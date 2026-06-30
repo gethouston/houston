@@ -2,6 +2,7 @@ import type { Session } from "@supabase/supabase-js";
 import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { analytics } from "./analytics";
+import { toCallbackUrl } from "./auth-callback";
 import { logger } from "./logger";
 import { queryClient } from "./query-client";
 import { isAuthConfigured, supabase } from "./supabase";
@@ -149,109 +150,132 @@ export function installDeepLinkListener(): () => void {
   if (deepLinkInstalled) return () => {};
   deepLinkInstalled = true;
 
-  const unlistenPromise = listen<string>("auth://deep-link", async (event) => {
-    const rawUrl = event.payload;
-    logger.info(`[auth] deep-link received: ${rawUrl}`);
-
-    try {
-      const url = new URL(rawUrl);
-      // OAuth errors can land in the query string (PKCE code flow) OR the
-      // fragment (implicit flow / some Microsoft Entra paths). Check both.
-      const fragmentParams = new URLSearchParams(
-        url.hash.startsWith("#") ? url.hash.slice(1) : url.hash,
-      );
-      const code = url.searchParams.get("code");
-      const errorParam =
-        url.searchParams.get("error_description") ||
-        url.searchParams.get("error") ||
-        fragmentParams.get("error_description") ||
-        fragmentParams.get("error");
-
-      if (errorParam) {
-        logger.error(`[auth] OAuth error: ${errorParam}`);
-        emitAuthError(errorParam);
-        return;
-      }
-
-      // Two callback shapes can land here:
-      //   PKCE   →  ?code=...                  (the `flowType: "pkce"`
-      //                                         path; client owns the
-      //                                         verifier in storage).
-      //   Implicit → #access_token=...&refresh_token=...
-      //
-      // Our client config asks for PKCE, but on Windows the desktop build
-      // has been observed to receive implicit-flow URLs (Supabase project
-      // config + an async Keychain adapter that silently swallows storage
-      // failures combine to make the JS lib generate an OAuth URL without
-      // `code_challenge`). The user got all the way through Google consent;
-      // the only thing left is installing the session — there is no reason
-      // to leave them stranded just because the URL shape doesn't match
-      // what we expected. Handle both, prefer PKCE when both are present
-      // (which never happens in practice — Supabase emits one or the other).
-      if (code) {
-        const { data, error } =
-          await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          logger.error(
-            `[auth] exchangeCodeForSession failed: ${error.message}`,
-          );
-          emitAuthError(error.message);
-          return;
-        }
-        applySessionToCache(data.session ?? null);
-        analytics.track("user_signed_in", {
-          provider: pendingProvider ?? "unknown",
-        });
-        pendingProvider = null;
-        logger.info(
-          `[auth] session established (pkce) for ${data.user?.email}`,
-        );
-        return;
-      }
-
-      const accessToken = fragmentParams.get("access_token");
-      const refreshToken = fragmentParams.get("refresh_token");
-      if (accessToken && refreshToken) {
-        const { data, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (error) {
-          logger.error(`[auth] setSession failed: ${error.message}`);
-          emitAuthError(error.message);
-          return;
-        }
-        // Push the session directly into the TanStack Query cache that
-        // `useSession` reads. Belt-and-suspenders over Supabase's
-        // `onAuthStateChange` listener, which a real Windows v0.4.14
-        // install was observed to skip for `setSession` calls 12 times
-        // in a row — every implicit-flow sign-in succeeded server-side
-        // but the auth gate in App.tsx never re-rendered. Writing the
-        // cache key directly here makes the UI transition deterministic
-        // regardless of whether the listener fires.
-        applySessionToCache(data.session ?? null);
-        analytics.track("user_signed_in", {
-          provider: pendingProvider ?? "unknown",
-        });
-        pendingProvider = null;
-        logger.info(
-          `[auth] session established (implicit) for ${data.user?.email}`,
-        );
-        return;
-      }
-
-      logger.warn(
-        "[auth] deep-link had neither `code` nor `access_token` — ignoring",
-      );
-      emitAuthError("Sign-in callback was missing the authorization code.");
-    } catch (e) {
-      logger.error(`[auth] failed to handle deep-link: ${e}`);
-      emitAuthError(String(e));
-    }
+  const unlistenPromise = listen<string>("auth://deep-link", (event) => {
+    logger.info(`[auth] deep-link received: ${event.payload}`);
+    void completeAuthCallback(event.payload);
   });
 
   return () => {
     unlistenPromise.then((fn) => fn()).catch(() => {});
     deepLinkInstalled = false;
   };
+}
+
+/**
+ * Complete an OAuth callback: pull the `code` (PKCE) or `access_token`
+ * (implicit) out of a callback URL and install the Supabase session. Shared by
+ * the desktop deep-link listener and the dev-only manual paste fallback
+ * (`completeSignInFromPaste`). Errors surface through `emitAuthError`, not by
+ * throwing, so both callers' UIs react the same way.
+ */
+async function completeAuthCallback(rawUrl: string): Promise<void> {
+  try {
+    const url = new URL(rawUrl);
+    // OAuth errors can land in the query string (PKCE code flow) OR the
+    // fragment (implicit flow / some Microsoft Entra paths). Check both.
+    const fragmentParams = new URLSearchParams(
+      url.hash.startsWith("#") ? url.hash.slice(1) : url.hash,
+    );
+    const code = url.searchParams.get("code");
+    const errorParam =
+      url.searchParams.get("error_description") ||
+      url.searchParams.get("error") ||
+      fragmentParams.get("error_description") ||
+      fragmentParams.get("error");
+
+    if (errorParam) {
+      logger.error(`[auth] OAuth error: ${errorParam}`);
+      emitAuthError(errorParam);
+      return;
+    }
+
+    // Two callback shapes can land here:
+    //   PKCE   →  ?code=...                  (the `flowType: "pkce"`
+    //                                         path; client owns the
+    //                                         verifier in storage).
+    //   Implicit → #access_token=...&refresh_token=...
+    //
+    // Our client config asks for PKCE, but on Windows the desktop build
+    // has been observed to receive implicit-flow URLs (Supabase project
+    // config + an async Keychain adapter that silently swallows storage
+    // failures combine to make the JS lib generate an OAuth URL without
+    // `code_challenge`). The user got all the way through Google consent;
+    // the only thing left is installing the session — there is no reason
+    // to leave them stranded just because the URL shape doesn't match
+    // what we expected. Handle both, prefer PKCE when both are present
+    // (which never happens in practice — Supabase emits one or the other).
+    if (code) {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) {
+        logger.error(`[auth] exchangeCodeForSession failed: ${error.message}`);
+        emitAuthError(error.message);
+        return;
+      }
+      applySessionToCache(data.session ?? null);
+      analytics.track("user_signed_in", {
+        provider: pendingProvider ?? "unknown",
+      });
+      pendingProvider = null;
+      logger.info(`[auth] session established (pkce) for ${data.user?.email}`);
+      return;
+    }
+
+    const accessToken = fragmentParams.get("access_token");
+    const refreshToken = fragmentParams.get("refresh_token");
+    if (accessToken && refreshToken) {
+      const { data, error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (error) {
+        logger.error(`[auth] setSession failed: ${error.message}`);
+        emitAuthError(error.message);
+        return;
+      }
+      // Push the session directly into the TanStack Query cache that
+      // `useSession` reads. Belt-and-suspenders over Supabase's
+      // `onAuthStateChange` listener, which a real Windows v0.4.14
+      // install was observed to skip for `setSession` calls 12 times
+      // in a row — every implicit-flow sign-in succeeded server-side
+      // but the auth gate in App.tsx never re-rendered. Writing the
+      // cache key directly here makes the UI transition deterministic
+      // regardless of whether the listener fires.
+      applySessionToCache(data.session ?? null);
+      analytics.track("user_signed_in", {
+        provider: pendingProvider ?? "unknown",
+      });
+      pendingProvider = null;
+      logger.info(
+        `[auth] session established (implicit) for ${data.user?.email}`,
+      );
+      return;
+    }
+
+    logger.warn(
+      "[auth] callback had neither `code` nor `access_token` — ignoring",
+    );
+    emitAuthError("Sign-in callback was missing the authorization code.");
+  } catch (e) {
+    logger.error(`[auth] failed to handle callback: ${e}`);
+    emitAuthError(String(e));
+  }
+}
+
+/**
+ * Dev-only sign-in fallback. In a dev build the `houston://auth-callback` deep
+ * link opens the INSTALLED production app (both builds share the `houston` URL
+ * scheme + `com.houston.app` bundle id), so the dev app stays stuck on the
+ * sign-in screen while production swallows the callback. The dev app still holds
+ * the PKCE verifier it generated when it opened the flow, so pasting the `code`
+ * (or the whole `…/auth/callback?code=…` URL the browser landed on) lets it
+ * finish the exchange locally — production is never involved. Gated to dev
+ * desktop builds in `SignInScreen`.
+ */
+export async function completeSignInFromPaste(input: string): Promise<void> {
+  const rawUrl = toCallbackUrl(input);
+  if (!rawUrl) {
+    emitAuthError("Paste the sign-in code or the full callback URL.");
+    return;
+  }
+  await completeAuthCallback(rawUrl);
 }

@@ -1,6 +1,11 @@
 import { Button } from "@houston-ai/core";
-import { useEffect, useState } from "react";
-import { onAuthError, signInWithGoogle } from "../../lib/auth";
+import { isTauri } from "@tauri-apps/api/core";
+import { type FormEvent, useEffect, useState } from "react";
+import {
+  completeSignInFromPaste,
+  onAuthError,
+  signInWithGoogle,
+} from "../../lib/auth";
 import { reportBug } from "../../lib/bug-report";
 import { logger } from "../../lib/logger";
 import { HoustonLogo } from "../shell/experience-card";
@@ -31,6 +36,10 @@ export function SignInScreen() {
     "idle",
   );
   const [logsIssueId, setLogsIssueId] = useState<string | null>(null);
+  // Dev-only manual completion (the `houston://` deep link opens the installed
+  // production app, so a dev build never receives the callback).
+  const [devCode, setDevCode] = useState("");
+  const [devExchanging, setDevExchanging] = useState(false);
 
   // Surface OAuth errors that happen AFTER the browser hands off (provider
   // rejection, code-exchange failure, identity already linked to another
@@ -56,6 +65,19 @@ export function SignInScreen() {
       // SignInScreen itself unmounts when the deep-link callback flips the
       // session, so we don't need a "waiting for callback" loading state.
       setPending(null);
+    }
+  };
+
+  const handleDevPaste = async (e: FormEvent) => {
+    e.preventDefault();
+    setDevExchanging(true);
+    setError(null);
+    try {
+      await completeSignInFromPaste(devCode);
+      // Success swaps the session and unmounts this screen; a failure already
+      // surfaced through the onAuthError subscription into `error`.
+    } finally {
+      setDevExchanging(false);
     }
   };
 
@@ -139,6 +161,39 @@ export function SignInScreen() {
             </button>
           )}
         </div>
+
+        {/* Dev-only manual sign-in completion. The `houston://auth-callback`
+         * deep link routes to the INSTALLED production app (shared scheme +
+         * bundle id), so a `pnpm start` dev build never receives the callback
+         * and stalls on this screen. Paste the code (or the full callback URL)
+         * the browser landed on to finish the PKCE exchange locally. Statically
+         * stripped from production by the `import.meta.env.DEV` guard. */}
+        {import.meta.env.DEV && isTauri() && (
+          <form
+            onSubmit={(e) => void handleDevPaste(e)}
+            className="mt-2 w-full flex flex-col gap-2 border-t border-border pt-4"
+          >
+            <p className="text-xs text-muted-foreground text-center">
+              Dev: the callback opens the production app. Paste the code (or the
+              full callback URL) from the browser here.
+            </p>
+            <input
+              value={devCode}
+              onChange={(e) => setDevCode(e.target.value)}
+              placeholder="code or https://gethouston.ai/auth/callback?code=..."
+              autoComplete="off"
+              spellCheck={false}
+              className="w-full rounded-md border border-border bg-background px-3 h-9 text-xs"
+            />
+            <Button
+              type="submit"
+              disabled={!devCode.trim() || devExchanging}
+              className="w-full rounded-full h-9 text-xs"
+            >
+              {devExchanging ? "Completing sign-in..." : "Complete dev sign-in"}
+            </Button>
+          </form>
+        )}
       </div>
     </div>
   );
