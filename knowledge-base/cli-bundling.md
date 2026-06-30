@@ -114,7 +114,7 @@ session's system prompt as a file-based profile
 `houston-terminal-manager::prompt_scratch`); older codex `-p` only reads
 `[profiles.*]` tables inside the user's own `config.toml` and would fail
 with "config profile not found". claude-code must stay ≥ a version with
-`--system-prompt-file` (the pinned 2.1.170 has it). Both exist because
+`--system-prompt-file` (the pinned 2.1.197 has it). Both exist because
 inline prompts on argv exceed Windows' 32,767-char `CreateProcessW`
 limit (os error 206) for agents with large accumulated context.
 
