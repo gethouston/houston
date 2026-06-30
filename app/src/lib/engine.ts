@@ -2,7 +2,7 @@
 
 import { EngineWebSocket, HoustonClient } from "@houston-ai/engine-client";
 import { pullEngineHandshakeWithRetry } from "./engine-handshake";
-import { controlPlaneBuild } from "./engine-mode";
+import { controlPlaneBuild, hostedOauthLoginActive } from "./engine-mode";
 import { installRustEngineLifecycleListeners } from "./engine-tauri-events";
 
 declare global {
@@ -28,8 +28,24 @@ const STATIC_HOST_URL: string | undefined =
 const HOSTED_ENGINE_URL: string | undefined =
   _env.VITE_HOSTED_ENGINE_URL || undefined;
 const HOST_TOKEN: string =
-  _env.VITE_NEW_ENGINE_TOKEN ?? _env.VITE_HOUSTON_ENGINE_TOKEN ?? "";
+  _env.VITE_HOSTED_ENGINE_TOKEN ??
+  _env.VITE_NEW_ENGINE_TOKEN ??
+  _env.VITE_HOUSTON_ENGINE_TOKEN ??
+  "";
 const REMOTE_HOST_MODE = Boolean(STATIC_HOST_URL || HOSTED_ENGINE_URL);
+
+// Hosted-gateway auth method (`VITE_HOSTED_ENGINE_AUTH`). OAuth gates the app
+// behind the Supabase Google-login screen and feeds the session token in via
+// setHostedEngineSessionToken; static points straight at the hosted URL with the
+// build's HOST_TOKEN (no login — for service-token smoke tests against e.g. the
+// local kind gateway). Defaults to OAuth whenever a hosted URL is set, so the
+// documented "VITE_HOSTED_ENGINE_URL ⇒ Supabase login" contract is unchanged.
+const HOSTED_OAUTH = hostedOauthLoginActive(
+  (import.meta.env ?? {}) as unknown as {
+    VITE_HOSTED_ENGINE_URL?: string;
+    VITE_HOSTED_ENGINE_AUTH?: string;
+  },
+);
 
 // When the new-engine adapter is aliased in (VITE_NEW_ENGINE or
 // VITE_NEW_ENGINE_URL — see app/vite.config.ts `useHost`), the desktop ALWAYS
@@ -59,6 +75,14 @@ function resolveConfig(): { baseUrl: string; token: string } | null {
   // Host mode wins: point at the v3 host, overriding the Tauri-injected Rust
   // engine handshake.
   if (STATIC_HOST_URL) return { baseUrl: STATIC_HOST_URL, token: HOST_TOKEN };
+  // Hosted gateway with OAuth disabled: behave exactly like STATIC_HOST_URL —
+  // point at the gateway with the static bearer immediately. (OAuth-enabled
+  // hosted mode instead leaves the client unbuilt here and waits for the Supabase
+  // session token via setHostedEngineSessionToken, so the gateway only ever sees
+  // a verified user JWT.)
+  if (HOSTED_ENGINE_URL && !HOSTED_OAUTH) {
+    return { baseUrl: HOSTED_ENGINE_URL, token: HOST_TOKEN };
+  }
   if (typeof window !== "undefined" && window.__HOUSTON_ENGINE__) {
     return window.__HOUSTON_ENGINE__;
   }
@@ -85,9 +109,14 @@ function applyConfig(config: { baseUrl: string; token: string }) {
   }
 }
 
-/** True when this build should use Supabase-authenticated hosted engine mode. */
-export function hostedEngineActive(): boolean {
-  return Boolean(HOSTED_ENGINE_URL);
+/**
+ * True when the desktop should run the Supabase Google-login gate: a hosted
+ * gateway URL is set AND its auth mode is OAuth (`VITE_HOSTED_ENGINE_AUTH`).
+ * Static-token hosted mode skips the login UI and bootstraps from HOST_TOKEN in
+ * resolveConfig, exactly like `VITE_NEW_ENGINE_URL`.
+ */
+export function hostedOauthGateActive(): boolean {
+  return HOSTED_OAUTH;
 }
 
 /** Updates the hosted engine bearer token from the current Supabase session. */

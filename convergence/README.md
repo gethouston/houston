@@ -95,7 +95,10 @@ Supabase-authenticated gateway, maps user `sub` to the pod service, replaces the
 user bearer with `HOUSTON_HOST_TOKEN`, and owns Kubernetes Deployment/PVC/Secret/
 Service/NetworkPolicy creation. Desktop hosted mode uses `VITE_HOSTED_ENGINE_URL`
 and the existing Supabase session token; `VITE_NEW_ENGINE_URL` static-token mode
-stays for dev/self-host.
+stays for dev/self-host. The hosted Google-login gate is toggled by
+`VITE_HOSTED_ENGINE_AUTH` (`oauth` by default when a hosted URL is set; `static`
+points at the gateway with a static bearer for service-token smoke tests) — see
+`knowledge-base/auth.md` for the table + the local-kind login recipe.
 
 ## Host-sidecar release CI
 

@@ -2,6 +2,9 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   controlPlaneBuild,
+  hostedAuthMode,
+  hostedGateState,
+  hostedOauthLoginActive,
   providerLoginUsesDeviceAuthByDefault,
 } from "../src/lib/engine-mode.ts";
 
@@ -100,5 +103,142 @@ describe("providerLoginUsesDeviceAuthByDefault", () => {
       providerLoginUsesDeviceAuthByDefault({}, { isTauri: false }),
       true,
     );
+  });
+});
+
+// HOU-611: VITE_HOSTED_ENGINE_AUTH is the enable/disable switch for the hosted
+// Supabase Google-login gate, so a developer can point the desktop app at a
+// hosted gateway (e.g. the local kind cluster) and toggle OAuth on or off
+// without changing the URL.
+describe("hostedAuthMode (HOU-611)", () => {
+  it("defaults to oauth when a hosted URL is set (managed-cloud contract)", () => {
+    strictEqual(
+      hostedAuthMode({ VITE_HOSTED_ENGINE_URL: "https://cloud.example" }),
+      "oauth",
+    );
+  });
+
+  it("defaults to static with no hosted URL (plain self-host / dev)", () => {
+    strictEqual(hostedAuthMode({}), "static");
+    strictEqual(
+      hostedAuthMode({ VITE_NEW_ENGINE_URL: "https://host.example" }),
+      "static",
+    );
+  });
+
+  it("accepts every truthy spelling as oauth (case/space-insensitive)", () => {
+    for (const v of [
+      "oauth",
+      "supabase",
+      "google",
+      "1",
+      "true",
+      "on",
+      " OAuth ",
+    ]) {
+      strictEqual(hostedAuthMode({ VITE_HOSTED_ENGINE_AUTH: v }), "oauth");
+    }
+  });
+
+  it("accepts every falsy spelling as static, overriding the URL default", () => {
+    for (const v of [
+      "static",
+      "token",
+      "none",
+      "0",
+      "false",
+      "off",
+      " STATIC ",
+    ]) {
+      strictEqual(
+        hostedAuthMode({
+          VITE_HOSTED_ENGINE_URL: "https://cloud.example",
+          VITE_HOSTED_ENGINE_AUTH: v,
+        }),
+        "static",
+      );
+    }
+  });
+
+  it("falls back to the URL default for an unrecognised value", () => {
+    strictEqual(
+      hostedAuthMode({
+        VITE_HOSTED_ENGINE_URL: "https://cloud.example",
+        VITE_HOSTED_ENGINE_AUTH: "banana",
+      }),
+      "oauth",
+    );
+  });
+});
+
+describe("hostedOauthLoginActive (HOU-611)", () => {
+  it("is on for a hosted URL with the default (oauth) auth mode", () => {
+    strictEqual(
+      hostedOauthLoginActive({
+        VITE_HOSTED_ENGINE_URL: "https://cloud.example",
+      }),
+      true,
+    );
+  });
+
+  it("is off for a hosted URL when auth is toggled to static", () => {
+    strictEqual(
+      hostedOauthLoginActive({
+        VITE_HOSTED_ENGINE_URL: "https://cloud.example",
+        VITE_HOSTED_ENGINE_AUTH: "static",
+      }),
+      false,
+    );
+  });
+
+  it("is off with no hosted URL even if oauth is requested (nowhere to send the token)", () => {
+    strictEqual(
+      hostedOauthLoginActive({ VITE_HOSTED_ENGINE_AUTH: "oauth" }),
+      false,
+    );
+    strictEqual(
+      hostedOauthLoginActive({ VITE_NEW_ENGINE_URL: "https://host.example" }),
+      false,
+    );
+  });
+});
+
+describe("hostedGateState (HOU-611)", () => {
+  const base = {
+    authConfigured: true,
+    sessionLoading: false,
+    hasSession: true,
+    engineReady: true,
+  };
+
+  it("is misconfigured when hosted OAuth lacks a Supabase project (no silent hang)", () => {
+    strictEqual(
+      hostedGateState({ ...base, authConfigured: false, hasSession: false }),
+      "misconfigured",
+    );
+    // misconfigured wins even mid-load — never spins on the splash forever.
+    strictEqual(
+      hostedGateState({ ...base, authConfigured: false, sessionLoading: true }),
+      "misconfigured",
+    );
+  });
+
+  it("loads while the session resolves", () => {
+    strictEqual(
+      hostedGateState({ ...base, sessionLoading: true, hasSession: false }),
+      "loading",
+    );
+  });
+
+  it("prompts sign-in once resolved to no session", () => {
+    strictEqual(hostedGateState({ ...base, hasSession: false }), "sign-in");
+  });
+
+  it("loads while a fresh token is applied to the engine", () => {
+    strictEqual(hostedGateState({ ...base, engineReady: false }), "loading");
+  });
+
+  it("is ready when signed in and the engine is bootstrapped", () => {
+    strictEqual(hostedGateState(base), "ready");
   });
 });

@@ -256,7 +256,9 @@
   },
   "engineGate": {
     "starting": "Starting Houston engine…",
-    "loadFailed": "Couldn't load your available AI models. Check your connection and try again."
+    "loadFailed": "Couldn't load your available AI models. Check your connection and try again.",
+    "authRequiredTitle": "Sign-in required",
+    "authRequiredBody": "This build connects to Houston's hosted engine, but no sign-in is configured. Set SUPABASE_URL and SUPABASE_ANON_KEY for this build to enable Google sign-in."
   },
   "providerError": {
     "rateLimited": {

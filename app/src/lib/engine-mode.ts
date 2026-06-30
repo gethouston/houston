@@ -15,6 +15,14 @@ type EngineModeEnv = {
   VITE_NEW_ENGINE_URL?: string;
   VITE_HOSTED_ENGINE_URL?: string;
   VITE_NEW_ENGINE?: string;
+  /**
+   * Auth method for the hosted engine (`VITE_HOSTED_ENGINE_URL`). The
+   * enable/disable switch for the Supabase Google-login gate — see
+   * {@link hostedAuthMode}. Independent of `VITE_HOSTED_ENGINE_URL` so a
+   * developer can point the desktop app at a hosted gateway (e.g. the local
+   * kind cluster) and toggle the OAuth login on or off without changing the URL.
+   */
+  VITE_HOSTED_ENGINE_AUTH?: string;
 };
 
 export function controlPlaneBuild(env: EngineModeEnv): boolean {
@@ -42,4 +50,74 @@ export function providerLoginUsesDeviceAuthByDefault(
     Boolean(env.VITE_NEW_ENGINE_URL) ||
     Boolean(env.VITE_HOSTED_ENGINE_URL)
   );
+}
+
+/** How the desktop authenticates to the hosted engine (`VITE_HOSTED_ENGINE_URL`). */
+export type HostedAuthMode =
+  /** Supabase Google login: prompt sign-in, send the session token as bearer. */
+  | "oauth"
+  /** Static bearer (`VITE_HOSTED_ENGINE_TOKEN` / `VITE_NEW_ENGINE_TOKEN`): no login. */
+  | "static";
+
+/**
+ * Resolve the hosted-engine auth method from `VITE_HOSTED_ENGINE_AUTH`.
+ *
+ * This is the enable/disable switch for the hosted Google-login flow. An
+ * explicit value wins; otherwise the presence of a hosted URL implies OAuth
+ * (managed cloud is authenticated by default — the documented contract), and a
+ * plain self-host / dev build with no hosted URL stays static.
+ *
+ * Accepted values (case-insensitive): `oauth` | `supabase` | `google` | `1` |
+ * `true` | `on` ⇒ OAuth; `static` | `token` | `none` | `0` | `false` | `off` ⇒
+ * static. Anything else falls back to the default.
+ */
+export function hostedAuthMode(env: EngineModeEnv): HostedAuthMode {
+  const raw = (env.VITE_HOSTED_ENGINE_AUTH ?? "").trim().toLowerCase();
+  if (["oauth", "supabase", "google", "1", "true", "on"].includes(raw)) {
+    return "oauth";
+  }
+  if (["static", "token", "none", "0", "false", "off"].includes(raw)) {
+    return "static";
+  }
+  return env.VITE_HOSTED_ENGINE_URL ? "oauth" : "static";
+}
+
+/**
+ * True when the desktop should run the Supabase Google-login gate for the hosted
+ * engine: a hosted gateway URL is set AND its auth mode is OAuth. Static-token
+ * hosted mode (and every non-hosted build) returns false and skips the login UI.
+ */
+export function hostedOauthLoginActive(env: EngineModeEnv): boolean {
+  return Boolean(env.VITE_HOSTED_ENGINE_URL) && hostedAuthMode(env) === "oauth";
+}
+
+/** The screen the hosted Google-login gate should render for a given auth state. */
+export type HostedGateState =
+  /** Hosted OAuth is on but no Supabase project is configured — can't sign in. */
+  | "misconfigured"
+  /** Resolving the persisted session, or applying a fresh token to the engine. */
+  | "loading"
+  /** No session — prompt "Continue with Google". */
+  | "sign-in"
+  /** Signed in and the engine client is bootstrapped — render the app. */
+  | "ready";
+
+/**
+ * Pure decision for {@link HostedEngineGate}. Only consulted when the hosted
+ * OAuth gate is active, so OAuth is assumed; the only escape hatch is a build
+ * that enabled hosted OAuth without baking Supabase creds, which can never
+ * produce a token (`misconfigured`) — surfaced loudly instead of spinning
+ * forever on the "starting" splash.
+ */
+export function hostedGateState(input: {
+  authConfigured: boolean;
+  sessionLoading: boolean;
+  hasSession: boolean;
+  engineReady: boolean;
+}): HostedGateState {
+  if (!input.authConfigured) return "misconfigured";
+  if (input.sessionLoading) return "loading";
+  if (!input.hasSession) return "sign-in";
+  if (!input.engineReady) return "loading";
+  return "ready";
 }

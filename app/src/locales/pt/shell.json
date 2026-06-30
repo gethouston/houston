@@ -256,7 +256,9 @@
   },
   "engineGate": {
     "starting": "Iniciando o motor do Houston…",
-    "loadFailed": "Não foi possível carregar seus modelos de IA disponíveis. Verifique sua conexão e tente novamente."
+    "loadFailed": "Não foi possível carregar seus modelos de IA disponíveis. Verifique sua conexão e tente novamente.",
+    "authRequiredTitle": "Login necessário",
+    "authRequiredBody": "Esta versão se conecta ao motor hospedado do Houston, mas não tem login configurado. Defina SUPABASE_URL e SUPABASE_ANON_KEY nesta versão para habilitar o login com Google."
   },
   "providerError": {
     "rateLimited": {

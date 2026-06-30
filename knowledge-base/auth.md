@@ -43,6 +43,57 @@ In cloud mode the Supabase access token doubles as the control-plane bearer:
 into `window.__HOUSTON_ENGINE__`, and the engine adapter reads it per request
 (`control-plane.liveToken`) so silent refreshes are picked up without a reload.
 
+## Desktop hosted mode + the OAuth toggle (HOU-611)
+
+The desktop app talks to the managed cloud gateway when `VITE_HOSTED_ENGINE_URL`
+is set. There the bearer is the **Supabase session token**, not a static key:
+`EngineGate` (`app/src/components/shell/engine-gate.tsx`) routes to
+`HostedEngineGate`, which blocks the app behind `SignInScreen` until Google
+sign-in lands, then feeds the session token to the engine client via
+`setHostedEngineSessionToken` (`app/src/lib/engine.ts`). The gateway verifies
+that JWT (`gethouston/cloud`, `src/auth/verify-supabase.ts`) and swaps in the
+pod's internal token — the user JWT never reaches the pod.
+
+Whether that OAuth gate runs is the **`VITE_HOSTED_ENGINE_AUTH`** switch
+(`hostedAuthMode` / `hostedOauthLoginActive` in `app/src/lib/engine-mode.ts`):
+
+| `VITE_HOSTED_ENGINE_AUTH` | Behavior |
+|---|---|
+| unset (hosted URL set) | **`oauth`** — Google login required (the managed-cloud default; unchanged contract) |
+| `oauth` / `supabase` / `google` / `1` / `true` / `on` | Google login required |
+| `static` / `token` / `none` / `0` / `false` / `off` | No login — point at the hosted URL with the static bearer (`VITE_HOSTED_ENGINE_TOKEN` / `VITE_NEW_ENGINE_TOKEN`), exactly like `VITE_NEW_ENGINE_URL`. For service-token smoke tests. |
+
+Hosted OAuth needs a baked Supabase project (`SUPABASE_URL` + `SUPABASE_ANON_KEY`).
+A build that turns OAuth on without them can never obtain a token, so the gate
+renders a loud **"Sign-in required"** screen (`shell:engineGate.authRequired*`)
+instead of spinning on the start splash forever.
+
+`static` suppresses only this hosted-engine OAuth gate. If a build separately
+bakes Supabase, the app-wide sign-in (`App.tsx`'s `isAuthConfigured()` gate) still
+applies, so the no-login path is meant for service-token smoke builds that bake no
+Supabase creds.
+
+### Testing Google login against the local kind gateway
+
+To exercise the real Google-login flow against the `gethouston/cloud` kind POC
+(`cloud/k8s/poc`) with the desktop app as client:
+
+1. Bake the Supabase project into the dev build — in `app/.env.local`:
+   ```
+   SUPABASE_URL=https://zfpnlvxazrataiannvtq.supabase.co
+   SUPABASE_ANON_KEY=<anon public key>
+   VITE_HOSTED_ENGINE_URL=http://localhost:9080
+   # VITE_HOSTED_ENGINE_AUTH defaults to oauth when the hosted URL is set;
+   # set it to `static` (+ VITE_HOSTED_ENGINE_TOKEN=<service token>) to test
+   # the no-login path instead.
+   ```
+2. Bring the gateway up: `make kind-up` in the cloud repo. Its
+   `ServiceTokenVerifier` falls through to the real `SupabaseTokenVerifier`
+   (kind sets `GW_SUPABASE_JWKS_URL`), so a Google-issued JWT verifies with no
+   gateway change.
+3. `pnpm tauri dev` in `app/` → **Continue with Google** → the verified session
+   token reaches the gateway, which provisions your per-user pod.
+
 ## Keychain boundary
 
 | Piece | Where |
