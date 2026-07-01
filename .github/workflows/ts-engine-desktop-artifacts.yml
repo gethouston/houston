@@ -1,11 +1,29 @@
 # Manual artifact builder for the convergence target desktop app: Tauri shell +
 # Bun-compiled TypeScript Houston host sidecar (`--features host-sidecar`) + pi.
 # Uploads Actions artifacts only. Does not create or mutate GitHub Releases.
+#
+# UNSIGNED test artifacts. This repo has no signing secrets configured, and these
+# builds are for internal engine testing, not distribution — so each job disables
+# updater-artifact creation and macOS falls back to the ad-hoc `signingIdentity:
+# "-"` already in tauri.conf.json. macOS testers run `xattr -cr Houston.app`
+# (or right-click -> Open) before first launch; Windows shows a SmartScreen
+# "More info -> Run anyway". Add the Apple/Tauri signing secrets + restore
+# createUpdaterArtifacts if these ever need to be distributable.
 
 name: TS Engine Desktop Artifacts
 
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: "Which platform(s) to build"
+        type: choice
+        options:
+          - all
+          - macos
+          - windows
+          - linux
+        default: all
 
 permissions:
   contents: read
@@ -40,8 +58,27 @@ jobs:
 
   build-macos-ts-engine:
     needs: prep
+    if: ${{ inputs.platform == 'all' || inputs.platform == 'macos' }}
     runs-on: macos-latest
     timeout-minutes: 75
+    # Env MUST live at JOB level, not on the composite-action step: GitHub
+    # propagates workflow/job-level env into a composite action's inner steps,
+    # but does NOT propagate env set on the `uses:` step itself. When it was on
+    # the step, VITE_NEW_ENGINE arrived empty inside tauri-action and the frontend
+    # was silently built against the wrong engine. Keep this block at job scope.
+    # No APPLE_* / TAURI_SIGNING_* here — this is an unsigned (ad-hoc) build; the
+    # config secrets below are best-effort (empty is fine, the app just degrades).
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      VITE_NEW_ENGINE: "1"
+      SIGN_MACOS: "false"
+      POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+      POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+      LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -49,33 +86,12 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Write Apple API key to disk
-        run: |
-          set -euo pipefail
-          mkdir -p ~/.appstoreconnect/private_keys
-          echo "${{ secrets.APPLE_API_KEY_CONTENT }}" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPLE_API_KEY }}.p8
+      - name: Configure unsigned test build
+        shell: bash
+        run: bash scripts/ci/configure-ts-engine-unsigned.sh
 
       - name: Build macOS universal artifact
         uses: ./.github/actions/build-ts-engine-desktop-artifact
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VITE_NEW_ENGINE: "1"
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_KEY_PATH: ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPLE_API_KEY }}.p8
-          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
-          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
-          LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          SIGN_MACOS: "true"
         with:
           rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
           cache-key: ${{ runner.os }}-cargo-ts-engine-desktop-${{ hashFiles('**/Cargo.lock') }}
@@ -98,6 +114,7 @@ jobs:
 
   build-windows-ts-engine:
     needs: prep
+    if: ${{ inputs.platform == 'all' || inputs.platform == 'windows' }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 75
     strategy:
@@ -110,6 +127,20 @@ jobs:
           - target: aarch64-pc-windows-msvc
             artifact_suffix: arm64
             runner: windows-11-arm
+    # Job-level env so VITE_NEW_ENGINE reaches the composite action's inner
+    # tauri-action step (step-level env on a `uses:` step is not propagated).
+    # Unsigned build: no TAURI_SIGNING_* (the MSI ships unsigned and updater
+    # artifacts are disabled in the configure step below).
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      VITE_NEW_ENGINE: "1"
+      POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+      POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+      LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -117,20 +148,12 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      - name: Configure unsigned test build
+        shell: bash
+        run: bash scripts/ci/configure-ts-engine-unsigned.sh
+
       - name: Build Windows ${{ matrix.artifact_suffix }} artifact
         uses: ./.github/actions/build-ts-engine-desktop-artifact
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VITE_NEW_ENGINE: "1"
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
-          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
-          LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         with:
           rust-targets: ${{ matrix.target }}
           cache-key: ${{ runner.os }}-cargo-ts-engine-desktop-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
@@ -144,8 +167,31 @@ jobs:
 
   build-linux-ts-engine:
     needs: prep
+    if: ${{ inputs.platform == 'all' || inputs.platform == 'linux' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
+    # Job-level env so VITE_NEW_ENGINE reaches the composite action's inner
+    # tauri-action step (step-level env on a `uses:` step is not propagated).
+    #
+    # AppImage bundling in CI also needs these (the primary linuxdeploy failure —
+    # ldd crashing on the self-contained sidecar — is fixed by the ldd-shim step
+    # below):
+    #   * APPIMAGE_EXTRACT_AND_RUN=1 — GitHub runners have no usable FUSE, so the
+    #     nested AppImage tools linuxdeploy invokes (appimagetool, plugins) must
+    #     extract-and-run instead of mounting.
+    #   * NO_STRIP=true — keeps linuxdeploy from running `strip` on bundled libs,
+    #     which can abort on modern WebKitGTK/glibc libs carrying `.relr.dyn` ELF
+    #     sections. (tauri-apps/tauri#14796)
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      VITE_NEW_ENGINE: "1"
+      POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+      POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      NO_STRIP: "true"
+      APPIMAGE_EXTRACT_AND_RUN: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -153,21 +199,27 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      - name: Configure unsigned test build
+        run: bash scripts/ci/configure-ts-engine-unsigned.sh
+
       - name: Install Tauri Linux system dependencies
         run: bash scripts/ci/install-tauri-linux-deps.sh
 
+      # linuxdeploy crashes running `ldd` on the self-contained Bun sidecar
+      # (houston-engine) while bundling the AppImage. Put an `ldd` shim at the
+      # front of PATH that reports that one binary as having no deployable libs
+      # and defers to the real ldd for everything else. See the script header.
+      - name: Shim ldd for the self-contained sidecar (AppImage)
+        run: |
+          set -euo pipefail
+          SHIM_DIR="$RUNNER_TEMP/ldd-shim"
+          mkdir -p "$SHIM_DIR"
+          install -m 0755 scripts/ci/appimage-ldd-shim.sh "$SHIM_DIR/ldd"
+          echo "$SHIM_DIR" >> "$GITHUB_PATH"
+          echo "Installed ldd shim at $SHIM_DIR/ldd (front of PATH)."
+
       - name: Build Linux x64 artifact
         uses: ./.github/actions/build-ts-engine-desktop-artifact
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VITE_NEW_ENGINE: "1"
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
-          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         with:
           rust-targets: x86_64-unknown-linux-gnu
           cache-key: ${{ runner.os }}-cargo-ts-engine-desktop-linux-${{ hashFiles('**/Cargo.lock') }}

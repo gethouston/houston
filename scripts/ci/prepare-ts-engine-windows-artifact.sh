@@ -20,18 +20,21 @@ newest_match() {
 MSI=$(newest_match "$BUNDLE/msi" "*.msi")
 SIG=$(newest_match "$BUNDLE/msi" "*.msi.sig")
 
-missing=()
-[ -f "$MSI" ] || missing+=("MSI")
-[ -f "$SIG" ] || missing+=("MSI .sig")
-if [ ${#missing[@]} -gt 0 ]; then
-  echo "::error::Windows TS-engine artifacts missing: ${missing[*]}"
+if [ ! -f "$MSI" ]; then
+  echo "::error::Windows TS-engine MSI missing under $BUNDLE/msi"
   find "$BUNDLE" -maxdepth 4 -print 2>&1 | head -80 || true
   exit 1
 fi
 
-echo "Artifacts: msi=$MSI ($(du -sh "$MSI" | cut -f1)) sig=$SIG"
+echo "Artifacts: msi=$MSI ($(du -sh "$MSI" | cut -f1))"
 mkdir -p "$OUT"
 cp "$MSI" "$OUT/"
-cp "$SIG" "$OUT/"
+# The updater signature only exists for updater-signed builds. Unsigned test
+# builds disable createUpdaterArtifacts, so the .sig is absent — copy it only
+# when present rather than failing the job.
+if [ -n "$SIG" ] && [ -f "$SIG" ]; then
+  echo "  updater sig: $SIG"
+  cp "$SIG" "$OUT/"
+fi
 (cd "$OUT" && sha256sum ./* > checksums-sha256.txt)
 ls -lh "$OUT"

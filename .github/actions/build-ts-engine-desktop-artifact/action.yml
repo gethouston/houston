@@ -72,6 +72,13 @@ runs:
       shell: bash
       run: ${{ inputs.compile-command }}
 
+    # This step (and the compile/prepare steps around it) read build config from
+    # AMBIENT env — VITE_NEW_ENGINE, POSTHOG/SUPABASE/LINEAR/SENTRY, and on Linux
+    # NO_STRIP/APPIMAGE_EXTRACT_AND_RUN (plus APPLE_*/TAURI_SIGNING_* if a signed
+    # build is ever wired). The caller MUST set these at JOB level (jobs.<id>.env),
+    # NOT on this `uses:` step: GitHub does not propagate a step's own env into a
+    # composite action's inner steps, so step-level env arrives empty here and, e.g.,
+    # silently builds the frontend against the wrong engine.
     - name: Build Tauri app (TS engine)
       uses: tauri-apps/tauri-action@v0
       with:
