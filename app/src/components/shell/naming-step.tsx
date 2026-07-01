@@ -15,6 +15,7 @@ import { ArrowLeft, Check, FolderOpen, ChevronDown } from "lucide-react";
 import type { AgentDefinition } from "../../lib/types";
 import { tauriProvider, type ProviderStatus } from "../../lib/tauri";
 import { PROVIDERS, getProvider, getModel } from "../../lib/providers";
+import { localizeCatalogEntry } from "../../agents/catalog-labels";
 
 interface NamingStepProps {
   selectedAgent: AgentDefinition | undefined;
@@ -50,9 +51,12 @@ export function NamingStep({
   onBack,
   onSubmit,
 }: NamingStepProps) {
-  const { t } = useTranslation("shell");
+  const { t } = useTranslation(["shell", "agents"]);
   // Default to white on mount if none selected
   const resolvedColor = resolveAgentColor(color);
+  const selectedName = selectedAgent
+    ? localizeCatalogEntry(selectedAgent, t).name
+    : t("naming.newAgentFallback");
 
   useEffect(() => {
     if (!color) {
@@ -77,7 +81,7 @@ export function NamingStep({
 
         <div className="text-center">
           <p className="text-lg font-semibold">
-            {selectedAgent?.config.name ?? t("naming.newAgentFallback")}
+            {selectedName}
           </p>
           <p className="text-sm text-muted-foreground mt-1">
             {t("naming.tagline")}
@@ -190,7 +194,7 @@ export function InlineModelSelector({
   model: string;
   onSelect: (provider: string, model: string) => void;
 }) {
-  const { t } = useTranslation("providers");
+  const { t } = useTranslation(["providers", "chat"]);
   const [statuses, setStatuses] = useState<Record<string, ProviderStatus>>({});
   const [open, setOpen] = useState(false);
 
@@ -265,7 +269,9 @@ export function InlineModelSelector({
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="text-sm">{m.label}</div>
-                        <div className="text-xs text-muted-foreground leading-snug">{m.description}</div>
+                        <div className="text-xs text-muted-foreground leading-snug">
+                          {t(`chat:modelSelector.modelDescriptions.${m.id.replace(/\./g, "_")}`, { defaultValue: m.description })}
+                        </div>
                       </div>
                     </button>
                   );

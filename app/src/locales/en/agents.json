@@ -1,4 +1,14 @@
 {
+  "catalog": {
+    "personal-assistant": {
+      "name": "Personal assistant",
+      "description": "A general-purpose assistant for your day, inbox, calendar, follow-ups, and recurring work."
+    },
+    "blank": {
+      "name": "Start from scratch",
+      "description": "A blank agent with no pre-configured actions, instructions, or learnings. Build it your way."
+    }
+  },
   "toasts": {
     "renamed": "Workspace renamed",
     "deleted": "Workspace deleted",

@@ -1,4 +1,14 @@
 {
+  "catalog": {
+    "personal-assistant": {
+      "name": "Asistente personal",
+      "description": "Un asistente de uso general para tu día, tu bandeja de entrada, tu calendario, tus seguimientos y tu trabajo recurrente."
+    },
+    "blank": {
+      "name": "Empezar desde cero",
+      "description": "Un agente en blanco, sin acciones, instrucciones ni aprendizajes preconfigurados. Constrúyelo a tu manera."
+    }
+  },
   "toasts": {
     "renamed": "Espacio de trabajo renombrado",
     "deleted": "Espacio de trabajo eliminado",

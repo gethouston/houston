@@ -5,7 +5,10 @@ import { useTranslation } from "react-i18next";
 import type { AgentDefinition, StoreListing } from "../../lib/types";
 import { SkillCard } from "../skill-card";
 import { AgentCard, StoreAgentCard } from "./experience-card";
+import { localizeCatalogEntry } from "../../agents/catalog-labels";
 import { useUIStore } from "../../stores/ui";
+
+type CatalogDisplay = { name: string; description: string };
 
 interface StoreStepProps {
   search: string;
@@ -26,7 +29,7 @@ export function StoreStep({
   onInstall,
   onCreateWithAi,
 }: StoreStepProps) {
-  const { t } = useTranslation(["shell", "portable"]);
+  const { t, i18n } = useTranslation(["shell", "portable", "agents"]);
   const setImportOpen = useUIStore((s) => s.setImportFromFriendOpen);
   const setCreateOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
 
@@ -36,6 +39,18 @@ export function StoreStep({
   );
   const query = search.trim().toLowerCase();
 
+  // First-party (builtin) agents render in the user's language; installed /
+  // remote agents keep their author's language. Recompute when the active
+  // language changes so switching locales relabels the store live.
+  const localized = useMemo(() => {
+    const map = new Map<string, CatalogDisplay>();
+    for (const def of agents) {
+      map.set(def.config.id, localizeCatalogEntry(def, t));
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agents, t, i18n.language]);
+
   const filteredAgents = useMemo(
     () =>
       agents.filter((d) => {
@@ -44,9 +59,9 @@ export function StoreStep({
         }
         if (storeIds.has(d.config.id)) return false;
         if (!query) return true;
-        return matchesAgent(d, query);
+        return matchesAgent(d, localized.get(d.config.id), query);
       }),
-    [agents, query, storeIds],
+    [agents, query, storeIds, localized],
   );
 
   const filteredStore = useMemo(
@@ -122,13 +137,18 @@ export function StoreStep({
                 onClick={onCreateWithAi}
               />
             )}
-            {reorderedAgents.map((def) => (
-              <AgentCard
-                key={def.config.id}
-                config={def.config}
-                onSelect={onSelect}
-              />
-            ))}
+            {reorderedAgents.map((def) => {
+              const display = localized.get(def.config.id);
+              return (
+                <AgentCard
+                  key={def.config.id}
+                  config={def.config}
+                  title={display?.name}
+                  description={display?.description}
+                  onSelect={onSelect}
+                />
+              );
+            })}
             {filteredStore.map((listing) => (
               <StoreAgentCard
                 key={listing.id}
@@ -150,11 +170,17 @@ export function StoreStep({
   );
 }
 
-function matchesAgent(def: AgentDefinition, query: string): boolean {
+function matchesAgent(
+  def: AgentDefinition,
+  display: CatalogDisplay | undefined,
+  query: string,
+): boolean {
   const config = def.config;
+  const name = display?.name ?? config.name;
+  const description = display?.description ?? config.description;
   return (
-    config.name.toLowerCase().includes(query) ||
-    config.description.toLowerCase().includes(query) ||
+    name.toLowerCase().includes(query) ||
+    description.toLowerCase().includes(query) ||
     config.tags?.some((tag) => tag.toLowerCase().includes(query)) ||
     config.integrations?.some((toolkit) =>
       toolkit.toLowerCase().includes(query),
