@@ -180,11 +180,54 @@ async fn run_command(
     };
 
     if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("process exited {}: {}", output.status, stderr.trim()));
+        return Err(format!(
+            "process exited {}: {}",
+            output.status,
+            describe_failure(&output.stdout, &output.stderr)
+        ));
     }
 
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+/// Cap on how much child output we fold into an error message, so a
+/// multi-KB JSON stream or stack trace can't bloat the toast the user sees
+/// (or the Sentry payload). Errors land at the *end* of a stream, so we
+/// keep the tail.
+const MAX_DIAGNOSTIC_CHARS: usize = 2000;
+
+/// Build the diagnostic tail for a non-zero one-shot provider exit.
+///
+/// stderr is already piped and captured, but the provider CLIs don't agree
+/// on where they report failures: codex streams its JSON (errors included)
+/// to stdout and routinely leaves stderr empty, and claude/gemini can exit
+/// non-zero with an empty stderr too. A bare `exit status: 1` with an empty
+/// tail is undiagnosable (HOU-437), so prefer stderr, fall back to stdout
+/// (labeled, so the source is unambiguous), and only then admit we captured
+/// nothing.
+fn describe_failure(stdout: &[u8], stderr: &[u8]) -> String {
+    let stderr = String::from_utf8_lossy(stderr);
+    let stderr = stderr.trim();
+    if !stderr.is_empty() {
+        return truncate_tail(stderr);
+    }
+    let stdout = String::from_utf8_lossy(stdout);
+    let stdout = stdout.trim();
+    if !stdout.is_empty() {
+        return format!("no stderr; stdout tail: {}", truncate_tail(stdout));
+    }
+    "no output on stderr or stdout".to_string()
+}
+
+/// Keep the last `MAX_DIAGNOSTIC_CHARS` characters of `s`, prefixing `...`
+/// when truncated. Char-based so we never split a UTF-8 sequence.
+fn truncate_tail(s: &str) -> String {
+    let count = s.chars().count();
+    if count <= MAX_DIAGNOSTIC_CHARS {
+        return s.to_string();
+    }
+    let tail: String = s.chars().skip(count - MAX_DIAGNOSTIC_CHARS).collect();
+    format!("...{tail}")
 }
 
 pub(super) fn extract_codex_text(stdout: &str) -> Result<String, String> {
@@ -228,5 +271,57 @@ mod tests {
     fn returns_error_when_no_agent_message() {
         let raw = r#"{"type":"thread.started","thread_id":"t1"}"#;
         assert!(extract_codex_text(raw).is_err());
+    }
+
+    #[test]
+    fn describe_failure_prefers_stderr() {
+        assert_eq!(
+            describe_failure(b"stdout junk", b"  real error on stderr  "),
+            "real error on stderr"
+        );
+    }
+
+    #[test]
+    fn describe_failure_falls_back_to_stdout_when_stderr_empty() {
+        // The HOU-437 case: non-zero exit, empty stderr, the actual error
+        // text sitting on stdout (codex streams its failure JSON there).
+        assert_eq!(
+            describe_failure(b"  Error: model not found  ", b"   \n"),
+            "no stderr; stdout tail: Error: model not found"
+        );
+    }
+
+    #[test]
+    fn describe_failure_reports_when_both_empty() {
+        assert_eq!(
+            describe_failure(b"", b"  \n "),
+            "no output on stderr or stdout"
+        );
+    }
+
+    #[test]
+    fn truncate_tail_keeps_short_strings_verbatim() {
+        assert_eq!(truncate_tail("short"), "short");
+    }
+
+    #[test]
+    fn truncate_tail_keeps_the_tail_when_long() {
+        let s = format!("{}{}", "x".repeat(50), "y".repeat(MAX_DIAGNOSTIC_CHARS));
+        let out = truncate_tail(&s);
+        // `...` prefix + exactly MAX_DIAGNOSTIC_CHARS retained chars, and the
+        // tail (where errors land) is what survives, not the head.
+        assert!(out.starts_with("..."));
+        assert_eq!(out.chars().count(), MAX_DIAGNOSTIC_CHARS + 3);
+        assert!(out.ends_with("yyy"));
+        assert!(!out.contains('x'));
+    }
+
+    #[test]
+    fn truncate_tail_does_not_split_multibyte_chars() {
+        // Each '✓' is 3 bytes; char-based truncation must stay valid UTF-8.
+        let s = "✓".repeat(MAX_DIAGNOSTIC_CHARS + 10);
+        let out = truncate_tail(&s);
+        assert!(out.starts_with("..."));
+        assert_eq!(out.chars().count(), MAX_DIAGNOSTIC_CHARS + 3);
     }
 }
