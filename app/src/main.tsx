@@ -4,7 +4,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { createRoot } from "react-dom/client";
+import { getOrCreateRoot } from "./lib/react-root";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { I18nextProvider } from "react-i18next";
 import { TooltipProvider } from "@houston-ai/core";
@@ -204,7 +204,19 @@ function EngineGate({ children }: { children: ReactNode }) {
 // WKWebView that double-mount collides with portal DOM + Tauri event
 // listeners and throws NotFoundError on removeChild. Skipping it for now;
 // revisit once the underlying portal/listener churn is fixed.
-createRoot(document.getElementById("root")!).render(
+const container = document.getElementById("root");
+if (!container) {
+  // index.html always ships <div id="root">, so a missing node means the
+  // document failed to parse. Surface it instead of silently no-op mounting;
+  // compat-gate.js's watchdog still paints a friendly fallback (no silent
+  // failures).
+  throw new Error("Houston UI cannot start: #root is missing from the document");
+}
+// getOrCreateRoot (not a bare createRoot) so a dev-time re-evaluation of this
+// entry module reuses the existing root instead of minting a second one on the
+// same #root node — two roots desync the container and crash React with a
+// removeChild reconciliation error (HOU-459).
+getOrCreateRoot(container).render(
   <QueryClientProvider client={queryClient}>
     <ErrorBoundary>
       <TooltipProvider>
