@@ -32,4 +32,29 @@ describe("createSentryReportError", () => {
     assert.equal(error.name, "react_crash");
     assert.equal(error.stack, original.stack);
   });
+
+  it("does not throw when Error.prototype.name is a getter-only accessor", () => {
+    // Reproduces HOU-461: in runtimes where `name` is exposed as a getter-only
+    // accessor on the prototype, a plain `error.name = command` assignment
+    // throws "Cannot set property name … which has only a getter" — inside the
+    // reporter. The fix defines an own data property, which must still win.
+    const descriptor = Object.getOwnPropertyDescriptor(Error.prototype, "name");
+    Object.defineProperty(Error.prototype, "name", {
+      configurable: true,
+      get: () => "Error",
+    });
+
+    try {
+      let error: Error | undefined;
+      assert.doesNotThrow(() => {
+        error = createSentryReportError("uncaught_error", "boom");
+      });
+      assert.equal(error?.name, "uncaught_error");
+      assert.equal(error?.message, "boom");
+    } finally {
+      if (descriptor) {
+        Object.defineProperty(Error.prototype, "name", descriptor);
+      }
+    }
+  });
 });
