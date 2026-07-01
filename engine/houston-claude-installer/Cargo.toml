@@ -1,6 +1,6 @@
 [package]
 name = "houston-claude-installer"
-version = "0.4.25"
+version = "0.4.26"
 edition = "2021"
 description = "Runtime installer for Anthropic Claude Code CLI — pinned URL + sha256-verified download"
 license = "MIT"
