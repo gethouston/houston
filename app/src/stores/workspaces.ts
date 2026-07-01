@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import { tauriWorkspaces, tauriPreferences } from "../lib/tauri";
 import { analytics } from "../lib/analytics";
+import { tauriPreferences, tauriWorkspaces } from "../lib/tauri";
 import type { Workspace } from "../lib/types";
 
 interface WorkspaceState {
@@ -59,7 +59,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       const workspaces = s.workspaces.filter((w) => w.id !== id);
       const current =
         s.current?.id === id
-          ? workspaces.find((w) => w.isDefault) ?? workspaces[0] ?? null
+          ? (workspaces.find((w) => w.isDefault) ?? workspaces[0] ?? null)
           : s.current;
       return { workspaces, current };
     });

@@ -1,0 +1,10 @@
+# Revisions listed here are skipped by `git blame` — they are mechanical,
+# repo-wide reformats with no semantic change. Enable locally once with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# GitHub applies this file automatically in its blame view.
+
+# chore: adopt Biome and apply baseline format
+24808492de331fcfbca6534d7d95564ab997a9de
+
+# style: organize imports repo-wide
+bb5ea8a5ab53a359495a78320fe18e1729ff84f4

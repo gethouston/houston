@@ -7,29 +7,30 @@
  */
 
 import "react-i18next";
-import type common from "../locales/en/common.json";
-import type setup from "../locales/en/setup.json";
-import type legal from "../locales/en/legal.json";
-import type shell from "../locales/en/shell.json";
-import type dashboard from "../locales/en/dashboard.json";
-import type settings from "../locales/en/settings.json";
-import type chat from "../locales/en/chat.json";
-import type board from "../locales/en/board.json";
 import type agents from "../locales/en/agents.json";
-import type skills from "../locales/en/skills.json";
-import type routines from "../locales/en/routines.json";
-import type integrations from "../locales/en/integrations.json";
-import type providers from "../locales/en/providers.json";
+import type board from "../locales/en/board.json";
+import type chat from "../locales/en/chat.json";
+import type common from "../locales/en/common.json";
+import type connect from "../locales/en/connect.json";
+import type context from "../locales/en/context.json";
+import type dashboard from "../locales/en/dashboard.json";
 import type errors from "../locales/en/errors.json";
 import type events from "../locales/en/events.json";
+import type legal from "../locales/en/legal.json";
 import type portable from "../locales/en/portable.json";
-import type context from "../locales/en/context.json";
+import type providers from "../locales/en/providers.json";
+import type routines from "../locales/en/routines.json";
+import type settings from "../locales/en/settings.json";
+import type setup from "../locales/en/setup.json";
+import type shell from "../locales/en/shell.json";
+import type skills from "../locales/en/skills.json";
 
 declare module "react-i18next" {
   interface CustomTypeOptions {
     defaultNS: "common";
     resources: {
       common: typeof common;
+      connect: typeof connect;
       setup: typeof setup;
       legal: typeof legal;
       shell: typeof shell;
@@ -40,7 +41,6 @@ declare module "react-i18next" {
       agents: typeof agents;
       skills: typeof skills;
       routines: typeof routines;
-      integrations: typeof integrations;
       providers: typeof providers;
       errors: typeof errors;
       events: typeof events;

@@ -1,8 +1,8 @@
 import { DropdownMenuItem } from "@houston-ai/core";
 import type { SidebarItem } from "@houston-ai/layout";
 import type { Agent } from "../../lib/types";
-import { AgentSidebarColorMenu } from "./agent-sidebar-color-menu";
 import type { AgentActivitySummary } from "./agent-activity-summary-model";
+import { AgentSidebarColorMenu } from "./agent-sidebar-color-menu";
 import { AgentSidebarIcon, NeedsYouChip } from "./agent-sidebar-status";
 
 interface BuildAgentSidebarItemsArgs {

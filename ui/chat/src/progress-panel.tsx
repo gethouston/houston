@@ -8,7 +8,7 @@
  * - done: filled checkmark
  */
 
-import { ScrollArea, cn } from "@houston-ai/core";
+import { cn, ScrollArea } from "@houston-ai/core";
 import { Check, Circle, Loader2 } from "lucide-react";
 import type { ProgressStep } from "./use-progress-steps";
 
@@ -18,7 +18,10 @@ export interface ProgressPanelProps {
   title?: string;
 }
 
-export function ProgressPanel({ steps, title = "Working on" }: ProgressPanelProps) {
+export function ProgressPanel({
+  steps,
+  title = "Working on",
+}: ProgressPanelProps) {
   const doneCount = steps.filter((s) => s.status === "done").length;
   const total = steps.length;
 
@@ -37,8 +40,8 @@ export function ProgressPanel({ steps, title = "Working on" }: ProgressPanelProp
       {/* Step list */}
       <ScrollArea className="flex-1">
         <div className="px-5 py-4 space-y-1">
-          {steps.map((step, i) => (
-            <StepRow key={i} step={step} />
+          {steps.map((step) => (
+            <StepRow key={step.title} step={step} />
           ))}
         </div>
       </ScrollArea>
@@ -61,10 +64,16 @@ function StepRow({ step }: { step: ProgressStep }) {
           </div>
         )}
         {step.status === "active" && (
-          <Loader2 className="size-5 text-foreground/60 animate-spin" strokeWidth={1.5} />
+          <Loader2
+            className="size-5 text-foreground/60 animate-spin"
+            strokeWidth={1.5}
+          />
         )}
         {step.status === "pending" && (
-          <Circle className="size-5 text-muted-foreground/25" strokeWidth={1.5} />
+          <Circle
+            className="size-5 text-muted-foreground/25"
+            strokeWidth={1.5}
+          />
         )}
       </div>
       <p

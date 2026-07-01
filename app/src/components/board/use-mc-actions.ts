@@ -1,28 +1,27 @@
+import type { KanbanItem } from "@houston-ai/board";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
-import type { KanbanItem } from "@houston-ai/board";
-import { useUIStore } from "../../stores/ui";
-import { tauriActivity, tauriChat } from "../../lib/tauri";
-import { openMissionWorktreeTerminal } from "../../lib/mission-worktree";
-import { queryKeys } from "../../lib/query-keys";
 import { canDropMission } from "../../lib/mission-selection";
-import { planNewMission } from "../mission-control-create";
+import { queryKeys } from "../../lib/query-keys";
+import { tauriActivity, tauriChat } from "../../lib/tauri";
+import type { Agent, AgentDefinition } from "../../lib/types";
+import { useUIStore } from "../../stores/ui";
 import { missionColumnIdForStatus } from "../mission-board-columns";
+import { planNewMission } from "../mission-control-create";
 import {
   missionControlAgentPathForSession,
   missionControlSessionKeyForId,
 } from "../mission-control-session";
 import type { useMissionControl } from "../use-mission-control";
 import type { SendOverrides } from "./board-source";
-import type { Agent, AgentDefinition } from "../../lib/types";
 
 /**
  * Mission Control's card/composer actions, routed to the right agent. Create
  * resolves the active agent's default mode via {@link planNewMission}; send
  * delegates to `mc.handleSendMessage` (which re-resolves provider/model from
  * the target activity, so composer overrides are intentionally ignored); stop
- * and run-in-terminal resolve their agent from the session / card metadata.
+ * resolves its agent from the session metadata.
  */
 export function useMcActions({
   mc,
@@ -47,9 +46,17 @@ export function useMcActions({
       providerOverride,
       modelOverride,
     }: { text: string; files: File[] } & SendOverrides) => {
-      const plan = planNewMission({ activeAgent, activeAgentDef, providerOverride, modelOverride });
+      const plan = planNewMission({
+        activeAgent,
+        activeAgentDef,
+        providerOverride,
+        modelOverride,
+      });
       if (plan.kind === "no-agent") {
-        addToast({ title: t("dashboard:errors.noAgentForMission"), variant: "error" });
+        addToast({
+          title: t("dashboard:errors.noAgentForMission"),
+          variant: "error",
+        });
         throw new Error("New mission submitted with no active agent");
       }
       return mc.handleCreateConversation(plan.agent, text, files, {
@@ -65,8 +72,12 @@ export function useMcActions({
   // Cross-agent: ignore composer overrides, re-resolve from the activity (see
   // useMissionControl). 4th param keeps the BoardSource signature aligned.
   const sendMessageNow = useCallback(
-    (sessionKey: string, text: string, files: File[], _overrides: SendOverrides) =>
-      mc.handleSendMessage(sessionKey, text, files),
+    (
+      sessionKey: string,
+      text: string,
+      files: File[],
+      _overrides: SendOverrides,
+    ) => mc.handleSendMessage(sessionKey, text, files),
     [mc.handleSendMessage],
   );
 
@@ -74,28 +85,25 @@ export function useMcActions({
     (sessionKey: string) => {
       const agentPath = missionControlAgentPathForSession(mc.items, sessionKey);
       if (!agentPath) return;
-      tauriChat.stop(agentPath, sessionKey).catch((err) => {
-        addToast({ title: t("dashboard:errors.stopSession", { error: String(err) }), variant: "error" });
-      });
-    },
-    [mc.items, addToast, t],
-  );
-
-  const runInTerminal = useCallback(
-    async (item: KanbanItem) => {
-      const wtPath = item.metadata?.worktreePath as string | undefined;
-      const agentPath = item.metadata?.agentPath as string | undefined;
-      if (!wtPath || !agentPath) return;
-      try {
-        await openMissionWorktreeTerminal(agentPath, wtPath);
-      } catch (err) {
-        addToast({
-          title: t("board:cardActions.openTerminalFailed", { error: String(err) }),
-          variant: "error",
+      // Refetch on success so a card the engine settled off "running" (an
+      // orphaned turn with no live turn to abort) actually leaves the spinner;
+      // a failed stop still surfaces as a toast.
+      tauriChat
+        .stop(agentPath, sessionKey)
+        .then(() => {
+          qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
+          qc.invalidateQueries({
+            queryKey: queryKeys.allConversations(paths),
+          });
+        })
+        .catch((err) => {
+          addToast({
+            title: t("dashboard:errors.stopSession", { error: String(err) }),
+            variant: "error",
+          });
         });
-      }
     },
-    [addToast, t],
+    [mc.items, qc, paths, addToast, t],
   );
 
   const sessionKeyFor = useCallback(
@@ -118,7 +126,10 @@ export function useMcActions({
         qc.invalidateQueries({ queryKey: queryKeys.allConversations(paths) });
         qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
       } catch (err) {
-        addToast({ title: t("board:dnd.moveError", { error: String(err) }), variant: "error" });
+        addToast({
+          title: t("board:dnd.moveError", { error: String(err) }),
+          variant: "error",
+        });
       }
     },
     [qc, paths, addToast, t],
@@ -135,7 +146,6 @@ export function useMcActions({
     createConversation,
     sendMessageNow,
     stopSession,
-    runInTerminal,
     sessionKeyFor,
     handleItemMove,
     canDropItem,

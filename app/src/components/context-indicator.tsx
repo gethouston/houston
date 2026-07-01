@@ -15,9 +15,14 @@
  * i18n; it uses `t()` directly per the library-boundary rule.
  */
 
-import { useTranslation } from "react-i18next";
-import { HoverCard, HoverCardContent, HoverCardTrigger, Progress } from "@houston-ai/core";
 import type { TokenUsage } from "@houston-ai/chat";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  Progress,
+} from "@houston-ai/core";
+import { useTranslation } from "react-i18next";
 import { contextFillPercent } from "../lib/context-usage";
 
 interface ContextIndicatorProps {
@@ -106,7 +111,10 @@ export function ContextIndicator({
           <ContextRing percent={percent} />
         </button>
       </HoverCardTrigger>
-      <HoverCardContent align="end" className="flex w-64 flex-col gap-2 rounded-2xl">
+      <HoverCardContent
+        align="end"
+        className="flex w-64 flex-col gap-2 rounded-2xl"
+      >
         <p className="text-sm font-medium leading-none">{t("card.title")}</p>
 
         {!usage ? (

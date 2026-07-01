@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
-import { defineConfig, loadEnv } from "vite";
-import react from "@vitejs/plugin-react";
+import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import { defineConfig, loadEnv } from "vite";
 import { version } from "./package.json";
 
 const host = process.env.TAURI_DEV_HOST;
@@ -33,10 +34,34 @@ function resolveAuthStorageMode(
 export default defineConfig(({ mode }) => {
   const env = { ...loadEnv(mode, process.cwd(), ""), ...process.env };
   const authStorageMode = resolveAuthStorageMode(mode, env);
+  // Cutover: when VITE_NEW_ENGINE_URL (or VITE_NEW_ENGINE=1) is set, swap the
+  // engine client for the new-engine adapter so the desktop UI runs on the v3
+  // Houston host instead of the Rust engine. Mirrors packages/web. Unset → the
+  // real @houston-ai/engine-client (v1 → Rust engine) is untouched.
+  const useHost =
+    Boolean(env.VITE_NEW_ENGINE_URL) ||
+    Boolean(env.VITE_HOSTED_ENGINE_URL) ||
+    env.VITE_NEW_ENGINE === "1" ||
+    env.VITE_NEW_ENGINE === "true";
   return {
     plugins: [react(), tailwindcss()],
+    resolve: {
+      alias: useHost
+        ? [
+            {
+              find: "@houston-ai/engine-client",
+              replacement: path.resolve(
+                __dirname,
+                "../packages/web/src/engine-adapter/index.ts",
+              ),
+            },
+          ]
+        : [],
+    },
     define: {
-      __APP_VERSION__: JSON.stringify(mode === "production" ? version : `${version}-dev`),
+      __APP_VERSION__: JSON.stringify(
+        mode === "production" ? version : `${version}-dev`,
+      ),
       __POSTHOG_KEY__: JSON.stringify(env.POSTHOG_KEY ?? ""),
       __POSTHOG_HOST__: JSON.stringify(
         env.POSTHOG_HOST ?? "https://us.i.posthog.com",

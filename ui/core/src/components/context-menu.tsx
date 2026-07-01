@@ -1,25 +1,22 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { ContextMenu as ContextMenuPrimitive } from "radix-ui"
+import { ContextMenu as ContextMenuPrimitive } from "radix-ui";
+import type * as React from "react";
 
-import { cn } from "../utils"
+import { cn } from "../utils";
 
 function ContextMenu({
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Root>) {
-  return <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />
+  return <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />;
 }
 
 function ContextMenuTrigger({
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Trigger>) {
   return (
-    <ContextMenuPrimitive.Trigger
-      data-slot="context-menu-trigger"
-      {...props}
-    />
-  )
+    <ContextMenuPrimitive.Trigger data-slot="context-menu-trigger" {...props} />
+  );
 }
 
 function ContextMenuContent({
@@ -37,7 +34,7 @@ function ContextMenuContent({
         {...props}
       />
     </ContextMenuPrimitive.Portal>
-  )
+  );
 }
 
 function ContextMenuItem({
@@ -45,7 +42,7 @@ function ContextMenuItem({
   variant = "default",
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Item> & {
-  variant?: "default" | "destructive"
+  variant?: "default" | "destructive";
 }) {
   return (
     <ContextMenuPrimitive.Item
@@ -57,7 +54,7 @@ function ContextMenuItem({
       )}
       {...props}
     />
-  )
+  );
 }
 
 function ContextMenuSeparator({
@@ -70,13 +67,13 @@ function ContextMenuSeparator({
       className={cn("-mx-1 my-1 h-px bg-border", className)}
       {...props}
     />
-  )
+  );
 }
 
 export {
   ContextMenu,
-  ContextMenuTrigger,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
-}
+  ContextMenuTrigger,
+};

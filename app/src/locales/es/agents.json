@@ -159,7 +159,33 @@
       "open": "Abrir",
       "rename": "Cambiar nombre",
       "reveal": "Mostrar en el Explorador de Archivos",
-      "delete": "Mover a la Papelera"
+      "delete": "Mover a la Papelera",
+      "preview": "Vista previa",
+      "download": "Descargar"
+    },
+    "preview": {
+      "loading": "Cargando vista previa…",
+      "unsupportedTitle": "No hay vista previa para este tipo de archivo",
+      "unsupportedDescription": "Descárgalo para abrirlo en tu computador.",
+      "download": "Descargar",
+      "close": "Cerrar",
+      "errorTitle": "No se pudo cargar el archivo"
     }
+  },
+  "integrations": {
+    "title": "Integraciones",
+    "description": "Conecta tus aplicaciones para que este agente pueda usarlas.",
+    "loading": "Cargando...",
+    "composio": "Composio",
+    "connectBlurb": "Inicia sesión para conectar tus aplicaciones. Tu cuenta sigue siendo tuya; el agente la usa en tu nombre.",
+    "connect": "Conectar Composio",
+    "connecting": "Esperando el inicio de sesión...",
+    "loginTimeout": "Se agotó el tiempo de inicio de sesión. Intenta conectarte de nuevo.",
+    "connectedAs": "Conectado como {{email}}",
+    "signOut": "Cerrar sesión",
+    "connectedApps": "Aplicaciones conectadas",
+    "noApps": "Aún no hay aplicaciones conectadas.",
+    "disconnect": "Desconectar",
+    "addApps": "Agregar aplicaciones"
   }
 }

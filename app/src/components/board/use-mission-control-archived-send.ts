@@ -1,14 +1,14 @@
+import type { KanbanItem } from "@houston-ai/board";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import type { KanbanItem } from "@houston-ai/board";
-import { useUIStore } from "../../stores/ui";
+import { analytics } from "../../lib/analytics";
+import { buildAttachmentPrompt } from "../../lib/attachment-message";
+import { classifyFileKind } from "../../lib/file-kind";
+import { tauriAttachments, tauriChat } from "../../lib/tauri";
+import type { Agent, AgentDefinition } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useFeedStore } from "../../stores/feeds";
-import { tauriAttachments, tauriChat } from "../../lib/tauri";
-import { buildAttachmentPrompt } from "../../lib/attachment-message";
-import { analytics } from "../../lib/analytics";
-import { classifyFileKind } from "../../lib/file-kind";
-import type { Agent, AgentDefinition } from "../../lib/types";
+import { useUIStore } from "../../stores/ui";
 
 /**
  * Send-to-reactivate for the cross-agent Archived view — the analogue of the
@@ -45,19 +45,24 @@ export function useMissionControlArchivedSend({
       const mode = activeAgentDef?.config.agents?.find(
         (m) => m.id === (selectedItem.metadata?.agent as string | undefined),
       );
-      const worktreePath = selectedItem.metadata?.worktreePath as string | undefined;
       try {
-        const paths = await tauriAttachments.save(`activity-${missionId}`, files);
+        const paths = await tauriAttachments.save(
+          `activity-${missionId}`,
+          files,
+        );
         const prompt = buildAttachmentPrompt(text, files, paths);
         await tauriChat.send(agentPath, prompt, sessionKey, {
           mode: mode?.promptFile,
-          workingDirOverride: worktreePath ?? undefined,
           providerOverride,
           modelOverride,
         });
-        pushFeedItem(agentPath, sessionKey, { feed_type: "user_message", data: prompt });
+        pushFeedItem(agentPath, sessionKey, {
+          feed_type: "user_message",
+          data: prompt,
+        });
         analytics.track("chat_message_sent");
-        for (const f of files) analytics.track("file_attached", { file_kind: classifyFileKind(f) });
+        for (const f of files)
+          analytics.track("file_attached", { file_kind: classifyFileKind(f) });
         // Reactivated (archived → running): hand off to the agent's board.
         onReactivated();
         useAgentStore.getState().setCurrent(activeAgent);

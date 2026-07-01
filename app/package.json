@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "start": "node --env-file-if-exists=../.env.local node_modules/@tauri-apps/cli/tauri.js dev",
+    "build": "tsgo --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsgo --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "check-locales": "node scripts/check-locales.mjs"
   },
@@ -24,6 +25,7 @@
     "@houston-ai/review": "workspace:*",
     "@houston-ai/routines": "workspace:*",
     "@houston-ai/skills": "workspace:*",
+    "@houston/runtime-client": "workspace:*",
     "@sentry/browser": "^10.54.0",
     "@supabase/supabase-js": "^2.45.0",
     "@tanstack/react-query": "^5.96.2",

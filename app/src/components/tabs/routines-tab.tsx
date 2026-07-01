@@ -1,7 +1,22 @@
+import type { RoutineFormData } from "@houston-ai/routines";
+import { RoutineEditor, RoutinesGrid } from "@houston-ai/routines";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RoutinesGrid, RoutineEditor } from "@houston-ai/routines";
-import type { RoutineFormData } from "@houston-ai/routines";
+import {
+  useCancelRoutineRun,
+  useCreateRoutine,
+  useDeleteRoutine,
+  useRoutineRuns,
+  useRoutines,
+  useRunRoutineNow,
+  useUpdateRoutine,
+} from "../../hooks/queries";
+import { useRoutineLabels } from "../../hooks/use-routine-labels";
+import { useTimezonePreference } from "../../hooks/use-timezone-preference";
+import { analytics } from "../../lib/analytics";
+import type { TabProps } from "../../lib/types";
+import { useUIStore } from "../../stores/ui";
+import { RoutineModelControls } from "./routine-model-controls";
 import {
   EMPTY_FORM,
   formMatchesRoutine,
@@ -10,21 +25,6 @@ import {
   routineToFormData,
   type View,
 } from "./routines-tab-model";
-import {
-  useRoutines,
-  useRoutineRuns,
-  useCreateRoutine,
-  useUpdateRoutine,
-  useDeleteRoutine,
-  useRunRoutineNow,
-  useCancelRoutineRun,
-} from "../../hooks/queries";
-import { useTimezonePreference } from "../../hooks/use-timezone-preference";
-import { useRoutineLabels } from "../../hooks/use-routine-labels";
-import { useUIStore } from "../../stores/ui";
-import { RoutineModelControls } from "./routine-model-controls";
-import { analytics } from "../../lib/analytics";
-import type { TabProps } from "../../lib/types";
 
 export default function RoutinesTab({ agent }: TabProps) {
   const { t } = useTranslation("routines");
@@ -42,7 +42,9 @@ export default function RoutinesTab({ agent }: TabProps) {
   const cancelRun = useCancelRoutineRun(path);
 
   const [view, setView] = useState<View>(() => freshRoutinesState().view);
-  const [form, setForm] = useState<RoutineFormData>(() => freshRoutinesState().form);
+  const [form, setForm] = useState<RoutineFormData>(
+    () => freshRoutinesState().form,
+  );
   const [baseline, setBaseline] = useState<RoutineFormData>(
     () => freshRoutinesState().baseline,
   );
@@ -147,8 +149,8 @@ export default function RoutinesTab({ agent }: TabProps) {
   );
 
   // The timezone is a single account-wide preference (not per-routine), so the
-  // editor's picker writes straight to it. Changing it re-times every routine,
-  // which the engine scheduler picks up on the next sync.
+  // routines list's picker writes straight to it. Changing it re-times every
+  // routine, which the engine scheduler picks up on the next sync.
   const handleTimezoneChange = useCallback(
     async (zone: string) => {
       try {
@@ -172,7 +174,9 @@ export default function RoutinesTab({ agent }: TabProps) {
   if (!tz.loaded || !tz.timezone) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-sm text-muted-foreground animate-pulse">{t("loading")}</p>
+        <p className="text-sm text-muted-foreground animate-pulse">
+          {t("loading")}
+        </p>
       </div>
     );
   }

@@ -38,7 +38,8 @@ function fakeEngine() {
       (agentsByWs[workspaceId] ?? []).slice(),
     createAssistant: async (workspaceId: string) => {
       const a: A = { id: `agent-${++agentSeq}` };
-      (agentsByWs[workspaceId] ??= []).push(a);
+      agentsByWs[workspaceId] ??= [];
+      agentsByWs[workspaceId].push(a);
       return a;
     },
   };

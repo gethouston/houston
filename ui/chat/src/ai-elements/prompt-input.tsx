@@ -8,42 +8,28 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from "@houston-ai/core";
-import {
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@houston-ai/core";
-import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from "@houston-ai/core";
-import {
-  // @ts-expect-error -- kept for type references in sub-components
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  InputGroup,
-  InputGroupAddon,
+  type InputGroupAddon,
   InputGroupButton,
-  InputGroupTextarea,
-} from "@houston-ai/core";
-import {
+  type InputGroupTextarea,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@houston-ai/core";
-import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@houston-ai/core";
-import { cn } from "@houston-ai/core";
 import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from "ai";
 import {
-
   ArrowUpIcon,
   ImageIcon,
   Monitor,
@@ -192,22 +178,22 @@ export interface PromptInputControllerProps {
   /** INTERNAL: Allows PromptInput to register its file textInput + "open" callback */
   __registerFileInput: (
     ref: RefObject<HTMLInputElement | null>,
-    open: () => void
+    open: () => void,
   ) => void;
 }
 
 const PromptInputController = createContext<PromptInputControllerProps | null>(
-  null
+  null,
 );
 const ProviderAttachmentsContext = createContext<AttachmentsContext | null>(
-  null
+  null,
 );
 
 export const usePromptInputController = () => {
   const ctx = useContext(PromptInputController);
   if (!ctx) {
     throw new Error(
-      "Wrap your component inside <PromptInputProvider> to use usePromptInputController()."
+      "Wrap your component inside <PromptInputProvider> to use usePromptInputController().",
     );
   }
   return ctx;
@@ -221,7 +207,7 @@ export const useProviderAttachments = () => {
   const ctx = useContext(ProviderAttachmentsContext);
   if (!ctx) {
     throw new Error(
-      "Wrap your component inside <PromptInputProvider> to use useProviderAttachments()."
+      "Wrap your component inside <PromptInputProvider> to use useProviderAttachments().",
     );
   }
   return ctx;
@@ -308,7 +294,7 @@ export const PromptInputProvider = ({
         }
       }
     },
-    []
+    [],
   );
 
   const openFileDialog = useCallback(() => {
@@ -324,7 +310,7 @@ export const PromptInputProvider = ({
       openFileDialog,
       remove,
     }),
-    [attachmentFiles, add, remove, clear, openFileDialog]
+    [attachmentFiles, add, remove, clear, openFileDialog],
   );
 
   const __registerFileInput = useCallback(
@@ -332,7 +318,7 @@ export const PromptInputProvider = ({
       fileInputRef.current = ref.current;
       openRef.current = open;
     },
-    []
+    [],
   );
 
   const controller = useMemo<PromptInputControllerProps>(
@@ -345,7 +331,7 @@ export const PromptInputProvider = ({
         value: textInput,
       },
     }),
-    [textInput, clearInput, attachments, __registerFileInput]
+    [textInput, clearInput, attachments, __registerFileInput],
   );
 
   return (
@@ -370,7 +356,7 @@ export const usePromptInputAttachments = () => {
   const context = local ?? provider;
   if (!context) {
     throw new Error(
-      "usePromptInputAttachments must be used within a PromptInput or PromptInputProvider"
+      "usePromptInputAttachments must be used within a PromptInput or PromptInputProvider",
     );
   }
   return context;
@@ -394,7 +380,7 @@ export const usePromptInputReferencedSources = () => {
   const ctx = useContext(LocalReferencedSourcesContext);
   if (!ctx) {
     throw new Error(
-      "usePromptInputReferencedSources must be used within a LocalReferencedSourcesContext.Provider"
+      "usePromptInputReferencedSources must be used within a LocalReferencedSourcesContext.Provider",
     );
   }
   return ctx;
@@ -417,7 +403,7 @@ export const PromptInputActionAddAttachments = ({
       e.preventDefault();
       attachments.openFileDialog();
     },
-    [attachments]
+    [attachments],
   );
 
   return (
@@ -462,7 +448,7 @@ export const PromptInputActionAddScreenshot = ({
         throw error;
       }
     },
-    [onSelect, attachments]
+    [onSelect, attachments],
   );
 
   return (
@@ -499,7 +485,7 @@ export type PromptInputProps = Omit<
   }) => void;
   onSubmit: (
     message: PromptInputMessage,
-    event: FormEvent<HTMLFormElement>
+    event: FormEvent<HTMLFormElement>,
   ) => void | Promise<void>;
 };
 
@@ -564,7 +550,7 @@ export const PromptInput = ({
         return f.type === pattern;
       });
     },
-    [accept]
+    [accept],
   );
 
   const addLocal = useCallback(
@@ -615,7 +601,7 @@ export const PromptInput = ({
         return [...prev, ...next];
       });
     },
-    [matchesAccept, maxFiles, maxFileSize, onError]
+    [matchesAccept, maxFiles, maxFileSize, onError],
   );
 
   const removeLocal = useCallback(
@@ -627,7 +613,7 @@ export const PromptInput = ({
         }
         return prev.filter((file) => file.id !== id);
       }),
-    []
+    [],
   );
 
   // Wrapper that validates files before calling provider's add
@@ -671,7 +657,7 @@ export const PromptInput = ({
         controller?.attachments.add(capped);
       }
     },
-    [matchesAccept, maxFileSize, maxFiles, onError, files.length, controller]
+    [matchesAccept, maxFileSize, maxFiles, onError, files.length, controller],
   );
 
   const clearAttachments = useCallback(
@@ -686,12 +672,12 @@ export const PromptInput = ({
             }
             return [];
           }),
-    [usingProvider, controller]
+    [usingProvider, controller],
   );
 
   const clearReferencedSources = useCallback(
     () => setReferencedSources([]),
-    []
+    [],
   );
 
   const add = usingProvider ? addWithProviderValidation : addLocal;
@@ -789,7 +775,7 @@ export const PromptInput = ({
         }
       }
     },
-    [usingProvider]
+    [usingProvider],
   );
 
   const handleChange: ChangeEventHandler<HTMLInputElement> = useCallback(
@@ -800,7 +786,7 @@ export const PromptInput = ({
       // Reset input value to allow selecting files that were previously removed
       event.currentTarget.value = "";
     },
-    [add]
+    [add],
   );
 
   const attachmentsCtx = useMemo<AttachmentsContext>(
@@ -812,7 +798,7 @@ export const PromptInput = ({
       openFileDialog,
       remove,
     }),
-    [files, add, remove, clearAttachments, openFileDialog]
+    [files, add, remove, clearAttachments, openFileDialog],
   );
 
   const refsCtx = useMemo<ReferencedSourcesContext>(
@@ -830,7 +816,7 @@ export const PromptInput = ({
       },
       sources: referencedSources,
     }),
-    [referencedSources, clearReferencedSources]
+    [referencedSources, clearReferencedSources],
   );
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = useCallback(
@@ -864,7 +850,7 @@ export const PromptInput = ({
               };
             }
             return item;
-          })
+          }),
         );
 
         const result = onSubmit({ files: convertedFiles, text }, event);
@@ -891,7 +877,7 @@ export const PromptInput = ({
         // Don't clear on error - user may want to retry
       }
     },
-    [usingProvider, controller, files, onSubmit, clear]
+    [usingProvider, controller, files, onSubmit, clear],
   );
 
   // Render with or without local provider
@@ -913,11 +899,21 @@ export const PromptInput = ({
         ref={formRef}
         {...props}
       >
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: focus-delegation surface; the real interactive widget is the <textarea> inside — role="presentation" is correct, no standalone widget role applies */}
         <div
           data-composer-surface="true"
           className="group/composer cursor-text overflow-clip rounded-[28px] border border-border/50 bg-card p-2.5 shadow-[0_1px_6px_rgba(0,0,0,0.06)] focus-within:shadow-[0_1px_10px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_6px_rgba(0,0,0,0.2)] dark:focus-within:shadow-[0_1px_10px_rgba(0,0,0,0.3)] grid grid-cols-[auto_1fr_auto] [grid-template-areas:'header_header_header'_'leading_primary_trailing'_'._footer_.'] data-[expanded]:[grid-template-areas:'header_header_header'_'primary_primary_primary'_'leading_footer_trailing']"
+          role="presentation"
           onClick={(e) => {
             if (!(e.target as HTMLElement).closest("button")) {
+              formRef.current?.querySelector("textarea")?.focus();
+            }
+          }}
+          onKeyDown={(e) => {
+            if (
+              (e.key === "Enter" || e.key === " ") &&
+              !(e.target as HTMLElement).closest("button")
+            ) {
               formRef.current?.querySelector("textarea")?.focus();
             }
           }}
@@ -948,7 +944,13 @@ export const PromptInputBody = ({
   className,
   ...props
 }: PromptInputBodyProps) => (
-  <div className={cn("flex items-center overflow-x-hidden px-1 [[data-expanded]_&]:px-3 [grid-area:primary]", className)} {...props} />
+  <div
+    className={cn(
+      "flex items-center overflow-x-hidden px-1 [[data-expanded]_&]:px-3 [grid-area:primary]",
+      className,
+    )}
+    {...props}
+  />
 );
 
 export type PromptInputTextareaProps = ComponentProps<
@@ -988,7 +990,7 @@ export const PromptInputTextarea = ({
         // Check if the submit button is disabled before submitting
         const { form } = e.currentTarget;
         const submitButton = form?.querySelector(
-          'button[type="submit"]'
+          'button[type="submit"]',
         ) as HTMLButtonElement | null;
         if (submitButton?.disabled) {
           return;
@@ -1010,7 +1012,7 @@ export const PromptInputTextarea = ({
         }
       }
     },
-    [onKeyDown, isComposing, attachments]
+    [onKeyDown, isComposing, attachments],
   );
 
   const handlePaste: ClipboardEventHandler<HTMLTextAreaElement> = useCallback(
@@ -1037,7 +1039,7 @@ export const PromptInputTextarea = ({
         attachments.add(files);
       }
     },
-    [attachments]
+    [attachments],
   );
 
   const handleCompositionEnd = useCallback(() => setIsComposing(false), []);
@@ -1082,7 +1084,7 @@ export const PromptInputTextarea = ({
       el.style.overflow = "hidden";
       const scrollH = el.scrollHeight;
       const newHeight = Math.min(scrollH, 208);
-      el.style.height = newHeight + "px";
+      el.style.height = `${newHeight}px`;
       el.style.overflow = newHeight >= 208 ? "auto" : "hidden";
 
       if (scrollH > 36) {
@@ -1139,7 +1141,10 @@ export const PromptInputFooter = ({
   ...props
 }: PromptInputFooterProps) => (
   <div
-    className={cn("flex items-center justify-between gap-1.5 [grid-area:footer] col-span-3", className)}
+    className={cn(
+      "flex items-center justify-between gap-1.5 [grid-area:footer] col-span-3",
+      className,
+    )}
     {...props}
   />
 );
@@ -1290,7 +1295,7 @@ export const PromptInputSubmit = ({
       }
       onClick?.(e);
     },
-    [isGenerating, onStop, onClick]
+    [isGenerating, onStop, onClick],
   );
 
   return (
@@ -1327,7 +1332,7 @@ export const PromptInputSelectTrigger = ({
     className={cn(
       "border-none bg-transparent font-medium text-muted-foreground shadow-none transition-colors",
       "hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground",
-      className
+      className,
     )}
     {...props}
   />
@@ -1377,7 +1382,7 @@ export type PromptInputHoverCardTriggerProps = ComponentProps<
 >;
 
 export const PromptInputHoverCardTrigger = (
-  props: PromptInputHoverCardTriggerProps
+  props: PromptInputHoverCardTriggerProps,
 ) => <HoverCardTrigger {...props} />;
 
 export type PromptInputHoverCardContentProps = ComponentProps<
@@ -1414,7 +1419,7 @@ export const PromptInputTabLabel = ({
   <h3
     className={cn(
       "mb-2 px-3 font-medium text-muted-foreground text-xs",
-      className
+      className,
     )}
     {...props}
   />
@@ -1438,7 +1443,7 @@ export const PromptInputTabItem = ({
   <div
     className={cn(
       "flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent",
-      className
+      className,
     )}
     {...props}
   />

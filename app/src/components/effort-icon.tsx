@@ -1,4 +1,4 @@
-import { effortBars, EFFORT_ICON_VIEWBOX } from "../lib/effort-bars";
+import { EFFORT_ICON_VIEWBOX, effortBars } from "../lib/effort-bars";
 
 interface EffortIconProps {
   /** Levels the active model accepts, ordered low→high. One bar each. */
@@ -26,7 +26,7 @@ export function EffortIcon({ levels, active, className }: EffortIconProps) {
     >
       {bars.map((bar, i) => (
         <rect
-          key={i}
+          key={levels[i]}
           x={bar.x}
           y={bar.y}
           width={bar.width}

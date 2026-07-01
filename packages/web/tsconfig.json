@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    "paths": {
+      "@tauri-apps/api/core": ["./src/shims/tauri-core.ts"],
+      "@tauri-apps/api/event": ["./src/shims/tauri-event.ts"],
+      "@tauri-apps/api/window": ["./src/shims/tauri-window.ts"],
+      "@tauri-apps/plugin-updater": ["./src/shims/tauri-plugin-updater.ts"],
+      "@tauri-apps/plugin-notification": [
+        "./src/shims/tauri-plugin-notification.ts"
+      ],
+      "@houston/app/*": ["../../app/src/*"],
+      "@houston/app": ["../../app/src"]
+    }
+  },
+  "include": ["src"],
+  // Test files run under Vitest/Node. The app typecheck/build is DOM-typed, so
+  // skip tests here and typecheck them through the package test/typecheck scripts.
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+}

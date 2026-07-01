@@ -21,8 +21,8 @@
  */
 
 import {
-  normalizeAttachmentReferences,
   type AttachmentReference,
+  normalizeAttachmentReferences,
 } from "./attachment-message.ts";
 
 const MARKER_RE = /^<!--houston:skill (\{[\s\S]*?\})-->\s*\n?\n?/;
@@ -89,7 +89,9 @@ export function decodeSkillMessage(body: string): SkillInvocation | null {
  * Used by both the desktop and mobile renderers so the visual stays
  * consistent.
  */
-export function resolveSkillImage(value: string | null | undefined): string | null {
+export function resolveSkillImage(
+  value: string | null | undefined,
+): string | null {
   if (!value) return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
@@ -102,8 +104,8 @@ export function resolveSkillImage(value: string | null | undefined): string | nu
   const folder =
     parts[0].charAt(0).toUpperCase() +
     parts[0].slice(1) +
-    (parts.length > 1 ? " " + parts.slice(1).join(" ") : "");
-  const file = parts.join("_") + "_3d.png";
+    (parts.length > 1 ? ` ${parts.slice(1).join(" ")}` : "");
+  const file = `${parts.join("_")}_3d.png`;
   return `https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/${encodeURIComponent(folder)}/3D/${file}`;
 }
 

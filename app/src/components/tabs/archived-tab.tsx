@@ -1,21 +1,20 @@
+import type { KanbanItem } from "@houston-ai/board";
+import { AIBoard } from "@houston-ai/board";
+import type { FeedItem } from "@houston-ai/chat";
+import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AIBoard } from "@houston-ai/board";
-import type { KanbanItem } from "@houston-ai/board";
-import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
-import type { FeedItem } from "@houston-ai/chat";
-
+import { useActivity, useDeleteActivity } from "../../hooks/queries";
+import { selectArchived } from "../../lib/mission-selection";
+import { openAgentHref } from "../../lib/open-href";
+import type { TabProps } from "../../lib/types";
 import { useFeedStore } from "../../stores/feeds";
 import { useUIStore } from "../../stores/ui";
-import { useActivity, useDeleteActivity } from "../../hooks/queries";
-import { useAgentChatPanel } from "../use-agent-chat-panel";
-import { openAgentHref } from "../../lib/open-href";
-import { selectArchived } from "../../lib/mission-selection";
-import type { TabProps } from "../../lib/types";
-import { useDetailPanelContainer } from "../shell/detail-panel-context";
+import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { AgentCardAvatar } from "../shell/agent-card-avatar";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
-import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
+import { useDetailPanelContainer } from "../shell/detail-panel-context";
+import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { ArchivedEmptyState, ArchivedSearchBar } from "./archived-tab-search";
 import { useArchivedMissionSearch } from "./use-archived-mission-search";
 import { useArchivedSendMessage } from "./use-archived-send-message";
@@ -69,7 +68,8 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
   }, [viewMode, selectedId]);
   const sessionKeyFor = useCallback(
     (activityId: string) =>
-      archived.find((a) => a.id === activityId)?.session_key ?? `activity-${activityId}`,
+      archived.find((a) => a.id === activityId)?.session_key ??
+      `activity-${activityId}`,
     [archived],
   );
   const selectedSessionKey = selectedId ? sessionKeyFor(selectedId) : null;
@@ -152,11 +152,13 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           cardAvatar={<AgentCardAvatar color={agent.color} />}
           thinkingIndicator={panel.thinkingIndicator}
+          endOfTurnIndicator={panel.endOfTurnIndicator}
           panelAgentName={agent.name}
           panelAvatar={<AgentPanelAvatar color={agent.color} running={false} />}
           cardLabels={{
             deleteTooltip: t("board:cardActions.deleteTooltip"),
-            deleteTitle: (name: string) => t("board:deleteCard.titleWithName", { name }),
+            deleteTitle: (name: string) =>
+              t("board:deleteCard.titleWithName", { name }),
             deleteDescription: t("board:deleteCard.description"),
           }}
           chatEmptyState={panel.chatEmptyState}
@@ -172,10 +174,7 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           renderToolResult={panel.renderToolResult}
           processLabels={panel.processLabels}
           getThinkingMessage={panel.getThinkingMessage}
-          endOfTurnIndicator={panel.endOfTurnIndicator}
           renderTurnSummary={panel.renderTurnSummary}
-          renderLink={panel.renderLink}
-          transformContent={panel.transformContent}
         />
       </div>
       {panel.pickerDialog}

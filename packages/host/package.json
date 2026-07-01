@@ -1,0 +1,35 @@
+{
+  "name": "@houston/host",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./src/vfs": "./src/vfs/index.ts",
+    "./src/*": [
+      "./src/*.ts",
+      "./src/*/index.ts"
+    ]
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "dev": "tsx src/local/main.ts",
+    "test": "vitest run --testTimeout=30000",
+    "typecheck": "tsgo -p tsconfig.json"
+  },
+  "dependencies": {
+    "@composio/client": "^0.1.0-alpha.73",
+    "@earendil-works/pi-ai": "0.78.1",
+    "@earendil-works/pi-coding-agent": "0.78.1",
+    "@houston/domain": "workspace:*",
+    "@houston/protocol": "workspace:*",
+    "@houston/runtime-client": "workspace:*",
+    "tsx": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@typescript/native-preview": "7.0.0-dev.20260607.1",
+    "vitest": "^3.2.4"
+  }
+}

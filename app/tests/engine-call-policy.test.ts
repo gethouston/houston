@@ -4,8 +4,14 @@ import { engineCallSurface } from "../src/lib/engine-call-policy.ts";
 
 describe("engineCallSurface", () => {
   it("toasts and captures by default", () => {
-    deepStrictEqual(engineCallSurface(undefined), { toast: true, capture: true });
-    deepStrictEqual(engineCallSurface("HoustonEngineError"), { toast: true, capture: true });
+    deepStrictEqual(engineCallSurface(undefined), {
+      toast: true,
+      capture: true,
+    });
+    deepStrictEqual(engineCallSurface("HoustonEngineError"), {
+      toast: true,
+      capture: true,
+    });
   });
 
   it("suppresses the toast but STILL captures when toast:false", () => {
@@ -27,18 +33,27 @@ describe("engineCallSurface", () => {
   });
 
   it("does nothing when both are suppressed", () => {
-    deepStrictEqual(engineCallSurface(undefined, { toast: false, capture: false }), {
-      toast: false,
-      capture: false,
-    });
+    deepStrictEqual(
+      engineCallSurface(undefined, { toast: false, capture: false }),
+      {
+        toast: false,
+        capture: false,
+      },
+    );
   });
 
   it("treats AbortError as expected — never toasts or captures, ignoring options", () => {
-    deepStrictEqual(engineCallSurface("AbortError"), { toast: false, capture: false });
-    // Even if a caller asked to toast, an abort stays silent.
-    deepStrictEqual(engineCallSurface("AbortError", { toast: true, capture: true }), {
+    deepStrictEqual(engineCallSurface("AbortError"), {
       toast: false,
       capture: false,
     });
+    // Even if a caller asked to toast, an abort stays silent.
+    deepStrictEqual(
+      engineCallSurface("AbortError", { toast: true, capture: true }),
+      {
+        toast: false,
+        capture: false,
+      },
+    );
   });
 });

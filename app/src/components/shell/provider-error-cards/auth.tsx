@@ -1,7 +1,9 @@
 /**
  * UnauthenticatedCard — drives the user back into the provider's
  * connect flow. Body copy varies by [`AuthFailureCause`] so the user
- * understands WHY they need to reconnect.
+ * understands WHY they need to reconnect. Renders through the shared
+ * `RowCard` with the provider's monochrome `ProviderGlyph` on the left
+ * (never a hand-picked brand logo) and a text-only `RowCardButton`.
  *
  * Reconnect lifecycle (the button must not fire-and-forget):
  * `launchLogin` resolves when the engine SPAWNS the login CLI, not when
@@ -21,17 +23,17 @@
  * flicker back to idle mid-relaunch.
  */
 
+import type { ProviderError } from "@houston-ai/chat";
+import type { HoustonEvent } from "@houston-ai/core";
+import { CheckCircle2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2Icon } from "lucide-react";
-import type { HoustonEvent } from "@houston-ai/core";
-import type { ProviderError } from "@houston-ai/chat";
-import { tauriProvider } from "../../../lib/tauri";
 import { subscribeHoustonEvents } from "../../../lib/events";
+import { tauriProvider } from "../../../lib/tauri";
 import { useUIStore } from "../../../stores/ui";
-import { ProviderGlyph } from "../provider-logos";
 import { RowCard } from "../../cards/row-card";
 import { RowCardButton } from "../../cards/row-card-button";
+import { ProviderGlyph } from "../provider-logos";
 import { providerLabel } from "./shared";
 
 type LoginPhase = "idle" | "waiting" | "done" | "failed";
@@ -48,6 +50,7 @@ export function UnauthenticatedCard({
   const [phase, setPhase] = useState<LoginPhase>("idle");
   const [launching, setLaunching] = useState(false);
   const [failureDetail, setFailureDetail] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const relaunchingRef = useRef(false);
   const provider = providerLabel(error.provider);
 
@@ -90,7 +93,6 @@ export function UnauthenticatedCard({
         return "providerError.unauthenticated.bodyInvalidApiKey";
       case "token_revoked":
         return "providerError.unauthenticated.bodyTokenRevoked";
-      case "unknown":
       default:
         return "providerError.unauthenticated.bodyUnknown";
     }
@@ -116,7 +118,6 @@ export function UnauthenticatedCard({
     }
   };
 
-  const [retrying, setRetrying] = useState(false);
   const sendAgain = async () => {
     if (!onRetry || retrying) return;
     setRetrying(true);
@@ -132,8 +133,12 @@ export function UnauthenticatedCard({
       <div className="w-full px-1 py-2">
         <RowCard
           media={<CheckCircle2Icon className="size-5 text-green-600" />}
-          title={t("providerError.unauthenticated.reconnectedTitle", { provider })}
-          description={t("providerError.unauthenticated.reconnectedBody", { provider })}
+          title={t("providerError.unauthenticated.reconnectedTitle", {
+            provider,
+          })}
+          description={t("providerError.unauthenticated.reconnectedBody", {
+            provider,
+          })}
           action={
             onRetry && (
               <RowCardButton

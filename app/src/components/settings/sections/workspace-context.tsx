@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
-import { useWorkspaceStore } from "../../../stores/workspaces";
 import {
   useSaveWorkspaceContext,
   useWorkspaceContext,
 } from "../../../hooks/queries/use-workspace-context";
+import { useWorkspaceStore } from "../../../stores/workspaces";
 import {
   InstructionsContent,
   type InstructionsContentLabels,
@@ -26,7 +26,9 @@ function useSlotEditor(slot: Slot) {
   return { ready: !!currentWorkspace && !!data, content, onSave };
 }
 
-function useSlotLabels(prefix: "workspaceContext" | "userContext"): InstructionsContentLabels {
+function useSlotLabels(
+  prefix: "workspaceContext" | "userContext",
+): InstructionsContentLabels {
   const { t } = useTranslation("settings");
   return {
     emptyTitle: t(`${prefix}.emptyTitle`),

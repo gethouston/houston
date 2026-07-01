@@ -20,7 +20,12 @@ describe("localizeCatalogCopy", () => {
       "agents:catalog.personal-assistant.description": "Descripción en español",
     });
     const result = localizeCatalogCopy(
-      { id: "personal-assistant", name: "Personal assistant", description: "English", author: "Houston" },
+      {
+        id: "personal-assistant",
+        name: "Personal assistant",
+        description: "English",
+        author: "Houston",
+      },
       t,
     );
     strictEqual(result.name, "Asistente personal");
@@ -33,7 +38,12 @@ describe("localizeCatalogCopy", () => {
       "agents:catalog.bookkeeping.description": "Categoriza transacciones...",
     });
     const result = localizeCatalogCopy(
-      { id: "bookkeeping", name: "Bookkeeping", description: "Categorize transactions...", author: "Houston" },
+      {
+        id: "bookkeeping",
+        name: "Bookkeeping",
+        description: "Categorize transactions...",
+        author: "Houston",
+      },
       t,
     );
     strictEqual(result.name, "Contabilidad");
@@ -43,7 +53,12 @@ describe("localizeCatalogCopy", () => {
   it("falls back to the raw strings when a Houston agent has no catalog entry", () => {
     const t = fakeT({});
     const result = localizeCatalogCopy(
-      { id: "future-agent", name: "Future", description: "Later", author: "Houston" },
+      {
+        id: "future-agent",
+        name: "Future",
+        description: "Later",
+        author: "Houston",
+      },
       t,
     );
     strictEqual(result.name, "Future");
@@ -57,7 +72,12 @@ describe("localizeCatalogCopy", () => {
       "agents:catalog.bookkeeping.name": "SHOULD NOT APPLY",
     });
     const result = localizeCatalogCopy(
-      { id: "bookkeeping", name: "Community Bookkeeper", description: "By some author", author: "Jane Dev" },
+      {
+        id: "bookkeeping",
+        name: "Community Bookkeeper",
+        description: "By some author",
+        author: "Jane Dev",
+      },
       t,
     );
     strictEqual(result.name, "Community Bookkeeper");

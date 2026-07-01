@@ -1,11 +1,11 @@
-import { useState, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import { DialogTitle } from "@houston-ai/core";
-import type { SuggestedIntegration, SuggestedRoutine } from "@houston-ai/engine-client";
+import type { SuggestedRoutine } from "@houston-ai/engine-client";
+import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { tauriAgents, tauriProvider } from "../../lib/tauri";
 import { AgentSetupForm, type AgentSetupFormValues } from "./agent-setup-form";
-import { AiStepFooter } from "./ai-step-footer";
 import { serializeFormValues } from "./agent-setup-utils";
+import { AiStepFooter } from "./ai-step-footer";
 import { InlineModelSelector } from "./naming-step";
 
 interface AiAssistStepProps {
@@ -15,11 +15,10 @@ interface AiAssistStepProps {
    * the assist call AND the saved provider/model on the created agent. */
   onProviderChange: (provider: string, model: string) => void;
   onBack: () => void;
-  /** Called with the final CLAUDE.md content, suggested name, integrations, and an optional routine. */
+  /** Called with the final CLAUDE.md content, suggested name, and an optional routine. */
   onContinue: (
     instructions: string,
     suggestedName: string,
-    integrations: SuggestedIntegration[],
     routine: SuggestedRoutine | null,
   ) => void;
 }
@@ -81,13 +80,10 @@ export function AiAssistStep({
       const body = result.instructions;
       const instructions = body.trimStart().startsWith("# ")
         ? body
-        : name ? `# ${name}\n\n${body}` : body;
-      onContinue(
-        instructions,
-        name,
-        result.suggestedIntegrations,
-        result.suggestedRoutine ?? null,
-      );
+        : name
+          ? `# ${name}\n\n${body}`
+          : body;
+      onContinue(instructions, name, result.suggestedRoutine ?? null);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : String(err));
@@ -104,8 +100,12 @@ export function AiAssistStep({
       <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6 pt-6">
         <div className="max-w-2xl mx-auto space-y-6">
           <div>
-            <h2 className="text-base font-semibold">{t("aiAssist.stepTitle")}</h2>
-            <p className="text-sm text-muted-foreground">{t("aiAssist.cardDescription")}</p>
+            <h2 className="text-base font-semibold">
+              {t("aiAssist.stepTitle")}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t("aiAssist.cardDescription")}
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -119,13 +119,23 @@ export function AiAssistStep({
             />
           </div>
 
-          <AgentSetupForm values={form} onChange={setForm} disabled={generating} />
+          <AgentSetupForm
+            values={form}
+            onChange={setForm}
+            disabled={generating}
+          />
 
           {error && !generating && (
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 space-y-1">
-              <p className="text-sm font-medium text-destructive">{t("aiAssist.errorTitle")}</p>
-              <p className="text-xs text-muted-foreground">{t("aiAssist.errorDescription")}</p>
-              <p className="text-xs font-mono text-muted-foreground/80 break-words whitespace-pre-wrap">{error}</p>
+              <p className="text-sm font-medium text-destructive">
+                {t("aiAssist.errorTitle")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("aiAssist.errorDescription")}
+              </p>
+              <p className="text-xs font-mono text-muted-foreground/80 break-words whitespace-pre-wrap">
+                {error}
+              </p>
             </div>
           )}
         </div>
@@ -133,7 +143,11 @@ export function AiAssistStep({
 
       <AiStepFooter
         onBack={onBack}
-        primaryLabel={generating ? t("aiAssist.generatingMessage") : t("aiAssist.generateButton")}
+        primaryLabel={
+          generating
+            ? t("aiAssist.generatingMessage")
+            : t("aiAssist.generateButton")
+        }
         onPrimary={handleGenerate}
         primaryDisabled={!canGenerate}
         primaryLoading={generating}

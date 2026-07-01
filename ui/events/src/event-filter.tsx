@@ -1,11 +1,11 @@
-import { cn, Badge } from "@houston-ai/core"
-import type { EventType } from "./types"
-import { EVENT_TYPE_LABELS } from "./types"
+import { Badge, cn } from "@houston-ai/core";
+import type { EventType } from "./types";
+import { EVENT_TYPE_LABELS } from "./types";
 
 export interface EventFilterProps {
-  value: EventType | null
-  onChange: (type: EventType | null) => void
-  counts?: Partial<Record<EventType, number>>
+  value: EventType | null;
+  onChange: (type: EventType | null) => void;
+  counts?: Partial<Record<EventType, number>>;
 }
 
 const EVENT_TYPES: EventType[] = [
@@ -15,12 +15,13 @@ const EVENT_TYPES: EventType[] = [
   "hook",
   "webhook",
   "agent_message",
-]
+];
 
 export function EventFilter({ value, onChange, counts }: EventFilterProps) {
   return (
     <div className="flex items-center gap-1.5 px-3 py-2 overflow-x-auto">
       <button
+        type="button"
         onClick={() => onChange(null)}
         className={cn(
           "shrink-0 px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-150",
@@ -33,11 +34,12 @@ export function EventFilter({ value, onChange, counts }: EventFilterProps) {
       </button>
 
       {EVENT_TYPES.map((type) => {
-        const count = counts?.[type]
-        const isActive = value === type
+        const count = counts?.[type];
+        const isActive = value === type;
 
         return (
           <button
+            type="button"
             key={type}
             onClick={() => onChange(isActive ? null : type)}
             className={cn(
@@ -57,8 +59,8 @@ export function EventFilter({ value, onChange, counts }: EventFilterProps) {
               </Badge>
             )}
           </button>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

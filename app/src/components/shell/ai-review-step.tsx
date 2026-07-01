@@ -1,15 +1,15 @@
-import { useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { Check } from "lucide-react";
 import {
   AGENT_COLORS,
+  cn,
+  colorHex,
   DialogTitle,
   HoustonAvatar,
   Input,
-  cn,
-  colorHex,
   resolveAgentColor,
 } from "@houston-ai/core";
+import { Check } from "lucide-react";
+import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { AiStepFooter } from "./ai-step-footer";
 
 interface AiReviewStepProps {
@@ -42,7 +42,7 @@ export function AiReviewStep({
 
   useEffect(() => {
     if (!color) onColorChange(AGENT_COLORS[0].id);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [color, onColorChange]);
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <DialogTitle className="sr-only">{t("aiReview.stepTitle")}</DialogTitle>
@@ -55,7 +55,8 @@ export function AiReviewStep({
             <div className="flex items-center gap-2">
               {AGENT_COLORS.map((c) => {
                 const hex = colorHex(c);
-                const isSelected = color === c.id || color === c.light || color === c.dark;
+                const isSelected =
+                  color === c.id || color === c.light || color === c.dark;
                 return (
                   <button
                     key={c.id}
@@ -63,7 +64,9 @@ export function AiReviewStep({
                     onClick={() => onColorChange(c.id)}
                     className={cn(
                       "h-6 w-6 rounded-full flex items-center justify-center transition-all duration-150",
-                      isSelected ? "ring-2 ring-offset-2 ring-foreground/30" : "hover:scale-110",
+                      isSelected
+                        ? "ring-2 ring-offset-2 ring-foreground/30"
+                        : "hover:scale-110",
                     )}
                     style={{ backgroundColor: hex }}
                   >
@@ -76,8 +79,14 @@ export function AiReviewStep({
 
           {/* Name */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium">{t("aiAssist.nameLabel")}</label>
+            <label
+              htmlFor="ai-review-name"
+              className="block text-sm font-medium"
+            >
+              {t("aiAssist.nameLabel")}
+            </label>
             <Input
+              id="ai-review-name"
               autoFocus
               value={name}
               onChange={(e) => onNameChange(e.target.value)}
@@ -89,8 +98,12 @@ export function AiReviewStep({
           {/* Instructions */}
           <div className="space-y-2">
             <div>
-              <p className="text-sm font-medium">{t("aiReview.instructionsLabel")}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t("aiReview.instructionsHelper")}</p>
+              <p className="text-sm font-medium">
+                {t("aiReview.instructionsLabel")}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {t("aiReview.instructionsHelper")}
+              </p>
             </div>
             <section className="rounded-xl bg-secondary p-3">
               <textarea
@@ -107,9 +120,7 @@ export function AiReviewStep({
             </section>
           </div>
 
-          {error && (
-            <p className="text-xs text-destructive">{error}</p>
-          )}
+          {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
       </div>
 

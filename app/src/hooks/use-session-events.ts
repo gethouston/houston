@@ -1,20 +1,21 @@
+import type { FeedItem } from "@houston-ai/chat";
+import type { HoustonEvent } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import type { HoustonEvent } from "@houston-ai/core";
-import type { FeedItem } from "@houston-ai/chat";
+import { hasToolRuntimeError } from "../components/tool-runtime-feed";
+import { listenOsEvent, subscribeHoustonEvents } from "../lib/events";
+import { logger } from "../lib/logger";
+import {
+  resolveNotificationTarget,
+  shouldNavigateOnAppActivation,
+} from "../lib/notification-nav";
+import { isMac } from "../lib/platform";
+import { useAgentStore } from "../stores/agents";
 import { useFeedStore } from "../stores/feeds";
+import { useProviderSwitchStore } from "../stores/provider-switch";
+import { useSessionStatusStore } from "../stores/session-status";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
-import { useAgentStore } from "../stores/agents";
-import { useSessionStatusStore } from "../stores/session-status";
-import { useProviderSwitchStore } from "../stores/provider-switch";
-import { subscribeHoustonEvents, listenOsEvent } from "../lib/events";
-import { logger } from "../lib/logger";
-import { isMac } from "../lib/platform";
-import { resolveNotificationTarget, shouldNavigateOnAppActivation } from "../lib/notification-nav";
-import { tauriClaude } from "../lib/tauri";
-import { useClaudeInstallErrorText } from "./use-claude-install";
-import { hasToolRuntimeError } from "../components/tool-runtime-feed";
 import {
   consumePendingNav,
   describePendingNotificationNav,
@@ -33,8 +34,7 @@ export function useSessionEvents() {
   const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
   const addToast = useUIStore((s) => s.addToast);
   const setAuthRequired = useUIStore((s) => s.setAuthRequired);
-  const { t } = useTranslation(["providers", "common"]);
-  const claudeErrorText = useClaudeInstallErrorText();
+  const { t } = useTranslation(["common"]);
 
   const handlersRef = useRef({
     pushFeedItem,
@@ -44,7 +44,6 @@ export function useSessionEvents() {
     getWorkspace: () => useWorkspaceStore.getState().current,
     getAgent: () => useAgentStore.getState().current,
     t,
-    claudeErrorText,
   });
   handlersRef.current = {
     pushFeedItem,
@@ -54,7 +53,6 @@ export function useSessionEvents() {
     getWorkspace: () => useWorkspaceStore.getState().current,
     getAgent: () => useAgentStore.getState().current,
     t,
-    claudeErrorText,
   };
 
   useEffect(() => {
@@ -125,10 +123,10 @@ export function useSessionEvents() {
             // Activity status flip (→ "needs_you") is owned by the
             // engine now — `sessions::start` spawns a task that writes
             // the terminal status after the runner finishes and emits
-            // `ActivityChanged`. That way phone-only users (and
-            // anything else that skips this webview) see the same
-            // transition. Here we only need the notification title + the
-            // click-to-navigate target.
+            // `ActivityChanged`. That way anything that skips this webview
+            // (the web app, a scheduled run) sees the same transition. Here
+            // we only need the notification title + the click-to-navigate
+            // target.
             //
             // Target the agent that *finished* (matched by folder path),
             // not the currently-open one, so clicking the notification
@@ -142,7 +140,8 @@ export function useSessionEvents() {
             );
             if (
               !nav &&
-              (session_key.startsWith("activity-") || session_key.startsWith("routine-"))
+              (session_key.startsWith("activity-") ||
+                session_key.startsWith("routine-"))
             ) {
               logger.debug(
                 `[notification] completed chat not navigable (agent not in loaded list?): agent_path=${agent_path} session_key=${session_key}`,
@@ -166,37 +165,11 @@ export function useSessionEvents() {
           });
           break;
         case "AuthRequired":
-          logger.info(`[auth] AuthRequired received: provider=${payload.data.provider}`);
+          logger.info(
+            `[auth] AuthRequired received: provider=${payload.data.provider}`,
+          );
           h.setAuthRequired(payload.data.provider);
           break;
-        case "ClaudeCliFailed": {
-          // Per the beta-stage "no silent failures" rule, every install
-          // failure must reach the user somewhere — the onboarding card
-          // shows it inline but a user already past onboarding (e.g. on
-          // a Houston upgrade that re-downloads claude-code) would
-          // otherwise never know. The engine emits a typed `kind`; we
-          // localize it here and keep `detail` in the log for the bug
-          // report.
-          const installError = payload.data.error;
-          logger.warn(
-            `[claude-install] ClaudeCliFailed: kind=${installError.kind}` +
-              (installError.detail ? ` detail=${installError.detail}` : ""),
-          );
-          h.addToast({
-            variant: "error",
-            title: h.t("providers:claudeInstall.failedTitle"),
-            description: h.claudeErrorText(installError),
-            action: {
-              label: h.t("providers:claudeInstall.retry"),
-              onClick: () => {
-                tauriClaude.install().catch((err: unknown) => {
-                  logger.warn(`[claude-install] retry from toast failed: ${String(err)}`);
-                });
-              },
-            },
-          });
-          break;
-        }
       }
     });
 
@@ -209,15 +182,23 @@ export function useSessionEvents() {
     let unlistenNotificationAction: (() => void) | undefined;
     import("@tauri-apps/plugin-notification").then(({ onAction }) => {
       onAction((action) => {
-        logger.debug(`[notification] onAction fired: ${JSON.stringify(action)} pendingNav=${describePendingNotificationNav()}`);
+        logger.debug(
+          `[notification] onAction fired: ${JSON.stringify(action)} pendingNav=${describePendingNotificationNav()}`,
+        );
         consumePendingNav().catch((e) => {
-          logger.error(`[notification] consumePendingNav (onAction) failed: ${e}`);
+          logger.error(
+            `[notification] consumePendingNav (onAction) failed: ${e}`,
+          );
         });
-      }).then((unlisten) => {
-        unlistenNotificationAction = () => { unlisten.unregister(); };
-      }).catch((e) => {
-        logger.debug(`[notification] onAction registration failed: ${e}`);
-      });
+      })
+        .then((unlisten) => {
+          unlistenNotificationAction = () => {
+            unlisten.unregister();
+          };
+        })
+        .catch((e) => {
+          logger.debug(`[notification] onAction registration failed: ${e}`);
+        });
     });
 
     // `app-activated` fires on ANY foregrounding (window focus, dock click,
@@ -233,10 +214,14 @@ export function useSessionEvents() {
     //  - Agent-list refresh: always, so external changes (e.g. Finder delete)
     //    are picked up when the window comes forward.
     const unlistenActivated = listenOsEvent<unknown>("app-activated", () => {
-      logger.debug(`[notification] app-activated event fired: pendingNav=${describePendingNotificationNav()}`);
+      logger.debug(
+        `[notification] app-activated event fired: pendingNav=${describePendingNotificationNav()}`,
+      );
       if (shouldNavigateOnAppActivation(isMac)) {
         consumePendingNav().catch((e) => {
-          logger.error(`[notification] consumePendingNav (app-activated) failed: ${e}`);
+          logger.error(
+            `[notification] consumePendingNav (app-activated) failed: ${e}`,
+          );
         });
       }
       const ws = useWorkspaceStore.getState().current;
@@ -250,12 +235,19 @@ export function useSessionEvents() {
     // Linux/Windows: a genuine notification click (emitted by notification.rs).
     // This is the ONLY foregrounding that should navigate to the finished
     // mission on those platforms. macOS never emits it (uses the focus path).
-    const unlistenNotifClick = listenOsEvent<unknown>("notification-clicked", () => {
-      logger.debug(`[notification] notification-clicked event fired: pendingNav=${describePendingNotificationNav()}`);
-      consumePendingNav().catch((e) => {
-        logger.error(`[notification] consumePendingNav (notification-clicked) failed: ${e}`);
-      });
-    });
+    const unlistenNotifClick = listenOsEvent<unknown>(
+      "notification-clicked",
+      () => {
+        logger.debug(
+          `[notification] notification-clicked event fired: pendingNav=${describePendingNotificationNav()}`,
+        );
+        consumePendingNav().catch((e) => {
+          logger.error(
+            `[notification] consumePendingNav (notification-clicked) failed: ${e}`,
+          );
+        });
+      },
+    );
 
     // Fallback: Tauri window focus event (macOS only — see listenForNotificationFocus).
     const unlistenTauriFocus = listenForNotificationFocus();
@@ -265,9 +257,13 @@ export function useSessionEvents() {
       unlistenActivated();
       unlistenNotifClick();
       unlistenNotificationAction?.();
-      unlistenTauriFocus?.then((fn) => fn()).catch((e) => {
-        logger.debug(`[notification] Tauri focus listener cleanup failed: ${e}`);
-      });
+      unlistenTauriFocus
+        ?.then((fn) => fn())
+        .catch((e) => {
+          logger.debug(
+            `[notification] Tauri focus listener cleanup failed: ${e}`,
+          );
+        });
     };
   }, []);
 }

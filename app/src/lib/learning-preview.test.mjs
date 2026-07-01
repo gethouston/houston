@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import {
   LEARNING_PREVIEW_LIMIT,
   learningNeedsExpansion,
@@ -8,7 +8,10 @@ import {
 
 test("learning preview leaves short text alone", () => {
   assert.equal(learningNeedsExpansion("Keep replies terse."), false);
-  assert.equal(learningPreviewText("Keep replies terse."), "Keep replies terse.");
+  assert.equal(
+    learningPreviewText("Keep replies terse."),
+    "Keep replies terse.",
+  );
 });
 
 test("learning preview collapses long text with visible ellipsis", () => {

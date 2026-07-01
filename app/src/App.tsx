@@ -2,36 +2,34 @@ import "./styles/globals.css";
 import type { Toast } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-
-import { tauriSystem } from "./lib/tauri";
-import { useHoustonInit } from "./hooks/use-houston-init";
-import { useSessionEvents } from "./hooks/use-session-events";
-import { useAgentInvalidation } from "./hooks/use-agent-invalidation";
-import { useAnalyticsSubscriber } from "./hooks/use-analytics-subscriber";
-import { useIntegrationTracker } from "./hooks/use-integration-tracker";
-import { useWorkspaceStore } from "./stores/workspaces";
-import { useAgentStore } from "./stores/agents";
-import { useUIStore } from "./stores/ui";
-import { useConnections, useComposioApps } from "./hooks/queries";
-import { analytics } from "./lib/analytics";
-import { setUser as setSentryUser, clearUser as clearSentryUser } from "./lib/sentry";
-import { isAuthConfigured } from "./lib/supabase";
-import { installDeepLinkListener } from "./lib/auth";
-import { useSession } from "./hooks/use-session";
 import { SignInScreen } from "./components/auth/sign-in-screen";
+import { MigrationReconnectScreen } from "./components/onboarding/migration-reconnect-screen";
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
 import { WorkspaceShell } from "./components/shell/workspace-shell";
+import { useAgentInvalidation } from "./hooks/use-agent-invalidation";
+import { useAnalyticsSubscriber } from "./hooks/use-analytics-subscriber";
+import { useHoustonInit } from "./hooks/use-houston-init";
+import { useMigrationReconnect } from "./hooks/use-migration-reconnect";
+import { useSession } from "./hooks/use-session";
+import { useSessionEvents } from "./hooks/use-session-events";
+import { analytics } from "./lib/analytics";
+import { installDeepLinkListener } from "./lib/auth";
 import { shouldAllowNativeContextMenu } from "./lib/context-menu";
+import {
+  clearUser as clearSentryUser,
+  setUser as setSentryUser,
+} from "./lib/sentry";
+import { isAuthConfigured } from "./lib/supabase";
+import { tauriSystem } from "./lib/tauri";
+import { useAgentStore } from "./stores/agents";
+import { useUIStore } from "./stores/ui";
+import { useWorkspaceStore } from "./stores/workspaces";
 
 export default function App() {
   useHoustonInit();
   useSessionEvents();
   useAgentInvalidation();
   useAnalyticsSubscriber();
-  useIntegrationTracker();
-  // Prefetch Composio data on launch so the integrations tab opens instantly.
-  useConnections();
-  useComposioApps();
 
   // NOTE: install identity, `install_created`, `session_started`, and theme
   // load run in <StartupEffects> at the top of the tree (main.tsx), NOT here.
@@ -104,7 +102,8 @@ export default function App() {
       const anchor = (e.target as HTMLElement).closest("a[href]");
       if (!anchor) return;
       const href = anchor.getAttribute("href");
-      if (!href || href.startsWith("#") || href.startsWith("javascript:")) return;
+      if (!href || href.startsWith("#") || href.startsWith("javascript:"))
+        return;
       e.preventDefault();
       tauriSystem.openUrl(href);
     };
@@ -133,6 +132,12 @@ export default function App() {
   const dismissToast = useUIStore((s) => s.dismissToast);
   const tutorialActive = useUIStore((s) => s.tutorialActive);
 
+  // One-time "reconnect your AI" moment for users upgrading from the legacy
+  // desktop build: their agents + history migrated, but their AI sign-in did
+  // not. Shows only when (migrated AND no provider connected AND not yet
+  // dismissed) — never on a fresh install, never once a provider is connected.
+  const migrationReconnect = useMigrationReconnect();
+
   const mappedToasts: Toast[] = toasts.map((t) => ({
     id: t.id,
     message: t.description ? `${t.title} ${t.description}` : t.title,
@@ -147,12 +152,17 @@ export default function App() {
   if (isAuthConfigured() && sessionLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background text-foreground">
-        <p className="text-muted-foreground text-sm">{t("engineGate.starting")}</p>
+        <p className="text-muted-foreground text-sm">
+          {t("engineGate.starting")}
+        </p>
       </div>
     );
   }
   if (isAuthConfigured() && !session) {
-    return <SignInScreen />;
+    // Local account login. Keep the dev-only paste-the-code fallback (#146) — a
+    // dev build's `houston://` callback opens the installed prod app, so without
+    // it dev sign-in strands. Production standalone gets no paste box (HOU-621).
+    return <SignInScreen allowManualCallback={import.meta.env.DEV} />;
   }
 
   // First-run tutorial. Held in front of the shell while the orchestrator is
@@ -173,7 +183,9 @@ export default function App() {
   if (agentLoading || wsLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background text-foreground">
-        <p className="text-muted-foreground text-sm">{t("engineGate.starting")}</p>
+        <p className="text-muted-foreground text-sm">
+          {t("engineGate.starting")}
+        </p>
       </div>
     );
   }
@@ -187,10 +199,13 @@ export default function App() {
     );
   }
 
-  return (
-    <WorkspaceShell
-      toasts={mappedToasts}
-      onDismissToast={dismissToast}
-    />
-  );
+  // Migrated user with workspaces but no connected provider: welcome them back
+  // and walk them through reconnecting once, before the shell (which is unusable
+  // without a provider anyway). Falls through the instant a provider connects or
+  // the user dismisses — see useMigrationReconnect for the full trigger.
+  if (migrationReconnect.show) {
+    return <MigrationReconnectScreen onDone={migrationReconnect.dismiss} />;
+  }
+
+  return <WorkspaceShell toasts={mappedToasts} onDismissToast={dismissToast} />;
 }

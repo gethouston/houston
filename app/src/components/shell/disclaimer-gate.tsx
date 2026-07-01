@@ -1,9 +1,8 @@
-import { useCallback, useState, type ReactNode } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-import { analytics } from "../../lib/analytics";
 import { useLegalAcceptance } from "../../hooks/use-legal-acceptance";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
+import { analytics } from "../../lib/analytics";
 import { SetupCard } from "../onboarding/setup-card";
 
 interface Section {
@@ -49,7 +48,8 @@ function AgreementScreen({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const sections = (t("legal:sections", { returnObjects: true }) as Section[]) ?? [];
+  const sections =
+    (t("legal:sections", { returnObjects: true }) as Section[]) ?? [];
 
   const handleAccept = useCallback(async () => {
     if (busy) return;
@@ -72,12 +72,15 @@ function AgreementScreen({
       onBack={onBack}
       backLabel={t("setup:tutorial.nav.back")}
       onNext={() => void handleAccept()}
-      nextLabel={busy ? t("legal:buttons.accept_busy") : t("legal:buttons.accept")}
+      nextLabel={
+        busy ? t("legal:buttons.accept_busy") : t("legal:buttons.accept")
+      }
       nextLoading={busy}
     >
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <ol className="space-y-4">
           {sections.map((section, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: sections is a static translation array — no reordering, no add/remove, no per-item state
             <li key={i} className="flex items-start gap-3">
               <span className="w-4 shrink-0 text-sm font-medium tabular-nums text-muted-foreground">
                 {i + 1}
@@ -93,7 +96,9 @@ function AgreementScreen({
             </li>
           ))}
         </ol>
-        <p className="mt-5 text-xs text-muted-foreground">{t("legal:closing")}</p>
+        <p className="mt-5 text-xs text-muted-foreground">
+          {t("legal:closing")}
+        </p>
         {error && (
           <p className="mt-2 text-xs text-destructive" role="alert">
             {error}

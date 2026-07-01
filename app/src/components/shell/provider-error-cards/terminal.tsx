@@ -5,11 +5,11 @@
  * All render on the unified `RowCard` (HOU-467).
  */
 
-import { useTranslation } from "react-i18next";
-import { CloudOffIcon, RefreshCwIcon, WrenchIcon } from "lucide-react";
 import type { ProviderError } from "@houston-ai/chat";
+import { CloudOffIcon, RefreshCwIcon, WrenchIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { RowCard } from "../../cards/row-card";
-import { ReportBugButton, RetryButton, providerLabel } from "./shared";
+import { providerLabel, ReportBugButton, RetryButton } from "./shared";
 
 interface BaseProps {
   onRetry?: () => Promise<void> | void;

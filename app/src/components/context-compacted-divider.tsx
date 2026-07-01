@@ -1,5 +1,5 @@
-import { useTranslation } from "react-i18next";
 import type { ChatCompactionInfo } from "@houston-ai/chat";
+import { useTranslation } from "react-i18next";
 import { getProvider } from "../lib/providers";
 
 interface ContextCompactedDividerProps {
@@ -19,12 +19,15 @@ interface ContextCompactedDividerProps {
  * Rendered by the app's `renderSystemMessage` for `msg.compaction` items so the
  * label is localized (the `ui/chat` library keeps an English default).
  */
-export function ContextCompactedDivider({ info }: ContextCompactedDividerProps) {
+export function ContextCompactedDivider({
+  info,
+}: ContextCompactedDividerProps) {
   const { t } = useTranslation("chat");
 
   let label: string;
   if (info.kind === "provider_switch") {
-    const provider = getProvider(info.provider ?? "")?.name ?? info.provider ?? "";
+    const provider =
+      getProvider(info.provider ?? "")?.name ?? info.provider ?? "";
     label = t(
       info.summarized
         ? "providerSwitch.dividerSummary"

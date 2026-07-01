@@ -1,10 +1,7 @@
 import { useTranslation } from "react-i18next";
-import {
-  PROVIDERS,
-  COMING_SOON_PROVIDERS,
-} from "../../../lib/providers";
+import { COMING_SOON_PROVIDERS, PROVIDERS } from "../../../lib/providers";
 import { ProviderGlyph } from "../../shell/provider-logos";
-import { SetupCard, OptionGrid, OptionCard } from "../setup-card";
+import { OptionCard, OptionGrid, SetupCard } from "../setup-card";
 
 interface BrainMissionProps {
   eyebrow: string;
@@ -40,33 +37,33 @@ export function BrainMission({
       nextDisabled={!provider}
     >
       <div className="min-h-0 flex-1 overflow-y-auto">
-      <OptionGrid>
-        {PROVIDERS.map((prov) => (
-          <OptionCard
-            key={prov.id}
-            leading={<ProviderGlyph providerId={prov.id} />}
-            label={prov.name}
-            description={prov.subtitle}
-            selected={provider === prov.id}
-            onSelect={() => onSelect(prov.id, prov.defaultModel)}
-          />
-        ))}
-        {COMING_SOON_PROVIDERS.map((prov) => (
-          <OptionCard
-            key={prov.id}
-            leading={<ProviderGlyph providerId={prov.id} />}
-            label={prov.name}
-            description={prov.subtitle}
-            selected={false}
-            disabled
-            trailing={
-              <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                {t("providers:card.comingSoon")}
-              </span>
-            }
-          />
-        ))}
-      </OptionGrid>
+        <OptionGrid>
+          {PROVIDERS.map((prov) => (
+            <OptionCard
+              key={prov.id}
+              leading={<ProviderGlyph providerId={prov.id} />}
+              label={prov.name}
+              description={prov.subtitle}
+              selected={provider === prov.id}
+              onSelect={() => onSelect(prov.id, prov.defaultModel)}
+            />
+          ))}
+          {COMING_SOON_PROVIDERS.map((prov) => (
+            <OptionCard
+              key={prov.id}
+              leading={<ProviderGlyph providerId={prov.id} />}
+              label={prov.name}
+              description={prov.subtitle}
+              selected={false}
+              disabled
+              trailing={
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t("providers:card.comingSoon")}
+                </span>
+              }
+            />
+          ))}
+        </OptionGrid>
       </div>
     </SetupCard>
   );

@@ -19,7 +19,7 @@ If you're unsure whether something fits, open an issue and ask. Cheaper than a c
 
 ```bash
 git clone https://github.com/gethouston/houston.git
-cd houston
+cd houston-web
 pnpm install
 cargo check --workspace
 ```
@@ -30,8 +30,8 @@ cargo check --workspace
 # Run the Houston app
 cd app && pnpm tauri dev
 
-# Run the showcase
-cd showcase && pnpm dev
+# Run the TypeScript host local profile
+cd packages/host && pnpm dev
 
 # TypeScript check
 pnpm typecheck
@@ -48,11 +48,8 @@ cargo test --workspace
 - `ui/` — React packages (@houston-ai/*)
 - `engine/` — Rust crates (houston-*) — frontend-agnostic backend
 - `app/` — Houston App (Tauri desktop)
-- `mobile/` — Houston Mobile companion
-- `desktop-mobile-bridge/` — Cloudflare Worker pairing App + Mobile
-- `store/` — Houston Store (agent registry)
-- `website/` — gethouston.ai landing
-- `always-on/` · `teams/` · `cloud/` — future hosted products (placeholders)
+- `packages/` — TypeScript engine convergence (runtime, host, host-cloud, domain, protocol)
+- `cloud/` — Houston Cloud docs and operations
 
 ## Pull Requests
 

@@ -1,10 +1,10 @@
-import { strictEqual, deepStrictEqual, ok } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 
 import {
   runStartupAnalytics,
-  welcomeBridgeUrl,
   type StartupAnalytics,
+  welcomeBridgeUrl,
 } from "../src/lib/startup-analytics.ts";
 
 /**
@@ -40,7 +40,10 @@ describe("welcomeBridgeUrl", () => {
 
 describe("runStartupAnalytics", () => {
   it("emits install_created AFTER identify(init) and BEFORE session_started on a new install", async () => {
-    const { analytics, calls } = fakeAnalytics({ installId: "id-1", isNew: true });
+    const { analytics, calls } = fakeAnalytics({
+      installId: "id-1",
+      isNew: true,
+    });
     const opened: string[] = [];
 
     await runStartupAnalytics(analytics, async (url) => {
@@ -62,7 +65,10 @@ describe("runStartupAnalytics", () => {
   });
 
   it("does NOT emit install_created for a returning install, but still emits session_started", async () => {
-    const { analytics, calls } = fakeAnalytics({ installId: "id-1", isNew: false });
+    const { analytics, calls } = fakeAnalytics({
+      installId: "id-1",
+      isNew: false,
+    });
     const opened: string[] = [];
 
     await runStartupAnalytics(analytics, async (url) => {
@@ -74,7 +80,11 @@ describe("runStartupAnalytics", () => {
       "install_created must not fire on a returning install",
     );
     ok(calls.includes("track:session_started"), "session_started always fires");
-    deepStrictEqual(opened, [], "no attribution bridge for a returning install");
+    deepStrictEqual(
+      opened,
+      [],
+      "no attribution bridge for a returning install",
+    );
   });
 
   it("skips the attribution bridge when init returns no install id", async () => {
@@ -89,7 +99,10 @@ describe("runStartupAnalytics", () => {
   });
 
   it("never rejects when the attribution bridge open fails", async () => {
-    const { analytics, calls } = fakeAnalytics({ installId: "id-1", isNew: true });
+    const { analytics, calls } = fakeAnalytics({
+      installId: "id-1",
+      isNew: true,
+    });
 
     await runStartupAnalytics(analytics, async () => {
       throw new Error("no default browser");

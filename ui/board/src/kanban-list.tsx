@@ -1,24 +1,24 @@
-import { AnimatePresence, motion } from "framer-motion"
-import { cn } from "@houston-ai/core"
-import { KanbanListRail } from "./kanban-list-rail"
-import { KanbanListItem } from "./kanban-list-item"
-import type { KanbanCardLabels } from "./kanban-card"
-import type { BoardSearchSnippet, KanbanItem } from "./types"
+import { cn } from "@houston-ai/core";
+import { AnimatePresence, motion } from "framer-motion";
+import type { KanbanCardLabels } from "./kanban-card";
+import { KanbanListItem } from "./kanban-list-item";
+import { KanbanListRail } from "./kanban-list-rail";
+import type { BoardSearchSnippet, KanbanItem } from "./types";
 
 export interface KanbanListProps {
-  items: KanbanItem[]
-  selectedId?: string | null
-  onSelect: (item: KanbanItem) => void
-  onDelete?: (item: KanbanItem) => void
-  avatar?: React.ReactNode
-  cardLabels?: KanbanCardLabels
-  emptyState?: React.ReactNode
+  items: KanbanItem[];
+  selectedId?: string | null;
+  onSelect: (item: KanbanItem) => void;
+  onDelete?: (item: KanbanItem) => void;
+  avatar?: React.ReactNode;
+  cardLabels?: KanbanCardLabels;
+  emptyState?: React.ReactNode;
   /** Per-item matched body fragment, keyed by `KanbanItem.id`, shown below a row
    *  when the search matched in the body rather than the title. */
-  searchSnippets?: Record<string, BoardSearchSnippet>
+  searchSnippets?: Record<string, BoardSearchSnippet>;
   /** Sizing of the list rail. "center" (default) keeps a fixed-width column
    *  centered; "left" fills the full pane width, left-aligned. */
-  align?: "center" | "left"
+  align?: "center" | "left";
 }
 
 /**
@@ -42,12 +42,12 @@ export function KanbanList({
       <div className="flex-1 flex items-center justify-center px-8">
         {emptyState}
       </div>
-    )
+    );
   }
 
   const sorted = [...items].sort(
     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-  )
+  );
 
   return (
     <div
@@ -83,5 +83,5 @@ export function KanbanList({
         </AnimatePresence>
       </KanbanListRail>
     </div>
-  )
+  );
 }

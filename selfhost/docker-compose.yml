@@ -1,0 +1,65 @@
+# Houston self-host — single-user engine + automatic-HTTPS reverse proxy.
+#
+#   cd selfhost
+#   cp .env.example .env          # set HOUSTON_DOMAIN + HOUSTON_HOST_TOKEN
+#   docker compose up -d --build
+#   docker compose logs -f
+#
+# The `host` service is the Houston engine (local adapter profile). It is NOT
+# published to the host network — only Caddy can reach it, on the internal
+# `houston` network — so the engine is never exposed as plain HTTP. Caddy
+# terminates TLS for HOUSTON_DOMAIN and forwards to it. Full guide: README.md.
+
+services:
+  host:
+    build:
+      # Context is the repo root: the image pulls sibling pnpm workspace packages.
+      context: ..
+      dockerfile: selfhost/Dockerfile
+    image: houston/self-host:local
+    restart: unless-stopped
+    environment:
+      # Required. Compose errors out if it's unset, so the engine is never
+      # exposed without auth. Generate one with: openssl rand -hex 32
+      HOUSTON_HOST_TOKEN: "${HOUSTON_HOST_TOKEN:?set HOUSTON_HOST_TOKEN in .env (try: openssl rand -hex 32)}"
+      # Everything else has a sensible default baked into the image; override here
+      # only if you know why (e.g. a different in-container port).
+    volumes:
+      # The whole ~/.houston equivalent: workspaces, the connect-once credential,
+      # and (if you migrate) the Rust-era chat db. One volume = your entire state.
+      - houston-data:/data
+    networks:
+      - houston
+    # No `ports:` — deliberately. Reachable only via Caddy, never directly.
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - host
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      # The public domain Caddy gets a Let's Encrypt cert for. Must resolve to
+      # this VPS (an A/AAAA record) BEFORE first boot or the ACME challenge fails.
+      HOUSTON_DOMAIN: "${HOUSTON_DOMAIN:?set HOUSTON_DOMAIN in .env (the public hostname for this VPS)}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Optional: drop a `pnpm --filter houston-web build` dist here to serve the
+      # web app from the same domain (see README "Frontend"). Safe to leave empty.
+      - ./web:/srv:ro
+      - caddy-data:/data # persisted certs — don't lose this or you re-issue on every boot
+      - caddy-config:/config
+    networks:
+      - houston
+
+networks:
+  houston:
+    driver: bridge
+
+volumes:
+  houston-data:
+  caddy-data:
+  caddy-config:

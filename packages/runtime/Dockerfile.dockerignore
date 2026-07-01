@@ -1,0 +1,36 @@
+# Dockerfile-specific ignores for packages/runtime/Dockerfile. Build context is
+# the repo root (`docker build -f packages/runtime/Dockerfile .`) because the
+# runtime resolves @houston/runtime-client via the pnpm workspace.
+# Paths are relative to the repo root.
+
+**/node_modules
+.git
+**/target
+**/*.log
+**/.DS_Store
+**/.env
+**/dist
+.context
+
+# Large product trees not copied by this Dockerfile.
+app/
+always-on/
+cloud/
+convergence/
+engine/
+examples/
+selfhost/
+store/
+teams/
+ui/
+website/
+packages/code-sandbox/
+packages/domain/
+packages/host/
+packages/host-cloud/
+packages/web/
+
+# Runtime-local dev artifacts that must never leak into the image.
+packages/runtime/data/
+packages/runtime/.env
+packages/runtime/docker-compose.yml

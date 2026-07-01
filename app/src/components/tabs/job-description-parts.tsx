@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
   Button,
+  cn,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  cn,
 } from "@houston-ai/core";
 import { FileText } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export type SubTab = "instructions" | "skills" | "learnings" | "general";
 
@@ -89,11 +89,17 @@ export function InstructionsContent({
         <span
           className={cn(
             "text-[11px] tabular-nums transition-opacity duration-200",
-            state === "idle" ? "opacity-0" : "opacity-100 text-muted-foreground",
+            state === "idle"
+              ? "opacity-0"
+              : "opacity-100 text-muted-foreground",
           )}
           aria-live="polite"
         >
-          {state === "saving" ? resolved.saving : state === "saved" ? resolved.saved : ""}
+          {state === "saving"
+            ? resolved.saving
+            : state === "saved"
+              ? resolved.saved
+              : ""}
         </span>
       </div>
       <section className="rounded-xl bg-secondary p-3">

@@ -71,13 +71,29 @@
       "days": { "one": "día", "other": "días" },
       "months": { "one": "mes", "other": "meses" }
     },
+    "unitsSingular": {
+      "minutes": "minuto",
+      "hours": "hora",
+      "days": "día",
+      "months": "mes"
+    },
     "timeLabel": "Hora",
     "dayOfMonthLabel": "Día del mes",
     "repeatEvery": "Repetir cada",
     "enterNumber": "Ingresa un número",
     "pickDay": "Elige al menos un día",
     "onTheseDays": "En estos días",
-    "shortcuts": { "everyDay": "Todos los días", "weekdays": "Días laborables", "weekends": "Fines de semana" },
+    "weekdaysLabel": "En estos días",
+    "shortcuts": {
+      "everyDay": "Todos los días",
+      "weekdays": "Días laborables",
+      "weekends": "Fines de semana"
+    },
+    "weekdayShortcuts": {
+      "everyDay": "Todos los días",
+      "weekdays": "Días laborables",
+      "weekends": "Fines de semana"
+    },
     "decrease": "Disminuir",
     "increase": "Aumentar",
     "timePicker": {
@@ -99,6 +115,7 @@
       "everyNDays": "Se ejecuta cada {n} días a las {time}",
       "weekly": "Se ejecuta cada {day} a las {time}",
       "everyWeekOnDays": "Se ejecuta cada semana los {days} a las {time}",
+      "weeklyOnDays": "Se ejecuta cada semana los {days} a las {time}",
       "monthly": "Se ejecuta el día {n} de cada mes a las {time}",
       "everyNMonths": "Se ejecuta el día {n} de cada {months} meses a las {time}"
     }

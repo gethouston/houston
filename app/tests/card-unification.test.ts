@@ -3,9 +3,10 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 /**
- * HOU-467 — card unification. These guard the user-visible contract of the
- * refactor by asserting on component source (the repo's React-test idiom; the
- * node test runner has no DOM). Three issue requirements + one latent bug:
+ * HOU-467 / HOU-529 (gethouston/houston PR #542, ported into houston-web) —
+ * card unification. These guard the user-visible contract of the refactor by
+ * asserting on component source (the repo's React-test idiom; the node test
+ * runner has no DOM). Four issue requirements + one latent bug:
  *
  *  1. The provider/auth/rate-limit cards render through the shared `RowCard`
  *     with the provider's monochrome `ProviderGlyph` on the left.
@@ -14,19 +15,22 @@ import { describe, it } from "node:test";
  *     generic `Sparkles`.
  *  4. `ProviderGlyph` dispatches per provider id — Gemini gets the Gemini
  *     mark, not the OpenAI logo the old `anthropic ? Claude : OpenAI` ternary
- *     handed every non-Anthropic provider.
+ *     handed every non-Anthropic provider — and falls back to the provider's
+ *     initial for anything unknown, so a provider can never borrow the wrong
+ *     brand's logo.
  */
 
 const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 
-describe("HOU-467 card unification", () => {
+describe("HOU-467 / HOU-529 card unification", () => {
   it("UnauthenticatedCard uses RowCard + glyph and drops the key icon", () => {
     const src = read("../src/components/shell/provider-error-cards/auth.tsx");
     ok(src.includes("RowCard"), "renders through RowCard");
     ok(src.includes("ProviderGlyph"), "left media is the provider glyph");
     ok(src.includes("RowCardButton"), "uses the shared row button");
     ok(!src.includes("KeyIcon"), "no key icon anywhere (left or in button)");
+    ok(!src.includes("ErrorCard"), "off the old ErrorCard shell");
   });
 
   it("ProviderReconnectCard uses the shared glyph, not hand-rolled logos", () => {
@@ -37,41 +41,48 @@ describe("HOU-467 card unification", () => {
       !src.includes("ClaudeLogoSmall") && !src.includes("OpenAILogoSmall"),
       "no duplicated in-button logo SVGs",
     );
+    ok(
+      !src.includes('=== "anthropic" ? <ClaudeLogo'),
+      "no anthropic ? Claude : OpenAI ternary",
+    );
   });
 
   it("RateLimitedCard becomes a RowCard with a clock + icon-free buttons", () => {
-    const src = read("../src/components/shell/provider-error-cards/transient.tsx");
+    const src = read(
+      "../src/components/shell/provider-error-cards/transient.tsx",
+    );
     ok(src.includes("RateLimitedCard"), "card still exists");
     ok(src.includes("RowCard"), "rate-limit migrated to RowCard");
-    // Per-variant files only mount CTAs; the rate-limit retry is the shared
-    // `RetryButton`, which is itself a text-only `RowCardButton` pill (locked
-    // against shared.tsx below). transient.tsx no longer references
-    // RowCardButton directly.
+    // The rate-limit retry is the shared `RetryButton` — a text-only
+    // `RowCardButton` pill (locked against shared.tsx below) — and the
+    // switch-model CTA is a plain RowCardButton, so the buttons are always the
+    // shared text-only pill.
     ok(src.includes("RetryButton"), "retry CTA is the shared RetryButton pill");
-    ok(src.includes("Clock"), "rate-limit shows a clock, not the provider logo");
+    ok(
+      src.includes("RowCardButton"),
+      "switch-model CTA is a plain text-only RowCardButton pill",
+    );
+    ok(
+      src.includes("Clock"),
+      "rate-limit shows a clock, not the provider logo",
+    );
     ok(!src.includes("ProviderGlyph"), "rate-limit dropped the provider glyph");
     // Every transient variant now renders on the unified RowCard — none remain
     // on the old ErrorCard layout.
-    ok(!src.includes("ErrorCard"), "all transient variants migrated off ErrorCard");
+    ok(
+      !src.includes("ErrorCard"),
+      "all transient variants migrated off ErrorCard",
+    );
 
     // The shared retry pill IS a RowCardButton, so "buttons are the shared
     // text-only pill" still holds transitively through the wrapper.
-    const shared = read("../src/components/shell/provider-error-cards/shared.tsx");
+    const shared = read(
+      "../src/components/shell/provider-error-cards/shared.tsx",
+    );
     ok(
       shared.includes("export function RetryButton") &&
         shared.includes("RowCardButton"),
       "RetryButton is a thin RowCardButton wrapper",
-    );
-  });
-
-  it("ComposioLinkCard (connect Google Drive etc.) uses RowCard", () => {
-    const src = read("../src/components/composio-link-card.tsx");
-    ok(src.includes("RowCard"), "per-toolkit card renders through RowCard");
-    ok(src.includes("AppLogo"), "keeps the app logo as media");
-    ok(src.includes("ComposioStatusSlot"), "status slot drops into the action");
-    ok(
-      !src.includes("border border-black/5 bg-background"),
-      "no hand-rolled white shell — RowCard owns the grey surface",
     );
   });
 
@@ -83,21 +94,28 @@ describe("HOU-467 card unification", () => {
     ok(src.includes("providerId"), "threads the target provider id");
   });
 
-  it("ComposioSigninCard keeps its optional trailing link icon", () => {
-    const src = read("../src/components/composio-signin-card.tsx");
-    ok(src.includes("RowCardButton"), "uses the shared row button");
-    ok(
-      src.includes("iconPosition=\"trailing\"") && src.includes("ExternalLink"),
-      "still passes its trailing link icon via the optional icon prop",
-    );
-  });
-
-  it("ProviderGlyph dispatches per provider (Gemini != OpenAI)", () => {
+  it("ProviderGlyph dispatches per provider (Gemini != OpenAI, unknown falls back to initial)", () => {
     const src = read("../src/components/shell/provider-logos.tsx");
     ok(src.includes("export function ProviderGlyph"), "glyph dispatch exists");
-    for (const id of ["anthropic", "openai", "gemini", "deepseek", "minimax"]) {
+    // Every provider with a brand mark gets its own case. Note Gemini appears
+    // under both its historical id "gemini" and its provider id "google".
+    for (const id of [
+      "anthropic",
+      "openai",
+      "gemini",
+      "google",
+      "github-copilot",
+      "openrouter",
+      "opencode",
+      "deepseek",
+      "minimax",
+    ]) {
       ok(src.includes(`case "${id}"`), `has a case for ${id}`);
     }
+    // The defensive fallback: an unknown provider renders its initial, never a
+    // borrowed brand logo. `slice(0, 1)` is the tell.
+    ok(src.includes("default:"), "has a fallback branch");
+    ok(src.includes("slice(0, 1)"), "fallback uses the provider's initial");
   });
 
   it("RowCardButton makes the icon optional + keeps the rage-click guard", () => {
@@ -111,5 +129,18 @@ describe("HOU-467 card unification", () => {
       src.includes("AsyncButton"),
       "built on the shared AsyncButton (HOU-465 rage-click guard)",
     );
+  });
+
+  it("RowCard renders the shared grey slab with a media/title/action layout", () => {
+    const src = read("../src/components/cards/row-card.tsx");
+    ok(
+      src.includes("bg-secondary"),
+      "grey slab, not a white hand-rolled shell",
+    );
+    ok(
+      src.includes("media") && src.includes("title") && src.includes("action"),
+      "left media + title + right action slots",
+    );
+    ok(src.includes("inline"), "supports the inline (prose) variant");
   });
 });

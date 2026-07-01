@@ -71,13 +71,29 @@
       "days": { "one": "day", "other": "days" },
       "months": { "one": "month", "other": "months" }
     },
+    "unitsSingular": {
+      "minutes": "minute",
+      "hours": "hour",
+      "days": "day",
+      "months": "month"
+    },
     "timeLabel": "Time",
     "dayOfMonthLabel": "Day of month",
     "repeatEvery": "Repeat every",
     "enterNumber": "Enter a number",
     "pickDay": "Pick at least one day",
     "onTheseDays": "On these days",
-    "shortcuts": { "everyDay": "Every day", "weekdays": "Weekdays", "weekends": "Weekends" },
+    "weekdaysLabel": "On these days",
+    "shortcuts": {
+      "everyDay": "Every day",
+      "weekdays": "Weekdays",
+      "weekends": "Weekends"
+    },
+    "weekdayShortcuts": {
+      "everyDay": "Every day",
+      "weekdays": "Weekdays",
+      "weekends": "Weekends"
+    },
     "decrease": "Decrease",
     "increase": "Increase",
     "timePicker": {
@@ -99,6 +115,7 @@
       "everyNDays": "Runs every {n} days at {time}",
       "weekly": "Runs every {day} at {time}",
       "everyWeekOnDays": "Runs every week on {days} at {time}",
+      "weeklyOnDays": "Runs every week on {days} at {time}",
       "monthly": "Runs on the {ordinal} of every month at {time}",
       "everyNMonths": "Runs on the {ordinal} of every {months} months at {time}"
     }

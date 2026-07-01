@@ -1,6 +1,6 @@
-import { useTranslation } from "react-i18next";
 import { Button } from "@houston-ai/core";
 import { User } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useSession } from "../../../hooks/use-session";
 import { signOut } from "../../../lib/auth";
 import { isAuthConfigured } from "../../../lib/supabase";
@@ -16,7 +16,8 @@ export function AccountSection() {
     full_name?: string;
     avatar_url?: string;
   };
-  const displayName = meta.full_name ?? meta.name ?? user.email ?? t("account.fallbackName");
+  const displayName =
+    meta.full_name ?? meta.name ?? user.email ?? t("account.fallbackName");
   const avatar = meta.avatar_url ?? null;
 
   return (

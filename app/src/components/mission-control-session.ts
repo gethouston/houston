@@ -2,12 +2,17 @@ import type { KanbanItem } from "@houston-ai/board";
 
 type MissionControlSessionItem = Pick<KanbanItem, "id" | "metadata">;
 
-function metadataString(item: MissionControlSessionItem, key: string): string | undefined {
+function metadataString(
+  item: MissionControlSessionItem,
+  key: string,
+): string | undefined {
   const value = item.metadata?.[key];
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
-export function missionControlSessionKey(item: MissionControlSessionItem): string {
+export function missionControlSessionKey(
+  item: MissionControlSessionItem,
+): string {
   return metadataString(item, "sessionKey") ?? `activity-${item.id}`;
 }
 

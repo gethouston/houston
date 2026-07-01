@@ -1,12 +1,13 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { resolveAuthStorageConfig } from "./auth-storage";
 import { logger } from "./logger";
 
 // __SUPABASE_URL__ / __SUPABASE_ANON_KEY__ baked at build time by Vite.
 // Empty values → Supabase client still constructs but all auth calls are
 // no-ops (isAuthConfigured() returns false so the UI won't attempt sign-in).
-const KEY = typeof __SUPABASE_ANON_KEY__ !== "undefined" ? __SUPABASE_ANON_KEY__ : "";
+const KEY =
+  typeof __SUPABASE_ANON_KEY__ !== "undefined" ? __SUPABASE_ANON_KEY__ : "";
 
 function isValidHttpUrl(u: string): boolean {
   try {
@@ -118,14 +119,17 @@ export const supabase: SupabaseClient = createClient(
   {
     auth: {
       storage:
-        authStorageConfig.mode === "keychain" ? keychainStorage : browserStorage,
+        authStorageConfig.mode === "keychain"
+          ? keychainStorage
+          : browserStorage,
       storageKey: authStorageConfig.storageKey,
       autoRefreshToken: true,
       persistSession: true,
-      // We listen for the deep-link URL in the app and call
-      // `exchangeCodeForSession` ourselves — disable the built-in URL sniffer
-      // so Supabase doesn't also try to consume window.location.
-      detectSessionInUrl: false,
+      // Desktop catches the OAuth code via the `houston://` deep link and calls
+      // `exchangeCodeForSession` itself, so its URL sniffer stays off. The web
+      // build has no deep link — it lands on `/auth/callback?code=…` and relies
+      // on Supabase to consume it, so enable the sniffer in browsers only.
+      detectSessionInUrl: !isTauri(),
       flowType: "pkce",
     },
   },

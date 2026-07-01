@@ -1,5 +1,5 @@
-import { Check } from "lucide-react";
 import { cn } from "@houston-ai/core";
+import { Check } from "lucide-react";
 
 /**
  * The shared "done" mark: a filled monochrome circle with a check that pops in.

@@ -3,18 +3,18 @@
  * Visual style matches Houston's ContextTab exactly: labeled textareas
  * with auto-save on blur, bg-[#f9f9f9], subtle borders.
  */
-import { useEffect, useState } from "react"
-import type { InstructionFile } from "./types"
+import { useEffect, useState } from "react";
+import type { InstructionFile } from "./types";
 
 export interface InstructionsPanelProps {
   /** Instruction files to display */
-  files: InstructionFile[]
+  files: InstructionFile[];
   /** Called when a file is edited and the textarea loses focus */
-  onSave: (name: string, content: string) => Promise<void>
+  onSave: (name: string, content: string) => Promise<void>;
   /** Title for empty state */
-  emptyTitle?: string
+  emptyTitle?: string;
   /** Description for empty state */
-  emptyDescription?: string
+  emptyDescription?: string;
 }
 
 export function InstructionsPanel({
@@ -33,7 +33,7 @@ export function InstructionsPanel({
           <p className="text-sm text-muted-foreground">{emptyDescription}</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -50,34 +50,39 @@ export function InstructionsPanel({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function InstructionField({
   file,
   onSave,
 }: {
-  file: InstructionFile
-  onSave: (content: string) => Promise<void>
+  file: InstructionFile;
+  onSave: (content: string) => Promise<void>;
 }) {
-  const [value, setValue] = useState(file.content)
-  const [saving, setSaving] = useState(false)
+  const [value, setValue] = useState(file.content);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setValue(file.content)
-  }, [file.content])
+    setValue(file.content);
+  }, [file.content]);
 
   const handleBlur = async () => {
     if (value !== file.content) {
-      setSaving(true)
-      await onSave(value)
-      setSaving(false)
+      setSaving(true);
+      await onSave(value);
+      setSaving(false);
     }
-  }
+  };
+
+  const fieldId = `instruction-${file.name}`;
 
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-medium text-muted-foreground/50 px-1 flex items-center gap-2">
+      <label
+        htmlFor={fieldId}
+        className="text-xs font-medium text-muted-foreground/50 px-1 flex items-center gap-2"
+      >
         {file.label}
         {saving && (
           <span className="text-[10px] text-muted-foreground/30">
@@ -86,6 +91,7 @@ function InstructionField({
         )}
       </label>
       <textarea
+        id={fieldId}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onBlur={handleBlur}
@@ -94,5 +100,5 @@ function InstructionField({
         className="w-full text-sm text-foreground leading-relaxed bg-[#f9f9f9] outline-none rounded-xl px-4 py-3 border border-black/[0.04] hover:border-black/[0.1] focus:border-black/[0.15] focus:bg-white transition-all duration-200 resize-none placeholder:text-muted-foreground/30"
       />
     </div>
-  )
+  );
 }

@@ -1,0 +1,120 @@
+# Houston PR CI Gate
+#
+# Fast, hermetic, secret-free TypeScript gate that runs on every pull request
+# targeting `main`. pnpm owns every JS/TS package and Vitest owns unit/contract
+# tests. Bun is deliberately absent from this workflow; it remains only for the
+# host-sidecar binary compile workflow (`scripts/build-host-sidecar.sh`).
+
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: TS checks (lint · typecheck · contract tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Biome check
+        run: pnpm check
+
+      - name: Boundary check
+        run: pnpm check:boundaries
+
+      - name: Typecheck (pnpm workspace)
+        run: pnpm -r typecheck
+
+      - name: Unit + contract tests (Vitest)
+        run: |
+          set -euo pipefail
+          pnpm --filter @houston/domain test
+          pnpm --filter @houston/host test
+          pnpm --filter @houston/host-cloud test
+          pnpm --filter @houston/runtime test
+          pnpm --filter @houston/code-sandbox test
+
+  web:
+    name: Web (typecheck + unit + UI tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter houston-web exec playwright install --with-deps chromium
+
+      - name: Typecheck (web)
+        run: pnpm --filter houston-web typecheck
+
+      - name: Typecheck (e2e harness)
+        run: pnpm --filter houston-web typecheck:e2e
+
+      - name: Unit tests (web)
+        run: pnpm --filter houston-web test
+
+      - name: UI tests (Playwright)
+        run: pnpm --filter houston-web test:e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: packages/web/playwright-report/
+          retention-days: 14
+
+  app:
+    name: App (node:test unit tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Unit tests (app)
+        run: pnpm --filter houston-app test

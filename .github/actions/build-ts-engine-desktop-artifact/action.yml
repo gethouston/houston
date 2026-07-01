@@ -1,0 +1,98 @@
+name: Build TS-engine desktop artifact
+
+description: Install toolchains, build Tauri with the TS host sidecar, and upload an artifact.
+
+inputs:
+  rust-targets:
+    description: Comma-separated Rust targets to install.
+    required: true
+  cache-key:
+    description: Exact actions/cache key.
+    required: true
+  restore-key:
+    description: actions/cache restore key prefix.
+    required: true
+  bun-version:
+    description: Bun version for host sidecar compilation.
+    required: true
+  compile-command:
+    description: Command that compiles/stages the host sidecar.
+    required: true
+  tauri-args:
+    description: Arguments passed to tauri-action.
+    required: true
+  prepare-command:
+    description: Command that prepares files under artifacts/.
+    required: true
+  artifact-name:
+    description: Uploaded artifact name.
+    required: true
+  artifact-path:
+    description: Uploaded artifact path glob.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v6
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: 22
+        cache: pnpm
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install
+
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ inputs.rust-targets }}
+
+    - name: Cache Rust artifacts
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          app/src-tauri/target
+          target
+        key: ${{ inputs.cache-key }}
+        restore-keys: ${{ inputs.restore-key }}
+
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: ${{ inputs.bun-version }}
+
+    - name: Compile Houston host sidecar
+      shell: bash
+      run: ${{ inputs.compile-command }}
+
+    # This step (and the compile/prepare steps around it) read build config from
+    # AMBIENT env — VITE_NEW_ENGINE, POSTHOG/SUPABASE/LINEAR/SENTRY, and on Linux
+    # NO_STRIP/APPIMAGE_EXTRACT_AND_RUN (plus APPLE_*/TAURI_SIGNING_* if a signed
+    # build is ever wired). The caller MUST set these at JOB level (jobs.<id>.env),
+    # NOT on this `uses:` step: GitHub does not propagate a step's own env into a
+    # composite action's inner steps, so step-level env arrives empty here and, e.g.,
+    # silently builds the frontend against the wrong engine.
+    - name: Build Tauri app (TS engine)
+      uses: tauri-apps/tauri-action@v0
+      with:
+        projectPath: app
+        args: ${{ inputs.tauri-args }}
+
+    - name: Prepare Actions artifact
+      shell: bash
+      run: ${{ inputs.prepare-command }}
+
+    - name: Upload Actions artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.artifact-path }}
+        if-no-files-found: error
+        retention-days: 14

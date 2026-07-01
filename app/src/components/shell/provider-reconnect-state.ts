@@ -15,7 +15,9 @@ export function providerReconnectSignalState(
     : "resolved";
 }
 
-export function providerIsAuthenticated(status: ProviderReconnectStatus): boolean {
+export function providerIsAuthenticated(
+  status: ProviderReconnectStatus,
+): boolean {
   return status.cli_installed && status.auth_state === "authenticated";
 }
 
@@ -31,7 +33,9 @@ export function providerIsAuthenticated(status: ProviderReconnectStatus): boolea
  * "Connect" button is wrong and, worse, never clears after a successful
  * sign-in because the follow-up probe is unknown too.
  */
-export function providerAppearsConnected(status: ProviderReconnectStatus): boolean {
+export function providerAppearsConnected(
+  status: ProviderReconnectStatus,
+): boolean {
   return status.cli_installed && status.auth_state !== "unauthenticated";
 }
 

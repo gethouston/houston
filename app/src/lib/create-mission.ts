@@ -4,10 +4,10 @@
  * and the mobile sync responder so the flow stays identical.
  */
 
-import { tauriActivity, tauriChat } from "./tauri";
-import { logger } from "./logger";
 import { analytics } from "./analytics";
+import { logger } from "./logger";
 import { fallbackMissionTitle, refreshMissionTitle } from "./mission-title";
+import { tauriActivity, tauriChat } from "./tauri";
 
 /** Build a session key for a given activity id. */
 function sessionKeyForActivity(activityId: string): string {
@@ -53,8 +53,6 @@ export interface CreateMissionAgent {
 export interface CreateMissionOptions {
   /** Sub-agent mode id to store with the activity row. */
   agentMode?: string;
-  /** If set, a git worktree path to bind the activity to. */
-  worktreePath?: string;
   /**
    * Builds the prompt actually sent to Claude, given the freshly-created
    * activity id. Defaults to returning the user's raw `text`. The board-tab
@@ -109,7 +107,7 @@ export async function createMission(
     title,
     description,
     opts.agentMode,
-    opts.worktreePath,
+    undefined,
     opts.providerOverride,
     opts.modelOverride,
   );
@@ -123,7 +121,6 @@ export async function createMission(
 
     await tauriChat.send(agent.folderPath, prompt, sessionKey, {
       mode: opts.promptFile,
-      workingDirOverride: opts.worktreePath,
       providerOverride: opts.providerOverride,
       modelOverride: opts.modelOverride,
       effortOverride: opts.effortOverride,

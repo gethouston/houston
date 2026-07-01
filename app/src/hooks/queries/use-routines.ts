@@ -1,20 +1,29 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { NewRoutine, RoutineUpdate } from "@houston-ai/engine-client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriRoutines } from "../../lib/tauri";
 
 export function useRoutines(agentPath: string | undefined) {
   return useQuery({
-    queryKey: queryKeys.routines(agentPath!),
-    queryFn: () => tauriRoutines.list(agentPath!),
+    queryKey: queryKeys.routines(agentPath ?? ""),
+    queryFn: () => {
+      if (!agentPath) throw new Error("agentPath required");
+      return tauriRoutines.list(agentPath);
+    },
     enabled: !!agentPath,
   });
 }
 
-export function useRoutineRuns(agentPath: string | undefined, routineId?: string) {
+export function useRoutineRuns(
+  agentPath: string | undefined,
+  routineId?: string,
+) {
   return useQuery({
-    queryKey: queryKeys.routineRuns(agentPath!, routineId),
-    queryFn: () => tauriRoutines.listRuns(agentPath!, routineId),
+    queryKey: queryKeys.routineRuns(agentPath ?? "", routineId),
+    queryFn: () => {
+      if (!agentPath) throw new Error("agentPath required");
+      return tauriRoutines.listRuns(agentPath, routineId);
+    },
     enabled: !!agentPath,
   });
 }
@@ -52,7 +61,8 @@ export function useUpdateRoutine(agentPath: string) {
 export function useDeleteRoutine(agentPath: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (routineId: string) => tauriRoutines.delete(agentPath, routineId),
+    mutationFn: (routineId: string) =>
+      tauriRoutines.delete(agentPath, routineId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.routines(agentPath) });
       tauriRoutines.syncScheduler(agentPath).catch(console.error);
@@ -63,7 +73,8 @@ export function useDeleteRoutine(agentPath: string) {
 export function useRunRoutineNow(agentPath: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (routineId: string) => tauriRoutines.runNow(agentPath, routineId),
+    mutationFn: (routineId: string) =>
+      tauriRoutines.runNow(agentPath, routineId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["routine-runs", agentPath] });
     },

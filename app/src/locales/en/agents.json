@@ -159,7 +159,33 @@
       "open": "Open",
       "rename": "Rename",
       "reveal": "Show in File Manager",
-      "delete": "Move to Trash"
+      "delete": "Move to Trash",
+      "preview": "Preview",
+      "download": "Download"
+    },
+    "preview": {
+      "loading": "Loading preview…",
+      "unsupportedTitle": "No preview for this file type",
+      "unsupportedDescription": "Download it to open it on your computer.",
+      "download": "Download",
+      "close": "Close",
+      "errorTitle": "Couldn't load the file"
     }
+  },
+  "integrations": {
+    "title": "Integrations",
+    "description": "Connect your apps so this agent can act on them.",
+    "loading": "Loading...",
+    "composio": "Composio",
+    "connectBlurb": "Sign in to connect your apps. Your account stays yours; the agent uses it on your behalf.",
+    "connect": "Connect Composio",
+    "connecting": "Waiting for sign-in...",
+    "loginTimeout": "Sign-in timed out. Please try connecting again.",
+    "connectedAs": "Connected as {{email}}",
+    "signOut": "Sign out",
+    "connectedApps": "Connected apps",
+    "noApps": "No apps connected yet.",
+    "disconnect": "Disconnect",
+    "addApps": "Add apps"
   }
 }

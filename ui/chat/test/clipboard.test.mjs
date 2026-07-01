@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { copyTextToClipboard } from "../src/clipboard.ts";
 
 test("copyTextToClipboard uses async Clipboard API when available", async () => {
@@ -25,7 +25,13 @@ test("copyTextToClipboard falls back when Clipboard API rejects", async () => {
   const previousDocument = globalThis.document;
   Object.defineProperty(globalThis, "navigator", {
     configurable: true,
-    value: { clipboard: { writeText: async () => { throw new Error("denied"); } } },
+    value: {
+      clipboard: {
+        writeText: async () => {
+          throw new Error("denied");
+        },
+      },
+    },
   });
   globalThis.document = {
     body: {

@@ -71,13 +71,29 @@
       "days": { "one": "dia", "other": "dias" },
       "months": { "one": "mês", "other": "meses" }
     },
+    "unitsSingular": {
+      "minutes": "minuto",
+      "hours": "hora",
+      "days": "dia",
+      "months": "mês"
+    },
     "timeLabel": "Hora",
     "dayOfMonthLabel": "Dia do mês",
     "repeatEvery": "Repetir a cada",
     "enterNumber": "Digite um número",
     "pickDay": "Escolha pelo menos um dia",
     "onTheseDays": "Nestes dias",
-    "shortcuts": { "everyDay": "Todos os dias", "weekdays": "Dias úteis", "weekends": "Fins de semana" },
+    "weekdaysLabel": "Nestes dias",
+    "shortcuts": {
+      "everyDay": "Todos os dias",
+      "weekdays": "Dias úteis",
+      "weekends": "Fins de semana"
+    },
+    "weekdayShortcuts": {
+      "everyDay": "Todos os dias",
+      "weekdays": "Dias úteis",
+      "weekends": "Fins de semana"
+    },
     "decrease": "Diminuir",
     "increase": "Aumentar",
     "timePicker": {
@@ -99,6 +115,7 @@
       "everyNDays": "Roda a cada {n} dias às {time}",
       "weekly": "Roda a cada {day} às {time}",
       "everyWeekOnDays": "Roda toda semana em {days} às {time}",
+      "weeklyOnDays": "Roda toda semana em {days} às {time}",
       "monthly": "Roda no dia {n} de cada mês às {time}",
       "everyNMonths": "Roda no dia {n} de cada {months} meses às {time}"
     }

@@ -1,16 +1,22 @@
-import { useCallback, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import type { KanbanItem } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
-
-import { useUIStore } from "../../stores/ui";
+import { useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { tauriChat } from "../../lib/tauri";
+import { useUIStore } from "../../stores/ui";
 import { useMissionSearch } from "../use-mission-search";
 
-export function useArchivedMissionSearch(agentPath: string, items: KanbanItem[]) {
+export function useArchivedMissionSearch(
+  agentPath: string,
+  items: KanbanItem[],
+) {
   const { t } = useTranslation("board");
-  const query = useUIStore((s) => s.agentArchivedSearchQueries[agentPath] ?? "");
-  const isLoading = useUIStore((s) => s.agentArchivedSearchLoading[agentPath] ?? false);
+  const query = useUIStore(
+    (s) => s.agentArchivedSearchQueries[agentPath] ?? "",
+  );
+  const isLoading = useUIStore(
+    (s) => s.agentArchivedSearchLoading[agentPath] ?? false,
+  );
   const setQuery = useUIStore((s) => s.setAgentArchivedSearchQuery);
   const setLoading = useUIStore((s) => s.setAgentArchivedSearchLoading);
   const addToast = useUIStore((s) => s.addToast);

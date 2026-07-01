@@ -1,0 +1,275 @@
+/* ============================================================
+   FUTURISTIC THEME — aurora glow + glass surfaces
+   ------------------------------------------------------------
+   Brings the landing page glow into the app.
+
+   Source of the recipe:
+     website/src/index.html
+       "Always on" card  — blue/orange radial layer (the designer
+                           "source of truth" spec, see handoff §7)
+     ui/core/src/globals.css
+       .card-running-glow — the blue -> indigo -> orange -> yellow
+                            brand gradient this palette is drawn from
+
+   Single source of truth for the look. This file imports AFTER
+   core globals.css, so its token overrides win at use-time.
+   Delete the import in globals.css to fully revert.
+   ============================================================ */
+
+/* ── 1. Aurora glow behind everything ──────────────────────────
+   Fixed, full-bleed, painted on body::before so it sits behind
+   the React tree (#root) but in front of the body's own base
+   color. The shell root is transparent (see workspace-shell.tsx),
+   so this bleeds up through the whole content area. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* Light mode: NO aurora. The colour mesh read as "glitter" over the
+     clean solid light variants. Dark keeps its glow (overrides below). */
+  background: none;
+}
+
+/* Dark: a brighter multi-tone glow with the slow drift. Both modes now
+   animate (light picked up the drift above) — the research direction is
+   "feel alive" + rich colour in both, no longer the static light spec. */
+[data-theme="dark"] body::before {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -8%, rgba(59, 130, 246, 0.22), transparent),
+    radial-gradient(ellipse 70% 55% at 88% 16%, rgba(249, 115, 22, 0.11), transparent),
+    radial-gradient(ellipse 65% 55% at 8% 90%, rgba(129, 140, 248, 0.18), transparent),
+    radial-gradient(ellipse 50% 45% at 55% 112%, rgba(59, 130, 246, 0.1), transparent);
+  animation: aurora-drift 32s ease-in-out infinite alternate;
+}
+
+/* Slow, barely-there drift so the surface feels alive (design
+   principle: "always feel alive") without ever distracting. */
+@keyframes aurora-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(-1.5%, 1.5%, 0) scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  [data-theme="dark"] body::before {
+    animation: none;
+  }
+}
+
+/* ── 2. Translucent glass surface tokens ───────────────────────
+   The chrome (sidebar, cards, popovers, soft chips) routes through
+   these vars. Made translucent so the aurora reads through every
+   surface instead of being sealed under flat white. */
+:root {
+  /* Canonical faint neutral glass wash (NOT white — white over white is
+     invisible). A low-alpha tint that stays glassy (aurora bleeds
+     through) but reads as a section (~#f6f6f6 over white). Shared by the
+     sidebar, kanban columns, soft chips, secondary buttons and RowCards
+     so every "secondary" surface matches — one knob to tune. */
+  --ht-secondary: rgba(13, 13, 13, 0.035);
+  /* Transparent so the rail melts into the window background — the Arc
+     "canvas" look (see section 6). */
+  --ht-sidebar: transparent;
+  --ht-sidebar-border: rgba(13, 13, 13, 0.06);
+  /* A bit more opaque than 0.6 so body text stays legible on cards over
+     the colour mesh (research: light glass needs higher-opacity text
+     surfaces). */
+  --ht-card: rgba(255, 255, 255, 0.68);
+  /* Resting (non-selected) kanban card fill — a soft solid gray, the light
+     equivalent of dark's #2C2C2B. Not translucent. */
+  /* Light theme = the "Aurora" variant, locked in: cool blue/indigo tints. */
+  --ht-card-rest: #f4f6fc;
+  /* Arc canvas surfaces. Gutter = window background behind/around the screen. */
+  --ht-canvas-gutter: #eef1f7;
+  --ht-canvas-screen: #ffffff;
+  --ht-foreground: #14161d;
+  --ht-popover: rgba(255, 255, 255, 0.82);
+  --ht-muted: rgba(13, 13, 13, 0.035);
+  --ht-border: rgba(60, 70, 120, 0.1);
+}
+
+[data-theme="dark"] {
+  --ht-sidebar: transparent;
+  --ht-sidebar-border: rgba(255, 255, 255, 0.08);
+  --ht-card: rgba(40, 40, 40, 0.5);
+  /* Resting (non-selected) kanban card fill — sampled from the running card. */
+  --ht-card-rest: #2c2c2b;
+  --ht-canvas-gutter: #141416;
+  --ht-canvas-screen: rgba(38, 38, 40, 0.55);
+  --ht-popover: rgba(34, 34, 34, 0.85);
+  --ht-secondary: rgba(255, 255, 255, 0.05);
+  --ht-muted: rgba(255, 255, 255, 0.045);
+  --ht-border: rgba(255, 255, 255, 0.1);
+  /* Pin dark's text: the light --ht-foreground above (set on :root) would
+     otherwise cascade into dark and turn it near-black. */
+  --ht-foreground: #e5e5e5;
+}
+
+/* ── 3. Frosted glass on the chrome surfaces ───────────────────
+   The translucent tokens above let the aurora through; these rules
+   add the actual frosted-glass blur + a 1px top sheen so each
+   surface reads as a pane of glass, not just a faded rectangle.
+   Curated allowlist of surface utility classes on purpose. (The
+   sidebar is intentionally NOT here — it's transparent now, melted
+   into the window background for the Arc canvas, section 6.) */
+.bg-card {
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.bg-popover {
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="dark"] .bg-card {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .bg-popover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+/* ── 4. Flat primary button ─────────────────────────────────────
+   Deliberately FLAT — no gradients, no bevels, no inset/outer shadows,
+   nothing that fakes depth or 3D. Just a plain fill + white text.
+     · DARK mode — a flat translucent pill with a plain 1px hairline
+       rim (the reference's edge), lightly frosted behind.
+     · LIGHT mode — a flat SOLID dark pill (translucent reads as a
+       disabled grey on white); no rim, no frost.
+   White text in both, monochrome.
+
+   Scoped to the Button component's default variant. We key on
+   `[data-variant="default"]` + the element (button/a), NOT
+   `[data-slot="button"]`: when a Button is wrapped in a Radix
+   `asChild` trigger (e.g. `<TooltipTrigger asChild><Button>`), the
+   trigger's own `data-slot="tooltip-trigger"` is spread onto the
+   button AFTER Button's `data-slot="button"`, clobbering it — so a
+   data-slot selector silently misses every tooltip-wrapped primary
+   (the top-right "New mission" button was the casualty). `data-variant`
+   survives the merge, and only Button renders a `<button>`/`<a>` with
+   it (badges/menus/tabs-list carry data-variant on non-button
+   elements), so this stays precise. It still avoids `.bg-primary`,
+   which also paints progress bars, tab underlines, switches and
+   status dots. Unlayered, so it outranks the Tailwind utilities
+   (`bg-primary`, `text-primary-foreground`, `hover:bg-primary/70`)
+   regardless of import order. The label + the currentColor HoustonLogo
+   take `color` from these rules: white in both modes (the base sets
+   `#fff`; the reference uses white text in dark too).
+
+   Knobs: light fill colour (`#1b1b1e`, darker = stronger), dark fill
+   alpha (`rgba(255,255,255,0.08)`) + the dark rim alpha. */
+[data-variant="default"]:is(button, a) {
+  /* LIGHT: flat SOLID dark pill, white text. A translucent dark fill
+     reads as washed-out grey on white — i.e. "disabled" — so it's
+     solid. Still flat: no gradient, no border, no shadow, no bevel. */
+  color: #fff;
+  background: #1b1b1e;
+  border: none;
+  box-shadow: none;
+}
+
+[data-variant="default"]:is(button, a):hover {
+  background: #2a2a2d;
+}
+
+[data-theme="dark"] [data-variant="default"]:is(button, a) {
+  /* DARK: flat translucent pill + a plain 1px hairline rim (the
+     reference's edge — a flat line, NOT a bevel/shadow). Light frost. */
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+[data-theme="dark"] [data-variant="default"]:is(button, a):hover {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ── 5. Glass active tab (segmented control) ───────────────────
+   The default-variant TabsList is a faint `bg-muted` track whose
+   ACTIVE segment lifted itself with a solid `bg-background` pill
+   (opaque white in light) — a hard slab that sealed the aurora and
+   clashed with the glass chrome. Make the active segment a glass
+   pane instead: translucent + blur + sheen, so it still reads as
+   "raised" but the glow bleeds through.
+
+   Scoped to the DEFAULT list variant on purpose — the `line`
+   variant keeps its transparent-with-underline look untouched.
+   Descendant of [data-variant="default"] list outranks the
+   Tailwind `data-[state=active]:bg-background` utility. */
+[data-slot="tabs-list"][data-variant="default"]
+  [data-slot="tabs-trigger"][data-state="active"] {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px) saturate(1.3);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 1px 2px rgba(13, 13, 13, 0.06);
+}
+
+[data-theme="dark"] [data-slot="tabs-list"][data-variant="default"]
+  [data-slot="tabs-trigger"][data-state="active"] {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* ── 6. Arc-style canvas (floating "screen" + integrated sidebar) ──
+   Arc/Zen/Canva layout: the right-hand content floats as a rounded
+   "screen" (workspace-shell.tsx gives it rounded corners + border +
+   bg-background + a small gutter), and the sidebar melts into the
+   window background (its token is transparent, section 2).
+
+   For the screen to read as RAISED, the window background sits one
+   step BELOW the screen tone — otherwise it's white-on-white. So the
+   body (the gutter + sidebar surface) is a hair darker than
+   --ht-background (the screen). The aurora still paints over it and
+   frames the screen.
+
+   Knob: these two colours vs --ht-background — widen the gap for more
+   separation, narrow it for a subtler float. */
+body {
+  background-color: var(--ht-canvas-gutter);
+}
+
+/* The screen itself: translucent + frosted so the window background and
+   the aurora bleed THROUGH the content area (not just the gutter),
+   while still sitting a step above the recessed window bg. `bg-background`
+   stays on the element as an opaque fallback for when the theme is off;
+   this override (unlayered) wins while futuristic.css is loaded.
+   Knob: the alphas — lower = more see-through, higher = more solid. */
+.canvas-screen {
+  background-color: var(--ht-canvas-screen);
+}
+
+[data-theme="dark"] .canvas-screen {
+  /* Dark keeps its frosted glass; the bg colour comes from the token. */
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+}
+
+/* ── 7. Kanban card resting fill ────────────────────────────────
+   The resting (non-selected) card uses a palette token, --ht-card-rest:
+   #2C2C2B in dark (sampled from the running card), a soft gray in light.
+   Solid, not translucent. Running cards use the SAME fill for their
+   center (--glow-bg) so every non-selected card reads uniformly — only
+   the running card's animated border marks it. Selected/highlighted
+   cards use bg-accent (and selected-running keeps its inline accent
+   tint), so they're untouched.
+   Knob: the --ht-card-rest values in the palette (section 2). */
+.kanban-card.bg-background:not(.card-running-glow) {
+  background-color: var(--ht-card-rest);
+}
+
+.kanban-card.card-running-glow {
+  --glow-bg: var(--ht-card-rest);
+}

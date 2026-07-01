@@ -7,7 +7,7 @@
  * the unified `RowCard` (HOU-467).
  */
 
-import { useTranslation } from "react-i18next";
+import type { ProviderError } from "@houston-ai/chat";
 import {
   AlertTriangleIcon,
   Clock,
@@ -15,17 +15,20 @@ import {
   TimerResetIcon,
   WifiOffIcon,
 } from "lucide-react";
-import type { ProviderError } from "@houston-ai/chat";
+import { useTranslation } from "react-i18next";
 import { RowCard } from "../../cards/row-card";
-import { RetryButton, providerLabel } from "./shared";
+import { RowCardButton } from "../../cards/row-card-button";
+import { providerLabel, RetryButton, StatusPageButton } from "./shared";
 
 interface BaseProps {
   onRetry?: () => Promise<void> | void;
+  onSwitchModel?: () => void;
 }
 
 export function RateLimitedCard({
   error,
   onRetry,
+  onSwitchModel,
 }: BaseProps & {
   error: Extract<ProviderError, { kind: "rate_limited" }>;
 }) {
@@ -44,12 +47,21 @@ export function RateLimitedCard({
         title={t("providerError.rateLimited.title")}
         description={body}
         action={
-          onRetry && (
-            <RetryButton
-              onRetry={onRetry}
-              label={t("providerError.rateLimited.retry")}
-            />
-          )
+          <>
+            {onRetry && (
+              <RetryButton
+                onRetry={onRetry}
+                label={t("providerError.rateLimited.retry")}
+              />
+            )}
+            {onSwitchModel && (
+              <RowCardButton
+                label={t("providerError.rateLimited.switchModel")}
+                onClick={onSwitchModel}
+                variant="outline"
+              />
+            )}
+          </>
         }
       />
     </div>
@@ -69,7 +81,9 @@ export function UsageLimitPausedCard({
 }) {
   const { t } = useTranslation("shell");
   const body = error.resets_at
-    ? t("providerError.usageLimitPaused.bodyWithReset", { time: error.resets_at })
+    ? t("providerError.usageLimitPaused.bodyWithReset", {
+        time: error.resets_at,
+      })
     : t("providerError.usageLimitPaused.body");
   return (
     <div className="w-full px-1 py-2">
@@ -97,12 +111,18 @@ export function NetworkUnreachableCard({
         title={t("providerError.networkUnreachable.title", { provider })}
         description={t("providerError.networkUnreachable.body", { provider })}
         action={
-          onRetry && (
-            <RetryButton
-              onRetry={onRetry}
-              label={t("providerError.networkUnreachable.retry")}
+          <>
+            {onRetry && (
+              <RetryButton
+                onRetry={onRetry}
+                label={t("providerError.networkUnreachable.retry")}
+              />
+            )}
+            <StatusPageButton
+              provider={error.provider}
+              label={t("providerError.networkUnreachable.checkStatus")}
             />
-          )
+          </>
         }
       />
     </div>
@@ -124,12 +144,18 @@ export function ProviderInternalCard({
         title={t("providerError.providerInternal.title", { provider })}
         description={t("providerError.providerInternal.body", { provider })}
         action={
-          onRetry && (
-            <RetryButton
-              onRetry={onRetry}
-              label={t("providerError.providerInternal.retry")}
+          <>
+            {onRetry && (
+              <RetryButton
+                onRetry={onRetry}
+                label={t("providerError.providerInternal.retry")}
+              />
+            )}
+            <StatusPageButton
+              provider={error.provider}
+              label={t("providerError.providerInternal.checkStatus")}
             />
-          )
+          </>
         }
       />
     </div>

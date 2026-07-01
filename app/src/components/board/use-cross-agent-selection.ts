@@ -1,12 +1,12 @@
-import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { ARCHIVED_STATUS } from "../../lib/mission-selection";
+import { queryKeys } from "../../lib/query-keys";
 import { tauriActivity, tauriAttachments } from "../../lib/tauri";
 import { useDraftStore } from "../../stores/drafts";
-import { queryKeys } from "../../lib/query-keys";
-import { ARCHIVED_STATUS } from "../../lib/mission-selection";
-import { useSelectionSet } from "./use-selection-set";
-import { groupIdsByAgent } from "./group-ids-by-agent";
 import type { BoardSelectionModel } from "./board-source";
+import { groupIdsByAgent } from "./group-ids-by-agent";
+import { useSelectionSet } from "./use-selection-set";
 
 /**
  * Cross-agent multi-select + bulk actions for Mission Control.

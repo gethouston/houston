@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { deriveStatus } from "../src/chat-status.ts";
 
 test("active session shows the thinking indicator after a non-streaming feed item", () => {

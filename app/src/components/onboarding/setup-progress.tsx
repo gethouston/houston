@@ -1,13 +1,12 @@
+import { cn } from "@houston-ai/core";
+import confetti from "canvas-confetti";
+import type { LucideIcon } from "lucide-react";
+import { Bot, Check, LayoutGrid, Mail, Send, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Bot, Check, LayoutGrid, Mail, Send, Sparkles } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import confetti from "canvas-confetti";
-import { cn } from "@houston-ai/core";
-
+import type { SetupSection } from "../../lib/setup-steps";
 import { HoustonLogo } from "../shell/experience-card";
 import { SetupCard } from "./setup-card";
-import type { SetupSection } from "../../lib/setup-steps";
 
 export type Milestone = "ai" | "apps" | "agent" | "email" | "send";
 
@@ -33,9 +32,26 @@ const prefersReducedMotion = () =>
 function fireConfetti() {
   if (prefersReducedMotion()) return;
   const base = { startVelocity: 45, ticks: 220, zIndex: 9999, scalar: 0.9 };
-  confetti({ ...base, particleCount: 140, spread: 80, origin: { x: 0.5, y: 0.55 } });
-  confetti({ ...base, particleCount: 70, spread: 60, angle: 60, origin: { x: 0, y: 0.7 } });
-  confetti({ ...base, particleCount: 70, spread: 60, angle: 120, origin: { x: 1, y: 0.7 } });
+  confetti({
+    ...base,
+    particleCount: 140,
+    spread: 80,
+    origin: { x: 0.5, y: 0.55 },
+  });
+  confetti({
+    ...base,
+    particleCount: 70,
+    spread: 60,
+    angle: 60,
+    origin: { x: 0, y: 0.7 },
+  });
+  confetti({
+    ...base,
+    particleCount: 70,
+    spread: 60,
+    angle: 120,
+    origin: { x: 1, y: 0.7 },
+  });
 }
 
 interface SetupProgressProps {

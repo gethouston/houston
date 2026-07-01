@@ -1,28 +1,28 @@
+import { SkillDetailPage } from "@houston-ai/skills";
+import { Brain, FileText, LibraryBig, Settings } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FileText, LibraryBig, Brain, Settings } from "lucide-react";
-import { SkillDetailPage } from "@houston-ai/skills";
 import {
-  useInstructions,
-  useSaveInstructions,
-  useLearnings,
   useAddLearning,
+  useInstructions,
+  useLearnings,
   useRemoveLearning,
+  useSaveInstructions,
   useUpdateLearning,
 } from "../../hooks/queries";
 import type { TabProps } from "../../lib/types";
+import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { useAgentStore } from "../../stores/agents";
-import { LearningsContent } from "./learnings-content";
-import { InstructionsContent, type SubTab } from "./job-description-parts";
+import {
+  type SidebarSectionItem,
+  SidebarSectionNav,
+} from "../shared/sidebar-section-nav";
 import { AgentSettingsContent } from "./agent-settings-content";
+import { InstructionsContent, type SubTab } from "./job-description-parts";
+import { LearningsContent } from "./learnings-content";
 import { SkillsContent } from "./skills-content";
 import { useSkillSurface } from "./use-skill-surface";
-import {
-  SidebarSectionNav,
-  type SidebarSectionItem,
-} from "../shared/sidebar-section-nav";
 
 export default function JobDescriptionTab({ agent }: TabProps) {
   const { t } = useTranslation("agents");
@@ -76,7 +76,7 @@ export default function JobDescriptionTab({ agent }: TabProps) {
   }
 
   return (
-    <div className="flex-1 flex min-h-0 bg-background">
+    <div className="flex-1 flex min-h-0 bg-transparent">
       <SidebarSectionNav
         ariaLabel={agent.name}
         items={items}
@@ -100,11 +100,6 @@ export default function JobDescriptionTab({ agent }: TabProps) {
               loading={surface.skillsLoading}
               loadingSkillName={surface.loadingSkillName}
               onSkillClick={surface.selectSkill}
-              onSearch={surface.handleSearch}
-              onPopular={surface.handlePopular}
-              onInstallCommunity={surface.handleInstallCommunity}
-              onListFromRepo={surface.handleListFromRepo}
-              onInstallFromRepo={surface.handleInstallFromRepo}
               onCreateFromScratch={surface.handleCreateFromScratch}
               installedSkillNames={surface.installedSkillNames}
             />

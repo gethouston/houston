@@ -1,6 +1,6 @@
-import { useTranslation } from "react-i18next";
 import {
   Button,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -8,14 +8,14 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-  cn,
 } from "@houston-ai/core";
 import { Archive, ArrowLeft, ChevronDown, ListFilter } from "lucide-react";
-import { HoustonLogo } from "./shell/experience-card";
-import { AgentCardAvatar } from "./shell/agent-card-avatar";
+import { useTranslation } from "react-i18next";
+import { shortcutLabel } from "../lib/shortcuts";
 import type { Agent } from "../lib/types";
 import { MissionSearchInput } from "./mission-search-input";
-import { shortcutLabel } from "../lib/shortcuts";
+import { AgentCardAvatar } from "./shell/agent-card-avatar";
+import { HoustonLogo } from "./shell/experience-card";
 
 interface MissionControlToolbarProps {
   agents: Agent[];
@@ -95,7 +95,7 @@ export function MissionControlToolbar({
               <DropdownMenuTrigger asChild>
                 {collapsed ? (
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="icon"
                     className="rounded-full"
                     aria-label={selectedAgent?.name ?? t("filter.allAgents")}
@@ -107,7 +107,7 @@ export function MissionControlToolbar({
                     )}
                   </Button>
                 ) : (
-                  <Button variant="outline" className="rounded-full gap-1.5">
+                  <Button variant="ghost" className="rounded-full gap-1.5">
                     {selectedAgent?.name ?? t("filter.allAgents")}
                     <ChevronDown className="size-3.5 text-muted-foreground" />
                   </Button>
@@ -132,7 +132,7 @@ export function MissionControlToolbar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant={archivedActive ? "secondary" : "outline"}
+                  variant={archivedActive ? "secondary" : "ghost"}
                   size={collapsed ? "icon" : "default"}
                   className={cn("rounded-full", !collapsed && "gap-1.5")}
                   onClick={onToggleArchived}
@@ -142,7 +142,11 @@ export function MissionControlToolbar({
                   {!collapsed && t("archived.button")}
                 </Button>
               </TooltipTrigger>
-              {collapsed && <TooltipContent side="bottom">{t("archived.button")}</TooltipContent>}
+              {collapsed && (
+                <TooltipContent side="bottom">
+                  {t("archived.button")}
+                </TooltipContent>
+              )}
             </Tooltip>
             {onNewMission && (
               <Tooltip>
@@ -159,7 +163,9 @@ export function MissionControlToolbar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  {collapsed ? t("empty.newMission") : shortcutLabel("newMission")}
+                  {collapsed
+                    ? t("empty.newMission")
+                    : shortcutLabel("newMission")}
                 </TooltipContent>
               </Tooltip>
             )}

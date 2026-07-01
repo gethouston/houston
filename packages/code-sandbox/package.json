@@ -1,0 +1,22 @@
+{
+  "name": "@houston/code-sandbox",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "test": "vitest run --testTimeout=30000",
+    "typecheck": "tsgo -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "vitest": "^3.2.4",
+    "@typescript/native-preview": "7.0.0-dev.20260607.1"
+  },
+  "dependencies": {
+    "tsx": "^4.21.0"
+  }
+}

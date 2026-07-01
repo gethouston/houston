@@ -1,0 +1,24 @@
+{
+  // Standalone typecheck for the e2e harness. The harness runs under Node (the
+  // fake host) and Playwright (the specs), NOT the DOM-typed app build, so
+  // it gets its own config — kept out of the app tsconfig's `include` ("src").
+  // Typing the imported wire types (Activity, WireEvent, ChatMessage) here means
+  // a contract change in the engine packages breaks this check, not a test.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["**/*.ts", "../playwright.config.ts"]
+}

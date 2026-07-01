@@ -1,0 +1,9 @@
+# Root-context Docker builds (selfhost/Dockerfile, packages/runtime/Dockerfile,
+# packages/host-cloud/Dockerfile) need sibling packages on disk for pnpm
+# workspace deps. Keep dev artifacts out of the context while preserving source trees.
+**/node_modules
+.git
+**/target
+**/*.log
+**/.DS_Store
+.context

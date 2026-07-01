@@ -56,6 +56,25 @@ export interface VersionResponse {
   engine: string;
   protocol: number;
   build: string | null;
+  /**
+   * True when this install carried over a legacy Rust-desktop chat-history db,
+   * i.e. the user is migrating from the old desktop build. The desktop UI uses
+   * this to show its one-time "reconnect your AI" moment, because the migrated
+   * provider credentials are not portable. Absent on engines that predate the
+   * field (treat as `false`).
+   */
+  chatHistoryMigrated?: boolean;
+}
+
+export interface Capabilities {
+  profile: "local" | "cloud";
+  revealInOs: boolean;
+  terminal: boolean;
+  tunnel: boolean;
+  codeExecution: "local-bash" | "remote-sandbox" | "disabled";
+  providers: string[];
+  openaiCompatible: boolean;
+  integrations: string[];
 }
 
 // ---------- Workspaces ----------
@@ -404,12 +423,18 @@ export interface ProviderStatus {
   /** Absolute path to the CLI binary that will be spawned, or `null`
    *  when `installSource === "missing"`. Useful for diagnostics UI. */
   cliPath: string | null;
+  /**
+   * The provider's currently-configured model id, when the engine reports one.
+   * Carries the OpenAI-compatible (local) provider's user-supplied model — which
+   * is dynamic and absent from the static frontend catalog — so the model picker
+   * can show + select it. Absent for providers whose models live in the catalog.
+   */
+  activeModel?: string;
 }
 
 export interface PreferenceValue {
   value: string | null;
 }
-
 
 /**
  * Known preference keys. Free-form strings are still allowed — this alias
@@ -420,7 +445,8 @@ export interface PreferenceValue {
 export type KnownPreferenceKey =
   | "timezone"
   | "locale"
-  | "legal_acceptance";
+  | "legal_acceptance"
+  | "migration_reconnect_dismissed";
 
 /**
  * Persisted record that the user has accepted a given version of the
@@ -436,6 +462,15 @@ export interface LegalAcceptance {
 
 /** Preference key for the JSON-encoded [`LegalAcceptance`]. */
 export const LEGAL_ACCEPTANCE_KEY = "legal_acceptance";
+
+/**
+ * Preference key marking that the user has seen (and dismissed/completed) the
+ * one-time "reconnect your AI" moment shown after migrating from the legacy
+ * desktop build. Value is the literal `"1"` once set; absent means not yet
+ * shown. Lives in engine preferences so it survives reinstall-in-place.
+ */
+export const MIGRATION_RECONNECT_DISMISSED_KEY =
+  "migration_reconnect_dismissed";
 
 // ---------- Store ----------
 
@@ -878,7 +913,11 @@ export type PortableScanCategory =
   | "suspicious_shell"
   | "external_callback";
 export type PortableScanSeverity = "low" | "medium" | "high";
-export type PortableScanItemKind = "claude_md" | "skill" | "routine" | "learning";
+export type PortableScanItemKind =
+  | "claude_md"
+  | "skill"
+  | "routine"
+  | "learning";
 
 export interface PortableScanFinding {
   category: PortableScanCategory;
@@ -918,4 +957,41 @@ export interface PortableInstalledAgent {
   agentName: string;
   workspaceName: string;
   requiredIntegrations: string[];
+}
+
+// ── integrations (Composio "for you") ────────────────────────────────────────
+// User-level: each user's own connected account, surfaced per-agent in the UI.
+
+export interface IntegrationProviderStatus {
+  provider: string;
+  connected: boolean;
+  account?: { accountId: string; email?: string };
+}
+export interface IntegrationToolkit {
+  slug: string;
+  name: string;
+  description?: string;
+  logoUrl?: string;
+  categories?: string[];
+}
+export interface IntegrationConnection {
+  toolkit: string;
+  connectionId: string;
+  status: "active" | "pending" | "error";
+}
+export type IntegrationLoginResult =
+  | { status: "pending" }
+  | { status: "linked"; account?: { accountId: string; email?: string } };
+
+// ── OpenAI-compatible (local) provider ───────────────────────────────────────
+// A local LLM server the user runs (Ollama / vLLM / LM Studio), connected by
+// base URL + model id. New-engine + desktop only (the URL is the user's own
+// machine). The key is optional — keyless local servers ignore it.
+export interface CustomEndpoint {
+  baseUrl: string;
+  model: string;
+  name?: string;
+  contextWindow?: number;
+  reasoning?: boolean;
+  apiKey?: string;
 }

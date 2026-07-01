@@ -1,0 +1,28 @@
+{
+  "name": "@houston/runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "spike": "tsx spike/phase0.ts",
+    "test": "vitest run --testTimeout=30000",
+    "typecheck": "tsgo -p tsconfig.json"
+  },
+  "dependencies": {
+    "@earendil-works/pi-ai": "0.78.1",
+    "@earendil-works/pi-coding-agent": "0.78.1",
+    "@google-cloud/storage": "^7.14.0",
+    "@houston/runtime-client": "workspace:*",
+    "typebox": "1.1.38",
+    "tsx": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@typescript/native-preview": "7.0.0-dev.20260607.1",
+    "vitest": "^3.2.4"
+  }
+}

@@ -2,11 +2,11 @@ import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Activity } from "../../data/activity";
-import type { AgentDefinition } from "../../lib/types";
 import { analytics } from "../../lib/analytics";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { classifyFileKind } from "../../lib/file-kind";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
+import type { AgentDefinition } from "../../lib/types";
 import { useFeedStore } from "../../stores/feeds";
 import { useUIStore } from "../../stores/ui";
 
@@ -38,18 +38,25 @@ export function useArchivedSendMessage({
     async (sessionKey: string, text: string, files: File[]) => {
       const missionId = selectedId ?? sessionKey.replace(/^activity-/, "");
       const activity = archived.find((a) => a.id === missionId);
-      const mode = agentDef.config.agents?.find((m) => m.id === activity?.agent);
+      const mode = agentDef.config.agents?.find(
+        (m) => m.id === activity?.agent,
+      );
 
       try {
-        const paths = await tauriAttachments.save(`activity-${missionId}`, files);
+        const paths = await tauriAttachments.save(
+          `activity-${missionId}`,
+          files,
+        );
         const prompt = buildAttachmentPrompt(text, files, paths);
         await tauriChat.send(agentPath, prompt, sessionKey, {
           mode: mode?.promptFile,
-          workingDirOverride: activity?.worktree_path ?? undefined,
           providerOverride: effectiveProvider,
           modelOverride: effectiveModel,
         });
-        pushFeedItem(agentPath, sessionKey, { feed_type: "user_message", data: prompt });
+        pushFeedItem(agentPath, sessionKey, {
+          feed_type: "user_message",
+          data: prompt,
+        });
         analytics.track("chat_message_sent");
         for (const f of files) {
           analytics.track("file_attached", { file_kind: classifyFileKind(f) });

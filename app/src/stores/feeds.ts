@@ -1,6 +1,10 @@
-import { create } from "zustand";
+import type {
+  FeedItem,
+  MergeFeedOptions,
+  PendingUserEcho,
+} from "@houston-ai/chat";
 import { mergeFeedItem, reconcileUserMessageEcho } from "@houston-ai/chat";
-import type { FeedItem, MergeFeedOptions, PendingUserEcho } from "@houston-ai/chat";
+import { create } from "zustand";
 
 /**
  * Feed store — nested by agent path, then by session key.
@@ -46,7 +50,11 @@ export const useFeedStore = create<FeedState>((set) => ({
     return set((s) => {
       const agentPending = s.pendingEcho[agentPath] ?? {};
       const sessionPending = { ...(agentPending[sessionKey] ?? {}) };
-      const keep = reconcileUserMessageEcho(sessionPending, item, opts?.fromWs ?? false);
+      const keep = reconcileUserMessageEcho(
+        sessionPending,
+        item,
+        opts?.fromWs ?? false,
+      );
       const pendingEcho = {
         ...s.pendingEcho,
         [agentPath]: { ...agentPending, [sessionKey]: sessionPending },

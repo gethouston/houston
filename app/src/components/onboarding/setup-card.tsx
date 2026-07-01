@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
-import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import { Button, cn } from "@houston-ai/core";
+import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
+import type { ReactNode } from "react";
 
 /**
  * The one frame every first-run setup screen shares, so Welcome, the agreement,
@@ -182,7 +182,9 @@ export function OptionCard({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-foreground">{label}</p>
           {description && (
-            <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {description}
+            </p>
           )}
         </div>
         <span className="shrink-0">

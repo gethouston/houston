@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { feedItemsToMessages } from "../src/feed-to-messages.ts";
 
 test("attaches file changes to the previous assistant message after final result", () => {
@@ -32,7 +32,12 @@ test("collapses duplicate provider-error cards to one per kind+provider", () => 
   // single reconnect card, not a stack.
   const auth = {
     feed_type: "provider_error",
-    data: { kind: "unauthenticated", provider: "openai", cause: "unknown", message: "Your session has ended." },
+    data: {
+      kind: "unauthenticated",
+      provider: "openai",
+      cause: "unknown",
+      message: "Your session has ended.",
+    },
   };
   const messages = feedItemsToMessages([
     { feed_type: "user_message", data: "hi" },
@@ -52,7 +57,12 @@ test("provider-error dedup resets at each user message (per turn)", () => {
   // be swallowed by the previous turn's dedup entry.
   const auth = {
     feed_type: "provider_error",
-    data: { kind: "unauthenticated", provider: "openai", cause: "unknown", message: "ended" },
+    data: {
+      kind: "unauthenticated",
+      provider: "openai",
+      cause: "unknown",
+      message: "ended",
+    },
   };
   const messages = feedItemsToMessages([
     { feed_type: "user_message", data: "first" },
@@ -68,11 +78,22 @@ test("keeps provider-error cards of different kinds", () => {
   const messages = feedItemsToMessages([
     {
       feed_type: "provider_error",
-      data: { kind: "rate_limited", provider: "anthropic", model: null, retry_after_seconds: null, message: "429" },
+      data: {
+        kind: "rate_limited",
+        provider: "anthropic",
+        model: null,
+        retry_after_seconds: null,
+        message: "429",
+      },
     },
     {
       feed_type: "provider_error",
-      data: { kind: "unauthenticated", provider: "anthropic", cause: "unknown", message: "401" },
+      data: {
+        kind: "unauthenticated",
+        provider: "anthropic",
+        cause: "unknown",
+        message: "401",
+      },
     },
   ]);
   assert.equal(messages.filter((m) => m.providerError).length, 2);
@@ -96,17 +117,23 @@ test("context_compacted becomes a system divider carrying compaction info", () =
   assert.equal(divider.compaction.trigger, "proactive");
   assert.equal(divider.compaction.preTokens, 185000);
   // The surrounding turns are preserved (full history stays visible).
-  assert.ok(messages.some((m) => m.from === "user" && m.content === "keep going"));
+  assert.ok(
+    messages.some((m) => m.from === "user" && m.content === "keep going"),
+  );
   assert.ok(
     messages.some(
-      (m) => m.from === "assistant" && m.content === "Continuing from the summary.",
+      (m) =>
+        m.from === "assistant" && m.content === "Continuing from the summary.",
     ),
   );
 });
 
 test("context_compacted tolerates a null pre_tokens", () => {
   const messages = feedItemsToMessages([
-    { feed_type: "context_compacted", data: { trigger: "native", pre_tokens: null } },
+    {
+      feed_type: "context_compacted",
+      data: { trigger: "native", pre_tokens: null },
+    },
   ]);
   const divider = messages.find((m) => m.compaction);
   assert.ok(divider);
@@ -116,7 +143,13 @@ test("context_compacted tolerates a null pre_tokens", () => {
 
 const rateLimited = {
   feed_type: "provider_error",
-  data: { kind: "rate_limited", provider: "anthropic", model: null, retry_after_seconds: null, message: "429" },
+  data: {
+    kind: "rate_limited",
+    provider: "anthropic",
+    model: null,
+    retry_after_seconds: null,
+    message: "429",
+  },
 };
 
 test("suppresses the 'Session error' echo when a provider-error card covered the turn", () => {
@@ -126,7 +159,10 @@ test("suppresses the 'Session error' echo when a provider-error card covered the
   const messages = feedItemsToMessages([
     { feed_type: "user_message", data: "hi" },
     rateLimited,
-    { feed_type: "system_message", data: "Session error: claude hit a runtime error" },
+    {
+      feed_type: "system_message",
+      data: "Session error: claude hit a runtime error",
+    },
   ]);
   assert.equal(messages.filter((m) => m.providerError).length, 1, "card kept");
   assert.ok(
@@ -149,8 +185,14 @@ test("keeps the 'Session error' echo when no card surfaced (no silent failures)"
 test("tool_runtime_error also suppresses the trailing 'Session error' echo", () => {
   const messages = feedItemsToMessages([
     { feed_type: "user_message", data: "hi" },
-    { feed_type: "tool_runtime_error", data: { kind: "provider_process", details: "boom" } },
-    { feed_type: "system_message", data: "Session error: claude hit a runtime error" },
+    {
+      feed_type: "tool_runtime_error",
+      data: { kind: "provider_process", details: "boom" },
+    },
+    {
+      feed_type: "system_message",
+      data: "Session error: claude hit a runtime error",
+    },
   ]);
   assert.ok(!messages.some((m) => m.content.startsWith("Session error:")));
 });

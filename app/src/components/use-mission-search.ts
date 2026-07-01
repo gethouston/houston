@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
 import type { KanbanItem } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { matchesPhrase } from "./mission-highlight";
 import {
   buildMissionHistorySearchText,
@@ -26,7 +26,9 @@ export function useMissionSearch({
   loadHistory,
   onHistoryLoadError,
 }: UseMissionSearchOptions) {
-  const [historyTextById, setHistoryTextById] = useState<Record<string, string>>({});
+  const [historyTextById, setHistoryTextById] = useState<
+    Record<string, string>
+  >({});
   const [pendingCount, setPendingCount] = useState(0);
   const loadingIdsRef = useRef<Set<string>>(new Set());
   const mountedRef = useRef(true);

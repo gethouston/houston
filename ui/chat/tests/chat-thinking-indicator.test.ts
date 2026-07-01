@@ -1,8 +1,8 @@
 import { equal } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  shouldShowThinkingIndicator,
   type ChatDisplayItem,
+  shouldShowThinkingIndicator,
 } from "../src/chat-process-groups.ts";
 import type { ChatMessage } from "../src/feed-to-messages.ts";
 
@@ -38,7 +38,10 @@ describe("shouldShowThinkingIndicator (HOU-471)", () => {
   });
 
   it("hides the indicator while the answer streams (the text is the signal)", () => {
-    equal(shouldShowThinkingIndicator([message("assistant")], "streaming"), false);
+    equal(
+      shouldShowThinkingIndicator([message("assistant")], "streaming"),
+      false,
+    );
   });
 
   it("shows the indicator in the gap after sending, before any output", () => {
@@ -54,15 +57,15 @@ describe("shouldShowThinkingIndicator (HOU-471)", () => {
     // The mission-log header already reads "Mission in progress: <action>", so
     // a second standalone line would duplicate it.
     equal(
-      shouldShowThinkingIndicator([message("user"), process(true)], "submitted"),
+      shouldShowThinkingIndicator(
+        [message("user"), process(true)],
+        "submitted",
+      ),
       false,
     );
   });
 
   it("shows the indicator again once the trailing process block has settled", () => {
-    equal(
-      shouldShowThinkingIndicator([process(false)], "submitted"),
-      true,
-    );
+    equal(shouldShowThinkingIndicator([process(false)], "submitted"), true);
   });
 });

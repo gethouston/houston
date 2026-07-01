@@ -1,10 +1,10 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import type { ChatProcessSegment } from "../src/chat-process-groups.ts";
 import {
   buildProcessHeaderLabel,
   getCurrentActionToolName,
 } from "../src/chat-process-header.ts";
-import type { ChatProcessSegment } from "../src/chat-process-groups.ts";
 
 type ToolStub = { name: string; result?: unknown };
 
@@ -26,7 +26,10 @@ function seg(tools: ToolStub[]): ChatProcessSegment {
 describe("buildProcessHeaderLabel", () => {
   it("names the tool currently running while active", () => {
     strictEqual(
-      buildProcessHeaderLabel({ isActive: true, segments: [seg([{ name: "Read" }])] }),
+      buildProcessHeaderLabel({
+        isActive: true,
+        segments: [seg([{ name: "Read" }])],
+      }),
       "Mission in progress: Reading file",
     );
   });
@@ -60,7 +63,10 @@ describe("buildProcessHeaderLabel", () => {
 
   it("reads the complete label once the mission settles", () => {
     strictEqual(
-      buildProcessHeaderLabel({ isActive: false, segments: [seg([{ name: "Read" }])] }),
+      buildProcessHeaderLabel({
+        isActive: false,
+        segments: [seg([{ name: "Read" }])],
+      }),
       "Mission log",
     );
   });
@@ -113,7 +119,9 @@ describe("getCurrentActionToolName", () => {
   });
 
   it("returns a tool even when it already has a result", () => {
-    const segments = [seg([{ name: "Read" }, { name: "Grep", result: RESULT }])];
+    const segments = [
+      seg([{ name: "Read" }, { name: "Grep", result: RESULT }]),
+    ];
     strictEqual(getCurrentActionToolName(segments), "Grep");
   });
 

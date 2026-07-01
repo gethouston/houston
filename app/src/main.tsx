@@ -1,29 +1,26 @@
-import {
-  Component,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
-import { createRoot } from "react-dom/client";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { I18nextProvider } from "react-i18next";
 import { TooltipProvider } from "@houston-ai/core";
-import { queryClient } from "./lib/query-client";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Component, type ReactNode, useEffect } from "react";
+import { createRoot } from "react-dom/client";
+import { I18nextProvider } from "react-i18next";
 import App from "./App";
+import { queryClient } from "./lib/query-client";
 import "./styles/globals.css";
-import { initFrontendLogging, logger } from "./lib/logger";
-import { whenEngineReady, isEngineReady } from "./lib/engine";
-import i18n from "./lib/i18n";
+import { ConnectionGate } from "./components/shell/connection-gate";
 import { DisclaimerGate } from "./components/shell/disclaimer-gate";
+import { EngineGate } from "./components/shell/engine-gate";
 import { LanguageGate } from "./components/shell/language-gate";
-import { showErrorToast } from "./lib/error-toast";
-import { isBenignLockRejection } from "./lib/benign-rejections";
 import { analytics, classifyAnalyticsError } from "./lib/analytics";
+import { whenEngineReady } from "./lib/engine";
+import { showErrorToast } from "./lib/error-toast";
+import { installGlobalErrorHandlers } from "./lib/global-error-handlers";
+import i18n from "./lib/i18n";
+import { initFrontendLogging, logger } from "./lib/logger";
+import { initSentry } from "./lib/sentry";
+import { installSentrySmokeShortcuts } from "./lib/sentry-smoke";
 import { runStartupAnalytics } from "./lib/startup-analytics";
 import { tauriSystem } from "./lib/tauri";
 import { loadTheme } from "./lib/theme";
-import { initSentry } from "./lib/sentry";
-import { installSentrySmokeShortcuts } from "./lib/sentry-smoke";
 
 // Sentry first so global error handlers below can capture into it from the
 // very first render. Empty DSN → silent no-op (dev / forks).
@@ -42,42 +39,21 @@ if (import.meta.env.DEV) {
 // ~/.houston/logs/frontend.log (or ~/.dev-houston/logs/frontend.log in dev).
 initFrontendLogging();
 
-// Global error handlers — surface ALL uncaught errors as toasts
-// (console.error calls here also flow to the log file via initFrontendLogging)
-window.onerror = (_event, _source, _line, _col, error) => {
-  const message = error?.message ?? String(_event);
-  console.error("[global:error]", message, error);
-  const err = error ?? new Error(message);
-  analytics.captureException(err, {
-    source: "uncaught_error",
-    error_kind: classifyAnalyticsError(message),
-  });
-  showErrorToast("uncaught_error", message, err);
-};
+// Global error handlers — surface uncaught errors as toasts + reports, while
+// swallowing benign background noise (Supabase Web Locks steal, HOU-435). Body
+// is shared with the web entry (packages/web/src/app-tree.tsx) so the two trees
+// can't drift. Must run AFTER initFrontendLogging() so the console.error → log
+// file patch is already in place.
+installGlobalErrorHandlers();
 
-window.onunhandledrejection = (event: PromiseRejectionEvent) => {
-  const message = event.reason?.message ?? String(event.reason);
-  // Supabase's cross-context auth-refresh lock gets stolen as a normal part of
-  // its own recovery; the displaced promise rejects from a timer we can't
-  // catch. Not a real error — swallow it instead of toasting + reporting
-  // (HOU-435). console.debug only (not the patched console.error) so it never
-  // reaches the log file as an error or the user as a toast.
-  if (isBenignLockRejection(event.reason)) {
-    event.preventDefault();
-    console.debug("[global:unhandledrejection] ignored benign Web Locks contention:", message);
-    return;
-  }
-  console.error("[global:unhandledrejection]", message, event.reason);
-  analytics.captureException(event.reason, {
-    source: "unhandled_rejection",
-    error_kind: classifyAnalyticsError(message),
-  });
-  showErrorToast("unhandled_rejection", message, event.reason);
-};
-
-class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
   state: { error: Error | null } = { error: null };
-  static getDerivedStateFromError(error: Error) { return { error }; }
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
   componentDidCatch(error: Error) {
     logger.error(`[react-crash] ${error.message}`, error.stack);
     analytics.captureException(error, {
@@ -103,13 +79,22 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
             zIndex: 999999,
           }}
         >
-          <h1 style={{ color: "#ff6666", fontSize: 24, margin: 0, marginBottom: 16 }}>
+          <h1
+            style={{
+              color: "#ff6666",
+              fontSize: 24,
+              margin: 0,
+              marginBottom: 16,
+            }}
+          >
             App crashed
           </h1>
           <p style={{ fontSize: 15, marginBottom: 16, color: "#ffffff" }}>
             {this.state.error.message}
           </p>
-          <pre style={{ fontSize: 12, opacity: 0.85 }}>{this.state.error.stack}</pre>
+          <pre style={{ fontSize: 12, opacity: 0.85 }}>
+            {this.state.error.stack}
+          </pre>
         </div>
       );
     }
@@ -152,74 +137,32 @@ function StartupEffects({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/**
- * Blocks the app from rendering until the Tauri supervisor emits
- * `houston-engine-ready` (or the injection raced in early). Hooks deep in
- * the tree synchronously call `getEngine()` in their first useEffect, so
- * we MUST have the handshake before mounting <App />.
- */
-function EngineGate({ children }: { children: ReactNode }) {
-  const [ready, setReady] = useState(isEngineReady());
-  useEffect(() => {
-    if (ready) return;
-    let cancelled = false;
-    whenEngineReady().then(() => {
-      if (!cancelled) setReady(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [ready]);
-
-  // Locale resolution lives in <LanguageGate>: it resolves the effective
-  // locale from the engine (active workspace override → global preference),
-  // applies it to the live i18n instance, and handles the first-run picker.
-  // That gate sits inside <I18nextProvider> and owns the full locale story —
-  // the engine, not localStorage, is the source of truth.
-
-  if (!ready) {
-    // Use the i18n singleton directly — this renders OUTSIDE
-    // <I18nextProvider>, so useTranslation would have no context.
-    // The singleton is already initialized synchronously in i18n.ts.
-    return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100vh",
-          fontFamily: "system-ui, sans-serif",
-          color: "#888",
-          fontSize: 14,
-        }}
-      >
-        {i18n.t("shell:engineGate.starting")}
-      </div>
-    );
-  }
-  return <>{children}</>;
-}
-
 // StrictMode intentionally remounts components to catch bugs. In Tauri's
 // WKWebView that double-mount collides with portal DOM + Tauri event
 // listeners and throws NotFoundError on removeChild. Skipping it for now;
 // revisit once the underlying portal/listener churn is fixed.
-createRoot(document.getElementById("root")!).render(
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error("Root element #root not found in DOM");
+}
+createRoot(rootElement).render(
   <QueryClientProvider client={queryClient}>
-    <ErrorBoundary>
-      <TooltipProvider>
-        <StartupEffects>
-          <EngineGate>
-            <I18nextProvider i18n={i18n}>
-              <LanguageGate>
-                <DisclaimerGate>
-                  <App />
-                </DisclaimerGate>
-              </LanguageGate>
-            </I18nextProvider>
-          </EngineGate>
-        </StartupEffects>
-      </TooltipProvider>
-    </ErrorBoundary>
+    <I18nextProvider i18n={i18n}>
+      <ErrorBoundary>
+        <TooltipProvider>
+          <StartupEffects>
+            <ConnectionGate>
+              <EngineGate>
+                <LanguageGate>
+                  <DisclaimerGate>
+                    <App />
+                  </DisclaimerGate>
+                </LanguageGate>
+              </EngineGate>
+            </ConnectionGate>
+          </StartupEffects>
+        </TooltipProvider>
+      </ErrorBoundary>
+    </I18nextProvider>
   </QueryClientProvider>,
 );

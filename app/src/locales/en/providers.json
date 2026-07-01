@@ -17,28 +17,10 @@
   "setup": {
     "installHint": "Install the {{cli}} CLI on your machine. Houston will pick it up automatically.",
     "installGuide": "Install guide",
-    "signInWith": "Sign in with {{provider}}",
+    "signInWith": "Sign in",
     "waiting": "Waiting for the sign-in to finish in your browser...",
     "cancelWaiting": "Cancel and try again",
     "installedCheckAgain": "Already installed? Check again"
-  },
-  "claudeInstall": {
-    "installing": "Downloading Claude Code...",
-    "installingWithProgress": "Downloading Claude Code... {{progress}}%",
-    "failedTitle": "Houston couldn't download Claude Code",
-    "preparing": "Houston is downloading Claude Code in the background. If it doesn't start, try again below.",
-    "retry": "Retry download",
-    "errors": {
-      "timeout": "The download took too long. Check your internet connection and try again.",
-      "networkUnreachable": "Couldn't reach Anthropic. Check your internet connection and try again.",
-      "downloadInterrupted": "The download was interrupted. Check your internet connection and try again.",
-      "httpError": "Anthropic's servers had a problem (error {{status}}). Try again in a few minutes.",
-      "checksumMismatch": "The download didn't arrive intact. Check your connection and try again.",
-      "platformUnsupported": "Claude Code isn't available for this device yet.",
-      "writeFailed": "Houston couldn't save Claude Code to your computer. Make sure there's enough space and try again.",
-      "unavailable": "Houston couldn't start the download. Try again in a moment.",
-      "unknown": "Something went wrong while downloading Claude Code. Try again."
-    }
   },
   "signOutConfirm": {
     "title": "Sign out of {{provider}}?",
@@ -76,23 +58,53 @@
     "codeCopyFailed": "Couldn't copy the code",
     "cancel": "Cancel"
   },
-  "geminiConnect": {
+  "apiKey": {
     "title": "Connect {{name}}",
-    "description": "Sign in with your Google account to use the free Gemini tier, the same one the gemini CLI uses outside Houston.",
-    "signInWithGoogle": "Sign in with Google",
-    "signingIn": "Opening browser...",
-    "signInFailed": "Couldn't start {{name}} sign-in",
-    "signInRecommended": "Recommended. Uses the free personal tier, no payment required.",
-    "or": "or",
-    "useApiKeyAdvanced": "Use an API key (advanced)",
-    "openConsole": "Open the {{name}} console",
-    "openConsoleFailed": "Couldn't open the {{name}} console",
-    "placeholder": "Paste your key here",
+    "description": "Paste your {{name}} API key. Houston keeps it safe and uses it for your chats.",
+    "getKey": "Get your API key",
+    "label": "API key",
+    "placeholder": "Paste your API key",
+    "required": "Enter your API key first.",
     "show": "Show key",
     "hide": "Hide key",
-    "saveKey": "Save and connect",
-    "saving": "Saving...",
-    "saveFailed": "Couldn't save your {{name}} key",
+    "save": "Connect",
+    "saving": "Connecting...",
+    "cancel": "Cancel"
+  },
+  "copilot": {
+    "title": "Connect GitHub Copilot",
+    "description": "Choose how you use Copilot.",
+    "personalTitle": "Personal",
+    "personalDesc": "Your own Copilot on github.com.",
+    "companyTitle": "Company (GitHub Enterprise)",
+    "companyDesc": "Copilot your company provides.",
+    "domainLabel": "Company GitHub domain",
+    "domainPlaceholder": "company.ghe.com",
+    "domainHint": "Ask your IT team if you're not sure.",
+    "cancel": "Cancel",
+    "continue": "Continue"
+  },
+  "openaiCompatible": {
+    "title": "Connect a local model",
+    "description": "Point Houston at a model running on your computer, like Ollama, LM Studio or vLLM.",
+    "baseUrlLabel": "Server address",
+    "baseUrlPlaceholder": "http://localhost:11434/v1",
+    "baseUrlHelp": "The address where your local server is listening. For Ollama this is usually http://localhost:11434/v1.",
+    "modelLabel": "Model",
+    "modelPlaceholder": "llama3.1",
+    "modelHelp": "The exact name of the model your server serves.",
+    "nameLabel": "Display name (optional)",
+    "namePlaceholder": "My local model",
+    "nameHelp": "A friendly label for the picker. Defaults to the model name.",
+    "keyLabel": "API key (optional)",
+    "keyPlaceholder": "Leave empty if your server has no key",
+    "keyHelp": "Most local servers don't need one. Add a key only if yours requires it.",
+    "show": "Show key",
+    "hide": "Hide key",
+    "baseUrlRequired": "Enter the server address first.",
+    "modelRequired": "Enter a model name first.",
+    "save": "Connect",
+    "saving": "Connecting...",
     "cancel": "Cancel"
   }
 }

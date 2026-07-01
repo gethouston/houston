@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { humanizeSkillName } from "./humanize-skill-name.ts";
 
 test("humanizes action slugs for user-facing cards", () => {

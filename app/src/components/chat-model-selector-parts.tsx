@@ -1,13 +1,24 @@
-import { useTranslation } from "react-i18next";
-import { Check } from "lucide-react";
 import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@houston-ai/core";
-import { type ProviderInfo } from "../lib/providers";
-import { type ProviderPickerState } from "../lib/model-picker";
-import { ClaudeLogo, OpenAILogo } from "./shell/provider-logos";
+import { Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { type ProviderPickerState, pickerModelRows } from "../lib/model-picker";
+import type { ProviderInfo } from "../lib/providers";
+import {
+  AmazonBedrockLogo,
+  ClaudeLogo,
+  DeepSeekLogo,
+  GeminiLogo,
+  GitHubCopilotLogo,
+  LocalModelLogo,
+  MiniMaxLogo,
+  OpenAILogo,
+  OpenCodeLogo,
+  OpenRouterLogo,
+} from "./shell/provider-logos";
 
 /**
  * Presentational sub-parts for {@link ChatModelSelector}. Split out so the
@@ -20,6 +31,7 @@ export function ProviderModelGroup({
   state,
   isActiveProvider,
   activeModel,
+  runtimeModelId,
   onSelect,
   showSeparator,
 }: {
@@ -27,11 +39,25 @@ export function ProviderModelGroup({
   state: ProviderPickerState;
   isActiveProvider: boolean;
   activeModel: string | null;
+  /** Engine-reported configured model for a catalog-less provider (the local one). */
+  runtimeModelId?: string;
   onSelect: (provider: string, model: string) => void;
   showSeparator: boolean;
 }) {
   const { t } = useTranslation("chat");
   const connected = state === "connected";
+  // The local OpenAI-compatible provider has no static catalog — its single
+  // model id is whatever the user's server serves, reported by the engine
+  // (`runtimeModelId`). `pickerModelRows` surfaces it as a one-item list so it
+  // shows and is selectable whenever connected, even before it's the active
+  // provider; the group is skipped when there's nothing to show.
+  const catalogless = provider.models.length === 0;
+  const displayModels = pickerModelRows(
+    provider.models,
+    runtimeModelId,
+    provider.subtitle,
+  );
+  if (displayModels.length === 0) return null;
   return (
     <>
       {showSeparator && <DropdownMenuSeparator />}
@@ -39,14 +65,21 @@ export function ProviderModelGroup({
         <ProviderIcon providerId={provider.id} className="size-3.5" />
         {provider.name}
         {state === "checking" && (
-          <span className="text-[10px] text-muted-foreground/60 ml-auto">{t("modelSelector.checking")}</span>
+          <span className="text-[10px] text-muted-foreground/60 ml-auto">
+            {t("modelSelector.checking")}
+          </span>
         )}
         {state === "disconnected" && (
-          <span className="text-[10px] text-muted-foreground/60 ml-auto">{t("modelSelector.notConnected")}</span>
+          <span className="text-[10px] text-muted-foreground/60 ml-auto">
+            {t("modelSelector.notConnected")}
+          </span>
         )}
       </DropdownMenuLabel>
-      {provider.models.map((m) => {
-        const isActive = isActiveProvider && m.id === activeModel;
+      {displayModels.map((m) => {
+        // A catalog-less provider has one model, so it's "active" whenever that
+        // provider is active (the chat's stored model id may be empty for it).
+        const isActive =
+          isActiveProvider && (catalogless || m.id === activeModel);
         return (
           <DropdownMenuItem
             key={m.id}
@@ -64,7 +97,10 @@ export function ProviderModelGroup({
             <div className="min-w-0 flex-1">
               <div className="text-sm">{m.label}</div>
               <div className="text-xs text-muted-foreground leading-snug">
-                {t(`modelSelector.modelDescriptions.${m.id.replace(/\./g, "_")}`, { defaultValue: m.description })}
+                {t(
+                  `modelSelector.modelDescriptions.${m.id.replace(/\./g, "_")}`,
+                  { defaultValue: m.description },
+                )}
               </div>
             </div>
           </DropdownMenuItem>
@@ -80,7 +116,13 @@ export function ProviderModelGroup({
  * (which renders at its native viewBox); the chat panel uses size-3.5 vs
  * the provider picker's size-5.
  */
-export function ProviderIcon({ providerId, className }: { providerId: string; className?: string }) {
+export function ProviderIcon({
+  providerId,
+  className,
+}: {
+  providerId: string;
+  className?: string;
+}) {
   return (
     <span className={className} style={{ display: "inline-flex" }}>
       {iconFor(providerId)}
@@ -94,6 +136,23 @@ function iconFor(providerId: string) {
       return <ClaudeLogo className="size-full" />;
     case "openai":
       return <OpenAILogo className="size-full" />;
+    case "github-copilot":
+      return <GitHubCopilotLogo className="size-full" />;
+    case "openrouter":
+      return <OpenRouterLogo className="size-full" />;
+    case "deepseek":
+      return <DeepSeekLogo className="size-full" />;
+    case "google":
+      return <GeminiLogo className="size-full" />;
+    case "amazon-bedrock":
+      return <AmazonBedrockLogo className="size-full" />;
+    case "minimax":
+      return <MiniMaxLogo className="size-full" />;
+    case "opencode":
+    case "opencode-go":
+      return <OpenCodeLogo className="size-full" />;
+    case "openai-compatible":
+      return <LocalModelLogo className="size-full" />;
     default:
       return null;
   }

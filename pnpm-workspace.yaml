@@ -1,9 +1,7 @@
 packages:
   - "ui/*"
   - "app"
-  - "mobile"
-  - "houston-relay"
-  - "examples/*"
+  - "packages/*"
 
 # Approve native build scripts (pnpm 10 blocks dependency postinstall by
 # default). @sentry/cli's postinstall downloads the platform `sentry-cli`

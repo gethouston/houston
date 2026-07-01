@@ -2,11 +2,11 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   activityIdForSessionKey,
+  type NavAgent,
   resolveNotificationTarget,
   resolvePendingActivitySelection,
   shouldArmNotificationNav,
   shouldNavigateOnAppActivation,
-  type NavAgent,
 } from "../src/lib/notification-nav.ts";
 
 const agents: NavAgent[] = [
@@ -17,8 +17,16 @@ const agents: NavAgent[] = [
 describe("resolveNotificationTarget", () => {
   it("targets the agent that finished, matched by folder path", () => {
     deepStrictEqual(
-      resolveNotificationTarget(agents, "/ws/Writer", "activity-act99", "Writer"),
-      { agentName: "Writer", nav: { agentId: "a2", sessionKey: "activity-act99" } },
+      resolveNotificationTarget(
+        agents,
+        "/ws/Writer",
+        "activity-act99",
+        "Writer",
+      ),
+      {
+        agentName: "Writer",
+        nav: { agentId: "a2", sessionKey: "activity-act99" },
+      },
     );
   });
 
@@ -27,14 +35,27 @@ describe("resolveNotificationTarget", () => {
   // at Writer + its chat, not stay on the open agent / go nowhere.
   it("targets the finished agent even when a different agent is open", () => {
     deepStrictEqual(
-      resolveNotificationTarget(agents, "/ws/Writer", "activity-act99", "Researcher"),
-      { agentName: "Writer", nav: { agentId: "a2", sessionKey: "activity-act99" } },
+      resolveNotificationTarget(
+        agents,
+        "/ws/Writer",
+        "activity-act99",
+        "Researcher",
+      ),
+      {
+        agentName: "Writer",
+        nav: { agentId: "a2", sessionKey: "activity-act99" },
+      },
     );
   });
 
   it("falls back to the open agent name and sets no nav when the finished agent isn't loaded", () => {
     deepStrictEqual(
-      resolveNotificationTarget(agents, "/ws/Archived", "activity-act1", "Researcher"),
+      resolveNotificationTarget(
+        agents,
+        "/ws/Archived",
+        "activity-act1",
+        "Researcher",
+      ),
       { agentName: "Researcher" },
     );
   });
@@ -45,7 +66,12 @@ describe("resolveNotificationTarget", () => {
   // stable key is carried through and resolved to its activity id at click time.
   it("arms the routine chat's session key for navigation", () => {
     deepStrictEqual(
-      resolveNotificationTarget(agents, "/ws/Writer", "routine-r1", "Researcher"),
+      resolveNotificationTarget(
+        agents,
+        "/ws/Writer",
+        "routine-r1",
+        "Researcher",
+      ),
       { agentName: "Writer", nav: { agentId: "a2", sessionKey: "routine-r1" } },
     );
   });
@@ -66,7 +92,10 @@ describe("activityIdForSessionKey", () => {
       { id: "act-1", session_key: "activity-act-1" },
       { id: "act-routine", session_key: "routine-r1" },
     ];
-    strictEqual(activityIdForSessionKey(activities, "routine-r1"), "act-routine");
+    strictEqual(
+      activityIdForSessionKey(activities, "routine-r1"),
+      "act-routine",
+    );
   });
 
   it("resolves a standard mission key whose row has no explicit session_key", () => {

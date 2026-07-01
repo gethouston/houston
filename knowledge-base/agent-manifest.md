@@ -242,6 +242,62 @@ Notes:
 - Adding a fourth provider = one new adapter file + one registry entry +
   three dispatch arms (runner, parser, summarizer). See "Engine boundary"
   in `CLAUDE.md`.
+- _[NEW ENGINE only]_ The TS engine (pi runtime) adds **OpenCode Zen**
+  (`opencode`), **OpenCode Go** (`opencode-go`), **OpenRouter** (`openrouter`),
+  **Google Gemini** (`google`), **Amazon Bedrock** (`amazon-bedrock`), and
+  **MiniMax global** (`minimax`, not `minimax-cn`) as **API-key** providers. pi
+  ships them as built-ins, so there is no Rust adapter
+  file and no CLI. The user pastes a key (dialog has a "Get your API key" button);
+  it's stored as a connect-once `kind:"api_key"` workspace credential. Bedrock is
+  special only at the runtime edge: the stored key is mirrored from pi-coding-agent's
+  generic `apiKey` option to pi-ai's Bedrock-specific `bearerToken` option in
+  `packages/runtime/src/ai/bedrock.ts`. The frontend catalog gates these behind
+  `newEngineActive()` so the Rust build never shows them. Full design:
+  `convergence/README.md` standing decisions. Runtime registry:
+  `packages/runtime/src/ai/providers.ts`; host catalog:
+  `packages/host/src/providers.ts`.
+- _[NEW ENGINE only]_ **One connect card for both OpenCode gateways** (HOU-577).
+  Zen and Go are two distinct pi gateways (`opencode.ai/zen/v1` vs
+  `opencode.ai/zen/go/v1`, disjoint model catalogs) but authenticate with the
+  SAME opencode.ai key — pi reads `OPENCODE_API_KEY` for both. So the connect
+  surfaces (settings + onboarding picker) show ONE "OpenCode" account card
+  (`getConnectProviders` collapses the two catalog entries; `gatewayIds` lists
+  both), and the adapter fans the pasted key out to both gateway ids
+  (`credentialSiblings` in `synthetic.ts`; `setProviderApiKey`/`providerLogout` in
+  `client.ts` loop over it — ONE `ProviderLoginComplete`, one active provider).
+  Status is OR'd across the gateways (`tauriProvider.checkMergedStatus`). The
+  chat **model picker keeps Zen and Go as separate sections** (it maps `PROVIDERS`
+  directly) — the model picked selects the gateway; opencode.ai enforces
+  Go-subscription vs Zen-credit entitlement per request (surfaced as a
+  provider-error card), so Houston never has to detect the plan from the key.
+- _[NEW ENGINE only]_ The TS engine also adds **GitHub Copilot**
+  (`github-copilot`) as a **subscription OAuth** provider — pi-ai ships it
+  built-in (no adapter, no CLI), so it's registry entries only across the same
+  runtime + host catalogs. Login is a GitHub **device-code** flow; its pi-ai
+  login opens with an optional "GitHub Enterprise URL/domain" prompt that
+  `login.ts` `autoPromptAnswer(provider, domain?)` answers programmatically
+  (`""` ⇒ github.com for individual, or the company domain for Enterprise) to
+  avoid a deadlock. Curated models proxy Claude/GPT/Gemini under one
+  subscription, using pi-ai's DOTTED Copilot ids (`claude-sonnet-4.6`, not the
+  native `claude-sonnet-4-6`). LOCAL-only (cloud egress isn't allowlisted).
+  **Plan gating (HOU-578):** Copilot's premium models (Claude, GPT-5.x) require
+  Copilot **Pro** — on **Copilot Free** (`sku=free_limited_copilot`) the editor
+  API serves only BASE models (gpt-4.1 / gpt-4o) and answers any premium model
+  with `400 model_not_supported` (independent of the API host / endpoint / the
+  per-model `policy` accept — all verified). So the default Copilot model is
+  **`gpt-4.1`** (a base model every plan serves; `config.githubCopilotModel`),
+  and the runtime classifies `model_not_supported` → a typed `model_unavailable`
+  provider error (`ai/provider-error.ts`) that renders the switch-model card with
+  `gpt-4.1` as the suggested fallback. Pro users switch up to Claude in the picker.
+- _[NEW ENGINE only]_ **GitHub Copilot Enterprise** (company-provided Copilot) is
+  NOT a separate card — pi has one Copilot provider/slot, so the SINGLE
+  `github-copilot` card's connect opens a **Personal vs Company** dialog
+  (`provider-copilot-connect-dialog.tsx` via `useCopilotConnect`). Company collects
+  the firm's GitHub domain and threads it as a non-secret `enterpriseUrl` through
+  the credential path + central refresh (so refresh hits
+  `api.<domain>/copilot_internal/v2/token`); Personal passes no domain (github.com).
+  One card + one slot means no per-card status disambiguation. Full design:
+  `convergence/README.md`.
 
 ### Switching provider mid-conversation
 

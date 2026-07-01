@@ -6,26 +6,31 @@ export type EventType =
   | "cron"
   | "hook"
   | "webhook"
-  | "agent_message"
+  | "agent_message";
 
-export type EventStatus = "pending" | "processing" | "completed" | "suppressed" | "error"
+export type EventStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "suppressed"
+  | "error";
 
 export interface EventSource {
-  channel: string // "slack", "telegram", "desktop", "system", "webhook", "agent"
-  identifier: string // channel ID, cron job name, etc.
+  channel: string; // "slack", "telegram", "desktop", "system", "webhook", "agent"
+  identifier: string; // channel ID, cron job name, etc.
 }
 
 export interface EventEntry {
-  id: string
-  type: EventType
-  source: EventSource
-  summary: string // human-readable description
-  status: EventStatus
-  payload?: Record<string, unknown>
-  sessionKey?: string
-  projectId?: string
-  createdAt: string // ISO 8601
-  processedAt?: string
+  id: string;
+  type: EventType;
+  source: EventSource;
+  summary: string; // human-readable description
+  status: EventStatus;
+  payload?: Record<string, unknown>;
+  sessionKey?: string;
+  projectId?: string;
+  createdAt: string; // ISO 8601
+  processedAt?: string;
 }
 
 export const EVENT_TYPE_LABELS: Record<EventType, string> = {
@@ -35,7 +40,7 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   hook: "Hook",
   webhook: "Webhook",
   agent_message: "Agent",
-}
+};
 
 export const EVENT_TYPE_ICONS: Record<EventType, string> = {
   message: "MessageSquare",
@@ -44,4 +49,4 @@ export const EVENT_TYPE_ICONS: Record<EventType, string> = {
   hook: "Zap",
   webhook: "Globe",
   agent_message: "Bot",
-}
+};

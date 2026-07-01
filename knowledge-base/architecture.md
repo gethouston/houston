@@ -1,16 +1,37 @@
 # Architecture
 
-Houston = open platform. Organized as **6 products + 3 code libraries**.
+> **⚠️ READ FIRST — single-engine convergence.** Much of this doc below describes the **legacy Rust `engine/`** and the original 7-products layout. Houston has converged onto ONE TypeScript engine for desktop AND cloud; the new architecture is the source of truth in **`convergence/README.md`**. The Rust `engine/` is still the *current default* desktop build (rollback oracle), **deleted at P6**. Treat the Rust-crate sections below as legacy-but-shipping.
 
-## The 6 products (end-user)
+## Current architecture (the convergence target)
+
+ONE deployment-agnostic server — the **host** (`packages/host`) — with ONE router, ONE `authorize()` seam, ONE domain layer, and **two adapter profiles** (local desktop vs cloud multi-tenant) wired in `main()`. The only agent loop is the **pi runtime** (`packages/runtime`, TS/Node in dev + Docker; Bun only for compiled desktop sidecar) — single-workspace, single-credential, tenancy-free. Domain logic lives once in `packages/domain`; wire types + zod in `packages/protocol` (**protocol v3**). The frontend (`app/src`, also `packages/web`) talks ONLY to the host via `@houston-ai/engine-client`, every deployment.
+
+- **Desktop** = the host booted with local adapters (FS store/vfs, subprocess pi launcher, single-user identity, FS watcher → events), spawned by the Tauri shell as a Bun-compiled sidecar (`--features host-sidecar`); normal dev/test/Docker runs use pnpm + Node.
+- **Cloud** = the same host with cloud adapters (Postgres, GCS, GKE/Cloud-Run launcher, Supabase identity, Redis bus). Per-turn Cloud Run: hydrate → run one pi turn → sync → wipe. Those cloud adapters + operator-admin + the cloud `main.ts` live in the CLOSED `packages/host-cloud` (`@houston/host-cloud`), extracted from the open host.
+- **Open/closed seam** = the open local stack (`protocol`/`domain`/`runtime`/`ui`/`host` + local adapters + `app`) may never import a cloud adapter; inside the host only `main.ts`/`admin/**` touch a concrete cloud adapter, everything else goes through ports. Documented in `BOUNDARY.md` (repo root), machine-enforced by `scripts/check-boundaries.mjs` (`pnpm check:boundaries`, wired into the PR CI gate).
+- **Self-host** = the local host in Docker behind Caddy TLS (`selfhost/`).
+- **Managed hosted POC** = the same open self-host/local-profile container as a K8s engine pod, one pod/PVC per Supabase user, fronted by a private gateway. The public repo provides `VITE_HOSTED_ENGINE_URL`, the `selfhost/Dockerfile` `engine-pod` target, `HOUSTON_MANAGED_CLOUD=1` capabilities, and `HOUSTON_CODE_EXECUTION=disabled`; the private repo owns gateway auth, K8s resources, and network policy.
+- **Providers** are in-process in pi: Anthropic + OpenAI/Codex + GitHub Copilot OAuth, plus API-key providers OpenCode Zen/Go, OpenRouter, DeepSeek, Google Gemini, Amazon Bedrock, and MiniMax global (`minimax`, not `minimax-cn`). **No provider CLIs.** Bedrock uses pi-ai's native `amazon-bedrock` provider; Houston maps the stored key to Bedrock's `bearerToken` request option in `packages/runtime/src/ai/bedrock.ts`.
+- **Composio** (and future integrations) = an in-process REST tool behind the `IntegrationProvider` port (`packages/host/src/integrations/`), each user's own free account, no CLI.
+- **Drift prevention** = port contract suites + the dual-profile parity test (`packages/host/src/dual-profile.test.ts`) + `/v1/capabilities` (no "am I web/desktop" branches). Gate spec: `convergence/parity-checklist.md`. PR CI gate: `.github/workflows/ci.yml`.
+- **Removed (deleted, not just planned):** `mobile/` + `houston-relay/` (mobile PWA + tunnel), `examples/smartbooks/` (custom-frontend reference), `always-on/` (the legacy Rust-engine VPS image — superseded by `selfhost/`), worktrees, store/marketplace, claude-CLI install. Single personal workspace (teams later).
+
+Everything from here down is the legacy/transitional detail (Rust engine crates, bundled CLIs, the original product map). Accurate for the default build until P6, but `convergence/README.md` is canonical for the direction.
+
+---
+
+Houston = open platform. Organized as **7 products + 3 code libraries**.
+
+## The 7 products (end-user)
 
 | Product | Dir | What |
 |---------|-----|------|
 | Houston App | `app/` | Desktop app (Tauri 2). Non-technical users create agents, run parallel terminal sessions. |
-| Houston Mobile | `mobile/` | React PWA served from `tunnel.gethouston.ai`. No native app — pure web, same origin as the relay. |
-| Houston Store | `store/` | Release-bundled registry of pre-built Houston agents. One-click install. |
+| Houston Web | `packages/web/` | The **full** desktop UI running in a plain browser tab. Composes `app/src` verbatim; `@tauri-apps/*` aliased to browser shims. Current path is **host mode** (`VITE_CONTROL_PLANE_URL`, legacy env name) against `packages/host`; external new-engine mode uses `VITE_NEW_ENGINE` / `VITE_NEW_ENGINE_URL`. The old Rust-engine connect screen remains only until final cutover. See `packages/web/README.md`. |
+| Houston Mobile | ~~`mobile/`~~ **REMOVED** | Was a React PWA served from `tunnel.gethouston.ai` over the relay. The mobile/tunnel feature was cut in the convergence; `mobile/` + `houston-relay/` are deleted. |
+| Houston Store | ~~`store/`~~ **REMOVED UI** | The store/marketplace product surface was cut in convergence. `store/` remains as legacy bundled catalog data only. |
 | Houston Website | `website/` | gethouston.ai landing. |
-| Houston Always On | `always-on/` | One-click deploy Engine to VPS/microVM. Agents 24/7. **TBD.** |
+| Houston Always On | ~~`always-on/`~~ **REMOVED** | Was a one-click VPS/microVM deploy of the Rust engine. Superseded by `selfhost/` (the TS host in Docker behind Caddy); `always-on/` is deleted. |
 | Houston Teams | `teams/` | Hosted multi-tenant agent pool w/ perms. **TBD.** |
 
 ## The 3 code libraries
@@ -19,7 +40,7 @@ Houston = open platform. Organized as **6 products + 3 code libraries**.
 |---------|-----|------|-----------|
 | Houston UI | `ui/` | `@houston-ai/*` React components | App, Mobile, future hosted products' frontends |
 | Houston Engine | `engine/` | Rust crates. **Frontend-agnostic backend.** Open source. Anyone self-hosts or uses as desktop-app backend. | App (via `app/houston-tauri` adapter), Always On, Teams, Cloud customers |
-| Houston Cloud | `cloud/` | Managed Engine deployments. **TBD.** | Third-party devs building on Engine |
+| Houston Cloud | `cloud/` + `packages/{host,host-cloud,runtime,code-sandbox,web}` | **LIVE (beta) / hosted POC evolving.** Current POC path: managed K8s engine pod/PVC per Supabase user, public open host/runtime image, private gateway. Existing per-turn Cloud Run docs remain for the scale-to-zero runtime/code-sandbox track. Start at `cloud/README.md`, `cloud/code-execution.md`, and `selfhost/README.md`. | Houston Web / hosted desktop users |
 
 ## Key distinction: Engine is standalone
 
@@ -33,8 +54,8 @@ Houston = open platform. Organized as **6 products + 3 code libraries**.
 
 | Dir | What |
 |-----|------|
-| `houston-relay/` | Cloudflare Worker + Durable Object at `tunnel.gethouston.ai`. Reverse-tunnel proxy (desktop engine dials outbound; mobile traffic multiplexes over that link) AND static host for the mobile PWA. One origin for both so Safari sees first-party traffic. Deploys separately. |
-| `examples/` | Reference consumers of `houston-engine` for third-party devs. First entry: `examples/smartbooks/` — a custom React frontend, own brand, zero `@houston-ai/*` UI deps. Lives in the monorepo (not a separate repo) so it stays in sync with protocol changes. |
+| ~~`houston-relay/`~~ **REMOVED** | Was the Cloudflare Worker + Durable Object at `tunnel.gethouston.ai` (reverse-tunnel proxy + static host for the mobile PWA). Deleted with the mobile/tunnel cut. |
+| ~~`examples/smartbooks/`~~ **REMOVED** | Was the reference custom-frontend consumer of `houston-engine` (own brand, zero `@houston-ai/*` UI deps). Deleted in the convergence sweep. |
 | `knowledge-base/` | These caveman docs. Loaded on demand. |
 | `scripts/` | Version bump, release, CLI binary fetch. |
 
@@ -159,12 +180,13 @@ the typed `.houston/<type>/<type>.json` layout.
 | Clear product dirs | ✅ done |
 | App ↔ Engine clear boundary | ✅ `app/houston-tauri` split |
 | UI standalone | ✅ |
+| Full desktop UI in the browser | ✅ `packages/web` composes `app/src` with `@tauri-apps/*` shimmed; typecheck + build green, parity guard in CI. Live engine click-through + web OAuth are the open follow-ups (see `packages/web/README.md`) |
 | Engine reusable by non-Tauri frontends | ✅ binary ships as Tauri sidecar + standalone; desktop app consumes it over HTTP/WS, no in-process coupling |
-| Reference custom-frontend integration | ✅ `examples/smartbooks/` — Vite + React, own brand, ~400 LOC TSX, proven end-to-end |
-| Always On | ✅ Dockerfile + compose + systemd unit + README all shipped |
-| Teams / Cloud | 🟡 Identity foundation shipped (Supabase Google SSO + Keychain sessions — see `knowledge-base/auth.md`); Cloud API surface TBD |
+| Reference custom-frontend integration | ➖ `examples/smartbooks/` was shipped, then REMOVED in the convergence sweep |
+| Always On | ➖ `always-on/` was shipped, then REMOVED; the TS-host self-host path is `selfhost/` |
+| Teams / Cloud | 🟢 Cloud is LIVE (beta): per-turn Cloud Run hosting + locked-down code sandbox + GCS workspaces + connect-once subscriptions, behind the host cloud profile (`packages/host` + closed `packages/host-cloud`). Teams (org workspaces, per-seat) modeled but not built. |
 | Store populated | 🟡 release-bundled MVP: `store/catalog.json` + `store/agents/*`; community sharing TBD |
-| Binary file read route (xlsx, pdf download through HTTP) | ❌ workaround: use `/v1/shell` with `open`/`xdg-open` to hand binary files to host OS |
+| Binary file read route (xlsx, pdf download through HTTP) | ✅ Host file routes serve preview/download for web; desktop keeps OS open/reveal affordances. |
 | Windows support (Rust engine layer) | ✅ `cargo check --target x86_64-pc-windows-gnu` clean across the workspace; platform-specific branches (taskkill vs kill, PATH separator, symlink_dir) covered. See `knowledge-base/platform-matrix.md`. |
 
 ## Direction of work

@@ -15,7 +15,10 @@ export function prettifyAuthError(raw: string): string {
   if (msg.includes("aadsts50020") || msg.includes("does not exist in tenant")) {
     return "Your Microsoft account isn't allowed in this Houston workspace. Try a different account, or ask your admin to invite it.";
   }
-  if (msg.includes("aadsts700016") || msg.includes("application with identifier")) {
+  if (
+    msg.includes("aadsts700016") ||
+    msg.includes("application with identifier")
+  ) {
     return "Microsoft sign-in isn't fully configured for Houston yet. Please contact support.";
   }
   if (msg.includes("aadsts65001") || msg.includes("consent")) {
@@ -27,7 +30,10 @@ export function prettifyAuthError(raw: string): string {
   if (msg.includes("provider") && msg.includes("not enabled")) {
     return "This sign-in option isn't turned on for Houston yet. Try another option.";
   }
-  if (msg.includes("otp") || (msg.includes("token") && msg.includes("expired"))) {
+  if (
+    msg.includes("otp") ||
+    (msg.includes("token") && msg.includes("expired"))
+  ) {
     return "That code is wrong or expired. Request a new one and try again.";
   }
   if (msg.includes("authorization code")) {

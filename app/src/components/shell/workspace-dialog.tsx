@@ -1,26 +1,26 @@
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
   Button,
+  cn,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   Spinner,
-  cn,
 } from "@houston-ai/core";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { tauriProvider, tauriStore } from "../../lib/tauri";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
-import { useWorkspaceStore } from "../../stores/workspaces";
 import { useUIStore } from "../../stores/ui";
-import { WorkspaceSetupFlow } from "./workspace-setup-flow";
+import { useWorkspaceStore } from "../../stores/workspaces";
 import { createPersonalAssistantForWorkspace } from "../onboarding/create-personal-assistant";
 import {
   buildAssistantInstructions,
   defaultAssistantSetup,
 } from "../onboarding/personal-assistant-artifacts";
+import { WorkspaceSetupFlow } from "./workspace-setup-flow";
 
 export function CreateWorkspaceDialog({
   open,
@@ -74,7 +74,12 @@ export function CreateWorkspaceDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) handleClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) handleClose();
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t("shell:workspaceDialog.title")}</DialogTitle>
@@ -83,6 +88,7 @@ export function CreateWorkspaceDialog({
           {(["new", "github"] as const).map((item) => (
             <button
               key={item}
+              type="button"
               onClick={() => setTab(item)}
               className={cn(
                 "rounded-full px-3 py-1.5 text-sm transition-colors",
@@ -143,7 +149,10 @@ export function CreateWorkspaceDialog({
               <input
                 type="text"
                 value={importUrl}
-                onChange={(e) => { setImportUrl(e.target.value); setImportError(""); }}
+                onChange={(e) => {
+                  setImportUrl(e.target.value);
+                  setImportError("");
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && importUrl.trim() && !importing) {
                     void handleImportWorkspace();
@@ -159,10 +168,16 @@ export function CreateWorkspaceDialog({
                 disabled={!importUrl.trim() || importing}
                 className="shrink-0 rounded-full"
               >
-                {importing ? <Spinner className="size-4" /> : t("shell:workspaceDialog.githubImport")}
+                {importing ? (
+                  <Spinner className="size-4" />
+                ) : (
+                  t("shell:workspaceDialog.githubImport")
+                )}
               </Button>
             </div>
-            {importError && <p className="text-xs text-destructive">{importError}</p>}
+            {importError && (
+              <p className="text-xs text-destructive">{importError}</p>
+            )}
             {importing && (
               <div className="flex flex-col items-center gap-2 py-4">
                 <Spinner className="size-5 text-muted-foreground" />

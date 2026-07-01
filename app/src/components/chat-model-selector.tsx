@@ -1,20 +1,26 @@
-import { useTranslation } from "react-i18next";
-import { ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
+  DropdownMenuTrigger,
 } from "@houston-ai/core";
-import { PROVIDERS, getProvider, getModel } from "../lib/providers";
+import { ChevronDown } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useCapabilities } from "../hooks/use-capabilities";
+import { useProviderStatuses } from "../hooks/use-provider-statuses";
+import { newEngineActive } from "../lib/engine";
 import {
   providerPickerState,
   shouldShowProviderInPicker,
 } from "../lib/model-picker";
-import { useProviderStatuses } from "../hooks/use-provider-statuses";
+import { osIsTauri } from "../lib/os-bridge";
 import {
-  ProviderModelGroup,
-  ProviderIcon,
-} from "./chat-model-selector-parts";
+  EMPTY_PROVIDER_CAPABILITIES,
+  getModel,
+  getProvider,
+  getVisibleProviders,
+  PROVIDERS,
+} from "../lib/providers";
+import { ProviderIcon, ProviderModelGroup } from "./chat-model-selector-parts";
 
 interface ChatModelSelectorProps {
   /** Current provider id (from agent config / per-mission override). */
@@ -23,30 +29,62 @@ interface ChatModelSelectorProps {
   model: string;
   /**
    * Called when the user picks a provider + model. The provider is never
-   * locked: picking a different provider mid-conversation is supported, and
-   * the consumer (`use-agent-chat-panel`) stages the handoff so the engine
-   * carries context across.
+   * locked: switching to a different provider mid-conversation is supported.
+   * The runtime resolves the provider per turn and continues the same
+   * conversation, and the consumer (`use-agent-chat-panel`) stages the handoff
+   * so the engine carries context across.
    */
   onSelect: (provider: string, model: string) => void;
+  /**
+   * Optional controlled open state so another surface can pop the picker open —
+   * e.g. a `model_unavailable` error card's "Pick another model" CTA. Omit both
+   * to leave the dropdown uncontrolled (its default trigger-click behavior).
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function ChatModelSelector({
   provider,
   model,
   onSelect,
+  open,
+  onOpenChange,
 }: ChatModelSelectorProps) {
   const { t } = useTranslation("chat");
   const { statuses, isLoading } = useProviderStatuses();
+  const { capabilities } = useCapabilities();
+  const newEngine = newEngineActive();
+  const providerCapabilities =
+    capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
+  const visibleProviders = getVisibleProviders({
+    newEngine,
+    desktop: osIsTauri(),
+    capabilities: providerCapabilities,
+  });
 
   const currentProvider = getProvider(provider);
   const currentModel = getModel(provider, model);
-  const displayLabel = currentModel?.label ?? currentProvider?.subtitle ?? t("modelSelector.selectModel");
+  const displayLabel =
+    currentModel?.label ??
+    // A local OpenAI-compatible model isn't in the static catalog, so show the
+    // engine-reported configured model id (then the raw selection) rather than
+    // falling through to the provider subtitle.
+    statuses[provider]?.active_model ??
+    (model || undefined) ??
+    currentProvider?.subtitle ??
+    t("modelSelector.selectModel");
 
   return (
     // Stop pointer events from bubbling — prevents the board detail panel
     // from interpreting dropdown clicks as "click outside → close panel".
-    <div onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-      <DropdownMenu>
+    <fieldset
+      className="contents border-0 p-0 m-0"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      <DropdownMenu open={open} onOpenChange={onOpenChange}>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
@@ -63,6 +101,7 @@ export function ChatModelSelector({
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           {PROVIDERS.map((prov, idx) => {
+            if (!visibleProviders.some((p) => p.id === prov.id)) return null;
             const state = providerPickerState(statuses[prov.id], isLoading);
             const isActiveProvider = prov.id === provider;
             // Keep every provider visible while statuses are still loading so
@@ -86,6 +125,7 @@ export function ChatModelSelector({
                 state={state}
                 isActiveProvider={isActiveProvider}
                 activeModel={isActiveProvider ? model : null}
+                runtimeModelId={statuses[prov.id]?.active_model}
                 onSelect={onSelect}
                 showSeparator={idx > 0}
               />
@@ -93,6 +133,6 @@ export function ChatModelSelector({
           })}
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
+    </fieldset>
   );
 }

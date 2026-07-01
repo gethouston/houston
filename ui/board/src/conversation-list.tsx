@@ -1,36 +1,39 @@
-import { Card, Badge } from "@houston-ai/core"
-import { MessageSquare } from "lucide-react"
-import type { ConversationEntry } from "./types"
+import { Badge, Card } from "@houston-ai/core";
+import { MessageSquare } from "lucide-react";
+import type { ConversationEntry } from "./types";
 
 export interface ConversationListProps {
-  entries: ConversationEntry[]
-  onSelect: (entry: ConversationEntry) => void
+  entries: ConversationEntry[];
+  onSelect: (entry: ConversationEntry) => void;
 }
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+const STATUS_VARIANT: Record<
+  string,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
   running: "default",
   needs_you: "destructive",
   done: "secondary",
   cancelled: "outline",
-}
+};
 
 const STATUS_LABEL: Record<string, string> = {
   running: "Running",
   needs_you: "Needs you",
   done: "Done",
   cancelled: "Cancelled",
-}
+};
 
 function formatRelative(iso?: string): string {
-  if (!iso) return ""
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60_000)
-  if (mins < 1) return "just now"
-  if (mins < 60) return `${mins}m ago`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 export function ConversationList({ entries, onSelect }: ConversationListProps) {
@@ -77,5 +80,5 @@ export function ConversationList({ entries, onSelect }: ConversationListProps) {
         </Card>
       ))}
     </div>
-  )
+  );
 }

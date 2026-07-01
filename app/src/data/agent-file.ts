@@ -6,7 +6,7 @@
  * and over the engine REST route tomorrow.
  */
 
-import Ajv, { type ValidateFunction, type Schema } from "ajv";
+import Ajv, { type Schema, type ValidateFunction } from "ajv";
 import { logger } from "../lib/logger";
 import { tauriAgent } from "../lib/tauri";
 
@@ -72,7 +72,11 @@ export async function writeAgentJson<T>(
       JSON.stringify(validate.errors),
     );
   }
-  await tauriAgent.writeFile(agentPath, relPath(name), JSON.stringify(data, null, 2));
+  await tauriAgent.writeFile(
+    agentPath,
+    relPath(name),
+    JSON.stringify(data, null, 2),
+  );
 }
 
 /** UUID via the Web Crypto API — good enough for in-UI ids. */

@@ -1,10 +1,10 @@
 import * as Sentry from "@sentry/browser";
+import { sentrySendInDevEnabled } from "./sentry-dev";
 import {
   eventIdFromEnvelope,
   isAcceptedStatus,
   resolveCapturedEventId,
 } from "./sentry-transport";
-import { sentrySendInDevEnabled } from "./sentry-dev";
 
 // __SENTRY_DSN__ baked at build time by Vite (see vite.config.ts). Empty
 // string in dev / forks → init bails, every capture is a silent no-op.

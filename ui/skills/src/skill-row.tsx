@@ -5,38 +5,38 @@
  * clickable; delete tucked into an overflow menu.
  */
 import {
-  cn,
   Button,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@houston-ai/core"
-import { MoreHorizontal, Trash2 } from "lucide-react"
-import type { Skill } from "./types"
+} from "@houston-ai/core";
+import { MoreHorizontal, Trash2 } from "lucide-react";
+import type { Skill } from "./types";
 
 export interface SkillRowProps {
-  skill: Skill
-  onClick: () => void
-  onDelete?: () => void
+  skill: Skill;
+  onClick: () => void;
+  onDelete?: () => void;
 }
 
 export function SkillRow({ skill, onClick, onDelete }: SkillRowProps) {
-  const displayName = humanizeSkillName(skill.name)
+  const displayName = humanizeSkillName(skill.name);
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
-      role="button"
-      tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onClick()
+          e.preventDefault();
+          onClick();
         }
       }}
       className={cn(
-        "group flex items-start gap-3 px-5 py-4 cursor-pointer",
+        "group flex items-start gap-3 px-5 py-4 cursor-pointer w-full text-left",
+        "bg-transparent border-0 p-0",
         "transition-colors duration-150",
         "hover:bg-black/[0.03]",
         "focus-visible:outline-none focus-visible:bg-black/[0.03]",
@@ -53,32 +53,35 @@ export function SkillRow({ skill, onClick, onDelete }: SkillRowProps) {
         )}
       </div>
       {onDelete && (
-        <div onClick={(e) => e.stopPropagation()} className="shrink-0 -mr-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="More actions"
-              >
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                <Trash2 className="size-3.5" />
-                Delete action
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="More actions"
+              className="shrink-0 -mr-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem variant="destructive" onClick={onDelete}>
+              <Trash2 className="size-3.5" />
+              Delete action
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
-    </div>
-  )
+    </button>
+  );
 }
 
 function humanizeSkillName(slug: string): string {
-  const spaced = slug.replace(/[-_]+/g, " ").trim()
-  if (spaced.length === 0) return slug
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+  // Tolerate a missing/empty identity: a display helper must never crash the
+  // whole view. Degrade gracefully rather than throw on `undefined`.
+  if (!slug) return "";
+  const spaced = slug.replace(/[-_]+/g, " ").trim();
+  if (spaced.length === 0) return slug;
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }

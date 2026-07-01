@@ -17,6 +17,6 @@
     "framer-motion": "^12.38.0"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo --noEmit"
   }
 }

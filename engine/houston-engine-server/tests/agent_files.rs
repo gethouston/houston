@@ -237,3 +237,53 @@ async fn seed_schemas_and_migrate() {
         .unwrap();
     assert!(m.status().is_success());
 }
+
+#[tokio::test]
+async fn download_returns_raw_bytes_with_headers() {
+    let (addr, tok, agent_path, _docs) = spawn_with_agent().await;
+    let c = reqwest::Client::new();
+
+    let payload: Vec<u8> = vec![0x50, 0x4b, 0x03, 0x04, 0xff, 0x00, 0x80];
+    std::fs::write(std::path::Path::new(&agent_path).join("deck.pptx"), &payload).unwrap();
+
+    let res = c
+        .get(format!("http://{addr}/v1/agents/files/download"))
+        .query(&[("agent_path", agent_path.as_str()), ("rel_path", "deck.pptx")])
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap();
+    assert!(res.status().is_success());
+    assert_eq!(
+        res.headers()["content-type"],
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    );
+    let dispo = res.headers()["content-disposition"].to_str().unwrap().to_string();
+    assert!(dispo.contains("attachment"));
+    assert!(dispo.contains("deck.pptx"));
+    assert_eq!(res.bytes().await.unwrap().to_vec(), payload);
+}
+
+#[tokio::test]
+async fn download_traversal_rejected_and_missing_404() {
+    let (addr, tok, agent_path, _docs) = spawn_with_agent().await;
+    let c = reqwest::Client::new();
+
+    let bad = c
+        .get(format!("http://{addr}/v1/agents/files/download"))
+        .query(&[("agent_path", agent_path.as_str()), ("rel_path", "../escape.txt")])
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(bad.status(), 400);
+
+    let miss = c
+        .get(format!("http://{addr}/v1/agents/files/download"))
+        .query(&[("agent_path", agent_path.as_str()), ("rel_path", "nope.pdf")])
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(miss.status(), 404);
+}

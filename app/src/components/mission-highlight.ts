@@ -48,14 +48,19 @@ const REGEXP_SPECIALS = /[.*+?^${}()|[\]\\]/g;
 function phrasePattern(phrase: string): string {
   const words = phrase.split(/\s+/).filter(Boolean);
   if (words.length === 0) return "";
-  return words.map((word) => word.replace(REGEXP_SPECIALS, "\\$&")).join("\\s+");
+  return words
+    .map((word) => word.replace(REGEXP_SPECIALS, "\\$&"))
+    .join("\\s+");
 }
 
 /**
  * Whether `text` contains `phrase` (case- and accent-insensitive, whitespace
  * between words flexible). `phrase` must already be folded.
  */
-export function matchesPhrase(text: string | undefined, phrase: string): boolean {
+export function matchesPhrase(
+  text: string | undefined,
+  phrase: string,
+): boolean {
   const pattern = phrasePattern(phrase);
   if (!text || !pattern) return false;
   return new RegExp(pattern).test(foldForSearch(text));
@@ -66,15 +71,17 @@ export function matchesPhrase(text: string | undefined, phrase: string): boolean
  * must already be folded; a multi-word phrase matches contiguously (flexible
  * whitespace), never as scattered words. Sorted, with overlaps merged.
  */
-export function findHighlightRanges(text: string, phrase: string): HighlightRange[] {
+export function findHighlightRanges(
+  text: string,
+  phrase: string,
+): HighlightRange[] {
   const pattern = phrasePattern(phrase);
   if (!text || !pattern) return [];
 
   const { folded, map } = foldWithMap(text);
   const re = new RegExp(pattern, "g");
   const ranges: HighlightRange[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(folded)) !== null) {
+  for (let match = re.exec(folded); match !== null; match = re.exec(folded)) {
     if (match[0].length === 0) {
       re.lastIndex += 1;
       continue;

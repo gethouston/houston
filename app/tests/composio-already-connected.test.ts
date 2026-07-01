@@ -30,7 +30,10 @@ describe("composio already-connected classifier (HOU-463)", () => {
 
   it("does NOT match other engine error kinds (they still bug-toast + report)", () => {
     strictEqual(isAlreadyConnectedError({ kind: "internal" }), false);
-    strictEqual(isAlreadyConnectedError({ kind: "composio_login_timeout" }), false);
+    strictEqual(
+      isAlreadyConnectedError({ kind: "composio_login_timeout" }),
+      false,
+    );
     strictEqual(isAlreadyConnectedError({ kind: "rate_limited" }), false);
   });
 

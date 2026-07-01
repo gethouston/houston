@@ -12,8 +12,7 @@ export const queryKeys = {
   skillDetail: (agentPath: string, name: string) =>
     ["skill-detail", agentPath, name] as const,
   files: (agentPath: string) => ["files", agentPath] as const,
-  instructions: (agentPath: string) =>
-    ["instructions", agentPath] as const,
+  instructions: (agentPath: string) => ["instructions", agentPath] as const,
   config: (agentPath: string) => ["config", agentPath] as const,
   routines: (agentPath: string) => ["routines", agentPath] as const,
   learnings: (agentPath: string) => ["learnings", agentPath] as const,
@@ -21,21 +20,38 @@ export const queryKeys = {
     routineId
       ? (["routine-runs", agentPath, routineId] as const)
       : (["routine-runs", agentPath] as const),
-  conversations: (agentPath: string) =>
-    ["conversations", agentPath] as const,
+  conversations: (agentPath: string) => ["conversations", agentPath] as const,
   allConversations: (agentPaths: string[]) =>
     ["all-conversations", ...agentPaths] as const,
   chatHistory: (agentPath: string, sessionKey: string) =>
     ["chat-history", agentPath, sessionKey] as const,
 
   // App-scoped (less reactive, loaded on init)
-  connections: () => ["connections"] as const,
-  composioApps: () => ["composio-apps"] as const,
-  connectedToolkits: () => ["connected-toolkits"] as const,
   /**
    * Provider connection statuses for the chat model picker. Invalidated on
    * `ProviderLoginComplete` so a fresh sign-in flips the picker live instead
    * of waiting for the next mount (issue #342).
    */
-  providerStatuses: () => ["provider-statuses"] as const,
+  providerStatuses: (providers?: readonly string[] | null) =>
+    providers
+      ? (["provider-statuses", ...providers] as const)
+      : (["provider-statuses"] as const),
+  capabilities: () => ["capabilities"] as const,
+
+  /**
+   * The one-time post-migration "reconnect your AI" gate. `migrationReconnect`
+   * holds the host's `chatHistoryMigrated` flag (does this install come from the
+   * legacy desktop build); `migrationReconnectDismissed` holds the persisted
+   * "already seen" flag. Both rarely change, so they are app-scoped.
+   */
+  migrationReconnect: () => ["migration-reconnect"] as const,
+  migrationReconnectDismissed: () => ["migration-reconnect-dismissed"] as const,
+
+  // Integrations are user-level (shared across the user's agents), so they are
+  // NOT keyed by agentPath even though they surface in a per-agent tab.
+  integrationStatus: () => ["integration-status"] as const,
+  integrationConnections: (provider: string) =>
+    ["integration-connections", provider] as const,
+  integrationToolkits: (provider: string) =>
+    ["integration-toolkits", provider] as const,
 };

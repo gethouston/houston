@@ -1,6 +1,6 @@
-import { useLayoutEffect, useRef, useState } from "react";
 import { Input } from "@houston-ai/core";
 import { Loader2, Search, X } from "lucide-react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 interface MissionSearchInputLabels {
   placeholder: string;
@@ -54,10 +54,14 @@ export function MissionSearchInput({
       const font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
       const available = Math.max(
         0,
-        el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0),
+        el.clientWidth -
+          (parseFloat(cs.paddingLeft) || 0) -
+          (parseFloat(cs.paddingRight) || 0),
       );
       // +4px so it switches just before the text would actually clip.
-      setPlaceholder(textWidth(full, font) + 4 <= available ? full : placeholderShort);
+      setPlaceholder(
+        textWidth(full, font) + 4 <= available ? full : placeholderShort,
+      );
     };
     update();
     const observer = new ResizeObserver(update);
@@ -76,7 +80,7 @@ export function MissionSearchInput({
         placeholder={placeholder}
         aria-label={full}
         autoComplete="off"
-        className="rounded-full border-border bg-background pl-9 pr-16 text-sm focus:bg-background"
+        className="rounded-full border-border bg-transparent pl-9 pr-16 text-sm focus:bg-transparent"
       />
       {isSearchingText && (
         <Loader2

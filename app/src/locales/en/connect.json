@@ -1,0 +1,20 @@
+{
+  "title": "Connect Houston",
+  "subtitle": "Choose how Houston connects to its engine.",
+  "local": {
+    "title": "Use this computer",
+    "description": "Run Houston privately on this device."
+  },
+  "remote": {
+    "title": "Connect to a remote engine",
+    "description": "Point Houston at an engine running in the cloud or on your network."
+  },
+  "url": {
+    "title": "Remote engine",
+    "description": "Enter the address of your Houston engine or gateway.",
+    "placeholder": "https://engine.example.com",
+    "invalid": "Enter a valid http or https address.",
+    "back": "Back",
+    "continue": "Continue"
+  }
+}

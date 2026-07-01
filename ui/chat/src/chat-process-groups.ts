@@ -36,7 +36,10 @@ function contentOnly(message: ChatMessage): ChatMessage {
   };
 }
 
-function segmentFrom(message: ChatMessage, sourceIndex: number): ChatProcessSegment {
+function segmentFrom(
+  message: ChatMessage,
+  sourceIndex: number,
+): ChatProcessSegment {
   return {
     key: message.key,
     sourceIndex,
@@ -90,7 +93,11 @@ export function getChatDisplayItems(
 
     if (messageHasContent) {
       flushProcess(false, false);
-      items.push({ kind: "message", message: contentOnly(message), sourceIndex });
+      items.push({
+        kind: "message",
+        message: contentOnly(message),
+        sourceIndex,
+      });
     } else if (!messageHasProcess) {
       items.push({ kind: "message", message, sourceIndex });
     }

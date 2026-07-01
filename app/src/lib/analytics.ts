@@ -34,6 +34,8 @@ export type AnalyticsEventName =
   // Onboarding
   | "onboarding_started"
   | "onboarding_completed"
+  // One-time "reconnect your AI" moment after upgrading from the legacy build.
+  | "migration_reconnect_completed"
   // Onboarding funnel (acquisition→activation) — one event per step the user
   // actually clears, so a single PostHog funnel can show where first-run drops
   // off (broken down by `app_os` for Mac vs Windows). Action-first: where a
@@ -211,10 +213,26 @@ function daysBetween(fromISO: string, toISO: string): number {
 
 export function classifyAnalyticsError(message: string): string {
   const lower = message.toLowerCase();
-  if (lower.includes("auth") || lower.includes("token") || lower.includes("login")) return "auth";
-  if (lower.includes("network") || lower.includes("fetch") || lower.includes("timeout")) return "network";
-  if (lower.includes("permission") || lower.includes("denied")) return "permission";
-  if (lower.includes("provider") || lower.includes("openai") || lower.includes("anthropic")) return "provider";
+  if (
+    lower.includes("auth") ||
+    lower.includes("token") ||
+    lower.includes("login")
+  )
+    return "auth";
+  if (
+    lower.includes("network") ||
+    lower.includes("fetch") ||
+    lower.includes("timeout")
+  )
+    return "network";
+  if (lower.includes("permission") || lower.includes("denied"))
+    return "permission";
+  if (
+    lower.includes("provider") ||
+    lower.includes("openai") ||
+    lower.includes("anthropic")
+  )
+    return "provider";
   if (
     lower.includes("unknown option") ||
     lower.includes("enoent") ||
@@ -361,7 +379,8 @@ export const analytics = {
   captureException: (error: unknown, props?: Props) => {
     if (!KEY) return;
     try {
-      const normalized = error instanceof Error ? error : new Error(String(error));
+      const normalized =
+        error instanceof Error ? error : new Error(String(error));
       posthog.captureException(normalized, cleanProps(props));
     } catch {
       // Analytics unavailable

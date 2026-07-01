@@ -1,15 +1,15 @@
+import type { KanbanItem } from "@houston-ai/board";
+import type { FeedItem } from "@houston-ai/chat";
+import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
 import { createElement, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { KanbanItem } from "@houston-ai/board";
-import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
-import type { FeedItem } from "@houston-ai/chat";
-import { useFeedStore } from "../../stores/feeds";
 import { useAllConversations } from "../../hooks/queries";
-import { useAgentCatalogStore } from "../../stores/agent-catalog";
-import { tauriActivity, tauriAttachments, tauriChat } from "../../lib/tauri";
 import { missionCardTags } from "../../lib/mission-card";
-import { AgentCardAvatar } from "../shell/agent-card-avatar";
+import { tauriActivity, tauriAttachments, tauriChat } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
+import { useAgentCatalogStore } from "../../stores/agent-catalog";
+import { useFeedStore } from "../../stores/feeds";
+import { AgentCardAvatar } from "../shell/agent-card-avatar";
 
 /**
  * Cross-agent archived data: every agent's *archived* missions on one list,
@@ -57,14 +57,22 @@ export function useMissionControlArchived(agents: Agent[]) {
   const items: KanbanItem[] = useMemo(() => {
     if (!convos) return [];
     const map: Record<string, string> = {};
-    const sessionMap: Record<string, { agentPath: string; activityId: string }> = {};
+    const sessionMap: Record<
+      string,
+      { agentPath: string; activityId: string }
+    > = {};
     const result = convos
       .filter((c) => c.type === "activity" && c.status === "archived")
       .map((c) => {
         const agent = agentMap[c.agent_path];
-        const agentModes = agent ? getAgentDef(agent.configId)?.config.agents : undefined;
+        const agentModes = agent
+          ? getAgentDef(agent.configId)?.config.agents
+          : undefined;
         map[c.id] = c.agent_path;
-        sessionMap[c.session_key] = { agentPath: c.agent_path, activityId: c.id };
+        sessionMap[c.session_key] = {
+          agentPath: c.agent_path,
+          activityId: c.id,
+        };
         return {
           id: c.id,
           title: c.title,
@@ -72,8 +80,10 @@ export function useMissionControlArchived(agents: Agent[]) {
           // words; never echo the raw `<!--houston:...-->` on the card (HOU-425).
           description: messagePreviewText(c.description),
           group: c.agent_name,
-          icon: createElement(AgentCardAvatar, { color: agentColorMap[c.agent_path] }),
-          status: c.status!,
+          icon: createElement(AgentCardAvatar, {
+            color: agentColorMap[c.agent_path],
+          }),
+          status: c.status ?? "archived",
           updatedAt: c.updated_at ?? new Date().toISOString(),
           tags: missionCardTags({
             agent: c.agent,
@@ -98,22 +108,29 @@ export function useMissionControlArchived(agents: Agent[]) {
   const sessionKeyFor = useCallback(
     (activityId: string) => {
       const item = items.find((i) => i.id === activityId);
-      return (item?.metadata?.sessionKey as string | undefined) ?? `activity-${activityId}`;
+      return (
+        (item?.metadata?.sessionKey as string | undefined) ??
+        `activity-${activityId}`
+      );
     },
     [items],
   );
 
-  const loadHistory = useCallback(async (sessionKey: string): Promise<FeedItem[]> => {
-    const agentPath = sessionMapRef.current[sessionKey]?.agentPath;
-    if (!agentPath) return [];
-    return (await tauriChat.loadHistory(agentPath, sessionKey)) as FeedItem[];
-  }, []);
+  const loadHistory = useCallback(
+    async (sessionKey: string): Promise<FeedItem[]> => {
+      const agentPath = sessionMapRef.current[sessionKey]?.agentPath;
+      if (!agentPath) return [];
+      return (await tauriChat.loadHistory(agentPath, sessionKey)) as FeedItem[];
+    },
+    [],
+  );
 
   const handleHistoryLoaded = useCallback(
     (sessionKey: string, history: FeedItem[]) => {
       const agentPath = sessionMapRef.current[sessionKey]?.agentPath;
       if (!agentPath) return;
-      const current = useFeedStore.getState().items[agentPath]?.[sessionKey] ?? [];
+      const current =
+        useFeedStore.getState().items[agentPath]?.[sessionKey] ?? [];
       setFeed(agentPath, sessionKey, mergeFeedHistory(history, current));
     },
     [setFeed],

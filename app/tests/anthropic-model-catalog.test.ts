@@ -1,9 +1,9 @@
-import { strictEqual, deepStrictEqual, ok } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  getModel,
   getContextWindowConfig,
   getEffortLevels,
+  getModel,
 } from "../src/lib/providers.ts";
 
 // Regression guards for HOU-618 (Sonnet 5 context window) plus the Fable 5

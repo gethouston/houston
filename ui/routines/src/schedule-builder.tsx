@@ -9,52 +9,38 @@
  * Conditional fields are wrapped in `Reveal` so they animate in/out (and the
  * card resizes) instead of snapping — switching units never makes the layout
  * jump. State and cron derivation live in useScheduleBuilder; this file is JSX.
- *
  * All visible text arrives via `labels` (English defaults) so the package stays
  * i18n-agnostic; `locale` drives day names + time formatting in the summary.
  */
-import type { ReactNode } from "react"
-import { AnimatePresence, motion } from "framer-motion"
-import { cn } from "@houston-ai/core"
-import type { SchedulePreset } from "./types"
-import { DEFAULT_SCHEDULE_LABELS, type ScheduleLabels } from "./labels"
-import { DayOfMonthPicker, WeekdaysPicker } from "./schedule-picker-fields"
-import { TimePicker } from "./time-picker"
-import { IntervalPicker } from "./schedule-interval-picker"
-import { useScheduleBuilder } from "./use-schedule-builder"
+
+import { cn } from "@houston-ai/core";
+import { AnimatePresence } from "framer-motion";
+import { DEFAULT_SCHEDULE_LABELS, type ScheduleLabels } from "./labels";
+import { IntervalPicker } from "./schedule-interval-picker";
+import { DayOfMonthPicker, WeekdaysPicker } from "./schedule-picker-fields";
+import { Reveal } from "./schedule-reveal";
+import { TimePicker } from "./time-picker";
+import type { SchedulePreset } from "./types";
+import { useScheduleBuilder } from "./use-schedule-builder";
 
 export interface ScheduleBuilderProps {
-  value: string
-  onChange: (cronExpression: string) => void
-  presets?: SchedulePreset[]
+  value: string;
+  onChange: (cronExpression: string) => void;
+  presets?: SchedulePreset[];
   /** Localized labels. Defaults to English so standalone callers still work. */
-  labels?: ScheduleLabels
+  labels?: ScheduleLabels;
   /** BCP-47 locale for day names + time formatting in the live summary. */
-  locale?: string
+  locale?: string;
 }
 
 const DEFAULT_PRESETS: SchedulePreset[] = [
-  "every_30min", "hourly", "daily", "weekly", "monthly", "custom",
-]
-
-/**
- * Animated wrapper for a field that conditionally appears. `layout` lets the
- * surrounding fields slide to their new positions as this one mounts/unmounts,
- * so the card grows and shrinks smoothly. Values per design-system.md.
- */
-function Reveal({ children }: { children: ReactNode }) {
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-    >
-      {children}
-    </motion.div>
-  )
-}
+  "every_30min",
+  "hourly",
+  "daily",
+  "weekly",
+  "monthly",
+  "custom",
+];
 
 export function ScheduleBuilder({
   value,
@@ -76,10 +62,10 @@ export function ScheduleBuilder({
     isCustom,
     showTime,
     summary,
-  } = useScheduleBuilder(value, onChange, labels, locale)
+  } = useScheduleBuilder(value, onChange, labels, locale);
 
   const showCustomTime =
-    isCustom && (intervalUnit === "days" || intervalUnit === "months")
+    isCustom && (intervalUnit === "days" || intervalUnit === "months");
 
   return (
     <div className="space-y-4">
@@ -87,6 +73,7 @@ export function ScheduleBuilder({
       <div className="flex flex-wrap gap-1.5">
         {presets.map((preset) => (
           <button
+            type="button"
             key={preset}
             onClick={() => selectPreset(preset)}
             className={cn(
@@ -122,9 +109,9 @@ export function ScheduleBuilder({
           {activePreset === "weekly" && (
             <Reveal key="weekly-days">
               <WeekdaysPicker
-                label={labels.onTheseDays}
+                label={labels.weekdaysLabel}
                 locale={locale}
-                shortcuts={labels.shortcuts}
+                shortcuts={labels.weekdayShortcuts}
                 value={options.daysOfWeek}
                 onChange={(daysOfWeek) => updateOption({ daysOfWeek })}
               />
@@ -146,6 +133,7 @@ export function ScheduleBuilder({
               <IntervalPicker
                 label={labels.repeatEvery}
                 units={labels.units}
+                unitsSingular={labels.unitsSingular}
                 decreaseLabel={labels.decrease}
                 increaseLabel={labels.increase}
                 every={intervalEvery}
@@ -181,5 +169,5 @@ export function ScheduleBuilder({
         </AnimatePresence>
       </div>
     </div>
-  )
+  );
 }

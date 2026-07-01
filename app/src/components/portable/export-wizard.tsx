@@ -11,26 +11,20 @@
  * h1, progress dots beside the eyebrow (close button owns the right
  * corner). Switches match the routine editor.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
-import {
-  Button,
-  cn,
-  Dialog,
-  DialogContent,
-  Switch,
-} from "@houston-ai/core";
-import { useUIStore } from "../../stores/ui";
-import { useAgentStore } from "../../stores/agents";
-import { getEngine } from "../../lib/engine";
-import { osRevealPath } from "../../lib/os-bridge";
-import { analytics } from "../../lib/analytics";
-import { IntegrationLogos } from "../integration-logos";
+
+import { Button, cn, Dialog, DialogContent, Switch } from "@houston-ai/core";
 import type {
   PortableAnonymizeResponse,
   PortableInventoryPreview,
 } from "@houston-ai/engine-client";
+import { invoke } from "@tauri-apps/api/core";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { analytics } from "../../lib/analytics";
+import { getEngine } from "../../lib/engine";
+import { osRevealPath } from "../../lib/os-bridge";
+import { useAgentStore } from "../../stores/agents";
+import { useUIStore } from "../../stores/ui";
 
 type Step = 1 | 2 | 3;
 
@@ -108,7 +102,7 @@ export function ExportAgentWizard() {
         setLoading(false);
       }
     })();
-  }, [agentId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [agentId, agent?.folderPath, addToast, setAgentId, t]);
 
   const counts = useMemo(
     () => ({
@@ -269,7 +263,9 @@ export function ExportAgentWizard() {
 
         <div className="flex-1 min-h-0 overflow-y-auto px-8 pt-2 pb-6">
           {loading ? (
-            <p className="text-sm text-muted-foreground">{t("export.loading")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("export.loading")}
+            </p>
           ) : !preview ? (
             <p className="text-sm text-muted-foreground">
               {t("export.errors.noPreview")}
@@ -304,7 +300,9 @@ export function ExportAgentWizard() {
         <footer className="shrink-0 px-8 py-4 flex items-center justify-between">
           <button
             type="button"
-            onClick={() => (step > 1 ? setStep((step - 1) as Step) : handleClose())}
+            onClick={() =>
+              step > 1 ? setStep((step - 1) as Step) : handleClose()
+            }
             className="text-sm text-muted-foreground hover:text-foreground"
           >
             {step > 1 ? t("export.actions.back") : t("export.actions.cancel")}
@@ -395,11 +393,6 @@ function PickStep({
               onChange={() => toggleSkill(s.slug)}
               title={humanize(s.slug)}
               subtitle={s.description}
-              trailing={
-                s.integrations.length > 0 ? (
-                  <IntegrationLogos toolkits={s.integrations} />
-                ) : null
-              }
             />
           ))}
         </Section>
@@ -414,11 +407,6 @@ function PickStep({
               onChange={() => toggleRoutine(r.id)}
               title={r.name}
               subtitle={r.description || r.promptExcerpt}
-              trailing={
-                r.integrations.length > 0 ? (
-                  <IntegrationLogos toolkits={r.integrations} />
-                ) : null
-              }
             />
           ))}
         </Section>
@@ -515,7 +503,10 @@ function AnonymizeStep({
                   onToggle={() =>
                     setAccept({
                       ...accept,
-                      skills: { ...accept.skills, [s.id]: !accept.skills[s.id] },
+                      skills: {
+                        ...accept.skills,
+                        [s.id]: !accept.skills[s.id],
+                      },
                     })
                   }
                 />
@@ -589,7 +580,10 @@ function SaveStep({
       </header>
 
       <dl className="space-y-2 text-sm">
-        <SummaryRow label={t("export.step3.skillsLabel")} value={counts.skills} />
+        <SummaryRow
+          label={t("export.step3.skillsLabel")}
+          value={counts.skills}
+        />
         <SummaryRow
           label={t("export.step3.routinesLabel")}
           value={counts.routines}
@@ -633,7 +627,8 @@ function ProgressDots({ index, total }: { index: number; total: number }) {
     <div className="flex items-center gap-1.5" aria-hidden>
       {Array.from({ length: total }, (_, i) => (
         <span
-          key={i}
+          // biome-ignore lint/suspicious/noArrayIndexKey: dots are positional counters — no identity field exists; order is invariant
+          key={`dot-${i}`}
           className={cn(
             "size-2 rounded-full transition-colors",
             i < index && "bg-foreground/60",
@@ -756,7 +751,11 @@ function DiffCard({
         </button>
       </header>
       <div className="grid grid-cols-2 gap-3">
-        <Pane label={t("export.step2.before")} body={before} dimmed={accepted} />
+        <Pane
+          label={t("export.step2.before")}
+          body={before}
+          dimmed={accepted}
+        />
         <Pane label={t("export.step2.after")} body={after} dimmed={!accepted} />
       </div>
       <p className="text-xs text-muted-foreground mt-3">{summary}</p>

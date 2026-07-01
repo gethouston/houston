@@ -142,11 +142,7 @@ export type ProviderError =
   | { kind: "cancelled"; provider: string }
   | { kind: "unknown"; provider: string; raw_excerpt: string };
 
-export type QuotaScope =
-  | "free_tier"
-  | "paid_plan"
-  | "organization"
-  | "unknown";
+export type QuotaScope = "free_tier" | "paid_plan" | "organization" | "unknown";
 
 export type ModelUnavailableReason =
   | "preview_gated"

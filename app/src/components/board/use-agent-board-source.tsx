@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-import { useUIStore } from "../../stores/ui";
 import { resolvePendingActivitySelection } from "../../lib/notification-nav";
-import { useMissionSearch } from "../use-mission-search";
+import type { Agent, AgentDefinition } from "../../lib/types";
+import { useUIStore } from "../../stores/ui";
 import { MissionBoardEmptyState } from "../mission-board-empty-state";
 import { AgentCardAvatar } from "../shell/agent-card-avatar";
-import { useAgentBoardData } from "./use-agent-board-data";
-import { useAgentBoardSend } from "./use-agent-board-send";
-import { useAgentBoardSelection } from "./use-agent-board-selection";
-import { useAgentNewMission } from "./use-agent-new-mission";
+import { useMissionSearch } from "../use-mission-search";
 import type { BoardSource } from "./board-source";
-import type { Agent, AgentDefinition } from "../../lib/types";
+import { useAgentBoardData } from "./use-agent-board-data";
+import { useAgentBoardSelection } from "./use-agent-board-selection";
+import { useAgentBoardSend } from "./use-agent-board-send";
+import { useAgentNewMission } from "./use-agent-new-mission";
 
 /**
  * Builds the {@link BoardSource} for a single agent's board tab: per-agent
@@ -20,14 +19,23 @@ import type { Agent, AgentDefinition } from "../../lib/types";
  * Control click publishes its target via `activityPanelId`, which this reused
  * tab reconciles on agent switch).
  */
-export function useAgentBoardSource(agent: Agent, agentDef: AgentDefinition): BoardSource {
+export function useAgentBoardSource(
+  agent: Agent,
+  agentDef: AgentDefinition,
+): BoardSource {
   const { t } = useTranslation(["board", "dashboard"]);
   const path = agent.folderPath;
 
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
-  const missionSearchQuery = useUIStore((s) => s.agentMissionSearchQueries[path] ?? "");
-  const setAgentMissionSearchQuery = useUIStore((s) => s.setAgentMissionSearchQuery);
-  const setAgentMissionSearchLoading = useUIStore((s) => s.setAgentMissionSearchLoading);
+  const missionSearchQuery = useUIStore(
+    (s) => s.agentMissionSearchQueries[path] ?? "",
+  );
+  const setAgentMissionSearchQuery = useUIStore(
+    (s) => s.setAgentMissionSearchQuery,
+  );
+  const setAgentMissionSearchLoading = useUIStore(
+    (s) => s.setAgentMissionSearchLoading,
+  );
   const addToast = useUIStore((s) => s.addToast);
 
   const pendingId = useUIStore((s) => s.activityPanelId);
@@ -71,7 +79,12 @@ export function useAgentBoardSource(agent: Agent, agentDef: AgentDefinition): Bo
   }, [pendingId, pendingForceOpen, clearPending, selectedId, missionPanelOpen]);
 
   const newMission = useAgentNewMission({ agentDef, selectedId });
-  const data = useAgentBoardData({ agent, agentDef, selectedId, setSelectedId });
+  const data = useAgentBoardData({
+    agent,
+    agentDef,
+    selectedId,
+    setSelectedId,
+  });
   const send = useAgentBoardSend({
     agent,
     agentDef,
@@ -127,7 +140,10 @@ export function useAgentBoardSource(agent: Agent, agentDef: AgentDefinition): Bo
     />
   ) : undefined;
 
-  const cardAvatar = useMemo(() => <AgentCardAvatar color={agent.color} />, [agent.color]);
+  const cardAvatar = useMemo(
+    () => <AgentCardAvatar color={agent.color} />,
+    [agent.color],
+  );
 
   return {
     variant: "agent",
@@ -155,7 +171,6 @@ export function useAgentBoardSource(agent: Agent, agentDef: AgentDefinition): Bo
     sendMessageNow: send.sendMessageNow,
     createConversation: send.createConversation,
     stopSession: send.stopSession,
-    onRunInTerminal: send.runInTerminal,
     onItemMove: data.handleItemMove,
     canDropItem: data.canDropItem,
     selection,

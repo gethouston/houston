@@ -18,14 +18,19 @@
  * placement stays consistent with the rest of the pill.
  */
 
-import type { ReactNode } from "react";
-import { Loader2 } from "lucide-react";
 import { AsyncButton } from "@houston-ai/core";
+import { Loader2 } from "lucide-react";
+import type { ReactNode } from "react";
 
 interface RowCardButtonProps {
   label: ReactNode;
-  /** Return the promise from async work to get the rage-click guard. */
-  onClick: () => void | Promise<unknown>;
+  /**
+   * Return the promise from async work to get the rage-click guard; a
+   * synchronous handler can just return nothing. Typed `unknown` (not
+   * `void | Promise`) so a fire-and-forget sync action and async work share
+   * one prop without tripping Biome's confusing-void-union rule.
+   */
+  onClick: () => unknown;
   icon?: ReactNode;
   iconPosition?: "leading" | "trailing";
   loading?: boolean;
@@ -49,7 +54,13 @@ export function RowCardButton({
       size="sm"
       spinner={false}
       disabled={disabled || loading}
-      onClick={onClick}
+      // AsyncButton wants `undefined | Promise<unknown>`; normalize a
+      // synchronous (void) handler to `undefined` while still handing the
+      // promise back from async work so the rage-click guard engages.
+      onClick={() => {
+        const result: unknown = onClick();
+        return result instanceof Promise ? result : undefined;
+      }}
       className="h-7 gap-1 rounded-full px-2.5 text-xs font-medium"
     >
       {loading ? (

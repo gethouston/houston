@@ -1,20 +1,19 @@
+import { AIBoard } from "@houston-ai/board";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AIBoard } from "@houston-ai/board";
-
-import { useUIStore } from "../../stores/ui";
-import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { openAgentHref } from "../../lib/open-href";
-import { useDetailPanelContainer } from "../shell/detail-panel-context";
-import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
-import { useAgentChatPanel } from "../use-agent-chat-panel";
+import type { Agent } from "../../lib/types";
+import { useAgentCatalogStore } from "../../stores/agent-catalog";
+import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
-import { useMissionSearch } from "../use-mission-search";
 import { MissionControlToolbar } from "../mission-control-toolbar";
+import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
+import { useDetailPanelContainer } from "../shell/detail-panel-context";
 import { ArchivedEmptyState } from "../tabs/archived-tab-search";
+import { useAgentChatPanel } from "../use-agent-chat-panel";
+import { useMissionSearch } from "../use-mission-search";
 import { useMissionControlArchived } from "./use-mission-control-archived";
 import { useMissionControlArchivedSend } from "./use-mission-control-archived-send";
-import type { Agent } from "../../lib/types";
 
 /**
  * Cross-agent Archived view for Mission Control. Same list UI as the per-agent
@@ -42,7 +41,10 @@ export function MissionControlArchived({
   const [filterPath, setFilterPath] = useState("");
   const [search, setSearch] = useState("");
   const agentFilteredItems = useMemo(
-    () => (filterPath ? data.items.filter((i) => i.metadata?.agentPath === filterPath) : data.items),
+    () =>
+      filterPath
+        ? data.items.filter((i) => i.metadata?.agentPath === filterPath)
+        : data.items,
     [data.items, filterPath],
   );
   const handleSearchError = useCallback(() => {
@@ -60,14 +62,17 @@ export function MissionControlArchived({
   });
 
   const selectedItem = data.selectedId
-    ? data.items.find((i) => i.id === data.selectedId) ?? null
+    ? (data.items.find((i) => i.id === data.selectedId) ?? null)
     : null;
   const activeAgent = selectedItem
-    ? data.agentMap[selectedItem.metadata?.agentPath as string] ?? null
+    ? (data.agentMap[selectedItem.metadata?.agentPath as string] ?? null)
     : null;
-  const activeAgentDef = activeAgent ? getAgentDef(activeAgent.configId) ?? null : null;
+  const activeAgentDef = activeAgent
+    ? (getAgentDef(activeAgent.configId) ?? null)
+    : null;
   const selectedSessionKey = selectedItem
-    ? (selectedItem.metadata?.sessionKey as string | undefined) ?? `activity-${selectedItem.id}`
+    ? ((selectedItem.metadata?.sessionKey as string | undefined) ??
+      `activity-${selectedItem.id}`)
     : null;
 
   const panel = useAgentChatPanel({
@@ -130,15 +135,21 @@ export function MissionControlArchived({
             />
           }
           onPanelOpenChange={setMissionPanelOpen}
-          onOpenLink={(url) => activeAgent && openAgentHref(url, activeAgent.folderPath)}
+          onOpenLink={(url) =>
+            activeAgent && openAgentHref(url, activeAgent.folderPath)
+          }
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           thinkingIndicator={panel.thinkingIndicator}
+          endOfTurnIndicator={panel.endOfTurnIndicator}
           panelAgentName={activeAgent?.name ?? selectedItem?.subtitle}
-          panelAvatar={<AgentPanelAvatar color={activeAgent?.color} running={false} />}
+          panelAvatar={
+            <AgentPanelAvatar color={activeAgent?.color} running={false} />
+          }
           cardLabels={{
             deleteTooltip: t("cardActions.deleteTooltip"),
-            deleteTitle: (name: string) => t("deleteCard.titleWithName", { name }),
+            deleteTitle: (name: string) =>
+              t("deleteCard.titleWithName", { name }),
             deleteDescription: t("deleteCard.description"),
           }}
           chatEmptyState={panel.chatEmptyState}
@@ -154,10 +165,7 @@ export function MissionControlArchived({
           renderToolResult={panel.renderToolResult}
           processLabels={panel.processLabels}
           getThinkingMessage={panel.getThinkingMessage}
-          endOfTurnIndicator={panel.endOfTurnIndicator}
           renderTurnSummary={panel.renderTurnSummary}
-          renderLink={panel.renderLink}
-          transformContent={panel.transformContent}
         />
       </div>
       {panel.pickerDialog}

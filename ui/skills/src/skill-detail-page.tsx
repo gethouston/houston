@@ -1,27 +1,27 @@
-import { useCallback, useEffect, useState } from "react"
 import {
-  cn,
   Button,
   ConfirmDialog,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@houston-ai/core"
-import { ArrowLeft, MoreHorizontal, Trash2 } from "lucide-react"
-import type { Skill } from "./types"
+} from "@houston-ai/core";
+import { ArrowLeft, MoreHorizontal, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import type { Skill } from "./types";
 
 export interface SkillDetailPageLabels {
-  notFound?: string
-  backAria?: string
-  saveChanges?: string
-  savingChanges?: string
-  moreOptions?: string
-  delete?: string
-  deleteTitle?: (name: string) => string
-  deleteDescription?: string
-  deleteConfirmLabel?: string
-  instructionsPlaceholder?: string
+  notFound?: string;
+  backAria?: string;
+  saveChanges?: string;
+  savingChanges?: string;
+  moreOptions?: string;
+  delete?: string;
+  deleteTitle?: (name: string) => string;
+  deleteDescription?: string;
+  deleteConfirmLabel?: string;
+  instructionsPlaceholder?: string;
 }
 
 const DEFAULT_LABELS: Required<SkillDetailPageLabels> = {
@@ -32,17 +32,18 @@ const DEFAULT_LABELS: Required<SkillDetailPageLabels> = {
   moreOptions: "More options",
   delete: "Delete skill",
   deleteTitle: (name) => `Delete "${name}"?`,
-  deleteDescription: "This removes the skill from your agent. You can reinstall it later.",
+  deleteDescription:
+    "This removes the skill from your agent. You can reinstall it later.",
   deleteConfirmLabel: "Delete",
   instructionsPlaceholder: "Instructions for this skill...",
-}
+};
 
 export interface SkillDetailPageProps {
-  skill: Skill | undefined
-  onBack: () => void
-  onSave: (skillName: string, instructions: string) => Promise<void>
-  onDelete: (skillName: string) => Promise<void>
-  labels?: SkillDetailPageLabels
+  skill: Skill | undefined;
+  onBack: () => void;
+  onSave: (skillName: string, instructions: string) => Promise<void>;
+  onDelete: (skillName: string) => Promise<void>;
+  labels?: SkillDetailPageLabels;
 }
 
 export function SkillDetailPage({
@@ -52,48 +53,50 @@ export function SkillDetailPage({
   onDelete,
   labels,
 }: SkillDetailPageProps) {
-  const l = { ...DEFAULT_LABELS, ...labels }
-  const [instructions, setInstructions] = useState("")
-  const [saving, setSaving] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [confirmOpen, setConfirmOpen] = useState(false)
+  const l = { ...DEFAULT_LABELS, ...labels };
+  const [instructions, setInstructions] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
-    if (skill) setInstructions(skill.instructions)
-  }, [skill?.id])
+    if (skill) setInstructions(skill.instructions);
+  }, [skill]);
 
   const handleSave = useCallback(async () => {
-    if (!skill) return
-    setSaving(true)
+    if (!skill) return;
+    setSaving(true);
     try {
-      await onSave(skill.name, instructions)
+      await onSave(skill.name, instructions);
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }, [skill, instructions, onSave])
+  }, [skill, instructions, onSave]);
 
   const handleConfirmDelete = useCallback(async () => {
-    if (!skill) return
-    setConfirmOpen(false)
-    setDeleting(true)
+    if (!skill) return;
+    setConfirmOpen(false);
+    setDeleting(true);
     try {
-      await onDelete(skill.name)
-      onBack()
+      await onDelete(skill.name);
+      onBack();
     } finally {
-      setDeleting(false)
+      setDeleting(false);
     }
-  }, [skill, onDelete, onBack])
+  }, [skill, onDelete, onBack]);
 
   if (!skill) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <p className="text-sm text-muted-foreground">{l.notFound}</p>
       </div>
-    )
+    );
   }
 
-  const isDirty = instructions !== skill.instructions
-  const displayName = humanizeSkillName(skill.name)
+  const isDirty = instructions !== skill.instructions;
+  // Fall back to the id (the directory slug — the canonical skill identity)
+  // when a detail response carries no name, so the header stays meaningful.
+  const displayName = humanizeSkillName(skill.name || skill.id);
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-background">
@@ -181,11 +184,14 @@ export function SkillDetailPage({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function humanizeSkillName(slug: string): string {
-  const spaced = slug.replace(/[-_]+/g, " ").trim()
-  if (spaced.length === 0) return slug
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+  // Tolerate a missing/empty identity: a display helper must never crash the
+  // whole view. Degrade gracefully rather than throw on `undefined`.
+  if (!slug) return "";
+  const spaced = slug.replace(/[-_]+/g, " ").trim();
+  if (spaced.length === 0) return slug;
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }

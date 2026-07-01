@@ -1,9 +1,9 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import {
-  RELEASE_AUTH_STORAGE_KEY,
   createLocalAuthStorageKey,
   normalizeAuthStorageMode,
+  RELEASE_AUTH_STORAGE_KEY,
   resolveAuthStorageConfig,
 } from "../src/lib/auth-storage.ts";
 
@@ -22,7 +22,10 @@ test("release auth storage uses Keychain-backed production key", () => {
 
 test("local auth storage uses browser storage scoped to worktree", () => {
   assert.deepEqual(
-    resolveAuthStorageConfig({ storageMode: "browser", storageScope: "abc123" }),
+    resolveAuthStorageConfig({
+      storageMode: "browser",
+      storageScope: "abc123",
+    }),
     {
       mode: "browser",
       storageKey: "houston-auth-local-abc123",

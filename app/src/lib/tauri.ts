@@ -12,32 +12,33 @@
  */
 
 import type {
-  Workspace,
-  Agent,
-  SkillSummary,
-  SkillDetail,
-  CommunitySkillResult,
-  RepoSkill,
-  FileEntry,
-  StoreListing,
-  ImportedWorkspace,
-} from "./types";
-import type {
+  CustomEndpoint,
   ComposioAppEntry as EngineComposioAppEntry,
   ComposioStatus as EngineComposioStatus,
-  ProviderAuthState,
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
+  ImportedWorkspace,
+  ProviderAuthState,
+  StoreListing,
 } from "@houston-ai/engine-client";
-import { getEngine } from "./engine";
-import { osPickDirectory } from "./os-bridge";
-import { logger } from "./logger";
-import { engineCallSurface } from "./engine-call-policy";
-import { MISSING_SKILL_KIND } from "./missing-skill";
-import { COMPOSIO_ALREADY_CONNECTED_KIND } from "./composio-already-connected";
-import { normalizeLegacyModel } from "./providers";
-import { shouldAutocompactForSession } from "./autocompact";
 import { useProviderSwitchStore } from "../stores/provider-switch";
+import { shouldAutocompactForSession } from "./autocompact";
+import { COMPOSIO_ALREADY_CONNECTED_KIND } from "./composio-already-connected";
+import { getEngine, isRemoteEngine } from "./engine";
+import { engineCallSurface } from "./engine-call-policy";
+import { providerLoginUsesDeviceAuthByDefault } from "./engine-mode";
+import { logger } from "./logger";
+import { isMissingSkillError } from "./missing-skill";
+import { osIsTauri, osPickDirectory } from "./os-bridge";
+import { normalizeLegacyModel } from "./providers";
+import type {
+  Agent,
+  FileEntry,
+  SkillDetail,
+  SkillSummary,
+  Workspace,
+} from "./types";
+
 export { withAttachmentPaths } from "./attachment-message";
 
 interface EngineCallOptions {
@@ -51,9 +52,16 @@ interface EngineCallOptions {
   /** Engine error `kind`s that are expected + explainable (not Houston bugs).
    *  Matching errors are logged but get NO red bug toast and NO Sentry report;
    *  the caller surfaces them inline. Use sparingly, only for kinds a user can
-   *  understand and act on (e.g. `skill_not_found` — the skill was renamed or
-   *  removed). */
+   *  understand and act on (e.g. the legacy Rust engine's typed
+   *  `composio_login_timeout` / `composio_already_connected`). */
   silenceKinds?: string[];
+  /** Classifier for errors that are expected + explainable (not Houston bugs).
+   *  A matching error is logged but gets NO red bug toast and NO Sentry report;
+   *  the caller surfaces it inline. Use sparingly, only for failures a user can
+   *  understand and act on (e.g. a skill that was renamed or removed). The TS
+   *  host emits bare-string / status-only errors with no typed `kind`, so this
+   *  predicate keys on the thrown error rather than a kind string. */
+  silence?: (err: unknown) => boolean;
 }
 
 /** Wrap an engine call and surface errors as toasts unless caller handles them inline. */
@@ -78,18 +86,31 @@ async function surfaceError(
   options?: EngineCallOptions,
 ): Promise<void> {
   const message =
-    err instanceof Error ? err.message : typeof err === "string" ? err : String(err);
-  logger.error(`[engine:${label}] ${message}`, context ? JSON.stringify(context) : undefined);
+    err instanceof Error
+      ? err.message
+      : typeof err === "string"
+        ? err
+        : String(err);
+  logger.error(
+    `[engine:${label}] ${message}`,
+    context ? JSON.stringify(context) : undefined,
+  );
 
   // Expected, explainable engine errors the caller surfaces inline. Logged
   // above for the local log tail, but no red bug toast and no Sentry report.
-  // e.g. `composio_login_timeout` (the user closed the sign-in tab) and
-  // `skill_not_found` (the skill was renamed/removed).
+  //
+  // Two complementary matchers so both engine wire formats are covered:
+  //  - `silenceKinds` — the legacy Rust engine tags errors with a typed
+  //    `kind` (e.g. `composio_login_timeout`, `composio_already_connected`).
+  //  - `silence` — the TS host emits bare-string / status-only errors with no
+  //    typed `kind`, so callers pass a predicate over the whole error (e.g.
+  //    `isMissingSkillError`, which reads the HoustonEngineError `.status`).
   const kind =
     err && typeof err === "object" && "kind" in err
       ? (err as { kind?: unknown }).kind
       : undefined;
   if (typeof kind === "string" && options?.silenceKinds?.includes(kind)) return;
+  if (options?.silence?.(err)) return;
 
   // Aborted requests are expected; `toast: false` callers render their own
   // failure UI but the error is still captured. See `engineCallSurface`.
@@ -114,10 +135,14 @@ async function surfaceError(
 // ─── Workspaces ────────────────────────────────────────────────────────
 
 export const tauriWorkspaces = {
-  list: () => call<Workspace[]>("list_workspaces", () => getEngine().listWorkspaces()),
+  list: () =>
+    call<Workspace[]>("list_workspaces", () => getEngine().listWorkspaces()),
   create: (name: string) =>
-    call<Workspace>("create_workspace", () => getEngine().createWorkspace({ name })),
-  delete: (id: string) => call<void>("delete_workspace", () => getEngine().deleteWorkspace(id)),
+    call<Workspace>("create_workspace", () =>
+      getEngine().createWorkspace({ name }),
+    ),
+  delete: (id: string) =>
+    call<void>("delete_workspace", () => getEngine().deleteWorkspace(id)),
   rename: (id: string, newName: string) =>
     call<void>("rename_workspace", async () => {
       await getEngine().renameWorkspace(id, { newName });
@@ -209,6 +234,13 @@ export const tauriAgents = {
       undefined,
       { toast: false },
     ),
+  /** Agent configs installed on disk (bundled + user-authored), merged with the
+   *  built-in templates by the agent loader to populate the create-agent gallery. */
+  listInstalledConfigs: () =>
+    call<Array<{ config: unknown; path: string }>>(
+      "list_installed_configs",
+      () => getEngine().listInstalledConfigs(),
+    ),
 };
 
 // ─── Chat sessions ────────────────────────────────────────────────────
@@ -292,22 +324,30 @@ export const tauriAttachments = {
     );
   },
   delete: (scopeId: string) =>
-    call<void>("delete_attachments", () => getEngine().deleteAttachments(scopeId)),
+    call<void>("delete_attachments", () =>
+      getEngine().deleteAttachments(scopeId),
+    ),
 };
 
 // ─── Agent-data files (`.houston/**`) ─────────────────────────────────
 
 export const tauriAgent = {
   readFile: (agentPath: string, relPath: string) =>
-    call<string>("read_agent_file", () => getEngine().readAgentFile(agentPath, relPath)),
+    call<string>("read_agent_file", () =>
+      getEngine().readAgentFile(agentPath, relPath),
+    ),
   writeFile: (agentPath: string, relPath: string, content: string) =>
     call<void>("write_agent_file", () =>
       getEngine().writeAgentFile(agentPath, relPath, content),
     ),
   seedSchemas: (agentPath: string) =>
-    call<void>("seed_agent_schemas", () => getEngine().seedAgentSchemas(agentPath)),
+    call<void>("seed_agent_schemas", () =>
+      getEngine().seedAgentSchemas(agentPath),
+    ),
   migrateFiles: (agentPath: string) =>
-    call<void>("migrate_agent_files", () => getEngine().migrateAgentFiles(agentPath)),
+    call<void>("migrate_agent_files", () =>
+      getEngine().migrateAgentFiles(agentPath),
+    ),
 };
 
 // ─── Skills ───────────────────────────────────────────────────────────
@@ -344,13 +384,25 @@ export const tauriSkills = {
       () => getEngine().loadSkill(agentPath, name),
       undefined,
       // The skill the user opened may have been renamed, deleted, or never
-      // installed. That's expected — the Skills view surfaces it inline and
-      // refreshes the list — so don't fire the red bug toast or report it.
-      { silenceKinds: [MISSING_SKILL_KIND] },
+      // installed (the host answers 404). That's expected — the Skills view
+      // surfaces it inline and refreshes the list — so don't fire the red bug
+      // toast or report it. Predicate form: the TS host's 404 carries no typed
+      // `kind`, so `isMissingSkillError` reads the HoustonEngineError `.status`.
+      { silence: isMissingSkillError },
     ),
-  create: (agentPath: string, name: string, description: string, content: string) =>
+  create: (
+    agentPath: string,
+    name: string,
+    description: string,
+    content: string,
+  ) =>
     call<void>("create_skill", () =>
-      getEngine().createSkill({ workspacePath: agentPath, name, description, content }),
+      getEngine().createSkill({
+        workspacePath: agentPath,
+        name,
+        description,
+        content,
+      }),
     ),
   delete: (agentPath: string, name: string) =>
     call<void>("delete_skill", () => getEngine().deleteSkill(agentPath, name)),
@@ -358,67 +410,9 @@ export const tauriSkills = {
     call<void>("save_skill", () =>
       getEngine().saveSkill(name, { workspacePath: agentPath, content }),
     ),
-  listFromRepo: (source: string) =>
-    call<RepoSkill[]>("list_skills_from_repo", () => getEngine().listSkillsFromRepo(source)),
-  installFromRepo: (agentPath: string, source: string, skills: RepoSkill[]) =>
-    call<string[]>("install_skills_from_repo", () =>
-      getEngine().installSkillsFromRepo({
-        workspacePath: agentPath,
-        source,
-        skills,
-      }),
-    ),
-  searchCommunity: (query: string, signal?: AbortSignal) =>
-    call<CommunitySkillResult[]>(
-      "search_community_skills",
-      async () =>
-        (await getEngine().searchCommunitySkills(query, signal)).map((s) => ({
-          id: s.id,
-          skillId: s.skillId,
-          name: s.name,
-          installs: s.installs,
-          source: s.source,
-        })),
-      undefined,
-      { toast: false },
-    ),
-  popularCommunity: (signal?: AbortSignal) =>
-    call<CommunitySkillResult[]>(
-      "popular_community_skills",
-      async () =>
-        (await getEngine().popularCommunitySkills(signal)).map((s) => ({
-          id: s.id,
-          skillId: s.skillId,
-          name: s.name,
-          installs: s.installs,
-          source: s.source,
-        })),
-      undefined,
-      { toast: false },
-    ),
-  installCommunity: (
-    agentPath: string,
-    source: string,
-    skillId: string,
-    signal?: AbortSignal,
-  ) =>
-    call<string>(
-      "install_community_skill",
-      () =>
-        getEngine().installCommunitySkill(
-          {
-            workspacePath: agentPath,
-            source,
-            skillId,
-          },
-          signal,
-        ),
-      undefined,
-      { toast: false },
-    ),
 };
 
-// ─── Composio ─────────────────────────────────────────────────────────
+// ─── Composio (desktop CLI connections) ───────────────────────────────
 
 export interface ComposioAppEntry {
   toolkit: string;
@@ -448,16 +442,20 @@ export interface ReconnectResult {
 
 export const tauriConnections = {
   list: () =>
-    call<ComposioStatus>("list_composio_connections", () => getEngine().composioStatus()),
+    call<ComposioStatus>("list_composio_connections", () =>
+      getEngine().composioStatus(),
+    ),
   listApps: () =>
     call<ComposioAppEntry[]>("list_composio_apps", async () =>
-      (await getEngine().composioListApps()).map((a: EngineComposioAppEntry) => ({
-        toolkit: a.toolkit,
-        name: a.name,
-        description: a.description,
-        logo_url: a.logo_url,
-        categories: a.categories,
-      })),
+      (await getEngine().composioListApps()).map(
+        (a: EngineComposioAppEntry) => ({
+          toolkit: a.toolkit,
+          name: a.name,
+          description: a.description,
+          logo_url: a.logo_url,
+          categories: a.categories,
+        }),
+      ),
     ),
   listConnectedToolkits: () =>
     call<string[]>("list_composio_connected_toolkits", () =>
@@ -530,10 +528,14 @@ export const tauriConnections = {
       // tab) is fully silenced; genuine faults still capture to Sentry.
       { toast: false, silenceKinds: ["composio_login_timeout"] },
     ),
-  logout: () => call<void>("logout_composio", () => getEngine().composioLogout()),
+  logout: () =>
+    call<void>("logout_composio", () => getEngine().composioLogout()),
   isCliInstalled: () =>
-    call<boolean>("is_composio_cli_installed", () => getEngine().composioCliInstalled()),
-  installCli: () => call<void>("install_composio_cli", () => getEngine().composioInstallCli()),
+    call<boolean>("is_composio_cli_installed", () =>
+      getEngine().composioCliInstalled(),
+    ),
+  installCli: () =>
+    call<void>("install_composio_cli", () => getEngine().composioInstallCli()),
 };
 
 // ─── Project files (browser) ──────────────────────────────────────────
@@ -556,8 +558,23 @@ export const tauriFiles = {
     osOpenFile(agentPath, relativePath),
   reveal: (agentPath: string, relativePath: string) =>
     osRevealFile(agentPath, relativePath),
+  /** Raw bytes over HTTP — powers in-browser preview + download (web build).
+   *  Pass `{ toast: false }` when the caller renders the failure inline. */
+  download: (
+    agentPath: string,
+    relativePath: string,
+    options?: { toast?: boolean },
+  ) =>
+    call<{ blob: Blob; contentType: string }>(
+      "download_project_file",
+      () => getEngine().downloadProjectFile(agentPath, relativePath),
+      { agentPath, relativePath },
+      options,
+    ),
   delete: (agentPath: string, relativePath: string) =>
-    call<void>("delete_file", () => getEngine().deleteFile(agentPath, relativePath)),
+    call<void>("delete_file", () =>
+      getEngine().deleteFile(agentPath, relativePath),
+    ),
   rename: (agentPath: string, relativePath: string, newName: string) =>
     call<void>("rename_file", () =>
       getEngine().renameFile(agentPath, relativePath, newName),
@@ -573,11 +590,14 @@ export const tauriFiles = {
 
 export const tauriStore = {
   listInstalled: () =>
-    call<Array<{ config: unknown; path: string }>>("list_installed_configs", () =>
-      getEngine().listInstalledConfigs(),
+    call<Array<{ config: unknown; path: string }>>(
+      "list_installed_configs",
+      () => getEngine().listInstalledConfigs(),
     ),
   fetchCatalog: () =>
-    call<StoreListing[]>("fetch_store_catalog", () => getEngine().storeCatalog()),
+    call<StoreListing[]>("fetch_store_catalog", () =>
+      getEngine().storeCatalog(),
+    ),
   search: (query: string) =>
     call<StoreListing[]>("search_store", () => getEngine().storeSearch(query)),
   install: (repo: string, agentId: string) =>
@@ -585,14 +605,19 @@ export const tauriStore = {
       getEngine().installStoreAgent({ repo, agentId }),
     ),
   uninstall: (agentId: string) =>
-    call<void>("uninstall_store_agent", () => getEngine().uninstallStoreAgent(agentId)),
+    call<void>("uninstall_store_agent", () =>
+      getEngine().uninstallStoreAgent(agentId),
+    ),
   installFromGithub: (githubUrl: string) =>
     call<string>(
       "install_agent_from_github",
-      async () => (await getEngine().installAgentFromGithub({ githubUrl })).agentId,
+      async () =>
+        (await getEngine().installAgentFromGithub({ githubUrl })).agentId,
     ),
   checkUpdates: () =>
-    call<string[]>("check_agent_updates", () => getEngine().checkAgentUpdates()),
+    call<string[]>("check_agent_updates", () =>
+      getEngine().checkAgentUpdates(),
+    ),
   installWorkspaceFromGithub: (githubUrl: string) =>
     call<ImportedWorkspace>("install_workspace_from_github", () =>
       getEngine().installWorkspaceFromGithub({ githubUrl }),
@@ -623,7 +648,9 @@ export const tauriConversations = {
     ),
   listAll: (agentPaths: string[]) =>
     call<RawConversation[]>("list_all_conversations", async () =>
-      (await getEngine().listAllConversations(agentPaths)).map(conversationToRaw),
+      (await getEngine().listAllConversations(agentPaths)).map(
+        conversationToRaw,
+      ),
     ),
 };
 
@@ -648,12 +675,12 @@ function conversationToRaw(
 
 // ─── Routines (engine-backed: CRUD + scheduler) ───────────────────────
 
-import * as activityData from "../data/activity";
-import * as configData from "../data/config";
 import type {
   NewRoutine as EngineNewRoutine,
   RoutineUpdate as EngineRoutineUpdate,
 } from "@houston-ai/engine-client";
+import * as activityData from "../data/activity";
+import * as configData from "../data/config";
 
 export const tauriRoutines = {
   list: (agentPath: string) =>
@@ -708,7 +735,16 @@ export const tauriActivity = {
     worktreePath?: string,
     provider?: string,
     model?: string,
-  ) => activityData.create(agentPath, title, description ?? "", agent, worktreePath, provider, model),
+  ) =>
+    activityData.create(
+      agentPath,
+      title,
+      description ?? "",
+      agent,
+      worktreePath,
+      provider,
+      model,
+    ),
   update: (
     agentPath: string,
     activityId: string,
@@ -757,14 +793,6 @@ export const tauriShell = {
     call<string>("run_shell", () => getEngine().runShell({ path, command })),
 };
 
-// Terminal launching is OS-native — see `./os-bridge::osOpenTerminal`.
-// Keep the `tauriTerminal` export for callers that haven't migrated.
-import { osOpenTerminal } from "./os-bridge";
-export const tauriTerminal = {
-  open: (path: string, command?: string, terminalApp?: string) =>
-    osOpenTerminal(path, command, terminalApp),
-};
-
 // ─── Agent config (per-agent JSON on disk) ────────────────────────────
 
 export const tauriConfig = {
@@ -790,6 +818,12 @@ export interface ProviderStatus {
   auth_state: ProviderAuthState;
   authenticated: boolean;
   cli_name: string;
+  /**
+   * The provider's configured model id, when the engine reports one — carries
+   * the OpenAI-compatible (local) provider's dynamic, catalog-less model so the
+   * chat model picker can show + select it. Absent for catalog-backed providers.
+   */
+  active_model?: string;
 }
 
 const DEFAULT_PROVIDER_PREF_KEY = "default_provider";
@@ -798,19 +832,38 @@ const DEFAULT_MODEL_PREF_KEY = "default_model";
 export const tauriProvider = {
   checkStatus: (provider: string) =>
     call<ProviderStatus>("check_provider_status", async () => {
-      const p: EngineProviderStatus = await getEngine().providerStatus(provider);
+      const p: EngineProviderStatus =
+        await getEngine().providerStatus(provider);
       return {
         provider: p.provider,
         cli_installed: p.cliInstalled,
         auth_state: p.authState,
         authenticated: p.authState === "authenticated",
         cli_name: p.cliName,
+        active_model: p.activeModel,
       };
     }),
+  /**
+   * Combined connect status for a card that spans several engine gateway ids —
+   * OpenCode's Zen + Go share one key, so the merged "OpenCode" account reads as
+   * connected when EITHER gateway is. Probes each in parallel (one probe for a
+   * normal single-id provider) and returns the first authenticated status, else
+   * the first probe. The adapter writes / clears both gateways together, so this
+   * also reconciles a credential left under a single gateway by an older build.
+   */
+  checkMergedStatus: async (
+    ids: readonly string[],
+  ): Promise<ProviderStatus> => {
+    const probes = await Promise.all(
+      ids.map((id) => tauriProvider.checkStatus(id)),
+    );
+    return probes.find((s) => s.cli_installed && s.authenticated) ?? probes[0];
+  },
   getDefault: () =>
     call<string>(
       "get_default_provider",
-      async () => (await getEngine().getPreference(DEFAULT_PROVIDER_PREF_KEY)) ?? "",
+      async () =>
+        (await getEngine().getPreference(DEFAULT_PROVIDER_PREF_KEY)) ?? "",
     ),
   setDefault: (provider: string) =>
     call<void>("set_default_provider", () =>
@@ -842,7 +895,10 @@ export const tauriProvider = {
           eng.getPreference(DEFAULT_PROVIDER_PREF_KEY),
           eng.getPreference(DEFAULT_MODEL_PREF_KEY),
         ]);
-        return { provider: provider ?? null, model: normalizeLegacyModel(model) };
+        return {
+          provider: provider ?? null,
+          model: normalizeLegacyModel(model),
+        };
       },
     ),
   setLastUsed: (provider: string, model: string) =>
@@ -851,20 +907,50 @@ export const tauriProvider = {
       await eng.setPreference(DEFAULT_PROVIDER_PREF_KEY, provider);
       await eng.setPreference(DEFAULT_MODEL_PREF_KEY, model);
     }),
-  launchLogin: (provider: string, opts?: { deviceAuth?: boolean; toast?: boolean }) =>
+  launchLogin: (
+    provider: string,
+    opts?: { deviceAuth?: boolean; toast?: boolean; enterpriseDomain?: string },
+  ) =>
+    // `deviceAuth` declares whether the client can catch a loopback OAuth
+    // callback. Default it from connection topology: a co-located desktop can
+    // catch the runtime's loopback callback (false → Codex browser login), but
+    // any browser client OR desktop pointed at a remote host cannot (true →
+    // device code). Callers may still override. Centralized here so every entry
+    // point (picker, settings, reconnect card, banner) agrees.
+    // `enterpriseDomain` (GitHub Copilot Enterprise) carries the company GitHub
+    // domain the user typed on the Enterprise card; absent for every other login.
     call<void>(
       "launch_provider_login",
-      () => getEngine().providerLogin(provider, opts),
+      () =>
+        getEngine().providerLogin(provider, {
+          deviceAuth:
+            opts?.deviceAuth ??
+            // A runtime `remote` choice (HOU-621) makes the engine remote without
+            // any baked URL env, so OR in isRemoteEngine() — else the topology
+            // helper (build-env only) would pick browser loopback against a
+            // callback that lives on the remote host and the login strands.
+            (isRemoteEngine() ||
+              providerLoginUsesDeviceAuthByDefault(
+                (import.meta.env ?? {}) as {
+                  VITE_NEW_ENGINE_URL?: string;
+                  VITE_HOSTED_ENGINE_URL?: string;
+                },
+                { isTauri: osIsTauri() },
+              )),
+          enterpriseDomain: opts?.enterpriseDomain,
+        }),
       undefined,
-      // Callers that render their OWN failure toast (the picker, settings, and
-      // the Gemini dialog) pass `toast: false` so `call`'s generic toast does
-      // not fire on top of theirs — the engine error message showed twice
-      // otherwise. Sentry capture still happens. Callers that surface the
-      // failure inline (reconnect cards / banner) omit it and keep this toast.
+      // Callers that render their OWN failure toast (the picker, settings) pass
+      // `toast: false` so `call`'s generic toast does not fire on top of theirs
+      // — the engine error message showed twice otherwise. Sentry capture still
+      // happens. Callers that surface the failure inline (reconnect cards /
+      // banner) omit it and keep this toast.
       opts?.toast === false ? { toast: false } : undefined,
     ),
   launchLogout: (provider: string) =>
-    call<void>("launch_provider_logout", () => getEngine().providerLogout(provider)),
+    call<void>("launch_provider_logout", () =>
+      getEngine().providerLogout(provider),
+    ),
   /**
    * Submit the OAuth verification code the user pasted from their
    * browser. Only meaningful for remote/headless engines (container,
@@ -887,14 +973,37 @@ export const tauriProvider = {
    * pending spinners clear without an error toast.
    */
   cancelLogin: (provider: string) =>
-    call<void>("cancel_provider_login", () => getEngine().cancelProviderLogin(provider)),
+    call<void>("cancel_provider_login", () =>
+      getEngine().cancelProviderLogin(provider),
+    ),
   /**
-   * Save a Gemini API key to `~/.gemini/.env` via the engine. Errors
-   * surface through `call`'s standard rejection path; the caller is
-   * expected to render them with `errorMessage(err)` + `addToast`.
+   * Connect an API-key provider (OpenRouter, Google Gemini, Amazon Bedrock,
+   * OpenCode Zen / Go):
+   * submit the pasted key. The new engine stores it for the workspace and the
+   * provider reads as connected (the adapter fires `ProviderLoginComplete`).
+   * New-engine only — the connect UI shows these providers only when
+   * `newEngineActive()`.
+   */
+  setApiKey: (provider: string, apiKey: string) =>
+    call<void>("set_provider_api_key", () =>
+      getEngine().setProviderApiKey(provider, apiKey),
+    ),
+  /**
+   * Connect an OpenAI-compatible (local) server: a base URL + model id the user
+   * runs themselves (Ollama / vLLM / LM Studio). Desktop + new-engine only — the
+   * connect UI shows it only then (see `getVisibleProviders`).
+   */
+  setCustomEndpoint: (endpoint: CustomEndpoint) =>
+    call<void>("set_provider_custom_endpoint", () =>
+      getEngine().setProviderCustomEndpoint(endpoint),
+    ),
+  /**
+   * Save a Gemini API key to `~/.gemini/.env` via the engine (legacy Rust /
+   * desktop path). Errors surface through `call`'s standard rejection path;
+   * the caller renders them with `errorMessage(err)` + `addToast`.
    *
-   * Gemini-only by design (other providers use OAuth via launchLogin).
-   * Never log `apiKey` — it's a SECRET.
+   * On the new engine, API-key providers (Gemini included) go through
+   * `setApiKey` instead. Never log `apiKey` — it's a SECRET.
    */
   setGeminiApiKey: (apiKey: string) =>
     call<void>("set_gemini_api_key", () => getEngine().setGeminiApiKey(apiKey)),
@@ -902,10 +1011,25 @@ export const tauriProvider = {
 
 // ─── System (OS-native helpers, preserved for back-compat) ────────────
 
-import { osCheckClaudeCli, osOpenUrl } from "./os-bridge";
+import { osOpenUrl } from "./os-bridge";
 export const tauriSystem = {
-  checkClaudeCli: () => osCheckClaudeCli(),
   openUrl: (url: string) => osOpenUrl(url),
+  /**
+   * Whether THIS install carried over a legacy Rust-desktop chat-history db —
+   * the signal that the user is migrating from the old desktop build (agents +
+   * history came across, provider credentials did NOT). Read from the host's
+   * `/v1/version`; the legacy Rust engine and older hosts omit the field, so a
+   * missing value reads as `false` (never show the reconnect moment there).
+   */
+  chatHistoryMigrated: () =>
+    call<boolean>(
+      "chat_history_migrated",
+      async () => (await getEngine().version()).chatHistoryMigrated ?? false,
+      undefined,
+      // A meta probe, not a user-initiated action: a transient failure should
+      // not toast. The hook treats a throw as "unknown → don't show".
+      { toast: false, capture: false },
+    ),
 };
 
 // ─── Claude Code runtime installer ────────────────────────────────────
@@ -948,22 +1072,66 @@ export const tauriClaude = {
 
 export const tauriWatcher = {
   start: (agentPath: string) =>
-    call<void>("start_agent_watcher", () => getEngine().startAgentWatcher(agentPath)),
-  stop: () => call<void>("stop_agent_watcher", () => getEngine().stopAgentWatcher()),
+    call<void>("start_agent_watcher", () =>
+      getEngine().startAgentWatcher(agentPath),
+    ),
+  stop: () =>
+    call<void>("stop_agent_watcher", () => getEngine().stopAgentWatcher()),
 };
 
 // ─── Tunnel (mobile pairing) ──────────────────────────────────────────
 
 import type {
-  TunnelStatus as EngineTunnelStatus,
   PairingCode as EnginePairingCode,
+  TunnelStatus as EngineTunnelStatus,
 } from "@houston-ai/engine-client";
 
 export const tauriTunnel = {
   status: () =>
     call<EngineTunnelStatus>("tunnel_status", () => getEngine().tunnelStatus()),
   mintPairingCode: () =>
-    call<EnginePairingCode>("tunnel_mint_pairing", () => getEngine().mintPairingCode()),
+    call<EnginePairingCode>("tunnel_mint_pairing", () =>
+      getEngine().mintPairingCode(),
+    ),
   resetAccess: () =>
-    call<EnginePairingCode>("tunnel_reset_access", () => getEngine().resetPhoneAccess()),
+    call<EnginePairingCode>("tunnel_reset_access", () =>
+      getEngine().resetPhoneAccess(),
+    ),
+};
+
+/**
+ * Integrations (Composio "for you"). User-level (the user's own connected
+ * account); surfaced per-agent in the Integrations tab. Host-only — these reach
+ * the v3 host's /v1/integrations routes; the tab is gated to the control-plane
+ * build so they never run on the legacy Rust wire. Types flow by inference.
+ */
+export const tauriIntegrations = {
+  status: () =>
+    call("integration_status", () => getEngine().integrationStatus()),
+  startLogin: (provider: string) =>
+    call("integration_login_start", () =>
+      getEngine().startIntegrationLogin(provider),
+    ),
+  pollLogin: (provider: string, pollKey: string) =>
+    call("integration_login_poll", () =>
+      getEngine().pollIntegrationLogin(provider, pollKey),
+    ),
+  toolkits: (provider: string) =>
+    call("integration_toolkits", () =>
+      getEngine().integrationToolkits(provider),
+    ),
+  connections: (provider: string) =>
+    call("integration_connections", () =>
+      getEngine().integrationConnections(provider),
+    ),
+  connect: (provider: string, toolkit: string) =>
+    call("integration_connect", () =>
+      getEngine().connectIntegration(provider, toolkit),
+    ),
+  disconnect: (provider: string, toolkit: string) =>
+    call("integration_disconnect", () =>
+      getEngine().disconnectIntegration(provider, toolkit),
+    ),
+  logout: (provider: string) =>
+    call("integration_logout", () => getEngine().logoutIntegration(provider)),
 };

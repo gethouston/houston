@@ -1,5 +1,5 @@
-import { useTranslation } from "react-i18next";
 import type { AIBoardProps } from "@houston-ai/board";
+import { useTranslation } from "react-i18next";
 
 /**
  * Translated label bundles AIBoard needs that are identical for both board
@@ -18,7 +18,8 @@ export function useBoardLabels(): {
       approveTooltip: t("board:cardActions.approveTooltip"),
       renameTooltip: t("board:cardActions.renameTooltip"),
       deleteTooltip: t("board:cardActions.deleteTooltip"),
-      deleteTitle: (name: string) => t("board:deleteCard.titleWithName", { name }),
+      deleteTitle: (name: string) =>
+        t("board:deleteCard.titleWithName", { name }),
       deleteDescription: t("board:deleteCard.description"),
       selectTooltip: t("board:cardActions.select"),
     },

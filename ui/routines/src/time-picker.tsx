@@ -15,27 +15,28 @@
  * via props; AM/PM markers and the 12h-vs-24h choice come from `Intl` in the
  * given `locale`. The scroll columns live in time-picker-columns.tsx.
  */
-import { Clock } from "lucide-react"
-import { cn, Popover, PopoverContent, PopoverTrigger } from "@houston-ai/core"
-import { parseTime, formatTime } from "./schedule-format.ts"
-import { labelClass } from "./schedule-picker-fields.tsx"
-import { TimeColumn, PeriodColumn } from "./time-picker-columns.tsx"
+
+import { cn, Popover, PopoverContent, PopoverTrigger } from "@houston-ai/core";
+import { Clock } from "lucide-react";
+import { formatTime, parseTime } from "./schedule-format.ts";
+import { labelClass } from "./schedule-picker-fields.tsx";
+import { PeriodColumn, TimeColumn } from "./time-picker-columns.tsx";
 import {
-  is12HourLocale,
-  periodLabels,
-  to12Hour,
-  from12Hour,
   buildTime,
+  from12Hour,
   hourOptions,
+  is12HourLocale,
   minuteOptions,
   type Period,
-} from "./time-picker-utils.ts"
+  periodLabels,
+  to12Hour,
+} from "./time-picker-utils.ts";
 
 /** Accessible names for the picker's columns. */
 export interface TimePickerLabels {
-  hour: string
-  minute: string
-  period: string
+  hour: string;
+  minute: string;
+  period: string;
 }
 
 export function TimePicker({
@@ -45,29 +46,34 @@ export function TimePicker({
   locale = "en-US",
   labels,
 }: {
-  label: string
-  value: string
-  onChange: (time: string) => void
-  locale?: string
-  labels: TimePickerLabels
+  label: string;
+  value: string;
+  onChange: (time: string) => void;
+  locale?: string;
+  labels: TimePickerLabels;
 }) {
-  const twelveHour = is12HourLocale(locale)
-  const { hour: hour24, minute } = parseTime(value)
-  const { hour: hour12, period } = to12Hour(hour24)
-  const periods = periodLabels(locale)
+  const twelveHour = is12HourLocale(locale);
+  const { hour: hour24, minute } = parseTime(value);
+  const { hour: hour12, period } = to12Hour(hour24);
+  const periods = periodLabels(locale);
 
   const selectHour = (h: number) =>
-    onChange(buildTime(twelveHour ? from12Hour(h, period) : h, minute))
-  const selectMinute = (m: number) => onChange(buildTime(hour24, m))
+    onChange(buildTime(twelveHour ? from12Hour(h, period) : h, minute));
+  const selectMinute = (m: number) => onChange(buildTime(hour24, m));
   const selectPeriod = (p: Period) =>
-    onChange(buildTime(from12Hour(hour12, p), minute))
+    onChange(buildTime(from12Hour(hour12, p), minute));
+
+  const triggerId = `time-picker-trigger-${label.toLowerCase().replace(/\s+/g, "-")}`;
 
   return (
     <div>
-      <label className={labelClass}>{label}</label>
+      <label htmlFor={triggerId} className={labelClass}>
+        {label}
+      </label>
       <Popover>
         <PopoverTrigger asChild>
           <button
+            id={triggerId}
             type="button"
             aria-label={`${label}: ${formatTime(value, locale)}`}
             className={cn(
@@ -82,7 +88,7 @@ export function TimePicker({
           </button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-auto rounded-2xl p-2">
-          <div className="flex gap-1" role="group" aria-label={label}>
+          <fieldset className="flex gap-1 border-0 p-0 m-0" aria-label={label}>
             <TimeColumn
               ariaLabel={labels.hour}
               options={hourOptions(twelveHour)}
@@ -103,9 +109,9 @@ export function TimePicker({
                 onSelect={selectPeriod}
               />
             )}
-          </div>
+          </fieldset>
         </PopoverContent>
       </Popover>
     </div>
-  )
+  );
 }

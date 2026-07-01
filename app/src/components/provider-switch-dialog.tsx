@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next";
 import {
   Button,
   Dialog,
@@ -7,9 +6,10 @@ import {
   DialogFooter,
   DialogTitle,
 } from "@houston-ai/core";
+import { useTranslation } from "react-i18next";
 import type { ProviderHandoffMode } from "../lib/provider-switch";
-import { ProviderGlyph } from "./shell/provider-logos";
 import { RowCard } from "./cards/row-card";
+import { ProviderGlyph } from "./shell/provider-logos";
 
 interface ProviderSwitchDialogProps {
   open: boolean;

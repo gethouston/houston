@@ -192,6 +192,20 @@ pub fn read_project_file(agent_root: &Path, rel_path: &str) -> CoreResult<String
         .map_err(|e| CoreError::Internal(format!("failed to read {rel_path}: {e}")))
 }
 
+/// Read an arbitrary file from the agent as raw bytes — powers the HTTP
+/// download route, so binary deliverables (pptx, xlsx, pdf) reach browser
+/// clients without a UTF-8 round-trip.
+pub fn read_project_file_bytes(agent_root: &Path, rel_path: &str) -> CoreResult<Vec<u8>> {
+    let full = resolve_existing(agent_root, rel_path)?;
+    if full.is_dir() {
+        return Err(CoreError::BadRequest(format!(
+            "not a file: {rel_path}"
+        )));
+    }
+    std::fs::read(&full)
+        .map_err(|e| CoreError::Internal(format!("failed to read {rel_path}: {e}")))
+}
+
 /// Rename a file or folder in the agent.
 pub fn rename_file(agent_root: &Path, rel_path: &str, new_name: &str) -> CoreResult<()> {
     let full = resolve_existing(agent_root, rel_path)?;
@@ -356,7 +370,15 @@ pub fn write_file_bytes(
 // ---------------------------------------------------------------------------
 
 fn resolve_existing(agent_root: &Path, rel_path: &str) -> CoreResult<PathBuf> {
-    let full = agent_root.join(rel_path);
+    let rel = Path::new(rel_path);
+    if rel.is_absolute()
+        || rel
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
+        return Err(CoreError::BadRequest(format!("invalid path: {rel_path}")));
+    }
+    let full = agent_root.join(rel);
     if !full.exists() {
         return Err(CoreError::NotFound(format!("file: {rel_path}")));
     }
@@ -469,6 +491,42 @@ mod tests {
             Err(CoreError::BadRequest(_)) => {}
             other => panic!("expected BadRequest, got {:?}", other.err().map(|e| e.to_string())),
         }
+    }
+
+    #[test]
+    fn read_project_file_bytes_round_trips_binary() {
+        let d = tmp();
+        let payload: Vec<u8> = vec![0x50, 0x4b, 0x03, 0x04, 0xff, 0x00, 0x80]; // zip magic + non-UTF-8
+        std::fs::write(d.path().join("deck.pptx"), &payload).unwrap();
+        let bytes = read_project_file_bytes(d.path(), "deck.pptx").unwrap();
+        assert_eq!(bytes, payload);
+    }
+
+    #[test]
+    fn read_project_file_bytes_rejects_directory() {
+        let d = tmp();
+        std::fs::create_dir_all(d.path().join("docs")).unwrap();
+        assert!(matches!(
+            read_project_file_bytes(d.path(), "docs"),
+            Err(CoreError::BadRequest(_))
+        ));
+    }
+
+    #[test]
+    fn project_file_reads_block_traversal() {
+        let d = tmp();
+        assert!(matches!(
+            read_project_file_bytes(d.path(), "../escape.txt"),
+            Err(CoreError::BadRequest(_))
+        ));
+        assert!(matches!(
+            read_project_file(d.path(), "../escape.txt"),
+            Err(CoreError::BadRequest(_))
+        ));
+        assert!(matches!(
+            delete_file(d.path(), "../escape.txt"),
+            Err(CoreError::BadRequest(_))
+        ));
     }
 
     #[test]

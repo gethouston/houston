@@ -17,6 +17,6 @@
     "react-markdown": "^10.1.0"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo --noEmit"
   }
 }

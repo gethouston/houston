@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
-import type { LucideIcon } from "lucide-react";
 import { Badge } from "@houston-ai/core";
+import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 export interface SidebarSectionItem<Id extends string> {
   id: Id;

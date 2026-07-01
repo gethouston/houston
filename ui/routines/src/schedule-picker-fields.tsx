@@ -7,52 +7,58 @@
  * All visible text arrives via props so the package stays i18n-agnostic;
  * weekday names come from `Intl` in the given `locale`.
  */
-import { cn } from "@houston-ai/core"
-import { narrowWeekdayNames, longWeekdayNames } from "./schedule-format.ts"
+import { cn } from "@houston-ai/core";
+import { longWeekdayNames, narrowWeekdayNames } from "./schedule-format.ts";
 
 const inputClass = cn(
   "px-3 py-2 rounded-lg border border-border/20 bg-background",
   "text-sm text-foreground",
   "focus:outline-none focus:shadow-sm transition-shadow",
-)
+);
 
-export const labelClass = "text-xs font-medium text-muted-foreground mb-1.5 block"
+export const labelClass =
+  "text-xs font-medium text-muted-foreground mb-1.5 block";
 
 export function DayOfMonthPicker({
   label,
   value,
   onChange,
 }: {
-  label: string
-  value: number
-  onChange: (day: number) => void
+  label: string;
+  value: number;
+  onChange: (day: number) => void;
 }) {
   return (
     <div>
-      <label className={labelClass}>{label}</label>
-      <input
-        type="number"
-        min={1}
-        max={31}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className={cn(inputClass, "w-24")}
-      />
+      <label className={labelClass}>
+        {label}
+        <input
+          type="number"
+          min={1}
+          max={31}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className={cn(inputClass, "w-24")}
+        />
+      </label>
     </div>
-  )
+  );
 }
 
-const WEEKDAY_SHORTCUT_DAYS: { key: "everyDay" | "weekdays" | "weekends"; days: number[] }[] = [
+const WEEKDAY_SHORTCUTS: {
+  key: "everyDay" | "weekdays" | "weekends";
+  days: number[];
+}[] = [
   { key: "everyDay", days: [0, 1, 2, 3, 4, 5, 6] },
   { key: "weekdays", days: [1, 2, 3, 4, 5] },
   { key: "weekends", days: [0, 6] },
-]
+];
 
 /**
- * "On these days" — multi-select weekday toggle (single-letter, Sunday-first)
- * plus quick shortcuts (Every day / Weekdays / Weekends), used by the Weekly
- * preset to pick one or more days. Day letters + accessible names come from
- * `Intl` in the given `locale`.
+ * "On these days" — multi-select weekday toggle (single-letter glyphs,
+ * Sunday-first) plus quick shortcuts (Every day / Weekdays / Weekends), used by
+ * the Weekly preset to pick one or more days. Display glyphs (narrow) and the
+ * full-name aria-labels both come from `Intl` in the given `locale`.
  */
 export function WeekdaysPicker({
   label,
@@ -61,25 +67,32 @@ export function WeekdaysPicker({
   value,
   onChange,
 }: {
-  label: string
-  locale?: string
-  shortcuts: { everyDay: string; weekdays: string; weekends: string }
-  value: number[]
-  onChange: (days: number[]) => void
+  label: string;
+  locale?: string;
+  shortcuts: { everyDay: string; weekdays: string; weekends: string };
+  value: number[];
+  onChange: (days: number[]) => void;
 }) {
-  const narrow = narrowWeekdayNames(locale)
-  const full = longWeekdayNames(locale)
+  const narrow = narrowWeekdayNames(locale);
+  const full = longWeekdayNames(locale);
   const toggle = (d: number) =>
-    onChange(value.includes(d) ? value.filter((x) => x !== d) : [...value, d].sort((a, b) => a - b))
+    onChange(
+      value.includes(d)
+        ? value.filter((x) => x !== d)
+        : [...value, d].sort((a, b) => a - b),
+    );
   return (
-    <div>
-      <label className={labelClass}>{label}</label>
+    <fieldset className="contents">
+      <legend className={labelClass}>{label}</legend>
       <div className="flex gap-1.5">
-        {narrow.map((letter, d) => {
-          const on = value.includes(d)
+        {narrow.map((glyph, d) => {
+          const on = value.includes(d);
+          // `d` is the weekday number (0 = Sun … 6 = Sat), not a volatile list
+          // position, so it is a stable semantic key.
+          const weekdayKey = `weekday-${d}`;
           return (
             <button
-              key={d}
+              key={weekdayKey}
               type="button"
               aria-label={full[d]}
               aria-pressed={on}
@@ -91,13 +104,13 @@ export function WeekdaysPicker({
                   : "bg-background border border-border/20 text-muted-foreground hover:text-foreground",
               )}
             >
-              {letter}
+              {glyph}
             </button>
-          )
+          );
         })}
       </div>
       <div className="mt-2 flex gap-1.5">
-        {WEEKDAY_SHORTCUT_DAYS.map((s) => (
+        {WEEKDAY_SHORTCUTS.map((s) => (
           <button
             key={s.key}
             type="button"
@@ -108,6 +121,6 @@ export function WeekdaysPicker({
           </button>
         ))}
       </div>
-    </div>
-  )
+    </fieldset>
+  );
 }

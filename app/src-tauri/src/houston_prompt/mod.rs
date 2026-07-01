@@ -26,6 +26,9 @@ pub fn system_prompt() -> String {
 }
 
 /// Onboarding prompt suffix, appended after `system_prompt()` on first-run sessions.
+/// (Default Rust-engine build only — the host-sidecar build hands the host just
+/// `HOUSTON_APP_SYSTEM_PROMPT`; the host has no onboarding-prompt env yet.)
+#[cfg_attr(feature = "host-sidecar", allow(dead_code))]
 pub fn onboarding_prompt() -> String {
     ONBOARDING_GUIDANCE.to_string()
 }

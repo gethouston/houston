@@ -15,47 +15,37 @@
  * `NamingStep` for name+color, so it feels exactly like creating an
  * agent from scratch.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
+
 import {
   AGENT_COLORS,
   Button,
   cn,
+  colorHex,
   Dialog,
   DialogContent,
   HoustonAvatar,
   Input,
-  Switch,
-  colorHex,
   resolveAgentColor,
+  Switch,
 } from "@houston-ai/core";
-import { Check } from "lucide-react";
-import { useUIStore } from "../../stores/ui";
-import { useWorkspaceStore } from "../../stores/workspaces";
-import { useAgentStore } from "../../stores/agents";
-import { getEngine } from "../../lib/engine";
-import { tauriConfig, tauriProvider } from "../../lib/tauri";
-import { analytics } from "../../lib/analytics";
-import { getDefaultModel } from "../../lib/providers";
-import { IntegrationLogos } from "../integration-logos";
-import { InlineModelSelector } from "../shell/naming-step";
-import {
-  useConnectedToolkits,
-  useComposioApps,
-} from "../../hooks/queries";
 import type {
   PortableScanResponse,
   PortableUploadPreviewResponse,
 } from "@houston-ai/engine-client";
+import { invoke } from "@tauri-apps/api/core";
+import { Check } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { analytics } from "../../lib/analytics";
+import { getEngine } from "../../lib/engine";
+import { getDefaultModel } from "../../lib/providers";
+import { tauriConfig, tauriProvider } from "../../lib/tauri";
+import { useAgentStore } from "../../stores/agents";
+import { useUIStore } from "../../stores/ui";
+import { useWorkspaceStore } from "../../stores/workspaces";
+import { InlineModelSelector } from "../shell/naming-step";
 
-type StepId =
-  | "upload"
-  | "name"
-  | "skills"
-  | "routines"
-  | "learnings"
-  | "integrations";
+type StepId = "upload" | "name" | "skills" | "routines" | "learnings";
 
 interface Selection {
   skillSlugs: Set<string>;
@@ -112,10 +102,6 @@ export function ImportAgentWizard() {
     if (uploaded.preview.skills.length > 0) out.push("skills");
     if (uploaded.preview.routines.length > 0) out.push("routines");
     if (uploaded.preview.learnings.length > 0) out.push("learnings");
-    const hasIntegrations =
-      uploaded.preview.skills.some((s) => s.integrations.length > 0) ||
-      uploaded.preview.routines.some((r) => r.integrations.length > 0);
-    if (hasIntegrations) out.push("integrations");
     return out;
   }, [uploaded]);
 
@@ -165,7 +151,8 @@ export function ImportAgentWizard() {
           result.preview.learnings.map((l: { id: string }) => l.id),
         ),
       });
-      if (!name && result.manifest.agentName) setName(result.manifest.agentName);
+      if (!name && result.manifest.agentName)
+        setName(result.manifest.agentName);
     } catch (err) {
       addToast({
         variant: "error",
@@ -258,9 +245,7 @@ export function ImportAgentWizard() {
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="sm:max-w-[680px] h-[78vh] flex flex-col p-0 gap-0 overflow-hidden">
         <header className="shrink-0 px-8 pt-6 pb-2 flex items-center gap-4">
-          <p className="text-xs text-muted-foreground">
-            {t("import.eyebrow")}
-          </p>
+          <p className="text-xs text-muted-foreground">{t("import.eyebrow")}</p>
           <ProgressDots index={stepIndex} total={steps.length} />
         </header>
 
@@ -305,10 +290,6 @@ export function ImportAgentWizard() {
                 renderRow={(s) => ({
                   title: s.description || humanize(s.slug),
                   subtitle: humanize(s.slug),
-                  trailing:
-                    s.integrations.length > 0 ? (
-                      <IntegrationLogos toolkits={s.integrations} />
-                    ) : null,
                   flagged: findingsForId("skill", s.slug).length > 0,
                 })}
               />
@@ -328,10 +309,6 @@ export function ImportAgentWizard() {
                 renderRow={(r) => ({
                   title: r.name,
                   subtitle: r.description || r.promptExcerpt,
-                  trailing:
-                    r.integrations.length > 0 ? (
-                      <IntegrationLogos toolkits={r.integrations} />
-                    ) : null,
                   flagged: findingsForId("routine", r.id).length > 0,
                 })}
               />
@@ -355,27 +332,19 @@ export function ImportAgentWizard() {
               />
             </Frame>
           )}
-          {currentStep === "integrations" && uploaded && (
-            <Frame>
-              <IntegrationsStep
-                uploaded={uploaded}
-                selection={selection}
-              />
-            </Frame>
-          )}
         </div>
 
         <footer className="shrink-0 px-8 py-4 flex items-center justify-between">
           <button
             type="button"
             onClick={() =>
-              stepIndex > 0
-                ? setStepIndex(stepIndex - 1)
-                : handleClose()
+              stepIndex > 0 ? setStepIndex(stepIndex - 1) : handleClose()
             }
             className="text-sm text-muted-foreground hover:text-foreground"
           >
-            {stepIndex > 0 ? t("import.actions.back") : t("import.actions.cancel")}
+            {stepIndex > 0
+              ? t("import.actions.back")
+              : t("import.actions.cancel")}
           </button>
           {!isLast ? (
             <Button
@@ -658,82 +627,6 @@ function PickListStep<T>({
   );
 }
 
-function IntegrationsStep({
-  uploaded,
-  selection,
-}: {
-  uploaded: PortableUploadPreviewResponse;
-  selection: Selection;
-}) {
-  const { t } = useTranslation("portable");
-  const { data: connected = [] } = useConnectedToolkits(true);
-  const { data: apps = [] } = useComposioApps();
-
-  const required = useMemo(() => {
-    const set = new Set<string>();
-    for (const s of uploaded.preview.skills) {
-      if (!selection.skillSlugs.has(s.slug)) continue;
-      for (const i of s.integrations) set.add(i.toLowerCase());
-    }
-    for (const r of uploaded.preview.routines) {
-      if (!selection.routineIds.has(r.id)) continue;
-      for (const i of r.integrations) set.add(i.toLowerCase());
-    }
-    return Array.from(set).sort();
-  }, [uploaded, selection]);
-
-  return (
-    <div className="space-y-10">
-      <header>
-        <h1 className="text-[28px] font-normal leading-tight">
-          {t("import.step6.title")}
-        </h1>
-        <p className="mt-3 text-base text-muted-foreground">
-          {required.length === 0
-            ? t("import.step6.none")
-            : t("import.step6.body")}
-        </p>
-      </header>
-
-      {required.length > 0 && (
-        <div className="space-y-1">
-          {required.map((slug) => {
-            const isConnected = connected.includes(slug);
-            const entry = apps.find((a) => a.toolkit === slug);
-            return (
-              <div
-                key={slug}
-                className="flex items-center gap-3 px-1 py-2.5"
-              >
-                <IntegrationLogos toolkits={[slug]} small={false} />
-                <p className="flex-1 text-sm text-foreground">
-                  {entry?.name ?? slug}
-                </p>
-                <p
-                  className={cn(
-                    "text-xs",
-                    isConnected ? "text-[#00a240]" : "text-muted-foreground",
-                  )}
-                >
-                  {isConnected
-                    ? t("import.step6.connected")
-                    : t("import.step6.needsConnection")}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {required.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {t("import.step6.connectLater")}
-        </p>
-      )}
-    </div>
-  );
-}
-
 // ─── Building blocks ──────────────────────────────────────────────────
 
 function Frame({ children }: { children: React.ReactNode }) {
@@ -745,6 +638,7 @@ function ProgressDots({ index, total }: { index: number; total: number }) {
     <div className="flex items-center gap-1.5" aria-hidden>
       {Array.from({ length: total }, (_, i) => (
         <span
+          // biome-ignore lint/suspicious/noArrayIndexKey: dots are purely positional — generated from a length, no real items or ids exist
           key={i}
           className={cn(
             "size-2 rounded-full transition-colors",

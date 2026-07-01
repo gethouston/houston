@@ -1,12 +1,10 @@
+import { AsyncButton } from "@houston-ai/core";
+import { ExternalLink, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ExternalLink, Loader2 } from "lucide-react";
-import { AsyncButton } from "@houston-ai/core";
 import { analytics } from "../../../lib/analytics";
-import { tauriProvider, type ProviderStatus } from "../../../lib/tauri";
 import { PROVIDERS } from "../../../lib/providers";
-import { useClaudeInstall } from "../../../hooks/use-claude-install";
-import { ClaudeInstallHint } from "../../shell/claude-install-hint";
+import { type ProviderStatus, tauriProvider } from "../../../lib/tauri";
 import { ProviderGlyph } from "../../shell/provider-logos";
 import { SetupCard } from "../setup-card";
 import { SuccessCheck } from "../success-check";
@@ -63,10 +61,6 @@ export function ProviderLoginMission({
     }
   }, [connected, providerId, onContinue]);
 
-  // Houston-managed `claude` install (license forbids bundling) — show the real
-  // download reason + Retry instead of a Log-in button that would only error.
-  const claudeInstall = useClaudeInstall({ onReady: () => void refresh() });
-
   // Poll until connected so the screen flips the moment the browser sign-in
   // finishes.
   useEffect(() => {
@@ -105,13 +99,12 @@ export function ProviderLoginMission({
     onContinue();
   }, [connected, onContinue]);
 
-  const showInstallHint =
-    !installed && provider?.id === "anthropic" && claudeInstall != null;
-
   return (
     <SetupCard
       eyebrow={eyebrow}
-      title={t("setup:tutorial.missions.providerLogin.title", { provider: name })}
+      title={t("setup:tutorial.missions.providerLogin.title", {
+        provider: name,
+      })}
       subtitle={
         connected
           ? undefined
@@ -144,15 +137,13 @@ export function ProviderLoginMission({
               </p>
             </div>
           </div>
-        ) : showInstallHint && claudeInstall ? (
-          <div className="w-full max-w-sm">
-            <ClaudeInstallHint state={claudeInstall} />
-          </div>
         ) : loginLaunched ? (
           <div className="flex flex-col items-center gap-2">
             <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              {t("setup:tutorial.missions.providerLogin.waiting", { provider: name })}
+              {t("setup:tutorial.missions.providerLogin.waiting", {
+                provider: name,
+              })}
             </span>
             <button
               type="button"

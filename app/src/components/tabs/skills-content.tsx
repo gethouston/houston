@@ -1,7 +1,3 @@
-import { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
-import type { CommunitySkill, RepoSkill } from "@houston-ai/skills";
-import { AddSkillDialog } from "@houston-ai/skills";
 import {
   Button,
   EmptyDescription,
@@ -9,10 +5,13 @@ import {
   EmptyTitle,
   Spinner,
 } from "@houston-ai/core";
+import { AddSkillDialog } from "@houston-ai/skills";
 import { Plus } from "lucide-react";
-import { SkillCard } from "../skill-card";
-import type { SkillSummary } from "../../lib/types";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { humanizeSkillName } from "../../lib/humanize-skill-name";
+import type { SkillSummary } from "../../lib/types";
+import { SkillCard } from "../skill-card";
 import { useSkillDialogLabels } from "./use-skill-surface-labels";
 
 export function SkillsContent({
@@ -20,11 +19,6 @@ export function SkillsContent({
   loading,
   loadingSkillName,
   onSkillClick,
-  onSearch,
-  onPopular,
-  onInstallCommunity,
-  onListFromRepo,
-  onInstallFromRepo,
   onCreateFromScratch,
   installedSkillNames,
 }: {
@@ -33,14 +27,6 @@ export function SkillsContent({
   /** Name of the skill whose detail is loading; its card spins + disables. */
   loadingSkillName?: string | null;
   onSkillClick: (name: string) => void;
-  onSearch?: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>;
-  onPopular?: (signal?: AbortSignal) => Promise<CommunitySkill[]>;
-  onInstallCommunity?: (
-    skill: CommunitySkill,
-    signal?: AbortSignal,
-  ) => Promise<string>;
-  onListFromRepo?: (source: string) => Promise<RepoSkill[]>;
-  onInstallFromRepo?: (source: string, skills: RepoSkill[]) => Promise<string[]>;
   onCreateFromScratch?: (input: {
     name: string;
     description: string;
@@ -55,18 +41,12 @@ export function SkillsContent({
     () => [...skills].sort((a, b) => a.name.localeCompare(b.name)),
     [skills],
   );
-  const addDialogProps =
-    onSearch && onInstallCommunity
-      ? {
-          onSearch,
-          onPopular,
-          onInstallCommunity,
-          onListFromRepo,
-          onInstallFromRepo,
-          onCreateFromScratch,
-          installedSkillNames,
-        }
-      : null;
+  const addDialogProps = onCreateFromScratch
+    ? {
+        onCreateFromScratch,
+        installedSkillNames,
+      }
+    : null;
 
   if (loading && sorted.length === 0) {
     return (
@@ -111,7 +91,11 @@ export function SkillsContent({
           {t("grid.descriptionShort")}
         </p>
         {addDialogProps && (
-          <Button size="sm" onClick={() => setDialogOpen(true)} className="shrink-0">
+          <Button
+            size="sm"
+            onClick={() => setDialogOpen(true)}
+            className="shrink-0"
+          >
             <Plus className="size-3.5" />
             {t("grid.addSkill")}
           </Button>
@@ -124,7 +108,6 @@ export function SkillsContent({
             image={skill.image}
             title={humanizeSkillName(skill.name)}
             description={skill.description}
-            integrations={skill.integrations}
             onClick={() => onSkillClick(skill.name)}
             busy={loadingSkillName === skill.name}
             disabled={loadingSkillName === skill.name}

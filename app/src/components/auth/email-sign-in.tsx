@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
 import { Button, Input } from "@houston-ai/core";
+import { type FormEvent, useState } from "react";
 import { sendEmailOtp, verifyEmailOtp } from "../../lib/auth";
 import { logger } from "../../lib/logger";
 import { prettifyAuthError } from "./auth-errors";
@@ -29,7 +29,9 @@ export function EmailSignIn() {
       setStep("code");
     } catch (err) {
       logger.error(`[auth] email otp send failed: ${err}`);
-      setError(prettifyAuthError(err instanceof Error ? err.message : String(err)));
+      setError(
+        prettifyAuthError(err instanceof Error ? err.message : String(err)),
+      );
     } finally {
       setPending(false);
     }
@@ -45,7 +47,9 @@ export function EmailSignIn() {
       // Success: the session write flips the auth gate and unmounts us.
     } catch (err) {
       logger.error(`[auth] email otp verify failed: ${err}`);
-      setError(prettifyAuthError(err instanceof Error ? err.message : String(err)));
+      setError(
+        prettifyAuthError(err instanceof Error ? err.message : String(err)),
+      );
     } finally {
       setPending(false);
     }
@@ -105,7 +109,9 @@ export function EmailSignIn() {
             Resend code
           </button>
         </div>
-        {error && <p className="text-center text-xs text-destructive">{error}</p>}
+        {error && (
+          <p className="text-center text-xs text-destructive">{error}</p>
+        )}
       </form>
     );
   }

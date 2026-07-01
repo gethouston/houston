@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Trans, useTranslation } from "react-i18next";
 import { Badge, Button, ConfirmDialog } from "@houston-ai/core";
 import { QRCodeSVG } from "qrcode.react";
-import { tauriTunnel } from "../../../lib/tauri";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { analytics } from "../../../lib/analytics";
 import { logger } from "../../../lib/logger";
+import { tauriTunnel } from "../../../lib/tauri";
 import { useUIStore } from "../../../stores/ui";
 import { canResetPhoneAccess } from "./connect-phone-state";
 
@@ -153,7 +153,9 @@ export function ConnectPhoneSection() {
           <br />
           <Trans
             i18nKey="settings:connectPhone.alwaysOnHint"
-            components={{ emph: <span className="underline underline-offset-2" /> }}
+            components={{
+              emph: <span className="underline underline-offset-2" />,
+            }}
           />
         </p>
       </div>

@@ -11,84 +11,82 @@
 import i18n from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
-
+import agentsEn from "../locales/en/agents.json";
+import boardEn from "../locales/en/board.json";
+import chatEn from "../locales/en/chat.json";
+import commonEn from "../locales/en/common.json";
+import connectEn from "../locales/en/connect.json";
+import contextEn from "../locales/en/context.json";
+import dashboardEn from "../locales/en/dashboard.json";
+import errorsEn from "../locales/en/errors.json";
+import eventsEn from "../locales/en/events.json";
+import legalEn from "../locales/en/legal.json";
+import portableEn from "../locales/en/portable.json";
+import providersEn from "../locales/en/providers.json";
+import routinesEn from "../locales/en/routines.json";
+import settingsEn from "../locales/en/settings.json";
+import setupEn from "../locales/en/setup.json";
+import shellEn from "../locales/en/shell.json";
+import skillsEn from "../locales/en/skills.json";
+import agentsEs from "../locales/es/agents.json";
+import boardEs from "../locales/es/board.json";
+import chatEs from "../locales/es/chat.json";
+import commonEs from "../locales/es/common.json";
+import connectEs from "../locales/es/connect.json";
+import contextEs from "../locales/es/context.json";
+import dashboardEs from "../locales/es/dashboard.json";
+import errorsEs from "../locales/es/errors.json";
+import eventsEs from "../locales/es/events.json";
+import legalEs from "../locales/es/legal.json";
+import portableEs from "../locales/es/portable.json";
+import providersEs from "../locales/es/providers.json";
+import routinesEs from "../locales/es/routines.json";
+import settingsEs from "../locales/es/settings.json";
+import setupEs from "../locales/es/setup.json";
+import shellEs from "../locales/es/shell.json";
+import skillsEs from "../locales/es/skills.json";
+import agentsPt from "../locales/pt/agents.json";
+import boardPt from "../locales/pt/board.json";
+import chatPt from "../locales/pt/chat.json";
+import commonPt from "../locales/pt/common.json";
+import connectPt from "../locales/pt/connect.json";
+import contextPt from "../locales/pt/context.json";
+import dashboardPt from "../locales/pt/dashboard.json";
+import errorsPt from "../locales/pt/errors.json";
+import eventsPt from "../locales/pt/events.json";
+import legalPt from "../locales/pt/legal.json";
+import portablePt from "../locales/pt/portable.json";
+import providersPt from "../locales/pt/providers.json";
+import routinesPt from "../locales/pt/routines.json";
+import settingsPt from "../locales/pt/settings.json";
+import setupPt from "../locales/pt/setup.json";
+import shellPt from "../locales/pt/shell.json";
+import skillsPt from "../locales/pt/skills.json";
 import {
-  SUPPORTED_LOCALES,
-  LOCALE_PREF_KEY,
+  activeWorkspaceLocale,
   isSupported,
+  LOCALE_PREF_KEY,
+  localeGateIsLoading,
+  localeToApply,
   normalizeLocale,
   resolveEffectiveLocale,
-  localeToApply,
-  activeWorkspaceLocale,
-  localeGateIsLoading,
+  SUPPORTED_LOCALES,
   type SupportedLocale,
 } from "./locale";
 
-import commonEn from "../locales/en/common.json";
-import setupEn from "../locales/en/setup.json";
-import legalEn from "../locales/en/legal.json";
-import shellEn from "../locales/en/shell.json";
-import dashboardEn from "../locales/en/dashboard.json";
-import settingsEn from "../locales/en/settings.json";
-import chatEn from "../locales/en/chat.json";
-import boardEn from "../locales/en/board.json";
-import agentsEn from "../locales/en/agents.json";
-import skillsEn from "../locales/en/skills.json";
-import routinesEn from "../locales/en/routines.json";
-import integrationsEn from "../locales/en/integrations.json";
-import providersEn from "../locales/en/providers.json";
-import errorsEn from "../locales/en/errors.json";
-import eventsEn from "../locales/en/events.json";
-import portableEn from "../locales/en/portable.json";
-import contextEn from "../locales/en/context.json";
-import commonEs from "../locales/es/common.json";
-import setupEs from "../locales/es/setup.json";
-import legalEs from "../locales/es/legal.json";
-import shellEs from "../locales/es/shell.json";
-import dashboardEs from "../locales/es/dashboard.json";
-import settingsEs from "../locales/es/settings.json";
-import chatEs from "../locales/es/chat.json";
-import boardEs from "../locales/es/board.json";
-import agentsEs from "../locales/es/agents.json";
-import skillsEs from "../locales/es/skills.json";
-import routinesEs from "../locales/es/routines.json";
-import integrationsEs from "../locales/es/integrations.json";
-import providersEs from "../locales/es/providers.json";
-import errorsEs from "../locales/es/errors.json";
-import eventsEs from "../locales/es/events.json";
-import portableEs from "../locales/es/portable.json";
-import contextEs from "../locales/es/context.json";
-import commonPt from "../locales/pt/common.json";
-import setupPt from "../locales/pt/setup.json";
-import legalPt from "../locales/pt/legal.json";
-import shellPt from "../locales/pt/shell.json";
-import dashboardPt from "../locales/pt/dashboard.json";
-import settingsPt from "../locales/pt/settings.json";
-import chatPt from "../locales/pt/chat.json";
-import boardPt from "../locales/pt/board.json";
-import agentsPt from "../locales/pt/agents.json";
-import skillsPt from "../locales/pt/skills.json";
-import routinesPt from "../locales/pt/routines.json";
-import integrationsPt from "../locales/pt/integrations.json";
-import providersPt from "../locales/pt/providers.json";
-import errorsPt from "../locales/pt/errors.json";
-import eventsPt from "../locales/pt/events.json";
-import portablePt from "../locales/pt/portable.json";
-import contextPt from "../locales/pt/context.json";
-
+export type { SupportedLocale };
 // Pure locale value-logic lives in ./locale (DOM/JSON-free, unit-tested).
 // Re-exported here so existing `from "../lib/i18n"` imports keep working.
 export {
-  SUPPORTED_LOCALES,
-  LOCALE_PREF_KEY,
+  activeWorkspaceLocale,
   isSupported,
+  LOCALE_PREF_KEY,
+  localeGateIsLoading,
+  localeToApply,
   normalizeLocale,
   resolveEffectiveLocale,
-  localeToApply,
-  activeWorkspaceLocale,
-  localeGateIsLoading,
+  SUPPORTED_LOCALES,
 };
-export type { SupportedLocale };
 
 /**
  * Boot-time cache key in localStorage. Used ONLY to avoid flash-of-wrong-
@@ -116,6 +114,7 @@ export function setCachedLocale(locale: SupportedLocale): void {
 const resources = {
   en: {
     common: commonEn,
+    connect: connectEn,
     setup: setupEn,
     legal: legalEn,
     shell: shellEn,
@@ -126,7 +125,6 @@ const resources = {
     agents: agentsEn,
     skills: skillsEn,
     routines: routinesEn,
-    integrations: integrationsEn,
     providers: providersEn,
     errors: errorsEn,
     events: eventsEn,
@@ -135,6 +133,7 @@ const resources = {
   },
   es: {
     common: commonEs,
+    connect: connectEs,
     setup: setupEs,
     legal: legalEs,
     shell: shellEs,
@@ -145,7 +144,6 @@ const resources = {
     agents: agentsEs,
     skills: skillsEs,
     routines: routinesEs,
-    integrations: integrationsEs,
     providers: providersEs,
     errors: errorsEs,
     events: eventsEs,
@@ -154,6 +152,7 @@ const resources = {
   },
   pt: {
     common: commonPt,
+    connect: connectPt,
     setup: setupPt,
     legal: legalPt,
     shell: shellPt,
@@ -164,7 +163,6 @@ const resources = {
     agents: agentsPt,
     skills: skillsPt,
     routines: routinesPt,
-    integrations: integrationsPt,
     providers: providersPt,
     errors: errorsPt,
     events: eventsPt,
@@ -193,6 +191,7 @@ void i18n
     defaultNS: "common",
     ns: [
       "common",
+      "connect",
       "setup",
       "legal",
       "shell",
@@ -203,7 +202,6 @@ void i18n
       "agents",
       "skills",
       "routines",
-      "integrations",
       "providers",
       "errors",
       "events",

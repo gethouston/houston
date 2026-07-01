@@ -1,11 +1,11 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import type { Activity } from "../src/data/activity.ts";
 import {
   applyBulkPatch,
   applyBulkRemove,
   applyRemove,
 } from "../src/data/activity-bulk.ts";
-import type { Activity } from "../src/data/activity.ts";
 
 const item = (id: string, status: string): Activity => ({
   id,
@@ -34,7 +34,12 @@ describe("activity bulk helpers", () => {
 
   it("treats unknown ids as a no-op", () => {
     const items = [item("a", "done")];
-    const next = applyBulkPatch(items, new Set(["zzz"]), { status: "archived" }, "t");
+    const next = applyBulkPatch(
+      items,
+      new Set(["zzz"]),
+      { status: "archived" },
+      "t",
+    );
     deepStrictEqual(next, items);
   });
 
@@ -47,29 +52,25 @@ describe("activity bulk helpers", () => {
     );
   });
 
+  it("single remove reports whether a row was removed", () => {
+    const items = [item("a", "done"), item("b", "running")];
+    const result = applyRemove(items, "a");
+    deepStrictEqual(result, {
+      items: [items[1]],
+      removed: true,
+    });
+  });
+
   it("removing an unknown id leaves the list unchanged", () => {
     const items = [item("a", "done")];
     deepStrictEqual(applyBulkRemove(items, new Set(["zzz"])), items);
   });
 
-  it("removes a single matching id and preserves order", () => {
-    const items = [item("a", "done"), item("b", "done"), item("c", "running")];
-    const next = applyRemove(items, "b");
-    deepStrictEqual(
-      next.map((i) => i.id),
-      ["a", "c"],
-    );
-  });
-
-  it("removing a single unknown id is an idempotent no-op", () => {
-    // Same length back signals "already gone" so `remove()` skips the write
-    // and resolves instead of throwing — the HOU-462 unhandled-rejection fix.
+  it("single remove treats unknown ids as an idempotent no-op", () => {
+    // Same-length list back with `removed: false` signals "already gone" so
+    // `remove()` skips the write and resolves instead of throwing — preserving
+    // the HOU-462 unhandled-rejection fix under the richer return shape.
     const items = [item("a", "done")];
-    const next = applyRemove(items, "zzz");
-    strictEqual(next.length, items.length);
-    deepStrictEqual(
-      next.map((i) => i.id),
-      ["a"],
-    );
+    deepStrictEqual(applyRemove(items, "zzz"), { items, removed: false });
   });
 });

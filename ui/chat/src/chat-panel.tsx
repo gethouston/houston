@@ -4,15 +4,15 @@
  * Generic version: accepts feedItems/status as props, no store dependencies.
  */
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { Shimmer } from "./ai-elements/shimmer";
+import { ChatDropOverlay } from "./chat-drop-overlay";
 import { feedItemsToMessages } from "./chat-helpers";
 import { ChatInput } from "./chat-input";
-import { ChatDropOverlay } from "./chat-drop-overlay";
 import { ChatMessages } from "./chat-messages";
 import type { ChatPanelProps } from "./chat-panel-types";
 import { deriveStatus } from "./chat-status";
-import { Shimmer } from "./ai-elements/shimmer";
-import { useFileDropZone, useControllable } from "./use-file-drop-zone";
 import { useAttachmentIntake } from "./use-attachment-intake";
+import { useControllable, useFileDropZone } from "./use-file-drop-zone";
 
 export type { ChatPanelProps } from "./chat-panel-types";
 
@@ -121,6 +121,7 @@ export function ChatPanel({
       {onBack && (
         <div className="max-w-3xl mx-auto w-full px-4 pt-3">
           <button
+            type="button"
             onClick={onBack}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
           >

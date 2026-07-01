@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import type { NewPanelOpener } from "@houston-ai/board";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { AgentPickerDialog } from "../agent-picker-dialog";
-import type { Agent } from "../../lib/types";
 
 /**
  * Mission Control's "New mission" flow. Because the view is cross-agent, the
@@ -49,7 +49,8 @@ export function useMcNewMission({
     setOpenerReady(true);
   }, []);
   const onAutoOpenEmpty = useCallback(() => {
-    if (visibleAgents.length === 1) handlePickAgent(visibleAgents[0], { focusComposer: false });
+    if (visibleAgents.length === 1)
+      handlePickAgent(visibleAgents[0], { focusComposer: false });
     else if (visibleAgents.length > 1) setAgentPickerOpen(true);
   }, [visibleAgents, handlePickAgent]);
   // Reset the pending agent when the panel closes without a card selected, so

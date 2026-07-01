@@ -15,14 +15,27 @@ const agent: Agent = {
 const agentDefWithModes = {
   config: {
     agents: [
-      { id: "default", name: "Default", promptFile: "default", createLabel: "New mission" },
-      { id: "research", name: "Research", promptFile: "research", createLabel: "Research" },
+      {
+        id: "default",
+        name: "Default",
+        promptFile: "default",
+        createLabel: "New mission",
+      },
+      {
+        id: "research",
+        name: "Research",
+        promptFile: "research",
+        createLabel: "Research",
+      },
     ],
   },
   source: "builtin",
 } as unknown as AgentDefinition;
 
-const agentDefNoModes = { config: {}, source: "builtin" } as unknown as AgentDefinition;
+const agentDefNoModes = {
+  config: {},
+  source: "builtin",
+} as unknown as AgentDefinition;
 
 describe("planNewMission (issue #328)", () => {
   it("plans a create from a blank submit when an agent is active", () => {

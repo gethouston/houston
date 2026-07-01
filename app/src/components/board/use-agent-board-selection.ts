@@ -1,8 +1,11 @@
 import { useCallback } from "react";
-import { useBulkUpdateActivity, useBulkDeleteActivity } from "../../hooks/queries";
+import {
+  useBulkDeleteActivity,
+  useBulkUpdateActivity,
+} from "../../hooks/queries";
 import { ARCHIVED_STATUS } from "../../lib/mission-selection";
-import { useSelectionSet } from "./use-selection-set";
 import type { BoardSelectionModel } from "./board-source";
+import { useSelectionSet } from "./use-selection-set";
 
 /**
  * Per-agent multi-select + bulk actions for the board tab. The selection
@@ -22,7 +25,10 @@ export function useAgentBoardSelection(
 
   const move = useCallback(
     async (status: string) => {
-      await bulkUpdate.mutateAsync({ ids: Array.from(selectedIds), update: { status } });
+      await bulkUpdate.mutateAsync({
+        ids: Array.from(selectedIds),
+        update: { status },
+      });
       clear();
     },
     [bulkUpdate, selectedIds, clear],

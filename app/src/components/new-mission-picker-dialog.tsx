@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@houston-ai/core";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSkills } from "../hooks/queries";
-import { SkillCard } from "./skill-card";
+import type { Agent, SkillSummary } from "../lib/types";
 import { SkillList } from "./new-mission-picker-skill-list";
 import {
   buildSkillPickerTabs,
@@ -18,7 +18,7 @@ import {
   shouldShowSkillPickerTabs,
 } from "./new-mission-picker-tab-model";
 import { ScrollableTabs } from "./new-mission-picker-tabs";
-import type { Agent, SkillSummary } from "../lib/types";
+import { SkillCard } from "./skill-card";
 
 interface Props {
   open: boolean;
@@ -76,13 +76,14 @@ export function NewMissionPickerDialog({
   const hasFeatured = featured.length > 0;
 
   const tabs = useMemo(
-    () => buildSkillPickerTabs({
-      categoryNames,
-      hasFeatured,
-      hasOther,
-      featuredLabel: t("skillPicker.featuredTab"),
-      otherLabel: t("skillPicker.otherTab"),
-    }),
+    () =>
+      buildSkillPickerTabs({
+        categoryNames,
+        hasFeatured,
+        hasOther,
+        featuredLabel: t("skillPicker.featuredTab"),
+        otherLabel: t("skillPicker.otherTab"),
+      }),
     [categoryNames, hasFeatured, hasOther, t],
   );
 
@@ -90,6 +91,7 @@ export function NewMissionPickerDialog({
   const firstTabId = tabs[0]?.id ?? "";
   const activeTabId = resolveActiveSkillPickerTab(tabs, activeTab);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: activeAgentPath is an intentional trigger — switching agents should reset the tab to the first one even though it is not read inside the effect body
   useEffect(() => {
     if (open) setActiveTab(firstTabId);
   }, [open, activeAgentPath, firstTabId]);
@@ -97,14 +99,15 @@ export function NewMissionPickerDialog({
   const skillsForActiveTab: SkillSummary[] =
     activeTabId === FEATURED_SKILLS_TAB_ID
       ? featured
-      : byCategory.get(activeTabId) ?? [];
+      : (byCategory.get(activeTabId) ?? []);
 
   const sortedSkills = useMemo(
     () => [...skillsForActiveTab].sort((a, b) => a.name.localeCompare(b.name)),
     [skillsForActiveTab],
   );
 
-  const showBlankCard = !hideBlank && (tabs.length === 0 || activeTabId === firstTabId);
+  const showBlankCard =
+    !hideBlank && (tabs.length === 0 || activeTabId === firstTabId);
 
   const handleBlank = () => {
     if (!onBlank) return;
@@ -128,14 +131,19 @@ export function NewMissionPickerDialog({
           <DialogTitle>{t("skillPicker.title")}</DialogTitle>
           <DialogDescription>
             {lockedAgent
-              ? t("skillPicker.descriptionWithAgent", { name: lockedAgent.name })
+              ? t("skillPicker.descriptionWithAgent", {
+                  name: lockedAgent.name,
+                })
               : t("skillPicker.description")}
           </DialogDescription>
         </DialogHeader>
 
         {!lockedAgent && agents.length > 1 && (
           <div className="shrink-0 px-6 pb-3">
-            <label htmlFor="nmp-agent" className="text-sm font-medium block mb-1.5">
+            <label
+              htmlFor="nmp-agent"
+              className="text-sm font-medium block mb-1.5"
+            >
               {t("skillPicker.agentLabel")}
             </label>
             <select
@@ -181,7 +189,9 @@ export function NewMissionPickerDialog({
               loading={skillsLoading}
               skills={sortedSkills}
               emptyLabel={
-                activeTabId ? t("skillPicker.skillsEmpty") : t("skillPicker.empty")
+                activeTabId
+                  ? t("skillPicker.skillsEmpty")
+                  : t("skillPicker.empty")
               }
               pickAgentLabel={t("skillPicker.pickAgentFirst")}
               loadingLabel={t("skillPicker.skillsLoading")}

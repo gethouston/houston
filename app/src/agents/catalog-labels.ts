@@ -30,7 +30,10 @@ interface CatalogEntry {
  * have a `catalog.<id>` entry: it renders the in-catalog English rather than a
  * raw key.
  */
-export function localizeCatalogCopy(entry: CatalogEntry, t: TFunction): CatalogCopy {
+export function localizeCatalogCopy(
+  entry: CatalogEntry,
+  t: TFunction,
+): CatalogCopy {
   if (entry.author !== "Houston") {
     return { name: entry.name, description: entry.description };
   }

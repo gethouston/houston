@@ -15,12 +15,19 @@
     "finishPage": "Empezar",
     "finishDialog": "Crear espacio de trabajo"
   },
+  "migrationReconnect": {
+    "title": "Bienvenido de nuevo",
+    "body": "Tus asistentes y todo lo que has trabajado están aquí. Solo vuelve a conectar tu IA para continuar donde lo dejaste.",
+    "skip": "Lo haré más tarde",
+    "dismissError": "No pudimos guardar eso. Inténtalo de nuevo."
+  },
   "tutorial": {
     "brand": "Houston",
     "nav": {
       "back": "Atrás",
       "continue": "Continuar"
     },
+    "counter": "Misión {{current}} de {{total}}",
     "eyebrow": "Paso {{number}}",
     "missionLabel": "Configuración: {{title}}",
     "upNext": "Sigue",
@@ -35,10 +42,20 @@
         "meet": "Conoce a tu agente",
         "brain": "Conecta un proveedor de IA para que piense",
         "tools": "Conecta tus apps",
-        "email": "Envía tu primer correo real con él"
+        "email": "Envía tu primer correo real con él",
+        "try": "Prueba una misión real con tu asistente",
+        "skill": "Guárdalo como una Habilidad reutilizable",
+        "routine": "Prográmalo como una Rutina recurrente",
+        "summary": "Conoce a tu asistente listo para trabajar"
       },
       "start": "Empezar",
       "skip": "Lo configuro más tarde"
+    },
+    "toolkits": {
+      "gmail": "Gmail",
+      "googlecalendar": "Google Calendar",
+      "outlook": "Outlook",
+      "outlook_calendar": "Outlook Calendar"
     },
     "defaults": {
       "workspaceName": "Personal",
@@ -62,7 +79,10 @@
       },
       "brain": {
         "title": "Inicia sesión en tu suscripción de IA",
-        "body": "Elige la IA que ya pagas. Tú traes tu propia suscripción, así que Houston nunca ve tu contraseña ni tu factura."
+        "body": "Elige la IA que ya pagas. Tú traes tu propia suscripción, así que Houston nunca ve tu contraseña ni tu factura.",
+        "continue": "Crear mi asistente",
+        "creating": "Creando",
+        "continueHint": "Houston creará tu asistente y abrirá la siguiente misión."
       },
       "providerLogin": {
         "title": "Inicia sesión en {{provider}}",
@@ -152,6 +172,71 @@
         "title": "Ahora pongámoslo a trabajar",
         "body": "Tres pasos rápidos para ver a tu agente hacer algo real.",
         "cta": "Vamos"
+      },
+      "try": {
+        "title": "Prueba una misión real",
+        "intro": {
+          "title": "Trabaja con tu primer agente",
+          "body": "En Houston, tus agentes se conectan a tus herramientas reales para hacer el trabajo por ti.",
+          "cta": "Probémoslo"
+        },
+        "doneTitle": "Lo lograste. Primera misión completada.",
+        "placeholder": "Responde a tu asistente...",
+        "skill": {
+          "title": "Planea mi siguiente día de trabajo",
+          "description": "Lee tu calendario y correo en paralelo, los cruza para encontrar cosas que se te escaparían y publica un plan estructurado con lo urgente, tu agenda y a quién responder."
+        },
+        "chip": "Planea mi siguiente día de trabajo",
+        "continueChip": "Guarda esto como una Habilidad",
+        "skip": "Saltar tutorial"
+      },
+      "skill": {
+        "title": "Guarda esto como una Habilidad",
+        "intro": {
+          "title": "Guárdalo como una Habilidad",
+          "body": "Si quieres ejecutar este mismo flujo después, guárdalo como una Habilidad. Tu asistente puede repetirlo con un clic o cuando se lo pidas.",
+          "cta": "Entendido"
+        },
+        "chip": "Guarda esto como una Habilidad",
+        "continueChip": "Conviértelo en una Rutina",
+        "skip": "Saltar tutorial",
+        "placeholder": "Responde a tu asistente...",
+        "savedDescription": "Planea el siguiente día de trabajo cruzando correo y calendario, con un borrador de respuesta para el correo más importante.",
+        "savedMessage": "Guardada como Habilidad llamada **{{slug}}**. Puedes ejecutarla cuando quieras, con un clic o pidiéndomelo.",
+        "done": {
+          "title": "Guardada como Habilidad",
+          "subtitle": "Ahora puedes ejecutarla cuando quieras, con un clic o pidiéndolo.",
+          "integrationsLabel": "Usa",
+          "savedLabel": "Habilidad"
+        }
+      },
+      "routine": {
+        "title": "Conviértelo en una Rutina",
+        "intro": {
+          "title": "Conviértelo en una Rutina",
+          "body": "Si quieres que esto se ejecute automáticamente en un horario, guárdalo como una Rutina. Tu asistente lo hará en segundo plano y te mostrará el resultado.",
+          "cta": "Entendido"
+        },
+        "chip": "Conviértelo en una Rutina",
+        "continueChip": "Conoce a tu asistente",
+        "skip": "Saltar tutorial",
+        "placeholder": "Responde a tu asistente...",
+        "done": {
+          "title": "Tu Rutina está lista",
+          "subtitle": "Houston ejecutará esto automáticamente en el horario que elegiste.",
+          "everyWeekdayAt": "Cada día laboral a las {{time}}",
+          "runsSkill": "Ejecuta tu Habilidad {{skill}}",
+          "manualHint": "También puedes crear rutinas desde la pestaña Rutinas o pedirle a cualquier agente que las cree."
+        }
+      },
+      "summary": {
+        "title": "Tu asistente está listo",
+        "body": "Esto es todo lo que acabas de configurar. Puedes cambiar cualquier cosa después desde la pestaña Habilidades o Rutinas, o simplemente pidiéndoselo a tu asistente.",
+        "skillCardTitle": "Habilidad",
+        "routineCardTitle": "Rutina",
+        "noSkill": "Ninguna Habilidad guardada",
+        "noRoutine": "Ninguna Rutina guardada",
+        "continueChip": "Entra a Houston"
       }
     },
     "sectionCounter": "{{section}} · {{current}} de {{total}}",

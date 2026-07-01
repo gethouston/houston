@@ -5,16 +5,17 @@
  *
  * These mirror `app/src/locales/en/routines.json`; keep them in sync.
  */
-import { SCHEDULE_PRESET_LABELS } from "./types.ts"
+
 import type {
-  ScheduleSummaryLabels,
   NextFireLabels,
+  RoutineEditorLabels,
+  RoutineRowLabels,
+  RoutinesGridLabels,
   RunHistoryLabels,
   ScheduleLabels,
-  RoutineEditorLabels,
-  RoutinesGridLabels,
-  RoutineRowLabels,
-} from "./labels"
+  ScheduleSummaryLabels,
+} from "./labels";
+import { SCHEDULE_PRESET_LABELS } from "./types.ts";
 
 export const DEFAULT_SCHEDULE_SUMMARY_LABELS: ScheduleSummaryLabels = {
   noSchedule: "No schedule set",
@@ -29,10 +30,10 @@ export const DEFAULT_SCHEDULE_SUMMARY_LABELS: ScheduleSummaryLabels = {
   everyDay: "Runs every day at {time}",
   everyNDays: "Runs every {n} days at {time}",
   weekly: "Runs every {day} at {time}",
-  everyWeekOnDays: "Runs every week on {days} at {time}",
+  weeklyOnDays: "Runs every week on {days} at {time}",
   monthly: "Runs on the {ordinal} of every month at {time}",
   everyNMonths: "Runs on the {ordinal} of every {months} months at {time}",
-}
+};
 
 export const DEFAULT_NEXT_FIRE_LABELS: NextFireLabels = {
   lessThanMinute: "in less than a minute",
@@ -44,7 +45,7 @@ export const DEFAULT_NEXT_FIRE_LABELS: NextFireLabels = {
   tomorrow: "tomorrow",
   soon: "soon",
   at: "{day} at {time}",
-}
+};
 
 export const DEFAULT_RUN_HISTORY_LABELS: RunHistoryLabels = {
   empty: "No runs yet, this routine hasn't fired.",
@@ -62,28 +63,38 @@ export const DEFAULT_RUN_HISTORY_LABELS: RunHistoryLabels = {
   today: "Today, {time}",
   yesterday: "Yesterday, {time}",
   onDate: "{date}, {time}",
-}
+};
 
 export const DEFAULT_SCHEDULE_LABELS: ScheduleLabels = {
   presets: SCHEDULE_PRESET_LABELS,
   units: {
-    minutes: { one: "minute", other: "minutes" },
-    hours: { one: "hour", other: "hours" },
-    days: { one: "day", other: "days" },
-    months: { one: "month", other: "months" },
+    minutes: "minutes",
+    hours: "hours",
+    days: "days",
+    months: "months",
+  },
+  unitsSingular: {
+    minutes: "minute",
+    hours: "hour",
+    days: "day",
+    months: "month",
   },
   timeLabel: "Time",
   dayOfMonthLabel: "Day of month",
   repeatEvery: "Repeat every",
-  enterNumber: "Enter a number",
-  pickDay: "Pick at least one day",
-  onTheseDays: "On these days",
-  shortcuts: { everyDay: "Every day", weekdays: "Weekdays", weekends: "Weekends" },
+  weekdaysLabel: "On these days",
+  weekdayShortcuts: {
+    everyDay: "Every day",
+    weekdays: "Weekdays",
+    weekends: "Weekends",
+  },
   decrease: "Decrease",
   increase: "Increase",
+  enterNumber: "Enter a number",
+  pickDay: "Pick at least one day",
   timePicker: { hour: "Hour", minute: "Minute", period: "AM/PM" },
   summary: DEFAULT_SCHEDULE_SUMMARY_LABELS,
-}
+};
 
 export const DEFAULT_EDITOR_LABELS: RoutineEditorLabels = {
   back: "Back to routines",
@@ -109,7 +120,8 @@ export const DEFAULT_EDITOR_LABELS: RoutineEditorLabels = {
   sectionRecent: "Recent runs",
   nextRun: "Next run {relative}",
   schedulePreview: "Schedule preview",
-  schedulePreviewHint: "Pick a valid schedule to see when this routine will fire.",
+  schedulePreviewHint:
+    "Pick a valid schedule to see when this routine will fire.",
   notifyTitle: "Only notify when relevant",
   notifyDescription:
     "If the agent has nothing to report, the run won't surface on the board.",
@@ -119,7 +131,7 @@ export const DEFAULT_EDITOR_LABELS: RoutineEditorLabels = {
   modelTitle: "Model",
   modelDescription:
     "Pick the model and reasoning effort this routine runs on. Defaults to the agent's settings.",
-}
+};
 
 export const DEFAULT_GRID_LABELS: RoutinesGridLabels = {
   loading: "Loading…",
@@ -133,7 +145,7 @@ export const DEFAULT_GRID_LABELS: RoutinesGridLabels = {
   timezoneHint: "All your routines run in this timezone.",
   timezoneSearchPlaceholder: "Search timezones…",
   timezoneNoResults: "No timezones found",
-}
+};
 
 export const DEFAULT_ROW_LABELS: RoutineRowLabels = {
   untitled: "Untitled",
@@ -147,4 +159,4 @@ export const DEFAULT_ROW_LABELS: RoutineRowLabels = {
   ranDays: "ran {n}d ago",
   pauseRoutine: "Pause routine",
   resumeRoutine: "Resume routine",
-}
+};

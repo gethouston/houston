@@ -1,13 +1,13 @@
-import { useTranslation } from "react-i18next";
-import { Check } from "lucide-react";
 import {
   AGENT_COLORS,
-  HoustonAvatar,
-  Input,
   cn,
   colorHex,
+  HoustonAvatar,
+  Input,
   resolveAgentColor,
 } from "@houston-ai/core";
+import { Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { SetupCard } from "../setup-card";
 
 interface MeetMissionProps {

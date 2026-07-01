@@ -1,9 +1,9 @@
-import { strictEqual, deepStrictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  effortFillCount,
-  effortBars,
   EFFORT_ICON_VIEWBOX,
+  effortBars,
+  effortFillCount,
 } from "../src/lib/effort-bars.ts";
 
 // Opus/Fable accept all five; Codex stops at xhigh (no max).

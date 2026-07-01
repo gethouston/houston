@@ -7,6 +7,15 @@ edition = "2021"
 name = "houston_app"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[features]
+# Off by default — the default build stays on the Rust-engine sidecar path and
+# remains releasable. Enable with `--features host-sidecar` to spawn the
+# Bun-compiled Houston host (packages/host/src/local/main.ts) as the
+# sidecar instead, talking to it in control-plane mode. build.rs keys off
+# `CARGO_FEATURE_HOST_SIDECAR` to stage the compiled host; lib.rs + the
+# supervisor branch on `cfg!(feature = "host-sidecar")` at spawn time.
+host-sidecar = []
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

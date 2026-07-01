@@ -1,30 +1,26 @@
+import { type Toast, ToastContainer } from "@houston-ai/core";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ToastContainer, type Toast } from "@houston-ai/core";
 import { analytics } from "../../lib/analytics";
+import { stepSection } from "../../lib/setup-steps";
+import { tauriAgents, tauriProvider, tauriWorkspaces } from "../../lib/tauri";
+import type { Agent } from "../../lib/types";
+import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { useAgentStore } from "../../stores/agents";
-import { tauriAgents, tauriProvider, tauriWorkspaces } from "../../lib/tauri";
-import { getDefaultModel } from "../../lib/providers";
-import type { Agent } from "../../lib/types";
-import { MeetMission } from "./missions/meet";
-import { BrainMission } from "./missions/brain";
-import { ProviderLoginMission } from "./missions/provider-login";
-import { ToolsMission } from "./missions/tools";
-import { ConnectEmailMission } from "./missions/connect-email";
-import { EmailMission } from "./missions/email";
-import { FinishedMission } from "./missions/finished";
-import { SetupProgress } from "./setup-progress";
 import { createPersonalAssistantForWorkspace } from "./create-personal-assistant";
 import { ensureWorkspaceWithAssistant } from "./ensure-default-assistant";
+import { BrainMission } from "./missions/brain";
+import { FinishedMission } from "./missions/finished";
+import { MeetMission } from "./missions/meet";
+import { ProviderLoginMission } from "./missions/provider-login";
 import {
   buildAssistantInstructions,
   defaultAssistantSetup,
 } from "./personal-assistant-artifacts";
 import { TUTORIAL_MISSION } from "./personal-assistant-missions";
-import { type OnboardingStep } from "./tutorial-copy";
-import { stepSection } from "../../lib/setup-steps";
+import { SetupProgress } from "./setup-progress";
+import type { OnboardingStep } from "./tutorial-copy";
 
 interface PersonalAssistantOnboardingProps {
   toasts: Toast[];
@@ -41,16 +37,11 @@ export function PersonalAssistantOnboarding({
   const setViewMode = useUIStore((s) => s.setViewMode);
   const addToast = useUIStore((s) => s.addToast);
   const [step, setStep] = useState<OnboardingStep>("intro");
-  const [agent, setAgent] = useState<Agent | null>(null);
+  const [, setAgent] = useState<Agent | null>(null);
   const [provider, setProvider] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
   // Set while the create-agent step is provisioning, to drive the loading state.
   const [creatingAgent, setCreatingAgent] = useState(false);
-  // The email toolkit connected in the "give access to your email" step.
-  const [emailTool, setEmailTool] = useState<{
-    toolkit: string;
-    label: string;
-  } | null>(null);
   const [assistantName, setAssistantName] = useState(() =>
     t("setup:tutorial.defaults.assistantName"),
   );
@@ -68,8 +59,7 @@ export function PersonalAssistantOnboarding({
   useEffect(() => {
     analytics.track("onboarding_started", { source: "setup" });
     setTutorialActive(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setTutorialActive]);
 
   // Fire one step-viewed event per screen reached so a single funnel shows
   // exactly where people drop off. Guarded so re-renders / Back don't refire.
@@ -97,20 +87,23 @@ export function PersonalAssistantOnboarding({
       });
       setup.color = assistantColor;
 
-      const { workspace: ws, assistant: created, createdWorkspace } =
-        await ensureWorkspaceWithAssistant(setup.workspaceName, {
-          listWorkspaces: () => tauriWorkspaces.list(),
-          createWorkspace: (name) => tauriWorkspaces.create(name),
-          listAgents: (workspaceId) => tauriAgents.list(workspaceId),
-          createAssistant: (workspaceId) =>
-            createPersonalAssistantForWorkspace(workspaceId, {
-              name: setup.assistantName.trim(),
-              instructions: buildAssistantInstructions(setup, missionTitle),
-              color: setup.color,
-              provider: pickedProvider,
-              model: pickedModel,
-            }),
-        });
+      const {
+        workspace: ws,
+        assistant: created,
+        createdWorkspace,
+      } = await ensureWorkspaceWithAssistant(setup.workspaceName, {
+        listWorkspaces: () => tauriWorkspaces.list(),
+        createWorkspace: (name) => tauriWorkspaces.create(name),
+        listAgents: (workspaceId) => tauriAgents.list(workspaceId),
+        createAssistant: (workspaceId) =>
+          createPersonalAssistantForWorkspace(workspaceId, {
+            name: setup.assistantName.trim(),
+            instructions: buildAssistantInstructions(setup, missionTitle),
+            color: setup.color,
+            provider: pickedProvider,
+            model: pickedModel,
+          }),
+      });
 
       await tauriProvider.setLastUsed(pickedProvider, pickedModel);
       if (createdWorkspace) {
@@ -172,26 +165,6 @@ export function PersonalAssistantOnboarding({
     }
   };
 
-  // Provider/model the email send runs against (fall back to the default).
-  const missionProvider = provider ?? "anthropic";
-  const missionModel = model ?? getDefaultModel(missionProvider);
-
-  // Escape hatch (HOU-555): the final email step auto-advances on a marker the
-  // agent must emit, but some models send the email and never emit it, stranding
-  // the user with no way forward. Let them bail into the app. This is NOT a
-  // completion: it fires `onboarding_skipped` (not `onboarding_completed`) with
-  // the model, so analytics can separate "stuck and skipped" from a normal
-  // finish and surface which models strand users.
-  const skipOnboarding = (fromStep: OnboardingStep) => {
-    analytics.track("onboarding_skipped", {
-      step: fromStep,
-      provider: missionProvider,
-      model: missionModel,
-      source: "stuck",
-    });
-    setTutorialActive(false);
-  };
-
   // Section-aware eyebrow: "Setup · 1 of 2", "Onboarding · 2 of 3". Empty for
   // screens that aren't numbered steps (never rendered on those).
   const stepEyebrow = (screen: string): string => {
@@ -249,28 +222,10 @@ export function PersonalAssistantOnboarding({
           done={["ai"]}
           justCompleted="ai"
           ctaLabel={t("setup:tutorial.missions.aiConnected.cta")}
-          onContinue={() => setStep("tools")}
-        />
-      )}
-
-      {step === "tools" && (
-        <ToolsMission
-          eyebrow={stepEyebrow("tools")}
-          onBack={() => setStep("providerLogin")}
-          onContinue={() => setStep("appsConnected")}
-        />
-      )}
-      {step === "appsConnected" && (
-        <SetupProgress
-          section="setup"
-          title={t("setup:tutorial.missions.appsConnected.title")}
-          message={t("setup:tutorial.missions.appsConnected.body")}
-          done={["ai", "apps"]}
-          justCompleted="apps"
-          ctaLabel={t("setup:tutorial.missions.appsConnected.cta")}
           onContinue={() => setStep("onboardingIntro")}
         />
       )}
+
       {step === "onboardingIntro" && (
         <SetupProgress
           section="onboarding"
@@ -302,59 +257,6 @@ export function PersonalAssistantOnboarding({
           done={["agent"]}
           justCompleted="agent"
           ctaLabel={t("setup:tutorial.missions.agentCreated.cta")}
-          onContinue={() => setStep("connectEmail")}
-        />
-      )}
-
-      {step === "connectEmail" && (
-        <ConnectEmailMission
-          eyebrow={stepEyebrow("connectEmail")}
-          onBack={() => setStep("meet")}
-          onConnected={(toolkit, label) => {
-            // Capture which email the user connected (connectApp doesn't route
-            // through the AI card, so the global tracker wouldn't see it).
-            analytics.track("integration_connected", {
-              integration_slug: toolkit,
-            });
-            setEmailTool({ toolkit, label });
-            setStep("emailConnected");
-          }}
-        />
-      )}
-      {step === "emailConnected" && (
-        <SetupProgress
-          section="onboarding"
-          title={t("setup:tutorial.missions.emailConnected.title")}
-          message={t("setup:tutorial.missions.emailConnected.body")}
-          done={["agent", "email"]}
-          justCompleted="email"
-          ctaLabel={t("setup:tutorial.missions.emailConnected.cta")}
-          onContinue={() => setStep("emailChat")}
-        />
-      )}
-
-      {step === "emailChat" && agent && emailTool && (
-        <EmailMission
-          eyebrow={stepEyebrow("emailChat")}
-          agent={agent}
-          assistantColor={assistantColor}
-          provider={missionProvider}
-          model={missionModel}
-          emailToolkit={emailTool.toolkit}
-          emailToolkitLabel={emailTool.label}
-          onBack={() => setStep("connectEmail")}
-          onContinue={() => setStep("emailSent")}
-          onSkip={() => skipOnboarding("emailChat")}
-        />
-      )}
-      {step === "emailSent" && (
-        <SetupProgress
-          section="onboarding"
-          title={t("setup:tutorial.missions.emailSent.title")}
-          message={t("setup:tutorial.missions.emailSent.body")}
-          done={["agent", "email", "send"]}
-          justCompleted="send"
-          ctaLabel={t("setup:tutorial.missions.emailSent.cta")}
           onContinue={() => setStep("finished")}
         />
       )}

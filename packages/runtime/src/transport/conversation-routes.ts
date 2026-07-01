@@ -1,0 +1,141 @@
+import { snapshot, subscribe } from "../session/bus";
+import {
+  cancelTurn,
+  disposeConversation,
+  ensureProviderForTurn,
+  runTurn,
+} from "../session/chat";
+import { summarizeTitle, titleFromText } from "../session/summarize";
+import {
+  deleteConversation,
+  getHistory,
+  listConversations,
+  renameConversation,
+} from "../store/conversations";
+import { json, type RouteContext, readJson } from "./http-helpers";
+import { openSSE } from "./sse";
+
+export async function handleConversationRoute(
+  ctx: RouteContext,
+): Promise<boolean> {
+  const { method, path, req, res } = ctx;
+
+  if (method === "GET" && path === "/conversations") {
+    json(res, 200, listConversations());
+    return true;
+  }
+  if (method === "POST" && path === "/title") {
+    await handleTitleFromText(ctx);
+    return true;
+  }
+
+  const convRootMatch = path.match(/^\/conversations\/([^/]+)$/);
+  if (convRootMatch && (method === "PATCH" || method === "DELETE")) {
+    await handleConversationRoot(ctx, decodeURIComponent(convRootMatch[1]));
+    return true;
+  }
+
+  const convMatch = path.match(
+    /^\/conversations\/([^/]+)\/(messages|events|cancel|title)$/,
+  );
+  if (!convMatch) return false;
+
+  const id = decodeURIComponent(convMatch[1]);
+  const action = convMatch[2];
+
+  if (method === "GET" && action === "messages") {
+    const history = getHistory(id);
+    history
+      ? json(res, 200, history)
+      : json(res, 404, { error: "conversation not found" });
+    return true;
+  }
+  if (method === "GET" && action === "events") {
+    const sse = openSSE(res);
+    sse.send("sync", snapshot(id));
+    const unsub = subscribe(id, (e) => sse.send(e.type, e.data));
+    req.on("close", () => {
+      unsub();
+      sse.close();
+    });
+    return true;
+  }
+  if (method === "POST" && action === "cancel") {
+    const cancelled = await cancelTurn(id);
+    json(res, 200, { ok: true, cancelled });
+    return true;
+  }
+  if (method === "POST" && action === "title") {
+    await handleConversationTitle(ctx, id);
+    return true;
+  }
+  if (method === "POST" && action === "messages") {
+    await handleStartTurn(ctx, id);
+    return true;
+  }
+
+  return false;
+}
+
+async function handleTitleFromText(ctx: RouteContext) {
+  const { text } = await readJson(ctx.req);
+  if (typeof text !== "string") {
+    json(ctx.res, 400, { error: "missing 'text'" });
+    return;
+  }
+  try {
+    json(ctx.res, 200, { title: await titleFromText(text) });
+  } catch (e) {
+    json(ctx.res, 400, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+async function handleConversationRoot(ctx: RouteContext, id: string) {
+  if (ctx.method === "PATCH") {
+    const { title } = await readJson(ctx.req);
+    if (!title || typeof title !== "string") {
+      json(ctx.res, 400, { error: "missing 'title'" });
+      return;
+    }
+    renameConversation(id, title)
+      ? json(ctx.res, 200, { ok: true })
+      : json(ctx.res, 404, { error: "conversation not found" });
+    return;
+  }
+  if (ctx.method === "DELETE") {
+    await disposeConversation(id, { deleteSessions: true });
+    deleteConversation(id)
+      ? json(ctx.res, 200, { ok: true })
+      : json(ctx.res, 404, { error: "conversation not found" });
+  }
+}
+
+async function handleConversationTitle(ctx: RouteContext, id: string) {
+  try {
+    const title = await summarizeTitle(id);
+    title
+      ? json(ctx.res, 200, { title })
+      : json(ctx.res, 404, { error: "conversation not found" });
+  } catch (e) {
+    json(ctx.res, 400, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+async function handleStartTurn(ctx: RouteContext, id: string) {
+  const { text, nonce, model, effort } = await readJson(ctx.req);
+  if (!text || typeof text !== "string") {
+    json(ctx.res, 400, { error: "missing 'text'" });
+    return;
+  }
+  if (!(await ensureProviderForTurn())) {
+    json(ctx.res, 409, {
+      error: "No provider connected. Connect an AI provider first.",
+    });
+    return;
+  }
+  void runTurn(id, text, typeof nonce === "string" ? nonce : undefined, {
+    model: typeof model === "string" ? model : undefined,
+    effort: typeof effort === "string" ? effort : undefined,
+  });
+  json(ctx.res, 202, { ok: true, id });
+}

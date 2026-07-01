@@ -1,6 +1,6 @@
-import { useTranslation } from "react-i18next";
 import { Kbd, KbdGroup } from "@houston-ai/core";
-import { shortcutParts, type ShortcutAction } from "../../../lib/shortcuts";
+import { useTranslation } from "react-i18next";
+import { type ShortcutAction, shortcutParts } from "../../../lib/shortcuts";
 
 interface Row {
   action?: ShortcutAction;
@@ -11,7 +11,10 @@ interface Row {
 
 const NAV_ROWS: Row[] = [
   { action: "palette", labelKey: "shell:cheatsheet.rows.palette" },
-  { action: "missionControl", labelKey: "shell:cheatsheet.rows.missionControl" },
+  {
+    action: "missionControl",
+    labelKey: "shell:cheatsheet.rows.missionControl",
+  },
   { action: "newMission", labelKey: "shell:cheatsheet.rows.newMission" },
 ];
 
@@ -36,13 +39,11 @@ const HELP_ROWS: Row[] = [
 ];
 
 function RowKbd({ row }: { row: Row }) {
-  const groups = row.action
-    ? [shortcutParts(row.action)]
-    : (row.parts ?? []);
+  const groups = row.action ? [shortcutParts(row.action)] : (row.parts ?? []);
   return (
     <div className="flex items-center gap-1">
-      {groups.map((parts, i) => (
-        <KbdGroup key={i}>
+      {groups.map((parts) => (
+        <KbdGroup key={parts.join("+")}>
           {parts.map((p) => (
             <Kbd key={p}>{p}</Kbd>
           ))}
@@ -92,9 +93,21 @@ export function ShortcutsSection() {
         {t("settings:shortcuts.description")}
       </p>
       <div className="flex flex-col gap-6">
-        <Section title={t("shell:cheatsheet.sections.navigation")} rows={NAV_ROWS} t={t} />
-        <Section title={t("shell:cheatsheet.sections.cycle")} rows={CYCLE_ROWS} t={t} />
-        <Section title={t("shell:cheatsheet.sections.help")} rows={HELP_ROWS} t={t} />
+        <Section
+          title={t("shell:cheatsheet.sections.navigation")}
+          rows={NAV_ROWS}
+          t={t}
+        />
+        <Section
+          title={t("shell:cheatsheet.sections.cycle")}
+          rows={CYCLE_ROWS}
+          t={t}
+        />
+        <Section
+          title={t("shell:cheatsheet.sections.help")}
+          rows={HELP_ROWS}
+          t={t}
+        />
       </div>
     </section>
   );

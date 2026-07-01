@@ -10,7 +10,9 @@ describe("session status store", () => {
   it("clears transient session status after engine restart", () => {
     const key = getSessionStatusKey("C:/agent", "activity-1");
 
-    useSessionStatusStore.getState().setStatus("C:/agent", "activity-1", "running");
+    useSessionStatusStore
+      .getState()
+      .setStatus("C:/agent", "activity-1", "running");
     strictEqual(useSessionStatusStore.getState().statuses[key], "running");
 
     useSessionStatusStore.getState().clearAll();

@@ -1,8 +1,8 @@
-import { Suspense } from "react";
 import { Spinner } from "@houston-ai/core";
-import { resolveTabComponent } from "../../agents/tab-resolver";
+import { Suspense } from "react";
 import { STANDARD_TABS } from "../../agents/standard-tabs";
-import type { AgentDefinition, Agent } from "../../lib/types";
+import { resolveTabComponent } from "../../agents/tab-resolver";
+import type { Agent, AgentDefinition } from "../../lib/types";
 
 interface AgentRendererProps {
   agentDef: AgentDefinition;
@@ -10,7 +10,11 @@ interface AgentRendererProps {
   activeTabId: string;
 }
 
-export function AgentRenderer({ agentDef, agent, activeTabId }: AgentRendererProps) {
+export function AgentRenderer({
+  agentDef,
+  agent,
+  activeTabId,
+}: AgentRendererProps) {
   return (
     <div className="h-full w-full relative min-h-0">
       {STANDARD_TABS.map((tab) => {
@@ -19,7 +23,9 @@ export function AgentRenderer({ agentDef, agent, activeTabId }: AgentRendererPro
         return (
           <div
             key={tab.id}
-            className={isActive ? "h-full w-full flex flex-col min-h-0" : "hidden"}
+            className={
+              isActive ? "h-full w-full flex flex-col min-h-0" : "hidden"
+            }
           >
             <Suspense
               fallback={

@@ -37,7 +37,7 @@ const DONE_LABELS: Record<string, string> = {
 
 /** The bare tool name with any MCP `server__tool` prefix stripped. */
 export function toolShortName(name: string): string {
-  return name.includes("__") ? name.split("__").pop()! : name;
+  return name.includes("__") ? (name.split("__").at(-1) ?? name) : name;
 }
 
 /**

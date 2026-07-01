@@ -16,37 +16,38 @@
  *   maps to plain-English copy (rate limited, offline, malformed,
  *   already installed, etc). No raw error messages reach the user.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Spinner } from "@houston-ai/core"
-import { AlertCircle, Search } from "lucide-react"
-import type { CommunitySkill } from "./types"
+
+import { Spinner } from "@houston-ai/core";
+import { AlertCircle, Search } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_STORE_VIEW_LABELS,
   type StoreViewLabels,
-} from "./add-skill-dialog-store-labels"
+} from "./add-skill-dialog-store-labels";
 import {
-  StoreRow,
   type InstallFailureReason,
   type RowInstallState,
-} from "./add-skill-dialog-store-row"
-import { classifySkillError } from "./skill-error-kinds"
+  StoreRow,
+} from "./add-skill-dialog-store-row";
+import { classifySkillError } from "./skill-error-kinds";
+import type { CommunitySkill } from "./types";
 
-const SEARCH_DEBOUNCE_MS = 350
+const SEARCH_DEBOUNCE_MS = 350;
 
 export interface StoreViewProps {
-  open: boolean
-  onSearch: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>
+  open: boolean;
+  onSearch: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>;
   /**
    * Optional dedicated "popular skills" fetcher. When provided, the
    * dialog opens against this feed instead of seeding a fake search,
    * which means user-typed search never blocks behind it.
    */
-  onPopular?: (signal?: AbortSignal) => Promise<CommunitySkill[]>
-  onInstall: (skill: CommunitySkill, signal?: AbortSignal) => Promise<string>
+  onPopular?: (signal?: AbortSignal) => Promise<CommunitySkill[]>;
+  onInstall: (skill: CommunitySkill, signal?: AbortSignal) => Promise<string>;
   /** Lowercase set of slugs already installed locally. Drives the
    *  "Already installed" badges and disables their install buttons. */
-  installedSkillNames?: Set<string>
-  labels?: StoreViewLabels
+  installedSkillNames?: Set<string>;
+  labels?: StoreViewLabels;
 }
 
 type SearchPhase =
@@ -59,13 +60,13 @@ type SearchPhase =
   | { kind: "results"; skills: CommunitySkill[]; query: string }
   | { kind: "no-results"; query: string }
   | {
-      kind: "search-error"
-      reason: "rate_limited" | "offline" | "generic"
-      query: string
-    }
+      kind: "search-error";
+      reason: "rate_limited" | "offline" | "generic";
+      query: string;
+    };
 
 interface RowInstallEntry {
-  state: RowInstallState
+  state: RowInstallState;
 }
 
 export function StoreView({
@@ -76,112 +77,117 @@ export function StoreView({
   installedSkillNames,
   labels,
 }: StoreViewProps) {
-  const l = { ...DEFAULT_STORE_VIEW_LABELS, ...labels }
-  const [query, setQuery] = useState("")
-  const [phase, setPhase] = useState<SearchPhase>({ kind: "idle" })
+  const l = { ...DEFAULT_STORE_VIEW_LABELS, ...labels };
+  const [query, setQuery] = useState("");
+  const [phase, setPhase] = useState<SearchPhase>({ kind: "idle" });
   const [installs, setInstalls] = useState<Map<string, RowInstallEntry>>(
     () => new Map(),
-  )
-  const popularLoadedRef = useRef(false)
+  );
+  const popularLoadedRef = useRef(false);
   /**
    * Keep the popular skills around once fetched so we can restore them
    * when the user clears the search box. Without this, clearing the
    * input drops the user back to an empty surface even though we
    * already paid for the popular fetch.
    */
-  const popularSkillsRef = useRef<CommunitySkill[] | null>(null)
-  const searchAbortRef = useRef<AbortController | null>(null)
-  const popularAbortRef = useRef<AbortController | null>(null)
-  const installAbortsRef = useRef<Map<string, AbortController>>(new Map())
+  const popularSkillsRef = useRef<CommunitySkill[] | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const popularAbortRef = useRef<AbortController | null>(null);
+  const installAbortsRef = useRef<Map<string, AbortController>>(new Map());
 
   // Dialog open lifecycle: clear state on close, kick off popular fetch
   // on open. The popular fetch is the ONLY network call that happens
   // automatically — search fires only when the user types.
   useEffect(() => {
     if (!open) {
-      setQuery("")
-      setPhase({ kind: "idle" })
-      setInstalls(new Map())
-      popularLoadedRef.current = false
-      popularSkillsRef.current = null
-      searchAbortRef.current?.abort()
-      popularAbortRef.current?.abort()
-      installAbortsRef.current.forEach((c) => c.abort())
-      installAbortsRef.current.clear()
-      return
+      setQuery("");
+      setPhase({ kind: "idle" });
+      setInstalls(new Map());
+      popularLoadedRef.current = false;
+      popularSkillsRef.current = null;
+      searchAbortRef.current?.abort();
+      popularAbortRef.current?.abort();
+      installAbortsRef.current.forEach((c) => {
+        c.abort();
+      });
+      installAbortsRef.current.clear();
+      return;
     }
-    if (popularLoadedRef.current) return
-    popularLoadedRef.current = true
+    if (popularLoadedRef.current) return;
+    popularLoadedRef.current = true;
 
     if (!onPopular) {
       // Fallback: without a popular fetcher just show the empty hint.
-      setPhase({ kind: "idle" })
-      return
+      setPhase({ kind: "idle" });
+      return;
     }
 
-    const controller = new AbortController()
-    popularAbortRef.current = controller
-    setPhase({ kind: "loading-popular" })
+    const controller = new AbortController();
+    popularAbortRef.current = controller;
+    setPhase({ kind: "loading-popular" });
     onPopular(controller.signal)
       .then((skills) => {
-        if (controller.signal.aborted) return
+        if (controller.signal.aborted) return;
         if (skills.length === 0) {
-          popularSkillsRef.current = null
-          setPhase({ kind: "popular-error" })
+          popularSkillsRef.current = null;
+          setPhase({ kind: "popular-error" });
         } else {
-          popularSkillsRef.current = skills
-          setPhase({ kind: "popular", skills })
+          popularSkillsRef.current = skills;
+          setPhase({ kind: "popular", skills });
         }
       })
       .catch((err) => {
-        if (controller.signal.aborted) return
-        const cls = classifySkillError(err)
-        if (cls === "aborted") return
-        popularSkillsRef.current = null
-        setPhase({ kind: "popular-error" })
-      })
+        if (controller.signal.aborted) return;
+        const cls = classifySkillError(err);
+        if (cls === "aborted") return;
+        popularSkillsRef.current = null;
+        setPhase({ kind: "popular-error" });
+      });
 
     return () => {
-      controller.abort()
-    }
-  }, [open, onPopular])
+      controller.abort();
+    };
+  }, [open, onPopular]);
 
   // User-typed search with debounce + abort. Each keystroke after the
   // debounce window aborts any in-flight request, so we never apply
   // stale results.
   useEffect(() => {
-    if (!open) return
-    const trimmed = query.trim()
+    if (!open) return;
+    const trimmed = query.trim();
 
     if (trimmed === "") {
       // Empty query → restore popular results if we already have them
       // cached in the ref. The ref persists across query changes so
       // typing then clearing returns the user to the popular feed
       // without a re-fetch.
-      searchAbortRef.current?.abort()
-      const cached = popularSkillsRef.current
+      searchAbortRef.current?.abort();
+      const cached = popularSkillsRef.current;
       if (cached && cached.length > 0) {
-        setPhase({ kind: "popular", skills: cached })
+        setPhase({ kind: "popular", skills: cached });
       } else {
         setPhase((prev) => {
-          if (prev.kind === "loading-popular" || prev.kind === "popular-error") {
-            return prev
+          if (
+            prev.kind === "loading-popular" ||
+            prev.kind === "popular-error"
+          ) {
+            return prev;
           }
-          return { kind: "idle" }
-        })
+          return { kind: "idle" };
+        });
       }
-      return
+      return;
     }
 
     if (trimmed.length < 2) {
-      searchAbortRef.current?.abort()
-      setPhase({ kind: "too-short" })
-      return
+      searchAbortRef.current?.abort();
+      setPhase({ kind: "too-short" });
+      return;
     }
 
-    const controller = new AbortController()
-    searchAbortRef.current?.abort()
-    searchAbortRef.current = controller
+    const controller = new AbortController();
+    searchAbortRef.current?.abort();
+    searchAbortRef.current = controller;
 
     const timer = setTimeout(() => {
       // Show a "searching" state that keeps the previous results
@@ -194,128 +200,128 @@ export function StoreView({
             : prev.kind === "searching"
               ? prev.previous
               : [],
-      }))
+      }));
 
       onSearch(trimmed, controller.signal)
         .then((skills) => {
-          if (controller.signal.aborted) return
+          if (controller.signal.aborted) return;
           if (skills.length === 0) {
-            setPhase({ kind: "no-results", query: trimmed })
+            setPhase({ kind: "no-results", query: trimmed });
           } else {
-            setPhase({ kind: "results", skills, query: trimmed })
+            setPhase({ kind: "results", skills, query: trimmed });
           }
         })
         .catch((err) => {
-          if (controller.signal.aborted) return
-          const cls = classifySkillError(err)
-          if (cls === "aborted") return
+          if (controller.signal.aborted) return;
+          const cls = classifySkillError(err);
+          if (cls === "aborted") return;
           const reason: "rate_limited" | "offline" | "generic" =
             cls === "rate_limited"
               ? "rate_limited"
               : cls === "offline"
                 ? "offline"
-                : "generic"
-          setPhase({ kind: "search-error", reason, query: trimmed })
-        })
-    }, SEARCH_DEBOUNCE_MS)
+                : "generic";
+          setPhase({ kind: "search-error", reason, query: trimmed });
+        });
+    }, SEARCH_DEBOUNCE_MS);
 
     return () => {
-      clearTimeout(timer)
-      controller.abort()
-    }
-  }, [query, onSearch, open])
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query, onSearch, open]);
 
   // Popular fetch retry — used by the "Try again" button when popular fails.
   const retryPopular = useCallback(() => {
-    if (!onPopular) return
-    popularAbortRef.current?.abort()
-    const controller = new AbortController()
-    popularAbortRef.current = controller
-    setPhase({ kind: "loading-popular" })
+    if (!onPopular) return;
+    popularAbortRef.current?.abort();
+    const controller = new AbortController();
+    popularAbortRef.current = controller;
+    setPhase({ kind: "loading-popular" });
     onPopular(controller.signal)
       .then((skills) => {
-        if (controller.signal.aborted) return
+        if (controller.signal.aborted) return;
         if (skills.length === 0) {
-          popularSkillsRef.current = null
-          setPhase({ kind: "popular-error" })
+          popularSkillsRef.current = null;
+          setPhase({ kind: "popular-error" });
         } else {
-          popularSkillsRef.current = skills
-          setPhase({ kind: "popular", skills })
+          popularSkillsRef.current = skills;
+          setPhase({ kind: "popular", skills });
         }
       })
       .catch((err) => {
-        if (controller.signal.aborted) return
-        if (classifySkillError(err) === "aborted") return
-        popularSkillsRef.current = null
-        setPhase({ kind: "popular-error" })
-      })
-  }, [onPopular])
+        if (controller.signal.aborted) return;
+        if (classifySkillError(err) === "aborted") return;
+        popularSkillsRef.current = null;
+        setPhase({ kind: "popular-error" });
+      });
+  }, [onPopular]);
 
   // Install handler — per-row state machine with kind-aware error copy.
   const handleInstall = useCallback(
     async (skill: CommunitySkill) => {
-      const controller = new AbortController()
-      installAbortsRef.current.set(skill.id, controller)
+      const controller = new AbortController();
+      installAbortsRef.current.set(skill.id, controller);
       setInstalls((prev) => {
-        const next = new Map(prev)
-        next.set(skill.id, { state: { kind: "installing" } })
-        return next
-      })
+        const next = new Map(prev);
+        next.set(skill.id, { state: { kind: "installing" } });
+        return next;
+      });
       try {
-        await onInstall(skill, controller.signal)
+        await onInstall(skill, controller.signal);
         setInstalls((prev) => {
-          const next = new Map(prev)
-          next.set(skill.id, { state: { kind: "installed-now" } })
-          return next
-        })
+          const next = new Map(prev);
+          next.set(skill.id, { state: { kind: "installed-now" } });
+          return next;
+        });
       } catch (err) {
-        if (controller.signal.aborted) return
-        const cls = classifySkillError(err)
-        if (cls === "aborted") return
-        const reason = installFailureReason(cls)
+        if (controller.signal.aborted) return;
+        const cls = classifySkillError(err);
+        if (cls === "aborted") return;
+        const reason = installFailureReason(cls);
         setInstalls((prev) => {
-          const next = new Map(prev)
-          next.set(skill.id, { state: { kind: "failed", reason } })
-          return next
-        })
+          const next = new Map(prev);
+          next.set(skill.id, { state: { kind: "failed", reason } });
+          return next;
+        });
       } finally {
-        installAbortsRef.current.delete(skill.id)
+        installAbortsRef.current.delete(skill.id);
       }
     },
     [onInstall],
-  )
+  );
 
   const stateForSkill = useCallback(
     (skill: CommunitySkill): RowInstallState => {
-      const local = installs.get(skill.id)
-      if (local) return local.state
-      const slug = (skill.skillId || skill.name).toLowerCase()
-      if (installedSkillNames?.has(slug)) return { kind: "already-installed" }
-      return { kind: "available" }
+      const local = installs.get(skill.id);
+      if (local) return local.state;
+      const slug = (skill.skillId || skill.name).toLowerCase();
+      if (installedSkillNames?.has(slug)) return { kind: "already-installed" };
+      return { kind: "available" };
     },
     [installs, installedSkillNames],
-  )
+  );
 
   const visibleSkills = useMemo<CommunitySkill[]>(() => {
     switch (phase.kind) {
       case "popular":
-        return phase.skills
+        return phase.skills;
       case "results":
-        return phase.skills
+        return phase.skills;
       case "searching":
-        return phase.previous
+        return phase.previous;
       default:
-        return []
+        return [];
     }
-  }, [phase])
+  }, [phase]);
 
   const installedInList = useMemo(() => {
-    if (!installedSkillNames || installedSkillNames.size === 0) return 0
+    if (!installedSkillNames || installedSkillNames.size === 0) return 0;
     return visibleSkills.reduce((acc, s) => {
-      const slug = (s.skillId || s.name).toLowerCase()
-      return installedSkillNames.has(slug) ? acc + 1 : acc
-    }, 0)
-  }, [visibleSkills, installedSkillNames])
+      const slug = (s.skillId || s.name).toLowerCase();
+      return installedSkillNames.has(slug) ? acc + 1 : acc;
+    }, 0);
+  }, [visibleSkills, installedSkillNames]);
 
   return (
     <>
@@ -327,6 +333,7 @@ export function StoreView({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={l.searchPlaceholder}
+            // biome-ignore lint/a11y/noAutofocus: search input in a modal dialog; autofocus is intentional UX
             autoFocus
             className="w-full h-9 pl-9 pr-3 rounded-full border border-border bg-background text-sm
                        placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
@@ -356,7 +363,9 @@ export function StoreView({
         {phase.kind === "popular-error" && (
           <div className="px-6 py-4 flex flex-col items-center gap-2 text-center">
             <AlertCircle className="size-5 text-muted-foreground/60" />
-            <p className="text-sm text-muted-foreground">{l.popularUnavailable}</p>
+            <p className="text-sm text-muted-foreground">
+              {l.popularUnavailable}
+            </p>
             {onPopular && (
               <button
                 type="button"
@@ -426,7 +435,7 @@ export function StoreView({
         )}
       </div>
     </>
-  )
+  );
 }
 
 function installFailureReason(
@@ -434,23 +443,23 @@ function installFailureReason(
 ): InstallFailureReason {
   switch (cls) {
     case "already_installed":
-      return "already_installed"
+      return "already_installed";
     case "skill_not_in_repo":
     case "skill_not_found":
     case "repo_not_found":
     case "repo_no_skills":
     case "repo_private":
-      return "skill_not_in_repo"
+      return "skill_not_in_repo";
     case "skill_malformed":
     case "parse_failed":
     case "validation":
-      return "skill_malformed"
+      return "skill_malformed";
     case "rate_limited":
     case "github_rate_limited":
-      return "rate_limited"
+      return "rate_limited";
     case "offline":
-      return "offline"
+      return "offline";
     default:
-      return "generic"
+      return "generic";
   }
 }

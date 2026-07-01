@@ -1,13 +1,10 @@
 {
   "cardActions": {
-    "run": "Executar",
-    "openTerminal": "Abrir o terminal no worktree",
     "approve": "Mover para Pronto",
     "approveTooltip": "Mover para Pronto",
     "renameTooltip": "Mudar título",
     "deleteTooltip": "Excluir",
-    "select": "Selecionar missão",
-    "openTerminalFailed": "Não foi possível abrir o terminal: {{error}}"
+    "select": "Selecionar missão"
   },
   "deleteCard": {
     "titleWithName": "Excluir \"{{name}}\"?",

@@ -3,9 +3,9 @@
  * Not exported from the package index — used only by chat-input.tsx.
  */
 
+import { FileIcon, XIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { FileIcon, XIcon } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // FileChip — shows an attached file with a remove button
@@ -55,7 +55,10 @@ export function AttachMenu({ items, onClose, anchorRef }: AttachMenuProps) {
 
   if (!posRef.current && anchorRef.current) {
     const rect = anchorRef.current.getBoundingClientRect();
-    posRef.current = { left: rect.left, bottom: window.innerHeight - rect.top + 6 };
+    posRef.current = {
+      left: rect.left,
+      bottom: window.innerHeight - rect.top + 6,
+    };
   }
 
   // Close on Escape
@@ -71,19 +74,30 @@ export function AttachMenu({ items, onClose, anchorRef }: AttachMenuProps) {
 
   const menu = (
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} aria-hidden="true" />
+      <div
+        className="fixed inset-0 z-40"
+        onClick={onClose}
+        aria-hidden="true"
+      />
       <div
         ref={menuRef}
         className="fixed z-50 min-w-[180px] rounded-xl border border-black/[0.08] bg-white shadow-lg py-1"
-        style={pos ? { left: pos.left, bottom: pos.bottom } : { left: 0, bottom: 0, visibility: "hidden" as const }}
+        style={
+          pos
+            ? { left: pos.left, bottom: pos.bottom }
+            : { left: 0, bottom: 0, visibility: "hidden" as const }
+        }
         role="menu"
       >
-        {items.map((item, i) => (
+        {items.map((item) => (
           <button
-            key={i}
+            key={item.label}
             type="button"
             role="menuitem"
-            onClick={() => { item.onClick(); onClose(); }}
+            onClick={() => {
+              item.onClick();
+              onClose();
+            }}
             className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
           >
             {item.icon}

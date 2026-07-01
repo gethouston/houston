@@ -1,0 +1,20 @@
+{
+  "title": "Conectar Houston",
+  "subtitle": "Elige cómo se conecta Houston con su motor.",
+  "local": {
+    "title": "Usar este computador",
+    "description": "Ejecuta Houston de forma privada en este dispositivo."
+  },
+  "remote": {
+    "title": "Conectar a un motor remoto",
+    "description": "Apunta Houston a un motor que corre en la nube o en tu red."
+  },
+  "url": {
+    "title": "Motor remoto",
+    "description": "Ingresa la dirección de tu motor o puerta de enlace de Houston.",
+    "placeholder": "https://engine.example.com",
+    "invalid": "Ingresa una dirección http o https válida.",
+    "back": "Atrás",
+    "continue": "Continuar"
+  }
+}

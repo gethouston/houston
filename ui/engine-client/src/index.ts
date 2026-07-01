@@ -10,6 +10,6 @@
  * `engine/houston-engine-protocol`.
  */
 
-export * from "./types.ts";
 export * from "./client.ts";
+export * from "./types.ts";
 export * from "./ws.ts";

@@ -1,7 +1,7 @@
+import { cn } from "@houston-ai/core";
+import { ArrowUp, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowUp, Loader2 } from "lucide-react";
-import { cn } from "@houston-ai/core";
 
 import { OptionCard } from "../setup-card";
 

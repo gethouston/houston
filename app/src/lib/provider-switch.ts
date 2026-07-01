@@ -1,18 +1,18 @@
 /**
- * Mid-session provider switch — the pure decision layer.
+ * Mid-session provider switch — the pure decision layer (frontend copy).
  *
- * Provider CLI sessions are not portable across providers (Claude's resume id
- * means nothing to Codex), so switching a live conversation to a different
- * provider runs a FRESH session on the new provider, seeded with prior context.
- * Two ways to carry that context over:
+ * Switching a live conversation to a different provider continues the SAME
+ * conversation on the new provider: the runtime re-points its session, carrying
+ * the full prior history across. Two ways that context comes over:
  *
- *   - `replay`    — re-send the full transcript verbatim. Lossless. Chosen when
- *                   the conversation comfortably fits the new model's window.
- *   - `summarize` — AI-summarize the conversation to fit. Lossy and spends a
+ *   - `replay`    — carried verbatim. Lossless. Chosen when the conversation
+ *                   comfortably fits the new model's window.
+ *   - `summarize` — compacted to fit a smaller window. Lossy and spends a
  *                   summarizer call, so the UI gates it behind explicit consent.
  *
- * The size check lives here (frontend) because the context-window catalog
- * (`providers.ts`) is frontend-only — the engine has no per-model window table.
+ * This decides only which COPY the consent dialog shows; the runtime makes the
+ * real replay-vs-compact call against the same fit fraction. The context-window
+ * catalog (`providers.ts`) is frontend-only, so the size check lives here.
  */
 
 import type { FeedItem } from "@houston-ai/chat";
@@ -24,16 +24,16 @@ export type ProviderHandoffMode = "replay" | "summarize";
  * verbatim into the new provider. The replayed transcript re-tokenizes
  * differently under the new model, and the new turn plus provider overhead need
  * room, so we only replay when the estimated size is under this fraction of the
- * target window. Below the fraction → `replay`; at/above → `summarize`.
+ * target window. Below the fraction -> `replay`; at/above -> `summarize`.
+ * Mirrors the runtime's REPLAY_FIT_FRACTION in `packages/runtime/src/session/chat.ts`.
  */
 export const REPLAY_FIT_FRACTION = 0.8;
 
 /**
  * Rough token estimate for a conversation from its visible text. Used only when
  * the leaving provider never reported usage (e.g. Gemini). ~4 chars per token,
- * counting the user/assistant text the engine would replay — tool calls and
- * results are dropped by the engine's `render_visible_entries`, so they are
- * excluded here too.
+ * counting the user/assistant text the runtime carries over (tool calls/results
+ * are not counted here).
  */
 export function estimateConversationTokens(
   items: FeedItem[] | undefined,
@@ -53,20 +53,20 @@ export function estimateConversationTokens(
 }
 
 /**
- * Decide how to carry a conversation across a mid-session provider switch.
+ * Decide how the consent dialog should describe a mid-session provider switch.
  *
- * Verbatim `replay` when the conversation fits the target window with headroom.
- * Otherwise `summarize`. When the target window is unknown (`null`) we cannot
- * prove a fit, so we summarize to be safe (the consent dialog still gives the
- * user the final say).
+ * Verbatim `replay` when the conversation fits the target window with headroom;
+ * otherwise `summarize`. When the target window is unknown (`null`) we cannot
+ * prove a fit, so we summarize to be safe (the dialog still gives the user the
+ * final say).
  *
  * `targetWindowTokens` is the new model's DEFAULT context window — pass the
  * catalogued default (`getContextWindowConfig(provider, model)?.default`), never
  * a snapped-up estimate, since the new provider hasn't been observed yet.
  * `currentContextTokens` is the most accurate size (the leaving provider's last
- * reported context fill, or `null` when it never reported one).
- * `estimatedTokens` is the text-derived fallback. The larger of the two is used
- * so a switch away from a usage-reporting provider never under-counts.
+ * reported context fill, or `null` when it never reported one); `estimatedTokens`
+ * is the text-derived fallback. The larger of the two is used so a switch away
+ * from a usage-reporting provider never under-counts.
  *
  * Pure (the window is passed in, not looked up) so it unit-tests without the
  * provider catalog module.

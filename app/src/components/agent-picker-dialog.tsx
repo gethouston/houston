@@ -1,13 +1,13 @@
-import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   HoustonAvatar,
   resolveAgentColor,
 } from "@houston-ai/core";
+import { useTranslation } from "react-i18next";
 import type { Agent } from "../lib/types";
 
 interface Props {
@@ -24,7 +24,12 @@ interface Props {
  * the per-agent New Mission button. See the dashboard wiring for that
  * sequencing (it lives there because it depends on view-mode state).
  */
-export function AgentPickerDialog({ open, onOpenChange, agents, onPick }: Props) {
+export function AgentPickerDialog({
+  open,
+  onOpenChange,
+  agents,
+  onPick,
+}: Props) {
   const { t } = useTranslation("dashboard");
 
   return (

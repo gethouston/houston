@@ -15,8 +15,15 @@
     "finishPage": "Get started",
     "finishDialog": "Create workspace"
   },
+  "migrationReconnect": {
+    "title": "Welcome back",
+    "body": "Your assistants and everything you've worked on are right here. Just reconnect your AI to pick up where you left off.",
+    "skip": "I'll do this later",
+    "dismissError": "We couldn't save that. Please try again."
+  },
   "tutorial": {
     "brand": "Houston",
+    "counter": "Mission {{current}} of {{total}}",
     "nav": {
       "back": "Back",
       "continue": "Continue"
@@ -35,10 +42,20 @@
         "meet": "Meet your agent",
         "brain": "Connect an AI provider so it can think",
         "tools": "Connect your apps",
-        "email": "Send your first real email with it"
+        "email": "Send your first real email with it",
+        "try": "Try a real mission with your assistant",
+        "skill": "Save it as a reusable Skill",
+        "routine": "Schedule it as a recurring Routine",
+        "summary": "Meet your fully equipped assistant"
       },
       "start": "Get started",
       "skip": "I'll set this up later"
+    },
+    "toolkits": {
+      "gmail": "Gmail",
+      "googlecalendar": "Google Calendar",
+      "outlook": "Outlook",
+      "outlook_calendar": "Outlook Calendar"
     },
     "defaults": {
       "workspaceName": "Personal",
@@ -62,7 +79,10 @@
       },
       "brain": {
         "title": "Log in to your AI subscription",
-        "body": "Choose the AI you already pay for. You bring your own subscription, so Houston never sees your password or your bill."
+        "body": "Choose the AI you already pay for. You bring your own subscription, so Houston never sees your password or your bill.",
+        "continue": "Create my assistant",
+        "creating": "Creating",
+        "continueHint": "Houston will create your assistant and open the next mission."
       },
       "providerLogin": {
         "title": "Log in to {{provider}}",
@@ -152,6 +172,71 @@
         "title": "Now let's put it to work",
         "body": "Three quick steps to see your agent do something real.",
         "cta": "Let's go"
+      },
+      "try": {
+        "title": "Try a real mission",
+        "intro": {
+          "title": "Work with your first agent",
+          "body": "In Houston, your agents connect to your real tools to actually do work for you.",
+          "cta": "Let's try that out"
+        },
+        "doneTitle": "You did it. First mission complete.",
+        "placeholder": "Reply to your assistant...",
+        "skill": {
+          "title": "Plan my next working day",
+          "description": "Read your calendar and inbox in parallel, cross-reference them for things you'd miss, and post a structured plan with what's urgent, your agenda and what to reply."
+        },
+        "chip": "Plan my next working day",
+        "continueChip": "Save this as a Skill",
+        "skip": "Skip tutorial"
+      },
+      "skill": {
+        "title": "Save this as a Skill",
+        "intro": {
+          "title": "Save it as a Skill",
+          "body": "If you want to run this same flow again later, save it as a Skill. Your assistant can reuse it with one click, or whenever you ask.",
+          "cta": "Got it"
+        },
+        "chip": "Save this as a Skill",
+        "continueChip": "Make it a Routine",
+        "skip": "Skip tutorial",
+        "placeholder": "Reply to your assistant...",
+        "savedDescription": "Plan the next working day by cross-referencing inbox and calendar, with a draft reply for the top email worth answering.",
+        "savedMessage": "Saved as a Skill called **{{slug}}**. You can run it anytime, with one click or by asking me.",
+        "done": {
+          "title": "Saved as a Skill",
+          "subtitle": "Now you can run this anytime, with one click or by asking.",
+          "integrationsLabel": "Uses",
+          "savedLabel": "Skill"
+        }
+      },
+      "routine": {
+        "title": "Make it a Routine",
+        "intro": {
+          "title": "Make it a Routine",
+          "body": "If you want this to run automatically on a schedule, save it as a Routine. Your assistant runs it in the background and shows you the result.",
+          "cta": "Got it"
+        },
+        "chip": "Make it a routine",
+        "continueChip": "See your assistant",
+        "skip": "Skip tutorial",
+        "placeholder": "Reply to your assistant...",
+        "done": {
+          "title": "Your Routine is ready",
+          "subtitle": "Houston will run this automatically on the schedule you picked.",
+          "everyWeekdayAt": "Every weekday at {{time}}",
+          "runsSkill": "Runs your {{skill}} Skill",
+          "manualHint": "You can also create routines yourself from the Routines tab, or just ask any agent."
+        }
+      },
+      "summary": {
+        "title": "Your assistant is ready",
+        "body": "Here is everything you just set up. You can change any of it later from the Skills or Routines tab, or just ask your assistant.",
+        "skillCardTitle": "Skill",
+        "routineCardTitle": "Routine",
+        "noSkill": "No Skill saved",
+        "noRoutine": "No Routine saved",
+        "continueChip": "Enter Houston"
       }
     },
     "sectionCounter": "{{section}} · {{current}} of {{total}}",

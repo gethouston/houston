@@ -3,28 +3,32 @@
  * after the chosen prototype (Variant A): a number stepper plus a row of unit
  * pills (minute / hour / day / month). Every unit takes a count.
  *
- * Stays i18n-agnostic: the heading, unit names (singular/plural) and stepper
- * aria-labels arrive via props; the consumer passes localized strings in.
+ * All visible text arrives via props so the package stays i18n-agnostic; the
+ * pills show the singular or plural unit name depending on the count.
  */
-import { cn } from "@houston-ai/core"
-import { Minus, Plus } from "lucide-react"
-import type { IntervalUnit } from "./schedule-interval-utils"
-import { labelClass } from "./schedule-picker-fields"
+import { cn } from "@houston-ai/core";
+import { Minus, Plus } from "lucide-react";
+import type { IntervalUnit } from "./schedule-interval-utils";
+import { labelClass } from "./schedule-picker-fields";
+
+const UNIT_ORDER: IntervalUnit[] = ["minutes", "hours", "days", "months"];
 
 function NumberStepper({
+  id,
   value,
   onChange,
   invalid,
   decreaseLabel,
   increaseLabel,
 }: {
-  value: string
-  onChange: (value: string) => void
-  invalid?: boolean
-  decreaseLabel: string
-  increaseLabel: string
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  invalid?: boolean;
+  decreaseLabel: string;
+  increaseLabel: string;
 }) {
-  const n = Number(value) || 1
+  const n = Number(value) || 1;
   return (
     <div
       className={cn(
@@ -42,6 +46,7 @@ function NumberStepper({
         <Minus className="size-4" />
       </button>
       <input
+        id={id}
         type="text"
         inputMode="numeric"
         value={value}
@@ -59,14 +64,13 @@ function NumberStepper({
         <Plus className="size-4" />
       </button>
     </div>
-  )
+  );
 }
-
-const UNIT_ORDER: IntervalUnit[] = ["minutes", "hours", "days", "months"]
 
 export function IntervalPicker({
   label,
   units,
+  unitsSingular,
   decreaseLabel,
   increaseLabel,
   every,
@@ -75,22 +79,27 @@ export function IntervalPicker({
   onEveryChange,
   onUnitChange,
 }: {
-  label: string
-  units: Record<IntervalUnit, { one: string; other: string }>
-  decreaseLabel: string
-  increaseLabel: string
-  every: string
-  unit: IntervalUnit
-  invalid?: boolean
-  onEveryChange: (every: string) => void
-  onUnitChange: (unit: IntervalUnit) => void
+  label: string;
+  units: Record<IntervalUnit, string>;
+  unitsSingular: Record<IntervalUnit, string>;
+  decreaseLabel: string;
+  increaseLabel: string;
+  every: string;
+  unit: IntervalUnit;
+  invalid?: boolean;
+  onEveryChange: (every: string) => void;
+  onUnitChange: (unit: IntervalUnit) => void;
 }) {
-  const plural = Number(every) > 1
+  const plural = Number(every) > 1;
+  const inputId = "interval-picker-every";
   return (
     <div>
-      <label className={labelClass}>{label}</label>
+      <label htmlFor={inputId} className={labelClass}>
+        {label}
+      </label>
       <div className="flex flex-wrap items-center gap-2">
         <NumberStepper
+          id={inputId}
           value={every}
           onChange={onEveryChange}
           invalid={invalid}
@@ -110,11 +119,11 @@ export function IntervalPicker({
                   : "bg-background border border-border/20 text-muted-foreground hover:text-foreground",
               )}
             >
-              {plural ? units[u].other : units[u].one}
+              {plural ? units[u] : unitsSingular[u]}
             </button>
           ))}
         </div>
       </div>
     </div>
-  )
+  );
 }

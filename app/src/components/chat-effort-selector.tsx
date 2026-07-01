@@ -1,6 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { getEffortLevels, type EffortLevel } from "../lib/providers";
 import { nextEffort } from "../lib/effort-cycle";
+import {
+  EFFORT_ORDER,
+  type EffortLevel,
+  getEffortLevels,
+} from "../lib/providers";
 import { EffortIcon } from "./effort-icon";
 
 interface ChatEffortSelectorProps {
@@ -22,7 +26,12 @@ interface ChatEffortSelectorProps {
  * menu. Renders nothing when the model has no effort control (e.g. Gemini), so
  * the composer row collapses cleanly.
  */
-export function ChatEffortSelector({ provider, model, effort, onSelect }: ChatEffortSelectorProps) {
+export function ChatEffortSelector({
+  provider,
+  model,
+  effort,
+  onSelect,
+}: ChatEffortSelectorProps) {
   const { t } = useTranslation("chat");
   const levels = getEffortLevels(provider, model);
   if (levels.length === 0) return null;
@@ -45,10 +54,14 @@ export function ChatEffortSelector({ provider, model, effort, onSelect }: ChatEf
   // The current level (only when the stored value is one this model accepts)
   // and the level a click advances to, wrapping past the last back to the first.
   const activeLevel =
-    effort && levels.includes(effort as EffortLevel) ? (effort as EffortLevel) : undefined;
+    effort && levels.includes(effort as EffortLevel)
+      ? (effort as EffortLevel)
+      : undefined;
   const nextLevel = nextEffort(levels, effort);
 
-  const activeLabel = activeLevel ? labels[activeLevel] : t("modelSelector.effort");
+  const activeLabel = activeLevel
+    ? labels[activeLevel]
+    : t("modelSelector.effort");
 
   return (
     <button
@@ -59,7 +72,9 @@ export function ChatEffortSelector({ provider, model, effort, onSelect }: ChatEf
           ? t("modelSelector.effortValue", { level: activeLabel })
           : t("modelSelector.effort")
       }
-      title={activeLevel ? descriptions[activeLevel] : t("modelSelector.effort")}
+      title={
+        activeLevel ? descriptions[activeLevel] : t("modelSelector.effort")
+      }
       // Stop pointer events from bubbling — keeps the board detail panel from
       // reading the click as "click outside → close panel".
       onPointerDown={(e) => e.stopPropagation()}
@@ -69,7 +84,11 @@ export function ChatEffortSelector({ provider, model, effort, onSelect }: ChatEf
       }}
       className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
-      <EffortIcon levels={levels} active={effort} className="size-3.5" />
+      {/* Always render the full effort spectrum (filled to the active level)
+          so the gauge looks identical across models — a 2-level model no longer
+          renders as a lone short + tall bar. Cycling still uses the model's own
+          `levels` above. */}
+      <EffortIcon levels={EFFORT_ORDER} active={effort} className="size-3.5" />
       <span>{activeLabel}</span>
     </button>
   );

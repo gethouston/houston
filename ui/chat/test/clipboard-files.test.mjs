@@ -1,10 +1,10 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import {
+  clipboardSignalsImage,
+  ensureFileName,
   filesFromClipboardData,
   filesFromClipboardItems,
-  ensureFileName,
-  clipboardSignalsImage,
   resolveClipboardPaste,
 } from "../src/clipboard-files.ts";
 
@@ -163,7 +163,10 @@ test("dedupe still collapses the same unnamed file exposed via both APIs", () =>
   const img = new File(["x"], "", { type: "image/png", lastModified: 7 });
 
   assert.deepEqual(
-    filesFromClipboardData({ files: [img], items: [{ kind: "file", getAsFile: () => img }] }).length,
+    filesFromClipboardData({
+      files: [img],
+      items: [{ kind: "file", getAsFile: () => img }],
+    }).length,
     1,
   );
 });
@@ -177,7 +180,8 @@ test("ensureFileName strips MIME parameters and suffixes from the extension", ()
 
   // Dotted vendor subtype is not a clean token -> fall back to bin.
   assert.match(
-    ensureFileName(new File(["x"], "", { type: "application/vnd.api+json" })).name,
+    ensureFileName(new File(["x"], "", { type: "application/vnd.api+json" }))
+      .name,
     /^pasted-\d+-0\.bin$/,
   );
 });
@@ -238,5 +242,7 @@ test("filesFromClipboardItems skips items where getAsFile() returns null", () =>
 
 test("filesFromClipboardData falls back to files when items is null", () => {
   const image = new File(["jpg"], "photo.jpg", { type: "image/jpeg" });
-  assert.deepEqual(filesFromClipboardData({ files: [image], items: null }), [image]);
+  assert.deepEqual(filesFromClipboardData({ files: [image], items: null }), [
+    image,
+  ]);
 });

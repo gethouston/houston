@@ -1,10 +1,14 @@
-import type { Routine, RoutineFormData, RoutineRun } from "@houston-ai/routines";
+import type {
+  Routine,
+  RoutineFormData,
+  RoutineRun,
+} from "@houston-ai/routines";
 import {
-  validProviderOrNull,
-  validModelOrNull,
-  validEffortOrDefault,
   getDefaultModel,
   normalizeLegacyModel,
+  validEffortOrDefault,
+  validModelOrNull,
+  validProviderOrNull,
 } from "../../lib/providers.ts";
 
 /** Editor view state for the Routines tab. */
@@ -19,7 +23,11 @@ export type View = { type: "grid" } | { type: "editor"; editId?: string };
 export function routineModelPickerDefaults(
   form: RoutineFormData,
   agentConfig:
-    | { provider?: string | null; model?: string | null; effort?: string | null }
+    | {
+        provider?: string | null;
+        model?: string | null;
+        effort?: string | null;
+      }
     | undefined,
 ): { provider: string; model: string; effort: string | undefined } {
   const agentModel = normalizeLegacyModel(agentConfig?.model ?? null);

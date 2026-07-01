@@ -1,4 +1,4 @@
-import type { RepoViewLabels } from "./add-skill-dialog-repo-labels"
+import type { RepoViewLabels } from "./add-skill-dialog-repo-labels";
 
 export function RepoSelectionSummary({
   skillCount,
@@ -6,10 +6,10 @@ export function RepoSelectionSummary({
   labels,
   onToggleAll,
 }: {
-  skillCount: number
-  selectedCount: number
-  labels: Required<RepoViewLabels>
-  onToggleAll: () => void
+  skillCount: number;
+  selectedCount: number;
+  labels: Required<RepoViewLabels>;
+  onToggleAll: () => void;
 }) {
   return (
     <div className="flex items-center justify-between pt-1">
@@ -24,5 +24,5 @@ export function RepoSelectionSummary({
         {selectedCount === skillCount ? labels.deselectAll : labels.selectAll}
       </button>
     </div>
-  )
+  );
 }

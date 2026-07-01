@@ -1,7 +1,7 @@
 import { Spinner } from "@houston-ai/core";
+import { humanizeSkillName } from "../lib/humanize-skill-name";
 import type { SkillSummary } from "../lib/types";
 import { SkillCard } from "./skill-card";
-import { humanizeSkillName } from "../lib/humanize-skill-name";
 
 export function SkillList({
   agentReady,
@@ -45,7 +45,6 @@ export function SkillList({
           image={s.image}
           title={humanizeSkillName(s.name)}
           description={s.description}
-          integrations={s.integrations}
           onClick={() => onSkill(s.name)}
         />
       ))}

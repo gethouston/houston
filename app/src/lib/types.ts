@@ -1,11 +1,4 @@
 /** A workspace (top-level container, formerly "Space") */
-/** Result of importing a workspace template from GitHub. */
-export interface ImportedWorkspace {
-  workspaceId: string;
-  workspaceName: string;
-  agentIds: string[];
-}
-
 export interface Workspace {
   id: string;
   name: string;
@@ -28,10 +21,10 @@ export type AgentCategory =
 
 /** An agent mode defines a prompt profile (e.g. "execution" or "planning"). */
 export interface AgentMode {
-  id: string;              // e.g. "execution", "planning"
-  name: string;            // Display name, e.g. "Coder", "Planner"
-  promptFile: string;      // Mode name → reads .houston/prompts/modes/{promptFile}.md
-  createLabel: string;     // Button label, e.g. "New Mission"
+  id: string; // e.g. "execution", "planning"
+  name: string; // Display name, e.g. "Coder", "Planner"
+  promptFile: string; // Mode name → reads .houston/prompts/modes/{promptFile}.md
+  createLabel: string; // Button label, e.g. "New Mission"
 }
 
 /** The agent config (houston.json schema) */
@@ -40,34 +33,34 @@ export interface AgentConfig {
   name: string;
   description: string;
   version?: string;
-  icon?: string;           // Lucide icon name (fallback if no image)
-  image?: string;          // Image URL for store card
-  color?: string;          // Brand color override
+  icon?: string; // Lucide icon name (fallback if no image)
+  image?: string; // Image URL for store card
+  color?: string; // Brand color override
   category?: AgentCategory;
-  author?: string;         // e.g. "Houston" for official, user name for community
-  tags?: string[];         // Searchable tags
-  integrations?: string[]; // Composio toolkit slugs used by bundled agents
-  claudeMd?: string;       // CLAUDE.md content template
-  systemPrompt?: string;   // System prompt for the assistant
-  agentSeeds?: Record<string, string>;  // Files to seed in new agents
-  features?: string[];     // Rust feature flags needed
-  agents?: AgentMode[];    // Multiple prompt profiles for multi-agent setups
+  author?: string; // e.g. "Houston" for official, user name for community
+  tags?: string[]; // Searchable tags
+  integrations?: string[]; // Legacy toolkit slugs declared by bundled agents (display-only metadata)
+  claudeMd?: string; // CLAUDE.md content template
+  systemPrompt?: string; // System prompt for the assistant
+  agentSeeds?: Record<string, string>; // Files to seed in new agents
+  features?: string[]; // Rust feature flags needed
+  agents?: AgentMode[]; // Multiple prompt profiles for multi-agent setups
 }
 
 /** A resolved agent definition (config + where it came from) */
 export interface AgentDefinition {
   config: AgentConfig;
   source: "builtin" | "installed";
-  path?: string;           // For installed: ~/.houston/agents/{id}/
+  path?: string; // For installed: ~/.houston/agents/{id}/
 }
 
 /** An agent instance (formerly "Workspace") */
 export interface Agent {
   id: string;
   name: string;
-  folderPath: string;      // ~/.houston/workspaces/{WorkspaceName}/{AgentName}/
-  configId: string;      // Points to an AgentConfig
-  color?: string;        // User-chosen color for avatar
+  folderPath: string; // ~/.houston/workspaces/{WorkspaceName}/{AgentName}/
+  configId: string; // Points to an AgentConfig
+  color?: string; // User-chosen color for avatar
   createdAt: string;
   lastOpenedAt?: string;
 }
@@ -90,7 +83,7 @@ export interface SkillSummary {
   category: string | null;
   /** Surface on the Featured tab of the New Mission picker. */
   featured: boolean;
-  /** Composio toolkit slugs this skill uses (e.g. ["gmail","slack"]). */
+  /** Legacy toolkit slugs declared in skill frontmatter (display-only metadata). */
   integrations: string[];
   /** Image URL or Microsoft Fluent 3D Emoji slug (e.g. "rocket"). */
   image: string | null;
@@ -119,23 +112,6 @@ export interface SkillDetail {
   content: string;
 }
 
-/** Community skill search result */
-export interface CommunitySkillResult {
-  id: string;
-  skillId: string;
-  name: string;
-  installs: number;
-  source: string;
-}
-
-/** A skill discovered in a GitHub repo */
-export interface RepoSkill {
-  id: string;
-  name: string;
-  description: string;
-  path: string;
-}
-
 /** File entry returned by list_project_files */
 export interface FileEntry {
   path: string;
@@ -144,22 +120,4 @@ export interface FileEntry {
   size: number;
   is_directory?: boolean;
   dateModified?: number;
-}
-
-/** A listing from the Houston Store registry */
-export interface StoreListing {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  author: string;
-  tags: string[];
-  icon_url: string;
-  integrations?: string[];
-  repo: string;
-  installs: number;
-  registered_at: string;
-  version?: string;
-  content_hash?: string;
-  bundled?: boolean;
 }

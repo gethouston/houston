@@ -218,42 +218,33 @@ The engine applies the rename per workspace on the next sync. If only the old sl
 
 ## Skill identity = directory slug (drift-resilient)
 
-The **directory slug is the one canonical identity** for a skill. `load_skill`,
-`save`, `delete`, and the `.claude/skills/<slug>` mirror all resolve by
-`skills_dir.join(<name>)` — the directory, never the frontmatter. So the name a
-caller hands `load_skill` MUST be a directory slug.
+> Current-direction (TS engine) behavior. The Rust paths below are the legacy oracle.
 
-Therefore `list_skills` (and the system-prompt `index::build`) report each
-skill's **directory name** as `name`, overriding whatever the frontmatter `name:`
-says. Agent-authored SKILL.md files sometimes carry a display phrase in `name:`
-(e.g. dir `redactar-outreach-esg`, frontmatter `name: Redactar Outreach ESG`).
-Before HOU-441 the list handed the UI the phrase, the user clicked it, and
-`load_skill("Redactar Outreach ESG")` found no such directory → a hard
-`skill_not_found` (red bug toast + Sentry). Reporting the directory slug makes
-the list → click → load round-trip consistent and gives the `.claude` mirror a
-real target. `load_skill` also **heals** the frontmatter `name:` to the slug on
-open (it already rewrites the file for `last_used`), so Claude Code's native
-tool name stops drifting too. No bulk migration — identity is fixed at read
-time and self-heals on access.
+The **directory slug is the one canonical identity** for a skill. `loadSkillDetail`, the create/save/delete routes, and the host's `GET /v1/skills/<slug>` all resolve by the on-disk directory (`packages/domain/src/skills.ts` `skillKey`), never by the frontmatter. So the name a caller hands `load_skill` MUST be a directory slug.
 
-Genuinely missing skills still happen (deleted, never installed, a stale
-selection). `skill_not_found` is an expected, explainable state, **not** a
-Houston bug: `tauriSkills.load` tags it via `silenceKinds: ["skill_not_found"]`
-(see `app/src/lib/missing-skill.ts`) so it skips the red bug toast + Sentry
-report, and `useSkillSurface` surfaces it inline (a friendly info toast, clears
-the selection, refetches the list so the dead card vanishes).
+Therefore `loadSkills` (via `parseSkillMd`) reports each skill's **directory slug** as `name`, overriding whatever the frontmatter `name:` says. Agent-authored SKILL.md files sometimes carry a display phrase in `name:` (e.g. dir `redactar-outreach-esg`, frontmatter `name: Redactar Outreach ESG`). Before HOU-515/HOU-441 the list handed the UI the phrase, the user clicked it, and `loadSkill("Redactar Outreach ESG")` 404'd → a hard "skill not found" (red bug toast + Sentry). Reporting the directory slug makes the list → click → load round-trip consistent. The Skills card still shows a friendly title via `humanizeSkillName(slug)`, so the kebab slug is never shown raw. No frontmatter healing is needed: pi loads skills through `DefaultResourceLoader` (`packages/runtime/src/session/resource-loader.ts`), so there is no `.claude` mirror or native tool name to keep in step (the legacy Rust engine healed `name:` on open for exactly that reason).
+
+Genuinely missing skills still happen (deleted, never installed, a stale selection). The host answers `404 { error: "skill not found" }`, surfaced by `@houston-ai/engine-client` as a `HoustonEngineError` with `status: 404` (the TS host emits bare-string bodies, so there is **no** typed `.kind` here — unlike the Rust engine). That 404 is an expected, explainable state, **not** a Houston bug: `tauriSkills.load` passes `{ silence: isMissingSkillError }` (`app/src/lib/missing-skill.ts`) so the error skips the red bug toast + Sentry report, and `useSkillSurface` surfaces it inline (a friendly info toast, clears the selection, refetches the list so the dead card vanishes).
+
+### Legacy Rust engine (oracle)
+
+The Rust engine applied the same directory-slug identity rule through different paths. `load_skill`, `save`, `delete`, and the `.claude/skills/<slug>` mirror all resolve by `skills_dir.join(<name>)` — the directory, never the frontmatter. `list_skills` (and the system-prompt `index::build`) report each skill's **directory name** as `name`, overriding the frontmatter `name:`. Before HOU-441 the list handed the UI the phrase, the user clicked it, and `load_skill("Redactar Outreach ESG")` found no such directory → a hard `skill_not_found` (red bug toast + Sentry). Reporting the directory slug makes the list → click → load round-trip consistent and gives the `.claude` mirror a real target. `load_skill` also **heals** the frontmatter `name:` to the slug on open (it already rewrites the file for `last_used`), so Claude Code's native tool name stops drifting too. No bulk migration — identity is fixed at read time and self-heals on access. In the Rust engine a genuinely missing skill surfaces as a typed `skill_not_found`, silenced via `tauriSkills.load`'s `silenceKinds: ["skill_not_found"]`.
 
 ## Files of interest
 
 | What | Where |
 |------|-------|
+| Skills domain (TS, current) | [`packages/domain/src/skills.ts`](../packages/domain/src/skills.ts) — parse + `loadSkills`/`loadSkillDetail`, identity = directory slug |
+| Skills host routes (TS, current) | [`packages/host/src/routes/skills.ts`](../packages/host/src/routes/skills.ts) — GET/POST/PUT/DELETE; missing skill → 404 |
+| Missing-skill classifier (TS, current) | [`app/src/lib/missing-skill.ts`](../app/src/lib/missing-skill.ts) — `isMissingSkillError` (404) keeps it off the bug-toast/Sentry path |
+| Skills surface hook (TS, current) | [`app/src/components/tabs/use-skill-surface.ts`](../app/src/components/tabs/use-skill-surface.ts) — inline "Skill unavailable" handling |
 | Schema (Rust) | [`engine/houston-skills/src/lib.rs`](../engine/houston-skills/src/lib.rs) |
 | Parser / serializer | [`engine/houston-skills/src/format.rs`](../engine/houston-skills/src/format.rs) |
 | Engine DTO | [`engine/houston-engine-core/src/skills.rs`](../engine/houston-engine-core/src/skills.rs) |
 | TS wire types | [`ui/engine-client/src/types.ts`](../ui/engine-client/src/types.ts) |
 | App shared hook | [`app/src/components/use-agent-chat-panel.tsx`](../app/src/components/use-agent-chat-panel.tsx) |
 | Selected Skill chip | [`app/src/components/selected-skill-chip.tsx`](../app/src/components/selected-skill-chip.tsx) |
-| Card on user message | [`app/src/components/user-skill-message.tsx`](../app/src/components/user-skill-message.tsx) (desktop) and [`mobile/src/components/user-skill-message.tsx`](../mobile/src/components/user-skill-message.tsx) |
+| Card on user message | [`app/src/components/user-skill-message.tsx`](../app/src/components/user-skill-message.tsx) (the mobile PWA copy was removed with `mobile/`) |
 | Marker codec | [`ui/chat/src/skill-message.ts`](../ui/chat/src/skill-message.ts) (decode) and [`app/src/lib/skill-message.ts`](../app/src/lib/skill-message.ts) (encode) |
-| Card/list preview text | [`ui/chat/src/message-preview.ts`](../ui/chat/src/message-preview.ts) — `messagePreviewText` decodes a marker → mission-card subtitle (HOU-425) |
+| Card/list preview text | [`ui/chat/src/message-preview.ts`](../ui/chat/src/message-preview.ts) — `messagePreviewText` decodes a marker → mission-card subtitle (HOU-508) |
 | System prompt template | [`app/src-tauri/src/houston_prompt/skills_memory.rs`](../app/src-tauri/src/houston_prompt/skills_memory.rs) (`SELF_IMPROVEMENT_GUIDANCE`) |

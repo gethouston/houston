@@ -25,6 +25,7 @@ export function SkillIcon({
   bubbleClassName = "size-12 rounded-full bg-input flex items-center justify-center shrink-0 overflow-hidden",
 }: Props) {
   const [broken, setBroken] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: image is a prop and is a valid dependency; the effect must reset `broken` whenever the image source changes
   useEffect(() => setBroken(false), [image]);
 
   const url = broken ? fluentEmojiUrl(FALLBACK_SLUG) : resolveImageValue(image);
@@ -50,10 +51,14 @@ function resolveImageValue(value: string | null | undefined): string {
 }
 
 function fluentEmojiUrl(slug: string): string {
-  const parts = slug.split(/[-_\s]+/).filter(Boolean).map((p) => p.toLowerCase());
+  const parts = slug
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((p) => p.toLowerCase());
   const folder =
-    parts[0].charAt(0).toUpperCase() + parts[0].slice(1) +
-    (parts.length > 1 ? " " + parts.slice(1).join(" ") : "");
-  const file = parts.join("_") + "_3d.png";
+    parts[0].charAt(0).toUpperCase() +
+    parts[0].slice(1) +
+    (parts.length > 1 ? ` ${parts.slice(1).join(" ")}` : "");
+  const file = `${parts.join("_")}_3d.png`;
   return `https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/${encodeURIComponent(folder)}/3D/${file}`;
 }

@@ -1,22 +1,20 @@
+import { AIBoard } from "@houston-ai/board";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { AIBoard } from "@houston-ai/board";
-
-import { useUIStore } from "../../stores/ui";
 import { openAgentHref } from "../../lib/open-href";
-import { buildMissionBoardColumns } from "../mission-board-columns";
-import { useDetailPanelContainer } from "../shell/detail-panel-context";
-import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
-import { useQueuedMessageLabels } from "../use-queued-message-labels";
-import { useAgentChatPanel } from "../use-agent-chat-panel";
+import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
+import { buildMissionBoardColumns } from "../mission-board-columns";
+import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
+import { useDetailPanelContainer } from "../shell/detail-panel-context";
+import { useAgentChatPanel } from "../use-agent-chat-panel";
+import { useQueuedMessageLabels } from "../use-queued-message-labels";
+import type { BoardSource } from "./board-source";
+import { useBoardDrafts } from "./use-board-drafts";
+import { useBoardKeyboard } from "./use-board-keyboard";
+import { useBoardLabels } from "./use-board-labels";
 import { useBoardSelectionUI } from "./use-board-selection-ui";
 import { useBoardSendQueue } from "./use-board-send-queue";
-import { useBoardKeyboard } from "./use-board-keyboard";
-import { useBoardDrafts } from "./use-board-drafts";
-import { useBoardLabels } from "./use-board-labels";
-import { useMissionCardActions } from "./mission-card-actions";
-import type { BoardSource } from "./board-source";
 
 /**
  * The one board both views render. It owns every shared concern — columns,
@@ -100,16 +98,15 @@ export function MissionBoard({ source }: { source: BoardSource }) {
     onAutoOpenEmpty: source.onAutoOpenEmpty,
   });
 
-  const { cardActions, panelActions } = useMissionCardActions(source.onRunInTerminal, {
-    openTerminal: t("board:cardActions.openTerminal"),
-    run: t("board:cardActions.run"),
-  });
-
   const handleCreateConversation = useCallback(
-    (text: string, files: File[]) => source.createConversation({ text, files, ...overrides }),
+    (text: string, files: File[]) =>
+      source.createConversation({ text, files, ...overrides }),
     [source.createConversation, overrides],
   );
-  const handleNotice = useCallback((message: string) => addToast({ title: message }), [addToast]);
+  const handleNotice = useCallback(
+    (message: string) => addToast({ title: message }),
+    [addToast],
+  );
   const handleOpenLink = useCallback(
     (url: string) => {
       const path = source.activeAgent?.folderPath;
@@ -156,10 +153,9 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           onOpenLink={handleOpenLink}
-          actions={cardActions}
-          panelActions={panelActions}
           cardAvatar={source.cardAvatar}
           thinkingIndicator={panel.thinkingIndicator}
+          endOfTurnIndicator={panel.endOfTurnIndicator}
           panelAgentName={source.panelAgentName}
           panelAvatar={
             <AgentPanelAvatar
@@ -185,10 +181,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           renderToolResult={panel.renderToolResult}
           processLabels={panel.processLabels}
           getThinkingMessage={panel.getThinkingMessage}
-          endOfTurnIndicator={panel.endOfTurnIndicator}
           renderTurnSummary={panel.renderTurnSummary}
-          renderLink={panel.renderLink}
-          transformContent={panel.transformContent}
         />
       </div>
       {panel.pickerDialog}

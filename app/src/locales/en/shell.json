@@ -21,7 +21,10 @@
     "needsYouCount_one": "{{count}} issue needs you",
     "needsYouCount_other": "{{count}} issues need you",
     "runningCount_one": "{{count}} issue running",
-    "runningCount_other": "{{count}} issues running"
+    "runningCount_other": "{{count}} issues running",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "createWorkspace": "Create workspace"
   },
   "tabActions": {
     "newMission": "New mission",
@@ -273,14 +276,18 @@
     "continueButton": "Continue"
   },
   "engineGate": {
-    "starting": "Starting Houston engine…"
+    "starting": "Starting Houston engine…",
+    "loadFailed": "Couldn't load your available AI models. Check your connection and try again.",
+    "authRequiredTitle": "Sign-in required",
+    "authRequiredBody": "This build connects to Houston's hosted engine, but no sign-in is configured. Set SUPABASE_URL and SUPABASE_ANON_KEY for this build to enable Google sign-in."
   },
   "providerError": {
     "rateLimited": {
       "title": "Hit a rate limit",
       "body": "The {{provider}} API is throttling requests. Wait a moment and try again.",
       "bodyWithRetry": "The {{provider}} API is throttling requests. Try again in {{seconds}}s.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "switchModel": "Switch model"
     },
     "usageLimitPaused": {
       "title": "You've reached your plan's limit",
@@ -291,11 +298,15 @@
       "title": "Out of capacity",
       "body": "Your {{provider}} plan reached its quota. Upgrade or switch to a different provider to keep going.",
       "bodyWithReset": "Your {{provider}} plan reached its quota. It resets {{time}}, or upgrade to keep going.",
-      "useApiKey": "Use API key instead"
+      "useApiKey": "Use API key instead",
+      "upgrade": "Upgrade plan",
+      "switchProvider": "Switch provider"
     },
     "modelUnavailable": {
       "title": "Model not available",
-      "body": "{{model}} is not available on your {{provider}} account."
+      "body": "{{model}} is not available on your {{provider}} account.",
+      "switchToFallback": "Switch to {{model}}",
+      "pickAnother": "Pick another model"
     },
     "unauthenticated": {
       "title": "Sign in to {{provider}} again",
@@ -314,12 +325,14 @@
     "networkUnreachable": {
       "title": "Cannot reach {{provider}}",
       "body": "Houston could not reach the {{provider}} API. Check your internet, then try again.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "checkStatus": "Check status page"
     },
     "providerInternal": {
       "title": "{{provider}} is having a problem",
       "body": "The {{provider}} API returned an error on its side. Try again in a moment.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "checkStatus": "Check status page"
     },
     "sessionResumeMissing": {
       "title": "Session restarted",

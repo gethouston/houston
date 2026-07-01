@@ -1,12 +1,17 @@
-import { useTranslation } from "react-i18next";
 import { Loader2, LogIn, LogOut } from "lucide-react";
-import type { ProviderInfo, ComingSoonProviderInfo } from "../../lib/providers";
+import { useTranslation } from "react-i18next";
+import type { ComingSoonProviderInfo, ProviderInfo } from "../../lib/providers";
 import {
+  AmazonBedrockLogo,
   ClaudeLogo,
-  OpenAILogo,
-  GeminiLogo,
   DeepSeekLogo,
+  GeminiLogo,
+  GitHubCopilotLogo,
+  LocalModelLogo,
   MiniMaxLogo,
+  OpenAILogo,
+  OpenCodeLogo,
+  OpenRouterLogo,
 } from "./provider-logos";
 
 /**
@@ -20,6 +25,23 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
       return <ClaudeLogo />;
     case "openai":
       return <OpenAILogo />;
+    case "github-copilot":
+      return <GitHubCopilotLogo />;
+    case "openrouter":
+      return <OpenRouterLogo />;
+    case "deepseek":
+      return <DeepSeekLogo />;
+    case "google":
+      return <GeminiLogo />;
+    case "amazon-bedrock":
+      return <AmazonBedrockLogo />;
+    case "minimax":
+      return <MiniMaxLogo />;
+    case "opencode":
+    case "opencode-go":
+      return <OpenCodeLogo />;
+    case "openai-compatible":
+      return <LocalModelLogo />;
     default:
       return (
         <span className="text-[10px] font-semibold tracking-tight text-muted-foreground">
@@ -31,12 +53,6 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
 
 function ComingSoonLogo({ provider }: { provider: ComingSoonProviderInfo }) {
   switch (provider.id) {
-    case "gemini":
-      // Gemini has a real brand mark — Houston already ships the SVG
-      // for the active-provider card path, so reuse it here while
-      // Gemini sits in the coming-soon slot rather than falling back
-      // to the generic two-letter chip.
-      return <GeminiLogo />;
     case "deepseek":
       return <DeepSeekLogo />;
     case "minimax":
@@ -91,13 +107,18 @@ export function ProviderCard({
           {provider.name}
           {connected && (
             <span
-              className="size-1.5 rounded-full bg-emerald-500 shrink-0"
+              role="img"
               aria-label={t("card.connected")}
+              className="size-1.5 rounded-full bg-emerald-500 shrink-0"
             />
           )}
         </p>
         <p className="text-[11px] text-muted-foreground truncate">
-          {pending ? t("card.connecting") : connected ? provider.cost : provider.subtitle}
+          {pending
+            ? t("card.connecting")
+            : connected
+              ? provider.cost
+              : provider.subtitle}
         </p>
       </div>
       {pending ? (
@@ -114,7 +135,11 @@ export function ProviderCard({
   );
 }
 
-export function ComingSoonCard({ provider }: { provider: ComingSoonProviderInfo }) {
+export function ComingSoonCard({
+  provider,
+}: {
+  provider: ComingSoonProviderInfo;
+}) {
   const { t } = useTranslation("providers");
   return (
     <div
@@ -125,8 +150,12 @@ export function ComingSoonCard({ provider }: { provider: ComingSoonProviderInfo 
         <ComingSoonLogo provider={provider} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-foreground truncate">{provider.name}</p>
-        <p className="text-[11px] text-muted-foreground truncate">{provider.subtitle}</p>
+        <p className="text-[13px] font-medium text-foreground truncate">
+          {provider.name}
+        </p>
+        <p className="text-[11px] text-muted-foreground truncate">
+          {provider.subtitle}
+        </p>
       </div>
       <span className="rounded-full bg-foreground/5 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground shrink-0">
         {t("card.comingSoon")}

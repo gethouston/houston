@@ -37,7 +37,10 @@ describe("mission search", () => {
 
   it("matches a word in the title and shows no snippet for it", () => {
     const result = searchMissions(missions, "review");
-    deepStrictEqual(result.items.map((m) => m.id), ["one"]);
+    deepStrictEqual(
+      result.items.map((m) => m.id),
+      ["one"],
+    );
     deepStrictEqual(result.snippets, {});
   });
 
@@ -46,9 +49,12 @@ describe("mission search", () => {
     const result = searchMissions(missions, "budget");
     deepStrictEqual(result.items.map((m) => m.id).sort(), ["one", "two"]);
     // one matched by title -> no snippet; two matched by body -> snippet.
-    strictEqual(result.snippets["one"], undefined);
-    strictEqual(result.snippets["two"] !== undefined, true);
-    strictEqual(result.snippets["two"].text.toLowerCase().includes("budget"), true);
+    strictEqual(result.snippets.one, undefined);
+    strictEqual(result.snippets.two !== undefined, true);
+    strictEqual(
+      result.snippets.two.text.toLowerCase().includes("budget"),
+      true,
+    );
   });
 
   it("treats a multi-word query as an exact phrase, not scattered words", () => {
@@ -66,9 +72,12 @@ describe("mission search", () => {
     const result = searchMissions(missions, "vendor contract", {
       three: "Assistant found the vendor contract in old messages.",
     });
-    deepStrictEqual(result.items.map((m) => m.id), ["three"]);
+    deepStrictEqual(
+      result.items.map((m) => m.id),
+      ["three"],
+    );
     strictEqual(
-      result.snippets["three"].text.toLowerCase().includes("vendor contract"),
+      result.snippets.three.text.toLowerCase().includes("vendor contract"),
       true,
     );
   });
@@ -76,10 +85,22 @@ describe("mission search", () => {
   it("includes user messages, tools, files, and results in searchable text", () => {
     const text = buildMissionHistorySearchText([
       { feed_type: "user_message", data: "Send the invoice this month" },
-      { feed_type: "tool_call", data: { name: "Grep", input: { pattern: "invoice" } } },
-      { feed_type: "tool_result", data: { content: "Found billing.csv", is_error: false } },
-      { feed_type: "file_changes", data: { created: ["out.md"], modified: ["billing.csv"] } },
-      { feed_type: "final_result", data: { result: "Invoice sent", cost_usd: null, duration_ms: null } },
+      {
+        feed_type: "tool_call",
+        data: { name: "Grep", input: { pattern: "invoice" } },
+      },
+      {
+        feed_type: "tool_result",
+        data: { content: "Found billing.csv", is_error: false },
+      },
+      {
+        feed_type: "file_changes",
+        data: { created: ["out.md"], modified: ["billing.csv"] },
+      },
+      {
+        feed_type: "final_result",
+        data: { result: "Invoice sent", cost_usd: null, duration_ms: null },
+      },
     ]);
 
     strictEqual(text.includes("Send the invoice this month"), true);
@@ -91,7 +112,10 @@ describe("mission search", () => {
   it("returns the full list and no snippets when the query is empty", () => {
     const result = searchMissions(missions, "");
     strictEqual(result.hasQuery, false);
-    deepStrictEqual(result.items.map((m) => m.id), ["one", "two", "three"]);
+    deepStrictEqual(
+      result.items.map((m) => m.id),
+      ["one", "two", "three"],
+    );
     deepStrictEqual(result.snippets, {});
   });
 });

@@ -1,4 +1,4 @@
-import { strictEqual, ok } from "node:assert";
+import { ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { prettifyAuthError } from "../src/components/auth/auth-errors.ts";
 

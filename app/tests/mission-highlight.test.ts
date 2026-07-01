@@ -8,7 +8,10 @@ import {
 } from "../src/components/mission-highlight.ts";
 
 /** Slice each range out of the source text — asserts WHAT got highlighted. */
-function highlighted(text: string, ranges: { start: number; end: number }[]): string[] {
+function highlighted(
+  text: string,
+  ranges: { start: number; end: number }[],
+): string[] {
   return ranges.map((r) => text.slice(r.start, r.end));
 }
 
@@ -63,7 +66,10 @@ describe("findHighlightRanges", () => {
     const text = "do this\nmonth ok";
     const ranges = findHighlightRanges(text, "this month");
     strictEqual(ranges.length, 1);
-    strictEqual(highlighted(text, ranges)[0].replace(/\s+/g, " "), "this month");
+    strictEqual(
+      highlighted(text, ranges)[0].replace(/\s+/g, " "),
+      "this month",
+    );
   });
 
   it("finds every occurrence of the phrase", () => {
@@ -73,7 +79,10 @@ describe("findHighlightRanges", () => {
   });
 
   it("returns nothing when the phrase is absent", () => {
-    deepStrictEqual(findHighlightRanges("this plan next month", "this month"), []);
+    deepStrictEqual(
+      findHighlightRanges("this plan next month", "this month"),
+      [],
+    );
     deepStrictEqual(findHighlightRanges("", "budget"), []);
     deepStrictEqual(findHighlightRanges("text", ""), []);
   });
@@ -107,7 +116,8 @@ describe("extractSnippet", () => {
   });
 
   it("omits the leading ellipsis when the match is at the start", () => {
-    const text = "budget owner is named here and the rest of the sentence keeps going onward";
+    const text =
+      "budget owner is named here and the rest of the sentence keeps going onward";
     const snippet = extractSnippet(text, "budget");
     strictEqual(snippet !== null, true);
     if (!snippet) return;

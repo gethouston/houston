@@ -21,11 +21,8 @@ interface NavigateInput {
  *  - Left / Right → first non-empty column in that direction. Tries to
  *    keep the same row index, clamping to the destination's length.
  */
-export function navigateBoard({
-  items,
-  columns,
-  selectedId,
-}: NavigateInput,
+export function navigateBoard(
+  { items, columns, selectedId }: NavigateInput,
   dir: BoardDir,
 ): string | null {
   const grouped = columns.map((col) => ({
@@ -42,7 +39,11 @@ export function navigateBoard({
   let rowIdx = -1;
   for (let c = 0; c < grouped.length; c++) {
     const r = grouped[c].items.findIndex((i) => i.id === selectedId);
-    if (r !== -1) { colIdx = c; rowIdx = r; break; }
+    if (r !== -1) {
+      colIdx = c;
+      rowIdx = r;
+      break;
+    }
   }
 
   if (colIdx === -1) {

@@ -8,9 +8,9 @@ import {
   FileSpreadsheetIcon,
   FileTextIcon,
   ImageIcon,
+  FileIcon as LucideFileIcon,
   MicIcon,
   XIcon,
-  FileIcon as LucideFileIcon,
 } from "lucide-react";
 import { PromptInputSubmit } from "./ai-elements/prompt-input";
 
@@ -21,10 +21,22 @@ export function getExt(name: string): string {
 
 export function getTypeLabel(ext: string): string {
   const map: Record<string, string> = {
-    pdf: "PDF", doc: "Word", docx: "Word", txt: "Text", rtf: "Rich Text",
-    csv: "Spreadsheet", xls: "Excel", xlsx: "Excel",
-    png: "Image", jpg: "Image", jpeg: "Image", gif: "Image", svg: "Image",
-    zip: "Zip Archive", rar: "Archive", "7z": "Archive",
+    pdf: "PDF",
+    doc: "Word",
+    docx: "Word",
+    txt: "Text",
+    rtf: "Rich Text",
+    csv: "Spreadsheet",
+    xls: "Excel",
+    xlsx: "Excel",
+    png: "Image",
+    jpg: "Image",
+    jpeg: "Image",
+    gif: "Image",
+    svg: "Image",
+    zip: "Zip Archive",
+    rar: "Archive",
+    "7z": "Archive",
   };
   return map[ext] ?? (ext ? ext.toUpperCase() : "File");
 }
@@ -34,10 +46,21 @@ export function AttachmentIcon({ ext }: { ext: string }) {
   if (ext === "pdf") {
     return (
       <div className="size-8 rounded-md bg-[#E5252A] flex items-center justify-center shrink-0">
-        <svg className="size-4" viewBox="0 0 16 16" fill="none">
+        <svg
+          className="size-4"
+          viewBox="0 0 16 16"
+          fill="none"
+          role="img"
+          aria-label="PDF"
+        >
           <text
-            x="8" y="11.5" textAnchor="middle" fill="white"
-            fontSize="8" fontWeight="700" fontFamily="system-ui, sans-serif"
+            x="8"
+            y="11.5"
+            textAnchor="middle"
+            fill="white"
+            fontSize="8"
+            fontWeight="700"
+            fontFamily="system-ui, sans-serif"
           >
             PDF
           </text>
@@ -59,7 +82,9 @@ export function AttachmentIcon({ ext }: { ext: string }) {
       </div>
     );
   }
-  if (["png", "jpg", "jpeg", "gif", "svg", "webp", "tif", "tiff"].includes(ext)) {
+  if (
+    ["png", "jpg", "jpeg", "gif", "svg", "webp", "tif", "tiff"].includes(ext)
+  ) {
     return (
       <div className="size-8 rounded-md bg-[#9333EA] flex items-center justify-center shrink-0">
         <ImageIcon className="size-4 text-white" strokeWidth={2} />
@@ -116,7 +141,11 @@ export interface ComposerTrailingProps {
  * send, which keeps the affordance stable in the same spot. The previous
  * "voice mode" wave icon was removed because it wasn't wired to anything.
  */
-export function ComposerTrailing({ status, hasContent, onStop }: ComposerTrailingProps) {
+export function ComposerTrailing({
+  status,
+  hasContent,
+  onStop,
+}: ComposerTrailingProps) {
   return (
     <div className="flex items-center gap-1.5 [grid-area:trailing]">
       {status === "ready" && (

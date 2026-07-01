@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
 import type { KanbanItem, NewPanelOpener } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
+import type { ReactNode } from "react";
 import type { Agent, AgentDefinition } from "../../lib/types";
 
 /**
@@ -116,7 +116,6 @@ export interface BoardSource {
     args: { text: string; files: File[] } & SendOverrides,
   ) => Promise<string>;
   stopSession: (sessionKey: string) => void;
-  onRunInTerminal: (item: KanbanItem) => Promise<void>;
 
   // ── Drag & drop (per-agent board only) ────────────────────────────────────
   onItemMove?: (item: KanbanItem, toColumnId: string) => void;

@@ -1,6 +1,6 @@
-import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 // Tests the real shipped artifact (public/compat-gate.js) rather than a copy,
@@ -21,13 +21,17 @@ function loadHelpers() {
 // Runs the gate's browser side effect with injected globals. `module` is
 // undefined here, so the IIFE skips the export branch and executes the gate.
 function runGate({ navigatorLanguage, lookbehindThrows, hasWindow = false }) {
-  const root = { innerHTML: "", childElementCount: 0, querySelector: () => null };
+  const root = {
+    innerHTML: "",
+    childElementCount: 0,
+    querySelector: () => null,
+  };
   const fakeDocument = {
     getElementById: (id) => (id === "root" ? root : null),
   };
   const fakeNavigator = { language: navigatorLanguage };
   const FakeRegExp = lookbehindThrows
-    ? function () {
+    ? () => {
         throw new SyntaxError("invalid group specifier name");
       }
     : RegExp;
@@ -35,13 +39,14 @@ function runGate({ navigatorLanguage, lookbehindThrows, hasWindow = false }) {
   // undefined: the gate's modern-engine branch guards on `typeof window` and
   // bails, so we exercise the lookbehind branch in isolation.
   const fakeWindow = hasWindow ? undefined : undefined;
-  new Function("module", "document", "navigator", "RegExp", "window", gateSource)(
-    undefined,
-    fakeDocument,
-    fakeNavigator,
-    FakeRegExp,
-    fakeWindow,
-  );
+  new Function(
+    "module",
+    "document",
+    "navigator",
+    "RegExp",
+    "window",
+    gateSource,
+  )(undefined, fakeDocument, fakeNavigator, FakeRegExp, fakeWindow);
   return root.innerHTML;
 }
 
@@ -96,7 +101,10 @@ test("every shipped language has full crash-screen copy", () => {
 test("gate copy contains no em dashes (i18n validator rule)", () => {
   for (const lang of ["en", "es", "pt"]) {
     const monterey = MESSAGES[lang];
-    assert.ok(!monterey.title.includes("—"), `em dash in Monterey ${lang} title`);
+    assert.ok(
+      !monterey.title.includes("—"),
+      `em dash in Monterey ${lang} title`,
+    );
     assert.ok(!monterey.body.includes("—"), `em dash in Monterey ${lang} body`);
     const crash = CRASH_MESSAGES[lang];
     for (const key of ["title", "body", "reload", "copy", "copied"]) {
@@ -107,27 +115,36 @@ test("gate copy contains no em dashes (i18n validator rule)", () => {
 
 test("isModernEngineSupported tracks the engine's lookbehind support", () => {
   assert.equal(isModernEngineSupported(RegExp), true);
-  const throwing = function () {
+  const throwing = () => {
     throw new SyntaxError("invalid group specifier name");
   };
   assert.equal(isModernEngineSupported(throwing), false);
 });
 
 test("a modern engine leaves the root untouched for the app to mount", () => {
-  assert.equal(runGate({ navigatorLanguage: "en-US", lookbehindThrows: false }), "");
+  assert.equal(
+    runGate({ navigatorLanguage: "en-US", lookbehindThrows: false }),
+    "",
+  );
 });
 
 test("an old engine renders a localized message into the root", () => {
   const es = runGate({ navigatorLanguage: "es-ES", lookbehindThrows: true });
   assert.ok(es.includes(MESSAGES.es.title));
   assert.ok(es.includes(MESSAGES.es.body));
-  assert.ok(es.includes("position:fixed"), "must use self-contained inline styles");
+  assert.ok(
+    es.includes("position:fixed"),
+    "must use self-contained inline styles",
+  );
 
   const pt = runGate({ navigatorLanguage: "pt-BR", lookbehindThrows: true });
   assert.ok(pt.includes(MESSAGES.pt.title));
 
   const en = runGate({ navigatorLanguage: "fr-FR", lookbehindThrows: true });
-  assert.ok(en.includes(MESSAGES.en.title), "unknown locale falls back to English");
+  assert.ok(
+    en.includes(MESSAGES.en.title),
+    "unknown locale falls back to English",
+  );
 });
 
 // Guards the load order, which runGate can't model: the gate paints into #root,
@@ -140,7 +157,9 @@ test("index.html loads the gate as a deferred (not parser-blocking) script", () 
     fileURLToPath(new URL("../../index.html", import.meta.url)),
     "utf8",
   );
-  const gateTag = indexHtml.match(/<script\b[^>]*\bsrc="\/compat-gate\.js"[^>]*>/);
+  const gateTag = indexHtml.match(
+    /<script\b[^>]*\bsrc="\/compat-gate\.js"[^>]*>/,
+  );
   assert.ok(gateTag, "index.html must load /compat-gate.js");
   assert.match(
     gateTag[0],
@@ -255,11 +274,25 @@ test("renderCrashScreen embeds title, body, buttons, diagnostics, and wires Relo
   assert.ok(root.innerHTML.includes(CRASH_MESSAGES.en.body));
   assert.ok(root.innerHTML.includes(CRASH_MESSAGES.en.reload));
   assert.ok(root.innerHTML.includes(CRASH_MESSAGES.en.copy));
-  assert.ok(root.innerHTML.includes("Error: Boom"), "diagnostics body must be embedded");
+  assert.ok(
+    root.innerHTML.includes("Error: Boom"),
+    "diagnostics body must be embedded",
+  );
   assert.ok(root.innerHTML.includes('id="houston-gate-diagnostics"'));
-  assert.ok(root.innerHTML.includes("position:fixed"), "must use self-contained inline styles");
-  assert.equal(typeof handlers.reload, "function", "Reload button must have a click handler");
-  assert.equal(typeof handlers.copy, "function", "Copy button must have a click handler");
+  assert.ok(
+    root.innerHTML.includes("position:fixed"),
+    "must use self-contained inline styles",
+  );
+  assert.equal(
+    typeof handlers.reload,
+    "function",
+    "Reload button must have a click handler",
+  );
+  assert.equal(
+    typeof handlers.copy,
+    "function",
+    "Copy button must have a click handler",
+  );
   // The copy click swallows any clipboard / selection error so it never
   // throws past the user. We can't mutate globalThis.navigator under Node 20+
   // (it's read-only), so just assert that invoking the handler in a hostile
@@ -291,8 +324,13 @@ function runGateWithWatchdog({ rootChildren, fireError, navigatorLanguage }) {
     childElementCount: rootChildren,
     querySelector: () => ({ addEventListener: () => {}, textContent: "" }),
   };
-  const fakeDocument = { getElementById: (id) => (id === "root" ? root : null) };
-  const fakeNavigator = { language: navigatorLanguage, userAgent: "Watchdog/1.0" };
+  const fakeDocument = {
+    getElementById: (id) => (id === "root" ? root : null),
+  };
+  const fakeNavigator = {
+    language: navigatorLanguage,
+    userAgent: "Watchdog/1.0",
+  };
   let scheduled = null;
   const fakeWindow = {
     addEventListener: (type, fn) => {

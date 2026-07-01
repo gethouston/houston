@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export interface ToastItem {
   id: string;
@@ -61,16 +62,23 @@ interface UIState {
   shareAgentId: string | null;
   /** Whether the "From a friend" import wizard is open. */
   importFromFriendOpen: boolean;
+  /** Whether the left rail is collapsed to an icon-only strip. Persisted. */
+  sidebarCollapsed: boolean;
   setViewMode: (mode: string) => void;
   setAssistantPanelOpen: (open: boolean) => void;
-  setActivityPanelId: (id: string | null, options?: { forceOpen?: boolean }) => void;
+  setActivityPanelId: (
+    id: string | null,
+    options?: { forceOpen?: boolean },
+  ) => void;
   setClaudeAvailable: (available: boolean | null) => void;
   setAuthRequired: (provider: string | null) => void;
   addToast: (toast: Omit<ToastItem, "id">) => void;
   dismissToast: (id: string) => void;
   setCreateAgentDialogOpen: (open: boolean) => void;
   setOnStartMission: (cb: (() => void) | null) => void;
-  setBoardActions: (actions: Array<{ id: string; label: string; onClick: () => void }>) => void;
+  setBoardActions: (
+    actions: Array<{ id: string; label: string; onClick: () => void }>,
+  ) => void;
   setAgentMissionSearchQuery: (agentPath: string, query: string) => void;
   setAgentMissionSearchLoading: (agentPath: string, loading: boolean) => void;
   setAgentArchivedSearchQuery: (agentPath: string, query: string) => void;
@@ -78,7 +86,9 @@ interface UIState {
   setMissionPanelOpen: (open: boolean) => void;
   setPaletteOpen: (open: boolean) => void;
   setCheatsheetOpen: (open: boolean) => void;
-  setOnBoardNavigate: (cb: ((dir: "up" | "down" | "left" | "right") => void) | null) => void;
+  setOnBoardNavigate: (
+    cb: ((dir: "up" | "down" | "left" | "right") => void) | null,
+  ) => void;
   setOnBoardOpen: (cb: (() => void) | null) => void;
   setOnPanelClose: (cb: (() => void) | null) => void;
   setJobDescriptionTarget: (target: JobDescriptionTarget | null) => void;
@@ -86,114 +96,136 @@ interface UIState {
   setUiTourActive: (active: boolean) => void;
   setShareAgentId: (agentId: string | null) => void;
   setImportFromFriendOpen: (open: boolean) => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebarCollapsed: () => void;
 }
 
 let toastCounter = 0;
 
-export const useUIStore = create<UIState>((set) => ({
-  viewMode: "chat",
-  assistantPanelOpen: false,
-  activityPanelId: null,
-  activityPanelForceOpen: false,
-  claudeAvailable: null,
-  authRequired: null,
-  toasts: [],
-  createAgentDialogOpen: false,
-  onStartMission: null,
-  boardActions: [],
-  agentMissionSearchQueries: {},
-  agentMissionSearchLoading: {},
-  agentArchivedSearchQueries: {},
-  agentArchivedSearchLoading: {},
-  missionPanelOpen: false,
-  paletteOpen: false,
-  cheatsheetOpen: false,
-  onBoardNavigate: null,
-  onBoardOpen: null,
-  onPanelClose: null,
-  jobDescriptionTarget: null,
-  tutorialActive: false,
-  uiTourActive: false,
-  shareAgentId: null,
-  importFromFriendOpen: false,
+export const useUIStore = create<UIState>()(
+  persist(
+    (set) => ({
+      viewMode: "chat",
+      assistantPanelOpen: false,
+      activityPanelId: null,
+      activityPanelForceOpen: false,
+      claudeAvailable: null,
+      authRequired: null,
+      toasts: [],
+      createAgentDialogOpen: false,
+      onStartMission: null,
+      boardActions: [],
+      agentMissionSearchQueries: {},
+      agentMissionSearchLoading: {},
+      agentArchivedSearchQueries: {},
+      agentArchivedSearchLoading: {},
+      missionPanelOpen: false,
+      paletteOpen: false,
+      cheatsheetOpen: false,
+      onBoardNavigate: null,
+      onBoardOpen: null,
+      onPanelClose: null,
+      jobDescriptionTarget: null,
+      tutorialActive: false,
+      uiTourActive: false,
+      shareAgentId: null,
+      importFromFriendOpen: false,
+      sidebarCollapsed: false,
 
-  setViewMode: (viewMode) => set({ viewMode }),
-  setAssistantPanelOpen: (assistantPanelOpen) => set({ assistantPanelOpen }),
-  setActivityPanelId: (activityPanelId, options) =>
-    set({
-      activityPanelId,
-      activityPanelForceOpen: activityPanelId ? (options?.forceOpen ?? false) : false,
-    }),
-  setClaudeAvailable: (claudeAvailable) => set({ claudeAvailable }),
-  setAuthRequired: (authRequired) => set({ authRequired }),
+      setViewMode: (viewMode) => set({ viewMode }),
+      setAssistantPanelOpen: (assistantPanelOpen) =>
+        set({ assistantPanelOpen }),
+      setActivityPanelId: (activityPanelId, options) =>
+        set({
+          activityPanelId,
+          activityPanelForceOpen: activityPanelId
+            ? (options?.forceOpen ?? false)
+            : false,
+        }),
+      setClaudeAvailable: (claudeAvailable) => set({ claudeAvailable }),
+      setAuthRequired: (authRequired) => set({ authRequired }),
 
-  addToast: (toast) =>
-    set((s) => {
-      // Error toasts must always render. Dedup hid genuine repeated failures:
-      // clicking "Report bug" after the first failure would silently no-op
-      // because the error toast title+description matched the previous one,
-      // making the button feel broken even when it was firing correctly.
-      if (toast.variant !== "error") {
-        const isDuplicate = s.toasts.some(
-          (t) => t.title === toast.title && t.description === toast.description,
-        );
-        if (isDuplicate) return s;
-      }
+      addToast: (toast) =>
+        set((s) => {
+          // Error toasts must always render. Dedup hid genuine repeated failures:
+          // clicking "Report bug" after the first failure would silently no-op
+          // because the error toast title+description matched the previous one,
+          // making the button feel broken even when it was firing correctly.
+          if (toast.variant !== "error") {
+            const isDuplicate = s.toasts.some(
+              (t) =>
+                t.title === toast.title && t.description === toast.description,
+            );
+            if (isDuplicate) return s;
+          }
 
-      const id = `toast-${++toastCounter}`;
-      const timeout = toast.action ? 10000 : 5000;
-      setTimeout(() => {
-        set((prev) => ({ toasts: prev.toasts.filter((t) => t.id !== id) }));
-      }, timeout);
-      return { toasts: [...s.toasts, { ...toast, id }] };
-    }),
+          const id = `toast-${++toastCounter}`;
+          const timeout = toast.action ? 10000 : 5000;
+          setTimeout(() => {
+            set((prev) => ({ toasts: prev.toasts.filter((t) => t.id !== id) }));
+          }, timeout);
+          return { toasts: [...s.toasts, { ...toast, id }] };
+        }),
 
-  dismissToast: (id) =>
-    set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+      dismissToast: (id) =>
+        set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 
-  setCreateAgentDialogOpen: (createAgentDialogOpen) =>
-    set({ createAgentDialogOpen }),
+      setCreateAgentDialogOpen: (createAgentDialogOpen) =>
+        set({ createAgentDialogOpen }),
 
-  setOnStartMission: (onStartMission) => set({ onStartMission }),
-  setBoardActions: (boardActions) => set({ boardActions }),
-  setAgentMissionSearchQuery: (agentPath, query) =>
-    set((s) => {
-      const next = { ...s.agentMissionSearchQueries };
-      if (query) next[agentPath] = query;
-      else delete next[agentPath];
-      return { agentMissionSearchQueries: next };
+      setOnStartMission: (onStartMission) => set({ onStartMission }),
+      setBoardActions: (boardActions) => set({ boardActions }),
+      setAgentMissionSearchQuery: (agentPath, query) =>
+        set((s) => {
+          const next = { ...s.agentMissionSearchQueries };
+          if (query) next[agentPath] = query;
+          else delete next[agentPath];
+          return { agentMissionSearchQueries: next };
+        }),
+      setAgentMissionSearchLoading: (agentPath, loading) =>
+        set((s) => {
+          const next = { ...s.agentMissionSearchLoading };
+          if (loading) next[agentPath] = true;
+          else delete next[agentPath];
+          return { agentMissionSearchLoading: next };
+        }),
+      setAgentArchivedSearchQuery: (agentPath, query) =>
+        set((s) => {
+          const next = { ...s.agentArchivedSearchQueries };
+          if (query) next[agentPath] = query;
+          else delete next[agentPath];
+          return { agentArchivedSearchQueries: next };
+        }),
+      setAgentArchivedSearchLoading: (agentPath, loading) =>
+        set((s) => {
+          const next = { ...s.agentArchivedSearchLoading };
+          if (loading) next[agentPath] = true;
+          else delete next[agentPath];
+          return { agentArchivedSearchLoading: next };
+        }),
+      setMissionPanelOpen: (missionPanelOpen) => set({ missionPanelOpen }),
+      setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+      setCheatsheetOpen: (cheatsheetOpen) => set({ cheatsheetOpen }),
+      setOnBoardNavigate: (onBoardNavigate) => set({ onBoardNavigate }),
+      setOnBoardOpen: (onBoardOpen) => set({ onBoardOpen }),
+      setOnPanelClose: (onPanelClose) => set({ onPanelClose }),
+      setJobDescriptionTarget: (jobDescriptionTarget) =>
+        set({ jobDescriptionTarget }),
+      setTutorialActive: (tutorialActive) => set({ tutorialActive }),
+      setUiTourActive: (uiTourActive) => set({ uiTourActive }),
+      setShareAgentId: (shareAgentId) => set({ shareAgentId }),
+      setImportFromFriendOpen: (importFromFriendOpen) =>
+        set({ importFromFriendOpen }),
+      setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
+      toggleSidebarCollapsed: () =>
+        set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
     }),
-  setAgentMissionSearchLoading: (agentPath, loading) =>
-    set((s) => {
-      const next = { ...s.agentMissionSearchLoading };
-      if (loading) next[agentPath] = true;
-      else delete next[agentPath];
-      return { agentMissionSearchLoading: next };
-    }),
-  setAgentArchivedSearchQuery: (agentPath, query) =>
-    set((s) => {
-      const next = { ...s.agentArchivedSearchQueries };
-      if (query) next[agentPath] = query;
-      else delete next[agentPath];
-      return { agentArchivedSearchQueries: next };
-    }),
-  setAgentArchivedSearchLoading: (agentPath, loading) =>
-    set((s) => {
-      const next = { ...s.agentArchivedSearchLoading };
-      if (loading) next[agentPath] = true;
-      else delete next[agentPath];
-      return { agentArchivedSearchLoading: next };
-    }),
-  setMissionPanelOpen: (missionPanelOpen) => set({ missionPanelOpen }),
-  setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
-  setCheatsheetOpen: (cheatsheetOpen) => set({ cheatsheetOpen }),
-  setOnBoardNavigate: (onBoardNavigate) => set({ onBoardNavigate }),
-  setOnBoardOpen: (onBoardOpen) => set({ onBoardOpen }),
-  setOnPanelClose: (onPanelClose) => set({ onPanelClose }),
-  setJobDescriptionTarget: (jobDescriptionTarget) => set({ jobDescriptionTarget }),
-  setTutorialActive: (tutorialActive) => set({ tutorialActive }),
-  setUiTourActive: (uiTourActive) => set({ uiTourActive }),
-  setShareAgentId: (shareAgentId) => set({ shareAgentId }),
-  setImportFromFriendOpen: (importFromFriendOpen) =>
-    set({ importFromFriendOpen }),
-}));
+    {
+      name: "houston-ui",
+      // Only durable layout preferences are persisted. Everything else in this
+      // store is ephemeral (toasts, registered callbacks, dialog flags) and
+      // must NOT survive a reload.
+      partialize: (state) => ({ sidebarCollapsed: state.sidebarCollapsed }),
+    },
+  ),
+);

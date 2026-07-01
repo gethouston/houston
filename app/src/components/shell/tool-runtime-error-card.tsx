@@ -1,8 +1,13 @@
+import type { ToolRuntimeErrorEntry } from "@houston-ai/chat";
+import { Button, Spinner } from "@houston-ai/core";
+import {
+  ArrowRightLeftIcon,
+  BugIcon,
+  RotateCcwIcon,
+  WrenchIcon,
+} from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BugIcon, RotateCcwIcon, WrenchIcon, ArrowRightLeftIcon } from "lucide-react";
-import { Button, Spinner } from "@houston-ai/core";
-import type { ToolRuntimeErrorEntry } from "@houston-ai/chat";
 import { reportBug } from "../../lib/bug-report";
 import { getCurrentUserEmail } from "../../lib/current-user";
 import { useUIStore } from "../../stores/ui";
@@ -91,7 +96,9 @@ export function ToolRuntimeErrorCard({
         description:
           e instanceof Error
             ? e.message
-            : t("shell:toolRuntimeError.modelUnsupported.switchErrorDescription"),
+            : t(
+                "shell:toolRuntimeError.modelUnsupported.switchErrorDescription",
+              ),
         variant: "error",
       });
     } finally {
@@ -115,7 +122,9 @@ export function ToolRuntimeErrorCard({
 
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <p className="text-sm font-semibold text-foreground">{title}</p>
-          <p className="text-xs leading-relaxed text-muted-foreground">{body}</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {body}
+          </p>
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {isModelUnsupported && onSwitchModel && (

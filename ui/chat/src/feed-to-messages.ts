@@ -90,7 +90,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
   };
 
   const ensureAssistant = (): ChatMessage => {
-    if (!cur || cur.from !== "assistant") {
+    if (cur?.from !== "assistant") {
       flush();
       cur = {
         key: `assistant-${messages.length}`,
@@ -177,7 +177,11 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
         // Deduplicate: the parser emits two tool_calls per tool (null input
         // on block start, real input on block stop). Replace the placeholder.
         const lastTool = msg.tools[msg.tools.length - 1];
-        if (lastTool && lastTool.name === item.data.name && lastTool.input == null) {
+        if (
+          lastTool &&
+          lastTool.name === item.data.name &&
+          lastTool.input == null
+        ) {
           lastTool.input = item.data.input;
         } else {
           msg.tools.push({ name: item.data.name, input: item.data.input });
@@ -327,8 +331,14 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
 
       case "file_changes": {
         attachFileChanges([
-          ...item.data.created.map((path) => ({ path, status: "created" as const })),
-          ...item.data.modified.map((path) => ({ path, status: "modified" as const })),
+          ...item.data.created.map((path) => ({
+            path,
+            status: "created" as const,
+          })),
+          ...item.data.modified.map((path) => ({
+            path,
+            status: "modified" as const,
+          })),
         ]);
         break;
       }

@@ -1,4 +1,4 @@
-import { strictEqual, ok, rejects } from "node:assert";
+import { ok, rejects, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { HoustonClient, isHoustonEngineError } from "../src/client.ts";
 
@@ -86,7 +86,12 @@ describe("HoustonClient transport retry (HOU-432)", () => {
       baseUrl: "http://127.0.0.1:1111",
       token: "t",
       // A generous attempt cap but a tiny deadline: the clock must stop it.
-      retry: { baseDelayMs: 1, maxDelayMs: 1, deadlineMs: 30, maxAttempts: 1000 },
+      retry: {
+        baseDelayMs: 1,
+        maxDelayMs: 1,
+        deadlineMs: 30,
+        maxAttempts: 1000,
+      },
       fetchImpl: async () => {
         calls += 1;
         await sleep(10);
@@ -156,9 +161,8 @@ describe("HoustonClient transport retry (HOU-432)", () => {
         return new Response("", { status: 503 });
       },
     });
-    await rejects(
-      client.createWorkspace({ name: "w" }),
-      (err: unknown) => isHoustonEngineError(err),
+    await rejects(client.createWorkspace({ name: "w" }), (err: unknown) =>
+      isHoustonEngineError(err),
     );
     strictEqual(calls, 1);
   });
@@ -256,7 +260,12 @@ describe("HoustonClient transport retry (HOU-432)", () => {
       baseUrl: "http://127.0.0.1:1111",
       token: "t",
       // Backoff long enough that we can abort mid-wait.
-      retry: { baseDelayMs: 100, maxDelayMs: 100, deadlineMs: 5_000, maxAttempts: 5 },
+      retry: {
+        baseDelayMs: 100,
+        maxDelayMs: 100,
+        deadlineMs: 5_000,
+        maxAttempts: 5,
+      },
       fetchImpl: async () => {
         calls += 1;
         // Abort while the first backoff is pending, then fail the request.
@@ -284,7 +293,10 @@ describe("HoustonClient transport retry (HOU-432)", () => {
         const auth = new Headers(init?.headers).get("authorization");
         tokens.push(auth);
         if (calls < 2) {
-          client.setEndpoint({ baseUrl: "http://127.0.0.1:1111", token: "new-token" });
+          client.setEndpoint({
+            baseUrl: "http://127.0.0.1:1111",
+            token: "new-token",
+          });
           loadFailed();
         }
         return jsonResponse({ ok: true });

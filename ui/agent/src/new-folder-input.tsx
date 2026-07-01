@@ -1,27 +1,35 @@
 /**
  * Inline new-folder input, styled as a selected folder row.
  */
-import { useRef, useState } from "react"
-import { FolderIcon, DisclosureChevron } from "./file-manager-icons"
-import { COL_GRID } from "./file-row"
+import { useEffect, useRef, useState } from "react";
+import { DisclosureChevron, FolderIcon } from "./file-manager-icons";
+import { COL_GRID } from "./file-row";
 
-export function NewFolderInput({ onConfirm, onCancel }: {
-  onConfirm: (name: string) => void
-  onCancel: () => void
+export function NewFolderInput({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: (name: string) => void;
+  onCancel: () => void;
 }) {
-  const [value, setValue] = useState("")
-  const committed = useRef(false)
+  const [value, setValue] = useState("");
+  const committed = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   const commit = () => {
-    if (committed.current) return
-    const trimmed = value.trim()
+    if (committed.current) return;
+    const trimmed = value.trim();
     if (trimmed) {
-      committed.current = true
-      onConfirm(trimmed)
+      committed.current = true;
+      onConfirm(trimmed);
     } else {
-      onCancel()
+      onCancel();
     }
-  }
+  };
 
   return (
     <div
@@ -32,12 +40,12 @@ export function NewFolderInput({ onConfirm, onCancel }: {
         <DisclosureChevron open={false} className="invisible" />
         <FolderIcon />
         <input
-          autoFocus
+          ref={inputRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") commit()
-            if (e.key === "Escape") onCancel()
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") onCancel();
           }}
           onBlur={commit}
           placeholder="untitled folder"
@@ -48,5 +56,5 @@ export function NewFolderInput({ onConfirm, onCancel }: {
       <span />
       <span className="text-[11px] text-white/70 px-2">Folder</span>
     </div>
-  )
+  );
 }

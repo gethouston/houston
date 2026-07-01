@@ -1,20 +1,32 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import type { HoustonEvent } from "@houston-ai/core";
-import { Spinner, ConfirmDialog } from "@houston-ai/core";
-import { tauriProvider, type ProviderStatus } from "../../lib/tauri";
-import {
-  PROVIDERS,
-  COMING_SOON_PROVIDERS,
-  type ProviderInfo,
-} from "../../lib/providers";
-import { useUIStore } from "../../stores/ui";
+import { ConfirmDialog, Spinner } from "@houston-ai/core";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import { analytics } from "../../lib/analytics";
+import { newEngineActive } from "../../lib/engine";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
-import { GeminiConnectDialog } from "./gemini-connect-dialog";
+import {
+  COMING_SOON_PROVIDERS,
+  EMPTY_PROVIDER_CAPABILITIES,
+  getConnectProviders,
+  PROVIDERS,
+  type ProviderInfo,
+  providerGatewayIds,
+} from "../../lib/providers";
+import {
+  type ProviderStatus,
+  tauriProvider,
+  tauriSystem,
+} from "../../lib/tauri";
+import { useUIStore } from "../../stores/ui";
+import { OpenAiCompatibleDialog } from "./openai-compatible-dialog";
+import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
+import { ComingSoonCard, ProviderCard } from "./provider-cards";
 import { ProviderLoginDialog } from "./provider-login-dialog";
-import { ProviderCard, ComingSoonCard } from "./provider-cards";
+import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
+import { useCopilotConnect } from "./use-copilot-connect";
 
 interface Props {
   /** Current workspace provider id (used to push the new default after sign-in). */
@@ -29,8 +41,8 @@ export function ProviderPicker({ onSelect }: Props) {
   const [statuses, setStatuses] = useState<Record<string, ProviderStatus>>({});
   const [loading, setLoading] = useState(true);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [confirmSignOutFor, setConfirmSignOutFor] = useState<ProviderInfo | null>(null);
-  const [apiKeyDialogFor, setApiKeyDialogFor] = useState<ProviderInfo | null>(null);
+  const [confirmSignOutFor, setConfirmSignOutFor] =
+    useState<ProviderInfo | null>(null);
   // OAuth URL surfaced by the engine when the CLI couldn't open the
   // user's browser (remote/headless deployments). `userCode` is set for
   // codex's device-grant flow (the one-time code to enter on OpenAI's
@@ -41,33 +53,69 @@ export function ProviderPicker({ onSelect }: Props) {
     url: string;
     userCode: string | null;
   } | null>(null);
+  // The paste-a-key dialog for API-key providers (OpenCode Zen / Go).
+  const [apiKeyDialog, setApiKeyDialog] = useState<ProviderInfo | null>(null);
+  // GitHub Copilot's connect opens a Personal vs Company plan dialog.
+  const { begin: beginCopilot, dialog: copilotDialog } = useCopilotConnect();
+  // The base-URL + model dialog for an OpenAI-compatible (local) server.
+  const [customEndpointDialog, setCustomEndpointDialog] =
+    useState<ProviderInfo | null>(null);
   const addToast = useUIStore((s) => s.addToast);
+  const { capabilities } = useCapabilities();
+  const newEngine = newEngineActive();
+  const providerCapabilities =
+    capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
+
+  // API-key providers (OpenCode) run only on the new TS engine; hide them on the
+  // Rust engine. Computed once — the engine doesn't change mid-session.
+  const visibleProviders = useMemo(
+    () =>
+      getConnectProviders({
+        newEngine,
+        desktop: osIsTauri(),
+        capabilities: providerCapabilities,
+      }),
+    [newEngine, providerCapabilities],
+  );
 
   const prevStatuses = useRef<Record<string, ProviderStatus>>({});
   const loadStatuses = useCallback(async () => {
-    // Probe every active provider in parallel. New providers added to the
-    // PROVIDERS list are picked up automatically; never hardcode ids here.
+    // Probe every visible provider in parallel. New providers added to the
+    // catalog are picked up automatically; never hardcode ids here.
     const results = await Promise.all(
-      PROVIDERS.map(async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const),
+      visibleProviders.map(
+        async (p) =>
+          // A connect card may front several gateways (OpenCode's Zen + Go share
+          // one key); probe them together so the merged card reads as connected
+          // when either is. `providerGatewayIds` is `[p.id]` for everything else.
+          [
+            p.id,
+            await tauriProvider.checkMergedStatus(providerGatewayIds(p)),
+          ] as const,
+      ),
     );
     const next: Record<string, ProviderStatus> = {};
     for (const [id, status] of results) {
       next[id] = status;
     }
-    for (const prov of PROVIDERS) {
+    for (const prov of visibleProviders) {
       const wasConnected =
         prevStatuses.current[prov.id]?.cli_installed &&
         prevStatuses.current[prov.id]?.authenticated;
-      const isConnected = next[prov.id]?.cli_installed && next[prov.id]?.authenticated;
+      const isConnected =
+        next[prov.id]?.cli_installed && next[prov.id]?.authenticated;
       if (!wasConnected && isConnected) {
         analytics.track("provider_configured", { provider: prov.id });
-        onSelect(prov.id, prov.defaultModel);
+        // Skip the auto-select when the catalog has no default model — the local
+        // OpenAI-compatible provider's model id is user-supplied, delivered by
+        // the connect dialog's onConnected callback, not a static default.
+        if (prov.defaultModel) onSelect(prov.id, prov.defaultModel);
       }
     }
     prevStatuses.current = next;
     setStatuses(next);
     setLoading(false);
-  }, [onSelect]);
+  }, [onSelect, visibleProviders]);
 
   useEffect(() => {
     loadStatuses();
@@ -107,15 +155,34 @@ export function ProviderPicker({ onSelect }: Props) {
   useEffect(() => {
     const off = subscribeHoustonEvents((ev: HoustonEvent) => {
       if (ev.type === "ProviderLoginUrl") {
-        // The sign-in URL / paste-back dialog is a REMOTE-only affordance.
-        // On desktop the engine is the co-located sidecar: the provider CLI
-        // opens the user's own browser and finishes via its localhost OAuth
-        // callback, so surfacing the URL would only flash a dialog that
-        // immediately auto-dismisses on ProviderLoginComplete (issue #453).
-        // Skip it — same osIsTauri signal that sets `deviceAuth: !osIsTauri()`
-        // on connect.
-        if (osIsTauri()) return;
-        const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
+        // Resolve the display name from the connect list first so the merged
+        // OpenCode account toasts as "OpenCode", not its primary gateway's
+        // catalog name; fall back to the full catalog for any non-connect id.
+        const prov =
+          visibleProviders.find((p) => p.id === ev.data.provider) ??
+          PROVIDERS.find((p) => p.id === ev.data.provider);
+        if (
+          shouldOpenLoginUrlDirectly({
+            isDesktop: osIsTauri(),
+            userCode: ev.data.user_code,
+          })
+        ) {
+          // Desktop: the runtime is co-located, so a loopback OAuth flow
+          // finishes when the user approves in their OWN browser (the localhost
+          // callback flips the card on ProviderLoginComplete). Open the URL and
+          // skip the dialog — there is no code to enter. Surface a failed open
+          // so the user isn't left on a silent spinner.
+          tauriSystem.openUrl(ev.data.url).catch((err) => {
+            addToast({
+              title: t("toast.signInFailed", {
+                provider: prov?.name ?? ev.data.provider,
+              }),
+              description: err instanceof Error ? err.message : String(err),
+              variant: "error",
+            });
+          });
+          return;
+        }
         if (prov) {
           // The relay can emit twice for codex's device flow: URL-only,
           // then again carrying the one-time code. Keep a code we've
@@ -130,17 +197,26 @@ export function ProviderPicker({ onSelect }: Props) {
           }));
         }
       } else if (ev.type === "ProviderLoginComplete") {
-        const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
+        // Resolve the display name from the connect list first so the merged
+        // OpenCode account toasts as "OpenCode", not its primary gateway's
+        // catalog name; fall back to the full catalog for any non-connect id.
+        const prov =
+          visibleProviders.find((p) => p.id === ev.data.provider) ??
+          PROVIDERS.find((p) => p.id === ev.data.provider);
         if (ev.data.success) {
           addToast({
-            title: t("toast.signInSucceeded", { provider: prov?.name ?? ev.data.provider }),
+            title: t("toast.signInSucceeded", {
+              provider: prov?.name ?? ev.data.provider,
+            }),
             variant: "success",
           });
         } else if (ev.data.error) {
           // A user cancel completes with `success: false` and no
           // `error` — benign, so we stay quiet and just clear state.
           addToast({
-            title: t("toast.signInFailed", { provider: prov?.name ?? ev.data.provider }),
+            title: t("toast.signInFailed", {
+              provider: prov?.name ?? ev.data.provider,
+            }),
             description: ev.data.error,
             variant: "error",
           });
@@ -148,33 +224,40 @@ export function ProviderPicker({ onSelect }: Props) {
         setLoginDialog((current) =>
           current?.provider.id === ev.data.provider ? null : current,
         );
-        setPendingId((current) => (current === ev.data.provider ? null : current));
+        setPendingId((current) =>
+          current === ev.data.provider ? null : current,
+        );
         loadStatuses();
       }
     });
     return off;
-  }, [addToast, loadStatuses, t]);
+  }, [addToast, loadStatuses, t, visibleProviders]);
 
-  const handleConnect = async (provider: ProviderInfo) => {
-    // API-key providers (e.g. Gemini) have no CLI login flow. The engine
-    // would return a BadRequest if we called `launchLogin`; instead we open
-    // a dedicated dialog that walks the user through pasting an API key.
-    if (provider.loginKind === "apiKey") {
-      setApiKeyDialogFor(provider);
-      return;
-    }
+  // Start the OAuth device/loopback login for a provider. `enterpriseDomain` is
+  // set only when connecting GitHub Copilot Enterprise (from the domain dialog).
+  const startOAuthLogin = async (
+    provider: ProviderInfo,
+    enterpriseDomain?: string,
+  ) => {
     setPendingId(provider.id);
     try {
-      // Remote clients (this app running as a webapp/PWA against a hosted
-      // engine) can't receive the CLI's localhost OAuth callback, so ask
-      // for the headless device-code flow. The engine ignores the flag for
-      // providers without a device variant (Claude keeps its paste-back).
+      // launchLogin defaults deviceAuth from connection topology: only a
+      // co-located desktop can catch the loopback callback (Codex browser
+      // login); browser clients and desktop clients pointed at a remote host use
+      // device code. No flag is needed here. Claude keys off the runtime's
+      // headless mode regardless.
       // `toast: false`: the catch below renders the provider-specific failure
       // toast, so `call` must not also toast the same message (it showed twice).
-      await tauriProvider.launchLogin(provider.id, { deviceAuth: !osIsTauri(), toast: false });
+      await tauriProvider.launchLogin(provider.id, {
+        toast: false,
+        enterpriseDomain,
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[provider-picker] launchLogin(${provider.id}) failed:`, msg);
+      console.error(
+        `[provider-picker] launchLogin(${provider.id}) failed:`,
+        msg,
+      );
       addToast({
         title: t("toast.signInFailed", { provider: provider.name }),
         description: msg,
@@ -182,6 +265,28 @@ export function ProviderPicker({ onSelect }: Props) {
       });
       setPendingId(null);
     }
+  };
+
+  const handleConnect = async (provider: ProviderInfo) => {
+    // API-key providers (OpenCode) connect by pasting a key, not OAuth.
+    if (provider.auth === "apiKey") {
+      setApiKeyDialog(provider);
+      return;
+    }
+    // OpenAI-compatible (local) servers connect by base URL + model.
+    if (provider.auth === "openaiCompatible") {
+      setCustomEndpointDialog(provider);
+      return;
+    }
+    // GitHub Copilot: open the Personal vs Company plan dialog first (Company
+    // collects the domain the device-code flow needs); the chosen plan resumes
+    // the login with the right domain. Every other OAuth provider connects
+    // straight away.
+    if (
+      beginCopilot(provider, (domain) => void startOAuthLogin(provider, domain))
+    )
+      return;
+    await startOAuthLogin(provider);
   };
 
   const handleCancel = async (provider: ProviderInfo) => {
@@ -193,7 +298,10 @@ export function ProviderPicker({ onSelect }: Props) {
       await tauriProvider.cancelLogin(provider.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[provider-picker] cancelLogin(${provider.id}) failed:`, msg);
+      console.error(
+        `[provider-picker] cancelLogin(${provider.id}) failed:`,
+        msg,
+      );
       addToast({
         title: t("toast.cancelFailed", { provider: provider.name }),
         description: msg,
@@ -201,7 +309,9 @@ export function ProviderPicker({ onSelect }: Props) {
       });
     } finally {
       setPendingId((current) => (current === provider.id ? null : current));
-      setLoginDialog((current) => (current?.provider.id === provider.id ? null : current));
+      setLoginDialog((current) =>
+        current?.provider.id === provider.id ? null : current,
+      );
     }
   };
 
@@ -212,7 +322,10 @@ export function ProviderPicker({ onSelect }: Props) {
       await loadStatuses();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[provider-picker] launchLogout(${provider.id}) failed:`, msg);
+      console.error(
+        `[provider-picker] launchLogout(${provider.id}) failed:`,
+        msg,
+      );
       addToast({
         title: t("toast.signOutFailed", { provider: provider.name }),
         description: msg,
@@ -234,9 +347,10 @@ export function ProviderPicker({ onSelect }: Props) {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {PROVIDERS.map((prov) => {
+        {visibleProviders.map((prov) => {
           const status = statuses[prov.id];
-          const connected = (status?.cli_installed && status?.authenticated) ?? false;
+          const connected =
+            (status?.cli_installed && status?.authenticated) ?? false;
           return (
             <ProviderCard
               key={prov.id}
@@ -260,8 +374,12 @@ export function ProviderPicker({ onSelect }: Props) {
         onOpenChange={(open) => {
           if (!open) setConfirmSignOutFor(null);
         }}
-        title={t("signOutConfirm.title", { provider: confirmSignOutFor?.name ?? "" })}
-        description={t("signOutConfirm.description", { provider: confirmSignOutFor?.name ?? "" })}
+        title={t("signOutConfirm.title", {
+          provider: confirmSignOutFor?.name ?? "",
+        })}
+        description={t("signOutConfirm.description", {
+          provider: confirmSignOutFor?.name ?? "",
+        })}
         confirmLabel={t("signOutConfirm.confirm")}
         cancelLabel={t("signOutConfirm.cancel")}
         variant="destructive"
@@ -272,35 +390,25 @@ export function ProviderPicker({ onSelect }: Props) {
         }}
       />
 
-      <GeminiConnectDialog
-        provider={apiKeyDialogFor}
-        onOpenChange={(open) => {
-          if (!open) setApiKeyDialogFor(null);
-        }}
-        onSaved={(providerId) => {
-          // Flipping pendingId arms the 2s status poll defined in this
-          // component, so the card transitions to "Connected" without a
-          // Houston restart. The poll is also responsible for clearing
-          // pendingId once the auth state reads `authenticated`.
-          setPendingId(providerId);
-          loadStatuses();
-        }}
-        onLoginStarted={(providerId) => {
-          // OAuth path: gemini-cli is now driving the browser flow.
-          // Arm the picker's status poll so the card flips to
-          // Connected the moment gemini-cli writes its credential
-          // files, same as the API-key save path above.
-          setPendingId(providerId);
-        }}
-      />
-
       <ProviderLoginDialog
         provider={loginDialog?.provider ?? null}
         url={loginDialog?.url ?? null}
         userCode={loginDialog?.userCode ?? null}
         onClose={() => setLoginDialog(null)}
       />
+
+      <ProviderApiKeyDialog
+        provider={apiKeyDialog}
+        onClose={() => setApiKeyDialog(null)}
+      />
+
+      {copilotDialog}
+
+      <OpenAiCompatibleDialog
+        provider={customEndpointDialog}
+        onConnected={(m) => onSelect("openai-compatible", m)}
+        onClose={() => setCustomEndpointDialog(null)}
+      />
     </>
   );
 }
-

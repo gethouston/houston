@@ -1,7 +1,7 @@
-import { useState } from "react";
-import type { ChangeEvent, ReactNode, RefObject } from "react";
-import { Plus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@houston-ai/core";
+import { Plus } from "lucide-react";
+import type { ChangeEvent, ReactNode, RefObject } from "react";
+import { useState } from "react";
 import { AttachmentChip } from "./attachment-chip";
 
 interface ChatInputAttachmentsProps {
@@ -35,14 +35,13 @@ export function ChatInputAttachments({
         >
           {files.map((file, idx) => (
             <AttachmentChip
-              key={`${file.name}-${idx}`}
+              key={`${file.name}-${file.lastModified}`}
               name={file.name}
               onRemove={() => onRemoveFile(idx)}
             />
           ))}
         </div>
       )}
-
     </>
   );
 }
@@ -78,7 +77,9 @@ export function ChatInputAttachButton({
   );
 
   if (!attachMenu) {
-    return <div className="flex items-center [grid-area:leading]">{button}</div>;
+    return (
+      <div className="flex items-center [grid-area:leading]">{button}</div>
+    );
   }
 
   const content =

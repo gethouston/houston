@@ -1,23 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Skill } from "@houston-ai/skills";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { CommunitySkill, RepoSkill, Skill } from "@houston-ai/skills";
 import {
   useCreateSkill,
   useDeleteSkill,
-  useInstallCommunitySkill,
-  useInstallSkillFromRepo,
-  useListSkillsFromRepo,
   useSaveSkill,
   useSkillDetail,
   useSkills,
 } from "../../hooks/queries";
-import { queryKeys } from "../../lib/query-keys";
-import { tauriSkills } from "../../lib/tauri";
 import { isMissingSkillError } from "../../lib/missing-skill";
+import { queryKeys } from "../../lib/query-keys";
 import { useUIStore } from "../../stores/ui";
-import { useSkillSurfaceLabels } from "./use-skill-surface-labels";
 import { resolveLoadingSkillName } from "./skill-loading-model";
+import { useSkillSurfaceLabels } from "./use-skill-surface-labels";
 
 export function useSkillSurface(agentPath: string) {
   const { t } = useTranslation("skills");
@@ -25,7 +21,9 @@ export function useSkillSurface(agentPath: string) {
   const addToast = useUIStore((s) => s.addToast);
   const { skillDetailLabels } = useSkillSurfaceLabels();
   const { data: summaries, isLoading: skillsLoading } = useSkills(agentPath);
-  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null);
+  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
+    null,
+  );
   // Render-time reset on agent switch — a useEffect would race the
   // auto-toast in `call()` because the stale-name fetch starts first.
   const [prevAgentPath, setPrevAgentPath] = useState(agentPath);
@@ -49,10 +47,10 @@ export function useSkillSurface(agentPath: string) {
   );
 
   // A selected skill that no longer resolves (renamed, deleted, or never
-  // installed) returns `skill_not_found`. `tauriSkills.load` keeps that off the
+  // installed) makes the host answer 404. `tauriSkills.load` keeps that off the
   // red bug-toast / Sentry path, so surface it plainly here: a friendly note,
   // drop the stale selection, and refetch the list so the dead card vanishes.
-  // (HOU-441)
+  // (HOU-515 / HOU-441)
   useEffect(() => {
     if (!selectedSkillName || !isMissingSkillError(skillDetailError)) return;
     addToast({
@@ -62,13 +60,17 @@ export function useSkillSurface(agentPath: string) {
     });
     setSelectedSkillName(null);
     queryClient.invalidateQueries({ queryKey: queryKeys.skills(agentPath) });
-  }, [skillDetailError, selectedSkillName, agentPath, addToast, queryClient, t]);
+  }, [
+    skillDetailError,
+    selectedSkillName,
+    agentPath,
+    addToast,
+    queryClient,
+    t,
+  ]);
   const saveSkill = useSaveSkill(agentPath);
   const deleteSkill = useDeleteSkill(agentPath);
   const createSkill = useCreateSkill(agentPath);
-  const installCommunity = useInstallCommunitySkill(agentPath);
-  const listFromRepo = useListSkillsFromRepo();
-  const installFromRepo = useInstallSkillFromRepo(agentPath);
 
   const selectedSkill: Skill | undefined =
     selectedSkillName && skillDetail
@@ -82,9 +84,9 @@ export function useSkillSurface(agentPath: string) {
       : undefined;
 
   /**
-   * Lowercase set of locally-installed skill slugs. The marketplace UI
-   * uses this to render "Already installed" badges before the user
-   * even tries to click install, preventing a confusing failure-on-click.
+   * Lowercase set of locally-installed skill slugs. The create dialog uses
+   * this to render "Already exists" badges before the user even tries to
+   * save, preventing a confusing failure-on-click.
    */
   const installedSkillNames = useMemo<Set<string>>(
     () => new Set((summaries ?? []).map((s) => s.name.toLowerCase())),
@@ -110,38 +112,6 @@ export function useSkillSurface(agentPath: string) {
     [deleteSkill],
   );
 
-  const handleSearch = useCallback(
-    (query: string, signal?: AbortSignal) =>
-      tauriSkills.searchCommunity(query, signal),
-    [],
-  );
-
-  const handlePopular = useCallback(
-    (signal?: AbortSignal) => tauriSkills.popularCommunity(signal),
-    [],
-  );
-
-  const handleInstallCommunity = useCallback(
-    async (skill: CommunitySkill, signal?: AbortSignal) =>
-      installCommunity.mutateAsync({
-        source: skill.source,
-        skillId: skill.skillId,
-        signal,
-      }),
-    [installCommunity],
-  );
-
-  const handleListFromRepo = useCallback(
-    async (source: string) => listFromRepo.mutateAsync(source),
-    [listFromRepo],
-  );
-
-  const handleInstallFromRepo = useCallback(
-    async (source: string, skills: RepoSkill[]) =>
-      installFromRepo.mutateAsync({ source, skills }),
-    [installFromRepo],
-  );
-
   const handleCreateFromScratch = useCallback(
     async (input: { name: string; description: string; content: string }) => {
       await createSkill.mutateAsync(input);
@@ -160,11 +130,6 @@ export function useSkillSurface(agentPath: string) {
     clearSelectedSkill,
     handleSkillSave,
     handleSkillDelete,
-    handleSearch,
-    handlePopular,
-    handleInstallCommunity,
-    handleListFromRepo,
-    handleInstallFromRepo,
     handleCreateFromScratch,
     installedSkillNames,
   };

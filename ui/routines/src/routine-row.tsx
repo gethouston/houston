@@ -5,35 +5,35 @@
  * + colored accent. Switch on the right. The whole row is clickable; the
  * switch stops propagation so toggling doesn't open the editor.
  */
-import { cn, Switch } from "@houston-ai/core"
-import type { Routine, RoutineRun } from "./types"
-import { cronSummary } from "./schedule-cron-utils"
-import { nextFire, describeNextFire } from "./next-fire"
-import { useNow } from "./use-now"
+import { cn, Switch } from "@houston-ai/core";
 import {
-  interp,
+  DEFAULT_NEXT_FIRE_LABELS,
   DEFAULT_ROW_LABELS,
   DEFAULT_SCHEDULE_SUMMARY_LABELS,
-  DEFAULT_NEXT_FIRE_LABELS,
+  interp,
+  type NextFireLabels,
   type RoutineRowLabels,
   type ScheduleSummaryLabels,
-  type NextFireLabels,
-} from "./labels"
+} from "./labels";
+import { describeNextFire, nextFire } from "./next-fire";
+import { cronSummary } from "./schedule-summary";
+import type { Routine, RoutineRun } from "./types";
+import { useNow } from "./use-now";
 
 export interface RoutineRowProps {
-  routine: Routine
-  lastRun?: RoutineRun
+  routine: Routine;
+  lastRun?: RoutineRun;
   /** The account-wide IANA timezone every routine fires in. */
-  accountTimezone: string
-  onClick?: () => void
-  onToggle?: (enabled: boolean) => void
+  accountTimezone: string;
+  onClick?: () => void;
+  onToggle?: (enabled: boolean) => void;
   /** Localized row labels. English defaults so standalone callers still work. */
-  labels?: RoutineRowLabels
+  labels?: RoutineRowLabels;
   /** Schedule-summary + next-run labels, threaded to the cron/time formatters. */
-  scheduleSummaryLabels?: ScheduleSummaryLabels
-  nextFireLabels?: NextFireLabels
+  scheduleSummaryLabels?: ScheduleSummaryLabels;
+  nextFireLabels?: NextFireLabels;
   /** BCP-47 locale for day names + time formatting. */
-  locale?: string
+  locale?: string;
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -42,23 +42,23 @@ const STATUS_DOT: Record<string, string> = {
   running: "bg-blue-500",
   error: "bg-red-500",
   cancelled: "bg-gray-400",
-}
+};
 
 function lastRunLabel(
   lastRun: RoutineRun | undefined,
   now: Date,
   labels: RoutineRowLabels,
 ): string | null {
-  if (!lastRun) return null
-  const date = new Date(lastRun.started_at)
-  const diff = now.getTime() - date.getTime()
-  const mins = Math.floor(diff / 60_000)
-  if (mins < 1) return labels.justRan
-  if (mins < 60) return interp(labels.ranMinutes, { n: mins })
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return interp(labels.ranHours, { n: hours })
-  const days = Math.floor(hours / 24)
-  return interp(labels.ranDays, { n: days })
+  if (!lastRun) return null;
+  const date = new Date(lastRun.started_at);
+  const diff = now.getTime() - date.getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return labels.justRan;
+  if (mins < 60) return interp(labels.ranMinutes, { n: mins });
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return interp(labels.ranHours, { n: hours });
+  const days = Math.floor(hours / 24);
+  return interp(labels.ranDays, { n: days });
 }
 
 export function RoutineRow({
@@ -72,25 +72,30 @@ export function RoutineRow({
   nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
   locale = "en-US",
 }: RoutineRowProps) {
-  const now = useNow(60_000)
+  const now = useNow(60_000);
   const next = routine.enabled
     ? nextFire(routine.schedule, accountTimezone, now)
-    : null
+    : null;
   const nextDescr = next
     ? describeNextFire(next, accountTimezone, now, nextFireLabels, locale)
-    : null
-  const lastLabel = lastRunLabel(lastRun, now, labels)
-  const isPaused = lastRun?.status === "running" && !!lastRun.paused_until
+    : null;
+  const lastLabel = lastRunLabel(lastRun, now, labels);
+  const isPaused = lastRun?.status === "running" && !!lastRun.paused_until;
 
+  // The row hosts a nested interactive control (the Switch, which Radix renders
+  // as a native <button role="switch">). Nesting a <button> inside a <button>
+  // is invalid HTML, so the outer row stays a <div role="button"> with explicit
+  // keyboard activation rather than a native <button>.
   return (
+    // biome-ignore lint/a11y/useSemanticElements: a native <button> can't wrap the nested Radix Switch button
     <div
       onClick={onClick}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onClick?.()
+          e.preventDefault();
+          onClick?.();
         }
       }}
       className={cn(
@@ -111,7 +116,7 @@ export function RoutineRow({
             ? "bg-gray-300"
             : isPaused
               ? "bg-amber-500"
-              : STATUS_DOT[lastRun?.status ?? "silent"] ?? "bg-gray-300",
+              : (STATUS_DOT[lastRun?.status ?? "silent"] ?? "bg-gray-300"),
           lastRun?.status === "running" && !isPaused && "animate-pulse",
         )}
         aria-hidden
@@ -156,16 +161,24 @@ export function RoutineRow({
         )}
       </div>
 
-      {/* Switch */}
+      {/* Switch — stop click and keys from bubbling to the outer row so
+          toggling (mouse or keyboard) never opens the editor. */}
       {onToggle && (
-        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+        <div
+          role="none"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          className="shrink-0"
+        >
           <Switch
             checked={routine.enabled}
             onCheckedChange={(checked) => onToggle(checked)}
-            aria-label={routine.enabled ? labels.pauseRoutine : labels.resumeRoutine}
+            aria-label={
+              routine.enabled ? labels.pauseRoutine : labels.resumeRoutine
+            }
           />
         </div>
       )}
     </div>
-  )
+  );
 }

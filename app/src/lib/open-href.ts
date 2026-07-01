@@ -1,12 +1,11 @@
-import { tauriFiles, tauriSystem } from "./tauri";
 import { logger } from "./logger";
+import { tauriFiles, tauriSystem } from "./tauri";
 
 /**
  * Open a link the agent emitted in chat. Two shapes land here:
  *
  *   1. Absolute URLs — `https://...`, `http://...`, `mailto:...`, `houston://...`,
- *      `composio.dev/#houston_toolkit=...`, etc. These go to the system
- *      browser via `tauriSystem.openUrl`.
+ *      etc. These go to the system browser via `tauriSystem.openUrl`.
  *
  *   2. Relative or bare paths — e.g. `perfil.md`, `subfolder/output.docx`,
  *      `./report.pdf`. The agent's prompt structure encourages it to drop
@@ -39,7 +38,7 @@ export function openAgentHref(href: string, agentPath: string): void {
 function looksLikeUrl(value: string): boolean {
   if (value.startsWith("//")) return true;
   // Scheme: a leading run of letters / digits / + - . followed by `:`.
-  // Catches http, https, mailto, file, houston (deep-link), composio://,
+  // Catches http, https, mailto, file, houston (deep-link),
   // etc. without false-positiving on Windows-style `C:\...` paths
   // because `C:` is followed by `\`, not by a non-`/`-non-`\` payload
   // — we additionally require a `/` immediately after the colon OR

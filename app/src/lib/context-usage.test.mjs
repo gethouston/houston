@@ -1,9 +1,9 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import {
-  sessionContextUsage,
-  effectiveContextWindow,
   contextFillPercent,
+  effectiveContextWindow,
+  sessionContextUsage,
 } from "./context-usage.ts";
 
 function finalResult(contextTokens) {

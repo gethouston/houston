@@ -1,6 +1,3 @@
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { ExternalLink, Copy, Eye, EyeOff } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -10,11 +7,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
+import { Copy, ExternalLink, Eye, EyeOff } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ProviderInfo } from "../../lib/providers";
-import { tauriProvider } from "../../lib/tauri";
+import { tauriProvider, tauriSystem } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
-import { providerLoginUrlHost } from "./provider-login-url";
 import { ProviderDeviceCode } from "./provider-device-code";
+import { providerLoginUrlHost } from "./provider-login-url";
 
 /**
  * Sign-in dialog for remote/headless Houston Engines, where the provider
@@ -31,10 +31,10 @@ import { ProviderDeviceCode } from "./provider-device-code";
  *    dialog waits for `ProviderLoginComplete` (handled by the parent) to
  *    auto-close.
  *
- * Desktop never reaches here: the picker / settings drop `ProviderLoginUrl`
- * when `osIsTauri()` (issue #453). The co-located CLI opens the user's own
- * browser and completes via its localhost OAuth callback, so the URL relay
- * is purely for clients that can't see that browser (webapp / mobile PWA).
+ * Desktop no longer shows this dialog: there the picker/settings handler opens
+ * the user's browser directly for the co-located loopback flow (see
+ * `shouldOpenLoginUrlDirectly`), so the dialog is now a remote / headless-only
+ * affordance (issue #453).
  */
 interface Props {
   provider: ProviderInfo | null;
@@ -44,7 +44,12 @@ interface Props {
   onClose: () => void;
 }
 
-export function ProviderLoginDialog({ provider, url, userCode, onClose }: Props) {
+export function ProviderLoginDialog({
+  provider,
+  url,
+  userCode,
+  onClose,
+}: Props) {
   const { t } = useTranslation("providers");
   const addToast = useUIStore((s) => s.addToast);
   const [code, setCode] = useState("");
@@ -59,12 +64,11 @@ export function ProviderLoginDialog({ provider, url, userCode, onClose }: Props)
   // Reset per-open state every time a new provider opens the dialog so a
   // stale code from a prior failed attempt — or a revealed URL — doesn't
   // leak across.
-  // Deliberately do NOT `window.open` here: claude/codex print the
-  // fallback URL unconditionally, including on desktop where the CLI
-  // already opened the user's browser via xdg-open/open. Auto-opening
-  // a duplicate tab would be a regression for personal-use Houston.
-  // The "Open URL" button below is the explicit action for remote
-  // deployments where the browser hasn't been opened.
+  // Deliberately do NOT `window.open` here. This dialog only renders for
+  // remote / headless clients now (desktop opens the browser directly
+  // upstream), and there the user can't be sure a co-located browser/callback
+  // exists — so the "Open URL" button below is the explicit, user-driven action
+  // rather than an auto-popped tab.
   useEffect(() => {
     if (provider && url) {
       setCode("");
@@ -122,7 +126,9 @@ export function ProviderLoginDialog({ provider, url, userCode, onClose }: Props)
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{t("providerLogin.title", { name: provider.name })}</DialogTitle>
+          <DialogTitle>
+            {t("providerLogin.title", { name: provider.name })}
+          </DialogTitle>
           <DialogDescription>
             {userCode
               ? t("providerLogin.deviceDescription", { name: provider.name })
@@ -143,7 +149,7 @@ export function ProviderLoginDialog({ provider, url, userCode, onClose }: Props)
               variant="outline"
               size="sm"
               className="gap-1.5"
-              onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+              onClick={() => void tauriSystem.openUrl(url)}
             >
               <ExternalLink className="size-3.5" />
               {t("providerLogin.openUrl")}
@@ -172,7 +178,9 @@ export function ProviderLoginDialog({ provider, url, userCode, onClose }: Props)
               ) : (
                 <Eye className="size-3.5" />
               )}
-              {showUrl ? t("providerLogin.hideUrl") : t("providerLogin.showUrl")}
+              {showUrl
+                ? t("providerLogin.hideUrl")
+                : t("providerLogin.showUrl")}
             </Button>
           </div>
 
@@ -194,7 +202,10 @@ export function ProviderLoginDialog({ provider, url, userCode, onClose }: Props)
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label htmlFor="provider-login-code" className="text-[13px] font-medium">
+                <label
+                  htmlFor="provider-login-code"
+                  className="text-[13px] font-medium"
+                >
                   {t("providerLogin.codeLabel")}
                 </label>
                 <input
@@ -221,7 +232,9 @@ export function ProviderLoginDialog({ provider, url, userCode, onClose }: Props)
                   {t("providerLogin.cancel")}
                 </Button>
                 <Button type="submit" disabled={submitting || !code.trim()}>
-                  {submitting ? t("providerLogin.submitting") : t("providerLogin.submit")}
+                  {submitting
+                    ? t("providerLogin.submitting")
+                    : t("providerLogin.submit")}
                 </Button>
               </DialogFooter>
             </form>

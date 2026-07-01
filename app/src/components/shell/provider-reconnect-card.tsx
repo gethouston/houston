@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useUIStore } from "../../stores/ui";
-import { tauriProvider } from "../../lib/tauri";
 import { getProvider } from "../../lib/providers";
-import { ProviderGlyph } from "./provider-logos";
+import { tauriProvider } from "../../lib/tauri";
+import { useUIStore } from "../../stores/ui";
 import { RowCard } from "../cards/row-card";
 import { RowCardButton } from "../cards/row-card-button";
+import { OpenAiCompatibleDialog } from "./openai-compatible-dialog";
+import { ProviderGlyph } from "./provider-logos";
 import {
   providerIsAuthenticated,
   providerReconnectSignalState,
@@ -26,6 +27,7 @@ export function ProviderReconnectCard({
   const setAuthRequired = useUIStore((s) => s.setAuthRequired);
   const [loginLaunched, setLoginLaunched] = useState(false);
   const [loginError, setLoginError] = useState(false);
+  const [showCustomDialog, setShowCustomDialog] = useState(false);
   const [resolvedSignal, setResolvedSignal] = useState<string | null>(null);
   const [signalNeedsAuth, setSignalNeedsAuth] = useState(false);
 
@@ -36,7 +38,10 @@ export function ProviderReconnectCard({
   // OpenAI chat (HOU-410).
   const authMatchesChat = !!authRequired && authRequired === providerId;
   const shouldCheckSignal =
-    !authMatchesChat && !!providerId && !!signalKey && signalKey !== resolvedSignal;
+    !authMatchesChat &&
+    !!providerId &&
+    !!signalKey &&
+    signalKey !== resolvedSignal;
   const activeProviderId = reconnectProviderForChat({
     authRequired,
     chatProvider: providerId ?? null,
@@ -44,16 +49,18 @@ export function ProviderReconnectCard({
   });
   const provider = activeProviderId ? getProvider(activeProviderId) : null;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: activeProviderId is a render-derived variable; the effect only calls stable setState setters but must re-run whenever the resolved provider changes — an empty dep array would run only once, which is wrong
   useEffect(() => {
     setLoginLaunched(false);
     setLoginError(false);
-  }, [activeProviderId, authRequired, providerId, signalKey]);
+  }, [activeProviderId]);
 
   useEffect(() => {
     setSignalNeedsAuth(false);
     if (!shouldCheckSignal || !providerId || !signalKey) return;
     let cancelled = false;
-    tauriProvider.checkStatus(providerId)
+    tauriProvider
+      .checkStatus(providerId)
       .then((status) => {
         if (cancelled) return;
         if (providerReconnectSignalState(status) === "needs_auth") {
@@ -99,6 +106,13 @@ export function ProviderReconnectCard({
 
   const handleSignIn = useCallback(async () => {
     if (!activeProviderId) return;
+    // A local OpenAI-compatible server has no OAuth flow — reconnect by
+    // re-entering its base URL + model in the dialog, not launchLogin (which
+    // would throw "does not use OAuth sign-in" and dead-end the card).
+    if (activeProviderId === "openai-compatible") {
+      setShowCustomDialog(true);
+      return;
+    }
     try {
       await tauriProvider.launchLogin(activeProviderId);
       setLoginError(false);
@@ -115,7 +129,7 @@ export function ProviderReconnectCard({
     ? t("shell:providerReconnect.launchError")
     : loginLaunched
       ? t("shell:providerReconnect.waiting")
-      : t("shell:providerReconnect.body", { provider: provider.subtitle });
+      : t("shell:providerReconnect.body", { provider: provider.name });
 
   return (
     <div className="w-full px-1 py-2">
@@ -128,12 +142,19 @@ export function ProviderReconnectCard({
             label={
               loginLaunched
                 ? t("common:actions.tryAgain")
-                : t("shell:authReconnect.signInWith", { provider: provider.name })
+                : t("shell:authReconnect.signInWith", {
+                    provider: provider.name,
+                  })
             }
             onClick={handleSignIn}
             variant={loginLaunched ? "outline" : "default"}
           />
         }
+      />
+
+      <OpenAiCompatibleDialog
+        provider={showCustomDialog ? provider : null}
+        onClose={() => setShowCustomDialog(false)}
       />
     </div>
   );

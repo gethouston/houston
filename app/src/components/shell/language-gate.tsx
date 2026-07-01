@@ -1,12 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { ArrowRight } from "lucide-react";
 import { Button } from "@houston-ai/core";
-
-import { HoustonLogo } from "./experience-card";
-import { analytics } from "../../lib/analytics";
+import { ArrowRight } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
+import { analytics } from "../../lib/analytics";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "../../lib/i18n";
-import { SetupCard, OptionCard } from "../onboarding/setup-card";
+import { OptionCard, SetupCard } from "../onboarding/setup-card";
+import { HoustonLogo } from "./experience-card";
 
 /**
  * First-run language flow, styled like the rest of setup. Two beats:

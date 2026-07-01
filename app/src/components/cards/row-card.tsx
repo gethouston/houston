@@ -52,7 +52,8 @@ export function RowCard({
 }: RowCardProps) {
   const Wrapper = inline ? "span" : "div";
   const rowClass = `${inline ? "inline-flex" : "flex w-full"} items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 min-w-0`;
-  const titleSize = size === "md" ? "text-[15px] font-semibold" : "text-[13px] font-medium";
+  const titleSize =
+    size === "md" ? "text-[15px] font-semibold" : "text-[13px] font-medium";
   const bodySize = size === "md" ? "text-[13px]" : "text-[11px]";
   const titleClass = `text-foreground ${titleSize}${truncate ? " truncate" : ""}`;
   const descClass = `text-foreground/70 ${bodySize}${truncate ? " truncate" : ""}`;
@@ -64,15 +65,21 @@ export function RowCard({
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className={titleClass}>{title}</span>
-        {description != null && <span className={descClass}>{description}</span>}
+        {description != null && (
+          <span className={descClass}>{description}</span>
+        )}
       </span>
-      {action != null && <span className="flex shrink-0 items-center gap-2">{action}</span>}
+      {action != null && (
+        <span className="flex shrink-0 items-center gap-2">{action}</span>
+      )}
     </Wrapper>
   );
 
   if (inline) {
     return (
-      <span className="not-prose my-1 inline-flex max-w-full align-middle">{row}</span>
+      <span className="not-prose my-1 inline-flex max-w-full align-middle">
+        {row}
+      </span>
     );
   }
   return row;

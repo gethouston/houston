@@ -25,7 +25,7 @@ import {
 import { ChevronDownIcon } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { ToolEntry } from "../feed-to-messages";
-import { getToolIcon, getToolDetail, ToolContent } from "../tool-formatters";
+import { getToolDetail, getToolIcon, ToolContent } from "../tool-formatters";
 import { getToolActionLabel, toolShortName } from "../tool-labels";
 import { Shimmer } from "./shimmer";
 
@@ -88,9 +88,7 @@ export const ToolBlock = memo(
         open={isOpen}
         onOpenChange={handleOpenChange}
       >
-        <CollapsibleTrigger
-          className="flex w-full items-start gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground"
-        >
+        <CollapsibleTrigger className="flex w-full items-start gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground">
           <Icon className="size-4 mt-0.5 shrink-0" />
           {isActive ? (
             <Shimmer duration={1}>

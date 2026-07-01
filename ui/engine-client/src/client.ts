@@ -10,12 +10,14 @@
  * One method per REST route. DTOs mirror `engine/houston-engine-core`.
  */
 
+import { planAttachmentUploadBatches } from "./attachments.ts";
 import type {
   Activity,
   ActivityUpdate,
   Agent,
   AttachmentManifest,
   AttachmentUploadResult,
+  Capabilities,
   ChatHistoryEntry,
   ClaudeStatus,
   CommunitySkill,
@@ -31,21 +33,37 @@ import type {
   CreateSkillRequest,
   CreateWorkspace,
   CreateWorktreeRequest,
+  CustomEndpoint,
   ErrorBody,
+  GenerateInstructionsResult,
   HealthResponse,
   ImportedWorkspace,
   InstallAgent,
   InstallCommunityRequest,
+  InstalledConfig,
   InstallFromGithub,
   InstallFromRepoRequest,
-  InstalledConfig,
+  IntegrationConnection,
+  IntegrationLoginResult,
+  IntegrationProviderStatus,
+  IntegrationToolkit,
   ListWorktreesRequest,
   NewActivity,
   NewRoutine,
+  PairingCode,
+  PortableAnonymizeRequest,
+  PortableAnonymizeResponse,
+  PortableExportRequest,
+  PortableInstalledAgent,
+  PortableInstallRequest,
+  PortableInventoryPreview,
+  PortableScanResponse,
+  PortableUploadPreviewResponse,
   PreferenceValue,
   ProjectConfig,
   ProjectFile,
   ProviderStatus,
+  PushRegisterRequest,
   RemoveWorktreeRequest,
   RenameWorkspace,
   RepoSkill,
@@ -61,28 +79,16 @@ import type {
   SkillDetail,
   SkillSummary,
   StoreListing,
-  GenerateInstructionsResult,
   SummarizeOptions,
   SummarizeResult,
   TunnelStatus,
-  PairingCode,
-  PushRegisterRequest,
   UpdateAgent,
   UpdateProvider,
   VersionResponse,
   Workspace,
   WorkspaceContext,
   WorktreeInfo,
-  PortableInventoryPreview,
-  PortableExportRequest,
-  PortableAnonymizeRequest,
-  PortableAnonymizeResponse,
-  PortableUploadPreviewResponse,
-  PortableScanResponse,
-  PortableInstallRequest,
-  PortableInstalledAgent,
 } from "./types.ts";
-import { planAttachmentUploadBatches } from "./attachments.ts";
 
 /**
  * Transport retry tuning. Defaults target the desktop loopback sidecar +
@@ -202,7 +208,9 @@ export class HoustonClient {
             method,
             headers: {
               Authorization: `Bearer ${this.token}`,
-              ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+              ...(body !== undefined
+                ? { "Content-Type": "application/json" }
+                : {}),
             },
             body: body !== undefined ? JSON.stringify(body) : undefined,
           },
@@ -234,7 +242,10 @@ export class HoustonClient {
           Authorization: `Bearer ${this.token}`,
         };
         if (contentType) headers["Content-Type"] = contentType;
-        return { url: `${this.baseUrl}/v1${path}`, init: { method, headers, body } };
+        return {
+          url: `${this.baseUrl}/v1${path}`,
+          init: { method, headers, body },
+        };
       },
       // Attachment uploads are PUTs to a keyed URL (idempotent); the only
       // non-idempotent rawRequest is the import-preview POST, which stays off.
@@ -292,7 +303,8 @@ export class HoustonClient {
       attempt += 1;
       const { url, init } = build();
       const remaining = () => deadlineMs - (Date.now() - start);
-      const canRetryAgain = () => replaySafe && attempt < maxAttempts && remaining() > 0;
+      const canRetryAgain = () =>
+        replaySafe && attempt < maxAttempts && remaining() > 0;
       try {
         const res = await this.fetchImpl(url, { ...init, signal });
         if (res.ok) return res;
@@ -326,9 +338,17 @@ export class HoustonClient {
    * request body is re-readable (JSON string / File / Blob / typed array) —
    * never use a one-shot streaming body on a replay-safe request.
    */
-  private backoff(attempt: number, remainingMs: number, signal?: AbortSignal): Promise<void> {
+  private backoff(
+    attempt: number,
+    remainingMs: number,
+    signal?: AbortSignal,
+  ): Promise<void> {
     const { baseDelayMs, maxDelayMs } = this.retryConfig;
-    const ceil = Math.min(maxDelayMs, baseDelayMs * 2 ** (attempt - 1), Math.max(0, remainingMs));
+    const ceil = Math.min(
+      maxDelayMs,
+      baseDelayMs * 2 ** (attempt - 1),
+      Math.max(0, remainingMs),
+    );
     const delay = Math.random() * ceil;
     return new Promise<void>((resolve, reject) => {
       const onAbort = () => {
@@ -367,6 +387,9 @@ export class HoustonClient {
   version(): Promise<VersionResponse> {
     return this.request("GET", "/version");
   }
+  capabilities(): Promise<Capabilities> {
+    return this.request("GET", "/capabilities");
+  }
 
   // ---------- workspaces ----------
 
@@ -388,18 +411,25 @@ export class HoustonClient {
    * the workspace record, so every client of this engine shares the value.
    */
   setWorkspaceLocale(id: string, locale: string | null): Promise<Workspace> {
-    return this.request("PATCH", `/workspaces/${this.seg(id)}/locale`, { locale });
+    return this.request("PATCH", `/workspaces/${this.seg(id)}/locale`, {
+      locale,
+    });
   }
   setWorkspaceProvider(id: string, req: UpdateProvider): Promise<Workspace> {
     return this.request("PATCH", `/workspaces/${this.seg(id)}/provider`, req);
   }
-  installWorkspaceFromGithub(req: InstallFromGithub): Promise<ImportedWorkspace> {
+  installWorkspaceFromGithub(
+    req: InstallFromGithub,
+  ): Promise<ImportedWorkspace> {
     return this.request("POST", "/workspaces/install-from-github", req);
   }
   getWorkspaceContext(id: string): Promise<WorkspaceContext> {
     return this.request("GET", `/workspaces/${this.seg(id)}/context`);
   }
-  setWorkspaceContext(id: string, body: WorkspaceContext): Promise<WorkspaceContext> {
+  setWorkspaceContext(
+    id: string,
+    body: WorkspaceContext,
+  ): Promise<WorkspaceContext> {
     return this.request("PUT", `/workspaces/${this.seg(id)}/context`, body);
   }
 
@@ -408,8 +438,15 @@ export class HoustonClient {
   listAgents(workspaceId: string): Promise<Agent[]> {
     return this.request("GET", `/workspaces/${this.seg(workspaceId)}/agents`);
   }
-  createAgent(workspaceId: string, req: CreateAgent): Promise<CreateAgentResult> {
-    return this.request("POST", `/workspaces/${this.seg(workspaceId)}/agents`, req);
+  createAgent(
+    workspaceId: string,
+    req: CreateAgent,
+  ): Promise<CreateAgentResult> {
+    return this.request(
+      "POST",
+      `/workspaces/${this.seg(workspaceId)}/agents`,
+      req,
+    );
   }
   deleteAgent(workspaceId: string, agentId: string): Promise<void> {
     return this.request(
@@ -417,14 +454,22 @@ export class HoustonClient {
       `/workspaces/${this.seg(workspaceId)}/agents/${this.seg(agentId)}`,
     );
   }
-  renameAgent(workspaceId: string, agentId: string, newName: string): Promise<Agent> {
+  renameAgent(
+    workspaceId: string,
+    agentId: string,
+    newName: string,
+  ): Promise<Agent> {
     return this.request(
       "POST",
       `/workspaces/${this.seg(workspaceId)}/agents/${this.seg(agentId)}/rename`,
       { newName },
     );
   }
-  updateAgent(workspaceId: string, agentId: string, req: UpdateAgent): Promise<Agent> {
+  updateAgent(
+    workspaceId: string,
+    agentId: string,
+    req: UpdateAgent,
+  ): Promise<Agent> {
     return this.request(
       "PATCH",
       `/workspaces/${this.seg(workspaceId)}/agents/${this.seg(agentId)}`,
@@ -445,7 +490,11 @@ export class HoustonClient {
       true,
     ).then((r) => r.content);
   }
-  writeAgentFile(agentPath: string, relPath: string, content: string): Promise<void> {
+  writeAgentFile(
+    agentPath: string,
+    relPath: string,
+    content: string,
+  ): Promise<void> {
     return this.request("POST", "/agents/files/write", {
       agent_path: agentPath,
       rel_path: relPath,
@@ -453,16 +502,22 @@ export class HoustonClient {
     });
   }
   seedAgentSchemas(agentPath: string): Promise<void> {
-    return this.request("POST", "/agents/files/seed-schemas", { agent_path: agentPath });
+    return this.request("POST", "/agents/files/seed-schemas", {
+      agent_path: agentPath,
+    });
   }
   migrateAgentFiles(agentPath: string): Promise<void> {
-    return this.request("POST", "/agents/files/migrate", { agent_path: agentPath });
+    return this.request("POST", "/agents/files/migrate", {
+      agent_path: agentPath,
+    });
   }
 
   // ---------- project files (browser) ----------
 
   listProjectFiles(agentPath: string): Promise<ProjectFile[]> {
-    return this.request("GET", "/agents/files", undefined, { agent_path: agentPath });
+    return this.request("GET", "/agents/files", undefined, {
+      agent_path: agentPath,
+    });
   }
   readProjectFile(agentPath: string, relPath: string): Promise<string> {
     // Read-only POST → replay-safe.
@@ -475,7 +530,38 @@ export class HoustonClient {
       true,
     ).then((r) => r.content);
   }
-  renameFile(agentPath: string, relPath: string, newName: string): Promise<void> {
+  /** Raw bytes of a project file (binary-safe) plus its served MIME type. */
+  async downloadProjectFile(
+    agentPath: string,
+    relPath: string,
+  ): Promise<{ blob: Blob; contentType: string }> {
+    const q = new URLSearchParams({ agent_path: agentPath, rel_path: relPath });
+    // GET → replay-safe; route through `send` so it inherits retries + the
+    // injectable `fetchImpl` like every other request (HOU-432 parity).
+    const res = await this.send(
+      () => ({
+        url: `${this.baseUrl}/v1/agents/files/download?${q}`,
+        init: {
+          method: "GET",
+          headers: { Authorization: `Bearer ${this.token}` },
+        },
+      }),
+      true,
+    );
+    if (!res.ok) {
+      throw await this.toError(res);
+    }
+    return {
+      blob: await res.blob(),
+      contentType:
+        res.headers.get("content-type") ?? "application/octet-stream",
+    };
+  }
+  renameFile(
+    agentPath: string,
+    relPath: string,
+    newName: string,
+  ): Promise<void> {
     return this.request("POST", "/agents/files/rename", {
       agent_path: agentPath,
       rel_path: relPath,
@@ -488,7 +574,10 @@ export class HoustonClient {
       rel_path: relPath,
     });
   }
-  createFolder(agentPath: string, folderName: string): Promise<{ created: string }> {
+  createFolder(
+    agentPath: string,
+    folderName: string,
+  ): Promise<{ created: string }> {
     return this.request("POST", "/agents/files/folder", {
       agent_path: agentPath,
       folder_name: folderName,
@@ -520,24 +609,38 @@ export class HoustonClient {
   // ---------- agents: activities ----------
 
   listActivities(agentPath: string): Promise<Activity[]> {
-    return this.request("GET", "/agents/activities", undefined, { agent_path: agentPath });
+    return this.request("GET", "/agents/activities", undefined, {
+      agent_path: agentPath,
+    });
   }
   createActivity(agentPath: string, input: NewActivity): Promise<Activity> {
-    return this.request("POST", "/agents/activities", input, { agent_path: agentPath });
+    return this.request("POST", "/agents/activities", input, {
+      agent_path: agentPath,
+    });
   }
   updateActivity(
     agentPath: string,
     id: string,
     updates: ActivityUpdate,
   ): Promise<Activity> {
-    return this.request("PATCH", `/agents/activities/${this.seg(id)}`, updates, {
-      agent_path: agentPath,
-    });
+    return this.request(
+      "PATCH",
+      `/agents/activities/${this.seg(id)}`,
+      updates,
+      {
+        agent_path: agentPath,
+      },
+    );
   }
   deleteActivity(agentPath: string, id: string): Promise<void> {
-    return this.request("DELETE", `/agents/activities/${this.seg(id)}`, undefined, {
-      agent_path: agentPath,
-    });
+    return this.request(
+      "DELETE",
+      `/agents/activities/${this.seg(id)}`,
+      undefined,
+      {
+        agent_path: agentPath,
+      },
+    );
   }
 
   // ---------- routines ----------
@@ -552,41 +655,66 @@ export class HoustonClient {
   createRoutine(agentPath: string, input: NewRoutine): Promise<Routine> {
     return this.request("POST", "/routines", input, { agentPath });
   }
-  updateRoutine(agentPath: string, id: string, updates: RoutineUpdate): Promise<Routine> {
-    return this.request("PATCH", `/routines/${this.seg(id)}`, updates, { agentPath });
+  updateRoutine(
+    agentPath: string,
+    id: string,
+    updates: RoutineUpdate,
+  ): Promise<Routine> {
+    return this.request("PATCH", `/routines/${this.seg(id)}`, updates, {
+      agentPath,
+    });
   }
   deleteRoutine(agentPath: string, id: string): Promise<void> {
-    return this.request("DELETE", `/routines/${this.seg(id)}`, undefined, { agentPath });
+    return this.request("DELETE", `/routines/${this.seg(id)}`, undefined, {
+      agentPath,
+    });
   }
 
   // ---------- routine runs ----------
 
-  listRoutineRuns(agentPath: string, routineId?: string): Promise<RoutineRun[]> {
+  listRoutineRuns(
+    agentPath: string,
+    routineId?: string,
+  ): Promise<RoutineRun[]> {
     return this.request("GET", "/routine-runs", undefined, {
       agentPath,
       routineId,
     });
   }
   createRoutineRun(agentPath: string, routineId: string): Promise<RoutineRun> {
-    return this.request("POST", `/routines/${this.seg(routineId)}/runs`, undefined, {
-      agentPath,
-    });
+    return this.request(
+      "POST",
+      `/routines/${this.seg(routineId)}/runs`,
+      undefined,
+      {
+        agentPath,
+      },
+    );
   }
   updateRoutineRun(
     agentPath: string,
     id: string,
     updates: RoutineRunUpdate,
   ): Promise<RoutineRun> {
-    return this.request("PATCH", `/routine-runs/${this.seg(id)}`, updates, { agentPath });
+    return this.request("PATCH", `/routine-runs/${this.seg(id)}`, updates, {
+      agentPath,
+    });
   }
 
   // ---------- agents: config ----------
 
   getAgentConfig(agentPath: string): Promise<ProjectConfig> {
-    return this.request("GET", "/agents/config", undefined, { agent_path: agentPath });
+    return this.request("GET", "/agents/config", undefined, {
+      agent_path: agentPath,
+    });
   }
-  setAgentConfig(agentPath: string, config: ProjectConfig): Promise<ProjectConfig> {
-    return this.request("PUT", "/agents/config", config, { agent_path: agentPath });
+  setAgentConfig(
+    agentPath: string,
+    config: ProjectConfig,
+  ): Promise<ProjectConfig> {
+    return this.request("PUT", "/agents/config", config, {
+      agent_path: agentPath,
+    });
   }
 
   // ---------- agent configs (installed manifests) ----------
@@ -599,7 +727,14 @@ export class HoustonClient {
 
   listConversations(agentPath: string): Promise<ConversationEntry[]> {
     // Read-only POST → replay-safe.
-    return this.request("POST", "/conversations/list", { agentPath }, undefined, undefined, true);
+    return this.request(
+      "POST",
+      "/conversations/list",
+      { agentPath },
+      undefined,
+      undefined,
+      true,
+    );
   }
   listAllConversations(agentPaths: string[]): Promise<ConversationEntry[]> {
     // Read-only POST → replay-safe.
@@ -619,7 +754,9 @@ export class HoustonClient {
     return this.request("GET", "/skills", undefined, { workspacePath });
   }
   loadSkill(workspacePath: string, name: string): Promise<SkillDetail> {
-    return this.request("GET", `/skills/${this.seg(name)}`, undefined, { workspacePath });
+    return this.request("GET", `/skills/${this.seg(name)}`, undefined, {
+      workspacePath,
+    });
   }
   createSkill(req: CreateSkillRequest): Promise<void> {
     return this.request("POST", "/skills", req);
@@ -628,33 +765,75 @@ export class HoustonClient {
     return this.request("PUT", `/skills/${this.seg(name)}`, req);
   }
   deleteSkill(workspacePath: string, name: string): Promise<void> {
-    return this.request("DELETE", `/skills/${this.seg(name)}`, undefined, { workspacePath });
+    return this.request("DELETE", `/skills/${this.seg(name)}`, undefined, {
+      workspacePath,
+    });
   }
-  searchCommunitySkills(query: string, signal?: AbortSignal): Promise<CommunitySkill[]> {
+  searchCommunitySkills(
+    query: string,
+    signal?: AbortSignal,
+  ): Promise<CommunitySkill[]> {
     // Read-only search POST → replay-safe.
-    return this.request("POST", "/skills/community/search", { query }, undefined, signal, true);
+    return this.request(
+      "POST",
+      "/skills/community/search",
+      { query },
+      undefined,
+      signal,
+      true,
+    );
   }
   popularCommunitySkills(signal?: AbortSignal): Promise<CommunitySkill[]> {
     // Read-only POST → replay-safe.
-    return this.request("POST", "/skills/community/popular", undefined, undefined, signal, true);
+    return this.request(
+      "POST",
+      "/skills/community/popular",
+      undefined,
+      undefined,
+      signal,
+      true,
+    );
   }
-  installCommunitySkill(req: InstallCommunityRequest, signal?: AbortSignal): Promise<string> {
-    return this.request("POST", "/skills/community/install", req, undefined, signal);
+  installCommunitySkill(
+    req: InstallCommunityRequest,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    return this.request(
+      "POST",
+      "/skills/community/install",
+      req,
+      undefined,
+      signal,
+    );
   }
-  listSkillsFromRepo(source: string, signal?: AbortSignal): Promise<RepoSkill[]> {
+  listSkillsFromRepo(
+    source: string,
+    signal?: AbortSignal,
+  ): Promise<RepoSkill[]> {
     // Read-only listing POST → replay-safe.
-    return this.request("POST", "/skills/repo/list", { source }, undefined, signal, true);
+    return this.request(
+      "POST",
+      "/skills/repo/list",
+      { source },
+      undefined,
+      signal,
+      true,
+    );
   }
-  installSkillsFromRepo(req: InstallFromRepoRequest, signal?: AbortSignal): Promise<string[]> {
+  installSkillsFromRepo(
+    req: InstallFromRepoRequest,
+    signal?: AbortSignal,
+  ): Promise<string[]> {
     return this.request("POST", "/skills/repo/install", req, undefined, signal);
   }
 
   // ---------- preferences ----------
 
   getPreference(key: string): Promise<string | null> {
-    return this.request<PreferenceValue>("GET", `/preferences/${this.seg(key)}`).then(
-      (r) => r.value,
-    );
+    return this.request<PreferenceValue>(
+      "GET",
+      `/preferences/${this.seg(key)}`,
+    ).then((r) => r.value);
   }
   setPreference(key: string, value: string): Promise<void> {
     return this.request("PUT", `/preferences/${this.seg(key)}`, { value });
@@ -671,13 +850,23 @@ export class HoustonClient {
    * for remote engines that can't receive the CLI's `localhost` OAuth
    * callback. It's ignored by providers without a device flow, and the
    * co-located desktop app omits it to keep the browser-loopback login.
+   *
+   * `opts.enterpriseDomain` (GitHub Copilot Enterprise) only matters on the
+   * new TS engine, where the control-plane adapter overrides this method; the
+   * legacy Rust path has no Copilot provider, so it's passed through harmlessly.
    */
-  providerLogin(name: string, opts?: { deviceAuth?: boolean }): Promise<void> {
+  providerLogin(
+    name: string,
+    opts?: { deviceAuth?: boolean; enterpriseDomain?: string },
+  ): Promise<void> {
+    const query: Record<string, string> = {};
+    if (opts?.deviceAuth) query.deviceAuth = "true";
+    if (opts?.enterpriseDomain) query.enterpriseDomain = opts.enterpriseDomain;
     return this.request(
       "POST",
       `/providers/${this.seg(name)}/login`,
       undefined,
-      opts?.deviceAuth ? { deviceAuth: "true" } : undefined,
+      Object.keys(query).length ? query : undefined,
     );
   }
   providerLogout(name: string): Promise<void> {
@@ -725,12 +914,103 @@ export class HoustonClient {
   setGeminiApiKey(apiKey: string): Promise<void> {
     return this.request("POST", "/providers/gemini/credentials", { apiKey });
   }
+  /**
+   * Connect an API-key provider (OpenCode Zen / Go) by submitting a pasted key.
+   * Only the new TS engine serves these providers; the UI gates the call behind
+   * `newEngineActive()`, so on the legacy Rust engine this route is never hit.
+   */
+  setProviderApiKey(name: string, apiKey: string): Promise<void> {
+    return this.request("POST", `/providers/${this.seg(name)}/api-key`, {
+      apiKey,
+    });
+  }
+  /**
+   * Connect an OpenAI-compatible (local) server by base URL + model. The legacy
+   * Rust engine has no such provider — it's new-engine + desktop only, and the
+   * connect UI is gated on `newEngineActive()` + desktop, so this is never hit
+   * here. Reject loudly rather than pretend to succeed (no silent failure).
+   */
+  setProviderCustomEndpoint(_endpoint: CustomEndpoint): Promise<void> {
+    return Promise.reject(new Error("Local models require the new engine."));
+  }
   // "Sign in with Google" for Gemini goes through the standard
   // `providerLogin("gemini")` call — the engine detects the gemini id
   // and delegates to gemini-cli's own OAuth via the ACP `authenticate`
   // JSON-RPC method. gemini-cli opens the browser with its own Google
   // app identity and writes its own credential files. Same shape as
   // `claude auth login --claudeai` and `codex login`.
+
+  // ---------- integrations (Composio "for you") — v3 host only ----------
+  //
+  // The Rust engine has no /v1/integrations routes; the UI gates these on the
+  // control-plane build (engine-mode), so on the legacy wire they never run.
+  // Kept here so the shared app typechecks against both clients (shim parity).
+
+  async integrationStatus(): Promise<IntegrationProviderStatus[]> {
+    return (
+      await this.request<{ items: IntegrationProviderStatus[] }>(
+        "GET",
+        "/integrations",
+      )
+    ).items;
+  }
+  startIntegrationLogin(
+    provider: string,
+  ): Promise<{ loginUrl: string; pollKey: string }> {
+    return this.request(
+      "POST",
+      `/integrations/${this.seg(provider)}/login/start`,
+    );
+  }
+  pollIntegrationLogin(
+    provider: string,
+    pollKey: string,
+  ): Promise<IntegrationLoginResult> {
+    return this.request(
+      "POST",
+      `/integrations/${this.seg(provider)}/login/poll`,
+      { pollKey },
+    );
+  }
+  async integrationToolkits(provider: string): Promise<IntegrationToolkit[]> {
+    return (
+      await this.request<{ items: IntegrationToolkit[] }>(
+        "GET",
+        `/integrations/${this.seg(provider)}/toolkits`,
+      )
+    ).items;
+  }
+  async integrationConnections(
+    provider: string,
+  ): Promise<IntegrationConnection[]> {
+    return (
+      await this.request<{ items: IntegrationConnection[] }>(
+        "GET",
+        `/integrations/${this.seg(provider)}/connections`,
+      )
+    ).items;
+  }
+  connectIntegration(
+    provider: string,
+    toolkit: string,
+  ): Promise<{ redirectUrl: string }> {
+    return this.request("POST", `/integrations/${this.seg(provider)}/connect`, {
+      toolkit,
+    });
+  }
+  async disconnectIntegration(
+    provider: string,
+    toolkit: string,
+  ): Promise<void> {
+    await this.request(
+      "POST",
+      `/integrations/${this.seg(provider)}/disconnect`,
+      { toolkit },
+    );
+  }
+  async logoutIntegration(provider: string): Promise<void> {
+    await this.request("POST", `/integrations/${this.seg(provider)}/logout`);
+  }
 
   // ---------- store ----------
 
@@ -751,7 +1031,14 @@ export class HoustonClient {
   }
   checkAgentUpdates(): Promise<string[]> {
     // Read-only update check POST → replay-safe.
-    return this.request("POST", "/agents/check-updates", undefined, undefined, undefined, true);
+    return this.request(
+      "POST",
+      "/agents/check-updates",
+      undefined,
+      undefined,
+      undefined,
+      true,
+    );
   }
 
   // ---------- attachments ----------
@@ -808,7 +1095,9 @@ export class HoustonClient {
         }
       }
     };
-    const workers = Array.from({ length: Math.min(3, files.length) }, () => worker());
+    const workers = Array.from({ length: Math.min(3, files.length) }, () =>
+      worker(),
+    );
     await Promise.all(workers);
     if (firstError !== undefined) throw firstError;
   }
@@ -826,7 +1115,14 @@ export class HoustonClient {
   }
   listWorktrees(req: ListWorktreesRequest): Promise<WorktreeInfo[]> {
     // Read-only listing POST → replay-safe.
-    return this.request("POST", "/worktrees/list", req, undefined, undefined, true);
+    return this.request(
+      "POST",
+      "/worktrees/list",
+      req,
+      undefined,
+      undefined,
+      true,
+    );
   }
   removeWorktree(req: RemoveWorktreeRequest): Promise<void> {
     return this.request("POST", "/worktrees/remove", req);
@@ -865,26 +1161,38 @@ export class HoustonClient {
   ): Promise<SessionStartResponse> {
     return this.request("POST", `/agents/${this.seg(agentPath)}/sessions`, req);
   }
-  cancelSession(agentPath: string, sessionKey: string): Promise<SessionCancelResponse> {
+  cancelSession(
+    agentPath: string,
+    sessionKey: string,
+  ): Promise<SessionCancelResponse> {
     return this.request(
       "POST",
       `/agents/${this.seg(agentPath)}/sessions/${this.seg(sessionKey)}:cancel`,
     );
   }
-  startOnboarding(agentPath: string, sessionKey: string): Promise<SessionStartResponse> {
+  startOnboarding(
+    agentPath: string,
+    sessionKey: string,
+  ): Promise<SessionStartResponse> {
     return this.request(
       "POST",
       `/agents/${this.seg(agentPath)}/sessions/onboarding`,
       { sessionKey },
     );
   }
-  loadChatHistory(agentPath: string, sessionKey: string): Promise<ChatHistoryEntry[]> {
+  loadChatHistory(
+    agentPath: string,
+    sessionKey: string,
+  ): Promise<ChatHistoryEntry[]> {
     return this.request(
       "GET",
       `/agents/${this.seg(agentPath)}/sessions/${this.seg(sessionKey)}/history`,
     );
   }
-  summarizeActivity(message: string, opts: SummarizeOptions = {}): Promise<SummarizeResult> {
+  summarizeActivity(
+    message: string,
+    opts: SummarizeOptions = {},
+  ): Promise<SummarizeResult> {
     return this.request("POST", "/sessions/summarize", {
       message,
       agentPath: opts.agentPath,
@@ -909,9 +1217,14 @@ export class HoustonClient {
   // ---------- routine scheduler ----------
 
   runRoutineNow(agentPath: string, routineId: string): Promise<void> {
-    return this.request("POST", `/routines/${this.seg(routineId)}/run-now`, undefined, {
-      agentPath,
-    });
+    return this.request(
+      "POST",
+      `/routines/${this.seg(routineId)}/run-now`,
+      undefined,
+      {
+        agentPath,
+      },
+    );
   }
   cancelRoutineRun(
     agentPath: string,
@@ -926,13 +1239,19 @@ export class HoustonClient {
     );
   }
   startRoutineScheduler(agentPath: string): Promise<void> {
-    return this.request("POST", "/routines/scheduler/start", undefined, { agentPath });
+    return this.request("POST", "/routines/scheduler/start", undefined, {
+      agentPath,
+    });
   }
   stopRoutineScheduler(agentPath: string): Promise<void> {
-    return this.request("POST", "/routines/scheduler/stop", undefined, { agentPath });
+    return this.request("POST", "/routines/scheduler/stop", undefined, {
+      agentPath,
+    });
   }
   syncRoutineScheduler(agentPath: string): Promise<void> {
-    return this.request("POST", "/routines/scheduler/sync", undefined, { agentPath });
+    return this.request("POST", "/routines/scheduler/sync", undefined, {
+      agentPath,
+    });
   }
 
   // ---------- agent file watcher ----------
@@ -972,9 +1291,10 @@ export class HoustonClient {
     return this.request("GET", "/composio/status");
   }
   composioCliInstalled(): Promise<boolean> {
-    return this.request<{ installed: boolean }>("GET", "/composio/cli-installed").then(
-      (r) => r.installed,
-    );
+    return this.request<{ installed: boolean }>(
+      "GET",
+      "/composio/cli-installed",
+    ).then((r) => r.installed);
   }
   composioInstallCli(): Promise<void> {
     return this.request("POST", "/composio/cli");
@@ -999,7 +1319,9 @@ export class HoustonClient {
   }
   /** Disconnect a toolkit: removes its connected account(s). */
   composioDisconnect(toolkit: string): Promise<void> {
-    return this.request("POST", "/composio/connections/disconnect", { toolkit });
+    return this.request("POST", "/composio/connections/disconnect", {
+      toolkit,
+    });
   }
   /**
    * Reconnect a toolkit by refreshing its auth. Resolves to a browser URL

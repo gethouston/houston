@@ -2,6 +2,15 @@
 
 Visual language: ChatGPT-like. Near-black primary, monochrome, clean typography, minimal chrome.
 
+> **⚠️ Updated — the desktop app now ships the "futuristic" theme**, a deliberate
+> brand-direction refactor layered into `app/src/styles/futuristic.css` (imported
+> last so its token overrides win). It intentionally overrides much of the
+> monochrome guidance below: an aurora glow + glass surfaces in **dark**, a cool
+> solid "Aurora" palette in **light**, an Arc/Zen "canvas" layout, and a seamless
+> macOS overlay title bar. See **Futuristic theme** at the bottom of this doc. The
+> grayscale / "never decorative colour" / "light mode only" notes below are kept
+> for history, but the futuristic layer is the current source of truth.
+
 ## Personality
 Capable, calm, invisible. Quiet expert. Not flashy, not corporate, not techy. Like texting brilliant assistant.
 
@@ -15,7 +24,8 @@ Capable, calm, invisible. Quiet expert. Not flashy, not corporate, not techy. Li
 5. **Invisible borders, visible actions.** Borders 5-15% opacity. Action buttons (Start/Approve/Delete) always visible — never hover-only.
 
 ## Color
-Near-black `#0d0d0d`, NEVER pure black. Light mode only for now.
+Near-black `#0d0d0d`, NEVER pure black. **Both light and dark ship** now (the
+"light mode only" era is over — see Futuristic theme).
 
 ### Grays
 `gray-50 #f9f9f9` (sidebar bg) · `100 #ececec` (hover, user bubble) · `200 #e3e3e3` (pressed, dividers) · `300 #cdcdcd` (borders) · `400 #b4b4b4` (disabled) · `500 #9b9b9b` (placeholder) · `600 #676767` (secondary text) · `700 #424242` (body) · `950 #0d0d0d` (primary text + buttons)
@@ -30,13 +40,15 @@ Near-black `#0d0d0d`, NEVER pure black. Light mode only for now.
 success `#00a240` · info `#0169cc` · warning `#e0ac00` · danger `#e02e2a`
 
 ### Color restraint
-UI is grayscale. Color ONLY for:
-1. card-running-glow gradient (blue→indigo→orange→yellow)
-2. status indicators
-3. agent/channel avatars
-4. links
+The monochrome discipline still holds for *content* (text, controls), but the
+futuristic theme adds intentional **ambient brand colour** as chrome:
+1. card-running-glow gradient (blue→indigo→orange→yellow) — the brand palette
+2. the **aurora glow** behind dark mode (same blue/indigo/orange family)
+3. the cool **Aurora** light palette (blue/indigo-tinted gutter + cards)
+4. status indicators, agent/channel avatars, links
 
-Never decorative color.
+"Never decorative colour" is now scoped to *content surfaces*; the **chrome**
+(window background, glass, glow) carries brand colour deliberately.
 
 ### Agent avatars
 Use `HoustonAvatar` from `@houston-ai/core` for agent avatar badges. Resting
@@ -88,7 +100,7 @@ Grid: leading (attach) | primary (text) | trailing (send).
 White bg, `border-black/5`, `rounded-xl`, hover shadow. Running state = `card-running-glow` animation border.
 
 ### RowCard (inline notice + integration cards)
-One shared component (`app/src/components/cards/row-card.tsx`) for the compact horizontal cards in chat and integration surfaces: monochrome logo/icon left (`size-8 rounded-lg` media box), `text-[13px]` title + `text-[11px]` muted description, single right-side action slot. Always grey `bg-secondary`, `rounded-xl`, `px-3 py-2.5`. The `inline` prop renders a `<span>` row so it can sit inside assistant markdown prose. Pair with `RowCardButton` (`h-7 rounded-full` pill) — its `icon` is **optional**, so action buttons are text-only by default (only the Composio cards pass a trailing link icon). Provider logos come from `ProviderGlyph` (`shell/provider-logos.tsx`) — monochrome, never full-color brand marks. Used by: reconnect / sign-in (`UnauthenticatedCard`, `ProviderReconnectCard`), rate-limit, the provider-switch dialog, and the Composio sign-in / link cards.
+One shared component (`app/src/components/cards/row-card.tsx`) for the compact horizontal cards in chat and integration surfaces: monochrome logo/icon left (`size-8 rounded-lg` media box), `text-[13px]` title + `text-[11px]` muted description, single right-side action slot. Always grey `bg-secondary`, `rounded-xl`, `px-3 py-2.5`. The `inline` prop renders a `<span>` row so it can sit inside assistant markdown prose; `size="md"` gives a roomier modal-heading variant. Pair with `RowCardButton` (`h-7 rounded-full` pill) — its `icon` is **optional**, so action buttons are text-only by default (only the Composio cards pass a trailing link icon), and it is built on `AsyncButton` (HOU-465 rage-click guard). The media slot takes either a `ProviderGlyph` (`shell/provider-logos.tsx`) — monochrome, never full-color brand marks, keyed by provider id with an initial fallback — or a lucide icon. Used by: reconnect / sign-in (`UnauthenticatedCard`, `ProviderReconnectCard`), rate-limit (`RateLimitedCard`, clock icon), the provider-switch dialog, and the Composio sign-in / link cards. Multi-button error cards stay on `ErrorCard` (icon-bubble) in `provider-error-cards/shared.tsx`.
 
 ## Empty states
 `Empty` from `@houston-ai/core`. Big `text-2xl font-semibold` title + description + optional action. No icon-in-box. Container must be `flex flex-col` for `flex-1 justify-center`.
@@ -136,7 +148,7 @@ Lucide React only. 20px standard (`h-5 w-5`), 16px small, 24px large. Stroke 2px
 ## Rules
 1. No emoji icons
 2. No hover-only affordances
-3. Monochrome by default
+3. Monochrome *content*; brand-coloured *chrome* (futuristic theme)
 4. Compact not cramped
 5. Animations serve purpose
 6. Pill shapes for buttons (`rounded-full`)
@@ -146,3 +158,42 @@ Lucide React only. 20px standard (`h-5 w-5`), 16px small, 24px large. Stroke 2px
 1. `/critique` — before building
 2. `/polish` — final alignment/spacing/consistency pass
 Use when relevant: `/clarify` (UX copy), `/distill` (overloaded screen), `/animate` (micro-interactions), `/audit` (a11y, perf).
+
+## Futuristic theme
+
+The current desktop look. One revert-able layer, `app/src/styles/futuristic.css`
+(delete its `@import` in `app/src/styles/globals.css` to fully revert), plus a
+few targeted component/token changes. Surface colours route through `--ht-*`
+tokens, re-exported to Tailwind as `--color-*`, so the theme is mostly token
+overrides — not a 20-component rewrite.
+
+**Arc / Zen "canvas" layout.** The main content floats as a rounded "screen"
+card (`canvas-screen`) on a recessed **window gutter**; the sidebar is
+transparent and melts into the gutter. Tokens: `--ht-canvas-gutter` (window bg)
+and `--ht-canvas-screen` (the floating screen). The mission panel opens as a
+second rounded card with a gutter gap.
+
+**Dark mode** — the signature look: a multi-radial **aurora glow** on
+`body::before` (blue/indigo/orange, slow 32s drift, disabled under
+`prefers-reduced-motion`) + translucent **glass** surfaces (`.bg-card`,
+`.bg-popover`, sidebar) with `backdrop-filter` blur.
+
+**Light mode** — the cool, solid **"Aurora" palette** (no glow mesh — it read as
+"glitter" over solid surfaces): gutter `#eef1f7`, screen `#fff`, cards `#f4f6fc`,
+cool blue/indigo border. Clean and futuristic by restraint, not decoration.
+
+**Primary button** — flat and sober (`[data-variant="default"]:is(button, a)`),
+not a glossy slab. Kanban resting cards use one token, `--ht-card-rest` (`#2c2c2b`
+dark / cool light), unified across resting + running + needs-you.
+
+**Seamless title bar (macOS desktop only)** — `titleBarStyle: "Overlay"` +
+`hiddenTitle`; the content extends to the top so the traffic lights float over
+the app's own background (a transparent drag strip in `workspace-shell.tsx`,
+gated to `osIsTauri() && isMac`). `applyTheme` also calls
+`getCurrentWindow().setTheme()` so the native chrome tracks the app theme.
+Capabilities: `core:window:allow-set-theme` + `…allow-start-dragging`.
+
+**Tuning knobs** live as comments in `futuristic.css` (aurora alphas, glass
+blur, `--ht-card-rest`, the canvas tokens). Dark mode is the loved baseline —
+when adjusting, scope changes to light (`:root`) and pin dark
+(`[data-theme="dark"]`) so it stays put.

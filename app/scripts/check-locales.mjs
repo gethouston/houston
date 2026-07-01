@@ -9,11 +9,16 @@
  * Exit 0 = clean, 1 = problems (with a human-readable report).
  */
 
-import { readFileSync, readdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "locales");
+const ROOT = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "src",
+  "locales",
+);
 const REFERENCE = "en";
 const EM_DASH = "\u2014";
 
@@ -38,7 +43,9 @@ function walk(ref, cand, pathPrefix, report) {
   const refShape = shape(ref);
   const candShape = shape(cand);
   if (refShape !== candShape) {
-    report.mismatches.push(`${pathPrefix}: expected ${refShape}, got ${candShape}`);
+    report.mismatches.push(
+      `${pathPrefix}: expected ${refShape}, got ${candShape}`,
+    );
     return;
   }
   if (refShape === "object") {
@@ -67,7 +74,9 @@ function walk(ref, cand, pathPrefix, report) {
   } else if (refShape === "string") {
     // Placeholder parity: {{name}} style vars must appear in both locales.
     const refVars = [...ref.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).sort();
-    const candVars = [...cand.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).sort();
+    const candVars = [...cand.matchAll(/\{\{(\w+)\}\}/g)]
+      .map((m) => m[1])
+      .sort();
     if (refVars.join(",") !== candVars.join(",")) {
       report.placeholders.push(
         `${pathPrefix}: en has [${refVars.join(", ")}], this has [${candVars.join(", ")}]`,
@@ -88,7 +97,13 @@ function validate() {
   const reference = loadLocale(REFERENCE);
 
   // English can't have em dashes either — scan the reference itself.
-  const referenceReport = { missing: [], extra: [], mismatches: [], placeholders: [], emDashes: [] };
+  const referenceReport = {
+    missing: [],
+    extra: [],
+    mismatches: [],
+    placeholders: [],
+    emDashes: [],
+  };
   walk(reference, reference, "en", referenceReport);
 
   let failed = referenceReport.emDashes.length > 0;
@@ -102,7 +117,13 @@ function validate() {
     const cand = loadLocale(locale);
     const refNamespaces = new Set(Object.keys(reference));
     const candNamespaces = new Set(Object.keys(cand));
-    const report = { missing: [], extra: [], mismatches: [], placeholders: [], emDashes: [] };
+    const report = {
+      missing: [],
+      extra: [],
+      mismatches: [],
+      placeholders: [],
+      emDashes: [],
+    };
 
     for (const ns of refNamespaces) {
       if (!candNamespaces.has(ns)) {
@@ -112,7 +133,8 @@ function validate() {
       walk(reference[ns], cand[ns], ns, report);
     }
     for (const ns of candNamespaces) {
-      if (!refNamespaces.has(ns)) report.extra.push(`${ns}.json (not in reference)`);
+      if (!refNamespaces.has(ns))
+        report.extra.push(`${ns}.json (not in reference)`);
     }
 
     const hasIssues =

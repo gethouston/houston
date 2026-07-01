@@ -1,18 +1,14 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import {
   buildAssistantInstructions,
   defaultAssistantSetup,
 } from "./personal-assistant-artifacts.ts";
 import { TUTORIAL_MISSION } from "./personal-assistant-missions.ts";
 
-test("tutorial mission is the single Plan-my-next-working-day skill with mail + calendar integrations", () => {
+test("tutorial mission is the single Plan-my-next-working-day skill", () => {
   assert.equal(TUTORIAL_MISSION.id, "plan-next-workday");
   assert.equal(TUTORIAL_MISSION.skillName, "plan-my-next-working-day");
-  assert.deepEqual(TUTORIAL_MISSION.integrations, [
-    "gmail",
-    "googlecalendar",
-  ]);
 });
 
 test("assistant instructions interpolate the mission title", () => {

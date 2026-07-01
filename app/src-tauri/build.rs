@@ -6,13 +6,35 @@ fn main() {
     configure_auth_storage(&dotenv_pairs);
     configure_sentry_env(&dotenv_pairs);
 
-    // Stage the houston-engine binary into `binaries/houston-engine-<triple>`
-    // so tauri's `externalBin` picks it up for bundling. The user is expected
-    // to run `cargo build -p houston-engine-server --release` first; CI wires
-    // that into the release workflow. If the binary is missing we print a
-    // warning but don't fail — dev builds resolve the engine binary from the
-    // cargo target directory at runtime (see engine_supervisor::resolve_*).
-    if let Err(e) = stage_engine_sidecar() {
+    // Stage the sidecar into `binaries/houston-engine-<triple>` so tauri's
+    // `externalBin` picks it up for bundling. Two sources, chosen by the
+    // `host-sidecar` cargo feature:
+    //   - default        → the Rust engine (`houston-engine`), staged from the
+    //                       cargo target dir. The user is expected to run
+    //                       `cargo build -p houston-engine-server --release`
+    //                       first; CI wires that into the release workflow.
+    //                       Missing → warn, don't fail (dev builds resolve it at
+    //                       runtime, and host/cutover dev mode skips spawning it).
+    //   - `host-sidecar` → the Bun-compiled Houston host, staged from
+    //                       `target/host-sidecar/houston-host-<triple>`.
+    //                       Missing → FAIL: a host-sidecar build with no host
+    //                       ships a non-functional app (no runtime fallback).
+    //                       Run `scripts/build-host-sidecar.sh` first.
+    // Both reuse the SAME externalBin name (`houston-engine-<triple>`), so
+    // tauri.conf.json never has to branch on the feature.
+    //
+    // We check `CARGO_FEATURE_HOST_SIDECAR` (cargo sets it for every enabled
+    // feature) rather than `cfg!`, because build scripts can't see their own
+    // crate's `cfg` features.
+    println!("cargo:rerun-if-env-changed=CARGO_FEATURE_HOST_SIDECAR");
+    if std::env::var_os("CARGO_FEATURE_HOST_SIDECAR").is_some() {
+        if let Err(e) = stage_host_sidecar() {
+            panic!(
+                "host-sidecar feature enabled but the compiled host could not be staged: {e}\n\
+                 Run `scripts/build-host-sidecar.sh` to bun-compile it first."
+            );
+        }
+    } else if let Err(e) = stage_engine_sidecar() {
         println!("cargo:warning=houston-engine sidecar staging skipped: {e}");
     }
 
@@ -186,10 +208,7 @@ fn stage_engine_sidecar() -> Result<(), String> {
         );
     }
     candidates.push(workspace.join("target").join("debug").join(bin_name));
-    let src = candidates
-        .iter()
-        .find(|p| p.exists())
-        .ok_or(format!("houston-engine not built — tried {:?}", candidates))?;
+    let src = candidates.iter().find(|p| p.exists());
 
     let dest_dir = manifest.join("binaries");
     std::fs::create_dir_all(&dest_dir).map_err(|e| format!("mkdir binaries: {e}"))?;
@@ -201,7 +220,32 @@ fn stage_engine_sidecar() -> Result<(), String> {
         format!("houston-engine-{triple}")
     };
     let dest = dest_dir.join(&dest_name);
-    std::fs::copy(src, &dest).map_err(|e| format!("copy engine sidecar: {e}"))?;
+    match src {
+        Some(src) => {
+            std::fs::copy(src, &dest).map_err(|e| format!("copy engine sidecar: {e}"))?;
+            println!("cargo:rerun-if-changed={}", src.display());
+        }
+        None => {
+            // The Rust engine isn't built — the single-engine cutover dev loop
+            // runs the desktop against the external Houston host and never
+            // spawns this sidecar (see lib.rs host_mode). Tauri's externalBin
+            // bundling still requires the file to exist, so stage a harmless
+            // placeholder. Host mode skips spawning it; a real Rust build would
+            // spawn it and (correctly) fail the /v1/health gate, signalling
+            // "build houston-engine-server first".
+            let placeholder = if cfg!(windows) {
+                "@echo off\r\nexit /b 0\r\n"
+            } else {
+                "#!/bin/sh\n# placeholder houston-engine (real engine not built)\nsleep 2147483647\n"
+            };
+            std::fs::write(&dest, placeholder)
+                .map_err(|e| format!("write placeholder sidecar: {e}"))?;
+            println!(
+                "cargo:warning=houston-engine not built — staged a placeholder at {} (cutover/host mode skips it; build houston-engine-server for a real Rust build)",
+                dest.display()
+            );
+        }
+    }
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -211,6 +255,78 @@ fn stage_engine_sidecar() -> Result<(), String> {
         perms.set_mode(0o755);
         std::fs::set_permissions(&dest, perms).map_err(|e| format!("chmod sidecar: {e}"))?;
     }
+    Ok(())
+}
+
+/// Stage the Bun-compiled Houston host (the `host-sidecar` feature path) as the
+/// Tauri externalBin `binaries/houston-engine-<triple>`.
+///
+/// Source: `target/host-sidecar/houston-host-<triple>[.exe]`, produced by
+/// `scripts/build-host-sidecar.sh` (or the release CI host-compile step). We
+/// keep the destination name identical to the Rust engine's so tauri.conf.json's
+/// `externalBin` list stays untouched — at runtime the supervisor spawns whatever
+/// binary is staged there and parses its `HOUSTON_HOST_LISTENING` banner.
+///
+/// Unlike the Rust-engine path, a missing host binary is a HARD ERROR (the
+/// caller `panic!`s): there is no host-mode runtime fallback for a packaged
+/// `--features host-sidecar` build, so shipping the placeholder would yield an
+/// app that never serves.
+fn stage_host_sidecar() -> Result<(), String> {
+    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let workspace = manifest
+        .parent()
+        .and_then(|p| p.parent())
+        .ok_or("could not resolve workspace root from CARGO_MANIFEST_DIR")?;
+    let triple = std::env::var("TARGET").unwrap_or_default();
+    let ext = if cfg!(windows) { ".exe" } else { "" };
+
+    // The compile script names outputs by the same rust triple Tauri uses as the
+    // externalBin suffix, so for a given `cargo --target <triple>` invocation the
+    // host binary is at exactly this path.
+    let host_dir = workspace.join("target").join("host-sidecar");
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if !triple.is_empty() {
+        candidates.push(host_dir.join(format!("houston-host-{triple}{ext}")));
+    }
+    // Fallback for a default-triple build where TARGET is unset: a single
+    // host-host-<anything> output in the dir.
+    candidates.push(host_dir.join(format!("houston-host{ext}")));
+    let src = candidates.iter().find(|p| p.exists()).ok_or_else(|| {
+        format!(
+            "no compiled host found. Tried:\n  - {}\n  (run `scripts/build-host-sidecar.sh`)",
+            candidates
+                .iter()
+                .map(|p| p.display().to_string())
+                .collect::<Vec<_>>()
+                .join("\n  - ")
+        )
+    })?;
+
+    let dest_dir = manifest.join("binaries");
+    std::fs::create_dir_all(&dest_dir).map_err(|e| format!("mkdir binaries: {e}"))?;
+    // SAME externalBin name as the Rust engine — see the module-level comment.
+    let dest_name = if triple.is_empty() {
+        format!("houston-engine{ext}")
+    } else {
+        format!("houston-engine-{triple}{ext}")
+    };
+    let dest = dest_dir.join(&dest_name);
+    std::fs::copy(src, &dest).map_err(|e| format!("copy host sidecar: {e}"))?;
     println!("cargo:rerun-if-changed={}", src.display());
+    println!(
+        "cargo:warning=host-sidecar: staged compiled host {} -> {}",
+        src.display(),
+        dest.display()
+    );
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&dest)
+            .map_err(|e| format!("stat sidecar: {e}"))?
+            .permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&dest, perms).map_err(|e| format!("chmod sidecar: {e}"))?;
+    }
     Ok(())
 }

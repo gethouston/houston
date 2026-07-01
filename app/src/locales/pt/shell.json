@@ -1,12 +1,14 @@
 {
   "sidebar": {
     "missionControl": "Central de missões",
-    "integrations": "Integrações",
     "settings": "Configurações",
     "yourAgents": "Seus agentes",
     "selectWorkspace": "Escolha um espaço de trabalho",
     "addAgent": "Novo agente",
     "agentMenu": "Menu do agente",
+    "collapse": "Recolher barra lateral",
+    "expand": "Expandir barra lateral",
+    "createWorkspace": "Criar espaço de trabalho",
     "color": "Cor",
     "changeColor": "Alterar cor",
     "colorLabels": {
@@ -21,7 +23,8 @@
     "needsYouCount_one": "{{count}} assunto precisa de você",
     "needsYouCount_other": "{{count}} assuntos precisam de você",
     "runningCount_one": "{{count}} assunto em execução",
-    "runningCount_other": "{{count}} assuntos em execução"
+    "runningCount_other": "{{count}} assuntos em execução",
+    "integrations": "Integrações"
   },
   "tabActions": {
     "newMission": "Nova missão",
@@ -43,13 +46,13 @@
   },
   "workspaceDialog": {
     "title": "Novo espaço de trabalho",
+    "createFailed": "Não conseguimos criar o espaço de trabalho. Tente novamente.",
     "tabNew": "Criar novo",
     "tabGithub": "Importar do GitHub",
     "githubDescription": "Importe um modelo de espaço de trabalho do GitHub. Isso cria um espaço com todos os agentes prontos para usar.",
     "githubPlaceholder": "usuario/repo",
     "githubImport": "Importar",
-    "githubImporting": "Importando espaço de trabalho e agentes...",
-    "createFailed": "Não conseguimos criar o espaço de trabalho. Tente novamente."
+    "githubImporting": "Importando espaço de trabalho e agentes..."
   },
   "uiTour": {
     "counter": "Tour {{current}} de {{total}}",
@@ -90,10 +93,6 @@
         "title": "Central de Missão",
         "body": "Quando adicionar mais agentes, isso vira o painel único de todos. Um lugar só para ver tudo."
       },
-      "integrations": {
-        "title": "Integrações",
-        "body": "Ferramentas que seus agentes podem usar, como Gmail e Calendar. As conexões ficam aqui, compartilhadas entre todos os seus agentes."
-      },
       "appTour": {
         "title": "Repita o tour",
         "body": "Esqueceu como algo funciona? Clique aqui quando quiser para rodar o tour de novo."
@@ -110,6 +109,10 @@
         "title": "Agora vai construir algo incrível",
         "body": "Esse é o tour inteiro. O resto é com você, divirta-se.",
         "confirm": "Vou fazer algo incrível"
+      },
+      "integrations": {
+        "title": "Integrações",
+        "body": "Ferramentas que seus agentes podem usar, como Gmail e Calendar. As conexões ficam aqui, compartilhadas entre todos os seus agentes."
       }
     }
   },
@@ -248,16 +251,6 @@
     "instructionsLabel": "Instruções do agente",
     "instructionsHelper": "Revise e edite as instruções abaixo"
   },
-  "aiIntegrations": {
-    "stepTitle": "Conecte seus aplicativos",
-    "stepDescription": "Esses aplicativos funcionam bem com seu agente. Conecte-os agora ou faça isso depois na aba Integrações.",
-    "notInstalledNote": "Você pode conectar integrações na aba Integrações depois de criar seu agente.",
-    "needsAuthNote": "Entre no Composio para conectar aplicativos agora, ou faça isso depois de criar seu agente.",
-    "signIn": "Entrar",
-    "connected": "Conectado",
-    "connect": "Conectar",
-    "continueButton": "Continuar"
-  },
   "aiRoutine": {
     "stepTitle": "Configure execuções automáticas",
     "stepDescription": "Seu agente pode rodar em automático em um horário. Ajuste os detalhes e ative quando estiver pronto.",
@@ -273,29 +266,32 @@
     "continueButton": "Continuar"
   },
   "engineGate": {
-    "starting": "Iniciando o motor do Houston…"
+    "starting": "Iniciando o motor do Houston…",
+    "loadFailed": "Não foi possível carregar seus modelos de IA disponíveis. Verifique sua conexão e tente novamente.",
+    "authRequiredTitle": "Login necessário",
+    "authRequiredBody": "Esta versão se conecta ao motor hospedado do Houston, mas não tem login configurado. Defina SUPABASE_URL e SUPABASE_ANON_KEY nesta versão para habilitar o login com Google."
   },
   "providerError": {
     "rateLimited": {
       "title": "Atingiu um limite de uso",
       "body": "A API do {{provider}} está limitando as requisições. Aguarde um momento e tente novamente.",
       "bodyWithRetry": "A API do {{provider}} está limitando as requisições. Tente novamente em {{seconds}}s.",
-      "retry": "Tentar de novo"
-    },
-    "usageLimitPaused": {
-      "title": "Você atingiu o limite do seu plano",
-      "body": "Por enquanto você esgotou seu plano. Aguarde ele ser restabelecido e continue.",
-      "bodyWithReset": "Por enquanto você esgotou seu plano. Ele é restabelecido às {{time}} e você poderá continuar."
+      "retry": "Tentar de novo",
+      "switchModel": "Trocar de modelo"
     },
     "quotaExhausted": {
       "title": "Sem capacidade disponível",
       "body": "Seu plano do {{provider}} chegou ao limite. Faça upgrade ou troque de provedor para continuar.",
-      "bodyWithReset": "Seu plano do {{provider}} chegou ao limite. Ele reinicia {{time}}, ou faça upgrade para continuar.",
-      "useApiKey": "Usar chave de API no lugar"
+      "upgrade": "Fazer upgrade",
+      "switchProvider": "Trocar de provedor",
+      "useApiKey": "Usar chave de API no lugar",
+      "bodyWithReset": "Seu plano do {{provider}} chegou ao limite. Ele reinicia {{time}}, ou faça upgrade para continuar."
     },
     "modelUnavailable": {
       "title": "Modelo não disponível",
-      "body": "O modelo {{model}} não está disponível na sua conta {{provider}}."
+      "body": "O modelo {{model}} não está disponível na sua conta {{provider}}.",
+      "switchToFallback": "Trocar para {{model}}",
+      "pickAnother": "Escolher outro modelo"
     },
     "unauthenticated": {
       "title": "Conecte-se ao {{provider}} novamente",
@@ -314,12 +310,14 @@
     "networkUnreachable": {
       "title": "Não foi possível alcançar o {{provider}}",
       "body": "O Houston não conseguiu acessar a API do {{provider}}. Verifique sua internet e tente de novo.",
-      "retry": "Tentar de novo"
+      "retry": "Tentar de novo",
+      "checkStatus": "Ver página de status"
     },
     "providerInternal": {
       "title": "{{provider}} está com um problema",
       "body": "A API do {{provider}} retornou um erro do lado deles. Tente de novo em alguns minutos.",
-      "retry": "Tentar de novo"
+      "retry": "Tentar de novo",
+      "checkStatus": "Ver página de status"
     },
     "sessionResumeMissing": {
       "title": "Sessão reiniciada",
@@ -342,6 +340,11 @@
       "body": "O Houston não conseguiu classificar este erro do {{provider}}. Relate para que possamos aprender a tratar.",
       "reportBug": "Relatar problema",
       "rawLabel": "Saída bruta"
+    },
+    "usageLimitPaused": {
+      "title": "Você atingiu o limite do seu plano",
+      "body": "Por enquanto você esgotou seu plano. Aguarde ele ser restabelecido e continue.",
+      "bodyWithReset": "Por enquanto você esgotou seu plano. Ele é restabelecido às {{time}} e você poderá continuar."
     }
   },
   "palette": {
@@ -357,9 +360,9 @@
     "actions": {
       "newMission": "Iniciar nova missão",
       "missionControl": "Ir para o Centro de Missões",
-      "integrations": "Abrir Integrações",
       "settings": "Abrir Configurações",
-      "shortcuts": "Ver atalhos do teclado"
+      "shortcuts": "Ver atalhos do teclado",
+      "integrations": "Abrir Integrações"
     }
   },
   "cheatsheet": {
@@ -396,5 +399,15 @@
     "successWithId": "O centro de controle está cuidando disso. Referência: {{id}}",
     "successNoId": "O centro de controle está cuidando disso.",
     "errorTitle": "Não foi possível enviar o relatório"
+  },
+  "aiIntegrations": {
+    "stepTitle": "Conecte seus aplicativos",
+    "stepDescription": "Esses aplicativos funcionam bem com seu agente. Conecte-os agora ou faça isso depois na aba Integrações.",
+    "notInstalledNote": "Você pode conectar integrações na aba Integrações depois de criar seu agente.",
+    "needsAuthNote": "Entre no Composio para conectar aplicativos agora, ou faça isso depois de criar seu agente.",
+    "signIn": "Entrar",
+    "connected": "Conectado",
+    "connect": "Conectar",
+    "continueButton": "Continuar"
   }
 }

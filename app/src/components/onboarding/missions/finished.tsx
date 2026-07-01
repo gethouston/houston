@@ -1,7 +1,7 @@
-import { useTranslation } from "react-i18next";
 import { ChevronRight, Compass, LayoutGrid } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
-import { SetupCard, OptionCard } from "../setup-card";
+import { OptionCard, SetupCard } from "../setup-card";
 import { SuccessCheck } from "../success-check";
 
 // These are actions, not a single-select — a chevron reads as "go", where the
@@ -19,7 +19,10 @@ interface FinishedMissionProps {
  * Onboarding finished: a quick celebration, then a fork — take the tour of
  * Houston or go connect more integrations. Either way the user lands in the app.
  */
-export function FinishedMission({ onTour, onConnectMore }: FinishedMissionProps) {
+export function FinishedMission({
+  onTour,
+  onConnectMore,
+}: FinishedMissionProps) {
   const { t } = useTranslation("setup");
   return (
     <SetupCard>

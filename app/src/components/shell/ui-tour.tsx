@@ -1,6 +1,6 @@
+import { Button, cn } from "@houston-ai/core";
 import { useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, cn } from "@houston-ai/core";
 
 export interface UiTourStep {
   title: string;
@@ -24,7 +24,13 @@ export interface UiTourStep {
    * the cutout. Useful when the cutout is huge (e.g. a modal interior) and
    * a card next to it would still cover the content.
    */
-  placement?: "below" | "above" | "right" | "left" | "viewport-right" | "viewport-left";
+  placement?:
+    | "below"
+    | "above"
+    | "right"
+    | "left"
+    | "viewport-right"
+    | "viewport-left";
   /** Override the confirm button label on this step (defaults to next/done). */
   confirmLabel?: string;
 }
@@ -81,6 +87,7 @@ export function UiTour({ steps, onDismiss }: UiTourProps) {
       setRect(null);
       return;
     }
+    const targetSelector = step.targetSelector;
     // The target may not be in the DOM yet if onEnter just switched views or
     // opened a dialog. Retry a few frames until it appears.
     let cancelled = false;
@@ -88,7 +95,7 @@ export function UiTour({ steps, onDismiss }: UiTourProps) {
     let tries = 0;
     const measure = () => {
       if (cancelled) return;
-      const el = document.querySelector(step.targetSelector!);
+      const el = document.querySelector(targetSelector);
       if (!el) {
         if (tries++ < 30) {
           raf = window.requestAnimationFrame(measure);
@@ -154,12 +161,15 @@ export function UiTour({ steps, onDismiss }: UiTourProps) {
         left: viewport.width / 2 - TOOLTIP_W / 2,
       };
     }
-    const spaceBelow = viewport.height - (cutout.top + cutout.height) - TOOLTIP_GAP;
+    const spaceBelow =
+      viewport.height - (cutout.top + cutout.height) - TOOLTIP_GAP;
     const spaceAbove = cutout.top - TOOLTIP_GAP;
-    const spaceRight = viewport.width - (cutout.left + cutout.width) - TOOLTIP_GAP;
+    const spaceRight =
+      viewport.width - (cutout.left + cutout.width) - TOOLTIP_GAP;
     const spaceLeft = cutout.left - TOOLTIP_GAP;
 
-    const isWideShort = cutout.width >= viewport.width * 0.4 && cutout.height < 220;
+    const isWideShort =
+      cutout.width >= viewport.width * 0.4 && cutout.height < 220;
     const order: Placement[] = isWideShort
       ? ["below", "above", "right", "left"]
       : ["right", "left", "below", "above"];
@@ -197,9 +207,15 @@ export function UiTour({ steps, onDismiss }: UiTourProps) {
       (Object.entries(space).sort((a, b) => b[1] - a[1])[0][0] as Placement);
 
     const clampLeft = (x: number) =>
-      Math.max(VIEWPORT_MARGIN, Math.min(x, viewport.width - TOOLTIP_W - VIEWPORT_MARGIN));
+      Math.max(
+        VIEWPORT_MARGIN,
+        Math.min(x, viewport.width - TOOLTIP_W - VIEWPORT_MARGIN),
+      );
     const clampTop = (y: number) =>
-      Math.max(VIEWPORT_MARGIN, Math.min(y, viewport.height - TOOLTIP_H_EST - VIEWPORT_MARGIN));
+      Math.max(
+        VIEWPORT_MARGIN,
+        Math.min(y, viewport.height - TOOLTIP_H_EST - VIEWPORT_MARGIN),
+      );
 
     switch (placement) {
       case "below":
@@ -312,11 +328,10 @@ export function UiTour({ steps, onDismiss }: UiTourProps) {
             )}
             <Button
               className="rounded-full"
-              onClick={() =>
-                isLast ? onDismiss() : setIndex(index + 1)
-              }
+              onClick={() => (isLast ? onDismiss() : setIndex(index + 1))}
             >
-              {step.confirmLabel ?? (isLast ? t("uiTour.done") : t("uiTour.next"))}
+              {step.confirmLabel ??
+                (isLast ? t("uiTour.done") : t("uiTour.next"))}
             </Button>
           </div>
         </div>

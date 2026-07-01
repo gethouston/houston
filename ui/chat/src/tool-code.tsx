@@ -31,10 +31,7 @@ export const TruncatedCode = memo(
       <div>
         {showActions && (
           <div className={toolbarClass}>
-            <CodeBlockActions
-              code={content}
-              dark={dark}
-            />
+            <CodeBlockActions code={content} dark={dark} />
           </div>
         )}
         <pre
@@ -70,7 +67,7 @@ export const TruncatedCode = memo(
 TruncatedCode.displayName = "TruncatedCode";
 
 export function truncateStr(str: string, max: number): string {
-  return str.length > max ? str.slice(0, max - 3) + "..." : str;
+  return str.length > max ? `${str.slice(0, max - 3)}...` : str;
 }
 
 export type ToolResult = ToolEntry["result"];

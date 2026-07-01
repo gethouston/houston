@@ -1,32 +1,26 @@
-import { useState, useCallback, useMemo, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import type { KanbanItem } from "@houston-ai/board";
-import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
 import type { FeedItem } from "@houston-ai/chat";
+import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
+import { useQueryClient } from "@tanstack/react-query";
+import { createElement, useCallback, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useAllConversations } from "../hooks/queries";
+import { buildAttachmentPrompt } from "../lib/attachment-message";
+import { createMission } from "../lib/create-mission";
+import { missionCardTags } from "../lib/mission-card";
+import { queryKeys } from "../lib/query-keys";
+import { formatVisibleMessageText } from "../lib/queued-chat";
+import { tauriActivity, tauriAttachments, tauriChat } from "../lib/tauri";
+import type { Agent } from "../lib/types";
+import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useFeedStore } from "../stores/feeds";
 import {
   getSessionStatusKey,
   isActiveSessionStatus,
   useSessionStatusStore,
 } from "../stores/session-status";
-import { useQueryClient } from "@tanstack/react-query";
-import { useAllConversations } from "../hooks/queries";
-import { useAgentCatalogStore } from "../stores/agent-catalog";
-import {
-  tauriActivity,
-  tauriChat,
-  tauriAttachments,
-} from "../lib/tauri";
-import { buildAttachmentPrompt } from "../lib/attachment-message";
-import { createMission } from "../lib/create-mission";
-import { createMissionWorktreeIfEnabled } from "../lib/mission-worktree";
-import { resolveActivityOverride } from "./mission-control-send";
-import { formatVisibleMessageText } from "../lib/queued-chat";
-import { queryKeys } from "../lib/query-keys";
-import { missionCardTags } from "../lib/mission-card";
 import { useUIStore } from "../stores/ui";
-import type { Agent } from "../lib/types";
-import { createElement } from "react";
+import { resolveActivityOverride } from "./mission-control-send";
 import { AgentCardAvatar } from "./shell/agent-card-avatar";
 
 export function useMissionControl(agents: Agent[]) {
@@ -65,10 +59,7 @@ export function useMissionControl(agents: Agent[]) {
     Record<string, { agentPath: string; activityId: string }>
   >({});
 
-  const paths = useMemo(
-    () => agents.map((a) => a.folderPath),
-    [agents],
-  );
+  const paths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
 
   const { data: convos, isFetched } = useAllConversations(paths);
 
@@ -86,16 +77,26 @@ export function useMissionControl(agents: Agent[]) {
   const items: KanbanItem[] = useMemo(() => {
     if (!convos) return [];
     const map: Record<string, string> = {};
-    const sessionMap: Record<string, { agentPath: string; activityId: string }> = {};
+    const sessionMap: Record<
+      string,
+      { agentPath: string; activityId: string }
+    > = {};
     const result = convos
       // Archived missions live in the per-agent Archived tab — keep them off
       // the cross-agent active board.
-      .filter((c) => c.type === "activity" && c.status && c.status !== "archived")
+      .filter(
+        (c) => c.type === "activity" && c.status && c.status !== "archived",
+      )
       .map((c) => {
         const agent = agentMap[c.agent_path];
-        const agentModes = agent ? getAgentDef(agent.configId)?.config.agents : undefined;
+        const agentModes = agent
+          ? getAgentDef(agent.configId)?.config.agents
+          : undefined;
         map[c.id] = c.agent_path;
-        sessionMap[c.session_key] = { agentPath: c.agent_path, activityId: c.id };
+        sessionMap[c.session_key] = {
+          agentPath: c.agent_path,
+          activityId: c.id,
+        };
         return {
           id: c.id,
           title: c.title,
@@ -103,8 +104,10 @@ export function useMissionControl(agents: Agent[]) {
           // words; never echo the raw `<!--houston:...-->` on the card (HOU-425).
           description: messagePreviewText(c.description),
           group: c.agent_name,
-          icon: createElement(AgentCardAvatar, { color: agentColorMap[c.agent_path] }),
-          status: c.status!,
+          icon: createElement(AgentCardAvatar, {
+            color: agentColorMap[c.agent_path],
+          }),
+          status: c.status ?? "",
           updatedAt: c.updated_at ?? new Date().toISOString(),
           tags: missionCardTags({
             agent: c.agent,
@@ -148,14 +151,11 @@ export function useMissionControl(agents: Agent[]) {
     [selectedId],
   );
 
-  const handleApprove = useCallback(
-    async (item: KanbanItem) => {
-      const agentPath = pathMapRef.current[item.id];
-      if (!agentPath) return;
-      await tauriActivity.update(agentPath, item.id, { status: "done" });
-    },
-    [],
-  );
+  const handleApprove = useCallback(async (item: KanbanItem) => {
+    const agentPath = pathMapRef.current[item.id];
+    if (!agentPath) return;
+    await tauriActivity.update(agentPath, item.id, { status: "done" });
+  }, []);
 
   const handleRename = useCallback(
     async (item: KanbanItem, newTitle: string) => {
@@ -180,7 +180,8 @@ export function useMissionControl(agents: Agent[]) {
       // anything already in the live bucket (optimistic overlay or a WS event
       // that landed mid-load) by turn identity so a routine that surfaced in
       // the background doesn't render its first turn twice (#363).
-      const current = useFeedStore.getState().items[agentPath]?.[sessionKey] ?? [];
+      const current =
+        useFeedStore.getState().items[agentPath]?.[sessionKey] ?? [];
       setFeed(agentPath, sessionKey, mergeFeedHistory(history, current));
     },
     [setFeed],
@@ -192,7 +193,10 @@ export function useMissionControl(agents: Agent[]) {
       if (!entry) return;
       const { agentPath, activityId } = entry;
       try {
-        const paths = await tauriAttachments.save(`activity-${activityId}`, files);
+        const paths = await tauriAttachments.save(
+          `activity-${activityId}`,
+          files,
+        );
         const prompt = buildAttachmentPrompt(text, files, paths);
         // Mission Control is cross-agent: the activity's stored provider/model
         // is the per-activity override that the chat picker is showing. The
@@ -205,7 +209,10 @@ export function useMissionControl(agents: Agent[]) {
         const list = await tauriActivity.list(agentPath);
         const overrides = resolveActivityOverride(sessionKey, list);
         await tauriChat.send(agentPath, prompt, sessionKey, overrides);
-        pushFeedItem(agentPath, sessionKey, { feed_type: "user_message", data: prompt });
+        pushFeedItem(agentPath, sessionKey, {
+          feed_type: "user_message",
+          data: prompt,
+        });
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
       } catch (err) {
         setLoading((prev) => ({ ...prev, [sessionKey]: false }));
@@ -241,35 +248,44 @@ export function useMissionControl(agents: Agent[]) {
       const agentPath = agent.folderPath;
 
       try {
-        const worktreePath = await createMissionWorktreeIfEnabled(agentPath);
-        const visible = formatVisibleMessageText(
-          text,
-          files,
-          (names) => t("queue.attached", { names }),
+        const visible = formatVisibleMessageText(text, files, (names) =>
+          t("queue.attached", { names }),
         );
         let userMessage = text;
         const { conversationId, sessionKey } = await createMission(
-          { id: agent.id, name: agent.name, color: agent.color, folderPath: agentPath },
+          {
+            id: agent.id,
+            name: agent.name,
+            color: agent.color,
+            folderPath: agentPath,
+          },
           text,
           {
             agentMode: opts?.agentMode,
-            worktreePath,
             promptFile: opts?.promptFile,
             providerOverride: opts?.providerOverride,
             modelOverride: opts?.modelOverride,
             titleText: visible,
             buildPrompt: async (activityId) => {
-              const saved = await tauriAttachments.save(`activity-${activityId}`, files);
+              const saved = await tauriAttachments.save(
+                `activity-${activityId}`,
+                files,
+              );
               userMessage = buildAttachmentPrompt(text, files, saved);
               return userMessage;
             },
           },
         );
-        pushFeedItem(agentPath, sessionKey, { feed_type: "user_message", data: userMessage });
+        pushFeedItem(agentPath, sessionKey, {
+          feed_type: "user_message",
+          data: userMessage,
+        });
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
         // createMission bypasses the activity mutation hooks, so refresh
         // the cross-agent conversation list manually.
-        queryClient.invalidateQueries({ queryKey: queryKeys.allConversations(paths) });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.allConversations(paths),
+        });
         return conversationId;
       } catch (err) {
         // No silent failures: createMission already rolled back the
@@ -289,7 +305,9 @@ export function useMissionControl(agents: Agent[]) {
     const out: Record<string, boolean> = {};
     const itemStatusBySession = new Map<string, string>();
     for (const item of items) {
-      const sessionKey = (item.metadata?.sessionKey as string | undefined) ?? `activity-${item.id}`;
+      const sessionKey =
+        (item.metadata?.sessionKey as string | undefined) ??
+        `activity-${item.id}`;
       itemStatusBySession.set(sessionKey, item.status);
     }
     for (const [sessionKey, value] of Object.entries(loading)) {
@@ -307,7 +325,9 @@ export function useMissionControl(agents: Agent[]) {
       }
     }
     for (const item of items) {
-      const sessionKey = (item.metadata?.sessionKey as string | undefined) ?? `activity-${item.id}`;
+      const sessionKey =
+        (item.metadata?.sessionKey as string | undefined) ??
+        `activity-${item.id}`;
       const agentPath = pathMapRef.current[item.id];
       const status = agentPath
         ? sessionStatuses[getSessionStatusKey(agentPath, sessionKey)]

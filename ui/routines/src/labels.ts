@@ -20,6 +20,9 @@
  * keep this file focused on the type contracts.
  */
 
+import type { IntervalUnit } from "./schedule-interval-utils";
+import type { SchedulePreset } from "./types";
+
 /** Replace `{name}` tokens in `template` with `vars[name]`. Unknown tokens stay. */
 export function interp(
   template: string,
@@ -27,159 +30,168 @@ export function interp(
 ): string {
   return template.replace(/\{(\w+)\}/g, (whole, key) =>
     key in vars ? String(vars[key]) : whole,
-  )
+  );
 }
 
 /** Plain-language summary of a cron schedule. `{n}`/`{time}`/`{day}`/`{days}`/`{ordinal}`/`{months}`. */
 export interface ScheduleSummaryLabels {
-  noSchedule: string
-  custom: string
-  customCron: string
-  every30: string
-  everyHourStart: string
-  everyMinute: string
-  everyNMinutes: string
-  everyHour: string
-  everyNHours: string
-  everyDay: string
-  everyNDays: string
-  weekly: string
-  /** Weekly on a list of days. `{days}` is a localized weekday list. */
-  everyWeekOnDays: string
-  monthly: string
-  /** Custom every-N-months on a day of month. `{ordinal}`/`{n}` day, `{months}` count. */
-  everyNMonths: string
+  noSchedule: string;
+  custom: string;
+  customCron: string;
+  every30: string;
+  everyHourStart: string;
+  everyMinute: string;
+  everyNMinutes: string;
+  everyHour: string;
+  everyNHours: string;
+  everyDay: string;
+  everyNDays: string;
+  /** Weekly on a single day. `{day}` is a localized weekday name. */
+  weekly: string;
+  /** Weekly on chosen days. `{days}` is a localized, joined weekday list. */
+  weeklyOnDays: string;
+  /** Monthly on a day-of-month. `{ordinal}` (en) or `{n}` (es/pt) day. */
+  monthly: string;
+  /** Every N months on a day-of-month. `{ordinal}`/`{n}` day, `{months}` count. */
+  everyNMonths: string;
 }
 
 /** Relative + absolute "next run" phrasing. `{m}`/`{h}`/`{d}`/`{day}`/`{time}`. */
 export interface NextFireLabels {
-  lessThanMinute: string
-  inMinutes: string
-  inHoursMinutes: string
-  inDaysHours: string
-  inDays: string
-  today: string
-  tomorrow: string
-  soon: string
-  at: string
+  lessThanMinute: string;
+  inMinutes: string;
+  inHoursMinutes: string;
+  inDaysHours: string;
+  inDays: string;
+  today: string;
+  tomorrow: string;
+  soon: string;
+  at: string;
 }
 
 /** Run-history row strings. `{time}` for the timestamp/usage-limit phrasings. */
 export interface RunHistoryLabels {
-  empty: string
-  view: string
-  stopRun: string
-  waiting: string
+  empty: string;
+  view: string;
+  stopRun: string;
+  waiting: string;
   status: {
-    silent: string
-    surfaced: string
-    running: string
-    error: string
-    cancelled: string
-    paused: string
-  }
-  today: string
-  yesterday: string
-  onDate: string
+    silent: string;
+    surfaced: string;
+    running: string;
+    error: string;
+    cancelled: string;
+    paused: string;
+  };
+  today: string;
+  yesterday: string;
+  onDate: string;
 }
 
 /** Schedule builder + picker-field labels. */
 export interface ScheduleLabels {
-  presets: Record<import("./types").SchedulePreset, string>
-  /** Unit names for the custom-interval pills, with singular + plural forms. */
-  units: Record<import("./schedule-interval-utils").IntervalUnit, { one: string; other: string }>
-  timeLabel: string
-  dayOfMonthLabel: string
-  /** "Repeat every" — label above the count stepper. */
-  repeatEvery: string
-  enterNumber: string
-  /** Validation hint when the Weekly preset has no day selected. */
-  pickDay: string
-  /** WeekdaysPicker heading ("On these days"). */
-  onTheseDays: string
-  /** WeekdaysPicker quick-select chips. */
-  shortcuts: { everyDay: string; weekdays: string; weekends: string }
-  /** aria-labels for the count stepper's − / + buttons. */
-  decrease: string
-  increase: string
+  presets: Record<SchedulePreset, string>;
+  /** Plural unit names for the custom-interval pills (when the count is > 1). */
+  units: Record<IntervalUnit, string>;
+  /** Singular unit names for the custom-interval pills (when the count is 1). */
+  unitsSingular: Record<IntervalUnit, string>;
+  timeLabel: string;
+  dayOfMonthLabel: string;
+  /** "Repeat every" — label above the custom-interval count + unit pills. */
+  repeatEvery: string;
+  /** "On these days" — label above the weekly day multi-select. */
+  weekdaysLabel: string;
+  /** Quick weekday-selection chips under the day multi-select. */
+  weekdayShortcuts: {
+    everyDay: string;
+    weekdays: string;
+    weekends: string;
+  };
+  /** aria-labels for the count stepper's minus/plus buttons. */
+  decrease: string;
+  increase: string;
+  /** Validation summary shown when the custom interval count is empty/invalid. */
+  enterNumber: string;
+  /** Validation summary shown when the Weekly preset has no day selected. */
+  pickDay: string;
   /** Accessible names for the time picker's hour / minute / AM-PM columns. */
-  timePicker: { hour: string; minute: string; period: string }
-  summary: ScheduleSummaryLabels
+  timePicker: { hour: string; minute: string; period: string };
+  summary: ScheduleSummaryLabels;
 }
 
 /** RoutineEditor chrome. `{tz}`/`{relative}` tokens on a couple of entries. */
 export interface RoutineEditorLabels {
-  back: string
-  newRoutine: string
-  untitled: string
-  stop: string
-  starting: string
-  runNow: string
-  saveChanges: string
-  createRoutine: string
-  moreActions: string
-  pauseRoutine: string
-  resumeRoutine: string
-  deleteRoutine: string
-  nameLabel: string
-  namePlaceholder: string
-  descriptionLabel: string
-  descriptionPlaceholder: string
-  promptLabel: string
-  promptPlaceholder: string
-  sectionWhen: string
-  sectionBehavior: string
-  sectionRecent: string
-  nextRun: string
-  schedulePreview: string
-  schedulePreviewHint: string
-  notifyTitle: string
-  notifyDescription: string
-  chatTitle: string
-  chatDescription: string
-  modelTitle: string
-  modelDescription: string
+  back: string;
+  newRoutine: string;
+  untitled: string;
+  stop: string;
+  starting: string;
+  runNow: string;
+  saveChanges: string;
+  createRoutine: string;
+  moreActions: string;
+  pauseRoutine: string;
+  resumeRoutine: string;
+  deleteRoutine: string;
+  nameLabel: string;
+  namePlaceholder: string;
+  descriptionLabel: string;
+  descriptionPlaceholder: string;
+  promptLabel: string;
+  promptPlaceholder: string;
+  sectionWhen: string;
+  sectionBehavior: string;
+  sectionRecent: string;
+  nextRun: string;
+  schedulePreview: string;
+  schedulePreviewHint: string;
+  notifyTitle: string;
+  notifyDescription: string;
+  chatTitle: string;
+  chatDescription: string;
+  modelTitle: string;
+  modelDescription: string;
 }
 
 /** RoutinesGrid empty state + meta row. */
 export interface RoutinesGridLabels {
-  loading: string
-  emptyTitle: string
-  emptyDescription: string
-  descriptionShort: string
-  newRoutine: string
+  loading: string;
+  emptyTitle: string;
+  emptyDescription: string;
+  descriptionShort: string;
+  newRoutine: string;
   /** Accessible name for the account-wide timezone picker. */
-  timezoneLabel: string
+  timezoneLabel: string;
   /** One-line hint that the timezone applies to every routine. */
-  timezoneHint: string
+  timezoneHint: string;
   /** Placeholder for the timezone picker's keyword search field. */
-  timezoneSearchPlaceholder: string
+  timezoneSearchPlaceholder: string;
   /** Empty state when no timezone matches the search. */
-  timezoneNoResults: string
+  timezoneNoResults: string;
 }
 
 /** RoutineRow meta. `{relative}`/`{time}`/`{n}` tokens on the dynamic entries. */
 export interface RoutineRowLabels {
-  untitled: string
-  next: string
-  noNextRun: string
-  paused: string
-  waiting: string
-  justRan: string
-  ranMinutes: string
-  ranHours: string
-  ranDays: string
-  pauseRoutine: string
-  resumeRoutine: string
+  untitled: string;
+  next: string;
+  noNextRun: string;
+  paused: string;
+  waiting: string;
+  justRan: string;
+  ranMinutes: string;
+  ranHours: string;
+  ranDays: string;
+  pauseRoutine: string;
+  resumeRoutine: string;
 }
 
 // English default values, co-located in a sibling file to keep this one small.
 export {
-  DEFAULT_SCHEDULE_SUMMARY_LABELS,
-  DEFAULT_NEXT_FIRE_LABELS,
-  DEFAULT_RUN_HISTORY_LABELS,
-  DEFAULT_SCHEDULE_LABELS,
   DEFAULT_EDITOR_LABELS,
   DEFAULT_GRID_LABELS,
+  DEFAULT_NEXT_FIRE_LABELS,
   DEFAULT_ROW_LABELS,
-} from "./labels-default.ts"
+  DEFAULT_RUN_HISTORY_LABELS,
+  DEFAULT_SCHEDULE_LABELS,
+  DEFAULT_SCHEDULE_SUMMARY_LABELS,
+} from "./labels-default.ts";

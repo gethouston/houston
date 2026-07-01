@@ -39,10 +39,14 @@ export function MissionBoardEmptyState({
       <Empty className="border-0">
         <EmptyHeader>
           <EmptyTitle>
-            {isSearchingText ? labels.searchSearchingTitle : labels.searchEmptyTitle}
+            {isSearchingText
+              ? labels.searchSearchingTitle
+              : labels.searchEmptyTitle}
           </EmptyTitle>
           <EmptyDescription>
-            {isSearchingText ? labels.searchSearchingDescription : labels.searchEmptyDescription}
+            {isSearchingText
+              ? labels.searchSearchingDescription
+              : labels.searchEmptyDescription}
           </EmptyDescription>
         </EmptyHeader>
         {isSearchingText ? (
@@ -67,9 +71,7 @@ export function MissionBoardEmptyState({
     <Empty className="border-0">
       <EmptyHeader>
         <EmptyTitle>{labels.emptyTitle}</EmptyTitle>
-        <EmptyDescription>
-          {labels.emptyDescription}
-        </EmptyDescription>
+        <EmptyDescription>{labels.emptyDescription}</EmptyDescription>
       </EmptyHeader>
       <Button
         className="mt-4 rounded-full gap-1.5"

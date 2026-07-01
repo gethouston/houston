@@ -1,19 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
-import { tauriPreferences, tauriWorkspaces } from "../lib/tauri";
-import { logger } from "../lib/logger";
-import { useWorkspaceStore } from "../stores/workspaces";
+import { useCallback, useEffect, useState } from "react";
 import {
-  LOCALE_PREF_KEY,
   activeWorkspaceLocale,
   applyEngineLocale,
   changeLocale,
   isSupported,
+  LOCALE_PREF_KEY,
   localeGateIsLoading,
   resolveEffectiveLocale,
   type SupportedLocale,
 } from "../lib/i18n";
+import { logger } from "../lib/logger";
+import { tauriPreferences, tauriWorkspaces } from "../lib/tauri";
+import { useWorkspaceStore } from "../stores/workspaces";
 
 const globalKey = ["locale-preference"] as const;
 const bootWorkspaceKey = ["boot-workspace-locale"] as const;
@@ -66,9 +65,17 @@ export function useLocalePreference(): LocalePreferenceState {
   const globalQuery = useQuery({
     queryKey: globalKey,
     queryFn: async (): Promise<SupportedLocale | null> => {
-      const raw = await tauriPreferences.get(LOCALE_PREF_KEY);
-      return isSupported(raw) ? raw : null;
+      try {
+        const raw = await tauriPreferences.get(LOCALE_PREF_KEY);
+        return isSupported(raw) ? raw : null;
+      } catch {
+        // Not authenticated yet (401) or engine unavailable — skip the gate
+        // rather than blocking for 3 retries. The sign-in screen handles auth;
+        // locale is re-fetched once a session is established.
+        return null;
+      }
     },
+    retry: false,
     staleTime: 30_000,
   });
 
@@ -106,8 +113,8 @@ export function useLocalePreference(): LocalePreferenceState {
   // the user switching workspaces); before that, the boot query stands in so
   // the first paint already reflects the active workspace's override.
   const workspaceLocale = storeCurrent
-    ? storeCurrent.locale ?? null
-    : bootWorkspaceQuery.data ?? null;
+    ? (storeCurrent.locale ?? null)
+    : (bootWorkspaceQuery.data ?? null);
   const effective = resolveEffectiveLocale(workspaceLocale, globalLocale);
 
   // Apply the engine-resolved locale to the live i18n instance once the GLOBAL
