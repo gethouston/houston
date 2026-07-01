@@ -1,8 +1,7 @@
 import { strictEqual } from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { TFunction } from "i18next";
-import { localizeCatalogEntry } from "../src/agents/catalog-labels.ts";
-import type { AgentDefinition } from "../src/lib/types.ts";
+import { localizeCatalogCopy } from "../src/agents/catalog-labels.ts";
 
 /**
  * Minimal i18next stub: returns the value in `table` for a known key,
@@ -14,56 +13,64 @@ function fakeT(table: Record<string, string>): TFunction {
   return t as unknown as TFunction;
 }
 
-function def(
-  source: AgentDefinition["source"],
-  config: Partial<AgentDefinition["config"]> & { id: string },
-): AgentDefinition {
-  return {
-    source,
-    config: {
-      name: "English name",
-      description: "English description",
-      ...config,
-    },
-  };
-}
-
-describe("localizeCatalogEntry", () => {
-  it("translates a builtin agent that has catalog entries", () => {
+describe("localizeCatalogCopy", () => {
+  it("translates a first-party (Houston) agent that has catalog entries", () => {
     const t = fakeT({
       "agents:catalog.personal-assistant.name": "Asistente personal",
       "agents:catalog.personal-assistant.description": "Descripción en español",
     });
-    const result = localizeCatalogEntry(def("builtin", { id: "personal-assistant" }), t);
+    const result = localizeCatalogCopy(
+      { id: "personal-assistant", name: "Personal assistant", description: "English", author: "Houston" },
+      t,
+    );
     strictEqual(result.name, "Asistente personal");
     strictEqual(result.description, "Descripción en español");
   });
 
-  it("falls back to the config strings when a builtin has no catalog entry", () => {
+  it("translates a bundled Houston store listing by id", () => {
+    const t = fakeT({
+      "agents:catalog.bookkeeping.name": "Contabilidad",
+      "agents:catalog.bookkeeping.description": "Categoriza transacciones...",
+    });
+    const result = localizeCatalogCopy(
+      { id: "bookkeeping", name: "Bookkeeping", description: "Categorize transactions...", author: "Houston" },
+      t,
+    );
+    strictEqual(result.name, "Contabilidad");
+    strictEqual(result.description, "Categoriza transacciones...");
+  });
+
+  it("falls back to the raw strings when a Houston agent has no catalog entry", () => {
     const t = fakeT({});
-    const result = localizeCatalogEntry(
-      def("builtin", { id: "future-agent", name: "Future", description: "Later" }),
+    const result = localizeCatalogCopy(
+      { id: "future-agent", name: "Future", description: "Later", author: "Houston" },
       t,
     );
     strictEqual(result.name, "Future");
     strictEqual(result.description, "Later");
   });
 
-  it("keeps an installed agent in its author's language, ignoring catalog keys", () => {
-    // Even if a catalog key collides by id, an installed (non-builtin) agent
-    // must never be relabeled — author's language wins (App Store model).
+  it("keeps a third-party agent in its author's language, ignoring catalog keys", () => {
+    // Even if a catalog key collides by id, a non-Houston agent must never be
+    // relabeled: author's language wins (App Store model).
     const t = fakeT({
-      "agents:catalog.personal-assistant.name": "SHOULD NOT APPLY",
+      "agents:catalog.bookkeeping.name": "SHOULD NOT APPLY",
     });
-    const result = localizeCatalogEntry(
-      def("installed", {
-        id: "personal-assistant",
-        name: "Community Agent",
-        description: "By some author",
-      }),
+    const result = localizeCatalogCopy(
+      { id: "bookkeeping", name: "Community Bookkeeper", description: "By some author", author: "Jane Dev" },
       t,
     );
-    strictEqual(result.name, "Community Agent");
+    strictEqual(result.name, "Community Bookkeeper");
     strictEqual(result.description, "By some author");
+  });
+
+  it("treats a missing author as third-party (no translation)", () => {
+    const t = fakeT({ "agents:catalog.sales.name": "Ventas" });
+    const result = localizeCatalogCopy(
+      { id: "sales", name: "Sales", description: "Find leads" },
+      t,
+    );
+    strictEqual(result.name, "Sales");
+    strictEqual(result.description, "Find leads");
   });
 });

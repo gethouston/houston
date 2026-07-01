@@ -5,10 +5,8 @@ import { useTranslation } from "react-i18next";
 import type { AgentDefinition, StoreListing } from "../../lib/types";
 import { SkillCard } from "../skill-card";
 import { AgentCard, StoreAgentCard } from "./experience-card";
-import { localizeCatalogEntry } from "../../agents/catalog-labels";
+import { localizeCatalogCopy, type CatalogCopy } from "../../agents/catalog-labels";
 import { useUIStore } from "../../stores/ui";
-
-type CatalogDisplay = { name: string; description: string };
 
 interface StoreStepProps {
   search: string;
@@ -39,17 +37,27 @@ export function StoreStep({
   );
   const query = search.trim().toLowerCase();
 
-  // First-party (builtin) agents render in the user's language; installed /
-  // remote agents keep their author's language. Recompute when the active
-  // language changes so switching locales relabels the store live.
-  const localized = useMemo(() => {
-    const map = new Map<string, CatalogDisplay>();
+  // Houston's first-party agents (builtin + bundled store listings) render in
+  // the user's language; third-party agents keep their author's language.
+  // Recompute when the active language changes so switching locales relabels
+  // the store live.
+  const localizedAgents = useMemo(() => {
+    const map = new Map<string, CatalogCopy>();
     for (const def of agents) {
-      map.set(def.config.id, localizeCatalogEntry(def, t));
+      map.set(def.config.id, localizeCatalogCopy(def.config, t));
     }
     return map;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agents, t, i18n.language]);
+
+  const localizedStore = useMemo(() => {
+    const map = new Map<string, CatalogCopy>();
+    for (const listing of storeCatalog) {
+      map.set(listing.id, localizeCatalogCopy(listing, t));
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeCatalog, t, i18n.language]);
 
   const filteredAgents = useMemo(
     () =>
@@ -59,18 +67,18 @@ export function StoreStep({
         }
         if (storeIds.has(d.config.id)) return false;
         if (!query) return true;
-        return matchesAgent(d, localized.get(d.config.id), query);
+        return matchesAgent(d, localizedAgents.get(d.config.id), query);
       }),
-    [agents, query, storeIds, localized],
+    [agents, query, storeIds, localizedAgents],
   );
 
   const filteredStore = useMemo(
     () =>
       storeCatalog.filter((listing) => {
         if (!query) return true;
-        return matchesListing(listing, query);
+        return matchesListing(listing, localizedStore.get(listing.id), query);
       }),
-    [query, storeCatalog],
+    [query, storeCatalog, localizedStore],
   );
 
   const reorderedAgents = useMemo(() => {
@@ -138,7 +146,7 @@ export function StoreStep({
               />
             )}
             {reorderedAgents.map((def) => {
-              const display = localized.get(def.config.id);
+              const display = localizedAgents.get(def.config.id);
               return (
                 <AgentCard
                   key={def.config.id}
@@ -149,14 +157,19 @@ export function StoreStep({
                 />
               );
             })}
-            {filteredStore.map((listing) => (
-              <StoreAgentCard
-                key={listing.id}
-                listing={listing}
-                onInstall={onInstall}
-                onSelect={onSelect}
-              />
-            ))}
+            {filteredStore.map((listing) => {
+              const display = localizedStore.get(listing.id);
+              return (
+                <StoreAgentCard
+                  key={listing.id}
+                  listing={listing}
+                  title={display?.name}
+                  description={display?.description}
+                  onInstall={onInstall}
+                  onSelect={onSelect}
+                />
+              );
+            })}
           </div>
         ) : (
           <div className="flex items-center justify-center py-16">
@@ -172,7 +185,7 @@ export function StoreStep({
 
 function matchesAgent(
   def: AgentDefinition,
-  display: CatalogDisplay | undefined,
+  display: CatalogCopy | undefined,
   query: string,
 ): boolean {
   const config = def.config;
@@ -189,10 +202,16 @@ function matchesAgent(
   );
 }
 
-function matchesListing(listing: StoreListing, query: string): boolean {
+function matchesListing(
+  listing: StoreListing,
+  display: CatalogCopy | undefined,
+  query: string,
+): boolean {
+  const name = display?.name ?? listing.name;
+  const description = display?.description ?? listing.description;
   return (
-    listing.name.toLowerCase().includes(query) ||
-    listing.description.toLowerCase().includes(query) ||
+    name.toLowerCase().includes(query) ||
+    description.toLowerCase().includes(query) ||
     listing.tags.some((tag) => tag.toLowerCase().includes(query)) ||
     listing.integrations?.some((toolkit) =>
       toolkit.toLowerCase().includes(query),

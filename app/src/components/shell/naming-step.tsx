@@ -15,7 +15,7 @@ import { ArrowLeft, Check, FolderOpen, ChevronDown } from "lucide-react";
 import type { AgentDefinition } from "../../lib/types";
 import { tauriProvider, type ProviderStatus } from "../../lib/tauri";
 import { PROVIDERS, getProvider, getModel } from "../../lib/providers";
-import { localizeCatalogEntry } from "../../agents/catalog-labels";
+import { localizeCatalogCopy } from "../../agents/catalog-labels";
 
 interface NamingStepProps {
   selectedAgent: AgentDefinition | undefined;
@@ -55,7 +55,7 @@ export function NamingStep({
   // Default to white on mount if none selected
   const resolvedColor = resolveAgentColor(color);
   const selectedName = selectedAgent
-    ? localizeCatalogEntry(selectedAgent, t).name
+    ? localizeCatalogCopy(selectedAgent.config, t).name
     : t("naming.newAgentFallback");
 
   useEffect(() => {

@@ -32,12 +32,18 @@ export function AgentCard({ config, title, description, onSelect }: AgentCardPro
 
 interface StoreAgentCardProps {
   listing: StoreListing;
+  /** Localized display name (falls back to `listing.name`). */
+  title?: string;
+  /** Localized display description (falls back to `listing.description`). */
+  description?: string;
   onInstall: (listing: StoreListing) => Promise<void>;
   onSelect: (id: string) => void;
 }
 
 export function StoreAgentCard({
   listing,
+  title,
+  description,
   onInstall,
   onSelect,
 }: StoreAgentCardProps) {
@@ -55,8 +61,8 @@ export function StoreAgentCard({
 
   return (
     <SkillCard
-      title={listing.name}
-      description={listing.description}
+      title={title ?? listing.name}
+      description={description ?? listing.description}
       image={listing.icon_url}
       integrations={listing.integrations}
       maxIntegrations={8}

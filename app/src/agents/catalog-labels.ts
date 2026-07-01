@@ -1,30 +1,43 @@
 import type { TFunction } from "i18next";
-import type { AgentDefinition } from "../lib/types";
+
+export interface CatalogCopy {
+  name: string;
+  description: string;
+}
 
 /**
- * Localized display name + description for a catalog agent shown in the
- * new-agent store.
- *
- * Houston's first-party (builtin) agents ship translations under
- * `agents:catalog.<id>`, so the store renders them in the user's language.
- * Installed / remote store agents keep their author's language (the App Store
- * model), so anything that isn't builtin falls back to the raw config strings.
- *
- * The `defaultValue` guard also covers a builtin agent that doesn't yet have a
- * `catalog.<id>` entry: it renders the in-code English rather than a raw key.
+ * The minimal shape both an `AgentConfig` (builtin / installed agents) and a
+ * `StoreListing` (remote store catalog) satisfy — enough to localize a card.
  */
-export function localizeCatalogEntry(
-  def: AgentDefinition,
-  t: TFunction,
-): { name: string; description: string } {
-  const { config } = def;
-  if (def.source !== "builtin") {
-    return { name: config.name, description: config.description };
+interface CatalogEntry {
+  id: string;
+  name: string;
+  description: string;
+  author?: string;
+}
+
+/**
+ * Localized display name + description for a new-agent store card.
+ *
+ * Houston's own first-party agents (`author === "Houston"`) — whether the
+ * builtin `personal-assistant` / `blank` or a bundled store listing
+ * (bookkeeping, legal, sales, …) — ship translations under
+ * `agents:catalog.<id>`, so the store renders them in the user's language.
+ *
+ * Third-party / community agents keep their author's language (the App Store
+ * model), so anything not authored by Houston falls back to the raw strings.
+ * The `defaultValue` guard also covers a first-party agent that doesn't yet
+ * have a `catalog.<id>` entry: it renders the in-catalog English rather than a
+ * raw key.
+ */
+export function localizeCatalogCopy(entry: CatalogEntry, t: TFunction): CatalogCopy {
+  if (entry.author !== "Houston") {
+    return { name: entry.name, description: entry.description };
   }
   return {
-    name: t(`agents:catalog.${config.id}.name`, { defaultValue: config.name }),
-    description: t(`agents:catalog.${config.id}.description`, {
-      defaultValue: config.description,
+    name: t(`agents:catalog.${entry.id}.name`, { defaultValue: entry.name }),
+    description: t(`agents:catalog.${entry.id}.description`, {
+      defaultValue: entry.description,
     }),
   };
 }

@@ -7,6 +7,38 @@
     "blank": {
       "name": "Começar do zero",
       "description": "Um agente em branco, sem ações, instruções ou aprendizados pré-configurados. Monte do seu jeito."
+    },
+    "bookkeeping": {
+      "name": "Contabilidade",
+      "description": "Categoriza transações, concilia contas, fecha os livros todo mês e gera demonstrações financeiras prontas para investidores. Conecta com QuickBooks, Xero, Stripe e os feeds do seu banco. Prepara lançamentos contábeis e demonstrações, mas nunca registra no seu livro-razão nem movimenta dinheiro."
+    },
+    "legal": {
+      "name": "Jurídico",
+      "description": "Revisa contratos, audita a conformidade de privacidade, prepara registros em Delaware, faz buscas de marcas registradas e responde dúvidas jurídicas na hora. Prepara acordos de confidencialidade, políticas e resumos de escalonamento, mas nunca protocola, assina nem envia nada em seu nome."
+    },
+    "marketing": {
+      "name": "Marketing",
+      "description": "Define o posicionamento, planeja campanhas, escreve posts de blog e páginas de destino, audita o SEO e a visibilidade em buscas com IA, e redige sequências de e-mail. Da estratégia à execução em conteúdo, mídia paga, redes sociais e textos de conversão, tudo em rascunhos, nunca publicado."
+    },
+    "operations": {
+      "name": "Operações",
+      "description": "Prioriza sua caixa de entrada, prepara reuniões, acompanha metas, gerencia renovações com fornecedores, audita os gastos com SaaS e executa consultas de dados. Abrange planejamento, agenda, organização financeira e relatórios, apenas rascunhos, nunca envia nem confirma nada."
+    },
+    "people": {
+      "name": "Pessoas",
+      "description": "Busca e avalia candidatos, coordena rodadas de entrevistas, redige cartas de oferta, conduz ciclos de avaliação e acompanha prazos de conformidade. Abrange da contratação à retenção, apenas rascunhos, nunca envia nem modifica seus sistemas de RH."
+    },
+    "sales": {
+      "name": "Vendas",
+      "description": "Encontra leads, pesquisa contas, prepara ligações, redige mensagens de contato, gerencia seu CRM e projeta o pipeline. Abrange da prospecção à expansão, apenas rascunhos, nunca envia nem muda o estágio de uma negociação sem a sua aprovação."
+    },
+    "support": {
+      "name": "Suporte",
+      "description": "Prioriza tickets, redige respostas, escreve artigos da central de ajuda, avalia a saúde dos clientes e cria planos para evitar cancelamentos. Abrange da caixa de entrada ao sucesso do cliente, apenas rascunhos, nunca envia."
+    },
+    "outbound": {
+      "name": "Prospecção",
+      "description": "Transforma uma única publicação do LinkedIn em uma campanha de e-mail frio pausada no Instantly. Extraio quem comenta ou reage, guardo essas pessoas no Airtable, busco e-mails verificados com o Apollo, escrevo com você uma sequência de 3 e-mails e depois carrego tudo no Instantly. A campanha sempre fica pausada para você revisar, nunca disparo sozinho."
     }
   },
   "toasts": {

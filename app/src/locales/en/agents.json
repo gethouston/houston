@@ -7,6 +7,38 @@
     "blank": {
       "name": "Start from scratch",
       "description": "A blank agent with no pre-configured actions, instructions, or learnings. Build it your way."
+    },
+    "bookkeeping": {
+      "name": "Bookkeeping",
+      "description": "Categorize transactions, reconcile accounts, close the books every month, and generate investor-ready financials. Connects to QuickBooks, Xero, Stripe, and your bank feeds. Drafts journal entries and statements, never posts to your ledger or moves money."
+    },
+    "legal": {
+      "name": "Legal",
+      "description": "Review contracts, audit privacy compliance, prep Delaware filings, run trademark searches, and answer legal questions on the spot. Drafts NDAs, policies, and escalation briefs, never files, signs, or sends anything on your behalf."
+    },
+    "marketing": {
+      "name": "Marketing",
+      "description": "Build positioning, plan campaigns, write blog posts and landing pages, audit SEO and AI-search visibility, and draft email sequences. Strategy through execution across content, paid, social, and conversion copy, all drafts, never published."
+    },
+    "operations": {
+      "name": "Operations",
+      "description": "Triage your inbox, prep meetings, track goals, manage vendor renewals, audit SaaS spend, and run data queries. Covers planning, scheduling, finance hygiene, and reporting, drafts only, never sends or commits."
+    },
+    "people": {
+      "name": "People",
+      "description": "Source and evaluate candidates, coordinate interview loops, draft offer letters, run review cycles, and track compliance deadlines. Covers hiring through retention, drafts only, never sends or modifies your HR systems."
+    },
+    "sales": {
+      "name": "Sales",
+      "description": "Find leads, research accounts, prep calls, draft outreach, manage your CRM, and forecast pipeline. Covers prospecting through expansion, drafts only, never sends or changes deal stages without your approval."
+    },
+    "support": {
+      "name": "Support",
+      "description": "Triage tickets, draft replies, write help-center articles, score customer health, and build churn-save playbooks. Covers inbox through customer success, drafts only, never sends."
+    },
+    "outbound": {
+      "name": "Outbound",
+      "description": "Turn a single LinkedIn post into a paused cold email campaign in Instantly. I scrape the commenters or reactors, store them in Airtable, find verified emails through Apollo, co-write a 3-email sequence with you, then load it all into Instantly. The campaign always stays paused for your review, I never auto-launch."
     }
   },
   "toasts": {
