@@ -15,6 +15,7 @@ import agentsEn from "../locales/en/agents.json";
 import boardEn from "../locales/en/board.json";
 import chatEn from "../locales/en/chat.json";
 import commonEn from "../locales/en/common.json";
+import connectEn from "../locales/en/connect.json";
 import contextEn from "../locales/en/context.json";
 import dashboardEn from "../locales/en/dashboard.json";
 import errorsEn from "../locales/en/errors.json";
@@ -31,6 +32,7 @@ import agentsEs from "../locales/es/agents.json";
 import boardEs from "../locales/es/board.json";
 import chatEs from "../locales/es/chat.json";
 import commonEs from "../locales/es/common.json";
+import connectEs from "../locales/es/connect.json";
 import contextEs from "../locales/es/context.json";
 import dashboardEs from "../locales/es/dashboard.json";
 import errorsEs from "../locales/es/errors.json";
@@ -47,6 +49,7 @@ import agentsPt from "../locales/pt/agents.json";
 import boardPt from "../locales/pt/board.json";
 import chatPt from "../locales/pt/chat.json";
 import commonPt from "../locales/pt/common.json";
+import connectPt from "../locales/pt/connect.json";
 import contextPt from "../locales/pt/context.json";
 import dashboardPt from "../locales/pt/dashboard.json";
 import errorsPt from "../locales/pt/errors.json";
@@ -111,6 +114,7 @@ export function setCachedLocale(locale: SupportedLocale): void {
 const resources = {
   en: {
     common: commonEn,
+    connect: connectEn,
     setup: setupEn,
     legal: legalEn,
     shell: shellEn,
@@ -129,6 +133,7 @@ const resources = {
   },
   es: {
     common: commonEs,
+    connect: connectEs,
     setup: setupEs,
     legal: legalEs,
     shell: shellEs,
@@ -147,6 +152,7 @@ const resources = {
   },
   pt: {
     common: commonPt,
+    connect: connectPt,
     setup: setupPt,
     legal: legalPt,
     shell: shellPt,
@@ -185,6 +191,7 @@ void i18n
     defaultNS: "common",
     ns: [
       "common",
+      "connect",
       "setup",
       "legal",
       "shell",

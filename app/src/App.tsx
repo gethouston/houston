@@ -185,7 +185,10 @@ export default function App() {
     );
   }
   if (isAuthConfigured() && !session) {
-    return <SignInScreen />;
+    // Local account login. Keep the dev-only paste-the-code fallback (#146) — a
+    // dev build's `houston://` callback opens the installed prod app, so without
+    // it dev sign-in strands. Production standalone gets no paste box (HOU-621).
+    return <SignInScreen allowManualCallback={import.meta.env.DEV} />;
   }
 
   // First-run tutorial. Held in front of the shell while the orchestrator is

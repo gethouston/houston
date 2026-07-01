@@ -18,7 +18,7 @@ import type {
   ProviderAuthState,
 } from "@houston-ai/engine-client";
 import { shouldAutocompactForSession } from "./autocompact";
-import { getEngine } from "./engine";
+import { getEngine, isRemoteEngine } from "./engine";
 import { engineCallSurface } from "./engine-call-policy";
 import { providerLoginUsesDeviceAuthByDefault } from "./engine-mode";
 import { logger } from "./logger";
@@ -689,13 +689,18 @@ export const tauriProvider = {
         getEngine().providerLogin(provider, {
           deviceAuth:
             opts?.deviceAuth ??
-            providerLoginUsesDeviceAuthByDefault(
-              (import.meta.env ?? {}) as {
-                VITE_NEW_ENGINE_URL?: string;
-                VITE_HOSTED_ENGINE_URL?: string;
-              },
-              { isTauri: osIsTauri() },
-            ),
+            // A runtime `remote` choice (HOU-621) makes the engine remote without
+            // any baked URL env, so OR in isRemoteEngine() — else the topology
+            // helper (build-env only) would pick browser loopback against a
+            // callback that lives on the remote host and the login strands.
+            (isRemoteEngine() ||
+              providerLoginUsesDeviceAuthByDefault(
+                (import.meta.env ?? {}) as {
+                  VITE_NEW_ENGINE_URL?: string;
+                  VITE_HOSTED_ENGINE_URL?: string;
+                },
+                { isTauri: osIsTauri() },
+              )),
           enterpriseDomain: opts?.enterpriseDomain,
         }),
       undefined,

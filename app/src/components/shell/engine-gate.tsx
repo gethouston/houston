@@ -54,7 +54,8 @@ function HostedEngineGate({ children }: { children: ReactNode }) {
       // loudly instead of spinning on the "starting" splash forever.
       return <HostedAuthMisconfigured />;
     case "sign-in":
-      return <SignInScreen />;
+      // Cloud/remote login: surface the paste-the-code fallback (HOU-621).
+      return <SignInScreen allowManualCallback />;
     case "ready":
       return <>{children}</>;
     default:

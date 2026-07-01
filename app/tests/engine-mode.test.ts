@@ -1,4 +1,4 @@
-import { strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   controlPlaneBuild,
@@ -6,6 +6,7 @@ import {
   hostedGateState,
   hostedOauthLoginActive,
   providerLoginUsesDeviceAuthByDefault,
+  resolveEngine,
 } from "../src/lib/engine-mode.ts";
 
 // HOU-546: the control-plane adapter reads window.__HOUSTON_CP__ at construction.
@@ -240,5 +241,128 @@ describe("hostedGateState (HOU-611)", () => {
 
   it("is ready when signed in and the engine is bootstrapped", () => {
     strictEqual(hostedGateState(base), "ready");
+  });
+});
+
+// HOU-621: the runtime local-vs-remote chooser. Build-baked targets win and skip
+// the chooser; the chooser only exists in the TS-engine build (VITE_NEW_ENGINE
+// truthy, where vite aliases the v3 adapter). A plain Rust build ignores any
+// stored choice and stays on its sidecar.
+describe("resolveEngine (HOU-621)", () => {
+  it("uses the baked static host when VITE_NEW_ENGINE_URL is set", () => {
+    deepStrictEqual(
+      resolveEngine(
+        { VITE_NEW_ENGINE_URL: "https://host.example" },
+        null,
+        true,
+      ),
+      { kind: "static-host", url: "https://host.example" },
+    );
+  });
+
+  it("uses hosted OAuth when a hosted URL is set (managed-cloud default)", () => {
+    deepStrictEqual(
+      resolveEngine(
+        { VITE_HOSTED_ENGINE_URL: "https://cloud.example" },
+        null,
+        true,
+      ),
+      { kind: "hosted-oauth", url: "https://cloud.example" },
+    );
+  });
+
+  it("uses hosted static when the hosted URL has OAuth toggled off", () => {
+    deepStrictEqual(
+      resolveEngine(
+        {
+          VITE_HOSTED_ENGINE_URL: "https://cloud.example",
+          VITE_HOSTED_ENGINE_AUTH: "static",
+        },
+        null,
+        true,
+      ),
+      { kind: "hosted-static", url: "https://cloud.example" },
+    );
+  });
+
+  it("is pending in a TS-engine DESKTOP build with no choice yet (shows the chooser)", () => {
+    deepStrictEqual(resolveEngine({ VITE_NEW_ENGINE: "1" }, null, true), {
+      kind: "pending",
+    });
+    deepStrictEqual(resolveEngine({ VITE_NEW_ENGINE: "true" }, null, true), {
+      kind: "pending",
+    });
+  });
+
+  it("uses the sidecar for the runtime `local` choice", () => {
+    deepStrictEqual(
+      resolveEngine({ VITE_NEW_ENGINE: "1" }, { mode: "local" }, true),
+      { kind: "sidecar" },
+    );
+  });
+
+  it("uses hosted OAuth at the entered URL for the runtime `remote` choice", () => {
+    deepStrictEqual(
+      resolveEngine(
+        { VITE_NEW_ENGINE: "1" },
+        { mode: "remote", url: "https://remote.example" },
+        true,
+      ),
+      { kind: "hosted-oauth", url: "https://remote.example" },
+    );
+  });
+
+  it("never goes pending in a browser (packages/web) TS-engine build", () => {
+    // The web build runs VITE_NEW_ENGINE=1 with no baked URL and injects
+    // window.__HOUSTON_ENGINE__ itself; a `pending` here would hang the web app
+    // and the whole Playwright suite (engine.ts is shared). isTauri=false yields
+    // `sidecar` so resolveConfig adopts the injected config.
+    deepStrictEqual(resolveEngine({ VITE_NEW_ENGINE: "1" }, null, false), {
+      kind: "sidecar",
+    });
+    deepStrictEqual(
+      resolveEngine(
+        { VITE_NEW_ENGINE: "1" },
+        { mode: "remote", url: "https://remote.example" },
+        false,
+      ),
+      { kind: "sidecar" },
+    );
+  });
+
+  it("stays on the Rust sidecar for the default build, ignoring any stored choice", () => {
+    deepStrictEqual(resolveEngine({}, null, true), { kind: "sidecar" });
+    // A stale choice from a prior TS-engine build must NOT be honoured without
+    // the v3 adapter alias: there is no v3 client to point at the remote URL.
+    deepStrictEqual(
+      resolveEngine(
+        {},
+        { mode: "remote", url: "https://remote.example" },
+        true,
+      ),
+      { kind: "sidecar" },
+    );
+  });
+
+  it("lets a baked URL win over the runtime chooser (build target is authoritative)", () => {
+    deepStrictEqual(
+      resolveEngine(
+        { VITE_NEW_ENGINE: "1", VITE_NEW_ENGINE_URL: "https://host.example" },
+        { mode: "remote", url: "https://remote.example" },
+        true,
+      ),
+      { kind: "static-host", url: "https://host.example" },
+    );
+    deepStrictEqual(
+      resolveEngine(
+        {
+          VITE_NEW_ENGINE: "1",
+          VITE_HOSTED_ENGINE_URL: "https://cloud.example",
+        },
+        { mode: "remote", url: "https://remote.example" },
+        true,
+      ),
+      { kind: "hosted-oauth", url: "https://cloud.example" },
+    );
   });
 });

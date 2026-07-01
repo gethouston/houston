@@ -18,15 +18,27 @@ type Provider = "google";
 
 /**
  * Full-screen sign-in overlay. Rendered by App.tsx when Supabase is
- * configured but no session is present. Keeps copy product-benefit-focused
- * — the audience is non-technical, so no mention of OAuth / tokens / APIs.
+ * configured but no session is present (the local account login), and by the
+ * cloud engine gate (HostedEngineGate) for the remote-connection login. Keeps
+ * copy product-benefit-focused — the audience is non-technical, so no mention
+ * of OAuth / tokens / APIs.
+ *
+ * `allowManualCallback` (HOU-621) surfaces the paste-the-code fallback. The
+ * cloud/remote gate passes it always (the connecting build may not own the
+ * `houston://` scheme and can't receive the deep-link callback); the local
+ * account login passes it only in dev builds (#146: a dev callback opens the
+ * installed prod app), so production standalone shows no manual step.
  *
  * Re-click semantics: the loading spinner is only on while the system
  * browser is being opened (a few ms). After that, the user is free to
  * click any provider again — useful when they land on the wrong browser
  * profile and need to retry. The PKCE flow is regenerated each click.
  */
-export function SignInScreen() {
+export function SignInScreen({
+  allowManualCallback = false,
+}: {
+  allowManualCallback?: boolean;
+}) {
   const [pending, setPending] = useState<Provider | null>(null);
   const [error, setError] = useState<string | null>(null);
   // "Send logs to support" affordance — for non-technical alpha users
@@ -162,13 +174,15 @@ export function SignInScreen() {
           )}
         </div>
 
-        {/* Dev-only manual sign-in completion. The `houston://auth-callback`
-         * deep link routes to the INSTALLED production app (shared scheme +
-         * bundle id), so a `pnpm start` dev build never receives the callback
-         * and stalls on this screen. Paste the code (or the full callback URL)
-         * the browser landed on to finish the PKCE exchange locally. Statically
-         * stripped from production by the `import.meta.env.DEV` guard. */}
-        {import.meta.env.DEV && isTauri() && (
+        {/* Manual sign-in completion for the cloud/remote flow (HOU-621). The
+         * `houston://auth-callback` deep link routes to the INSTALLED app that
+         * owns the `houston` scheme, which is not necessarily the build that is
+         * pointed at the remote engine (e.g. a `pnpm start` dev build alongside
+         * the installed production app). Paste the code (or the full callback
+         * URL) the browser landed on to finish the PKCE exchange locally. Only
+         * rendered when the caller opts in via `allowManualCallback` — the local
+         * standalone flow never shows it. */}
+        {allowManualCallback && isTauri() && (
           <form
             onSubmit={(e) => void handleDevPaste(e)}
             className="mt-2 w-full flex flex-col gap-2 border-t border-border pt-4"

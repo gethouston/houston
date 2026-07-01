@@ -1,8 +1,10 @@
 /** Engine client bootstrap for the Houston desktop app. */
 
 import { EngineWebSocket, HoustonClient } from "@houston-ai/engine-client";
+import { isTauri } from "@tauri-apps/api/core";
+import { getEngineConnection } from "./engine-connection";
 import { pullEngineHandshakeWithRetry } from "./engine-handshake";
-import { controlPlaneBuild, hostedOauthLoginActive } from "./engine-mode";
+import { controlPlaneBuild, resolveEngine } from "./engine-mode";
 import { installRustEngineLifecycleListeners } from "./engine-tauri-events";
 
 declare global {
@@ -23,29 +25,49 @@ declare global {
  * a downgrade is just "don't set the flag".
  */
 const _env = import.meta.env as Record<string, string | undefined>;
-const STATIC_HOST_URL: string | undefined =
-  _env.VITE_NEW_ENGINE_URL || undefined;
-const HOSTED_ENGINE_URL: string | undefined =
-  _env.VITE_HOSTED_ENGINE_URL || undefined;
 const HOST_TOKEN: string =
   _env.VITE_HOSTED_ENGINE_TOKEN ??
   _env.VITE_NEW_ENGINE_TOKEN ??
   _env.VITE_HOUSTON_ENGINE_TOKEN ??
   "";
-const REMOTE_HOST_MODE = Boolean(STATIC_HOST_URL || HOSTED_ENGINE_URL);
 
-// Hosted-gateway auth method (`VITE_HOSTED_ENGINE_AUTH`). OAuth gates the app
-// behind the Supabase Google-login screen and feeds the session token in via
-// setHostedEngineSessionToken; static points straight at the hosted URL with the
-// build's HOST_TOKEN (no login — for service-token smoke tests against e.g. the
-// local kind gateway). Defaults to OAuth whenever a hosted URL is set, so the
-// documented "VITE_HOSTED_ENGINE_URL ⇒ Supabase login" contract is unchanged.
-const HOSTED_OAUTH = hostedOauthLoginActive(
+// Fold the build-time engine env flags together with the user's runtime
+// local-vs-remote choice (HOU-621). The choice is read synchronously here at
+// module load — before any HoustonClient is constructed — so applying a new one
+// reloads the webview to re-run this module deterministically (the same
+// "set before any client is built" invariant HOU-546 relies on below).
+const RESOLVED = resolveEngine(
   (import.meta.env ?? {}) as unknown as {
+    VITE_NEW_ENGINE_URL?: string;
     VITE_HOSTED_ENGINE_URL?: string;
     VITE_HOSTED_ENGINE_AUTH?: string;
+    VITE_NEW_ENGINE?: string;
   },
+  getEngineConnection(),
+  // Desktop-only chooser. In a browser (packages/web) isTauri() is false, so the
+  // TS-engine web build stays on the injected-config path instead of a chooser
+  // that never renders — see resolveEngine + the packages/web new-engine entry.
+  isTauri(),
 );
+
+// A TS-engine build still awaiting the user's connection choice: engine.ts stays
+// inert (no client, no sidecar handshake) while <ConnectionGate> shows the
+// chooser. Picking an option persists it and reloads, re-running this module.
+const PENDING = RESOLVED.kind === "pending";
+const STATIC_HOST_URL: string | undefined =
+  RESOLVED.kind === "static-host" ? RESOLVED.url : undefined;
+// Hosted gateway URL, from either VITE_HOSTED_ENGINE_URL or a runtime `remote`
+// choice. OAuth (the default / every runtime remote) gates the app behind the
+// Supabase Google-login screen and feeds the session token in via
+// setHostedEngineSessionToken, so the gateway only ever sees a verified user
+// JWT. `hosted-static` points straight at the URL with the build's HOST_TOKEN
+// (no login — for service-token smoke tests against e.g. the local kind gateway).
+const HOSTED_ENGINE_URL: string | undefined =
+  RESOLVED.kind === "hosted-oauth" || RESOLVED.kind === "hosted-static"
+    ? RESOLVED.url
+    : undefined;
+const HOSTED_OAUTH = RESOLVED.kind === "hosted-oauth";
+const REMOTE_HOST_MODE = Boolean(STATIC_HOST_URL || HOSTED_ENGINE_URL);
 
 // When the new-engine adapter is aliased in (VITE_NEW_ENGINE or
 // VITE_NEW_ENGINE_URL — see app/vite.config.ts `useHost`), the desktop ALWAYS
@@ -72,15 +94,20 @@ if (NEW_ENGINE && typeof window !== "undefined") {
 }
 
 function resolveConfig(): { baseUrl: string; token: string } | null {
+  // Awaiting the runtime connection choice — build nothing until the reload.
+  if (PENDING) return null;
   // Host mode wins: point at the v3 host, overriding the Tauri-injected Rust
   // engine handshake.
   if (STATIC_HOST_URL) return { baseUrl: STATIC_HOST_URL, token: HOST_TOKEN };
-  // Hosted gateway with OAuth disabled: behave exactly like STATIC_HOST_URL —
-  // point at the gateway with the static bearer immediately. (OAuth-enabled
-  // hosted mode instead leaves the client unbuilt here and waits for the Supabase
-  // session token via setHostedEngineSessionToken, so the gateway only ever sees
-  // a verified user JWT.)
-  if (HOSTED_ENGINE_URL && !HOSTED_OAUTH) {
+  // Hosted OAuth (a managed gateway, OR the runtime `remote` choice): the client
+  // is built ONLY from the Supabase session token via setHostedEngineSessionToken.
+  // Return null here even though the TS-engine chooser build has a Tauri-spawned
+  // sidecar injecting window.__HOUSTON_ENGINE__ (lib.rs) — adopting that would
+  // wrongly point the remote connection at the local sidecar.
+  if (HOSTED_OAUTH) return null;
+  // Hosted gateway with OAuth disabled: point at the gateway with the static
+  // bearer immediately, exactly like STATIC_HOST_URL.
+  if (HOSTED_ENGINE_URL) {
     return { baseUrl: HOSTED_ENGINE_URL, token: HOST_TOKEN };
   }
   if (typeof window !== "undefined" && window.__HOUSTON_ENGINE__) {
@@ -119,6 +146,26 @@ export function hostedOauthGateActive(): boolean {
   return HOSTED_OAUTH;
 }
 
+/**
+ * True while a TS-engine build is waiting for the user's local-vs-remote pick
+ * (HOU-621). `<ConnectionGate>` shows the chooser instead of the engine gates
+ * until a choice is persisted (which then reloads the webview).
+ */
+export function isConnectionPending(): boolean {
+  return PENDING;
+}
+
+/**
+ * True when the active engine is NOT co-located with this client — a baked host
+ * URL, a hosted gateway, OR the runtime `remote` choice (HOU-621). Callers that
+ * decide OAuth loopback-vs-device-code topology must consult this: the runtime's
+ * localhost callback lives on the remote host, so provider login has to use the
+ * device-code flow. See `providerLoginUsesDeviceAuthByDefault` + `tauri.ts`.
+ */
+export function isRemoteEngine(): boolean {
+  return REMOTE_HOST_MODE;
+}
+
 /** Updates the hosted engine bearer token from the current Supabase session. */
 export function setHostedEngineSessionToken(token: string | null): void {
   if (!HOSTED_ENGINE_URL || typeof window === "undefined") return;
@@ -145,7 +192,8 @@ if (initial) {
 }
 
 // Host mode supplies the config from the env, so skip the Tauri/Rust handshake.
-if (!_client && !REMOTE_HOST_MODE) {
+// PENDING builds stay inert until the chooser reload.
+if (!_client && !REMOTE_HOST_MODE && !PENDING) {
   pullEngineHandshakeWithRetry({
     hasClient: () => _client !== null,
     applyConfig,
@@ -222,7 +270,7 @@ function notifyEngineRestarted() {
   }
 }
 
-if (!REMOTE_HOST_MODE) {
+if (!REMOTE_HOST_MODE && !PENDING) {
   installRustEngineLifecycleListeners({
     hasClient: () => _client !== null,
     applyConfig,

@@ -3,6 +3,10 @@ import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { analytics } from "./analytics";
 import { toCallbackUrl } from "./auth-callback";
+import {
+  clearEngineConnection,
+  getEngineConnection,
+} from "./engine-connection";
 import { logger } from "./logger";
 import { queryClient } from "./query-client";
 import { isAuthConfigured, supabase } from "./supabase";
@@ -134,6 +138,13 @@ export async function signOut(): Promise<void> {
   }
   analytics.track("user_signed_out");
   analytics.reset();
+  // Signing out returns the user to the connection chooser (HOU-621): forget the
+  // runtime engine choice and reload so <ConnectionGate> re-prompts. Only reloads
+  // when a choice was actually stored, so the Rust default build and build-baked
+  // host builds (which never store one) keep their exact sign-out behaviour.
+  const hadConnection = getEngineConnection() !== null;
+  clearEngineConnection();
+  if (hadConnection && typeof window !== "undefined") window.location.reload();
 }
 
 let deepLinkInstalled = false;

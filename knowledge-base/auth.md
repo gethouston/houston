@@ -94,6 +94,47 @@ To exercise the real Google-login flow against the `gethouston/cloud` kind POC
 3. `pnpm tauri dev` in `app/` → **Continue with Google** → the verified session
    token reaches the gateway, which provisions your per-user pod.
 
+## Runtime engine-connection chooser (HOU-621)
+
+The hosted mode above is baked at **build** time. HOU-621 adds a **runtime** pick
+for the TS-engine build so one binary can go either way. It only appears in the
+TS-engine build (`VITE_NEW_ENGINE=1`, the build where `vite.config.ts`'s `useHost`
+aliases the v3 adapter) **and** when no URL is baked (`VITE_HOSTED_ENGINE_URL` /
+`VITE_NEW_ENGINE_URL` still win and skip the chooser). The plain Rust build (no
+flags) never sees it — `resolveEngine` returns `sidecar` and `ConnectionGate` is a
+passthrough.
+
+Flow (`app/src/components/auth/connection-chooser.tsx`, gated by
+`ConnectionGate` above `EngineGate` in `main.tsx`):
+
+- **Use this computer** → persists `{mode:"local"}` → runs the Tauri host sidecar
+  (the normal handshake). Account sign-in is the standard `SignInScreen`; the
+  manual-paste box shows only in **dev** builds (the #146 deep-link-collision
+  fallback), never in production standalone.
+- **Connect to a remote engine** → prompts for a URL (`normalizeEngineUrl`
+  accepts a bare host and prepends `https://`, e.g. `engine.example.com`) →
+  persists `{mode:"remote", url}` → reload → treated exactly like an
+  OAuth-hosted gateway: `HostedEngineGate` + `SignInScreen` **with** the
+  paste-the-code fallback (`allowManualCallback`), and the Supabase session token
+  becomes the gateway bearer. The allowlist is enforced server-side (the gateway
+  401s a non-allowlisted JWT). Because the runtime lives on the gateway,
+  `isRemoteEngine()` forces provider (Codex/OpenAI) OAuth onto the **device-code**
+  flow — a browser loopback callback would land on the remote host, not the
+  user's machine.
+
+The choice lives in `localStorage` (`houston.engineConnection`,
+`app/src/lib/engine-connection.ts`) and is read **synchronously** at
+`engine.ts` module load — so applying one reloads the webview to re-run that
+module deterministically (the HOU-546 "engine mode is a build-time constant"
+invariant). Because the TS-engine build's Tauri shell still spawns a local
+sidecar (`lib.rs` `host_mode` only checks the URL envs) and `window.eval`-injects
+`window.__HOUSTON_ENGINE__`, `resolveConfig()` returns `null` for the remote
+(`HOSTED_OAUTH`) path so the remote client is built **only** from the session
+token and never adopts the idle local sidecar.
+
+**Sign out returns to the chooser**: `signOut()` clears the stored choice and
+reloads (only when a choice existed, so the Rust build is unaffected).
+
 ## Keychain boundary
 
 | Piece | Where |
