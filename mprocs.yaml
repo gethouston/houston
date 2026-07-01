@@ -1,0 +1,5 @@
+procs:
+  host:
+    shell: pnpm dev:host
+  app:
+    shell: pnpm dev:app
