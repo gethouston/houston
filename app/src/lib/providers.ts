@@ -160,11 +160,12 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         // Sonnet 5 accepts the full effort range, INCLUDING `xhigh` (unlike
         // Sonnet 4.6, which has `max` but not `xhigh`). API default is `high`.
         effortLevels: ["low", "medium", "high", "xhigh", "max"],
-        // Same window story as Sonnet 4.6: Claude Code starts at 200k on every
-        // plan and the 1M window is opt-in via usage credits, so start at 200k
-        // and snap to 1M once observed usage proves the larger window is active.
-        contextWindow: 200_000,
-        contextWindowMax: 1_000_000,
+        // Unlike Sonnet 4.6 (whose 1M is a credit-gated opt-in over a 200k
+        // default), Sonnet 5's 1M window is the default AND the only variant:
+        // per Anthropic, "1M tokens is both the default and the maximum; there
+        // is no smaller context variant," and it's the Claude Code default on
+        // Pro and up. So a flat 1M denominator with no snap-up, like Opus 4.8.
+        contextWindow: 1_000_000,
       },
       {
         id: "claude-sonnet-4-6",
@@ -192,10 +193,15 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         // it can't self-correct downward, so the dialog flags it as estimated.
         contextWindow: 1_000_000,
       },
-      // Fable 5 (`claude-fable-5`) is intentionally absent from the picker for
-      // now — pulled per HOU-476. Engine support and its `modelDescriptions`
-      // copy in the chat locales are retained so re-adding a ModelOption here
-      // (full effort range, 1M window, 2x Opus 4.8 credits) re-enables it.
+      {
+        id: "claude-fable-5",
+        label: "Fable 5",
+        description: "Most capable model. Costs 2x more credits than Opus 4.8.",
+        // Fable 5: full range like Opus 4.8. ultracode is a harness mode, not
+        // an effort level — it is intentionally excluded for this model.
+        effortLevels: ["low", "medium", "high", "xhigh", "max"],
+        contextWindow: 1_000_000,
+      },
       {
         id: "claude-opus-4-7",
         label: "Opus 4.7",

@@ -293,6 +293,7 @@ shows only the levels the active model accepts.
 
 | Provider | Model | Effort levels offered | CLI flag |
 |---|---|---|---|
+| `anthropic` | `claude-fable-5` (Fable 5) | low, medium, high, xhigh, max | `--effort <v>` |
 | `anthropic` | `claude-opus-4-8` (Opus 4.8) | low, medium, high, xhigh, max | `--effort <v>` |
 | `anthropic` | `claude-opus-4-7` (Opus 4.7) | low, medium, high, xhigh, max | `--effort <v>` |
 | `anthropic` | `claude-sonnet-5` (Sonnet 5) | low, medium, high, xhigh, max | `--effort <v>` |
