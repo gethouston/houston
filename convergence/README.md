@@ -103,12 +103,17 @@ points at the gateway with a static bearer for service-token smoke tests) — se
 ## Host-sidecar release CI
 
 The Rust `release.yml` pipeline is untouched — it still builds the Rust engine on
-a `v*` tag. The host-sidecar builds live in a SEPARATE, committed workflow,
-`.github/workflows/host-sidecar-release.yml`, so they can never perturb the
-releasable Rust path. It fires only off the critical path: a manual
+a `v*` tag. The host-sidecar release builds live in a SEPARATE, committed
+workflow, `.github/workflows/host-sidecar-release.yml`, so they can never perturb
+the releasable Rust path. It fires only off the critical path: a manual
 `workflow_dispatch` or a `host-v*` tag push (NOT `v*`), producing a draft release
-tagged `host-v<version>` (distinct namespace, no artifact collision). The workflow
-is committed (`.github/workflows/host-sidecar-release.yml`).
+tagged `host-v<version>` (distinct namespace, no artifact collision).
+
+For QA artifact pulls that should NOT create a release, use
+`.github/workflows/ts-engine-desktop-artifacts.yml`. It is manual-only,
+builds the same host-sidecar desktop path for macOS universal, Windows x64/arm64,
+and Linux x64, and uploads GitHub Actions artifacts (DMG/tar/sig, MSI/sig,
+AppImage, and `.deb`) without touching any release draft.
 
 Three platform jobs, all bun-compiling the host via the one parameterized
 `scripts/build-host-sidecar.sh <triple>` (no second compile path to drift):

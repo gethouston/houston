@@ -1,0 +1,180 @@
+# Manual artifact builder for the convergence target desktop app: Tauri shell +
+# Bun-compiled TypeScript Houston host sidecar (`--features host-sidecar`) + pi.
+# Uploads Actions artifacts only. Does not create or mutate GitHub Releases.
+
+name: TS Engine Desktop Artifacts
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ts-engine-desktop-artifacts-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  BUN_VERSION: "1.3.14"
+
+jobs:
+  prep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      short_sha: ${{ steps.version.outputs.short_sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve artifact version
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION="$(jq -r .version app/package.json)"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          echo "Artifacts will be named for Houston v$VERSION ($SHORT_SHA)."
+
+  build-macos-ts-engine:
+    needs: prep
+    runs-on: macos-latest
+    timeout-minutes: 75
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Write Apple API key to disk
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APPLE_API_KEY_CONTENT }}" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPLE_API_KEY }}.p8
+
+      - name: Build macOS universal artifact
+        uses: ./.github/actions/build-ts-engine-desktop-artifact
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_NEW_ENGINE: "1"
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_PATH: ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPLE_API_KEY }}.p8
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SIGN_MACOS: "true"
+        with:
+          rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+          cache-key: ${{ runner.os }}-cargo-ts-engine-desktop-${{ hashFiles('**/Cargo.lock') }}
+          restore-key: ${{ runner.os }}-cargo-ts-engine-desktop-
+          bun-version: ${{ env.BUN_VERSION }}
+          tauri-args: --target universal-apple-darwin --features host-sidecar
+          artifact-name: houston-ts-engine-macos-universal-${{ needs.prep.outputs.version }}-${{ needs.prep.outputs.short_sha }}
+          artifact-path: artifacts/macos-universal/*
+          prepare-command: bash scripts/ci/prepare-ts-engine-macos-artifact.sh
+          compile-command: |
+            scripts/build-host-sidecar.sh aarch64-apple-darwin
+            scripts/build-host-sidecar.sh x86_64-apple-darwin
+            mkdir -p app/src-tauri/binaries
+            lipo -create \
+              target/host-sidecar/houston-host-aarch64-apple-darwin \
+              target/host-sidecar/houston-host-x86_64-apple-darwin \
+              -output app/src-tauri/binaries/houston-engine-universal-apple-darwin
+            chmod +x app/src-tauri/binaries/houston-engine-universal-apple-darwin
+            lipo -info app/src-tauri/binaries/houston-engine-universal-apple-darwin
+
+  build-windows-ts-engine:
+    needs: prep
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            artifact_suffix: x64
+            runner: windows-latest
+          - target: aarch64-pc-windows-msvc
+            artifact_suffix: arm64
+            runner: windows-11-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Build Windows ${{ matrix.artifact_suffix }} artifact
+        uses: ./.github/actions/build-ts-engine-desktop-artifact
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_NEW_ENGINE: "1"
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        with:
+          rust-targets: ${{ matrix.target }}
+          cache-key: ${{ runner.os }}-cargo-ts-engine-desktop-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-key: ${{ runner.os }}-cargo-ts-engine-desktop-${{ matrix.target }}-
+          bun-version: ${{ env.BUN_VERSION }}
+          compile-command: scripts/build-host-sidecar.sh ${{ matrix.target }} --verify
+          tauri-args: --target ${{ matrix.target }} --features host-sidecar
+          prepare-command: bash scripts/ci/prepare-ts-engine-windows-artifact.sh ${{ matrix.target }} ${{ matrix.artifact_suffix }}
+          artifact-name: houston-ts-engine-windows-${{ matrix.artifact_suffix }}-${{ needs.prep.outputs.version }}-${{ needs.prep.outputs.short_sha }}
+          artifact-path: artifacts/windows-${{ matrix.artifact_suffix }}/*
+
+  build-linux-ts-engine:
+    needs: prep
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install Tauri Linux system dependencies
+        run: bash scripts/ci/install-tauri-linux-deps.sh
+
+      - name: Build Linux x64 artifact
+        uses: ./.github/actions/build-ts-engine-desktop-artifact
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_NEW_ENGINE: "1"
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        with:
+          rust-targets: x86_64-unknown-linux-gnu
+          cache-key: ${{ runner.os }}-cargo-ts-engine-desktop-linux-${{ hashFiles('**/Cargo.lock') }}
+          restore-key: ${{ runner.os }}-cargo-ts-engine-desktop-linux-
+          bun-version: ${{ env.BUN_VERSION }}
+          compile-command: scripts/build-host-sidecar.sh x86_64-unknown-linux-gnu --verify
+          tauri-args: --target x86_64-unknown-linux-gnu --bundles deb,appimage --features host-sidecar
+          prepare-command: bash scripts/ci/prepare-ts-engine-linux-artifact.sh x86_64-unknown-linux-gnu x64
+          artifact-name: houston-ts-engine-linux-x64-${{ needs.prep.outputs.version }}-${{ needs.prep.outputs.short_sha }}
+          artifact-path: artifacts/linux-x64/*

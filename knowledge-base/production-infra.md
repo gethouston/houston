@@ -244,6 +244,15 @@ CI also needs as Secrets:
 - **Duration:** ~25-30 min wall-clock (mac + win run in parallel; mac is the long pole at ~25 min including Apple notarization).
 - **Draft = QA gate.** Users don't see until published on GitHub.
 
+New TypeScript-engine desktop artifacts use a separate manual workflow,
+`.github/workflows/ts-engine-desktop-artifacts.yml`. It builds the Tauri app with
+`VITE_NEW_ENGINE=1` and `--features host-sidecar`, Bun-compiles
+`packages/host/src/sidecar-entry.ts` through `scripts/build-host-sidecar.sh`, and
+uploads macOS universal, Windows x64/arm64, and Linux x64 installers as GitHub
+Actions artifacts instead of creating a release. Use it for QA builds of the
+convergence target. The draft-release host-sidecar channel remains
+`.github/workflows/host-sidecar-release.yml` (`host-v*`).
+
 ### Job graph
 ```
 prep (ubuntu, ~30s)               creates empty draft + release-notes.md artifact
