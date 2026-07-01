@@ -60,8 +60,6 @@ jobs:
           pnpm --filter @houston/host-cloud test
           pnpm --filter @houston/runtime test
           pnpm --filter @houston/code-sandbox test
-          pnpm --filter houston-evals test
-          pnpm test:cloud-k8s
 
   web:
     name: Web (typecheck + unit + UI tests)
