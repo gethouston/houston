@@ -187,7 +187,13 @@
     "noApps": "Nenhum aplicativo conectado ainda.",
     "disconnect": "Desconectar",
     "addApps": "Adicionar aplicativos",
-    "statusPending": "aguardando aprovação",
-    "statusError": "precisa reconectar"
+    "connect": "Conectar",
+    "reconnect": "Reconectar",
+    "finishInBrowser": "Termine de conectar no seu navegador...",
+    "searchApps": "Buscar aplicativos...",
+    "searchHint": "Busque para explorar os {{count}} aplicativos.",
+    "noResults": "Nenhum aplicativo encontrado para \"{{query}}\".",
+    "statusConnected": "Conectado",
+    "statusError": "Precisa reconectar"
   }
 }

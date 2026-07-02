@@ -187,7 +187,13 @@
     "noApps": "Aún no hay aplicaciones conectadas.",
     "disconnect": "Desconectar",
     "addApps": "Agregar aplicaciones",
-    "statusPending": "esperando aprobación",
-    "statusError": "necesita reconexión"
+    "connect": "Conectar",
+    "reconnect": "Reconectar",
+    "finishInBrowser": "Termina de conectar en tu navegador...",
+    "searchApps": "Buscar aplicaciones...",
+    "searchHint": "Busca para explorar las {{count}} aplicaciones.",
+    "noResults": "No se encontraron aplicaciones para \"{{query}}\".",
+    "statusConnected": "Conectada",
+    "statusError": "Necesita reconexión"
   }
 }

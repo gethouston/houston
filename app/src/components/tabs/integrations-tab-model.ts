@@ -1,4 +1,7 @@
-import type { IntegrationConnection } from "@houston-ai/engine-client";
+import type {
+  IntegrationConnection,
+  IntegrationToolkit,
+} from "@houston-ai/engine-client";
 
 /**
  * The integrations provider (platform mode): Houston holds the platform key
@@ -12,8 +15,8 @@ export const POLL_INTERVAL_MS = 2000;
 export const POLL_MAX_ATTEMPTS = 150; // ~5 min at 2s/attempt.
 
 /**
- * A short list of common apps for one-click connect. Connecting opens the
- * app's own OAuth consent (Composio hosts the dance; the user never sees it).
+ * Popular apps, pinned in this order when the user is not searching.
+ * Connecting opens the app's own OAuth consent (Composio hosts the dance).
  */
 export const COMMON_TOOLKITS = [
   "gmail",
@@ -24,6 +27,45 @@ export const COMMON_TOOLKITS = [
   "github",
   "linear",
 ] as const;
+
+/** How many search results to render (the catalog holds ~1000 apps). */
+export const SEARCH_RESULT_LIMIT = 24;
+
+/**
+ * The "Add apps" list: not searching → the pinned popular apps (in
+ * COMMON_TOOLKITS order); searching → case-insensitive name/slug matches,
+ * name-prefix hits first, capped. Already-connected apps never appear.
+ * Pure so both behaviors are unit-testable.
+ */
+export function filterCatalog(opts: {
+  catalog: IntegrationToolkit[];
+  query: string;
+  connected: ReadonlySet<string>;
+  popular?: readonly string[];
+  limit?: number;
+}): IntegrationToolkit[] {
+  const popular = opts.popular ?? COMMON_TOOLKITS;
+  const limit = opts.limit ?? SEARCH_RESULT_LIMIT;
+  const available = opts.catalog.filter((t) => !opts.connected.has(t.slug));
+  const q = opts.query.trim().toLowerCase();
+
+  if (!q) {
+    const bySlug = new Map(available.map((t) => [t.slug, t]));
+    return popular
+      .map((slug) => bySlug.get(slug))
+      .filter((t): t is IntegrationToolkit => t !== undefined);
+  }
+
+  const matches = available.filter(
+    (t) => t.name.toLowerCase().includes(q) || t.slug.toLowerCase().includes(q),
+  );
+  matches.sort((a, b) => {
+    const aPrefix = a.name.toLowerCase().startsWith(q) ? 0 : 1;
+    const bPrefix = b.name.toLowerCase().startsWith(q) ? 0 : 1;
+    return aPrefix - bPrefix || a.name.localeCompare(b.name);
+  });
+  return matches.slice(0, limit);
+}
 
 /**
  * Outcome of the post-connect poll loop. `timeout` and `error` are first-class

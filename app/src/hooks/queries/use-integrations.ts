@@ -21,6 +21,20 @@ export function useIntegrationConnections(provider: string, enabled: boolean) {
 }
 
 /**
+ * The provider's app catalog (name, logo, description per toolkit). Big and
+ * near-static, so cache it for the session — the tab uses it to render real
+ * app cards instead of machine slugs.
+ */
+export function useIntegrationToolkits(provider: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.integrationToolkits(provider),
+    queryFn: () => tauriIntegrations.toolkits(provider),
+    enabled,
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
+/**
  * The mutations below intentionally carry no `onError`: their `mutationFn`
  * routes through `tauriIntegrations.*`, every one of which is wrapped by the
  * `call()` adapter in `lib/tauri.ts`. `call()` already shows the real error as a

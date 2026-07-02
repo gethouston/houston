@@ -63,11 +63,12 @@ export default function IntegrationsTab(_props: TabProps) {
           isCancelled: () => cancelled.current,
           intervalMs: POLL_INTERVAL_MS,
         });
-        if (outcome === "active") {
-          await qc.invalidateQueries({
-            queryKey: queryKeys.integrationConnections(INTEGRATION_PROVIDER),
-          });
-        } else if (outcome === "timeout") {
+        // Whatever happened, show the real state — a failed OAuth surfaces as
+        // an error row with a Reconnect action, not a silently missing app.
+        await qc.invalidateQueries({
+          queryKey: queryKeys.integrationConnections(INTEGRATION_PROVIDER),
+        });
+        if (outcome === "timeout") {
           showErrorToast(
             "integration_connect_timeout",
             t("integrations.connectTimeout"),

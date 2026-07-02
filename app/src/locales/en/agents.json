@@ -187,7 +187,13 @@
     "noApps": "No apps connected yet.",
     "disconnect": "Disconnect",
     "addApps": "Add apps",
-    "statusPending": "waiting for approval",
-    "statusError": "needs reconnecting"
+    "connect": "Connect",
+    "reconnect": "Reconnect",
+    "finishInBrowser": "Finish connecting in your browser...",
+    "searchApps": "Search apps...",
+    "searchHint": "Search to browse all {{count}} apps.",
+    "noResults": "No apps found for \"{{query}}\".",
+    "statusConnected": "Connected",
+    "statusError": "Needs reconnecting"
   }
 }

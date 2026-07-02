@@ -1,38 +1,56 @@
-import { cn } from "@houston-ai/core";
-import type { IntegrationConnection } from "@houston-ai/engine-client";
-import { RefreshCw } from "lucide-react";
+import type { IntegrationToolkit } from "@houston-ai/engine-client";
+import { Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useDisconnectIntegration,
   useIntegrationConnections,
+  useIntegrationToolkits,
 } from "../../hooks/queries";
-import {
-  COMMON_TOOLKITS,
-  INTEGRATION_PROVIDER,
-} from "./integrations-tab-model";
-
-const btn =
-  "inline-flex items-center gap-2 rounded-full border border-black/15 bg-background px-4 h-9 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50";
+import { AvailableAppRow, ConnectedAppRow } from "./integrations-app-card";
+import { filterCatalog, INTEGRATION_PROVIDER } from "./integrations-tab-model";
 
 interface Props {
-  /** Hand off an "add this app" click to the parent's surfaced-action runner. */
+  /** Hand off a connect/reconnect click to the parent's OAuth-poll runner. */
   onAddApp: (toolkit: string) => void;
-  /** Toolkit slug currently mid-OAuth (spinner on its button), if any. */
+  /** Toolkit slug currently mid-OAuth (spinner on its row), if any. */
   connectingToolkit?: string | null;
 }
 
-/** Connected apps + one-click add. Platform mode: no account header — the user
- *  has no provider account, only per-app connections. */
+/** Connected apps + a searchable catalog of connectable apps. Real names,
+ *  logos, and descriptions — never machine slugs. */
 export function IntegrationsConnections({
   onAddApp,
   connectingToolkit,
 }: Props) {
   const { t } = useTranslation("agents");
+  const [query, setQuery] = useState("");
   const connections = useIntegrationConnections(INTEGRATION_PROVIDER, true);
+  const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, true);
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
 
-  const items: IntegrationConnection[] = connections.data ?? [];
-  const connectedSlugs = new Set(items.map((c) => c.toolkit));
+  const items = connections.data ?? [];
+  const bySlug = useMemo(
+    () =>
+      new Map<string, IntegrationToolkit>(
+        (catalog.data ?? []).map((tk) => [tk.slug, tk]),
+      ),
+    [catalog.data],
+  );
+  const connectedSlugs = useMemo(
+    () => new Set(items.map((c) => c.toolkit)),
+    [items],
+  );
+  const available = useMemo(
+    () =>
+      filterCatalog({
+        catalog: catalog.data ?? [],
+        query,
+        connected: connectedSlugs,
+      }),
+    [catalog.data, query, connectedSlugs],
+  );
+  const searching = query.trim().length > 0;
 
   return (
     <>
@@ -49,31 +67,16 @@ export function IntegrationsConnections({
             {t("integrations.noApps")}
           </p>
         ) : (
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col gap-1.5">
             {items.map((c) => (
-              <li
+              <ConnectedAppRow
                 key={c.connectionId || c.toolkit}
-                className="flex items-center justify-between rounded-xl border border-black/5 px-3 py-2 text-sm"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="font-medium">{c.toolkit}</span>
-                  {c.status !== "active" && (
-                    <span className="text-xs text-muted-foreground">
-                      {c.status === "pending"
-                        ? t("integrations.statusPending")
-                        : t("integrations.statusError")}
-                    </span>
-                  )}
-                </span>
-                <button
-                  type="button"
-                  className="text-xs text-muted-foreground hover:text-destructive hover:underline disabled:opacity-50"
-                  onClick={() => disconnect.mutate(c.toolkit)}
-                  disabled={disconnect.isPending}
-                >
-                  {t("integrations.disconnect")}
-                </button>
-              </li>
+                connection={c}
+                toolkit={bySlug.get(c.toolkit)}
+                onReconnect={() => onAddApp(c.toolkit)}
+                onDisconnect={() => disconnect.mutate(c.toolkit)}
+                disconnecting={disconnect.isPending}
+              />
             ))}
           </ul>
         )}
@@ -81,22 +84,51 @@ export function IntegrationsConnections({
 
       <section className="flex flex-col gap-2">
         <h3 className="text-sm font-medium">{t("integrations.addApps")}</h3>
-        <div className="flex flex-wrap gap-2">
-          {COMMON_TOOLKITS.filter((tk) => !connectedSlugs.has(tk)).map((tk) => (
-            <button
-              key={tk}
-              type="button"
-              className={cn(btn, "h-8 px-3 text-xs")}
-              onClick={() => onAddApp(tk)}
-              disabled={connectingToolkit != null}
-            >
-              {connectingToolkit === tk && (
-                <RefreshCw className="h-3 w-3 animate-spin" />
-              )}
-              {tk}
-            </button>
-          ))}
-        </div>
+        <label className="flex h-9 items-center gap-2 rounded-full border border-black/15 bg-background px-3.5 shadow-sm focus-within:border-black/25">
+          <Search className="size-4 shrink-0 text-muted-foreground" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("integrations.searchApps")}
+            aria-label={t("integrations.searchApps")}
+            className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          />
+        </label>
+        {catalog.isLoading ? (
+          <p className="text-sm text-muted-foreground">
+            {t("integrations.loading")}
+          </p>
+        ) : available.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {searching
+              ? t("integrations.noResults", { query: query.trim() })
+              : t("integrations.noApps")}
+          </p>
+        ) : (
+          <>
+            <ul className="flex flex-col gap-1.5">
+              {available.map((tk) => (
+                <AvailableAppRow
+                  key={tk.slug}
+                  toolkit={tk}
+                  connecting={connectingToolkit === tk.slug}
+                  disabled={
+                    connectingToolkit != null && connectingToolkit !== tk.slug
+                  }
+                  onConnect={() => onAddApp(tk.slug)}
+                />
+              ))}
+            </ul>
+            {!searching && (catalog.data?.length ?? 0) > available.length && (
+              <p className="text-xs text-muted-foreground">
+                {t("integrations.searchHint", {
+                  count: catalog.data?.length ?? 0,
+                })}
+              </p>
+            )}
+          </>
+        )}
       </section>
     </>
   );
