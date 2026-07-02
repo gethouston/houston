@@ -55,7 +55,12 @@ function save(dir: string, conv: StoredConversation) {
   renameSync(tmp, f); // atomic swap; never leaves a half-written file
 }
 
-export function appendUserMessageAt(dir: string, id: string, content: string) {
+export function appendUserMessageAt(
+  dir: string,
+  id: string,
+  content: string,
+  author?: ChatMessage["author"],
+) {
   const now = Date.now();
   const conv: StoredConversation = loadConversation(dir, id) ?? {
     id,
@@ -64,7 +69,10 @@ export function appendUserMessageAt(dir: string, id: string, content: string) {
     updatedAt: now,
     messages: [],
   };
-  conv.messages.push({ role: "user", content, ts: now });
+  // Stamp the author (C5) only when a token identified one — a single-user /
+  // local turn omits the field entirely, keeping the stored record
+  // byte-identical to today.
+  conv.messages.push({ role: "user", content, ts: now, author });
   conv.updatedAt = now;
   save(dir, conv);
 }

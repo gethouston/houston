@@ -29,8 +29,12 @@ import {
 const dir = join(config.dataDir, "conversations");
 mkdirSync(dir, { recursive: true });
 
-export function appendUserMessage(id: string, content: string) {
-  appendUserMessageAt(dir, id, content);
+export function appendUserMessage(
+  id: string,
+  content: string,
+  author?: ChatMessage["author"],
+) {
+  appendUserMessageAt(dir, id, content, author);
 }
 
 export function appendAssistantMessage(
