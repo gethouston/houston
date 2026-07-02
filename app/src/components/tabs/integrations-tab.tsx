@@ -7,9 +7,11 @@ import {
   useIntegrationStatus,
   useIntegrationToolkits,
 } from "../../hooks/queries";
+import { useSession } from "../../hooks/use-session";
 import { signInWithGoogle } from "../../lib/auth";
 import { showErrorToast } from "../../lib/error-toast";
 import { queryKeys } from "../../lib/query-keys";
+import { isAuthConfigured } from "../../lib/supabase";
 import { tauriIntegrations, tauriSystem } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
 import { BrowseAppsSection } from "./browse-apps-section";
@@ -37,6 +39,7 @@ export default function IntegrationsTab(_props: TabProps) {
   const { t } = useTranslation("integrations");
   const qc = useQueryClient();
   const status = useIntegrationStatus();
+  const { data: session } = useSession();
   const composio = status.data?.find(
     (p) => p.provider === INTEGRATION_PROVIDER,
   );
@@ -56,6 +59,34 @@ export default function IntegrationsTab(_props: TabProps) {
       cancelled.current = true;
     };
   }, []);
+
+  // Production users are ALWAYS signed in (App.tsx gates the whole shell on
+  // it), so "host says signin while the app holds a session" is only the boot
+  // race: the session-token push is async. Re-push once and hold the loading
+  // state instead of flashing a sign-in card the user can't make sense of.
+  // Only after that settles without flipping ready is the card shown (a real,
+  // rare desync — signing in again fixes it).
+  const token = session?.access_token ?? null;
+  const [resynced, setResynced] = useState(false);
+  useEffect(() => {
+    if (!token || ready || resynced || status.isLoading || !composio) return;
+    let stale = false;
+    tauriIntegrations
+      .setSession(token)
+      .then(() =>
+        qc.invalidateQueries({ queryKey: queryKeys.integrationStatus() }),
+      )
+      .catch(() => {
+        // Surfaced by call(); the sign-in card below stays actionable.
+      })
+      .finally(() => {
+        if (!stale) setResynced(true);
+      });
+    return () => {
+      stale = true;
+    };
+  }, [token, ready, resynced, status.isLoading, composio, qc]);
+  const sessionSyncPending = !!token && !ready && !resynced;
 
   // Connect AND reconnect are the same hand-off: mint the hosted link, open
   // the browser, poll until active. Every engine call routes through `call()`
@@ -129,12 +160,19 @@ export default function IntegrationsTab(_props: TabProps) {
           </p>
         </div>
 
-        {status.isLoading ? (
+        {status.isLoading || sessionSyncPending ? (
           <LoadingState />
         ) : !composio ? (
           <UnavailableState />
         ) : !composio.ready ? (
-          <SigninState onSignIn={() => void signIn()} signingIn={signingIn} />
+          isAuthConfigured() ? (
+            <SigninState onSignIn={() => void signIn()} signingIn={signingIn} />
+          ) : (
+            // A build with no auth baked can never obtain the session the
+            // gateway needs — "sign in" would be a dead button, so say the
+            // honest thing instead.
+            <UnavailableState />
+          )
         ) : (
           <>
             {composio.reconnect && (
