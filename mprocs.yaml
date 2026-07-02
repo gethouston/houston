@@ -1,5 +1,8 @@
 procs:
   host:
-    shell: pnpm dev:host
+    # Source repo-root .env.local (gitignored) first so local dev secrets —
+    # e.g. COMPOSIO_API_KEY for direct-mode integrations — reach the host
+    # without living in a committed file or your shell profile.
+    shell: "set -a; [ -f .env.local ] && . ./.env.local; set +a; pnpm dev:host"
   app:
     shell: pnpm dev:app
