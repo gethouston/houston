@@ -38,7 +38,7 @@ Output: a DRAFT GitHub Release tagged `v<version>` with, per platform:
 | macOS | `Houston_<v>_universal.dmg` + `.app.tar.gz` + `.sig` | Developer ID, notarized, stapled |
 | Windows x64 | `Houston_<v>_x64_en-US.msi` + `.msi.sig` | updater-key only (no OS code-sign yet) |
 | Windows arm64 | `Houston_<v>_arm64_en-US.msi` + `.msi.sig` | updater-key only |
-| Linux x64 | `*.AppImage` + `*.deb` | unsigned |
+| Linux x64 | `*.AppImage` | unsigned |
 
 Download the macOS DMG from the draft release, then go to **"Run the gate"** below.
 

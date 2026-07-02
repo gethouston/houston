@@ -205,7 +205,7 @@ CI also needs as Secrets:
 - **Workflow:** `.github/workflows/release.yml`
 - **Trigger:** Push tag matching `v*`
 - **Engine:** builds the desktop app around the **bun-compiled Houston host sidecar** (the TS engine) via `--features host-sidecar` + `VITE_NEW_ENGINE=1` — NOT the legacy Rust `houston-engine`. No provider CLIs are bundled (pi runs providers in-process). The app's build DEFAULTS stay Rust (a plain `pnpm tauri build` still builds the Rust engine); only the release workflow passes the host-sidecar flags, so `engine/` remains the instant-rollback oracle until the gated final cutover (`convergence/final-cutover.md`).
-- **Output:** Draft GitHub Release w/ signed+notarized universal DMG + signed Windows MSI (x64 + arm64) + Linux AppImage + `.deb` + `latest.json`
+- **Output:** Draft GitHub Release w/ signed+notarized universal DMG + signed Windows MSI (x64 + arm64) + Linux AppImage + `latest.json`
 - **Duration:** ~25-30 min wall-clock (mac + win + linux run in parallel; mac is the long pole at ~25 min including Apple notarization).
 - **Draft = QA gate.** Users don't see until published on GitHub.
 
@@ -214,7 +214,7 @@ CI also needs as Secrets:
 prep (ubuntu, ~30s)               creates empty draft + release-notes.md artifact
   ├── build-macos (mac, ~25m)     bun-compiles host sidecar (both arches) → signs, notarizes, uploads DMG/tar/sig/latest.json
   ├── build-windows (win, ~15m)   bun-compiles host sidecar per arch → uploads MSI + .sig (x64 + arm64)
-  └── build-linux (ubuntu, ~15m)  bun-compiles host sidecar → uploads AppImage + .deb (download-only, not in latest.json)
+  └── build-linux (ubuntu, ~15m)  bun-compiles host sidecar → uploads AppImage (download-only, not in latest.json)
         └── finalize (ubuntu, ~30s) [needs mac + win] extends latest.json with windows entries, posts Slack
 ```
 Mac, Windows, and Linux run in parallel because they only need the empty draft `prep` creates, not each other's output. `finalize` stitches `latest.json` together (the macOS-only base from build-macos plus the Windows entries assembled from the MSI .sig in the draft) and posts the team Slack notification — it needs only mac + win, so a flaky new Linux leg never blocks the updater manifest or the mac/win artifacts already on the draft. Linux is UNSIGNED + download-only (no auto-update entry). Slack lives in `finalize` (not Windows) because it needs `release-notes.md` and the file is published as a workflow artifact by `prep`.

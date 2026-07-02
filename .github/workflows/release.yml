@@ -8,7 +8,7 @@
 # `--features host-sidecar` + `VITE_NEW_ENGINE=1` (the frontend aliases to the v3
 # host adapter). No provider CLIs are bundled — pi runs providers in-process — so
 # the codex/composio/git-bash staging the Rust path needed is gone. Ships macOS
-# (universal DMG) + Windows (x64/arm64 MSI) + Linux (x64 AppImage + .deb).
+# (universal DMG) + Windows (x64/arm64 MSI) + Linux (x64 AppImage).
 #
 # Signing chain (macOS):
 #   1. tauri-action builds, signs, notarizes, and staples the .app
@@ -1059,12 +1059,14 @@ jobs:
           echo "::warning::This MSI is UNSIGNED (code-signing wise) — Windows SmartScreen will warn on first install. The updater minisign signature above is separate; it covers in-app auto-update verification, not OS code-signing. SignPath integration lands in a follow-up PR."
 
   # ============================================================================
-  # Linux desktop build — x86_64 AppImage + .deb. Runs IN PARALLEL with the mac
-  # and Windows jobs, uploading into the same draft. NEW with the TS engine: the
+  # Linux desktop build — x86_64 AppImage. Runs IN PARALLEL with the mac and
+  # Windows jobs, uploading into the same draft. NEW with the TS engine: the
   # CLI-free host makes a Linux desktop build viable for the first time (the Rust
   # path bundled per-arch provider CLIs that never had Linux builds). The
-  # tauri.conf.json bundle.targets stay app/dmg/msi — Linux bundles are requested
-  # on the CLI via `--bundles deb,appimage`, so the default config is untouched.
+  # tauri.conf.json bundle.targets stay app/dmg/msi — the AppImage bundle is
+  # requested on the CLI via `--bundles appimage`, so the default config is
+  # untouched. (.deb intentionally not built — AppImage is the single Linux
+  # artifact; a .deb would need its own apt/repo + GPG story to be worth it.)
   #
   # UNSIGNED + NOT wired into the auto-updater (latest.json is macOS + Windows
   # only; `finalize` doesn't add a Linux entry). Download-only, for testing.
@@ -1144,11 +1146,11 @@ jobs:
           chmod +x "$SHIM_DIR/ldd"
           echo "$SHIM_DIR" >> "$GITHUB_PATH"
 
-      - name: Build Tauri app (Linux AppImage + deb)
+      - name: Build Tauri app (Linux AppImage)
         uses: tauri-apps/tauri-action@v0
         with:
           projectPath: app
-          args: --target x86_64-unknown-linux-gnu --features host-sidecar --bundles deb,appimage
+          args: --target x86_64-unknown-linux-gnu --features host-sidecar --bundles appimage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
@@ -1159,28 +1161,22 @@ jobs:
           LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
-      - name: Locate Linux artifacts
+      - name: Locate Linux artifact
         id: artifacts-linux
         run: |
           set -euo pipefail
           BUNDLE="target/x86_64-unknown-linux-gnu/release/bundle"
           APPIMAGE=$(ls -t "$BUNDLE/appimage/"*.AppImage 2>/dev/null | head -1 || true)
-          DEB=$(ls -t "$BUNDLE/deb/"*.deb 2>/dev/null | head -1 || true)
 
-          missing=()
-          [ -f "$APPIMAGE" ] || missing+=("AppImage")
-          [ -f "$DEB" ] || missing+=(".deb")
-          if [ ${#missing[@]} -gt 0 ]; then
-            echo "::error::Missing Linux build artifacts: ${missing[*]}"
+          if [ ! -f "$APPIMAGE" ]; then
+            echo "::error::Missing Linux build artifact: AppImage"
             ls -laR "$BUNDLE" 2>&1 | head -50 || true
             exit 1
           fi
 
           echo "appimage=$APPIMAGE" >> "$GITHUB_OUTPUT"
-          echo "deb=$DEB" >> "$GITHUB_OUTPUT"
-          echo "Artifacts:"
+          echo "Artifact:"
           echo "  AppImage: $APPIMAGE ($(du -sh "$APPIMAGE" | cut -f1))"
-          echo "  .deb:     $DEB ($(du -sh "$DEB" | cut -f1))"
 
       - name: Upload source maps + Rust debug symbols to Sentry (linux x64)
         if: ${{ env.SENTRY_AUTH_TOKEN != '' }}
@@ -1217,7 +1213,6 @@ jobs:
         run: |
           sha256sum \
             "${{ steps.artifacts-linux.outputs.appimage }}" \
-            "${{ steps.artifacts-linux.outputs.deb }}" \
             > checksums-linux-sha256.txt
           cat checksums-linux-sha256.txt
 
@@ -1227,11 +1222,10 @@ jobs:
         run: |
           gh release upload "$GITHUB_REF_NAME" \
             "${{ steps.artifacts-linux.outputs.appimage }}" \
-            "${{ steps.artifacts-linux.outputs.deb }}" \
             checksums-linux-sha256.txt \
             --clobber
 
-          echo "::notice::Linux artifacts uploaded to draft https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME"
+          echo "::notice::Linux AppImage uploaded to draft https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME"
 
   # ============================================================================
   # Stitch the parallel mac + win builds into one finished draft release.

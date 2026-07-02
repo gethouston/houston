@@ -134,11 +134,11 @@ The platform jobs all bun-compile the host via the one parameterized
   emitted), uploaded. None of the old codex/composio/git-bash CLI staging: pi runs
   providers in-process, so the host carries no CLIs.
 - **Linux** — NEW: the CLI-free host makes a Linux DESKTOP build viable for the
-  first time. x86_64 AppImage + `.deb` via tauri-action's `--bundles deb,appimage`
-  (passed on the CLI, so `tauri.conf.json`'s app/dmg/msi targets stay untouched),
-  uploaded to the draft (UNSIGNED, download-only — not in `latest.json`). The job
-  also boots the bare host binary (`--verify` → curls `/v1/capabilities`), which is
-  the same binary the `selfhost/` server runs.
+  first time. x86_64 AppImage via tauri-action's `--bundles appimage` (passed on
+  the CLI, so `tauri.conf.json`'s app/dmg/msi targets stay untouched), uploaded to
+  the draft (UNSIGNED, download-only — not in `latest.json`; `.deb` intentionally
+  not built). The job also boots the bare host binary (`--verify` → curls
+  `/v1/capabilities`), which is the same binary the `selfhost/` server runs.
 
 `build.rs::stage_host_sidecar` (the `host-sidecar` cargo feature) stages the
 compiled host at the SAME `binaries/houston-engine-<triple>` externalBin name the
