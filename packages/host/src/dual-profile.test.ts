@@ -149,6 +149,10 @@ const VOLATILE = new Set([
   "session_key",
   "created",
   "exportedAt",
+  // A routine's creator sub (C2) is the profile's single owner — local-owner vs
+  // cloud-owner — so it differs by design, like id/created_at above. The parity
+  // check is about route + shape, not per-deployment identity values.
+  "created_by",
 ]);
 
 function norm(v: unknown, agentId: string): unknown {

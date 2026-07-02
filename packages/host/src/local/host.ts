@@ -75,8 +75,17 @@ export interface LocalHostOptions {
    *    operator owns the key. Never ship a shared key to end-user desktops.
    * Both set → the gateway wins. Neither → integrations off (empty capability
    * list, routes 503).
+   *
+   * `podToken` (managed pods only, env `HOUSTON_HOST_TOKEN`) lets the gateway
+   * adapter authenticate a routine turn as its creator (C2, auth mode b). Absent
+   * on the desktop — a routine turn there has no way to act as the creator, so it
+   * falls through to signin-required.
    */
-  integrations?: { gatewayUrl?: string; composioApiKey?: string };
+  integrations?: {
+    gatewayUrl?: string;
+    composioApiKey?: string;
+    podToken?: string;
+  };
 }
 
 export interface LocalHost {
@@ -161,6 +170,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           id: "composio",
           upstreamUrl: opts.integrations.gatewayUrl,
           token: () => sessionToken.current,
+          // Managed pods pass their host token so routine turns authenticate as
+          // the creator; the desktop leaves this undefined.
+          podToken: opts.integrations.podToken,
         }),
       ])
     : opts.integrations?.composioApiKey

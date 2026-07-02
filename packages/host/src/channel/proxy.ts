@@ -62,6 +62,14 @@ export class ProxyChannel implements RuntimeChannel {
     params.delete("token");
     const qs = params.toString();
 
+    // Forward the gateway's per-turn acting-as token (C2) verbatim — nothing is
+    // minted host-side; when absent (desktop / no gateway) the runtime acts as
+    // the workspace owner. A single-value header only.
+    const actingHeader = req.headers["x-houston-acting-as"];
+    const actingAs = Array.isArray(actingHeader)
+      ? actingHeader[0]
+      : actingHeader;
+
     return this.opts.proxy.forward(
       endpoint,
       {
@@ -70,6 +78,7 @@ export class ProxyChannel implements RuntimeChannel {
         search: qs ? `?${qs}` : "",
         contentType: req.headers["content-type"] ?? null,
         body,
+        actingAs,
       },
       res,
     );
@@ -80,6 +89,7 @@ export class ProxyChannel implements RuntimeChannel {
     conversationId: string,
     text: string,
     pin?: TurnPin,
+    actingUser?: string,
   ): Promise<void> {
     // Wake the standing runtime and POST the routine's prompt as a normal
     // message — the runtime starts the turn (202) and persists the reply into
@@ -94,6 +104,10 @@ export class ProxyChannel implements RuntimeChannel {
         headers: {
           "content-type": "application/json",
           Authorization: `Bearer ${endpoint.token}`,
+          // C2 routine path: no per-turn acting-as token is minted — the runtime
+          // instead forwards this creator sub on its integration calls (paired
+          // pod-side with the pod token). Omitted for legacy creator-less routines.
+          ...(actingUser ? { "x-houston-acting-user": actingUser } : {}),
         },
         body: JSON.stringify({
           text,

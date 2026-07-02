@@ -468,7 +468,17 @@ export async function handleAgents(
     // vfs — the runtime surface (chat, auth, settings, files) goes to the channel.
     const paths = deps.paths ?? DEFAULT_PATHS;
     if (
-      await handleAgentData(deps.vfs, paths, ctx, method, rest, req, res, emit)
+      await handleAgentData(
+        deps.vfs,
+        paths,
+        ctx,
+        method,
+        rest,
+        req,
+        res,
+        emit,
+        userId,
+      )
     )
       return true;
     if (

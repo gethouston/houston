@@ -1,4 +1,4 @@
-import type { IntegrationProvider } from "./provider";
+import type { ActingContext, IntegrationProvider } from "./provider";
 import {
   type ActionResult,
   type Connection,
@@ -24,6 +24,14 @@ import {
  * The frontend keeps `token()` fresh (it owns the Supabase session + refresh);
  * with no session the adapter reports not-ready and throws a typed
  * signin-required error, which the routes surface as an actionable 409.
+ *
+ * Acting-as (C2, cloud pods only): when a `search`/`execute` carries an
+ * `ActingContext`, per-call auth takes precedence over the frontend session in
+ * this order — (a) `actingAs` token → `Authorization: Bearer <token>`; else
+ * (b) `actingUser` + a configured `podToken` → `Authorization: Bearer <podToken>`
+ * plus `x-houston-acting-user: <sub>` (the routine path); else (c) today's
+ * behavior (the frontend session token, else the typed signin-required error).
+ * The desktop configures no `podToken`, so it never reaches mode (b).
  */
 
 export interface RemoteIntegrationOptions {
@@ -33,6 +41,12 @@ export interface RemoteIntegrationOptions {
   upstreamUrl: string;
   /** The user's current Supabase access token; null when signed out. */
   token: () => string | null;
+  /**
+   * This managed pod's own host token (env `HOUSTON_HOST_TOKEN`), enabling the
+   * routine acting-user auth mode. Absent on the desktop (no pod token exists),
+   * so a routine turn there falls through to signin-required rather than
+   * authenticating as the pod. */
+  podToken?: string;
   /** Injected for tests; defaults to global fetch. */
   fetch?: typeof fetch;
 }
@@ -41,13 +55,41 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
   readonly id: string;
   private readonly upstreamUrl: string;
   private readonly token: () => string | null;
+  private readonly podToken?: string;
   private readonly fetchImpl: typeof fetch;
 
   constructor(opts: RemoteIntegrationOptions) {
     this.id = opts.id;
     this.upstreamUrl = opts.upstreamUrl.replace(/\/+$/, "");
     this.token = opts.token;
+    this.podToken = opts.podToken;
     this.fetchImpl = opts.fetch ?? fetch;
+  }
+
+  /**
+   * Resolve the auth headers for one call given the optional acting context
+   * (C2 precedence). Throws the typed signin error when nothing can authenticate
+   * — surfaced to the runtime as an actionable 409. Kept separate so `search` /
+   * `execute` (the only acting-aware calls) share it and the userId-derived
+   * management calls keep using the frontend session directly.
+   */
+  private authHeaders(acting?: ActingContext): Record<string, string> {
+    // (a) A per-turn acting-as token authenticates AS that user upstream.
+    if (acting?.actingAs) {
+      return { authorization: `Bearer ${acting.actingAs}` };
+    }
+    // (b) A routine turn: no per-turn token, so present the pod's own token and
+    //     name the routine creator the gateway must resolve + authorize.
+    if (acting?.actingUser && this.podToken) {
+      return {
+        authorization: `Bearer ${this.podToken}`,
+        "x-houston-acting-user": acting.actingUser,
+      };
+    }
+    // (c) Today's behavior: the frontend-pushed session token, else signin.
+    const token = this.token();
+    if (!token) throw new IntegrationSigninRequiredError();
+    return { authorization: `Bearer ${token}` };
   }
 
   async readiness(): Promise<ProviderReadiness> {
@@ -56,17 +98,20 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
 
   private async call<T>(
     path: string,
-    opts: { method?: "GET" | "POST"; body?: unknown } = {},
+    opts: {
+      method?: "GET" | "POST";
+      body?: unknown;
+      acting?: ActingContext;
+    } = {},
   ): Promise<T> {
-    const token = this.token();
-    if (!token) throw new IntegrationSigninRequiredError();
+    const auth = this.authHeaders(opts.acting);
 
     const res = await this.fetchImpl(
       `${this.upstreamUrl}/v1/integrations/${encodeURIComponent(this.id)}${path}`,
       {
         method: opts.method ?? "GET",
         headers: {
-          authorization: `Bearer ${token}`,
+          ...auth,
           ...(opts.body !== undefined
             ? { "content-type": "application/json" }
             : {}),
@@ -126,10 +171,15 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
     await this.call("/disconnect", { method: "POST", body: { toolkit } });
   }
 
-  async search(_userId: string, query: string): Promise<ToolMatch[]> {
+  async search(
+    _userId: string,
+    query: string,
+    acting?: ActingContext,
+  ): Promise<ToolMatch[]> {
     const body = await this.call<{ items: ToolMatch[] }>("/search", {
       method: "POST",
       body: { query },
+      acting,
     });
     return body.items;
   }
@@ -138,10 +188,12 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
     _userId: string,
     action: string,
     params: Record<string, unknown>,
+    acting?: ActingContext,
   ): Promise<ActionResult> {
     return this.call<ActionResult>("/execute", {
       method: "POST",
       body: { action, params },
+      acting,
     });
   }
 }

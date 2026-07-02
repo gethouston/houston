@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { IntegrationSigninRequiredError } from "../integrations/types";
 import type { CredentialVault, WorkspaceStore } from "../ports";
-import { bearer, json, readJson } from "./http";
+import { bearer, header, json, readJson } from "./http";
 import { type IntegrationDeps, signinRequired } from "./integrations";
 
 /**
@@ -59,6 +59,13 @@ export async function handleSandboxIntegrations(
     return true;
   }
 
+  // WHO the runtime is acting as this turn (C2): the gateway-minted acting-as
+  // token for a live user, OR the routine creator's sub for a fired routine.
+  // Both absent locally (single-user) → the provider falls back to the owner.
+  const actingAs = header(req, "x-houston-acting-as");
+  const actingUser = header(req, "x-houston-acting-user");
+  const acting = actingAs || actingUser ? { actingAs, actingUser } : undefined;
+
   try {
     if (m[1] === "search") {
       if (typeof body.query !== "string") {
@@ -66,7 +73,7 @@ export async function handleSandboxIntegrations(
         return true;
       }
       json(res, 200, {
-        items: await provider.search(ws.ownerUserId, body.query),
+        items: await provider.search(ws.ownerUserId, body.query, acting),
       });
       return true;
     }
@@ -80,7 +87,11 @@ export async function handleSandboxIntegrations(
       body.params && typeof body.params === "object"
         ? (body.params as Record<string, unknown>)
         : {};
-    json(res, 200, await provider.execute(ws.ownerUserId, body.action, params));
+    json(
+      res,
+      200,
+      await provider.execute(ws.ownerUserId, body.action, params, acting),
+    );
     return true;
   } catch (err) {
     if (err instanceof IntegrationSigninRequiredError) {

@@ -1,4 +1,4 @@
-import type { IntegrationProvider } from "./provider";
+import type { ActingContext, IntegrationProvider } from "./provider";
 import {
   type ActionResult,
   type Connection,
@@ -25,6 +25,8 @@ export class FakeIntegrationProvider implements IntegrationProvider {
   private notReady = false;
   /** Test helper: scoped calls throw like a signed-out gateway adapter. */
   throwSigninRequired = false;
+  /** Test helper: the acting context of the most recent search/execute call. */
+  lastActing: ActingContext | undefined;
   private seq = 0;
 
   constructor(
@@ -94,7 +96,12 @@ export class FakeIntegrationProvider implements IntegrationProvider {
     );
   }
 
-  async search(_userId: string, query: string): Promise<ToolMatch[]> {
+  async search(
+    _userId: string,
+    query: string,
+    acting?: ActingContext,
+  ): Promise<ToolMatch[]> {
+    this.lastActing = acting;
     if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
     const q = query.toLowerCase();
     return this.actions.filter(
@@ -108,7 +115,9 @@ export class FakeIntegrationProvider implements IntegrationProvider {
     _userId: string,
     action: string,
     params: Record<string, unknown>,
+    acting?: ActingContext,
   ): Promise<ActionResult> {
+    this.lastActing = acting;
     if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
     return { successful: true, data: { action, params } };
   }
