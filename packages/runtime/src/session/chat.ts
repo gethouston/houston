@@ -20,8 +20,10 @@ import { config } from "../config";
 import {
   appendAssistantMessage,
   appendUserMessage,
+  getHistory,
 } from "../store/conversations";
 import { type ActingContext, runWithActingContext } from "./acting-context";
+import { decodeActingAuthor, framePrompt } from "./attribution";
 import { publish } from "./bus";
 import { makeAgentLoader } from "./resource-loader";
 import { buildToolSelection } from "./tool-selection";
@@ -172,8 +174,21 @@ async function execTurn(
   pin?: TurnPin,
   acting?: ActingContext,
 ) {
-  appendUserMessage(id, text);
-  publish(id, { type: "user", data: { content: text, ts: Date.now(), nonce } });
+  // WHO wrote this message (C5): decode the acting-as token's payload (the
+  // gateway already verified it; the runtime only reads it). Absent → no author,
+  // and everything below stays byte-identical to a single-user turn.
+  const author = decodeActingAuthor(acting?.actingAs);
+  // Prior user authors, read BEFORE appending this turn — drives the model
+  // framing decision (prefix only when ≥2 distinct authors are in play).
+  const priorAuthors = (getHistory(id)?.messages ?? [])
+    .filter((m) => m.role === "user")
+    .map((m) => m.author);
+
+  appendUserMessage(id, text, author);
+  publish(id, {
+    type: "user",
+    data: { content: text, ts: Date.now(), nonce, author },
+  });
 
   let assistantText = "";
   let usage: TokenUsage | null = null;
@@ -255,10 +270,15 @@ async function execTurn(
       const level = toThinkingLevel(effort);
       if (level) conv.session.setThinkingLevel(level);
     }
+    // Model framing (C5): in a multiplayer conversation with ≥2 distinct authors,
+    // prefix the prompt with `[From: <name>]\n` so the model can tell teammates
+    // apart. Single-author (or authorless) turns pass `text` through unchanged —
+    // today's prompts stay byte-identical, so no drift for existing users.
+    const promptText = framePrompt(text, author, priorAuthors);
     // Hold the turn's acting-as identity (C2) for the DURATION of the prompt so
     // the integration tools' proxy calls (which run inside this async subtree)
     // attach it. Absent → runs plainly (act as owner).
-    await runWithActingContext(acting, () => conv.session.prompt(text));
+    await runWithActingContext(acting, () => conv.session.prompt(promptText));
     // Persist the switch marker AND any typed provider error on this turn's
     // assistant message so both the boundary divider and the reconnect /
     // rate-limit card survive a history reload. A provider failure lands HERE

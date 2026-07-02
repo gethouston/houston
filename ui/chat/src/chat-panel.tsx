@@ -65,6 +65,8 @@ export function ChatPanel({
   canSendEmpty,
   composerOverride,
   composerLabels,
+  currentUserId,
+  authorLabels,
 }: ChatPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const status = statusProp ?? deriveStatus(feedItems, isLoading);
@@ -161,6 +163,8 @@ export function ChatPanel({
           renderTurnSummary={renderTurnSummary}
           onOpenLink={onOpenLink}
           renderLink={renderLink}
+          currentUserId={currentUserId}
+          authorLabels={authorLabels}
         />
       ) : (
         <div className="flex-1 min-h-0 flex items-center justify-center">

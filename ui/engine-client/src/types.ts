@@ -668,6 +668,12 @@ export interface SessionCancelResponse {
 export interface ChatHistoryEntry {
   feed_type: string;
   data: unknown;
+  /**
+   * Multiplayer only (C5): who wrote a `user_message` entry, carried through to
+   * the ui/chat feed so a shared conversation attributes each teammate's bubble.
+   * Absent on every other feed type and in single-player mode.
+   */
+  author?: { userId: string; name?: string };
 }
 
 export interface SummarizeResult {
