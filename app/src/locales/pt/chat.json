@@ -7,6 +7,9 @@
     "imagePasteUnavailable": "Não foi possível ler a imagem colada. Tente arrastar o arquivo.",
     "addFiles": "Adicionar arquivos"
   },
+  "attribution": {
+    "you": "Você"
+  },
   "queue": {
     "title": "Na fila",
     "remove": "Remover mensagem da fila",

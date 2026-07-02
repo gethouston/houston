@@ -38,6 +38,13 @@ export interface VersionResponse {
 }
 
 /**
+ * A member's authority inside a multiplayer org. `owner` is the billing/root
+ * seat, `admin` manages members + agents, `user` is a plain seat that can only
+ * use the agents assigned to them. Absent capability means single-player.
+ */
+export type OrgRole = "owner" | "admin" | "user";
+
+/**
  * What this host deployment can do. The UI gates affordances on capabilities,
  * NEVER on "am I web / desktop / cloud" branches — that's where drift breeds.
  */
@@ -69,4 +76,15 @@ export interface Capabilities {
    * Empty = integrations off for this deployment.
    */
   integrations: string[];
+  /**
+   * Whether this deployment runs in multiplayer (paid org) mode: members,
+   * roles, per-agent assignment. Absent/false = single personal workspace.
+   * Optional so every existing single-player host/profile stays valid.
+   */
+  multiplayer?: boolean;
+  /**
+   * The current user's role in the org, when `multiplayer` is on. Drives which
+   * management affordances the UI shows. Absent in single-player mode.
+   */
+  role?: OrgRole;
 }

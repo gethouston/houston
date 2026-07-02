@@ -7,6 +7,9 @@
     "imagePasteUnavailable": "Couldn't read the pasted image. Try dragging the file in instead.",
     "addFiles": "Add files"
   },
+  "attribution": {
+    "you": "You"
+  },
   "queue": {
     "title": "Queued",
     "remove": "Remove queued message",

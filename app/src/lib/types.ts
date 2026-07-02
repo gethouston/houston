@@ -63,6 +63,17 @@ export interface Agent {
   color?: string; // User-chosen color for avatar
   createdAt: string;
   lastOpenedAt?: string;
+  /**
+   * Multiplayer only: whether the CURRENT user is assigned this agent (may use
+   * it). Absent in single-player mode. Kept in sync (by hand) with the
+   * engine-client `Agent` shape.
+   */
+  assigned?: boolean;
+  /**
+   * Multiplayer only: the org-member user ids this agent is assigned to. Empty
+   * means "everyone in the org". Absent in single-player mode.
+   */
+  assignedUserIds?: string[];
 }
 
 /** Props injected into every tab component */

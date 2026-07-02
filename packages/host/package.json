@@ -19,7 +19,6 @@
     "typecheck": "tsgo -p tsconfig.json"
   },
   "dependencies": {
-    "@composio/client": "^0.1.0-alpha.73",
     "@earendil-works/pi-ai": "0.78.1",
     "@earendil-works/pi-coding-agent": "0.78.1",
     "@houston/domain": "workspace:*",

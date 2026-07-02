@@ -1053,23 +1053,14 @@ export class HoustonClient {
     return { title: truncated, description: "" };
   }
 
-  // ---- integrations (Composio "for you") — host only ----
+  // ---- integrations (Composio, platform mode) — host only ----
   async integrationStatus(): Promise<controlPlane.IntegrationProviderStatus[]> {
     if (!this.cp) return [];
     return controlPlane.integrationStatus(this.cp);
   }
-  async startIntegrationLogin(
-    provider: string,
-  ): Promise<{ loginUrl: string; pollKey: string }> {
-    if (!this.cp) throw new Error("Integrations require a connected host");
-    return controlPlane.startIntegrationLogin(this.cp, provider);
-  }
-  async pollIntegrationLogin(
-    provider: string,
-    pollKey: string,
-  ): Promise<controlPlane.IntegrationLoginResult> {
-    if (!this.cp) throw new Error("Integrations require a connected host");
-    return controlPlane.pollIntegrationLogin(this.cp, provider, pollKey);
+  async setIntegrationSession(token: string | null): Promise<void> {
+    if (!this.cp) return;
+    return controlPlane.setIntegrationSession(this.cp, token);
   }
   async integrationToolkits(
     provider: string,
@@ -1086,9 +1077,16 @@ export class HoustonClient {
   async connectIntegration(
     provider: string,
     toolkit: string,
-  ): Promise<{ redirectUrl: string }> {
+  ): Promise<{ redirectUrl: string; connectionId: string }> {
     if (!this.cp) throw new Error("Integrations require a connected host");
     return controlPlane.connectIntegration(this.cp, provider, toolkit);
+  }
+  async integrationConnection(
+    provider: string,
+    connectionId: string,
+  ): Promise<controlPlane.IntegrationConnection> {
+    if (!this.cp) throw new Error("Integrations require a connected host");
+    return controlPlane.integrationConnection(this.cp, provider, connectionId);
   }
   async disconnectIntegration(
     provider: string,
@@ -1097,9 +1095,52 @@ export class HoustonClient {
     if (!this.cp) return;
     return controlPlane.disconnectIntegration(this.cp, provider, toolkit);
   }
-  async logoutIntegration(provider: string): Promise<void> {
+
+  // ---- org / roles (multiplayer) — hosted gateway only ----
+  async getOrg(): Promise<controlPlane.OrgInfo> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.getOrg(this.cp);
+  }
+  async addOrgMember(email: string, role: controlPlane.OrgRole): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.addOrgMember(this.cp, email, role);
+  }
+  async removeOrgMember(userId: string): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.removeOrgMember(this.cp, userId);
+  }
+  async setOrgMemberRole(
+    userId: string,
+    role: controlPlane.OrgRole,
+  ): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.setOrgMemberRole(this.cp, userId, role);
+  }
+
+  // ---- per-agent assignments + integration grants (multiplayer) ----
+  async setAgentAssignments(
+    agentSlugOrId: string,
+    userIds: string[],
+  ): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.setAgentAssignments(this.cp, agentSlugOrId, userIds);
+  }
+  // Grants degrade like `integrationStatus`: single-player has no grants model,
+  // so read is empty and write is a no-op rather than a hard failure.
+  async agentIntegrationGrants(agentSlugOrId: string): Promise<string[]> {
+    if (!this.cp) return [];
+    return controlPlane.agentIntegrationGrants(this.cp, agentSlugOrId);
+  }
+  async setAgentIntegrationGrants(
+    agentSlugOrId: string,
+    toolkits: string[],
+  ): Promise<void> {
     if (!this.cp) return;
-    return controlPlane.logoutIntegration(this.cp, provider);
+    return controlPlane.setAgentIntegrationGrants(
+      this.cp,
+      agentSlugOrId,
+      toolkits,
+    );
   }
 
   // ---- lifecycle no-ops the shell calls ----

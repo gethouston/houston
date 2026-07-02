@@ -181,6 +181,8 @@ function toAgent(a: import("@houston-ai/engine-client").Agent): Agent {
     color: a.color,
     createdAt: a.createdAt,
     lastOpenedAt: a.lastOpenedAt,
+    assigned: a.assigned,
+    assignedUserIds: a.assignedUserIds,
   };
 }
 
@@ -240,6 +242,11 @@ export const tauriAgents = {
     call<Array<{ config: unknown; path: string }>>(
       "list_installed_configs",
       () => getEngine().listInstalledConfigs(),
+    ),
+  /** Multiplayer: set which org members may use this agent. Empty = everyone. */
+  setAssignments: (agentSlugOrId: string, userIds: string[]) =>
+    call<void>("set_agent_assignments", () =>
+      getEngine().setAgentAssignments(agentSlugOrId, userIds),
     ),
 };
 
@@ -1100,22 +1107,17 @@ export const tauriTunnel = {
 };
 
 /**
- * Integrations (Composio "for you"). User-level (the user's own connected
- * account); surfaced per-agent in the Integrations tab. Host-only — these reach
- * the v3 host's /v1/integrations routes; the tab is gated to the control-plane
- * build so they never run on the legacy Rust wire. Types flow by inference.
+ * Integrations (Composio, platform mode). The user never creates a provider
+ * account — they only OAuth apps (Gmail, Slack…); Houston's platform key lives
+ * server-side. Host-only — these reach the v3 host's /v1/integrations routes;
+ * the tab is gated to the control-plane build so they never run on the legacy
+ * Rust wire. Types flow by inference.
  */
 export const tauriIntegrations = {
   status: () =>
     call("integration_status", () => getEngine().integrationStatus()),
-  startLogin: (provider: string) =>
-    call("integration_login_start", () =>
-      getEngine().startIntegrationLogin(provider),
-    ),
-  pollLogin: (provider: string, pollKey: string) =>
-    call("integration_login_poll", () =>
-      getEngine().pollIntegrationLogin(provider, pollKey),
-    ),
+  setSession: (token: string | null) =>
+    call("integration_session", () => getEngine().setIntegrationSession(token)),
   toolkits: (provider: string) =>
     call("integration_toolkits", () =>
       getEngine().integrationToolkits(provider),
@@ -1128,10 +1130,45 @@ export const tauriIntegrations = {
     call("integration_connect", () =>
       getEngine().connectIntegration(provider, toolkit),
     ),
+  connection: (provider: string, connectionId: string) =>
+    call("integration_connection", () =>
+      getEngine().integrationConnection(provider, connectionId),
+    ),
   disconnect: (provider: string, toolkit: string) =>
     call("integration_disconnect", () =>
       getEngine().disconnectIntegration(provider, toolkit),
     ),
-  logout: (provider: string) =>
-    call("integration_logout", () => getEngine().logoutIntegration(provider)),
+  /** Multiplayer: the integration toolkit slugs granted to an agent. */
+  grants: (agentSlugOrId: string) =>
+    call("agent_integration_grants", () =>
+      getEngine().agentIntegrationGrants(agentSlugOrId),
+    ),
+  /** Multiplayer: replace the integration toolkit slugs granted to an agent. */
+  setGrants: (agentSlugOrId: string, toolkits: string[]) =>
+    call("set_agent_integration_grants", () =>
+      getEngine().setAgentIntegrationGrants(agentSlugOrId, toolkits),
+    ),
+};
+
+/**
+ * Multiplayer org management. Hosted-gateway only: the desktop/local engine has
+ * no /v1/org routes, so `getEngine()` throws "multiplayer requires the hosted
+ * gateway" there — callers gate the UI on the `multiplayer` capability. Same
+ * `call()` surfacing as every other wrapper; types flow by inference.
+ */
+export const tauriOrg = {
+  get: () => call("get_org", () => getEngine().getOrg()),
+  addMember: (
+    email: string,
+    role: import("@houston-ai/engine-client").OrgRole,
+  ) => call("add_org_member", () => getEngine().addOrgMember(email, role)),
+  removeMember: (userId: string) =>
+    call("remove_org_member", () => getEngine().removeOrgMember(userId)),
+  setMemberRole: (
+    userId: string,
+    role: import("@houston-ai/engine-client").OrgRole,
+  ) =>
+    call("set_org_member_role", () =>
+      getEngine().setOrgMemberRole(userId, role),
+    ),
 };

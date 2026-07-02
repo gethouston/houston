@@ -54,4 +54,9 @@ export const queryKeys = {
     ["integration-connections", provider] as const,
   integrationToolkits: (provider: string) =>
     ["integration-toolkits", provider] as const,
+
+  // Multiplayer (org). The current user's org + roster is app-scoped (one org
+  // per user); per-agent integration grants are keyed by agent id.
+  org: () => ["org"] as const,
+  agentGrants: (agentId: string) => ["agent-grants", agentId] as const,
 };

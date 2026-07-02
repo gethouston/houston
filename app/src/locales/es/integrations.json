@@ -1,56 +1,35 @@
 {
   "title": "Integraciones",
+  "description": "Conecta tus aplicaciones para que tu agente pueda usarlas.",
   "loading": {
     "title": "Cargando tus integraciones",
     "body": "Verificando tu proveedor de integraciones…"
   },
-  "notInstalled": {
-    "title": "Conecta tus apps",
-    "body": "Houston usa un proveedor de integraciones para que tu agente pueda usar Gmail, Slack, Google Drive y más de 100 servicios por ti. El proveedor por defecto es Composio. Se instala una sola vez y pesa unos 80 MB.",
-    "install": "Instalar proveedor",
-    "installing": "Instalando…"
+  "unavailable": "Las integraciones no están disponibles en esta configuración.",
+  "signin": {
+    "title": "Inicia sesión para conectar aplicaciones",
+    "body": "Inicia sesión en Houston para conectar tus aplicaciones. Tus cuentas siguen siendo tuyas; el agente actúa en tu nombre.",
+    "button": "Iniciar sesión en Houston"
   },
-  "needsAuth": {
-    "title": "Conecta tu proveedor de integraciones",
-    "body": "Inicia sesión en tu proveedor de integraciones para que tu agente pueda usar Gmail, Slack, Google Drive y más de 100 servicios por ti. Por defecto usamos Composio.",
-    "signIn": "Iniciar sesión"
-  },
-  "error": {
-    "title": "No se pudieron cargar las integraciones",
-    "retry": "Reintentar",
-    "openDashboard": "Abrir el panel del proveedor"
-  },
+  "reconnectNotice": "Mejoramos la forma en que se conectan las aplicaciones para hacerla más segura. Reconecta tus aplicaciones una sola vez; Houston ya no guarda ninguna clave de larga duración.",
   "connected": {
     "title": "Conectadas",
     "count_one": "{{count}} app",
     "count_other": "{{count}} apps",
-    "manageOn": "Gestionar {{name}}",
     "dotAria": "Conectado",
     "menu": {
       "aria": "Opciones de {{name}}",
-      "manage": "Gestionar en Composio",
       "reconnect": "Reconectar",
       "disconnect": "Desconectar"
-    },
-    "reconnect": {
-      "openedTitle": "Reconectando {{name}}",
-      "openedBody": "Vuelve a iniciar sesión en tu navegador y regresa aquí.",
-      "doneTitle": "{{name}} reconectado"
     },
     "disconnect": {
       "confirmTitle": "¿Desconectar {{name}}?",
       "confirmBody": "Tu agente perderá el acceso a {{name}}. Puedes reconectarlo cuando quieras.",
       "confirmAction": "Desconectar",
       "cancel": "Cancelar"
-    }
-  },
-  "signOut": {
-    "button": "Cerrar sesión",
-    "loading": "Cerrando sesión…",
-    "confirmTitle": "¿Cerrar sesión de Composio?",
-    "confirmBody": "Tendrás que iniciar sesión de nuevo y reconectar las apps que uses. Esto no desinstala el proveedor.",
-    "confirmAction": "Cerrar sesión",
-    "cancel": "Cancelar"
+    },
+    "statusPending": "Termina de conectar en tu navegador...",
+    "statusError": "Necesita reconexión"
   },
   "browse": {
     "title": "Explorar todas las apps",
@@ -64,19 +43,27 @@
     "loadMoreWithRemaining": "Cargar más ({{count}} restantes)",
     "connectTitle": "Conectar {{name}}"
   },
-  "authDialog": {
-    "title": "Conectando tu proveedor de integraciones",
-    "description": "Completa el inicio de sesión en tu navegador y vuelve aquí.",
-    "waiting": "Esperando tu aprobación en el navegador…",
-    "openInBrowser": "Abrir enlace en el navegador",
-    "errorTimeout": "Se agotó el tiempo de inicio de sesión. Asegúrate de completar la aprobación en el navegador y vuelve a intentarlo.",
-    "errorGeneric": "Algo salió mal al conectar. Inténtalo de nuevo.",
-    "tryAgain": "Volver a intentar"
+  "connectResult": {
+    "timeout": "La conexión no se completó. Inténtalo de nuevo.",
+    "failed": "No se pudo conectar la aplicación. Inténtalo de nuevo."
   },
-  "linkCard": {
-    "integration": "Integración de app",
-    "alreadyConnected": "Ya está conectado",
-    "connected": "Conectado",
-    "connect": "Conectar"
+  "grants": {
+    "granted": {
+      "title": "Este agente puede usar",
+      "subtitle": "Aplicaciones que este agente puede usar. Desactiva una para quitarla aquí.",
+      "empty": "Este agente aún no puede usar ninguna aplicación. Permite una abajo o conecta una nueva.",
+      "revoke": "Dejar de permitir que este agente use {{name}}"
+    },
+    "available": {
+      "title": "Tus otras aplicaciones conectadas",
+      "subtitle": "Aplicaciones conectadas que este agente aún no puede usar. Activa una para permitirla aquí.",
+      "allow": "Permitir que este agente use {{name}}"
+    },
+    "disconnect": {
+      "menu": "Desconectar en todas partes",
+      "confirmTitle": "¿Desconectar {{name}} en todas partes?",
+      "confirmBody": "Esto quita {{name}} de todos tus agentes, no solo de este. Puedes volver a conectarla cuando quieras.",
+      "confirmAction": "Desconectar en todas partes"
+    }
   }
 }

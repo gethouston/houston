@@ -15,6 +15,15 @@ import {
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
+/**
+ * A routine plus the (optional) Supabase `sub` of the user who created it — the
+ * per-turn acting-user identity threaded to integration calls on fired routines
+ * (C2 routine path). Modeled as a domain-local extension (the wire `Routine` in
+ * `@houston/protocol` is another stream's surface); absent for legacy routines,
+ * so it's optional and needs no migration — a tolerant read round-trips it.
+ */
+export type RoutineWithCreator = Routine & { created_by?: string };
+
 /** Normalize raw routines: defaults per the schema; entries without identity dropped + reported. */
 export function normalizeRoutines(
   raw: unknown,
@@ -81,12 +90,18 @@ export async function saveRoutines(
   await saveJson(store, docKey(root, "routines"), items);
 }
 
-/** Materialize a NewRoutine. Caller supplies identity + clock (domain stays pure). */
+/**
+ * Materialize a NewRoutine. Caller supplies identity + clock (domain stays pure).
+ * `createdBy` (the authenticated creator's Supabase `sub`) is recorded on the
+ * routine so fired turns can act as them (C2); omit it (legacy / single-user)
+ * and the field is simply absent — no migration, tolerant read.
+ */
 export function createRoutine(
   input: NewRoutine,
   id: string,
   nowIso: string,
-): Routine {
+  createdBy?: string,
+): RoutineWithCreator {
   return {
     id,
     name: input.name,
@@ -104,6 +119,8 @@ export function createRoutine(
     integrations: input.integrations ?? [],
     created_at: nowIso,
     updated_at: nowIso,
+    // Only write the key when known, so legacy routines stay absent (not "": …).
+    ...(createdBy ? { created_by: createdBy } : {}),
   };
 }
 
@@ -113,16 +130,18 @@ export function createRoutine(
  * (one account-wide zone), so a client still sending it must not write it back.
  */
 export function applyRoutineUpdate(
-  current: Routine,
+  current: RoutineWithCreator,
   update: RoutineUpdate,
   nowIso: string,
-): Routine {
+): RoutineWithCreator {
   const defined = Object.fromEntries(
     Object.entries(update).filter(
       ([k, v]) => v !== undefined && k !== "timezone",
     ),
   );
-  return { ...current, ...defined, updated_at: nowIso } as Routine;
+  // `...current` preserves `created_by` (RoutineUpdate can't set it, so a client
+  // can never reassign a routine's creator — it stays whoever created it).
+  return { ...current, ...defined, updated_at: nowIso } as RoutineWithCreator;
 }
 
 /** Normalize raw routine runs (written by the scheduler; read by the UI). */

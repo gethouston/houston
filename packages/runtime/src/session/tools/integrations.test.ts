@@ -1,5 +1,6 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test } from "vitest";
+import { runWithActingContext } from "../acting-context";
 import { makeIntegrationTools } from "./integrations";
 
 /**
@@ -17,6 +18,7 @@ afterEach(() => {
 interface Captured {
   url: string;
   auth?: string;
+  headers: Record<string, string>;
   body: unknown;
 }
 function mockFetch(
@@ -29,6 +31,7 @@ function mockFetch(
     calls.push({
       url,
       auth: headers.authorization,
+      headers,
       body: init?.body ? JSON.parse(String(init.body)) : undefined,
     });
     const r = reply(new URL(url).pathname);
@@ -109,4 +112,28 @@ test("a 409 (not connected) becomes an actionable message, not a crash dump", as
   await expect(run(execute, { action: "X" })).rejects.toThrow(
     /connect their apps/i,
   );
+});
+
+test("C2: attaches the turn's acting-as header inside a turn, and nothing outside one", async () => {
+  // Inside a turn that received an acting-as token, the tool forwards it.
+  const inTurn = mockFetch(() => ({ body: { items: [] } }));
+  await runWithActingContext({ actingAs: "acting-v1.tok" }, () =>
+    run(search, { query: "x" }),
+  );
+  expect(inTurn[0]?.headers["x-houston-acting-as"]).toBe("acting-v1.tok");
+  expect(inTurn[0]?.headers["x-houston-acting-user"]).toBeUndefined();
+
+  // A routine turn forwards the acting-user instead.
+  const routine = mockFetch(() => ({ body: { successful: true } }));
+  await runWithActingContext({ actingUser: "sub-alice" }, () =>
+    run(execute, { action: "X" }),
+  );
+  expect(routine[0]?.headers["x-houston-acting-user"]).toBe("sub-alice");
+  expect(routine[0]?.headers["x-houston-acting-as"]).toBeUndefined();
+
+  // A call with NO turn context attaches neither header — today's behavior.
+  const bare = mockFetch(() => ({ body: { items: [] } }));
+  await run(search, { query: "x" });
+  expect(bare[0]?.headers["x-houston-acting-as"]).toBeUndefined();
+  expect(bare[0]?.headers["x-houston-acting-user"]).toBeUndefined();
 });

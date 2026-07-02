@@ -44,12 +44,13 @@ import type {
   InstallFromGithub,
   InstallFromRepoRequest,
   IntegrationConnection,
-  IntegrationLoginResult,
   IntegrationProviderStatus,
   IntegrationToolkit,
   ListWorktreesRequest,
   NewActivity,
   NewRoutine,
+  OrgInfo,
+  OrgRole,
   PairingCode,
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
@@ -940,7 +941,7 @@ export class HoustonClient {
   // app identity and writes its own credential files. Same shape as
   // `claude auth login --claudeai` and `codex login`.
 
-  // ---------- integrations (Composio "for you") — v3 host only ----------
+  // ---------- integrations (Composio platform mode) — v3 host only ----------
   //
   // The Rust engine has no /v1/integrations routes; the UI gates these on the
   // control-plane build (engine-mode), so on the legacy wire they never run.
@@ -954,23 +955,9 @@ export class HoustonClient {
       )
     ).items;
   }
-  startIntegrationLogin(
-    provider: string,
-  ): Promise<{ loginUrl: string; pollKey: string }> {
-    return this.request(
-      "POST",
-      `/integrations/${this.seg(provider)}/login/start`,
-    );
-  }
-  pollIntegrationLogin(
-    provider: string,
-    pollKey: string,
-  ): Promise<IntegrationLoginResult> {
-    return this.request(
-      "POST",
-      `/integrations/${this.seg(provider)}/login/poll`,
-      { pollKey },
-    );
+  /** Keep the desktop gateway's Supabase session fresh (null on sign-out). */
+  async setIntegrationSession(token: string | null): Promise<void> {
+    await this.request("PUT", "/integrations/session", { token });
   }
   async integrationToolkits(provider: string): Promise<IntegrationToolkit[]> {
     return (
@@ -993,10 +980,20 @@ export class HoustonClient {
   connectIntegration(
     provider: string,
     toolkit: string,
-  ): Promise<{ redirectUrl: string }> {
+  ): Promise<{ redirectUrl: string; connectionId: string }> {
     return this.request("POST", `/integrations/${this.seg(provider)}/connect`, {
       toolkit,
     });
+  }
+  /** Poll one connection after connect() until the OAuth finishes. */
+  integrationConnection(
+    provider: string,
+    connectionId: string,
+  ): Promise<IntegrationConnection> {
+    return this.request(
+      "GET",
+      `/integrations/${this.seg(provider)}/connections/${this.seg(connectionId)}`,
+    );
   }
   async disconnectIntegration(
     provider: string,
@@ -1008,8 +1005,65 @@ export class HoustonClient {
       { toolkit },
     );
   }
-  async logoutIntegration(provider: string): Promise<void> {
-    await this.request("POST", `/integrations/${this.seg(provider)}/logout`);
+
+  // ---------- org / roles (multiplayer) — v3 host only ----------
+  //
+  // The Rust engine has no /v1/org routes; multiplayer is a hosted-gateway
+  // feature, so on the legacy wire these never run. Kept here so the shared app
+  // typechecks against both clients (shim parity), same as integrations above.
+
+  /** The current user's org + role (and, for owner/admin, the member roster). */
+  getOrg(): Promise<OrgInfo> {
+    return this.request("GET", "/org");
+  }
+  /** Invite a member by email at a role. Owner/admin only (enforced by the host). */
+  async addOrgMember(email: string, role: OrgRole): Promise<void> {
+    await this.request("POST", "/org/members", { email, role });
+  }
+  /** Remove a member from the org. */
+  async removeOrgMember(userId: string): Promise<void> {
+    await this.request("DELETE", `/org/members/${this.seg(userId)}`);
+  }
+  /** Change a member's role. */
+  async setOrgMemberRole(userId: string, role: OrgRole): Promise<void> {
+    await this.request("PATCH", `/org/members/${this.seg(userId)}`, { role });
+  }
+
+  // ---------- per-agent assignments + integration grants (multiplayer) ----------
+
+  /**
+   * Set which org members may use this agent. Empty `userIds` means "everyone".
+   * Owner/admin only.
+   */
+  async setAgentAssignments(
+    agentSlugOrId: string,
+    userIds: string[],
+  ): Promise<void> {
+    await this.request(
+      "PUT",
+      `/agents/${this.seg(agentSlugOrId)}/assignments`,
+      { userIds },
+    );
+  }
+  /** The integration toolkit slugs granted to this agent. */
+  async agentIntegrationGrants(agentSlugOrId: string): Promise<string[]> {
+    return (
+      await this.request<{ toolkits: string[] }>(
+        "GET",
+        `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
+      )
+    ).toolkits;
+  }
+  /** Replace the integration toolkit slugs granted to this agent. */
+  async setAgentIntegrationGrants(
+    agentSlugOrId: string,
+    toolkits: string[],
+  ): Promise<void> {
+    await this.request(
+      "PUT",
+      `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
+      { toolkits },
+    );
   }
 
   // ---------- store ----------

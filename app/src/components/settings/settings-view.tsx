@@ -7,9 +7,12 @@ import {
   Keyboard,
   User,
   UserCircle,
+  Users,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useCapabilities } from "../../hooks/use-capabilities";
+import { canSeeMembers } from "../../lib/org-roles";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import {
@@ -19,6 +22,7 @@ import {
 
 type SettingsSectionId =
   | "account"
+  | "members"
   | "workspace"
   | "workspaceContext"
   | "userContext"
@@ -32,6 +36,7 @@ import { AppearanceSection } from "./sections/appearance";
 import { ConnectPhoneSection } from "./sections/connect-phone";
 import { DangerSection } from "./sections/danger";
 import { LanguageSection } from "./sections/language";
+import { MembersSection } from "./sections/members";
 import { ProviderSection } from "./sections/provider";
 import { ReportBugSection } from "./sections/report-bug";
 import { ShortcutsSection } from "./sections/shortcuts";
@@ -42,9 +47,11 @@ import {
 } from "./sections/workspace-context";
 
 export function SettingsView() {
-  const { t } = useTranslation(["settings", "common"]);
+  const { t } = useTranslation(["settings", "common", "org"]);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const accountAvailable = useAccountAvailable();
+  const { capabilities } = useCapabilities();
+  const showMembers = canSeeMembers(capabilities);
   const addToast = useUIStore((s) => s.addToast);
 
   async function handleVersionClick() {
@@ -69,6 +76,13 @@ export function SettingsView() {
         icon: User,
       });
     }
+    if (showMembers) {
+      list.push({
+        id: "members",
+        label: t("org:members.navLabel"),
+        icon: Users,
+      });
+    }
     list.push(
       { id: "workspace", label: t("settings:nav.workspace"), icon: Folder },
       {
@@ -86,7 +100,7 @@ export function SettingsView() {
       { id: "reportBug", label: t("settings:nav.reportBug"), icon: Bug },
     );
     return list;
-  }, [accountAvailable, t]);
+  }, [accountAvailable, showMembers, t]);
 
   const [active, setActive] = useState<SettingsSectionId>(
     accountAvailable ? "account" : "workspace",
@@ -130,6 +144,7 @@ export function SettingsView() {
         ) : (
           <div className="mx-auto max-w-xl px-8 py-10">
             {activeVisible === "account" && <AccountSection />}
+            {activeVisible === "members" && <MembersSection />}
             {activeVisible === "workspace" && (
               <div className="space-y-10">
                 <WorkspaceSection />

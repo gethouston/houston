@@ -75,6 +75,13 @@ export interface ForwardRequest {
   contentType?: string | null;
   /** Raw request body for non-GET methods. */
   body?: Buffer;
+  /**
+   * The gateway's per-turn acting-as token (C2), forwarded verbatim so the
+   * runtime can attach it on its integration calls. Absent locally / when the
+   * caller sent none — the runtime then acts as the workspace owner. Only this
+   * one header is relayed; nothing host-minted.
+   */
+  actingAs?: string;
 }
 
 export type RuntimeState = "running" | "asleep" | "absent";
@@ -136,12 +143,16 @@ export interface RuntimeChannel {
    * so the caller records an errored run instead of a silent miss.
    *
    * `pin` carries the routine's model/effort overrides (absent = inherit).
+   * `actingUser` (C2) is the routine creator's Supabase `sub` — forwarded to the
+   * runtime as `x-houston-acting-user` so its integration calls act as that user.
+   * Absent for legacy routines (no creator recorded) → the runtime acts as owner.
    */
   fireTurn(
     ctx: ChannelCtx,
     conversationId: string,
     text: string,
     pin?: TurnPin,
+    actingUser?: string,
   ): Promise<void>;
   /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
   teardown(ctx: ChannelCtx): Promise<void>;

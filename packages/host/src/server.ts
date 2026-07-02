@@ -27,9 +27,9 @@ import { handleEventStream } from "./routes/events-stream";
 import { bearer, json, readJson } from "./routes/http";
 import {
   handleIntegrations,
-  handleSandboxIntegrations,
   type IntegrationDeps,
 } from "./routes/integrations";
+import { handleSandboxIntegrations } from "./routes/integrations-sandbox";
 import { handlePortableAccount } from "./routes/portable";
 import type { Vfs } from "./vfs";
 
@@ -92,7 +92,7 @@ export interface ControlPlaneDeps {
   mountAdmin?: MountAdmin;
   /** "Send feedback" intake (web build → Linear); omit and POST /feedback answers 503. */
   feedback?: FeedbackSender;
-  /** Third-party integrations (Composio "for you"); absent → integration routes 503. */
+  /** Third-party integrations (Composio, platform mode); absent → integration routes 503. */
   integrations?: IntegrationDeps;
   corsOrigin?: string;
 }

@@ -19,6 +19,7 @@ import {
   MessageResponse,
 } from "./ai-elements/message";
 import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
+import { authorLabelFor, type ChatAuthorLabels } from "./author-label";
 import type { ToolsAndCardsProps } from "./chat-helpers";
 import type { ChatProcessLabels } from "./chat-process-block";
 import {
@@ -28,8 +29,12 @@ import {
 import { ChatProcessMessage } from "./chat-process-message";
 import { ChatSystemMessage } from "./chat-system-message";
 import type { ChatMessage } from "./feed-to-messages";
+import { distinctAuthorCount } from "./feed-to-messages";
 import type { TurnEndSummary } from "./turn-tools";
 import { computeTurnEndSummary } from "./turn-tools";
+
+export type { ChatAuthorLabels } from "./author-label";
+export { authorLabelFor } from "./author-label";
 
 export interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -69,6 +74,14 @@ export interface ChatMessagesProps {
   onOpenLink?: (url: string) => void;
   /** Custom renderer for markdown links. See `RenderLinkProps`. */
   renderLink?: (props: RenderLinkProps) => ReactNode;
+  /**
+   * Multiplayer only (C5): the signed-in viewer's user id. Used to decide
+   * whether a user bubble is the viewer's own — its author label is hidden
+   * (or shows `authorLabels.you` when provided). Absent in single-player mode.
+   */
+  currentUserId?: string;
+  /** Localized labels for author attribution. See `ChatAuthorLabels`. */
+  authorLabels?: ChatAuthorLabels;
 }
 
 export function ChatMessages({
@@ -90,7 +103,15 @@ export function ChatMessages({
   afterMessages,
   onOpenLink,
   renderLink,
+  currentUserId,
+  authorLabels,
 }: ChatMessagesProps) {
+  // Show author labels only when the thread has ≥2 distinct authors (C5); a
+  // single-author (or single-player) conversation stays label-free.
+  const showAuthorLabels = useMemo(
+    () => distinctAuthorCount(messages) >= 2,
+    [messages],
+  );
   const turnEndSummaries = useMemo(
     () => computeTurnEndSummary(messages, status),
     [messages, status],
@@ -150,6 +171,10 @@ export function ChatMessages({
           }
           const isLastMsg = idx === messages.length - 1;
           const streaming = msg.isStreaming && isLastMsg;
+          const authorLabel =
+            msg.from === "user" && showAuthorLabels
+              ? authorLabelFor(msg.author, currentUserId, authorLabels)
+              : null;
           return (
             <Message
               from={msg.from}
@@ -157,6 +182,11 @@ export function ChatMessages({
               avatar={renderMessageAvatar?.(msg)}
             >
               <div>
+                {authorLabel ? (
+                  <div className="mb-1 px-1 text-xs text-muted-foreground group-[.is-user]:text-right">
+                    {authorLabel}
+                  </div>
+                ) : null}
                 {msg.content &&
                   (() => {
                     if (msg.from === "user" && renderUserMessage) {

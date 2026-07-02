@@ -6,7 +6,12 @@
  * their corresponding tool_result items.
  */
 
-import type { FeedItem, ProviderError, ToolRuntimeErrorEntry } from "./types";
+import type {
+  FeedItem,
+  MessageAuthor,
+  ProviderError,
+  ToolRuntimeErrorEntry,
+} from "./types";
 
 export interface ToolEntry {
   name: string;
@@ -51,6 +56,13 @@ export interface ChatMessage {
   fileChanges: FileChangeEntry[];
   /** Source channel if the message came from an external channel. */
   source?: string;
+  /**
+   * Multiplayer only: who wrote this user message (C5). Present on
+   * `from: "user"` messages in a shared conversation; absent in single-player
+   * mode. The renderer shows a label only when the thread has ≥2 distinct
+   * authors — see `distinctAuthorCount`.
+   */
+  author?: MessageAuthor;
   /**
    * Set on `from: "system"` messages that mark a context-compaction boundary.
    * The renderer shows a subtle divider instead of plain system text.
@@ -135,6 +147,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
           tools: [],
           fileChanges: [],
           source,
+          author: item.author,
         });
         break;
       }
@@ -351,6 +364,20 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
 
   flush();
   return messages;
+}
+
+/**
+ * How many DISTINCT authors (by userId) wrote user messages in this thread.
+ * The renderer shows author labels only when this is ≥2 — a single-author
+ * conversation stays label-free (C5). Authorless user messages don't count.
+ * Pure, so the threshold is unit-tested without rendering.
+ */
+export function distinctAuthorCount(messages: ChatMessage[]): number {
+  const ids = new Set<string>();
+  for (const m of messages) {
+    if (m.from === "user" && m.author) ids.add(m.author.userId);
+  }
+  return ids.size;
 }
 
 /**

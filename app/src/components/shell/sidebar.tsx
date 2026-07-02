@@ -4,6 +4,7 @@ import { LayoutDashboard, Settings } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
+import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { orderAgents } from "../../lib/agent-order";
 import { resolveAutoCollapse } from "../../lib/sidebar-auto-collapse";
 import { useAgentStore } from "../../stores/agents";
@@ -34,6 +35,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const setDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
+  const canCreateAgents = useCanCreateAgents();
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useUIStore((s) => s.toggleSidebarCollapsed);
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed);
@@ -162,7 +164,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
           items={items}
           selectedId={!isTopLevel ? (currentAgent?.id ?? null) : null}
           onSelect={handleSelectAgent}
-          onAdd={() => setDialogOpen(true)}
+          onAdd={canCreateAgents ? () => setDialogOpen(true) : undefined}
           addItemDataAttrs={{ "data-tour-target": "newAgent" }}
           onRename={handleRename}
           onDelete={handleDelete}

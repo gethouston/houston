@@ -1,7 +1,8 @@
-import { existsSync, mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
+import { decodeActingAuthor } from "../session/attribution";
 import {
   appendAssistantMessageAt,
   appendUserMessageAt,
@@ -11,6 +12,12 @@ import {
   loadConversation,
   renameConversationAt,
 } from "./conversation-file";
+
+/** Mint an `acting-v1.<payloadB64Url>.<sig>` token carrying `payload` (C2). */
+function actingToken(payload: Record<string, unknown>): string {
+  const b64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  return `acting-v1.${b64}.sig`;
+}
 
 const freshDir = () => mkdtempSync(join(tmpdir(), "houston-conv-"));
 
@@ -134,4 +141,30 @@ test("assistant message with no switch stores no providerSwitch field", () => {
     (m) => m.role === "assistant",
   );
   expect(msg?.providerSwitch ?? null).toBeNull();
+});
+
+test("a user message from an acting-as token persists its author (C5), served on read-back", () => {
+  const dir = freshDir();
+  // The runtime decodes WHO the turn acts as off the C2 token, then stamps it.
+  const author = decodeActingAuthor(
+    actingToken({ sub: "user_ada", name: "Ada", agent: "mercury", exp: 1 }),
+  );
+  appendUserMessageAt(dir, "c1", "ship the report", author);
+
+  const msg = getHistoryAt(dir, "c1")?.messages.find((m) => m.role === "user");
+  expect(msg?.author).toEqual({ userId: "user_ada", name: "Ada" });
+});
+
+test("a user message with no acting-as token stays author-free (byte-identical to today)", () => {
+  const dir = freshDir();
+  // No token → decode yields undefined → no author stamped.
+  const author = decodeActingAuthor(undefined);
+  appendUserMessageAt(dir, "c1", "ship the report", author);
+
+  const msg = getHistoryAt(dir, "c1")?.messages.find((m) => m.role === "user");
+  expect(msg?.author).toBeUndefined();
+  // The `author` key must be ABSENT from the JSON, not present-and-undefined,
+  // so a single-user transcript is byte-identical to before this feature.
+  const raw = readFileSync(join(dir, "c1.json"), "utf8");
+  expect(raw).not.toContain("author");
 });

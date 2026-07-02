@@ -7,6 +7,9 @@
     "imagePasteUnavailable": "No se pudo leer la imagen pegada. Prueba a arrastrar el archivo.",
     "addFiles": "Agregar archivos"
   },
+  "attribution": {
+    "you": "Tú"
+  },
   "queue": {
     "title": "En cola",
     "remove": "Quitar mensaje en cola",

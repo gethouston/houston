@@ -8,8 +8,8 @@ import { FileCredentialStore } from "../credentials/file-store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { BusEventHub } from "../events/hub";
 import { ComposioProvider } from "../integrations/composio";
-import { FileIntegrationCredentialStore } from "../integrations/credential-store";
 import { IntegrationRegistry } from "../integrations/registry";
+import { RemoteIntegrationProvider } from "../integrations/remote";
 import { ProcessLauncher, type RuntimeSpawner } from "../launcher/process";
 import { RuntimeProcessSpawner } from "../launcher/runtime-spawner";
 import { migrateChatHistory } from "../migrate/chat-history";
@@ -67,6 +67,25 @@ export interface LocalHostOptions {
   chatHistoryDbPath?: string;
   /** Override served capabilities; managed K8s pods use the cloud profile. */
   capabilities?: ControlPlaneDeps["capabilities"];
+  /**
+   * Integration wiring (platform model):
+   *  - `gatewayUrl`: Houston's cloud host; the desktop forwards with the user's
+   *    Supabase session, so no provider key ever lives on this machine.
+   *  - `composioApiKey`: a DIRECT platform key — self-host/dev only, where the
+   *    operator owns the key. Never ship a shared key to end-user desktops.
+   * Both set → the gateway wins. Neither → integrations off (empty capability
+   * list, routes 503).
+   *
+   * `podToken` (managed pods only, env `HOUSTON_HOST_TOKEN`) lets the gateway
+   * adapter authenticate a routine turn as its creator (C2, auth mode b). Absent
+   * on the desktop — a routine turn there has no way to act as the creator, so it
+   * falls through to signin-required.
+   */
+  integrations?: {
+    gatewayUrl?: string;
+    composioApiKey?: string;
+    podToken?: string;
+  };
 }
 
 export interface LocalHost {
@@ -133,15 +152,51 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     credentials,
   });
 
-  // Integrations: Composio "for you" (the user's own free account). The user's
-  // key persists beside the connect-once credential file; the registry holds the
-  // adapter(s) the routes + sandbox proxy dispatch through.
-  const integrations = {
-    registry: new IntegrationRegistry([new ComposioProvider()]),
-    credentials: new FileIntegrationCredentialStore(
-      join(dirname(opts.credentialsPath), "integrations.json"),
-    ),
-  };
+  // Integrations (platform model): the desktop holds NO provider key — the
+  // gateway adapter forwards every call to Houston's cloud host with the user's
+  // Supabase session (kept fresh by the frontend via PUT /v1/integrations/
+  // session). Self-host/dev goes direct with its own COMPOSIO_API_KEY instead.
+  // A leftover `integrations.json` from the retired "Composio for you" model
+  // means this user's old connections are gone — surface the one-time
+  // reconnect notice (their personal long-lived key is no longer used: a
+  // security improvement, and the UI says so).
+  // Gateway wins when both are configured: a machine that CAN forward to the
+  // key's real custodian should, and it makes dev's prod-simulation a one-knob
+  // toggle (drop the URL from .env.local → direct mode with your own key).
+  const sessionToken = { current: null as string | null };
+  const registry = opts.integrations?.gatewayUrl
+    ? new IntegrationRegistry([
+        new RemoteIntegrationProvider({
+          id: "composio",
+          upstreamUrl: opts.integrations.gatewayUrl,
+          token: () => sessionToken.current,
+          // Managed pods pass their host token so routine turns authenticate as
+          // the creator; the desktop leaves this undefined.
+          podToken: opts.integrations.podToken,
+        }),
+      ])
+    : opts.integrations?.composioApiKey
+      ? new IntegrationRegistry([
+          new ComposioProvider({ apiKey: opts.integrations.composioApiKey }),
+        ])
+      : null;
+  const integrations = registry
+    ? {
+        registry,
+        ...(opts.integrations?.gatewayUrl
+          ? {
+              session: {
+                set: (token: string | null) => {
+                  sessionToken.current = token;
+                },
+              },
+            }
+          : {}),
+        reconnectNotice: existsSync(
+          join(dirname(opts.credentialsPath), "integrations.json"),
+        ),
+      }
+    : undefined;
 
   // Did this install carry over a Rust-desktop chat-history db? Its mere
   // presence means the user is migrating from the legacy desktop build — their
@@ -164,7 +219,12 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     paths,
     events,
     channels: { local: channel },
-    capabilities: opts.capabilities ?? LOCAL_CAPABILITIES,
+    // Served capabilities advertise the integrations actually wired, not the
+    // profile's nominal list — an unconfigured deployment says [] honestly.
+    capabilities: {
+      ...(opts.capabilities ?? LOCAL_CAPABILITIES),
+      integrations: registry?.ids() ?? [],
+    },
     chatHistoryMigrated,
     integrations,
     corsOrigin: "*",

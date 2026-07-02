@@ -1,12 +1,11 @@
 import { expect, test } from "vitest";
-import { type ComposioLoginClient, ComposioProvider } from "./composio";
-import type { ProviderCredential } from "./types";
+import { ComposioProvider } from "./composio";
 
 /**
  * The Composio adapter verified against an injected fetch — no network. These
- * pin the REQUEST shaping (path, the x-user-api-key header, query/body) and the
- * wire→port MAPPING, so swapping the live transport later can't silently change
- * what the host sends or how it reads the reply.
+ * pin the REQUEST shaping (path, the x-api-key platform header, query/body) and
+ * the wire→port MAPPING, so swapping the live transport later can't silently
+ * change what the host sends or how it reads the reply.
  */
 
 type Reply = { status?: number; body?: unknown };
@@ -17,10 +16,7 @@ interface Recorded {
   body: unknown;
 }
 
-function harness(
-  handler: (url: URL, method: string) => Reply,
-  loginClient?: ComposioLoginClient,
-) {
+function harness(handler: (url: URL, method: string) => Reply) {
   const calls: Recorded[] = [];
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input));
@@ -35,258 +31,340 @@ function harness(
     });
   }) as typeof fetch;
   const provider = new ComposioProvider({
+    apiKey: "pk_test",
     baseURL: "https://cmp.test",
-    webURL: "https://web.test",
+    callbackUrl: "https://gethouston.ai/connected",
     fetch: fetchImpl,
-    loginClient,
   });
   return { provider, calls };
 }
 
-const cred: ProviderCredential = {
-  provider: "composio",
-  data: {
-    apiKey: "uak_test",
-    userId: "consumer-1",
-    orgId: "ok_test",
-    projectId: "pr_test",
-  },
-};
+const USER = "supabase-sub-1";
 
-test("verifyCredential maps session/info and sends the user key", async () => {
+test("a missing platform key is a wiring bug, not a silent no-op", () => {
+  expect(() => new ComposioProvider({ apiKey: "" })).toThrow(/api key/);
+});
+
+test("readiness is always ready (the key is here)", async () => {
+  const { provider } = harness(() => ({ body: {} }));
+  expect(await provider.readiness()).toEqual({ ready: true });
+});
+
+test("listToolkits maps the catalog and sends the platform key", async () => {
   const { provider, calls } = harness((url) => {
-    if (url.pathname === "/api/v3/auth/session/info") {
+    if (url.pathname === "/api/v3/toolkits") {
       return {
-        body: { org_member: { user_id: "consumer-1", email: "a@b.com" } },
+        body: {
+          items: [
+            {
+              slug: "gmail",
+              name: "Gmail",
+              meta: { description: "Email", logo: "https://l/g.png" },
+              categories: [{ name: "productivity" }, "email"],
+            },
+          ],
+        },
       };
     }
     return { status: 404 };
   });
-  expect(await provider.verifyCredential(cred)).toEqual({
-    accountId: "consumer-1",
-    email: "a@b.com",
-  });
-  expect(calls[0]?.headers["x-user-api-key"]).toBe("uak_test");
-  expect(calls[0]?.headers["x-org-id"]).toBe("ok_test");
-});
-
-test("verifyCredential returns null on 401 (bad key), throws on 500", async () => {
-  const unauthorized = harness(() => ({ status: 401 }));
-  expect(await unauthorized.provider.verifyCredential(cred)).toBeNull();
-
-  const broken = harness(() => ({ status: 500, body: { error: "boom" } }));
-  await expect(broken.provider.verifyCredential(cred)).rejects.toThrow(/→ 500/);
-});
-
-test("listToolkits maps the catalog", async () => {
-  const { provider, calls } = harness((url) =>
-    url.pathname === "/api/v3/toolkits"
-      ? {
-          body: {
-            items: [
-              {
-                slug: "gmail",
-                name: "Gmail",
-                meta: { description: "Email", logo: "l.png" },
-              },
-            ],
-          },
-        }
-      : { status: 404 },
-  );
-  const toolkits = await provider.listToolkits(cred);
-  expect(toolkits).toEqual([
+  expect(await provider.listToolkits()).toEqual([
     {
       slug: "gmail",
       name: "Gmail",
       description: "Email",
-      logoUrl: "l.png",
-      categories: [],
+      logoUrl: "https://l/g.png",
+      categories: ["productivity", "email"],
     },
   ]);
-  expect(calls[0]?.path).toContain("limit=1000");
+  expect(calls[0]?.headers["x-api-key"]).toBe("pk_test");
+  expect(calls[0]?.path).toBe("/api/v3/toolkits?limit=1000");
 });
 
-test("listConnections reads connected_accounts, project-scoped (verified live)", async () => {
-  const { provider, calls } = harness((url) =>
-    url.pathname === "/api/v3/connected_accounts"
-      ? {
-          body: {
-            items: [
-              { toolkit: { slug: "gmail" }, id: "ca1", status: "ACTIVE" },
-              { toolkit: { slug: "github" }, id: "ca2", status: "ACTIVE" },
-            ],
-          },
-        }
-      : { status: 404 },
-  );
-  const conns = await provider.listConnections(cred);
-  expect(conns).toEqual([
-    { toolkit: "gmail", connectionId: "ca1", status: "active" },
-    { toolkit: "github", connectionId: "ca2", status: "active" },
+test("listConnections scopes by user_ids and maps statuses", async () => {
+  const { provider, calls } = harness(() => ({
+    body: {
+      items: [
+        { toolkit: { slug: "gmail" }, id: "ca_1", status: "ACTIVE" },
+        { toolkit: { slug: "slack" }, id: "ca_2", status: "INITIATED" },
+        { toolkit: { slug: "notion" }, id: "ca_3", status: "REVOKED" },
+      ],
+    },
+  }));
+  expect(await provider.listConnections(USER)).toEqual([
+    { toolkit: "gmail", connectionId: "ca_1", status: "active" },
+    { toolkit: "slack", connectionId: "ca_2", status: "pending" },
+    { toolkit: "notion", connectionId: "ca_3", status: "error" },
   ]);
-  expect(calls[0]?.path).toContain("user_ids=consumer-1");
-  // The consumer-project header is what makes the connections visible at all.
-  expect(calls[0]?.headers["x-project-id"]).toBe("pr_test");
+  expect(calls[0]?.path).toBe(
+    `/api/v3/connected_accounts?user_ids=${USER}&limit=100`,
+  );
 });
 
-test("execute posts user_id + arguments to the action path and maps the result", async () => {
-  const { provider, calls } = harness((url, method) =>
-    method === "POST" &&
-    url.pathname === "/api/v3/tools/execute/GMAIL_SEND_EMAIL"
-      ? { body: { successful: true, data: { id: "msg1" } } }
-      : { status: 404 },
+test("connect reuses the project's enabled auth config and mints a link session", async () => {
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return {
+        body: {
+          items: [
+            { id: "ac_old", status: "DISABLED" },
+            { id: "ac_gmail", status: "ENABLED" },
+          ],
+        },
+      };
+    }
+    if (url.pathname === "/api/v3.1/connected_accounts/link") {
+      return {
+        body: {
+          redirect_url: "https://oauth.g/consent",
+          connected_account_id: "ca_9",
+        },
+      };
+    }
+    return { status: 404 };
+  });
+
+  const start = await provider.connect(USER, "gmail");
+  expect(start).toEqual({
+    redirectUrl: "https://oauth.g/consent",
+    connectionId: "ca_9",
+  });
+  expect(calls[0]?.path).toBe(
+    "/api/v3/auth_configs?toolkit_slug=gmail&limit=100",
   );
-  const result = await provider.execute(cred, "GMAIL_SEND_EMAIL", {
-    to: "a@b.com",
-    subject: "Hi",
+  expect(calls[1]?.method).toBe("POST");
+  expect(calls[1]?.body).toEqual({
+    auth_config_id: "ac_gmail",
+    user_id: USER,
+    callback_url: "https://gethouston.ai/connected",
   });
-  expect(result).toEqual({
-    successful: true,
-    data: { id: "msg1" },
-    error: undefined,
+
+  // The auth config is cached — a second connect goes straight to the link.
+  await provider.connect(USER, "gmail");
+  expect(calls[2]?.path).toBe("/api/v3.1/connected_accounts/link");
+});
+
+test("connect creates a Composio-managed auth config when the toolkit has one", async () => {
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [] } };
+    }
+    if (url.pathname === "/api/v3/toolkits/slack") {
+      return {
+        body: {
+          composio_managed_auth_schemes: ["OAUTH2"],
+          auth_config_details: [{ mode: "OAUTH2" }],
+        },
+      };
+    }
+    if (url.pathname === "/api/v3/auth_configs" && method === "POST") {
+      return { body: { auth_config: { id: "ac_new" } } };
+    }
+    if (url.pathname === "/api/v3.1/connected_accounts/link") {
+      return {
+        body: { redirect_url: "https://oauth", connected_account_id: "ca_1" },
+      };
+    }
+    return { status: 404 };
   });
-  expect(calls[0]?.body).toEqual({
-    user_id: "consumer-1",
-    arguments: { to: "a@b.com", subject: "Hi" },
+
+  await provider.connect(USER, "slack");
+  expect(calls[2]?.body).toEqual({
+    toolkit: { slug: "slack" },
+    auth_config: { type: "use_composio_managed_auth" },
   });
-  // The consumer-project header is REQUIRED for execute to find the connection.
-  expect(calls[0]?.headers["x-project-id"]).toBe("pr_test");
+  expect(calls[3]?.body).toMatchObject({ auth_config_id: "ac_new" });
+});
+
+test("connect falls back to the toolkit's own scheme when Composio has no managed auth", async () => {
+  // API-key toolkits (serpapi, exa, firecrawl…): the auth config is created on
+  // the toolkit's scheme with EMPTY credentials — the hosted connect link asks
+  // the USER for their key. Verified live: use_composio_managed_auth 400s for
+  // these, and this shape mints a working link session.
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [] } };
+    }
+    if (url.pathname === "/api/v3/toolkits/serpapi") {
+      return {
+        body: {
+          composio_managed_auth_schemes: [],
+          auth_config_details: [{ mode: "API_KEY" }],
+        },
+      };
+    }
+    if (url.pathname === "/api/v3/auth_configs" && method === "POST") {
+      return { body: { auth_config: { id: "ac_key" } } };
+    }
+    if (url.pathname === "/api/v3.1/connected_accounts/link") {
+      return {
+        body: { redirect_url: "https://link", connected_account_id: "ca_2" },
+      };
+    }
+    return { status: 404 };
+  });
+
+  const start = await provider.connect(USER, "serpapi");
+  expect(calls[2]?.body).toEqual({
+    toolkit: { slug: "serpapi" },
+    auth_config: {
+      type: "use_custom_auth",
+      authScheme: "API_KEY",
+      credentials: {},
+    },
+  });
+  expect(start.connectionId).toBe("ca_2");
+});
+
+test("connect refuses a toolkit with no connectable auth scheme, loudly", async () => {
+  const { provider } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [] } };
+    }
+    if (url.pathname === "/api/v3/toolkits/weird") {
+      return {
+        body: { composio_managed_auth_schemes: [], auth_config_details: [] },
+      };
+    }
+    return { status: 404 };
+  });
+  await expect(provider.connect(USER, "weird")).rejects.toThrow(
+    /no connectable auth scheme/,
+  );
+});
+
+test("connection polls one account; 404 → null; another user's account → null", async () => {
+  const { provider } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts/ca_mine") {
+      return {
+        body: {
+          id: "ca_mine",
+          user_id: USER,
+          toolkit: { slug: "gmail" },
+          status: "ACTIVE",
+        },
+      };
+    }
+    if (url.pathname === "/api/v3/connected_accounts/ca_theirs") {
+      return {
+        body: { id: "ca_theirs", user_id: "someone-else", status: "ACTIVE" },
+      };
+    }
+    return { status: 404 };
+  });
+  expect(await provider.connection(USER, "ca_mine")).toEqual({
+    toolkit: "gmail",
+    connectionId: "ca_mine",
+    status: "active",
+  });
+  expect(await provider.connection(USER, "ca_theirs")).toBeNull();
+  expect(await provider.connection(USER, "ca_gone")).toBeNull();
 });
 
 test("disconnect deletes every connected account for the toolkit", async () => {
-  const { provider, calls } = harness((url, method) => {
-    if (method === "GET" && url.pathname === "/api/v3/connected_accounts") {
-      return { body: { items: [{ id: "ca1" }, { id: "ca2" }] } };
+  const deleted: string[] = [];
+  const { provider } = harness((url, method) => {
+    if (url.pathname === "/api/v3/connected_accounts" && method === "GET") {
+      return { body: { items: [{ id: "ca_1" }, { id: "ca_2" }] } };
     }
-    if (method === "DELETE") return { status: 204 };
+    if (method === "DELETE") {
+      deleted.push(url.pathname);
+      return { status: 204 };
+    }
     return { status: 404 };
   });
-  await provider.disconnect(cred, "gmail");
-  const deletes = calls.filter((c) => c.method === "DELETE").map((c) => c.path);
-  expect(deletes).toEqual([
-    "/api/v3/connected_accounts/ca1",
-    "/api/v3/connected_accounts/ca2",
+  await provider.disconnect(USER, "gmail");
+  expect(deleted).toEqual([
+    "/api/v3/connected_accounts/ca_1",
+    "/api/v3/connected_accounts/ca_2",
   ]);
 });
 
-test("search maps discovered actions to slugs + param schemas", async () => {
-  const { provider, calls } = harness((url) =>
-    url.pathname === "/api/v3/tools"
-      ? {
-          body: {
-            items: [
-              {
-                slug: "GMAIL_SEND_EMAIL",
-                toolkit: { slug: "gmail" },
-                description: "Send",
-                input_parameters: { type: "object" },
-              },
-            ],
+test("search scopes to the user's connected toolkits and maps tools", async () => {
+  const { provider, calls } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts") {
+      return {
+        body: {
+          items: [
+            { toolkit: { slug: "gmail" }, id: "ca_1", status: "ACTIVE" },
+            { toolkit: { slug: "slack" }, id: "ca_2", status: "ACTIVE" },
+            // A second gmail account (dedup) and a failed one (excluded).
+            { toolkit: { slug: "gmail" }, id: "ca_3", status: "ACTIVE" },
+            { toolkit: { slug: "notion" }, id: "ca_4", status: "FAILED" },
+          ],
+        },
+      };
+    }
+    return {
+      body: {
+        items: [
+          {
+            slug: "GMAIL_SEND_EMAIL",
+            toolkit: { slug: "gmail" },
+            description: "Send an email",
+            input_parameters: { type: "object" },
           },
-        }
-      : { status: 404 },
-  );
-  const matches = await provider.search(cred, "email");
-  expect(matches).toEqual([
+        ],
+      },
+    };
+  });
+  expect(await provider.search(USER, "send an email")).toEqual([
     {
       action: "GMAIL_SEND_EMAIL",
       toolkit: "gmail",
-      description: "Send",
+      description: "Send an email",
       inputParams: { type: "object" },
     },
   ]);
-  expect(calls[0]?.path).toContain("search=email");
-});
-
-test("a credential for another provider, or missing apiKey, is rejected", async () => {
-  const { provider } = harness(() => ({ status: 200, body: {} }));
-  await expect(
-    provider.execute(
-      { provider: "other", data: { apiKey: "x", userId: "u" } },
-      "A",
-      {},
-    ),
-  ).rejects.toThrow(/not 'composio'/);
-  await expect(
-    provider.execute({ provider: "composio", data: { userId: "u" } }, "A", {}),
-  ).rejects.toThrow(/missing 'apiKey'/);
-});
-
-test("startLogin mints a session and builds the no-key login URL", async () => {
-  const loginClient: ComposioLoginClient = {
-    createSession: async () => ({ id: "sess-1" }),
-    getSession: async () => ({ status: "pending" }),
-  };
-  const { provider } = harness(() => ({ status: 200 }), loginClient);
-  expect(await provider.startLogin()).toEqual({
-    loginUrl: "https://web.test/?cliKey=sess-1",
-    pollKey: "sess-1",
-  });
-});
-
-test("pollLogin is pending until linked, then returns the credential (key never shown)", async () => {
-  let linked = false;
-  const loginClient: ComposioLoginClient = {
-    createSession: async () => ({ id: "s" }),
-    getSession: async () =>
-      linked
-        ? {
-            status: "linked",
-            api_key: "uak_new",
-            account: { email: "x@y.com" },
-          }
-        : { status: "pending" },
-  };
-  const { provider, calls } = harness((url, method) => {
-    if (url.pathname === "/api/v3/auth/session/info")
-      return {
-        body: {
-          org_member: { email: "x@y.com" },
-          project: { org: { id: "ok_1" } },
-        },
-      };
-    if (
-      method === "POST" &&
-      url.pathname === "/api/v3/org/consumer/project/resolve"
-    )
-      return {
-        body: {
-          consumer_user_id: "consumer-1-ok_1",
-          project_nano_id: "pr_abc",
-        },
-      };
-    return { status: 404 };
-  }, loginClient);
-
-  expect(await provider.pollLogin("s")).toEqual({ status: "pending" });
-
-  linked = true;
-  expect(await provider.pollLogin("s")).toEqual({
-    status: "linked",
-    credential: {
-      provider: "composio",
-      data: {
-        apiKey: "uak_new",
-        orgId: "ok_1",
-        userId: "consumer-1-ok_1",
-        projectId: "pr_abc",
-        email: "x@y.com",
-      },
-    },
-  });
-  // The consumer user id is resolved with the freshly-linked key + its org.
-  const resolve = calls.find((c) =>
-    c.path.startsWith("/api/v3/org/consumer/project/resolve"),
+  // Scoped to the ACTIVE connected toolkits (deduped) — Composio's global
+  // full-text search ranks unrelated tools above the obvious match.
+  expect(calls[1]?.path).toBe(
+    "/api/v3/tools?query=send+an+email&limit=10&toolkit_slug=gmail%2Cslack",
   );
-  expect(resolve?.headers["x-user-api-key"]).toBe("uak_new");
-  expect(resolve?.headers["x-org-id"]).toBe("ok_1");
 });
 
-test("connect deep-links to the provider's hosted connect (no key, no orchestration)", async () => {
-  const { provider } = harness(() => ({ status: 200 }));
-  const r = await provider.connect(cred, "gmail");
-  // "Composio for you" hosts the connect UX in its dashboard; we just send the user.
-  expect(r.redirectUrl).toBe("https://web.test/connections?add=gmail");
-  expect(r.connectionId).toBe("");
+test("search falls back to the global catalog when nothing is connected", async () => {
+  const { provider, calls } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts")
+      return { body: { items: [] } };
+    return { body: { items: [] } };
+  });
+  expect(await provider.search(USER, "send an email")).toEqual([]);
+  expect(calls[1]?.path).toBe("/api/v3/tools?query=send+an+email&limit=10");
+});
+
+test("execute posts user_id + arguments and maps success and failure", async () => {
+  const ok = harness(() => ({
+    body: { successful: true, data: { id: "msg_1" } },
+  }));
+  const result = await ok.provider.execute(USER, "GMAIL_SEND_EMAIL", {
+    to: "a@b.com",
+  });
+  expect(result).toEqual({
+    successful: true,
+    data: { id: "msg_1" },
+    error: undefined,
+  });
+  expect(ok.calls[0]?.path).toBe("/api/v3/tools/execute/GMAIL_SEND_EMAIL");
+  expect(ok.calls[0]?.body).toEqual({
+    user_id: USER,
+    arguments: { to: "a@b.com" },
+  });
+
+  const failed = harness(() => ({
+    body: { successful: false, error: "no connected account found" },
+  }));
+  expect(await failed.provider.execute(USER, "X", {})).toEqual({
+    successful: false,
+    data: undefined,
+    error: "no connected account found",
+  });
+});
+
+test("a non-2xx response surfaces as an error with the status + detail", async () => {
+  const { provider } = harness(() => ({
+    status: 500,
+    body: { error: "boom" },
+  }));
+  await expect(provider.listToolkits()).rejects.toThrow(/→ 500.*boom/);
 });

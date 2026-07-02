@@ -1,12 +1,32 @@
 // Chat-related types extracted from Houston's type system.
 // Only the types needed by chat components are included here.
 
+/**
+ * Who wrote a user message in a multiplayer conversation (C5). Mirrors the
+ * protocol `ChatMessage.author`. `name` is a best-effort display name; when
+ * absent the consumer falls back to the userId. Props-only — no store or
+ * i18n imports (library boundary).
+ */
+export interface MessageAuthor {
+  userId: string;
+  name?: string;
+}
+
 export type FeedItem =
   | { feed_type: "assistant_text"; data: string }
   | { feed_type: "assistant_text_streaming"; data: string }
   | { feed_type: "thinking"; data: string }
   | { feed_type: "thinking_streaming"; data: string }
-  | { feed_type: "user_message"; data: string }
+  | {
+      feed_type: "user_message";
+      data: string;
+      /**
+       * Multiplayer only: who wrote this message (C5). Set only in shared
+       * conversations so the renderer can label a teammate's bubble. Absent in
+       * single-player mode — the bubble renders exactly as before.
+       */
+      author?: MessageAuthor;
+    }
   | { feed_type: "tool_runtime_error"; data: ToolRuntimeErrorEntry }
   | { feed_type: "provider_error"; data: ProviderError }
   | { feed_type: "tool_call"; data: { name: string; input: unknown } }
