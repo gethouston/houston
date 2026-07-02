@@ -1,58 +1,54 @@
 import type {
-  AccountIdentity,
   ActionResult,
   Connection,
   ConnectStart,
-  LoginResult,
-  LoginStart,
-  ProviderCredential,
+  ProviderReadiness,
   Toolkit,
   ToolMatch,
 } from "./types";
 
 /**
- * The integration-provider PORT — the seam the user asked for: Composio is the
- * first adapter, and a future provider slots in by implementing this same
- * interface. The host routes + the agent's generic tools depend ONLY on this;
- * no provider's wire types or SDK leak past its adapter.
+ * The integration-provider PORT: Composio is the first adapter, and a future
+ * provider slots in by implementing this same interface. The host routes + the
+ * agent's generic tools depend ONLY on this; no provider's wire types or SDK
+ * leak past its adapter.
  *
- * Credential model (per the product decision): each user uses THEIR OWN free
- * account with the provider — there is no Houston-held platform key. Auth is
- * acquired per user via startLogin/pollLogin; the host stores the resulting
- * ProviderCredential and passes it back into the scoped methods. The credential
- * never reaches the agent runtime — execution is proxied through the host.
+ * Credential model (platform): Houston holds ONE platform API key; users never
+ * create a provider account. Every scoped method takes the caller's verified
+ * Houston `userId` — the provider keys that user's connections by it. On the
+ * desktop the adapter is a thin gateway that forwards to Houston's cloud host
+ * (which holds the key and re-derives the userId from the Supabase JWT), so the
+ * platform key never ships in a client binary. Self-hosters point the direct
+ * adapter at their own provider key instead.
  *
  * Same code in every deployment (local + cloud) — availability is a capability
  * flag, not a forked implementation, so there is no drift.
  */
 export interface IntegrationProvider {
-  /** Stable id, e.g. "composio". Matches ProviderCredential.provider. */
+  /** Stable id, e.g. "composio". */
   readonly id: string;
 
-  // ── Per-user account auth (the user signs into their own account) ──────────
-  /** Begin sign-in: returns the URL to open + a key to poll with. */
-  startLogin(): Promise<LoginStart>;
-  /** Poll a started login; resolves to the user's credential once they finish. */
-  pollLogin(pollKey: string): Promise<LoginResult>;
-  /** Validate a stored credential; null if invalid/expired. */
-  verifyCredential(cred: ProviderCredential): Promise<AccountIdentity | null>;
+  /** Can this deployment serve the user right now (gateway needs a session)? */
+  readiness(): Promise<ProviderReadiness>;
 
-  // ── Toolkits + connections (scoped to one user's credential) ──────────────
-  /** The catalog of connectable apps (in the context of the signed-in user). */
-  listToolkits(cred: ProviderCredential): Promise<Toolkit[]>;
+  // ── Toolkits + connections (scoped to one Houston user) ───────────────────
+  /** The catalog of connectable apps. */
+  listToolkits(): Promise<Toolkit[]>;
   /** The toolkits this user has connected. */
-  listConnections(cred: ProviderCredential): Promise<Connection[]>;
+  listConnections(userId: string): Promise<Connection[]>;
   /** Start connecting a toolkit; returns the OAuth redirect to send the user to. */
-  connect(cred: ProviderCredential, toolkit: string): Promise<ConnectStart>;
+  connect(userId: string, toolkit: string): Promise<ConnectStart>;
+  /** One connection by id (poll after connect() until it turns active). */
+  connection(userId: string, connectionId: string): Promise<Connection | null>;
   /** Remove a toolkit connection. */
-  disconnect(cred: ProviderCredential, toolkit: string): Promise<void>;
+  disconnect(userId: string, toolkit: string): Promise<void>;
 
   // ── Execution (what the agent's generic tools call) ───────────────────────
   /** Discover actions matching a natural-language query (slug + param schema). */
-  search(cred: ProviderCredential, query: string): Promise<ToolMatch[]>;
+  search(userId: string, query: string): Promise<ToolMatch[]>;
   /** Run one action by slug with its params. */
   execute(
-    cred: ProviderCredential,
+    userId: string,
     action: string,
     params: Record<string, unknown>,
   ): Promise<ActionResult>;

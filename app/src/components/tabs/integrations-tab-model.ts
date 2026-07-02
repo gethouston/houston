@@ -1,18 +1,19 @@
-import type { IntegrationLoginResult } from "@houston-ai/engine-client";
+import type { IntegrationConnection } from "@houston-ai/engine-client";
 
 /**
- * The provider whose "for you" account this tab signs into. Composio owns the
- * OAuth; we only ever hold a reference to the user's own hosted account.
+ * The integrations provider (platform mode): Houston holds the platform key
+ * server-side; the user only OAuths the apps themselves — no Composio account,
+ * no sign-in step in this tab.
  */
 export const INTEGRATION_PROVIDER = "composio";
 
-/** How long to wait between login polls, and how many times to poll. */
+/** How long to wait between connection polls, and how many times to poll. */
 export const POLL_INTERVAL_MS = 2000;
 export const POLL_MAX_ATTEMPTS = 150; // ~5 min at 2s/attempt.
 
 /**
- * A short list of common apps for one-click connect. Connecting deep-links to
- * Composio's hosted dashboard (it owns the OAuth); the full catalog lives there.
+ * A short list of common apps for one-click connect. Connecting opens the
+ * app's own OAuth consent (Composio hosts the dance; the user never sees it).
  */
 export const COMMON_TOOLKITS = [
   "gmail",
@@ -25,28 +26,32 @@ export const COMMON_TOOLKITS = [
 ] as const;
 
 /**
- * Outcome of the post-sign-in poll loop. `timeout` is a first-class result, NOT
- * a silent fall-through: the caller MUST surface it so an abandoned browser flow
- * never leaves the user staring at a stopped spinner with no explanation.
+ * Outcome of the post-connect poll loop. `timeout` and `error` are first-class
+ * results, NOT silent fall-throughs: the caller MUST surface them so an
+ * abandoned or failed browser OAuth never leaves the user staring at a stopped
+ * spinner with no explanation.
  */
-export type PollOutcome = "linked" | "timeout" | "cancelled";
+export type PollOutcome = "active" | "error" | "timeout" | "cancelled";
 
 /**
- * Poll the provider until the user finishes signing in in their browser, the
- * loop times out, or the user leaves the tab. Pure + dependency-injected so the
- * timeout and cancellation paths are unit-testable without real timers:
+ * Poll one connection until the user finishes the app's OAuth in their browser,
+ * it fails, the loop times out, or the user leaves the tab. Pure +
+ * dependency-injected so the timeout and cancellation paths are unit-testable
+ * without real timers:
  *
- *  - `poll`        — one `pollLogin` call (already routed through `call()`, so a
- *                    network failure rejects here and the caller surfaces it).
+ *  - `poll`        — one connection-status call (already routed through
+ *                    `call()`, so a network failure rejects here and the
+ *                    caller surfaces it).
  *  - `sleep`       — the inter-attempt delay (real `setTimeout` in prod).
  *  - `isCancelled` — read before every wait + poll so leaving the tab stops the
  *                    loop immediately instead of running out the full 5 minutes.
  *
- * Returns `"linked"` on success, `"cancelled"` if the user left mid-flow, and
- * `"timeout"` once the attempt budget is spent without linking.
+ * Returns `"active"` on success, `"error"` if the OAuth failed or was revoked,
+ * `"cancelled"` if the user left mid-flow, and `"timeout"` once the attempt
+ * budget is spent while still pending.
  */
-export async function pollLoginUntilLinked(deps: {
-  poll: () => Promise<IntegrationLoginResult>;
+export async function pollConnectionUntilActive(deps: {
+  poll: () => Promise<IntegrationConnection>;
   sleep: (ms: number) => Promise<void>;
   isCancelled: () => boolean;
   maxAttempts?: number;
@@ -58,8 +63,9 @@ export async function pollLoginUntilLinked(deps: {
     if (deps.isCancelled()) return "cancelled";
     await deps.sleep(intervalMs);
     if (deps.isCancelled()) return "cancelled";
-    const res = await deps.poll();
-    if (res.status === "linked") return "linked";
+    const conn = await deps.poll();
+    if (conn.status === "active") return "active";
+    if (conn.status === "error") return "error";
   }
   return "timeout";
 }

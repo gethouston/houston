@@ -44,7 +44,6 @@ import type {
   InstallFromGithub,
   InstallFromRepoRequest,
   IntegrationConnection,
-  IntegrationLoginResult,
   IntegrationProviderStatus,
   IntegrationToolkit,
   ListWorktreesRequest,
@@ -940,7 +939,7 @@ export class HoustonClient {
   // app identity and writes its own credential files. Same shape as
   // `claude auth login --claudeai` and `codex login`.
 
-  // ---------- integrations (Composio "for you") — v3 host only ----------
+  // ---------- integrations (Composio platform mode) — v3 host only ----------
   //
   // The Rust engine has no /v1/integrations routes; the UI gates these on the
   // control-plane build (engine-mode), so on the legacy wire they never run.
@@ -954,23 +953,9 @@ export class HoustonClient {
       )
     ).items;
   }
-  startIntegrationLogin(
-    provider: string,
-  ): Promise<{ loginUrl: string; pollKey: string }> {
-    return this.request(
-      "POST",
-      `/integrations/${this.seg(provider)}/login/start`,
-    );
-  }
-  pollIntegrationLogin(
-    provider: string,
-    pollKey: string,
-  ): Promise<IntegrationLoginResult> {
-    return this.request(
-      "POST",
-      `/integrations/${this.seg(provider)}/login/poll`,
-      { pollKey },
-    );
+  /** Keep the desktop gateway's Supabase session fresh (null on sign-out). */
+  async setIntegrationSession(token: string | null): Promise<void> {
+    await this.request("PUT", "/integrations/session", { token });
   }
   async integrationToolkits(provider: string): Promise<IntegrationToolkit[]> {
     return (
@@ -993,10 +978,20 @@ export class HoustonClient {
   connectIntegration(
     provider: string,
     toolkit: string,
-  ): Promise<{ redirectUrl: string }> {
+  ): Promise<{ redirectUrl: string; connectionId: string }> {
     return this.request("POST", `/integrations/${this.seg(provider)}/connect`, {
       toolkit,
     });
+  }
+  /** Poll one connection after connect() until the OAuth finishes. */
+  integrationConnection(
+    provider: string,
+    connectionId: string,
+  ): Promise<IntegrationConnection> {
+    return this.request(
+      "GET",
+      `/integrations/${this.seg(provider)}/connections/${this.seg(connectionId)}`,
+    );
   }
   async disconnectIntegration(
     provider: string,
@@ -1007,9 +1002,6 @@ export class HoustonClient {
       `/integrations/${this.seg(provider)}/disconnect`,
       { toolkit },
     );
-  }
-  async logoutIntegration(provider: string): Promise<void> {
-    await this.request("POST", `/integrations/${this.seg(provider)}/logout`);
   }
 
   // ---------- store ----------

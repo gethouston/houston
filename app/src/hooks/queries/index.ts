@@ -23,7 +23,6 @@ export {
   useDisconnectIntegration,
   useIntegrationConnections,
   useIntegrationStatus,
-  useLogoutIntegration,
 } from "./use-integrations";
 export {
   useAddLearning,

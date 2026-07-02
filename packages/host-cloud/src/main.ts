@@ -12,7 +12,6 @@ import {
   LinearFeedbackSender,
 } from "@houston/host/src/feedback";
 import { ComposioProvider } from "@houston/host/src/integrations/composio";
-import { MemoryIntegrationCredentialStore } from "@houston/host/src/integrations/credential-store";
 import { IntegrationRegistry } from "@houston/host/src/integrations/registry";
 import { FakeLauncher } from "@houston/host/src/launcher/fake";
 import { CloudPaths } from "@houston/host/src/paths";
@@ -45,7 +44,6 @@ import { type AutopilotRates, BigQueryBillingReader } from "./admin/billing";
 import { FakeClusterReader, GkeClusterReader } from "./admin/cluster";
 import { makeTokenVerifier } from "./auth/verify-supabase";
 import { PgCredentialStore } from "./credentials/store-pg";
-import { PgIntegrationCredentialStore } from "./integrations/credential-store-pg";
 import { type AgentResolver, GkeLauncher } from "./launcher/gke";
 import { type AdminDeps, handleAdmin } from "./routes/admin";
 import { PgWorkspaceStore } from "./store/pg";
@@ -68,21 +66,19 @@ import { GcsVfs } from "./vfs/gcs";
  */
 
 /**
- * Workspace store + the connect-once credential store, sharing one Pool in prod.
- * The Pool is returned too (null in dev) so the same connection backs the
- * integration credential store wired in main() — one pool per process.
+ * Workspace store + the connect-once credential store, sharing one Pool in
+ * prod. (Platform-mode integrations keep no per-user credential, so nothing
+ * else needs the Pool anymore.)
  */
 function buildStores(): {
   store: WorkspaceStore;
   credentials: CredentialStore;
-  pool: Pool | null;
 } {
   const runtime = { defaultRuntime: config.defaultRuntime };
   if (config.dev) {
     return {
       store: new MemoryWorkspaceStore(runtime),
       credentials: new MemoryCredentialStore(),
-      pool: null,
     };
   }
   if (!config.databaseUrl) {
@@ -92,7 +88,6 @@ function buildStores(): {
   return {
     store: new PgWorkspaceStore(pool, runtime),
     credentials: new PgCredentialStore(pool),
-    pool,
   };
 }
 
@@ -227,7 +222,7 @@ function buildFeedback(): FeedbackSender | undefined {
 }
 
 function main(): void {
-  const { store, credentials, pool } = buildStores();
+  const { store, credentials } = buildStores();
   const vault = new EnvCredentialVault();
   const verifier = makeTokenVerifier();
 
@@ -258,17 +253,21 @@ function main(): void {
     ...(turn ? { cloudrun: new TurnChannel(turn) } : {}),
   };
 
-  // Integrations: Composio "for you" (each user's own free account). The adapter
-  // is the same in every deployment; only the credential store differs. With a
-  // live Pool (prod) the user's connected account persists in Postgres so it
-  // survives a replica restart; dev mode (no Pool) uses the in-memory store. The
-  // LOCAL profile persists to a file (see @houston/host local/host.ts).
-  const integrations: IntegrationDeps = {
-    registry: new IntegrationRegistry([new ComposioProvider()]),
-    credentials: pool
-      ? new PgIntegrationCredentialStore(pool)
-      : new MemoryIntegrationCredentialStore(),
-  };
+  // Integrations (platform model): Houston's ONE Composio project key, from the
+  // environment (never a literal). Users are plain `user_id`s under the project
+  // — the verified Supabase `sub` — so there is no per-user credential store at
+  // all: which apps a user connected lives with Composio. This host is ALSO the
+  // desktop's integrations gateway (the local profile forwards here with the
+  // user's Supabase token), so the key never ships in a client binary. No key →
+  // integrations off (capability [] + routes 503).
+  const composioApiKey = process.env.COMPOSIO_API_KEY;
+  const integrations: IntegrationDeps | undefined = composioApiKey
+    ? {
+        registry: new IntegrationRegistry([
+          new ComposioProvider({ apiKey: composioApiKey }),
+        ]),
+      }
+    : undefined;
 
   // The operator-admin surface is CLOSED: bind it here and inject it behind the
   // host's `mountAdmin` seam. The bound `handleAdmin` closes over the admin deps
@@ -294,7 +293,11 @@ function main(): void {
     paths,
     events,
     channels,
-    capabilities: CLOUD_CAPABILITIES,
+    // Advertise the integrations actually wired (no COMPOSIO_API_KEY → []).
+    capabilities: {
+      ...CLOUD_CAPABILITIES,
+      integrations: integrations?.registry.ids() ?? [],
+    },
     mountAdmin,
     feedback: buildFeedback(),
     integrations,

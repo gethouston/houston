@@ -176,16 +176,18 @@
     "title": "Integrations",
     "description": "Connect your apps so this agent can act on them.",
     "loading": "Loading...",
-    "composio": "Composio",
-    "connectBlurb": "Sign in to connect your apps. Your account stays yours; the agent uses it on your behalf.",
-    "connect": "Connect Composio",
-    "connecting": "Waiting for sign-in...",
-    "loginTimeout": "Sign-in timed out. Please try connecting again.",
-    "connectedAs": "Connected as {{email}}",
-    "signOut": "Sign out",
+    "unavailable": "Integrations are not available in this setup.",
+    "signinTitle": "Sign in to connect apps",
+    "signinBlurb": "Sign in to Houston to connect your apps. Your accounts stay yours; the agent acts on your behalf.",
+    "signinButton": "Sign in to Houston",
+    "reconnectNotice": "We upgraded how apps connect to make it more secure. Please reconnect your apps once; Houston no longer keeps any long-lived key for them.",
+    "connectTimeout": "The connection didn't finish. Please try again.",
+    "connectFailed": "The app couldn't be connected. Please try again.",
     "connectedApps": "Connected apps",
     "noApps": "No apps connected yet.",
     "disconnect": "Disconnect",
-    "addApps": "Add apps"
+    "addApps": "Add apps",
+    "statusPending": "waiting for approval",
+    "statusError": "needs reconnecting"
   }
 }

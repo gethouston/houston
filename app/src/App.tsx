@@ -9,6 +9,7 @@ import { WorkspaceShell } from "./components/shell/workspace-shell";
 import { useAgentInvalidation } from "./hooks/use-agent-invalidation";
 import { useAnalyticsSubscriber } from "./hooks/use-analytics-subscriber";
 import { useHoustonInit } from "./hooks/use-houston-init";
+import { useIntegrationSessionSync } from "./hooks/use-integration-session-sync";
 import { useMigrationReconnect } from "./hooks/use-migration-reconnect";
 import { useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
@@ -30,6 +31,7 @@ export default function App() {
   useSessionEvents();
   useAgentInvalidation();
   useAnalyticsSubscriber();
+  useIntegrationSessionSync();
 
   // NOTE: install identity, `install_created`, `session_started`, and theme
   // load run in <StartupEffects> at the top of the tree (main.tsx), NOT here.

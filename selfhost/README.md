@@ -68,8 +68,12 @@ curl http://127.0.0.1:4318/health
 curl -H "Authorization: Bearer test" http://127.0.0.1:4318/v1/capabilities
 ```
 
-Expected capabilities include `"codeExecution":"disabled"`,
-`"amazon-bedrock"` in `providers`, and `"composio"` in `integrations`. The
+Expected capabilities include `"codeExecution":"disabled"` and
+`"amazon-bedrock"` in `providers`. `integrations` reflects what you configured:
+it lists `"composio"` only when the container has a `COMPOSIO_API_KEY`
+(platform-mode Composio — create a free project at composio.dev and pass
+`-e COMPOSIO_API_KEY=...`; the single-user pod acts as one Composio `user_id`).
+Without the key, integrations are simply off (`"integrations":[]`). The
 private gateway supplies `HOUSTON_HOST_TOKEN`, mounts `/data` on the user's PVC,
 and fronts the pod with Supabase-authenticated proxying.
 
@@ -197,6 +201,9 @@ Edit `selfhost/.env`:
 ```env
 HOUSTON_DOMAIN=houston.example.com
 HOUSTON_HOST_TOKEN=<run openssl rand -hex 32>
+# Optional: app integrations (Gmail, Slack…) via your own Composio project
+# key (platform mode; free tier at composio.dev). Omit → integrations off.
+COMPOSIO_API_KEY=
 ```
 
 Start the engine and Caddy:

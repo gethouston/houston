@@ -432,8 +432,14 @@ test("the documented profile asymmetries are exactly the intended ones", async (
     ).json()) as Capabilities;
 
     // Each serves its own real profile constant (the single source of truth).
-    expect(lc).toEqual(LOCAL_CAPABILITIES);
+    // Integration availability is CONFIG-driven, not a profile asymmetry: the
+    // local boot here wires no gateway/key, so it honestly serves [] (the
+    // cloud fixture passes the nominal constant straight through).
+    expect(lc).toEqual({ ...LOCAL_CAPABILITIES, integrations: [] });
     expect(cc).toEqual(CLOUD_CAPABILITIES);
+    expect(CLOUD_CAPABILITIES.integrations).toEqual(
+      LOCAL_CAPABILITIES.integrations,
+    );
 
     // The asymmetries are ONLY these — desktop shell + the user's own machine vs
     // the egress-locked remote sandbox. Anything else differing is a bug.

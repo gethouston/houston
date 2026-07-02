@@ -1100,22 +1100,17 @@ export const tauriTunnel = {
 };
 
 /**
- * Integrations (Composio "for you"). User-level (the user's own connected
- * account); surfaced per-agent in the Integrations tab. Host-only — these reach
- * the v3 host's /v1/integrations routes; the tab is gated to the control-plane
- * build so they never run on the legacy Rust wire. Types flow by inference.
+ * Integrations (Composio, platform mode). The user never creates a provider
+ * account — they only OAuth apps (Gmail, Slack…); Houston's platform key lives
+ * server-side. Host-only — these reach the v3 host's /v1/integrations routes;
+ * the tab is gated to the control-plane build so they never run on the legacy
+ * Rust wire. Types flow by inference.
  */
 export const tauriIntegrations = {
   status: () =>
     call("integration_status", () => getEngine().integrationStatus()),
-  startLogin: (provider: string) =>
-    call("integration_login_start", () =>
-      getEngine().startIntegrationLogin(provider),
-    ),
-  pollLogin: (provider: string, pollKey: string) =>
-    call("integration_login_poll", () =>
-      getEngine().pollIntegrationLogin(provider, pollKey),
-    ),
+  setSession: (token: string | null) =>
+    call("integration_session", () => getEngine().setIntegrationSession(token)),
   toolkits: (provider: string) =>
     call("integration_toolkits", () =>
       getEngine().integrationToolkits(provider),
@@ -1128,10 +1123,12 @@ export const tauriIntegrations = {
     call("integration_connect", () =>
       getEngine().connectIntegration(provider, toolkit),
     ),
+  connection: (provider: string, connectionId: string) =>
+    call("integration_connection", () =>
+      getEngine().integrationConnection(provider, connectionId),
+    ),
   disconnect: (provider: string, toolkit: string) =>
     call("integration_disconnect", () =>
       getEngine().disconnectIntegration(provider, toolkit),
     ),
-  logout: (provider: string) =>
-    call("integration_logout", () => getEngine().logoutIntegration(provider)),
 };

@@ -1,8 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Plug, RefreshCw } from "lucide-react";
+import { Plug, RefreshCw, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useIntegrationStatus } from "../../hooks/queries";
+import { signInWithGoogle } from "../../lib/auth";
 import { showErrorToast } from "../../lib/error-toast";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations, tauriSystem } from "../../lib/tauri";
@@ -11,7 +12,7 @@ import { IntegrationsConnections } from "./integrations-connections";
 import {
   INTEGRATION_PROVIDER,
   POLL_INTERVAL_MS,
-  pollLoginUntilLinked,
+  pollConnectionUntilActive,
 } from "./integrations-tab-model";
 
 const btn =
@@ -26,10 +27,12 @@ export default function IntegrationsTab(_props: TabProps) {
   const composio = status.data?.find(
     (p) => p.provider === INTEGRATION_PROVIDER,
   );
-  const connected = !!composio?.connected;
 
-  const [connecting, setConnecting] = useState(false);
-  // Stop the login poll loop if the user leaves the tab mid-flow.
+  const [connectingToolkit, setConnectingToolkit] = useState<string | null>(
+    null,
+  );
+  const [signingIn, setSigningIn] = useState(false);
+  // Stop the connect poll loop if the user leaves the tab mid-flow.
   const cancelled = useRef(false);
   useEffect(() => {
     cancelled.current = false;
@@ -38,55 +41,64 @@ export default function IntegrationsTab(_props: TabProps) {
     };
   }, []);
 
-  // The no-API-key sign-in: open the provider's login URL, then poll until the
-  // user finishes there. The key is fetched + stored host-side — never here.
-  // Every engine call routes through `call()`, which already toasts + reports
-  // failures, so we only need to (a) absorb the re-thrown rejection so it never
-  // becomes an unhandled promise rejection, and (b) surface the ONE failure
-  // `call()` can't see: the poll timing out because the user abandoned the flow.
-  const connectAccount = useCallback(async () => {
-    setConnecting(true);
-    try {
-      const { loginUrl, pollKey } =
-        await tauriIntegrations.startLogin(INTEGRATION_PROVIDER);
-      await tauriSystem.openUrl(loginUrl);
-      const outcome = await pollLoginUntilLinked({
-        poll: () => tauriIntegrations.pollLogin(INTEGRATION_PROVIDER, pollKey),
-        sleep,
-        isCancelled: () => cancelled.current,
-        intervalMs: POLL_INTERVAL_MS,
-      });
-      if (outcome === "linked") {
-        await qc.invalidateQueries({
-          queryKey: queryKeys.integrationStatus(),
-        });
-      } else if (outcome === "timeout") {
-        showErrorToast(
-          "integration_login_timeout",
-          t("integrations.loginTimeout"),
+  // Platform mode: connecting an app opens ITS OWN OAuth consent (Gmail,
+  // Slack…) — no Composio account, no provider sign-in. We then poll the
+  // connection until the user finishes in the browser. Every engine call
+  // routes through `call()` (toasts + reports failures); we surface the two
+  // outcomes `call()` can't see: the poll timing out (abandoned flow) and the
+  // OAuth failing on the provider's side.
+  const addApp = useCallback(
+    async (toolkit: string) => {
+      setConnectingToolkit(toolkit);
+      try {
+        const { redirectUrl, connectionId } = await tauriIntegrations.connect(
+          INTEGRATION_PROVIDER,
+          toolkit,
         );
+        await tauriSystem.openUrl(redirectUrl);
+        const outcome = await pollConnectionUntilActive({
+          poll: () =>
+            tauriIntegrations.connection(INTEGRATION_PROVIDER, connectionId),
+          sleep,
+          isCancelled: () => cancelled.current,
+          intervalMs: POLL_INTERVAL_MS,
+        });
+        if (outcome === "active") {
+          await qc.invalidateQueries({
+            queryKey: queryKeys.integrationConnections(INTEGRATION_PROVIDER),
+          });
+        } else if (outcome === "timeout") {
+          showErrorToast(
+            "integration_connect_timeout",
+            t("integrations.connectTimeout"),
+          );
+        } else if (outcome === "error") {
+          showErrorToast(
+            "integration_connect_failed",
+            t("integrations.connectFailed"),
+          );
+        }
+      } catch {
+        // The failing engine call (connect / open-url / poll) already surfaced
+        // via `call()`. Swallow the re-throw so the click handler never leaks
+        // an unhandled rejection.
+      } finally {
+        if (!cancelled.current) setConnectingToolkit(null);
       }
-    } catch {
-      // The failing engine call (start / open-url / poll) already surfaced via
-      // `call()`. Swallow the re-throw here so the click handler never leaks an
-      // unhandled rejection.
-    } finally {
-      if (!cancelled.current) setConnecting(false);
-    }
-  }, [qc, t]);
+    },
+    [qc, t],
+  );
 
-  // Adding an app hands off to the provider's hosted connect (it owns the
-  // OAuth). Both calls route through `call()`; catch the re-throw so the click
-  // handler stays an awaited, surfaced boundary.
-  const addApp = useCallback(async (toolkit: string) => {
+  // Desktop, signed out of Houston: the gateway has no session to forward.
+  // Signing in is the ONLY step — the session sync pushes the token and the
+  // status query flips to ready on its own.
+  const signIn = useCallback(async () => {
+    setSigningIn(true);
     try {
-      const { redirectUrl } = await tauriIntegrations.connect(
-        INTEGRATION_PROVIDER,
-        toolkit,
-      );
-      await tauriSystem.openUrl(redirectUrl);
+      await signInWithGoogle();
     } catch {
-      // Already surfaced by `call()`; swallow so onClick doesn't fire-and-forget.
+      // Surfaced by the auth layer's own error listener; reset the spinner.
+      setSigningIn(false);
     }
   }, []);
 
@@ -104,37 +116,49 @@ export default function IntegrationsTab(_props: TabProps) {
           <p className="text-sm text-muted-foreground">
             {t("integrations.loading")}
           </p>
-        ) : !connected ? (
-          // Not connected → sign in to the user's own Composio account.
+        ) : !composio ? (
+          <p className="text-sm text-muted-foreground">
+            {t("integrations.unavailable")}
+          </p>
+        ) : !composio.ready ? (
+          // Signed out of Houston (desktop) → one sign-in, nothing else.
           <div className="flex flex-col items-start gap-3 rounded-2xl border border-black/10 bg-card p-6">
             <div className="flex items-center gap-2">
               <Plug className="h-5 w-5 text-muted-foreground" />
-              <span className="font-medium">{t("integrations.composio")}</span>
+              <span className="font-medium">
+                {t("integrations.signinTitle")}
+              </span>
             </div>
             <p className="text-sm text-muted-foreground">
-              {t("integrations.connectBlurb")}
+              {t("integrations.signinBlurb")}
             </p>
             <button
               type="button"
               className={btn}
               onClick={() => {
-                void connectAccount();
+                void signIn();
               }}
-              disabled={connecting}
+              disabled={signingIn}
             >
-              {connecting && <RefreshCw className="h-4 w-4 animate-spin" />}
-              {connecting
-                ? t("integrations.connecting")
-                : t("integrations.connect")}
+              {signingIn && <RefreshCw className="h-4 w-4 animate-spin" />}
+              {t("integrations.signinButton")}
             </button>
           </div>
         ) : (
-          <IntegrationsConnections
-            email={composio?.account?.email}
-            onAddApp={(toolkit) => {
-              void addApp(toolkit);
-            }}
-          />
+          <>
+            {composio.reconnect && (
+              <div className="flex items-start gap-2 rounded-2xl border border-black/10 bg-card p-4 text-sm text-muted-foreground">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                <span>{t("integrations.reconnectNotice")}</span>
+              </div>
+            )}
+            <IntegrationsConnections
+              onAddApp={(toolkit) => {
+                void addApp(toolkit);
+              }}
+              connectingToolkit={connectingToolkit}
+            />
+          </>
         )}
       </div>
     </div>

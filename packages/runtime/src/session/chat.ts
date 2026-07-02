@@ -36,10 +36,10 @@ import { toWire } from "./wire";
 // bash tool. See tools/clamped-fs.ts.
 const fileTools = makeClampedFileTools(config.workspaceDir);
 
-// Integration tools (Composio "for you"): available whenever this runtime can
-// reach its host with a sandbox token (server mode — local desktop + standing
-// pods). They hold no credential; they proxy to /sandbox/integrations and the
-// host uses the user's own connected account.
+// Integration tools (Composio, platform mode): available whenever this runtime
+// can reach its host with a sandbox token (server mode — local desktop +
+// standing pods). They hold no credential; they proxy to /sandbox/integrations
+// and the host (or its cloud gateway) acts as the user's Composio user_id.
 const integrationTools =
   config.controlPlaneUrl && config.sandboxToken
     ? makeIntegrationTools({

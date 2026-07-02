@@ -663,21 +663,20 @@ export function subscribeEvents(
   return () => ac.abort();
 }
 
-// ── integrations (Composio "for you") ────────────────────────────────────────
-// User-level (each user's own connected account); surfaced per-agent in the UI.
-// Types live once in the shared engine-client types (re-exported here so callers
-// importing from the adapter keep one import site, and the v1 client agrees).
+// ── integrations (Composio, platform mode) ───────────────────────────────────
+// User-level: no provider account — users only OAuth apps; the platform key
+// lives with the host (or its cloud gateway). Types live once in the shared
+// engine-client types (re-exported here so callers importing from the adapter
+// keep one import site, and the v1 client agrees).
 
 export type {
   IntegrationConnection,
-  IntegrationLoginResult,
   IntegrationProviderStatus,
   IntegrationToolkit,
 } from "../../../../ui/engine-client/src/types";
 
 import type {
   IntegrationConnection,
-  IntegrationLoginResult,
   IntegrationProviderStatus,
   IntegrationToolkit,
 } from "../../../../ui/engine-client/src/types";
@@ -692,26 +691,34 @@ export async function integrationStatus(
   return ((await res.json()) as { items: IntegrationProviderStatus[] }).items;
 }
 
-export async function startIntegrationLogin(
+export async function setIntegrationSession(
   cfg: ControlPlaneConfig,
-  provider: string,
-): Promise<{ loginUrl: string; pollKey: string }> {
-  const res = await cpFetch(cfg, `${integrationPath(provider)}/login/start`, {
-    method: "POST",
-  });
-  return (await res.json()) as { loginUrl: string; pollKey: string };
+  token: string | null,
+): Promise<void> {
+  try {
+    await cpFetch(cfg, "/v1/integrations/session", {
+      method: "PUT",
+      body: JSON.stringify({ token }),
+    });
+  } catch (err) {
+    // 404 = this deployment has no gateway session sink (the cloud host
+    // verifies JWTs itself) — a legitimate shape, not a failure. Anything
+    // else (network, 5xx) rethrows and the caller surfaces it.
+    if (err instanceof HoustonEngineError && err.status === 404) return;
+    throw err;
+  }
 }
 
-export async function pollIntegrationLogin(
+export async function integrationConnection(
   cfg: ControlPlaneConfig,
   provider: string,
-  pollKey: string,
-): Promise<IntegrationLoginResult> {
-  const res = await cpFetch(cfg, `${integrationPath(provider)}/login/poll`, {
-    method: "POST",
-    body: JSON.stringify({ pollKey }),
-  });
-  return (await res.json()) as IntegrationLoginResult;
+  connectionId: string,
+): Promise<IntegrationConnection> {
+  const res = await cpFetch(
+    cfg,
+    `${integrationPath(provider)}/connections/${encodeURIComponent(connectionId)}`,
+  );
+  return (await res.json()) as IntegrationConnection;
 }
 
 export async function integrationToolkits(
@@ -734,12 +741,12 @@ export async function connectIntegration(
   cfg: ControlPlaneConfig,
   provider: string,
   toolkit: string,
-): Promise<{ redirectUrl: string }> {
+): Promise<{ redirectUrl: string; connectionId: string }> {
   const res = await cpFetch(cfg, `${integrationPath(provider)}/connect`, {
     method: "POST",
     body: JSON.stringify({ toolkit }),
   });
-  return (await res.json()) as { redirectUrl: string };
+  return (await res.json()) as { redirectUrl: string; connectionId: string };
 }
 
 export async function disconnectIntegration(
@@ -751,11 +758,4 @@ export async function disconnectIntegration(
     method: "POST",
     body: JSON.stringify({ toolkit }),
   });
-}
-
-export async function logoutIntegration(
-  cfg: ControlPlaneConfig,
-  provider: string,
-): Promise<void> {
-  await cpFetch(cfg, `${integrationPath(provider)}/logout`, { method: "POST" });
 }

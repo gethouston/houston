@@ -176,16 +176,18 @@
     "title": "Integraciones",
     "description": "Conecta tus aplicaciones para que este agente pueda usarlas.",
     "loading": "Cargando...",
-    "composio": "Composio",
-    "connectBlurb": "Inicia sesión para conectar tus aplicaciones. Tu cuenta sigue siendo tuya; el agente la usa en tu nombre.",
-    "connect": "Conectar Composio",
-    "connecting": "Esperando el inicio de sesión...",
-    "loginTimeout": "Se agotó el tiempo de inicio de sesión. Intenta conectarte de nuevo.",
-    "connectedAs": "Conectado como {{email}}",
-    "signOut": "Cerrar sesión",
+    "unavailable": "Las integraciones no están disponibles en esta configuración.",
+    "signinTitle": "Inicia sesión para conectar aplicaciones",
+    "signinBlurb": "Inicia sesión en Houston para conectar tus aplicaciones. Tus cuentas siguen siendo tuyas; el agente actúa en tu nombre.",
+    "signinButton": "Iniciar sesión en Houston",
+    "reconnectNotice": "Mejoramos la forma en que se conectan las aplicaciones para hacerla más segura. Reconecta tus aplicaciones una sola vez; Houston ya no guarda ninguna clave de larga duración.",
+    "connectTimeout": "La conexión no se completó. Inténtalo de nuevo.",
+    "connectFailed": "No se pudo conectar la aplicación. Inténtalo de nuevo.",
     "connectedApps": "Aplicaciones conectadas",
     "noApps": "Aún no hay aplicaciones conectadas.",
     "disconnect": "Desconectar",
-    "addApps": "Agregar aplicaciones"
+    "addApps": "Agregar aplicaciones",
+    "statusPending": "esperando aprobación",
+    "statusError": "necesita reconexión"
   }
 }

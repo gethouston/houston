@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations } from "../../lib/tauri";
 
-/** Per-provider connection status (connected? whose account?). User-level. */
+/** Per-provider readiness (usable now? needs a Houston sign-in?). User-level. */
 export function useIntegrationStatus() {
   return useQuery({
     queryKey: queryKeys.integrationStatus(),
@@ -11,7 +11,7 @@ export function useIntegrationStatus() {
   });
 }
 
-/** The toolkits a provider connection currently has (after sign-in). */
+/** The apps the user has connected through a provider. */
 export function useIntegrationConnections(provider: string, enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.integrationConnections(provider),
@@ -38,18 +38,5 @@ export function useDisconnectIntegration(provider: string) {
       qc.invalidateQueries({
         queryKey: queryKeys.integrationConnections(provider),
       }),
-  });
-}
-
-export function useLogoutIntegration(provider: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => tauriIntegrations.logout(provider),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.integrationStatus() });
-      qc.invalidateQueries({
-        queryKey: queryKeys.integrationConnections(provider),
-      });
-    },
   });
 }

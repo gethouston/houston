@@ -959,13 +959,21 @@ export interface PortableInstalledAgent {
   requiredIntegrations: string[];
 }
 
-// ── integrations (Composio "for you") ────────────────────────────────────────
-// User-level: each user's own connected account, surfaced per-agent in the UI.
+// ── integrations (Composio, platform mode) ───────────────────────────────────
+// User-level: no provider account — the user only connects apps (Gmail, Slack…)
+// via OAuth; Houston's platform key lives server-side, keyed by the user's id.
 
 export interface IntegrationProviderStatus {
   provider: string;
-  connected: boolean;
-  account?: { accountId: string; email?: string };
+  /** False on desktop until the user signs in to Houston (gateway needs it). */
+  ready: boolean;
+  reason?: "signin";
+  /**
+   * Legacy "Composio for you" connections were found for this install: the
+   * user reconnects their apps once (framed as the security improvement it is
+   * — their personal long-lived key is no longer used anywhere).
+   */
+  reconnect?: boolean;
 }
 export interface IntegrationToolkit {
   slug: string;
@@ -979,9 +987,6 @@ export interface IntegrationConnection {
   connectionId: string;
   status: "active" | "pending" | "error";
 }
-export type IntegrationLoginResult =
-  | { status: "pending" }
-  | { status: "linked"; account?: { accountId: string; email?: string } };
 
 // ── OpenAI-compatible (local) provider ───────────────────────────────────────
 // A local LLM server the user runs (Ollama / vLLM / LM Studio), connected by

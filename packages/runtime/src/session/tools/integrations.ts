@@ -3,13 +3,14 @@ import { type Static, Type } from "typebox";
 
 /**
  * The agent's window into the user's connected third-party apps (Gmail, Google
- * Calendar, Slack, Notion, …) via the "Composio for you" integration.
+ * Calendar, Slack, Notion, …) via the Composio platform integration.
  *
  * Two GENERIC tools — search (discover an action) then execute (run it) — kept
  * deliberately thin: they hold NO credential and talk ONLY to the host's
  * `/sandbox/integrations/*` proxy under the per-sandbox HMAC token. The host
- * resolves the user's own connected account and makes the real provider call, so
- * a prompt-injected agent here can never read the user's integration key.
+ * (or its cloud gateway, which owns the platform key) acts as the user and
+ * makes the real provider call, so a prompt-injected agent here can never read
+ * any integration secret — there is none on this machine at all.
  */
 
 const SearchParams = Type.Object({
@@ -73,11 +74,12 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      // 409 = the user hasn't connected this provider yet — a normal, actionable
-      // state the agent should relay, not a crash.
+      // 409 = integrations can't act for this user yet (on desktop: they're
+      // signed out of Houston, so the gateway has no session to forward) — a
+      // normal, actionable state the agent should relay, not a crash.
       if (res.status === 409) {
         throw new Error(
-          "No apps are connected yet. Ask the user to connect their apps in Integrations, then try again.",
+          "Connected apps aren't available yet: the user needs to sign in to Houston (Settings), then connect their apps in Integrations. Ask them to do that, then try again.",
         );
       }
       throw new Error(
