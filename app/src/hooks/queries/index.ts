@@ -34,6 +34,13 @@ export {
   useUpdateLearning,
 } from "./use-learnings";
 export {
+  useAddMember,
+  useOrg,
+  useRemoveMember,
+  useSetAgentAssignments,
+  useSetMemberRole,
+} from "./use-org";
+export {
   useCancelRoutineRun,
   useCreateRoutine,
   useDeleteRoutine,

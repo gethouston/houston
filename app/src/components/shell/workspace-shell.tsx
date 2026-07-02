@@ -21,6 +21,7 @@ import {
   STANDARD_TABS,
 } from "../../agents/standard-tabs";
 import { useActivity } from "../../hooks/queries";
+import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
 import { analytics } from "../../lib/analytics";
 import { osIsTauri } from "../../lib/os-bridge";
@@ -83,6 +84,7 @@ export function WorkspaceShell({
   const [panelContainer, setPanelContainer] = useState<HTMLDivElement | null>(
     null,
   );
+  const canCreateAgents = useCanCreateAgents();
   const agentDef = currentAgent ? getById(currentAgent.configId) : undefined;
   const { data: activities } = useActivity(currentAgent?.folderPath);
   const needsYouCount = (activities ?? []).filter(
@@ -295,13 +297,15 @@ export function WorkspaceShell({
                           {t("agents:empty.description")}
                         </EmptyDescription>
                       </EmptyHeader>
-                      <Button
-                        className="mt-4 rounded-full"
-                        onClick={() => setCreateAgentDialogOpen(true)}
-                      >
-                        <Plus className="h-4 w-4" />
-                        {t("shell:newAgent.dialogTitle")}
-                      </Button>
+                      {canCreateAgents && (
+                        <Button
+                          className="mt-4 rounded-full"
+                          onClick={() => setCreateAgentDialogOpen(true)}
+                        >
+                          <Plus className="h-4 w-4" />
+                          {t("shell:newAgent.dialogTitle")}
+                        </Button>
+                      )}
                     </Empty>
                   </div>
                 ) : (
