@@ -12,6 +12,7 @@
 
 import { createServer } from "node:http";
 import { Readable } from "node:stream";
+import type { Capabilities } from "@houston-ai/engine-client";
 import { clearChatStreams } from "./chat";
 import { CORS, json, noContent } from "./http";
 import { FAKE_HOST_PORT } from "./ports";
@@ -80,6 +81,21 @@ async function handle(req: Request): Promise<Response> {
   if (path === "/providers") return json(providersBody());
 
   // --- misc host surface the UI may touch on boot (kept permissive) ---
+  // Single-player local profile: the app's boot routing waits on this
+  // (App.tsx gates onboarding-vs-shell on loaded capabilities).
+  if (path === "/v1/capabilities" && method === "GET") {
+    const caps: Capabilities = {
+      profile: "local",
+      revealInOs: false,
+      terminal: false,
+      tunnel: false,
+      codeExecution: "disabled",
+      providers: ["anthropic"],
+      openaiCompatible: false,
+      integrations: [],
+    };
+    return json(caps);
+  }
   if (segs[0] === "v1" && segs[1] === "workspaces") return json([]);
   // Composio integrations: report none connected (control-plane.ts wants `{ items }`).
   if (segs[0] === "v1" && segs[1] === "integrations")
