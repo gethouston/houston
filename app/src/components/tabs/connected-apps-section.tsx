@@ -6,11 +6,8 @@ import type {
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDisconnectIntegration } from "../../hooks/queries";
-import {
-  type AppDisplay,
-  appDisplay,
-  ConnectedAppRow,
-} from "./integrations-app-rows";
+import { type AppDisplay, appDisplay } from "./integrations-app-rows";
+import { ConnectedAppRow } from "./integrations-connected-row";
 import { INTEGRATION_PROVIDER } from "./integrations-tab-model";
 
 interface ConnectedAppsSectionProps {

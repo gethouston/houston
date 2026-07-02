@@ -54,3 +54,33 @@ export function useDisconnectIntegration(provider: string) {
       }),
   });
 }
+
+/**
+ * Multiplayer only: the integration toolkit slugs this agent may use (the
+ * per-(user, agent) grant set from C4). Gated on the `multiplayer` capability
+ * via `enabled` — the local/desktop engine has no grant routes, so the query
+ * stays idle in single-player and the tab renders without grant sections.
+ */
+export function useAgentGrants(agentId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.agentGrants(agentId),
+    queryFn: () => tauriIntegrations.grants(agentId),
+    enabled,
+  });
+}
+
+/**
+ * Multiplayer only: replace this agent's grant set (an instant replace-set PUT
+ * per C4). Invalidates `agentGrants` so the granted/available split re-renders
+ * live. Carries no `onError` for the same reason as the mutations above: the
+ * `call()` wrapper already surfaces + reports the failure once.
+ */
+export function useSetAgentGrants(agentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (toolkits: string[]) =>
+      tauriIntegrations.setGrants(agentId, toolkits),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: queryKeys.agentGrants(agentId) }),
+  });
+}

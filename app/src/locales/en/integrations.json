@@ -46,5 +46,24 @@
   "connectResult": {
     "timeout": "The connection didn't finish. Please try again.",
     "failed": "The app couldn't be connected. Please try again."
+  },
+  "grants": {
+    "granted": {
+      "title": "This agent can use",
+      "subtitle": "Apps this agent is allowed to act on. Turn one off to remove it here.",
+      "empty": "This agent can't use any apps yet. Allow one below, or connect a new app.",
+      "revoke": "Stop letting this agent use {{name}}"
+    },
+    "available": {
+      "title": "Your other connected apps",
+      "subtitle": "Connected apps this agent can't use yet. Turn one on to allow it here.",
+      "allow": "Allow this agent to use {{name}}"
+    },
+    "disconnect": {
+      "menu": "Disconnect everywhere",
+      "confirmTitle": "Disconnect {{name}} everywhere?",
+      "confirmBody": "This removes {{name}} for all of your agents, not just this one. You can reconnect it anytime.",
+      "confirmAction": "Disconnect everywhere"
+    }
   }
 }

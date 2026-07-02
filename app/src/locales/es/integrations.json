@@ -46,5 +46,24 @@
   "connectResult": {
     "timeout": "La conexión no se completó. Inténtalo de nuevo.",
     "failed": "No se pudo conectar la aplicación. Inténtalo de nuevo."
+  },
+  "grants": {
+    "granted": {
+      "title": "Este agente puede usar",
+      "subtitle": "Aplicaciones que este agente puede usar. Desactiva una para quitarla aquí.",
+      "empty": "Este agente aún no puede usar ninguna aplicación. Permite una abajo o conecta una nueva.",
+      "revoke": "Dejar de permitir que este agente use {{name}}"
+    },
+    "available": {
+      "title": "Tus otras aplicaciones conectadas",
+      "subtitle": "Aplicaciones conectadas que este agente aún no puede usar. Activa una para permitirla aquí.",
+      "allow": "Permitir que este agente use {{name}}"
+    },
+    "disconnect": {
+      "menu": "Desconectar en todas partes",
+      "confirmTitle": "¿Desconectar {{name}} en todas partes?",
+      "confirmBody": "Esto quita {{name}} de todos tus agentes, no solo de este. Puedes volver a conectarla cuando quieras.",
+      "confirmAction": "Desconectar en todas partes"
+    }
   }
 }

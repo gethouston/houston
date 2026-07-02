@@ -47,6 +47,30 @@ export function browseCatalog(opts: {
   return filtered;
 }
 
+/**
+ * Split the user's connections into the two multiplayer grant buckets (C4):
+ *
+ *  - `granted`   — connected AND in this agent's grant set → "This agent can
+ *                  use" (revoking removes the slug from the set).
+ *  - `available` — connected but NOT granted → "Your other connected apps"
+ *                  with an "Allow for this agent" action (no OAuth).
+ *
+ * A grant slug with no matching connection is ignored here: a grant only means
+ * something once the app is actually connected. Connection order is preserved
+ * within each bucket (the caller sorts for display). Pure so it's unit-testable.
+ */
+export function splitByGrant(opts: {
+  connections: IntegrationConnection[];
+  grants: ReadonlySet<string>;
+}): { granted: IntegrationConnection[]; available: IntegrationConnection[] } {
+  const granted: IntegrationConnection[] = [];
+  const available: IntegrationConnection[] = [];
+  for (const c of opts.connections) {
+    (opts.grants.has(c.toolkit) ? granted : available).push(c);
+  }
+  return { granted, available };
+}
+
 /** Every category present in the catalog, sorted by display label. */
 export function categoriesOf(catalog: IntegrationToolkit[]): string[] {
   const seen = new Set<string>();
