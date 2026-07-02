@@ -105,19 +105,27 @@ export class SupabaseTokenVerifier implements TokenVerifier {
 }
 
 /**
- * Picks the verifier for the current mode: DevTokenVerifier in `dev`, the real
- * Supabase verifier otherwise. The Supabase verifier's constructor enforces that
- * at least one verification method is configured. CP_SERVICE_TOKENS, when set,
- * wraps either with the static service-token map (evals harness).
+ * Picks the verifier: explicit Supabase config (CP_SUPABASE_JWKS_URL or
+ * CP_SUPABASE_JWT_SECRET) always wins — INCLUDING in `dev` mode, so a local
+ * gateway (fake stores, real identity) can verify real Google-issued sessions,
+ * e.g. when simulating the desktop→gateway integrations path in `pnpm dev`.
+ * Dev with no Supabase config falls back to DevTokenVerifier (`dev:<user>`
+ * bearers). Production requires Supabase config (the constructor refuses to
+ * start without a verification method). CP_SERVICE_TOKENS, when set, wraps
+ * either with the static service-token map (evals harness).
  */
 export function makeTokenVerifier(): TokenVerifier {
-  const base: TokenVerifier = config.dev
-    ? new DevTokenVerifier()
-    : new SupabaseTokenVerifier({
-        jwtSecret: config.supabaseJwtSecret,
-        jwksUrl: config.supabaseJwksUrl,
-        issuer: config.supabaseJwtIssuer,
-      });
+  const supabaseConfigured = Boolean(
+    config.supabaseJwksUrl || config.supabaseJwtSecret,
+  );
+  const base: TokenVerifier =
+    config.dev && !supabaseConfigured
+      ? new DevTokenVerifier()
+      : new SupabaseTokenVerifier({
+          jwtSecret: config.supabaseJwtSecret,
+          jwksUrl: config.supabaseJwksUrl,
+          issuer: config.supabaseJwtIssuer,
+        });
   const tokens = parseServiceTokens(config.serviceTokens);
   return tokens.size > 0 ? new ServiceTokenVerifier(tokens, base) : base;
 }

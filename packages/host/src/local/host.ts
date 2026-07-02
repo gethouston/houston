@@ -68,12 +68,13 @@ export interface LocalHostOptions {
   /** Override served capabilities; managed K8s pods use the cloud profile. */
   capabilities?: ControlPlaneDeps["capabilities"];
   /**
-   * Integration wiring (platform model — pick at most one source):
+   * Integration wiring (platform model):
    *  - `gatewayUrl`: Houston's cloud host; the desktop forwards with the user's
    *    Supabase session, so no provider key ever lives on this machine.
    *  - `composioApiKey`: a DIRECT platform key — self-host/dev only, where the
    *    operator owns the key. Never ship a shared key to end-user desktops.
-   * Neither set → integrations off (empty capability list, routes 503).
+   * Both set → the gateway wins. Neither → integrations off (empty capability
+   * list, routes 503).
    */
   integrations?: { gatewayUrl?: string; composioApiKey?: string };
 }
@@ -150,18 +151,21 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   // means this user's old connections are gone — surface the one-time
   // reconnect notice (their personal long-lived key is no longer used: a
   // security improvement, and the UI says so).
+  // Gateway wins when both are configured: a machine that CAN forward to the
+  // key's real custodian should, and it makes dev's prod-simulation a one-knob
+  // toggle (drop the URL from .env.local → direct mode with your own key).
   const sessionToken = { current: null as string | null };
-  const registry = opts.integrations?.composioApiKey
+  const registry = opts.integrations?.gatewayUrl
     ? new IntegrationRegistry([
-        new ComposioProvider({ apiKey: opts.integrations.composioApiKey }),
+        new RemoteIntegrationProvider({
+          id: "composio",
+          upstreamUrl: opts.integrations.gatewayUrl,
+          token: () => sessionToken.current,
+        }),
       ])
-    : opts.integrations?.gatewayUrl
+    : opts.integrations?.composioApiKey
       ? new IntegrationRegistry([
-          new RemoteIntegrationProvider({
-            id: "composio",
-            upstreamUrl: opts.integrations.gatewayUrl,
-            token: () => sessionToken.current,
-          }),
+          new ComposioProvider({ apiKey: opts.integrations.composioApiKey }),
         ])
       : null;
   const integrations = registry

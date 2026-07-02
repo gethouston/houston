@@ -100,9 +100,14 @@ test("capabilities can report the managed cloud pod profile", async () => {
   }
 });
 
-test("a configured integrations gateway advertises composio", async () => {
+test("a configured integrations gateway advertises composio and wins over a direct key", async () => {
   const { host, base } = await setup({
-    integrations: { gatewayUrl: "https://cloud.test" },
+    // Both configured (the dev prod-simulation shape) → the gateway wins, so
+    // the signin-gated remote adapter is what serves, never the direct key.
+    integrations: {
+      gatewayUrl: "https://cloud.test",
+      composioApiKey: "pk_ignored",
+    },
   });
   try {
     const caps = (await (
