@@ -1146,6 +1146,16 @@ jobs:
           chmod +x "$SHIM_DIR/ldd"
           echo "$SHIM_DIR" >> "$GITHUB_PATH"
 
+      # tauri.conf.json has `createUpdaterArtifacts: true` + an updater pubkey, so
+      # tauri tries to emit a minisign `.sig` for the AppImage and FAILS if
+      # TAURI_SIGNING_PRIVATE_KEY is absent ("public key found, but no private
+      # key"). Linux is download-only / not wired into the auto-updater, so we
+      # don't ship the signing key here — instead flip updater-artifact creation
+      # off for this runner's checkout (never committed). mac/win keep it on:
+      # they pass the key and feed latest.json.
+      - name: Disable updater artifacts (Linux is download-only)
+        run: ./scripts/ci/configure-ts-engine-unsigned.sh
+
       - name: Build Tauri app (Linux AppImage)
         uses: tauri-apps/tauri-action@v0
         with:
