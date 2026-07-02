@@ -3,9 +3,17 @@ import type { RawAuthConfig } from "./composio-wire";
 
 /**
  * The project's auth config for a toolkit: reuse an enabled one, else create
- * one on Composio-managed auth (their OAuth app — no Google registration on
- * our side). The caller caches per process; a restart just re-resolves the
- * same config.
+ * one. Which kind depends on how the toolkit authenticates:
+ *
+ *  - Composio-managed OAuth available (gmail, slack…) → `use_composio_managed_auth`
+ *    (their OAuth app; no Google registration on our side).
+ *  - No managed auth (API-key/bearer toolkits like serpapi) → `use_custom_auth`
+ *    with the toolkit's own scheme and EMPTY credentials: the auth config is
+ *    just the container; the hosted connect link then asks the USER for their
+ *    key (verified live — `connected_account_initiation.required` fields are
+ *    collected on connect.composio.dev). Same Connect UX either way.
+ *
+ * The caller caches per process; a restart just re-resolves the same config.
  */
 export async function resolveAuthConfig(
   http: ComposioHttp,
@@ -33,7 +41,7 @@ export async function resolveAuthConfig(
       method: "POST",
       body: {
         toolkit: { slug: toolkit },
-        auth_config: { type: "use_composio_managed_auth" },
+        auth_config: await authConfigSpec(http, toolkit),
       },
     },
   );
@@ -45,4 +53,29 @@ export async function resolveAuthConfig(
   }
   cache.set(toolkit, id);
   return id;
+}
+
+interface RawToolkitDetail {
+  composio_managed_auth_schemes?: string[];
+  auth_config_details?: { mode?: string }[];
+}
+
+/** Managed auth when Composio offers it; else the toolkit's own scheme. */
+async function authConfigSpec(
+  http: ComposioHttp,
+  toolkit: string,
+): Promise<Record<string, unknown>> {
+  const detail = await http.call<RawToolkitDetail>(
+    `/api/v3/toolkits/${encodeURIComponent(toolkit)}`,
+  );
+  if ((detail?.composio_managed_auth_schemes ?? []).length > 0) {
+    return { type: "use_composio_managed_auth" };
+  }
+  const scheme = detail?.auth_config_details?.find((d) => d.mode)?.mode;
+  if (!scheme) {
+    throw new Error(
+      `composio: toolkit '${toolkit}' offers no connectable auth scheme`,
+    );
+  }
+  return { type: "use_custom_auth", authScheme: scheme, credentials: {} };
 }

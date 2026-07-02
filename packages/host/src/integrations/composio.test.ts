@@ -144,10 +144,18 @@ test("connect reuses the project's enabled auth config and mints a link session"
   expect(calls[2]?.path).toBe("/api/v3.1/connected_accounts/link");
 });
 
-test("connect creates a Composio-managed auth config when none exists", async () => {
+test("connect creates a Composio-managed auth config when the toolkit has one", async () => {
   const { provider, calls } = harness((url, method) => {
     if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
       return { body: { items: [] } };
+    }
+    if (url.pathname === "/api/v3/toolkits/slack") {
+      return {
+        body: {
+          composio_managed_auth_schemes: ["OAUTH2"],
+          auth_config_details: [{ mode: "OAUTH2" }],
+        },
+      };
     }
     if (url.pathname === "/api/v3/auth_configs" && method === "POST") {
       return { body: { auth_config: { id: "ac_new" } } };
@@ -161,11 +169,68 @@ test("connect creates a Composio-managed auth config when none exists", async ()
   });
 
   await provider.connect(USER, "slack");
-  expect(calls[1]?.body).toEqual({
+  expect(calls[2]?.body).toEqual({
     toolkit: { slug: "slack" },
     auth_config: { type: "use_composio_managed_auth" },
   });
-  expect(calls[2]?.body).toMatchObject({ auth_config_id: "ac_new" });
+  expect(calls[3]?.body).toMatchObject({ auth_config_id: "ac_new" });
+});
+
+test("connect falls back to the toolkit's own scheme when Composio has no managed auth", async () => {
+  // API-key toolkits (serpapi, exa, firecrawl…): the auth config is created on
+  // the toolkit's scheme with EMPTY credentials — the hosted connect link asks
+  // the USER for their key. Verified live: use_composio_managed_auth 400s for
+  // these, and this shape mints a working link session.
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [] } };
+    }
+    if (url.pathname === "/api/v3/toolkits/serpapi") {
+      return {
+        body: {
+          composio_managed_auth_schemes: [],
+          auth_config_details: [{ mode: "API_KEY" }],
+        },
+      };
+    }
+    if (url.pathname === "/api/v3/auth_configs" && method === "POST") {
+      return { body: { auth_config: { id: "ac_key" } } };
+    }
+    if (url.pathname === "/api/v3.1/connected_accounts/link") {
+      return {
+        body: { redirect_url: "https://link", connected_account_id: "ca_2" },
+      };
+    }
+    return { status: 404 };
+  });
+
+  const start = await provider.connect(USER, "serpapi");
+  expect(calls[2]?.body).toEqual({
+    toolkit: { slug: "serpapi" },
+    auth_config: {
+      type: "use_custom_auth",
+      authScheme: "API_KEY",
+      credentials: {},
+    },
+  });
+  expect(start.connectionId).toBe("ca_2");
+});
+
+test("connect refuses a toolkit with no connectable auth scheme, loudly", async () => {
+  const { provider } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [] } };
+    }
+    if (url.pathname === "/api/v3/toolkits/weird") {
+      return {
+        body: { composio_managed_auth_schemes: [], auth_config_details: [] },
+      };
+    }
+    return { status: 404 };
+  });
+  await expect(provider.connect(USER, "weird")).rejects.toThrow(
+    /no connectable auth scheme/,
+  );
 });
 
 test("connection polls one account; 404 → null; another user's account → null", async () => {
