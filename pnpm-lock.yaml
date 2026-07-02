@@ -29,6 +29,9 @@ importers:
       lint-staged:
         specifier: ^17.0.8
         version: 17.0.8
+      mprocs:
+        specifier: ^0.9.6
+        version: 0.9.6
       tsx:
         specifier: ^4.21.0
         version: 4.22.4
@@ -4534,6 +4537,11 @@ packages:
         optional: true
       react-dom:
         optional: true
+
+  mprocs@0.9.6:
+    resolution: {integrity: sha512-sEwB5XD3/rReB47h0YbN2L5fXOLcMjF8sOEDTMr/daCLyVZfU4CegbanxO0ybiaFx0MQ/nV7yzOHmprmy2Wq9w==}
+    engines: {node: '>=0.10.0'}
+    hasBin: true
 
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
@@ -9879,6 +9887,8 @@ snapshots:
     optionalDependencies:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
+
+  mprocs@0.9.6: {}
 
   ms@2.1.3: {}
 
