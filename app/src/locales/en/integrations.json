@@ -1,56 +1,37 @@
 {
   "title": "Integrations",
+  "description": "Connect your apps so your agent can act on them.",
   "loading": {
     "title": "Loading your integrations",
     "body": "Checking your integrations provider…"
   },
-  "notInstalled": {
-    "title": "Connect your apps",
-    "body": "Houston uses an integrations provider to let your agent use Gmail, Slack, Google Drive, and 100+ other services on your behalf. The default provider is Composio. One-time install, about 80 MB.",
-    "install": "Install provider",
-    "installing": "Installing…"
+  "unavailable": "Integrations are not available in this setup.",
+  "signin": {
+    "title": "Sign in to connect apps",
+    "body": "Sign in to Houston to connect your apps. Your accounts stay yours; the agent acts on your behalf.",
+    "button": "Sign in to Houston",
+    "failed": "Sign-in couldn't start. Please try again."
   },
-  "needsAuth": {
-    "title": "Connect your integrations provider",
-    "body": "Sign in to your integrations provider so your agent can use Gmail, Slack, Google Drive, and 100+ other services on your behalf. We use Composio by default.",
-    "signIn": "Sign in"
-  },
-  "error": {
-    "title": "Couldn't load integrations",
-    "retry": "Retry",
-    "openDashboard": "Open provider dashboard"
-  },
+  "reconnectNotice": "We upgraded how apps connect to make it more secure. Please reconnect your apps once; Houston no longer keeps any long-lived key for them.",
+  "reconnectDismiss": "Got it",
   "connected": {
     "title": "Connected",
     "count_one": "{{count}} app",
     "count_other": "{{count}} apps",
-    "manageOn": "Manage {{name}}",
     "dotAria": "Connected",
     "menu": {
       "aria": "Options for {{name}}",
-      "manage": "Manage on Composio",
       "reconnect": "Reconnect",
       "disconnect": "Disconnect"
-    },
-    "reconnect": {
-      "openedTitle": "Reconnecting {{name}}",
-      "openedBody": "Finish signing in again in your browser, then come back here.",
-      "doneTitle": "{{name}} reconnected"
     },
     "disconnect": {
       "confirmTitle": "Disconnect {{name}}?",
       "confirmBody": "Your agent will lose access to {{name}}. You can reconnect it anytime.",
       "confirmAction": "Disconnect",
       "cancel": "Cancel"
-    }
-  },
-  "signOut": {
-    "button": "Sign out",
-    "loading": "Signing out…",
-    "confirmTitle": "Sign out of Composio?",
-    "confirmBody": "You'll need to sign in again and reconnect any apps you use. This won't uninstall the provider.",
-    "confirmAction": "Sign out",
-    "cancel": "Cancel"
+    },
+    "statusPending": "Finish connecting in your browser...",
+    "statusError": "Needs reconnecting"
   },
   "browse": {
     "title": "Browse all apps",
@@ -64,19 +45,27 @@
     "loadMoreWithRemaining": "Load more ({{count}} remaining)",
     "connectTitle": "Connect {{name}}"
   },
-  "authDialog": {
-    "title": "Connecting your integrations provider",
-    "description": "Complete the sign-in in your browser, then return here.",
-    "waiting": "Waiting for you to approve in the browser…",
-    "openInBrowser": "Open link in browser",
-    "errorTimeout": "Sign-in timed out. Make sure you finished approving in the browser, then try again.",
-    "errorGeneric": "Something went wrong while connecting. Please try again.",
-    "tryAgain": "Try again"
+  "connectResult": {
+    "timeout": "The connection didn't finish. Please try again.",
+    "failed": "The app couldn't be connected. Please try again."
   },
-  "linkCard": {
-    "integration": "App integration",
-    "alreadyConnected": "Already connected",
-    "connected": "Connected",
-    "connect": "Connect"
+  "grants": {
+    "granted": {
+      "title": "This agent can use",
+      "subtitle": "Apps this agent is allowed to act on. Turn one off to remove it here.",
+      "empty": "This agent can't use any apps yet. Allow one below, or connect a new app.",
+      "revoke": "Stop letting this agent use {{name}}"
+    },
+    "available": {
+      "title": "Your other connected apps",
+      "subtitle": "Connected apps this agent can't use yet. Turn one on to allow it here.",
+      "allow": "Allow this agent to use {{name}}"
+    },
+    "disconnect": {
+      "menu": "Disconnect everywhere",
+      "confirmTitle": "Disconnect {{name}} everywhere?",
+      "confirmBody": "This removes {{name}} for all of your agents, not just this one. You can reconnect it anytime.",
+      "confirmAction": "Disconnect everywhere"
+    }
   }
 }

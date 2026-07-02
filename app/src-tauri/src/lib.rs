@@ -640,6 +640,27 @@ fn spawn_host_sidecar(
             houston_prompt::system_prompt(),
         ),
     ];
+    // Integrations gateway (platform-mode Composio): Houston's cloud host owns
+    // the platform key; this desktop host only forwards with the user's
+    // Supabase session. Runtime env wins (dev override), else the compile-time
+    // URL CI bakes in. No URL → the host runs with integrations off. The URL
+    // is configuration, not a secret; the KEY never appears here at all.
+    if let Some(url) = std::env::var("HOUSTON_INTEGRATIONS_URL")
+        .ok()
+        .filter(|v| !v.is_empty())
+        .or_else(|| option_env!("HOUSTON_INTEGRATIONS_URL").map(str::to_string))
+        .filter(|v| !v.is_empty())
+    {
+        host_env.push(("HOUSTON_INTEGRATIONS_URL".into(), url));
+    }
+    // Dev/self-host escape hatch: a locally-exported platform key makes the
+    // host call Composio directly (packages/host/src/local/main.ts). Never
+    // baked at compile time — a shared key must not ship in a client binary.
+    if let Ok(key) = std::env::var("COMPOSIO_API_KEY") {
+        if !key.is_empty() {
+            host_env.push(("COMPOSIO_API_KEY".into(), key));
+        }
+    }
     // Same Sentry-forwarding contract as the engine path, gated on the same
     // `sentry_active` decision (and forwarding the SENTRY_SEND_IN_DEV opt-in),
     // so host-side crashes land in the shared project under the same release

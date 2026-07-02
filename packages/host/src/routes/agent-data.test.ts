@@ -56,6 +56,7 @@ const deps = (): ControlPlaneDeps => ({
       launcher,
       proxy: { async forward() {} },
       credentials,
+      forwardActingHeader: false,
     }),
   },
   vfs,
@@ -184,6 +185,35 @@ test("routines: created with schema defaults; a stray per-routine timezone is ig
     headers: auth("alice"),
   });
   expect(((await runs.json()) as { items: unknown[] }).items).toEqual([]);
+});
+
+test("routines: created_by is server-owned and cannot be spoofed", async () => {
+  const created = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      name: "Daily report",
+      prompt: "Write it",
+      schedule: "0 9 * * 1-5",
+      created_by: "mallory",
+    }),
+  });
+  expect(created.status).toBe(201);
+  const routine = (await created.json()) as Routine;
+  expect(routine.created_by).toBe("alice");
+
+  const patched = await fetch(
+    `${base}/agents/${agentId}/routines/${routine.id}`,
+    {
+      method: "PATCH",
+      headers: auth("alice"),
+      body: JSON.stringify({ name: "Renamed", created_by: "mallory" }),
+    },
+  );
+  expect(patched.status).toBe(200);
+  const next = (await patched.json()) as Routine;
+  expect(next.name).toBe("Renamed");
+  expect(next.created_by).toBe("alice");
 });
 
 test("routines: an invalid cron is rejected at create (400), never saved to fail silently", async () => {

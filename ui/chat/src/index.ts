@@ -176,6 +176,8 @@ export {
 export type { ChatComposerLabels, ChatInputProps } from "./chat-input";
 export { ChatInput } from "./chat-input";
 export type { AttachMenuItem } from "./chat-input-parts";
+export type { ChatAuthorLabels } from "./chat-messages";
+export { authorLabelFor } from "./chat-messages";
 // === Chat Components ===
 export { ChatPanel } from "./chat-panel";
 export type {
@@ -201,6 +203,7 @@ export type {
   FileChangeEntry,
   ToolEntry,
 } from "./feed-to-messages";
+export { distinctAuthorCount } from "./feed-to-messages";
 // Clean, human-readable preview of a persisted user-message body: decodes the
 // Skill / attachment markers so cards and lists never show the raw marker.
 export { messagePreviewText } from "./message-preview";
@@ -222,6 +225,7 @@ export type { TurnEndSummary } from "./turn-tools";
 export type {
   AuthFailureCause,
   FeedItem,
+  MessageAuthor,
   ModelUnavailableReason,
   ProviderError,
   QuotaScope,

@@ -20,7 +20,10 @@ import { config } from "../config";
 import {
   appendAssistantMessage,
   appendUserMessage,
+  getHistory,
 } from "../store/conversations";
+import { type ActingContext, runWithActingContext } from "./acting-context";
+import { decodeActingAuthor, framePrompt } from "./attribution";
 import { publish } from "./bus";
 import { makeAgentLoader } from "./resource-loader";
 import { buildToolSelection } from "./tool-selection";
@@ -36,10 +39,10 @@ import { toWire } from "./wire";
 // bash tool. See tools/clamped-fs.ts.
 const fileTools = makeClampedFileTools(config.workspaceDir);
 
-// Integration tools (Composio "for you"): available whenever this runtime can
-// reach its host with a sandbox token (server mode — local desktop + standing
-// pods). They hold no credential; they proxy to /sandbox/integrations and the
-// host uses the user's own connected account.
+// Integration tools (Composio, platform mode): available whenever this runtime
+// can reach its host with a sandbox token (server mode — local desktop +
+// standing pods). They hold no credential; they proxy to /sandbox/integrations
+// and the host (or its cloud gateway) acts as the user's Composio user_id.
 const integrationTools =
   config.controlPlaneUrl && config.sandboxToken
     ? makeIntegrationTools({
@@ -169,9 +172,28 @@ async function execTurn(
   text: string,
   nonce?: string,
   pin?: TurnPin,
+  acting?: ActingContext,
 ) {
-  appendUserMessage(id, text);
-  publish(id, { type: "user", data: { content: text, ts: Date.now(), nonce } });
+  // WHO wrote this message (C5): decode the acting-as token's payload (the
+  // gateway already verified it; the runtime only reads it). Absent → no author,
+  // and everything below stays byte-identical to a single-user turn.
+  const author = decodeActingAuthor(acting?.actingAs);
+  // Prior user authors, read BEFORE appending this turn — drives the model
+  // framing decision (prefix only when ≥2 distinct authors are in play).
+  // Authorless turns (single-user desktop) can never frame (shouldFrame is
+  // false without an author), so skip re-reading + parsing the whole
+  // conversation file every turn and pass the empty list it would reduce to.
+  const priorAuthors = author
+    ? (getHistory(id)?.messages ?? [])
+        .filter((m) => m.role === "user")
+        .map((m) => m.author)
+    : [];
+
+  appendUserMessage(id, text, author);
+  publish(id, {
+    type: "user",
+    data: { content: text, ts: Date.now(), nonce, author },
+  });
 
   let assistantText = "";
   let usage: TokenUsage | null = null;
@@ -253,7 +275,15 @@ async function execTurn(
       const level = toThinkingLevel(effort);
       if (level) conv.session.setThinkingLevel(level);
     }
-    await conv.session.prompt(text);
+    // Model framing (C5): in a multiplayer conversation with ≥2 distinct authors,
+    // prefix the prompt with `[From: <name>]\n` so the model can tell teammates
+    // apart. Single-author (or authorless) turns pass `text` through unchanged —
+    // today's prompts stay byte-identical, so no drift for existing users.
+    const promptText = framePrompt(text, author, priorAuthors);
+    // Hold the turn's acting-as identity (C2) for the DURATION of the prompt so
+    // the integration tools' proxy calls (which run inside this async subtree)
+    // attach it. Absent → runs plainly (act as owner).
+    await runWithActingContext(acting, () => conv.session.prompt(promptText));
     // Persist the switch marker AND any typed provider error on this turn's
     // assistant message so both the boundary divider and the reconnect /
     // rate-limit card survive a history reload. A provider failure lands HERE
@@ -333,6 +363,7 @@ export async function runTurn(
   text: string,
   nonce?: string,
   pin?: TurnPin,
+  acting?: ActingContext,
 ): Promise<void> {
   // The message route already synced the credential and confirmed a provider via
   // ensureProviderForTurn. Re-check here as a cheap guard for the narrow window
@@ -357,7 +388,9 @@ export async function runTurn(
     return;
   }
 
-  const run = conv.queue.then(() => execTurn(conv, id, text, nonce, pin));
+  const run = conv.queue.then(() =>
+    execTurn(conv, id, text, nonce, pin, acting),
+  );
   // Keep the queue chain alive past a turn. execTurn already surfaces its own
   // failure as an `error` event, so this guard never swallows a user-visible one.
   conv.queue = run.catch(() => {});

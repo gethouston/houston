@@ -1,8 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations } from "../../lib/tauri";
+import {
+  applyGrantChange,
+  type GrantChange,
+  reverseGrantChange,
+} from "./grant-set";
 
-/** Per-provider connection status (connected? whose account?). User-level. */
+/** Per-provider readiness (usable now? needs a Houston sign-in?). User-level. */
 export function useIntegrationStatus() {
   return useQuery({
     queryKey: queryKeys.integrationStatus(),
@@ -11,12 +16,26 @@ export function useIntegrationStatus() {
   });
 }
 
-/** The toolkits a provider connection currently has (after sign-in). */
+/** The apps the user has connected through a provider. */
 export function useIntegrationConnections(provider: string, enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.integrationConnections(provider),
     queryFn: () => tauriIntegrations.connections(provider),
     enabled,
+  });
+}
+
+/**
+ * The provider's app catalog (name, logo, description per toolkit). Big and
+ * near-static, so cache it for the session — the tab uses it to render real
+ * app cards instead of machine slugs.
+ */
+export function useIntegrationToolkits(provider: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.integrationToolkits(provider),
+    queryFn: () => tauriIntegrations.toolkits(provider),
+    enabled,
+    staleTime: 60 * 60 * 1000,
   });
 }
 
@@ -41,15 +60,62 @@ export function useDisconnectIntegration(provider: string) {
   });
 }
 
-export function useLogoutIntegration(provider: string) {
+/**
+ * Multiplayer only: the integration toolkit slugs this agent may use (the
+ * per-(user, agent) grant set from C4). Gated on the `multiplayer` capability
+ * via `enabled` — the local/desktop engine has no grant routes, so the query
+ * stays idle in single-player and the tab renders without grant sections.
+ */
+export function useAgentGrants(agentId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.agentGrants(agentId),
+    queryFn: () => tauriIntegrations.grants(agentId),
+    enabled,
+  });
+}
+
+/**
+ * Multiplayer only: add or remove ONE toolkit in this agent's grant set. The
+ * host API is a replace-set PUT (C4), so the next set is computed inside
+ * `mutationFn` from the freshest cache value at mutate time — never from a set
+ * a component captured earlier (a stale snapshot would wipe grants made in
+ * between, e.g. while the OAuth poll was running). An optimistic `onMutate`
+ * update (+ targeted rollback on error, + invalidation on settle) makes
+ * overlapping add/remove mutations compose instead of resurrecting each other.
+ * Carries no `onError` toast for the same reason as the mutations above: the
+ * `call()` wrapper already surfaces + reports the failure once.
+ */
+export function useAgentGrantMutation(agentId: string) {
   const qc = useQueryClient();
+  const key = queryKeys.agentGrants(agentId);
   return useMutation({
-    mutationFn: () => tauriIntegrations.logout(provider),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.integrationStatus() });
-      qc.invalidateQueries({
-        queryKey: queryKeys.integrationConnections(provider),
-      });
+    mutationFn: (change: GrantChange) => {
+      // Freshest value: includes this change's own optimistic update (onMutate
+      // runs first) AND any other in-flight change's, so overlapping toggles
+      // send the union rather than each other's stale snapshots. Re-applying
+      // the change is idempotent over the optimistic value and covers the
+      // edge where a refetch overwrote the cache in between.
+      const current = qc.getQueryData<string[]>(key) ?? [];
+      return tauriIntegrations.setGrants(
+        agentId,
+        applyGrantChange(current, change),
+      );
     },
+    onMutate: async (change) => {
+      // Stop a racing refetch from overwriting the optimistic value mid-flight.
+      await qc.cancelQueries({ queryKey: key });
+      qc.setQueryData<string[]>(key, (prev) =>
+        applyGrantChange(prev ?? [], change),
+      );
+    },
+    onError: (_err, change) => {
+      // Reverse ONLY this change (not a whole-set snapshot restore, which
+      // would clobber another overlapping mutation's optimistic update); the
+      // settle invalidation below re-syncs with the server regardless.
+      qc.setQueryData<string[]>(key, (prev) =>
+        reverseGrantChange(prev ?? [], change),
+      );
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
   });
 }

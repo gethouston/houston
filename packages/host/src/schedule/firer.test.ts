@@ -49,14 +49,30 @@ function job(over: Partial<FiringJob> = {}): FiringJob {
 
 /** A channel that records fireTurn calls; the other verbs are unused here. */
 function recordingChannel(): RuntimeChannel & {
-  calls: { cid: string; text: string; pin?: TurnPin }[];
+  calls: {
+    cid: string;
+    text: string;
+    pin?: TurnPin;
+    actingUser?: string;
+  }[];
 } {
-  const calls: { cid: string; text: string; pin?: TurnPin }[] = [];
+  const calls: {
+    cid: string;
+    text: string;
+    pin?: TurnPin;
+    actingUser?: string;
+  }[] = [];
   return {
     calls,
     async dispatch() {},
-    async fireTurn(_ctx: ChannelCtx, cid: string, text: string, pin?: TurnPin) {
-      calls.push({ cid, text, pin });
+    async fireTurn(
+      _ctx: ChannelCtx,
+      cid: string,
+      text: string,
+      pin?: TurnPin,
+      actingUser?: string,
+    ) {
+      calls.push({ cid, text, pin, actingUser });
     },
     async teardown() {},
     async captureCredential() {
@@ -73,13 +89,29 @@ test("ChannelRoutineFirer routes the prompt to the workspace's channel", async (
   const firer = new ChannelRoutineFirer({ cloudrun });
   await firer.fire(job());
   expect(cloudrun.calls).toEqual([
-    // No pins on this routine → both inherit (undefined).
+    // No pins on this routine → both inherit (undefined). No created_by on a
+    // legacy routine → no acting user threaded (acts as owner).
     {
       cid: "routine-r1",
       text: "Write the daily report",
       pin: { model: undefined, effort: undefined },
+      actingUser: undefined,
     },
   ]);
+});
+
+test("ChannelRoutineFirer threads the routine creator as the turn's acting user (C2)", async () => {
+  const cloudrun = recordingChannel();
+  const firer = new ChannelRoutineFirer({ cloudrun });
+  await firer.fire(
+    job({
+      routine: {
+        ...job().routine,
+        created_by: "sub-alice",
+      } as FiringJob["routine"],
+    }),
+  );
+  expect(cloudrun.calls[0]?.actingUser).toBe("sub-alice");
 });
 
 test("ChannelRoutineFirer carries the routine's model/effort pins", async () => {
@@ -137,6 +169,7 @@ test("ProxyChannel.fireTurn posts the prompt to the runtime's conversation endpo
     launcher,
     proxy: { async forward() {} },
     credentials: new MemoryCredentialStore(),
+    forwardActingHeader: false,
   });
   try {
     await channel.fireTurn(
@@ -174,6 +207,7 @@ test("ProxyChannel.fireTurn includes the routine's model/effort pins in the mess
     launcher,
     proxy: { async forward() {} },
     credentials: new MemoryCredentialStore(),
+    forwardActingHeader: false,
   });
   try {
     await channel.fireTurn(
@@ -186,6 +220,46 @@ test("ProxyChannel.fireTurn includes the routine's model/effort pins in the mess
       },
     );
     expect(body).toEqual({ text: "go", model: "gpt-5.5", effort: "high" });
+  } finally {
+    await runtime.stop();
+  }
+});
+
+test("ProxyChannel.fireTurn sends x-houston-acting-user when a creator is threaded, omits it otherwise", async () => {
+  const seen: { actingUser: string | null }[] = [];
+  const runtime = await startTestFetchServer(async (req) => {
+    seen.push({ actingUser: req.headers.get("x-houston-acting-user") });
+    return Response.json({ ok: true }, { status: 202 });
+  });
+  const launcher = {
+    async ensureAwake() {
+      return { baseUrl: runtime.baseUrl, token: "t" };
+    },
+    async sleep() {},
+    async destroy() {},
+    async status() {
+      return "running" as const;
+    },
+  };
+  const channel = new ProxyChannel({
+    launcher,
+    proxy: { async forward() {} },
+    credentials: new MemoryCredentialStore(),
+    forwardActingHeader: false,
+  });
+  try {
+    // Routine turn with a creator → the header carries the sub.
+    await channel.fireTurn(
+      { workspace: ws("gke"), agent },
+      "c1",
+      "go",
+      undefined,
+      "sub-alice",
+    );
+    expect(seen[0]?.actingUser).toBe("sub-alice");
+    // Legacy routine (no creator) → the header is absent.
+    await channel.fireTurn({ workspace: ws("gke"), agent }, "c1", "go");
+    expect(seen[1]?.actingUser).toBeNull();
   } finally {
     await runtime.stop();
   }
@@ -209,6 +283,7 @@ test("ProxyChannel.fireTurn throws when the runtime rejects (→ errored run)", 
     launcher,
     proxy: { async forward() {} },
     credentials: new MemoryCredentialStore(),
+    forwardActingHeader: false,
   });
   try {
     await expect(

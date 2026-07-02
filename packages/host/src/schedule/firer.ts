@@ -23,11 +23,15 @@ export class ChannelRoutineFirer implements RoutineFirer {
     // The suppression instruction (when opted in) rides on the prompt so the
     // agent knows to emit ROUTINE_OK for a silent run — reconcile reads it back.
     // The routine's model/effort pins ride alongside (absent = inherit).
+    // The creator's sub (C2) is threaded as the turn's acting-user so integration
+    // calls act as them; absent for legacy creator-less routines → acts as owner.
+    const createdBy = job.routine.created_by;
     await channel.fireTurn(
       { workspace: job.workspace, agent: job.agent },
       job.conversationId,
       routinePrompt(job.routine),
       { model: job.routine.model, effort: job.routine.effort },
+      createdBy,
     );
   }
 }

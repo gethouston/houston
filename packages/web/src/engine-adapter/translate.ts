@@ -328,7 +328,13 @@ export function historyToFeed(messages: ChatMessage[]): ChatHistoryEntry[] {
   const out: ChatHistoryEntry[] = [];
   for (const m of messages) {
     if (m.role === "user") {
-      out.push({ feed_type: "user_message", data: m.content });
+      // Carry the author (C5) so a shared conversation attributes each teammate's
+      // bubble on reload. Absent in single-player mode → the bubble is unchanged.
+      out.push({
+        feed_type: "user_message",
+        data: m.content,
+        author: m.author,
+      });
     } else {
       // A persisted provider switch: replay the boundary divider before this
       // turn's content so it survives a reload (and the window estimate resets).

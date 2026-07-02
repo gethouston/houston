@@ -1,0 +1,48 @@
+{
+  "members": {
+    "navLabel": "Members",
+    "title": "Members",
+    "description": "People on your team and what each of them can do.",
+    "adminNotice": "Only the owner can add or remove people.",
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "user": "Member"
+    },
+    "roleHelp": {
+      "admin": "Can create agents and manage the ones they run.",
+      "user": "Can only use the agents shared with them."
+    },
+    "add": {
+      "title": "Add someone",
+      "emailLabel": "Email",
+      "emailPlaceholder": "name@company.com",
+      "roleLabel": "Role",
+      "submit": "Add"
+    },
+    "roster": {
+      "you": "You",
+      "empty": "No one else is on your team yet.",
+      "changeRole": "Change role",
+      "remove": "Remove"
+    },
+    "removeConfirm": {
+      "title": "Remove this person?",
+      "description": "They lose access to every agent right away. You can add them back later.",
+      "confirm": "Remove"
+    }
+  },
+  "assignments": {
+    "title": "Who can use this agent",
+    "description": "Pick the people who can chat with this agent. Turn everyone off to share it with the whole team.",
+    "everyone": "Everyone on the team",
+    "empty": "No one else to add yet.",
+    "you": "You",
+    "openToAll": {
+      "title": "Open this agent to everyone?",
+      "description": "You are removing the last person from the list. With no one picked, everyone on your team can use this agent.",
+      "confirm": "Open to everyone",
+      "cancel": "Cancel"
+    }
+  }
+}

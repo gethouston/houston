@@ -186,6 +186,11 @@ export interface AIBoardProps {
   composerOverride?: ReactNode;
   /** Translated labels for the file-drop overlay and composer notices. Forwarded to ChatPanel. */
   composerLabels?: ChatPanelProps["composerLabels"];
+  /** Multiplayer only (C5): the signed-in viewer's user id. Forwarded to
+   *  ChatPanel so a shared conversation attributes teammates' bubbles. */
+  currentUserId?: ChatPanelProps["currentUserId"];
+  /** Localized author-attribution labels. Forwarded to ChatPanel. */
+  authorLabels?: ChatPanelProps["authorLabels"];
   /** Left-pane layout. "board" = kanban columns (default); "list" = a single
    *  column-less vertical list (used by the Archived missions tab). */
   layout?: "board" | "list";
@@ -295,6 +300,8 @@ export function AIBoard({
   cardLabels,
   composerOverride,
   composerLabels,
+  currentUserId,
+  authorLabels,
   layout = "board",
   listAlign,
   searchSnippets,
@@ -681,6 +688,8 @@ export function AIBoard({
           renderSystemMessage={renderSystemMessage}
           endOfTurnIndicator={endOfTurnIndicator}
           renderUserMessage={renderUserMessage}
+          currentUserId={currentUserId}
+          authorLabels={authorLabels}
           afterMessages={renderedAfterMessages}
           onNotice={onNotice}
           prepareAttachments={prepareAttachments}

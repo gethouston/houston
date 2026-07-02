@@ -81,11 +81,17 @@ export async function saveRoutines(
   await saveJson(store, docKey(root, "routines"), items);
 }
 
-/** Materialize a NewRoutine. Caller supplies identity + clock (domain stays pure). */
+/**
+ * Materialize a NewRoutine. Caller supplies identity + clock (domain stays pure).
+ * `createdBy` (the authenticated creator's Supabase `sub`) is recorded on the
+ * routine so fired turns can act as them (C2); omit it (legacy / single-user)
+ * and the field is simply absent — no migration, tolerant read.
+ */
 export function createRoutine(
   input: NewRoutine,
   id: string,
   nowIso: string,
+  createdBy?: string,
 ): Routine {
   return {
     id,
@@ -104,6 +110,8 @@ export function createRoutine(
     integrations: input.integrations ?? [],
     created_at: nowIso,
     updated_at: nowIso,
+    // Only write the key when known, so legacy routines stay absent (not "": …).
+    ...(createdBy ? { created_by: createdBy } : {}),
   };
 }
 
@@ -111,6 +119,7 @@ export function createRoutine(
  * Apply a partial update. Undefined leaves a field alone. A stray legacy
  * `timezone` key is ignored: the per-routine override was removed in HOU-470
  * (one account-wide zone), so a client still sending it must not write it back.
+ * `created_by` is server-owned identity, never client-updateable.
  */
 export function applyRoutineUpdate(
   current: Routine,
@@ -119,9 +128,11 @@ export function applyRoutineUpdate(
 ): Routine {
   const defined = Object.fromEntries(
     Object.entries(update).filter(
-      ([k, v]) => v !== undefined && k !== "timezone",
+      ([k, v]) => v !== undefined && k !== "timezone" && k !== "created_by",
     ),
   );
+  // `...current` preserves `created_by` (RoutineUpdate can't set it, so a client
+  // can never reassign a routine's creator — it stays whoever created it).
   return { ...current, ...defined, updated_at: nowIso } as Routine;
 }
 

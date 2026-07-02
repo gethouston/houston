@@ -207,6 +207,42 @@ test("a stray on-disk per-routine timezone is dropped on read and not re-saved (
   expect(routinesRaw).not.toContain("timezone");
 });
 
+test("routine created_by: set on create, preserved on update, round-trips; legacy absent (C2)", async () => {
+  const store = memStore();
+  // Set from the authenticated creator on create.
+  const r = createRoutine(
+    { name: "Report", prompt: "p", schedule: "0 9 * * *" },
+    "r1",
+    NOW,
+    "sub-alice",
+  );
+  expect(r.created_by).toBe("sub-alice");
+
+  // An update (even one changing other fields) preserves the creator — a client
+  // cannot reassign it (RoutineUpdate has no created_by).
+  const renamed = applyRoutineUpdate(
+    r,
+    { name: "Daily report", created_by: "sub-mallory" } as RoutineUpdate & {
+      created_by: string;
+    },
+    NOW,
+  );
+  expect(renamed.created_by).toBe("sub-alice");
+
+  // It survives a save → load round-trip (the tolerant reader spreads it back).
+  await saveRoutines(store, ROOT, [r]);
+  const { items } = await loadRoutines(store, ROOT);
+  expect((items[0] as { created_by?: string }).created_by).toBe("sub-alice");
+
+  // Omitting the creator (legacy / single-user) leaves the key ABSENT, not "".
+  const legacy = createRoutine(
+    { name: "Old", prompt: "p", schedule: "0 9 * * *" },
+    "r2",
+    NOW,
+  );
+  expect("created_by" in legacy).toBe(false);
+});
+
 test("routine provider/model/effort: pinned on create, cleared by null, left by undefined", () => {
   const pinned = createRoutine(
     {

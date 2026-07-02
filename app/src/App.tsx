@@ -8,7 +8,9 @@ import { PersonalAssistantOnboarding } from "./components/onboarding/personal-as
 import { WorkspaceShell } from "./components/shell/workspace-shell";
 import { useAgentInvalidation } from "./hooks/use-agent-invalidation";
 import { useAnalyticsSubscriber } from "./hooks/use-analytics-subscriber";
+import { useCanCreateAgents } from "./hooks/use-can-create-agents";
 import { useHoustonInit } from "./hooks/use-houston-init";
+import { useIntegrationSessionSync } from "./hooks/use-integration-session-sync";
 import { useMigrationReconnect } from "./hooks/use-migration-reconnect";
 import { useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
@@ -30,6 +32,7 @@ export default function App() {
   useSessionEvents();
   useAgentInvalidation();
   useAnalyticsSubscriber();
+  useIntegrationSessionSync();
 
   // NOTE: install identity, `install_created`, `session_started`, and theme
   // load run in <StartupEffects> at the top of the tree (main.tsx), NOT here.
@@ -131,6 +134,20 @@ export default function App() {
   const toasts = useUIStore((s) => s.toasts);
   const dismissToast = useUIStore((s) => s.dismissToast);
   const tutorialActive = useUIStore((s) => s.tutorialActive);
+  // A plain org `user` can't create agents (the create-your-assistant
+  // onboarding would 403 at `POST /agents`), so they skip that funnel and land
+  // straight in the shell on their assigned agents (or an empty state without a
+  // create CTA). Owner/admin and every single-player build keep the flow.
+  // The routing below must never run on UNLOADED capabilities: `canCreate` is
+  // optimistically true while they load, which would push a multiplayer `user`
+  // with zero workspaces into an onboarding whose POST /agents 403s. So the
+  // loading state joins the splash gate, and a persistent fetch failure
+  // (multiplayer status unknown) fails closed into the normal shell path.
+  const {
+    canCreate: canCreateAgents,
+    isLoading: capabilitiesLoading,
+    isError: capabilitiesError,
+  } = useCanCreateAgents();
 
   // One-time "reconnect your AI" moment for users upgrading from the legacy
   // desktop build: their agents + history migrated, but their AI sign-in did
@@ -180,7 +197,7 @@ export default function App() {
     );
   }
 
-  if (agentLoading || wsLoading) {
+  if (agentLoading || wsLoading || capabilitiesLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background text-foreground">
         <p className="text-muted-foreground text-sm">
@@ -190,7 +207,7 @@ export default function App() {
     );
   }
 
-  if (workspaces.length === 0) {
+  if (workspaces.length === 0 && canCreateAgents && !capabilitiesError) {
     return (
       <PersonalAssistantOnboarding
         toasts={mappedToasts}

@@ -1,3 +1,4 @@
+import type { ActingContext } from "../session/acting-context";
 import { snapshot, subscribe } from "../session/bus";
 import {
   cancelTurn,
@@ -133,9 +134,30 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
     });
     return;
   }
-  void runTurn(id, text, typeof nonce === "string" ? nonce : undefined, {
-    model: typeof model === "string" ? model : undefined,
-    effort: typeof effort === "string" ? effort : undefined,
-  });
+  // WHO is driving this turn (C2): the host forwards the gateway's acting-as
+  // token, or (routine turns) the creator's sub. Captured here and held for the
+  // turn so the integration tools act as that user. Both absent → act as owner.
+  const acting = actingFromHeaders(ctx.req.headers);
+  void runTurn(
+    id,
+    text,
+    typeof nonce === "string" ? nonce : undefined,
+    {
+      model: typeof model === "string" ? model : undefined,
+      effort: typeof effort === "string" ? effort : undefined,
+    },
+    acting,
+  );
   json(ctx.res, 202, { ok: true, id });
+}
+
+/** Extract the C2 acting-as identity from a message request's headers, or undefined. */
+function actingFromHeaders(
+  headers: RouteContext["req"]["headers"],
+): ActingContext | undefined {
+  const one = (v: string | string[] | undefined) =>
+    Array.isArray(v) ? v[0] : v;
+  const actingAs = one(headers["x-houston-acting-as"]);
+  const actingUser = one(headers["x-houston-acting-user"]);
+  return actingAs || actingUser ? { actingAs, actingUser } : undefined;
 }

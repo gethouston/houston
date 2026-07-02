@@ -1,27 +1,47 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { UserId } from "../domain/types";
-import type { IntegrationCredentialStore } from "../integrations/credential-store";
 import type { IntegrationProvider } from "../integrations/provider";
 import type { IntegrationRegistry } from "../integrations/registry";
-import type { ProviderCredential } from "../integrations/types";
-import type { CredentialVault, WorkspaceStore } from "../ports";
-import { bearer, json, readJson } from "./http";
+import {
+  IntegrationSigninRequiredError,
+  IntegrationUpstreamError,
+} from "../integrations/types";
+import { json, readJson } from "./http";
 
 /**
- * Third-party integrations (Composio "for you" first). Two surfaces:
- *
- *  - USER routes (`/v1/integrations/*`, authed as the signed-in user): the
- *    click-through login, the toolkit catalog, a user's connections, connect
- *    (deep-link to the provider's hosted connect), disconnect, logout.
- *  - The RUNTIME proxy (`/sandbox/integrations/*`, authed by the per-sandbox
- *    HMAC token): the agent's `integration_search` / `integration_execute` tools
- *    call THIS, never the provider directly — so the user's long-lived key stays
- *    host-side (same custody gate as `/sandbox/credential`). The host resolves
- *    the sandbox → its workspace owner → that user's stored credential.
+ * Third-party integrations (Composio platform mode first) — the USER routes
+ * (`/v1/integrations/*`, authed as the signed-in user): the toolkit catalog,
+ * the user's connections, connect (a real OAuth redirect — the user authorizes
+ * the app itself, never the provider), a connection poll, disconnect, plus
+ * search/execute for the desktop gateway. There is no provider login: the
+ * platform key lives with the deployment (cloud/self-host) or upstream behind
+ * the gateway adapter. The runtime-facing proxy lives in
+ * integrations-sandbox.ts.
  */
 export interface IntegrationDeps {
   registry: IntegrationRegistry;
-  credentials: IntegrationCredentialStore;
+  /**
+   * Where the frontend pushes the user's Supabase session token for the
+   * gateway adapter (desktop only — the cloud host verifies JWTs itself).
+   */
+  session?: { set(token: string | null): void };
+  /**
+   * A legacy "Composio for you" credentials file on disk means the user
+   * connected apps under the old per-user-account model and must reconnect
+   * them once (surfaced in the UI as a security improvement, which it is —
+   * their long-lived personal key is no longer used anywhere). Local profile
+   * only; cloud deployments have no legacy file and leave this absent.
+   */
+  reconnectNotice?: {
+    /** Live check per request — dismissal must clear the banner without a restart. */
+    active(): boolean;
+    /**
+     * Delete the legacy file (it holds the user's retired plaintext key).
+     * Idempotent — already-gone is success; a real failure (EACCES…) throws
+     * and surfaces as an error response, never swallowed.
+     */
+    dismiss(): void | Promise<void>;
+  };
 }
 
 /** Resolve the provider from the URL segment, or 404. */
@@ -35,8 +55,22 @@ function providerOr404(
   return null;
 }
 
-const notConnected = (res: ServerResponse) =>
-  json(res, 409, { error: "integration not connected" });
+/** 409 + code for "the user must sign in to Houston first" (shared with the
+ *  sandbox proxy in integrations-sandbox.ts). */
+export const signinRequired = (res: ServerResponse) =>
+  json(res, 409, {
+    error: "sign in to Houston to use integrations",
+    code: "signin_required",
+  });
+
+export const relayIntegrationUpstreamError = (
+  res: ServerResponse,
+  err: unknown,
+): boolean => {
+  if (!(err instanceof IntegrationUpstreamError)) return false;
+  json(res, err.status, err.body);
+  return true;
+};
 
 // ── User-facing routes ───────────────────────────────────────────────────────
 
@@ -49,22 +83,56 @@ export async function handleIntegrations(
   res: ServerResponse,
 ): Promise<boolean> {
   if (!path.startsWith("/v1/integrations")) return false;
+
+  // PUT /v1/integrations/session — the frontend keeps the gateway adapter's
+  // Supabase token fresh (sign-in, refresh, sign-out → null). Deployments
+  // without a gateway sink accept it as a no-op so signed-in users never see a
+  // bogus red toast in direct-key/self-host/no-integrations builds.
+  if (path === "/v1/integrations/session" && method === "PUT") {
+    const { token } = await readJson(req);
+    if (token !== null && typeof token !== "string") {
+      json(res, 400, { error: "missing 'token' (string or null)" });
+      return true;
+    }
+    deps.integrations?.session?.set(token);
+    json(res, 200, { ok: true });
+    return true;
+  }
+
+  // POST /v1/integrations/reconnect-notice/dismiss — delete the legacy
+  // "Composio for you" credentials file (it holds the user's retired plaintext
+  // key) and clear the banner. Local-only wiring; deployments without a legacy
+  // path (cloud) accept it as a no-op, mirroring the session sink above.
+  // Idempotent: 200 even when the file is already gone. A real deletion
+  // failure throws → the server's error handler surfaces it, never swallowed.
+  if (
+    path === "/v1/integrations/reconnect-notice/dismiss" &&
+    method === "POST"
+  ) {
+    await deps.integrations?.reconnectNotice?.dismiss();
+    json(res, 200, { ok: true });
+    return true;
+  }
+
   if (!deps.integrations) {
     json(res, 503, { error: "integrations not configured" });
     return true;
   }
-  const { registry, credentials } = deps.integrations;
+  const { registry, reconnectNotice } = deps.integrations;
 
-  // GET /v1/integrations — per-provider connection status (no secret leaves here).
+  // GET /v1/integrations — per-provider readiness (never a secret). The
+  // reconnect flag is re-checked live so a dismiss takes effect immediately.
   if (path === "/v1/integrations" && method === "GET") {
+    const reconnect = reconnectNotice?.active() ?? false;
     const items = await Promise.all(
       registry.ids().map(async (id) => {
-        const cred = await credentials.get(userId, id);
-        if (!cred) return { provider: id, connected: false };
-        const identity = await registry.get(id).verifyCredential(cred);
-        return identity
-          ? { provider: id, connected: true, account: identity }
-          : { provider: id, connected: false };
+        const readiness = await registry.get(id).readiness();
+        return {
+          provider: id,
+          ready: readiness.ready,
+          ...(readiness.reason ? { reason: readiness.reason } : {}),
+          ...(reconnect ? { reconnect: true } : {}),
+        };
       }),
     );
     json(res, 200, { items });
@@ -75,151 +143,74 @@ export async function handleIntegrations(
   if (!m) return false;
   const provider = providerOr404(registry, m[1], res);
   if (!provider) return true;
-  const sub = m[2];
+  const sub = m[2] ?? "";
 
-  // Login: start (no credential yet) then poll until linked, storing the result.
-  if (sub === "login/start" && method === "POST") {
-    json(res, 200, await provider.startLogin());
-    return true;
-  }
-  if (sub === "login/poll" && method === "POST") {
-    const { pollKey } = await readJson(req);
-    if (!pollKey || typeof pollKey !== "string") {
-      json(res, 400, { error: "missing 'pollKey'" });
+  try {
+    if (sub === "toolkits" && method === "GET") {
+      json(res, 200, { items: await provider.listToolkits() });
       return true;
     }
-    const result = await provider.pollLogin(pollKey);
-    if (result.status === "linked") {
-      await credentials.put(userId, result.credential);
-      const identity = await provider.verifyCredential(result.credential);
-      json(res, 200, { status: "linked", account: identity });
-    } else {
-      json(res, 200, { status: "pending" });
-    }
-    return true;
-  }
-
-  if (sub === "logout" && method === "POST") {
-    await credentials.remove(userId, provider.id);
-    json(res, 200, { ok: true });
-    return true;
-  }
-
-  // Everything below needs the user's connected credential.
-  const cred = await credentials.get(userId, provider.id);
-  if (!cred) {
-    notConnected(res);
-    return true;
-  }
-
-  if (sub === "toolkits" && method === "GET") {
-    json(res, 200, { items: await provider.listToolkits(cred) });
-    return true;
-  }
-  if (sub === "connections" && method === "GET") {
-    json(res, 200, { items: await provider.listConnections(cred) });
-    return true;
-  }
-  if (sub === "connect" && method === "POST") {
-    const { toolkit } = await readJson(req);
-    if (!toolkit || typeof toolkit !== "string") {
-      json(res, 400, { error: "missing 'toolkit'" });
+    if (sub === "connections" && method === "GET") {
+      json(res, 200, { items: await provider.listConnections(userId) });
       return true;
     }
-    json(res, 200, await provider.connect(cred, toolkit));
-    return true;
-  }
-  if (sub === "disconnect" && method === "POST") {
-    const { toolkit } = await readJson(req);
-    if (!toolkit || typeof toolkit !== "string") {
-      json(res, 400, { error: "missing 'toolkit'" });
+    const connPoll = sub.match(/^connections\/([^/]+)$/)?.[1];
+    if (connPoll && method === "GET") {
+      const conn = await provider.connection(userId, connPoll);
+      if (!conn) json(res, 404, { error: "connection not found" });
+      else json(res, 200, conn);
       return true;
     }
-    await provider.disconnect(cred, toolkit);
-    json(res, 200, { ok: true });
-    return true;
+    if (sub === "connect" && method === "POST") {
+      const { toolkit } = await readJson(req);
+      if (!toolkit || typeof toolkit !== "string") {
+        json(res, 400, { error: "missing 'toolkit'" });
+        return true;
+      }
+      json(res, 200, await provider.connect(userId, toolkit));
+      return true;
+    }
+    if (sub === "disconnect" && method === "POST") {
+      const { toolkit } = await readJson(req);
+      if (!toolkit || typeof toolkit !== "string") {
+        json(res, 400, { error: "missing 'toolkit'" });
+        return true;
+      }
+      await provider.disconnect(userId, toolkit);
+      json(res, 200, { ok: true });
+      return true;
+    }
+    if (sub === "search" && method === "POST") {
+      const { query } = await readJson(req);
+      if (typeof query !== "string") {
+        json(res, 400, { error: "missing 'query'" });
+        return true;
+      }
+      json(res, 200, { items: await provider.search(userId, query) });
+      return true;
+    }
+    if (sub === "execute" && method === "POST") {
+      const body = await readJson(req);
+      if (typeof body.action !== "string") {
+        json(res, 400, { error: "missing 'action'" });
+        return true;
+      }
+      const params =
+        body.params && typeof body.params === "object"
+          ? (body.params as Record<string, unknown>)
+          : {};
+      json(res, 200, await provider.execute(userId, body.action, params));
+      return true;
+    }
+  } catch (err) {
+    if (err instanceof IntegrationSigninRequiredError) {
+      signinRequired(res);
+      return true;
+    }
+    if (relayIntegrationUpstreamError(res, err)) return true;
+    throw err;
   }
 
   json(res, 404, { error: "not found" });
-  return true;
-}
-
-// ── Runtime-facing proxy (HMAC sandbox token) ────────────────────────────────
-
-export async function handleSandboxIntegrations(
-  deps: {
-    vault: CredentialVault;
-    store: WorkspaceStore;
-    integrations?: IntegrationDeps;
-  },
-  method: string,
-  path: string,
-  url: URL,
-  req: IncomingMessage,
-  res: ServerResponse,
-): Promise<boolean> {
-  const m = path.match(/^\/sandbox\/integrations\/(search|execute)$/);
-  if (!m || method !== "POST") return false;
-
-  // Authenticate the sandbox (NOT a user JWT) — same gate as /sandbox/credential.
-  const sbToken = bearer(req, url);
-  const claim = sbToken ? deps.vault.validateSandboxToken(sbToken) : null;
-  if (!claim) {
-    json(res, 401, { error: "unauthorized" });
-    return true;
-  }
-  if (!deps.integrations) {
-    json(res, 503, { error: "integrations not configured" });
-    return true;
-  }
-  const { registry, credentials } = deps.integrations;
-
-  const body = await readJson(req);
-  // Default to the only/first provider when the tool omits it (single-provider).
-  const providerId =
-    typeof body.provider === "string" ? body.provider : registry.ids()[0];
-  if (!providerId || !registry.has(providerId)) {
-    json(res, 404, {
-      error: `unknown integration provider '${providerId ?? ""}'`,
-    });
-    return true;
-  }
-  const provider = registry.get(providerId);
-
-  // The sandbox proves its workspace; the integration credential is the
-  // workspace owner's own connected account.
-  const ws = await deps.store.getWorkspace(claim.workspaceId);
-  if (!ws) {
-    json(res, 404, { error: "workspace not found" });
-    return true;
-  }
-  const cred: ProviderCredential | null = await credentials.get(
-    ws.ownerUserId,
-    providerId,
-  );
-  if (!cred) {
-    notConnected(res);
-    return true;
-  }
-
-  if (m[1] === "search") {
-    if (typeof body.query !== "string") {
-      json(res, 400, { error: "missing 'query'" });
-      return true;
-    }
-    json(res, 200, { items: await provider.search(cred, body.query) });
-    return true;
-  }
-
-  // execute
-  if (typeof body.action !== "string") {
-    json(res, 400, { error: "missing 'action'" });
-    return true;
-  }
-  const params =
-    body.params && typeof body.params === "object"
-      ? (body.params as Record<string, unknown>)
-      : {};
-  json(res, 200, await provider.execute(cred, body.action, params));
   return true;
 }

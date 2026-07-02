@@ -85,7 +85,12 @@ const auth = (who: string) => ({ Authorization: `Bearer tok:${who}` });
 
 // Standing-runtime channel over a given launcher — the gke wiring main.ts builds.
 const channelsWith = (launcher: RuntimeLauncher) => ({
-  gke: new ProxyChannel({ launcher, proxy: router, credentials }),
+  gke: new ProxyChannel({
+    launcher,
+    proxy: router,
+    credentials,
+    forwardActingHeader: false,
+  }),
 });
 
 const TEST_CAPABILITIES: Capabilities = {

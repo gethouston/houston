@@ -75,6 +75,45 @@ export interface Capabilities {
   providers: string[];
   openaiCompatible: boolean;
   integrations: string[];
+  /**
+   * Whether this deployment runs in multiplayer (paid org) mode: members,
+   * roles, per-agent assignment. Absent/false = single personal workspace.
+   * Optional so every existing single-player host/profile stays valid.
+   */
+  multiplayer?: boolean;
+  /** The current user's role in the org, when `multiplayer` is on. */
+  role?: OrgRole;
+}
+
+// ---------- Org / roles (multiplayer) ----------
+
+/**
+ * A member's authority inside a multiplayer org. `owner` is the billing/root
+ * seat, `admin` manages members + agents, `user` is a plain seat that can only
+ * use the agents assigned to them. Kept in sync (by hand) with the protocol
+ * `OrgRole` — the engine side is the source of truth.
+ */
+export type OrgRole = "owner" | "admin" | "user";
+
+/** One member of the current user's org. */
+export interface OrgMember {
+  userId: string;
+  /** The member's email, when the host exposes it to the caller. */
+  email?: string;
+  role: OrgRole;
+}
+
+/**
+ * The current user's org, with the caller's own role. `members` is populated
+ * only for callers allowed to see the roster (owner/admin); a plain `user`
+ * gets just the identity fields.
+ */
+export interface OrgInfo {
+  id: string;
+  slug: string;
+  name: string;
+  role: OrgRole;
+  members?: OrgMember[];
 }
 
 // ---------- Workspaces ----------
@@ -123,6 +162,18 @@ export interface Agent {
   color?: string;
   createdAt: string;
   lastOpenedAt?: string;
+  /**
+   * Multiplayer only: whether the CURRENT user has been assigned this agent
+   * (i.e. may use it). Absent in single-player mode, where every agent is the
+   * sole user's. The host computes this per-caller.
+   */
+  assigned?: boolean;
+  /**
+   * Multiplayer only: the org-member user ids this agent is assigned to.
+   * Empty means "everyone in the org". Absent in single-player mode. Only
+   * populated for callers who may manage assignments (owner/admin).
+   */
+  assignedUserIds?: string[];
 }
 
 export interface CreateAgent {
@@ -209,6 +260,11 @@ export interface Routine {
   model?: string | null;
   /** Reasoning-effort override (e.g. "high", "max"); absent means inherit the agent's effort. */
   effort?: string | null;
+  /**
+   * Multiplayer only: the org-member user id that created this routine. Absent
+   * in single-player mode. Surfaced so the UI can attribute automations.
+   */
+  created_by?: string;
   created_at: string;
   updated_at: string;
 }
@@ -612,6 +668,12 @@ export interface SessionCancelResponse {
 export interface ChatHistoryEntry {
   feed_type: string;
   data: unknown;
+  /**
+   * Multiplayer only (C5): who wrote a `user_message` entry, carried through to
+   * the ui/chat feed so a shared conversation attributes each teammate's bubble.
+   * Absent on every other feed type and in single-player mode.
+   */
+  author?: { userId: string; name?: string };
 }
 
 export interface SummarizeResult {
@@ -959,13 +1021,21 @@ export interface PortableInstalledAgent {
   requiredIntegrations: string[];
 }
 
-// ── integrations (Composio "for you") ────────────────────────────────────────
-// User-level: each user's own connected account, surfaced per-agent in the UI.
+// ── integrations (Composio, platform mode) ───────────────────────────────────
+// User-level: no provider account — the user only connects apps (Gmail, Slack…)
+// via OAuth; Houston's platform key lives server-side, keyed by the user's id.
 
 export interface IntegrationProviderStatus {
   provider: string;
-  connected: boolean;
-  account?: { accountId: string; email?: string };
+  /** False on desktop until the user signs in to Houston (gateway needs it). */
+  ready: boolean;
+  reason?: "signin";
+  /**
+   * Legacy "Composio for you" connections were found for this install: the
+   * user reconnects their apps once (framed as the security improvement it is
+   * — their personal long-lived key is no longer used anywhere).
+   */
+  reconnect?: boolean;
 }
 export interface IntegrationToolkit {
   slug: string;
@@ -979,9 +1049,6 @@ export interface IntegrationConnection {
   connectionId: string;
   status: "active" | "pending" | "error";
 }
-export type IntegrationLoginResult =
-  | { status: "pending" }
-  | { status: "linked"; account?: { accountId: string; email?: string } };
 
 // ── OpenAI-compatible (local) provider ───────────────────────────────────────
 // A local LLM server the user runs (Ollama / vLLM / LM Studio), connected by

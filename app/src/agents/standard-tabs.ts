@@ -20,7 +20,7 @@ export interface AgentTab {
   badge?: "activity";
 }
 
-// Integrations (Composio "for you") are a v3-host feature; the legacy Rust engine
+// Integrations (Composio, platform mode) are a v3-host feature; the legacy Rust engine
 // has no /v1/integrations routes. Gate on the build flag — a deterministic build
 // constant (NOT the runtime handshake), so the tab is present in every host build
 // and absent in the legacy one, uniformly across every STANDARD_TABS consumer.

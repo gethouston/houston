@@ -18,6 +18,8 @@ import { queryKeys } from "../lib/query-keys";
 export function useCapabilities(): {
   capabilities: Capabilities | null;
   isLoading: boolean;
+  /** True once the fetch failed for real (retries exhausted, no data). */
+  isError: boolean;
 } {
   const enabled = newEngineActive();
   const query = useQuery({
@@ -47,5 +49,6 @@ export function useCapabilities(): {
   return {
     capabilities: query.data ?? null,
     isLoading: enabled && query.isLoading,
+    isError: enabled && query.isError,
   };
 }

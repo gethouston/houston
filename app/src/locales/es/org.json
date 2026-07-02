@@ -1,0 +1,48 @@
+{
+  "members": {
+    "navLabel": "Miembros",
+    "title": "Miembros",
+    "description": "Las personas de tu equipo y lo que puede hacer cada una.",
+    "adminNotice": "Solo el propietario puede agregar o quitar personas.",
+    "roles": {
+      "owner": "Propietario",
+      "admin": "Administrador",
+      "user": "Miembro"
+    },
+    "roleHelp": {
+      "admin": "Puede crear agentes y administrar los que usa.",
+      "user": "Solo puede usar los agentes que le comparten."
+    },
+    "add": {
+      "title": "Agregar a alguien",
+      "emailLabel": "Correo",
+      "emailPlaceholder": "nombre@empresa.com",
+      "roleLabel": "Rol",
+      "submit": "Agregar"
+    },
+    "roster": {
+      "you": "Tú",
+      "empty": "Todavía no hay nadie más en tu equipo.",
+      "changeRole": "Cambiar rol",
+      "remove": "Quitar"
+    },
+    "removeConfirm": {
+      "title": "¿Quitar a esta persona?",
+      "description": "Pierde el acceso a todos los agentes de inmediato. Puedes volver a agregarla después.",
+      "confirm": "Quitar"
+    }
+  },
+  "assignments": {
+    "title": "Quién puede usar este agente",
+    "description": "Elige las personas que pueden chatear con este agente. Apaga a todos para compartirlo con todo el equipo.",
+    "everyone": "Todo el equipo",
+    "empty": "Todavía no hay nadie más para agregar.",
+    "you": "Tú",
+    "openToAll": {
+      "title": "¿Abrir este agente a todo el equipo?",
+      "description": "Estás quitando a la última persona de la lista. Sin nadie elegido, todo tu equipo puede usar este agente.",
+      "confirm": "Abrir a todos",
+      "cancel": "Cancelar"
+    }
+  }
+}
