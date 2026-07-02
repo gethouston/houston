@@ -125,7 +125,7 @@ PostHog → BigQuery plugin → target GCP project (burns credits). SQL-queryabl
   - **Source CODE context (both platforms):** symbolication gives function + file:line, but Sentry shows the actual source LINES inline only if a source bundle is uploaded too. CI passes `--include-sources` to `debug-files upload`, which bundles the referenced source (Houston's own Rust + cargo-registry crates present in the build checkout; NOT the Rust stdlib unless `rust-src` is installed) into Sentry. The repo is open source so there's no exposure concern, and it brings native to parity with JS (whose maps already inline `sourcesContent`). Without the flag you still get file:line, just no code snippet.
 - **JS source maps:** Vite emits `*.js.map` next to bundled JS via `build.sourcemap: "hidden"` (no `//# sourceMappingURL=` comment — production users can't view source via DevTools). With a hidden map, Sentry can only link `.js`→`.map` via a **Debug ID baked into the shipped bundle**, so the ID must be injected BEFORE Tauri embeds the frontend.
 - **Build-time Debug ID injection:** `app/src-tauri/tauri.conf.json` → `beforeBuildCommand: "pnpm build && node scripts/sentry-inject.mjs"`. The script (`app/scripts/sentry-inject.mjs`, using the `@sentry/cli` devDep) runs `sentry-cli sourcemaps inject app/dist` after the Vite build but before cargo embeds the assets, so the shipped bundle and the uploaded map share identical byte offsets + Debug ID. No-op unless `SENTRY_DSN` is baked in (dev/forks skip it). **Why here, not in CI:** injecting after Tauri packaged `app/dist` (the pre-2026-06 behavior) shifted offsets and every in-app JS frame failed to symbolicate (`js_invalid_sourcemap_location`) even though the map uploaded fine. `beforeBundleCommand` is too late — assets embed during cargo build. Do NOT add `@sentry/vite-plugin` (getsentry #916 risk); the CLI inject achieves the same result. `@sentry/cli` needs an `onlyBuiltDependencies` allowlist in `pnpm-workspace.yaml` (pnpm 10 blocks its postinstall otherwise — without it the native `sentry-cli` binary never downloads and the inject fails). This setting lives in `pnpm-workspace.yaml`, NOT the `package.json` `pnpm` field: recent pnpm stopped reading that field ("The pnpm field in package.json is no longer read").
-- **Release.yml uploads:** After Tauri build (which has already injected the bundle), the macOS job runs `sentry-cli releases new + set-commits + sourcemaps upload + debug-files upload` against the signed Tauri app executable + its `.dSYM` plus both `target/{aarch64,x86_64}-apple-darwin/release/houston-engine` + their `.dSYM`s. Each Windows matrix arch uploads its own `app/dist` maps (Vite content-hashes differ per arch) + `houston-app.exe` + `houston_app.pdb` + `houston-engine.exe` + `houston_engine.pdb` (PDB filename has underscore — Rust convention). `releases finalize` runs ONCE in the dedicated `finalize` job (after both build jobs upload), not per-build. The CI steps **upload only** (no `inject` — that happens at build time). sentry-cli is the lockfile-pinned `app/node_modules/.bin/sentry-cli` (via the `@sentry/cli` devDep), not an unpinned `get-cli` download.
+- **Release.yml uploads:** After Tauri build (which has already injected the bundle), the macOS job runs `sentry-cli releases new + set-commits + sourcemaps upload + debug-files upload` against the signed Tauri app executable + its `.dSYM`. Only the Tauri app SHELL is native now — the engine is the bun-compiled host sidecar (a self-contained binary with no Rust debug info), so there are no engine `.dSYM`/`.pdb` uploads. Each Windows matrix arch uploads its own `app/dist` maps (Vite content-hashes differ per arch) + `houston-app.exe` + `houston_app.pdb` (PDB filename has underscore — Rust convention); the Linux job uploads its own maps + the `houston-app` ELF. `releases finalize` runs ONCE in the dedicated `finalize` job (after both build jobs upload), not per-build. The CI steps **upload only** (no `inject` — that happens at build time). sentry-cli is the lockfile-pinned `app/node_modules/.bin/sentry-cli` (via the `@sentry/cli` devDep), not an unpinned `get-cli` download.
   - **⚠️ The gate that must never regress:** the upload steps gate on `if: ${{ env.SENTRY_AUTH_TOKEN != '' }}`, and `SENTRY_AUTH_TOKEN` is defined at **job level** on `build-macos` / `build-windows` (and `finalize`). It MUST stay job-level: a step's own `env:` block is NOT visible to that same step's `if:` (GitHub evaluates `if:` before step env), so defining it only in the step made the gate read empty and **silently skipped every upload on every run, official builds included** — the bug that left production stack traces minified/hex despite the maps existing. Same footgun fixed on the PostHog annotation step. Forks without the secret still resolve to `''` and skip.
   - **Version guard:** the `prep` job fails the release if the git tag ≠ `app/package.json` version ≠ `app/src-tauri/Cargo.toml` version (all three feed the one `houston-app@<version>` release identity).
 - **Sentry smoke shortcuts (DEV-ONLY):** `Ctrl+Alt+Shift+J` throws a JS error from `app/src/lib/error-toast.ts` (source-map frame resolution check); `Ctrl+Alt+Shift+N` invokes a native Tauri command that panics with `sentry-native-stack-smoke-test` (app binary/PDB symbolication check); in DevTools the same hooks are `window.__HOUSTON_SENTRY_SMOKE__.javascript()` / `.native()`. Because dev builds now suppress Sentry by default (Dev suppression above), these only actually transmit when `SENTRY_SEND_IN_DEV` is set — run `pnpm tauri dev` with both that flag and a `SENTRY_DSN` to verify delivery; without the flag BOTH triggers show the dev "no issue sent" toast and nothing leaves the machine (the native trigger checks `sentrySuppressedInDev` too, so it never tells you to "Check Sentry" when the client was never initialized). **These are compiled OUT of release builds** — the JS triggers are gated behind `import.meta.env.DEV` in `main.tsx` (tree-shaken in prod) and the native command's panic path behind `#[cfg(debug_assertions)]` in `commands/diagnostics.rs` (no-op in release). Reason: Houston is open source and official release binaries bake the prod `SENTRY_DSN`, so shipping reachable error-injectors would let anyone flood the prod Sentry project. **To verify symbolication on a SIGNED build** (rare — only when the build/upload setup changes), temporarily drop the `import.meta.env.DEV` guard + the `debug_assertions` cfg and cut a one-off tagged build (the disposable-version + `gh release delete --cleanup-tag` flow). Note: the native smoke panics the **app** process — there is no dedicated engine-process smoke trigger; verify engine (`runtime=engine`) symbolication against a real engine crash.
@@ -204,40 +204,47 @@ CI also needs as Secrets:
 
 - **Workflow:** `.github/workflows/release.yml`
 - **Trigger:** Push tag matching `v*`
-- **Output:** Draft GitHub Release w/ signed+notarized DMG + signed MSI + `latest.json`
-- **Duration:** ~25-30 min wall-clock (mac + win run in parallel; mac is the long pole at ~25 min including Apple notarization).
+- **Engine:** builds the desktop app around the **bun-compiled Houston host sidecar** (the TS engine) via `--features host-sidecar` + `VITE_NEW_ENGINE=1` — NOT the legacy Rust `houston-engine`. No provider CLIs are bundled (pi runs providers in-process). The app's build DEFAULTS stay Rust (a plain `pnpm tauri build` still builds the Rust engine); only the release workflow passes the host-sidecar flags, so `engine/` remains the instant-rollback oracle until the gated final cutover (`convergence/final-cutover.md`).
+- **Output:** Draft GitHub Release w/ signed+notarized universal DMG + signed Windows MSI (x64 + arm64) + Linux AppImage + `.deb` + `latest.json`
+- **Duration:** ~25-30 min wall-clock (mac + win + linux run in parallel; mac is the long pole at ~25 min including Apple notarization).
 - **Draft = QA gate.** Users don't see until published on GitHub.
 
 ### Job graph
 ```
 prep (ubuntu, ~30s)               creates empty draft + release-notes.md artifact
-  ├── build-macos (mac, ~25m)     builds, signs, notarizes, uploads DMG/tar/sig/latest.json
-  └── build-windows (win, ~20m)   builds, uploads MSI + .sig
-        └── finalize (ubuntu, ~30s) extends latest.json with windows-x86_64 entry, posts Slack
+  ├── build-macos (mac, ~25m)     bun-compiles host sidecar (both arches) → signs, notarizes, uploads DMG/tar/sig/latest.json
+  ├── build-windows (win, ~15m)   bun-compiles host sidecar per arch → uploads MSI + .sig (x64 + arm64)
+  └── build-linux (ubuntu, ~15m)  bun-compiles host sidecar → uploads AppImage + .deb (download-only, not in latest.json)
+        └── finalize (ubuntu, ~30s) [needs mac + win] extends latest.json with windows entries, posts Slack
 ```
-Mac and Windows run in parallel because they only need the empty draft `prep` creates, not each other's output. `finalize` stitches `latest.json` together (the macOS-only base from build-macos plus the Windows entry assembled from the MSI .sig in the draft) and posts the team Slack notification. Slack lives in `finalize` (not Windows) because it needs `release-notes.md` and the file is published as a workflow artifact by `prep`.
+Mac, Windows, and Linux run in parallel because they only need the empty draft `prep` creates, not each other's output. `finalize` stitches `latest.json` together (the macOS-only base from build-macos plus the Windows entries assembled from the MSI .sig in the draft) and posts the team Slack notification — it needs only mac + win, so a flaky new Linux leg never blocks the updater manifest or the mac/win artifacts already on the draft. Linux is UNSIGNED + download-only (no auto-update entry). Slack lives in `finalize` (not Windows) because it needs `release-notes.md` and the file is published as a workflow artifact by `prep`.
 
 ## macOS Universal (arm64 + Intel)
 
 Houston ships ONE DMG that runs natively on Apple Silicon AND Intel. Same app, same download, same update channel.
 
 ### How it works
-- `release.yml` builds `houston-engine` TWICE — once per real triple (`aarch64-apple-darwin`, `x86_64-apple-darwin`).
-- `build.rs` stages both as per-triple sidecars: `src-tauri/binaries/houston-engine-aarch64-apple-darwin` + `-x86_64-apple-darwin`. Tauri universal build requires per-triple sidecars (NOT a pre-lipo'd fat binary).
-- `tauri-action` invoked with `--target universal-apple-darwin`. It runs cargo twice, then `lipo`s the outputs into one fat `.app`. Bundle lands at `target/universal-apple-darwin/release/bundle/`.
-- Verification step runs `lipo -info` on the embedded engine sidecar and fails the release if either slice is missing.
+- `release.yml` bun-compiles the **host sidecar** TWICE — once per real triple (`aarch64-apple-darwin`, `x86_64-apple-darwin`) via `scripts/build-host-sidecar.sh <triple>` — then `lipo`s the two `target/host-sidecar/houston-host-<triple>` outputs into one fat `binaries/houston-engine-universal-apple-darwin` (the universal bundle's externalBin).
+- `build.rs::stage_host_sidecar` (the `host-sidecar` cargo feature) also stages per-triple copies to `src-tauri/binaries/houston-engine-<triple>` during tauri's per-arch cargo runs; the manually-lipo'd fat binary is what the `--target universal-apple-darwin` bundle actually ships. It reuses the SAME externalBin name the Rust engine used, so `tauri.conf.json` never branches on the feature.
+- `tauri-action` invoked with `--target universal-apple-darwin --features host-sidecar`. Bundle lands at `target/universal-apple-darwin/release/bundle/`.
+- Verification step runs `lipo -info` on the embedded host sidecar and fails the release if either slice is missing.
 - `latest.json` ships FOUR platform keys (`darwin-aarch64`, `darwin-aarch64-app`, `darwin-x86_64`, `darwin-x86_64-app`) all pointing at the same tarball + signature. Intel users on older Houston installs check `darwin-x86_64` — if that key is absent they NEVER see the update prompt.
 - `bundle.macOS.minimumSystemVersion = 10.15` in `tauri.conf.json` — required for Intel Macs old enough to matter.
 
-### Engine-only release
-`.github/workflows/engine-release.yml` (tag `engine-v*`) builds `houston-engine` standalone for Linux (arm64 + x86_64 musl) and macOS (arm64 + Intel). Four artifacts total.
+### Standalone host binary release
+`.github/workflows/engine-release.yml` (tag `engine-v*`) bun-compiles the **standalone Houston host binary** (`houston-host-<triple>` — the same self-contained binary the desktop embeds as its sidecar, and the one a `selfhost/` operator can run directly instead of the Docker image) for Linux (arm64 + x86_64 gnu) and macOS (arm64 + Intel). Four artifacts total. Replaced the legacy standalone Rust `houston-engine` build; needs no Rust toolchain (bun only).
 
 ### Local universal build
 ```bash
 rustup target add aarch64-apple-darwin x86_64-apple-darwin
-cargo build --release --target aarch64-apple-darwin -p houston-engine-server
-cargo build --release --target x86_64-apple-darwin -p houston-engine-server
-cd app && pnpm tauri build --target universal-apple-darwin
+# bun-compile the host sidecar for both arches, then lipo into the universal externalBin
+scripts/build-host-sidecar.sh aarch64-apple-darwin
+scripts/build-host-sidecar.sh x86_64-apple-darwin
+lipo -create \
+  target/host-sidecar/houston-host-aarch64-apple-darwin \
+  target/host-sidecar/houston-host-x86_64-apple-darwin \
+  -output app/src-tauri/binaries/houston-engine-universal-apple-darwin
+cd app && VITE_NEW_ENGINE=1 pnpm tauri build --target universal-apple-darwin --features host-sidecar
 ```
 Output: `target/universal-apple-darwin/release/bundle/{macos,dmg}/`.
 

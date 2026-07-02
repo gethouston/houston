@@ -2,6 +2,8 @@
 
 > **⚠️ LEGACY — Rust engine, being retired at P6.** This whole CLI-bundling scheme exists because the Rust `engine/` drives agents by spawning provider **CLI subprocesses**. The target TS engine (**pi runtime**) talks to providers **in-process** — there are NO bundled provider CLIs. This doc is accurate for the current default Rust build only. See `convergence/README.md` + `selfhost/`.
 >
+> **⚠️ No longer wired into CI (HOU-628).** `.github/workflows/release.yml` was rewritten to build the desktop app around the bun-compiled TS host sidecar, so it NO LONGER runs `fetch-cli-deps.sh`, the "Pre-sign bundled CLI binaries" step, or the bundled-CLI invariant checks. Every "CI / `release.yml` calls `fetch-cli-deps.sh` …" reference below is HISTORICAL — the script + this bundling scheme survive only for a manual/local Rust-engine build until `engine/` is deleted at P6.
+>
 > **Two corrections that matter even today:**
 > - **Composio is NO LONGER a bundled CLI.** The earlier "cut" was reversed and Composio was **re-wired as an in-process REST tool** (each user's own free "Composio for you" account, no binary) behind the `IntegrationProvider` port — `packages/host/src/integrations/`. Ignore every "bundle the composio CLI" instruction below; that path is gone. `houston-composio` (Rust) + the per-arch composio binary fetch are deleted with `engine/`.
 > - **Gemini CLI is dropped, not Google Gemini as a provider.** The TS engine keeps Google Gemini as an API-key pi provider. Ignore the legacy gemini CLI bundle rows/sections below.

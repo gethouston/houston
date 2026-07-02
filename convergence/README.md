@@ -102,35 +102,43 @@ points at the gateway with a static bearer for service-token smoke tests) — se
 
 ## Host-sidecar release CI
 
-The Rust `release.yml` pipeline is untouched — it still builds the Rust engine on
-a `v*` tag. The host-sidecar release builds live in a SEPARATE, committed
-workflow, `.github/workflows/host-sidecar-release.yml`, so they can never perturb
-the releasable Rust path. It fires only off the critical path: a manual
-`workflow_dispatch` or a `host-v*` tag push (NOT `v*`), producing a draft release
-tagged `host-v<version>` (distinct namespace, no artifact collision).
+**Updated (HOU-628): the desktop release now builds the TS engine directly.**
+`.github/workflows/release.yml` (tag `v*`) was rewritten to bun-compile the host
+sidecar and build Tauri with `--features host-sidecar` + `VITE_NEW_ENGINE=1`,
+replacing the Rust `houston-engine` build + the codex/composio/git-bash CLI
+staging. `.github/workflows/engine-release.yml` (tag `engine-v*`) likewise now
+bun-compiles the **standalone** host binary (`houston-host-<triple>`) instead of
+the Rust engine. (The earlier plan kept `release.yml` on Rust and put the TS build
+in a separate `host-sidecar-release.yml` / `ts-engine-desktop-artifacts.yml`;
+those were never committed — the build logic they described now lives directly in
+`release.yml` + `engine-release.yml`.)
 
-For QA artifact pulls that should NOT create a release, use
-`.github/workflows/ts-engine-desktop-artifacts.yml`. It is manual-only,
-builds the same host-sidecar desktop path for macOS universal, Windows x64/arm64,
-and Linux x64, and uploads GitHub Actions artifacts (DMG/tar/sig, MSI/sig,
-AppImage, and `.deb`) without touching any release draft.
+This is a CI-only cutover: it flips what the RELEASE ships to the TS engine, but
+the app's build DEFAULTS are untouched (a plain `pnpm tauri build` still builds the
+Rust engine; the `app/vite.config.ts` + `app/src-tauri/Cargo.toml` defaults are
+unchanged), so `engine/` stays as the instant-rollback oracle. Flipping the
+defaults + deleting `engine/` remain the gated final cutover
+(`convergence/final-cutover.md`). A manual-only QA-artifacts workflow — the
+`.github/actions/build-ts-engine-desktop-artifact` composite action + `scripts/ci/`
+prepare helpers already exist for it — can upload GitHub Actions artifacts without
+cutting a release; it is not wired into a top-level workflow yet.
 
-Three platform jobs, all bun-compiling the host via the one parameterized
+The platform jobs all bun-compile the host via the one parameterized
 `scripts/build-host-sidecar.sh <triple>` (no second compile path to drift):
 
 - **macOS** — universal (arm64 + x86_64, lipo'd from two per-arch bun-compiles),
-  signed + notarized + stapled with the SAME Apple secrets + steps as
-  `release.yml::build-macos` (DMG re-sign, notarize-with-retry, full signing-chain
-  verification, sidecar Developer-ID + hardened-runtime asserts), uploaded.
+  signed + notarized + stapled with the SAME Apple secrets + steps as before (DMG
+  re-sign, notarize-with-retry, full signing-chain verification, sidecar
+  Developer-ID + hardened-runtime asserts), uploaded to the draft release.
 - **Windows** — MSI per arch (x86_64 + aarch64 matrix), updater-key signed (`.sig`
-  emitted), uploaded. None of `release.yml`'s codex/composio/git-bash CLI staging:
-  pi runs providers in-process, so the host carries no CLIs.
-- **Linux** — the platform `release.yml` never builds (its `tauri.conf.json`
-  `bundle.targets` are app/dmg/msi only). The CLI-free host makes a Linux DESKTOP
-  build viable for the first time: x86_64 AppImage + `.deb` via tauri-action's
-  `--bundles deb,appimage` (passed on the CLI, so the default config stays
-  untouched), uploaded. The job also boots the bare host binary (`--verify` →
-  curls `/v1/capabilities`), which is the same binary the `selfhost/` server runs.
+  emitted), uploaded. None of the old codex/composio/git-bash CLI staging: pi runs
+  providers in-process, so the host carries no CLIs.
+- **Linux** — NEW: the CLI-free host makes a Linux DESKTOP build viable for the
+  first time. x86_64 AppImage + `.deb` via tauri-action's `--bundles deb,appimage`
+  (passed on the CLI, so `tauri.conf.json`'s app/dmg/msi targets stay untouched),
+  uploaded to the draft (UNSIGNED, download-only — not in `latest.json`). The job
+  also boots the bare host binary (`--verify` → curls `/v1/capabilities`), which is
+  the same binary the `selfhost/` server runs.
 
 `build.rs::stage_host_sidecar` (the `host-sidecar` cargo feature) stages the
 compiled host at the SAME `binaries/houston-engine-<triple>` externalBin name the

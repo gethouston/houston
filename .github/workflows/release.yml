@@ -1,8 +1,16 @@
-# Houston macOS Release Workflow
+# Houston Desktop Release Workflow (TypeScript engine)
 #
 # Triggered by pushing a version tag (e.g. `git tag v0.3.0 && git push --tags`).
 #
-# Signing chain:
+# Builds the desktop app around the Bun-compiled Houston HOST sidecar (the single
+# TypeScript engine), NOT the legacy Rust `houston-engine`. Each platform job
+# bun-compiles the host via `scripts/build-host-sidecar.sh` and builds Tauri with
+# `--features host-sidecar` + `VITE_NEW_ENGINE=1` (the frontend aliases to the v3
+# host adapter). No provider CLIs are bundled — pi runs providers in-process — so
+# the codex/composio/git-bash staging the Rust path needed is gone. Ships macOS
+# (universal DMG) + Windows (x64/arm64 MSI) + Linux (x64 AppImage + .deb).
+#
+# Signing chain (macOS):
 #   1. tauri-action builds, signs, notarizes, and staples the .app
 #   2. tauri-action creates and signs the DMG (but does NOT notarize it — known Tauri gap)
 #   3. This workflow notarizes and staples the DMG (with retry)
@@ -40,6 +48,12 @@ on:
 
 permissions:
   contents: write
+
+# Bun version used to compile the Houston host sidecar (the TS engine), shared by
+# every platform job so the compiled binary is reproducible. Matches the version
+# the repo already pins elsewhere (cli-deps.json).
+env:
+  BUN_VERSION: "1.3.10"
 
 jobs:
   # Lightweight orchestration job that runs before the heavy builds. It
@@ -264,6 +278,11 @@ jobs:
     # without the secret, so forks keep skipping the upload.
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      # Frontend build flag: aliases @houston-ai/engine-client to the v3 host
+      # adapter (app/vite.config.ts `useHost`) so the packaged app talks to the
+      # bun-compiled host sidecar, not the legacy Rust wire. Job-level so every
+      # step — including tauri-action's beforeBuildCommand child — sees it.
+      VITE_NEW_ENGINE: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -307,70 +326,23 @@ jobs:
           mkdir -p ~/.appstoreconnect/private_keys
           echo "${{ secrets.APPLE_API_KEY_CONTENT }}" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPLE_API_KEY }}.p8
 
-      # Stage bundled CLI binaries (codex universal, composio per-arch)
-      # into `app/src-tauri/resources/bin/` so Tauri's `bundle.resources`
-      # picks them up. The fetch script:
-      #   - Downloads each CLI for both arches from URLs pinned in
-      #     cli-deps.json
-      #   - Verifies SHA-256 against pinned checksums (any mismatch
-      #     fails the release — release artifacts must be reproducible)
-      #   - lipos codex into a single universal Mach-O binary
-      #   - Prunes cross-platform composio acp-adapters that the
-      #     resolved arch can never execute (saves ~580 MB)
-      #   - Stages cli-deps.json itself so the runtime claude-code
-      #     installer can read pinned URLs + checksums offline
-      #
-      # macos-latest comes with curl + unzip + jq + lipo preinstalled.
-      # If a future runner image drops jq, install it explicitly
-      # rather than rewriting the script in a dep-free language; jq is
-      # the right tool for cli-deps.json.
-      - name: Stage bundled CLI dependencies (codex, composio)
-        run: |
-          set -euo pipefail
-          if ! command -v jq >/dev/null 2>&1; then
-            echo "::group::Installing jq (missing on runner)"
-            brew install jq
-            echo "::endgroup::"
-          fi
-          ./scripts/fetch-cli-deps.sh both
+      # The TS engine bundles NO provider CLIs (pi runs providers in-process), so
+      # the codex/composio staging + SHA-verify the Rust path did is gone. All we
+      # need is Bun to compile the host sidecar in the next steps.
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
 
-          echo "=== Staged bundle ==="
-          ls -lah app/src-tauri/resources/bin/
-          echo "=== Sizes ==="
-          du -sh app/src-tauri/resources/bin/*
-
-          # Sanity: every shippable artifact must be present and the
-          # codex binary must be a fat (universal) Mach-O.
-          test -x app/src-tauri/resources/bin/codex
-          test -x app/src-tauri/resources/bin/composio-aarch64/composio
-          test -x app/src-tauri/resources/bin/composio-x86_64/composio
-          test -f app/src-tauri/resources/bin/cli-deps.json
-
-          LIPO_INFO=$(lipo -info app/src-tauri/resources/bin/codex)
-          echo "$LIPO_INFO"
-          echo "$LIPO_INFO" | grep -q 'arm64' \
-            || { echo "::error::bundled codex missing arm64 slice"; exit 1; }
-          echo "$LIPO_INFO" | grep -q 'x86_64' \
-            || { echo "::error::bundled codex missing x86_64 slice"; exit 1; }
-
-      # Import the Developer ID certificate into a temporary keychain so
-      # we can pre-sign the bundled CLI binaries (codex + composio) BEFORE
-      # tauri-action runs.
-      #
-      # Why pre-sign here:
-      #   tauri-action calls `codesign --force --deep` on the .app bundle,
-      #   which signs the main app + frameworks + helpers but does NOT
-      #   recurse into nested directories under `Resources/`. Result:
-      #   `Resources/bin/composio-aarch64/composio` (one level deeper than
-      #   `Resources/bin/codex`) ships UNSIGNED, and Apple notary rejects
-      #   the .app with "signature invalid / no secure timestamp / hardened
-      #   runtime not enabled" on those nested binaries.
-      #
-      # Pre-signing each Mach-O at stage time with Developer ID + hardened
-      # runtime + secure timestamp leaves a valid signature in place that
-      # tauri-action's deep sign won't disturb (it skips files inside
-      # nested Resources/ subdirs entirely).
-      - name: Import Apple Developer ID for pre-signing bundled CLIs
+      # Import the Developer ID certificate into a temporary keychain and add it
+      # to the user search list. tauri-action imports its OWN cert for the .app
+      # sign, but the later "Re-sign DMG after volume rename" step runs a bare
+      # `codesign --sign "$APPLE_SIGNING_IDENTITY"` and needs the identity
+      # resolvable in a keychain — this step is what keeps it there. (The Rust
+      # path also used this keychain to pre-sign nested CLI binaries; the TS host
+      # sidecar sits directly in Contents/MacOS/, so tauri-action's deep sign
+      # reaches it and no pre-signing is needed.)
+      - name: Import Apple Developer ID (keychain for DMG re-signing)
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -400,72 +372,41 @@ jobs:
 
           rm -f "$CERT_FILE"
 
-      - name: Pre-sign bundled CLI binaries (Developer ID + hardened runtime + timestamp)
-        env:
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-        run: |
-          set -euo pipefail
-          BIN=app/src-tauri/resources/bin
-          for f in "$BIN/codex" \
-                   "$BIN/composio-aarch64/composio" \
-                   "$BIN/composio-x86_64/composio" \
-                   "$BIN/gemini-aarch64/gemini" \
-                   "$BIN/gemini-x86_64/gemini"; do
-            echo "=== Signing $f ==="
-            codesign --force --options runtime --timestamp \
-              --sign "$APPLE_SIGNING_IDENTITY" "$f"
-            codesign -dvv "$f" 2>&1 | grep -E '^(Authority|TeamIdentifier|Timestamp|CodeDirectory)' || true
-          done
-
-      # Build the engine sidecar for BOTH macOS architectures BEFORE the
-      # Tauri app build.
+      # Compile the Houston HOST sidecar (the TS engine) for BOTH macOS arches,
+      # then lipo them into the single universal binary Tauri's
+      # `--target universal-apple-darwin` bundler expects at
+      # `binaries/houston-engine-universal-apple-darwin`.
       #
-      # Tauri's universal-apple-darwin build invokes cargo once per real
-      # triple (aarch64 + x86_64) and expects per-triple sidecars at
-      # `src-tauri/binaries/houston-engine-<triple>`. `build.rs` copies them
-      # there, but it needs the underlying binary to exist for the triple
-      # cargo is currently compiling for. So we build BOTH up front.
-      #
-      # Shipping an Intel-only or arm64-only engine would break half of our
-      # Mac users — so a missing triple fails hard here rather than producing
-      # a silently-broken DMG.
-      - name: Build houston-engine sidecar (aarch64 + x86_64) + lipo universal
+      # `scripts/build-host-sidecar.sh <triple>` bun-compiles a self-contained
+      # binary (embeds the Bun runtime — no `bun`/node needed at runtime) to
+      # `target/host-sidecar/houston-host-<triple>`. Bun links its own libc, so
+      # one macOS runner cross-compiles both arches. `build.rs::stage_host_sidecar`
+      # (the `host-sidecar` cargo feature) also stages per-triple copies to
+      # `binaries/houston-engine-<triple>` during tauri's per-arch cargo runs;
+      # the fat binary we lipo here is what the universal bundle actually ships.
+      # A missing arch would break half of our Mac users, so fail hard.
+      - name: Compile Houston host sidecar (aarch64 + x86_64) + lipo universal
         run: |
           set -euo pipefail
           for TRIPLE in aarch64-apple-darwin x86_64-apple-darwin; do
-            echo "=== Building houston-engine for $TRIPLE ==="
-            cargo build --release --target "$TRIPLE" -p houston-engine-server
-            test -x "target/$TRIPLE/release/houston-engine" \
-              || { echo "::error::engine binary missing for $TRIPLE"; exit 1; }
-            # Pack DWARF into a .dSYM right after the build, while the per-object
-            # (.o) files the debug map points at are still on disk and unmoved.
-            # `debug = "line-tables-only"` keeps line tables in the .o, not in
-            # the linked Mach-O, so without this Sentry can only show function
-            # names (no file:line) for engine panics. Uploaded in the Sentry
-            # step below.
-            dsymutil "target/$TRIPLE/release/houston-engine" \
-              -o "target/$TRIPLE/release/houston-engine.dSYM"
+            echo "=== Bun-compiling host sidecar for $TRIPLE ==="
+            scripts/build-host-sidecar.sh "$TRIPLE"
+            test -x "target/host-sidecar/houston-host-$TRIPLE" \
+              || { echo "::error::host sidecar missing for $TRIPLE"; exit 1; }
           done
 
-          # Tauri's `--target universal-apple-darwin` bundler looks for a
-          # SINGLE fat binary at `binaries/houston-engine-universal-apple-darwin`.
-          # `build.rs` stages per-triple binaries during the per-arch cargo
-          # invocations (aarch64 + x86_64), but there's no cargo target for
-          # "universal-apple-darwin" — so nothing stages the fat one.
-          # We lipo the two per-arch outputs manually here, before tauri-action
-          # runs, so the bundler finds it.
           echo "=== Lipo universal sidecar ==="
           mkdir -p app/src-tauri/binaries
           lipo -create \
-            target/aarch64-apple-darwin/release/houston-engine \
-            target/x86_64-apple-darwin/release/houston-engine \
+            target/host-sidecar/houston-host-aarch64-apple-darwin \
+            target/host-sidecar/houston-host-x86_64-apple-darwin \
             -output app/src-tauri/binaries/houston-engine-universal-apple-darwin
           chmod +x app/src-tauri/binaries/houston-engine-universal-apple-darwin
           lipo -info app/src-tauri/binaries/houston-engine-universal-apple-darwin
 
           ls -la \
-            target/aarch64-apple-darwin/release/houston-engine \
-            target/x86_64-apple-darwin/release/houston-engine \
+            target/host-sidecar/houston-host-aarch64-apple-darwin \
+            target/host-sidecar/houston-host-x86_64-apple-darwin \
             app/src-tauri/binaries/houston-engine-universal-apple-darwin
 
       # Build only — no release creation (no tagName).
@@ -481,7 +422,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         with:
           projectPath: app
-          args: --target universal-apple-darwin
+          args: --target universal-apple-darwin --features host-sidecar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -546,82 +487,12 @@ jobs:
           echo "=== Notarization staple ==="
           xcrun stapler validate "${{ steps.artifacts.outputs.app }}"
 
-      # Explicit assertions on the bundled `houston-engine` sidecar.
-      # `--deep` above validates all embedded binaries, but a regression in
-      # tauri-action could silently ship an ad-hoc-signed or
-      # hardened-runtime-less sidecar — Gatekeeper would then quarantine-kill
-      # it on first launch for upgraders and the app hangs at splash.
-      # Fail the release if any of these invariants drifts.
-      # Bundled CLI invariants — codex, composio per-arch + the
-      # cli-deps.json manifest must all be present inside the
-      # `.app/Contents/Resources/bin/` tree, and every Mach-O must be
-      # signed with Developer ID + hardened runtime so Gatekeeper +
-      # subprocess execution work post-notarization.
-      #
-      # We assert every check that, if violated, would visibly break
-      # the user experience: missing files, ad-hoc signatures (Gatekeeper
-      # quarantine), missing arch slices, and broken codex universal
-      # layout. Any failure is fatal — a release where the bundled CLI
-      # works for half of users is worse than no release.
-      - name: Verify bundled CLI invariants
-        run: |
-          set -euo pipefail
-          APP="${{ steps.artifacts.outputs.app }}"
-          BIN="$APP/Contents/Resources/bin"
-
-          echo "=== 1. Bundle layout ==="
-          test -d "$BIN" || { echo "::error::Resources/bin/ missing"; exit 1; }
-          test -x "$BIN/codex" || { echo "::error::Resources/bin/codex missing or not executable"; exit 1; }
-          test -x "$BIN/composio-aarch64/composio" || { echo "::error::composio-aarch64/composio missing"; exit 1; }
-          test -x "$BIN/composio-x86_64/composio"  || { echo "::error::composio-x86_64/composio missing"; exit 1; }
-          test -x "$BIN/gemini-aarch64/gemini"     || { echo "::error::gemini-aarch64/gemini missing"; exit 1; }
-          test -x "$BIN/gemini-x86_64/gemini"      || { echo "::error::gemini-x86_64/gemini missing"; exit 1; }
-          test -f "$BIN/cli-deps.json" || { echo "::error::cli-deps.json manifest missing"; exit 1; }
-          ls -lah "$BIN"
-
-          echo "=== 2. codex is universal (arm64 + x86_64) ==="
-          LIPO=$(lipo -info "$BIN/codex")
-          echo "$LIPO"
-          echo "$LIPO" | grep -q 'arm64'  || { echo "::error::codex missing arm64 slice"; exit 1; }
-          echo "$LIPO" | grep -q 'x86_64' || { echo "::error::codex missing x86_64 slice"; exit 1; }
-
-          echo "=== 3. Mach-O binaries have Developer ID + hardened runtime ==="
-          # Walk every executable file under Resources/bin/ and assert
-          # signing invariants. We only care about Mach-O — `.mjs` /
-          # `services/` / json files don't need signatures.
-          fail=0
-          while IFS= read -r f; do
-            if file "$f" | grep -q 'Mach-O'; then
-              echo ""
-              echo "Checking: $f"
-              if ! codesign -vvv "$f" 2>&1; then
-                echo "::error::codesign verify failed: $f"
-                fail=1
-                continue
-              fi
-              AUTH=$(codesign -dvv "$f" 2>&1 | grep '^Authority=' | head -1 || echo "")
-              echo "  $AUTH"
-              if ! echo "$AUTH" | grep -q 'Developer ID Application'; then
-                echo "::error::Bundled binary not signed with Developer ID: $f"
-                codesign -dvv "$f" 2>&1 | sed 's/^/  /' || true
-                fail=1
-              fi
-              FLAGS=$(codesign -dv "$f" 2>&1 | grep -E '^CodeDirectory.*flags=' | head -1 || echo "")
-              echo "  $FLAGS"
-              if ! echo "$FLAGS" | grep -q 'runtime'; then
-                echo "::error::Bundled binary missing hardened runtime: $f"
-                fail=1
-              fi
-            fi
-          done < <(find "$BIN" -type f -perm -u+x)
-
-          if [ "$fail" -ne 0 ]; then
-            echo "::error::One or more bundled CLI binaries failed signing checks"
-            exit 1
-          fi
-          echo "=== Bundled CLI checks passed ==="
-
-      - name: Verify engine sidecar signing
+      # The host sidecar is a single universal Mach-O in Contents/MacOS/ (same
+      # externalBin name the Rust engine used). tauri-action's deep sign reaches
+      # it there, so assert the invariants that would otherwise break launch:
+      # valid signature, Developer ID (not ad-hoc → Gatekeeper), hardened runtime,
+      # and both arch slices.
+      - name: Verify host sidecar signing
         run: |
           APP="${{ steps.artifacts.outputs.app }}"
 
@@ -723,19 +594,17 @@ jobs:
           # symbolicate (Sentry error `js_invalid_sourcemap_location`).
           "$SENTRY_CLI" sourcemaps upload --release "$RELEASE" app/dist
 
-          echo "=== 3. Upload Rust debug info (app + engine, dSYM) ==="
-          # macOS gotcha: `debug = "line-tables-only"` keeps DWARF line tables
-          # in the per-object (.o) files, NOT in the linked Mach-O. Uploading
-          # just the executable gives Sentry function names but never file:line.
-          # `dsymutil` walks the binary's debug map (OSO stabs) and packs the
-          # DWARF into a standalone .dSYM, which is the DIF Sentry symbolicates
-          # against. The engine .dSYMs are produced in the sidecar-build step;
-          # we dsymutil the universal app binary here (its per-arch .o still
-          # live under target/{aarch64,x86_64}-apple-darwin/release/deps).
+          echo "=== 3. Upload Rust debug info (Tauri app binary, dSYM) ==="
+          # Only the Tauri app SHELL is native now — the engine is the
+          # bun-compiled host sidecar (a self-contained binary with no Rust
+          # debug info to upload). macOS gotcha: `debug = "line-tables-only"`
+          # keeps DWARF line tables in the per-object (.o) files, NOT in the
+          # linked Mach-O, so `dsymutil` packs them into a standalone .dSYM (the
+          # DIF Sentry symbolicates against). The app's per-arch .o still live
+          # under target/{aarch64,x86_64}-apple-darwin/release/deps.
           APP="${{ steps.artifacts.outputs.app }}"
           # The bundled executable is named after the Cargo binary
-          # (`houston-app`), NOT the productName ("Houston"). The sidecar
-          # alongside it is `houston-engine`.
+          # (`houston-app`), NOT the productName ("Houston").
           APP_EXE="$APP/Contents/MacOS/houston-app"
           if [ ! -x "$APP_EXE" ]; then
             echo "::error::Tauri app executable missing at $APP_EXE"
@@ -747,26 +616,17 @@ jobs:
           # than the pre-dSYM behavior).
           dsymutil "$APP_EXE" -o "$APP_EXE.dSYM" \
             || echo "::warning::dsymutil failed for the app binary — native app frames may stay unresolved"
-          # Executables (code-id) always upload. dSYMs (DWARF) join the upload
-          # only when present, each checked + warned individually so one bad
-          # dSYM can't fail the whole release.
-          UPLOAD=(
-            "$APP_EXE"
-            target/aarch64-apple-darwin/release/houston-engine
-            target/x86_64-apple-darwin/release/houston-engine
-          )
-          for D in "$APP_EXE.dSYM" \
-                   target/aarch64-apple-darwin/release/houston-engine.dSYM \
-                   target/x86_64-apple-darwin/release/houston-engine.dSYM; do
-            if [ -d "$D" ]; then
-              "$SENTRY_CLI" debug-files check "$D" \
-                || echo "::warning::debug-files check failed for $D — native frames from it may not resolve to file:line"
-              UPLOAD+=( "$D" )
-            else
-              echo "::warning::missing dSYM $D — native frames from it may stay unresolved"
-            fi
-          done
-          # sentry-cli recurses into the .dSYM bundles. --include-sources bundles
+          # Executable (code-id) always uploads. The dSYM (DWARF) joins only
+          # when present, checked + warned so a bad dSYM can't fail the release.
+          UPLOAD=( "$APP_EXE" )
+          if [ -d "$APP_EXE.dSYM" ]; then
+            "$SENTRY_CLI" debug-files check "$APP_EXE.dSYM" \
+              || echo "::warning::debug-files check failed for $APP_EXE.dSYM — native frames may not resolve to file:line"
+            UPLOAD+=( "$APP_EXE.dSYM" )
+          else
+            echo "::warning::missing dSYM $APP_EXE.dSYM — native app frames may stay unresolved"
+          fi
+          # sentry-cli recurses into the .dSYM bundle. --include-sources bundles
           # the referenced source files (Houston's own Rust + cargo-registry
           # crates present in this checkout) so native stack traces show inline
           # CODE context, not just file:line. The repo is open source, so there's
@@ -951,8 +811,8 @@ jobs:
   # `latest.json` together (Windows entry added to the macOS-only base
   # uploaded by build-macos).
   #
-  # Scope (v1, weekend test build):
-  #   * Windows x64 only — no ARM64 build, no NSIS installer.
+  # Scope:
+  #   * Windows x86_64 + aarch64 (matrix), MSI installers.
   #   * No SignPath signing — the MSI ships UNSIGNED. Windows users will see
   #     a SmartScreen warning ("Don't run / More info → Run anyway") on
   #     first install. This is acceptable for personal testing; before we
@@ -960,24 +820,16 @@ jobs:
   #     a `sign-windows` job between this and the upload step.
   #
   # Build pipeline (runs once per matrix arch, x86_64 + aarch64):
-  #   1. Stage CLI deps via `scripts/fetch-cli-deps.sh windows-<arch>`.
-  #      Codex is downloaded + zstd-decompressed; composio is BUILT FROM
-  #      SOURCE on this Windows runner using a pinned commit on the
-  #      gethouston/composio fork (windows-x64 = houston-windows-support
-  #      branch, windows-arm64 = houston-windows-arm64 branch with the
-  #      bun:ffi fallback patch) — see `cli-deps.json`'s
-  #      `composio.build."windows-<arch>"` block for the pin and the
-  #      `$build_comment` for why upstream can't ship Windows yet.
-  #      git-bash-<arch>.7z.exe (PortableGit SFX) is also staged so the
-  #      first-launch extractor in houston-engine-core::git_bash gives
-  #      Claude Code its bash.exe dependency without user setup.
-  #   2. Build the houston-engine sidecar for the matrix target.
-  #      Tauri's externalBin picks it up at `binaries/houston-engine.exe`
-  #      (build.rs::stage_engine_sidecar names it
-  #      `houston-engine-<target>.exe` per Tauri's per-target convention).
-  #   3. Run `pnpm tauri build --target <matrix.target>` to produce the
-  #      MSI under `target/<matrix.target>/release/bundle/msi/*.msi`.
-  #   4. Upload the per-arch MSI + .sig to the draft release. `finalize`
+  #   1. Bun-compile the Houston HOST sidecar for the matrix target via
+  #      `scripts/build-host-sidecar.sh <target>` → a self-contained
+  #      `target/host-sidecar/houston-host-<target>.exe`. NO provider-CLI
+  #      staging (no codex/composio/git-bash) — pi runs providers in-process.
+  #      `build.rs::stage_host_sidecar` copies it to the externalBin name
+  #      `binaries/houston-engine-<target>.exe` (same name the Rust engine used,
+  #      so tauri.conf.json needs no per-feature branch).
+  #   2. Run `tauri build --target <matrix.target> --features host-sidecar` to
+  #      produce the MSI under `target/<matrix.target>/release/bundle/msi/*.msi`.
+  #   3. Upload the per-arch MSI + .sig to the draft release. `finalize`
   #      then merges both into a single latest.json with separate
   #      `windows-x86_64` and `windows-aarch64` entries the in-app
   #      updater consumes.
@@ -989,6 +841,9 @@ jobs:
     # can see it — same step-`if`-can't-read-step-env footgun as build-macos.
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      # See build-macos: aliases the frontend to the v3 host adapter so the
+      # packaged app runs on the bun-compiled host sidecar.
+      VITE_NEW_ENGINE: "1"
     strategy:
       # Both arches build in parallel. fail-fast=false so a transient
       # ARM-runner outage doesn't kill the x64 release that 90%+ of
@@ -997,26 +852,18 @@ jobs:
       matrix:
         include:
           - arch: x86_64
-            bun_arch: x64
-            fetch_mode: windows-x64
             target: x86_64-pc-windows-msvc
             runner: windows-latest
           - arch: aarch64
-            bun_arch: arm64
-            fetch_mode: windows-arm64
             target: aarch64-pc-windows-msvc
-            # GitHub-hosted Windows-on-ARM runner. Goes through the
-            # same VS 2022 toolchain as the x64 runner; the only
-            # practical difference is the host arch + which Bun /
-            # composio variants we pull. See:
-            # https://github.com/actions/partner-runner-images/issues/61
-            # If this label ever disappears, fall back by changing
-            # `runner: windows-latest` + adding
-            # `rustup target add aarch64-pc-windows-msvc` and the
-            # ARM64 component of VS Build Tools — but that path
-            # requires running the linker via /arm64 cross-toolchain
-            # which has subtle issues with mingw-w64-linked C deps in
-            # libsql, so prefer the native runner whenever it's up.
+            # GitHub-hosted Windows-on-ARM runner. Native arm64 keeps two things
+            # simple: the Tauri app shell links for aarch64 without a cross
+            # toolchain, and setup-bun compiles the host sidecar for windows-arm64
+            # natively (avoiding the flakier cross-target compile). See
+            # https://github.com/actions/partner-runner-images/issues/61 — if this
+            # label ever disappears, fall back to `runner: windows-latest` plus
+            # `rustup target add aarch64-pc-windows-msvc` and the ARM64 VS Build
+            # Tools component, but prefer the native runner whenever it's up.
             runner: windows-11-arm
     steps:
       - name: Checkout
@@ -1053,126 +900,33 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ matrix.arch }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-${{ matrix.arch }}-
 
-      # Bun + jq + zstd are required by `scripts/fetch-cli-deps.sh`. Bun
-      # is needed because the composio Windows binary is built FROM
-      # SOURCE on this runner via `bun build:binary:cross
-      # --target=bun-windows-<arch>`. The version MUST match the pin
-      # in `cli-deps.json#composio.build."windows-<arch>".bun_version` —
-      # mismatched Bun produces a binary with subtle behavioral
-      # differences that bite at runtime, so we install via direct
-      # GitHub release download (deterministic) rather than the
-      # web-installer (which can drift if oven-sh changes the env-var
-      # contract on `install.ps1`).
-      - name: Install Bun (pinned to cli-deps.json)
-        shell: pwsh
-        run: |
-          $platformKey = "windows-${{ matrix.bun_arch }}"
-          if ("${{ matrix.bun_arch }}" -eq "x64") {
-            $bunVersion = (Get-Content cli-deps.json | ConvertFrom-Json).composio.build.'windows-x64'.bun_version
-            $bunBundle = "bun-windows-x64"
-          } else {
-            $bunVersion = (Get-Content cli-deps.json | ConvertFrom-Json).composio.build.'windows-arm64'.bun_version
-            # Bun's GitHub release artifact for Windows ARM64 is published
-            # as `bun-windows-aarch64.zip` (asymmetric with the
-            # `--target=bun-windows-arm64` CLI flag in cli-deps.json,
-            # which still uses `arm64`). Both the URL stem and the zip's
-            # inner folder use `aarch64`.
-            $bunBundle = "bun-windows-aarch64"
-          }
-          Write-Host "Installing Bun $bunVersion ($bunBundle, direct GitHub release download)"
-          $bunDir = "$HOME\.bun\bin"
-          New-Item -ItemType Directory -Force -Path $bunDir | Out-Null
-          $url = "https://github.com/oven-sh/bun/releases/download/bun-v$bunVersion/$bunBundle.zip"
-          $zipPath = "$env:TEMP\$bunBundle.zip"
-          Invoke-WebRequest -Uri $url -OutFile $zipPath
-          Expand-Archive -Force -Path $zipPath -DestinationPath "$env:TEMP\bun-extract"
-          Copy-Item -Force "$env:TEMP\bun-extract\$bunBundle\bun.exe" "$bunDir\bun.exe"
-          Remove-Item -Recurse -Force "$env:TEMP\bun-extract", $zipPath
-          # Add bun to PATH for subsequent steps.
-          echo "$bunDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-          $actual = & "$bunDir\bun.exe" --version
-          if ($actual.Trim() -ne $bunVersion) {
-            Write-Error "Bun version mismatch after install: got '$actual', expected '$bunVersion'"
-            exit 1
-          }
-          Write-Host "Pinned Bun OK: $actual"
+      # Bun compiles the host sidecar. setup-bun resolves the right build for the
+      # x64 and arm64 Windows runners.
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
 
-      # jq is preinstalled on the GitHub Windows runners. zstd is NOT, and the
-      # Chocolatey community feed (community.chocolatey.org) 504s intermittently
-      # — it failed the ARM64 release leg repeatedly. Pull zstd straight from
-      # its GitHub release instead (pinned), which is far more reliable. The
-      # x64 binary runs natively on x64 and under emulation on the ARM64 runner;
-      # it's only used to decompress the codex archive in fetch-cli-deps.sh.
-      - name: Install jq + zstd
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          jq --version
-
-          $ZSTD = "1.5.6"
-          $zip = "zstd-v$ZSTD-win64.zip"
-          $url = "https://github.com/facebook/zstd/releases/download/v$ZSTD/$zip"
-          $tmp = Join-Path $env:RUNNER_TEMP $zip
-          $out = Join-Path $env:RUNNER_TEMP "zstd"
-          Write-Host "Downloading $url"
-          for ($i = 1; $i -le 3; $i++) {
-            try { Invoke-WebRequest -Uri $url -OutFile $tmp; break }
-            catch { if ($i -eq 3) { throw }; Write-Host "retry $i…"; Start-Sleep 5 }
-          }
-          Expand-Archive -Force -Path $tmp -DestinationPath $out
-          # Zip extracts to a single `zstd-v<ver>-win64\` folder containing zstd.exe.
-          $dir = (Get-ChildItem -Path $out -Directory | Select-Object -First 1).FullName
-          if (-not $dir) { $dir = $out }
-          echo "$dir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-          & "$dir\zstd.exe" --version
-
-      # Stage bundled CLI binaries: codex.exe (downloaded + zstd),
-      # composio-<arch>/composio.exe (built from gethouston/composio
-      # fork — windows-x64 from branch houston-windows-support,
-      # windows-arm64 from branch houston-windows-arm64 with the
-      # bun:ffi fallback patch), and git-bash-<arch>.7z.exe (PortableGit
-      # SFX, extracted on first launch by houston-engine-core::git_bash).
-      # The fetch script handles `pnpm install` + `tsdown` +
-      # `bun build:binary:cross` for the composio fork; full build is
-      # ~3-5 minutes on a warm runner.
-      - name: Stage bundled CLI dependencies (codex, composio, git-bash)
+      # Bun-compile the Houston HOST sidecar for the matrix target BEFORE
+      # `tauri build`. build.rs::stage_host_sidecar copies
+      # `target/host-sidecar/houston-host-<target>.exe` to the externalBin name
+      # `app/src-tauri/binaries/houston-engine-<target>.exe` (the same name the
+      # Rust engine used). Self-contained — no provider CLIs, jq, or zstd needed.
+      - name: Compile Houston host sidecar (${{ matrix.target }})
         shell: bash
         run: |
           set -euo pipefail
-          ./scripts/fetch-cli-deps.sh ${{ matrix.fetch_mode }}
-
-          echo "=== Staged bundle ==="
-          ls -lah app/src-tauri/resources/bin/
-          echo "=== Sizes ==="
-          du -sh app/src-tauri/resources/bin/*
-
-          # Sanity: every Windows artifact must be present.
-          test -f app/src-tauri/resources/bin/codex.exe
-          test -f app/src-tauri/resources/bin/composio-${{ matrix.arch }}/composio.exe
-          test -f app/src-tauri/resources/bin/composio-${{ matrix.arch }}/run-helpers-runtime.mjs
-          test -f app/src-tauri/resources/bin/composio-${{ matrix.arch }}/acp-adapters/codex/win32-${{ matrix.bun_arch }}/codex-acp.exe
-          test -f app/src-tauri/resources/bin/git-bash-${{ matrix.arch }}.7z.exe
-          test -f app/src-tauri/resources/bin/cli-deps.json
-
-      # Build the engine sidecar for the matrix target BEFORE
-      # `tauri build`. build.rs::stage_engine_sidecar copies it to
-      # `app/src-tauri/binaries/houston-engine-<target>.exe` which is
-      # what Tauri's externalBin pattern expects.
-      - name: Build houston-engine sidecar (${{ matrix.target }})
-        shell: bash
-        run: |
-          set -euo pipefail
-          cargo build --release --target ${{ matrix.target }} -p houston-engine-server
-          test -x "target/${{ matrix.target }}/release/houston-engine.exe" \
-            || { echo "::error::engine binary missing for ${{ matrix.target }}"; exit 1; }
+          scripts/build-host-sidecar.sh ${{ matrix.target }}
+          test -x "target/host-sidecar/houston-host-${{ matrix.target }}.exe" \
+            || { echo "::error::host sidecar missing for ${{ matrix.target }}"; exit 1; }
           echo "Sidecar size:"
-          ls -lah target/${{ matrix.target }}/release/houston-engine.exe
+          ls -lah target/host-sidecar/houston-host-${{ matrix.target }}.exe
 
       - name: Build Tauri app (Windows MSI)
         uses: tauri-apps/tauri-action@v0
         with:
           projectPath: app
-          args: --target ${{ matrix.target }}
+          args: --target ${{ matrix.target }} --features host-sidecar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # The Tauri updater key signs the MSI for the auto-updater
@@ -1270,22 +1024,19 @@ jobs:
           "$SENTRY_CLI" sourcemaps upload --release "$RELEASE" app/dist
 
           echo "=== Upload ${{ matrix.target }} debug symbols ==="
-          # Rust converts `-` to `_` for PDB stems
-          # (houston-app.exe -> houston_app.pdb, houston-engine.exe ->
-          # houston_engine.pdb). Upload exe + PDB pairs so Sentry can index by
-          # the executable debug-id and resolve through the PDB line tables.
+          # Only the Tauri app SHELL is native now (the engine is the
+          # bun-compiled host sidecar — no PDB). Rust converts `-` to `_` for
+          # PDB stems (houston-app.exe -> houston_app.pdb). Upload exe + PDB so
+          # Sentry indexes by the executable debug-id and resolves through the
+          # PDB line tables.
           test -f "target/${{ matrix.target }}/release/houston-app.exe"
           test -f "target/${{ matrix.target }}/release/houston_app.pdb"
-          test -f "target/${{ matrix.target }}/release/houston-engine.exe"
-          test -f "target/${{ matrix.target }}/release/houston_engine.pdb"
           # --include-sources bundles the referenced source (Houston's Rust +
           # cargo crates in this checkout) so native frames show inline CODE,
           # not just file:line. Open-source repo → no exposure concern.
           "$SENTRY_CLI" debug-files upload --include-sources \
             "target/${{ matrix.target }}/release/houston-app.exe" \
-            "target/${{ matrix.target }}/release/houston_app.pdb" \
-            "target/${{ matrix.target }}/release/houston-engine.exe" \
-            "target/${{ matrix.target }}/release/houston_engine.pdb"
+            "target/${{ matrix.target }}/release/houston_app.pdb"
 
       - name: Upload Windows MSI + updater signature to draft release
         env:
@@ -1306,6 +1057,181 @@ jobs:
 
           echo "::notice::Windows MSI + .sig uploaded to draft https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME"
           echo "::warning::This MSI is UNSIGNED (code-signing wise) — Windows SmartScreen will warn on first install. The updater minisign signature above is separate; it covers in-app auto-update verification, not OS code-signing. SignPath integration lands in a follow-up PR."
+
+  # ============================================================================
+  # Linux desktop build — x86_64 AppImage + .deb. Runs IN PARALLEL with the mac
+  # and Windows jobs, uploading into the same draft. NEW with the TS engine: the
+  # CLI-free host makes a Linux desktop build viable for the first time (the Rust
+  # path bundled per-arch provider CLIs that never had Linux builds). The
+  # tauri.conf.json bundle.targets stay app/dmg/msi — Linux bundles are requested
+  # on the CLI via `--bundles deb,appimage`, so the default config is untouched.
+  #
+  # UNSIGNED + NOT wired into the auto-updater (latest.json is macOS + Windows
+  # only; `finalize` doesn't add a Linux entry). Download-only, for testing.
+  build-linux:
+    needs: prep
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      # See build-macos: aliases the frontend to the v3 host adapter.
+      VITE_NEW_ENGINE: "1"
+      # AppImage packaging on headless CI: don't strip (keeps the bundled
+      # sidecar intact) and extract-and-run the AppImage tooling (no FUSE on
+      # GitHub runners).
+      NO_STRIP: "true"
+      APPIMAGE_EXTRACT_AND_RUN: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Setup Rust (linux target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Cache Rust artifacts
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            app/src-tauri/target
+            target
+          key: ${{ runner.os }}-cargo-linux-x64-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-linux-x64-
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install Tauri Linux system dependencies
+        run: ./scripts/ci/install-tauri-linux-deps.sh
+
+      - name: Compile Houston host sidecar (x86_64-unknown-linux-gnu)
+        run: |
+          set -euo pipefail
+          scripts/build-host-sidecar.sh x86_64-unknown-linux-gnu --verify
+          test -x target/host-sidecar/houston-host-x86_64-unknown-linux-gnu \
+            || { echo "::error::host sidecar missing for x86_64-unknown-linux-gnu"; exit 1; }
+
+      # linuxdeploy runs `ldd` on every ELF to discover libraries to bundle. The
+      # bun-compiled sidecar is self-contained and `ldd` can't trace it, aborting
+      # the AppImage build. A front-of-PATH shim reports it as "not a dynamic
+      # executable" and defers to the real ldd for everything else.
+      - name: Install AppImage ldd shim
+        run: |
+          set -euo pipefail
+          SHIM_DIR="$RUNNER_TEMP/ldd-shim"
+          mkdir -p "$SHIM_DIR"
+          cp scripts/ci/appimage-ldd-shim.sh "$SHIM_DIR/ldd"
+          chmod +x "$SHIM_DIR/ldd"
+          echo "$SHIM_DIR" >> "$GITHUB_PATH"
+
+      - name: Build Tauri app (Linux AppImage + deb)
+        uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: app
+          args: --target x86_64-unknown-linux-gnu --features host-sidecar --bundles deb,appimage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+      - name: Locate Linux artifacts
+        id: artifacts-linux
+        run: |
+          set -euo pipefail
+          BUNDLE="target/x86_64-unknown-linux-gnu/release/bundle"
+          APPIMAGE=$(ls -t "$BUNDLE/appimage/"*.AppImage 2>/dev/null | head -1 || true)
+          DEB=$(ls -t "$BUNDLE/deb/"*.deb 2>/dev/null | head -1 || true)
+
+          missing=()
+          [ -f "$APPIMAGE" ] || missing+=("AppImage")
+          [ -f "$DEB" ] || missing+=(".deb")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing Linux build artifacts: ${missing[*]}"
+            ls -laR "$BUNDLE" 2>&1 | head -50 || true
+            exit 1
+          fi
+
+          echo "appimage=$APPIMAGE" >> "$GITHUB_OUTPUT"
+          echo "deb=$DEB" >> "$GITHUB_OUTPUT"
+          echo "Artifacts:"
+          echo "  AppImage: $APPIMAGE ($(du -sh "$APPIMAGE" | cut -f1))"
+          echo "  .deb:     $DEB ($(du -sh "$DEB" | cut -f1))"
+
+      - name: Upload source maps + Rust debug symbols to Sentry (linux x64)
+        if: ${{ env.SENTRY_AUTH_TOKEN != '' }}
+        env:
+          SENTRY_ORG: houston-cd
+          SENTRY_PROJECT: houston-app
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          RELEASE="houston-app@${VERSION}"
+          SENTRY_CLI="app/node_modules/.bin/sentry-cli"
+          "$SENTRY_CLI" --version
+
+          echo "=== Upload Linux Vite source maps ==="
+          # Linux ships its own Vite content-hashed bundle, so its maps must be
+          # uploaded under the shared release or Linux JS frames stay minified.
+          # `releases new` is idempotent and guards the race with the mac/win jobs.
+          "$SENTRY_CLI" releases new "$RELEASE"
+          "$SENTRY_CLI" sourcemaps upload --release "$RELEASE" app/dist
+
+          echo "=== Upload Linux app debug symbols ==="
+          # Only the Tauri app SHELL is native (the engine is the bun-compiled
+          # host sidecar — no debug info). The ELF carries DWARF inline in release
+          # with debug = "line-tables-only", so upload the executable directly.
+          APP_EXE="target/x86_64-unknown-linux-gnu/release/houston-app"
+          if [ -f "$APP_EXE" ]; then
+            "$SENTRY_CLI" debug-files upload --include-sources "$APP_EXE" \
+              || echo "::warning::debug-files upload failed for $APP_EXE"
+          else
+            echo "::warning::app executable missing at $APP_EXE — native Linux frames may stay unresolved"
+          fi
+
+      - name: Generate checksums
+        run: |
+          sha256sum \
+            "${{ steps.artifacts-linux.outputs.appimage }}" \
+            "${{ steps.artifacts-linux.outputs.deb }}" \
+            > checksums-linux-sha256.txt
+          cat checksums-linux-sha256.txt
+
+      - name: Upload Linux artifacts to draft release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" \
+            "${{ steps.artifacts-linux.outputs.appimage }}" \
+            "${{ steps.artifacts-linux.outputs.deb }}" \
+            checksums-linux-sha256.txt \
+            --clobber
+
+          echo "::notice::Linux artifacts uploaded to draft https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME"
 
   # ============================================================================
   # Stitch the parallel mac + win builds into one finished draft release.
