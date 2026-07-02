@@ -215,19 +215,34 @@ test("disconnect deletes every connected account for the toolkit", async () => {
   ]);
 });
 
-test("search uses the `query` param and maps tools", async () => {
-  const { provider, calls } = harness(() => ({
-    body: {
-      items: [
-        {
-          slug: "GMAIL_SEND_EMAIL",
-          toolkit: { slug: "gmail" },
-          description: "Send an email",
-          input_parameters: { type: "object" },
+test("search scopes to the user's connected toolkits and maps tools", async () => {
+  const { provider, calls } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts") {
+      return {
+        body: {
+          items: [
+            { toolkit: { slug: "gmail" }, id: "ca_1", status: "ACTIVE" },
+            { toolkit: { slug: "slack" }, id: "ca_2", status: "ACTIVE" },
+            // A second gmail account (dedup) and a failed one (excluded).
+            { toolkit: { slug: "gmail" }, id: "ca_3", status: "ACTIVE" },
+            { toolkit: { slug: "notion" }, id: "ca_4", status: "FAILED" },
+          ],
         },
-      ],
-    },
-  }));
+      };
+    }
+    return {
+      body: {
+        items: [
+          {
+            slug: "GMAIL_SEND_EMAIL",
+            toolkit: { slug: "gmail" },
+            description: "Send an email",
+            input_parameters: { type: "object" },
+          },
+        ],
+      },
+    };
+  });
   expect(await provider.search(USER, "send an email")).toEqual([
     {
       action: "GMAIL_SEND_EMAIL",
@@ -236,7 +251,21 @@ test("search uses the `query` param and maps tools", async () => {
       inputParams: { type: "object" },
     },
   ]);
-  expect(calls[0]?.path).toBe("/api/v3/tools?query=send+an+email&limit=10");
+  // Scoped to the ACTIVE connected toolkits (deduped) — Composio's global
+  // full-text search ranks unrelated tools above the obvious match.
+  expect(calls[1]?.path).toBe(
+    "/api/v3/tools?query=send+an+email&limit=10&toolkit_slug=gmail%2Cslack",
+  );
+});
+
+test("search falls back to the global catalog when nothing is connected", async () => {
+  const { provider, calls } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts")
+      return { body: { items: [] } };
+    return { body: { items: [] } };
+  });
+  expect(await provider.search(USER, "send an email")).toEqual([]);
+  expect(calls[1]?.path).toBe("/api/v3/tools?query=send+an+email&limit=10");
 });
 
 test("execute posts user_id + arguments and maps success and failure", async () => {

@@ -152,10 +152,25 @@ export class ComposioProvider implements IntegrationProvider {
     }
   }
 
-  async search(_userId: string, query: string): Promise<ToolMatch[]> {
+  async search(userId: string, query: string): Promise<ToolMatch[]> {
     // GET /api/v3/tools?query=… (the older `search` param is deprecated).
+    // Composio's full-text search is weak unqualified ("send an email" ranks
+    // unrelated marketing tools above GMAIL_SEND_EMAIL — verified live), so
+    // scope to the user's CONNECTED toolkits when they have any: those are the
+    // only actions execute() can run for them anyway. No connections yet →
+    // global search, so the agent can still discover what to suggest.
+    const connected = await this.listConnections(userId);
+    const slugs = [
+      ...new Set(
+        connected.filter((c) => c.status === "active").map((c) => c.toolkit),
+      ),
+    ];
     const body = await this.http.call<{ items?: RawTool[] }>("/api/v3/tools", {
-      query: { query, limit: "10" },
+      query: {
+        query,
+        limit: "10",
+        ...(slugs.length ? { toolkit_slug: slugs.join(",") } : {}),
+      },
     });
     return (body?.items ?? []).map(mapTool);
   }

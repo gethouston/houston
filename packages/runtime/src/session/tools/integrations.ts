@@ -16,7 +16,7 @@ import { type Static, Type } from "typebox";
 const SearchParams = Type.Object({
   query: Type.String({
     description:
-      "Plain-language description of what you want to do, e.g. 'send an email' or 'list upcoming calendar events'. Returns matching action slugs + their input parameters.",
+      "Plain-language description of what you want to do. Include the app name when you know it — 'gmail send email' finds better matches than 'send an email'. Returns matching action slugs + their input parameters.",
   }),
 });
 type SearchParams = Static<typeof SearchParams>;
