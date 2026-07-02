@@ -120,6 +120,8 @@ async function bootCloud(): Promise<{
         launcher: new FakeLauncher(),
         proxy: { async forward() {} },
         credentials,
+        // Mirrors the cloud wiring: the gateway in front mints/strips the header.
+        forwardActingHeader: true,
       }),
     },
     capabilities: CLOUD_CAPABILITIES,

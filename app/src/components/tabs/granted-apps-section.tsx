@@ -1,4 +1,3 @@
-import { ConfirmDialog } from "@houston-ai/core";
 import type {
   IntegrationConnection,
   IntegrationToolkit,
@@ -6,11 +5,12 @@ import type {
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  useAgentGrantMutation,
   useDisconnectIntegration,
-  useSetAgentGrants,
 } from "../../hooks/queries";
-import { type AppDisplay, appDisplay } from "./integrations-app-rows";
+import { type AppDisplay, connectionRows } from "./integrations-app-display";
 import { AvailableAppRow, ConnectedAppRow } from "./integrations-connected-row";
+import { IntegrationDisconnectDialog } from "./integrations-disconnect-dialog";
 import { INTEGRATION_PROVIDER, splitByGrant } from "./integrations-tab-model";
 
 interface GrantedAppsSectionProps {
@@ -23,26 +23,14 @@ interface GrantedAppsSectionProps {
   onReconnect: (toolkit: string) => void;
 }
 
-/** Resolve + sort a connection list into display rows by app name. */
-function toRows(
-  connections: IntegrationConnection[],
-  catalog: IntegrationToolkit[],
-) {
-  const bySlug = new Map(catalog.map((tk) => [tk.slug, tk]));
-  return connections
-    .map((c) => ({
-      connection: c,
-      app: appDisplay(c.toolkit, bySlug.get(c.toolkit)),
-    }))
-    .sort((a, b) => a.app.name.localeCompare(b.app.name));
-}
-
 /**
  * The multiplayer grant view (C4): "This agent can use" (granted connections,
  * toggle OFF = revoke) and "Your other connected apps" (connected but ungranted,
- * "Allow for this agent" = grant). Every grant change is an instant replace-set
- * PUT over the current grant set. Disconnect stays here but its copy makes clear
- * it removes the app for ALL agents ("Disconnect everywhere").
+ * "Allow for this agent" = grant). Each toggle is a single add/remove change;
+ * the mutation computes the replace-set PUT from the freshest cached grants (an
+ * optimistic update, so quick successive toggles compose instead of resurrecting
+ * each other). Disconnect stays here but its copy makes clear it removes the app
+ * for ALL agents ("Disconnect everywhere").
  */
 export function GrantedAppsSection({
   agentId,
@@ -52,7 +40,7 @@ export function GrantedAppsSection({
   onReconnect,
 }: GrantedAppsSectionProps) {
   const { t } = useTranslation("integrations");
-  const setGrants = useSetAgentGrants(agentId);
+  const grantMutation = useAgentGrantMutation(agentId);
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const [pendingDisconnect, setPendingDisconnect] = useState<AppDisplay | null>(
     null,
@@ -61,21 +49,15 @@ export function GrantedAppsSection({
   const { grantedRows, availableRows } = useMemo(() => {
     const { granted, available } = splitByGrant({ connections, grants });
     return {
-      grantedRows: toRows(granted, catalog),
-      availableRows: toRows(available, catalog),
+      grantedRows: connectionRows(granted, catalog),
+      availableRows: connectionRows(available, catalog),
     };
   }, [connections, grants, catalog]);
 
-  // A grant change replaces the whole set: revoke drops the slug, allow adds it.
-  const revoke = (toolkit: string) =>
-    setGrants.mutate([...grants].filter((g) => g !== toolkit));
-  const allow = (toolkit: string) => setGrants.mutate([...grants, toolkit]);
-  // `variables` is the NEXT set being PUT; a slug is mid-toggle when its
-  // membership there differs from now (added = allowing, removed = revoking).
-  const grantPendingFor = (toolkit: string) => {
-    if (!setGrants.isPending || !setGrants.variables) return false;
-    return grants.has(toolkit) !== setGrants.variables.includes(toolkit);
-  };
+  // The optimistic update flips the row instantly; the spinner covers the
+  // in-flight PUT for the toolkit the LATEST mutation is touching.
+  const grantPendingFor = (toolkit: string) =>
+    grantMutation.isPending && grantMutation.variables?.toolkit === toolkit;
 
   return (
     <>
@@ -105,7 +87,11 @@ export function GrantedAppsSection({
                 }
                 grant={{
                   pending: grantPendingFor(connection.toolkit),
-                  onToggle: () => revoke(connection.toolkit),
+                  onToggle: () =>
+                    grantMutation.mutate({
+                      toolkit: connection.toolkit,
+                      op: "remove",
+                    }),
                 }}
                 onReconnect={() => onReconnect(connection.toolkit)}
                 onDisconnect={() => setPendingDisconnect(app)}
@@ -133,30 +119,23 @@ export function GrantedAppsSection({
                 app={app}
                 status={connection.status}
                 pending={grantPendingFor(connection.toolkit)}
-                onAllow={() => allow(connection.toolkit)}
+                onAllow={() =>
+                  grantMutation.mutate({
+                    toolkit: connection.toolkit,
+                    op: "add",
+                  })
+                }
               />
             ))}
           </div>
         </section>
       )}
 
-      <ConfirmDialog
-        open={pendingDisconnect !== null}
-        onOpenChange={(open) => {
-          if (!open) setPendingDisconnect(null);
-        }}
-        title={t("grants.disconnect.confirmTitle", {
-          name: pendingDisconnect?.name ?? "",
-        })}
-        description={t("grants.disconnect.confirmBody", {
-          name: pendingDisconnect?.name ?? "",
-        })}
-        confirmLabel={t("grants.disconnect.confirmAction")}
-        cancelLabel={t("connected.disconnect.cancel")}
-        variant="destructive"
-        onConfirm={() => {
-          if (pendingDisconnect) disconnect.mutate(pendingDisconnect.toolkit);
-        }}
+      <IntegrationDisconnectDialog
+        app={pendingDisconnect}
+        scope="everywhere"
+        onClose={() => setPendingDisconnect(null)}
+        onConfirm={(toolkit) => disconnect.mutate(toolkit)}
       />
     </>
   );

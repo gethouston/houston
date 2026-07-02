@@ -8,7 +8,6 @@ import {
   canManageMembers,
   canSeeMembers,
   GRANTABLE_ROLES,
-  isGrantableRole,
   isMultiplayer,
   orgRole,
 } from "../src/lib/org-roles.ts";
@@ -134,8 +133,5 @@ describe("canManageAgentGrants", () => {
 describe("grantable roles", () => {
   it("owner is never grantable from the UI", () => {
     deepStrictEqual([...GRANTABLE_ROLES], ["admin", "user"]);
-    strictEqual(isGrantableRole("owner"), false);
-    strictEqual(isGrantableRole("admin"), true);
-    strictEqual(isGrantableRole("user"), true);
   });
 });

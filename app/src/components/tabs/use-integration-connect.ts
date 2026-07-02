@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSetAgentGrants } from "../../hooks/queries";
+import { useAgentGrantMutation } from "../../hooks/queries";
 import { showErrorToast } from "../../lib/error-toast";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations, tauriSystem } from "../../lib/tauri";
@@ -25,15 +25,14 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 export function useIntegrationConnect(opts: {
   agentId: string;
   autoGrant: boolean;
-  grantSet: ReadonlySet<string>;
 }): {
   connectingToolkit: string | null;
   connect: (toolkit: string) => Promise<void>;
 } {
-  const { agentId, autoGrant, grantSet } = opts;
+  const { agentId, autoGrant } = opts;
   const { t } = useTranslation("integrations");
   const qc = useQueryClient();
-  const setGrants = useSetAgentGrants(agentId);
+  const { mutateAsync: mutateGrant } = useAgentGrantMutation(agentId);
   const [connectingToolkit, setConnectingToolkit] = useState<string | null>(
     null,
   );
@@ -65,11 +64,15 @@ export function useIntegrationConnect(opts: {
         });
         // Multiplayer, connected from this agent's tab → auto-grant it here so
         // the row lands under "This agent can use", not "Your other connected
-        // apps". PUT the grant BEFORE invalidating. `mutateAsync` routes through
-        // `call()`, so a failure surfaces + re-throws into the catch below (the
-        // connection still shows; the grant just didn't take).
-        if (outcome === "active" && autoGrant && !grantSet.has(toolkit)) {
-          await setGrants.mutateAsync([...grantSet, toolkit]);
+        // apps". PUT the grant BEFORE invalidating. The mutation computes the
+        // next set from the FRESHEST cached grants at mutate time (nothing is
+        // read from this closure — the poll above can run for minutes, and a
+        // snapshot from before it would wipe grants made meanwhile).
+        // `mutateAsync` routes through `call()`, so a failure surfaces +
+        // re-throws into the catch below (the connection still shows; the
+        // grant just didn't take).
+        if (outcome === "active" && autoGrant) {
+          await mutateGrant({ toolkit, op: "add" });
         }
         // Whatever happened, show the real state — a failed OAuth surfaces as
         // an error row with a Reconnect action, not a silently missing app.
@@ -95,7 +98,7 @@ export function useIntegrationConnect(opts: {
         if (!cancelled.current) setConnectingToolkit(null);
       }
     },
-    [qc, t, autoGrant, grantSet, setGrants],
+    [qc, t, autoGrant, mutateGrant],
   );
 
   return { connectingToolkit, connect };

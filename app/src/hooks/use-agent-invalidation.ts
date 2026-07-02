@@ -66,6 +66,13 @@ export function useAgentInvalidation() {
             queryKey: queryKeys.conversations(p.data.agent_path),
           });
           qc.invalidateQueries({ queryKey: ["all-conversations"] });
+          // A message landing in ANY of this agent's conversations (e.g. a
+          // teammate's turn) must reach an open chat live. The event carries
+          // no session key, so invalidate the agent's whole chat-history
+          // prefix — correctness over precision.
+          qc.invalidateQueries({
+            queryKey: queryKeys.chatHistoryForAgent(p.data.agent_path),
+          });
           break;
         case "RoutinesChanged":
           qc.invalidateQueries({

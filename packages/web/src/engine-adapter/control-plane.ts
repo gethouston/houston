@@ -769,6 +769,14 @@ export async function disconnectIntegration(
   });
 }
 
+export async function dismissIntegrationsReconnectNotice(
+  cfg: ControlPlaneConfig,
+): Promise<void> {
+  await cpFetch(cfg, "/v1/integrations/reconnect-notice/dismiss", {
+    method: "POST",
+  });
+}
+
 // ── org / roles + per-agent grants (multiplayer) ─────────────────────────────
 // Hosted-gateway only. The v1 client mirrors these for shim parity.
 

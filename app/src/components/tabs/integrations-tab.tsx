@@ -1,3 +1,4 @@
+import { AsyncButton } from "@houston-ai/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -11,6 +12,7 @@ import {
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSession } from "../../hooks/use-session";
 import { signInWithGoogle } from "../../lib/auth";
+import { showErrorToast } from "../../lib/error-toast";
 import { canManageAgentGrants } from "../../lib/org-roles";
 import { queryKeys } from "../../lib/query-keys";
 import { isAuthConfigured } from "../../lib/supabase";
@@ -46,10 +48,9 @@ export default function IntegrationsTab({ agent }: TabProps) {
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, ready);
 
   // Grants are a multiplayer-only concept (C4): per-(user, agent) toolkit
-  // permission. In single-player they don't exist and the tab renders exactly
-  // as before. We gate every grant surface on the `multiplayer` capability.
+  // permission. In single-player they don't exist (`canManageAgentGrants` is
+  // false outside multiplayer) and the tab renders exactly as before.
   const { capabilities } = useCapabilities();
-  const multiplayer = capabilities?.multiplayer === true;
   const canUseGrants = canManageAgentGrants(capabilities, agent);
   const grantsQuery = useAgentGrants(agent.id, ready && canUseGrants);
   const grantSet = useMemo(
@@ -60,7 +61,6 @@ export default function IntegrationsTab({ agent }: TabProps) {
   const { connectingToolkit, connect } = useIntegrationConnect({
     agentId: agent.id,
     autoGrant: canUseGrants,
-    grantSet,
   });
   const [signingIn, setSigningIn] = useState(false);
 
@@ -99,11 +99,26 @@ export default function IntegrationsTab({ agent }: TabProps) {
     setSigningIn(true);
     try {
       await signInWithGoogle();
-    } catch {
-      // Surfaced by the auth layer's own error listener; reset the spinner.
+    } catch (err) {
+      // The auth layer's `onAuthError` listener only lives in SignInScreen
+      // (not mounted here), so surface the kickoff failure ourselves.
       setSigningIn(false);
+      showErrorToast("integrations_sign_in", t("signin.failed"), err);
     }
-  }, []);
+  }, [t]);
+
+  // "Got it" on the one-time reconnect banner: persist the dismissal, then
+  // refresh the status so the banner drops. A failure surfaces via `call()`
+  // (red toast + Report bug); swallow the re-throw so the button handler
+  // never leaks an unhandled rejection.
+  const dismissReconnect = useCallback(async () => {
+    try {
+      await tauriIntegrations.dismissReconnectNotice();
+      await qc.invalidateQueries({ queryKey: queryKeys.integrationStatus() });
+    } catch {
+      // Surfaced by call(); the banner stays until the dismissal sticks.
+    }
+  }, [qc]);
 
   return (
     <div className="h-full overflow-auto">
@@ -135,10 +150,18 @@ export default function IntegrationsTab({ agent }: TabProps) {
             {composio.reconnect && (
               <div className="flex items-start gap-2 rounded-xl bg-secondary p-4 text-sm text-muted-foreground">
                 <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                <span>{t("reconnectNotice")}</span>
+                <span className="flex-1">{t("reconnectNotice")}</span>
+                <AsyncButton
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 rounded-full"
+                  onClick={() => dismissReconnect()}
+                >
+                  {t("reconnectDismiss")}
+                </AsyncButton>
               </div>
             )}
-            {multiplayer && canUseGrants ? (
+            {canUseGrants ? (
               <GrantedAppsSection
                 agentId={agent.id}
                 connections={connections.data ?? []}

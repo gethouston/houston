@@ -126,30 +126,37 @@ export class ComposioProvider implements IntegrationProvider {
     userId: string,
     connectionId: string,
   ): Promise<Connection | null> {
-    const body = await this.http.call<RawConnection & { user_id?: string }>(
+    const body = await this.http.call<RawConnection>(
       `/api/v3/connected_accounts/${encodeURIComponent(connectionId)}`,
       { nullStatuses: [404] },
     );
     if (!body) return null;
-    // Never surface another user's connection, even to a guessed id.
-    if (body.user_id && body.user_id !== userId) return null;
+    // Never surface another user's connection, even to a guessed id. Fail
+    // CLOSED: a response without a usable user_id proves nothing about
+    // ownership, so it is treated as not this user's account.
+    if (typeof body.user_id !== "string" || body.user_id !== userId)
+      return null;
     return mapConnection(body);
   }
 
   async disconnect(userId: string, toolkit: string): Promise<void> {
     // Remove every connected account for the toolkit (a toolkit can have more
-    // than one, e.g. two Gmail logins). List then DELETE each.
+    // than one, e.g. two Gmail logins). List, then DELETE all in parallel —
+    // the deletes are independent; any failure still rejects (surfaces).
     const accounts = await this.http.call<{ items?: RawConnection[] }>(
       "/api/v3/connected_accounts",
       { query: { user_ids: userId, toolkit_slugs: toolkit, limit: "100" } },
     );
-    for (const acct of accounts?.items ?? []) {
-      if (!acct.id) continue;
-      await this.http.call(
-        `/api/v3/connected_accounts/${encodeURIComponent(acct.id)}`,
-        { method: "DELETE" },
-      );
-    }
+    await Promise.all(
+      (accounts?.items ?? [])
+        .flatMap((acct) => (acct.id ? [acct.id] : []))
+        .map((id) =>
+          this.http.call(
+            `/api/v3/connected_accounts/${encodeURIComponent(id)}`,
+            { method: "DELETE" },
+          ),
+        ),
+    );
   }
 
   async search(

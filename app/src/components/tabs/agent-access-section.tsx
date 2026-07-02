@@ -1,10 +1,12 @@
-import { Spinner, Switch } from "@houston-ai/core";
+import { ConfirmDialog, Spinner, Switch } from "@houston-ai/core";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrg, useSetAgentAssignments } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSession } from "../../hooks/use-session";
 import { canManageAssignments, isMultiplayer } from "../../lib/org-roles";
 import type { Agent } from "../../lib/types";
+import { assignmentToggle } from "./agent-access-model";
 
 /**
  * The "Who can use this agent" block on an agent's General settings. Lists org
@@ -19,6 +21,9 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
   const { data: session } = useSession();
   const org = useOrg(isMultiplayer(capabilities));
   const setAssignments = useSetAgentAssignments();
+  // Removing the LAST assigned member flips the agent open to the whole org
+  // (empty set = everyone) — that widening is confirm-gated, never silent.
+  const [confirmOpenToAll, setConfirmOpenToAll] = useState(false);
 
   if (!canManageAssignments(capabilities, agent)) return null;
 
@@ -29,12 +34,19 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
   const everyone = assigned.size === 0;
 
   const toggle = (userId: string, on: boolean) => {
-    const next = new Set(everyone ? members.map((m) => m.userId) : assigned);
-    if (on) next.add(userId);
-    else next.delete(userId);
+    const result = assignmentToggle({
+      memberIds: members.map((m) => m.userId),
+      assigned,
+      userId,
+      on,
+    });
+    if (result.kind === "confirmOpenToAll") {
+      setConfirmOpenToAll(true);
+      return;
+    }
     setAssignments.mutate({
       agentSlugOrId: agent.id,
-      userIds: [...next],
+      userIds: result.userIds,
     });
   };
 
@@ -87,6 +99,19 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
           {t("assignments.everyone")}
         </p>
       )}
+
+      <ConfirmDialog
+        open={confirmOpenToAll}
+        onOpenChange={setConfirmOpenToAll}
+        title={t("assignments.openToAll.title")}
+        description={t("assignments.openToAll.description")}
+        confirmLabel={t("assignments.openToAll.confirm")}
+        cancelLabel={t("assignments.openToAll.cancel")}
+        variant="default"
+        onConfirm={() =>
+          setAssignments.mutate({ agentSlugOrId: agent.id, userIds: [] })
+        }
+      />
     </section>
   );
 }

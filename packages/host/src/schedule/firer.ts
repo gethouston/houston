@@ -1,4 +1,3 @@
-import type { RoutineWithCreator } from "@houston/domain";
 import { routinePrompt } from "@houston/domain";
 import type { WorkspaceRuntime } from "../domain/types";
 import type { RuntimeChannel } from "../ports";
@@ -26,7 +25,7 @@ export class ChannelRoutineFirer implements RoutineFirer {
     // The routine's model/effort pins ride alongside (absent = inherit).
     // The creator's sub (C2) is threaded as the turn's acting-user so integration
     // calls act as them; absent for legacy creator-less routines → acts as owner.
-    const createdBy = (job.routine as RoutineWithCreator).created_by;
+    const createdBy = job.routine.created_by;
     await channel.fireTurn(
       { workspace: job.workspace, agent: job.agent },
       job.conversationId,

@@ -24,7 +24,7 @@ export function Dashboard() {
   const { t } = useTranslation("dashboard");
   const agents = useAgentStore((s) => s.agents);
   const setDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
-  const canCreateAgents = useCanCreateAgents();
+  const { canCreate: canCreateAgents } = useCanCreateAgents();
   const [showArchived, setShowArchived] = useState(false);
 
   if (agents.length === 0) {

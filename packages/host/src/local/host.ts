@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { dirname, join } from "node:path";
 import { SingleUserVerifier } from "../auth/verify";
@@ -150,6 +150,11 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     launcher,
     proxy: { forward },
     credentials,
+    // Desktop: clients talk to this host DIRECTLY (no gateway in front to mint
+    // or strip identity headers), so an inbound x-houston-acting-as is
+    // untrusted client input — never relay it to the runtime. Identity here is
+    // always the single local owner.
+    forwardActingHeader: false,
   });
 
   // Integrations (platform model): the desktop holds NO provider key — the
@@ -159,11 +164,17 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   // A leftover `integrations.json` from the retired "Composio for you" model
   // means this user's old connections are gone — surface the one-time
   // reconnect notice (their personal long-lived key is no longer used: a
-  // security improvement, and the UI says so).
+  // security improvement, and the UI says so). Dismissing it DELETES the file
+  // (it still holds that retired plaintext key), which also clears the flag —
+  // active() re-checks the disk on every status read, no restart needed.
   // Gateway wins when both are configured: a machine that CAN forward to the
   // key's real custodian should, and it makes dev's prod-simulation a one-knob
   // toggle (drop the URL from .env.local → direct mode with your own key).
   const sessionToken = { current: null as string | null };
+  const legacyIntegrationsPath = join(
+    dirname(opts.credentialsPath),
+    "integrations.json",
+  );
   const registry = opts.integrations?.gatewayUrl
     ? new IntegrationRegistry([
         new RemoteIntegrationProvider({
@@ -192,9 +203,12 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
               },
             }
           : {}),
-        reconnectNotice: existsSync(
-          join(dirname(opts.credentialsPath), "integrations.json"),
-        ),
+        reconnectNotice: {
+          active: () => existsSync(legacyIntegrationsPath),
+          // force: already-gone is success (idempotent dismiss); a real
+          // failure (EACCES…) throws and surfaces as the route's error.
+          dismiss: () => rmSync(legacyIntegrationsPath, { force: true }),
+        },
       }
     : undefined;
 

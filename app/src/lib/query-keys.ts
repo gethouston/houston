@@ -25,6 +25,14 @@ export const queryKeys = {
     ["all-conversations", ...agentPaths] as const,
   chatHistory: (agentPath: string, sessionKey: string) =>
     ["chat-history", agentPath, sessionKey] as const,
+  /**
+   * Prefix key covering EVERY session's chat history for an agent. Used for
+   * coarse invalidation on `ConversationsChanged` (the event carries no
+   * session key): a teammate's message must appear live in an open
+   * conversation, not on the next remount/focus. Correctness over precision.
+   */
+  chatHistoryForAgent: (agentPath: string) =>
+    ["chat-history", agentPath] as const,
 
   // App-scoped (less reactive, loaded on init)
   /**

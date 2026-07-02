@@ -18,8 +18,7 @@
       "emailLabel": "Correo",
       "emailPlaceholder": "nombre@empresa.com",
       "roleLabel": "Rol",
-      "submit": "Agregar",
-      "adding": "Agregando…"
+      "submit": "Agregar"
     },
     "roster": {
       "you": "Tú",
@@ -38,6 +37,12 @@
     "description": "Elige las personas que pueden chatear con este agente. Apaga a todos para compartirlo con todo el equipo.",
     "everyone": "Todo el equipo",
     "empty": "Todavía no hay nadie más para agregar.",
-    "you": "Tú"
+    "you": "Tú",
+    "openToAll": {
+      "title": "¿Abrir este agente a todo el equipo?",
+      "description": "Estás quitando a la última persona de la lista. Sin nadie elegido, todo tu equipo puede usar este agente.",
+      "confirm": "Abrir a todos",
+      "cancel": "Cancelar"
+    }
   }
 }

@@ -169,6 +169,7 @@ test("ProxyChannel.fireTurn posts the prompt to the runtime's conversation endpo
     launcher,
     proxy: { async forward() {} },
     credentials: new MemoryCredentialStore(),
+    forwardActingHeader: false,
   });
   try {
     await channel.fireTurn(
@@ -206,6 +207,7 @@ test("ProxyChannel.fireTurn includes the routine's model/effort pins in the mess
     launcher,
     proxy: { async forward() {} },
     credentials: new MemoryCredentialStore(),
+    forwardActingHeader: false,
   });
   try {
     await channel.fireTurn(
@@ -243,6 +245,7 @@ test("ProxyChannel.fireTurn sends x-houston-acting-user when a creator is thread
     launcher,
     proxy: { async forward() {} },
     credentials: new MemoryCredentialStore(),
+    forwardActingHeader: false,
   });
   try {
     // Routine turn with a creator → the header carries the sub.
@@ -280,6 +283,7 @@ test("ProxyChannel.fireTurn throws when the runtime rejects (→ errored run)", 
     launcher,
     proxy: { async forward() {} },
     credentials: new MemoryCredentialStore(),
+    forwardActingHeader: false,
   });
   try {
     await expect(

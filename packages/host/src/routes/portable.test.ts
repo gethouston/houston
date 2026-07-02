@@ -57,6 +57,7 @@ const deps: ControlPlaneDeps = {
       launcher,
       proxy: { async forward() {} },
       credentials,
+      forwardActingHeader: false,
     }),
   },
   vfs,

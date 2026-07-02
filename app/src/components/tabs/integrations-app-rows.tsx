@@ -12,12 +12,6 @@ import { type AppDisplay, Logo } from "./integrations-app-display";
  * name/description resolution) in `integrations-app-display`.
  */
 
-export {
-  type AppDisplay,
-  appDisplay,
-  fallbackLogo,
-} from "./integrations-app-display";
-
 /** A connectable app in the browse grid. */
 export function BrowseAppRow({
   app,

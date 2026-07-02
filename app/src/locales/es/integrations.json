@@ -9,9 +9,11 @@
   "signin": {
     "title": "Inicia sesión para conectar aplicaciones",
     "body": "Inicia sesión en Houston para conectar tus aplicaciones. Tus cuentas siguen siendo tuyas; el agente actúa en tu nombre.",
-    "button": "Iniciar sesión en Houston"
+    "button": "Iniciar sesión en Houston",
+    "failed": "No se pudo iniciar sesión. Inténtalo de nuevo."
   },
   "reconnectNotice": "Mejoramos la forma en que se conectan las aplicaciones para hacerla más segura. Reconecta tus aplicaciones una sola vez; Houston ya no guarda ninguna clave de larga duración.",
+  "reconnectDismiss": "Entendido",
   "connected": {
     "title": "Conectadas",
     "count_one": "{{count}} app",

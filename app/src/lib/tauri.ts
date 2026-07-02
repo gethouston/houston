@@ -1138,6 +1138,11 @@ export const tauriIntegrations = {
     call("integration_disconnect", () =>
       getEngine().disconnectIntegration(provider, toolkit),
     ),
+  /** Dismiss the reconnect notice (deletes the legacy credentials server-side). */
+  dismissReconnectNotice: () =>
+    call("integration_dismiss_reconnect_notice", () =>
+      getEngine().dismissIntegrationsReconnectNotice(),
+    ),
   /** Multiplayer: the integration toolkit slugs granted to an agent. */
   grants: (agentSlugOrId: string) =>
     call("agent_integration_grants", () =>

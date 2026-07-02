@@ -1,4 +1,7 @@
-import type { IntegrationToolkit } from "@houston-ai/engine-client";
+import type {
+  IntegrationConnection,
+  IntegrationToolkit,
+} from "@houston-ai/engine-client";
 import { useState } from "react";
 
 /**
@@ -27,6 +30,20 @@ export function appDisplay(
     description: toolkit?.description ?? "",
     logoUrl: toolkit?.logoUrl || fallbackLogo(slug),
   };
+}
+
+/** Resolve + sort a connection list into display rows by app name. */
+export function connectionRows(
+  connections: IntegrationConnection[],
+  catalog: IntegrationToolkit[],
+): { connection: IntegrationConnection; app: AppDisplay }[] {
+  const bySlug = new Map(catalog.map((tk) => [tk.slug, tk]));
+  return connections
+    .map((c) => ({
+      connection: c,
+      app: appDisplay(c.toolkit, bySlug.get(c.toolkit)),
+    }))
+    .sort((a, b) => a.app.name.localeCompare(b.app.name));
 }
 
 export function fallbackLogo(toolkit: string): string {

@@ -12,7 +12,8 @@ import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import { Check, ChevronDown, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { appDisplay, BrowseAppRow } from "./integrations-app-rows";
+import { appDisplay } from "./integrations-app-display";
+import { BrowseAppRow } from "./integrations-app-rows";
 import {
   BROWSE_PAGE_SIZE,
   browseCatalog,
@@ -53,9 +54,10 @@ export function BrowseAppsSection({
     [catalog, search, category, connectedToolkits],
   );
 
-  const isSearching = search.trim().length > 0;
-  const visibleApps = isSearching ? available : available.slice(0, visible);
-  const hasMore = !isSearching && visible < available.length;
+  // Search results page exactly like the browse grid — the catalog holds
+  // ~1000 apps, so one keystroke can match hundreds of rows.
+  const visibleApps = available.slice(0, visible);
+  const hasMore = visible < available.length;
 
   return (
     <section className="mt-8">
@@ -74,7 +76,11 @@ export function BrowseAppsSection({
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              // New query, new result set — restart the pagination window.
+              setVisible(BROWSE_PAGE_SIZE);
+            }}
             placeholder={t("browse.searchPlaceholder")}
             className="h-9 w-full rounded-full border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
           />

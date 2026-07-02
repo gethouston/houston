@@ -249,7 +249,15 @@ function main(): void {
   // One channel per hosting model: gke workspaces proxy to standing pods,
   // cloudrun workspaces dispatch per-turn. A missing channel answers 503.
   const channels: ControlPlaneDeps["channels"] = {
-    gke: new ProxyChannel({ launcher, proxy: { forward }, credentials }),
+    // forwardActingHeader: the CLOSED gateway fronts every pod request here —
+    // it mints x-houston-acting-as for authenticated users and strips any
+    // client-supplied value, so relaying it to the runtime is safe (C2).
+    gke: new ProxyChannel({
+      launcher,
+      proxy: { forward },
+      credentials,
+      forwardActingHeader: true,
+    }),
     ...(turn ? { cloudrun: new TurnChannel(turn) } : {}),
   };
 

@@ -1,4 +1,3 @@
-import { ConfirmDialog } from "@houston-ai/core";
 import type {
   IntegrationConnection,
   IntegrationToolkit,
@@ -6,8 +5,9 @@ import type {
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDisconnectIntegration } from "../../hooks/queries";
-import { type AppDisplay, appDisplay } from "./integrations-app-rows";
+import { type AppDisplay, connectionRows } from "./integrations-app-display";
 import { ConnectedAppRow } from "./integrations-connected-row";
+import { IntegrationDisconnectDialog } from "./integrations-disconnect-dialog";
 import { INTEGRATION_PROVIDER } from "./integrations-tab-model";
 
 interface ConnectedAppsSectionProps {
@@ -29,15 +29,10 @@ export function ConnectedAppsSection({
     null,
   );
 
-  const rows = useMemo(() => {
-    const bySlug = new Map(catalog.map((tk) => [tk.slug, tk]));
-    return connections
-      .map((c) => ({
-        connection: c,
-        app: appDisplay(c.toolkit, bySlug.get(c.toolkit)),
-      }))
-      .sort((a, b) => a.app.name.localeCompare(b.app.name));
-  }, [connections, catalog]);
+  const rows = useMemo(
+    () => connectionRows(connections, catalog),
+    [connections, catalog],
+  );
 
   if (rows.length === 0) return null;
 
@@ -67,23 +62,11 @@ export function ConnectedAppsSection({
         ))}
       </div>
 
-      <ConfirmDialog
-        open={pendingDisconnect !== null}
-        onOpenChange={(open) => {
-          if (!open) setPendingDisconnect(null);
-        }}
-        title={t("connected.disconnect.confirmTitle", {
-          name: pendingDisconnect?.name ?? "",
-        })}
-        description={t("connected.disconnect.confirmBody", {
-          name: pendingDisconnect?.name ?? "",
-        })}
-        confirmLabel={t("connected.disconnect.confirmAction")}
-        cancelLabel={t("connected.disconnect.cancel")}
-        variant="destructive"
-        onConfirm={() => {
-          if (pendingDisconnect) disconnect.mutate(pendingDisconnect.toolkit);
-        }}
+      <IntegrationDisconnectDialog
+        app={pendingDisconnect}
+        scope="agent"
+        onClose={() => setPendingDisconnect(null)}
+        onConfirm={(toolkit) => disconnect.mutate(toolkit)}
       />
     </section>
   );

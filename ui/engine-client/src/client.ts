@@ -1005,6 +1005,14 @@ export class HoustonClient {
       { toolkit },
     );
   }
+  /**
+   * Dismiss the "reconnect your apps" notice by deleting the legacy
+   * credentials server-side; afterwards `integrationStatus()` reports no
+   * `reconnect` flag.
+   */
+  async dismissIntegrationsReconnectNotice(): Promise<void> {
+    await this.request("POST", "/integrations/reconnect-notice/dismiss");
+  }
 
   // ---------- org / roles (multiplayer) — v3 host only ----------
   //

@@ -1,4 +1,7 @@
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import type { Server } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Capabilities } from "@houston/protocol";
 import { expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
@@ -33,7 +36,10 @@ const CAPS: Capabilities = {
 async function setup(
   opts: {
     withIntegrations?: boolean;
-    reconnectNotice?: boolean;
+    reconnectNotice?: {
+      active(): boolean;
+      dismiss(): void | Promise<void>;
+    };
     session?: { set(token: string | null): void };
   } = {},
 ) {
@@ -56,7 +62,9 @@ async function setup(
     integrations: withIntegrations
       ? {
           registry: new IntegrationRegistry([fake]),
-          ...(opts.reconnectNotice ? { reconnectNotice: true } : {}),
+          ...(opts.reconnectNotice
+            ? { reconnectNotice: opts.reconnectNotice }
+            : {}),
           ...(opts.session ? { session: opts.session } : {}),
         }
       : undefined,
@@ -95,15 +103,83 @@ test("status reports readiness (no login concept, no account, no secret)", async
   }
 });
 
-test("a legacy for-you credentials file surfaces the one-time reconnect notice", async () => {
-  const { base, stop } = await setup({ reconnectNotice: true });
+test("a legacy for-you credentials file surfaces the one-time reconnect notice, and dismiss deletes it", async () => {
+  // A real legacy file on disk (the local profile's wiring shape: active() is
+  // a live existsSync, dismiss() an idempotent rm) — so the test proves the
+  // retired plaintext-key file is actually deleted and the flag clears live.
+  const dir = mkdtempSync(join(tmpdir(), "houston-legacy-integrations-"));
+  const legacyPath = join(dir, "integrations.json");
+  writeFileSync(legacyPath, JSON.stringify({ apiKey: "legacy-plaintext-key" }));
+  const { base, stop } = await setup({
+    reconnectNotice: {
+      active: () => existsSync(legacyPath),
+      dismiss: () => rmSync(legacyPath, { force: true }),
+    },
+  });
   try {
-    const status = await (
+    let status = await (
       await fetch(`${base}/v1/integrations`, { headers: auth })
     ).json();
     expect(status.items[0]).toMatchObject({ reconnect: true });
+
+    const dismiss = await fetch(
+      `${base}/v1/integrations/reconnect-notice/dismiss`,
+      { method: "POST", headers: auth },
+    );
+    expect(dismiss.status).toBe(200);
+    expect(await dismiss.json()).toEqual({ ok: true });
+    expect(existsSync(legacyPath)).toBe(false);
+
+    // The flag reflects reality immediately — no host restart.
+    status = await (
+      await fetch(`${base}/v1/integrations`, { headers: auth })
+    ).json();
+    expect(status.items[0].reconnect).toBeUndefined();
+
+    // Idempotent: dismissing an already-gone file is still a 200.
+    const again = await fetch(
+      `${base}/v1/integrations/reconnect-notice/dismiss`,
+      { method: "POST", headers: auth },
+    );
+    expect(again.status).toBe(200);
+    expect(await again.json()).toEqual({ ok: true });
   } finally {
     stop();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("dismiss with no legacy path wired (cloud) is a no-op success; a deletion failure surfaces", async () => {
+  const cloud = await setup();
+  try {
+    const res = await fetch(
+      `${cloud.base}/v1/integrations/reconnect-notice/dismiss`,
+      { method: "POST", headers: auth },
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+  } finally {
+    cloud.stop();
+  }
+
+  // A real failure (e.g. EACCES) must NOT be swallowed behind {ok:true}.
+  const failing = await setup({
+    reconnectNotice: {
+      active: () => true,
+      dismiss: () => {
+        throw new Error("EACCES: permission denied");
+      },
+    },
+  });
+  try {
+    const res = await fetch(
+      `${failing.base}/v1/integrations/reconnect-notice/dismiss`,
+      { method: "POST", headers: auth },
+    );
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toContain("EACCES");
+  } finally {
+    failing.stop();
   }
 });
 

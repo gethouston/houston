@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations } from "../../lib/tauri";
+import {
+  applyGrantChange,
+  type GrantChange,
+  reverseGrantChange,
+} from "./grant-set";
 
 /** Per-provider readiness (usable now? needs a Houston sign-in?). User-level. */
 export function useIntegrationStatus() {
@@ -70,17 +75,47 @@ export function useAgentGrants(agentId: string, enabled: boolean) {
 }
 
 /**
- * Multiplayer only: replace this agent's grant set (an instant replace-set PUT
- * per C4). Invalidates `agentGrants` so the granted/available split re-renders
- * live. Carries no `onError` for the same reason as the mutations above: the
+ * Multiplayer only: add or remove ONE toolkit in this agent's grant set. The
+ * host API is a replace-set PUT (C4), so the next set is computed inside
+ * `mutationFn` from the freshest cache value at mutate time — never from a set
+ * a component captured earlier (a stale snapshot would wipe grants made in
+ * between, e.g. while the OAuth poll was running). An optimistic `onMutate`
+ * update (+ targeted rollback on error, + invalidation on settle) makes
+ * overlapping add/remove mutations compose instead of resurrecting each other.
+ * Carries no `onError` toast for the same reason as the mutations above: the
  * `call()` wrapper already surfaces + reports the failure once.
  */
-export function useSetAgentGrants(agentId: string) {
+export function useAgentGrantMutation(agentId: string) {
   const qc = useQueryClient();
+  const key = queryKeys.agentGrants(agentId);
   return useMutation({
-    mutationFn: (toolkits: string[]) =>
-      tauriIntegrations.setGrants(agentId, toolkits),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: queryKeys.agentGrants(agentId) }),
+    mutationFn: (change: GrantChange) => {
+      // Freshest value: includes this change's own optimistic update (onMutate
+      // runs first) AND any other in-flight change's, so overlapping toggles
+      // send the union rather than each other's stale snapshots. Re-applying
+      // the change is idempotent over the optimistic value and covers the
+      // edge where a refetch overwrote the cache in between.
+      const current = qc.getQueryData<string[]>(key) ?? [];
+      return tauriIntegrations.setGrants(
+        agentId,
+        applyGrantChange(current, change),
+      );
+    },
+    onMutate: async (change) => {
+      // Stop a racing refetch from overwriting the optimistic value mid-flight.
+      await qc.cancelQueries({ queryKey: key });
+      qc.setQueryData<string[]>(key, (prev) =>
+        applyGrantChange(prev ?? [], change),
+      );
+    },
+    onError: (_err, change) => {
+      // Reverse ONLY this change (not a whole-set snapshot restore, which
+      // would clobber another overlapping mutation's optimistic update); the
+      // settle invalidation below re-syncs with the server regardless.
+      qc.setQueryData<string[]>(key, (prev) =>
+        reverseGrantChange(prev ?? [], change),
+      );
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
   });
 }

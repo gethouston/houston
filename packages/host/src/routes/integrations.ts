@@ -26,12 +26,22 @@ export interface IntegrationDeps {
    */
   session?: { set(token: string | null): void };
   /**
-   * A legacy "Composio for you" credentials file was found on disk: the user
+   * A legacy "Composio for you" credentials file on disk means the user
    * connected apps under the old per-user-account model and must reconnect
    * them once (surfaced in the UI as a security improvement, which it is —
-   * their long-lived personal key is no longer used anywhere).
+   * their long-lived personal key is no longer used anywhere). Local profile
+   * only; cloud deployments have no legacy file and leave this absent.
    */
-  reconnectNotice?: boolean;
+  reconnectNotice?: {
+    /** Live check per request — dismissal must clear the banner without a restart. */
+    active(): boolean;
+    /**
+     * Delete the legacy file (it holds the user's retired plaintext key).
+     * Idempotent — already-gone is success; a real failure (EACCES…) throws
+     * and surfaces as an error response, never swallowed.
+     */
+    dismiss(): void | Promise<void>;
+  };
 }
 
 /** Resolve the provider from the URL segment, or 404. */
@@ -89,14 +99,31 @@ export async function handleIntegrations(
     return true;
   }
 
+  // POST /v1/integrations/reconnect-notice/dismiss — delete the legacy
+  // "Composio for you" credentials file (it holds the user's retired plaintext
+  // key) and clear the banner. Local-only wiring; deployments without a legacy
+  // path (cloud) accept it as a no-op, mirroring the session sink above.
+  // Idempotent: 200 even when the file is already gone. A real deletion
+  // failure throws → the server's error handler surfaces it, never swallowed.
+  if (
+    path === "/v1/integrations/reconnect-notice/dismiss" &&
+    method === "POST"
+  ) {
+    await deps.integrations?.reconnectNotice?.dismiss();
+    json(res, 200, { ok: true });
+    return true;
+  }
+
   if (!deps.integrations) {
     json(res, 503, { error: "integrations not configured" });
     return true;
   }
   const { registry, reconnectNotice } = deps.integrations;
 
-  // GET /v1/integrations — per-provider readiness (never a secret).
+  // GET /v1/integrations — per-provider readiness (never a secret). The
+  // reconnect flag is re-checked live so a dismiss takes effect immediately.
   if (path === "/v1/integrations" && method === "GET") {
+    const reconnect = reconnectNotice?.active() ?? false;
     const items = await Promise.all(
       registry.ids().map(async (id) => {
         const readiness = await registry.get(id).readiness();
@@ -104,7 +131,7 @@ export async function handleIntegrations(
           provider: id,
           ready: readiness.ready,
           ...(readiness.reason ? { reason: readiness.reason } : {}),
-          ...(reconnectNotice ? { reconnect: true } : {}),
+          ...(reconnect ? { reconnect: true } : {}),
         };
       }),
     );

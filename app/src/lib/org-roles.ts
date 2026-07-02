@@ -81,8 +81,3 @@ export function canManageAgentGrants(
  * is out of scope for v1).
  */
 export const GRANTABLE_ROLES: readonly OrgRole[] = ["admin", "user"] as const;
-
-/** Whether a role can be picked in the add-member / change-role selects. */
-export function isGrantableRole(role: OrgRole): boolean {
-  return GRANTABLE_ROLES.includes(role);
-}

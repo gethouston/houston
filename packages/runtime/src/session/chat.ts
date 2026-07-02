@@ -180,9 +180,14 @@ async function execTurn(
   const author = decodeActingAuthor(acting?.actingAs);
   // Prior user authors, read BEFORE appending this turn — drives the model
   // framing decision (prefix only when ≥2 distinct authors are in play).
-  const priorAuthors = (getHistory(id)?.messages ?? [])
-    .filter((m) => m.role === "user")
-    .map((m) => m.author);
+  // Authorless turns (single-user desktop) can never frame (shouldFrame is
+  // false without an author), so skip re-reading + parsing the whole
+  // conversation file every turn and pass the empty list it would reduce to.
+  const priorAuthors = author
+    ? (getHistory(id)?.messages ?? [])
+        .filter((m) => m.role === "user")
+        .map((m) => m.author)
+    : [];
 
   appendUserMessage(id, text, author);
   publish(id, {

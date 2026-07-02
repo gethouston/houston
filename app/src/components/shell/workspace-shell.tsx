@@ -84,7 +84,7 @@ export function WorkspaceShell({
   const [panelContainer, setPanelContainer] = useState<HTMLDivElement | null>(
     null,
   );
-  const canCreateAgents = useCanCreateAgents();
+  const { canCreate: canCreateAgents } = useCanCreateAgents();
   const agentDef = currentAgent ? getById(currentAgent.configId) : undefined;
   const { data: activities } = useActivity(currentAgent?.folderPath);
   const needsYouCount = (activities ?? []).filter(

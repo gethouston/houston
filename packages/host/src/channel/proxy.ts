@@ -35,6 +35,18 @@ export class ProxyChannel implements RuntimeChannel {
       launcher: RuntimeLauncher;
       proxy: RuntimeProxy;
       credentials: CredentialStore;
+      /**
+       * Whether an inbound `x-houston-acting-as` header is relayed to the
+       * runtime. The runtime decodes that token's payload WITHOUT verifying
+       * it (C2/C5: the gateway is the trust boundary), so this must be true
+       * ONLY when a trusted gateway sits in front minting/stripping the
+       * header (cloud). On the desktop clients reach this host directly —
+       * forwarding would let any client forge message attribution, so the
+       * local profile sets false and inbound headers are dropped. The
+       * routine path is unaffected either way: fireTurn's server-minted
+       * `x-houston-acting-user` never rides this header.
+       */
+      forwardActingHeader: boolean;
     },
   ) {}
 
@@ -63,9 +75,13 @@ export class ProxyChannel implements RuntimeChannel {
     const qs = params.toString();
 
     // Forward the gateway's per-turn acting-as token (C2) verbatim — nothing is
-    // minted host-side; when absent (desktop / no gateway) the runtime acts as
-    // the workspace owner. A single-value header only.
-    const actingHeader = req.headers["x-houston-acting-as"];
+    // minted host-side; when absent the runtime acts as the workspace owner.
+    // Gateway-fronted deployments only (forwardActingHeader): without a gateway
+    // to have minted it, an inbound header is untrusted client input and is
+    // dropped. A single-value header only.
+    const actingHeader = this.opts.forwardActingHeader
+      ? req.headers["x-houston-acting-as"]
+      : undefined;
     const actingAs = Array.isArray(actingHeader)
       ? actingHeader[0]
       : actingHeader;

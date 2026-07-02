@@ -9,9 +9,11 @@
   "signin": {
     "title": "Sign in to connect apps",
     "body": "Sign in to Houston to connect your apps. Your accounts stay yours; the agent acts on your behalf.",
-    "button": "Sign in to Houston"
+    "button": "Sign in to Houston",
+    "failed": "Sign-in couldn't start. Please try again."
   },
   "reconnectNotice": "We upgraded how apps connect to make it more secure. Please reconnect your apps once; Houston no longer keeps any long-lived key for them.",
+  "reconnectDismiss": "Got it",
   "connected": {
     "title": "Connected",
     "count_one": "{{count}} app",

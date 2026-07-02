@@ -46,6 +46,15 @@ agent context = `agent`. Grant checks apply per C1/C4.
 - The pod host receives `x-houston-acting-as` on each proxied request. For a
   message dispatch (`POST .../conversations/:id/messages` and the equivalents),
   it passes the token to the runtime as the turn's `actingAs` parameter.
+- **Gateway-fronted profiles only.** The runtime decodes the token's payload
+  without verifying it, so the host relays the header ONLY when a trusted
+  gateway in front mints it and strips client-supplied values
+  (`ProxyChannel({ forwardActingHeader: true })`, the cloud wiring). The local
+  desktop profile has no gateway — clients hit the host directly — so it sets
+  `forwardActingHeader: false` and DROPS any inbound `x-houston-acting-as`
+  (otherwise any local client could forge message attribution). The routine
+  path is independent of this flag: `fireTurn` sends the server-minted
+  `x-houston-acting-user`, never the acting-as header.
 - The runtime holds it for the DURATION OF THE TURN only and sends it on
   `/sandbox/integrations/*` calls as `x-houston-acting-as`.
 - The pod host's sandbox proxy forwards integration calls upstream

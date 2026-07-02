@@ -9,9 +9,11 @@
   "signin": {
     "title": "Entre para conectar aplicativos",
     "body": "Entre no Houston para conectar seus aplicativos. Suas contas continuam sendo suas; o agente age em seu nome.",
-    "button": "Entrar no Houston"
+    "button": "Entrar no Houston",
+    "failed": "Não foi possível iniciar a sessão. Tente de novo."
   },
   "reconnectNotice": "Melhoramos a forma como os aplicativos se conectam para deixá-la mais segura. Reconecte seus aplicativos uma única vez; o Houston não guarda mais nenhuma chave de longa duração.",
+  "reconnectDismiss": "Entendi",
   "connected": {
     "title": "Conectados",
     "count_one": "{{count}} app",

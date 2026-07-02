@@ -93,6 +93,20 @@ export class IntegrationUpstreamError extends Error {
   }
 }
 
+/**
+ * A json content-type is a claim, not a guarantee — a malformed body (a
+ * truncated proxy error, an HTML error page mislabeled json) must still yield
+ * the typed upstream error carrying the REAL status, not a SyntaxError that
+ * callers bury behind a generic 500. Fall back to the raw text as the detail.
+ */
+function parseJsonOrRaw(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+}
+
 export async function integrationUpstreamErrorFromResponse(
   res: Response,
   context: string,
@@ -100,7 +114,7 @@ export async function integrationUpstreamErrorFromResponse(
   const raw = await res.text();
   const body = raw
     ? res.headers.get("content-type")?.includes("json")
-      ? JSON.parse(raw)
+      ? parseJsonOrRaw(raw)
       : raw
     : { error: `integrations upstream returned ${res.status}` };
   return new IntegrationUpstreamError(

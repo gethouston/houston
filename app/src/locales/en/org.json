@@ -18,8 +18,7 @@
       "emailLabel": "Email",
       "emailPlaceholder": "name@company.com",
       "roleLabel": "Role",
-      "submit": "Add",
-      "adding": "Adding…"
+      "submit": "Add"
     },
     "roster": {
       "you": "You",
@@ -38,6 +37,12 @@
     "description": "Pick the people who can chat with this agent. Turn everyone off to share it with the whole team.",
     "everyone": "Everyone on the team",
     "empty": "No one else to add yet.",
-    "you": "You"
+    "you": "You",
+    "openToAll": {
+      "title": "Open this agent to everyone?",
+      "description": "You are removing the last person from the list. With no one picked, everyone on your team can use this agent.",
+      "confirm": "Open to everyone",
+      "cancel": "Cancel"
+    }
   }
 }

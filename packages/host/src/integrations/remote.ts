@@ -97,14 +97,21 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
     return this.token() ? { ready: true } : { ready: false, reason: "signin" };
   }
 
+  /**
+   * One authenticated upstream call. 401 → the typed signin error; a status in
+   * `nullStatuses` → null (e.g. a connection poll's 404 — same pattern as
+   * ComposioHttp.call); any other !ok relays the upstream status + body.
+   */
   private async call<T>(
     path: string,
     opts: {
       method?: "GET" | "POST";
       body?: unknown;
       acting?: ActingContext;
+      /** Treat these statuses as "no" rather than an error (e.g. 404 → null). */
+      nullStatuses?: number[];
     } = {},
-  ): Promise<T> {
+  ): Promise<T | null> {
     const auth = this.authHeaders(opts.acting);
 
     const res = await this.fetchImpl(
@@ -121,6 +128,7 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
       },
     );
     if (res.status === 401) throw new IntegrationSigninRequiredError();
+    if (opts.nullStatuses?.includes(res.status)) return null;
     if (!res.ok)
       throw await integrationUpstreamErrorFromResponse(
         res,
@@ -129,41 +137,41 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
     return (await res.json()) as T;
   }
 
+  /** Unwrap a call that passed no `nullStatuses` — null there is impossible;
+   *  guard it loudly rather than cast it away. */
+  private must<T>(body: T | null, what: string): T {
+    if (body === null)
+      throw new Error(`integrations gateway returned no body for ${what}`);
+    return body;
+  }
+
   async listToolkits(): Promise<Toolkit[]> {
     const body = await this.call<{ items: Toolkit[] }>("/toolkits");
-    return body.items;
+    return this.must(body, "GET /toolkits").items;
   }
 
   async listConnections(_userId: string): Promise<Connection[]> {
     const body = await this.call<{ items: Connection[] }>("/connections");
-    return body.items;
+    return this.must(body, "GET /connections").items;
   }
 
   async connect(_userId: string, toolkit: string): Promise<ConnectStart> {
-    return this.call<ConnectStart>("/connect", {
+    const body = await this.call<ConnectStart>("/connect", {
       method: "POST",
       body: { toolkit },
     });
+    return this.must(body, "POST /connect");
   }
 
   async connection(
     _userId: string,
     connectionId: string,
   ): Promise<Connection | null> {
-    const token = this.token();
-    if (!token) throw new IntegrationSigninRequiredError();
-    const res = await this.fetchImpl(
-      `${this.upstreamUrl}/v1/integrations/${encodeURIComponent(this.id)}/connections/${encodeURIComponent(connectionId)}`,
-      { headers: { authorization: `Bearer ${token}` } },
+    // A vanished/unknown connection is a normal poll outcome, not an error.
+    return this.call<Connection>(
+      `/connections/${encodeURIComponent(connectionId)}`,
+      { nullStatuses: [404] },
     );
-    if (res.status === 404) return null;
-    if (res.status === 401) throw new IntegrationSigninRequiredError();
-    if (!res.ok)
-      throw await integrationUpstreamErrorFromResponse(
-        res,
-        "integrations gateway GET /connections/:id",
-      );
-    return (await res.json()) as Connection;
   }
 
   async disconnect(_userId: string, toolkit: string): Promise<void> {
@@ -180,7 +188,7 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
       body: { query },
       acting,
     });
-    return body.items;
+    return this.must(body, "POST /search").items;
   }
 
   async execute(
@@ -189,10 +197,11 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
     params: Record<string, unknown>,
     acting?: ActingContext,
   ): Promise<ActionResult> {
-    return this.call<ActionResult>("/execute", {
+    const body = await this.call<ActionResult>("/execute", {
       method: "POST",
       body: { action, params },
       acting,
     });
+    return this.must(body, "POST /execute");
   }
 }

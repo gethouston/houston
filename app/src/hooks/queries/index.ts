@@ -20,12 +20,12 @@ export {
 } from "./use-files";
 export { useInstructions, useSaveInstructions } from "./use-instructions";
 export {
+  useAgentGrantMutation,
   useAgentGrants,
   useDisconnectIntegration,
   useIntegrationConnections,
   useIntegrationStatus,
   useIntegrationToolkits,
-  useSetAgentGrants,
 } from "./use-integrations";
 export {
   useAddLearning,

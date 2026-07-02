@@ -15,15 +15,6 @@ import {
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/**
- * A routine plus the (optional) Supabase `sub` of the user who created it — the
- * per-turn acting-user identity threaded to integration calls on fired routines
- * (C2 routine path). Modeled as a domain-local extension (the wire `Routine` in
- * `@houston/protocol` is another stream's surface); absent for legacy routines,
- * so it's optional and needs no migration — a tolerant read round-trips it.
- */
-export type RoutineWithCreator = Routine & { created_by?: string };
-
 /** Normalize raw routines: defaults per the schema; entries without identity dropped + reported. */
 export function normalizeRoutines(
   raw: unknown,
@@ -101,7 +92,7 @@ export function createRoutine(
   id: string,
   nowIso: string,
   createdBy?: string,
-): RoutineWithCreator {
+): Routine {
   return {
     id,
     name: input.name,
@@ -131,10 +122,10 @@ export function createRoutine(
  * `created_by` is server-owned identity, never client-updateable.
  */
 export function applyRoutineUpdate(
-  current: RoutineWithCreator,
+  current: Routine,
   update: RoutineUpdate,
   nowIso: string,
-): RoutineWithCreator {
+): Routine {
   const defined = Object.fromEntries(
     Object.entries(update).filter(
       ([k, v]) => v !== undefined && k !== "timezone" && k !== "created_by",
@@ -142,7 +133,7 @@ export function applyRoutineUpdate(
   );
   // `...current` preserves `created_by` (RoutineUpdate can't set it, so a client
   // can never reassign a routine's creator — it stays whoever created it).
-  return { ...current, ...defined, updated_at: nowIso } as RoutineWithCreator;
+  return { ...current, ...defined, updated_at: nowIso } as Routine;
 }
 
 /** Normalize raw routine runs (written by the scheduler; read by the UI). */

@@ -1095,6 +1095,12 @@ export class HoustonClient {
     if (!this.cp) return;
     return controlPlane.disconnectIntegration(this.cp, provider, toolkit);
   }
+  async dismissIntegrationsReconnectNotice(): Promise<void> {
+    // The notice only ever renders from a host-reported `reconnect` flag, so
+    // dismissing without a host is a real failure — surface it, don't no-op.
+    if (!this.cp) throw new Error("Integrations require a connected host");
+    return controlPlane.dismissIntegrationsReconnectNotice(this.cp);
+  }
 
   // ---- org / roles (multiplayer) — hosted gateway only ----
   async getOrg(): Promise<controlPlane.OrgInfo> {

@@ -261,6 +261,25 @@ test("connection polls one account; 404 → null; another user's account → nul
   expect(await provider.connection(USER, "ca_gone")).toBeNull();
 });
 
+test("connection FAILS CLOSED when Composio omits user_id — ownership unproven → null", async () => {
+  const { provider } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts/ca_anon") {
+      // No top-level user_id at all: nothing proves this account is the
+      // caller's, so the guard must not surface it.
+      return {
+        body: { id: "ca_anon", toolkit: { slug: "gmail" }, status: "ACTIVE" },
+      };
+    }
+    if (url.pathname === "/api/v3/connected_accounts/ca_weird") {
+      // A non-string user_id is equally unproven.
+      return { body: { id: "ca_weird", user_id: 42, status: "ACTIVE" } };
+    }
+    return { status: 404 };
+  });
+  expect(await provider.connection(USER, "ca_anon")).toBeNull();
+  expect(await provider.connection(USER, "ca_weird")).toBeNull();
+});
+
 test("disconnect deletes every connected account for the toolkit", async () => {
   const deleted: string[] = [];
   const { provider } = harness((url, method) => {

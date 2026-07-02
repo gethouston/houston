@@ -204,6 +204,7 @@ function routeDeps(feedback?: ControlPlaneDeps["feedback"]): ControlPlaneDeps {
         launcher,
         proxy: { async forward() {} },
         credentials,
+        forwardActingHeader: false,
       }),
     },
     capabilities,

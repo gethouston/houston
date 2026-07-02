@@ -24,6 +24,8 @@ export interface RawConnection {
   connected_account_id?: string;
   id?: string;
   status?: string;
+  /** The Composio user this account belongs to — the ownership guard's input. */
+  user_id?: string;
 }
 export interface RawTool {
   slug?: string;
