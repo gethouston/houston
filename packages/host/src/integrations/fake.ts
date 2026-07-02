@@ -25,6 +25,8 @@ export class FakeIntegrationProvider implements IntegrationProvider {
   private notReady = false;
   /** Test helper: scoped calls throw like a signed-out gateway adapter. */
   throwSigninRequired = false;
+  /** Test helper: search/execute throw a caller-provided provider error. */
+  throwSearchExecute?: Error;
   /** Test helper: the acting context of the most recent search/execute call. */
   lastActing: ActingContext | undefined;
   private seq = 0;
@@ -103,6 +105,7 @@ export class FakeIntegrationProvider implements IntegrationProvider {
   ): Promise<ToolMatch[]> {
     this.lastActing = acting;
     if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
+    if (this.throwSearchExecute) throw this.throwSearchExecute;
     const q = query.toLowerCase();
     return this.actions.filter(
       (a) =>
@@ -119,6 +122,7 @@ export class FakeIntegrationProvider implements IntegrationProvider {
   ): Promise<ActionResult> {
     this.lastActing = acting;
     if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
+    if (this.throwSearchExecute) throw this.throwSearchExecute;
     return { successful: true, data: { action, params } };
   }
 }

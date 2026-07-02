@@ -220,7 +220,13 @@ test("routine created_by: set on create, preserved on update, round-trips; legac
 
   // An update (even one changing other fields) preserves the creator — a client
   // cannot reassign it (RoutineUpdate has no created_by).
-  const renamed = applyRoutineUpdate(r, { name: "Daily report" }, NOW);
+  const renamed = applyRoutineUpdate(
+    r,
+    { name: "Daily report", created_by: "sub-mallory" } as RoutineUpdate & {
+      created_by: string;
+    },
+    NOW,
+  );
   expect(renamed.created_by).toBe("sub-alice");
 
   // It survives a save → load round-trip (the tolerant reader spreads it back).

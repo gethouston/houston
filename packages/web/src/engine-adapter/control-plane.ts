@@ -36,6 +36,8 @@ interface CpAgent {
   workspaceId: string;
   name: string;
   createdAt: number;
+  assigned?: boolean;
+  assignedUserIds?: string[];
 }
 
 // Color is a client-side cosmetic the control plane intentionally does not store
@@ -119,6 +121,8 @@ function toUiAgent(a: CpAgent, colors = colorOverlay()): Agent {
     color: colors[a.id] ?? DEFAULT_AGENT_COLOR,
     createdAt: iso,
     lastOpenedAt: iso,
+    assigned: a.assigned,
+    assignedUserIds: a.assignedUserIds,
   };
 }
 

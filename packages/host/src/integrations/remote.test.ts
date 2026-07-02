@@ -1,6 +1,9 @@
 import { expect, test } from "vitest";
 import { RemoteIntegrationProvider } from "./remote";
-import { IntegrationSigninRequiredError } from "./types";
+import {
+  IntegrationSigninRequiredError,
+  IntegrationUpstreamError,
+} from "./types";
 
 /**
  * The gateway adapter verified against an injected fetch: pins the upstream
@@ -122,6 +125,19 @@ test("upstream 401 (expired session) becomes the typed signin error; 404 poll �
   }, "jwt-1");
   expect(await provider.connection("u", "gone")).toBeNull();
   await expect(provider.listToolkits()).rejects.toThrow(/→ 500/);
+});
+
+test("non-401 upstream errors carry status and body for route relay", async () => {
+  const body = { error: "not granted", code: "integration_grant_required" };
+  const { provider } = harness(() => ({ status: 403, body }), "jwt-1");
+
+  await expect(provider.execute("u", "X", {})).rejects.toMatchObject({
+    status: 403,
+    body,
+  });
+  await expect(provider.execute("u", "X", {})).rejects.toThrow(
+    IntegrationUpstreamError,
+  );
 });
 
 // ── Acting-as (C2): the three per-call auth modes on search/execute ───────────

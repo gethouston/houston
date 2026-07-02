@@ -2,7 +2,11 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { IntegrationSigninRequiredError } from "../integrations/types";
 import type { CredentialVault, WorkspaceStore } from "../ports";
 import { bearer, header, json, readJson } from "./http";
-import { type IntegrationDeps, signinRequired } from "./integrations";
+import {
+  type IntegrationDeps,
+  relayIntegrationUpstreamError,
+  signinRequired,
+} from "./integrations";
 
 /**
  * The RUNTIME-facing integrations proxy (`/sandbox/integrations/*`, authed by
@@ -98,6 +102,7 @@ export async function handleSandboxIntegrations(
       signinRequired(res);
       return true;
     }
+    if (relayIntegrationUpstreamError(res, err)) return true;
     throw err;
   }
 }

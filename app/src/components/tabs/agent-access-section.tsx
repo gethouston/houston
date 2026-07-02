@@ -32,7 +32,7 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
     const next = new Set(everyone ? members.map((m) => m.userId) : assigned);
     if (on) next.add(userId);
     else next.delete(userId);
-    void setAssignments.mutateAsync({
+    setAssignments.mutate({
       agentSlugOrId: agent.id,
       userIds: [...next],
     });

@@ -143,6 +143,10 @@ export type HoustonEvent =
       data: { agent_path: string };
     }
   | {
+      type: "AgentsChanged";
+      data: { workspace_id: string };
+    }
+  | {
       type: "ComposioCliReady";
       data: Record<string, never>;
     }

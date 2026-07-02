@@ -171,7 +171,7 @@ export function useAgentChatPanel({
   // the viewer's own bubbles from teammates'. Undefined signed out / local.
   const { data: session } = useSession();
   const currentUserId = session?.user.id;
-  const authorLabels = useMemo(() => ({ you: t("chat:attribution.you") }), [t]);
+  const authorLabels = undefined;
 
   const path = agent?.folderPath ?? null;
   const agentModes = agentDef?.config.agents;

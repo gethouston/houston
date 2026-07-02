@@ -45,3 +45,9 @@ The k8s Deployment/Service/SA names, the `control-plane:v8` image tag, `CP_*` en
 `houston.ai/component: control-plane` labels were intentionally NOT renamed (changing a live
 deploy identity is an ops migration, not a code rename). Rename them as a coordinated infra
 change in the closed Houston Cloud repo when convenient.
+
+## 7. Own-message attribution label decision
+C5 currently keeps the viewer's own user bubbles visually unchanged in shared chats; teammate
+bubbles show labels once a thread has multiple authors. If product wants an explicit localized
+"You" label later, make that a deliberate UI decision and update `convergence/contracts/C5-attribution.md`
+plus `ui/chat` label defaults together.

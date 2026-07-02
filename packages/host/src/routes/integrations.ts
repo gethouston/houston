@@ -2,7 +2,10 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { UserId } from "../domain/types";
 import type { IntegrationProvider } from "../integrations/provider";
 import type { IntegrationRegistry } from "../integrations/registry";
-import { IntegrationSigninRequiredError } from "../integrations/types";
+import {
+  IntegrationSigninRequiredError,
+  IntegrationUpstreamError,
+} from "../integrations/types";
 import { json, readJson } from "./http";
 
 /**
@@ -50,6 +53,15 @@ export const signinRequired = (res: ServerResponse) =>
     code: "signin_required",
   });
 
+export const relayIntegrationUpstreamError = (
+  res: ServerResponse,
+  err: unknown,
+): boolean => {
+  if (!(err instanceof IntegrationUpstreamError)) return false;
+  json(res, err.status, err.body);
+  return true;
+};
+
 // ── User-facing routes ───────────────────────────────────────────────────────
 
 export async function handleIntegrations(
@@ -61,11 +73,27 @@ export async function handleIntegrations(
   res: ServerResponse,
 ): Promise<boolean> {
   if (!path.startsWith("/v1/integrations")) return false;
+
+  // PUT /v1/integrations/session — the frontend keeps the gateway adapter's
+  // Supabase token fresh (sign-in, refresh, sign-out → null). Deployments
+  // without a gateway sink accept it as a no-op so signed-in users never see a
+  // bogus red toast in direct-key/self-host/no-integrations builds.
+  if (path === "/v1/integrations/session" && method === "PUT") {
+    const { token } = await readJson(req);
+    if (token !== null && typeof token !== "string") {
+      json(res, 400, { error: "missing 'token' (string or null)" });
+      return true;
+    }
+    deps.integrations?.session?.set(token);
+    json(res, 200, { ok: true });
+    return true;
+  }
+
   if (!deps.integrations) {
     json(res, 503, { error: "integrations not configured" });
     return true;
   }
-  const { registry, session, reconnectNotice } = deps.integrations;
+  const { registry, reconnectNotice } = deps.integrations;
 
   // GET /v1/integrations — per-provider readiness (never a secret).
   if (path === "/v1/integrations" && method === "GET") {
@@ -81,24 +109,6 @@ export async function handleIntegrations(
       }),
     );
     json(res, 200, { items });
-    return true;
-  }
-
-  // PUT /v1/integrations/session — the frontend keeps the gateway adapter's
-  // Supabase token fresh (sign-in, refresh, sign-out → null). Local only; a
-  // deployment without a gateway has no sink and answers 404.
-  if (path === "/v1/integrations/session" && method === "PUT") {
-    if (!session) {
-      json(res, 404, { error: "not found" });
-      return true;
-    }
-    const { token } = await readJson(req);
-    if (token !== null && typeof token !== "string") {
-      json(res, 400, { error: "missing 'token' (string or null)" });
-      return true;
-    }
-    session.set(token);
-    json(res, 200, { ok: true });
     return true;
   }
 
@@ -170,6 +180,7 @@ export async function handleIntegrations(
       signinRequired(res);
       return true;
     }
+    if (relayIntegrationUpstreamError(res, err)) return true;
     throw err;
   }
 

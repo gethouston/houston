@@ -77,3 +77,35 @@ export class IntegrationSigninRequiredError extends Error {
     this.name = "IntegrationSigninRequiredError";
   }
 }
+
+/**
+ * A gateway/provider response that is already user-actionable. Routes relay its
+ * status + body instead of hiding policy failures behind a generic 500.
+ */
+export class IntegrationUpstreamError extends Error {
+  constructor(
+    readonly status: number,
+    readonly body: unknown,
+    message?: string,
+  ) {
+    super(message ?? `integrations upstream returned ${status}`);
+    this.name = "IntegrationUpstreamError";
+  }
+}
+
+export async function integrationUpstreamErrorFromResponse(
+  res: Response,
+  context: string,
+): Promise<IntegrationUpstreamError> {
+  const raw = await res.text();
+  const body = raw
+    ? res.headers.get("content-type")?.includes("json")
+      ? JSON.parse(raw)
+      : raw
+    : { error: `integrations upstream returned ${res.status}` };
+  return new IntegrationUpstreamError(
+    res.status,
+    body,
+    `${context} → ${res.status}${raw ? `: ${raw.slice(0, 300)}` : ""}`,
+  );
+}

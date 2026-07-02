@@ -11,6 +11,7 @@ import {
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSession } from "../../hooks/use-session";
 import { signInWithGoogle } from "../../lib/auth";
+import { canManageAgentGrants } from "../../lib/org-roles";
 import { queryKeys } from "../../lib/query-keys";
 import { isAuthConfigured } from "../../lib/supabase";
 import { tauriIntegrations } from "../../lib/tauri";
@@ -49,7 +50,8 @@ export default function IntegrationsTab({ agent }: TabProps) {
   // as before. We gate every grant surface on the `multiplayer` capability.
   const { capabilities } = useCapabilities();
   const multiplayer = capabilities?.multiplayer === true;
-  const grantsQuery = useAgentGrants(agent.id, ready && multiplayer);
+  const canUseGrants = canManageAgentGrants(capabilities, agent);
+  const grantsQuery = useAgentGrants(agent.id, ready && canUseGrants);
   const grantSet = useMemo(
     () => new Set(grantsQuery.data ?? []),
     [grantsQuery.data],
@@ -57,7 +59,7 @@ export default function IntegrationsTab({ agent }: TabProps) {
 
   const { connectingToolkit, connect } = useIntegrationConnect({
     agentId: agent.id,
-    multiplayer,
+    autoGrant: canUseGrants,
     grantSet,
   });
   const [signingIn, setSigningIn] = useState(false);
@@ -88,7 +90,7 @@ export default function IntegrationsTab({ agent }: TabProps) {
       stale = true;
     };
   }, [token, ready, resynced, status.isLoading, composio, qc]);
-  const sessionSyncPending = !!token && !ready && !resynced;
+  const sessionSyncPending = !!token && !!composio && !ready && !resynced;
 
   // Desktop, signed out of Houston: the gateway has no session to forward.
   // Signing in is the ONLY step — the session sync pushes the token and the
@@ -136,7 +138,7 @@ export default function IntegrationsTab({ agent }: TabProps) {
                 <span>{t("reconnectNotice")}</span>
               </div>
             )}
-            {multiplayer ? (
+            {multiplayer && canUseGrants ? (
               <GrantedAppsSection
                 agentId={agent.id}
                 connections={connections.data ?? []}

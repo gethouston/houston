@@ -163,7 +163,7 @@ export function MembersSection() {
                   <Select
                     value={member.role}
                     onValueChange={(v) =>
-                      void setRole.mutateAsync({
+                      setRole.mutate({
                         userId: member.userId,
                         role: v as OrgRole,
                       })
@@ -214,7 +214,7 @@ export function MembersSection() {
         onConfirm={() => {
           const target = pendingRemove;
           setPendingRemove(null);
-          if (target) void removeMember.mutateAsync(target.userId);
+          if (target) removeMember.mutate(target.userId);
         }}
       />
     </section>

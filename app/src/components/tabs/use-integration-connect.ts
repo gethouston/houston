@@ -24,13 +24,13 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
  */
 export function useIntegrationConnect(opts: {
   agentId: string;
-  multiplayer: boolean;
+  autoGrant: boolean;
   grantSet: ReadonlySet<string>;
 }): {
   connectingToolkit: string | null;
   connect: (toolkit: string) => Promise<void>;
 } {
-  const { agentId, multiplayer, grantSet } = opts;
+  const { agentId, autoGrant, grantSet } = opts;
   const { t } = useTranslation("integrations");
   const qc = useQueryClient();
   const setGrants = useSetAgentGrants(agentId);
@@ -68,7 +68,7 @@ export function useIntegrationConnect(opts: {
         // apps". PUT the grant BEFORE invalidating. `mutateAsync` routes through
         // `call()`, so a failure surfaces + re-throws into the catch below (the
         // connection still shows; the grant just didn't take).
-        if (outcome === "active" && multiplayer && !grantSet.has(toolkit)) {
+        if (outcome === "active" && autoGrant && !grantSet.has(toolkit)) {
           await setGrants.mutateAsync([...grantSet, toolkit]);
         }
         // Whatever happened, show the real state — a failed OAuth surfaces as
@@ -95,7 +95,7 @@ export function useIntegrationConnect(opts: {
         if (!cancelled.current) setConnectingToolkit(null);
       }
     },
-    [qc, t, multiplayer, grantSet, setGrants],
+    [qc, t, autoGrant, grantSet, setGrants],
   );
 
   return { connectingToolkit, connect };

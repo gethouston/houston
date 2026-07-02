@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import type { Capabilities, OrgRole } from "@houston-ai/engine-client";
 import {
   canCreateAgents,
+  canManageAgentGrants,
   canManageAssignments,
   canManageMembers,
   canSeeMembers,
@@ -105,6 +106,28 @@ describe("canManageAssignments", () => {
       false,
     );
     strictEqual(canManageAssignments(caps(), { assigned: true }), false);
+  });
+});
+
+describe("canManageAgentGrants", () => {
+  it("requires multiplayer assignment for every role", () => {
+    strictEqual(
+      canManageAgentGrants(multiplayer("owner"), { assigned: true }),
+      true,
+    );
+    strictEqual(
+      canManageAgentGrants(multiplayer("owner"), { assigned: false }),
+      false,
+    );
+    strictEqual(
+      canManageAgentGrants(multiplayer("admin"), { assigned: true }),
+      true,
+    );
+    strictEqual(
+      canManageAgentGrants(multiplayer("user"), { assigned: true }),
+      true,
+    );
+    strictEqual(canManageAgentGrants(caps(), { assigned: true }), false);
   });
 });
 

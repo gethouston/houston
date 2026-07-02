@@ -128,6 +128,7 @@ export function createRoutine(
  * Apply a partial update. Undefined leaves a field alone. A stray legacy
  * `timezone` key is ignored: the per-routine override was removed in HOU-470
  * (one account-wide zone), so a client still sending it must not write it back.
+ * `created_by` is server-owned identity, never client-updateable.
  */
 export function applyRoutineUpdate(
   current: RoutineWithCreator,
@@ -136,7 +137,7 @@ export function applyRoutineUpdate(
 ): RoutineWithCreator {
   const defined = Object.fromEntries(
     Object.entries(update).filter(
-      ([k, v]) => v !== undefined && k !== "timezone",
+      ([k, v]) => v !== undefined && k !== "timezone" && k !== "created_by",
     ),
   );
   // `...current` preserves `created_by` (RoutineUpdate can't set it, so a client

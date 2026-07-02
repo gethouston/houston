@@ -5,6 +5,7 @@ import { MemoryCredentialStore } from "../credentials/store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { FakeIntegrationProvider } from "../integrations/fake";
 import { IntegrationRegistry } from "../integrations/registry";
+import { IntegrationUpstreamError } from "../integrations/types";
 import type { TokenVerifier } from "../ports";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
@@ -127,7 +128,7 @@ test("the frontend keeps the gateway session fresh via PUT /v1/integrations/sess
   }
 });
 
-test("no session sink (cloud) → PUT session 404s", async () => {
+test("no session sink (cloud) → PUT session is a no-op", async () => {
   const { base, stop } = await setup();
   try {
     const res = await fetch(`${base}/v1/integrations/session`, {
@@ -135,7 +136,21 @@ test("no session sink (cloud) → PUT session 404s", async () => {
       headers: auth,
       body: JSON.stringify({ token: "jwt" }),
     });
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
+  } finally {
+    stop();
+  }
+});
+
+test("no integrations configured → PUT session is still a no-op", async () => {
+  const { base, stop } = await setup({ withIntegrations: false });
+  try {
+    const res = await fetch(`${base}/v1/integrations/session`, {
+      method: "PUT",
+      headers: auth,
+      body: JSON.stringify({ token: "jwt" }),
+    });
+    expect(res.status).toBe(200);
   } finally {
     stop();
   }
@@ -362,6 +377,35 @@ test("sandbox proxy: bad token 401; a signed-out gateway surfaces 409 signin_req
     });
     expect(res.status).toBe(409);
     expect((await res.json()).code).toBe("signin_required");
+  } finally {
+    stop();
+  }
+});
+
+test("integration routes relay upstream policy status and body", async () => {
+  const { base, ws, vault, fake, stop } = await setup();
+  const body = { error: "not granted", code: "integration_grant_required" };
+  fake.throwSearchExecute = new IntegrationUpstreamError(403, body);
+  try {
+    const user = await fetch(`${base}/v1/integrations/composio/execute`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ action: "GMAIL_SEND_EMAIL", params: {} }),
+    });
+    expect(user.status).toBe(403);
+    expect(await user.json()).toEqual(body);
+
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const sandbox = await fetch(`${base}/sandbox/integrations/execute`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "GMAIL_SEND_EMAIL", params: {} }),
+    });
+    expect(sandbox.status).toBe(403);
+    expect(await sandbox.json()).toEqual(body);
   } finally {
     stop();
   }

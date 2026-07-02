@@ -4,6 +4,7 @@ import {
   type Connection,
   type ConnectStart,
   IntegrationSigninRequiredError,
+  integrationUpstreamErrorFromResponse,
   type ProviderReadiness,
   type Toolkit,
   type ToolMatch,
@@ -120,12 +121,11 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
       },
     );
     if (res.status === 401) throw new IntegrationSigninRequiredError();
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new Error(
-        `integrations gateway ${opts.method ?? "GET"} ${path} → ${res.status}${detail ? `: ${detail.slice(0, 300)}` : ""}`,
+    if (!res.ok)
+      throw await integrationUpstreamErrorFromResponse(
+        res,
+        `integrations gateway ${opts.method ?? "GET"} ${path}`,
       );
-    }
     return (await res.json()) as T;
   }
 
@@ -158,12 +158,11 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
     );
     if (res.status === 404) return null;
     if (res.status === 401) throw new IntegrationSigninRequiredError();
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new Error(
-        `integrations gateway GET /connections/:id → ${res.status}${detail ? `: ${detail.slice(0, 300)}` : ""}`,
+    if (!res.ok)
+      throw await integrationUpstreamErrorFromResponse(
+        res,
+        "integrations gateway GET /connections/:id",
       );
-    }
     return (await res.json()) as Connection;
   }
 

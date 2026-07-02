@@ -66,6 +66,15 @@ export function canManageAssignments(
   return false;
 }
 
+/** Can this caller read/edit their own per-agent integration grants? */
+export function canManageAgentGrants(
+  caps: Capabilities | null | undefined,
+  agent: Pick<Agent, "assigned">,
+): boolean {
+  if (orgRole(caps) === null) return false;
+  return agent.assigned === true;
+}
+
 /**
  * The roles an owner may GRANT when adding or re-roling a member. Owner is the
  * single billing seat and is never handed out from the UI (ownership transfer
