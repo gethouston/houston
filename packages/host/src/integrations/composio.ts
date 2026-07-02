@@ -10,7 +10,7 @@ import {
   type RawTool,
   type RawToolkit,
 } from "./composio-wire";
-import type { IntegrationProvider } from "./provider";
+import type { ActingContext, IntegrationProvider } from "./provider";
 import type {
   ActionResult,
   Connection,
@@ -152,7 +152,14 @@ export class ComposioProvider implements IntegrationProvider {
     }
   }
 
-  async search(userId: string, query: string): Promise<ToolMatch[]> {
+  async search(
+    userId: string,
+    query: string,
+    _acting?: ActingContext,
+  ): Promise<ToolMatch[]> {
+    // The direct adapter owns the platform key and derives identity from the
+    // verified `userId`; there is no upstream to re-authenticate as, so the
+    // acting context is intentionally ignored (self-host / dev only).
     // GET /api/v3/tools?query=… (the older `search` param is deprecated).
     // Composio's full-text search is weak unqualified ("send an email" ranks
     // unrelated marketing tools above GMAIL_SEND_EMAIL — verified live), so
@@ -179,7 +186,9 @@ export class ComposioProvider implements IntegrationProvider {
     userId: string,
     action: string,
     params: Record<string, unknown>,
+    _acting?: ActingContext,
   ): Promise<ActionResult> {
+    // Acting context ignored — see search(): identity is the verified userId.
     const body = await this.http.call<RawExecute>(
       `/api/v3/tools/execute/${encodeURIComponent(action)}`,
       { method: "POST", body: { user_id: userId, arguments: params } },

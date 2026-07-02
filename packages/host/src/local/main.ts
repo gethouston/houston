@@ -87,6 +87,11 @@ const host = buildLocalHost({
   integrations: {
     composioApiKey: process.env.COMPOSIO_API_KEY || undefined,
     gatewayUrl: process.env.HOUSTON_INTEGRATIONS_URL || undefined,
+    // Managed pods run with a real HOUSTON_HOST_TOKEN (the gateway can recompute
+    // it): pass it as the pod token so a routine turn authenticates as its
+    // creator (C2). The desktop's token is a random per-boot secret, not a pod
+    // token the gateway knows, so leave it unset there.
+    podToken: process.env.HOUSTON_HOST_TOKEN || undefined,
   },
   onRuntimeLog: (line) => process.stderr.write(line),
 });

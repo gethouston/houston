@@ -54,6 +54,10 @@ export async function handleAgentData(
   req: IncomingMessage,
   res: ServerResponse,
   emit?: (event: HoustonEvent) => void,
+  // The authenticated caller's id — recorded as a new routine's `created_by`
+  // so a fired routine turn can act as its creator (C2). Absent in callers that
+  // don't carry identity (local single-user); the field then stays absent.
+  createdBy?: string,
 ): Promise<boolean> {
   const m = rest.match(
     /^(activities|routines|routine_runs|config|learnings)(?:\/([^/]+))?$/,
@@ -116,7 +120,12 @@ export async function handleAgentData(
         return true;
       }
       const { items } = await loadRoutines(vfs, root);
-      const routine = createRoutine(input, crypto.randomUUID(), nowIso);
+      const routine = createRoutine(
+        input,
+        crypto.randomUUID(),
+        nowIso,
+        createdBy,
+      );
       await saveRoutines(vfs, root, upsertById(items, routine));
       fireChange();
       json(res, 201, routine);

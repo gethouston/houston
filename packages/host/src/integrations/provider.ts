@@ -8,6 +8,25 @@ import type {
 } from "./types";
 
 /**
+ * WHO the agent runtime is acting as for one integration call (C2). Read off the
+ * runtime→host proxy call by the sandbox route and handed to `search`/`execute`
+ * so a gateway adapter can authenticate as that user upstream. Exactly one of
+ * the two is set per call in the cloud; both absent locally (single-user).
+ *
+ *  - `actingAs`:   a signed acting-as token minted by the gateway for the user
+ *                  driving THIS turn (a normal message dispatch).
+ *  - `actingUser`: the Supabase `sub` of a routine's creator (routine turns,
+ *                  where no per-turn token is minted — see C2 "Routine path").
+ *
+ * The direct adapter (self-host, own key) ignores both — identity is the
+ * verified `userId` it already has. Optional so implementors may ignore it.
+ */
+export interface ActingContext {
+  actingAs?: string;
+  actingUser?: string;
+}
+
+/**
  * The integration-provider PORT: Composio is the first adapter, and a future
  * provider slots in by implementing this same interface. The host routes + the
  * agent's generic tools depend ONLY on this; no provider's wire types or SDK
@@ -44,12 +63,24 @@ export interface IntegrationProvider {
   disconnect(userId: string, toolkit: string): Promise<void>;
 
   // ── Execution (what the agent's generic tools call) ───────────────────────
-  /** Discover actions matching a natural-language query (slug + param schema). */
-  search(userId: string, query: string): Promise<ToolMatch[]>;
-  /** Run one action by slug with its params. */
+  /**
+   * Discover actions matching a natural-language query (slug + param schema).
+   * `acting` (optional) names the user the agent is acting as this turn (C2);
+   * a gateway adapter authenticates upstream as that user, direct adapters
+   * ignore it.
+   */
+  search(
+    userId: string,
+    query: string,
+    acting?: ActingContext,
+  ): Promise<ToolMatch[]>;
+  /**
+   * Run one action by slug with its params. `acting` (optional) as in `search`.
+   */
   execute(
     userId: string,
     action: string,
     params: Record<string, unknown>,
+    acting?: ActingContext,
   ): Promise<ActionResult>;
 }

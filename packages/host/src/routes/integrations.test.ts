@@ -296,6 +296,43 @@ test("sandbox proxy: HMAC token → workspace owner's userId → execute/search"
   }
 });
 
+test("sandbox proxy: forwards the C2 acting headers into the provider (absent → undefined)", async () => {
+  const { base, ws, vault, fake, stop } = await setup();
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const call = (headers: Record<string, string>) =>
+      fetch(`${base}/sandbox/integrations/execute`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${sb}`,
+          "Content-Type": "application/json",
+          ...headers,
+        },
+        body: JSON.stringify({ action: "GMAIL_SEND_EMAIL", params: {} }),
+      });
+
+    // An acting-as token rides through verbatim.
+    await call({ "x-houston-acting-as": "acting-v1.tok" });
+    expect(fake.lastActing).toEqual({
+      actingAs: "acting-v1.tok",
+      actingUser: undefined,
+    });
+
+    // A routine's acting-user rides through.
+    await call({ "x-houston-acting-user": "sub-123" });
+    expect(fake.lastActing).toEqual({
+      actingAs: undefined,
+      actingUser: "sub-123",
+    });
+
+    // Neither header (today's desktop path) → no acting context at all.
+    await call({});
+    expect(fake.lastActing).toBeUndefined();
+  } finally {
+    stop();
+  }
+});
+
 test("sandbox proxy: bad token 401; a signed-out gateway surfaces 409 signin_required", async () => {
   const { base, ws, vault, fake, stop } = await setup();
   try {

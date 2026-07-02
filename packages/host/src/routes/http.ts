@@ -21,3 +21,9 @@ export function bearer(req: IncomingMessage, url: URL): string | null {
   if (h?.startsWith("Bearer ")) return h.slice("Bearer ".length);
   return url.searchParams.get("token");
 }
+
+/** One request header by (lowercase) name, or undefined; arrays collapse to the first. */
+export function header(req: IncomingMessage, name: string): string | undefined {
+  const v = req.headers[name.toLowerCase()];
+  return Array.isArray(v) ? v[0] : v;
+}

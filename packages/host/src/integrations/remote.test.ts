@@ -17,7 +17,11 @@ interface Recorded {
   body: unknown;
 }
 
-function harness(handler: (url: URL, method: string) => Reply, token?: string) {
+function harness(
+  handler: (url: URL, method: string) => Reply,
+  token?: string,
+  podToken?: string,
+) {
   const calls: Recorded[] = [];
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input));
@@ -38,6 +42,7 @@ function harness(handler: (url: URL, method: string) => Reply, token?: string) {
     id: "composio",
     upstreamUrl: "https://cloud.test/",
     token: () => token ?? null,
+    podToken,
     fetch: fetchImpl,
   });
   return { provider, calls };
@@ -117,4 +122,48 @@ test("upstream 401 (expired session) becomes the typed signin error; 404 poll �
   }, "jwt-1");
   expect(await provider.connection("u", "gone")).toBeNull();
   await expect(provider.listToolkits()).rejects.toThrow(/→ 500/);
+});
+
+// ── Acting-as (C2): the three per-call auth modes on search/execute ───────────
+
+test("acting mode a: an acting-as token authenticates AS that user (overrides the session)", async () => {
+  // A frontend session AND a pod token are present — the acting-as token still
+  // wins (precedence a), so a prompt-injected agent can only act as the driver.
+  const { provider, calls } = harness(
+    () => ({ body: { items: [], successful: true } }),
+    "session-jwt",
+    "pod-secret",
+  );
+  await provider.search("owner", "email", { actingAs: "acting-v1.tok" });
+  await provider.execute("owner", "X", {}, { actingAs: "acting-v1.tok" });
+  expect(calls[0]?.headers.authorization).toBe("Bearer acting-v1.tok");
+  expect(calls[0]?.headers["x-houston-acting-user"]).toBeUndefined();
+  expect(calls[1]?.headers.authorization).toBe("Bearer acting-v1.tok");
+});
+
+test("acting mode b: a routine actingUser + pod token → pod bearer + acting-user header", async () => {
+  const { provider, calls } = harness(
+    () => ({ body: { items: [], successful: true } }),
+    undefined, // signed out on the frontend session — irrelevant to the routine path
+    "pod-secret",
+  );
+  await provider.execute("owner", "X", {}, { actingUser: "sub-123" });
+  expect(calls[0]?.headers.authorization).toBe("Bearer pod-secret");
+  expect(calls[0]?.headers["x-houston-acting-user"]).toBe("sub-123");
+});
+
+test("acting mode c: no acting context falls back to the session token (else signin error)", async () => {
+  const signedIn = harness(() => ({ body: { items: [] } }), "session-jwt");
+  await signedIn.provider.search("owner", "email");
+  expect(signedIn.calls[0]?.headers.authorization).toBe("Bearer session-jwt");
+  expect(signedIn.calls[0]?.headers["x-houston-acting-user"]).toBeUndefined();
+
+  // actingUser present but NO pod token configured (the desktop): mode b can't
+  // apply, and with no session it falls through to the typed signin error —
+  // nothing ever leaves the machine unauthenticated.
+  const noPod = harness(() => ({ body: {} }));
+  await expect(
+    noPod.provider.execute("owner", "X", {}, { actingUser: "sub-123" }),
+  ).rejects.toThrow(IntegrationSigninRequiredError);
+  expect(noPod.calls).toEqual([]);
 });

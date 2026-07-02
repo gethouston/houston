@@ -68,6 +68,9 @@ export async function forward(
     };
     if (!bodyless && request.contentType)
       headers["Content-Type"] = request.contentType;
+    // The gateway's per-turn acting-as token (C2) rides through as the SAME
+    // header the runtime reads — the ONE user-identity header relayed to the pod.
+    if (request.actingAs) headers["x-houston-acting-as"] = request.actingAs;
     headers.Accept = request.path.endsWith("/events")
       ? "text/event-stream"
       : "application/json";

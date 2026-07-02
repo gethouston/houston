@@ -1,5 +1,6 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
+import { currentActingContext } from "../acting-context";
 
 /**
  * The agent's window into the user's connected third-party apps (Gmail, Google
@@ -63,11 +64,20 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     body: unknown,
     signal: AbortSignal | undefined,
   ): Promise<T> {
+    // WHO this turn acts as (C2): attach the header the host reads to authenticate
+    // the upstream provider call as that user. Turn-scoped via AsyncLocalStorage
+    // (chat.ts wraps the turn), so it's present only when this turn received one —
+    // absent otherwise, preserving the act-as-owner behavior.
+    const acting = currentActingContext();
     const res = await fetch(`${base}/sandbox/integrations/${path}`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${opts.sandboxToken}`,
+        ...(acting?.actingAs ? { "x-houston-acting-as": acting.actingAs } : {}),
+        ...(acting?.actingUser
+          ? { "x-houston-acting-user": acting.actingUser }
+          : {}),
       },
       body: JSON.stringify(body),
       signal,
