@@ -1367,7 +1367,7 @@ jobs:
       # ship something?". Skipped silently when the personal API key or
       # project ID aren't set (forks, personal builds).
       - name: Annotate this release in PostHog
-        if: ${{ env.POSTHOG_PERSONAL_API_KEY != '' && env.POSTHOG_PROJECT_ID != '' }}
+        if: false # disposable draft: no PostHog annotation
         env:
           # POSTHOG_PERSONAL_API_KEY + POSTHOG_PROJECT_ID come from the
           # job-level env so the `if:` above can see them. Only POSTHOG_HOST
@@ -1402,7 +1402,7 @@ jobs:
       # SLACK_RELEASE_WEBHOOK_URL is unset, so forks and personal builds
       # stay quiet.
       - name: Notify Slack of new draft release
-        if: success()
+        if: false # disposable draft: no Slack ping
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_RELEASE_WEBHOOK_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
