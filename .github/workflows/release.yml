@@ -1154,7 +1154,7 @@ jobs:
       # off for this runner's checkout (never committed). mac/win keep it on:
       # they pass the key and feed latest.json.
       - name: Disable updater artifacts (Linux is download-only)
-        run: ./scripts/ci/configure-ts-engine-unsigned.sh
+        run: bash scripts/ci/configure-ts-engine-unsigned.sh
 
       - name: Build Tauri app (Linux AppImage)
         uses: tauri-apps/tauri-action@v0
