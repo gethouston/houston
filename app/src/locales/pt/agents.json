@@ -171,29 +171,5 @@
       "close": "Fechar",
       "errorTitle": "Não foi possível carregar o arquivo"
     }
-  },
-  "integrations": {
-    "title": "Integrações",
-    "description": "Conecte seus aplicativos para que este agente possa usá-los.",
-    "loading": "Carregando...",
-    "unavailable": "As integrações não estão disponíveis nesta configuração.",
-    "signinTitle": "Entre para conectar aplicativos",
-    "signinBlurb": "Entre no Houston para conectar seus aplicativos. Suas contas continuam sendo suas; o agente age em seu nome.",
-    "signinButton": "Entrar no Houston",
-    "reconnectNotice": "Melhoramos a forma como os aplicativos se conectam para deixá-la mais segura. Reconecte seus aplicativos uma única vez; o Houston não guarda mais nenhuma chave de longa duração.",
-    "connectTimeout": "A conexão não foi concluída. Tente novamente.",
-    "connectFailed": "Não foi possível conectar o aplicativo. Tente novamente.",
-    "connectedApps": "Aplicativos conectados",
-    "noApps": "Nenhum aplicativo conectado ainda.",
-    "disconnect": "Desconectar",
-    "addApps": "Adicionar aplicativos",
-    "connect": "Conectar",
-    "reconnect": "Reconectar",
-    "finishInBrowser": "Termine de conectar no seu navegador...",
-    "searchApps": "Buscar aplicativos...",
-    "searchHint": "Busque para explorar os {{count}} aplicativos.",
-    "noResults": "Nenhum aplicativo encontrado para \"{{query}}\".",
-    "statusConnected": "Conectado",
-    "statusError": "Precisa reconectar"
   }
 }

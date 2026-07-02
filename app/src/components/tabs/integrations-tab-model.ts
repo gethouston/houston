@@ -14,57 +14,53 @@ export const INTEGRATION_PROVIDER = "composio";
 export const POLL_INTERVAL_MS = 2000;
 export const POLL_MAX_ATTEMPTS = 150; // ~5 min at 2s/attempt.
 
-/**
- * Popular apps, pinned in this order when the user is not searching.
- * Connecting opens the app's own OAuth consent (Composio hosts the dance).
- */
-export const COMMON_TOOLKITS = [
-  "gmail",
-  "googlecalendar",
-  "googledrive",
-  "slack",
-  "notion",
-  "github",
-  "linear",
-] as const;
-
-/** How many search results to render (the catalog holds ~1000 apps). */
-export const SEARCH_RESULT_LIMIT = 24;
+/** Page size for the browse grid's "Load more" (catalog holds ~1000 apps). */
+export const BROWSE_PAGE_SIZE = 100;
 
 /**
- * The "Add apps" list: not searching → the pinned popular apps (in
- * COMMON_TOOLKITS order); searching → case-insensitive name/slug matches,
- * name-prefix hits first, capped. Already-connected apps never appear.
- * Pure so both behaviors are unit-testable.
+ * The browse grid's contents: already-connected apps never appear; an active
+ * category narrows first; a search query then matches name/slug/description
+ * case-insensitively. Catalog order is preserved (the provider serves it
+ * usage-ranked). Pure so it's unit-testable.
  */
-export function filterCatalog(opts: {
+export function browseCatalog(opts: {
   catalog: IntegrationToolkit[];
   query: string;
+  category: string;
   connected: ReadonlySet<string>;
-  popular?: readonly string[];
-  limit?: number;
 }): IntegrationToolkit[] {
-  const popular = opts.popular ?? COMMON_TOOLKITS;
-  const limit = opts.limit ?? SEARCH_RESULT_LIMIT;
-  const available = opts.catalog.filter((t) => !opts.connected.has(t.slug));
-  const q = opts.query.trim().toLowerCase();
-
-  if (!q) {
-    const bySlug = new Map(available.map((t) => [t.slug, t]));
-    return popular
-      .map((slug) => bySlug.get(slug))
-      .filter((t): t is IntegrationToolkit => t !== undefined);
+  let filtered = opts.catalog.filter((t) => !opts.connected.has(t.slug));
+  if (opts.category !== "all") {
+    filtered = filtered.filter((t) =>
+      (t.categories ?? []).includes(opts.category),
+    );
   }
+  const q = opts.query.trim().toLowerCase();
+  if (q) {
+    filtered = filtered.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.slug.toLowerCase().includes(q) ||
+        (t.description ?? "").toLowerCase().includes(q),
+    );
+  }
+  return filtered;
+}
 
-  const matches = available.filter(
-    (t) => t.name.toLowerCase().includes(q) || t.slug.toLowerCase().includes(q),
+/** Every category present in the catalog, sorted by display label. */
+export function categoriesOf(catalog: IntegrationToolkit[]): string[] {
+  const seen = new Set<string>();
+  for (const t of catalog) {
+    for (const c of t.categories ?? []) seen.add(c);
+  }
+  return [...seen].sort((a, b) =>
+    categoryLabel(a).localeCompare(categoryLabel(b)),
   );
-  matches.sort((a, b) => {
-    const aPrefix = a.name.toLowerCase().startsWith(q) ? 0 : 1;
-    const bPrefix = b.name.toLowerCase().startsWith(q) ? 0 : 1;
-    return aPrefix - bPrefix || a.name.localeCompare(b.name);
-  });
-  return matches.slice(0, limit);
+}
+
+/** "developer-tools" → "Developer tools". */
+export function categoryLabel(cat: string): string {
+  return cat.charAt(0).toUpperCase() + cat.slice(1).replace(/-/g, " ");
 }
 
 /**

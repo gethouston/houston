@@ -1,32 +1,48 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Plug, RefreshCw, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useIntegrationStatus } from "../../hooks/queries";
+import {
+  useIntegrationConnections,
+  useIntegrationStatus,
+  useIntegrationToolkits,
+} from "../../hooks/queries";
 import { signInWithGoogle } from "../../lib/auth";
 import { showErrorToast } from "../../lib/error-toast";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations, tauriSystem } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
-import { IntegrationsConnections } from "./integrations-connections";
+import { BrowseAppsSection } from "./browse-apps-section";
+import { ConnectedAppsSection } from "./connected-apps-section";
+import {
+  LoadingState,
+  SigninState,
+  UnavailableState,
+} from "./integrations-states";
 import {
   INTEGRATION_PROVIDER,
   POLL_INTERVAL_MS,
   pollConnectionUntilActive,
 } from "./integrations-tab-model";
 
-const btn =
-  "inline-flex items-center gap-2 rounded-full border border-black/15 bg-background px-4 h-9 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50";
-
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+/**
+ * The Integrations page (the legacy design on the platform API): connected
+ * apps + the full browsable catalog. Connecting opens the APP's own OAuth (or
+ * key prompt) on Composio's hosted page — the user never creates or sees a
+ * Composio account — then we poll the connection until it turns active.
+ */
 export default function IntegrationsTab(_props: TabProps) {
-  const { t } = useTranslation("agents");
+  const { t } = useTranslation("integrations");
   const qc = useQueryClient();
   const status = useIntegrationStatus();
   const composio = status.data?.find(
     (p) => p.provider === INTEGRATION_PROVIDER,
   );
+  const ready = !!composio?.ready;
+  const connections = useIntegrationConnections(INTEGRATION_PROVIDER, ready);
+  const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, ready);
 
   const [connectingToolkit, setConnectingToolkit] = useState<string | null>(
     null,
@@ -41,13 +57,11 @@ export default function IntegrationsTab(_props: TabProps) {
     };
   }, []);
 
-  // Platform mode: connecting an app opens ITS OWN OAuth consent (Gmail,
-  // Slack…) — no Composio account, no provider sign-in. We then poll the
-  // connection until the user finishes in the browser. Every engine call
-  // routes through `call()` (toasts + reports failures); we surface the two
-  // outcomes `call()` can't see: the poll timing out (abandoned flow) and the
-  // OAuth failing on the provider's side.
-  const addApp = useCallback(
+  // Connect AND reconnect are the same hand-off: mint the hosted link, open
+  // the browser, poll until active. Every engine call routes through `call()`
+  // (toasts + reports failures); we surface the two outcomes it can't see:
+  // the poll timing out (abandoned flow) and the OAuth failing provider-side.
+  const connect = useCallback(
     async (toolkit: string) => {
       setConnectingToolkit(toolkit);
       try {
@@ -71,12 +85,12 @@ export default function IntegrationsTab(_props: TabProps) {
         if (outcome === "timeout") {
           showErrorToast(
             "integration_connect_timeout",
-            t("integrations.connectTimeout"),
+            t("connectResult.timeout"),
           );
         } else if (outcome === "error") {
           showErrorToast(
             "integration_connect_failed",
-            t("integrations.connectFailed"),
+            t("connectResult.failed"),
           );
         }
       } catch {
@@ -104,60 +118,43 @@ export default function IntegrationsTab(_props: TabProps) {
   }, []);
 
   return (
-    <div className="h-full overflow-auto p-6">
-      <div className="mx-auto flex max-w-2xl flex-col gap-6">
-        <header>
-          <h2 className="text-lg font-semibold">{t("integrations.title")}</h2>
+    <div className="h-full overflow-auto">
+      <div className="mx-auto w-full max-w-3xl px-6 py-6">
+        <div className="mb-6 min-h-[36px]">
+          <h1 className="text-[28px] font-normal text-foreground">
+            {t("title")}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {t("integrations.description")}
+            {t("description")}
           </p>
-        </header>
+        </div>
 
         {status.isLoading ? (
-          <p className="text-sm text-muted-foreground">
-            {t("integrations.loading")}
-          </p>
+          <LoadingState />
         ) : !composio ? (
-          <p className="text-sm text-muted-foreground">
-            {t("integrations.unavailable")}
-          </p>
+          <UnavailableState />
         ) : !composio.ready ? (
-          // Signed out of Houston (desktop) → one sign-in, nothing else.
-          <div className="flex flex-col items-start gap-3 rounded-2xl border border-black/10 bg-card p-6">
-            <div className="flex items-center gap-2">
-              <Plug className="h-5 w-5 text-muted-foreground" />
-              <span className="font-medium">
-                {t("integrations.signinTitle")}
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {t("integrations.signinBlurb")}
-            </p>
-            <button
-              type="button"
-              className={btn}
-              onClick={() => {
-                void signIn();
-              }}
-              disabled={signingIn}
-            >
-              {signingIn && <RefreshCw className="h-4 w-4 animate-spin" />}
-              {t("integrations.signinButton")}
-            </button>
-          </div>
+          <SigninState onSignIn={() => void signIn()} signingIn={signingIn} />
         ) : (
           <>
             {composio.reconnect && (
-              <div className="flex items-start gap-2 rounded-2xl border border-black/10 bg-card p-4 text-sm text-muted-foreground">
-                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                <span>{t("integrations.reconnectNotice")}</span>
+              <div className="flex items-start gap-2 rounded-xl bg-secondary p-4 text-sm text-muted-foreground">
+                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                <span>{t("reconnectNotice")}</span>
               </div>
             )}
-            <IntegrationsConnections
-              onAddApp={(toolkit) => {
-                void addApp(toolkit);
-              }}
+            <ConnectedAppsSection
+              connections={connections.data ?? []}
+              catalog={catalog.data ?? []}
+              onReconnect={(toolkit) => void connect(toolkit)}
+            />
+            <BrowseAppsSection
+              catalog={catalog.data ?? []}
+              connectedToolkits={
+                new Set((connections.data ?? []).map((c) => c.toolkit))
+              }
               connectingToolkit={connectingToolkit}
+              onConnect={(toolkit) => void connect(toolkit)}
             />
           </>
         )}

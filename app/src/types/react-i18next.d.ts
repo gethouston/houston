@@ -16,6 +16,7 @@ import type context from "../locales/en/context.json";
 import type dashboard from "../locales/en/dashboard.json";
 import type errors from "../locales/en/errors.json";
 import type events from "../locales/en/events.json";
+import type integrations from "../locales/en/integrations.json";
 import type legal from "../locales/en/legal.json";
 import type portable from "../locales/en/portable.json";
 import type providers from "../locales/en/providers.json";
@@ -44,6 +45,7 @@ declare module "react-i18next" {
       providers: typeof providers;
       errors: typeof errors;
       events: typeof events;
+      integrations: typeof integrations;
       portable: typeof portable;
       context: typeof context;
     };

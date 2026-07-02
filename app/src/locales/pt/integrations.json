@@ -1,56 +1,35 @@
 {
   "title": "Integrações",
+  "description": "Conecte seus aplicativos para que seu agente possa usá-los.",
   "loading": {
     "title": "Carregando suas integrações",
     "body": "Verificando seu provedor de integrações…"
   },
-  "notInstalled": {
-    "title": "Conecte seus apps",
-    "body": "O Houston usa um provedor de integrações para deixar seu agente usar Gmail, Slack, Google Drive e mais de 100 serviços por você. O provedor padrão é o Composio. Instalação única, cerca de 80 MB.",
-    "install": "Instalar provedor",
-    "installing": "Instalando…"
+  "unavailable": "As integrações não estão disponíveis nesta configuração.",
+  "signin": {
+    "title": "Entre para conectar aplicativos",
+    "body": "Entre no Houston para conectar seus aplicativos. Suas contas continuam sendo suas; o agente age em seu nome.",
+    "button": "Entrar no Houston"
   },
-  "needsAuth": {
-    "title": "Conecte seu provedor de integrações",
-    "body": "Entre no seu provedor de integrações para seu agente poder usar Gmail, Slack, Google Drive e mais de 100 serviços por você. Por padrão usamos o Composio.",
-    "signIn": "Entrar"
-  },
-  "error": {
-    "title": "Não foi possível carregar as integrações",
-    "retry": "Tentar de novo",
-    "openDashboard": "Abrir o painel do provedor"
-  },
+  "reconnectNotice": "Melhoramos a forma como os aplicativos se conectam para deixá-la mais segura. Reconecte seus aplicativos uma única vez; o Houston não guarda mais nenhuma chave de longa duração.",
   "connected": {
     "title": "Conectados",
     "count_one": "{{count}} app",
     "count_other": "{{count}} apps",
-    "manageOn": "Gerenciar {{name}}",
     "dotAria": "Conectado",
     "menu": {
       "aria": "Opções de {{name}}",
-      "manage": "Gerenciar no Composio",
       "reconnect": "Reconectar",
       "disconnect": "Desconectar"
-    },
-    "reconnect": {
-      "openedTitle": "Reconectando {{name}}",
-      "openedBody": "Entre de novo no seu navegador e volte para cá.",
-      "doneTitle": "{{name}} reconectado"
     },
     "disconnect": {
       "confirmTitle": "Desconectar {{name}}?",
       "confirmBody": "Seu agente vai perder o acesso a {{name}}. Você pode reconectar quando quiser.",
       "confirmAction": "Desconectar",
       "cancel": "Cancelar"
-    }
-  },
-  "signOut": {
-    "button": "Sair",
-    "loading": "Saindo…",
-    "confirmTitle": "Sair do Composio?",
-    "confirmBody": "Você vai precisar entrar de novo e reconectar os apps que usa. Isso não desinstala o provedor.",
-    "confirmAction": "Sair",
-    "cancel": "Cancelar"
+    },
+    "statusPending": "Termine de conectar no seu navegador...",
+    "statusError": "Precisa reconectar"
   },
   "browse": {
     "title": "Ver todos os apps",
@@ -64,19 +43,8 @@
     "loadMoreWithRemaining": "Carregar mais ({{count}} restantes)",
     "connectTitle": "Conectar {{name}}"
   },
-  "authDialog": {
-    "title": "Conectando seu provedor de integrações",
-    "description": "Conclua o login no navegador e volte para cá.",
-    "waiting": "Aguardando sua aprovação no navegador…",
-    "openInBrowser": "Abrir link no navegador",
-    "errorTimeout": "O tempo de login se esgotou. Conclua a aprovação no navegador e tente novamente.",
-    "errorGeneric": "Algo deu errado ao conectar. Tente novamente.",
-    "tryAgain": "Tentar novamente"
-  },
-  "linkCard": {
-    "integration": "Integração de app",
-    "alreadyConnected": "Já conectado",
-    "connected": "Conectado",
-    "connect": "Conectar"
+  "connectResult": {
+    "timeout": "A conexão não foi concluída. Tente novamente.",
+    "failed": "Não foi possível conectar o aplicativo. Tente novamente."
   }
 }

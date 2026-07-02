@@ -1,87 +1,99 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { IntegrationToolkit } from "@houston-ai/engine-client";
-import { filterCatalog } from "../src/components/tabs/integrations-tab-model.ts";
+import {
+  browseCatalog,
+  categoriesOf,
+  categoryLabel,
+} from "../src/components/tabs/integrations-tab-model.ts";
 
-const tk = (slug: string, name: string): IntegrationToolkit => ({ slug, name });
+const tk = (
+  slug: string,
+  name: string,
+  categories: string[] = [],
+  description = "",
+): IntegrationToolkit => ({ slug, name, categories, description });
 
 const CATALOG: IntegrationToolkit[] = [
-  tk("gmail", "Gmail"),
-  tk("googlecalendar", "Google Calendar"),
-  tk("slack", "Slack"),
-  tk("notion", "Notion"),
-  tk("slackbot", "Slack Bot"),
-  tk("mailchimp", "Mailchimp"),
+  tk("gmail", "Gmail", ["productivity"], "Email by Google"),
+  tk("googlecalendar", "Google Calendar", ["productivity"]),
+  tk("slack", "Slack", ["collaboration"]),
+  tk("notion", "Notion", ["collaboration", "developer-tools"]),
+  tk("serpapi", "SerpApi", ["developer-tools"], "Search engine results"),
 ];
 
-describe("filterCatalog", () => {
-  it("no query → the pinned popular apps, in pinned order, minus connected", () => {
-    const result = filterCatalog({
+describe("browseCatalog", () => {
+  it("excludes connected apps and preserves catalog (usage-ranked) order", () => {
+    const result = browseCatalog({
       catalog: CATALOG,
       query: "",
+      category: "all",
       connected: new Set(["gmail"]),
-      popular: ["gmail", "slack", "notion"],
     });
     deepStrictEqual(
       result.map((t) => t.slug),
+      ["googlecalendar", "slack", "notion", "serpapi"],
+    );
+  });
+
+  it("filters by category, then by search over name/slug/description", () => {
+    const byCategory = browseCatalog({
+      catalog: CATALOG,
+      query: "",
+      category: "collaboration",
+      connected: new Set(),
+    });
+    deepStrictEqual(
+      byCategory.map((t) => t.slug),
       ["slack", "notion"],
     );
-  });
 
-  it("no query → pinned slugs missing from the catalog are skipped, not crashed on", () => {
-    const result = filterCatalog({
+    const byDescription = browseCatalog({
       catalog: CATALOG,
-      query: "",
-      connected: new Set(),
-      popular: ["gmail", "not-in-catalog", "slack"],
-    });
-    deepStrictEqual(
-      result.map((t) => t.slug),
-      ["gmail", "slack"],
-    );
-  });
-
-  it("searching matches name or slug case-insensitively, prefix hits first", () => {
-    const result = filterCatalog({
-      catalog: CATALOG,
-      query: "SLA",
-      connected: new Set(),
-    });
-    // Name-prefix matches ("Slack", "Slack Bot") come before others.
-    deepStrictEqual(
-      result.map((t) => t.slug),
-      ["slack", "slackbot"],
-    );
-
-    const bySlug = filterCatalog({
-      catalog: CATALOG,
-      query: "googlecal",
+      query: "search engine",
+      category: "all",
       connected: new Set(),
     });
     deepStrictEqual(
-      bySlug.map((t) => t.slug),
-      ["googlecalendar"],
+      byDescription.map((t) => t.slug),
+      ["serpapi"],
     );
-  });
 
-  it("searching never surfaces already-connected apps and respects the cap", () => {
-    const result = filterCatalog({
+    const stacked = browseCatalog({
       catalog: CATALOG,
-      query: "a", // matches many
-      connected: new Set(["gmail"]),
-      limit: 2,
+      query: "notion",
+      category: "collaboration",
+      connected: new Set(),
     });
-    strictEqual(result.length, 2);
-    strictEqual(
-      result.some((t) => t.slug === "gmail"),
-      false,
+    deepStrictEqual(
+      stacked.map((t) => t.slug),
+      ["notion"],
     );
   });
 
   it("no matches → empty (the UI shows the no-results line, not a blank)", () => {
     deepStrictEqual(
-      filterCatalog({ catalog: CATALOG, query: "zzz", connected: new Set() }),
+      browseCatalog({
+        catalog: CATALOG,
+        query: "zzz",
+        category: "all",
+        connected: new Set(),
+      }),
       [],
     );
+  });
+});
+
+describe("categoriesOf / categoryLabel", () => {
+  it("collects unique categories sorted by display label", () => {
+    deepStrictEqual(categoriesOf(CATALOG), [
+      "collaboration",
+      "developer-tools",
+      "productivity",
+    ]);
+  });
+
+  it("labels kebab-case categories for humans", () => {
+    strictEqual(categoryLabel("developer-tools"), "Developer tools");
   });
 });
