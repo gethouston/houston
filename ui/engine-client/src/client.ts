@@ -49,6 +49,8 @@ import type {
   ListWorktreesRequest,
   NewActivity,
   NewRoutine,
+  OrgInfo,
+  OrgRole,
   PairingCode,
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
@@ -1001,6 +1003,66 @@ export class HoustonClient {
       "POST",
       `/integrations/${this.seg(provider)}/disconnect`,
       { toolkit },
+    );
+  }
+
+  // ---------- org / roles (multiplayer) — v3 host only ----------
+  //
+  // The Rust engine has no /v1/org routes; multiplayer is a hosted-gateway
+  // feature, so on the legacy wire these never run. Kept here so the shared app
+  // typechecks against both clients (shim parity), same as integrations above.
+
+  /** The current user's org + role (and, for owner/admin, the member roster). */
+  getOrg(): Promise<OrgInfo> {
+    return this.request("GET", "/org");
+  }
+  /** Invite a member by email at a role. Owner/admin only (enforced by the host). */
+  async addOrgMember(email: string, role: OrgRole): Promise<void> {
+    await this.request("POST", "/org/members", { email, role });
+  }
+  /** Remove a member from the org. */
+  async removeOrgMember(userId: string): Promise<void> {
+    await this.request("DELETE", `/org/members/${this.seg(userId)}`);
+  }
+  /** Change a member's role. */
+  async setOrgMemberRole(userId: string, role: OrgRole): Promise<void> {
+    await this.request("PATCH", `/org/members/${this.seg(userId)}`, { role });
+  }
+
+  // ---------- per-agent assignments + integration grants (multiplayer) ----------
+
+  /**
+   * Set which org members may use this agent. Empty `userIds` means "everyone".
+   * Owner/admin only.
+   */
+  async setAgentAssignments(
+    agentSlugOrId: string,
+    userIds: string[],
+  ): Promise<void> {
+    await this.request(
+      "PUT",
+      `/agents/${this.seg(agentSlugOrId)}/assignments`,
+      { userIds },
+    );
+  }
+  /** The integration toolkit slugs granted to this agent. */
+  async agentIntegrationGrants(agentSlugOrId: string): Promise<string[]> {
+    return (
+      await this.request<{ toolkits: string[] }>(
+        "GET",
+        `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
+      )
+    ).toolkits;
+  }
+  /** Replace the integration toolkit slugs granted to this agent. */
+  async setAgentIntegrationGrants(
+    agentSlugOrId: string,
+    toolkits: string[],
+  ): Promise<void> {
+    await this.request(
+      "PUT",
+      `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
+      { toolkits },
     );
   }
 

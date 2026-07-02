@@ -219,6 +219,12 @@ export interface ChatMessage {
   content: string;
   /** epoch ms */
   ts: number;
+  /**
+   * Multiplayer only: who sent this message. Set on `role: "user"` turns in an
+   * org so the UI can attribute a message to the teammate who wrote it. Absent
+   * in single-player mode and on assistant turns.
+   */
+  author?: { userId: string; name?: string };
   tools?: ToolCallRecord[];
   /** Normalized usage for the turn this assistant message completed, when the
    *  provider reported it. Persisted so the context indicator survives a reload. */

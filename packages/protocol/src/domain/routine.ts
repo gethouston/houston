@@ -20,6 +20,11 @@ export interface Routine {
   effort?: string | null;
   /** Integration slugs this routine uses (data carried for store agents). */
   integrations: string[];
+  /**
+   * Multiplayer only: the org-member user id that created this routine. Absent
+   * in single-player mode. Surfaced so the UI can attribute automations.
+   */
+  created_by?: string;
   created_at: string;
   updated_at: string;
 }

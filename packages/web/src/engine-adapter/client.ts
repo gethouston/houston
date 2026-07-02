@@ -1096,6 +1096,53 @@ export class HoustonClient {
     return controlPlane.disconnectIntegration(this.cp, provider, toolkit);
   }
 
+  // ---- org / roles (multiplayer) — hosted gateway only ----
+  async getOrg(): Promise<controlPlane.OrgInfo> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.getOrg(this.cp);
+  }
+  async addOrgMember(email: string, role: controlPlane.OrgRole): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.addOrgMember(this.cp, email, role);
+  }
+  async removeOrgMember(userId: string): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.removeOrgMember(this.cp, userId);
+  }
+  async setOrgMemberRole(
+    userId: string,
+    role: controlPlane.OrgRole,
+  ): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.setOrgMemberRole(this.cp, userId, role);
+  }
+
+  // ---- per-agent assignments + integration grants (multiplayer) ----
+  async setAgentAssignments(
+    agentSlugOrId: string,
+    userIds: string[],
+  ): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.setAgentAssignments(this.cp, agentSlugOrId, userIds);
+  }
+  // Grants degrade like `integrationStatus`: single-player has no grants model,
+  // so read is empty and write is a no-op rather than a hard failure.
+  async agentIntegrationGrants(agentSlugOrId: string): Promise<string[]> {
+    if (!this.cp) return [];
+    return controlPlane.agentIntegrationGrants(this.cp, agentSlugOrId);
+  }
+  async setAgentIntegrationGrants(
+    agentSlugOrId: string,
+    toolkits: string[],
+  ): Promise<void> {
+    if (!this.cp) return;
+    return controlPlane.setAgentIntegrationGrants(
+      this.cp,
+      agentSlugOrId,
+      toolkits,
+    );
+  }
+
   // ---- lifecycle no-ops the shell calls ----
   async startAgentWatcher(): Promise<void> {}
   async stopAgentWatcher(): Promise<void> {}

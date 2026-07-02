@@ -181,6 +181,8 @@ function toAgent(a: import("@houston-ai/engine-client").Agent): Agent {
     color: a.color,
     createdAt: a.createdAt,
     lastOpenedAt: a.lastOpenedAt,
+    assigned: a.assigned,
+    assignedUserIds: a.assignedUserIds,
   };
 }
 
@@ -240,6 +242,11 @@ export const tauriAgents = {
     call<Array<{ config: unknown; path: string }>>(
       "list_installed_configs",
       () => getEngine().listInstalledConfigs(),
+    ),
+  /** Multiplayer: set which org members may use this agent. Empty = everyone. */
+  setAssignments: (agentSlugOrId: string, userIds: string[]) =>
+    call<void>("set_agent_assignments", () =>
+      getEngine().setAgentAssignments(agentSlugOrId, userIds),
     ),
 };
 
@@ -1130,5 +1137,38 @@ export const tauriIntegrations = {
   disconnect: (provider: string, toolkit: string) =>
     call("integration_disconnect", () =>
       getEngine().disconnectIntegration(provider, toolkit),
+    ),
+  /** Multiplayer: the integration toolkit slugs granted to an agent. */
+  grants: (agentSlugOrId: string) =>
+    call("agent_integration_grants", () =>
+      getEngine().agentIntegrationGrants(agentSlugOrId),
+    ),
+  /** Multiplayer: replace the integration toolkit slugs granted to an agent. */
+  setGrants: (agentSlugOrId: string, toolkits: string[]) =>
+    call("set_agent_integration_grants", () =>
+      getEngine().setAgentIntegrationGrants(agentSlugOrId, toolkits),
+    ),
+};
+
+/**
+ * Multiplayer org management. Hosted-gateway only: the desktop/local engine has
+ * no /v1/org routes, so `getEngine()` throws "multiplayer requires the hosted
+ * gateway" there — callers gate the UI on the `multiplayer` capability. Same
+ * `call()` surfacing as every other wrapper; types flow by inference.
+ */
+export const tauriOrg = {
+  get: () => call("get_org", () => getEngine().getOrg()),
+  addMember: (
+    email: string,
+    role: import("@houston-ai/engine-client").OrgRole,
+  ) => call("add_org_member", () => getEngine().addOrgMember(email, role)),
+  removeMember: (userId: string) =>
+    call("remove_org_member", () => getEngine().removeOrgMember(userId)),
+  setMemberRole: (
+    userId: string,
+    role: import("@houston-ai/engine-client").OrgRole,
+  ) =>
+    call("set_org_member_role", () =>
+      getEngine().setOrgMemberRole(userId, role),
     ),
 };

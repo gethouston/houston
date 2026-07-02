@@ -673,12 +673,17 @@ export type {
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
+  OrgInfo,
+  OrgMember,
+  OrgRole,
 } from "../../../../ui/engine-client/src/types";
 
 import type {
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
+  OrgInfo,
+  OrgRole,
 } from "../../../../ui/engine-client/src/types";
 
 const integrationPath = (provider: string) =>
@@ -758,4 +763,78 @@ export async function disconnectIntegration(
     method: "POST",
     body: JSON.stringify({ toolkit }),
   });
+}
+
+// ── org / roles + per-agent grants (multiplayer) ─────────────────────────────
+// Hosted-gateway only. The v1 client mirrors these for shim parity.
+
+export async function getOrg(cfg: ControlPlaneConfig): Promise<OrgInfo> {
+  const res = await cpFetch(cfg, "/v1/org");
+  return (await res.json()) as OrgInfo;
+}
+
+export async function addOrgMember(
+  cfg: ControlPlaneConfig,
+  email: string,
+  role: OrgRole,
+): Promise<void> {
+  await cpFetch(cfg, "/v1/org/members", {
+    method: "POST",
+    body: JSON.stringify({ email, role }),
+  });
+}
+
+export async function removeOrgMember(
+  cfg: ControlPlaneConfig,
+  userId: string,
+): Promise<void> {
+  await cpFetch(cfg, `/v1/org/members/${encodeURIComponent(userId)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function setOrgMemberRole(
+  cfg: ControlPlaneConfig,
+  userId: string,
+  role: OrgRole,
+): Promise<void> {
+  await cpFetch(cfg, `/v1/org/members/${encodeURIComponent(userId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function setAgentAssignments(
+  cfg: ControlPlaneConfig,
+  agentSlugOrId: string,
+  userIds: string[],
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/assignments`,
+    { method: "PUT", body: JSON.stringify({ userIds }) },
+  );
+}
+
+export async function agentIntegrationGrants(
+  cfg: ControlPlaneConfig,
+  agentSlugOrId: string,
+): Promise<string[]> {
+  const res = await cpFetch(
+    cfg,
+    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/integration-grants`,
+  );
+  return ((await res.json()) as { toolkits: string[] }).toolkits;
+}
+
+export async function setAgentIntegrationGrants(
+  cfg: ControlPlaneConfig,
+  agentSlugOrId: string,
+  toolkits: string[],
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/integration-grants`,
+    { method: "PUT", body: JSON.stringify({ toolkits }) },
+  );
 }
