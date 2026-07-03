@@ -81,6 +81,10 @@ const host = buildLocalHost({
     process.env.HOUSTON_MANAGED_CLOUD === "1"
       ? MANAGED_CLOUD_CAPABILITIES
       : LOCAL_CAPABILITIES,
+  // Managed pods sit behind the gateway (it enforces the pod token and mints
+  // x-houston-acting-as); relay that header to the runtime so integration
+  // calls act as the driving user. Desktop/self-host stay direct → false.
+  gatewayFronted: process.env.HOUSTON_MANAGED_CLOUD === "1",
   // Platform-mode integrations: desktops get HOUSTON_INTEGRATIONS_URL (the
   // cloud gateway holding Houston's Composio key); self-host + the managed pod
   // set their own COMPOSIO_API_KEY and go direct. Neither → integrations off.

@@ -186,7 +186,17 @@ export class ComposioProvider implements IntegrationProvider {
         ...(slugs.length ? { toolkit_slug: slugs.join(",") } : {}),
       },
     });
-    return (body?.items ?? []).map(mapTool);
+    const matched = (body?.items ?? []).map(mapTool);
+    if (matched.length > 0 || slugs.length === 0) return matched;
+    // Composio's full-text match is naive AND-ish: an everyday phrasing like
+    // "read my latest 5 emails" scores ZERO against GMAIL_FETCH_EMAILS
+    // (verified live). Scoped to connected toolkits the catalog is small, so
+    // degrade to listing their actions instead of returning nothing — the
+    // agent picks the right slug from the list.
+    const all = await this.http.call<{ items?: RawTool[] }>("/api/v3/tools", {
+      query: { limit: "50", toolkit_slug: slugs.join(",") },
+    });
+    return (all?.items ?? []).map(mapTool);
   }
 
   async execute(
