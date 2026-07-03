@@ -4,7 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}{{ title }}{% endblock %}</title>
-<!-- Default social card (per-page blocks can override meta) -->
+<!-- Social card. Pages can override the image via `ogImage` front matter
+     (site-relative path, e.g. /blog/my-post/cover.jpg); crawlers honor the
+     first og:image, so the default is only emitted when no override exists. -->
+{% if ogImage %}
+<meta property="og:image" content="https://gethouston.ai{{ ogImage }}">
+<meta property="og:image:secure_url" content="https://gethouston.ai{{ ogImage }}">
+<meta name="twitter:image" content="https://gethouston.ai{{ ogImage }}">
+{% else %}
 <meta property="og:image" content="https://gethouston.ai/og-image.jpg">
 <meta property="og:image:secure_url" content="https://gethouston.ai/og-image.jpg">
 <meta property="og:image:type" content="image/jpeg">
@@ -13,6 +20,7 @@
 <meta property="og:image:alt" content="Houston: AI agents that actually do the work.">
 <meta name="twitter:image" content="https://gethouston.ai/og-image.jpg">
 <meta name="twitter:image:alt" content="Houston: AI agents that actually do the work.">
+{% endif %}
 {% block meta %}{% endblock %}
 {% block favicon %}<link rel="icon" type="image/svg+xml" href="/favicon.svg">{% endblock %}
 {% if noindex %}<meta name="robots" content="noindex,nofollow">{% endif %}

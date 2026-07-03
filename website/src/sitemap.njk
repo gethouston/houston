@@ -1,0 +1,37 @@
+---
+permalink: /sitemap.xml
+eleventyExcludeFromCollections: true
+# Core pages listed explicitly (update lastmod when a page meaningfully
+# changes). Blog posts are appended automatically from the posts collection
+# so a new post can never be forgotten.
+corePages:
+  - url: /
+    lastmod: "2026-06-28"
+  - url: /startups/
+    lastmod: "2026-06-28"
+  - url: /waitlist/
+    lastmod: "2026-06-28"
+  - url: /changelog/
+    lastmod: "2026-06-28"
+  - url: /privacy/
+    lastmod: "2026-06-28"
+  - url: /terms/
+    lastmod: "2026-06-28"
+  - url: /learn/
+    lastmod: "2026-06-28"
+  - url: /vision/
+    lastmod: "2026-06-28"
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{%- for p in corePages %}
+  <url><loc>https://gethouston.ai{{ p.url }}</loc><lastmod>{{ p.lastmod }}</lastmod></url>
+{%- endfor %}
+{%- set newest = collections.posts | reverse | first %}
+{%- if newest %}
+  <url><loc>https://gethouston.ai/blog/</loc><lastmod>{{ newest.date | isoDateOnly }}</lastmod></url>
+{%- endif %}
+{%- for post in collections.posts | reverse %}
+  <url><loc>https://gethouston.ai{{ post.url }}</loc><lastmod>{{ post.date | isoDateOnly }}</lastmod></url>
+{%- endfor %}
+</urlset>

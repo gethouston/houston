@@ -1,4 +1,10 @@
 import { marked } from "marked";
+import {
+  isoDate,
+  isoDateOnly,
+  readableDate,
+  readingTimeMinutes,
+} from "./lib/blog.js";
 
 marked.setOptions({ gfm: true, breaks: false });
 
@@ -10,6 +16,12 @@ export default function (eleventyConfig) {
     return marked.parse(str);
   });
 
+  // Blog filters (pure logic lives in lib/blog.js, unit-tested via `npm test`)
+  eleventyConfig.addFilter("readingTime", readingTimeMinutes);
+  eleventyConfig.addFilter("readableDate", readableDate);
+  eleventyConfig.addFilter("isoDate", isoDate);
+  eleventyConfig.addFilter("isoDateOnly", isoDateOnly);
+
   // Pass through static assets unchanged
   eleventyConfig.addPassthroughCopy("src/favicon.svg");
   eleventyConfig.addPassthroughCopy("src/houston-black.svg");
@@ -19,15 +31,16 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/og-image.jpg");
   eleventyConfig.addPassthroughCopy("src/icons");
   eleventyConfig.addPassthroughCopy("src/learn/style.css");
+  eleventyConfig.addPassthroughCopy("src/blog/blog.css");
   eleventyConfig.addPassthroughCopy("src/slack");
   eleventyConfig.addPassthroughCopy("src/auth");
   eleventyConfig.addPassthroughCopy("src/_headers");
   eleventyConfig.addPassthroughCopy("src/_redirects");
   // SEO + AI-crawler files. Served verbatim at the site root (/robots.txt,
-  // /sitemap.xml, /llms.txt). The 404 page is a template with its own
-  // permalink, so it does not need a passthrough entry.
+  // /llms.txt). The sitemap is now a generated template (src/sitemap.njk) so
+  // blog posts can never be forgotten. The 404 page is a template with its
+  // own permalink, so it does not need a passthrough entry.
   eleventyConfig.addPassthroughCopy("src/robots.txt");
-  eleventyConfig.addPassthroughCopy("src/sitemap.xml");
   eleventyConfig.addPassthroughCopy("src/llms.txt");
 
   return {
