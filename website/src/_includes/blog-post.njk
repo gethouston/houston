@@ -1,0 +1,70 @@
+{% extends "base.njk" %}
+{% block title %}{{ title }} — Houston Blog{% endblock %}
+{% block favicon %}<link rel="icon" type="image/svg+xml" href="/favicon.svg">{% endblock %}
+{% block meta %}
+<meta name="description" content="{{ description }}">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://gethouston.ai{{ page.url }}">
+<meta property="og:title" content="{{ title }}">
+<meta property="og:description" content="{{ description }}">
+<meta property="og:site_name" content="Houston">
+<meta property="article:published_time" content="{{ page.date | isoDate }}">
+<meta property="article:author" content="{{ author }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ title }}">
+<meta name="twitter:description" content="{{ description }}">
+<link rel="alternate" type="application/atom+xml" title="Houston Blog" href="/blog/feed.xml">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": {{ title | dump | safe }},
+  "description": {{ description | dump | safe }},
+  "datePublished": "{{ page.date | isoDate }}",
+  "dateModified": "{{ page.date | isoDate }}",
+  "url": "https://gethouston.ai{{ page.url }}",
+  "image": "https://gethouston.ai{{ ogImage or '/og-image.jpg' }}",
+  "author": { "@type": "Person", "name": {{ author | dump | safe }} },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Houston",
+    "url": "https://gethouston.ai/",
+    "logo": { "@type": "ImageObject", "url": "https://gethouston.ai/houston-icon.png" }
+  },
+  "mainEntityOfPage": { "@type": "WebPage", "@id": "https://gethouston.ai{{ page.url }}" }
+}
+</script>
+{% endblock %}
+{% block stylesheets %}
+<link rel="stylesheet" href="/learn/style.css?v=3">
+<link rel="stylesheet" href="/blog/blog.css?v=1">
+{% endblock %}
+{% block body %}
+{% include "nav-docs.njk" %}
+<main class="post">
+  <div class="post-eyebrow"><a href="/blog/">Blog</a></div>
+  <h1>{{ title }}</h1>
+  <div class="post-byline">
+    <span class="post-byline-name">{{ author }}</span>
+    <span class="post-byline-sep">·</span>
+    <time datetime="{{ page.date | isoDateOnly }}">{{ page.date | readableDate }}</time>
+    <span class="post-byline-sep">·</span>
+    <span>{{ content | readingTime }} min read</span>
+  </div>
+  <article class="post-body">
+    {{ content | safe }}
+  </article>
+  <div class="post-back"><a href="/blog/">&larr; All posts</a></div>
+</main>
+{% include "footer-learn.njk" %}
+<script>
+  // Nav border on scroll (mirrors learn pages)
+  (function () {
+    var nav = document.querySelector('nav');
+    if (!nav) return;
+    window.addEventListener('scroll', function () {
+      nav.classList.toggle('scrolled', window.scrollY > 8);
+    }, { passive: true });
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,26 @@
+---
+permalink: /blog/feed.xml
+eleventyExcludeFromCollections: true
+---
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Houston Blog</title>
+  <subtitle>Notes from mission control. Product updates, ideas, and lessons from building AI agents that actually do the work.</subtitle>
+  <link href="https://gethouston.ai/blog/feed.xml" rel="self"/>
+  <link href="https://gethouston.ai/blog/"/>
+  <id>https://gethouston.ai/blog/</id>
+  {%- set newest = collections.posts | reverse | first %}
+  <updated>{% if newest %}{{ newest.date | isoDate }}{% else %}{{ page.date | isoDate }}{% endif %}</updated>
+  {%- for post in collections.posts | reverse %}
+  <entry>
+    <title>{{ post.data.title }}</title>
+    <link href="https://gethouston.ai{{ post.url }}"/>
+    <id>https://gethouston.ai{{ post.url }}</id>
+    <published>{{ post.date | isoDate }}</published>
+    <updated>{{ post.date | isoDate }}</updated>
+    <author><name>{{ post.data.author }}</name></author>
+    <summary>{{ post.data.description }}</summary>
+    <content type="html">{{ post.templateContent | escape }}</content>
+  </entry>
+  {%- endfor %}
+</feed>

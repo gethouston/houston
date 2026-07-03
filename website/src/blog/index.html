@@ -1,0 +1,54 @@
+---
+eleventyExcludeFromCollections: true
+---
+{% extends "base.njk" %}
+{% block title %}Blog — Houston{% endblock %}
+{% block favicon %}<link rel="icon" type="image/svg+xml" href="/favicon.svg">{% endblock %}
+{% block meta %}
+<meta name="description" content="Notes from mission control. Product updates, ideas, and lessons from building AI agents that actually do the work.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gethouston.ai/blog/">
+<meta property="og:title" content="Blog — Houston">
+<meta property="og:description" content="Notes from mission control. Product updates, ideas, and lessons from building AI agents that actually do the work.">
+<meta property="og:site_name" content="Houston">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Blog — Houston">
+<meta name="twitter:description" content="Notes from mission control. Product updates, ideas, and lessons from building AI agents that actually do the work.">
+<link rel="alternate" type="application/atom+xml" title="Houston Blog" href="/blog/feed.xml">
+{% endblock %}
+{% block stylesheets %}
+<link rel="stylesheet" href="/learn/style.css?v=3">
+<link rel="stylesheet" href="/blog/blog.css?v=1">
+{% endblock %}
+{% block body %}
+{% include "nav-docs.njk" %}
+<main class="blog-index">
+  <h1 class="blog-heading">Blog</h1>
+  <p class="blog-sub">
+    Notes from mission control. Product updates, ideas, and lessons from
+    building AI agents that actually do the work.
+    <a href="/blog/feed.xml">Subscribe via RSS</a>.
+  </p>
+  <ul class="post-list">
+    {% for post in collections.posts | reverse %}
+    <li class="post-card">
+      <a href="{{ post.url }}">
+        <div class="post-card-date">{{ post.date | readableDate }}</div>
+        <h2>{{ post.data.title }}</h2>
+        <p>{{ post.data.description }}</p>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</main>
+{% include "footer-learn.njk" %}
+<script>
+  (function () {
+    var nav = document.querySelector('nav');
+    if (!nav) return;
+    window.addEventListener('scroll', function () {
+      nav.classList.toggle('scrolled', window.scrollY > 8);
+    }, { passive: true });
+  })();
+</script>
+{% endblock %}

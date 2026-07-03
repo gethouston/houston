@@ -1,0 +1,135 @@
+# Website PR Guardrails
+#
+# Two protections for pull requests that touch website/:
+#
+# 1. Build check (all website PRs): the Eleventy site must build and the
+#    website unit tests must pass before merge. A broken post or template
+#    turns the PR red instead of reaching production.
+#
+# 2. Content-only guard (blog/* branches): branches named `blog/<anything>`
+#    are reserved for content publishing (e.g. by non-technical writers or
+#    agent sessions). Those PRs may ONLY touch files under
+#    website/src/blog/posts/. Any change outside that folder fails the check,
+#    so a writing session can never accidentally edit the homepage, templates,
+#    or product code.
+#
+# 3. Preview deploy (same-repo PRs, secrets permitting): deploys the built
+#    site to a Cloudflare Pages preview URL so the change can be reviewed
+#    live before merge. Skipped for forks (no secrets).
+#
+# Production deploys remain in website-deploy.yml (push to main only).
+
+name: Website PR
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - '.github/workflows/website-pr.yml'
+
+concurrency:
+  group: website-pr-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  content-guard:
+    name: Blog branches touch only post content
+    if: startsWith(github.head_ref, 'blog/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify changed files are all under website/src/blog/posts/
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          CHANGED=$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA")
+          echo "Changed files:"
+          echo "$CHANGED"
+          VIOLATIONS=$(echo "$CHANGED" | grep -v '^website/src/blog/posts/' || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo ""
+            echo "::error::This is a blog/* branch, which may only change files under website/src/blog/posts/. Offending files:"
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+          echo "OK: all changes are blog post content."
+
+  build:
+    name: Build site & run tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install dependencies
+        working-directory: website
+        run: npm ci
+
+      - name: Unit tests
+        working-directory: website
+        run: npm test
+
+      - name: Build site
+        working-directory: website
+        run: npx @11ty/eleventy
+        env:
+          # Same public build-time config as production. On forked PRs these
+          # are empty and env.js falls back to its committed defaults.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          WAITLIST_SHEET_ENDPOINT: ${{ secrets.WAITLIST_SHEET_ENDPOINT }}
+
+      - name: Upload built site
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-dist
+          path: website/_site
+          retention-days: 7
+
+  preview:
+    name: Deploy Cloudflare Pages preview
+    needs: build
+    # Forked PRs have no access to secrets; only same-repo branches preview.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: website-dist
+          path: website/_site
+
+      - name: Deploy preview
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: website
+          command: pages deploy _site --project-name=houston-site --branch=${{ github.head_ref }}
+
+      - name: Preview URL in job summary
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          echo "### Website preview" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "$DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
