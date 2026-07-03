@@ -8,6 +8,21 @@ import StyleDictionary from "style-dictionary";
 // cwd the build is invoked from (pnpm filter, the sync test, CI).
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
+/**
+ * Join path segments into a Style Dictionary `source` glob with POSIX separators.
+ *
+ * Style Dictionary globs `source` with fast-glob, which requires forward-slash
+ * separators on EVERY platform. `node:path.join` emits BACKSLASHES on Windows,
+ * and fast-glob reads a backslash as an escape character — so a Windows-joined
+ * glob (`C:\…\tokens\primitive\**\*.json`) silently matches nothing, the
+ * primitive/scale token files never load, and every cross-file reference fails
+ * ("Some token references could not be found"). This broke both windows-msvc
+ * release jobs at `pnpm install` (the design-tokens `prepare` build). Join for
+ * correct resolution, then force forward slashes. No-op on macOS/Linux.
+ */
+export const posixGlob = (...segments) =>
+  join(...segments).replaceAll("\\", "/");
+
 const FLAT_FORMAT = "houston/flat-json";
 let registered = false;
 
@@ -44,9 +59,9 @@ export async function collect(theme) {
   try {
     const sd = new StyleDictionary({
       source: [
-        join(ROOT, "tokens/primitive/**/*.json"),
-        join(ROOT, "tokens/scale/**/*.json"),
-        join(ROOT, `tokens/semantic/color.${theme}.json`),
+        posixGlob(ROOT, "tokens/primitive/**/*.json"),
+        posixGlob(ROOT, "tokens/scale/**/*.json"),
+        posixGlob(ROOT, `tokens/semantic/color.${theme}.json`),
       ],
       platforms: {
         flat: {
@@ -59,7 +74,12 @@ export async function collect(theme) {
     });
     await sd.buildAllPlatforms();
     const tokens = JSON.parse(readFileSync(join(out, "flat.json"), "utf8"));
-    return tokens.filter((t) => !t.filePath.includes("/primitive/"));
+    // fast-glob returns forward-slash filePaths, but normalise defensively so the
+    // primitive filter can't silently misfire on Windows (which would leak
+    // primitives into the emitted tokens instead of failing loudly).
+    return tokens.filter(
+      (t) => !t.filePath.replaceAll("\\", "/").includes("/primitive/"),
+    );
   } finally {
     rmSync(out, { recursive: true, force: true });
   }
