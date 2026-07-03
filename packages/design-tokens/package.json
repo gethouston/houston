@@ -21,6 +21,7 @@
   ],
   "scripts": {
     "build": "node build/index.mjs",
+    "prepare": "node build/index.mjs",
     "test": "vitest run",
     "typecheck": "tsgo -p tsconfig.json --noEmit"
   },
