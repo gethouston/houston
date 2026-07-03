@@ -1,0 +1,9 @@
+surface: web
+enforced: true
+inventoryVersion: 1
+components:
+  comp-a:
+    status: implemented
+  comp-b:
+    status: partial
+    notes: half done

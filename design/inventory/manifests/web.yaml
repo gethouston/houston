@@ -1,0 +1,115 @@
+# Web / desktop surface parity manifest.
+#
+# The React frontend in `app/src` (also shipped verbatim as `packages/web`),
+# built on the `@houston-ai/*` ui packages. This surface is ENFORCED: it must
+# implement (implemented or partial, never not-started/missing) every inventory
+# component whose `since <= inventoryVersion`. `pnpm check:parity` fails the
+# build otherwise. `ref` points at where the component lives today.
+#
+# Honesty note: `partial` flags a real structural gap even when the component
+# ships and works -- typically because the reusable, view-model-driven piece is
+# not yet in a shared `ui/` package (it is app/-locked), so a native surface
+# cannot reuse its structure. Those are the extract-before-mobile items.
+
+surface: web
+enforced: true
+inventoryVersion: 1
+
+components:
+  agent-avatar:
+    status: implemented
+    ref: "@houston-ai/core HoustonAvatar / AgentAvatar (resolveAgentColor)"
+
+  agent-list-item:
+    status: partial
+    ref: "@houston-ai/layout SidebarNavItem + @houston-ai/core HoustonAvatar"
+    notes: >-
+      No single shared agent-list-item component; the row is composed in app/
+      from generic nav + avatar primitives. Aggregate status is app-side.
+
+  conversation-feed:
+    status: implemented
+    ref: "@houston-ai/chat ChatPanel / ChatMessages / Conversation"
+
+  assistant-message:
+    status: implemented
+    ref: "@houston-ai/chat ai-elements/message + markdown-code-block"
+
+  user-message:
+    status: implemented
+    ref: "@houston-ai/chat user-attachment-message + author-label"
+
+  thinking-indicator:
+    status: implemented
+    ref: "@houston-ai/chat ai-elements/reasoning + chat-status (deriveStatus)"
+
+  tool-call-chip:
+    status: implemented
+    ref: "@houston-ai/chat ai-elements/tool-block + tool-formatters"
+
+  provider-error-card:
+    status: partial
+    ref: "app/src/components/shell/provider-error-cards/* (types in @houston-ai/chat)"
+    notes: >-
+      Feed types + ProviderError taxonomy live in @houston-ai/chat, but the
+      rendered cards are app/-locked. Extract into ui/ before mobile can reuse.
+
+  system-message:
+    status: implemented
+    ref: "@houston-ai/chat chat-system-message"
+
+  skill-invocation-message:
+    status: partial
+    ref: "@houston-ai/chat skill-message (decode) rendered in app/"
+    notes: Marker decode is shared; the card render is composed in app/.
+
+  composer:
+    status: implemented
+    ref: "@houston-ai/chat ChatInput / ai-elements/prompt-input"
+
+  turn-status:
+    status: implemented
+    ref: "@houston-ai/chat ChatStatusLine + chat-status"
+
+  progress-panel:
+    status: implemented
+    ref: "@houston-ai/chat ProgressPanel / useProgressSteps"
+
+  approval-surface:
+    status: implemented
+    ref: "@houston-ai/review ReviewItem / ReviewDetailPanel / DeliverableCard"
+
+  deliverable-card:
+    status: implemented
+    ref: "@houston-ai/review DeliverableCard / UserFeedback"
+
+  mission-card:
+    status: implemented
+    ref: "@houston-ai/board KanbanCard / KanbanListItem"
+
+  mission-board:
+    status: implemented
+    ref: "@houston-ai/board KanbanBoard / AIBoard / KanbanColumn"
+
+  mission-status-chip:
+    status: partial
+    ref: "@houston-ai/board + @houston-ai/review (per-package)"
+    notes: >-
+      Status rendering is duplicated across kanban-card, conversation-list and
+      review-item with divergent RunStatus enums. No shared status chip yet.
+
+  routine-row:
+    status: implemented
+    ref: "@houston-ai/routines RoutineRow / RoutinesGrid"
+
+  skill-row:
+    status: implemented
+    ref: "@houston-ai/skills SkillRow / SkillsGrid"
+
+  empty-state:
+    status: implemented
+    ref: "@houston-ai/core Empty"
+
+  toast:
+    status: implemented
+    ref: "@houston-ai/core sonner / toast-container"

@@ -1,0 +1,8 @@
+surface: web
+enforced: true
+inventoryVersion: 1
+components:
+  comp-a:
+    status: done
+  comp-b:
+    status: implemented

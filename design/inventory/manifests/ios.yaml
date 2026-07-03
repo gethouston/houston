@@ -1,0 +1,57 @@
+# ios surface parity manifest.
+#
+# The native SwiftUI iOS app (not started). This surface is UNENFORCED: check-parity reports its lag in
+# every CI run (visible progress) but never fails the build on it. When the
+# app begins implementing components, flip statuses to partial/implemented and
+# raise inventoryVersion as it fully catches up; flip enforced: true only when
+# the app SHIPS at that inventory version.
+
+surface: ios
+enforced: false
+inventoryVersion: 0
+
+components:
+  agent-avatar:
+    status: not-started
+  agent-list-item:
+    status: not-started
+  conversation-feed:
+    status: not-started
+  assistant-message:
+    status: not-started
+  user-message:
+    status: not-started
+  thinking-indicator:
+    status: not-started
+  tool-call-chip:
+    status: not-started
+  provider-error-card:
+    status: not-started
+  system-message:
+    status: not-started
+  skill-invocation-message:
+    status: not-started
+  composer:
+    status: not-started
+  turn-status:
+    status: not-started
+  progress-panel:
+    status: not-started
+  approval-surface:
+    status: not-started
+  deliverable-card:
+    status: not-started
+  mission-card:
+    status: not-started
+  mission-board:
+    status: not-started
+  mission-status-chip:
+    status: not-started
+  routine-row:
+    status: not-started
+  skill-row:
+    status: not-started
+  empty-state:
+    status: not-started
+  toast:
+    status: not-started

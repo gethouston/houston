@@ -13,6 +13,7 @@
     "check": "biome check --error-on-warnings",
     "check:fix": "biome check --write --error-on-warnings",
     "check:boundaries": "node scripts/check-boundaries.mjs",
+    "check:parity": "node scripts/check-parity.mjs",
     "prepare": "husky || true",
     "test": "pnpm -r --if-present --no-bail test",
     "dev": "mprocs",

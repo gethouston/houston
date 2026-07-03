@@ -49,6 +49,9 @@ jobs:
       - name: Boundary check
         run: pnpm check:boundaries
 
+      - name: Parity check (cross-surface component inventory)
+        run: pnpm check:parity
+
       - name: Typecheck (pnpm workspace)
         run: pnpm -r typecheck
 
@@ -60,6 +63,7 @@ jobs:
           pnpm --filter @houston/host-cloud test
           pnpm --filter @houston/runtime test
           pnpm --filter @houston/code-sandbox test
+          pnpm exec vitest run scripts/check-parity.test.mjs
 
   web:
     name: Web (typecheck + unit + UI tests)

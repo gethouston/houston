@@ -1,0 +1,8 @@
+surface: ios
+enforced: false
+inventoryVersion: 0
+components:
+  comp-a:
+    status: not-started
+  comp-b:
+    status: not-started

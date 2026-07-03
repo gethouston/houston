@@ -18,6 +18,26 @@ Closes #
 
 -
 
+## Surface impact
+
+<!-- A UI/UX change must not silently skip a surface. Tick what this PR touches.
+     Procedure: knowledge-base/client-architecture.md -->
+
+Change type:
+
+- [ ] Behavior (shared SDK view-model — `packages/sdk`)
+- [ ] Look (design tokens — `packages/design-tokens`)
+- [ ] Structure (a component added/changed → bump `design/inventory/inventory.yaml` + CHANGELOG + update enforced manifests)
+- [ ] n-a (no user-facing surface change)
+
+Surfaces updated:
+
+- [ ] Web / desktop
+- [ ] iOS
+- [ ] Android
+
+<!-- Structural change? `pnpm check:parity` must pass. See design/inventory/README.md. -->
+
 ## Checklist
 
 - [ ] I read the diff myself before opening this PR (AI-assisted is fine, AI-unreviewed is not)
