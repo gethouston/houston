@@ -1,0 +1,71 @@
+{
+  "title": "Integraciones",
+  "description": "Conecta tus aplicaciones para que tu agente pueda usarlas.",
+  "loading": {
+    "title": "Cargando tus integraciones",
+    "body": "Verificando tu proveedor de integraciones…"
+  },
+  "unavailable": "Las integraciones no están disponibles en esta configuración.",
+  "signin": {
+    "title": "Inicia sesión para conectar aplicaciones",
+    "body": "Inicia sesión en Houston para conectar tus aplicaciones. Tus cuentas siguen siendo tuyas; el agente actúa en tu nombre.",
+    "button": "Iniciar sesión en Houston",
+    "failed": "No se pudo iniciar sesión. Inténtalo de nuevo."
+  },
+  "reconnectNotice": "Mejoramos la forma en que se conectan las aplicaciones para hacerla más segura. Reconecta tus aplicaciones una sola vez; Houston ya no guarda ninguna clave de larga duración.",
+  "reconnectDismiss": "Entendido",
+  "connected": {
+    "title": "Conectadas",
+    "count_one": "{{count}} app",
+    "count_other": "{{count}} apps",
+    "dotAria": "Conectado",
+    "menu": {
+      "aria": "Opciones de {{name}}",
+      "reconnect": "Reconectar",
+      "disconnect": "Desconectar"
+    },
+    "disconnect": {
+      "confirmTitle": "¿Desconectar {{name}}?",
+      "confirmBody": "Tu agente perderá el acceso a {{name}}. Puedes reconectarlo cuando quieras.",
+      "confirmAction": "Desconectar",
+      "cancel": "Cancelar"
+    },
+    "statusPending": "Termina de conectar en tu navegador...",
+    "statusError": "Necesita reconexión"
+  },
+  "browse": {
+    "title": "Explorar todas las apps",
+    "count_one": "{{count}} app",
+    "count_other": "{{count}} apps",
+    "searchPlaceholder": "Buscar apps...",
+    "allCategories": "Todas las categorías",
+    "searchCategories": "Buscar categorías...",
+    "noCategoryResults": "No hay categorías que coincidan.",
+    "noResults": "No hay apps que coincidan.",
+    "loadMoreWithRemaining": "Cargar más ({{count}} restantes)",
+    "connectTitle": "Conectar {{name}}"
+  },
+  "connectResult": {
+    "timeout": "La conexión no se completó. Inténtalo de nuevo.",
+    "failed": "No se pudo conectar la aplicación. Inténtalo de nuevo."
+  },
+  "grants": {
+    "granted": {
+      "title": "Este agente puede usar",
+      "subtitle": "Aplicaciones que este agente puede usar. Desactiva una para quitarla aquí.",
+      "empty": "Este agente aún no puede usar ninguna aplicación. Permite una abajo o conecta una nueva.",
+      "revoke": "Dejar de permitir que este agente use {{name}}"
+    },
+    "available": {
+      "title": "Tus otras aplicaciones conectadas",
+      "subtitle": "Aplicaciones conectadas que este agente aún no puede usar. Activa una para permitirla aquí.",
+      "allow": "Permitir que este agente use {{name}}"
+    },
+    "disconnect": {
+      "menu": "Desconectar en todas partes",
+      "confirmTitle": "¿Desconectar {{name}} en todas partes?",
+      "confirmBody": "Esto quita {{name}} de todos tus agentes, no solo de este. Puedes volver a conectarla cuando quieras.",
+      "confirmAction": "Desconectar en todas partes"
+    }
+  }
+}

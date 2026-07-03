@@ -144,7 +144,8 @@ export function ProviderPicker({ onSelect }: Props) {
 
   // Sign-in lifecycle events. `ProviderLoginUrl` surfaces the OAuth URL
   // for remote/headless engines (the CLI can't open the local browser),
-  // shown via <ProviderLoginDialog>. `ProviderLoginComplete` is the
+  // shown via <ProviderLoginDialog> — remote clients only (see the
+  // osIsTauri guard below). `ProviderLoginComplete` is the
   // authoritative end of an attempt: the status poll only ever flips a
   // card to Connected on SUCCESS, so without reacting to a failed or
   // cancelled completion the card would spin forever (the #237 bug this

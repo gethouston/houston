@@ -1,14 +1,12 @@
 {
   "sidebar": {
     "missionControl": "Mission Control",
+    "integrations": "Integrations",
     "settings": "Settings",
     "yourAgents": "Your Agents",
     "selectWorkspace": "Select workspace",
     "addAgent": "New agent",
     "agentMenu": "Agent menu",
-    "collapse": "Collapse sidebar",
-    "expand": "Expand sidebar",
-    "createWorkspace": "Create workspace",
     "color": "Color",
     "changeColor": "Change color",
     "colorLabels": {
@@ -23,7 +21,10 @@
     "needsYouCount_one": "{{count}} issue needs you",
     "needsYouCount_other": "{{count}} issues need you",
     "runningCount_one": "{{count}} issue running",
-    "runningCount_other": "{{count}} issues running"
+    "runningCount_other": "{{count}} issues running",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "createWorkspace": "Create workspace"
   },
   "tabActions": {
     "newMission": "New mission",
@@ -45,6 +46,12 @@
   },
   "workspaceDialog": {
     "title": "New workspace",
+    "tabNew": "Create new",
+    "tabGithub": "Import from GitHub",
+    "githubDescription": "Import a workspace template from GitHub. This creates a workspace with all its agents ready to use.",
+    "githubPlaceholder": "owner/repo",
+    "githubImport": "Import",
+    "githubImporting": "Importing workspace and agents...",
     "createFailed": "We couldn't create the workspace. Please try again."
   },
   "uiTour": {
@@ -86,6 +93,10 @@
         "title": "Mission Control",
         "body": "When you add more agents, this becomes the single board across all of them. One place to see everything."
       },
+      "integrations": {
+        "title": "Integrations",
+        "body": "Tools your agents can use, like Gmail and Calendar. Connections live here, shared across all your agents."
+      },
       "appTour": {
         "title": "Replay the tour",
         "body": "Forget how something works? Click this any time to run the tour again."
@@ -116,11 +127,11 @@
     "heading": "Houston, we have a problem",
     "body": "Your {{provider}} session expired. Sign in again to keep your agents running.",
     "waiting": "Waiting for browser sign-in...",
-    "signInWith": "Sign in"
+    "signInWith": "Sign in with {{provider}}"
   },
   "providerReconnect": {
     "title": "Session expired",
-    "body": "Your {{provider}} session expired. Sign in again to continue.",
+    "body": "Your {{provider}} connection ended, this happens from time to time. Sign back in and you're good to go.",
     "reconnect": "Reconnect to {{provider}}",
     "waiting": "Waiting for browser sign-in...",
     "tryAgain": "Try again",
@@ -163,7 +174,7 @@
     "dismissAction": "Dismiss update for now"
   },
   "store": {
-    "searchPlaceholder": "Search agents...",
+    "searchPlaceholder": "Search the store...",
     "noResults": "No agents match your search"
   },
   "naming": {
@@ -240,6 +251,16 @@
     "instructionsLabel": "Agent instructions",
     "instructionsHelper": "Review and edit the instructions below"
   },
+  "aiIntegrations": {
+    "stepTitle": "Connect your apps",
+    "stepDescription": "These apps work well with your agent. Connect them now or do it later from the Integrations tab.",
+    "notInstalledNote": "You can connect integrations from the Integrations tab after creating your agent.",
+    "needsAuthNote": "Sign in to Composio to connect apps now, or do it after creating your agent.",
+    "signIn": "Sign in",
+    "connected": "Connected",
+    "connect": "Connect",
+    "continueButton": "Continue"
+  },
   "aiRoutine": {
     "stepTitle": "Set up automatic runs",
     "stepDescription": "Based on what you described, this agent can run on a schedule by itself. Edit anything before you turn it on.",
@@ -268,12 +289,18 @@
       "retry": "Try again",
       "switchModel": "Switch model"
     },
+    "usageLimitPaused": {
+      "title": "You've reached your plan's limit",
+      "body": "You've used up your plan for now. Wait for it to reset, then keep going.",
+      "bodyWithReset": "You've used up your plan for now. It resets at {{time}}, then you can keep going."
+    },
     "quotaExhausted": {
       "title": "Out of capacity",
       "body": "Your {{provider}} plan reached its quota. Upgrade or switch to a different provider to keep going.",
+      "bodyWithReset": "Your {{provider}} plan reached its quota. It resets {{time}}, or upgrade to keep going.",
+      "useApiKey": "Use API key instead",
       "upgrade": "Upgrade plan",
-      "switchProvider": "Switch provider",
-      "useApiKey": "Use API key instead"
+      "switchProvider": "Switch provider"
     },
     "modelUnavailable": {
       "title": "Model not available",
@@ -343,6 +370,7 @@
     "actions": {
       "newMission": "Start new mission",
       "missionControl": "Go to Mission Control",
+      "integrations": "Open Integrations",
       "settings": "Open Settings",
       "shortcuts": "Show keyboard shortcuts"
     }

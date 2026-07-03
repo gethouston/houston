@@ -178,7 +178,7 @@ export function nextFire(
 /**
  * Format a future `Date` as a relative ("in 2h 14m") + absolute ("today at
  * 9:00 AM") pair, both interpreted in the routine's `timeZone`. The connector
- * words come from `labels`; weekday/time formatting comes from `locale`.
+ * words come from `labels`; weekday/month/time formatting comes from `locale`.
  */
 export function describeNextFire(
   next: Date,

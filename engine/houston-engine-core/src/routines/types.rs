@@ -60,16 +60,26 @@ pub struct Routine {
     /// behavior (#381) until the user opts into a new chat per run (#423).
     #[serde(default)]
     pub chat_mode: RoutineChatMode,
-    /// IANA timezone override (e.g. `"America/Bogota"`). When `None`, the
-    /// scheduler falls back to the user's `timezone` preference, then UTC.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timezone: Option<String>,
     /// Composio toolkit slugs this routine uses (e.g. `["gmail", "slack"]`).
     /// Mirrors the same field on Skills. Surfaced by the share/import flow so
     /// the recipient can see which integrations a routine needs before they
     /// install it. Defaults to empty for existing routines on disk.
     #[serde(default)]
     pub integrations: Vec<String>,
+    /// Provider id override for this routine's runs (e.g. `"anthropic"`,
+    /// `"openai"`). When `None`, runs fall back to the agent's configured
+    /// provider — the behavior every routine had before this option.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    /// Model override (e.g. `"claude-opus-4-8"`, `"gpt-5.5"`). Provider-specific.
+    /// When `None`, runs fall back to the agent's configured model.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    /// Reasoning-effort override (e.g. `"high"`, `"max"`). Validated against the
+    /// resolved provider's accepted levels at dispatch — an unsupported value is
+    /// dropped. When `None`, runs fall back to the agent's configured effort.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effort: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -88,9 +98,13 @@ pub struct NewRoutine {
     #[serde(default)]
     pub chat_mode: RoutineChatMode,
     #[serde(default)]
-    pub timezone: Option<String>,
-    #[serde(default)]
     pub integrations: Vec<String>,
+    #[serde(default)]
+    pub provider: Option<String>,
+    #[serde(default)]
+    pub model: Option<String>,
+    #[serde(default)]
+    pub effort: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -102,11 +116,20 @@ pub struct RoutineUpdate {
     pub enabled: Option<bool>,
     pub suppress_when_silent: Option<bool>,
     pub chat_mode: Option<RoutineChatMode>,
-    /// `Some(Some("..."))` sets a tz override, `Some(None)` clears it.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timezone: Option<Option<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub integrations: Option<Vec<String>>,
+    /// Provider id to pin for this routine (e.g. `"openai"`); `None` leaves it
+    /// unchanged. The picker always sends a concrete provider + model together,
+    /// so there is no "clear back to inherit" wire op — legacy routines with no
+    /// override already inherit the agent's provider at dispatch time.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    /// Model to pin for this routine; `None` leaves it unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    /// Reasoning effort to pin (e.g. `"high"`); `None` leaves it unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effort: Option<String>,
 }
 
 // -- RoutineRun --

@@ -107,6 +107,13 @@ export function getChatDisplayItems(
   return items;
 }
 
+/**
+ * HOU-471: the standalone "Mission in progress..." indicator is the only
+ * in-flight signal during the gap before the agent's first output. Once an
+ * active process block is on screen it ALREADY surfaces "Mission in progress:
+ * <action>", so the standalone line would duplicate it. Show the indicator
+ * only while a turn is `submitted` AND no active process block is trailing.
+ */
 export function shouldShowThinkingIndicator(
   items: ChatDisplayItem[],
   status: ChatStatus,

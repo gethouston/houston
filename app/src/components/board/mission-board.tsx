@@ -150,6 +150,8 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           onDraftChange={onDraftChange}
           onNotice={handleNotice}
           composerLabels={composerLabels}
+          currentUserId={panel.currentUserId}
+          authorLabels={panel.authorLabels}
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           onOpenLink={handleOpenLink}

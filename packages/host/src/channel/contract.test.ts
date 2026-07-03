@@ -241,7 +241,12 @@ function makeProxyFixture(): ChannelFixture {
   const credentials = new MemoryCredentialStore();
   const launcher = new FakeLauncher({ baseUrl: proxyRuntimeUrl, token: "sbx" });
   const proxy: RuntimeProxy = { forward };
-  const channel = new ProxyChannel({ launcher, proxy, credentials });
+  const channel = new ProxyChannel({
+    launcher,
+    proxy,
+    credentials,
+    forwardActingHeader: false,
+  });
   return {
     channel,
     credentials,

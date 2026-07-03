@@ -53,7 +53,7 @@ test("decideHandoffMode: respects the exact fit boundary", () => {
 });
 
 test("decideHandoffMode: uses the larger of reported vs estimated size", () => {
-  // Reported usage is tiny but the text estimate proves it's big -> summarize.
+  // Reported usage is tiny but the text estimate proves it's big → summarize.
   assert.equal(
     decideHandoffMode({
       currentContextTokens: 1_000,
@@ -81,7 +81,7 @@ test("estimateConversationTokens: ~4 chars/token over user + assistant text only
   const items = [
     { feed_type: "user_message", data: "a".repeat(400) },
     { feed_type: "assistant_text", data: "b".repeat(400) },
-    // tool noise is excluded (the runtime doesn't carry it as visible text).
+    // tool noise is excluded (the engine drops it from the replay too).
     { feed_type: "tool_call", data: { name: "x", input: {} } },
     { feed_type: "final_result", data: { result: "ok" } },
   ];

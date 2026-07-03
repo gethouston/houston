@@ -1,6 +1,6 @@
 [package]
 name = "houston-engine-core"
-version = "0.4.19"
+version = "0.4.26"
 edition = "2021"
 description = "Runtime container for Houston Engine — owns DB, event sinks, paths, and domain logic shared by HTTP routes and CLI tools"
 license = "MIT"
@@ -45,6 +45,10 @@ base64 = "0.22"
 # subprocess that popped its own progress dialog and blocked engine
 # boot.
 sevenz-rust2 = "0.18"
+# Directory junctions for the `.claude/skills/<name>` discovery mirror when a
+# real symlink is denied (stock Windows without Developer Mode). Junctions need
+# no privilege and stay live, unlike a copied snapshot (see src/skills.rs).
+junction = "1"
 
 [dev-dependencies]
 tempfile = "3"

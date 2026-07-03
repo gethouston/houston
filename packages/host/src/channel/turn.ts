@@ -22,7 +22,7 @@ export class TurnChannel implements RuntimeChannel {
     ctx: ChannelCtx,
     method: string,
     rest: string,
-    _url: URL,
+    url: URL,
     req: IncomingMessage,
     res: ServerResponse,
   ): Promise<void> {
@@ -32,6 +32,7 @@ export class TurnChannel implements RuntimeChannel {
       ctx.agent,
       method,
       rest,
+      url,
       req,
       res,
     );
@@ -42,6 +43,11 @@ export class TurnChannel implements RuntimeChannel {
     conversationId: string,
     text: string,
     pin?: TurnPin,
+    // The per-turn cloud runtime hydrates a fresh process per POST /turn and has
+    // no standing sandbox proxy to relay an acting-user header to; the acting-as
+    // identity flows through the standing-pod path (ProxyChannel). Accepted to
+    // keep the port aligned, ignored here.
+    _actingUser?: string,
   ): Promise<void> {
     const outcome = await dispatchTurn(
       this.deps,

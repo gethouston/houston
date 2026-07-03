@@ -1,0 +1,71 @@
+{
+  "title": "Integrations",
+  "description": "Connect your apps so your agent can act on them.",
+  "loading": {
+    "title": "Loading your integrations",
+    "body": "Checking your integrations provider…"
+  },
+  "unavailable": "Integrations are not available in this setup.",
+  "signin": {
+    "title": "Sign in to connect apps",
+    "body": "Sign in to Houston to connect your apps. Your accounts stay yours; the agent acts on your behalf.",
+    "button": "Sign in to Houston",
+    "failed": "Sign-in couldn't start. Please try again."
+  },
+  "reconnectNotice": "We upgraded how apps connect to make it more secure. Please reconnect your apps once; Houston no longer keeps any long-lived key for them.",
+  "reconnectDismiss": "Got it",
+  "connected": {
+    "title": "Connected",
+    "count_one": "{{count}} app",
+    "count_other": "{{count}} apps",
+    "dotAria": "Connected",
+    "menu": {
+      "aria": "Options for {{name}}",
+      "reconnect": "Reconnect",
+      "disconnect": "Disconnect"
+    },
+    "disconnect": {
+      "confirmTitle": "Disconnect {{name}}?",
+      "confirmBody": "Your agent will lose access to {{name}}. You can reconnect it anytime.",
+      "confirmAction": "Disconnect",
+      "cancel": "Cancel"
+    },
+    "statusPending": "Finish connecting in your browser...",
+    "statusError": "Needs reconnecting"
+  },
+  "browse": {
+    "title": "Browse all apps",
+    "count_one": "{{count}} app",
+    "count_other": "{{count}} apps",
+    "searchPlaceholder": "Search apps...",
+    "allCategories": "All categories",
+    "searchCategories": "Search categories...",
+    "noCategoryResults": "No matching categories.",
+    "noResults": "No matching apps found.",
+    "loadMoreWithRemaining": "Load more ({{count}} remaining)",
+    "connectTitle": "Connect {{name}}"
+  },
+  "connectResult": {
+    "timeout": "The connection didn't finish. Please try again.",
+    "failed": "The app couldn't be connected. Please try again."
+  },
+  "grants": {
+    "granted": {
+      "title": "This agent can use",
+      "subtitle": "Apps this agent is allowed to act on. Turn one off to remove it here.",
+      "empty": "This agent can't use any apps yet. Allow one below, or connect a new app.",
+      "revoke": "Stop letting this agent use {{name}}"
+    },
+    "available": {
+      "title": "Your other connected apps",
+      "subtitle": "Connected apps this agent can't use yet. Turn one on to allow it here.",
+      "allow": "Allow this agent to use {{name}}"
+    },
+    "disconnect": {
+      "menu": "Disconnect everywhere",
+      "confirmTitle": "Disconnect {{name}} everywhere?",
+      "confirmBody": "This removes {{name}} for all of your agents, not just this one. You can reconnect it anytime.",
+      "confirmAction": "Disconnect everywhere"
+    }
+  }
+}

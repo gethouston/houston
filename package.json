@@ -1,6 +1,6 @@
 {
   "name": "houston-ai",
-  "version": "0.4.19",
+  "version": "0.4.26",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,12 +13,18 @@
     "check": "biome check --error-on-warnings",
     "check:fix": "biome check --write --error-on-warnings",
     "check:boundaries": "node scripts/check-boundaries.mjs",
+    "check:parity": "node scripts/check-parity.mjs",
     "prepare": "husky || true",
     "test": "pnpm -r --if-present --no-bail test && pnpm test:cloud-k8s",
-    "test:cloud-k8s": "vitest run cloud/k8s/scripts/*.test.ts --testTimeout=30000"
+    "test:cloud-k8s": "vitest run cloud/k8s/scripts/*.test.ts --testTimeout=30000",
+    "dev": "mprocs",
+    "dev:host": "HOUSTON_HOST_TOKEN=devtoken HOUSTON_HOST_PORT=4318 pnpm --filter @houston/host dev",
+    "dev:app": "cd app && VITE_NEW_ENGINE_URL=http://127.0.0.1:4318 VITE_NEW_ENGINE_TOKEN=devtoken VITE_HOSTED_ENGINE_URL= pnpm tauri dev",
+    "dev:gateway": "CP_DEV=1 CP_PORT=8090 pnpm --filter @houston/host-cloud dev"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
+    "mprocs": "^0.9.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",

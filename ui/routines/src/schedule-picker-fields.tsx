@@ -1,14 +1,14 @@
 /**
  * Picker fields used by ScheduleBuilder — day-of-month and the "On these days"
- * weekday multi-select. The clock-button time picker lives in time-picker.tsx
- * and the "Repeat every N [unit]" control in schedule-interval-picker.tsx; both
- * reuse `labelClass` exported here.
+ * weekday multi-select. The friendly clock-button time picker lives in
+ * time-picker.tsx and the "Repeat every N [unit]" control in
+ * schedule-interval-picker.tsx; both reuse `labelClass` exported here.
  *
  * All visible text arrives via props so the package stays i18n-agnostic;
  * weekday names come from `Intl` in the given `locale`.
  */
 import { cn } from "@houston-ai/core";
-import { narrowWeekdayNames, shortWeekdayNames } from "./schedule-format";
+import { longWeekdayNames, narrowWeekdayNames } from "./schedule-format.ts";
 
 const inputClass = cn(
   "px-3 py-2 rounded-lg border border-border/20 bg-background",
@@ -55,10 +55,10 @@ const WEEKDAY_SHORTCUTS: {
 ];
 
 /**
- * "On these days" — multi-select weekday toggle (S M T W T F S) plus quick
- * shortcuts (Every day / Weekdays / Weekends), used by the Weekly preset to
- * pick one or more days. Weekday glyphs and aria-labels come from `Intl` in the
- * given `locale`.
+ * "On these days" — multi-select weekday toggle (single-letter glyphs,
+ * Sunday-first) plus quick shortcuts (Every day / Weekdays / Weekends), used by
+ * the Weekly preset to pick one or more days. Display glyphs (narrow) and the
+ * full-name aria-labels both come from `Intl` in the given `locale`.
  */
 export function WeekdaysPicker({
   label,
@@ -74,7 +74,7 @@ export function WeekdaysPicker({
   onChange: (days: number[]) => void;
 }) {
   const narrow = narrowWeekdayNames(locale);
-  const short = shortWeekdayNames(locale);
+  const full = longWeekdayNames(locale);
   const toggle = (d: number) =>
     onChange(
       value.includes(d)
@@ -94,7 +94,7 @@ export function WeekdaysPicker({
             <button
               key={weekdayKey}
               type="button"
-              aria-label={short[d]}
+              aria-label={full[d]}
               aria-pressed={on}
               onClick={() => toggle(d)}
               className={cn(

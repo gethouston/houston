@@ -18,6 +18,7 @@ import {
   type SidebarSectionItem,
   SidebarSectionNav,
 } from "../shared/sidebar-section-nav";
+import { AgentAccessSection } from "./agent-access-section";
 import { AgentSettingsContent } from "./agent-settings-content";
 import { InstructionsContent, type SubTab } from "./job-description-parts";
 import { LearningsContent } from "./learnings-content";
@@ -98,6 +99,7 @@ export default function JobDescriptionTab({ agent }: TabProps) {
             <SkillsContent
               skills={surface.skills}
               loading={surface.skillsLoading}
+              loadingSkillName={surface.loadingSkillName}
               onSkillClick={surface.selectSkill}
               onCreateFromScratch={surface.handleCreateFromScratch}
               installedSkillNames={surface.installedSkillNames}
@@ -115,26 +117,31 @@ export default function JobDescriptionTab({ agent }: TabProps) {
         )}
 
         {activeTab === "general" && (
-          <AgentSettingsContent
-            name={agent.name}
-            color={agent.color}
-            onRename={(newName) =>
-              currentWorkspace
-                ? renameAgent(currentWorkspace.id, agent.id, newName)
-                : Promise.resolve()
-            }
-            onChangeColor={(color) =>
-              currentWorkspace
-                ? updateAgentColor(currentWorkspace.id, agent.id, color)
-                : Promise.resolve()
-            }
-            onShare={() => setShareAgentId(agent.id)}
-            onDelete={() =>
-              currentWorkspace
-                ? deleteAgent(currentWorkspace.id, agent.id)
-                : Promise.resolve()
-            }
-          />
+          <>
+            <div className="mx-auto max-w-xl px-8 pt-10 empty:hidden">
+              <AgentAccessSection agent={agent} />
+            </div>
+            <AgentSettingsContent
+              name={agent.name}
+              color={agent.color}
+              onRename={(newName) =>
+                currentWorkspace
+                  ? renameAgent(currentWorkspace.id, agent.id, newName)
+                  : Promise.resolve()
+              }
+              onChangeColor={(color) =>
+                currentWorkspace
+                  ? updateAgentColor(currentWorkspace.id, agent.id, color)
+                  : Promise.resolve()
+              }
+              onShare={() => setShareAgentId(agent.id)}
+              onDelete={() =>
+                currentWorkspace
+                  ? deleteAgent(currentWorkspace.id, agent.id)
+                  : Promise.resolve()
+              }
+            />
+          </>
         )}
       </div>
     </div>

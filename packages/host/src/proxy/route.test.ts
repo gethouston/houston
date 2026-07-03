@@ -160,6 +160,37 @@ test("forward pipes a text/event-stream response 1:1, including the heartbeat co
   expect(seenAuth).toBe("Bearer sbx-stream");
 });
 
+test("forward relays the Last-Event-ID resume cursor to the runtime's events stream", async () => {
+  let seenLastEventId: string | string[] | undefined;
+  const { server: upstream, baseUrl } = await listen((req, res) => {
+    seenLastEventId = req.headers["last-event-id"];
+    res.writeHead(200, { "Content-Type": "text/event-stream" });
+    res.end(": connected\n\n");
+  });
+
+  const endpoint: RuntimeEndpoint = { baseUrl, token: "t" };
+  let done: Promise<void> | undefined;
+  const { server: proxy, baseUrl: proxyUrl } = await listen((_req, res) => {
+    done = forward(
+      endpoint,
+      {
+        method: "GET",
+        path: "/conversations/c1/events",
+        search: "",
+        lastEventId: "42",
+      },
+      res,
+    );
+  });
+
+  await (await fetch(`${proxyUrl}/`)).text();
+  await done;
+  await close(proxy);
+  await close(upstream);
+
+  expect(seenLastEventId).toBe("42");
+});
+
 test("forward aborts the upstream stream when the client disconnects (clean resolve, no idle hang)", async () => {
   let upstreamClosed = false;
   const { server: upstream, baseUrl } = await listen((req, res) => {

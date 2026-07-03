@@ -5,7 +5,12 @@ import { createElement, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../../hooks/queries";
 import { missionCardTags } from "../../lib/mission-card";
-import { tauriActivity, tauriAttachments, tauriChat } from "../../lib/tauri";
+import {
+  type HistoryLoadOptions,
+  tauriActivity,
+  tauriAttachments,
+  tauriChat,
+} from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useFeedStore } from "../../stores/feeds";
@@ -76,6 +81,8 @@ export function useMissionControlArchived(agents: Agent[]) {
         return {
           id: c.id,
           title: c.title,
+          // Decode a Skill / attachment first-message marker to the user's
+          // words; never echo the raw `<!--houston:...-->` on the card (HOU-425).
           description: messagePreviewText(c.description),
           group: c.agent_name,
           icon: createElement(AgentCardAvatar, {
@@ -94,6 +101,7 @@ export function useMissionControlArchived(agents: Agent[]) {
             sessionKey: c.session_key,
             ...(c.agent ? { agent: c.agent } : {}),
             ...(c.routine_id ? { routineId: c.routine_id } : {}),
+            ...(c.worktree_path ? { worktreePath: c.worktree_path } : {}),
           },
         };
       });
@@ -114,10 +122,17 @@ export function useMissionControlArchived(agents: Agent[]) {
   );
 
   const loadHistory = useCallback(
-    async (sessionKey: string): Promise<FeedItem[]> => {
+    async (
+      sessionKey: string,
+      opts?: HistoryLoadOptions,
+    ): Promise<FeedItem[]> => {
       const agentPath = sessionMapRef.current[sessionKey]?.agentPath;
       if (!agentPath) return [];
-      return (await tauriChat.loadHistory(agentPath, sessionKey)) as FeedItem[];
+      return (await tauriChat.loadHistory(
+        agentPath,
+        sessionKey,
+        opts,
+      )) as FeedItem[];
     },
     [],
   );

@@ -6,26 +6,25 @@
  * `GET /v1/events`. Both are `fetch` + ReadableStream on the client (see
  * packages/runtime-client/src/client.ts `streamEvents` and
  * packages/web/src/engine-adapter/control-plane.ts `subscribeEvents`), framing
- * on `\n\n` and reading only `data:` lines. We mirror that wire exactly.
+ * on `\n\n` and reading only `data:` lines. Conversation frames are encoded by
+ * the SAME `formatSseFrame` the real servers use (id: <seq> resume line +
+ * data: envelope) so the wire can't drift from the contract.
  */
+import { formatSseFrame, type WireFrame } from "@houston/runtime-client";
+
 const encoder = new TextEncoder();
-
-/** A `data: <json>` frame, the unit both client readers parse. */
-export function dataFrame(payload: unknown): Uint8Array {
-  return encoder.encode(`data: ${JSON.stringify(payload)}\n\n`);
-}
-
-/** A `: <text>` comment frame — connection notices + heartbeats. Clients skip
- *  any frame without a `data:` line, so these keep the stream warm harmlessly. */
-export function commentFrame(text: string): Uint8Array {
-  return encoder.encode(`: ${text}\n\n`);
-}
 
 /** A live SSE connection we can push frames onto and close. */
 export interface SseSink {
-  push(payload: unknown): void;
+  /** One conversation wire frame, encoded via the shared `formatSseFrame`. */
+  frame(frame: WireFrame): void;
+  /** A non-conversation `data:` payload (the /v1/events domain feed). */
+  data(payload: unknown): void;
+  /** A `: <text>` comment frame — connection notices + heartbeats. */
   comment(text: string): void;
   close(): void;
+  /** Run `fn` when the connection ends (client abort, drop, or close()). */
+  onClose(fn: () => void): void;
   readonly closed: boolean;
 }
 
@@ -40,13 +39,23 @@ export function sseResponse(
 ): Response {
   let closed = false;
   let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+  const closeHooks: Array<() => void> = [];
 
+  const write = (text: string) => {
+    if (!closed && controller) controller.enqueue(encoder.encode(text));
+  };
+  const runCloseHooks = () => {
+    while (closeHooks.length > 0) closeHooks.pop()?.();
+  };
   const sink: SseSink = {
-    push(payload) {
-      if (!closed && controller) controller.enqueue(dataFrame(payload));
+    frame(frame) {
+      write(formatSseFrame(frame));
+    },
+    data(payload) {
+      write(`data: ${JSON.stringify(payload)}\n\n`);
     },
     comment(text) {
-      if (!closed && controller) controller.enqueue(commentFrame(text));
+      write(`: ${text}\n\n`);
     },
     close() {
       if (closed) return;
@@ -56,6 +65,11 @@ export function sseResponse(
       } catch {
         /* already closed */
       }
+      runCloseHooks();
+    },
+    onClose(fn) {
+      if (closed) fn();
+      else closeHooks.push(fn);
     },
     get closed() {
       return closed;
@@ -72,6 +86,7 @@ export function sseResponse(
     },
     cancel() {
       closed = true;
+      runCloseHooks();
     },
   });
 

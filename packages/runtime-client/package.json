@@ -18,11 +18,13 @@
   "scripts": {
     "build": "tsgo -p tsconfig.json",
     "dev": "tsgo -p tsconfig.json --watch",
+    "test": "vitest run --testTimeout=30000",
     "typecheck": "tsgo -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vitest": "^3.2.4"
   },
   "dependencies": {
     "@houston/protocol": "workspace:*"

@@ -2,7 +2,7 @@
   "$schema": "./cli-deps.schema.json",
   "$comment": "Pinned versions for every CLI Houston ships or runtime-installs. Bundled (codex, composio) ride inside the .app / .msi under resources/bin. claude-code cannot be bundled (proprietary license) so the runtime installer downloads it on first launch via houston-claude-installer using the URLs + sha256 below. Bumping a version: run `./scripts/bump-cli.sh <name> <version>`, then `./scripts/fetch-cli-deps.sh both` to refresh the staged copies + print the new checksums; pin the printed sha256 back into this file. For Windows, composio is built from source (see `build` block) because upstream does not yet ship a Windows artifact.",
   "claude-code": {
-    "version": "2.1.158",
+    "version": "2.1.197",
     "bundled": false,
     "binary_name": "claude",
     "license": "PROPRIETARY",
@@ -16,14 +16,14 @@
       "manifest": "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/{version}/manifest.json"
     },
     "checksums": {
-      "darwin-arm64": "536a0517fa64d48ddcbc8eb511a3d08027d47e06d148872332a8041d72c22768",
-      "darwin-x64": "b7b33293702fb8e0a119b795d5af5178bd346fb46d4d7f161336d521f62d1451",
-      "windows-x64": "10fa305545b20baf6e074a086762bd252b89dfe7035848a5d41385503b1a6c74",
-      "windows-arm64": "9e0e303015eb3c9aba782b366b35194073ab8130ac6c091c2c46870798a20bdc"
+      "darwin-arm64": "8cc0c4d1e4eb1dca3b0cc92ab02ee3505de764e023f8c901761c167b72041fb8",
+      "darwin-x64": "5e8a57cc7a92377f0744fa4c79191cf93d4b26c79cb919b07a407511fed1be26",
+      "windows-x64": "038bd9fe90c60304601e19751269a50d62925c541dd6a2b3da5274549e9416ee",
+      "windows-arm64": "8d2baeaf77b0e79ea33cf5ce78a37e64804c3a26d63d35355a830fda404a4f61"
     }
   },
   "codex": {
-    "version": "0.130.0",
+    "version": "0.137.0",
     "bundled": true,
     "binary_name": "codex",
     "license": "Apache-2.0",
@@ -36,10 +36,10 @@
       "windows-arm64": "https://github.com/openai/codex/releases/download/rust-v{version}/codex-aarch64-pc-windows-msvc.exe.zst"
     },
     "checksums": {
-      "darwin-arm64": "bc50a4b7f9a0c8ca99179189e4659b601107830770e21547dc0c246bce733577",
-      "darwin-x64": "feddb116bd96d7d83f8bb19b34fbabe6843cc64461baf2e49c017e1206ad5e67",
-      "windows-x64": "b941e5d2f3d59ef38d7b31885be1596566640f1c3b6c5d086bfdeade6c8ff9cd",
-      "windows-arm64": "087f12e44d6da8a6378e39e1448470db6b40836c9775f704de95cd9c84bfce0f"
+      "darwin-arm64": "628d2278b1fa2a467452635f2fd5aaeee98de4a94f2af06031e4790da6844046",
+      "darwin-x64": "32206ff8e4edb3422832b24d25a521246e4478b67bab2ec63bee632fdf94b306",
+      "windows-x64": "327e93f43d039734353d2ba7feb8ecffd8a0f90c068c5370ac2ae4f80436aa7a",
+      "windows-arm64": "1a24ce2d34a2b9e62a22c2a20626a78bab83250f148ce87b73c67b1b0923b1e7"
     }
   },
   "composio": {

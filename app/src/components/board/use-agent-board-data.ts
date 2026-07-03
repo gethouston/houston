@@ -10,7 +10,11 @@ import {
 } from "../../hooks/queries";
 import { missionCardTags } from "../../lib/mission-card";
 import { canDropMission, selectActive } from "../../lib/mission-selection";
-import { tauriActivity, tauriChat } from "../../lib/tauri";
+import {
+  type HistoryLoadOptions,
+  tauriActivity,
+  tauriChat,
+} from "../../lib/tauri";
 import type { Agent, AgentDefinition } from "../../lib/types";
 import { useFeedStore } from "../../stores/feeds";
 import { useUIStore } from "../../stores/ui";
@@ -53,6 +57,8 @@ export function useAgentBoardData({
       activeRaw.map((activity) => ({
         id: activity.id,
         title: activity.title,
+        // A Skill / attachment first message persists as a marker; show the
+        // user's words on the card, never the raw `<!--houston:...-->` (HOU-425).
         description: messagePreviewText(activity.description),
         status: activity.status,
         updatedAt: activity.updated_at ?? new Date().toISOString(),
@@ -67,6 +73,9 @@ export function useAgentBoardData({
           ...(activity.session_key ? { sessionKey: activity.session_key } : {}),
           ...(activity.routine_id ? { routineId: activity.routine_id } : {}),
           ...(activity.agent ? { agent: activity.agent } : {}),
+          ...(activity.worktree_path
+            ? { worktreePath: activity.worktree_path }
+            : {}),
         },
       })),
     [agent.name, agentModes, activeRaw, t],
@@ -84,8 +93,8 @@ export function useAgentBoardData({
   );
 
   const loadHistory = useCallback(
-    async (sessionKey: string) => {
-      const history = await tauriChat.loadHistory(path, sessionKey);
+    async (sessionKey: string, opts?: HistoryLoadOptions) => {
+      const history = await tauriChat.loadHistory(path, sessionKey, opts);
       return history as FeedItem[];
     },
     [path],

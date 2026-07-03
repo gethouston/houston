@@ -1,4 +1,4 @@
-import { cn } from "@houston-ai/core";
+import { cn, Spinner } from "@houston-ai/core";
 import type { ReactNode } from "react";
 import { SkillIcon } from "./skill-icon";
 
@@ -55,6 +55,9 @@ export function SkillCard({
           </span>
         )}
       </div>
+      {busy && (
+        <Spinner className="size-4 shrink-0 self-center text-muted-foreground" />
+      )}
     </button>
   );
 }

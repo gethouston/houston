@@ -7,6 +7,9 @@
     "imagePasteUnavailable": "No se pudo leer la imagen pegada. Prueba a arrastrar el archivo.",
     "addFiles": "Agregar archivos"
   },
+  "attribution": {
+    "you": "Tú"
+  },
   "queue": {
     "title": "En cola",
     "remove": "Quitar mensaje en cola",
@@ -39,6 +42,25 @@
       "tooLarge": "Este archivo supera {{maxSize}}."
     }
   },
+  "composio": {
+    "integration": "Integración de app",
+    "alreadyConnected": "Ya está conectado",
+    "connected": "Conectado",
+    "connecting": "Conectando...",
+    "connect": "Conectar",
+    "waitingToConnect": "Esperando a que te conectes",
+    "reconnect": "Reconectar",
+    "verifiedToast": "{{name}} está conectado",
+    "connectedFollowup": "Ya conecté {{name}}. Por favor continúa.",
+    "followupFailed": "No pudimos avisar al asistente que {{name}} está conectado"
+  },
+  "composioSignin": {
+    "appName": "Proveedor de integraciones",
+    "description": "Inicia sesión para que tu asistente use tus apps. Proveedor por defecto: Composio.",
+    "alreadySignedIn": "Ya iniciaste sesión en tu proveedor de integraciones",
+    "signedIn": "Conectado",
+    "signIn": "Iniciar sesión"
+  },
   "modelSelector": {
     "selectModel": "Elige un modelo",
     "model": "Modelo",
@@ -59,6 +81,17 @@
       "high": "Análisis más profundo para tareas difíciles.",
       "xhigh": "Ideal para tareas complejas.",
       "max": "Análisis máximo, sin límite de tokens."
+    },
+    "modelDescriptions": {
+      "gpt-5_5": "El modelo más avanzado de OpenAI.",
+      "gpt-5_4": "Modelo potente para programar a diario.",
+      "gpt-5_4-mini": "Pequeño, rápido y económico para tareas más simples.",
+      "gpt-5_3-codex-spark": "Modelo de programación ultrarrápido.",
+      "claude-sonnet-5": "Sonnet mas reciente. Mejor para codigo con agentes y herramientas.",
+      "claude-sonnet-4-6": "Mejor equilibrio entre velocidad y calidad.",
+      "claude-opus-4-8": "Opus mas reciente. Mejor alineamiento y codigo agente que 4.7.",
+      "claude-fable-5": "El modelo mas capaz. Consume el doble de creditos que Opus 4.8.",
+      "claude-opus-4-7": "Modelo anterior. Autonomia de codigo y razonamiento complejo."
     }
   },
   "reasoning": {
@@ -84,8 +117,8 @@
   "contextCompacted": "Resumimos la conversación anterior para que el chat pueda continuar",
   "providerSwitch": {
     "title": "¿Cambiar a {{provider}}?",
-    "replayBody": "Cambiar lleva toda esta conversación a {{provider}} para que pueda continuar con todo el contexto. Llevarla usa una cantidad considerable de tokens, y más cuanto más larga sea la conversación en este momento. ¿Continuar?",
-    "replayConfirm": "Cambiar de proveedor",
+    "replayBody": "Cambiar lleva toda esta conversación a {{provider}} para que pueda continuar con todo el contexto. Recargar la conversación usa una cantidad considerable de tokens, y más cuanto más larga sea la conversación en este momento. ¿Continuar?",
+    "replayConfirm": "Recargar y cambiar",
     "summaryBody": "{{provider}} tiene una ventana de contexto más pequeña, así que la conversación completa no cabe. La resumiremos para que {{provider}} pueda continuar. Resumir usa tokens y puede perder algún detalle. ¿Continuar?",
     "summaryConfirm": "Resumir y cambiar",
     "cancel": "Cancelar",

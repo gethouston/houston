@@ -24,10 +24,11 @@
  *    to `preferred` so the value is never empty.
  *
  * NOTE: routines/onboarding/summaries are the unattended counterpart and DO
- * auth-switch an explicit provider — that lives in the engine, not here.
+ * auth-switch an explicit provider — that lives in the engine
+ * (`ResolveMode::Unattended`), not here.
  *
  * @param authenticatedProviders provider ids the user is currently logged into,
- *   in registry order (anthropic, openai).
+ *   in registry order (anthropic, openai, gemini).
  * @param hasMessages whether the open conversation already has turns. Once true,
  *   the provider is frozen (no auth-driven switch) so logging out mid-chat shows
  *   the reconnect card rather than silently moving to another connected provider.

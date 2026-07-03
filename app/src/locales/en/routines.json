@@ -41,7 +41,7 @@
     "chatTitle": "Keep results in one chat",
     "chatDescription": "Every run adds to the same chat. Turn this off to start a new chat each time this routine runs.",
     "modelTitle": "Model",
-    "modelDescription": "Pick the model and reasoning effort this routine runs on."
+    "modelDescription": "Pick the model and reasoning effort this routine runs on. Defaults to the agent's settings."
   },
   "row": {
     "untitled": "Untitled",
@@ -80,7 +80,15 @@
     "timeLabel": "Time",
     "dayOfMonthLabel": "Day of month",
     "repeatEvery": "Repeat every",
+    "enterNumber": "Enter a number",
+    "pickDay": "Pick at least one day",
+    "onTheseDays": "On these days",
     "weekdaysLabel": "On these days",
+    "shortcuts": {
+      "everyDay": "Every day",
+      "weekdays": "Weekdays",
+      "weekends": "Weekends"
+    },
     "weekdayShortcuts": {
       "everyDay": "Every day",
       "weekdays": "Weekdays",
@@ -88,8 +96,6 @@
     },
     "decrease": "Decrease",
     "increase": "Increase",
-    "enterNumber": "Enter a number",
-    "pickDay": "Pick at least one day",
     "timePicker": {
       "hour": "Hour",
       "minute": "Minute",
@@ -108,6 +114,7 @@
       "everyDay": "Runs every day at {time}",
       "everyNDays": "Runs every {n} days at {time}",
       "weekly": "Runs every {day} at {time}",
+      "everyWeekOnDays": "Runs every week on {days} at {time}",
       "weeklyOnDays": "Runs every week on {days} at {time}",
       "monthly": "Runs on the {ordinal} of every month at {time}",
       "everyNMonths": "Runs on the {ordinal} of every {months} months at {time}"

@@ -1,3 +1,4 @@
+import { FAKE_HOST_URL } from "./fake-host/ports";
 import { expect, test } from "./support/fixtures";
 
 /**
@@ -43,6 +44,122 @@ test("sends a message with the Submit button", async ({ page }) => {
   await expect(page.getByText(/Roger that\. You said:/)).toBeVisible({
     timeout: 15_000,
   });
+});
+
+/**
+ * Reconnect resilience — the settle-on-close truncation regression. The SSE
+ * stream is severed server-side mid-turn (a simulated network blip) while the
+ * turn keeps producing into the fake host's replay log; the client must
+ * silently reconnect with its `?after=<seq>` cursor and render the reply IN
+ * FULL — never settle a truncated bubble from the partial text.
+ */
+test("recovers a dropped stream mid-turn and renders the full reply", async ({
+  page,
+  request,
+}) => {
+  // Slow the canned reply (3 deltas x 800ms) so the drop lands mid-turn.
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-config`, {
+    data: { replyDelayMs: 800 },
+  });
+  await page.goto("/");
+  await page.locator('[data-tour-target="newMission"]').click();
+
+  const composer = page.getByPlaceholder("What should the agent work on?");
+  await composer.fill("test reconnect");
+  await composer.press("Enter");
+
+  // The first streamed delta rendered — the turn is mid-flight.
+  await expect(page.getByText(/Roger that/).first()).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // Sever every open chat stream. The turn keeps running server-side.
+  const drop = await request.post(
+    `${FAKE_HOST_URL}/__test__/drop-chat-streams`,
+  );
+  expect(((await drop.json()) as { dropped: number }).dropped).toBeGreaterThan(
+    0,
+  );
+
+  // The client reconnects with its cursor and the FULL reply lands (the `.`
+  // wildcards absorb a markdown smart-quote transform).
+  await expect(page.getByText(/You said: .test reconnect./)).toBeVisible({
+    timeout: 15_000,
+  });
+});
+
+/**
+ * Reconnect across a TURN BOUNDARY. Our turn ends (terminal frame lost, replay
+ * buffer cleared) and ANOTHER turn is already running when the client comes
+ * back — the resync/replay names a different turnId. The client must settle
+ * OUR turn from persisted history matched by turnId: the full reply renders,
+ * no error surface, and the new foreign turn's frames are never spliced in.
+ */
+test("settles the interrupted turn from history by turnId across a turn boundary", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-config`, {
+    data: { replyDelayMs: 800 },
+  });
+  await page.goto("/");
+  await page.locator('[data-tour-target="newMission"]').click();
+
+  const composer = page.getByPlaceholder("What should the agent work on?");
+  await composer.fill("test boundary");
+  await composer.press("Enter");
+
+  // The first streamed delta rendered — the turn is mid-flight.
+  await expect(page.getByText(/Roger that/).first()).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // Sever the stream, finish OUR turn into history, start the NEXT turn.
+  const res = await request.post(`${FAKE_HOST_URL}/__test__/turn-boundary`, {
+    data: { nextText: "someone else's turn" },
+  });
+  expect(((await res.json()) as { advanced: number }).advanced).toBe(1);
+
+  // OUR full reply settles from history by turnId (the `.` wildcards absorb a
+  // markdown smart-quote transform)...
+  await expect(page.getByText(/You said: .test boundary./)).toBeVisible({
+    timeout: 15_000,
+  });
+  // ...with no error surface, and without splicing the foreign turn's reply.
+  await expect(page.getByText(/Session error/)).not.toBeVisible();
+  await expect(page.getByText(/someone else.s turn/)).not.toBeVisible();
+});
+
+/**
+ * The dead-turn settle: the host's reaper detects a dead turn and synthesizes
+ * a terminal `error` frame carrying the dead turn's turnId. The client must
+ * settle the turn as an error with the reaper's copy — never an eternal
+ * spinner, never an empty "completed" bubble.
+ */
+test("a dead turn settles as an error with the reaper's message", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-config`, {
+    data: { replyDelayMs: 800 },
+  });
+  await page.goto("/");
+  await page.locator('[data-tour-target="newMission"]').click();
+
+  const composer = page.getByPlaceholder("What should the agent work on?");
+  await composer.fill("test dead turn");
+  await composer.press("Enter");
+
+  await expect(page.getByText(/Roger that/).first()).toBeVisible({
+    timeout: 15_000,
+  });
+
+  const res = await request.post(`${FAKE_HOST_URL}/__test__/kill-turn`);
+  expect(((await res.json()) as { killed: number }).killed).toBe(1);
+
+  await expect(
+    page.getByText(/The turn ended unexpectedly/).first(),
+  ).toBeVisible({ timeout: 15_000 });
 });
 
 /** Replying inside an EXISTING mission (the follow-up composer), not a new one. */

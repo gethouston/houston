@@ -3,8 +3,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { onEngineRestarted } from "../lib/engine";
 import { subscribeHoustonEvents } from "../lib/events";
+import { logger } from "../lib/logger";
+import { osFocusWindow } from "../lib/os-bridge";
 import { queryKeys } from "../lib/query-keys";
+import { useAgentStore } from "../stores/agents";
 import { useSessionStatusStore } from "../stores/session-status";
+import { useWorkspaceStore } from "../stores/workspaces";
 
 /**
  * Maps agent-change events from Rust (both Tauri command emissions
@@ -62,6 +66,13 @@ export function useAgentInvalidation() {
             queryKey: queryKeys.conversations(p.data.agent_path),
           });
           qc.invalidateQueries({ queryKey: ["all-conversations"] });
+          // A message landing in ANY of this agent's conversations (e.g. a
+          // teammate's turn) must reach an open chat live. The event carries
+          // no session key, so invalidate the agent's whole chat-history
+          // prefix — correctness over precision.
+          qc.invalidateQueries({
+            queryKey: queryKeys.chatHistoryForAgent(p.data.agent_path),
+          });
           break;
         case "RoutinesChanged":
           qc.invalidateQueries({
@@ -78,6 +89,15 @@ export function useAgentInvalidation() {
             queryKey: queryKeys.learnings(p.data.agent_path),
           });
           break;
+        case "AgentsChanged": {
+          const workspaceId = useWorkspaceStore.getState().current?.id;
+          if (workspaceId && p.data.workspace_id === workspaceId) {
+            void useAgentStore
+              .getState()
+              .loadAgents(workspaceId, { silent: true });
+          }
+          break;
+        }
         // SessionStatus triggers activity invalidation (agent finished → status changed)
         case "SessionStatus":
           if (p.data.status === "completed" || p.data.status === "error") {
@@ -90,6 +110,12 @@ export function useAgentInvalidation() {
         // connection without waiting for the next mount (issue #342).
         case "ProviderLoginComplete":
           qc.invalidateQueries({ queryKey: queryKeys.providerStatuses() });
+          // Pull the app back to the front the moment the browser sign-in
+          // finishes — the user just authorized in their browser, so surface
+          // the app on the detected event. No-op outside Tauri.
+          void osFocusWindow().catch((e) =>
+            logger.warn(`[provider] focus window failed: ${e}`),
+          );
           break;
       }
     });

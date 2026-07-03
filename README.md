@@ -46,7 +46,7 @@ Houston is converging onto a single TypeScript engine — see `convergence/READM
 **1. Clone and install.** pnpm owns the whole JS/TS workspace: app, web, UI packages, host, runtime, cloud adapters, and evals.
 
 ```bash
-git clone https://github.com/gethouston/houston-web.git
+git clone https://github.com/gethouston/houston.git
 cd houston-web
 
 pnpm install
@@ -173,7 +173,7 @@ Node-based host image that spawns the pi runtime in-container, plus Caddy for TL
 The web UI is a static build served by Caddy from `selfhost/web`.
 
 ```bash
-git clone https://github.com/gethouston/houston-web
+git clone https://github.com/gethouston/houston
 cd houston-web
 pnpm install
 VITE_NEW_ENGINE=1 pnpm --filter houston-web build

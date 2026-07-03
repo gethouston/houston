@@ -45,7 +45,9 @@ fn sample_inventory() -> Inventory {
             enabled: true,
             suppress_when_silent: false,
             integrations: vec!["gmail".into(), "slack".into()],
-            timezone: Some("America/Bogota".into()),
+            provider: Some("openai".into()),
+            model: Some("gpt-5.5".into()),
+            effort: Some("high".into()),
             created_at: "2026-05-15T09:00:00Z".into(),
             updated_at: "2026-05-15T09:00:00Z".into(),
         }],
@@ -87,10 +89,10 @@ fn round_trip_all_items() {
     assert_eq!(parsed.inventory.skills[1].slug, "research-company");
     assert_eq!(parsed.inventory.routines, inv.routines);
     assert_eq!(parsed.inventory.routines[0].integrations, vec!["gmail", "slack"]);
-    assert_eq!(
-        parsed.inventory.routines[0].timezone.as_deref(),
-        Some("America/Bogota")
-    );
+    // Provider/model/effort pin survives the share round-trip.
+    assert_eq!(parsed.inventory.routines[0].provider.as_deref(), Some("openai"));
+    assert_eq!(parsed.inventory.routines[0].model.as_deref(), Some("gpt-5.5"));
+    assert_eq!(parsed.inventory.routines[0].effort.as_deref(), Some("high"));
     assert_eq!(parsed.inventory.learnings, inv.learnings);
 }
 
@@ -318,8 +320,11 @@ use std::io::Read as _;
 
 #[test]
 fn legacy_routine_without_integrations_field_parses() {
-    // A package authored before integrations + timezone existed. The reader
-    // must default both fields and not error out.
+    // A package authored before the integrations field existed. The reader
+    // must default it and not error out. The same routine also still carries a
+    // stray `"timezone"` key (per-routine override removed in HOU-470); the
+    // reader must silently drop it rather than reject the whole package, so
+    // pre-HOU-470 shared packages keep importing.
     let mut buf = Vec::new();
     {
         let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut buf));
@@ -344,6 +349,7 @@ fn legacy_routine_without_integrations_field_parses() {
             "schedule": "0 9 * * 1-5",
             "enabled": true,
             "suppress_when_silent": false,
+            "timezone": "America/Bogota",
             "created_at": "2026-05-15T09:00:00Z",
             "updated_at": "2026-05-15T09:00:00Z"
         }]);
@@ -356,5 +362,4 @@ fn legacy_routine_without_integrations_field_parses() {
     let parsed = parse_package(&buf).unwrap();
     assert_eq!(parsed.inventory.routines.len(), 1);
     assert!(parsed.inventory.routines[0].integrations.is_empty());
-    assert!(parsed.inventory.routines[0].timezone.is_none());
 }

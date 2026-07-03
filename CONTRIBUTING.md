@@ -18,7 +18,7 @@ If you're unsure whether something fits, open an issue and ask. Cheaper than a c
 ## Getting Started
 
 ```bash
-git clone https://github.com/gethouston/houston-web.git
+git clone https://github.com/gethouston/houston.git
 cd houston-web
 pnpm install
 cargo check --workspace

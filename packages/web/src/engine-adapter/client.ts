@@ -36,6 +36,7 @@ import * as agents from "./agents";
 import { bus, emitEvent } from "./bus";
 import type { ControlPlaneConfig } from "./control-plane";
 import * as controlPlane from "./control-plane";
+import type { BoardStatus } from "./feed-events";
 import {
   configWriteToSettings,
   credentialSiblings,
@@ -46,7 +47,8 @@ import {
   toNewProvider,
   toOldProvider,
 } from "./synthetic";
-import { historyToFeed, streamTurn } from "./translate";
+import { historyToFeed } from "./translate";
+import { observeConversation, streamTurn } from "./turn-stream";
 
 export interface HoustonClientOptions {
   baseUrl: string;
@@ -378,7 +380,7 @@ export class HoustonClient {
   private async setActivityStatus(
     agentPath: string,
     sessionKey: string,
-    status: string,
+    status: BoardStatus,
   ): Promise<void> {
     if (!this.cp) {
       activities.setStatusBySessionKey(agentPath, sessionKey, status);
@@ -1014,12 +1016,31 @@ export class HoustonClient {
   async loadChatHistory(
     agentPath: string,
     sessionKey: string,
+    opts: { observe?: boolean } = {},
   ): Promise<ChatHistoryEntry[]> {
     try {
       const engine = this.cp
         ? controlPlane.runtimeClientFor(this.cp, agentPath)
         : this.engine;
       const history = await engine.getHistory(sessionKey);
+      // Observer mode: a loaded chat may have a turn in flight that THIS client
+      // isn't streaming (page reloaded mid-turn, or another client sent it).
+      // Attach a passive resumable stream: if the server's `sync` reports a
+      // running turn it surfaces (spinner + partial) and renders to completion;
+      // an idle conversation closes the stream right after that `sync`. No-op
+      // when the conversation is already streamed here. `observe: false` is
+      // for BULK history reads (mission search, board scans) that load N
+      // conversations at a time and must not spawn N streams — only a real
+      // conversation open observes (the default).
+      if (opts.observe !== false) {
+        observeConversation(
+          engine,
+          agentPath,
+          sessionKey,
+          (status) => this.setActivityStatus(agentPath, sessionKey, status),
+          history.messages.length,
+        );
+      }
       return historyToFeed(history.messages);
     } catch {
       return [];
@@ -1053,23 +1074,14 @@ export class HoustonClient {
     return { title: truncated, description: "" };
   }
 
-  // ---- integrations (Composio "for you") — host only ----
+  // ---- integrations (Composio, platform mode) — host only ----
   async integrationStatus(): Promise<controlPlane.IntegrationProviderStatus[]> {
     if (!this.cp) return [];
     return controlPlane.integrationStatus(this.cp);
   }
-  async startIntegrationLogin(
-    provider: string,
-  ): Promise<{ loginUrl: string; pollKey: string }> {
-    if (!this.cp) throw new Error("Integrations require a connected host");
-    return controlPlane.startIntegrationLogin(this.cp, provider);
-  }
-  async pollIntegrationLogin(
-    provider: string,
-    pollKey: string,
-  ): Promise<controlPlane.IntegrationLoginResult> {
-    if (!this.cp) throw new Error("Integrations require a connected host");
-    return controlPlane.pollIntegrationLogin(this.cp, provider, pollKey);
+  async setIntegrationSession(token: string | null): Promise<void> {
+    if (!this.cp) return;
+    return controlPlane.setIntegrationSession(this.cp, token);
   }
   async integrationToolkits(
     provider: string,
@@ -1086,9 +1098,16 @@ export class HoustonClient {
   async connectIntegration(
     provider: string,
     toolkit: string,
-  ): Promise<{ redirectUrl: string }> {
+  ): Promise<{ redirectUrl: string; connectionId: string }> {
     if (!this.cp) throw new Error("Integrations require a connected host");
     return controlPlane.connectIntegration(this.cp, provider, toolkit);
+  }
+  async integrationConnection(
+    provider: string,
+    connectionId: string,
+  ): Promise<controlPlane.IntegrationConnection> {
+    if (!this.cp) throw new Error("Integrations require a connected host");
+    return controlPlane.integrationConnection(this.cp, provider, connectionId);
   }
   async disconnectIntegration(
     provider: string,
@@ -1097,9 +1116,58 @@ export class HoustonClient {
     if (!this.cp) return;
     return controlPlane.disconnectIntegration(this.cp, provider, toolkit);
   }
-  async logoutIntegration(provider: string): Promise<void> {
+  async dismissIntegrationsReconnectNotice(): Promise<void> {
+    // The notice only ever renders from a host-reported `reconnect` flag, so
+    // dismissing without a host is a real failure — surface it, don't no-op.
+    if (!this.cp) throw new Error("Integrations require a connected host");
+    return controlPlane.dismissIntegrationsReconnectNotice(this.cp);
+  }
+
+  // ---- org / roles (multiplayer) — hosted gateway only ----
+  async getOrg(): Promise<controlPlane.OrgInfo> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.getOrg(this.cp);
+  }
+  async addOrgMember(email: string, role: controlPlane.OrgRole): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.addOrgMember(this.cp, email, role);
+  }
+  async removeOrgMember(userId: string): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.removeOrgMember(this.cp, userId);
+  }
+  async setOrgMemberRole(
+    userId: string,
+    role: controlPlane.OrgRole,
+  ): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.setOrgMemberRole(this.cp, userId, role);
+  }
+
+  // ---- per-agent assignments + integration grants (multiplayer) ----
+  async setAgentAssignments(
+    agentSlugOrId: string,
+    userIds: string[],
+  ): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.setAgentAssignments(this.cp, agentSlugOrId, userIds);
+  }
+  // Grants degrade like `integrationStatus`: single-player has no grants model,
+  // so read is empty and write is a no-op rather than a hard failure.
+  async agentIntegrationGrants(agentSlugOrId: string): Promise<string[]> {
+    if (!this.cp) return [];
+    return controlPlane.agentIntegrationGrants(this.cp, agentSlugOrId);
+  }
+  async setAgentIntegrationGrants(
+    agentSlugOrId: string,
+    toolkits: string[],
+  ): Promise<void> {
     if (!this.cp) return;
-    return controlPlane.logoutIntegration(this.cp, provider);
+    return controlPlane.setAgentIntegrationGrants(
+      this.cp,
+      agentSlugOrId,
+      toolkits,
+    );
   }
 
   // ---- lifecycle no-ops the shell calls ----

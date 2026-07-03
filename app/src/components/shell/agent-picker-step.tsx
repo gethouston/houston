@@ -2,6 +2,10 @@ import { Input } from "@houston-ai/core";
 import { Gift, Search } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  type CatalogCopy,
+  localizeCatalogCopy,
+} from "../../agents/catalog-labels";
 import type { AgentDefinition } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { SkillCard } from "../skill-card";
@@ -22,11 +26,24 @@ export function AgentPickerStep({
   onSelect,
   onCreateWithAi,
 }: AgentPickerStepProps) {
-  const { t } = useTranslation(["shell", "portable"]);
+  const { t, i18n } = useTranslation(["shell", "portable", "agents"]);
   const setImportOpen = useUIStore((s) => s.setImportFromFriendOpen);
   const setCreateOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
 
   const query = search.trim().toLowerCase();
+
+  // Houston's first-party agents (`author === "Houston"`) render in the user's
+  // language; third-party agents keep their author's language. Recompute when
+  // the active language changes so switching locales relabels the picker live.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: i18n.language is required to relabel on locale switch
+  const localizedAgents = useMemo(() => {
+    const map = new Map<string, CatalogCopy>();
+    for (const def of agents) {
+      map.set(def.config.id, localizeCatalogCopy(def.config, t));
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agents, t, i18n.language]);
 
   const filteredAgents = useMemo(
     () =>
@@ -35,9 +52,9 @@ export function AgentPickerStep({
           return false;
         }
         if (!query) return true;
-        return matchesAgent(d, query);
+        return matchesAgent(d, localizedAgents.get(d.config.id), query);
       }),
-    [agents, query],
+    [agents, query, localizedAgents],
   );
 
   const reorderedAgents = useMemo(() => {
@@ -104,13 +121,18 @@ export function AgentPickerStep({
                 onClick={onCreateWithAi}
               />
             )}
-            {reorderedAgents.map((def) => (
-              <AgentCard
-                key={def.config.id}
-                config={def.config}
-                onSelect={onSelect}
-              />
-            ))}
+            {reorderedAgents.map((def) => {
+              const display = localizedAgents.get(def.config.id);
+              return (
+                <AgentCard
+                  key={def.config.id}
+                  config={def.config}
+                  title={display?.name}
+                  description={display?.description}
+                  onSelect={onSelect}
+                />
+              );
+            })}
           </div>
         ) : (
           <div className="flex items-center justify-center py-16">
@@ -124,11 +146,17 @@ export function AgentPickerStep({
   );
 }
 
-function matchesAgent(def: AgentDefinition, query: string): boolean {
+function matchesAgent(
+  def: AgentDefinition,
+  display: CatalogCopy | undefined,
+  query: string,
+): boolean {
   const config = def.config;
+  const name = display?.name ?? config.name;
+  const description = display?.description ?? config.description;
   return (
-    config.name.toLowerCase().includes(query) ||
-    config.description.toLowerCase().includes(query) ||
+    name.toLowerCase().includes(query) ||
+    description.toLowerCase().includes(query) ||
     config.tags?.some((tag) => tag.toLowerCase().includes(query)) ||
     config.integrations?.some((toolkit) =>
       toolkit.toLowerCase().includes(query),

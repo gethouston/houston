@@ -11,11 +11,6 @@ use crate::provider_error_kind::{
 };
 
 const PROVIDER: &str = "gemini";
-/// Plan-upgrade target for QuotaExhausted. The "Use API key instead"
-/// CTA target (`https://aistudio.google.com/app/apikey`) is driven by
-/// the frontend, not embedded in the wire shape, because it depends on
-/// the user's chosen auth mode.
-pub const UPGRADE_URL: &str = "https://ai.google.dev/pricing";
 
 pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
     let trimmed = line.trim();
@@ -38,8 +33,8 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
                 provider: PROVIDER.into(),
                 model: None,
                 scope: QuotaScope::Unknown,
+                resets_at: None,
                 message: truncate_excerpt(trimmed),
-                upgrade_url: Some(UPGRADE_URL.into()),
             });
         }
 
@@ -95,8 +90,8 @@ pub(crate) fn classify_result_error(
             provider: PROVIDER.into(),
             model: None,
             scope: QuotaScope::Unknown,
+            resets_at: None,
             message: truncate_excerpt(error_message),
-            upgrade_url: Some(UPGRADE_URL.into()),
         }),
         // Auth class names emitted by gemini-cli's error handler.
         "FatalAuthenticationError" => Some(ProviderError::Unauthenticated {
@@ -204,9 +199,8 @@ mod tests {
     #[test]
     fn attempt_max_reached_is_quota_exhausted() {
         match classify_stderr(ATTEMPT_MAX_REACHED).unwrap() {
-            ProviderError::QuotaExhausted { provider, upgrade_url, .. } => {
+            ProviderError::QuotaExhausted { provider, .. } => {
                 assert_eq!(provider, "gemini");
-                assert_eq!(upgrade_url.as_deref(), Some(UPGRADE_URL));
             }
             other => panic!("expected QuotaExhausted, got {other:?}"),
         }
@@ -238,9 +232,7 @@ mod tests {
         )
         .unwrap()
         {
-            ProviderError::QuotaExhausted { upgrade_url, .. } => {
-                assert_eq!(upgrade_url.as_deref(), Some(UPGRADE_URL));
-            }
+            ProviderError::QuotaExhausted { .. } => {}
             other => panic!("expected QuotaExhausted, got {other:?}"),
         }
     }

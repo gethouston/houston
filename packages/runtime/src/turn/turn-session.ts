@@ -1,4 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   type AgentSessionEvent,
@@ -11,10 +10,9 @@ import type {
   ProviderError,
   TokenUsage,
   ToolCallRecord,
-  WireEvent,
+  WireFrame,
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
-import { providerDefaultModel, safeGetModel } from "../ai/providers";
 import { config } from "../config";
 import { makeAgentLoader } from "../session/resource-loader";
 import { buildToolSelection } from "../session/tool-selection";
@@ -26,6 +24,7 @@ import {
   appendAssistantMessageAt,
   appendUserMessageAt,
 } from "../store/conversation-file";
+import { resolveTurnModel } from "./turn-model";
 
 /**
  * One pi turn against a hydrated throwaway root (<root>/workspace +
@@ -38,35 +37,6 @@ import {
  * client could see `done` before its files are durable).
  */
 
-type Settings = { activeProvider?: string; models?: Record<string, string> };
-
-/**
- * Model for this turn. Precedence: an explicit per-turn override (a routine's
- * pinned model) beats the agent's settings.json, which beats the env default.
- * A bad PIN surfaces as the turn's error; a stale SAVED model id (a legacy id
- * the migration didn't reach, e.g. a hand-edited settings.json) falls back to
- * the provider's default with a logged diagnostic (safeGetModel) instead of
- * hard-failing the turn.
- */
-function resolveTurnModel(
-  dataDir: string,
-  provider: string,
-  override?: string | null,
-) {
-  let settings: Settings = {};
-  const f = join(dataDir, "settings.json");
-  if (existsSync(f)) {
-    try {
-      settings = JSON.parse(readFileSync(f, "utf8")) as Settings;
-    } catch {
-      settings = {};
-    }
-  }
-  const modelId =
-    override || settings.models?.[provider] || providerDefaultModel(provider);
-  return safeGetModel(provider, modelId, !!override);
-}
-
 export interface TurnOutcome {
   error?: string;
 }
@@ -77,21 +47,35 @@ export interface TurnModelPin {
   effort?: string | null;
 }
 
+/** Everything one pi turn needs (the per-turn server assembles it per request). */
+export interface PiTurnRequest {
+  conversationId: string;
+  text: string;
+  provider: string;
+  /** Receives every non-terminal wire frame, already stamped with `turnId`. */
+  emit: (e: WireFrame) => void;
+  signal: AbortSignal | undefined;
+  nonce?: string;
+  pin?: TurnModelPin;
+  /**
+   * The turn's wire identity, minted by the per-turn SERVER (which also stamps
+   * it on the terminal frame it sends after sync-back) — stamped here on every
+   * emitted frame and persisted on both stored messages.
+   */
+  turnId: string;
+}
+
 export async function runPiTurn(
   root: string,
-  conversationId: string,
-  text: string,
-  provider: string,
-  emit: (e: WireEvent) => void,
-  signal: AbortSignal | undefined,
-  nonce?: string,
-  pin?: TurnModelPin,
+  turn: PiTurnRequest,
 ): Promise<TurnOutcome> {
+  const { conversationId, text, provider, signal, nonce, pin, turnId } = turn;
+  const emit = (e: WireFrame) => turn.emit({ ...e, turnId });
   const workspaceDir = join(root, "workspace");
   const dataDir = join(root, "data");
   const conversationsDir = join(dataDir, "conversations");
 
-  appendUserMessageAt(conversationsDir, conversationId, text);
+  appendUserMessageAt(conversationsDir, conversationId, text, { turnId });
   emit({ type: "user", data: { content: text, ts: Date.now(), nonce } });
 
   let assistantText = "";
@@ -194,15 +178,12 @@ export async function runPiTurn(
     // returns no `outcome.error` — the per-turn server's trailing terminal is a
     // no-op for the already-settled client, and reporting an error here would make
     // it send a SECOND, generic error frame on top of the typed card.
-    appendAssistantMessageAt(
-      conversationsDir,
-      conversationId,
-      assistantText,
+    appendAssistantMessageAt(conversationsDir, conversationId, assistantText, {
       tools,
       usage,
-      undefined,
       providerError,
-    );
+      turnId,
+    });
     return {};
   } catch (err) {
     if (assistantText || providerError)
@@ -210,10 +191,7 @@ export async function runPiTurn(
         conversationsDir,
         conversationId,
         assistantText,
-        tools,
-        usage,
-        undefined,
-        providerError,
+        { tools, usage, providerError, turnId },
       );
     return { error: err instanceof Error ? err.message : String(err) };
   }

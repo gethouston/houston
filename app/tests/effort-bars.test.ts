@@ -6,7 +6,7 @@ import {
   effortFillCount,
 } from "../src/lib/effort-bars.ts";
 
-// Opus accepts all five; Codex stops at xhigh and has no max level.
+// Opus/Fable accept all five; Codex stops at xhigh (no max).
 const FIVE = ["low", "medium", "high", "xhigh", "max"] as const;
 const FOUR = ["low", "medium", "high", "xhigh"] as const;
 
@@ -19,7 +19,7 @@ describe("effortFillCount", () => {
   });
 
   it("is 0 when the level is absent, unset, or the set is empty", () => {
-    strictEqual(effortFillCount(FOUR, "max"), 0);
+    strictEqual(effortFillCount(FOUR, "max"), 0); // Codex has no max
     strictEqual(effortFillCount(FIVE, undefined), 0);
     strictEqual(effortFillCount(FIVE, null), 0);
     strictEqual(effortFillCount([], "low"), 0);
@@ -35,18 +35,18 @@ describe("effortBars", () => {
 
   it("fills bars up to and including the active level", () => {
     deepStrictEqual(
-      effortBars(FIVE, "high").map((bar) => bar.filled),
+      effortBars(FIVE, "high").map((b) => b.filled),
       [true, true, true, false, false],
     );
     deepStrictEqual(
-      effortBars(FOUR, "xhigh").map((bar) => bar.filled),
+      effortBars(FOUR, "xhigh").map((b) => b.filled),
       [true, true, true, true],
     );
   });
 
   it("leaves every bar dimmed when nothing is selected", () => {
     deepStrictEqual(
-      effortBars(FIVE, undefined).map((bar) => bar.filled),
+      effortBars(FIVE, undefined).map((b) => b.filled),
       [false, false, false, false, false],
     );
   });

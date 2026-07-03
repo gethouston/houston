@@ -167,6 +167,20 @@ impl EngineSubprocess {
         // missing supervisor pipe never crash-loops the host at boot (HOU-582).
         // The Rust engine ignores it — it watches stdin EOF directly.
         cmd.env("HOUSTON_SUPERVISED", "1");
+        // The engine's Sentry config is decided ENTIRELY by the desktop app
+        // (gated on `sentry_active` in lib.rs) and injected via `env` below.
+        // Strip any inherited SENTRY_* from our own environment first, so a
+        // shell-exported DSN can never make the engine self-report when the app
+        // chose to suppress it — keeping the "app injects NO DSN → engine
+        // dormant" contract airtight regardless of the launching shell (HOU-469).
+        for key in [
+            "SENTRY_DSN",
+            "SENTRY_RELEASE",
+            "SENTRY_ENVIRONMENT",
+            "SENTRY_SEND_IN_DEV",
+        ] {
+            cmd.env_remove(key);
+        }
         for (k, v) in env {
             cmd.env(k, v);
         }
@@ -328,10 +342,17 @@ impl EngineSubprocess {
         })
     }
 
-    /// Block the current thread waiting for the child to exit.
+    /// Block the current thread until the process behind `child` exits.
     /// Returns `None` if the child was already killed/reaped.
-    pub fn wait(&self) -> Option<std::process::ExitStatus> {
-        let mut guard = self.child.lock().ok()?;
+    ///
+    /// Takes the shared child handle rather than `&self` so the supervisor can
+    /// wait on a CLONED handle and keep the outer slot lock free. Holding the
+    /// slot lock across this blocking call deadlocks the Tauri `setup()`
+    /// closure — which locks the same slot to read the handshake — so the app
+    /// launches with a live process but no window (the dock shows the running
+    /// dot, clicking it does nothing). See [`spawn_supervisor`].
+    fn wait_on(child: &Mutex<Option<Child>>) -> Option<std::process::ExitStatus> {
+        let mut guard = child.lock().ok()?;
         let child = guard.as_mut()?;
         child.wait().ok()
     }
@@ -544,11 +565,17 @@ pub fn spawn_supervisor<C: SupervisorCallbacks>(
     thread::spawn(move || {
         let mut backoff = Duration::from_secs(1);
         loop {
-            // Wait for current child to exit.
-            let exit = {
-                let guard = slot_clone.lock().ok();
-                guard.and_then(|g| g.as_ref().map(|s| s.wait())).flatten()
-            };
+            // Clone the current child handle under a BRIEF lock, then release
+            // the slot BEFORE blocking on exit. The Tauri `setup()` closure
+            // locks this same slot to read the handshake; holding it across the
+            // blocking `wait_on` deadlocked app launch — the window never
+            // showed and the dock icon went dead. Cloning the `Arc` is cheap and
+            // the slot lock is released the instant this guard drops.
+            let child = slot_clone
+                .lock()
+                .ok()
+                .and_then(|g| g.as_ref().map(|s| Arc::clone(&s.child)));
+            let exit = child.and_then(|c| EngineSubprocess::wait_on(&c));
 
             // App tearing down → exit is deliberate. Stop the supervisor: don't
             // report a crash and don't respawn an engine that would outlive the
@@ -826,6 +853,63 @@ mod tests {
         assert!(!engine_exit_is_crash(Some(false), true));
         assert!(!engine_exit_is_crash(Some(true), true));
         assert!(!engine_exit_is_crash(None, true));
+    }
+
+    #[test]
+    fn wait_on_returns_none_for_empty_handle() {
+        // An already-reaped / never-populated handle must not panic — it
+        // returns None so the supervisor falls through to its respawn path.
+        let empty: Mutex<Option<Child>> = Mutex::new(None);
+        assert!(EngineSubprocess::wait_on(&empty).is_none());
+    }
+
+    #[test]
+    fn supervisor_releases_slot_before_blocking_wait() {
+        // Regression for the launch deadlock: the monitor must clone the child
+        // handle under a brief lock and release the slot BEFORE blocking in
+        // `wait_on`. Holding the slot across the blocking wait wedged the Tauri
+        // `setup()` closure (which locks the same slot to read the handshake),
+        // so the app launched with a live process but no window.
+        //
+        // Modeled with plain handles (a real `EngineSubprocess` needs a spawned
+        // binary): the inner `Arc<Mutex<()>>` stands in for the child handle the
+        // monitor blocks on; the outer `Mutex<Option<_>>` is the slot the setup
+        // closure must still be able to lock. Under the old code the assertion
+        // below would never even be reached — the monitor held the slot across
+        // the blocking wait.
+        use std::sync::mpsc;
+
+        let inner = Arc::new(Mutex::new(()));
+        let slot = Arc::new(Mutex::new(Some(inner)));
+        let (blocked_tx, blocked_rx) = mpsc::channel::<()>();
+        let (release_tx, release_rx) = mpsc::channel::<()>();
+
+        let slot_for_monitor = Arc::clone(&slot);
+        let monitor = thread::spawn(move || {
+            // Brief lock: clone the handle out, then DROP the slot guard.
+            let handle = slot_for_monitor
+                .lock()
+                .unwrap()
+                .as_ref()
+                .map(Arc::clone)
+                .expect("slot occupied");
+            // Now block "waiting on the child" while holding only the inner
+            // handle — never the slot.
+            let _held = handle.lock().unwrap();
+            blocked_tx.send(()).unwrap();
+            release_rx.recv().unwrap();
+        });
+
+        // Once the monitor is blocked in its wait, the setup closure must still
+        // be able to acquire the slot lock.
+        blocked_rx.recv().unwrap();
+        assert!(
+            slot.try_lock().is_ok(),
+            "slot held during wait — app launch would deadlock"
+        );
+
+        release_tx.send(()).unwrap();
+        monitor.join().unwrap();
     }
 
     /// The Windows orphan-fix contract: a process assigned to our job dies

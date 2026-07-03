@@ -8,7 +8,9 @@ import { PersonalAssistantOnboarding } from "./components/onboarding/personal-as
 import { WorkspaceShell } from "./components/shell/workspace-shell";
 import { useAgentInvalidation } from "./hooks/use-agent-invalidation";
 import { useAnalyticsSubscriber } from "./hooks/use-analytics-subscriber";
+import { useCanCreateAgents } from "./hooks/use-can-create-agents";
 import { useHoustonInit } from "./hooks/use-houston-init";
+import { useIntegrationSessionSync } from "./hooks/use-integration-session-sync";
 import { useMigrationReconnect } from "./hooks/use-migration-reconnect";
 import { useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
@@ -21,7 +23,6 @@ import {
 } from "./lib/sentry";
 import { isAuthConfigured } from "./lib/supabase";
 import { tauriSystem } from "./lib/tauri";
-import { loadTheme } from "./lib/theme";
 import { useAgentStore } from "./stores/agents";
 import { useUIStore } from "./stores/ui";
 import { useWorkspaceStore } from "./stores/workspaces";
@@ -31,41 +32,13 @@ export default function App() {
   useSessionEvents();
   useAgentInvalidation();
   useAnalyticsSubscriber();
+  useIntegrationSessionSync();
 
-  // Track active installs once per day. This is the canonical DAU/WAU/MAU
-  // signal; launch counts are intentionally not captured.
-  useEffect(() => {
-    analytics.init().then(({ installId, isNew }) => {
-      analytics.trackActive();
-      if (isNew) {
-        analytics.track("install_created");
-        // Attribution bridge: open the website's /welcome page in the
-        // user's default browser. The page reads ?install_id, calls
-        // posthog.identify(install_id), which MERGES the website's
-        // anonymous person — containing $initial_utm_* from the original
-        // landing pageview — into the app's install identity. From this
-        // point on every app event carries the original attribution.
-        //
-        // Only fires once per install (isNew flips false after first
-        // launch via the install_id cache in install-id.ts). If the
-        // browser-open fails or the user closes the tab before PostHog
-        // identifies, we lose attribution for this install — that's the
-        // accepted tradeoff for not requiring clipboard/extension hacks.
-        if (installId) {
-          const url = `https://gethouston.ai/welcome?install_id=${encodeURIComponent(installId)}`;
-          tauriSystem.openUrl(url).catch(() => {
-            // openUrl failed (no default browser? dev build?) — silent;
-            // attribution falls back to app-only events with no UTMs.
-          });
-        }
-      }
-      // `session_started` fires every app launch (cf. `app_active` which
-      // dedupes per UTC day for DAU). Lets us measure sessions-per-day
-      // intensity AND time-of-day usage patterns.
-      analytics.track("session_started");
-    });
-    loadTheme();
-  }, []);
+  // NOTE: install identity, `install_created`, `session_started`, and theme
+  // load run in <StartupEffects> at the top of the tree (main.tsx), NOT here.
+  // They MUST fire before the language/disclaimer gates' `onboarding_*` events,
+  // and those gates block <App/> from mounting on a fresh install — so this
+  // effect would run too late and break the sequential onboarding funnel.
 
   // Session-end signal: fired when the window goes hidden (cmd-tab away,
   // minimize, close). Tauri's WKWebView delivers `pagehide` reliably on
@@ -102,17 +75,21 @@ export default function App() {
 
   const { data: session, isLoading: sessionLoading } = useSession();
 
-  // Identify / alias the user in PostHog AND Sentry on sign-in; reset on
-  // sign-out. Runs AFTER analytics.init() has claimed the install_id as
-  // distinct_id, so `alias(userId, profile)` correctly merges prior
-  // anonymous history. Sentry gets the same identity so crashes are
-  // attributable to a user when triaging.
+  // Tag the user in PostHog AND Sentry on sign-in; reset on sign-out. The
+  // install_id stays PostHog's distinct_id (the website UTM bridge + onboarding
+  // funnel depend on it); `identifyUser` aliases the Supabase id onto that person
+  // (merging the same human across devices/reinstalls) AND attaches
+  // supabase_user_id / email / signup date as person properties, so every
+  // authenticated person is both one PostHog person and joinable to a Supabase
+  // account. Sentry gets the same identity so crashes are attributable to a user
+  // when triaging.
   const prevUserIdRef = useRef<string | null>(null);
   useEffect(() => {
     const userId = session?.user?.id ?? null;
     const userEmail = session?.user?.email ?? null;
+    const signupDate = session?.user?.created_at?.slice(0, 10) ?? null;
     if (userId && userId !== prevUserIdRef.current) {
-      analytics.alias(userId, { email: userEmail });
+      analytics.identifyUser(userId, { email: userEmail, signupDate });
       setSentryUser({ id: userId, email: userEmail });
       prevUserIdRef.current = userId;
     } else if (!userId && prevUserIdRef.current) {
@@ -157,6 +134,20 @@ export default function App() {
   const toasts = useUIStore((s) => s.toasts);
   const dismissToast = useUIStore((s) => s.dismissToast);
   const tutorialActive = useUIStore((s) => s.tutorialActive);
+  // A plain org `user` can't create agents (the create-your-assistant
+  // onboarding would 403 at `POST /agents`), so they skip that funnel and land
+  // straight in the shell on their assigned agents (or an empty state without a
+  // create CTA). Owner/admin and every single-player build keep the flow.
+  // The routing below must never run on UNLOADED capabilities: `canCreate` is
+  // optimistically true while they load, which would push a multiplayer `user`
+  // with zero workspaces into an onboarding whose POST /agents 403s. So the
+  // loading state joins the splash gate, and a persistent fetch failure
+  // (multiplayer status unknown) fails closed into the normal shell path.
+  const {
+    canCreate: canCreateAgents,
+    isLoading: capabilitiesLoading,
+    isError: capabilitiesError,
+  } = useCanCreateAgents();
 
   // One-time "reconnect your AI" moment for users upgrading from the legacy
   // desktop build: their agents + history migrated, but their AI sign-in did
@@ -206,7 +197,7 @@ export default function App() {
     );
   }
 
-  if (agentLoading || wsLoading) {
+  if (agentLoading || wsLoading || capabilitiesLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background text-foreground">
         <p className="text-muted-foreground text-sm">
@@ -216,7 +207,7 @@ export default function App() {
     );
   }
 
-  if (workspaces.length === 0) {
+  if (workspaces.length === 0 && canCreateAgents && !capabilitiesError) {
     return (
       <PersonalAssistantOnboarding
         toasts={mappedToasts}

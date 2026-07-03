@@ -140,4 +140,23 @@ describe("resolveEffectiveProvider — frozen once a conversation has messages",
       "openai",
     );
   });
+
+  // Preserved from public (gethouston/houston): on a frozen (in-progress) chat,
+  // an explicit activity/agent provider stays put even when its provider is
+  // logged out. The send then surfaces the reconnect card instead of silently
+  // auto-switching to a connected provider. Under the new contract this is the
+  // hasMessages=true branch.
+  it("honors an explicit activity provider as-is on a frozen chat, even when logged out", () => {
+    strictEqual(
+      resolveEffectiveProvider("anthropic", null, "openai", ["openai"], true),
+      "anthropic",
+    );
+  });
+
+  it("honors an explicit agent provider as-is on a frozen chat, even when logged out", () => {
+    strictEqual(
+      resolveEffectiveProvider(null, "anthropic", null, ["openai"], true),
+      "anthropic",
+    );
+  });
 });

@@ -4,7 +4,7 @@
 //! that apps previously implemented manually.
 
 use crate::session_id_tracker::SessionIdHandle;
-use crate::session_pids::SessionPidMap;
+use crate::session_pids::{PidInsert, SessionPidMap};
 use houston_db::Database;
 use houston_terminal_manager::auth_error::{is_auth_error, is_auth_retry_marker};
 use houston_terminal_manager::provider_auth::ProviderAuthState;
@@ -141,7 +141,20 @@ pub fn spawn_and_monitor(
             match update {
                 SessionUpdate::ProcessPid(pid) => {
                     if let Some(ref pm) = pid_map {
-                        pm.insert(key.clone(), pid).await;
+                        if pm.insert(key.clone(), pid).await == PidInsert::AlreadyCancelled {
+                            // Stop was pressed before this PID existed
+                            // (slow prep or a provider retry respawn).
+                            // Kill it now or it runs to completion behind
+                            // the "Stopped by user" message (issue #469).
+                            tracing::info!(
+                                "[session_runner] pid {pid} arrived for cancelled session {key} — terminating"
+                            );
+                            if !crate::process_kill::terminate_process_tree(pid).await {
+                                tracing::error!(
+                                    "[session_runner] could not confirm late-spawn kill for cancelled session {key} (pid {pid})"
+                                );
+                            }
+                        }
                     }
                     continue;
                 }
@@ -456,6 +469,23 @@ fn serialize_for_persist(item: &FeedItem) -> Option<(String, String)> {
             // fields). `trigger` serializes to "native"/"proactive".
             let data = serde_json::json!({ "trigger": trigger, "pre_tokens": pre_tokens });
             Some(("context_compacted".into(), data.to_string()))
+        }
+        FeedItem::ProviderSwitched {
+            provider,
+            summarized,
+            pre_tokens,
+        } => {
+            // Persist the provider-switch divider so it survives a history
+            // reload, matching the live FeedItem wire shape (`data` = the
+            // variant fields). Engine-core emits + persists this directly at the
+            // switch boundary (see `sessions::run_start`); this arm keeps the
+            // FeedItem → feed_type mapping total for any future emitter.
+            let data = serde_json::json!({
+                "provider": provider,
+                "summarized": summarized,
+                "pre_tokens": pre_tokens,
+            });
+            Some(("provider_switched".into(), data.to_string()))
         }
         // Skip streaming items — they get replaced by finals.
         FeedItem::AssistantTextStreaming(_) | FeedItem::ThinkingStreaming(_) => None,

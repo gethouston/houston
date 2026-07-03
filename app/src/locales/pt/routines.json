@@ -41,7 +41,7 @@
     "chatTitle": "Manter os resultados em um só chat",
     "chatDescription": "Cada execução é adicionada ao mesmo chat. Desative para abrir um novo chat cada vez que esta rotina rodar.",
     "modelTitle": "Modelo",
-    "modelDescription": "Escolha o modelo e o nível de esforço de raciocínio que executa esta rotina."
+    "modelDescription": "Escolha o modelo e o nível de esforço de raciocínio que executa esta rotina. Usa as configurações do agente por padrão."
   },
   "row": {
     "untitled": "Sem título",
@@ -80,7 +80,15 @@
     "timeLabel": "Hora",
     "dayOfMonthLabel": "Dia do mês",
     "repeatEvery": "Repetir a cada",
+    "enterNumber": "Digite um número",
+    "pickDay": "Escolha pelo menos um dia",
+    "onTheseDays": "Nestes dias",
     "weekdaysLabel": "Nestes dias",
+    "shortcuts": {
+      "everyDay": "Todos os dias",
+      "weekdays": "Dias úteis",
+      "weekends": "Fins de semana"
+    },
     "weekdayShortcuts": {
       "everyDay": "Todos os dias",
       "weekdays": "Dias úteis",
@@ -88,8 +96,6 @@
     },
     "decrease": "Diminuir",
     "increase": "Aumentar",
-    "enterNumber": "Digite um número",
-    "pickDay": "Escolha pelo menos um dia",
     "timePicker": {
       "hour": "Hora",
       "minute": "Minuto",
@@ -108,9 +114,10 @@
       "everyDay": "Roda todos os dias às {time}",
       "everyNDays": "Roda a cada {n} dias às {time}",
       "weekly": "Roda a cada {day} às {time}",
+      "everyWeekOnDays": "Roda toda semana em {days} às {time}",
       "weeklyOnDays": "Roda toda semana em {days} às {time}",
       "monthly": "Roda no dia {n} de cada mês às {time}",
-      "everyNMonths": "Roda no dia {n} a cada {months} meses às {time}"
+      "everyNMonths": "Roda no dia {n} de cada {months} meses às {time}"
     }
   },
   "nextFire": {

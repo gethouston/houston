@@ -31,9 +31,9 @@ export const REPLAY_FIT_FRACTION = 0.8;
 
 /**
  * Rough token estimate for a conversation from its visible text. Used only when
- * the leaving provider never reported usage. ~4 chars per token, counting the
- * user/assistant text the runtime carries over (tool calls/results are not
- * counted here).
+ * the leaving provider never reported usage (e.g. Gemini). ~4 chars per token,
+ * counting the user/assistant text the runtime carries over (tool calls/results
+ * are not counted here).
  */
 export function estimateConversationTokens(
   items: FeedItem[] | undefined,

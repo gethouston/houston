@@ -168,8 +168,12 @@ export async function invoke<T = unknown>(
       // The CLI lives on the engine host, not the browser. Provider status
       // (an engine route) is the real signal used elsewhere in the UI.
       return false as T;
+    case "focus_main_window":
+      // The web build is a single browser tab; there's no OS window to raise.
+      return undefined as T;
 
     // ── Desktop-only: surface a clear error if a user triggers them ─────
+    case "start_oauth_loopback": // desktop uses a native loopback listener; web uses the redirect flow
     case "get_engine_handshake": // web injects window.__HOUSTON_ENGINE__ directly
     case "pick_directory":
     case "reveal_file":

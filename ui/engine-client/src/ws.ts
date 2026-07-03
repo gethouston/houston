@@ -28,8 +28,8 @@
  * directly through the reverse tunnel.)
  */
 
-import type { HoustonClient } from "./client";
-import type { EngineEnvelope } from "./types";
+import type { HoustonClient } from "./client.ts";
+import type { EngineEnvelope } from "./types.ts";
 
 type EnvelopeHandler = (env: EngineEnvelope) => void;
 type EventHandler = (event: unknown) => void;

@@ -1,8 +1,8 @@
 import { type Toast, ToastContainer } from "@houston-ai/core";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
-import { getDefaultModel } from "../../lib/providers";
+import { stepSection } from "../../lib/setup-steps";
 import { tauriAgents, tauriProvider, tauriWorkspaces } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
@@ -10,25 +10,17 @@ import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { createPersonalAssistantForWorkspace } from "./create-personal-assistant";
 import { ensureWorkspaceWithAssistant } from "./ensure-default-assistant";
-import { MissionFrame } from "./mission-frame";
 import { BrainMission } from "./missions/brain";
+import { FinishedMission } from "./missions/finished";
 import { MeetMission } from "./missions/meet";
-import { RoutineMission } from "./missions/routine";
-import { SkillMission } from "./missions/skill";
-import { TryMission } from "./missions/try";
+import { ProviderLoginMission } from "./missions/provider-login";
 import {
   buildAssistantInstructions,
   defaultAssistantSetup,
 } from "./personal-assistant-artifacts";
 import { TUTORIAL_MISSION } from "./personal-assistant-missions";
-import { SummaryScreen } from "./summary-screen";
-import {
-  buildFrameLabels,
-  buildMissionMeta,
-  type OnboardingStep,
-  type TutorialStep,
-} from "./tutorial-copy";
-import { WelcomeScreen } from "./welcome-screen";
+import { SetupProgress } from "./setup-progress";
+import type { OnboardingStep } from "./tutorial-copy";
 
 interface PersonalAssistantOnboardingProps {
   toasts: Toast[];
@@ -42,54 +34,47 @@ export function PersonalAssistantOnboarding({
   const { t } = useTranslation(["setup", "common"]);
   const setTutorialActive = useUIStore((s) => s.setTutorialActive);
   const setUiTourActive = useUIStore((s) => s.setUiTourActive);
+  const setViewMode = useUIStore((s) => s.setViewMode);
   const addToast = useUIStore((s) => s.addToast);
-  const [step, setStep] = useState<OnboardingStep>("welcome");
-  const [agent, setAgent] = useState<Agent | null>(null);
+  const [step, setStep] = useState<OnboardingStep>("intro");
+  const [, setAgent] = useState<Agent | null>(null);
   const [provider, setProvider] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
-  /**
-   * Activity session key minted by the Try mission's `createMission` call.
-   * The Routine mission re-uses the same session so the chat history (the
-   * agent's full day-plan reply with the bold sections) carries over and
-   * the agent can reference it while writing the routine prompt.
-   */
-  const [missionSessionKey, setMissionSessionKey] = useState<string | null>(
-    null,
-  );
+  // Set while the create-agent step is provisioning, to drive the loading state.
+  const [creatingAgent, setCreatingAgent] = useState(false);
   const [assistantName, setAssistantName] = useState(() =>
     t("setup:tutorial.defaults.assistantName"),
   );
   const [assistantColor, setAssistantColor] = useState("navy");
   // Collapses concurrent / repeated default-workspace creation onto a single
   // in-flight operation so first-run can never fire `createWorkspace` twice
-  // (a double-clicked Continue, Skip racing a mission) — HOU-444.
+  // (a double-clicked Continue, a remount) — HOU-444.
   const creationRef = useRef<Promise<Agent> | null>(null);
 
-  const missionTitle = t("setup:tutorial.missions.try.skill.title");
-
-  const missionStep = step === "welcome" ? null : (step as TutorialStep);
-  const meta = missionStep ? buildMissionMeta(t, missionStep) : null;
-  const frame = missionStep ? buildFrameLabels(t, missionStep) : null;
+  // Title stamped on the agent's first-run instructions.
+  const missionTitle = t("setup:tutorial.missions.email.chip");
 
   // `tutorialActive` pins the orchestrator in front of the workspace shell so
-  // the workspace-create event in M2 (Brain) doesn't unmount us. Set on the
-  // user's explicit Start / Skip click — NOT on mount — so a returning user
-  // whose first paint briefly falls through `workspaces.length === 0` is not
-  // trapped here once their real workspaces arrive.
-  const startTutorial = () => {
-    analytics.track("onboarding_started", { source: "tutorial" });
+  // the workspace-create event in the create step doesn't unmount us.
+  useEffect(() => {
+    analytics.track("onboarding_started", { source: "setup" });
     setTutorialActive(true);
-    setStep("meet");
-  };
+  }, [setTutorialActive]);
+
+  // Fire one step-viewed event per screen reached so a single funnel shows
+  // exactly where people drop off. Guarded so re-renders / Back don't refire.
+  const viewedSteps = useRef(new Set<string>());
+  useEffect(() => {
+    if (!viewedSteps.current.has(step)) {
+      viewedSteps.current.add(step);
+      analytics.track("onboarding_step_viewed", { step });
+    }
+  }, [step]);
 
   const createWorkspaceAndAssistant = (
     pickedProvider: string,
     pickedModel: string,
   ): Promise<Agent> => {
-    // Reuse an in-flight creation rather than starting a second one, so a
-    // double-clicked Continue (or a Skip racing a mission) can't fire two
-    // `createWorkspace("Personal")` calls and trip the engine's dup-name
-    // conflict (HOU-444).
     if (creationRef.current) return creationRef.current;
 
     const op = (async (): Promise<Agent> => {
@@ -102,9 +87,6 @@ export function PersonalAssistantOnboarding({
       });
       setup.color = assistantColor;
 
-      // Get-or-create: a prior partial run (or an orchestrator remount) may
-      // have already created "Personal" and/or its assistant. Reuse them
-      // instead of re-creating, which the engine rejects as a duplicate.
       const {
         workspace: ws,
         assistant: created,
@@ -123,11 +105,7 @@ export function PersonalAssistantOnboarding({
           }),
       });
 
-      // Persist the picked pair as the new global default so the next new
-      // agent starts from the same place the user just chose during onboarding.
       await tauriProvider.setLastUsed(pickedProvider, pickedModel);
-      // Count activation only for a genuinely new workspace — a reused one
-      // (retry / remount) must not double-fire the event.
       if (createdWorkspace) {
         analytics.track("workspace_created", {
           provider: pickedProvider,
@@ -146,176 +124,150 @@ export function PersonalAssistantOnboarding({
     })();
 
     creationRef.current = op;
-    // If it fails partway, drop the memo so a retry re-runs the (now
-    // idempotent) get-or-create instead of being stuck on a rejected promise.
     op.catch(() => {
       creationRef.current = null;
     });
     return op;
   };
 
-  const handleSkip = async () => {
-    // Skip path: create the workspace + assistant, but no UI tour and no
-    // tutorial artifacts. User lands directly in the workspace shell.
-    analytics.track("onboarding_started", { source: "skip" });
-    setTutorialActive(true);
+  // Terminal hand-off. Arm the UI tour BEFORE clearing `tutorialActive` so the
+  // workspace shell mounts with the tour overlay already up — no flicker.
+  const finishOnboarding = (next: "tour" | "integrations") => {
+    analytics.track("onboarding_completed", {
+      mission: TUTORIAL_MISSION.id,
+      integrations_skipped: false,
+      tutorial_run: true,
+      source: next === "tour" ? "tour" : "connect_more",
+    });
+    if (next === "tour") setUiTourActive(true);
+    // "Connect more apps" lands the user in the Integrations browser.
+    else setViewMode("connections");
+    setTutorialActive(false);
+  };
+
+  // The create-agent step owns provisioning the workspace + assistant. By here
+  // provider/model are picked; reused creation is deduped (HOU-444).
+  const handleCreateAgent = async () => {
+    if (!provider || !model) return;
+    setCreatingAgent(true);
     try {
-      const fallbackProvider = provider ?? "anthropic";
-      const fallbackModel = model ?? getDefaultModel(fallbackProvider);
-      await createWorkspaceAndAssistant(fallbackProvider, fallbackModel);
-      analytics.track("onboarding_completed", {
-        mission: TUTORIAL_MISSION.id,
-        integrations_skipped: true,
-        tutorial_run: false,
-      });
+      analytics.track("onboarding_assistant_named");
+      await createWorkspaceAndAssistant(provider, model);
+      setCreatingAgent(false);
+      setStep("agentCreated");
     } catch (err) {
-      // No silent failures: surface why setup failed (and drop back to the
-      // welcome screen via the finally) so the user can retry instead of
-      // crashing to an unhandled rejection — HOU-444.
       addToast({
         title: t("setup:tutorial.errors.setupFailed"),
         description: String(err),
         variant: "error",
       });
-    } finally {
-      setTutorialActive(false);
+      setCreatingAgent(false);
     }
   };
 
-  // Step transitions for the back-half of the tutorial (Try → Skill →
-  // Routine → Summary → app tour). None of them clear `tutorialActive`
-  // — each next step still owns the screen, and clearing here would
-  // let the workspace shell race in behind. `onboarding_completed`
-  // fires at the very end (after the Summary "Enter Houston" CTA or
-  // an explicit Skip).
-  const handleTryComplete = () => setStep("skill");
-  const handleSkillComplete = () => setStep("routine");
-  const handleRoutineComplete = () => setStep("summary");
-
-  // Terminal hand-off. Arm the UI tour BEFORE clearing `tutorialActive`
-  // so the workspace shell mounts with the tour overlay already up —
-  // no flicker of bare workspace. Called by the Summary CTA AND by
-  // every always-on Skip link in M4-M6 so a user who bails midway
-  // still lands in the workspace shell cleanly.
-  const finishOnboarding = () => {
-    analytics.track("onboarding_completed", {
-      mission: TUTORIAL_MISSION.id,
-      integrations_skipped: false,
-      tutorial_run: true,
+  // Section-aware eyebrow: "Setup · 1 of 2", "Onboarding · 2 of 3". Empty for
+  // screens that aren't numbered steps (never rendered on those).
+  const stepEyebrow = (screen: string): string => {
+    const s = stepSection(screen);
+    if (!s) return "";
+    const sectionName =
+      s.section === "setup"
+        ? t("setup:tutorial.sections.setup")
+        : t("setup:tutorial.sections.onboarding");
+    return t("setup:tutorial.sectionCounter", {
+      section: sectionName,
+      current: s.current,
+      total: s.total,
     });
-    setUiTourActive(true);
-    setTutorialActive(false);
   };
-
-  // Provider/model the back-half missions (Try, Routine) run against. The
-  // user picks these in the Brain mission; fall back to the platform default
-  // model for the chosen provider if a mission renders before a pick.
-  const missionProvider = provider ?? "anthropic";
-  const missionModel = model ?? getDefaultModel(missionProvider);
 
   return (
     <>
-      {step === "welcome" && (
-        <WelcomeScreen
-          title={t("setup:tutorial.welcome.title")}
-          tagline={t("setup:tutorial.welcome.tagline")}
-          stepsTitle={t("setup:tutorial.welcome.stepsTitle")}
-          steps={[
-            t("setup:tutorial.welcome.steps.meet"),
-            t("setup:tutorial.welcome.steps.brain"),
-            t("setup:tutorial.welcome.steps.try"),
-            t("setup:tutorial.welcome.steps.routine"),
-          ]}
-          startLabel={t("setup:tutorial.welcome.start")}
-          skipLabel={t("setup:tutorial.welcome.skip")}
-          onStart={startTutorial}
-          onSkip={() => void handleSkip()}
+      {step === "intro" && (
+        <SetupProgress
+          section="setup"
+          title={t("setup:tutorial.missions.intro.title")}
+          message={t("setup:tutorial.missions.intro.body")}
+          done={[]}
+          ctaLabel={t("setup:tutorial.missions.intro.cta")}
+          onContinue={() => setStep("brain")}
         />
       )}
-      {meta && frame && step === "meet" && (
-        <MissionFrame meta={meta} {...frame}>
-          <MeetMission
-            name={assistantName}
-            color={assistantColor}
-            namePlaceholder={t("setup:tutorial.defaults.assistantName")}
-            beginLabel={t("setup:tutorial.missions.meet.begin")}
-            onNameChange={setAssistantName}
-            onColorChange={setAssistantColor}
-            onBegin={() => setStep("brain")}
-          />
-        </MissionFrame>
-      )}
-      {meta && frame && step === "brain" && (
-        <MissionFrame meta={meta} {...frame}>
-          <BrainMission
-            provider={provider}
-            onSelect={(p, m) => {
-              setProvider(p);
-              setModel(m);
-            }}
-            onContinue={async () => {
-              if (!provider || !model) return;
-              try {
-                await createWorkspaceAndAssistant(provider, model);
-                setStep("try");
-              } catch (err) {
-                // Surface the failure as a toast and stay on this step so the
-                // user can retry — never an unhandled rejection (HOU-444).
-                addToast({
-                  title: t("setup:tutorial.errors.setupFailed"),
-                  description: String(err),
-                  variant: "error",
-                });
-              }
-            }}
-          />
-        </MissionFrame>
-      )}
-      {meta && frame && step === "try" && agent && (
-        <TryMission
-          meta={meta}
-          frame={frame}
-          agent={agent}
-          assistantColor={assistantColor}
-          provider={missionProvider}
-          model={missionModel}
-          onSessionKey={setMissionSessionKey}
-          onContinue={handleTryComplete}
-          onSkip={finishOnboarding}
+
+      {step === "brain" && (
+        <BrainMission
+          eyebrow={stepEyebrow("brain")}
+          provider={provider}
+          onBack={() => setStep("intro")}
+          onSelect={(p, m) => {
+            setProvider(p);
+            setModel(m);
+          }}
+          onContinue={() => setStep("providerLogin")}
         />
       )}
-      {meta && frame && step === "skill" && agent && missionSessionKey && (
-        <SkillMission
-          meta={meta}
-          frame={frame}
-          agent={agent}
-          assistantColor={assistantColor}
-          sessionKey={missionSessionKey}
-          onContinue={handleSkillComplete}
-          onSkip={finishOnboarding}
+      {step === "providerLogin" && provider && (
+        <ProviderLoginMission
+          eyebrow={stepEyebrow("providerLogin")}
+          providerId={provider}
+          onBack={() => setStep("brain")}
+          onContinue={() => setStep("aiConnected")}
         />
       )}
-      {meta && frame && step === "routine" && agent && missionSessionKey && (
-        <RoutineMission
-          meta={meta}
-          frame={frame}
-          agent={agent}
-          assistantColor={assistantColor}
-          provider={missionProvider}
-          model={missionModel}
-          sessionKey={missionSessionKey}
-          onContinue={handleRoutineComplete}
-          onSkip={finishOnboarding}
+      {step === "aiConnected" && (
+        <SetupProgress
+          section="setup"
+          title={t("setup:tutorial.missions.aiConnected.title")}
+          message={t("setup:tutorial.missions.aiConnected.body")}
+          done={["ai"]}
+          justCompleted="ai"
+          ctaLabel={t("setup:tutorial.missions.aiConnected.cta")}
+          onContinue={() => setStep("onboardingIntro")}
         />
       )}
-      {frame && step === "summary" && agent && (
-        <SummaryScreen
-          frame={frame}
-          agent={agent}
-          assistantColor={assistantColor}
-          onContinue={finishOnboarding}
+
+      {step === "onboardingIntro" && (
+        <SetupProgress
+          section="onboarding"
+          title={t("setup:tutorial.missions.onboardingIntro.title")}
+          message={t("setup:tutorial.missions.onboardingIntro.body")}
+          done={[]}
+          ctaLabel={t("setup:tutorial.missions.onboardingIntro.cta")}
+          onContinue={() => setStep("meet")}
         />
       )}
+
+      {step === "meet" && (
+        <MeetMission
+          eyebrow={stepEyebrow("meet")}
+          name={assistantName}
+          color={assistantColor}
+          namePlaceholder={t("setup:tutorial.defaults.assistantName")}
+          onNameChange={setAssistantName}
+          onColorChange={setAssistantColor}
+          creating={creatingAgent}
+          onBegin={() => void handleCreateAgent()}
+        />
+      )}
+      {step === "agentCreated" && (
+        <SetupProgress
+          section="onboarding"
+          title={t("setup:tutorial.missions.agentCreated.title")}
+          message={t("setup:tutorial.missions.agentCreated.body")}
+          done={["agent"]}
+          justCompleted="agent"
+          ctaLabel={t("setup:tutorial.missions.agentCreated.cta")}
+          onContinue={() => setStep("finished")}
+        />
+      )}
+
+      {step === "finished" && (
+        <FinishedMission
+          onTour={() => finishOnboarding("tour")}
+          onConnectMore={() => finishOnboarding("integrations")}
+        />
+      )}
+
       <ToastContainer toasts={toasts} onDismiss={onDismissToast} />
     </>
   );

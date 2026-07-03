@@ -52,9 +52,9 @@ export function providerPickerState(
  * Whether a provider group should render in the picker.
  *
  * The user may switch providers any time, including mid-conversation: the
- * runtime resolves the provider per turn over a provider-agnostic history, so a
- * switch just continues the same conversation. The picker never locks to one
- * provider. Rules, in order:
+ * runtime resolves the provider per turn over a provider-agnostic history (see
+ * `lib/provider-switch.ts`), so a switch just continues the same conversation.
+ * The picker never locks to one provider. Rules, in order:
  *  1. The active provider is always shown, so the user can see and re-pick the
  *     current selection even when it is disconnected.
  *  2. While `checking`, every provider stays visible — this is the #342 fix:

@@ -1,20 +1,19 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type {
-  ChatMessage,
   ConversationHistory,
   ConversationSummary,
-  TokenUsage,
-  ToolCallRecord,
 } from "@houston/runtime-client";
 import { config } from "../config";
 import {
+  type AssistantMessageMeta,
   appendAssistantMessageAt,
   appendUserMessageAt,
   deleteConversationAt,
   getHistoryAt,
   listConversationsAt,
   renameConversationAt,
+  type UserMessageMeta,
 } from "./conversation-file";
 
 /**
@@ -29,27 +28,20 @@ import {
 const dir = join(config.dataDir, "conversations");
 mkdirSync(dir, { recursive: true });
 
-export function appendUserMessage(id: string, content: string) {
-  appendUserMessageAt(dir, id, content);
+export function appendUserMessage(
+  id: string,
+  content: string,
+  meta?: UserMessageMeta,
+) {
+  appendUserMessageAt(dir, id, content, meta);
 }
 
 export function appendAssistantMessage(
   id: string,
   content: string,
-  tools?: ToolCallRecord[],
-  usage?: TokenUsage | null,
-  providerSwitch?: ChatMessage["providerSwitch"],
-  providerError?: ChatMessage["providerError"],
+  meta?: AssistantMessageMeta,
 ) {
-  appendAssistantMessageAt(
-    dir,
-    id,
-    content,
-    tools,
-    usage,
-    providerSwitch,
-    providerError,
-  );
+  appendAssistantMessageAt(dir, id, content, meta);
 }
 
 export function getHistory(id: string): ConversationHistory | null {

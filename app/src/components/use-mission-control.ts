@@ -10,7 +10,12 @@ import { createMission } from "../lib/create-mission";
 import { missionCardTags } from "../lib/mission-card";
 import { queryKeys } from "../lib/query-keys";
 import { formatVisibleMessageText } from "../lib/queued-chat";
-import { tauriActivity, tauriAttachments, tauriChat } from "../lib/tauri";
+import {
+  type HistoryLoadOptions,
+  tauriActivity,
+  tauriAttachments,
+  tauriChat,
+} from "../lib/tauri";
 import type { Agent } from "../lib/types";
 import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useFeedStore } from "../stores/feeds";
@@ -100,6 +105,8 @@ export function useMissionControl(agents: Agent[]) {
         return {
           id: c.id,
           title: c.title,
+          // Decode a Skill / attachment first-message marker to the user's
+          // words; never echo the raw `<!--houston:...-->` on the card (HOU-425).
           description: messagePreviewText(c.description),
           group: c.agent_name,
           icon: createElement(AgentCardAvatar, {
@@ -118,6 +125,7 @@ export function useMissionControl(agents: Agent[]) {
             sessionKey: c.session_key,
             ...(c.agent ? { agent: c.agent } : {}),
             ...(c.routine_id ? { routineId: c.routine_id } : {}),
+            ...(c.worktree_path ? { worktreePath: c.worktree_path } : {}),
           },
         };
       });
@@ -127,10 +135,13 @@ export function useMissionControl(agents: Agent[]) {
   }, [convos, agentColorMap, agentMap, getAgentDef, t]);
 
   const loadHistory = useCallback(
-    async (sessionKey: string): Promise<FeedItem[]> => {
+    async (
+      sessionKey: string,
+      opts?: HistoryLoadOptions,
+    ): Promise<FeedItem[]> => {
       const agentPath = sessionMapRef.current[sessionKey]?.agentPath;
       if (!agentPath) return [];
-      const history = await tauriChat.loadHistory(agentPath, sessionKey);
+      const history = await tauriChat.loadHistory(agentPath, sessionKey, opts);
       return history as FeedItem[];
     },
     [],

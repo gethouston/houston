@@ -1,54 +1,52 @@
 import { expect, test } from "vitest";
 import { FakeIntegrationProvider } from "./fake";
 import type { IntegrationProvider } from "./provider";
-import type { ProviderCredential } from "./types";
 
 // Drive the FAKE through the PORT type only — if this compiles + passes, the
 // interface is implementable end-to-end without leaking provider specifics.
-const cred: ProviderCredential = {
-  provider: "fake",
-  data: { user: "u1", apiKey: "k1" },
-};
+const USER = "u1";
 
 test("the full lifecycle runs through the IntegrationProvider port", async () => {
   const p: IntegrationProvider = new FakeIntegrationProvider({ id: "fake" });
 
-  // login: pending until completed, then yields a credential.
-  const start = await p.startLogin();
-  expect(start.loginUrl).toContain(start.pollKey);
-  expect(await p.pollLogin(start.pollKey)).toEqual({ status: "pending" });
-  (p as FakeIntegrationProvider).completeLogin(start.pollKey, cred);
-  expect(await p.pollLogin(start.pollKey)).toEqual({
-    status: "linked",
-    credential: cred,
+  expect(await p.readiness()).toEqual({ ready: true });
+
+  // toolkits + connect (pending until the OAuth "finishes") + poll + list
+  expect((await p.listToolkits()).map((t) => t.slug)).toContain("gmail");
+  expect(await p.listConnections(USER)).toEqual([]);
+  const start = await p.connect(USER, "gmail");
+  expect(start.redirectUrl).toContain("gmail");
+  expect(await p.connection(USER, start.connectionId)).toMatchObject({
+    toolkit: "gmail",
+    status: "pending",
   });
-
-  // verify
-  expect(await p.verifyCredential(cred)).toEqual({ accountId: "u1" });
-
-  // toolkits + connect + list
-  expect((await p.listToolkits(cred)).map((t) => t.slug)).toContain("gmail");
-  expect(await p.listConnections(cred)).toEqual([]);
-  const conn = await p.connect(cred, "gmail");
-  expect(conn.redirectUrl).toContain("gmail");
-  expect((await p.listConnections(cred)).map((c) => c.toolkit)).toEqual([
+  (p as FakeIntegrationProvider).completeConnection(USER, start.connectionId);
+  expect(await p.connection(USER, start.connectionId)).toMatchObject({
+    status: "active",
+  });
+  expect((await p.listConnections(USER)).map((c) => c.toolkit)).toEqual([
     "gmail",
   ]);
 
+  // connections are per user — another user sees nothing.
+  expect(await p.listConnections("someone-else")).toEqual([]);
+  expect(await p.connection("someone-else", start.connectionId)).toBeNull();
+
   // search + execute
-  const matches = await p.search(cred, "send an email");
+  const matches = await p.search(USER, "send an email");
   expect(matches.map((m) => m.action)).toContain("GMAIL_SEND_EMAIL");
-  const result = await p.execute(cred, "GMAIL_SEND_EMAIL", { to: "a@b.com" });
+  const result = await p.execute(USER, "GMAIL_SEND_EMAIL", { to: "a@b.com" });
   expect(result.successful).toBe(true);
 
   // disconnect
-  await p.disconnect(cred, "gmail");
-  expect(await p.listConnections(cred)).toEqual([]);
+  await p.disconnect(USER, "gmail");
+  expect(await p.listConnections(USER)).toEqual([]);
 });
 
-test("an invalidated credential fails verification", async () => {
+test("a signed-out gateway reports signin-required readiness", async () => {
   const p = new FakeIntegrationProvider();
-  expect(await p.verifyCredential(cred)).not.toBeNull();
-  p.invalidate("k1");
-  expect(await p.verifyCredential(cred)).toBeNull();
+  p.setNotReady();
+  expect(await p.readiness()).toEqual({ ready: false, reason: "signin" });
+  p.setNotReady(false);
+  expect(await p.readiness()).toEqual({ ready: true });
 });

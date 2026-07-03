@@ -47,6 +47,8 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
       archived.map((a) => ({
         id: a.id,
         title: a.title,
+        // Decode a Skill / attachment first-message marker to the user's words;
+        // never echo the raw `<!--houston:...-->` on the card (HOU-425).
         description: messagePreviewText(a.description),
         status: a.status,
         updatedAt: a.updated_at ?? new Date().toISOString(),
@@ -165,6 +167,8 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           footer={panel.footer}
           attachMenu={panel.attachMenu}
           renderUserMessage={panel.renderUserMessage}
+          currentUserId={panel.currentUserId}
+          authorLabels={panel.authorLabels}
           renderSystemMessage={panel.renderSystemMessage}
           mapFeedItems={panel.mapFeedItems}
           afterMessages={panel.afterMessages}

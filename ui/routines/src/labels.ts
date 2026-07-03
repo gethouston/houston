@@ -13,8 +13,8 @@
  * are filled here. The locale validator only checks `{{ }}` parity, so `{token}`
  * is invisible to it — keep the tokens identical across en/es/pt by hand.
  *
- * Day names, AM/PM and date order come from `Intl.*Format(locale)`, so they
- * localize without per-language strings.
+ * Day names, month names, AM/PM and date order come from `Intl.*Format(locale)`,
+ * so they localize without per-language strings.
  *
  * The English default values live in `./labels-default` (re-exported below) to
  * keep this file focused on the type contracts.
@@ -33,7 +33,7 @@ export function interp(
   );
 }
 
-/** Plain-language summary of a cron schedule. `{n}`/`{time}`/`{day}`/`{ordinal}`. */
+/** Plain-language summary of a cron schedule. `{n}`/`{time}`/`{day}`/`{days}`/`{ordinal}`/`{months}`. */
 export interface ScheduleSummaryLabels {
   noSchedule: string;
   custom: string;

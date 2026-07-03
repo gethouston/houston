@@ -58,6 +58,7 @@ const deps = (over: Partial<ControlPlaneDeps> = {}): ControlPlaneDeps => ({
       launcher,
       proxy: { async forward() {} },
       credentials,
+      forwardActingHeader: false,
     }),
   },
   vfs,

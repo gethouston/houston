@@ -2,8 +2,10 @@
 //!
 //! Skills are directories containing a `SKILL.md` file with frontmatter metadata
 //! and a markdown body. Stored under `.agents/skills/<name>/SKILL.md` — the
-//! skill.sh / Claude Code convention. A `.claude/skills/<name>` symlink is
-//! typically created alongside so Claude Code can discover skills natively.
+//! skill.sh / Claude Code convention. A live `.claude/skills/<name>` link is
+//! created alongside so Claude Code can discover skills natively (a symlink on
+//! Unix; a directory junction on Windows without Developer Mode). The engine
+//! owns that mirror — see `ensure_claude_mirror` in `houston-engine-core`.
 
 pub mod format;
 pub mod index;
@@ -45,6 +47,14 @@ pub enum SkillError {
     /// expected path. Different from `NotFound` (which is local).
     #[error("Couldn't find that skill in the repo. The author may have renamed or removed it.")]
     SkillNotInRepo(String),
+    /// The user's repo reference couldn't be parsed into an `owner/repo` —
+    /// they pasted a whole command (`npx skills add ...`), a bare word, or
+    /// free text. Distinct from `RepoNotFound` (a well-formed `owner/repo`
+    /// GitHub simply doesn't have) so the UI can coach the format instead of
+    /// implying the repo is missing, and so we never fire a doomed GitHub
+    /// lookup on garbage. (HOU-440)
+    #[error("Enter a GitHub repo as owner/repo, or paste its GitHub link.")]
+    InvalidRepoSource(String),
     #[error("That repo is private. Only public repos are supported.")]
     RepoPrivate,
     #[error("Couldn't find a repo named '{0}'. Check the owner/repo.")]
@@ -180,7 +190,19 @@ pub fn list_skills(skills_dir: &Path) -> Result<Vec<SkillSummary>, SkillError> {
             continue;
         }
         match format::parse_file(&skill_md) {
-            Ok((summary, _body)) => summaries.push(summary),
+            Ok((mut summary, _body)) => {
+                // Identity = the on-disk directory slug. `load_skill`, `save`,
+                // `delete`, and the `.claude` discovery mirror all resolve by
+                // directory, so the name we hand back here is the one a caller
+                // will pass to `load_skill`. A SKILL.md whose frontmatter `name:`
+                // drifted from its directory (common for agent-authored skills
+                // that carry a display phrase) must still round-trip — trust the
+                // directory, not the frontmatter. (HOU-441)
+                if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                    summary.name = dir_name.to_string();
+                }
+                summaries.push(summary);
+            }
             Err(e) => tracing::warn!("[houston-skills] skipping {}: {e}", path.display()),
         }
     }
@@ -242,6 +264,13 @@ pub fn load_skill(skills_dir: &Path, name: &str) -> Result<Skill, SkillError> {
         return Err(SkillError::NotFound(name.to_string()));
     }
     let (mut summary, body) = format::parse_file(&skill_md)?;
+    // Pin identity to the directory slug we were asked for. If the frontmatter
+    // `name:` drifted from the directory (agent-authored skills often store a
+    // display phrase here), heal it on open so the file, the `.claude` mirror,
+    // and Claude Code's native tool name all agree with the slug everything
+    // else loads by. `load_skill` already rewrites the file for `last_used`, so
+    // this is free. (HOU-441)
+    summary.name = name.to_string();
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
     summary.last_used = Some(today);
     let updated = format::serialize(&summary, &body);
@@ -283,6 +312,106 @@ pub fn create_skill(skills_dir: &Path, input: CreateSkillInput) -> Result<(), Sk
     let skill_md = skill_dir.join("SKILL.md");
     std::fs::write(&skill_md, &content).map_err(|e| SkillError::Io(e.to_string()))?;
     Ok(())
+}
+
+/// Install a skill from a raw `SKILL.md` string, **preserving the author's
+/// frontmatter** (description, category, integrations, image, inputs) instead
+/// of rebuilding a bare one like [`create_skill`] does.
+///
+/// `install_name` becomes both the on-disk slug and the frontmatter `name`, so
+/// the directory and the name always match. Bookkeeping is reset to a fresh
+/// install (version 1, today's dates) and the skill is marked `featured` — the
+/// user explicitly chose to install it, so it must surface on the chat empty
+/// state and in the picker's Featured tab rather than hiding under "Other".
+///
+/// Falls back to a minimal skill (`fallback_description` + the raw body) when
+/// the source has no parseable frontmatter, so a bare `SKILL.md` still installs
+/// instead of failing.
+///
+/// Idempotent: if a healthy skill is already installed under `install_name`,
+/// this is a no-op success that leaves the existing copy (and any local edits)
+/// untouched. A corrupt existing skill is replaced so a reinstall heals it.
+pub fn install_skill_md(
+    skills_dir: &Path,
+    install_name: &str,
+    raw_md: &str,
+    fallback_description: &str,
+) -> Result<(), SkillError> {
+    validate::name(install_name)?;
+
+    let skill_dir = skills_dir.join(install_name);
+    if skill_dir.exists() {
+        // Installing is idempotent: a healthy skill that's already present is
+        // the goal state, so treat it as success (no-op) instead of erroring —
+        // clicking "install" on something you already have must never fail
+        // (HOU-439). Preserve the existing copy so local edits and version
+        // bumps survive. A corrupt or unparseable SKILL.md (e.g. left by an
+        // older Houston) falls through and is REPLACED, so a reinstall heals a
+        // wedged skill that never lists yet blocks a fresh install.
+        if format::parse_file(&skill_dir.join("SKILL.md")).is_ok() {
+            return Ok(());
+        }
+        std::fs::remove_dir_all(&skill_dir).map_err(|e| SkillError::Io(e.to_string()))?;
+    }
+
+    let (mut summary, body) = match format::parse_content(raw_md) {
+        Ok(parsed) => parsed,
+        // No (or malformed) frontmatter: keep the whole document as the body.
+        Err(_) => (
+            blank_summary(install_name, fallback_description),
+            raw_md.trim().to_string(),
+        ),
+    };
+
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    summary.name = install_name.to_string();
+    summary.version = 1;
+    summary.created = Some(today.clone());
+    summary.last_used = Some(today);
+    summary.featured = true;
+    if summary.description.trim().is_empty() {
+        summary.description = fallback_description.to_string();
+    }
+    // Source descriptions can exceed our cap; clamp instead of failing the
+    // install (matches the old lenient behavior).
+    summary.description = clamp_len(&summary.description, validate::MAX_DESCRIPTION_LEN);
+
+    validate::description(&summary.description)?;
+    validate::content(&body)?;
+
+    std::fs::create_dir_all(&skill_dir).map_err(|e| SkillError::Io(e.to_string()))?;
+    let serialized = format::serialize(&summary, &body);
+    std::fs::write(skill_dir.join("SKILL.md"), serialized).map_err(|e| SkillError::Io(e.to_string()))?;
+    Ok(())
+}
+
+fn blank_summary(name: &str, description: &str) -> SkillSummary {
+    SkillSummary {
+        name: name.to_string(),
+        description: description.to_string(),
+        version: 1,
+        tags: Vec::new(),
+        created: None,
+        last_used: None,
+        category: None,
+        featured: false,
+        integrations: Vec::new(),
+        image: None,
+        inputs: Vec::new(),
+        prompt_template: None,
+    }
+}
+
+/// Truncate `s` to at most `max` bytes on a UTF-8 char boundary.
+fn clamp_len(s: &str, max: usize) -> String {
+    if s.len() <= max {
+        return s.to_string();
+    }
+    let mut end = max;
+    while end > 0 && !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    s[..end].trim_end().to_string()
 }
 
 /// Fuzzy find-and-replace within a skill's content. Increments version.
@@ -389,6 +518,45 @@ mod tests {
         let skill = load_skill(dir, "loader-test").unwrap();
         assert_eq!(skill.summary.name, "loader-test");
         assert!(skill.content.contains("Test body"));
+    }
+
+    #[test]
+    fn list_and_load_use_directory_slug_when_frontmatter_name_drifts() {
+        // HOU-441: an agent-authored SKILL.md can carry a display phrase in its
+        // frontmatter `name:` while living in a kebab-slug directory. `list_skills`
+        // must report the *directory* slug — the id `load_skill` resolves by — or
+        // the UI round-trip (list -> click -> load) hard-errors "Skill not found".
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path();
+        let slug = "redactar-outreach-esg";
+        let skill_dir = dir.join(slug);
+        std::fs::create_dir_all(&skill_dir).unwrap();
+        std::fs::write(
+            skill_dir.join("SKILL.md"),
+            "---\nname: Redactar Outreach ESG\ndescription: Draft ESG outreach\n---\n\n## Procedure\nDraft it.\n",
+        )
+        .unwrap();
+
+        // list reports the directory slug, not the drifted frontmatter phrase.
+        let skills = list_skills(dir).unwrap();
+        assert_eq!(skills.len(), 1);
+        assert_eq!(skills[0].name, slug);
+
+        // The id `list_skills` handed back round-trips cleanly through `load_skill`.
+        let loaded = load_skill(dir, &skills[0].name).unwrap();
+        assert_eq!(loaded.summary.name, slug);
+        assert!(loaded.content.contains("Draft it."));
+
+        // Opening the skill heals the on-disk frontmatter name to the slug.
+        let healed = std::fs::read_to_string(skill_dir.join("SKILL.md")).unwrap();
+        assert!(healed.contains(&format!("name: {slug}")));
+        assert!(!healed.contains("Redactar Outreach ESG"));
+
+        // The drifted phrase never named a real directory — still NotFound.
+        assert!(matches!(
+            load_skill(dir, "Redactar Outreach ESG"),
+            Err(SkillError::NotFound(_))
+        ));
     }
 
     #[test]
@@ -510,5 +678,122 @@ mod tests {
 
         // The flat file should be left alone (not silently overwriting the dir)
         assert!(flat.exists(), "flat file should not be removed when target dir exists");
+    }
+
+    #[test]
+    fn install_md_preserves_frontmatter_and_features() {
+        let d = TempDir::new().unwrap();
+        let raw = "---\nname: original-slug\ndescription: Do the thing\ncategory: research\nimage: rocket\nintegrations: [tavily, gmail]\n---\n\n# Title\n\nBody here.\n";
+        install_skill_md(d.path(), "writing-plans", raw, "fallback").unwrap();
+
+        let (s, body) =
+            format::parse_file(&d.path().join("writing-plans/SKILL.md")).unwrap();
+        // The install slug owns the name, but the author's frontmatter survives.
+        assert_eq!(s.name, "writing-plans");
+        assert!(
+            s.featured,
+            "installed skills must be featured so the user can find what they installed"
+        );
+        assert_eq!(s.description, "Do the thing");
+        assert_eq!(s.category.as_deref(), Some("research"));
+        assert_eq!(s.image.as_deref(), Some("rocket"));
+        assert_eq!(s.integrations, vec!["tavily", "gmail"]);
+        assert_eq!(s.version, 1);
+        assert!(body.contains("Body here."));
+
+        // And it shows up in the list as a featured skill.
+        let listed = list_skills(d.path()).unwrap();
+        assert!(listed.iter().any(|x| x.name == "writing-plans" && x.featured));
+    }
+
+    #[test]
+    fn install_md_without_frontmatter_uses_fallback() {
+        let d = TempDir::new().unwrap();
+        let raw = "# Just a heading\n\nNo frontmatter at all.\n";
+        install_skill_md(d.path(), "bare-skill", raw, "fallback desc").unwrap();
+
+        let (s, body) = format::parse_file(&d.path().join("bare-skill/SKILL.md")).unwrap();
+        assert_eq!(s.name, "bare-skill");
+        assert!(s.featured);
+        assert_eq!(s.description, "fallback desc");
+        assert!(body.contains("No frontmatter at all."));
+    }
+
+    #[test]
+    fn install_md_clamps_overlong_description() {
+        let d = TempDir::new().unwrap();
+        let long = "x".repeat(400);
+        let raw = format!("---\nname: s\ndescription: {long}\n---\n\nBody\n");
+        // Must not fail validation on an over-long source description.
+        install_skill_md(d.path(), "clamp-me", &raw, "fallback").unwrap();
+        let (s, _) = format::parse_file(&d.path().join("clamp-me/SKILL.md")).unwrap();
+        assert!(s.description.len() <= validate::MAX_DESCRIPTION_LEN);
+    }
+
+    #[test]
+    fn install_md_colon_description_appears_in_list() {
+        // Regression for the Vercel `ai-sdk` skill: its single-quoted, colon-laden
+        // description used to serialize to invalid YAML, so the installed skill
+        // was on disk but silently skipped by `list_skills`.
+        let d = TempDir::new().unwrap();
+        let raw = "---\nname: ai-sdk\ndescription: 'Use when developers: build agents, call generateText, or ask about \"streamText\"'\n---\n\n# AI SDK\n\nBody\n";
+        install_skill_md(d.path(), "ai-sdk", raw, "fallback").unwrap();
+
+        let listed = list_skills(d.path()).unwrap();
+        assert!(
+            listed.iter().any(|s| s.name == "ai-sdk"),
+            "a skill whose description contains a colon must still appear in the list"
+        );
+    }
+
+    #[test]
+    fn install_md_overwrites_a_corrupt_existing_skill() {
+        let d = TempDir::new().unwrap();
+        // A skill left corrupt by an older Houston: unparseable SKILL.md.
+        let dir = d.path().join("ai-sdk");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("SKILL.md"), "---\ndescription: broken: yaml\nno closing").unwrap();
+        assert!(
+            list_skills(d.path()).unwrap().is_empty(),
+            "a corrupt skill should not list"
+        );
+
+        // Reinstalling heals it instead of erroring "already installed".
+        let raw = "---\nname: ai-sdk\ndescription: Fresh and valid\n---\n\nBody\n";
+        install_skill_md(d.path(), "ai-sdk", raw, "fallback").unwrap();
+        let listed = list_skills(d.path()).unwrap();
+        assert!(
+            listed.iter().any(|s| s.name == "ai-sdk"),
+            "reinstalling must heal a corrupt skill"
+        );
+    }
+
+    #[test]
+    fn install_md_is_idempotent_and_preserves_local_edits() {
+        let d = TempDir::new().unwrap();
+        let raw = "---\nname: dup\ndescription: ok\n---\n\nOriginal body\n";
+        install_skill_md(d.path(), "dup", raw, "f").unwrap();
+
+        // Simulate a local edit made after the first install (the user tweaked
+        // the skill, or `edit_skill` bumped its version).
+        let edited = "---\nname: dup\ndescription: ok\nversion: 4\n---\n\nLocally edited body\n";
+        std::fs::write(d.path().join("dup/SKILL.md"), edited).unwrap();
+
+        // Reinstalling a healthy skill is a no-op success, not an error
+        // (HOU-439): installing what you already have must not fail...
+        let upstream = "---\nname: dup\ndescription: ok\n---\n\nUpstream body\n";
+        install_skill_md(d.path(), "dup", upstream, "f").unwrap();
+
+        // ...and it must NOT clobber the local copy.
+        let skill = load_skill(d.path(), "dup").unwrap();
+        assert!(
+            skill.content.contains("Locally edited body"),
+            "idempotent reinstall must preserve the existing copy, not overwrite it"
+        );
+        assert_eq!(
+            list_skills(d.path()).unwrap().iter().filter(|s| s.name == "dup").count(),
+            1,
+            "the skill must still list exactly once after a reinstall"
+        );
     }
 }

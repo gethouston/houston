@@ -1,3 +1,4 @@
+import { readEventStream } from "./sse-read";
 import type {
   AuthStatus,
   ConversationHistory,
@@ -10,7 +11,7 @@ import type {
   ProviderInfo,
   Settings,
   VersionResponse,
-  WireEvent,
+  WireFrame,
 } from "./types";
 
 export class EngineError extends Error {
@@ -26,8 +27,22 @@ export class EngineError extends Error {
 export interface EventStreamOptions {
   /** Abort to close the stream (e.g. when switching conversations). */
   signal?: AbortSignal;
+  /**
+   * Resume cursor (`?after=<seq>`): the server replays only frames with
+   * `seq > after` from its in-flight-turn buffer — no `sync`, no gap, no
+   * duplicate. An unserviceable cursor gets a `sync` with `resync: true`
+   * instead. Omit for the fresh-connect contract (`sync`, then live frames).
+   */
+  after?: number;
   /** Called for every event scoped to this conversation. */
-  onEvent: (event: WireEvent) => void;
+  onEvent: (event: WireFrame) => void;
+  /**
+   * Called whenever ANY bytes arrive on the stream — including SSE comment
+   * frames (": connected", ": hb" heartbeats) that never reach `onEvent`.
+   * Feeds idle watchdogs (see `streamEventsResumable`): a server heartbeating
+   * every 15s keeps this firing even when no turn is running.
+   */
+  onActivity?: () => void;
 }
 
 export interface SendOptions {
@@ -251,11 +266,15 @@ export class HoustonEngineClient {
   /**
    * Subscribe to ONE conversation's live event stream (SSE). Resolves when the
    * stream closes or `opts.signal` aborts. Events are strictly scoped to `id` —
-   * no other conversation's events can arrive here.
+   * no other conversation's events can arrive here. Pass `opts.after` to
+   * resume from a seq cursor instead of the fresh-connect `sync`. This is one
+   * connection attempt; for a subscription that survives drops, wrap it with
+   * `streamEventsResumable`.
    */
   async streamEvents(id: string, opts: EventStreamOptions): Promise<void> {
+    const cursor = opts.after !== undefined ? `?after=${opts.after}` : "";
     const res = await this.request(
-      `/conversations/${encodeURIComponent(id)}/events`,
+      `/conversations/${encodeURIComponent(id)}/events${cursor}`,
       {
         method: "GET",
         headers: { Accept: "text/event-stream" },
@@ -264,23 +283,6 @@ export class HoustonEngineClient {
     );
     if (!res.body)
       throw new EngineError(0, "no response body for event stream");
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      let idx = buf.indexOf("\n\n");
-      while (idx >= 0) {
-        const frame = buf.slice(0, idx);
-        buf = buf.slice(idx + 2);
-        idx = buf.indexOf("\n\n");
-        const line = frame.split("\n").find((l) => l.startsWith("data:"));
-        if (!line) continue; // skip SSE comments (": hb" heartbeats, ": connected")
-        opts.onEvent(JSON.parse(line.slice(5).trim()) as WireEvent);
-      }
-    }
+    await readEventStream(res.body, opts.onEvent, opts.onActivity);
   }
 }

@@ -41,7 +41,7 @@
     "chatTitle": "Mantener los resultados en un solo chat",
     "chatDescription": "Cada ejecución se suma al mismo chat. Desactívalo para abrir un chat nuevo cada vez que se ejecute esta rutina.",
     "modelTitle": "Modelo",
-    "modelDescription": "Elige el modelo y el nivel de esfuerzo de razonamiento con que se ejecuta esta rutina."
+    "modelDescription": "Elige el modelo y el nivel de esfuerzo de razonamiento con que se ejecuta esta rutina. Usa la configuración del agente de forma predeterminada."
   },
   "row": {
     "untitled": "Sin título",
@@ -80,7 +80,15 @@
     "timeLabel": "Hora",
     "dayOfMonthLabel": "Día del mes",
     "repeatEvery": "Repetir cada",
+    "enterNumber": "Ingresa un número",
+    "pickDay": "Elige al menos un día",
+    "onTheseDays": "En estos días",
     "weekdaysLabel": "En estos días",
+    "shortcuts": {
+      "everyDay": "Todos los días",
+      "weekdays": "Días laborables",
+      "weekends": "Fines de semana"
+    },
     "weekdayShortcuts": {
       "everyDay": "Todos los días",
       "weekdays": "Días laborables",
@@ -88,8 +96,6 @@
     },
     "decrease": "Disminuir",
     "increase": "Aumentar",
-    "enterNumber": "Ingresa un número",
-    "pickDay": "Elige al menos un día",
     "timePicker": {
       "hour": "Hora",
       "minute": "Minuto",
@@ -108,6 +114,7 @@
       "everyDay": "Se ejecuta todos los días a las {time}",
       "everyNDays": "Se ejecuta cada {n} días a las {time}",
       "weekly": "Se ejecuta cada {day} a las {time}",
+      "everyWeekOnDays": "Se ejecuta cada semana los {days} a las {time}",
       "weeklyOnDays": "Se ejecuta cada semana los {days} a las {time}",
       "monthly": "Se ejecuta el día {n} de cada mes a las {time}",
       "everyNMonths": "Se ejecuta el día {n} de cada {months} meses a las {time}"

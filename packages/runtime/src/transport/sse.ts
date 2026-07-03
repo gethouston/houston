@@ -1,4 +1,5 @@
 import type { ServerResponse } from "node:http";
+import { formatSseFrame, type WireFrame } from "@houston/runtime-client";
 
 /** Open a Server-Sent Events stream on a response. */
 export function openSSE(res: ServerResponse) {
@@ -19,9 +20,15 @@ export function openSSE(res: ServerResponse) {
   res.on("close", () => clearInterval(heartbeat));
 
   return {
-    send(type: string, data: unknown) {
+    /**
+     * Write one wire frame (the whole envelope — type, data, seq, turnId). A
+     * sequenced frame (conversation streams) gets an SSE `id: <seq>` line +
+     * `seq` in the JSON envelope so a client can resume with
+     * `?after=`/`Last-Event-ID`; heartbeats/comments are unaffected.
+     */
+    send(frame: WireFrame) {
       if (res.writableEnded) return;
-      res.write(`data: ${JSON.stringify({ type, data })}\n\n`);
+      res.write(formatSseFrame(frame));
     },
     close() {
       clearInterval(heartbeat);

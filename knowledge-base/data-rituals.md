@@ -69,7 +69,7 @@ First 10 results = the day's queue.
 Open PostHog → **Growth** dashboard. Three numbers:
 - Yesterday's installs (acquisition tile)
 - Yesterday's DAU (engagement tile)
-- Yesterday's activation rate (activation tile — % of new installs who hit `chat_message_received` within 24h)
+- Yesterday's activation rate (activation tile — % of new installs who hit `chat_message_sent` within 24h)
 
 Compare each to the trailing 7-day average. If any is ≥ 20% off, dig.
 
@@ -82,7 +82,7 @@ Open PostHog → **Acquisition Sources** tile. Look at `$initial_utm_campaign` b
 Open PostHog dashboards. For each metric below, note the value and the week-over-week change:
 
 - New installs
-- Activated users (`chat_message_received` first-fire count)
+- Activated users (`chat_message_sent` first-fire count)
 - D7 retention (% of last-week-Monday installs who came back)
 - Errors per user (`app_error_shown` count / DAU)
 - Top feature events (which `skill_used` / `tab_opened` values are up?)
@@ -157,7 +157,7 @@ Open with: **"Where in the funnel do we lose people?"**
 Tiles:
 - Full funnel: `install_created` → `workspace_created` → `provider_configured` → `agent_created` → `chat_message_sent` → `chat_message_received`
 - Drop-off heatmap (which step bleeds the most users?)
-- Time-to-activation distribution (median minutes from install to first reply)
+- Time-to-activation distribution (median minutes from install to first message sent)
 - Activation rate, cohorted by signup week (is it getting better or worse over time?)
 
 Red flag: drop-off > 50% at any single step that wasn't there last week.
@@ -221,7 +221,7 @@ Red flag: a heavily-active domain (> 5 users) suddenly drops to 1-2 users — li
 
 Defined once in PostHog → reuse in every insight. From `knowledge-base/production-infra.md`:
 
-- **Activated users** — fired `chat_message_received` (the activation milestone)
+- **Activated users** — fired `chat_message_sent` (the activation milestone)
 - **Stale-version users** — `app_version != latest`, for marketing-update emails to push people to update (improves Sentry symbolication coverage AND reduces bugs they hit)
 - **B2B users** — `email_domain in [<your strategic accounts>]`
 - **Power users** — top 10% by `total_messages_sent` (or `is_activated=true` if you haven't wired the counter yet)

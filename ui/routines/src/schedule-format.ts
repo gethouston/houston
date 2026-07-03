@@ -1,12 +1,14 @@
 /**
- * Small pure formatting helpers shared by the schedule cron + picker code:
- * time parsing/formatting, ordinals, and weekday names. No cron logic here.
+ * Small pure formatting helpers shared by the schedule cron + summary + picker
+ * code: time parsing/formatting, ordinals, weekday names, and list joining. No
+ * cron logic here.
  *
  * Everything user-visible localizes through `Intl.*Format(locale)` so the
- * package stays i18n-agnostic: day names, AM/PM and 12h-vs-24h clock all come
- * from the locale, never per-language strings. `ordinal` is the one
- * English-only helper — callers feed it through an `{ordinal}` token that only
- * the English summary templates use (es/pt phrase the day as a plain number).
+ * package stays i18n-agnostic: day names, AM/PM, 12h-vs-24h clock and the list
+ * conjunction ("and" / "y" / "e") all come from the locale, never per-language
+ * strings. `ordinal` is the one English-only helper — callers feed it through an
+ * `{ordinal}` token that only the English summary templates use (es/pt phrase
+ * the day as a plain number).
  */
 
 /** Parse "HH:MM" into { hour, minute }. */
@@ -56,17 +58,23 @@ export function narrowWeekdayNames(locale = "en-US"): string[] {
   return weekdayNames(locale, "narrow");
 }
 
+/** Full weekday names (Sun…Sat) for `locale`, indexed 0–6. */
+export function longWeekdayNames(locale = "en-US"): string[] {
+  return weekdayNames(locale, "long");
+}
+
 /** Localized full weekday name for a 0 (Sun) – 6 (Sat) index. */
 export function weekdayName(dayOfWeek: number, locale = "en-US"): string {
-  return weekdayNames(locale, "long")[dayOfWeek % 7];
+  return longWeekdayNames(locale)[dayOfWeek % 7];
 }
 
 /**
  * Join names with the locale's conjunction list format:
- * ["Mon","Wed","Fri"] → "Mon, Wed, and Fri" (en), "Lun, Mié y Vie" (es). Uses
+ * ["Mon","Wed","Fri"] → "Mon, Wed, and Fri" (en), "lun, mié y vie" (es). Uses
  * `Intl.ListFormat` so the connector localizes without per-language strings.
  */
 export function joinList(items: string[], locale = "en-US"): string {
+  if (items.length <= 1) return items[0] ?? "";
   return new Intl.ListFormat(locale, {
     style: "long",
     type: "conjunction",

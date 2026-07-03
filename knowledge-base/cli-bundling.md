@@ -2,6 +2,8 @@
 
 > **⚠️ LEGACY — Rust engine, being retired at P6.** This whole CLI-bundling scheme exists because the Rust `engine/` drives agents by spawning provider **CLI subprocesses**. The target TS engine (**pi runtime**) talks to providers **in-process** — there are NO bundled provider CLIs. This doc is accurate for the current default Rust build only. See `convergence/README.md` + `selfhost/`.
 >
+> **⚠️ No longer wired into CI (HOU-628).** `.github/workflows/release.yml` was rewritten to build the desktop app around the bun-compiled TS host sidecar, so it NO LONGER runs `fetch-cli-deps.sh`, the "Pre-sign bundled CLI binaries" step, or the bundled-CLI invariant checks. Every "CI / `release.yml` calls `fetch-cli-deps.sh` …" reference below is HISTORICAL — the script + this bundling scheme survive only for a manual/local Rust-engine build until `engine/` is deleted at P6.
+>
 > **Two corrections that matter even today:**
 > - **Composio is NO LONGER a bundled CLI.** The earlier "cut" was reversed and Composio was **re-wired as an in-process REST tool** (each user's own free "Composio for you" account, no binary) behind the `IntegrationProvider` port — `packages/host/src/integrations/`. Ignore every "bundle the composio CLI" instruction below; that path is gone. `houston-composio` (Rust) + the per-arch composio binary fetch are deleted with `engine/`.
 > - **Gemini CLI is dropped, not Google Gemini as a provider.** The TS engine keeps Google Gemini as an API-key pi provider. Ignore the legacy gemini CLI bundle rows/sections below.
@@ -113,6 +115,16 @@ version:
 The manifest is staged into the .app at
 `Resources/bin/cli-deps.json` so the runtime claude-code installer can
 read pinned URLs + checksums without a separate network round-trip.
+
+**Version floors:** codex must stay ≥ 0.137 — the engine passes each
+session's system prompt as a file-based profile
+(`$CODEX_HOME/houston-tmp-*.config.toml` + `-p`, see
+`houston-terminal-manager::prompt_scratch`); older codex `-p` only reads
+`[profiles.*]` tables inside the user's own `config.toml` and would fail
+with "config profile not found". claude-code must stay ≥ a version with
+`--system-prompt-file` (the pinned 2.1.197 has it). Both exist because
+inline prompts on argv exceed Windows' 32,767-char `CreateProcessW`
+limit (os error 206) for agents with large accumulated context.
 
 ## Build pipeline
 

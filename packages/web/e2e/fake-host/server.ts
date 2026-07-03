@@ -12,7 +12,14 @@
 
 import { createServer } from "node:http";
 import { Readable } from "node:stream";
-import { clearChatStreams } from "./chat";
+import type { Capabilities } from "@houston-ai/engine-client";
+import { setReplyDelay } from "./chat";
+import {
+  clearChatStreams,
+  dropChatStreams,
+  killRunningTurns,
+  turnBoundary,
+} from "./chat-controls";
 import { CORS, json, noContent } from "./http";
 import { FAKE_HOST_PORT } from "./ports";
 import { authStatusBody, handleAgents, providersBody } from "./routes";
@@ -35,7 +42,7 @@ function openDomainStream(req: Request): Response {
   return sseResponse(req, (sink) => {
     sink.comment("connected");
     const off = state.onDomainEvent((event) => {
-      if (!sink.closed) sink.push(event);
+      if (!sink.closed) sink.data(event);
     });
     req.signal.addEventListener("abort", off);
   });
@@ -66,6 +73,29 @@ async function handle(req: Request): Promise<Response> {
     );
     return json({ ok: true });
   }
+  // Sever every open chat stream mid-turn (the turns keep producing into the
+  // replay log) — the network-drop half of the reconnect e2e.
+  if (path === "/__test__/drop-chat-streams" && method === "POST") {
+    return json({ dropped: dropChatStreams() });
+  }
+  // Slow the canned reply so a test can land a drop mid-turn deterministically.
+  if (path === "/__test__/chat-config" && method === "POST") {
+    const body = await parseBody(req);
+    setReplyDelay(Number(body?.replyDelayMs ?? 15));
+    return json({ ok: true });
+  }
+  // Synthesize the dead-pump reaper's terminal error on every running turn.
+  if (path === "/__test__/kill-turn" && method === "POST") {
+    return json({ killed: killRunningTurns() });
+  }
+  // End the running turn while nobody watches, then start the next one —
+  // the resync-across-a-turn-boundary simulation.
+  if (path === "/__test__/turn-boundary" && method === "POST") {
+    const body = await parseBody(req);
+    return json({
+      advanced: turnBoundary(String(body?.nextText ?? "next turn")),
+    });
+  }
 
   // --- global reactivity feed ---
   if (path === "/v1/events" && method === "GET") return openDomainStream(req);
@@ -80,6 +110,21 @@ async function handle(req: Request): Promise<Response> {
   if (path === "/providers") return json(providersBody());
 
   // --- misc host surface the UI may touch on boot (kept permissive) ---
+  // Single-player local profile: the app's boot routing waits on this
+  // (App.tsx gates onboarding-vs-shell on loaded capabilities).
+  if (path === "/v1/capabilities" && method === "GET") {
+    const caps: Capabilities = {
+      profile: "local",
+      revealInOs: false,
+      terminal: false,
+      tunnel: false,
+      codeExecution: "disabled",
+      providers: ["anthropic"],
+      openaiCompatible: false,
+      integrations: [],
+    };
+    return json(caps);
+  }
   if (segs[0] === "v1" && segs[1] === "workspaces") return json([]);
   // Composio integrations: report none connected (control-plane.ts wants `{ items }`).
   if (segs[0] === "v1" && segs[1] === "integrations")

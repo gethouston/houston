@@ -30,9 +30,12 @@ Playwright boots two servers automatically (see `playwright.config.ts`):
 e2e/
   fake-host/        # a Node HTTP server: host + per-agent runtime, in-memory
     server.ts       #   entry: CORS, /v1/*, /agents/*, test-control routes
-    routes.ts       #   per-agent dispatch + the chat SSE stream (the interesting bit)
+    routes.ts       #   per-agent dispatch (activities, auth, conversations, files)
+    chat.ts         #   the chat SSE stream (the interesting bit): StreamChannel +
+                    #   serveResumableStream + turnId-stamped turns
+    chat-controls.ts#   /__test__/* chat controls (drop, kill-turn, turn-boundary)
     state.ts        #   seed + mutations; .houston/** files-first store (the board)
-    sse.ts          #   Server-Sent Events helpers (chat turn + /v1/events feed)
+    sse.ts          #   SSE response plumbing (formatSseFrame + /v1/events feed)
     ports.ts        #   shared ports + the seeded agent id
   support/
     seed.ts         # localStorage + window.__HOUSTON_CP__ primed before any app script
@@ -50,9 +53,30 @@ deployment).
 
 **Chat.** The new engine has no WebSocket — a turn streams over SSE. The client
 subscribes to `GET …/conversations/:id/events` first, then POSTs the message
-(fire-and-forget 202). The fake host registers the open stream and, when the
-message lands, pushes a canned reply (`text` deltas → `usage` → `done`), exactly
-like the real runtime (`packages/runtime-client` + `engine-adapter/translate.ts`).
+(fire-and-forget 202, with a `nonce` the server echoes on the turn's `user`
+frame). The fake host (`fake-host/chat.ts`) is built from the SAME shared
+server pieces as the real runtime/host, so the wire cannot drift from the
+contract: `StreamChannel` owns each conversation's publish ordering (seq
+authority + replay buffer + snapshot), `serveResumableStream` serves every
+connection (fresh connect → `sync`; `?after=<seq>` / `Last-Event-ID` →
+gap/dupe-free replay; unserviceable cursor → `sync` with `resync: true`), and
+`formatSseFrame` encodes the frames. Every turn-scoped frame carries the
+turn's `turnId`, and history persists the user message at turn START + the
+assistant reply at turn END (both turn-stamped) — the identity contract
+`engine-adapter/turn-sink.ts` settles against. Test controls
+(`fake-host/chat-controls.ts`, wired under `/__test__/*`):
+
+- `POST /__test__/drop-chat-streams` — sever every open chat stream WITHOUT
+  ending the turns (a network blip; the reconnect spec).
+- `POST /__test__/chat-config` (`{ replyDelayMs }`) — slow the canned reply so
+  a drop/kill lands mid-turn deterministically.
+- `POST /__test__/kill-turn` — synthesize the host reaper's terminal `error`
+  frame (dead turn's turnId + "The turn ended unexpectedly"; the dead-turn
+  settle spec).
+- `POST /__test__/turn-boundary` (`{ nextText }`) — end the running turn while
+  nobody watches and start the next one, so the reconnect resyncs onto a
+  DIFFERENT turnId and the client must settle its turn from history by turnId
+  (the turn-boundary spec).
 
 **Board.** The mission board is files-first: it reads/writes
 `.houston/activity/activity.json` through `/agents/:id/agentfile/*`. The fake host

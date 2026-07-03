@@ -39,6 +39,7 @@ import { useTranslation } from "react-i18next";
 import { useActivity, useSkills } from "../hooks/queries";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
+import { useSession } from "../hooks/use-session";
 import { analytics } from "../lib/analytics";
 import { attachmentReferences } from "../lib/attachment-message";
 import { filterAutoContinueFeedItems } from "../lib/auto-continue-message";
@@ -142,6 +143,11 @@ interface AgentChatPanelProps {
   /** Effective provider/model for sending. */
   effectiveProvider: string;
   effectiveModel: string;
+  /** Multiplayer only (C5): the signed-in viewer's user id, for attributing
+   *  teammates' messages. Undefined when signed out / single-player. */
+  currentUserId: ChatPanelProps["currentUserId"];
+  /** Localized author-attribution labels forwarded to ChatPanel. */
+  authorLabels: ChatPanelProps["authorLabels"];
 }
 
 export function useAgentChatPanel({
@@ -160,6 +166,12 @@ export function useAgentChatPanel({
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
   const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
+
+  // Multiplayer attribution (C5): the signed-in viewer's id lets ChatPanel tell
+  // the viewer's own bubbles from teammates'. Undefined signed out / local.
+  const { data: session } = useSession();
+  const currentUserId = session?.user.id;
+  const authorLabels = undefined;
 
   const path = agent?.folderPath ?? null;
   const agentModes = agentDef?.config.agents;
@@ -868,6 +880,7 @@ export function useAgentChatPanel({
       />
       <ProviderSwitchDialog
         open={switchDialog !== null}
+        providerId={switchDialog?.toProvider ?? ""}
         providerName={
           switchDialog
             ? (getProvider(switchDialog.toProvider)?.name ??
@@ -902,5 +915,7 @@ export function useAgentChatPanel({
     pickerDialog,
     effectiveProvider,
     effectiveModel,
+    currentUserId,
+    authorLabels,
   };
 }

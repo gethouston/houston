@@ -1,12 +1,14 @@
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import type { Server } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Capabilities } from "@houston/protocol";
 import { expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import { EnvCredentialVault } from "../credentials/vault";
-import { MemoryIntegrationCredentialStore } from "../integrations/credential-store";
 import { FakeIntegrationProvider } from "../integrations/fake";
 import { IntegrationRegistry } from "../integrations/registry";
-import type { ProviderCredential } from "../integrations/types";
+import { IntegrationUpstreamError } from "../integrations/types";
 import type { TokenVerifier } from "../ports";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
@@ -15,7 +17,8 @@ import { MemoryWorkspaceStore } from "../store/memory";
  * The host integration surface end-to-end over real HTTP: the user routes
  * (`/v1/integrations/*`) and the runtime-facing HMAC proxy
  * (`/sandbox/integrations/*`), driven against an in-memory fake provider so the
- * routing/auth/credential-custody logic is verified without a live Composio.
+ * routing/auth logic is verified without a live Composio. Platform model: no
+ * provider login — users only connect toolkits, keyed by their Houston userId.
  */
 
 const USER = "alice";
@@ -30,7 +33,16 @@ const CAPS: Capabilities = {
   integrations: ["composio"],
 };
 
-async function setup(opts: { withIntegrations?: boolean } = {}) {
+async function setup(
+  opts: {
+    withIntegrations?: boolean;
+    reconnectNotice?: {
+      active(): boolean;
+      dismiss(): void | Promise<void>;
+    };
+    session?: { set(token: string | null): void };
+  } = {},
+) {
   const withIntegrations = opts.withIntegrations ?? true;
   const verifier: TokenVerifier = {
     async verify(b) {
@@ -40,7 +52,6 @@ async function setup(opts: { withIntegrations?: boolean } = {}) {
   const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
   const vault = new EnvCredentialVault({ secret: "test-secret" });
   const fake = new FakeIntegrationProvider({ id: "composio" });
-  const intCreds = new MemoryIntegrationCredentialStore();
   const deps: ControlPlaneDeps = {
     verifier,
     store,
@@ -49,7 +60,13 @@ async function setup(opts: { withIntegrations?: boolean } = {}) {
     channels: {},
     capabilities: CAPS,
     integrations: withIntegrations
-      ? { registry: new IntegrationRegistry([fake]), credentials: intCreds }
+      ? {
+          registry: new IntegrationRegistry([fake]),
+          ...(opts.reconnectNotice
+            ? { reconnectNotice: opts.reconnectNotice }
+            : {}),
+          ...(opts.session ? { session: opts.session } : {}),
+        }
       : undefined,
     corsOrigin: "*",
   };
@@ -58,83 +75,166 @@ async function setup(opts: { withIntegrations?: boolean } = {}) {
   const addr = server.address();
   const base = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
   const ws = await store.getOrCreatePersonalWorkspace(USER);
-  return { base, ws, vault, fake, intCreds, stop: () => server.close() };
+  return { base, ws, vault, fake, stop: () => server.close() };
 }
 
 const auth = {
   Authorization: "Bearer tok",
   "Content-Type": "application/json",
 };
-const cred: ProviderCredential = {
-  provider: "composio",
-  data: { user: USER, apiKey: "uak_test" },
-};
 
-test("status starts disconnected; login stores the credential and flips it connected", async () => {
+test("status reports readiness (no login concept, no account, no secret)", async () => {
   const { base, fake, stop } = await setup();
   try {
     let status = await (
       await fetch(`${base}/v1/integrations`, { headers: auth })
     ).json();
-    expect(status).toEqual({
-      items: [{ provider: "composio", connected: false }],
-    });
+    expect(status).toEqual({ items: [{ provider: "composio", ready: true }] });
 
-    const start = (await (
-      await fetch(`${base}/v1/integrations/composio/login/start`, {
-        method: "POST",
-        headers: auth,
-      })
-    ).json()) as { pollKey: string; loginUrl: string };
-    expect(start.loginUrl).toContain(start.pollKey);
-
-    // Pending until the user finishes; then linked stores the credential.
-    const pending = await (
-      await fetch(`${base}/v1/integrations/composio/login/poll`, {
-        method: "POST",
-        headers: auth,
-        body: JSON.stringify({ pollKey: start.pollKey }),
-      })
-    ).json();
-    expect(pending).toEqual({ status: "pending" });
-
-    fake.completeLogin(start.pollKey, cred);
-    const linked = await (
-      await fetch(`${base}/v1/integrations/composio/login/poll`, {
-        method: "POST",
-        headers: auth,
-        body: JSON.stringify({ pollKey: start.pollKey }),
-      })
-    ).json();
-    expect(linked.status).toBe("linked");
-    expect(linked.account.accountId).toBe(USER);
-
+    fake.setNotReady();
     status = await (
       await fetch(`${base}/v1/integrations`, { headers: auth })
     ).json();
-    expect(status.items[0]).toMatchObject({
-      provider: "composio",
-      connected: true,
+    expect(status).toEqual({
+      items: [{ provider: "composio", ready: false, reason: "signin" }],
     });
   } finally {
     stop();
   }
 });
 
-test("toolkits/connections/connect/disconnect require a connected credential", async () => {
-  const { base, intCreds, stop } = await setup();
+test("a legacy for-you credentials file surfaces the one-time reconnect notice, and dismiss deletes it", async () => {
+  // A real legacy file on disk (the local profile's wiring shape: active() is
+  // a live existsSync, dismiss() an idempotent rm) — so the test proves the
+  // retired plaintext-key file is actually deleted and the flag clears live.
+  const dir = mkdtempSync(join(tmpdir(), "houston-legacy-integrations-"));
+  const legacyPath = join(dir, "integrations.json");
+  writeFileSync(legacyPath, JSON.stringify({ apiKey: "legacy-plaintext-key" }));
+  const { base, stop } = await setup({
+    reconnectNotice: {
+      active: () => existsSync(legacyPath),
+      dismiss: () => rmSync(legacyPath, { force: true }),
+    },
+  });
   try {
-    // Not connected → 409 on the credential-bearing routes.
-    expect(
-      (
-        await fetch(`${base}/v1/integrations/composio/toolkits`, {
-          headers: auth,
-        })
-      ).status,
-    ).toBe(409);
+    let status = await (
+      await fetch(`${base}/v1/integrations`, { headers: auth })
+    ).json();
+    expect(status.items[0]).toMatchObject({ reconnect: true });
 
-    await intCreds.put(USER, cred);
+    const dismiss = await fetch(
+      `${base}/v1/integrations/reconnect-notice/dismiss`,
+      { method: "POST", headers: auth },
+    );
+    expect(dismiss.status).toBe(200);
+    expect(await dismiss.json()).toEqual({ ok: true });
+    expect(existsSync(legacyPath)).toBe(false);
 
+    // The flag reflects reality immediately — no host restart.
+    status = await (
+      await fetch(`${base}/v1/integrations`, { headers: auth })
+    ).json();
+    expect(status.items[0].reconnect).toBeUndefined();
+
+    // Idempotent: dismissing an already-gone file is still a 200.
+    const again = await fetch(
+      `${base}/v1/integrations/reconnect-notice/dismiss`,
+      { method: "POST", headers: auth },
+    );
+    expect(again.status).toBe(200);
+    expect(await again.json()).toEqual({ ok: true });
+  } finally {
+    stop();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("dismiss with no legacy path wired (cloud) is a no-op success; a deletion failure surfaces", async () => {
+  const cloud = await setup();
+  try {
+    const res = await fetch(
+      `${cloud.base}/v1/integrations/reconnect-notice/dismiss`,
+      { method: "POST", headers: auth },
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+  } finally {
+    cloud.stop();
+  }
+
+  // A real failure (e.g. EACCES) must NOT be swallowed behind {ok:true}.
+  const failing = await setup({
+    reconnectNotice: {
+      active: () => true,
+      dismiss: () => {
+        throw new Error("EACCES: permission denied");
+      },
+    },
+  });
+  try {
+    const res = await fetch(
+      `${failing.base}/v1/integrations/reconnect-notice/dismiss`,
+      { method: "POST", headers: auth },
+    );
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toContain("EACCES");
+  } finally {
+    failing.stop();
+  }
+});
+
+test("the frontend keeps the gateway session fresh via PUT /v1/integrations/session", async () => {
+  const seen: (string | null)[] = [];
+  const { base, stop } = await setup({
+    session: { set: (t) => seen.push(t) },
+  });
+  try {
+    const put = (token: unknown) =>
+      fetch(`${base}/v1/integrations/session`, {
+        method: "PUT",
+        headers: auth,
+        body: JSON.stringify({ token }),
+      });
+    expect((await put("jwt-1")).status).toBe(200);
+    expect((await put(null)).status).toBe(200);
+    expect((await put(42)).status).toBe(400);
+    expect(seen).toEqual(["jwt-1", null]);
+  } finally {
+    stop();
+  }
+});
+
+test("no session sink (cloud) → PUT session is a no-op", async () => {
+  const { base, stop } = await setup();
+  try {
+    const res = await fetch(`${base}/v1/integrations/session`, {
+      method: "PUT",
+      headers: auth,
+      body: JSON.stringify({ token: "jwt" }),
+    });
+    expect(res.status).toBe(200);
+  } finally {
+    stop();
+  }
+});
+
+test("no integrations configured → PUT session is still a no-op", async () => {
+  const { base, stop } = await setup({ withIntegrations: false });
+  try {
+    const res = await fetch(`${base}/v1/integrations/session`, {
+      method: "PUT",
+      headers: auth,
+      body: JSON.stringify({ token: "jwt" }),
+    });
+    expect(res.status).toBe(200);
+  } finally {
+    stop();
+  }
+});
+
+test("toolkits/connect/poll/disconnect — the full OAuth hand-off, no provider account", async () => {
+  const { base, fake, stop } = await setup();
+  try {
     const toolkits = await (
       await fetch(`${base}/v1/integrations/composio/toolkits`, {
         headers: auth,
@@ -144,24 +244,33 @@ test("toolkits/connections/connect/disconnect require a connected credential", a
       "gmail",
     );
 
-    expect(
-      (
-        await (
-          await fetch(`${base}/v1/integrations/composio/connections`, {
-            headers: auth,
-          })
-        ).json()
-      ).items,
-    ).toEqual([]);
-
-    const connect = await (
+    const connect = (await (
       await fetch(`${base}/v1/integrations/composio/connect`, {
         method: "POST",
         headers: auth,
         body: JSON.stringify({ toolkit: "gmail" }),
       })
-    ).json();
+    ).json()) as { redirectUrl: string; connectionId: string };
     expect(connect.redirectUrl).toContain("gmail");
+
+    // Pending until the user finishes the OAuth in the browser…
+    let conn = await (
+      await fetch(
+        `${base}/v1/integrations/composio/connections/${connect.connectionId}`,
+        { headers: auth },
+      )
+    ).json();
+    expect(conn.status).toBe("pending");
+
+    // …then the poll sees it active.
+    fake.completeConnection(USER, connect.connectionId);
+    conn = await (
+      await fetch(
+        `${base}/v1/integrations/composio/connections/${connect.connectionId}`,
+        { headers: auth },
+      )
+    ).json();
+    expect(conn.status).toBe("active");
 
     const conns = await (
       await fetch(`${base}/v1/integrations/composio/connections`, {
@@ -186,21 +295,53 @@ test("toolkits/connections/connect/disconnect require a connected credential", a
         ).json()
       ).items,
     ).toEqual([]);
+
+    // Polling a vanished connection 404s.
+    expect(
+      (
+        await fetch(`${base}/v1/integrations/composio/connections/nope`, {
+          headers: auth,
+        })
+      ).status,
+    ).toBe(404);
   } finally {
     stop();
   }
 });
 
-test("logout removes the credential; unknown provider 404s; no auth 401s", async () => {
-  const { base, intCreds, stop } = await setup();
+test("user-facing search/execute exist (the desktop gateway forwards here)", async () => {
+  const { base, stop } = await setup();
   try {
-    await intCreds.put(USER, cred);
-    await fetch(`${base}/v1/integrations/composio/logout`, {
-      method: "POST",
-      headers: auth,
-    });
-    expect(await intCreds.get(USER, "composio")).toBeNull();
+    const search = await (
+      await fetch(`${base}/v1/integrations/composio/search`, {
+        method: "POST",
+        headers: auth,
+        body: JSON.stringify({ query: "send an email" }),
+      })
+    ).json();
+    expect(search.items.map((m: { action: string }) => m.action)).toContain(
+      "GMAIL_SEND_EMAIL",
+    );
 
+    const exec = await (
+      await fetch(`${base}/v1/integrations/composio/execute`, {
+        method: "POST",
+        headers: auth,
+        body: JSON.stringify({
+          action: "GMAIL_SEND_EMAIL",
+          params: { to: "a@b.com" },
+        }),
+      })
+    ).json();
+    expect(exec.successful).toBe(true);
+  } finally {
+    stop();
+  }
+});
+
+test("unknown provider 404s; no auth 401s", async () => {
+  const { base, stop } = await setup();
+  try {
     expect(
       (await fetch(`${base}/v1/integrations/nope/toolkits`, { headers: auth }))
         .status,
@@ -211,10 +352,9 @@ test("logout removes the credential; unknown provider 404s; no auth 401s", async
   }
 });
 
-test("sandbox proxy: HMAC token → workspace owner's credential → execute/search", async () => {
-  const { base, ws, vault, intCreds, stop } = await setup();
+test("sandbox proxy: HMAC token → workspace owner's userId → execute/search", async () => {
+  const { base, ws, vault, stop } = await setup();
   try {
-    await intCreds.put(USER, cred); // the workspace owner's connected account
     const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
 
     const exec = await fetch(`${base}/sandbox/integrations/execute`, {
@@ -247,25 +387,48 @@ test("sandbox proxy: HMAC token → workspace owner's credential → execute/sea
   }
 });
 
-test("sandbox proxy: bad token 401; connected-but-no-credential 409; the user key never crosses", async () => {
-  const { base, ws, vault, stop } = await setup();
+test("sandbox proxy: forwards the C2 acting headers into the provider (absent → undefined)", async () => {
+  const { base, ws, vault, fake, stop } = await setup();
   try {
-    // No integration credential stored for the owner yet.
     const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
-    expect(
-      (
-        await fetch(`${base}/sandbox/integrations/execute`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${sb}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ action: "X" }),
-        })
-      ).status,
-    ).toBe(409);
+    const call = (headers: Record<string, string>) =>
+      fetch(`${base}/sandbox/integrations/execute`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${sb}`,
+          "Content-Type": "application/json",
+          ...headers,
+        },
+        body: JSON.stringify({ action: "GMAIL_SEND_EMAIL", params: {} }),
+      });
 
-    // A bad sandbox token is refused outright.
+    // An acting-as token rides through verbatim.
+    await call({ "x-houston-acting-as": "acting-v1.tok" });
+    expect(fake.lastActing).toEqual({
+      actingAs: "acting-v1.tok",
+      actingUser: undefined,
+    });
+
+    // A routine's acting-user rides through.
+    await call({ "x-houston-acting-user": "sub-123" });
+    expect(fake.lastActing).toEqual({
+      actingAs: undefined,
+      actingUser: "sub-123",
+    });
+
+    // Neither header (today's desktop path) → no acting context at all.
+    await call({});
+    expect(fake.lastActing).toBeUndefined();
+  } finally {
+    stop();
+  }
+});
+
+test("sandbox proxy: bad token 401; a signed-out gateway surfaces 409 signin_required", async () => {
+  const { base, ws, vault, fake, stop } = await setup();
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+
     expect(
       (
         await fetch(`${base}/sandbox/integrations/execute`, {
@@ -278,6 +441,47 @@ test("sandbox proxy: bad token 401; connected-but-no-credential 409; the user ke
         })
       ).status,
     ).toBe(401);
+
+    fake.throwSigninRequired = true;
+    const res = await fetch(`${base}/sandbox/integrations/execute`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "X" }),
+    });
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe("signin_required");
+  } finally {
+    stop();
+  }
+});
+
+test("integration routes relay upstream policy status and body", async () => {
+  const { base, ws, vault, fake, stop } = await setup();
+  const body = { error: "not granted", code: "integration_grant_required" };
+  fake.throwSearchExecute = new IntegrationUpstreamError(403, body);
+  try {
+    const user = await fetch(`${base}/v1/integrations/composio/execute`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ action: "GMAIL_SEND_EMAIL", params: {} }),
+    });
+    expect(user.status).toBe(403);
+    expect(await user.json()).toEqual(body);
+
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const sandbox = await fetch(`${base}/sandbox/integrations/execute`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "GMAIL_SEND_EMAIL", params: {} }),
+    });
+    expect(sandbox.status).toBe(403);
+    expect(await sandbox.json()).toEqual(body);
   } finally {
     stop();
   }

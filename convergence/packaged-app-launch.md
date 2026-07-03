@@ -16,38 +16,29 @@ There are two ways to get the packaged app. Pick one.
 
 ## Option A — build it in CI (preferred: produces the real signed/notarized artifact)
 
-The committed workflow `.github/workflows/host-sidecar-release.yml` builds all
-three platforms. It is OFF the Rust `release.yml` critical path — it never runs
-on a `v*` tag.
+Since HOU-628, `.github/workflows/release.yml` (tag `v*`) builds the desktop app
+around the host sidecar — so a **normal release IS the host-sidecar build**. There
+is no separate `host-sidecar-release.yml` (it was planned but never committed; the
+build logic lives in `release.yml`).
 
-Trigger it one of two ways:
+Trigger it with a version tag (drives the full signed + notarized chain — the Apple
+secrets are already on the repo):
 
-1. **GitHub UI / `gh`** — Actions → "Host-sidecar Release" → Run workflow:
+```bash
+# Bump app/package.json + app/src-tauri/Cargo.toml to <version> first — the `prep`
+# job fails the release if the tag and the two manifests disagree.
+git tag v0.4.19
+git push origin v0.4.19
+```
 
-   ```bash
-   # default inputs: sign_macos = true (full notarized chain)
-   gh workflow run host-sidecar-release.yml --ref main
-
-   # or build mac unsigned (e.g. no Apple secrets on the runner):
-   gh workflow run host-sidecar-release.yml --ref main -f sign_macos=false
-   ```
-
-2. **`host-v*` tag push** (always signs mac):
-
-   ```bash
-   git tag host-v0.4.19
-   git push origin host-v0.4.19
-   ```
-
-Output: a DRAFT GitHub Release tagged `host-v<version>` (distinct from the Rust
-`v<version>` releases — no collision) with, per platform:
+Output: a DRAFT GitHub Release tagged `v<version>` with, per platform:
 
 | Platform | Artifact | Signed |
 |---|---|---|
 | macOS | `Houston_<v>_universal.dmg` + `.app.tar.gz` + `.sig` | Developer ID, notarized, stapled |
 | Windows x64 | `Houston_<v>_x64_en-US.msi` + `.msi.sig` | updater-key only (no OS code-sign yet) |
 | Windows arm64 | `Houston_<v>_arm64_en-US.msi` + `.msi.sig` | updater-key only |
-| Linux x64 | `*.AppImage` + `*.deb` | unsigned |
+| Linux x64 | `*.AppImage` | unsigned |
 
 Download the macOS DMG from the draft release, then go to **"Run the gate"** below.
 

@@ -23,7 +23,8 @@
     "needsYouCount_one": "{{count}} assunto precisa de você",
     "needsYouCount_other": "{{count}} assuntos precisam de você",
     "runningCount_one": "{{count}} assunto em execução",
-    "runningCount_other": "{{count}} assuntos em execução"
+    "runningCount_other": "{{count}} assuntos em execução",
+    "integrations": "Integrações"
   },
   "tabActions": {
     "newMission": "Nova missão",
@@ -45,7 +46,13 @@
   },
   "workspaceDialog": {
     "title": "Novo espaço de trabalho",
-    "createFailed": "Não conseguimos criar o espaço de trabalho. Tente novamente."
+    "createFailed": "Não conseguimos criar o espaço de trabalho. Tente novamente.",
+    "tabNew": "Criar novo",
+    "tabGithub": "Importar do GitHub",
+    "githubDescription": "Importe um modelo de espaço de trabalho do GitHub. Isso cria um espaço com todos os agentes prontos para usar.",
+    "githubPlaceholder": "usuario/repo",
+    "githubImport": "Importar",
+    "githubImporting": "Importando espaço de trabalho e agentes..."
   },
   "uiTour": {
     "counter": "Tour {{current}} de {{total}}",
@@ -102,6 +109,10 @@
         "title": "Agora vai construir algo incrível",
         "body": "Esse é o tour inteiro. O resto é com você, divirta-se.",
         "confirm": "Vou fazer algo incrível"
+      },
+      "integrations": {
+        "title": "Integrações",
+        "body": "Ferramentas que seus agentes podem usar, como Gmail e Calendar. As conexões ficam aqui, compartilhadas entre todos os seus agentes."
       }
     }
   },
@@ -116,11 +127,11 @@
     "heading": "Houston, temos um problema",
     "body": "Sua sessão no {{provider}} expirou. Entre de novo para manter seus agentes funcionando.",
     "waiting": "Aguardando o login no navegador...",
-    "signInWith": "Entrar"
+    "signInWith": "Entrar com {{provider}}"
   },
   "providerReconnect": {
     "title": "Sessão expirada",
-    "body": "Sua sessão do {{provider}} expirou. Faça login novamente para continuar.",
+    "body": "Sua conexão com o {{provider}} encerrou, isso acontece de vez em quando. Entre de novo e está tudo certo.",
     "reconnect": "Reconectar ao {{provider}}",
     "waiting": "Aguardando o login no navegador...",
     "tryAgain": "Tentar de novo",
@@ -163,7 +174,7 @@
     "dismissAction": "Dispensar atualização por enquanto"
   },
   "store": {
-    "searchPlaceholder": "Buscar agentes...",
+    "searchPlaceholder": "Buscar na loja...",
     "noResults": "Nenhum agente corresponde à sua busca"
   },
   "naming": {
@@ -273,7 +284,8 @@
       "body": "Seu plano do {{provider}} chegou ao limite. Faça upgrade ou troque de provedor para continuar.",
       "upgrade": "Fazer upgrade",
       "switchProvider": "Trocar de provedor",
-      "useApiKey": "Usar chave de API no lugar"
+      "useApiKey": "Usar chave de API no lugar",
+      "bodyWithReset": "Seu plano do {{provider}} chegou ao limite. Ele reinicia {{time}}, ou faça upgrade para continuar."
     },
     "modelUnavailable": {
       "title": "Modelo não disponível",
@@ -328,6 +340,11 @@
       "body": "O Houston não conseguiu classificar este erro do {{provider}}. Relate para que possamos aprender a tratar.",
       "reportBug": "Relatar problema",
       "rawLabel": "Saída bruta"
+    },
+    "usageLimitPaused": {
+      "title": "Você atingiu o limite do seu plano",
+      "body": "Por enquanto você esgotou seu plano. Aguarde ele ser restabelecido e continue.",
+      "bodyWithReset": "Por enquanto você esgotou seu plano. Ele é restabelecido às {{time}} e você poderá continuar."
     }
   },
   "palette": {
@@ -344,7 +361,8 @@
       "newMission": "Iniciar nova missão",
       "missionControl": "Ir para o Centro de Missões",
       "settings": "Abrir Configurações",
-      "shortcuts": "Ver atalhos do teclado"
+      "shortcuts": "Ver atalhos do teclado",
+      "integrations": "Abrir Integrações"
     }
   },
   "cheatsheet": {
@@ -381,5 +399,15 @@
     "successWithId": "O centro de controle está cuidando disso. Referência: {{id}}",
     "successNoId": "O centro de controle está cuidando disso.",
     "errorTitle": "Não foi possível enviar o relatório"
+  },
+  "aiIntegrations": {
+    "stepTitle": "Conecte seus aplicativos",
+    "stepDescription": "Esses aplicativos funcionam bem com seu agente. Conecte-os agora ou faça isso depois na aba Integrações.",
+    "notInstalledNote": "Você pode conectar integrações na aba Integrações depois de criar seu agente.",
+    "needsAuthNote": "Entre no Composio para conectar aplicativos agora, ou faça isso depois de criar seu agente.",
+    "signIn": "Entrar",
+    "connected": "Conectado",
+    "connect": "Conectar",
+    "continueButton": "Continuar"
   }
 }

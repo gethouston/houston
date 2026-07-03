@@ -1,5 +1,4 @@
 import type { Session } from "@supabase/supabase-js";
-import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { analytics } from "./analytics";
 import { toCallbackUrl } from "./auth-callback";
@@ -8,6 +7,7 @@ import {
   getEngineConnection,
 } from "./engine-connection";
 import { logger } from "./logger";
+import { osIsTauri, osStartOauthLoopback } from "./os-bridge";
 import { queryClient } from "./query-client";
 import { isAuthConfigured, supabase } from "./supabase";
 import { tauriSystem } from "./tauri";
@@ -21,12 +21,40 @@ function applySessionToCache(session: Session | null): void {
   queryClient.setQueryData<Session | null>(SESSION_QUERY_KEY, session);
 }
 
-// HTTPS bridge instead of a raw deep link so the user lands on a polished
-// "Sign-in complete, you can close this tab" page after Google. The bridge
-// at gethouston.ai/auth/callback then forwards the PKCE code into the
-// `houston://auth-callback?code=...` deep link so macOS / Windows hand
-// it to the running app. See website/src/auth/callback/index.html.
-const REDIRECT_URI = "https://gethouston.ai/auth/callback/";
+// Where Supabase sends the browser after Google consent. Resolved per
+// client at sign-in time by `resolveRedirectUri`:
+//
+//   • Desktop (Tauri): a one-shot `http://127.0.0.1:<port>/auth/callback`
+//     loopback the app itself serves. A plain HTTP navigation — no website
+//     relay and no custom-scheme "open Houston?" dialog — so the user snaps
+//     straight back into the app instead of getting stranded on a web page.
+//   • Web / mobile PWA: the https relay bridge at gethouston.ai/auth/callback,
+//     which forwards the PKCE code into the `houston://` deep link. These
+//     clients aren't co-located with a local listener, so the bridge stays.
+//     See website/src/auth/callback/index.html.
+//
+// `houston://auth-callback` is the desktop fallback if the loopback can't
+// bind (every candidate port busy). All three shapes are registered in the
+// Supabase project's redirect allow-list.
+const WEB_REDIRECT_URI = "https://gethouston.ai/auth/callback/";
+const DESKTOP_FALLBACK_REDIRECT_URI = "houston://auth-callback";
+
+/**
+ * Pick — and, on desktop, provision — the OAuth redirect target. Desktop
+ * starts a loopback listener and returns its URL; if that can't bind we fall
+ * back to the custom-scheme deep link rather than stranding the user.
+ */
+async function resolveRedirectUri(): Promise<string> {
+  if (!osIsTauri()) return WEB_REDIRECT_URI;
+  try {
+    return await osStartOauthLoopback();
+  } catch (e) {
+    logger.warn(
+      `[auth] loopback listener unavailable, falling back to deep link: ${e}`,
+    );
+    return DESKTOP_FALLBACK_REDIRECT_URI;
+  }
+}
 
 // Track which provider initiated the current OAuth flow so the deep-link
 // callback can tag the user_signed_in event with the correct provider.
@@ -54,8 +82,8 @@ async function signInWithProvider(provider: "google" | "azure"): Promise<void> {
   // Web build (no Tauri webview / deep link): a normal in-browser redirect to
   // `/auth/callback`, where Supabase's URL sniffer (detectSessionInUrl) trades
   // the `?code=` for a session. The desktop flow below opens the system browser
-  // and waits for the `houston://` deep link instead.
-  if (!isTauri()) {
+  // and waits for the `houston://` deep link (or the loopback redirect) instead.
+  if (!osIsTauri()) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: `${window.location.origin}/auth/callback` },
@@ -64,10 +92,14 @@ async function signInWithProvider(provider: "google" | "azure"): Promise<void> {
     return; // Supabase navigates the page to the consent screen.
   }
 
+  // Desktop: provision the loopback listener (or fall back to the deep link)
+  // and hand Supabase the resolved redirect target.
+  const redirectTo = await resolveRedirectUri();
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: REDIRECT_URI,
+      redirectTo,
       // Don't let Supabase touch window.location — we're in a webview and
       // need the consent page to open in the user's real browser.
       skipBrowserRedirect: true,
@@ -124,6 +156,61 @@ export const signInWithGoogle = (): Promise<void> =>
   signInWithProvider("google");
 export const signInWithMicrosoft = (): Promise<void> =>
   signInWithProvider("azure");
+
+/**
+ * Passwordless email sign-in, step 1: mail the user a 6-digit code.
+ *
+ * We use the OTP *code* (not a magic link) on purpose: a code keeps the
+ * whole flow inside the app — no browser, no redirect, no deep link — and
+ * works even when the user reads the email on a different device. Magic
+ * links would need a redirect back to the desktop app, the exact friction
+ * we removed from the OAuth flow.
+ *
+ * Requires the Supabase email template to render `{{ .Token }}`; otherwise
+ * the user receives a magic link with no visible code.
+ */
+export async function sendEmailOtp(email: string): Promise<void> {
+  if (!isAuthConfigured()) {
+    throw new Error("Auth not configured");
+  }
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true },
+  });
+  if (error) throw error;
+}
+
+/**
+ * Passwordless email sign-in, step 2: verify the 6-digit code. On success
+ * Supabase persists the session via our storage adapter; we mirror it into
+ * the TanStack Query cache so the auth gate flips immediately (same
+ * belt-and-suspenders write the deep-link path uses).
+ */
+export async function verifyEmailOtp(
+  email: string,
+  token: string,
+): Promise<void> {
+  if (!isAuthConfigured()) {
+    throw new Error("Auth not configured");
+  }
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: "email",
+  });
+  if (error) throw error;
+  // verifyOtp can resolve with `error == null` but `session == null` (e.g. a
+  // misconfigured email template, or a code accepted as a confirmation rather
+  // than a sign-in). Caching null here would silently leave the auth gate up
+  // — the user typed a valid code, it "succeeded", and nothing happens. Throw
+  // so EmailSignIn's catch surfaces it (no-silent-failures rule).
+  if (!data.session) {
+    throw new Error("Sign-in succeeded but returned no session.");
+  }
+  applySessionToCache(data.session);
+  analytics.track("user_signed_in", { provider: "email" });
+  logger.info(`[auth] session established (email otp) for ${data.user?.email}`);
+}
 
 /**
  * Sign out: clear the Supabase session (our Keychain storage adapter
@@ -243,6 +330,11 @@ async function completeAuthCallback(rawUrl: string): Promise<void> {
         emitAuthError(error.message);
         return;
       }
+      if (!data.session) {
+        logger.error("[auth] setSession returned no session");
+        emitAuthError("Sign-in succeeded but returned no session.");
+        return;
+      }
       // Push the session directly into the TanStack Query cache that
       // `useSession` reads. Belt-and-suspenders over Supabase's
       // `onAuthStateChange` listener, which a real Windows v0.4.14
@@ -251,7 +343,7 @@ async function completeAuthCallback(rawUrl: string): Promise<void> {
       // but the auth gate in App.tsx never re-rendered. Writing the
       // cache key directly here makes the UI transition deterministic
       // regardless of whether the listener fires.
-      applySessionToCache(data.session ?? null);
+      applySessionToCache(data.session);
       analytics.track("user_signed_in", {
         provider: pendingProvider ?? "unknown",
       });

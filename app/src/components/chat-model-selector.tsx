@@ -29,9 +29,10 @@ interface ChatModelSelectorProps {
   model: string;
   /**
    * Called when the user picks a provider + model. The provider is never
-   * locked: switching to a different provider mid-conversation is supported
-   * (the runtime resolves the provider per turn and continues the same
-   * conversation).
+   * locked: switching to a different provider mid-conversation is supported.
+   * The runtime resolves the provider per turn and continues the same
+   * conversation, and the consumer (`use-agent-chat-panel`) stages the handoff
+   * so the engine carries context across.
    */
   onSelect: (provider: string, model: string) => void;
   /**

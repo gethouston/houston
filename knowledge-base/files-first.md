@@ -53,12 +53,27 @@ REST routes (`/v1/agents/:path/files/:kind`, etc.), which call into
 matching `HoustonEvent` over the WS. No typed CRUD — per-type folder +
 schema + a generic read/write pair covers everything.
 
-Typed JSON readers preserve corrupt files as
-`.houston/<type>/<type>.json.corrupt-<timestamp>-<uuid>.bak` before
-repairing. If a file has trailing JSON data, Houston keeps the first valid
-value and rewrites the file. If `routine_runs.json` is otherwise
-unreadable, Houston resets only the run history to `[]` after backing up
-the original so routine definitions can load and run again.
+Typed JSON readers never let a corrupt data file brick the surface that
+reads it (HOU-436: a malformed `routines.json` used to make every
+`list_routines` call 500 with `json error: expected value at line 1 column
+1`). Recovery is least-lossy first: a leading UTF-8 BOM is stripped before
+parsing (serde rejects one); a whitespace-only file reads as the type
+default; **unescaped control characters inside a string** (a raw newline/tab
+an external editor, sync client, or agent spliced into a multi-line value)
+are escaped in place and the document re-parsed — lossless, so every record
+survives; a file with one valid value plus trailing junk keeps the first
+value; any other unparseable file resets to the type default (`[]`, `{}`,
+…). Every recovery that rewrites the file first copies the original bytes to
+`.houston/<type>/<type>.json.corrupt-<timestamp>-<uuid>.bak` and logs a
+warning, so nothing is lost silently.
+
+The control-char step is load-bearing (HOU-494): these files are explicitly
+multi-writer, so a non-Houston process (a `routines.json.tmp.<pid>.<hex>`
+temp file unlike Houston's own `.<name>.<uuid>.tmp`) can leave a literal
+newline inside a `prompt`. Without the lossless escape, that hit the reset
+path and the recovery itself *wiped* every routine — exactly the data loss it
+was meant to prevent. Reset is the last resort, for genuinely unrecoverable
+bytes only.
 
 ## Schemas
 Authoritative. Live in `ui/agent-schemas/src/*.schema.json`. Embedded in Rust via `include_str!` in `houston-agent-files::schemas`. Seeded into each agent's `.houston/<type>/<type>.schema.json` on first launch. Prompts instruct model to read schema before writing data file.

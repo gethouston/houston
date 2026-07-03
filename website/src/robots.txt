@@ -1,0 +1,11 @@
+# robots.txt for https://gethouston.ai
+# Updated: 2026-06-28
+# Policy: allow every crawler full access, including AI search and AI
+# training bots. Houston wants maximum visibility in Google and in AI
+# answer engines (ChatGPT, Perplexity, Gemini, Claude).
+
+User-agent: *
+Allow: /
+
+# Sitemap location.
+Sitemap: https://gethouston.ai/sitemap.xml

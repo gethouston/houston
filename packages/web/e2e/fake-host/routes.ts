@@ -147,11 +147,17 @@ export function handleAgents(
             messages: state.getHistory(id, cid),
           });
         if (method === "POST")
-          return sendMessage(id, cid, String(body?.text ?? ""));
+          return sendMessage(
+            id,
+            cid,
+            String(body?.text ?? ""),
+            typeof body?.nonce === "string" ? body.nonce : undefined,
+          );
       }
       if (action === "cancel") {
-        cancelChat(id, cid);
-        return json({ ok: true });
+        // `cancelled` mirrors the runtime: false = nothing was in flight, so
+        // the client settles the stuck card itself (the orphan path).
+        return json({ ok: true, cancelled: cancelChat(id, cid) });
       }
       return noContent();
     }

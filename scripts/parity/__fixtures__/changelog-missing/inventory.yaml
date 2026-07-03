@@ -1,0 +1,20 @@
+version: 2
+components:
+  - id: comp-a
+    title: Component A
+    purpose: First test component.
+    anatomy: [part-a]
+    states: [default]
+    variants: [only]
+    behavior: Driven by the view-model.
+    a11y: button role.
+    since: 1
+  - id: comp-b
+    title: Component B
+    purpose: Second test component.
+    anatomy: [part-b]
+    states: [default]
+    variants: [only]
+    behavior: Driven by the view-model.
+    a11y: list role.
+    since: 1

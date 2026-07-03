@@ -41,8 +41,8 @@ curl -H "Authorization: Bearer test" http://127.0.0.1:4318/v1/capabilities
 
 ## Managed Engine Pod Target
 
-Kubernetes hosted POC uses the same open host/runtime stack without Caddy and
-with local process code execution disabled:
+Houston's managed cloud runs this same open host/runtime stack as Kubernetes
+engine pods, without Caddy and with local process code execution disabled:
 
 ```sh
 docker build \
@@ -68,8 +68,12 @@ curl http://127.0.0.1:4318/health
 curl -H "Authorization: Bearer test" http://127.0.0.1:4318/v1/capabilities
 ```
 
-Expected capabilities include `"codeExecution":"disabled"`,
-`"amazon-bedrock"` in `providers`, and `"composio"` in `integrations`. The
+Expected capabilities include `"codeExecution":"disabled"` and
+`"amazon-bedrock"` in `providers`. `integrations` reflects what you configured:
+it lists `"composio"` only when the container has a `COMPOSIO_API_KEY`
+(platform-mode Composio — create a free project at composio.dev and pass
+`-e COMPOSIO_API_KEY=...`; the single-user pod acts as one Composio `user_id`).
+Without the key, integrations are simply off (`"integrations":[]`). The
 private gateway supplies `HOUSTON_HOST_TOKEN`, mounts `/data` on the user's PVC,
 and fronts the pod with Supabase-authenticated proxying.
 
@@ -125,9 +129,9 @@ docker run --rm -d --name houston-engine-pod \
   ghcr.io/gethouston/houston-engine-pod:latest
 ```
 
-For Google Cloud, prefer a public GHCR package for the first POC. If the package
-stays private, use an authenticated pull path such as a GKE image pull secret or
-an Artifact Registry mirror/remote repository.
+For Google Cloud, prefer a public GHCR package. If the package stays private,
+use an authenticated pull path such as a GKE image pull secret or an Artifact
+Registry mirror/remote repository.
 
 Watch live engine logs:
 
@@ -187,7 +191,7 @@ Prereqs:
 Run these on the VPS:
 
 ```sh
-git clone https://github.com/gethouston/houston-web
+git clone https://github.com/gethouston/houston
 cd houston-web/selfhost
 cp .env.example .env
 ```
@@ -197,6 +201,9 @@ Edit `selfhost/.env`:
 ```env
 HOUSTON_DOMAIN=houston.example.com
 HOUSTON_HOST_TOKEN=<run openssl rand -hex 32>
+# Optional: app integrations (Gmail, Slack…) via your own Composio project
+# key (platform mode; free tier at composio.dev). Omit → integrations off.
+COMPOSIO_API_KEY=
 ```
 
 Start the engine and Caddy:

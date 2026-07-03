@@ -12,7 +12,8 @@
  * (see `tauriSkills.load` and `useSkillSurface`), and a skill GET has exactly
  * one 404 path — the skill is gone — so the status is unambiguous in context. A
  * typed `kind` is still tolerated so the classifier keeps working if the host's
- * error envelope is ever upgraded to carry one.
+ * error envelope is ever upgraded to carry one (as the legacy Rust engine did
+ * via `SkillError::NotFound` -> `CoreError::Labeled`).
  *
  * A missing skill is an expected, explainable state, NOT a Houston bug:
  * `tauriSkills.load` tags it so it skips the red "we have a problem" bug toast +
@@ -33,6 +34,6 @@ export function isMissingSkillError(err: unknown): boolean {
   const e = err as { status?: unknown; kind?: unknown };
   // Primary signal: the engine-client HoustonEngineError for a 404 skill GET.
   if (e.status === 404) return true;
-  // Forward-compat: a typed kind, should the host ever emit one.
+  // Forward-compat / legacy Rust engine: a typed kind, should the host emit one.
   return e.kind === MISSING_SKILL_KIND;
 }

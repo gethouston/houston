@@ -8,6 +8,7 @@ import {
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useCanCreateAgents } from "../hooks/use-can-create-agents";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { MissionControlActive } from "./board/mission-control-active";
@@ -23,6 +24,7 @@ export function Dashboard() {
   const { t } = useTranslation("dashboard");
   const agents = useAgentStore((s) => s.agents);
   const setDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
+  const { canCreate: canCreateAgents } = useCanCreateAgents();
   const [showArchived, setShowArchived] = useState(false);
 
   if (agents.length === 0) {
@@ -33,13 +35,15 @@ export function Dashboard() {
             <EmptyTitle>{t("noAgents.title")}</EmptyTitle>
             <EmptyDescription>{t("noAgents.description")}</EmptyDescription>
           </EmptyHeader>
-          <Button
-            className="mt-4 rounded-full"
-            onClick={() => setDialogOpen(true)}
-          >
-            <Plus className="h-4 w-4" />
-            {t("noAgents.cta")}
-          </Button>
+          {canCreateAgents && (
+            <Button
+              className="mt-4 rounded-full"
+              onClick={() => setDialogOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              {t("noAgents.cta")}
+            </Button>
+          )}
         </Empty>
       </div>
     );

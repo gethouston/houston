@@ -3,29 +3,27 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 /**
- * HOU-529 (port of HOU-467 / gethouston/houston PR #542) — card unification.
- * These guard the user-visible contract of the refactor by asserting on
- * component source (the repo's React-test idiom; the node test runner has no
- * DOM).
- *
- * Scope note for this codebase: only the chat reconnect / error cards exist
- * here. The Composio sign-in/link cards and the provider-switch dialog from
- * the source PR are NOT present in this fork, so their assertions are omitted.
- * Three requirements + one latent bug are covered:
+ * HOU-467 / HOU-529 (gethouston/houston PR #542, ported into houston-web) —
+ * card unification. These guard the user-visible contract of the refactor by
+ * asserting on component source (the repo's React-test idiom; the node test
+ * runner has no DOM). Four issue requirements + one latent bug:
  *
  *  1. The provider/auth/rate-limit cards render through the shared `RowCard`
  *     with the provider's monochrome `ProviderGlyph` on the left.
  *  2. Their action buttons are icon-free (no key / no provider logo glyph).
- *  3. `ProviderGlyph` dispatches per provider id and falls back to the
- *     provider's initial for anything unknown, so a provider can never borrow
- *     the wrong brand's logo the way the old `anthropic ? Claude : OpenAI`
- *     ternary handed every non-Anthropic provider the OpenAI mark.
+ *  3. The provider-switch dialog shows the target provider's logo, not a
+ *     generic `Sparkles`.
+ *  4. `ProviderGlyph` dispatches per provider id — Gemini gets the Gemini
+ *     mark, not the OpenAI logo the old `anthropic ? Claude : OpenAI` ternary
+ *     handed every non-Anthropic provider — and falls back to the provider's
+ *     initial for anything unknown, so a provider can never borrow the wrong
+ *     brand's logo.
  */
 
 const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 
-describe("HOU-529 card unification", () => {
+describe("HOU-467 / HOU-529 card unification", () => {
   it("UnauthenticatedCard uses RowCard + glyph and drops the key icon", () => {
     const src = read("../src/components/shell/provider-error-cards/auth.tsx");
     ok(src.includes("RowCard"), "renders through RowCard");
@@ -55,24 +53,56 @@ describe("HOU-529 card unification", () => {
     );
     ok(src.includes("RateLimitedCard"), "card still exists");
     ok(src.includes("RowCard"), "rate-limit migrated to RowCard");
-    ok(src.includes("RowCardButton"), "buttons are the shared text-only pill");
+    // The rate-limit retry is the shared `RetryButton` — a text-only
+    // `RowCardButton` pill (locked against shared.tsx below) — and the
+    // switch-model CTA is a plain RowCardButton, so the buttons are always the
+    // shared text-only pill.
+    ok(src.includes("RetryButton"), "retry CTA is the shared RetryButton pill");
+    ok(
+      src.includes("RowCardButton"),
+      "switch-model CTA is a plain text-only RowCardButton pill",
+    );
     ok(
       src.includes("Clock"),
       "rate-limit shows a clock, not the provider logo",
     );
     ok(!src.includes("ProviderGlyph"), "rate-limit dropped the provider glyph");
-    // Sibling cards in this file stay on the old ErrorCard layout untouched.
-    ok(src.includes("ErrorCard"), "siblings still use ErrorCard");
+    // Every transient variant now renders on the unified RowCard — none remain
+    // on the old ErrorCard layout.
+    ok(
+      !src.includes("ErrorCard"),
+      "all transient variants migrated off ErrorCard",
+    );
+
+    // The shared retry pill IS a RowCardButton, so "buttons are the shared
+    // text-only pill" still holds transitively through the wrapper.
+    const shared = read(
+      "../src/components/shell/provider-error-cards/shared.tsx",
+    );
+    ok(
+      shared.includes("export function RetryButton") &&
+        shared.includes("RowCardButton"),
+      "RetryButton is a thin RowCardButton wrapper",
+    );
   });
 
-  it("ProviderGlyph dispatches per provider (unknown != OpenAI)", () => {
+  it("ProviderSwitchDialog shows the provider glyph, not a sparkle", () => {
+    const src = read("../src/components/provider-switch-dialog.tsx");
+    ok(!src.includes("Sparkles"), "sparkle icon removed");
+    ok(src.includes("ProviderGlyph"), "target provider logo shown");
+    ok(src.includes("RowCard"), "rendered with the shared card");
+    ok(src.includes("providerId"), "threads the target provider id");
+  });
+
+  it("ProviderGlyph dispatches per provider (Gemini != OpenAI, unknown falls back to initial)", () => {
     const src = read("../src/components/shell/provider-logos.tsx");
     ok(src.includes("export function ProviderGlyph"), "glyph dispatch exists");
-    // Every provider this fork has a brand mark for gets its own case
-    // (note: Gemini's provider id is "google").
+    // Every provider with a brand mark gets its own case. Note Gemini appears
+    // under both its historical id "gemini" and its provider id "google".
     for (const id of [
       "anthropic",
       "openai",
+      "gemini",
       "google",
       "github-copilot",
       "openrouter",
@@ -82,8 +112,8 @@ describe("HOU-529 card unification", () => {
     ]) {
       ok(src.includes(`case "${id}"`), `has a case for ${id}`);
     }
-    // The defensive fallback: an unknown provider renders its initial, never
-    // a borrowed brand logo. `slice(0, 1)` is the tell.
+    // The defensive fallback: an unknown provider renders its initial, never a
+    // borrowed brand logo. `slice(0, 1)` is the tell.
     ok(src.includes("default:"), "has a fallback branch");
     ok(src.includes("slice(0, 1)"), "fallback uses the provider's initial");
   });

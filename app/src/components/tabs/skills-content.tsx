@@ -17,12 +17,15 @@ import { useSkillDialogLabels } from "./use-skill-surface-labels";
 export function SkillsContent({
   skills,
   loading,
+  loadingSkillName,
   onSkillClick,
   onCreateFromScratch,
   installedSkillNames,
 }: {
   skills: SkillSummary[];
   loading: boolean;
+  /** Name of the skill whose detail is loading; its card spins + disables. */
+  loadingSkillName?: string | null;
   onSkillClick: (name: string) => void;
   onCreateFromScratch?: (input: {
     name: string;
@@ -106,6 +109,8 @@ export function SkillsContent({
             title={humanizeSkillName(skill.name)}
             description={skill.description}
             onClick={() => onSkillClick(skill.name)}
+            busy={loadingSkillName === skill.name}
+            disabled={loadingSkillName === skill.name}
           />
         ))}
       </div>

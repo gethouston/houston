@@ -6,6 +6,7 @@
     "workspaceContext": "Contexto del espacio",
     "userContext": "Contexto del usuario",
     "provider": "Proveedor de IA",
+    "phone": "Conectar celular",
     "shortcuts": "Atajos de teclado",
     "reportBug": "Reportar bug"
   },
@@ -39,6 +40,28 @@
   "provider": {
     "title": "Proveedor de IA",
     "description": "Houston usa <emph>tu propia</emph> suscripción. Nunca vemos tus credenciales."
+  },
+  "connectPhone": {
+    "title": "Conectar celular",
+    "description": "Escanea este código para manejar Houston desde tu celular. El mismo código sigue funcionando mientras esta computadora esté encendida y Houston esté abierto.",
+    "loading": "Preparando la conexión con tu celular…",
+    "connectingStatus": "Conectando con el servicio del celular. Suele tomar unos segundos.",
+    "keepComputerAwake": "Mantén esta computadora despierta mientras usas Houston en tu celular.",
+    "alwaysOnHint": "Para acceso 24/7, <emph>Always On</emph> ejecuta Houston en nuestros servidores.",
+    "errors": {
+      "noInternet": "Houston necesita conexión a internet la primera vez que lo abres. Conéctate y reabre Houston para habilitar el emparejamiento del celular.",
+      "generic": "No se pudo generar un código de emparejamiento. Inténtalo de nuevo."
+    },
+    "reset": {
+      "title": "Desconectar todos los celulares",
+      "description": "Restablece el QR y cierra la sesión de todos los celulares conectados a esta computadora.",
+      "button": "Desconectar todos los celulares",
+      "confirmTitle": "¿Desconectar todos los celulares?",
+      "confirmDescription": "Esto restablece el QR y cierra la sesión de todos los celulares conectados a esta computadora. Escanea el nuevo QR para conectarte otra vez.",
+      "confirmLabel": "Desconectar",
+      "toast": "Acceso desde el celular restablecido",
+      "unavailable": "Disponible cuando la conexión con tu celular esté lista."
+    }
   },
   "appearance": {
     "title": "Apariencia",

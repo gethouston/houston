@@ -21,10 +21,10 @@ interface ChatEffortSelectorProps {
 /**
  * Reasoning-effort cycle button, rendered beside {@link ChatModelSelector} in
  * the composer. One click advances to the next level the active model accepts,
- * wrapping after the last (low -> ... -> max -> low). The icon's filled bars and
+ * wrapping after the last (low → … → max → low). The icon's filled bars and
  * the label both track the level, so the control reads at a glance without a
- * menu. Renders nothing when the model has no effort control, so the composer
- * row collapses cleanly.
+ * menu. Renders nothing when the model has no effort control (e.g. Gemini), so
+ * the composer row collapses cleanly.
  */
 export function ChatEffortSelector({
   provider,
@@ -51,8 +51,8 @@ export function ChatEffortSelector({
     max: t("modelSelector.effortDescriptions.max"),
   };
 
-  // Stored configs can carry an effort unsupported by the active model; show
-  // an unselected state until the next click resets to the model's first level.
+  // The current level (only when the stored value is one this model accepts)
+  // and the level a click advances to, wrapping past the last back to the first.
   const activeLevel =
     effort && levels.includes(effort as EffortLevel)
       ? (effort as EffortLevel)
@@ -66,6 +66,7 @@ export function ChatEffortSelector({
   return (
     <button
       type="button"
+      // Announce the value (the visible label alone reads as a bare "High").
       aria-label={
         activeLevel
           ? t("modelSelector.effortValue", { level: activeLabel })
@@ -74,8 +75,8 @@ export function ChatEffortSelector({
       title={
         activeLevel ? descriptions[activeLevel] : t("modelSelector.effort")
       }
-      // Stop pointer events from bubbling: keeps the board detail panel from
-      // reading the click as click-outside and closing the panel.
+      // Stop pointer events from bubbling — keeps the board detail panel from
+      // reading the click as "click outside → close panel".
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();

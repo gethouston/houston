@@ -112,7 +112,7 @@ module.
 |---|---|---|
 | POST | `/v1/agents/:agent_path/sessions` | Start turn |
 | POST | `/v1/agents/:agent_path/sessions/onboarding` | Start onboarding turn |
-| POST | `/v1/agents/:agent_path/sessions/:key:cancel` | SIGTERM CLI |
+| POST | `/v1/agents/:agent_path/sessions/:key:cancel` | Kill CLI process tree (verified, SIGKILL escalation); a tombstone catches a CLI that spawns after Stop |
 | GET | `/v1/agents/:agent_path/sessions/:key/history` | Load chat history |
 | POST | `/v1/sessions/summarize` | Activity title/description |
 
@@ -146,11 +146,12 @@ not user-facing copy.
 |---|---|---|
 | GET/POST | `/v1/agents/activities` | List/create |
 | PATCH/DELETE | `/v1/agents/activities/:id` | Update/delete |
-| GET/POST | `/v1/agents/routines` | List/create |
-| PATCH/DELETE | `/v1/agents/routines/:id` | Update/delete |
-| GET/POST | `/v1/agents/routine-runs` | List/create |
-| PATCH | `/v1/agents/routine-runs/:id` | Update |
 | GET/PUT | `/v1/agents/config` | Read/write project config |
+
+Routine + routine-run CRUD is **not** here — there is one canonical surface
+under `/v1/routines` + `/v1/routine-runs` (below); the engine-client points all
+routine CRUD at it. (The old duplicate `/v1/agents/routines*` mirror, which
+silently dropped `timezone`, was removed.)
 
 **Agent files** (typed `.houston/` + project file browser)
 | Method | Path | Description |
@@ -167,7 +168,18 @@ not user-facing copy.
 | POST | `/v1/agents/files/import` | Import paths |
 | POST | `/v1/agents/files/import-bytes` | Import base64 bytes |
 
-**Routines (separate scheduler surface)**
+**Routines (the single routine surface — CRUD + scheduler)**
+
+All routine + routine-run CRUD lives here (the engine-client targets it); the
+`/v1/agents/routines*` mirror was deleted. Query params are camelCase
+(`?agentPath`, `?routineId`). A routine carries optional
+`provider`/`model`/`effort` overrides (absent = inherit the agent's config at
+dispatch); the dispatcher resolves provider+model via
+`sessions::resolve_provider_with_overrides` and effort via
+`resolve_effort_with_override` (an effort the resolved provider rejects is
+dropped), the same precedence a chat turn uses. Create/update/delete + run create/update
+emit `RoutinesChanged` / `RoutineRunsChanged`.
+
 | Method | Path | Description |
 |---|---|---|
 | GET/POST | `/v1/routines` | List/create (by `?agentPath`) |
@@ -189,6 +201,20 @@ translates the day-of-week field at the single `spawn_cron` boundary. Without it
 every weekly routine fired a day early and Sunday routines never scheduled
 (issue #389). Keep cron generation/parsing on the standard convention; never
 hand a raw `schedule` to `Schedule::from_str`.
+
+**Suspend-safe waiting (HOU-541).** The cron task must NOT wait for its next
+fire in one long `tokio::time::sleep`. That timer runs on the monotonic clock,
+which macOS *freezes while the machine is asleep* (App Nap, closed lid, idle
+suspend) — so a single multi-hour sleep undercounts wall-clock time by the nap
+duration and the routine fires late, or across an overnight suspend never that
+day, with no run row ever written (the run row is only created when the timer
+actually fires). The loop instead re-reads the wall clock in capped chunks
+(`MAX_TICK`, 30s) and fires the moment `now` has reached *or passed* the
+instant, so a wake catches up an overdue fire within `MAX_TICK`. After firing it
+re-arms with `upcoming().next()` (strictly-after-now), which collapses every
+instant skipped during a long suspend into a single catch-up instead of
+replaying the backlog. Same pattern in `houston-scheduler::cron_job`. Never
+reintroduce a single unbounded sleep for a wall-clock deadline.
 
 **Conversations** (cross-agent read)
 | Method | Path | Description |
@@ -381,6 +407,20 @@ skills index, integrations). Final prompt =
 `<product_prompt>\n\n---\n\n<agent_context>`. Onboarding sessions use
 `HOUSTON_APP_ONBOARDING_PROMPT` as an additional suffix.
 
+The assembled prompt reaches the provider CLIs via **scratch files,
+never argv** (`houston-terminal-manager::prompt_scratch`): codex gets a
+per-session profile at `$CODEX_HOME/houston-tmp-*.config.toml` selected
+with `-p` (requires the file-based profiles in codex ≥ 0.137 — keep the
+`cli-deps.json` pin at or above that), claude gets a temp file via
+`--system-prompt-file`. Argv tokens are capped at 32,767 chars total by
+Windows `CreateProcessW`; carrying the prompt inline (`-c
+developer_instructions=…` / `--system-prompt <text>`) broke every spawn
+with os error 206 once an agent's accumulated context outgrew the limit.
+Growth is also bounded at the source: `workspace_context` caps the
+`WORKSPACE.md`/`USER.md` prompt share (12 KB / 4 KB, newest-first, with
+an explicit omission marker) the same way `learnings_context` caps
+learnings — files on disk are never trimmed.
+
 ### Feed-item streaming needs a reducer
 
 `assistant_text_streaming` deltas should REPLACE the in-progress
@@ -492,6 +532,27 @@ synchronously. The only knob is the threshold, a build-time constant
 summary failure the engine logs and falls back to a normal resume (the CLI's own
 auto-compaction is the backstop), so a turn never fails because compaction
 couldn't run.
+
+### Provider switch (`provider_switched`)
+
+`POST .../sessions` accepts an optional `providerSwitch: { mode: "replay" |
+"summarize", fromProvider }` (HOU-424). It is set by the client when the user
+moves a live conversation to a DIFFERENT provider mid-stream. Provider CLI
+sessions aren't portable, so the engine reseeds a FRESH session on the resolved
+(new) provider with prior context — the full transcript verbatim (`replay`) or
+an AI summary (`summarize`) — and clears any current resume id for the resolved
+provider so a switch-back never resumes a stale cross-provider session. It takes
+precedence over `compact`. The seed is built from the DB `chat_feed`, and the
+summary (for `summarize`) runs on the TARGET provider, so a switch away from an
+out-of-credits provider still works. Unlike `compact`, a switch seed failure is
+NOT swallowed: it surfaces as a `SessionStatus` error (beta no-silent-failure
+policy).
+
+The boundary is recorded as a `feed_type: "provider_switched"` item (`data: {
+provider, summarized, pre_tokens? }`, Rust `FeedItem::ProviderSwitched`),
+rendered as a subtle divider like `context_compacted`. `provider` is the
+provider switched TO; `summarized` distinguishes the verbatim carry from the
+summarized one. The full `chat_feed` above and below stays visible.
 
 ### Binary file downloads
 

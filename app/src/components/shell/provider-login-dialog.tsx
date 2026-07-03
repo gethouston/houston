@@ -34,7 +34,7 @@ import { providerLoginUrlHost } from "./provider-login-url";
  * Desktop no longer shows this dialog: there the picker/settings handler opens
  * the user's browser directly for the co-located loopback flow (see
  * `shouldOpenLoginUrlDirectly`), so the dialog is now a remote / headless-only
- * affordance.
+ * affordance (issue #453).
  */
 interface Props {
   provider: ProviderInfo | null;

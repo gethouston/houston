@@ -20,14 +20,14 @@ export interface Routine {
   suppress_when_silent: boolean;
   /** Whether each run reuses one chat or starts a fresh one. */
   chat_mode: RoutineChatMode;
+  /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */
+  integrations: string[];
   /** Provider id override; absent means inherit the agent's provider. */
   provider?: string | null;
   /** Model override; absent means inherit the agent's model. */
   model?: string | null;
   /** Reasoning-effort override; absent means inherit the agent's effort. */
   effort?: string | null;
-  /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */
-  integrations: string[];
   created_at: string;
   updated_at: string;
 }

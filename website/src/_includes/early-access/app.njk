@@ -1,0 +1,93 @@
+<script>
+  // ── Storage config ──
+  // Supabase anon key is public + RLS-protected; injected at build (SUPABASE_ANON_KEY),
+  // never committed. Feedback writes go ONLY through two locked-down security-definer
+  // RPCs (submit_early_access / mark_download) keyed by the per-person token.
+  var SUPABASE_URL = '{{ env.supabaseUrl }}';
+  var SUPABASE_ANON_KEY = '{{ env.supabaseAnonKey }}';
+
+  // Token was read from ?t=… and stripped from the URL in <head> (early-access/scrub.njk).
+  var token = window.__eaToken || null;
+
+  // Best-effort background write on a static page (no toast channel here, so we
+  // log a warning on failure, same convention as the waitlist Sheet mirror).
+  // A failure must never block the download the user came for.
+  function rpc(fn, body) {
+    if (!token || !SUPABASE_ANON_KEY) return;
+    fetch(SUPABASE_URL + '/rest/v1/rpc/' + fn, {
+      method: 'POST',
+      keepalive: true,
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    }).catch(function (err) { console.warn('early-access: ' + fn + ' write failed:', err); });
+  }
+
+  var answer = document.getElementById('answer');
+  var group = document.getElementById('dlActions');
+  var lockNote = document.getElementById('lockNote');
+  var saved = document.getElementById('saved');
+  var macBtn = document.getElementById('macBtn');
+  var winBtn = document.getElementById('winBtn');
+
+  // Resolve the real installer URLs from the latest GitHub release (same source
+  // as the home page). On failure we fall back to the site, and log it.
+  var dmgUrl = null, winUrl = null;
+  fetch('https://api.github.com/repos/gethouston/houston/releases/latest')
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var assets = (data && data.assets) || [];
+      var dmg = assets.find(function (a) { return /\.dmg$/.test(a.name); });
+      if (dmg) dmgUrl = dmg.browser_download_url;
+      var win = assets.find(function (a) { return /_x64.*\.msi$/.test(a.name); }) ||
+                assets.find(function (a) { return /\.msi$/.test(a.name); });
+      if (win) winUrl = win.browser_download_url;
+    })
+    .catch(function (err) { console.warn('early-access: release lookup failed, using fallback link:', err); });
+
+  // OS-aware promote/demote, mirrored from the home page: the detected platform
+  // becomes the primary pill, the other a small underlined escape link.
+  (function () {
+    function detectOs() {
+      var uaData = navigator.userAgentData;
+      var hay = ((uaData && uaData.platform ? uaData.platform : '') + ' ' + (navigator.userAgent || '')).toLowerCase();
+      if (hay.indexOf('win') !== -1) return 'windows';
+      if (hay.indexOf('mac') !== -1) return 'mac';
+      return 'other';
+    }
+    var os = detectOs();
+    if (os === 'other') return;
+    function asPrimary(b) { b.className = 'btn btn-primary btn-lg'; b.style.order = '0'; }
+    function asAlt(b) { b.className = 'dl-alt'; b.style.order = '1'; }
+    if (os === 'windows') { asPrimary(winBtn); asAlt(macBtn); }
+    else { asPrimary(macBtn); asAlt(winBtn); }
+  })();
+
+  // Gate: the download unlocks once the question is answered.
+  function answered() { return answer.value.trim().length >= 2; }
+  function update() {
+    var ok = answered();
+    group.classList.toggle('locked', !ok);
+    saved.classList.toggle('show', ok);
+    lockNote.style.display = ok ? 'none' : 'block';
+  }
+  answer.addEventListener('input', update);
+  update();
+
+  var submitted = false;
+  function go(url, os) {
+    if (group.classList.contains('locked')) return;
+    if (!submitted) {
+      submitted = true;
+      // Pledge UI removed; anyone who answers + downloads is recorded as an early adopter.
+      rpc('submit_early_access', { p_token: token, p_answer: answer.value.trim().slice(0, 2000), p_pledged: true });
+    }
+    rpc('mark_download', { p_token: token, p_os: os });
+    if (url) window.location.href = url;
+  }
+  macBtn.addEventListener('click', function (e) { e.preventDefault(); go(dmgUrl || 'https://gethouston.ai/', 'mac'); });
+  winBtn.addEventListener('click', function (e) { e.preventDefault(); go(winUrl || 'https://gethouston.ai/', 'windows'); });
+</script>

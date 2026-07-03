@@ -102,10 +102,18 @@ export async function update(
   return merged;
 }
 
+/**
+ * Delete an activity. Idempotent: removing an id that's already gone is a
+ * no-op success — the desired end state (row absent) already holds, so there's
+ * nothing to write. Mirrors `bulkRemove`'s "unknown ids are silently no-ops"
+ * semantics and stops a double-delete (a UI click racing an agent / file-watcher
+ * write that already removed the row) from rejecting as an unhandled rejection.
+ * Genuine write failures still propagate.
+ */
 export async function remove(agentPath: string, id: string): Promise<void> {
   const items = await list(agentPath);
   const { items: next, removed } = applyRemove(items, id);
-  if (!removed) return;
+  if (!removed) return; // already gone — nothing to write
   await writeAgentJson(agentPath, NAME, s, next);
 }
 

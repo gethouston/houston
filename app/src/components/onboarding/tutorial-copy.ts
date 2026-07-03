@@ -1,57 +1,33 @@
-import type { MissionMeta } from "./mission-frame";
-
 /**
- * Onboarding state machine. `welcome` sits OUTSIDE the mission counter — it's
- * the decision point ("do the tutorial or skip"). Once the user starts, the
- * mission stages drive the HUD `Mission N of N` counter.
+ * Every screen the onboarding orchestrator can render, in flow order. The
+ * numbered steps (their section + position) live in `lib/setup-steps.ts`; the
+ * rest are unnumbered framing/celebration screens.
+ *
+ *  intro (overview of all steps)
+ *  ── Setup ──────────────────────────────────────────
+ *  brain → providerLogin → aiConnected ✓
+ *  tools → appsConnected ✓
+ *  ── Onboarding ─────────────────────────────────────
+ *  meet (name) → agentCreated ✓
+ *  connectEmail (Gmail/Outlook) → emailConnected ✓
+ *  emailIntro (it'll email you) → emailChat (send to myself) → emailSent ✓
+ *  finished (tour or connect more)
+ *
+ * `numbered` steps that drive the "Setup · N of M" eyebrow: brain,
+ * providerLogin, tools, meet, connectEmail, emailChat.
  */
-export type OnboardingStep = "welcome" | TutorialStep;
-
-export type TutorialStep =
-  | "meet"
+export type OnboardingStep =
+  | "intro"
   | "brain"
-  | "try"
-  | "skill"
-  | "routine"
-  | "summary";
-
-type Translate = (key: string, options?: Record<string, unknown>) => string;
-
-export const TUTORIAL_STEPS: TutorialStep[] = [
-  "meet",
-  "brain",
-  "try",
-  "skill",
-  "routine",
-  "summary",
-];
-
-export function buildMissionMeta(
-  t: Translate,
-  step: TutorialStep,
-): MissionMeta {
-  const index = TUTORIAL_STEPS.indexOf(step);
-  const total = TUTORIAL_STEPS.length;
-  const next = TUTORIAL_STEPS[index + 1];
-  const nextTitle = next ? t(`setup:tutorial.missions.${next}.title`) : null;
-  return {
-    index,
-    total,
-    eyebrow: t("setup:tutorial.eyebrow", { number: index + 1 }),
-    title: t(`setup:tutorial.missions.${step}.title`),
-    body: t(`setup:tutorial.missions.${step}.body`),
-    nextTitle,
-  };
-}
-
-export function buildFrameLabels(t: Translate, step: TutorialStep) {
-  const index = TUTORIAL_STEPS.indexOf(step);
-  return {
-    brandLabel: t("setup:tutorial.brand"),
-    counterLabel: t("setup:tutorial.counter", {
-      current: index + 1,
-      total: TUTORIAL_STEPS.length,
-    }),
-    upNextLabel: t("setup:tutorial.upNext"),
-  };
-}
+  | "providerLogin"
+  | "aiConnected"
+  | "tools"
+  | "appsConnected"
+  | "onboardingIntro"
+  | "meet"
+  | "agentCreated"
+  | "connectEmail"
+  | "emailConnected"
+  | "emailChat"
+  | "emailSent"
+  | "finished";

@@ -32,27 +32,30 @@ function process(isActive: boolean): ChatDisplayItem {
   };
 }
 
-describe("shouldShowThinkingIndicator", () => {
+describe("shouldShowThinkingIndicator (HOU-471)", () => {
   it("hides the indicator when the turn is settled", () => {
     equal(shouldShowThinkingIndicator([message("assistant")], "ready"), false);
   });
 
-  it("hides the indicator while the answer streams", () => {
+  it("hides the indicator while the answer streams (the text is the signal)", () => {
     equal(
       shouldShowThinkingIndicator([message("assistant")], "streaming"),
       false,
     );
   });
 
-  it("shows the indicator after sending before any output", () => {
+  it("shows the indicator in the gap after sending, before any output", () => {
+    // Just the user's message on the feed, waiting on the first token.
     equal(shouldShowThinkingIndicator([message("user")], "submitted"), true);
   });
 
-  it("shows the indicator on a new chat with no items", () => {
+  it("shows the indicator on a brand-new chat with no items yet", () => {
     equal(shouldShowThinkingIndicator([], "submitted"), true);
   });
 
-  it("suppresses the indicator while an active process block shows progress", () => {
+  it("suppresses the indicator while an active process block surfaces progress", () => {
+    // The mission-log header already reads "Mission in progress: <action>", so
+    // a second standalone line would duplicate it.
     equal(
       shouldShowThinkingIndicator(
         [message("user"), process(true)],
@@ -62,7 +65,7 @@ describe("shouldShowThinkingIndicator", () => {
     );
   });
 
-  it("shows the indicator when the trailing process block has settled", () => {
+  it("shows the indicator again once the trailing process block has settled", () => {
     equal(shouldShowThinkingIndicator([process(false)], "submitted"), true);
   });
 });

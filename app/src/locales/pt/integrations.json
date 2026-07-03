@@ -1,0 +1,71 @@
+{
+  "title": "Integrações",
+  "description": "Conecte seus aplicativos para que seu agente possa usá-los.",
+  "loading": {
+    "title": "Carregando suas integrações",
+    "body": "Verificando seu provedor de integrações…"
+  },
+  "unavailable": "As integrações não estão disponíveis nesta configuração.",
+  "signin": {
+    "title": "Entre para conectar aplicativos",
+    "body": "Entre no Houston para conectar seus aplicativos. Suas contas continuam sendo suas; o agente age em seu nome.",
+    "button": "Entrar no Houston",
+    "failed": "Não foi possível iniciar a sessão. Tente de novo."
+  },
+  "reconnectNotice": "Melhoramos a forma como os aplicativos se conectam para deixá-la mais segura. Reconecte seus aplicativos uma única vez; o Houston não guarda mais nenhuma chave de longa duração.",
+  "reconnectDismiss": "Entendi",
+  "connected": {
+    "title": "Conectados",
+    "count_one": "{{count}} app",
+    "count_other": "{{count}} apps",
+    "dotAria": "Conectado",
+    "menu": {
+      "aria": "Opções de {{name}}",
+      "reconnect": "Reconectar",
+      "disconnect": "Desconectar"
+    },
+    "disconnect": {
+      "confirmTitle": "Desconectar {{name}}?",
+      "confirmBody": "Seu agente vai perder o acesso a {{name}}. Você pode reconectar quando quiser.",
+      "confirmAction": "Desconectar",
+      "cancel": "Cancelar"
+    },
+    "statusPending": "Termine de conectar no seu navegador...",
+    "statusError": "Precisa reconectar"
+  },
+  "browse": {
+    "title": "Ver todos os apps",
+    "count_one": "{{count}} app",
+    "count_other": "{{count}} apps",
+    "searchPlaceholder": "Buscar apps...",
+    "allCategories": "Todas as categorias",
+    "searchCategories": "Buscar categorias...",
+    "noCategoryResults": "Nenhuma categoria corresponde à busca.",
+    "noResults": "Nenhum app corresponde à busca.",
+    "loadMoreWithRemaining": "Carregar mais ({{count}} restantes)",
+    "connectTitle": "Conectar {{name}}"
+  },
+  "connectResult": {
+    "timeout": "A conexão não foi concluída. Tente novamente.",
+    "failed": "Não foi possível conectar o aplicativo. Tente novamente."
+  },
+  "grants": {
+    "granted": {
+      "title": "Este agente pode usar",
+      "subtitle": "Aplicativos que este agente pode usar. Desative um para removê-lo aqui.",
+      "empty": "Este agente ainda não pode usar nenhum aplicativo. Permita um abaixo ou conecte um novo.",
+      "revoke": "Parar de permitir que este agente use {{name}}"
+    },
+    "available": {
+      "title": "Seus outros aplicativos conectados",
+      "subtitle": "Aplicativos conectados que este agente ainda não pode usar. Ative um para permiti-lo aqui.",
+      "allow": "Permitir que este agente use {{name}}"
+    },
+    "disconnect": {
+      "menu": "Desconectar em todos os lugares",
+      "confirmTitle": "Desconectar {{name}} em todos os lugares?",
+      "confirmBody": "Isso remove {{name}} de todos os seus agentes, não só deste. Você pode reconectá-lo quando quiser.",
+      "confirmAction": "Desconectar em todos os lugares"
+    }
+  }
+}

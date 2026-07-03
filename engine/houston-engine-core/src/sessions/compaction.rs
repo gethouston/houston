@@ -23,6 +23,15 @@ use std::time::Duration;
 /// resume-recovery cap; keeps the summary call itself from blowing context.
 const MAX_HISTORY_BYTES: usize = 120_000;
 
+/// Cap on a verbatim provider-switch replay. Far larger than the summarizer cap
+/// because the whole point is to carry the FULL conversation across when it
+/// fits the new provider's window (the frontend only chooses `Replay` after
+/// confirming it fits). `render_visible_entries` already drops tool noise, so
+/// this is conversation text, not raw turns; ~3 MB ≈ 750k tokens stays under
+/// every catalogued window ceiling. `truncate_history_tail` keeps the most
+/// recent text and marks any omission rather than failing.
+const REPLAY_MAX_BYTES: usize = 3_000_000;
+
 /// Generous bound — summarizing a long conversation with a capable model takes
 /// longer than a title. Still bounded so a hung CLI can't wedge the turn.
 const SUMMARY_TIMEOUT: Duration = Duration::from_secs(90);
@@ -45,10 +54,13 @@ pub struct CompactionSeed {
     pub pre_tokens: Option<u64>,
 }
 
-/// Build the seed for a forced compaction, or `Ok(None)` when there is nothing
-/// to summarize (no visible history yet). Returns `Err` only when the
-/// summarizer call itself fails — the caller degrades to a normal resume in
-/// that case (the provider's own auto-compaction is the backstop).
+/// Build the seed for a forced compaction. `Ok(None)` means there is genuinely
+/// nothing to summarize (no visible history yet). `Err` means the summarize
+/// step failed — either the summarizer call errored, or it returned empty text
+/// despite real history existing (an unusable summary). Callers must treat the
+/// two differently: a provider switch surfaces the `Err` (the user consented to
+/// the summary), while autocompact degrades to a normal resume (the provider's
+/// own auto-compaction is the backstop).
 pub async fn build_compaction_seed(
     db: &Database,
     working_dir: &Path,
@@ -88,13 +100,72 @@ pub async fn build_compaction_seed(
 
     let summary = summary.trim();
     if summary.is_empty() {
-        return Ok(None);
+        // History WAS non-empty (checked above), but the summarizer returned
+        // nothing usable. That's a real failure, not a "nothing to summarize" —
+        // distinct from the `Ok(None)` above so callers can tell them apart. The
+        // provider-switch path surfaces this (the user consented to + paid for a
+        // summary); autocompact degrades to a normal resume in its `Err` arm.
+        return Err(CoreError::Internal(
+            "summarizer returned empty output".to_string(),
+        ));
     }
 
     Ok(Some(CompactionSeed {
         prompt: seeded_prompt(summary, latest_user_prompt),
         pre_tokens,
     }))
+}
+
+/// Outcome of preparing a verbatim replay: the full rendered transcript framed
+/// as the seed prompt for a fresh session on the new provider, plus the context
+/// size just before the switch (for the divider marker).
+pub struct ReplaySeed {
+    pub prompt: String,
+    pub pre_tokens: Option<u64>,
+}
+
+/// Build a verbatim-replay seed for a provider switch: render the FULL visible
+/// transcript and frame it as established context for a fresh session on the
+/// new provider. Unlike [`build_compaction_seed`] this makes NO provider call,
+/// so it never depends on the leaving provider (the transcript comes from our
+/// `chat_feed`) — the reliable path when the user is switching precisely
+/// because the old provider hit a wall (out of credits, rate limited).
+///
+/// Returns `Ok(None)` when there is no visible history to carry. Returns `Err`
+/// only on a DB read failure; the caller surfaces that rather than silently
+/// starting the new provider blank, because a provider switch was explicit.
+pub async fn build_replay_seed(
+    db: &Database,
+    working_dir: &Path,
+    agent_dir: &Path,
+    session_key: &str,
+    latest_user_prompt: &str,
+) -> CoreResult<Option<ReplaySeed>> {
+    let mut entries = history::load(db, working_dir, session_key).await?;
+    if entries.is_empty() && agent_dir != working_dir {
+        entries = history::load(db, agent_dir, session_key).await?;
+    }
+
+    let rendered = history::render_visible_entries(&entries).join("\n\n");
+    if rendered.trim().is_empty() {
+        return Ok(None);
+    }
+    let pre_tokens = latest_context_tokens(&entries);
+    let capped = history::truncate_history_tail(rendered, REPLAY_MAX_BYTES);
+
+    Ok(Some(ReplaySeed {
+        prompt: replay_seeded_prompt(&capped, latest_user_prompt),
+        pre_tokens,
+    }))
+}
+
+/// Wrap the verbatim transcript + the user's latest message into the prompt the
+/// fresh session receives after a provider switch. The transcript is the
+/// ongoing conversation (established context); the latest message is the task.
+fn replay_seeded_prompt(history: &str, latest_user_prompt: &str) -> String {
+    format!(
+        "This conversation continues from earlier work that a different assistant handled. The full prior conversation is below. Treat it as the ongoing conversation you are part of, not a new task or a document to react to.\n\n<conversation_history>\n{history}\n</conversation_history>\n\nLatest user message:\n<latest_user_message>\n{latest_user_prompt}\n</latest_user_message>"
+    )
 }
 
 /// The prompt sent to the summarizer CLI. Asks for a handoff brief that lets a
@@ -148,6 +219,68 @@ mod tests {
         // No em dashes in any generated text (project copy rule, even for
         // model-facing prompts we keep it clean).
         assert!(!p.contains('\u{2014}'));
+    }
+
+    #[test]
+    fn replay_prompt_carries_verbatim_history_and_keeps_latest_as_task() {
+        let p = replay_seeded_prompt(
+            "User:\nrefactor the parser\n\nAssistant:\ndone, split into modules",
+            "now add tests",
+        );
+        assert!(p.contains("<conversation_history>"));
+        assert!(p.contains("refactor the parser"));
+        assert!(p.contains("split into modules"));
+        assert!(p.contains("<latest_user_message>"));
+        assert!(p.contains("now add tests"));
+        // Verbatim, not summarized: the original assistant text is present.
+        assert!(p.contains("done, split into modules"));
+        // No em dashes in generated text (project copy rule).
+        assert!(!p.contains('\u{2014}'));
+    }
+
+    #[tokio::test]
+    async fn replay_seed_renders_full_visible_history() {
+        let db = houston_db::Database::connect_in_memory().await.unwrap();
+        let dir = tempfile::TempDir::new().unwrap();
+        let provider: Provider = "anthropic".parse().unwrap();
+        let sid_path = houston_agents_conversations::session_id_tracker::session_id_path(
+            dir.path(),
+            provider,
+            "chat",
+        );
+        std::fs::create_dir_all(sid_path.parent().unwrap()).unwrap();
+        std::fs::write(&sid_path, "claude-session").unwrap();
+        for (ft, text) in [
+            ("user_message", "plan the launch"),
+            ("assistant_text", "step one: pick a date"),
+        ] {
+            db.add_chat_feed_item_by_session(
+                "claude-session",
+                ft,
+                &serde_json::Value::String(text.into()).to_string(),
+                "test",
+            )
+            .await
+            .unwrap();
+        }
+
+        let seed = build_replay_seed(&db, dir.path(), dir.path(), "chat", "now draft the invite")
+            .await
+            .unwrap()
+            .expect("replay seed");
+        assert!(seed.prompt.contains("plan the launch"));
+        assert!(seed.prompt.contains("step one: pick a date"));
+        assert!(seed.prompt.contains("now draft the invite"));
+    }
+
+    #[tokio::test]
+    async fn replay_seed_is_none_without_visible_history() {
+        let db = houston_db::Database::connect_in_memory().await.unwrap();
+        let dir = tempfile::TempDir::new().unwrap();
+        let seed = build_replay_seed(&db, dir.path(), dir.path(), "chat", "hi")
+            .await
+            .unwrap();
+        assert!(seed.is_none());
     }
 
     #[test]

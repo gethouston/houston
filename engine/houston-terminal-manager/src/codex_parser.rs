@@ -3,7 +3,7 @@
 //! Maps Codex events to the same `FeedItem` variants used by the Claude parser,
 //! so the rest of the stack (session_runner, frontend) is provider-agnostic.
 
-use super::auth_error::{is_auth_retry_noise, AUTH_RETRY_MARKER};
+use super::auth_error::{is_auth_retry_noise, is_terminal_auth_error, AUTH_RETRY_MARKER};
 use super::provider::Provider;
 use super::provider_error_kind::ProviderError;
 use super::types::FeedItem;
@@ -20,6 +20,14 @@ fn classify_codex_error_message(message: &str) -> Option<ProviderError> {
     Provider::from_str("openai")
         .ok()
         .and_then(|p| p.classify_stderr(message))
+}
+
+fn is_reconnect_progress_noise(message: &str) -> bool {
+    if is_terminal_auth_error(message) {
+        return false;
+    }
+    let lower = message.trim_start().to_lowercase();
+    lower.starts_with("reconnecting...") && lower.contains("/5")
 }
 
 /// Top-level Codex NDJSON event envelope.
@@ -195,6 +203,17 @@ pub struct CodexAccumulator {
     /// block transitions out of its streaming state and doesn't strand a
     /// permanent shimmer in the chat.
     thinking_placeholder_open: bool,
+    /// True once a terminal-auth `Unauthenticated` card has been emitted for
+    /// this session. codex prints the "Reconnecting... N/5 (session ended)"
+    /// banner up to 5× and then restarts the whole turn, so without this the
+    /// feed would stack a reconnect card per retry. One per session is enough.
+    auth_card_emitted: bool,
+    /// True once a NON-auth terminal error (typed `ProviderError` card or the
+    /// raw `Error: …` fallback) has been surfaced for this run. codex emits the
+    /// same failure as BOTH an `error` and a `turn.failed` event back-to-back
+    /// (e.g. the usage-limit banner, HOU-495), so without this the feed would
+    /// stack two identical cards. Auth keeps its own dedup above.
+    terminal_error_emitted: bool,
 }
 
 impl CodexAccumulator {
@@ -304,21 +323,46 @@ pub fn parse_codex_event(line: &str, acc: &mut CodexAccumulator) -> Vec<FeedItem
                 acc.thinking_placeholder_open = false;
                 items.push(FeedItem::Thinking(std::mem::take(&mut acc.thinking_buffer)));
             }
-            // Auth retry noise (e.g. "Reconnecting... 1/5 (unexpected status 401 Unauthorized...)")
-            // Show a single friendly "Checking connection..." instead of raw retries.
-            if is_auth_retry_noise(&msg) {
+            // A TRANSIENT reconnect (a bare 401 codex may refresh past) is
+            // deferred via the marker so a recovered turn shows no error. A
+            // TERMINAL auth failure (session killed server-side) is NOT
+            // deferred — it falls through to the typed classifier below.
+            if is_auth_retry_noise(&msg) && !is_terminal_auth_error(&msg) {
                 tracing::info!("[codex] auth retry detected — suppressing raw error");
-                // Return a marker so session_runner can track it, but don't show raw noise.
                 items.push(FeedItem::SystemMessage(AUTH_RETRY_MARKER.to_string()));
+            } else if is_reconnect_progress_noise(&msg) {
+                tracing::info!("[codex] transient reconnect detected — suppressing raw error");
             } else if let Some(typed) = classify_codex_error_message(&msg) {
                 // Typed classifier path. Covers ProviderModelUnsupported
                 // (the "is not supported when using Codex with a ChatGPT
-                // account" pattern → `ModelUnavailable` with a
-                // gpt-5.5 fallback), auth, rate-limit, quota, internal
-                // 5xx, resume-rollout-missing, etc. — all in
+                // account" pattern → `ModelUnavailable` with a gpt-5.5
+                // fallback), auth, rate-limit, quota, internal 5xx,
+                // resume-rollout-missing, etc. — all in
                 // `provider/openai_classify.rs`.
-                items.push(FeedItem::ProviderError(typed));
-            } else {
+                //
+                // Auth is deduped to ONE reconnect card per session: codex
+                // repeats the failure across retries and turn restarts AND
+                // prints it on stderr (the frontend dedupes that cross-reader
+                // copy). Without this the chat stacked the raw "Error: ..."
+                // text twice and never showed a persistent login button. This
+                // fires after `thread.started`, so the card persists and
+                // survives a reload — parity with the claude `result` auth path.
+                if matches!(typed, ProviderError::Unauthenticated { .. }) {
+                    if !acc.auth_card_emitted {
+                        acc.auth_card_emitted = true;
+                        tracing::info!(
+                            "[codex] auth failure — emitting Unauthenticated reconnect card"
+                        );
+                        items.push(FeedItem::ProviderError(typed));
+                    }
+                } else if !acc.terminal_error_emitted {
+                    // codex repeats the same failure across its `error` +
+                    // `turn.failed` pair; surface the typed card once per run.
+                    acc.terminal_error_emitted = true;
+                    items.push(FeedItem::ProviderError(typed));
+                }
+            } else if !acc.terminal_error_emitted {
+                acc.terminal_error_emitted = true;
                 items.push(FeedItem::SystemMessage(format!("Error: {msg}")));
             }
             items
@@ -576,7 +620,9 @@ mod tests {
         let _ = parse_codex_event(r#"{"type":"turn.started"}"#, &mut a);
         let items = parse_codex_event(r#"{"type":"turn.completed"}"#, &mut a);
         assert!(
-            items.iter().any(|i| matches!(i, FeedItem::Thinking(t) if t.is_empty())),
+            items
+                .iter()
+                .any(|i| matches!(i, FeedItem::Thinking(t) if t.is_empty())),
             "expected an empty Thinking() to close the placeholder, got {items:?}"
         );
     }
@@ -687,7 +733,10 @@ mod tests {
                 // accurate value is patched in from the rollout by
                 // `session_io::read_codex_stdout` (see codex_rollout).
                 assert!(result.contains("24885"));
-                assert!(usage.is_none(), "cumulative turn usage must not be trusted as context fill");
+                assert!(
+                    usage.is_none(),
+                    "cumulative turn usage must not be trusted as context fill"
+                );
             }
             other => panic!("expected FinalResult, got {other:?}"),
         }
@@ -715,6 +764,41 @@ mod tests {
     }
 
     #[test]
+    fn parse_reconnect_progress_suppresses_system_message() {
+        // Verbatim production shape from Andres, 2026-06-22: Codex reports
+        // retry progress as `type:error`, then later returns the answer and
+        // exits 0. These lines must not persist as mission-log errors.
+        let line = r#"{"type":"error","message":"Reconnecting... 2/5 (stream disconnected before completion: websocket closed by server before response.completed)"}"#;
+        let items = parse_codex_event(line, &mut acc());
+        assert!(
+            items.is_empty(),
+            "retry progress is not user-visible: {items:?}"
+        );
+    }
+
+    #[test]
+    fn parse_reconnect_progress_only_closes_existing_placeholder() {
+        let mut a = acc();
+        let _ = parse_codex_event(r#"{"type":"turn.started"}"#, &mut a);
+        let line = r#"{"type":"error","message":"Reconnecting... 5/5 (stream disconnected before completion: websocket closed by server before response.completed)"}"#;
+
+        let items = parse_codex_event(line, &mut a);
+
+        assert_eq!(items.len(), 1);
+        assert!(matches!(&items[0], FeedItem::Thinking(t) if t.is_empty()));
+    }
+
+    #[test]
+    fn parse_final_network_failure_still_surfaces_error() {
+        let line = r#"{"type":"turn.failed","error":{"message":"stream disconnected before completion: websocket closed by server before response.completed"}}"#;
+        let items = parse_codex_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(
+            matches!(&items[0], FeedItem::SystemMessage(m) if m.contains("stream disconnected"))
+        );
+    }
+
+    #[test]
     fn parse_auth_retry_returns_marker() {
         let line = r#"{"type":"error","message":"Reconnecting... 1/5 (unexpected status 401 Unauthorized: Missing bearer)"}"#;
         let items = parse_codex_event(line, &mut acc());
@@ -734,11 +818,126 @@ mod tests {
     }
 
     #[test]
+    fn terminal_auth_retry_emits_persisted_unauthenticated_card() {
+        // Production case (Luis, 2026-06-09): codex wraps a server-side session
+        // kill in its retry banner. Even though it says "Reconnecting", the
+        // session has ended for good — so we surface a real reconnect card
+        // (login button) instead of the deferred __auth_retry__ marker. This
+        // is what gives OpenAI chats parity with Claude's auth card.
+        let line = r#"{"type":"error","message":"Reconnecting... 1/5 (Failed to refresh token: 400 Bad Request: Your session has ended. Please log in again.)"}"#;
+        let items = parse_codex_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(matches!(
+            &items[0],
+            FeedItem::ProviderError(ProviderError::Unauthenticated { provider, .. }) if provider == "openai"
+        ));
+    }
+
+    #[test]
+    fn terminal_auth_card_emitted_once_per_session() {
+        // codex prints the banner up to 5× then restarts the turn — the feed
+        // must not stack a reconnect card per retry.
+        let mut a = acc();
+        let line = r#"{"type":"error","message":"Reconnecting... 2/5 (Failed to refresh token: 400 Bad Request: Your session has ended. Please log in again.)"}"#;
+        let first = parse_codex_event(line, &mut a);
+        assert_eq!(first.len(), 1);
+        assert!(matches!(
+            &first[0],
+            FeedItem::ProviderError(ProviderError::Unauthenticated { .. })
+        ));
+        let second = parse_codex_event(line, &mut a);
+        assert!(
+            second.is_empty(),
+            "duplicate terminal-auth retries must be dropped, got {second:?}"
+        );
+    }
+
+    #[test]
+    fn refresh_failure_error_emits_single_reconnect_card_not_raw_text_twice() {
+        // The exact codex error the user hit in the app: NOT wrapped in
+        // "Reconnecting", and previously matched no classifier, so it rendered
+        // as raw `Error: ...` text — twice (two error events). Now it
+        // classifies to ONE deduped Unauthenticated card with a login button.
+        let mut a = acc();
+        let line = r#"{"type":"error","message":"Your access token could not be refreshed. Please log out and sign in again."}"#;
+        let first = parse_codex_event(line, &mut a);
+        assert_eq!(first.len(), 1);
+        match &first[0] {
+            FeedItem::ProviderError(ProviderError::Unauthenticated { provider, .. }) => {
+                assert_eq!(provider, "openai");
+            }
+            other => panic!("expected Unauthenticated card, got {other:?}"),
+        }
+        // Second identical error event (codex repeats it) is dropped — no
+        // second card, and crucially no raw "Error: ..." SystemMessage.
+        let second = parse_codex_event(line, &mut a);
+        assert!(
+            second.is_empty(),
+            "duplicate auth error must be dropped, got {second:?}"
+        );
+    }
+
+    #[test]
+    fn transient_auth_retry_still_defers_via_marker() {
+        // A bare 401 (no terminal phrasing) codex may refresh past keeps the
+        // deferred marker so a recovered turn shows no error.
+        let line = r#"{"type":"error","message":"Reconnecting... 1/5 (unexpected status 401 Unauthorized: Missing bearer)"}"#;
+        let items = parse_codex_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(matches!(&items[0], FeedItem::SystemMessage(m) if m == "__auth_retry__"));
+    }
+
+    #[test]
     fn parse_turn_failed() {
         let line = r#"{"type":"turn.failed","error":{"message":"Context window exceeded"}}"#;
         let items = parse_codex_event(line, &mut acc());
         assert_eq!(items.len(), 1);
         assert!(matches!(&items[0], FeedItem::SystemMessage(m) if m.contains("Context window")));
+    }
+
+    #[test]
+    fn codex_usage_limit_emits_single_quota_card_across_error_and_turn_failed() {
+        // HOU-495: a spent ChatGPT-account Codex allowance fails every turn
+        // with this banner, emitted as BOTH an `error` and a `turn.failed`
+        // event. The parser must surface ONE QuotaExhausted card (Upgrade CTA)
+        // — not the old generic "runtime error" text, and not two cards.
+        use crate::provider_error_kind::{ProviderError, QuotaScope};
+        let mut a = acc();
+        let _ = parse_codex_event(r#"{"type":"turn.started"}"#, &mut a);
+
+        let banner = "You've hit your usage limit. Upgrade to Plus to continue using Codex (https://chatgpt.com/explore/plus), or try again at Jul 1st, 2026 1:16 PM.";
+        let err = format!(r#"{{"type":"error","message":"{banner}"}}"#);
+        let first = parse_codex_event(&err, &mut a);
+        let cards: Vec<_> = first
+            .iter()
+            .filter(|i| matches!(i, FeedItem::ProviderError(_)))
+            .collect();
+        assert_eq!(cards.len(), 1, "expected exactly one card, got {first:?}");
+        match cards[0] {
+            FeedItem::ProviderError(ProviderError::QuotaExhausted {
+                provider, scope, ..
+            }) => {
+                assert_eq!(provider, "openai");
+                assert_eq!(*scope, QuotaScope::FreeTier);
+            }
+            other => panic!("expected QuotaExhausted card, got {other:?}"),
+        }
+        // No raw "Error: ..." text alongside the card.
+        assert!(
+            !first
+                .iter()
+                .any(|i| matches!(i, FeedItem::SystemMessage(m) if m.starts_with("Error:"))),
+            "usage limit must not also render as raw text, got {first:?}"
+        );
+
+        // The duplicate `turn.failed` carrying the same banner must not stack a
+        // second card.
+        let failed = format!(r#"{{"type":"turn.failed","error":{{"message":"{banner}"}}}}"#);
+        let second = parse_codex_event(&failed, &mut a);
+        assert!(
+            !second.iter().any(|i| matches!(i, FeedItem::ProviderError(_))),
+            "duplicate usage-limit event must not emit a second card, got {second:?}"
+        );
     }
 
     #[test]

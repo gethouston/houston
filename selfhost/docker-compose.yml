@@ -22,6 +22,9 @@ services:
       # Required. Compose errors out if it's unset, so the engine is never
       # exposed without auth. Generate one with: openssl rand -hex 32
       HOUSTON_HOST_TOKEN: "${HOUSTON_HOST_TOKEN:?set HOUSTON_HOST_TOKEN in .env (try: openssl rand -hex 32)}"
+      # Optional: your own Composio project key (platform-mode integrations).
+      # Empty → the host runs with integrations off.
+      COMPOSIO_API_KEY: "${COMPOSIO_API_KEY:-}"
       # Everything else has a sensible default baked into the image; override here
       # only if you know why (e.g. a different in-container port).
     volumes:

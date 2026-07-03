@@ -82,12 +82,24 @@ export function RoutineRow({
   const lastLabel = lastRunLabel(lastRun, now, labels);
   const isPaused = lastRun?.status === "running" && !!lastRun.paused_until;
 
+  // The row hosts a nested interactive control (the Switch, which Radix renders
+  // as a native <button role="switch">). Nesting a <button> inside a <button>
+  // is invalid HTML, so the outer row stays a <div role="button"> with explicit
+  // keyboard activation rather than a native <button>.
   return (
-    <button
-      type="button"
+    // biome-ignore lint/a11y/useSemanticElements: a native <button> can't wrap the nested Radix Switch button
+    <div
       onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
       className={cn(
-        "group relative flex w-full items-center gap-4 px-5 py-4 cursor-pointer text-left",
+        "group relative flex items-center gap-4 px-5 py-4 cursor-pointer",
         "transition-colors duration-150",
         "hover:bg-black/[0.03]",
         "focus-visible:outline-none focus-visible:bg-black/[0.03]",
@@ -149,7 +161,8 @@ export function RoutineRow({
         )}
       </div>
 
-      {/* Switch — stop click from bubbling to the outer button */}
+      {/* Switch — stop click and keys from bubbling to the outer row so
+          toggling (mouse or keyboard) never opens the editor. */}
       {onToggle && (
         <div
           role="none"
@@ -166,6 +179,6 @@ export function RoutineRow({
           />
         </div>
       )}
-    </button>
+    </div>
   );
 }

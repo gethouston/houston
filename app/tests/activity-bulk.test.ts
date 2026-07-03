@@ -67,6 +67,9 @@ describe("activity bulk helpers", () => {
   });
 
   it("single remove treats unknown ids as an idempotent no-op", () => {
+    // Same-length list back with `removed: false` signals "already gone" so
+    // `remove()` skips the write and resolves instead of throwing — preserving
+    // the HOU-462 unhandled-rejection fix under the richer return shape.
     const items = [item("a", "done")];
     deepStrictEqual(applyRemove(items, "zzz"), { items, removed: false });
   });

@@ -31,6 +31,12 @@ pub enum ClaudeEvent {
         subtype: Option<String>,
         result: Option<String>,
         is_error: Option<bool>,
+        /// HTTP status claude-code attaches when the terminal API request
+        /// failed (e.g. `api_error_status:429`). The human `result` string
+        /// frequently omits the status, so this numeric field is the
+        /// authoritative signal for rate-limit / server-error / auth
+        /// classification. `null` (or absent) on a clean turn.
+        api_error_status: Option<u16>,
         cost_usd: Option<f64>,
         duration_ms: Option<u64>,
         session_id: Option<String>,
@@ -48,7 +54,10 @@ pub enum ClaudeEvent {
         #[serde(flatten)]
         extra: serde_json::Value,
     },
-    /// Rate limit info — silently ignored.
+    /// Rate-limit state from claude-code. Parsed in `parse_rate_limit_event`:
+    /// `allowed`/`allowed_warning` stay silent, `rejected` becomes a
+    /// `UsageLimitPaused` card (with the reset time), genuine throttles become
+    /// `RateLimited`.
     #[serde(rename = "rate_limit_event")]
     RateLimitEvent {
         #[serde(flatten)]
@@ -279,6 +288,25 @@ pub enum FeedItem {
     },
     /// Visible files created or changed during the session.
     FileChanges(FileChanges),
+    /// The conversation was handed off to a DIFFERENT provider mid-session.
+    ///
+    /// Provider CLI sessions are not portable across providers (Claude's
+    /// resume id means nothing to Codex), so the new provider runs a FRESH
+    /// session seeded with prior context — the full transcript verbatim when
+    /// it fits the new model's window (`summarized = false`), or an
+    /// AI-generated summary when it does not (`summarized = true`). The user's
+    /// visible `chat_feed` is never mutated; this is a boundary divider, like
+    /// [`Self::ContextCompacted`]. `pre_tokens` is how full the leaving
+    /// provider's context was just before the switch, when known.
+    ProviderSwitched {
+        /// Provider id the conversation was handed off TO (e.g. "openai").
+        provider: String,
+        /// Whether prior context was summarized to fit (`true`) or carried
+        /// over verbatim (`false`).
+        summarized: bool,
+        #[serde(default)]
+        pre_tokens: Option<u64>,
+    },
 }
 
 /// In-memory buffer for a live session's feed items.

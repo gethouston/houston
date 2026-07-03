@@ -28,6 +28,13 @@ pub fn is_auth_error(message: &str) -> bool {
         || lower.contains("no auth credentials")
         || lower.contains("please login")
         || lower.contains("please log in")
+        || lower.contains("log in again")
+        || lower.contains("sign in again")
+        || lower.contains("signing in again")
+        || lower.contains("could not be refreshed")
+        || lower.contains("session has ended")
+        || lower.contains("session_terminated")
+        || lower.contains("has been invalidated")
         || lower.contains("please run /login")
         || lower.contains("run claude auth login")
         || lower.contains("run codex login")
@@ -38,6 +45,23 @@ pub fn is_auth_error(message: &str) -> bool {
 pub fn is_auth_retry_noise(message: &str) -> bool {
     let lower = message.to_lowercase();
     is_auth_error(message) && (lower.contains("reconnecting") || lower.contains("retrying"))
+}
+
+/// A TERMINAL auth failure the CLI cannot recover from by retrying — the
+/// session/token was killed server-side and the user MUST sign in again.
+/// Distinguished from a transient reconnect (a bare 401 the CLI may refresh
+/// past): codex prints "Reconnecting... N/5 (... Your session has ended.
+/// Please log in again ...)" with `app_session_terminated` when ChatGPT
+/// revokes the login, and keeps looping pointlessly. We use this to surface a
+/// reconnect card immediately instead of deferring until the loop exhausts.
+pub fn is_terminal_auth_error(message: &str) -> bool {
+    let lower = message.to_lowercase();
+    lower.contains("session has ended")
+        || lower.contains("session_terminated") // covers app_session_terminated
+        || lower.contains("has been invalidated")
+        || lower.contains("log in again")
+        || lower.contains("sign in again")
+        || lower.contains("signing in again")
 }
 
 #[cfg(test)]
@@ -67,5 +91,38 @@ mod tests {
             "Reconnecting... 1/5 (unexpected status 401 Unauthorized)",
         ));
         assert!(!is_auth_retry_noise("Invalid API key. Please login again."));
+    }
+
+    #[test]
+    fn detects_terminal_auth_signatures() {
+        // Verbatim shapes codex prints when ChatGPT kills the session
+        // server-side (Luis, 2026-06-09 — code app_session_terminated).
+        let terminal = [
+            "Reconnecting... 1/5 (Failed to refresh token: 400 Bad Request: Your session has ended. Please log in again.)",
+            "Your authentication token has been invalidated. Please try signing in again.",
+            "400 Bad Request: app_session_terminated",
+        ];
+        for case in terminal {
+            assert!(is_terminal_auth_error(case), "{case}");
+        }
+    }
+
+    #[test]
+    fn transient_reconnects_are_not_terminal() {
+        // A bare 401 the CLI may refresh past must stay deferred, not surface
+        // a premature reconnect card.
+        assert!(!is_terminal_auth_error(
+            "Reconnecting... 1/5 (unexpected status 401 Unauthorized)"
+        ));
+        assert!(!is_terminal_auth_error("rate limit exceeded"));
+    }
+
+    #[test]
+    fn refresh_failure_phrasing_is_auth_and_terminal() {
+        // Verbatim codex error the user hit in the app (shown twice, as raw
+        // "Error: ..." text, because neither classifier matched it before).
+        let msg = "Your access token could not be refreshed. Please log out and sign in again.";
+        assert!(is_auth_error(msg), "must classify as auth → Unauthenticated card");
+        assert!(is_terminal_auth_error(msg), "refresh failure is unrecoverable");
     }
 }

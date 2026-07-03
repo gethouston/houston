@@ -2,7 +2,11 @@
  * The conversation core — runtime v2, verbatim. One runtime instance serves
  * exactly this surface; the host nests it under /v1/agents/:id/conversations/*.
  * Source of truth for these shapes; @houston/runtime-client re-exports them.
+ * The SSE wire frames live in wire.ts; the provider failure taxonomy in
+ * provider-error.ts.
  */
+
+import type { ProviderError } from "./provider-error";
 
 /**
  * Connectable AI providers.
@@ -133,92 +137,25 @@ export interface TokenUsage {
   cached_tokens: number;
 }
 
-/**
- * Why an `unauthenticated` provider error happened. Mirrors the frontend
- * `AuthFailureCause` (`@houston-ai/chat`) so the typed reconnect card reads it
- * straight off the wire and picks the right body copy + reconnect lifecycle.
- *
- * - `no_credentials` — never connected (surfaced separately at send time, not
- *   from a live turn).
- * - `token_expired` — the credential lapsed; logging in again recovers it.
- * - `token_revoked` — the provider ended the session server-side (the terminal
- *   session-kill, e.g. Codex `app_session_terminated` / "your session has ended").
- * - `invalid_api_key` — a pasted key the provider rejected.
- */
-export type AuthFailureCause =
-  | "no_credentials"
-  | "token_expired"
-  | "token_revoked"
-  | "invalid_api_key"
-  | "unknown";
-
-/**
- * Why a `model_unavailable` provider error happened. Mirrors the frontend
- * `ModelUnavailableReason` (`@houston-ai/chat`) so the wire shape stays
- * assignable to the card's union. The runtime can't always tell the precise
- * sub-reason from the gateway's flat string (GitHub Copilot just says
- * `model_not_supported`), so `unknown` is the common case; the actionable detail
- * is the `suggested_fallback`, not this tag.
- */
-export type ModelUnavailableReason =
-  | "preview_gated"
-  | "deprecated"
-  | "region_restricted"
-  | "unknown";
-
-/**
- * A typed provider/auth/model failure for a turn's model request. Mirrors the
- * relevant subset of the frontend `ProviderError` union (`@houston-ai/chat`) so
- * it renders as the matching inline card (UnauthenticatedCard / RateLimitedCard /
- * ProviderInternalCard / NetworkUnreachableCard / UnknownErrorCard). The runtime
- * classifies pi's errored `AssistantMessage` (provider + model + errorMessage)
- * into one of these — see runtime `ai/provider-error.ts`. `provider` is the pi
- * provider id; the frontend maps it to its own id when rendering.
- */
-export type ProviderError =
-  | {
-      kind: "unauthenticated";
-      provider: string;
-      cause: AuthFailureCause;
-      message: string;
-    }
-  | {
-      kind: "rate_limited";
-      provider: string;
-      model: string | null;
-      retry_after_seconds: number | null;
-      message: string;
-    }
-  | {
-      /**
-       * The model the turn ran on isn't available to this credential's plan —
-       * e.g. GitHub Copilot Free answers a premium model (Claude / GPT-5.x) it
-       * doesn't include with `400 model_not_supported`. Distinct from auth (the
-       * credential is fine) and rate/quota (nothing to wait out): the fix is to
-       * pick a different model, so `suggested_fallback` names a known-good one
-       * (a Copilot base model every plan serves) when we have one.
-       */
-      kind: "model_unavailable";
-      provider: string;
-      model: string;
-      reason: ModelUnavailableReason;
-      suggested_fallback: string | null;
-      message: string;
-    }
-  | {
-      kind: "provider_internal";
-      provider: string;
-      http_status: number | null;
-      message: string;
-    }
-  | { kind: "network_unreachable"; provider: string; message: string }
-  | { kind: "unknown"; provider: string; raw_excerpt: string };
-
 export interface ChatMessage {
   role: ChatRole;
   content: string;
   /** epoch ms */
   ts: number;
+  /**
+   * The turn this message belongs to — the same id the live stream stamps on
+   * the turn's wire frames (`WireFrame.turnId`). Persisted on BOTH the user
+   * and assistant messages of a turn, so a client that refetches history can
+   * match messages to a turn it is (or was) watching live. Absent on messages
+   * written before turn ids existed.
+   */
+  turnId?: string;
+  /**
+   * Multiplayer only: who sent this message. Set on `role: "user"` turns in an
+   * org so the UI can attribute a message to the teammate who wrote it. Absent
+   * in single-player mode and on assistant turns.
+   */
+  author?: { userId: string; name?: string };
   tools?: ToolCallRecord[];
   /** Normalized usage for the turn this assistant message completed, when the
    *  provider reported it. Persisted so the context indicator survives a reload. */
@@ -256,65 +193,3 @@ export interface ConversationHistory {
   title: string;
   messages: ChatMessage[];
 }
-
-/**
- * Live conversation events (SSE), one stream per conversation, strictly
- * id-scoped. Each SSE frame is `data: <WireEvent JSON>`.
- *
- * - `sync`  — once on connect: is a turn running + assistant text so far.
- * - `user`  — a user message was added (by any client); `nonce` echoes the sender's.
- * - `text` / `thinking` — assistant output deltas.
- * - `tool_start` / `tool_end` — tool activity within the turn.
- * - `usage` — normalized token usage for the turn (when the provider reports it),
- *   emitted before `done`. Drives the context-usage indicator.
- * - `provider_switched` — the conversation moved to a different provider
- *   mid-session; renders a boundary divider and resets the context-usage window.
- * - `provider_error` — the turn's model request failed with a typed provider /
- *   auth / rate-limit / 5xx / network error; renders the matching inline card.
- *   The turn still ends with a normal terminal frame (pi resolves the turn — it
- *   does NOT throw on a provider error), so this never replaces `done`.
- * - `done` / `error` — the turn ended.
- */
-export type WireEvent =
-  | { type: "sync"; data: { running: boolean; partial: string } }
-  | { type: "user"; data: { content: string; ts: number; nonce?: string } }
-  | { type: "text"; data: string }
-  | { type: "thinking"; data: string }
-  | { type: "tool_start"; data: { name: string; args: unknown } }
-  | { type: "tool_end"; data: { name: string; isError: boolean } }
-  | { type: "usage"; data: TokenUsage }
-  | {
-      /**
-       * The conversation moved to a different provider mid-session. The runtime
-       * re-pointed the live session to the new provider, carrying the full prior
-       * history verbatim when it fit (`summarized: false`) or compacting it to
-       * fit a smaller window first (`summarized: true`). `provider` is the pi
-       * provider id switched TO; `pre_tokens` is the leaving provider's last
-       * context fill. Drives the chat's boundary divider + the context-usage
-       * window reset.
-       */
-      type: "provider_switched";
-      data: {
-        provider: string;
-        summarized: boolean;
-        pre_tokens?: number | null;
-      };
-    }
-  | {
-      /**
-       * The turn's model request failed with a typed provider error
-       * (401/403/session-ended → unauthenticated, 429 → rate_limited, 5xx →
-       * provider_internal, network → network_unreachable, else unknown).
-       * Published live so the chat renders the matching reconnect / rate-limit
-       * card, and persisted on the turn's assistant message
-       * (`ChatMessage.providerError`) so the card survives a reload. pi resolves
-       * the turn rather than throwing, so a normal terminal frame (`done`) still
-       * follows — this is NOT a substitute for it.
-       */
-      type: "provider_error";
-      data: ProviderError;
-    }
-  | { type: "done"; data: null }
-  | { type: "error"; data: { message: string } };
-
-export type WireEventType = WireEvent["type"];

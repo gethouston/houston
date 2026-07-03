@@ -1,6 +1,6 @@
 {
   "name": "@houston-ai/core",
-  "version": "0.4.19",
+  "version": "0.4.26",
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
@@ -13,6 +13,7 @@
     "tailwindcss": "^4.0.0"
   },
   "dependencies": {
+    "@houston/design-tokens": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "tailwind-merge": "^3.5.0",

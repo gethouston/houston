@@ -1,0 +1,302 @@
+# Houston cross-surface component inventory
+#
+# THE CONTRACT
+# ------------
+# This file is the single source of truth for WHICH product components exist
+# across Houston's surfaces and WHAT each one is (anatomy, states, semantics,
+# a11y). It handles STRUCTURAL parity only:
+#
+#   - BEHAVIOR parity  -> owned by the shared SDK view-models (packages/sdk).
+#   - LOOK parity      -> owned by design tokens (packages/design-tokens).
+#   - STRUCTURE parity -> owned by THIS inventory: does the component exist on
+#                         each surface, with the same anatomy/states/semantics?
+#
+# Every entry here is surface-AGNOSTIC. It describes the component once; each
+# surface (web/desktop, iOS, Android) then declares in its own manifest under
+# manifests/ whether it implements that component (implemented|partial|
+# not-started). scripts/check-parity.mjs (pnpm check:parity) enforces the
+# contract in CI: an enforced surface may not lag its declared inventoryVersion.
+#
+# SCOPE: only components that are genuinely cross-surface (will exist on native
+# mobile) belong here. Desktop-only chrome (menu bars, resizable panes, the file
+# tree, the schedule/cron editor, skill-authoring dialogs) is deliberately
+# excluded -- see design/inventory/README.md for the exclusion rationale.
+#
+# CHANGE FLOW: add/modify a component -> bump `version` -> add a CHANGELOG.md
+# entry -> update every ENFORCED surface manifest in the SAME PR. Unenforced
+# surfaces catch up later and bump their manifest's inventoryVersion when they do.
+#
+# Field reference (all fields required per component):
+#   id       kebab-case stable identifier (never reused/renamed without a bump)
+#   title    human name
+#   purpose  one line: what it is / when it appears
+#   anatomy  named structural parts
+#   states   distinct render states (incl. loading/empty/error/streaming where real)
+#   variants shape/context variants that are the SAME component
+#   behavior semantic notes: what the SDK view-model drives (not styling)
+#   a11y     roles / labels / focus expectations the surface must honor
+#   since    inventory version this component first appeared in
+
+version: 1
+
+components:
+  - id: agent-avatar
+    title: Agent avatar
+    purpose: Identity badge for an agent -- colored helmet glyph, resting vs running.
+    anatomy: [glyph, color-fill, running-glow-ring]
+    states: [resting, running]
+    variants: [sizes-xs-to-xl, channel-source-avatar]
+    behavior: >-
+      Stored semantic color id resolves to a palette entry (resolveAgentColor);
+      running state is driven by the agent's live run status, not local hover.
+    a11y: Decorative when paired with a text label; else img role with the agent name as label.
+    since: 1
+
+  - id: agent-list-item
+    title: Agent list item
+    purpose: A single agent row/card in the agent list or sidebar.
+    anatomy: [avatar, name, status-chip, unread-or-count-slot, trailing-actions]
+    states: [idle, running, needs-you, selected, focused]
+    variants: [sidebar-rail-collapsed, list-row, grid-card]
+    behavior: >-
+      Selection and run status come from the view-model; the row reflects the
+      agent's aggregate mission state, not a single conversation.
+    a11y: button/listitem role, name as accessible label, aria-current when selected.
+    since: 1
+
+  - id: conversation-feed
+    title: Conversation feed
+    purpose: The scrolling transcript that hosts every message/tool/system item.
+    anatomy: [scroll-viewport, item-list, stick-to-bottom-anchor, scroll-to-bottom-button]
+    states: [empty, loading-history, streaming, idle, error]
+    variants: [single-player, multiplayer]
+    behavior: >-
+      Renders an ordered FeedItem stream; auto-sticks to bottom while streaming
+      unless the user scrolled up. Item ordering/merge is view-model driven.
+    a11y: log role with aria-live=polite for appended items; preserves scroll on prepend.
+    since: 1
+
+  - id: assistant-message
+    title: Assistant message
+    purpose: A model turn's prose -- markdown, no bubble, left aligned.
+    anatomy: [markdown-body, code-block, inline-links, copy-action]
+    states: [streaming, complete]
+    variants: [with-code, plain-prose]
+    behavior: >-
+      assistant_text vs assistant_text_streaming decide whether the body grows
+      token-by-token; copy acts on the resolved markdown source.
+    a11y: article/group role; code blocks keyboard-selectable; copy button labeled.
+    since: 1
+
+  - id: user-message
+    title: User message
+    purpose: A message the user (or a teammate) sent, right-aligned bubble.
+    anatomy: [bubble, author-label, attachment-chips]
+    states: [default, with-attachments]
+    variants: [single-player, multiplayer-authored]
+    behavior: >-
+      In multiplayer the author field labels a teammate's bubble; single-player
+      omits it. Attachment/skill markers are decoded to a clean preview.
+    a11y: group role; author announced in multiplayer; attachments labeled.
+    since: 1
+
+  - id: thinking-indicator
+    title: Thinking / reasoning indicator
+    purpose: Signals the model is working -- reasoning block or the pre-token wait.
+    anatomy: [helmet-glyph, shimmer-label, collapsible-reasoning-body]
+    states: [submitted-waiting, streaming-thoughts, collapsed, expanded]
+    variants: [typing-bounce-dots, reasoning-collapsible]
+    behavior: >-
+      Shown while a turn is in flight with no visible stream (deriveStatus =
+      submitted); yields to the stream once tokens appear. Reasoning content is
+      thinking / thinking_streaming feed items.
+    a11y: aria-live=polite status text; expand/collapse is a labeled toggle button.
+    since: 1
+
+  - id: tool-call-chip
+    title: Tool call chip
+    purpose: Collapsible display of one tool invocation and its result.
+    anatomy: [tool-icon, action-label, chevron, collapsible-output, result-status]
+    states: [running, success, error, collapsed, expanded]
+    variants: [default-auto-collapse, bash-collapsed-by-default]
+    behavior: >-
+      Auto-opens while running, auto-collapses shortly after the result; Bash
+      stays collapsed. Label derives from tool name + input via tool-labels.
+    a11y: toggle button with tool action as label; error state announced.
+    since: 1
+
+  - id: provider-error-card
+    title: Provider error card
+    purpose: Actionable card for a provider failure in the feed (auth, quota, rate-limit).
+    anatomy: [icon-bubble, title, reason, primary-action, secondary-action]
+    states: [unauthenticated, quota-exhausted, rate-limited, model-unavailable, transient]
+    variants: [single-action-row-card, multi-action-error-card]
+    behavior: >-
+      provider_error feed items carry a typed ProviderError (cause/scope). The
+      card maps each taxonomy variant to its reconnect/upgrade/retry affordance.
+    a11y: alert role; each action a labeled button; status-page link where relevant.
+    since: 1
+
+  - id: system-message
+    title: System message / boundary
+    purpose: Non-message feed events -- system notes and context/provider boundaries.
+    anatomy: [divider-rule, centered-italic-label]
+    states: [system-note, context-compacted, provider-switched]
+    variants: [plain-note, divider-boundary]
+    behavior: >-
+      system_message renders a centered note; context_compacted and
+      provider_switched render subtle dividers that keep the full chat visible.
+    a11y: separator role for boundaries; note text exposed to the a11y tree.
+    since: 1
+
+  - id: skill-invocation-message
+    title: Skill invocation message
+    purpose: Shows that the user ran a Skill, as a decoded card in the feed.
+    anatomy: [skill-image, skill-title, field-summary]
+    states: [default]
+    variants: [with-image, initial-fallback]
+    behavior: >-
+      A user-message marker (decodeSkillMessage) is decoded to a structured
+      payload so every surface renders the same card instead of the raw marker.
+    a11y: group role labeled with the skill name; image is decorative.
+    since: 1
+
+  - id: composer
+    title: Composer
+    purpose: The signature message-input surface -- text, attachments, send/stop.
+    anatomy: [leading-attach, textarea, footer-slot, queued-list, trailing-send-stop]
+    states: [ready, submitted, streaming, has-attachments, drag-over, disabled]
+    variants: [single-line, multiline-expanded]
+    behavior: >-
+      Send is gated on non-empty text/attachments; while streaming the trailing
+      button becomes Stop. Queued messages show when sending mid-turn.
+    a11y: labeled textarea; send/stop button state-labeled; drop zone announced.
+    since: 1
+
+  - id: turn-status
+    title: Turn status line
+    purpose: The helmet + muted label line reporting the current turn state.
+    anatomy: [helmet-glyph, status-label, shimmer]
+    states: [idle, active-shimmer]
+    variants: [inline-in-feed, standalone-on-card]
+    behavior: >-
+      Label + active flag come from deriveStatus over the feed; shimmer marks an
+      ongoing/pending state. Inline-safe so it can sit inside markdown prose.
+    a11y: status role; label announced politely; shimmer is presentational only.
+    since: 1
+
+  - id: progress-panel
+    title: Progress panel
+    purpose: Agent-declared step checklist for a running mission.
+    anatomy: [header-count, step-row, step-status-icon]
+    states: [pending, active, done, empty]
+    variants: [side-panel, sidebar-card]
+    behavior: >-
+      Steps come from the agent's update_progress calls (or are derived from
+      tool activity); header shows "X of Y complete".
+    a11y: list role; each step's status conveyed as text, not color alone.
+    since: 1
+
+  - id: approval-surface
+    title: Approval / needs-you surface
+    purpose: Where a mission awaiting the user is reviewed and approved.
+    anatomy: [item-title, status-indicator, deliverable-preview, approve-action, feedback-input]
+    states: [needs-you, running, approved, error, empty]
+    variants: [list-item, detail-panel]
+    behavior: >-
+      needs_you items are surfaced for the user to review; approve advances the
+      mission, feedback returns it to the agent. Status drives the indicator.
+    a11y: needs-you item announced; approve is a labeled primary button; live status.
+    since: 1
+
+  - id: deliverable-card
+    title: Deliverable card
+    purpose: A rendered mission deliverable (markdown output) for review.
+    anatomy: [card-frame, markdown-body]
+    states: [default]
+    variants: [deliverable, user-feedback-bubble]
+    behavior: Renders the deliverable markdown; feedback variant echoes the user's reply.
+    a11y: article role; headings preserved from source markdown.
+    since: 1
+
+  - id: mission-card
+    title: Mission card
+    purpose: A board card representing one mission/conversation.
+    anatomy: [avatar, title, status-chip, actions, drag-handle, select-checkbox]
+    states: [resting, running, needs-you, error, selected, focused, dragging]
+    variants: [board-card, archived-list-row]
+    behavior: >-
+      Running state shows the comet glow; approve moves to done. Drag/multi-select
+      are surface-capability gated (pointer drag on desktop).
+    a11y: article/button role; title as label; checkbox labeled; status not color-only.
+    since: 1
+
+  - id: mission-board
+    title: Mission board
+    purpose: The columned board that groups mission cards by status.
+    anatomy: [column, column-header, card-list, empty-column-state, bulk-action-bar]
+    states: [populated, empty, loading, dragging]
+    variants: [multi-column-board, single-column-list]
+    behavior: >-
+      Columns map to mission statuses; cards move between columns on approve/drag.
+      Bulk-action bar appears when cards are multi-selected.
+    a11y: list/grid semantics per column; column headers labeled; DnD has non-pointer fallback.
+    since: 1
+
+  - id: mission-status-chip
+    title: Mission status chip
+    purpose: The shared status token (running / needs-you / done / error) used across surfaces.
+    anatomy: [status-dot-or-icon, status-label]
+    states: [running, needs-you, done, error, cancelled]
+    variants: [dot-only, dot-with-label, badge]
+    behavior: >-
+      One canonical mapping from a mission RunStatus to indicator + label, reused
+      by board cards, the approval list, and conversation rows.
+    a11y: status conveyed as text/label, never color alone; running is announced.
+    since: 1
+
+  - id: routine-row
+    title: Routine row
+    purpose: A scheduled routine in the routines list -- schedule summary + next run.
+    anatomy: [name, schedule-summary, next-fire, enabled-toggle, run-status]
+    states: [enabled, disabled, running, last-run-failed]
+    variants: [list-row, grid-card]
+    behavior: >-
+      Shows a humanized schedule summary and the next fire time; the toggle
+      enables/disables the routine. Authoring the schedule is a separate surface.
+    a11y: listitem role; toggle labeled with the routine name; next-run as text.
+    since: 1
+
+  - id: skill-row
+    title: Skill row
+    purpose: A skill in the skills list -- icon, name, description, install/run action.
+    anatomy: [icon, name, description, trailing-action]
+    states: [available, installed, installing, error]
+    variants: [list-row, grid-card, community-row]
+    behavior: >-
+      Reflects install state; the trailing action installs or runs the skill.
+      Full skill detail/authoring lives on a separate surface.
+    a11y: listitem role; action button labeled; install state conveyed as text.
+    since: 1
+
+  - id: empty-state
+    title: Empty state
+    purpose: The shared "nothing here yet" surface -- title, description, optional action.
+    anatomy: [title, description, optional-action]
+    states: [default]
+    variants: [with-action, text-only]
+    behavior: Big title + description with one optional primary action; no icon-in-box.
+    a11y: region labeled by the title; action is a labeled button.
+    since: 1
+
+  - id: toast
+    title: Toast / notice
+    purpose: Transient surfacing of an action's result or error (with report-bug affordance).
+    anatomy: [message, optional-action, dismiss]
+    states: [info, success, error, loading]
+    variants: [plain, with-report-bug-action]
+    behavior: >-
+      Every user-initiated error must reach a toast carrying the real reason and
+      a Report-bug action (beta no-silent-failure policy).
+    a11y: status/alert role by severity; auto-dismiss pauses on focus/hover.
+    since: 1

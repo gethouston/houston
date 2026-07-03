@@ -1,7 +1,7 @@
 import { EFFORT_ICON_VIEWBOX, effortBars } from "../lib/effort-bars";
 
 interface EffortIconProps {
-  /** Levels the active model accepts, ordered low -> high. One bar each. */
+  /** Levels the active model accepts, ordered low→high. One bar each. */
   levels: readonly string[];
   /** Current level; bars fill up to and including it. */
   active?: string | null;
@@ -9,9 +9,11 @@ interface EffortIconProps {
 }
 
 /**
- * Reasoning-effort glyph: ascending signal bars filled to the active level.
- * Color is inherited via `currentColor`; unfilled bars stay visible at low
- * opacity instead of disappearing.
+ * Reasoning-effort glyph: ascending signal bars filled to the active level (see
+ * {@link effortBars} for the geometry). Replaces the static gauge so the icon
+ * itself changes with the effort. Color is inherited via `currentColor` so the
+ * same component reads correctly on the muted composer trigger and the menu
+ * rows; unfilled bars drop to a low opacity instead of disappearing.
  */
 export function EffortIcon({ levels, active, className }: EffortIconProps) {
   const bars = effortBars(levels, active);

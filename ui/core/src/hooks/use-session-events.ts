@@ -77,6 +77,11 @@ export function useSessionEvents(handlers: SessionEventsHandlers): void {
           }
           case "SessionStatus":
             if (payload.data.status === "error" && payload.data.error) {
+              // Echo the session-status error as a feed item so an un-carded
+              // failure is never silent. When a typed error card already covered
+              // the turn, this redundant raw line is suppressed downstream in
+              // `feed-to-messages` (`isSessionErrorEcho`) — keep the
+              // "Session error:" prefix in sync with that matcher.
               h.onFeedItem(payload.data.agent_path, payload.data.session_key, {
                 feed_type: "system_message",
                 data: `Session error: ${payload.data.error}`,

@@ -20,10 +20,12 @@ export {
 } from "./use-files";
 export { useInstructions, useSaveInstructions } from "./use-instructions";
 export {
+  useAgentGrantMutation,
+  useAgentGrants,
   useDisconnectIntegration,
   useIntegrationConnections,
   useIntegrationStatus,
-  useLogoutIntegration,
+  useIntegrationToolkits,
 } from "./use-integrations";
 export {
   useAddLearning,
@@ -31,6 +33,13 @@ export {
   useRemoveLearning,
   useUpdateLearning,
 } from "./use-learnings";
+export {
+  useAddMember,
+  useOrg,
+  useRemoveMember,
+  useSetAgentAssignments,
+  useSetMemberRole,
+} from "./use-org";
 export {
   useCancelRoutineRun,
   useCreateRoutine,

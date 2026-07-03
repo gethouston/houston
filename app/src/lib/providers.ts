@@ -4,7 +4,7 @@ import type { Capabilities } from "@houston-ai/engine-client";
  * Reasoning-effort levels, ordered low→high. The set a given model accepts
  * is model-specific (see `ModelOption.effortLevels`):
  * - Codex `model_reasoning_effort`: low/medium/high/xhigh (no `max`).
- * - Claude `--effort`: Opus 4.7 and 4.8 = all five; Sonnet 4.6 =
+ * - Claude `--effort`: Opus 4.7/4.8 and Sonnet 5 = all five; Sonnet 4.6 =
  *   low/medium/high/max (no `xhigh`). Claude self-clamps an unsupported
  *   value; Codex does not.
  */
@@ -198,6 +198,37 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         contextWindow: 258_400,
         contextWindowMax: 950_000,
       },
+      {
+        id: "gpt-5.4",
+        label: "GPT-5.4",
+        description: "Strong model for everyday coding.",
+        effortLevels: ["low", "medium", "high", "xhigh"],
+        // Same window math as gpt-5.5: raw context_window 272k × 95%
+        // effective = 258_400 default. gpt-5.4 also exposes the opt-in 1M
+        // variant (max_context_window 1_000_000 in Codex's models_cache.json),
+        // so the snap-up ceiling is 1_000_000 × 95% = 950_000, reached only
+        // once observed usage exceeds the default.
+        contextWindow: 258_400,
+        contextWindowMax: 950_000,
+      },
+      {
+        id: "gpt-5.4-mini",
+        label: "GPT-5.4-Mini",
+        description: "Small, fast, and cost-efficient for simpler tasks.",
+        effortLevels: ["low", "medium", "high", "xhigh"],
+        // 272k raw × 95% = 258_400. No 1M opt-in (max_context_window == base in
+        // models_cache.json), so no snap-up ceiling.
+        contextWindow: 258_400,
+      },
+      {
+        id: "gpt-5.3-codex-spark",
+        label: "GPT-5.3-Codex-Spark",
+        description: "Ultra-fast coding model.",
+        effortLevels: ["low", "medium", "high", "xhigh"],
+        // Smaller window than the 5.4/5.5 line: 128k raw × 95% = 121_600. No
+        // upward gating (max_context_window == base in models_cache.json).
+        contextWindow: 121_600,
+      },
     ],
     defaultModel: "gpt-5.5",
   },
@@ -210,6 +241,20 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     loginCommand: "claude login",
     cost: "Your Claude subscription",
     models: [
+      {
+        id: "claude-sonnet-5",
+        label: "Sonnet 5",
+        description: "Newest Sonnet. Stronger agentic coding and tool use.",
+        // Sonnet 5 accepts the full effort range, INCLUDING `xhigh` (unlike
+        // Sonnet 4.6, which has `max` but not `xhigh`). API default is `high`.
+        effortLevels: ["low", "medium", "high", "xhigh", "max"],
+        // Unlike Sonnet 4.6 (whose 1M is a credit-gated opt-in over a 200k
+        // default), Sonnet 5's 1M window is the default AND the only variant:
+        // per Anthropic, "1M tokens is both the default and the maximum; there
+        // is no smaller context variant," and it's the Claude Code default on
+        // Pro and up. So a flat 1M denominator with no snap-up, like Opus 4.8.
+        contextWindow: 1_000_000,
+      },
       {
         id: "claude-sonnet-4-6",
         label: "Sonnet 4.6",
@@ -226,7 +271,8 @@ export const PROVIDERS: readonly ProviderInfo[] = [
       {
         id: "claude-opus-4-8",
         label: "Opus 4.8",
-        description: "Newest flagship. Most capable, slower.",
+        description:
+          "Latest Opus. Better alignment and agentic coding than 4.7.",
         // Opus 4.8: full range (same as 4.7). NOTE: `ultracode` is a Claude
         // Code harness mode, NOT an effort level — never add it here.
         effortLevels: ["low", "medium", "high", "xhigh", "max"],
@@ -237,9 +283,19 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         contextWindow: 1_000_000,
       },
       {
+        id: "claude-fable-5",
+        label: "Fable 5",
+        description: "Most capable model. Costs 2x more credits than Opus 4.8.",
+        // Fable 5: full range like Opus 4.8. ultracode is a harness mode, not
+        // an effort level — it is intentionally excluded for this model.
+        effortLevels: ["low", "medium", "high", "xhigh", "max"],
+        contextWindow: 1_000_000,
+      },
+      {
         id: "claude-opus-4-7",
         label: "Opus 4.7",
-        description: "Previous flagship. Very capable, slower.",
+        description:
+          "Previous flagship. Strong coding autonomy and complex reasoning.",
         // Opus 4.7: full range. Same 1M-on-Max default as Opus 4.8 above.
         effortLevels: ["low", "medium", "high", "xhigh", "max"],
         contextWindow: 1_000_000,

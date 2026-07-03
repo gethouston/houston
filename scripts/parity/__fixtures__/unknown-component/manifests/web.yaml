@@ -1,0 +1,10 @@
+surface: web
+enforced: true
+inventoryVersion: 1
+components:
+  comp-a:
+    status: implemented
+  comp-b:
+    status: implemented
+  ghost-component:
+    status: implemented

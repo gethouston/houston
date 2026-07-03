@@ -35,6 +35,18 @@ export class ProxyChannel implements RuntimeChannel {
       launcher: RuntimeLauncher;
       proxy: RuntimeProxy;
       credentials: CredentialStore;
+      /**
+       * Whether an inbound `x-houston-acting-as` header is relayed to the
+       * runtime. The runtime decodes that token's payload WITHOUT verifying
+       * it (C2/C5: the gateway is the trust boundary), so this must be true
+       * ONLY when a trusted gateway sits in front minting/stripping the
+       * header (cloud). On the desktop clients reach this host directly —
+       * forwarding would let any client forge message attribution, so the
+       * local profile sets false and inbound headers are dropped. The
+       * routine path is unaffected either way: fireTurn's server-minted
+       * `x-houston-acting-user` never rides this header.
+       */
+      forwardActingHeader: boolean;
     },
   ) {}
 
@@ -62,6 +74,25 @@ export class ProxyChannel implements RuntimeChannel {
     params.delete("token");
     const qs = params.toString();
 
+    // Forward the gateway's per-turn acting-as token (C2) verbatim — nothing is
+    // minted host-side; when absent the runtime acts as the workspace owner.
+    // Gateway-fronted deployments only (forwardActingHeader): without a gateway
+    // to have minted it, an inbound header is untrusted client input and is
+    // dropped. A single-value header only.
+    const actingHeader = this.opts.forwardActingHeader
+      ? req.headers["x-houston-acting-as"]
+      : undefined;
+    const actingAs = Array.isArray(actingHeader)
+      ? actingHeader[0]
+      : actingHeader;
+
+    // The SSE resume cursor: an EventSource reconnect sends Last-Event-ID, and
+    // the runtime's events route honors it — relay it so resume survives the proxy.
+    const lastEventHeader = req.headers["last-event-id"];
+    const lastEventId = Array.isArray(lastEventHeader)
+      ? lastEventHeader[0]
+      : lastEventHeader;
+
     return this.opts.proxy.forward(
       endpoint,
       {
@@ -70,6 +101,8 @@ export class ProxyChannel implements RuntimeChannel {
         search: qs ? `?${qs}` : "",
         contentType: req.headers["content-type"] ?? null,
         body,
+        actingAs,
+        lastEventId,
       },
       res,
     );
@@ -80,6 +113,7 @@ export class ProxyChannel implements RuntimeChannel {
     conversationId: string,
     text: string,
     pin?: TurnPin,
+    actingUser?: string,
   ): Promise<void> {
     // Wake the standing runtime and POST the routine's prompt as a normal
     // message — the runtime starts the turn (202) and persists the reply into
@@ -94,6 +128,10 @@ export class ProxyChannel implements RuntimeChannel {
         headers: {
           "content-type": "application/json",
           Authorization: `Bearer ${endpoint.token}`,
+          // C2 routine path: no per-turn acting-as token is minted — the runtime
+          // instead forwards this creator sub on its integration calls (paired
+          // pod-side with the pod token). Omitted for legacy creator-less routines.
+          ...(actingUser ? { "x-houston-acting-user": actingUser } : {}),
         },
         body: JSON.stringify({
           text,

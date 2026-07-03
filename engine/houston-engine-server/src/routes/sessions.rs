@@ -23,8 +23,8 @@ use axum::{
 };
 use houston_composio::toolkit_display_name;
 use houston_engine_core::sessions::{
-    self, generate_instructions, history, resolve_agent_dir, resolve_provider, summarize,
-    SessionRuntime, StartParams,
+    self, fallback_provider, generate_instructions, history, resolve_agent_dir, resolve_provider,
+    summarize, SessionRuntime, StartParams,
 };
 use houston_engine_core::CoreError;
 use houston_terminal_manager::Provider;
@@ -90,6 +90,23 @@ pub struct StartRequest {
     /// clients deserialize unchanged.
     #[serde(default)]
     pub compact: bool,
+    /// Set when the user switched this conversation to a DIFFERENT provider
+    /// mid-stream. Reseeds a fresh session on the new provider with prior
+    /// context (verbatim or summarized — see [`ProviderSwitchRequest`]). Takes
+    /// precedence over `compact`. Absent for normal turns.
+    #[serde(default)]
+    pub provider_switch: Option<ProviderSwitchRequest>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderSwitchRequest {
+    /// `"replay"` (carry the full transcript verbatim) or `"summarize"`
+    /// (AI-summarize to fit the new provider's smaller window).
+    pub mode: String,
+    /// Provider id being LEFT (e.g. `"anthropic"`). The provider being switched
+    /// TO is `provider`. Used to anchor the boundary divider in history.
+    pub from_provider: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -110,9 +127,17 @@ async fn start_session(
         .map(|p| sessions::expand_tilde(std::path::Path::new(p)))
         .unwrap_or_else(|| agent_dir.clone());
 
-    // Override > agent config > Anthropic default.
-    let ResolvedProviderChoice { provider, model } =
-        resolve_provider_with_overrides(&agent_dir, req.provider.as_deref(), req.model.clone())?;
+    // Override > agent config > authenticated fallback. Shared with routine
+    // dispatch via `sessions::resolve_provider_with_overrides`.
+    let resolved = sessions::resolve_provider_with_overrides(
+        &st.engine.db,
+        &agent_dir,
+        req.provider.as_deref(),
+        req.model.clone(),
+    )
+    .await
+    .map_err(CoreError::BadRequest)?;
+    let (provider, model) = (resolved.provider, resolved.model);
 
     // Reasoning effort: an explicit request override wins (the onboarding
     // tutorial forces a known-good value); otherwise resolve the agent's
@@ -120,6 +145,24 @@ async fn start_session(
     let effort = req
         .effort
         .or_else(|| sessions::resolve_effort(&agent_dir, provider));
+
+    // Parse the optional provider-switch handoff. Invalid mode / provider is a
+    // client error, not a silent drop.
+    let handoff = match req.provider_switch {
+        Some(sw) => {
+            let mode: sessions::SeedMode =
+                sw.mode.parse().map_err(|e: String| CoreError::BadRequest(e))?;
+            let from_provider: Provider = sw
+                .from_provider
+                .parse()
+                .map_err(|e: String| CoreError::BadRequest(e))?;
+            Some(sessions::ProviderHandoff {
+                mode,
+                from_provider,
+            })
+        }
+        None => None,
+    };
 
     let params = StartParams {
         agent_dir,
@@ -132,6 +175,7 @@ async fn start_session(
         model,
         effort,
         compact: req.compact,
+        handoff,
     };
 
     let rt = SessionRuntime::clone(&st.engine.sessions);
@@ -207,10 +251,12 @@ async fn summarize_activity(
         (provider, req.model)
     } else if let Some(agent_path) = req.agent_path.as_deref() {
         let agent_dir = resolve_agent_dir(&st.engine.paths, agent_path);
-        let resolved = resolve_provider(&agent_dir);
+        let resolved = resolve_provider(&st.engine.db, &agent_dir).await;
         (resolved.provider, req.model.or(resolved.model))
     } else {
-        (Provider::default(), req.model)
+        // No provider + no agent to resolve against: auth-aware fallback so an
+        // OpenAI-only user's title summary doesn't spawn the Claude CLI (#483).
+        (fallback_provider(&st.engine.db).await, req.model)
     };
     Ok(Json(
         summarize::summarize(&req.message, provider, model.as_deref()).await?,
@@ -252,6 +298,7 @@ struct GenerateInstructionsResponse {
 }
 
 async fn generate_agent_instructions(
+    State(st): State<Arc<ServerState>>,
     Json(req): Json<GenerateInstructionsRequest>,
 ) -> Result<Json<GenerateInstructionsResponse>, ApiError> {
     let (provider, model) = if let Some(p_str) = req.provider.as_deref() {
@@ -260,9 +307,9 @@ async fn generate_agent_instructions(
             .map_err(|e: String| CoreError::BadRequest(e))?;
         (provider, req.model)
     } else {
-        // `Provider::default()` is anthropic — same fallback the
-        // `summarize_activity` handler above uses for the no-override case.
-        (Provider::default(), req.model)
+        // No override: auth-aware fallback (same as summarize) so generating an
+        // agent's instructions for an OpenAI-only user doesn't spawn Claude (#483).
+        (fallback_provider(&st.engine.db).await, req.model)
     };
     let result =
         generate_instructions::generate_instructions(&req.description, provider, model.as_deref())
@@ -307,35 +354,6 @@ async fn cancel_session(
 }
 
 // ---------------------------------------------------------------------------
-
-struct ResolvedProviderChoice {
-    provider: Provider,
-    model: Option<String>,
-}
-
-fn resolve_provider_with_overrides(
-    agent_dir: &std::path::Path,
-    provider_override: Option<&str>,
-    model_override: Option<String>,
-) -> Result<ResolvedProviderChoice, ApiError> {
-    if let Some(p_str) = provider_override {
-        let provider: Provider = p_str
-            .parse()
-            .map_err(|e: String| CoreError::BadRequest(e))?;
-        return Ok(ResolvedProviderChoice {
-            provider,
-            model: model_override,
-        });
-    }
-    let mut resolved = resolve_provider(agent_dir);
-    if let Some(m) = model_override {
-        resolved.model = Some(m);
-    }
-    Ok(ResolvedProviderChoice {
-        provider: resolved.provider,
-        model: resolved.model,
-    })
-}
 
 #[cfg(test)]
 mod tests {

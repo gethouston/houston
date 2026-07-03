@@ -1,14 +1,16 @@
 /**
  * Shared layout + CTA primitives for typed-provider-error cards.
  *
- * All variants share the same secondary-tinted slab (icon + title +
- * body + button row), the same retry button shape, and the same
- * report-bug + status-page helpers. Centralising them keeps the
- * per-variant files small (each renderer = copy + which CTAs to mount).
+ * The card surface is mid-migration to the unified `RowCard` (HOU-467): the
+ * stateful pills below (retry with spinner, report-bug + toast) are thin
+ * wrappers over `RowCardButton` so migrated variants match the reconnect /
+ * integration cards exactly. Variants that have not been ported yet still
+ * render on the secondary-tinted `ErrorCard` slab (icon + title + body +
+ * button row) and can mount the `StatusPageButton` / `statusPageUrl` helper.
+ * Either way the per-variant files own only the copy + which CTAs to mount.
  */
 
-import { Button, Spinner } from "@houston-ai/core";
-import { BugIcon, RotateCcwIcon } from "lucide-react";
+import { Button } from "@houston-ai/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { reportBug } from "../../../lib/bug-report";
@@ -17,6 +19,7 @@ import { getProvider } from "../../../lib/providers";
 import { tauriSystem } from "../../../lib/tauri";
 import { useUIStore } from "../../../stores/ui";
 import { useWorkspaceStore } from "../../../stores/workspaces";
+import { RowCardButton } from "../../cards/row-card-button";
 
 export function ErrorCard({
   icon,
@@ -72,21 +75,7 @@ export function RetryButton({
       setRunning(false);
     }
   };
-  return (
-    <Button
-      size="sm"
-      className="h-8 gap-2 rounded-full px-3 text-xs"
-      disabled={running}
-      onClick={() => void handle()}
-    >
-      {running ? (
-        <Spinner className="size-3.5" />
-      ) : (
-        <RotateCcwIcon className="size-3.5" />
-      )}
-      {label}
-    </Button>
-  );
+  return <RowCardButton label={label} onClick={handle} loading={running} />;
 }
 
 export function StatusPageButton({
@@ -151,20 +140,12 @@ export function ReportBugButton({
     }
   };
   return (
-    <Button
+    <RowCardButton
+      label={label}
       variant="outline"
-      size="sm"
-      className="h-8 gap-2 rounded-full px-3 text-xs"
-      disabled={sending}
-      onClick={() => void send()}
-    >
-      {sending ? (
-        <Spinner className="size-3.5" />
-      ) : (
-        <BugIcon className="size-3.5" />
-      )}
-      {label}
-    </Button>
+      onClick={send}
+      loading={sending}
+    />
   );
 }
 
@@ -174,6 +155,8 @@ export function statusPageUrl(provider: string): string | null {
       return "https://status.anthropic.com/";
     case "openai":
       return "https://status.openai.com/";
+    case "gemini":
+      return "https://status.cloud.google.com/";
     case "github-copilot":
       return "https://www.githubstatus.com/";
     default:

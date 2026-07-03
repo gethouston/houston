@@ -35,6 +35,7 @@ const fakeSpawner: RuntimeSpawner = {
 async function setup(opts?: {
   chatHistoryDbPath?: string;
   capabilities?: Capabilities;
+  integrations?: { gatewayUrl?: string; composioApiKey?: string };
 }) {
   const workspacesRoot = mkdtempSync(join(tmpdir(), "houston-localhost-"));
   mkdirSync(join(workspacesRoot, "Work", "Sales"), { recursive: true });
@@ -51,6 +52,7 @@ async function setup(opts?: {
     spawner: fakeSpawner,
     chatHistoryDbPath: opts?.chatHistoryDbPath,
     capabilities: opts?.capabilities,
+    integrations: opts?.integrations,
   });
   await host.start();
   return { host, base: `http://127.0.0.1:${port}`, workspacesRoot };
@@ -67,7 +69,9 @@ test("capabilities report the local profile", async () => {
     const r = await fetch(`${base}/v1/capabilities`);
     expect(r.status).toBe(200);
     const caps = (await r.json()) as Capabilities;
-    expect(caps).toEqual(LOCAL_CAPABILITIES);
+    // Integration availability is CONFIG-driven: this boot wired no gateway
+    // URL and no platform key, so the served list is honestly empty.
+    expect(caps).toEqual({ ...LOCAL_CAPABILITIES, integrations: [] });
     expect(caps.profile).toBe("local");
     expect(caps.codeExecution).toBe("local-bash");
     expect(caps.providers).toContain("anthropic");
@@ -85,12 +89,38 @@ test("capabilities can report the managed cloud pod profile", async () => {
     const r = await fetch(`${base}/v1/capabilities`);
     expect(r.status).toBe(200);
     const caps = (await r.json()) as Capabilities;
-    expect(caps).toEqual(MANAGED_CLOUD_CAPABILITIES);
+    expect(caps).toEqual({ ...MANAGED_CLOUD_CAPABILITIES, integrations: [] });
     expect(caps.codeExecution).toBe("disabled");
     // Managed pods still offer the full provider set; only the local LLM is cut.
     expect(caps.providers).toContain("amazon-bedrock");
     expect(caps.providers).toContain("anthropic");
     expect(caps.openaiCompatible).toBe(false);
+  } finally {
+    host.stop();
+  }
+});
+
+test("a configured integrations gateway advertises composio and wins over a direct key", async () => {
+  const { host, base } = await setup({
+    // Both configured (the dev prod-simulation shape) → the gateway wins, so
+    // the signin-gated remote adapter is what serves, never the direct key.
+    integrations: {
+      gatewayUrl: "https://cloud.test",
+      composioApiKey: "pk_ignored",
+    },
+  });
+  try {
+    const caps = (await (
+      await fetch(`${base}/v1/capabilities`)
+    ).json()) as Capabilities;
+    expect(caps.integrations).toEqual(["composio"]);
+    // Desktop gateway before sign-in: present but signin-gated, never a 503.
+    const status = await (
+      await fetch(`${base}/v1/integrations`, { headers: auth })
+    ).json();
+    expect(status.items).toEqual([
+      { provider: "composio", ready: false, reason: "signin" },
+    ]);
   } finally {
     host.stop();
   }

@@ -37,10 +37,23 @@ Playwright auto-starts two servers: vite `:1430` (`VITE_NEW_ENGINE=1` → adapte
 
 ## Two wire facts the mock mirrors exactly
 
-- **Chat = SSE, no WebSocket.** Subscribe `GET …/conversations/:id/events` FIRST,
-  then `POST …/messages` (202). Fake host registers stream, pushes canned reply
-  on send: `text` deltas → `usage` → `done`. Matches `runtime-client` +
-  `engine-adapter/translate.ts`.
+- **Chat = SSE, no WebSocket — resumable, sequenced, turn-stamped.** Subscribe
+  `GET …/conversations/:id/events` FIRST, then `POST …/messages` (202, with a
+  `nonce` echoed on the `user` frame). The fake host (`fake-host/chat.ts`) is
+  built from the SAME shared pieces as the real servers: `StreamChannel`
+  (publish ordering + seq authority + replay buffer), `serveResumableStream`
+  (the connect stitch: fresh → `sync`, `?after=<seq>` → gap/dupe-free replay,
+  unserviceable cursor → `sync` + `resync: true`), and `formatSseFrame` (the
+  `id:`/`data:` encoding). Every turn-scoped frame carries `turnId`, and
+  history persists the user message at turn start + the reply at turn end
+  (both turn-stamped) — the identity contract `engine-adapter/turn-sink.ts`
+  matches against. Test controls (`fake-host/chat-controls.ts`):
+  `POST /__test__/drop-chat-streams` (sever streams mid-turn, reconnect spec),
+  `POST /__test__/chat-config` (`{ replyDelayMs }`),
+  `POST /__test__/kill-turn` (synthesize the dead-pump reaper's terminal
+  error — the dead-turn spec), and `POST /__test__/turn-boundary`
+  (`{ nextText }`; end the running turn unseen + start the next one — the
+  settle-from-history-by-turnId spec).
 - **Board = files-first.** Reads/writes `.houston/activity/activity.json` via
   `/agents/:id/agentfile/*` (NOT just `/activities`). Fake host backs it with a
   real store, unified with `/activities` (same data, as in the real host),

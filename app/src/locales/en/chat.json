@@ -7,6 +7,9 @@
     "imagePasteUnavailable": "Couldn't read the pasted image. Try dragging the file in instead.",
     "addFiles": "Add files"
   },
+  "attribution": {
+    "you": "You"
+  },
   "queue": {
     "title": "Queued",
     "remove": "Remove queued message",
@@ -39,6 +42,25 @@
       "tooLarge": "This file is larger than {{maxSize}}."
     }
   },
+  "composio": {
+    "integration": "App integration",
+    "alreadyConnected": "Already connected",
+    "connected": "Connected",
+    "connecting": "Connecting...",
+    "connect": "Connect",
+    "waitingToConnect": "Waiting for you to connect",
+    "reconnect": "Reconnect",
+    "verifiedToast": "{{name}} is connected",
+    "connectedFollowup": "I've connected {{name}}. Please continue.",
+    "followupFailed": "Couldn't tell the assistant that {{name}} is connected"
+  },
+  "composioSignin": {
+    "appName": "Integrations provider",
+    "description": "Sign in to let your assistant use your apps. Default provider: Composio.",
+    "alreadySignedIn": "You're signed in to your integrations provider",
+    "signedIn": "Signed in",
+    "signIn": "Sign in"
+  },
   "modelSelector": {
     "selectModel": "Select model",
     "model": "Model",
@@ -59,6 +81,17 @@
       "high": "Deeper thinking for harder work.",
       "xhigh": "Best for complex, agentic tasks.",
       "max": "Deepest thinking, no token limit."
+    },
+    "modelDescriptions": {
+      "gpt-5_5": "OpenAI's frontier model.",
+      "gpt-5_4": "Strong model for everyday coding.",
+      "gpt-5_4-mini": "Small, fast, and cost-efficient for simpler tasks.",
+      "gpt-5_3-codex-spark": "Ultra-fast coding model.",
+      "claude-sonnet-5": "Newest Sonnet. Stronger agentic coding and tool use.",
+      "claude-sonnet-4-6": "Best balance of speed and quality.",
+      "claude-opus-4-8": "Latest Opus. Better alignment and agentic coding than 4.7.",
+      "claude-fable-5": "Most capable model. Costs 2x more credits than Opus 4.8.",
+      "claude-opus-4-7": "Previous flagship. Strong coding autonomy and complex reasoning."
     }
   },
   "reasoning": {
@@ -84,8 +117,8 @@
   "contextCompacted": "Earlier conversation summarized so the chat can keep going",
   "providerSwitch": {
     "title": "Switch to {{provider}}?",
-    "replayBody": "Switching brings this whole conversation over to {{provider}} so it can continue with full context. Carrying it across uses a considerable amount of tokens, and more the larger the conversation is right now. Continue?",
-    "replayConfirm": "Switch provider",
+    "replayBody": "Switching brings this whole conversation over to {{provider}} so it can continue with full context. Reloading the conversation uses a considerable amount of tokens, and more the larger the conversation is right now. Continue?",
+    "replayConfirm": "Reload and switch",
     "summaryBody": "{{provider}} has a smaller context window, so the whole conversation won't fit. We'll summarize it so {{provider}} can continue. Summarizing uses tokens and may lose some detail. Continue?",
     "summaryConfirm": "Summarize and switch",
     "cancel": "Cancel",

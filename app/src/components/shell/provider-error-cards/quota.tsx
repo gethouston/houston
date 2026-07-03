@@ -1,17 +1,22 @@
 /**
- * Quota / model-availability variants — these are the "pay or switch"
- * outcomes. CTAs lean on `tauriSystem.openUrl` to drop the user into
- * the right provider console.
+ * Quota / model-availability variants — the "pay or switch" outcomes.
+ * QuotaExhausted names the reset time when the provider gives one and offers a
+ * "switch provider" CTA; ModelUnavailable offers a one-click "switch to the
+ * suggested fallback" (applied directly on the same provider, no picker) plus a
+ * "pick another model" CTA that pops the model picker. All render on the
+ * unified `RowCard` (HOU-467), with their CTAs mounted as `RowCardButton`s in
+ * the card's action slot.
  */
 
 import type { ProviderError } from "@houston-ai/chat";
-import { Button } from "@houston-ai/core";
 import { AlertTriangleIcon, XCircleIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { tauriSystem } from "../../../lib/tauri";
-import { ErrorCard, providerLabel } from "./shared";
+import { RowCard } from "../../cards/row-card";
+import { RowCardButton } from "../../cards/row-card-button";
+import { providerLabel } from "./shared";
 
 interface BaseProps {
+  /** Open the model picker so the user can choose a different model/provider. */
   onSwitchModel?: () => void;
 }
 
@@ -23,33 +28,30 @@ export function QuotaExhaustedCard({
 }) {
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
-  const upgradeUrl = error.upgrade_url;
   return (
-    <ErrorCard
-      icon={<XCircleIcon className="size-5" />}
-      title={t("providerError.quotaExhausted.title")}
-      body={t("providerError.quotaExhausted.body", { provider })}
-    >
-      {upgradeUrl && (
-        <Button
-          size="sm"
-          className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={() => void tauriSystem.openUrl(upgradeUrl)}
-        >
-          {t("providerError.quotaExhausted.upgrade")}
-        </Button>
-      )}
-      {onSwitchModel && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={onSwitchModel}
-        >
-          {t("providerError.quotaExhausted.switchProvider")}
-        </Button>
-      )}
-    </ErrorCard>
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<XCircleIcon className="size-5" />}
+        title={t("providerError.quotaExhausted.title")}
+        description={
+          error.resets_at
+            ? t("providerError.quotaExhausted.bodyWithReset", {
+                provider,
+                time: error.resets_at,
+              })
+            : t("providerError.quotaExhausted.body", { provider })
+        }
+        action={
+          onSwitchModel && (
+            <RowCardButton
+              variant="outline"
+              label={t("providerError.quotaExhausted.switchProvider")}
+              onClick={onSwitchModel}
+            />
+          )
+        }
+      />
+    </div>
   );
 }
 
@@ -66,35 +68,34 @@ export function ModelUnavailableCard({
   const provider = providerLabel(error.provider);
   const fallback = error.suggested_fallback;
   return (
-    <ErrorCard
-      icon={<AlertTriangleIcon className="size-5" />}
-      title={t("providerError.modelUnavailable.title")}
-      body={t("providerError.modelUnavailable.body", {
-        provider,
-        model: error.model,
-      })}
-    >
-      {fallback && onApplyModel && (
-        <Button
-          size="sm"
-          className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={() => onApplyModel(fallback)}
-        >
-          {t("providerError.modelUnavailable.switchToFallback", {
-            model: fallback,
-          })}
-        </Button>
-      )}
-      {onSwitchModel && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={onSwitchModel}
-        >
-          {t("providerError.modelUnavailable.pickAnother")}
-        </Button>
-      )}
-    </ErrorCard>
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<AlertTriangleIcon className="size-5" />}
+        title={t("providerError.modelUnavailable.title")}
+        description={t("providerError.modelUnavailable.body", {
+          provider,
+          model: error.model,
+        })}
+        action={
+          <>
+            {fallback && onApplyModel && (
+              <RowCardButton
+                label={t("providerError.modelUnavailable.switchToFallback", {
+                  model: fallback,
+                })}
+                onClick={() => onApplyModel(fallback)}
+              />
+            )}
+            {onSwitchModel && (
+              <RowCardButton
+                variant="outline"
+                label={t("providerError.modelUnavailable.pickAnother")}
+                onClick={onSwitchModel}
+              />
+            )}
+          </>
+        }
+      />
+    </div>
   );
 }

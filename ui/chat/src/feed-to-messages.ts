@@ -6,7 +6,12 @@
  * their corresponding tool_result items.
  */
 
-import type { FeedItem, ProviderError, ToolRuntimeErrorEntry } from "./types";
+import type {
+  FeedItem,
+  MessageAuthor,
+  ProviderError,
+  ToolRuntimeErrorEntry,
+} from "./types";
 
 export interface ToolEntry {
   name: string;
@@ -52,6 +57,13 @@ export interface ChatMessage {
   /** Source channel if the message came from an external channel. */
   source?: string;
   /**
+   * Multiplayer only: who wrote this user message (C5). Present on
+   * `from: "user"` messages in a shared conversation; absent in single-player
+   * mode. The renderer shows a label only when the thread has ≥2 distinct
+   * authors — see `distinctAuthorCount`.
+   */
+  author?: MessageAuthor;
+  /**
    * Set on `from: "system"` messages that mark a context-compaction boundary.
    * The renderer shows a subtle divider instead of plain system text.
    */
@@ -69,6 +81,14 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
   // same way (e.g. the session dies again after a successful reconnect) must
   // show a fresh card, not be swallowed by the previous turn's.
   let seenProviderErrors = new Set<string>();
+  // A failed turn surfaces BOTH a typed error card (provider_error /
+  // tool_runtime_error) and the engine's session-status echo, which ui/core
+  // (`use-session-events`) materializes as a raw `"Session error: …"`
+  // system_message. The typed card is the real, localized surface; the echo is
+  // a redundant English duplicate. Suppress the echo ONLY when a card already
+  // covered this turn — with no card it still shows, so no failure goes silent.
+  // Resets per turn alongside the dedup set.
+  let turnHadErrorCard = false;
 
   function getCur(): ChatMessage | null {
     return cur;
@@ -115,8 +135,9 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
     switch (item.feed_type) {
       case "user_message": {
         flush();
-        // New turn — provider-error dedup is per turn (see declaration).
+        // New turn — provider-error dedup + error-echo suppression are per turn.
         seenProviderErrors = new Set<string>();
+        turnHadErrorCard = false;
         const { source, text } = extractSource(item.data);
         messages.push({
           key: `user-${messages.length}`,
@@ -126,6 +147,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
           tools: [],
           fileChanges: [],
           source,
+          author: item.author,
         });
         break;
       }
@@ -221,6 +243,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
 
       case "tool_runtime_error": {
         flush();
+        turnHadErrorCard = true;
         messages.push({
           key: `tool-runtime-error-${messages.length}`,
           from: "system",
@@ -238,6 +261,9 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
         // SessionStatus::Cancelled via a separate channel, and a card
         // here would feel like a real error. Drop it.
         if (item.data.kind === "cancelled") break;
+        // A real error card covered this turn (even if a duplicate is collapsed
+        // below) — lets the trailing session-status echo be suppressed.
+        turnHadErrorCard = true;
         // Collapse duplicates (same kind + provider) to a single card.
         const providerErrorKey = `${item.data.kind}:${item.data.provider}`;
         if (seenProviderErrors.has(providerErrorKey)) break;
@@ -259,6 +285,10 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
       }
 
       case "system_message": {
+        // Drop the redundant session-status echo when a typed error card
+        // already surfaced this turn. Without a card it still renders, so a
+        // failure on an un-carded path is never silent.
+        if (turnHadErrorCard && isSessionErrorEcho(item.data)) break;
         flush();
         messages.push({
           key: `system-${messages.length}`,
@@ -334,6 +364,30 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
 
   flush();
   return messages;
+}
+
+/**
+ * How many DISTINCT authors (by userId) wrote user messages in this thread.
+ * The renderer shows author labels only when this is ≥2 — a single-author
+ * conversation stays label-free (C5). Authorless user messages don't count.
+ * Pure, so the threshold is unit-tested without rendering.
+ */
+export function distinctAuthorCount(messages: ChatMessage[]): number {
+  const ids = new Set<string>();
+  for (const m of messages) {
+    if (m.from === "user" && m.author) ids.add(m.author.userId);
+  }
+  return ids.size;
+}
+
+/**
+ * The session-status error echo synthesized in ui/core's `use-session-events`
+ * (`Session error: <detail>`). Matched here so a typed error card can suppress
+ * this redundant raw duplicate. The prefix is a hardcoded (un-localized) string
+ * on that side, so this stays a stable contract — keep the two in sync.
+ */
+function isSessionErrorEcho(text: string): boolean {
+  return text.startsWith("Session error:");
 }
 
 /** Extract a `[ChannelName]` prefix from a user message, if present. */

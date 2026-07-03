@@ -1,4 +1,5 @@
-import { snapshot, subscribe } from "../session/bus";
+import type { ActingContext } from "../session/acting-context";
+import { evict } from "../session/bus";
 import {
   cancelTurn,
   disposeConversation,
@@ -12,13 +13,13 @@ import {
   listConversations,
   renameConversation,
 } from "../store/conversations";
+import { handleConversationEvents } from "./events-route";
 import { json, type RouteContext, readJson } from "./http-helpers";
-import { openSSE } from "./sse";
 
 export async function handleConversationRoute(
   ctx: RouteContext,
 ): Promise<boolean> {
-  const { method, path, req, res } = ctx;
+  const { method, path, res } = ctx;
 
   if (method === "GET" && path === "/conversations") {
     json(res, 200, listConversations());
@@ -51,13 +52,7 @@ export async function handleConversationRoute(
     return true;
   }
   if (method === "GET" && action === "events") {
-    const sse = openSSE(res);
-    sse.send("sync", snapshot(id));
-    const unsub = subscribe(id, (e) => sse.send(e.type, e.data));
-    req.on("close", () => {
-      unsub();
-      sse.close();
-    });
+    handleConversationEvents(ctx, id);
     return true;
   }
   if (method === "POST" && action === "cancel") {
@@ -104,6 +99,10 @@ async function handleConversationRoot(ctx: RouteContext, id: string) {
   }
   if (ctx.method === "DELETE") {
     await disposeConversation(id, { deleteSessions: true });
+    // Drop the event channel with the transcript: any outstanding resume
+    // cursor for a deleted conversation is unserviceable by definition, so a
+    // reconnect gets a resync against the (now empty) history — correct.
+    evict(id);
     deleteConversation(id)
       ? json(ctx.res, 200, { ok: true })
       : json(ctx.res, 404, { error: "conversation not found" });
@@ -133,9 +132,30 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
     });
     return;
   }
-  void runTurn(id, text, typeof nonce === "string" ? nonce : undefined, {
-    model: typeof model === "string" ? model : undefined,
-    effort: typeof effort === "string" ? effort : undefined,
-  });
+  // WHO is driving this turn (C2): the host forwards the gateway's acting-as
+  // token, or (routine turns) the creator's sub. Captured here and held for the
+  // turn so the integration tools act as that user. Both absent → act as owner.
+  const acting = actingFromHeaders(ctx.req.headers);
+  void runTurn(
+    id,
+    text,
+    typeof nonce === "string" ? nonce : undefined,
+    {
+      model: typeof model === "string" ? model : undefined,
+      effort: typeof effort === "string" ? effort : undefined,
+    },
+    acting,
+  );
   json(ctx.res, 202, { ok: true, id });
+}
+
+/** Extract the C2 acting-as identity from a message request's headers, or undefined. */
+function actingFromHeaders(
+  headers: RouteContext["req"]["headers"],
+): ActingContext | undefined {
+  const one = (v: string | string[] | undefined) =>
+    Array.isArray(v) ? v[0] : v;
+  const actingAs = one(headers["x-houston-acting-as"]);
+  const actingUser = one(headers["x-houston-acting-user"]);
+  return actingAs || actingUser ? { actingAs, actingUser } : undefined;
 }

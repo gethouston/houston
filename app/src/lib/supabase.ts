@@ -6,9 +6,31 @@ import { logger } from "./logger";
 // __SUPABASE_URL__ / __SUPABASE_ANON_KEY__ baked at build time by Vite.
 // Empty values → Supabase client still constructs but all auth calls are
 // no-ops (isAuthConfigured() returns false so the UI won't attempt sign-in).
-const URL_ = typeof __SUPABASE_URL__ !== "undefined" ? __SUPABASE_URL__ : "";
 const KEY =
   typeof __SUPABASE_ANON_KEY__ !== "undefined" ? __SUPABASE_ANON_KEY__ : "";
+
+function isValidHttpUrl(u: string): boolean {
+  try {
+    const parsed = new URL(u);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+// A non-empty but MALFORMED url (a leftover `.env.local` placeholder, a typo,
+// a missing https://) must not white-screen the entire app: supabase-js throws
+// synchronously inside `createClient` on an invalid URL, and that runs at
+// module load before any error boundary. Treat an invalid URL exactly like an
+// empty one — the app boots, the sign-in screen just won't appear — but log it
+// loudly so the misconfiguration is obvious in the logs.
+const rawUrl = typeof __SUPABASE_URL__ !== "undefined" ? __SUPABASE_URL__ : "";
+const URL_ = isValidHttpUrl(rawUrl) ? rawUrl : "";
+if (rawUrl && !URL_) {
+  logger.error(
+    `[auth] SUPABASE_URL is set but is not a valid http(s) URL — sign-in disabled. Got: ${rawUrl}`,
+  );
+}
 
 /**
  * Release storage adapter that round-trips to Rust via the `auth_*` Tauri

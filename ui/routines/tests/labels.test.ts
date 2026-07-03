@@ -63,12 +63,34 @@ describe("cronSummary localization", () => {
     );
     assert.equal(cronSummary("", ES_SUMMARY), "Sin horario definido");
   });
+  it("localizes the weekly-on-days list through Intl", () => {
+    // English joins with the locale's conjunction (Oxford comma in en-US).
+    assert.equal(
+      cronSummary("0 9 * * 1,3,5"),
+      "Runs every week on Mon, Wed, and Fri at 9:00 AM",
+    );
+    // Spanish: localized template + weekday names + "y" connector, no English leak.
+    const es = cronSummary("0 9 * * 1,3,5", ES_SUMMARY, "es");
+    assert.match(es, /^Se ejecuta cada semana los /);
+    assert.match(es, / y /);
+    assert.doesNotMatch(es, /Mon|Wed|Fri| and /);
+  });
   it("localizes the every-N-days time through Intl (24h for es, no English leak)", () => {
     const en = cronSummary("30 14 */2 * *");
     assert.equal(en, "Runs every 2 days at 2:30 PM");
     const es = cronSummary("30 14 */2 * *", ES_SUMMARY, "es");
     assert.match(es, /^Se ejecuta cada 2 días a las 14:30/);
     assert.doesNotMatch(es, /PM|AM/);
+  });
+  it("localizes every-N-months (English ordinal, Spanish plain day)", () => {
+    assert.equal(
+      cronSummary("30 8 1 */2 *"),
+      "Runs on the 1st of every 2 months at 8:30 AM",
+    );
+    assert.match(
+      cronSummary("30 8 1 */2 *", ES_SUMMARY, "es"),
+      /^Se ejecuta el día 1 de cada 2 meses a las /,
+    );
   });
 });
 

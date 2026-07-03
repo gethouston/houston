@@ -63,53 +63,15 @@ body::before {
 }
 
 /* ── 2. Translucent glass surface tokens ───────────────────────
-   The chrome (sidebar, cards, popovers, soft chips) routes through
-   these vars. Made translucent so the aurora reads through every
-   surface instead of being sealed under flat white. */
-:root {
-  /* Canonical faint neutral glass wash (NOT white — white over white is
-     invisible). A low-alpha tint that stays glassy (aurora bleeds
-     through) but reads as a section (~#f6f6f6 over white). Shared by the
-     sidebar, kanban columns, soft chips, secondary buttons and RowCards
-     so every "secondary" surface matches — one knob to tune. */
-  --ht-secondary: rgba(13, 13, 13, 0.035);
-  /* Transparent so the rail melts into the window background — the Arc
-     "canvas" look (see section 6). */
-  --ht-sidebar: transparent;
-  --ht-sidebar-border: rgba(13, 13, 13, 0.06);
-  /* A bit more opaque than 0.6 so body text stays legible on cards over
-     the colour mesh (research: light glass needs higher-opacity text
-     surfaces). */
-  --ht-card: rgba(255, 255, 255, 0.68);
-  /* Resting (non-selected) kanban card fill — a soft solid gray, the light
-     equivalent of dark's #2C2C2B. Not translucent. */
-  /* Light theme = the "Aurora" variant, locked in: cool blue/indigo tints. */
-  --ht-card-rest: #f4f6fc;
-  /* Arc canvas surfaces. Gutter = window background behind/around the screen. */
-  --ht-canvas-gutter: #eef1f7;
-  --ht-canvas-screen: #ffffff;
-  --ht-foreground: #14161d;
-  --ht-popover: rgba(255, 255, 255, 0.82);
-  --ht-muted: rgba(13, 13, 13, 0.035);
-  --ht-border: rgba(60, 70, 120, 0.1);
-}
-
-[data-theme="dark"] {
-  --ht-sidebar: transparent;
-  --ht-sidebar-border: rgba(255, 255, 255, 0.08);
-  --ht-card: rgba(40, 40, 40, 0.5);
-  /* Resting (non-selected) kanban card fill — sampled from the running card. */
-  --ht-card-rest: #2c2c2b;
-  --ht-canvas-gutter: #141416;
-  --ht-canvas-screen: rgba(38, 38, 40, 0.55);
-  --ht-popover: rgba(34, 34, 34, 0.85);
-  --ht-secondary: rgba(255, 255, 255, 0.05);
-  --ht-muted: rgba(255, 255, 255, 0.045);
-  --ht-border: rgba(255, 255, 255, 0.1);
-  /* Pin dark's text: the light --ht-foreground above (set on :root) would
-     otherwise cascade into dark and turn it near-black. */
-  --ht-foreground: #e5e5e5;
-}
+   The futuristic surface palette — the translucent glass fills, the
+   transparent sidebar, the cool "Aurora" light tints and the Arc canvas
+   colours (--ht-card, --ht-popover, --ht-secondary, --ht-muted, --ht-border,
+   --ht-sidebar, --ht-sidebar-border, --ht-foreground, --ht-card-rest,
+   --ht-canvas-gutter, --ht-canvas-screen) — now lives in the single token
+   source: @houston/design-tokens (tokens/semantic/color.*.json), compiled to
+   the --ht-* CSS imported by @houston-ai/core. These are the CURRENT shipped
+   values; to retune a surface, edit the token JSON and rebuild. The glass
+   BLUR/sheen effects that consume those tokens stay below (sections 3-7). */
 
 /* ── 3. Frosted glass on the chrome surfaces ───────────────────
    The translucent tokens above let the aurora through; these rules

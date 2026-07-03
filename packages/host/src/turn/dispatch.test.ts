@@ -1,6 +1,7 @@
 import type { Server } from "node:http";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
+import type { WireFrame } from "@houston/runtime-client";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { Agent, Workspace } from "../domain/types";
@@ -101,6 +102,7 @@ function serve(deps: TurnDeps): Promise<{ base: string; close: () => void }> {
       agent,
       req.method || "GET",
       rest,
+      url,
       req,
       res,
     ).catch((err) => {
@@ -240,31 +242,142 @@ test("providers + auth/status reflect the central credential; settings persist t
   }
 });
 
-test("the events SSE endpoint emits a sync frame, then live frames", async () => {
+/** Parse the SSE stream into `{type,data,seq,id}` frames until `count` arrive. */
+async function collectFrames(
+  res: Response,
+  count: number,
+): Promise<{ type: string; data: unknown; seq?: number; id?: string }[]> {
+  if (res.body === null) throw new Error("expected res.body to be non-null");
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  const frames: { type: string; data: unknown; seq?: number; id?: string }[] =
+    [];
+  let buf = "";
+  while (frames.length < count) {
+    const { value, done } = await reader.read();
+    if (done) throw new Error(`stream ended after ${frames.length} frames`);
+    buf += decoder.decode(value, { stream: true });
+    let sep = buf.indexOf("\n\n");
+    while (sep >= 0) {
+      const block = buf.slice(0, sep);
+      buf = buf.slice(sep + 2);
+      sep = buf.indexOf("\n\n");
+      const dataLine = block.split("\n").find((l) => l.startsWith("data: "));
+      if (!dataLine) continue; // ": connected" / ": hb"
+      const idLine = block.split("\n").find((l) => l.startsWith("id: "));
+      frames.push({
+        ...JSON.parse(dataLine.slice(6)),
+        ...(idLine ? { id: idLine.slice(4) } : {}),
+      });
+    }
+  }
+  await reader.cancel();
+  return frames;
+}
+
+test("the events SSE endpoint emits a sync frame (with watermark + id line), then sequenced live frames", async () => {
   const { deps } = makeDeps();
   const { base, close } = await serve(deps);
   try {
     const res = await fetch(`${base}/conversations/c9/events`);
     expect(res.headers.get("content-type")).toContain("text/event-stream");
-    if (res.body === null) throw new Error("expected res.body to be non-null");
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = "";
-    // First frame must be the sync catch-up.
-    while (!buf.includes("\n\n") || !buf.includes("sync")) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-    }
-    expect(buf).toContain('"type":"sync"');
-    deps.relay.publish("agent-1/c9", { type: "text", data: "live!" });
-    while (!buf.includes("live!")) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-    }
-    expect(buf).toContain('"type":"text"');
-    await reader.cancel();
+    const pending = collectFrames(res, 2);
+    await deps.relay.publish("agent-1/c9", { type: "text", data: "live!" });
+    const frames = await pending;
+    expect(frames[0]).toEqual({
+      type: "sync",
+      data: { running: false, partial: "", seq: 0 },
+      seq: 0,
+      id: "0",
+    });
+    expect(frames[1]).toEqual({ type: "text", data: "live!", seq: 1, id: "1" });
+  } finally {
+    close();
+  }
+});
+
+test("?after= resumes the in-flight turn: no sync, replayed + live frames, no gap, no duplicate", async () => {
+  const { deps } = makeDeps();
+  const { base, close } = await serve(deps);
+  try {
+    let publishFrame!: (e: WireFrame) => Promise<void>;
+    let finish!: () => void;
+    await deps.relay.start("agent-1", "agent-1/c10", async (publish) => {
+      publishFrame = publish;
+      await new Promise<void>((r) => (finish = r));
+    });
+    await publishFrame({ type: "text", data: "a" }); // 1
+    await publishFrame({ type: "text", data: "b" }); // 2
+    await publishFrame({ type: "text", data: "c" }); // 3
+
+    const res = await fetch(`${base}/conversations/c10/events?after=1`);
+    const pending = collectFrames(res, 3);
+    await publishFrame({ type: "text", data: "d" }); // 4 — concurrent with the replay flush
+    const frames = await pending;
+    expect(frames.some((f) => f.type === "sync")).toBe(false);
+    expect(frames.map((f) => [f.seq, f.data])).toEqual([
+      [2, "b"],
+      [3, "c"],
+      [4, "d"],
+    ]);
+    finish();
+  } finally {
+    close();
+  }
+});
+
+test("an unserviceable cursor degrades to a resync sync carrying the current watermark", async () => {
+  const { deps } = makeDeps();
+  const { base, close } = await serve(deps);
+  try {
+    // Finished turn: the replay window is cleared, only the watermark survives.
+    await deps.relay.start("agent-1", "agent-1/c11", async (publish) => {
+      await publish({ type: "user", data: { content: "q", ts: 1 } }); // 1
+      await publish({ type: "text", data: "answer" }); // 2
+      await publish({ type: "done", data: null }); // 3
+    });
+    await new Promise((r) => setTimeout(r, 0));
+
+    const res = await fetch(`${base}/conversations/c11/events?after=1`);
+    const frames = await collectFrames(res, 1);
+    expect(frames[0]).toEqual({
+      type: "sync",
+      data: { running: false, partial: "", seq: 3, resync: true },
+      seq: 3,
+      id: "3",
+    });
+  } finally {
+    close();
+  }
+});
+
+test("Last-Event-ID resumes like ?after=, and the query wins when both are sent", async () => {
+  const { deps } = makeDeps();
+  const { base, close } = await serve(deps);
+  try {
+    let publishFrame!: (e: WireFrame) => Promise<void>;
+    let finish!: () => void;
+    await deps.relay.start("agent-1", "agent-1/c12", async (publish) => {
+      publishFrame = publish;
+      await new Promise<void>((r) => (finish = r));
+    });
+    await publishFrame({ type: "text", data: "a" }); // 1
+    await publishFrame({ type: "text", data: "b" }); // 2
+    await publishFrame({ type: "text", data: "c" }); // 3
+
+    const viaHeader = await fetch(`${base}/conversations/c12/events`, {
+      headers: { "Last-Event-ID": "1" },
+    });
+    expect((await collectFrames(viaHeader, 2)).map((f) => f.seq)).toEqual([
+      2, 3,
+    ]);
+
+    const both = await fetch(`${base}/conversations/c12/events?after=2`, {
+      headers: { "Last-Event-ID": "0" },
+    });
+    const frames = await collectFrames(both, 1);
+    expect(frames).toEqual([{ type: "text", data: "c", seq: 3, id: "3" }]);
+    finish();
   } finally {
     close();
   }

@@ -13,11 +13,17 @@
 
 import type {
   CustomEndpoint,
+  ComposioAppEntry as EngineComposioAppEntry,
+  ComposioStatus as EngineComposioStatus,
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
+  ImportedWorkspace,
   ProviderAuthState,
+  StoreListing,
 } from "@houston-ai/engine-client";
+import { useProviderSwitchStore } from "../stores/provider-switch";
 import { shouldAutocompactForSession } from "./autocompact";
+import { COMPOSIO_ALREADY_CONNECTED_KIND } from "./composio-already-connected";
 import { getEngine, isRemoteEngine } from "./engine";
 import { engineCallSurface } from "./engine-call-policy";
 import { providerLoginUsesDeviceAuthByDefault } from "./engine-mode";
@@ -43,12 +49,18 @@ interface EngineCallOptions {
    *  user-initiated failures always reach crash reporting; set false only for
    *  genuinely fire-and-forget calls or ones with their own report path. */
   capture?: boolean;
+  /** Engine error `kind`s that are expected + explainable (not Houston bugs).
+   *  Matching errors are logged but get NO red bug toast and NO Sentry report;
+   *  the caller surfaces them inline. Use sparingly, only for kinds a user can
+   *  understand and act on (e.g. the legacy Rust engine's typed
+   *  `composio_login_timeout` / `composio_already_connected`). */
+  silenceKinds?: string[];
   /** Classifier for errors that are expected + explainable (not Houston bugs).
    *  A matching error is logged but gets NO red bug toast and NO Sentry report;
    *  the caller surfaces it inline. Use sparingly, only for failures a user can
    *  understand and act on (e.g. a skill that was renamed or removed). The TS
-   *  host emits bare-string errors with no typed `kind`, so silencing keys on a
-   *  predicate over the thrown error rather than a kind string. */
+   *  host emits bare-string / status-only errors with no typed `kind`, so this
+   *  predicate keys on the thrown error rather than a kind string. */
   silence?: (err: unknown) => boolean;
 }
 
@@ -84,9 +96,20 @@ async function surfaceError(
     context ? JSON.stringify(context) : undefined,
   );
 
-  // Expected, explainable errors the caller surfaces inline. Logged above for
-  // the local log tail, but no red bug toast and no Sentry report. Checked here
-  // (not in `engineCallSurface`) because the predicate needs the full error.
+  // Expected, explainable engine errors the caller surfaces inline. Logged
+  // above for the local log tail, but no red bug toast and no Sentry report.
+  //
+  // Two complementary matchers so both engine wire formats are covered:
+  //  - `silenceKinds` — the legacy Rust engine tags errors with a typed
+  //    `kind` (e.g. `composio_login_timeout`, `composio_already_connected`).
+  //  - `silence` — the TS host emits bare-string / status-only errors with no
+  //    typed `kind`, so callers pass a predicate over the whole error (e.g.
+  //    `isMissingSkillError`, which reads the HoustonEngineError `.status`).
+  const kind =
+    err && typeof err === "object" && "kind" in err
+      ? (err as { kind?: unknown }).kind
+      : undefined;
+  if (typeof kind === "string" && options?.silenceKinds?.includes(kind)) return;
   if (options?.silence?.(err)) return;
 
   // Aborted requests are expected; `toast: false` callers render their own
@@ -158,6 +181,8 @@ function toAgent(a: import("@houston-ai/engine-client").Agent): Agent {
     color: a.color,
     createdAt: a.createdAt,
     lastOpenedAt: a.lastOpenedAt,
+    assigned: a.assigned,
+    assignedUserIds: a.assignedUserIds,
   };
 }
 
@@ -218,9 +243,24 @@ export const tauriAgents = {
       "list_installed_configs",
       () => getEngine().listInstalledConfigs(),
     ),
+  /** Multiplayer: set which org members may use this agent. Empty = everyone. */
+  setAssignments: (agentSlugOrId: string, userIds: string[]) =>
+    call<void>("set_agent_assignments", () =>
+      getEngine().setAgentAssignments(agentSlugOrId, userIds),
+    ),
 };
 
 // ─── Chat sessions ────────────────────────────────────────────────────
+
+/**
+ * How a chat history load behaves. `observe: false` marks a BULK read
+ * (mission search, board scans over N conversations): the new-engine adapter
+ * then skips attaching its passive in-flight-turn observer stream, which only
+ * a real conversation open (the default) should do.
+ */
+export interface HistoryLoadOptions {
+  observe?: boolean;
+}
 
 export const tauriChat = {
   send: (
@@ -230,30 +270,46 @@ export const tauriChat = {
     opts?: {
       mode?: string;
       promptFile?: string;
+      workingDirOverride?: string;
       providerOverride?: string;
       modelOverride?: string;
       effortOverride?: string;
     },
   ) =>
     call<string>("send_message", async () => {
+      // A staged provider switch (the user changed providers mid-conversation)
+      // takes precedence over autocompact: the engine reseeds a fresh session
+      // on the new provider, so same-provider context-full compaction doesn't
+      // apply. PEEK, don't clear — the handoff is cleared only when the engine
+      // confirms the switch with a `provider_switched` event, so a failed seed
+      // is retried on the next send instead of silently continuing blank.
+      const handoff = useProviderSwitchStore
+        .getState()
+        .peekPending(agentPath, sessionKey);
       // Centralized autocompact decision: when this session's context is
       // nearly full, ask the engine to summarize + reseed before this turn.
       // Computed here so every send path gets it; new conversations have no
       // usage yet and resolve to `false`.
-      const compact = shouldAutocompactForSession(
-        agentPath,
-        sessionKey,
-        opts?.providerOverride,
-        opts?.modelOverride,
-      );
+      const compact = handoff
+        ? false
+        : shouldAutocompactForSession(
+            agentPath,
+            sessionKey,
+            opts?.providerOverride,
+            opts?.modelOverride,
+          );
       const res = await getEngine().startSession(agentPath, {
         sessionKey,
         prompt,
         source: "desktop",
+        workingDir: opts?.workingDirOverride,
         provider: opts?.providerOverride,
         model: opts?.modelOverride,
         effort: opts?.effortOverride,
         compact,
+        providerSwitch: handoff
+          ? { mode: handoff.mode, fromProvider: handoff.fromProvider }
+          : undefined,
       });
       return res.sessionKey;
     }),
@@ -265,9 +321,13 @@ export const tauriChat = {
     call<void>("stop_session", async () => {
       await getEngine().cancelSession(agentPath, sessionKey);
     }),
-  loadHistory: (agentPath: string, sessionKey: string) =>
+  loadHistory: (
+    agentPath: string,
+    sessionKey: string,
+    opts?: HistoryLoadOptions,
+  ) =>
     call<Array<{ feed_type: string; data: unknown }>>("load_chat_history", () =>
-      getEngine().loadChatHistory(agentPath, sessionKey),
+      getEngine().loadChatHistory(agentPath, sessionKey, opts),
     ),
   summarize: (message: string) =>
     call<{ title: string; description: string }>("summarize_activity", () =>
@@ -347,7 +407,8 @@ export const tauriSkills = {
       // The skill the user opened may have been renamed, deleted, or never
       // installed (the host answers 404). That's expected — the Skills view
       // surfaces it inline and refreshes the list — so don't fire the red bug
-      // toast or report it.
+      // toast or report it. Predicate form: the TS host's 404 carries no typed
+      // `kind`, so `isMissingSkillError` reads the HoustonEngineError `.status`.
       { silence: isMissingSkillError },
     ),
   create: (
@@ -370,6 +431,132 @@ export const tauriSkills = {
     call<void>("save_skill", () =>
       getEngine().saveSkill(name, { workspacePath: agentPath, content }),
     ),
+};
+
+// ─── Composio (desktop CLI connections) ───────────────────────────────
+
+export interface ComposioAppEntry {
+  toolkit: string;
+  name: string;
+  description: string;
+  logo_url: string;
+  categories: string[];
+}
+
+export type ComposioStatus = EngineComposioStatus;
+
+export interface StartLoginResponse {
+  login_url: string;
+  cli_key: string;
+}
+
+export interface StartLinkResponse {
+  redirect_url: string;
+  connected_account_id: string;
+  toolkit: string;
+}
+
+export interface ReconnectResult {
+  /** URL to open for OAuth re-consent, or null when refreshed silently. */
+  redirectUrl: string | null;
+}
+
+export const tauriConnections = {
+  list: () =>
+    call<ComposioStatus>("list_composio_connections", () =>
+      getEngine().composioStatus(),
+    ),
+  listApps: () =>
+    call<ComposioAppEntry[]>("list_composio_apps", async () =>
+      (await getEngine().composioListApps()).map(
+        (a: EngineComposioAppEntry) => ({
+          toolkit: a.toolkit,
+          name: a.name,
+          description: a.description,
+          logo_url: a.logo_url,
+          categories: a.categories,
+        }),
+      ),
+    ),
+  listConnectedToolkits: () =>
+    call<string[]>("list_composio_connected_toolkits", () =>
+      getEngine().composioListConnections(),
+    ),
+  connectApp: (toolkit: string) =>
+    call<StartLinkResponse>(
+      "connect_composio_app",
+      async () => {
+        const r = await getEngine().composioConnectApp(toolkit);
+        return {
+          redirect_url: r.redirect_url,
+          connected_account_id: r.connected_account_id,
+          toolkit: r.toolkit,
+        };
+      },
+      { toolkit },
+      // "Already connected" is an expected state, not a Houston bug: the
+      // caller refreshes the connected-toolkits list so the card flips to
+      // connected (HOU-463). Silence it so it gets no red bug toast and no
+      // Sentry report — the prior over-reporting was the source of this issue.
+      { silenceKinds: [COMPOSIO_ALREADY_CONNECTED_KIND] },
+    ),
+  disconnectApp: (toolkit: string) =>
+    call<void>(
+      "disconnect_composio_app",
+      () => getEngine().composioDisconnect(toolkit),
+      { toolkit },
+    ),
+  reconnectApp: (toolkit: string) =>
+    call<ReconnectResult>(
+      "reconnect_composio_app",
+      async () => {
+        const r = await getEngine().composioReconnect(toolkit);
+        return { redirectUrl: r.redirectUrl };
+      },
+      { toolkit },
+    ),
+  watchConnection: (toolkit: string) =>
+    call<void>(
+      "watch_composio_connection",
+      () => getEngine().composioWatchConnection(toolkit),
+      { toolkit },
+      // Fire-and-forget — caller awaits only to know the request was
+      // accepted; the result is delivered as a `ComposioConnectionAdded`
+      // WS event. Don't toast OR report; failure here just means we fall
+      // back to the client-side watcher.
+      { toast: false, capture: false },
+    ),
+  startOAuth: () =>
+    call<StartLoginResponse>(
+      "start_composio_oauth",
+      async () => {
+        const r = await getEngine().composioStartLogin();
+        return { login_url: r.login_url, cli_key: r.cli_key };
+      },
+      undefined,
+      // "Already signed in" is a benign no-op (the CLI prints nothing when
+      // creds already exist); the dialog handles that kind as success, so no
+      // red bug toast and no Sentry report.
+      { silenceKinds: ["composio_already_signed_in"] },
+    ),
+  completeLogin: (cliKey: string) =>
+    call<void>(
+      "complete_composio_login",
+      () => getEngine().composioCompleteLogin(cliKey),
+      undefined,
+      // The sign-in dialog renders failures inline, so don't double-surface
+      // as a toast. The expected `composio_login_timeout` (user closed the
+      // tab) is fully silenced; genuine faults still capture to Sentry.
+      { toast: false, silenceKinds: ["composio_login_timeout"] },
+    ),
+  logout: () =>
+    call<void>("logout_composio", () => getEngine().composioLogout()),
+  isCliInstalled: () =>
+    call<boolean>("is_composio_cli_installed", () =>
+      getEngine().composioCliInstalled(),
+    ),
+  installCli: () =>
+    call<void>("install_composio_cli", () => getEngine().composioInstallCli()),
 };
 
 // ─── Project files (browser) ──────────────────────────────────────────
@@ -418,6 +605,44 @@ export const tauriFiles = {
       await getEngine().createFolder(agentPath, name);
     }),
   revealAgent: (agentPath: string) => osRevealAgent(agentPath),
+};
+
+// ─── Store ────────────────────────────────────────────────────────────
+
+export const tauriStore = {
+  listInstalled: () =>
+    call<Array<{ config: unknown; path: string }>>(
+      "list_installed_configs",
+      () => getEngine().listInstalledConfigs(),
+    ),
+  fetchCatalog: () =>
+    call<StoreListing[]>("fetch_store_catalog", () =>
+      getEngine().storeCatalog(),
+    ),
+  search: (query: string) =>
+    call<StoreListing[]>("search_store", () => getEngine().storeSearch(query)),
+  install: (repo: string, agentId: string) =>
+    call<void>("install_store_agent", () =>
+      getEngine().installStoreAgent({ repo, agentId }),
+    ),
+  uninstall: (agentId: string) =>
+    call<void>("uninstall_store_agent", () =>
+      getEngine().uninstallStoreAgent(agentId),
+    ),
+  installFromGithub: (githubUrl: string) =>
+    call<string>(
+      "install_agent_from_github",
+      async () =>
+        (await getEngine().installAgentFromGithub({ githubUrl })).agentId,
+    ),
+  checkUpdates: () =>
+    call<string[]>("check_agent_updates", () =>
+      getEngine().checkAgentUpdates(),
+    ),
+  installWorkspaceFromGithub: (githubUrl: string) =>
+    call<ImportedWorkspace>("install_workspace_from_github", () =>
+      getEngine().installWorkspaceFromGithub({ githubUrl }),
+    ),
 };
 
 // ─── Conversations ────────────────────────────────────────────────────
@@ -555,6 +780,38 @@ export const tauriActivity = {
   ) => activityData.bulkUpdate(agentPath, ids, update),
   bulkDelete: (agentPath: string, ids: string[]) =>
     activityData.bulkRemove(agentPath, ids),
+};
+
+// ─── Worktrees & shell ────────────────────────────────────────────────
+
+export const tauriWorktree = {
+  create: (repoPath: string, name: string, branch?: string) =>
+    call<{ path: string; branch: string; is_main: boolean }>(
+      "create_worktree",
+      async () => {
+        const w = await getEngine().createWorktree({ repoPath, name, branch });
+        return { path: w.path, branch: w.branch, is_main: w.isMain };
+      },
+    ),
+  remove: (repoPath: string, worktreePath: string) =>
+    call<void>("remove_worktree", () =>
+      getEngine().removeWorktree({ repoPath, worktreePath }),
+    ),
+  list: (repoPath: string) =>
+    call<Array<{ path: string; branch: string; is_main: boolean }>>(
+      "list_worktrees",
+      async () =>
+        (await getEngine().listWorktrees({ repoPath })).map((w) => ({
+          path: w.path,
+          branch: w.branch,
+          is_main: w.isMain,
+        })),
+    ),
+};
+
+export const tauriShell = {
+  run: (path: string, command: string) =>
+    call<string>("run_shell", () => getEngine().runShell({ path, command })),
 };
 
 // ─── Agent config (per-agent JSON on disk) ────────────────────────────
@@ -761,6 +1018,16 @@ export const tauriProvider = {
     call<void>("set_provider_custom_endpoint", () =>
       getEngine().setProviderCustomEndpoint(endpoint),
     ),
+  /**
+   * Save a Gemini API key to `~/.gemini/.env` via the engine (legacy Rust /
+   * desktop path). Errors surface through `call`'s standard rejection path;
+   * the caller renders them with `errorMessage(err)` + `addToast`.
+   *
+   * On the new engine, API-key providers (Gemini included) go through
+   * `setApiKey` instead. Never log `apiKey` — it's a SECRET.
+   */
+  setGeminiApiKey: (apiKey: string) =>
+    call<void>("set_gemini_api_key", () => getEngine().setGeminiApiKey(apiKey)),
 };
 
 // ─── System (OS-native helpers, preserved for back-compat) ────────────
@@ -786,6 +1053,42 @@ export const tauriSystem = {
     ),
 };
 
+// ─── Claude Code runtime installer ────────────────────────────────────
+
+import type { ClaudeStatus as EngineClaudeStatus } from "@houston-ai/engine-client";
+
+/** Mirror of the engine `ClaudeStatus` — re-exported so callers can
+ *  import from `lib/tauri.ts` like the other engine DTOs. */
+export type ClaudeStatus = EngineClaudeStatus;
+
+/** Runtime install bridge for the proprietary Claude Code CLI.
+ *
+ *  Distinct from `tauriProvider`: provider-level concerns (auth, CLI
+ *  spawn) sit on `tauriProvider`; the *install* of Anthropic's CLI is
+ *  Houston-managed (we download it because the license forbids
+ *  bundling) and exposed here so the onboarding card can show a
+ *  specific "couldn't reach Anthropic — Retry" affordance — issue #231.
+ */
+export const tauriClaude = {
+  status: () =>
+    call<ClaudeStatus>("claude_status", () => getEngine().claudeStatus()),
+  /**
+   * Triggers the background install. Errors are deliberately not
+   * auto-toasted by `call` — both callers (the onboarding card hook and
+   * the `ClaudeCliFailed` toast retry action) surface failures
+   * themselves, and double-toasting on a retry click is noisy.
+   */
+  install: () =>
+    call<void>(
+      "claude_install",
+      () => getEngine().claudeInstall(),
+      undefined,
+      // Both callers (onboarding card + ClaudeCliFailed retry) surface and
+      // report failures themselves; capture here would double-report.
+      { toast: false, capture: false },
+    ),
+};
+
 // ─── Agent file watcher ───────────────────────────────────────────────
 
 export const tauriWatcher = {
@@ -797,23 +1100,38 @@ export const tauriWatcher = {
     call<void>("stop_agent_watcher", () => getEngine().stopAgentWatcher()),
 };
 
+// ─── Tunnel (mobile pairing) ──────────────────────────────────────────
+
+import type {
+  PairingCode as EnginePairingCode,
+  TunnelStatus as EngineTunnelStatus,
+} from "@houston-ai/engine-client";
+
+export const tauriTunnel = {
+  status: () =>
+    call<EngineTunnelStatus>("tunnel_status", () => getEngine().tunnelStatus()),
+  mintPairingCode: () =>
+    call<EnginePairingCode>("tunnel_mint_pairing", () =>
+      getEngine().mintPairingCode(),
+    ),
+  resetAccess: () =>
+    call<EnginePairingCode>("tunnel_reset_access", () =>
+      getEngine().resetPhoneAccess(),
+    ),
+};
+
 /**
- * Integrations (Composio "for you"). User-level (the user's own connected
- * account); surfaced per-agent in the Integrations tab. Host-only — these reach
- * the v3 host's /v1/integrations routes; the tab is gated to the control-plane
- * build so they never run on the legacy Rust wire. Types flow by inference.
+ * Integrations (Composio, platform mode). The user never creates a provider
+ * account — they only OAuth apps (Gmail, Slack…); Houston's platform key lives
+ * server-side. Host-only — these reach the v3 host's /v1/integrations routes;
+ * the tab is gated to the control-plane build so they never run on the legacy
+ * Rust wire. Types flow by inference.
  */
 export const tauriIntegrations = {
   status: () =>
     call("integration_status", () => getEngine().integrationStatus()),
-  startLogin: (provider: string) =>
-    call("integration_login_start", () =>
-      getEngine().startIntegrationLogin(provider),
-    ),
-  pollLogin: (provider: string, pollKey: string) =>
-    call("integration_login_poll", () =>
-      getEngine().pollIntegrationLogin(provider, pollKey),
-    ),
+  setSession: (token: string | null) =>
+    call("integration_session", () => getEngine().setIntegrationSession(token)),
   toolkits: (provider: string) =>
     call("integration_toolkits", () =>
       getEngine().integrationToolkits(provider),
@@ -826,10 +1144,50 @@ export const tauriIntegrations = {
     call("integration_connect", () =>
       getEngine().connectIntegration(provider, toolkit),
     ),
+  connection: (provider: string, connectionId: string) =>
+    call("integration_connection", () =>
+      getEngine().integrationConnection(provider, connectionId),
+    ),
   disconnect: (provider: string, toolkit: string) =>
     call("integration_disconnect", () =>
       getEngine().disconnectIntegration(provider, toolkit),
     ),
-  logout: (provider: string) =>
-    call("integration_logout", () => getEngine().logoutIntegration(provider)),
+  /** Dismiss the reconnect notice (deletes the legacy credentials server-side). */
+  dismissReconnectNotice: () =>
+    call("integration_dismiss_reconnect_notice", () =>
+      getEngine().dismissIntegrationsReconnectNotice(),
+    ),
+  /** Multiplayer: the integration toolkit slugs granted to an agent. */
+  grants: (agentSlugOrId: string) =>
+    call("agent_integration_grants", () =>
+      getEngine().agentIntegrationGrants(agentSlugOrId),
+    ),
+  /** Multiplayer: replace the integration toolkit slugs granted to an agent. */
+  setGrants: (agentSlugOrId: string, toolkits: string[]) =>
+    call("set_agent_integration_grants", () =>
+      getEngine().setAgentIntegrationGrants(agentSlugOrId, toolkits),
+    ),
+};
+
+/**
+ * Multiplayer org management. Hosted-gateway only: the desktop/local engine has
+ * no /v1/org routes, so `getEngine()` throws "multiplayer requires the hosted
+ * gateway" there — callers gate the UI on the `multiplayer` capability. Same
+ * `call()` surfacing as every other wrapper; types flow by inference.
+ */
+export const tauriOrg = {
+  get: () => call("get_org", () => getEngine().getOrg()),
+  addMember: (
+    email: string,
+    role: import("@houston-ai/engine-client").OrgRole,
+  ) => call("add_org_member", () => getEngine().addOrgMember(email, role)),
+  removeMember: (userId: string) =>
+    call("remove_org_member", () => getEngine().removeOrgMember(userId)),
+  setMemberRole: (
+    userId: string,
+    role: import("@houston-ai/engine-client").OrgRole,
+  ) =>
+    call("set_org_member_role", () =>
+      getEngine().setOrgMemberRole(userId, role),
+    ),
 };

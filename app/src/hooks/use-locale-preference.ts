@@ -37,6 +37,12 @@ export interface LocalePreferenceState {
    * through the workspace store's `setLocale`, not this.
    */
   setLocale: (locale: SupportedLocale) => Promise<void>;
+  /**
+   * Clear the GLOBAL preference so the first-run language picker shows again.
+   * Used by the agreement's "Back" to return to the picker. Leaves the live
+   * i18n language untouched (the user re-picks from there).
+   */
+  clearLocale: () => Promise<void>;
 }
 
 /**
@@ -158,9 +164,26 @@ export function useLocalePreference(): LocalePreferenceState {
     [mutation],
   );
 
+  const clearMutation = useMutation({
+    mutationFn: async () => {
+      // Empty string isn't a SupportedLocale, so the query resolves to null and
+      // the picker re-shows. Don't touch i18n — keep showing the current
+      // language until the user re-picks.
+      await tauriPreferences.set(LOCALE_PREF_KEY, "");
+    },
+    onSuccess: () => {
+      qc.setQueryData<SupportedLocale | null>(globalKey, null);
+    },
+  });
+
+  const clearLocale = useCallback(async () => {
+    await clearMutation.mutateAsync();
+  }, [clearMutation]);
+
   return {
     locale: globalLocale,
     isLoading: localeGateIsLoading(globalQuery.isLoading, applied),
     setLocale,
+    clearLocale,
   };
 }

@@ -1,29 +1,34 @@
-import type { IntegrationProvider } from "./provider";
-import type {
-  AccountIdentity,
-  ActionResult,
-  Connection,
-  ConnectStart,
-  LoginResult,
-  LoginStart,
-  ProviderCredential,
-  Toolkit,
-  ToolMatch,
+import type { ActingContext, IntegrationProvider } from "./provider";
+import {
+  type ActionResult,
+  type Connection,
+  type ConnectStart,
+  IntegrationSigninRequiredError,
+  type ProviderReadiness,
+  type Toolkit,
+  type ToolMatch,
 } from "./types";
 
 /**
  * An in-memory IntegrationProvider — the second implementation of the port (so
  * the contract test proves the interface isn't accidentally Composio-shaped),
- * and the double the host + the agent tool tests will run against in later
- * slices without touching a real provider.
+ * and the double the host + the agent tool tests run against without touching
+ * a real provider. Connections start pending (like a real OAuth hand-off) and
+ * are completed by the test via `completeConnection`.
  */
 export class FakeIntegrationProvider implements IntegrationProvider {
   readonly id: string;
   private readonly toolkits: Toolkit[];
   private readonly actions: ToolMatch[];
+  /** userId → that user's connections. */
   private readonly connections = new Map<string, Connection[]>();
-  private readonly pending = new Map<string, ProviderCredential>();
-  private readonly invalidKeys = new Set<string>();
+  private notReady = false;
+  /** Test helper: scoped calls throw like a signed-out gateway adapter. */
+  throwSigninRequired = false;
+  /** Test helper: search/execute throw a caller-provided provider error. */
+  throwSearchExecute?: Error;
+  /** Test helper: the acting context of the most recent search/execute call. */
+  lastActing: ActingContext | undefined;
   private seq = 0;
 
   constructor(
@@ -40,72 +45,67 @@ export class FakeIntegrationProvider implements IntegrationProvider {
     ];
   }
 
-  private userOf(cred: ProviderCredential): string {
-    return String(cred.data.user ?? cred.data.userId ?? cred.data.apiKey ?? "");
+  /** Test helper: make readiness report signin-required (gateway signed out). */
+  setNotReady(notReady = true): void {
+    this.notReady = notReady;
   }
 
-  /** Test helper: mark a credential's key invalid so verifyCredential returns null. */
-  invalidate(key: string): void {
-    this.invalidKeys.add(key);
+  /** Test helper: finish a started connect so the connection turns active. */
+  completeConnection(userId: string, connectionId: string): void {
+    const conn = (this.connections.get(userId) ?? []).find(
+      (c) => c.connectionId === connectionId,
+    );
+    if (conn) conn.status = "active";
   }
 
-  /** Test helper: finish a started login so the next pollLogin returns linked. */
-  completeLogin(pollKey: string, credential: ProviderCredential): void {
-    this.pending.set(pollKey, credential);
+  async readiness(): Promise<ProviderReadiness> {
+    return this.notReady ? { ready: false, reason: "signin" } : { ready: true };
   }
 
-  async startLogin(): Promise<LoginStart> {
-    const pollKey = `poll-${++this.seq}`;
-    return { loginUrl: `https://fake.local/login/${pollKey}`, pollKey };
-  }
-
-  async pollLogin(pollKey: string): Promise<LoginResult> {
-    const credential = this.pending.get(pollKey);
-    return credential
-      ? { status: "linked", credential }
-      : { status: "pending" };
-  }
-
-  async verifyCredential(
-    cred: ProviderCredential,
-  ): Promise<AccountIdentity | null> {
-    const key = String(cred.data.apiKey ?? this.userOf(cred));
-    if (this.invalidKeys.has(key)) return null;
-    return { accountId: this.userOf(cred) };
-  }
-
-  async listToolkits(_cred: ProviderCredential): Promise<Toolkit[]> {
+  async listToolkits(): Promise<Toolkit[]> {
     return [...this.toolkits];
   }
 
-  async listConnections(cred: ProviderCredential): Promise<Connection[]> {
-    return [...(this.connections.get(this.userOf(cred)) ?? [])];
+  async listConnections(userId: string): Promise<Connection[]> {
+    return (this.connections.get(userId) ?? []).map((c) => ({ ...c }));
   }
 
-  async connect(
-    cred: ProviderCredential,
-    toolkit: string,
-  ): Promise<ConnectStart> {
+  async connect(userId: string, toolkit: string): Promise<ConnectStart> {
     const connectionId = `conn-${++this.seq}`;
-    const user = this.userOf(cred);
-    const list = this.connections.get(user) ?? [];
-    list.push({ toolkit, connectionId, status: "active" });
-    this.connections.set(user, list);
+    const list = this.connections.get(userId) ?? [];
+    list.push({ toolkit, connectionId, status: "pending" });
+    this.connections.set(userId, list);
     return {
       redirectUrl: `https://fake.local/connect/${toolkit}/${connectionId}`,
       connectionId,
     };
   }
 
-  async disconnect(cred: ProviderCredential, toolkit: string): Promise<void> {
-    const user = this.userOf(cred);
+  async connection(
+    userId: string,
+    connectionId: string,
+  ): Promise<Connection | null> {
+    const conn = (this.connections.get(userId) ?? []).find(
+      (c) => c.connectionId === connectionId,
+    );
+    return conn ? { ...conn } : null;
+  }
+
+  async disconnect(userId: string, toolkit: string): Promise<void> {
     this.connections.set(
-      user,
-      (this.connections.get(user) ?? []).filter((c) => c.toolkit !== toolkit),
+      userId,
+      (this.connections.get(userId) ?? []).filter((c) => c.toolkit !== toolkit),
     );
   }
 
-  async search(_cred: ProviderCredential, query: string): Promise<ToolMatch[]> {
+  async search(
+    _userId: string,
+    query: string,
+    acting?: ActingContext,
+  ): Promise<ToolMatch[]> {
+    this.lastActing = acting;
+    if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
+    if (this.throwSearchExecute) throw this.throwSearchExecute;
     const q = query.toLowerCase();
     return this.actions.filter(
       (a) =>
@@ -115,10 +115,14 @@ export class FakeIntegrationProvider implements IntegrationProvider {
   }
 
   async execute(
-    _cred: ProviderCredential,
+    _userId: string,
     action: string,
     params: Record<string, unknown>,
+    acting?: ActingContext,
   ): Promise<ActionResult> {
+    this.lastActing = acting;
+    if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
+    if (this.throwSearchExecute) throw this.throwSearchExecute;
     return { successful: true, data: { action, params } };
   }
 }

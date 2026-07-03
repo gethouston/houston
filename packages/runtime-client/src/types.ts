@@ -25,6 +25,7 @@ export type {
   ToolCallRecord,
   WireEvent,
   WireEventType,
+  WireFrame,
 } from "@houston/protocol";
 
 /** The runtime's own conversation-core surface version (`GET /version`). */

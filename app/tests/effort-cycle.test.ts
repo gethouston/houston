@@ -2,12 +2,12 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { nextEffort } from "../src/lib/effort-cycle.ts";
 
-// Opus accepts all five; Codex stops at xhigh and has no max level.
+// Opus/Fable accept all five; Codex stops at xhigh (no max).
 const FIVE = ["low", "medium", "high", "xhigh", "max"] as const;
 const FOUR = ["low", "medium", "high", "xhigh"] as const;
 
 describe("nextEffort", () => {
-  it("advances to the next level from low through max", () => {
+  it("advances to the next level low → … → max", () => {
     strictEqual(nextEffort(FIVE, "low"), "medium");
     strictEqual(nextEffort(FIVE, "medium"), "high");
     strictEqual(nextEffort(FIVE, "high"), "xhigh");
@@ -16,7 +16,7 @@ describe("nextEffort", () => {
 
   it("wraps past the last level back to the first", () => {
     strictEqual(nextEffort(FIVE, "max"), "low");
-    strictEqual(nextEffort(FOUR, "xhigh"), "low");
+    strictEqual(nextEffort(FOUR, "xhigh"), "low"); // Codex tops out at xhigh
   });
 
   it("starts at the first level when current is unset", () => {
@@ -25,7 +25,8 @@ describe("nextEffort", () => {
     strictEqual(nextEffort(FIVE, ""), "low");
   });
 
-  it("starts at the first level when current is not in this model set", () => {
+  it("starts at the first level when current isn't in this model's set", () => {
+    // e.g. an agent carrying `max` after switching to a Codex model.
     strictEqual(nextEffort(FOUR, "max"), "low");
   });
 

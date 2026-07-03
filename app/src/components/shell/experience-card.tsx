@@ -13,18 +13,27 @@ export {
 
 interface AgentCardProps {
   config: AgentConfig;
+  /** Localized display name (falls back to `config.name`). */
+  title?: string;
+  /** Localized display description (falls back to `config.description`). */
+  description?: string;
   onSelect: (id: string) => void;
 }
 
-export function AgentCard({ config, onSelect }: AgentCardProps) {
+export function AgentCard({
+  config,
+  title,
+  description,
+  onSelect,
+}: AgentCardProps) {
   return (
     <SkillCard
       image={config.image}
       media={
         config.image ? undefined : <AgentAvatar config={config} size="md" />
       }
-      title={config.name}
-      description={config.description}
+      title={title ?? config.name}
+      description={description ?? config.description}
       className="min-h-[132px]"
       onClick={() => onSelect(config.id)}
     />

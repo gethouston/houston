@@ -14,7 +14,7 @@ import { routineModelPickerDefaults } from "./routines-tab-model";
  * configured default (read here via `useAgentConfig`), else the platform
  * default. Picking a model/effort pins it on the form; leaving it untouched
  * keeps the routine inheriting the agent's config at dispatch. The effort
- * control hides itself for models with no effort levels.
+ * control hides itself for models with no effort levels (e.g. Gemini).
  */
 export function RoutineModelControls({
   agentPath,

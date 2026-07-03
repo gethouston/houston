@@ -1,17 +1,15 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ConversationSummary } from "@houston/runtime-client";
 import type { Agent, Workspace } from "../domain/types";
-import type { WorkspaceCredential } from "../ports";
-import { CLOUD_PROVIDERS, isApiKeyProvider, providerName } from "../providers";
 import {
   conversationKey,
   json,
-  PROVIDER,
   prefixFor,
   readJson,
-  readSettings,
   type TurnDeps,
 } from "./deps";
+import { dispatchProviderRoutes } from "./dispatch-providers";
+import { serveConversationEvents } from "./events-route";
 import { startTurn } from "./start-turn";
 
 /**
@@ -27,6 +25,7 @@ export async function dispatchCloudrun(
   agent: Agent,
   method: string,
   rest: string,
+  url: URL,
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<void> {
@@ -78,59 +77,18 @@ export async function dispatchCloudrun(
     }
 
     // Subscribe to this conversation's live events. Mirrors the runtime's SSE
-    // contract exactly: a `sync` catch-up frame, then live frames, heartbeats.
+    // contract exactly: resumable, sequenced frames (see turn/events-route.ts).
+    // The agent id rides along so the route can run the dead-pump reaper
+    // against the agent's turn lease.
     if (method === "GET" && action === "events") {
-      res.writeHead(200, {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
-        "X-Accel-Buffering": "no",
-      });
-      res.write(": connected\n\n");
-      const key = `${agent.id}/${cid}`;
-      const send = (type: string, data: unknown) => {
-        if (!res.writableEnded)
-          res.write(`data: ${JSON.stringify({ type, data })}\n\n`);
-      };
-      // Subscribe FIRST (buffering), then read the snapshot, then flush the
-      // buffer through the (turnId, seq) watermark: frames the snapshot
-      // already folded in are dropped, frames it hasn't are delivered. No
-      // gap, no duplicates — even though the snapshot read is async.
-      let live = false;
-      let snapTurn = "";
-      let snapSeq = 0;
-      const buffered: {
-        e: import("@houston/runtime-client").WireEvent;
-        turnId: string;
-        seq: number;
-      }[] = [];
-      const deliver = (
-        e: { type: string; data: unknown },
-        turnId: string,
-        seq: number,
-      ) => {
-        if (turnId === snapTurn && seq <= snapSeq) return; // already in the sync frame
-        send(e.type, e.data);
-      };
-      const unsub = deps.relay.subscribe(key, (e, meta) => {
-        if (live) deliver(e, meta.turnId, meta.seq);
-        else buffered.push({ e, ...meta });
-      });
-      const snap = await deps.relay.snapshot(key);
-      snapTurn = snap.turnId;
-      snapSeq = snap.seq;
-      send("sync", snap.snapshot);
-      for (const b of buffered) deliver(b.e, b.turnId, b.seq);
-      live = true;
-      const heartbeat = setInterval(() => {
-        if (!res.writableEnded) res.write(": hb\n\n");
-      }, 15_000);
-      req.on("close", () => {
-        clearInterval(heartbeat);
-        unsub();
-        res.end();
-      });
-      return;
+      return serveConversationEvents(
+        deps.relay,
+        agent.id,
+        `${agent.id}/${cid}`,
+        url,
+        req,
+        res,
+      );
     }
 
     if (method === "POST" && action === "cancel") {
@@ -159,98 +117,9 @@ export async function dispatchCloudrun(
     }
   }
 
-  // Which cloud providers this workspace has connected, and the active one (the
-  // saved active provider if still connected, else the first connected).
-  const connectedCloud = async (): Promise<{
-    creds: Map<string, WorkspaceCredential | null>;
-    active: string | null;
-    settings: Awaited<ReturnType<typeof readSettings>>;
-  }> => {
-    const settings = await readSettings(deps, prefix);
-    const creds = new Map<string, WorkspaceCredential | null>();
-    for (const p of CLOUD_PROVIDERS)
-      creds.set(p.id, await deps.credentials.get(ws.id, p.id));
-    const active =
-      settings.activeProvider && creds.get(settings.activeProvider)
-        ? settings.activeProvider
-        : (CLOUD_PROVIDERS.find((p) => creds.get(p.id))?.id ?? null);
-    return { creds, active, settings };
-  };
-
-  if (method === "GET" && rest === "providers") {
-    const { creds, active, settings } = await connectedCloud();
-    return json(
-      res,
-      200,
-      CLOUD_PROVIDERS.map((p) => {
-        const models =
-          p.id === PROVIDER ? deps.codexModels : [...(p.models ?? [])];
-        return {
-          id: p.id,
-          name: p.name,
-          configured: !!creds.get(p.id),
-          isActive: p.id === active,
-          activeModel:
-            settings.models?.[p.id] ?? p.defaultModel ?? models[0] ?? "",
-          models,
-        };
-      }),
-    );
-  }
-
-  if (method === "PUT" && rest === "settings") {
-    const body = await readJson(req);
-    const settings = await readSettings(deps, prefix);
-    if (typeof body.activeProvider === "string")
-      settings.activeProvider = body.activeProvider;
-    if (typeof body.model === "string") {
-      const prov =
-        (typeof body.activeProvider === "string"
-          ? body.activeProvider
-          : settings.activeProvider) ?? PROVIDER;
-      settings.models = { ...settings.models, [prov]: body.model };
-    }
-    if (typeof body.effort === "string") settings.effort = body.effort;
-    await deps.vfs.writeText(
-      `${prefix}/data/settings.json`,
-      JSON.stringify(settings),
-    );
-    return json(res, 200, settings);
-  }
-
-  if (method === "GET" && rest === "auth/status") {
-    const { creds, active } = await connectedCloud();
-    // Only the OAuth providers have an in-flight device-code login state; the
-    // api-key gateways have none (the user pastes a key via the host route).
-    const login = await deps.connect.status(ws.id);
-    return json(res, 200, {
-      providers: CLOUD_PROVIDERS.map((p) => ({
-        provider: p.id,
-        name: p.name,
-        configured: !!creds.get(p.id),
-        login: p.id === PROVIDER ? login : null,
-      })),
-      activeProvider: active,
-    });
-  }
-
-  const auth = rest.match(/^auth\/([^/]+)\/(login|logout)$/);
-  if (auth && method === "POST") {
-    const pid = auth[1] ?? "";
-    if (auth[2] === "logout") {
-      await deps.credentials.remove(ws.id, pid);
-      return json(res, 200, { ok: true });
-    }
-    // OAuth sign-in is Codex-only in cloud (Anthropic is ToS-off). The api-key
-    // gateways connect through POST /agents/:id/credential/api-key, not here.
-    if (pid !== PROVIDER) {
-      return json(res, 400, {
-        error: isApiKeyProvider(pid)
-          ? `${providerName(pid)} connects with an API key, not OAuth sign-in`
-          : `cloud agents support only ${PROVIDER} sign-in`,
-      });
-    }
-    return json(res, 200, await deps.connect.start(ws.id));
+  // Providers, settings, auth status/login/logout (see dispatch-providers.ts).
+  if (await dispatchProviderRoutes(deps, ws, prefix, method, rest, req, res)) {
+    return;
   }
 
   return json(res, 404, { error: "not found" });

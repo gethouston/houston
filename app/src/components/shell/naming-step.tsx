@@ -12,6 +12,7 @@ import { ArrowLeft, Check, ChevronDown, FolderOpen } from "lucide-react";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { localizeCatalogCopy } from "../../agents/catalog-labels";
 import { getModel, getProvider, PROVIDERS } from "../../lib/providers";
 import { type ProviderStatus, tauriProvider } from "../../lib/tauri";
 import type { AgentDefinition } from "../../lib/types";
@@ -50,9 +51,12 @@ export function NamingStep({
   onBack,
   onSubmit,
 }: NamingStepProps) {
-  const { t } = useTranslation("shell");
+  const { t } = useTranslation(["shell", "agents"]);
   // Default to white on mount if none selected
   const resolvedColor = resolveAgentColor(color);
+  const selectedName = selectedAgent
+    ? localizeCatalogCopy(selectedAgent.config, t).name
+    : t("naming.newAgentFallback");
 
   useEffect(() => {
     if (!color) {
@@ -77,9 +81,7 @@ export function NamingStep({
         <HoustonAvatar color={resolvedColor} diameter={80} />
 
         <div className="text-center">
-          <p className="text-lg font-semibold">
-            {selectedAgent?.config.name ?? t("naming.newAgentFallback")}
-          </p>
+          <p className="text-lg font-semibold">{selectedName}</p>
           <p className="text-sm text-muted-foreground mt-1">
             {t("naming.tagline")}
           </p>
@@ -193,7 +195,7 @@ export function InlineModelSelector({
   model: string;
   onSelect: (provider: string, model: string) => void;
 }) {
-  const { t } = useTranslation("providers");
+  const { t } = useTranslation(["providers", "chat"]);
   const [statuses, setStatuses] = useState<Record<string, ProviderStatus>>({});
   const [open, setOpen] = useState(false);
 
@@ -285,7 +287,10 @@ export function InlineModelSelector({
                       <div className="min-w-0 flex-1">
                         <div className="text-sm">{m.label}</div>
                         <div className="text-xs text-muted-foreground leading-snug">
-                          {m.description}
+                          {t(
+                            `chat:modelSelector.modelDescriptions.${m.id.replace(/\./g, "_")}`,
+                            { defaultValue: m.description },
+                          )}
                         </div>
                       </div>
                     </button>

@@ -75,6 +75,45 @@ export interface Capabilities {
   providers: string[];
   openaiCompatible: boolean;
   integrations: string[];
+  /**
+   * Whether this deployment runs in multiplayer (paid org) mode: members,
+   * roles, per-agent assignment. Absent/false = single personal workspace.
+   * Optional so every existing single-player host/profile stays valid.
+   */
+  multiplayer?: boolean;
+  /** The current user's role in the org, when `multiplayer` is on. */
+  role?: OrgRole;
+}
+
+// ---------- Org / roles (multiplayer) ----------
+
+/**
+ * A member's authority inside a multiplayer org. `owner` is the billing/root
+ * seat, `admin` manages members + agents, `user` is a plain seat that can only
+ * use the agents assigned to them. Kept in sync (by hand) with the protocol
+ * `OrgRole` — the engine side is the source of truth.
+ */
+export type OrgRole = "owner" | "admin" | "user";
+
+/** One member of the current user's org. */
+export interface OrgMember {
+  userId: string;
+  /** The member's email, when the host exposes it to the caller. */
+  email?: string;
+  role: OrgRole;
+}
+
+/**
+ * The current user's org, with the caller's own role. `members` is populated
+ * only for callers allowed to see the roster (owner/admin); a plain `user`
+ * gets just the identity fields.
+ */
+export interface OrgInfo {
+  id: string;
+  slug: string;
+  name: string;
+  role: OrgRole;
+  members?: OrgMember[];
 }
 
 // ---------- Workspaces ----------
@@ -123,6 +162,18 @@ export interface Agent {
   color?: string;
   createdAt: string;
   lastOpenedAt?: string;
+  /**
+   * Multiplayer only: whether the CURRENT user has been assigned this agent
+   * (i.e. may use it). Absent in single-player mode, where every agent is the
+   * sole user's. The host computes this per-caller.
+   */
+  assigned?: boolean;
+  /**
+   * Multiplayer only: the org-member user ids this agent is assigned to.
+   * Empty means "everyone in the org". Absent in single-player mode. Only
+   * populated for callers who may manage assignments (owner/admin).
+   */
+  assignedUserIds?: string[];
 }
 
 export interface CreateAgent {
@@ -201,14 +252,19 @@ export interface Routine {
   suppress_when_silent: boolean;
   /** Whether each run reuses one chat or starts a fresh one. */
   chat_mode: RoutineChatMode;
+  /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */
+  integrations: string[];
   /** Provider id override (e.g. "anthropic", "openai"); absent means inherit the agent's provider. */
   provider?: string | null;
   /** Model override (e.g. "claude-opus-4-8", "gpt-5.5"); absent means inherit the agent's model. */
   model?: string | null;
   /** Reasoning-effort override (e.g. "high", "max"); absent means inherit the agent's effort. */
   effort?: string | null;
-  /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */
-  integrations: string[];
+  /**
+   * Multiplayer only: the org-member user id that created this routine. Absent
+   * in single-player mode. Surfaced so the UI can attribute automations.
+   */
+  created_by?: string;
   created_at: string;
   updated_at: string;
 }
@@ -222,14 +278,14 @@ export interface NewRoutine {
   suppress_when_silent?: boolean;
   /** Defaults to `"shared"` (one chat per routine) when omitted. */
   chat_mode?: RoutineChatMode;
+  /** Composio toolkit slugs this routine uses. */
+  integrations?: string[];
   /** Provider id to pin (e.g. "openai"); omit to inherit the agent's provider. */
   provider?: string | null;
   /** Model to pin (e.g. "gpt-5.5"); omit to inherit the agent's model. */
   model?: string | null;
   /** Reasoning effort to pin (e.g. "high"); omit to inherit the agent's effort. */
   effort?: string | null;
-  /** Composio toolkit slugs this routine uses. */
-  integrations?: string[];
 }
 
 export interface RoutineUpdate {
@@ -240,13 +296,13 @@ export interface RoutineUpdate {
   enabled?: boolean;
   suppress_when_silent?: boolean;
   chat_mode?: RoutineChatMode;
+  integrations?: string[];
   /** Provider id to pin (e.g. "openai"); omit or null to leave unchanged. */
   provider?: string | null;
   /** Model to pin (e.g. "gpt-5.5"); omit or null to leave unchanged. */
   model?: string | null;
   /** Reasoning effort to pin (e.g. "high"); omit or null to leave unchanged. */
   effort?: string | null;
-  integrations?: string[];
 }
 
 export type RoutineRunStatus =
@@ -586,6 +642,19 @@ export interface SessionStartRequest {
    * when there's an existing session to compact; ignored on the first turn.
    */
   compact?: boolean;
+  /**
+   * Set when the user switches this conversation to a DIFFERENT provider
+   * mid-stream. Provider CLI sessions are not portable, so the engine reseeds
+   * a fresh session on the new provider with prior context: the full
+   * transcript verbatim (`mode: "replay"`) when it fits the new model's
+   * window, or an AI summary (`mode: "summarize"`) when it does not.
+   * `fromProvider` is the provider being left. Takes precedence over
+   * `compact`; absent for normal turns.
+   */
+  providerSwitch?: {
+    mode: "replay" | "summarize";
+    fromProvider: string;
+  };
 }
 
 export interface SessionStartResponse {
@@ -599,6 +668,12 @@ export interface SessionCancelResponse {
 export interface ChatHistoryEntry {
   feed_type: string;
   data: unknown;
+  /**
+   * Multiplayer only (C5): who wrote a `user_message` entry, carried through to
+   * the ui/chat feed so a shared conversation attributes each teammate's bubble.
+   * Absent on every other feed type and in single-player mode.
+   */
+  author?: { userId: string; name?: string };
 }
 
 export interface SummarizeResult {
@@ -946,13 +1021,21 @@ export interface PortableInstalledAgent {
   requiredIntegrations: string[];
 }
 
-// ── integrations (Composio "for you") ────────────────────────────────────────
-// User-level: each user's own connected account, surfaced per-agent in the UI.
+// ── integrations (Composio, platform mode) ───────────────────────────────────
+// User-level: no provider account — the user only connects apps (Gmail, Slack…)
+// via OAuth; Houston's platform key lives server-side, keyed by the user's id.
 
 export interface IntegrationProviderStatus {
   provider: string;
-  connected: boolean;
-  account?: { accountId: string; email?: string };
+  /** False on desktop until the user signs in to Houston (gateway needs it). */
+  ready: boolean;
+  reason?: "signin";
+  /**
+   * Legacy "Composio for you" connections were found for this install: the
+   * user reconnects their apps once (framed as the security improvement it is
+   * — their personal long-lived key is no longer used anywhere).
+   */
+  reconnect?: boolean;
 }
 export interface IntegrationToolkit {
   slug: string;
@@ -966,9 +1049,6 @@ export interface IntegrationConnection {
   connectionId: string;
   status: "active" | "pending" | "error";
 }
-export type IntegrationLoginResult =
-  | { status: "pending" }
-  | { status: "linked"; account?: { accountId: string; email?: string } };
 
 // ── OpenAI-compatible (local) provider ───────────────────────────────────────
 // A local LLM server the user runs (Ollama / vLLM / LM Studio), connected by

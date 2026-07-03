@@ -21,6 +21,8 @@ Drift prevention: domain logic exists once in the host; adapters pass shared **c
 
 **Protocol v3** = v2 conversation core verbatim, nested under `/v1/agents/:id/conversations/*`, + domain families (workspaces, agents, files, skills, routines, activities, config, providers, preferences, portable, store) + global `/v1/events` channel carrying the existing HoustonEvent vocabulary (keeps `use-agent-invalidation.ts`). Types in `packages/protocol`. Frontend talks ONLY to the host, every deployment. `@houston-ai/engine-client` keeps its function surface, transport rewritten. `packages/web/src/engine-adapter/` (the v1-faking synthesizer) gets deleted.
 
+**Resumable conversation streams** (additive to v3): every conversation SSE frame carries a per-conversation monotonic `seq` (envelope + SSE `id:` line), and every turn-scoped frame a server-minted `turnId` — also persisted on the turn's user+assistant `ChatMessage`s and carried in `sync.data.turnId` for the running turn, so a client resyncing across a turn boundary can match history to a live turn and never splices another writer's turn (teammate, second tab, routine) into its own. The events route takes a resume cursor (`?after=` / `Last-Event-ID`) and replays missed in-flight frames gap-free from a bounded per-turn replay buffer, falling back to a `sync {resync: true}` that tells the client to refetch history. Contract + types in `packages/protocol/src/wire.ts`. The shared implementation is `packages/runtime-client`: `replay.ts` (ReplayLog — each stream's ONE sequencing authority; upstream seqs are never adopted), `stream-channel.ts` (StreamChannel — the append→reduce→fan-out→clear-on-terminal publish ordering, used by the runtime bus AND the host's turn relay), and `stitch.ts` (`serveResumableStream` — the subscribe-first connect/replay/resync stitch shared by both events routes; the seq dedupe covers only the initial flush, so a seq regression — e.g. an evicted/deleted conversation — never starves a live subscriber). Relay hardening: the bus dialect is versioned (`turn:ev2:`/`turn:snap2:`, `packages/host/src/turn/relay-dialect.ts`) so a mixed-version fleet never cross-feeds payload shapes; persisted snapshots parse defensively (garbage → resync); and a dead-pump reaper at subscribe time (`TurnRelay.reapIfDead`) terminates a turn whose snapshot says running while no replica holds the agent's lease — clients get a synthesized terminal `error` carrying the dead turn's `turnId` instead of a spinner stuck until the snapshot's TTL. Turns already ran server-side regardless of subscribers — this makes observing them survive disconnects (mobile, backgrounding, network switches) without truncation.
+
 ## Sub-docs (this directory)
 
 - `final-cutover.md` — the LAST gated step: delete the Rust `engine/` + flip the host to default. Not run by the autonomous finish pass; preconditions are the live parity gate + the packaged-app launch.
@@ -80,9 +82,9 @@ code. Artifacts + guide: `selfhost/` (Dockerfile, Caddy TLS compose, README).
 Replaced the legacy `always-on/` Rust-engine VPS image (now deleted). The host boot
 was verified on a clean-room per-package install; the image build itself wants a Docker host.
 
-## Managed hosted pod POC
+## Managed hosted pods
 
-The hosted K8s POC reuses the self-host shape, not a new runtime. The public repo
+Houston's managed cloud reuses the self-host shape, not a new runtime. The public repo
 builds `selfhost/Dockerfile --target engine-pod` (manually publishable via
 `.github/workflows/ts-engine-image.yml` to the multi-arch
 `ghcr.io/gethouston/houston-engine-pod` image): one open host process that
@@ -102,35 +104,69 @@ points at the gateway with a static bearer for service-token smoke tests) — se
 
 ## Host-sidecar release CI
 
-The Rust `release.yml` pipeline is untouched — it still builds the Rust engine on
-a `v*` tag. The host-sidecar release builds live in a SEPARATE, committed
-workflow, `.github/workflows/host-sidecar-release.yml`, so they can never perturb
-the releasable Rust path. It fires only off the critical path: a manual
-`workflow_dispatch` or a `host-v*` tag push (NOT `v*`), producing a draft release
-tagged `host-v<version>` (distinct namespace, no artifact collision).
+**Updated (HOU-628): the desktop release now builds the TS engine directly.**
+`.github/workflows/release.yml` (tag `v*`) was rewritten to bun-compile the host
+sidecar and build Tauri with `--features host-sidecar` + `VITE_NEW_ENGINE=1`,
+replacing the Rust `houston-engine` build + the codex/composio/git-bash CLI
+staging. `.github/workflows/engine-release.yml` (tag `engine-v*`) likewise now
+bun-compiles the **standalone** host binary (`houston-host-<triple>`) instead of
+the Rust engine. (The earlier plan kept `release.yml` on Rust and put the TS build
+in a separate `host-sidecar-release.yml` / `ts-engine-desktop-artifacts.yml`;
+those were never committed — the build logic they described now lives directly in
+`release.yml` + `engine-release.yml`.)
 
-For QA artifact pulls that should NOT create a release, use
-`.github/workflows/ts-engine-desktop-artifacts.yml`. It is manual-only,
-builds the same host-sidecar desktop path for macOS universal, Windows x64/arm64,
-and Linux x64, and uploads GitHub Actions artifacts (DMG/tar/sig, MSI/sig,
-AppImage, and `.deb`) without touching any release draft.
+**Cloud desktop channel (tag `cloud-v*`).** `release.yml` now drives TWO channels
+from one pipeline: `v*` = the LOCAL build (host sidecar / connection chooser,
+unchanged) and `cloud-v*` = a CLOUD build that bakes the managed gateway URL in
+from the `HOSTED_ENGINE_URL` **secret** (never a literal) as
+`VITE_HOSTED_ENGINE_URL` + `VITE_HOSTED_ENGINE_AUTH=oauth`, so `resolveEngine` →
+`hosted-oauth` and the user just signs in with Google — no URL to enter. Every
+cloud-specific line is gated on `startsWith(github.ref_name, 'cloud-')`, so a `v*`
+build is byte-identical to before. The cloud channel repoints the in-app updater
+at a distinct `latest-cloud.json` manifest (`scripts/ci/point-updater-at-cloud-manifest.sh`,
+Node-based so it runs on windows-11-arm too) so a cloud app can never auto-update
+into a local build (dropping the baked gateway) or vice-versa. Cloud releases are
+also created as **prereleases** so they can never become GitHub's "latest release"
+(which is the newest NON-prerelease) and shadow the local channel's baked
+`…/releases/latest/download/latest.json` endpoint — otherwise the first published
+cloud release would 404 every installed local app's auto-updater. The desktop
+hosted path itself is unchanged app code (`app/src/lib/engine-mode.ts`,
+`knowledge-base/auth.md`); this is purely the CI that ships it. Known non-blocking
+follow-ups: the packaged app still spawns an idle host sidecar in hosted mode
+(`lib.rs` `host_mode` reads runtime env, which is empty in a packaged app — an
+`option_env!` check would let it skip the spawn); and cloud auto-update itself is
+not wired up yet — because cloud releases are prereleases, the cloud app's
+`…/releases/latest/download/latest-cloud.json` endpoint resolves to the latest
+non-prerelease (a local release) and 404s, so cloud is effectively download-only
+until a fixed-tag / channel-pinned updater endpoint exists (the manifest isolation
+here is the foundation for that).
 
-Three platform jobs, all bun-compiling the host via the one parameterized
+This is a CI-only cutover: it flips what the RELEASE ships to the TS engine, but
+the app's build DEFAULTS are untouched (a plain `pnpm tauri build` still builds the
+Rust engine; the `app/vite.config.ts` + `app/src-tauri/Cargo.toml` defaults are
+unchanged), so `engine/` stays as the instant-rollback oracle. Flipping the
+defaults + deleting `engine/` remain the gated final cutover
+(`convergence/final-cutover.md`). A manual-only QA-artifacts workflow — the
+`.github/actions/build-ts-engine-desktop-artifact` composite action + `scripts/ci/`
+prepare helpers already exist for it — can upload GitHub Actions artifacts without
+cutting a release; it is not wired into a top-level workflow yet.
+
+The platform jobs all bun-compile the host via the one parameterized
 `scripts/build-host-sidecar.sh <triple>` (no second compile path to drift):
 
 - **macOS** — universal (arm64 + x86_64, lipo'd from two per-arch bun-compiles),
-  signed + notarized + stapled with the SAME Apple secrets + steps as
-  `release.yml::build-macos` (DMG re-sign, notarize-with-retry, full signing-chain
-  verification, sidecar Developer-ID + hardened-runtime asserts), uploaded.
+  signed + notarized + stapled with the SAME Apple secrets + steps as before (DMG
+  re-sign, notarize-with-retry, full signing-chain verification, sidecar
+  Developer-ID + hardened-runtime asserts), uploaded to the draft release.
 - **Windows** — MSI per arch (x86_64 + aarch64 matrix), updater-key signed (`.sig`
-  emitted), uploaded. None of `release.yml`'s codex/composio/git-bash CLI staging:
-  pi runs providers in-process, so the host carries no CLIs.
-- **Linux** — the platform `release.yml` never builds (its `tauri.conf.json`
-  `bundle.targets` are app/dmg/msi only). The CLI-free host makes a Linux DESKTOP
-  build viable for the first time: x86_64 AppImage + `.deb` via tauri-action's
-  `--bundles deb,appimage` (passed on the CLI, so the default config stays
-  untouched), uploaded. The job also boots the bare host binary (`--verify` →
-  curls `/v1/capabilities`), which is the same binary the `selfhost/` server runs.
+  emitted), uploaded. None of the old codex/composio/git-bash CLI staging: pi runs
+  providers in-process, so the host carries no CLIs.
+- **Linux** — NEW: the CLI-free host makes a Linux DESKTOP build viable for the
+  first time. x86_64 AppImage via tauri-action's `--bundles appimage` (passed on
+  the CLI, so `tauri.conf.json`'s app/dmg/msi targets stay untouched), uploaded to
+  the draft (UNSIGNED, download-only — not in `latest.json`; `.deb` intentionally
+  not built). The job also boots the bare host binary (`--verify` → curls
+  `/v1/capabilities`), which is the same binary the `selfhost/` server runs.
 
 `build.rs::stage_host_sidecar` (the `host-sidecar` cargo feature) stages the
 compiled host at the SAME `binaries/houston-engine-<triple>` externalBin name the
@@ -142,7 +178,8 @@ path — it runs the host from Node/pnpm source, not this compiled sidecar.
 ## Standing decisions
 
 - API-key providers — **OpenCode Zen + Go, OpenRouter, DeepSeek, Google Gemini, Amazon Bedrock, and MiniMax global** (reversing the earlier "Gemini dropped"). pi ships `opencode`/`opencode-go`/`openrouter`/`deepseek`/`google`/`amazon-bedrock`/`minimax` as built-in in-process providers (OpenAI-compatible gateways + native DeepSeek + native Google + Bedrock Converse Stream + MiniMax Anthropic-compatible global API; intentionally not `minimax-cn`), so no provider engine is needed — only an API-key credential path threaded through the stack: pi `AuthStorage` `{type:"api_key"}` creds; the host `WorkspaceCredential` gains `kind` (api-key = no refresh, `expiresAt:0` sentinel — no Postgres migration, Pg derives `kind` on read); `refreshCredential`/`isExpiring` no-op for api-key; `POST /agents/:id/credential/api-key` + `RuntimeChannel.saveApiKeyCredential` (ProxyChannel stores centrally AND pushes to the standing runtime for instant status; TurnChannel stores centrally, served per-turn); the per-turn `syncServedCredential` now syncs ALL providers. Connect = paste a key in `ProviderApiKeyDialog`, with a one-click "Get your API key" button opening the provider's key page (OpenCode `opencode.ai/auth`, OpenRouter `settings/keys`, DeepSeek `platform.deepseek.com/api_keys`, AI Studio `apikey`, Bedrock console `api-keys`, MiniMax `platform.minimax.io`). Bedrock's pasted key is a Bedrock bearer token; `packages/runtime/src/ai/bedrock.ts` maps pi-coding-agent's generic `apiKey` option to pi-ai's provider-specific `bearerToken` option before each request. **New-engine only**: the catalog gates these behind `newEngineActive()` (the adapter sets `window.__HOUSTON_NEW_ENGINE__`), so the legacy Rust build never shows them. Reasoning effort flows via the settings bridge (`configWriteToSettings` → `setSettings` → `activeEffort`), with per-model `effortLevels` in the catalog (DeepSeek direct reaches `xhigh`; Gemini caps at `high`; MiniMax caps at `high`; OpenRouter Claude/DeepSeek reach `xhigh`; Bedrock Claude reaches `xhigh`). OpenRouter/DeepSeek/Gemini/Bedrock/MiniMax stay local-only until cloud egress is allowlisted. **OpenRouter OAuth-PKCE** (the no-paste path) is a deferred follow-on (needs an https callback on :443/:3000, web-profile-only).
-- Composio: **kept, re-wired** (reversed the earlier "cut"). pi has no MCP, but its one extension point — custom tools — is enough: a generic `integration_search`/`integration_execute` pi tool calls Composio's hosted v3 REST API in-process. **No bundled CLI** (the old per-arch binary is gone). Credential model = each user's OWN free "Composio for you" account (per-user `x-user-api-key`), NOT a Houston platform key; the user's key is held host-side and execution is proxied through the host (`/sandbox/integrations`), so the long-lived key never sits in the agent runtime. Behind an `IntegrationProvider` **port** (`packages/host/src/integrations/`) so a second provider slots in later. **All deployments** (capability flag, not a fork → no drift). Build phases: (a) port + Composio adapter + registry + fake **[done — `integrations/`, 14 tests]**; (b) host module (per-user key store + `/sandbox/integrations` proxy + login via `@composio/client.createSession` + connect/OAuth routes); (c) the pi tool; (d) Integrations UI + repoint the onboarding "try" demo at the tool.
+- Composio: **kept, re-wired, PLATFORM mode** (reversed twice: first the "cut", then the "Composio for you" per-user-account model). pi has no MCP, but its one extension point — custom tools — is enough: a generic `integration_search`/`integration_execute` pi tool calls Composio's hosted v3 REST API in-process. **No bundled CLI**, **no SDK** (raw fetch), **no per-user Composio account**: Houston holds ONE Composio project key (`x-api-key`, env `COMPOSIO_API_KEY` — never a literal, never in a client binary) and each Houston user is a plain Composio `user_id`. Users never see Composio — they only OAuth the app itself (connect = `POST /api/v3.1/connected_accounts/link` → real `redirect_url`; the legacy initiate endpoint is retired for managed OAuth as of 2026-07). Auth configs are get-or-created per toolkit on Composio-managed auth (no per-toolkit dashboard step; switching to Houston's own Google OAuth app later is dashboard-side only). Key custody per profile: **cloud host** = direct adapter with the env key, `user_id` = verified Supabase `sub`; **desktop** = `RemoteIntegrationProvider` gateway that forwards every call to the cloud host's `/v1/integrations/*` with the user's Supabase session (frontend keeps it fresh via `PUT /v1/integrations/session`; `HOUSTON_INTEGRATIONS_URL` points the sidecar at the gateway), so connections follow the user across desktop/cloud and no key ever ships; **self-host/managed pod** = the operator's own `COMPOSIO_API_KEY`, direct. There is NO per-user integration credential store anymore (the Pg table + `integrations.json` stores are deleted; a leftover `integrations.json` only triggers the one-time "reconnect your apps" security-upgrade notice). Behind the `IntegrationProvider` **port** (`packages/host/src/integrations/`) so a second provider slots in later. **All deployments** (capability flag reflects what's actually configured, not a fork → no drift). Execution stays proxied (`/sandbox/integrations`) — the agent runtime never holds any integration secret. Remaining loose end: the dead onboarding email-mission copy (`tutorial-system-prompt.ts`) still describes the legacy `composio` CLI demo — the phase-(d) repoint of the "try" demo is still open.
+- Multiplayer (paid cloud) — **orgs, 3 roles, per-agent assignment, per-(user, agent) integration grants, acting-as identity**. Contracts: `convergence/contracts/C1..C5` (mirrored in the private gateway repo, which ENFORCES all of it — the open repo only carries the plumbing + UI). Roles: `owner` / `admin` (creates agents, assigns agents they have) / `user` (uses assigned agents only). The gateway (private `cloud` repo) owns the Composio platform key, serves `/v1/integrations/*` itself, and is the sole policy enforcer: per-(user, agent) toolkit **grants** filter `integration_search` and 403 ungranted `integration_execute`; the **acting user** is whoever is driving the turn — the gateway mints a per-dispatch `x-houston-acting-as` HMAC token, the runtime holds it per-turn (AsyncLocalStorage) and echoes it on `/sandbox/integrations/*`, so John's turns act as John and Sarah's as Sarah on the same agent; routines act as their stored `created_by` via the pod-token path. Open-repo pieces (all optional-field/no-drift: single-player is byte-identical): `ActingContext` on the `IntegrationProvider` port + `RemoteIntegrationProvider` auth modes, routine `created_by`, `ChatMessage.author` + `[From: name]` model framing only in multi-author threads, `Capabilities.multiplayer`/`role` gating ALL org UI (members management, assignment toggles, create-agent hidden for `user`, grant switches in the per-agent Integrations tab). OSS/self-host never sees any of it.
 - GitHub Copilot — **subscription OAuth provider** (`github-copilot`), new-engine + LOCAL only. pi-ai already ships it built-in (KnownProvider + the `githubCopilotOAuthProvider` in its OAuth registry), so adding it is registry entries only — runtime `PROVIDERS` (`packages/runtime/src/ai/providers.ts`), host catalog (`packages/host/src/providers.ts`), protocol `ProviderId`, the frontend catalog + logo, and the `synthetic.ts` `toNewProvider` id passthrough (same id both sides). The ONE bit of logic: Copilot's pi-ai login is a GitHub **device-code** flow that OPENS with an optional "GitHub Enterprise URL/domain" `onPrompt` *before* the device code — left unanswered it deadlocks, so `login.ts` `autoPromptAnswer(provider, enterpriseDomain?)` answers it programmatically (the company domain for Enterprise, or `""` ⇒ github.com for individual). Curated models proxy Claude/GPT/Gemini under one sub; their context windows are the FIXED gateway-served values (no plan-gated snap-up). Cloud stays off (egress sandbox doesn't allowlist `githubcopilot.com`).
 - GitHub Copilot **Enterprise** (GHE) — Copilot a company provides. pi has exactly ONE `github-copilot` provider/credential slot, so Enterprise is NOT a separate provider OR a separate card: the **single** Copilot card's connect opens a small **Personal vs Company** dialog (`provider-copilot-connect-dialog.tsx`, driven by `useCopilotConnect`). Company collects the firm's GitHub domain and threads it as a non-secret **`enterpriseUrl`** through the whole credential path (login `onPrompt` → runtime auth.json `PiCred` → export/capture → host `WorkspaceCredential` → serve → central **refresh**, which then hits `api.<domain>/copilot_internal/v2/token` instead of github.com); pi's `modifyModels` derives the enterprise API base URL from the token's `proxy-ep` automatically. Personal passes no domain (⇒ github.com). Because it's one card + one credential slot, the frontend needs no per-card status disambiguation or enterprise-aware connect poll — the backend never sees the plan choice, only `enterpriseDomain` on login + `enterpriseUrl` on the credential.
 - OpenAI-compatible local models (`openai-compatible`) — **any local LLM server the user runs** (Ollama, vLLM, LM Studio, LiteLLM…), connected by a **base URL + model id** (+ optional key). LOCAL profile ONLY: the URL is the user's own machine, unreachable from a cloud runtime or pod. Unlike the api-key gateways this is NOT a pi KnownProvider, so there's no catalog — the runtime hand-builds a `Model<"openai-completions">` (`packages/runtime/src/ai/openai-compatible.ts`, the same wire format the OpenCode/OpenRouter gateways use) and persists the endpoint to its own `custom-endpoint.json`; the optional key goes in `auth.json` as pi's `api_key` variant — **a placeholder (`houston-local`) for keyless servers**, since pi requires *some* key to resolve a request, and pi resolves it by `model.provider` (== the auth-store key). New pieces, all gated so they never reach a cloud surface: a third `ProviderAuthMethod` `"openaiCompatible"`; a `Capabilities.openaiCompatible` flag (local `true` / cloud `false`); a `CustomEndpoint` protocol type; `POST /providers/openai-compatible` on the runtime + `POST /agents/:id/provider/openai-compatible` on the host (gated on the capability — the hard refusal for ALL cloud variants incl. standing pods); and `RuntimeChannel.saveCustomEndpoint` — ProxyChannel forwards to the standing runtime, TurnChannel rejects (defense-in-depth). Frontend: a dedicated `OpenAiCompatibleDialog` (base URL + model + optional name/key), gated to `newEngine && desktop` (`getVisibleProviders`); the model is dynamic so the static catalog has none and the chat picker surfaces the engine-reported model (`providerStatus.activeModel` → `pickerModelRows`). **Known follow-up (pre-existing, tracked separately):** on desktop the agent's in-process `bash` inherits `HOUSTON_RUNTIME_TOKEN`, so a prompt-injected agent could self-call any loopback runtime route (incl. this one) to redirect model egress — scrub secrets from the bash child env / never trust an empty loopback token.

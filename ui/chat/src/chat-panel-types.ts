@@ -67,6 +67,8 @@ export interface ChatPanelProps {
   canSendEmpty?: boolean;
   status?: ChatStatus;
   thinkingIndicator?: ReactNode;
+  /** Static glyph shown after the agent's reply once the turn settles
+   *  (e.g. a non-blinking Houston helmet). Opt-in per surface. */
   endOfTurnIndicator?: ReactNode;
   transformContent?: (content: string) => {
     content: string;
@@ -89,4 +91,11 @@ export interface ChatPanelProps {
   renderLink?: ChatMessagesProps["renderLink"];
   composerOverride?: ReactNode;
   composerLabels?: ChatComposerLabels;
+  /**
+   * Multiplayer only (C5): the signed-in viewer's user id, so the panel can tell
+   * the viewer's own bubbles from teammates'. Absent in single-player mode.
+   */
+  currentUserId?: ChatMessagesProps["currentUserId"];
+  /** Localized author-attribution labels. See `ChatAuthorLabels`. */
+  authorLabels?: ChatMessagesProps["authorLabels"];
 }

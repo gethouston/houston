@@ -17,7 +17,7 @@ we will not take.
    **notarized packaged `.app`** (see `convergence/packaged-app-launch.md`), with a real
    provider, including the migrated-conversation recall rows and the force-quit/no-orphan row.
 2. The host-sidecar release builds are produced + launched on macOS, Windows, and Linux
-   (`.github/workflows/host-sidecar-release.yml`).
+   (`.github/workflows/release.yml` — since HOU-628 it builds the TS host sidecar directly on `v*`).
 3. The migration gate is confirmed on the real `~/.houston` (already verified on a copy —
    `convergence/migration-gate.md`; re-confirm on the live machine).
 
@@ -37,8 +37,11 @@ Make `VITE_NEW_ENGINE` / the host-sidecar the DEFAULT (not flag-gated):
   host path is behind the flag — `app/vite.config.ts`, `app/src/lib/engine.ts`).
 - `app/src-tauri`: make `host-sidecar` the default cargo feature (today it is opt-in;
   `app/src-tauri/Cargo.toml`), and the supervisor spawns the host sidecar unconditionally.
-- `release.yml`: build the app with the host sidecar (as `host-sidecar-release.yml` does),
-  retire the Rust-engine sidecar staging.
+- `release.yml`: **DONE (HOU-628)** — it already builds the app with the host sidecar
+  (`--features host-sidecar` + `VITE_NEW_ENGINE=1`), and the Rust-engine + codex/composio/
+  git-bash CLI staging is retired. `engine-release.yml` bun-compiles the standalone TS host
+  too. What remains here are the two DEFAULT flips above, so that a plain `pnpm tauri build`
+  (no flags) also builds the host.
 
 ## Step 3 — delete the legacy Rust + CLI surface
 
@@ -47,7 +50,9 @@ Only after Steps 1–2 and a green build:
 - The CLI-bundling pipeline: `scripts/fetch-cli-deps.sh`, the `build.rs` engine/CLI staging,
   `cli-deps.json`, the claude-installer + per-arch Composio CLI fetch.
 - Gemini legacy (only in `engine/` + the legacy `ui/engine-client` v1 client — both go here).
-- `.github/workflows/engine-release.yml` (the standalone Rust engine release).
+- `.github/workflows/engine-release.yml` — no longer builds the Rust engine (HOU-628 rewired
+  it to bun-compile the standalone TS host binary `houston-host-<triple>`). Keep it if you
+  still want a bare-host release artifact; drop it only if nothing consumes it.
 - The legacy `ui/engine-client` v1 transport (the app's v3 path uses the QA'd adapter; once
   the Rust default is gone, the v1 client has no consumer — see `convergence/follow-ups.md`
   for the cleaner consolidation).

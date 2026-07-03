@@ -45,8 +45,11 @@ export const LOCAL_CAPABILITIES: Capabilities = {
   providers: [...HOSTED_PROVIDERS],
   // The user's own machine can reach a local LLM server (Ollama/vLLM/LM Studio).
   openaiCompatible: true,
-  // Composio ("for you" — each user's own free account) works in every
-  // deployment; the same host code, gated on this flag, not a fork.
+  // Composio (platform model) works in every deployment; the same host code,
+  // gated on this flag, not a fork. This is the NOMINAL list — each wiring
+  // point overrides it with the providers actually configured (desktop needs
+  // the gateway URL, cloud/self-host the platform key), so an unconfigured
+  // deployment honestly serves [].
   integrations: ["composio"],
 };
 

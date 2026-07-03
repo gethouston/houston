@@ -10,7 +10,7 @@
  * One method per REST route. DTOs mirror `engine/houston-engine-core`.
  */
 
-import { planAttachmentUploadBatches } from "./attachments";
+import { planAttachmentUploadBatches } from "./attachments.ts";
 import type {
   Activity,
   ActivityUpdate,
@@ -44,12 +44,13 @@ import type {
   InstallFromGithub,
   InstallFromRepoRequest,
   IntegrationConnection,
-  IntegrationLoginResult,
   IntegrationProviderStatus,
   IntegrationToolkit,
   ListWorktreesRequest,
   NewActivity,
   NewRoutine,
+  OrgInfo,
+  OrgRole,
   PairingCode,
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
@@ -88,18 +89,95 @@ import type {
   Workspace,
   WorkspaceContext,
   WorktreeInfo,
-} from "./types";
+} from "./types.ts";
+
+/**
+ * Transport retry tuning. Defaults target the desktop loopback sidecar +
+ * mobile reverse-tunnel; tests override with tiny delays for determinism.
+ */
+export interface RetryConfig {
+  /** Hard cap on total attempts (initial + retries). */
+  maxAttempts: number;
+  /** First backoff in ms, doubled each retry up to `maxDelayMs`. */
+  baseDelayMs: number;
+  /** Per-wait backoff ceiling in ms. */
+  maxDelayMs: number;
+  /** Overall wall-clock budget in ms; once exceeded we stop retrying. */
+  deadlineMs: number;
+}
+
+const DEFAULT_RETRY: RetryConfig = {
+  maxAttempts: 8,
+  baseDelayMs: 200,
+  maxDelayMs: 2_000,
+  deadlineMs: 10_000,
+};
+
+/** 502/504 (gateway) + 503 (unavailable) — the mobile reverse-tunnel path
+ *  can surface these while the far end is restarting. The desktop loopback
+ *  engine never returns them, so this only matters for tunneled clients. */
+const RETRYABLE_STATUS = new Set([502, 503, 504]);
+
+/** Methods safe to replay after a SERVER response (a mutation may have
+ *  partially run). A thrown network error is handled separately and IS safe
+ *  to replay for any method — see `HoustonClient.send`. */
+function isIdempotentMethod(method: string): boolean {
+  return (
+    method === "GET" ||
+    method === "HEAD" ||
+    method === "PUT" ||
+    method === "DELETE" ||
+    method === "OPTIONS"
+  );
+}
+
+function isAbortError(err: unknown): boolean {
+  return err instanceof Error && err.name === "AbortError";
+}
+
+function makeAbortError(): Error {
+  if (typeof DOMException !== "undefined") {
+    return new DOMException("The operation was aborted.", "AbortError");
+  }
+  const e = new Error("The operation was aborted.");
+  e.name = "AbortError";
+  return e;
+}
 
 export interface HoustonClientOptions {
   baseUrl: string;
   token: string;
+  /** Override transport retry tuning (tests, latency-sensitive hosts). */
+  retry?: Partial<RetryConfig>;
+  /** Injectable `fetch` for tests / non-browser hosts. Defaults to global `fetch`. */
+  fetchImpl?: typeof fetch;
 }
 
 export class HoustonClient {
-  private readonly baseUrl: string;
-  private readonly token: string;
+  // Mutable so the desktop supervisor can repoint us at a fresh
+  // `{baseUrl, token}` when it restarts a crashed engine on a NEW random port
+  // (HOU-432) — without every cached client reference going stale. In-flight
+  // retries re-read these on each attempt, so they recover transparently.
+  private baseUrl: string;
+  private token: string;
+  private readonly retryConfig: RetryConfig;
+  private readonly fetchImpl: typeof fetch;
 
   constructor(opts: HoustonClientOptions) {
+    this.baseUrl = opts.baseUrl.replace(/\/$/, "");
+    this.token = opts.token;
+    this.retryConfig = { ...DEFAULT_RETRY, ...opts.retry };
+    this.fetchImpl = opts.fetchImpl ?? ((input, init) => fetch(input, init));
+  }
+
+  /**
+   * Point this client at a new engine endpoint in place. The desktop app
+   * calls this when the supervisor respawns the engine on a fresh port so
+   * requests already mid-flight (and every hook holding this instance)
+   * recover on their next retry instead of hammering the dead port. See
+   * `app/src/lib/engine.ts`.
+   */
+  setEndpoint(opts: { baseUrl: string; token: string }): void {
     this.baseUrl = opts.baseUrl.replace(/\/$/, "");
     this.token = opts.token;
   }
@@ -112,25 +190,38 @@ export class HoustonClient {
     body?: unknown,
     query?: Record<string, string | undefined>,
     signal?: AbortSignal,
+    retryable?: boolean,
   ): Promise<T> {
-    let url = `${this.baseUrl}/v1${path}`;
-    if (query) {
-      const q = new URLSearchParams();
-      for (const [k, v] of Object.entries(query)) {
-        if (v !== undefined && v !== null) q.set(k, v);
-      }
-      const s = q.toString();
-      if (s) url += `?${s}`;
-    }
-    const res = await fetch(url, {
-      method,
-      headers: {
-        Authorization: `Bearer ${this.token}`,
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+    const res = await this.send(
+      () => {
+        let url = `${this.baseUrl}/v1${path}`;
+        if (query) {
+          const q = new URLSearchParams();
+          for (const [k, v] of Object.entries(query)) {
+            if (v !== undefined && v !== null) q.set(k, v);
+          }
+          const s = q.toString();
+          if (s) url += `?${s}`;
+        }
+        return {
+          url,
+          init: {
+            method,
+            headers: {
+              Authorization: `Bearer ${this.token}`,
+              ...(body !== undefined
+                ? { "Content-Type": "application/json" }
+                : {}),
+            },
+            body: body !== undefined ? JSON.stringify(body) : undefined,
+          },
+        };
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      // Idempotent methods replay safely; a POST only replays when the caller
+      // explicitly marks it read-only (see `replaySafe` doc on `send`).
+      retryable ?? isIdempotentMethod(method),
       signal,
-    });
+    );
     if (!res.ok) {
       throw await this.toError(res);
     }
@@ -146,15 +237,21 @@ export class HoustonClient {
     body?: BodyInit,
     contentType?: string,
   ): Promise<T> {
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.token}`,
-    };
-    if (contentType) headers["Content-Type"] = contentType;
-    const res = await fetch(`${this.baseUrl}/v1${path}`, {
-      method,
-      headers,
-      body,
-    });
+    const res = await this.send(
+      () => {
+        const headers: Record<string, string> = {
+          Authorization: `Bearer ${this.token}`,
+        };
+        if (contentType) headers["Content-Type"] = contentType;
+        return {
+          url: `${this.baseUrl}/v1${path}`,
+          init: { method, headers, body },
+        };
+      },
+      // Attachment uploads are PUTs to a keyed URL (idempotent); the only
+      // non-idempotent rawRequest is the import-preview POST, which stays off.
+      isIdempotentMethod(method),
+    );
     if (!res.ok) {
       throw await this.toError(res);
     }
@@ -162,6 +259,116 @@ export class HoustonClient {
       return undefined as T;
     }
     return (await res.json()) as T;
+  }
+
+  /**
+   * Single retrying fetch path shared by every request. `build` is invoked
+   * once per attempt so retries pick up the CURRENT endpoint + token (the
+   * supervisor may have swapped them via `setEndpoint` after an engine
+   * restart). This is the core of the HOU-432 fix: a localhost sidecar that
+   * WebKit drops under burst load, or that the supervisor restarts on a new
+   * port, would otherwise surface a bare `TypeError: Load failed` to the user.
+   *
+   * Retry is gated on `replaySafe` because `fetch` CANNOT distinguish "the
+   * request never reached the engine" from "the engine ran it, but the
+   * response was lost" — both surface as a thrown `TypeError`. Replaying the
+   * latter double-executes a side effect (e.g. `startSession` spawns the chat
+   * turn before it flushes its 200, with no server-side dedup → a duplicate
+   * agent turn + double provider billing). So:
+   *
+   *   - `replaySafe` is true for idempotent HTTP methods (GET/HEAD/PUT/DELETE/
+   *     OPTIONS) and for the curated read-only POSTs that mark themselves
+   *     (`readAgentFile`, `listConversations`, …). For these, a thrown
+   *     `TypeError` AND a 502/503/504 response are retried.
+   *   - Mutating POSTs (`startSession`, `create*`, `install*`, …) are
+   *     `replaySafe: false` and never auto-retried — a real failure surfaces
+   *     immediately so the user can re-issue the action deliberately.
+   *   - `AbortError` (caller cancelled) is never retried, and any failure that
+   *     races a cancellation is normalized to an `AbortError` so the app's
+   *     "abort suppresses the toast" contract holds.
+   *
+   * Bounded by `maxAttempts` AND a wall-clock `deadlineMs`; on exhaustion the
+   * last error / response propagates so the UI still surfaces a real failure
+   * toast — no silent swallowing.
+   */
+  private async send(
+    build: () => { url: string; init: RequestInit },
+    replaySafe: boolean,
+    signal?: AbortSignal,
+  ): Promise<Response> {
+    const { maxAttempts, deadlineMs } = this.retryConfig;
+    const start = Date.now();
+    let attempt = 0;
+    for (;;) {
+      if (signal?.aborted) throw makeAbortError();
+      attempt += 1;
+      const { url, init } = build();
+      const remaining = () => deadlineMs - (Date.now() - start);
+      const canRetryAgain = () =>
+        replaySafe && attempt < maxAttempts && remaining() > 0;
+      try {
+        const res = await this.fetchImpl(url, { ...init, signal });
+        if (res.ok) return res;
+        if (RETRYABLE_STATUS.has(res.status) && canRetryAgain()) {
+          await this.backoff(attempt, remaining(), signal);
+          continue;
+        }
+        // A non-ok response we won't retry: if the caller cancelled in the
+        // meantime, report the cancellation rather than the stale status.
+        if (signal?.aborted) throw makeAbortError();
+        return res;
+      } catch (err) {
+        // Caller cancelled — surface as AbortError (the app suppresses those),
+        // even if the underlying rejection was a racing transport TypeError.
+        if (signal?.aborted) throw makeAbortError();
+        if (isAbortError(err)) throw err;
+        // `fetch` reports every transport failure as a TypeError; that's our
+        // retry signal for replay-safe requests.
+        if (err instanceof TypeError && canRetryAgain()) {
+          await this.backoff(attempt, remaining(), signal);
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
+  /**
+   * Full-jitter exponential backoff, abortable via `signal` and clamped to the
+   * remaining deadline budget so a late wait can't overshoot it. Assumes the
+   * request body is re-readable (JSON string / File / Blob / typed array) —
+   * never use a one-shot streaming body on a replay-safe request.
+   */
+  private backoff(
+    attempt: number,
+    remainingMs: number,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const { baseDelayMs, maxDelayMs } = this.retryConfig;
+    const ceil = Math.min(
+      maxDelayMs,
+      baseDelayMs * 2 ** (attempt - 1),
+      Math.max(0, remainingMs),
+    );
+    const delay = Math.random() * ceil;
+    return new Promise<void>((resolve, reject) => {
+      const onAbort = () => {
+        clearTimeout(timer);
+        reject(makeAbortError());
+      };
+      const timer = setTimeout(() => {
+        signal?.removeEventListener("abort", onAbort);
+        resolve();
+      }, delay);
+      if (signal) {
+        if (signal.aborted) {
+          clearTimeout(timer);
+          reject(makeAbortError());
+          return;
+        }
+        signal.addEventListener("abort", onAbort, { once: true });
+      }
+    });
   }
 
   private async toError(res: Response): Promise<HoustonEngineError> {
@@ -274,10 +481,15 @@ export class HoustonClient {
   // ---------- agent files (typed .houston data) ----------
 
   readAgentFile(agentPath: string, relPath: string): Promise<string> {
-    return this.request<{ content: string }>("POST", "/agents/files/read", {
-      agent_path: agentPath,
-      rel_path: relPath,
-    }).then((r) => r.content);
+    // Read-only POST → replay-safe (this is the route that dominated HOU-432).
+    return this.request<{ content: string }>(
+      "POST",
+      "/agents/files/read",
+      { agent_path: agentPath, rel_path: relPath },
+      undefined,
+      undefined,
+      true,
+    ).then((r) => r.content);
   }
   writeAgentFile(
     agentPath: string,
@@ -309,13 +521,14 @@ export class HoustonClient {
     });
   }
   readProjectFile(agentPath: string, relPath: string): Promise<string> {
+    // Read-only POST → replay-safe.
     return this.request<{ content: string }>(
       "POST",
       "/agents/files/read-project",
-      {
-        agent_path: agentPath,
-        rel_path: relPath,
-      },
+      { agent_path: agentPath, rel_path: relPath },
+      undefined,
+      undefined,
+      true,
     ).then((r) => r.content);
   }
   /** Raw bytes of a project file (binary-safe) plus its served MIME type. */
@@ -324,9 +537,18 @@ export class HoustonClient {
     relPath: string,
   ): Promise<{ blob: Blob; contentType: string }> {
     const q = new URLSearchParams({ agent_path: agentPath, rel_path: relPath });
-    const res = await fetch(`${this.baseUrl}/v1/agents/files/download?${q}`, {
-      headers: { Authorization: `Bearer ${this.token}` },
-    });
+    // GET → replay-safe; route through `send` so it inherits retries + the
+    // injectable `fetchImpl` like every other request (HOU-432 parity).
+    const res = await this.send(
+      () => ({
+        url: `${this.baseUrl}/v1/agents/files/download?${q}`,
+        init: {
+          method: "GET",
+          headers: { Authorization: `Bearer ${this.token}` },
+        },
+      }),
+      true,
+    );
     if (!res.ok) {
       throw await this.toError(res);
     }
@@ -392,81 +614,6 @@ export class HoustonClient {
       agent_path: agentPath,
     });
   }
-
-  // ---- integrations (Composio "for you") — v3 host only ----
-  // The Rust engine has no /v1/integrations routes; the UI gates these on the
-  // control-plane build (engine-mode), so on the legacy wire they never run.
-  // Kept here so the shared app typechecks against both clients (shim parity).
-  async integrationStatus(): Promise<IntegrationProviderStatus[]> {
-    return (
-      await this.request<{ items: IntegrationProviderStatus[] }>(
-        "GET",
-        "/integrations",
-      )
-    ).items;
-  }
-  startIntegrationLogin(
-    provider: string,
-  ): Promise<{ loginUrl: string; pollKey: string }> {
-    return this.request(
-      "POST",
-      `/integrations/${encodeURIComponent(provider)}/login/start`,
-    );
-  }
-  pollIntegrationLogin(
-    provider: string,
-    pollKey: string,
-  ): Promise<IntegrationLoginResult> {
-    return this.request(
-      "POST",
-      `/integrations/${encodeURIComponent(provider)}/login/poll`,
-      { pollKey },
-    );
-  }
-  async integrationToolkits(provider: string): Promise<IntegrationToolkit[]> {
-    return (
-      await this.request<{ items: IntegrationToolkit[] }>(
-        "GET",
-        `/integrations/${encodeURIComponent(provider)}/toolkits`,
-      )
-    ).items;
-  }
-  async integrationConnections(
-    provider: string,
-  ): Promise<IntegrationConnection[]> {
-    return (
-      await this.request<{ items: IntegrationConnection[] }>(
-        "GET",
-        `/integrations/${encodeURIComponent(provider)}/connections`,
-      )
-    ).items;
-  }
-  connectIntegration(
-    provider: string,
-    toolkit: string,
-  ): Promise<{ redirectUrl: string }> {
-    return this.request(
-      "POST",
-      `/integrations/${encodeURIComponent(provider)}/connect`,
-      { toolkit },
-    );
-  }
-  async disconnectIntegration(
-    provider: string,
-    toolkit: string,
-  ): Promise<void> {
-    await this.request(
-      "POST",
-      `/integrations/${encodeURIComponent(provider)}/disconnect`,
-      { toolkit },
-    );
-  }
-  async logoutIntegration(provider: string): Promise<void> {
-    await this.request(
-      "POST",
-      `/integrations/${encodeURIComponent(provider)}/logout`,
-    );
-  }
   createActivity(agentPath: string, input: NewActivity): Promise<Activity> {
     return this.request("POST", "/agents/activities", input, {
       agent_path: agentPath,
@@ -497,55 +644,52 @@ export class HoustonClient {
     );
   }
 
-  // ---------- agents: routines ----------
+  // ---------- routines ----------
+  //
+  // CRUD lives on the canonical `/routines` + `/routine-runs` surface (the
+  // scheduler, dispatcher, and run-now/cancel all share it). These methods use
+  // the `agentPath` / `routineId` camelCase query params that surface expects.
 
   listRoutines(agentPath: string): Promise<Routine[]> {
-    return this.request("GET", "/agents/routines", undefined, {
-      agent_path: agentPath,
-    });
+    return this.request("GET", "/routines", undefined, { agentPath });
   }
   createRoutine(agentPath: string, input: NewRoutine): Promise<Routine> {
-    return this.request("POST", "/agents/routines", input, {
-      agent_path: agentPath,
-    });
+    return this.request("POST", "/routines", input, { agentPath });
   }
   updateRoutine(
     agentPath: string,
     id: string,
     updates: RoutineUpdate,
   ): Promise<Routine> {
-    return this.request("PATCH", `/agents/routines/${this.seg(id)}`, updates, {
-      agent_path: agentPath,
+    return this.request("PATCH", `/routines/${this.seg(id)}`, updates, {
+      agentPath,
     });
   }
   deleteRoutine(agentPath: string, id: string): Promise<void> {
-    return this.request(
-      "DELETE",
-      `/agents/routines/${this.seg(id)}`,
-      undefined,
-      {
-        agent_path: agentPath,
-      },
-    );
+    return this.request("DELETE", `/routines/${this.seg(id)}`, undefined, {
+      agentPath,
+    });
   }
 
-  // ---------- agents: routine runs ----------
+  // ---------- routine runs ----------
 
   listRoutineRuns(
     agentPath: string,
     routineId?: string,
   ): Promise<RoutineRun[]> {
-    return this.request("GET", "/agents/routine-runs", undefined, {
-      agent_path: agentPath,
-      routine_id: routineId,
+    return this.request("GET", "/routine-runs", undefined, {
+      agentPath,
+      routineId,
     });
   }
   createRoutineRun(agentPath: string, routineId: string): Promise<RoutineRun> {
     return this.request(
       "POST",
-      "/agents/routine-runs",
-      { routine_id: routineId },
-      { agent_path: agentPath },
+      `/routines/${this.seg(routineId)}/runs`,
+      undefined,
+      {
+        agentPath,
+      },
     );
   }
   updateRoutineRun(
@@ -553,14 +697,9 @@ export class HoustonClient {
     id: string,
     updates: RoutineRunUpdate,
   ): Promise<RoutineRun> {
-    return this.request(
-      "PATCH",
-      `/agents/routine-runs/${this.seg(id)}`,
-      updates,
-      {
-        agent_path: agentPath,
-      },
-    );
+    return this.request("PATCH", `/routine-runs/${this.seg(id)}`, updates, {
+      agentPath,
+    });
   }
 
   // ---------- agents: config ----------
@@ -588,10 +727,26 @@ export class HoustonClient {
   // ---------- conversations ----------
 
   listConversations(agentPath: string): Promise<ConversationEntry[]> {
-    return this.request("POST", "/conversations/list", { agentPath });
+    // Read-only POST → replay-safe.
+    return this.request(
+      "POST",
+      "/conversations/list",
+      { agentPath },
+      undefined,
+      undefined,
+      true,
+    );
   }
   listAllConversations(agentPaths: string[]): Promise<ConversationEntry[]> {
-    return this.request("POST", "/conversations/list-all", { agentPaths });
+    // Read-only POST → replay-safe.
+    return this.request(
+      "POST",
+      "/conversations/list-all",
+      { agentPaths },
+      undefined,
+      undefined,
+      true,
+    );
   }
 
   // ---------- skills ----------
@@ -619,21 +774,25 @@ export class HoustonClient {
     query: string,
     signal?: AbortSignal,
   ): Promise<CommunitySkill[]> {
+    // Read-only search POST → replay-safe.
     return this.request(
       "POST",
       "/skills/community/search",
       { query },
       undefined,
       signal,
+      true,
     );
   }
   popularCommunitySkills(signal?: AbortSignal): Promise<CommunitySkill[]> {
+    // Read-only POST → replay-safe.
     return this.request(
       "POST",
       "/skills/community/popular",
       undefined,
       undefined,
       signal,
+      true,
     );
   }
   installCommunitySkill(
@@ -652,12 +811,14 @@ export class HoustonClient {
     source: string,
     signal?: AbortSignal,
   ): Promise<RepoSkill[]> {
+    // Read-only listing POST → replay-safe.
     return this.request(
       "POST",
       "/skills/repo/list",
       { source },
       undefined,
       signal,
+      true,
     );
   }
   installSkillsFromRepo(
@@ -690,14 +851,15 @@ export class HoustonClient {
    * for remote engines that can't receive the CLI's `localhost` OAuth
    * callback. It's ignored by providers without a device flow, and the
    * co-located desktop app omits it to keep the browser-loopback login.
+   *
+   * `opts.enterpriseDomain` (GitHub Copilot Enterprise) only matters on the
+   * new TS engine, where the control-plane adapter overrides this method; the
+   * legacy Rust path has no Copilot provider, so it's passed through harmlessly.
    */
   providerLogin(
     name: string,
     opts?: { deviceAuth?: boolean; enterpriseDomain?: string },
   ): Promise<void> {
-    // `enterpriseDomain` (GitHub Copilot Enterprise) only matters on the new TS
-    // engine, where the control-plane adapter overrides this method; the legacy
-    // Rust path has no Copilot provider, so it's passed through harmlessly.
     const query: Record<string, string> = {};
     if (opts?.deviceAuth) query.deviceAuth = "true";
     if (opts?.enterpriseDomain) query.enterpriseDomain = opts.enterpriseDomain;
@@ -779,6 +941,139 @@ export class HoustonClient {
   // app identity and writes its own credential files. Same shape as
   // `claude auth login --claudeai` and `codex login`.
 
+  // ---------- integrations (Composio platform mode) — v3 host only ----------
+  //
+  // The Rust engine has no /v1/integrations routes; the UI gates these on the
+  // control-plane build (engine-mode), so on the legacy wire they never run.
+  // Kept here so the shared app typechecks against both clients (shim parity).
+
+  async integrationStatus(): Promise<IntegrationProviderStatus[]> {
+    return (
+      await this.request<{ items: IntegrationProviderStatus[] }>(
+        "GET",
+        "/integrations",
+      )
+    ).items;
+  }
+  /** Keep the desktop gateway's Supabase session fresh (null on sign-out). */
+  async setIntegrationSession(token: string | null): Promise<void> {
+    await this.request("PUT", "/integrations/session", { token });
+  }
+  async integrationToolkits(provider: string): Promise<IntegrationToolkit[]> {
+    return (
+      await this.request<{ items: IntegrationToolkit[] }>(
+        "GET",
+        `/integrations/${this.seg(provider)}/toolkits`,
+      )
+    ).items;
+  }
+  async integrationConnections(
+    provider: string,
+  ): Promise<IntegrationConnection[]> {
+    return (
+      await this.request<{ items: IntegrationConnection[] }>(
+        "GET",
+        `/integrations/${this.seg(provider)}/connections`,
+      )
+    ).items;
+  }
+  connectIntegration(
+    provider: string,
+    toolkit: string,
+  ): Promise<{ redirectUrl: string; connectionId: string }> {
+    return this.request("POST", `/integrations/${this.seg(provider)}/connect`, {
+      toolkit,
+    });
+  }
+  /** Poll one connection after connect() until the OAuth finishes. */
+  integrationConnection(
+    provider: string,
+    connectionId: string,
+  ): Promise<IntegrationConnection> {
+    return this.request(
+      "GET",
+      `/integrations/${this.seg(provider)}/connections/${this.seg(connectionId)}`,
+    );
+  }
+  async disconnectIntegration(
+    provider: string,
+    toolkit: string,
+  ): Promise<void> {
+    await this.request(
+      "POST",
+      `/integrations/${this.seg(provider)}/disconnect`,
+      { toolkit },
+    );
+  }
+  /**
+   * Dismiss the "reconnect your apps" notice by deleting the legacy
+   * credentials server-side; afterwards `integrationStatus()` reports no
+   * `reconnect` flag.
+   */
+  async dismissIntegrationsReconnectNotice(): Promise<void> {
+    await this.request("POST", "/integrations/reconnect-notice/dismiss");
+  }
+
+  // ---------- org / roles (multiplayer) — v3 host only ----------
+  //
+  // The Rust engine has no /v1/org routes; multiplayer is a hosted-gateway
+  // feature, so on the legacy wire these never run. Kept here so the shared app
+  // typechecks against both clients (shim parity), same as integrations above.
+
+  /** The current user's org + role (and, for owner/admin, the member roster). */
+  getOrg(): Promise<OrgInfo> {
+    return this.request("GET", "/org");
+  }
+  /** Invite a member by email at a role. Owner/admin only (enforced by the host). */
+  async addOrgMember(email: string, role: OrgRole): Promise<void> {
+    await this.request("POST", "/org/members", { email, role });
+  }
+  /** Remove a member from the org. */
+  async removeOrgMember(userId: string): Promise<void> {
+    await this.request("DELETE", `/org/members/${this.seg(userId)}`);
+  }
+  /** Change a member's role. */
+  async setOrgMemberRole(userId: string, role: OrgRole): Promise<void> {
+    await this.request("PATCH", `/org/members/${this.seg(userId)}`, { role });
+  }
+
+  // ---------- per-agent assignments + integration grants (multiplayer) ----------
+
+  /**
+   * Set which org members may use this agent. Empty `userIds` means "everyone".
+   * Owner/admin only.
+   */
+  async setAgentAssignments(
+    agentSlugOrId: string,
+    userIds: string[],
+  ): Promise<void> {
+    await this.request(
+      "PUT",
+      `/agents/${this.seg(agentSlugOrId)}/assignments`,
+      { userIds },
+    );
+  }
+  /** The integration toolkit slugs granted to this agent. */
+  async agentIntegrationGrants(agentSlugOrId: string): Promise<string[]> {
+    return (
+      await this.request<{ toolkits: string[] }>(
+        "GET",
+        `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
+      )
+    ).toolkits;
+  }
+  /** Replace the integration toolkit slugs granted to this agent. */
+  async setAgentIntegrationGrants(
+    agentSlugOrId: string,
+    toolkits: string[],
+  ): Promise<void> {
+    await this.request(
+      "PUT",
+      `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
+      { toolkits },
+    );
+  }
+
   // ---------- store ----------
 
   storeCatalog(): Promise<StoreListing[]> {
@@ -797,7 +1092,15 @@ export class HoustonClient {
     return this.request("POST", "/agents/install-from-github", req);
   }
   checkAgentUpdates(): Promise<string[]> {
-    return this.request("POST", "/agents/check-updates");
+    // Read-only update check POST → replay-safe.
+    return this.request(
+      "POST",
+      "/agents/check-updates",
+      undefined,
+      undefined,
+      undefined,
+      true,
+    );
   }
 
   // ---------- attachments ----------
@@ -873,7 +1176,15 @@ export class HoustonClient {
     return this.request("POST", "/worktrees", req);
   }
   listWorktrees(req: ListWorktreesRequest): Promise<WorktreeInfo[]> {
-    return this.request("POST", "/worktrees/list", req);
+    // Read-only listing POST → replay-safe.
+    return this.request(
+      "POST",
+      "/worktrees/list",
+      req,
+      undefined,
+      undefined,
+      true,
+    );
   }
   removeWorktree(req: RemoveWorktreeRequest): Promise<void> {
     return this.request("POST", "/worktrees/remove", req);
@@ -931,9 +1242,17 @@ export class HoustonClient {
       { sessionKey },
     );
   }
+  /**
+   * `opts.observe` (default true) is consumed by the new-engine adapter, where
+   * opening a chat also attaches a passive observer stream: bulk history reads
+   * (mission search, board scans) pass `false` so N loads don't spawn N
+   * streams. The Rust engine's WS delivers everything already — here the flag
+   * is accepted for signature parity and ignored.
+   */
   loadChatHistory(
     agentPath: string,
     sessionKey: string,
+    _opts: { observe?: boolean } = {},
   ): Promise<ChatHistoryEntry[]> {
     return this.request(
       "GET",
@@ -1104,16 +1423,21 @@ export class HoustonClient {
     agentPath: string,
     req: PortableExportRequest,
   ): Promise<ArrayBuffer> {
-    const res = await fetch(
-      `${this.baseUrl}/v1/agents/portable/package?agentPath=${encodeURIComponent(agentPath)}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-          "Content-Type": "application/json",
+    const res = await this.send(
+      () => ({
+        url: `${this.baseUrl}/v1/agents/portable/package?agentPath=${encodeURIComponent(
+          agentPath,
+        )}`,
+        init: {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(req),
         },
-        body: JSON.stringify(req),
-      },
+      }),
+      false, // heavy export POST — re-issue on the user's command, don't auto-replay
     );
     if (!res.ok) throw await this.toError(res);
     return await res.arrayBuffer();
@@ -1152,11 +1476,13 @@ export class HoustonClient {
 }
 
 export class HoustonEngineError extends Error {
-  constructor(
-    public status: number,
-    public body: ErrorBody | null,
-  ) {
+  status: number;
+  body: ErrorBody | null;
+
+  constructor(status: number, body: ErrorBody | null) {
     super(body?.error.message ?? `Engine error ${status}`);
+    this.status = status;
+    this.body = body;
     this.name = "HoustonEngineError";
   }
 

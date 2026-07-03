@@ -7,6 +7,8 @@ mod engine_supervisor;
 mod houston_prompt;
 mod logging;
 mod notification;
+mod oauth_loopback;
+mod window_focus;
 
 use engine_supervisor::{
     resolve_engine_binary, spawn_supervisor, EngineHandshake, SupervisorCallbacks,
@@ -73,6 +75,53 @@ impl SupervisorCallbacks for TauriSupervisorCallbacks {
     }
 }
 
+/// Truthy check for the `SENTRY_SEND_IN_DEV` opt-in. Accepts `1`, `true`,
+/// `yes`, `on` (any case, surrounding whitespace ignored); everything else
+/// (including unset) is off. Pure for testability.
+fn sentry_send_in_dev_enabled(raw: Option<&str>) -> bool {
+    matches!(
+        raw.map(|v| v.trim().to_ascii_lowercase()).as_deref(),
+        Some("1" | "true" | "yes" | "on")
+    )
+}
+
+/// Whether to activate Sentry. Needs a DSN, and in a debug build only when the
+/// `SENTRY_SEND_IN_DEV` opt-in is set — a HARD gate (no client at all), not the
+/// soft `environment: development` tag, so dev errors never reach the prod
+/// `houston-app` project. Pure for testability.
+fn sentry_should_activate(dsn_empty: bool, debug: bool, send_in_dev: bool) -> bool {
+    !dsn_empty && (!debug || send_in_dev)
+}
+
+/// Build the Sentry env vars to inject into the engine subprocess. EMPTY when
+/// Sentry is inactive, so the engine stays a silent no-op — the "app injects NO
+/// DSN → engine dormant" contract (the supervisor additionally strips any
+/// inherited SENTRY_* so this is the engine's only source). When active, always
+/// forwards DSN/RELEASE/ENVIRONMENT so engine events share the app's project +
+/// release; additionally forwards `SENTRY_SEND_IN_DEV=1` when the app opted into
+/// dev sending, so a debug engine sidecar's own dev gate (`main::init_sentry`)
+/// agrees instead of self-suppressing. Pure for testability.
+fn engine_sentry_env(
+    active: bool,
+    send_in_dev: bool,
+    dsn: &str,
+    release: &str,
+    environment: &str,
+) -> Vec<(String, String)> {
+    if !active {
+        return Vec::new();
+    }
+    let mut env = vec![
+        ("SENTRY_DSN".to_string(), dsn.to_string()),
+        ("SENTRY_RELEASE".to_string(), release.to_string()),
+        ("SENTRY_ENVIRONMENT".to_string(), environment.to_string()),
+    ];
+    if send_in_dev {
+        env.push(("SENTRY_SEND_IN_DEV".to_string(), "1".to_string()));
+    }
+    env
+}
+
 pub fn run() {
     // First-launch DMG guard (macOS only). If we were double-clicked from
     // inside the installer DMG (path under /Volumes/…), show a native
@@ -117,7 +166,17 @@ pub fn run() {
     } else {
         "production"
     };
-    let _sentry_client = if sentry_dsn.is_empty() {
+    // Dev builds suppress Sentry unless SENTRY_SEND_IN_DEV is set, so a dev
+    // running with the prod DSN exported doesn't pollute the prod project
+    // (HOU-469). `option_env!` reads it at compile time, matching SENTRY_DSN.
+    let sentry_send_in_dev =
+        sentry_send_in_dev_enabled(option_env!("SENTRY_SEND_IN_DEV"));
+    let sentry_active = sentry_should_activate(
+        sentry_dsn.is_empty(),
+        cfg!(debug_assertions),
+        sentry_send_in_dev,
+    );
+    let _sentry_client = if !sentry_active {
         None
     } else {
         Some(sentry::init((
@@ -160,11 +219,7 @@ pub fn run() {
                 tracing::info!(
                     "[single-instance] secondary launch routed to primary"
                 );
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.unminimize();
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
+                window_focus::bring_to_front(app);
             },
         ));
     }
@@ -188,7 +243,18 @@ pub fn run() {
                 let handle = app.handle().clone();
                 app.deep_link().on_open_url(move |event| {
                     for url in event.urls() {
-                        auth::emit_deep_link(&handle, url.as_str());
+                        // Any deep link brings Houston forward — e.g. the
+                        // "Open Houston" button on the sign-in success page
+                        // (`houston://open`), or the `houston://auth-callback`
+                        // fallback when the loopback couldn't bind.
+                        window_focus::bring_to_front(&handle);
+                        // Only the OAuth callback carries a code/error for the
+                        // webview to exchange; a bare `houston://open` is
+                        // focus-only (routing it through the auth path would
+                        // surface a spurious "missing authorization code").
+                        if url.host_str() == Some("auth-callback") {
+                            auth::emit_deep_link(&handle, url.as_str());
+                        }
                     }
                 });
             }
@@ -266,6 +332,8 @@ pub fn run() {
                 spawn_host_sidecar(
                     app,
                     &houston,
+                    sentry_active,
+                    sentry_send_in_dev,
                     sentry_dsn,
                     &sentry_release,
                     sentry_environment,
@@ -274,6 +342,8 @@ pub fn run() {
                 spawn_rust_engine(
                     app,
                     &houston,
+                    sentry_active,
+                    sentry_send_in_dev,
                     sentry_dsn,
                     &sentry_release,
                     sentry_environment,
@@ -327,6 +397,13 @@ pub fn run() {
             auth::auth_get_item,
             auth::auth_set_item,
             auth::auth_remove_item,
+            // One-shot loopback listener for the Google OAuth redirect —
+            // keeps desktop sign-in on the user's machine (no website relay,
+            // no custom-scheme dialog).
+            oauth_loopback::start_oauth_loopback,
+            // Pull the app to the foreground when a flow finishes in the
+            // browser (e.g. a Composio integration connection landing).
+            window_focus::focus_main_window,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -335,11 +412,7 @@ pub fn run() {
                 // App-level activation (cmd+tab, dock click, etc.)
                 tauri::RunEvent::Resumed => {
                     tracing::info!("[app] RunEvent::Resumed — bringing window to front");
-                    if let Some(window) = app_handle.get_webview_window("main") {
-                        let _ = window.show();
-                        let _ = window.unminimize();
-                        let _ = window.set_focus();
-                    }
+                    window_focus::bring_to_front(app_handle);
                     let _ = app_handle.emit("app-activated", ());
                 }
                 tauri::RunEvent::WindowEvent {
@@ -372,6 +445,8 @@ pub fn run() {
 fn spawn_rust_engine(
     app: &tauri::App,
     houston: &std::path::Path,
+    sentry_active: bool,
+    sentry_send_in_dev: bool,
     sentry_dsn: &str,
     sentry_release: &str,
     sentry_environment: &str,
@@ -433,14 +508,18 @@ fn spawn_rust_engine(
     // Hand our Sentry config to the engine subprocess so engine-side
     // panics + `tracing::error!` land in the SAME Sentry project, under
     // the SAME release, tagged `runtime=engine` (the engine reads these
-    // in `main::init_sentry`). Gated on the app actually having a DSN so
-    // forks / dev builds inject nothing and the engine stays a silent
-    // no-op. The engine debug files CI uploads then become useful.
-    if !sentry_dsn.is_empty() {
-        engine_env.push(("SENTRY_DSN".into(), sentry_dsn.to_string()));
-        engine_env.push(("SENTRY_RELEASE".into(), sentry_release.to_string()));
-        engine_env.push(("SENTRY_ENVIRONMENT".into(), sentry_environment.to_string()));
-    }
+    // in `main::init_sentry`). Gated on the same `sentry_active`
+    // decision as the app's own client, so forks / dev builds (without
+    // the SENTRY_SEND_IN_DEV opt-in) inject nothing and the engine
+    // stays a silent no-op. The engine debug files CI uploads then
+    // become useful.
+    engine_env.extend(engine_sentry_env(
+        sentry_active,
+        sentry_send_in_dev,
+        sentry_dsn,
+        sentry_release,
+        sentry_environment,
+    ));
     // 30s banner timeout: first-run Gatekeeper scan on a notarized
     // sidecar can take 15–20s on slow machines.
     let slot = spawn_supervisor(binary, Duration::from_secs(30), engine_env, cb)
@@ -526,6 +605,8 @@ fn spawn_rust_engine(
 fn spawn_host_sidecar(
     app: &tauri::App,
     houston: &std::path::Path,
+    sentry_active: bool,
+    sentry_send_in_dev: bool,
     sentry_dsn: &str,
     sentry_release: &str,
     sentry_environment: &str,
@@ -559,14 +640,39 @@ fn spawn_host_sidecar(
             houston_prompt::system_prompt(),
         ),
     ];
-    // Same Sentry-forwarding contract as the engine path, so host-side crashes
-    // land in the shared project under the same release. The host treats these
-    // as opaque if it has no Sentry wiring yet — harmless.
-    if !sentry_dsn.is_empty() {
-        host_env.push(("SENTRY_DSN".into(), sentry_dsn.to_string()));
-        host_env.push(("SENTRY_RELEASE".into(), sentry_release.to_string()));
-        host_env.push(("SENTRY_ENVIRONMENT".into(), sentry_environment.to_string()));
+    // Integrations gateway (platform-mode Composio): Houston's cloud host owns
+    // the platform key; this desktop host only forwards with the user's
+    // Supabase session. Runtime env wins (dev override), else the compile-time
+    // URL CI bakes in. No URL → the host runs with integrations off. The URL
+    // is configuration, not a secret; the KEY never appears here at all.
+    if let Some(url) = std::env::var("HOUSTON_INTEGRATIONS_URL")
+        .ok()
+        .filter(|v| !v.is_empty())
+        .or_else(|| option_env!("HOUSTON_INTEGRATIONS_URL").map(str::to_string))
+        .filter(|v| !v.is_empty())
+    {
+        host_env.push(("HOUSTON_INTEGRATIONS_URL".into(), url));
     }
+    // Dev/self-host escape hatch: a locally-exported platform key makes the
+    // host call Composio directly (packages/host/src/local/main.ts). Never
+    // baked at compile time — a shared key must not ship in a client binary.
+    if let Ok(key) = std::env::var("COMPOSIO_API_KEY") {
+        if !key.is_empty() {
+            host_env.push(("COMPOSIO_API_KEY".into(), key));
+        }
+    }
+    // Same Sentry-forwarding contract as the engine path, gated on the same
+    // `sentry_active` decision (and forwarding the SENTRY_SEND_IN_DEV opt-in),
+    // so host-side crashes land in the shared project under the same release
+    // and dev builds without the opt-in inject nothing. The host treats these
+    // as opaque if it has no Sentry wiring yet — harmless.
+    host_env.extend(engine_sentry_env(
+        sentry_active,
+        sentry_send_in_dev,
+        sentry_dsn,
+        sentry_release,
+        sentry_environment,
+    ));
 
     let cb: Arc<TauriSupervisorCallbacks> = Arc::new(TauriSupervisorCallbacks {
         handle: app.handle().clone(),
@@ -744,5 +850,82 @@ fn migrate_legacy_docs_dir(houston: &std::path::Path) {
             legacy.display(),
             new_root.display()
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{engine_sentry_env, sentry_send_in_dev_enabled, sentry_should_activate};
+
+    #[test]
+    fn send_in_dev_flag_off_by_default() {
+        // Unset / blank / unrecognized → never opt in.
+        assert!(!sentry_send_in_dev_enabled(None));
+        assert!(!sentry_send_in_dev_enabled(Some("")));
+        assert!(!sentry_send_in_dev_enabled(Some("   ")));
+        assert!(!sentry_send_in_dev_enabled(Some("0")));
+        assert!(!sentry_send_in_dev_enabled(Some("false")));
+    }
+
+    #[test]
+    fn send_in_dev_flag_accepts_truthy_values() {
+        for v in ["1", "true", "yes", "on", "TRUE", " On ", "Yes"] {
+            assert!(sentry_send_in_dev_enabled(Some(v)), "expected {v} → true");
+        }
+    }
+
+    #[test]
+    fn sentry_inactive_without_dsn() {
+        // No DSN → never active, regardless of build profile or opt-in.
+        assert!(!sentry_should_activate(true, false, false));
+        assert!(!sentry_should_activate(true, true, true));
+    }
+
+    #[test]
+    fn sentry_active_in_release_with_dsn() {
+        // Release build (debug = false) with a DSN → active; opt-in irrelevant.
+        assert!(sentry_should_activate(false, false, false));
+        assert!(sentry_should_activate(false, false, true));
+    }
+
+    #[test]
+    fn sentry_suppressed_in_dev_unless_opted_in() {
+        // Debug build with a DSN: suppressed by default, active only with opt-in.
+        assert!(!sentry_should_activate(false, true, false));
+        assert!(sentry_should_activate(false, true, true));
+    }
+
+    #[test]
+    fn engine_sentry_env_empty_when_inactive() {
+        // Inactive → inject NOTHING, so the engine stays dormant. The opt-in
+        // flag must NOT leak through when Sentry is off.
+        assert!(engine_sentry_env(false, false, "dsn", "rel", "production").is_empty());
+        assert!(engine_sentry_env(false, true, "dsn", "rel", "development").is_empty());
+    }
+
+    #[test]
+    fn engine_sentry_env_forwards_core_three_when_active() {
+        let env = engine_sentry_env(true, false, "https://dsn", "houston-app@1.2.3", "production");
+        assert_eq!(
+            env,
+            vec![
+                ("SENTRY_DSN".to_string(), "https://dsn".to_string()),
+                ("SENTRY_RELEASE".to_string(), "houston-app@1.2.3".to_string()),
+                ("SENTRY_ENVIRONMENT".to_string(), "production".to_string()),
+            ]
+        );
+        // No opt-in flag unless the app itself opted in.
+        assert!(!env.iter().any(|(k, _)| k == "SENTRY_SEND_IN_DEV"));
+    }
+
+    #[test]
+    fn engine_sentry_env_forwards_send_in_dev_when_opted_in() {
+        // The symmetric invariant: opting in injects the DSN AND the flag, so
+        // the debug engine sidecar's own dev gate agrees instead of suppressing.
+        let env =
+            engine_sentry_env(true, true, "https://dsn", "houston-app@1.2.3-dev", "development");
+        assert!(env.contains(&("SENTRY_SEND_IN_DEV".to_string(), "1".to_string())));
+        assert!(env.iter().any(|(k, _)| k == "SENTRY_DSN"));
+        assert!(env.iter().any(|(k, _)| k == "SENTRY_ENVIRONMENT"));
     }
 }

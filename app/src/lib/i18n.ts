@@ -20,7 +20,9 @@ import contextEn from "../locales/en/context.json";
 import dashboardEn from "../locales/en/dashboard.json";
 import errorsEn from "../locales/en/errors.json";
 import eventsEn from "../locales/en/events.json";
+import integrationsEn from "../locales/en/integrations.json";
 import legalEn from "../locales/en/legal.json";
+import orgEn from "../locales/en/org.json";
 import portableEn from "../locales/en/portable.json";
 import providersEn from "../locales/en/providers.json";
 import routinesEn from "../locales/en/routines.json";
@@ -37,7 +39,9 @@ import contextEs from "../locales/es/context.json";
 import dashboardEs from "../locales/es/dashboard.json";
 import errorsEs from "../locales/es/errors.json";
 import eventsEs from "../locales/es/events.json";
+import integrationsEs from "../locales/es/integrations.json";
 import legalEs from "../locales/es/legal.json";
+import orgEs from "../locales/es/org.json";
 import portableEs from "../locales/es/portable.json";
 import providersEs from "../locales/es/providers.json";
 import routinesEs from "../locales/es/routines.json";
@@ -54,7 +58,9 @@ import contextPt from "../locales/pt/context.json";
 import dashboardPt from "../locales/pt/dashboard.json";
 import errorsPt from "../locales/pt/errors.json";
 import eventsPt from "../locales/pt/events.json";
+import integrationsPt from "../locales/pt/integrations.json";
 import legalPt from "../locales/pt/legal.json";
+import orgPt from "../locales/pt/org.json";
 import portablePt from "../locales/pt/portable.json";
 import providersPt from "../locales/pt/providers.json";
 import routinesPt from "../locales/pt/routines.json";
@@ -128,8 +134,10 @@ const resources = {
     providers: providersEn,
     errors: errorsEn,
     events: eventsEn,
+    integrations: integrationsEn,
     portable: portableEn,
     context: contextEn,
+    org: orgEn,
   },
   es: {
     common: commonEs,
@@ -147,8 +155,10 @@ const resources = {
     providers: providersEs,
     errors: errorsEs,
     events: eventsEs,
+    integrations: integrationsEs,
     portable: portableEs,
     context: contextEs,
+    org: orgEs,
   },
   pt: {
     common: commonPt,
@@ -166,8 +176,10 @@ const resources = {
     providers: providersPt,
     errors: errorsPt,
     events: eventsPt,
+    integrations: integrationsPt,
     portable: portablePt,
     context: contextPt,
+    org: orgPt,
   },
 } as const;
 
@@ -207,6 +219,7 @@ void i18n
       "events",
       "portable",
       "context",
+      "org",
     ],
     interpolation: { escapeValue: false }, // react already escapes
     detection: {
