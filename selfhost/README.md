@@ -41,8 +41,8 @@ curl -H "Authorization: Bearer test" http://127.0.0.1:4318/v1/capabilities
 
 ## Managed Engine Pod Target
 
-Kubernetes hosted POC uses the same open host/runtime stack without Caddy and
-with local process code execution disabled:
+Houston's managed cloud runs this same open host/runtime stack as Kubernetes
+engine pods, without Caddy and with local process code execution disabled:
 
 ```sh
 docker build \
@@ -129,9 +129,9 @@ docker run --rm -d --name houston-engine-pod \
   ghcr.io/gethouston/houston-engine-pod:latest
 ```
 
-For Google Cloud, prefer a public GHCR package for the first POC. If the package
-stays private, use an authenticated pull path such as a GKE image pull secret or
-an Artifact Registry mirror/remote repository.
+For Google Cloud, prefer a public GHCR package. If the package stays private,
+use an authenticated pull path such as a GKE image pull secret or an Artifact
+Registry mirror/remote repository.
 
 Watch live engine logs:
 

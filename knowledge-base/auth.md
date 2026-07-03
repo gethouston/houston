@@ -75,8 +75,8 @@ Supabase creds.
 
 ### Testing Google login against the local kind gateway
 
-To exercise the real Google-login flow against the `gethouston/cloud` kind POC
-(`cloud/k8s/poc`) with the desktop app as client:
+To exercise the real Google-login flow against the `gethouston/cloud` local kind
+gateway (`cloud/k8s/kind`) with the desktop app as client:
 
 1. Bake the Supabase project into the dev build — in `app/.env.local`:
    ```
