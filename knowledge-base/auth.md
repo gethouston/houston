@@ -73,6 +73,15 @@ bakes Supabase, the app-wide sign-in (`App.tsx`'s `isAuthConfigured()` gate) sti
 applies, so the no-login path is meant for service-token smoke builds that bake no
 Supabase creds.
 
+**Shipping a cloud desktop build.** The signed, all-platform CI for this mode is
+the `cloud-v*` channel of `.github/workflows/release.yml`: tag `cloud-v<version>`
+and it builds mac/win/linux with `VITE_HOSTED_ENGINE_URL` baked from the
+`HOSTED_ENGINE_URL` **secret** (the gateway URL is never a literal) plus
+`VITE_HOSTED_ENGINE_AUTH=oauth`, so users just sign in with Google — no URL to
+enter. The plain `v*` channel is the unchanged local build. See
+`convergence/README.md` → "Host-sidecar release CI" for the channel details and
+the updater-isolation note.
+
 ### Testing Google login against the local kind gateway
 
 To exercise the real Google-login flow against the `gethouston/cloud` local kind

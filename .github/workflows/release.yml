@@ -1,6 +1,15 @@
 # Houston Desktop Release Workflow (TypeScript engine)
 #
-# Triggered by pushing a version tag (e.g. `git tag v0.3.0 && git push --tags`).
+# Triggered by pushing a version tag. Two channels, one pipeline:
+#   - `v*`        → LOCAL build (e.g. `git tag v0.3.0`). The user connects on
+#                   their own machine (host sidecar) or types a remote URL.
+#   - `cloud-v*`  → CLOUD build (e.g. `git tag cloud-v0.3.0`). The managed
+#                   Houston Cloud gateway URL is baked in from a secret, so the
+#                   user just signs in with Google — no URL to enter. Everything
+#                   cloud-specific is gated on the tag prefix, so a `v*` build
+#                   behaves exactly as it did before this channel existed (the
+#                   cloud env vars resolve to '' there, which the app reads as
+#                   unset — see app/src/lib/engine-mode.ts).
 #
 # Builds the desktop app around the Bun-compiled Houston HOST sidecar (the single
 # TypeScript engine), NOT the legacy Rust `houston-engine`. Each platform job
@@ -31,6 +40,11 @@
 #   POSTHOG_HOST                       — PostHog ingest host (e.g. https://us.i.posthog.com)
 #   SUPABASE_URL                       — Supabase project URL
 #   SUPABASE_ANON_KEY                  — Supabase anon key (client-side, RLS-gated)
+#   HOSTED_ENGINE_URL                  — (CLOUD channel only, tag `cloud-v*`) Base URL of the
+#                                        managed Houston Cloud gateway the desktop app connects to.
+#                                        Baked in as VITE_HOSTED_ENGINE_URL so cloud users just sign
+#                                        in with Google — no URL to enter. Kept as a secret; never a
+#                                        literal in this file. Empty/unused on the local `v*` channel.
 #   LINEAR_API_KEY                     — Linear API key for in-app "Report bug" issue creation
 #   LINEAR_TEAM_ID                     — Linear team UUID for in-app "Report bug" issues
 #   SLACK_RELEASE_WEBHOOK_URL          — Slack incoming-webhook to ping the team when a draft release is built
@@ -45,6 +59,7 @@ on:
   push:
     tags:
       - "v*"
+      - "cloud-v*"
 
 permissions:
   contents: write
@@ -83,7 +98,7 @@ jobs:
       - name: Verify tag matches manifest versions
         run: |
           set -euo pipefail
-          TAG="${GITHUB_REF_NAME#v}"
+          TAG="${GITHUB_REF_NAME#cloud-}"; TAG="${TAG#v}"
           PKG_V=$(jq -r .version app/package.json)
           CARGO_V=$(grep -m1 '^version = ' app/src-tauri/Cargo.toml | sed -E 's/version = "(.*)"/\1/')
           echo "tag=$TAG package.json=$PKG_V Cargo.toml=$CARGO_V"
@@ -91,6 +106,21 @@ jobs:
             echo "::error::Version mismatch — tag '$TAG', app/package.json '$PKG_V', app/src-tauri/Cargo.toml '$CARGO_V' must all match. Bump them together before tagging."
             exit 1
           fi
+
+      # A `cloud-v*` tag promises a build with the managed gateway baked in. If
+      # the secret is empty the build would silently fall back to the local
+      # connection chooser (no gateway), shipping a "cloud" app that isn't one.
+      # Fail loudly here (no-silent-failures) rather than at a confused user.
+      - name: Verify cloud gateway secret is set (cloud channel)
+        if: ${{ startsWith(github.ref_name, 'cloud-') }}
+        env:
+          HOSTED_ENGINE_URL: ${{ secrets.HOSTED_ENGINE_URL }}
+        run: |
+          if [ -z "${HOSTED_ENGINE_URL}" ]; then
+            echo "::error::A cloud-v* tag was pushed but the HOSTED_ENGINE_URL secret is empty. Set it (repo → Settings → Secrets) or push a plain v* tag for a local build."
+            exit 1
+          fi
+          echo "HOSTED_ENGINE_URL secret is present — cloud gateway will be baked in."
 
       # Resolve `release-notes.md`. Two paths:
       #
@@ -110,7 +140,7 @@ jobs:
       # polish before publishing.
       - name: Build release notes
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
           AUTHORED=".github/release-notes/${VERSION}.md"
 
           if [ -f "$AUTHORED" ]; then
@@ -180,7 +210,7 @@ jobs:
       - name: Build localized updater notes
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
           DIR=".github/release-notes"
           EN="$DIR/${VERSION}.md"
           ES="$DIR/${VERSION}.es.md"
@@ -233,13 +263,33 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
+          # Distinguish the two channels in the GitHub Releases list so a cloud
+          # draft is never mistaken for the local one (they carry the same
+          # underlying version, only the tag prefix + connection target differ).
+          #
+          # Cloud releases are marked PRERELEASE. This is load-bearing, not
+          # cosmetic: existing LOCAL apps have `…/releases/latest/download/latest.json`
+          # baked in, and GitHub's "latest release" is the newest NON-prerelease,
+          # non-draft release. If a cloud release could become "latest" it would
+          # shadow that URL (a cloud release ships latest-cloud.json, not
+          # latest.json) and every installed local app's auto-updater would 404.
+          # Keeping cloud releases as prereleases means they never become "latest",
+          # so the local updater feed is unaffected. (Consequence: cloud auto-update
+          # via the /latest/ endpoint is a documented follow-up — see the PR /
+          # convergence/README.md; contamination is already prevented by the
+          # channel-specific manifest name.)
+          case "$GITHUB_REF_NAME" in
+            cloud-*) TITLE="Houston Cloud v$VERSION"; PRERELEASE=(--prerelease) ;;
+            *)       TITLE="Houston v$VERSION";       PRERELEASE=() ;;
+          esac
           gh release create "$GITHUB_REF_NAME" \
-            --title "Houston v$VERSION" \
+            --title "$TITLE" \
             --notes-file release-notes.md \
-            --draft
+            --draft \
+            "${PRERELEASE[@]}"
 
-          echo "::notice::Empty draft release created at https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME — macOS + Windows builds will upload artifacts in parallel."
+          echo "::notice::Empty draft release \"$TITLE\" created at https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME — macOS + Windows builds will upload artifacts in parallel."
 
       # Hand release-notes.md to downstream jobs (Slack notifier in
       # finalize, updater-manifest builder in build-macos) without each of
@@ -283,6 +333,17 @@ jobs:
       # bun-compiled host sidecar, not the legacy Rust wire. Job-level so every
       # step — including tauri-action's beforeBuildCommand child — sees it.
       VITE_NEW_ENGINE: "1"
+      # CLOUD channel (tag `cloud-v*`): bake the managed gateway URL so the
+      # packaged app talks to Houston Cloud and the user just signs in with
+      # Google — no URL to enter (resolveEngine → hosted-oauth, chooser skipped).
+      # The URL is a SECRET, never a literal. On the local `v*` channel these
+      # resolve to '' (a missing secret is also ''), so that build is unchanged.
+      # VITE_HOSTED_ENGINE_AUTH=oauth is the managed-cloud default anyway; set it
+      # explicitly so the Google-login gate is unambiguous. Baked as VITE_* build
+      # constants (consumed by app/vite.config.ts), so job-level like the flag above.
+      IS_CLOUD: ${{ startsWith(github.ref_name, 'cloud-') }}
+      VITE_HOSTED_ENGINE_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
+      VITE_HOSTED_ENGINE_AUTH: ${{ startsWith(github.ref_name, 'cloud-') && 'oauth' || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -418,6 +479,16 @@ jobs:
       # sidecar is handled the same way via the per-triple
       # `binaries/houston-engine-<triple>` files staged by `build.rs`.
       # Bundle output lands under `target/universal-apple-darwin/release/bundle/`.
+      # CLOUD channel only: repoint the in-app updater at `latest-cloud.json`
+      # BEFORE the build bakes tauri.conf.json in, so a Houston Cloud app never
+      # reads the local channel's `latest.json` (which would auto-update it into
+      # a local build and drop the baked gateway). Local `v*` builds skip this
+      # and keep the default `latest.json` endpoint untouched. Edits only the
+      # runner's checkout — never committed.
+      - name: Point updater at cloud manifest (cloud channel)
+        if: ${{ env.IS_CLOUD == 'true' }}
+        run: bash scripts/ci/point-updater-at-cloud-manifest.sh
+
       - name: Build Tauri app (universal)
         uses: tauri-apps/tauri-action@v0
         with:
@@ -565,7 +636,7 @@ jobs:
           SENTRY_PROJECT: houston-app
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
           RELEASE="houston-app@${VERSION}"
 
           # Use the sentry-cli pinned in app/package.json (devDep @sentry/cli)
@@ -736,7 +807,16 @@ jobs:
 
       - name: Generate updater manifest
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
+          # Channel-specific updater manifest name so the cloud + local feeds
+          # stay distinct release assets (the cloud app's baked endpoint points
+          # at latest-cloud.json — see point-updater-at-cloud-manifest.sh).
+          # Exported so the upload + finalize steps agree on the filename.
+          case "$GITHUB_REF_NAME" in
+            cloud-*) MANIFEST="latest-cloud.json" ;;
+            *)       MANIFEST="latest.json" ;;
+          esac
+          echo "MANIFEST=$MANIFEST" >> "$GITHUB_ENV"
           TAR_NAME=$(basename "${{ steps.artifacts.outputs.tar }}")
           SIG=$(cat "${{ steps.artifacts.outputs.sig }}")
           URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$TAR_NAME"
@@ -777,10 +857,10 @@ jobs:
                   url: $url
                 }
               }
-            }' > latest.json
+            }' > "$MANIFEST"
 
-          echo "latest.json:"
-          cat latest.json
+          echo "$MANIFEST:"
+          cat "$MANIFEST"
 
       # Draft release was already created in the `prep` job. We only need
       # to upload the macOS-specific artifacts to it. `--clobber` makes
@@ -798,7 +878,7 @@ jobs:
             "${{ steps.artifacts.outputs.dmg }}" \
             "${{ steps.artifacts.outputs.tar }}" \
             "${{ steps.artifacts.outputs.sig }}" \
-            latest.json \
+            "$MANIFEST" \
             checksums-sha256.txt \
             --clobber
 
@@ -844,6 +924,11 @@ jobs:
       # See build-macos: aliases the frontend to the v3 host adapter so the
       # packaged app runs on the bun-compiled host sidecar.
       VITE_NEW_ENGINE: "1"
+      # See build-macos: cloud channel bakes the managed gateway URL (a secret)
+      # so cloud users just sign in with Google. Empty on the local `v*` channel.
+      IS_CLOUD: ${{ startsWith(github.ref_name, 'cloud-') }}
+      VITE_HOSTED_ENGINE_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
+      VITE_HOSTED_ENGINE_AUTH: ${{ startsWith(github.ref_name, 'cloud-') && 'oauth' || '' }}
     strategy:
       # Both arches build in parallel. fail-fast=false so a transient
       # ARM-runner outage doesn't kill the x64 release that 90%+ of
@@ -922,6 +1007,14 @@ jobs:
           echo "Sidecar size:"
           ls -lah target/host-sidecar/houston-host-${{ matrix.target }}.exe
 
+      # CLOUD channel only: repoint the updater at `latest-cloud.json` before the
+      # build bakes tauri.conf.json in (see build-macos for the why). The script
+      # is Node-based so it also runs on windows-11-arm, where jq is absent.
+      - name: Point updater at cloud manifest (cloud channel)
+        if: ${{ env.IS_CLOUD == 'true' }}
+        shell: bash
+        run: bash scripts/ci/point-updater-at-cloud-manifest.sh
+
       - name: Build Tauri app (Windows MSI)
         uses: tauri-apps/tauri-action@v0
         with:
@@ -997,7 +1090,7 @@ jobs:
           SENTRY_PROJECT: houston-app
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
           RELEASE="houston-app@${VERSION}"
 
           # Use the lockfile-pinned sentry-cli from app/package.json via the
@@ -1078,6 +1171,12 @@ jobs:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       # See build-macos: aliases the frontend to the v3 host adapter.
       VITE_NEW_ENGINE: "1"
+      # See build-macos: cloud channel bakes the managed gateway URL (a secret).
+      # Linux is download-only / not wired into the auto-updater, so it needs no
+      # endpoint rewrite — only the baked URL so the app reaches the gateway.
+      IS_CLOUD: ${{ startsWith(github.ref_name, 'cloud-') }}
+      VITE_HOSTED_ENGINE_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
+      VITE_HOSTED_ENGINE_AUTH: ${{ startsWith(github.ref_name, 'cloud-') && 'oauth' || '' }}
       # AppImage packaging on headless CI: don't strip (keeps the bundled
       # sidecar intact) and extract-and-run the AppImage tooling (no FUSE on
       # GitHub runners).
@@ -1195,7 +1294,7 @@ jobs:
           SENTRY_PROJECT: houston-app
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
           RELEASE="houston-app@${VERSION}"
           SENTRY_CLI="app/node_modules/.bin/sentry-cli"
           "$SENTRY_CLI" --version
@@ -1290,7 +1389,7 @@ jobs:
           SENTRY_PROJECT: houston-app
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
           RELEASE="houston-app@${VERSION}"
           # This job has no source tree / node_modules, so use the standalone
           # CLI. Pin it to the same major the app's @sentry/cli devDep tracks.
@@ -1310,14 +1409,21 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          # Match the channel-specific manifest build-macos uploaded (the cloud
+          # app's baked updater endpoint reads latest-cloud.json). finalize has
+          # no checkout, so derive the name from the tag, not a shared file.
+          case "$GITHUB_REF_NAME" in
+            cloud-*) MANIFEST="latest-cloud.json" ;;
+            *)       MANIFEST="latest.json" ;;
+          esac
           tmpdir=$(mktemp -d)
           gh release download "$GITHUB_REF_NAME" \
-            --pattern 'latest.json' \
+            --pattern "$MANIFEST" \
             --pattern '*.msi.sig' \
             --dir "$tmpdir"
 
-          if [ ! -s "$tmpdir/latest.json" ]; then
-            echo "::error::latest.json not found in draft release; build-macos must have failed to upload it"
+          if [ ! -s "$tmpdir/$MANIFEST" ]; then
+            echo "::error::$MANIFEST not found in draft release; build-macos must have failed to upload it"
             exit 1
           fi
 
@@ -1333,7 +1439,7 @@ jobs:
             exit 1
           fi
 
-          cp "$tmpdir/latest.json" "$tmpdir/latest.next.json"
+          cp "$tmpdir/$MANIFEST" "$tmpdir/latest.next.json"
           for SIG_FILE in "${sigs[@]}"; do
             MSI_NAME=$(basename "$SIG_FILE" .sig)
             MSI_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$MSI_NAME"
@@ -1354,12 +1460,12 @@ jobs:
             mv "$tmpdir/latest.merged.json" "$tmpdir/latest.next.json"
           done
 
-          echo "Updated latest.json:"
+          echo "Updated $MANIFEST:"
           cat "$tmpdir/latest.next.json"
 
-          mv "$tmpdir/latest.next.json" "$tmpdir/latest.json"
-          gh release upload "$GITHUB_REF_NAME" "$tmpdir/latest.json" --clobber
-          echo "::notice::latest.json now advertises macOS + Windows (x64 + arm64) for the in-app updater"
+          mv "$tmpdir/latest.next.json" "$tmpdir/$MANIFEST"
+          gh release upload "$GITHUB_REF_NAME" "$tmpdir/$MANIFEST" --clobber
+          echo "::notice::$MANIFEST now advertises macOS + Windows (x64 + arm64) for the in-app updater"
 
       # Drop a PostHog annotation marking this release. Every PostHog
       # insight chart shows a vertical line at this timestamp, so any
@@ -1375,7 +1481,7 @@ jobs:
           POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
           HOST="${POSTHOG_HOST:-https://us.posthog.com}"
           # Strip the i. ingestion subdomain if someone configured POSTHOG_HOST
           # for client ingest (us.i.posthog.com). The annotation REST API
@@ -1412,7 +1518,7 @@ jobs:
             exit 0
           fi
 
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${GITHUB_REF_NAME}"
           DMG_URL=$(gh release view "$GITHUB_REF_NAME" --json assets --jq '[.assets[] | select(.name | endswith(".dmg")) | .url] | first // empty')
 

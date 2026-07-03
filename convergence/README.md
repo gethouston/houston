@@ -115,6 +115,32 @@ in a separate `host-sidecar-release.yml` / `ts-engine-desktop-artifacts.yml`;
 those were never committed — the build logic they described now lives directly in
 `release.yml` + `engine-release.yml`.)
 
+**Cloud desktop channel (tag `cloud-v*`).** `release.yml` now drives TWO channels
+from one pipeline: `v*` = the LOCAL build (host sidecar / connection chooser,
+unchanged) and `cloud-v*` = a CLOUD build that bakes the managed gateway URL in
+from the `HOSTED_ENGINE_URL` **secret** (never a literal) as
+`VITE_HOSTED_ENGINE_URL` + `VITE_HOSTED_ENGINE_AUTH=oauth`, so `resolveEngine` →
+`hosted-oauth` and the user just signs in with Google — no URL to enter. Every
+cloud-specific line is gated on `startsWith(github.ref_name, 'cloud-')`, so a `v*`
+build is byte-identical to before. The cloud channel repoints the in-app updater
+at a distinct `latest-cloud.json` manifest (`scripts/ci/point-updater-at-cloud-manifest.sh`,
+Node-based so it runs on windows-11-arm too) so a cloud app can never auto-update
+into a local build (dropping the baked gateway) or vice-versa. Cloud releases are
+also created as **prereleases** so they can never become GitHub's "latest release"
+(which is the newest NON-prerelease) and shadow the local channel's baked
+`…/releases/latest/download/latest.json` endpoint — otherwise the first published
+cloud release would 404 every installed local app's auto-updater. The desktop
+hosted path itself is unchanged app code (`app/src/lib/engine-mode.ts`,
+`knowledge-base/auth.md`); this is purely the CI that ships it. Known non-blocking
+follow-ups: the packaged app still spawns an idle host sidecar in hosted mode
+(`lib.rs` `host_mode` reads runtime env, which is empty in a packaged app — an
+`option_env!` check would let it skip the spawn); and cloud auto-update itself is
+not wired up yet — because cloud releases are prereleases, the cloud app's
+`…/releases/latest/download/latest-cloud.json` endpoint resolves to the latest
+non-prerelease (a local release) and 404s, so cloud is effectively download-only
+until a fixed-tag / channel-pinned updater endpoint exists (the manifest isolation
+here is the foundation for that).
+
 This is a CI-only cutover: it flips what the RELEASE ships to the TS engine, but
 the app's build DEFAULTS are untouched (a plain `pnpm tauri build` still builds the
 Rust engine; the `app/vite.config.ts` + `app/src-tauri/Cargo.toml` defaults are
