@@ -1,5 +1,7 @@
 export type { EventStreamOptions, SendOptions } from "./client";
 export { EngineError, HoustonEngineClient } from "./client";
+export type { GlobalEventsOptions } from "./global-events";
+export { streamGlobalEvents } from "./global-events";
 export type { SequencedFrame } from "./replay";
 export {
   formatSseFrame,
@@ -23,6 +25,7 @@ export {
 } from "./resume-contract";
 export type { ConversationSnapshot } from "./snapshot";
 export { EMPTY_SNAPSHOT, reduceSnapshot } from "./snapshot";
+export type { ReadEventStreamOptions } from "./sse-read";
 export { readEventStream } from "./sse-read";
 export type { ResumableStreamSource } from "./stitch";
 export { serveResumableStream } from "./stitch";

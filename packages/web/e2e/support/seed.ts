@@ -17,13 +17,13 @@
  * (packages/web/src/engine-adapter/client.ts `getPreference` → `houston.pref.*`,
  * packages/web/src/engine-config.ts `NEW_ENGINE_STORAGE_KEY`).
  */
-import type { Page } from "@playwright/test";
 import {
   FAKE_HOST_URL,
   FAKE_TOKEN,
   SEED_AGENT_ID,
   SEED_WORKSPACE_ID,
-} from "../fake-host/ports";
+} from "@houston/fake-host";
+import type { Page } from "@playwright/test";
 
 const NEW_ENGINE_STORAGE_KEY = "houston.web.engine.new";
 const pref = (key: string) => `houston.pref.${key}`;

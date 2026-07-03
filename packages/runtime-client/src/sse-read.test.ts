@@ -57,3 +57,27 @@ test("a malformed data line rejects — a garbled stream must surface", async ()
     readEventStream(streamOf("data: {not json}\n\n"), () => {}),
   ).rejects.toThrow();
 });
+
+test("tolerant mode reports a malformed line and skips it, keeping later frames", async () => {
+  const frames: WireFrame[] = [];
+  const bad: Array<[string, unknown]> = [];
+  await readEventStream(
+    streamOf(
+      'data: {"type":"text","data":"a","seq":1}\n\n',
+      "data: {not json}\n\n",
+      'data: {"type":"done","data":null,"seq":2}\n\n',
+    ),
+    (f) => {
+      frames.push(f);
+    },
+    undefined,
+    { onParseError: (line, err) => bad.push([line, err]) },
+  );
+  expect(frames).toEqual([
+    { type: "text", data: "a", seq: 1 },
+    { type: "done", data: null, seq: 2 },
+  ]);
+  expect(bad).toHaveLength(1);
+  expect(bad[0]?.[0]).toBe("{not json}");
+  expect(bad[0]?.[1]).toBeInstanceOf(Error);
+});

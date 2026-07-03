@@ -15,7 +15,7 @@
     "test:e2e": "playwright test --fail-on-flaky-tests",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
-    "fake-host": "tsx e2e/fake-host/server.ts",
+    "fake-host": "pnpm --filter @houston/fake-host start",
     "check-shims": "node ../../scripts/check-tauri-shims.mjs"
   },
   "dependencies": {
@@ -28,6 +28,7 @@
     "@houston-ai/events": "workspace:*",
     "@houston-ai/layout": "workspace:*",
     "@houston/domain": "workspace:*",
+    "@houston/sdk": "workspace:*",
     "@houston-ai/review": "workspace:*",
     "@houston-ai/routines": "workspace:*",
     "@houston-ai/skills": "workspace:*",
@@ -47,6 +48,7 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
+    "@houston/fake-host": "workspace:*",
     "@playwright/test": "^1.49.1",
     "@tailwindcss/vite": "^4.1.8",
     "@types/react": "^19.2.14",
