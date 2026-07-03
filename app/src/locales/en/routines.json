@@ -66,10 +66,10 @@
       "custom": "Custom"
     },
     "units": {
-      "minutes": { "one": "minute", "other": "minutes" },
-      "hours": { "one": "hour", "other": "hours" },
-      "days": { "one": "day", "other": "days" },
-      "months": { "one": "month", "other": "months" }
+      "minutes": "minutes",
+      "hours": "hours",
+      "days": "days",
+      "months": "months"
     },
     "unitsSingular": {
       "minutes": "minute",
