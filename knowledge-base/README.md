@@ -8,6 +8,7 @@ Load on demand.
 |------|-------|
 | [architecture.md](architecture.md) | 6 products + 3 code libraries, Engine standalone story, crate list |
 | [design-system.md](design-system.md) | Colors, typography, spacing, components, animation |
+| [client-architecture.md](client-architecture.md) | Three-surface client contract — SDK / tokens / inventory / parity, change-flow procedures |
 | [files-first.md](files-first.md) | `.houston/` layout, atomic writes, schemas, AI-native reactivity |
 | [skills.md](skills.md) | Skills on disk + UI — frontmatter schema, picker rendering, invocation marker |
 | [agent-manifest.md](agent-manifest.md) | Three tiers, manifest shape, workspace templates, sidebar |

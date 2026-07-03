@@ -9,6 +9,10 @@ Why one client? Every surface used to grow its own fetch/cache/state glue and
 drift. `@houston/sdk` collapses that into a single kernel + typed modules, so a
 behaviour is implemented once and observed identically everywhere.
 
+> **Changing client behavior?** Follow procedure a of the three-surface
+> maintenance contract: `knowledge-base/client-architecture.md`. A VM-snapshot
+> change is a contract change — additive only, same discipline as protocol v3.
+
 ## Ports (injected capabilities)
 
 The kernel never touches a global directly. Every side effect arrives through

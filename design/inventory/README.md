@@ -15,6 +15,10 @@ This directory is the **structural** layer. It answers: *does this component
 exist on each surface, with the same parts, states, and semantics?* It is a
 versioned engineering contract, CI-checked, not remembered.
 
+A structural change here is procedure c of the three-surface maintenance
+contract — how it flows relative to behavior (SDK) and look (tokens) changes is
+in `knowledge-base/client-architecture.md`.
+
 ## Files
 
 ```
