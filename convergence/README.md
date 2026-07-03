@@ -80,9 +80,9 @@ code. Artifacts + guide: `selfhost/` (Dockerfile, Caddy TLS compose, README).
 Replaced the legacy `always-on/` Rust-engine VPS image (now deleted). The host boot
 was verified on a clean-room per-package install; the image build itself wants a Docker host.
 
-## Managed hosted pod POC
+## Managed hosted pods
 
-The hosted K8s POC reuses the self-host shape, not a new runtime. The public repo
+Houston's managed cloud reuses the self-host shape, not a new runtime. The public repo
 builds `selfhost/Dockerfile --target engine-pod` (manually publishable via
 `.github/workflows/ts-engine-image.yml` to the multi-arch
 `ghcr.io/gethouston/houston-engine-pod` image): one open host process that
