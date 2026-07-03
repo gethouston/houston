@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { credentialSiblings } from "./credential-siblings";
 
 /**
  * Pure auth.json file logic (no config import — tests drive it with explicit
@@ -85,6 +86,11 @@ export function applyServedCredential(path: string, c: ServedCredential): void {
         };
   const merged = readAuthFile(path);
   merged[c.provider] = entry;
+  // OpenCode Zen + Go share one opencode.ai key (pi reads OPENCODE_API_KEY for
+  // both gateways). Mirror the served entry onto its sibling(s) so the gateway
+  // this credential wasn't served under still reads as connected AND its turns
+  // authenticate — otherwise it surfaces a spurious "sign in again" card.
+  for (const sibling of credentialSiblings(c.provider)) merged[sibling] = entry;
   writeAuthFile(path, merged);
 }
 

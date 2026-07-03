@@ -18,6 +18,7 @@ import {
   providerAuthMethod,
 } from "../ai/providers";
 import { config } from "../config";
+import { credentialSiblings } from "./credential-siblings";
 import { authStorage, providerConnected } from "./storage";
 
 /**
@@ -210,6 +211,12 @@ export function setApiKey(providerId: string, key: string): void {
   const trimmed = key.trim();
   if (!trimmed) throw new Error("missing API key");
   authStorage.set(providerId, { type: "api_key", key: trimmed });
+  // OpenCode Zen + Go authenticate with the same opencode.ai key, so connecting
+  // one connects both — mirror the key onto its sibling gateway(s). Without this
+  // the gateway the user didn't paste under reads as a spurious "sign in again".
+  for (const sibling of credentialSiblings(providerId)) {
+    authStorage.set(sibling, { type: "api_key", key: trimmed });
+  }
   active.delete(providerId as ProviderId);
 }
 
@@ -247,6 +254,12 @@ export function logout(providerId: string): void {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   authStorage.logout(providerId);
   active.delete(providerId);
+  // Siblings share this stored credential (OpenCode Zen ↔ Go), so disconnect
+  // them together — else the sibling lingers "connected" with the same key.
+  for (const sibling of credentialSiblings(providerId)) {
+    authStorage.logout(sibling);
+    active.delete(sibling as ProviderId);
+  }
   // Disconnecting the local provider also forgets its endpoint, else the next
   // turn would re-resolve a base URL with no (real) key behind it.
   if (providerId === OPENAI_COMPATIBLE) clearCustomEndpointConfig();

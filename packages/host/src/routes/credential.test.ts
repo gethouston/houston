@@ -109,3 +109,25 @@ test("404 when the workspace has not connected the provider", async () => {
   expect(await call(credentials, "anthropic", r)).toBe(true);
   expect(r.out.status).toBe(404);
 });
+
+test("serves an OpenCode Go turn the shared opencode.ai key (sibling fallback)", async () => {
+  const credentials = new MemoryCredentialStore();
+  // The user connected OpenCode Zen (`opencode`) only; Go shares the same key,
+  // so a Go turn must still be served — relabeled to the gateway it runs on.
+  await credentials.put({
+    workspaceId: "w1",
+    provider: "opencode",
+    accessToken: "sk-shared",
+    refreshToken: "",
+    expiresAt: 0,
+    kind: "api_key",
+  });
+  const r = mockRes();
+  expect(await call(credentials, "opencode-go", r)).toBe(true);
+  expect(r.out.status).toBe(200);
+  expect(r.out.body).toMatchObject({
+    provider: "opencode-go",
+    access: "sk-shared",
+    kind: "api_key",
+  });
+});

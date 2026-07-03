@@ -53,3 +53,57 @@ test("applyServedCredential omits enterpriseUrl for individual Copilot", () => {
     expect(cred.enterpriseUrl).toBeUndefined();
   }
 });
+
+/**
+ * OpenCode Zen (`opencode`) and OpenCode Go (`opencode-go`) authenticate with the
+ * same opencode.ai key. A credential served for either gateway must materialize
+ * an auth.json entry for BOTH, so the gateway it wasn't served under still reads
+ * as connected (pi's `has()`) and its turns authenticate (pi's `getApiKey()`) —
+ * otherwise it surfaces a spurious "sign in again" card.
+ */
+test("applyServedCredential mirrors an OpenCode key onto its sibling gateway", () => {
+  const path = scratch();
+  applyServedCredential(path, {
+    provider: "opencode",
+    access: "sk-zen",
+    expires: 0,
+    accountId: null,
+    kind: "api_key",
+  });
+  const auth = readAuthFile(path);
+  rmSync(path, { force: true });
+  for (const id of ["opencode", "opencode-go"]) {
+    const cred = auth[id];
+    expect(cred?.type).toBe("api_key");
+    if (cred?.type === "api_key") expect(cred.key).toBe("sk-zen");
+  }
+});
+
+test("applyServedCredential mirrors symmetrically from opencode-go to opencode", () => {
+  const path = scratch();
+  applyServedCredential(path, {
+    provider: "opencode-go",
+    access: "sk-go",
+    expires: 0,
+    accountId: null,
+    kind: "api_key",
+  });
+  const opencode = readAuthFile(path).opencode;
+  rmSync(path, { force: true });
+  expect(opencode?.type).toBe("api_key");
+  if (opencode?.type === "api_key") expect(opencode.key).toBe("sk-go");
+});
+
+test("applyServedCredential does not mirror a provider with no shared credential", () => {
+  const path = scratch();
+  applyServedCredential(path, {
+    provider: "openrouter",
+    access: "sk-or",
+    expires: 0,
+    accountId: null,
+    kind: "api_key",
+  });
+  const auth = readAuthFile(path);
+  rmSync(path, { force: true });
+  expect(Object.keys(auth)).toEqual(["openrouter"]);
+});

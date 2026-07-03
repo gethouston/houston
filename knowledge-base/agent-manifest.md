@@ -270,6 +270,15 @@ Notes:
   directly) — the model picked selects the gateway; opencode.ai enforces
   Go-subscription vs Zen-credit entitlement per request (surfaced as a
   provider-error card), so Houston never has to detect the plan from the key.
+  The **cloud/web path has no Tauri adapter**, so the client-side fan-out above
+  doesn't run there — the same sharing is enforced BACKEND-side instead:
+  `credentialSiblings` (`@houston/domain`, byte-mirrored in the runtime at
+  `packages/runtime/src/auth/credential-siblings.ts`) makes the host serve either
+  gateway from the one stored opencode key (`resolveSharedCredential`) and the
+  runtime write/clear both gateways' `auth.json` entries together
+  (`applyServedCredential`, `setApiKey`, `logout`). So a single saved key connects
+  both gateways with or without a client fan-out; without it a Go turn hit
+  `opencode-go`'s empty credential and surfaced a spurious "sign in to OpenCode Go".
 - _[NEW ENGINE only]_ The TS engine also adds **GitHub Copilot**
   (`github-copilot`) as a **subscription OAuth** provider — pi-ai ships it
   built-in (no adapter, no CLI), so it's registry entries only across the same

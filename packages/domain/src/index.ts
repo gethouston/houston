@@ -1,5 +1,6 @@
 export * from "./activities";
 export * from "./config";
+export * from "./credential-siblings";
 export * from "./layout";
 export * from "./portable";
 export * from "./preferences";

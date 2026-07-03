@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { isExpiring, refreshCredential } from "../credentials/refresh";
+import { resolveSharedCredential } from "../credentials/resolve";
 import {
   type CredentialStore,
   type CredentialVault,
@@ -32,7 +33,14 @@ export async function handleSandboxCredential(
     return true;
   }
   const provider = url.searchParams.get("provider") || "openai-codex";
-  let cred = await deps.credentials.get(claim.workspaceId, provider);
+  // OpenCode Zen + Go share one opencode.ai key: when the requested gateway has
+  // no credential of its own, fall back to its sibling's (relabeled to the
+  // requested provider) so a turn on either gateway resolves the shared key.
+  let cred = await resolveSharedCredential(
+    deps.credentials,
+    claim.workspaceId,
+    provider,
+  );
   if (!cred) {
     json(res, 404, { error: "workspace not connected" });
     return true;

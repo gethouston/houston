@@ -1,6 +1,7 @@
 import type { ServerResponse } from "node:http";
 import { readEventStream } from "@houston/runtime-client";
 import { isExpiring } from "../credentials/refresh";
+import { resolveSharedCredential } from "../credentials/resolve";
 import type { Agent, Workspace } from "../domain/types";
 import {
   isApiKeyCredential,
@@ -28,7 +29,7 @@ export async function freshCredential(
   wsId: string,
   provider: string,
 ): Promise<WorkspaceCredential | null> {
-  let cred = await deps.credentials.get(wsId, provider);
+  let cred = await resolveSharedCredential(deps.credentials, wsId, provider);
   if (!cred) return null;
   if (isExpiring(cred)) {
     cred = await deps.refresh(cred);
