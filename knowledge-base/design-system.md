@@ -21,7 +21,10 @@ by Style Dictionary to every surface: `dist/css/tokens.css` (web/desktop),
 (native, no consumers yet). `@houston-ai/core`'s `globals.css` imports the CSS;
 `@theme` there re-exports `--ht-*` to Tailwind `--color-*` as before.
 
-**Change procedure — a visual change is a token edit:**
+**Change procedure — a visual change is a token edit** (this is procedure b of
+the client-architecture contract — see `knowledge-base/client-architecture.md`
+for how visual, behavior, and structural changes flow across all three surfaces):
+
 
 1. Edit `packages/design-tokens/tokens/*.json` (a primitive value or a semantic
    reference). NEVER edit `dist/` and NEVER add a new hardcoded colour/spacing
