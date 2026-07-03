@@ -69,6 +69,18 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
         msg.stopReason === "error" &&
         msg.errorMessage
       ) {
+        // Log the provider's VERBATIM failure text before it's reduced to a typed
+        // card. The classifier collapses it into "unauthenticated" / "rate_limited"
+        // / etc., but the raw reason (an opencode.ai 401 body, an entitlement 403,
+        // a misclassified non-auth error) is otherwise never recorded — leaving
+        // production provider failures undiagnosable from the engine logs.
+        console.error(
+          `[provider_error] provider=${msg.provider} model=${
+            msg.model ?? "?"
+          } status=${diagnosticStatus(msg.diagnostics) ?? "?"} :: ${
+            msg.errorMessage
+          }`,
+        );
         return {
           type: "provider_error",
           data: classifyProviderError({
