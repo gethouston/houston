@@ -1,0 +1,21 @@
+{
+  // Dev-only test server: typechecked, never emitted (consumed as source via
+  // the workspace `exports` -> src/index.ts). Runs under Node (the server) and
+  // uses web platform types (Request/Response/ReadableStream/TextEncoder), so it
+  // needs both `node` types and the DOM lib. Importing the wire types from the
+  // real packages means a protocol change breaks THIS check, not a test.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["src"]
+}

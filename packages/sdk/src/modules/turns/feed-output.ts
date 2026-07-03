@@ -1,0 +1,89 @@
+/**
+ * The turn machinery's OUTPUT port — the seam the extraction inverts.
+ *
+ * The turn/feed machinery (sink, stream runners, settles) folds ONE
+ * conversation's wire frames into three kinds of push: a chat FeedItem, a
+ * SessionStatus, and a persisted board-card status. Historically those pushes
+ * went straight onto the desktop's in-process event bus. That coupling is now
+ * inverted — the machinery emits ONLY through {@link FeedOutput}, and the host
+ * supplies the implementation: the SDK's built-in conversation-VM fold
+ * (`vm-output.ts`), the web adapter's bus bridge, or several at once
+ * ({@link MultiplexFeedOutput}). One machinery, any number of outputs.
+ *
+ * These three methods mirror the original bus seams exactly; the union types
+ * are the same ones the desktop UI reacts to, carried along unchanged.
+ */
+
+/**
+ * The session statuses a streamed turn produces. The desktop reacts to exactly
+ * these: `running` drives the spinner/loading flag, `completed` the
+ * notification + settle, `error` the failure surface. `starting` exists in the
+ * legacy dialect; this machinery never emits it.
+ */
+export type SessionStatusValue = "starting" | "running" | "completed" | "error";
+
+/** Terminal board-card status, persisted once the turn settles. */
+export type TerminalBoardStatus = "needs_you" | "error";
+
+/** Board-card statuses a streamed turn writes: running in flight, then terminal. */
+export type BoardStatus = "running" | TerminalBoardStatus;
+
+/**
+ * Everything the turn machinery emits for one conversation. An implementation
+ * decides where the pushes land (a reactive VM, a UI bus, ...). `pushFeedItem`
+ * and `sessionStatus` are fire-and-forget; `persistBoardStatus` is awaited so
+ * the runner can settle the board card before the turn returns.
+ */
+export interface FeedOutput {
+  /** One chat FeedItem for this conversation (streaming text, tool call, ...). */
+  pushFeedItem(agentPath: string, sessionKey: string, item: unknown): void;
+  /** The conversation's session status (spinner / settle / failure). */
+  sessionStatus(
+    agentPath: string,
+    sessionKey: string,
+    status: SessionStatusValue,
+    error?: string,
+  ): void;
+  /** Persist the board-card status through the host's (cloud-aware) seam. */
+  persistBoardStatus(
+    agentPath: string,
+    sessionKey: string,
+    status: BoardStatus,
+  ): Promise<void>;
+}
+
+/**
+ * Fan every push out to several {@link FeedOutput}s at once. The turn machinery
+ * folds each frame ONCE and calls a single output; wrapping N outputs in one
+ * multiplexer runs them all with no re-processing — e.g. the SDK's conversation
+ * VM plus a host's own sink. `persistBoardStatus` awaits every child.
+ */
+export class MultiplexFeedOutput implements FeedOutput {
+  constructor(private readonly outputs: readonly FeedOutput[]) {}
+
+  pushFeedItem(agentPath: string, sessionKey: string, item: unknown): void {
+    for (const o of this.outputs) o.pushFeedItem(agentPath, sessionKey, item);
+  }
+
+  sessionStatus(
+    agentPath: string,
+    sessionKey: string,
+    status: SessionStatusValue,
+    error?: string,
+  ): void {
+    for (const o of this.outputs)
+      o.sessionStatus(agentPath, sessionKey, status, error);
+  }
+
+  async persistBoardStatus(
+    agentPath: string,
+    sessionKey: string,
+    status: BoardStatus,
+  ): Promise<void> {
+    await Promise.all(
+      this.outputs.map((o) =>
+        o.persistBoardStatus(agentPath, sessionKey, status),
+      ),
+    );
+  }
+}

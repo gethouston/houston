@@ -17,7 +17,7 @@
  * the first assertion's clock begins.
  */
 import { chromium, type FullConfig } from "@playwright/test";
-import { WEB_URL } from "../fake-host/ports";
+import { WEB_URL } from "../config";
 import { seedPage } from "./seed";
 
 export default async function globalSetup(_config: FullConfig): Promise<void> {

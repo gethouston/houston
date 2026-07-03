@@ -1,4 +1,7 @@
-import { HoustonEngineClient } from "@houston/runtime-client";
+import {
+  HoustonEngineClient,
+  streamGlobalEvents,
+} from "@houston/runtime-client";
 import type {
   Activity,
   ActivityUpdate,
@@ -601,69 +604,44 @@ export async function setPreference(
 /**
  * Subscribe to the host's global reactivity stream (`GET /v1/events`, SSE).
  *
- * Uses a fetch + ReadableStream reader, NOT `EventSource`: in the Tauri desktop
- * webview a cross-origin `EventSource` to the host silently never connects, so
- * the desktop would get zero reactivity (the board/routines/etc. only refresh on
- * navigation). fetch streaming works in both the webview and the browser — it's
- * the same transport the chat stream already relies on. The token rides in the
- * query (the host's bearer reads `?token=`). Host events are `{ type, agentPath }`;
- * the UI's invalidation map reads `{ type, data: { agent_path } }`, so translate.
- * Reconnects with a short backoff on any drop, mirroring EventSource's auto-retry.
+ * A thin consumer of the shared `streamGlobalEvents` loop
+ * (`@houston/runtime-client`), which uses fetch + a ReadableStream reader, NOT
+ * `EventSource`: in the Tauri desktop webview a cross-origin `EventSource` to
+ * the host silently never connects, so the desktop would get zero reactivity
+ * (the board/routines/etc. only refresh on navigation). fetch streaming works
+ * in both the webview and the browser — it's the same transport the chat stream
+ * already relies on.
+ *
+ * This adapter keeps only its own two seams: the token rides in the query (the
+ * host's bearer reads `?token=`, re-embedded per (re)connect so a refreshed
+ * token is always current), and host events `{ type, agentPath, workspaceId }`
+ * are translated to the shape the UI's invalidation map reads
+ * (`{ type, data: { agent_path, workspace_id } }`). Malformed frames are
+ * dropped and the loop reconnects with a short backoff on any drop — including
+ * a `401`, which (with no `onUnauthorized` seam) simply reconnects.
  */
 export function subscribeEvents(
   cfg: ControlPlaneConfig,
   onEvent: (event: unknown) => void,
 ): () => void {
   const ac = new AbortController();
-  void (async () => {
-    while (!ac.signal.aborted) {
-      try {
-        const url = `${cfg.baseUrl}/v1/events?token=${encodeURIComponent(liveToken(cfg.token))}`;
-        const res = await fetch(url, {
-          headers: { Accept: "text/event-stream" },
-          signal: ac.signal,
-        });
-        if (!res.ok || !res.body) throw new Error(`/v1/events ${res.status}`);
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = "";
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          let idx = buf.indexOf("\n\n");
-          while (idx >= 0) {
-            const frame = buf.slice(0, idx);
-            buf = buf.slice(idx + 2);
-            idx = buf.indexOf("\n\n");
-            const line = frame.split("\n").find((l) => l.startsWith("data:"));
-            if (!line) continue; // skip ": connected" / ": hb" comment frames
-            try {
-              const ev = JSON.parse(line.slice(5).trim()) as {
-                type: string;
-                agentPath?: string;
-                workspaceId?: string;
-              };
-              onEvent({
-                type: ev.type,
-                data: {
-                  agent_path: ev.agentPath,
-                  workspace_id: ev.workspaceId,
-                },
-              });
-            } catch {
-              /* a malformed frame is dropped, never thrown into the UI */
-            }
-          }
-        }
-      } catch {
-        if (ac.signal.aborted) return; // our own teardown — expected
-      }
-      // Stream ended or dropped (not aborted) — reconnect after a short backoff.
-      if (ac.signal.aborted) return;
-      await new Promise((r) => setTimeout(r, 1500));
-    }
-  })();
+  void streamGlobalEvents({
+    url: () =>
+      `${cfg.baseUrl}/v1/events?token=${encodeURIComponent(liveToken(cfg.token))}`,
+    fetch,
+    signal: ac.signal,
+    onEvent: (data) => {
+      const ev = data as {
+        type: string;
+        agentPath?: string;
+        workspaceId?: string;
+      };
+      onEvent({
+        type: ev.type,
+        data: { agent_path: ev.agentPath, workspace_id: ev.workspaceId },
+      });
+    },
+  });
   return () => ac.abort();
 }
 

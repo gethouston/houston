@@ -6,8 +6,8 @@
  * The fake host is a single shared process, so the suite runs with `workers: 1`
  * and resets state per test for isolation (see playwright.config.ts).
  */
+import { FAKE_HOST_URL } from "@houston/fake-host";
 import { test as base, expect, type Page } from "@playwright/test";
-import { FAKE_HOST_URL } from "../fake-host/ports";
 import { seedPage } from "./seed";
 
 interface Fixtures {

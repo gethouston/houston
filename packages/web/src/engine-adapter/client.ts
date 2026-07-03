@@ -4,6 +4,7 @@ import {
   HoustonEngineClient,
   type ProviderId,
 } from "@houston/runtime-client";
+import type { BoardStatus } from "@houston/sdk";
 import type {
   Activity,
   ActivityUpdate,
@@ -36,7 +37,6 @@ import * as agents from "./agents";
 import { bus, emitEvent } from "./bus";
 import type { ControlPlaneConfig } from "./control-plane";
 import * as controlPlane from "./control-plane";
-import type { BoardStatus } from "./feed-events";
 import {
   configWriteToSettings,
   credentialSiblings,
