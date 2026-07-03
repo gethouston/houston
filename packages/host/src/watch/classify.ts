@@ -1,3 +1,4 @@
+import { agentFileEventType } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
 
 /**
@@ -6,6 +7,9 @@ import type { HoustonEvent } from "@houston/protocol";
  * engine/houston-file-watcher's classification. The agentPath is the
  * `<Workspace>/<Agent>` prefix (the agent's opaque key locally).
  *
+ * The path→event decision lives in `@houston/domain` (`agentFileEventType`) so
+ * this watcher and the web adapter's write-through echo classify identically.
+ *
  * Returns null for paths not inside an agent or not worth an event.
  */
 export function classifyChange(relPath: string): HoustonEvent | null {
@@ -13,34 +17,6 @@ export function classifyChange(relPath: string): HoustonEvent | null {
   if (parts.length < 3) return null; // need <Workspace>/<Agent>/<something>
   const agentPath = `${parts[0]}/${parts[1]}`;
   const rest = parts.slice(2).join("/");
-  const type = eventTypeFor(rest);
+  const type = agentFileEventType(rest);
   return type ? ({ type, agentPath } as HoustonEvent) : null;
-}
-
-function eventTypeFor(rest: string): HoustonEvent["type"] | null {
-  // Order matters: routine_runs must be tested before routines (prefix overlap).
-  if (rest.startsWith(".houston/routine_runs")) return "RoutineRunsChanged";
-  if (rest.startsWith(".houston/routines")) return "RoutinesChanged";
-  if (rest.startsWith(".houston/activity")) return "ActivityChanged";
-  if (rest.startsWith(".houston/config")) return "ConfigChanged";
-  if (rest.startsWith(".houston/learnings")) return "LearningsChanged";
-  if (
-    rest.startsWith(".houston/conversations") ||
-    rest.startsWith(".houston/sessions")
-  ) {
-    return "ConversationsChanged";
-  }
-  if (
-    rest.startsWith(".agents/skills") ||
-    rest.startsWith(".houston/skills") ||
-    rest.startsWith(".claude/skills")
-  ) {
-    return "SkillsChanged";
-  }
-  if (rest === "CLAUDE.md" || rest === "AGENTS.md" || rest === "GEMINI.md")
-    return "ContextChanged";
-  // Internal bookkeeping we never surface.
-  if (rest.startsWith(".git/") || rest === ".DS_Store") return null;
-  // Any other file in the agent's working tree.
-  return "FilesChanged";
 }

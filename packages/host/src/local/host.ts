@@ -22,6 +22,7 @@ import { LocalWorkspaceStore } from "../store/local";
 import { MemoryTurnBus } from "../turn/bus";
 import { FsVfs } from "../vfs";
 import { FsWatcher } from "../watch/watcher";
+import { formatHostListeningBanner } from "./banner";
 
 /** The single local user every request resolves to. */
 export const LOCAL_USER = "local-owner";
@@ -48,6 +49,15 @@ export interface LocalHostOptions {
   bind?: string;
   /** Random per-boot token the shell presents on every request (SingleUserVerifier). */
   token: string;
+  /**
+   * Redact the token in the `HOUSTON_HOST_LISTENING` startup banner to a short
+   * fingerprint instead of printing it in full. Set when the token was supplied
+   * by an orchestrator (env `HOUSTON_HOST_TOKEN`) or in managed cloud — where the
+   * banner would otherwise leak the credential into plaintext pod logs and no one
+   * reads it back. Left false for the desktop sidecar, whose supervisor parses the
+   * per-boot token out of this line (`engine_supervisor.rs::parse_banner`).
+   */
+  redactBannerToken?: boolean;
   /** argv to launch a pi-runtime: dev `node --import tsx .../runtime/src/main.ts`, prod the sidecar. */
   runtimeCommand: string[];
   /** Product system prompt the app injects into every runtime (voice rules). */
@@ -288,8 +298,14 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       watcher.start();
       scheduler.start();
       // The banner the Tauri supervisor parses (mirrors the runtime's contract).
+      // The full token rides ONLY for the desktop sidecar; a pod/self-host token
+      // is env-supplied and redacted so it never lands in plaintext logs.
       console.log(
-        `HOUSTON_HOST_LISTENING port=${opts.port} token=${opts.token}`,
+        formatHostListeningBanner({
+          port: opts.port,
+          token: opts.token,
+          redactToken: opts.redactBannerToken ?? false,
+        }),
       );
     },
     stop() {

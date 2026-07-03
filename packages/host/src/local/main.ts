@@ -73,6 +73,15 @@ const host = buildLocalHost({
   // Loopback by default (desktop). Self-host sets HOUSTON_HOST_BIND=0.0.0.0.
   bind: process.env.HOUSTON_HOST_BIND || undefined,
   token: process.env.HOUSTON_HOST_TOKEN || randomBytes(32).toString("hex"),
+  // Redact the token in the startup banner whenever it came from the
+  // environment (a pod/self-host token an orchestrator already knows) or we are
+  // a managed cloud pod — echoing it there just leaks a credential into
+  // plaintext logs. The desktop sidecar mints a random per-boot token (no
+  // HOUSTON_HOST_TOKEN) and its supervisor reads it back from this line, so
+  // that case keeps the full token.
+  redactBannerToken:
+    !!process.env.HOUSTON_HOST_TOKEN ||
+    process.env.HOUSTON_MANAGED_CLOUD === "1",
   runtimeCommand: runtimeCommand(),
   // The real Tauri app hands over its own product prompt; this is the built-in
   // default so the agent knows how to create Skills/Routines/learnings.

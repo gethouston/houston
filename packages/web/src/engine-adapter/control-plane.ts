@@ -630,19 +630,36 @@ export function subscribeEvents(
       `${cfg.baseUrl}/v1/events?token=${encodeURIComponent(liveToken(cfg.token))}`,
     fetch,
     signal: ac.signal,
-    onEvent: (data) => {
-      const ev = data as {
-        type: string;
-        agentPath?: string;
-        workspaceId?: string;
-      };
-      onEvent({
-        type: ev.type,
-        data: { agent_path: ev.agentPath, workspace_id: ev.workspaceId },
-      });
-    },
+    onEvent: (data) =>
+      onEvent(
+        toInvalidationEvent(
+          data as { type: string; agentPath?: string; workspaceId?: string },
+        ),
+      ),
   });
   return () => ac.abort();
+}
+
+/**
+ * Translate a host global-events frame (`{ type, agentPath, workspaceId }`) into
+ * the shape the app's invalidation map reads
+ * (`{ type, data: { agent_path, workspace_id } }`, see
+ * `app/src/hooks/use-agent-invalidation.ts`).
+ *
+ * Exported as the ONE source of that shape so the adapter's write-through echo
+ * (`bus.emitLocalEcho`) can be verified to produce byte-identical events — a
+ * locally synthesized echo and a real server frame must be indistinguishable to
+ * the invalidation hook, or one of them silently no-ops.
+ */
+export function toInvalidationEvent(frame: {
+  type: string;
+  agentPath?: string;
+  workspaceId?: string;
+}): { type: string; data: { agent_path?: string; workspace_id?: string } } {
+  return {
+    type: frame.type,
+    data: { agent_path: frame.agentPath, workspace_id: frame.workspaceId },
+  };
 }
 
 // ── integrations (Composio, platform mode) ───────────────────────────────────

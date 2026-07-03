@@ -1,4 +1,4 @@
-import { migrateProviderModel } from "@houston/domain";
+import { agentFileEventType, migrateProviderModel } from "@houston/domain";
 import {
   type CustomEndpoint,
   HoustonEngineClient,
@@ -34,7 +34,7 @@ import {
   writeAgentFile as writeAgentFileStore,
 } from "./agent-files";
 import * as agents from "./agents";
-import { bus, emitEvent } from "./bus";
+import { bus, emitEvent, emitLocalEcho } from "./bus";
 import type { ControlPlaneConfig } from "./control-plane";
 import * as controlPlane from "./control-plane";
 import {
@@ -335,6 +335,9 @@ export class HoustonClient {
         : this.engine;
       await engine.setSettings({ activeProvider: provider, model });
     }
+    // Write-through echo: the config query keys on agentPath, so the picker
+    // flips without waiting for a server round trip. See bus.emitLocalEcho.
+    emitLocalEcho("ConfigChanged", { agentPath });
     return config;
   }
   async listInstalledConfigs() {
@@ -352,21 +355,27 @@ export class HoustonClient {
     agentPath: string,
     input: NewActivity,
   ): Promise<Activity> {
-    if (this.cp) return controlPlane.createActivity(this.cp, agentPath, input);
-    return activities.createActivity(agentPath, input);
+    const activity = this.cp
+      ? await controlPlane.createActivity(this.cp, agentPath, input)
+      : activities.createActivity(agentPath, input);
+    emitLocalEcho("ActivityChanged", { agentPath });
+    return activity;
   }
   async updateActivity(
     agentPath: string,
     id: string,
     updates: ActivityUpdate,
   ): Promise<Activity> {
-    if (this.cp)
-      return controlPlane.updateActivity(this.cp, agentPath, id, updates);
-    return activities.updateActivity(agentPath, id, updates);
+    const activity = this.cp
+      ? await controlPlane.updateActivity(this.cp, agentPath, id, updates)
+      : activities.updateActivity(agentPath, id, updates);
+    emitLocalEcho("ActivityChanged", { agentPath });
+    return activity;
   }
   async deleteActivity(agentPath: string, id: string): Promise<void> {
-    if (this.cp) return controlPlane.deleteActivity(this.cp, agentPath, id);
-    activities.deleteActivity(agentPath, id);
+    if (this.cp) await controlPlane.deleteActivity(this.cp, agentPath, id);
+    else activities.deleteActivity(agentPath, id);
+    emitLocalEcho("ActivityChanged", { agentPath });
   }
 
   /**
@@ -384,6 +393,10 @@ export class HoustonClient {
   ): Promise<void> {
     if (!this.cp) {
       activities.setStatusBySessionKey(agentPath, sessionKey, status);
+      // Write-through echo: this is the settle path (a turn finishing PATCHes
+      // its board status). Without it the card sticks on "running" until a
+      // server event that, in hosted mode, historically never comes.
+      emitLocalEcho("ActivityChanged", { agentPath });
       return;
     }
     const list = await controlPlane.listActivities(this.cp, agentPath);
@@ -392,6 +405,7 @@ export class HoustonClient {
     );
     if (!match) return; // transient session with no board card — nothing to update
     await controlPlane.updateActivity(this.cp, agentPath, match.id, { status });
+    emitLocalEcho("ActivityChanged", { agentPath });
   }
 
   // ---- agent data files (.houston/**) ----
@@ -418,6 +432,11 @@ export class HoustonClient {
     // (e.g. a non-default OpenCode Go model) updates the doc but every turn keeps
     // running the provider's default. Bridge the config write into the engine.
     await this.syncConfigToSettings(agentPath, relPath, content);
+    // Write-through echo: files-first writes (learnings, context, config doc, …)
+    // have no dedicated event, so classify the path exactly as the host watcher
+    // does and invalidate the matching cache locally. Null (e.g. `.git/**`) skips.
+    const echoType = agentFileEventType(relPath);
+    if (echoType) emitLocalEcho(echoType, { agentPath });
   }
 
   /**
@@ -608,46 +627,55 @@ export class HoustonClient {
   // Routine + skill mutations route to the host (cloud); standalone web has no
   // routine/skill backend, so they no-op there (the UI still navigates).
   async createRoutine(agentPath: string, input: NewRoutine): Promise<Routine> {
-    if (this.cp) return controlPlane.createRoutine(this.cp, agentPath, input);
-    return {} as Routine;
+    if (!this.cp) return {} as Routine;
+    const routine = await controlPlane.createRoutine(this.cp, agentPath, input);
+    emitLocalEcho("RoutinesChanged", { agentPath });
+    return routine;
   }
   async updateRoutine(
     agentPath: string,
     id: string,
     updates: RoutineUpdate,
   ): Promise<Routine> {
-    if (this.cp)
-      return controlPlane.updateRoutine(this.cp, agentPath, id, updates);
-    return {} as Routine;
+    if (!this.cp) return {} as Routine;
+    const routine = await controlPlane.updateRoutine(
+      this.cp,
+      agentPath,
+      id,
+      updates,
+    );
+    emitLocalEcho("RoutinesChanged", { agentPath });
+    return routine;
   }
   async deleteRoutine(agentPath: string, id: string): Promise<void> {
-    if (this.cp) return controlPlane.deleteRoutine(this.cp, agentPath, id);
+    if (!this.cp) return;
+    await controlPlane.deleteRoutine(this.cp, agentPath, id);
+    emitLocalEcho("RoutinesChanged", { agentPath });
   }
   /** Fire a routine on demand: the host records a routine_run and starts the turn now. */
   async runRoutineNow(agentPath: string, routineId: string): Promise<void> {
-    if (this.cp)
-      return controlPlane.runRoutineNow(this.cp, agentPath, routineId);
-    throw new Error("Running a routine needs a cloud workspace.");
+    if (!this.cp) throw new Error("Running a routine needs a cloud workspace.");
+    await controlPlane.runRoutineNow(this.cp, agentPath, routineId);
+    emitLocalEcho("RoutineRunsChanged", { agentPath });
   }
   async createSkill(req: CreateSkillRequest): Promise<void> {
-    if (this.cp)
-      return controlPlane.createSkill(this.cp, req.workspacePath, {
-        name: req.name,
-        description: req.description,
-        content: req.content,
-      });
+    if (!this.cp) return;
+    await controlPlane.createSkill(this.cp, req.workspacePath, {
+      name: req.name,
+      description: req.description,
+      content: req.content,
+    });
+    emitLocalEcho("SkillsChanged", { agentPath: req.workspacePath });
   }
   async saveSkill(name: string, req: SaveSkillRequest): Promise<void> {
-    if (this.cp)
-      return controlPlane.saveSkill(
-        this.cp,
-        req.workspacePath,
-        name,
-        req.content,
-      );
+    if (!this.cp) return;
+    await controlPlane.saveSkill(this.cp, req.workspacePath, name, req.content);
+    emitLocalEcho("SkillsChanged", { agentPath: req.workspacePath });
   }
   async deleteSkill(workspacePath: string, name: string): Promise<void> {
-    if (this.cp) return controlPlane.deleteSkill(this.cp, workspacePath, name);
+    if (!this.cp) return;
+    await controlPlane.deleteSkill(this.cp, workspacePath, name);
+    emitLocalEcho("SkillsChanged", { agentPath: workspacePath });
   }
 
   // ---- providers (auth) ----
