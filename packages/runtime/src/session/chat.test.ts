@@ -38,9 +38,8 @@ vi.mock("../ai/providers", async (importOriginal) => {
   };
 });
 
-const { runTurn, ensureProviderForTurn, switchNeedsCompaction } = await import(
-  "./chat"
-);
+const { runTurn, ensureProviderForTurn } = await import("./chat");
+const { switchNeedsCompaction } = await import("./provider-switch");
 const { subscribe } = await import("./bus");
 
 afterAll(() => vi.restoreAllMocks());

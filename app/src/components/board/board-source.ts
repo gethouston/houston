@@ -1,6 +1,7 @@
 import type { KanbanItem, NewPanelOpener } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
 import type { ReactNode } from "react";
+import type { HistoryLoadOptions } from "../../lib/tauri";
 import type { Agent, AgentDefinition } from "../../lib/types";
 
 /**
@@ -100,7 +101,15 @@ export interface BoardSource {
   onDelete: (item: KanbanItem) => void | Promise<void>;
   onApprove: (item: KanbanItem) => void | Promise<void>;
   onRename: (item: KanbanItem, title: string) => void;
-  loadHistory: (sessionKey: string) => Promise<FeedItem[]>;
+  /**
+   * Persisted chat history for one conversation. Callers forward `opts`:
+   * mission search bulk-loads with `observe: false` (no per-conversation
+   * observer streams); the board's open-a-chat hydration omits it (observes).
+   */
+  loadHistory: (
+    sessionKey: string,
+    opts?: HistoryLoadOptions,
+  ) => Promise<FeedItem[]>;
   onHistoryLoaded: (sessionKey: string, items: FeedItem[]) => void;
   /** Raw send (no queue). `overrides` carry the composer's effective
    *  provider/model; the per-agent source uses them, Mission Control resolves

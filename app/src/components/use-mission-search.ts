@@ -11,7 +11,15 @@ import {
 interface UseMissionSearchOptions {
   items: KanbanItem[];
   query: string;
-  loadHistory: (sessionKey: string) => Promise<FeedItem[]>;
+  /**
+   * Must forward the options to the history loader: search loads N missions'
+   * histories at a time and passes `observe: false` so the new-engine adapter
+   * doesn't spawn N observer streams (that's for real conversation opens).
+   */
+  loadHistory: (
+    sessionKey: string,
+    opts?: { observe?: boolean },
+  ) => Promise<FeedItem[]>;
   onHistoryLoadError?: () => void;
 }
 
@@ -64,7 +72,9 @@ export function useMissionSearch({
 
     Promise.allSettled(
       missing.map(async (item) => {
-        const history = await loadHistory(sessionKeyFor(item));
+        const history = await loadHistory(sessionKeyFor(item), {
+          observe: false,
+        });
         return [item.id, buildMissionHistorySearchText(history)] as const;
       }),
     )

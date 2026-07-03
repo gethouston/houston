@@ -1,4 +1,5 @@
 import type { ServerResponse } from "node:http";
+import { readEventStream } from "@houston/runtime-client";
 import { isExpiring } from "../credentials/refresh";
 import type { Agent, Workspace } from "../domain/types";
 import {
@@ -9,7 +10,6 @@ import {
 import { isCloudProvider } from "../providers";
 import { json, PROVIDER, prefixFor, readSettings, type TurnDeps } from "./deps";
 import { TurnQuotaError } from "./quota";
-import { pumpSse } from "./sse";
 
 /**
  * Fire one turn against the per-turn runtime: claim the workspace quota and
@@ -133,7 +133,11 @@ export async function dispatchTurn(
             `turn runtime ${upstream.status}: ${await upstream.text().catch(() => "")}`,
           );
         }
-        await pumpSse(upstream.body, publish);
+        // Each frame is awaited into the relay (sequence → persist snapshot →
+        // broadcast) before the next is parsed, preserving stream order. The
+        // runtime's frames arrive seq-less with a turnId; the relay stamps seq
+        // itself and turnId rides the envelope through.
+        await readEventStream(upstream.body, publish);
       } finally {
         await release();
       }

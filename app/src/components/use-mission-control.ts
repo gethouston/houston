@@ -10,7 +10,12 @@ import { createMission } from "../lib/create-mission";
 import { missionCardTags } from "../lib/mission-card";
 import { queryKeys } from "../lib/query-keys";
 import { formatVisibleMessageText } from "../lib/queued-chat";
-import { tauriActivity, tauriAttachments, tauriChat } from "../lib/tauri";
+import {
+  type HistoryLoadOptions,
+  tauriActivity,
+  tauriAttachments,
+  tauriChat,
+} from "../lib/tauri";
 import type { Agent } from "../lib/types";
 import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useFeedStore } from "../stores/feeds";
@@ -130,10 +135,13 @@ export function useMissionControl(agents: Agent[]) {
   }, [convos, agentColorMap, agentMap, getAgentDef, t]);
 
   const loadHistory = useCallback(
-    async (sessionKey: string): Promise<FeedItem[]> => {
+    async (
+      sessionKey: string,
+      opts?: HistoryLoadOptions,
+    ): Promise<FeedItem[]> => {
       const agentPath = sessionMapRef.current[sessionKey]?.agentPath;
       if (!agentPath) return [];
-      const history = await tauriChat.loadHistory(agentPath, sessionKey);
+      const history = await tauriChat.loadHistory(agentPath, sessionKey, opts);
       return history as FeedItem[];
     },
     [],

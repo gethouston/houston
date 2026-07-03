@@ -22,7 +22,7 @@ export class TurnChannel implements RuntimeChannel {
     ctx: ChannelCtx,
     method: string,
     rest: string,
-    _url: URL,
+    url: URL,
     req: IncomingMessage,
     res: ServerResponse,
   ): Promise<void> {
@@ -32,6 +32,7 @@ export class TurnChannel implements RuntimeChannel {
       ctx.agent,
       method,
       rest,
+      url,
       req,
       res,
     );

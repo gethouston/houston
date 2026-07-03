@@ -28,21 +28,18 @@ function seed(rel: string, content: string) {
 }
 
 // A fake pi turn: proves it sees the hydrated workspace + injected credential,
-// mutates the workspace, emits frames.
-const fakeTurn: typeof runPiTurn = async (
-  root,
-  _conversationId,
-  text,
-  provider,
-  emit,
-) => {
+// mutates the workspace, emits frames (stamped with the server-minted turnId,
+// like the real runPiTurn).
+const fakeTurn: typeof runPiTurn = async (root, turn) => {
+  const { text, provider, emit, turnId } = turn;
   const notes = await readFile(join(root, "workspace", "notes.txt"), "utf8");
   const auth = await readFile(join(root, "data", "auth.json"), "utf8");
   await writeFile(join(root, "workspace", "deck.pptx"), "DECK-BYTES");
-  emit({ type: "user", data: { content: text, ts: 1 } });
+  emit({ type: "user", data: { content: text, ts: 1 }, turnId });
   emit({
     type: "text",
     data: `saw:${notes};provider:${provider};auth:${JSON.parse(auth)[provider].access}`,
+    turnId,
   });
   return {};
 };
@@ -158,20 +155,15 @@ test("a sync failure surfaces as the turn's error — never a quiet done", async
 });
 
 test("a routine's model/effort pin reaches the pi turn", async () => {
-  // Capture the pin the server forwards to runPiTurn (8th arg).
+  // Capture the pin the server forwards to runPiTurn.
   let seen: { model?: string | null; effort?: string | null } | undefined;
-  const capture: typeof runPiTurn = async (
-    _root,
-    _cid,
-    text,
-    _provider,
-    emit,
-    _signal,
-    _nonce,
-    pin,
-  ) => {
-    seen = pin;
-    emit({ type: "user", data: { content: text, ts: 1 } });
+  const capture: typeof runPiTurn = async (_root, turn) => {
+    seen = turn.pin;
+    turn.emit({
+      type: "user",
+      data: { content: turn.text, ts: 1 },
+      turnId: turn.turnId,
+    });
     return {};
   };
   const s = createTurnServer({ store, token: "", runTurn: capture });
@@ -190,6 +182,21 @@ test("a routine's model/effort pin reaches the pi turn", async () => {
   } finally {
     s.close();
   }
+});
+
+test("every frame of a turn — including the server's terminal — carries ONE turnId", async () => {
+  seed("workspace/notes.txt", "hello-from-gcs");
+  const res = await post(turnBody());
+  const raw = await res.text();
+  const frames = raw
+    .split("\n\n")
+    .map((b) => b.split("\n").find((l) => l.startsWith("data: ")))
+    .filter((l): l is string => !!l)
+    .map((l) => JSON.parse(l.slice(6)) as { type: string; turnId?: string });
+  expect(frames.map((f) => f.type)).toEqual(["user", "text", "done"]);
+  const ids = new Set(frames.map((f) => f.turnId));
+  expect(ids.size).toBe(1);
+  expect([...ids][0]).toMatch(/^[0-9a-f-]{36}$/);
 });
 
 test("health endpoint reports turn mode", async () => {

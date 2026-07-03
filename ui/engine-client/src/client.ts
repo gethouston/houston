@@ -1242,9 +1242,17 @@ export class HoustonClient {
       { sessionKey },
     );
   }
+  /**
+   * `opts.observe` (default true) is consumed by the new-engine adapter, where
+   * opening a chat also attaches a passive observer stream: bulk history reads
+   * (mission search, board scans) pass `false` so N loads don't spawn N
+   * streams. The Rust engine's WS delivers everything already — here the flag
+   * is accepted for signature parity and ignored.
+   */
   loadChatHistory(
     agentPath: string,
     sessionKey: string,
+    _opts: { observe?: boolean } = {},
   ): Promise<ChatHistoryEntry[]> {
     return this.request(
       "GET",

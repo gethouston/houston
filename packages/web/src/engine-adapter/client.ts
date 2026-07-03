@@ -36,6 +36,7 @@ import * as agents from "./agents";
 import { bus, emitEvent } from "./bus";
 import type { ControlPlaneConfig } from "./control-plane";
 import * as controlPlane from "./control-plane";
+import type { BoardStatus } from "./feed-events";
 import {
   configWriteToSettings,
   credentialSiblings,
@@ -46,7 +47,8 @@ import {
   toNewProvider,
   toOldProvider,
 } from "./synthetic";
-import { historyToFeed, streamTurn } from "./translate";
+import { historyToFeed } from "./translate";
+import { observeConversation, streamTurn } from "./turn-stream";
 
 export interface HoustonClientOptions {
   baseUrl: string;
@@ -378,7 +380,7 @@ export class HoustonClient {
   private async setActivityStatus(
     agentPath: string,
     sessionKey: string,
-    status: string,
+    status: BoardStatus,
   ): Promise<void> {
     if (!this.cp) {
       activities.setStatusBySessionKey(agentPath, sessionKey, status);
@@ -1014,12 +1016,31 @@ export class HoustonClient {
   async loadChatHistory(
     agentPath: string,
     sessionKey: string,
+    opts: { observe?: boolean } = {},
   ): Promise<ChatHistoryEntry[]> {
     try {
       const engine = this.cp
         ? controlPlane.runtimeClientFor(this.cp, agentPath)
         : this.engine;
       const history = await engine.getHistory(sessionKey);
+      // Observer mode: a loaded chat may have a turn in flight that THIS client
+      // isn't streaming (page reloaded mid-turn, or another client sent it).
+      // Attach a passive resumable stream: if the server's `sync` reports a
+      // running turn it surfaces (spinner + partial) and renders to completion;
+      // an idle conversation closes the stream right after that `sync`. No-op
+      // when the conversation is already streamed here. `observe: false` is
+      // for BULK history reads (mission search, board scans) that load N
+      // conversations at a time and must not spawn N streams — only a real
+      // conversation open observes (the default).
+      if (opts.observe !== false) {
+        observeConversation(
+          engine,
+          agentPath,
+          sessionKey,
+          (status) => this.setActivityStatus(agentPath, sessionKey, status),
+          history.messages.length,
+        );
+      }
       return historyToFeed(history.messages);
     } catch {
       return [];

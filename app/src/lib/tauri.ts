@@ -252,6 +252,16 @@ export const tauriAgents = {
 
 // ─── Chat sessions ────────────────────────────────────────────────────
 
+/**
+ * How a chat history load behaves. `observe: false` marks a BULK read
+ * (mission search, board scans over N conversations): the new-engine adapter
+ * then skips attaching its passive in-flight-turn observer stream, which only
+ * a real conversation open (the default) should do.
+ */
+export interface HistoryLoadOptions {
+  observe?: boolean;
+}
+
 export const tauriChat = {
   send: (
     agentPath: string,
@@ -311,9 +321,13 @@ export const tauriChat = {
     call<void>("stop_session", async () => {
       await getEngine().cancelSession(agentPath, sessionKey);
     }),
-  loadHistory: (agentPath: string, sessionKey: string) =>
+  loadHistory: (
+    agentPath: string,
+    sessionKey: string,
+    opts?: HistoryLoadOptions,
+  ) =>
     call<Array<{ feed_type: string; data: unknown }>>("load_chat_history", () =>
-      getEngine().loadChatHistory(agentPath, sessionKey),
+      getEngine().loadChatHistory(agentPath, sessionKey, opts),
     ),
   summarize: (message: string) =>
     call<{ title: string; description: string }>("summarize_activity", () =>

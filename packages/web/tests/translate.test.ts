@@ -5,7 +5,8 @@ import type {
 } from "@houston/runtime-client";
 import { expect, test } from "vitest";
 import { bus } from "../src/engine-adapter/bus";
-import { historyToFeed, streamTurn } from "../src/engine-adapter/translate";
+import { historyToFeed } from "../src/engine-adapter/translate";
+import { streamTurn } from "../src/engine-adapter/turn-stream";
 
 type FinalResult = {
   feed_type?: string;

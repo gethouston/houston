@@ -10,7 +10,11 @@ import {
 } from "../../hooks/queries";
 import { missionCardTags } from "../../lib/mission-card";
 import { canDropMission, selectActive } from "../../lib/mission-selection";
-import { tauriActivity, tauriChat } from "../../lib/tauri";
+import {
+  type HistoryLoadOptions,
+  tauriActivity,
+  tauriChat,
+} from "../../lib/tauri";
 import type { Agent, AgentDefinition } from "../../lib/types";
 import { useFeedStore } from "../../stores/feeds";
 import { useUIStore } from "../../stores/ui";
@@ -89,8 +93,8 @@ export function useAgentBoardData({
   );
 
   const loadHistory = useCallback(
-    async (sessionKey: string) => {
-      const history = await tauriChat.loadHistory(path, sessionKey);
+    async (sessionKey: string, opts?: HistoryLoadOptions) => {
+      const history = await tauriChat.loadHistory(path, sessionKey, opts);
       return history as FeedItem[];
     },
     [path],

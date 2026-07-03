@@ -86,6 +86,13 @@ export class ProxyChannel implements RuntimeChannel {
       ? actingHeader[0]
       : actingHeader;
 
+    // The SSE resume cursor: an EventSource reconnect sends Last-Event-ID, and
+    // the runtime's events route honors it — relay it so resume survives the proxy.
+    const lastEventHeader = req.headers["last-event-id"];
+    const lastEventId = Array.isArray(lastEventHeader)
+      ? lastEventHeader[0]
+      : lastEventHeader;
+
     return this.opts.proxy.forward(
       endpoint,
       {
@@ -95,6 +102,7 @@ export class ProxyChannel implements RuntimeChannel {
         contentType: req.headers["content-type"] ?? null,
         body,
         actingAs,
+        lastEventId,
       },
       res,
     );

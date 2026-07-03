@@ -2,7 +2,7 @@ import type { KanbanItem } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
 import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { tauriChat } from "../../lib/tauri";
+import { type HistoryLoadOptions, tauriChat } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 import { useMissionSearch } from "../use-mission-search";
 
@@ -22,8 +22,8 @@ export function useArchivedMissionSearch(
   const addToast = useUIStore((s) => s.addToast);
 
   const loadHistory = useCallback(
-    async (sessionKey: string) =>
-      (await tauriChat.loadHistory(agentPath, sessionKey)) as FeedItem[],
+    async (sessionKey: string, opts?: HistoryLoadOptions) =>
+      (await tauriChat.loadHistory(agentPath, sessionKey, opts)) as FeedItem[],
     [agentPath],
   );
   const handleHistoryLoadError = useCallback(() => {

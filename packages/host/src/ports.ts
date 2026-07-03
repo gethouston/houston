@@ -82,6 +82,13 @@ export interface ForwardRequest {
    * one header is relayed; nothing host-minted.
    */
   actingAs?: string;
+  /**
+   * The caller's `Last-Event-ID` resume cursor, relayed so the runtime's
+   * resumable conversation events stream (`GET .../events`) can replay the
+   * frames an EventSource reconnect missed. Query cursors (`?after=`) ride
+   * `search` and need no special handling.
+   */
+  lastEventId?: string;
 }
 
 export type RuntimeState = "running" | "asleep" | "absent";
