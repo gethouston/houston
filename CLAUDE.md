@@ -1,42 +1,6 @@
-# Claude Session Protocol — Houston
+# Houston — repo knowledge
 
-Caveman style. Progressive discovery. Load on demand.
-
----
-
-## RULE 0 — NEVER TAKE SHORTCUTS
-
-**This is the highest rule. It outranks every phase, every dispatch, every "be efficient" instinct.**
-
-If a faster path and a better path both exist, the better path wins. Always. Even if "better" means 40 directory renames, 28 cross-reference fixes, a doc update, a test rewrite, and a hash bump. Volume of work is not a reason. "It would still work" is not a reason.
-
-**Watch for these shortcut patterns in your own thinking:**
-
-- "This avoids the rename / refactor / doc update / migration." → That's labor, not a reason. Do the work.
-- Adding an override / opt-out / fallback field to paper over a bad name or bad shape. → Fix the underlying name or shape.
-- Skipping a typecheck / test / build because it's slow or set-up-heavy. → Run it.
-- Keeping legacy compatibility "just in case" inside internal code. → Delete it (per the existing no-backwards-compat rule).
-- Generating bulk content with a script when each item deserves real thought. → Do the items by hand.
-- Writing a TODO / FIXME / "we can clean this up later." → Clean it up now.
-- Declaring something done before the verification step actually passed. → Not done.
-- Picking the smallest example to demo on without asking the user. → Ask.
-
-**Self-audit at the end of every meaningful chunk of work:**
-> "Where did I cut a corner? Was it because the better path was wrong, or because it was just longer?"
->
-> If "just longer" — go back and do it right.
-
-This rule was added because the model defaulted to a shortcut (a `display_name` schema override instead of renaming 40 slugs) and the user had to push back. Don't make the user push back. Catch yourself first.
-
----
-
-## PHASE 0 — Load /caveman (EVERY SESSION, FIRST)
-
-Before any action: invoke `/caveman` skill. Stay terse. Drop articles, filler, pleasantries. Technical substance stays. Code blocks unchanged.
-
-Default level: `full`. Switch via `/caveman lite|full|ultra`.
-
-Off only if user says "stop caveman" or "normal mode".
+**The session protocol (writing style, Rule 0, work phases, git/PR workflow) lives at the workspace level: `~/dev-houston/CLAUDE.md`** (symlinked into every task workspace). This file is houston-specific knowledge only.
 
 ---
 
@@ -96,53 +60,17 @@ Design work? Skills: `/critique` before, `/polish` after. Else `/clarify` (copy)
 
 ---
 
-## Phases (follow IN ORDER)
+## Houston-specific phase notes
 
-Print phase name so user knows protocol active.
+The phases themselves are in the workspace CLAUDE.md. In this repo they mean:
 
-**STOP-AND-WAIT rule:** When told "wait for approval" / "ask user" — end turn NOW. No anticipating. No next phase.
-
-### PHASE 1 — Load Context (session start only)
-Read `knowledge-base/architecture.md` + any KBs relevant to scope. Name what you loaded.
-
-### PHASE 2 — Understand
-Read files user references. Identify direction: library-first / app-first / single-layer. Ask clarifying Qs if anything unclear. **STOP if asked.**
-
-### PHASE 3 — Challenge
-Push back on request if better approach exists. Check:
-- Library or app? Generic → ui/engine. App-specific → app/.
-- Which package? Exists already?
-- Props generic? No store imports? No app-specific types?
-- Does this fit chat-first planning/delegation?
-
-Approach sound → say so. Better path exists → say it clearly, no sugarcoat. **STOP until user agrees.**
-
-### PHASE 4 — Plan
-Numbered steps. Mark area per step: `[ui/board]`, `[engine]`, `[app]`. Group into testable chunks. Library before app. **STOP for approval.**
-
-### PHASE 5 — Execute chunk
-Print chunk + area. Do all steps. Brief summary. Continue.
-
-### PHASE 6 — Test
-Run checks for what touched. Rust → `cargo test`, not just check. Fix failures.
-
-### PHASE 7 — Verify
-Full verification. UI touched? Visual fidelity check. Say "Ready for testing — verify + report." **STOP.** Issue? Add logging first (see `/debug`), never blind fix.
-
-### PHASE 8 — Refactor
-Library boundary leak? API clean? File > 200 lines (CSS > 500)? Duplication across ui/ + app/? Propose + do after approval.
-
-### PHASE 9 — Cleanup
-Unused imports, dead code, debug artifacts. ui/ → no `@/`, no Zustand, no Tauri. app/ → no duplicated logic.
-
-### PHASE 10 — Document
-Check + update all affected docs: `knowledge-base/*.md`, skills, showcase. Update now, not propose.
-
-### PHASE 11 — Complete
-Summarize. Needs NEW KB entry? New pattern / architecture decision / gotcha / design precedent. Propose if yes.
-
-### PHASE 12 — Commit
-Ask: "Ready to commit? (yes/no/skip)" **STOP.** Yes → stage specific files, conventional commit, push `claude/wip`. Never `git add -A`.
+- Phase 1 (context): read `knowledge-base/architecture.md` + KBs relevant to scope. Name what you loaded.
+- Phase 3 (challenge): library or app? Generic → ui/engine. App-specific → app/. Props generic, no store imports, no app types?
+- Phase 4 (plan): tag each step `[ui/board]`, `[engine]`, `[app]`. Library before app.
+- Phase 6 (test): Rust → `cargo test`, not just check.
+- Phase 7 (verify): UI touched → visual fidelity check. Issue? Add logging first (`/debug`), never blind fix.
+- Phase 9 (cleanup): ui/ → no `@/`, no Zustand, no Tauri. app/ → no duplicated logic.
+- Phase 10 (document): `knowledge-base/*.md`, skills, showcase.
 
 ---
 
@@ -265,24 +193,9 @@ Never "You're absolutely right!" if better approach exists. Say it.
 
 ---
 
-## Git — Worktree workflow (ALWAYS)
+## Git
 
-User ALWAYS runs Claude in a per-task worktree. Each task = isolated branch in `.claude/worktrees/<name>/`. Main stays clean.
-
-Branch model:
-- `main` — releasable, protected, PRs only
-- `claude/<worktree-name>` — the worktree's own branch (auto-created on worktree spawn); commits go here
-
-End-to-end flow (run without asking, unless a step is destructive and not pre-authorized):
-1. `git branch --show-current` → confirm it's the worktree branch (e.g. `claude/crazy-pare-b3d43d`). Never switch to `claude/wip` or `main`.
-2. Stage specific files. Never `git add -A`.
-3. Conventional commit (`feat:` `fix:` `docs:` `chore:` `refactor:` `style:` `test:`).
-4. `git push -u origin <worktree-branch>`.
-5. `gh pr create --base main --title "…" --body "…"` — summarise changes, list affected files.
-6. STOP. Never merge the PR yourself. The user must explicitly say to merge that PR before any `gh pr merge`, squash merge, branch deletion, or cleanup.
-7. Cleanup only after an explicit merge instruction; `git worktree remove <path>` is handled by the harness on exit.
-
-Never `git reset --hard` on `main`, never force-push to `main`, never merge without an explicit user merge instruction, and never bypass the PR step (even for trivial changes — PR is the audit trail).
+Workflow lives in the workspace CLAUDE.md (task branches `agent/<task-id>/<repo>`, per-repo PRs against `main`, never merge without explicit instruction). Houston-specific: `main` is protected, PRs only. Never `git reset --hard` or force-push on `main`.
 
 ---
 

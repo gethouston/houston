@@ -56,7 +56,7 @@ Houston = open platform. Organized as **7 products + 3 code libraries**.
 |-----|------|
 | ~~`houston-relay/`~~ **REMOVED** | Was the Cloudflare Worker + Durable Object at `tunnel.gethouston.ai` (reverse-tunnel proxy + static host for the mobile PWA). Deleted with the mobile/tunnel cut. |
 | ~~`examples/smartbooks/`~~ **REMOVED** | Was the reference custom-frontend consumer of `houston-engine` (own brand, zero `@houston-ai/*` UI deps). Deleted in the convergence sweep. |
-| `knowledge-base/` | These caveman docs. Loaded on demand. |
+| `knowledge-base/` | Repo knowledge docs. Loaded on demand. |
 | `scripts/` | Version bump, release, CLI binary fetch. |
 
 ## Engine crates (`engine/`)
