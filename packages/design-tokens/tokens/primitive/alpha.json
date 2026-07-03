@@ -1,0 +1,28 @@
+{
+  "color": {
+    "alpha": {
+      "$type": "color",
+      "black-a07": { "$value": "rgba(0, 0, 0, 0.07)" },
+      "ink-a035": { "$value": "rgba(13, 13, 13, 0.035)" },
+      "ink-a06": { "$value": "rgba(13, 13, 13, 0.06)" },
+      "white-a045": { "$value": "rgba(255, 255, 255, 0.045)" },
+      "white-a05": { "$value": "rgba(255, 255, 255, 0.05)" },
+      "white-a08": { "$value": "rgba(255, 255, 255, 0.08)" },
+      "white-a10": { "$value": "rgba(255, 255, 255, 0.1)" }
+    },
+    "glass": {
+      "$type": "color",
+      "white-68": { "$value": "rgba(255, 255, 255, 0.68)" },
+      "white-82": { "$value": "rgba(255, 255, 255, 0.82)" },
+      "neutral-50": { "$value": "rgba(40, 40, 40, 0.5)" },
+      "neutral-85": { "$value": "rgba(34, 34, 34, 0.85)" },
+      "screen-55": { "$value": "rgba(38, 38, 40, 0.55)" }
+    },
+    "brand": {
+      "$type": "color",
+      "border-wash": { "$value": "rgba(60, 70, 120, 0.1)" },
+      "highlight-45": { "$value": "rgba(250, 204, 21, 0.45)" },
+      "highlight-34": { "$value": "rgba(234, 179, 8, 0.34)" }
+    }
+  }
+}

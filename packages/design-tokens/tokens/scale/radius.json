@@ -1,0 +1,12 @@
+{
+  "radius": {
+    "$type": "dimension",
+    "sm": { "$value": "4px" },
+    "md": { "$value": "6px" },
+    "lg": { "$value": "8px" },
+    "xl": { "$value": "12px" },
+    "xxl": { "$value": "16px" },
+    "composer": { "$value": "28px" },
+    "full": { "$value": "9999px" }
+  }
+}

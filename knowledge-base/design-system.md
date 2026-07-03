@@ -11,6 +11,31 @@ Visual language: ChatGPT-like. Near-black primary, monochrome, clean typography,
 > grayscale / "never decorative colour" / "light mode only" notes below are kept
 > for history, but the futuristic layer is the current source of truth.
 
+## Design tokens are the source of truth
+
+Colour, typography scale, spacing, radii, motion and elevation are defined ONCE
+in **`packages/design-tokens`** (`@houston/design-tokens`), authored as W3C DTCG
+JSON (primitive layer + semantic `--ht-*` alias layer, light + dark) and compiled
+by Style Dictionary to every surface: `dist/css/tokens.css` (web/desktop),
+`dist/ts/tokens.ts` (JS values), `dist/swift/*.swift` + `dist/kotlin/*.kt`
+(native, no consumers yet). `@houston-ai/core`'s `globals.css` imports the CSS;
+`@theme` there re-exports `--ht-*` to Tailwind `--color-*` as before.
+
+**Change procedure — a visual change is a token edit:**
+
+1. Edit `packages/design-tokens/tokens/*.json` (a primitive value or a semantic
+   reference). NEVER edit `dist/` and NEVER add a new hardcoded colour/spacing
+   literal to app or `ui/` CSS — reference a `--ht-*` var (or a Tailwind
+   `--color-*` utility).
+2. `pnpm --filter @houston/design-tokens build`.
+3. Commit source + regenerated `dist/` together (a sync test fails on stale dist).
+4. If the change is genuinely visual, update `test/legacy-resolved.json` to the
+   new baseline in the same commit (the zero-diff test pins it otherwise).
+
+The colour values below are the CURRENT shipped tokens; treat the JSON as
+authoritative. See `packages/design-tokens/README.md` for the two-tier model and
+the zero-diff story.
+
 ## Personality
 Capable, calm, invisible. Quiet expert. Not flashy, not corporate, not techy. Like texting brilliant assistant.
 
@@ -31,7 +56,12 @@ Near-black `#0d0d0d`, NEVER pure black. **Both light and dark ship** now (the
 `gray-50 #f9f9f9` (sidebar bg) · `100 #ececec` (hover, user bubble) · `200 #e3e3e3` (pressed, dividers) · `300 #cdcdcd` (borders) · `400 #b4b4b4` (disabled) · `500 #9b9b9b` (placeholder) · `600 #676767` (secondary text) · `700 #424242` (body) · `950 #0d0d0d` (primary text + buttons)
 
 ### Tokens
-`--background #fff` · `--foreground #0d0d0d` · `--secondary #f9f9f9` · `--muted-foreground #5d5d5d` · `--border #e5e5e5` · `--ring #0d0d0d` · `--accent #f5f5f5`
+The semantic `--ht-*` set (re-exported to Tailwind `--color-*`) is generated from
+`@houston/design-tokens` — see `tokens/semantic/color.{light,dark}.json` for the
+live values. Historic light-mode reference: `--background #fff` · `--foreground
+#0d0d0d` · `--secondary #f9f9f9` · `--muted-foreground #5d5d5d` · `--border
+#e5e5e5` · `--ring #0d0d0d` · `--accent #f5f5f5` (the futuristic layer now shifts
+several of these — the JSON is authoritative).
 
 ### Borders (opacity)
 5%/15%/15%/25% = light/medium/heavy/xheavy. Use `rgba(13,13,13,X)`.

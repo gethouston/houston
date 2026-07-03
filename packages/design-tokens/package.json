@@ -1,0 +1,34 @@
+{
+  "name": "@houston/design-tokens",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/ts/tokens.ts",
+  "module": "./dist/ts/tokens.ts",
+  "types": "./dist/ts/tokens.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/ts/tokens.ts",
+      "import": "./dist/ts/tokens.ts"
+    },
+    "./css": "./dist/css/tokens.css",
+    "./tokens.css": "./dist/css/tokens.css"
+  },
+  "files": [
+    "dist",
+    "tokens",
+    "build"
+  ],
+  "scripts": {
+    "build": "node build/index.mjs",
+    "test": "vitest run",
+    "typecheck": "tsgo -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@typescript/native-preview": "7.0.0-dev.20260607.1",
+    "style-dictionary": "4.4.0",
+    "typescript": "^6.0.2",
+    "vitest": "^3.2.4"
+  }
+}

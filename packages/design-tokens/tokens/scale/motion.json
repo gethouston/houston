@@ -1,0 +1,15 @@
+{
+  "duration": {
+    "$type": "duration",
+    "fast": { "$value": "200ms" },
+    "elegant": { "$value": "582ms" },
+    "common": { "$value": "667ms" },
+    "bounce": { "$value": "833ms" },
+    "ambient": { "$value": "32000ms" }
+  },
+  "easing": {
+    "$type": "cubicBezier",
+    "standard": { "$value": [0.25, 0.1, 0.25, 1] },
+    "entrance": { "$value": [0.16, 1, 0.3, 1] }
+  }
+}
