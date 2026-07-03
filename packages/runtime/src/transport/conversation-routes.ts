@@ -1,5 +1,5 @@
 import type { ActingContext } from "../session/acting-context";
-import { snapshot, subscribe } from "../session/bus";
+import { evict } from "../session/bus";
 import {
   cancelTurn,
   disposeConversation,
@@ -13,13 +13,13 @@ import {
   listConversations,
   renameConversation,
 } from "../store/conversations";
+import { handleConversationEvents } from "./events-route";
 import { json, type RouteContext, readJson } from "./http-helpers";
-import { openSSE } from "./sse";
 
 export async function handleConversationRoute(
   ctx: RouteContext,
 ): Promise<boolean> {
-  const { method, path, req, res } = ctx;
+  const { method, path, res } = ctx;
 
   if (method === "GET" && path === "/conversations") {
     json(res, 200, listConversations());
@@ -52,13 +52,7 @@ export async function handleConversationRoute(
     return true;
   }
   if (method === "GET" && action === "events") {
-    const sse = openSSE(res);
-    sse.send("sync", snapshot(id));
-    const unsub = subscribe(id, (e) => sse.send(e.type, e.data));
-    req.on("close", () => {
-      unsub();
-      sse.close();
-    });
+    handleConversationEvents(ctx, id);
     return true;
   }
   if (method === "POST" && action === "cancel") {
@@ -105,6 +99,10 @@ async function handleConversationRoot(ctx: RouteContext, id: string) {
   }
   if (ctx.method === "DELETE") {
     await disposeConversation(id, { deleteSessions: true });
+    // Drop the event channel with the transcript: any outstanding resume
+    // cursor for a deleted conversation is unserviceable by definition, so a
+    // reconnect gets a resync against the (now empty) history — correct.
+    evict(id);
     deleteConversation(id)
       ? json(ctx.res, 200, { ok: true })
       : json(ctx.res, 404, { error: "conversation not found" });

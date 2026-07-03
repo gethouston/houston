@@ -76,10 +76,8 @@ test("delete then re-append starts a fresh conversation, not a resurrected one",
 test("assistant message persists token usage so the indicator survives a reload", () => {
   const dir = freshDir();
   appendUserMessageAt(dir, "c1", "hi");
-  appendAssistantMessageAt(dir, "c1", "hello!", undefined, {
-    context_tokens: 12345,
-    output_tokens: 67,
-    cached_tokens: 89,
+  appendAssistantMessageAt(dir, "c1", "hello!", {
+    usage: { context_tokens: 12345, output_tokens: 67, cached_tokens: 89 },
   });
 
   const history = getHistoryAt(dir, "c1");
@@ -108,18 +106,13 @@ test("assistant message without usage stores no usage field (degrades cleanly)",
 test("assistant message persists the provider-switch marker so the divider survives a reload", () => {
   const dir = freshDir();
   appendUserMessageAt(dir, "c1", "hi");
-  appendAssistantMessageAt(
-    dir,
-    "c1",
-    "now on the new provider",
-    undefined,
-    null,
-    {
+  appendAssistantMessageAt(dir, "c1", "now on the new provider", {
+    providerSwitch: {
       provider: "openai-codex",
       summarized: true,
       pre_tokens: 280_000,
     },
-  );
+  });
 
   const history = getHistoryAt(dir, "c1");
   if (!history) throw new Error("getHistoryAt returned null after append");
@@ -149,17 +142,37 @@ test("a user message from an acting-as token persists its author (C5), served on
   const author = decodeActingAuthor(
     actingToken({ sub: "user_ada", name: "Ada", agent: "mercury", exp: 1 }),
   );
-  appendUserMessageAt(dir, "c1", "ship the report", author);
+  appendUserMessageAt(dir, "c1", "ship the report", { author });
 
   const msg = getHistoryAt(dir, "c1")?.messages.find((m) => m.role === "user");
   expect(msg?.author).toEqual({ userId: "user_ada", name: "Ada" });
+});
+
+test("turnId persists on BOTH messages of a turn (matches the live stream's frames)", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "hi", { turnId: "t-1" });
+  appendAssistantMessageAt(dir, "c1", "hello!", { turnId: "t-1" });
+
+  const messages = getHistoryAt(dir, "c1")?.messages ?? [];
+  expect(messages.map((m) => [m.role, m.turnId])).toEqual([
+    ["user", "t-1"],
+    ["assistant", "t-1"],
+  ]);
+});
+
+test("messages without a turnId stay turnId-free in the JSON (pre-turn-id records unchanged)", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "hi");
+  appendAssistantMessageAt(dir, "c1", "hello!");
+  const raw = readFileSync(join(dir, "c1.json"), "utf8");
+  expect(raw).not.toContain("turnId");
 });
 
 test("a user message with no acting-as token stays author-free (byte-identical to today)", () => {
   const dir = freshDir();
   // No token → decode yields undefined → no author stamped.
   const author = decodeActingAuthor(undefined);
-  appendUserMessageAt(dir, "c1", "ship the report", author);
+  appendUserMessageAt(dir, "c1", "ship the report", { author });
 
   const msg = getHistoryAt(dir, "c1")?.messages.find((m) => m.role === "user");
   expect(msg?.author).toBeUndefined();

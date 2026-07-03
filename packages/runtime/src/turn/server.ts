@@ -8,7 +8,7 @@ import {
 } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { WireEvent } from "@houston/runtime-client";
+import type { WireFrame } from "@houston/runtime-client";
 import { applyServedCredential } from "../auth/auth-file";
 import { openSSE } from "../transport/sse";
 import { hydrate, syncBack } from "./hydrate";
@@ -85,29 +85,34 @@ async function executeTurn(
     }
 
     const sse = openSSE(res);
-    const emit = (e: WireEvent) => sse.send(e.type, e.data);
+    // The turn's wire identity: minted HERE (the per-turn server owns the whole
+    // turn) so the frames runPiTurn emits and the terminal frame sent after
+    // sync-back all carry one id — the host relay re-broadcasts them verbatim.
+    const turnId = crypto.randomUUID();
+    const emit = (e: WireFrame) => sse.send(e);
 
     let outcome: TurnOutcome;
     if (!turn.credential) {
       emit({
         type: "user",
         data: { content: turn.text, ts: Date.now(), nonce: turn.nonce },
+        turnId,
       });
       outcome = {
         error: "No provider connected. Connect your subscription first.",
       };
     } else {
       const run = deps.runTurn ?? runPiTurn;
-      outcome = await run(
-        root,
-        turn.conversationId,
-        turn.text,
-        turn.credential.provider,
+      outcome = await run(root, {
+        conversationId: turn.conversationId,
+        text: turn.text,
+        provider: turn.credential.provider,
         emit,
-        abort.signal,
-        turn.nonce,
-        { model: turn.model, effort: turn.effort },
-      );
+        signal: abort.signal,
+        nonce: turn.nonce,
+        pin: { model: turn.model, effort: turn.effort },
+        turnId,
+      });
     }
 
     // Durability BEFORE the terminal frame. A sync failure is data loss and
@@ -123,8 +128,9 @@ async function executeTurn(
       };
     }
 
-    if (outcome.error) sse.send("error", { message: outcome.error });
-    else sse.send("done", null);
+    if (outcome.error)
+      sse.send({ type: "error", data: { message: outcome.error }, turnId });
+    else sse.send({ type: "done", data: null, turnId });
     sse.close();
   } finally {
     await rm(root, { recursive: true, force: true });

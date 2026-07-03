@@ -55,11 +55,28 @@ function save(dir: string, conv: StoredConversation) {
   renameSync(tmp, f); // atomic swap; never leaves a half-written file
 }
 
+/** Optional fields of a persisted user message. */
+export interface UserMessageMeta {
+  author?: ChatMessage["author"];
+  /** The turn's wire id (`WireFrame.turnId`) — same on the assistant reply. */
+  turnId?: string;
+}
+
+/** Optional fields of a persisted assistant message. */
+export interface AssistantMessageMeta {
+  tools?: ToolCallRecord[];
+  usage?: TokenUsage | null;
+  providerSwitch?: ChatMessage["providerSwitch"];
+  providerError?: ChatMessage["providerError"];
+  /** The turn's wire id (`WireFrame.turnId`) — same as the user message's. */
+  turnId?: string;
+}
+
 export function appendUserMessageAt(
   dir: string,
   id: string,
   content: string,
-  author?: ChatMessage["author"],
+  meta: UserMessageMeta = {},
 ) {
   const now = Date.now();
   const conv: StoredConversation = loadConversation(dir, id) ?? {
@@ -71,8 +88,15 @@ export function appendUserMessageAt(
   };
   // Stamp the author (C5) only when a token identified one — a single-user /
   // local turn omits the field entirely, keeping the stored record
-  // byte-identical to today.
-  conv.messages.push({ role: "user", content, ts: now, author });
+  // byte-identical to today. `turnId` matches the live stream's frames so a
+  // client can pair refetched history with a turn it watched.
+  conv.messages.push({
+    role: "user",
+    content,
+    ts: now,
+    author: meta.author,
+    turnId: meta.turnId,
+  });
   conv.updatedAt = now;
   save(dir, conv);
 }
@@ -81,10 +105,7 @@ export function appendAssistantMessageAt(
   dir: string,
   id: string,
   content: string,
-  tools?: ToolCallRecord[],
-  usage?: TokenUsage | null,
-  providerSwitch?: ChatMessage["providerSwitch"],
-  providerError?: ChatMessage["providerError"],
+  meta: AssistantMessageMeta = {},
 ) {
   const conv = loadConversation(dir, id);
   if (!conv) return;
@@ -92,10 +113,11 @@ export function appendAssistantMessageAt(
     role: "assistant",
     content,
     ts: Date.now(),
-    tools: tools?.length ? tools : undefined,
-    usage: usage ?? undefined,
-    providerSwitch,
-    providerError,
+    tools: meta.tools?.length ? meta.tools : undefined,
+    usage: meta.usage ?? undefined,
+    providerSwitch: meta.providerSwitch,
+    providerError: meta.providerError,
+    turnId: meta.turnId,
   });
   conv.updatedAt = Date.now();
   save(dir, conv);

@@ -71,6 +71,8 @@ export async function forward(
     // The gateway's per-turn acting-as token (C2) rides through as the SAME
     // header the runtime reads — the ONE user-identity header relayed to the pod.
     if (request.actingAs) headers["x-houston-acting-as"] = request.actingAs;
+    // The EventSource resume cursor for the runtime's conversation events stream.
+    if (request.lastEventId) headers["Last-Event-ID"] = request.lastEventId;
     headers.Accept = request.path.endsWith("/events")
       ? "text/event-stream"
       : "application/json";
