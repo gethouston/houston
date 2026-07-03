@@ -96,6 +96,15 @@ export interface LocalHostOptions {
     composioApiKey?: string;
     podToken?: string;
   };
+  /**
+   * True only when a trusted gateway fronts EVERY request to this host (the
+   * managed cloud pod: the gateway enforces the pod token and mints/strips
+   * `x-houston-acting-as` itself). Relays that header to the runtime so a
+   * turn's integration calls authenticate as the driving user (C2). On the
+   * desktop clients reach this host directly, so an inbound acting header is
+   * untrusted client input — leave this false (the default) and it is dropped.
+   */
+  gatewayFronted?: boolean;
 }
 
 export interface LocalHost {
@@ -162,9 +171,11 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     credentials,
     // Desktop: clients talk to this host DIRECTLY (no gateway in front to mint
     // or strip identity headers), so an inbound x-houston-acting-as is
-    // untrusted client input — never relay it to the runtime. Identity here is
-    // always the single local owner.
-    forwardActingHeader: false,
+    // untrusted client input — never relay it to the runtime; identity is the
+    // single local owner. Managed pods (gatewayFronted) ARE gateway-fronted:
+    // the gateway minted the header, so relaying it is what lets the runtime's
+    // integration calls act as the driving user (C2).
+    forwardActingHeader: opts.gatewayFronted ?? false,
   });
 
   // Integrations (platform model): the desktop holds NO provider key — the
