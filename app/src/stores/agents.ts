@@ -32,6 +32,14 @@ interface AgentState {
   agents: Agent[];
   current: Agent | null;
   loading: boolean;
+  /**
+   * True once `loadAgents` has settled at least once. `loading` alone can't
+   * distinguish "not started yet" from "loaded, empty": boot has an async gap
+   * between workspaces resolving and the first `loadAgents` call, and the v3
+   * first-run gate (zero agents, HOU-653) must not read `agents: []` in that
+   * gap as a fresh install.
+   */
+  loaded: boolean;
   loadAgents: (
     workspaceId: string,
     options?: { silent?: boolean },
@@ -60,6 +68,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   agents: [],
   current: null,
   loading: false,
+  loaded: false,
 
   loadAgents: async (workspaceId, options) => {
     const silent = options?.silent ?? false;
@@ -68,13 +77,16 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       const agents = await tauriAgents.list(workspaceId);
       const current = get().current;
       const selected = selectCurrentAgent(agents, current);
-      set({ agents, current: selected, loading: false });
+      set({ agents, current: selected, loading: false, loaded: true });
       if (selected && selected.id !== current?.id) {
         startAgentSideEffects(selected);
       }
     } catch (e) {
       console.error("[agents] Failed to load:", e);
-      set({ loading: false });
+      // Settled (with the failure already logged + toasted upstream): the boot
+      // gate must not hang on `loaded` forever; an empty-but-failed list reads
+      // as the same empty state the legacy wire shows on a failed load.
+      set({ loading: false, loaded: true });
     }
   },
 

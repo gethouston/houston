@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { SignInScreen } from "./components/auth/sign-in-screen";
 import { MigrationReconnectScreen } from "./components/onboarding/migration-reconnect-screen";
+import { isFirstRun } from "./components/onboarding/missions/onboarding-flow";
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
 import { WorkspaceShell } from "./components/shell/workspace-shell";
 import { useAgentInvalidation } from "./hooks/use-agent-invalidation";
@@ -17,6 +18,7 @@ import { useSessionEvents } from "./hooks/use-session-events";
 import { analytics } from "./lib/analytics";
 import { installDeepLinkListener } from "./lib/auth";
 import { shouldAllowNativeContextMenu } from "./lib/context-menu";
+import { newEngineActive } from "./lib/engine";
 import {
   clearUser as clearSentryUser,
   setUser as setSentryUser,
@@ -131,6 +133,8 @@ export default function App() {
   const wsLoading = useWorkspaceStore((s) => s.loading);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const agentLoading = useAgentStore((s) => s.loading);
+  const agents = useAgentStore((s) => s.agents);
+  const agentsLoaded = useAgentStore((s) => s.loaded);
   const toasts = useUIStore((s) => s.toasts);
   const dismissToast = useUIStore((s) => s.dismissToast);
   const tutorialActive = useUIStore((s) => s.tutorialActive);
@@ -197,7 +201,21 @@ export default function App() {
     );
   }
 
-  if (agentLoading || wsLoading || capabilitiesLoading) {
+  // On the v3 control plane the first-run gate below reads the AGENT count, so
+  // the splash must also cover boot's async gap between workspaces resolving
+  // and the first `loadAgents` call — `agents: []` in that gap is "not loaded
+  // yet", not "fresh install" (an existing user must never flash into
+  // onboarding, which would pin them there via `tutorialActive`). The v3
+  // adapter always reports one synthetic workspace, so `loadAgents` is
+  // guaranteed to run and settle `loaded`. The legacy Rust wire gates on
+  // workspaces alone and skips this wait (zero-workspace first runs never load
+  // agents, so `loaded` would hang false there).
+  if (
+    agentLoading ||
+    wsLoading ||
+    capabilitiesLoading ||
+    (newEngineActive() && !agentsLoaded)
+  ) {
     return (
       <div className="h-screen flex items-center justify-center bg-background text-foreground">
         <p className="text-muted-foreground text-sm">
@@ -207,7 +225,17 @@ export default function App() {
     );
   }
 
-  if (workspaces.length === 0 && canCreateAgents && !capabilitiesError) {
+  // First-run signal differs by wire (HOU-653): the legacy Rust engine uses
+  // zero WORKSPACES, but the v3 control plane has no workspace CRUD — the
+  // adapter always reports one synthetic workspace — so there first-run is
+  // zero AGENTS. Both counts are settled here (the splash above waited on
+  // wsLoading + agentLoading).
+  const firstRun = isFirstRun({
+    controlPlane: newEngineActive(),
+    workspaceCount: workspaces.length,
+    agentCount: agents.length,
+  });
+  if (firstRun && canCreateAgents && !capabilitiesError) {
     return (
       <PersonalAssistantOnboarding
         toasts={mappedToasts}

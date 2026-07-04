@@ -6,6 +6,7 @@ import type {
 } from "@houston-ai/engine-client";
 import {
   integrationsAvailable,
+  isFirstRun,
   isToolkitConnected,
   shouldOfferConnectSkip,
   stepAfterAgentCreated,
@@ -29,6 +30,32 @@ const conn = (
   toolkit: string,
   status: IntegrationConnection["status"],
 ): IntegrationConnection => ({ toolkit, connectionId: "ca_1", status });
+
+describe("isFirstRun (per-wire first-run signal)", () => {
+  it("legacy Rust wire: zero workspaces = first run, agents irrelevant", () => {
+    strictEqual(
+      isFirstRun({ controlPlane: false, workspaceCount: 0, agentCount: 5 }),
+      true,
+    );
+    strictEqual(
+      isFirstRun({ controlPlane: false, workspaceCount: 1, agentCount: 0 }),
+      false,
+    );
+  });
+
+  it("v3 control plane: zero agents = first run, despite the synthetic workspace", () => {
+    // The adapter always reports one synthetic workspace, so a workspace
+    // count of 1 with no agents IS a fresh install there.
+    strictEqual(
+      isFirstRun({ controlPlane: true, workspaceCount: 1, agentCount: 0 }),
+      true,
+    );
+    strictEqual(
+      isFirstRun({ controlPlane: true, workspaceCount: 1, agentCount: 3 }),
+      false,
+    );
+  });
+});
 
 describe("integrationsAvailable (HOU-653 engine gating)", () => {
   it("true when the composio provider is advertised", () => {

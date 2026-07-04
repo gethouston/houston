@@ -23,6 +23,25 @@ import type { OnboardingStep } from "../tutorial-copy";
  */
 
 /**
+ * Whether this boot is a first run that should enter onboarding (HOU-653).
+ *
+ * The legacy Rust wire signals first-run with ZERO WORKSPACES. The v3 control
+ * plane can't: it has no workspace CRUD (single personal workspace,
+ * auto-provisioned server-side), so the engine adapter always reports exactly
+ * one synthetic workspace and a workspace-count gate never fires — which is
+ * how onboarding silently vanished on the TS engine and the cloud gateway.
+ * There the honest signal is ZERO AGENTS in that one workspace.
+ */
+export function isFirstRun(opts: {
+  /** New-engine build (v3 host / cloud gateway) vs the legacy Rust wire. */
+  controlPlane: boolean;
+  workspaceCount: number;
+  agentCount: number;
+}): boolean {
+  return opts.controlPlane ? opts.agentCount === 0 : opts.workspaceCount === 0;
+}
+
+/**
  * Whether this deployment can run the email-connect detour: the integrations
  * provider we drive (`composio`) is advertised. Null capabilities (legacy Rust
  * engine, or still loading) read as unavailable — never guess a route the host
