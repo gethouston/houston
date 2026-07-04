@@ -21,6 +21,27 @@ function close(server: Server): Promise<void> {
   });
 }
 
+test("generate-agent without a description is a 400, not a model call", async () => {
+  const server = createRuntimeServer();
+  const baseUrl = await listen(server);
+  try {
+    const res = await fetch(`${baseUrl}/generate-agent`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(config.token ? { Authorization: `Bearer ${config.token}` } : {}),
+      },
+      body: JSON.stringify({ description: "   " }),
+    });
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({
+      error: "missing 'description'",
+    });
+  } finally {
+    await close(server);
+  }
+});
+
 test("unknown conversation root methods return 404 instead of hanging", async () => {
   const server = createRuntimeServer();
   const baseUrl = await listen(server);

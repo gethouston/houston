@@ -1,16 +1,13 @@
-import {
-  type AgentSessionEvent,
-  type AuthStorage,
-  createAgentSession,
-  DefaultResourceLoader,
-  type ModelRegistry,
-  SessionManager,
+import type {
+  AuthStorage,
+  ModelRegistry,
 } from "@earendil-works/pi-coding-agent";
 import type { ChatMessage } from "@houston/runtime-client";
 import { resolveModel } from "../ai/providers";
 import { authStorage, modelRegistry } from "../auth/storage";
 import { config } from "../config";
 import { getHistory, renameConversation } from "../store/conversations";
+import { oneShotText } from "./one-shot";
 
 const TITLE_PROMPT = [
   "You generate conversation titles.",
@@ -28,10 +25,8 @@ export function buildExcerpt(messages: ChatMessage[]): string {
 }
 
 /**
- * Pure, parameterized title generation. Reuses the same pi auth machinery as
- * chat (one throwaway session: no tools, in-memory session state, bare loader)
- * so every provider/OAuth flavor behaves exactly like a normal turn instead of
- * needing per-provider completion plumbing.
+ * Pure, parameterized title generation: a throwaway one-shot turn (see
+ * `oneShotText`) trimmed to a single title line.
  */
 export async function generateTitle(opts: {
   cwd: string;
@@ -40,45 +35,14 @@ export async function generateTitle(opts: {
   modelRegistry: ModelRegistry;
   excerpt: string;
 }): Promise<string> {
-  const loader = new DefaultResourceLoader({
+  const text = await oneShotText({
     cwd: opts.cwd,
-    agentDir: opts.cwd,
-    noExtensions: true,
-    noSkills: true,
-    noPromptTemplates: true,
-    noThemes: true,
-    noContextFiles: true,
-    systemPrompt: TITLE_PROMPT,
-  });
-  await loader.reload();
-
-  const { session } = await createAgentSession({
-    cwd: opts.cwd,
-    agentDir: opts.cwd,
-    model: opts.model as never,
+    model: opts.model,
     authStorage: opts.authStorage,
     modelRegistry: opts.modelRegistry,
-    sessionManager: SessionManager.inMemory(opts.cwd),
-    resourceLoader: loader,
-    tools: [],
+    systemPrompt: TITLE_PROMPT,
+    prompt: opts.excerpt,
   });
-
-  let text = "";
-  const unsub = session.subscribe((e: AgentSessionEvent) => {
-    if (
-      e.type === "message_update" &&
-      e.assistantMessageEvent?.type === "text_delta"
-    ) {
-      text += e.assistantMessageEvent.delta ?? "";
-    }
-  });
-  try {
-    await session.prompt(opts.excerpt);
-  } finally {
-    unsub();
-    session.dispose();
-  }
-
   return text.trim().split("\n")[0]?.trim().slice(0, 80) ?? "";
 }
 

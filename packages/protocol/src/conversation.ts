@@ -193,3 +193,28 @@ export interface ConversationHistory {
   title: string;
   messages: ChatMessage[];
 }
+
+/**
+ * A routine suggestion parsed out of Create-with-AI agent generation. The cron
+ * is built and validated by the runtime from a constrained schedule set —
+ * never taken raw from the model.
+ */
+export interface SuggestedRoutine {
+  name: string;
+  prompt: string;
+  /** 5-field cron, built and validated by the runtime. */
+  schedule: string;
+}
+
+/**
+ * `POST /generate-agent` — the Create-with-AI one-shot: a plain-language
+ * description in; a generated agent name, CLAUDE.md instructions, suggested
+ * Composio toolkit slugs, and an optional routine suggestion out.
+ */
+export interface GenerateAgentResponse {
+  name: string;
+  instructions: string;
+  /** Composio toolkit slugs (e.g. "GMAIL") the agent would genuinely use. */
+  suggestedIntegrations: string[];
+  suggestedRoutine: SuggestedRoutine | null;
+}
