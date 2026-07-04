@@ -21,6 +21,14 @@ import type {
   InstallFromRepoRequest,
   NewActivity,
   NewRoutine,
+  PortableAnonymizeRequest,
+  PortableAnonymizeResponse,
+  PortableExportRequest,
+  PortableInstalledAgent,
+  PortableInstallRequest,
+  PortableInventoryPreview,
+  PortableScanResponse,
+  PortableUploadPreviewResponse,
   ProjectConfig,
   ProjectFile,
   ProviderStatus,
@@ -43,6 +51,7 @@ import * as agents from "./agents";
 import { bus, emitEvent, emitLocalEcho } from "./bus";
 import type { ControlPlaneConfig } from "./control-plane";
 import * as controlPlane from "./control-plane";
+import * as portable from "./portable";
 import {
   configWriteToSettings,
   credentialSiblings,
@@ -1228,6 +1237,45 @@ export class HoustonClient {
       /* engine unreachable / not authed / no agent → fall back to truncation */
     }
     return { title: truncated, description: "" };
+  }
+
+  // ---- portable agents (share with / from a friend) — host only ----
+  // The wizards' backend. Preview/export/anonymize/install talk to the
+  // host's v3 portable routes; the uploaded archive is unpacked in the
+  // browser, parked in memory until install, and the threat scan runs on it
+  // right there — the scan is the same pure `@houston/domain` heuristic the
+  // host uses (see ./portable.ts).
+  async portablePreview(agentPath: string): Promise<PortableInventoryPreview> {
+    if (!this.cp) throw new Error("Sharing an agent needs a connected host.");
+    return portable.exportPreview(this.cp, agentPath);
+  }
+  async portablePackage(
+    agentPath: string,
+    req: PortableExportRequest,
+  ): Promise<ArrayBuffer> {
+    if (!this.cp) throw new Error("Sharing an agent needs a connected host.");
+    return portable.exportPackage(this.cp, agentPath, req);
+  }
+  async portableAnonymize(
+    agentPath: string,
+    req: PortableAnonymizeRequest,
+  ): Promise<PortableAnonymizeResponse> {
+    if (!this.cp) throw new Error("Sharing an agent needs a connected host.");
+    return portable.anonymize(this.cp, agentPath, req);
+  }
+  async importPreview(
+    bytes: ArrayBuffer | Uint8Array,
+  ): Promise<PortableUploadPreviewResponse> {
+    return portable.previewUpload(bytes);
+  }
+  async importScan(packageId: string): Promise<PortableScanResponse> {
+    return portable.scanUpload(packageId);
+  }
+  async importInstall(
+    req: PortableInstallRequest,
+  ): Promise<PortableInstalledAgent> {
+    if (!this.cp) throw new Error("Importing an agent needs a connected host.");
+    return portable.install(this.cp, req);
   }
 
   // ---- integrations (Composio, platform mode) — host only ----
