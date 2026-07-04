@@ -23,6 +23,7 @@ import { handleFiles } from "../turn/files";
 import type { Vfs } from "../vfs";
 import { handleAgentData } from "./agent-data";
 import { handleAgentFile } from "./agent-file";
+import { asSeedRecord, writeAgentSeeds } from "./agent-seed";
 import { json, readJson } from "./http";
 import { handlePortableExport } from "./portable";
 import { handleSkills } from "./skills";
@@ -104,21 +105,38 @@ export async function handleAgents(
     return true;
   }
   if (path === "/agents" && method === "POST") {
-    const { name } = await readJson(req);
+    const body = await readJson(req);
+    const { name } = body;
     if (!name || typeof name !== "string") {
       json(res, 400, { error: "missing 'name'" });
       return true;
+    }
+    // Optional create-time content: CLAUDE.md instructions + a flat seed-file
+    // map (skills, seeded .houston data, working files). Builtin templates and
+    // portable installs supply these; the Rust engine wrote them on install, so
+    // the host must too or the agent is created empty. Both are untrusted input
+    // — validate before writing.
+    const claudeMd =
+      typeof body.claudeMd === "string" ? body.claudeMd : undefined;
+    let seeds: Record<string, string> | undefined;
+    if (body.seeds !== undefined) {
+      const parsed = asSeedRecord(body.seeds);
+      if (!parsed) {
+        json(res, 400, { error: "'seeds' must be a map of string→string" });
+        return true;
+      }
+      seeds = parsed;
     }
     const ws = await deps.store.getOrCreatePersonalWorkspace(userId);
     const agent = await deps.store.createAgent({ workspaceId: ws.id, name });
     // Seed the .houston JSON schemas beside the (future) docs so the agent and
     // external tools can validate what they write. Skipped only when no vfs is
     // wired (legacy gke-only deploys); the typed-data routes 503 there anyway.
-    if (deps.vfs)
-      await seedSchemas(
-        deps.vfs,
-        (deps.paths ?? DEFAULT_PATHS).agentRoot(ws, agent),
-      );
+    if (deps.vfs) {
+      const root = (deps.paths ?? DEFAULT_PATHS).agentRoot(ws, agent);
+      await seedSchemas(deps.vfs, root);
+      await writeAgentSeeds(deps.vfs, root, { claudeMd, seeds });
+    }
     deps.events?.emit(ws.ownerUserId, {
       type: "AgentsChanged",
       workspaceId: ws.id,

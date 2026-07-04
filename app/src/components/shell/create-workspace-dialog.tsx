@@ -8,6 +8,8 @@ import type { SuggestedRoutine } from "@houston-ai/engine-client";
 import type { RoutineFormData } from "@houston-ai/routines";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { STORE_TEMPLATE_IDS } from "../../agents/builtin/store-catalog";
+import { loadStoreTemplate } from "../../agents/builtin/store-template-loader";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { logger } from "../../lib/logger";
 import { getDefaultModel } from "../../lib/providers";
@@ -97,9 +99,18 @@ export function CreateAgentDialog() {
     setError(null);
     setCreating(true);
     // AI-generated instructions take priority over the template's claudeMd.
-    const claudeMd = generatedClaudeMd ?? selectedDef?.config.claudeMd;
+    let claudeMd = generatedClaudeMd ?? selectedDef?.config.claudeMd;
+    let seeds = selectedDef?.config.agentSeeds;
     let agentPath: string;
     try {
+      // First-party "store" templates (bookkeeping, legal, …) keep their
+      // CLAUDE.md + skills/data seeds in a lazily-loaded payload kept out of the
+      // initial bundle; pull it now so the host seeds the new agent with them.
+      if (!generatedClaudeMd && STORE_TEMPLATE_IDS.has(selectedConfigId)) {
+        const tpl = await loadStoreTemplate(selectedConfigId);
+        claudeMd = tpl.claudeMd;
+        seeds = tpl.seeds;
+      }
       const { agent } = await createAgent(
         currentWorkspace.id,
         trimmed,
@@ -107,7 +118,7 @@ export function CreateAgentDialog() {
         color,
         claudeMd,
         selectedDef?.path,
-        selectedDef?.config.agentSeeds,
+        seeds,
         existingPath ?? undefined,
       );
       agentPath = agent.folderPath;
