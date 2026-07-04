@@ -363,6 +363,12 @@ export function AIBoard({
     if (selectedId) hydrateSession(selectedId);
   }, []);
 
+  // Set by handleSend right before it selects the conversation it just
+  // created, so the selection effect below can tell that internal
+  // selection apart from an external one (arrow keys, notification
+  // jump). Only external changes may close the "new mission" panel.
+  const createdSelectionRef = useRef<string | null>(null);
+
   // When the selection changes from OUTSIDE (e.g. arrow-key navigation
   // sets selectedId via the controlled prop, or session-notifications
   // jumps to a different mission), hydrate the new session, close any
@@ -371,7 +377,15 @@ export function AIBoard({
   useEffect(() => {
     if (!selectedId) return;
     hydrateSession(selectedId);
-    setNewPanelOpen(false);
+    if (createdSelectionRef.current === selectedId) {
+      // First-send flow: the freshly created activity isn't in `items`
+      // yet (the parent's list query is still refetching), so closing
+      // `newPanelOpen` would collapse `showPanel` and unmount the chat
+      // panel until the refetch lands (HOU-640).
+      createdSelectionRef.current = null;
+    } else {
+      setNewPanelOpen(false);
+    }
     setComposerFocusToken((prev) => (prev ?? 0) + 1);
   }, [selectedId, hydrateSession]);
 
@@ -412,8 +426,11 @@ export function AIBoard({
     [setSelectedId],
   );
 
-  // Resolve which session key and feed to show (merge persisted history + live items)
-  const activeSessionKey = selectedItem ? sessionKeyFor(selectedItem.id) : null;
+  // Resolve which session key and feed to show (merge persisted history +
+  // live items). Keyed off `selectedId`, not the resolved item: right after
+  // the first send the created activity isn't in `items` yet, but its feed
+  // (seeded with the optimistic user message) must render immediately.
+  const activeSessionKey = selectedId ? sessionKeyFor(selectedId) : null;
   // The session key currently visible in the detail panel's ChatPanel.
   const activeDraftKey = activeSessionKey ?? "new-conversation";
   const rawActiveFeed = activeSessionKey
@@ -437,8 +454,12 @@ export function AIBoard({
         onDraftChange?.(activeDraftKey, "");
         return;
       }
-      if (selectedItem && onSendMessage) {
-        await onSendMessage(sessionKeyFor(selectedItem.id), text, files);
+      if (activeSessionKey && onSendMessage) {
+        // Keyed off `activeSessionKey` (derived from `selectedId`), not
+        // `selectedItem`: a send fired while the created activity is
+        // still absent from `items` must go to the existing session,
+        // never fall through and create a duplicate conversation.
+        await onSendMessage(activeSessionKey, text, files);
         onDraftChange?.(activeDraftKey, "");
       } else if (newPanelOpen && onCreateConversation) {
         const activityId = await onCreateConversation(text, files);
@@ -448,9 +469,12 @@ export function AIBoard({
         // freshly-created activity isn't yet in `items` (the parent
         // invalidates the activity query asynchronously) and during
         // that window `selectedItem` is still null. Closing
-        // `newPanelOpen` here would collapse `showPanel` to false and
-        // dismiss the panel mid-create. `newPanelOpen` resets naturally
-        // on the next opener call, card select, or outside-click close.
+        // `newPanelOpen` would collapse `showPanel` to false and
+        // dismiss the panel mid-create — `createdSelectionRef` tells
+        // the selection effect above to keep it open. `newPanelOpen`
+        // resets naturally on the next external selection, card
+        // select, or outside-click close.
+        createdSelectionRef.current = activityId;
         setSelectedId(activityId);
       }
     },
@@ -460,9 +484,7 @@ export function AIBoard({
       activeFeed.length,
       activeDraftKey,
       onDraftChange,
-      selectedItem,
       onSendMessage,
-      sessionKeyFor,
       newPanelOpen,
       onCreateConversation,
       setSelectedId,
@@ -664,7 +686,7 @@ export function AIBoard({
           }
           queuedLabels={queuedLabels}
           placeholder={
-            selectedItem
+            activeSessionKey
               ? "Send a follow-up..."
               : "What should the agent work on?"
           }
