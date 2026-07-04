@@ -145,6 +145,8 @@ export function Sidebar({ children }: { children: ReactNode }) {
               onCreate={handleCreateWorkspace}
               collapsed={collapsed}
               createLabel={t("shell:sidebar.createWorkspace")}
+              onExpand={() => setSidebarCollapsed(false)}
+              expandLabel={t("shell:sidebar.expand")}
             />
           }
           navItems={[
@@ -183,7 +185,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
             renameItem: t("common:actions.rename"),
             deleteItem: t("common:actions.delete"),
             collapseSidebar: t("shell:sidebar.collapse"),
-            expandSidebar: t("shell:sidebar.expand"),
           }}
           footer={
             <div className="flex flex-col">
