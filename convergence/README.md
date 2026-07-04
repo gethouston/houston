@@ -133,17 +133,19 @@ into a local build (dropping the baked gateway) or vice-versa. Cloud releases ar
 also created as **prereleases** so they can never become GitHub's "latest release"
 (which is the newest NON-prerelease) and shadow the local channel's baked
 `…/releases/latest/download/latest.json` endpoint — otherwise the first published
-cloud release would 404 every installed local app's auto-updater. The desktop
-hosted path itself is unchanged app code (`app/src/lib/engine-mode.ts`,
-`knowledge-base/auth.md`); this is purely the CI that ships it. Known non-blocking
-follow-ups: the packaged app still spawns an idle host sidecar in hosted mode
-(`lib.rs` `host_mode` reads runtime env, which is empty in a packaged app — an
-`option_env!` check would let it skip the spawn); and cloud auto-update itself is
-not wired up yet — because cloud releases are prereleases, the cloud app's
-`…/releases/latest/download/latest-cloud.json` endpoint resolves to the latest
-non-prerelease (a local release) and 404s, so cloud is effectively download-only
-until a fixed-tag / channel-pinned updater endpoint exists (the manifest isolation
-here is the foundation for that).
+cloud release would 404 every installed local app's auto-updater. Because the
+`/latest/` alias only ever resolves to non-prereleases, the cloud app's updater is
+instead pinned to a FIXED tag: `…/releases/download/cloud-latest/latest-cloud.json`.
+The rolling `cloud-latest` pointer release (itself a prerelease, so it can't shadow
+the local channel either) is maintained by
+`.github/workflows/cloud-updater-manifest.yml`, which copies the finalized
+`latest-cloud.json` onto it whenever a `cloud-v*` release is published — so cloud
+auto-update only ever advertises published (post-QA) builds, and re-publishing an
+older cloud release doubles as channel rollback (HOU-667). The packaged cloud app
+also skips spawning the idle host sidecar: `lib.rs` `host_mode` checks
+`option_env!` (compile-time, catches the CI-baked gateway URL) in addition to the
+runtime env (dev). The desktop hosted path itself is unchanged app code
+(`app/src/lib/engine-mode.ts`, `knowledge-base/auth.md`).
 
 This is a CI-only cutover: it flips what the RELEASE ships to the TS engine, but
 the app's build DEFAULTS are untouched (a plain `pnpm tauri build` still builds the

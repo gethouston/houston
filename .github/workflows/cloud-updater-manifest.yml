@@ -1,0 +1,70 @@
+# Cloud updater-manifest promotion (HOU-667)
+#
+# Cloud desktop builds (`cloud-v*`) ship as PRERELEASES so they can never
+# become GitHub's "latest release" and shadow the local channel's
+# `releases/latest/download/latest.json` endpoint. The flip side: the
+# `/latest/` alias only resolves to non-prereleases, so a cloud app can't use
+# it to find its own channel's manifest. Instead the cloud build's updater is
+# baked to the FIXED tag `releases/download/cloud-latest/latest-cloud.json`
+# (see scripts/ci/point-updater-at-cloud-manifest.sh), and this workflow keeps
+# that pointer current: whenever a `cloud-v*` release is PUBLISHED (draft →
+# public, manual after QA — same flow as the local channel), it copies the
+# release's finalized `latest-cloud.json` (macOS + Windows entries, merged by
+# the release workflow's finalize job) onto the rolling `cloud-latest`
+# release.
+#
+# Properties that matter:
+#   - `cloud-latest` is itself a PRERELEASE, so it can never become "latest"
+#     and shadow the local channel either.
+#   - Publishing is the trigger, so the pointer only ever advertises builds
+#     whose assets are publicly downloadable (draft assets 404 for users).
+#   - The copy is an unconditional clobber: re-publishing an OLDER cloud
+#     release repoints the channel at it, which is exactly the rollback story
+#     the local channel gets from un-publishing a bad "latest".
+#   - The tag `cloud-latest` matches neither `v*` nor `cloud-v*`, so creating
+#     it never triggers the release workflow.
+name: Cloud updater manifest
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    if: startsWith(github.event.release.tag_name, 'cloud-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # No checkout — `gh` only needs to know the repo.
+    env:
+      GH_REPO: ${{ github.repository }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Promote latest-cloud.json to the cloud-latest release
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.release.tag_name }}"
+
+          gh release download "$TAG" --pattern 'latest-cloud.json' --dir .
+          if [ ! -s latest-cloud.json ]; then
+            echo "::error::latest-cloud.json missing from release $TAG — was the release workflow's finalize job green?"
+            exit 1
+          fi
+          echo "Manifest from $TAG:"
+          cat latest-cloud.json
+
+          # First cloud publish ever: create the rolling pointer release. It
+          # must be a prerelease (never GitHub's "latest") and needs SOME
+          # commit to tag; which one is irrelevant — only its assets are read.
+          if ! gh release view cloud-latest --json id --jq .id >/dev/null 2>&1; then
+            gh release create cloud-latest \
+              --target "${{ github.sha }}" \
+              --prerelease \
+              --title "Houston Cloud updater pointer" \
+              --notes "Machine-managed rolling release: hosts the current cloud channel's updater manifest (\`latest-cloud.json\`). Cloud desktop apps poll this fixed tag for auto-updates. Do not edit or delete — it is rewritten on every \`cloud-v*\` publish by the cloud-updater-manifest workflow."
+          fi
+
+          gh release upload cloud-latest latest-cloud.json --clobber
+          echo "::notice::cloud-latest now serves the $TAG updater manifest"
