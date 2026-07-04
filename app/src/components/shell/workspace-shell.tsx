@@ -27,9 +27,11 @@ import { analytics } from "../../lib/analytics";
 import { osIsTauri } from "../../lib/os-bridge";
 import { isMac } from "../../lib/platform";
 import { shortcutLabel } from "../../lib/shortcuts";
+import { isTopLevelView } from "../../lib/top-level-views";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
+import { AiHubView } from "../ai-hub/ai-hub-view";
 import { CommandPalette } from "../command-palette";
 import { Dashboard } from "../dashboard";
 import { MissionSearchInput } from "../mission-search-input";
@@ -41,7 +43,6 @@ import { CreateAgentDialog } from "./create-workspace-dialog";
 import { DetailPanelProvider } from "./detail-panel-context";
 import { HoustonLogo } from "./experience-card";
 import { AgentRenderer } from "./experience-renderer";
-import { ProvidersView } from "./providers-view";
 import { Sidebar } from "./sidebar";
 import { UiTour } from "./ui-tour";
 
@@ -91,10 +92,7 @@ export function WorkspaceShell({
   const needsYouCount = (activities ?? []).filter(
     (a) => a.status === "needs_you",
   ).length;
-  const isAgentView =
-    viewMode !== "dashboard" &&
-    viewMode !== "settings" &&
-    viewMode !== "providers";
+  const isAgentView = !isTopLevelView(viewMode);
   const tabOr = (id: string) =>
     STANDARD_TAB_IDS.has(id) ? id : DEFAULT_TAB_ID;
 
@@ -161,10 +159,10 @@ export function WorkspaceShell({
               >
                 {viewMode === "dashboard" ? (
                   <Dashboard />
+                ) : viewMode === "ai-hub" ? (
+                  <AiHubView />
                 ) : viewMode === "settings" ? (
                   <SettingsView />
-                ) : viewMode === "providers" ? (
-                  <ProvidersView />
                 ) : currentAgent && agentDef && isAgentView ? (
                   <>
                     <div data-tour-target="tabs">
