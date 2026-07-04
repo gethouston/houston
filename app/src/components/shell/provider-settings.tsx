@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { analytics } from "../../lib/analytics";
-import { beginCodexBrowserLogin } from "../../lib/codex-loopback";
 import { newEngineActive } from "../../lib/engine";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
@@ -30,10 +29,7 @@ import { OpenAiCompatibleDialog } from "./openai-compatible-dialog";
 import { ProviderAccountRow } from "./provider-account-row";
 import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
 import { ProviderLoginDialog } from "./provider-login-dialog";
-import {
-  shouldOpenLoginUrlDirectly,
-  shouldUseCodexLoopback,
-} from "./provider-login-url";
+import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
 import { providerAppearsConnected } from "./provider-reconnect-state";
 import { useCopilotConnect } from "./use-copilot-connect";
 
@@ -200,20 +196,6 @@ export function ProviderSettings() {
         const prov =
           visibleProviders.find((p) => p.id === ev.data.provider) ??
           PROVIDERS.find((p) => p.id === ev.data.provider);
-        if (
-          shouldUseCodexLoopback({
-            provider: ev.data.provider,
-            isDesktop: osIsTauri(),
-            userCode: ev.data.user_code,
-          })
-        ) {
-          // Codex/OpenAI on desktop: bind our own localhost listener and relay
-          // the callback code, so ChatGPT sign-in works with zero device code
-          // even against a remote engine. beginCodexBrowserLogin surfaces its
-          // own failure toast and never leaves an orphaned listener.
-          void beginCodexBrowserLogin(ev.data.provider, ev.data.url);
-          return;
-        }
         if (
           shouldOpenLoginUrlDirectly({
             isDesktop: osIsTauri(),

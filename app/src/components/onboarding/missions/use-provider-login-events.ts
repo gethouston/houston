@@ -1,13 +1,9 @@
 import type { HoustonEvent } from "@houston-ai/core";
 import { useEffect, useRef, useState } from "react";
-import { beginCodexBrowserLogin } from "../../../lib/codex-loopback";
 import { subscribeHoustonEvents } from "../../../lib/events";
 import { osIsTauri } from "../../../lib/os-bridge";
 import { tauriSystem } from "../../../lib/tauri";
-import {
-  shouldOpenLoginUrlDirectly,
-  shouldUseCodexLoopback,
-} from "../../shell/provider-login-url";
+import { shouldOpenLoginUrlDirectly } from "../../shell/provider-login-url";
 
 /** The remote / device-code fallback the mission renders a dialog for. */
 export interface LoginDialogState {
@@ -21,12 +17,12 @@ export interface LoginDialogState {
  * browser itself and no URL event fires locally, but on the v3 wire the
  * runtime can't touch the user's browser — the adapter surfaces the OAuth URL
  * as an event and expects the ACTIVE view to act on it. The shell's provider
- * picker/settings do; this hook gives the onboarding mission the same three
+ * picker/settings do; this hook gives the onboarding mission the same two
  * branches (mirroring `provider-picker.tsx`):
  *
- *  1. Codex/OpenAI on desktop, no device code → the zero-code loopback relay.
- *  2. Any provider on desktop, no device code → open the browser directly.
- *  3. Otherwise (device code, or a web/remote client with no local browser to
+ *  1. Desktop, no device code → open the browser; pi's own in-process loopback
+ *     server catches the callback and completes the token exchange itself.
+ *  2. Otherwise (device code, or a web/remote client with no local browser to
  *     reach) → hand back dialog state for <ProviderLoginDialog>.
  */
 export function useProviderLoginEvents(opts: {
@@ -55,24 +51,14 @@ export function useProviderLoginEvents(opts: {
       if (ev.type === "ProviderLoginUrl") {
         if (ev.data.provider !== providerId) return;
         if (
-          shouldUseCodexLoopback({
-            provider: ev.data.provider,
-            isDesktop: osIsTauri(),
-            userCode: ev.data.user_code,
-          })
-        ) {
-          // Desktop ChatGPT sign-in with zero device code: bind our own
-          // localhost listener and relay the callback. Surfaces its own
-          // failure toast and never leaves an orphaned listener.
-          void beginCodexBrowserLogin(ev.data.provider, ev.data.url);
-          return;
-        }
-        if (
           shouldOpenLoginUrlDirectly({
             isDesktop: osIsTauri(),
             userCode: ev.data.user_code,
           })
         ) {
+          // Open the browser and step aside: pi's own in-process loopback
+          // server catches the OAuth callback and finishes the exchange —
+          // no app-side listener (it would fight pi for the same port).
           tauriSystem.openUrl(ev.data.url).catch((err) => {
             onOpenFailedRef.current(
               err instanceof Error ? err.message : String(err),
