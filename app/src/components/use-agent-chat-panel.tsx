@@ -37,18 +37,23 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivity, useSkills } from "../hooks/queries";
+import { useCapabilities } from "../hooks/use-capabilities";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import { useSession } from "../hooks/use-session";
 import { analytics } from "../lib/analytics";
 import { attachmentReferences } from "../lib/attachment-message";
-import { filterAutoContinueFeedItems } from "../lib/auto-continue-message";
+import {
+  encodeAutoContinueMessage,
+  filterAutoContinueFeedItems,
+} from "../lib/auto-continue-message";
 import {
   effectiveContextWindow,
   sessionContextUsage,
 } from "../lib/context-usage";
 import { createMission } from "../lib/create-mission";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
+import { canManageAgentGrants } from "../lib/org-roles";
 import {
   decideHandoffMode,
   estimateConversationTokens,
@@ -85,6 +90,8 @@ import { ChatEffortSelector } from "./chat-effort-selector";
 import { ChatModelSelector } from "./chat-model-selector";
 import { ContextCompactedDivider } from "./context-compacted-divider";
 import { ContextIndicator } from "./context-indicator";
+import { IntegrationConnectCard } from "./integration-connect-card";
+import { parseToolkitFromHref } from "./integration-connect-card-state";
 import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
 import { ProviderSwitchDialog } from "./provider-switch-dialog";
 import { SelectedSkillChip } from "./selected-skill-chip";
@@ -92,6 +99,7 @@ import { ProviderErrorCard } from "./shell/provider-error-card";
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
 import { ToolRuntimeErrorCard } from "./shell/tool-runtime-error-card";
 import { SkillCard } from "./skill-card";
+import { integrationsSupported } from "./tabs/integrations-tab-model";
 import {
   filterProviderAuthFeedItems,
   isProviderAuthMessage,
@@ -127,6 +135,8 @@ interface AgentChatPanelProps {
   attachMenu: AIBoardProps["attachMenu"];
   /** Decodes skill-invocation user messages into a card. */
   renderUserMessage: AIBoardProps["renderUserMessage"];
+  /** Renders agent-authored `#houston_toolkit=` links as connect cards. */
+  renderLink: AIBoardProps["renderLink"];
   /** Forwarded to AIBoard / ChatPanel for tool rendering. */
   isSpecialTool: ChatPanelProps["isSpecialTool"];
   renderToolResult: ChatPanelProps["renderToolResult"];
@@ -172,6 +182,12 @@ export function useAgentChatPanel({
   const { data: session } = useSession();
   const currentUserId = session?.user.id;
   const authorLabels = undefined;
+
+  // Integration connect cards are a new-engine feature: the host advertises
+  // its wired providers in capabilities; the legacy Rust engine (null) and
+  // unconfigured deployments fall back to plain markdown links.
+  const { capabilities } = useCapabilities();
+  const integrationsEnabled = integrationsSupported(capabilities);
 
   const path = agent?.folderPath ?? null;
   const agentModes = agentDef?.config.agents;
@@ -580,6 +596,65 @@ export function useAgentChatPanel({
     [],
   );
 
+  // ── Integration connect card support (HOU-670) ───────────────────────
+  // The card owns its own connection status (it subscribes to the shared
+  // integration queries directly so it stays reactive inside Streamdown's
+  // memoized markdown blocks). The panel only supplies the agent nudge.
+  //
+  // When a connection the user started from a chat card lands, proactively
+  // nudge the agent so it resumes the task without the user having to
+  // retype. The agent needs a user turn to resume, but the user didn't type
+  // one — tag it with the auto-continue marker so the agent still receives
+  // the instruction while the transcript hides the bubble (see
+  // `mapFeedItems`). No optimistic push: we never want it shown, and the
+  // engine-persisted copy is filtered the same way on reload.
+  const handleIntegrationConnected = useCallback(
+    (_toolkit: string, appName: string) => {
+      if (!path || !selectedSessionKey) return;
+      const message = encodeAutoContinueMessage(
+        t("chat:composio.connectedFollowup", { name: appName }),
+      );
+      tauriChat
+        .send(path, message, selectedSessionKey, {
+          providerOverride: effectiveProvider,
+          modelOverride: effectiveModel,
+          effortOverride: effectiveEffort,
+        })
+        .catch((err) => {
+          addToast({
+            title: t("chat:composio.followupFailed", { name: appName }),
+            description: String(err),
+            variant: "error",
+          });
+        });
+    },
+    [
+      path,
+      selectedSessionKey,
+      effectiveProvider,
+      effectiveModel,
+      effectiveEffort,
+      addToast,
+      t,
+    ],
+  );
+  const renderLink = useCallback<NonNullable<AIBoardProps["renderLink"]>>(
+    ({ href }) => {
+      if (!integrationsEnabled || !agent) return undefined;
+      const toolkit = parseToolkitFromHref(href);
+      if (!toolkit) return undefined;
+      return (
+        <IntegrationConnectCard
+          toolkit={toolkit}
+          agentId={agent.id}
+          autoGrant={canManageAgentGrants(capabilities, agent)}
+          onConnected={handleIntegrationConnected}
+        />
+      );
+    },
+    [integrationsEnabled, agent, capabilities, handleIntegrationConnected],
+  );
+
   // ── Built JSX bundles ─────────────────────────────────────────────────
   const renderUserMessage = useCallback(
     (msg: { content: string }) => {
@@ -902,6 +977,7 @@ export function useAgentChatPanel({
     footer,
     attachMenu,
     renderUserMessage,
+    renderLink,
     isSpecialTool,
     renderToolResult,
     processLabels,

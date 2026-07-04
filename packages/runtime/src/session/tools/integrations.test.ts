@@ -86,6 +86,42 @@ test("search POSTs to the host proxy with the sandbox token + formats matches", 
   const text = (out.content[0] as { text: string }).text;
   expect(text).toContain("GMAIL_SEND_EMAIL");
   expect(text).toContain("Send an email");
+  // Everything matched is connected → no connect-card instruction noise.
+  expect(text).not.toContain("NOT CONNECTED");
+  expect(text).not.toContain("#houston_toolkit=");
+});
+
+test("search marks not-connected matches and teaches the connect link (HOU-670)", async () => {
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "SLACK_SEND_MESSAGE",
+          toolkit: "slack",
+          description: "Send a message",
+          connected: true,
+        },
+        {
+          action: "GMAIL_SEND_EMAIL",
+          toolkit: "gmail",
+          description: "Send an email",
+          connected: false,
+        },
+      ],
+    },
+  }));
+  const out = await run(search, { query: "send an email via gmail" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain("- SLACK_SEND_MESSAGE (slack): Send a message");
+  expect(text).toContain(
+    "- GMAIL_SEND_EMAIL (gmail, NOT CONNECTED): Send an email",
+  );
+  // The hand-off instruction rides with the results, at the moment the model
+  // actually faces a not-connected app.
+  expect(text).toContain("#houston_toolkit=<toolkit>");
+  expect(text).toContain(
+    "[Connect Gmail](https://gethouston.ai/connect#houston_toolkit=gmail)",
+  );
 });
 
 test("execute runs an action and returns its data; a failed action surfaces", async () => {
@@ -102,6 +138,23 @@ test("execute runs an action and returns its data; a failed action surfaces", as
   await expect(
     run(execute, { action: "GMAIL_SEND_EMAIL", params: {} }),
   ).rejects.toThrow(/did not succeed: missing recipient/);
+});
+
+test("a no-connected-account failure carries the connect-link hand-off (HOU-670)", async () => {
+  mockFetch(() => ({
+    body: { successful: false, error: "no connected account found for user" },
+  }));
+  const failure = run(execute, { action: "GMAIL_SEND_EMAIL", params: {} });
+  await expect(failure).rejects.toThrow(/has not connected this app/);
+  await expect(failure).rejects.toThrow(/#houston_toolkit=<toolkit>/);
+
+  // An ordinary app rejection stays hint-free — no false connect offers.
+  mockFetch(() => ({
+    body: { successful: false, error: "quota exceeded" },
+  }));
+  await expect(
+    run(execute, { action: "GMAIL_SEND_EMAIL", params: {} }),
+  ).rejects.toThrow(/did not succeed: quota exceeded$/);
 });
 
 test("a 409 (not connected) becomes an actionable message, not a crash dump", async () => {

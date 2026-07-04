@@ -158,6 +158,7 @@ export function MissionControlArchived({
           footer={panel.footer}
           attachMenu={panel.attachMenu}
           renderUserMessage={panel.renderUserMessage}
+          renderLink={panel.renderLink}
           currentUserId={panel.currentUserId}
           authorLabels={panel.authorLabels}
           renderSystemMessage={panel.renderSystemMessage}

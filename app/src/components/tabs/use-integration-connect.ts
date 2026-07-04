@@ -8,6 +8,7 @@ import { tauriIntegrations, tauriSystem } from "../../lib/tauri";
 import {
   INTEGRATION_PROVIDER,
   POLL_INTERVAL_MS,
+  type PollOutcome,
   pollConnectionUntilActive,
 } from "./integrations-tab-model";
 
@@ -27,7 +28,12 @@ export function useIntegrationConnect(opts: {
   autoGrant: boolean;
 }): {
   connectingToolkit: string | null;
-  connect: (toolkit: string) => Promise<void>;
+  /**
+   * Resolves with the poll outcome so callers can react to a LANDED
+   * connection (the chat card nudges the agent on "active"); `null` when the
+   * flow failed before/while polling (already surfaced via `call()`).
+   */
+  connect: (toolkit: string) => Promise<PollOutcome | null>;
 } {
   const { agentId, autoGrant } = opts;
   const { t } = useTranslation("integrations");
@@ -90,10 +96,12 @@ export function useIntegrationConnect(opts: {
             t("connectResult.failed"),
           );
         }
+        return outcome;
       } catch {
         // The failing engine call (connect / open-url / poll / grant) already
         // surfaced via `call()`. Swallow the re-throw so the click handler never
         // leaks an unhandled rejection.
+        return null;
       } finally {
         if (!cancelled.current) setConnectingToolkit(null);
       }
