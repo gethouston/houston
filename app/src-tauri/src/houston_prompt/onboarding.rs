@@ -1,6 +1,7 @@
 /// Onboarding guidance, appended on first-run sessions when agent has no config yet.
-/// (Default Rust-engine build only — see `onboarding_prompt`.)
-#[cfg_attr(feature = "host-sidecar", allow(dead_code))]
+/// Not yet wired into the host spawn (the host reads only `HOUSTON_APP_SYSTEM_PROMPT`);
+/// kept for the pending host-onboarding follow-up. See `onboarding_prompt`.
+#[allow(dead_code)]
 pub const ONBOARDING_GUIDANCE: &str = "\n\n---\n\n# Onboarding\n\n\
 This is a brand new agent with no configuration yet. \
 Welcome the user and briefly tell them what they can provide to get this agent working:\n\n\

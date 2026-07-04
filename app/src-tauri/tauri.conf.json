@@ -48,7 +48,6 @@
     "targets": ["app", "dmg", "msi"],
     "externalBin": ["binaries/houston-engine"],
     "resources": {
-      "resources/bin": "bin",
       "../../store": "store"
     },
     "macOS": {

@@ -199,8 +199,7 @@ engine, and the supporting product surfaces.
 houston/
 ├── app/                     Houston App — desktop (Tauri 2)
 │   ├── src/                 React frontend (also runs as packages/web)
-│   ├── src-tauri/           Tauri binary (spawns the engine sidecar)
-│   └── houston-tauri/       Tauri adapter (applies the legacy Rust engine to desktop)
+│   └── src-tauri/           Tauri shell (spawns the host sidecar; OS-native glue)
 ├── website/                 Houston Website — gethouston.ai
 ├── teams/                   Houston Teams (TBD — hosted multi-tenant)
 ├── store/                   Legacy bundled agent catalog data; store UI cut in convergence
@@ -217,19 +216,22 @@ houston/
 ├── convergence/            The single-engine convergence plan + status (SOURCE OF TRUTH)
 │
 ├── ui/                      Houston UI — @houston-ai/* React packages
-├── engine/                  LEGACY Rust engine — current default build, deleted at the final cutover
 └── cloud/                   Houston Cloud — deploy + admin for the hosted multi-tenant host
 ```
 
-> Removed in the convergence: `mobile/` + `houston-relay/` (mobile PWA + tunnel),
+> Removed in the convergence: the legacy Rust `engine/` (17 crates) and its Tauri
+> adapter `app/houston-tauri/` — the single TypeScript engine (`packages/`) is now
+> the only engine, spawned by the `app/src-tauri` shell as a sidecar. Also gone:
+> the bundled provider CLIs + CLI-bundling pipeline (`cli-deps.json`,
+> `scripts/fetch-cli-deps.sh`), `mobile/` + `houston-relay/` (mobile PWA + tunnel),
 > `examples/smartbooks/` (custom-frontend reference), `always-on/` (the legacy
-> Rust-engine VPS image — the TS-engine self-host is `selfhost/`), marketplace
-> UI, worktrees UI, Claude-CLI install, and bundled provider CLIs.
+> Rust-engine VPS image — the TS-engine self-host is `selfhost/`), marketplace UI,
+> worktrees UI, and Claude-CLI install.
 
 > `packages/control-plane` was renamed to `packages/host`. The host still owns
 > the cloud-control-plane role, but the package and path are now host-first.
 
-See `knowledge-base/architecture.md` for crate-level detail + current gaps.
+See `knowledge-base/architecture.md` for repo-shape detail + current gaps.
 
 ---
 

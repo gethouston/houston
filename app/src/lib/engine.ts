@@ -2,12 +2,8 @@
 
 import { EngineWebSocket, HoustonClient } from "@houston-ai/engine-client";
 import { pullEngineHandshakeWithRetry } from "./engine-handshake";
-import {
-  controlPlaneBuild,
-  isLoopbackHostUrl,
-  resolveEngine,
-} from "./engine-mode";
-import { installRustEngineLifecycleListeners } from "./engine-tauri-events";
+import { isLoopbackHostUrl, resolveEngine } from "./engine-mode";
+import { installEngineLifecycleListeners } from "./engine-tauri-events";
 
 declare global {
   interface Window {
@@ -19,12 +15,10 @@ declare global {
 }
 
 /**
- * Cutover switch. When `VITE_NEW_ENGINE_URL` is set, the desktop frontend talks
- * to the v3 Houston host (host mode) instead of the Tauri-spawned Rust
- * engine — mirroring packages/web's same flag. The host URL + token come from
- * the env (the host runs as the sidecar, or by hand in dev). Unset → the Rust
- * path below is completely untouched, so the default build stays releasable and
- * a downgrade is just "don't set the flag".
+ * Remote-host switch. When `VITE_NEW_ENGINE_URL` is set, the desktop frontend
+ * talks to an external v3 Houston host instead of the Tauri-spawned local host
+ * sidecar — mirroring packages/web. The host URL + token come from the env (by
+ * hand in dev). Unset → the app uses the local sidecar the Tauri shell spawns.
  */
 const _env = import.meta.env as Record<string, string | undefined>;
 const HOST_TOKEN: string =
@@ -60,33 +54,23 @@ const HOSTED_ENGINE_URL: string | undefined =
 const HOSTED_OAUTH = RESOLVED.kind === "hosted-oauth";
 const REMOTE_HOST_MODE = Boolean(STATIC_HOST_URL || HOSTED_ENGINE_URL);
 
-// When the new-engine adapter is aliased in (VITE_NEW_ENGINE or
-// VITE_NEW_ENGINE_URL — see app/vite.config.ts `useHost`), the desktop ALWAYS
-// talks to a v3 host, so flip the adapter into host mode. This must be
-// set HERE, at module load, before any HoustonClient is constructed: the
-// adapter reads window.__HOUSTON_CP__ in its constructor, and the handshake can
-// arrive via the get_engine_handshake poll or the houston-engine-ready event —
-// neither of which sets this flag. On a cold first launch that poll wins the
-// race against the Tauri window.eval injection and a Rust-wire client gets
-// built against the v3 host -> every turn fails with "Session error" until the
-// next launch (the warm sidecar lets the injection land first). Setting the
-// flag from the build constant closes that race for all delivery paths. HOU-546.
-// import.meta typing differs between the app and packages/web tsconfigs that
-// both compile this file, so cast env to controlPlaneBuild's expected shape.
-const NEW_ENGINE = controlPlaneBuild(
-  (import.meta.env ?? {}) as unknown as {
-    VITE_NEW_ENGINE_URL?: string;
-    VITE_HOSTED_ENGINE_URL?: string;
-    VITE_NEW_ENGINE?: string;
-  },
-);
-if (NEW_ENGINE && typeof window !== "undefined") {
+// The v3 host adapter is the only engine client (aliased in unconditionally —
+// see app/vite.config.ts), so flip it into host mode. This must be set HERE, at
+// module load, before any HoustonClient is constructed: the adapter reads
+// window.__HOUSTON_CP__ in its constructor, and the sidecar handshake can arrive
+// via the get_engine_handshake poll or the houston-engine-ready event — neither
+// of which sets this flag. On a cold first launch that poll can win the race
+// against the Tauri window.eval injection; without the flag a mis-moded client
+// gets built against the v3 host -> every turn fails with "Session error" until
+// the next launch. Setting it as a build constant closes that race for all
+// delivery paths. HOU-546.
+if (typeof window !== "undefined") {
   (window as unknown as { __HOUSTON_CP__?: boolean }).__HOUSTON_CP__ = true;
 }
 
 function resolveConfig(): { baseUrl: string; token: string } | null {
-  // Host mode wins: point at the v3 host, overriding the Tauri-injected Rust
-  // engine handshake.
+  // Remote host wins: point at the external v3 host, overriding the
+  // sidecar-injected handshake.
   if (STATIC_HOST_URL) return { baseUrl: STATIC_HOST_URL, token: HOST_TOKEN };
   // Hosted OAuth (a managed gateway): the client is built ONLY from the
   // Supabase session token via setHostedEngineSessionToken. Return null here
@@ -195,7 +179,8 @@ if (initial) {
   applyConfig(initial);
 }
 
-// Host mode supplies the config from the env, so skip the Tauri/Rust handshake.
+// Remote host mode supplies the config from the env, so skip the Tauri sidecar
+// handshake.
 if (!_client && !REMOTE_HOST_MODE) {
   pullEngineHandshakeWithRetry({
     hasClient: () => _client !== null,
@@ -223,10 +208,11 @@ export function isEngineReady(): boolean {
 }
 
 /**
- * True when the active backend is the new TS engine. Set by the engine-adapter
- * (the only client that talks to the host); the legacy Rust engine never sets
- * it. Gates new-engine-only capabilities in the UI — notably API-key providers
- * (OpenCode Zen / Go), which the Rust engine can't serve.
+ * True once the host adapter's client has been constructed (the adapter sets
+ * `window.__HOUSTON_NEW_ENGINE__`). The host is the only engine now, so this is
+ * effectively "a host client is live"; it still gates UI that needs a live host
+ * connection (e.g. API-key provider surfaces). A candidate to fold away in the
+ * v3-client consolidation follow-up.
  */
 export function newEngineActive(): boolean {
   return (
@@ -274,7 +260,7 @@ function notifyEngineRestarted() {
 }
 
 if (!REMOTE_HOST_MODE) {
-  installRustEngineLifecycleListeners({
+  installEngineLifecycleListeners({
     hasClient: () => _client !== null,
     applyConfig,
     resetWebSocket: () => {

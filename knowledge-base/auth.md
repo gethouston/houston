@@ -2,6 +2,8 @@
 
 One-click Google sign-in on first launch. CI release tokens live in macOS Keychain / Windows Credential Manager, never localStorage or disk. Local builds use browser storage scoped per worktree to avoid macOS Keychain prompts from changing local signatures. Identifies users in PostHog, lays the foundation for Houston Cloud.
 
+> **Updated: Houston runs on the TypeScript host now — the Rust `engine/` was removed.** The auth/session behavior below is current, but `engine/houston-*` crate names and `.rs` paths (e.g. `houston-terminal-manager`, `houston-ui-events`) are historical pointers; the implementation lives in the **host** (`packages/host`) + the **pi runtime**.
+
 ## The flow (PKCE)
 
 1. User clicks **Continue with Google** in `SignInScreen`.

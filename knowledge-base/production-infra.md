@@ -2,6 +2,8 @@
 
 Four prod systems. All **dormant by default** — activate only when env vars set.
 
+> **Updated: the desktop engine is the bun-compiled TypeScript host — the Rust `engine/` was removed.** Sentry/observability plumbing below still applies, but references to the Rust `houston-engine` subprocess and `engine/houston-*` crates are historical: that runtime is now the host sidecar (the app still injects `SENTRY_*` into it at spawn, same contract).
+
 ## Auto-updater (`tauri-plugin-updater`)
 
 - **Config:** `tauri.conf.json` → `plugins.updater` (endpoint + pubkey)
@@ -204,7 +206,7 @@ CI also needs as Secrets:
 
 - **Workflow:** `.github/workflows/release.yml`
 - **Trigger:** Push tag matching `v*`
-- **Engine:** builds the desktop app around the **bun-compiled Houston host sidecar** (the TS engine) via `--features host-sidecar` + `VITE_NEW_ENGINE=1` — NOT the legacy Rust `houston-engine`. No provider CLIs are bundled (pi runs providers in-process). The app's build DEFAULTS stay Rust (a plain `pnpm tauri build` still builds the Rust engine); only the release workflow passes the host-sidecar flags, so `engine/` remains the instant-rollback oracle until the gated final cutover (`convergence/final-cutover.md`).
+- **Engine:** builds the desktop app around the **bun-compiled Houston host sidecar** (the TS engine). The Rust `engine/` was removed, so this is the only path — a plain `pnpm tauri build` builds the host too (no cargo feature to opt in). No provider CLIs are bundled (pi runs providers in-process).
 - **Output:** Draft GitHub Release w/ signed+notarized universal DMG + signed Windows MSI (x64 + arm64) + Linux AppImage + `latest.json`
 - **Duration:** ~25-30 min wall-clock (mac + win + linux run in parallel; mac is the long pole at ~25 min including Apple notarization).
 - **Draft = QA gate.** Users don't see until published on GitHub.
@@ -225,8 +227,8 @@ Houston ships ONE DMG that runs natively on Apple Silicon AND Intel. Same app, s
 
 ### How it works
 - `release.yml` bun-compiles the **host sidecar** TWICE — once per real triple (`aarch64-apple-darwin`, `x86_64-apple-darwin`) via `scripts/build-host-sidecar.sh <triple>` — then `lipo`s the two `target/host-sidecar/houston-host-<triple>` outputs into one fat `binaries/houston-engine-universal-apple-darwin` (the universal bundle's externalBin).
-- `build.rs::stage_host_sidecar` (the `host-sidecar` cargo feature) also stages per-triple copies to `src-tauri/binaries/houston-engine-<triple>` during tauri's per-arch cargo runs; the manually-lipo'd fat binary is what the `--target universal-apple-darwin` bundle actually ships. It reuses the SAME externalBin name the Rust engine used, so `tauri.conf.json` never branches on the feature.
-- `tauri-action` invoked with `--target universal-apple-darwin --features host-sidecar`. Bundle lands at `target/universal-apple-darwin/release/bundle/`.
+- `build.rs::stage_host_sidecar` also stages per-triple copies to `src-tauri/binaries/houston-engine-<triple>` during tauri's per-arch cargo runs; the manually-lipo'd fat binary is what the `--target universal-apple-darwin` bundle actually ships. The externalBin name (`houston-engine-<triple>`) is kept from the old Rust engine so `tauri.conf.json` is unchanged.
+- `tauri-action` invoked with `--target universal-apple-darwin`. Bundle lands at `target/universal-apple-darwin/release/bundle/`.
 - Verification step runs `lipo -info` on the embedded host sidecar and fails the release if either slice is missing.
 - `latest.json` ships FOUR platform keys (`darwin-aarch64`, `darwin-aarch64-app`, `darwin-x86_64`, `darwin-x86_64-app`) all pointing at the same tarball + signature. Intel users on older Houston installs check `darwin-x86_64` — if that key is absent they NEVER see the update prompt.
 - `bundle.macOS.minimumSystemVersion = 10.15` in `tauri.conf.json` — required for Intel Macs old enough to matter.

@@ -34,29 +34,23 @@ function resolveAuthStorageMode(
 export default defineConfig(({ mode }) => {
   const env = { ...loadEnv(mode, process.cwd(), ""), ...process.env };
   const authStorageMode = resolveAuthStorageMode(mode, env);
-  // Cutover: when VITE_NEW_ENGINE_URL (or VITE_NEW_ENGINE=1) is set, swap the
-  // engine client for the new-engine adapter so the desktop UI runs on the v3
-  // Houston host instead of the Rust engine. Mirrors packages/web. Unset → the
-  // real @houston-ai/engine-client (v1 → Rust engine) is untouched.
-  const useHost =
-    Boolean(env.VITE_NEW_ENGINE_URL) ||
-    Boolean(env.VITE_HOSTED_ENGINE_URL) ||
-    env.VITE_NEW_ENGINE === "1" ||
-    env.VITE_NEW_ENGINE === "true";
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
-      alias: useHost
-        ? [
-            {
-              find: "@houston-ai/engine-client",
-              replacement: path.resolve(
-                __dirname,
-                "../packages/web/src/engine-adapter/index.ts",
-              ),
-            },
-          ]
-        : [],
+      // The Houston host (packages/host) is the only engine, so
+      // `@houston-ai/engine-client` always resolves to the v3 host adapter.
+      // The desktop talks to a spawned local host sidecar, an external host
+      // (VITE_NEW_ENGINE_URL), or a hosted gateway (VITE_HOSTED_ENGINE_URL) —
+      // all v3. Mirrors packages/web.
+      alias: [
+        {
+          find: "@houston-ai/engine-client",
+          replacement: path.resolve(
+            __dirname,
+            "../packages/web/src/engine-adapter/index.ts",
+          ),
+        },
+      ],
     },
     define: {
       __APP_VERSION__: JSON.stringify(

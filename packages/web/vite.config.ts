@@ -5,9 +5,8 @@ import { defineConfig, loadEnv } from "vite";
 import { version } from "./package.json";
 
 // packages/web composes the desktop app's React tree (app/src) and runs it in a
-// plain browser tab pointed at the Houston host (or the legacy Rust engine until
-// final cutover). The ONLY platform
-// coupling app/src has is a handful of `@tauri-apps/*` imports; we redirect each
+// plain browser tab pointed at the Houston host. The ONLY platform coupling
+// app/src has is a handful of `@tauri-apps/*` imports; we redirect each
 // specifier to a browser shim under ./src/shims. `@houston/app/*` aliases into
 // app/src so we can reuse it verbatim — no fork, no app/ changes.
 //
@@ -24,34 +23,18 @@ export default defineConfig(({ mode }) => {
   // envDir, so it stays the old-engine connect screen.
   const envDir = mode === "host" ? repoRoot : process.cwd();
   const env = { ...loadEnv(mode, envDir, ""), ...process.env };
-  // Target the new TS engine host (packages/host) when VITE_NEW_ENGINE is truthy,
-  // or when a URL is baked via VITE_NEW_ENGINE_URL. In that mode we swap the
-  // engine client for the new-engine adapter so the entire desktop UI (app/src)
-  // runs on the new engine. Otherwise the old-engine path is untouched.
-  const useNewEngine =
-    env.VITE_NEW_ENGINE === "1" ||
-    env.VITE_NEW_ENGINE === "true" ||
-    Boolean(env.VITE_NEW_ENGINE_URL);
   return {
     envDir,
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: [
-        // New-engine mode (see `useNewEngine` above) and host/cloud mode
-        // (VITE_CONTROL_PLANE_URL, legacy env name) both route @houston-ai/engine-client through
-        // the new-engine adapter so the whole desktop UI runs on the new TS
-        // runtime / the control plane.
-        ...(useNewEngine || env.VITE_CONTROL_PLANE_URL
-          ? [
-              {
-                find: "@houston-ai/engine-client",
-                replacement: path.resolve(
-                  __dirname,
-                  "src/engine-adapter/index.ts",
-                ),
-              },
-            ]
-          : []),
+        // The Houston host (packages/host) is the only engine, so
+        // `@houston-ai/engine-client` always resolves to the v3 host adapter —
+        // the whole desktop UI (app/src) runs on the host / control plane.
+        {
+          find: "@houston-ai/engine-client",
+          replacement: path.resolve(__dirname, "src/engine-adapter/index.ts"),
+        },
         { find: "@tauri-apps/api/core", replacement: shim("tauri-core.ts") },
         { find: "@tauri-apps/api/event", replacement: shim("tauri-event.ts") },
         {

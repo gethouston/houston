@@ -13,22 +13,30 @@ mod oauth_loopback;
 mod window_focus;
 
 use engine_supervisor::{
-    resolve_engine_binary, spawn_supervisor, EngineHandshake, SupervisorCallbacks,
+    resolve_engine_binary, reserve_free_port, spawn_supervisor, wait_until_host_healthy,
+    EngineHandshake, SupervisorCallbacks,
 };
-// The default (Rust-engine) path health-checks `/v1/health`; the host-sidecar
-// path health-checks the host's `/health` and reserves a loopback port to hand
-// the host (it echoes the *requested* port in its banner). Import per feature so
-// neither pulls in an unused symbol.
-#[cfg(not(feature = "host-sidecar"))]
-use engine_supervisor::wait_until_healthy;
-#[cfg(feature = "host-sidecar")]
-use engine_supervisor::{reserve_free_port, wait_until_host_healthy};
-use houston_tauri::houston_db::Database;
-use houston_tauri::state::AppState;
-use houston_ui_events::HoustonEvent;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{Emitter, Manager};
+
+/// Resolve Houston's data root: `~/.houston/` for release builds, `~/.dev-houston/`
+/// for debug builds so `pnpm tauri dev` stays isolated from an installed release.
+/// `HOUSTON_HOME` overrides both. Inlined here when the Rust engine crates (which
+/// previously owned `houston_db::db::houston_dir`) were removed.
+pub(crate) fn houston_dir() -> PathBuf {
+    if let Ok(override_path) = std::env::var("HOUSTON_HOME") {
+        return PathBuf::from(override_path);
+    }
+    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+    let subdir = if cfg!(debug_assertions) {
+        ".dev-houston"
+    } else {
+        ".houston"
+    };
+    home.join(subdir)
+}
 
 /// Tauri-managed state holding the latest engine handshake so the frontend
 /// can pull it on demand via `get_engine_handshake` — wins the race when
@@ -67,12 +75,14 @@ impl SupervisorCallbacks for TauriSupervisorCallbacks {
             "token": handshake.token,
         });
         let _ = self.handle.emit("houston-engine-restarted", payload);
+        // Matches the `{ type, data }` wire shape the frontend's houston-event
+        // listener expects (formerly houston_ui_events::HoustonEvent::CompletionToast).
         let _ = self.handle.emit(
             "houston-event",
-            HoustonEvent::CompletionToast {
-                title: "Engine reconnected".into(),
-                issue_id: None,
-            },
+            serde_json::json!({
+                "type": "CompletionToast",
+                "data": { "title": "Engine reconnected", "issue_id": null },
+            }),
         );
     }
 }
@@ -135,7 +145,7 @@ pub fn run() {
 
     // `houston_dir()` flips to `~/.dev-houston/` in debug builds so
     // `pnpm tauri dev` stays isolated from an installed release of Houston.
-    let houston = houston_tauri::houston_db::db::houston_dir();
+    let houston = houston_dir();
 
     // Sentry MUST init before logging so the tracing subscriber's
     // sentry_tracing layer (registered in logging::init) has a live client
@@ -261,17 +271,7 @@ pub fn run() {
                 });
             }
 
-            // Resolve the user's shell PATH early so provider checks work
-            // in release builds (macOS .app bundles get a minimal PATH).
-            houston_tauri::houston_terminal_manager::claude_path::init();
-
-            let houston = houston_tauri::houston_db::db::houston_dir();
-            let db_path = houston.join("db").join("houston.db");
-            let db = tauri::async_runtime::block_on(async {
-                Database::connect(&db_path)
-                    .await
-                    .expect("Failed to open database")
-            });
+            let houston = houston_dir();
 
             // One-time migration: earlier versions stored workspaces under
             // `~/Documents/Houston/`. New default is `$HOUSTON_HOME/workspaces/`
@@ -280,34 +280,16 @@ pub fn run() {
             // empty. Idempotent on subsequent launches.
             migrate_legacy_docs_dir(&houston);
 
-            // Eagerly run the intra-agent data-layout migration on every
-            // agent the user already has. Previously this only fired the
-            // first time a user started a session on each agent, which
-            // meant upgraders who just BROWSED the Activity tab saw an
-            // empty board even though their `.houston/activity.json` was
-            // sitting next to it. Walk the workspaces dir here so existing
-            // activities, routines, learnings show up immediately.
-            migrate_all_agents(&houston.join("workspaces"));
-
-            // AppState keeps a DB handle for any OS-native lookup (log
-            // reading, session search). Domain state now lives in the
-            // engine subprocess.
-            app.manage(AppState {
-                db,
-                event_queue: None,
-                scheduler: None,
-            });
-
-            // --- Spawn houston-engine as a subprocess --------------------
+            // --- Spawn the Houston host as a subprocess ------------------
             //
-            // All domain calls go through the engine over HTTP/WS. The
+            // All domain calls go through the host over HTTP/SSE. The
             // supervisor thread restarts it with exponential backoff on
             // crash and emits a toast via `houston-event` on each reconnect.
             //
-            // Cutover host mode: when VITE_NEW_ENGINE_URL (static token) or
+            // Remote host mode: when VITE_NEW_ENGINE_URL (static token) or
             // VITE_HOSTED_ENGINE_URL (Supabase bearer) is set, the frontend
             // talks to an external Houston host/gateway (see app/src/lib/engine.ts),
-            // so don't spawn or health-check the Rust engine sidecar at all.
+            // so don't spawn or health-check the local host sidecar at all.
             //
             // Two places to look: the runtime env covers `pnpm tauri dev`
             // (Vite and this process share the shell env), while `option_env!`
@@ -330,31 +312,15 @@ pub fn run() {
                     });
             if host_mode {
                 tracing::info!(
-                    "[engine] host mode — skipping the Rust engine sidecar"
+                    "[host] remote host mode — skipping the local host sidecar"
                 );
                 // Keep get_engine_handshake callable (the frontend skips it here).
                 app.manage(EngineHandshakeState::default());
             } else {
-                // `host-sidecar` feature: spawn the Bun-compiled Houston host
-                // (packages/host/src/local/main.ts) as the sidecar and
-                // drive the frontend into control-plane mode against it. Default
-                // (feature off): the Rust engine — unchanged, so main stays
-                // releasable. Both spawners are `#[cfg]`-gated (not a runtime
-                // `cfg!`) so only the selected one is even compiled; the host
-                // arm references feature-gated supervisor helpers that don't
-                // exist when the feature is off.
-                #[cfg(feature = "host-sidecar")]
+                // Spawn the Bun-compiled Houston host (packages/host/src/local/main.ts)
+                // as the sidecar and drive the frontend into control-plane mode
+                // against it.
                 spawn_host_sidecar(
-                    app,
-                    &houston,
-                    sentry_active,
-                    sentry_send_in_dev,
-                    sentry_dsn,
-                    &sentry_release,
-                    sentry_environment,
-                );
-                #[cfg(not(feature = "host-sidecar"))]
-                spawn_rust_engine(
                     app,
                     &houston,
                     sentry_active,
@@ -389,7 +355,6 @@ pub fn run() {
             commands::os::reveal_agent,
             commands::os::reveal_path,
             commands::terminal::open_terminal,
-            commands::os::check_claude_cli,
             commands::portable::save_portable_agent,
             commands::portable::open_portable_agent,
             commands::update::current_app_bundle_path,
@@ -453,158 +418,9 @@ pub fn run() {
         });
 }
 
-/// Spawn the Rust `houston-engine` as the sidecar (default build) and inject
-/// the `{baseUrl, token}` handshake the frontend's Rust-engine adapter reads.
+/// Spawn the Bun-compiled Houston host as the sidecar and drive the frontend
+/// into control-plane mode against it.
 ///
-/// This is the unchanged, releasable path — extracted verbatim from `setup()`
-/// so the two spawners (this and `spawn_host_sidecar`) are symmetric
-/// `#[cfg]`-gated siblings instead of an inline `if/else` that would force an
-/// extra indent level on the larger arm.
-#[cfg(not(feature = "host-sidecar"))]
-fn spawn_rust_engine(
-    app: &tauri::App,
-    houston: &std::path::Path,
-    sentry_active: bool,
-    sentry_send_in_dev: bool,
-    sentry_dsn: &str,
-    sentry_release: &str,
-    sentry_environment: &str,
-) {
-    let resource_dir = app.path().resource_dir().ok();
-    let binary = resolve_engine_binary(resource_dir.as_ref())
-        .expect("houston-engine binary missing — check externalBin bundling");
-    tracing::info!("[engine] spawning {}", binary.display());
-
-    let cb: Arc<TauriSupervisorCallbacks> = Arc::new(TauriSupervisorCallbacks {
-        handle: app.handle().clone(),
-    });
-    // Product-layer prompts live in the `houston_prompt` module and are
-    // exported to the engine via env vars. The engine treats these
-    // as opaque strings — it has no hardcoded Houston copy.
-    //
-    // Also pin HOUSTON_HOME + HOUSTON_DOCS so the engine uses the
-    // same data roots as the app. Workspaces live under
-    // `$HOUSTON_HOME/workspaces/` in both debug (`~/.dev-houston/`)
-    // and release (`~/.houston/`) — everything Houston writes is
-    // rooted at a single discoverable location.
-    let docs_dir = houston.join("workspaces");
-    let mut engine_env: Vec<(String, String)> = vec![
-        (
-            "HOUSTON_APP_SYSTEM_PROMPT".into(),
-            houston_prompt::system_prompt(),
-        ),
-        (
-            "HOUSTON_APP_ONBOARDING_PROMPT".into(),
-            houston_prompt::onboarding_prompt(),
-        ),
-        ("HOUSTON_HOME".into(), houston.display().to_string()),
-        ("HOUSTON_DOCS".into(), docs_dir.display().to_string()),
-    ];
-    if let Some(store_dir) = resource_dir
-        .as_ref()
-        .map(|dir| dir.join("store"))
-        .filter(|dir| dir.join("catalog.json").exists())
-    {
-        engine_env.push(("HOUSTON_STORE_DIR".into(), store_dir.display().to_string()));
-    }
-    // If a Supabase session is already persisted in Keychain (user
-    // signed in on a previous launch), stamp the subprocess with the
-    // user_id so future cloud-side operations can attribute work to
-    // a user. Engine is prompt-agnostic about identity — treats this
-    // as an opaque string. Local/ad-hoc builds compile auth storage
-    // in browser mode, so this returns before touching Keychain.
-    if let Some(user_id) = auth::persisted_user_id() {
-        engine_env.push(("HOUSTON_APP_USER_ID".into(), user_id));
-    }
-    // Pass through `HOUSTON_TUNNEL_URL` for local relay dev
-    // (`wrangler dev` on localhost:8787). Production uses the
-    // engine's baked-in default (`tunnel.gethouston.ai`).
-    if let Ok(v) = std::env::var("HOUSTON_TUNNEL_URL") {
-        if !v.is_empty() {
-            engine_env.push(("HOUSTON_TUNNEL_URL".into(), v));
-        }
-    }
-    // Hand our Sentry config to the engine subprocess so engine-side
-    // panics + `tracing::error!` land in the SAME Sentry project, under
-    // the SAME release, tagged `runtime=engine` (the engine reads these
-    // in `main::init_sentry`). Gated on the same `sentry_active`
-    // decision as the app's own client, so forks / dev builds (without
-    // the SENTRY_SEND_IN_DEV opt-in) inject nothing and the engine
-    // stays a silent no-op. The engine debug files CI uploads then
-    // become useful.
-    engine_env.extend(engine_sentry_env(
-        sentry_active,
-        sentry_send_in_dev,
-        sentry_dsn,
-        sentry_release,
-        sentry_environment,
-    ));
-    // 30s banner timeout: first-run Gatekeeper scan on a notarized
-    // sidecar can take 15–20s on slow machines.
-    let slot = spawn_supervisor(binary, Duration::from_secs(30), engine_env, cb)
-        .expect("failed to spawn houston-engine");
-    let handshake = {
-        let guard = slot.lock().expect("engine slot poisoned");
-        guard
-            .as_ref()
-            .expect("engine subprocess missing after spawn")
-            .handshake
-            .clone()
-    };
-    // 30s matches the banner timeout above. On first launch the
-    // engine has to import the bundled certificates, run a
-    // login-shell PATH probe, and (on Windows) kick off
-    // PortableGit extraction in the background. The shorter
-    // 5s budget we used before turned out to be the trigger
-    // for a Windows crash loop: any startup path that crossed
-    // it killed the engine subprocess, which on Windows meant
-    // an in-flight PortableGit extraction was never finalized
-    // and re-fired identically on every relaunch.
-    wait_until_healthy(&handshake, Duration::from_secs(30))
-        .expect("engine did not pass /v1/health in time");
-
-    // Stash the handshake so the frontend can pull it via
-    // `get_engine_handshake` — wins the race when the one-shot
-    // `houston-engine-ready` event fires before the webview's
-    // `listen()` registers (common in dev + cold Vite).
-    let handshake_state = EngineHandshakeState::default();
-    *handshake_state.0.lock().unwrap() = Some(handshake.clone());
-    app.manage(handshake_state);
-
-    // Inject bootstrap so `app/src/lib/engine.ts::resolveConfig`
-    // picks it up before any HoustonClient call fires.
-    //
-    // Two delivery paths because the webview + React may mount
-    // BEFORE `setup()` finishes waiting on /v1/health:
-    //   1. `window.eval` — fastest path, wins if the webview hasn't
-    //      loaded the JS bundle yet.
-    //   2. `houston-engine-ready` Tauri event — the frontend's
-    //      `EngineGate` awaits this before rendering the app, so a
-    //      slow health check simply shows a splash instead of
-    //      crashing the React tree.
-    let init_script = format!(
-        "window.__HOUSTON_ENGINE__ = {{ baseUrl: \"{}\", token: \"{}\" }};",
-        handshake.base_url(),
-        handshake.token.replace('"', "\\\"")
-    );
-    if let Some(window) = app.get_webview_window("main") {
-        if let Err(e) = window.eval(&init_script) {
-            tracing::error!("[engine] failed to inject bootstrap: {e}");
-        }
-    }
-    let ready_payload = serde_json::json!({
-        "baseUrl": handshake.base_url(),
-        "token": handshake.token,
-    });
-    if let Err(e) = app.emit("houston-engine-ready", ready_payload) {
-        tracing::error!("[engine] failed to emit ready event: {e}");
-    }
-}
-
-/// Spawn the Bun-compiled Houston host as the sidecar (`host-sidecar` feature)
-/// and drive the frontend into control-plane mode against it.
-///
-/// Mirrors the Rust-engine spawn in `setup()` but:
 ///   - hands the host its OWN env contract: `HOUSTON_WORKSPACES_ROOT`,
 ///     `HOUSTON_CREDENTIALS_PATH`, a reserved `HOUSTON_HOST_PORT`, and the
 ///     product voice via `HOUSTON_APP_SYSTEM_PROMPT` (read by
@@ -612,15 +428,12 @@ fn spawn_rust_engine(
 ///     crypto-strong per-boot token (`randomBytes(32)`) and echoes it in the
 ///     `HOUSTON_HOST_LISTENING` banner — we read it back rather than minting a
 ///     weaker one in Rust, so the handshake token is still random per boot.
-///   - parses the host banner (`engine_supervisor::parse_banner` accepts both
-///     `HOUSTON_ENGINE_LISTENING` and `HOUSTON_HOST_LISTENING`).
-///   - health-checks the host's `/health` (the engine's `/v1/health` is a
-///     different surface).
+///   - parses the host banner (`engine_supervisor::parse_banner`).
+///   - health-checks the host's `/health`.
 ///   - injects `window.__HOUSTON_CP__ = true` ALONGSIDE the `__HOUSTON_ENGINE__`
 ///     handshake, so `app/src/lib/engine.ts` runs the control-plane adapter
 ///     against the sidecar — the runtime equivalent of setting
 ///     `VITE_NEW_ENGINE_URL`, but pointed at our own spawned host.
-#[cfg(feature = "host-sidecar")]
 fn spawn_host_sidecar(
     app: &tauri::App,
     houston: &std::path::Path,
@@ -739,64 +552,6 @@ fn spawn_host_sidecar(
     });
     if let Err(e) = app.emit("houston-engine-ready", ready_payload) {
         tracing::error!("[host] failed to emit ready event: {e}");
-    }
-}
-
-/// Walk every agent under `<workspaces>/<workspace>/<agent>/` and run
-/// `houston_agent_files::migrate_agent_data` on each. Idempotent — only
-/// does real work for agents whose `.houston/` is still in the legacy flat
-/// layout or still has a `memory/learnings.md` that needs rewriting.
-///
-/// Exists because the per-agent migration used to be gated behind
-/// `seed_agent()`, which only runs when the user starts a session, creates
-/// an agent, or fires a routine. Upgraders from v0.3.x who simply browsed
-/// the Activity / Learnings tabs saw empty boards even though the legacy
-/// files sat right beside the new paths the UI was polling.
-fn migrate_all_agents(workspaces_root: &std::path::Path) {
-    let entries = match std::fs::read_dir(workspaces_root) {
-        Ok(it) => it,
-        Err(_) => return, // no workspaces yet — nothing to migrate
-    };
-
-    for ws_entry in entries.flatten() {
-        let ws_path = ws_entry.path();
-        if !ws_path.is_dir() {
-            continue;
-        }
-        let ws_name = ws_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
-        if ws_name.starts_with('.') {
-            continue;
-        }
-
-        let agent_entries = match std::fs::read_dir(&ws_path) {
-            Ok(it) => it,
-            Err(e) => {
-                tracing::warn!("[migrate-agents] read_dir({}) failed: {e}", ws_path.display());
-                continue;
-            }
-        };
-
-        for agent_entry in agent_entries.flatten() {
-            let agent_path = agent_entry.path();
-            if !agent_path.is_dir() {
-                continue;
-            }
-            let agent_name = agent_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
-            if agent_name.starts_with('.') {
-                continue;
-            }
-            // Only agents that already have a `.houston/` dir — otherwise
-            // we'd eagerly create one for every random folder in the tree.
-            if !agent_path.join(".houston").is_dir() {
-                continue;
-            }
-            if let Err(e) = houston_tauri::houston_agent_files::migrate_agent_data(&agent_path) {
-                tracing::warn!(
-                    "[migrate-agents] migrate_agent_data({}) failed: {e}",
-                    agent_path.display()
-                );
-            }
-        }
     }
 }
 

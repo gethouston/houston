@@ -49,7 +49,7 @@ done
 #   [dependencies.thiserror]
 #   version = "1"
 # The $d guard stops after the first hit per file.
-for toml in engine/*/Cargo.toml app/houston-tauri/Cargo.toml app/src-tauri/Cargo.toml; do
+for toml in app/src-tauri/Cargo.toml; do
   perl -i -pe 'BEGIN{$d=0} if(!$d && /^version = "[^"]+"$/){s/^version = "[^"]+"$/version = "'"$VERSION"'"/; $d=1}' "$toml"
 done
 
@@ -60,7 +60,7 @@ done
 # stay untouched. Without this, a caret pin silently tolerates patch bumps and
 # then breaks the release on the first MINOR bump (bit us at 0.4.26 -> 0.5.0:
 # houston-engine-server pinned ^0.4.0 while the crates moved to 0.5.0).
-for toml in engine/*/Cargo.toml app/houston-tauri/Cargo.toml app/src-tauri/Cargo.toml; do
+for toml in app/src-tauri/Cargo.toml; do
   perl -i -pe 's/version = "[0-9]+\.[0-9]+\.[0-9]+"/version = "'"$VERSION"'"/ if /path = "/' "$toml"
 done
 

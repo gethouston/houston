@@ -38,9 +38,8 @@ pub fn init(data_dir: &Path) {
     // Store the guard so the background writer thread stays alive
     let _ = GUARD.set(guard);
 
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-        EnvFilter::new("info,houston_terminal_manager=debug,houston_tauri=debug,houston_app=debug")
-    });
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("info,houston_app=debug"));
 
     let fmt_layer = fmt::layer()
         .with_writer(non_blocking)
@@ -58,7 +57,7 @@ pub fn init(data_dir: &Path) {
 }
 
 fn logs_dir() -> PathBuf {
-    houston_tauri::houston_db::db::houston_dir().join("logs")
+    crate::houston_dir().join("logs")
 }
 
 fn frontend_log_path() -> PathBuf {

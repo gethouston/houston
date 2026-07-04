@@ -17,7 +17,6 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   DEFAULT_TAB_ID,
-  HOST_BUILD,
   STANDARD_TAB_IDS,
   STANDARD_TABS,
 } from "../../agents/standard-tabs";
@@ -165,7 +164,7 @@ export function WorkspaceShell({
                   <AiHubView />
                 ) : viewMode === "settings" ? (
                   <SettingsView />
-                ) : viewMode === INTEGRATIONS_VIEW_ID && HOST_BUILD ? (
+                ) : viewMode === INTEGRATIONS_VIEW_ID ? (
                   <IntegrationsView />
                 ) : currentAgent && agentDef && isAgentView ? (
                   <>

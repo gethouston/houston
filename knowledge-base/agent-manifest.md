@@ -2,6 +2,8 @@
 
 Agent definitions = what AI agent looks like. What prompt. What files seeded. Primary dev surface of platform.
 
+> **Updated: Houston runs on the TypeScript host now — the Rust `engine/` was removed.** The routes, schemas, and behavior below are current, but `engine/houston-*` crate names and `.rs` paths are historical pointers; the implementation lives in the **host** (`packages/host`), `packages/domain`, and the **pi runtime**.
+
 ## Two tiers
 
 1. **JSON-only** — `houston.json` + `CLAUDE.md`. Defines prompt, colors, icon, integrations. All agents share the same shell tabs (see "Tabs" below).

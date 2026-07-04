@@ -1,11 +1,10 @@
-//! Engine subprocess supervisor (Phase 4).
+//! Host subprocess supervisor.
 //!
-//! Spawns the sidecar as a child process, parses its stdout for the
-//! `HOUSTON_ENGINE_LISTENING port=<p> token=<t>` banner (or the Bun host's
-//! equivalent `HOUSTON_HOST_LISTENING ...` under the `host-sidecar` feature),
-//! polls a health endpoint until ready, and hands the `{baseUrl, token}`
-//! handshake back to the caller so the Tauri setup can inject
-//! `window.__HOUSTON_ENGINE__` before showing the webview.
+//! Spawns the Bun-compiled Houston host as a child process, parses its stdout
+//! for the `HOUSTON_HOST_LISTENING port=<p> token=<t>` banner, polls the host's
+//! `/health` until ready, and hands the `{baseUrl, token}` handshake back to the
+//! caller so the Tauri setup can inject `window.__HOUSTON_ENGINE__` before
+//! showing the webview.
 //!
 //! Lifecycle:
 //! - Parent exit → child dies. On Unix the child runs in its own process
@@ -258,7 +257,7 @@ impl EngineSubprocess {
         // Without (1), Windows GUI builds discard engine stderr to NUL.
         let stderr_reader = BufReader::new(stderr);
         thread::spawn(move || {
-            let logs_dir = houston_tauri::houston_db::db::houston_dir().join("logs");
+            let logs_dir = crate::houston_dir().join("logs");
             let _ = std::fs::create_dir_all(&logs_dir);
             let today = chrono::Local::now().format("%Y-%m-%d").to_string();
             let log_path = logs_dir.join(format!("engine.log.{today}"));
@@ -623,13 +622,12 @@ pub fn spawn_supervisor<C: SupervisorCallbacks>(
 }
 
 fn parse_banner(line: &str) -> Option<EngineHandshake> {
-    // The Rust engine emits   `HOUSTON_ENGINE_LISTENING port=<p> token=<t>`.
-    // The Bun host (host-sidecar feature) emits the equivalent
-    //                          `HOUSTON_HOST_LISTENING  port=<p> token=<t>`.
-    // Same field grammar; accept either prefix so one supervisor drives both.
+    // The Houston host emits `HOUSTON_HOST_LISTENING port=<p> token=<t>`.
+    // The legacy `HOUSTON_ENGINE_LISTENING` prefix is still accepted (same field
+    // grammar) so the parser stays lenient across banner variants.
     let rest = line
-        .strip_prefix("HOUSTON_ENGINE_LISTENING ")
-        .or_else(|| line.strip_prefix("HOUSTON_HOST_LISTENING "))?;
+        .strip_prefix("HOUSTON_HOST_LISTENING ")
+        .or_else(|| line.strip_prefix("HOUSTON_ENGINE_LISTENING "))?;
     let mut port: Option<u16> = None;
     let mut token: Option<String> = None;
     for field in rest.split_whitespace() {
@@ -746,11 +744,9 @@ mod win_job {
 /// Reserve a free loopback TCP port by binding to `:0` and reading back the
 /// OS-assigned port. The listener is dropped immediately, so there's a tiny
 /// TOCTOU window before the host re-binds it — acceptable for a single-user
-/// desktop on loopback (nothing else is racing for ports here). Used by the
-/// host-sidecar path, which must hand the host a concrete `HOUSTON_HOST_PORT`
-/// (the host echoes the *requested* port in its banner, so `0` would print
-/// `port=0`).
-#[cfg(feature = "host-sidecar")]
+/// desktop on loopback (nothing else is racing for ports here). The host must
+/// be handed a concrete `HOUSTON_HOST_PORT` (it echoes the *requested* port in
+/// its banner, so `0` would print `port=0`).
 pub fn reserve_free_port() -> Result<u16, String> {
     let listener = std::net::TcpListener::bind("127.0.0.1:0")
         .map_err(|e| format!("could not reserve a free port: {e}"))?;
@@ -760,21 +756,9 @@ pub fn reserve_free_port() -> Result<u16, String> {
         .map_err(|e| format!("could not read reserved port: {e}"))
 }
 
-/// Poll `/v1/health` until a 2xx response, or timeout. Uses bearer auth.
-/// (Default build only — the host-sidecar path uses `wait_until_host_healthy`.)
-#[cfg_attr(feature = "host-sidecar", allow(dead_code))]
-pub fn wait_until_healthy(
-    handshake: &EngineHandshake,
-    timeout: Duration,
-) -> Result<(), String> {
-    wait_until_healthy_at(handshake, "/v1/health", timeout)
-}
-
-/// Poll the Bun host's `/health` until a 2xx response, or timeout. The host
-/// (host-sidecar feature) serves `/health` (no `/v1` prefix — that's the Rust
-/// engine's gate) as a public endpoint, but we still send the bearer so the
-/// same code path covers any deployment that gates it.
-#[cfg(feature = "host-sidecar")]
+/// Poll the Houston host's `/health` until a 2xx response, or timeout. Served as
+/// a public endpoint, but we still send the bearer so the same code path covers
+/// any deployment that gates it.
 pub fn wait_until_host_healthy(
     handshake: &EngineHandshake,
     timeout: Duration,
@@ -824,8 +808,7 @@ mod tests {
 
     #[test]
     fn parses_host_banner() {
-        // The Bun host (host-sidecar feature) emits the HOUSTON_HOST_LISTENING
-        // variant; same grammar, must parse identically so one supervisor drives both.
+        // The Houston host emits the HOUSTON_HOST_LISTENING banner.
         let h = parse_banner("HOUSTON_HOST_LISTENING port=4318 token=deadbeef").unwrap();
         assert_eq!(h.port, 4318);
         assert_eq!(h.token, "deadbeef");

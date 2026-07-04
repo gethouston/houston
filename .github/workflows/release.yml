@@ -494,7 +494,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         with:
           projectPath: app
-          args: --target universal-apple-darwin --features host-sidecar
+          args: --target universal-apple-darwin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -1020,7 +1020,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         with:
           projectPath: app
-          args: --target ${{ matrix.target }} --features host-sidecar
+          args: --target ${{ matrix.target }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # The Tauri updater key signs the MSI for the auto-updater
@@ -1260,7 +1260,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         with:
           projectPath: app
-          args: --target x86_64-unknown-linux-gnu --features host-sidecar --bundles appimage
+          args: --target x86_64-unknown-linux-gnu --bundles appimage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
