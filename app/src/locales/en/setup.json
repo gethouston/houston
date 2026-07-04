@@ -71,7 +71,6 @@
         "cta": "Start setup",
         "steps": {
           "ai": "Connect your AI",
-          "apps": "Connect your apps",
           "agent": "Create your agent",
           "email": "Connect your email",
           "send": "Send your first email"
@@ -129,7 +128,7 @@
       },
       "agentCreated": {
         "title": "Agent created!",
-        "body": "Meet your new agent. Two quick steps and it's working for you.",
+        "body": "Meet your new agent. A few more quick steps and it's working for you.",
         "cta": "Continue"
       },
       "emailConnected": {
@@ -149,11 +148,6 @@
         "tourBody": "A quick walkthrough of the basics.",
         "connectMore": "Connect more apps",
         "connectMoreBody": "Give your agent access to more of your tools."
-      },
-      "onboardingIntro": {
-        "title": "Now let's put it to work",
-        "body": "Three quick steps to see your agent do something real.",
-        "cta": "Let's go"
       },
       "try": {
         "title": "Try a real mission",

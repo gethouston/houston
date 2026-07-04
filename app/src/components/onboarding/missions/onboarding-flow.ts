@@ -54,10 +54,12 @@ export function integrationsAvailable(
 }
 
 /**
- * Where "Continue" on the agent-created screen goes: into the email detour when
- * integrations are available, straight to the finish line otherwise.
+ * Where "Continue" on the AI-connected screen goes: into the email detour when
+ * integrations are available, straight to the finish line otherwise. (The AI
+ * steps run AFTER agent creation: on the v3 wire provider login executes inside
+ * the agent's runtime, so an agent must exist before the login screen.)
  */
-export function stepAfterAgentCreated(
+export function stepAfterAiConnected(
   capabilities: Capabilities | null | undefined,
 ): OnboardingStep {
   return integrationsAvailable(capabilities) ? "connectEmail" : "finished";

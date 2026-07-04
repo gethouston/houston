@@ -1,24 +1,25 @@
 import { cn } from "@houston-ai/core";
 import confetti from "canvas-confetti";
 import type { LucideIcon } from "lucide-react";
-import { Bot, Check, LayoutGrid, Mail, Send, Sparkles } from "lucide-react";
+import { Bot, Check, Mail, Send, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import type { SetupSection } from "../../lib/setup-steps";
 import { HoustonLogo } from "../shell/experience-card";
 import { SetupCard } from "./setup-card";
 
-export type Milestone = "ai" | "apps" | "agent" | "email" | "send";
+export type Milestone = "agent" | "ai" | "email" | "send";
 
-const SECTION_MILESTONES: Record<SetupSection, Milestone[]> = {
-  setup: ["ai", "apps"],
-  onboarding: ["agent", "email", "send"],
-};
+/**
+ * One continuous journey checklist, in completion order: the agent is created
+ * first, then its AI connects (v3 provider login runs inside the agent's
+ * runtime, so it must come after creation), then the email steps. Every
+ * celebration screen shows the SAME list so progress reads as one journey.
+ */
+const MILESTONES: Milestone[] = ["agent", "ai", "email", "send"];
 
 const ICON: Record<Milestone, LucideIcon> = {
-  ai: Sparkles,
-  apps: LayoutGrid,
   agent: Bot,
+  ai: Sparkles,
   email: Mail,
   send: Send,
 };
@@ -55,8 +56,6 @@ function fireConfetti() {
 }
 
 interface SetupProgressProps {
-  /** Which phase's checklist to show — Setup and Onboarding are separate views. */
-  section: SetupSection;
   title: string;
   message: string;
   /** Milestones (within this section) completed so far, rendered checked. */
@@ -70,13 +69,12 @@ interface SetupProgressProps {
 
 /**
  * The single screen behind the intro AND every milestone celebration. It shows
- * the Houston mark, a title + message, and the four-milestone checklist grouped
- * Setup vs Onboarding — items the user has finished animate to a check. When a
- * milestone just completed, confetti rains. One component so the journey reads
- * as continuous progress; monochrome per the design system (confetti aside).
+ * the Houston mark, a title + message, and the four-milestone journey checklist
+ * — items the user has finished animate to a check. When a milestone just
+ * completed, confetti rains. One component so the journey reads as continuous
+ * progress; monochrome per the design system (confetti aside).
  */
 export function SetupProgress({
-  section,
   title,
   message,
   done,
@@ -92,13 +90,12 @@ export function SetupProgress({
 
   const doneSet = new Set(done);
   const label: Record<Milestone, string> = {
-    ai: t("tutorial.missions.intro.steps.ai"),
-    apps: t("tutorial.missions.intro.steps.apps"),
     agent: t("tutorial.missions.intro.steps.agent"),
+    ai: t("tutorial.missions.intro.steps.ai"),
     email: t("tutorial.missions.intro.steps.email"),
     send: t("tutorial.missions.intro.steps.send"),
   };
-  const items = SECTION_MILESTONES[section];
+  const items = MILESTONES;
 
   return (
     <SetupCard onNext={onContinue} nextLabel={ctaLabel}>

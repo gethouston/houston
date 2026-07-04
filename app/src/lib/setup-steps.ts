@@ -11,8 +11,9 @@
 export type SetupSection = "setup" | "onboarding";
 
 const LOGICAL_STEPS: { section: SetupSection; screens: readonly string[] }[] = [
-  { section: "setup", screens: ["brain", "providerLogin"] }, // Connect your AI
+  { section: "setup", screens: ["brain"] }, // Pick your AI
   { section: "onboarding", screens: ["meet"] }, // Create your agent
+  { section: "onboarding", screens: ["providerLogin"] }, // Connect your AI
   { section: "onboarding", screens: ["connectEmail"] }, // Connect your email
   { section: "onboarding", screens: ["emailChat"] }, // Send your first email
 ];

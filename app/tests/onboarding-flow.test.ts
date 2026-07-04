@@ -9,7 +9,7 @@ import {
   isFirstRun,
   isToolkitConnected,
   shouldOfferConnectSkip,
-  stepAfterAgentCreated,
+  stepAfterAiConnected,
 } from "../src/components/onboarding/missions/onboarding-flow.ts";
 
 /** A minimal capabilities object with the integrations set under test. */
@@ -78,14 +78,14 @@ describe("integrationsAvailable (HOU-653 engine gating)", () => {
   });
 });
 
-describe("stepAfterAgentCreated", () => {
+describe("stepAfterAiConnected", () => {
   it("routes into the email detour when integrations are available", () => {
-    strictEqual(stepAfterAgentCreated(caps(["composio"])), "connectEmail");
+    strictEqual(stepAfterAiConnected(caps(["composio"])), "connectEmail");
   });
 
   it("routes straight to finish when integrations are unavailable", () => {
-    strictEqual(stepAfterAgentCreated(caps([])), "finished");
-    strictEqual(stepAfterAgentCreated(null), "finished");
+    strictEqual(stepAfterAiConnected(caps([])), "finished");
+    strictEqual(stepAfterAiConnected(null), "finished");
   });
 });
 
