@@ -846,19 +846,6 @@ export class HoustonClient {
     return this.request("GET", `/providers/${this.seg(name)}/status`);
   }
   /**
-   * Connect status for several providers at once. The legacy Rust engine has no
-   * batch endpoint, so this fans out to per-provider probes — identical to the
-   * `Promise.all(providerStatus)` callers used to write inline. The new TS-engine
-   * adapter OVERRIDES this with a single `listProviders()` round-trip (see
-   * `packages/web/src/engine-adapter/client.ts`), which is the whole point:
-   * screens that show many provider cards (settings, onboarding picker, chat
-   * model picker) call this once instead of probing each card separately, so on
-   * the new engine a dozen cards cost one round-trip, not a dozen (HOU-650).
-   */
-  providerStatuses(names: readonly string[]): Promise<ProviderStatus[]> {
-    return Promise.all(names.map((name) => this.providerStatus(name)));
-  }
-  /**
    * Launch the provider's CLI login. `opts.deviceAuth` requests the
    * provider's headless device-code flow (OpenAI/codex `--device-auth`)
    * for remote engines that can't receive the CLI's `localhost` OAuth

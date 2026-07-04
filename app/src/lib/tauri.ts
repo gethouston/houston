@@ -884,17 +884,28 @@ export const tauriProvider = {
   /**
    * Connect status for many provider / gateway ids in ONE engine round-trip.
    *
-   * On the new TS engine this maps to a single `listProviders()` call (HOU-650);
-   * on the legacy Rust engine it fans out to per-provider probes. Returns a map
-   * keyed by the ids passed. Screens that show several provider cards (settings,
-   * onboarding picker, chat model picker) call this once instead of probing each
-   * card separately — otherwise a dozen cards meant a dozen round-trips.
+   * The new TS engine's adapter exposes a batched `providerStatuses()` that
+   * resolves every card from a single `listProviders()` call (HOU-650). The
+   * legacy Rust client has no such method — and won't get one, it's being
+   * retired — so we feature-detect it and fall back to per-provider probes there
+   * (that path keeps its old N-round-trip behavior; no Rust-side change). Returns
+   * a map keyed by the ids passed. Screens that show several provider cards
+   * (settings, onboarding picker, chat model picker) call this once instead of
+   * probing each card separately.
    */
   checkAllStatuses: (ids: readonly string[]) =>
     call<Record<string, ProviderStatus>>(
       "check_provider_statuses",
       async () => {
-        const list = await getEngine().providerStatuses([...ids]);
+        const engine = getEngine() as {
+          providerStatus: (name: string) => Promise<EngineProviderStatus>;
+          providerStatuses?: (
+            names: readonly string[],
+          ) => Promise<EngineProviderStatus[]>;
+        };
+        const list = engine.providerStatuses
+          ? await engine.providerStatuses([...ids])
+          : await Promise.all(ids.map((id) => engine.providerStatus(id)));
         const out: Record<string, ProviderStatus> = {};
         ids.forEach((id, i) => {
           const p = list[i];
