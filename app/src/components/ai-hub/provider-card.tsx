@@ -56,7 +56,7 @@ export function ProviderCard({
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={onKeyDown}
-      className="group flex cursor-pointer flex-col rounded-2xl border border-black/5 bg-card p-5 transition-shadow duration-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group flex cursor-pointer flex-col rounded-2xl border border-foreground/5 bg-card p-5 transition-shadow duration-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="flex size-10 items-center justify-center rounded-xl bg-secondary text-foreground">
         <ProviderGlyph providerId={provider.id} />
@@ -121,7 +121,7 @@ export function ComingSoonProviderCard({
   return (
     <div
       aria-disabled="true"
-      className="flex select-none flex-col rounded-2xl border border-black/5 bg-card p-5 opacity-60"
+      className="flex select-none flex-col rounded-2xl border border-foreground/5 bg-card p-5 opacity-60"
     >
       <div className="flex size-10 items-center justify-center rounded-xl bg-secondary text-[11px] font-semibold text-muted-foreground">
         {provider.mark}

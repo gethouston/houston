@@ -669,7 +669,7 @@ function ChoiceCard({
       onClick={onClick}
       className={cn(
         "rounded-xl border bg-background p-4 text-left transition-all",
-        "border-black/5 hover:border-black/15 hover:shadow-[0_1px_0_rgba(0,0,0,0.05)]",
+        "border-foreground/5 hover:border-foreground/15 hover:shadow-[0_1px_0_rgba(0,0,0,0.05)]",
         selected && "border-foreground shadow-[0_1px_0_rgba(0,0,0,0.05)]",
       )}
     >

@@ -38,7 +38,7 @@ export function AddMemberForm() {
   };
 
   return (
-    <div className="mb-6 rounded-xl border border-black/5 bg-secondary p-4">
+    <div className="mb-6 rounded-xl border border-foreground/5 bg-secondary p-4">
       <h3 className="text-sm font-medium mb-3">{t("members.add.title")}</h3>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <div className="flex-1">

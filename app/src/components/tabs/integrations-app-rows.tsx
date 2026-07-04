@@ -29,7 +29,7 @@ export function BrowseAppRow({
       onClick={onConnect}
       disabled={connecting}
       title={t("browse.connectTitle", { name: app.name })}
-      className="group flex w-full items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 text-left transition-colors hover:bg-black/[0.05] focus-visible:bg-black/[0.05] focus-visible:outline-none disabled:cursor-wait disabled:opacity-60"
+      className="group flex w-full items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 text-left transition-colors hover:bg-foreground/[0.05] focus-visible:bg-foreground/[0.05] focus-visible:outline-none disabled:cursor-wait disabled:opacity-60"
     >
       <Logo app={app} />
       <div className="min-w-0 flex-1">

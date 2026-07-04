@@ -252,7 +252,7 @@ export function FileRow({
                 }
               }}
               onBlur={commitRename}
-              className="flex-1 text-[13px] bg-white text-[#0d0d0d] outline-none rounded px-1 -ml-1 min-w-0 border border-[#2068d0] shadow-sm"
+              className="flex-1 text-[13px] bg-background text-foreground outline-none rounded px-1 -ml-1 min-w-0 border border-[#2068d0] shadow-sm"
             />
           ) : (
             <span className="text-[13px] truncate">{file.name}</span>

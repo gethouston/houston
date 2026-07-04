@@ -18,7 +18,7 @@ export interface FileChipProps {
 
 export function FileChip({ name, onRemove }: FileChipProps) {
   return (
-    <div className="flex items-center gap-1 bg-secondary border border-black/[0.08] rounded-md px-2 py-1 text-xs text-foreground">
+    <div className="flex items-center gap-1 bg-secondary border border-foreground/[0.08] rounded-md px-2 py-1 text-xs text-foreground">
       <FileIcon className="size-3 shrink-0 text-muted-foreground" />
       <span className="max-w-[140px] truncate">{name}</span>
       <button
@@ -81,7 +81,7 @@ export function AttachMenu({ items, onClose, anchorRef }: AttachMenuProps) {
       />
       <div
         ref={menuRef}
-        className="fixed z-50 min-w-[180px] rounded-xl border border-black/[0.08] bg-white shadow-lg py-1"
+        className="fixed z-50 min-w-[180px] rounded-xl border border-border/80 bg-popover shadow-lg py-1"
         style={
           pos
             ? { left: pos.left, bottom: pos.bottom }
