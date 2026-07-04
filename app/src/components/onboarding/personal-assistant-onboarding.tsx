@@ -11,7 +11,7 @@ import { ConnectEmailMission } from "./missions/connect-email";
 import { EmailMission } from "./missions/email";
 import { FinishedMission } from "./missions/finished";
 import { MeetMission } from "./missions/meet";
-import { stepAfterAiConnected } from "./missions/onboarding-flow";
+import { stepAfterAgentCreated } from "./missions/onboarding-flow";
 import { ProviderLoginMission } from "./missions/provider-login";
 import { TUTORIAL_MISSION } from "./personal-assistant-missions";
 import { SetupProgress } from "./setup-progress";
@@ -161,6 +161,7 @@ export function PersonalAssistantOnboarding({
     <>
       {step === "intro" && (
         <SetupProgress
+          section="setup"
           title={t("setup:tutorial.missions.intro.title")}
           message={t("setup:tutorial.missions.intro.body")}
           done={[]}
@@ -178,6 +179,36 @@ export function PersonalAssistantOnboarding({
             setProvider(p);
             setModel(m);
           }}
+          onContinue={() => setStep("providerLogin")}
+        />
+      )}
+      {step === "providerLogin" && provider && (
+        <ProviderLoginMission
+          eyebrow={stepEyebrow("providerLogin")}
+          providerId={provider}
+          onBack={() => setStep("brain")}
+          onContinue={() => setStep("aiConnected")}
+        />
+      )}
+      {step === "aiConnected" && (
+        <SetupProgress
+          section="setup"
+          title={t("setup:tutorial.missions.aiConnected.title")}
+          message={t("setup:tutorial.missions.aiConnected.body")}
+          done={["ai"]}
+          justCompleted="ai"
+          ctaLabel={t("setup:tutorial.missions.aiConnected.cta")}
+          onContinue={() => setStep("onboardingIntro")}
+        />
+      )}
+
+      {step === "onboardingIntro" && (
+        <SetupProgress
+          section="onboarding"
+          title={t("setup:tutorial.missions.onboardingIntro.title")}
+          message={t("setup:tutorial.missions.onboardingIntro.body")}
+          done={[]}
+          ctaLabel={t("setup:tutorial.missions.onboardingIntro.cta")}
           onContinue={() => setStep("meet")}
         />
       )}
@@ -196,35 +227,13 @@ export function PersonalAssistantOnboarding({
       )}
       {step === "agentCreated" && (
         <SetupProgress
+          section="onboarding"
           title={t("setup:tutorial.missions.agentCreated.title")}
           message={t("setup:tutorial.missions.agentCreated.body")}
           done={["agent"]}
           justCompleted="agent"
           ctaLabel={t("setup:tutorial.missions.agentCreated.cta")}
-          onContinue={() => setStep("providerLogin")}
-        />
-      )}
-
-      {/* Provider login runs AFTER the agent exists: on the v3 wire the OAuth
-          flow executes inside the agent's runtime (the credential itself lands
-          in the host-level store), so a pre-agent login has nothing to run in.
-          The legacy Rust wire's login is global and doesn't care about order. */}
-      {step === "providerLogin" && provider && (
-        <ProviderLoginMission
-          eyebrow={stepEyebrow("providerLogin")}
-          providerId={provider}
-          onBack={() => setStep("brain")}
-          onContinue={() => setStep("aiConnected")}
-        />
-      )}
-      {step === "aiConnected" && (
-        <SetupProgress
-          title={t("setup:tutorial.missions.aiConnected.title")}
-          message={t("setup:tutorial.missions.aiConnected.body")}
-          done={["agent", "ai"]}
-          justCompleted="ai"
-          ctaLabel={t("setup:tutorial.missions.aiConnected.cta")}
-          onContinue={() => setStep(stepAfterAiConnected(capabilities))}
+          onContinue={() => setStep(stepAfterAgentCreated(capabilities))}
         />
       )}
 
@@ -232,7 +241,7 @@ export function PersonalAssistantOnboarding({
         <ConnectEmailMission
           eyebrow={stepEyebrow("connectEmail")}
           agent={agent}
-          onBack={() => setStep("providerLogin")}
+          onBack={() => setStep("meet")}
           onConnected={(toolkit, label) => {
             // Capture which email the user connected (connect doesn't route
             // through the AI card, so the global tracker wouldn't see it).
@@ -247,9 +256,10 @@ export function PersonalAssistantOnboarding({
       )}
       {step === "emailConnected" && (
         <SetupProgress
+          section="onboarding"
           title={t("setup:tutorial.missions.emailConnected.title")}
           message={t("setup:tutorial.missions.emailConnected.body")}
-          done={["agent", "ai", "email"]}
+          done={["agent", "email"]}
           justCompleted="email"
           ctaLabel={t("setup:tutorial.missions.emailConnected.cta")}
           onContinue={() => setStep("emailChat")}
@@ -272,9 +282,10 @@ export function PersonalAssistantOnboarding({
       )}
       {step === "emailSent" && (
         <SetupProgress
+          section="onboarding"
           title={t("setup:tutorial.missions.emailSent.title")}
           message={t("setup:tutorial.missions.emailSent.body")}
-          done={["agent", "ai", "email", "send"]}
+          done={["agent", "email", "send"]}
           justCompleted="send"
           ctaLabel={t("setup:tutorial.missions.emailSent.cta")}
           onContinue={() => setStep("finished")}

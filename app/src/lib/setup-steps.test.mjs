@@ -2,8 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { stepSection } from "./setup-steps.ts";
 
-test("Setup is the single pick-your-AI step", () => {
+test("Setup is one logical step; Connect-your-AI spans pick + login", () => {
   assert.deepEqual(stepSection("brain"), {
+    section: "setup",
+    current: 1,
+    total: 1,
+  });
+  assert.deepEqual(stepSection("providerLogin"), {
     section: "setup",
     current: 1,
     total: 1,
@@ -13,28 +18,21 @@ test("Setup is the single pick-your-AI step", () => {
   assert.equal(stepSection("tools"), null);
 });
 
-test("Onboarding is four logical steps, provider login after creation", () => {
-  // Login comes AFTER the agent exists: v3 provider login runs inside the
-  // agent's runtime, so the create step must precede it.
+test("Onboarding is three logical steps", () => {
   assert.deepEqual(stepSection("meet"), {
     section: "onboarding",
     current: 1,
-    total: 4,
-  });
-  assert.deepEqual(stepSection("providerLogin"), {
-    section: "onboarding",
-    current: 2,
-    total: 4,
+    total: 3,
   });
   assert.deepEqual(stepSection("connectEmail"), {
     section: "onboarding",
-    current: 3,
-    total: 4,
+    current: 2,
+    total: 3,
   });
   assert.deepEqual(stepSection("emailChat"), {
     section: "onboarding",
-    current: 4,
-    total: 4,
+    current: 3,
+    total: 3,
   });
 });
 
