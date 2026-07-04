@@ -140,61 +140,33 @@ export function hostedGateState(input: {
 }
 
 /**
- * The user's runtime engine-connection choice (HOU-621). Persisted by
- * `engine-connection.ts` and only consulted in the TS-engine build (where vite
- * aliases the v3 adapter — see {@link resolveEngine}). `local` runs the
- * Tauri-spawned host sidecar; `remote` points the desktop at a Houston host /
- * gateway URL and authenticates with the Supabase session token.
- */
-export type RuntimeConnection =
-  | { mode: "local" }
-  | { mode: "remote"; url: string };
-
-/**
- * The concrete engine transport the app should bootstrap, after folding the
- * build-time env flags together with the user's runtime choice.
+ * The concrete engine transport the app should bootstrap, from the build-time
+ * env flags.
  *
  * - `static-host` — `VITE_NEW_ENGINE_URL` (baked host URL + static token).
- * - `hosted-oauth` — a hosted gateway authenticated with a Supabase session
- *   token. Comes from either `VITE_HOSTED_ENGINE_URL` (oauth) OR a runtime
- *   `remote` choice.
+ * - `hosted-oauth` — `VITE_HOSTED_ENGINE_URL`, authenticated with a Supabase
+ *   session token (the managed-cloud default).
  * - `hosted-static` — `VITE_HOSTED_ENGINE_URL` with OAuth toggled off.
  * - `sidecar` — the Tauri-spawned engine subprocess (Rust in the default build,
- *   the TS host under the `host-sidecar` feature); also the runtime `local`
- *   choice.
- * - `pending` — a TS-engine build that has not yet been given a runtime choice;
- *   the connection chooser is shown.
+ *   the TS host under the `host-sidecar` feature). Also what `packages/web`
+ *   resolves to: it reuses this module verbatim, injects
+ *   `window.__HOUSTON_ENGINE__` itself, and `engine.ts` adopts that config.
  */
 export type ResolvedEngine =
   | { kind: "static-host"; url: string }
   | { kind: "hosted-oauth"; url: string }
   | { kind: "hosted-static"; url: string }
-  | { kind: "sidecar" }
-  | { kind: "pending" };
+  | { kind: "sidecar" };
 
 /**
- * Fold the build-time env flags and the persisted runtime choice into the one
- * transport the app should use.
+ * Resolve the one transport the app should use from the build-time env flags.
  *
- * Build-baked targets (a URL, or a hosted gateway) win and skip the runtime
- * chooser entirely, so existing self-host / managed-cloud builds keep their
- * exact behaviour. The local-vs-remote chooser only exists in the TS-engine
- * build (`VITE_NEW_ENGINE` truthy), where vite aliases the v3 adapter via
- * `useHost`; without that alias there is no v3 client to point anywhere, so a
- * plain Rust build ignores any stored choice and stays on its sidecar.
- *
- * The chooser is also **desktop-only** (`isTauri`). `packages/web` reuses this
- * module verbatim and runs the same `VITE_NEW_ENGINE=1` build, but supplies its
- * OWN connection UX and injects `window.__HOUSTON_ENGINE__`; there is no Tauri
- * sidecar and no desktop chooser, so a browser client falls to `sidecar` (which
- * makes `engine.ts` adopt that injected config) rather than blocking on a
- * chooser that will never render.
+ * The gateway URL is baked into the build (HOU-642): a build-baked target (a
+ * host URL, or a hosted gateway) wins, and everything else — the default Rust
+ * build, the TS-engine dev loop, and the browser build — runs against its
+ * co-located sidecar / injected config. There is no runtime chooser.
  */
-export function resolveEngine(
-  env: EngineModeEnv,
-  runtime: RuntimeConnection | null,
-  isTauri: boolean,
-): ResolvedEngine {
+export function resolveEngine(env: EngineModeEnv): ResolvedEngine {
   if (env.VITE_NEW_ENGINE_URL) {
     return { kind: "static-host", url: env.VITE_NEW_ENGINE_URL };
   }
@@ -202,14 +174,6 @@ export function resolveEngine(
     return hostedAuthMode(env) === "oauth"
       ? { kind: "hosted-oauth", url: env.VITE_HOSTED_ENGINE_URL }
       : { kind: "hosted-static", url: env.VITE_HOSTED_ENGINE_URL };
-  }
-  const tsEngineBuild =
-    env.VITE_NEW_ENGINE === "1" || env.VITE_NEW_ENGINE === "true";
-  if (!tsEngineBuild) return { kind: "sidecar" };
-  if (!isTauri) return { kind: "sidecar" };
-  if (!runtime) return { kind: "pending" };
-  if (runtime.mode === "remote") {
-    return { kind: "hosted-oauth", url: runtime.url };
   }
   return { kind: "sidecar" };
 }

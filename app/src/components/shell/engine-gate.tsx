@@ -54,8 +54,11 @@ function HostedEngineGate({ children }: { children: ReactNode }) {
       // loudly instead of spinning on the "starting" splash forever.
       return <HostedAuthMisconfigured />;
     case "sign-in":
-      // Cloud/remote login: surface the paste-the-code fallback (HOU-621).
-      return <SignInScreen allowManualCallback />;
+      // Hosted-gateway login. The paste-the-code fallback is dev-only: a dev
+      // build doesn't own the `houston://` scheme (the callback opens the
+      // installed production app), but production owns it and completes the
+      // deep link natively — never show users the dev paste form (HOU-642).
+      return <SignInScreen allowManualCallback={import.meta.env.DEV} />;
     case "ready":
       return <>{children}</>;
     default:
