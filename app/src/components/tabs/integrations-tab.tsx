@@ -50,7 +50,10 @@ export default function IntegrationsTab({ agent }: TabProps) {
   // Grants are a multiplayer-only concept (C4): per-(user, agent) toolkit
   // permission. In single-player they don't exist (`canManageAgentGrants` is
   // false outside multiplayer) and the tab renders exactly as before.
-  const { capabilities } = useCapabilities();
+  // `isLoading` also covers the status query: it's gated on the advertised
+  // `integrations` capability, so until capabilities resolve the status query
+  // sits idle — show the loading state, not a premature "unavailable".
+  const { capabilities, isLoading: capabilitiesLoading } = useCapabilities();
   const canUseGrants = canManageAgentGrants(capabilities, agent);
   const grantsQuery = useAgentGrants(agent.id, ready && canUseGrants);
   const grantSet = useMemo(
@@ -132,7 +135,7 @@ export default function IntegrationsTab({ agent }: TabProps) {
           </p>
         </div>
 
-        {status.isLoading || sessionSyncPending ? (
+        {status.isLoading || capabilitiesLoading || sessionSyncPending ? (
           <LoadingState />
         ) : !composio ? (
           <UnavailableState />

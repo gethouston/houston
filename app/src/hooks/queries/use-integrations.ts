@@ -1,18 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { integrationsSupported } from "../../components/tabs/integrations-tab-model";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations } from "../../lib/tauri";
+import { useCapabilities } from "../use-capabilities";
 import {
   applyGrantChange,
   type GrantChange,
   reverseGrantChange,
 } from "./grant-set";
 
-/** Per-provider readiness (usable now? needs a Houston sign-in?). User-level. */
+/**
+ * Per-provider readiness (usable now? needs a Houston sign-in?). User-level.
+ *
+ * Gated on the host-advertised `integrations` capability: a deployment with no
+ * integration provider wired answers `/v1/integrations` with 503, so fetching
+ * there would surface a red bug toast for a configuration that's perfectly
+ * legitimate (dev host, self-host without a Composio key). The disabled query
+ * stays idle with no data and the tab renders its unavailable state.
+ */
 export function useIntegrationStatus() {
+  const { capabilities } = useCapabilities();
   return useQuery({
     queryKey: queryKeys.integrationStatus(),
     queryFn: () => tauriIntegrations.status(),
     staleTime: 30_000,
+    enabled: integrationsSupported(capabilities),
   });
 }
 
