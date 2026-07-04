@@ -22,10 +22,9 @@ import { AgentPickerStep } from "./agent-picker-step";
 import { AiAssistStep } from "./ai-assist-step";
 import { AiReviewStep } from "./ai-review-step";
 import { AiRoutineStep } from "./ai-routine-step";
-import { GithubInstallStep } from "./github-install-step";
 import { NamingStep } from "./naming-step";
 
-type Step = 1 | "ai-assist" | "ai-routine" | "ai-review" | "github" | 2;
+type Step = 1 | "ai-assist" | "ai-routine" | "ai-review" | 2;
 
 export function CreateAgentDialog() {
   const { t } = useTranslation("shell");
@@ -33,7 +32,6 @@ export function CreateAgentDialog() {
   const setOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
   const uiTourActive = useUIStore((s) => s.uiTourActive);
   const agentDefs = useAgentCatalogStore((s) => s.agents);
-  const loadConfigs = useAgentCatalogStore((s) => s.loadConfigs);
   const createAgent = useAgentStore((s) => s.create);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
 
@@ -203,21 +201,8 @@ export function CreateAgentDialog() {
                 setGeneratedClaudeMd(undefined);
                 setStep("ai-assist");
               }}
-              onInstallFromGithub={() => setStep("github")}
             />
           </>
-        ) : step === "github" ? (
-          <GithubInstallStep
-            onBack={() => setStep(1)}
-            onInstalled={async (configId) => {
-              // Pull the fresh library entry into the catalog, then jump
-              // straight to naming an agent built from it.
-              await loadConfigs();
-              setSelectedConfigId(configId);
-              setGeneratedClaudeMd(undefined);
-              setStep(2);
-            }}
-          />
         ) : step === "ai-assist" ? (
           <AiAssistStep
             provider={provider}

@@ -246,17 +246,6 @@ export const tauriAgents = {
       "list_installed_configs",
       () => getEngine().listInstalledConfigs(),
     ),
-  /** Add a GitHub repo's houston.json to the config library; resolves to its id. */
-  installFromGithub: (githubUrl: string) =>
-    call<string>(
-      "install_agent_from_github",
-      async () =>
-        (await getEngine().installAgentFromGithub({ githubUrl })).agentId,
-      undefined,
-      // The dialog shows the failure inline next to the input; a global red
-      // bug-toast on a typo'd URL would be noise, not signal.
-      { toast: false },
-    ),
   /** Multiplayer: set which org members may use this agent. Empty = everyone. */
   setAssignments: (agentSlugOrId: string, userIds: string[]) =>
     call<void>("set_agent_assignments", () =>

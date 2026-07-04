@@ -181,14 +181,7 @@
     "createAgent": "Create Agent"
   },
   "newAgent": {
-    "dialogTitle": "New agent",
-    "githubCard": "Install from GitHub",
-    "githubCardDescription": "Add an agent shared as a repository",
-    "githubTitle": "Install from GitHub",
-    "githubDescription": "Paste a GitHub repository that contains a Houston agent and we'll add it to your gallery.",
-    "githubPlaceholder": "owner/repo",
-    "githubInstall": "Install",
-    "githubInstalling": "Installing agent..."
+    "dialogTitle": "New agent"
   },
   "aiAssist": {
     "brainLabel": "Set up with",

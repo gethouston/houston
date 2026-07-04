@@ -1,5 +1,5 @@
 import { Input } from "@houston-ai/core";
-import { Gift, Github, Search } from "lucide-react";
+import { Gift, Search } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -17,7 +17,6 @@ interface AgentPickerStepProps {
   agents: AgentDefinition[];
   onSelect: (id: string) => void;
   onCreateWithAi: () => void;
-  onInstallFromGithub: () => void;
 }
 
 export function AgentPickerStep({
@@ -26,7 +25,6 @@ export function AgentPickerStep({
   agents,
   onSelect,
   onCreateWithAi,
-  onInstallFromGithub,
 }: AgentPickerStepProps) {
   const { t, i18n } = useTranslation(["shell", "portable", "agents"]);
   const setImportOpen = useUIStore((s) => s.setImportFromFriendOpen);
@@ -94,41 +92,24 @@ export function AgentPickerStep({
         data-tour-target="agentStore"
         className="flex-1 min-h-0 overflow-y-auto px-6 pb-6"
       >
-        <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => {
-              setCreateOpen(false);
-              setImportOpen(true);
-            }}
-            className="w-full rounded-xl border border-border/40 bg-secondary px-4 py-3 text-left hover:bg-accent transition-colors flex items-start gap-3"
-          >
-            <Gift className="size-5 text-foreground mt-0.5 shrink-0" />
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-foreground">
-                {t("portable:newAgent.fromFriendCard")}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {t("portable:newAgent.fromFriendDescription")}
-              </p>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={onInstallFromGithub}
-            className="w-full rounded-xl border border-border/40 bg-secondary px-4 py-3 text-left hover:bg-accent transition-colors flex items-start gap-3"
-          >
-            <Github className="size-5 text-foreground mt-0.5 shrink-0" />
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-foreground">
-                {t("shell:newAgent.githubCard")}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {t("shell:newAgent.githubCardDescription")}
-              </p>
-            </div>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setCreateOpen(false);
+            setImportOpen(true);
+          }}
+          className="w-full mb-3 rounded-xl border border-border/40 bg-secondary px-4 py-3 text-left hover:bg-accent transition-colors flex items-start gap-3"
+        >
+          <Gift className="size-5 text-foreground mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">
+              {t("portable:newAgent.fromFriendCard")}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t("portable:newAgent.fromFriendDescription")}
+            </p>
+          </div>
+        </button>
         {filteredAgents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {!query && (
