@@ -38,6 +38,8 @@ type LoginState = {
   info?: LoginInfo;
   error?: string;
   resolvePaste?: (code: string) => void;
+  rejectPaste?: (err: Error) => void;
+  abort?: AbortController;
 };
 
 const active = new Map<ProviderId, LoginState>();
@@ -131,12 +133,22 @@ export async function startLogin(
     return existing.info;
   }
 
-  const state: LoginState = { status: "starting" };
+  const state: LoginState = {
+    status: "starting",
+    abort: new AbortController(),
+  };
   active.set(provider, state);
 
   let resolveInfo!: (i: LoginInfo) => void;
   const infoReady = new Promise<LoginInfo>((r) => (resolveInfo = r));
-  const pastePromise = new Promise<string>((r) => (state.resolvePaste = r));
+  const pastePromise = new Promise<string>((resolve, reject) => {
+    state.resolvePaste = resolve;
+    state.rejectPaste = reject;
+  });
+  // Only the loopback flows consume the paste promise (onPrompt /
+  // onManualCodeInput); cancelling a device-code login rejects it with no
+  // consumer, which must not crash the process as an unhandled rejection.
+  pastePromise.catch(() => {});
 
   void authStorage
     .login(provider, {
@@ -171,12 +183,19 @@ export async function startLogin(
       },
       onManualCodeInput: () => pastePromise,
       onProgress: (m: string) => console.log(`[oauth:${provider}]`, m),
+      signal: state.abort?.signal,
     })
     .then(() => {
       state.status = "complete";
       console.log(`[oauth:${provider}] login complete`);
     })
     .catch((e: unknown) => {
+      if (state.abort?.signal.aborted) {
+        // User-initiated cancel (cancelLogin already dropped the state from
+        // `active`): the rejection is the flow unwinding, not a failure.
+        console.log(`[oauth:${provider}] login cancelled`);
+        return;
+      }
       state.status = "error";
       state.error = e instanceof Error ? e.message : String(e);
       console.error(`[oauth:${provider}] failed:`, state.error);
@@ -230,6 +249,26 @@ export function setCustomEndpoint(
   setCustomEndpointConfig(input);
   const key = input.apiKey?.trim() || LOCAL_PLACEHOLDER_KEY;
   authStorage.set(OPENAI_COMPATIBLE, { type: "api_key", key });
+}
+
+/**
+ * Cancel an in-flight OAuth login for real — not just the client's spinner.
+ * Two teardown paths cover every flow pi runs:
+ * - aborting the signal stops the device-code pollers (Codex device, Copilot);
+ * - rejecting the paste promise unwinds the loopback flows (Anthropic, Codex
+ *   browser): their onManualCodeInput rejection handler calls cancelWait(),
+ *   which closes the callback server and frees the port for a retry.
+ * Dropping the state from `active` immediately frees the slot, so a retried
+ * startLogin never collides with the cancelled one ("sign-in already pending",
+ * the HOU-438 failure class). Cancelling when nothing is in flight is benign.
+ */
+export function cancelLogin(providerId: string): void {
+  if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
+  const state = active.get(providerId);
+  if (!state || state.status === "complete") return;
+  active.delete(providerId);
+  state.abort?.abort();
+  state.rejectPaste?.(new Error("login cancelled"));
 }
 
 /** Paste-code completion (Anthropic remote path). */
