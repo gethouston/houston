@@ -40,9 +40,6 @@ export interface ChatMessagesProps {
   messages: ChatMessage[];
   status: "ready" | "streaming" | "submitted";
   thinkingIndicator: ReactNode;
-  /** Static glyph rendered after the agent's reply once the turn settles
-   *  (e.g. a non-blinking Houston helmet). Omitted → nothing renders. */
-  endOfTurnIndicator?: ReactNode;
   transformContent?: (content: string) => {
     content: string;
     extra?: ReactNode;
@@ -88,7 +85,6 @@ export function ChatMessages({
   messages,
   status,
   thinkingIndicator,
-  endOfTurnIndicator,
   transformContent,
   toolLabels,
   isSpecialTool,
@@ -127,14 +123,6 @@ export function ChatMessages({
     displayItems,
     status,
   );
-  // HOU-471: once the turn settles, the agent's reply ends with a static
-  // (never-blinking) helmet — same slot the loader used. The consumer supplies
-  // the glyph, so it stays opt-in per surface.
-  const lastMessage = messages[messages.length - 1];
-  const showEndOfTurnIndicator =
-    status === "ready" &&
-    lastMessage?.from === "assistant" &&
-    Boolean(endOfTurnIndicator);
   return (
     <Conversation className="flex-1 min-h-0">
       <ConversationAutoScroll status={status} />
@@ -224,11 +212,6 @@ export function ChatMessages({
         {showThinkingIndicator ? (
           <Message from="assistant">
             <MessageContent>{thinkingIndicator}</MessageContent>
-          </Message>
-        ) : null}
-        {showEndOfTurnIndicator ? (
-          <Message from="assistant">
-            <MessageContent>{endOfTurnIndicator}</MessageContent>
           </Message>
         ) : null}
         {afterMessages}

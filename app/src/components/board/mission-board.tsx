@@ -157,7 +157,6 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           onOpenLink={handleOpenLink}
           cardAvatar={source.cardAvatar}
           thinkingIndicator={panel.thinkingIndicator}
-          endOfTurnIndicator={panel.endOfTurnIndicator}
           panelAgentName={source.panelAgentName}
           panelAvatar={
             <AgentPanelAvatar
