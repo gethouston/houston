@@ -599,17 +599,9 @@ export class HoustonClient {
     // The board/missions list is derived from activities; in cloud those live on
     // the host (this.listActivities un-fakes it), not localStorage.
     const acts = await this.listActivities(agentPath);
-    return acts.map((a) => ({
-      id: a.id,
-      title: a.title,
-      description: a.description,
-      status: a.status,
-      type: "activity",
-      session_key: a.session_key ?? `activity-${a.id}`,
-      updated_at: a.updated_at,
-      agent_path: agentPath,
-      agent_name: agentName,
-    }));
+    return acts.map((a) =>
+      activities.activityToConversation(a, agentPath, agentName),
+    );
   }
   async listAllConversations(
     agentPaths: string[],

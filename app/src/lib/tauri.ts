@@ -733,7 +733,6 @@ interface RawConversation {
   agent_name: string;
   agent?: string;
   routine_id?: string;
-  worktree_path?: string | null;
 }
 
 export const tauriConversations = {
@@ -764,7 +763,6 @@ function conversationToRaw(
     agent_name: c.agent_name,
     agent: c.agent,
     routine_id: c.routine_id,
-    worktree_path: c.worktree_path,
   };
 }
 
@@ -827,7 +825,6 @@ export const tauriActivity = {
     title: string,
     description?: string,
     agent?: string,
-    worktreePath?: string,
     provider?: string,
     model?: string,
   ) =>
@@ -836,7 +833,6 @@ export const tauriActivity = {
       title,
       description ?? "",
       agent,
-      worktreePath,
       provider,
       model,
     ),
