@@ -1,10 +1,11 @@
+import { FAKE_HOST_PORT } from "@houston/fake-host";
 import { defineConfig, devices } from "@playwright/test";
-import { FAKE_HOST_PORT, WEB_PORT, WEB_URL } from "./e2e/fake-host/ports";
+import { WEB_PORT, WEB_URL } from "./e2e/config";
 
 /**
  * Playwright drives the FULL desktop UI (app/src) as it runs in the browser
  * (packages/web), on the host adapter in host mode, against an
- * in-memory fake host (e2e/fake-host) — no real backend, no AI provider.
+ * in-memory fake host (@houston/fake-host) — no real backend, no AI provider.
  *
  * Two web servers boot for a run: the fake host (Node) and vite with
  * `VITE_NEW_ENGINE=1`. The fake host is a single shared process, so the suite is

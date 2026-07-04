@@ -22,6 +22,7 @@ import { LocalWorkspaceStore } from "../store/local";
 import { MemoryTurnBus } from "../turn/bus";
 import { FsVfs } from "../vfs";
 import { FsWatcher } from "../watch/watcher";
+import { formatHostListeningBanner } from "./banner";
 
 /** The single local user every request resolves to. */
 export const LOCAL_USER = "local-owner";
@@ -48,6 +49,15 @@ export interface LocalHostOptions {
   bind?: string;
   /** Random per-boot token the shell presents on every request (SingleUserVerifier). */
   token: string;
+  /**
+   * Redact the token in the `HOUSTON_HOST_LISTENING` startup banner to a short
+   * fingerprint instead of printing it in full. Set when the token was supplied
+   * by an orchestrator (env `HOUSTON_HOST_TOKEN`) or in managed cloud — where the
+   * banner would otherwise leak the credential into plaintext pod logs and no one
+   * reads it back. Left false for the desktop sidecar, whose supervisor parses the
+   * per-boot token out of this line (`engine_supervisor.rs::parse_banner`).
+   */
+  redactBannerToken?: boolean;
   /** argv to launch a pi-runtime: dev `node --import tsx .../runtime/src/main.ts`, prod the sidecar. */
   runtimeCommand: string[];
   /** Product system prompt the app injects into every runtime (voice rules). */
@@ -86,6 +96,15 @@ export interface LocalHostOptions {
     composioApiKey?: string;
     podToken?: string;
   };
+  /**
+   * True only when a trusted gateway fronts EVERY request to this host (the
+   * managed cloud pod: the gateway enforces the pod token and mints/strips
+   * `x-houston-acting-as` itself). Relays that header to the runtime so a
+   * turn's integration calls authenticate as the driving user (C2). On the
+   * desktop clients reach this host directly, so an inbound acting header is
+   * untrusted client input — leave this false (the default) and it is dropped.
+   */
+  gatewayFronted?: boolean;
 }
 
 export interface LocalHost {
@@ -152,9 +171,11 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     credentials,
     // Desktop: clients talk to this host DIRECTLY (no gateway in front to mint
     // or strip identity headers), so an inbound x-houston-acting-as is
-    // untrusted client input — never relay it to the runtime. Identity here is
-    // always the single local owner.
-    forwardActingHeader: false,
+    // untrusted client input — never relay it to the runtime; identity is the
+    // single local owner. Managed pods (gatewayFronted) ARE gateway-fronted:
+    // the gateway minted the header, so relaying it is what lets the runtime's
+    // integration calls act as the driving user (C2).
+    forwardActingHeader: opts.gatewayFronted ?? false,
   });
 
   // Integrations (platform model): the desktop holds NO provider key — the
@@ -288,8 +309,14 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       watcher.start();
       scheduler.start();
       // The banner the Tauri supervisor parses (mirrors the runtime's contract).
+      // The full token rides ONLY for the desktop sidecar; a pod/self-host token
+      // is env-supplied and redacted so it never lands in plaintext logs.
       console.log(
-        `HOUSTON_HOST_LISTENING port=${opts.port} token=${opts.token}`,
+        formatHostListeningBanner({
+          port: opts.port,
+          token: opts.token,
+          redactToken: opts.redactBannerToken ?? false,
+        }),
       );
     },
     stop() {

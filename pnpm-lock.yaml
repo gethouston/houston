@@ -253,6 +253,31 @@ importers:
         specifier: ^3.2.4
         version: 3.2.6(@types/debug@4.1.13)(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
 
+  packages/fake-host:
+    dependencies:
+      '@houston/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@houston/runtime-client':
+        specifier: workspace:*
+        version: link:../runtime-client
+    devDependencies:
+      '@types/node':
+        specifier: ^22
+        version: 22.19.21
+      '@typescript/native-preview':
+        specifier: 7.0.0-dev.20260607.1
+        version: 7.0.0-dev.20260607.1
+      tsx:
+        specifier: ^4.21.0
+        version: 4.22.4
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+
   packages/host:
     dependencies:
       '@earendil-works/pi-ai':
@@ -392,6 +417,40 @@ importers:
         specifier: ^3.2.4
         version: 3.2.6(@types/debug@4.1.13)(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
 
+  packages/sdk:
+    dependencies:
+      '@houston/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@houston/runtime-client':
+        specifier: workspace:*
+        version: link:../runtime-client
+    devDependencies:
+      '@houston/fake-host':
+        specifier: workspace:*
+        version: link:../fake-host
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.14)
+      '@typescript/native-preview':
+        specifier: 7.0.0-dev.20260607.1
+        version: 7.0.0-dev.20260607.1
+      react:
+        specifier: ^19.0.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.4(react@19.2.4)
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
+
   packages/web:
     dependencies:
       '@houston-ai/agent':
@@ -433,6 +492,9 @@ importers:
       '@houston/runtime-client':
         specifier: workspace:*
         version: link:../runtime-client
+      '@houston/sdk':
+        specifier: workspace:*
+        version: link:../sdk
       '@sentry/browser':
         specifier: ^10.54.0
         version: 10.54.0
@@ -473,6 +535,9 @@ importers:
         specifier: ^5.0.5
         version: 5.0.12(@types/react@19.2.14)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
     devDependencies:
+      '@houston/fake-host':
+        specifier: workspace:*
+        version: link:../fake-host
       '@playwright/test':
         specifier: ^1.49.1
         version: 1.61.0

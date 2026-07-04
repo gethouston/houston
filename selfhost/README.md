@@ -296,4 +296,7 @@ All state lives in the Docker volume mounted at `/data`: workspaces, agents,
 skills, routines, and provider credentials.
 
 Security: token gates every route except `/engine/health`; treat it like a
-password. On a VPS, expose Caddy only, never port `4318` directly.
+password. On a VPS, expose Caddy only, never port `4318` directly. Because you
+supply `HOUSTON_HOST_TOKEN` via env, the host redacts it in its
+`HOUSTON_HOST_LISTENING` boot banner (you see `token_fp=…` + `token_len=…`, not
+the value) so the credential never lands in `docker compose logs`.

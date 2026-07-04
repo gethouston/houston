@@ -24,25 +24,28 @@ Playwright boots two servers automatically (see `playwright.config.ts`):
    to the new-engine adapter and mounts `NewEngineRoot` (`packages/web/src/main.tsx`).
 2. the **fake host** (`pnpm fake-host`) on `:4399`.
 
+The fake host itself lives in the shared **`@houston/fake-host`** package
+(`packages/fake-host`) — a faithful protocol-v3 in-memory host built from the
+real server streaming pieces. Its routes, `/__test__/*` control endpoints, and
+`startFakeHost` API are documented in that package's README. This directory keeps
+only the web-e2e glue.
+
 ## How it works
 
 ```
 e2e/
-  fake-host/        # a Node HTTP server: host + per-agent runtime, in-memory
-    server.ts       #   entry: CORS, /v1/*, /agents/*, test-control routes
-    routes.ts       #   per-agent dispatch (activities, auth, conversations, files)
-    chat.ts         #   the chat SSE stream (the interesting bit): StreamChannel +
-                    #   serveResumableStream + turnId-stamped turns
-    chat-controls.ts#   /__test__/* chat controls (drop, kill-turn, turn-boundary)
-    state.ts        #   seed + mutations; .houston/** files-first store (the board)
-    sse.ts          #   SSE response plumbing (formatSseFrame + /v1/events feed)
-    ports.ts        #   shared ports + the seeded agent id
+  config.ts         # web dev-server constants (WEB_PORT / WEB_URL) — harness glue
   support/
     seed.ts         # localStorage + window.__HOUSTON_CP__ primed before any app script
     fixtures.ts     # the `test`/`expect` used by specs (resets the host per test)
     global-setup.ts # warms the vite dev server once before the suite (see CI below)
   *.spec.ts         # the tests
 ```
+
+The host itself (`@houston/fake-host`): `startFakeHost`/`stop`, the `/v1/*` +
+`/agents/*` surface, the `StreamChannel` + `serveResumableStream` chat stream,
+the `.houston/**` files-first store, and the `/__test__/*` controls all live in
+`packages/fake-host` and are documented there.
 
 **Boot.** A browser tab has no Tauri supervisor, so `support/seed.ts` primes
 `localStorage` (engine config + `houston.pref.*`) and sets `window.__HOUSTON_CP__`
@@ -54,7 +57,7 @@ deployment).
 **Chat.** The new engine has no WebSocket — a turn streams over SSE. The client
 subscribes to `GET …/conversations/:id/events` first, then POSTs the message
 (fire-and-forget 202, with a `nonce` the server echoes on the turn's `user`
-frame). The fake host (`fake-host/chat.ts`) is built from the SAME shared
+frame). The fake host (`@houston/fake-host` `chat.ts`) is built from the SAME shared
 server pieces as the real runtime/host, so the wire cannot drift from the
 contract: `StreamChannel` owns each conversation's publish ordering (seq
 authority + replay buffer + snapshot), `serveResumableStream` serves every
@@ -63,8 +66,8 @@ gap/dupe-free replay; unserviceable cursor → `sync` with `resync: true`), and
 `formatSseFrame` encodes the frames. Every turn-scoped frame carries the
 turn's `turnId`, and history persists the user message at turn START + the
 assistant reply at turn END (both turn-stamped) — the identity contract
-`engine-adapter/turn-sink.ts` settles against. Test controls
-(`fake-host/chat-controls.ts`, wired under `/__test__/*`):
+`@houston/sdk`'s `turn-sink.ts` settles against. Test controls
+(`@houston/fake-host` `chat-controls.ts`, wired under `/__test__/*`):
 
 - `POST /__test__/drop-chat-streams` — sever every open chat stream WITHOUT
   ending the turns (a network blip; the reconnect spec).
@@ -105,5 +108,6 @@ passes on retry now fails the run (non-zero exit) instead of going green. Locall
 3. Prefer role/label/text selectors; the app forces `en`, so English copy is
    stable. Reach for an existing stable anchor (e.g. `data-tour-target`) over a
    brittle one before adding a new `data-testid`.
-4. Need more host behavior? Extend `fake-host/state.ts` + `routes.ts`. Set
-   `FAKE_HOST_LOG=1` on the fake host to log every request it serves.
+4. Need more host behavior? Extend `@houston/fake-host` (`src/state.ts` +
+   `src/routes.ts`). Set `FAKE_HOST_LOG=1` on the fake host to log every request
+   it serves.

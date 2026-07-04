@@ -73,6 +73,15 @@ const host = buildLocalHost({
   // Loopback by default (desktop). Self-host sets HOUSTON_HOST_BIND=0.0.0.0.
   bind: process.env.HOUSTON_HOST_BIND || undefined,
   token: process.env.HOUSTON_HOST_TOKEN || randomBytes(32).toString("hex"),
+  // Redact the token in the startup banner whenever it came from the
+  // environment (a pod/self-host token an orchestrator already knows) or we are
+  // a managed cloud pod — echoing it there just leaks a credential into
+  // plaintext logs. The desktop sidecar mints a random per-boot token (no
+  // HOUSTON_HOST_TOKEN) and its supervisor reads it back from this line, so
+  // that case keeps the full token.
+  redactBannerToken:
+    !!process.env.HOUSTON_HOST_TOKEN ||
+    process.env.HOUSTON_MANAGED_CLOUD === "1",
   runtimeCommand: runtimeCommand(),
   // The real Tauri app hands over its own product prompt; this is the built-in
   // default so the agent knows how to create Skills/Routines/learnings.
@@ -81,6 +90,10 @@ const host = buildLocalHost({
     process.env.HOUSTON_MANAGED_CLOUD === "1"
       ? MANAGED_CLOUD_CAPABILITIES
       : LOCAL_CAPABILITIES,
+  // Managed pods sit behind the gateway (it enforces the pod token and mints
+  // x-houston-acting-as); relay that header to the runtime so integration
+  // calls act as the driving user. Desktop/self-host stay direct → false.
+  gatewayFronted: process.env.HOUSTON_MANAGED_CLOUD === "1",
   // Platform-mode integrations: desktops get HOUSTON_INTEGRATIONS_URL (the
   // cloud gateway holding Houston's Composio key); self-host + the managed pod
   // set their own COMPOSIO_API_KEY and go direct. Neither → integrations off.

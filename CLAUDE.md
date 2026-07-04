@@ -37,6 +37,7 @@ Need specific knowledge? Load on demand:
 - **Single-engine convergence (the NEW, current-direction architecture — host + pi runtime + adapter profiles, protocol v3, Composio-as-REST) → `convergence/README.md`** ← read this before the legacy engine docs below
 - Repo shape, products, engine story (convergence-aware) → `knowledge-base/architecture.md`
 - Colors, typography, components, animation → `knowledge-base/design-system.md`
+- Client architecture — SDK / tokens / inventory / parity procedures → `knowledge-base/client-architecture.md`
 - `.houston/` layout, schemas, reactivity → `knowledge-base/files-first.md`
 - Skills on disk + UI, picker, invocation marker → `knowledge-base/skills.md`
 - Agent manifest, tiers, sidebar, workspaces → `knowledge-base/agent-manifest.md`
@@ -110,6 +111,14 @@ After any TS/JS/JSON modification or addition, run **`pnpm check:fix`** before t
 - **Props over stores, always.** No Zustand/Redux/etc imports in ui/.
 - No app/ types in ui/. Use generic types (`BoardItem`, `FeedItem`, `ChatMessage`).
 - No `@/` path aliases in ui/. Relative imports within package. Package imports between.
+
+### Client-surface changes
+Three surfaces (web/desktop today; iOS/Android next), one model of the world. Three iron rules:
+- **Behavior** (turn lifecycle, state, reconnection, VM fields) → change `@houston/sdk` FIRST, then surfaces bind. NEVER re-implement behavior in surface code. VM-snapshot changes are contract changes — additive only.
+- **Visual values** → a design-token edit (`packages/design-tokens`), never a hardcoded hex/spacing literal in app or `ui/`.
+- **Cross-surface structure** (a component added/changed) → bump `design/inventory/inventory.yaml` + CHANGELOG + enforced manifests in the SAME PR (`pnpm check:parity`).
+
+Full procedures + decision table + verification matrix: `knowledge-base/client-architecture.md`.
 
 ### Engine boundary
 - `engine/` = frontend-agnostic. No Tauri. No React. No webview assumption.

@@ -1,4 +1,4 @@
-import { FAKE_HOST_URL } from "./fake-host/ports";
+import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
 
 /**

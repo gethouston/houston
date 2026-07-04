@@ -1,4 +1,5 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { createServer as createHttpServer } from "node:http";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -36,6 +37,8 @@ async function setup(opts?: {
   chatHistoryDbPath?: string;
   capabilities?: Capabilities;
   integrations?: { gatewayUrl?: string; composioApiKey?: string };
+  gatewayFronted?: boolean;
+  spawner?: RuntimeSpawner;
 }) {
   const workspacesRoot = mkdtempSync(join(tmpdir(), "houston-localhost-"));
   mkdirSync(join(workspacesRoot, "Work", "Sales"), { recursive: true });
@@ -49,10 +52,11 @@ async function setup(opts?: {
     port,
     token: "boot-secret",
     runtimeCommand: ["true"],
-    spawner: fakeSpawner,
+    spawner: opts?.spawner ?? fakeSpawner,
     chatHistoryDbPath: opts?.chatHistoryDbPath,
     capabilities: opts?.capabilities,
     integrations: opts?.integrations,
+    gatewayFronted: opts?.gatewayFronted,
   });
   await host.start();
   return { host, base: `http://127.0.0.1:${port}`, workspacesRoot };
@@ -211,6 +215,74 @@ test("a slash-bearing agent id round-trips through the URL (encode → decode)",
   } finally {
     host.stop();
   }
+});
+
+// ── acting-as relay (C2): the managed pod is gateway-fronted ─────────────────
+
+/**
+ * A fake runtime: a live HTTP server whose port the spawner hands to the
+ * launcher. /health satisfies the launcher's readiness probe; every other
+ * request records its headers so the test can see what the proxy relayed.
+ */
+function fakeRuntime() {
+  const seen: Record<string, string | string[] | undefined>[] = [];
+  const server = createHttpServer((req, res) => {
+    if (req.url === "/health") {
+      res.writeHead(200);
+      res.end("ok");
+      return;
+    }
+    seen.push({ ...req.headers });
+    res.writeHead(202, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true }));
+  });
+  const spawner: RuntimeSpawner = {
+    spawn: () => ({
+      port: (server.address() as { port: number }).port,
+      kill: () => {},
+    }),
+  };
+  return {
+    seen,
+    spawner,
+    listen: () =>
+      new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r())),
+    close: () => server.close(),
+  };
+}
+
+async function relayActingHeader(gatewayFronted: boolean | undefined) {
+  const rt = fakeRuntime();
+  await rt.listen();
+  const { host, base } = await setup({ spawner: rt.spawner, gatewayFronted });
+  try {
+    const r = await fetch(
+      `${base}/agents/${encodeURIComponent("Work/Sales")}/conversations/c1/messages`,
+      {
+        method: "POST",
+        headers: { ...auth, "x-houston-acting-as": "acting-v1.payload.sig" },
+        body: JSON.stringify({ text: "hi" }),
+      },
+    );
+    expect(r.status).toBe(202);
+    return rt.seen[0] ?? {};
+  } finally {
+    host.stop();
+    rt.close();
+  }
+}
+
+test("managed pod (gatewayFronted): the gateway-minted acting-as header reaches the runtime", async () => {
+  // The bug this locks down: the pod profile dropping the header meant the
+  // runtime had no acting identity, so every integration call in a cloud chat
+  // died signin-required and agents claimed connected apps weren't connected.
+  const headers = await relayActingHeader(true);
+  expect(headers["x-houston-acting-as"]).toBe("acting-v1.payload.sig");
+});
+
+test("desktop (default): a client-supplied acting-as header is dropped", async () => {
+  const headers = await relayActingHeader(undefined);
+  expect(headers["x-houston-acting-as"]).toBeUndefined();
 });
 
 test("preferences persist via the vfs under the workspace", async () => {

@@ -53,11 +53,34 @@ for toml in engine/*/Cargo.toml app/houston-tauri/Cargo.toml app/src-tauri/Cargo
   perl -i -pe 'BEGIN{$d=0} if(!$d && /^version = "[^"]+"$/){s/^version = "[^"]+"$/version = "'"$VERSION"'"/; $d=1}' "$toml"
 done
 
+# --- Cross-crate houston-* dep pins in member Cargo.tomls --------------------
+# A member crate may pin a sibling like
+#   houston-engine-core = { version = "0.4.0", path = "../houston-engine-core" }
+# Scoped on `path = "` exactly like the root pass below, so third-party pins
+# stay untouched. Without this, a caret pin silently tolerates patch bumps and
+# then breaks the release on the first MINOR bump (bit us at 0.4.26 -> 0.5.0:
+# houston-engine-server pinned ^0.4.0 while the crates moved to 0.5.0).
+for toml in engine/*/Cargo.toml app/houston-tauri/Cargo.toml app/src-tauri/Cargo.toml; do
+  perl -i -pe 's/version = "[0-9]+\.[0-9]+\.[0-9]+"/version = "'"$VERSION"'"/ if /path = "/' "$toml"
+done
+
 # --- Root Cargo.toml workspace deps -----------------------------------------
 # Bump only the houston-* path deps: every workspace member line carries
 # `path = "…"`, while third-party pins like serde `version = "1"` do not, so
 # scoping on `path = "` leaves them untouched. perl (not BSD `sed -i ''`) so
 # the bump runs on Linux + Windows git-bash, not just macOS.
 perl -i -pe 's/version = "[0-9]+\.[0-9]+\.[0-9]+"/version = "'"$VERSION"'"/ if /path = "/' Cargo.toml
+
+# --- Cargo.lock ---------------------------------------------------------------
+# The lock pins workspace-member versions too; without a regen the release
+# build fails on the toml/lock mismatch (prior releases regenerated it by
+# hand — now it's part of the bump). `cargo update --workspace` refreshes only
+# the workspace members' entries.
+if command -v cargo >/dev/null 2>&1; then
+  cargo update --workspace --quiet
+  echo "Cargo.lock regenerated for workspace members"
+else
+  echo "WARNING: cargo not found — Cargo.lock NOT regenerated; the release build will fail until it is" >&2
+fi
 
 echo "All packages bumped to v$VERSION"

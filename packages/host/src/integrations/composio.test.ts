@@ -342,6 +342,36 @@ test("search scopes to the user's connected toolkits and maps tools", async () =
   );
 });
 
+test("a zero-hit scoped query degrades to listing the connected toolkits' actions", async () => {
+  // Composio's full-text match is naive: "read my latest 5 emails" scores zero
+  // against GMAIL_FETCH_EMAILS. The scoped retry (no query) must surface the
+  // toolkit's real actions instead of a dead "no results".
+  const { provider, calls } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts") {
+      return {
+        body: { items: [{ toolkit: { slug: "gmail" }, status: "ACTIVE" }] },
+      };
+    }
+    // First tools call carries the query → no hits; the fallback (no query)
+    // returns the toolkit listing.
+    if (url.searchParams.has("query")) return { body: { items: [] } };
+    return {
+      body: {
+        items: [
+          {
+            slug: "GMAIL_FETCH_EMAILS",
+            toolkit: { slug: "gmail" },
+            description: "Fetch emails",
+          },
+        ],
+      },
+    };
+  });
+  const found = await provider.search(USER, "read my latest 5 emails");
+  expect(found.map((t) => t.action)).toEqual(["GMAIL_FETCH_EMAILS"]);
+  expect(calls[2]?.path).toBe("/api/v3/tools?limit=50&toolkit_slug=gmail");
+});
+
 test("search falls back to the global catalog when nothing is connected", async () => {
   const { provider, calls } = harness((url) => {
     if (url.pathname === "/api/v3/connected_accounts")
