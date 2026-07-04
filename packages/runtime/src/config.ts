@@ -147,7 +147,7 @@ export const config = {
   codeExecution: codeExecutionMode(),
   /**
    * Remote code-execution sandbox (Cloud Run). Used only when codeExecution is
-   * "remote"; managed hosted pods set HOUSTON_CODE_EXECUTION=disabled.
+   * "remote"; managed hosted pods run bash in-container (HOUSTON_CODE_EXECUTION=local).
    */
   codeSandboxUrl: env.HOUSTON_CODE_SANDBOX_URL || "",
   /** App-layer token presented to the code sandbox via X-Sandbox-Token. */

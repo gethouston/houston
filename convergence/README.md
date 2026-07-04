@@ -89,8 +89,12 @@ builds `selfhost/Dockerfile --target engine-pod` (manually publishable via
 `.github/workflows/ts-engine-image.yml` to the multi-arch
 `ghcr.io/gethouston/houston-engine-pod` image): one open host process that
 spawns one pi runtime per agent over loopback, with `/data` as `HOUSTON_HOME`,
-`HOUSTON_MANAGED_CLOUD=1`, and `HOUSTON_CODE_EXECUTION=disabled`. Capabilities
-advertise cloud profile, no OS reveal/terminal, the full desktop provider set
+`HOUSTON_MANAGED_CLOUD=1`, and `HOUSTON_CODE_EXECUTION=local` (HOU-669: the
+agent's bash runs in-container — the pod is single-tenant and network-policied,
+so the container is the sandbox, same as self-host; the image ships
+curl/wget/git/python3 for it). Capabilities
+advertise cloud profile, no OS reveal/terminal, `local-bash` code execution,
+the full desktop provider set
 (only the user's local LLM `openaiCompatible` is dropped), and integration
 `composio`. The private repo supplies the
 Supabase-authenticated gateway, maps user `sub` to the pod service, replaces the
