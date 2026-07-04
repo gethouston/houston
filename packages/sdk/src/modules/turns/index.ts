@@ -1,10 +1,12 @@
 import type { ModuleContext } from "../../module-context";
 import { type FeedOutput, MultiplexFeedOutput } from "./feed-output";
+import { type FeedFrame, historyToFeed } from "./history";
 import { resolveModelSettings } from "./model-settings";
 import { observeConversation } from "./observe-stream";
-import { StreamRegistry } from "./stream-registry";
+import { StreamRegistry, streamKey } from "./stream-registry";
 import {
   asCancelInput,
+  asHistoryInput,
   asObserveInput,
   asSendInput,
   type TurnSendInput,
@@ -63,19 +65,25 @@ export function createTurnsModule(ctx: ModuleContext) {
 
   /**
    * Passively attach to a conversation with a turn started elsewhere (another
-   * client) or before a reload — observer mode. Loads history to seed the legacy
-   * settle guard, then drives {@link observeConversation} into the SAME VM the
-   * `send` path uses, so a mobile client opening an in-flight conversation sees
-   * the running turn. An idle conversation self-closes (the observer settles to
-   * a coherent idle VM); a no-op if the conversation is already streamed here.
+   * client) or before a reload — observer mode. Loads history, folds it, and
+   * SEEDS the conversation VM's feed FIRST so a mobile client opening the chat
+   * sees the full transcript immediately — THEN attaches {@link
+   * observeConversation} into the SAME VM the `send` path uses, so an in-flight
+   * turn keeps rendering live. History also seeds the legacy settle guard
+   * (`messages.length`). An idle conversation self-closes; a no-op if the
+   * conversation is already streamed here — in which case we DON'T re-seed
+   * (that live feed already owns the VM), which is the double-render guard.
    */
   const observe = async (
     conversationId: string,
     agentId?: string,
   ): Promise<void> => {
     const client = ctx.clientFor(agentId ?? "");
+    const key = streamKey(agentId ?? "", conversationId);
     const { messages } = await client.getHistory(conversationId);
     const output = new MultiplexFeedOutput([vm, ...external]);
+    if (!registry.get(key))
+      vm.seedHistory(conversationId, historyToFeed(messages));
     observeConversation(
       client,
       agentId ?? "",
@@ -84,6 +92,21 @@ export function createTurnsModule(ctx: ModuleContext) {
       messages.length,
       registry,
     );
+  };
+
+  /**
+   * Read-only: fold a conversation's persisted transcript into feed frames (the
+   * same fold `observe` seeds the VM with). The `turns/history` command surfaces
+   * it to a native shell that wants the transcript without attaching a stream.
+   */
+  const history = async (
+    conversationId: string,
+    agentId?: string,
+  ): Promise<FeedFrame[]> => {
+    const { messages } = await ctx
+      .clientFor(agentId ?? "")
+      .getHistory(conversationId);
+    return historyToFeed(messages);
   };
 
   /** Abort a conversation's in-flight turn in the agent's sandbox. */
@@ -103,11 +126,16 @@ export function createTurnsModule(ctx: ModuleContext) {
     const { conversationId, agentId } = asObserveInput(payload);
     return observe(conversationId, agentId);
   });
+  ctx.registerCommand("turns/history", (payload) => {
+    const { conversationId, agentId } = asHistoryInput(payload);
+    return history(conversationId, agentId);
+  });
 
   return {
     send,
     cancel,
     observe,
+    history,
     /**
      * Attach an extra {@link FeedOutput} that every subsequent turn also drives
      * (e.g. a host UI bus). Returns a detach function.
@@ -132,6 +160,7 @@ export {
   type SessionStatusValue,
   type TerminalBoardStatus,
 } from "./feed-output";
+export { type FeedFrame, historyToFeed } from "./history";
 export { observeConversation } from "./observe-stream";
 export {
   SEND_IN_FLIGHT_MESSAGE,
@@ -147,6 +176,7 @@ export {
 } from "./turn-errors";
 export type {
   TurnCancelInput,
+  TurnHistoryInput,
   TurnObserveInput,
   TurnSendInput,
 } from "./turn-inputs";
