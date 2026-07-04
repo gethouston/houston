@@ -1,8 +1,8 @@
 {
   "sidebar": {
     "missionControl": "Centro de misiones",
+    "aiModels": "Modelos de IA",
     "integrations": "Integraciones",
-    "aiProviders": "Proveedores de IA",
     "settings": "Configuración",
     "yourAgents": "Tus agentes",
     "selectWorkspace": "Elige un espacio de trabajo",

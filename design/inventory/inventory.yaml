@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 1
+version: 2
 
 components:
   - id: agent-avatar
@@ -300,3 +300,42 @@ components:
       a Report-bug action (beta no-silent-failure policy).
     a11y: status/alert role by severity; auto-dismiss pauses on focus/hover.
     since: 1
+
+  - id: ai-provider-card
+    title: AI provider card
+    purpose: A marketplace tile for one AI provider in the AI models hub (connect / connected).
+    anatomy: [logo-media, name, description, meta-chips, action-footer]
+    states: [available, connected, connecting, signing-out, coming-soon]
+    variants: [connectable-card, coming-soon-card]
+    behavior: >-
+      Connection state (connected / in-flight) comes from the shared
+      provider-connections layer; the model-count chip is derived from the hub
+      catalog across the card's gateway ids. The whole card opens the provider
+      detail; the footer action always shows (no hover gate).
+    a11y: button role with a visible focus ring; inner Connect/Cancel buttons stop propagation; connected shown as dot + label, not color alone.
+    since: 2
+
+  - id: ai-model-row
+    title: AI model row
+    purpose: One model in the AI hub directory or a provider's model list.
+    anatomy: [lab-glyph, name, description, provider-count, context-chip, reasoning-badge]
+    states: [default]
+    variants: [directory-row, provider-model-row]
+    behavior: >-
+      A unique cross-provider catalog model; the provider-count reflects how many
+      providers offer it. Opening the row navigates to the model detail.
+    a11y: button/listitem role; name as accessible label; badges conveyed as text.
+    since: 2
+
+  - id: ai-model-offer-row
+    title: AI model offer row
+    purpose: One provider's way to run a model in the model detail's "Get it through" list.
+    anatomy: [provider-glyph, provider-name, pricing-or-subscription, action]
+    states: [available, connecting, connected]
+    variants: [connect-action, connected-opens-provider]
+    behavior: >-
+      Offers sort connected-first, then subscription, then cheapest input price.
+      Connect drives the shared connections layer; a connected row opens the
+      provider detail. Pricing vs "Included with subscription" comes from the offer.
+    a11y: RowCard semantics; Connect is a labeled button; connected shown as dot + label.
+    since: 2
