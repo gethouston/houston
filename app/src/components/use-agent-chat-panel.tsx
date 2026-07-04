@@ -133,6 +133,7 @@ interface AgentChatPanelProps {
   processLabels: ChatPanelProps["processLabels"];
   getThinkingMessage: ChatPanelProps["getThinkingMessage"];
   thinkingIndicator: ChatPanelProps["thinkingIndicator"];
+  loadingIndicator: ChatPanelProps["loadingIndicator"];
   renderTurnSummary: ChatPanelProps["renderTurnSummary"];
   renderSystemMessage: AIBoardProps["renderSystemMessage"];
   mapFeedItems: AIBoardProps["mapFeedItems"];
@@ -156,8 +157,12 @@ export function useAgentChatPanel({
   onSelectSession,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
   const { t } = useTranslation(["board", "chat"]);
-  const { processLabels, getThinkingMessage, thinkingIndicator } =
-    useChatDisplayLabels();
+  const {
+    processLabels,
+    getThinkingMessage,
+    thinkingIndicator,
+    loadingIndicator,
+  } = useChatDisplayLabels();
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
   const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
@@ -902,6 +907,7 @@ export function useAgentChatPanel({
     processLabels,
     getThinkingMessage,
     thinkingIndicator,
+    loadingIndicator,
     renderTurnSummary,
     renderSystemMessage,
     mapFeedItems,

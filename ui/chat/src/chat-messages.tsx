@@ -40,6 +40,12 @@ export interface ChatMessagesProps {
   messages: ChatMessage[];
   status: "ready" | "streaming" | "submitted";
   thinkingIndicator: ReactNode;
+  /** Rendered below the last item for the WHOLE in-flight turn (status
+   *  `"submitted"`), even while an active mission-log header is surfacing
+   *  "Mission in progress: <action>" and the standalone `thinkingIndicator`
+   *  is therefore suppressed (HOU-655: the loading helmet must not vanish
+   *  when a tool label takes over the status line). */
+  loadingIndicator?: ReactNode;
   transformContent?: (content: string) => {
     content: string;
     extra?: ReactNode;
@@ -85,6 +91,7 @@ export function ChatMessages({
   messages,
   status,
   thinkingIndicator,
+  loadingIndicator,
   transformContent,
   toolLabels,
   isSpecialTool,
@@ -209,9 +216,15 @@ export function ChatMessages({
             </Message>
           );
         })}
-        {showThinkingIndicator ? (
+        {status === "submitted" &&
+        (showThinkingIndicator || loadingIndicator) ? (
           <Message from="assistant">
-            <MessageContent>{thinkingIndicator}</MessageContent>
+            <MessageContent>
+              <div className="flex flex-col items-start gap-4 py-1">
+                {showThinkingIndicator ? thinkingIndicator : null}
+                {loadingIndicator}
+              </div>
+            </MessageContent>
           </Message>
         ) : null}
         {afterMessages}

@@ -6,7 +6,10 @@ import { HoustonLogo } from "./shell/experience-card";
 
 export function useChatDisplayLabels(): Pick<
   ChatPanelProps,
-  "processLabels" | "getThinkingMessage" | "thinkingIndicator"
+  | "processLabels"
+  | "getThinkingMessage"
+  | "thinkingIndicator"
+  | "loadingIndicator"
 > {
   const { t } = useTranslation("chat");
   const processLabels = useMemo(
@@ -32,29 +35,32 @@ export function useChatDisplayLabels(): Pick<
   );
 
   // HOU-655: while a turn is in flight, the loading state is a single blinking
-  // Houston helmet sitting under the calm, shimmering "Mission in progress..."
-  // label. We keep ONE helmet (no small glyph on the label here) so the pulsing
-  // mark reads as the loader, not a duplicate icon, and give it real breathing
-  // room below the line. It vanishes the instant the turn settles — there is no
-  // longer a static helmet at the end of the reply.
+  // Houston helmet under the "Mission in progress" line. The two pieces are
+  // separate props because they live on different clocks: the shimmering label
+  // (`thinkingIndicator`) yields to the mission-log header the moment a tool
+  // action takes over the status line, while the helmet (`loadingIndicator`)
+  // stays up for the WHOLE turn — under either line — and vanishes the instant
+  // the reply streams. One helmet, no duplicate label; ChatMessages owns the
+  // spacing between them.
   const thinkingIndicator = useMemo(
     () => (
-      <div className="flex flex-col items-start gap-4 py-1">
-        <Shimmer as="span" duration={1} className="text-xs">
-          {t("process.active")}
-        </Shimmer>
-        <HoustonLogo
-          size={20}
-          className="animate-pulse text-muted-foreground"
-        />
-      </div>
+      <Shimmer as="span" duration={1} className="text-xs">
+        {t("process.active")}
+      </Shimmer>
     ),
     [t],
+  );
+  const loadingIndicator = useMemo(
+    () => (
+      <HoustonLogo size={20} className="animate-pulse text-muted-foreground" />
+    ),
+    [],
   );
 
   return {
     processLabels,
     getThinkingMessage,
     thinkingIndicator,
+    loadingIndicator,
   };
 }
