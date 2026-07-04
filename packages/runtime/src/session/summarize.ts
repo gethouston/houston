@@ -3,11 +3,17 @@ import type {
   ModelRegistry,
 } from "@earendil-works/pi-coding-agent";
 import type { ChatMessage } from "@houston/runtime-client";
-import { resolveModel } from "../ai/providers";
+import { activeProvider, resolveModel } from "../ai/providers";
 import { authStorage, modelRegistry } from "../auth/storage";
+import { ClaudeBackendUnavailableError } from "../backends/claude/backend";
+import { readAnthropicToken } from "../backends/claude/read-token";
+import { titleWithClaude } from "../backends/claude/title";
 import { config } from "../config";
 import { getHistory, renameConversation } from "../store/conversations";
 import { oneShotText } from "./one-shot";
+
+const errMessage = (err: unknown): string =>
+  err instanceof Error ? err.message : String(err);
 
 const TITLE_PROMPT = [
   "You generate conversation titles.",
@@ -46,6 +52,73 @@ export async function generateTitle(opts: {
   return text.trim().split("\n")[0]?.trim().slice(0, 80) ?? "";
 }
 
+/** Produce a title for an excerpt (one provider's title implementation). */
+export type TitleRunner = (excerpt: string) => Promise<string>;
+
+/**
+ * COMPLIANCE GATE (titles): route the title the SAME way a turn routes. When the
+ * active provider is `anthropic` the title runs through the Claude Agent SDK —
+ * NEVER pi's `createAgentSession`, which would hit api.anthropic.com in-process
+ * with the setup token, the harness-spoofing path Anthropic server-blocks. Every
+ * other provider keeps the existing pi title path byte-identical. Pure (the
+ * runners are injected) so the "pi is not invoked for anthropic" guarantee is
+ * unit-tested with spies.
+ */
+export function dispatchTitle(
+  provider: string | null,
+  excerpt: string,
+  runners: { claude: TitleRunner; pi: TitleRunner },
+): Promise<string> {
+  return provider === "anthropic"
+    ? runners.claude(excerpt)
+    : runners.pi(excerpt);
+}
+
+/** The concrete runners bound to this workspace's config/credentials. */
+function titleRunners(model?: unknown): {
+  claude: TitleRunner;
+  pi: TitleRunner;
+} {
+  return {
+    claude: (excerpt) => claudeTitle(excerpt),
+    pi: (excerpt) =>
+      generateTitle({
+        cwd: config.workspaceDir,
+        model: model ?? resolveModel(),
+        authStorage,
+        modelRegistry,
+        excerpt,
+      }),
+  };
+}
+
+/**
+ * The anthropic title runner: a one-shot Claude SDK query. The ONLY expected
+ * failure is the optional SDK being absent from this build; degrade to no title
+ * (the caller truncates) rather than reroute an anthropic title onto pi's client
+ * — that reroute is precisely what the compliance gate forbids.
+ */
+async function claudeTitle(excerpt: string): Promise<string> {
+  try {
+    return await titleWithClaude({
+      excerpt,
+      titlePrompt: TITLE_PROMPT,
+      workspaceDir: config.workspaceDir,
+      dataDir: config.dataDir,
+      readToken: () => readAnthropicToken(authStorage),
+      modelId: resolveModel().id,
+    });
+  } catch (err) {
+    if (err instanceof ClaudeBackendUnavailableError) {
+      console.warn(
+        `[title] Claude Agent SDK unavailable; skipping anthropic title: ${errMessage(err)}`,
+      );
+      return "";
+    }
+    throw err;
+  }
+}
+
 /**
  * Title an arbitrary excerpt (the composer's first message), independent of any
  * stored conversation. Powers the adapter's `summarizeActivity(message)` —
@@ -64,13 +137,7 @@ export async function titleFromText(
 ): Promise<string> {
   const excerpt = text.trim().slice(0, 2400);
   if (!excerpt) return "";
-  return generateTitle({
-    cwd: config.workspaceDir,
-    model: model ?? resolveModel(),
-    authStorage,
-    modelRegistry,
-    excerpt,
-  });
+  return dispatchTitle(activeProvider(), excerpt, titleRunners(model));
 }
 
 /**
@@ -86,13 +153,11 @@ export async function summarizeTitle(
   const history = getHistory(id);
   if (!history || history.messages.length === 0) return null;
 
-  const title = await generateTitle({
-    cwd: config.workspaceDir,
-    model: model ?? resolveModel(),
-    authStorage,
-    modelRegistry,
-    excerpt: buildExcerpt(history.messages),
-  });
+  const title = await dispatchTitle(
+    activeProvider(),
+    buildExcerpt(history.messages),
+    titleRunners(model),
+  );
   if (!title) return null;
   renameConversation(id, title);
   return title;

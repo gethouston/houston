@@ -6,8 +6,13 @@ import {
   registerFauxProvider,
 } from "@earendil-works/pi-ai";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
-import { expect, test } from "vitest";
-import { buildExcerpt, generateTitle, titleFromText } from "./summarize";
+import { expect, test, vi } from "vitest";
+import {
+  buildExcerpt,
+  dispatchTitle,
+  generateTitle,
+  titleFromText,
+} from "./summarize";
 
 /**
  * Title generation runs a real pi turn (faux provider: scripted, no network),
@@ -32,6 +37,29 @@ test("titleFromText short-circuits empty input to '' without touching the model"
   // No provider registered: if it tried to run a turn it would throw, not return "".
   expect(await titleFromText("")).toBe("");
   expect(await titleFromText("   \n\t  ")).toBe("");
+});
+
+test("dispatchTitle routes anthropic to the Claude SDK runner — pi is NOT invoked", async () => {
+  // The compliance gate: an anthropic title must NOT touch pi's createAgentSession.
+  const claude = vi.fn(async () => "Claude Title");
+  const pi = vi.fn(async () => "Pi Title");
+  const title = await dispatchTitle("anthropic", "excerpt", { claude, pi });
+  expect(title).toBe("Claude Title");
+  expect(claude).toHaveBeenCalledWith("excerpt");
+  expect(pi).not.toHaveBeenCalled();
+});
+
+test("dispatchTitle routes every other provider to the pi runner — Claude is NOT invoked", async () => {
+  const claude = vi.fn(async () => "Claude Title");
+  const pi = vi.fn(async () => "Pi Title");
+  for (const provider of ["openai-codex", "google", null]) {
+    claude.mockClear();
+    pi.mockClear();
+    const title = await dispatchTitle(provider, "excerpt", { claude, pi });
+    expect(title).toBe("Pi Title");
+    expect(pi).toHaveBeenCalledWith("excerpt");
+    expect(claude).not.toHaveBeenCalled();
+  }
 });
 
 test("generateTitle runs a faux turn and returns a single trimmed line", async () => {

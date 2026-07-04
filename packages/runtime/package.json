@@ -17,12 +17,15 @@
     "@earendil-works/pi-coding-agent": "0.78.1",
     "@google-cloud/storage": "^7.14.0",
     "@houston/runtime-client": "workspace:*",
-    "typebox": "1.1.38",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "typebox": "1.1.38"
   },
   "devDependencies": {
     "@types/node": "^22",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
     "vitest": "^3.2.4"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.201"
   }
 }

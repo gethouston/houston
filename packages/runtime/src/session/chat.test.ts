@@ -38,9 +38,14 @@ vi.mock("../ai/providers", async (importOriginal) => {
   };
 });
 
-const { runTurn, ensureProviderForTurn } = await import("./chat");
+const { runTurn, ensureProviderForTurn, disposeConversation } = await import(
+  "./chat"
+);
 const { switchNeedsCompaction } = await import("./provider-switch");
 const { subscribe } = await import("./bus");
+const { createSessionsStore } = await import(
+  "../backends/claude/sessions-store"
+);
 
 afterAll(() => vi.restoreAllMocks());
 
@@ -71,6 +76,21 @@ test("runTurn refuses with a clear error (never a hang) if the provider vanished
   expect(err).toBeDefined();
   expect(err?.data.message).toContain("No provider connected");
   expect(events.some((e) => e.type === "done")).toBe(false);
+});
+
+test("disposeConversation with deleteSessions purges the anthropic SDK session mapping", async () => {
+  // A conversation that ran on the Claude backend has a sessions.json mapping;
+  // deleting the conversation must drop it too, not just pi's transcript dir.
+  const dataDir = process.env.HOUSTON_DATA_DIR as string;
+  const store = createSessionsStore(dataDir);
+  store.setSessionId("conv-anthropic", "sess-xyz");
+  expect(store.getSessionId("conv-anthropic")).toBe("sess-xyz");
+
+  await disposeConversation("conv-anthropic", { deleteSessions: true });
+
+  expect(
+    createSessionsStore(dataDir).getSessionId("conv-anthropic"),
+  ).toBeUndefined();
 });
 
 test("switchNeedsCompaction: replays under the fit fraction, compacts over it, replays when unknown", () => {

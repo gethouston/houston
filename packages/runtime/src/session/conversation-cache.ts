@@ -1,9 +1,16 @@
 import { resolveModel } from "../ai/providers";
 import { authStorage, modelRegistry } from "../auth/storage";
+import { createClaudeBackend } from "../backends/claude/backend";
+import { readAnthropicToken } from "../backends/claude/read-token";
 import { createPiBackend } from "../backends/pi/backend";
-import { backendFor, setDefaultBackend } from "../backends/registry";
+import {
+  backendFor,
+  registerBackend,
+  setDefaultBackend,
+} from "../backends/registry";
 import type { HarnessSession } from "../backends/types";
 import { config } from "../config";
+import { SYSTEM_PROMPT } from "./resource-loader";
 import { buildToolSelection } from "./tool-selection";
 import { makeClampedFileTools } from "./tools/clamped-fs";
 import { makeIdTokenProvider } from "./tools/gcp-id-token";
@@ -72,6 +79,31 @@ const piBackend = createPiBackend({
   ],
 });
 setDefaultBackend(piBackend);
+
+/**
+ * COMPLIANCE GATE: the `anthropic` provider runs its turns through the Claude
+ * Agent SDK backend — `createClaudeBackend` → the real `claude` subprocess with
+ * the token in `options.env` — NOT pi's in-process Anthropic client. pi-ai
+ * hitting api.anthropic.com with a setup token + hand-set Claude Code beta
+ * headers is exactly the harness-spoofing Anthropic server-blocks, so this
+ * registration reroutes anthropic OFF the pi default above. Every other provider
+ * still resolves to the pi backend. It reuses the SAME `toolSelection` the pi
+ * path computed (so Bash gating / run-code stay identical) and Houston's product
+ * system prompt (full-replace, never the SDK's claude_code preset).
+ *
+ * Server-mode only: the per-request cloud runtime (turn/) builds its own pi
+ * backend per turn and never imports this module, so cloud anthropic stays OFF.
+ */
+registerBackend(
+  "anthropic",
+  createClaudeBackend({
+    workspaceDir: config.workspaceDir,
+    dataDir: config.dataDir,
+    readToken: () => readAnthropicToken(authStorage),
+    toolSelection,
+    systemPrompt: config.systemPrompt || SYSTEM_PROMPT,
+  }),
+);
 
 export type Conversation = {
   session: HarnessSession;
