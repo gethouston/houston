@@ -108,6 +108,7 @@ async function pollHealth(port: number): Promise<void> {
  */
 export class ProcessLauncher implements RuntimeLauncher {
   private readonly running = new Map<AgentId, Running>();
+  private readonly booting = new Map<AgentId, Promise<RuntimeEndpoint>>();
   private readonly allocatePort: () => Promise<number>;
   private readonly waitHealthy: (port: number, token: string) => Promise<void>;
 
@@ -117,6 +118,14 @@ export class ProcessLauncher implements RuntimeLauncher {
   }
 
   async ensureAwake(agent: Agent): Promise<RuntimeEndpoint> {
+    // Single-flight per agent: the `running` entry exists BEFORE the child is
+    // healthy (so sleep/shutdown can kill a mid-boot process), so a concurrent
+    // caller must not read it as "awake" — it would be handed a port nobody has
+    // bound yet and proxy into connection-refused (surfacing as a 502 the
+    // desktop renders as an empty chat / disconnected provider). Everyone who
+    // arrives during a boot awaits the SAME spawn+health instead.
+    const inflight = this.booting.get(agent.id);
+    if (inflight) return inflight;
     const existing = this.running.get(agent.id);
     if (existing)
       return {
@@ -124,6 +133,16 @@ export class ProcessLauncher implements RuntimeLauncher {
         token: existing.token,
       };
 
+    const boot = this.spawnUntilHealthy(agent);
+    this.booting.set(agent.id, boot);
+    try {
+      return await boot;
+    } finally {
+      this.booting.delete(agent.id);
+    }
+  }
+
+  private async spawnUntilHealthy(agent: Agent): Promise<RuntimeEndpoint> {
     const token = this.opts.mintToken(agent);
     const port = await this.allocatePort();
     const cred = this.opts.credentialServing;
