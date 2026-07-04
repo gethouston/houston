@@ -33,7 +33,9 @@ import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { normalizeLegacyModel } from "./providers";
 import type {
   Agent,
+  CommunitySkillResult,
   FileEntry,
+  RepoSkill,
   SkillDetail,
   SkillSummary,
   Workspace,
@@ -430,6 +432,75 @@ export const tauriSkills = {
   save: (agentPath: string, name: string, content: string) =>
     call<void>("save_skill", () =>
       getEngine().saveSkill(name, { workspacePath: agentPath, content }),
+    ),
+  listFromRepo: (source: string) =>
+    call<RepoSkill[]>(
+      "list_skills_from_repo",
+      () => getEngine().listSkillsFromRepo(source),
+      undefined,
+      // The Add Skills dialog renders repo failures (typo'd repo, private,
+      // no skills) inline with plain-English copy — no red bug toast.
+      { toast: false },
+    ),
+  installFromRepo: (agentPath: string, source: string, skills: RepoSkill[]) =>
+    call<string[]>(
+      "install_skills_from_repo",
+      () =>
+        getEngine().installSkillsFromRepo({
+          workspacePath: agentPath,
+          source,
+          skills,
+        }),
+      undefined,
+      { toast: false },
+    ),
+  searchCommunity: (query: string, signal?: AbortSignal) =>
+    call<CommunitySkillResult[]>(
+      "search_community_skills",
+      async () =>
+        (await getEngine().searchCommunitySkills(query, signal)).map((s) => ({
+          id: s.id,
+          skillId: s.skillId,
+          name: s.name,
+          installs: s.installs,
+          source: s.source,
+        })),
+      undefined,
+      { toast: false },
+    ),
+  popularCommunity: (signal?: AbortSignal) =>
+    call<CommunitySkillResult[]>(
+      "popular_community_skills",
+      async () =>
+        (await getEngine().popularCommunitySkills(signal)).map((s) => ({
+          id: s.id,
+          skillId: s.skillId,
+          name: s.name,
+          installs: s.installs,
+          source: s.source,
+        })),
+      undefined,
+      { toast: false },
+    ),
+  installCommunity: (
+    agentPath: string,
+    source: string,
+    skillId: string,
+    signal?: AbortSignal,
+  ) =>
+    call<string>(
+      "install_community_skill",
+      () =>
+        getEngine().installCommunitySkill(
+          {
+            workspacePath: agentPath,
+            source,
+            skillId,
+          },
+          signal,
+        ),
+      undefined,
+      { toast: false },
     ),
 };
 

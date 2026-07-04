@@ -26,6 +26,7 @@ import { handleAgentFile } from "./agent-file";
 import { json, readJson } from "./http";
 import { handlePortableExport } from "./portable";
 import { handleSkills } from "./skills";
+import { handleSkillsRemote } from "./skills-remote";
 
 export interface AgentRouteDeps {
   store: WorkspaceStore;
@@ -486,6 +487,19 @@ export async function handleAgents(
     )
       return true;
     if (await handleSkills(deps.vfs, paths, ctx, method, rest, req, res, emit))
+      return true;
+    if (
+      await handleSkillsRemote(
+        deps.vfs,
+        paths,
+        ctx,
+        method,
+        rest,
+        req,
+        res,
+        emit,
+      )
+    )
       return true;
     // The Files tab: served by the HOST off the workspace vfs for every profile
     // (the runtime has no /files route). Same handler cloud + local — zero drift.

@@ -7,5 +7,6 @@ export * from "./provider-model";
 export * from "./reactivity";
 export * from "./routines";
 export * from "./schedule";
+export * from "./skill-install";
 export * from "./skills";
 export * from "./store";

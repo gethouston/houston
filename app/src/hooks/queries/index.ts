@@ -52,6 +52,9 @@ export {
 export {
   useCreateSkill,
   useDeleteSkill,
+  useInstallCommunitySkill,
+  useInstallSkillFromRepo,
+  useListSkillsFromRepo,
   useSaveSkill,
   useSkillDetail,
   useSkills,
