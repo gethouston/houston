@@ -59,8 +59,27 @@ const MODEL_UNAVAILABLE_PATTERNS = [
   "model_not_supported",
   "model is not supported",
   "model not supported",
+  // opencode.ai's ModelError body — "Model <id> is not supported" — returned,
+  // oddly, under HTTP 401 (see the non-auth-401 note in `isAuth`).
+  "is not supported",
   "model_not_found",
   "does not exist or you do not have access",
+];
+
+/**
+ * A spend/credit exhaustion — NOT an auth failure. opencode.ai answers an
+ * out-of-credit account with `401 {"type":"CreditsError","message":"Insufficient
+ * balance. Manage your billing here: …"}`. Reconnecting the (valid) key does
+ * nothing; the user must top up. Classified as `quota_exhausted` (the "pay or
+ * switch" card), never a reconnect.
+ */
+const INSUFFICIENT_BALANCE_PATTERNS = [
+  "insufficient balance",
+  "insufficient_balance",
+  "insufficient credits",
+  "insufficient funds",
+  "not enough credits",
+  "creditserror",
 ];
 
 /**
@@ -98,6 +117,19 @@ export function classifyProviderError(
       kind: "unauthenticated",
       provider,
       cause: authCause(lower),
+      message,
+    };
+  }
+  // Spend/credit exhaustion (opencode.ai CreditsError): the account is out of
+  // credit or lacks the subscription for this model — the "pay or switch" state,
+  // NOT auth and NOT a wait-out rate limit. Surfaces the provider's message.
+  if (isInsufficientBalance(lower)) {
+    return {
+      kind: "quota_exhausted",
+      provider,
+      model,
+      scope: "unknown",
+      resets_at: null,
       message,
     };
   }
@@ -149,6 +181,12 @@ function isAuth(lower: string, status: number | null): boolean {
   // the user can't act on. Rate-limit / 5xx / network own their own statuses.
   if (typeof status === "number" && status !== 401 && status !== 403)
     return false;
+  // Some OpenAI-compatible gateways OVERLOAD 401 for non-auth failures: opencode.ai
+  // answers "Insufficient balance" (CreditsError) and "Model <id> is not supported"
+  // (ModelError) with HTTP 401. The credential is valid — reconnecting fixes
+  // neither — so a 401 whose body names one of those must fall through to the
+  // quota / model-unavailable branches, never the reconnect card.
+  if (isInsufficientBalance(lower) || isModelUnavailable(lower)) return false;
   // 401 is always authentication. 403 is ambiguous — Anthropic uses it for
   // authorization (`permission_error`), which re-logging-in won't fix — so a
   // 403 only counts as auth when the body itself names an auth failure (below).
@@ -220,6 +258,10 @@ function isNetwork(lower: string): boolean {
 
 function isModelUnavailable(lower: string): boolean {
   return MODEL_UNAVAILABLE_PATTERNS.some((p) => lower.includes(p));
+}
+
+function isInsufficientBalance(lower: string): boolean {
+  return INSUFFICIENT_BALANCE_PATTERNS.some((p) => lower.includes(p));
 }
 
 /**
