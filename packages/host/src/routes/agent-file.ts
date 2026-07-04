@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { agentFileEventType } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
@@ -14,19 +15,18 @@ import { json, readJson } from "./http";
  * (shared storage locally / cloud) see one file. Returns true when handled.
  */
 
-/** The reactivity event a write under a known `.houston` family should fire. */
+/**
+ * The reactivity event a write to `rel` should fire, or null for paths not
+ * worth an event. Classification comes from the ONE shared domain classifier
+ * (`agentFileEventType`), so this route, the FS watcher, and the web adapter's
+ * write-through echo can never drift into disagreeing about which file raises
+ * which event — e.g. a PUT of `CLAUDE.md` must fire `ContextChanged`, not
+ * `FilesChanged` (HOU-644).
+ */
 function eventForPath(rel: string, agentPath: string): HoustonEvent | null {
-  if (rel.startsWith(".houston/routine_runs"))
-    return { type: "RoutineRunsChanged", agentPath };
-  if (rel.startsWith(".houston/routines"))
-    return { type: "RoutinesChanged", agentPath };
-  if (rel.startsWith(".houston/activity"))
-    return { type: "ActivityChanged", agentPath };
-  if (rel.startsWith(".houston/config"))
-    return { type: "ConfigChanged", agentPath };
-  if (rel.startsWith(".houston/learnings"))
-    return { type: "LearningsChanged", agentPath };
-  return { type: "FilesChanged", agentPath };
+  const type = agentFileEventType(rel);
+  if (type === null) return null;
+  return { type, agentPath };
 }
 
 export async function handleAgentFile(
