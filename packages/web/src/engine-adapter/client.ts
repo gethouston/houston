@@ -52,7 +52,7 @@ import {
   toNewProvider,
   toOldProvider,
 } from "./synthetic";
-import { historyToFeed } from "./translate";
+import { historyToFeed, isConversationNotFound } from "./translate";
 import { observeConversation, streamTurn } from "./turn-stream";
 
 export interface HoustonClientOptions {
@@ -1146,8 +1146,14 @@ export class HoustonClient {
         );
       }
       return historyToFeed(history.messages);
-    } catch {
-      return [];
+    } catch (err) {
+      // A conversation with no persisted turns yet 404s — that IS an empty
+      // conversation (a fresh card opened before its first turn lands), not
+      // a failure. Anything else (network drop, auth, 5xx) propagates so the
+      // app's `call()` wrapper toasts it with the Report-bug affordance —
+      // returning [] would render a fake empty chat and swallow the error.
+      if (isConversationNotFound(err)) return [];
+      throw err;
     }
   }
   /**

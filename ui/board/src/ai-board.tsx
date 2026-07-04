@@ -340,7 +340,14 @@ export function AIBoard({
         .then((h) => {
           if (h.length > 0) onHistoryLoaded?.(sk, h);
         })
-        .catch(console.error);
+        .catch((err) => {
+          // Un-mark the session so re-selecting the conversation retries the
+          // load instead of permanently rendering it empty. Surfacing the
+          // failure (toast, report) is the parent's job — its loader rejects
+          // through its own error path before landing here.
+          hydratedKeys.current.delete(sk);
+          console.error(err);
+        });
     },
     [onLoadHistory, onHistoryLoaded, sessionKeyFor],
   );
