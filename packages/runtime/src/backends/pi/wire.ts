@@ -1,7 +1,7 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import type { TokenUsage, WireEvent } from "@houston/runtime-client";
-import { classifyProviderError } from "../ai/provider-error";
+import { classifyProviderError } from "../../ai/provider-error";
 
 /**
  * Normalize pi's per-message `Usage` into our provider-agnostic `TokenUsage`.

@@ -1,9 +1,9 @@
-import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import type {
   ChatMessage,
   ProviderError,
   TokenUsage,
   ToolCallRecord,
+  WireEvent,
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { activeEffort, resolveModel } from "../ai/providers";
@@ -17,7 +17,6 @@ import { decodeActingAuthor, framePrompt } from "./attribution";
 import { publish } from "./bus";
 import type { Conversation } from "./conversation-cache";
 import { switchNeedsCompaction } from "./provider-switch";
-import { toWire } from "./wire";
 
 /** A routine's pinned model/effort for this turn. Absent = keep the session's current. */
 export interface TurnPin {
@@ -78,9 +77,7 @@ export async function execTurn(
   // `done` that would settle the chat as a success on top of the error.
   let providerError: ProviderError | undefined;
 
-  const unsub = conv.session.subscribe((e: AgentSessionEvent) => {
-    const wire = toWire(e);
-    if (!wire) return;
+  const unsub = conv.session.subscribe((wire: WireEvent) => {
     if (wire.type === "text") assistantText += wire.data;
     else if (wire.type === "usage") usage = wire.data;
     else if (wire.type === "tool_start") tools.push({ name: wire.data.name });
