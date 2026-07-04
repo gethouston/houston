@@ -24,7 +24,7 @@ export interface AgentTab {
 // has no /v1/integrations routes. Gate on the build flag — a deterministic build
 // constant (NOT the runtime handshake), so the tab is present in every host build
 // and absent in the legacy one, uniformly across every STANDARD_TABS consumer.
-const HOST_BUILD = controlPlaneBuild(
+export const HOST_BUILD = controlPlaneBuild(
   import.meta.env as { VITE_NEW_ENGINE_URL?: string; VITE_NEW_ENGINE?: string },
 );
 

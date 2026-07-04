@@ -1,4 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import {
+  filterMatchesToGranted,
+  isActionGranted,
+  type LocalIntegrationGrants,
+} from "../integrations/grants";
 import { IntegrationSigninRequiredError } from "../integrations/types";
 import type { CredentialVault, WorkspaceStore } from "../ports";
 import { bearer, header, json, readJson } from "./http";
@@ -21,6 +26,13 @@ export async function handleSandboxIntegrations(
     vault: CredentialVault;
     store: WorkspaceStore;
     integrations?: IntegrationDeps;
+    /**
+     * Per-agent grants (LOCAL / self-host only; absent on gateway-fronted pods,
+     * where the gateway already enforced before the request reached here). When
+     * the acting agent HAS a stored record, search is filtered to granted
+     * toolkits and execute of an ungranted toolkit is refused with 403.
+     */
+    integrationGrants?: LocalIntegrationGrants;
   },
   method: string,
   path: string,
@@ -70,14 +82,22 @@ export async function handleSandboxIntegrations(
   const actingUser = header(req, "x-houston-acting-user");
   const acting = actingAs || actingUser ? { actingAs, actingUser } : undefined;
 
+  // The grant set for THIS agent (the sandbox token binds its id). null ⇒ no
+  // record ⇒ backward-compatible pass-through (every connected app). Absent on
+  // gateway-fronted pods, where the gateway already enforced upstream.
+  const granted = deps.integrationGrants
+    ? await deps.integrationGrants.grantedOrNull(claim.agentId)
+    : null;
+
   try {
     if (m[1] === "search") {
       if (typeof body.query !== "string") {
         json(res, 400, { error: "missing 'query'" });
         return true;
       }
+      const items = await provider.search(ws.ownerUserId, body.query, acting);
       json(res, 200, {
-        items: await provider.search(ws.ownerUserId, body.query, acting),
+        items: granted ? filterMatchesToGranted(items, granted) : items,
       });
       return true;
     }
@@ -85,6 +105,11 @@ export async function handleSandboxIntegrations(
     // execute
     if (typeof body.action !== "string") {
       json(res, 400, { error: "missing 'action'" });
+      return true;
+    }
+    // Grant check before the upstream call — an ungranted toolkit never runs.
+    if (granted && !isActionGranted(body.action, granted)) {
+      json(res, 403, { error: "toolkit_not_granted" });
       return true;
     }
     const params =

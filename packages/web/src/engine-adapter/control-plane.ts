@@ -823,15 +823,26 @@ export async function setAgentAssignments(
   );
 }
 
+/**
+ * The integration toolkit slugs granted to this agent, or `null` when the host
+ * does not serve grants (404) — a deployment without per-agent grants (e.g. a
+ * managed cloud pod whose gateway owns the policy). Callers treat `null` as
+ * "grants unsupported here" and degrade silently; every other error still throws.
+ */
 export async function agentIntegrationGrants(
   cfg: ControlPlaneConfig,
   agentSlugOrId: string,
-): Promise<string[]> {
-  const res = await cpFetch(
-    cfg,
-    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/integration-grants`,
-  );
-  return ((await res.json()) as { toolkits: string[] }).toolkits;
+): Promise<string[] | null> {
+  try {
+    const res = await cpFetch(
+      cfg,
+      `/v1/agents/${encodeURIComponent(agentSlugOrId)}/integration-grants`,
+    );
+    return ((await res.json()) as { toolkits: string[] }).toolkits;
+  } catch (err) {
+    if (err instanceof HoustonEngineError && err.status === 404) return null;
+    throw err;
+  }
 }
 
 export async function setAgentIntegrationGrants(

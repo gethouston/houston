@@ -1180,10 +1180,14 @@ export class HoustonClient {
     if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
     return controlPlane.setAgentAssignments(this.cp, agentSlugOrId, userIds);
   }
-  // Grants degrade like `integrationStatus`: single-player has no grants model,
-  // so read is empty and write is a no-op rather than a hard failure.
-  async agentIntegrationGrants(agentSlugOrId: string): Promise<string[]> {
-    if (!this.cp) return [];
+  // Grants degrade gracefully: `null` means "this deployment has no grants
+  // model" (the legacy engine path, or a host that 404s the route), which the UI
+  // treats as unsupported rather than a hard failure. A host that serves grants
+  // (the local/self-host TS host, or the cloud gateway) answers with the set.
+  async agentIntegrationGrants(
+    agentSlugOrId: string,
+  ): Promise<string[] | null> {
+    if (!this.cp) return null;
     return controlPlane.agentIntegrationGrants(this.cp, agentSlugOrId);
   }
   async setAgentIntegrationGrants(

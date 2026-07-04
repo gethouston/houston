@@ -3,6 +3,7 @@ import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations } from "../../lib/tauri";
 import {
   applyGrantChange,
+  applyGrantChangeNullable,
   type GrantChange,
   reverseGrantChange,
 } from "./grant-set";
@@ -65,9 +66,13 @@ export function useDisconnectIntegration(provider: string) {
  * per-(user, agent) grant set from C4). Gated on the `multiplayer` capability
  * via `enabled` — the local/desktop engine has no grant routes, so the query
  * stays idle in single-player and the tab renders without grant sections.
+ *
+ * Data is `string[] | null`: `null` means the host answered 404 = grants
+ * unsupported (a build that predates grants), which the caller renders as
+ * "all agents can use this" rather than a broken toggle.
  */
 export function useAgentGrants(agentId: string, enabled: boolean) {
-  return useQuery({
+  return useQuery<string[] | null>({
     queryKey: queryKeys.agentGrants(agentId),
     queryFn: () => tauriIntegrations.grants(agentId),
     enabled,
@@ -95,25 +100,33 @@ export function useAgentGrantMutation(agentId: string) {
       // send the union rather than each other's stale snapshots. Re-applying
       // the change is idempotent over the optimistic value and covers the
       // edge where a refetch overwrote the cache in between.
-      const current = qc.getQueryData<string[]>(key) ?? [];
+      const current = qc.getQueryData<string[] | null>(key);
+      // Grants unsupported (host answered 404 → cached null): never fire a PUT
+      // that would fabricate a set the host has no route for. The UI gates
+      // toggles on `supported`, so this is a defensive no-op, not a swallow.
+      if (current === null) return Promise.resolve();
       return tauriIntegrations.setGrants(
         agentId,
-        applyGrantChange(current, change),
+        applyGrantChange(current ?? [], change),
       );
     },
     onMutate: async (change) => {
       // Stop a racing refetch from overwriting the optimistic value mid-flight.
       await qc.cancelQueries({ queryKey: key });
-      qc.setQueryData<string[]>(key, (prev) =>
-        applyGrantChange(prev ?? [], change),
+      qc.setQueryData<string[] | null>(key, (prev) =>
+        // A null (unsupported) cache stays null; an unloaded cache starts empty.
+        applyGrantChangeNullable(prev === undefined ? [] : prev, change),
       );
     },
     onError: (_err, change) => {
       // Reverse ONLY this change (not a whole-set snapshot restore, which
       // would clobber another overlapping mutation's optimistic update); the
-      // settle invalidation below re-syncs with the server regardless.
-      qc.setQueryData<string[]>(key, (prev) =>
-        reverseGrantChange(prev ?? [], change),
+      // settle invalidation below re-syncs with the server regardless. A null
+      // (unsupported) cache stays null — nothing to reverse.
+      qc.setQueryData<string[] | null>(key, (prev) =>
+        prev === null || prev === undefined
+          ? (prev ?? null)
+          : reverseGrantChange(prev, change),
       );
     },
     onSettled: () => qc.invalidateQueries({ queryKey: key }),

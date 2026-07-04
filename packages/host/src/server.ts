@@ -12,6 +12,7 @@ import {
   type FeedbackSender,
   parseFeedbackPayload,
 } from "./feedback";
+import type { LocalIntegrationGrants } from "./integrations/grants";
 import type { WorkspacePaths } from "./paths";
 import type {
   CredentialStore,
@@ -25,6 +26,7 @@ import { handleAgents } from "./routes/agents";
 import { handleSandboxCredential } from "./routes/credential";
 import { handleEventStream } from "./routes/events-stream";
 import { bearer, json, readJson } from "./routes/http";
+import { handleIntegrationGrants } from "./routes/integration-grants";
 import {
   handleIntegrations,
   type IntegrationDeps,
@@ -94,6 +96,14 @@ export interface ControlPlaneDeps {
   feedback?: FeedbackSender;
   /** Third-party integrations (Composio, platform mode); absent → integration routes 503. */
   integrations?: IntegrationDeps;
+  /**
+   * Per-agent integration grants (LOCAL / self-host profile only). Present ONLY
+   * when this host is NOT gateway-fronted — a managed cloud pod leaves it unset so
+   * the gateway that fronts it stays the single owner of grant policy. Absent →
+   * the grant routes 404 (client reads that as "grants unsupported") and the
+   * sandbox proxy enforces nothing.
+   */
+  integrationGrants?: LocalIntegrationGrants;
   corsOrigin?: string;
 }
 
@@ -197,6 +207,8 @@ async function handle(
   if (await handleAccount(deps, userId, method, path, req, res)) return;
   if (await handlePortableAccount(deps, userId, method, path, req, res)) return;
   if (await handleIntegrations(deps, userId, method, path, req, res)) return;
+  if (await handleIntegrationGrants(deps, userId, method, path, req, res))
+    return;
 
   if (await handleAgents(deps, userId, method, path, url, req, res)) return;
 

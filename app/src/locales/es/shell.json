@@ -1,4 +1,7 @@
 {
+  "sidebar": {
+    "integrations": "Integraciones"
+  },
   "catalog": {
     "personal-assistant": {
       "name": "Asistente personal",

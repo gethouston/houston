@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   DEFAULT_TAB_ID,
+  HOST_BUILD,
   STANDARD_TAB_IDS,
   STANDARD_TABS,
 } from "../../agents/standard-tabs";
@@ -32,6 +33,7 @@ import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { CommandPalette } from "../command-palette";
 import { Dashboard } from "../dashboard";
+import { INTEGRATIONS_VIEW_ID, IntegrationsView } from "../integrations-view";
 import { MissionSearchInput } from "../mission-search-input";
 import { ExportAgentWizard } from "../portable/export-wizard";
 import { ImportAgentWizard } from "../portable/import-wizard";
@@ -90,7 +92,10 @@ export function WorkspaceShell({
   const needsYouCount = (activities ?? []).filter(
     (a) => a.status === "needs_you",
   ).length;
-  const isAgentView = viewMode !== "dashboard" && viewMode !== "settings";
+  const isAgentView =
+    viewMode !== "dashboard" &&
+    viewMode !== "settings" &&
+    viewMode !== INTEGRATIONS_VIEW_ID;
   const tabOr = (id: string) =>
     STANDARD_TAB_IDS.has(id) ? id : DEFAULT_TAB_ID;
 
@@ -159,6 +164,8 @@ export function WorkspaceShell({
                   <Dashboard />
                 ) : viewMode === "settings" ? (
                   <SettingsView />
+                ) : viewMode === INTEGRATIONS_VIEW_ID && HOST_BUILD ? (
+                  <IntegrationsView />
                 ) : currentAgent && agentDef && isAgentView ? (
                   <>
                     <div data-tour-target="tabs">

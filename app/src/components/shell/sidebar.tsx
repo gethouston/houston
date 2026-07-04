@@ -1,15 +1,16 @@
 import { ConfirmDialog } from "@houston-ai/core";
 import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
-import { LayoutDashboard, Settings } from "lucide-react";
+import { Blocks, LayoutDashboard, Settings } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
+import { DEFAULT_TAB_ID, HOST_BUILD } from "../../agents/standard-tabs";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { orderAgents } from "../../lib/agent-order";
 import { resolveAutoCollapse } from "../../lib/sidebar-auto-collapse";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
+import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
 import { buildAgentSidebarItems } from "./agent-sidebar-items";
 import { UpdateChecker } from "./update-checker";
 import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
@@ -70,7 +71,10 @@ export function Sidebar({ children }: { children: ReactNode }) {
     onShareAgent: (agentId) => useUIStore.getState().setShareAgentId(agentId),
     shareLabel: t("portable:shareMenu"),
   });
-  const isTopLevel = viewMode === "dashboard" || viewMode === "settings";
+  const isTopLevel =
+    viewMode === "dashboard" ||
+    viewMode === "settings" ||
+    viewMode === INTEGRATIONS_VIEW_ID;
 
   const handleWorkspaceSwitch = async (wsId: string) => {
     if (wsId === currentWorkspace?.id) return;
@@ -152,6 +156,20 @@ export function Sidebar({ children }: { children: ReactNode }) {
               onClick: () => setViewMode("dashboard"),
               dataAttrs: { "data-tour-target": "nav-dashboard" },
             },
+            // Composio integrations are a v3-host feature; gate the nav entry on
+            // the same build flag STANDARD_TABS uses so legacy-engine builds
+            // never surface it (the routes do not exist there).
+            ...(HOST_BUILD
+              ? [
+                  {
+                    id: INTEGRATIONS_VIEW_ID,
+                    label: t("shell:sidebar.integrations"),
+                    icon: <Blocks className="h-4 w-4" />,
+                    onClick: () => setViewMode(INTEGRATIONS_VIEW_ID),
+                    dataAttrs: { "data-tour-target": "nav-integrations" },
+                  },
+                ]
+              : []),
             {
               id: "settings",
               label: t("shell:sidebar.settings"),
