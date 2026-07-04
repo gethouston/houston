@@ -275,10 +275,11 @@ jobs:
           # shadow that URL (a cloud release ships latest-cloud.json, not
           # latest.json) and every installed local app's auto-updater would 404.
           # Keeping cloud releases as prereleases means they never become "latest",
-          # so the local updater feed is unaffected. (Consequence: cloud auto-update
-          # via the /latest/ endpoint is a documented follow-up — see the PR /
-          # convergence/README.md; contamination is already prevented by the
-          # channel-specific manifest name.)
+          # so the local updater feed is unaffected. Cloud apps instead poll the
+          # fixed-tag `cloud-latest` pointer release, which the
+          # cloud-updater-manifest workflow refreshes when a cloud release is
+          # published (contamination is additionally prevented by the
+          # channel-specific manifest name).
           case "$GITHUB_REF_NAME" in
             cloud-*) TITLE="Houston Cloud v$VERSION"; PRERELEASE=(--prerelease) ;;
             *)       TITLE="Houston v$VERSION";       PRERELEASE=() ;;
