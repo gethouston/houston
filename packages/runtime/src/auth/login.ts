@@ -17,7 +17,6 @@ import {
   type ProviderId,
   providerAuthMethod,
 } from "../ai/providers";
-import { config } from "../config";
 import { authStorage, providerConnected } from "./storage";
 
 /**
@@ -44,24 +43,23 @@ type LoginState = {
 const active = new Map<ProviderId, LoginState>();
 
 /**
- * Which Codex OAuth flow to run. The browser/loopback login (the user approves
- * in their own browser, the localhost callback finishes it, no code to type) is
- * used ONLY when the client is co-located: it asked for it (`deviceAuth: false`,
- * which only the desktop app sends — `!osIsTauri()`) AND this runtime can host a
- * loopback callback the browser actually reaches (`!headless`). Otherwise the
- * device-code grant, where the user enters a one-time code while the runtime
- * polls. `deviceAuth` is the load-bearing signal — a remote webapp (cloud OR
- * self-host) sends `deviceAuth: true` and gets the device code regardless of how
- * the runtime binds; `headless` only guards the exotic "desktop pointed at a
- * remote headless runtime" case where the loopback can't be reached.
+ * Which Codex OAuth flow to run — decided SOLELY by `deviceAuth`. The
+ * browser/loopback login (the user approves in their own browser, no code to
+ * type) works even against a headless/remote runtime: pi's loginOpenAICodex
+ * races its own local callback server against a manually-relayed code
+ * (`onManualCodeInput`, wired below). The desktop client catches the fixed
+ * `http://localhost:1455/auth/callback` redirect and relays code+state via
+ * `completeLogin`, and the runtime performs the token exchange — so the loopback
+ * never needs to be reachable from the runtime itself. `deviceAuth: false` is
+ * only sent by clients that can catch/relay that loopback callback; everyone
+ * else (a remote webapp, cloud OR self-host) sends `deviceAuth: true` and gets
+ * the device-code grant, where the user types a one-time code while the runtime
+ * polls.
  */
-export function codexLoginMethod(opts: {
-  deviceAuth: boolean;
-  headless: boolean;
-}): string {
-  return !opts.deviceAuth && !opts.headless
-    ? OPENAI_CODEX_BROWSER_LOGIN_METHOD
-    : OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD;
+export function codexLoginMethod(opts: { deviceAuth: boolean }): string {
+  return opts.deviceAuth
+    ? OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD
+    : OPENAI_CODEX_BROWSER_LOGIN_METHOD;
 }
 
 /**
@@ -166,8 +164,7 @@ export async function startLogin(
       // Codex offers browser (loopback) or device-code login; let the client
       // pick so the co-located desktop redirects to the browser to approve and
       // remote webapp clients type a code (see codexLoginMethod).
-      onSelect: async () =>
-        codexLoginMethod({ deviceAuth, headless: config.headless }),
+      onSelect: async () => codexLoginMethod({ deviceAuth }),
       onPrompt: () => {
         const auto = autoPromptAnswer(provider, enterpriseDomain);
         return auto === null ? pastePromise : Promise.resolve(auto);

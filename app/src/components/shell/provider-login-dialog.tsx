@@ -197,6 +197,12 @@ export function ProviderLoginDialog({
             <ProviderDeviceCode
               code={userCode}
               providerName={provider.name}
+              verificationUri={url}
+              settingsUrl={
+                provider.id === "openai"
+                  ? "https://chatgpt.com/#settings/Security"
+                  : null
+              }
               onClose={onClose}
             />
           ) : (

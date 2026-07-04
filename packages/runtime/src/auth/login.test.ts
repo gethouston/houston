@@ -11,30 +11,31 @@ import {
   startLogin,
 } from "./login";
 
-test("codexLoginMethod: browser login only for a co-located client on a loopback runtime", () => {
-  // The desktop app sends deviceAuth:false and the desktop runtime is non-headless:
-  // the user approves in their own browser and the localhost callback finishes it.
-  expect(codexLoginMethod({ deviceAuth: false, headless: false })).toBe(
+test("codexLoginMethod: browser login for any client that can catch/relay the loopback callback", () => {
+  // The desktop app sends deviceAuth:false: the user approves in their own
+  // browser, the client catches the fixed localhost:1455 redirect and relays
+  // code+state, and the runtime finishes the token exchange.
+  expect(codexLoginMethod({ deviceAuth: false })).toBe(
     OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   );
 });
 
 test("codexLoginMethod: device code for any remote client (deviceAuth) — cloud and self-host", () => {
   // A remote webapp (cloud OR self-host) sends deviceAuth:true: the user types a
-  // one-time code while the runtime polls, regardless of how the runtime binds.
-  expect(codexLoginMethod({ deviceAuth: true, headless: false })).toBe(
-    OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
-  );
-  expect(codexLoginMethod({ deviceAuth: true, headless: true })).toBe(
+  // one-time code while the runtime polls.
+  expect(codexLoginMethod({ deviceAuth: true })).toBe(
     OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
   );
 });
 
-test("codexLoginMethod: device code when a co-located client hits a headless runtime", () => {
-  // Exotic: desktop pointed at a remote headless runtime. The loopback can't be
-  // reached, so fall back to the device code even though deviceAuth is false.
-  expect(codexLoginMethod({ deviceAuth: false, headless: true })).toBe(
-    OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
+test("codexLoginMethod: browser login for a headless/remote runtime whose client relays the callback", () => {
+  // Cloud-relay scenario: the runtime is headless but the desktop client still
+  // catches http://localhost:1455/auth/callback and relays code+state via
+  // completeLogin. The browser flow races its local callback server against that
+  // manually-relayed code, so headless no longer forces the device code — only
+  // deviceAuth decides, and deviceAuth:false means the client CAN relay.
+  expect(codexLoginMethod({ deviceAuth: false })).toBe(
+    OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   );
 });
 

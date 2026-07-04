@@ -26,7 +26,10 @@ import { shouldAutocompactForSession } from "./autocompact";
 import { COMPOSIO_ALREADY_CONNECTED_KIND } from "./composio-already-connected";
 import { getEngine, isRemoteEngine } from "./engine";
 import { engineCallSurface } from "./engine-call-policy";
-import { providerLoginUsesDeviceAuthByDefault } from "./engine-mode";
+import {
+  codexUsesLoopbackRelay,
+  providerLoginUsesDeviceAuthByDefault,
+} from "./engine-mode";
 import { logger } from "./logger";
 import { isMissingSkillError } from "./missing-skill";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
@@ -946,18 +949,27 @@ export const tauriProvider = {
         getEngine().providerLogin(provider, {
           deviceAuth:
             opts?.deviceAuth ??
-            // A runtime `remote` choice (HOU-621) makes the engine remote without
-            // any baked URL env, so OR in isRemoteEngine() — else the topology
-            // helper (build-env only) would pick browser loopback against a
-            // callback that lives on the remote host and the login strands.
-            (isRemoteEngine() ||
-              providerLoginUsesDeviceAuthByDefault(
-                (import.meta.env ?? {}) as {
-                  VITE_NEW_ENGINE_URL?: string;
-                  VITE_HOSTED_ENGINE_URL?: string;
-                },
-                { isTauri: osIsTauri() },
-              )),
+            // Codex/OpenAI on a Tauri desktop uses the zero-code loopback relay
+            // even against a REMOTE engine: the desktop binds its own localhost
+            // listener and relays the callback code, so it always wants an
+            // authorize URL (deviceAuth:false), never device code. Every other
+            // provider keeps the connection-topology default below.
+            (provider === "openai" &&
+            codexUsesLoopbackRelay({ isTauri: osIsTauri() })
+              ? false
+              : // A runtime `remote` choice (HOU-621) makes the engine remote
+                // without any baked URL env, so OR in isRemoteEngine() — else the
+                // topology helper (build-env only) would pick browser loopback
+                // against a callback that lives on the remote host and the login
+                // strands.
+                isRemoteEngine() ||
+                providerLoginUsesDeviceAuthByDefault(
+                  (import.meta.env ?? {}) as {
+                    VITE_NEW_ENGINE_URL?: string;
+                    VITE_HOSTED_ENGINE_URL?: string;
+                  },
+                  { isTauri: osIsTauri() },
+                )),
           enterpriseDomain: opts?.enterpriseDomain,
         }),
       undefined,

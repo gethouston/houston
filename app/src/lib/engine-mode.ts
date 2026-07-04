@@ -52,6 +52,23 @@ export function providerLoginUsesDeviceAuthByDefault(
   );
 }
 
+/**
+ * Whether Codex/OpenAI (ChatGPT) sign-in should use the desktop's own
+ * zero-code loopback relay instead of the device-code flow.
+ *
+ * Unlike {@link providerLoginUsesDeviceAuthByDefault}, this is true for a Tauri
+ * desktop even when the engine is REMOTE: the runtime hands back an authorize
+ * URL, the desktop binds its OWN localhost listener
+ * (`start_codex_oauth_loopback`), opens the URL in the user's browser, and
+ * relays the `code=...&state=...` the callback carries back to the engine via
+ * `submitLoginCode`. The callback lands on the user's machine, so co-location
+ * with the engine is irrelevant. A plain browser client has no local listener
+ * and still falls back to device code.
+ */
+export function codexUsesLoopbackRelay(client: { isTauri: boolean }): boolean {
+  return client.isTauri;
+}
+
 /** How the desktop authenticates to the hosted engine (`VITE_HOSTED_ENGINE_URL`). */
 export type HostedAuthMode =
   /** Supabase Google login: prompt sign-in, send the session token as bearer. */

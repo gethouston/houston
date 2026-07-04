@@ -56,6 +56,9 @@
     "copyCode": "Copiar código",
     "codeCopied": "¡Código copiado!",
     "codeCopyFailed": "No se pudo copiar el código",
+    "deviceOpenFailed": "No se pudo abrir la página de inicio de sesión",
+    "deviceSettingsHint": "¿No aparece la solicitud de código? Activa el inicio de sesión con código de dispositivo en <link>Configuración de ChatGPT > Seguridad</link>.",
+    "deviceSettingsOpenFailed": "No se pudo abrir la configuración de ChatGPT",
     "cancel": "Cancelar"
   },
   "apiKey": {
