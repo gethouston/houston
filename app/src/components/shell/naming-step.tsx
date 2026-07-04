@@ -7,6 +7,7 @@ import {
   HoustonAvatar,
   Input,
   resolveAgentColor,
+  Spinner,
 } from "@houston-ai/core";
 import { ArrowLeft, Check, ChevronDown, FolderOpen } from "lucide-react";
 import type { FormEvent } from "react";
@@ -25,6 +26,8 @@ interface NamingStepProps {
   existingPath: string | null;
   provider: string;
   model: string;
+  /** The create request is in flight — lock the submit and show progress. */
+  creating: boolean;
   /** Show "Link existing project" option (opt-in via agent features). */
   showLinkProject?: boolean;
   onNameChange: (value: string) => void;
@@ -43,6 +46,7 @@ export function NamingStep({
   existingPath,
   provider,
   model,
+  creating,
   onNameChange,
   onColorChange,
   onExistingPathChange,
@@ -175,10 +179,17 @@ export function NamingStep({
         )}
         <Button
           type="submit"
-          disabled={!name.trim()}
+          disabled={!name.trim() || creating}
           className="w-full rounded-full"
         >
-          {t("naming.createAgent")}
+          {creating ? (
+            <>
+              <Spinner className="size-4" />
+              {t("naming.createAgent")}
+            </>
+          ) : (
+            t("naming.createAgent")
+          )}
         </Button>
       </form>
     </div>
