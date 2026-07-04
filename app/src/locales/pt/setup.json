@@ -79,7 +79,10 @@
       },
       "brain": {
         "title": "Entre na sua assinatura de IA",
-        "body": "Escolha a IA que você já paga. Você usa sua própria assinatura, então o Houston nunca vê sua senha nem sua fatura."
+        "body": "Escolha a IA que você já paga. Você usa sua própria assinatura, então o Houston nunca vê sua senha nem sua fatura.",
+        "continue": "Criar meu assistente",
+        "creating": "Criando",
+        "continueHint": "O Houston vai criar seu assistente e abrir a próxima missão."
       },
       "providerLogin": {
         "title": "Entre no {{provider}}",
@@ -90,21 +93,6 @@
         "connected": {
           "title": "Tudo pronto",
           "body": "Encontramos o {{provider}} neste computador. Você já está conectado com sua própria assinatura, então não há nada para configurar aqui."
-        }
-      },
-      "tools": {
-        "title": "Conecte seus apps",
-        "body": "Seu agente trabalha com apps como Gmail e sua agenda através do Composio, um provedor de integrações seguro. Uma única conta permite conectar qualquer app, só quando você precisa.",
-        "steps": {
-          "account": "Crie sua conta no Composio",
-          "authorize": "Autorize o Houston a conectar"
-        },
-        "allow": "Entrar",
-        "waiting": "Esperando você no navegador...",
-        "cancel": "Cancelar",
-        "connected": {
-          "title": "Tudo pronto",
-          "body": "Seu agente já pode conectar seus apps quando você precisar."
         }
       },
       "meet": {
@@ -129,18 +117,15 @@
         "body": "Seu agente já pode pensar. Você está um passo mais perto.",
         "cta": "Continuar"
       },
-      "appsConnected": {
-        "title": "Apps conectados!",
-        "body": "Configuração concluída, mandou bem. Agora vamos criar seu primeiro agente.",
-        "cta": "Criar meu agente"
-      },
       "connectEmail": {
         "title": "Dê ao seu agente acesso ao seu e-mail",
         "body": "Escolha seu e-mail para o agente poder enviar por você. Você conecta uma vez, com segurança.",
         "other": "Outro provedor",
         "otherPlaceholder": "Qual provedor de e-mail?",
         "connect": "Conectar",
-        "connecting": "Conectando..."
+        "connecting": "Conectando...",
+        "skipHint": "Não consegue conectar agora? Você pode fazer isso quando quiser em Integrações.",
+        "skip": "Pular por enquanto"
       },
       "agentCreated": {
         "title": "Agente criado!",
