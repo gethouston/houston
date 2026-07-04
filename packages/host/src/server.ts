@@ -31,6 +31,7 @@ import {
 } from "./routes/integrations";
 import { handleSandboxIntegrations } from "./routes/integrations-sandbox";
 import { handlePortableAccount } from "./routes/portable";
+import { handleSkillsDirectory } from "./routes/skills-directory";
 import type { Vfs } from "./vfs";
 
 export type { RuntimeProxy } from "./channel/proxy";
@@ -194,6 +195,9 @@ async function handle(
   }
 
   // User-level resources (workspaces, preferences) — no agent in the path.
+  // Marketplace reads (skills.sh search/popular, GitHub repo discovery) are
+  // user-scoped too: browsing has no agent yet; only installs are per-agent.
+  if (await handleSkillsDirectory(method, path, req, res)) return;
   if (await handleAccount(deps, userId, method, path, req, res)) return;
   if (await handlePortableAccount(deps, userId, method, path, req, res)) return;
   if (await handleIntegrations(deps, userId, method, path, req, res)) return;

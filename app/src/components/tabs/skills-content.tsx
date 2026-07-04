@@ -5,6 +5,7 @@ import {
   EmptyTitle,
   Spinner,
 } from "@houston-ai/core";
+import type { CommunitySkill, RepoSkill } from "@houston-ai/skills";
 import { AddSkillDialog } from "@houston-ai/skills";
 import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -19,6 +20,11 @@ export function SkillsContent({
   loading,
   loadingSkillName,
   onSkillClick,
+  onSearch,
+  onPopular,
+  onInstallCommunity,
+  onListFromRepo,
+  onInstallFromRepo,
   onCreateFromScratch,
   installedSkillNames,
 }: {
@@ -27,6 +33,17 @@ export function SkillsContent({
   /** Name of the skill whose detail is loading; its card spins + disables. */
   loadingSkillName?: string | null;
   onSkillClick: (name: string) => void;
+  onSearch?: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>;
+  onPopular?: (signal?: AbortSignal) => Promise<CommunitySkill[]>;
+  onInstallCommunity?: (
+    skill: CommunitySkill,
+    signal?: AbortSignal,
+  ) => Promise<string>;
+  onListFromRepo?: (source: string) => Promise<RepoSkill[]>;
+  onInstallFromRepo?: (
+    source: string,
+    skills: RepoSkill[],
+  ) => Promise<string[]>;
   onCreateFromScratch?: (input: {
     name: string;
     description: string;
@@ -43,6 +60,11 @@ export function SkillsContent({
   );
   const addDialogProps = onCreateFromScratch
     ? {
+        onSearch,
+        onPopular,
+        onInstallCommunity,
+        onListFromRepo,
+        onInstallFromRepo,
         onCreateFromScratch,
         installedSkillNames,
       }

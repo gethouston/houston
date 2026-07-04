@@ -123,6 +123,23 @@ export interface SkillDetail {
   content: string;
 }
 
+/** Community skill search result */
+export interface CommunitySkillResult {
+  id: string;
+  skillId: string;
+  name: string;
+  installs: number;
+  source: string;
+}
+
+/** A skill discovered in a GitHub repo */
+export interface RepoSkill {
+  id: string;
+  name: string;
+  description: string;
+  path: string;
+}
+
 /** File entry returned by list_project_files */
 export interface FileEntry {
   path: string;

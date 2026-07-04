@@ -88,18 +88,35 @@ Step-by-step instructions Claude follows when the Skill runs.
 ## Community search behavior
 
 `POST /v1/skills/community/search` calls `skills.sh`, which can rate-limit.
-Engine owns the resilience: successful searches are cached in-memory, outbound
-requests are globally spaced, and stale cached results are returned during a
-temporary 429/network failure. App search callers handle remaining failures
-inline in the Add Skills UI; they should not show global "Houston problem" bug
-toasts for marketplace search misses.
+The engine owns the resilience: successful searches are cached in-memory,
+outbound requests are globally spaced, and stale cached results are returned
+during a temporary 429/network failure. App search callers handle remaining
+failures inline in the Add Skills UI; they should not show global "Houston
+problem" bug toasts for marketplace search misses.
+
+Both engines implement the same routes and resilience. TS host (current):
+the read-only marketplace surface (search/popular/repo-list — no workspace
+touched) is served top-level at `POST /v1/skills/...`
+(`packages/host/src/routes/skills-directory.ts`, what the web/desktop host
+adapter in `packages/web/src/engine-adapter/` calls) AND agent-scoped for the
+engine-client wire; installs are agent-scoped only.
+`packages/host/src/routes/skills-remote.ts` dispatches
+`POST skills/community/{search,popular,install}` and
+`POST skills/repo/{list,install}` to `packages/host/src/skills/`
+(`community.ts` = skills.sh cache/spacing/stale-fallback, `github.ts` +
+`github-parse.ts` = repo discovery, `install.ts` = install composition on the
+workspace Vfs). Typed failures answer `{error: {code, message, details:
+{kind}}}` so `HoustonEngineError.kind` carries the same
+`ui/skills/src/skill-error-kinds.ts` taxonomy the Rust engine emits. Legacy
+Rust oracle: `engine/houston-skills/src/remote.rs`.
 
 ## Installing a community / repo skill
 
 `install_skill` (skills.sh) and `install_from_repo` (GitHub) both route the
-fetched `SKILL.md` through `houston_skills::install_skill_md`, which **preserves
-the author's frontmatter** (description, category, integrations, image, inputs)
-instead of rebuilding a bare one. Two invariants matter:
+fetched `SKILL.md` through `houston_skills::install_skill_md` (Rust) /
+`composeInstalledSkillMd` in `packages/domain/src/skill-install.ts` (TS host),
+which **preserves the author's frontmatter** (description, category,
+integrations, image) instead of rebuilding a bare one. Two invariants matter:
 
 - The install slug owns the on-disk directory **and** the frontmatter `name`
   (derived from the source `name:` when valid, else a slugified id), so the two
@@ -112,8 +129,9 @@ instead of rebuilding a bare one. Two invariants matter:
 
 ### Repo input parsing (the "Install from another repo" field)
 
-`normalize_source` in `engine/houston-skills/src/remote.rs` is the single
-front door for whatever the user types into the repo field. It anchors on the
+`normalize_source` in `engine/houston-skills/src/remote.rs` (Rust) and
+`normalizeSource` in `packages/host/src/skills/github-parse.ts` (TS host) are
+the single front door for whatever the user types into the repo field. It anchors on the
 `github.com` host wherever it appears, so it recovers `owner/repo` from the
 short form, a full URL (`.git`, `/tree/main`, `?query`, `#frag` all tolerated),
 the SSH form (`git@github.com:owner/repo`), and even a whole pasted shell
@@ -236,6 +254,9 @@ The Rust engine applied the same directory-slug identity rule through different 
 |------|-------|
 | Skills domain (TS, current) | [`packages/domain/src/skills.ts`](../packages/domain/src/skills.ts) — parse + `loadSkills`/`loadSkillDetail`, identity = directory slug |
 | Skills host routes (TS, current) | [`packages/host/src/routes/skills.ts`](../packages/host/src/routes/skills.ts) — GET/POST/PUT/DELETE; missing skill → 404 |
+| Marketplace host routes (TS, current) | [`packages/host/src/routes/skills-remote.ts`](../packages/host/src/routes/skills-remote.ts) — skills.sh search/popular/install + GitHub repo list/install |
+| Marketplace remote logic (TS, current) | [`packages/host/src/skills/`](../packages/host/src/skills/) — community cache, GitHub discovery, install composition |
+| Install composition (TS, current) | [`packages/domain/src/skill-install.ts`](../packages/domain/src/skill-install.ts) — `composeInstalledSkillMd`, frontmatter-preserving |
 | Missing-skill classifier (TS, current) | [`app/src/lib/missing-skill.ts`](../app/src/lib/missing-skill.ts) — `isMissingSkillError` (404) keeps it off the bug-toast/Sentry path |
 | Skills surface hook (TS, current) | [`app/src/components/tabs/use-skill-surface.ts`](../app/src/components/tabs/use-skill-surface.ts) — inline "Skill unavailable" handling |
 | Schema (Rust) | [`engine/houston-skills/src/lib.rs`](../engine/houston-skills/src/lib.rs) |

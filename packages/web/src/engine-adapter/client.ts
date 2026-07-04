@@ -11,15 +11,19 @@ import type {
   Agent,
   Capabilities,
   ChatHistoryEntry,
+  CommunitySkill,
   ConversationEntry,
   CreateAgent,
   CreateAgentResult,
   CreateSkillRequest,
+  InstallCommunityRequest,
+  InstallFromRepoRequest,
   NewActivity,
   NewRoutine,
   ProjectConfig,
   ProjectFile,
   ProviderStatus,
+  RepoSkill,
   Routine,
   RoutineUpdate,
   SaveSkillRequest,
@@ -676,6 +680,57 @@ export class HoustonClient {
     if (!this.cp) return;
     await controlPlane.deleteSkill(this.cp, workspacePath, name);
     emitLocalEcho("SkillsChanged", { agentPath: workspacePath });
+  }
+  // Marketplace: skills.sh search/install + GitHub repo discovery. Standalone
+  // web has no marketplace backend — searches answer empty (the dialog shows
+  // its "unavailable" state), installs refuse loudly rather than no-op.
+  async searchCommunitySkills(
+    query: string,
+    signal?: AbortSignal,
+  ): Promise<CommunitySkill[]> {
+    if (!this.cp) return [];
+    return controlPlane.searchCommunitySkills(this.cp, query, signal);
+  }
+  async popularCommunitySkills(
+    signal?: AbortSignal,
+  ): Promise<CommunitySkill[]> {
+    if (!this.cp) return [];
+    return controlPlane.popularCommunitySkills(this.cp, signal);
+  }
+  async listSkillsFromRepo(
+    source: string,
+    signal?: AbortSignal,
+  ): Promise<RepoSkill[]> {
+    if (!this.cp) return [];
+    return controlPlane.listSkillsFromRepo(this.cp, source, signal);
+  }
+  async installCommunitySkill(
+    req: InstallCommunityRequest,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    if (!this.cp) throw new Error("Installing skills needs a cloud workspace.");
+    const slug = await controlPlane.installCommunitySkill(
+      this.cp,
+      req.workspacePath,
+      { source: req.source, skillId: req.skillId },
+      signal,
+    );
+    emitLocalEcho("SkillsChanged", { agentPath: req.workspacePath });
+    return slug;
+  }
+  async installSkillsFromRepo(
+    req: InstallFromRepoRequest,
+    signal?: AbortSignal,
+  ): Promise<string[]> {
+    if (!this.cp) throw new Error("Installing skills needs a cloud workspace.");
+    const installed = await controlPlane.installSkillsFromRepo(
+      this.cp,
+      req.workspacePath,
+      { source: req.source, skills: req.skills },
+      signal,
+    );
+    emitLocalEcho("SkillsChanged", { agentPath: req.workspacePath });
+    return installed;
   }
 
   // ---- providers (auth) ----
