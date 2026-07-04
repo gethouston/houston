@@ -70,8 +70,8 @@ const MODEL_UNAVAILABLE_PATTERNS = [
  * A spend/credit exhaustion — NOT an auth failure. opencode.ai answers an
  * out-of-credit account with `401 {"type":"CreditsError","message":"Insufficient
  * balance. Manage your billing here: …"}`. Reconnecting the (valid) key does
- * nothing; the user must top up. Classified into the quota family (`rate_limited`)
- * so the card shows the provider's own message + billing link, never a reconnect.
+ * nothing; the user must top up. Classified as `quota_exhausted` (the "pay or
+ * switch" card), never a reconnect.
  */
 const INSUFFICIENT_BALANCE_PATTERNS = [
   "insufficient balance",
@@ -117,6 +117,19 @@ export function classifyProviderError(
       kind: "unauthenticated",
       provider,
       cause: authCause(lower),
+      message,
+    };
+  }
+  // Spend/credit exhaustion (opencode.ai CreditsError): the account is out of
+  // credit or lacks the subscription for this model — the "pay or switch" state,
+  // NOT auth and NOT a wait-out rate limit. Surfaces the provider's message.
+  if (isInsufficientBalance(lower)) {
+    return {
+      kind: "quota_exhausted",
+      provider,
+      model,
+      scope: "unknown",
+      resets_at: null,
       message,
     };
   }
@@ -213,10 +226,7 @@ function isRateLimited(lower: string, status: number | null): boolean {
     lower.includes("too many requests") ||
     lower.includes("usage limit") ||
     lower.includes("usage_limit") ||
-    lower.includes("quota") ||
-    // Spend/credit exhaustion (opencode.ai CreditsError): a quota-family limit,
-    // not an auth failure. See INSUFFICIENT_BALANCE_PATTERNS.
-    isInsufficientBalance(lower)
+    lower.includes("quota")
   );
 }
 

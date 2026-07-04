@@ -295,7 +295,7 @@ test("extractRetryAfterSeconds reads the bare/fractional unit forms providers em
 // reconnect card the valid key can't satisfy — that was the bug behind "Sign in
 // to OpenCode Zen again" for an account simply out of credit, or one that picked
 // a model opencode.ai doesn't serve.
-test("opencode CreditsError under 401 → rate_limited, not a reconnect", () => {
+test("opencode CreditsError under 401 → quota_exhausted, not a reconnect", () => {
   const message =
     '{"type":"error","error":{"type":"CreditsError","message":"Insufficient balance. Manage your billing here: https://opencode.ai/workspace/wrk_test/billing"}}';
   const err = classifyProviderError({
@@ -304,10 +304,10 @@ test("opencode CreditsError under 401 → rate_limited, not a reconnect", () => 
     message,
     status: 401,
   });
-  expect(err.kind).toBe("rate_limited");
-  if (err.kind === "rate_limited") {
-    // The valid key never lapses here, so no countdown — just the real message.
-    expect(err.retry_after_seconds).toBeNull();
+  expect(err.kind).toBe("quota_exhausted");
+  if (err.kind === "quota_exhausted") {
+    // No reset window — the account must top up / upgrade, not wait it out.
+    expect(err.resets_at).toBeNull();
     expect(err.message).toContain("Insufficient balance");
   }
 });
@@ -319,7 +319,7 @@ test("opencode CreditsError classifies off the body even with no parsed status",
     message:
       '{"error":{"type":"CreditsError","message":"Insufficient balance. Manage your billing here: https://opencode.ai/workspace/wrk_test/billing"}}',
   });
-  expect(err.kind).toBe("rate_limited");
+  expect(err.kind).toBe("quota_exhausted");
 });
 
 test("opencode ModelError 'is not supported' under 401 → model_unavailable, not a reconnect", () => {
