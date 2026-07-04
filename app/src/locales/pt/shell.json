@@ -47,13 +47,7 @@
   },
   "workspaceDialog": {
     "title": "Novo espaço de trabalho",
-    "createFailed": "Não conseguimos criar o espaço de trabalho. Tente novamente.",
-    "tabNew": "Criar novo",
-    "tabGithub": "Importar do GitHub",
-    "githubDescription": "Importe um modelo de espaço de trabalho do GitHub. Isso cria um espaço com todos os agentes prontos para usar.",
-    "githubPlaceholder": "usuario/repo",
-    "githubImport": "Importar",
-    "githubImporting": "Importando espaço de trabalho e agentes..."
+    "createFailed": "Não conseguimos criar o espaço de trabalho. Tente novamente."
   },
   "uiTour": {
     "counter": "Tour {{current}} de {{total}}",

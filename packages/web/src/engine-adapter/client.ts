@@ -18,6 +18,8 @@ import type {
   CreateSkillRequest,
   GenerateInstructionsResult,
   InstallCommunityRequest,
+  InstalledConfig,
+  InstallFromGithub,
   InstallFromRepoRequest,
   NewActivity,
   NewRoutine,
@@ -409,8 +411,18 @@ export class HoustonClient {
     emitLocalEcho("ConfigChanged", { agentPath });
     return config;
   }
-  async listInstalledConfigs() {
-    return [];
+  // Agent-config library: templates the user installed (GitHub) that the
+  // create-agent picker merges alongside the bundled ones. Standalone web has
+  // no host to keep a library — nothing installed there is the honest answer.
+  async listInstalledConfigs(): Promise<InstalledConfig[]> {
+    if (!this.cp) return [];
+    return controlPlane.listInstalledConfigs(this.cp);
+  }
+  async installAgentFromGithub(
+    req: InstallFromGithub,
+  ): Promise<{ agentId: string }> {
+    if (!this.cp) throw new Error("Installing agents needs a cloud workspace.");
+    return controlPlane.installAgentFromGithub(this.cp, req.githubUrl);
   }
 
   // ---- activities (board / missions) ----

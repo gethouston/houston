@@ -8,6 +8,7 @@ import type {
   Agent,
   CommunitySkill,
   CustomEndpoint,
+  InstalledConfig,
   NewActivity,
   RepoSkill,
   Routine,
@@ -486,6 +487,25 @@ export async function runRoutineNow(
     `${agentPath(agentId)}/routines/${encodeURIComponent(id)}/run`,
     { method: "POST" },
   );
+}
+
+// Agent-config library: user-scoped like the marketplace reads — a template
+// belongs to the account, not to any existing agent.
+export async function listInstalledConfigs(
+  cfg: ControlPlaneConfig,
+): Promise<InstalledConfig[]> {
+  const res = await cpFetch(cfg, "/v1/agent-configs");
+  return (await res.json()) as InstalledConfig[];
+}
+export async function installAgentFromGithub(
+  cfg: ControlPlaneConfig,
+  githubUrl: string,
+): Promise<{ agentId: string }> {
+  const res = await cpFetch(cfg, "/v1/agents/install-from-github", {
+    method: "POST",
+    body: JSON.stringify({ githubUrl }),
+  });
+  return (await res.json()) as { agentId: string };
 }
 
 // Marketplace reads are user-scoped (browsing has no agent yet); installs
