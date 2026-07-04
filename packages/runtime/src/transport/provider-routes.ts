@@ -1,5 +1,6 @@
 import { listProviders, setSettings } from "../ai/providers";
 import {
+  cancelLogin,
   completeLogin,
   getAuthStatus,
   logout,
@@ -61,7 +62,7 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
   }
 
   const authMatch = path.match(
-    /^\/auth\/([^/]+)\/(login|login\/complete|logout)$/,
+    /^\/auth\/([^/]+)\/(login|login\/complete|login\/cancel|logout)$/,
   );
   if (method === "POST" && authMatch) {
     await handleAuthAction(ctx, authMatch[1], authMatch[2]);
@@ -120,6 +121,11 @@ async function handleAuthAction(
     if (action === "login/complete") {
       const { code } = await readJson(ctx.req);
       completeLogin(provider, String(code || ""));
+      json(ctx.res, 200, { ok: true });
+      return;
+    }
+    if (action === "login/cancel") {
+      cancelLogin(provider);
       json(ctx.res, 200, { ok: true });
       return;
     }

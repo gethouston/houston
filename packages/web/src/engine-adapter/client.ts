@@ -951,16 +951,25 @@ export class HoustonClient {
     await engine.completeLogin(pid, code);
   }
   async cancelProviderLogin(name?: string): Promise<void> {
-    if (!name || !toNewProvider(name)) return;
+    const pid = name ? toNewProvider(name) : undefined;
+    if (!name || !pid) return;
     if (this.cp) {
-      const pid = toNewProvider(name);
       // Key mirrors pollProviderConnect: the agent's id, or the setup-runtime
       // sentinel when the first-run login started before any agent existed.
       const agentId = this.currentAgentId();
-      if (pid) this.activeLogins.delete(`${agentId ?? SETUP_LOGIN_KEY}:${pid}`); // stop the poll
+      this.activeLogins.delete(`${agentId ?? SETUP_LOGIN_KEY}:${pid}`); // stop the poll
+      // Kill the runtime-side login too, in the same runtime the login started
+      // in (the agent's sandbox, or the hidden setup runtime pre-agent) —
+      // otherwise it keeps polling the provider until timeout and a retry
+      // collides with the stale flow ("sign-in already pending", HOU-664 /
+      // the HOU-438 failure class).
+      await this.providerEngine().cancelLogin(pid);
       return;
     }
     this.stopLoginWatch(name);
+    // Cancel the runtime's in-flight OAuth flow for real (frees the loopback
+    // port + login slot), not just the local watcher.
+    await this.engine.cancelLogin(pid);
     // Benign completion: clears the dialog + spinner without an error toast,
     // matching the old engine's cancel semantics.
     emitEvent("ProviderLoginComplete", {

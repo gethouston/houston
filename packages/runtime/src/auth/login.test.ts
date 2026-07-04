@@ -5,7 +5,9 @@ import {
 import { expect, test } from "vitest";
 import {
   autoPromptAnswer,
+  cancelLogin,
   codexLoginMethod,
+  getAuthStatus,
   LOCAL_PLACEHOLDER_KEY,
   setApiKey,
   startLogin,
@@ -71,6 +73,44 @@ test("the OpenAI-compatible provider rejects the OAuth and api-key connect paths
   // start a sign-in pi has no provider for.
   await expect(startLogin("openai-compatible")).rejects.toThrow(/OAuth/);
   expect(() => setApiKey("openai-compatible", "k")).toThrow(/API key/);
+});
+
+test("cancelLogin: benign with nothing in flight, throws on an unknown provider", () => {
+  // The client fires cancel on dialog dismiss regardless of flow state, so a
+  // no-op cancel must never error; a typo'd provider id is a caller bug.
+  expect(() => cancelLogin("anthropic")).not.toThrow();
+  expect(() => cancelLogin("not-a-provider")).toThrow(/unknown provider/);
+});
+
+test("cancelLogin: tears down the in-flight flow so a retry starts clean (HOU-664)", async () => {
+  // Anthropic's OAuth flow binds the fixed loopback port (127.0.0.1:53692)
+  // once. The old cosmetic cancel left the flow alive and the slot pending, so
+  // a retry collided with the stale login (the HOU-438 failure class). A real
+  // cancel frees the slot immediately and closes the callback server.
+  const first = await startLogin("anthropic");
+  expect(first.kind).toBe("url");
+  expect(
+    getAuthStatus().providers.find((p) => p.provider === "anthropic")?.login
+      ?.status,
+  ).toBe("awaiting_user");
+
+  cancelLogin("anthropic");
+
+  // Slot freed at once: status no longer reports a pending login.
+  expect(
+    getAuthStatus().providers.find((p) => p.provider === "anthropic")?.login,
+  ).toBeNull();
+
+  // Let the rejected paste promise unwind pi's flow and close the server...
+  await new Promise((r) => setTimeout(r, 100));
+  // ...then a retry re-binds the port and yields a FRESH login (idempotent
+  // reuse of a live login returns the same info object; a fresh start builds
+  // a new one).
+  const second = await startLogin("anthropic");
+  expect(second.kind).toBe("url");
+  expect(second).not.toBe(first);
+  cancelLogin("anthropic");
+  await new Promise((r) => setTimeout(r, 100));
 });
 
 test("LOCAL_PLACEHOLDER_KEY exists for keyless local servers", () => {
