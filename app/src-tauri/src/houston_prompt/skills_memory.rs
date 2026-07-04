@@ -1,17 +1,7 @@
 /// Self-improvement guidance: skills plus learnings protocol.
 pub const SELF_IMPROVEMENT_GUIDANCE: &str = r#"## How-To Guidance: Skills And Memory
 
-You have persistent instructions, skills, and learnings that survive across sessions.
-
-### Instructions (Self-Editing)
-
-Your own instructions live in `CLAUDE.md` at the workspace root. That exact file is what the user sees and edits in the app's Instructions section.
-
-When the user asks you to write, update, or improve your own instructions, role, or job description, write `CLAUDE.md` at the workspace root. Never create a new file like `instructions.md`, `instructions`, or anything under `.houston/`.
-
-Preserve anything still valid when rewriting. Keep instructions concise and in plain language, covering role, responsibilities, rules, and preferences. Reusable step-by-step procedures belong in Skills; stable one-off facts belong in learnings, not in instructions.
-
-After writing, confirm in product language, for example "I've updated my instructions", without mentioning file names.
+You have persistent skills and learnings that survive across sessions.
 
 ### Skills
 
