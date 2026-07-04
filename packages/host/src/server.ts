@@ -21,6 +21,10 @@ import type {
   WorkspaceStore,
 } from "./ports";
 import { handleAccount } from "./routes/account";
+import {
+  type AgentConfigsDeps,
+  handleAgentConfigs,
+} from "./routes/agent-configs";
 import { handleAgents } from "./routes/agents";
 import { handleSandboxCredential } from "./routes/credential";
 import { handleEventStream } from "./routes/events-stream";
@@ -95,6 +99,12 @@ export interface ControlPlaneDeps {
   feedback?: FeedbackSender;
   /** Third-party integrations (Composio, platform mode); absent → integration routes 503. */
   integrations?: IntegrationDeps;
+  /**
+   * Installed agent-config library (the create-agent picker's "installed"
+   * source + GitHub agent install). Absent → the list reads empty and installs
+   * answer 503.
+   */
+  agentConfigs?: AgentConfigsDeps;
   corsOrigin?: string;
 }
 
@@ -200,6 +210,7 @@ async function handle(
   if (await handleSkillsDirectory(method, path, req, res)) return;
   if (await handleAccount(deps, userId, method, path, req, res)) return;
   if (await handlePortableAccount(deps, userId, method, path, req, res)) return;
+  if (await handleAgentConfigs(deps, userId, method, path, req, res)) return;
   if (await handleIntegrations(deps, userId, method, path, req, res)) return;
 
   if (await handleAgents(deps, userId, method, path, url, req, res)) return;

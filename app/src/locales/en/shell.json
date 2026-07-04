@@ -47,12 +47,6 @@
   },
   "workspaceDialog": {
     "title": "New workspace",
-    "tabNew": "Create new",
-    "tabGithub": "Import from GitHub",
-    "githubDescription": "Import a workspace template from GitHub. This creates a workspace with all its agents ready to use.",
-    "githubPlaceholder": "owner/repo",
-    "githubImport": "Import",
-    "githubImporting": "Importing workspace and agents...",
     "createFailed": "We couldn't create the workspace. Please try again."
   },
   "uiTour": {
@@ -187,7 +181,14 @@
     "createAgent": "Create Agent"
   },
   "newAgent": {
-    "dialogTitle": "New agent"
+    "dialogTitle": "New agent",
+    "githubCard": "Install from GitHub",
+    "githubCardDescription": "Add an agent shared as a repository",
+    "githubTitle": "Install from GitHub",
+    "githubDescription": "Paste a GitHub repository that contains a Houston agent and we'll add it to your gallery.",
+    "githubPlaceholder": "owner/repo",
+    "githubInstall": "Install",
+    "githubInstalling": "Installing agent..."
   },
   "aiAssist": {
     "brainLabel": "Set up with",

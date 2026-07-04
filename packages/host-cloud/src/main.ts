@@ -309,6 +309,11 @@ function main(): void {
     mountAdmin,
     feedback: buildFeedback(),
     integrations,
+    // Installed agent-config library (GitHub agent install, HOU-662): a
+    // per-user prefix on the same object store, outside every workspace tree.
+    agentConfigs: vfs
+      ? { vfs, root: (userId) => `users/${userId}/agent-configs` }
+      : undefined,
     corsOrigin: config.corsOrigin,
   };
 

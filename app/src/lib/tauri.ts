@@ -17,9 +17,7 @@ import type {
   ComposioStatus as EngineComposioStatus,
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
-  ImportedWorkspace,
   ProviderAuthState,
-  StoreListing,
 } from "@houston-ai/engine-client";
 import { useProviderSwitchStore } from "../stores/provider-switch";
 import { shouldAutocompactForSession } from "./autocompact";
@@ -247,6 +245,17 @@ export const tauriAgents = {
     call<Array<{ config: unknown; path: string }>>(
       "list_installed_configs",
       () => getEngine().listInstalledConfigs(),
+    ),
+  /** Add a GitHub repo's houston.json to the config library; resolves to its id. */
+  installFromGithub: (githubUrl: string) =>
+    call<string>(
+      "install_agent_from_github",
+      async () =>
+        (await getEngine().installAgentFromGithub({ githubUrl })).agentId,
+      undefined,
+      // The dialog shows the failure inline next to the input; a global red
+      // bug-toast on a typo'd URL would be noise, not signal.
+      { toast: false },
     ),
   /** Multiplayer: set which org members may use this agent. Empty = everyone. */
   setAssignments: (agentSlugOrId: string, userIds: string[]) =>
@@ -679,44 +688,6 @@ export const tauriFiles = {
       await getEngine().createFolder(agentPath, name);
     }),
   revealAgent: (agentPath: string) => osRevealAgent(agentPath),
-};
-
-// ─── Store ────────────────────────────────────────────────────────────
-
-export const tauriStore = {
-  listInstalled: () =>
-    call<Array<{ config: unknown; path: string }>>(
-      "list_installed_configs",
-      () => getEngine().listInstalledConfigs(),
-    ),
-  fetchCatalog: () =>
-    call<StoreListing[]>("fetch_store_catalog", () =>
-      getEngine().storeCatalog(),
-    ),
-  search: (query: string) =>
-    call<StoreListing[]>("search_store", () => getEngine().storeSearch(query)),
-  install: (repo: string, agentId: string) =>
-    call<void>("install_store_agent", () =>
-      getEngine().installStoreAgent({ repo, agentId }),
-    ),
-  uninstall: (agentId: string) =>
-    call<void>("uninstall_store_agent", () =>
-      getEngine().uninstallStoreAgent(agentId),
-    ),
-  installFromGithub: (githubUrl: string) =>
-    call<string>(
-      "install_agent_from_github",
-      async () =>
-        (await getEngine().installAgentFromGithub({ githubUrl })).agentId,
-    ),
-  checkUpdates: () =>
-    call<string[]>("check_agent_updates", () =>
-      getEngine().checkAgentUpdates(),
-    ),
-  installWorkspaceFromGithub: (githubUrl: string) =>
-    call<ImportedWorkspace>("install_workspace_from_github", () =>
-      getEngine().installWorkspaceFromGithub({ githubUrl }),
-    ),
 };
 
 // ─── Conversations ────────────────────────────────────────────────────

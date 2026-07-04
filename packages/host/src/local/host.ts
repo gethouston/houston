@@ -1,6 +1,6 @@
 import { existsSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
 import { ProxyChannel } from "../channel/proxy";
@@ -37,6 +37,12 @@ export interface LocalHostOptions {
   workspacesRoot: string;
   /** Where the connect-once credential file lives (e.g. `~/.houston/credentials.json`). */
   credentialsPath: string;
+  /**
+   * `~/.houston/agents` — the installed agent-config library (the same tree the
+   * Rust engine wrote, so previously installed configs carry over). Omit to run
+   * without a library (list reads empty, installs answer 503).
+   */
+  agentConfigsDir?: string;
   /** Loopback port; the Tauri shell reads it from the startup banner. */
   port: number;
   /**
@@ -245,6 +251,17 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     opts.chatHistoryDbPath && existsSync(opts.chatHistoryDbPath)
   );
 
+  // The installed agent-config library. FsVfs keys must be non-empty, so root
+  // the vfs at the library's PARENT and address it by its basename — this vfs
+  // instance is only ever handed to the agent-configs route, which stays under
+  // that prefix.
+  const agentConfigs = opts.agentConfigsDir
+    ? {
+        vfs: new FsVfs(dirname(opts.agentConfigsDir)),
+        root: () => basename(opts.agentConfigsDir as string),
+      }
+    : undefined;
+
   const deps: ControlPlaneDeps = {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
@@ -262,6 +279,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     },
     chatHistoryMigrated,
     integrations,
+    agentConfigs,
     corsOrigin: "*",
   };
 
