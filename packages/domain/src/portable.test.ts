@@ -1,12 +1,12 @@
 import type { Learning, Routine } from "@houston/protocol";
 import { expect, test } from "vitest";
 import {
-  filterPackage,
   type PortableContent,
   packAgent,
   portableInventory,
   unpackAgent,
 } from "./portable";
+import { filterPackage } from "./portable-edit";
 import { createRoutine } from "./routines";
 
 /**

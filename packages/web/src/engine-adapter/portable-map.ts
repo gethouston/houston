@@ -46,8 +46,7 @@ export function packagePreview(pkg: PortablePackage): {
   const inventory = portableInventory(pkg);
   return {
     manifest: {
-      // v3 manifests don't carry the source agent id or an anonymized flag
-      // (anonymization isn't on this engine); the wizard only reads
+      // v3 manifests don't carry the source agent id; the wizard only reads
       // agentName/exporter/anonymized.
       agentId: "",
       agentName: pkg.manifest.agentName,
@@ -55,7 +54,7 @@ export function packagePreview(pkg: PortablePackage): {
       exporter: pkg.manifest.exporter ?? null,
       houstonVersion: pkg.manifest.houstonVersion,
       createdAt: pkg.manifest.createdAt,
-      anonymized: false,
+      anonymized: pkg.manifest.anonymized ?? false,
       formatVersion: pkg.manifest.formatVersion,
     },
     preview: {

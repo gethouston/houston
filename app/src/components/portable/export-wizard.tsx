@@ -21,12 +21,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
-import { getEngine, newEngineActive } from "../../lib/engine";
+import { getEngine } from "../../lib/engine";
 import { osRevealPath } from "../../lib/os-bridge";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 
 type StepId = "pick" | "anonymize" | "save";
+
+const steps: StepId[] = ["pick", "anonymize", "save"];
 
 interface Selection {
   claudeMd: boolean;
@@ -51,13 +53,6 @@ export function ExportAgentWizard() {
   const agent = agents.find((a) => a.id === agentId);
   const open = Boolean(agentId);
 
-  // The anonymize pass is an LLM feature of the legacy Rust engine; the new
-  // TS engine doesn't serve it yet, so the wizard collapses to pick → save.
-  const canAnonymize = !newEngineActive();
-  const steps = useMemo<StepId[]>(
-    () => (canAnonymize ? ["pick", "anonymize", "save"] : ["pick", "save"]),
-    [canAnonymize],
-  );
   const [stepIndex, setStepIndex] = useState(0);
   const currentStep = steps[stepIndex] ?? "pick";
   const [preview, setPreview] = useState<PortableInventoryPreview | null>(null);

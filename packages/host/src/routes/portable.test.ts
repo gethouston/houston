@@ -1,5 +1,5 @@
 import type { Server } from "node:http";
-import { loadRoutines } from "@houston/domain";
+import { loadRoutines, unpackAgent } from "@houston/domain";
 import type { Capabilities, Routine } from "@houston/protocol";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { ProxyChannel } from "../channel/proxy";
@@ -287,4 +287,75 @@ test("install honors an explicit selection (unticked parts stay out)", async () 
   expect(
     await vfs.readText(`${carolRoot}/.agents/skills/research/SKILL.md`),
   ).toBeNull();
+});
+
+test("anonymize returns redaction diffs for the selected content", async () => {
+  const privId = (
+    (await (
+      await fetch(`${base}/agents`, {
+        method: "POST",
+        headers: auth("alice"),
+        body: JSON.stringify({ name: "Priv" }),
+      })
+    ).json()) as { id: string }
+  ).id;
+  const ws = await store.getOrCreatePersonalWorkspace("alice");
+  const priv = (await store.listAgents(ws.id)).find((a) => a.id === privId);
+  if (!priv) throw new Error("Expected the Priv agent to exist");
+  await vfs.writeText(
+    `${workspaceRoot(ws, priv)}/CLAUDE.md`,
+    "Contact dan@example.com for escalations.",
+  );
+
+  const r = await fetch(`${base}/agents/${privId}/portable/anonymize`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      claudeMd: true,
+      skillSlugs: [],
+      routineIds: [],
+      learningIds: [],
+    }),
+  });
+  expect(r.status).toBe(200);
+  const out = (await r.json()) as {
+    claudeMd: {
+      before: string;
+      after: string;
+      summary: string;
+      becameEmpty: boolean;
+    } | null;
+    skills: unknown[];
+  };
+  expect(out.claudeMd?.after).toBe("Contact <email> for escalations.");
+  expect(out.claudeMd?.summary).toContain("1 email");
+  expect(out.claudeMd?.becameEmpty).toBe(false);
+  expect(out.skills).toEqual([]);
+});
+
+test("export applies accepted overrides and stamps the manifest anonymized", async () => {
+  const exp = await fetch(`${base}/agents/${agentId}/portable/export`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      selection: {
+        includeClaudeMd: true,
+        skillSlugs: ["research"],
+        routineIds: [],
+        learningIds: [],
+      },
+      overrides: {
+        claudeMd: "# Role\nYou are the <redacted> agent.",
+        skillBodies: { research: "## Procedure\nredacted" },
+      },
+      meta: { anonymized: true },
+    }),
+  });
+  expect(exp.status).toBe(200);
+  const pkg = unpackAgent(new Uint8Array(await exp.arrayBuffer()));
+  expect(pkg.manifest.anonymized).toBe(true);
+  expect(pkg.claudeMd).toBe("# Role\nYou are the <redacted> agent.");
+  expect(pkg.skills).toEqual([
+    { slug: "research", body: "## Procedure\nredacted" },
+  ]);
 });

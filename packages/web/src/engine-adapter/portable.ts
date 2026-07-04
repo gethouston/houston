@@ -11,12 +11,19 @@
  * Pure shape mappings live in `portable-map.ts`.
  */
 
-import { unpackAgent } from "@houston/domain";
+import {
+  type PortablePackage,
+  scanContent,
+  unpackAgent,
+} from "@houston/domain";
 import type {
+  PortableAnonymizeRequest,
+  PortableAnonymizeResponse,
   PortableExportRequest,
   PortableInstalledAgent,
   PortableInstallRequest,
   PortableInventoryPreview,
+  PortableScanResponse,
   PortableUploadPreviewResponse,
 } from "../../../../ui/engine-client/src/types";
 import { HoustonEngineError } from "./client";
@@ -28,7 +35,7 @@ import {
 import { packagePreview, toBase64, toWireSelection } from "./portable-map";
 
 /** Uploaded archives awaiting install, keyed by the packageId handed to the wizard. */
-const uploads = new Map<string, Uint8Array>();
+const uploads = new Map<string, { bytes: Uint8Array; pkg: PortablePackage }>();
 
 async function hostFetch(
   cfg: ControlPlaneConfig,
@@ -73,9 +80,30 @@ export async function exportPackage(
   const res = await hostFetch(
     cfg,
     `/agents/${encodeURIComponent(agentId)}/portable/export`,
-    { method: "POST", body: JSON.stringify(toWireSelection(req.selection)) },
+    {
+      method: "POST",
+      body: JSON.stringify({
+        selection: toWireSelection(req.selection),
+        overrides: req.overrides,
+        meta: { anonymized: req.meta.anonymized },
+      }),
+    },
   );
   return await res.arrayBuffer();
+}
+
+/** Run the host's heuristic redactor over the selected agent content. */
+export async function anonymize(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  req: PortableAnonymizeRequest,
+): Promise<PortableAnonymizeResponse> {
+  const res = await hostFetch(
+    cfg,
+    `/agents/${encodeURIComponent(agentId)}/portable/anonymize`,
+    { method: "POST", body: JSON.stringify(req) },
+  );
+  return (await res.json()) as PortableAnonymizeResponse;
 }
 
 /**
@@ -89,8 +117,23 @@ export function previewUpload(
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   const pkg = unpackAgent(u8);
   const packageId = crypto.randomUUID();
-  uploads.set(packageId, u8);
+  uploads.set(packageId, { bytes: u8, pkg });
   return { packageId, ...packagePreview(pkg) };
+}
+
+/**
+ * The heuristic threat scan over a parked upload. Runs entirely in the
+ * browser — the package is already unpacked here, and the scan is the same
+ * pure `@houston/domain` code the host would run.
+ */
+export function scanUpload(packageId: string): PortableScanResponse {
+  const upload = uploads.get(packageId);
+  if (!upload) {
+    throw new Error(
+      "The uploaded agent file is no longer available — pick the file again.",
+    );
+  }
+  return scanContent(upload.pkg);
 }
 
 /** Install the parked archive as a new agent via the host. */
@@ -98,8 +141,8 @@ export async function install(
   cfg: ControlPlaneConfig,
   req: PortableInstallRequest,
 ): Promise<PortableInstalledAgent> {
-  const bytes = uploads.get(req.packageId);
-  if (!bytes) {
+  const upload = uploads.get(req.packageId);
+  if (!upload) {
     throw new Error(
       "The uploaded agent file is no longer available — pick the file again.",
     );
@@ -108,7 +151,7 @@ export async function install(
     method: "POST",
     body: JSON.stringify({
       agentName: req.agentName,
-      archive: toBase64(bytes),
+      archive: toBase64(upload.bytes),
       selection: toWireSelection(req.selection),
     }),
   });

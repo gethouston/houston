@@ -20,10 +20,13 @@ import type {
   InstallFromRepoRequest,
   NewActivity,
   NewRoutine,
+  PortableAnonymizeRequest,
+  PortableAnonymizeResponse,
   PortableExportRequest,
   PortableInstalledAgent,
   PortableInstallRequest,
   PortableInventoryPreview,
+  PortableScanResponse,
   PortableUploadPreviewResponse,
   ProjectConfig,
   ProjectFile,
@@ -1185,12 +1188,11 @@ export class HoustonClient {
   }
 
   // ---- portable agents (share with / from a friend) — host only ----
-  // The wizards' backend. Preview/export/install talk to the host's v3
-  // portable routes; the uploaded archive is unpacked in the browser and
-  // parked in memory until install (see ./portable.ts). Anonymize and the
-  // import threat-scan have no TS-engine backend yet, so the wizards hide
-  // those steps on this engine (gated on newEngineActive()) — the throws
-  // below are the loud backstop, never a silent [].
+  // The wizards' backend. Preview/export/anonymize/install talk to the
+  // host's v3 portable routes; the uploaded archive is unpacked in the
+  // browser, parked in memory until install, and the threat scan runs on it
+  // right there — the scan is the same pure `@houston/domain` heuristic the
+  // host uses (see ./portable.ts).
   async portablePreview(agentPath: string): Promise<PortableInventoryPreview> {
     if (!this.cp) throw new Error("Sharing an agent needs a connected host.");
     return portable.exportPreview(this.cp, agentPath);
@@ -1202,16 +1204,20 @@ export class HoustonClient {
     if (!this.cp) throw new Error("Sharing an agent needs a connected host.");
     return portable.exportPackage(this.cp, agentPath, req);
   }
-  async portableAnonymize(): Promise<never> {
-    throw new Error("Anonymizing isn't available on this engine yet.");
+  async portableAnonymize(
+    agentPath: string,
+    req: PortableAnonymizeRequest,
+  ): Promise<PortableAnonymizeResponse> {
+    if (!this.cp) throw new Error("Sharing an agent needs a connected host.");
+    return portable.anonymize(this.cp, agentPath, req);
   }
   async importPreview(
     bytes: ArrayBuffer | Uint8Array,
   ): Promise<PortableUploadPreviewResponse> {
     return portable.previewUpload(bytes);
   }
-  async importScan(): Promise<never> {
-    throw new Error("The security scan isn't available on this engine yet.");
+  async importScan(packageId: string): Promise<PortableScanResponse> {
+    return portable.scanUpload(packageId);
   }
   async importInstall(
     req: PortableInstallRequest,
