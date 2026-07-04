@@ -1,6 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  codexUsesLoopbackRelay,
   controlPlaneBuild,
   hostedAuthMode,
   hostedGateState,
@@ -104,6 +105,21 @@ describe("providerLoginUsesDeviceAuthByDefault", () => {
       providerLoginUsesDeviceAuthByDefault({}, { isTauri: false }),
       true,
     );
+  });
+});
+
+// Codex/OpenAI (ChatGPT) sign-in uses the desktop's own loopback relay even
+// against a remote engine — the desktop binds its localhost listener and relays
+// the callback code, so unlike providerLoginUsesDeviceAuthByDefault it does NOT
+// fall back to device code just because the engine is remote. A plain browser
+// client has no local listener and still can't relay.
+describe("codexUsesLoopbackRelay", () => {
+  it("uses the loopback relay on the Tauri desktop (even against a remote engine)", () => {
+    strictEqual(codexUsesLoopbackRelay({ isTauri: true }), true);
+  });
+
+  it("does not use the loopback relay in a plain browser client", () => {
+    strictEqual(codexUsesLoopbackRelay({ isTauri: false }), false);
   });
 });
 

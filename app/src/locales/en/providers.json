@@ -56,6 +56,9 @@
     "copyCode": "Copy code",
     "codeCopied": "Code copied!",
     "codeCopyFailed": "Couldn't copy the code",
+    "deviceOpenFailed": "Couldn't open the sign-in page",
+    "deviceSettingsHint": "Not seeing a code prompt? Turn on device-code sign-in in <link>ChatGPT Settings > Security</link>.",
+    "deviceSettingsOpenFailed": "Couldn't open ChatGPT settings",
     "cancel": "Cancel"
   },
   "apiKey": {

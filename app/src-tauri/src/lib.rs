@@ -1,11 +1,13 @@
 mod auth;
 mod bug_report;
+mod codex_oauth_loopback;
 mod commands;
 #[cfg(target_os = "macos")]
 mod dmg_guard;
 mod engine_supervisor;
 mod houston_prompt;
 mod logging;
+mod loopback_util;
 mod notification;
 mod oauth_loopback;
 mod window_focus;
@@ -401,6 +403,10 @@ pub fn run() {
             // keeps desktop sign-in on the user's machine (no website relay,
             // no custom-scheme dialog).
             oauth_loopback::start_oauth_loopback,
+            // One-shot loopback listener for the OpenAI Codex OAuth redirect —
+            // binds the fixed port 1455 OpenAI registered and forwards the raw
+            // callback query to the webview as `codex-oauth://callback`.
+            codex_oauth_loopback::start_codex_oauth_loopback,
             // Pull the app to the foreground when a flow finishes in the
             // browser (e.g. a Composio integration connection landing).
             window_focus::focus_main_window,

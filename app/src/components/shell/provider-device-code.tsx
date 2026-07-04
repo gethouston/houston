@@ -1,7 +1,8 @@
 import { Button, DialogFooter, Spinner } from "@houston-ai/core";
 import { Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
+import { tauriSystem } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 
 /**
@@ -12,14 +13,31 @@ import { useUIStore } from "../../stores/ui";
  * `ProviderLoginDialog` auto-closes on `ProviderLoginComplete`. Rendered
  * only when the engine surfaced a `userCode`. Split out to keep the
  * dialog under the 200-line ceiling.
+ *
+ * On mount we open the verification page once (`verificationUri`) so a
+ * non-technical user lands where the code goes without hunting for a
+ * button. Popup blockers can veto an open that isn't tied to a click, so
+ * the parent dialog's "Open URL" button stays as the user-driven
+ * fallback. `settingsUrl`, when set (OpenAI/ChatGPT), surfaces the
+ * "turn on device-code sign-in" hint that catches the most common
+ * dead-end: device login switched off in the provider's own settings.
  */
 interface Props {
   code: string;
   providerName: string;
+  verificationUri: string;
+  /** Provider settings page to enable device-code sign-in. OpenAI only. */
+  settingsUrl?: string | null;
   onClose: () => void;
 }
 
-export function ProviderDeviceCode({ code, providerName, onClose }: Props) {
+export function ProviderDeviceCode({
+  code,
+  providerName,
+  verificationUri,
+  settingsUrl,
+  onClose,
+}: Props) {
   const { t } = useTranslation("providers");
   const addToast = useUIStore((s) => s.addToast);
   // Brief inline confirmation: on copy the code box swaps to "Code
@@ -28,6 +46,9 @@ export function ProviderDeviceCode({ code, providerName, onClose }: Props) {
   // right where they're looking.
   const [copied, setCopied] = useState(false);
   const revertTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Open the verification page exactly once per mounted panel, even if a
+  // re-emit swaps the code prop underneath us.
+  const openedRef = useRef(false);
 
   // Drop the confirmation if a fresh code arrives (e.g. a re-emit), and
   // clear any pending timer on unmount so it can't fire into an unmounted
@@ -41,6 +62,21 @@ export function ProviderDeviceCode({ code, providerName, onClose }: Props) {
       if (revertTimer.current) clearTimeout(revertTimer.current);
     };
   }, []);
+
+  // Auto-open the verification page on first render. A failed open is
+  // surfaced (never swallowed) so the user knows to use the dialog's
+  // "Open URL" button instead of staring at a code with nowhere to enter it.
+  useEffect(() => {
+    if (openedRef.current || !verificationUri) return;
+    openedRef.current = true;
+    tauriSystem.openUrl(verificationUri).catch((err) => {
+      addToast({
+        title: t("providerLogin.deviceOpenFailed"),
+        description: err instanceof Error ? err.message : String(err),
+        variant: "error",
+      });
+    });
+  }, [verificationUri, addToast, t]);
 
   const copyCode = async () => {
     try {
@@ -57,41 +93,59 @@ export function ProviderDeviceCode({ code, providerName, onClose }: Props) {
     }
   };
 
+  const openSettings = () => {
+    if (!settingsUrl) return;
+    tauriSystem.openUrl(settingsUrl).catch((err) => {
+      addToast({
+        title: t("providerLogin.deviceSettingsOpenFailed"),
+        description: err instanceof Error ? err.message : String(err),
+        variant: "error",
+      });
+    });
+  };
+
   return (
     <div className="space-y-3">
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <span className="block text-[13px] font-medium">
           {t("providerLogin.deviceCodeLabel")}
         </span>
-        <div className="flex items-center gap-2">
-          <code
-            aria-live="polite"
-            className={`flex-1 rounded-md border bg-background px-3 py-2 text-center font-mono ${
-              copied
-                ? "text-[14px] font-medium text-emerald-600 dark:text-emerald-400"
-                : "text-[18px] tracking-[0.25em]"
-            }`}
-          >
-            {copied ? t("providerLogin.codeCopied") : code}
-          </code>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            aria-label={t("providerLogin.copyCode")}
-            onClick={copyCode}
-          >
-            {copied ? (
-              <Check className="size-3.5" />
-            ) : (
-              <Copy className="size-3.5" />
-            )}
-          </Button>
-        </div>
+        <code
+          aria-live="polite"
+          className={`block rounded-md border bg-background px-3 py-2 text-center font-mono ${
+            copied
+              ? "text-[14px] font-medium text-emerald-600 dark:text-emerald-400"
+              : "text-[20px] tracking-[0.3em]"
+          }`}
+        >
+          {copied ? t("providerLogin.codeCopied") : code}
+        </code>
+        <Button type="button" className="w-full gap-1.5" onClick={copyCode}>
+          {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+          {copied ? t("providerLogin.codeCopied") : t("providerLogin.copyCode")}
+        </Button>
         <p className="text-[12px] text-muted-foreground">
           {t("providerLogin.deviceCodeHint", { name: providerName })}
         </p>
       </div>
+
+      {settingsUrl && (
+        <p className="text-[12px] text-muted-foreground">
+          <Trans
+            t={t}
+            i18nKey="providerLogin.deviceSettingsHint"
+            components={{
+              link: (
+                <button
+                  type="button"
+                  onClick={openSettings}
+                  className="font-medium text-foreground underline underline-offset-2"
+                />
+              ),
+            }}
+          />
+        </p>
+      )}
 
       <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
         <Spinner className="size-3.5" />

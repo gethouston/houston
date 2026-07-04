@@ -77,6 +77,17 @@ export function osStartOauthLoopback(): Promise<string> {
   return invoke<string>("start_oauth_loopback");
 }
 
+/** Bind a one-shot localhost listener for the Codex/OpenAI OAuth redirect. On
+ * success the native side emits `codex-oauth://callback` with the raw
+ * `code=...&state=...` query string once OpenAI bounces the browser back;
+ * rejects with a message string if the port can't be bound. Desktop only —
+ * keeps ChatGPT sign-in on the user's machine even when the engine is remote,
+ * so the relay works without a device code. Mirrors {@link osStartOauthLoopback}
+ * (the Supabase Google loopback). */
+export function osStartCodexOauthLoopback(): Promise<void> {
+  return invoke<void>("start_codex_oauth_loopback");
+}
+
 /** Pull the Houston window to the front. Used when a flow finishes in the
  * user's browser (e.g. a Composio integration connection lands) and we want
  * the app to surface itself — the same snap-back the sign-in loopback does.
