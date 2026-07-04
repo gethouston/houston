@@ -17,14 +17,17 @@ import {
   type ProviderId,
   providerAuthMethod,
 } from "../ai/providers";
+import { runAnthropicSetupTokenLogin } from "./anthropic-setup-token";
 import { authStorage, providerConnected } from "./storage";
 
 /**
  * Multi-provider OAuth login, driven server-side and relayed to the webapp.
  *
- * - anthropic (Claude): PKCE. Locally the loopback (127.0.0.1:53692) catches the
- *   redirect (`url`). Headless, the user pastes the code Claude shows (`auth_code`
- *   + completeLogin) — see auth/anthropic-headless.ts.
+ * - anthropic (Claude): the sanctioned setup-token flow. The direct OAuth PKCE
+ *   replay is server-blocked since 2026-04, so we drive Anthropic's own
+ *   `claude setup-token` (or take a pasted token) and store the resulting
+ *   `sk-ant-oat01…` as an api_key. Same `auth_code` + completeLogin wire shape as
+ *   before — see auth/anthropic-setup-token.ts.
  * - openai-codex (ChatGPT/Codex): the CLIENT picks. A co-located desktop client
  *   sends `deviceAuth: false` and gets the browser/loopback login — the user
  *   approves in their own browser and the localhost callback finishes it, no
@@ -71,8 +74,8 @@ export function codexLoginMethod(opts: { deviceAuth: boolean }): string {
  * leaving it unanswered deadlocks the flow (the device code never appears). We
  * answer it programmatically: the company domain for an Enterprise connect, or
  * "" (=> github.com) for individual Copilot. Every other provider's `onPrompt`
- * is the Anthropic headless code-paste, which MUST wait for the user — those
- * return null so the caller hands back the paste promise.
+ * is a manual code-paste that MUST wait for the user — those return null so the
+ * caller hands back the paste promise.
  */
 export function autoPromptAnswer(
   provider: string,
@@ -150,41 +153,62 @@ export async function startLogin(
   // consumer, which must not crash the process as an unhandled rejection.
   pastePromise.catch(() => {});
 
-  void authStorage
-    .login(provider, {
-      onAuth: ({ url, instructions }) => {
-        // A provider with no loopback server (the headless Claude flow) can't
-        // catch a redirect — the user must paste the code back. Signal that to
-        // the webapp with `auth_code` so it shows a paste box.
-        const needsCode =
-          getOAuthProvider(provider)?.usesCallbackServer === false;
-        state.info = needsCode
-          ? { kind: "auth_code", url, instructions }
-          : { kind: "url", url };
-        state.status = "awaiting_user";
-        resolveInfo(state.info);
-      },
-      onDeviceCode: (info: OAuthDeviceCodeInfo) => {
-        state.info = {
-          kind: "device_code",
-          verificationUri: info.verificationUri,
-          userCode: info.userCode,
-        };
-        state.status = "awaiting_user";
-        resolveInfo(state.info);
-      },
-      // Codex offers browser (loopback) or device-code login; let the client
-      // pick so the co-located desktop redirects to the browser to approve and
-      // remote webapp clients type a code (see codexLoginMethod).
-      onSelect: async () => codexLoginMethod({ deviceAuth }),
-      onPrompt: () => {
-        const auto = autoPromptAnswer(provider, enterpriseDomain);
-        return auto === null ? pastePromise : Promise.resolve(auto);
-      },
-      onManualCodeInput: () => pastePromise,
-      onProgress: (m: string) => console.log(`[oauth:${provider}]`, m),
-      signal: state.abort?.signal,
-    })
+  // Anthropic uses the sanctioned setup-token flow (the direct OAuth replay is
+  // server-blocked), NOT pi's AuthStorage login. It emits the same `auth_code`
+  // wire shape and reuses the paste promise, then stores the captured token as an
+  // api_key credential — see auth/anthropic-setup-token.ts.
+  const login: Promise<unknown> =
+    provider === "anthropic"
+      ? runAnthropicSetupTokenLogin(
+          {
+            onAuth: ({ url, instructions }) => {
+              state.info = { kind: "auth_code", url, instructions };
+              state.status = "awaiting_user";
+              resolveInfo(state.info);
+            },
+            onManualCodeInput: () => pastePromise,
+          },
+          {
+            store: (key) =>
+              authStorage.set("anthropic", { type: "api_key", key }),
+          },
+        )
+      : authStorage.login(provider, {
+          onAuth: ({ url, instructions }) => {
+            // A provider with no loopback server can't catch a redirect — the
+            // user must paste the code back. Signal that to the webapp with
+            // `auth_code` so it shows a paste box.
+            const needsCode =
+              getOAuthProvider(provider)?.usesCallbackServer === false;
+            state.info = needsCode
+              ? { kind: "auth_code", url, instructions }
+              : { kind: "url", url };
+            state.status = "awaiting_user";
+            resolveInfo(state.info);
+          },
+          onDeviceCode: (info: OAuthDeviceCodeInfo) => {
+            state.info = {
+              kind: "device_code",
+              verificationUri: info.verificationUri,
+              userCode: info.userCode,
+            };
+            state.status = "awaiting_user";
+            resolveInfo(state.info);
+          },
+          // Codex offers browser (loopback) or device-code login; let the client
+          // pick so the co-located desktop redirects to the browser to approve
+          // and remote webapp clients type a code (see codexLoginMethod).
+          onSelect: async () => codexLoginMethod({ deviceAuth }),
+          onPrompt: () => {
+            const auto = autoPromptAnswer(provider, enterpriseDomain);
+            return auto === null ? pastePromise : Promise.resolve(auto);
+          },
+          onManualCodeInput: () => pastePromise,
+          onProgress: (m: string) => console.log(`[oauth:${provider}]`, m),
+          signal: state.abort?.signal,
+        });
+
+  void login
     .then(() => {
       state.status = "complete";
       console.log(`[oauth:${provider}] login complete`);

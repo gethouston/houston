@@ -5,7 +5,6 @@
     "workspace": "Espaço de trabalho",
     "workspaceContext": "Contexto do espaço",
     "userContext": "Contexto do usuário",
-    "provider": "Provedor de IA",
     "phone": "Conectar celular",
     "shortcuts": "Atalhos de teclado",
     "reportBug": "Reportar bug"
@@ -36,10 +35,6 @@
     "placeholder": "ex. Sou o Juan, líder de vendas. Me importo com velocidade de pipeline e prefiro respostas curtas.",
     "saving": "Salvando…",
     "saved": "Salvo"
-  },
-  "provider": {
-    "title": "Provedor de IA",
-    "description": "O Houston usa <emph>sua própria</emph> assinatura. Nunca vemos suas credenciais."
   },
   "connectPhone": {
     "title": "Conectar celular",

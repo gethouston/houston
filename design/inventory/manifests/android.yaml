@@ -55,3 +55,9 @@ components:
     status: not-started
   toast:
     status: not-started
+  ai-provider-card:
+    status: not-started
+  ai-model-row:
+    status: not-started
+  ai-model-offer-row:
+    status: not-started

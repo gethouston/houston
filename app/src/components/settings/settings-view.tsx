@@ -1,6 +1,5 @@
 import { Spinner } from "@houston-ai/core";
 import {
-  Bot,
   Bug,
   FileText,
   Folder,
@@ -26,7 +25,6 @@ type SettingsSectionId =
   | "workspace"
   | "workspaceContext"
   | "userContext"
-  | "provider"
   | "phone"
   | "shortcuts"
   | "reportBug";
@@ -37,7 +35,6 @@ import { ConnectPhoneSection } from "./sections/connect-phone";
 import { DangerSection } from "./sections/danger";
 import { LanguageSection } from "./sections/language";
 import { MembersSection } from "./sections/members";
-import { ProviderSection } from "./sections/provider";
 import { ReportBugSection } from "./sections/report-bug";
 import { ShortcutsSection } from "./sections/shortcuts";
 import { WorkspaceSection } from "./sections/workspace";
@@ -95,7 +92,6 @@ export function SettingsView() {
         label: t("settings:nav.userContext"),
         icon: UserCircle,
       },
-      { id: "provider", label: t("settings:nav.provider"), icon: Bot },
       { id: "shortcuts", label: t("settings:nav.shortcuts"), icon: Keyboard },
       { id: "reportBug", label: t("settings:nav.reportBug"), icon: Bug },
     );
@@ -153,7 +149,6 @@ export function SettingsView() {
                 <DangerSection />
               </div>
             )}
-            {activeVisible === "provider" && <ProviderSection />}
             {/* Connect-phone section kept but intentionally not in the nav above:
                 the entry point was removed (HOU-473) so it's unreachable today.
                 Re-add the `phone` nav item to surface it again. */}

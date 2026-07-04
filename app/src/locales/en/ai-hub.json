@@ -1,0 +1,101 @@
+{
+  "hero": {
+    "title": "AI models",
+    "subtitle": "Use your ChatGPT, Claude, or Copilot subscription, or connect {{models}}+ models from every major lab with your own keys.",
+    "subtitleFew": "Use your ChatGPT, Claude, or Copilot subscription, or connect models from every major lab with your own keys."
+  },
+  "tabs": {
+    "providers": "Providers",
+    "modelsCount": "Models · {{count}}"
+  },
+  "sections": {
+    "connected": "Connected",
+    "available": "Available",
+    "comingSoon": "Coming soon"
+  },
+  "card": {
+    "connect": "Connect",
+    "connected": "Connected",
+    "cancel": "Cancel",
+    "models_one": "{{count}} model",
+    "models_other": "{{count}} models",
+    "subscription": "Subscription",
+    "apiKey": "Your API key",
+    "local": "Runs on your computer",
+    "gateway": "Multi-model gateway",
+    "comingSoon": "Coming soon"
+  },
+  "providerDetail": {
+    "back": "All providers",
+    "models": "Models",
+    "searchModels": "Search models",
+    "signOut": "Sign out",
+    "noModels": "Models are configured when you connect."
+  },
+  "directory": {
+    "search": "Search {{count}}+ models",
+    "searchFew": "Search models",
+    "filters": {
+      "all": "All",
+      "reasoning": "Reasoning",
+      "vision": "Vision"
+    },
+    "providers_one": "{{count}} provider",
+    "providers_other": "{{count}} providers",
+    "showMore": "Show more",
+    "empty": {
+      "title": "No models found",
+      "description": "Try a different search or filter."
+    }
+  },
+  "model": {
+    "back": "All models",
+    "specs": {
+      "context": "Context",
+      "output": "Max output",
+      "knowledge": "Knowledge up to",
+      "released": "Released",
+      "reasoning": "Reasoning",
+      "vision": "Vision"
+    },
+    "offers": {
+      "title": "Get it through",
+      "subtitle": "Connect any of these to start using {{model}}.",
+      "subscription": "Included with subscription",
+      "pricing": "{{input}} in · {{output}} out per 1M tokens"
+    }
+  },
+  "providers": {
+    "openai": {
+      "description": "Sign in with ChatGPT and put the GPT and Codex models to work."
+    },
+    "anthropic": {
+      "description": "Sign in with Claude and bring the models behind Claude Code."
+    },
+    "github-copilot": {
+      "description": "One Copilot subscription, many models: Claude, GPT, and Gemini under one plan."
+    },
+    "opencode-account": {
+      "description": "One account for curated coding models from every major lab, with a free tier to start."
+    },
+    "openrouter": {
+      "description": "The everything gateway. One key unlocks hundreds of models from every lab."
+    },
+    "deepseek": {
+      "description": "Frontier reasoning at a fraction of the price, straight from DeepSeek."
+    },
+    "google": {
+      "description": "The Gemini family from Google AI Studio, with a free tier to start."
+    },
+    "amazon-bedrock": {
+      "description": "Claude and more on your own AWS account, built for companies."
+    },
+    "minimax": {
+      "description": "Fast, affordable models tuned for agent work."
+    },
+    "openai-compatible": {
+      "description": "Run models on your own computer with Ollama, LM Studio, and friends."
+    }
+  },
+  "toast": {}
+}

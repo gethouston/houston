@@ -101,3 +101,9 @@ components:
   toast:
     status: not-started
     notes: No toast system in mobile v1; action failures surface via alerts carrying the real reason.
+  ai-provider-card:
+    status: not-started
+  ai-model-row:
+    status: not-started
+  ai-model-offer-row:
+    status: not-started

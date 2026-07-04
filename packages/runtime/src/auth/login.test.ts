@@ -61,8 +61,8 @@ test("autoPromptAnswer: github-copilot forwards the Enterprise company domain", 
 });
 
 test("autoPromptAnswer: other providers defer to the user (null => paste promise)", () => {
-  // Every other provider's onPrompt is the Anthropic headless code paste, which
-  // MUST wait for the user — null tells startLogin to hand back the paste promise.
+  // Every other provider's onPrompt is a manual code paste, which MUST wait for
+  // the user — null tells startLogin to hand back the paste promise.
   expect(autoPromptAnswer("anthropic")).toBeNull();
   expect(autoPromptAnswer("openai-codex")).toBeNull();
 });
@@ -83,12 +83,13 @@ test("cancelLogin: benign with nothing in flight, throws on an unknown provider"
 });
 
 test("cancelLogin: tears down the in-flight flow so a retry starts clean (HOU-664)", async () => {
-  // Anthropic's OAuth flow binds the fixed loopback port (127.0.0.1:53692)
-  // once. The old cosmetic cancel left the flow alive and the slot pending, so
-  // a retry collided with the stale login (the HOU-438 failure class). A real
-  // cancel frees the slot immediately and closes the callback server.
+  // Anthropic now uses the sanctioned setup-token paste flow (`auth_code`, no
+  // loopback server). Independent of the flow shape, the old cosmetic cancel
+  // left the flow alive and the slot pending, so a retry collided with the
+  // stale login (the HOU-438 failure class). A real cancel frees the slot
+  // immediately so a retry builds a fresh login.
   const first = await startLogin("anthropic");
-  expect(first.kind).toBe("url");
+  expect(first.kind).toBe("auth_code");
   expect(
     getAuthStatus().providers.find((p) => p.provider === "anthropic")?.login
       ?.status,
@@ -101,13 +102,12 @@ test("cancelLogin: tears down the in-flight flow so a retry starts clean (HOU-66
     getAuthStatus().providers.find((p) => p.provider === "anthropic")?.login,
   ).toBeNull();
 
-  // Let the rejected paste promise unwind pi's flow and close the server...
+  // Let the rejected paste promise unwind the flow...
   await new Promise((r) => setTimeout(r, 100));
-  // ...then a retry re-binds the port and yields a FRESH login (idempotent
-  // reuse of a live login returns the same info object; a fresh start builds
-  // a new one).
+  // ...then a retry yields a FRESH login (idempotent reuse of a live login
+  // returns the same info object; a fresh start builds a new one).
   const second = await startLogin("anthropic");
-  expect(second.kind).toBe("url");
+  expect(second.kind).toBe("auth_code");
   expect(second).not.toBe(first);
   cancelLogin("anthropic");
   await new Promise((r) => setTimeout(r, 100));
