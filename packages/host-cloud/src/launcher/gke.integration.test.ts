@@ -104,7 +104,7 @@ if (!ENABLED) {
     afterAll(async () => {
       // Best-effort teardown of everything this suite created.
       await launcher.destroy(agent.id, { dropVolume: true }).catch(() => {});
-      await core.deleteNamespace(ns).catch(() => {});
+      await core.deleteNamespace({ name: ns }).catch(() => {});
     });
 
     test("status of an unknown agent is 'absent' before anything is created", async () => {
@@ -126,15 +126,24 @@ if (!ENABLED) {
       }
 
       // Every object now exists under the workspace namespace.
-      await expect(core.readNamespace(ns)).resolves.toBeDefined();
+      await expect(core.readNamespace({ name: ns })).resolves.toBeDefined();
       await expect(
-        core.readNamespacedPersistentVolumeClaim(pvcName(agent.id), ns),
+        core.readNamespacedPersistentVolumeClaim({
+          name: pvcName(agent.id),
+          namespace: ns,
+        }),
       ).resolves.toBeDefined();
       await expect(
-        core.readNamespacedService(serviceName(agent.id), ns),
+        core.readNamespacedService({
+          name: serviceName(agent.id),
+          namespace: ns,
+        }),
       ).resolves.toBeDefined();
       await expect(
-        apps.readNamespacedDeployment(deploymentName(agent.id), ns),
+        apps.readNamespacedDeployment({
+          name: deploymentName(agent.id),
+          namespace: ns,
+        }),
       ).resolves.toBeDefined();
     });
 

@@ -10,3 +10,12 @@ packages:
 # longer reads that field ("The pnpm field in package.json is no longer read").
 onlyBuiltDependencies:
   - "@sentry/cli"
+
+# Security override (uuid <11.1.1 advisory): gaxios 6 and teeny-request 9
+# (both pulled by @google-cloud/storage, which has no gaxios-7-based release
+# yet) declare uuid ^9. Both only call the still-present `v4()` (multipart
+# boundaries), so forcing the patched major is safe. Drop when
+# @google-cloud/storage moves to gaxios >=7 (which dropped uuid entirely).
+overrides:
+  "gaxios>uuid": "^11.1.1"
+  "teeny-request>uuid": "^11.1.1"
