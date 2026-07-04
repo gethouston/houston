@@ -49,21 +49,10 @@ export function shouldOpenLoginUrlDirectly(opts: {
   return opts.isDesktop && !opts.userCode;
 }
 
-/**
- * Decide whether a `ProviderLoginUrl` event for Codex/OpenAI should drive the
- * desktop's zero-code loopback relay (`beginCodexBrowserLogin`) instead of the
- * plain open-in-browser path or the device-code dialog.
- *
- * True only for Codex (`provider === "openai"`) on a desktop client with no
- * device code: there the desktop binds its own localhost listener and relays
- * the callback code, which works even against a remote engine. A device code
- * (`userCode` present) means the runtime chose the headless flow, and web
- * clients have no local listener — both keep their existing paths.
- */
-export function shouldUseCodexLoopback(opts: {
-  provider: string;
-  isDesktop: boolean;
-  userCode: string | null | undefined;
-}): boolean {
-  return opts.provider === "openai" && opts.isDesktop && !opts.userCode;
-}
+// NOTE: the desktop's own Codex OAuth loopback relay (`shouldUseCodexLoopback`
+// + `beginCodexBrowserLogin`) is GONE. pi runs the whole OAuth flow in-process:
+// for a loopback (no-code) login it binds the fixed localhost callback port
+// itself and completes the token exchange — an app-side listener on the same
+// port could only fight it. Every topology that genuinely can't catch the
+// callback (hosted cloud, a truly remote host) gets the device-code flow from
+// `providerLoginUsesDeviceAuthByDefault` instead.

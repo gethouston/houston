@@ -2,22 +2,20 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { stepSection } from "./setup-steps.ts";
 
-test("Setup is two logical steps; Connect-your-AI spans pick + login", () => {
+test("Setup is one logical step; Connect-your-AI spans pick + login", () => {
   assert.deepEqual(stepSection("brain"), {
     section: "setup",
     current: 1,
-    total: 2,
+    total: 1,
   });
   assert.deepEqual(stepSection("providerLogin"), {
     section: "setup",
     current: 1,
-    total: 2,
+    total: 1,
   });
-  assert.deepEqual(stepSection("tools"), {
-    section: "setup",
-    current: 2,
-    total: 2,
-  });
+  // The apps/tools step was dropped (platform-mode Composio has no per-user
+  // account to sign into); it is no longer a numbered step.
+  assert.equal(stepSection("tools"), null);
 });
 
 test("Onboarding is three logical steps", () => {

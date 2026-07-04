@@ -107,6 +107,12 @@ export function isHoustonEngineError(e: unknown): e is HoustonEngineError {
 }
 
 /**
+ * `activeLogins` key segment for a login started before any agent existed
+ * (first-run: it runs in the host's hidden setup runtime, not an agent's).
+ */
+const SETUP_LOGIN_KEY = "__setup__";
+
+/**
  * Drop-in replacement for `@houston-ai/engine-client`'s HoustonClient, backed by
  * the new TS engine. Boot/chat/auth map to the new engine; a single synthetic
  * workspace holds localStorage-backed agents, their `.houston/**` files, and
@@ -211,12 +217,17 @@ export class HoustonClient {
     if (!id) throw new Error("Open an agent first, then connect its account.");
     return id;
   }
-  /** Runtime client for provider/auth calls: the selected agent's sandbox in cloud
-   *  (null until an agent is selected), the single runtime locally. */
-  private providerEngine(): HoustonEngineClient | null {
+  /** Runtime client for provider/auth calls: the selected agent's sandbox in
+   *  cloud, the single runtime locally. Before ANY agent exists (first-run
+   *  onboarding), the host's hidden SETUP runtime — provider connect must work
+   *  pre-agent, and its capture lands on the personal workspace so the agent
+   *  created next is already connected. */
+  private providerEngine(): HoustonEngineClient {
     if (!this.cp) return this.engine;
     const id = this.currentAgentId();
-    return id ? controlPlane.runtimeClientFor(this.cp, id) : null;
+    return id
+      ? controlPlane.runtimeClientFor(this.cp, id)
+      : controlPlane.setupRuntimeClientFor(this.cp);
   }
 
   // ---- meta / boot ----
@@ -903,14 +914,18 @@ export class HoustonClient {
     }
 
     // Control-plane path (cloud sandbox OR the desktop host sidecar). Start the
-    // login in THIS agent's runtime and surface it on the bus the picker/settings
-    // handler consumes. A remote runtime returns a device_code (we pass its
+    // login in THIS agent's runtime — or, before any agent exists (first-run
+    // onboarding connects the AI ahead of agent creation), in the host's hidden
+    // SETUP runtime — and surface it on the bus the picker/settings handler
+    // consumes. A remote runtime returns a device_code (we pass its
     // `user_code`, which opens the code panel); a co-located desktop client gets
     // a loopback `url` (user_code null) that the handler opens straight in the
     // browser. `provider` MUST be the old/frontend id (the dialog's contract).
-    const agentId = this.requireAgentId();
+    const agentId = this.currentAgentId();
     const old = toOldProvider(pid);
-    const engine = controlPlane.runtimeClientFor(this.cp, agentId);
+    const engine = agentId
+      ? controlPlane.runtimeClientFor(this.cp, agentId)
+      : controlPlane.setupRuntimeClientFor(this.cp);
     const info = await engine.startLogin(pid, deviceAuth, enterpriseDomain);
     if (info.kind === "device_code") {
       emitEvent("ProviderLoginUrl", {
@@ -930,17 +945,19 @@ export class HoustonClient {
   async submitProviderLoginCode(name: string, code: string): Promise<void> {
     const pid = toNewProvider(name);
     if (!pid) return;
-    const engine = this.cp
-      ? controlPlane.runtimeClientFor(this.cp, this.requireAgentId())
-      : this.engine;
+    // Same target the login started in: the agent's runtime, or the setup
+    // runtime when first-run connected pre-agent.
+    const engine = this.cp ? this.providerEngine() : this.engine;
     await engine.completeLogin(pid, code);
   }
   async cancelProviderLogin(name?: string): Promise<void> {
     if (!name || !toNewProvider(name)) return;
     if (this.cp) {
       const pid = toNewProvider(name);
+      // Key mirrors pollProviderConnect: the agent's id, or the setup-runtime
+      // sentinel when the first-run login started before any agent existed.
       const agentId = this.currentAgentId();
-      if (pid && agentId) this.activeLogins.delete(`${agentId}:${pid}`); // stop the poll
+      if (pid) this.activeLogins.delete(`${agentId ?? SETUP_LOGIN_KEY}:${pid}`); // stop the poll
       return;
     }
     this.stopLoginWatch(name);
@@ -1034,7 +1051,21 @@ export class HoustonClient {
     // that becomes active; the order of the writes doesn't affect that.
     const targets = credentialSiblings(pid);
     if (this.cp) {
-      const agentId = this.requireAgentId();
+      // First-run pre-agent: store through the setup runtime instead — the key
+      // lands on the personal workspace and the agent created next reads it.
+      // No per-agent settings exist yet to flip.
+      const agentId = this.currentAgentId();
+      if (!agentId) {
+        for (const target of targets) {
+          await controlPlane.setSetupApiKey(this.cp, target, apiKey);
+        }
+        emitEvent("ProviderLoginComplete", {
+          provider: name,
+          success: true,
+          error: null,
+        });
+        return;
+      }
       for (const target of targets) {
         await controlPlane.setApiKey(this.cp, agentId, target, apiKey);
       }
@@ -1092,17 +1123,22 @@ export class HoustonClient {
    * polls OpenAI in-process and writes auth.json to the PVC), then make the new
    * provider this agent's active one and signal completion — which closes the
    * dialog and refreshes provider status. Emits a failure on timeout (no silent
-   * stall). Cancellable via `cancelProviderLogin`.
+   * stall). Cancellable via `cancelProviderLogin`. A null `agentId` is the
+   * first-run pre-agent flow: the login ran in the host's hidden SETUP runtime,
+   * so poll + capture there (no per-agent settings to flip yet — the agent
+   * created next carries its provider from creation).
    */
   private async pollProviderConnect(
-    agentId: string,
+    agentId: string | null,
     pid: ProviderId,
     oldProvider: string,
   ): Promise<void> {
     if (!this.cp) return;
-    const key = `${agentId}:${pid}`;
+    const key = `${agentId ?? SETUP_LOGIN_KEY}:${pid}`;
     this.activeLogins.add(key);
-    const engine = controlPlane.runtimeClientFor(this.cp, agentId);
+    const engine = agentId
+      ? controlPlane.runtimeClientFor(this.cp, agentId)
+      : controlPlane.setupRuntimeClientFor(this.cp);
     const deadline = Date.now() + 5 * 60 * 1000;
     try {
       while (Date.now() < deadline) {
@@ -1117,16 +1153,23 @@ export class HoustonClient {
           /* transient — keep polling */
         }
         if (configured) {
-          // Make the just-connected provider this agent's active model so chat uses it.
-          try {
-            await engine.setSettings({ activeProvider: pid });
-          } catch {
-            /* non-fatal: the user can pick the model in the chat header */
+          // Make the just-connected provider this agent's active model so chat
+          // uses it. Skipped pre-agent: the setup runtime has no agent settings.
+          if (agentId) {
+            try {
+              await engine.setSettings({ activeProvider: pid });
+            } catch {
+              /* non-fatal: the user can pick the model in the chat header */
+            }
           }
           // Connect-once: store this credential for the WHOLE workspace, so every
-          // agent (existing + new) shares this one connection.
+          // agent (existing + new + the one onboarding creates next) shares it.
           try {
-            await controlPlane.captureCredential(this.cp, agentId, pid);
+            if (agentId) {
+              await controlPlane.captureCredential(this.cp, agentId, pid);
+            } else {
+              await controlPlane.captureSetupCredential(this.cp, pid);
+            }
           } catch (e) {
             console.error("[connect] workspace credential capture failed", e);
           }

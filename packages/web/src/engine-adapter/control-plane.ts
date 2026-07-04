@@ -339,6 +339,46 @@ export function runtimeClientFor(
   });
 }
 
+/**
+ * Runtime client for the host's hidden SETUP runtime (`/setup-runtime/*`):
+ * the pre-agent provider-connect surface first-run onboarding uses. Provider
+ * OAuth needs a runtime to execute in, but the flow connects the AI BEFORE the
+ * first agent exists — the host runs it in a dedicated hidden runtime whose
+ * captured credential lands on the personal workspace, so the agent created
+ * right after is already connected.
+ */
+export function setupRuntimeClientFor(
+  cfg: ControlPlaneConfig,
+): HoustonEngineClient {
+  return new HoustonEngineClient({
+    baseUrl: `${cfg.baseUrl}/setup-runtime`,
+    token: liveToken(cfg.token) || undefined,
+  });
+}
+
+/** Connect-once capture on the setup runtime — `captureCredential`, agentless. */
+export async function captureSetupCredential(
+  cfg: ControlPlaneConfig,
+  provider?: string,
+): Promise<void> {
+  await cpFetch(cfg, `/setup-runtime/credential/capture`, {
+    method: "POST",
+    ...(provider ? { body: JSON.stringify({ provider }) } : {}),
+  });
+}
+
+/** API-key connect on the setup runtime — `setApiKey`, agentless. */
+export async function setSetupApiKey(
+  cfg: ControlPlaneConfig,
+  provider: string,
+  apiKey: string,
+): Promise<void> {
+  await cpFetch(cfg, `/setup-runtime/credential/api-key`, {
+    method: "POST",
+    body: JSON.stringify({ provider, apiKey }),
+  });
+}
+
 // --- The typed .houston families, now served REALLY by the host (P3). The list
 // routes return `{ items, diagnostics }`; the UI wants bare arrays. ---
 

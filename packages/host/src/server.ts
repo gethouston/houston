@@ -35,6 +35,7 @@ import {
 } from "./routes/integrations";
 import { handleSandboxIntegrations } from "./routes/integrations-sandbox";
 import { handlePortableAccount } from "./routes/portable";
+import { handleSetupRuntime } from "./routes/setup-runtime";
 import { handleSkillsDirectory } from "./routes/skills-directory";
 import type { Vfs } from "./vfs";
 
@@ -212,6 +213,10 @@ async function handle(
   if (await handlePortableAccount(deps, userId, method, path, req, res)) return;
   if (await handleAgentConfigs(deps, userId, method, path, req, res)) return;
   if (await handleIntegrations(deps, userId, method, path, req, res)) return;
+  // Pre-agent provider connect (first-run onboarding): a hidden setup runtime
+  // runs the OAuth so the user can connect their AI before any agent exists.
+  if (await handleSetupRuntime(deps, userId, method, path, url, req, res))
+    return;
 
   if (await handleAgents(deps, userId, method, path, url, req, res)) return;
 

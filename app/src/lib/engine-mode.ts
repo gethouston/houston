@@ -35,38 +35,47 @@ export function controlPlaneBuild(env: EngineModeEnv): boolean {
 }
 
 /**
+ * True when a URL's host is this same machine (127.0.0.1 / localhost / ::1) —
+ * an engine reached there is CO-LOCATED for provider auth even though it was
+ * configured by URL (the dev two-terminal setup points `VITE_NEW_ENGINE_URL`
+ * at a hand-run local host). Unparseable input reads as NOT loopback: when in
+ * doubt, prefer the device-code flow that works everywhere.
+ */
+export function isLoopbackHostUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  try {
+    const host = new URL(url).hostname;
+    return (
+      host === "127.0.0.1" ||
+      host === "localhost" ||
+      host === "[::1]" ||
+      host === "::1"
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Provider OAuth loopback only works when the browser and runtime are
- * co-located on the same desktop machine. A Tauri desktop pointed at a remote
- * host is still a remote client for provider auth: the runtime's localhost
- * callback is on the remote host, not the user's machine, so Codex/OpenAI must
- * use the device-code flow.
+ * co-located on the same machine: pi binds the provider's fixed localhost
+ * callback port IN-PROCESS and completes the token exchange itself, so the
+ * client's only job is opening the authorize URL in the user's browser. A
+ * Tauri desktop pointed at a truly remote host is still a remote client for
+ * provider auth (the runtime's localhost callback is on the remote host) and
+ * must use the device-code flow — but a `VITE_NEW_ENGINE_URL` at a loopback
+ * address IS co-located (the dev two-terminal setup), so it keeps the
+ * seamless browser flow, exactly like the packaged host-sidecar build.
  */
 export function providerLoginUsesDeviceAuthByDefault(
   env: Pick<EngineModeEnv, "VITE_NEW_ENGINE_URL" | "VITE_HOSTED_ENGINE_URL">,
   client: { isTauri: boolean },
 ): boolean {
-  return (
-    !client.isTauri ||
-    Boolean(env.VITE_NEW_ENGINE_URL) ||
-    Boolean(env.VITE_HOSTED_ENGINE_URL)
-  );
-}
-
-/**
- * Whether Codex/OpenAI (ChatGPT) sign-in should use the desktop's own
- * zero-code loopback relay instead of the device-code flow.
- *
- * Unlike {@link providerLoginUsesDeviceAuthByDefault}, this is true for a Tauri
- * desktop even when the engine is REMOTE: the runtime hands back an authorize
- * URL, the desktop binds its OWN localhost listener
- * (`start_codex_oauth_loopback`), opens the URL in the user's browser, and
- * relays the `code=...&state=...` the callback carries back to the engine via
- * `submitLoginCode`. The callback lands on the user's machine, so co-location
- * with the engine is irrelevant. A plain browser client has no local listener
- * and still falls back to device code.
- */
-export function codexUsesLoopbackRelay(client: { isTauri: boolean }): boolean {
-  return client.isTauri;
+  if (!client.isTauri) return true;
+  if (env.VITE_HOSTED_ENGINE_URL) return true;
+  if (env.VITE_NEW_ENGINE_URL)
+    return !isLoopbackHostUrl(env.VITE_NEW_ENGINE_URL);
+  return false;
 }
 
 /** How the desktop authenticates to the hosted engine (`VITE_HOSTED_ENGINE_URL`). */
