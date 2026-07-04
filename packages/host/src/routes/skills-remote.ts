@@ -2,46 +2,26 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { HoustonEvent, RepoSkill } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
-import { CommunityDirectory } from "../skills/community";
-import { listSkillsFromRepo } from "../skills/github";
 import {
   installCommunitySkill,
   installSkillsFromRepo,
 } from "../skills/install";
-import { SkillRemoteError } from "../skills/remote-error";
 import type { Vfs } from "../vfs";
 import { json, readJson } from "./http";
+import {
+  communityPopularAction,
+  communitySearchAction,
+  failSkill,
+  repoListAction,
+} from "./skills-directory";
 
 /**
- * The marketplace half of the skills surface: skills.sh community search +
- * install and GitHub-repo discovery + install, feeding the same
- * `.agents/skills/<slug>/SKILL.md` folders the CRUD routes serve. One
- * directory instance per process so the skills.sh cache + request spacing are
- * global (mirrors the legacy Rust engine's static cache).
+ * The agent-scoped marketplace surface: installs write into the agent's
+ * `.agents/skills/<slug>/SKILL.md` (the same folders pi loads), and the
+ * read-only search/popular/list routes are also served here for the
+ * engine-client wire (which scopes every call under /agents/:id). The shared
+ * skills.sh cache + typed error shape live in skills-directory.ts.
  */
-
-const directory = new CommunityDirectory();
-
-/** Typed errors answer `{error: {code, message, details: {kind}}}` so the
- *  engine-client's `HoustonEngineError.kind` (and the Add Skills dialog's
- *  plain-English error states) work identically against both engines. */
-function fail(res: ServerResponse, err: unknown): void {
-  if (err instanceof SkillRemoteError) {
-    const code =
-      err.httpStatus === 400
-        ? "BAD_REQUEST"
-        : err.httpStatus === 404
-          ? "NOT_FOUND"
-          : "UNAVAILABLE";
-    json(res, err.httpStatus, {
-      error: { code, message: err.message, details: { kind: err.kind } },
-    });
-    return;
-  }
-  json(res, 502, {
-    error: err instanceof Error ? err.message : String(err),
-  });
-}
 
 export interface RemoteSkillsDeps {
   /** Injection point for tests; production uses the global fetch. */
@@ -69,25 +49,15 @@ export async function handleSkillsRemote(
   const fetchImpl = deps.fetchImpl ?? fetch;
 
   if (family === "community" && action === "search") {
-    const body = await readJson(req);
-    if (typeof body.query !== "string") {
-      json(res, 400, { error: "missing 'query'" });
-      return true;
-    }
-    try {
-      json(res, 200, await directory.search(body.query));
-    } catch (err) {
-      fail(res, err);
-    }
+    await communitySearchAction(req, res);
     return true;
   }
-
   if (family === "community" && action === "popular") {
-    try {
-      json(res, 200, await directory.popular());
-    } catch (err) {
-      fail(res, err);
-    }
+    await communityPopularAction(res);
+    return true;
+  }
+  if (family === "repo" && action === "list") {
+    await repoListAction(req, res, fetchImpl);
     return true;
   }
 
@@ -116,22 +86,7 @@ export async function handleSkillsRemote(
       fireChange();
       json(res, 200, slug);
     } catch (err) {
-      fail(res, err);
-    }
-    return true;
-  }
-
-  if (family === "repo" && action === "list") {
-    const body = await readJson(req);
-    if (typeof body.source !== "string") {
-      json(res, 400, { error: "missing 'source'" });
-      return true;
-    }
-    try {
-      const { skills } = await listSkillsFromRepo(fetchImpl, body.source);
-      json(res, 200, skills);
-    } catch (err) {
-      fail(res, err);
+      failSkill(res, err);
     }
     return true;
   }
@@ -153,7 +108,7 @@ export async function handleSkillsRemote(
       fireChange();
       json(res, 200, installed);
     } catch (err) {
-      fail(res, err);
+      failSkill(res, err);
     }
     return true;
   }

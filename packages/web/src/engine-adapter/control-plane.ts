@@ -6,8 +6,10 @@ import type {
   Activity,
   ActivityUpdate,
   Agent,
+  CommunitySkill,
   CustomEndpoint,
   NewActivity,
+  RepoSkill,
   Routine,
   RoutineRun,
   SkillSummary,
@@ -454,6 +456,70 @@ export async function runRoutineNow(
     `${agentPath(agentId)}/routines/${encodeURIComponent(id)}/run`,
     { method: "POST" },
   );
+}
+
+// Marketplace reads are user-scoped (browsing has no agent yet); installs
+// write into a specific agent's skills folder. Mirrors the host's split
+// between /v1/skills/* and /agents/:id/skills/*.
+export async function searchCommunitySkills(
+  cfg: ControlPlaneConfig,
+  query: string,
+  signal?: AbortSignal,
+): Promise<CommunitySkill[]> {
+  const res = await cpFetch(cfg, "/v1/skills/community/search", {
+    method: "POST",
+    body: JSON.stringify({ query }),
+    signal,
+  });
+  return (await res.json()) as CommunitySkill[];
+}
+export async function popularCommunitySkills(
+  cfg: ControlPlaneConfig,
+  signal?: AbortSignal,
+): Promise<CommunitySkill[]> {
+  const res = await cpFetch(cfg, "/v1/skills/community/popular", {
+    method: "POST",
+    signal,
+  });
+  return (await res.json()) as CommunitySkill[];
+}
+export async function listSkillsFromRepo(
+  cfg: ControlPlaneConfig,
+  source: string,
+  signal?: AbortSignal,
+): Promise<RepoSkill[]> {
+  const res = await cpFetch(cfg, "/v1/skills/repo/list", {
+    method: "POST",
+    body: JSON.stringify({ source }),
+    signal,
+  });
+  return (await res.json()) as RepoSkill[];
+}
+export async function installCommunitySkill(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  body: { source: string; skillId: string },
+  signal?: AbortSignal,
+): Promise<string> {
+  const res = await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/skills/community/install`,
+    { method: "POST", body: JSON.stringify(body), signal },
+  );
+  return (await res.json()) as string;
+}
+export async function installSkillsFromRepo(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  body: { source: string; skills: RepoSkill[] },
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const res = await cpFetch(cfg, `${agentPath(agentId)}/skills/repo/install`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    signal,
+  });
+  return (await res.json()) as string[];
 }
 
 export async function createSkill(

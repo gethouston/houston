@@ -95,6 +95,11 @@ failures inline in the Add Skills UI; they should not show global "Houston
 problem" bug toasts for marketplace search misses.
 
 Both engines implement the same routes and resilience. TS host (current):
+the read-only marketplace surface (search/popular/repo-list — no workspace
+touched) is served top-level at `POST /v1/skills/...`
+(`packages/host/src/routes/skills-directory.ts`, what the web/desktop host
+adapter in `packages/web/src/engine-adapter/` calls) AND agent-scoped for the
+engine-client wire; installs are agent-scoped only.
 `packages/host/src/routes/skills-remote.ts` dispatches
 `POST skills/community/{search,popular,install}` and
 `POST skills/repo/{list,install}` to `packages/host/src/skills/`
