@@ -244,125 +244,57 @@ describe("hostedGateState (HOU-611)", () => {
   });
 });
 
-// HOU-621: the runtime local-vs-remote chooser. Build-baked targets win and skip
-// the chooser; the chooser only exists in the TS-engine build (VITE_NEW_ENGINE
-// truthy, where vite aliases the v3 adapter). A plain Rust build ignores any
-// stored choice and stays on its sidecar.
-describe("resolveEngine (HOU-621)", () => {
+// HOU-642: the gateway URL is baked into the build — there is no runtime
+// chooser. A build-baked target (host URL or hosted gateway) wins; everything
+// else runs against its co-located sidecar / injected config.
+describe("resolveEngine (HOU-642)", () => {
   it("uses the baked static host when VITE_NEW_ENGINE_URL is set", () => {
     deepStrictEqual(
-      resolveEngine(
-        { VITE_NEW_ENGINE_URL: "https://host.example" },
-        null,
-        true,
-      ),
-      { kind: "static-host", url: "https://host.example" },
+      resolveEngine({ VITE_NEW_ENGINE_URL: "https://host.example" }),
+      {
+        kind: "static-host",
+        url: "https://host.example",
+      },
     );
   });
 
   it("uses hosted OAuth when a hosted URL is set (managed-cloud default)", () => {
     deepStrictEqual(
-      resolveEngine(
-        { VITE_HOSTED_ENGINE_URL: "https://cloud.example" },
-        null,
-        true,
-      ),
+      resolveEngine({ VITE_HOSTED_ENGINE_URL: "https://cloud.example" }),
       { kind: "hosted-oauth", url: "https://cloud.example" },
     );
   });
 
   it("uses hosted static when the hosted URL has OAuth toggled off", () => {
     deepStrictEqual(
-      resolveEngine(
-        {
-          VITE_HOSTED_ENGINE_URL: "https://cloud.example",
-          VITE_HOSTED_ENGINE_AUTH: "static",
-        },
-        null,
-        true,
-      ),
+      resolveEngine({
+        VITE_HOSTED_ENGINE_URL: "https://cloud.example",
+        VITE_HOSTED_ENGINE_AUTH: "static",
+      }),
       { kind: "hosted-static", url: "https://cloud.example" },
     );
   });
 
-  it("is pending in a TS-engine DESKTOP build with no choice yet (shows the chooser)", () => {
-    deepStrictEqual(resolveEngine({ VITE_NEW_ENGINE: "1" }, null, true), {
-      kind: "pending",
-    });
-    deepStrictEqual(resolveEngine({ VITE_NEW_ENGINE: "true" }, null, true), {
-      kind: "pending",
-    });
-  });
-
-  it("uses the sidecar for the runtime `local` choice", () => {
-    deepStrictEqual(
-      resolveEngine({ VITE_NEW_ENGINE: "1" }, { mode: "local" }, true),
-      { kind: "sidecar" },
-    );
-  });
-
-  it("uses hosted OAuth at the entered URL for the runtime `remote` choice", () => {
-    deepStrictEqual(
-      resolveEngine(
-        { VITE_NEW_ENGINE: "1" },
-        { mode: "remote", url: "https://remote.example" },
-        true,
-      ),
-      { kind: "hosted-oauth", url: "https://remote.example" },
-    );
-  });
-
-  it("never goes pending in a browser (packages/web) TS-engine build", () => {
-    // The web build runs VITE_NEW_ENGINE=1 with no baked URL and injects
-    // window.__HOUSTON_ENGINE__ itself; a `pending` here would hang the web app
-    // and the whole Playwright suite (engine.ts is shared). isTauri=false yields
-    // `sidecar` so resolveConfig adopts the injected config.
-    deepStrictEqual(resolveEngine({ VITE_NEW_ENGINE: "1" }, null, false), {
+  it("uses the sidecar for the TS-engine build with no baked URL (dev loop + packages/web)", () => {
+    deepStrictEqual(resolveEngine({ VITE_NEW_ENGINE: "1" }), {
       kind: "sidecar",
     });
-    deepStrictEqual(
-      resolveEngine(
-        { VITE_NEW_ENGINE: "1" },
-        { mode: "remote", url: "https://remote.example" },
-        false,
-      ),
-      { kind: "sidecar" },
-    );
+    deepStrictEqual(resolveEngine({ VITE_NEW_ENGINE: "true" }), {
+      kind: "sidecar",
+    });
   });
 
-  it("stays on the Rust sidecar for the default build, ignoring any stored choice", () => {
-    deepStrictEqual(resolveEngine({}, null, true), { kind: "sidecar" });
-    // A stale choice from a prior TS-engine build must NOT be honoured without
-    // the v3 adapter alias: there is no v3 client to point at the remote URL.
-    deepStrictEqual(
-      resolveEngine(
-        {},
-        { mode: "remote", url: "https://remote.example" },
-        true,
-      ),
-      { kind: "sidecar" },
-    );
+  it("uses the sidecar for the default Rust build (no flags)", () => {
+    deepStrictEqual(resolveEngine({}), { kind: "sidecar" });
   });
 
-  it("lets a baked URL win over the runtime chooser (build target is authoritative)", () => {
+  it("lets VITE_NEW_ENGINE_URL win over the hosted URL (static host is authoritative)", () => {
     deepStrictEqual(
-      resolveEngine(
-        { VITE_NEW_ENGINE: "1", VITE_NEW_ENGINE_URL: "https://host.example" },
-        { mode: "remote", url: "https://remote.example" },
-        true,
-      ),
+      resolveEngine({
+        VITE_NEW_ENGINE_URL: "https://host.example",
+        VITE_HOSTED_ENGINE_URL: "https://cloud.example",
+      }),
       { kind: "static-host", url: "https://host.example" },
-    );
-    deepStrictEqual(
-      resolveEngine(
-        {
-          VITE_NEW_ENGINE: "1",
-          VITE_HOSTED_ENGINE_URL: "https://cloud.example",
-        },
-        { mode: "remote", url: "https://remote.example" },
-        true,
-      ),
-      { kind: "hosted-oauth", url: "https://cloud.example" },
     );
   });
 });

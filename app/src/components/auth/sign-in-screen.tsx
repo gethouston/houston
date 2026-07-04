@@ -27,11 +27,10 @@ type Provider = "google";
  * Two ways in: Google (OAuth via the loopback flow) and passwordless email
  * (6-digit code, fully in-app — see EmailSignIn).
  *
- * `allowManualCallback` (HOU-621) surfaces the paste-the-code fallback. The
- * cloud/remote gate passes it always (the connecting build may not own the
- * `houston://` scheme and can't receive the deep-link callback); the local
- * account login passes it only in dev builds (#146: a dev callback opens the
- * installed prod app), so production standalone shows no manual step.
+ * `allowManualCallback` surfaces the paste-the-code fallback. Both call sites
+ * pass it only in dev builds (#146: a dev build doesn't own the `houston://`
+ * scheme, so the callback opens the installed prod app instead), so production
+ * never shows the manual step.
  *
  * Re-click semantics: the loading spinner is only on while the system
  * browser is being opened (a few ms). After that, the user is free to
@@ -186,14 +185,12 @@ export function SignInScreen({
           )}
         </div>
 
-        {/* Manual sign-in completion for the cloud/remote flow (HOU-621). The
-         * `houston://auth-callback` deep link routes to the INSTALLED app that
-         * owns the `houston` scheme, which is not necessarily the build that is
-         * pointed at the remote engine (e.g. a `pnpm start` dev build alongside
-         * the installed production app). Paste the code (or the full callback
-         * URL) the browser landed on to finish the PKCE exchange locally. Only
-         * rendered when the caller opts in via `allowManualCallback` — the local
-         * standalone flow never shows it. */}
+        {/* Dev-only manual sign-in completion. The `houston://auth-callback`
+         * deep link routes to the INSTALLED app that owns the `houston` scheme,
+         * which is not the `pnpm start` dev build running alongside it. Paste
+         * the code (or the full callback URL) the browser landed on to finish
+         * the PKCE exchange locally. Only rendered when the caller opts in via
+         * `allowManualCallback` — every caller gates it on dev builds. */}
         {allowManualCallback && isTauri() && (
           <form
             onSubmit={(e) => void handleDevPaste(e)}

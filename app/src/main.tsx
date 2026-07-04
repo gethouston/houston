@@ -6,7 +6,6 @@ import { I18nextProvider } from "react-i18next";
 import App from "./App";
 import { queryClient } from "./lib/query-client";
 import "./styles/globals.css";
-import { ConnectionGate } from "./components/shell/connection-gate";
 import { DisclaimerGate } from "./components/shell/disclaimer-gate";
 import { EngineGate } from "./components/shell/engine-gate";
 import { LanguageGate } from "./components/shell/language-gate";
@@ -151,15 +150,13 @@ createRoot(rootElement).render(
       <ErrorBoundary>
         <TooltipProvider>
           <StartupEffects>
-            <ConnectionGate>
-              <EngineGate>
-                <LanguageGate>
-                  <DisclaimerGate>
-                    <App />
-                  </DisclaimerGate>
-                </LanguageGate>
-              </EngineGate>
-            </ConnectionGate>
+            <EngineGate>
+              <LanguageGate>
+                <DisclaimerGate>
+                  <App />
+                </DisclaimerGate>
+              </LanguageGate>
+            </EngineGate>
           </StartupEffects>
         </TooltipProvider>
       </ErrorBoundary>
