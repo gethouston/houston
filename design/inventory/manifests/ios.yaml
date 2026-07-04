@@ -1,10 +1,17 @@
 # ios surface parity manifest.
 #
-# The native SwiftUI iOS app (not started). This surface is UNENFORCED: check-parity reports its lag in
-# every CI run (visible progress) but never fails the build on it. When the
-# app begins implementing components, flip statuses to partial/implemented and
-# raise inventoryVersion as it fully catches up; flip enforced: true only when
-# the app SHIPS at that inventory version.
+# The native SwiftUI iOS app (mobile/ios/). This surface is UNENFORCED:
+# check-parity reports its lag in every CI run (visible progress) but never
+# fails the build on it.
+#
+# STATUS OF THIS SURFACE (2026-07): a full v1 has been BUILT on @houston/sdk
+# (JavaScriptCore bridge + native fetch/storage ports, Supabase auth, the
+# DesignSystem over @houston/design-tokens, and the Agents / Mission Control /
+# New Mission / Chat surfaces). Per-component statuses below reflect what is
+# actually built. inventoryVersion STAYS 0 and enforced STAYS false because the
+# app has not yet been compiled+shipped: the build environment has no Xcode, so
+# the Swift is disciplined-but-compiler-unverified. Raise inventoryVersion only
+# once it compiles, tests pass on a simulator, and it ships at that version.
 
 surface: ios
 enforced: false
@@ -12,46 +19,85 @@ inventoryVersion: 0
 
 components:
   agent-avatar:
-    status: not-started
+    status: implemented
+    ref: mobile/ios/Houston/DesignSystem/HoustonAvatar.swift
+    notes: Helmet glyph (verbatim SVG paths), agent color-fill tint, running-glow ring.
   agent-list-item:
-    status: not-started
+    status: implemented
+    ref: mobile/ios/Houston/Features/Agents/AgentRow.swift
+    notes: Contact row — avatar, name, last-activity line, outline needs-you count chip.
   conversation-feed:
-    status: not-started
+    status: implemented
+    ref: mobile/ios/Houston/Features/Chat/MissionFeed.swift
+    notes: Scroll viewport, item list, stick-to-bottom anchor, scroll-to-latest button.
   assistant-message:
-    status: not-started
+    status: partial
+    ref: mobile/ios/Houston/Features/Chat/ChatBubbles.swift
+    notes: Plain-text streaming bubble with stable id; rich markdown / code-block / copy-action deferred past v1.
   user-message:
-    status: not-started
+    status: implemented
+    ref: mobile/ios/Houston/Features/Chat/ChatBubbles.swift
+    notes: Bubble with author label (shown only with >=2 distinct authors). Attachments not a mobile v1 feature.
   thinking-indicator:
-    status: not-started
+    status: implemented
+    ref: mobile/ios/Houston/Features/Chat/ThinkingBlock.swift
+    notes: Helmet glyph + shimmer label ("Thinking…" -> "Thought for a few seconds").
   tool-call-chip:
-    status: not-started
+    status: implemented
+    ref: mobile/ios/Houston/Features/Chat/ToolChipView.swift
+    notes: Tool icon, action label, paired tool_result, error-tinted result status.
   provider-error-card:
-    status: not-started
+    status: partial
+    ref: mobile/ios/Houston/Features/Chat/ProviderErrorCardView.swift
+    notes: Icon bubble + title + reason for all 12 kinds; reconnect/switch-model actions are desktop-only flows, deferred (no dead affordances).
   system-message:
-    status: not-started
+    status: implemented
+    ref: mobile/ios/Houston/Features/Chat/SystemFeedViews.swift
+    notes: Divider rule + centered label; also context-compacted / provider-switched dividers.
   skill-invocation-message:
     status: not-started
+    notes: No dedicated skill-invocation feed item in mobile v1; skill runs surface as tool-call chips.
   composer:
-    status: not-started
+    status: implemented
+    ref: mobile/ios/Houston/Features/Chat/MissionComposer.swift
+    notes: Growing textarea (1-6 lines), trailing send/stop that lights on non-empty trimmed text.
   turn-status:
-    status: not-started
+    status: implemented
+    ref: mobile/ios/Houston/Features/Chat/MissionStatusLine.swift
+    notes: Helmet glyph + shimmering status label + Stop while running.
   progress-panel:
     status: not-started
+    notes: Desktop progress panel not ported to mobile v1.
   approval-surface:
-    status: not-started
+    status: implemented
+    ref: mobile/ios/Houston/Features/Chat/ApproveBar.swift
+    notes: Move-to-done bar shown only when boardStatus==needs_you and not running (reads the pair, never sessionStatus alone).
   deliverable-card:
-    status: not-started
+    status: partial
+    ref: mobile/ios/Houston/Features/Chat/MissionLogBlock.swift
+    notes: final_result rendered as a Mission-log block (result + duration/cost); no distinct deliverable artifact card yet.
   mission-card:
-    status: not-started
+    status: implemented
+    ref: mobile/ios/Houston/Features/MissionControl/MissionCardView.swift
+    notes: Avatar, title, description, tags, running-glow / destructive-error border; actions via context menu + swipe (mobile's model for the desktop drag-handle/select-checkbox).
   mission-board:
-    status: not-started
+    status: implemented
+    ref: mobile/ios/Houston/Features/MissionControl/MissionControlPager.swift
+    notes: Three-column pager (Running / Needs you / Done) with headers, card lists, empty-column states; no bulk-action bar on mobile.
   mission-status-chip:
-    status: not-started
+    status: implemented
+    ref: mobile/ios/Houston/DesignSystem/StatusChip.swift
+    notes: Column-labeled pill + NeedsYouChip (99+ cap); needs_you vs error kept distinct.
   routine-row:
     status: not-started
+    notes: Routines list not in mobile v1; missions only carry a "Routine" tag.
   skill-row:
     status: not-started
+    notes: Skills catalog not in mobile v1.
   empty-state:
-    status: not-started
+    status: implemented
+    ref: mobile/ios/Houston/DesignSystem/Primitives/EmptyStateView.swift
+    notes: Title, description, optional action/system image.
   toast:
     status: not-started
+    notes: No toast system in mobile v1; action failures surface via alerts carrying the real reason.
