@@ -56,14 +56,10 @@ export function EmailMission({
   const [composerFiles, setComposerFiles] = useState<File[]>([]);
 
   // The same chat-rendering hooks the real agent chat uses, so the onboarding
-  // chat shows the agent's actual tool calls/results + a proper thinking + end-
-  // of-turn indicator, not just a bare "thinking".
-  const {
-    processLabels,
-    getThinkingMessage,
-    thinkingIndicator,
-    endOfTurnIndicator,
-  } = useChatDisplayLabels();
+  // chat shows the agent's actual tool calls/results + the proper in-flight
+  // indicator, not just a bare "thinking".
+  const { processLabels, getThinkingMessage, thinkingIndicator } =
+    useChatDisplayLabels();
   const { isSpecialTool, renderToolResult, renderTurnSummary } =
     useFileToolRenderer(agent.folderPath);
   const queuedLabels = useQueuedMessageLabels();
@@ -143,7 +139,6 @@ export function EmailMission({
             processLabels={processLabels}
             getThinkingMessage={getThinkingMessage}
             thinkingIndicator={thinkingIndicator}
-            endOfTurnIndicator={endOfTurnIndicator}
             isSpecialTool={isSpecialTool}
             renderToolResult={renderToolResult}
             renderTurnSummary={renderTurnSummary}
