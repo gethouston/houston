@@ -16,6 +16,7 @@ import type {
   CreateAgent,
   CreateAgentResult,
   CreateSkillRequest,
+  GenerateInstructionsResult,
   InstallCommunityRequest,
   InstallFromRepoRequest,
   NewActivity,
@@ -289,8 +290,46 @@ export class HoustonClient {
     if (this.cp) return controlPlane.deleteAgent(this.cp, agentId);
     agents.deleteAgent(workspaceId, agentId);
   }
-  async generateAgentInstructions() {
-    return { instructions: "" };
+  /**
+   * Create-with-AI: one one-shot generation turn on the runtime — the selected
+   * agent's sandbox in cloud / desktop-new-engine mode (same path as
+   * summarizeActivity), the single runtime locally. The dialog's brain picker
+   * sends legacy provider/model ids; migrate them to pi ids first. No engine
+   * reachable (cloud with no agent open yet) throws — the assist step shows the
+   * real reason instead of silently producing an empty agent (HOU-660).
+   */
+  async generateAgentInstructions(
+    description: string,
+    opts: { provider?: string; model?: string; signal?: AbortSignal } = {},
+  ): Promise<GenerateInstructionsResult> {
+    const engine = this.providerEngine();
+    if (!engine)
+      throw new Error("Open an agent first, then try Create with AI again.");
+    let provider: string | undefined;
+    let model = opts.model;
+    if (opts.provider) {
+      const migrated = migrateProviderModel(opts.provider, opts.model);
+      for (const d of migrated.diagnostics)
+        console.warn(`[engine-adapter] migrated generate model: ${d.message}`);
+      provider = migrated.provider;
+      model = migrated.model;
+    }
+    const r = await engine.generateAgent(description, {
+      provider,
+      model,
+      signal: opts.signal,
+    });
+    return {
+      name: r.name,
+      instructions: r.instructions,
+      // Nothing renders these yet on the new engine; keep the wire shape so the
+      // create dialog can start consuming them without an adapter change.
+      suggestedIntegrations: r.suggestedIntegrations.map((slug) => ({
+        slug: slug.toLowerCase(),
+        displayName: slug,
+      })),
+      suggestedRoutine: r.suggestedRoutine ?? null,
+    };
   }
   async getPreference(key: string): Promise<string | null> {
     try {
