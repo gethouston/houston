@@ -35,10 +35,11 @@ with no port-poll, so it can race on a cold boot (the binary boots + serves fine
 manually). Make `--verify` poll `/health` with a short retry loop instead of a single curl.
 
 ## 5. Cloud adapter integration tests (real infra)
-`packages/host-cloud` covers Pg (pg-mem) and Redis (ioredis-mock) behaviorally. `GcsVfs` and
-`GkeLauncher` are env-gated integration tests that need a real bucket / cluster — see
-`packages/host-cloud/src/vfs/README-testing.md` and `.../launcher/README-testing.md`. Wire
-these into a nightly/integration CI that has the credentials (the PR gate stays hermetic).
+The closed `@houston/host-cloud` (now in its own repo) covers Pg (pg-mem) and Redis
+(ioredis-mock) behaviorally. `GcsVfs` and `GkeLauncher` are env-gated integration tests that
+need a real bucket / cluster — see that package's `src/vfs/README-testing.md` and
+`src/launcher/README-testing.md`. Wire these into a nightly/integration CI there that has
+the credentials (the PR gate stays hermetic).
 
 ## 6. Deploy identities still say "control-plane"
 The k8s Deployment/Service/SA names, the `control-plane:v8` image tag, `CP_*` env vars, and

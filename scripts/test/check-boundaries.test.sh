@@ -13,7 +13,7 @@
 #       - a cloud lib / closed package DECLARED in an open package.json (Hole 3, manifest)
 #       - a bare @houston/host-cloud import              (the original check)
 #       - a cloud lib imported by a non-allowlisted file
-#       - an empty host-cloud package (Rule B)
+#       - a reappearing packages/host-cloud dir (Rule B — it moved out of the repo)
 #   * a commented-out cloud import does NOT false-fail (comment stripping);
 #   * the runtime's GcsStore adapter + dep are the one allowed exception.
 #
@@ -51,7 +51,8 @@ assert_fail() { # <label> <substring>
 }
 
 # ---------------------------------------------------------------------------
-# Clean fixture: the open packages + the closed host-cloud package.
+# Clean fixture: the open packages only — the closed control plane lives
+# outside this repository, so a clean tree has NO packages/host-cloud.
 # ---------------------------------------------------------------------------
 reset_fixture() {
   rm -rf "$TMP/packages" "$TMP/ui"
@@ -81,11 +82,6 @@ reset_fixture() {
   mkdir -p "$TMP/ui/core/src"
   printf '{"name":"@houston-ai/core","version":"0.0.0","dependencies":{"react":"^19"}}\n' > "$TMP/ui/core/package.json"
   printf 'import React from "react";\nexport const C = React;\n' > "$TMP/ui/core/src/index.tsx"
-
-  # The CLOSED package: may import cloud freely; must carry the adapters (Rule B).
-  mkdir -p "$TMP/packages/host-cloud/src/store"
-  printf '{"name":"@houston/host-cloud","version":"0.0.0","dependencies":{"pg":"^8","@houston/host":"file:../host"}}\n' > "$TMP/packages/host-cloud/package.json"
-  printf 'import pg from "pg";\nexport const p = pg;\n' > "$TMP/packages/host-cloud/src/store/pg.ts"
 }
 
 echo "== check-boundaries.mjs =="
@@ -128,11 +124,11 @@ reset_fixture
 printf 'import { Storage } from "@google-cloud/storage";\nexport const s = Storage;\n' > "$TMP/packages/runtime/src/other.ts"
 assert_fail "cloud lib in a non-allowlisted file is caught" 'cloud lib "@google-cloud/storage"'
 
-# Rule B — the closed package must carry the extracted adapters.
+# Rule B — the closed package must not reappear under its old path.
 reset_fixture
-rm -rf "$TMP/packages/host-cloud/src"
 mkdir -p "$TMP/packages/host-cloud/src"
-assert_fail "empty host-cloud package is caught" "no source files"
+printf 'import pg from "pg";\nexport const p = pg;\n' > "$TMP/packages/host-cloud/src/pg.ts"
+assert_fail "reappearing host-cloud package is caught" "must not exist"
 
 # Comment stripping — a commented-out cloud import must NOT false-fail.
 reset_fixture

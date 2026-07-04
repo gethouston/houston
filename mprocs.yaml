@@ -6,10 +6,6 @@ procs:
     shell: "set -a; [ -f .env.local ] && . ./.env.local; set +a; pnpm dev:host"
   app:
     shell: pnpm dev:app
-  gateway:
-    # A local stand-in for Houston's cloud host (dev stores, REAL Supabase
-    # verification when CP_SUPABASE_JWKS_URL is set in .env.local): holds the
-    # Composio platform key and serves /v1/integrations for the desktop host,
-    # so `pnpm dev` can exercise the exact production integrations path. Its
-    # dev script self-loads repo-root .env.local. Idle/keyless → harmless.
-    shell: pnpm dev:gateway
+  # The cloud control plane (the local integrations-gateway stand-in that used
+  # to run here as `gateway:`) moved out of this repository; run its dev server
+  # from its own repo when exercising the production integrations path.

@@ -1,22 +1,19 @@
 #!/usr/bin/env node
 /**
- * Locks the open/closed seam between "Houston" (open) and "Houston Cloud"
- * (closed) so the eventual OSS split is a clean directory move. See BOUNDARY.md
- * for the manifest this script enforces.
+ * Locks the open/closed seam of "Houston" (open). The CLOSED control plane
+ * (`@houston/host-cloud` — the concrete cloud adapters pg / GCS / GKE / Redis /
+ * BigQuery, the operator-admin surface, and the cloud `main.ts`) has MOVED OUT
+ * of this repository to its private home, which vendors this repo at a pinned
+ * SHA and builds against the ports in `@houston/host`. See BOUNDARY.md for the
+ * manifest this script enforces.
  *
- * The seam is a PACKAGE boundary (the in-host CLOSED_FILES/MIXED_FILES machinery
- * is gone — host-cloud was extracted):
+ *   - Every package here is OPEN: `packages/host` (the server builder, ports,
+ *     every domain route handler, the open adapters, and the LOCAL entry) plus
+ *     protocol/domain/runtime/runtime-client and ui. None of them may EVER
+ *     import a cloud lib or `@houston/host-cloud`.
  *
- *   - `packages/host-cloud/**` is the CLOSED package (the concrete cloud adapters
- *     pg / GCS / GKE / Redis / BigQuery, the operator-admin surface, and the
- *     cloud `main.ts`). It MAY import `@houston/host` and cloud libs freely.
- *   - `packages/host/**` is OPEN (the server builder, ports, every domain route
- *     handler, the open adapters, and the LOCAL entry). It must NEVER import a
- *     cloud lib or `@houston/host-cloud`.
- *   - The other open packages (protocol/domain/runtime/runtime-client, ui) must
- *     NEVER import a cloud lib or `@houston/host-cloud`.
- *
- * The one-way rule: CLOSED may import OPEN; OPEN must NEVER import CLOSED.
+ * The one-way rule: CLOSED (out-of-repo) may import OPEN; OPEN must NEVER
+ * import CLOSED.
  *
  * Three protections, all fail the build (exit 1):
  *
@@ -38,9 +35,9 @@
  *     wiring point (`packages/runtime/src/main.ts`) — the same port+adapter+wiring
  *     shape one level down. Those two files may import `@google-cloud/storage`.
  *
- *   Rule B — `packages/host-cloud/**` must exist and carry the extracted cloud
- *     adapters (a stray empty package can't pass as "extracted"). The package is
- *     closed by definition, so its cloud imports are all legitimate crossings.
+ *   Rule B — `packages/host-cloud/` must NOT exist here. It was moved out of
+ *     this repository; anything reappearing under that path would silently
+ *     re-publish closed code.
  *
  *   Rule C (manifest) — no OPEN package may DECLARE the closed package or a cloud
  *     lib as a dependency (any bucket). This is the allowlist direction the seam
@@ -80,7 +77,11 @@ const OPEN_PACKAGES = [
   "ui",
 ];
 
-/** The closed package. Walked only to assert it exists + holds the adapters. */
+/**
+ * The closed package's former path. It lives in its private home now; Rule B
+ * asserts nothing reappears here, and Rules A/C keep open code from importing
+ * or declaring it by name.
+ */
 const CLOSED_PACKAGE = "packages/host-cloud";
 
 /**
@@ -322,7 +323,6 @@ function declaredDeps(abs) {
 
 const violations = [];
 let openFilesChecked = 0;
-let closedFilesChecked = 0;
 let crossingsAllowed = 0;
 let manifestsChecked = 0;
 
@@ -384,21 +384,11 @@ for (const pkg of OPEN_PACKAGES) {
   }
 }
 
-// Rule B — the closed package is wholesale CLOSED: it may import cloud libs and
-// @houston/host (the one-way dependency). We walk it only to count its files and
-// confirm it carries the cloud adapters (so a stray empty dir can't pass as
-// "extracted"). Its cloud imports are all legitimate crossings.
-for (const abs of walk(join(root, CLOSED_PACKAGE, "src"))) {
-  closedFilesChecked++;
-  const src = readFileSync(abs, "utf8");
-  for (const spec of importsOf(src)) {
-    if (isCloudLib(spec)) crossingsAllowed++;
-  }
-}
-
-if (closedFilesChecked === 0) {
+// Rule B — the closed package moved out of this repository. Anything
+// reappearing under its old path would silently re-publish closed code.
+if (existsSync(join(root, CLOSED_PACKAGE))) {
   violations.push(
-    `[B] ${CLOSED_PACKAGE}/src has no source files — the closed package must hold the extracted cloud adapters`,
+    `[B] ${CLOSED_PACKAGE} must not exist — the closed control plane lives outside this repository; do not re-add it here`,
   );
 }
 
@@ -448,7 +438,7 @@ if (violations.length > 0) {
 
 console.log(
   `Boundary OK — ${openFilesChecked} open file(s) clean (incl. packages/host); ` +
-    `${closedFilesChecked} closed file(s) in ${CLOSED_PACKAGE}; ` +
+    `no ${CLOSED_PACKAGE} present (extracted); ` +
     `${crossingsAllowed} allowlisted cloud crossing(s); ` +
     `${manifestsChecked} open manifest(s) clean.`,
 );
