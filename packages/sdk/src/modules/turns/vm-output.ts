@@ -85,6 +85,31 @@ export class ConversationVmOutput implements FeedOutput {
     return s;
   }
 
+  /**
+   * Replace a conversation's feed with a folded history transcript (fresh ids),
+   * the hydration seam `observe` uses so a chat opens COMPLETE before any live
+   * frame. History frames are all final, so the streaming map is reset — a live
+   * observer attaching next starts its running turn's bubble cleanly, never
+   * extending a seeded one. `sessionStatus`/`boardStatus` are untouched: the
+   * attaching observer owns those. The double-render guard is by construction —
+   * the running turn's reply is NOT yet in history (unsettled), so seeding it
+   * plus observing it live cannot duplicate; the caller only seeds when it is
+   * not already streaming this conversation.
+   */
+  seedHistory(
+    sessionKey: string,
+    frames: readonly { feed_type: string; data: unknown }[],
+  ): void {
+    const s = this.state(sessionKey);
+    s.feed = frames.map((f) => ({
+      id: `f${s.seq++}`,
+      feed_type: f.feed_type,
+      data: f.data,
+    }));
+    s.streaming.clear();
+    this.publish(sessionKey, s);
+  }
+
   pushFeedItem(_agentPath: string, sessionKey: string, item: unknown): void {
     const s = this.state(sessionKey);
     const { feed_type, data } = item as { feed_type: string; data: unknown };

@@ -21,6 +21,7 @@
   ],
   "scripts": {
     "build": "tsgo -p tsconfig.json",
+    "build:bridge": "node scripts/build-bridge.mjs",
     "dev": "tsgo -p tsconfig.json --watch",
     "test": "vitest run --testTimeout=30000",
     "typecheck": "tsgo -p tsconfig.json --noEmit"
@@ -33,6 +34,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
+    "esbuild": "^0.25.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "^6.0.2",

@@ -36,6 +36,14 @@ export interface TurnObserveInput {
   conversationId: string;
 }
 
+/** The `turns/history` command payload. */
+export interface TurnHistoryInput {
+  /** The agent whose sandbox holds the conversation (omit for the single local runtime). */
+  agentId?: string;
+  /** The conversation whose persisted transcript to fold into feed frames. */
+  conversationId: string;
+}
+
 const str = (v: unknown): string | undefined =>
   typeof v === "string" ? v : undefined;
 
@@ -70,5 +78,15 @@ export function asObserveInput(payload: unknown): TurnObserveInput {
   return {
     conversationId: id,
     agentId: str((payload as TurnObserveInput)?.agentId),
+  };
+}
+
+export function asHistoryInput(payload: unknown): TurnHistoryInput {
+  const id = (payload as { conversationId?: unknown })?.conversationId;
+  if (typeof id !== "string")
+    throw new Error("turns/history requires a string conversationId");
+  return {
+    conversationId: id,
+    agentId: str((payload as TurnHistoryInput)?.agentId),
   };
 }
