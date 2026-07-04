@@ -1,6 +1,6 @@
 import { ConfirmDialog } from "@houston-ai/core";
 import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
-import { LayoutDashboard, Settings } from "lucide-react";
+import { Bot, LayoutDashboard, Settings } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
@@ -70,7 +70,10 @@ export function Sidebar({ children }: { children: ReactNode }) {
     onShareAgent: (agentId) => useUIStore.getState().setShareAgentId(agentId),
     shareLabel: t("portable:shareMenu"),
   });
-  const isTopLevel = viewMode === "dashboard" || viewMode === "settings";
+  const isTopLevel =
+    viewMode === "dashboard" ||
+    viewMode === "settings" ||
+    viewMode === "providers";
 
   const handleWorkspaceSwitch = async (wsId: string) => {
     if (wsId === currentWorkspace?.id) return;
@@ -151,6 +154,12 @@ export function Sidebar({ children }: { children: ReactNode }) {
               icon: <LayoutDashboard className="h-4 w-4" />,
               onClick: () => setViewMode("dashboard"),
               dataAttrs: { "data-tour-target": "nav-dashboard" },
+            },
+            {
+              id: "providers",
+              label: t("shell:sidebar.aiProviders"),
+              icon: <Bot className="h-4 w-4" />,
+              onClick: () => setViewMode("providers"),
             },
             {
               id: "settings",

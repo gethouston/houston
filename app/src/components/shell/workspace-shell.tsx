@@ -41,6 +41,7 @@ import { CreateAgentDialog } from "./create-workspace-dialog";
 import { DetailPanelProvider } from "./detail-panel-context";
 import { HoustonLogo } from "./experience-card";
 import { AgentRenderer } from "./experience-renderer";
+import { ProvidersView } from "./providers-view";
 import { Sidebar } from "./sidebar";
 import { UiTour } from "./ui-tour";
 
@@ -90,7 +91,10 @@ export function WorkspaceShell({
   const needsYouCount = (activities ?? []).filter(
     (a) => a.status === "needs_you",
   ).length;
-  const isAgentView = viewMode !== "dashboard" && viewMode !== "settings";
+  const isAgentView =
+    viewMode !== "dashboard" &&
+    viewMode !== "settings" &&
+    viewMode !== "providers";
   const tabOr = (id: string) =>
     STANDARD_TAB_IDS.has(id) ? id : DEFAULT_TAB_ID;
 
@@ -159,6 +163,8 @@ export function WorkspaceShell({
                   <Dashboard />
                 ) : viewMode === "settings" ? (
                   <SettingsView />
+                ) : viewMode === "providers" ? (
+                  <ProvidersView />
                 ) : currentAgent && agentDef && isAgentView ? (
                   <>
                     <div data-tour-target="tabs">
