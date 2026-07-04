@@ -5,6 +5,7 @@ import type {
   ConversationSummary,
   CustomEndpoint,
   EngineClientConfig,
+  GenerateInstructionsResponse,
   HealthResponse,
   LoginInfo,
   ProviderId,
@@ -243,6 +244,24 @@ export class HoustonEngineClient {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
+    });
+  }
+
+  /**
+   * AI-assisted agent creation: turn a description into CLAUDE.md content, a
+   * short name, suggested Composio toolkit slugs, and (optionally) one
+   * suggested routine with a runtime-validated cron. Throws on failure — the
+   * caller surfaces the reason, never a silent empty result.
+   */
+  generateInstructions(
+    description: string,
+    opts: { model?: string; signal?: AbortSignal } = {},
+  ) {
+    return this.json<GenerateInstructionsResponse>("/generate-instructions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description, model: opts.model }),
+      signal: opts.signal,
     });
   }
 

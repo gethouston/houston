@@ -68,6 +68,8 @@ export interface AssistantMessageMeta {
   usage?: TokenUsage | null;
   providerSwitch?: ChatMessage["providerSwitch"];
   providerError?: ChatMessage["providerError"];
+  /** Files the turn created/modified (relative paths); omitted when empty. */
+  fileChanges?: ChatMessage["fileChanges"];
   /** The turn's wire id (`WireFrame.turnId`) — same as the user message's. */
   turnId?: string;
 }
@@ -117,6 +119,7 @@ export function appendAssistantMessageAt(
     usage: meta.usage ?? undefined,
     providerSwitch: meta.providerSwitch,
     providerError: meta.providerError,
+    fileChanges: meta.fileChanges,
     turnId: meta.turnId,
   });
   conv.updatedAt = Date.now();

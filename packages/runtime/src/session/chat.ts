@@ -11,6 +11,7 @@ import {
   getConversation,
 } from "./conversation-cache";
 import { execTurn, type TurnPin } from "./exec-turn";
+import { withWorkdirLock } from "./workdir-lock";
 
 /**
  * The runtime's public turn API: start (queued per conversation), cancel,
@@ -98,8 +99,16 @@ export async function runTurn(
     return;
   }
 
+  // Two layers of serialization: per-conversation ordering (conv.queue) AND
+  // the per-workdir lock — every conversation in this runtime shares ONE
+  // workspaceDir, so a routine's turn and a user chat queue instead of
+  // mutating the same files concurrently (the Rust engine's workdir_locks
+  // behavior). The conv.queue link resolves before the lock is requested, so
+  // the two layers can't deadlock.
   const run = conv.queue.then(() =>
-    execTurn(conv, id, turnId, text, nonce, pin, acting),
+    withWorkdirLock(config.workspaceDir, () =>
+      execTurn(conv, id, turnId, text, nonce, pin, acting),
+    ),
   );
   // Keep the queue chain alive past a turn. execTurn already surfaces its own
   // failure as an `error` event, so this guard never swallows a user-visible one.

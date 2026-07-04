@@ -101,4 +101,23 @@ describe("historyToFeed", () => {
       data: { content: "", is_error: true },
     });
   });
+
+  it("replays a persisted file-change summary after the assistant text", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "make a report", ts: 1 },
+      {
+        role: "assistant",
+        content: "Report ready.",
+        ts: 2,
+        fileChanges: { created: ["report.pdf"], modified: ["notes.md"] },
+      },
+    ]);
+    const textIdx = feed.findIndex((f) => f.feed_type === "assistant_text");
+    const changesIdx = feed.findIndex((f) => f.feed_type === "file_changes");
+    expect(changesIdx).toBeGreaterThan(textIdx);
+    expect(feed[changesIdx].data).toEqual({
+      created: ["report.pdf"],
+      modified: ["notes.md"],
+    });
+  });
 });

@@ -82,6 +82,11 @@ export function historyToFeed(
       });
     }
     if (m.content) out.push({ feed_type: "assistant_text", data: m.content });
+    // A persisted file-change summary: replay it AFTER the assistant text so
+    // the chat attaches it to this turn's assistant message on reload.
+    if (m.fileChanges) {
+      out.push({ feed_type: "file_changes", data: m.fileChanges });
+    }
     if (m.usage) {
       out.push({
         feed_type: "final_result",

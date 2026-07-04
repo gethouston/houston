@@ -172,6 +172,13 @@ export interface ChatMessage {
     pre_tokens?: number | null;
   };
   /**
+   * User-visible workspace files this turn created or modified (relative
+   * paths). Set on the assistant message only when the turn's diff was
+   * non-empty, so the "files this mission touched" summary survives a history
+   * reload. Mirrors the `file_changes` wire frame.
+   */
+  fileChanges?: { created: string[]; modified: string[] };
+  /**
    * Set when this turn's model request failed with a typed provider error
    * (auth / rate-limit / 5xx / network). Persisted so the inline reconnect /
    * rate-limit card survives a history reload, mirroring `providerSwitch`. The

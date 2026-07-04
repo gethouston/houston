@@ -52,6 +52,7 @@ import {
   toNewProvider,
   toOldProvider,
 } from "./synthetic";
+import { toolkitDisplayName } from "./toolkit-names";
 import { historyToFeed } from "./translate";
 import { observeConversation, streamTurn } from "./turn-stream";
 
@@ -289,8 +290,34 @@ export class HoustonClient {
     if (this.cp) return controlPlane.deleteAgent(this.cp, agentId);
     agents.deleteAgent(workspaceId, agentId);
   }
-  async generateAgentInstructions() {
-    return { instructions: "" };
+  /**
+   * AI-assisted agent creation: the runtime generates CLAUDE.md content, a
+   * short name, suggested integrations, and (optionally) one routine with a
+   * runtime-validated cron. Cloud: the selected agent's sandbox runs it (the
+   * same per-agent path every provider call takes); local: the single runtime.
+   * Failures throw — the wizard toasts the real reason, never a silent empty
+   * result (the old stub's behavior).
+   */
+  async generateAgentInstructions(
+    description: string,
+    opts: { provider?: string; model?: string; signal?: AbortSignal } = {},
+  ) {
+    const engine = this.providerEngine();
+    if (!engine)
+      throw new Error("Open an agent first, then use Create with AI.");
+    const r = await engine.generateInstructions(description, {
+      model: opts.model,
+      signal: opts.signal,
+    });
+    return {
+      name: r.name,
+      instructions: r.instructions,
+      suggestedIntegrations: r.suggestedIntegrations.map((slug) => ({
+        slug,
+        displayName: toolkitDisplayName(slug),
+      })),
+      suggestedRoutine: r.suggestedRoutine ?? null,
+    };
   }
   async getPreference(key: string): Promise<string | null> {
     try {
