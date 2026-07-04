@@ -26,6 +26,7 @@ import { handleAgentFile } from "./agent-file";
 import { asSeedRecord, writeAgentSeeds } from "./agent-seed";
 import { json, readJson } from "./http";
 import { handlePortableExport } from "./portable";
+import { handlePortablePreview } from "./portable-preview";
 import { handleSkills } from "./skills";
 import { handleSkillsRemote } from "./skills-remote";
 
@@ -546,6 +547,17 @@ export async function handleAgents(
         req,
         res,
         url.searchParams,
+      )
+    )
+      return true;
+    if (
+      await handlePortablePreview(
+        { vfs: deps.vfs, paths },
+        ctx,
+        method,
+        rest,
+        req,
+        res,
       )
     )
       return true;

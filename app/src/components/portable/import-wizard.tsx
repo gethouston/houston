@@ -37,7 +37,7 @@ import { Check } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
-import { getEngine } from "../../lib/engine";
+import { getEngine, newEngineActive } from "../../lib/engine";
 import { getDefaultModel } from "../../lib/providers";
 import { tauriConfig, tauriProvider } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";
@@ -61,6 +61,9 @@ export function ImportAgentWizard() {
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const loadAgents = useAgentStore((s) => s.loadAgents);
 
+  // The threat scan is an LLM feature of the legacy Rust engine; the new TS
+  // engine doesn't serve it yet, so the choice isn't offered there.
+  const canScan = !newEngineActive();
   const [stepIndex, setStepIndex] = useState(0);
   const [uploaded, setUploaded] =
     useState<PortableUploadPreviewResponse | null>(null);
@@ -236,7 +239,7 @@ export function ImportAgentWizard() {
 
   const canAdvance =
     currentStep === "upload"
-      ? !!uploaded && wantScan !== null && !scanning
+      ? !!uploaded && (!canScan || wantScan !== null) && !scanning
       : currentStep === "name"
         ? name.trim().length > 0
         : true;
@@ -254,6 +257,7 @@ export function ImportAgentWizard() {
             <Frame>
               <UploadStep
                 uploaded={uploaded}
+                canScan={canScan}
                 wantScan={wantScan}
                 onChooseScan={handleChooseScan}
                 onPick={handleOpenFile}
@@ -375,6 +379,7 @@ export function ImportAgentWizard() {
 
 function UploadStep({
   uploaded,
+  canScan,
   wantScan,
   onChooseScan,
   onPick,
@@ -382,6 +387,7 @@ function UploadStep({
   scan,
 }: {
   uploaded: PortableUploadPreviewResponse | null;
+  canScan: boolean;
   wantScan: boolean | null;
   onChooseScan: (yes: boolean) => void;
   onPick: () => void;
@@ -429,7 +435,7 @@ function UploadStep({
         </section>
       )}
 
-      {uploaded && (
+      {uploaded && canScan && (
         <section className="space-y-3">
           <h2 className="text-sm font-medium">
             {t("import.step1.scanChoiceLabel")}

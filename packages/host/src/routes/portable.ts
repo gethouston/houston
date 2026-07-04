@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
+  filterPackage,
   loadLearnings,
   loadRoutines,
   loadSkillDetail,
@@ -154,6 +155,11 @@ export async function handlePortableAccount(
   } catch (err) {
     json(res, 400, { error: err instanceof Error ? err.message : String(err) });
     return true;
+  }
+  // Optional install-time subset: the importer unticked items in the wizard.
+  // Absent selection installs the whole package (the original contract).
+  if (body.selection !== undefined) {
+    pkg = filterPackage(pkg, body.selection as PortableSelection);
   }
 
   const ws = await deps.store.getOrCreatePersonalWorkspace(userId);

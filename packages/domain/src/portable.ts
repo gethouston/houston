@@ -3,6 +3,7 @@ import {
   PORTABLE_FORMAT_VERSION,
   type PortableInventory,
   type PortableManifest,
+  type PortableSelection,
   type Routine,
 } from "@houston/protocol";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
@@ -121,6 +122,29 @@ export function unpackAgent(bytes: Uint8Array): PortablePackage {
     learnings: parseArray<Learning>(learningsRaw).filter(
       (l) => isRecord(l) && typeof l.id === "string",
     ),
+  };
+}
+
+/**
+ * Keep only the selected parts of an unpacked package — the install-time
+ * subset (the importer unticked items in the wizard). Unknown ids are simply
+ * absent from the result; the manifest rides along unchanged.
+ */
+export function filterPackage(
+  pkg: PortablePackage,
+  sel: PortableSelection,
+): PortablePackage {
+  const skillSlugs = new Set(sel.skillSlugs);
+  const routineIds = new Set(sel.routineIds);
+  const learningIds = new Set(sel.learningIds);
+  return {
+    manifest: pkg.manifest,
+    ...(sel.includeClaudeMd && pkg.claudeMd !== undefined
+      ? { claudeMd: pkg.claudeMd }
+      : {}),
+    skills: pkg.skills.filter((s) => skillSlugs.has(s.slug)),
+    routines: pkg.routines.filter((r) => routineIds.has(r.id)),
+    learnings: pkg.learnings.filter((l) => learningIds.has(l.id)),
   };
 }
 
