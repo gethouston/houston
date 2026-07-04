@@ -12,6 +12,7 @@ import type {
   RepoSkill,
   Routine,
   RoutineRun,
+  SkillDetail,
   SkillSummary,
   Workspace,
 } from "../../../../ui/engine-client/src/types";
@@ -175,10 +176,18 @@ export async function createAgent(
   cfg: ControlPlaneConfig,
   name: string,
   color?: string,
+  seed?: { claudeMd?: string; seeds?: Record<string, string> },
 ): Promise<Agent> {
   const res = await cpFetch(cfg, "/agents", {
     method: "POST",
-    body: JSON.stringify({ name }),
+    // The host seeds CLAUDE.md + the seed-file map on create (builtin
+    // templates, AI-assist instructions). JSON.stringify drops undefined
+    // fields, so a plain create still posts just `{ name }`.
+    body: JSON.stringify({
+      name,
+      claudeMd: seed?.claudeMd,
+      seeds: seed?.seeds,
+    }),
   });
   const agent = (await res.json()) as CpAgent;
   if (color) setColor(agent.id, color);
@@ -404,6 +413,23 @@ export async function listSkills(
   // The host dropped the legacy structured-inputs/prompt-template fields (the UI
   // ignores them); restore them as empty so the v1 SkillSummary type is satisfied.
   return items.map((s) => ({ ...s, inputs: [], promptTemplate: null }));
+}
+
+/**
+ * A single skill's full detail (its SKILL.md content) from the host's
+ * `GET /agents/:id/skills/:slug`. Without this the adapter's Proxy fallback
+ * stubbed skill detail to `[]`, so clicking any skill showed no content.
+ */
+export async function loadSkill(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  slug: string,
+): Promise<SkillDetail> {
+  const res = await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/skills/${encodeURIComponent(slug)}`,
+  );
+  return (await res.json()) as SkillDetail;
 }
 
 export async function createRoutine(

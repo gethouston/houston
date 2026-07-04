@@ -29,6 +29,7 @@ import type {
   SaveSkillRequest,
   SessionStartRequest,
   SessionStartResponse,
+  SkillDetail,
   UpdateAgent,
   Workspace,
 } from "../../../../ui/engine-client/src/types";
@@ -260,7 +261,10 @@ export class HoustonClient {
   ): Promise<CreateAgentResult> {
     if (this.cp)
       return {
-        agent: await controlPlane.createAgent(this.cp, req.name, req.color),
+        agent: await controlPlane.createAgent(this.cp, req.name, req.color, {
+          claudeMd: req.claudeMd,
+          seeds: req.seeds,
+        }),
       };
     return agents.createAgent(workspaceId, req);
   }
@@ -626,6 +630,12 @@ export class HoustonClient {
   async listSkills(agentPath: string) {
     if (this.cp) return controlPlane.listSkills(this.cp, agentPath);
     return [];
+  }
+  async loadSkill(agentPath: string, name: string): Promise<SkillDetail> {
+    if (this.cp) return controlPlane.loadSkill(this.cp, agentPath, name);
+    // Standalone web has no skill backend (nothing is listed), so this is
+    // unreachable; return an empty detail rather than crash if it ever isn't.
+    return { name, description: "", version: 1, content: "" };
   }
 
   // Routine + skill mutations route to the host (cloud); standalone web has no

@@ -11,6 +11,8 @@ interface Props {
   description?: string;
   /** Optional custom media for callers that already have an avatar component. */
   media?: ReactNode;
+  /** Optional content rendered beneath the description (e.g. integration chips). */
+  footer?: ReactNode;
   className?: string;
   onClick: () => void;
   disabled?: boolean;
@@ -30,6 +32,7 @@ export function SkillCard({
   title,
   description,
   media,
+  footer,
   className,
   onClick,
   disabled,
@@ -54,6 +57,7 @@ export function SkillCard({
             {description}
           </span>
         )}
+        {footer && <div className="mt-0.5">{footer}</div>}
       </div>
       {busy && (
         <Spinner className="size-4 shrink-0 self-center text-muted-foreground" />
