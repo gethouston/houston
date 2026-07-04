@@ -19,6 +19,7 @@ import {
   providerGatewayIds,
 } from "../../lib/providers";
 import {
+  mergeGatewayStatus,
   type ProviderStatus,
   tauriProvider,
   tauriSystem,
@@ -98,26 +99,21 @@ export function ProviderSettings() {
   const hasBaseline = useRef(false);
   const prevStatuses = useRef<Record<string, ProviderStatus>>({});
   const loadStatuses = useCallback(async () => {
-    const results = await Promise.all(
-      visibleProviders.map(async (p) => {
-        // A connect card may front several engine gateways (OpenCode's Zen + Go
-        // share one key) — probe them together so the merged card is connected
-        // when either is. `providerGatewayIds` is just `[p.id]` for everything else.
-        const status = await tauriProvider.checkMergedStatus(
-          providerGatewayIds(p),
-        );
-        // Paint each card the moment ITS probe resolves instead of blocking
-        // every card on the slowest provider — each CLI shell-out can take
-        // up to its 5s timeout, and gating the whole batch made the section
-        // feel frozen for ~6s after connect/sign-out.
-        setStatuses((prev) => ({ ...prev, [p.id]: status }));
-        return [p.id, status] as const;
-      }),
-    );
+    // ONE engine round-trip for every card. On the new engine this collapses to
+    // a single listProviders() (HOU-650); probing each card separately meant a
+    // round-trip per gateway (~a dozen) to the agent's sandbox each scan. A card
+    // may front several gateways (OpenCode's Zen + Go share one key), so we probe
+    // the union of gateway ids and merge per card below.
+    const gatewayIds = [
+      ...new Set(visibleProviders.flatMap((p) => providerGatewayIds(p))),
+    ];
+    const byId = await tauriProvider.checkAllStatuses(gatewayIds);
     const next: Record<string, ProviderStatus> = {};
-    for (const [id, status] of results) {
-      next[id] = status;
+    for (const p of visibleProviders) {
+      const merged = mergeGatewayStatus(providerGatewayIds(p), byId);
+      if (merged) next[p.id] = merged;
     }
+    setStatuses((prev) => ({ ...prev, ...next }));
     if (hasBaseline.current) {
       for (const prov of visibleProviders) {
         const prev = prevStatuses.current[prov.id];

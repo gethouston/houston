@@ -200,12 +200,10 @@ export function InlineModelSelector({
   const [open, setOpen] = useState(false);
 
   const loadStatuses = useCallback(async () => {
-    const entries = await Promise.all(
-      PROVIDERS.map(
-        async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const,
-      ),
+    // ONE round-trip for all providers (HOU-650) instead of a probe per card.
+    setStatuses(
+      await tauriProvider.checkAllStatuses(PROVIDERS.map((p) => p.id)),
     );
-    setStatuses(Object.fromEntries(entries));
   }, []);
 
   useEffect(() => {

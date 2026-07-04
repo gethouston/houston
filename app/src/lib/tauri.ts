@@ -847,6 +847,23 @@ export interface ProviderStatus {
   active_model?: string;
 }
 
+/**
+ * Pick the connected gateway for a card that spans several engine gateway ids —
+ * OpenCode's Zen + Go share one key, so the merged "OpenCode" account reads as
+ * connected when EITHER gateway is. Returns the first authenticated probe, else
+ * the first probe present. `byId` is a `checkAllStatuses` result; `[p.id]` for a
+ * normal single-gateway provider just returns its own probe.
+ */
+export function mergeGatewayStatus(
+  gatewayIds: readonly string[],
+  byId: Record<string, ProviderStatus>,
+): ProviderStatus | undefined {
+  const probes = gatewayIds
+    .map((id) => byId[id])
+    .filter((s): s is ProviderStatus => Boolean(s));
+  return probes.find((s) => s.cli_installed && s.authenticated) ?? probes[0];
+}
+
 const DEFAULT_PROVIDER_PREF_KEY = "default_provider";
 const DEFAULT_MODEL_PREF_KEY = "default_model";
 
@@ -865,21 +882,35 @@ export const tauriProvider = {
       };
     }),
   /**
-   * Combined connect status for a card that spans several engine gateway ids —
-   * OpenCode's Zen + Go share one key, so the merged "OpenCode" account reads as
-   * connected when EITHER gateway is. Probes each in parallel (one probe for a
-   * normal single-id provider) and returns the first authenticated status, else
-   * the first probe. The adapter writes / clears both gateways together, so this
-   * also reconciles a credential left under a single gateway by an older build.
+   * Connect status for many provider / gateway ids in ONE engine round-trip.
+   *
+   * On the new TS engine this maps to a single `listProviders()` call (HOU-650);
+   * on the legacy Rust engine it fans out to per-provider probes. Returns a map
+   * keyed by the ids passed. Screens that show several provider cards (settings,
+   * onboarding picker, chat model picker) call this once instead of probing each
+   * card separately — otherwise a dozen cards meant a dozen round-trips.
    */
-  checkMergedStatus: async (
-    ids: readonly string[],
-  ): Promise<ProviderStatus> => {
-    const probes = await Promise.all(
-      ids.map((id) => tauriProvider.checkStatus(id)),
-    );
-    return probes.find((s) => s.cli_installed && s.authenticated) ?? probes[0];
-  },
+  checkAllStatuses: (ids: readonly string[]) =>
+    call<Record<string, ProviderStatus>>(
+      "check_provider_statuses",
+      async () => {
+        const list = await getEngine().providerStatuses([...ids]);
+        const out: Record<string, ProviderStatus> = {};
+        ids.forEach((id, i) => {
+          const p = list[i];
+          if (!p) return;
+          out[id] = {
+            provider: p.provider,
+            cli_installed: p.cliInstalled,
+            auth_state: p.authState,
+            authenticated: p.authState === "authenticated",
+            cli_name: p.cliName,
+            active_model: p.activeModel,
+          };
+        });
+        return out;
+      },
+    ),
   getDefault: () =>
     call<string>(
       "get_default_provider",

@@ -684,35 +684,46 @@ export class HoustonClient {
   // on the PVC). Login is surfaced through the same ProviderLoginUrl/Complete bus
   // events the desktop connect dialog already consumes, so the UI is unchanged.
   async providerStatus(name: string): Promise<ProviderStatus> {
-    const pid = toNewProvider(name);
-    let configured = false;
-    let activeModel: string | undefined;
-    if (pid) {
-      try {
-        const engine = this.providerEngine();
-        if (engine) {
-          // listProviders (not authStatus) so we also learn the configured
-          // model id — the OpenAI-compatible provider's model is dynamic and
-          // absent from the static catalog, so the picker has no other source.
-          // `configured` here matches authStatus for credential providers and
-          // is endpoint-aware for the local one.
-          const p = (await engine.listProviders()).find((x) => x.id === pid);
-          configured = p?.configured ?? false;
-          activeModel = p?.activeModel || undefined;
-        }
-      } catch {
-        /* sandbox unreachable / no agent selected → report not-connected */
+    return (await this.providerStatuses([name]))[0];
+  }
+  /**
+   * Batched provider status: ONE `listProviders()` round-trip, then derive every
+   * requested provider's status from it.
+   *
+   * `listProviders` already returns EVERY provider (with its configured flag and
+   * dynamic model id — the OpenAI-compatible provider's model is absent from the
+   * static catalog, so this is the picker's only source). The old per-card
+   * `providerStatus` fetched that whole list and threw away all but one entry, so
+   * a settings screen with a dozen cards fired a dozen identical round-trips —
+   * each proxied to the agent's sandbox in cloud. Fetching once and mapping N
+   * cards off the result is the fix for HOU-650.
+   */
+  async providerStatuses(names: readonly string[]): Promise<ProviderStatus[]> {
+    const byId = new Map<
+      string,
+      { configured?: boolean; activeModel?: string }
+    >();
+    try {
+      const engine = this.providerEngine();
+      if (engine) {
+        for (const p of await engine.listProviders()) byId.set(p.id, p);
       }
+    } catch {
+      /* sandbox unreachable / no agent selected → all report not-connected */
     }
-    return {
-      provider: name,
-      cliInstalled: true,
-      authState: configured ? "authenticated" : "unauthenticated",
-      cliName: name,
-      installSource: "managed",
-      cliPath: null,
-      activeModel,
-    } as ProviderStatus;
+    return names.map((name) => {
+      const pid = toNewProvider(name);
+      const p = pid ? byId.get(pid) : undefined;
+      return {
+        provider: name,
+        cliInstalled: true,
+        authState: p?.configured ? "authenticated" : "unauthenticated",
+        cliName: name,
+        installSource: "managed",
+        cliPath: null,
+        activeModel: p?.activeModel || undefined,
+      } as ProviderStatus;
+    });
   }
   // `deviceAuth` is the client's "I can't catch a loopback callback" flag — the
   // co-located desktop sends false (it CAN), remote webapps send true. It steers

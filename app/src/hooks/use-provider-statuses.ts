@@ -46,12 +46,10 @@ export function useProviderStatuses(): ProviderStatusesState {
         desktop: osIsTauri(),
         capabilities: providerCapabilities,
       });
-      const entries = await Promise.all(
-        providers.map(
-          async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const,
-        ),
-      );
-      return Object.fromEntries(entries);
+      // ONE round-trip for every provider (HOU-650): on the new engine this is a
+      // single listProviders(), versus the old per-provider probe that fired N
+      // identical round-trips to the agent's sandbox each time the picker opened.
+      return tauriProvider.checkAllStatuses(providers.map((p) => p.id));
     },
     staleTime: 30_000,
   });
