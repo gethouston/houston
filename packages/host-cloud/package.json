@@ -13,23 +13,23 @@
     "typecheck": "tsgo -p tsconfig.json"
   },
   "dependencies": {
-    "@google-cloud/storage": "^7.14.0",
+    "@google-cloud/storage": "7.21.0",
     "@houston/host": "workspace:*",
     "@houston/protocol": "workspace:*",
     "@houston/runtime-client": "workspace:*",
-    "@kubernetes/client-node": "^0.22.3",
-    "ioredis": "^5.11.1",
-    "jose": "^5.9.6",
-    "pg": "^8.13.1",
-    "tsx": "^4.21.0"
+    "@kubernetes/client-node": "1.4.0",
+    "ioredis": "5.11.1",
+    "jose": "5.10.0",
+    "pg": "8.22.0",
+    "tsx": "4.23.0"
   },
   "devDependencies": {
-    "@types/ioredis-mock": "^8.2.7",
-    "@types/node": "^22",
-    "@types/pg": "^8.11.10",
+    "@types/ioredis-mock": "8.2.7",
+    "@types/node": "22.20.0",
+    "@types/pg": "8.20.0",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
-    "ioredis-mock": "^8.13.1",
-    "pg-mem": "^3.0.14",
-    "vitest": "^3.2.4"
+    "ioredis-mock": "8.13.1",
+    "pg-mem": "3.0.14",
+    "vitest": "3.2.6"
   }
 }
