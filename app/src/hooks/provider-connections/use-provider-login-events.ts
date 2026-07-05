@@ -1,5 +1,6 @@
 import type { HoustonEvent } from "@houston-ai/core";
 import { type Dispatch, type SetStateAction, useEffect } from "react";
+import { claimProviderLoginSurface } from "../../components/shell/provider-login-surface";
 import { shouldOpenLoginUrlDirectly } from "../../components/shell/provider-login-url";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
@@ -40,6 +41,9 @@ export function useProviderLoginEvents({
   setPending,
 }: Args): void {
   useEffect(() => {
+    // This surface owns `ProviderLoginUrl` while mounted — the shell's global
+    // fallback stands down so the URL is never opened twice.
+    const release = claimProviderLoginSurface();
     const off = subscribeHoustonEvents((ev: HoustonEvent) => {
       if (ev.type === "ProviderLoginUrl") {
         // Resolve the display name from the connect list first so the merged
@@ -117,7 +121,10 @@ export function useProviderLoginEvents({
         loadStatuses();
       }
     });
-    return off;
+    return () => {
+      off();
+      release();
+    };
   }, [
     visibleProviders,
     addToast,

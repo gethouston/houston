@@ -1,6 +1,7 @@
 import { agentFileEventType, migrateProviderModel } from "@houston/domain";
 import {
   type CustomEndpoint,
+  EngineError,
   HoustonEngineClient,
   type ProviderId,
 } from "@houston/runtime-client";
@@ -111,6 +112,18 @@ export function isHoustonEngineError(e: unknown): e is HoustonEngineError {
  * (first-run: it runs in the host's hidden setup runtime, not an agent's).
  */
 const SETUP_LOGIN_KEY = "__setup__";
+
+/**
+ * Treat a 404 on login/cancel as benign: it means no login was pending (or an
+ * older host lacks the cancel route), so cancel's postcondition — the login
+ * slot is free — already holds. The reconnect card's every press goes
+ * cancel → launch, so propagating this 404 aborted the chain and the login
+ * never launched (HOU-676). Every other failure still propagates.
+ */
+function benignCancelMiss(e: unknown): void {
+  if (e instanceof EngineError && e.status === 404) return;
+  throw e;
+}
 
 /**
  * Drop-in replacement for `@houston-ai/engine-client`'s HoustonClient, backed by
@@ -895,12 +908,15 @@ export class HoustonClient {
       );
       const url = info.kind === "device_code" ? info.verificationUri : info.url;
       const userCode = info.kind === "device_code" ? info.userCode : null;
+      // The bus event is the ONE opening path: an app-side handler (a mounted
+      // login surface, else the shell's global fallback) opens the URL via the
+      // platform opener. A direct window.open here double-opened next to those
+      // handlers — and was a silent no-op inside the desktop's WKWebView.
       emitEvent("ProviderLoginUrl", {
         provider: name,
         url,
         user_code: userCode,
       });
-      if (typeof window !== "undefined") window.open(url, "_blank", "noopener");
       this.watchLoginCompletion(pid, name);
       return;
     }
@@ -955,13 +971,13 @@ export class HoustonClient {
       // otherwise it keeps polling the provider until timeout and a retry
       // collides with the stale flow ("sign-in already pending", HOU-664 /
       // the HOU-438 failure class).
-      await this.providerEngine().cancelLogin(pid);
+      await this.providerEngine().cancelLogin(pid).catch(benignCancelMiss);
       return;
     }
     this.stopLoginWatch(name);
     // Cancel the runtime's in-flight OAuth flow for real (frees the loopback
     // port + login slot), not just the local watcher.
-    await this.engine.cancelLogin(pid);
+    await this.engine.cancelLogin(pid).catch(benignCancelMiss);
     // Benign completion: clears the dialog + spinner without an error toast,
     // matching the old engine's cancel semantics.
     emitEvent("ProviderLoginComplete", {

@@ -26,6 +26,7 @@ import { OpenAiCompatibleDialog } from "./openai-compatible-dialog";
 import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
 import { ComingSoonCard, ProviderCard } from "./provider-cards";
 import { ProviderLoginDialog } from "./provider-login-dialog";
+import { claimProviderLoginSurface } from "./provider-login-surface";
 import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
 import { useCopilotConnect } from "./use-copilot-connect";
 
@@ -149,6 +150,9 @@ export function ProviderPicker({ onSelect }: Props) {
   // setState avoids stale-closure reads when several providers fire
   // events concurrently.
   useEffect(() => {
+    // This surface owns `ProviderLoginUrl` while mounted — the shell's global
+    // fallback stands down so the URL is never opened twice.
+    const release = claimProviderLoginSurface();
     const off = subscribeHoustonEvents((ev: HoustonEvent) => {
       if (ev.type === "ProviderLoginUrl") {
         // Resolve the display name from the connect list first so the merged
@@ -226,7 +230,10 @@ export function ProviderPicker({ onSelect }: Props) {
         loadStatuses();
       }
     });
-    return off;
+    return () => {
+      off();
+      release();
+    };
   }, [addToast, loadStatuses, t, visibleProviders]);
 
   // Start the OAuth device/loopback login for a provider. `enterpriseDomain` is
