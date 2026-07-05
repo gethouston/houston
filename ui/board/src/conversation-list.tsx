@@ -42,7 +42,7 @@ export function ConversationList({ entries, onSelect }: ConversationListProps) {
       {entries.map((entry) => (
         <Card
           key={entry.id}
-          className="cursor-pointer hover:shadow-md transition-shadow border-black/5 px-4 py-3"
+          className="cursor-pointer hover:shadow-md transition-shadow border-foreground/5 px-4 py-3"
           onClick={() => onSelect(entry)}
         >
           <div className="flex items-center justify-between gap-3">

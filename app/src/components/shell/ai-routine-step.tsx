@@ -75,7 +75,7 @@ export function AiRoutineStep({
               rows={3}
               className={cn(
                 "w-full px-4 py-3 text-sm text-foreground leading-relaxed",
-                "bg-secondary border border-black/[0.04] rounded-xl",
+                "bg-secondary border border-foreground/[0.04] rounded-xl",
                 "outline-none resize-none transition-shadow duration-200",
                 "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
               )}
@@ -101,7 +101,7 @@ export function AiRoutineStep({
 
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 space-y-2">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
               <p className="text-sm font-medium text-foreground">
                 {t("aiRoutine.consentTitle")}
               </p>

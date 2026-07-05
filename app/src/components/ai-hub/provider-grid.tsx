@@ -112,7 +112,7 @@ function ProviderGridSkeleton({ count }: { count: number }) {
         <div
           // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length static placeholder list, no reordering.
           key={i}
-          className="flex flex-col rounded-2xl border border-black/5 bg-card p-5"
+          className="flex flex-col rounded-2xl border border-foreground/5 bg-card p-5"
         >
           <div className="size-10 animate-pulse rounded-xl bg-secondary" />
           <div className="mt-3 h-4 w-24 animate-pulse rounded bg-secondary" />

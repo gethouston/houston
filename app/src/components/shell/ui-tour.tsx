@@ -284,7 +284,7 @@ export function UiTour({ steps, onDismiss }: UiTourProps) {
           is no target. */}
       <div
         className={cn(
-          "fixed z-[60] rounded-2xl border border-black/5 bg-background p-5 shadow-[0_10px_40px_rgba(0,0,0,0.18)]",
+          "fixed z-[60] rounded-2xl border border-foreground/5 bg-background p-5 shadow-[0_10px_40px_rgba(0,0,0,0.18)]",
         )}
         style={{
           top: tooltip.top,

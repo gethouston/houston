@@ -143,7 +143,7 @@ export function ConnectPhoneSection() {
         )}
 
         {info && !info.connected && !error && (
-          <div className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-800 leading-relaxed text-center max-w-[260px]">
+          <div className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-800 leading-relaxed text-center max-w-[260px] dark:bg-amber-950/40 dark:text-amber-300">
             {t("settings:connectPhone.connectingStatus")}
           </div>
         )}
