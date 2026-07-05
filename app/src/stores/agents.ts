@@ -127,9 +127,11 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   delete: async (workspaceId, id) => {
     const wasCurrent = get().current?.id === id;
     await tauriAgents.delete(workspaceId, id);
-    // Wipe any chat composer attachments scoped to this agent's chat.
-    // Per-activity attachments are wiped via useDeleteActivity / handleDelete.
-    await tauriAttachments.delete(`agent-${id}`).catch(() => {});
+    // The server confirmed the delete — reflect it in the UI NOW. In cloud
+    // mode the attachments cleanup below dispatches into the agent's pod,
+    // which this very delete just tore down, so awaiting it here can block
+    // on a dead endpoint for many seconds — leaving the "deleted" agent
+    // sitting in the sidebar (and 404ing when reopened).
     // Conversation state lives in the SDK conversation VM; a deleted agent's
     // scopes are simply never subscribed again.
     // Clear the free-form chat draft for this agent.
@@ -144,6 +146,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     if (wasCurrent && nextCurrent) {
       startAgentSideEffects(nextCurrent);
     }
+    // Wipe any chat composer attachments scoped to this agent's chat —
+    // fire-and-forget best-effort: the agent's own data died with it.
+    // Per-activity attachments are wiped via useDeleteActivity / handleDelete.
+    void tauriAttachments.delete(`agent-${id}`).catch(() => {});
   },
 
   rename: async (workspaceId, id, newName) => {
