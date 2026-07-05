@@ -11,6 +11,10 @@ declare global {
       baseUrl: string;
       token: string;
     };
+    /** Hosted-session refresher the engine adapter calls on a gateway 401 —
+     *  mints a fresh Supabase access token so the request can be replayed
+     *  invisibly (HOU-687). Installed by installHostedSessionRefresh below. */
+    __HOUSTON_SESSION_REFRESH__?: () => Promise<string | null>;
   }
 }
 
@@ -169,6 +173,33 @@ export function setHostedEngineSessionToken(token: string | null): void {
     _ws.disconnect();
     _ws.connect();
   }
+}
+
+/**
+ * Installs the hosted-session refresher the engine adapter's gatewayAuthFetch
+ * calls when the gateway answers 401: `refresh` force-mints a fresh Supabase
+ * access token (or resolves null when the session is truly gone), the new
+ * token is pushed onto the engine global, and the adapter replays the failed
+ * request — so an expired bearer never reaches the user as an error toast
+ * (HOU-687). Hosted mode only; returns an uninstaller.
+ */
+export function installHostedSessionRefresh(
+  refresh: () => Promise<string | null>,
+): () => void {
+  if (!HOSTED_ENGINE_URL || typeof window === "undefined") return () => {};
+  const handler = async () => {
+    const token = await refresh();
+    // Push synchronously so every liveToken() read after this refresh sees the
+    // new bearer — the React session state catches up on its own schedule.
+    if (token) setHostedEngineSessionToken(token);
+    return token;
+  };
+  window.__HOUSTON_SESSION_REFRESH__ = handler;
+  return () => {
+    if (window.__HOUSTON_SESSION_REFRESH__ === handler) {
+      delete window.__HOUSTON_SESSION_REFRESH__;
+    }
+  };
 }
 
 // Initial attempt — config may already be injected via window.eval before

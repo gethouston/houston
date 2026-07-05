@@ -52,7 +52,25 @@ export function reportError(
  * Sentry not configured or not flushed → no green toast. Red toast still
  * shown. This is the right behavior for forks / personal builds and for
  * network failures where we cannot honestly say the report was sent.
+ *
+ * A message identical to one toasted moments ago is deduped (toast pair
+ * skipped, Sentry capture kept): one root cause failing N concurrent calls —
+ * a dozen queries all hitting the same rejected bearer during a cloud deploy
+ * (HOU-687) — must read as ONE problem, not a toast storm.
  */
+const TOAST_DEDUPE_WINDOW_MS = 5_000;
+const recentToasts = new Map<string, number>();
+
+function isDuplicateToast(message: string, now: number): boolean {
+  const last = recentToasts.get(message);
+  recentToasts.set(message, now);
+  // The map only ever holds messages from the current burst — evict as we go.
+  for (const [msg, at] of recentToasts) {
+    if (now - at > TOAST_DEDUPE_WINDOW_MS) recentToasts.delete(msg);
+  }
+  return last !== undefined && now - last <= TOAST_DEDUPE_WINDOW_MS;
+}
+
 export function showErrorToast(
   command: string,
   message: string,
@@ -63,6 +81,21 @@ export function showErrorToast(
     source: command,
     error_kind: classifyAnalyticsError(message),
   });
+
+  if (isDuplicateToast(message, Date.now())) {
+    // Still worth the report (Sentry dedupes server-side); just not a second
+    // identical red toast within the window.
+    const error = createSentryReportError(command, message, originalError);
+    if (!sentrySuppressedInDev) {
+      void sentryCapture(error, {
+        source: command,
+        error_kind: classifyAnalyticsError(message),
+      }).catch((flushErr: unknown) => {
+        console.error("[sentry] failed to flush captured error", flushErr);
+      });
+    }
+    return;
+  }
 
   addToast({
     title: i18n.t("shell:errorToast.problemTitle"),
