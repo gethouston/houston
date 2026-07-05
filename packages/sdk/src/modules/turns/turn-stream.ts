@@ -5,13 +5,15 @@ import { randomNonce } from "./random-nonce";
 import {
   type ActiveStream,
   SEND_IN_FLIGHT_MESSAGE,
+  SEND_LOST_MESSAGE,
+  SEND_VERDICT_MS,
   STREAM_FAILURE_BUDGET,
   STREAM_LOST_MESSAGE,
   type StreamRegistry,
   type StreamTuning,
   streamKey,
 } from "./stream-registry";
-import { turnErrorMessage } from "./turn-errors";
+import { isAmbiguousSendFailure, turnErrorMessage } from "./turn-errors";
 import { TurnSink } from "./turn-sink";
 
 export { observeConversation } from "./observe-stream";
@@ -44,6 +46,17 @@ export interface StreamTurnOptions {
  * persisted history, by turnId), on a rejected send, on a fatal (401/403/404/
  * 410) stream refusal, or after `STREAM_FAILURE_BUDGET` dead reconnects —
  * never from partial text on a silent close.
+ *
+ * A send that fails at the TRANSPORT level (fetch threw — no engine verdict)
+ * is AMBIGUOUS: the engine may have accepted the message and be running the
+ * turn with only the 202 lost to the dropped connection. Failing the turn
+ * immediately would render an error card against a live turn whose reply then
+ * lands anyway (HOU-683). So the ambiguous path settles nothing: the already-
+ * open subscription arbitrates — our nonce echo or a running sync proves the
+ * turn started (it then renders and settles normally); if no evidence arrives
+ * within `tuning.sendVerdictMs`, the send provably never landed and the turn
+ * fails with `SEND_LOST_MESSAGE`. A definitive rejection (the engine answered:
+ * EngineError) or the caller's own abort still fails immediately.
  *
  * When a live observer holds the conversation, the send goes FIRST and the
  * observer keeps rendering until it is accepted: a 202 disposes the observer
@@ -141,6 +154,7 @@ export async function streamTurn(
   });
   if (sent) sink.sendAccepted();
 
+  let sendVerdict: ReturnType<typeof setTimeout> | undefined;
   try {
     const streaming = streamEventsResumable(engine, sessionKey, {
       signal: ac.signal,
@@ -164,8 +178,20 @@ export async function streamTurn(
     // `await streaming`) so nothing becomes an unhandled rejection.
     streaming.catch(() => {});
     if (!sent) {
-      await engine.sendMessage(sessionKey, prompt, { nonce });
-      sink.sendAccepted();
+      try {
+        await engine.sendMessage(sessionKey, prompt, { nonce });
+        sink.sendAccepted();
+      } catch (e) {
+        // A definitive failure (engine verdict / our abort) settles below.
+        if (!isAmbiguousSendFailure(e)) throw e;
+        // Transport failure — the engine may be running the turn regardless.
+        // Keep the subscription as the arbiter: evidence of the turn settles
+        // it normally; a verdict window with no evidence fails it as lost.
+        sink.sendMaybeAccepted();
+        sendVerdict = setTimeout(() => {
+          if (sink.failUnlessStarted(SEND_LOST_MESSAGE)) ac.abort();
+        }, opts.tuning?.sendVerdictMs ?? SEND_VERDICT_MS);
+      }
     }
     await streaming; // resolves only once the sink settled and aborted
   } catch (e) {
@@ -175,6 +201,7 @@ export async function streamTurn(
     // and the reason surfaces.
     if (!sink.settled) sink.fail(turnErrorMessage(e));
   } finally {
+    if (sendVerdict !== undefined) clearTimeout(sendVerdict);
     ac.abort();
     registry.release(key, entry);
   }

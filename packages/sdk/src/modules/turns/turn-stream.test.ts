@@ -10,6 +10,7 @@ import type { FeedOutput } from "./feed-output";
 import { TURN_DIED_MESSAGE } from "./settle-from-history";
 import {
   SEND_IN_FLIGHT_MESSAGE,
+  SEND_LOST_MESSAGE,
   STREAM_LOST_MESSAGE,
   StreamRegistry,
 } from "./stream-registry";
@@ -1092,4 +1093,114 @@ test("two registries are isolated: same key coexists and dispose crosses no boun
 
   regB.disposeAll();
   await waitFor(() => abortFlags.b);
+});
+
+// ── Ambiguous send failure (HOU-683) ─────────────────────────────────────────
+// fetch can't distinguish "the POST never reached the engine" from "the engine
+// accepted it but the 202 was lost with the connection" — both throw a bare
+// TypeError (WebKit: "Load failed"). The stream is the arbiter.
+
+test("a transport-failed send whose turn actually started renders and settles normally", async () => {
+  const { engine, nonces } = fakeEngine(
+    [
+      (o) =>
+        new Promise<void>((resolve) => {
+          // Delayed so sendMessage has run (and thrown) and the nonce is known.
+          setTimeout(() => {
+            o.onEvent(sync(false, "", 0));
+            // The engine DID accept the send: our echo arrives with the nonce.
+            o.onEvent({
+              type: "user",
+              data: { content: "Yes.", ts: 1, nonce: nonces[0] },
+              turnId: "t-1",
+              seq: 1,
+            });
+            o.onEvent({ type: "text", data: "Done", turnId: "t-1", seq: 2 });
+            o.onEvent({ type: "done", data: null, turnId: "t-1", seq: 3 });
+            resolve();
+          }, 10);
+        }).then(() => hang(o)),
+    ],
+    [],
+    { sendError: new TypeError("Load failed") },
+  );
+  const { items, sessionStatuses, board, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bob",
+    "activity-ambiguous-landed",
+    "Yes.",
+    output,
+    registry,
+    { tuning: fast },
+  );
+
+  // The turn settled from the live frames — never as an error.
+  expect(sessionStatuses).not.toContain("error");
+  expect(finals(items)).toHaveLength(1);
+  const texts = items.filter((i) => i.feed_type === "assistant_text");
+  expect(texts).toEqual([{ feed_type: "assistant_text", data: "Done" }]);
+  // No misleading transport-error line reached the feed.
+  expect(items.map((i) => i.data)).not.toContain("Load failed");
+  expect(items.map((i) => i.data)).not.toContain(SEND_LOST_MESSAGE);
+  expect(board).toEqual(["running", "needs_you"]);
+});
+
+test("a transport-failed send with no evidence of the turn settles as lost after the verdict window", async () => {
+  const { engine } = fakeEngine(
+    [
+      (o) => {
+        // The engine never saw the send: the conversation stays idle.
+        o.onEvent(sync(false, "", 0));
+        return hang(o);
+      },
+    ],
+    [],
+    { sendError: new TypeError("Load failed") },
+  );
+  const { items, sessionStatuses, board, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bob",
+    "activity-ambiguous-lost",
+    "hi",
+    output,
+    registry,
+    { tuning: { ...fast, sendVerdictMs: 50 } },
+  );
+
+  expect(sessionStatuses).toContain("error");
+  expect(items).toContainEqual({
+    feed_type: "system_message",
+    data: SEND_LOST_MESSAGE,
+  });
+  expect(board).toEqual(["running", "error"]);
+});
+
+test("a definitive send rejection (the engine answered) still fails the turn immediately", async () => {
+  const { engine } = fakeEngine([hang], [], {
+    sendError: new EngineError(
+      409,
+      JSON.stringify({ error: "A turn is already running" }),
+    ),
+  });
+  const { items, sessionStatuses, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bob",
+    "activity-definitive-reject",
+    "hi",
+    output,
+    registry,
+    { tuning: fast },
+  );
+
+  expect(sessionStatuses).toContain("error");
+  expect(items).toContainEqual({
+    feed_type: "system_message",
+    data: "A turn is already running",
+  });
 });

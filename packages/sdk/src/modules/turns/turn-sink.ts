@@ -55,9 +55,29 @@ export class TurnSink {
   sendAccepted(): void {
     this.accepted = true;
   }
+  /**
+   * Turn mode: the send failed at the TRANSPORT level, so the engine may have
+   * accepted it anyway (the 202 was lost with the connection). Adopt the same
+   * posture as an accepted send — a running sync on reconnect may be OUR turn
+   * — while `failUnlessStarted` arbitrates whether it really began.
+   */
+  sendMaybeAccepted(): void {
+    this.accepted = true;
+  }
   /** The send failed / stream broke before a terminal frame: settle as error. */
   fail(msg: string): void {
     finishErr(this.s, msg);
+  }
+  /**
+   * Verdict on an ambiguous send: settle as an error UNLESS evidence arrived
+   * that the turn actually started (our nonce echo, frames, a running sync) or
+   * a settle is already underway. Returns whether it failed the turn, so the
+   * caller knows to tear the stream down.
+   */
+  failUnlessStarted(msg: string): boolean {
+    if (this.sawRunning || this.settling || this.s.settled) return false;
+    finishErr(this.s, msg);
+    return true;
   }
 
   onFrame(ev: WireFrame): void {

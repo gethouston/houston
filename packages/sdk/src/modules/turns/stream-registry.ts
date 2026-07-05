@@ -4,6 +4,13 @@ import type { ResumableBackoff } from "@houston/runtime-client";
 export interface StreamTuning {
   idleTimeoutMs?: number;
   backoff?: ResumableBackoff;
+  /**
+   * Grace before an AMBIGUOUS send failure (transport error — the engine may
+   * or may not have received the POST) settles the turn as an error. Within
+   * the window the live stream can prove the send landed (nonce echo /
+   * running sync) and the turn proceeds as if the send had succeeded.
+   */
+  sendVerdictMs?: number;
 }
 
 /**
@@ -21,6 +28,23 @@ export const STREAM_LOST_MESSAGE = "Lost the connection to the engine.";
  * turn keeps showing progress and this only explains the ignored duplicate.
  */
 export const SEND_IN_FLIGHT_MESSAGE = "A message is already being sent.";
+
+/**
+ * How long an ambiguously-failed send (see {@link StreamTuning.sendVerdictMs})
+ * waits for the stream to prove the turn started before settling as an error.
+ * Long enough for the resumable stream to ride out the same network blip that
+ * broke the send (a few backoff attempts), short enough that a genuinely lost
+ * send doesn't leave the user staring at a spinner.
+ */
+export const SEND_VERDICT_MS = 15_000;
+/**
+ * Copy for a send that provably never landed: the send fetch failed at the
+ * transport level AND no evidence of the turn arrived within the verdict
+ * window. Product voice (no status codes, no `TypeError: Load failed`), and
+ * actionable — resending is safe precisely because the turn never started.
+ */
+export const SEND_LOST_MESSAGE =
+  "Your message didn't reach the agent. Check your connection and send it again.";
 
 /**
  * One live subscription per conversation, whoever opened it: a turn we sent
