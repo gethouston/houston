@@ -172,6 +172,16 @@ export interface ChatMessage {
     pre_tokens?: number | null;
   };
   /**
+   * Set on the first assistant message produced after the runtime proactively
+   * compacted the conversation to stay under the context window, so the
+   * boundary divider and the window reset survive a history reload. Mirrors
+   * the `context_compacted` wire frame.
+   */
+  compaction?: {
+    trigger: "native" | "proactive";
+    pre_tokens?: number | null;
+  };
+  /**
    * User-visible workspace files this turn created or modified (relative
    * paths). Set on the assistant message only when the turn's diff was
    * non-empty, so the "files this mission touched" summary survives a history

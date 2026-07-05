@@ -41,6 +41,7 @@ export interface ConversationView {
   running: boolean;
   sessionStatus: ConversationVM["sessionStatus"];
   boardStatus: ConversationVM["boardStatus"];
+  queued: ConversationVM["queued"];
 }
 
 const EMPTY_FEED: FeedItem[] = [];
@@ -51,6 +52,7 @@ function toView(vm: ConversationVM): ConversationView {
     running: vm.running,
     sessionStatus: vm.sessionStatus,
     boardStatus: vm.boardStatus,
+    queued: vm.queued,
   };
 }
 

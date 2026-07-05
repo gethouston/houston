@@ -196,8 +196,16 @@ export function useMissionControl(agents: Agent[]) {
         const list = await tauriActivity.list(agentPath);
         const overrides = resolveActivityOverride(sessionKey, list);
         // The turn stream pushes the user bubble into the conversation VM
-        // itself — no app-side optimistic push.
-        await tauriChat.send(agentPath, prompt, sessionKey, overrides);
+        // itself — no app-side optimistic push. If the conversation is
+        // mid-turn the adapter holds this send; the queued bubble shows the
+        // user's words, not the built prompt.
+        await tauriChat.send(agentPath, prompt, sessionKey, {
+          ...overrides,
+          queuedPreview: {
+            text,
+            attachmentNames: files.map((f) => f.name),
+          },
+        });
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
       } catch (err) {
         setLoading((prev) => ({ ...prev, [sessionKey]: false }));

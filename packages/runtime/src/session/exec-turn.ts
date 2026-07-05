@@ -15,6 +15,7 @@ import {
 } from "../store/conversations";
 import { type ActingContext, runWithActingContext } from "./acting-context";
 import { decodeActingAuthor, framePrompt } from "./attribution";
+import { needsAutocompact } from "./autocompact";
 import { publish } from "./bus";
 import { type Conversation, switchBackendIfNeeded } from "./conversation-cache";
 import {
@@ -102,9 +103,11 @@ export async function execTurn(
     });
   };
 
-  // Set inside the try when this turn crosses a provider boundary; declared out
-  // here so the error path can still persist the marker on the partial message.
+  // Set inside the try when this turn crosses a provider boundary or compacts
+  // a near-full context; declared out here so the error path can still persist
+  // the markers on the partial message.
   let providerSwitch: ChatMessage["providerSwitch"];
+  let compaction: ChatMessage["compaction"];
   try {
     // Resolve the model for THIS turn from current settings (a routine's
     // provider/model pin wins, else the workspace's active provider/model).
@@ -177,6 +180,24 @@ export async function execTurn(
       conv.provider = model.provider;
       conv.model = model.id;
     }
+    // AUTOCOMPACT: when the session's context is nearly full, summarize +
+    // reseed BEFORE this turn so long chats keep working — a guarantee every
+    // surface inherits, owned here because the runtime holds the ground truth
+    // (live fill + the active model's window). Skipped when a provider switch
+    // above already summarized (nothing left to compact) — the fill is read
+    // from the SETTLED session, so a rebuilt/fresh session reads low and
+    // never re-compacts.
+    if (!providerSwitch?.summarized) {
+      const fill = conv.session.getContextUsage()?.tokens ?? null;
+      if (needsAutocompact(fill, model.contextWindow)) {
+        await conv.session.compact();
+        compaction = { trigger: "proactive", pre_tokens: fill };
+        // Stream the boundary so the chat draws the divider + resets its
+        // window estimate; persisted on the assistant message below so the
+        // divider survives a history reload.
+        publish(id, { type: "context_compacted", data: compaction, turnId });
+      }
+    }
     // Effort: the routine's pin wins, else the agent's saved setting; if neither
     // is set and the model can reason, default to medium so a reasoning model
     // (e.g. an OpenCode toggle model) actually thinks — pi only enables reasoning
@@ -235,6 +256,7 @@ export async function execTurn(
       tools,
       usage,
       providerSwitch,
+      compaction,
       providerError,
       fileChanges,
       turnId,
@@ -256,6 +278,7 @@ export async function execTurn(
       tools,
       usage,
       providerSwitch,
+      compaction,
       providerError: providerError ?? {
         kind: "unknown",
         provider: pin?.provider ?? conv.provider,

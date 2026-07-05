@@ -1,4 +1,3 @@
-import type { FeedItem } from "@houston-ai/chat";
 import type { HoustonEvent } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,7 +9,6 @@ import {
 } from "../lib/notification-nav";
 import { isMac } from "../lib/platform";
 import { useAgentStore } from "../stores/agents";
-import { useProviderSwitchStore } from "../stores/provider-switch";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
 import {
@@ -22,8 +20,8 @@ import {
 
 /**
  * Subscribe to "houston-event" from the engine bus.
- * Handles the provider-switch confirmation, session-complete notifications,
- * Toast, and AuthRequired. Conversation STATE (feed, spinner, status) lives in
+ * Handles session-complete notifications, Toast, and AuthRequired.
+ * Conversation STATE (feed, spinner, status) lives in
  * the SDK conversation VM (`use-conversation-vm.ts`) — never accumulated here.
  *
  * NOTE: Data invalidation is handled by useWorkspaceInvalidation (TanStack Query).
@@ -58,20 +56,6 @@ export function useSessionEvents() {
       const h = handlersRef.current;
 
       switch (payload.type) {
-        case "FeedItem": {
-          const item = payload.data.item as FeedItem;
-          // Rendering is the conversation VM's job — this listener only reacts
-          // to the provider-switch confirmation: the engine emitted the
-          // boundary divider, so clear the staged handoff so later normal
-          // turns don't re-trigger a reseed. A failed seed never emits this,
-          // so the handoff stays staged and the next send retries the switch.
-          if (item.feed_type === "provider_switched") {
-            useProviderSwitchStore
-              .getState()
-              .clearPending(payload.data.agent_path, payload.data.session_key);
-          }
-          break;
-        }
         case "SessionStatus": {
           const { status, session_key, agent_path } = payload.data;
           // Status/spinner state lives in the conversation VM; error surfacing

@@ -197,4 +197,5 @@ export {
   ConversationVmOutput,
   conversationScope,
   type FeedItemVM,
+  type QueuedMessageVM,
 } from "./vm-output";

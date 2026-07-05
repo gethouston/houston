@@ -1275,6 +1275,17 @@ export class HoustonClient {
   ): Promise<SessionStartResponse> {
     return this.request("POST", `/agents/${this.seg(agentPath)}/sessions`, req);
   }
+  /**
+   * Drop one queued (not yet sent) message from a conversation's send queue.
+   * INERT here: the queue lives in the host engine-adapter (the aliased
+   * implementation every build runs); this stub only keeps the unaliased
+   * surface shape-identical.
+   */
+  removeQueuedMessage(
+    _agentPath: string,
+    _sessionKey: string,
+    _id: string,
+  ): void {}
   cancelSession(
     agentPath: string,
     sessionKey: string,

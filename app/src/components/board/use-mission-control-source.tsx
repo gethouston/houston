@@ -90,9 +90,6 @@ export function useMissionControlSource(
     : null;
   const selectedAgentPath =
     (selectedItem?.metadata?.agentPath as string | undefined) ?? null;
-  const selectedSessionActive = selectedSessionKey
-    ? (mc.loading[selectedSessionKey] ?? false)
-    : false;
 
   const actions = useMcActions({ mc, activeAgent, activeAgentDef, paths });
 
@@ -158,7 +155,6 @@ export function useMissionControlSource(
     activeAgentDef,
     selectedSessionKey,
     selectedAgentPath,
-    selectedSessionActive,
     onSelectSession: mc.setSelectedId,
     sessionKeyFor: actions.sessionKeyFor,
     onDelete: mc.handleDelete,
