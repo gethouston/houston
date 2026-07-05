@@ -45,6 +45,12 @@ export interface ToolMatch {
   description: string;
   /** JSON-schema-shaped description of the action's params, for the model. */
   inputParams?: unknown;
+  /**
+   * Whether the user has an active connection to this action's toolkit.
+   * `false` means execute() would fail — the agent should offer the in-chat
+   * connect card instead (HOU-670). Absent = unknown (older adapters).
+   */
+  connected?: boolean;
 }
 
 /** The outcome of running an action. */

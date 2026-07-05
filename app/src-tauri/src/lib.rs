@@ -654,9 +654,11 @@ fn spawn_host_sidecar(
         ("HOUSTON_HOST_PORT".into(), port.to_string()),
         // The product voice — the host reads this exact env var and injects it
         // into every runtime it spawns (main.ts → buildLocalHost.systemPrompt).
+        // The pi variant: same identity, but integrations guidance for the
+        // in-process tools + in-chat connect card, not the retired CLI.
         (
             "HOUSTON_APP_SYSTEM_PROMPT".into(),
-            houston_prompt::system_prompt(),
+            houston_prompt::system_prompt_pi(),
         ),
     ];
     // Integrations gateway (platform-mode Composio): Houston's cloud host owns

@@ -176,6 +176,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           footer={panel.footer}
           attachMenu={panel.attachMenu}
           renderUserMessage={panel.renderUserMessage}
+          renderLink={panel.renderLink}
           renderSystemMessage={panel.renderSystemMessage}
           mapFeedItems={panel.mapFeedItems}
           afterMessages={panel.afterMessages}

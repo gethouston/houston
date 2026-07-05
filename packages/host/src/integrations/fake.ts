@@ -99,7 +99,7 @@ export class FakeIntegrationProvider implements IntegrationProvider {
   }
 
   async search(
-    _userId: string,
+    userId: string,
     query: string,
     acting?: ActingContext,
   ): Promise<ToolMatch[]> {
@@ -107,11 +107,18 @@ export class FakeIntegrationProvider implements IntegrationProvider {
     if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
     if (this.throwSearchExecute) throw this.throwSearchExecute;
     const q = query.toLowerCase();
-    return this.actions.filter(
-      (a) =>
-        a.description.toLowerCase().includes(q) ||
-        a.action.toLowerCase().includes(q),
+    const activeToolkits = new Set(
+      (this.connections.get(userId) ?? [])
+        .filter((c) => c.status === "active")
+        .map((c) => c.toolkit),
     );
+    return this.actions
+      .filter(
+        (a) =>
+          a.description.toLowerCase().includes(q) ||
+          a.action.toLowerCase().includes(q),
+      )
+      .map((a) => ({ ...a, connected: activeToolkits.has(a.toolkit) }));
   }
 
   async execute(
