@@ -13,6 +13,8 @@ export interface FileEntry {
   is_directory?: boolean;
   /** Last modified timestamp in milliseconds (Date.now() format) */
   dateModified?: number;
+  /** Creation timestamp in milliseconds (Date.now() format) */
+  dateCreated?: number;
 }
 
 // --- Instructions panel ---

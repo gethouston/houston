@@ -101,8 +101,8 @@ export function RoutineRow({
       className={cn(
         "group relative flex items-center gap-4 px-5 py-4 cursor-pointer",
         "transition-colors duration-150",
-        "hover:bg-black/[0.03]",
-        "focus-visible:outline-none focus-visible:bg-black/[0.03]",
+        "hover:bg-foreground/[0.03]",
+        "focus-visible:outline-none focus-visible:bg-foreground/[0.03]",
         !routine.enabled && "opacity-55",
       )}
     >

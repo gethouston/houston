@@ -284,3 +284,112 @@ test("a missing vfs answers 503 for files routes", async () => {
   expect(handled).toBe(true);
   expect(state.status).toBe(503);
 });
+
+test("listing reports date_created for files and the oldest one for folders", async () => {
+  const objects = new MemoryVfs();
+  await seed(objects, "data/first.csv", "1"); // created @ clock 1
+  await seed(objects, "data/second.csv", "2"); // created @ clock 2
+  await objects.writeText(`${ROOT}/data/first.csv`, "1-updated"); // overwrite keeps createdMs
+
+  const byPath = Object.fromEntries(
+    (await listWorkspace(objects, ROOT)).map((f) => [f.path, f]),
+  );
+  expect(byPath["data/first.csv"]?.date_created).toBe(1);
+  expect(byPath["data/second.csv"]?.date_created).toBe(2);
+  // The folder inherits the OLDEST creation and the NEWEST modification beneath it.
+  expect(byPath.data?.date_created).toBe(1);
+  expect(byPath.data?.date_modified).toBe(3);
+});
+
+/** A fake IncomingMessage that yields a JSON body once (async-iterable). */
+function fakeReq(body: unknown) {
+  const buf = Buffer.from(JSON.stringify(body));
+  return (async function* () {
+    yield buf;
+  })() as never;
+}
+
+test("every files mutation emits FilesChanged; reads do not", async () => {
+  const objects = new MemoryVfs();
+  await seed(objects, "Docs/a.txt", "a");
+  const ctx = {
+    workspace: {} as Workspace,
+    agent: { id: "Houston/Bo" } as Agent,
+  };
+  const events: string[] = [];
+  const emit = (e: { type: string; agentPath?: string }) => {
+    expect(e.agentPath).toBe("Houston/Bo");
+    events.push(e.type);
+  };
+  const run = (
+    method: string,
+    rest: string,
+    req: unknown,
+    query: Record<string, string> = {},
+  ) =>
+    handleFiles(
+      objects,
+      PATHS,
+      ctx,
+      method,
+      rest,
+      req as never,
+      fakeRes().res,
+      new URLSearchParams(query),
+      emit as never,
+    );
+
+  await run("GET", "files", { url: "/x" });
+  expect(events).toEqual([]);
+
+  await run(
+    "POST",
+    "files/import",
+    fakeReq({
+      files: [
+        { name: "up.txt", contentBase64: Buffer.from("up").toString("base64") },
+      ],
+    }),
+  );
+  await run("POST", "files/move", fakeReq({ path: "up.txt", toDir: "Docs" }));
+  await run(
+    "POST",
+    "files/rename",
+    fakeReq({ path: "Docs/up.txt", newName: "up2.txt" }),
+  );
+  await run("POST", "files/folder", fakeReq({ path: "Reports" }));
+  await run("DELETE", "files", { url: "/x" }, { path: "Docs/up2.txt" });
+  expect(events).toEqual([
+    "FilesChanged",
+    "FilesChanged",
+    "FilesChanged",
+    "FilesChanged",
+    "FilesChanged",
+  ]);
+});
+
+test("files/archive serves a zip of the workspace over HTTP", async () => {
+  const objects = new MemoryVfs();
+  await seed(objects, "report.md", "# hi");
+  const ctx = {
+    workspace: {} as Workspace,
+    agent: { id: "Houston/Bo", name: "Bo" } as Agent,
+  };
+  const { res, state } = fakeRes();
+  await handleFiles(
+    objects,
+    PATHS,
+    ctx,
+    "GET",
+    "files/archive",
+    { url: "/x" } as never,
+    res,
+    new URLSearchParams(),
+  );
+  expect(state.status).toBe(200);
+  expect(state.headers["Content-Type"]).toBe("application/zip");
+  expect(String(state.headers["Content-Disposition"])).toContain(
+    "Bo files.zip",
+  );
+  expect(state.body?.subarray(0, 2).toString("latin1")).toBe("PK");
+});

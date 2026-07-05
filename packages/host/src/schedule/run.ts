@@ -1,13 +1,16 @@
 import {
   createRoutineRun,
   loadRoutineRuns,
+  pruneRoutineRuns,
   saveRoutineRuns,
+  upsertById,
 } from "@houston/domain";
 import type { Routine } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
+import { withRunsFile } from "./runs-lock";
 import type { RoutineFirer } from "./scheduler";
 
 /** Inputs shared by the scheduler's tick and the on-demand "run now" route. */
@@ -21,16 +24,36 @@ export interface FireRoutineDeps {
 }
 
 /**
+ * The routine already has a run in flight — an expected outcome, not a fault:
+ * "run now" maps it to a 409, the scheduler skips the instant quietly.
+ */
+export class RoutineBusyError extends Error {
+  constructor(routineName: string) {
+    super(`"${routineName}" is already running`);
+    this.name = "RoutineBusyError";
+  }
+}
+
+/**
  * Record a routine run and fire it through the channel — the SINGLE path a
  * scheduled tick and a hand-pressed "run now" both go through, so an on-demand
  * run is indistinguishable from a cron one (same run record, same firer, same
  * reconcile-driven completion).
  *
+ * Per-routine in-flight gate (parity with the Rust create_if_routine_idle): a
+ * routine whose previous run is still going never double-fires into the same
+ * conversation. The gate + record write run under the per-agent runs-file
+ * queue (runs-lock.ts), so a scheduler tick racing a hand-pressed "run now"
+ * can't both pass the gate or drop each other's rows. A stuck "running" row
+ * can't wedge the gate forever — reconcile times a reply-less run out and
+ * errors it.
+ *
  * The "running" run is persisted FIRST (so the board shows it immediately and a
- * fire failure has a record to mark), then the turn is started. A fire failure
- * marks the run errored — never stuck "running", never a silent miss — and
- * re-throws so an HTTP caller can surface the real reason to the user (the
- * scheduler, having no UI thread, catches + logs it instead).
+ * fire failure has a record to mark), then the turn is started OUTSIDE the
+ * queue (a cold start must never block a cancel). A fire failure marks the run
+ * errored — never stuck "running", never a silent miss — and re-throws so an
+ * HTTP caller can surface the real reason to the user (the scheduler, having
+ * no UI thread, catches + logs it instead).
  */
 export async function fireRoutineRun(
   deps: FireRoutineDeps,
@@ -41,8 +64,16 @@ export async function fireRoutineRun(
   const root = deps.paths.agentRoot(ws, agent);
   const runId = deps.newId();
   const run = createRoutineRun(routine, runId, deps.now().toISOString());
-  const { items } = await loadRoutineRuns(deps.vfs, root);
-  await saveRoutineRuns(deps.vfs, root, [run, ...items]); // newest first
+  await withRunsFile(root, async () => {
+    const { items } = await loadRoutineRuns(deps.vfs, root);
+    if (
+      items.some((r) => r.routine_id === routine.id && r.status === "running")
+    )
+      throw new RoutineBusyError(routine.name);
+    // Newest first; prune keeps the history at the Rust engine's per-routine
+    // cap so routine_runs.json can't grow without bound.
+    await saveRoutineRuns(deps.vfs, root, pruneRoutineRuns([run, ...items]));
+  });
   deps.events?.emit(ws.ownerUserId, {
     type: "RoutineRunsChanged",
     agentPath: agent.id,
@@ -58,21 +89,23 @@ export async function fireRoutineRun(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const { items: current } = await loadRoutineRuns(deps.vfs, root);
-    await saveRoutineRuns(
-      deps.vfs,
-      root,
-      current.map((r) =>
-        r.id === runId
-          ? {
-              ...r,
-              status: "error" as const,
-              summary: message,
-              completed_at: deps.now().toISOString(),
-            }
-          : r,
-      ),
-    );
+    await withRunsFile(root, async () => {
+      const { items: current } = await loadRoutineRuns(deps.vfs, root);
+      const row = current.find((r) => r.id === runId);
+      // The row can only be missing/terminal if a cancel raced the failed
+      // fire — leave what the user set.
+      if (row?.status !== "running") return;
+      await saveRoutineRuns(
+        deps.vfs,
+        root,
+        upsertById(current, {
+          ...row,
+          status: "error",
+          summary: message,
+          completed_at: deps.now().toISOString(),
+        }),
+      );
+    });
     deps.events?.emit(ws.ownerUserId, {
       type: "RoutineRunsChanged",
       agentPath: agent.id,

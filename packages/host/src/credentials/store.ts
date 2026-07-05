@@ -7,9 +7,9 @@ import type { CredentialStore, WorkspaceCredential } from "../ports";
  * sandboxes only ever serve a fresh access token from here (they never hold the
  * refresh token), so there is no per-agent refresh-token-rotation conflict.
  *
- * MemoryCredentialStore backs dev/tests; the live Postgres adapter
- * (PgCredentialStore) lives in `@houston/host-cloud` (credentials/store-pg.ts) —
- * same interface, same semantics. The two are held to one shared contract
+ * MemoryCredentialStore backs dev/tests; the Postgres adapter
+ * (PgCredentialStore) was retired with `@houston/host-cloud` (git history).
+ * Every adapter is held to one shared contract
  * (credentials/contract.test.ts → runCredentialStoreContract).
  */
 

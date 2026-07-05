@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   DEFAULT_TAB_ID,
+  HOST_BUILD,
   STANDARD_TAB_IDS,
   STANDARD_TABS,
 } from "../../agents/standard-tabs";
@@ -34,6 +35,7 @@ import { useUIStore } from "../../stores/ui";
 import { AiHubView } from "../ai-hub/ai-hub-view";
 import { CommandPalette } from "../command-palette";
 import { Dashboard } from "../dashboard";
+import { INTEGRATIONS_VIEW_ID, IntegrationsView } from "../integrations-view";
 import { MissionSearchInput } from "../mission-search-input";
 import { ExportAgentWizard } from "../portable/export-wizard";
 import { ImportAgentWizard } from "../portable/import-wizard";
@@ -163,6 +165,8 @@ export function WorkspaceShell({
                   <AiHubView />
                 ) : viewMode === "settings" ? (
                   <SettingsView />
+                ) : viewMode === INTEGRATIONS_VIEW_ID && HOST_BUILD ? (
+                  <IntegrationsView />
                 ) : currentAgent && agentDef && isAgentView ? (
                   <>
                     <div data-tour-target="tabs">

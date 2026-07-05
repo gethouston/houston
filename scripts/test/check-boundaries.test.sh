@@ -13,8 +13,13 @@
 #       - a cloud lib / closed package DECLARED in an open package.json (Hole 3, manifest)
 #       - a bare @houston/host-cloud import              (the original check)
 #       - a cloud lib imported by a non-allowlisted file
-#       - an empty host-cloud package (Rule B)
+#       - a reappearing packages/host-cloud dir (Rule B — retired and deleted)
+#       - a cloud import in a BRAND-NEW package (dynamic enumeration — a fixed
+#         open-package list would let cloud code reappear under a new name)
 #   * a commented-out cloud import does NOT false-fail (comment stripping);
+#   * leftover gitignored build artifacts under packages/host-cloud do NOT
+#     false-fail Rule B (pnpm node_modules survives a branch switch);
+#   * a repo-scoped alias import (@houston/app/...) does NOT false-fail rule (d);
 #   * the runtime's GcsStore adapter + dep are the one allowed exception.
 #
 # Never touches the real repo (everything happens in a temp dir).
@@ -51,7 +56,8 @@ assert_fail() { # <label> <substring>
 }
 
 # ---------------------------------------------------------------------------
-# Clean fixture: the open packages + the closed host-cloud package.
+# Clean fixture: the open packages only — the closed control plane lives
+# outside this repository, so a clean tree has NO packages/host-cloud.
 # ---------------------------------------------------------------------------
 reset_fixture() {
   rm -rf "$TMP/packages" "$TMP/ui"
@@ -81,11 +87,6 @@ reset_fixture() {
   mkdir -p "$TMP/ui/core/src"
   printf '{"name":"@houston-ai/core","version":"0.0.0","dependencies":{"react":"^19"}}\n' > "$TMP/ui/core/package.json"
   printf 'import React from "react";\nexport const C = React;\n' > "$TMP/ui/core/src/index.tsx"
-
-  # The CLOSED package: may import cloud freely; must carry the adapters (Rule B).
-  mkdir -p "$TMP/packages/host-cloud/src/store"
-  printf '{"name":"@houston/host-cloud","version":"0.0.0","dependencies":{"pg":"^8","@houston/host":"file:../host"}}\n' > "$TMP/packages/host-cloud/package.json"
-  printf 'import pg from "pg";\nexport const p = pg;\n' > "$TMP/packages/host-cloud/src/store/pg.ts"
 }
 
 echo "== check-boundaries.mjs =="
@@ -128,11 +129,33 @@ reset_fixture
 printf 'import { Storage } from "@google-cloud/storage";\nexport const s = Storage;\n' > "$TMP/packages/runtime/src/other.ts"
 assert_fail "cloud lib in a non-allowlisted file is caught" 'cloud lib "@google-cloud/storage"'
 
-# Rule B — the closed package must carry the extracted adapters.
+# Rule B — the closed package must not reappear under its old path.
 reset_fixture
-rm -rf "$TMP/packages/host-cloud/src"
 mkdir -p "$TMP/packages/host-cloud/src"
-assert_fail "empty host-cloud package is caught" "no source files"
+printf 'import pg from "pg";\nexport const p = pg;\n' > "$TMP/packages/host-cloud/src/pg.ts"
+assert_fail "reappearing host-cloud package is caught" "must not exist"
+
+# Rule B tolerance — leftover gitignored build artifacts (pnpm installed a
+# node_modules under this path on every pre-retirement checkout, and a branch
+# switch removes only tracked files) must NOT false-fail a dev machine.
+reset_fixture
+mkdir -p "$TMP/packages/host-cloud/node_modules/pg" "$TMP/packages/host-cloud/dist"
+printf '{"name":"pg"}\n' > "$TMP/packages/host-cloud/node_modules/pg/package.json"
+assert_pass "leftover host-cloud build artifacts do not false-fail Rule B"
+
+# Dynamic enumeration — a brand-new package is covered the day it appears; a
+# fixed open-package list would let cloud code reappear under any other name.
+reset_fixture
+mkdir -p "$TMP/packages/rogue-cloud/src"
+printf '{"name":"@houston/rogue-cloud","version":"0.0.0"}\n' > "$TMP/packages/rogue-cloud/package.json"
+printf 'import pg from "pg";\nexport const p = pg;\n' > "$TMP/packages/rogue-cloud/src/index.ts"
+assert_fail "cloud import in a brand-new package is caught" 'cloud lib "pg"'
+
+# Repo-scope exemption — a vite-aliased @houston/* import is a path rewrite,
+# not an npm dependency; rule (d) must not flag it as undeclared.
+reset_fixture
+printf 'import { App } from "@houston/app/App";\nexport const a = App;\n' > "$TMP/packages/host/src/aliased.ts"
+assert_pass "repo-scoped alias import does not false-fail rule (d)"
 
 # Comment stripping — a commented-out cloud import must NOT false-fail.
 reset_fixture

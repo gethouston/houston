@@ -295,7 +295,7 @@ export function RoutineEditor({
                 className={cn(
                   "w-full px-3 py-2 text-sm text-foreground",
                   "placeholder:text-muted-foreground/60",
-                  "bg-background border border-black/[0.04] rounded-lg",
+                  "bg-background border border-foreground/[0.04] rounded-lg",
                   "outline-none transition-shadow duration-200",
                   "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
                 )}
@@ -313,7 +313,7 @@ export function RoutineEditor({
                 className={cn(
                   "w-full px-3 py-2 text-sm text-foreground",
                   "placeholder:text-muted-foreground/60",
-                  "bg-background border border-black/[0.04] rounded-lg",
+                  "bg-background border border-foreground/[0.04] rounded-lg",
                   "outline-none transition-shadow duration-200",
                   "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
                 )}
@@ -329,7 +329,7 @@ export function RoutineEditor({
                 className={cn(
                   "w-full px-3 py-2 text-sm text-foreground leading-relaxed",
                   "placeholder:text-muted-foreground/60",
-                  "bg-background border border-black/[0.04] rounded-lg",
+                  "bg-background border border-foreground/[0.04] rounded-lg",
                   "outline-none resize-none transition-shadow duration-200",
                   "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
                 )}
@@ -346,7 +346,7 @@ export function RoutineEditor({
             />
 
             {/* Live "Next run" callout — white well inside the gray card */}
-            <div className="flex items-start gap-3 rounded-lg bg-background border border-black/[0.04] px-4 py-3">
+            <div className="flex items-start gap-3 rounded-lg bg-background border border-foreground/[0.04] px-4 py-3">
               <CalendarClock
                 className="size-4 text-muted-foreground mt-0.5 shrink-0"
                 strokeWidth={1.75}
@@ -433,6 +433,7 @@ export function RoutineEditor({
                 onCancelRun={onCancelRun}
                 labels={runHistoryLabels}
                 locale={locale}
+                timeZone={accountTimezone}
               />
             </SectionCard>
           )}

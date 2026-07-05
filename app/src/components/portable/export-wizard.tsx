@@ -715,7 +715,7 @@ function ChoiceCard({
       onClick={onClick}
       className={cn(
         "rounded-xl border bg-background p-4 text-left transition-all",
-        "border-black/5 hover:border-black/15 hover:shadow-[0_1px_0_rgba(0,0,0,0.05)]",
+        "border-foreground/5 hover:border-foreground/15 hover:shadow-[0_1px_0_rgba(0,0,0,0.05)]",
         selected && "border-foreground shadow-[0_1px_0_rgba(0,0,0,0.05)]",
       )}
     >
@@ -744,7 +744,7 @@ function DiffCard({
 }) {
   const { t } = useTranslation("portable");
   return (
-    <article className="rounded-xl border border-black/5 bg-background p-4">
+    <article className="rounded-xl border border-foreground/5 bg-background p-4">
       <header className="flex items-center justify-between gap-3 mb-3">
         <p className="text-sm font-medium">{title}</p>
         <button
@@ -786,7 +786,7 @@ function RoutineDiffCard({
 }) {
   const { t } = useTranslation("portable");
   return (
-    <article className="rounded-xl border border-black/5 bg-background p-4">
+    <article className="rounded-xl border border-foreground/5 bg-background p-4">
       <header className="flex items-center justify-between gap-3 mb-3">
         <p className="text-sm font-medium">
           {t("export.step2.routineTitle", { id: routineId })}

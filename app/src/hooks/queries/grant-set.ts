@@ -34,3 +34,17 @@ export function reverseGrantChange(
     op: change.op === "add" ? "remove" : "add",
   });
 }
+
+/**
+ * Null-aware apply: `null` means the host answered "grants unsupported" (404),
+ * so there is no set to change and the value stays `null` (the mutation must
+ * never fabricate a set on an unsupported host). Any real array is changed as
+ * usual. Pure so the null guard is unit-testable.
+ */
+export function applyGrantChangeNullable(
+  current: string[] | null,
+  change: GrantChange,
+): string[] | null {
+  if (current === null) return null;
+  return applyGrantChange(current, change);
+}

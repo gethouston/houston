@@ -7,6 +7,7 @@ import type {
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { activeEffort, resolveModel } from "../ai/providers";
+import { config } from "../config";
 import {
   appendAssistantMessage,
   appendUserMessage,
@@ -16,10 +17,16 @@ import { type ActingContext, runWithActingContext } from "./acting-context";
 import { decodeActingAuthor, framePrompt } from "./attribution";
 import { publish } from "./bus";
 import type { Conversation } from "./conversation-cache";
+import {
+  diffSnapshots,
+  type FileSnapshot,
+  snapshotWorkspace,
+} from "./file-changes";
 import { switchNeedsCompaction } from "./provider-switch";
 
-/** A routine's pinned model/effort for this turn. Absent = keep the session's current. */
+/** A routine's pinned provider/model/effort for this turn. Absent = keep the session's current. */
 export interface TurnPin {
+  provider?: string | null;
   model?: string | null;
   effort?: string | null;
 }
@@ -92,13 +99,15 @@ export async function execTurn(
   // here so the error path can still persist the marker on the partial message.
   let providerSwitch: ChatMessage["providerSwitch"];
   try {
-    // Resolve the model for THIS turn from current settings (a routine pin wins,
-    // else the workspace's active provider/model). Re-resolved every turn so a
-    // mid-conversation provider/model switch — which the web picker applies via
-    // setSettings, NOT a per-turn field — actually takes effect on the cached
-    // session instead of silently continuing on the model it was built with.
+    // Resolve the model for THIS turn from current settings (a routine's
+    // provider/model pin wins, else the workspace's active provider/model).
+    // Re-resolved every turn so a mid-conversation provider/model switch —
+    // which the web picker applies via setSettings, NOT a per-turn field —
+    // actually takes effect on the cached session instead of silently
+    // continuing on the model it was built with; and so a pinned routine keeps
+    // firing on ITS provider no matter what other chats picked in between.
     // A bad model id throws here → surfaces as the turn's error event.
-    const model = resolveModel(pin?.model);
+    const model = resolveModel(pin?.model, pin?.provider);
     const providerChanged = model.provider !== conv.provider;
     const modelChanged = model.id !== conv.model;
     if (providerChanged || modelChanged) {
@@ -154,10 +163,37 @@ export async function execTurn(
     // apart. Single-author (or authorless) turns pass `text` through unchanged —
     // today's prompts stay byte-identical, so no drift for existing users.
     const promptText = framePrompt(text, author, priorAuthors);
+    // Snapshot the workspace's user-visible files so the turn's diff can be
+    // surfaced as a `file_changes` frame below. Same-workdir turns are
+    // serialized by the workdir lock (chat.ts), so the diff is attributable to
+    // exactly this turn. Best-effort: a snapshot failure only loses the
+    // summary, never the turn.
+    let beforeFiles: FileSnapshot | null = null;
+    try {
+      beforeFiles = snapshotWorkspace(config.workspaceDir);
+    } catch (err) {
+      console.warn("[turn] file snapshot failed:", errMessage(err));
+    }
     // Hold the turn's acting-as identity (C2) for the DURATION of the prompt so
     // the integration tools' proxy calls (which run inside this async subtree)
     // attach it. Absent → runs plainly (act as owner).
     await runWithActingContext(acting, () => conv.session.prompt(promptText));
+    // Diff what this turn created/modified. Skipped on a failed turn — a
+    // provider error means the model never finished, so attributing partial
+    // writes would be noise (mirrors the Rust engine's error gate).
+    let fileChanges: ChatMessage["fileChanges"];
+    if (beforeFiles && !providerError) {
+      try {
+        const changes = diffSnapshots(
+          beforeFiles,
+          snapshotWorkspace(config.workspaceDir),
+        );
+        if (changes.created.length || changes.modified.length)
+          fileChanges = changes;
+      } catch (err) {
+        console.warn("[turn] file diff failed:", errMessage(err));
+      }
+    }
     // Persist the switch marker AND any typed provider error on this turn's
     // assistant message so both the boundary divider and the reconnect /
     // rate-limit card survive a history reload. A provider failure lands HERE
@@ -167,22 +203,33 @@ export async function execTurn(
       usage,
       providerSwitch,
       providerError,
+      fileChanges,
       turnId,
     });
+    if (fileChanges)
+      publish(id, { type: "file_changes", data: fileChanges, turnId });
     // Skip the clean `done` when the turn failed: the provider_error frame is the
     // turn's terminal surface (the web adapter settles on it), and a `done` would
     // settle the chat as a clean success — firing the "mission complete"
     // notification on top of the error.
     if (!providerError) publish(id, { type: "done", data: null, turnId });
   } catch (err) {
-    if (assistantText)
-      appendAssistantMessage(id, assistantText, {
-        tools,
-        usage,
-        providerSwitch,
-        providerError,
-        turnId,
-      });
+    // Persist the failure even when nothing streamed: a thrown turn (bad pin,
+    // missing credential, stale model id) must leave the same durable trace a
+    // provider_error frame does — an unattended reader (a routine's reconcile)
+    // reads the real reason off this message instead of timing the run out
+    // with a vague error 15 minutes later.
+    appendAssistantMessage(id, assistantText, {
+      tools,
+      usage,
+      providerSwitch,
+      providerError: providerError ?? {
+        kind: "unknown",
+        provider: pin?.provider ?? conv.provider,
+        raw_excerpt: errMessage(err),
+      },
+      turnId,
+    });
     publish(id, { type: "error", data: { message: errMessage(err) }, turnId });
   } finally {
     conv.turnId = undefined;

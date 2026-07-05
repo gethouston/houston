@@ -21,6 +21,12 @@ export type { StreamRegistry, StreamTuning } from "./stream-registry";
 export interface StreamTurnOptions {
   /** Override the wire nonce (default: a fresh UUID). Its `user` echo names our turnId. */
   nonce?: string;
+  /**
+   * The provider this turn targets (caller's id dialect). Only labels the
+   * typed reconnect card when the runtime refuses the send as not-connected —
+   * the runtime can't name a provider in that refusal (nothing is connected).
+   */
+  provider?: string;
   /** Reconnect tuning (tests inject fast backoff). */
   tuning?: StreamTuning;
 }
@@ -123,6 +129,8 @@ export async function streamTurn(
     output,
     mode: "turn",
     nonce,
+    provider: opts.provider,
+    prompt,
     stop: () => ac.abort(),
     reloadHistory: async () => (await engine.getHistory(sessionKey)).messages,
     // LEGACY fallback (no turn ids anywhere): trust history's trailing reply

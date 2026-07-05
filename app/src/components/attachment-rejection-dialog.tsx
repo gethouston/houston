@@ -54,7 +54,7 @@ export function useAttachmentRejectionDialog(): AttachmentValidationDialogApi {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700">
+              <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
                 <AlertTriangle className="size-5" />
               </span>
               <div>

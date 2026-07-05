@@ -23,7 +23,8 @@
   },
   "dependencies": {
     "@houston/protocol": "workspace:*",
-    "@houston/runtime-client": "workspace:*"
+    "@houston/runtime-client": "workspace:*",
+    "fflate": "0.8.3"
   },
   "devDependencies": {
     "@types/node": "22.20.0",

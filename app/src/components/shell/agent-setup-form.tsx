@@ -186,7 +186,7 @@ export function AgentSetupForm({
           className={cn(
             "w-full px-4 py-3 text-sm text-foreground leading-relaxed",
             "placeholder:text-muted-foreground/60",
-            "bg-secondary border border-black/[0.04] rounded-xl",
+            "bg-secondary border border-foreground/[0.04] rounded-xl",
             "outline-none resize-none transition-shadow duration-200",
             "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
             "disabled:opacity-60 disabled:cursor-not-allowed",

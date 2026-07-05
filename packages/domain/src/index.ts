@@ -7,6 +7,7 @@ export * from "./portable-edit";
 export * from "./preferences";
 export * from "./provider-model";
 export * from "./reactivity";
+export * from "./routine-pin";
 export * from "./routines";
 export * from "./scan";
 export * from "./schedule";

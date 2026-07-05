@@ -6,10 +6,11 @@ import type { TokenVerifier } from "../ports";
  * static service-token wrapper, plus the shared `stripBearer` / `parseServiceTokens`
  * helpers.
  *
- * The CLOUD verifier (`SupabaseTokenVerifier`, jose/JWKS) and the
- * `makeTokenVerifier` factory that picks dev-vs-Supabase at startup live in
- * `@houston/host-cloud` (auth/verify-supabase.ts) — they are the closed half of
- * this split. `SupabaseTokenVerifier` reuses `stripBearer` exported from here.
+ * The cloud verifier (`SupabaseTokenVerifier`, jose/JWKS) and its
+ * `makeTokenVerifier` factory were retired with `@houston/host-cloud` (git
+ * history) — the shipped cloud authenticates at the private gateway instead. A
+ * future closed verifier would implement `TokenVerifier` behind the port and
+ * can reuse `stripBearer` exported from here.
  *
  * Failure policy (CLAUDE.md "no silent failures"): only *authentication*
  * failures resolve to `null`; everything else is re-thrown so it surfaces rather

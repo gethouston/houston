@@ -10,6 +10,11 @@ import type {
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { createPiBackend } from "../backends/pi/backend";
 import { config } from "../config";
+import {
+  diffSnapshots,
+  type FileSnapshot,
+  snapshotWorkspace,
+} from "../session/file-changes";
 import { buildToolSelection } from "../session/tool-selection";
 import { makeClampedFileTools } from "../session/tools/clamped-fs";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
@@ -145,6 +150,19 @@ export async function runPiTurn(
       ...(thinkingLevel ? { thinkingLevel } : {}),
     });
 
+    // Snapshot the hydrated workspace so the turn's created/modified files can
+    // be surfaced as a `file_changes` frame. The per-turn root is exclusive to
+    // this request, so the diff is attributable by construction. Best-effort.
+    let beforeFiles: FileSnapshot | null = null;
+    try {
+      beforeFiles = snapshotWorkspace(workspaceDir);
+    } catch (err) {
+      console.warn(
+        "[turn] file snapshot failed:",
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+
     const unsub = session.subscribe((wire: WireEvent) => {
       if (wire.type === "text") assistantText += wire.data;
       else if (wire.type === "usage") usage = wire.data;
@@ -163,6 +181,25 @@ export async function runPiTurn(
       signal?.removeEventListener("abort", onAbort);
       unsub();
     }
+    // Diff what this turn created/modified; skipped on a failed turn (a
+    // provider error means the model never finished). Emitted BEFORE the
+    // caller's terminal frame, mirroring the long-lived runtime's order.
+    let fileChanges: { created: string[]; modified: string[] } | undefined;
+    if (beforeFiles && !providerError) {
+      try {
+        const changes = diffSnapshots(
+          beforeFiles,
+          snapshotWorkspace(workspaceDir),
+        );
+        if (changes.created.length || changes.modified.length)
+          fileChanges = changes;
+      } catch (err) {
+        console.warn(
+          "[turn] file diff failed:",
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    }
     // Persist the turn's assistant message with any typed provider error so the
     // inline card survives a reload of this cloud conversation. The provider_error
     // frame was already streamed to the client (which settles on it), so this
@@ -173,8 +210,10 @@ export async function runPiTurn(
       tools,
       usage,
       providerError,
+      fileChanges,
       turnId,
     });
+    if (fileChanges) emit({ type: "file_changes", data: fileChanges });
     return {};
   } catch (err) {
     if (assistantText || providerError)

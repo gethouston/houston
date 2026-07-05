@@ -8,11 +8,11 @@ import type { WorkspaceStore } from "../ports";
  * personal-workspace provisioning, agent CRUD, owner-sees-all listing,
  * cross-workspace isolation, and error-on-unknown (no silent no-ops).
  *
- * Exported from `@houston/host` (OPEN) so BOTH the open adapter suite
- * (store/contract.test.ts: Memory/Local) AND the closed adapter suite in
- * `@houston/host-cloud` (store/pg.contract.test.ts: PgWorkspaceStore over pg-mem)
- * run the SAME assertions. The shared contract lives on the open side of the
- * seam; only the adapters it is pointed at differ.
+ * Exported from `@houston/host` (OPEN) and run by the open adapter suite
+ * (store/contract.test.ts: Memory/Local). The closed PgWorkspaceStore suite
+ * that also consumed it was retired with `@houston/host-cloud` (git history);
+ * the contract stays exported as the behavioral bar for any out-of-repo
+ * adapter.
  *
  * INTENTIONAL DIVERGENCES (NOT part of the shared contract — asserted per-impl
  * in memory.test.ts / local.test.ts and the divergence block in

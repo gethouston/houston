@@ -15,6 +15,7 @@ import {
   pickActiveProvider,
   providerAuthMethod,
   providerDefaultModel,
+  resolveModel,
   safeGetModel,
 } from "./providers";
 
@@ -100,6 +101,27 @@ test("safeGetModel keeps a valid saved id but falls back on a stale one", () => 
   // downstream with a raw `Cannot read properties of undefined` TypeError).
   expect(() => safeGetModel("anthropic", "claude-2.1", true)).toThrow(
     'anthropic model "claude-2.1" is not available',
+  );
+});
+
+test("resolveModel honors a pinned provider regardless of the active one (never auth-gated)", () => {
+  // A routine's provider pin resolves ITS provider + model without consulting
+  // the saved active provider or connection state — parity with the Rust
+  // resolve_provider_with_overrides. This is what keeps a routine on the
+  // provider it was configured with while chats switch providers freely.
+  const m = resolveModel("claude-opus-4-8", "anthropic") as {
+    provider?: string;
+    id?: string;
+  };
+  expect(m.provider).toBe("anthropic");
+  expect(m.id).toBe("claude-opus-4-8");
+});
+
+test("resolveModel throws a readable error for an unknown pinned provider", () => {
+  // A junk pin must fail the turn with the reason — never silently fall back
+  // to whatever provider happens to be active.
+  expect(() => resolveModel(undefined, "gemini-cli")).toThrow(
+    "unknown provider: gemini-cli",
   );
 });
 

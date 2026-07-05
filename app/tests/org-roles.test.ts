@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import type { Capabilities, OrgRole } from "@houston-ai/engine-client";
 import {
   canCreateAgents,
+  canEditAgentGrants,
   canManageAgentGrants,
   canManageAssignments,
   canManageMembers,
@@ -127,6 +128,27 @@ describe("canManageAgentGrants", () => {
       true,
     );
     strictEqual(canManageAgentGrants(caps(), { assigned: true }), false);
+  });
+});
+
+describe("canEditAgentGrants", () => {
+  it("single-player can always edit its own agent's grants (regression)", () => {
+    // A self-host / local sidecar serves grants but has no org roles; the tab
+    // must stay editable there, not fall read-only.
+    strictEqual(canEditAgentGrants(caps(), { assigned: true }), true);
+    strictEqual(canEditAgentGrants(caps(), { assigned: false }), true);
+    strictEqual(canEditAgentGrants(null, { assigned: false }), true);
+  });
+
+  it("multiplayer defers to the assignment rule", () => {
+    strictEqual(
+      canEditAgentGrants(multiplayer("admin"), { assigned: true }),
+      true,
+    );
+    strictEqual(
+      canEditAgentGrants(multiplayer("user"), { assigned: false }),
+      false,
+    );
   });
 });
 

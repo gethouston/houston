@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@houston/runtime-client";
+import { type ChatMessage, EngineError } from "@houston/runtime-client";
 import { historyToFeed as foldHistoryToFeed } from "@houston/sdk";
 import type { ChatHistoryEntry } from "../../../../ui/engine-client/src/types";
 import { toOldProvider } from "./synthetic";
@@ -22,4 +22,15 @@ export {
  */
 export function historyToFeed(messages: ChatMessage[]): ChatHistoryEntry[] {
   return foldHistoryToFeed(messages, toOldProvider) as ChatHistoryEntry[];
+}
+
+/**
+ * Whether a history load failed because the conversation simply doesn't exist
+ * on the runtime yet. A conversation persists on its FIRST turn, so a fresh
+ * card opened before that turn lands 404s on `GET /conversations/:id/messages`
+ * — that IS an empty conversation, not a failure. Everything else (network
+ * drop, auth, 5xx) is a real error and must surface, never render as empty.
+ */
+export function isConversationNotFound(err: unknown): boolean {
+  return err instanceof EngineError && err.status === 404;
 }

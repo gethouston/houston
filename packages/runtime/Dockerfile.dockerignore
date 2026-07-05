@@ -27,7 +27,6 @@ website/
 packages/code-sandbox/
 packages/domain/
 packages/host/
-packages/host-cloud/
 packages/web/
 
 # Runtime-local dev artifacts that must never leak into the image.

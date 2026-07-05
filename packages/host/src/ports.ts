@@ -115,10 +115,13 @@ export interface ChannelCtx {
 }
 
 /**
- * A routine's pinned model/effort, carried into the turn it fires. Absent
- * fields mean "inherit the agent default", resolved by the runtime.
+ * A routine's pinned provider/model/effort, carried into the turn it fires.
+ * Absent fields mean "inherit the agent default", resolved by the runtime.
+ * The pin is per-turn only — it never touches the agent's saved settings, so
+ * a pinned routine and the chats around it can't clobber each other.
  */
 export interface TurnPin {
+  provider?: string | null;
   model?: string | null;
   effort?: string | null;
 }
@@ -161,6 +164,14 @@ export interface RuntimeChannel {
     pin?: TurnPin,
     actingUser?: string,
   ): Promise<void>;
+  /**
+   * Abort the in-flight turn on a conversation — the "stop this routine run"
+   * path (no HTTP request behind it). Resolves whether a live turn was
+   * actually aborted; `false` means nothing was running. The caller marks the
+   * run cancelled BEFORE calling this, so a transport failure here surfaces
+   * but never resurrects the run.
+   */
+  cancelTurn(ctx: ChannelCtx, conversationId: string): Promise<boolean>;
   /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
   teardown(ctx: ChannelCtx): Promise<void>;
   /**

@@ -299,6 +299,8 @@
       "waiting": "Conclua o login no seu navegador",
       "reconnectedTitle": "Reconectado a {{provider}}",
       "reconnectedBody": "Você entrou de novo. Continue de onde parou.",
+      "reconnectedResending": "Você entrou de novo. O Houston está respondendo sua mensagem agora.",
+      "signedIn": "Sessão iniciada",
       "sendAgain": "Tentar novamente",
       "failedBody": "O login de {{provider}} não foi concluído. Tente novamente. {{detail}}"
     },

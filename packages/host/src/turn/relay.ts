@@ -32,8 +32,8 @@ const cancelChannel = (agentId: string) => `turn:cancel:${agentId}`;
 
 export class TurnRelay {
   private readonly channels: RelayChannels;
-  /** Agents whose turn THIS replica is pumping right now. */
-  private inflightLocal = new Set<string>();
+  /** Agents whose turn THIS replica is pumping right now → the conversation key. */
+  private inflightLocal = new Map<string, string>();
   /** In-flight dead-turn heals, deduped per conversation (see reapIfDead). */
   private healing = new Map<string, Promise<boolean>>();
 
@@ -64,9 +64,13 @@ export class TurnRelay {
     ) => Promise<void>,
   ): Promise<boolean> {
     if (this.inflightLocal.has(agentId)) return false;
-    if (!(await this.bus.setNx(inflightKey(agentId), "1", LEASE_SEC)))
+    // The lease VALUE is the conversation key, so a conversation-scoped cancel
+    // (a routine-run stop) can tell whether the slot is running ITS turn.
+    if (
+      !(await this.bus.setNx(inflightKey(agentId), conversationKey, LEASE_SEC))
+    )
       return false;
-    this.inflightLocal.add(agentId);
+    this.inflightLocal.set(agentId, conversationKey);
 
     const ctrl = new AbortController();
     const unsubCancel = this.bus.subscribe(cancelChannel(agentId), () =>
@@ -157,14 +161,18 @@ export class TurnRelay {
     return heal;
   }
 
-  /** Abort the agent's in-flight turn — on whichever replica owns it. */
-  async cancel(agentId: string): Promise<boolean> {
-    if (
-      !this.inflightLocal.has(agentId) &&
-      (await this.bus.get(inflightKey(agentId))) === null
-    ) {
-      return false;
-    }
+  /**
+   * Abort the agent's in-flight turn — on whichever replica owns it. With
+   * `conversationKey`, only a turn on THAT conversation is aborted: the agent
+   * has one slot shared by chats and routines, so a conversation-scoped cancel
+   * (stopping a stale routine run) must never kill an unrelated live chat turn.
+   */
+  async cancel(agentId: string, conversationKey?: string): Promise<boolean> {
+    const inflight =
+      this.inflightLocal.get(agentId) ??
+      (await this.bus.get(inflightKey(agentId)));
+    if (inflight === null || inflight === undefined) return false;
+    if (conversationKey && inflight !== conversationKey) return false;
     await this.bus.publish(cancelChannel(agentId), "cancel");
     return true;
   }

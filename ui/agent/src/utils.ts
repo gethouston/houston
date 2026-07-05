@@ -89,7 +89,7 @@ export function getKind(extension: string): string {
 
 // --- Sort ---
 
-export type SortKey = "name" | "dateModified" | "size" | "kind";
+export type SortKey = "name" | "dateModified" | "dateCreated" | "size" | "kind";
 export type SortDirection = "asc" | "desc";
 
 /** Recursively sort a tree (folders first, then by selected column). */
@@ -113,6 +113,9 @@ export function sortTree(
         break;
       case "dateModified":
         cmp = (fa.dateModified ?? 0) - (fb.dateModified ?? 0);
+        break;
+      case "dateCreated":
+        cmp = (fa.dateCreated ?? 0) - (fb.dateCreated ?? 0);
         break;
       case "size":
         cmp = fa.size - fb.size;

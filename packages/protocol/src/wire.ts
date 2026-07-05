@@ -32,6 +32,9 @@ import type { ProviderError } from "./provider-error";
  *   auth / rate-limit / 5xx / network error; renders the matching inline card.
  *   The turn still ends with a normal terminal frame (pi resolves the turn — it
  *   does NOT throw on a provider error), so this never replaces `done`.
+ * - `file_changes` — user-visible workspace files this turn created/modified,
+ *   emitted once before `done` (only when non-empty). Drives the "files this
+ *   mission touched" summary.
  * - `done` / `error` — the turn ended.
  */
 export type WireEvent =
@@ -96,6 +99,17 @@ export type WireEvent =
       type: "provider_error";
       data: ProviderError;
     }
+  | {
+      /**
+       * User-visible files this turn created or modified in the agent's
+       * workspace (relative paths, filtered to user-deliverable file types).
+       * Emitted at most once per turn, after the model finished and before
+       * `done`, and only when the diff is non-empty. Also persisted on the
+       * turn's assistant `ChatMessage.fileChanges` so it survives a reload.
+       */
+      type: "file_changes";
+      data: { created: string[]; modified: string[] };
+    }
   | { type: "done"; data: null }
   | { type: "error"; data: { message: string } };
 
@@ -114,7 +128,7 @@ export type WireEventType = WireEvent["type"];
  * `turnId` identifies the turn a frame belongs to. The turn's server mints one
  * id (a UUID) when the turn starts and stamps it on every turn-scoped frame it
  * publishes (`user`, `text`, `thinking`, `tool_start`, `tool_end`, `usage`,
- * `provider_switched`, `provider_error`, `done`, `error` — including terminal
+ * `provider_switched`, `provider_error`, `file_changes`, `done`, `error` — including terminal
  * frames the relay synthesizes for a dead turn). The same id is persisted on
  * the turn's user + assistant `ChatMessage`s, so a client resyncing across a
  * turn boundary can match history to a live turn — and, crucially, can tell a

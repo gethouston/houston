@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fallbackLogo } from "./tabs/integrations-app-display";
+import { fallbackLogo } from "./integrations/app-display";
 
 interface Props {
   /** Composio toolkit slugs the agent is designed to work with. */

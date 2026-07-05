@@ -41,7 +41,7 @@ export const TruncatedCode = memo(
                 ? "text-red-400"
                 : "text-zinc-300"
               : isError
-                ? "text-red-600 bg-red-50"
+                ? "text-red-600 bg-red-50 dark:text-red-300 dark:bg-red-950/40"
                 : "text-foreground bg-muted/50"
           }`}
         >

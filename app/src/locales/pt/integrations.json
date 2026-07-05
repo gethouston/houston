@@ -15,57 +15,103 @@
   "reconnectNotice": "Melhoramos a forma como os aplicativos se conectam para deixá-la mais segura. Reconecte seus aplicativos uma única vez; o Houston não guarda mais nenhuma chave de longa duração.",
   "reconnectDismiss": "Entendi",
   "connected": {
-    "title": "Conectados",
-    "count_one": "{{count}} app",
-    "count_other": "{{count}} apps",
-    "dotAria": "Conectado",
-    "menu": {
-      "aria": "Opções de {{name}}",
-      "reconnect": "Reconectar",
-      "disconnect": "Desconectar"
-    },
     "disconnect": {
       "confirmTitle": "Desconectar {{name}}?",
       "confirmBody": "Seu agente vai perder o acesso a {{name}}. Você pode reconectar quando quiser.",
       "confirmAction": "Desconectar",
       "cancel": "Cancelar"
-    },
-    "statusPending": "Termine de conectar no seu navegador...",
-    "statusError": "Precisa reconectar"
+    }
   },
   "browse": {
-    "title": "Ver todos os apps",
-    "count_one": "{{count}} app",
-    "count_other": "{{count}} apps",
-    "searchPlaceholder": "Buscar apps...",
     "allCategories": "Todas as categorias",
     "searchCategories": "Buscar categorias...",
     "noCategoryResults": "Nenhuma categoria corresponde à busca.",
-    "noResults": "Nenhum app corresponde à busca.",
-    "loadMoreWithRemaining": "Carregar mais ({{count}} restantes)",
-    "connectTitle": "Conectar {{name}}"
+    "loadMoreWithRemaining": "Carregar mais ({{count}} restantes)"
   },
   "connectResult": {
     "timeout": "A conexão não foi concluída. Tente novamente.",
     "failed": "Não foi possível conectar o aplicativo. Tente novamente."
   },
   "grants": {
-    "granted": {
-      "title": "Este agente pode usar",
-      "subtitle": "Aplicativos que este agente pode usar. Desative um para removê-lo aqui.",
-      "empty": "Este agente ainda não pode usar nenhum aplicativo. Permita um abaixo ou conecte um novo.",
-      "revoke": "Parar de permitir que este agente use {{name}}"
-    },
-    "available": {
-      "title": "Seus outros aplicativos conectados",
-      "subtitle": "Aplicativos conectados que este agente ainda não pode usar. Ative um para permiti-lo aqui.",
-      "allow": "Permitir que este agente use {{name}}"
-    },
     "disconnect": {
-      "menu": "Desconectar em todos os lugares",
       "confirmTitle": "Desconectar {{name}} em todos os lugares?",
       "confirmBody": "Isso remove {{name}} de todos os seus agentes, não só deste. Você pode reconectá-lo quando quiser.",
       "confirmAction": "Desconectar em todos os lugares"
     }
+  },
+  "status": {
+    "active": "Conectado",
+    "pending": "Finalizando",
+    "error": "Precisa reconectar"
+  },
+  "waiting": {
+    "title": "Termine de conectar o {{app}}",
+    "body": "Abrimos o {{app}} no seu navegador. Entre por lá e depois volte aqui.",
+    "reopen": "Reabrir no navegador",
+    "check": "Já terminei",
+    "cancel": "Cancelar"
+  },
+  "pendingRecovery": {
+    "body": "Você começou a conectar o {{app}} mas não terminou de entrar.",
+    "finish": "Terminar de conectar",
+    "remove": "Remover"
+  },
+  "errorRecovery": {
+    "body": "O {{app}} precisa ser conectado de novo.",
+    "reconnect": "Reconectar",
+    "remove": "Remover"
+  },
+  "picker": {
+    "title": "Adicionar apps",
+    "searchPlaceholder": "Buscar apps...",
+    "readyTitle": "Prontos para ativar",
+    "readySubtitle": "Apps que você já conectou. Ative um para o {{agent}}.",
+    "activate": "Ativar",
+    "connectTitle": "Conectar algo novo",
+    "connected": "Conectado",
+    "noResults": "Nenhum app corresponde à busca.",
+    "loading": "Carregando apps..."
+  },
+  "chips": {
+    "more": "+{{count}}"
+  },
+  "disconnect": {
+    "affected_one": "Usado por {{count}} agente",
+    "affected_other": "Usado por {{count}} agentes"
+  },
+  "home": {
+    "title": "Integrações",
+    "description": "Conecte seus apps uma vez e escolha quais agentes podem usar cada um.",
+    "addApp": "Adicionar app",
+    "usedByNone": "Ainda não há agentes",
+    "usedByAll": "Todos os agentes",
+    "manage": "Gerenciar",
+    "empty": {
+      "title": "Nenhum app conectado ainda",
+      "body": "Conecte um app como Gmail ou Slack para que seus agentes possam usá-lo.",
+      "cta": "Conecte seu primeiro app"
+    }
+  },
+  "detail": {
+    "activeOn": "Agentes que podem usar",
+    "reconnect": "Reconectar",
+    "disconnect": "Desconectar",
+    "noAgents": "Nenhum agente pode usar ainda. Ative um acima.",
+    "allAgentsNote": "Todos os agentes podem usar este app."
+  },
+  "agentTab": {
+    "activeTitle": "Apps que este agente pode usar",
+    "activeSubtitle": "Apps que o {{agent}} pode usar.",
+    "addApps": "Adicionar apps",
+    "deactivate": "Remover deste agente",
+    "empty": {
+      "title": "Ainda não há apps",
+      "body": "Adicione um app para que este agente possa usá-lo."
+    },
+    "allApps": {
+      "title": "Seus outros apps conectados",
+      "subtitle": "Apps que você conectou e que este agente ainda não pode usar."
+    },
+    "manageAll": "Gerenciar todas as integrações"
   }
 }

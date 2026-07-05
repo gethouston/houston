@@ -333,6 +333,7 @@ test("search scopes to the user's connected toolkits and maps tools", async () =
       toolkit: "gmail",
       description: "Send an email",
       inputParams: { type: "object" },
+      connected: true,
     },
   ]);
   // Scoped to the ACTIVE connected toolkits (deduped) — Composio's global
@@ -369,16 +370,86 @@ test("a zero-hit scoped query degrades to listing the connected toolkits' action
   });
   const found = await provider.search(USER, "read my latest 5 emails");
   expect(found.map((t) => t.action)).toEqual(["GMAIL_FETCH_EMAILS"]);
+  expect(found[0]?.connected).toBe(true);
   expect(calls[2]?.path).toBe("/api/v3/tools?limit=50&toolkit_slug=gmail");
+});
+
+test("a scoped miss also surfaces global matches marked NOT connected (HOU-670)", async () => {
+  // "send it via gmail" with only Slack linked: the scoped query misses, so
+  // the fallback must ALSO search globally and mark the gmail actions
+  // connected:false — that is what lets the agent offer the connect card.
+  const { provider, calls } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts") {
+      return {
+        body: { items: [{ toolkit: { slug: "slack" }, status: "ACTIVE" }] },
+      };
+    }
+    // The scoped query (query + toolkit_slug) misses…
+    if (url.searchParams.has("query") && url.searchParams.has("toolkit_slug"))
+      return { body: { items: [] } };
+    // …the connected-toolkit listing returns Slack's actions…
+    if (url.searchParams.has("toolkit_slug")) {
+      return {
+        body: {
+          items: [
+            {
+              slug: "SLACK_SEND_MESSAGE",
+              toolkit: { slug: "slack" },
+              description: "Send a message",
+            },
+          ],
+        },
+      };
+    }
+    // …and the global query finds the not-connected app (plus a duplicate of
+    // an already-connected one, which must be dropped from the global half).
+    return {
+      body: {
+        items: [
+          {
+            slug: "GMAIL_SEND_EMAIL",
+            toolkit: { slug: "gmail" },
+            description: "Send an email",
+          },
+          {
+            slug: "SLACK_SEND_MESSAGE",
+            toolkit: { slug: "slack" },
+            description: "Send a message",
+          },
+        ],
+      },
+    };
+  });
+  const found = await provider.search(USER, "send an email via gmail");
+  expect(found.map((t) => [t.action, t.connected])).toEqual([
+    ["SLACK_SEND_MESSAGE", true],
+    ["GMAIL_SEND_EMAIL", false],
+  ]);
+  // connections + scoped query + (connected listing ∥ global query).
+  expect(calls).toHaveLength(4);
 });
 
 test("search falls back to the global catalog when nothing is connected", async () => {
   const { provider, calls } = harness((url) => {
     if (url.pathname === "/api/v3/connected_accounts")
       return { body: { items: [] } };
-    return { body: { items: [] } };
+    return {
+      body: {
+        items: [
+          {
+            slug: "GMAIL_SEND_EMAIL",
+            toolkit: { slug: "gmail" },
+            description: "Send an email",
+          },
+        ],
+      },
+    };
   });
-  expect(await provider.search(USER, "send an email")).toEqual([]);
+  const found = await provider.search(USER, "send an email");
+  // Discoverable but marked not-connected → the agent offers the card.
+  expect(found.map((t) => [t.action, t.connected])).toEqual([
+    ["GMAIL_SEND_EMAIL", false],
+  ]);
   expect(calls[1]?.path).toBe("/api/v3/tools?query=send+an+email&limit=10");
 });
 

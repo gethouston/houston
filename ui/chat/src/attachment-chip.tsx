@@ -106,7 +106,7 @@ export interface AttachmentChipProps {
 export function AttachmentChip({ name, onRemove }: AttachmentChipProps) {
   const ext = getExt(name);
   return (
-    <div className="relative flex items-center gap-2.5 rounded-xl border border-black/[0.08] bg-background pl-2.5 pr-8 py-2 min-w-0 shrink-0 max-w-[240px] shadow-sm">
+    <div className="relative flex items-center gap-2.5 rounded-xl border border-foreground/[0.08] bg-background pl-2.5 pr-8 py-2 min-w-0 shrink-0 max-w-[240px] shadow-sm">
       <AttachmentIcon ext={ext} />
       <div className="min-w-0">
         <p className="text-xs font-medium text-foreground truncate leading-tight">

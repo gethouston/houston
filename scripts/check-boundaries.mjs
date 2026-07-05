@@ -1,32 +1,28 @@
 #!/usr/bin/env node
 /**
- * Locks the open/closed seam between "Houston" (open) and "Houston Cloud"
- * (closed) so the eventual OSS split is a clean directory move. See BOUNDARY.md
+ * Keeps "Houston" (this repo) cloud-free. The CLOSED control plane
+ * (`@houston/host-cloud` — the concrete cloud adapters pg / GCS / GKE / Redis /
+ * BigQuery, the operator-admin surface, and the cloud `main.ts`) was RETIRED
+ * and deleted: the shipped cloud is a private gateway plus one engine pod per
+ * agent running this repo's open host/runtime, so the multi-tenant host was an
+ * architecture Houston moved past (it remains in git history). See BOUNDARY.md
  * for the manifest this script enforces.
  *
- * The seam is a PACKAGE boundary (the in-host CLOSED_FILES/MIXED_FILES machinery
- * is gone — host-cloud was extracted):
- *
- *   - `packages/host-cloud/**` is the CLOSED package (the concrete cloud adapters
- *     pg / GCS / GKE / Redis / BigQuery, the operator-admin surface, and the
- *     cloud `main.ts`). It MAY import `@houston/host` and cloud libs freely.
- *   - `packages/host/**` is OPEN (the server builder, ports, every domain route
- *     handler, the open adapters, and the LOCAL entry). It must NEVER import a
- *     cloud lib or `@houston/host-cloud`.
- *   - The other open packages (protocol/domain/runtime/runtime-client, ui) must
- *     NEVER import a cloud lib or `@houston/host-cloud`.
- *
- * The one-way rule: CLOSED may import OPEN; OPEN must NEVER import CLOSED.
+ *   - Every package here is OPEN: every `packages/*` workspace package
+ *     (enumerated dynamically, so a brand-new package is covered the day it
+ *     appears) plus the `ui/` React packages. None of them may EVER import a
+ *     cloud lib or `@houston/host-cloud`. Staying cloud-lib-free is what keeps
+ *     this code deployment-agnostic (desktop, engine pod, self-host).
  *
  * Three protections, all fail the build (exit 1):
  *
  *   Rule A — no OPEN-package file reaches the closed package or a cloud lib. A
  *     reach is ANY of:
  *       (a) a bare `@houston/host-cloud` (or subpath) specifier;
- *       (b) a relative/absolute import that, resolved on disk, lands inside
- *           `packages/host-cloud/` — host and host-cloud are on-disk siblings and
- *           host-cloud has no `exports` field, so `../../host-cloud/src/...`
- *           resolves and would otherwise slip past a bare-spec match;
+ *       (b) a relative/absolute import that resolves under the closed package's
+ *           former `packages/host-cloud/` path — a deep-relative specifier like
+ *           `../../host-cloud/src/...` never contains the bare package name, so
+ *           it would slip past a bare-spec match;
  *       (c) a known cloud lib (the CLOUD_LIBS denylist);
  *       (d) an UNDECLARED bare import — a specifier that is not a node/bun builtin
  *           and not a dependency of the importing file's own package.json. This is
@@ -38,9 +34,11 @@
  *     wiring point (`packages/runtime/src/main.ts`) — the same port+adapter+wiring
  *     shape one level down. Those two files may import `@google-cloud/storage`.
  *
- *   Rule B — `packages/host-cloud/**` must exist and carry the extracted cloud
- *     adapters (a stray empty package can't pass as "extracted"). The package is
- *     closed by definition, so its cloud imports are all legitimate crossings.
+ *   Rule B — `packages/host-cloud/` must NOT exist here. It was retired and
+ *     deleted; anything reappearing under that path would silently re-publish
+ *     closed code. Local build leftovers (a gitignored node_modules/ or dist/
+ *     that survives a branch switch on a dev machine) are tolerated — only
+ *     real content under the path fails.
  *
  *   Rule C (manifest) — no OPEN package may DECLARE the closed package or a cloud
  *     lib as a dependency (any bucket). This is the allowlist direction the seam
@@ -67,21 +65,22 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
  * Open packages whose every file must be free of cloud (Rule A) and whose
- * package.json must not declare cloud (Rule C). Repo-relative. `packages/host` is
- * OPEN now — the closed cloud adapters live in the separate `packages/host-cloud`
- * package, which is NOT in this list.
+ * package.json must not declare cloud (Rule C). Repo-relative. Enumerated
+ * dynamically from `packages/*` (mirroring the pnpm-workspace.yaml glob) plus
+ * `ui`, so a brand-new package is covered the day it appears — a fixed list
+ * would let cloud code reappear under a new name unchecked. The retired
+ * closed path is excluded here; Rule B owns it.
  */
+const CLOSED_PACKAGE = "packages/host-cloud";
 const OPEN_PACKAGES = [
-  "packages/protocol",
-  "packages/domain",
-  "packages/runtime",
-  "packages/runtime-client",
-  "packages/host",
+  ...readdirSync(join(root, "packages"))
+    .map((entry) => `packages/${entry}`)
+    .filter(
+      (pkg) =>
+        pkg !== CLOSED_PACKAGE && statSync(join(root, pkg)).isDirectory(),
+    ),
   "ui",
 ];
-
-/** The closed package. Walked only to assert it exists + holds the adapters. */
-const CLOSED_PACKAGE = "packages/host-cloud";
 
 /**
  * Bare specifiers that are cloud-only. A `from "<lib>"` or `from "<lib>/..."`
@@ -129,6 +128,15 @@ const RUNTIME_CLOUD_ALLOWLIST = new Set([
 const MANIFEST_CLOUD_ALLOW = new Map([
   ["packages/runtime", new Set(["@google-cloud/storage"])],
 ]);
+
+/**
+ * Rule A(d) exemption: the repo's own package scopes. `packages/web` mirrors
+ * `app/src` through a vite alias (`@houston/app/...` is a path rewrite, not an
+ * npm dependency) and test harnesses self-import their package's public name —
+ * neither can be a cloud lib. `@houston/host-cloud` specifically is still
+ * caught by Rule A(a), which runs before (d).
+ */
+const REPO_SCOPES = ["@houston/", "@houston-ai/"];
 
 /** Node + Bun builtins are always fine to import from open code. */
 const BUILTINS = new Set([
@@ -279,9 +287,10 @@ const isPathSpec = (spec) => spec.startsWith(".") || spec.startsWith("/");
 
 /**
  * Resolve a relative/absolute `spec` from `fromAbs` to a repo-relative, no-ext
- * path, and report whether it lands inside the closed package. This is the
- * deep-relative leak vector: `../../host-cloud/src/launcher/gke` resolves on
- * disk and must be caught even though the bare spec never appears.
+ * path, and report whether it lands under the closed package's former path.
+ * Pure string resolution (no disk lookup), so the deep-relative leak vector —
+ * `../../host-cloud/src/launcher/gke`, which never contains the bare spec —
+ * is caught even though the directory no longer exists.
  */
 function pathLandsInClosed(fromAbs, spec) {
   const target = spec.startsWith("/") ? spec : resolve(dirname(fromAbs), spec);
@@ -322,7 +331,6 @@ function declaredDeps(abs) {
 
 const violations = [];
 let openFilesChecked = 0;
-let closedFilesChecked = 0;
 let crossingsAllowed = 0;
 let manifestsChecked = 0;
 
@@ -373,6 +381,11 @@ for (const pkg of OPEN_PACKAGES) {
       ) {
         continue;
       }
+      // Repo-internal scopes (vite aliases, self-imports) are never cloud libs;
+      // @houston/host-cloud was already rejected by (a) above.
+      if (REPO_SCOPES.some((scope) => spec.startsWith(scope))) {
+        continue;
+      }
       // (d) the allowlist half: a bare import must be a declared dependency. An
       // undeclared one is a cloud dep the denylist can't see.
       if (!deps.has(bareName(spec))) {
@@ -384,22 +397,27 @@ for (const pkg of OPEN_PACKAGES) {
   }
 }
 
-// Rule B — the closed package is wholesale CLOSED: it may import cloud libs and
-// @houston/host (the one-way dependency). We walk it only to count its files and
-// confirm it carries the cloud adapters (so a stray empty dir can't pass as
-// "extracted"). Its cloud imports are all legitimate crossings.
-for (const abs of walk(join(root, CLOSED_PACKAGE, "src"))) {
-  closedFilesChecked++;
-  const src = readFileSync(abs, "utf8");
-  for (const spec of importsOf(src)) {
-    if (isCloudLib(spec)) crossingsAllowed++;
-  }
-}
-
-if (closedFilesChecked === 0) {
-  violations.push(
-    `[B] ${CLOSED_PACKAGE}/src has no source files — the closed package must hold the extracted cloud adapters`,
+// Rule B — the closed package was retired and deleted. Anything reappearing
+// under its old path would silently re-publish closed code. Gitignored build
+// leftovers are tolerated: pnpm installed a node_modules/ under this path on
+// every pre-retirement checkout, and a branch switch removes only tracked
+// files — a dev machine with that leftover must not false-fail.
+const RULE_B_LEFTOVERS = new Set([
+  "node_modules",
+  "dist",
+  ".turbo",
+  "coverage",
+  ".DS_Store",
+]);
+if (existsSync(join(root, CLOSED_PACKAGE))) {
+  const remnants = readdirSync(join(root, CLOSED_PACKAGE)).filter(
+    (entry) => !RULE_B_LEFTOVERS.has(entry),
   );
+  if (remnants.length > 0) {
+    violations.push(
+      `[B] ${CLOSED_PACKAGE} must not exist — the closed control plane was retired (it survives in git history); do not re-add it here (found: ${remnants.sort().join(", ")})`,
+    );
+  }
 }
 
 // Rule C (manifest) — no open package may DECLARE the closed package or a cloud
@@ -447,8 +465,8 @@ if (violations.length > 0) {
 }
 
 console.log(
-  `Boundary OK — ${openFilesChecked} open file(s) clean (incl. packages/host); ` +
-    `${closedFilesChecked} closed file(s) in ${CLOSED_PACKAGE}; ` +
+  `Boundary OK — ${openFilesChecked} open file(s) clean across ${OPEN_PACKAGES.length} package root(s); ` +
+    `no ${CLOSED_PACKAGE} present (retired); ` +
     `${crossingsAllowed} allowlisted cloud crossing(s); ` +
     `${manifestsChecked} open manifest(s) clean.`,
 );

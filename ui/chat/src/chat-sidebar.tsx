@@ -63,7 +63,7 @@ function ProgressCard({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="rounded-xl border border-border bg-white shadow-sm">
+      <div className="rounded-xl border border-border bg-card shadow-sm">
         <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 text-sm font-medium">
           Progress
           <ChevronDown

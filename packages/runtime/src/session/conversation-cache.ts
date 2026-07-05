@@ -10,6 +10,7 @@ import {
 } from "../backends/registry";
 import type { HarnessSession } from "../backends/types";
 import { config } from "../config";
+import type { TurnPin } from "./exec-turn";
 import { SYSTEM_PROMPT } from "./resource-loader";
 import { buildToolSelection } from "./tool-selection";
 import { makeClampedFileTools } from "./tools/clamped-fs";
@@ -126,13 +127,18 @@ export type Conversation = {
 /** Live sessions by conversation id (module state — one workspace per process). */
 export const conversations = new Map<string, Conversation>();
 
-export async function getConversation(id: string): Promise<Conversation> {
+export async function getConversation(
+  id: string,
+  pin?: TurnPin,
+): Promise<Conversation> {
   const existing = conversations.get(id);
   if (existing) return existing;
 
   // The model the session is built with — recorded on the Conversation so a
   // later turn can detect when the active provider/model changed under it.
-  const builtModel = resolveModel();
+  // A routine's pin builds the session directly on ITS provider/model, so a
+  // pinned routine works even when the agent's saved provider is logged out.
+  const builtModel = resolveModel(pin?.model, pin?.provider);
   // Resolve the provider's backend (pi by default) and open the conversation's
   // session through it. The backend rehydrates prior turns from disk when the
   // conversation already exists — see createPiBackend.
