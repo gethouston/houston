@@ -12,7 +12,11 @@ import type {
   RuntimeLauncher,
   TokenVerifier,
 } from "./ports";
-import { type ControlPlaneDeps, createControlPlaneServer } from "./server";
+import {
+  type ControlPlaneDeps,
+  createControlPlaneServer,
+  type MountAdmin,
+} from "./server";
 import { MemoryWorkspaceStore } from "./store/memory";
 import { startTestFetchServer } from "./testing/fetch-server";
 import { MemoryVfs } from "./vfs";
@@ -413,12 +417,12 @@ test("a different user CANNOT forget someone else's credential → 403", async (
   expect(await credentials.get(aliceWs.id, "openai-codex")).not.toBeNull(); // untouched
 });
 
-// The operator dashboard (`/admin/*`) is the CLOSED admin surface, injected via
-// the `mountAdmin` seam. Its end-to-end tests (404 when unmounted, the
-// non-admin/admin 403/200 split, billing days, the 405s) live in
-// `@houston/host-cloud` (routes/admin.test.ts), which wires `handleAdmin` into
-// this same server through `mountAdmin`. The open server only proves the seam is
-// absent by default — see the "unmounted → 404" case below.
+// The `mountAdmin` seam: an injected request hook for a private deployment's
+// admin surface. The closed operator dashboard that used to bind it was retired
+// with `@houston/host-cloud`, so the seam's behavior is proven here in the open
+// tests, both ways: unmounted → `/admin/*` 404s (the in-tree default), and a
+// mounted stub → runs behind auth, short-circuits routing when it handles the
+// request, and falls through when it declines.
 
 const baseDeps = () => ({
   verifier,
@@ -502,12 +506,53 @@ test("create rejects a seed map with non-string values (400)", async () => {
   }
 });
 
-test("/admin/* 404s when no admin surface is injected (the local-profile default)", async () => {
-  // The module-level server was built without `mountAdmin` — exactly the local
-  // profile. The full admin behavior (403/200, billing, 405s) is exercised in
-  // @houston/host-cloud's routes/admin.test.ts, which injects `handleAdmin`.
+test("/admin/* 404s when no admin surface is injected (the in-tree default)", async () => {
+  // The module-level server was built without `mountAdmin` — exactly how every
+  // profile in this repo runs since the closed admin surface was retired.
   const r = await fetch(`${base}/admin/overview`, { headers: auth("alice") });
   expect(r.status).toBe(404);
+});
+
+test("an injected mountAdmin hook runs behind auth, serves /admin/*, and falls through when it declines", async () => {
+  const calls: { userId: string; method: string; path: string }[] = [];
+  const mountAdmin: MountAdmin = async (
+    userId,
+    method,
+    path,
+    _url,
+    _req,
+    res,
+  ) => {
+    calls.push({ userId, method, path });
+    if (!path.startsWith("/admin/")) return false;
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ admin: true, userId }));
+    return true;
+  };
+  const { base: b, close } = await startServer({ ...baseDeps(), mountAdmin });
+  try {
+    // The hook mounts AFTER auth: an anonymous /admin/* request is 401 and the
+    // hook never sees it (an unauthenticated caller can't probe the admin API).
+    expect((await fetch(`${b}/admin/overview`)).status).toBe(401);
+    expect(calls).toEqual([]);
+
+    // Mounted: the hook gets the VERIFIED user id and its response is final —
+    // the server must not keep routing (no trailing 404 clobbering the reply).
+    const r = await fetch(`${b}/admin/overview`, { headers: auth("alice") });
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ admin: true, userId: "alice" });
+    expect(calls).toEqual([
+      { userId: "alice", method: "GET", path: "/admin/overview" },
+    ]);
+
+    // A non-admin route reaches the hook (it is a request hook, not a prefix
+    // mount) and falls through to normal routing when it returns false.
+    const agents = await fetch(`${b}/agents`, { headers: auth("alice") });
+    expect(agents.status).toBe(200);
+    expect(calls).toHaveLength(2);
+  } finally {
+    await close();
+  }
 });
 
 // --- v3 meta surface + the local-profile identity adapter ---------------------

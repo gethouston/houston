@@ -60,7 +60,6 @@ jobs:
           set -euo pipefail
           pnpm --filter @houston/domain test
           pnpm --filter @houston/host test
-          pnpm --filter @houston/host-cloud test
           pnpm --filter @houston/runtime test
           pnpm --filter @houston/code-sandbox test
           pnpm exec vitest run scripts/check-parity.test.mjs

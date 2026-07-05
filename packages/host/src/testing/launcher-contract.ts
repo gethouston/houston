@@ -10,11 +10,11 @@ import type { RuntimeLauncher } from "../ports";
  * is reused, not respawned), sleep then ensureAwake re-wakes, and independent
  * agents track state separately.
  *
- * Exported from `@houston/host` (OPEN) so BOTH the open adapter suite
- * (launcher/contract.test.ts: Fake/Process via injected doubles) AND the closed
- * adapter suite in `@houston/host-cloud` (launcher/gke.integration.test.ts:
- * GkeLauncher against a live apiserver, gated on HOUSTON_GKE_TEST) run the SAME
- * assertions.
+ * Exported from `@houston/host` (OPEN) and run by the open adapter suite
+ * (launcher/contract.test.ts: Fake/Process via injected doubles). The closed
+ * GkeLauncher suite that also consumed it was retired with
+ * `@houston/host-cloud` (git history); the contract stays exported as the
+ * behavioral bar for any out-of-repo adapter.
  */
 export const launcherAgent = (id: string): Agent => ({
   id,

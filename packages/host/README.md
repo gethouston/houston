@@ -5,8 +5,11 @@ local desktop/web and cloud. It owns the protocol v3 router, auth seam, domain
 routes, scheduler, event stream, credential serve, integrations proxy, and the
 ports that hide deployment-specific adapters.
 
-Closed cloud adapters live in `packages/host-cloud` (`@houston/host-cloud`). The
-dependency direction is one-way: `host-cloud -> host`. See `BOUNDARY.md`.
+Everything here is OPEN and deployment-agnostic. The closed multi-tenant cloud
+adapters (`@houston/host-cloud`) were retired and deleted — the shipped cloud is
+a private gateway plus one engine pod per agent running this same host — and any
+private deployment glue builds against the ports and the `"./src/*"` exports
+subpath from outside this repo. See `BOUNDARY.md`.
 
 The package is pnpm-managed and frontend-agnostic. Bun is not required for dev,
 tests, or Docker runtime; it is only used by `scripts/build-host-sidecar.sh` when
@@ -40,8 +43,8 @@ internal symbol is tracked in `convergence/follow-ups.md`.
   routing, credentials, and deployment lifecycle.
 - Domain route logic lives once. Local and cloud behavior changes only through
   injected ports and capabilities.
-- Open code never imports closed cloud adapters. `pnpm check:boundaries` enforces
-  that seam.
+- Open code never imports a cloud library or closed adapter. `pnpm
+  check:boundaries` enforces that seam.
 - The local profile is the same host server with local adapters: FS store/Vfs,
   subprocess runtime launcher, single-user verifier, in-process bus, and FS
   watcher.
@@ -54,12 +57,8 @@ cd packages/host
 pnpm dev          # local desktop/web host, src/local/main.ts, serves :4318
 ```
 
-Cloud profile:
-
-```bash
-cd packages/host-cloud
-CP_DEV=1 pnpm dev # cloud wiring with fake stores/launchers
-```
+The cloud profile is this same server wired by the private gateway repo's
+deployment (one engine pod per agent); there is no in-repo cloud entry point.
 
 See `convergence/README.md` for the full desktop/web + host local dev loop.
 

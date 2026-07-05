@@ -123,5 +123,4 @@ test(".dockerignore excludes the heavy / non-shipping paths", () => {
   expect(dockerignore).toContain("engine/");
   expect(dockerignore).toContain("selfhost/");
   expect(dockerignore).toContain("packages/host/");
-  expect(dockerignore).toContain("packages/host-cloud/");
 });
