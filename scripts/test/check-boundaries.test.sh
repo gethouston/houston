@@ -13,8 +13,13 @@
 #       - a cloud lib / closed package DECLARED in an open package.json (Hole 3, manifest)
 #       - a bare @houston/host-cloud import              (the original check)
 #       - a cloud lib imported by a non-allowlisted file
-#       - a reappearing packages/host-cloud dir (Rule B — it moved out of the repo)
+#       - a reappearing packages/host-cloud dir (Rule B — retired and deleted)
+#       - a cloud import in a BRAND-NEW package (dynamic enumeration — a fixed
+#         open-package list would let cloud code reappear under a new name)
 #   * a commented-out cloud import does NOT false-fail (comment stripping);
+#   * leftover gitignored build artifacts under packages/host-cloud do NOT
+#     false-fail Rule B (pnpm node_modules survives a branch switch);
+#   * a repo-scoped alias import (@houston/app/...) does NOT false-fail rule (d);
 #   * the runtime's GcsStore adapter + dep are the one allowed exception.
 #
 # Never touches the real repo (everything happens in a temp dir).
@@ -129,6 +134,28 @@ reset_fixture
 mkdir -p "$TMP/packages/host-cloud/src"
 printf 'import pg from "pg";\nexport const p = pg;\n' > "$TMP/packages/host-cloud/src/pg.ts"
 assert_fail "reappearing host-cloud package is caught" "must not exist"
+
+# Rule B tolerance — leftover gitignored build artifacts (pnpm installed a
+# node_modules under this path on every pre-retirement checkout, and a branch
+# switch removes only tracked files) must NOT false-fail a dev machine.
+reset_fixture
+mkdir -p "$TMP/packages/host-cloud/node_modules/pg" "$TMP/packages/host-cloud/dist"
+printf '{"name":"pg"}\n' > "$TMP/packages/host-cloud/node_modules/pg/package.json"
+assert_pass "leftover host-cloud build artifacts do not false-fail Rule B"
+
+# Dynamic enumeration — a brand-new package is covered the day it appears; a
+# fixed open-package list would let cloud code reappear under any other name.
+reset_fixture
+mkdir -p "$TMP/packages/rogue-cloud/src"
+printf '{"name":"@houston/rogue-cloud","version":"0.0.0"}\n' > "$TMP/packages/rogue-cloud/package.json"
+printf 'import pg from "pg";\nexport const p = pg;\n' > "$TMP/packages/rogue-cloud/src/index.ts"
+assert_fail "cloud import in a brand-new package is caught" 'cloud lib "pg"'
+
+# Repo-scope exemption — a vite-aliased @houston/* import is a path rewrite,
+# not an npm dependency; rule (d) must not flag it as undeclared.
+reset_fixture
+printf 'import { App } from "@houston/app/App";\nexport const a = App;\n' > "$TMP/packages/host/src/aliased.ts"
+assert_pass "repo-scoped alias import does not false-fail rule (d)"
 
 # Comment stripping — a commented-out cloud import must NOT false-fail.
 reset_fixture

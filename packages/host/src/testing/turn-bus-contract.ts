@@ -10,16 +10,16 @@ import type { TurnBus } from "../turn/bus";
  * unsubscribe, key set/get/del with TTL, the setNx mutex + lease renew via
  * expire, and atomic incr/decr with creation TTL.
  *
- * Exported from `@houston/host` (OPEN) so BOTH the open adapter suite
- * (turn/bus.contract.test.ts: MemoryTurnBus, virtual clock) AND the closed
- * adapter suite in `@houston/host-cloud` (turn/bus-redis.contract.test.ts:
- * RedisTurnBus against ioredis-mock) run the SAME assertions.
+ * Exported from `@houston/host` (OPEN) and run by the open adapter suite
+ * (turn/bus.contract.test.ts: MemoryTurnBus, virtual clock). The closed
+ * RedisTurnBus suite that also consumed it was retired with
+ * `@houston/host-cloud` (git history); the contract stays exported as the
+ * behavioral bar for any out-of-repo adapter.
  *
  * TIME: the contract is parameterized by a `make(now)` so impls with a virtual
  * clock (MemoryTurnBus) can prove TTL expiry deterministically. An impl with no
- * injectable clock (Redis) passes the non-time assertions verbatim and drives
- * the time-dependent ones against Redis's NATIVE EX/NX/TTL (see the host-cloud
- * suite).
+ * injectable clock (e.g. Redis) passes the non-time assertions verbatim and
+ * drives the time-dependent ones against its native EX/NX/TTL semantics.
  */
 export function runTurnBusContract(
   name: string,

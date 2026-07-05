@@ -42,12 +42,13 @@ import type { Vfs } from "./vfs";
 export type { RuntimeProxy } from "./channel/proxy";
 
 /**
- * The operator-admin surface is CLOSED (it ships in `@houston/host-cloud`). The
- * open server never imports the admin route; instead it accepts an INJECTED
- * request hook here and calls it after the events stream. The cloud entry point
- * builds the hook (binding `handleAdmin` + its `AdminDeps` + the store) and passes
- * it in; the local profile passes nothing, so `/admin/*` simply 404s — exactly as
- * a request to any unmounted route would.
+ * The operator-admin extension seam. The open server never imports an admin
+ * route; it accepts an INJECTED request hook here and calls it after the events
+ * stream. Nothing in-tree binds it anymore — the closed control plane that did
+ * (`@houston/host-cloud`) was retired and deleted — but the seam stays as the
+ * documented extension point for any private deployment's admin surface. No
+ * profile in this repo sets it, so `/admin/*` simply 404s — exactly as a
+ * request to any unmounted route would.
  *
  * Returns true when it handled the request (the server then stops routing), false
  * to fall through. Mirrors every other `handle*` route's contract.

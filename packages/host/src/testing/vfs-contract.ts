@@ -7,11 +7,11 @@ import type { Vfs } from "../vfs/vfs";
  * local (FsVfs) and cloud (GcsVfs/MemoryVfs) cannot quietly diverge in file
  * semantics.
  *
- * Exported from `@houston/host` (OPEN) so BOTH the open adapter suite
- * (vfs/contract.test.ts: Memory/Fs) AND the closed adapter suite in
- * `@houston/host-cloud` (vfs/gcs.contract.test.ts: GcsVfs against a real object
- * store, env-gated on HOUSTON_GCS_TEST_BUCKET) run the SAME assertions. It is
- * never faked green.
+ * Exported from `@houston/host` (OPEN) and run by the open adapter suite
+ * (vfs/contract.test.ts: Memory/Fs). The closed GcsVfs suite that also
+ * consumed it was retired with `@houston/host-cloud` (git history); the
+ * contract stays exported as the behavioral bar for any out-of-repo adapter.
+ * It is never faked green.
  */
 export function runVfsContract(name: string, make: () => Vfs): void {
   describe(`Vfs contract: ${name}`, () => {

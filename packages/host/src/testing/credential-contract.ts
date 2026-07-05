@@ -12,10 +12,11 @@ import {
  * must agree on: null-before-put, put→get round-trip, upsert-in-place on
  * refresh, per-(workspace, provider) key isolation, and idempotent remove.
  *
- * Exported from `@houston/host` (OPEN) so BOTH the open adapter suite
- * (credentials/contract.test.ts: Memory/File) AND the closed adapter suite in
- * `@houston/host-cloud` (credentials/store-pg.contract.test.ts: PgCredentialStore
- * over pg-mem) run the SAME assertions.
+ * Exported from `@houston/host` (OPEN) and run by the open adapter suite
+ * (credentials/contract.test.ts: Memory/File). The closed PgCredentialStore
+ * suite that also consumed it was retired with `@houston/host-cloud` (git
+ * history); the contract stays exported as the behavioral bar for any
+ * out-of-repo adapter.
  *
  * The contract treats the stored value as a faithful copy: a `put` followed by a
  * `get` must return every field that was put (a refresh persists access AND

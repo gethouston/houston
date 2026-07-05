@@ -28,8 +28,12 @@ leak.
 ## Open — everything here
 
 Pure / local / deployment-agnostic. Must contain **zero** cloud-library imports
-and **zero** imports of `@houston/host-cloud` (except the one documented runtime
-adapter below).
+(except the one documented runtime adapter below) and **zero** imports of
+`@houston/host-cloud` (no exceptions — the checker has no allowlist for it).
+
+The check covers **every `packages/*` workspace package, enumerated
+dynamically** (so a brand-new package is covered the day it appears), plus
+`ui/**`. The main residents:
 
 | Path                       | Role                                                            |
 | -------------------------- | --------------------------------------------------------------- |
@@ -38,6 +42,7 @@ adapter below).
 | `packages/runtime`         | the **pi** engine (the only agent loop) — runs desktop AND cloud |
 | `packages/runtime-client`  | typed client for the runtime                                     |
 | `packages/host`            | the OPEN host: server builder, ports, route handlers, open adapters, LOCAL entry |
+| `packages/{web,sdk,code-sandbox,fake-host,design-tokens}` | the web build, client SDK, code sandbox, e2e fake host, design tokens |
 | `ui/**`                    | `@houston-ai/*` React packages (props-only)                      |
 
 Inside **`packages/host`**, every file is OPEN. Its `package.json` `exports`
@@ -81,8 +86,8 @@ the open packages' `package.json` files. It then enforces:
 > may import a cloud lib directly — they exercise adapters in unit tests and
 > are never shipped. Production code may not.
 
-- **Rule A** — no file in `packages/{protocol,domain,runtime,runtime-client,host}`
-  or `ui/**` may _reach_ the closed package or a cloud lib. A reach is ANY of:
+- **Rule A** — no file in any `packages/*` package or `ui/**` may _reach_ the
+  closed package or a cloud lib. A reach is ANY of:
   - a bare `@houston/host-cloud` (or subpath) specifier;
   - a **relative or absolute path** that resolves under the closed package's
     former `packages/host-cloud/` path;
@@ -92,14 +97,19 @@ the open packages' `package.json` files. It then enforces:
   - an **undeclared bare import** — any non-builtin specifier that is not a
     dependency of the importing file's own `package.json`. This is the allowlist
     half: a future cloud dep the denylist has never heard of cannot be imported
-    without first being declared, where Rule C then sees it.
+    without first being declared, where Rule C then sees it. The repo's own
+    scopes (`@houston/*`, `@houston-ai/*`) are exempt from this sub-rule — they
+    are vite aliases / workspace self-imports, never cloud libs, and
+    `@houston/host-cloud` itself is still rejected by the bare-specifier rule.
 
   The one allowlisted exception is the runtime's own adapter
   (`runtime/src/turn/gcs-store.ts`), reachable only from `runtime/src/main.ts`;
   those two files may import `@google-cloud/storage`.
 - **Rule B** — `packages/host-cloud/` must **not exist** in this repository.
   The closed control plane was retired and deleted; anything reappearing under
-  that path would silently re-publish closed code.
+  that path would silently re-publish closed code. Gitignored build leftovers
+  (`node_modules/`, `dist/`) that survive a branch switch on a dev machine are
+  tolerated — only real content fails.
 - **Rule C (manifest)** — no open `package.json` may **declare** the closed
   package or a cloud lib as a dependency (any bucket: `dependencies`,
   `devDependencies`, `peerDependencies`, `optionalDependencies`). This is the
