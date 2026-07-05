@@ -31,6 +31,13 @@ export interface AgentRouteDeps {
   events?: EventHub;
   /** Deployment capabilities; gates local-only routes (OpenAI-compatible connect). */
   capabilities?: Capabilities;
+  /**
+   * The agent's absolute on-disk directory, when this deployment is co-located
+   * with the files (local profile). Serialized as `dir` on agent payloads so
+   * the desktop shell can reveal/open the folder in the OS file manager — the
+   * agent id is a route key, not a path (HOU-677). Cloud deployments omit it.
+   */
+  agentDir?: (ws: Workspace, agent: Agent) => string;
 }
 
 export const DEFAULT_PATHS = new CloudPaths();
