@@ -29,7 +29,7 @@ import type {
 import { HoustonEngineError } from "./client";
 import {
   type ControlPlaneConfig,
-  liveToken,
+  gatewayAuthFetch,
   rememberAgentColor,
 } from "./control-plane";
 import { packagePreview, toBase64, toWireSelection } from "./portable-map";
@@ -42,10 +42,10 @@ async function hostFetch(
   path: string,
   init?: RequestInit,
 ): Promise<Response> {
-  const res = await fetch(`${cfg.baseUrl}${path}`, {
+  // gatewayAuthFetch: live bearer per attempt + 401 refresh/replay (HOU-687).
+  const res = await gatewayAuthFetch(cfg.token)(`${cfg.baseUrl}${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${liveToken(cfg.token)}`,
       "Content-Type": "application/json",
       ...init?.headers,
     },
