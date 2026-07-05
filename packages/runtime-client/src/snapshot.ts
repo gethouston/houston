@@ -78,8 +78,10 @@ export function reduceSnapshot(
       // would report the turn as still running forever.
       return { running: false, partial: "", seq };
     case "provider_switched":
-      // A mid-session provider switch is a boundary marker, not turn progress —
-      // it's published while a turn is live, so leave running/partial untouched.
+    case "context_compacted":
+      // Boundary markers (a mid-session provider switch / a proactive context
+      // compaction), not turn progress — published while a turn is live, so
+      // leave running/partial untouched.
       return {
         running: prev.running,
         partial: prev.partial,

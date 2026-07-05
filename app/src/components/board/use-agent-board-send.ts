@@ -160,6 +160,12 @@ export function useAgentBoardSend({
           mode: mode?.promptFile,
           providerOverride: overrides.providerOverride,
           modelOverride: overrides.modelOverride,
+          // If the conversation is mid-turn the adapter holds this send; the
+          // queued bubble shows the user's words, not the built prompt.
+          queuedPreview: {
+            text,
+            attachmentNames: files.map((f) => f.name),
+          },
         });
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
         analytics.track("chat_message_sent");

@@ -75,10 +75,8 @@ export function MissionBoard({ source }: { source: BoardSource }) {
   const sendQueue = useBoardSendQueue({
     selectedSessionKey: source.selectedSessionKey,
     selectedAgentPath: source.selectedAgentPath,
-    selectedSessionActive: source.selectedSessionActive,
     overrides,
     sendMessageNow: source.sendMessageNow,
-    panelComposerSubmit: panel.onComposerSubmit,
   });
 
   const { handleCloserReady } = useBoardKeyboard({
@@ -171,7 +169,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           chatEmptyState={panel.chatEmptyState}
           composerHeader={panel.composerHeader}
           canSendEmpty={panel.canSendEmpty}
-          onComposerSubmit={sendQueue.handleComposerSubmit}
+          onComposerSubmit={panel.onComposerSubmit}
           footer={panel.footer}
           attachMenu={panel.attachMenu}
           renderUserMessage={panel.renderUserMessage}

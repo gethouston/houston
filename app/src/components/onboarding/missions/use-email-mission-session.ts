@@ -196,6 +196,7 @@ export function useEmailMissionSession({
           providerOverride: provider,
           modelOverride: model,
           effortOverride: "medium",
+          queuedPreview: { text: trimmed },
         });
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -207,7 +208,6 @@ export function useEmailMissionSession({
   const messageQueue = useSessionMessageQueue({
     agentPath,
     sessionKey: missionSessionKey,
-    isActive,
     sendNow,
   });
 

@@ -19,8 +19,6 @@ import type {
   GenerateInstructionsResult,
   ProviderAuthState,
 } from "@houston-ai/engine-client";
-import { useProviderSwitchStore } from "../stores/provider-switch";
-import { shouldAutocompactForSession } from "./autocompact";
 import { COMPOSIO_ALREADY_CONNECTED_KIND } from "./composio-already-connected";
 import { getEngine, isRemoteEngine } from "./engine";
 import { engineCallSurface } from "./engine-call-policy";
@@ -281,30 +279,15 @@ export const tauriChat = {
       effortOverride?: string;
       /** Resend of a prompt whose bubble is already in the feed (see SessionStartRequest). */
       suppressUserBubble?: boolean;
+      /** Queue display (user's words + attachment names) if the send is held (see SessionStartRequest). */
+      queuedPreview?: { text: string; attachmentNames?: string[] };
     },
   ) =>
     call<string>("send_message", async () => {
-      // A staged provider switch (the user changed providers mid-conversation)
-      // takes precedence over autocompact: the engine reseeds a fresh session
-      // on the new provider, so same-provider context-full compaction doesn't
-      // apply. PEEK, don't clear — the handoff is cleared only when the engine
-      // confirms the switch with a `provider_switched` event, so a failed seed
-      // is retried on the next send instead of silently continuing blank.
-      const handoff = useProviderSwitchStore
-        .getState()
-        .peekPending(agentPath, sessionKey);
-      // Centralized autocompact decision: when this session's context is
-      // nearly full, ask the engine to summarize + reseed before this turn.
-      // Computed here so every send path gets it; new conversations have no
-      // usage yet and resolve to `false`.
-      const compact = handoff
-        ? false
-        : shouldAutocompactForSession(
-            agentPath,
-            sessionKey,
-            opts?.providerOverride,
-            opts?.modelOverride,
-          );
+      // Send-time policy lives BELOW this call now: the engine adapter queues
+      // a send whose conversation is still running (flushed at settle), and
+      // the runtime itself owns provider-switch handoffs and context-full
+      // autocompaction — this is a pure pass-through of named inputs.
       const res = await getEngine().startSession(agentPath, {
         sessionKey,
         prompt,
@@ -313,14 +296,14 @@ export const tauriChat = {
         provider: opts?.providerOverride,
         model: opts?.modelOverride,
         effort: opts?.effortOverride,
-        compact,
-        providerSwitch: handoff
-          ? { mode: handoff.mode, fromProvider: handoff.fromProvider }
-          : undefined,
         suppressUserBubble: opts?.suppressUserBubble,
+        queuedPreview: opts?.queuedPreview,
       });
       return res.sessionKey;
     }),
+  /** Drop one queued (not yet sent) message from a conversation's send queue. */
+  removeQueued: (agentPath: string, sessionKey: string, id: string) =>
+    getEngine().removeQueuedMessage(agentPath, sessionKey, id),
   startOnboarding: (agentPath: string, sessionKey: string) =>
     call<void>("start_onboarding_session", async () => {
       await getEngine().startOnboarding(agentPath, sessionKey);

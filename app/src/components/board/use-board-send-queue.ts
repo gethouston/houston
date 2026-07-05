@@ -3,15 +3,13 @@ import { useCallback, useMemo } from "react";
 import { useSessionMessageQueue } from "../../hooks/use-session-message-queue";
 import type { SendOverrides } from "./board-source";
 
-type ComposerSubmit = NonNullable<AIBoardProps["onComposerSubmit"]>;
-
 /**
- * Follow-up send + queue wiring shared by both board views.
+ * Follow-up send + queue display shared by both board views.
  *
- * Messages typed at the open conversation while it's still running are
- * queued (and auto-flushed when it settles); messages to any other session
- * send immediately. A composer submit fired while the open session is active
- * is captured as a queued message before the panel hook (Skills) sees it.
+ * Queue-while-running lives in the engine adapter now (a send into a running
+ * conversation is held and flushed as one combined send at settle), so every
+ * send here just sends; this hook renders the open conversation's queued
+ * bubbles and forwards the remove affordance.
  *
  * `overrides` carry the composer's effective provider/model so the wire
  * mirrors the dropdown; the source decides whether to honor or re-resolve
@@ -20,14 +18,11 @@ type ComposerSubmit = NonNullable<AIBoardProps["onComposerSubmit"]>;
 export function useBoardSendQueue({
   selectedSessionKey,
   selectedAgentPath,
-  selectedSessionActive,
   overrides,
   sendMessageNow,
-  panelComposerSubmit,
 }: {
   selectedSessionKey: string | null;
   selectedAgentPath: string | null;
-  selectedSessionActive: boolean;
   overrides: SendOverrides;
   sendMessageNow: (
     sessionKey: string,
@@ -35,7 +30,6 @@ export function useBoardSendQueue({
     files: File[],
     overrides: SendOverrides,
   ) => Promise<void>;
-  panelComposerSubmit: AIBoardProps["onComposerSubmit"];
 }) {
   const sendSelectedNow = useCallback(
     async (text: string, files: File[]) => {
@@ -48,39 +42,14 @@ export function useBoardSendQueue({
   const messageQueue = useSessionMessageQueue({
     agentPath: selectedAgentPath,
     sessionKey: selectedSessionKey,
-    isActive: selectedSessionActive,
     sendNow: sendSelectedNow,
   });
 
   const handleSendMessage = useCallback(
     async (sessionKey: string, text: string, files: File[]) => {
-      if (sessionKey === selectedSessionKey) {
-        await messageQueue.sendOrQueue(text, files);
-        return;
-      }
       await sendMessageNow(sessionKey, text, files, overrides);
     },
-    [selectedSessionKey, messageQueue.sendOrQueue, sendMessageNow, overrides],
-  );
-
-  const handleComposerSubmit = useCallback<ComposerSubmit>(
-    async (ctx) => {
-      if (
-        ctx.sessionKey &&
-        ctx.sessionKey === selectedSessionKey &&
-        selectedSessionActive
-      ) {
-        messageQueue.queueMessage(ctx.text, ctx.files);
-        return true;
-      }
-      return (await panelComposerSubmit?.(ctx)) ?? false;
-    },
-    [
-      selectedSessionKey,
-      selectedSessionActive,
-      messageQueue.queueMessage,
-      panelComposerSubmit,
-    ],
+    [sendMessageNow, overrides],
   );
 
   const queuedMessages = useMemo<AIBoardProps["queuedMessages"]>(
@@ -98,7 +67,6 @@ export function useBoardSendQueue({
 
   return {
     handleSendMessage,
-    handleComposerSubmit,
     queuedMessages,
     onRemoveQueuedMessage,
   };

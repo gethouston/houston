@@ -63,6 +63,17 @@ export function historyToFeed(
         },
       });
     }
+    // A persisted proactive compaction: replay the boundary divider so it
+    // (and the window reset) survives a reload.
+    if (m.compaction) {
+      out.push({
+        feed_type: "context_compacted",
+        data: {
+          trigger: m.compaction.trigger,
+          pre_tokens: m.compaction.pre_tokens,
+        },
+      });
+    }
     // A persisted provider failure: replay the typed card so the inline
     // reconnect / rate-limit surface survives a reload.
     if (m.providerError) {

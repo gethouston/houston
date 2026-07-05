@@ -110,6 +110,7 @@ export {
   isStoppedByUser,
   MultiplexFeedOutput,
   observeConversation,
+  type QueuedMessageVM,
   SEND_IN_FLIGHT_MESSAGE,
   type SessionStatusValue,
   STREAM_FAILURE_BUDGET,

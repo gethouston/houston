@@ -32,6 +32,13 @@ export interface FeedItemVM {
   data: unknown;
 }
 
+/** A message queued while a turn runs — rendered in the composer, removable. */
+export interface QueuedMessageVM {
+  id: string;
+  text: string;
+  attachmentNames?: string[];
+}
+
 /** The reactive snapshot published to the `conversation/<id>` scope. */
 export interface ConversationVM {
   feed: FeedItemVM[];
@@ -44,6 +51,11 @@ export interface ConversationVM {
    * attention (a user Stop settles here), `error` = a real failure.
    */
   boardStatus: BoardStatus | null;
+  /**
+   * Messages queued while a turn runs (additive; absent when none). The sender
+   * flushes them as ONE combined send when the turn settles.
+   */
+  queued?: QueuedMessageVM[];
 }
 
 interface ConvState {
@@ -53,6 +65,7 @@ interface ConvState {
   seq: number;
   /** Open streaming run: its streaming feed_type -> the feed entry id it updates. */
   streaming: Map<string, string>;
+  queued: QueuedMessageVM[];
 }
 
 /** Final feed_type -> the streaming feed_type it finalizes. */
@@ -88,6 +101,7 @@ export class ConversationVmOutput implements FeedOutput {
         boardStatus: null,
         seq: 0,
         streaming: new Map(),
+        queued: [],
       };
       this.convs.set(key, s);
     }
@@ -187,12 +201,24 @@ export class ConversationVmOutput implements FeedOutput {
     this.publish(agentPath, sessionKey, s);
   }
 
+  /** Replace the conversation's queued-message list (the send queue's seam). */
+  setQueued(
+    agentPath: string,
+    sessionKey: string,
+    queued: readonly QueuedMessageVM[],
+  ): void {
+    const s = this.state(agentPath, sessionKey);
+    s.queued = [...queued];
+    this.publish(agentPath, sessionKey, s);
+  }
+
   private publish(agentPath: string, sessionKey: string, s: ConvState): void {
     const snapshot: ConversationVM = {
       feed: s.feed.map((f) => ({ ...f })),
       running: s.sessionStatus === "running",
       sessionStatus: s.sessionStatus,
       boardStatus: s.boardStatus,
+      ...(s.queued.length ? { queued: s.queued.map((q) => ({ ...q })) } : {}),
     };
     this.store.publish(conversationScope(agentPath, sessionKey), snapshot);
   }

@@ -58,6 +58,11 @@ import type { ControlPlaneConfig } from "./control-plane";
 import * as controlPlane from "./control-plane";
 import * as portable from "./portable";
 import {
+  flushQueuedSends,
+  maybeQueueSend,
+  removeQueuedSend,
+} from "./send-queue";
+import {
   configWriteToSettings,
   credentialSiblings,
   DEFAULT_AGENT_ID,
@@ -1290,6 +1295,10 @@ export class HoustonClient {
     const engine = this.cp
       ? controlPlane.runtimeClientFor(this.cp, path)
       : this.engine;
+    // Queue-while-running: a send into a conversation whose turn is still
+    // streaming is held and flushed as ONE combined send at settle (see
+    // send-queue.ts). Every send path inherits this here.
+    if (maybeQueueSend(path, req)) return { sessionKey: req.sessionKey };
     // Fire-and-stream: events flow to the feed store over the bus/WS adapter.
     // The board-status setter is cloud-aware (writes land where the board reads).
     void streamTurn(
@@ -1301,8 +1310,18 @@ export class HoustonClient {
       req.provider,
       undefined,
       req.suppressUserBubble,
-    );
+    ).finally(() => {
+      // The turn settled (or failed): release anything queued behind it.
+      flushQueuedSends(path, req.sessionKey, (r) => {
+        void this.startSession(path, r);
+      });
+    });
     return { sessionKey: req.sessionKey };
+  }
+
+  /** Drop one queued (not yet sent) message from a conversation's send queue. */
+  removeQueuedMessage(agentPath: string, sessionKey: string, id: string): void {
+    removeQueuedSend(agentPath || DEFAULT_AGENT_PATH, sessionKey, id);
   }
   async cancelSession(agentPath: string, sessionKey: string) {
     const engine = this.cp

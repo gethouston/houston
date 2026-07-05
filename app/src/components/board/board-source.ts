@@ -89,7 +89,6 @@ export interface BoardSource {
   activeAgentDef: AgentDefinition | null;
   selectedSessionKey: string | null;
   selectedAgentPath: string | null;
-  selectedSessionActive: boolean;
   /** Called with a new conversation id after the panel creates one (Skill
    *  start or a routed action). */
   onSelectSession: (id: string) => void;

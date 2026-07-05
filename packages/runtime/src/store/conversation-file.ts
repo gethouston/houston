@@ -67,6 +67,7 @@ export interface AssistantMessageMeta {
   tools?: ToolCallRecord[];
   usage?: TokenUsage | null;
   providerSwitch?: ChatMessage["providerSwitch"];
+  compaction?: ChatMessage["compaction"];
   providerError?: ChatMessage["providerError"];
   /** Files the turn created/modified (relative paths); omitted when empty. */
   fileChanges?: ChatMessage["fileChanges"];
@@ -118,6 +119,7 @@ export function appendAssistantMessageAt(
     tools: meta.tools?.length ? meta.tools : undefined,
     usage: meta.usage ?? undefined,
     providerSwitch: meta.providerSwitch,
+    compaction: meta.compaction,
     providerError: meta.providerError,
     fileChanges: meta.fileChanges,
     turnId: meta.turnId,

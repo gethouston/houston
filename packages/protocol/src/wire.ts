@@ -87,6 +87,21 @@ export type WireEvent =
     }
   | {
       /**
+       * The runtime compacted this conversation's context before running the
+       * turn: at/over the autocompact threshold of the active model's window,
+       * earlier turns are summarized so long chats keep working (`proactive`;
+       * `native` is reserved for a provider's own compaction). Renders a
+       * boundary divider and resets the context-usage window; persisted on the
+       * turn's assistant message (`ChatMessage.compaction`) for reload replay.
+       */
+      type: "context_compacted";
+      data: {
+        trigger: "native" | "proactive";
+        pre_tokens?: number | null;
+      };
+    }
+  | {
+      /**
        * The turn's model request failed with a typed provider error
        * (401/403/session-ended → unauthenticated, 429 → rate_limited, 5xx →
        * provider_internal, network → network_unreachable, else unknown).

@@ -58,6 +58,11 @@ export function applyTurnFrame(
         },
       });
       break;
+    case "context_compacted":
+      // Proactive context compaction: draw the boundary divider + reset the
+      // context-usage window (same divider a reload replays from history).
+      push(s, { feed_type: "context_compacted", data: ev.data });
+      break;
     case "file_changes":
       // Files this turn created/modified — the chat attaches them to the
       // current assistant message ("files this mission touched" summary).

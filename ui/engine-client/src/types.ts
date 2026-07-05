@@ -643,31 +643,19 @@ export interface SessionStartRequest {
    */
   effort?: string;
   /**
-   * When `true`, the engine compacts the conversation (summarize the visible
-   * history + reseed a fresh provider session) before running this turn. Set
-   * by the desktop client once the context window is nearly full. Honored only
-   * when there's an existing session to compact; ignored on the first turn.
-   */
-  compact?: boolean;
-  /**
-   * Set when the user switches this conversation to a DIFFERENT provider
-   * mid-stream. Provider CLI sessions are not portable, so the engine reseeds
-   * a fresh session on the new provider with prior context: the full
-   * transcript verbatim (`mode: "replay"`) when it fits the new model's
-   * window, or an AI summary (`mode: "summarize"`) when it does not.
-   * `fromProvider` is the provider being left. Takes precedence over
-   * `compact`; absent for normal turns.
-   */
-  providerSwitch?: {
-    mode: "replay" | "summarize";
-    fromProvider: string;
-  };
-  /**
    * Skip the turn stream's optimistic user bubble — for resends of a prompt
    * whose bubble is already in the conversation VM (a refused not-connected
    * send being retried verbatim).
    */
   suppressUserBubble?: boolean;
+  /**
+   * Composer preview for a send that lands in the adapter's queue while a turn
+   * is running: the user's words + attachment names, rendered as a removable
+   * queued bubble. Ignored when the conversation is idle. (Context-full
+   * compaction and provider-switch handoffs are the RUNTIME's job now — there
+   * are no per-send fields for them.)
+   */
+  queuedPreview?: { text: string; attachmentNames?: string[] };
 }
 
 export interface SessionStartResponse {

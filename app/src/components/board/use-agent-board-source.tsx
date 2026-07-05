@@ -99,9 +99,6 @@ export function useAgentBoardSource(
     const item = (data.rawItems ?? []).find((a) => a.id === selectedId);
     return item?.session_key ?? `activity-${selectedId}`;
   }, [selectedId, data.rawItems]);
-  const selectedSessionActive = selectedSessionKey
-    ? (send.effectiveLoading[selectedSessionKey] ?? false)
-    : false;
 
   const handleMissionSearchError = useCallback(() => {
     addToast({
@@ -160,7 +157,6 @@ export function useAgentBoardSource(
     activeAgentDef: agentDef,
     selectedSessionKey,
     selectedAgentPath: path,
-    selectedSessionActive,
     onSelectSession: setSelectedId,
     sessionKeyFor: data.sessionKeyFor,
     onDelete: data.handleDelete,

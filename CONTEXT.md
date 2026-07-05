@@ -23,19 +23,19 @@ The server's replay of the user's own message on the turn stream. Never rendered
 _Avoid_: duplicate message
 
 **Send policy**:
-The turn-lifecycle decisions applied when a message is sent: Provider handoff, Autocompact, and Queue-while-running. Owned by the SDK; a surface supplies only genuine inputs (text, overrides).
+The turn-lifecycle decisions applied when a message is sent. Queue-while-running belongs to the client's engine adapter; Autocompact and Provider switch belong to the runtime (ADR-0002). A surface supplies only genuine inputs (text, overrides).
 _Avoid_: send flags, send options
 
-**Provider handoff**:
-A staged intent to switch providers mid-conversation. Consumed by the next send and cleared only when the engine confirms the switch; a failed switch stays staged and retries.
-_Avoid_: provider switch (that is the engine's confirmation event)
+**Provider switch**:
+The runtime moving a conversation to a different provider mid-session, detected per turn from the persisted settings and announced with a boundary divider. Never staged or requested by the client.
+_Avoid_: provider handoff (the deleted client-staged mechanism)
 
 **Autocompact**:
-The always-on decision to summarize and reseed a conversation before a turn when its context is nearly full. A guarantee, not a user setting.
+The runtime's always-on decision to summarize and reseed a conversation before a turn when its context is nearly full. A guarantee owned where the ground truth lives (live token fill, active model window), never a user setting or a client flag.
 _Avoid_: compaction flag
 
 **Queue-while-running**:
-Messages accepted while a turn is active, held and flushed when the turn settles.
+Messages accepted while a turn is active, held by the engine adapter and flushed as one combined send when the turn settles.
 _Avoid_: message buffer
 
 **Board status**:
