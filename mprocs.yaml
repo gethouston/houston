@@ -6,6 +6,7 @@ procs:
     shell: "set -a; [ -f .env.local ] && . ./.env.local; set +a; pnpm dev:host"
   app:
     shell: pnpm dev:app
-  # The cloud control plane (the local integrations-gateway stand-in that used
-  # to run here as `gateway:`) moved out of this repository; run its dev server
-  # from its own repo when exercising the production integrations path.
+  # The `gateway:` pane (a local stand-in for the cloud integrations path,
+  # backed by the retired @houston/host-cloud) is gone. To exercise the
+  # production integrations path, run the private gateway locally or point
+  # HOUSTON_INTEGRATIONS_URL at the deployed one.

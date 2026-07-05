@@ -62,8 +62,7 @@ Only after Steps 1–2 and a green build:
 ## Step 4 — verify + ship
 
 - `pnpm -r typecheck`, `pnpm check`, `pnpm check:boundaries`, Vitest suites in
-  `packages/{host,runtime,domain}` — all green (the closed control plane runs
-  its own suite in its own repo against its pinned SHA of this one).
+  `packages/{host,runtime,domain}` — all green.
 - `cd app/src-tauri && cargo check` (now host-sidecar-default) — compiles.
 - Build + notarize the packaged app; smoke-test one real turn.
 - Doc sweep: mark the `knowledge-base/engine-*.md` + `cli-bundling.md` files HISTORICAL

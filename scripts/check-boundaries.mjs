@@ -1,19 +1,18 @@
 #!/usr/bin/env node
 /**
- * Locks the open/closed seam of "Houston" (open). The CLOSED control plane
+ * Keeps "Houston" (this repo) cloud-free. The CLOSED control plane
  * (`@houston/host-cloud` — the concrete cloud adapters pg / GCS / GKE / Redis /
- * BigQuery, the operator-admin surface, and the cloud `main.ts`) has MOVED OUT
- * of this repository to its private home, which vendors this repo at a pinned
- * SHA and builds against the ports in `@houston/host`. See BOUNDARY.md for the
- * manifest this script enforces.
+ * BigQuery, the operator-admin surface, and the cloud `main.ts`) was RETIRED
+ * and deleted: the shipped cloud is a private gateway plus one engine pod per
+ * agent running this repo's open host/runtime, so the multi-tenant host was an
+ * architecture Houston moved past (it remains in git history). See BOUNDARY.md
+ * for the manifest this script enforces.
  *
  *   - Every package here is OPEN: `packages/host` (the server builder, ports,
  *     every domain route handler, the open adapters, and the LOCAL entry) plus
  *     protocol/domain/runtime/runtime-client and ui. None of them may EVER
- *     import a cloud lib or `@houston/host-cloud`.
- *
- * The one-way rule: CLOSED (out-of-repo) may import OPEN; OPEN must NEVER
- * import CLOSED.
+ *     import a cloud lib or `@houston/host-cloud`. Staying cloud-lib-free is
+ *     what keeps this code deployment-agnostic (desktop, engine pod, self-host).
  *
  * Three protections, all fail the build (exit 1):
  *
@@ -35,9 +34,9 @@
  *     wiring point (`packages/runtime/src/main.ts`) — the same port+adapter+wiring
  *     shape one level down. Those two files may import `@google-cloud/storage`.
  *
- *   Rule B — `packages/host-cloud/` must NOT exist here. It was moved out of
- *     this repository; anything reappearing under that path would silently
- *     re-publish closed code.
+ *   Rule B — `packages/host-cloud/` must NOT exist here. It was retired and
+ *     deleted; anything reappearing under that path would silently re-publish
+ *     closed code.
  *
  *   Rule C (manifest) — no OPEN package may DECLARE the closed package or a cloud
  *     lib as a dependency (any bucket). This is the allowlist direction the seam
@@ -78,9 +77,8 @@ const OPEN_PACKAGES = [
 ];
 
 /**
- * The closed package's former path. It lives in its private home now; Rule B
- * asserts nothing reappears here, and Rules A/C keep open code from importing
- * or declaring it by name.
+ * The retired closed package's former path. Rule B asserts nothing reappears
+ * here, and Rules A/C keep open code from importing or declaring it by name.
  */
 const CLOSED_PACKAGE = "packages/host-cloud";
 
@@ -384,11 +382,11 @@ for (const pkg of OPEN_PACKAGES) {
   }
 }
 
-// Rule B — the closed package moved out of this repository. Anything
-// reappearing under its old path would silently re-publish closed code.
+// Rule B — the closed package was retired and deleted. Anything reappearing
+// under its old path would silently re-publish closed code.
 if (existsSync(join(root, CLOSED_PACKAGE))) {
   violations.push(
-    `[B] ${CLOSED_PACKAGE} must not exist — the closed control plane lives outside this repository; do not re-add it here`,
+    `[B] ${CLOSED_PACKAGE} must not exist — the closed control plane was retired (it survives in git history); do not re-add it here`,
   );
 }
 
