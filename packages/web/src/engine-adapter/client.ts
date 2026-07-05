@@ -1205,8 +1205,13 @@ export class HoustonClient {
       : this.engine;
     // Fire-and-stream: events flow to the feed store over the bus/WS adapter.
     // The board-status setter is cloud-aware (writes land where the board reads).
-    void streamTurn(engine, path, req.sessionKey, req.prompt, (status) =>
-      this.setActivityStatus(path, req.sessionKey, status),
+    void streamTurn(
+      engine,
+      path,
+      req.sessionKey,
+      req.prompt,
+      (status) => this.setActivityStatus(path, req.sessionKey, status),
+      req.provider,
     );
     return { sessionKey: req.sessionKey };
   }

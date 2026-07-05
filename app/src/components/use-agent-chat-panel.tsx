@@ -96,6 +96,11 @@ import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
 import { ProviderSwitchDialog } from "./provider-switch-dialog";
 import { SelectedSkillChip } from "./selected-skill-chip";
 import { ProviderErrorCard } from "./shell/provider-error-card";
+import {
+  isInlineAuthCardForChat,
+  providerErrorRetryText,
+  resolveProviderErrorForChat,
+} from "./shell/provider-error-cards/not-connected";
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
 import { ToolRuntimeErrorCard } from "./shell/tool-runtime-error-card";
 import { SkillCard } from "./skill-card";
@@ -719,12 +724,26 @@ export function useAgentChatPanel({
       // shows `msg.content` ("") — i.e. NOTHING. That's why a 429 card and the
       // OpenAI reconnect card never appeared in chat.
       if (msg.providerError) {
+        // The not-connected card arrives provider-less (the refusal can't name
+        // one — nothing was connected); label it with THIS chat's provider so
+        // its reconnect flow targets the provider the send actually used.
+        const providerError = resolveProviderErrorForChat(
+          msg.providerError,
+          effectiveProvider,
+        );
         return (
           <ProviderErrorCard
-            error={msg.providerError}
+            error={providerError}
             onRetry={async () => {
               if (!path || !selectedSessionKey) return;
-              const text = t("chat:toolRuntimeError.retryPrompt");
+              // A refused not-connected send never reached the engine —
+              // "Send again" resends the original message verbatim. Live-turn
+              // failures keep the generic retry prompt (their context is
+              // already server-side).
+              const text = providerErrorRetryText(
+                providerError,
+                t("chat:toolRuntimeError.retryPrompt"),
+              );
               await tauriChat.send(path, text, selectedSessionKey, {
                 providerOverride: effectiveProvider,
                 modelOverride: effectiveModel,
@@ -771,11 +790,8 @@ export function useAgentChatPanel({
       // (auto-dismisses) when the provider's auth probe is unreliable, e.g.
       // codex reporting "authenticated" off a stale ~/.codex/auth.json after a
       // server-side session kill. One card, and it stays put.
-      const hasInlineAuthCard = feedItems.some(
-        (it) =>
-          it.feed_type === "provider_error" &&
-          it.data.kind === "unauthenticated" &&
-          it.data.provider === effectiveProvider,
+      const hasInlineAuthCard = feedItems.some((it) =>
+        isInlineAuthCardForChat(it, effectiveProvider),
       );
       if (hasInlineAuthCard) return null;
       const signalKey = providerAuthSignalKey(feedItems);

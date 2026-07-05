@@ -1,12 +1,8 @@
 import type { ChatMessage } from "@houston/runtime-client";
 import { expect, test } from "vitest";
 import type { FeedOutput } from "./feed-output";
-import {
-  newTurnState,
-  settleFromHistory,
-  TURN_DIED_MESSAGE,
-  type TurnState,
-} from "./turn-settle";
+import { settleFromHistory, TURN_DIED_MESSAGE } from "./settle-from-history";
+import { finishErr, newTurnState, type TurnState } from "./turn-settle";
 
 /**
  * settleFromHistory — the "terminal frame was lost" settle. With a turnId the
@@ -164,4 +160,83 @@ test("a failed history reload (null) still settles: streamed text as completed, 
 
   const withoutText = run(null, "t-1");
   expect(withoutText.s.terminal).toBe("error");
+});
+
+/**
+ * finishErr — the not-connected refusal (HOU-676). A logged-out send is
+ * refused BEFORE the message reaches the engine, so it must settle as the
+ * persistent typed reconnect card (which survives the reconnect and offers
+ * "Send again" with the original text) — never as the raw system message
+ * that only fed the auto-dismissing store-driven card.
+ */
+
+const NOT_CONNECTED = "No provider connected. Connect an AI provider first.";
+
+test("a not-connected refusal settles as the typed card carrying provider + failed prompt", () => {
+  const { items, statuses, output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity-nc", output, {
+    provider: "openai",
+    prompt: "hey",
+  });
+  finishErr(s, NOT_CONNECTED);
+  expect(s.settled).toBe(true);
+  expect(s.terminal).toBe("needs_you");
+  expect(items).toContainEqual({
+    feed_type: "provider_error",
+    data: {
+      kind: "unauthenticated",
+      provider: "openai",
+      cause: "no_credentials",
+      message: NOT_CONNECTED,
+      failed_prompt: "hey",
+    },
+  });
+  // The card IS the surface: no raw system_message duplicate, and the
+  // invisible final_result stops the progress line.
+  expect(items.some((i) => i.feed_type === "system_message")).toBe(false);
+  expect(items.some((i) => i.feed_type === "final_result")).toBe(true);
+  // Status clears the loading flag with NO text — text would re-synthesize
+  // the "Session error:" echo that fed the auto-dismissing card.
+  expect(statuses).toEqual([["error", undefined]]);
+});
+
+test("a not-connected refusal without send context still cards (surface resolves the provider)", () => {
+  const { items, output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity-nc", output);
+  finishErr(s, "No provider connected. Connect your subscription first.");
+  const card = items.find((i) => i.feed_type === "provider_error")?.data as {
+    provider: string;
+    failed_prompt?: string;
+  };
+  expect(card.provider).toBe("");
+  expect("failed_prompt" in card).toBe(false);
+});
+
+test("a real turn failure still settles as system_message + red error", () => {
+  const { items, statuses, output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity-boom", output, {
+    provider: "openai",
+    prompt: "hey",
+  });
+  finishErr(s, "upstream exploded");
+  expect(s.terminal).toBe("error");
+  expect(items).toContainEqual({
+    feed_type: "system_message",
+    data: "upstream exploded",
+  });
+  expect(items.some((i) => i.feed_type === "provider_error")).toBe(false);
+  expect(statuses).toEqual([["error", "upstream exploded"]]);
+});
+
+test("a user stop still settles as the neutral needs_you, never a card", () => {
+  const { items, statuses, output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity-stop", output);
+  finishErr(s, "Stopped by user");
+  expect(s.terminal).toBe("needs_you");
+  expect(items).toContainEqual({
+    feed_type: "system_message",
+    data: "Stopped by user",
+  });
+  expect(items.some((i) => i.feed_type === "provider_error")).toBe(false);
+  expect(statuses).toEqual([["error", undefined]]);
 });

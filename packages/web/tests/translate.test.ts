@@ -189,6 +189,60 @@ test("a failing status persist surfaces in the feed, not silently", async () => 
   expect(surfaced).toBe(true);
 });
 
+// HOU-676: a logged-out send is refused by the runtime (409) BEFORE the
+// message reaches the engine. That must settle as the typed unauthenticated
+// card — stamped with the chat's provider and carrying the refused prompt so
+// "Send again" can resend it — never as the raw system message that only fed
+// the auto-dismissing store-driven reconnect card (which vanished on
+// reconnect and dead-ended the undelivered message).
+test("a refused not-connected send surfaces the typed reconnect card with provider + prompt", async () => {
+  const statuses: string[] = [];
+  const feed = collectFeed();
+  const { EngineError } = await import("@houston/runtime-client");
+  const engine = {
+    async streamEvents() {},
+    async sendMessage() {
+      throw new EngineError(
+        409,
+        JSON.stringify({
+          error: "No provider connected. Connect an AI provider first.",
+        }),
+      );
+    },
+  } as unknown as HoustonEngineClient;
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-nc",
+    "hey",
+    async (s) => {
+      statuses.push(s);
+    },
+    "openai",
+  );
+  feed.stop();
+
+  const card = feed.items.find(
+    (i) => (i as { feed_type?: string })?.feed_type === "provider_error",
+  ) as { data?: Record<string, unknown> } | undefined;
+  expect(card?.data).toEqual({
+    kind: "unauthenticated",
+    provider: "openai",
+    cause: "no_credentials",
+    message: "No provider connected. Connect an AI provider first.",
+    failed_prompt: "hey",
+  });
+  // No raw system_message duplicate — the card is the whole surface.
+  expect(
+    feed.items.some(
+      (i) => (i as { feed_type?: string })?.feed_type === "system_message",
+    ),
+  ).toBe(false);
+  // A handled state: the board card lands on needs_you, never the red error.
+  expect(statuses).toEqual(["running", "needs_you"]);
+});
+
 // HOU-666: loadChatHistory must only treat "conversation not found" (404 — a
 // fresh chat whose first turn hasn't persisted yet) as an empty conversation.
 // Every other failure (network drop, auth, 5xx) must propagate to the app's
