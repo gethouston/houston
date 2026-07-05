@@ -39,7 +39,11 @@ export interface SetupRuntimeDeps {
 function allowedRest(method: string, rest: string): boolean {
   if (method === "GET") return rest === "providers" || rest === "auth/status";
   if (method === "POST") {
-    return /^auth\/[^/]+\/login(\/complete)?$/.test(rest);
+    // login/cancel is part of the connect surface: the reconnect card's every
+    // press goes cancel → launch (the runtime keeps one login slot per
+    // provider), so blocking cancel 404s the chain and the login never
+    // launches (HOU-676).
+    return /^auth\/[^/]+\/login(\/(complete|cancel))?$/.test(rest);
   }
   return false;
 }

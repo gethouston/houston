@@ -6,6 +6,7 @@ import { SignInScreen } from "./components/auth/sign-in-screen";
 import { MigrationReconnectScreen } from "./components/onboarding/migration-reconnect-screen";
 import { isFirstRun } from "./components/onboarding/missions/onboarding-flow";
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
+import { ProviderLoginFallback } from "./components/shell/provider-login-fallback";
 import { WorkspaceShell } from "./components/shell/workspace-shell";
 import { useAgentInvalidation } from "./hooks/use-agent-invalidation";
 import { useAnalyticsSubscriber } from "./hooks/use-analytics-subscriber";
@@ -249,8 +250,22 @@ export default function App() {
   // without a provider anyway). Falls through the instant a provider connects or
   // the user dismisses — see useMigrationReconnect for the full trigger.
   if (migrationReconnect.show) {
-    return <MigrationReconnectScreen onDone={migrationReconnect.dismiss} />;
+    return (
+      <>
+        <ProviderLoginFallback />
+        <MigrationReconnectScreen onDone={migrationReconnect.dismiss} />
+      </>
+    );
   }
 
-  return <WorkspaceShell toasts={mappedToasts} onDismissToast={dismissToast} />;
+  // The fallback rides alongside the shell so a sign-in launched from a
+  // surface without its own login handler (the in-chat reconnect card) still
+  // opens the browser / dialog. Onboarding + tutorial mount their own handler
+  // (the login mission), so they don't need it.
+  return (
+    <>
+      <ProviderLoginFallback />
+      <WorkspaceShell toasts={mappedToasts} onDismissToast={dismissToast} />
+    </>
+  );
 }

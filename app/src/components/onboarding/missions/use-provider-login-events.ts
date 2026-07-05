@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { subscribeHoustonEvents } from "../../../lib/events";
 import { osIsTauri } from "../../../lib/os-bridge";
 import { tauriSystem } from "../../../lib/tauri";
+import { claimProviderLoginSurface } from "../../shell/provider-login-surface";
 import { shouldOpenLoginUrlDirectly } from "../../shell/provider-login-url";
 
 /** The remote / device-code fallback the mission renders a dialog for. */
@@ -47,7 +48,10 @@ export function useProviderLoginEvents(opts: {
 
   const { providerId } = opts;
   useEffect(() => {
-    return subscribeHoustonEvents((ev: HoustonEvent) => {
+    // This step owns `ProviderLoginUrl` while mounted — the shell's global
+    // fallback stands down so the URL is never opened twice.
+    const release = claimProviderLoginSurface();
+    const off = subscribeHoustonEvents((ev: HoustonEvent) => {
       if (ev.type === "ProviderLoginUrl") {
         if (ev.data.provider !== providerId) return;
         if (
@@ -83,6 +87,10 @@ export function useProviderLoginEvents(opts: {
         // screen to connected and advances.
       }
     });
+    return () => {
+      off();
+      release();
+    };
   }, [providerId]);
 
   return { dialog, closeDialog: () => setDialog(null) };

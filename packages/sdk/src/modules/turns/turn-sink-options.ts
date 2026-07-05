@@ -15,6 +15,15 @@ export interface TurnSinkOptions {
   mode: "turn" | "observer";
   /** Turn mode: the nonce our send carried — its `user` echo names OUR turnId. */
   nonce?: string;
+  /**
+   * Turn mode: the provider the composer targeted (caller's id dialect) and
+   * the prompt we sent. Neither is knowable from the wire when the runtime
+   * refuses a not-connected send — nothing is connected, and the prompt was
+   * never delivered — so the typed reconnect card is built from these
+   * (see `finishErr`). Absent in observer mode.
+   */
+  provider?: string;
+  prompt?: string;
   /** Abort the resumable subscription (the turn settled / nothing to watch). */
   stop: () => void;
   /** Refetch persisted history (the resync settle source). */

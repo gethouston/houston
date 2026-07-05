@@ -139,6 +139,13 @@ export type ProviderError =
       provider: string;
       cause: AuthFailureCause;
       message: string;
+      /**
+       * Client-synthesized only (never on the wire): the prompt whose SEND the
+       * engine refused because no provider was connected. The message never
+       * reached the engine, so the card's "Send again" must resend THIS text —
+       * a generic "try again" prompt would arrive with no context to retry.
+       */
+      failed_prompt?: string;
     }
   | { kind: "network_unreachable"; provider: string; message: string }
   | {

@@ -1,14 +1,9 @@
 import type { WireFrame } from "@houston/runtime-client";
 import type { TerminalBoardStatus } from "./feed-output";
+import { reloadAndSettle } from "./settle-from-history";
 import { applyTurnFrame } from "./turn-frames";
 import { classifyFrame, classifyRunningSync } from "./turn-identity";
-import {
-  finishErr,
-  newTurnState,
-  push,
-  reloadAndSettle,
-  type TurnState,
-} from "./turn-settle";
+import { finishErr, newTurnState, push, type TurnState } from "./turn-settle";
 import type { TurnSinkOptions } from "./turn-sink-options";
 
 export type { TurnSinkOptions } from "./turn-sink-options";
@@ -40,7 +35,10 @@ export class TurnSink {
   private accepted = false;
 
   constructor(private readonly o: TurnSinkOptions) {
-    this.s = newTurnState(o.agentPath, o.sessionKey, o.output);
+    this.s = newTurnState(o.agentPath, o.sessionKey, o.output, {
+      provider: o.provider,
+      prompt: o.prompt,
+    });
   }
 
   get settled(): boolean {
