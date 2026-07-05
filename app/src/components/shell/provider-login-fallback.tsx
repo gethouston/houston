@@ -1,6 +1,7 @@
 import type { HoustonEvent } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { tryBeginCodexLoopbackLogin } from "../../lib/codex-loopback";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
 import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
@@ -38,8 +39,25 @@ export function ProviderLoginFallback() {
   useEffect(() => {
     return subscribeHoustonEvents((ev: HoustonEvent) => {
       if (ev.type === "ProviderLoginUrl") {
+        const claimed = providerLoginSurfaceClaimed();
+        // MUST precede the open/dialog decision: for a REMOTE-engine desktop the
+        // engine emits a codex URL with no user_code, so the fallback action
+        // would resolve to "open" and plainly openUrl — but pi's callback server
+        // is in the pod and unreachable. The relay intercepts, binds a LOCAL 1455,
+        // and relays the code. Gated on `!claimed`: a dedicated surface, if
+        // mounted, runs the relay itself, so we don't double-bind 1455.
+        if (
+          !claimed &&
+          tryBeginCodexLoopbackLogin({
+            provider: ev.data.provider,
+            url: ev.data.url,
+            userCode: ev.data.user_code,
+          })
+        ) {
+          return;
+        }
         const action = providerLoginFallbackAction({
-          claimed: providerLoginSurfaceClaimed(),
+          claimed,
           isDesktop: osIsTauri(),
           userCode: ev.data.user_code,
         });

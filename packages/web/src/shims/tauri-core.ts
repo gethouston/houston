@@ -174,6 +174,7 @@ export async function invoke<T = unknown>(
 
     // ── Desktop-only: surface a clear error if a user triggers them ─────
     case "start_oauth_loopback": // desktop uses a native loopback listener; web uses the redirect flow
+    case "start_codex_oauth_loopback": // desktop relays the Codex 1455 callback; web stays on device-code
     case "get_engine_handshake": // web injects window.__HOUSTON_ENGINE__ directly
     case "pick_directory":
     case "reveal_file":

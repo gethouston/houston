@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   providerLoginUrlHost,
   shouldOpenLoginUrlDirectly,
+  shouldUseCodexLoopback,
 } from "../src/components/shell/provider-login-url.ts";
 
 describe("providerLoginUrlHost", () => {
@@ -94,6 +95,105 @@ describe("shouldOpenLoginUrlDirectly", () => {
     strictEqual(
       shouldOpenLoginUrlDirectly({ isDesktop: true, userCode: "" }),
       true,
+    );
+  });
+});
+
+// The Codex loopback relay drives ChatGPT sign-in for openai on a Tauri desktop
+// ONLY when the engine is remote (pi's 1455 is in the pod, so a local bind can't
+// collide). Co-located desktop, a pending device code, a non-openai provider,
+// and web clients all stay on their existing paths.
+describe("shouldUseCodexLoopback", () => {
+  const hosted = { VITE_HOSTED_ENGINE_URL: "https://cloud.example" };
+  const remoteHost = { VITE_NEW_ENGINE_URL: "https://houston.example.com" };
+  const loopbackDev = { VITE_NEW_ENGINE_URL: "http://127.0.0.1:4318" };
+
+  it("drives the relay for openai on a remote-engine desktop with no device code", () => {
+    for (const env of [hosted, remoteHost]) {
+      strictEqual(
+        shouldUseCodexLoopback({
+          provider: "openai",
+          env,
+          isTauri: true,
+          userCode: null,
+        }),
+        true,
+      );
+      strictEqual(
+        shouldUseCodexLoopback({
+          provider: "openai",
+          env,
+          isTauri: true,
+          userCode: undefined,
+        }),
+        true,
+      );
+      strictEqual(
+        shouldUseCodexLoopback({
+          provider: "openai",
+          env,
+          isTauri: true,
+          userCode: "",
+        }),
+        true,
+      );
+    }
+  });
+
+  it("does NOT relay for a co-located desktop (local sidecar / loopback dev URL)", () => {
+    strictEqual(
+      shouldUseCodexLoopback({
+        provider: "openai",
+        env: {},
+        isTauri: true,
+        userCode: null,
+      }),
+      false,
+    );
+    strictEqual(
+      shouldUseCodexLoopback({
+        provider: "openai",
+        env: loopbackDev,
+        isTauri: true,
+        userCode: null,
+      }),
+      false,
+    );
+  });
+
+  it("does not relay when a device code must be shown", () => {
+    strictEqual(
+      shouldUseCodexLoopback({
+        provider: "openai",
+        env: hosted,
+        isTauri: true,
+        userCode: "WXYZ-1234",
+      }),
+      false,
+    );
+  });
+
+  it("does not relay for a web / non-desktop client", () => {
+    strictEqual(
+      shouldUseCodexLoopback({
+        provider: "openai",
+        env: hosted,
+        isTauri: false,
+        userCode: null,
+      }),
+      false,
+    );
+  });
+
+  it("does not relay for a non-Codex provider (e.g. Claude)", () => {
+    strictEqual(
+      shouldUseCodexLoopback({
+        provider: "anthropic",
+        env: hosted,
+        isTauri: true,
+        userCode: null,
+      }),
+      false,
     );
   });
 });

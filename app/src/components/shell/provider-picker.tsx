@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { analytics } from "../../lib/analytics";
+import { tryBeginCodexLoopbackLogin } from "../../lib/codex-loopback";
 import { newEngineActive } from "../../lib/engine";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
@@ -161,6 +162,19 @@ export function ProviderPicker({ onSelect }: Props) {
         const prov =
           visibleProviders.find((p) => p.id === ev.data.provider) ??
           PROVIDERS.find((p) => p.id === ev.data.provider);
+        // MUST precede the open/dialog decision: for a REMOTE-engine desktop the
+        // engine emits a codex URL with no user_code, so shouldOpenLoginUrlDirectly
+        // would plainly openUrl — but pi's callback server is in the pod and
+        // unreachable. The relay intercepts, binds a LOCAL 1455, and relays the code.
+        if (
+          tryBeginCodexLoopbackLogin({
+            provider: ev.data.provider,
+            url: ev.data.url,
+            userCode: ev.data.user_code,
+          })
+        ) {
+          return;
+        }
         if (
           shouldOpenLoginUrlDirectly({
             isDesktop: osIsTauri(),

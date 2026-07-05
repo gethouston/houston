@@ -2,6 +2,7 @@ import type { HoustonEvent } from "@houston-ai/core";
 import { type Dispatch, type SetStateAction, useEffect } from "react";
 import { claimProviderLoginSurface } from "../../components/shell/provider-login-surface";
 import { shouldOpenLoginUrlDirectly } from "../../components/shell/provider-login-url";
+import { tryBeginCodexLoopbackLogin } from "../../lib/codex-loopback";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
 import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
@@ -52,6 +53,19 @@ export function useProviderLoginEvents({
         const prov =
           visibleProviders.find((p) => p.id === ev.data.provider) ??
           PROVIDERS.find((p) => p.id === ev.data.provider);
+        // MUST precede the open/dialog decision: for a REMOTE-engine desktop the
+        // engine emits a codex URL with no user_code, so shouldOpenLoginUrlDirectly
+        // would plainly openUrl — but pi's callback server is in the pod and
+        // unreachable. The relay intercepts, binds a LOCAL 1455, and relays the code.
+        if (
+          tryBeginCodexLoopbackLogin({
+            provider: ev.data.provider,
+            url: ev.data.url,
+            userCode: ev.data.user_code,
+          })
+        ) {
+          return;
+        }
         if (
           shouldOpenLoginUrlDirectly({
             isDesktop: osIsTauri(),

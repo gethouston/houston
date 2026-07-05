@@ -9,6 +9,8 @@
  * dialog stays a thin render layer and the host parse is unit-testable.
  */
 
+import { codexUsesLoopbackRelay } from "../../lib/engine-mode.ts";
+
 /**
  * Friendly host for the "you'll be taken to …" hint. Returns the bare
  * hostname (no scheme, no `www.`, no port/path/query) or `null` when the
@@ -49,10 +51,29 @@ export function shouldOpenLoginUrlDirectly(opts: {
   return opts.isDesktop && !opts.userCode;
 }
 
-// NOTE: the desktop's own Codex OAuth loopback relay (`shouldUseCodexLoopback`
-// + `beginCodexBrowserLogin`) is GONE. pi runs the whole OAuth flow in-process:
-// for a loopback (no-code) login it binds the fixed localhost callback port
-// itself and completes the token exchange — an app-side listener on the same
-// port could only fight it. Every topology that genuinely can't catch the
-// callback (hosted cloud, a truly remote host) gets the device-code flow from
-// `providerLoginUsesDeviceAuthByDefault` instead.
+/**
+ * Decide whether a `ProviderLoginUrl` event for Codex/OpenAI should drive the
+ * desktop's zero-code loopback relay (`beginCodexBrowserLogin`) instead of the
+ * plain open-in-browser path or the device-code dialog.
+ *
+ * True only for Codex (`provider === "openai"`) on a Tauri desktop whose engine
+ * is REMOTE (`codexUsesLoopbackRelay`) and with no device code pending: there
+ * pi's own 1455 lives in the pod, so the desktop binds a LOCAL 1455 and relays
+ * the callback code — ChatGPT sign-in with zero device code even against a
+ * remote engine, and no collision with pi. A CO-LOCATED desktop (local sidecar
+ * or a loopback dev URL) returns false and keeps pi's own browser flow (pi owns
+ * 1455 there — an app bind would fight it). A device code present, or a web
+ * client, also stay on their existing paths.
+ */
+export function shouldUseCodexLoopback(opts: {
+  provider: string;
+  env: { VITE_NEW_ENGINE_URL?: string; VITE_HOSTED_ENGINE_URL?: string };
+  isTauri: boolean;
+  userCode: string | null | undefined;
+}): boolean {
+  return (
+    opts.provider === "openai" &&
+    codexUsesLoopbackRelay(opts.env, { isTauri: opts.isTauri }) &&
+    !opts.userCode
+  );
+}
