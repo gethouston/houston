@@ -912,7 +912,7 @@ export function useAgentChatPanel({
 
   const attachMenu = useMemo<AIBoardProps["attachMenu"]>(() => {
     if (!agent) return undefined;
-    return ({ openFilePicker, close }) => (
+    return ({ openFilePicker }) => (
       <div className="flex flex-col gap-0.5">
         <button
           type="button"
@@ -924,43 +924,9 @@ export function useAgentChatPanel({
           <Paperclip className="size-4 text-muted-foreground" />
           {t("composerAttach.addFiles")}
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            setPickerOpen(true);
-            close();
-          }}
-          className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-foreground hover:bg-accent transition-colors"
-        >
-          <Play className="size-4 text-muted-foreground fill-current" />
-          {t("composerSkill.browse")}
-        </button>
-        <div className="px-2 py-1">
-          <ChatModelSelector
-            provider={effectiveProvider}
-            model={effectiveModel}
-            onSelect={handleModelSelect}
-          />
-        </div>
-        <div className="px-2 py-1">
-          <ChatEffortSelector
-            provider={effectiveProvider}
-            model={effectiveModel}
-            effort={effectiveEffort}
-            onSelect={handleEffortSelect}
-          />
-        </div>
       </div>
     );
-  }, [
-    agent,
-    t,
-    effectiveProvider,
-    effectiveModel,
-    effectiveEffort,
-    handleModelSelect,
-    handleEffortSelect,
-  ]);
+  }, [agent, t]);
 
   const pickerDialog = agent ? (
     <>
