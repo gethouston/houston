@@ -12,26 +12,15 @@ mod routines;
 mod skills_memory;
 
 pub use base::HOUSTON_SYSTEM_PROMPT;
-pub use integrations::{COMPOSIO_GUIDANCE, PI_INTEGRATIONS_GUIDANCE};
+pub use integrations::PI_INTEGRATIONS_GUIDANCE;
 pub use onboarding::ONBOARDING_GUIDANCE;
 pub use routines::ROUTINES_GUIDANCE;
 pub use skills_memory::SELF_IMPROVEMENT_GUIDANCE;
 
-/// Build the composite system prompt the engine uses as its fallback.
-/// Order: base identity, skills/memory guidance, routines guidance, Composio guidance.
-/// (Default Rust-engine build only — host-sidecar builds use `system_prompt_pi`.)
-#[cfg_attr(feature = "host-sidecar", allow(dead_code))]
-pub fn system_prompt() -> String {
-    format!(
-        "{HOUSTON_SYSTEM_PROMPT}\n\n---\n\n{SELF_IMPROVEMENT_GUIDANCE}\n\n---\n\n{ROUTINES_GUIDANCE}{COMPOSIO_GUIDANCE}"
-    )
-}
-
-/// The composite prompt for the TS engine (`host-sidecar` builds). Same
-/// product voice, but the integrations section teaches the in-process
+/// The composite system prompt for the TS engine (pi runtime). The
+/// integrations section teaches the in-process
 /// `integration_search`/`integration_execute` tools + the in-chat connect
-/// card instead of the retired Composio CLI (HOU-670).
-#[cfg_attr(not(feature = "host-sidecar"), allow(dead_code))]
+/// card (HOU-670).
 pub fn system_prompt_pi() -> String {
     format!(
         "{HOUSTON_SYSTEM_PROMPT}\n\n---\n\n{SELF_IMPROVEMENT_GUIDANCE}\n\n---\n\n{ROUTINES_GUIDANCE}{PI_INTEGRATIONS_GUIDANCE}"
@@ -52,7 +41,7 @@ mod tests {
 
     #[test]
     fn system_prompt_contains_new_interaction_gates() {
-        let prompt = system_prompt();
+        let prompt = system_prompt_pi();
 
         assert!(prompt.contains("# Houston Context"));
         assert!(prompt.contains("# Interaction Procedure"));
@@ -78,14 +67,11 @@ mod tests {
         assert!(!prompt.contains("Composio CLI"));
         assert!(!prompt.contains("composio link"));
         assert!(!prompt.contains("houston_composio_signin"));
-
-        // The legacy Rust-engine prompt keeps the CLI guidance untouched.
-        assert!(system_prompt().contains("Composio CLI"));
     }
 
     #[test]
     fn memory_guidance_requires_user_opt_in() {
-        let prompt = system_prompt();
+        let prompt = system_prompt_pi();
 
         assert!(prompt.contains("Want me to remember that for next time?"));
         assert!(prompt.contains("Save a learning only when"));
@@ -95,7 +81,7 @@ mod tests {
 
     #[test]
     fn skill_guidance_omits_legacy_fields() {
-        let prompt = system_prompt();
+        let prompt = system_prompt_pi();
 
         assert!(!prompt.contains("tags:"));
         assert!(!prompt.contains("inputs"));
@@ -114,7 +100,7 @@ mod tests {
 
     #[test]
     fn routine_guidance_maps_recurring_requests_to_routines() {
-        let prompt = system_prompt();
+        let prompt = system_prompt_pi();
 
         assert!(prompt.contains("## How-To Guidance: Routines"));
         assert!(prompt.contains("explicitly says \"routine\""));
