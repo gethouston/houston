@@ -4,6 +4,7 @@ import type { FeedItem, ProviderError } from "@houston-ai/chat";
 import {
   isInlineAuthCardForChat,
   providerErrorRetryText,
+  resendsOriginalPrompt,
   resolveProviderErrorForChat,
 } from "../src/components/shell/provider-error-cards/not-connected.ts";
 
@@ -35,6 +36,34 @@ describe("resolveProviderErrorForChat", () => {
       message: "session expired",
     };
     deepStrictEqual(resolveProviderErrorForChat(wireCard, "openai"), wireCard);
+  });
+});
+
+describe("resendsOriginalPrompt", () => {
+  it("marks the refused-send card: auto-resend, no duplicate bubble", () => {
+    strictEqual(resendsOriginalPrompt(notConnectedCard), true);
+  });
+
+  it("never marks live-turn failures: explicit CTA, bubble kept", () => {
+    strictEqual(
+      resendsOriginalPrompt({
+        kind: "unauthenticated",
+        provider: "anthropic",
+        cause: "token_expired",
+        message: "session expired",
+      }),
+      false,
+    );
+    strictEqual(
+      resendsOriginalPrompt({
+        kind: "rate_limited",
+        provider: "anthropic",
+        model: null,
+        retry_after_seconds: null,
+        message: "slow down",
+      }),
+      false,
+    );
   });
 });
 

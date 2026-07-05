@@ -99,6 +99,7 @@ import { ProviderErrorCard } from "./shell/provider-error-card";
 import {
   isInlineAuthCardForChat,
   providerErrorRetryText,
+  resendsOriginalPrompt,
   resolveProviderErrorForChat,
 } from "./shell/provider-error-cards/not-connected";
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
@@ -737,9 +738,9 @@ export function useAgentChatPanel({
             onRetry={async () => {
               if (!path || !selectedSessionKey) return;
               // A refused not-connected send never reached the engine —
-              // "Send again" resends the original message verbatim. Live-turn
-              // failures keep the generic retry prompt (their context is
-              // already server-side).
+              // the card resends the original message verbatim (and fires
+              // itself on reconnect). Live-turn failures keep the generic
+              // retry prompt (their context is already server-side).
               const text = providerErrorRetryText(
                 providerError,
                 t("chat:toolRuntimeError.retryPrompt"),
@@ -749,10 +750,14 @@ export function useAgentChatPanel({
                 modelOverride: effectiveModel,
                 effortOverride: effectiveEffort,
               });
-              pushFeedItem(path, selectedSessionKey, {
-                feed_type: "user_message",
-                data: text,
-              });
+              // The refused prompt's bubble is already in the feed; only a
+              // generic retry is a NEW message that needs one.
+              if (!resendsOriginalPrompt(providerError)) {
+                pushFeedItem(path, selectedSessionKey, {
+                  feed_type: "user_message",
+                  data: text,
+                });
+              }
             }}
             // "Pick another model" pops the MODEL picker (not the Skills picker);
             // "Switch to <fallback>" applies it directly on the same provider.

@@ -314,6 +314,8 @@
       "waiting": "Termina de iniciar sesión en tu navegador",
       "reconnectedTitle": "Reconectado a {{provider}}",
       "reconnectedBody": "Ya iniciaste sesión de nuevo. Continúa donde quedaste.",
+      "reconnectedResending": "Ya iniciaste sesión de nuevo. Houston está respondiendo tu mensaje ahora.",
+      "signedIn": "Sesión iniciada",
       "sendAgain": "Intentar de nuevo",
       "failedBody": "El inicio de sesión de {{provider}} no se completó. Inténtalo de nuevo. {{detail}}"
     },
