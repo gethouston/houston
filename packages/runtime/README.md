@@ -22,11 +22,11 @@ The engine is API-only (REST + SSE) with no built-in UI. Drive it with the webap
 ([`@houston/runtime-client`](../runtime-client)), both pointed at
 `http://127.0.0.1:4317`. To wire up a login from scratch:
 
-1. `POST /auth/anthropic/login` → returns a Claude login URL; open it.
-2. Authorize with your Claude Pro/Max subscription. The engine catches the
-   callback on `localhost:53692` and stores the token (auto-refreshed); poll
-   `GET /auth/status` until `configured: true`. (Headless engines use a
-   copy-paste code instead — see below.)
+1. `POST /auth/anthropic/login` → returns `{ kind: "auth_code", url, instructions }`; open the URL.
+2. Run `claude setup-token`, then paste the `sk-ant-oat01…` token back via
+   `POST /auth/anthropic/login/complete`; poll `GET /auth/status` until
+   `configured: true`. (Anthropic subscription runs through the Claude Agent SDK
+   — see below; there is no loopback callback.)
 3. `POST /conversations/:id/messages` and stream the agent's reply (and tool
    calls like `read`/`ls`/`bash`) from `GET /conversations/:id/events`.
 
@@ -37,9 +37,12 @@ Claude connects via the sanctioned setup-token flow: `POST /auth/anthropic/login
 returns a `{ kind: "auth_code", url, instructions }`, the webapp opens the URL, and
 the user pastes their `sk-ant-oat01…` setup token (from `claude setup-token`) or an
 `sk-ant-api03…` console key back via `POST /auth/anthropic/login/complete`. The
-token is stored as an `api_key` credential (pi-ai auto-detects the `sk-ant-oat`
-prefix and uses Claude Code Bearer headers). No loopback and no `HOUSTON_HEADLESS`
-mode. Codex stays device-code. See `src/auth/anthropic-setup-token.ts`.
+token is stored as an `api_key` credential (so the central refresh path stays a
+no-op) and is consumed by the **Claude Agent SDK** backend — the real `claude`
+subprocess, with the token in its env (`CLAUDE_CODE_OAUTH_TOKEN` for `oat01`,
+`ANTHROPIC_API_KEY` for `api03`), never pi's in-process Anthropic client. No
+loopback and no `HOUSTON_HEADLESS` mode. Codex stays device-code. See
+`src/auth/anthropic-setup-token.ts` and `src/backends/claude/`.
 
 ## Config (env)
 
@@ -124,22 +127,21 @@ your Claude subscription. On a VPS:
   Caddy streams correctly by default — a `reverse_proxy 127.0.0.1:4317` is
   enough.
 
-**Logging in on a VPS.** A non-loopback `HOUSTON_HOST` auto-enables the headless
-copy-paste login (see "Headless login" above), since a remote browser can't reach
-the engine's `127.0.0.1:53692` loopback. **Claude** → start login, authorize in
-your browser, then paste the code back (`POST /auth/anthropic/login/complete`);
-**Codex** → device code (`POST /auth/openai-codex/login`, enter the code on your
-own device).
+**Logging in on a VPS.** **Claude** → the setup-token paste flow works anywhere
+(`claude setup-token`, paste via `POST /auth/anthropic/login/complete`); no
+loopback needed. **Codex** → device code (`POST /auth/openai-codex/login`, enter
+the code on your own device).
 
 ## Layout
 
 ```
 spike/phase0.ts          Phase 0 de-risk spike (faux turn + OAuth probe)
-src/config.ts            env config (incl. headless detection)
+src/config.ts            env config
 src/auth/storage.ts      AuthStorage + ModelRegistry (persisted)
 src/auth/login.ts        multi-provider login orchestration (url / auth_code / device_code)
-src/auth/anthropic-headless.ts   headless Claude OAuth (console redirect + paste code)
-src/ai / src/session     headless ResourceLoader, createAgentSession, turn runner
+src/auth/anthropic-setup-token.ts   Claude setup-token paste flow (sanctioned subscription auth)
+src/backends/            HarnessBackend seam: pi (default) + claude (Agent SDK subprocess)
+src/ai / src/session     ResourceLoader, createAgentSession, turn runner
 src/transport/server.ts  node:http router (REST + SSE)
 src/main.ts              bootstrap
 ```
@@ -156,9 +158,10 @@ Endpoints: `GET /health`, `GET /version`, `GET /providers`, `PUT /settings`,
 `GET|POST /conversations/:id/messages` (POST streams SSE),
 `POST /conversations/:id/cancel`. CORS is enabled (`HOUSTON_CORS_ORIGIN`, default `*`).
 
-Both subscription logins work: **Claude** (`anthropic` — loopback locally, copy-paste
-`auth_code` when headless) and **Codex** (`openai-codex`, device code). Pick the chat
-model via `PUT /settings`.
+Both subscription logins work: **Claude** (`anthropic` — setup-token `auth_code`
+paste, run through the Claude Agent SDK) and **Codex** (`openai-codex`, browser
+loopback locally / device code or desktop relay when remote). Pick the chat model
+via `PUT /settings`.
 
 ## Not yet built (next)
 

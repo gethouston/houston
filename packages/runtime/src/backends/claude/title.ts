@@ -1,8 +1,8 @@
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import {
+  buildClaudeEnv,
   ClaudeBackendUnavailableError,
   type ClaudeToken,
-  tokenEnv,
 } from "./backend";
 import { resolveClaudeExecutable } from "./binary-path";
 import { toSdkModel } from "./model";
@@ -54,11 +54,7 @@ export async function titleWithClaude(p: ClaudeTitleParams): Promise<string> {
   const pathToClaudeCodeExecutable = resolveClaudeExecutable();
   const options: Options = {
     cwd: p.workspaceDir,
-    env: {
-      ...process.env,
-      CLAUDE_CONFIG_DIR: claudeConfigDir(p.dataDir),
-      ...tokenEnv(p.readToken()),
-    },
+    env: buildClaudeEnv(claudeConfigDir(p.dataDir), p.readToken()),
     ...(pathToClaudeCodeExecutable ? { pathToClaudeCodeExecutable } : {}),
     settingSources: [],
     allowedTools: [],

@@ -1,3 +1,4 @@
+import { isAbsolute } from "node:path";
 import type {
   CanUseTool,
   PermissionResult,
@@ -71,8 +72,8 @@ export function buildToolPolicy(input: ToolPolicyInput): ToolPolicy {
  * the workspace, deny any that escape. Reuses `WorkspaceGuard.clamp` (the same
  * wall pi's file tools use), so a Read/Edit/Write/Glob/Grep path outside the root
  * — absolute, `~`, `..`, `@`/`file://`, or a symlink leaving the root — is denied
- * with a clear message. Bash is approved unless its command names an
- * absolute/home path that escapes (conservative: relative paths stay cwd-bound).
+ * with a clear message. Bash is approved unless its command names a path token
+ * that escapes (absolute, `~`, or a `..` segment climbing out of cwd).
  */
 export function makeCanUseTool(workspaceDir: string): CanUseTool {
   const guard = new WorkspaceGuard(workspaceDir);
@@ -108,8 +109,16 @@ function targetPaths(
     }
     case "Glob":
     case "Grep": {
-      const p = input.path;
-      return typeof p === "string" ? [p] : [];
+      const targets: string[] = [];
+      if (typeof input.path === "string") targets.push(input.path);
+      // Glob's real target is its PATTERN, not `path`: with no `path`, the
+      // pattern is resolved against cwd, so an absolute/`~`/`..`-escaping
+      // pattern (e.g. `Glob({pattern:"/etc/**/*.conf"})`) reads OUTSIDE the
+      // workspace unless clamped. A benign relative glob (`**/*.ts`) has no
+      // escape anchor, resolves under cwd, and is left to the default.
+      if (typeof input.pattern === "string" && isEscapeToken(input.pattern))
+        targets.push(input.pattern);
+      return targets;
     }
     case "Bash": {
       const cmd = input.command;
@@ -121,13 +130,31 @@ function targetPaths(
 }
 
 /**
- * Absolute / home-relative path tokens in a Bash command — the only escape risk
- * (relative tokens resolve under the workspace cwd). Each is clamped; an escape
- * denies the whole command. Conservative by design: over-denying an odd absolute
- * path is safer than letting `cat /etc/passwd` through.
+ * Path tokens in a Bash command that could escape the workspace: absolute (`/`),
+ * home (`~`), or a `..` segment that climbs out of cwd — `cat ../../etc/passwd`
+ * is relative AND escapes, so `..` must be caught here too. Each candidate is
+ * clamped; any escape denies the whole command.
+ *
+ * This is NOT a security boundary. Arbitrary Bash is inherently porous —
+ * redirections, `$HOME`, env expansion, and `$(...)` command substitution all
+ * evade flat token inspection. This layer is defense-in-depth that must at least
+ * not fail open on the trivial absolute/`~`/`..` cases. Conservative by design:
+ * over-denying an odd path token is safer than leaking a read.
  */
 function bashEscapeCandidates(command: string): string[] {
-  return command
-    .split(/[\s;|&()<>"'`]+/)
-    .filter((t) => t.startsWith("/") || t.startsWith("~"));
+  return command.split(/[\s;|&()<>"'`]+/).filter(isEscapeToken);
+}
+
+/**
+ * A path token or glob pattern that could resolve OUTSIDE the workspace and so
+ * must be clamped: an absolute path (leading `/`, a Windows drive/UNC), a `~`
+ * home reference, or any `..` segment that can climb out of cwd. Benign relative
+ * inputs (a recursive `src` glob, `./sub`) return false and stay under cwd. For
+ * glob patterns we deliberately do NOT parse magic — only the leading anchor
+ * matters for escape detection.
+ */
+function isEscapeToken(token: string): boolean {
+  if (isAbsolute(token) || token.startsWith("~")) return true;
+  // Split on both separators so a `..` segment is caught on POSIX and Windows.
+  return token.split(/[/\\]+/).includes("..");
 }

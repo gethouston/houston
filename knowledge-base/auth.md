@@ -126,10 +126,13 @@ Flow (`app/src/components/auth/connection-chooser.tsx`, gated by
   OAuth-hosted gateway: `HostedEngineGate` + `SignInScreen` **with** the
   paste-the-code fallback (`allowManualCallback`), and the Supabase session token
   becomes the gateway bearer. The allowlist is enforced server-side (the gateway
-  401s a non-allowlisted JWT). Because the runtime lives on the gateway,
-  `isRemoteEngine()` forces provider (Codex/OpenAI) OAuth onto the **device-code**
-  flow — a browser loopback callback would land on the remote host, not the
-  user's machine.
+  401s a non-allowlisted JWT). **Provider (Codex/OpenAI) OAuth against a remote
+  DESKTOP no longer forces device-code** (the claim this section used to make):
+  the desktop binds its OWN local `127.0.0.1:1455` loopback relay and finishes
+  ChatGPT sign-in with zero code (PR #648) — pi's own 1455 lives in the pod, so
+  there is no collision. Only a WEB (non-Tauri) remote client falls back to
+  device-code. Full topology + rationale: **"Provider connect + turn execution
+  (TS engine)"** below.
 
 The choice lives in `localStorage` (`houston.engineConnection`,
 `app/src/lib/engine-connection.ts`) and is read **synchronously** at
@@ -230,9 +233,153 @@ create trigger on_auth_user_created after insert on auth.users
 - In-app NPS — PostHog has it built in; configure later.
 - Teams / orgs, Stripe billing — future Supabase schema extensions.
 
-## Provider CLI re-auth (Claude Code / Codex)
+## Provider connect + turn execution (TS engine) — CURRENT
 
-_Provider CLI re-auth (Claude/Codex) is the legacy Rust-engine path; the TS engine uses in-process OAuth — see `convergence/README.md`._
+This is the CURRENT provider-auth model (pi runtime + host, PRs #636 / #647 /
+#648). It REPLACES the Rust-engine "Provider CLI re-auth" section below, which is
+retired. There are no provider CLIs — pi talks to providers in-process — with ONE
+exception: Anthropic, which runs through the Claude Agent SDK for compliance (see
+below). Cross-ref: `convergence/README.md` → Standing decisions → "Anthropic in
+cloud" (packaging) and the backend seam.
+
+### Per-provider turn execution — the `HarnessBackend` seam
+
+Turn execution is pluggable per provider behind `HarnessBackend`
+(`packages/runtime/src/backends/types.ts` + `registry.ts`). Both the long-lived
+server (`session/`) and the per-request cloud runtime (`turn/`) drive turns
+through this port; the emitted wire dialect (`WireEvent`) is identical whatever
+backend runs.
+
+- **pi is the default backend** (`backends/pi/`): `setDefaultBackend(pi)`, and any
+  provider without a specific registration resolves to it via
+  `backendFor(providerId)` (throws if neither a registration nor a default exists
+  — a turn never silently runs on no backend).
+- **`anthropic` registers the Claude Agent SDK backend** (`backends/claude/`):
+  `registerBackend("anthropic", claudeBackend)`, so Anthropic turns run the real
+  `claude` subprocess (`@anthropic-ai/claude-agent-sdk`) instead of pi's
+  in-process Anthropic client.
+
+**Why the SDK for Anthropic.** Anthropic server-blocks raw subscription-OAuth
+replay (harness-spoofing) since 2026-04. The sanctioned way to use a Claude
+Pro/Max subscription programmatically is to run Anthropic's OWN harness — the
+Claude Agent SDK, which spawns their native `claude` binary. So Houston runs it
+rather than replaying OAuth against Anthropic's API itself.
+
+**Compliance rule (load-bearing):** when the active provider is `anthropic`, BOTH
+turns AND conversation titles go through the SDK subprocess — NEVER pi's
+in-process Anthropic client. Turns: `backends/claude/backend.ts` → `ClaudeSession`
+(`session.ts`, `translate.ts` maps SDK messages → `WireEvent`s). Titles:
+`backends/claude/title.ts` (`titleWithClaude`) is a one-shot SDK query, NOT pi's
+in-process summarizer — a title leaking to the in-process client would be the
+exact replay Anthropic blocks. `title.ts` and `backend.ts` share `tokenEnv` so
+the two paths set the identical auth env var.
+
+How the SDK subprocess runs (`backend.ts`):
+- **Token in `options.env`** — `CLAUDE_CODE_OAUTH_TOKEN` for a `sk-ant-oat01…`
+  setup token, `ANTHROPIC_API_KEY` for a `sk-ant-api03…` console key (`tokenEnv`
+  + `read-token.ts`, selected by prefix). `options.env` REPLACES the child env, so
+  `process.env` is spread in to keep PATH/HOME while pinning the config dir + token.
+- **Isolated `CLAUDE_CONFIG_DIR`** under the agent `dataDir` + `settingSources: []`
+  — nothing on the host machine's `~/.claude` leaks in.
+- **Workspace-clamp `canUseTool`** (`tool-policy.ts`): pi's clamped toolset
+  (Read/Edit/Write/Glob/Grep, plus Bash only when code execution is local) mirrored
+  as the SDK `tools` allowlist + a `disallowedTools` deny of the Claude Code tools
+  pi lacks; every call routes through a `WorkspaceGuard`-backed handler that
+  auto-approves in-workspace targets and denies escapes. There is deliberately NO
+  `allowedTools` — an allow rule short-circuits `canUseTool` and would bypass the
+  clamp.
+- **SDK is an OPTIONAL dep**, lazily imported inside `createSession`/`titleWithClaude`;
+  its absence throws typed `ClaudeBackendUnavailableError`, never crashes the runtime.
+- **Binary resolution** (`binary-path.ts`): on Node (self-host / engine-pod /
+  per-turn Docker / dev / tests) the SDK self-resolves its ~250 MB per-platform
+  native binary via `require.resolve`; inside the Bun-compiled desktop sidecar
+  `require.resolve` can't reach `$bunfs`, so `resolveClaudeExecutable` points the
+  SDK at the `<dir of sidecar>/claude` sibling via `pathToClaudeCodeExecutable`.
+  Which images carry vs strip the ~250 MB binary (and the deferred desktop
+  externalBin wiring) is in `convergence/README.md`.
+
+**Cloud per-turn keeps Anthropic OFF** (ToS). The multi-tenant per-turn Cloud Run
+image strips the `claude` binary and the catalog doesn't advertise `anthropic`;
+only local + self-host + the managed single-tenant pod run it. Config asymmetry,
+not a code fork.
+
+### Anthropic connect UX — the setup-token PASTE flow
+
+`auth/anthropic-setup-token.ts` + `auth/login.ts`. Replaces the deleted
+`anthropic-headless` direct-OAuth flow.
+
+**What the user does:** runs `claude setup-token` in their own terminal (it mints
+a long-lived `sk-ant-oat01…` token) and PASTES that token into Houston. A console
+`sk-ant-api03…` API key works too. Houston never replays OAuth itself (the blocked
+path) and never spawns the `claude` binary for login (it is an Ink TUI that needs
+a real TTY and deadlocks on the runtime's piped stdio).
+
+**Wire shape is unchanged:** `startLogin("anthropic")` emits the same
+`{ kind:"auth_code", url, instructions }` LoginInfo and reuses `completeLogin`'s
+paste promise, so the existing connect UX (`connect.tsx` /
+`provider-login-dialog.tsx`) works verbatim — the pasted value is a token, not an
+OAuth code. `url` is Anthropic's CLI-reference help page, shown next to the paste
+box.
+
+**What's stored + why the shape matters:** the token is persisted under
+`"anthropic"` as pi's **`api_key`** PiCred variant
+(`authStorage.set("anthropic", { type:"api_key", key })`). Because an api_key
+credential has no refresh token, the central refresh path (`refresh.ts`) and the
+credential-scrub gate stay a NO-OP for anthropic — untouched. pi-ai's anthropic
+provider auto-detects the `sk-ant-oat` prefix and switches to Bearer + Claude Code
+identity headers; an `sk-ant-api03…` key routes to the standard `x-api-key` path.
+`read-token.ts` reads the same stored value back for the SDK backend, again
+selecting the env var by prefix (no-silent-failure: a wrong variant or unknown
+prefix returns undefined AND logs the reason).
+
+### OpenAI / Codex (ChatGPT) login topology — truth table (as shipped)
+
+Codex OAuth has two flows: the **browser/loopback** login (approve in your own
+browser, no code) and the **device-code** grant (type a one-time code while the
+runtime polls). Which runs is decided by the CLIENT'S topology, because the
+loopback callback lands on `127.0.0.1:1455` — whoever binds that port must be
+co-located with the user's browser. `tauri.ts::launchLogin` resolves the
+`deviceAuth` flag centrally so every entry point (picker, settings, reconnect
+card, banner) agrees.
+
+| Client topology | Flow | Who owns the 1455 loopback |
+|---|---|---|
+| **Local sidecar** (co-located desktop) OR **loopback dev URL** (`VITE_NEW_ENGINE_URL` at 127.0.0.1/localhost) | pi's own browser login (`deviceAuth:false`); client just opens the authorize URL | **pi, in-process** — zero app code |
+| **Remote DESKTOP** (`VITE_HOSTED_ENGINE_URL`, or a non-loopback `VITE_NEW_ENGINE_URL`) | zero-code browser login via the desktop **1455 relay** (`launchLogin` forces `deviceAuth:false` for `openai` here) | **the desktop app** binds its OWN local 1455 and relays the callback code — pi's 1455 is in the pod |
+| **Web** (non-Tauri) | device-code — verification URL + one-time `user_code`, runtime polls | nobody (no local browser reachable) |
+
+- **Frontend gates** (`app/src/lib/engine-mode.ts`):
+  `providerLoginUsesDeviceAuthByDefault` is the topology default for the
+  `deviceAuth` a client sends (co-located desktop → `false`; remote desktop / web
+  → `true`). `codexUsesLoopbackRelay` = `isTauri && device-auth-by-default`, i.e.
+  the relay is **desktop-remote ONLY**. For `openai` in that case
+  `launchLogin` OVERRIDES `deviceAuth` back to `false` so the runtime emits an
+  authorize URL (not a device code), then `shouldUseCodexLoopback`
+  (`provider-login-url.ts`, requires `provider==="openai"` + no `userCode`) routes
+  it to the relay. The relay itself is `app/src/lib/codex-loopback.ts`
+  (`beginCodexBrowserLogin`: bind the native loopback, open the URL, relay
+  `code=…&state=…` to the engine via `submitLoginCode`).
+- **Runtime side** (`auth/login.ts`): `codexLoginMethod` picks browser vs
+  device-code purely from `deviceAuth`. The browser method works even against a
+  remote runtime because pi races its own local callback server against a
+  manually-relayed code — the desktop catches the fixed
+  `http://localhost:1455/auth/callback` redirect and relays code+state, and the
+  runtime does the token exchange, so its own loopback never needs to be reachable.
+
+**History (#615 → #620 → #648).** #453/#615 first dropped `ProviderLoginUrl` when
+`osIsTauri()` and left codex's `localhost:1455` fallback alone; the sharp edge is
+that a CO-LOCATED desktop that binds 1455 fights pi, which already owns it there.
+#648 gates the desktop 1455 relay REMOTE-ONLY (`codexUsesLoopbackRelay`) precisely
+to dodge that LOCAL 1455 collision: only when pi's 1455 is elsewhere (in the pod)
+does the desktop bind its own. Co-located desktop and loopback dev URLs keep pi's
+in-process flow untouched.
+
+## Provider CLI re-auth (Claude Code / Codex) — [LEGACY, Rust engine — RETIRED]
+
+_This is the legacy Rust-engine CLI-subprocess path. The TS engine's provider
+model is **"Provider connect + turn execution (TS engine)"** above — in-process
+OAuth for OpenAI/Codex, the Claude Agent SDK for Anthropic, and pasted API keys
+for the rest. The sections below survive only to explain the retired build._
 
 Separate from Houston account auth. Claude Code and Codex keep their own CLI
 sessions. When those sessions expire mid-chat, `houston-terminal-manager`
