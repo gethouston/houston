@@ -29,6 +29,24 @@ export function turnErrorMessage(e: unknown): string {
 }
 
 /**
+ * Whether a failed send is AMBIGUOUS about whether the engine received it.
+ *
+ * An {@link EngineError} is a server verdict (the engine answered — 409, 401,
+ * …) and an abort is the caller's own cancellation: both are definitive.
+ * Everything else is `fetch` reporting a transport failure (WebKit's
+ * `TypeError: Load failed`, a reset, DNS…), which CANNOT distinguish "the
+ * request never reached the engine" from "the engine accepted it but the
+ * response was lost" — the turn may be running. Callers must not settle the
+ * turn as failed on such an error without independent evidence (see
+ * `streamTurn`'s send-verdict window).
+ */
+export function isAmbiguousSendFailure(e: unknown): boolean {
+  if (e instanceof EngineError) return false;
+  if (e instanceof Error && e.name === "AbortError") return false;
+  return true;
+}
+
+/**
  * Whether a turn failure is the runtime's "no provider connected" refusal — the
  * verbatim message it raises when the chat's provider is logged out (runtime
  * `ai/providers.ts`, `transport/server.ts`, `turn/server.ts`; all prefixed
