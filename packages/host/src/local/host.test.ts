@@ -6,9 +6,14 @@ import { join } from "node:path";
 import type { Capabilities, Workspace } from "@houston/protocol";
 import { expect, test } from "vitest";
 import { MANAGED_CLOUD_CAPABILITIES } from "../capabilities";
+import { EnvCredentialVault } from "../credentials/vault";
 import type { Agent } from "../domain/types";
 import type { RuntimeSpawner } from "../launcher/process";
-import { buildLocalHost, LOCAL_CAPABILITIES } from "./host";
+import {
+  buildLocalHost,
+  LOCAL_CAPABILITIES,
+  type LocalHostOptions,
+} from "./host";
 
 /**
  * The local host wired end-to-end at the route level: the SAME server, driven
@@ -38,6 +43,7 @@ async function setup(opts?: {
   capabilities?: Capabilities;
   integrations?: { gatewayUrl?: string; composioApiKey?: string };
   gatewayFronted?: boolean;
+  credentials?: LocalHostOptions["credentials"];
   spawner?: RuntimeSpawner;
 }) {
   const workspacesRoot = mkdtempSync(join(tmpdir(), "houston-localhost-"));
@@ -57,6 +63,7 @@ async function setup(opts?: {
     capabilities: opts?.capabilities,
     integrations: opts?.integrations,
     gatewayFronted: opts?.gatewayFronted,
+    credentials: opts?.credentials,
   });
   await host.start();
   return { host, base: `http://127.0.0.1:${port}`, workspacesRoot };
@@ -102,6 +109,68 @@ test("capabilities can report the managed cloud pod profile", async () => {
     expect(caps.openaiCompatible).toBe(false);
   } finally {
     host.stop();
+  }
+});
+
+test("managed credential config serves sandbox credentials from the gateway", async () => {
+  const orgSlug = "0011223344556677";
+  const agentSlug = "8899aabbccddeeff";
+  const seen: { url?: string; auth?: string }[] = [];
+  const gateway = createHttpServer((req, res) => {
+    seen.push({ url: req.url, auth: req.headers.authorization });
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        provider: "openai-codex",
+        kind: "oauth",
+        access: "AT-org",
+        expires: 1_730_000_000_000,
+        accountId: null,
+        enterpriseUrl: null,
+      }),
+    );
+  });
+  await new Promise<void>((r) => gateway.listen(0, "127.0.0.1", () => r()));
+  try {
+    const addr = gateway.address();
+    const gatewayUrl = `http://127.0.0.1:${
+      typeof addr === "object" && addr ? addr.port : 0
+    }`;
+    const { host, base } = await setup({
+      credentials: {
+        url: gatewayUrl,
+        orgSlug,
+        agentSlug,
+        podToken: "pod-secret",
+      },
+    });
+    try {
+      const sbx = new EnvCredentialVault({
+        secret: "boot-secret",
+      }).sandboxToken("Work", "Work/Sales");
+      const r = await fetch(
+        `${base}/sandbox/credential?provider=openai-codex`,
+        {
+          headers: { Authorization: `Bearer ${sbx}` },
+        },
+      );
+      expect(r.status).toBe(200);
+      expect(await r.json()).toMatchObject({
+        provider: "openai-codex",
+        access: "AT-org",
+        kind: "oauth",
+      });
+      const first = seen.at(0);
+      if (!first) throw new Error("expected a gateway credential request");
+      expect(first.url).toBe(
+        `/v1/pod/credentials/${orgSlug}/${agentSlug}/openai-codex`,
+      );
+      expect(first.auth).toBe("Bearer pod-secret");
+    } finally {
+      host.stop();
+    }
+  } finally {
+    await new Promise<void>((r) => gateway.close(() => r()));
   }
 });
 

@@ -1,7 +1,7 @@
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { activeProvider, resolveModel } from "../ai/providers";
-import { syncServedCredential } from "../auth/serve";
+import { syncServedCredentialSafe } from "../auth/serve";
 import { cleanupClaudeConversation } from "../backends/claude/cleanup";
 import { config } from "../config";
 import {
@@ -42,11 +42,7 @@ export async function ensureProviderForTurn(): Promise<string | null> {
   // Connect-once: pull the workspace's current central credential into auth.json
   // so pi uses the user's own token. Best-effort — a transient failure leaves the
   // existing (still-valid) credential; a forgotten connection => activeProvider null.
-  try {
-    await syncServedCredential();
-  } catch (err) {
-    console.error("[serve] credential sync failed:", errMessage(err));
-  }
+  await syncServedCredentialSafe("serve");
   const provider = activeProvider();
   // Ground-truth diagnostic: the provider + model + the model's actual API base
   // URL this turn will run against. baseUrl is unambiguous — opencode.ai/zen/go/v1

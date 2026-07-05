@@ -3,50 +3,13 @@ import { PROVIDERS } from "../ai/providers";
 import { config } from "../config";
 import {
   applyServedCredential,
-  type PiCred,
-  readAuthFile,
+  readServedProvidersAt,
+  removeServedCredentialAt,
   type ServedCredential,
   scrubRefreshTokensAt,
+  writeServedProvidersAt,
 } from "./auth-file";
 import { authStorage } from "./storage";
-
-export type ExportedCredential = {
-  provider: string;
-  access: string;
-  refresh: string;
-  expires: number;
-  accountId?: string;
-  enterpriseUrl?: string;
-};
-
-/**
- * Pure: choose the OAuth credential to export from an auth.json record. When
- * `provider` is given, returns EXACTLY that provider (connect-once capture is
- * provider-specific — capturing a github-copilot connect must never grab a
- * different OAuth provider that comes first in the record). Without a provider,
- * returns the first connected OAuth provider. Only OAuth credentials with both
- * access + refresh are exportable (an API key is submitted to the host directly,
- * and a scrubbed entry has refresh=""). Testable without the dataDir singleton.
- */
-export function selectExportCredential(
-  auth: Record<string, PiCred>,
-  provider?: string,
-): ExportedCredential | null {
-  for (const [p, c] of Object.entries(auth)) {
-    if (provider && p !== provider) continue;
-    if (c?.type === "oauth" && c.access && c.refresh) {
-      return {
-        provider: p,
-        access: c.access,
-        refresh: c.refresh,
-        expires: c.expires,
-        accountId: c.accountId,
-        enterpriseUrl: c.enterpriseUrl,
-      };
-    }
-  }
-  return null;
-}
 
 /**
  * Connect-once serve mode (security Gate #2: access-token-only).
@@ -69,6 +32,19 @@ export function selectExportCredential(
  */
 
 const authPathFor = () => join(config.dataDir, "auth.json");
+const servedManifestPathFor = () =>
+  join(config.dataDir, "served-providers.json");
+
+/**
+ * Marker the host sets on its /sandbox/credential 404: the credential store's
+ * own "not connected" answer. Only marked 404s are an authoritative logout —
+ * a bare 404 (an old host, a mistyped control-plane URL, a route-level miss)
+ * must never delete a working credential.
+ */
+const NOT_CONNECTED_HEADER = "x-houston-not-connected";
+
+/** One stalled host/gateway socket must not hang every hydrating route. */
+const SERVE_FETCH_TIMEOUT_MS = 10_000;
 
 /** True when the sandbox is wired to serve a central workspace credential. */
 export function serveModeOn(): boolean {
@@ -90,12 +66,13 @@ export function scrubRefreshTokens(): string[] {
  * provider the next turn uses. Returns the providers that were applied; an empty
  * result means the workspace hasn't connected anything yet.
  *
- * Concurrent callers SHARE one in-flight sync. GET /auth/status now hydrates too
- * (so a brand-new agent's model picker shows the workspace's connected providers
- * before its first turn — HOU-573), and the picker fires one status request PER
- * provider in parallel. Without sharing, those N requests would run N syncs that
- * each rewrite auth.json at once — a write race. A turn and a status poll can also
- * overlap. One sync, one auth.json write, every caller gets the same result.
+ * Concurrent callers SHARE one in-flight sync. GET /auth/status and GET /providers
+ * hydrate too (so a brand-new agent's model picker shows the workspace's connected
+ * providers before its first turn — HOU-573/HOU-680), and the picker fires one
+ * status request PER provider in parallel. Without sharing, those N requests would
+ * run N syncs that each rewrite auth.json at once — a write race. A turn and a
+ * status poll can also overlap. One sync, one auth.json write, every caller gets
+ * the same result.
  */
 let serveSyncInFlight: Promise<string[]> | null = null;
 
@@ -107,35 +84,98 @@ export function syncServedCredential(): Promise<string[]> {
   return serveSyncInFlight;
 }
 
-async function runServedSync(): Promise<string[]> {
-  if (!serveModeOn()) return [];
-  const applied: string[] = [];
-  for (const p of PROVIDERS) {
+/**
+ * Best-effort wrapper for read routes and turn start: hydration must never fail
+ * the request it precedes. A missing connection still surfaces downstream as
+ * the runtime's normal "No provider connected" when nothing was applied.
+ */
+export async function syncServedCredentialSafe(tag: string): Promise<void> {
+  try {
+    await syncServedCredential();
+  } catch (err) {
+    console.error(
+      `[${tag}] credential sync failed:`,
+      err instanceof Error ? err.message : err,
+    );
+  }
+}
+
+type ServeProbe =
+  | { id: string; state: "served"; cred: ServedCredential }
+  | { id: string; state: "not-connected" }
+  | { id: string; state: "error"; detail: string };
+
+/** One provider's central lookup. Never throws — an internal serve hiccup for
+ *  ONE provider must not strand the others. */
+async function probeProvider(id: string): Promise<ServeProbe> {
+  try {
     const res = await fetch(
-      `${config.controlPlaneUrl}/sandbox/credential?provider=${p.id}`,
+      `${config.controlPlaneUrl}/sandbox/credential?provider=${id}`,
       {
         headers: { Authorization: `Bearer ${config.sandboxToken}` },
+        signal: AbortSignal.timeout(SERVE_FETCH_TIMEOUT_MS),
       },
     );
-    if (res.status === 404) continue; // this provider isn't connected
-    if (!res.ok) {
-      // Internal serve hiccup for ONE provider must not strand the others; the
-      // turn still surfaces "No provider connected" downstream if nothing applied.
-      console.error(
-        `[serve] credential ${p.id} (${res.status}): ${await res.text().catch(() => "")}`,
-      );
-      continue;
-    }
-    applyServedCredential(
-      authPathFor(),
-      (await res.json()) as ServedCredential,
-    );
-    applied.push(p.id);
+    if (res.status === 404 && res.headers.get(NOT_CONNECTED_HEADER) === "1")
+      return { id, state: "not-connected" };
+    if (!res.ok)
+      return {
+        id,
+        state: "error",
+        detail: `${res.status}: ${await res.text().catch(() => "")}`,
+      };
+    return {
+      id,
+      state: "served",
+      cred: (await res.json()) as ServedCredential,
+    };
+  } catch (err) {
+    return {
+      id,
+      state: "error",
+      detail: err instanceof Error ? err.message : String(err),
+    };
   }
+}
+
+async function runServedSync(): Promise<string[]> {
+  if (!serveModeOn()) return [];
+  // Probes are independent — run them in parallel so a hydrating route pays one
+  // round-trip, not eleven. The auth.json writes below stay serial.
+  const probes = await Promise.all(PROVIDERS.map((p) => probeProvider(p.id)));
+  const applied: string[] = [];
+  const removed: string[] = [];
+  // Provenance gate: an authoritative "not connected" may only remove providers
+  // this runtime learned from serve mode. A locally-connected credential the
+  // central store never held (the Anthropic setup token, an openai-compatible
+  // local model) is shaped like a served one, so shape alone cannot decide.
+  const manifest = new Set(readServedProvidersAt(servedManifestPathFor()));
+  let manifestDirty = false;
+  for (const probe of probes) {
+    if (probe.state === "served") {
+      applyServedCredential(authPathFor(), probe.cred);
+      applied.push(probe.id);
+      if (!manifest.has(probe.id)) {
+        manifest.add(probe.id);
+        manifestDirty = true;
+      }
+    } else if (probe.state === "not-connected" && manifest.has(probe.id)) {
+      // A refresh-bearing OAuth entry still survives inside
+      // removeServedCredentialAt: that's the device-code connect mid-capture.
+      if (removeServedCredentialAt(authPathFor(), probe.id))
+        removed.push(probe.id);
+      manifest.delete(probe.id);
+      manifestDirty = true;
+    } else if (probe.state === "error") {
+      console.error(`[serve] credential ${probe.id}: ${probe.detail}`);
+    }
+  }
+  if (manifestDirty)
+    writeServedProvidersAt(servedManifestPathFor(), [...manifest]);
   // pi's AuthStorage caches auth.json in memory at startup; a direct write is
   // invisible to hasAuth()/resolveModel() until we re-read it. This is the line
   // that makes a never-connected agent actually see the served credential.
-  if (applied.length) authStorage.reload();
+  if (applied.length || removed.length) authStorage.reload();
   // One-line per-turn diagnostic: which central credentials this serve applied.
   // If a connected provider is absent here (its serve 404'd), its token can't be
   // refreshed centrally — the silent-404 path that left Copilot un-served.
@@ -143,19 +183,4 @@ async function runServedSync(): Promise<string[]> {
     `[serve] applied central credentials: ${applied.join(", ") || "(none)"}`,
   );
   return applied;
-}
-
-/**
- * Export the locally-held credential so the control plane can capture it into
- * the workspace's central store right after a device-code connect. When
- * `provider` is given, exports EXACTLY that provider — connect-once capture is
- * provider-specific, so capturing a github-copilot connect must never grab a
- * different OAuth provider that happens to come first in auth.json (which would
- * leave Copilot un-persisted centrally and 404 every per-turn serve). Without a
- * provider, falls back to the first connected OAuth provider. Returns null when
- * the (requested) provider isn't connected — also the post-scrub state, so
- * capture must run before scrub.
- */
-export function exportCredential(provider?: string): ExportedCredential | null {
-  return selectExportCredential(readAuthFile(authPathFor()), provider);
 }

@@ -34,10 +34,18 @@ export async function handleSandboxCredential(
   const provider = url.searchParams.get("provider") || "openai-codex";
   let cred = await deps.credentials.get(claim.workspaceId, provider);
   if (!cred) {
-    json(res, 404, { error: "workspace not connected" });
+    // The marker makes this 404 the store's own authoritative "not connected"
+    // answer. The runtime only drops served credentials on marked 404s — a bare
+    // 404 (old host, wrong control-plane URL) must never read as a logout.
+    json(
+      res,
+      404,
+      { error: "workspace not connected" },
+      { "x-houston-not-connected": "1" },
+    );
     return true;
   }
-  if (isExpiring(cred)) {
+  if (isExpiring(cred) && cred.refreshToken) {
     try {
       cred = await refreshCredential(cred);
       await deps.credentials.put(cred);

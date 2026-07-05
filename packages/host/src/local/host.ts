@@ -5,6 +5,7 @@ import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
 import { ProxyChannel } from "../channel/proxy";
 import { FileCredentialStore } from "../credentials/file-store";
+import { RemoteCredentialStore } from "../credentials/remote-store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { BusEventHub } from "../events/hub";
 import { ComposioProvider } from "../integrations/composio";
@@ -87,6 +88,17 @@ export interface LocalHostOptions {
   /** Override served capabilities; managed K8s pods use the cloud profile. */
   capabilities?: ControlPlaneDeps["capabilities"];
   /**
+   * Managed pod credential gateway. When present, provider credentials live at
+   * the org level in the gateway (single refresher); the local file is only a
+   * one-time adoption fallback for pods that already captured a legacy credential.
+   */
+  credentials?: {
+    url: string;
+    orgSlug: string;
+    agentSlug: string;
+    podToken: string;
+  };
+  /**
    * Integration wiring (platform model):
    *  - `gatewayUrl`: Houston's cloud host; the desktop forwards with the user's
    *    Supabase session, so no provider key ever lives on this machine.
@@ -136,7 +148,16 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   const bus = new MemoryTurnBus();
   const events = new BusEventHub(bus);
   const vault = new EnvCredentialVault({ secret: opts.token });
-  const credentials = new FileCredentialStore(opts.credentialsPath);
+  const fileCredentials = new FileCredentialStore(opts.credentialsPath);
+  const credentials = opts.credentials
+    ? new RemoteCredentialStore({
+        baseUrl: opts.credentials.url,
+        orgSlug: opts.credentials.orgSlug,
+        agentSlug: opts.credentials.agentSlug,
+        podToken: opts.credentials.podToken,
+        fallback: fileCredentials,
+      })
+    : fileCredentials;
   const controlPlaneUrl = `http://127.0.0.1:${opts.port}`;
 
   const spawner =
