@@ -82,10 +82,16 @@ export async function dispatchTurn(
     throw err;
   }
   const prefix = prefixFor(ws, agent);
-  const { provider, effort: savedEffort } = await activeCloudSettings(
-    deps,
-    prefix,
-  );
+  const { provider: savedProvider, effort: savedEffort } =
+    await activeCloudSettings(deps, prefix);
+  // The routine's pinned provider wins when the cloud runtime can serve it —
+  // the same not-cloud fallback the SAVED provider gets (Anthropic stays
+  // ToS-off in cloud). The pin is per-turn: it never writes settings, so the
+  // agent's saved pick is untouched.
+  const provider =
+    pin?.provider && isCloudProvider(pin.provider)
+      ? pin.provider
+      : savedProvider;
   // The routine's pinned effort wins; otherwise the agent's saved effort is
   // baked into the turn so a normal cloud message honors the picker selection.
   const effort = pin?.effort ?? savedEffort;

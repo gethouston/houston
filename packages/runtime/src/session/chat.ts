@@ -81,8 +81,9 @@ export async function runTurn(
   // where the provider is logged out mid-turn: getConversation returns a CACHED
   // session without re-running resolveModel()'s connect guard, so without this a
   // now-credential-less turn could still reach session.prompt() and hang with no
-  // terminal event.
-  if (!activeProvider()) {
+  // terminal event. A provider-pinned turn (a routine) skips the guard — its
+  // pin is never auth-gated; a failure surfaces as the turn's provider error.
+  if (!pin?.provider && !activeProvider()) {
     publish(id, {
       type: "error",
       data: { message: "No provider connected. Connect an AI provider first." },
@@ -93,7 +94,7 @@ export async function runTurn(
 
   let conv: Conversation;
   try {
-    conv = await getConversation(id);
+    conv = await getConversation(id, pin);
   } catch (err) {
     // e.g. no provider connected — surface it on the conversation's stream.
     publish(id, { type: "error", data: { message: errMessage(err) }, turnId });

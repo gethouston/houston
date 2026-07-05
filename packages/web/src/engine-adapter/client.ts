@@ -36,6 +36,7 @@ import type {
   ProviderStatus,
   RepoSkill,
   Routine,
+  RoutineRun,
   RoutineUpdate,
   SaveSkillRequest,
   SessionStartRequest,
@@ -747,6 +748,23 @@ export class HoustonClient {
     if (!this.cp) throw new Error("Running a routine needs a cloud workspace.");
     await controlPlane.runRoutineNow(this.cp, agentPath, routineId);
     emitLocalEcho("RoutineRunsChanged", { agentPath });
+  }
+  /** Stop an in-flight routine run: the host flips the row terminal, then aborts the turn. */
+  async cancelRoutineRun(
+    agentPath: string,
+    routineId: string,
+    runId: string,
+  ): Promise<RoutineRun> {
+    if (!this.cp)
+      throw new Error("Stopping a routine run needs a cloud workspace.");
+    const run = await controlPlane.cancelRoutineRun(
+      this.cp,
+      agentPath,
+      routineId,
+      runId,
+    );
+    emitLocalEcho("RoutineRunsChanged", { agentPath });
+    return run;
   }
   async createSkill(req: CreateSkillRequest): Promise<void> {
     if (!this.cp) return;

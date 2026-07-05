@@ -24,8 +24,9 @@ import {
 } from "./file-changes";
 import { switchNeedsCompaction } from "./provider-switch";
 
-/** A routine's pinned model/effort for this turn. Absent = keep the session's current. */
+/** A routine's pinned provider/model/effort for this turn. Absent = keep the session's current. */
 export interface TurnPin {
+  provider?: string | null;
   model?: string | null;
   effort?: string | null;
 }
@@ -98,13 +99,15 @@ export async function execTurn(
   // here so the error path can still persist the marker on the partial message.
   let providerSwitch: ChatMessage["providerSwitch"];
   try {
-    // Resolve the model for THIS turn from current settings (a routine pin wins,
-    // else the workspace's active provider/model). Re-resolved every turn so a
-    // mid-conversation provider/model switch — which the web picker applies via
-    // setSettings, NOT a per-turn field — actually takes effect on the cached
-    // session instead of silently continuing on the model it was built with.
+    // Resolve the model for THIS turn from current settings (a routine's
+    // provider/model pin wins, else the workspace's active provider/model).
+    // Re-resolved every turn so a mid-conversation provider/model switch —
+    // which the web picker applies via setSettings, NOT a per-turn field —
+    // actually takes effect on the cached session instead of silently
+    // continuing on the model it was built with; and so a pinned routine keeps
+    // firing on ITS provider no matter what other chats picked in between.
     // A bad model id throws here → surfaces as the turn's error event.
-    const model = resolveModel(pin?.model);
+    const model = resolveModel(pin?.model, pin?.provider);
     const providerChanged = model.provider !== conv.provider;
     const modelChanged = model.id !== conv.model;
     if (providerChanged || modelChanged) {

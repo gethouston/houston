@@ -63,6 +63,12 @@ export class TurnChannel implements RuntimeChannel {
       throw new Error("a turn is already running for this agent");
   }
 
+  async cancelTurn(ctx: ChannelCtx, _conversationId: string): Promise<boolean> {
+    // The per-turn model has one turn slot per agent, owned by the relay —
+    // cancelling the agent's slot IS cancelling the conversation's turn.
+    return this.deps.relay.cancel(ctx.agent.id);
+  }
+
   async teardown(ctx: ChannelCtx): Promise<void> {
     await this.deps.vfs.deletePrefix(prefixFor(ctx.workspace, ctx.agent));
   }

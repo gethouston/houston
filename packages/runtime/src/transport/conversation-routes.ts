@@ -121,12 +121,18 @@ async function handleConversationTitle(ctx: RouteContext, id: string) {
 }
 
 async function handleStartTurn(ctx: RouteContext, id: string) {
-  const { text, nonce, model, effort } = await readJson(ctx.req);
+  const { text, nonce, model, effort, provider } = await readJson(ctx.req);
   if (!text || typeof text !== "string") {
     json(ctx.res, 400, { error: "missing 'text'" });
     return;
   }
-  if (!(await ensureProviderForTurn())) {
+  // A provider-pinned turn (a routine) is never auth-gated on the ACTIVE
+  // provider — the pin names its own; a disconnected pin surfaces as the
+  // turn's provider error. The credential sync inside ensureProviderForTurn
+  // still runs either way so the pinned provider's token is fresh.
+  const pinnedProvider =
+    typeof provider === "string" && provider ? provider : undefined;
+  if (!(await ensureProviderForTurn()) && !pinnedProvider) {
     json(ctx.res, 409, {
       error: "No provider connected. Connect an AI provider first.",
     });
@@ -141,6 +147,7 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
     text,
     typeof nonce === "string" ? nonce : undefined,
     {
+      provider: pinnedProvider,
       model: typeof model === "string" ? model : undefined,
       effort: typeof effort === "string" ? effort : undefined,
     },

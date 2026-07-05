@@ -22,6 +22,12 @@ export interface RunHistoryProps {
   labels?: RunHistoryLabels;
   /** BCP-47 locale for the run timestamps. */
   locale?: string;
+  /**
+   * IANA zone for the run timestamps — the account-wide routines zone, so run
+   * times read in the same clock the schedule + next-run already use. Absent →
+   * the browser's local zone.
+   */
+  timeZone?: string;
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -36,6 +42,7 @@ function formatRunTime(
   iso: string,
   labels: RunHistoryLabels,
   locale: string,
+  timeZone?: string,
 ): string {
   const date = new Date(iso);
   const now = new Date();
@@ -45,6 +52,7 @@ function formatRunTime(
   const time = date.toLocaleTimeString(locale, {
     hour: "numeric",
     minute: "2-digit",
+    ...(timeZone ? { timeZone } : {}),
   });
 
   if (diffDays === 0) return interp(labels.today, { time });
@@ -52,6 +60,7 @@ function formatRunTime(
   const dateStr = date.toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
+    ...(timeZone ? { timeZone } : {}),
   });
   return interp(labels.onDate, { date: dateStr, time });
 }
@@ -73,6 +82,7 @@ export function RunHistory({
   onCancelRun,
   labels = DEFAULT_RUN_HISTORY_LABELS,
   locale = "en-US",
+  timeZone,
 }: RunHistoryProps) {
   const sorted = [...runs].sort(
     (a, b) =>
@@ -119,7 +129,7 @@ export function RunHistory({
               aria-hidden
             />
             <span className="text-xs text-muted-foreground tabular-nums w-36 shrink-0">
-              {formatRunTime(run.started_at, labels, locale)}
+              {formatRunTime(run.started_at, labels, locale, timeZone)}
             </span>
             <span
               className={cn(

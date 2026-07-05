@@ -44,13 +44,19 @@ async function seedReply(
   cid: string,
   content: string,
   ts: number,
+  providerError?: unknown,
 ) {
   await vfs.writeText(
     conversationKey(prefixFor(ws as never, agent as never), cid),
     JSON.stringify({
       messages: [
         { role: "user", content: "go", ts: ts - 1 },
-        { role: "assistant", content, ts },
+        {
+          role: "assistant",
+          content,
+          ts,
+          ...(providerError ? { providerError } : {}),
+        },
       ],
     }),
   );
@@ -153,6 +159,59 @@ test("a reply BEFORE the run started is ignored (shared-conversation prior turns
     workspaceRoot(env.ws, env.agent),
   );
   expect((items[0] as RoutineRun).status).toBe("running"); // still in flight
+});
+
+test("a failed turn's typed provider error surfaces as the run's error immediately", async () => {
+  const r = routine();
+  const env = await setup(r);
+  // A provider failure persists an EMPTY assistant message carrying the typed
+  // error (exec-turn). The run must error NOW with the real reason — not sit
+  // out the 15-minute timeout and report a vague "timed out".
+  await seedReply(
+    env.vfs,
+    env.ws,
+    env.agent,
+    env.run.session_key,
+    "",
+    STARTED.getTime() + 1000,
+    {
+      kind: "unauthenticated",
+      provider: "anthropic",
+      cause: "token_expired",
+      message: "Your Claude session expired. Reconnect to continue.",
+    },
+  );
+
+  await reconcileAgentRuns(deps(env.vfs, NOW), env.ws, env.agent);
+  const { items } = await loadRoutineRuns(
+    env.vfs,
+    workspaceRoot(env.ws, env.agent),
+  );
+  expect((items[0] as RoutineRun).status).toBe("error");
+  expect((items[0] as RoutineRun).summary).toContain("session expired");
+});
+
+test("an empty successful reply completes the run (surfaced 'Nothing to report'), not a timeout", async () => {
+  const r = routine();
+  const env = await setup(r);
+  await seedReply(
+    env.vfs,
+    env.ws,
+    env.agent,
+    env.run.session_key,
+    "",
+    STARTED.getTime() + 1000,
+  );
+
+  await reconcileAgentRuns(deps(env.vfs, NOW), env.ws, env.agent);
+  const { items } = await loadRoutineRuns(
+    env.vfs,
+    workspaceRoot(env.ws, env.agent),
+  );
+  // Parity with runner.rs: an empty response classifies (extract_run_summary →
+  // "Nothing to report"), it does not read as "still in flight".
+  expect((items[0] as RoutineRun).status).toBe("surfaced");
+  expect((items[0] as RoutineRun).summary).toBe("Nothing to report");
 });
 
 test("no reply past the 15-min timeout → run errored, never stuck running", async () => {

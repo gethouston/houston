@@ -117,9 +117,10 @@ export class ProxyChannel implements RuntimeChannel {
   ): Promise<void> {
     // Wake the standing runtime and POST the routine's prompt as a normal
     // message — the runtime starts the turn (202) and persists the reply into
-    // the conversation, exactly as a user message would. The routine's model/
-    // effort pins ride alongside (omitted when absent → the session's current).
-    // A non-2xx throws so the scheduler records an errored run.
+    // the conversation, exactly as a user message would. The routine's
+    // provider/model/effort pins ride alongside (omitted when absent → the
+    // session's current). A non-2xx throws so the scheduler records an
+    // errored run.
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     const res = await fetch(
       `${endpoint.baseUrl}/conversations/${encodeURIComponent(conversationId)}/messages`,
@@ -135,6 +136,7 @@ export class ProxyChannel implements RuntimeChannel {
         },
         body: JSON.stringify({
           text,
+          ...(pin?.provider ? { provider: pin.provider } : {}),
           ...(pin?.model ? { model: pin.model } : {}),
           ...(pin?.effort ? { effort: pin.effort } : {}),
         }),
@@ -145,6 +147,30 @@ export class ProxyChannel implements RuntimeChannel {
         `runtime ${res.status}: ${await res.text().catch(() => "")}`,
       );
     }
+  }
+
+  async cancelTurn(ctx: ChannelCtx, conversationId: string): Promise<boolean> {
+    // The runtime's own cancel route aborts the in-flight turn; `cancelled`
+    // reports whether anything was actually running. A non-2xx throws — the
+    // caller has already marked the run cancelled, so this only surfaces the
+    // abort failure, it never resurrects the run.
+    const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
+    const res = await fetch(
+      `${endpoint.baseUrl}/conversations/${encodeURIComponent(conversationId)}/cancel`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${endpoint.token}` },
+      },
+    );
+    if (!res.ok) {
+      throw new Error(
+        `runtime ${res.status}: ${await res.text().catch(() => "")}`,
+      );
+    }
+    const body = (await res.json().catch(() => ({}))) as {
+      cancelled?: boolean;
+    };
+    return body.cancelled === true;
   }
 
   async teardown(ctx: ChannelCtx): Promise<void> {

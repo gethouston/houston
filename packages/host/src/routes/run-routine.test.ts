@@ -36,6 +36,9 @@ class SpyChannel implements RuntimeChannel {
     this.fired.push({ conversationId, text });
     if (this.throwMessage) throw new Error(this.throwMessage);
   }
+  async cancelTurn() {
+    return false;
+  }
   async teardown() {}
   async captureCredential() {
     return { ok: true as const, provider: "openai-codex" };
@@ -186,6 +189,33 @@ test("a fire failure answers 502 and marks the run errored — never stuck runni
   expect(run.status).toBe("error");
   expect(run.summary).toContain("runtime unreachable");
   expect(run.completed_at).toBeTruthy();
+});
+
+test("a second run while one is in flight answers 409 and fires nothing (in-flight gate)", async () => {
+  const routine = await makeRoutine();
+  const first = await fetch(
+    `${base}/agents/${agentId}/routines/${routine.id}/run`,
+    { method: "POST", headers: auth("alice") },
+  );
+  expect(first.status).toBe(200);
+
+  // The first run is still `running` (nothing reconciled it) — parity with the
+  // Rust create_if_routine_idle Conflict.
+  const second = await fetch(
+    `${base}/agents/${agentId}/routines/${routine.id}/run`,
+    { method: "POST", headers: auth("alice") },
+  );
+  expect(second.status).toBe(409);
+  expect(((await second.json()) as { error: string }).error).toContain(
+    "already running",
+  );
+  expect(channel.fired).toHaveLength(1);
+
+  const ws = await store.getOrCreatePersonalWorkspace("alice");
+  const agent = (await store.listAgents(ws.id))[0];
+  if (!agent) throw new Error("expected at least one agent to exist");
+  const { items } = await loadRoutineRuns(vfs, workspaceRoot(ws, agent));
+  expect(items).toHaveLength(1); // no second run row
 });
 
 test("an unknown routine 404s, never fires", async () => {

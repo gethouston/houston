@@ -304,9 +304,26 @@ export function safeGetModel(
  * the provider default (see safeGetModel) rather than hard-failing the turn. The
  * OpenAI-compatible provider isn't a pi KnownProvider, so it builds its model by
  * hand instead.
+ *
+ * `providerOverride` (a routine's pinned provider) wins over the saved active
+ * provider and is never auth-gated — parity with the Rust engine's
+ * resolve_provider_with_overrides: a disconnected pin surfaces as this turn's
+ * provider error, never a silent switch to whatever provider happens to be
+ * active. It is per-turn only: nothing here writes settings.json, so a routine
+ * firing on its pinned provider never moves the agent's saved pick.
  */
-export function resolveModel(override?: string | null): Model<Api> {
-  const provider = activeProvider();
+export function resolveModel(
+  override?: string | null,
+  providerOverride?: string | null,
+): Model<Api> {
+  let provider: ProviderId | null;
+  if (providerOverride) {
+    if (!isProvider(providerOverride))
+      throw new Error(`unknown provider: ${providerOverride}`);
+    provider = providerOverride;
+  } else {
+    provider = activeProvider();
+  }
   if (!provider)
     throw new Error("No provider connected. Connect an AI provider first.");
   // The OpenAI-compatible (local) provider isn't a pi KnownProvider, so its

@@ -17,6 +17,7 @@ import {
 import type { HoustonEvent, NewRoutine } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
+import { hostProvider } from "../providers";
 import type { Vfs } from "../vfs";
 import { handleActivitiesData } from "./agent-data-activities";
 import { json, readJson } from "./http";
@@ -25,6 +26,18 @@ import { json, readJson } from "./http";
 // don't carry a WorkspacePaths instance. Production handlers use the injected
 // `paths` so the local profile gets its own layout. See paths.ts.
 export { workspaceRoot } from "../paths";
+
+/**
+ * Reject a provider pin naming a provider this host has never heard of —
+ * otherwise the typo saves and every fired run errors. Model ids are validated
+ * at dispatch (the catalog is the runtime's).
+ */
+const pinError = (body: Record<string, unknown>): string | null =>
+  typeof body.provider === "string" &&
+  body.provider &&
+  !hostProvider(body.provider)
+    ? `unknown provider: ${body.provider}`
+    : null;
 
 /** Each typed family's reactivity event — emitted after a successful mutation. */
 const FAMILY_EVENT: Record<string, (agentPath: string) => HoustonEvent> = {
@@ -119,6 +132,11 @@ export async function handleAgentData(
         json(res, 400, { error: `invalid schedule: ${scheduleErr}` });
         return true;
       }
+      const providerErr = pinError(body);
+      if (providerErr) {
+        json(res, 400, { error: providerErr });
+        return true;
+      }
       const { items } = await loadRoutines(vfs, root);
       const routine = createRoutine(
         input,
@@ -151,6 +169,11 @@ export async function handleAgentData(
         const scheduleErr = validateSchedule(next.schedule, accountTz);
         if (scheduleErr) {
           json(res, 400, { error: `invalid schedule: ${scheduleErr}` });
+          return true;
+        }
+        const providerErr = pinError(update);
+        if (providerErr) {
+          json(res, 400, { error: providerErr });
           return true;
         }
         await saveRoutines(vfs, root, upsertById(items, next));

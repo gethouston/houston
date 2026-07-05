@@ -8,7 +8,7 @@ import {
   saveRoutineRuns,
   upsertById,
 } from "@houston/domain";
-import type { ChatMessage } from "@houston/protocol";
+import type { ChatMessage, ProviderError } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import { conversationKey, type WorkspacePaths } from "../paths";
@@ -21,18 +21,30 @@ interface StoredConversation {
   messages: ChatMessage[];
 }
 
-/** The agent's reply for this run: the last assistant message after the run started. */
+/**
+ * The agent's reply for this run: the last assistant message after the run
+ * started. Returns the MESSAGE (not just its text) so the caller can read a
+ * persisted providerError — a failed turn appends an empty-content assistant
+ * message carrying the typed failure, and that emptiness must classify as
+ * "the turn answered (badly)", never "still in flight".
+ */
 function replyAfter(
   conversation: StoredConversation | null,
   startedAtMs: number,
-): string | null {
+): ChatMessage | null {
   if (!conversation) return null;
   for (let i = conversation.messages.length - 1; i >= 0; i--) {
     const m = conversation.messages[i];
     if (!m) continue;
-    if (m.role === "assistant" && m.ts >= startedAtMs) return m.content;
+    if (m.role === "assistant" && m.ts >= startedAtMs) return m;
   }
   return null;
+}
+
+/** A run-row-sized reason from the turn's typed provider failure. */
+function providerErrorSummary(err: ProviderError): string {
+  const text = err.kind === "unknown" ? err.raw_excerpt : err.message;
+  return text.trim() || `provider error (${err.kind})`;
 }
 
 export interface ReconcileDeps {
@@ -98,10 +110,26 @@ export async function reconcileAgentRuns(
     }
 
     if (!reply) continue; // narrowing: timedOut is false here, so reply must be set
+
+    // A failed turn (auth, rate limit, bad pin…) persists its typed provider
+    // error on the assistant message — surface THAT as the run's error right
+    // now (parity with the Rust dispatcher's visible run errors) instead of
+    // classifying the empty reply or waiting out the 15-minute timeout.
+    if (reply.providerError) {
+      nextRuns = upsertById(nextRuns, {
+        ...run,
+        status: "error",
+        summary: providerErrorSummary(reply.providerError),
+        completed_at: deps.now().toISOString(),
+      });
+      changed = true;
+      continue;
+    }
+
     const done = completeRoutineRun(
       run,
       routine,
-      reply,
+      reply.content,
       deps.now().toISOString(),
     );
     if (done.status === "surfaced") {

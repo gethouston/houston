@@ -16,8 +16,9 @@ import type { EventHub } from "../events/hub";
 import { CloudPaths, type WorkspacePaths } from "../paths";
 import type { RuntimeChannel, WorkspaceStore } from "../ports";
 import { isApiKeyProvider } from "../providers";
+import { cancelRoutineRun } from "../schedule/cancel";
 import { ChannelRoutineFirer } from "../schedule/firer";
-import { fireRoutineRun } from "../schedule/run";
+import { fireRoutineRun, RoutineBusyError } from "../schedule/run";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
 import type { Vfs } from "../vfs";
@@ -453,10 +454,63 @@ export async function handleAgents(
       );
       json(res, 200, { ok: true, runId });
     } catch (err) {
-      json(res, 502, {
+      // A run already in flight is a 409 the UI can toast plainly (the Rust
+      // engine's Conflict); anything else is a real fire failure.
+      json(res, err instanceof RoutineBusyError ? 409 : 502, {
         error: err instanceof Error ? err.message : String(err),
       });
     }
+    return true;
+  }
+
+  // Stop an in-flight routine run: the row goes terminal first, then the live
+  // turn is aborted through the channel (schedule/cancel.ts). Must precede the
+  // generic dispatch — the runtime has no routine routes.
+  const runCancel = path.match(
+    /^\/agents\/([^/]+)\/routines\/([^/]+)\/runs\/([^/]+)\/cancel$/,
+  );
+  if (runCancel && method === "POST") {
+    const agentId = runCancel[1] ? decodeURIComponent(runCancel[1]) : undefined;
+    const routineId = runCancel[2]
+      ? decodeURIComponent(runCancel[2])
+      : undefined;
+    const runId = runCancel[3] ? decodeURIComponent(runCancel[3]) : undefined;
+    if (!agentId || !routineId || !runId) {
+      json(res, 404, { error: "not found" });
+      return true;
+    }
+    const authz = await authorizeAgent(deps, userId, agentId);
+    if (!authz.ok) {
+      json(res, authz.status, { error: authz.reason });
+      return true;
+    }
+    if (!deps.vfs) {
+      json(res, 503, { error: "agent data not configured" });
+      return true;
+    }
+    const channel = channelFor(deps, authz.workspace);
+    if (!channel) {
+      noChannel(res, authz.workspace.runtime);
+      return true;
+    }
+    const result = await cancelRoutineRun(
+      {
+        vfs: deps.vfs,
+        paths: deps.paths ?? DEFAULT_PATHS,
+        channel,
+        events: deps.events,
+        now: () => new Date(),
+      },
+      authz.workspace,
+      authz.agent,
+      routineId,
+      runId,
+    );
+    if (result.status === "not_found")
+      json(res, 404, { error: "run not found" });
+    else if (result.status === "not_running")
+      json(res, 409, { error: "run is not running" });
+    else json(res, 200, result.run);
     return true;
   }
 

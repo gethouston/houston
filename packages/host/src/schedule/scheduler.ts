@@ -6,7 +6,7 @@ import type { WorkspacePaths } from "../paths";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
 import { reconcileAgentRuns } from "./reconcile";
-import { fireRoutineRun } from "./run";
+import { fireRoutineRun, RoutineBusyError } from "./run";
 
 /** A due routine to run, with its resolved conversation + run id. */
 export interface FiringJob {
@@ -166,6 +166,9 @@ export class Scheduler {
         routine,
       );
     } catch (err) {
+      // Expected when the previous run is still in flight — the instant is
+      // skipped (its dedup lock is already burned), not an error.
+      if (err instanceof RoutineBusyError) return;
       console.error(
         `[scheduler] routine ${routine.id} fire failed:`,
         err instanceof Error ? err.message : err,
