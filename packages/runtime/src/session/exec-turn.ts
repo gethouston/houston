@@ -16,7 +16,7 @@ import {
 import { type ActingContext, runWithActingContext } from "./acting-context";
 import { decodeActingAuthor, framePrompt } from "./attribution";
 import { publish } from "./bus";
-import type { Conversation } from "./conversation-cache";
+import { type Conversation, switchBackendIfNeeded } from "./conversation-cache";
 import {
   diffSnapshots,
   type FileSnapshot,
@@ -84,16 +84,23 @@ export async function execTurn(
   // `done` that would settle the chat as a success on top of the error.
   let providerError: ProviderError | undefined;
 
-  const unsub = conv.session.subscribe((wire: WireEvent) => {
-    if (wire.type === "text") assistantText += wire.data;
-    else if (wire.type === "usage") usage = wire.data;
-    else if (wire.type === "tool_start") tools.push({ name: wire.data.name });
-    else if (wire.type === "tool_end") {
-      const t = tools[tools.length - 1];
-      if (t) t.isError = wire.data.isError;
-    } else if (wire.type === "provider_error") providerError = wire.data;
-    publish(id, { ...wire, turnId });
-  });
+  // Subscribes THIS turn's session once it is settled on the correct backend
+  // (a cross-backend switch below rebuilds `conv.session`, so the subscription
+  // must attach to the final session, not the one we entered with). Undefined
+  // until then; the finally guards on it.
+  let unsub: (() => void) | undefined;
+  const subscribeSession = () => {
+    unsub = conv.session.subscribe((wire: WireEvent) => {
+      if (wire.type === "text") assistantText += wire.data;
+      else if (wire.type === "usage") usage = wire.data;
+      else if (wire.type === "tool_start") tools.push({ name: wire.data.name });
+      else if (wire.type === "tool_end") {
+        const t = tools[tools.length - 1];
+        if (t) t.isError = wire.data.isError;
+      } else if (wire.type === "provider_error") providerError = wire.data;
+      publish(id, { ...wire, turnId });
+    });
+  };
 
   // Set inside the try when this turn crosses a provider boundary; declared out
   // here so the error path can still persist the marker on the partial message.
@@ -110,14 +117,40 @@ export async function execTurn(
     const model = resolveModel(pin?.model, pin?.provider);
     const providerChanged = model.provider !== conv.provider;
     const modelChanged = model.id !== conv.model;
-    if (providerChanged || modelChanged) {
+    // COMPLIANCE GATE: when this turn's model crosses a BACKEND boundary
+    // (openai/pi → anthropic/Claude SDK, or the reverse), REBUILD the session on
+    // the correct backend rather than `setModel` a foreign model into the live
+    // one — the harness-spoofing route the whole backend seam exists to prevent.
+    // A same-backend change falls through to the cheap `setModel` fast path below.
+    const { rebuilt, preTokens: rebuiltPreTokens } =
+      await switchBackendIfNeeded(conv, id, model);
+    // Attach the turn's listeners to the SETTLED session (the rebuilt one when we
+    // crossed a backend, else the session we entered with).
+    subscribeSession();
+    if (rebuilt) {
+      // Cross-backend rebuild: the new session starts fresh (no in-memory history
+      // to compact — each backend owns its own store), so nothing is summarized.
+      // Still announce the boundary so the chat draws a divider + resets its
+      // window estimate; persisted on the assistant message below for reload.
+      providerSwitch = {
+        provider: model.provider,
+        summarized: false,
+        pre_tokens: rebuiltPreTokens,
+      };
+      publish(id, {
+        type: "provider_switched",
+        data: providerSwitch,
+        turnId,
+      });
+    } else if (providerChanged || modelChanged) {
       // The leaving provider's last context fill, captured BEFORE the switch so
       // a PROVIDER change can be sized against the new model's window.
       const preTokens = providerChanged
         ? (conv.session.getContextUsage()?.tokens ?? null)
         : null;
       // Re-point the live session; pi keeps the full message history and swaps
-      // only the model (cross-provider works — the Model carries its provider).
+      // only the model (same backend — a same-backend cross-provider change,
+      // e.g. openai→google, both ride pi).
       await conv.session.setModel(model);
       if (providerChanged) {
         // Mid-session PROVIDER switch. Carry the conversation verbatim when it
@@ -233,6 +266,8 @@ export async function execTurn(
     publish(id, { type: "error", data: { message: errMessage(err) }, turnId });
   } finally {
     conv.turnId = undefined;
-    unsub();
+    // Undefined only if resolveModel/switchBackendIfNeeded threw before we
+    // subscribed (a bad pin) — nothing to tear down in that case.
+    unsub?.();
   }
 }

@@ -8,7 +8,7 @@ import {
   registerBackend,
   setDefaultBackend,
 } from "../backends/registry";
-import type { HarnessSession } from "../backends/types";
+import type { HarnessSession, ResolvedModel } from "../backends/types";
 import { config } from "../config";
 import type { TurnPin } from "./exec-turn";
 import { SYSTEM_PROMPT } from "./resource-loader";
@@ -117,6 +117,15 @@ export type Conversation = {
   provider: string;
   model: string;
   /**
+   * The id of the backend that BUILT the live session (pi by default, `anthropic`
+   * for the Claude Agent SDK). A mid-conversation provider switch that crosses a
+   * backend boundary must REBUILD the session on the new backend — never forward
+   * a foreign model into the live one via `setModel` (that would route an
+   * anthropic turn through pi's in-process client, or an openai id through the
+   * Claude subprocess). Compared against `backendFor(model.provider).id` each turn.
+   */
+  backendId: string;
+  /**
    * The wire id of the turn EXECUTING right now (undefined between turns).
    * cancelTurn stamps it on the "Stopped by user" terminal frame so the stop
    * settles the turn it actually interrupts, not whatever a client guesses.
@@ -142,7 +151,8 @@ export async function getConversation(
   // Resolve the provider's backend (pi by default) and open the conversation's
   // session through it. The backend rehydrates prior turns from disk when the
   // conversation already exists — see createPiBackend.
-  const session = await backendFor(builtModel.provider).createSession({
+  const backend = backendFor(builtModel.provider);
+  const session = await backend.createSession({
     conversationId: id,
     model: builtModel,
   });
@@ -152,7 +162,49 @@ export async function getConversation(
     queue: Promise.resolve(),
     provider: builtModel.provider,
     model: builtModel.id,
+    backendId: backend.id,
   };
   conversations.set(id, conv);
   return conv;
+}
+
+/**
+ * COMPLIANCE GATE: ensure a conversation's live session sits on the backend the
+ * resolved model requires, REBUILDING it when a mid-conversation switch crosses a
+ * backend boundary (e.g. openai/pi → anthropic/Claude SDK, or the reverse).
+ *
+ * A foreign model must NEVER be `setModel`'d into the live session — that would
+ * forward an anthropic model into pi's in-process Anthropic client (the
+ * harness-spoofing request Anthropic blocks) or an openai id through the Claude
+ * subprocess. So the old session is disposed and a fresh one opened via the
+ * correct backend. The new backend starts WITHOUT the old in-memory history —
+ * each backend owns its own session store and the Houston transcript is the UI
+ * source of truth, so history is not (and cannot be) replayed across backends.
+ *
+ * A same-backend change (pi sonnet→opus, or claude model→model) is left alone —
+ * the caller keeps the cheap `setModel` fast path that preserves the live session.
+ *
+ * Returns `rebuilt: true` with the leaving session's last context fill (for the
+ * `provider_switched` frame) when it rebuilt, else `rebuilt: false`.
+ */
+export async function switchBackendIfNeeded(
+  conv: Conversation,
+  conversationId: string,
+  model: ResolvedModel,
+): Promise<{ rebuilt: boolean; preTokens: number | null }> {
+  const backend = backendFor(model.provider);
+  if (backend.id === conv.backendId) return { rebuilt: false, preTokens: null };
+
+  // Capture the leaving provider's context fill BEFORE tearing the session down,
+  // so the switch can still be sized against the new model's window downstream.
+  const preTokens = conv.session.getContextUsage()?.tokens ?? null;
+  conv.session.dispose();
+  conv.session = await backend.createSession({
+    conversationId,
+    model,
+  });
+  conv.backendId = backend.id;
+  conv.provider = model.provider;
+  conv.model = model.id;
+  return { rebuilt: true, preTokens };
 }

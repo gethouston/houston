@@ -114,6 +114,36 @@ test("Glob / Grep: an in-workspace base path is allowed, an escape denied", asyn
   );
 });
 
+test("Glob: an absolute pattern with no path is denied", async () => {
+  // Regression: Glob's real target is its PATTERN. With no `path`, an absolute
+  // pattern must be clamped, not fail open to an out-of-workspace read.
+  const can = makeCanUseTool(workspace());
+  expect(
+    (await decide(can, "Glob", { pattern: "/etc/**/*.conf" })).behavior,
+  ).toBe("deny");
+});
+
+test("Glob: a `..`-escaping pattern with no path is denied", async () => {
+  const can = makeCanUseTool(workspace());
+  expect(
+    (await decide(can, "Glob", { pattern: "../../../../etc/*" })).behavior,
+  ).toBe("deny");
+});
+
+test("Grep: an absolute pattern with no path is denied", async () => {
+  const can = makeCanUseTool(workspace());
+  expect(
+    (await decide(can, "Grep", { pattern: "/etc/**/*.conf" })).behavior,
+  ).toBe("deny");
+});
+
+test("Glob: a benign relative pattern with no path is allowed", async () => {
+  const can = makeCanUseTool(workspace());
+  expect((await decide(can, "Glob", { pattern: "**/*.ts" })).behavior).toBe(
+    "allow",
+  );
+});
+
 test("Bash: a cwd-bound command is allowed, an absolute/home escape denied", async () => {
   const can = makeCanUseTool(workspace());
   expect(
@@ -124,6 +154,11 @@ test("Bash: a cwd-bound command is allowed, an absolute/home escape denied", asy
   ).toBe("deny");
   expect(
     (await decide(can, "Bash", { command: "cat ~/secret" })).behavior,
+  ).toBe("deny");
+  // Regression: `..` is relative but still escapes — must not fail open.
+  expect(
+    (await decide(can, "Bash", { command: "cat ../../../../etc/passwd" }))
+      .behavior,
   ).toBe("deny");
 });
 
