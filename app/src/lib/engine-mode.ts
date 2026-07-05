@@ -78,6 +78,17 @@ export function providerLoginUsesDeviceAuthByDefault(
   return false;
 }
 
+/** Gate for the desktop Codex/OpenAI zero-code loopback relay: ON only for a
+ * REMOTE engine, where pi's own 1455 is in the pod so the desktop's LOCAL 1455
+ * can't collide. Co-located/web keep existing flows; collision rationale
+ * (#615/#620) is at the relay call sites (codex-loopback.ts). */
+export function codexUsesLoopbackRelay(
+  env: Pick<EngineModeEnv, "VITE_NEW_ENGINE_URL" | "VITE_HOSTED_ENGINE_URL">,
+  client: { isTauri: boolean },
+): boolean {
+  return client.isTauri && providerLoginUsesDeviceAuthByDefault(env, client);
+}
+
 /** How the desktop authenticates to the hosted engine (`VITE_HOSTED_ENGINE_URL`). */
 export type HostedAuthMode =
   /** Supabase Google login: prompt sign-in, send the session token as bearer. */

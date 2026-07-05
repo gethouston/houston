@@ -1,6 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  codexUsesLoopbackRelay,
   controlPlaneBuild,
   hostedAuthMode,
   hostedGateState,
@@ -134,6 +135,60 @@ describe("isLoopbackHostUrl + the co-located dev URL case", () => {
       ),
       false,
     );
+  });
+});
+
+// The desktop Codex/OpenAI loopback relay is re-introduced but gated to the
+// REMOTE-engine cases ONLY. When the engine is CO-LOCATED, pi binds 1455
+// in-process on THIS machine — an app-side bind would lose the race (the #615
+// collision, reverted in #620). Relay ON is therefore exactly the set where
+// topology would otherwise force device-code, and OFF for every co-located /
+// web case. The two OFF cases below are the regression guard proving the #620
+// collision cannot recur.
+describe("codexUsesLoopbackRelay (B2 truth table)", () => {
+  it("relay OFF for the local sidecar desktop (tauri, no URLs — pi owns 1455)", () => {
+    strictEqual(codexUsesLoopbackRelay({}, { isTauri: true }), false);
+  });
+
+  it("relay OFF for a loopback VITE_NEW_ENGINE_URL (co-located dev — pi owns 1455)", () => {
+    strictEqual(
+      codexUsesLoopbackRelay(
+        { VITE_NEW_ENGINE_URL: "http://127.0.0.1:4318" },
+        { isTauri: true },
+      ),
+      false,
+    );
+  });
+
+  it("relay ON for the hosted gateway (remote — pi's 1455 is in the pod)", () => {
+    strictEqual(
+      codexUsesLoopbackRelay(
+        { VITE_HOSTED_ENGINE_URL: "https://cloud.example" },
+        { isTauri: true },
+      ),
+      true,
+    );
+  });
+
+  it("relay ON for a non-loopback VITE_NEW_ENGINE_URL (remote host)", () => {
+    strictEqual(
+      codexUsesLoopbackRelay(
+        { VITE_NEW_ENGINE_URL: "https://houston.example.com/engine" },
+        { isTauri: true },
+      ),
+      true,
+    );
+  });
+
+  it("relay OFF for a web client (can't bind a local port — device-code)", () => {
+    strictEqual(
+      codexUsesLoopbackRelay(
+        { VITE_HOSTED_ENGINE_URL: "https://cloud.example" },
+        { isTauri: false },
+      ),
+      false,
+    );
+    strictEqual(codexUsesLoopbackRelay({}, { isTauri: false }), false);
   });
 });
 

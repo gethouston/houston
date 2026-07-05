@@ -25,6 +25,7 @@ import { COMPOSIO_ALREADY_CONNECTED_KIND } from "./composio-already-connected";
 import { getEngine, isRemoteEngine } from "./engine";
 import { engineCallSurface } from "./engine-call-policy";
 import {
+  codexUsesLoopbackRelay,
   isLoopbackHostUrl,
   providerLoginUsesDeviceAuthByDefault,
 } from "./engine-mode";
@@ -1037,26 +1038,44 @@ export const tauriProvider = {
         getEngine().providerLogin(provider, {
           deviceAuth:
             opts?.deviceAuth ??
-            // The browser/loopback flow needs the runtime CO-LOCATED with the
-            // user's browser: pi binds the provider's fixed localhost callback
-            // port in-process and completes the exchange itself, so the client
-            // only opens the URL. A truly remote engine (hosted cloud, a VPS,
-            // or the HOU-621 runtime `remote` choice with no baked env — hence
-            // the isRemoteEngine() OR) must use device code instead. A LOOPBACK
-            // `VITE_NEW_ENGINE_URL` (the dev two-terminal setup) is co-located
-            // despite being URL-configured, so it keeps the browser flow like
-            // the packaged host-sidecar build.
-            ((isRemoteEngine() &&
-              !isLoopbackHostUrl(
-                import.meta.env?.VITE_NEW_ENGINE_URL as string | undefined,
-              )) ||
-              providerLoginUsesDeviceAuthByDefault(
-                (import.meta.env ?? {}) as {
-                  VITE_NEW_ENGINE_URL?: string;
-                  VITE_HOSTED_ENGINE_URL?: string;
-                },
-                { isTauri: osIsTauri() },
-              )),
+            // Codex/OpenAI on a Tauri desktop against a REMOTE engine uses the
+            // zero-code loopback relay (`codexUsesLoopbackRelay`): the desktop
+            // binds its OWN local 127.0.0.1:1455 and relays the callback code,
+            // so it wants an authorize URL (deviceAuth:false), never a device
+            // code. pi's own 1455 is in the pod, so no collision. Co-located
+            // desktop (local sidecar / loopback dev URL) is NOT a relay case —
+            // pi owns 1455 there and its own browser flow already resolves to
+            // deviceAuth:false via the topology default below.
+            (provider === "openai" &&
+            codexUsesLoopbackRelay(
+              (import.meta.env ?? {}) as {
+                VITE_NEW_ENGINE_URL?: string;
+                VITE_HOSTED_ENGINE_URL?: string;
+              },
+              { isTauri: osIsTauri() },
+            )
+              ? false
+              : // The browser/loopback flow needs the runtime CO-LOCATED with
+                // the user's browser: pi binds the provider's fixed localhost
+                // callback port in-process and completes the exchange itself, so
+                // the client only opens the URL. A truly remote engine (hosted
+                // cloud, a VPS, or the HOU-621 runtime `remote` choice with no
+                // baked env — hence the isRemoteEngine() OR) must use device
+                // code instead. A LOOPBACK `VITE_NEW_ENGINE_URL` (the dev
+                // two-terminal setup) is co-located despite being URL-configured,
+                // so it keeps the browser flow like the packaged host-sidecar
+                // build.
+                (isRemoteEngine() &&
+                  !isLoopbackHostUrl(
+                    import.meta.env?.VITE_NEW_ENGINE_URL as string | undefined,
+                  )) ||
+                providerLoginUsesDeviceAuthByDefault(
+                  (import.meta.env ?? {}) as {
+                    VITE_NEW_ENGINE_URL?: string;
+                    VITE_HOSTED_ENGINE_URL?: string;
+                  },
+                  { isTauri: osIsTauri() },
+                )),
           enterpriseDomain: opts?.enterpriseDomain,
         }),
       undefined,
