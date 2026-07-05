@@ -319,6 +319,10 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     integrations,
     integrationGrants,
     agentConfigs,
+    // Managed pods record the gateway-minted acting identity as a routine's
+    // `created_by` (C2 — the sub the gateway re-authorizes at fire time);
+    // the desktop ignores the header and keeps stamping the local owner.
+    gatewayFronted: opts.gatewayFronted ?? false,
     // The desktop shell reveals/opens agent folders in the OS file manager;
     // give it the REAL directory (the agent id is a route key, not a path).
     agentDir: (_ws, a) => agentDir(a.id),

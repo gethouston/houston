@@ -72,9 +72,12 @@ export async function handleAgentData(
   req: IncomingMessage,
   res: ServerResponse,
   emit?: (event: HoustonEvent) => void,
-  // The authenticated caller's id — recorded as a new routine's `created_by`
-  // so a fired routine turn can act as its creator (C2). Absent in callers that
-  // don't carry identity (local single-user); the field then stays absent.
+  // The verified acting identity of THIS request (C2) — recorded as a new
+  // routine's `created_by` and re-stamped on PATCH, so a fired routine turn
+  // acts as whoever last shaped it. Gateway-fronted pods pass the gateway-
+  // minted acting sub (the id the gateway re-authorizes at fire time, HOU-689);
+  // the desktop passes its local owner. Absent in callers that don't carry
+  // identity; the field then stays as-is (absent on create).
   createdBy?: string,
 ): Promise<boolean> {
   const m = rest.match(
@@ -163,7 +166,7 @@ export async function handleAgentData(
       }
       if (method === "PATCH") {
         const update = await readJson(req);
-        const next = applyRoutineUpdate(current, update, nowIso);
+        const next = applyRoutineUpdate(current, update, nowIso, createdBy);
         // A PATCH may change the schedule; validate it against the account-wide
         // zone (HOU-470: no per-routine timezone).
         const accountTz = await getPreference(

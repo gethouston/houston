@@ -38,6 +38,13 @@ export interface AgentRouteDeps {
    * agent id is a route key, not a path (HOU-677). Cloud deployments omit it.
    */
   agentDir?: (ws: Workspace, agent: Agent) => string;
+  /**
+   * True only when a trusted gateway fronts EVERY request (the managed cloud
+   * pod) — mirrors ControlPlaneDeps.gatewayFronted. Routine writes then take
+   * their recorded identity from the gateway-minted acting-as header instead
+   * of this host's single local user id.
+   */
+  gatewayFronted?: boolean;
 }
 
 export const DEFAULT_PATHS = new CloudPaths();
