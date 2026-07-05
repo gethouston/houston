@@ -15,57 +15,103 @@
   "reconnectNotice": "We upgraded how apps connect to make it more secure. Please reconnect your apps once; Houston no longer keeps any long-lived key for them.",
   "reconnectDismiss": "Got it",
   "connected": {
-    "title": "Connected",
-    "count_one": "{{count}} app",
-    "count_other": "{{count}} apps",
-    "dotAria": "Connected",
-    "menu": {
-      "aria": "Options for {{name}}",
-      "reconnect": "Reconnect",
-      "disconnect": "Disconnect"
-    },
     "disconnect": {
       "confirmTitle": "Disconnect {{name}}?",
       "confirmBody": "Your agent will lose access to {{name}}. You can reconnect it anytime.",
       "confirmAction": "Disconnect",
       "cancel": "Cancel"
-    },
-    "statusPending": "Finish connecting in your browser...",
-    "statusError": "Needs reconnecting"
+    }
   },
   "browse": {
-    "title": "Browse all apps",
-    "count_one": "{{count}} app",
-    "count_other": "{{count}} apps",
-    "searchPlaceholder": "Search apps...",
     "allCategories": "All categories",
     "searchCategories": "Search categories...",
     "noCategoryResults": "No matching categories.",
-    "noResults": "No matching apps found.",
-    "loadMoreWithRemaining": "Load more ({{count}} remaining)",
-    "connectTitle": "Connect {{name}}"
+    "loadMoreWithRemaining": "Load more ({{count}} remaining)"
   },
   "connectResult": {
     "timeout": "The connection didn't finish. Please try again.",
     "failed": "The app couldn't be connected. Please try again."
   },
   "grants": {
-    "granted": {
-      "title": "This agent can use",
-      "subtitle": "Apps this agent is allowed to act on. Turn one off to remove it here.",
-      "empty": "This agent can't use any apps yet. Allow one below, or connect a new app.",
-      "revoke": "Stop letting this agent use {{name}}"
-    },
-    "available": {
-      "title": "Your other connected apps",
-      "subtitle": "Connected apps this agent can't use yet. Turn one on to allow it here.",
-      "allow": "Allow this agent to use {{name}}"
-    },
     "disconnect": {
-      "menu": "Disconnect everywhere",
       "confirmTitle": "Disconnect {{name}} everywhere?",
       "confirmBody": "This removes {{name}} for all of your agents, not just this one. You can reconnect it anytime.",
       "confirmAction": "Disconnect everywhere"
     }
+  },
+  "status": {
+    "active": "Connected",
+    "pending": "Finishing up",
+    "error": "Needs reconnecting"
+  },
+  "waiting": {
+    "title": "Finish connecting {{app}}",
+    "body": "We opened {{app}} in your browser. Sign in there, then come back here.",
+    "reopen": "Reopen in browser",
+    "check": "I have finished",
+    "cancel": "Cancel"
+  },
+  "pendingRecovery": {
+    "body": "You started connecting {{app}} but did not finish signing in.",
+    "finish": "Finish connecting",
+    "remove": "Remove"
+  },
+  "errorRecovery": {
+    "body": "{{app}} needs to be connected again.",
+    "reconnect": "Reconnect",
+    "remove": "Remove"
+  },
+  "picker": {
+    "title": "Add apps",
+    "searchPlaceholder": "Search apps...",
+    "readyTitle": "Ready to activate",
+    "readySubtitle": "Apps you already connected. Turn one on for {{agent}}.",
+    "activate": "Activate",
+    "connectTitle": "Connect something new",
+    "connected": "Connected",
+    "noResults": "No matching apps found.",
+    "loading": "Loading apps..."
+  },
+  "chips": {
+    "more": "+{{count}}"
+  },
+  "disconnect": {
+    "affected_one": "Used by {{count}} agent",
+    "affected_other": "Used by {{count}} agents"
+  },
+  "home": {
+    "title": "Integrations",
+    "description": "Connect your apps once, then choose which agents can use each one.",
+    "addApp": "Add app",
+    "usedByNone": "No agents yet",
+    "usedByAll": "All agents",
+    "manage": "Manage",
+    "empty": {
+      "title": "No apps connected yet",
+      "body": "Connect an app like Gmail or Slack so your agents can act on it.",
+      "cta": "Add your first app"
+    }
+  },
+  "detail": {
+    "activeOn": "Agents that can use this",
+    "reconnect": "Reconnect",
+    "disconnect": "Disconnect",
+    "noAgents": "No agents can use this yet. Turn one on above.",
+    "allAgentsNote": "Every agent can use this app."
+  },
+  "agentTab": {
+    "activeTitle": "Apps this agent can use",
+    "activeSubtitle": "Apps {{agent}} is allowed to act on.",
+    "addApps": "Add apps",
+    "deactivate": "Remove from this agent",
+    "empty": {
+      "title": "No apps yet",
+      "body": "Add an app so this agent can act on it."
+    },
+    "allApps": {
+      "title": "Your other connected apps",
+      "subtitle": "Apps you connected that this agent can't use yet."
+    },
+    "manageAll": "Manage all integrations"
   }
 }

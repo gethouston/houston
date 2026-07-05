@@ -8,6 +8,8 @@ import { FileCredentialStore } from "../credentials/file-store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { BusEventHub } from "../events/hub";
 import { ComposioProvider } from "../integrations/composio";
+import { FileIntegrationGrantStore } from "../integrations/grant-store";
+import { LocalIntegrationGrants } from "../integrations/grants";
 import { IntegrationRegistry } from "../integrations/registry";
 import { RemoteIntegrationProvider } from "../integrations/remote";
 import { ProcessLauncher, type RuntimeSpawner } from "../launcher/process";
@@ -251,6 +253,20 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     opts.chatHistoryDbPath && existsSync(opts.chatHistoryDbPath)
   );
 
+  // Per-agent integration grants: single-player parity with the cloud gateway's
+  // multiplayer policy. Wired ONLY when integrations are configured AND this host
+  // is not gateway-fronted — a managed cloud pod (gatewayFronted) leaves it unset
+  // so the gateway in front stays the single owner of grant policy, and the pod
+  // never shadows it (the grant routes 404, the sandbox proxy enforces nothing).
+  // The record lives inside each agent's own dir, so agent deletion removes it.
+  const integrationGrants =
+    registry && !opts.gatewayFronted
+      ? new LocalIntegrationGrants({
+          store: new FileIntegrationGrantStore(opts.workspacesRoot),
+          registry,
+        })
+      : undefined;
+
   // The installed agent-config library. FsVfs keys must be non-empty, so root
   // the vfs at the library's PARENT and address it by its basename — this vfs
   // instance is only ever handed to the agent-configs route, which stays under
@@ -279,6 +295,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     },
     chatHistoryMigrated,
     integrations,
+    integrationGrants,
     agentConfigs,
     corsOrigin: "*",
   };

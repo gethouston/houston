@@ -1,10 +1,11 @@
 import {
+  AsyncButton,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
 } from "@houston-ai/core";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { HoustonLogo } from "../shell/experience-card";
@@ -78,5 +79,28 @@ export function UnavailableState() {
         <EmptyDescription>{t("unavailable")}</EmptyDescription>
       </EmptyHeader>
     </Empty>
+  );
+}
+
+/** The one-time "reconnect your apps" security notice, with a dismiss action. */
+export function ReconnectBanner({
+  onDismiss,
+}: {
+  onDismiss: () => Promise<void>;
+}) {
+  const { t } = useTranslation("integrations");
+  return (
+    <div className="flex items-start gap-2 rounded-xl bg-secondary p-4 text-sm text-muted-foreground">
+      <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+      <span className="flex-1">{t("reconnectNotice")}</span>
+      <AsyncButton
+        variant="ghost"
+        size="sm"
+        className="shrink-0 rounded-full"
+        onClick={() => onDismiss()}
+      >
+        {t("reconnectDismiss")}
+      </AsyncButton>
+    </div>
   );
 }

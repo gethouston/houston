@@ -1053,14 +1053,27 @@ export class HoustonClient {
       { userIds },
     );
   }
-  /** The integration toolkit slugs granted to this agent. */
-  async agentIntegrationGrants(agentSlugOrId: string): Promise<string[]> {
-    return (
-      await this.request<{ toolkits: string[] }>(
-        "GET",
-        `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
-      )
-    ).toolkits;
+  /**
+   * The integration toolkit slugs granted to this agent, or `null` when the host
+   * does not serve grants (404) — a deployment without per-agent grants (e.g. a
+   * managed cloud pod whose gateway owns the policy). Callers treat `null` as
+   * "grants unsupported here" and degrade silently; every other error still
+   * throws. Any host that DOES serve grants answers 200 with the set.
+   */
+  async agentIntegrationGrants(
+    agentSlugOrId: string,
+  ): Promise<string[] | null> {
+    try {
+      return (
+        await this.request<{ toolkits: string[] }>(
+          "GET",
+          `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
+        )
+      ).toolkits;
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return null;
+      throw err;
+    }
   }
   /** Replace the integration toolkit slugs granted to this agent. */
   async setAgentIntegrationGrants(

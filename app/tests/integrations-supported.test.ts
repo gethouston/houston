@@ -1,6 +1,6 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { integrationsSupported } from "../src/components/tabs/integrations-tab-model.ts";
+import { integrationsSupported } from "../src/components/integrations/model.ts";
 
 describe("integrationsSupported", () => {
   it("true when the host advertises a wired provider", () => {

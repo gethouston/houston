@@ -16,9 +16,11 @@ import {
   isToolkitConnected,
   normalizeToolkitSlug,
 } from "./integration-connect-card-state";
-import { appDisplay } from "./tabs/integrations-app-display";
-import { INTEGRATION_PROVIDER } from "./tabs/integrations-tab-model";
-import { useIntegrationConnect } from "./tabs/use-integration-connect";
+import {
+  appDisplay,
+  INTEGRATION_PROVIDER,
+  useConnectFlow,
+} from "./integrations";
 
 interface IntegrationConnectCardProps {
   /** The raw `#houston_toolkit=<slug>` fragment from the agent's link. */
@@ -40,7 +42,7 @@ interface IntegrationConnectCardProps {
  * tags a URL with `#houston_toolkit=<slug>` — the in-chat integration connect
  * hand-off on the TS engine (HOU-670). Clicking Connect mints the hosted
  * OAuth link, opens the system browser, and polls until the connection turns
- * active (`useIntegrationConnect`, the same flow as the Integrations tab).
+ * active (`useConnectFlow`, the same flow as the Integrations tab).
  *
  * The card owns its own connection status: it renders inside Streamdown,
  * which memoizes finished markdown blocks by source text and stops re-invoking
@@ -69,7 +71,7 @@ export function IntegrationConnectCard({
   const app = appDisplay(slug, findCatalogToolkit(catalog.data, toolkit));
   const displayName = app.name === slug ? toolkit.trim() : app.name;
 
-  const { connectingToolkit, connect } = useIntegrationConnect({
+  const { state: connectState, connect } = useConnectFlow({
     agentId,
     autoGrant,
   });
@@ -90,7 +92,7 @@ export function IntegrationConnectCard({
     });
   };
 
-  const view = deriveConnectCardView(isConnected, connectingToolkit !== null);
+  const view = deriveConnectCardView(isConnected, connectState !== null);
 
   return (
     <RowCard

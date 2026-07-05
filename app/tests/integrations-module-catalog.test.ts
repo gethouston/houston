@@ -1,11 +1,15 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { IntegrationToolkit } from "@houston-ai/engine-client";
+import type {
+  IntegrationConnection,
+  IntegrationToolkit,
+} from "@houston-ai/engine-client";
 import {
   browseCatalog,
   categoriesOf,
   categoryLabel,
-} from "../src/components/tabs/integrations-tab-model.ts";
+  splitByGrant,
+} from "../src/components/integrations/model.ts";
 
 const tk = (
   slug: string,
@@ -22,7 +26,7 @@ const CATALOG: IntegrationToolkit[] = [
   tk("serpapi", "SerpApi", ["developer-tools"], "Search engine results"),
 ];
 
-describe("browseCatalog", () => {
+describe("browseCatalog (new module)", () => {
   it("excludes connected apps and preserves catalog (usage-ranked) order", () => {
     const result = browseCatalog({
       catalog: CATALOG,
@@ -33,6 +37,19 @@ describe("browseCatalog", () => {
     deepStrictEqual(
       result.map((t) => t.slug),
       ["googlecalendar", "slack", "notion", "serpapi"],
+    );
+  });
+
+  it("keeps every app when `connected` is empty (picker renders them connected)", () => {
+    const result = browseCatalog({
+      catalog: CATALOG,
+      query: "",
+      category: "all",
+      connected: new Set(),
+    });
+    deepStrictEqual(
+      result.map((t) => t.slug),
+      ["gmail", "googlecalendar", "slack", "notion", "serpapi"],
     );
   });
 
@@ -84,7 +101,7 @@ describe("browseCatalog", () => {
   });
 });
 
-describe("categoriesOf / categoryLabel", () => {
+describe("categoriesOf / categoryLabel (new module)", () => {
   it("collects unique categories sorted by display label", () => {
     deepStrictEqual(categoriesOf(CATALOG), [
       "collaboration",
@@ -95,5 +112,58 @@ describe("categoriesOf / categoryLabel", () => {
 
   it("labels kebab-case categories for humans", () => {
     strictEqual(categoryLabel("developer-tools"), "Developer tools");
+  });
+});
+
+const conn = (
+  toolkit: string,
+  status: IntegrationConnection["status"] = "active",
+): IntegrationConnection => ({
+  toolkit,
+  connectionId: `ca_${toolkit}`,
+  status,
+});
+
+describe("splitByGrant (new module)", () => {
+  it("puts granted connections under granted, the rest under available", () => {
+    const { granted, available } = splitByGrant({
+      connections: [conn("gmail"), conn("slack", "pending"), conn("notion")],
+      grants: new Set(["gmail", "notion"]),
+    });
+    deepStrictEqual(
+      granted.map((c) => c.toolkit),
+      ["gmail", "notion"],
+    );
+    deepStrictEqual(
+      available.map((c) => c.toolkit),
+      ["slack"],
+    );
+  });
+
+  it("empty grant set → everything available, nothing granted", () => {
+    const { granted, available } = splitByGrant({
+      connections: [conn("gmail"), conn("slack")],
+      grants: new Set(),
+    });
+    deepStrictEqual(granted, []);
+    deepStrictEqual(
+      available.map((c) => c.toolkit),
+      ["gmail", "slack"],
+    );
+  });
+
+  it("preserves connection order within each bucket", () => {
+    const { granted, available } = splitByGrant({
+      connections: [conn("z"), conn("a"), conn("m"), conn("b")],
+      grants: new Set(["z", "m"]),
+    });
+    deepStrictEqual(
+      granted.map((c) => c.toolkit),
+      ["z", "m"],
+    );
+    deepStrictEqual(
+      available.map((c) => c.toolkit),
+      ["a", "b"],
+    );
   });
 });

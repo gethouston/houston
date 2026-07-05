@@ -92,6 +92,7 @@ import { ContextCompactedDivider } from "./context-compacted-divider";
 import { ContextIndicator } from "./context-indicator";
 import { IntegrationConnectCard } from "./integration-connect-card";
 import { parseToolkitFromHref } from "./integration-connect-card-state";
+import { integrationsSupported } from "./integrations/model";
 import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
 import { ProviderSwitchDialog } from "./provider-switch-dialog";
 import { SelectedSkillChip } from "./selected-skill-chip";
@@ -99,7 +100,6 @@ import { ProviderErrorCard } from "./shell/provider-error-card";
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
 import { ToolRuntimeErrorCard } from "./shell/tool-runtime-error-card";
 import { SkillCard } from "./skill-card";
-import { integrationsSupported } from "./tabs/integrations-tab-model";
 import {
   filterProviderAuthFeedItems,
   isProviderAuthMessage,

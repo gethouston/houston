@@ -6,8 +6,8 @@ import type {
 
 /**
  * The integrations provider (platform mode): Houston holds the platform key
- * server-side; the user only OAuths the apps themselves — no Composio account,
- * no sign-in step in this tab.
+ * server-side; the user only OAuths the apps themselves, no Composio account,
+ * no sign-in step for the apps.
  */
 export const INTEGRATION_PROVIDER = "composio";
 
@@ -34,10 +34,11 @@ export const POLL_MAX_ATTEMPTS = 150; // ~5 min at 2s/attempt.
 export const BROWSE_PAGE_SIZE = 100;
 
 /**
- * The browse grid's contents: already-connected apps never appear; an active
- * category narrows first; a search query then matches name/slug/description
- * case-insensitively. Catalog order is preserved (the provider serves it
- * usage-ranked). Pure so it's unit-testable.
+ * The browse grid's contents: an active category narrows first; a search query
+ * then matches name/slug/description case-insensitively. `connected` lets the
+ * caller exclude already-connected apps (pass an empty set to keep them, e.g.
+ * the picker renders them with a connected state instead). Catalog order is
+ * preserved (the provider serves it usage-ranked). Pure so it's unit-testable.
  */
 export function browseCatalog(opts: {
   catalog: IntegrationToolkit[];
@@ -64,16 +65,14 @@ export function browseCatalog(opts: {
 }
 
 /**
- * Split the user's connections into the two multiplayer grant buckets (C4):
+ * Split the user's connections into the two grant buckets:
  *
- *  - `granted`   — connected AND in this agent's grant set → "This agent can
- *                  use" (revoking removes the slug from the set).
- *  - `available` — connected but NOT granted → "Your other connected apps"
- *                  with an "Allow for this agent" action (no OAuth).
+ *  - `granted`   — connected AND in this agent's grant set.
+ *  - `available` — connected but NOT granted.
  *
- * A grant slug with no matching connection is ignored here: a grant only means
- * something once the app is actually connected. Connection order is preserved
- * within each bucket (the caller sorts for display). Pure so it's unit-testable.
+ * A grant slug with no matching connection is ignored (a grant only means
+ * something once the app is actually connected). Connection order is preserved
+ * within each bucket. Pure so it's unit-testable.
  */
 export function splitByGrant(opts: {
   connections: IntegrationConnection[];
@@ -98,7 +97,7 @@ export function categoriesOf(catalog: IntegrationToolkit[]): string[] {
   );
 }
 
-/** "developer-tools" → "Developer tools". */
+/** "developer-tools" -> "Developer tools". */
 export function categoryLabel(cat: string): string {
   return cat.charAt(0).toUpperCase() + cat.slice(1).replace(/-/g, " ");
 }
@@ -113,20 +112,20 @@ export type PollOutcome = "active" | "error" | "timeout" | "cancelled";
 
 /**
  * Poll one connection until the user finishes the app's OAuth in their browser,
- * it fails, the loop times out, or the user leaves the tab. Pure +
- * dependency-injected so the timeout and cancellation paths are unit-testable
- * without real timers:
+ * it fails, the loop times out, or the flow is cancelled. Pure +
+ * dependency-injected so the timeout, wake, and cancellation paths are
+ * unit-testable without real timers:
  *
  *  - `poll`        — one connection-status call (already routed through
- *                    `call()`, so a network failure rejects here and the
- *                    caller surfaces it).
- *  - `sleep`       — the inter-attempt delay (real `setTimeout` in prod).
- *  - `isCancelled` — read before every wait + poll so leaving the tab stops the
- *                    loop immediately instead of running out the full 5 minutes.
+ *                    `call()`, so a network failure rejects here).
+ *  - `sleep`       — the inter-attempt delay. Back it with a `Waker` (below) to
+ *                    let `checkNow()` wake the loop before the interval elapses.
+ *  - `isCancelled` — read before every wait + poll so cancelling stops the loop
+ *                    immediately instead of running out the full budget.
  *
  * Returns `"active"` on success, `"error"` if the OAuth failed or was revoked,
- * `"cancelled"` if the user left mid-flow, and `"timeout"` once the attempt
- * budget is spent while still pending.
+ * `"cancelled"` if the flow was cancelled mid-wait, and `"timeout"` once the
+ * attempt budget is spent while still pending.
  */
 export async function pollConnectionUntilActive(deps: {
   poll: () => Promise<IntegrationConnection>;
@@ -146,4 +145,49 @@ export async function pollConnectionUntilActive(deps: {
     if (conn.status === "error") return "error";
   }
   return "timeout";
+}
+
+/**
+ * A wake-able inter-attempt delay. `wait(ms)` resolves after `ms` OR as soon as
+ * `wake()` is called, whichever is first, so the connect flow's "I have
+ * finished" button can poll immediately instead of waiting out the interval.
+ * The timer is dependency-injected so wake + timeout are unit-testable without
+ * real timers.
+ */
+export interface Waker {
+  wait: (ms: number) => Promise<void>;
+  wake: () => void;
+}
+
+interface WakerTimer {
+  set: (fn: () => void, ms: number) => unknown;
+  clear: (handle: unknown) => void;
+}
+
+const REAL_TIMER: WakerTimer = {
+  set: (fn, ms) => setTimeout(fn, ms),
+  clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+};
+
+/** Build a `Waker`. Pass a fake `timer` in tests to drive wake vs timeout. */
+export function createWaker(timer: WakerTimer = REAL_TIMER): Waker {
+  let resolveCurrent: (() => void) | null = null;
+  let handle: unknown = null;
+  const settle = () => {
+    if (handle !== null) {
+      timer.clear(handle);
+      handle = null;
+    }
+    const resolve = resolveCurrent;
+    resolveCurrent = null;
+    resolve?.();
+  };
+  return {
+    wait: (ms) =>
+      new Promise<void>((resolve) => {
+        resolveCurrent = resolve;
+        handle = timer.set(settle, ms);
+      }),
+    wake: settle,
+  };
 }

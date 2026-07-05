@@ -40,6 +40,7 @@ Need specific knowledge? Load on demand:
 - Client architecture — SDK / tokens / inventory / parity procedures → `knowledge-base/client-architecture.md`
 - `.houston/` layout, schemas, reactivity → `knowledge-base/files-first.md`
 - Skills on disk + UI, picker, invocation marker → `knowledge-base/skills.md`
+- Integrations (Composio platform mode — provider port, direct vs gateway adapter, sandbox path, grants model incl. local single-player grants, UI map) → `knowledge-base/integrations.md`
 - Agent manifest, tiers, sidebar, workspaces → `knowledge-base/agent-manifest.md`
 - _[LEGACY, Rust engine]_ Engine wire protocol (REST + WS) → `knowledge-base/engine-protocol.md` · the v3 contract is `packages/protocol/`
 - _[LEGACY, Rust engine]_ Provider error taxonomy + classifier contract → `knowledge-base/provider-errors.md`
