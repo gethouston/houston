@@ -25,6 +25,9 @@ import { buildLocalHost } from "./host";
  *   HOUSTON_HOST_BIND         127.0.0.1 (desktop). Self-host on a VPS sets
  *                             0.0.0.0 to expose it behind a TLS reverse proxy.
  *   HOUSTON_HOST_TOKEN        random per boot (set a fixed one for self-host)
+ *   HOUSTON_CREDENTIALS_URL   managed pod only: gateway base URL for org credentials
+ *   HOUSTON_ORG_SLUG          managed pod only: org slug for org credentials
+ *   HOUSTON_AGENT_SLUG        managed pod only: agent slug for org credentials
  *   HOUSTON_RUNTIME_COMMAND   argv to launch a pi-runtime (space-separated);
  *                             explicit override (highest priority). Otherwise:
  *                             the compiled sidecar spawns ITSELF (in runtime
@@ -58,7 +61,25 @@ function runtimeCommand(): string[] {
   return [process.execPath, "--import", "tsx", runtimeMain];
 }
 
+function remoteCredentialConfig(hostTokenEnv: string | undefined) {
+  const url = process.env.HOUSTON_CREDENTIALS_URL;
+  const orgSlug = process.env.HOUSTON_ORG_SLUG;
+  const agentSlug = process.env.HOUSTON_AGENT_SLUG;
+  const any = !!url || !!orgSlug || !!agentSlug;
+  if (url && orgSlug && agentSlug && hostTokenEnv) {
+    return { url, orgSlug, agentSlug, podToken: hostTokenEnv };
+  }
+  if (any) {
+    console.warn(
+      "[local-host] incomplete managed credential gateway env; set HOUSTON_CREDENTIALS_URL, HOUSTON_ORG_SLUG, HOUSTON_AGENT_SLUG, and HOUSTON_HOST_TOKEN. Falling back to file credentials.",
+    );
+  }
+  return undefined;
+}
+
 const houstonHome = process.env.HOUSTON_HOME || join(homedir(), ".houston");
+const hostTokenEnv = process.env.HOUSTON_HOST_TOKEN;
+const hostToken = hostTokenEnv || randomBytes(32).toString("hex");
 const host = buildLocalHost({
   workspacesRoot:
     process.env.HOUSTON_WORKSPACES_ROOT || join(houstonHome, "workspaces"),
@@ -77,7 +98,7 @@ const host = buildLocalHost({
   port: Number(process.env.HOUSTON_HOST_PORT || 4318),
   // Loopback by default (desktop). Self-host sets HOUSTON_HOST_BIND=0.0.0.0.
   bind: process.env.HOUSTON_HOST_BIND || undefined,
-  token: process.env.HOUSTON_HOST_TOKEN || randomBytes(32).toString("hex"),
+  token: hostToken,
   // Redact the token in the startup banner whenever it came from the
   // environment (a pod/self-host token an orchestrator already knows) or we are
   // a managed cloud pod — echoing it there just leaks a credential into
@@ -85,8 +106,7 @@ const host = buildLocalHost({
   // HOUSTON_HOST_TOKEN) and its supervisor reads it back from this line, so
   // that case keeps the full token.
   redactBannerToken:
-    !!process.env.HOUSTON_HOST_TOKEN ||
-    process.env.HOUSTON_MANAGED_CLOUD === "1",
+    !!hostTokenEnv || process.env.HOUSTON_MANAGED_CLOUD === "1",
   runtimeCommand: runtimeCommand(),
   // The real Tauri app hands over its own product prompt; this is the built-in
   // default so the agent knows how to create Skills/Routines/learnings.
@@ -99,6 +119,7 @@ const host = buildLocalHost({
   // x-houston-acting-as); relay that header to the runtime so integration
   // calls act as the driving user. Desktop/self-host stay direct → false.
   gatewayFronted: process.env.HOUSTON_MANAGED_CLOUD === "1",
+  credentials: remoteCredentialConfig(hostTokenEnv),
   // Platform-mode integrations: desktops get HOUSTON_INTEGRATIONS_URL (the
   // cloud gateway holding Houston's Composio key); self-host + the managed pod
   // set their own COMPOSIO_API_KEY and go direct. Neither → integrations off.
@@ -109,7 +130,7 @@ const host = buildLocalHost({
     // it): pass it as the pod token so a routine turn authenticates as its
     // creator (C2). The desktop's token is a random per-boot secret, not a pod
     // token the gateway knows, so leave it unset there.
-    podToken: process.env.HOUSTON_HOST_TOKEN || undefined,
+    podToken: hostTokenEnv || undefined,
   },
   onRuntimeLog: (line) => process.stderr.write(line),
 });

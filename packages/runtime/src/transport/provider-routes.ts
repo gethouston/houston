@@ -19,6 +19,11 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
   const { method, path, req, res, url } = ctx;
 
   if (method === "GET" && path === "/providers") {
+    try {
+      await syncServedCredential();
+    } catch (e) {
+      console.error("[providers] list credential sync failed:", e);
+    }
     json(res, 200, listProviders());
     return true;
   }

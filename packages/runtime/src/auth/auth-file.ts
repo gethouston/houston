@@ -105,3 +105,27 @@ export function scrubRefreshTokensAt(path: string): string[] {
   if (scrubbed.length) writeAuthFile(path, auth);
   return scrubbed;
 }
+
+/**
+ * Remove one provider only when the entry is owned by the serve path: an OAuth
+ * credential already scrubbed to refresh="" or an API key served from the host.
+ * A refresh-bearing OAuth entry is pi's just-connected credential before capture
+ * + scrub, so a transient gateway 404 must not delete it.
+ */
+export function removeServedCredentialAt(
+  path: string,
+  provider: string,
+): boolean {
+  const auth = readAuthFile(path);
+  const cred = auth[provider];
+  if (
+    !cred ||
+    (cred.type === "oauth" && cred.refresh) ||
+    (cred.type !== "oauth" && cred.type !== "api_key")
+  ) {
+    return false;
+  }
+  delete auth[provider];
+  writeAuthFile(path, auth);
+  return true;
+}

@@ -5,6 +5,7 @@ import {
   applyServedCredential,
   type PiCred,
   readAuthFile,
+  removeServedCredentialAt,
   type ServedCredential,
   scrubRefreshTokensAt,
 } from "./auth-file";
@@ -110,6 +111,7 @@ export function syncServedCredential(): Promise<string[]> {
 async function runServedSync(): Promise<string[]> {
   if (!serveModeOn()) return [];
   const applied: string[] = [];
+  const removed: string[] = [];
   for (const p of PROVIDERS) {
     const res = await fetch(
       `${config.controlPlaneUrl}/sandbox/credential?provider=${p.id}`,
@@ -117,7 +119,13 @@ async function runServedSync(): Promise<string[]> {
         headers: { Authorization: `Bearer ${config.sandboxToken}` },
       },
     );
-    if (res.status === 404) continue; // this provider isn't connected
+    if (res.status === 404) {
+      // Authoritative logout from the central store: remove only credentials this
+      // runtime learned from serve mode. A refresh-bearing OAuth entry is the
+      // device-code connect flow mid-capture, before scrub, and must survive.
+      if (removeServedCredentialAt(authPathFor(), p.id)) removed.push(p.id);
+      continue;
+    }
     if (!res.ok) {
       // Internal serve hiccup for ONE provider must not strand the others; the
       // turn still surfaces "No provider connected" downstream if nothing applied.
@@ -135,7 +143,7 @@ async function runServedSync(): Promise<string[]> {
   // pi's AuthStorage caches auth.json in memory at startup; a direct write is
   // invisible to hasAuth()/resolveModel() until we re-read it. This is the line
   // that makes a never-connected agent actually see the served credential.
-  if (applied.length) authStorage.reload();
+  if (applied.length || removed.length) authStorage.reload();
   // One-line per-turn diagnostic: which central credentials this serve applied.
   // If a connected provider is absent here (its serve 404'd), its token can't be
   // refreshed centrally — the silent-404 path that left Copilot un-served.

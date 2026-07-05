@@ -37,7 +37,7 @@ export async function handleSandboxCredential(
     json(res, 404, { error: "workspace not connected" });
     return true;
   }
-  if (isExpiring(cred)) {
+  if (isExpiring(cred) && cred.refreshToken) {
     try {
       cred = await refreshCredential(cred);
       await deps.credentials.put(cred);

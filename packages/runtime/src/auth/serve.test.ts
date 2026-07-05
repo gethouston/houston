@@ -7,6 +7,7 @@ import { config } from "../config";
 import {
   applyServedCredential,
   type PiCred,
+  removeServedCredentialAt,
   scrubRefreshTokensAt,
 } from "./auth-file";
 import { selectExportCredential, syncServedCredential } from "./serve";
@@ -57,9 +58,11 @@ async function withServeMode(
 ): Promise<void> {
   const prevUrl = config.controlPlaneUrl;
   const prevTok = config.sandboxToken;
+  const prevDataDir = config.dataDir;
   const prevFetch = globalThis.fetch;
   config.controlPlaneUrl = "http://control-plane.test";
   config.sandboxToken = "sbx-token";
+  config.dataDir = mkdtempSync(join(tmpdir(), "houston-servemode-"));
   globalThis.fetch = fetchImpl;
   try {
     await body();
@@ -67,6 +70,7 @@ async function withServeMode(
     globalThis.fetch = prevFetch;
     config.controlPlaneUrl = prevUrl;
     config.sandboxToken = prevTok;
+    config.dataDir = prevDataDir;
   }
 }
 
@@ -112,6 +116,44 @@ test("syncServedCredential is a no-op when serve mode is off (local desktop)", a
     config.controlPlaneUrl = prevUrl;
     config.sandboxToken = prevTok;
   }
+});
+
+test("syncServedCredential removes served-owned credentials on a central 404", async () => {
+  const fetchImpl = (async () => {
+    return new Response(null, { status: 404 });
+  }) as unknown as typeof globalThis.fetch;
+  await withServeMode(fetchImpl, async () => {
+    const path = join(config.dataDir, "auth.json");
+    writeFileSync(
+      path,
+      JSON.stringify({
+        "openai-codex": {
+          type: "oauth",
+          access: "AT-served",
+          refresh: "",
+          expires: 1,
+        },
+        "github-copilot": {
+          type: "oauth",
+          access: "AT-pending",
+          refresh: "RT-pending-capture",
+          expires: 2,
+        },
+        opencode: { type: "api_key", key: "sk-served" },
+      }),
+    );
+
+    expect(await syncServedCredential()).toEqual([]);
+    const auth = readAuth(path);
+    expect(auth["openai-codex"]).toBeUndefined();
+    expect(auth.opencode).toBeUndefined();
+    expect(auth["github-copilot"]).toEqual({
+      type: "oauth",
+      access: "AT-pending",
+      refresh: "RT-pending-capture",
+      expires: 2,
+    });
+  });
 });
 
 test("selectExportCredential without a provider falls back to the first OAuth credential", () => {
@@ -279,6 +321,53 @@ test("scrub is idempotent and a missing auth.json is a no-op", () => {
     }),
   );
   expect(scrubRefreshTokensAt(path)).toEqual([]); // already clean
+});
+
+test("removeServedCredentialAt removes only served-owned credentials for the requested provider", () => {
+  const path = freshAuthPath();
+  writeFileSync(
+    path,
+    JSON.stringify({
+      "openai-codex": { type: "oauth", access: "A1", refresh: "", expires: 1 },
+      anthropic: { type: "oauth", access: "A2", refresh: "", expires: 2 },
+      opencode: { type: "api_key", key: "sk-opencode" },
+    }),
+  );
+
+  expect(removeServedCredentialAt(path, "openai-codex")).toBe(true);
+  expect(removeServedCredentialAt(path, "opencode")).toBe(true);
+  const auth = readAuth(path);
+  expect(auth["openai-codex"]).toBeUndefined();
+  expect(auth.opencode).toBeUndefined();
+  expect(auth.anthropic).toEqual({
+    type: "oauth",
+    access: "A2",
+    refresh: "",
+    expires: 2,
+  });
+});
+
+test("removeServedCredentialAt keeps a refresh-bearing OAuth credential mid-capture", () => {
+  const path = freshAuthPath();
+  writeFileSync(
+    path,
+    JSON.stringify({
+      "github-copilot": {
+        type: "oauth",
+        access: "AT-pending",
+        refresh: "RT-pending-capture",
+        expires: 2,
+      },
+    }),
+  );
+
+  expect(removeServedCredentialAt(path, "github-copilot")).toBe(false);
+  expect(readAuth(path)["github-copilot"]).toEqual({
+    type: "oauth",
+    access: "AT-pending",
+    refresh: "RT-pending-capture",
+    expires: 2,
+  });
 });
 
 // --- API-key providers (openrouter, deepseek, google, amazon-bedrock) ---

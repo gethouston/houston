@@ -103,6 +103,26 @@ test("serves an api-key credential as kind=api_key without refreshing", async ()
   });
 });
 
+test("serves a gateway access-only OAuth credential without local refresh", async () => {
+  const credentials = new MemoryCredentialStore();
+  await credentials.put({
+    workspaceId: "w1",
+    provider: "openai-codex",
+    accessToken: "served-AT",
+    refreshToken: "",
+    expiresAt: 1, // expiring, but the gateway is the only refresher
+    kind: "oauth",
+  });
+  const r = mockRes();
+  expect(await call(credentials, "openai-codex", r)).toBe(true);
+  expect(r.out.status).toBe(200);
+  expect(r.out.body).toMatchObject({
+    provider: "openai-codex",
+    access: "served-AT",
+    kind: "oauth",
+  });
+});
+
 test("404 when the workspace has not connected the provider", async () => {
   const credentials = new MemoryCredentialStore();
   const r = mockRes();
