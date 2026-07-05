@@ -34,11 +34,11 @@ The `--verify` step curls the freshly-built sidecar immediately after the LISTEN
 with no port-poll, so it can race on a cold boot (the binary boots + serves fine — confirmed
 manually). Make `--verify` poll `/health` with a short retry loop instead of a single curl.
 
-## 5. Cloud adapter integration tests (real infra)
-`packages/host-cloud` covers Pg (pg-mem) and Redis (ioredis-mock) behaviorally. `GcsVfs` and
-`GkeLauncher` are env-gated integration tests that need a real bucket / cluster — see
-`packages/host-cloud/src/vfs/README-testing.md` and `.../launcher/README-testing.md`. Wire
-these into a nightly/integration CI that has the credentials (the PR gate stays hermetic).
+## 5. ~~Cloud adapter integration tests (real infra)~~ — OBSOLETE
+Resolved by retirement: the closed `@houston/host-cloud` package (and its env-gated
+GcsVfs/GkeLauncher integration suites) was deleted along with the multi-tenant cloud
+architecture it implemented. The shipped cloud (gateway + per-agent engine pods) carries
+its own launcher and tests in the private gateway repo.
 
 ## 6. Deploy identities still say "control-plane"
 The k8s Deployment/Service/SA names, the `control-plane:v8` image tag, `CP_*` env vars, and

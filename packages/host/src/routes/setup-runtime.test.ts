@@ -120,6 +120,9 @@ test("login + status dispatch to a hidden setup agent on the PERSONAL workspace"
     for (const [method, path] of [
       ["POST", "auth/openai-codex/login?deviceAuth=false"],
       ["POST", "auth/openai-codex/login/complete"],
+      // The reconnect card's every press goes cancel → launch, so a blocked
+      // cancel 404s and the login never launches (HOU-676).
+      ["POST", "auth/openai-codex/login/cancel"],
       ["GET", "auth/status"],
       ["GET", "providers"],
     ] as const) {
@@ -132,6 +135,7 @@ test("login + status dispatch to a hidden setup agent on the PERSONAL workspace"
     expect(channel.dispatched.map((d) => d.rest)).toEqual([
       "auth/openai-codex/login",
       "auth/openai-codex/login/complete",
+      "auth/openai-codex/login/cancel",
       "auth/status",
       "providers",
     ]);

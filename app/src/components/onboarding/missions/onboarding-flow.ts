@@ -5,7 +5,7 @@ import type {
 // `.ts` extension so the node test runner (extensionless ESM can't resolve)
 // can import this pure helper directly, matching the repo's tested-module
 // convention. The target only imports erased package types, so it loads clean.
-import { INTEGRATION_PROVIDER } from "../../tabs/integrations-tab-model.ts";
+import { INTEGRATION_PROVIDER } from "../../integrations/model.ts";
 import type { OnboardingStep } from "../tutorial-copy";
 
 /**

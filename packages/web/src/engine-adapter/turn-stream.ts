@@ -26,10 +26,12 @@ export function disposeAllStreams(): void {
 /**
  * The web adapter's turn entry. The turn/feed machinery lives in `@houston/sdk`
  * now; this drives it with a bus-backed {@link createBusFeedOutput} FeedOutput
- * and keeps the historical `(…, setActivityStatus, tuning?)` signature so app
+ * and keeps the historical `(…, setActivityStatus)` signature shape so app
  * callers and the adapter's unit tests are unchanged. `setActivityStatus` is
  * already bound to this turn's conversation, so the FeedOutput ignores the
- * (agentPath, sessionKey) it re-supplies.
+ * (agentPath, sessionKey) it re-supplies. `provider` is the chat's composer
+ * pick (frontend id) — it labels the typed reconnect card when the runtime
+ * refuses the send as not-connected.
  */
 export function streamTurn(
   engine: HoustonEngineClient,
@@ -37,6 +39,7 @@ export function streamTurn(
   sessionKey: string,
   prompt: string,
   setActivityStatus: (status: BoardStatus) => Promise<void>,
+  provider?: string,
   tuning?: StreamTuning,
 ): Promise<void> {
   const output = createBusFeedOutput((_a, _s, status) =>
@@ -50,6 +53,7 @@ export function streamTurn(
     output,
     registry,
     {
+      provider,
       tuning,
     },
   );

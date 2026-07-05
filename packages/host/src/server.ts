@@ -5,13 +5,19 @@ import {
   type ServerResponse,
 } from "node:http";
 import { type Capabilities, PROTOCOL_VERSION } from "@houston/protocol";
-import type { UserId, WorkspaceRuntime } from "./domain/types";
+import type {
+  Agent,
+  UserId,
+  Workspace,
+  WorkspaceRuntime,
+} from "./domain/types";
 import type { EventHub } from "./events/hub";
 import {
   type FeedbackPayload,
   type FeedbackSender,
   parseFeedbackPayload,
 } from "./feedback";
+import type { LocalIntegrationGrants } from "./integrations/grants";
 import type { WorkspacePaths } from "./paths";
 import type {
   CredentialStore,
@@ -29,6 +35,7 @@ import { handleAgents } from "./routes/agents";
 import { handleSandboxCredential } from "./routes/credential";
 import { handleEventStream } from "./routes/events-stream";
 import { bearer, json, readJson } from "./routes/http";
+import { handleIntegrationGrants } from "./routes/integration-grants";
 import {
   handleIntegrations,
   type IntegrationDeps,
@@ -42,12 +49,13 @@ import type { Vfs } from "./vfs";
 export type { RuntimeProxy } from "./channel/proxy";
 
 /**
- * The operator-admin surface is CLOSED (it ships in `@houston/host-cloud`). The
- * open server never imports the admin route; instead it accepts an INJECTED
- * request hook here and calls it after the events stream. The cloud entry point
- * builds the hook (binding `handleAdmin` + its `AdminDeps` + the store) and passes
- * it in; the local profile passes nothing, so `/admin/*` simply 404s — exactly as
- * a request to any unmounted route would.
+ * The operator-admin extension seam. The open server never imports an admin
+ * route; it accepts an INJECTED request hook here and calls it after the events
+ * stream. Nothing in-tree binds it anymore — the closed control plane that did
+ * (`@houston/host-cloud`) was retired and deleted — but the seam stays as the
+ * documented extension point for any private deployment's admin surface. No
+ * profile in this repo sets it, so `/admin/*` simply 404s — exactly as a
+ * request to any unmounted route would.
  *
  * Returns true when it handled the request (the server then stops routing), false
  * to fall through. Mirrors every other `handle*` route's contract.
@@ -83,6 +91,12 @@ export interface ControlPlaneDeps {
   /** What this deployment can do; served at /v1/capabilities for the UI to gate on. */
   capabilities: Capabilities;
   /**
+   * The agent's absolute on-disk directory, when this deployment is co-located
+   * with the files (local profile). Serialized as `dir` on agent payloads so
+   * the desktop shell can reveal/open in the OS file manager (HOU-677).
+   */
+  agentDir?: (ws: Workspace, agent: Agent) => string;
+  /**
    * True when this install carried over a legacy Rust-desktop chat-history db —
    * i.e. the user is migrating from the old desktop build. Surfaced on
    * `/v1/version` so the desktop UI can show its one-time "reconnect your AI"
@@ -100,6 +114,14 @@ export interface ControlPlaneDeps {
   feedback?: FeedbackSender;
   /** Third-party integrations (Composio, platform mode); absent → integration routes 503. */
   integrations?: IntegrationDeps;
+  /**
+   * Per-agent integration grants (LOCAL / self-host profile only). Present ONLY
+   * when this host is NOT gateway-fronted — a managed cloud pod leaves it unset so
+   * the gateway that fronts it stays the single owner of grant policy. Absent →
+   * the grant routes 404 (client reads that as "grants unsupported") and the
+   * sandbox proxy enforces nothing.
+   */
+  integrationGrants?: LocalIntegrationGrants;
   /**
    * Installed agent-config library (the create-agent picker's "installed"
    * source + GitHub agent install). Absent → the list reads empty and installs
@@ -213,6 +235,8 @@ async function handle(
   if (await handlePortableAccount(deps, userId, method, path, req, res)) return;
   if (await handleAgentConfigs(deps, userId, method, path, req, res)) return;
   if (await handleIntegrations(deps, userId, method, path, req, res)) return;
+  if (await handleIntegrationGrants(deps, userId, method, path, req, res))
+    return;
   // Pre-agent provider connect (first-run onboarding): a hidden setup runtime
   // runs the OAuth so the user can connect their AI before any agent exists.
   if (await handleSetupRuntime(deps, userId, method, path, url, req, res))

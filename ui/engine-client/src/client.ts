@@ -135,6 +135,16 @@ function isAbortError(err: unknown): boolean {
   return err instanceof Error && err.name === "AbortError";
 }
 
+/** Base64-encode bytes without blowing the call stack on large files (chunked btoa). */
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
 function makeAbortError(): Error {
   if (typeof DOMException !== "undefined") {
     return new DOMException("The operation was aborted.", "AbortError");
@@ -606,6 +616,35 @@ export class HoustonClient {
       data_base64: dataBase64,
     });
   }
+  /** Upload browser Files into the agent's workspace (Files tab drag-drop /
+   * Browse). This engine's import route takes one file per request and has no
+   * target-folder parameter, so uploads land at the workspace root. */
+  async uploadProjectFiles(
+    agentPath: string,
+    files: File[],
+    _targetDir?: string | null,
+  ): Promise<void> {
+    for (const f of files) {
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      await this.importFileBytes(agentPath, f.name, bytesToBase64(bytes));
+    }
+  }
+  /** This engine has no move route; the Files tab only offers drag-move on the
+   * TS host. Refuse loudly rather than pretend the file moved. */
+  async moveProjectFile(
+    _agentPath: string,
+    _relPath: string,
+    _toDir: string | null,
+  ): Promise<void> {
+    throw new Error("Moving files is not supported on this engine.");
+  }
+  /** This engine has no archive route ("Download all" is a TS-host feature);
+   * it is never offered in the UI here, so refuse loudly if reached. */
+  async downloadProjectArchive(
+    _agentPath: string,
+  ): Promise<{ blob: Blob; contentType: string }> {
+    throw new Error("Downloading all files is not supported on this engine.");
+  }
 
   // ---------- agents: activities ----------
 
@@ -1053,14 +1092,27 @@ export class HoustonClient {
       { userIds },
     );
   }
-  /** The integration toolkit slugs granted to this agent. */
-  async agentIntegrationGrants(agentSlugOrId: string): Promise<string[]> {
-    return (
-      await this.request<{ toolkits: string[] }>(
-        "GET",
-        `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
-      )
-    ).toolkits;
+  /**
+   * The integration toolkit slugs granted to this agent, or `null` when the host
+   * does not serve grants (404) — a deployment without per-agent grants (e.g. a
+   * managed cloud pod whose gateway owns the policy). Callers treat `null` as
+   * "grants unsupported here" and degrade silently; every other error still
+   * throws. Any host that DOES serve grants answers 200 with the set.
+   */
+  async agentIntegrationGrants(
+    agentSlugOrId: string,
+  ): Promise<string[] | null> {
+    try {
+      return (
+        await this.request<{ toolkits: string[] }>(
+          "GET",
+          `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
+        )
+      ).toolkits;
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return null;
+      throw err;
+    }
   }
   /** Replace the integration toolkit slugs granted to this agent. */
   async setAgentIntegrationGrants(

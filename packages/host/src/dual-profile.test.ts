@@ -171,12 +171,20 @@ function norm(v: unknown, agentId: string): unknown {
   if (Array.isArray(v)) return v.map((x) => norm(x, agentId));
   if (v && typeof v === "object") {
     const out: Record<string, unknown> = {};
-    for (const [k, val] of Object.entries(v))
+    for (const [k, val] of Object.entries(v)) {
+      // `dir` (the agent's real on-disk directory, HOU-677) is a DOCUMENTED
+      // profile asymmetry — local serves it, cloud has no local path to serve.
+      // Dropped here; its presence/absence is pinned in the asymmetries test.
+      if (ASYMMETRIC.has(k)) continue;
       out[k] = VOLATILE.has(k) ? "<X>" : norm(val, agentId);
+    }
     return out;
   }
   return v;
 }
+
+/** Keys that legitimately exist on one profile only (see the asymmetries test). */
+const ASYMMETRIC = new Set(["dir"]);
 
 type Step = {
   label: string;
@@ -463,6 +471,27 @@ test("the documented profile asymmetries are exactly the intended ones", async (
     expect(cc.providers).toEqual(lc.providers);
     expect(lc.openaiCompatible).toBe(true);
     expect(cc.openaiCompatible).toBe(false);
+
+    // Agent payloads: only the LOCAL profile reports the agent's real on-disk
+    // directory (`dir`) — the desktop shell needs it for OS reveal/open
+    // (HOU-677); a cloud deployment has no local path to report. Pinned here
+    // because the parity battery deliberately drops the key (ASYMMETRIC).
+    const mk = async (base: string) =>
+      (await (
+        await fetch(`${base}/agents`, {
+          method: "POST",
+          headers: auth,
+          body: JSON.stringify({ name: "DirProbe" }),
+        })
+      ).json()) as { id: string; dir?: string };
+    const localAgent = await mk(local.base);
+    const cloudAgent = await mk(cloud.base);
+    expect(typeof localAgent.dir).toBe("string");
+    // Separator-agnostic: the id is slash-joined, the dir is OS-native.
+    expect(localAgent.dir?.split("\\").join("/").endsWith(localAgent.id)).toBe(
+      true,
+    );
+    expect(cloudAgent.dir).toBeUndefined();
 
     // Shared invariants: mobile/tunnel is gone everywhere; one protocol version.
     expect(lc.tunnel).toBe(false);

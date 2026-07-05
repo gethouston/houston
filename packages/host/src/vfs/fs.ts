@@ -29,7 +29,7 @@ export class FsVfs implements Vfs {
 
   private async walk(
     dir: string,
-    out: { path: string; size: number; mtimeMs: number }[],
+    out: { path: string; size: number; mtimeMs: number; birthMs: number }[],
   ): Promise<void> {
     const entries = await readdir(dir, { withFileTypes: true });
     for (const e of entries) {
@@ -37,15 +37,27 @@ export class FsVfs implements Vfs {
       if (e.isDirectory()) await this.walk(p, out);
       else if (e.isFile()) {
         const s = await stat(p);
-        out.push({ path: p, size: s.size, mtimeMs: s.mtimeMs });
+        out.push({
+          path: p,
+          size: s.size,
+          mtimeMs: s.mtimeMs,
+          birthMs: s.birthtimeMs,
+        });
       }
     }
   }
 
   private async statsUnder(prefix: string): Promise<ObjectStat[]> {
     const dir = this.pathFor(prefix);
-    if (!existsSync(dir)) return [];
-    const found: { path: string; size: number; mtimeMs: number }[] = [];
+    // A prefix that resolves to a plain file has no keys UNDER it — same answer
+    // an object store gives. Walking it would readdir() a file and throw.
+    if (!existsSync(dir) || !(await stat(dir)).isDirectory()) return [];
+    const found: {
+      path: string;
+      size: number;
+      mtimeMs: number;
+      birthMs: number;
+    }[] = [];
     await this.walk(dir, found);
     return found
       .map((f) => ({
@@ -55,6 +67,8 @@ export class FsVfs implements Vfs {
           .join("/"),
         size: f.size,
         updatedMs: Math.round(f.mtimeMs),
+        // Linux filesystems without birthtime report 0 — omit rather than lie.
+        ...(f.birthMs > 0 ? { createdMs: Math.round(f.birthMs) } : {}),
       }))
       .sort((a, b) => a.key.localeCompare(b.key));
   }

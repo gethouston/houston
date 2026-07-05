@@ -163,6 +163,14 @@ export interface Agent {
   createdAt: string;
   lastOpenedAt?: string;
   /**
+   * The agent's absolute on-disk directory, reported only when the engine is
+   * co-located with the files (TS host, local profile). This is what the
+   * desktop shell hands to the OS reveal/open commands — `folderPath` there is
+   * a route key, not a path (HOU-677). Absent on cloud and on the legacy Rust
+   * engine (whose `folderPath` is already the real path).
+   */
+  localDir?: string;
+  /**
    * Multiplayer only: whether the CURRENT user has been assigned this agent
    * (i.e. may use it). Absent in single-player mode, where every agent is the
    * sole user's. The host computes this per-caller.
@@ -349,6 +357,9 @@ export interface ProjectFile {
   /** Last modification time in milliseconds since the UNIX epoch. Omitted
    * when the filesystem doesn't expose mtime for the entry. */
   date_modified?: number;
+  /** Creation time in milliseconds since the UNIX epoch. Omitted when the
+   * storage backend doesn't report one (e.g. Linux without birthtime). */
+  date_created?: number;
 }
 
 export interface InstalledConfig {

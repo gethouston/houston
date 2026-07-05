@@ -60,3 +60,43 @@ export function useCreateFolder(agentPath: string | undefined) {
     },
   });
 }
+
+export function useUploadFiles(agentPath: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      files,
+      targetDir,
+    }: {
+      files: File[];
+      targetDir?: string | null;
+    }) => {
+      if (!agentPath) throw new Error("agentPath is required");
+      return tauriFiles.upload(agentPath, files, targetDir);
+    },
+    onSuccess: () => {
+      if (agentPath)
+        qc.invalidateQueries({ queryKey: queryKeys.files(agentPath) });
+    },
+  });
+}
+
+export function useMoveFile(agentPath: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      relativePath,
+      toDir,
+    }: {
+      relativePath: string;
+      toDir: string | null;
+    }) => {
+      if (!agentPath) throw new Error("agentPath is required");
+      return tauriFiles.move(agentPath, relativePath, toDir);
+    },
+    onSuccess: () => {
+      if (agentPath)
+        qc.invalidateQueries({ queryKey: queryKeys.files(agentPath) });
+    },
+  });
+}

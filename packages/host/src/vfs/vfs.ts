@@ -3,6 +3,9 @@ export interface ObjectStat {
   key: string;
   size: number;
   updatedMs: number;
+  /** Creation time (ms epoch). Absent when the backend can't report one
+   * (e.g. Linux filesystems without birthtime). */
+  createdMs?: number;
 }
 
 /**

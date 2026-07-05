@@ -208,12 +208,11 @@ houston/
 ├── packages/               THE CONVERGENCE — the single TypeScript engine (see convergence/README.md)
 │   ├── runtime/             pi runtime — the only agent loop
 │   ├── host/                the host (cloud + local desktop, adapter profiles) — OPEN
-│   ├── host-cloud/          CLOSED cloud adapters (Pg/Gcs/Gke/Redis + admin + cloud main)
 │   ├── domain/              shared domain logic (.houston layout, schemas, cron, portable)
 │   ├── protocol/            v3 wire types + zod
 │   ├── web/                 the full desktop UI in a browser tab
 │   └── code-sandbox/        egress-locked code-execution sandbox (cloud)
-├── BOUNDARY.md             The open/closed seam (enforced by scripts/check-boundaries.mjs)
+├── BOUNDARY.md             Everything here is OPEN; cloud-lib-free, enforced by scripts/check-boundaries.mjs
 ├── selfhost/               Self-host the TS engine on a VPS (Docker + Caddy TLS)
 ├── convergence/            The single-engine convergence plan + status (SOURCE OF TRUTH)
 │

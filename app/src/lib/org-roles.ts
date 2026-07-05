@@ -76,6 +76,21 @@ export function canManageAgentGrants(
 }
 
 /**
+ * Can this caller EDIT an agent's integration grants on a grants-serving host?
+ * Single-player (no org roles) always can — the sole user owns everything, the
+ * same short-circuit the global Integrations page uses; without it a self-host /
+ * local sidecar that serves grants would render the agent tab fully read-only.
+ * Multiplayer defers to the C3 assignment rule. Whether the host serves grants
+ * at all is a separate concern the caller gates on.
+ */
+export function canEditAgentGrants(
+  caps: Capabilities | null | undefined,
+  agent: Pick<Agent, "assigned">,
+): boolean {
+  return !isMultiplayer(caps) || canManageAgentGrants(caps, agent);
+}
+
+/**
  * The roles an owner may GRANT when adding or re-roling a member. Owner is the
  * single billing seat and is never handed out from the UI (ownership transfer
  * is out of scope for v1).

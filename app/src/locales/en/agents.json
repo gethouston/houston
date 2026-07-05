@@ -149,9 +149,12 @@
     "openInFileManager": "Open in File Manager",
     "loading": "Loading…",
     "browseFiles": "Browse files",
+    "uploadFiles": "Upload files",
+    "downloadAll": "Download all",
     "columns": {
       "name": "Name",
       "dateModified": "Date Modified",
+      "dateCreated": "Date Created",
       "size": "Size",
       "kind": "Kind"
     },

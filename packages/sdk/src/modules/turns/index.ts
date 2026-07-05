@@ -47,10 +47,19 @@ export function createTurnsModule(ctx: ModuleContext) {
    */
   const send = async (input: TurnSendInput): Promise<void> => {
     const client = ctx.clientFor(input.agentId ?? "");
-    if (input.model !== undefined || input.effort !== undefined)
-      await client.setSettings(
-        await resolveModelSettings(client, input.model, input.effort),
+    // Remember the provider the pick resolved to: it labels the typed
+    // reconnect card when the runtime refuses the send as not-connected
+    // (the refusal itself can't name a provider — nothing is connected).
+    let provider: string | undefined;
+    if (input.model !== undefined || input.effort !== undefined) {
+      const settings = await resolveModelSettings(
+        client,
+        input.model,
+        input.effort,
       );
+      await client.setSettings(settings);
+      provider = settings.activeProvider;
+    }
     const output = new MultiplexFeedOutput([vm, ...external]);
     void streamTurn(
       client,
@@ -59,7 +68,7 @@ export function createTurnsModule(ctx: ModuleContext) {
       input.text,
       output,
       registry,
-      { nonce: input.nonce },
+      { nonce: input.nonce, provider },
     );
   };
 
@@ -162,6 +171,7 @@ export {
 } from "./feed-output";
 export { type FeedFrame, historyToFeed } from "./history";
 export { observeConversation } from "./observe-stream";
+export { TURN_DIED_MESSAGE } from "./settle-from-history";
 export {
   SEND_IN_FLIGHT_MESSAGE,
   STREAM_FAILURE_BUDGET,
@@ -180,7 +190,6 @@ export type {
   TurnObserveInput,
   TurnSendInput,
 } from "./turn-inputs";
-export { TURN_DIED_MESSAGE } from "./turn-settle";
 export { type StreamTurnOptions, streamTurn } from "./turn-stream";
 export {
   type ConversationVM,

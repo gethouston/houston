@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { seedSchemas } from "@houston/domain";
 import type { CustomEndpoint, HoustonEvent } from "@houston/protocol";
-import type { UserId } from "../domain/types";
+import type { Agent, UserId, Workspace } from "../domain/types";
 import { isApiKeyProvider } from "../providers";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
@@ -27,6 +27,11 @@ import { handleSkillsRemote } from "./skills-remote";
 // routine-runs.ts); re-exported so existing importers keep working.
 export type { AgentRouteDeps } from "./agent-authz";
 
+/** Attach the agent's real directory (`dir`) when this deployment has one. */
+function withAgentDir(deps: AgentRouteDeps, ws: Workspace, agent: Agent) {
+  return deps.agentDir ? { ...agent, dir: deps.agentDir(ws, agent) } : agent;
+}
+
 /**
  * The user's agents: list/create/rename/delete, connect-once capture, and the
  * per-agent runtime dispatch (chat, SSE, providers, settings, files) — all
@@ -45,7 +50,12 @@ export async function handleAgents(
   // The user's own agents — their personal workspace, auto-provisioned on first hit.
   if (path === "/agents" && method === "GET") {
     const ws = await deps.store.getOrCreatePersonalWorkspace(userId);
-    json(res, 200, await deps.store.listAgents(ws.id));
+    const agents = await deps.store.listAgents(ws.id);
+    json(
+      res,
+      200,
+      agents.map((a) => withAgentDir(deps, ws, a)),
+    );
     return true;
   }
   if (path === "/agents" && method === "POST") {
@@ -85,7 +95,7 @@ export async function handleAgents(
       type: "AgentsChanged",
       workspaceId: ws.id,
     });
-    json(res, 201, agent);
+    json(res, 201, withAgentDir(deps, ws, agent));
     return true;
   }
 
@@ -114,7 +124,7 @@ export async function handleAgents(
         type: "AgentsChanged",
         workspaceId: authz.workspace.id,
       });
-      json(res, 200, renamed);
+      json(res, 200, withAgentDir(deps, authz.workspace, renamed));
       return true;
     }
 
@@ -417,6 +427,7 @@ export async function handleAgents(
         req,
         res,
         url.searchParams,
+        emit,
       )
     )
       return true;

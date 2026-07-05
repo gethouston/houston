@@ -92,14 +92,20 @@ import { ContextCompactedDivider } from "./context-compacted-divider";
 import { ContextIndicator } from "./context-indicator";
 import { IntegrationConnectCard } from "./integration-connect-card";
 import { parseToolkitFromHref } from "./integration-connect-card-state";
+import { integrationsSupported } from "./integrations/model";
 import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
 import { ProviderSwitchDialog } from "./provider-switch-dialog";
 import { SelectedSkillChip } from "./selected-skill-chip";
 import { ProviderErrorCard } from "./shell/provider-error-card";
+import {
+  isInlineAuthCardForChat,
+  providerErrorRetryText,
+  resendsOriginalPrompt,
+  resolveProviderErrorForChat,
+} from "./shell/provider-error-cards/not-connected";
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
 import { ToolRuntimeErrorCard } from "./shell/tool-runtime-error-card";
 import { SkillCard } from "./skill-card";
-import { integrationsSupported } from "./tabs/integrations-tab-model";
 import {
   filterProviderAuthFeedItems,
   isProviderAuthMessage,
@@ -719,21 +725,39 @@ export function useAgentChatPanel({
       // shows `msg.content` ("") — i.e. NOTHING. That's why a 429 card and the
       // OpenAI reconnect card never appeared in chat.
       if (msg.providerError) {
+        // The not-connected card arrives provider-less (the refusal can't name
+        // one — nothing was connected); label it with THIS chat's provider so
+        // its reconnect flow targets the provider the send actually used.
+        const providerError = resolveProviderErrorForChat(
+          msg.providerError,
+          effectiveProvider,
+        );
         return (
           <ProviderErrorCard
-            error={msg.providerError}
+            error={providerError}
             onRetry={async () => {
               if (!path || !selectedSessionKey) return;
-              const text = t("chat:toolRuntimeError.retryPrompt");
+              // A refused not-connected send never reached the engine —
+              // the card resends the original message verbatim (and fires
+              // itself on reconnect). Live-turn failures keep the generic
+              // retry prompt (their context is already server-side).
+              const text = providerErrorRetryText(
+                providerError,
+                t("chat:toolRuntimeError.retryPrompt"),
+              );
               await tauriChat.send(path, text, selectedSessionKey, {
                 providerOverride: effectiveProvider,
                 modelOverride: effectiveModel,
                 effortOverride: effectiveEffort,
               });
-              pushFeedItem(path, selectedSessionKey, {
-                feed_type: "user_message",
-                data: text,
-              });
+              // The refused prompt's bubble is already in the feed; only a
+              // generic retry is a NEW message that needs one.
+              if (!resendsOriginalPrompt(providerError)) {
+                pushFeedItem(path, selectedSessionKey, {
+                  feed_type: "user_message",
+                  data: text,
+                });
+              }
             }}
             // "Pick another model" pops the MODEL picker (not the Skills picker);
             // "Switch to <fallback>" applies it directly on the same provider.
@@ -771,11 +795,8 @@ export function useAgentChatPanel({
       // (auto-dismisses) when the provider's auth probe is unreliable, e.g.
       // codex reporting "authenticated" off a stale ~/.codex/auth.json after a
       // server-side session kill. One card, and it stays put.
-      const hasInlineAuthCard = feedItems.some(
-        (it) =>
-          it.feed_type === "provider_error" &&
-          it.data.kind === "unauthenticated" &&
-          it.data.provider === effectiveProvider,
+      const hasInlineAuthCard = feedItems.some((it) =>
+        isInlineAuthCardForChat(it, effectiveProvider),
       );
       if (hasInlineAuthCard) return null;
       const signalKey = providerAuthSignalKey(feedItems);
@@ -891,7 +912,7 @@ export function useAgentChatPanel({
 
   const attachMenu = useMemo<AIBoardProps["attachMenu"]>(() => {
     if (!agent) return undefined;
-    return ({ openFilePicker, close }) => (
+    return ({ openFilePicker }) => (
       <div className="flex flex-col gap-0.5">
         <button
           type="button"
@@ -903,43 +924,9 @@ export function useAgentChatPanel({
           <Paperclip className="size-4 text-muted-foreground" />
           {t("composerAttach.addFiles")}
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            setPickerOpen(true);
-            close();
-          }}
-          className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-foreground hover:bg-accent transition-colors"
-        >
-          <Play className="size-4 text-muted-foreground fill-current" />
-          {t("composerSkill.browse")}
-        </button>
-        <div className="px-2 py-1">
-          <ChatModelSelector
-            provider={effectiveProvider}
-            model={effectiveModel}
-            onSelect={handleModelSelect}
-          />
-        </div>
-        <div className="px-2 py-1">
-          <ChatEffortSelector
-            provider={effectiveProvider}
-            model={effectiveModel}
-            effort={effectiveEffort}
-            onSelect={handleEffortSelect}
-          />
-        </div>
       </div>
     );
-  }, [
-    agent,
-    t,
-    effectiveProvider,
-    effectiveModel,
-    effectiveEffort,
-    handleModelSelect,
-    handleEffortSelect,
-  ]);
+  }, [agent, t]);
 
   const pickerDialog = agent ? (
     <>

@@ -23,3 +23,4 @@ export * from "./state-activities";
 export * from "./state-agents";
 export * from "./state-history";
 export * from "./state-store";
+export * from "./state-workspace";

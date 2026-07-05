@@ -36,3 +36,36 @@ removes the app for ALL agents ("Disconnect everywhere").
 - `PUT  /v1/agents/:slug/integration-grants {toolkits: string[]}` → `{ok:true}`
   (replace-set; server validates slugs are plain `[a-z0-9_-]+`, dedupes)
 - 403 `{code:"not_assigned"}` when the caller isn't assigned to the agent.
+
+## Local (single-player) grants
+
+The desktop / self-host TS host (`packages/host`) serves the SAME grant model so
+single-player has parity with the multiplayer gateway. Differences from the
+gateway:
+
+- **Routes** are `/v1/agents/:agentId/integration-grants` (GET/PUT), returning
+  `{toolkits: string[]}` on both. No org/assignment concept (personal tier =
+  owner-only), so no `not_assigned`; an unknown agent is 404, ownership 403.
+- **Materialize-on-first-read default = all connected.** Preserves today's
+  behavior (every agent may use every connected app). GET on an agent with no
+  stored record materializes the record as ALL toolkits the user currently has
+  connected (`provider.listConnections`, statuses `active`+`error`, `pending`
+  excluded), persists it, and returns it. Provider not ready (signed out /
+  unconfigured) → `{toolkits:[]}` WITHOUT persisting, so a later signed-in read
+  materializes the real set. Concurrent first-reads share one in-flight
+  materialization (persisted exactly once).
+- **Enforcement begins only once a record exists.** The sandbox proxy
+  (`/sandbox/integrations/*`) resolves the agent from the HMAC sandbox token
+  (which binds `{workspaceId, agentId}`). With a stored record: search is
+  filtered to granted toolkits (by the real `ToolMatch.toolkit`), and execute of
+  an ungranted toolkit is `403 {error:"toolkit_not_granted"}` — the action's
+  toolkit is its slug prefix before the first `_`, lowercased (the Composio
+  convention, mirroring C1). No stored record → no filtering (pass-through).
+- **Storage** is per agent, inside the agent's own dir
+  (`<Workspace>/<Agent>/.houston/integration-grants.json`), so it survives
+  restarts and is removed for free when the agent is deleted.
+- **Gateway-fronted pods never serve these routes.** A managed cloud pod
+  (`HOUSTON_MANAGED_CLOUD` / `gatewayFronted`) leaves the grant dep unwired: the
+  gateway in front owns grant policy, so the pod must not shadow it. The routes
+  then 404 and the sandbox proxy enforces nothing (the gateway already did).
+  Clients read that 404 as "grants unsupported" and degrade without a toast.

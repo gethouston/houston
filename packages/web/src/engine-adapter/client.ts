@@ -1,6 +1,7 @@
 import { agentFileEventType, migrateProviderModel } from "@houston/domain";
 import {
   type CustomEndpoint,
+  EngineError,
   HoustonEngineClient,
   type ProviderId,
 } from "@houston/runtime-client";
@@ -112,6 +113,18 @@ export function isHoustonEngineError(e: unknown): e is HoustonEngineError {
  * (first-run: it runs in the host's hidden setup runtime, not an agent's).
  */
 const SETUP_LOGIN_KEY = "__setup__";
+
+/**
+ * Treat a 404 on login/cancel as benign: it means no login was pending (or an
+ * older host lacks the cancel route), so cancel's postcondition — the login
+ * slot is free — already holds. The reconnect card's every press goes
+ * cancel → launch, so propagating this 404 aborted the chain and the login
+ * never launched (HOU-676). Every other failure still propagates.
+ */
+function benignCancelMiss(e: unknown): void {
+  if (e instanceof EngineError && e.status === 404) return;
+  throw e;
+}
 
 /**
  * Drop-in replacement for `@houston-ai/engine-client`'s HoustonClient, backed by
@@ -677,6 +690,53 @@ export class HoustonClient {
       })
     ).json()) as { created: string };
   }
+  /** Upload browser Files into the workspace (Files tab drag-drop / Browse),
+   * optionally into a subfolder. One request per file, so each request stays
+   * within the host's upload cap regardless of how many files were dropped. */
+  async uploadProjectFiles(
+    agentPath: string,
+    files: File[],
+    targetDir?: string | null,
+  ): Promise<void> {
+    if (files.length === 0) return;
+    if (!this.cp) throw new Error("Uploading files needs a connected host.");
+    for (const f of files) {
+      const contentBase64 = controlPlane.bytesToBase64(
+        new Uint8Array(await f.arrayBuffer()),
+      );
+      await this.cpFilesFetch(agentPath, "files/import", {
+        method: "POST",
+        body: JSON.stringify({
+          dir: targetDir ?? null,
+          files: [{ name: f.name, contentBase64 }],
+        }),
+      });
+    }
+  }
+  /** Move a file/folder into another folder (null = workspace root). */
+  async moveProjectFile(
+    agentPath: string,
+    relPath: string,
+    toDir: string | null,
+  ): Promise<void> {
+    if (!this.cp) throw new Error("Moving files needs a connected host.");
+    await this.cpFilesFetch(agentPath, "files/move", {
+      method: "POST",
+      body: JSON.stringify({ path: relPath, toDir }),
+    });
+  }
+  /** The whole workspace as one zip — "Download all" where there's no local
+   * file manager to reveal in (cloud pods, web builds). */
+  async downloadProjectArchive(
+    agentPath: string,
+  ): Promise<{ blob: Blob; contentType: string }> {
+    if (!this.cp) throw new Error("Downloads need a connected host.");
+    const res = await this.cpFilesFetch(agentPath, "files/archive");
+    return {
+      blob: await res.blob(),
+      contentType: res.headers.get("content-type") ?? "application/zip",
+    };
+  }
 
   // ---- conversations / routines / skills (mostly empty) ----
   async listConversations(agentPath: string): Promise<ConversationEntry[]> {
@@ -913,12 +973,15 @@ export class HoustonClient {
       );
       const url = info.kind === "device_code" ? info.verificationUri : info.url;
       const userCode = info.kind === "device_code" ? info.userCode : null;
+      // The bus event is the ONE opening path: an app-side handler (a mounted
+      // login surface, else the shell's global fallback) opens the URL via the
+      // platform opener. A direct window.open here double-opened next to those
+      // handlers — and was a silent no-op inside the desktop's WKWebView.
       emitEvent("ProviderLoginUrl", {
         provider: name,
         url,
         user_code: userCode,
       });
-      if (typeof window !== "undefined") window.open(url, "_blank", "noopener");
       this.watchLoginCompletion(pid, name);
       return;
     }
@@ -973,13 +1036,13 @@ export class HoustonClient {
       // otherwise it keeps polling the provider until timeout and a retry
       // collides with the stale flow ("sign-in already pending", HOU-664 /
       // the HOU-438 failure class).
-      await this.providerEngine().cancelLogin(pid);
+      await this.providerEngine().cancelLogin(pid).catch(benignCancelMiss);
       return;
     }
     this.stopLoginWatch(name);
     // Cancel the runtime's in-flight OAuth flow for real (frees the loopback
     // port + login slot), not just the local watcher.
-    await this.engine.cancelLogin(pid);
+    await this.engine.cancelLogin(pid).catch(benignCancelMiss);
     // Benign completion: clears the dialog + spinner without an error toast,
     // matching the old engine's cancel semantics.
     emitEvent("ProviderLoginComplete", {
@@ -1223,8 +1286,13 @@ export class HoustonClient {
       : this.engine;
     // Fire-and-stream: events flow to the feed store over the bus/WS adapter.
     // The board-status setter is cloud-aware (writes land where the board reads).
-    void streamTurn(engine, path, req.sessionKey, req.prompt, (status) =>
-      this.setActivityStatus(path, req.sessionKey, status),
+    void streamTurn(
+      engine,
+      path,
+      req.sessionKey,
+      req.prompt,
+      (status) => this.setActivityStatus(path, req.sessionKey, status),
+      req.provider,
     );
     return { sessionKey: req.sessionKey };
   }
@@ -1436,10 +1504,14 @@ export class HoustonClient {
     if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
     return controlPlane.setAgentAssignments(this.cp, agentSlugOrId, userIds);
   }
-  // Grants degrade like `integrationStatus`: single-player has no grants model,
-  // so read is empty and write is a no-op rather than a hard failure.
-  async agentIntegrationGrants(agentSlugOrId: string): Promise<string[]> {
-    if (!this.cp) return [];
+  // Grants degrade gracefully: `null` means "this deployment has no grants
+  // model" (the legacy engine path, or a host that 404s the route), which the UI
+  // treats as unsupported rather than a hard failure. A host that serves grants
+  // (the local/self-host TS host, or the cloud gateway) answers with the set.
+  async agentIntegrationGrants(
+    agentSlugOrId: string,
+  ): Promise<string[] | null> {
+    if (!this.cp) return null;
     return controlPlane.agentIntegrationGrants(this.cp, agentSlugOrId);
   }
   async setAgentIntegrationGrants(

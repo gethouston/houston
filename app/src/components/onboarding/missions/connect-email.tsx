@@ -9,8 +9,7 @@ import {
 import { useCapabilities } from "../../../hooks/use-capabilities";
 import { canManageAgentGrants } from "../../../lib/org-roles";
 import type { Agent } from "../../../lib/types";
-import { INTEGRATION_PROVIDER } from "../../tabs/integrations-tab-model";
-import { useIntegrationConnect } from "../../tabs/use-integration-connect";
+import { INTEGRATION_PROVIDER, useConnectFlow } from "../../integrations";
 import { OptionCard, SetupCard } from "../setup-card";
 import { isToolkitConnected, shouldOfferConnectSkip } from "./onboarding-flow";
 
@@ -30,9 +29,9 @@ interface ConnectEmailMissionProps {
  * Onboarding: give the agent access to the user's email. Pick Gmail, Outlook,
  * or another provider and connect it through the app's own OAuth on the
  * integrations provider (platform mode — no Composio account, no sign-in step;
- * see `integrations-tab-model.ts`). `useIntegrationConnect` mints the hosted
- * link, opens the browser, and polls until the connection turns active; we then
- * hand off the moment the chosen toolkit shows up connected.
+ * see `integrations/model.ts`). `useConnectFlow` mints the hosted link, opens
+ * the browser, and polls until the connection turns active; we then hand off
+ * the moment the chosen toolkit shows up connected.
  */
 export function ConnectEmailMission({
   eyebrow,
@@ -46,9 +45,9 @@ export function ConnectEmailMission({
   const [sel, setSel] = useState<"gmail" | "outlook" | "other" | null>(null);
   const [other, setOther] = useState("");
   // Once the user has kicked off a connect, keep the detection query enabled
-  // regardless of the cached ready flag: `useIntegrationConnect` invalidates
-  // it when its OAuth poll resolves, and we must refetch to see the new
-  // connection even if the status cache still lags on `ready`.
+  // regardless of the cached ready flag: `useConnectFlow` invalidates it when
+  // its OAuth poll resolves, and we must refetch to see the new connection
+  // even if the status cache still lags on `ready`.
   const [attempted, setAttempted] = useState(false);
 
   // The gateway is "ready" only once it has the Houston session (App's session
@@ -65,10 +64,11 @@ export function ConnectEmailMission({
   // Multiplayer: a connection made from this agent's flow is auto-granted to it
   // (mirrors the integrations tab). Single-player has no grants — this is false.
   const autoGrant = canManageAgentGrants(capabilities, agent);
-  const { connectingToolkit, connect } = useIntegrationConnect({
+  const { state: connectState, connect } = useConnectFlow({
     agentId: agent.id,
     autoGrant,
   });
+  const connecting = connectState !== null;
 
   const chosen = useMemo(() => {
     if (sel === "gmail") return { toolkit: "gmail", label: "Gmail" };
@@ -108,7 +108,7 @@ export function ConnectEmailMission({
     statusKnown: !status.isPending,
     ready,
     attempted,
-    connecting: connectingToolkit !== null,
+    connecting,
   });
 
   return (
@@ -149,10 +149,10 @@ export function ConnectEmailMission({
         <AsyncButton
           className="h-11 rounded-full px-5"
           spinner={false}
-          disabled={!chosen || connectingToolkit !== null}
+          disabled={!chosen || connecting}
           onClick={handleConnect}
         >
-          {connectingToolkit
+          {connecting
             ? t("tutorial.missions.connectEmail.connecting")
             : t("tutorial.missions.connectEmail.connect")}
         </AsyncButton>

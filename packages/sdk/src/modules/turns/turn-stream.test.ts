@@ -7,12 +7,12 @@ import type {
 import { EngineError } from "@houston/runtime-client";
 import { afterEach, expect, test } from "vitest";
 import type { FeedOutput } from "./feed-output";
+import { TURN_DIED_MESSAGE } from "./settle-from-history";
 import {
   SEND_IN_FLIGHT_MESSAGE,
   STREAM_LOST_MESSAGE,
   StreamRegistry,
 } from "./stream-registry";
-import { TURN_DIED_MESSAGE } from "./turn-settle";
 import {
   observeConversation,
   type StreamTuning,

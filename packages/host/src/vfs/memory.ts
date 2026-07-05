@@ -2,7 +2,10 @@ import { assertSafeKey, type ObjectStat, type Vfs } from "./vfs";
 
 /** In-memory Vfs for tests and CP_DEV=1. */
 export class MemoryVfs implements Vfs {
-  private files = new Map<string, { content: Buffer; updatedMs: number }>();
+  private files = new Map<
+    string,
+    { content: Buffer; updatedMs: number; createdMs: number }
+  >();
   private clock = 1;
 
   async list(prefix: string): Promise<string[]> {
@@ -18,6 +21,7 @@ export class MemoryVfs implements Vfs {
         key,
         size: v.content.byteLength,
         updatedMs: v.updatedMs,
+        createdMs: v.createdMs,
       }))
       .sort((a, b) => a.key.localeCompare(b.key));
   }
@@ -31,16 +35,14 @@ export class MemoryVfs implements Vfs {
   }
 
   async writeText(key: string, content: string): Promise<void> {
-    assertSafeKey(key);
-    this.files.set(key, {
-      content: Buffer.from(content, "utf8"),
-      updatedMs: this.clock++,
-    });
+    await this.writeBytes(key, Buffer.from(content, "utf8"));
   }
 
   async writeBytes(key: string, content: Buffer): Promise<void> {
     assertSafeKey(key);
-    this.files.set(key, { content, updatedMs: this.clock++ });
+    // An overwrite keeps the original creation time (filesystem semantics).
+    const createdMs = this.files.get(key)?.createdMs ?? this.clock;
+    this.files.set(key, { content, updatedMs: this.clock++, createdMs });
   }
 
   async deleteKey(key: string): Promise<void> {
@@ -51,7 +53,12 @@ export class MemoryVfs implements Vfs {
     assertSafeKey(toKey);
     const v = this.files.get(fromKey);
     if (!v) throw new Error(`move: source not found: ${fromKey}`);
-    this.files.set(toKey, { content: v.content, updatedMs: this.clock++ });
+    // A move keeps the creation time — renaming a file doesn't re-create it.
+    this.files.set(toKey, {
+      content: v.content,
+      updatedMs: this.clock++,
+      createdMs: v.createdMs,
+    });
     this.files.delete(fromKey);
   }
 

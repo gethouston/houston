@@ -3,11 +3,10 @@ import { MemoryTurnBus } from "./bus";
 
 /**
  * The OPEN TurnBus adapter (MemoryTurnBus, virtual clock) runs through the shared
- * contract (../testing/turn-bus-contract.ts → runTurnBusContract). The CLOSED
- * RedisTurnBus runs the SAME time-independent assertions plus Redis's native
- * EX/NX/TTL semantics in `@houston/host-cloud` (turn/bus-redis.contract.test.ts),
- * against an in-process ioredis-mock — the contract function lives on the open
- * side of the seam; only the adapters differ.
+ * contract (../testing/turn-bus-contract.ts → runTurnBusContract). The closed
+ * RedisTurnBus and its Redis-native EX/NX/TTL suite were retired with
+ * `@houston/host-cloud` (git history) — the contract stays open as the
+ * behavioral bar for any out-of-repo adapter.
  */
 
 runTurnBusContract("MemoryTurnBus", (now) => new MemoryTurnBus(now));
