@@ -18,6 +18,7 @@ import type {
   Workspace,
 } from "../../../../ui/engine-client/src/types";
 import { HoustonEngineError } from "./client";
+import { refreshLiveToken } from "./session-refresh";
 import { DEFAULT_AGENT_COLOR, DEFAULT_AGENT_CONFIG_ID } from "./synthetic";
 
 /**
@@ -156,19 +157,74 @@ export function liveToken(fallback: string): string {
   return fallback;
 }
 
+/**
+ * A `fetch` for gateway calls that keeps auth invisible across cloud restarts
+ * (HOU-687): the bearer is read LIVE per attempt (never a pinned copy), and a
+ * 401 triggers one single-flight session refresh and one replay with the fresh
+ * token. A 401 that survives the refresh is returned as-is — a real sign-out
+ * must surface, not spin. With no refresher installed (static tokens, tests)
+ * the refresh resolves null and this degrades to a plain live-token fetch.
+ */
+export function gatewayAuthFetch(fallbackToken: string): typeof fetch {
+  return async (input, init) => {
+    const send = (bearer: string) => {
+      const headers = new Headers(init?.headers);
+      if (bearer) headers.set("Authorization", `Bearer ${bearer}`);
+      return fetch(input, { ...init, headers });
+    };
+    const res = await send(liveToken(fallbackToken));
+    if (res.status !== 401) return res;
+    const fresh = await refreshLiveToken();
+    if (!fresh) return res;
+    return send(fresh);
+  };
+}
+
+/** Gateway statuses that mean "rolling deploy / pod handoff in progress", not a
+ *  real answer: worth a brief blind retry for reads. */
+const TRANSIENT_STATUSES = new Set([502, 503, 504]);
+/** Two retries, ~2s total — bridges a gateway roll's LB handoff, without
+ *  masking a real outage for long. */
+const TRANSIENT_RETRY_DELAYS_MS = [500, 1500];
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function cpFetch(
   cfg: ControlPlaneConfig,
   path: string,
   init?: RequestInit,
 ): Promise<Response> {
-  const res = await fetch(`${cfg.baseUrl}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${liveToken(cfg.token)}`,
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-  });
+  const doFetch = gatewayAuthFetch(cfg.token);
+  const attempt = () =>
+    doFetch(`${cfg.baseUrl}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...init?.headers,
+      },
+    });
+
+  // Reads retry through the deploy window; writes never blind-retry (a thrown
+  // network error on a POST may have reached the gateway — the caller decides).
+  const method = (init?.method ?? "GET").toUpperCase();
+  const retriable = method === "GET" || method === "HEAD";
+  let res: Response | undefined;
+  let failure: unknown;
+  for (let i = 0; ; i++) {
+    failure = undefined;
+    try {
+      res = await attempt();
+    } catch (err) {
+      failure = err; // network-level: connection refused/reset mid-roll
+    }
+    const transient = res === undefined || TRANSIENT_STATUSES.has(res.status);
+    if (!transient || !retriable || i >= TRANSIENT_RETRY_DELAYS_MS.length) {
+      break;
+    }
+    await sleep(TRANSIENT_RETRY_DELAYS_MS[i]);
+    res = undefined;
+  }
+  if (failure !== undefined || res === undefined) throw failure;
   if (!res.ok) {
     // Surface the real failure (auth, not-found, server) — never swallow.
     const body = await res.json().catch(() => ({}));
@@ -339,9 +395,12 @@ export function runtimeClientFor(
   cfg: ControlPlaneConfig,
   agentId: string,
 ): HoustonEngineClient {
+  // Auth rides gatewayAuthFetch, never a pinned token: these clients back
+  // long-lived turn streams, whose reconnects must present the CURRENT bearer
+  // (and refresh it on 401) or a gateway roll kills the turn (HOU-687).
   return new HoustonEngineClient({
     baseUrl: `${cfg.baseUrl}/agents/${encodeURIComponent(agentId)}`,
-    token: liveToken(cfg.token) || undefined,
+    fetch: gatewayAuthFetch(cfg.token),
   });
 }
 
@@ -358,7 +417,7 @@ export function setupRuntimeClientFor(
 ): HoustonEngineClient {
   return new HoustonEngineClient({
     baseUrl: `${cfg.baseUrl}/setup-runtime`,
-    token: liveToken(cfg.token) || undefined,
+    fetch: gatewayAuthFetch(cfg.token),
   });
 }
 
@@ -801,8 +860,10 @@ export async function setPreference(
  * token is always current), and host events `{ type, agentPath, workspaceId }`
  * are translated to the shape the UI's invalidation map reads
  * (`{ type, data: { agent_path, workspace_id } }`). Malformed frames are
- * dropped and the loop reconnects with a short backoff on any drop — including
- * a `401`, which (with no `onUnauthorized` seam) simply reconnects.
+ * dropped and the loop reconnects with a short backoff on any drop. A `401`
+ * forces a session refresh (single-flight, HOU-687) so the next attempt's
+ * re-read of `liveToken` carries a valid bearer — without it, an expired token
+ * would 401-loop forever because nothing else re-mints while the app idles.
  */
 export function subscribeEvents(
   cfg: ControlPlaneConfig,
@@ -814,6 +875,9 @@ export function subscribeEvents(
       `${cfg.baseUrl}/v1/events?token=${encodeURIComponent(liveToken(cfg.token))}`,
     fetch,
     signal: ac.signal,
+    onUnauthorized: () => {
+      void refreshLiveToken();
+    },
     onEvent: (data) =>
       onEvent(
         toInvalidationEvent(

@@ -3,13 +3,14 @@ import { useSession } from "../../hooks/use-session";
 import { installDeepLinkListener } from "../../lib/auth";
 import {
   hostedOauthGateActive,
+  installHostedSessionRefresh,
   isEngineReady,
   setHostedEngineSessionToken,
   whenEngineReady,
 } from "../../lib/engine";
 import { hostedGateState } from "../../lib/engine-mode";
 import i18n from "../../lib/i18n";
-import { isAuthConfigured } from "../../lib/supabase";
+import { isAuthConfigured, supabase } from "../../lib/supabase";
 import { SignInScreen } from "../auth/sign-in-screen";
 
 /**
@@ -32,6 +33,20 @@ function HostedEngineGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isAuthConfigured()) return;
     return installDeepLinkListener();
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthConfigured()) return;
+    // The 401 → refresh → replay seam (HOU-687): when the gateway rejects a
+    // bearer (token expired while the app idled, connections severed by a
+    // gateway roll), the adapter force-mints a fresh access token and retries
+    // instead of toasting. refreshSession failing (revoked/absent refresh
+    // token) resolves null — a real sign-out, surfaced by the auth gate.
+    return installHostedSessionRefresh(async () => {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error) return null;
+      return data.session?.access_token ?? null;
+    });
   }, []);
 
   useEffect(() => {

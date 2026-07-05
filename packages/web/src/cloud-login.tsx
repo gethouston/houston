@@ -49,7 +49,23 @@ export function CloudApp({ controlPlaneUrl }: { controlPlaneUrl: string }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) =>
       apply(session?.access_token ?? ""),
     );
-    return () => sub.subscription.unsubscribe();
+    // The 401 → refresh → replay seam (HOU-687): the adapter's gatewayAuthFetch
+    // calls this to force-mint a fresh access token when the gateway rejects
+    // the current one (expired while the tab idled, gateway roll severed the
+    // streams). Null = the session is really gone; the 401 surfaces.
+    const refresher = async () => {
+      const { data, error } = await supabase.auth.refreshSession();
+      const token = error ? null : (data.session?.access_token ?? null);
+      if (token) apply(token);
+      return token;
+    };
+    window.__HOUSTON_SESSION_REFRESH__ = refresher;
+    return () => {
+      sub.subscription.unsubscribe();
+      if (window.__HOUSTON_SESSION_REFRESH__ === refresher) {
+        delete window.__HOUSTON_SESSION_REFRESH__;
+      }
+    };
   }, [controlPlaneUrl]);
 
   return <AppTree />;

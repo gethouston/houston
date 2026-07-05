@@ -26,4 +26,7 @@ interface Window {
   __HOUSTON_ENGINE__?: { baseUrl: string; token: string };
   /** When true, the engine-adapter routes agents + chat through the control plane (cloud). */
   __HOUSTON_CP__?: boolean;
+  /** Hosted-session refresher: mints a fresh Supabase access token on a
+   *  gateway 401 so the adapter can replay the request (HOU-687). */
+  __HOUSTON_SESSION_REFRESH__?: () => Promise<string | null>;
 }

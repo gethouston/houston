@@ -153,9 +153,13 @@ export class HoustonClient {
     this.cp = useCp
       ? { baseUrl: opts.baseUrl.replace(/\/+$/, ""), token: opts.token }
       : null;
+    // Live-token auth fetch (not a pinned `token`): hosted mode rotates the
+    // Supabase bearer mid-session, and a 401 must refresh + replay instead of
+    // surfacing (HOU-687). Outside hosted mode liveToken falls back to the
+    // captured static token, so local/static hosts are unchanged.
     this.engine = new HoustonEngineClient({
       baseUrl: opts.baseUrl,
-      token: opts.token || undefined,
+      fetch: controlPlane.gatewayAuthFetch(opts.token),
     });
     // Mark the new TS engine as the active backend so the frontend can surface
     // new-engine-only capabilities (e.g. API-key providers like OpenCode). The
@@ -253,14 +257,12 @@ export class HoustonClient {
     return (await this.engine.version()) as never;
   }
   async capabilities(): Promise<Capabilities> {
-    // Raw fetch (not `this.engine.capabilities()`) on purpose: the inner engine
-    // client captured its token at construction, but hosted mode rotates the
-    // Supabase bearer mid-session, so we MUST read the live token here.
-    const res = await fetch(`${this.baseUrl}/v1/capabilities`, {
-      headers: {
-        Authorization: `Bearer ${controlPlane.liveToken(this.token)}`,
-      },
-    });
+    // gatewayAuthFetch (not `this.engine.capabilities()`) on purpose: hosted
+    // mode rotates the Supabase bearer mid-session, so the live token is read
+    // per attempt and a 401 refreshes + replays (HOU-687).
+    const res = await controlPlane.gatewayAuthFetch(this.token)(
+      `${this.baseUrl}/v1/capabilities`,
+    );
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new HoustonEngineError(res.status, body);
@@ -610,12 +612,11 @@ export class HoustonClient {
     if (!this.cp)
       throw new Error("cpFilesFetch called without a control-plane config");
     const cp = this.cp;
-    const res = await fetch(
+    const res = await controlPlane.gatewayAuthFetch(cp.token)(
       `${cp.baseUrl}/agents/${encodeURIComponent(agentId)}/${path}`,
       {
         ...init,
         headers: {
-          Authorization: `Bearer ${controlPlane.liveToken(cp.token)}`,
           "Content-Type": "application/json",
           ...init?.headers,
         },
