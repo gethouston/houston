@@ -1,6 +1,6 @@
 import type { KanbanItem } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
-import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
+import { messagePreviewText } from "@houston-ai/chat";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -8,6 +8,7 @@ import {
   useDeleteActivity,
   useUpdateActivity,
 } from "../../hooks/queries";
+import { useConversationFeed } from "../../hooks/use-conversation-vm";
 import { missionCardTags } from "../../lib/mission-card";
 import { canDropMission, selectActive } from "../../lib/mission-selection";
 import {
@@ -16,14 +17,8 @@ import {
   tauriChat,
 } from "../../lib/tauri";
 import type { Agent, AgentDefinition } from "../../lib/types";
-import { useFeedStore } from "../../stores/feeds";
 import { useUIStore } from "../../stores/ui";
 import { missionColumnIdForStatus } from "../mission-board-columns";
-
-// Stable empty reference so the feed store selector doesn't return a new
-// object every render when this agent has no feeds yet (which would otherwise
-// trigger "getSnapshot should be cached" / infinite loop in React).
-const EMPTY_FEED_BUCKET: Record<string, never> = Object.freeze({});
 
 /**
  * Per-agent board data: maps this agent's activities to kanban items, exposes
@@ -46,7 +41,6 @@ export function useAgentBoardData({
   const path = agent.folderPath;
   const agentModes = agentDef.config.agents;
   const addToast = useUIStore((s) => s.addToast);
-  const setFeed = useFeedStore((s) => s.setFeed);
   const { data: rawItems } = useActivity(path);
   const deleteActivity = useDeleteActivity(path);
   const updateActivity = useUpdateActivity(path);
@@ -78,9 +72,6 @@ export function useAgentBoardData({
     [agent.name, agentModes, activeRaw, t],
   );
 
-  const feedBucket = useFeedStore((s) => s.items[path]);
-  const feedItems = feedBucket ?? EMPTY_FEED_BUCKET;
-
   const sessionKeyFor = useCallback(
     (activityId: string) => {
       const item = (rawItems ?? []).find((a) => a.id === activityId);
@@ -89,22 +80,23 @@ export function useAgentBoardData({
     [rawItems],
   );
 
+  // The open conversation's reactive feed from the SDK conversation VM
+  // (history seeded by the adapter's loadHistory; live turns folded by the
+  // SDK). AIBoard only reads `feedItems[activeSessionKey]`, so the
+  // single-entry map is the whole contract.
+  const activeSessionKey = selectedId ? sessionKeyFor(selectedId) : null;
+  const activeFeed = useConversationFeed(path, activeSessionKey);
+  const feedItems = useMemo<Record<string, FeedItem[]>>(
+    () => (activeSessionKey ? { [activeSessionKey]: activeFeed } : {}),
+    [activeSessionKey, activeFeed],
+  );
+
   const loadHistory = useCallback(
     async (sessionKey: string, opts?: HistoryLoadOptions) => {
       const history = await tauriChat.loadHistory(path, sessionKey, opts);
       return history as FeedItem[];
     },
     [path],
-  );
-  const handleHistoryLoaded = useCallback(
-    (sessionKey: string, history: FeedItem[]) => {
-      // Reconcile the persisted slice with any live-bucket items (optimistic
-      // or a WS event that landed mid-load) by turn identity so a surfaced
-      // routine isn't rendered twice (#363).
-      const current = useFeedStore.getState().items[path]?.[sessionKey] ?? [];
-      setFeed(path, sessionKey, mergeFeedHistory(history, current));
-    },
-    [path, setFeed],
   );
 
   const handleDelete = useCallback(
@@ -160,7 +152,6 @@ export function useAgentBoardData({
     feedItems,
     sessionKeyFor,
     loadHistory,
-    handleHistoryLoaded,
     handleDelete,
     handleApprove,
     handleItemMove,

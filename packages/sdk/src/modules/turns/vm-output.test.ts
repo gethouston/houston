@@ -1,6 +1,10 @@
 import { expect, test } from "vitest";
 import { ScopeStore } from "../../store";
-import { type ConversationVM, ConversationVmOutput } from "./vm-output";
+import {
+  type ConversationVM,
+  ConversationVmOutput,
+  conversationScope,
+} from "./vm-output";
 
 /**
  * The built-in conversation VM fold: streaming text updates one entry in place,
@@ -12,7 +16,8 @@ import { type ConversationVM, ConversationVmOutput } from "./vm-output";
 function harness() {
   const store = new ScopeStore();
   const vm = new ConversationVmOutput(store);
-  const snap = () => store.getSnapshot("conversation/c1") as ConversationVM;
+  const snap = () =>
+    store.getSnapshot(conversationScope("a", "c1")) as ConversationVM;
   return { store, vm, snap };
 }
 
@@ -65,7 +70,9 @@ test("non-streaming items append with fresh stable ids", () => {
 test("session status drives running + sessionStatus and publishes reactively", () => {
   const { store, vm } = harness();
   const seen: ConversationVM[] = [];
-  store.subscribe("conversation/c1", (s) => seen.push(s as ConversationVM));
+  store.subscribe(conversationScope("a", "c1"), (s) =>
+    seen.push(s as ConversationVM),
+  );
 
   vm.sessionStatus("a", "c1", "running");
   vm.sessionStatus("a", "c1", "completed");
@@ -132,9 +139,34 @@ test("distinct conversations get distinct scopes", () => {
   vm.pushFeedItem("a", "c2", { feed_type: "system_message", data: "two" });
 
   expect(
-    (store.getSnapshot("conversation/c1") as ConversationVM).feed,
+    (store.getSnapshot(conversationScope("a", "c1")) as ConversationVM).feed,
   ).toHaveLength(1);
   expect(
-    (store.getSnapshot("conversation/c2") as ConversationVM).feed,
+    (store.getSnapshot(conversationScope("a", "c2")) as ConversationVM).feed,
   ).toHaveLength(1);
+});
+
+test("the same session key on two agents never collides (agent-qualified scope)", () => {
+  // Session keys are unique only WITHIN one agent (e.g. two agents each with
+  // an `activity-1` conversation) — the scope must keep them apart (ADR-0001).
+  const { store, vm } = harness();
+  vm.pushFeedItem("Houston/Bo", "activity-1", {
+    feed_type: "system_message",
+    data: "bo's",
+  });
+  vm.pushFeedItem("Houston/Ada", "activity-1", {
+    feed_type: "system_message",
+    data: "ada's",
+  });
+
+  const bo = store.getSnapshot(
+    conversationScope("Houston/Bo", "activity-1"),
+  ) as ConversationVM;
+  const ada = store.getSnapshot(
+    conversationScope("Houston/Ada", "activity-1"),
+  ) as ConversationVM;
+  expect(bo.feed).toHaveLength(1);
+  expect(bo.feed[0]?.data).toBe("bo's");
+  expect(ada.feed).toHaveLength(1);
+  expect(ada.feed[0]?.data).toBe("ada's");
 });

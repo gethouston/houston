@@ -7,7 +7,6 @@ import { classifyFileKind } from "../../lib/file-kind";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
 import type { Agent, AgentDefinition } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
-import { useFeedStore } from "../../stores/feeds";
 import { useUIStore } from "../../stores/ui";
 
 /**
@@ -33,7 +32,7 @@ export function useMissionControlArchivedSend({
   onReactivated: () => void;
 }) {
   const { t } = useTranslation("chat");
-  const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
+  const addToast = useUIStore((s) => s.addToast);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const setActivityPanelId = useUIStore((s) => s.setActivityPanelId);
 
@@ -51,14 +50,12 @@ export function useMissionControlArchivedSend({
           files,
         );
         const prompt = buildAttachmentPrompt(text, files, paths);
+        // The turn stream pushes the user bubble into the conversation VM
+        // itself — no app-side optimistic push.
         await tauriChat.send(agentPath, prompt, sessionKey, {
           mode: mode?.promptFile,
           providerOverride,
           modelOverride,
-        });
-        pushFeedItem(agentPath, sessionKey, {
-          feed_type: "user_message",
-          data: prompt,
         });
         analytics.track("chat_message_sent");
         for (const f of files)
@@ -69,9 +66,11 @@ export function useMissionControlArchivedSend({
         setViewMode("activity");
         setActivityPanelId(missionId, { forceOpen: true });
       } catch (err) {
-        pushFeedItem(agentPath, sessionKey, {
-          feed_type: "system_message",
-          data: t("errors.sessionStart", { error: String(err) }),
+        // The send failed BEFORE a turn stream existed — nothing wrote to the
+        // VM, so surface it as a toast (no-silent-failures rule).
+        addToast({
+          title: t("errors.sessionStart", { error: String(err) }),
+          variant: "error",
         });
         throw err;
       }
@@ -83,7 +82,7 @@ export function useMissionControlArchivedSend({
       providerOverride,
       modelOverride,
       onReactivated,
-      pushFeedItem,
+      addToast,
       setViewMode,
       setActivityPanelId,
       t,

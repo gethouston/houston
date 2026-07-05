@@ -82,7 +82,9 @@ function harness(frames: WireFrame[] = doneTurn) {
     registerCommand: (type, handler) => commands.set(type, handler),
   };
   const mod = createTurnsModule(ctx);
-  const vm = () => store.getSnapshot(conversationScope("c1")) as ConversationVM;
+  // Sends in this suite carry no agentId, so the VM lands on the "" agent slot.
+  const vm = () =>
+    store.getSnapshot(conversationScope("", "c1")) as ConversationVM;
   return { store, commands, calls, mod, vm };
 }
 

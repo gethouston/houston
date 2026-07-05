@@ -167,7 +167,6 @@ export function useAgentBoardSource(
     onApprove: data.handleApprove,
     onRename: data.onRename,
     loadHistory: data.loadHistory,
-    onHistoryLoaded: data.handleHistoryLoaded,
     sendMessageNow: send.sendMessageNow,
     createConversation: send.createConversation,
     stopSession: send.stopSession,

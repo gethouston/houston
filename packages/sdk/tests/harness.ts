@@ -13,7 +13,11 @@
  * these tests pin is the wire contract, not a mock's guess.
  */
 
-import { type FakeHost, startFakeHost } from "@houston/fake-host";
+import {
+  type FakeHost,
+  SEED_AGENT_ID,
+  startFakeHost,
+} from "@houston/fake-host";
 import {
   type BoardStatus,
   type ConversationVM,
@@ -88,12 +92,17 @@ export function resetHost(baseUrl: string): Promise<Record<string, unknown>> {
   return control(baseUrl, "reset");
 }
 
-/** Read the conversation VM snapshot for `conversationId`. */
+/**
+ * Read the conversation VM snapshot for `conversationId`. Scopes are
+ * agent-qualified (ADR-0001); every contract suite sends as the fake host's
+ * seed agent, so that is the default.
+ */
 export function convVm(
   sdk: HoustonSdk,
   conversationId: string,
+  agentId: string = SEED_AGENT_ID,
 ): ConversationVM | undefined {
-  return sdk.getSnapshot(conversationScope(conversationId)) as
+  return sdk.getSnapshot(conversationScope(agentId, conversationId)) as
     | ConversationVM
     | undefined;
 }

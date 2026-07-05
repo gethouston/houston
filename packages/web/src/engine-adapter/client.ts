@@ -6,6 +6,7 @@ import {
   type ProviderId,
 } from "@houston/runtime-client";
 import type { BoardStatus } from "@houston/sdk";
+import { historyToFeed as sdkHistoryToFeed } from "@houston/sdk";
 import type {
   Activity,
   ActivityUpdate,
@@ -67,7 +68,11 @@ import {
   toOldProvider,
 } from "./synthetic";
 import { historyToFeed, isConversationNotFound } from "./translate";
-import { observeConversation, streamTurn } from "./turn-stream";
+import {
+  observeConversation,
+  seedConversationVm,
+  streamTurn,
+} from "./turn-stream";
 
 export interface HoustonClientOptions {
   baseUrl: string;
@@ -1294,6 +1299,8 @@ export class HoustonClient {
       req.prompt,
       (status) => this.setActivityStatus(path, req.sessionKey, status),
       req.provider,
+      undefined,
+      req.suppressUserBubble,
     );
     return { sessionKey: req.sessionKey };
   }
@@ -1341,6 +1348,17 @@ export class HoustonClient {
       // conversations at a time and must not spawn N streams — only a real
       // conversation open observes (the default).
       if (opts.observe !== false) {
+        // Seed FIRST (the chat opens complete), then attach: the observer
+        // renders any in-flight turn live into the same VM. Seeding is a no-op
+        // when a live stream already owns this conversation (see
+        // seedConversationVm) — its feed IS the VM. The VM seed is the SDK's
+        // UNMAPPED fold: the VM carries engine provider ids uniformly (seeded
+        // and live alike); the app's binding hook owns the old-id remap.
+        seedConversationVm(
+          agentPath,
+          sessionKey,
+          sdkHistoryToFeed(history.messages),
+        );
         observeConversation(
           engine,
           agentPath,

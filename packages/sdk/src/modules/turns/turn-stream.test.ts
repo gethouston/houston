@@ -289,7 +289,7 @@ test("the history guard rejects a PREVIOUS turn's reply when ours never persiste
   expect(texts).toEqual([{ feed_type: "assistant_text", data: "Hel" }]);
 });
 
-test("the engine's user echo is never rendered (the app pushes it optimistically)", async () => {
+test("exactly one user bubble: the optimistic push renders, the engine's echo never does", async () => {
   const { engine } = fakeEngine([
     (o) => {
       o.onEvent(sync(false, "", 0));
@@ -312,7 +312,9 @@ test("the engine's user echo is never rendered (the app pushes it optimistically
     },
   );
 
-  expect(items.some((i) => i.feed_type === "user_message")).toBe(false);
+  const bubbles = items.filter((i) => i.feed_type === "user_message");
+  expect(bubbles).toHaveLength(1); // ours — the echo never becomes a second one
+  expect(bubbles[0]?.data).toBe("hi");
 });
 
 test("observer mode surfaces a running turn (spinner + partial) and settles on done", async () => {

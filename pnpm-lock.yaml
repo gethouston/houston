@@ -87,6 +87,9 @@ importers:
       '@houston/runtime-client':
         specifier: workspace:*
         version: link:../packages/runtime-client
+      '@houston/sdk':
+        specifier: workspace:*
+        version: link:../packages/sdk
       '@sentry/browser':
         specifier: 10.63.0
         version: 10.63.0

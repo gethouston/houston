@@ -1,9 +1,10 @@
 import type { KanbanItem } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
-import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
+import { messagePreviewText } from "@houston-ai/chat";
 import { createElement, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../../hooks/queries";
+import { useConversationFeed } from "../../hooks/use-conversation-vm";
 import { missionCardTags } from "../../lib/mission-card";
 import {
   type HistoryLoadOptions,
@@ -13,7 +14,6 @@ import {
 } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
-import { useFeedStore } from "../../stores/feeds";
 import { AgentCardAvatar } from "../shell/agent-card-avatar";
 
 /**
@@ -26,21 +26,9 @@ import { AgentCardAvatar } from "../shell/agent-card-avatar";
 export function useMissionControlArchived(agents: Agent[]) {
   const { t } = useTranslation(["board"]);
   const getAgentDef = useAgentCatalogStore((s) => s.getById);
-  const setFeed = useFeedStore((s) => s.setFeed);
-  const allItems = useFeedStore((s) => s.items);
 
   const agentPaths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
   const { data: convos } = useAllConversations(agentPaths);
-
-  const feedItems = useMemo(() => {
-    const out: Record<string, FeedItem[]> = {};
-    for (const ap of agentPaths) {
-      const bucket = allItems[ap];
-      if (!bucket) continue;
-      for (const [sk, items] of Object.entries(bucket)) out[sk] = items;
-    }
-    return out;
-  }, [allItems, agentPaths]);
 
   const agentColorMap = useMemo(() => {
     const m: Record<string, string | undefined> = {};
@@ -120,6 +108,19 @@ export function useMissionControlArchived(agents: Agent[]) {
     [items],
   );
 
+  // The open conversation's reactive feed from the SDK conversation VM
+  // (history seeded by the adapter's loadHistory). Single-entry map — AIBoard
+  // only reads `feedItems[activeSessionKey]`.
+  const activeSessionKey = selectedId ? sessionKeyFor(selectedId) : null;
+  const activeAgentPath = activeSessionKey
+    ? (sessionMapRef.current[activeSessionKey]?.agentPath ?? null)
+    : null;
+  const activeFeed = useConversationFeed(activeAgentPath, activeSessionKey);
+  const feedItems = useMemo<Record<string, FeedItem[]>>(
+    () => (activeSessionKey ? { [activeSessionKey]: activeFeed } : {}),
+    [activeSessionKey, activeFeed],
+  );
+
   const loadHistory = useCallback(
     async (
       sessionKey: string,
@@ -134,17 +135,6 @@ export function useMissionControlArchived(agents: Agent[]) {
       )) as FeedItem[];
     },
     [],
-  );
-
-  const handleHistoryLoaded = useCallback(
-    (sessionKey: string, history: FeedItem[]) => {
-      const agentPath = sessionMapRef.current[sessionKey]?.agentPath;
-      if (!agentPath) return;
-      const current =
-        useFeedStore.getState().items[agentPath]?.[sessionKey] ?? [];
-      setFeed(agentPath, sessionKey, mergeFeedHistory(history, current));
-    },
-    [setFeed],
   );
 
   const handleDelete = useCallback(
@@ -165,7 +155,6 @@ export function useMissionControlArchived(agents: Agent[]) {
     setSelectedId,
     sessionKeyFor,
     loadHistory,
-    handleHistoryLoaded,
     handleDelete,
     agentMap,
   };

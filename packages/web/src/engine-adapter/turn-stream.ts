@@ -1,12 +1,17 @@
 import type { HoustonEngineClient } from "@houston/runtime-client";
 import {
   type BoardStatus,
+  conversationScope,
+  type FeedFrame,
+  MultiplexFeedOutput,
   StreamRegistry,
   type StreamTuning,
   observeConversation as sdkObserveConversation,
   streamTurn as sdkStreamTurn,
+  streamKey,
 } from "@houston/sdk";
 import { createBusFeedOutput } from "./feed-output";
+import { conversationStore, conversationVm } from "./vm";
 
 export type { StreamTuning } from "@houston/sdk";
 
@@ -21,6 +26,45 @@ const registry = new StreamRegistry();
 /** Abort every live conversation stream this adapter owns (WS teardown seam). */
 export function disposeAllStreams(): void {
   registry.disposeAll();
+}
+
+/**
+ * Every stream folds into BOTH halves: the conversation VM (the app's one
+ * turn-state source, read via `useSdkSnapshot`) and the legacy event bus
+ * (which still drives query invalidation and notifications — events, not
+ * state).
+ */
+function composedOutput(
+  setActivityStatus: (status: BoardStatus) => Promise<void>,
+) {
+  return new MultiplexFeedOutput([
+    conversationVm,
+    createBusFeedOutput((_a, _s, status) => setActivityStatus(status)),
+  ]);
+}
+
+/**
+ * Seed the conversation VM from a loaded history fold — unless a live turn or
+ * observer already owns the conversation (that stream's feed IS the VM;
+ * re-seeding would clobber its in-flight bubble), or the VM already holds at
+ * least as much as the fold. The second guard is what makes a RACED history
+ * read harmless: a load fired mid-turn can resolve just after settle (the
+ * registry entry already released) carrying a fold persisted BEFORE the reply
+ * — replacing the settled live feed with it would eat the reply. History only
+ * ever seeds a poorer VM (cold open, or turns that landed while this chat was
+ * closed).
+ */
+export function seedConversationVm(
+  agentPath: string,
+  sessionKey: string,
+  frames: FeedFrame[],
+): void {
+  if (registry.get(streamKey(agentPath, sessionKey))) return;
+  const current = conversationStore.getSnapshot(
+    conversationScope(agentPath, sessionKey),
+  ) as { feed?: unknown[] } | undefined;
+  if ((current?.feed?.length ?? 0) >= frames.length) return;
+  conversationVm.seedHistory(agentPath, sessionKey, frames);
 }
 
 /**
@@ -41,20 +85,19 @@ export function streamTurn(
   setActivityStatus: (status: BoardStatus) => Promise<void>,
   provider?: string,
   tuning?: StreamTuning,
+  suppressUserBubble?: boolean,
 ): Promise<void> {
-  const output = createBusFeedOutput((_a, _s, status) =>
-    setActivityStatus(status),
-  );
   return sdkStreamTurn(
     engine,
     agentPath,
     sessionKey,
     prompt,
-    output,
+    composedOutput(setActivityStatus),
     registry,
     {
       provider,
       tuning,
+      suppressUserBubble,
     },
   );
 }
@@ -68,14 +111,11 @@ export function observeConversation(
   messagesAtOpen: number,
   tuning?: StreamTuning,
 ): void {
-  const output = createBusFeedOutput((_a, _s, status) =>
-    setActivityStatus(status),
-  );
   sdkObserveConversation(
     engine,
     agentPath,
     sessionKey,
-    output,
+    composedOutput(setActivityStatus),
     messagesAtOpen,
     registry,
     tuning,

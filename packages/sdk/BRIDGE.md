@@ -147,14 +147,18 @@ modules register; the flows in §6 use the representative names below.
 - Host sends `{ kind: "subscribe", sub, scope }`. `sub` is a **host-minted
   subscription id** (unique per live subscription; the correlation handle for
   later pushes and for `unsubscribe`). `scope` is a store scope string:
-  `"connection"`, `"agents"`, or `"conversation/<id>"`.
+  `"connection"`, `"agents"`, or `"conversation/<agent>/<conversation>"` —
+  conversation scopes are **agent-qualified** (both segments URI-encoded)
+  because conversation ids are unique only within one agent; hosts never build
+  the encoding themselves, they call `conversationScope(agentId,
+  conversationId)` (ADR-0001 in the repo root).
 - SDK replies **once, immediately**, with
   `{ kind: "subscribed", sub, scope, snapshot? }`. `snapshot` carries the
   current `getSnapshot(scope)`; it is **omitted** when that is `undefined`
   (nothing published yet).
 
   > **Deviation — subscribing does NOT activate a lazy scope.** The roadmap
-  > draft said the first subscriber on `conversation/<id>` starts that
+  > draft said the first subscriber on `conversation/<agent>/<conversation>` starts that
   > conversation's stream underneath. In the shipped SDK `subscribe` is a
   > *passive* read attachment: it delivers the initial snapshot and forwards
   > later publishes, but it starts no stream. To make a conversation stream, the
@@ -335,13 +339,13 @@ published to the scope, so a late subscriber is caught up too.
 ### 6.3 Open a conversation and receive the feed snapshot
 
 `conversation/open` loads history and returns the **feed snapshot** as its
-value; subscribing to `conversation/<id>` starts the live stream underneath and
+value; subscribing to `conversation/<agent>/<conversation>` starts the live stream underneath and
 delivers subsequent updates. The feed snapshot is the persisted history plus the
 in-flight `live` block (running/partial/seq/turnId — see §7).
 
 ```json
-→ { "kind": "subscribe", "sub": "s-conv", "scope": "conversation/cv_42" }
-← { "kind": "subscribed", "sub": "s-conv", "scope": "conversation/cv_42",
+→ { "kind": "subscribe", "sub": "s-conv", "scope": "conversation/ag_1/cv_42" }
+← { "kind": "subscribed", "sub": "s-conv", "scope": "conversation/ag_1/cv_42",
     "snapshot": { "id": "cv_42", "title": "Q2 books",
       "messages": [
         { "role": "user", "content": "Reconcile June", "ts": 1751000000000, "turnId": "t_9" },
@@ -369,19 +373,19 @@ growing `live.partial` (assistant text deltas), then a settled snapshot
 ```json
 → { "kind": "command", "envelope": { "id": "c4", "type": "conversation/send",
       "payload": { "id": "cv_42", "text": "Now email the summary", "nonce": "n-88" } } }
-← { "kind": "snapshot", "sub": "s-conv", "scope": "conversation/cv_42",
+← { "kind": "snapshot", "sub": "s-conv", "scope": "conversation/ag_1/cv_42",
     "snapshot": { "id": "cv_42", "title": "Q2 books",
       "messages": [ …, { "role": "user", "content": "Now email the summary",
                          "ts": 1751000100000, "turnId": "t_10" } ],
       "live": { "running": true, "partial": "", "seq": 13, "turnId": "t_10" } } }
 ← { "kind": "result", "result": { "id": "c4", "ok": true } }
-← { "kind": "snapshot", "sub": "s-conv", "scope": "conversation/cv_42",
+← { "kind": "snapshot", "sub": "s-conv", "scope": "conversation/ag_1/cv_42",
     "snapshot": { "…messages…": "…", "live": { "running": true, "partial": "Drafting the",
                   "seq": 15, "turnId": "t_10" } } }
-← { "kind": "snapshot", "sub": "s-conv", "scope": "conversation/cv_42",
+← { "kind": "snapshot", "sub": "s-conv", "scope": "conversation/ag_1/cv_42",
     "snapshot": { "…messages…": "…", "live": { "running": true,
                   "partial": "Drafting the email now…", "seq": 18, "turnId": "t_10" } } }
-← { "kind": "snapshot", "sub": "s-conv", "scope": "conversation/cv_42",
+← { "kind": "snapshot", "sub": "s-conv", "scope": "conversation/ag_1/cv_42",
     "snapshot": { "id": "cv_42", "title": "Q2 books",
       "messages": [ …, { "role": "assistant", "content": "Drafting the email now… Sent.",
                          "ts": 1751000108000, "turnId": "t_10",
@@ -400,7 +404,7 @@ is owned by the approvals module (representative below); the `event` envelope is
 the contract.
 
 ```json
-← { "kind": "event", "event": { "type": "approval/needed", "scope": "conversation/cv_42",
+← { "kind": "event", "event": { "type": "approval/needed", "scope": "conversation/ag_1/cv_42",
       "data": { "approvalId": "ap_5", "turnId": "t_10", "tool": "send_email",
                 "summary": "Email June summary to owner@acme.com" } } }
 → { "kind": "command", "envelope": { "id": "c5", "type": "approval/resolve",

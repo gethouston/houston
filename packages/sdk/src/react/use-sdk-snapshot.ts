@@ -41,8 +41,12 @@ export function snapshotStoreAdapter<T>(
 
 /**
  * Subscribe a component to a Houston SDK scope snapshot (`"connection"`,
- * `"agents"`, `"conversation/<id>"`, …). Returns the latest snapshot, or
- * `undefined` until one is published.
+ * `"agents"`, a conversation scope from `conversationScope(…)`, …). Returns
+ * the latest snapshot, or `undefined` until one is published.
+ *
+ * `source` is anything with the SDK's `subscribe`/`getSnapshot` pair — a whole
+ * {@link HoustonSdk}, or a bare `ScopeStore` (how the desktop binds the
+ * engine-adapter's conversation VM without constructing a full SDK).
  *
  * Referentially stable: the value is whatever the store holds, which only
  * changes reference when a new snapshot is published. SSR-safe: the server
@@ -54,12 +58,12 @@ export function snapshotStoreAdapter<T>(
  * type the owning module publishes for `scope`.
  */
 export function useSdkSnapshot<T>(
-  sdk: HoustonSdk,
+  source: SnapshotSource,
   scope: string,
 ): T | undefined {
   const adapter = useMemo(
-    () => snapshotStoreAdapter<T>(sdk, scope),
-    [sdk, scope],
+    () => snapshotStoreAdapter<T>(source, scope),
+    [source, scope],
   );
   return useSyncExternalStore(
     adapter.subscribe,

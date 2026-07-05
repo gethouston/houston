@@ -141,7 +141,7 @@ describe("send -> stream -> settle (bridge-fetch streaming path)", () => {
     const cid = "cv-bridge";
     await h.configure(host.url);
     await h.command(SET_TOKEN_COMMAND, { token: FAKE_TOKEN });
-    await h.subscribe("s-conv", conversationScope(cid));
+    await h.subscribe("s-conv", conversationScope(SEED_AGENT_ID, cid));
 
     const sent = await h.command("turns/send", {
       agentId: SEED_AGENT_ID,
@@ -168,9 +168,11 @@ describe("send -> stream -> settle (bridge-fetch streaming path)", () => {
       sessionStatus: "completed",
       boardStatus: "needs_you",
       feed: [
-        { id: "f0", feed_type: "assistant_text", data: cannedReply("Ping") },
+        // The optimistic push — the ONE user bubble (its echo never renders).
+        { id: "f0", feed_type: "user_message", data: "Ping" },
+        { id: "f1", feed_type: "assistant_text", data: cannedReply("Ping") },
         {
-          id: "f1",
+          id: "f2",
           feed_type: "final_result",
           data: {
             result: cannedReply("Ping"),
@@ -202,7 +204,7 @@ describe("abort propagation", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ replyDelayMs: 200 }),
     });
-    await h.subscribe("s-abort", conversationScope(cid));
+    await h.subscribe("s-abort", conversationScope(SEED_AGENT_ID, cid));
     await h.command("turns/send", {
       agentId: SEED_AGENT_ID,
       conversationId: cid,

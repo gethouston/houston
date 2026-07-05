@@ -1,10 +1,14 @@
 import type { KanbanItem } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
-import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
+import { messagePreviewText } from "@houston-ai/chat";
 import { useQueryClient } from "@tanstack/react-query";
 import { createElement, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../hooks/queries";
+import {
+  getConversationStatus,
+  useConversationVm,
+} from "../hooks/use-conversation-vm";
 import { buildAttachmentPrompt } from "../lib/attachment-message";
 import { createMission } from "../lib/create-mission";
 import { missionCardTags } from "../lib/mission-card";
@@ -18,12 +22,6 @@ import {
 } from "../lib/tauri";
 import type { Agent } from "../lib/types";
 import { useAgentCatalogStore } from "../stores/agent-catalog";
-import { useFeedStore } from "../stores/feeds";
-import {
-  getSessionStatusKey,
-  isActiveSessionStatus,
-  useSessionStatusStore,
-} from "../stores/session-status";
 import { useUIStore } from "../stores/ui";
 import { resolveActivityOverride } from "./mission-control-send";
 import { AgentCardAvatar } from "./shell/agent-card-avatar";
@@ -33,23 +31,6 @@ export function useMissionControl(agents: Agent[]) {
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
   const getAgentDef = useAgentCatalogStore((s) => s.getById);
-  // Mission control is cross-agent. Flatten the nested feed store into a
-  // single sessionKey → items map, filtered to the agents on this view.
-  const allItems = useFeedStore((s) => s.items);
-  const agentPaths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
-  const feedItems = useMemo(() => {
-    const out: Record<string, FeedItem[]> = {};
-    for (const ap of agentPaths) {
-      const bucket = allItems[ap];
-      if (!bucket) continue;
-      for (const [sk, items] of Object.entries(bucket)) {
-        out[sk] = items;
-      }
-    }
-    return out;
-  }, [allItems, agentPaths]);
-  const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
-  const sessionStatuses = useSessionStatusStore((s) => s.statuses);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
@@ -133,6 +114,26 @@ export function useMissionControl(agents: Agent[]) {
     return result;
   }, [convos, agentColorMap, agentMap, getAgentDef, t]);
 
+  // The open conversation's reactive feed, straight from the SDK conversation
+  // VM. AIBoard only ever reads `feedItems[activeSessionKey]`, so a
+  // single-entry map for the selected session is the whole contract.
+  const selectedItem = useMemo(
+    () => items.find((i) => i.id === selectedId) ?? null,
+    [items, selectedId],
+  );
+  const activeSessionKey = selectedItem
+    ? ((selectedItem.metadata?.sessionKey as string | undefined) ??
+      `activity-${selectedItem.id}`)
+    : null;
+  const activeAgentPath =
+    (selectedItem?.metadata?.agentPath as string | undefined) ?? null;
+  const activeVm = useConversationVm(activeAgentPath, activeSessionKey);
+  const feedItems = useMemo<Record<string, FeedItem[]>>(
+    () =>
+      activeSessionKey ? { [activeSessionKey]: activeVm?.feed ?? [] } : {},
+    [activeSessionKey, activeVm],
+  );
+
   const loadHistory = useCallback(
     async (
       sessionKey: string,
@@ -173,27 +174,6 @@ export function useMissionControl(agents: Agent[]) {
     [],
   );
 
-  const setFeed = useFeedStore((s) => s.setFeed);
-  const handleHistoryLoaded = useCallback(
-    (sessionKey: string, history: FeedItem[]) => {
-      // Mirror board-tab's hydration: when AIBoard loads persisted chat
-      // for an activity, drop the server slice into the feed store so
-      // the ChatPanel renders it. Without this Mission Control would
-      // open a conversation and show an empty chat (history was loaded
-      // but had nowhere to land).
-      const agentPath = sessionMapRef.current[sessionKey]?.agentPath;
-      if (!agentPath) return;
-      // Server history is authoritative for what's persisted; reconcile it with
-      // anything already in the live bucket (optimistic overlay or a WS event
-      // that landed mid-load) by turn identity so a routine that surfaced in
-      // the background doesn't render its first turn twice (#363).
-      const current =
-        useFeedStore.getState().items[agentPath]?.[sessionKey] ?? [];
-      setFeed(agentPath, sessionKey, mergeFeedHistory(history, current));
-    },
-    [setFeed],
-  );
-
   const handleSendMessage = useCallback(
     async (sessionKey: string, text: string, files: File[]) => {
       const entry = sessionMapRef.current[sessionKey];
@@ -215,22 +195,23 @@ export function useMissionControl(agents: Agent[]) {
         // in agreement.
         const list = await tauriActivity.list(agentPath);
         const overrides = resolveActivityOverride(sessionKey, list);
+        // The turn stream pushes the user bubble into the conversation VM
+        // itself — no app-side optimistic push.
         await tauriChat.send(agentPath, prompt, sessionKey, overrides);
-        pushFeedItem(agentPath, sessionKey, {
-          feed_type: "user_message",
-          data: prompt,
-        });
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
       } catch (err) {
         setLoading((prev) => ({ ...prev, [sessionKey]: false }));
-        pushFeedItem(agentPath, sessionKey, {
-          feed_type: "system_message",
-          data: t("errors.sessionStart", { error: String(err) }),
+        // The send failed BEFORE a turn stream existed (attachment save,
+        // activity lookup, refused start) — nothing wrote to the VM, so
+        // surface it as a toast, same as the create path below.
+        addToast({
+          title: t("errors.sessionStart", { error: String(err) }),
+          variant: "error",
         });
         throw err;
       }
     },
-    [pushFeedItem, t],
+    [addToast, t],
   );
 
   // Blank "New mission" create path for Mission Control. Mirrors the
@@ -258,7 +239,6 @@ export function useMissionControl(agents: Agent[]) {
         const visible = formatVisibleMessageText(text, files, (names) =>
           t("queue.attached", { names }),
         );
-        let userMessage = text;
         const { conversationId, sessionKey } = await createMission(
           {
             id: agent.id,
@@ -278,15 +258,10 @@ export function useMissionControl(agents: Agent[]) {
                 `activity-${activityId}`,
                 files,
               );
-              userMessage = buildAttachmentPrompt(text, files, saved);
-              return userMessage;
+              return buildAttachmentPrompt(text, files, saved);
             },
           },
         );
-        pushFeedItem(agentPath, sessionKey, {
-          feed_type: "user_message",
-          data: userMessage,
-        });
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
         // createMission bypasses the activity mutation hooks, so refresh
         // the cross-agent conversation list manually.
@@ -305,9 +280,15 @@ export function useMissionControl(agents: Agent[]) {
         throw err;
       }
     },
-    [t, pushFeedItem, queryClient, paths, addToast],
+    [t, queryClient, paths, addToast],
   );
 
+  // Per-session run state. The conversation VM is the live source: the open
+  // session's `activeFeed` subscription keeps this recomputing while its turn
+  // runs; background sessions re-derive when the activity list refetches (the
+  // SessionStatus/ActivityChanged invalidations), reading VM status
+  // synchronously. "idle"/unpublished falls back to the card's activity
+  // status, which the turn stream persists host-side at start and settle.
   const effectiveLoading = useMemo(() => {
     const out: Record<string, boolean> = {};
     const itemStatusBySession = new Map<string, string>();
@@ -317,17 +298,27 @@ export function useMissionControl(agents: Agent[]) {
         `activity-${item.id}`;
       itemStatusBySession.set(sessionKey, item.status);
     }
+    const vmStatusFor = (agentPath: string | undefined, sessionKey: string) => {
+      // The open session reads its SUBSCRIBED vm (the reactive path — its
+      // spinner updates as the turn streams and settles); background sessions
+      // are read synchronously and re-derive on the activity refetch.
+      const s =
+        sessionKey === activeSessionKey && agentPath === (activeAgentPath ?? "")
+          ? activeVm?.sessionStatus
+          : agentPath
+            ? getConversationStatus(agentPath, sessionKey)
+            : undefined;
+      return s === "idle" ? undefined : s;
+    };
     for (const [sessionKey, value] of Object.entries(loading)) {
       if (!value) continue;
       const agentPath = sessionMapRef.current[sessionKey]?.agentPath;
-      const status = agentPath
-        ? sessionStatuses[getSessionStatusKey(agentPath, sessionKey)]
-        : undefined;
+      const status = vmStatusFor(agentPath, sessionKey);
       const activityStatus = itemStatusBySession.get(sessionKey);
       if (!status && activityStatus && activityStatus !== "running") {
         continue;
       }
-      if (!status || isActiveSessionStatus(status)) {
+      if (!status || status === "running") {
         out[sessionKey] = true;
       }
     }
@@ -336,15 +327,15 @@ export function useMissionControl(agents: Agent[]) {
         (item.metadata?.sessionKey as string | undefined) ??
         `activity-${item.id}`;
       const agentPath = pathMapRef.current[item.id];
-      const status = agentPath
-        ? sessionStatuses[getSessionStatusKey(agentPath, sessionKey)]
-        : undefined;
-      if (item.status === "running" || isActiveSessionStatus(status)) {
+      if (
+        item.status === "running" ||
+        vmStatusFor(agentPath, sessionKey) === "running"
+      ) {
         out[sessionKey] = true;
       }
     }
     return out;
-  }, [items, loading, sessionStatuses]);
+  }, [items, loading, activeVm, activeSessionKey, activeAgentPath]);
 
   return {
     items,
@@ -354,7 +345,6 @@ export function useMissionControl(agents: Agent[]) {
     isLoaded: isFetched,
     feedItems,
     loadHistory,
-    handleHistoryLoaded,
     handleDelete,
     handleApprove,
     handleRename,

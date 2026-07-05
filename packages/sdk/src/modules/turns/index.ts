@@ -92,7 +92,7 @@ export function createTurnsModule(ctx: ModuleContext) {
     const { messages } = await client.getHistory(conversationId);
     const output = new MultiplexFeedOutput([vm, ...external]);
     if (!registry.get(key))
-      vm.seedHistory(conversationId, historyToFeed(messages));
+      vm.seedHistory(agentId ?? "", conversationId, historyToFeed(messages));
     observeConversation(
       client,
       agentId ?? "",
@@ -178,6 +178,7 @@ export {
   STREAM_LOST_MESSAGE,
   StreamRegistry,
   type StreamTuning,
+  streamKey,
 } from "./stream-registry";
 export {
   isNotConnectedError,
@@ -193,6 +194,7 @@ export type {
 export { type StreamTurnOptions, streamTurn } from "./turn-stream";
 export {
   type ConversationVM,
+  ConversationVmOutput,
   conversationScope,
   type FeedItemVM,
 } from "./vm-output";

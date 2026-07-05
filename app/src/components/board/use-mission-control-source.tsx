@@ -165,7 +165,6 @@ export function useMissionControlSource(
     onApprove: mc.handleApprove,
     onRename: mc.handleRename,
     loadHistory: mc.loadHistory,
-    onHistoryLoaded: mc.handleHistoryLoaded,
     sendMessageNow: actions.sendMessageNow,
     createConversation: actions.createConversation,
     stopSession: actions.stopSession,

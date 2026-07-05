@@ -127,7 +127,6 @@ export function MissionControlArchived({
           onSendMessage={handleSendMessage}
           onComposerSubmit={panel.onComposerSubmit}
           onLoadHistory={data.loadHistory}
-          onHistoryLoaded={data.handleHistoryLoaded}
           emptyState={
             <ArchivedEmptyState
               hasQuery={missionSearch.hasQuery}

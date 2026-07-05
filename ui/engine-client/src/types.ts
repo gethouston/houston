@@ -662,6 +662,12 @@ export interface SessionStartRequest {
     mode: "replay" | "summarize";
     fromProvider: string;
   };
+  /**
+   * Skip the turn stream's optimistic user bubble — for resends of a prompt
+   * whose bubble is already in the conversation VM (a refused not-connected
+   * send being retried verbatim).
+   */
+  suppressUserBubble?: boolean;
 }
 
 export interface SessionStartResponse {

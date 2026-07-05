@@ -1,5 +1,8 @@
 import { create } from "zustand";
-import { getSessionStatusKey } from "./session-status";
+
+/** Composite per-conversation key (agent-qualified, same identity as the VM scope). */
+const getSessionStatusKey = (agentPath: string, sessionKey: string) =>
+  `${agentPath}\u0000${sessionKey}`;
 
 export interface QueuedChatMessage {
   id: string;
