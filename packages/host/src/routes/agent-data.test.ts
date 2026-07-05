@@ -216,6 +216,91 @@ test("routines: created_by is server-owned and cannot be spoofed", async () => {
   expect(next.created_by).toBe("alice");
 });
 
+/** A gateway-shaped acting-as token; the pod decodes the payload, never the sig. */
+const actingToken = (sub: string) =>
+  `acting-v1.${Buffer.from(
+    JSON.stringify({ sub, agent: "a1", exp: 4102444800 }),
+  ).toString("base64url")}.sig`;
+
+test("routines: an inbound acting-as header is ignored when not gateway-fronted", async () => {
+  const created = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: {
+      ...auth("alice"),
+      "x-houston-acting-as": actingToken("mallory-sub"),
+    },
+    body: JSON.stringify({
+      name: "Spoof attempt",
+      prompt: "Write it",
+      schedule: "0 9 * * 1-5",
+    }),
+  });
+  expect(created.status).toBe(201);
+  expect(((await created.json()) as Routine).created_by).toBe("alice");
+});
+
+test("routines (gateway-fronted): created_by records the acting sub, PATCH re-stamps it, and a missing header stays creator-less (HOU-689)", async () => {
+  // A managed pod: same store/vfs, but the server trusts the gateway-minted
+  // acting-as header for routine identity instead of the pod-local user id.
+  const fronted = createControlPlaneServer({ ...deps(), gatewayFronted: true });
+  await new Promise<void>((r) => fronted.listen(0, "127.0.0.1", () => r()));
+  const addr = fronted.address();
+  const frontedBase = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
+  try {
+    const created = await fetch(`${frontedBase}/agents/${agentId}/routines`, {
+      method: "POST",
+      headers: {
+        ...auth("alice"),
+        "x-houston-acting-as": actingToken("supabase-sub-1"),
+      },
+      body: JSON.stringify({
+        name: "Send the morning email",
+        prompt: "Send it",
+        schedule: "0 9 * * 1-5",
+      }),
+    });
+    expect(created.status).toBe(201);
+    const routine = (await created.json()) as Routine;
+    // NOT the pod-local verifier id — the sub the gateway can re-authorize
+    // when the fired routine's integration calls present it (C1 auth mode 3).
+    expect(routine.created_by).toBe("supabase-sub-1");
+
+    // Editing re-stamps to the current verified editor — which also heals
+    // routines recorded before pods stamped real subs.
+    const patched = await fetch(
+      `${frontedBase}/agents/${agentId}/routines/${routine.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          ...auth("alice"),
+          "x-houston-acting-as": actingToken("supabase-sub-2"),
+        },
+        body: JSON.stringify({ name: "Renamed", created_by: "mallory" }),
+      },
+    );
+    expect(patched.status).toBe(200);
+    expect(((await patched.json()) as Routine).created_by).toBe(
+      "supabase-sub-2",
+    );
+
+    // No header (nothing the gateway vouched for) → creator-less, never the
+    // pod-local id (which would 401 at fire time — the HOU-689 failure mode).
+    const bare = await fetch(`${frontedBase}/agents/${agentId}/routines`, {
+      method: "POST",
+      headers: auth("alice"),
+      body: JSON.stringify({
+        name: "Headerless",
+        prompt: "Write it",
+        schedule: "0 9 * * 1-5",
+      }),
+    });
+    expect(bare.status).toBe(201);
+    expect("created_by" in ((await bare.json()) as Routine)).toBe(false);
+  } finally {
+    await new Promise<void>((r) => fronted.close(() => r()));
+  }
+});
+
 test("routines: an invalid cron is rejected at create (400), never saved to fail silently", async () => {
   const bad = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",

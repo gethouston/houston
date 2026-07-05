@@ -128,6 +128,18 @@ export interface ControlPlaneDeps {
    * answer 503.
    */
   agentConfigs?: AgentConfigsDeps;
+  /**
+   * True only when a trusted gateway fronts EVERY request to this host (the
+   * managed cloud pod — same stance as LocalHostOptions.gatewayFronted).
+   * Routine writes then record the gateway-minted acting identity (the
+   * `x-houston-acting-as` payload sub) as `created_by` instead of this host's
+   * single local user id — that sub is what the gateway can re-authorize when
+   * the fired routine's integration calls present it (C2 auth mode 3; the
+   * pod's local user id has no upstream membership, so it would 401 every
+   * call). Leave false on the desktop: an inbound acting header there is
+   * untrusted client input and is ignored.
+   */
+  gatewayFronted?: boolean;
   corsOrigin?: string;
 }
 

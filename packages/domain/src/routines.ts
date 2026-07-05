@@ -119,21 +119,31 @@ export function createRoutine(
  * Apply a partial update. Undefined leaves a field alone. A stray legacy
  * `timezone` key is ignored: the per-routine override was removed in HOU-470
  * (one account-wide zone), so a client still sending it must not write it back.
- * `created_by` is server-owned identity, never client-updateable.
+ * `created_by` is server-owned identity, never client-updateable: only
+ * `actorSub` — the server's own verified resolution of WHO is editing (C2) —
+ * may re-stamp it. The last verified editor is who a fired routine acts as
+ * (they authorized the routine's current shape), and re-stamping on edit also
+ * heals routines recorded before gateway-fronted pods stamped real subs.
  */
 export function applyRoutineUpdate(
   current: Routine,
   update: RoutineUpdate,
   nowIso: string,
+  actorSub?: string,
 ): Routine {
   const defined = Object.fromEntries(
     Object.entries(update).filter(
       ([k, v]) => v !== undefined && k !== "timezone" && k !== "created_by",
     ),
   );
-  // `...current` preserves `created_by` (RoutineUpdate can't set it, so a client
-  // can never reassign a routine's creator — it stays whoever created it).
-  return { ...current, ...defined, updated_at: nowIso } as Routine;
+  // `...current` preserves `created_by` when no verified actor is known — a
+  // client can never reassign a routine's acting identity through the body.
+  return {
+    ...current,
+    ...defined,
+    ...(actorSub ? { created_by: actorSub } : {}),
+    updated_at: nowIso,
+  } as Routine;
 }
 
 /** Normalize raw routine runs (written by the scheduler; read by the UI). */

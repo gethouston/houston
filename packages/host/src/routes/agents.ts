@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { seedSchemas } from "@houston/domain";
 import type { CustomEndpoint, HoustonEvent } from "@houston/protocol";
+import { ACTING_AS_HEADER, actingSubFromHeader } from "../auth/acting";
 import type { Agent, UserId, Workspace } from "../domain/types";
 import { isApiKeyProvider } from "../providers";
 import { handleAttachments } from "../turn/attachments";
@@ -382,6 +383,17 @@ export async function handleAgents(
     // Typed .houston families + skills are served by the HOST off the workspace
     // vfs — the runtime surface (chat, auth, settings, files) goes to the channel.
     const paths = deps.paths ?? DEFAULT_PATHS;
+    // WHO a routine write records as its acting identity (C2). A gateway-fronted
+    // pod authenticates every request as its single local user, and that id has
+    // no membership upstream — a routine stamped with it 401s every integration
+    // call when it fires (HOU-689). The gateway minted the acting-as header for
+    // exactly this: its sub is the identity the gateway re-authorizes at fire
+    // time. On the desktop the header is untrusted client input, so the local
+    // userId stays the recorded creator (routine turns there authenticate with
+    // the frontend session instead).
+    const routineActor = deps.gatewayFronted
+      ? actingSubFromHeader(req.headers[ACTING_AS_HEADER])
+      : userId;
     if (
       await handleAgentData(
         deps.vfs,
@@ -392,7 +404,7 @@ export async function handleAgents(
         req,
         res,
         emit,
-        userId,
+        routineActor,
       )
     )
       return true;
