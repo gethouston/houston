@@ -37,8 +37,10 @@ export const BROWSE_PAGE_SIZE = 100;
  * The browse grid's contents: an active category narrows first; a search query
  * then matches name/slug/description case-insensitively. `connected` lets the
  * caller exclude already-connected apps (pass an empty set to keep them, e.g.
- * the picker renders them with a connected state instead). Catalog order is
- * preserved (the provider serves it usage-ranked). Pure so it's unit-testable.
+ * the picker renders them with a connected state instead). Results are sorted
+ * ALPHABETICALLY by app name (case-insensitive) AFTER filtering, so a brand-new
+ * user scanning 1000+ apps gets a predictable A-Z list rather than the
+ * provider's usage-ranked order. Pure so it's unit-testable.
  */
 export function browseCatalog(opts: {
   catalog: IntegrationToolkit[];
@@ -61,7 +63,9 @@ export function browseCatalog(opts: {
         (t.description ?? "").toLowerCase().includes(q),
     );
   }
-  return filtered;
+  return filtered.sort((a, b) =>
+    a.name.toLowerCase().localeCompare(b.name.toLowerCase()),
+  );
 }
 
 /**

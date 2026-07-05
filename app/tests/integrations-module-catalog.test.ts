@@ -27,20 +27,21 @@ const CATALOG: IntegrationToolkit[] = [
 ];
 
 describe("browseCatalog (new module)", () => {
-  it("excludes connected apps and preserves catalog (usage-ranked) order", () => {
+  it("excludes connected apps and returns the rest alphabetically by name", () => {
     const result = browseCatalog({
       catalog: CATALOG,
       query: "",
       category: "all",
       connected: new Set(["gmail"]),
     });
+    // Google Calendar, Notion, SerpApi, Slack (A-Z by name, not usage rank).
     deepStrictEqual(
       result.map((t) => t.slug),
-      ["googlecalendar", "slack", "notion", "serpapi"],
+      ["googlecalendar", "notion", "serpapi", "slack"],
     );
   });
 
-  it("keeps every app when `connected` is empty (picker renders them connected)", () => {
+  it("keeps every app when `connected` is empty, still sorted alphabetically", () => {
     const result = browseCatalog({
       catalog: CATALOG,
       query: "",
@@ -49,20 +50,41 @@ describe("browseCatalog (new module)", () => {
     });
     deepStrictEqual(
       result.map((t) => t.slug),
-      ["gmail", "googlecalendar", "slack", "notion", "serpapi"],
+      ["gmail", "googlecalendar", "notion", "serpapi", "slack"],
     );
   });
 
-  it("filters by category, then by search over name/slug/description", () => {
+  it("sorts case-insensitively by name (mixed-case + out-of-order input)", () => {
+    const mixed: IntegrationToolkit[] = [
+      tk("z", "Zoom"),
+      tk("a1", "airtable"),
+      tk("b", "Box"),
+      tk("a2", "Asana"),
+    ];
+    const result = browseCatalog({
+      catalog: mixed,
+      query: "",
+      category: "all",
+      connected: new Set(),
+    });
+    // airtable (lowercase) sorts before Asana; Box before Zoom.
+    deepStrictEqual(
+      result.map((t) => t.slug),
+      ["a1", "a2", "b", "z"],
+    );
+  });
+
+  it("applies category, then search, then sorts alphabetically", () => {
     const byCategory = browseCatalog({
       catalog: CATALOG,
       query: "",
       category: "collaboration",
       connected: new Set(),
     });
+    // Filter keeps Slack + Notion; the sort reorders them to Notion, Slack.
     deepStrictEqual(
       byCategory.map((t) => t.slug),
-      ["slack", "notion"],
+      ["notion", "slack"],
     );
 
     const byDescription = browseCatalog({

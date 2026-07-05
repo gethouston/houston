@@ -59,8 +59,17 @@ test("listToolkits maps the catalog and sends the platform key", async () => {
             {
               slug: "gmail",
               name: "Gmail",
-              meta: { description: "Email", logo: "https://l/g.png" },
-              categories: [{ name: "productivity" }, "email"],
+              // Composio's real shape: categories live under meta as {id,name},
+              // the top-level `categories` is null. We key off the id.
+              meta: {
+                description: "Email",
+                logo: "https://l/g.png",
+                categories: [
+                  { id: "developer-tools", name: "developer tools" },
+                  { id: "email", name: "email" },
+                ],
+              },
+              categories: null,
             },
           ],
         },
@@ -74,7 +83,7 @@ test("listToolkits maps the catalog and sends the platform key", async () => {
       name: "Gmail",
       description: "Email",
       logoUrl: "https://l/g.png",
-      categories: ["productivity", "email"],
+      categories: ["developer-tools", "email"],
     },
   ]);
   expect(calls[0]?.headers["x-api-key"]).toBe("pk_test");

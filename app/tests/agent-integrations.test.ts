@@ -65,6 +65,45 @@ describe("agentIntegrationsView", () => {
     strictEqual(view.grantedToolkits.has("slack"), true);
   });
 
+  it("grants mode exposes connected-but-not-granted active apps as accountRows", () => {
+    const view = agentIntegrationsView({
+      connections: [conn("gmail"), conn("slack"), conn("notion")],
+      catalog: CATALOG,
+      grants: ["gmail"],
+    });
+    if (view.mode !== "grants") throw new Error("unreachable");
+    // Section 1 has the granted app; Section 2 has the rest, name-sorted.
+    deepStrictEqual(
+      view.activeRows.map((r) => r.connection.toolkit),
+      ["gmail"],
+    );
+    deepStrictEqual(
+      view.accountRows.map((r) => r.connection.toolkit),
+      ["notion", "slack"],
+    );
+  });
+
+  it("accountRows excludes pending/errored non-granted connections", () => {
+    const view = agentIntegrationsView({
+      connections: [conn("slack", "pending"), conn("notion", "error")],
+      catalog: CATALOG,
+      grants: [],
+    });
+    if (view.mode !== "grants") throw new Error("unreachable");
+    // Only ACTIVE connections are activatable for this agent.
+    deepStrictEqual(view.accountRows, []);
+  });
+
+  it("a granted app is never also an accountRow", () => {
+    const view = agentIntegrationsView({
+      connections: [conn("gmail"), conn("slack")],
+      catalog: CATALOG,
+      grants: ["gmail", "slack"],
+    });
+    if (view.mode !== "grants") throw new Error("unreachable");
+    deepStrictEqual(view.accountRows, []);
+  });
+
   it("grants mode with an empty grant set yields no active rows", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail")],

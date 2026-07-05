@@ -10,13 +10,17 @@ export interface RawAuthConfig {
   id?: string;
   status?: string;
 }
+type RawCategory = string | { id?: string; name?: string };
+
 export interface RawToolkit {
   slug?: string;
   name?: string;
-  meta?: { description?: string; logo?: string };
+  // Composio nests categories under `meta.categories` as { id, name } objects
+  // (the top-level `categories` is null on the list endpoint).
+  meta?: { description?: string; logo?: string; categories?: RawCategory[] };
   description?: string;
   logo_url?: string;
-  categories?: (string | { name?: string })[];
+  categories?: RawCategory[];
 }
 export interface RawConnection {
   toolkit?: { slug?: string } | string;
@@ -47,8 +51,11 @@ export function mapToolkit(t: RawToolkit): Toolkit {
     name: t.name ?? t.slug ?? "",
     description: t.meta?.description ?? t.description,
     logoUrl: t.meta?.logo ?? t.logo_url,
-    categories: (t.categories ?? [])
-      .map((c) => (typeof c === "string" ? c : (c.name ?? "")))
+    // Prefer the category `id` (kebab-case, e.g. "developer-tools") — the UI's
+    // categoryLabel() turns it into a display label. Fall back to name, then to
+    // the top-level field for any provider shape that populates it.
+    categories: (t.meta?.categories ?? t.categories ?? [])
+      .map((c) => (typeof c === "string" ? c : (c.id ?? c.name ?? "")))
       .filter(Boolean),
   };
 }

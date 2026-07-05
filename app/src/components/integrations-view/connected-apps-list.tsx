@@ -31,9 +31,11 @@ interface ConnectedAppsListProps {
 }
 
 /**
- * The connected-apps list: one static-but-clickable row per active app (logo,
- * name, live status dot, the agents using it, and a visible Manage affordance),
- * plus pending / errored connections rendered with the recovery callout. Purely
+ * The connected-apps section body: pending / errored connections first as
+ * full-width recovery callouts (they need attention and would not fit a card),
+ * then the active apps as a TWO-COLUMN grid of clickable cards. Each card shows
+ * the logo, name, live status dot, the agents using it BELOW the name, and a
+ * visible chevron so it reads as openable without hovering. Purely
  * presentational; the parent owns the connect flow and the derived rows.
  */
 export function ConnectedAppsList({
@@ -47,48 +49,57 @@ export function ConnectedAppsList({
   const { t } = useTranslation("integrations");
   return (
     <div className="space-y-2">
-      {active.map(({ connection, app, chips }) => (
-        <AppRow
-          key={connection.connectionId || connection.toolkit}
-          display={app}
-          status="active"
-          onClick={() => onManage(connection, app)}
-          trailing={
-            <div className="flex items-center gap-2.5">
-              {grantsSupported ? (
-                <AgentChips agents={chips} emptyLabel={t("home.usedByNone")} />
-              ) : (
-                <span className="text-xs text-muted-foreground">
-                  {t("home.usedByAll")}
-                </span>
-              )}
-              <span className="hidden text-xs font-medium text-muted-foreground sm:inline">
-                {t("home.manage")}
-              </span>
-              <ChevronRight
-                aria-hidden
-                className="size-4 text-muted-foreground"
+      {recovering.length > 0 && (
+        <div className="space-y-2">
+          {recovering.map(({ connection, app }) => (
+            <AppRow
+              key={connection.connectionId || connection.toolkit}
+              display={app}
+              status={connection.status}
+            >
+              <PendingConnectionCallout
+                status={connection.status === "error" ? "error" : "pending"}
+                toolkit={connection.toolkit}
+                connectFlow={connectFlow}
+                appName={app.name}
+                onRemove={() => onRemove(connection.toolkit)}
               />
-            </div>
-          }
-        />
-      ))}
+            </AppRow>
+          ))}
+        </div>
+      )}
 
-      {recovering.map(({ connection, app }) => (
-        <AppRow
-          key={connection.connectionId || connection.toolkit}
-          display={app}
-          status={connection.status}
-        >
-          <PendingConnectionCallout
-            status={connection.status === "error" ? "error" : "pending"}
-            toolkit={connection.toolkit}
-            connectFlow={connectFlow}
-            appName={app.name}
-            onRemove={() => onRemove(connection.toolkit)}
-          />
-        </AppRow>
-      ))}
+      {active.length > 0 && (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {active.map(({ connection, app, chips }) => (
+            <AppRow
+              key={connection.connectionId || connection.toolkit}
+              display={app}
+              status="active"
+              onClick={() => onManage(connection, app)}
+              trailing={
+                <ChevronRight
+                  aria-hidden
+                  className="size-4 text-muted-foreground"
+                />
+              }
+            >
+              <div className="mt-1.5">
+                {grantsSupported ? (
+                  <AgentChips
+                    agents={chips}
+                    emptyLabel={t("home.usedByNone")}
+                  />
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    {t("home.usedByAll")}
+                  </span>
+                )}
+              </div>
+            </AppRow>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -96,8 +107,8 @@ export function ConnectedAppsList({
 /** First-load placeholder rows while the connections + catalog fetch settles. */
 export function ConnectedAppsListSkeleton() {
   return (
-    <div className="space-y-2" aria-hidden>
-      {[0, 1, 2].map((i) => (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-hidden>
+      {[0, 1, 2, 3].map((i) => (
         <div
           key={i}
           className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5"

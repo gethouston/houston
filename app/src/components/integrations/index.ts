@@ -1,7 +1,6 @@
 export { useAllAgentGrants } from "../../hooks/queries/use-all-agent-grants";
 export { type AgentChip, toAgentChip } from "./agent-chip";
 export { AgentChips } from "./agent-chips";
-export { AppCatalogPicker } from "./app-catalog-picker";
 export { AppDetailSheet } from "./app-detail-sheet";
 export {
   type AppDisplay,
@@ -10,6 +9,7 @@ export {
 } from "./app-display";
 export { AppLogo } from "./app-logo";
 export { AppRow } from "./app-row";
+export { ConnectMoreAppsSection } from "./connect-more-apps";
 export {
   type ConnectionStatus,
   ConnectionStatusBadge,

@@ -46,7 +46,7 @@ export function AgentAppRow({
             <button
               type="button"
               onClick={() => onDeactivate(connection.toolkit)}
-              className="inline-flex h-7 items-center rounded-full px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary"
+              className="inline-flex h-7 items-center rounded-full border border-border bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               {t("agentTab.deactivate")}
             </button>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useAgentGrantMutation,
@@ -12,7 +12,7 @@ import { canEditAgentGrants } from "../../../lib/org-roles";
 import type { TabProps } from "../../../lib/types";
 import { useUIStore } from "../../../stores/ui";
 import {
-  AppCatalogPicker,
+  ConnectMoreAppsSection,
   INTEGRATION_PROVIDER,
   LoadingState,
   ReconnectBanner,
@@ -22,14 +22,17 @@ import {
   useIntegrationsGate,
 } from "../../integrations";
 import { INTEGRATIONS_VIEW_ID } from "../../integrations-view/id";
+import { AgentAccountAppsSection } from "./agent-account-apps-section";
 import { AgentAppsSection, type AppsSectionCopy } from "./agent-apps-section";
 import { agentIntegrationsView } from "./model";
 
 /**
- * The per-agent Integrations tab: which apps THIS agent can use, one-click
- * activation of already-connected apps, and connecting brand-new ones. Behind
- * the shared boot gate; the grant view (multiplayer) and degraded view (host
- * without grant routes) are a discriminated union so the two never mix.
+ * The per-agent Integrations tab, three stacked sections: the apps this agent
+ * can use, the account apps ready to activate here (grants mode), and the
+ * always-visible "Connect more apps" catalog. One tab-level connect flow with
+ * `autoGrant` so a brand-new connection auto-activates on this agent. Behind the
+ * shared boot gate; the grant view (multiplayer) and degraded view (host without
+ * grant routes) are a discriminated union so the two never mix.
  */
 export default function IntegrationsTab({ agent }: TabProps) {
   const { t } = useTranslation("integrations");
@@ -54,7 +57,6 @@ export default function IntegrationsTab({ agent }: TabProps) {
     autoGrant: grantsSupported && canEdit,
   });
   const setViewMode = useUIStore((s) => s.setViewMode);
-  const [pickerOpen, setPickerOpen] = useState(false);
 
   const view = useMemo(
     () =>
@@ -72,10 +74,11 @@ export default function IntegrationsTab({ agent }: TabProps) {
 
   const removeGrant = (toolkit: string) =>
     grantMutation.mutate({ toolkit, op: "remove" });
+  const activate = (toolkit: string) =>
+    grantMutation.mutate({ toolkit, op: "add" });
 
   const grantsCopy: AppsSectionCopy = {
     title: t("agentTab.activeTitle"),
-    subtitle: t("agentTab.activeSubtitle", { agent: agent.name }),
     emptyTitle: t("agentTab.empty.title"),
     emptyBody: t("agentTab.empty.body"),
   };
@@ -89,15 +92,6 @@ export default function IntegrationsTab({ agent }: TabProps) {
   return (
     <div className="h-full overflow-auto">
       <div className="mx-auto w-full max-w-3xl px-6 py-6">
-        <div className="mb-6 min-h-[36px]">
-          <h1 className="text-[28px] font-normal text-foreground">
-            {t("title")}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("description")}
-          </p>
-        </div>
-
         {gate.kind === "loading" ? (
           <LoadingState />
         ) : gate.kind === "unavailable" ? (
@@ -118,15 +112,22 @@ export default function IntegrationsTab({ agent }: TabProps) {
             )}
 
             {view.mode === "grants" ? (
-              <AgentAppsSection
-                copy={grantsCopy}
-                rows={view.activeRows}
-                canEdit={canEdit}
-                connectFlow={connectFlow}
-                onDeactivate={removeGrant}
-                onRemove={removeGrant}
-                onAddApps={() => setPickerOpen(true)}
-              />
+              <>
+                <AgentAppsSection
+                  copy={grantsCopy}
+                  rows={view.activeRows}
+                  canEdit={canEdit}
+                  connectFlow={connectFlow}
+                  onDeactivate={removeGrant}
+                  onRemove={removeGrant}
+                />
+                {canEdit && view.accountRows.length > 0 && (
+                  <AgentAccountAppsSection
+                    rows={view.accountRows}
+                    onActivate={activate}
+                  />
+                )}
+              </>
             ) : (
               <AgentAppsSection
                 copy={degradedCopy}
@@ -134,9 +135,17 @@ export default function IntegrationsTab({ agent }: TabProps) {
                 canEdit={canEdit}
                 connectFlow={connectFlow}
                 onRemove={(toolkit) => disconnect.mutate(toolkit)}
-                onAddApps={() => setPickerOpen(true)}
               />
             )}
+
+            <div className="mt-8">
+              <ConnectMoreAppsSection
+                catalog={catalog.data ?? []}
+                connections={connections.data ?? []}
+                connectFlow={connectFlow}
+                loading={catalog.isLoading}
+              />
+            </div>
 
             <div className="mt-8 flex justify-center">
               <button
@@ -147,24 +156,6 @@ export default function IntegrationsTab({ agent }: TabProps) {
                 {t("agentTab.manageAll")}
               </button>
             </div>
-
-            <AppCatalogPicker
-              open={pickerOpen}
-              onOpenChange={setPickerOpen}
-              catalog={catalog.data ?? []}
-              connections={connections.data ?? []}
-              connectFlow={connectFlow}
-              loading={catalog.isLoading}
-              grantedToolkits={
-                view.mode === "grants" ? view.grantedToolkits : undefined
-              }
-              onActivate={
-                view.mode === "grants" && canEdit
-                  ? (toolkit) => grantMutation.mutate({ toolkit, op: "add" })
-                  : undefined
-              }
-              agentName={view.mode === "grants" ? agent.name : undefined}
-            />
           </>
         )}
       </div>

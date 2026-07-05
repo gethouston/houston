@@ -18,16 +18,24 @@ export interface AgentAppRow {
  * The per-agent integrations surface has exactly two shapes, kept as a
  * discriminated union so the tab can never mix them:
  *
- *  - `grants`   — the host supports per-agent grants (C4). Only the apps this
- *                 agent is allowed to act on are listed; the rest live behind
- *                 the picker's "Ready to activate" group.
+ *  - `grants`   — the host supports per-agent grants (C4). `activeRows` are the
+ *                 apps this agent may act on; `accountRows` are apps connected
+ *                 to the user's account but not yet granted here, each activated
+ *                 with a one-click grant-add (the promoted "Ready to activate"
+ *                 group). Only ACTIVE connections are activatable — a pending or
+ *                 errored connection is not a usable app to hand this agent.
  *  - `degraded` — grants resolved to `null` (host has no grant routes, e.g.
  *                 single-player). There is no per-agent permission, so every
  *                 connected app is usable by this agent; the list shows them all
- *                 with no activation toggles.
+ *                 with no activation toggles and no account section.
  */
 export type AgentIntegrationsView =
-  | { mode: "grants"; activeRows: AgentAppRow[]; grantedToolkits: Set<string> }
+  | {
+      mode: "grants";
+      activeRows: AgentAppRow[];
+      accountRows: AgentAppRow[];
+      grantedToolkits: Set<string>;
+    }
   | { mode: "degraded"; rows: AgentAppRow[] };
 
 /**
@@ -47,13 +55,17 @@ export function agentIntegrationsView(opts: {
     };
   }
   const grantedToolkits = new Set(opts.grants);
-  const { granted } = splitByGrant({
+  const { granted, available } = splitByGrant({
     connections: opts.connections,
     grants: grantedToolkits,
   });
   return {
     mode: "grants",
     activeRows: connectionRows(granted, opts.catalog),
+    accountRows: connectionRows(
+      available.filter((c) => c.status === "active"),
+      opts.catalog,
+    ),
     grantedToolkits,
   };
 }
