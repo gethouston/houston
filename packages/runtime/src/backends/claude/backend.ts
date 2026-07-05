@@ -5,6 +5,7 @@ import type {
   HarnessBackend,
   HarnessSession,
 } from "../types";
+import { resolveClaudeExecutable } from "./binary-path";
 import { toSdkModel } from "./model";
 import { claudeConfigDir } from "./paths";
 import { type ClaudeQuery, ClaudeSession } from "./session";
@@ -66,6 +67,10 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
 
       const localBash = deps.toolSelection.toolNames.includes("bash");
       const policy = buildToolPolicy({ localBash });
+      // undefined on the Node path (self-host / engine-pod / per-turn Docker +
+      // dev/tests): the SDK resolves its own native binary. Only set inside the
+      // Bun-compiled desktop sidecar, where require.resolve can't reach it.
+      const pathToClaudeCodeExecutable = resolveClaudeExecutable();
       const baseOptions: Options = {
         cwd: deps.workspaceDir,
         env: {
@@ -73,6 +78,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
           CLAUDE_CONFIG_DIR: claudeConfigDir(deps.dataDir),
           ...tokenEnv(deps.readToken()),
         },
+        ...(pathToClaudeCodeExecutable ? { pathToClaudeCodeExecutable } : {}),
         settingSources: [],
         tools: policy.tools,
         disallowedTools: policy.disallowedTools,

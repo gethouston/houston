@@ -30,6 +30,21 @@ COPY packages/runtime/ ./packages/runtime/
 
 RUN pnpm install --frozen-lockfile --prod --filter @houston/runtime...
 
+# Drop the Claude Agent SDK's per-platform native binary (~250 MB). This image
+# is CLOUD-only: server mode = the legacy GKE per-agent pod, turn mode = the
+# per-turn Cloud Run runtime. Anthropic stays OFF in cloud (ToS), so this
+# runtime never spawns the `claude` subprocess — conversation-cache registers
+# the backend but createSession is never reached, and the SDK is a lazy import.
+# Keeping the binary would bloat every cold-start image for a code path that
+# never runs here. We remove ONLY the platform-binary package (glob matches
+# `@anthropic-ai+claude-agent-sdk-<platform>-<arch>`, NOT the `…-sdk@<version>`
+# JS package), so a stray import still fails as a clean typed error rather than
+# a missing module — and esbuild/tsx's own optional platform binaries (which a
+# blanket `--no-optional` would have stripped, breaking `node --import tsx`)
+# stay intact. The self-host / engine-pod image (selfhost/Dockerfile) does NOT
+# do this: there a user connects their own Anthropic subscription and needs it.
+RUN rm -rf /app/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk-*
+
 # ---------- Runtime stage ----------
 FROM node:22-bookworm-slim AS runtime
 

@@ -115,6 +115,61 @@ chmod +x "$OUT"
 SIZE="$(du -h "$OUT" | cut -f1)"
 echo "Built host sidecar: $OUT ($SIZE)"
 
+# --- Stage the Claude Code native binary next to the sidecar ------------------
+# The Bun-compiled sidecar can't resolve the SDK's native `claude` binary at
+# runtime (it lives outside Bun's $bunfs virtual FS — see
+# packages/runtime/src/backends/claude/binary-path.ts). So we ship the platform
+# `claude` binary as a SIBLING: build.rs stages it as the Tauri externalBin
+# `binaries/claude-<triple>` (alongside `binaries/houston-engine-<triple>`), so
+# both land in the same bundle dir (Contents/MacOS on macOS) and the macOS
+# signing/notarization sweep signs it like any other bundled binary.
+# resolveClaudeExecutable() then points the SDK at `<dir of sidecar>/claude`.
+#
+# The binary comes from the SDK's per-platform optional package in the pnpm
+# store: @anthropic-ai/claude-agent-sdk-<os>-<arch> (glibc for linux; the
+# desktop AppImage/deb are glibc). pnpm installs only the HOST-matching platform
+# package, so a cross-target build (e.g. the macOS universal build compiling
+# x86_64 on an arm64 runner) needs the non-native package force-installed first
+# (`pnpm add -w @anthropic-ai/claude-agent-sdk-<os>-<arch>@<ver> --force`), the
+# same requirement the SDK README documents for `bun build --compile`.
+sdk_platform_slug() {
+  local triple="$1" arch os
+  case "$triple" in
+    aarch64-*) arch="arm64" ;;
+    x86_64-*) arch="x64" ;;
+    *) echo "ERROR: unsupported triple arch in '$triple'" >&2; return 1 ;;
+  esac
+  case "$triple" in
+    *-apple-darwin) os="darwin" ;;
+    *-unknown-linux-gnu) os="linux" ;;
+    *-pc-windows-msvc) os="win32" ;;
+    *) echo "ERROR: unsupported triple OS in '$triple'" >&2; return 1 ;;
+  esac
+  echo "${os}-${arch}"
+}
+
+SDK_SLUG="$(sdk_platform_slug "$TRIPLE")"
+CLAUDE_BIN_NAME="claude"
+case "$TRIPLE" in *-pc-windows-msvc) CLAUDE_BIN_NAME="claude.exe" ;; esac
+
+# Locate the binary in the pnpm store (deterministic layout). Newest match wins.
+CLAUDE_SRC="$(
+  ls -1 "$REPO_ROOT"/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk-"$SDK_SLUG"@*/node_modules/@anthropic-ai/claude-agent-sdk-"$SDK_SLUG"/"$CLAUDE_BIN_NAME" 2>/dev/null | tail -1 || true
+)"
+
+if [ -z "$CLAUDE_SRC" ] || [ ! -f "$CLAUDE_SRC" ]; then
+  echo "ERROR: Claude Code binary for '$SDK_SLUG' not found in the pnpm store." >&2
+  echo "       Install it before building the sidecar for this target:" >&2
+  echo "       pnpm add -w @anthropic-ai/claude-agent-sdk-$SDK_SLUG@<version> --force" >&2
+  exit 1
+fi
+
+CLAUDE_OUT="$OUT_DIR/claude-${TRIPLE}${EXT}"
+cp "$CLAUDE_SRC" "$CLAUDE_OUT"
+chmod +x "$CLAUDE_OUT"
+CLAUDE_SIZE="$(du -h "$CLAUDE_OUT" | cut -f1)"
+echo "Staged Claude Code binary: $CLAUDE_OUT ($CLAUDE_SIZE)"
+
 if [ -z "$VERIFY" ]; then
   exit 0
 fi
