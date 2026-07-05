@@ -4,6 +4,7 @@ import {
   type ClaudeToken,
   tokenEnv,
 } from "./backend";
+import { resolveClaudeExecutable } from "./binary-path";
 import { toSdkModel } from "./model";
 import { claudeConfigDir } from "./paths";
 import type { ClaudeQuery } from "./session";
@@ -48,6 +49,9 @@ export async function titleWithClaude(p: ClaudeTitleParams): Promise<string> {
     }
   }
 
+  // undefined on the Node path; set only inside the Bun-compiled desktop sidecar
+  // (same as a turn — see backend.ts / binary-path.ts).
+  const pathToClaudeCodeExecutable = resolveClaudeExecutable();
   const options: Options = {
     cwd: p.workspaceDir,
     env: {
@@ -55,6 +59,7 @@ export async function titleWithClaude(p: ClaudeTitleParams): Promise<string> {
       CLAUDE_CONFIG_DIR: claudeConfigDir(p.dataDir),
       ...tokenEnv(p.readToken()),
     },
+    ...(pathToClaudeCodeExecutable ? { pathToClaudeCodeExecutable } : {}),
     settingSources: [],
     allowedTools: [],
     systemPrompt: p.titlePrompt,

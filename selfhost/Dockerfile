@@ -45,6 +45,15 @@ COPY packages/runtime-client/ /app/packages/runtime-client/
 COPY packages/domain/ /app/packages/domain/
 COPY packages/runtime/ /app/packages/runtime/
 COPY packages/host/ /app/packages/host/
+# Optional deps are installed on purpose (no --no-optional): the runtime the
+# host spawns registers the Claude Agent SDK backend for the `anthropic`
+# provider, and self-host / managed-pod users connect their OWN Anthropic
+# subscription. That pulls the SDK's per-platform native `claude` binary
+# (@anthropic-ai/claude-agent-sdk-linux-<arch>, ~250 MB, glibc — bookworm is
+# glibc, so the glibc variant is the right one). It resolves via require.resolve
+# under `node --import tsx` (NOT Bun), so no pathToClaudeCodeExecutable override
+# is needed here. The CLOUD-only per-turn image (packages/runtime/Dockerfile)
+# strips this binary because Anthropic stays off there (ToS).
 RUN pnpm install --frozen-lockfile --prod \
       --filter @houston/runtime... \
       --filter @houston/host...
