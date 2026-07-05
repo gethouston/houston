@@ -59,6 +59,9 @@ class FakeChannel implements RuntimeChannel {
     _t: string,
     _p?: TurnPin,
   ): Promise<void> {}
+  async cancelTurn(): Promise<boolean> {
+    return false;
+  }
   async teardown(): Promise<void> {}
   async captureCredential(
     ctx: ChannelCtx,

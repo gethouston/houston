@@ -11,6 +11,7 @@ import {
   interp,
   type RunHistoryLabels,
 } from "./labels";
+import { formatRunTime } from "./run-time-format";
 import type { RoutineRun } from "./types";
 
 export interface RunHistoryProps {
@@ -22,6 +23,12 @@ export interface RunHistoryProps {
   labels?: RunHistoryLabels;
   /** BCP-47 locale for the run timestamps. */
   locale?: string;
+  /**
+   * IANA zone for the run timestamps — the account-wide routines zone, so run
+   * times read in the same clock the schedule + next-run already use. Absent →
+   * the browser's local zone.
+   */
+  timeZone?: string;
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -31,30 +38,6 @@ const STATUS_DOT: Record<string, string> = {
   error: "bg-red-500",
   cancelled: "bg-gray-400",
 };
-
-function formatRunTime(
-  iso: string,
-  labels: RunHistoryLabels,
-  locale: string,
-): string {
-  const date = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  const time = date.toLocaleTimeString(locale, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
-  if (diffDays === 0) return interp(labels.today, { time });
-  if (diffDays === 1) return interp(labels.yesterday, { time });
-  const dateStr = date.toLocaleDateString(locale, {
-    month: "short",
-    day: "numeric",
-  });
-  return interp(labels.onDate, { date: dateStr, time });
-}
 
 function formatDuration(
   startedAt: string,
@@ -73,6 +56,7 @@ export function RunHistory({
   onCancelRun,
   labels = DEFAULT_RUN_HISTORY_LABELS,
   locale = "en-US",
+  timeZone,
 }: RunHistoryProps) {
   const sorted = [...runs].sort(
     (a, b) =>
@@ -119,7 +103,7 @@ export function RunHistory({
               aria-hidden
             />
             <span className="text-xs text-muted-foreground tabular-nums w-36 shrink-0">
-              {formatRunTime(run.started_at, labels, locale)}
+              {formatRunTime(run.started_at, labels, locale, timeZone)}
             </span>
             <span
               className={cn(

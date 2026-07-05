@@ -94,6 +94,42 @@ test("cancel aborts the pump and reads as a cancelled-turn error", async () => {
   expect(await relay.cancel("a1")).toBe(false); // nothing in flight anymore
 });
 
+test("a conversation-scoped cancel only aborts a turn on THAT conversation", async () => {
+  const relay = new TurnRelay();
+  let aborted = false;
+  let finish!: () => void;
+  await relay.start("a1", "a1/chat", async (_publish, signal) => {
+    signal.addEventListener("abort", () => {
+      aborted = true;
+    });
+    await new Promise<void>((r) => (finish = r));
+  });
+  // Aimed at a DIFFERENT conversation (a stale routine-run stop) → no-op:
+  // the agent's one slot is running the user's chat, which must survive.
+  expect(await relay.cancel("a1", "a1/routine-r1")).toBe(false);
+  expect(aborted).toBe(false);
+  // Aimed at the running conversation → aborts it.
+  expect(await relay.cancel("a1", "a1/chat")).toBe(true);
+  await drainTick();
+  expect(aborted).toBe(true);
+  finish();
+});
+
+test("a conversation-scoped cancel matches across replicas (lease value = conversation key)", async () => {
+  const bus = new MemoryTurnBus();
+  const owner = new TurnRelay(bus);
+  const other = new TurnRelay(bus);
+  let finish!: () => void;
+  await owner.start("a1", "a1/chat", async () => {
+    await new Promise<void>((r) => (finish = r));
+  });
+  // The non-owning replica sees the same conversation scoping through the bus.
+  expect(await other.cancel("a1", "a1/routine-r1")).toBe(false);
+  expect(await other.cancel("a1", "a1/chat")).toBe(true);
+  finish();
+  await drainTick();
+});
+
 test("an upstream that dies mid-turn synthesizes an error at watermark+1 (client never hangs)", async () => {
   const relay = new TurnRelay();
   const seen: SequencedFrame[] = [];

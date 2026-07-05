@@ -259,6 +259,49 @@ test("routines: an invalid cron is rejected at create (400), never saved to fail
   }
 });
 
+test("routines: an unknown provider pin is rejected (400), a Rust-era alias round-trips", async () => {
+  // A typo'd/unknown provider must not save — every fired run would error.
+  const bad = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      name: "Junk pin",
+      prompt: "p",
+      schedule: "0 9 * * *",
+      provider: "gemini-cli",
+    }),
+  });
+  expect(bad.status).toBe(400);
+  expect(((await bad.json()) as { error: string }).error).toContain(
+    "unknown provider: gemini-cli",
+  );
+
+  // A migrated routines.json can still say "claude" (routinePin maps it at
+  // fire time and never rewrites the file) — the editor round-trips that
+  // stored value verbatim on ANY save, so validation must accept the alias or
+  // a legacy-pinned routine becomes uneditable.
+  const created = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      name: "Legacy pin",
+      prompt: "p",
+      schedule: "0 9 * * *",
+    }),
+  });
+  const routine = (await created.json()) as Routine;
+  const patched = await fetch(
+    `${base}/agents/${agentId}/routines/${routine.id}`,
+    {
+      method: "PATCH",
+      headers: auth("alice"),
+      body: JSON.stringify({ name: "Renamed", provider: "claude" }),
+    },
+  );
+  expect(patched.status).toBe(200);
+  expect(((await patched.json()) as Routine).name).toBe("Renamed");
+});
+
 test("config: PUT replaces, GET reads back", async () => {
   const put = await fetch(`${base}/agents/${agentId}/config`, {
     method: "PUT",

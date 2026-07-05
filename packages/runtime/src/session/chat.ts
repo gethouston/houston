@@ -4,6 +4,10 @@ import { activeProvider, resolveModel } from "../ai/providers";
 import { syncServedCredential } from "../auth/serve";
 import { cleanupClaudeConversation } from "../backends/claude/cleanup";
 import { config } from "../config";
+import {
+  appendAssistantMessage,
+  appendUserMessage,
+} from "../store/conversations";
 import type { ActingContext } from "./acting-context";
 import { publish } from "./bus";
 import {
@@ -81,8 +85,9 @@ export async function runTurn(
   // where the provider is logged out mid-turn: getConversation returns a CACHED
   // session without re-running resolveModel()'s connect guard, so without this a
   // now-credential-less turn could still reach session.prompt() and hang with no
-  // terminal event.
-  if (!activeProvider()) {
+  // terminal event. A provider-pinned turn (a routine) skips the guard — its
+  // pin is never auth-gated; a failure surfaces as the turn's provider error.
+  if (!pin?.provider && !activeProvider()) {
     publish(id, {
       type: "error",
       data: { message: "No provider connected. Connect an AI provider first." },
@@ -93,9 +98,22 @@ export async function runTurn(
 
   let conv: Conversation;
   try {
-    conv = await getConversation(id);
+    conv = await getConversation(id, pin);
   } catch (err) {
-    // e.g. no provider connected — surface it on the conversation's stream.
+    // e.g. no provider connected, or a pin naming an unknown provider —
+    // surface it on the conversation's stream AND persist it (user prompt +
+    // an empty assistant message carrying the typed reason), so an unattended
+    // reader (a routine's reconcile) errors its run with the real message
+    // instead of finding no reply and timing out vague.
+    appendUserMessage(id, text, { turnId });
+    appendAssistantMessage(id, "", {
+      providerError: {
+        kind: "unknown",
+        provider: pin?.provider ?? "unknown",
+        raw_excerpt: errMessage(err),
+      },
+      turnId,
+    });
     publish(id, { type: "error", data: { message: errMessage(err) }, turnId });
     return;
   }

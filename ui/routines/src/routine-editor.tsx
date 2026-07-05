@@ -433,6 +433,7 @@ export function RoutineEditor({
                 onCancelRun={onCancelRun}
                 labels={runHistoryLabels}
                 locale={locale}
+                timeZone={accountTimezone}
               />
             </SectionCard>
           )}

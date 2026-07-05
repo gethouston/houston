@@ -24,8 +24,9 @@ import {
 } from "./file-changes";
 import { switchNeedsCompaction } from "./provider-switch";
 
-/** A routine's pinned model/effort for this turn. Absent = keep the session's current. */
+/** A routine's pinned provider/model/effort for this turn. Absent = keep the session's current. */
 export interface TurnPin {
+  provider?: string | null;
   model?: string | null;
   effort?: string | null;
 }
@@ -98,13 +99,15 @@ export async function execTurn(
   // here so the error path can still persist the marker on the partial message.
   let providerSwitch: ChatMessage["providerSwitch"];
   try {
-    // Resolve the model for THIS turn from current settings (a routine pin wins,
-    // else the workspace's active provider/model). Re-resolved every turn so a
-    // mid-conversation provider/model switch — which the web picker applies via
-    // setSettings, NOT a per-turn field — actually takes effect on the cached
-    // session instead of silently continuing on the model it was built with.
+    // Resolve the model for THIS turn from current settings (a routine's
+    // provider/model pin wins, else the workspace's active provider/model).
+    // Re-resolved every turn so a mid-conversation provider/model switch —
+    // which the web picker applies via setSettings, NOT a per-turn field —
+    // actually takes effect on the cached session instead of silently
+    // continuing on the model it was built with; and so a pinned routine keeps
+    // firing on ITS provider no matter what other chats picked in between.
     // A bad model id throws here → surfaces as the turn's error event.
-    const model = resolveModel(pin?.model);
+    const model = resolveModel(pin?.model, pin?.provider);
     const providerChanged = model.provider !== conv.provider;
     const modelChanged = model.id !== conv.model;
     if (providerChanged || modelChanged) {
@@ -211,14 +214,22 @@ export async function execTurn(
     // notification on top of the error.
     if (!providerError) publish(id, { type: "done", data: null, turnId });
   } catch (err) {
-    if (assistantText)
-      appendAssistantMessage(id, assistantText, {
-        tools,
-        usage,
-        providerSwitch,
-        providerError,
-        turnId,
-      });
+    // Persist the failure even when nothing streamed: a thrown turn (bad pin,
+    // missing credential, stale model id) must leave the same durable trace a
+    // provider_error frame does — an unattended reader (a routine's reconcile)
+    // reads the real reason off this message instead of timing the run out
+    // with a vague error 15 minutes later.
+    appendAssistantMessage(id, assistantText, {
+      tools,
+      usage,
+      providerSwitch,
+      providerError: providerError ?? {
+        kind: "unknown",
+        provider: pin?.provider ?? conv.provider,
+        raw_excerpt: errMessage(err),
+      },
+      turnId,
+    });
     publish(id, { type: "error", data: { message: errMessage(err) }, turnId });
   } finally {
     conv.turnId = undefined;

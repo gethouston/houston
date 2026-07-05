@@ -535,6 +535,21 @@ export async function runRoutineNow(
   );
 }
 
+/** Stop an in-flight routine run — the host flips the row terminal, then aborts the turn. */
+export async function cancelRoutineRun(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  routineId: string,
+  runId: string,
+): Promise<RoutineRun> {
+  const res = await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/routines/${encodeURIComponent(routineId)}/runs/${encodeURIComponent(runId)}/cancel`,
+    { method: "POST" },
+  );
+  return (await res.json()) as RoutineRun;
+}
+
 // Agent-config library: user-scoped like the marketplace reads — a template
 // belongs to the account, not to any existing agent.
 export async function listInstalledConfigs(

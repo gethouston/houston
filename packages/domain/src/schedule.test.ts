@@ -6,7 +6,9 @@ import {
   createRoutineRun,
   dueAt,
   extractRunSummary,
+  MAX_RUNS_PER_ROUTINE,
   nextRun,
+  pruneRoutineRuns,
   responseIsSilent,
   routineConversationId,
   routinePrompt,
@@ -111,6 +113,27 @@ test("createRoutineRun starts as running with the run's conversation as session_
     session_key: "routine-r1-run-9",
     started_at: NOW,
   });
+});
+
+test("pruneRoutineRuns caps history per routine, keeping the newest (parity with the Rust cap)", () => {
+  const runFor = (routineId: string, n: number) => ({
+    ...createRoutineRun(
+      routine({ id: routineId }),
+      `${routineId}-run-${n}`,
+      NOW,
+    ),
+    routine_id: routineId,
+  });
+  // 60 runs for r1 (newest first) interleaved with 3 for r2: r1 is capped at
+  // MAX_RUNS_PER_ROUTINE (newest survive), r2 is untouched.
+  const r1 = Array.from({ length: 60 }, (_, i) => runFor("r1", i));
+  const r2 = Array.from({ length: 3 }, (_, i) => runFor("r2", i));
+  const pruned = pruneRoutineRuns([...r1.slice(0, 30), ...r2, ...r1.slice(30)]);
+  const r1Kept = pruned.filter((r) => r.routine_id === "r1");
+  expect(r1Kept).toHaveLength(MAX_RUNS_PER_ROUTINE);
+  expect(r1Kept[0]?.id).toBe("r1-run-0"); // newest kept
+  expect(r1Kept.at(-1)?.id).toBe(`r1-run-${MAX_RUNS_PER_ROUTINE - 1}`);
+  expect(pruned.filter((r) => r.routine_id === "r2")).toHaveLength(3);
 });
 
 // --- run completion (parity with runner.rs) ---

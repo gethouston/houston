@@ -27,6 +27,9 @@ class SpyChannel implements RuntimeChannel {
   throwMessage: string | null = null;
   async dispatch() {}
   async fireTurn() {}
+  async cancelTurn() {
+    return false;
+  }
   async teardown() {}
   async captureCredential() {
     return { ok: true as const, provider: "openai-codex" };
