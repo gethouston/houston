@@ -7,10 +7,20 @@ import { config } from "../config";
 import {
   applyServedCredential,
   type PiCred,
+  readServedProvidersAt,
   removeServedCredentialAt,
   scrubRefreshTokensAt,
+  writeServedProvidersAt,
 } from "./auth-file";
-import { selectExportCredential, syncServedCredential } from "./serve";
+import { selectExportCredential } from "./export";
+import { syncServedCredential } from "./serve";
+
+/** The host's authoritative "not connected" 404 (see routes/credential.ts). */
+const notConnected404 = () =>
+  new Response(null, {
+    status: 404,
+    headers: { "x-houston-not-connected": "1" },
+  });
 
 /**
  * Connect-once capture must be PROVIDER-SPECIFIC. The runtime exports the
@@ -80,7 +90,7 @@ test("concurrent syncServedCredential calls share one in-flight sync (no auth.js
   // pure while still exercising one full per-provider probe sweep.
   const fetchImpl = (async () => {
     calls++;
-    return new Response(null, { status: 404 });
+    return notConnected404();
   }) as unknown as typeof globalThis.fetch;
   await withServeMode(fetchImpl, async () => {
     const [a, b, c] = await Promise.all([
@@ -118,12 +128,13 @@ test("syncServedCredential is a no-op when serve mode is off (local desktop)", a
   }
 });
 
-test("syncServedCredential removes served-owned credentials on a central 404", async () => {
+test("syncServedCredential removes manifest-tracked credentials on a central 404", async () => {
   const fetchImpl = (async () => {
-    return new Response(null, { status: 404 });
+    return notConnected404();
   }) as unknown as typeof globalThis.fetch;
   await withServeMode(fetchImpl, async () => {
     const path = join(config.dataDir, "auth.json");
+    const manifestPath = join(config.dataDir, "served-providers.json");
     writeFileSync(
       path,
       JSON.stringify({
@@ -142,17 +153,121 @@ test("syncServedCredential removes served-owned credentials on a central 404", a
         opencode: { type: "api_key", key: "sk-served" },
       }),
     );
+    // These three were hydrated by earlier serves; the sign-out may touch them.
+    writeServedProvidersAt(manifestPath, [
+      "openai-codex",
+      "github-copilot",
+      "opencode",
+    ]);
 
     expect(await syncServedCredential()).toEqual([]);
     const auth = readAuth(path);
     expect(auth["openai-codex"]).toBeUndefined();
     expect(auth.opencode).toBeUndefined();
+    // Mid-capture (refresh-bearing) survives even when manifest-tracked.
     expect(auth["github-copilot"]).toEqual({
       type: "oauth",
       access: "AT-pending",
       refresh: "RT-pending-capture",
       expires: 2,
     });
+    // The signed-out providers left the manifest.
+    expect(readServedProvidersAt(manifestPath)).toEqual([]);
+  });
+});
+
+test("a central 404 leaves locally-connected credentials alone (no manifest entry)", async () => {
+  const fetchImpl = (async () => {
+    return notConnected404();
+  }) as unknown as typeof globalThis.fetch;
+  await withServeMode(fetchImpl, async () => {
+    const path = join(config.dataDir, "auth.json");
+    // The Anthropic setup token and an openai-compatible local-model key are
+    // written by pi locally and NEVER exist centrally — every serve 404s them.
+    // They are shaped exactly like served entries, so only provenance saves them.
+    writeFileSync(
+      path,
+      JSON.stringify({
+        anthropic: { type: "api_key", key: "sk-ant-oat01-SETUP" },
+        "openai-compatible": { type: "api_key", key: "houston-local" },
+      }),
+    );
+
+    expect(await syncServedCredential()).toEqual([]);
+    const auth = readAuth(path);
+    expect(auth.anthropic).toEqual({
+      type: "api_key",
+      key: "sk-ant-oat01-SETUP",
+    });
+    expect(auth["openai-compatible"]).toEqual({
+      type: "api_key",
+      key: "houston-local",
+    });
+  });
+});
+
+test("a bare 404 without the not-connected marker is a hiccup, not a logout", async () => {
+  // An old host, a wrong control-plane URL, or a route-level miss all produce
+  // unmarked 404s — none of them may delete a working credential.
+  const fetchImpl = (async () => {
+    return new Response(null, { status: 404 });
+  }) as unknown as typeof globalThis.fetch;
+  await withServeMode(fetchImpl, async () => {
+    const path = join(config.dataDir, "auth.json");
+    const manifestPath = join(config.dataDir, "served-providers.json");
+    writeFileSync(
+      path,
+      JSON.stringify({
+        "openai-codex": {
+          type: "oauth",
+          access: "AT-served",
+          refresh: "",
+          expires: 1,
+        },
+      }),
+    );
+    writeServedProvidersAt(manifestPath, ["openai-codex"]);
+
+    expect(await syncServedCredential()).toEqual([]);
+    expect(readAuth(path)["openai-codex"]).toEqual({
+      type: "oauth",
+      access: "AT-served",
+      refresh: "",
+      expires: 1,
+    });
+    expect(readServedProvidersAt(manifestPath)).toEqual(["openai-codex"]);
+  });
+});
+
+test("a serve marks the provider in the manifest, so a later sign-out removes it", async () => {
+  let signedOut = false;
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    if (!signedOut && String(input).includes("provider=openai-codex")) {
+      return new Response(
+        JSON.stringify({
+          provider: "openai-codex",
+          kind: "oauth",
+          access: "AT-central",
+          expires: 1_900_000_000_000,
+          accountId: null,
+        }),
+        { status: 200 },
+      );
+    }
+    return notConnected404();
+  }) as unknown as typeof globalThis.fetch;
+  await withServeMode(fetchImpl, async () => {
+    const path = join(config.dataDir, "auth.json");
+    const manifestPath = join(config.dataDir, "served-providers.json");
+
+    expect(await syncServedCredential()).toEqual(["openai-codex"]);
+    expect(readServedProvidersAt(manifestPath)).toEqual(["openai-codex"]);
+    expect(readAuth(path)["openai-codex"]?.access).toBe("AT-central");
+
+    signedOut = true; // org-wide sign-out: central store now 404s everything
+    expect(await syncServedCredential()).toEqual([]);
+    expect(readAuth(path)["openai-codex"]).toBeUndefined();
+    expect(readServedProvidersAt(manifestPath)).toEqual([]);
   });
 });
 

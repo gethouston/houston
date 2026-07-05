@@ -65,14 +65,19 @@ function remoteCredentialConfig(hostTokenEnv: string | undefined) {
   const url = process.env.HOUSTON_CREDENTIALS_URL;
   const orgSlug = process.env.HOUSTON_ORG_SLUG;
   const agentSlug = process.env.HOUSTON_AGENT_SLUG;
-  const any = !!url || !!orgSlug || !!agentSlug;
   if (url && orgSlug && agentSlug && hostTokenEnv) {
     return { url, orgSlug, agentSlug, podToken: hostTokenEnv };
   }
-  if (any) {
-    console.warn(
-      "[local-host] incomplete managed credential gateway env; set HOUSTON_CREDENTIALS_URL, HOUSTON_ORG_SLUG, HOUSTON_AGENT_SLUG, and HOUSTON_HOST_TOKEN. Falling back to file credentials.",
+  if (url || orgSlug || agentSlug) {
+    // A partial env is always a deploy bug — no profile sets only some of these.
+    // Falling back to the (empty) file store would make every credential serve
+    // read as an org-wide logout, and a legacy pod would even start rotating
+    // refresh tokens locally against the gateway's rotation. Die loudly so the
+    // pod restarts into a fixed spec instead of degrading silently.
+    console.error(
+      "[local-host] incomplete managed credential gateway env: set HOUSTON_CREDENTIALS_URL, HOUSTON_ORG_SLUG, HOUSTON_AGENT_SLUG, and HOUSTON_HOST_TOKEN together.",
     );
+    process.exit(1);
   }
   return undefined;
 }

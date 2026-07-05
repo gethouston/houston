@@ -57,10 +57,14 @@ export function readAuthFile(path: string): Record<string, PiCred> {
   }
 }
 
-function writeAuthFile(path: string, contents: Record<string, PiCred>): void {
+function writeJsonAtomic(path: string, contents: unknown): void {
   const tmp = `${path}.tmp`;
   writeFileSync(tmp, JSON.stringify(contents), { mode: 0o600 }); // atomic write
   renameSync(tmp, path);
+}
+
+function writeAuthFile(path: string, contents: Record<string, PiCred>): void {
+  writeJsonAtomic(path, contents);
 }
 
 /**
@@ -107,10 +111,39 @@ export function scrubRefreshTokensAt(path: string): string[] {
 }
 
 /**
+ * Provenance manifest ("served-providers.json", next to auth.json): the
+ * providers whose auth.json entry was written by the serve path. An
+ * authoritative central 404 may only remove providers listed here — a
+ * locally-connected credential the central store never held (the Anthropic
+ * setup token, an openai-compatible local-model key) is shaped exactly like a
+ * served one (api_key / refresh=""), so shape alone cannot prove ownership.
+ */
+export function readServedProvidersAt(path: string): string[] {
+  if (!existsSync(path)) return [];
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf8")) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((p): p is string => typeof p === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export function writeServedProvidersAt(
+  path: string,
+  providers: string[],
+): void {
+  writeJsonAtomic(path, providers);
+}
+
+/**
  * Remove one provider only when the entry is owned by the serve path: an OAuth
  * credential already scrubbed to refresh="" or an API key served from the host.
  * A refresh-bearing OAuth entry is pi's just-connected credential before capture
- * + scrub, so a transient gateway 404 must not delete it.
+ * + scrub, so a transient gateway 404 must not delete it. The caller gates this
+ * further on the served-providers manifest (see serve.ts) — shape is defense in
+ * depth, provenance is the decider.
  */
 export function removeServedCredentialAt(
   path: string,

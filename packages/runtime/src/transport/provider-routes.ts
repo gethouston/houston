@@ -1,4 +1,5 @@
 import { listProviders, setSettings } from "../ai/providers";
+import { exportCredential } from "../auth/export";
 import {
   cancelLogin,
   completeLogin,
@@ -8,22 +9,14 @@ import {
   setCustomEndpoint,
   startLogin,
 } from "../auth/login";
-import {
-  exportCredential,
-  scrubRefreshTokens,
-  syncServedCredential,
-} from "../auth/serve";
+import { scrubRefreshTokens, syncServedCredentialSafe } from "../auth/serve";
 import { json, type RouteContext, readJson } from "./http-helpers";
 
 export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
   const { method, path, req, res, url } = ctx;
 
   if (method === "GET" && path === "/providers") {
-    try {
-      await syncServedCredential();
-    } catch (e) {
-      console.error("[providers] list credential sync failed:", e);
-    }
+    await syncServedCredentialSafe("providers");
     json(res, 200, listProviders());
     return true;
   }
@@ -38,11 +31,7 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
   }
 
   if (method === "GET" && path === "/auth/status") {
-    try {
-      await syncServedCredential();
-    } catch (e) {
-      console.error("[auth] status credential sync failed:", e);
-    }
+    await syncServedCredentialSafe("auth");
     json(res, 200, getAuthStatus());
     return true;
   }

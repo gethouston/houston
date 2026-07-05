@@ -4,18 +4,15 @@ import {
   isApiKeyCredential,
   type WorkspaceCredential,
 } from "../ports";
+import {
+  credentialFromGateway,
+  type GatewayCredential,
+  isNotConnected404,
+} from "./gateway-wire";
 
 const CACHE_TTL_MS = 15_000;
 type CachedCredential = Omit<WorkspaceCredential, "workspaceId">;
 
-interface GatewayCredential {
-  provider: string;
-  kind: "oauth" | "api_key";
-  access: string;
-  expires: number;
-  accountId?: string | null;
-  enterpriseUrl?: string | null;
-}
 export interface RemoteCredentialStoreOptions {
   baseUrl: string;
   orgSlug: string;
@@ -28,9 +25,11 @@ export interface RemoteCredentialStoreOptions {
 /**
  * Managed-pod credential store: the pod never owns refresh-token rotation. The
  * gateway is the single refresher for org credentials (OpenAI refresh tokens
- * rotate), and pods fetch only access/API-key material just-in-time. A 404 is the
- * authoritative "not connected" signal; transport/5xx errors must throw so the
- * runtime keeps its last hydrated token instead of logging the org out locally.
+ * rotate), and pods fetch only access/API-key material just-in-time. Only the
+ * gateway's own "not connected" 404 (JSON error body — see isNotConnected404)
+ * means logged out; every other failure, including a route-level 404 from a
+ * misdeployed gateway, must throw so the runtime keeps its last hydrated token
+ * instead of logging the org out locally.
  */
 export class RemoteCredentialStore implements CredentialStore {
   private readonly baseUrl: string;
@@ -77,13 +76,21 @@ export class RemoteCredentialStore implements CredentialStore {
     this.cache.delete(cred.provider);
   }
 
-  async remove(_workspaceId: WorkspaceId, provider: string): Promise<void> {
+  async remove(workspaceId: WorkspaceId, provider: string): Promise<void> {
     const res = await this.fetchImpl(this.url(provider), {
       method: "DELETE",
       headers: this.authHeaders(),
     });
-    if (res.status !== 200)
+    // Sign-out is idempotent, like the file store: the gateway's "not
+    // connected" 404 means the row is already gone (another pod removed it, or
+    // this provider was never adopted) — callers forget credential siblings
+    // unconditionally and rely on the no-op.
+    if (res.status !== 200 && !(await isNotConnected404(res)))
       throw await this.errorFromResponse(res, "DELETE", provider);
+    // Clear the legacy adoption source too — leaving the file entry would let
+    // the next get()'s 404-adoption silently resurrect the credential the user
+    // just removed, org-wide.
+    await this.fallback?.remove(workspaceId, provider);
     this.cache.delete(provider);
   }
 
@@ -104,11 +111,14 @@ export class RemoteCredentialStore implements CredentialStore {
     const res = await this.fetchImpl(this.url(provider), {
       headers: this.authHeaders(),
     });
-    if (res.status === 404) return null;
+    if (await isNotConnected404(res)) return null;
     if (res.status !== 200)
       throw await this.errorFromResponse(res, "GET", provider);
 
-    return this.fromGateway(provider, (await res.json()) as GatewayCredential);
+    return credentialFromGateway(
+      provider,
+      (await res.json()) as GatewayCredential,
+    );
   }
 
   private async putRemote(
@@ -135,33 +145,6 @@ export class RemoteCredentialStore implements CredentialStore {
     });
     if (res.status !== 200)
       throw await this.errorFromResponse(res, "PUT", provider);
-  }
-
-  private fromGateway(
-    provider: string,
-    body: GatewayCredential,
-  ): CachedCredential {
-    if (
-      body.provider !== provider ||
-      (body.kind !== "oauth" && body.kind !== "api_key") ||
-      typeof body.access !== "string" ||
-      typeof body.expires !== "number"
-    ) {
-      throw new Error(`credential gateway returned malformed ${provider} body`);
-    }
-    return {
-      provider: body.provider,
-      kind: body.kind,
-      accessToken: body.access,
-      refreshToken: "",
-      expiresAt: body.expires,
-      ...(typeof body.accountId === "string"
-        ? { accountId: body.accountId }
-        : {}),
-      ...(typeof body.enterpriseUrl === "string"
-        ? { enterpriseUrl: body.enterpriseUrl }
-        : {}),
-    };
   }
 
   private withWorkspace(

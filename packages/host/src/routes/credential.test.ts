@@ -36,12 +36,17 @@ type ServedBody = {
 
 function mockRes(): {
   res: ServerResponse;
-  out: { status?: number; body: ServedBody };
+  out: { status?: number; headers?: Record<string, string>; body: ServedBody };
 } {
-  const out: { status?: number; body: ServedBody } = { body: {} };
+  const out: {
+    status?: number;
+    headers?: Record<string, string>;
+    body: ServedBody;
+  } = { body: {} };
   const res = {
-    writeHead(status: number) {
+    writeHead(status: number, headers?: Record<string, string>) {
       out.status = status;
+      out.headers = headers;
     },
     end(buf: Buffer | string) {
       out.body = JSON.parse(buf.toString());
@@ -128,4 +133,7 @@ test("404 when the workspace has not connected the provider", async () => {
   const r = mockRes();
   expect(await call(credentials, "anthropic", r)).toBe(true);
   expect(r.out.status).toBe(404);
+  // The authoritative marker: the runtime only drops served credentials on
+  // marked 404s, never on a bare route-level 404.
+  expect(r.out.headers?.["x-houston-not-connected"]).toBe("1");
 });

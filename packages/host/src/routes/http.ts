@@ -1,8 +1,16 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-export function json(res: ServerResponse, status: number, body: unknown): void {
+export function json(
+  res: ServerResponse,
+  status: number,
+  body: unknown,
+  headers: Record<string, string> = {},
+): void {
   const buf = Buffer.from(JSON.stringify(body));
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  res.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    ...headers,
+  });
   res.end(buf);
 }
 

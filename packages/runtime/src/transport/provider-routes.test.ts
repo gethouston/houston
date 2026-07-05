@@ -50,7 +50,10 @@ test("GET /providers hydrates served credentials before listing providers", asyn
         { status: 200 },
       );
     }
-    return new Response(null, { status: 404 });
+    return new Response(null, {
+      status: 404,
+      headers: { "x-houston-not-connected": "1" },
+    });
   }) as typeof fetch;
 
   try {
