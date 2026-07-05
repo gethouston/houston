@@ -6,10 +6,11 @@ interface EngineConfig {
 }
 
 /**
- * Installs Rust-engine lifecycle listeners. Host modes skip this so a Rust
- * restart event can never replace a v3 host client.
+ * Installs local host-sidecar lifecycle listeners (`houston-engine-ready` /
+ * `houston-engine-restarted`, emitted by the Tauri supervisor). Remote host
+ * modes skip this so a local restart event can never replace a remote client.
  */
-export function installRustEngineLifecycleListeners(opts: {
+export function installEngineLifecycleListeners(opts: {
   hasClient: () => boolean;
   applyConfig: (config: EngineConfig) => void;
   resetWebSocket: () => void;

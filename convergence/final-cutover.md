@@ -1,76 +1,69 @@
-# Final cutover — the LAST, gated step (do NOT run before the live gate)
+# Final cutover — DONE (record of the completed step)
 
-Everything else in the convergence is done. This is the one irreversible step left:
-**delete the Rust `engine/` and make the host the default desktop build.**
+> **Status: performed.** The Rust `engine/` has been deleted and the Houston host
+> is the default (and only) desktop engine. This doc is now the record of what the
+> cutover did and how to roll back, not a checklist to run.
 
-It is deliberately NOT executed by the autonomous finish pass, because `engine/` is
-the **rollback oracle** and the **parity oracle** — and the live half of the parity
-gate (`convergence/parity-checklist.md` Section 2, ~14 manual rows) can only be run
-by a human on the packaged app with a real provider. This sequencing is the
-consultant's P0 ("keep the Rust build as rollback oracle until the release gate
-passes") and is correct: deleting the oracle before the live gate is the one shortcut
-we will not take.
+This was the one irreversible step at the end of the convergence: delete the Rust
+`engine/` (the rollback + parity oracle) and make the host the default desktop
+build. It was deliberately held until the live parity gate
+(`convergence/parity-checklist.md`) passed on a notarized packaged `.app` with a
+real provider, because deleting the oracle before that gate was the one shortcut
+we would not take. That gate having passed, the cutover was executed as below.
 
-## Preconditions (ALL must be green first)
+## What the cutover did
 
-1. The live parity gate passes — `convergence/parity-checklist.md` Section 2, run on a
-   **notarized packaged `.app`** (see `convergence/packaged-app-launch.md`), with a real
-   provider, including the migrated-conversation recall rows and the force-quit/no-orphan row.
-2. The host-sidecar release builds are produced + launched on macOS, Windows, and Linux
-   (`.github/workflows/release.yml` — since HOU-628 it builds the TS host sidecar directly on `v*`).
-3. The migration gate is confirmed on the real `~/.houston` (already verified on a copy —
-   `convergence/migration-gate.md`; re-confirm on the live machine).
+### 1. The host is the default (and only) engine
+- The desktop frontend aliases `@houston-ai/engine-client` → the v3 host adapter
+  **unconditionally** (`app/vite.config.ts`). `VITE_NEW_ENGINE` is now vestigial
+  (harmless if set); the URL vars (`VITE_NEW_ENGINE_URL` / `VITE_HOSTED_ENGINE_URL`)
+  still select an external / hosted host vs the locally-spawned sidecar.
+- The Tauri shell (`app/src-tauri`) spawns the host sidecar as its default and only
+  path. The `host-sidecar` cargo feature was **removed** — there is no
+  `--features host-sidecar` anymore; a plain `pnpm tauri build` builds the host app.
+  (The script `scripts/build-host-sidecar.sh` and the `target/host-sidecar/` output
+  dir keep their names; the externalBin is still staged at
+  `binaries/houston-engine-<triple>` — the name is kept on purpose so
+  `tauri.conf.json` needs no change.)
 
-## Step 1 — tag the rollback oracle
+### 2. Deleted the legacy Rust + CLI surface
+- `engine/` — the whole Rust workspace (~17 crates).
+- `app/houston-tauri/` — the Tauri adapter crate that bound the Rust engine's
+  crates in-process. Nothing to adapt now that the engine is an out-of-process host.
+- The CLI-bundling pipeline: `scripts/fetch-cli-deps.sh`, `scripts/bump-cli.sh`,
+  `scripts/install-claude-code.sh`, `cli-deps.json`, and the `build.rs` engine/CLI
+  staging. pi runs providers in-process, so no codex / composio / gemini / claude
+  CLIs ship. (The Gemini *CLI* went with `engine/`; the Google **Gemini API-key
+  provider** stays as a pi provider.)
+- The legacy `ui/engine-client` v1 REST/WS transport has no consumer anymore (both
+  desktop and web alias the v3 adapter). Its `src/types.ts` remains as the shared
+  v3 wire-type surface; the v1 client code is kept only pending the v3-client
+  consolidation follow-up (`convergence/follow-ups.md`).
 
-```sh
-git tag pre-host-cutover-rust-oracle
-git push origin pre-host-cutover-rust-oracle   # needs your auth
-```
-Everything below is recoverable by checking out this tag. Because migration is
-copy-never-move, a downgraded Rust build also keeps working on the user's data.
+### 3. Migration
+- The Rust intra-agent data migration (`migrate_agent_data`) was dropped with
+  `engine/`. Chat-history migration is owned by the TS host
+  (`src/migrate/{chat-history,reconstruct,linkage}.ts`, run on boot), verified on
+  real Rust-era `~/.houston` data (`convergence/migration-gate.md`).
+- The `~/Documents/Houston → ~/.houston/workspaces` filesystem migration is **kept**
+  in the Tauri shell (`app/src-tauri`).
+- Migration stays copy-never-move, so the data is downgrade-safe.
 
-## Step 2 — flip the default to the host
+## Release CI
 
-Make `VITE_NEW_ENGINE` / the host-sidecar the DEFAULT (not flag-gated):
-- `app/` build config: default `VITE_NEW_ENGINE=1` (today the Rust path is default; the
-  host path is behind the flag — `app/vite.config.ts`, `app/src/lib/engine.ts`).
-- `app/src-tauri`: make `host-sidecar` the default cargo feature (today it is opt-in;
-  `app/src-tauri/Cargo.toml`), and the supervisor spawns the host sidecar unconditionally.
-- `release.yml`: **DONE (HOU-628)** — it already builds the app with the host sidecar
-  (`--features host-sidecar` + `VITE_NEW_ENGINE=1`), and the Rust-engine + codex/composio/
-  git-bash CLI staging is retired. `engine-release.yml` bun-compiles the standalone TS host
-  too. What remains here are the two DEFAULT flips above, so that a plain `pnpm tauri build`
-  (no flags) also builds the host.
-
-## Step 3 — delete the legacy Rust + CLI surface
-
-Only after Steps 1–2 and a green build:
-- `engine/` (the whole Rust workspace — ~17 crates).
-- The CLI-bundling pipeline: `scripts/fetch-cli-deps.sh`, the `build.rs` engine/CLI staging,
-  `cli-deps.json`, the claude-installer + per-arch Composio CLI fetch.
-- Gemini legacy (only in `engine/` + the legacy `ui/engine-client` v1 client — both go here).
-- `.github/workflows/engine-release.yml` — no longer builds the Rust engine (HOU-628 rewired
-  it to bun-compile the standalone TS host binary `houston-host-<triple>`). Keep it if you
-  still want a bare-host release artifact; drop it only if nothing consumes it.
-- The legacy `ui/engine-client` v1 transport (the app's v3 path uses the QA'd adapter; once
-  the Rust default is gone, the v1 client has no consumer — see `convergence/follow-ups.md`
-  for the cleaner consolidation).
-- `app/src-tauri/src/engine_supervisor.rs` Rust-engine spawn branch (keep the shared
-  supervisor; drop the Rust-engine-specific path now that only the host sidecar is spawned).
-
-## Step 4 — verify + ship
-
-- `pnpm -r typecheck`, `pnpm check`, `pnpm check:boundaries`, Vitest suites in
-  `packages/{host,runtime,domain}` — all green.
-- `cd app/src-tauri && cargo check` (now host-sidecar-default) — compiles.
-- Build + notarize the packaged app; smoke-test one real turn.
-- Doc sweep: mark the `knowledge-base/engine-*.md` + `cli-bundling.md` files HISTORICAL
-  (the headers already flag them legacy), update `CLAUDE.md`'s "two engines coexist" framing
-  to "one host" (see `convergence/follow-ups.md`).
+`.github/workflows/release.yml` (tag `v*`) builds the desktop app around the
+bun-compiled host sidecar directly (no Rust engine, no CLI staging), on macOS
+(universal DMG), Windows (x64/arm64 MSI), and Linux (x64 AppImage).
+`.github/workflows/engine-release.yml` (tag `engine-v*`) bun-compiles the
+standalone host binary (`houston-host-<triple>`).
 
 ## Rollback
 
-`git checkout pre-host-cutover-rust-oracle` rebuilds the Rust-engine desktop app. User
-data is untouched by the host path beyond additive `.houston/runtime/**` files, so a Rust
-build reads the same workspaces. No data migration is reversed.
+The rollback oracle was tagged before deletion:
+
+```sh
+git checkout pre-host-cutover-rust-oracle   # rebuilds the Rust-engine desktop app
+```
+
+User data is untouched by the host path beyond additive `.houston/runtime/**`
+files, so a Rust build reads the same workspaces. No data migration is reversed.

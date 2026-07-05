@@ -1,20 +1,12 @@
 /**
- * Whether this build talks to the v3 Houston host (host mode) instead
- * of the Tauri-spawned Rust engine.
- *
- * This MUST mirror `useHost` in `app/vite.config.ts`, which aliases
- * `@houston-ai/engine-client` to the host adapter exactly when one of
- * these flags is set. The adapter decides its protocol (v3 host vs the
- * Rust wire) from `window.__HOUSTON_CP__` at HoustonClient *construction* time,
- * so the flag has to be a deterministic build constant set before any client is
- * built — NOT a value injected by the Tauri host handshake, which can lose the
- * race against the `get_engine_handshake` poll / `houston-engine-ready` event
- * and leave a Rust-wire client pointed at a v3 host. See HOU-546.
+ * Build-time engine-connection env flags. The Houston host is the only engine,
+ * so the app always talks to a v3 host; these flags only pick *which* host —
+ * an external one (`VITE_NEW_ENGINE_URL`), a hosted gateway
+ * (`VITE_HOSTED_ENGINE_URL`), or the local spawned sidecar (no flag).
  */
 type EngineModeEnv = {
   VITE_NEW_ENGINE_URL?: string;
   VITE_HOSTED_ENGINE_URL?: string;
-  VITE_NEW_ENGINE?: string;
   /**
    * Auth method for the hosted engine (`VITE_HOSTED_ENGINE_URL`). The
    * enable/disable switch for the Supabase Google-login gate — see
@@ -24,15 +16,6 @@ type EngineModeEnv = {
    */
   VITE_HOSTED_ENGINE_AUTH?: string;
 };
-
-export function controlPlaneBuild(env: EngineModeEnv): boolean {
-  return (
-    Boolean(env.VITE_NEW_ENGINE_URL) ||
-    Boolean(env.VITE_HOSTED_ENGINE_URL) ||
-    env.VITE_NEW_ENGINE === "1" ||
-    env.VITE_NEW_ENGINE === "true"
-  );
-}
 
 /**
  * True when a URL's host is this same machine (127.0.0.1 / localhost / ::1) —
@@ -167,9 +150,8 @@ export function hostedGateState(input: {
  * - `hosted-oauth` — `VITE_HOSTED_ENGINE_URL`, authenticated with a Supabase
  *   session token (the managed-cloud default).
  * - `hosted-static` — `VITE_HOSTED_ENGINE_URL` with OAuth toggled off.
- * - `sidecar` — the Tauri-spawned engine subprocess (Rust in the default build,
- *   the TS host under the `host-sidecar` feature). Also what `packages/web`
- *   resolves to: it reuses this module verbatim, injects
+ * - `sidecar` — the Tauri-spawned Houston host subprocess. Also what
+ *   `packages/web` resolves to: it reuses this module verbatim, injects
  *   `window.__HOUSTON_ENGINE__` itself, and `engine.ts` adopts that config.
  */
 export type ResolvedEngine =
@@ -182,9 +164,9 @@ export type ResolvedEngine =
  * Resolve the one transport the app should use from the build-time env flags.
  *
  * The gateway URL is baked into the build (HOU-642): a build-baked target (a
- * host URL, or a hosted gateway) wins, and everything else — the default Rust
- * build, the TS-engine dev loop, and the browser build — runs against its
- * co-located sidecar / injected config. There is no runtime chooser.
+ * host URL, or a hosted gateway) wins, and everything else — the desktop
+ * dev/prod build and the browser build — runs against its co-located host
+ * sidecar / injected config. There is no runtime chooser.
  */
 export function resolveEngine(env: EngineModeEnv): ResolvedEngine {
   if (env.VITE_NEW_ENGINE_URL) {

@@ -1,11 +1,10 @@
-//! Engine subprocess supervisor (Phase 4).
+//! Host subprocess supervisor.
 //!
-//! Spawns the sidecar as a child process, parses its stdout for the
-//! `HOUSTON_ENGINE_LISTENING port=<p> token=<t>` banner (or the Bun host's
-//! equivalent `HOUSTON_HOST_LISTENING ...` under the `host-sidecar` feature),
-//! polls a health endpoint until ready, and hands the `{baseUrl, token}`
-//! handshake back to the caller so the Tauri setup can inject
-//! `window.__HOUSTON_ENGINE__` before showing the webview.
+//! Spawns the Bun-compiled Houston host as a child process, parses its stdout
+//! for the `HOUSTON_HOST_LISTENING port=<p> token=<t>` banner, polls the host's
+//! `/health` until ready, and hands the `{baseUrl, token}` handshake back to the
+//! caller so the Tauri setup can inject `window.__HOUSTON_ENGINE__` before
+//! showing the webview.
 //!
 //! Lifecycle:
 //! - Parent exit → child dies. On Unix the child runs in its own process
@@ -258,7 +257,7 @@ impl EngineSubprocess {
         // Without (1), Windows GUI builds discard engine stderr to NUL.
         let stderr_reader = BufReader::new(stderr);
         thread::spawn(move || {
-            let logs_dir = houston_tauri::houston_db::db::houston_dir().join("logs");
+            let logs_dir = crate::houston_dir().join("logs");
             let _ = std::fs::create_dir_all(&logs_dir);
             let today = chrono::Local::now().format("%Y-%m-%d").to_string();
             let log_path = logs_dir.join(format!("engine.log.{today}"));
@@ -380,14 +379,12 @@ impl Drop for EngineSubprocess {
     }
 }
 
-/// Resolve the `houston-engine` binary path.
+/// Resolve the staged host sidecar binary path (externalBin name
+/// `houston-engine`, kept from the Rust-engine era).
 ///
 /// Resolution order:
 /// 1. `HOUSTON_ENGINE_BIN` env var (dev override / SSH deploy).
-/// 2. Debug builds: cargo workspace target (freshest during `pnpm tauri
-///    dev` — the staged sidecar can be stale if you rebuild just the
-///    engine crate).
-/// 3. Sibling of the current executable — this is where Tauri's
+/// 2. Sibling of the current executable — this is where Tauri's
 ///    `externalBin` places sidecars in shipped app bundles:
 ///      - macOS: `Houston.app/Contents/MacOS/houston-engine`
 ///      - Windows: next to `houston-app.exe`
@@ -395,11 +392,14 @@ impl Drop for EngineSubprocess {
 ///    Authoritative for release builds. (Tauri's `resource_dir()` points
 ///    at `Contents/Resources/` on macOS which is the WRONG place for
 ///    externalBin — sidecars are not resources.)
-/// 4. `<resource_dir>/binaries/houston-engine` — legacy / belt-and-braces
+/// 3. `<resource_dir>/binaries/houston-engine` — legacy / belt-and-braces
 ///    fallback for platforms that stage externalBin into the resources
 ///    tree.
-/// 5. Release builds: cargo workspace target (last-resort, exists only
-///    when running `cargo run --release` outside a bundled `.app`).
+///
+/// The cargo target dir (`target/{debug,release}/houston-engine`) is
+/// deliberately NOT searched: only the deleted Rust engine ever produced
+/// those artifacts, so post-cutover they could only ever match a STALE
+/// pre-cutover binary and shadow the real staged host.
 ///
 /// Returning `Err` here causes the Tauri `setup()` closure to abort the
 /// app on launch — so this function is a hot path during the "download
@@ -424,24 +424,7 @@ pub fn resolve_engine_binary(resource_dir: Option<&PathBuf>) -> Result<PathBuf, 
         }
     }
 
-    let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..");
-    let target_debug = workspace_root.join("target").join("debug").join(bin_name());
-    let target_release = workspace_root.join("target").join("release").join(bin_name());
-
-    // 2. Debug: prefer cargo target (freshest under `tauri dev`).
-    #[cfg(debug_assertions)]
-    {
-        if let Some(hit) = try_candidate(target_debug.clone(), &mut tried) {
-            return Ok(hit);
-        }
-        if let Some(hit) = try_candidate(target_release.clone(), &mut tried) {
-            return Ok(hit);
-        }
-    }
-
-    // 3. Sibling of the current executable — the bundled-sidecar location
+    // 2. Sibling of the current executable — the bundled-sidecar location
     //    Tauri actually uses on every shipping platform.
     if let Ok(exe) = std::env::current_exe() {
         if let Some(exe_dir) = exe.parent() {
@@ -457,7 +440,7 @@ pub fn resolve_engine_binary(resource_dir: Option<&PathBuf>) -> Result<PathBuf, 
         }
     }
 
-    // 4. Resources dir — legacy fallback.
+    // 3. Resources dir — legacy fallback.
     if let Some(resources) = resource_dir {
         if let Some(hit) =
             try_candidate(resources.join("binaries").join(bin_name_no_triple()), &mut tried)
@@ -474,19 +457,8 @@ pub fn resolve_engine_binary(resource_dir: Option<&PathBuf>) -> Result<PathBuf, 
         }
     }
 
-    // 5. Release: cargo target as last resort.
-    #[cfg(not(debug_assertions))]
-    {
-        if let Some(hit) = try_candidate(target_release.clone(), &mut tried) {
-            return Ok(hit);
-        }
-        if let Some(hit) = try_candidate(target_debug.clone(), &mut tried) {
-            return Ok(hit);
-        }
-    }
-
     Err(format!(
-        "houston-engine binary not found. Tried:\n  - {}",
+        "host sidecar binary not found. Tried:\n  - {}",
         tried
             .iter()
             .map(|p| p.display().to_string())
@@ -501,10 +473,6 @@ fn bin_name_no_triple() -> &'static str {
     } else {
         "houston-engine"
     }
-}
-
-fn bin_name() -> &'static str {
-    bin_name_no_triple()
 }
 
 /// Host target triple — best-effort. Matches the suffix tauri `externalBin`
@@ -623,13 +591,10 @@ pub fn spawn_supervisor<C: SupervisorCallbacks>(
 }
 
 fn parse_banner(line: &str) -> Option<EngineHandshake> {
-    // The Rust engine emits   `HOUSTON_ENGINE_LISTENING port=<p> token=<t>`.
-    // The Bun host (host-sidecar feature) emits the equivalent
-    //                          `HOUSTON_HOST_LISTENING  port=<p> token=<t>`.
-    // Same field grammar; accept either prefix so one supervisor drives both.
-    let rest = line
-        .strip_prefix("HOUSTON_ENGINE_LISTENING ")
-        .or_else(|| line.strip_prefix("HOUSTON_HOST_LISTENING "))?;
+    // The Houston host emits `HOUSTON_HOST_LISTENING port=<p> token=<t>`.
+    // (The Rust engine's `HOUSTON_ENGINE_LISTENING` prefix is gone with the
+    // engine — accepting it could only ever bless a stale wrong binary.)
+    let rest = line.strip_prefix("HOUSTON_HOST_LISTENING ")?;
     let mut port: Option<u16> = None;
     let mut token: Option<String> = None;
     for field in rest.split_whitespace() {
@@ -746,11 +711,9 @@ mod win_job {
 /// Reserve a free loopback TCP port by binding to `:0` and reading back the
 /// OS-assigned port. The listener is dropped immediately, so there's a tiny
 /// TOCTOU window before the host re-binds it — acceptable for a single-user
-/// desktop on loopback (nothing else is racing for ports here). Used by the
-/// host-sidecar path, which must hand the host a concrete `HOUSTON_HOST_PORT`
-/// (the host echoes the *requested* port in its banner, so `0` would print
-/// `port=0`).
-#[cfg(feature = "host-sidecar")]
+/// desktop on loopback (nothing else is racing for ports here). The host must
+/// be handed a concrete `HOUSTON_HOST_PORT` (it echoes the *requested* port in
+/// its banner, so `0` would print `port=0`).
 pub fn reserve_free_port() -> Result<u16, String> {
     let listener = std::net::TcpListener::bind("127.0.0.1:0")
         .map_err(|e| format!("could not reserve a free port: {e}"))?;
@@ -760,21 +723,9 @@ pub fn reserve_free_port() -> Result<u16, String> {
         .map_err(|e| format!("could not read reserved port: {e}"))
 }
 
-/// Poll `/v1/health` until a 2xx response, or timeout. Uses bearer auth.
-/// (Default build only — the host-sidecar path uses `wait_until_host_healthy`.)
-#[cfg_attr(feature = "host-sidecar", allow(dead_code))]
-pub fn wait_until_healthy(
-    handshake: &EngineHandshake,
-    timeout: Duration,
-) -> Result<(), String> {
-    wait_until_healthy_at(handshake, "/v1/health", timeout)
-}
-
-/// Poll the Bun host's `/health` until a 2xx response, or timeout. The host
-/// (host-sidecar feature) serves `/health` (no `/v1` prefix — that's the Rust
-/// engine's gate) as a public endpoint, but we still send the bearer so the
-/// same code path covers any deployment that gates it.
-#[cfg(feature = "host-sidecar")]
+/// Poll the Houston host's `/health` until a 2xx response, or timeout. Served as
+/// a public endpoint, but we still send the bearer so the same code path covers
+/// any deployment that gates it.
 pub fn wait_until_host_healthy(
     handshake: &EngineHandshake,
     timeout: Duration,
@@ -816,16 +767,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_banner() {
-        let h = parse_banner("HOUSTON_ENGINE_LISTENING port=12345 token=abc").unwrap();
-        assert_eq!(h.port, 12345);
-        assert_eq!(h.token, "abc");
-    }
-
-    #[test]
     fn parses_host_banner() {
-        // The Bun host (host-sidecar feature) emits the HOUSTON_HOST_LISTENING
-        // variant; same grammar, must parse identically so one supervisor drives both.
+        // The Houston host emits the HOUSTON_HOST_LISTENING banner.
         let h = parse_banner("HOUSTON_HOST_LISTENING port=4318 token=deadbeef").unwrap();
         assert_eq!(h.port, 4318);
         assert_eq!(h.token, "deadbeef");
@@ -834,6 +777,13 @@ mod tests {
     #[test]
     fn rejects_unknown_line() {
         assert!(parse_banner("hello world").is_none());
+    }
+
+    #[test]
+    fn rejects_legacy_engine_banner() {
+        // The Rust engine is gone; its banner must no longer be blessed —
+        // a stale pre-cutover binary emitting it is the WRONG sidecar.
+        assert!(parse_banner("HOUSTON_ENGINE_LISTENING port=12345 token=abc").is_none());
     }
 
     #[test]

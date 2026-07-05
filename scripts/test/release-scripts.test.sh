@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
-# Cross-OS regression test for the release-cut scripts (version.sh, bump-cli.sh).
+# Cross-OS regression test for the release-cut version bumper (version.sh).
 #
-# These scripts MUST produce byte-identical, LF-only output on macOS, Linux,
+# version.sh MUST produce byte-identical, LF-only output on macOS, Linux,
 # and Windows git-bash. This test builds a throwaway fixture repo, runs the
-# scripts against it, and asserts:
+# script against it, and asserts:
 #   * version.sh edits ONLY the intended version lines (byte-golden compare),
 #     leaving 3-part dependency pins and nested "version" keys untouched, and
 #     scoping the root Cargo.toml bump to houston-* `path =` deps only.
-#   * bump-cli.sh bumps the targeted CLI's version + clears its checksums and
-#     leaves sibling CLIs untouched.
 #   * NO output file contains a CR byte — the Windows CRLF regression that the
 #     old `jq` rewrite and `sed -i ''` used to introduce.
 #
 # Run it on EVERY OS you cut releases from. Identical PASS output across macOS,
-# Linux, and Windows git-bash is the proof the scripts behave the same way.
+# Linux, and Windows git-bash is the proof the script behaves the same way.
 # Requires only bash, perl, jq, diff/cmp — all present in git-bash. Never
 # touches the real repo files (everything happens in a temp dir).
 #
@@ -41,9 +39,8 @@ assert_no_cr() { # <label> <file>
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-mkdir -p "$TMP/scripts" "$TMP/app/houston-tauri" "$TMP/app/src-tauri" \
-         "$TMP/engine/houston-a" "$TMP/expected"
-cp "$SCRIPTS_DIR/version.sh" "$SCRIPTS_DIR/bump-cli.sh" "$TMP/scripts/"
+mkdir -p "$TMP/scripts" "$TMP/app/src-tauri" "$TMP/expected"
+cp "$SCRIPTS_DIR/version.sh" "$TMP/scripts/"
 
 # ---------------------------------------------------------------------------
 # Fixtures for version.sh
@@ -83,56 +80,34 @@ for d in app ui/core ui/chat ui/board ui/layout ui/skills ui/events ui/routines 
   printf '{\n  "name": "%s",\n  "version": "0.0.1"\n}\n' "$d" > "$TMP/$d/package.json"
 done
 
-# Engine crate: [package] version must bump; the dependency version lines
-# (bare "1" and 3-part "1.2.3") must NOT.
-cat > "$TMP/engine/houston-a/Cargo.toml" <<'EOF'
-[package]
-name = "houston-a"
-version = "0.0.1"
-edition = "2021"
+# The one Rust crate the script still bumps: app/src-tauri (the Tauri shell;
+# the legacy engine/* crates and app/houston-tauri are gone). Its [package]
+# version must bump.
+printf '[package]\nname = "src-tauri"\nversion = "0.0.1"\n' > "$TMP/app/src-tauri/Cargo.toml"
+# A target is required for the fixture manifest to PARSE: version.sh runs
+# `cargo update --workspace`, which loads every member and aborts on a
+# target-less crate before any assertion runs.
+mkdir -p "$TMP/app/src-tauri/src"
+: > "$TMP/app/src-tauri/src/lib.rs"
 
-[dependencies]
-thiserror = "1"
-
-[dependencies.serde]
-version = "1.2.3"
-EOF
-cat > "$TMP/expected/houston-a.Cargo.toml" <<'EOF'
-[package]
-name = "houston-a"
-version = "9.9.9"
-edition = "2021"
-
-[dependencies]
-thiserror = "1"
-
-[dependencies.serde]
-version = "1.2.3"
-EOF
-
-# The two app crates the script lists explicitly.
-for c in houston-tauri src-tauri; do
-  printf '[package]\nname = "%s"\nversion = "0.0.1"\n' "$c" > "$TMP/app/$c/Cargo.toml"
-done
-
-# Root Cargo.toml: serde (third-party, NO path) must stay pinned; houston-a
-# (workspace member, HAS path) must bump. This is the core of the path-scoped
+# Root Cargo.toml: serde (third-party, NO path) must stay pinned; the houston-*
+# workspace member (HAS path) must bump. This is the core of the path-scoped
 # substitution that replaced the macOS-only `sed -i ''` global replace.
 cat > "$TMP/Cargo.toml" <<'EOF'
 [workspace]
-members = ["engine/houston-a"]
+members = ["app/src-tauri"]
 
 [workspace.dependencies]
 serde = { version = "1.2.3", features = ["derive"] }
-houston-a = { version = "0.0.1", path = "engine/houston-a" }
+houston-shell = { version = "0.0.1", path = "app/src-tauri" }
 EOF
 cat > "$TMP/expected/Cargo.toml" <<'EOF'
 [workspace]
-members = ["engine/houston-a"]
+members = ["app/src-tauri"]
 
 [workspace.dependencies]
 serde = { version = "1.2.3", features = ["derive"] }
-houston-a = { version = "9.9.9", path = "engine/houston-a" }
+houston-shell = { version = "9.9.9", path = "app/src-tauri" }
 EOF
 
 # ---------------------------------------------------------------------------
@@ -143,18 +118,14 @@ echo "== version.sh =="
 
 assert_same "package.json: top version bumped, dep + nested version kept" \
   "$TMP/package.json" "$TMP/expected/package.json"
-assert_same "engine Cargo.toml: [package] bumped, dep versions kept" \
-  "$TMP/engine/houston-a/Cargo.toml" "$TMP/expected/houston-a.Cargo.toml"
 assert_same "root Cargo.toml: path dep bumped, third-party pin kept" \
   "$TMP/Cargo.toml" "$TMP/expected/Cargo.toml"
 
 for d in app ui/core ui/chat ui/board ui/layout ui/skills ui/events ui/routines ui/review; do
   assert_str "$d/package.json version" "$(jq -r .version "$TMP/$d/package.json")" "9.9.9"
 done
-for c in houston-tauri src-tauri; do
-  assert_str "app/$c version" \
-    "$(perl -ne 'print $1 if /^version = "([^"]+)"$/' "$TMP/app/$c/Cargo.toml")" "9.9.9"
-done
+assert_str "app/src-tauri version" \
+  "$(perl -ne 'print $1 if /^version = "([^"]+)"$/' "$TMP/app/src-tauri/Cargo.toml")" "9.9.9"
 
 # Reject a non-semver argument (the validation guard).
 if ( cd "$TMP" && bash scripts/version.sh not.a.version ) > /dev/null 2>&1; then
@@ -163,47 +134,10 @@ else
   ok "version.sh rejects non-semver argument"
 fi
 
-for f in "$TMP/package.json" "$TMP/Cargo.toml" "$TMP/engine/houston-a/Cargo.toml" \
-         "$TMP/app/houston-tauri/Cargo.toml" "$TMP/ui/core/package.json"; do
+for f in "$TMP/package.json" "$TMP/Cargo.toml" \
+         "$TMP/app/src-tauri/Cargo.toml" "$TMP/ui/core/package.json"; do
   assert_no_cr "${f#"$TMP"/}" "$f"
 done
-
-# ---------------------------------------------------------------------------
-# Fixtures + run for bump-cli.sh
-# ---------------------------------------------------------------------------
-echo "== bump-cli.sh =="
-cat > "$TMP/cli-deps.json" <<'EOF'
-{
-  "$schema": "./cli-deps.schema.json",
-  "alpha": {
-    "version": "1.0.0",
-    "checksums": {
-      "darwin-arm64": "deadbeef"
-    }
-  },
-  "beta": {
-    "version": "2.0.0",
-    "checksums": {
-      "windows-x64": "cafef00d"
-    }
-  }
-}
-EOF
-
-( cd "$TMP" && bash scripts/bump-cli.sh alpha 9.9.9 ) > /dev/null
-
-assert_str "alpha version bumped"        "$(jq -r '.alpha.version' "$TMP/cli-deps.json")" "9.9.9"
-assert_str "alpha checksums cleared"     "$(jq '.alpha.checksums | length' "$TMP/cli-deps.json")" "0"
-assert_str "beta version untouched"      "$(jq -r '.beta.version' "$TMP/cli-deps.json")" "2.0.0"
-assert_str "beta checksums untouched"    "$(jq -r '.beta.checksums."windows-x64"' "$TMP/cli-deps.json")" "cafef00d"
-assert_no_cr "cli-deps.json" "$TMP/cli-deps.json"
-
-# Unknown CLI must fail, not silently no-op.
-if ( cd "$TMP" && bash scripts/bump-cli.sh nope 1.0.0 ) > /dev/null 2>&1; then
-  bad "bump-cli.sh accepted an unknown CLI"
-else
-  ok "bump-cli.sh rejects an unknown CLI"
-fi
 
 # ---------------------------------------------------------------------------
 echo

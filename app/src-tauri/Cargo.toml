@@ -7,15 +7,6 @@ edition = "2021"
 name = "houston_app"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-[features]
-# Off by default — the default build stays on the Rust-engine sidecar path and
-# remains releasable. Enable with `--features host-sidecar` to spawn the
-# Bun-compiled Houston host (packages/host/src/local/main.ts) as the
-# sidecar instead, talking to it in control-plane mode. build.rs keys off
-# `CARGO_FEATURE_HOST_SIDECAR` to stage the compiled host; lib.rs + the
-# supervisor branch on `cfg!(feature = "host-sidecar")` at spawn time.
-host-sidecar = []
-
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -30,7 +21,6 @@ serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 dirs = "5"
 chrono = { version = "0.4", features = ["serde"] }
-houston-tauri = { path = "../houston-tauri" }
 tauri-plugin-notification = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-deep-link = "2"
@@ -41,7 +31,6 @@ sentry = "0.42"
 # unconditionally in logging.rs even when SENTRY_DSN is empty.
 sentry-tracing = "0.42"
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
-houston-ui-events = { path = "../../engine/houston-ui-events" }
 reqwest = { version = "0.12", features = ["json", "rustls-tls", "blocking"], default-features = false }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

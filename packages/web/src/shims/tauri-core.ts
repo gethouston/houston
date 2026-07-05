@@ -164,10 +164,6 @@ export async function invoke<T = unknown>(
     case "read_recent_logs":
       // No local log files in a browser; bug-report bundles empty tails.
       return { backend: "", frontend: "" } as T;
-    case "check_claude_cli":
-      // The CLI lives on the engine host, not the browser. Provider status
-      // (an engine route) is the real signal used elsewhere in the UI.
-      return false as T;
     case "focus_main_window":
       // The web build is a single browser tab; there's no OS window to raise.
       return undefined as T;

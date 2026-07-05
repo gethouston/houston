@@ -6,50 +6,38 @@ fn main() {
     configure_auth_storage(&dotenv_pairs);
     configure_sentry_env(&dotenv_pairs);
 
-    // Stage the sidecar into `binaries/houston-engine-<triple>` so tauri's
-    // `externalBin` picks it up for bundling. Two sources, chosen by the
-    // `host-sidecar` cargo feature:
-    //   - default        → the Rust engine (`houston-engine`), staged from the
-    //                       cargo target dir. The user is expected to run
-    //                       `cargo build -p houston-engine-server --release`
-    //                       first; CI wires that into the release workflow.
-    //                       Missing → warn, don't fail (dev builds resolve it at
-    //                       runtime, and host/cutover dev mode skips spawning it).
-    //   - `host-sidecar` → the Bun-compiled Houston host, staged from
-    //                       `target/host-sidecar/houston-host-<triple>`.
-    //                       Missing → FAIL: a host-sidecar build with no host
-    //                       ships a non-functional app (no runtime fallback).
-    //                       Run `scripts/build-host-sidecar.sh` first.
-    // Both reuse the SAME externalBin name (`houston-engine-<triple>`), so
-    // tauri.conf.json never has to branch on the feature.
+    // Stage the Bun-compiled Houston host into `binaries/houston-engine-<triple>`
+    // so tauri's `externalBin` picks it up for bundling. The source is
+    // `target/host-sidecar/houston-host-<triple>`, produced by
+    // `scripts/build-host-sidecar.sh` (CI wires this into the release workflow).
     //
-    // We check `CARGO_FEATURE_HOST_SIDECAR` (cargo sets it for every enabled
-    // feature) rather than `cfg!`, because build scripts can't see their own
-    // crate's `cfg` features.
-    println!("cargo:rerun-if-env-changed=CARGO_FEATURE_HOST_SIDECAR");
-    if std::env::var_os("CARGO_FEATURE_HOST_SIDECAR").is_some() {
-        if let Err(e) = stage_host_sidecar() {
+    // Missing → depends on the profile. Debug builds warn + stage a harmless
+    // placeholder: the dev loop runs the app against an externally-run host
+    // (`pnpm dev:host` + VITE_NEW_ENGINE_URL) and never spawns the staged
+    // sidecar, so `pnpm tauri dev` must still compile without a bun-compiled
+    // host on disk. Release builds FAIL: a signed, installable bundle whose
+    // sidecar is the placeholder can never serve, which is strictly worse than
+    // a failed build (release CI compiles the host first; a local
+    // `pnpm tauri build` must too).
+    if let Err(e) = stage_host_sidecar() {
+        if release_profile() {
             panic!(
-                "host-sidecar feature enabled but the compiled host could not be staged: {e}\n\
-                 Run `scripts/build-host-sidecar.sh` to bun-compile it first."
+                "host sidecar staging failed for a release build: {e}\n\
+                 Run `scripts/build-host-sidecar.sh <triple>` to bun-compile the host first."
             );
         }
-    } else if let Err(e) = stage_engine_sidecar() {
-        println!("cargo:warning=houston-engine sidecar staging skipped: {e}");
+        println!("cargo:warning=host sidecar staging skipped: {e}");
     }
 
-    // Ensure the bundled-CLI staging directory exists. Tauri's `bundle.resources`
-    // points at `resources/bin` and its resource walker errors out if the
-    // directory is missing entirely (a real config error would still surface
-    // — empty walks are silent). CI populates this dir via
-    // `scripts/fetch-cli-deps.sh both` before invoking the bundler. Local
-    // `pnpm tauri dev` builds don't strictly need bundled CLIs (engine
-    // falls back to PATH lookup / `~/.composio` install), so we create
-    // an empty dir here to keep the config valid without forcing every
-    // developer to fetch ~700 MB of binaries on first checkout.
-    ensure_resources_bin_dir();
-
     tauri_build::build()
+}
+
+/// Whether this build script run is for a release-profile (shippable) build.
+/// Cargo sets `PROFILE` to the base profile name (`debug`/`release`) for
+/// build scripts; `cfg!(debug_assertions)` can't be used here because it
+/// describes the profile the build SCRIPT was compiled under, not the target's.
+fn release_profile() -> bool {
+    std::env::var("PROFILE").as_deref() == Ok("release")
 }
 
 fn load_dotenv_pairs() -> Vec<(String, String)> {
@@ -155,122 +143,22 @@ fn env_value(key: &str, dotenv_pairs: &[(String, String)]) -> Option<String> {
         })
 }
 
-fn ensure_resources_bin_dir() {
-    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let dir = manifest.join("resources").join("bin");
-    if let Err(e) = std::fs::create_dir_all(&dir) {
-        println!(
-            "cargo:warning=could not create {} (Tauri bundle.resources may fail): {e}",
-            dir.display()
-        );
-    }
-}
-
-fn stage_engine_sidecar() -> Result<(), String> {
-    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let workspace = manifest
-        .parent()
-        .and_then(|p| p.parent())
-        .ok_or("could not resolve workspace root from CARGO_MANIFEST_DIR")?;
-    let triple = std::env::var("TARGET").unwrap_or_default();
-    let bin_name = if cfg!(windows) {
-        "houston-engine.exe"
-    } else {
-        "houston-engine"
-    };
-
-    // Pick the first existing source. Ordering:
-    //   1. `target/<triple>/release/` — required for universal-apple-darwin
-    //      because tauri invokes cargo once per real triple (aarch64 + x86_64)
-    //      and each invocation needs the engine built for THAT triple.
-    //   2. `target/release/` — single-triple release (local `pnpm tauri build`).
-    //   3. `target/<triple>/debug/` — rarely used but keeps `tauri dev --target`
-    //      happy.
-    //   4. `target/debug/` — default dev build.
-    let mut candidates: Vec<PathBuf> = Vec::new();
-    if !triple.is_empty() {
-        candidates.push(
-            workspace
-                .join("target")
-                .join(&triple)
-                .join("release")
-                .join(bin_name),
-        );
-    }
-    candidates.push(workspace.join("target").join("release").join(bin_name));
-    if !triple.is_empty() {
-        candidates.push(
-            workspace
-                .join("target")
-                .join(&triple)
-                .join("debug")
-                .join(bin_name),
-        );
-    }
-    candidates.push(workspace.join("target").join("debug").join(bin_name));
-    let src = candidates.iter().find(|p| p.exists());
-
-    let dest_dir = manifest.join("binaries");
-    std::fs::create_dir_all(&dest_dir).map_err(|e| format!("mkdir binaries: {e}"))?;
-    let dest_name = if triple.is_empty() {
-        bin_name.to_string()
-    } else if cfg!(windows) {
-        format!("houston-engine-{triple}.exe")
-    } else {
-        format!("houston-engine-{triple}")
-    };
-    let dest = dest_dir.join(&dest_name);
-    match src {
-        Some(src) => {
-            std::fs::copy(src, &dest).map_err(|e| format!("copy engine sidecar: {e}"))?;
-            println!("cargo:rerun-if-changed={}", src.display());
-        }
-        None => {
-            // The Rust engine isn't built — the single-engine cutover dev loop
-            // runs the desktop against the external Houston host and never
-            // spawns this sidecar (see lib.rs host_mode). Tauri's externalBin
-            // bundling still requires the file to exist, so stage a harmless
-            // placeholder. Host mode skips spawning it; a real Rust build would
-            // spawn it and (correctly) fail the /v1/health gate, signalling
-            // "build houston-engine-server first".
-            let placeholder = if cfg!(windows) {
-                "@echo off\r\nexit /b 0\r\n"
-            } else {
-                "#!/bin/sh\n# placeholder houston-engine (real engine not built)\nsleep 2147483647\n"
-            };
-            std::fs::write(&dest, placeholder)
-                .map_err(|e| format!("write placeholder sidecar: {e}"))?;
-            println!(
-                "cargo:warning=houston-engine not built — staged a placeholder at {} (cutover/host mode skips it; build houston-engine-server for a real Rust build)",
-                dest.display()
-            );
-        }
-    }
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = std::fs::metadata(&dest)
-            .map_err(|e| format!("stat sidecar: {e}"))?
-            .permissions();
-        perms.set_mode(0o755);
-        std::fs::set_permissions(&dest, perms).map_err(|e| format!("chmod sidecar: {e}"))?;
-    }
-    Ok(())
-}
-
-/// Stage the Bun-compiled Houston host (the `host-sidecar` feature path) as the
-/// Tauri externalBin `binaries/houston-engine-<triple>`.
+/// Stage the Bun-compiled Houston host as the Tauri externalBin
+/// `binaries/houston-engine-<triple>`.
 ///
 /// Source: `target/host-sidecar/houston-host-<triple>[.exe]`, produced by
-/// `scripts/build-host-sidecar.sh` (or the release CI host-compile step). We
-/// keep the destination name identical to the Rust engine's so tauri.conf.json's
-/// `externalBin` list stays untouched — at runtime the supervisor spawns whatever
-/// binary is staged there and parses its `HOUSTON_HOST_LISTENING` banner.
+/// `scripts/build-host-sidecar.sh` (or the release CI host-compile step). The
+/// destination keeps the historical `houston-engine-<triple>` name so
+/// `tauri.conf.json`'s `externalBin` list needs no change — at runtime the
+/// supervisor spawns whatever binary is staged there and parses its
+/// `HOUSTON_HOST_LISTENING` banner.
 ///
-/// Unlike the Rust-engine path, a missing host binary is a HARD ERROR (the
-/// caller `panic!`s): there is no host-mode runtime fallback for a packaged
-/// `--features host-sidecar` build, so shipping the placeholder would yield an
-/// app that never serves.
+/// Missing host binary → debug builds stage a harmless placeholder (the caller
+/// warns): the dev loop runs the app against an externally-run host
+/// (`pnpm dev:host` + `VITE_NEW_ENGINE_URL`) and never spawns the staged
+/// sidecar, so `pnpm tauri dev` must compile without a bun-compiled host on
+/// disk. Release builds get an `Err` instead (the caller panics) — a shippable
+/// bundle must contain the real host, staged by `scripts/build-host-sidecar.sh`.
 fn stage_host_sidecar() -> Result<(), String> {
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let workspace = manifest
@@ -288,36 +176,66 @@ fn stage_host_sidecar() -> Result<(), String> {
     if !triple.is_empty() {
         candidates.push(host_dir.join(format!("houston-host-{triple}{ext}")));
     }
-    // Fallback for a default-triple build where TARGET is unset: a single
-    // host-host-<anything> output in the dir.
+    // Fallback for a default-triple build where TARGET is unset.
     candidates.push(host_dir.join(format!("houston-host{ext}")));
-    let src = candidates.iter().find(|p| p.exists()).ok_or_else(|| {
-        format!(
-            "no compiled host found. Tried:\n  - {}\n  (run `scripts/build-host-sidecar.sh`)",
-            candidates
-                .iter()
-                .map(|p| p.display().to_string())
-                .collect::<Vec<_>>()
-                .join("\n  - ")
-        )
-    })?;
+
+    // Watch every candidate source in BOTH arms. Cargo re-runs a build script
+    // whose watched file is missing, so after `build-host-sidecar.sh` produces
+    // the binary the next build re-runs this script and replaces a previously
+    // staged placeholder — without this, the placeholder is sticky until some
+    // unrelated input dirties the script.
+    for candidate in &candidates {
+        println!("cargo:rerun-if-changed={}", candidate.display());
+    }
 
     let dest_dir = manifest.join("binaries");
     std::fs::create_dir_all(&dest_dir).map_err(|e| format!("mkdir binaries: {e}"))?;
-    // SAME externalBin name as the Rust engine — see the module-level comment.
     let dest_name = if triple.is_empty() {
         format!("houston-engine{ext}")
     } else {
         format!("houston-engine-{triple}{ext}")
     };
     let dest = dest_dir.join(&dest_name);
-    std::fs::copy(src, &dest).map_err(|e| format!("copy host sidecar: {e}"))?;
-    println!("cargo:rerun-if-changed={}", src.display());
-    println!(
-        "cargo:warning=host-sidecar: staged compiled host {} -> {}",
-        src.display(),
-        dest.display()
-    );
+
+    match candidates.iter().find(|p| p.exists()) {
+        Some(src) => {
+            std::fs::copy(src, &dest).map_err(|e| format!("copy host sidecar: {e}"))?;
+            println!(
+                "cargo:warning=host-sidecar: staged compiled host {} -> {}",
+                src.display(),
+                dest.display()
+            );
+        }
+        None => {
+            // No bun-compiled host on disk. Release builds must not ship the
+            // placeholder — surface the miss as a hard error (main panics).
+            if release_profile() {
+                return Err(format!(
+                    "no compiled host found. Tried:\n  - {}",
+                    candidates
+                        .iter()
+                        .map(|p| p.display().to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n  - ")
+                ));
+            }
+            // Debug builds (typical for `pnpm tauri dev`, which talks to an
+            // externally-run host and never spawns this file): Tauri's
+            // externalBin bundling still requires the file to exist, so stage
+            // a placeholder.
+            let placeholder = if cfg!(windows) {
+                "@echo off\r\nexit /b 0\r\n"
+            } else {
+                "#!/bin/sh\n# placeholder Houston host (real host not bun-compiled)\nsleep 2147483647\n"
+            };
+            std::fs::write(&dest, placeholder)
+                .map_err(|e| format!("write placeholder sidecar: {e}"))?;
+            println!(
+                "cargo:warning=Houston host not bun-compiled — staged a placeholder at {} (run scripts/build-host-sidecar.sh for a real build)",
+                dest.display()
+            );
+        }
+    }
 
     #[cfg(unix)]
     {

@@ -9,23 +9,8 @@
 use std::path::{Path, PathBuf};
 use tokio::process::Command;
 
-fn shell_command_exists(bin: &str) -> bool {
-    let probe = if cfg!(windows) { "where" } else { "which" };
-    std::process::Command::new(probe)
-        .arg(bin)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-}
-
-/// Does the user's shell have the `claude` CLI on `PATH`?
-#[tauri::command]
-pub fn check_claude_cli() -> bool {
-    shell_command_exists("claude")
-}
-
 fn expand(p: &str) -> PathBuf {
-    houston_tauri::paths::expand_tilde(&PathBuf::from(p))
+    super::expand_tilde(&PathBuf::from(p))
 }
 
 // -- Directory Picker --

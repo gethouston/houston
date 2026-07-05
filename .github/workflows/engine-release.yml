@@ -22,7 +22,7 @@ permissions:
   contents: read
 
 env:
-  # Same Bun pin the desktop release + cli-deps.json use, so every compiled host
+  # Same Bun pin the desktop release (release.yml) uses, so every compiled host
   # binary is byte-reproducible regardless of which workflow built it.
   BUN_VERSION: "1.3.10"
 

@@ -247,29 +247,6 @@ pub fn emit_deep_link(handle: &AppHandle, url: &str) {
     }
 }
 
-/// Best-effort read of the persisted Supabase session, returning the user_id
-/// if present. Called at engine spawn time so the subprocess can stamp
-/// `HOUSTON_APP_USER_ID` on its own operations. Failures (no entry, corrupt
-/// JSON, keychain locked, DPAPI ciphertext from a different Windows user)
-/// all resolve to `None` silently — the engine runs fine without an identity.
-///
-/// (Default Rust-engine build only — the single-tenant local host resolves
-/// every request to `LOCAL_USER`, so it takes no `HOUSTON_APP_USER_ID`. Still
-/// referenced by the `#[cfg(test)]` suite, so only `allow` under the feature.)
-#[cfg_attr(feature = "host-sidecar", allow(dead_code))]
-pub fn persisted_user_id() -> Option<String> {
-    if option_env!("HOUSTON_AUTH_STORAGE_MODE") != Some("keychain") {
-        return None;
-    }
-    // Storage key must match `storageKey` in app/src/lib/supabase.ts.
-    let raw = storage::get("houston-auth").ok().flatten()?;
-    let parsed: serde_json::Value = serde_json::from_str(&raw).ok()?;
-    parsed
-        .get("user")
-        .and_then(|u| u.get("id"))
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string())
-}
 
 #[cfg(test)]
 mod tests {
@@ -309,12 +286,5 @@ mod tests {
         auth_remove_item(key.into()).await.unwrap();
         let after = auth_get_item(key.into()).await.unwrap();
         assert!(after.is_none());
-    }
-
-    #[test]
-    fn local_auth_storage_does_not_read_persisted_keychain_user() {
-        if option_env!("HOUSTON_AUTH_STORAGE_MODE") == Some("browser") {
-            assert!(persisted_user_id().is_none());
-        }
     }
 }

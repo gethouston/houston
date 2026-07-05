@@ -1,15 +1,14 @@
 /**
- * Web entry point. The engine target is chosen at build time:
+ * Web entry point. The Houston host is the only engine — the full desktop UI
+ * (app/src) always runs against it (vite.config aliases
+ * `@houston-ai/engine-client` to the host adapter). Which root mounts depends
+ * only on the deployment:
  *
- *  - **New TS engine host** (`VITE_NEW_ENGINE` truthy, or a URL baked via
- *    `VITE_NEW_ENGINE_URL`): boots the FULL desktop UI (app/src) against the new
- *    Houston host. vite.config aliases `@houston-ai/engine-client` to the
- *    new-engine adapter, so app/src runs unchanged. The engine URL + token are
- *    entered at runtime via the new-engine Connect screen (`<NewEngineRoot>`),
- *    or pre-seeded from `VITE_NEW_ENGINE_URL` / `VITE_NEW_ENGINE_TOKEN`.
- *
- *  - **Old engine** (default): the original flow — Connect screen (engine URL +
- *    token), then the lazy app tree against the old Rust engine.
+ *  - **Cloud host** (`VITE_CONTROL_PLANE_URL`): the app's own Supabase auth
+ *    gates sign-in (plus the `/admin` operator dashboard on that path).
+ *  - **Default**: `<NewEngineRoot>` — the host URL + token come from a stored
+ *    config, are pre-seeded via `VITE_NEW_ENGINE_URL` / `VITE_NEW_ENGINE_TOKEN`,
+ *    or are entered at runtime on the Connect screen.
  */
 import { createRoot } from "react-dom/client";
 import {
@@ -23,11 +22,6 @@ if (!rootEl) throw new Error("Missing #root element");
 const env =
   (import.meta as { env?: Record<string, string | undefined> }).env ?? {};
 const controlPlaneUrl = env.VITE_CONTROL_PLANE_URL || "";
-
-const useNewEngine =
-  env.VITE_NEW_ENGINE === "1" ||
-  env.VITE_NEW_ENGINE === "true" ||
-  Boolean(env.VITE_NEW_ENGINE_URL);
 
 if (controlPlaneUrl && window.location.pathname.startsWith("/admin")) {
   // Operator dashboard (served at /admin by nginx try_files): pods-per-user + GCP
@@ -50,7 +44,7 @@ if (controlPlaneUrl && window.location.pathname.startsWith("/admin")) {
   void import("./cloud-login").then(({ CloudApp }) =>
     createRoot(rootEl).render(<CloudApp controlPlaneUrl={controlPlaneUrl} />),
   );
-} else if (useNewEngine) {
+} else {
   // Resolve the engine config before the app graph loads (app/src/lib/engine.ts
   // reads window.__HOUSTON_ENGINE__ at import): a stored config wins, else a URL
   // baked via VITE_NEW_ENGINE_URL, else null → the Connect screen prompts.
@@ -66,11 +60,5 @@ if (controlPlaneUrl && window.location.pathname.startsWith("/admin")) {
   if (initial) window.__HOUSTON_ENGINE__ = initial;
   void import("./new-engine/root").then(({ NewEngineRoot }) =>
     createRoot(rootEl).render(<NewEngineRoot initialConfig={initial} />),
-  );
-} else {
-  const stored = readStoredEngineConfig();
-  if (stored) window.__HOUSTON_ENGINE__ = stored;
-  void import("./root").then(({ Root }) =>
-    createRoot(rootEl).render(<Root initialConfig={stored} />),
   );
 }

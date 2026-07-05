@@ -1,6 +1,17 @@
-# Provider Errors — typed taxonomy + classifier contract
+# Provider Errors — typed taxonomy + card surface
 
-> **⚠️ LEGACY — Rust engine, retired at P6.** Documents the Rust `engine/` (the current *default* desktop build), being replaced by the single TypeScript engine — the **pi runtime** (`packages/runtime`) behind the **host** (`packages/host`), protocol **v3** (`packages/protocol`). Accurate for the legacy build while it ships. New architecture: **`convergence/README.md`**.
+> **Updated: the Rust engine is removed.** The `ProviderError` **taxonomy** below
+> (`RateLimited`, `QuotaExhausted`, `Unauthenticated`, `UsageLimitPaused`, …) still
+> holds — it is the shared contract the frontend cards render — but it now lives in
+> **TypeScript**: the wire type in `packages/protocol/src/provider-error.ts`, and
+> pi/host classification in `packages/runtime/src/ai/provider-error.ts`. The old
+> Rust `ProviderAdapter::classify_stderr` / `classify_result_error` contract and the
+> `engine/houston-terminal-manager/**` file map at the bottom are **historical** —
+> that engine is deleted. Providers run **in-process** in pi now (no CLI stderr to
+> parse), so a provider maps its failures to these variants in TS. Read the
+> variant / UI columns and the wire-flow intent as current; treat every `.rs` path
+> and `classify_*` Rust signature below as a description of the former engine. New
+> architecture: **`convergence/README.md`**.
 
 Skim the table of contents and load the section that
 touches what you are doing.
@@ -20,8 +31,10 @@ into a real variant.
 
 ## The taxonomy
 
-Defined in `engine/houston-terminal-manager/src/provider_error_kind.rs`
-and mirrored in `ui/chat/src/types.ts`. The two MUST stay in sync.
+The variants are defined in `packages/protocol/src/provider-error.ts` (the wire
+type) and rendered from `ui/chat/src/types.ts` on the frontend. (Historically the
+Rust source of truth was `engine/houston-terminal-manager/src/provider_error_kind.rs`,
+now removed.)
 
 | Variant                    | When it fires                                                                          | UI CTAs                                              |
 |----------------------------|-----------------------------------------------------------------------------------------|------------------------------------------------------|

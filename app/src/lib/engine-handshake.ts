@@ -6,7 +6,7 @@ interface EngineConfig {
 }
 
 /**
- * Pulls the Tauri-provided Rust engine handshake when the one-shot ready event
+ * Pulls the Tauri-provided host sidecar handshake when the one-shot ready event
  * raced ahead of the React listener.
  */
 export async function pullEngineHandshakeWithRetry(opts: {

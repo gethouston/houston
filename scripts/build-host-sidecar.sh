@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================================
 # Bun-compile the Houston single sidecar into a self-contained binary and stage
-# it where `build.rs` (under the `host-sidecar` cargo feature) picks it up for
-# Tauri's `externalBin` bundling.
+# it where `build.rs` picks it up for Tauri's `externalBin` bundling.
 #
 # ONE binary, TWO roles: the compiled `sidecar-entry.ts` runs as the local HOST
 # by default, or as a pi RUNTIME when HOUSTON_SIDECAR_ROLE=runtime. The host
@@ -11,11 +10,10 @@
 # a source-run default (`node --import tsx <repo>/packages/runtime/src/main.ts`)
 # could never resolve inside the .app.
 #
-# This is the host-sidecar analogue of the release workflow's
-# `cargo build -p houston-engine-server` step: the desktop's default build
-# still ships the Rust engine; a `--features host-sidecar` build ships THIS
-# binary instead and the Tauri shell spawns it (see app/src-tauri/src/lib.rs
-# `host_sidecar` path + engine_supervisor::parse_banner for HOUSTON_HOST_LISTENING).
+# Every desktop build ships THIS binary as its one and only sidecar — the Tauri
+# shell spawns it (see app/src-tauri/src/lib.rs `spawn_host_sidecar` +
+# engine_supervisor::parse_banner for HOUSTON_HOST_LISTENING). Release builds
+# hard-fail in build.rs if it hasn't been compiled first.
 #
 # Output:
 #   target/host-sidecar/houston-host-<rust-triple>            (macOS / Linux)

@@ -1,48 +1,32 @@
 # @houston-ai/engine-client
 
-TypeScript SDK for the [Houston Engine](../../knowledge-base/engine-protocol.md).
-Consumed by the Houston desktop app, Houston Mobile, and third-party
-integrations.
+The TypeScript front door to the Houston engine. What it provides depends on the
+consumer:
 
-## Install
+- **`src/types.ts` — the shared v3 wire-type surface.** These types are the
+  TypeScript projection of protocol v3 (`packages/protocol`). The desktop and web
+  builds alias `@houston-ai/engine-client` to the v3 **host adapter**
+  (`packages/web/src/engine-adapter`, via `vite.config.ts`), which re-exports
+  these types and implements the client function surface against `packages/host`
+  over HTTP + SSE. This is the path every shipping build takes.
+- **`src/` v1 REST/WS transport (`HoustonClient`, `EngineWebSocket`) — legacy.**
+  This was the client for the old Rust engine's HTTP+WS protocol. That engine has
+  been deleted, and no build wires this transport in anymore (both surfaces alias
+  the v3 adapter above). It is kept only pending the v3-client consolidation
+  follow-up (`convergence/follow-ups.md`), which folds the remaining consumers
+  onto `@houston/runtime-client` / `@houston/sdk` and removes this v1 code.
 
-```bash
-pnpm add @houston-ai/engine-client
-```
+## Usage (v3, via the alias)
 
-## Usage
+Consumers import from `@houston-ai/engine-client` and get the v3 adapter's
+function surface (workspaces, agents, conversations, files, skills, routines,
+events, …) plus the wire types. Desktop-app bootstrap (reads
+`window.__HOUSTON_ENGINE__` injected by the Tauri shell) lives at
+`app/src/lib/engine.ts`.
 
-```ts
-import { HoustonClient, EngineWebSocket } from "@houston-ai/engine-client";
+## Contract reference
 
-const engine = new HoustonClient({
-  baseUrl: "http://127.0.0.1:53871",
-  token: "<bearer>",
-});
-
-// REST
-const workspaces = await engine.listWorkspaces();
-const alpha = await engine.createWorkspace({ name: "alpha", provider: "anthropic" });
-
-// WebSocket — automatic reconnect, typed envelope
-const ws = new EngineWebSocket(engine);
-const unsub = ws.on("event", (env) => {
-  console.log(env.kind, env.payload);
-});
-ws.connect();
-```
-
-Desktop-app-specific bootstrap (reads `window.__HOUSTON_ENGINE__` injected
-by the Tauri supervisor) lives at `app/src/lib/engine.ts`.
-
-## Type parity
-
-DTOs live in `src/types.ts` and mirror the Rust types in
-`engine/houston-engine-protocol/src/lib.rs`. The Rust side is the source
-of truth. A future codegen step (`ts-rs` or `specta`) will remove the
-manual sync.
-
-## Protocol reference
-
-- [`knowledge-base/engine-protocol.md`](../../knowledge-base/engine-protocol.md) — wire contract.
-- [`knowledge-base/engine-server.md`](../../knowledge-base/engine-server.md) — binary/ops.
+- Wire types + zod: `packages/protocol/src/wire.ts` (protocol v3).
+- The host that serves the contract: `packages/host` (`@houston/host`).
+- The maintenance contract across surfaces (SDK / tokens / inventory / parity):
+  `knowledge-base/client-architecture.md`.

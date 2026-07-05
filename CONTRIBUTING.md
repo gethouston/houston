@@ -30,25 +30,25 @@ cargo check --workspace
 # Run the Houston app
 cd app && pnpm tauri dev
 
-# Run the TypeScript host local profile
+# Run the TypeScript host local profile (the engine)
 cd packages/host && pnpm dev
 
 # TypeScript check
 pnpm typecheck
 
-# Rust check
+# Rust check — the Rust workspace is now just the app/src-tauri Tauri shell
+# (the engine is TypeScript; the legacy Rust engine crates were removed)
 cargo check --workspace
 
-# Rust tests
+# Rust tests (Tauri shell)
 cargo test --workspace
 ```
 
 ## Structure
 
 - `ui/` — React packages (@houston-ai/*)
-- `engine/` — Rust crates (houston-*) — frontend-agnostic backend
-- `app/` — Houston App (Tauri desktop)
-- `packages/` — TypeScript engine convergence (runtime, host, domain, protocol)
+- `packages/` — the single TypeScript engine: `runtime` (pi, the agent loop), `host`, `domain`, `protocol`, plus `web`
+- `app/` — Houston App: `app/src` React frontend + `app/src-tauri` Rust shell (spawns the host sidecar)
 - `cloud/` — Houston Cloud docs and operations
 
 ## Pull Requests

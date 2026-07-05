@@ -2,6 +2,8 @@
 
 A Skill is a reusable procedure stored as a markdown file with YAML frontmatter. Houston shows them in the picker, the chat empty state, and the per-agent Skills tab.
 
+> **Updated: Houston runs on the TypeScript host now — the Rust `engine/` was removed.** SKILL.md format, discovery, and UI behavior below are current, but `engine/houston-skills` / `houston-engine-core` crate names and `.rs` paths are historical: skills are now parsed in the **host** and loaded by the **pi runtime** (`packages/runtime/src/session/resource-loader.ts`).
+
 ## File layout
 
 ```

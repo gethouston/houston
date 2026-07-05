@@ -7,8 +7,6 @@
  * now one canonical set, hardcoded here.
  */
 
-import { controlPlaneBuild } from "../lib/engine-mode";
-
 export interface AgentTab {
   /** Tab identifier (also matches the built-in component key in tab-resolver). */
   id: string;
@@ -20,20 +18,12 @@ export interface AgentTab {
   badge?: "activity";
 }
 
-// Integrations (Composio, platform mode) are a v3-host feature; the legacy Rust engine
-// has no /v1/integrations routes. Gate on the build flag — a deterministic build
-// constant (NOT the runtime handshake), so the tab is present in every host build
-// and absent in the legacy one, uniformly across every STANDARD_TABS consumer.
-export const HOST_BUILD = controlPlaneBuild(
-  import.meta.env as { VITE_NEW_ENGINE_URL?: string; VITE_NEW_ENGINE?: string },
-);
-
 export const STANDARD_TABS: AgentTab[] = [
   { id: "activity", label: "Activity", builtIn: "board", badge: "activity" },
   { id: "routines", label: "Routines", builtIn: "routines" },
-  ...(HOST_BUILD
-    ? [{ id: "integrations", label: "Integrations", builtIn: "integrations" }]
-    : []),
+  // Integrations (Composio, platform mode) are served by the Houston host's
+  // /v1/integrations routes — present in every build.
+  { id: "integrations", label: "Integrations", builtIn: "integrations" },
   { id: "files", label: "Files", builtIn: "files" },
   {
     id: "job-description",

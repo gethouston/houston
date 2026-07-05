@@ -7,9 +7,9 @@ import { WEB_PORT, WEB_URL } from "./e2e/config";
  * (packages/web), on the host adapter in host mode, against an
  * in-memory fake host (@houston/fake-host) — no real backend, no AI provider.
  *
- * Two web servers boot for a run: the fake host (Node) and vite with
- * `VITE_NEW_ENGINE=1`. The fake host is a single shared process, so the suite is
- * serial (`workers: 1`) and resets host state per test (see support/fixtures.ts).
+ * Two web servers boot for a run: the fake host (Node) and vite. The fake
+ * host is a single shared process, so the suite is serial (`workers: 1`) and
+ * resets host state per test (see support/fixtures.ts).
  */
 export default defineConfig({
   testDir: "./e2e",
@@ -43,15 +43,14 @@ export default defineConfig({
       stderr: "pipe",
     },
     {
-      // VITE_NEW_ENGINE=1 aliases @houston-ai/engine-client → the new-engine
-      // adapter and mounts NewEngineRoot (see packages/web/src/main.tsx).
+      // The host adapter is aliased in unconditionally and NewEngineRoot is
+      // the default web root (see packages/web/src/main.tsx) — no env needed.
       command: "pnpm dev",
       port: WEB_PORT,
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
       stderr: "pipe",
       timeout: 120_000,
-      env: { VITE_NEW_ENGINE: "1" },
     },
   ],
 });

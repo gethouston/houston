@@ -2,6 +2,14 @@
 
 Houston uses files, not DB, for agent-visible data. SQLite only for chat replay + app prefs.
 
+> **Updated: the backend is the TypeScript host now, not the Rust engine.** The
+> `.houston/` layout, atomic-write discipline, JSON schemas, and AI-native
+> reactivity model below all carry over unchanged — but the implementation moved
+> from the deleted Rust crates (`houston-agent-files`, `houston-engine-core`, the
+> `notify` file watcher, `migrate_agent_data`) to the **host** + `packages/domain`
+> + the **pi runtime**. Treat `houston-*` crate names and `.rs` paths below as
+> historical pointers; the concepts are current.
+
 ## Rule
 If @houston-ai component renders it → `.houston/` folder.
 If app-specific → `.houston/`.
@@ -47,11 +55,11 @@ If app-specific → `.houston/`.
 
 ## File I/O path
 Frontend never touches the filesystem directly. All `.houston/` reads
-and writes flow through `@houston-ai/engine-client` → `houston-engine`
-REST routes (`/v1/agents/:path/files/:kind`, etc.), which call into
-`houston-agent-files`. Writes are atomic (unique temp + rename) and emit a
-matching `HoustonEvent` over the WS. No typed CRUD — per-type folder +
-schema + a generic read/write pair covers everything.
+and writes flow through `@houston-ai/engine-client` → the **host** file
+routes (`packages/host`), which read/write the workspace vfs. Writes are
+atomic (unique temp + rename) and emit a matching `HoustonEvent` on the
+`/v1/events` SSE channel. No typed CRUD — per-type folder + schema + a
+generic read/write pair covers everything.
 
 Typed JSON readers never let a corrupt data file brick the surface that
 reads it (HOU-436: a malformed `routines.json` used to make every
@@ -76,7 +84,7 @@ was meant to prevent. Reset is the last resort, for genuinely unrecoverable
 bytes only.
 
 ## Schemas
-Authoritative. Live in `ui/agent-schemas/src/*.schema.json`. Embedded in Rust via `include_str!` in `houston-agent-files::schemas`. Seeded into each agent's `.houston/<type>/<type>.schema.json` on first launch. Prompts instruct model to read schema before writing data file.
+Authoritative. Live in `ui/agent-schemas/src/*.schema.json`. `packages/domain` seeds them into each agent's `.houston/<type>/<type>.schema.json` on create. Prompts instruct the model to read the schema before writing a data file.
 
 ## Learnings prompt injection
 `engine/houston-engine-core/src/agents/prompt.rs::build_agent_context`
@@ -87,7 +95,7 @@ stay storage/UI-only. Writes during a session persist immediately but are
 not visible in the already-started prompt until the next session.
 
 ## Migration
-`houston_agent_files::migrate_agent_data()` runs on every `seed_agent()`. Idempotent. Leaves legacy flat-layout data files in place as rollback. Legacy product-prompt seeds (`.houston/prompts/system.md`, `.houston/prompts/self-improvement.md`) are deleted — the Houston product prompt now lives in the app binary (`app/src-tauri/src/houston_prompt/`), not on disk.
+The Rust intra-agent migration (`houston_agent_files::migrate_agent_data`) was **dropped** with the Rust engine. Chat-history migration — Rust-era transcripts → v3 conversations + a synthesized pi session — is now owned by the **TS host** and runs on boot (`packages/host` `src/migrate/*`; see `convergence/migration-gate.md`). It is copy-never-move, so it stays downgrade-safe. The product prompt is no longer a `.houston/prompts/*` seed; it lives in the host (`packages/host/src/houston-prompt.ts`), not on disk.
 
 Session resume IDs are provider-scoped for new writes so Claude and Codex
 never overwrite each other's current resume ID. Existing

@@ -1,24 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "engine/houston-terminal-manager",
-    "engine/houston-db",
-    "app/houston-tauri",
-    "engine/houston-events",
-    "engine/houston-scheduler",
-    "engine/houston-skills",
-    "engine/houston-tunnel",
-    "engine/houston-agent-files",
-    "engine/houston-agent-portable",
-    "engine/houston-ui-events",
-    "engine/houston-agents-conversations",
-    "engine/houston-file-watcher",
-    "engine/houston-composio",
-    "engine/houston-cli-bundle",
-    "engine/houston-claude-installer",
-    "engine/houston-engine-core",
-    "engine/houston-engine-protocol",
-    "engine/houston-engine-server",
     "app/src-tauri",
 ]
 
@@ -26,31 +8,10 @@ members = [
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
-uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
-anyhow = "1"
-async-trait = "0.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 tracing-appender = "0.2"
-houston-terminal-manager = { version = "0.5.0", path = "engine/houston-terminal-manager" }
-houston-db = { version = "0.5.0", path = "engine/houston-db" }
-houston-tauri = { version = "0.5.0", path = "app/houston-tauri" }
-houston-events = { version = "0.5.0", path = "engine/houston-events" }
-houston-scheduler = { version = "0.5.0", path = "engine/houston-scheduler" }
-houston-skills = { version = "0.5.0", path = "engine/houston-skills" }
-houston-tunnel = { version = "0.5.0", path = "engine/houston-tunnel" }
-houston-agent-files = { version = "0.5.0", path = "engine/houston-agent-files" }
-houston-agent-portable = { version = "0.5.0", path = "engine/houston-agent-portable" }
-houston-ui-events = { version = "0.5.0", path = "engine/houston-ui-events" }
-houston-agents-conversations = { version = "0.5.0", path = "engine/houston-agents-conversations" }
-houston-file-watcher = { version = "0.5.0", path = "engine/houston-file-watcher" }
-houston-composio = { version = "0.5.0", path = "engine/houston-composio" }
-houston-cli-bundle = { version = "0.5.0", path = "engine/houston-cli-bundle" }
-houston-claude-installer = { version = "0.5.0", path = "engine/houston-claude-installer" }
-houston-engine-core = { version = "0.5.0", path = "engine/houston-engine-core" }
-houston-engine-protocol = { version = "0.5.0", path = "engine/houston-engine-protocol" }
-houston-engine-server = { version = "0.5.0", path = "engine/houston-engine-server" }
 
 # Keep line-table debug info in release binaries so Sentry can symbolicate
 # Rust panics to file:line. Costs ~10-15% binary size; full debug info is

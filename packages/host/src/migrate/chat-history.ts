@@ -209,8 +209,9 @@ export function migrateAgentChatHistory(
 // ---------------------------------------------------------------------------
 
 /** Every agent dir under the tree: `<root>/<Workspace>/<Agent>`. Dot-dirs and
- * non-directories are skipped, mirroring LocalWorkspaceStore. */
-function agentRoots(workspacesRoot: string): string[] {
+ * non-directories are skipped, mirroring LocalWorkspaceStore. Shared with the
+ * flat-layout migration (agent-layout.ts). */
+export function agentRoots(workspacesRoot: string): string[] {
   if (!existsSync(workspacesRoot)) return [];
   const out: string[] = [];
   const isDir = (p: string) => {

@@ -1,5 +1,18 @@
 # Windows testing — UTM VM dev loop
 
+> **Updated: the Rust engine is removed — most of this loop is historical.** This
+> doc was the fast cross-compile-and-deploy loop for the Rust `houston-engine`
+> binary (mingw-w64 from a Mac). That engine is gone; the desktop engine is now the
+> **bun-compiled host sidecar** (`scripts/build-host-sidecar.sh`, windows-x64 +
+> arm64 targets — no mingw cross-compile). The engine-specific mechanics below
+> (`win.sh build/deploy engine`, the `engine/houston-*` Windows bug catalog,
+> `cli-deps.json` / `scripts/fetch-cli-deps.sh`, the bundled composio/claude/
+> git-bash CLIs) describe the deleted Rust engine and no longer apply. What DOES
+> carry over: the Windows VM **setup gotchas** (network profile, standalone OpenSSH
+> on ARM, `administrators_authorized_keys`, PowerShell-over-SSH quoting), the
+> `Get-Process houston-app` naming, and where `.houston/logs` lands. Keep those;
+> treat the rest as a record of the old loop.
+
 How to test Houston Windows builds from a macOS dev host without
 waiting 25 minutes for the full release CI pipeline. Built and proven
 on macOS 26 (Apple Silicon) + UTM running Windows 11 ARM64.

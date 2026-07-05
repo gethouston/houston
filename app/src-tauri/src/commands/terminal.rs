@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use tokio::process::Command;
 
 fn expand(p: &str) -> PathBuf {
-    houston_tauri::paths::expand_tilde(&PathBuf::from(p))
+    super::expand_tilde(&PathBuf::from(p))
 }
 
 #[tauri::command(rename_all = "snake_case")]

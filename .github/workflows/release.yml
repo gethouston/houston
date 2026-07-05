@@ -12,10 +12,10 @@
 #                   unset — see app/src/lib/engine-mode.ts).
 #
 # Builds the desktop app around the Bun-compiled Houston HOST sidecar (the single
-# TypeScript engine), NOT the legacy Rust `houston-engine`. Each platform job
-# bun-compiles the host via `scripts/build-host-sidecar.sh` and builds Tauri with
-# `--features host-sidecar` + `VITE_NEW_ENGINE=1` (the frontend aliases to the v3
-# host adapter). No provider CLIs are bundled — pi runs providers in-process — so
+# TypeScript engine). Each platform job bun-compiles the host via
+# `scripts/build-host-sidecar.sh`; `build.rs` stages it as the Tauri externalBin
+# (the frontend's v3 host-adapter alias is unconditional — see the vite configs).
+# No provider CLIs are bundled — pi runs providers in-process — so
 # the codex/composio/git-bash staging the Rust path needed is gone. Ships macOS
 # (universal DMG) + Windows (x64/arm64 MSI) + Linux (x64 AppImage).
 #
@@ -65,8 +65,8 @@ permissions:
   contents: write
 
 # Bun version used to compile the Houston host sidecar (the TS engine), shared by
-# every platform job so the compiled binary is reproducible. Matches the version
-# the repo already pins elsewhere (cli-deps.json).
+# every platform job so the compiled binary is reproducible. THE single pin —
+# keep engine-release.yml's BUN_VERSION in sync when bumping.
 env:
   BUN_VERSION: "1.3.10"
 
@@ -329,11 +329,6 @@ jobs:
     # without the secret, so forks keep skipping the upload.
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      # Frontend build flag: aliases @houston-ai/engine-client to the v3 host
-      # adapter (app/vite.config.ts `useHost`) so the packaged app talks to the
-      # bun-compiled host sidecar, not the legacy Rust wire. Job-level so every
-      # step — including tauri-action's beforeBuildCommand child — sees it.
-      VITE_NEW_ENGINE: "1"
       # CLOUD channel (tag `cloud-v*`): bake the managed gateway URL so the
       # packaged app talks to Houston Cloud and the user just signs in with
       # Google — no URL to enter (resolveEngine → hosted-oauth, chooser skipped).
@@ -443,7 +438,7 @@ jobs:
       # binary (embeds the Bun runtime — no `bun`/node needed at runtime) to
       # `target/host-sidecar/houston-host-<triple>`. Bun links its own libc, so
       # one macOS runner cross-compiles both arches. `build.rs::stage_host_sidecar`
-      # (the `host-sidecar` cargo feature) also stages per-triple copies to
+      # also stages per-triple copies to
       # `binaries/houston-engine-<triple>` during tauri's per-arch cargo runs;
       # the fat binary we lipo here is what the universal bundle actually ships.
       # A missing arch would break half of our Mac users, so fail hard.
@@ -494,7 +489,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         with:
           projectPath: app
-          args: --target universal-apple-darwin --features host-sidecar
+          args: --target universal-apple-darwin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -908,7 +903,7 @@ jobs:
   #      `build.rs::stage_host_sidecar` copies it to the externalBin name
   #      `binaries/houston-engine-<target>.exe` (same name the Rust engine used,
   #      so tauri.conf.json needs no per-feature branch).
-  #   2. Run `tauri build --target <matrix.target> --features host-sidecar` to
+  #   2. Run `tauri build --target <matrix.target>` to
   #      produce the MSI under `target/<matrix.target>/release/bundle/msi/*.msi`.
   #   3. Upload the per-arch MSI + .sig to the draft release. `finalize`
   #      then merges both into a single latest.json with separate
@@ -922,9 +917,6 @@ jobs:
     # can see it — same step-`if`-can't-read-step-env footgun as build-macos.
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      # See build-macos: aliases the frontend to the v3 host adapter so the
-      # packaged app runs on the bun-compiled host sidecar.
-      VITE_NEW_ENGINE: "1"
       # See build-macos: cloud channel bakes the managed gateway URL (a secret)
       # so cloud users just sign in with Google. Empty on the local `v*` channel.
       IS_CLOUD: ${{ startsWith(github.ref_name, 'cloud-') }}
@@ -1020,7 +1012,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         with:
           projectPath: app
-          args: --target ${{ matrix.target }} --features host-sidecar
+          args: --target ${{ matrix.target }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # The Tauri updater key signs the MSI for the auto-updater
@@ -1170,8 +1162,6 @@ jobs:
     timeout-minutes: 60
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      # See build-macos: aliases the frontend to the v3 host adapter.
-      VITE_NEW_ENGINE: "1"
       # See build-macos: cloud channel bakes the managed gateway URL (a secret).
       # Linux is download-only / not wired into the auto-updater, so it needs no
       # endpoint rewrite — only the baked URL so the app reaches the gateway.
@@ -1260,7 +1250,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         with:
           projectPath: app
-          args: --target x86_64-unknown-linux-gnu --features host-sidecar --bundles appimage
+          args: --target x86_64-unknown-linux-gnu --bundles appimage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
