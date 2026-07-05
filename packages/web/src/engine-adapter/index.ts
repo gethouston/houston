@@ -13,4 +13,7 @@ export {
   HoustonEngineError,
   isHoustonEngineError,
 } from "./client";
+// The conversation-VM read side: the app binds this store with
+// `useSdkSnapshot(conversationStore, conversationScope(agentPath, sessionKey))`.
+export { conversationStore } from "./vm";
 export { EngineWebSocket, topics } from "./ws";

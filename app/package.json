@@ -26,6 +26,7 @@
     "@houston-ai/routines": "workspace:*",
     "@houston-ai/skills": "workspace:*",
     "@houston/runtime-client": "workspace:*",
+    "@houston/sdk": "workspace:*",
     "@sentry/browser": "10.63.0",
     "@supabase/supabase-js": "2.110.0",
     "@tanstack/react-query": "5.101.2",

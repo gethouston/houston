@@ -29,6 +29,11 @@ export interface StreamTurnOptions {
   provider?: string;
   /** Reconnect tuning (tests inject fast backoff). */
   tuning?: StreamTuning;
+  /**
+   * Skip the optimistic user bubble — for resends of a prompt whose bubble is
+   * already in the feed (a refused not-connected send being retried).
+   */
+  suppressUserBubble?: boolean;
 }
 
 /**
@@ -66,7 +71,19 @@ export async function streamTurn(
   registry: StreamRegistry,
   opts: StreamTurnOptions = {},
 ): Promise<void> {
+  // Status BEFORE the bubble: `running: false` must mean settled-or-idle, so a
+  // watcher can't mistake the optimistic-push snapshot for a settled turn.
   output.sessionStatus(agentPath, sessionKey, "running");
+  // The optimistic user bubble: the surface never renders it itself, and the
+  // sink never renders the server's echo of it (nonce-matched) — this push is
+  // the ONE place a sent prompt enters the feed. Marker-tagged prompts
+  // (auto-continue) are filtered at render, same as their persisted copies.
+  if (!opts.suppressUserBubble) {
+    output.pushFeedItem(agentPath, sessionKey, {
+      feed_type: "user_message",
+      data: prompt,
+    });
+  }
   // Flip the card to "running" for this turn (re-running a needs_you/done
   // activity must reset it). Fire concurrently so it never delays turn start;
   // persistBoardStatus surfaces its own failure.

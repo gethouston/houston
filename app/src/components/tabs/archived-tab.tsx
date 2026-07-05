@@ -1,14 +1,14 @@
 import type { KanbanItem } from "@houston-ai/board";
 import { AIBoard } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
-import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
+import { messagePreviewText } from "@houston-ai/chat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivity, useDeleteActivity } from "../../hooks/queries";
+import { useConversationFeed } from "../../hooks/use-conversation-vm";
 import { selectArchived } from "../../lib/mission-selection";
 import { openAgentHref } from "../../lib/open-href";
 import type { TabProps } from "../../lib/types";
-import { useFeedStore } from "../../stores/feeds";
 import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { AgentCardAvatar } from "../shell/agent-card-avatar";
@@ -18,10 +18,6 @@ import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { ArchivedEmptyState, ArchivedSearchBar } from "./archived-tab-search";
 import { useArchivedMissionSearch } from "./use-archived-mission-search";
 import { useArchivedSendMessage } from "./use-archived-send-message";
-
-// Stable empty reference so the feed store selector doesn't return a new
-// object every render when this agent has no feeds yet.
-const EMPTY_FEED_BUCKET: Record<string, never> = Object.freeze({});
 
 /**
  * Archived missions: a column-less list of the agent's archived missions.
@@ -38,7 +34,6 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
   const deleteActivity = useDeleteActivity(path);
   const setMissionPanelOpen = useUIStore((s) => s.setMissionPanelOpen);
   const viewMode = useUIStore((s) => s.viewMode);
-  const setFeed = useFeedStore((s) => s.setFeed);
   const attachmentValidation = useAttachmentRejectionDialog();
 
   const archived = useMemo(() => selectArchived(rawItems ?? []), [rawItems]);
@@ -82,19 +77,15 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
   });
   const { effectiveProvider, effectiveModel } = panel;
 
-  const feedBucket = useFeedStore((s) => s.items[path]);
-  const feedItems = feedBucket ?? EMPTY_FEED_BUCKET;
+  // The open conversation's reactive feed from the SDK conversation VM
+  // (history seeded by the adapter's loadHistory).
+  const activeFeed = useConversationFeed(path, selectedSessionKey);
+  const feedItems = useMemo<Record<string, FeedItem[]>>(
+    () => (selectedSessionKey ? { [selectedSessionKey]: activeFeed } : {}),
+    [selectedSessionKey, activeFeed],
+  );
 
   const archivedSearch = useArchivedMissionSearch(path, items);
-  const handleHistoryLoaded = useCallback(
-    (sessionKey: string, history: FeedItem[]) => {
-      // Reconcile the persisted slice with any live-bucket items (optimistic
-      // or WS) by turn identity so a surfaced routine isn't shown twice (#363).
-      const current = useFeedStore.getState().items[path]?.[sessionKey] ?? [];
-      setFeed(path, sessionKey, mergeFeedHistory(history, current));
-    },
-    [path, setFeed],
-  );
 
   const handleDelete = useCallback(
     async (item: KanbanItem) => {
@@ -144,7 +135,6 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           onSendMessage={handleSendMessage}
           onComposerSubmit={panel.onComposerSubmit}
           onLoadHistory={archivedSearch.loadHistory}
-          onHistoryLoaded={handleHistoryLoaded}
           emptyState={emptyState}
           onPanelOpenChange={setMissionPanelOpen}
           onOpenLink={(url) => openAgentHref(url, path)}

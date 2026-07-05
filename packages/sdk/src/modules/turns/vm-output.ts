@@ -61,17 +61,26 @@ const FINAL_OF: Record<string, string> = {
   thinking: "thinking_streaming",
 };
 
-/** The scope a conversation's VM is published on. */
-export const conversationScope = (sessionKey: string): string =>
-  `conversation/${sessionKey}`;
+/**
+ * The scope a conversation's VM is published on. Agent-qualified: session keys
+ * are unique only within one agent — the same identity `streamKey` uses — so
+ * the scope carries BOTH, and the encoding stays in here so no caller ever
+ * builds or parses it (ADR-0001).
+ */
+export const conversationScope = (
+  agentPath: string,
+  sessionKey: string,
+): string =>
+  `conversation/${encodeURIComponent(agentPath)}/${encodeURIComponent(sessionKey)}`;
 
 export class ConversationVmOutput implements FeedOutput {
   private readonly convs = new Map<string, ConvState>();
 
   constructor(private readonly store: ScopeStore) {}
 
-  private state(sessionKey: string): ConvState {
-    let s = this.convs.get(sessionKey);
+  private state(agentPath: string, sessionKey: string): ConvState {
+    const key = conversationScope(agentPath, sessionKey);
+    let s = this.convs.get(key);
     if (!s) {
       s = {
         feed: [],
@@ -80,7 +89,7 @@ export class ConversationVmOutput implements FeedOutput {
         seq: 0,
         streaming: new Map(),
       };
-      this.convs.set(sessionKey, s);
+      this.convs.set(key, s);
     }
     return s;
   }
@@ -97,21 +106,22 @@ export class ConversationVmOutput implements FeedOutput {
    * not already streaming this conversation.
    */
   seedHistory(
+    agentPath: string,
     sessionKey: string,
     frames: readonly { feed_type: string; data: unknown }[],
   ): void {
-    const s = this.state(sessionKey);
+    const s = this.state(agentPath, sessionKey);
     s.feed = frames.map((f) => ({
       id: `f${s.seq++}`,
       feed_type: f.feed_type,
       data: f.data,
     }));
     s.streaming.clear();
-    this.publish(sessionKey, s);
+    this.publish(agentPath, sessionKey, s);
   }
 
-  pushFeedItem(_agentPath: string, sessionKey: string, item: unknown): void {
-    const s = this.state(sessionKey);
+  pushFeedItem(agentPath: string, sessionKey: string, item: unknown): void {
+    const s = this.state(agentPath, sessionKey);
     const { feed_type, data } = item as { feed_type: string; data: unknown };
     const finalOf = FINAL_OF[feed_type];
     if (feed_type.endsWith("_streaming")) {
@@ -127,7 +137,7 @@ export class ConversationVmOutput implements FeedOutput {
     } else {
       s.feed.push({ id: `f${s.seq++}`, feed_type, data });
     }
-    this.publish(sessionKey, s);
+    this.publish(agentPath, sessionKey, s);
   }
 
   private upsertStreaming(
@@ -149,16 +159,16 @@ export class ConversationVmOutput implements FeedOutput {
   }
 
   sessionStatus(
-    _agentPath: string,
+    agentPath: string,
     sessionKey: string,
     status: SessionStatusValue,
   ): void {
-    const s = this.state(sessionKey);
+    const s = this.state(agentPath, sessionKey);
     s.sessionStatus = status;
     // A terminal status closes every open streaming run so the next turn's
     // streaming text starts a fresh bubble instead of extending this one.
     if (status === "completed" || status === "error") s.streaming.clear();
-    this.publish(sessionKey, s);
+    this.publish(agentPath, sessionKey, s);
   }
 
   /**
@@ -168,22 +178,22 @@ export class ConversationVmOutput implements FeedOutput {
    * `boardStatus` is updated and republished.
    */
   async persistBoardStatus(
-    _agentPath: string,
+    agentPath: string,
     sessionKey: string,
     status: BoardStatus,
   ): Promise<void> {
-    const s = this.state(sessionKey);
+    const s = this.state(agentPath, sessionKey);
     s.boardStatus = status;
-    this.publish(sessionKey, s);
+    this.publish(agentPath, sessionKey, s);
   }
 
-  private publish(sessionKey: string, s: ConvState): void {
+  private publish(agentPath: string, sessionKey: string, s: ConvState): void {
     const snapshot: ConversationVM = {
       feed: s.feed.map((f) => ({ ...f })),
       running: s.sessionStatus === "running",
       sessionStatus: s.sessionStatus,
       boardStatus: s.boardStatus,
     };
-    this.store.publish(conversationScope(sessionKey), snapshot);
+    this.store.publish(conversationScope(agentPath, sessionKey), snapshot);
   }
 }

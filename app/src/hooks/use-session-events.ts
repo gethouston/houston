@@ -2,7 +2,6 @@ import type { FeedItem } from "@houston-ai/chat";
 import type { HoustonEvent } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { hasToolRuntimeError } from "../components/tool-runtime-feed";
 import { listenOsEvent, subscribeHoustonEvents } from "../lib/events";
 import { logger } from "../lib/logger";
 import {
@@ -11,9 +10,7 @@ import {
 } from "../lib/notification-nav";
 import { isMac } from "../lib/platform";
 import { useAgentStore } from "../stores/agents";
-import { useFeedStore } from "../stores/feeds";
 import { useProviderSwitchStore } from "../stores/provider-switch";
-import { useSessionStatusStore } from "../stores/session-status";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
 import {
@@ -24,32 +21,29 @@ import {
 } from "./session-notifications";
 
 /**
- * Subscribe to "houston-event" from the Rust backend.
- * Handles FeedItem, SessionStatus, Toast, AuthRequired, and native notifications.
+ * Subscribe to "houston-event" from the engine bus.
+ * Handles the provider-switch confirmation, session-complete notifications,
+ * Toast, and AuthRequired. Conversation STATE (feed, spinner, status) lives in
+ * the SDK conversation VM (`use-conversation-vm.ts`) — never accumulated here.
  *
  * NOTE: Data invalidation is handled by useWorkspaceInvalidation (TanStack Query).
- * This hook only handles push-based events (streaming, toasts, notifications).
+ * This hook only handles push-based events (toasts, notifications).
  */
 export function useSessionEvents() {
-  const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
   const addToast = useUIStore((s) => s.addToast);
   const setAuthRequired = useUIStore((s) => s.setAuthRequired);
   const { t } = useTranslation(["common"]);
 
   const handlersRef = useRef({
-    pushFeedItem,
     addToast,
     setAuthRequired,
-    setSessionStatus: useSessionStatusStore.getState().setStatus,
     getWorkspace: () => useWorkspaceStore.getState().current,
     getAgent: () => useAgentStore.getState().current,
     t,
   });
   handlersRef.current = {
-    pushFeedItem,
     addToast,
     setAuthRequired,
-    setSessionStatus: useSessionStatusStore.getState().setStatus,
     getWorkspace: () => useWorkspaceStore.getState().current,
     getAgent: () => useAgentStore.getState().current,
     t,
@@ -66,19 +60,11 @@ export function useSessionEvents() {
       switch (payload.type) {
         case "FeedItem": {
           const item = payload.data.item as FeedItem;
-          // Mark WS-delivered so a re-broadcast user_message echo (the engine
-          // emits one at session-id time for cross-client sync) dedupes against
-          // a turn the feed already shows instead of duplicating it (#363).
-          h.pushFeedItem(
-            payload.data.agent_path,
-            payload.data.session_key,
-            item,
-            { fromWs: true },
-          );
-          // The engine confirmed a mid-session provider switch by emitting the
-          // boundary divider — clear the staged handoff so later normal turns
-          // don't re-trigger a reseed. A failed seed never emits this, so the
-          // handoff stays staged and the next send retries the switch.
+          // Rendering is the conversation VM's job — this listener only reacts
+          // to the provider-switch confirmation: the engine emitted the
+          // boundary divider, so clear the staged handoff so later normal
+          // turns don't re-trigger a reseed. A failed seed never emits this,
+          // so the handoff stays staged and the next send retries the switch.
           if (item.feed_type === "provider_switched") {
             useProviderSwitchStore
               .getState()
@@ -87,35 +73,10 @@ export function useSessionEvents() {
           break;
         }
         case "SessionStatus": {
-          const { status, error, session_key, agent_path } = payload.data;
-          if (
-            status === "starting" ||
-            status === "running" ||
-            status === "completed" ||
-            status === "error"
-          ) {
-            h.setSessionStatus(agent_path, session_key, status);
-          }
-          if (status === "error" && error) {
-            // When auth is required, the backend has emitted AuthRequired and
-            // the inline reconnect card renders from the authRequired store
-            // state. Suppress the generic "Session error: ..." system message
-            // so the feed doesn't show a raw error *and* the card.
-            const isAuth = useUIStore.getState().authRequired !== null;
-            const feedItems =
-              useFeedStore.getState().items[agent_path]?.[session_key] ?? [];
-            const hasRuntimeCard = hasToolRuntimeError(feedItems);
-            if (!isAuth && !hasRuntimeCard) {
-              h.pushFeedItem(agent_path, session_key, {
-                feed_type: "system_message",
-                data: `Session error: ${error}`,
-              } as FeedItem);
-            } else {
-              logger.info(
-                `[session] suppressing Session error system_message for ${agent_path}/${session_key}`,
-              );
-            }
-          }
+          const { status, session_key, agent_path } = payload.data;
+          // Status/spinner state lives in the conversation VM; error surfacing
+          // is the turn sink's job (it pushes the failure into the VM feed).
+          // This listener owns only the OS notification on completion.
           if (status === "completed") {
             const workspace = h.getWorkspace();
             const workspaceName = workspace?.name ?? "Houston";

@@ -1,17 +1,13 @@
 import type { FeedItem, QueuedChatMessage } from "@houston-ai/chat";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useConversationVm } from "../../../hooks/use-conversation-vm";
 import { useSessionMessageQueue } from "../../../hooks/use-session-message-queue";
 import { analytics } from "../../../lib/analytics";
 import { createMission } from "../../../lib/create-mission";
 import { logger } from "../../../lib/logger";
 import { tauriAgent, tauriChat } from "../../../lib/tauri";
 import type { Agent } from "../../../lib/types";
-import { useFeedStore } from "../../../stores/feeds";
-import {
-  isActiveSessionStatus,
-  useSessionStatus,
-} from "../../../stores/session-status";
 import {
   appendSetupSection,
   stripSetupSection,
@@ -91,12 +87,10 @@ export function useEmailMissionSession({
   }, [agentPath]);
 
   const sessionKeyForHooks = missionSessionKey ?? "";
-  const realFeed = useFeedStore(
-    (s) => s.items[agentPath]?.[sessionKeyForHooks],
-  );
-  const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
-  const sessionStatus = useSessionStatus(agentPath, sessionKeyForHooks);
-  const isActive = isActiveSessionStatus(sessionStatus);
+  // This conversation's reactive state, straight from the SDK conversation VM.
+  const vm = useConversationVm(agentPath, sessionKeyForHooks || null);
+  const realFeed = vm?.feed;
+  const isActive = vm?.running ?? false;
 
   // The mission session has gone active at least once (the agent actually ran).
   // Gates the skip escape hatch so we only offer it after a real attempt.
@@ -195,10 +189,8 @@ export function useEmailMissionSession({
     async (text: string, _files: File[]) => {
       const trimmed = text.trim();
       if (!trimmed || !missionSessionKey) return;
-      pushFeedItem(agentPath, missionSessionKey, {
-        feed_type: "user_message",
-        data: trimmed,
-      });
+      // The turn stream pushes the user bubble into the conversation VM
+      // itself — no app-side optimistic push.
       try {
         await tauriChat.send(agentPath, trimmed, missionSessionKey, {
           providerOverride: provider,
@@ -209,7 +201,7 @@ export function useEmailMissionSession({
         setError(e instanceof Error ? e.message : String(e));
       }
     },
-    [agentPath, missionSessionKey, provider, model, pushFeedItem],
+    [agentPath, missionSessionKey, provider, model],
   );
 
   const messageQueue = useSessionMessageQueue({

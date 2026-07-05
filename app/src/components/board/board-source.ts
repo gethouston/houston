@@ -110,7 +110,6 @@ export interface BoardSource {
     sessionKey: string,
     opts?: HistoryLoadOptions,
   ) => Promise<FeedItem[]>;
-  onHistoryLoaded: (sessionKey: string, items: FeedItem[]) => void;
   /** Raw send (no queue). `overrides` carry the composer's effective
    *  provider/model; the per-agent source uses them, Mission Control resolves
    *  its own from the target activity. */

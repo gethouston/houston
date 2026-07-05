@@ -7,11 +7,11 @@
  *
  * Autocompact is always on: it's a non-destructive guarantee that long chats
  * keep working (the full history stays visible regardless). The only knob is
- * the build-time threshold. Reads the live feed store synchronously. New
+ * the build-time threshold. Reads the conversation VM synchronously. New
  * conversations have no reported usage yet, so this returns `false` and the
  * engine runs a normal first turn.
  */
-import { useFeedStore } from "../stores/feeds";
+import { getConversationFeed } from "../hooks/use-conversation-vm";
 import {
   contextFillPercent,
   effectiveContextWindow,
@@ -37,7 +37,7 @@ export function shouldAutocompactForSession(
   provider: string | undefined,
   model: string | undefined,
 ): boolean {
-  const items = useFeedStore.getState().items[agentPath]?.[sessionKey];
+  const items = getConversationFeed(agentPath, sessionKey);
   const { latest, peakContextTokens } = sessionContextUsage(items);
   const cfg = getContextWindowConfig(provider, model);
   const window = effectiveContextWindow(cfg, peakContextTokens);

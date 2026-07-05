@@ -38,6 +38,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useActivity, useSkills } from "../hooks/queries";
 import { useCapabilities } from "../hooks/use-capabilities";
+import { useConversationFeed } from "../hooks/use-conversation-vm";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import { useSession } from "../hooks/use-session";
@@ -83,7 +84,6 @@ import {
   withAttachmentPaths,
 } from "../lib/tauri";
 import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
-import { useFeedStore } from "../stores/feeds";
 import { useUIStore } from "../stores/ui";
 import { resolveEffectiveProvider } from "./chat-effective-provider";
 import { ChatEffortSelector } from "./chat-effort-selector";
@@ -181,7 +181,6 @@ export function useAgentChatPanel({
   } = useChatDisplayLabels();
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
-  const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
 
   // Multiplayer attribution (C5): the signed-in viewer's id lets ChatPanel tell
   // the viewer's own bubbles from teammates'. Undefined signed out / local.
@@ -266,15 +265,16 @@ export function useAgentChatPanel({
     [providerStatuses],
   );
 
+  // This conversation's reactive feed — the SDK conversation VM, the app's one
+  // turn-state source (history seeded by the adapter on load; live turns
+  // folded by the SDK machinery).
+  const sessionFeedItems = useConversationFeed(path, selectedSessionKey);
+
   // Whether the open conversation already has turns. Once it does, the chat's
   // provider is frozen (see resolveEffectiveProvider): a provider that logs out
   // mid-conversation must surface the reconnect card, never silently hand the
   // turn to another connected provider.
-  const hasMessages = useFeedStore((s) =>
-    path && selectedSessionKey
-      ? (s.items[path]?.[selectedSessionKey]?.length ?? 0) > 0
-      : false,
-  );
+  const hasMessages = sessionFeedItems.length > 0;
 
   const effectiveProvider = resolveEffectiveProvider(
     activityProvider,
@@ -301,11 +301,6 @@ export function useAgentChatPanel({
   // self-correcting window estimate: the active model's catalogued default,
   // snapped up once the session's observed peak proves a larger (plan/credit-
   // gated) window. Drives the composer footer pill + dialog.
-  const sessionFeedItems = useFeedStore((s) =>
-    path && selectedSessionKey
-      ? s.items[path]?.[selectedSessionKey]
-      : undefined,
-  );
   const { contextUsage, contextWindow } = useMemo(() => {
     const { latest, peakContextTokens } = sessionContextUsage(sessionFeedItems);
     // `peakContextTokens` is session-wide while `cfg` is the currently-selected
@@ -513,6 +508,8 @@ export function useAgentChatPanel({
           attachmentReferences(files, attachmentPaths),
         );
         const mode = agentModes?.find((m) => m.id === undefined); // default mode
+        // The send's turn stream pushes the user bubble into the
+        // conversation VM itself — no app-side optimistic push.
         await tauriChat.send(path, encodedWithAttachments, sessionKey, {
           mode: mode?.promptFile,
           // Pass the EFFECTIVE values, not just `chatProvider`. The dropdown
@@ -525,18 +522,13 @@ export function useAgentChatPanel({
           modelOverride: effectiveModel,
           effortOverride: effectiveEffort,
         });
-        pushFeedItem(path, sessionKey, {
-          feed_type: "user_message",
-          data: encodedWithAttachments,
-        });
       } else {
         // New conversation: createMission with `title` override so the
         // kanban card reads "Research a company" instead of the marker.
         const agentMode = agentModes?.[0]?.id;
         const mode = agentModes?.find((m) => m.id === agentMode);
-        let encodedUserMessage = encoded;
 
-        const { conversationId, sessionKey } = await createMission(
+        const { conversationId } = await createMission(
           {
             id: agent.id,
             name: agent.name,
@@ -557,21 +549,16 @@ export function useAgentChatPanel({
                 files,
               );
               const prompt = withAttachmentPaths(claudePrompt, paths);
-              encodedUserMessage = encodeSkillMessage(
+              return encodeSkillMessage(
                 skill,
                 text,
                 prompt,
                 attachmentReferences(files, paths),
               );
-              return encodedUserMessage;
             },
             title: friendlyTitle,
           },
         );
-        pushFeedItem(path, sessionKey, {
-          feed_type: "user_message",
-          data: encodedUserMessage,
-        });
         queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
         analytics.track("mission_created", {
           agent_mode: agentMode ?? "default",
@@ -590,7 +577,6 @@ export function useAgentChatPanel({
       effectiveProvider,
       effectiveModel,
       effectiveEffort,
-      pushFeedItem,
       queryClient,
     ],
   );
@@ -704,10 +690,6 @@ export function useAgentChatPanel({
                 modelOverride: effectiveModel,
                 effortOverride: effectiveEffort,
               });
-              pushFeedItem(path, selectedSessionKey, {
-                feed_type: "user_message",
-                data: text,
-              });
             }}
             onSwitchModel={
               isModelUnsupported
@@ -749,15 +731,10 @@ export function useAgentChatPanel({
                 providerOverride: effectiveProvider,
                 modelOverride: effectiveModel,
                 effortOverride: effectiveEffort,
+                // A refused not-connected send left its prompt's bubble in
+                // the feed already — resending it must not add a second one.
+                suppressUserBubble: resendsOriginalPrompt(providerError),
               });
-              // The refused prompt's bubble is already in the feed; only a
-              // generic retry is a NEW message that needs one.
-              if (!resendsOriginalPrompt(providerError)) {
-                pushFeedItem(path, selectedSessionKey, {
-                  feed_type: "user_message",
-                  data: text,
-                });
-              }
             }}
             // "Pick another model" pops the MODEL picker (not the Skills picker);
             // "Switch to <fallback>" applies it directly on the same provider.
@@ -777,7 +754,6 @@ export function useAgentChatPanel({
       effectiveEffort,
       handleModelSelect,
       path,
-      pushFeedItem,
       selectedSessionKey,
       t,
     ],

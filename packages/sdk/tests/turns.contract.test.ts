@@ -10,7 +10,7 @@
 
 import { type FakeHost, SEED_AGENT_ID } from "@houston/fake-host";
 import { HoustonEngineClient } from "@houston/runtime-client";
-import type { ConversationVM } from "@houston/sdk";
+import { type ConversationVM, conversationScope } from "@houston/sdk";
 import {
   afterAll,
   afterEach,
@@ -72,9 +72,11 @@ describe("turn send → stream → settle", () => {
       // signal a native shell reads); a clean turn lands on needs_you.
       boardStatus: "needs_you",
       feed: [
-        { id: "f0", feed_type: "assistant_text", data: cannedReply("Ping") },
+        // The optimistic push — the ONE user bubble (its echo never renders).
+        { id: "f0", feed_type: "user_message", data: "Ping" },
+        { id: "f1", feed_type: "assistant_text", data: cannedReply("Ping") },
         {
-          id: "f1",
+          id: "f2",
           feed_type: "final_result",
           data: {
             result: cannedReply("Ping"),
@@ -93,7 +95,7 @@ describe("turn send → stream → settle", () => {
     await control(host.url, "chat-config", { replyDelayMs: 40 });
 
     const streamingSnaps: ConversationVM[] = [];
-    const off = h.sdk.subscribe(`conversation/${cid}`, (s) =>
+    const off = h.sdk.subscribe(conversationScope(SEED_AGENT_ID, cid), (s) =>
       streamingSnaps.push(structuredClone(s as ConversationVM)),
     );
 
@@ -115,8 +117,9 @@ describe("turn send → stream → settle", () => {
 
     expect(streamingEntries.length).toBeGreaterThan(1); // multiple deltas seen
     // One stable id across the whole stream — the reply is one bubble.
+    // (f0 is the optimistic user bubble; the reply streams into f1.)
     const ids = new Set(streamingEntries.map((f) => f.id));
-    expect(ids).toEqual(new Set(["f0"]));
+    expect(ids).toEqual(new Set(["f1"]));
     // Cumulative, monotonic growth — never a shrink, never a reset.
     const lengths = streamingEntries.map((f) => String(f.data).length);
     for (let i = 1; i < lengths.length; i++) {
@@ -126,7 +129,7 @@ describe("turn send → stream → settle", () => {
     const finalTextEntry = convVm(h.sdk, cid)?.feed.find(
       (f) => f.feed_type === "assistant_text",
     );
-    expect(finalTextEntry?.id).toBe("f0");
+    expect(finalTextEntry?.id).toBe("f1");
     expect(finalTextEntry?.data).toBe(cannedReply("Ping"));
   });
 

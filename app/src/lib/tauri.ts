@@ -279,6 +279,8 @@ export const tauriChat = {
       providerOverride?: string;
       modelOverride?: string;
       effortOverride?: string;
+      /** Resend of a prompt whose bubble is already in the feed (see SessionStartRequest). */
+      suppressUserBubble?: boolean;
     },
   ) =>
     call<string>("send_message", async () => {
@@ -315,6 +317,7 @@ export const tauriChat = {
         providerSwitch: handoff
           ? { mode: handoff.mode, fromProvider: handoff.fromProvider }
           : undefined,
+        suppressUserBubble: opts?.suppressUserBubble,
       });
       return res.sessionKey;
     }),

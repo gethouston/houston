@@ -10,7 +10,6 @@ import {
 } from "../lib/tauri";
 import type { Agent } from "../lib/types";
 import { useDraftStore } from "./drafts";
-import { useFeedStore } from "./feeds";
 
 export interface CreatedAgent {
   agent: Agent;
@@ -126,18 +125,13 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   delete: async (workspaceId, id) => {
-    // Resolve the agent path before deleting so we can clear its feed bucket.
-    const agentPath = get().agents.find((a) => a.id === id)?.folderPath;
     const wasCurrent = get().current?.id === id;
     await tauriAgents.delete(workspaceId, id);
     // Wipe any chat composer attachments scoped to this agent's chat.
     // Per-activity attachments are wiped via useDeleteActivity / handleDelete.
     await tauriAttachments.delete(`agent-${id}`).catch(() => {});
-    // Drop the feed store bucket for this agent so stale messages don't
-    // linger in memory.
-    if (agentPath) {
-      useFeedStore.getState().clearAgent(agentPath);
-    }
+    // Conversation state lives in the SDK conversation VM; a deleted agent's
+    // scopes are simply never subscribed again.
     // Clear the free-form chat draft for this agent.
     useDraftStore.getState().clearDraft(`chat-${id}`);
     let nextCurrent: Agent | null = null;

@@ -100,6 +100,7 @@ export {
 export {
   type BoardStatus,
   type ConversationVM,
+  ConversationVmOutput,
   conversationScope,
   type FeedFrame,
   type FeedItemVM,
@@ -116,6 +117,7 @@ export {
   StreamRegistry,
   type StreamTuning,
   type StreamTurnOptions,
+  streamKey,
   streamTurn,
   type TerminalBoardStatus,
   TURN_DIED_MESSAGE,

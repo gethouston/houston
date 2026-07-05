@@ -110,14 +110,15 @@ describe("turns/observe — seed the VM feed from history", () => {
     }
   });
 
-  it("seeds the user bubble the live send omitted when re-observing idle", async () => {
+  it("re-observing an idle conversation re-seeds the transcript without doubling", async () => {
     const cid = "c-observe-reseed";
     await seedOneTurn(cid, "Ping");
-    // The live send path never renders the user's own echo, so its settled feed
-    // has no user_message. Re-observing the now-idle conversation seeds the full
-    // transcript from history, so the user's bubble appears — without doubling
-    // the assistant reply.
+    // The live send pushed the user bubble optimistically (and never rendered
+    // its echo), so the settled feed already leads with it. Re-observing the
+    // now-idle conversation replaces the feed with the history fold — the same
+    // shape, never a doubled bubble or reply.
     expect(convVm(h.sdk, cid)?.feed.map((f) => f.feed_type)).toEqual([
+      "user_message",
       "assistant_text",
       "final_result",
     ]);

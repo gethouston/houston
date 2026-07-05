@@ -8,7 +8,6 @@ import { logger } from "../lib/logger";
 import { osFocusWindow } from "../lib/os-bridge";
 import { queryKeys } from "../lib/query-keys";
 import { useAgentStore } from "../stores/agents";
-import { useSessionStatusStore } from "../stores/session-status";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
 
@@ -24,7 +23,6 @@ export function useAgentInvalidation() {
 
   useEffect(() => {
     const offEngineRestarted = onEngineRestarted(() => {
-      useSessionStatusStore.getState().clearAll();
       qc.invalidateQueries({ queryKey: ["activity"] });
       qc.invalidateQueries({ queryKey: ["all-conversations"] });
       // The supervisor restarted the host sidecar after a crash. Beta policy:
