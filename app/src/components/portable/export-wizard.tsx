@@ -26,7 +26,9 @@ import { osRevealPath } from "../../lib/os-bridge";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 
-type Step = 1 | 2 | 3;
+type StepId = "pick" | "anonymize" | "save";
+
+const steps: StepId[] = ["pick", "anonymize", "save"];
 
 interface Selection {
   claudeMd: boolean;
@@ -51,7 +53,8 @@ export function ExportAgentWizard() {
   const agent = agents.find((a) => a.id === agentId);
   const open = Boolean(agentId);
 
-  const [step, setStep] = useState<Step>(1);
+  const [stepIndex, setStepIndex] = useState(0);
+  const currentStep = steps[stepIndex] ?? "pick";
   const [preview, setPreview] = useState<PortableInventoryPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [selection, setSelection] = useState<Selection>({
@@ -74,7 +77,7 @@ export function ExportAgentWizard() {
 
   useEffect(() => {
     if (!agentId) {
-      setStep(1);
+      setStepIndex(0);
       setPreview(null);
       setWantAnonymize(null);
       setAnonymized(null);
@@ -246,9 +249,9 @@ export function ExportAgentWizard() {
   if (!open) return null;
 
   const canAdvance =
-    step === 1
+    currentStep === "pick"
       ? !loading && !!preview
-      : step === 2
+      : currentStep === "anonymize"
         ? wantAnonymize !== null && !anonymizing
         : true;
 
@@ -257,8 +260,8 @@ export function ExportAgentWizard() {
       <DialogContent className="sm:max-w-[680px] h-[78vh] flex flex-col p-0 gap-0 overflow-hidden">
         <WizardHeader
           eyebrow={t("export.eyebrow", { name: agent?.name ?? "" })}
-          index={step - 1}
-          total={3}
+          index={stepIndex}
+          total={steps.length}
         />
 
         <div className="flex-1 min-h-0 overflow-y-auto px-8 pt-2 pb-6">
@@ -270,13 +273,13 @@ export function ExportAgentWizard() {
             <p className="text-sm text-muted-foreground">
               {t("export.errors.noPreview")}
             </p>
-          ) : step === 1 ? (
+          ) : currentStep === "pick" ? (
             <PickStep
               preview={preview}
               selection={selection}
               setSelection={setSelection}
             />
-          ) : step === 2 ? (
+          ) : currentStep === "anonymize" ? (
             <AnonymizeStep
               wantAnonymize={wantAnonymize}
               onChoose={(v) => {
@@ -301,16 +304,18 @@ export function ExportAgentWizard() {
           <button
             type="button"
             onClick={() =>
-              step > 1 ? setStep((step - 1) as Step) : handleClose()
+              stepIndex > 0 ? setStepIndex(stepIndex - 1) : handleClose()
             }
             className="text-sm text-muted-foreground hover:text-foreground"
           >
-            {step > 1 ? t("export.actions.back") : t("export.actions.cancel")}
+            {stepIndex > 0
+              ? t("export.actions.back")
+              : t("export.actions.cancel")}
           </button>
-          {step < 3 ? (
+          {stepIndex < steps.length - 1 ? (
             <Button
               className="rounded-full"
-              onClick={() => setStep((step + 1) as Step)}
+              onClick={() => setStepIndex(stepIndex + 1)}
               disabled={!canAdvance}
             >
               {t("export.actions.next")}
@@ -710,7 +715,7 @@ function ChoiceCard({
       onClick={onClick}
       className={cn(
         "rounded-xl border bg-background p-4 text-left transition-all",
-        "border-black/5 hover:border-black/15 hover:shadow-[0_1px_0_rgba(0,0,0,0.05)]",
+        "border-foreground/5 hover:border-foreground/15 hover:shadow-[0_1px_0_rgba(0,0,0,0.05)]",
         selected && "border-foreground shadow-[0_1px_0_rgba(0,0,0,0.05)]",
       )}
     >
@@ -739,7 +744,7 @@ function DiffCard({
 }) {
   const { t } = useTranslation("portable");
   return (
-    <article className="rounded-xl border border-black/5 bg-background p-4">
+    <article className="rounded-xl border border-foreground/5 bg-background p-4">
       <header className="flex items-center justify-between gap-3 mb-3">
         <p className="text-sm font-medium">{title}</p>
         <button
@@ -781,7 +786,7 @@ function RoutineDiffCard({
 }) {
   const { t } = useTranslation("portable");
   return (
-    <article className="rounded-xl border border-black/5 bg-background p-4">
+    <article className="rounded-xl border border-foreground/5 bg-background p-4">
       <header className="flex items-center justify-between gap-3 mb-3">
         <p className="text-sm font-medium">
           {t("export.step2.routineTitle", { id: routineId })}

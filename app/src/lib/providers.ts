@@ -379,13 +379,6 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         effortLevels: ["high", "max"],
       },
       {
-        id: "minimax-m3-free",
-        label: "MiniMax M3 (Free)",
-        description: "Capable. Free to try.",
-        contextWindow: 200_000,
-        // Reasoning toggle only (no discrete effort) per models.dev.
-      },
-      {
         id: "mimo-v2.5-free",
         label: "MiMo V2.5 (Free)",
         description: "Free to try.",

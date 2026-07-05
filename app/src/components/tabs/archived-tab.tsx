@@ -152,7 +152,7 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           cardAvatar={<AgentCardAvatar color={agent.color} />}
           thinkingIndicator={panel.thinkingIndicator}
-          endOfTurnIndicator={panel.endOfTurnIndicator}
+          loadingIndicator={panel.loadingIndicator}
           panelAgentName={agent.name}
           panelAvatar={<AgentPanelAvatar color={agent.color} running={false} />}
           cardLabels={{
@@ -167,6 +167,7 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           footer={panel.footer}
           attachMenu={panel.attachMenu}
           renderUserMessage={panel.renderUserMessage}
+          renderLink={panel.renderLink}
           currentUserId={panel.currentUserId}
           authorLabels={panel.authorLabels}
           renderSystemMessage={panel.renderSystemMessage}

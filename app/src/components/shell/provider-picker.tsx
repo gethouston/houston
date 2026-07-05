@@ -16,6 +16,7 @@ import {
   providerGatewayIds,
 } from "../../lib/providers";
 import {
+  mergeGatewayStatus,
   type ProviderStatus,
   tauriProvider,
   tauriSystem,
@@ -80,23 +81,18 @@ export function ProviderPicker({ onSelect }: Props) {
 
   const prevStatuses = useRef<Record<string, ProviderStatus>>({});
   const loadStatuses = useCallback(async () => {
-    // Probe every visible provider in parallel. New providers added to the
-    // catalog are picked up automatically; never hardcode ids here.
-    const results = await Promise.all(
-      visibleProviders.map(
-        async (p) =>
-          // A connect card may front several gateways (OpenCode's Zen + Go share
-          // one key); probe them together so the merged card reads as connected
-          // when either is. `providerGatewayIds` is `[p.id]` for everything else.
-          [
-            p.id,
-            await tauriProvider.checkMergedStatus(providerGatewayIds(p)),
-          ] as const,
-      ),
-    );
+    // ONE engine round-trip for every card (HOU-650). A card may front several
+    // gateways (OpenCode's Zen + Go share one key); probe the union and merge per
+    // card so the merged card reads as connected when either gateway is. New
+    // catalog providers are picked up automatically; never hardcode ids here.
+    const gatewayIds = [
+      ...new Set(visibleProviders.flatMap((p) => providerGatewayIds(p))),
+    ];
+    const byId = await tauriProvider.checkAllStatuses(gatewayIds);
     const next: Record<string, ProviderStatus> = {};
-    for (const [id, status] of results) {
-      next[id] = status;
+    for (const p of visibleProviders) {
+      const merged = mergeGatewayStatus(providerGatewayIds(p), byId);
+      if (merged) next[p.id] = merged;
     }
     for (const prov of visibleProviders) {
       const wasConnected =

@@ -8,6 +8,8 @@ import type { SuggestedRoutine } from "@houston-ai/engine-client";
 import type { RoutineFormData } from "@houston-ai/routines";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { STORE_TEMPLATE_IDS } from "../../agents/builtin/store-catalog";
+import { loadStoreTemplate } from "../../agents/builtin/store-template-loader";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { logger } from "../../lib/logger";
 import { getDefaultModel } from "../../lib/providers";
@@ -91,12 +93,24 @@ export function CreateAgentDialog() {
 
   const handleCreateAgent = async () => {
     const trimmed = name.trim();
-    if (!trimmed || !selectedConfigId || !currentWorkspace) return;
+    // `creating` also gates re-entry: the submit button is disabled while in
+    // flight, but Enter in the name input still fires the form's onSubmit.
+    if (creating || !trimmed || !selectedConfigId || !currentWorkspace) return;
     setError(null);
     setCreating(true);
     // AI-generated instructions take priority over the template's claudeMd.
-    const claudeMd = generatedClaudeMd ?? selectedDef?.config.claudeMd;
+    let claudeMd = generatedClaudeMd ?? selectedDef?.config.claudeMd;
+    let seeds = selectedDef?.config.agentSeeds;
+    let agentPath: string;
     try {
+      // First-party "store" templates (bookkeeping, legal, …) keep their
+      // CLAUDE.md + skills/data seeds in a lazily-loaded payload kept out of the
+      // initial bundle; pull it now so the host seeds the new agent with them.
+      if (!generatedClaudeMd && STORE_TEMPLATE_IDS.has(selectedConfigId)) {
+        const tpl = await loadStoreTemplate(selectedConfigId);
+        claudeMd = tpl.claudeMd;
+        seeds = tpl.seeds;
+      }
       const { agent } = await createAgent(
         currentWorkspace.id,
         trimmed,
@@ -104,53 +118,32 @@ export function CreateAgentDialog() {
         color,
         claudeMd,
         selectedDef?.path,
-        selectedDef?.config.agentSeeds,
+        seeds,
         existingPath ?? undefined,
       );
-      // Always write provider/model to the agent's own config. With workspace
-      // defaults retired, the agent is the single source of truth — leaving
-      // the field blank would make the engine resolver fall back to its
-      // platform default rather than the user's pick.
-      const cfg = await tauriConfig.read(agent.folderPath);
-      await tauriConfig.write(agent.folderPath, {
-        ...cfg,
-        provider: provider as "anthropic" | "openai",
-        model,
-      });
-      // Keep the sticky last-used in sync so the next new agent inherits
-      // the user's most recent choice.
-      await tauriProvider.setLastUsed(provider, model);
-      if (routineAccepted && routineForm) {
-        // The agent is brand new, so its scheduler was never started
-        // (create() doesn't go through setCurrent, and use-houston-init
-        // only starts schedulers that existed at launch). startScheduler
-        // is idempotent and picks up the just-written routine; plain
-        // syncScheduler would be a no-op for an unstarted agent.
-        try {
-          await tauriRoutines.create(agent.folderPath, {
-            name: routineForm.name,
-            description: routineForm.description,
-            prompt: routineForm.prompt,
-            schedule: routineForm.schedule,
-            enabled: true,
-            suppress_when_silent: routineForm.suppress_when_silent,
-            chat_mode: routineForm.chat_mode,
-          });
-          await tauriRoutines.startScheduler(agent.folderPath);
-        } catch (e) {
-          // The agent is already created and the tauri wrapper surfaced
-          // its own error toast. Log a breadcrumb and don't abort the
-          // post-create flow over the routine.
-          logger.error(`[new-agent] routine setup failed: ${e}`);
-        }
-      }
-      useUIStore.getState().setViewMode(DEFAULT_TAB_ID);
-      handleClose();
+      agentPath = agent.folderPath;
     } catch (err) {
       setError(String(err));
-    } finally {
       setCreating(false);
+      return;
     }
+    // Keep the sticky last-used in sync so the next new agent inherits the
+    // user's most recent choice (local, so it's cheap to await).
+    await tauriProvider.setLastUsed(provider, model);
+    // Reveal the agent NOW. The provider/model write and routine setup dispatch
+    // to the agent's engine, which on the hosted profile is a pod still
+    // cold-starting — awaiting them here would re-block the dialog for the whole
+    // pod warm-up (HOU-649), the exact stall this is fixing. The agent already
+    // exists and is current; finish its setup in the background. Both writes
+    // land before the pod is usable enough to send a message, and each surfaces
+    // its own error toast on failure.
+    useUIStore.getState().setViewMode(DEFAULT_TAB_ID);
+    handleClose();
+    void finishAgentSetup(agentPath, {
+      provider,
+      model,
+      routine: routineAccepted ? routineForm : null,
+    });
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -276,6 +269,7 @@ export function CreateAgentDialog() {
             existingPath={existingPath}
             provider={provider}
             model={model}
+            creating={creating}
             showLinkProject={selectedDef?.config.features?.includes(
               "link-project",
             )}
@@ -293,4 +287,55 @@ export function CreateAgentDialog() {
       </DialogContent>
     </Dialog>
   );
+}
+
+/**
+ * The pod-bound tail of agent creation, run after the dialog has already
+ * revealed the agent (HOU-649): persist the picked provider/model and, if the
+ * user accepted one, its starter routine. Both dispatch to the agent's engine,
+ * so on the hosted profile they wait out the pod's cold start — off the create
+ * click. Each step surfaces its own error toast via the tauri wrappers; we only
+ * add a breadcrumb so a background failure is traceable.
+ */
+async function finishAgentSetup(
+  agentPath: string,
+  opts: { provider: string; model: string; routine: RoutineFormData | null },
+): Promise<void> {
+  try {
+    // Always write provider/model to the agent's own config. With workspace
+    // defaults retired, the agent is the single source of truth — leaving the
+    // field blank would make the engine resolver fall back to its platform
+    // default rather than the user's pick.
+    const cfg = await tauriConfig.read(agentPath);
+    await tauriConfig.write(agentPath, {
+      ...cfg,
+      provider: opts.provider as "anthropic" | "openai",
+      model: opts.model,
+    });
+  } catch (e) {
+    logger.error(`[new-agent] provider/model write failed: ${e}`);
+  }
+
+  if (opts.routine) {
+    // The agent is brand new, so its scheduler was never started (create()
+    // doesn't go through setCurrent, and use-houston-init only starts
+    // schedulers that existed at launch). startScheduler is idempotent and
+    // picks up the just-written routine; plain syncScheduler would be a no-op
+    // for an unstarted agent.
+    try {
+      await tauriRoutines.create(agentPath, {
+        name: opts.routine.name,
+        description: opts.routine.description,
+        prompt: opts.routine.prompt,
+        schedule: opts.routine.schedule,
+        enabled: true,
+        suppress_when_silent: opts.routine.suppress_when_silent,
+        chat_mode: opts.routine.chat_mode,
+      });
+      await tauriRoutines.startScheduler(agentPath);
+    } catch (e) {
+      // The tauri wrapper surfaced its own error toast; leave a breadcrumb.
+      logger.error(`[new-agent] routine setup failed: ${e}`);
+    }
+  }
 }

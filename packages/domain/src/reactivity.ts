@@ -15,9 +15,30 @@ import type { HoustonEvent } from "@houston/protocol";
  * Order matters: `routine_runs` must be tested before `routines` (prefix
  * overlap). Returns null for paths not worth an event (`.git/**`, `.DS_Store`).
  */
+/**
+ * The events a file mutation can raise — exactly the plain
+ * `{ type, agentPath }` variants of {@link HoustonEvent}, so callers can pair
+ * the returned type with an agentPath and get a valid event without casting.
+ */
+export type AgentFileChangeEvent = Extract<
+  HoustonEvent,
+  {
+    type:
+      | "RoutineRunsChanged"
+      | "RoutinesChanged"
+      | "ActivityChanged"
+      | "ConfigChanged"
+      | "LearningsChanged"
+      | "ConversationsChanged"
+      | "SkillsChanged"
+      | "ContextChanged"
+      | "FilesChanged";
+  }
+>;
+
 export function agentFileEventType(
   relPath: string,
-): HoustonEvent["type"] | null {
+): AgentFileChangeEvent["type"] | null {
   if (relPath.startsWith(".houston/routine_runs")) return "RoutineRunsChanged";
   if (relPath.startsWith(".houston/routines")) return "RoutinesChanged";
   if (relPath.startsWith(".houston/activity")) return "ActivityChanged";

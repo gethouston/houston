@@ -22,6 +22,10 @@ import type {
   WorkspaceStore,
 } from "./ports";
 import { handleAccount } from "./routes/account";
+import {
+  type AgentConfigsDeps,
+  handleAgentConfigs,
+} from "./routes/agent-configs";
 import { handleAgents } from "./routes/agents";
 import { handleSandboxCredential } from "./routes/credential";
 import { handleEventStream } from "./routes/events-stream";
@@ -33,6 +37,8 @@ import {
 } from "./routes/integrations";
 import { handleSandboxIntegrations } from "./routes/integrations-sandbox";
 import { handlePortableAccount } from "./routes/portable";
+import { handleSetupRuntime } from "./routes/setup-runtime";
+import { handleSkillsDirectory } from "./routes/skills-directory";
 import type { Vfs } from "./vfs";
 
 export type { RuntimeProxy } from "./channel/proxy";
@@ -104,6 +110,12 @@ export interface ControlPlaneDeps {
    * sandbox proxy enforces nothing.
    */
   integrationGrants?: LocalIntegrationGrants;
+  /**
+   * Installed agent-config library (the create-agent picker's "installed"
+   * source + GitHub agent install). Absent → the list reads empty and installs
+   * answer 503.
+   */
+  agentConfigs?: AgentConfigsDeps;
   corsOrigin?: string;
 }
 
@@ -204,10 +216,18 @@ async function handle(
   }
 
   // User-level resources (workspaces, preferences) — no agent in the path.
+  // Marketplace reads (skills.sh search/popular, GitHub repo discovery) are
+  // user-scoped too: browsing has no agent yet; only installs are per-agent.
+  if (await handleSkillsDirectory(method, path, req, res)) return;
   if (await handleAccount(deps, userId, method, path, req, res)) return;
   if (await handlePortableAccount(deps, userId, method, path, req, res)) return;
+  if (await handleAgentConfigs(deps, userId, method, path, req, res)) return;
   if (await handleIntegrations(deps, userId, method, path, req, res)) return;
   if (await handleIntegrationGrants(deps, userId, method, path, req, res))
+    return;
+  // Pre-agent provider connect (first-run onboarding): a hidden setup runtime
+  // runs the OAuth so the user can connect their AI before any agent exists.
+  if (await handleSetupRuntime(deps, userId, method, path, url, req, res))
     return;
 
   if (await handleAgents(deps, userId, method, path, url, req, res)) return;

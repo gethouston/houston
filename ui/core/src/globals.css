@@ -7,7 +7,10 @@
    re-exports these to Tailwind's --color-* utilities. */
 @import "@houston/design-tokens/css";
 
-@custom-variant dark (&:is(.dark *));
+/* The app toggles dark mode via data-theme="dark" on <html> (see
+   app/src/lib/theme.ts) — NOT a .dark class. The variant must key on the
+   attribute or every `dark:` utility silently never applies. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /* Dark mode needs the native form controls / scrollbars to follow suit; the
    colour values themselves come from the imported tokens above. */

@@ -112,7 +112,7 @@ export function AiReviewStep({
                 rows={Math.max(10, instructions.split("\n").length + 2)}
                 className={cn(
                   "w-full px-4 py-3 text-sm text-foreground leading-relaxed",
-                  "bg-background border border-black/[0.04] rounded-lg",
+                  "bg-background border border-foreground/[0.04] rounded-lg",
                   "outline-none resize-none transition-shadow duration-200",
                   "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
                 )}

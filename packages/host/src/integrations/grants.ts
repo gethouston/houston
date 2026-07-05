@@ -63,13 +63,22 @@ export function normalizeToolkits(input: unknown): GrantValidation {
   return { ok: true, toolkits };
 }
 
-/** Keep only the matches whose toolkit is granted (case-insensitive). */
+/**
+ * Keep the matches whose toolkit is granted (case-insensitive) — plus every
+ * match marked NOT connected. Grants only exist over connected toolkits, so a
+ * `connected: false` match can never be granted; dropping it would kill the
+ * in-chat connect discovery (HOU-670: search surfaces not-connected apps so
+ * the agent can offer the connect card). Execute stays fully enforced — a
+ * not-connected toolkit fails there regardless.
+ */
 export function filterMatchesToGranted(
   matches: ToolMatch[],
   granted: string[],
 ): ToolMatch[] {
   const set = new Set(granted.map((t) => t.toLowerCase()));
-  return matches.filter((m) => set.has(m.toolkit.toLowerCase()));
+  return matches.filter(
+    (m) => m.connected === false || set.has(m.toolkit.toLowerCase()),
+  );
 }
 
 /** Is the action's toolkit in the granted set? Matches each granted slug as a

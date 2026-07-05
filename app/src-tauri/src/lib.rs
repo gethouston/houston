@@ -1,11 +1,13 @@
 mod auth;
 mod bug_report;
+mod codex_oauth_loopback;
 mod commands;
 #[cfg(target_os = "macos")]
 mod dmg_guard;
 mod engine_supervisor;
 mod houston_prompt;
 mod logging;
+mod loopback_util;
 mod notification;
 mod oauth_loopback;
 mod window_focus;
@@ -306,13 +308,26 @@ pub fn run() {
             // VITE_HOSTED_ENGINE_URL (Supabase bearer) is set, the frontend
             // talks to an external Houston host/gateway (see app/src/lib/engine.ts),
             // so don't spawn or health-check the Rust engine sidecar at all.
-            let host_mode = ["VITE_NEW_ENGINE_URL", "VITE_HOSTED_ENGINE_URL"]
-                .iter()
-                .any(|name| {
-                    std::env::var(name)
-                        .map(|v| !v.trim().is_empty())
-                        .unwrap_or(false)
-                });
+            //
+            // Two places to look: the runtime env covers `pnpm tauri dev`
+            // (Vite and this process share the shell env), while `option_env!`
+            // covers PACKAGED cloud builds — release CI bakes the gateway URL
+            // into the frontend at compile time, and the installed app's
+            // runtime env is empty, so without the compile-time check a cloud
+            // app would spawn an idle sidecar it never talks to.
+            let host_mode = [
+                option_env!("VITE_NEW_ENGINE_URL"),
+                option_env!("VITE_HOSTED_ENGINE_URL"),
+            ]
+            .iter()
+            .any(|v| v.is_some_and(|v| !v.trim().is_empty()))
+                || ["VITE_NEW_ENGINE_URL", "VITE_HOSTED_ENGINE_URL"]
+                    .iter()
+                    .any(|name| {
+                        std::env::var(name)
+                            .map(|v| !v.trim().is_empty())
+                            .unwrap_or(false)
+                    });
             if host_mode {
                 tracing::info!(
                     "[engine] host mode — skipping the Rust engine sidecar"
@@ -401,6 +416,10 @@ pub fn run() {
             // keeps desktop sign-in on the user's machine (no website relay,
             // no custom-scheme dialog).
             oauth_loopback::start_oauth_loopback,
+            // One-shot loopback listener for the OpenAI Codex OAuth redirect —
+            // binds the fixed port 1455 OpenAI registered and forwards the raw
+            // callback query to the webview as `codex-oauth://callback`.
+            codex_oauth_loopback::start_codex_oauth_loopback,
             // Pull the app to the foreground when a flow finishes in the
             // browser (e.g. a Composio integration connection landing).
             window_focus::focus_main_window,
@@ -635,9 +654,11 @@ fn spawn_host_sidecar(
         ("HOUSTON_HOST_PORT".into(), port.to_string()),
         // The product voice — the host reads this exact env var and injects it
         // into every runtime it spawns (main.ts → buildLocalHost.systemPrompt).
+        // The pi variant: same identity, but integrations guidance for the
+        // in-process tools + in-chat connect card, not the retired CLI.
         (
             "HOUSTON_APP_SYSTEM_PROMPT".into(),
-            houston_prompt::system_prompt(),
+            houston_prompt::system_prompt_pi(),
         ),
     ];
     // Integrations gateway (platform-mode Composio): Houston's cloud host owns

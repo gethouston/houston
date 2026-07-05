@@ -55,7 +55,7 @@ export function AppRow({
         onClick={onClick}
         className={cn(
           base,
-          "w-full transition-colors hover:bg-black/[0.05] focus-visible:bg-black/[0.05] focus-visible:outline-none",
+          "w-full transition-colors hover:bg-foreground/[0.05] focus-visible:bg-foreground/[0.05] focus-visible:outline-none",
         )}
       >
         {body}

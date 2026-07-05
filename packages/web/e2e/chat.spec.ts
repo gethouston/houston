@@ -47,6 +47,56 @@ test("sends a message with the Submit button", async ({ page }) => {
 });
 
 /**
+ * HOU-640: the first send must not flicker. AIBoard used to close its "new
+ * mission" state as soon as the created activity was selected, but the detail
+ * panel was gated on that activity being present in the refetched board
+ * query — so the whole chat panel unmounted until the refetch landed, then
+ * remounted. Stall the activity-list refetch and assert the optimistic user
+ * message renders immediately and stays visible through the whole window.
+ */
+test("first message keeps the chat panel mounted while the board refetches", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.locator('[data-tour-target="newMission"]').click();
+
+  const composer = page.getByPlaceholder("What should the agent work on?");
+  await expect(composer).toBeVisible();
+  await composer.fill("no flicker please");
+
+  // Once the create path has written the new activity (the PUT), stall every
+  // re-read of the board's activity list (both the files-first activity.json
+  // read and the REST route): the created activity stays absent from the
+  // board query for a beat — exactly the window where the panel used to
+  // unmount. The create path's own read-modify-write must NOT stall, so the
+  // stall arms only after the PUT.
+  let activityWritten = false;
+  await page.route(/\/activity\.json$|\/activities$/, async (route) => {
+    const req = route.request();
+    if (req.method() === "PUT") {
+      activityWritten = true;
+    } else if (activityWritten && req.method() === "GET") {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+    await route.continue();
+  });
+
+  await composer.press("Enter");
+
+  // The user's message renders right away, well before the stalled refetch
+  // resolves...
+  const message = page.getByText("no flicker please").first();
+  await expect(message).toBeVisible({ timeout: 1_000 });
+
+  // ...and never disappears — neither while the refetch is still pending nor
+  // when it lands and the panel switches to the resolved activity.
+  for (let i = 0; i < 10; i++) {
+    await page.waitForTimeout(200);
+    await expect(message).toBeVisible({ timeout: 100 });
+  }
+});
+
+/**
  * Reconnect resilience — the settle-on-close truncation regression. The SSE
  * stream is severed server-side mid-turn (a simulated network blip) while the
  * turn keeps producing into the fake host's replay log; the client must

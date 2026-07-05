@@ -18,5 +18,5 @@ export function classifyChange(relPath: string): HoustonEvent | null {
   const agentPath = `${parts[0]}/${parts[1]}`;
   const rest = parts.slice(2).join("/");
   const type = agentFileEventType(rest);
-  return type ? ({ type, agentPath } as HoustonEvent) : null;
+  return type ? { type, agentPath } : null;
 }

@@ -67,9 +67,11 @@ export interface ChatPanelProps {
   canSendEmpty?: boolean;
   status?: ChatStatus;
   thinkingIndicator?: ReactNode;
-  /** Static glyph shown after the agent's reply once the turn settles
-   *  (e.g. a non-blinking Houston helmet). Opt-in per surface. */
-  endOfTurnIndicator?: ReactNode;
+  /** Loader (e.g. the pulsing Houston helmet) shown for the WHOLE in-flight
+   *  turn — it stays up while the active mission-log header reads "Mission in
+   *  progress: <action>" and the standalone `thinkingIndicator` is suppressed
+   *  (HOU-655). Hidden the moment the reply text streams or the turn settles. */
+  loadingIndicator?: ReactNode;
   transformContent?: (content: string) => {
     content: string;
     extra?: ReactNode;

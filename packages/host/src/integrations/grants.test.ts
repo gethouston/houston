@@ -96,6 +96,35 @@ test("filter + grant checks are case-insensitive on the toolkit", () => {
   expect(isActionGranted("SLACK_POST", ["gmail"])).toBe(false);
 });
 
+test("not-connected matches pass the grant filter (in-chat connect discovery)", () => {
+  const matches: ToolMatch[] = [
+    {
+      action: "GMAIL_SEND",
+      toolkit: "gmail",
+      description: "",
+      connected: true,
+    },
+    // Connected but ungranted → hidden from this agent.
+    {
+      action: "SLACK_POST",
+      toolkit: "slack",
+      description: "",
+      connected: true,
+    },
+    // Not connected → can never be granted; must survive so the agent can
+    // offer the connect card (HOU-670).
+    {
+      action: "NOTION_ADD",
+      toolkit: "notion",
+      description: "",
+      connected: false,
+    },
+  ];
+  expect(
+    filterMatchesToGranted(matches, ["gmail"]).map((m) => m.action),
+  ).toEqual(["GMAIL_SEND", "NOTION_ADD"]);
+});
+
 test("concurrent first-reads materialize + persist exactly once", async () => {
   const provider = new CountingProvider([
     { toolkit: "gmail", connectionId: "c1", status: "active" },

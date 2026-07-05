@@ -56,6 +56,9 @@
     "copyCode": "Copiar código",
     "codeCopied": "Código copiado!",
     "codeCopyFailed": "Não foi possível copiar o código",
+    "deviceOpenFailed": "Não foi possível abrir a página de login",
+    "deviceSettingsHint": "Não apareceu o pedido de código? Ative o login por código de dispositivo em <link>Configurações do ChatGPT > Segurança</link>.",
+    "deviceSettingsOpenFailed": "Não foi possível abrir as configurações do ChatGPT",
     "cancel": "Cancelar"
   },
   "apiKey": {

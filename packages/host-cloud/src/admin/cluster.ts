@@ -81,7 +81,7 @@ function sumRestarts(pod: V1Pod): number {
 
 function sumCpuRequestCores(pod: V1Pod): number {
   const containers = pod.spec?.containers ?? [];
-  // In @kubernetes/client-node v0.22, requests is a plain { [k]: string } map.
+  // requests is a plain { [k]: string } quantity map.
   return containers.reduce(
     (acc, c) => acc + parseCpuToCores(c.resources?.requests?.cpu),
     0,
@@ -108,7 +108,7 @@ export function toPodInfo(pod: V1Pod): PodInfo {
     phase: pod.status?.phase ?? "Unknown",
     ready: podReady(pod),
     nodeName: pod.spec?.nodeName ?? null,
-    // startTime deserializes to a Date in v0.22; normalise to ISO for the wire.
+    // startTime deserializes to a Date; normalise to ISO for the wire.
     startedAt: start ? new Date(start).toISOString() : null,
     restarts: sumRestarts(pod),
     cpuRequestCores: sumCpuRequestCores(pod),
@@ -133,10 +133,9 @@ export function toVolumeInfo(pvc: V1PersistentVolumeClaim): VolumeInfo {
 
 /**
  * Live GKE cluster reader. Two cluster-wide list calls, each constrained to the
- * managed-by label selector (4th positional arg in the v0.22 client; skipped args
- * are `undefined`, and the result is the `{ body }`-wrapped shape that version
- * returns). The control plane's ClusterRole already grants cluster-scoped
- * list on pods + persistentvolumeclaims, so no extra RBAC is needed.
+ * managed-by label selector. The control plane's ClusterRole already grants
+ * cluster-scoped list on pods + persistentvolumeclaims, so no extra RBAC is
+ * needed.
  */
 export class GkeClusterReader implements ClusterReader {
   private readonly core: CoreV1Api;
@@ -147,22 +146,14 @@ export class GkeClusterReader implements ClusterReader {
 
   async snapshot(): Promise<ClusterSnapshot> {
     const [pods, pvcs] = await Promise.all([
-      this.core.listPodForAllNamespaces(
-        undefined,
-        undefined,
-        undefined,
-        MANAGED_SELECTOR,
-      ),
-      this.core.listPersistentVolumeClaimForAllNamespaces(
-        undefined,
-        undefined,
-        undefined,
-        MANAGED_SELECTOR,
-      ),
+      this.core.listPodForAllNamespaces({ labelSelector: MANAGED_SELECTOR }),
+      this.core.listPersistentVolumeClaimForAllNamespaces({
+        labelSelector: MANAGED_SELECTOR,
+      }),
     ]);
     return {
-      pods: pods.body.items.map(toPodInfo),
-      volumes: pvcs.body.items.map(toVolumeInfo),
+      pods: pods.items.map(toPodInfo),
+      volumes: pvcs.items.map(toVolumeInfo),
     };
   }
 }

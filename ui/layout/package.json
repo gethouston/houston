@@ -8,13 +8,13 @@
     "src"
   ],
   "peerDependencies": {
+    "@houston-ai/core": "workspace:*",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@houston-ai/core": "workspace:*"
+    "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "lucide-react": "^0.577.0",
-    "react-resizable-panels": "^4.7.3"
+    "lucide-react": "0.577.0",
+    "react-resizable-panels": "4.12.1"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit"

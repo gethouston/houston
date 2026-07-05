@@ -6,26 +6,6 @@ const env = process.env;
 
 const host = env.HOUSTON_HOST || "127.0.0.1";
 
-/** Loopback addresses — browser and runtime must be co-located to reach these. */
-function isLoopbackHost(h: string): boolean {
-  const v = h
-    .trim()
-    .toLowerCase()
-    .replace(/^\[|\]$/g, "");
-  return v === "127.0.0.1" || v === "localhost" || v === "::1";
-}
-
-/**
- * Headless = no usable loopback between the user's browser and the runtime, so
- * Claude's loopback OAuth can't catch its redirect. Explicit `HOUSTON_HEADLESS`
- * wins; otherwise inferred from a non-loopback bind host.
- */
-function isHeadless(): boolean {
-  const flag = env.HOUSTON_HEADLESS;
-  if (flag === undefined || flag === "") return !isLoopbackHost(host);
-  return /^(1|true|yes|on)$/i.test(flag);
-}
-
 function codeExecutionMode(): "local" | "remote" | "disabled" {
   const raw = env.HOUSTON_CODE_EXECUTION?.trim().toLowerCase();
   if (raw) {
@@ -57,8 +37,6 @@ export const config = {
     join(env.HOUSTON_HOME || join(homedir(), ".houston-ts"), "data"),
   host,
   port: Number(env.HOUSTON_PORT || 4317),
-  /** Use the headless OAuth flows (Claude via copy-paste code, no loopback). */
-  headless: isHeadless(),
   /** Default Anthropic model (Claude Pro/Max subscription). */
   model: env.HOUSTON_MODEL || "claude-sonnet-4-6",
   /** Default Codex model (ChatGPT subscription — the cloud's only provider). */
@@ -147,7 +125,7 @@ export const config = {
   codeExecution: codeExecutionMode(),
   /**
    * Remote code-execution sandbox (Cloud Run). Used only when codeExecution is
-   * "remote"; managed hosted pods set HOUSTON_CODE_EXECUTION=disabled.
+   * "remote"; managed hosted pods run bash in-container (HOUSTON_CODE_EXECUTION=local).
    */
   codeSandboxUrl: env.HOUSTON_CODE_SANDBOX_URL || "",
   /** App-layer token presented to the code sandbox via X-Sandbox-Token. */

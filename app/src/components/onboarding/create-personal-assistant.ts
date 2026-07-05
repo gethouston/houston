@@ -1,3 +1,4 @@
+import { logger } from "../../lib/logger";
 import { tauriConfig } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
@@ -25,16 +26,35 @@ export async function createPersonalAssistantForWorkspace(
       options.instructions,
     );
 
+  // The provider/model write dispatches to the agent's engine, which on the
+  // hosted profile is a pod still cold-starting — awaiting it would stall the
+  // whole first-run onboarding on the pod warm-up (HOU-649). The agent already
+  // exists; write the config in the background so the "assistant created" screen
+  // shows immediately. It lands well before the user can send their first
+  // message (the pod must finish warming for that too), and a failure surfaces
+  // via the tauri wrapper's own error toast.
   if (options.provider || options.model) {
-    const cfg = await tauriConfig.read(agent.folderPath);
-    await tauriConfig.write(agent.folderPath, {
+    void applyProviderModel(agent.folderPath, options);
+  }
+
+  return agent;
+}
+
+async function applyProviderModel(
+  agentPath: string,
+  options: CreatePersonalAssistantOptions,
+): Promise<void> {
+  try {
+    const cfg = await tauriConfig.read(agentPath);
+    await tauriConfig.write(agentPath, {
       ...cfg,
       ...(options.provider === "anthropic" || options.provider === "openai"
         ? { provider: options.provider }
         : {}),
       ...(options.model ? { model: options.model } : {}),
     });
+  } catch (e) {
+    // The tauri wrapper already showed a red error toast; leave a breadcrumb.
+    logger.error(`[onboarding] provider/model write failed: ${e}`);
   }
-
-  return agent;
 }

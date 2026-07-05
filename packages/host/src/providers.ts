@@ -53,7 +53,6 @@ export const PROVIDERS: readonly HostProvider[] = [
       "gemini-3.5-flash",
       // Free trial models — test the provider without spending credits.
       "deepseek-v4-flash-free",
-      "minimax-m3-free",
       "mimo-v2.5-free",
       "nemotron-3-ultra-free",
     ],

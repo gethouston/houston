@@ -184,16 +184,24 @@ test("gateway-fronted profile (no integrationGrants) does not serve the routes",
   }
 });
 
-test("sandbox search is filtered to granted toolkits once a record exists", async () => {
+test("sandbox search filters connected-but-ungranted toolkits; not-connected discovery survives", async () => {
   const fake = new FakeIntegrationProvider({
     id: "composio",
     actions: [
       { action: "GMAIL_SEND_EMAIL", toolkit: "gmail", description: "email" },
       { action: "SLACK_POST", toolkit: "slack", description: "email" },
+      // Never connected below — must SURVIVE the grant filter so the agent
+      // can offer the in-chat connect card (HOU-670 discovery).
+      { action: "NOTION_ADD", toolkit: "notion", description: "email notes" },
     ],
   });
   const { base, ws, agent, vault, grantStore, stop } = await setupWith(fake);
   try {
+    // gmail + slack are CONNECTED; only gmail is granted to this agent.
+    for (const toolkit of ["gmail", "slack"]) {
+      const { connectionId } = await fake.connect(USER, toolkit);
+      fake.completeConnection(USER, connectionId);
+    }
     await grantStore.put(agent.id, ["gmail"]);
     const sb = vault.sandboxToken(ws.id, agent.id);
     const res = await fetch(`${base}/sandbox/integrations/search`, {
@@ -205,7 +213,10 @@ test("sandbox search is filtered to granted toolkits once a record exists", asyn
       body: JSON.stringify({ query: "email" }),
     });
     const items = (await res.json()).items as { action: string }[];
-    expect(items.map((m) => m.action)).toEqual(["GMAIL_SEND_EMAIL"]);
+    expect(items.map((m) => m.action)).toEqual([
+      "GMAIL_SEND_EMAIL",
+      "NOTION_ADD",
+    ]);
   } finally {
     stop();
   }

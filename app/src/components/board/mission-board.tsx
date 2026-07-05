@@ -157,7 +157,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           onOpenLink={handleOpenLink}
           cardAvatar={source.cardAvatar}
           thinkingIndicator={panel.thinkingIndicator}
-          endOfTurnIndicator={panel.endOfTurnIndicator}
+          loadingIndicator={panel.loadingIndicator}
           panelAgentName={source.panelAgentName}
           panelAvatar={
             <AgentPanelAvatar
@@ -176,6 +176,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           footer={panel.footer}
           attachMenu={panel.attachMenu}
           renderUserMessage={panel.renderUserMessage}
+          renderLink={panel.renderLink}
           renderSystemMessage={panel.renderSystemMessage}
           mapFeedItems={panel.mapFeedItems}
           afterMessages={panel.afterMessages}

@@ -1,25 +1,24 @@
 import { join } from "node:path";
-import {
-  type AgentSessionEvent,
-  AuthStorage,
-  createAgentSession,
-  ModelRegistry,
-  SessionManager,
-} from "@earendil-works/pi-coding-agent";
+import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import type {
   ProviderError,
   TokenUsage,
   ToolCallRecord,
+  WireEvent,
   WireFrame,
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
+import { createPiBackend } from "../backends/pi/backend";
 import { config } from "../config";
-import { makeAgentLoader } from "../session/resource-loader";
+import {
+  diffSnapshots,
+  type FileSnapshot,
+  snapshotWorkspace,
+} from "../session/file-changes";
 import { buildToolSelection } from "../session/tool-selection";
 import { makeClampedFileTools } from "../session/tools/clamped-fs";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
 import { makeRunCodeTool } from "../session/tools/run-code";
-import { toWire } from "../session/wire";
 import {
   appendAssistantMessageAt,
   appendUserMessageAt,
@@ -92,8 +91,6 @@ export async function runPiTurn(
       authStorage,
       join(dataDir, "models.json"),
     );
-    const loader = makeAgentLoader(workspaceDir);
-    await loader.reload();
 
     const toolSelection = buildToolSelection({
       codeExecution: config.codeExecution === "remote" ? "remote" : "disabled",
@@ -132,29 +129,41 @@ export async function runPiTurn(
       pin?.effort ??
       (m.reasoning === true ? DEFAULT_REASONING_EFFORT : undefined);
     const thinkingLevel = toThinkingLevel(effort);
-    const { session } = await createAgentSession({
-      cwd: workspaceDir,
-      agentDir: dataDir,
-      model,
-      ...(thinkingLevel ? { thinkingLevel } : {}),
+    // Per-request pi backend rooted at the throwaway dirs. Same factory the
+    // long-lived server uses (backends/pi) — here nothing survives the request:
+    // auth, registry, tools, and session are all per-turn. No bash, ever, in
+    // cloud turn mode.
+    const backend = createPiBackend({
+      workspaceDir,
+      dataDir,
       authStorage,
       modelRegistry,
-      sessionManager: SessionManager.continueRecent(
-        workspaceDir,
-        join(dataDir, "sessions", conversationId),
-      ),
-      resourceLoader: loader as never,
-      // No bash, ever, in cloud turn mode.
       tools: toolSelection.toolNames,
       customTools: [
         ...makeClampedFileTools(workspaceDir),
         ...(sandbox ? [sandbox] : []),
       ],
     });
+    const session = await backend.createSession({
+      conversationId,
+      model,
+      ...(thinkingLevel ? { thinkingLevel } : {}),
+    });
 
-    const unsub = session.subscribe((e: AgentSessionEvent) => {
-      const wire = toWire(e);
-      if (!wire) return;
+    // Snapshot the hydrated workspace so the turn's created/modified files can
+    // be surfaced as a `file_changes` frame. The per-turn root is exclusive to
+    // this request, so the diff is attributable by construction. Best-effort.
+    let beforeFiles: FileSnapshot | null = null;
+    try {
+      beforeFiles = snapshotWorkspace(workspaceDir);
+    } catch (err) {
+      console.warn(
+        "[turn] file snapshot failed:",
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+
+    const unsub = session.subscribe((wire: WireEvent) => {
       if (wire.type === "text") assistantText += wire.data;
       else if (wire.type === "usage") usage = wire.data;
       else if (wire.type === "tool_start") tools.push({ name: wire.data.name });
@@ -172,6 +181,25 @@ export async function runPiTurn(
       signal?.removeEventListener("abort", onAbort);
       unsub();
     }
+    // Diff what this turn created/modified; skipped on a failed turn (a
+    // provider error means the model never finished). Emitted BEFORE the
+    // caller's terminal frame, mirroring the long-lived runtime's order.
+    let fileChanges: { created: string[]; modified: string[] } | undefined;
+    if (beforeFiles && !providerError) {
+      try {
+        const changes = diffSnapshots(
+          beforeFiles,
+          snapshotWorkspace(workspaceDir),
+        );
+        if (changes.created.length || changes.modified.length)
+          fileChanges = changes;
+      } catch (err) {
+        console.warn(
+          "[turn] file diff failed:",
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    }
     // Persist the turn's assistant message with any typed provider error so the
     // inline card survives a reload of this cloud conversation. The provider_error
     // frame was already streamed to the client (which settles on it), so this
@@ -182,8 +210,10 @@ export async function runPiTurn(
       tools,
       usage,
       providerError,
+      fileChanges,
       turnId,
     });
+    if (fileChanges) emit({ type: "file_changes", data: fileChanges });
     return {};
   } catch (err) {
     if (assistantText || providerError)

@@ -101,14 +101,23 @@ export class GkeLauncher implements RuntimeLauncher {
     const { agent, workspaceSlug } = await this.deps.resolver.resolve(agentId);
     const ns = namespaceFor(workspaceSlug);
     await deleteIgnoringMissing(() =>
-      this.apps.deleteNamespacedDeployment(deploymentName(agent.id), ns),
+      this.apps.deleteNamespacedDeployment({
+        name: deploymentName(agent.id),
+        namespace: ns,
+      }),
     );
     await deleteIgnoringMissing(() =>
-      this.core.deleteNamespacedService(serviceName(agent.id), ns),
+      this.core.deleteNamespacedService({
+        name: serviceName(agent.id),
+        namespace: ns,
+      }),
     );
     if (opts?.dropVolume) {
       await deleteIgnoringMissing(() =>
-        this.core.deleteNamespacedPersistentVolumeClaim(pvcName(agent.id), ns),
+        this.core.deleteNamespacedPersistentVolumeClaim({
+          name: pvcName(agent.id),
+          namespace: ns,
+        }),
       );
     }
   }
@@ -117,12 +126,12 @@ export class GkeLauncher implements RuntimeLauncher {
     const { agent, workspaceSlug } = await this.deps.resolver.resolve(agentId);
     const ns = namespaceFor(workspaceSlug);
     try {
-      const { body } = await this.apps.readNamespacedDeployment(
-        deploymentName(agent.id),
-        ns,
-      );
-      const desired = body.spec?.replicas ?? 0;
-      const ready = body.status?.readyReplicas ?? 0;
+      const deployment = await this.apps.readNamespacedDeployment({
+        name: deploymentName(agent.id),
+        namespace: ns,
+      });
+      const desired = deployment.spec?.replicas ?? 0;
+      const ready = deployment.status?.readyReplicas ?? 0;
       if (desired === 0) return "asleep";
       return ready > 0 ? "running" : "asleep";
     } catch (err) {

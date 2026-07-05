@@ -46,6 +46,7 @@ export function packAgent(
     description?: string;
     exporter?: string;
     houstonVersion: string;
+    anonymized?: boolean;
   },
   createdAt: string,
 ): Uint8Array {
@@ -55,6 +56,7 @@ export function packAgent(
     exporter: meta.exporter,
     houstonVersion: meta.houstonVersion,
     createdAt,
+    anonymized: meta.anonymized ?? false,
     formatVersion: PORTABLE_FORMAT_VERSION,
   };
   const files: Record<string, Uint8Array> = {

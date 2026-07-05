@@ -1,12 +1,13 @@
 import { ConfirmDialog } from "@houston-ai/core";
 import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
-import { Blocks, LayoutDashboard, Settings } from "lucide-react";
+import { Blocks, LayoutDashboard, Settings, Sparkles } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID, HOST_BUILD } from "../../agents/standard-tabs";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { orderAgents } from "../../lib/agent-order";
 import { resolveAutoCollapse } from "../../lib/sidebar-auto-collapse";
+import { isTopLevelView } from "../../lib/top-level-views";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
@@ -71,10 +72,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
     onShareAgent: (agentId) => useUIStore.getState().setShareAgentId(agentId),
     shareLabel: t("portable:shareMenu"),
   });
-  const isTopLevel =
-    viewMode === "dashboard" ||
-    viewMode === "settings" ||
-    viewMode === INTEGRATIONS_VIEW_ID;
+  const isTopLevel = isTopLevelView(viewMode);
 
   const handleWorkspaceSwitch = async (wsId: string) => {
     if (wsId === currentWorkspace?.id) return;
@@ -146,6 +144,8 @@ export function Sidebar({ children }: { children: ReactNode }) {
               onCreate={handleCreateWorkspace}
               collapsed={collapsed}
               createLabel={t("shell:sidebar.createWorkspace")}
+              onExpand={() => setSidebarCollapsed(false)}
+              expandLabel={t("shell:sidebar.expand")}
             />
           }
           navItems={[
@@ -171,6 +171,12 @@ export function Sidebar({ children }: { children: ReactNode }) {
                 ]
               : []),
             {
+              id: "ai-hub",
+              label: t("shell:sidebar.aiModels"),
+              icon: <Sparkles className="h-4 w-4" />,
+              onClick: () => setViewMode("ai-hub"),
+            },
+            {
               id: "settings",
               label: t("shell:sidebar.settings"),
               icon: <Settings className="h-4 w-4" />,
@@ -192,7 +198,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
             renameItem: t("common:actions.rename"),
             deleteItem: t("common:actions.delete"),
             collapseSidebar: t("shell:sidebar.collapse"),
-            expandSidebar: t("shell:sidebar.expand"),
           }}
           footer={
             <div className="flex flex-col">

@@ -94,10 +94,11 @@ async function waitFor(cond: () => boolean, ms = 2_000): Promise<void> {
   }
 }
 
-test("registers the turns/send, turns/cancel and turns/observe commands", () => {
+test("registers the turns/send, turns/cancel, turns/observe and turns/history commands", () => {
   const { commands } = harness();
   expect([...commands.keys()].sort()).toEqual([
     "turns/cancel",
+    "turns/history",
     "turns/observe",
     "turns/send",
   ]);

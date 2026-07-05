@@ -18,6 +18,24 @@ export {
   isUnauthorized,
   TOKEN_EXPIRED_EVENT,
 } from "./auth-expiry";
+// ===== Native bridge (dispatcher + wire vocabulary) ====================
+// The JS-side dispatcher that implements `BRIDGE.md` for embedding hosts
+// (iOS/JavaScriptCore, Android/Hermes). The self-contained IIFE bundle entry
+// lives in `bridge/entry.ts` (built via `build:bridge`) and is NOT re-exported
+// here because it installs global shims as an import side effect.
+export {
+  type Bridge,
+  createBridge,
+  type SdkFactory,
+} from "./bridge/dispatcher";
+export {
+  BRIDGE_PROTOCOL_VERSION,
+  type BridgeInbound,
+  type BridgeLogLevel,
+  type BridgeOutbound,
+  type NativePorts,
+  type SendFn,
+} from "./bridge/wire";
 export type {
   CommandEnvelope,
   CommandHandler,
@@ -25,6 +43,19 @@ export type {
 } from "./commands";
 export { CommandRegistry, isCommandEnvelope } from "./commands";
 export type { ModuleContext } from "./module-context";
+// ===== Activities module contract ======================================
+export {
+  ACTIVITY_CHANGED_EVENT,
+  ACTIVITY_STATUSES,
+  ActivitiesCommand,
+  type ActivitiesCommandType,
+  ActivitiesHttpError,
+  type ActivitiesModule,
+  type ActivitiesViewModel,
+  type ActivityItem,
+  activitiesScope,
+  type CreatedActivity,
+} from "./modules/activities";
 // ===== Agents module contract ==========================================
 export {
   AGENTS_CHANGED_EVENT,
@@ -43,6 +74,12 @@ export {
   type ConversationListVM,
   conversationListScope,
 } from "./modules/conversations";
+// ===== Mission-search module contract ==================================
+export type {
+  MatchedIn,
+  MissionMatch,
+  MissionsSearchModule,
+} from "./modules/missions-search";
 // ===== Session module contract =========================================
 // `createAuthFetch` + `SESSION_TOKEN_KEY` are host-facing: the host composes the
 // auth-fetch into `ports.fetch` before constructing the SDK (see the module).
@@ -64,8 +101,10 @@ export {
   type BoardStatus,
   type ConversationVM,
   conversationScope,
+  type FeedFrame,
   type FeedItemVM,
   type FeedOutput,
+  historyToFeed,
   isNotConnectedError,
   isStoppedByUser,
   MultiplexFeedOutput,
@@ -81,6 +120,7 @@ export {
   type TerminalBoardStatus,
   TURN_DIED_MESSAGE,
   type TurnCancelInput,
+  type TurnHistoryInput,
   type TurnObserveInput,
   type TurnSendInput,
   turnErrorMessage,

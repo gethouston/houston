@@ -48,7 +48,18 @@ interface ToolMatch {
   toolkit: string;
   description: string;
   inputParams?: unknown;
+  /** Host-reported: does the user have this action's app connected? */
+  connected?: boolean;
 }
+
+/**
+ * The instruction appended to search results (and connection-shaped execute
+ * failures) that teaches the model the in-chat connect hand-off (HOU-670):
+ * a markdown link carrying the `#houston_toolkit=<slug>` fragment, which the
+ * Houston chat renders as a rich connect card with a one-click button.
+ */
+const CONNECT_LINK_GUIDANCE =
+  "To let the user connect an app, include a markdown link in your reply whose URL ends with `#houston_toolkit=<toolkit>` — exactly like `[Connect Gmail](https://gethouston.ai/connect#houston_toolkit=gmail)`. Houston renders it as a connect button. After the user connects, Houston automatically sends you a message so you can continue — do not ask them to confirm.";
 interface ActionResult {
   successful: boolean;
   data?: unknown;
@@ -103,7 +114,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     name: "integration_search",
     label: "Find an app action",
     description:
-      "Search the user's connected apps (Gmail, Google Calendar, Slack, Notion, and many more) for an action you can run. Returns action slugs with their input parameters. Call this first to discover what's possible, then run one with integration_execute.",
+      "Search the user's apps (Gmail, Google Calendar, Slack, Notion, and many more) for an action you can run. Returns action slugs with their input parameters; actions marked NOT CONNECTED need the user to connect the app first (the result explains how to offer that). Call this first to discover what's possible, then run one with integration_execute.",
     promptSnippet: "Search the user's connected apps for an action to run",
     parameters: SearchParams,
     executionMode: "sequential",
@@ -128,14 +139,20 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           details: { matches: 0, actions: [] as string[] },
         };
       }
-      const text = items
+      const list = items
         .map((m) => {
+          const status = m.connected === false ? ", NOT CONNECTED" : "";
           const schema = m.inputParams
             ? `\n  params: ${JSON.stringify(m.inputParams)}`
             : "";
-          return `- ${m.action} (${m.toolkit}): ${m.description}${schema}`;
+          return `- ${m.action} (${m.toolkit}${status}): ${m.description}${schema}`;
         })
         .join("\n");
+      // Some matches need a connection first → teach the hand-off inline, at
+      // the moment the model actually faces a not-connected app (HOU-670).
+      const text = items.some((m) => m.connected === false)
+        ? `${list}\n\nActions marked NOT CONNECTED will fail until the user connects that app. ${CONNECT_LINK_GUIDANCE}`
+        : list;
       return {
         content: [{ type: "text" as const, text }],
         details: { matches: items.length, actions: items.map((m) => m.action) },
@@ -163,9 +180,13 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       );
       // The action ran but the app rejected it → surface, don't pretend success.
       if (!result.successful) {
-        throw new Error(
-          `"${params.action}" did not succeed: ${result.error ?? "unknown error"}`,
-        );
+        const reason = result.error ?? "unknown error";
+        // A missing connection is an actionable state, not a dead end: hand
+        // the model the connect-card instruction right in the error (HOU-670).
+        const hint = /connected account|not connected/i.test(reason)
+          ? ` The user has not connected this app. ${CONNECT_LINK_GUIDANCE}`
+          : "";
+        throw new Error(`"${params.action}" did not succeed: ${reason}${hint}`);
       }
       const text = result.data ? JSON.stringify(result.data, null, 2) : "Done.";
       return {

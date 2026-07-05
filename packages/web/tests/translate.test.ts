@@ -188,3 +188,29 @@ test("a failing status persist surfaces in the feed, not silently", async () => 
   });
   expect(surfaced).toBe(true);
 });
+
+// HOU-666: loadChatHistory must only treat "conversation not found" (404 — a
+// fresh chat whose first turn hasn't persisted yet) as an empty conversation.
+// Every other failure (network drop, auth, 5xx) must propagate to the app's
+// `call()` wrapper so the user gets a toast + Report-bug, never a fake empty
+// chat. The classifier is the seam that decides which is which.
+test("isConversationNotFound: only an engine 404 reads as no-history-yet", async () => {
+  const { isConversationNotFound } = await import(
+    "../src/engine-adapter/translate"
+  );
+  const { EngineError } = await import("@houston/runtime-client");
+
+  expect(
+    isConversationNotFound(
+      new EngineError(404, '{"error":"conversation not found"}'),
+    ),
+  ).toBe(true);
+  // Real failures keep throwing: server error, auth, and transport drops
+  // (fetch rejects with a plain TypeError, not an EngineError).
+  expect(isConversationNotFound(new EngineError(500, "boom"))).toBe(false);
+  expect(isConversationNotFound(new EngineError(401, "unauthorized"))).toBe(
+    false,
+  );
+  expect(isConversationNotFound(new TypeError("Load failed"))).toBe(false);
+  expect(isConversationNotFound(undefined)).toBe(false);
+});

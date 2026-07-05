@@ -37,13 +37,6 @@ async function start(): Promise<Server> {
     });
     return server;
   }
-  // Swap Claude's loopback OAuth for the headless copy-paste flow when remote.
-  if (config.headless) {
-    const { registerHeadlessAnthropicProvider } = await import(
-      "./auth/anthropic-headless"
-    );
-    registerHeadlessAnthropicProvider();
-  }
   const { startServer } = await import("./transport/server");
   return startServer();
 }

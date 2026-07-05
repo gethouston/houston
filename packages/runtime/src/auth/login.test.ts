@@ -5,36 +5,39 @@ import {
 import { expect, test } from "vitest";
 import {
   autoPromptAnswer,
+  cancelLogin,
   codexLoginMethod,
+  getAuthStatus,
   LOCAL_PLACEHOLDER_KEY,
   setApiKey,
   startLogin,
 } from "./login";
 
-test("codexLoginMethod: browser login only for a co-located client on a loopback runtime", () => {
-  // The desktop app sends deviceAuth:false and the desktop runtime is non-headless:
-  // the user approves in their own browser and the localhost callback finishes it.
-  expect(codexLoginMethod({ deviceAuth: false, headless: false })).toBe(
+test("codexLoginMethod: browser login for any client that can catch/relay the loopback callback", () => {
+  // The desktop app sends deviceAuth:false: the user approves in their own
+  // browser, the client catches the fixed localhost:1455 redirect and relays
+  // code+state, and the runtime finishes the token exchange.
+  expect(codexLoginMethod({ deviceAuth: false })).toBe(
     OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   );
 });
 
 test("codexLoginMethod: device code for any remote client (deviceAuth) — cloud and self-host", () => {
   // A remote webapp (cloud OR self-host) sends deviceAuth:true: the user types a
-  // one-time code while the runtime polls, regardless of how the runtime binds.
-  expect(codexLoginMethod({ deviceAuth: true, headless: false })).toBe(
-    OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
-  );
-  expect(codexLoginMethod({ deviceAuth: true, headless: true })).toBe(
+  // one-time code while the runtime polls.
+  expect(codexLoginMethod({ deviceAuth: true })).toBe(
     OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
   );
 });
 
-test("codexLoginMethod: device code when a co-located client hits a headless runtime", () => {
-  // Exotic: desktop pointed at a remote headless runtime. The loopback can't be
-  // reached, so fall back to the device code even though deviceAuth is false.
-  expect(codexLoginMethod({ deviceAuth: false, headless: true })).toBe(
-    OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
+test("codexLoginMethod: browser login for a headless/remote runtime whose client relays the callback", () => {
+  // Cloud-relay scenario: the runtime is headless but the desktop client still
+  // catches http://localhost:1455/auth/callback and relays code+state via
+  // completeLogin. The browser flow races its local callback server against that
+  // manually-relayed code, so headless no longer forces the device code — only
+  // deviceAuth decides, and deviceAuth:false means the client CAN relay.
+  expect(codexLoginMethod({ deviceAuth: false })).toBe(
+    OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   );
 });
 
@@ -58,8 +61,8 @@ test("autoPromptAnswer: github-copilot forwards the Enterprise company domain", 
 });
 
 test("autoPromptAnswer: other providers defer to the user (null => paste promise)", () => {
-  // Every other provider's onPrompt is the Anthropic headless code paste, which
-  // MUST wait for the user — null tells startLogin to hand back the paste promise.
+  // Every other provider's onPrompt is a manual code paste, which MUST wait for
+  // the user — null tells startLogin to hand back the paste promise.
   expect(autoPromptAnswer("anthropic")).toBeNull();
   expect(autoPromptAnswer("openai-codex")).toBeNull();
 });
@@ -70,6 +73,44 @@ test("the OpenAI-compatible provider rejects the OAuth and api-key connect paths
   // start a sign-in pi has no provider for.
   await expect(startLogin("openai-compatible")).rejects.toThrow(/OAuth/);
   expect(() => setApiKey("openai-compatible", "k")).toThrow(/API key/);
+});
+
+test("cancelLogin: benign with nothing in flight, throws on an unknown provider", () => {
+  // The client fires cancel on dialog dismiss regardless of flow state, so a
+  // no-op cancel must never error; a typo'd provider id is a caller bug.
+  expect(() => cancelLogin("anthropic")).not.toThrow();
+  expect(() => cancelLogin("not-a-provider")).toThrow(/unknown provider/);
+});
+
+test("cancelLogin: tears down the in-flight flow so a retry starts clean (HOU-664)", async () => {
+  // Anthropic now uses the sanctioned setup-token paste flow (`auth_code`, no
+  // loopback server). Independent of the flow shape, the old cosmetic cancel
+  // left the flow alive and the slot pending, so a retry collided with the
+  // stale login (the HOU-438 failure class). A real cancel frees the slot
+  // immediately so a retry builds a fresh login.
+  const first = await startLogin("anthropic");
+  expect(first.kind).toBe("auth_code");
+  expect(
+    getAuthStatus().providers.find((p) => p.provider === "anthropic")?.login
+      ?.status,
+  ).toBe("awaiting_user");
+
+  cancelLogin("anthropic");
+
+  // Slot freed at once: status no longer reports a pending login.
+  expect(
+    getAuthStatus().providers.find((p) => p.provider === "anthropic")?.login,
+  ).toBeNull();
+
+  // Let the rejected paste promise unwind the flow...
+  await new Promise((r) => setTimeout(r, 100));
+  // ...then a retry yields a FRESH login (idempotent reuse of a live login
+  // returns the same info object; a fresh start builds a new one).
+  const second = await startLogin("anthropic");
+  expect(second.kind).toBe("auth_code");
+  expect(second).not.toBe(first);
+  cancelLogin("anthropic");
+  await new Promise((r) => setTimeout(r, 100));
 });
 
 test("LOCAL_PLACEHOLDER_KEY exists for keyless local servers", () => {

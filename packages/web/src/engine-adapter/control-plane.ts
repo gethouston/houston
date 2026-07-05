@@ -6,10 +6,14 @@ import type {
   Activity,
   ActivityUpdate,
   Agent,
+  CommunitySkill,
   CustomEndpoint,
+  InstalledConfig,
   NewActivity,
+  RepoSkill,
   Routine,
   RoutineRun,
+  SkillDetail,
   SkillSummary,
   Workspace,
 } from "../../../../ui/engine-client/src/types";
@@ -66,6 +70,10 @@ function writeOverlay(overlay: Record<string, string>): void {
 }
 function setColor(agentId: string, color: string): void {
   writeOverlay({ ...colorOverlay(), [agentId]: color });
+}
+/** Record an agent's overlay color from outside this module (portable install). */
+export function rememberAgentColor(agentId: string, color: string): void {
+  setColor(agentId, color);
 }
 function moveColor(fromId: string, toId: string): void {
   writeOverlay(renameColorOverlay(colorOverlay(), fromId, toId));
@@ -173,10 +181,18 @@ export async function createAgent(
   cfg: ControlPlaneConfig,
   name: string,
   color?: string,
+  seed?: { claudeMd?: string; seeds?: Record<string, string> },
 ): Promise<Agent> {
   const res = await cpFetch(cfg, "/agents", {
     method: "POST",
-    body: JSON.stringify({ name }),
+    // The host seeds CLAUDE.md + the seed-file map on create (builtin
+    // templates, AI-assist instructions). JSON.stringify drops undefined
+    // fields, so a plain create still posts just `{ name }`.
+    body: JSON.stringify({
+      name,
+      claudeMd: seed?.claudeMd,
+      seeds: seed?.seeds,
+    }),
   });
   const agent = (await res.json()) as CpAgent;
   if (color) setColor(agent.id, color);
@@ -323,6 +339,46 @@ export function runtimeClientFor(
   });
 }
 
+/**
+ * Runtime client for the host's hidden SETUP runtime (`/setup-runtime/*`):
+ * the pre-agent provider-connect surface first-run onboarding uses. Provider
+ * OAuth needs a runtime to execute in, but the flow connects the AI BEFORE the
+ * first agent exists — the host runs it in a dedicated hidden runtime whose
+ * captured credential lands on the personal workspace, so the agent created
+ * right after is already connected.
+ */
+export function setupRuntimeClientFor(
+  cfg: ControlPlaneConfig,
+): HoustonEngineClient {
+  return new HoustonEngineClient({
+    baseUrl: `${cfg.baseUrl}/setup-runtime`,
+    token: liveToken(cfg.token) || undefined,
+  });
+}
+
+/** Connect-once capture on the setup runtime — `captureCredential`, agentless. */
+export async function captureSetupCredential(
+  cfg: ControlPlaneConfig,
+  provider?: string,
+): Promise<void> {
+  await cpFetch(cfg, `/setup-runtime/credential/capture`, {
+    method: "POST",
+    ...(provider ? { body: JSON.stringify({ provider }) } : {}),
+  });
+}
+
+/** API-key connect on the setup runtime — `setApiKey`, agentless. */
+export async function setSetupApiKey(
+  cfg: ControlPlaneConfig,
+  provider: string,
+  apiKey: string,
+): Promise<void> {
+  await cpFetch(cfg, `/setup-runtime/credential/api-key`, {
+    method: "POST",
+    body: JSON.stringify({ provider, apiKey }),
+  });
+}
+
 // --- The typed .houston families, now served REALLY by the host (P3). The list
 // routes return `{ items, diagnostics }`; the UI wants bare arrays. ---
 
@@ -404,6 +460,23 @@ export async function listSkills(
   return items.map((s) => ({ ...s, inputs: [], promptTemplate: null }));
 }
 
+/**
+ * A single skill's full detail (its SKILL.md content) from the host's
+ * `GET /agents/:id/skills/:slug`. Without this the adapter's Proxy fallback
+ * stubbed skill detail to `[]`, so clicking any skill showed no content.
+ */
+export async function loadSkill(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  slug: string,
+): Promise<SkillDetail> {
+  const res = await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/skills/${encodeURIComponent(slug)}`,
+  );
+  return (await res.json()) as SkillDetail;
+}
+
 export async function createRoutine(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -454,6 +527,89 @@ export async function runRoutineNow(
     `${agentPath(agentId)}/routines/${encodeURIComponent(id)}/run`,
     { method: "POST" },
   );
+}
+
+// Agent-config library: user-scoped like the marketplace reads — a template
+// belongs to the account, not to any existing agent.
+export async function listInstalledConfigs(
+  cfg: ControlPlaneConfig,
+): Promise<InstalledConfig[]> {
+  const res = await cpFetch(cfg, "/v1/agent-configs");
+  return (await res.json()) as InstalledConfig[];
+}
+export async function installAgentFromGithub(
+  cfg: ControlPlaneConfig,
+  githubUrl: string,
+): Promise<{ agentId: string }> {
+  const res = await cpFetch(cfg, "/v1/agents/install-from-github", {
+    method: "POST",
+    body: JSON.stringify({ githubUrl }),
+  });
+  return (await res.json()) as { agentId: string };
+}
+
+// Marketplace reads are user-scoped (browsing has no agent yet); installs
+// write into a specific agent's skills folder. Mirrors the host's split
+// between /v1/skills/* and /agents/:id/skills/*.
+export async function searchCommunitySkills(
+  cfg: ControlPlaneConfig,
+  query: string,
+  signal?: AbortSignal,
+): Promise<CommunitySkill[]> {
+  const res = await cpFetch(cfg, "/v1/skills/community/search", {
+    method: "POST",
+    body: JSON.stringify({ query }),
+    signal,
+  });
+  return (await res.json()) as CommunitySkill[];
+}
+export async function popularCommunitySkills(
+  cfg: ControlPlaneConfig,
+  signal?: AbortSignal,
+): Promise<CommunitySkill[]> {
+  const res = await cpFetch(cfg, "/v1/skills/community/popular", {
+    method: "POST",
+    signal,
+  });
+  return (await res.json()) as CommunitySkill[];
+}
+export async function listSkillsFromRepo(
+  cfg: ControlPlaneConfig,
+  source: string,
+  signal?: AbortSignal,
+): Promise<RepoSkill[]> {
+  const res = await cpFetch(cfg, "/v1/skills/repo/list", {
+    method: "POST",
+    body: JSON.stringify({ source }),
+    signal,
+  });
+  return (await res.json()) as RepoSkill[];
+}
+export async function installCommunitySkill(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  body: { source: string; skillId: string },
+  signal?: AbortSignal,
+): Promise<string> {
+  const res = await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/skills/community/install`,
+    { method: "POST", body: JSON.stringify(body), signal },
+  );
+  return (await res.json()) as string;
+}
+export async function installSkillsFromRepo(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  body: { source: string; skills: RepoSkill[] },
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const res = await cpFetch(cfg, `${agentPath(agentId)}/skills/repo/install`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    signal,
+  });
+  return (await res.json()) as string[];
 }
 
 export async function createSkill(

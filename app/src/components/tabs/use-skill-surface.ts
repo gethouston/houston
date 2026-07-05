@@ -1,16 +1,20 @@
-import type { Skill } from "@houston-ai/skills";
+import type { CommunitySkill, RepoSkill, Skill } from "@houston-ai/skills";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useCreateSkill,
   useDeleteSkill,
+  useInstallCommunitySkill,
+  useInstallSkillFromRepo,
+  useListSkillsFromRepo,
   useSaveSkill,
   useSkillDetail,
   useSkills,
 } from "../../hooks/queries";
 import { isMissingSkillError } from "../../lib/missing-skill";
 import { queryKeys } from "../../lib/query-keys";
+import { tauriSkills } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 import { resolveLoadingSkillName } from "./skill-loading-model";
 import { useSkillSurfaceLabels } from "./use-skill-surface-labels";
@@ -71,6 +75,9 @@ export function useSkillSurface(agentPath: string) {
   const saveSkill = useSaveSkill(agentPath);
   const deleteSkill = useDeleteSkill(agentPath);
   const createSkill = useCreateSkill(agentPath);
+  const installCommunity = useInstallCommunitySkill(agentPath);
+  const listFromRepo = useListSkillsFromRepo();
+  const installFromRepo = useInstallSkillFromRepo(agentPath);
 
   const selectedSkill: Skill | undefined =
     selectedSkillName && skillDetail
@@ -112,6 +119,38 @@ export function useSkillSurface(agentPath: string) {
     [deleteSkill],
   );
 
+  const handleSearch = useCallback(
+    (query: string, signal?: AbortSignal) =>
+      tauriSkills.searchCommunity(query, signal),
+    [],
+  );
+
+  const handlePopular = useCallback(
+    (signal?: AbortSignal) => tauriSkills.popularCommunity(signal),
+    [],
+  );
+
+  const handleInstallCommunity = useCallback(
+    async (skill: CommunitySkill, signal?: AbortSignal) =>
+      installCommunity.mutateAsync({
+        source: skill.source,
+        skillId: skill.skillId,
+        signal,
+      }),
+    [installCommunity],
+  );
+
+  const handleListFromRepo = useCallback(
+    async (source: string) => listFromRepo.mutateAsync(source),
+    [listFromRepo],
+  );
+
+  const handleInstallFromRepo = useCallback(
+    async (source: string, skills: RepoSkill[]) =>
+      installFromRepo.mutateAsync({ source, skills }),
+    [installFromRepo],
+  );
+
   const handleCreateFromScratch = useCallback(
     async (input: { name: string; description: string; content: string }) => {
       await createSkill.mutateAsync(input);
@@ -130,6 +169,11 @@ export function useSkillSurface(agentPath: string) {
     clearSelectedSkill,
     handleSkillSave,
     handleSkillDelete,
+    handleSearch,
+    handlePopular,
+    handleInstallCommunity,
+    handleListFromRepo,
+    handleInstallFromRepo,
     handleCreateFromScratch,
     installedSkillNames,
   };

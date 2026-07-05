@@ -224,7 +224,6 @@ test("OpenCode effort levels match models.dev reasoning_options", () => {
   // Open models expose only a reasoning toggle (no discrete effort) → omitted.
   for (const [prov, id] of [
     ["opencode", "gemini-3.5-flash"],
-    ["opencode", "minimax-m3-free"],
     ["opencode", "mimo-v2.5-free"],
     ["opencode", "nemotron-3-ultra-free"],
     ["opencode-go", "glm-5.1"],

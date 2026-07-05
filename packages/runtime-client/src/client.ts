@@ -5,6 +5,7 @@ import type {
   ConversationSummary,
   CustomEndpoint,
   EngineClientConfig,
+  GenerateAgentResponse,
   HealthResponse,
   LoginInfo,
   ProviderId,
@@ -148,6 +149,16 @@ export class HoustonEngineClient {
       { method: "POST" },
     );
   }
+  /**
+   * Cancel an in-flight OAuth login on the runtime itself — aborts the
+   * device-code polling / closes the loopback callback server and frees the
+   * login slot so a retry starts clean. Benign when nothing is in flight.
+   */
+  cancelLogin(provider: ProviderId) {
+    return this.json<{ ok: boolean }>(`/auth/${provider}/login/cancel`, {
+      method: "POST",
+    });
+  }
   /** Submit a pasted code (the `auth_code` headless Claude path). */
   completeLogin(provider: ProviderId, code: string) {
     return this.json<{ ok: boolean }>(`/auth/${provider}/login/complete`, {
@@ -243,6 +254,28 @@ export class HoustonEngineClient {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
+    });
+  }
+
+  /**
+   * Create-with-AI: generate an agent name + CLAUDE.md instructions (+ an
+   * optional routine suggestion) from a plain-language description, via one
+   * one-shot turn on the runtime. `provider` / `model` are pi ids; omitted,
+   * the runtime uses its active provider — same resolution as a chat turn.
+   */
+  generateAgent(
+    description: string,
+    opts: { provider?: string; model?: string; signal?: AbortSignal } = {},
+  ) {
+    return this.json<GenerateAgentResponse>("/generate-agent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        description,
+        provider: opts.provider,
+        model: opts.model,
+      }),
+      signal: opts.signal,
     });
   }
 

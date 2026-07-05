@@ -17,23 +17,26 @@ import type {
   ComposioStatus as EngineComposioStatus,
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
-  ImportedWorkspace,
   ProviderAuthState,
-  StoreListing,
 } from "@houston-ai/engine-client";
 import { useProviderSwitchStore } from "../stores/provider-switch";
 import { shouldAutocompactForSession } from "./autocompact";
 import { COMPOSIO_ALREADY_CONNECTED_KIND } from "./composio-already-connected";
 import { getEngine, isRemoteEngine } from "./engine";
 import { engineCallSurface } from "./engine-call-policy";
-import { providerLoginUsesDeviceAuthByDefault } from "./engine-mode";
+import {
+  isLoopbackHostUrl,
+  providerLoginUsesDeviceAuthByDefault,
+} from "./engine-mode";
 import { logger } from "./logger";
 import { isMissingSkillError } from "./missing-skill";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { normalizeLegacyModel } from "./providers";
 import type {
   Agent,
+  CommunitySkillResult,
   FileEntry,
+  RepoSkill,
   SkillDetail,
   SkillSummary,
   Workspace,
@@ -431,6 +434,75 @@ export const tauriSkills = {
     call<void>("save_skill", () =>
       getEngine().saveSkill(name, { workspacePath: agentPath, content }),
     ),
+  listFromRepo: (source: string) =>
+    call<RepoSkill[]>(
+      "list_skills_from_repo",
+      () => getEngine().listSkillsFromRepo(source),
+      undefined,
+      // The Add Skills dialog renders repo failures (typo'd repo, private,
+      // no skills) inline with plain-English copy — no red bug toast.
+      { toast: false },
+    ),
+  installFromRepo: (agentPath: string, source: string, skills: RepoSkill[]) =>
+    call<string[]>(
+      "install_skills_from_repo",
+      () =>
+        getEngine().installSkillsFromRepo({
+          workspacePath: agentPath,
+          source,
+          skills,
+        }),
+      undefined,
+      { toast: false },
+    ),
+  searchCommunity: (query: string, signal?: AbortSignal) =>
+    call<CommunitySkillResult[]>(
+      "search_community_skills",
+      async () =>
+        (await getEngine().searchCommunitySkills(query, signal)).map((s) => ({
+          id: s.id,
+          skillId: s.skillId,
+          name: s.name,
+          installs: s.installs,
+          source: s.source,
+        })),
+      undefined,
+      { toast: false },
+    ),
+  popularCommunity: (signal?: AbortSignal) =>
+    call<CommunitySkillResult[]>(
+      "popular_community_skills",
+      async () =>
+        (await getEngine().popularCommunitySkills(signal)).map((s) => ({
+          id: s.id,
+          skillId: s.skillId,
+          name: s.name,
+          installs: s.installs,
+          source: s.source,
+        })),
+      undefined,
+      { toast: false },
+    ),
+  installCommunity: (
+    agentPath: string,
+    source: string,
+    skillId: string,
+    signal?: AbortSignal,
+  ) =>
+    call<string>(
+      "install_community_skill",
+      () =>
+        getEngine().installCommunitySkill(
+          {
+            workspacePath: agentPath,
+            source,
+            skillId,
+          },
+          signal,
+        ),
+      undefined,
+      { toast: false },
+    ),
 };
 
 // ─── Composio (desktop CLI connections) ───────────────────────────────
@@ -607,44 +679,6 @@ export const tauriFiles = {
   revealAgent: (agentPath: string) => osRevealAgent(agentPath),
 };
 
-// ─── Store ────────────────────────────────────────────────────────────
-
-export const tauriStore = {
-  listInstalled: () =>
-    call<Array<{ config: unknown; path: string }>>(
-      "list_installed_configs",
-      () => getEngine().listInstalledConfigs(),
-    ),
-  fetchCatalog: () =>
-    call<StoreListing[]>("fetch_store_catalog", () =>
-      getEngine().storeCatalog(),
-    ),
-  search: (query: string) =>
-    call<StoreListing[]>("search_store", () => getEngine().storeSearch(query)),
-  install: (repo: string, agentId: string) =>
-    call<void>("install_store_agent", () =>
-      getEngine().installStoreAgent({ repo, agentId }),
-    ),
-  uninstall: (agentId: string) =>
-    call<void>("uninstall_store_agent", () =>
-      getEngine().uninstallStoreAgent(agentId),
-    ),
-  installFromGithub: (githubUrl: string) =>
-    call<string>(
-      "install_agent_from_github",
-      async () =>
-        (await getEngine().installAgentFromGithub({ githubUrl })).agentId,
-    ),
-  checkUpdates: () =>
-    call<string[]>("check_agent_updates", () =>
-      getEngine().checkAgentUpdates(),
-    ),
-  installWorkspaceFromGithub: (githubUrl: string) =>
-    call<ImportedWorkspace>("install_workspace_from_github", () =>
-      getEngine().installWorkspaceFromGithub({ githubUrl }),
-    ),
-};
-
 // ─── Conversations ────────────────────────────────────────────────────
 
 interface RawConversation {
@@ -659,7 +693,6 @@ interface RawConversation {
   agent_name: string;
   agent?: string;
   routine_id?: string;
-  worktree_path?: string | null;
 }
 
 export const tauriConversations = {
@@ -690,7 +723,6 @@ function conversationToRaw(
     agent_name: c.agent_name,
     agent: c.agent,
     routine_id: c.routine_id,
-    worktree_path: c.worktree_path,
   };
 }
 
@@ -753,7 +785,6 @@ export const tauriActivity = {
     title: string,
     description?: string,
     agent?: string,
-    worktreePath?: string,
     provider?: string,
     model?: string,
   ) =>
@@ -762,7 +793,6 @@ export const tauriActivity = {
       title,
       description ?? "",
       agent,
-      worktreePath,
       provider,
       model,
     ),
@@ -847,6 +877,23 @@ export interface ProviderStatus {
   active_model?: string;
 }
 
+/**
+ * Pick the connected gateway for a card that spans several engine gateway ids —
+ * OpenCode's Zen + Go share one key, so the merged "OpenCode" account reads as
+ * connected when EITHER gateway is. Returns the first authenticated probe, else
+ * the first probe present. `byId` is a `checkAllStatuses` result; `[p.id]` for a
+ * normal single-gateway provider just returns its own probe.
+ */
+export function mergeGatewayStatus(
+  gatewayIds: readonly string[],
+  byId: Record<string, ProviderStatus>,
+): ProviderStatus | undefined {
+  const probes = gatewayIds
+    .map((id) => byId[id])
+    .filter((s): s is ProviderStatus => Boolean(s));
+  return probes.find((s) => s.cli_installed && s.authenticated) ?? probes[0];
+}
+
 const DEFAULT_PROVIDER_PREF_KEY = "default_provider";
 const DEFAULT_MODEL_PREF_KEY = "default_model";
 
@@ -865,21 +912,46 @@ export const tauriProvider = {
       };
     }),
   /**
-   * Combined connect status for a card that spans several engine gateway ids —
-   * OpenCode's Zen + Go share one key, so the merged "OpenCode" account reads as
-   * connected when EITHER gateway is. Probes each in parallel (one probe for a
-   * normal single-id provider) and returns the first authenticated status, else
-   * the first probe. The adapter writes / clears both gateways together, so this
-   * also reconciles a credential left under a single gateway by an older build.
+   * Connect status for many provider / gateway ids in ONE engine round-trip.
+   *
+   * The new TS engine's adapter exposes a batched `providerStatuses()` that
+   * resolves every card from a single `listProviders()` call (HOU-650). The
+   * legacy Rust client has no such method — and won't get one, it's being
+   * retired — so we feature-detect it and fall back to per-provider probes there
+   * (that path keeps its old N-round-trip behavior; no Rust-side change). Returns
+   * a map keyed by the ids passed. Screens that show several provider cards
+   * (settings, onboarding picker, chat model picker) call this once instead of
+   * probing each card separately.
    */
-  checkMergedStatus: async (
-    ids: readonly string[],
-  ): Promise<ProviderStatus> => {
-    const probes = await Promise.all(
-      ids.map((id) => tauriProvider.checkStatus(id)),
-    );
-    return probes.find((s) => s.cli_installed && s.authenticated) ?? probes[0];
-  },
+  checkAllStatuses: (ids: readonly string[]) =>
+    call<Record<string, ProviderStatus>>(
+      "check_provider_statuses",
+      async () => {
+        const engine = getEngine() as {
+          providerStatus: (name: string) => Promise<EngineProviderStatus>;
+          providerStatuses?: (
+            names: readonly string[],
+          ) => Promise<EngineProviderStatus[]>;
+        };
+        const list = engine.providerStatuses
+          ? await engine.providerStatuses([...ids])
+          : await Promise.all(ids.map((id) => engine.providerStatus(id)));
+        const out: Record<string, ProviderStatus> = {};
+        ids.forEach((id, i) => {
+          const p = list[i];
+          if (!p) return;
+          out[id] = {
+            provider: p.provider,
+            cli_installed: p.cliInstalled,
+            auth_state: p.authState,
+            authenticated: p.authState === "authenticated",
+            cli_name: p.cliName,
+            active_model: p.activeModel,
+          };
+        });
+        return out;
+      },
+    ),
   getDefault: () =>
     call<string>(
       "get_default_provider",
@@ -946,11 +1018,19 @@ export const tauriProvider = {
         getEngine().providerLogin(provider, {
           deviceAuth:
             opts?.deviceAuth ??
-            // A runtime `remote` choice (HOU-621) makes the engine remote without
-            // any baked URL env, so OR in isRemoteEngine() — else the topology
-            // helper (build-env only) would pick browser loopback against a
-            // callback that lives on the remote host and the login strands.
-            (isRemoteEngine() ||
+            // The browser/loopback flow needs the runtime CO-LOCATED with the
+            // user's browser: pi binds the provider's fixed localhost callback
+            // port in-process and completes the exchange itself, so the client
+            // only opens the URL. A truly remote engine (hosted cloud, a VPS,
+            // or the HOU-621 runtime `remote` choice with no baked env — hence
+            // the isRemoteEngine() OR) must use device code instead. A LOOPBACK
+            // `VITE_NEW_ENGINE_URL` (the dev two-terminal setup) is co-located
+            // despite being URL-configured, so it keeps the browser flow like
+            // the packaged host-sidecar build.
+            ((isRemoteEngine() &&
+              !isLoopbackHostUrl(
+                import.meta.env?.VITE_NEW_ENGINE_URL as string | undefined,
+              )) ||
               providerLoginUsesDeviceAuthByDefault(
                 (import.meta.env ?? {}) as {
                   VITE_NEW_ENGINE_URL?: string;

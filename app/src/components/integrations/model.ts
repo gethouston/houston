@@ -1,4 +1,5 @@
 import type {
+  Capabilities,
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
@@ -9,6 +10,21 @@ import type {
  * no sign-in step for the apps.
  */
 export const INTEGRATION_PROVIDER = "composio";
+
+/**
+ * Whether this deployment serves the integration routes at all. The host
+ * advertises the providers actually wired in `/v1/capabilities` — a deployment
+ * with neither a gateway URL nor a platform key honestly serves `[]` and
+ * answers every `/v1/integrations` route with 503 ("integrations not
+ * configured"), so callers must not fetch there. `null` capabilities (still
+ * loading, or the legacy Rust engine, which has no integration routes) also
+ * means don't fetch. Pure so it's unit-testable.
+ */
+export function integrationsSupported(
+  capabilities: Pick<Capabilities, "integrations"> | null,
+): boolean {
+  return (capabilities?.integrations.length ?? 0) > 0;
+}
 
 /** How long to wait between connection polls, and how many times to poll. */
 export const POLL_INTERVAL_MS = 2000;

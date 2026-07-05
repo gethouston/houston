@@ -38,8 +38,8 @@ export function SkillRow({ skill, onClick, onDelete }: SkillRowProps) {
         "group flex items-start gap-3 px-5 py-4 cursor-pointer w-full text-left",
         "bg-transparent border-0 p-0",
         "transition-colors duration-150",
-        "hover:bg-black/[0.03]",
-        "focus-visible:outline-none focus-visible:bg-black/[0.03]",
+        "hover:bg-foreground/[0.03]",
+        "focus-visible:outline-none focus-visible:bg-foreground/[0.03]",
       )}
     >
       <div className="flex-1 min-w-0">

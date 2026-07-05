@@ -58,6 +58,11 @@ export function applyTurnFrame(
         },
       });
       break;
+    case "file_changes":
+      // Files this turn created/modified — the chat attaches them to the
+      // current assistant message ("files this mission touched" summary).
+      push(s, { feed_type: "file_changes", data: ev.data });
+      break;
     case "provider_error":
       settleProviderErrorCard(s, ev.data);
       stop();

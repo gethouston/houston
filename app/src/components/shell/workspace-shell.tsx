@@ -28,9 +28,11 @@ import { analytics } from "../../lib/analytics";
 import { osIsTauri } from "../../lib/os-bridge";
 import { isMac } from "../../lib/platform";
 import { shortcutLabel } from "../../lib/shortcuts";
+import { isTopLevelView } from "../../lib/top-level-views";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
+import { AiHubView } from "../ai-hub/ai-hub-view";
 import { CommandPalette } from "../command-palette";
 import { Dashboard } from "../dashboard";
 import { INTEGRATIONS_VIEW_ID, IntegrationsView } from "../integrations-view";
@@ -92,10 +94,7 @@ export function WorkspaceShell({
   const needsYouCount = (activities ?? []).filter(
     (a) => a.status === "needs_you",
   ).length;
-  const isAgentView =
-    viewMode !== "dashboard" &&
-    viewMode !== "settings" &&
-    viewMode !== INTEGRATIONS_VIEW_ID;
+  const isAgentView = !isTopLevelView(viewMode);
   const tabOr = (id: string) =>
     STANDARD_TAB_IDS.has(id) ? id : DEFAULT_TAB_ID;
 
@@ -162,6 +161,8 @@ export function WorkspaceShell({
               >
                 {viewMode === "dashboard" ? (
                   <Dashboard />
+                ) : viewMode === "ai-hub" ? (
+                  <AiHubView />
                 ) : viewMode === "settings" ? (
                   <SettingsView />
                 ) : viewMode === INTEGRATIONS_VIEW_ID && HOST_BUILD ? (

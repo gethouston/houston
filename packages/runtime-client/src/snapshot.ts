@@ -62,6 +62,7 @@ export function reduceSnapshot(
     case "tool_start":
     case "tool_end":
     case "usage":
+    case "file_changes":
       return {
         running: true,
         partial: prev.partial,

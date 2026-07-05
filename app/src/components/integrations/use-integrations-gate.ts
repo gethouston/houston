@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useIntegrationStatus } from "../../hooks/queries";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSession } from "../../hooks/use-session";
 import { signInWithGoogle } from "../../lib/auth";
 import { showErrorToast } from "../../lib/error-toast";
@@ -35,6 +36,10 @@ export type IntegrationsGate =
 export function useIntegrationsGate(): IntegrationsGate {
   const { t } = useTranslation("integrations");
   const qc = useQueryClient();
+  // The status query is gated on the advertised `integrations` capability, so
+  // until capabilities resolve it sits idle (`isLoading` false, no data) —
+  // hold `loading`, not a premature `unavailable`.
+  const { isLoading: capabilitiesLoading } = useCapabilities();
   const status = useIntegrationStatus();
   const { data: session } = useSession();
   const composio = status.data?.find(
@@ -87,7 +92,8 @@ export function useIntegrationsGate(): IntegrationsGate {
     }
   }, [qc]);
 
-  if (status.isLoading || sessionSyncPending) return { kind: "loading" };
+  if (status.isLoading || capabilitiesLoading || sessionSyncPending)
+    return { kind: "loading" };
   if (!composio) return { kind: "unavailable" };
   if (!composio.ready) {
     if (isAuthConfigured()) {

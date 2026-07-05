@@ -9,7 +9,8 @@ import type { Capabilities } from "@houston/protocol";
  * The asymmetries are deliberate and contained here (the irreducible local↔cloud
  * differences from the convergence plan): local has the Tauri shell + the user's
  * own machine (reveal-in-OS, terminal, unconfined bash, a reachable local LLM);
- * cloud is the egress-locked remote sandbox or the clamped managed pod. Cloud
+ * cloud is the egress-locked remote sandbox or the managed pod (bash confined
+ * to the single-tenant container). Cloud
  * offers the SAME connect-once / API-key providers as desktop — only the user's
  * own local LLM (the `openaiCompatible` flag) is desktop-only, because a cloud
  * runtime can't reach a server on the user's machine. Everything NOT listed here
@@ -69,16 +70,17 @@ export const CLOUD_CAPABILITIES: Capabilities = {
 
 /**
  * Managed personal cloud pod: open local-profile host/runtime in Kubernetes,
- * fronted by the private gateway. The pod has no OS-native affordances and no
- * process code execution; tools are clamped file + integrations only. It still
- * offers the full provider set — only code execution and OS-native bits are cut.
+ * fronted by the private gateway. The pod has no OS-native affordances, but the
+ * agent's bash runs in-container (HOU-669): the pod is single-tenant and
+ * network-policied, so the container is the sandbox — same posture as
+ * self-host. Only the OS-native bits (reveal, terminal, local LLM) are cut.
  */
 export const MANAGED_CLOUD_CAPABILITIES: Capabilities = {
   profile: "cloud",
   revealInOs: false,
   terminal: false,
   tunnel: false,
-  codeExecution: "disabled",
+  codeExecution: "local-bash",
   providers: [...HOSTED_PROVIDERS],
   openaiCompatible: false,
   integrations: ["composio"],

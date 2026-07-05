@@ -45,6 +45,17 @@ test("memory guidance requires explicit opt-in", () => {
   expect(p).toContain(".houston/learnings/learnings.json");
 });
 
-test("Composio is dropped (cut in the convergence)", () => {
-  expect(houstonSystemPrompt()).not.toContain("Composio");
+test("integrations guidance teaches the tools + the in-chat connect card (HOU-670)", () => {
+  const p = houstonSystemPrompt();
+  expect(p).toContain("## How-To Guidance: Connected Apps (Integrations)");
+  expect(p).toContain("integration_search");
+  expect(p).toContain("integration_execute");
+  expect(p).toContain("#houston_toolkit=<toolkit>");
+  expect(p).toContain("I've connected Gmail. Please continue.");
+});
+
+test("the guidance is provider-agnostic and CLI-free (Composio CLI cut in the convergence)", () => {
+  const p = houstonSystemPrompt();
+  expect(p).not.toContain("Composio");
+  expect(p).not.toContain("composio link");
 });

@@ -8,9 +8,10 @@ versioning discipline. Everything here is plain JSON; nothing crosses the bridge
 that is not JSON-serializable.
 
 This is the contract. The thin JS-side **dispatcher** that implements it (wraps
-`HoustonSdk.dispatch` / `subscribe` / `on` and marshals strings over the pipe)
-is on the roadmap — this document is the interface it will satisfy, and the
-native side may be written against it before that code lands.
+`HoustonSdk.dispatch` / `subscribe` / `on`, marshals strings over the pipe, and
+backs `fetch`/`storage` natively) has **shipped** in `packages/sdk/src/bridge/`,
+along with the embeddable IIFE bundle (`build:bridge`). §2.1, §9, and §10 are the
+normative additions that landed with it; the base envelopes are unchanged.
 
 ---
 
@@ -47,15 +48,22 @@ Every message is a JSON object with a `kind` discriminator. Types below reuse
 the kernel contract verbatim:
 
 ```ts
-// packages/sdk/src/bridge.ts (roadmap) — the wire union this doc specifies
+// packages/sdk/src/bridge/wire.ts — the wire union this doc specifies (SHIPPED)
 import type { CommandEnvelope, CommandResult } from "../commands";
 import type { SdkEvent } from "../store";
 
 // host → SDK
 export type BridgeInbound =
+  | { kind: "configure"; baseUrl: string; native?: NativePorts } // §2.1
   | { kind: "command"; envelope: CommandEnvelope }
   | { kind: "subscribe"; sub: string; scope: string }
-  | { kind: "unsubscribe"; sub: string };
+  | { kind: "unsubscribe"; sub: string }
+  // native port replies (correlated to an SDK-minted `id`) — §9
+  | { kind: "fetch/response"; id: string; status: number; ok: boolean }
+  | { kind: "fetch/chunk"; id: string; bytesBase64: string }
+  | { kind: "fetch/done"; id: string }
+  | { kind: "fetch/error"; id: string; message: string }
+  | { kind: "storage/result"; id: string; value?: string | null };
 
 // SDK → host
 export type BridgeOutbound =
@@ -64,8 +72,60 @@ export type BridgeOutbound =
   | { kind: "subscribed"; sub: string; scope: string; snapshot?: unknown }
   | { kind: "snapshot"; sub: string; scope: string; snapshot: unknown }
   | { kind: "event"; event: SdkEvent }
-  | { kind: "fatal"; reason: string; message: string };
+  | { kind: "fatal"; reason: string; message: string }
+  | { kind: "error"; message: string; detail?: unknown } // §5, protocol-level
+  // native port requests (host replies correlated by `id`) — §9
+  | { kind: "fetch/start"; id: string; url: string; method: string;
+      headers: Record<string, string>; body?: string }
+  | { kind: "fetch/abort"; id: string }
+  | { kind: "storage/get"; id: string; key: string }
+  | { kind: "storage/set"; id: string; key: string; value: string }
+  | { kind: "storage/delete"; id: string; key: string }
+  | { kind: "log"; level: "debug" | "info" | "warn" | "error";
+      message: string; fields?: Record<string, unknown> };
+
+/** Which capability ports the host services natively over the pipe (§9). */
+export interface NativePorts { storage?: boolean; fetch?: boolean }
 ```
+
+> **Status.** This union is SHIPPED in `packages/sdk/src/bridge/` (the dispatcher
+> `createBridge`, the native-port marshalling, and the embeddable-bundle entry).
+> The four base envelopes above match the original contract verbatim; the
+> `configure` / `error` / `fetch/*` / `storage/*` / `log` members and the
+> `NativePorts` shape were added additively when the dispatcher landed — all
+> optional-by-construction, so a host built against the base four is unaffected
+> (§4). §2.1 (configure), §9 (native ports), and §10 (host polyfills) below are
+> the new normative sections.
+
+### 2.1 Configure — the first inbound message
+
+The dispatcher constructs nothing until the host declares where the engine
+lives. `configure` is therefore the **first** message the host sends, before
+any command or subscription:
+
+```json
+→ { "kind": "configure", "baseUrl": "http://127.0.0.1:4317",
+    "native": { "storage": true } }
+← { "kind": "ready", "v": 1 }
+```
+
+- `baseUrl` (required) roots every engine request.
+- `native` (optional) declares which ports the host backs over the pipe.
+  `storage` defaults `true` (host-backed via `storage/*`); `false` makes the
+  bridge use an in-memory store (tokens do not survive a restart). `fetch` is
+  always native — an embedded engine has no HTTP stack — and a `false` is
+  ignored.
+- The dispatcher builds the ports, constructs the SDK, wires the event channel,
+  and replies `ready` **once**. A second `configure` is refused with an `error`.
+- **Ordering note.** Constructing the SDK hydrates the persisted token, so the
+  first `storage/get` (§9) may go out *before* `ready`. A host must be ready to
+  service port requests as soon as it has sent `configure`.
+
+> **Deviation from the original §2 handshake.** The roadmap draft posted `ready`
+> "on construction," before any inbound message. Reality: the dispatcher needs
+> `baseUrl` to construct the SDK, so `ready` is the **reply to `configure`**, not
+> an unprompted greeting. Everything else about `ready` (posted exactly once,
+> `v` is the compatibility gate) is unchanged.
 
 ### Commands (request / reply, correlated by `id`)
 
@@ -91,9 +151,17 @@ modules register; the flows in §6 use the representative names below.
 - SDK replies **once, immediately**, with
   `{ kind: "subscribed", sub, scope, snapshot? }`. `snapshot` carries the
   current `getSnapshot(scope)`; it is **omitted** when that is `undefined`
-  (nothing published yet). Subscribing is also what *activates* a lazy scope —
-  e.g. the first subscriber on `conversation/<id>` starts that conversation's
-  live stream underneath (§7).
+  (nothing published yet).
+
+  > **Deviation — subscribing does NOT activate a lazy scope.** The roadmap
+  > draft said the first subscriber on `conversation/<id>` starts that
+  > conversation's stream underneath. In the shipped SDK `subscribe` is a
+  > *passive* read attachment: it delivers the initial snapshot and forwards
+  > later publishes, but it starts no stream. To make a conversation stream, the
+  > host issues a command — `turns/send` (start a turn) or `turns/observe`
+  > (attach to a turn started elsewhere); those publish to the scope and the
+  > subscriber then receives the pushes. Subscribe first so the initial frames
+  > are not missed, then send the activating command (see §6.3/§6.4).
 - Thereafter, every `publish(scope, snapshot)` the SDK makes for that scope is
   pushed as `{ kind: "snapshot", sub, scope, snapshot }` — one message **per
   matching subscription**. `snapshot` here always carries a value (publish
@@ -168,7 +236,21 @@ no in-band renegotiation — `v` is a compatibility gate, not a handshake dialog
 
 ## 5. Error surfaces
 
-Three distinct surfaces. Keep them separate in host code.
+Four distinct surfaces. Keep them separate in host code. (The fourth,
+**protocol errors**, is new — added with the dispatcher.)
+
+**0. Protocol errors** — an inbound message the dispatcher could not act on and
+could not correlate to a command or subscription. Delivered as
+`{ kind: "error", message, detail? }`. Causes: a non-JSON string, an object with
+no string `kind`, `subscribe` missing `sub`/`scope`, `unsubscribe` missing
+`sub`, `subscribe`/`command` before `configure`, or a second `configure`. It is
+**never fatal** and correlates to nothing — it just reports that one message was
+rejected. A **malformed command** does *not* use this surface: it still gets a
+`result` (`ok:false`, `"invalid command envelope"`) correlated by whatever `id`
+was extractable (§2), so command replies stay uniform. An **unknown `kind`** is
+*not* an error either — it is inert per §4 (ignored, no reply), so a newer host
+speaking a future member never trips the old dispatcher.
+
 
 **1. Command errors** — a single command failed. Delivered as the command's own
 `{ kind: "result", result: { id, ok: false, error: { message, status? } } }`.
@@ -195,6 +277,13 @@ host must stop issuing commands, obtain a fresh session token, and re-attach
 (§6.6). The SDK also flips the `connection` scope snapshot to unauthenticated,
 so a host subscribed there sees it both ways. A `fatal` is **not** correlated to
 any command; it can arrive at any time.
+
+> **Mechanism.** Inside the SDK, token expiry is an `SdkEvent`
+> (`type: "session/tokenExpired"`) on the event channel. The dispatcher
+> translates that ONE event type into `{ kind: "fatal", reason: "tokenExpired" }`
+> and forwards every other event verbatim as `{ kind: "event", event }`. A host
+> therefore never sees a `session/tokenExpired` `event` — it always arrives as a
+> `fatal`.
 
 > **Provider token-expired vs. session token-expired.** A *provider* credential
 > lapsing (Claude/Codex OAuth) is a **stream error** — per-conversation, in the
@@ -400,3 +489,135 @@ The conversation feed snapshot's `live` block projects the runtime-client
 - **Backpressure.** The pipe has none at this layer. If the host cannot keep up
   with `snapshot` pushes it should coalesce on its side — since each snapshot is
   a full replacement, dropping all but the latest per `sub` is always correct.
+
+---
+
+## 9. Native-backed ports (fetch + storage over the pipe)
+
+An embedded engine has no HTTP stack and no persistent store of its own. The SDK
+reaches both **through the host, over the same pipe**, as request/reply message
+pairs correlated by an **SDK-minted** `id` (a separate namespace from the
+host-minted command `id`/`sub`; ids appear only inside these `fetch/*` /
+`storage/*` frames, so they never collide with `result`/`snapshot` ids).
+
+### 9.1 fetch
+
+Every engine request — a `GET /agents`, a `POST …/messages`, and the long-lived
+`GET …/events` SSE — leaves as a `fetch/start`; the host performs the real
+network I/O and streams the response back:
+
+```json
+→ { "kind": "fetch/start", "id": "f7", "url": "http://127.0.0.1:4317/agents/ag_1/conversations/cv_42/events",
+    "method": "GET", "headers": { "accept": "text/event-stream", "authorization": "Bearer eyJ…" } }
+← { "kind": "fetch/response", "id": "f7", "status": 200, "ok": true }
+← { "kind": "fetch/chunk", "id": "f7", "bytesBase64": "ZGF0YTogeyJ0eXBlIjoic3luYyJ9Cgo=" }
+← { "kind": "fetch/chunk", "id": "f7", "bytesBase64": "ZGF0YTogeyJ0eXBlIjoidGV4dCJ9Cgo=" }
+← { "kind": "fetch/done", "id": "f7" }
+```
+
+- **`fetch/start { id, url, method, headers, body? }`** — `headers` is a flat
+  string map. `body` is a UTF-8 string (the SDK sends `JSON.stringify(...)` or
+  nothing); absent when there is no body.
+- **`fetch/response { id, status, ok }`** — resolves the SDK's `Response`.
+  Response headers are **not** carried: no consumer reads them (see the pinned
+  contract below).
+- **`fetch/chunk { id, bytesBase64 }`** — one body chunk, **base64** (the pipe
+  is JSON strings; raw bytes are not JSON-serializable). The SDK decodes to
+  `Uint8Array` and feeds its stream reader. Send as many as the body has;
+  a non-streaming JSON body is typically one chunk.
+- **`fetch/done { id }`** — the body ended cleanly. **`fetch/error { id, message }`**
+  — the request/stream failed; before `fetch/response` it rejects the `fetch`
+  promise, after it errors the body reader (which the resume loop reads as a
+  dropped connection and reconnects, §7).
+- **`fetch/abort { id }`** (SDK→host) — the SDK aborted this request (switching
+  conversations, teardown). The host cancels the native request; any later
+  `fetch/*` for that `id` is ignored.
+
+**The minimal `Response` the SDK assembles** — only these members are used, so
+only these are guaranteed (each pinned to its consumer in `@houston/runtime-client`
+/ `@houston/sdk`):
+
+| Member | Consumer |
+| --- | --- |
+| `status` | `client.ts` (EngineError), `auth-fetch.ts` (401), `agents/http.ts` |
+| `ok` | `client.ts`, `agents/http.ts` |
+| `text()` | `client.ts` (error body), `agents/http.ts` |
+| `json()` | `client.ts` (`json<T>`), `agents/http.ts` |
+| `body` (truthy) + `body.getReader()` | `client.ts` (`streamEvents`) |
+| `getReader().read() → { done, value: Uint8Array }` | `sse-read.ts` |
+
+`releaseLock()` exists as a no-op (spec symmetry) but no consumer calls it;
+`Response.headers` is never read.
+
+### 9.2 storage
+
+`SdkPorts.storage` (the token custody store) is a request/reply pair; the host
+serves it from Keychain / SecureStore / SharedPreferences:
+
+```json
+→ { "kind": "storage/get", "id": "k1", "key": "houston.sdk.session.token" }
+← { "kind": "storage/result", "id": "k1", "value": "eyJ…" }     // string, or null if absent
+→ { "kind": "storage/set", "id": "k2", "key": "houston.sdk.session.token", "value": "eyJ…" }
+← { "kind": "storage/result", "id": "k2" }                       // value omitted for set/delete
+→ { "kind": "storage/delete", "id": "k3", "key": "houston.sdk.session.token" }
+← { "kind": "storage/result", "id": "k3" }
+```
+
+`storage/result` carries `value` (string | null) only for a `get`; it is omitted
+for `set`/`delete`. If the host declared `native.storage: false` in `configure`
+(§2.1), the bridge serves storage from an in-memory map and emits no `storage/*`.
+
+### 9.3 clock + logger — not port-bridged
+
+- **Clock is NOT bridged.** The SDK's `setTimeout` / `clearTimeout` / `Date.now`
+  come from the JS engine's own globals (§10), which the host already backs with
+  its native run loop; the resume/backoff loops schedule against those globals
+  directly. Bridging the clock would put a message round-trip on every backoff
+  tick and idle-watchdog sweep for no benefit, so timers stay in-engine.
+- **Logger** forwards each line as `{ kind: "log", level, message, fields? }`
+  (SDK→host, no reply). Route it to your native log / Sentry, or drop it.
+
+### 9.4 Command vocabulary (informative)
+
+The bridge routes command `type` strings **opaquely** — they are owned by the
+SDK modules, not this contract (§2). The §6 flows use illustrative names; the
+**registered** types today are: `session/setToken` (§6.1/§6.6 call it
+`session/attach`), `agents/refresh` · `agents/create` · `agents/rename` ·
+`agents/delete`, `conversations/refresh` · `conversations/rename` ·
+`conversations/delete`, and `turns/send` · `turns/cancel` · `turns/observe`.
+New modules add types without touching the bridge.
+
+---
+
+## 10. Host polyfills (normative)
+
+The bundle targets a **bare** embedded engine (JavaScriptCore / Hermes outside a
+WebKit web context), so it assumes very little. The split:
+
+**The host MUST provide these globals** (no pure-JS substitute; they need the
+native run loop):
+
+- `setTimeout(fn, ms)` / `clearTimeout(id)`
+- `setInterval(fn, ms)` / `clearInterval(id)` — the per-conversation resume loop
+  arms an idle watchdog with `setInterval`.
+
+**The bundle self-provides these if the engine lacks them** (installed only when
+`typeof X === "undefined"`, so a host that already has them wins) — a host need
+NOT polyfill them, but MAY:
+
+- `Headers` + `Request` — `auth-fetch.ts` builds `new Headers()` on every
+  authenticated request and tests `input instanceof Request`.
+- `AbortController` / `AbortSignal` — stream cancellation.
+- `TextEncoder` / `TextDecoder` — UTF-8 SSE decoding (`TextDecoder` with
+  `{ stream: true }`).
+
+**Optional** (used if present, gracefully degraded if not):
+
+- `crypto.getRandomValues` — nonce entropy; falls back to `Math.random`.
+- `console` — the SDK logs through the `log` port, not `console`, so it is only
+  a convenience.
+
+The bundle needs **no** `fetch`, `btoa`/`atob`, `Buffer`, `process`, `document`,
+or `window`. A CI smoke test evaluates the built IIFE in a bare Node `vm` context
+with **only** the required globals injected and round-trips a command, so any
+hidden global dependency fails the build.

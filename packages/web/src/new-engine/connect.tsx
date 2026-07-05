@@ -3,8 +3,35 @@ import type {
   ProviderId,
   ProviderInfo,
 } from "@houston/runtime-client";
-import { useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import { ui } from "./styles";
+
+// ChatGPT security settings, where device-code sign-in is toggled on. The
+// most common device-login dead-end is that switch being off.
+const CHATGPT_SECURITY_URL = "https://chatgpt.com/#settings/Security";
+
+// Inline text link, matching the card's dark-on-dark palette. This surface
+// paints before app CSS loads, so it carries its own styles (see styles.ts).
+const linkStyle: CSSProperties = {
+  background: "none",
+  border: "none",
+  padding: 0,
+  font: "inherit",
+  color: "#9a9cff",
+  textDecoration: "underline",
+  cursor: "pointer",
+};
+
+const codeBoxStyle: CSSProperties = {
+  ...ui.input,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  height: 52,
+  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+  fontSize: 22,
+  letterSpacing: "0.3em",
+};
 
 /**
  * Connect screen for the new engine: lists subscription providers and starts the
@@ -28,6 +55,13 @@ export function ConnectView({
     hint?: string;
   } | null>(null);
   const [code, setCode] = useState("");
+  // Set for the Codex/ChatGPT device-code flow: the one-time code the user
+  // types on the verification page (opened automatically) to finish sign-in.
+  const [deviceCode, setDeviceCode] = useState<{
+    code: string;
+    verificationUri: string;
+  } | null>(null);
+  const [deviceCopied, setDeviceCopied] = useState(false);
 
   useEffect(() => {
     client
@@ -47,6 +81,7 @@ export function ConnectView({
         } else if (pr?.login?.status === "error") {
           clearInterval(poll);
           setPendingCode(null);
+          setDeviceCode(null);
           setNote(`Login failed: ${pr.login.error}`);
         }
       } catch {
@@ -58,6 +93,8 @@ export function ConnectView({
   const connect = async (p: ProviderInfo) => {
     setNote(`Starting ${p.name} login…`);
     setPendingCode(null);
+    setDeviceCode(null);
+    setDeviceCopied(false);
     setCode("");
     try {
       const info = await client.startLogin(p.id);
@@ -72,16 +109,31 @@ export function ConnectView({
         );
         setPendingCode({ id: p.id, hint: info.instructions });
       } else {
+        // Device code: open the verification page now and show the code with a
+        // one-click copy affordance. pollUntilConnected auto-advances on success.
         window.open(info.verificationUri, "_blank", "noopener");
-        setNote(
-          `Open ${info.verificationUri} and enter code: ${info.userCode}`,
-        );
+        setDeviceCode({
+          code: info.userCode,
+          verificationUri: info.verificationUri,
+        });
+        setNote("Waiting for you to authorize in the new tab…");
       }
     } catch (e) {
       setNote(e instanceof Error ? e.message : String(e));
       return;
     }
     pollUntilConnected(p.id);
+  };
+
+  const copyDeviceCode = async () => {
+    if (!deviceCode) return;
+    try {
+      await navigator.clipboard.writeText(deviceCode.code);
+      setDeviceCopied(true);
+      setTimeout(() => setDeviceCopied(false), 2000);
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : String(e));
+    }
   };
 
   const submitCode = async () => {
@@ -114,6 +166,39 @@ export function ConnectView({
             {p.configured ? `✓ ${p.name} connected` : `Connect ${p.name}`}
           </button>
         ))}
+        {deviceCode ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={codeBoxStyle}>{deviceCode.code}</div>
+            <button type="button" style={ui.button} onClick={copyDeviceCode}>
+              {deviceCopied ? "Code copied!" : "Copy code"}
+            </button>
+            <p style={ui.note}>
+              Enter this code on the ChatGPT tab that opened.{" "}
+              <button
+                type="button"
+                style={linkStyle}
+                onClick={() =>
+                  window.open(deviceCode.verificationUri, "_blank", "noopener")
+                }
+              >
+                Open the page again
+              </button>
+            </p>
+            <p style={ui.note}>
+              Not seeing a code prompt? Turn on device-code sign-in in ChatGPT
+              Settings {">"} Security.{" "}
+              <button
+                type="button"
+                style={linkStyle}
+                onClick={() =>
+                  window.open(CHATGPT_SECURITY_URL, "_blank", "noopener")
+                }
+              >
+                Open settings
+              </button>
+            </p>
+          </div>
+        ) : null}
         {pendingCode ? (
           <div style={{ display: "flex", gap: 8 }}>
             <input

@@ -171,32 +171,49 @@ export class ComposioProvider implements IntegrationProvider {
     // Composio's full-text search is weak unqualified ("send an email" ranks
     // unrelated marketing tools above GMAIL_SEND_EMAIL — verified live), so
     // scope to the user's CONNECTED toolkits when they have any: those are the
-    // only actions execute() can run for them anyway. No connections yet →
-    // global search, so the agent can still discover what to suggest.
+    // only actions execute() can run for them anyway. Every match carries
+    // `connected` so the agent can tell "run it" from "offer to connect it".
     const connected = await this.listConnections(userId);
     const slugs = [
       ...new Set(
         connected.filter((c) => c.status === "active").map((c) => c.toolkit),
       ),
     ];
-    const body = await this.http.call<{ items?: RawTool[] }>("/api/v3/tools", {
-      query: {
-        query,
-        limit: "10",
-        ...(slugs.length ? { toolkit_slug: slugs.join(",") } : {}),
-      },
+    const isConnected = (toolkit: string) =>
+      slugs.some((s) => s.toLowerCase() === toolkit.toLowerCase());
+    const tools = async (query: Record<string, string>) => {
+      const body = await this.http.call<{ items?: RawTool[] }>(
+        "/api/v3/tools",
+        { query },
+      );
+      return (body?.items ?? []).map((t) => {
+        const match = mapTool(t);
+        return { ...match, connected: isConnected(match.toolkit) };
+      });
+    };
+    // No connections yet → global search, so the agent can still discover
+    // what to suggest connecting (every match reports connected:false).
+    if (slugs.length === 0) return tools({ query, limit: "10" });
+    const matched = await tools({
+      query,
+      limit: "10",
+      toolkit_slug: slugs.join(","),
     });
-    const matched = (body?.items ?? []).map(mapTool);
-    if (matched.length > 0 || slugs.length === 0) return matched;
-    // Composio's full-text match is naive AND-ish: an everyday phrasing like
-    // "read my latest 5 emails" scores ZERO against GMAIL_FETCH_EMAILS
-    // (verified live). Scoped to connected toolkits the catalog is small, so
-    // degrade to listing their actions instead of returning nothing — the
-    // agent picks the right slug from the list.
-    const all = await this.http.call<{ items?: RawTool[] }>("/api/v3/tools", {
-      query: { limit: "50", toolkit_slug: slugs.join(",") },
-    });
-    return (all?.items ?? []).map(mapTool);
+    if (matched.length > 0) return matched;
+    // The scoped query missed. Two distinct reasons, both worth answering:
+    //  - Composio's full-text match is naive AND-ish: an everyday phrasing
+    //    like "read my latest 5 emails" scores ZERO against GMAIL_FETCH_EMAILS
+    //    (verified live). Scoped to connected toolkits the catalog is small,
+    //    so degrade to listing their actions — the agent picks the slug.
+    //  - The user wants an app they never connected ("send it via gmail" with
+    //    only Slack linked). A global search surfaces those actions marked
+    //    connected:false, so the agent can offer the in-chat connect card
+    //    (HOU-670) instead of dead-ending.
+    const [listing, global] = await Promise.all([
+      tools({ limit: "50", toolkit_slug: slugs.join(",") }),
+      tools({ query, limit: "10" }),
+    ]);
+    return [...listing, ...global.filter((t) => !t.connected)];
   }
 
   async execute(

@@ -10,8 +10,10 @@ import {
   isCommandEnvelope,
 } from "./commands";
 import type { ModuleContext } from "./module-context";
+import { createActivitiesModule } from "./modules/activities";
 import { createAgentsModule } from "./modules/agents";
 import { createConversationsModule } from "./modules/conversations";
+import { createMissionsSearchModule } from "./modules/missions-search";
 import { createSessionModule } from "./modules/session";
 import { createTurnsModule } from "./modules/turns";
 import type { SdkConfig } from "./ports";
@@ -70,6 +72,10 @@ export class HoustonSdk {
   readonly conversations: ReturnType<typeof createConversationsModule>;
   /** Turn facade (send message, drive a turn). */
   readonly turns: ReturnType<typeof createTurnsModule>;
+  /** Board/missions facade (per-agent activities read + CRUD). */
+  readonly activities: ReturnType<typeof createActivitiesModule>;
+  /** Mission-search facade (ranked full-text search across missions). */
+  readonly missions: ReturnType<typeof createMissionsSearchModule>;
 
   constructor(config: SdkConfig) {
     this.config = config;
@@ -99,6 +105,8 @@ export class HoustonSdk {
     this.agents = createAgentsModule(ctx);
     this.conversations = createConversationsModule(ctx);
     this.turns = createTurnsModule(ctx);
+    this.activities = createActivitiesModule(ctx);
+    this.missions = createMissionsSearchModule(ctx);
     // =====================================================================
   }
 
@@ -155,8 +163,8 @@ export class HoustonSdk {
   }
 
   /**
-   * Tear down every long-lived resource the SDK holds: the agents reactivity
-   * stream and all in-flight turn/observer streams. Call it when the SDK is
+   * Tear down every long-lived resource the SDK holds: the agents + activities
+   * reactivity streams and all in-flight turn/observer streams. Call it when the SDK is
    * being discarded (logout, teardown) so no background fetch loop outlives it.
    * Idempotent-friendly at the module level; the SDK instance is single-use
    * after disposal.
@@ -164,5 +172,6 @@ export class HoustonSdk {
   dispose(): void {
     this.agents.dispose();
     this.turns.dispose();
+    this.activities.dispose();
   }
 }

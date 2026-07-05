@@ -9,6 +9,7 @@ import {
   createWaker,
   INTEGRATION_PROVIDER,
   POLL_INTERVAL_MS,
+  type PollOutcome,
   pollConnectionUntilActive,
   type Waker,
 } from "./model";
@@ -21,7 +22,13 @@ export type ConnectState = {
 
 export interface ConnectFlow {
   state: ConnectState;
-  connect: (toolkit: string) => Promise<void>;
+  /**
+   * Resolves with the poll outcome so callers can react to a LANDED
+   * connection (the chat connect card nudges the agent on "active"); `null`
+   * when the flow failed before/while polling (already surfaced via `call()`)
+   * or when another connect already owns the flow.
+   */
+  connect: (toolkit: string) => Promise<PollOutcome | null>;
   /** Reopen the SAME OAuth page (the user closed the tab too early). */
   reopen: () => Promise<void>;
   /** Wake the poll loop to check the connection right now. */
@@ -83,7 +90,7 @@ export function useConnectFlow(opts: {
       // overwrite those refs and leave the first loop polling invisibly. The
       // picker + callouts disable their buttons on `state`, but this guard is
       // the real enforcement for every entry point.
-      if (wakerRef.current) return;
+      if (wakerRef.current) return null;
       cancelledRef.current = false;
       const waker = createWaker();
       wakerRef.current = waker;
@@ -131,9 +138,11 @@ export function useConnectFlow(opts: {
         }
         // outcome === "cancelled": no toast; the server connection may stay
         // pending and the pending recovery UI is the way back.
+        return outcome;
       } catch {
         // The failing engine call already surfaced via call(). Swallow the
         // re-throw so the click handler never leaks an unhandled rejection.
+        return null;
       } finally {
         wakerRef.current = null;
         if (!unmountedRef.current) setState(null);

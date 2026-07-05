@@ -97,7 +97,7 @@ export function ProviderCard({
             ? t("card.signOutTitle", { name: provider.name })
             : t("card.connectTitle", { name: provider.name })
       }
-      className="group w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl bg-secondary hover:bg-black/[0.05] transition-colors focus-visible:outline-none focus-visible:bg-black/[0.05]"
+      className="group w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl bg-secondary hover:bg-foreground/[0.05] transition-colors focus-visible:outline-none focus-visible:bg-foreground/[0.05]"
     >
       <div className="size-8 rounded-lg bg-background flex items-center justify-center shrink-0">
         <ProviderLogo provider={provider} />

@@ -289,3 +289,62 @@ test("extractRetryAfterSeconds reads the bare/fractional unit forms providers em
   expect(extractRetryAfterSeconds("Please try again in 540ms")).toBe(1);
   expect(extractRetryAfterSeconds("Try again in 2 minutes")).toBe(120);
 });
+
+// opencode.ai OVERLOADS HTTP 401 for non-auth failures. These are its verbatim
+// error bodies (billing id redacted). The classifier must NOT turn them into a
+// reconnect card the valid key can't satisfy — that was the bug behind "Sign in
+// to OpenCode Zen again" for an account simply out of credit, or one that picked
+// a model opencode.ai doesn't serve.
+test("opencode CreditsError under 401 → quota_exhausted, not a reconnect", () => {
+  const message =
+    '{"type":"error","error":{"type":"CreditsError","message":"Insufficient balance. Manage your billing here: https://opencode.ai/workspace/wrk_test/billing"}}';
+  const err = classifyProviderError({
+    provider: "opencode",
+    model: "claude-fable-5",
+    message,
+    status: 401,
+  });
+  expect(err.kind).toBe("quota_exhausted");
+  if (err.kind === "quota_exhausted") {
+    // No reset window — the account must top up / upgrade, not wait it out.
+    expect(err.resets_at).toBeNull();
+    expect(err.message).toContain("Insufficient balance");
+  }
+});
+
+test("opencode CreditsError classifies off the body even with no parsed status", () => {
+  const err = classifyProviderError({
+    provider: "opencode-go",
+    model: "kimi-k2.6",
+    message:
+      '{"error":{"type":"CreditsError","message":"Insufficient balance. Manage your billing here: https://opencode.ai/workspace/wrk_test/billing"}}',
+  });
+  expect(err.kind).toBe("quota_exhausted");
+});
+
+test("opencode ModelError 'is not supported' under 401 → model_unavailable, not a reconnect", () => {
+  const err = classifyProviderError({
+    provider: "opencode",
+    model: "minimax-m3-free",
+    message:
+      '{"type":"error","error":{"type":"ModelError","message":"Model minimax-m3-free is not supported"}}',
+    status: 401,
+  });
+  expect(err.kind).toBe("model_unavailable");
+  if (err.kind === "model_unavailable")
+    expect(err.model).toBe("minimax-m3-free");
+});
+
+test("a genuine opencode 401 invalid key still reads as unauthenticated", () => {
+  // The fix must not blunt real auth failures: an invalid key under 401 stays a
+  // reconnect prompt.
+  const err = classifyProviderError({
+    provider: "opencode",
+    model: "claude-sonnet-4-6",
+    message:
+      '{"type":"error","error":{"type":"AuthError","message":"Invalid API key"}}',
+    status: 401,
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("invalid_api_key");
+});

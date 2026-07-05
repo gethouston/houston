@@ -172,6 +172,13 @@ export interface ChatMessage {
     pre_tokens?: number | null;
   };
   /**
+   * User-visible workspace files this turn created or modified (relative
+   * paths). Set on the assistant message only when the turn's diff was
+   * non-empty, so the "files this mission touched" summary survives a history
+   * reload. Mirrors the `file_changes` wire frame.
+   */
+  fileChanges?: { created: string[]; modified: string[] };
+  /**
    * Set when this turn's model request failed with a typed provider error
    * (auth / rate-limit / 5xx / network). Persisted so the inline reconnect /
    * rate-limit card survives a history reload, mirroring `providerSwitch`. The
@@ -192,4 +199,29 @@ export interface ConversationHistory {
   id: string;
   title: string;
   messages: ChatMessage[];
+}
+
+/**
+ * A routine suggestion parsed out of Create-with-AI agent generation. The cron
+ * is built and validated by the runtime from a constrained schedule set —
+ * never taken raw from the model.
+ */
+export interface SuggestedRoutine {
+  name: string;
+  prompt: string;
+  /** 5-field cron, built and validated by the runtime. */
+  schedule: string;
+}
+
+/**
+ * `POST /generate-agent` — the Create-with-AI one-shot: a plain-language
+ * description in; a generated agent name, CLAUDE.md instructions, suggested
+ * Composio toolkit slugs, and an optional routine suggestion out.
+ */
+export interface GenerateAgentResponse {
+  name: string;
+  instructions: string;
+  /** Composio toolkit slugs (e.g. "GMAIL") the agent would genuinely use. */
+  suggestedIntegrations: string[];
+  suggestedRoutine: SuggestedRoutine | null;
 }

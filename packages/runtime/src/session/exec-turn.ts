@@ -1,12 +1,13 @@
-import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import type {
   ChatMessage,
   ProviderError,
   TokenUsage,
   ToolCallRecord,
+  WireEvent,
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { activeEffort, resolveModel } from "../ai/providers";
+import { config } from "../config";
 import {
   appendAssistantMessage,
   appendUserMessage,
@@ -16,8 +17,12 @@ import { type ActingContext, runWithActingContext } from "./acting-context";
 import { decodeActingAuthor, framePrompt } from "./attribution";
 import { publish } from "./bus";
 import type { Conversation } from "./conversation-cache";
+import {
+  diffSnapshots,
+  type FileSnapshot,
+  snapshotWorkspace,
+} from "./file-changes";
 import { switchNeedsCompaction } from "./provider-switch";
-import { toWire } from "./wire";
 
 /** A routine's pinned model/effort for this turn. Absent = keep the session's current. */
 export interface TurnPin {
@@ -78,9 +83,7 @@ export async function execTurn(
   // `done` that would settle the chat as a success on top of the error.
   let providerError: ProviderError | undefined;
 
-  const unsub = conv.session.subscribe((e: AgentSessionEvent) => {
-    const wire = toWire(e);
-    if (!wire) return;
+  const unsub = conv.session.subscribe((wire: WireEvent) => {
     if (wire.type === "text") assistantText += wire.data;
     else if (wire.type === "usage") usage = wire.data;
     else if (wire.type === "tool_start") tools.push({ name: wire.data.name });
@@ -157,10 +160,37 @@ export async function execTurn(
     // apart. Single-author (or authorless) turns pass `text` through unchanged —
     // today's prompts stay byte-identical, so no drift for existing users.
     const promptText = framePrompt(text, author, priorAuthors);
+    // Snapshot the workspace's user-visible files so the turn's diff can be
+    // surfaced as a `file_changes` frame below. Same-workdir turns are
+    // serialized by the workdir lock (chat.ts), so the diff is attributable to
+    // exactly this turn. Best-effort: a snapshot failure only loses the
+    // summary, never the turn.
+    let beforeFiles: FileSnapshot | null = null;
+    try {
+      beforeFiles = snapshotWorkspace(config.workspaceDir);
+    } catch (err) {
+      console.warn("[turn] file snapshot failed:", errMessage(err));
+    }
     // Hold the turn's acting-as identity (C2) for the DURATION of the prompt so
     // the integration tools' proxy calls (which run inside this async subtree)
     // attach it. Absent → runs plainly (act as owner).
     await runWithActingContext(acting, () => conv.session.prompt(promptText));
+    // Diff what this turn created/modified. Skipped on a failed turn — a
+    // provider error means the model never finished, so attributing partial
+    // writes would be noise (mirrors the Rust engine's error gate).
+    let fileChanges: ChatMessage["fileChanges"];
+    if (beforeFiles && !providerError) {
+      try {
+        const changes = diffSnapshots(
+          beforeFiles,
+          snapshotWorkspace(config.workspaceDir),
+        );
+        if (changes.created.length || changes.modified.length)
+          fileChanges = changes;
+      } catch (err) {
+        console.warn("[turn] file diff failed:", errMessage(err));
+      }
+    }
     // Persist the switch marker AND any typed provider error on this turn's
     // assistant message so both the boundary divider and the reconnect /
     // rate-limit card survive a history reload. A provider failure lands HERE
@@ -170,8 +200,11 @@ export async function execTurn(
       usage,
       providerSwitch,
       providerError,
+      fileChanges,
       turnId,
     });
+    if (fileChanges)
+      publish(id, { type: "file_changes", data: fileChanges, turnId });
     // Skip the clean `done` when the turn failed: the provider_error frame is the
     // turn's terminal surface (the web adapter settles on it), and a `done` would
     // settle the chat as a clean success — firing the "mission complete"
