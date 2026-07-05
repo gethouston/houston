@@ -1,18 +1,10 @@
-import {
-  Button,
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "@houston-ai/core";
-import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDisconnectIntegration } from "../../hooks/queries";
 import {
-  AppCatalogPicker,
   AppDetailSheet,
   appDisplay,
+  ConnectMoreAppsSection,
   INTEGRATION_PROVIDER,
   IntegrationDisconnectDialog,
   ReconnectBanner,
@@ -32,11 +24,14 @@ interface IntegrationsReadyProps {
 }
 
 /**
- * The ready state of the global Integrations page: every connected app, the
- * agents using it, per-agent activation and disconnects, and adding new apps.
- * ONE connect flow lives here (connect-only, no auto-grant) and is handed to the
- * picker, the recovery callouts and the detail sheet so closing any of them
- * never kills an in-flight OAuth poll.
+ * The ready state of the global Integrations page. Two always-present sections:
+ * the apps the user has connected (a two-column grid of cards, each opening the
+ * detail sheet for per-agent access, with pending / errored connections shown
+ * full-width for recovery), then the full "Connect more apps" catalog so a
+ * brand-new user immediately sees the 1000+ connectable apps. ONE connect flow
+ * lives here (connect-only, no auto-grant) and is handed to the catalog, the
+ * recovery callouts, and the detail sheet so closing any of them never kills an
+ * in-flight OAuth poll.
  */
 export function IntegrationsReady({
   reconnectNotice,
@@ -48,7 +43,6 @@ export function IntegrationsReady({
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const toggle = useAgentGrantToggle();
 
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedConnId, setSelectedConnId] = useState<string | null>(null);
   const [disconnectToolkit, setDisconnectToolkit] = useState<string | null>(
     null,
@@ -74,22 +68,13 @@ export function IntegrationsReady({
 
   return (
     <>
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-[28px] font-normal text-foreground">
-            {t("home.title")}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("home.description")}
-          </p>
-        </div>
-        <Button
-          className="shrink-0 rounded-full"
-          onClick={() => setPickerOpen(true)}
-        >
-          <Plus className="size-4" />
-          {t("home.addApp")}
-        </Button>
+      <div className="mb-6">
+        <h1 className="text-[28px] font-normal text-foreground">
+          {t("home.title")}
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t("home.description")}
+        </p>
       </div>
 
       {reconnectNotice && (
@@ -98,41 +83,34 @@ export function IntegrationsReady({
         </div>
       )}
 
-      {apps.isLoading ? (
-        <ConnectedAppsListSkeleton />
-      ) : hasConnections ? (
-        <ConnectedAppsList
-          active={apps.activeRows}
-          recovering={apps.recoveringRows}
-          grantsSupported={apps.grantsSupported}
-          connectFlow={connectFlow}
-          onManage={(c) => setSelectedConnId(connKey(c))}
-          onRemove={(toolkit) => disconnect.mutate(toolkit)}
-        />
-      ) : (
-        <Empty className="border-0">
-          <EmptyHeader>
-            <EmptyTitle>{t("home.empty.title")}</EmptyTitle>
-            <EmptyDescription>{t("home.empty.body")}</EmptyDescription>
-          </EmptyHeader>
-          <Button
-            className="mt-4 rounded-full"
-            onClick={() => setPickerOpen(true)}
-          >
-            <Plus className="size-4" />
-            {t("home.empty.cta")}
-          </Button>
-        </Empty>
-      )}
+      <div className="space-y-8">
+        {(apps.isLoading || hasConnections) && (
+          <section>
+            <h3 className="mb-3 text-sm font-medium text-foreground">
+              {t("home.connectedTitle")}
+            </h3>
+            {apps.isLoading ? (
+              <ConnectedAppsListSkeleton />
+            ) : (
+              <ConnectedAppsList
+                active={apps.activeRows}
+                recovering={apps.recoveringRows}
+                grantsSupported={apps.grantsSupported}
+                connectFlow={connectFlow}
+                onManage={(c) => setSelectedConnId(connKey(c))}
+                onRemove={(toolkit) => disconnect.mutate(toolkit)}
+              />
+            )}
+          </section>
+        )}
 
-      <AppCatalogPicker
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        catalog={apps.catalogData}
-        connections={apps.connData}
-        connectFlow={connectFlow}
-        loading={apps.catalogLoading}
-      />
+        <ConnectMoreAppsSection
+          catalog={apps.catalogData}
+          connections={apps.connData}
+          connectFlow={connectFlow}
+          loading={apps.catalogLoading}
+        />
+      </div>
 
       {selectedConn && selectedApp && (
         <AppDetailSheet

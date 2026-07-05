@@ -120,34 +120,53 @@ constant, not the runtime handshake. Absent in the legacy Rust engine build.
 
 **Shared module** — `app/src/components/integrations/` (`index.ts` is the surface;
 pure model in `model.ts`/`app-display.ts`, DOM-free and node-tested). Both surfaces
-consume it verbatim — no forked copies. Notable exports: `AppCatalogPicker`,
-`AppDetailSheet`, `AppRow`, `AgentChips`, `PendingConnectionCallout`,
-`IntegrationDisconnectDialog`, the gate/flow hooks below, and pure helpers
-`browseCatalog`/`splitByGrant`/`pollConnectionUntilActive`.
+consume it verbatim — no forked copies. Notable exports: `ConnectMoreAppsSection`
+(the always-visible catalog block, below), `AppDetailSheet`, `AppRow`,
+`AgentChips`, `PendingConnectionCallout`, `IntegrationDisconnectDialog`, the
+gate/flow hooks below, and pure helpers
+`browseCatalog`/`splitByGrant`/`pollConnectionUntilActive`. `browseCatalog` sorts
+results ALPHABETICALLY by app name (case-insensitive) after filtering.
+
+**Always-visible catalog** — `ConnectMoreAppsSection` (wrapping the internal
+`CatalogBrowser`) is a permanent "Connect more apps" section on BOTH surfaces, not
+a dialog: a brand-new user with zero connections immediately sees the full ~1000-app
+catalog. Apps list A-Z; category is a dropdown (categories A-Z); a search box
+filters; "Load more" pages. It excludes already-connected toolkits (surfaced by the
+caller's own grids) and renders the `ConnectWaitingPanel` inline for an in-progress
+OAuth. There is NO add-apps dialog anymore (`AppCatalogPicker` was deleted).
 
 **Global page** — `app/src/components/integrations-view/`, top-level view
 `INTEGRATIONS_VIEW_ID = "integrations-home"` (NOT `"integrations"`, which is the
 per-agent tab id — a shared slug would shadow the tab; like `dashboard`/`settings`
 a top-level view lives OUTSIDE `STANDARD_TAB_IDS`). Sidebar nav + the render branch
-live in `shell/workspace-shell.tsx` / `shell/sidebar.tsx`. Lists every connected
-app, the agents using each (`AppDetailSheet` per-agent Switch), disconnect
-(scope `everywhere`, names affected agents), and adding apps (connect-only picker).
+live in `shell/workspace-shell.tsx` / `shell/sidebar.tsx`. TWO stacked sections:
+**Connected apps** (a two-column grid of cards, each opening `AppDetailSheet` for
+per-agent access; pending/errored connections shown full-width above the grid for
+recovery; omitted entirely at zero connections) then the always-visible **Connect
+more apps** catalog. Disconnect is scope `everywhere` and names affected agents.
 
 **Agent tab** — `app/src/components/tabs/agent-integrations/`
-(`integrations-tab.tsx` re-exports the orchestrator). A discriminated union:
-`grants` mode (multiplayer/local record → "Apps this agent can use", activation
-toggles, picker in agent context with a "Ready to activate" group) vs `degraded`
-mode (grants `null` → all connected apps shown usable, no fake toggles). "Manage
-all integrations" navigates to `INTEGRATIONS_VIEW_ID`.
+(`integrations-tab.tsx` re-exports the orchestrator). THREE stacked sections, gated
+by a discriminated union: `grants` mode shows **Apps this agent can use** (two-col,
+deactivate toggles) + **Apps connected to your account** (connected-but-not-granted
+active apps, one-click Activate = grant-add, no OAuth; hidden when empty or
+read-only); `degraded` mode (grants `null`) shows all connected apps usable with no
+toggles and no account section. Both modes end with the always-visible **Connect
+more apps** catalog (auto-granting a fresh connection to this agent in grants mode).
+"Manage all integrations" navigates to `INTEGRATIONS_VIEW_ID`.
 
 **Connect flow + pending recovery** — `useConnectFlow` (in the shared module) lives
 on the SURFACE, never inside the picker, so closing the dialog never kills polling.
 It mints the hosted link, opens the browser, polls until active (a `Waker` backs
 the sleep so `checkNow()` wakes an immediate poll and `cancel()` returns
 `"cancelled"`), then invalidates connections. In agent context a fresh connection
-is auto-granted. An abandoned OAuth (user closed the tab) is ALWAYS recoverable
-from both surfaces via `PendingConnectionCallout` (pending → Finish connecting;
-error → Reconnect; both a fresh link) + Remove. While any connect is waiting,
+is auto-granted. An abandoned OAuth is recoverable inline on BOTH surfaces while
+the flow is live via the `ConnectWaitingPanel` (Reopen / I have finished / Cancel).
+A connection left pending/errored across sessions surfaces a `PendingConnectionCallout`
+(pending → Finish connecting; error → Reconnect; both a fresh link) + Remove on the
+global page and on the agent tab's own app rows (degraded mode, or grants mode once
+granted). An ungranted orphaned pending connection is recovered from the global page
+(the agent tab links there via "Manage all integrations"). While any connect is waiting,
 other Connect buttons are disabled (single flight). Only outcomes `call()` cannot
 see are toasted (timeout, provider-side OAuth failure); a cancel is silent by
 design.

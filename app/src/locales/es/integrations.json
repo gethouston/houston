@@ -1,6 +1,5 @@
 {
   "title": "Integraciones",
-  "description": "Conecta tus aplicaciones para que tu agente pueda usarlas.",
   "loading": {
     "title": "Cargando tus integraciones",
     "body": "Verificando tu proveedor de integraciones…"
@@ -62,15 +61,13 @@
     "remove": "Quitar"
   },
   "picker": {
-    "title": "Agregar apps",
     "searchPlaceholder": "Buscar apps...",
-    "readyTitle": "Listas para activar",
-    "readySubtitle": "Apps que ya conectaste. Activa una para {{agent}}.",
-    "activate": "Activar",
-    "connectTitle": "Conectar algo nuevo",
     "connected": "Conectada",
     "noResults": "No hay apps que coincidan.",
     "loading": "Cargando apps..."
+  },
+  "connectMore": {
+    "title": "Conecta más apps"
   },
   "chips": {
     "more": "+{{count}}"
@@ -82,15 +79,9 @@
   "home": {
     "title": "Integraciones",
     "description": "Conecta tus apps una vez y elige qué agentes pueden usar cada una.",
-    "addApp": "Agregar app",
+    "connectedTitle": "Apps conectadas",
     "usedByNone": "Aún no hay agentes",
-    "usedByAll": "Todos los agentes",
-    "manage": "Administrar",
-    "empty": {
-      "title": "Aún no hay apps conectadas",
-      "body": "Conecta una app como Gmail o Slack para que tus agentes puedan usarla.",
-      "cta": "Conecta tu primera app"
-    }
+    "usedByAll": "Todos los agentes"
   },
   "detail": {
     "activeOn": "Agentes que pueden usarla",
@@ -101,9 +92,9 @@
   },
   "agentTab": {
     "activeTitle": "Apps que este agente puede usar",
-    "activeSubtitle": "Apps que {{agent}} puede usar.",
-    "addApps": "Agregar apps",
+    "accountTitle": "Otras apps conectadas a tu cuenta",
     "deactivate": "Quitar de este agente",
+    "activate": "Activar para este agente",
     "empty": {
       "title": "Aún no hay apps",
       "body": "Agrega una app para que este agente pueda usarla."
