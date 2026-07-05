@@ -1,7 +1,7 @@
 import { MIGRATION_RECONNECT_DISMISSED_KEY } from "@houston-ai/engine-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { newEngineActive } from "../lib/engine";
+import { isCoLocatedEngine, newEngineActive } from "../lib/engine";
 import { queryKeys } from "../lib/query-keys";
 import { tauriPreferences, tauriSystem } from "../lib/tauri";
 import { shouldShowMigrationReconnect } from "./migration-reconnect-trigger";
@@ -33,11 +33,17 @@ export interface MigrationReconnectState {
 export function useMigrationReconnect(): MigrationReconnectState {
   const qc = useQueryClient();
 
+  // Remote engines (hosted gateway, self-host VPS) can never be "this install
+  // migrated" — don't even probe them; the trigger holds the gate closed on
+  // `coLocated` regardless of what their `/v1/version` reports (HOU-688).
+  const coLocated = isCoLocatedEngine();
+
   const migratedQuery = useQuery({
     queryKey: queryKeys.migrationReconnect(),
     // The host's answer is stable for the life of the install; fetch once.
     queryFn: () => tauriSystem.chatHistoryMigrated(),
     staleTime: Number.POSITIVE_INFINITY,
+    enabled: coLocated,
   });
 
   const dismissedQuery = useQuery({
@@ -67,11 +73,14 @@ export function useMigrationReconnect(): MigrationReconnectState {
 
   const show = shouldShowMigrationReconnect({
     newEngine: newEngineActive(),
+    coLocated,
     migrated: migratedQuery.data ?? false,
     hasProvider,
     dismissed: dismissedQuery.data ?? false,
     loading:
-      migratedQuery.isLoading || dismissedQuery.isLoading || statusesLoading,
+      (coLocated && migratedQuery.isLoading) ||
+      dismissedQuery.isLoading ||
+      statusesLoading,
   });
 
   return { show, dismiss };

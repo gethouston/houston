@@ -6,6 +6,7 @@ import { shouldShowMigrationReconnect } from "../src/hooks/migration-reconnect-t
 // prior dismissal, once every signal has resolved.
 const SHOW = {
   newEngine: true,
+  coLocated: true,
   migrated: true,
   hasProvider: false,
   dismissed: false,
@@ -44,6 +45,15 @@ test("hidden once the user has dismissed it — never shows twice", () => {
 test("hidden on the legacy Rust engine even if it looks migrated", () => {
   assert.equal(
     shouldShowMigrationReconnect({ ...SHOW, newEngine: false }),
+    false,
+  );
+});
+
+test("hidden on a remote engine even if its /v1/version claims migrated (HOU-688)", () => {
+  // The hosted gateway synthesizes `chatHistoryMigrated: true`; a remote
+  // engine can never be "this install migrated", so the gate stays closed.
+  assert.equal(
+    shouldShowMigrationReconnect({ ...SHOW, coLocated: false }),
     false,
   );
 });

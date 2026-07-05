@@ -614,8 +614,17 @@ export async function cancelRoutineRun(
 export async function listInstalledConfigs(
   cfg: ControlPlaneConfig,
 ): Promise<InstalledConfig[]> {
-  const res = await cpFetch(cfg, "/v1/agent-configs");
-  return (await res.json()) as InstalledConfig[];
+  try {
+    const res = await cpFetch(cfg, "/v1/agent-configs");
+    return (await res.json()) as InstalledConfig[];
+  } catch (err) {
+    // The hosted gateway keeps no account-level config library (one pod per
+    // agent, no shared disk) and answers 404 for the route — the same honest
+    // answer as standalone web: nothing installed, the picker shows the
+    // bundled templates (HOU-688). Every other failure still propagates.
+    if (err instanceof HoustonEngineError && err.status === 404) return [];
+    throw err;
+  }
 }
 export async function installAgentFromGithub(
   cfg: ControlPlaneConfig,

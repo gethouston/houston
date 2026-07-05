@@ -264,7 +264,20 @@ export class HoustonClient {
     return { status: h.status, version: h.version, protocol: 1 } as never;
   }
   async version() {
-    return (await this.engine.version()) as never;
+    // gatewayAuthFetch on `/v1/version` (not `this.engine.version()`): the
+    // runtime-protocol client asks `/version`, a path only the pi runtime
+    // serves — the host's and the gateway's meta surface is `/v1/version`, so
+    // the old call 404'd against every host, silently breaking the
+    // migration-reconnect probe (HOU-688). Live-bearer fetch for the same
+    // reason as capabilities() (HOU-687).
+    const res = await controlPlane.gatewayAuthFetch(this.token)(
+      `${this.baseUrl}/v1/version`,
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new HoustonEngineError(res.status, body);
+    }
+    return (await res.json()) as never;
   }
   async capabilities(): Promise<Capabilities> {
     // gatewayAuthFetch (not `this.engine.capabilities()`) on purpose: hosted

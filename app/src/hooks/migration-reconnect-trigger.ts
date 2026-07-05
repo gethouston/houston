@@ -10,6 +10,14 @@
 export interface MigrationReconnectInputs {
   /** Active backend is the new TS host (the only build that migrates). */
   newEngine: boolean;
+  /**
+   * The engine runs on THIS machine (Tauri sidecar / loopback dev host). The
+   * migration is a local-install moment — a legacy Rust-desktop db carried
+   * over on disk — so a remote engine (hosted gateway, self-host VPS) can
+   * never be "this install migrated": whatever its `/v1/version` reports, the
+   * gate must stay closed (HOU-688).
+   */
+  coLocated: boolean;
   /** Host reports this install carried over a legacy Rust-desktop history db. */
   migrated: boolean;
   /** A provider is currently connected (auth complete). */
@@ -37,6 +45,7 @@ export function shouldShowMigrationReconnect(
 ): boolean {
   if (i.loading) return false;
   if (!i.newEngine) return false;
+  if (!i.coLocated) return false;
   if (!i.migrated) return false;
   if (i.hasProvider) return false;
   if (i.dismissed) return false;
