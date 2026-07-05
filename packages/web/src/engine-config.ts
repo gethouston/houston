@@ -7,9 +7,6 @@
  * we persist it in localStorage and re-apply it on every load BEFORE the app
  * module graph evaluates (app/src/lib/engine.ts reads the global at import time).
  *
- * Old (Rust) and new (TS) engines speak different protocols, so each gets its
- * own storage key — switching the deployment's engine target never reuses a
- * stale endpoint from the other.
  */
 
 export interface EngineConfig {
@@ -17,13 +14,16 @@ export interface EngineConfig {
   token: string;
 }
 
-/** localStorage key for the old (Rust) engine connection. */
-export const OLD_ENGINE_STORAGE_KEY = "houston.web.engine";
-/** localStorage key for the new (TS) engine connection. */
+/**
+ * localStorage key for the host connection. The `.new` suffix is historical
+ * (it distinguished the TS host from the deleted Rust engine's key,
+ * `houston.web.engine`); the VALUE must not change — existing browsers hold
+ * stored configs under it.
+ */
 export const NEW_ENGINE_STORAGE_KEY = "houston.web.engine.new";
 
 export function readStoredEngineConfig(
-  key: string = OLD_ENGINE_STORAGE_KEY,
+  key: string = NEW_ENGINE_STORAGE_KEY,
 ): EngineConfig | null {
   try {
     const raw = localStorage.getItem(key);
@@ -45,7 +45,7 @@ export function readStoredEngineConfig(
 
 export function storeEngineConfig(
   config: EngineConfig,
-  key: string = OLD_ENGINE_STORAGE_KEY,
+  key: string = NEW_ENGINE_STORAGE_KEY,
 ): void {
   try {
     localStorage.setItem(key, JSON.stringify(config));
@@ -55,7 +55,7 @@ export function storeEngineConfig(
 }
 
 export function clearStoredEngineConfig(
-  key: string = OLD_ENGINE_STORAGE_KEY,
+  key: string = NEW_ENGINE_STORAGE_KEY,
 ): void {
   try {
     localStorage.removeItem(key);

@@ -84,6 +84,11 @@ done
 # the legacy engine/* crates and app/houston-tauri are gone). Its [package]
 # version must bump.
 printf '[package]\nname = "src-tauri"\nversion = "0.0.1"\n' > "$TMP/app/src-tauri/Cargo.toml"
+# A target is required for the fixture manifest to PARSE: version.sh runs
+# `cargo update --workspace`, which loads every member and aborts on a
+# target-less crate before any assertion runs.
+mkdir -p "$TMP/app/src-tauri/src"
+: > "$TMP/app/src-tauri/src/lib.rs"
 
 # Root Cargo.toml: serde (third-party, NO path) must stay pinned; the houston-*
 # workspace member (HAS path) must bump. This is the core of the path-scoped

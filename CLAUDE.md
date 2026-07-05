@@ -145,7 +145,7 @@ See `knowledge-base/agent-manifest.md` (provider/model table) and `knowledge-bas
 
 ### Internal code = no backwards compat
 - Types, APIs, Rust modules, TS fns: change = change. No "just in case" keeps.
-- **User data = different.** Canonical location is `~/.houston/**` (workspaces live at `~/.houston/workspaces/`). Shape/layout changes inside `~/.houston/<agent>/.houston/**` need an **idempotent migration** in `houston_agent_files::migrate_agent_data`. Never break existing users.
+- **User data = different.** Canonical location is `~/.houston/**` (workspaces live at `~/.houston/workspaces/`). Shape/layout changes inside `~/.houston/<agent>/.houston/**` need an **idempotent migration** on the host's boot path (`packages/host/src/migrate/` — agent-layout for the flat→per-type layout, chat-history for the Rust-era db; add new ones beside them and call them from `packages/host/src/local/host.ts` `start()`). Never break existing users.
 - **Legacy `~/Documents/Houston/**`** — earlier versions used this path. We do NOT auto-migrate from there; if a user upgrades they may need to copy their workspaces manually. When introducing further root moves, propose a migration story before executing.
 
 ### Tests mandatory

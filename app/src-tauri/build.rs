@@ -11,17 +11,33 @@ fn main() {
     // `target/host-sidecar/houston-host-<triple>`, produced by
     // `scripts/build-host-sidecar.sh` (CI wires this into the release workflow).
     //
-    // Missing → warn + stage a harmless placeholder, don't fail: the dev loop
-    // runs the app against an externally-run host (`pnpm dev:host` +
-    // VITE_NEW_ENGINE_URL) and never spawns the staged sidecar, so `pnpm tauri
-    // dev` must still compile without a bun-compiled host on disk. A real
-    // packaged build runs `scripts/build-host-sidecar.sh` first, so the
-    // placeholder is only ever a dev convenience.
+    // Missing → depends on the profile. Debug builds warn + stage a harmless
+    // placeholder: the dev loop runs the app against an externally-run host
+    // (`pnpm dev:host` + VITE_NEW_ENGINE_URL) and never spawns the staged
+    // sidecar, so `pnpm tauri dev` must still compile without a bun-compiled
+    // host on disk. Release builds FAIL: a signed, installable bundle whose
+    // sidecar is the placeholder can never serve, which is strictly worse than
+    // a failed build (release CI compiles the host first; a local
+    // `pnpm tauri build` must too).
     if let Err(e) = stage_host_sidecar() {
+        if release_profile() {
+            panic!(
+                "host sidecar staging failed for a release build: {e}\n\
+                 Run `scripts/build-host-sidecar.sh <triple>` to bun-compile the host first."
+            );
+        }
         println!("cargo:warning=host sidecar staging skipped: {e}");
     }
 
     tauri_build::build()
+}
+
+/// Whether this build script run is for a release-profile (shippable) build.
+/// Cargo sets `PROFILE` to the base profile name (`debug`/`release`) for
+/// build scripts; `cfg!(debug_assertions)` can't be used here because it
+/// describes the profile the build SCRIPT was compiled under, not the target's.
+fn release_profile() -> bool {
+    std::env::var("PROFILE").as_deref() == Ok("release")
 }
 
 fn load_dotenv_pairs() -> Vec<(String, String)> {
@@ -137,11 +153,12 @@ fn env_value(key: &str, dotenv_pairs: &[(String, String)]) -> Option<String> {
 /// supervisor spawns whatever binary is staged there and parses its
 /// `HOUSTON_HOST_LISTENING` banner.
 ///
-/// Missing host binary → stage a harmless placeholder (the caller warns): the
-/// dev loop runs the app against an externally-run host (`pnpm dev:host` +
-/// `VITE_NEW_ENGINE_URL`) and never spawns the staged sidecar, so `pnpm tauri
-/// dev` must compile without a bun-compiled host on disk. A real packaged build
-/// runs `scripts/build-host-sidecar.sh` first and stages the real binary.
+/// Missing host binary → debug builds stage a harmless placeholder (the caller
+/// warns): the dev loop runs the app against an externally-run host
+/// (`pnpm dev:host` + `VITE_NEW_ENGINE_URL`) and never spawns the staged
+/// sidecar, so `pnpm tauri dev` must compile without a bun-compiled host on
+/// disk. Release builds get an `Err` instead (the caller panics) — a shippable
+/// bundle must contain the real host, staged by `scripts/build-host-sidecar.sh`.
 fn stage_host_sidecar() -> Result<(), String> {
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let workspace = manifest
@@ -162,6 +179,15 @@ fn stage_host_sidecar() -> Result<(), String> {
     // Fallback for a default-triple build where TARGET is unset.
     candidates.push(host_dir.join(format!("houston-host{ext}")));
 
+    // Watch every candidate source in BOTH arms. Cargo re-runs a build script
+    // whose watched file is missing, so after `build-host-sidecar.sh` produces
+    // the binary the next build re-runs this script and replaces a previously
+    // staged placeholder — without this, the placeholder is sticky until some
+    // unrelated input dirties the script.
+    for candidate in &candidates {
+        println!("cargo:rerun-if-changed={}", candidate.display());
+    }
+
     let dest_dir = manifest.join("binaries");
     std::fs::create_dir_all(&dest_dir).map_err(|e| format!("mkdir binaries: {e}"))?;
     let dest_name = if triple.is_empty() {
@@ -174,7 +200,6 @@ fn stage_host_sidecar() -> Result<(), String> {
     match candidates.iter().find(|p| p.exists()) {
         Some(src) => {
             std::fs::copy(src, &dest).map_err(|e| format!("copy host sidecar: {e}"))?;
-            println!("cargo:rerun-if-changed={}", src.display());
             println!(
                 "cargo:warning=host-sidecar: staged compiled host {} -> {}",
                 src.display(),
@@ -182,11 +207,22 @@ fn stage_host_sidecar() -> Result<(), String> {
             );
         }
         None => {
-            // No bun-compiled host on disk (typical for `pnpm tauri dev`, which
-            // talks to an externally-run host and never spawns this file). Tauri's
-            // externalBin bundling still requires the file to exist, so stage a
-            // placeholder. A real packaged build runs scripts/build-host-sidecar.sh
-            // first and hits the arm above instead.
+            // No bun-compiled host on disk. Release builds must not ship the
+            // placeholder — surface the miss as a hard error (main panics).
+            if release_profile() {
+                return Err(format!(
+                    "no compiled host found. Tried:\n  - {}",
+                    candidates
+                        .iter()
+                        .map(|p| p.display().to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n  - ")
+                ));
+            }
+            // Debug builds (typical for `pnpm tauri dev`, which talks to an
+            // externally-run host and never spawns this file): Tauri's
+            // externalBin bundling still requires the file to exist, so stage
+            // a placeholder.
             let placeholder = if cfg!(windows) {
                 "@echo off\r\nexit /b 0\r\n"
             } else {

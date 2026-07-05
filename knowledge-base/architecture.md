@@ -53,7 +53,7 @@ Houston = open platform. Organized as **products + code libraries**.
 
 | Dir | What |
 |-----|------|
-| `packages/` | The converged TypeScript engine — `runtime`, `host`, `host-cloud`, `domain`, `protocol`, `web`, `code-sandbox`, `sdk`, `runtime-client`, `design-tokens`, `fake-host`. See `convergence/README.md`. |
+| `packages/` | The converged TypeScript engine — `runtime`, `host`, `domain`, `protocol`, `web`, `code-sandbox`, `sdk`, `runtime-client`, `design-tokens`, `fake-host`. See `convergence/README.md`. |
 | `convergence/` | The single-engine convergence plan + status. Source of truth for the architecture direction. |
 | `selfhost/` | Self-host the TS engine on a VPS (Docker + Caddy TLS). |
 | `knowledge-base/` | Repo knowledge docs. Loaded on demand. |

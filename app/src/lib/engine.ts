@@ -35,7 +35,6 @@ const RESOLVED = resolveEngine(
     VITE_NEW_ENGINE_URL?: string;
     VITE_HOSTED_ENGINE_URL?: string;
     VITE_HOSTED_ENGINE_AUTH?: string;
-    VITE_NEW_ENGINE?: string;
   },
 );
 

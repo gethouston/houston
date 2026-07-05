@@ -14,6 +14,7 @@ import { IntegrationRegistry } from "../integrations/registry";
 import { RemoteIntegrationProvider } from "../integrations/remote";
 import { ProcessLauncher, type RuntimeSpawner } from "../launcher/process";
 import { RuntimeProcessSpawner } from "../launcher/runtime-spawner";
+import { migrateAgentLayouts } from "../migrate/agent-layout";
 import { migrateChatHistory } from "../migrate/chat-history";
 import { LocalPaths } from "../paths";
 import { forward } from "../proxy/route";
@@ -320,6 +321,21 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   return {
     server,
     async start() {
+      // One-time, idempotent migration of the pre-v0.4 FLAT `.houston/` layout
+      // into the per-type folders the domain reads (ported from the Rust
+      // engine's migrate_agent_data). Runs BEFORE the watcher so migrated files
+      // are on disk when reactivity turns on; originals stay in place as a
+      // rollback net and re-boots are no-ops (old-exists && new-missing).
+      try {
+        migrateAgentLayouts({ workspacesRoot: opts.workspacesRoot });
+      } catch (err) {
+        // No UI thread to toast on at boot; the supervisor must stay up. Log
+        // loudly so the failure shows in the app logs / bug report tail.
+        console.error(
+          "[local-host] agent-layout migration failed (continuing):",
+          err,
+        );
+      }
       // One-time, additive, idempotent migration of the Rust-desktop era's chat
       // history (SQLite chat_feed) into each agent's `.houston/runtime/`. Runs
       // BEFORE the watcher so its writes are already on disk when reactivity

@@ -311,15 +311,6 @@ describe("resolveEngine (HOU-642)", () => {
     );
   });
 
-  it("uses the sidecar for the TS-engine build with no baked URL (dev loop + packages/web)", () => {
-    deepStrictEqual(resolveEngine({ VITE_NEW_ENGINE: "1" }), {
-      kind: "sidecar",
-    });
-    deepStrictEqual(resolveEngine({ VITE_NEW_ENGINE: "true" }), {
-      kind: "sidecar",
-    });
-  });
-
   it("uses the sidecar for a no-flag build (the local host sidecar)", () => {
     deepStrictEqual(resolveEngine({}), { kind: "sidecar" });
   });

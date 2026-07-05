@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
   // (host token + the frontend's host URL/token) instead of a
   // package-local .env, so the browser dev server points at the local host with
   // no flags. Plain `pnpm dev` (mode=development) keeps the default package
-  // envDir, so it stays the old-engine connect screen.
+  // envDir, so the Connect screen prompts for a host URL + token.
   const envDir = mode === "host" ? repoRoot : process.cwd();
   const env = { ...loadEnv(mode, envDir, ""), ...process.env };
   return {

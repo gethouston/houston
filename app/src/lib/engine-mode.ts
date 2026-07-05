@@ -7,7 +7,6 @@
 type EngineModeEnv = {
   VITE_NEW_ENGINE_URL?: string;
   VITE_HOSTED_ENGINE_URL?: string;
-  VITE_NEW_ENGINE?: string;
   /**
    * Auth method for the hosted engine (`VITE_HOSTED_ENGINE_URL`). The
    * enable/disable switch for the Supabase Google-login gate — see

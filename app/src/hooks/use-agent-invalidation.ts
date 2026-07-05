@@ -1,6 +1,7 @@
 import type { HoustonEvent } from "@houston-ai/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { onEngineRestarted } from "../lib/engine";
 import { subscribeHoustonEvents } from "../lib/events";
 import { logger } from "../lib/logger";
@@ -8,6 +9,7 @@ import { osFocusWindow } from "../lib/os-bridge";
 import { queryKeys } from "../lib/query-keys";
 import { useAgentStore } from "../stores/agents";
 import { useSessionStatusStore } from "../stores/session-status";
+import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
 
 /**
@@ -18,12 +20,20 @@ import { useWorkspaceStore } from "../stores/workspaces";
  */
 export function useAgentInvalidation() {
   const qc = useQueryClient();
+  const { t } = useTranslation("shell");
 
   useEffect(() => {
     const offEngineRestarted = onEngineRestarted(() => {
       useSessionStatusStore.getState().clearAll();
       qc.invalidateQueries({ queryKey: ["activity"] });
       qc.invalidateQueries({ queryKey: ["all-conversations"] });
+      // The supervisor restarted the host sidecar after a crash. Beta policy:
+      // never let that pass silently — the user should know a reconnect
+      // happened (and that in-flight work may have been interrupted).
+      useUIStore.getState().addToast({
+        title: t("engineGate.reconnected"),
+        variant: "info",
+      });
     });
     const unlisten = subscribeHoustonEvents((p: HoustonEvent) => {
       console.log(
@@ -151,5 +161,5 @@ export function useAgentInvalidation() {
       offEngineRestarted();
       unlisten();
     };
-  }, [qc]);
+  }, [qc, t]);
 }

@@ -379,14 +379,12 @@ impl Drop for EngineSubprocess {
     }
 }
 
-/// Resolve the `houston-engine` binary path.
+/// Resolve the staged host sidecar binary path (externalBin name
+/// `houston-engine`, kept from the Rust-engine era).
 ///
 /// Resolution order:
 /// 1. `HOUSTON_ENGINE_BIN` env var (dev override / SSH deploy).
-/// 2. Debug builds: cargo workspace target (freshest during `pnpm tauri
-///    dev` — the staged sidecar can be stale if you rebuild just the
-///    engine crate).
-/// 3. Sibling of the current executable — this is where Tauri's
+/// 2. Sibling of the current executable — this is where Tauri's
 ///    `externalBin` places sidecars in shipped app bundles:
 ///      - macOS: `Houston.app/Contents/MacOS/houston-engine`
 ///      - Windows: next to `houston-app.exe`
@@ -394,11 +392,14 @@ impl Drop for EngineSubprocess {
 ///    Authoritative for release builds. (Tauri's `resource_dir()` points
 ///    at `Contents/Resources/` on macOS which is the WRONG place for
 ///    externalBin — sidecars are not resources.)
-/// 4. `<resource_dir>/binaries/houston-engine` — legacy / belt-and-braces
+/// 3. `<resource_dir>/binaries/houston-engine` — legacy / belt-and-braces
 ///    fallback for platforms that stage externalBin into the resources
 ///    tree.
-/// 5. Release builds: cargo workspace target (last-resort, exists only
-///    when running `cargo run --release` outside a bundled `.app`).
+///
+/// The cargo target dir (`target/{debug,release}/houston-engine`) is
+/// deliberately NOT searched: only the deleted Rust engine ever produced
+/// those artifacts, so post-cutover they could only ever match a STALE
+/// pre-cutover binary and shadow the real staged host.
 ///
 /// Returning `Err` here causes the Tauri `setup()` closure to abort the
 /// app on launch — so this function is a hot path during the "download
@@ -423,24 +424,7 @@ pub fn resolve_engine_binary(resource_dir: Option<&PathBuf>) -> Result<PathBuf, 
         }
     }
 
-    let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..");
-    let target_debug = workspace_root.join("target").join("debug").join(bin_name());
-    let target_release = workspace_root.join("target").join("release").join(bin_name());
-
-    // 2. Debug: prefer cargo target (freshest under `tauri dev`).
-    #[cfg(debug_assertions)]
-    {
-        if let Some(hit) = try_candidate(target_debug.clone(), &mut tried) {
-            return Ok(hit);
-        }
-        if let Some(hit) = try_candidate(target_release.clone(), &mut tried) {
-            return Ok(hit);
-        }
-    }
-
-    // 3. Sibling of the current executable — the bundled-sidecar location
+    // 2. Sibling of the current executable — the bundled-sidecar location
     //    Tauri actually uses on every shipping platform.
     if let Ok(exe) = std::env::current_exe() {
         if let Some(exe_dir) = exe.parent() {
@@ -456,7 +440,7 @@ pub fn resolve_engine_binary(resource_dir: Option<&PathBuf>) -> Result<PathBuf, 
         }
     }
 
-    // 4. Resources dir — legacy fallback.
+    // 3. Resources dir — legacy fallback.
     if let Some(resources) = resource_dir {
         if let Some(hit) =
             try_candidate(resources.join("binaries").join(bin_name_no_triple()), &mut tried)
@@ -473,19 +457,8 @@ pub fn resolve_engine_binary(resource_dir: Option<&PathBuf>) -> Result<PathBuf, 
         }
     }
 
-    // 5. Release: cargo target as last resort.
-    #[cfg(not(debug_assertions))]
-    {
-        if let Some(hit) = try_candidate(target_release.clone(), &mut tried) {
-            return Ok(hit);
-        }
-        if let Some(hit) = try_candidate(target_debug.clone(), &mut tried) {
-            return Ok(hit);
-        }
-    }
-
     Err(format!(
-        "houston-engine binary not found. Tried:\n  - {}",
+        "host sidecar binary not found. Tried:\n  - {}",
         tried
             .iter()
             .map(|p| p.display().to_string())
@@ -500,10 +473,6 @@ fn bin_name_no_triple() -> &'static str {
     } else {
         "houston-engine"
     }
-}
-
-fn bin_name() -> &'static str {
-    bin_name_no_triple()
 }
 
 /// Host target triple — best-effort. Matches the suffix tauri `externalBin`
@@ -623,11 +592,9 @@ pub fn spawn_supervisor<C: SupervisorCallbacks>(
 
 fn parse_banner(line: &str) -> Option<EngineHandshake> {
     // The Houston host emits `HOUSTON_HOST_LISTENING port=<p> token=<t>`.
-    // The legacy `HOUSTON_ENGINE_LISTENING` prefix is still accepted (same field
-    // grammar) so the parser stays lenient across banner variants.
-    let rest = line
-        .strip_prefix("HOUSTON_HOST_LISTENING ")
-        .or_else(|| line.strip_prefix("HOUSTON_ENGINE_LISTENING "))?;
+    // (The Rust engine's `HOUSTON_ENGINE_LISTENING` prefix is gone with the
+    // engine — accepting it could only ever bless a stale wrong binary.)
+    let rest = line.strip_prefix("HOUSTON_HOST_LISTENING ")?;
     let mut port: Option<u16> = None;
     let mut token: Option<String> = None;
     for field in rest.split_whitespace() {
@@ -800,13 +767,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_banner() {
-        let h = parse_banner("HOUSTON_ENGINE_LISTENING port=12345 token=abc").unwrap();
-        assert_eq!(h.port, 12345);
-        assert_eq!(h.token, "abc");
-    }
-
-    #[test]
     fn parses_host_banner() {
         // The Houston host emits the HOUSTON_HOST_LISTENING banner.
         let h = parse_banner("HOUSTON_HOST_LISTENING port=4318 token=deadbeef").unwrap();
@@ -817,6 +777,13 @@ mod tests {
     #[test]
     fn rejects_unknown_line() {
         assert!(parse_banner("hello world").is_none());
+    }
+
+    #[test]
+    fn rejects_legacy_engine_banner() {
+        // The Rust engine is gone; its banner must no longer be blessed —
+        // a stale pre-cutover binary emitting it is the WRONG sidecar.
+        assert!(parse_banner("HOUSTON_ENGINE_LISTENING port=12345 token=abc").is_none());
     }
 
     #[test]

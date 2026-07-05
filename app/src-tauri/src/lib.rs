@@ -59,7 +59,8 @@ fn get_engine_handshake(
     }))
 }
 
-/// Supervisor callback that toasts the UI on each engine restart.
+/// Supervisor callback that notifies the frontend on each engine restart
+/// (the frontend surfaces the reconnect toast).
 struct TauriSupervisorCallbacks {
     handle: tauri::AppHandle,
 }
@@ -74,16 +75,10 @@ impl SupervisorCallbacks for TauriSupervisorCallbacks {
             "baseUrl": handshake.base_url(),
             "token": handshake.token,
         });
+        // The frontend's `houston-engine-restarted` listener
+        // (app/src/lib/engine-tauri-events.ts) re-applies the handshake and
+        // notifies restart subscribers, which surface the reconnect toast.
         let _ = self.handle.emit("houston-engine-restarted", payload);
-        // Matches the `{ type, data }` wire shape the frontend's houston-event
-        // listener expects (formerly houston_ui_events::HoustonEvent::CompletionToast).
-        let _ = self.handle.emit(
-            "houston-event",
-            serde_json::json!({
-                "type": "CompletionToast",
-                "data": { "title": "Engine reconnected", "issue_id": null },
-            }),
-        );
     }
 }
 
@@ -421,7 +416,9 @@ pub fn run() {
 /// Spawn the Bun-compiled Houston host as the sidecar and drive the frontend
 /// into control-plane mode against it.
 ///
-///   - hands the host its OWN env contract: `HOUSTON_WORKSPACES_ROOT`,
+///   - hands the host its OWN env contract: `HOUSTON_HOME` (so every host
+///     default — agents dir, chat-history db — roots at the same data dir as
+///     the shell, `~/.dev-houston` in debug builds), `HOUSTON_WORKSPACES_ROOT`,
 ///     `HOUSTON_CREDENTIALS_PATH`, a reserved `HOUSTON_HOST_PORT`, and the
 ///     product voice via `HOUSTON_APP_SYSTEM_PROMPT` (read by
 ///     packages/host/src/local/main.ts). The host mints its OWN
@@ -456,6 +453,11 @@ fn spawn_host_sidecar(
     let credentials_path = houston.join("credentials.json");
 
     let mut host_env: Vec<(String, String)> = vec![
+        // The data root itself, not just the two derived paths below: the host
+        // defaults HOUSTON_AGENTS_DIR and HOUSTON_CHAT_HISTORY_DB from
+        // HOUSTON_HOME (falling back to `~/.houston`), so omitting it would
+        // point a debug shell (`~/.dev-houston`) at PRODUCTION agent/chat data.
+        ("HOUSTON_HOME".into(), houston.display().to_string()),
         (
             "HOUSTON_WORKSPACES_ROOT".into(),
             workspaces_root.display().to_string(),
