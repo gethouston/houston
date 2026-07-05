@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
   applyRoutineUpdate,
+  canonicalProviderId,
   createRoutine,
   getPreference,
   loadConfig,
@@ -29,15 +30,19 @@ export { workspaceRoot } from "../paths";
 
 /**
  * Reject a provider pin naming a provider this host has never heard of —
- * otherwise the typo saves and every fired run errors. Model ids are validated
- * at dispatch (the catalog is the runtime's).
+ * otherwise the typo saves and every fired run errors. Validated through the
+ * SAME canonical mapping the fire path uses (routinePin), so a Rust-era alias
+ * ("claude", "codex") that still lives in a migrated routines.json round-trips
+ * through an edit without a spurious 400. Model ids are validated at dispatch
+ * (the catalog is the runtime's).
  */
-const pinError = (body: Record<string, unknown>): string | null =>
-  typeof body.provider === "string" &&
-  body.provider &&
-  !hostProvider(body.provider)
-    ? `unknown provider: ${body.provider}`
-    : null;
+const pinError = (body: Record<string, unknown>): string | null => {
+  if (typeof body.provider !== "string" || !body.provider) return null;
+  const canonical = canonicalProviderId(body.provider);
+  return canonical && hostProvider(canonical)
+    ? null
+    : `unknown provider: ${body.provider}`;
+};
 
 /** Each typed family's reactivity event — emitted after a successful mutation. */
 const FAMILY_EVENT: Record<string, (agentPath: string) => HoustonEvent> = {

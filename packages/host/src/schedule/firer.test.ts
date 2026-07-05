@@ -150,6 +150,19 @@ test("ChannelRoutineFirer maps a Rust-era provider pin to its pi id at fire time
   expect(cloudrun.calls[0]?.pin?.provider).toBe("anthropic");
 });
 
+test("an unresolvable provider pin fails the fire with the real reason, before any turn starts", async () => {
+  const cloudrun = recordingChannel();
+  const firer = new ChannelRoutineFirer({ cloudrun });
+  // routinePin passes unknown ids through verbatim (never a silent switch);
+  // the firer must reject them HERE so the run errors immediately with the
+  // reason — firing anyway would die inside the runtime as an ephemeral
+  // stream error and the run would time out vague 15 minutes later.
+  await expect(
+    firer.fire(job({ routine: { ...job().routine, provider: "gemini-cli" } })),
+  ).rejects.toThrow("unknown provider: gemini-cli");
+  expect(cloudrun.calls).toHaveLength(0);
+});
+
 test("a missing channel for the workspace's runtime throws (→ errored run)", async () => {
   const firer = new ChannelRoutineFirer({}); // nothing wired
   await expect(firer.fire(job({ workspace: ws("cloudrun") }))).rejects.toThrow(
@@ -315,6 +328,67 @@ test("ProxyChannel.fireTurn throws when the runtime rejects (→ errored run)", 
     await expect(
       channel.fireTurn({ workspace: ws("gke"), agent }, "c1", "hi"),
     ).rejects.toThrow("runtime 500");
+  } finally {
+    await runtime.stop();
+  }
+});
+
+test("ProxyChannel.cancelTurn answers false for an asleep runtime without waking it", async () => {
+  // Asleep ⇒ no turn can be in flight (turns live inside the runtime process);
+  // paying a cold start just to hear cancelled:false would add seconds + spend
+  // to the user's Stop click on a stale row.
+  const calls: string[] = [];
+  const launcher = {
+    async ensureAwake(): Promise<{ baseUrl: string; token: string }> {
+      calls.push("ensureAwake");
+      throw new Error("must not wake an asleep runtime for a cancel");
+    },
+    async sleep() {},
+    async destroy() {},
+    async status() {
+      calls.push("status");
+      return "asleep" as const;
+    },
+  };
+  const channel = new ProxyChannel({
+    launcher,
+    proxy: { async forward() {} },
+    credentials: new MemoryCredentialStore(),
+    forwardActingHeader: false,
+  });
+  await expect(
+    channel.cancelTurn({ workspace: ws("gke"), agent }, "routine-r1"),
+  ).resolves.toBe(false);
+  expect(calls).toEqual(["status"]);
+});
+
+test("ProxyChannel.cancelTurn cancels through a running runtime and reports the outcome", async () => {
+  const runtime = await startTestFetchServer(async (req) => {
+    const u = new URL(req.url);
+    if (u.pathname === "/conversations/routine-r1/cancel")
+      return Response.json({ ok: true, cancelled: true });
+    return Response.json({ error: "unexpected" }, { status: 500 });
+  });
+  const launcher = {
+    async ensureAwake() {
+      return { baseUrl: runtime.baseUrl, token: "t" };
+    },
+    async sleep() {},
+    async destroy() {},
+    async status() {
+      return "running" as const;
+    },
+  };
+  const channel = new ProxyChannel({
+    launcher,
+    proxy: { async forward() {} },
+    credentials: new MemoryCredentialStore(),
+    forwardActingHeader: false,
+  });
+  try {
+    await expect(
+      channel.cancelTurn({ workspace: ws("gke"), agent }, "routine-r1"),
+    ).resolves.toBe(true);
   } finally {
     await runtime.stop();
   }

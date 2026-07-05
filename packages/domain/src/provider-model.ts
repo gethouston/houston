@@ -37,6 +37,36 @@ import type { DocDiagnostic } from "./store";
 export type { ProviderId } from "./provider-model-catalog";
 export { DEFAULT_PROVIDER } from "./provider-model-catalog";
 
+/**
+ * Resolve a stored provider string to a pi ProviderId: a valid id passes
+ * through, a known legacy alias maps, anything else is null. The ONE
+ * alias-resolution ladder — every consumer (agent-config migration, routine
+ * pins, write-time validation) wraps this with its own fallback policy.
+ */
+export function canonicalProviderId(raw: string): ProviderId | null {
+  if (isProviderId(raw)) return raw;
+  return PROVIDER_ALIASES[raw] ?? null;
+}
+
+/**
+ * Resolve a stored model id for `provider`: an open-catalog gateway keeps the
+ * stored id verbatim, a valid id passes through, a known legacy alias maps at
+ * the same tier, anything else is null. Same single-ladder contract as
+ * `canonicalProviderId` — callers pick their own fallback.
+ */
+export function canonicalModelId(
+  provider: ProviderId,
+  raw: string,
+): string | null {
+  const valid = VALID_MODELS[provider];
+  // Open-catalog gateways: pi forwards any id to the gateway, so keep whatever
+  // was stored (the runtime's safeGetModel is the backstop for stale ids).
+  if (!valid) return raw;
+  if (valid.has(raw)) return raw;
+  const alias = MODEL_ALIASES[provider]?.[raw];
+  return alias && valid.has(alias) ? alias : null;
+}
+
 /** Map a stored provider string to a pi ProviderId, recording a diagnostic when
  * it falls back. Returns the mapped id + whether a diagnostic was emitted. */
 function mapProvider(
@@ -44,8 +74,8 @@ function mapProvider(
   diagnostics: DocDiagnostic[],
   key: string,
 ): ProviderId {
-  if (raw && isProviderId(raw)) return raw;
-  if (raw && PROVIDER_ALIASES[raw]) return PROVIDER_ALIASES[raw];
+  const canonical = raw ? canonicalProviderId(raw) : null;
+  if (canonical) return canonical;
   diagnostics.push({
     key,
     message: `unknown provider ${JSON.stringify(raw)} → defaulting to ${DEFAULT_PROVIDER}`,
@@ -61,14 +91,9 @@ function mapModel(
   diagnostics: DocDiagnostic[],
   key: string,
 ): string {
-  const valid = VALID_MODELS[provider];
-  // Open-catalog gateways: pi forwards any id to the gateway, so keep whatever
-  // was stored (or its default when absent).
-  if (!valid) return raw || DEFAULT_MODEL[provider];
   if (!raw) return DEFAULT_MODEL[provider];
-  if (valid.has(raw)) return raw;
-  const alias = MODEL_ALIASES[provider]?.[raw];
-  if (alias && valid.has(alias)) return alias;
+  const canonical = canonicalModelId(provider, raw);
+  if (canonical) return canonical;
   diagnostics.push({
     key,
     message: `unknown ${provider} model ${JSON.stringify(raw)} → falling back to ${DEFAULT_MODEL[provider]}`,

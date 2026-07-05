@@ -63,10 +63,15 @@ export class TurnChannel implements RuntimeChannel {
       throw new Error("a turn is already running for this agent");
   }
 
-  async cancelTurn(ctx: ChannelCtx, _conversationId: string): Promise<boolean> {
-    // The per-turn model has one turn slot per agent, owned by the relay —
-    // cancelling the agent's slot IS cancelling the conversation's turn.
-    return this.deps.relay.cancel(ctx.agent.id);
+  async cancelTurn(ctx: ChannelCtx, conversationId: string): Promise<boolean> {
+    // The per-turn model has one turn slot per agent, owned by the relay — but
+    // the slot may be running a DIFFERENT conversation's turn (a live chat
+    // while this routine's run row is stale-running), so the cancel is scoped
+    // to this conversation's key and no-ops otherwise.
+    return this.deps.relay.cancel(
+      ctx.agent.id,
+      `${ctx.agent.id}/${conversationId}`,
+    );
   }
 
   async teardown(ctx: ChannelCtx): Promise<void> {

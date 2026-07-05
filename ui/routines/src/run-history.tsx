@@ -11,6 +11,7 @@ import {
   interp,
   type RunHistoryLabels,
 } from "./labels";
+import { formatRunTime } from "./run-time-format";
 import type { RoutineRun } from "./types";
 
 export interface RunHistoryProps {
@@ -37,33 +38,6 @@ const STATUS_DOT: Record<string, string> = {
   error: "bg-red-500",
   cancelled: "bg-gray-400",
 };
-
-function formatRunTime(
-  iso: string,
-  labels: RunHistoryLabels,
-  locale: string,
-  timeZone?: string,
-): string {
-  const date = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  const time = date.toLocaleTimeString(locale, {
-    hour: "numeric",
-    minute: "2-digit",
-    ...(timeZone ? { timeZone } : {}),
-  });
-
-  if (diffDays === 0) return interp(labels.today, { time });
-  if (diffDays === 1) return interp(labels.yesterday, { time });
-  const dateStr = date.toLocaleDateString(locale, {
-    month: "short",
-    day: "numeric",
-    ...(timeZone ? { timeZone } : {}),
-  });
-  return interp(labels.onDate, { date: dateStr, time });
-}
 
 function formatDuration(
   startedAt: string,

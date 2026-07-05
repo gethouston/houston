@@ -214,14 +214,22 @@ export async function execTurn(
     // notification on top of the error.
     if (!providerError) publish(id, { type: "done", data: null, turnId });
   } catch (err) {
-    if (assistantText)
-      appendAssistantMessage(id, assistantText, {
-        tools,
-        usage,
-        providerSwitch,
-        providerError,
-        turnId,
-      });
+    // Persist the failure even when nothing streamed: a thrown turn (bad pin,
+    // missing credential, stale model id) must leave the same durable trace a
+    // provider_error frame does — an unattended reader (a routine's reconcile)
+    // reads the real reason off this message instead of timing the run out
+    // with a vague error 15 minutes later.
+    appendAssistantMessage(id, assistantText, {
+      tools,
+      usage,
+      providerSwitch,
+      providerError: providerError ?? {
+        kind: "unknown",
+        provider: pin?.provider ?? conv.provider,
+        raw_excerpt: errMessage(err),
+      },
+      turnId,
+    });
     publish(id, { type: "error", data: { message: errMessage(err) }, turnId });
   } finally {
     conv.turnId = undefined;

@@ -278,3 +278,57 @@ test("surfaced run reuses the same activity across runs (keyed by session_key)",
   expect(activities).toHaveLength(1); // reused, not a second card
   expect((activities[0] as Activity).routine_run_id).toBe("run-2"); // points at the latest run
 });
+
+test("a cancel landing mid-sweep wins — reconcile never resurrects the cancelled row", async () => {
+  const r = routine();
+  const env = await setup(r);
+  await seedReply(
+    env.vfs,
+    env.ws,
+    env.agent,
+    env.run.session_key,
+    "found something",
+    STARTED.getTime() + 1000,
+  );
+
+  // Simulate the user's Stop landing while this sweep awaits I/O: the moment
+  // reconcile reads the run's conversation, flip the row terminal underneath
+  // it (exactly what schedule/cancel.ts does). Reconcile has already loaded
+  // its runs snapshot with the row `running` — the stale snapshot must NOT be
+  // saved over the cancel.
+  const root = workspaceRoot(env.ws, env.agent);
+  const convKey = conversationKey(
+    prefixFor(env.ws as never, env.agent as never),
+    env.run.session_key,
+  );
+  const origRead = env.vfs.readText.bind(env.vfs);
+  let flipped = false;
+  env.vfs.readText = async (key: string) => {
+    const text = await origRead(key);
+    if (!flipped && key === convKey) {
+      flipped = true;
+      const { items } = await loadRoutineRuns(env.vfs, root);
+      await saveRoutineRuns(
+        env.vfs,
+        root,
+        items.map((run) =>
+          run.id === env.run.id
+            ? {
+                ...run,
+                status: "cancelled" as const,
+                summary: "Stopped by user",
+                completed_at: NOW.toISOString(),
+              }
+            : run,
+        ),
+      );
+    }
+    return text;
+  };
+
+  await reconcileAgentRuns(deps(env.vfs, NOW), env.ws, env.agent);
+
+  const { items } = await loadRoutineRuns(env.vfs, root);
+  expect((items[0] as RoutineRun).status).toBe("cancelled");
+  expect((items[0] as RoutineRun).summary).toBe("Stopped by user");
+});

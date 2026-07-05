@@ -124,9 +124,10 @@ test("cancel flips the run terminal and aborts the live turn through the channel
     { method: "POST", headers: auth("alice") },
   );
   expect(res.status).toBe(200);
-  const body = (await res.json()) as RoutineRun;
+  const body = (await res.json()) as RoutineRun & { abort_failed?: boolean };
   expect(body.status).toBe("cancelled");
   expect(body.summary).toBe("Stopped by user");
+  expect(body.abort_failed).toBeUndefined(); // clean abort → no failure flag
 
   const rows = await runRows();
   expect(rows[0]).toMatchObject({
@@ -161,7 +162,7 @@ test("an unknown run 404s", async () => {
   expect(res.status).toBe(404);
 });
 
-test("a turn-abort failure still leaves the run cancelled (the user asked it to stop)", async () => {
+test("a turn-abort failure still leaves the run cancelled AND surfaces abort_failed", async () => {
   const { routine, runId } = await startRun();
   channel.cancelThrows = true;
   const res = await fetch(
@@ -169,6 +170,10 @@ test("a turn-abort failure still leaves the run cancelled (the user asked it to 
     { method: "POST", headers: auth("alice") },
   );
   expect(res.status).toBe(200);
+  // The abort failure is reported, not swallowed: the runtime may still be
+  // burning the turn, and the client gets to say so.
+  const body = (await res.json()) as RoutineRun & { abort_failed?: boolean };
+  expect(body.abort_failed).toBe(true);
   const rows = await runRows();
   expect((rows[0] as RoutineRun).status).toBe("cancelled");
 });

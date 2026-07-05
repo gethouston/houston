@@ -1,27 +1,17 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { loadRoutines, seedSchemas } from "@houston/domain";
-import type {
-  Capabilities,
-  CustomEndpoint,
-  HoustonEvent,
-} from "@houston/protocol";
-import { canUseAgent } from "../domain/access";
-import type {
-  Agent,
-  UserId,
-  Workspace,
-  WorkspaceRuntime,
-} from "../domain/types";
-import type { EventHub } from "../events/hub";
-import { CloudPaths, type WorkspacePaths } from "../paths";
-import type { RuntimeChannel, WorkspaceStore } from "../ports";
+import { seedSchemas } from "@houston/domain";
+import type { CustomEndpoint, HoustonEvent } from "@houston/protocol";
+import type { UserId } from "../domain/types";
 import { isApiKeyProvider } from "../providers";
-import { cancelRoutineRun } from "../schedule/cancel";
-import { ChannelRoutineFirer } from "../schedule/firer";
-import { fireRoutineRun, RoutineBusyError } from "../schedule/run";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
-import type { Vfs } from "../vfs";
+import {
+  type AgentRouteDeps,
+  authorizeAgent,
+  channelFor,
+  DEFAULT_PATHS,
+  noChannel,
+} from "./agent-authz";
 import { handleAgentData } from "./agent-data";
 import { handleAgentFile } from "./agent-file";
 import { asSeedRecord, writeAgentSeeds } from "./agent-seed";
@@ -29,62 +19,13 @@ import { json, readJson } from "./http";
 import { handlePortableExport } from "./portable";
 import { handlePortableAnonymize } from "./portable-anonymize";
 import { handlePortablePreview } from "./portable-preview";
+import { handleRoutineRuns } from "./routine-runs";
 import { handleSkills } from "./skills";
 import { handleSkillsRemote } from "./skills-remote";
 
-export interface AgentRouteDeps {
-  store: WorkspaceStore;
-  /** RuntimeChannel per workspace hosting model; a missing entry answers 503. */
-  channels: Partial<Record<WorkspaceRuntime, RuntimeChannel>>;
-  /** Workspace file store backing the typed .houston families; absent → those routes 503. */
-  vfs?: Vfs;
-  /** Where agent files live in the vfs (cloud prefixes vs local tree). Default: cloud. */
-  paths?: WorkspacePaths;
-  /** Global reactivity fan-out; absent → mutations succeed but emit nothing. */
-  events?: EventHub;
-  /** Deployment capabilities; gates local-only routes (OpenAI-compatible connect). */
-  capabilities?: Capabilities;
-}
-
-const DEFAULT_PATHS = new CloudPaths();
-
-type AgentAuthz =
-  | { ok: true; agent: Agent; workspace: Workspace }
-  | { ok: false; status: number; reason: string };
-
-/** Load an agent + its workspace and run the ownership check in one place. */
-async function authorizeAgent(
-  deps: AgentRouteDeps,
-  userId: UserId,
-  agentId: string,
-): Promise<AgentAuthz> {
-  const agent = await deps.store.getAgent(agentId);
-  const workspace = agent
-    ? await deps.store.getWorkspace(agent.workspaceId)
-    : null;
-  const access = canUseAgent({ userId, agent, workspace });
-  if (!access.ok) {
-    return {
-      ok: false,
-      status: access.reason === "agent not found" ? 404 : 403,
-      reason: access.reason,
-    };
-  }
-  if (!agent || !workspace)
-    return { ok: false, status: 404, reason: "agent not found" }; // narrows the type
-  return { ok: true, agent, workspace };
-}
-
-/** The workspace's channel, or null (route answers 503 — hosting model not wired). */
-function channelFor(
-  deps: AgentRouteDeps,
-  workspace: Workspace,
-): RuntimeChannel | null {
-  return deps.channels[workspace.runtime] ?? null;
-}
-
-const noChannel = (res: ServerResponse, runtime: WorkspaceRuntime) =>
-  json(res, 503, { error: `${runtime} runtime not configured` });
+// The deps bag + authz helpers moved to agent-authz.ts (shared with
+// routine-runs.ts); re-exported so existing importers keep working.
+export type { AgentRouteDeps } from "./agent-authz";
 
 /**
  * The user's agents: list/create/rename/delete, connect-once capture, and the
@@ -399,120 +340,9 @@ export async function handleAgents(
     return true;
   }
 
-  // Run a routine ON DEMAND: fire it now through the SAME firer + record path the
-  // scheduler uses, so a hand-pressed run is indistinguishable from a cron one
-  // (records a routine_run, reconcile completes it). Must precede the generic
-  // dispatch (the runtime has no run route). A fire failure surfaces as a real
-  // status — never a silent miss.
-  const runNow = path.match(/^\/agents\/([^/]+)\/routines\/([^/]+)\/run$/);
-  if (runNow && method === "POST") {
-    const agentId = runNow[1] ? decodeURIComponent(runNow[1]) : undefined;
-    const routineId = runNow[2] ? decodeURIComponent(runNow[2]) : undefined;
-    if (!agentId || !routineId) {
-      json(res, 404, { error: "not found" });
-      return true;
-    }
-    const authz = await authorizeAgent(deps, userId, agentId);
-    if (!authz.ok) {
-      json(res, authz.status, { error: authz.reason });
-      return true;
-    }
-    if (!deps.vfs) {
-      json(res, 503, { error: "agent data not configured" });
-      return true;
-    }
-    const channel = channelFor(deps, authz.workspace);
-    if (!channel) {
-      noChannel(res, authz.workspace.runtime);
-      return true;
-    }
-    const paths = deps.paths ?? DEFAULT_PATHS;
-    const root = paths.agentRoot(authz.workspace, authz.agent);
-    const { items: routines } = await loadRoutines(deps.vfs, root);
-    const routine = routines.find((r) => r.id === routineId);
-    if (!routine) {
-      json(res, 404, { error: "routine not found" });
-      return true;
-    }
-    // The firer wraps the workspace's channel — the exact path ChannelRoutineFirer
-    // takes for the scheduler. fireRoutineRun records the run, then fires; a fire
-    // failure marks the run errored AND rethrows, so we answer 502 (never 200).
-    const firer = new ChannelRoutineFirer(deps.channels);
-    try {
-      const { runId } = await fireRoutineRun(
-        {
-          vfs: deps.vfs,
-          paths,
-          firer,
-          events: deps.events,
-          now: () => new Date(),
-          newId: () => crypto.randomUUID(),
-        },
-        authz.workspace,
-        authz.agent,
-        routine,
-      );
-      json(res, 200, { ok: true, runId });
-    } catch (err) {
-      // A run already in flight is a 409 the UI can toast plainly (the Rust
-      // engine's Conflict); anything else is a real fire failure.
-      json(res, err instanceof RoutineBusyError ? 409 : 502, {
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-    return true;
-  }
-
-  // Stop an in-flight routine run: the row goes terminal first, then the live
-  // turn is aborted through the channel (schedule/cancel.ts). Must precede the
-  // generic dispatch — the runtime has no routine routes.
-  const runCancel = path.match(
-    /^\/agents\/([^/]+)\/routines\/([^/]+)\/runs\/([^/]+)\/cancel$/,
-  );
-  if (runCancel && method === "POST") {
-    const agentId = runCancel[1] ? decodeURIComponent(runCancel[1]) : undefined;
-    const routineId = runCancel[2]
-      ? decodeURIComponent(runCancel[2])
-      : undefined;
-    const runId = runCancel[3] ? decodeURIComponent(runCancel[3]) : undefined;
-    if (!agentId || !routineId || !runId) {
-      json(res, 404, { error: "not found" });
-      return true;
-    }
-    const authz = await authorizeAgent(deps, userId, agentId);
-    if (!authz.ok) {
-      json(res, authz.status, { error: authz.reason });
-      return true;
-    }
-    if (!deps.vfs) {
-      json(res, 503, { error: "agent data not configured" });
-      return true;
-    }
-    const channel = channelFor(deps, authz.workspace);
-    if (!channel) {
-      noChannel(res, authz.workspace.runtime);
-      return true;
-    }
-    const result = await cancelRoutineRun(
-      {
-        vfs: deps.vfs,
-        paths: deps.paths ?? DEFAULT_PATHS,
-        channel,
-        events: deps.events,
-        now: () => new Date(),
-      },
-      authz.workspace,
-      authz.agent,
-      routineId,
-      runId,
-    );
-    if (result.status === "not_found")
-      json(res, 404, { error: "run not found" });
-    else if (result.status === "not_running")
-      json(res, 409, { error: "run is not running" });
-    else json(res, 200, result.run);
-    return true;
-  }
+  // Routine-run routes (run-now / cancel) — matched before the generic
+  // dispatch below; the runtime has no routine routes. See routine-runs.ts.
+  if (await handleRoutineRuns(deps, userId, method, path, res)) return true;
 
   // The per-agent runtime surface: /agents/:agentId/<anything> → the agent's
   // runtime, via the workspace's channel. The frontend points its runtime

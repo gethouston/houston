@@ -150,8 +150,14 @@ export class ProxyChannel implements RuntimeChannel {
   }
 
   async cancelTurn(ctx: ChannelCtx, conversationId: string): Promise<boolean> {
+    // An asleep/absent runtime cannot be running a turn (turns live inside the
+    // runtime process; sleep kills it) — answer false without paying a cold
+    // start just to hear the same thing from a fresh process.
+    if ((await this.opts.launcher.status(ctx.agent.id)) !== "running")
+      return false;
     // The runtime's own cancel route aborts the in-flight turn; `cancelled`
-    // reports whether anything was actually running. A non-2xx throws — the
+    // reports whether anything was actually running. A non-2xx (or a 2xx with
+    // an unreadable body — a protocol bug, not a clean no-op) throws — the
     // caller has already marked the run cancelled, so this only surfaces the
     // abort failure, it never resurrects the run.
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
@@ -167,9 +173,11 @@ export class ProxyChannel implements RuntimeChannel {
         `runtime ${res.status}: ${await res.text().catch(() => "")}`,
       );
     }
-    const body = (await res.json().catch(() => ({}))) as {
-      cancelled?: boolean;
-    };
+    const body = (await res.json().catch((err: unknown) => {
+      throw new Error(
+        `runtime cancel: malformed response body: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    })) as { cancelled?: boolean };
     return body.cancelled === true;
   }
 

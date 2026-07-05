@@ -242,3 +242,28 @@ test("another user cannot run the agent's routine (403)", async () => {
   expect(res.status).toBe(403);
   expect(channel.fired).toHaveLength(0);
 });
+
+test("two simultaneous run-now requests: one fires, one 409s, exactly one run row", async () => {
+  const routine = await makeRoutine();
+  // Both requests race the in-flight gate; the per-agent runs-file queue must
+  // let exactly one through — never two turns into the same conversation, and
+  // never a run row silently dropped by the second whole-file save.
+  const [a, b] = await Promise.all([
+    fetch(`${base}/agents/${agentId}/routines/${routine.id}/run`, {
+      method: "POST",
+      headers: auth("alice"),
+    }),
+    fetch(`${base}/agents/${agentId}/routines/${routine.id}/run`, {
+      method: "POST",
+      headers: auth("alice"),
+    }),
+  ]);
+  expect([a.status, b.status].sort()).toEqual([200, 409]);
+  expect(channel.fired).toHaveLength(1);
+
+  const ws = await store.getOrCreatePersonalWorkspace("alice");
+  const agent = (await store.listAgents(ws.id))[0];
+  if (!agent) throw new Error("expected at least one agent to exist");
+  const { items } = await loadRoutineRuns(vfs, workspaceRoot(ws, agent));
+  expect(items).toHaveLength(1);
+});
