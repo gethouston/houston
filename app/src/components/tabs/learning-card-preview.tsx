@@ -27,7 +27,7 @@ export function LearningPreview({
           onClick={onToggle}
           className={cn(
             "size-7 shrink-0 rounded-lg flex items-center justify-center",
-            "text-muted-foreground hover:bg-black/[0.04] hover:text-foreground",
+            "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground",
             "transition-colors",
           )}
           aria-label={
@@ -98,7 +98,7 @@ function IconButton({
       onClick={onClick}
       className={cn(
         "size-7 rounded-lg flex items-center justify-center text-muted-foreground",
-        "hover:bg-black/[0.04] transition-colors",
+        "hover:bg-foreground/[0.04] transition-colors",
         danger ? "hover:text-red-500" : "hover:text-foreground",
       )}
       aria-label={label}

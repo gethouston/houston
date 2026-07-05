@@ -29,10 +29,11 @@ ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH
 RUN corepack enable
 
-# Extras the agent commonly reaches for through its bash tool; ca-certificates is
-# for the runtime's outbound HTTPS to the model provider.
+# Extras the agent commonly reaches for through its bash tool (curl/wget for
+# fetching, git/python3 for scripting); ca-certificates is for the runtime's
+# outbound HTTPS to the model provider.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      git python3 ca-certificates \
+      git python3 curl wget ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -75,7 +76,10 @@ CMD ["node", "--import", "tsx", "src/local/main.ts"]
 
 FROM host-base AS engine-pod
 
+# Pods run the agent's bash in-container (HOU-669): each pod is single-tenant
+# and network-policied by the private repo, so the container IS the sandbox —
+# same posture as self-host. "local" = pi's built-in bash + clamped file tools.
 ENV HOUSTON_MANAGED_CLOUD=1 \
-    HOUSTON_CODE_EXECUTION=disabled
+    HOUSTON_CODE_EXECUTION=local
 
 FROM host-base AS selfhost

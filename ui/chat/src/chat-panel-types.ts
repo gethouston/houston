@@ -67,6 +67,11 @@ export interface ChatPanelProps {
   canSendEmpty?: boolean;
   status?: ChatStatus;
   thinkingIndicator?: ReactNode;
+  /** Loader (e.g. the pulsing Houston helmet) shown for the WHOLE in-flight
+   *  turn — it stays up while the active mission-log header reads "Mission in
+   *  progress: <action>" and the standalone `thinkingIndicator` is suppressed
+   *  (HOU-655). Hidden the moment the reply text streams or the turn settles. */
+  loadingIndicator?: ReactNode;
   transformContent?: (content: string) => {
     content: string;
     extra?: ReactNode;

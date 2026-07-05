@@ -107,7 +107,6 @@ export async function createMission(
     title,
     description,
     opts.agentMode,
-    undefined,
     opts.providerOverride,
     opts.modelOverride,
   );

@@ -8,6 +8,7 @@
 
 import "react-i18next";
 import type agents from "../locales/en/agents.json";
+import type aiHub from "../locales/en/ai-hub.json";
 import type board from "../locales/en/board.json";
 import type chat from "../locales/en/chat.json";
 import type common from "../locales/en/common.json";
@@ -31,6 +32,7 @@ declare module "react-i18next" {
     defaultNS: "common";
     resources: {
       common: typeof common;
+      aiHub: typeof aiHub;
       setup: typeof setup;
       legal: typeof legal;
       shell: typeof shell;

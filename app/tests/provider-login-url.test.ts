@@ -3,7 +3,6 @@ import { describe, it } from "node:test";
 import {
   providerLoginUrlHost,
   shouldOpenLoginUrlDirectly,
-  shouldUseCodexLoopback,
 } from "../src/components/shell/provider-login-url.ts";
 
 describe("providerLoginUrlHost", () => {
@@ -95,68 +94,6 @@ describe("shouldOpenLoginUrlDirectly", () => {
     strictEqual(
       shouldOpenLoginUrlDirectly({ isDesktop: true, userCode: "" }),
       true,
-    );
-  });
-});
-
-describe("shouldUseCodexLoopback", () => {
-  it("drives the loopback relay for Codex on desktop with no device code", () => {
-    strictEqual(
-      shouldUseCodexLoopback({
-        provider: "openai",
-        isDesktop: true,
-        userCode: null,
-      }),
-      true,
-    );
-    strictEqual(
-      shouldUseCodexLoopback({
-        provider: "openai",
-        isDesktop: true,
-        userCode: undefined,
-      }),
-      true,
-    );
-    strictEqual(
-      shouldUseCodexLoopback({
-        provider: "openai",
-        isDesktop: true,
-        userCode: "",
-      }),
-      true,
-    );
-  });
-
-  it("does not use the relay when a device code must be shown", () => {
-    strictEqual(
-      shouldUseCodexLoopback({
-        provider: "openai",
-        isDesktop: true,
-        userCode: "WXYZ-1234",
-      }),
-      false,
-    );
-  });
-
-  it("does not use the relay for a web / non-desktop client", () => {
-    strictEqual(
-      shouldUseCodexLoopback({
-        provider: "openai",
-        isDesktop: false,
-        userCode: null,
-      }),
-      false,
-    );
-  });
-
-  it("does not use the relay for a non-Codex provider (e.g. Claude)", () => {
-    strictEqual(
-      shouldUseCodexLoopback({
-        provider: "anthropic",
-        isDesktop: true,
-        userCode: null,
-      }),
-      false,
     );
   });
 });

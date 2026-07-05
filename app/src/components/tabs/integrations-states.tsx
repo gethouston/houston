@@ -29,7 +29,7 @@ export function LoadingState() {
         <EmptyTitle>{t("loading.title")}</EmptyTitle>
         <EmptyDescription>{t("loading.body")}</EmptyDescription>
       </EmptyHeader>
-      <div className="h-[2px] w-48 overflow-hidden rounded-full bg-black/10">
+      <div className="h-[2px] w-48 overflow-hidden rounded-full bg-foreground/10">
         <div
           ref={barRef}
           className="h-full rounded-full bg-foreground"

@@ -12,6 +12,7 @@ import i18n from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
 import agentsEn from "../locales/en/agents.json";
+import aiHubEn from "../locales/en/ai-hub.json";
 import boardEn from "../locales/en/board.json";
 import chatEn from "../locales/en/chat.json";
 import commonEn from "../locales/en/common.json";
@@ -30,6 +31,7 @@ import setupEn from "../locales/en/setup.json";
 import shellEn from "../locales/en/shell.json";
 import skillsEn from "../locales/en/skills.json";
 import agentsEs from "../locales/es/agents.json";
+import aiHubEs from "../locales/es/ai-hub.json";
 import boardEs from "../locales/es/board.json";
 import chatEs from "../locales/es/chat.json";
 import commonEs from "../locales/es/common.json";
@@ -48,6 +50,7 @@ import setupEs from "../locales/es/setup.json";
 import shellEs from "../locales/es/shell.json";
 import skillsEs from "../locales/es/skills.json";
 import agentsPt from "../locales/pt/agents.json";
+import aiHubPt from "../locales/pt/ai-hub.json";
 import boardPt from "../locales/pt/board.json";
 import chatPt from "../locales/pt/chat.json";
 import commonPt from "../locales/pt/common.json";
@@ -117,6 +120,7 @@ export function setCachedLocale(locale: SupportedLocale): void {
 const resources = {
   en: {
     common: commonEn,
+    aiHub: aiHubEn,
     setup: setupEn,
     legal: legalEn,
     shell: shellEn,
@@ -137,6 +141,7 @@ const resources = {
   },
   es: {
     common: commonEs,
+    aiHub: aiHubEs,
     setup: setupEs,
     legal: legalEs,
     shell: shellEs,
@@ -157,6 +162,7 @@ const resources = {
   },
   pt: {
     common: commonPt,
+    aiHub: aiHubPt,
     setup: setupPt,
     legal: legalPt,
     shell: shellPt,
@@ -197,6 +203,7 @@ void i18n
     defaultNS: "common",
     ns: [
       "common",
+      "aiHub",
       "setup",
       "legal",
       "shell",

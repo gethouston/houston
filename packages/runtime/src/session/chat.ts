@@ -2,6 +2,7 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { activeProvider, resolveModel } from "../ai/providers";
 import { syncServedCredential } from "../auth/serve";
+import { cleanupClaudeConversation } from "../backends/claude/cleanup";
 import { config } from "../config";
 import type { ActingContext } from "./acting-context";
 import { publish } from "./bus";
@@ -151,8 +152,14 @@ export const STOPPED_BY_USER = "Stopped by user";
 
 /**
  * Drop a conversation's live session (aborting any in-flight turn) and, when
- * requested, its on-disk pi session history. Used by DELETE /conversations/:id;
- * the transcript file itself is the store's job (deleteConversation).
+ * requested, its on-disk session history. Used by DELETE /conversations/:id.
+ *
+ * Two backends store history in two places, so deletion clears both: pi's
+ * per-conversation transcript dir (`<dataDir>/sessions/<id>`), and the Claude
+ * Agent SDK backend's `sessions.json` mapping + transcript JSONL. The Claude
+ * cleanup is called unconditionally — it is a no-op for a conversation that never
+ * ran on the anthropic backend — so a deleted anthropic chat leaves no SDK state
+ * behind without chat.ts needing to know which provider the conversation used.
  */
 export async function disposeConversation(
   id: string,
@@ -169,5 +176,6 @@ export async function disposeConversation(
       recursive: true,
       force: true,
     });
+    cleanupClaudeConversation(config.dataDir, id);
   }
 }

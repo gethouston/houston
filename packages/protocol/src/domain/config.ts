@@ -8,6 +8,18 @@ export interface AgentConfig {
   [extra: string]: unknown;
 }
 
+/**
+ * One entry of the installed agent-config library — a `houston.json` template
+ * the user added (e.g. from a GitHub repo) that the create-agent picker merges
+ * alongside the bundled first-party templates. `config` is the raw manifest
+ * (id/name/description/claudeMd/agentSeeds/…, authored outside this repo, so
+ * untyped here); `path` is the library key the entry lives under.
+ */
+export interface InstalledAgentConfig {
+  config: Record<string, unknown>;
+  path: string;
+}
+
 export interface PreferenceValue {
   value: string | null;
 }

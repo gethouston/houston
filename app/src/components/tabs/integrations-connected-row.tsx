@@ -50,7 +50,7 @@ export function ConnectedAppRow({
 }) {
   const { t } = useTranslation("integrations");
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 transition-colors hover:bg-black/[0.05]">
+    <div className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 transition-colors hover:bg-foreground/[0.05]">
       <Logo app={app} />
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5 truncate text-[13px] font-medium text-foreground">
@@ -77,7 +77,7 @@ export function ConnectedAppRow({
             type="button"
             disabled={busy}
             aria-label={t("connected.menu.aria", { name: app.name })}
-            className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground/70 transition-colors hover:bg-black/[0.06] hover:text-foreground focus-visible:bg-black/[0.06] focus-visible:outline-none disabled:cursor-wait disabled:opacity-50"
+            className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground/70 transition-colors hover:bg-foreground/[0.06] hover:text-foreground focus-visible:bg-foreground/[0.06] focus-visible:outline-none disabled:cursor-wait disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="size-4 animate-spin" />
@@ -121,7 +121,7 @@ export function AvailableAppRow({
 }) {
   const { t } = useTranslation("integrations");
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 transition-colors hover:bg-black/[0.05]">
+    <div className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 transition-colors hover:bg-foreground/[0.05]">
       <Logo app={app} />
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5 truncate text-[13px] font-medium text-foreground">

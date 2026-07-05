@@ -30,14 +30,16 @@ The engine is API-only (REST + SSE) with no built-in UI. Drive it with the webap
 3. `POST /conversations/:id/messages` and stream the agent's reply (and tool
    calls like `read`/`ls`/`bash`) from `GET /conversations/:id/events`.
 
-### Headless login (no loopback)
+### Claude login (setup token)
 
-When the browser can't reach the engine's loopback, Claude login switches to a
-copy-paste code flow (the same one Claude Code uses for browserless sign-in): the
-engine returns a `{ kind: "auth_code" }` login, the webapp opens the URL, and the
-user pastes the code Claude shows back via `POST /auth/anthropic/login/complete`.
-Auto-selected from a non-loopback `HOUSTON_HOST`; force it with `HOUSTON_HEADLESS=1`.
-Codex is headless either way (device code). See `src/auth/anthropic-headless.ts`.
+The direct OAuth PKCE replay against Anthropic is server-blocked (2026-04), so
+Claude connects via the sanctioned setup-token flow: `POST /auth/anthropic/login`
+returns a `{ kind: "auth_code", url, instructions }`, the webapp opens the URL, and
+the user pastes their `sk-ant-oat01…` setup token (from `claude setup-token`) or an
+`sk-ant-api03…` console key back via `POST /auth/anthropic/login/complete`. The
+token is stored as an `api_key` credential (pi-ai auto-detects the `sk-ant-oat`
+prefix and uses Claude Code Bearer headers). No loopback and no `HOUSTON_HEADLESS`
+mode. Codex stays device-code. See `src/auth/anthropic-setup-token.ts`.
 
 ## Config (env)
 
@@ -48,7 +50,6 @@ Codex is headless either way (device code). See `src/auth/anthropic-headless.ts`
 | `HOUSTON_HOST` / `HOUSTON_PORT` | `127.0.0.1` / `4317` | Bind address |
 | `HOUSTON_MODEL` | `claude-sonnet-4-6` | Anthropic model id (optional; built-in default) |
 | `HOUSTON_RUNTIME_TOKEN` | _(unset)_ | Bearer token; unset = open (local dev) |
-| `HOUSTON_HEADLESS` | _(inferred)_ | Force the headless Claude login (copy-paste code, no loopback). Inferred from a non-loopback `HOUSTON_HOST`; set `1` to force it, `0` to force loopback |
 | `HOUSTON_CORS_ORIGIN` | `*` | Allowed CORS origin for the webapp |
 | `HOUSTON_SKILLS_DIR` | `<workspace>/.agents/skills` | SKILL.md skills dir (Agent Skills standard); absent dir = no skills |
 | `HOUSTON_SYSTEM_PROMPT` | _(built-in)_ | Product system prompt injected by the host/app |

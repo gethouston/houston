@@ -35,7 +35,7 @@ import {
  * desktop app is co-located with its engine, so only there can a
  * provider CLI's `localhost` OAuth callback reach the user's browser.
  * Remote clients must request the headless device-code flow instead
- * (see `provider-picker` / `provider-settings`). Delegates to
+ * (see `provider-picker` / the AI hub's `use-provider-connections`). Delegates to
  * `@tauri-apps/api`'s blessed check (the global `isTauri` flag the
  * webview sets) rather than poking internals ourselves.
  */
@@ -75,17 +75,6 @@ export function osOpenUrl(url: string): Promise<void> {
  * local listener and use the https relay bridge instead. */
 export function osStartOauthLoopback(): Promise<string> {
   return invoke<string>("start_oauth_loopback");
-}
-
-/** Bind a one-shot localhost listener for the Codex/OpenAI OAuth redirect. On
- * success the native side emits `codex-oauth://callback` with the raw
- * `code=...&state=...` query string once OpenAI bounces the browser back;
- * rejects with a message string if the port can't be bound. Desktop only —
- * keeps ChatGPT sign-in on the user's machine even when the engine is remote,
- * so the relay works without a device code. Mirrors {@link osStartOauthLoopback}
- * (the Supabase Google loopback). */
-export function osStartCodexOauthLoopback(): Promise<void> {
-  return invoke<void>("start_codex_oauth_loopback");
 }
 
 /** Pull the Houston window to the front. Used when a flow finishes in the

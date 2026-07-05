@@ -1,6 +1,7 @@
 import type {
   Activity,
   ActivityUpdate,
+  ConversationEntry,
   NewActivity,
 } from "../../../../ui/engine-client/src/types";
 import { readAgentFile, writeAgentFile } from "./agent-files";
@@ -34,6 +35,31 @@ export function listActivities(agentPath: string): Activity[] {
   return read(agentPath);
 }
 
+/**
+ * Board card ← activity. Mission Control renders tags/attribution from
+ * `agent` (mode) and `routine_id` (routine chat), so both must survive the
+ * mapping — dropping them loses the card's routine/mode tags (HOU-665).
+ */
+export function activityToConversation(
+  a: Activity,
+  agentPath: string,
+  agentName: string,
+): ConversationEntry {
+  return {
+    id: a.id,
+    title: a.title,
+    description: a.description,
+    status: a.status,
+    type: "activity",
+    session_key: a.session_key ?? `activity-${a.id}`,
+    updated_at: a.updated_at,
+    agent_path: agentPath,
+    agent_name: agentName,
+    agent: a.agent,
+    routine_id: a.routine_id,
+  };
+}
+
 export function createActivity(
   agentPath: string,
   input: NewActivity,
@@ -46,7 +72,6 @@ export function createActivity(
     status: "running",
     session_key: `activity-${id}`,
     agent: input.agent,
-    worktree_path: input.worktree_path ?? null,
     provider: input.provider,
     model: input.model,
     updated_at: new Date().toISOString(),

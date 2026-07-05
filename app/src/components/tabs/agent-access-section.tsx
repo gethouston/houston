@@ -73,7 +73,7 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
             return (
               <li
                 key={member.userId}
-                className="flex items-center gap-3 rounded-xl border border-black/5 bg-card px-4 py-3"
+                className="flex items-center gap-3 rounded-xl border border-foreground/5 bg-card px-4 py-3"
               >
                 <div className="flex-1 min-w-0 text-sm truncate">
                   {member.email ?? member.userId}

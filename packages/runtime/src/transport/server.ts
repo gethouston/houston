@@ -54,7 +54,6 @@ export function startServer() {
   server.listen(config.port, config.host, () => {
     console.info("runtime listening", {
       auth: config.token ? "bearer_token_required" : "open_local_dev",
-      claude: config.headless ? "headless" : "loopback",
       cors: config.corsOrigin,
       dataDir: config.dataDir,
       mode: "server",

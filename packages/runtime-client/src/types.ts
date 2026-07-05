@@ -13,6 +13,7 @@ export type {
   ConversationHistory,
   ConversationSummary,
   CustomEndpoint,
+  GenerateAgentResponse,
   LoginInfo,
   LoginState,
   LoginStatus,
@@ -21,6 +22,7 @@ export type {
   ProviderId,
   ProviderInfo,
   Settings,
+  SuggestedRoutine,
   TokenUsage,
   ToolCallRecord,
   WireEvent,
@@ -48,24 +50,4 @@ export interface HealthResponse {
 export interface VersionResponse {
   engine: string;
   protocol: number;
-}
-
-/**
- * A routine suggested by instruction generation. `schedule` is a 5-field cron
- * BUILT AND VALIDATED by the runtime from a constrained schedule set — never
- * the LLM's raw expression.
- */
-export interface SuggestedRoutine {
-  name: string;
-  prompt: string;
-  schedule: string;
-}
-
-/** `POST /generate-instructions` — AI-assisted agent creation. */
-export interface GenerateInstructionsResponse {
-  name: string;
-  instructions: string;
-  /** Composio toolkit slugs (e.g. "GMAIL"); display names are the client's job. */
-  suggestedIntegrations: string[];
-  suggestedRoutine: SuggestedRoutine | null;
 }

@@ -55,8 +55,9 @@ test("isExpiring is true for an already-expired oauth token", () => {
 test("refreshCredential mints a fresh GitHub Copilot token from the stored GitHub token", async () => {
   // Copilot's refresh is NOT a standard `grant_type=refresh_token` POST: pi-ai
   // GETs GitHub's Copilot token endpoint with the long-lived GitHub OAuth token
-  // (stored as `refreshToken`) and gets a short-lived Copilot token back. Stub
-  // that single call so the test stays offline. Without the provider branch this
+  // (stored as `refreshToken`) and gets a short-lived Copilot token back, then
+  // lists `<copilot api>/models` to learn the account's selectable model ids.
+  // Stub both calls so the test stays offline. Without the provider branch this
   // would throw "no OAuth refresh config" and every Copilot turn would 401.
   const realFetch = globalThis.fetch;
   const expiresAtSec = Math.floor(Date.now() / 1000) + 1500; // ~25 min out
@@ -70,6 +71,12 @@ test("refreshCredential mints a fresh GitHub Copilot token from the stored GitHu
         }),
         { status: 200, headers: { "content-type": "application/json" } },
       );
+    }
+    if (u.endsWith("/models")) {
+      return new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
     }
     throw new Error(`unexpected fetch in test: ${u}`);
   }) as typeof fetch;
@@ -100,16 +107,23 @@ test("refreshCredential refreshes Copilot Enterprise against the company GitHub 
   // github.com — or the company's short-lived Copilot token can never be minted.
   const realFetch = globalThis.fetch;
   const expiresAtSec = Math.floor(Date.now() / 1000) + 1500;
-  let hitUrl = "";
+  let tokenUrl = "";
   globalThis.fetch = (async (url: string | URL | Request) => {
-    hitUrl = String(url);
-    if (hitUrl.includes("copilot_internal/v2/token")) {
+    const u = String(url);
+    if (u.includes("copilot_internal/v2/token")) {
+      tokenUrl = u;
       return new Response(
         JSON.stringify({ token: "tid=ghe-token", expires_at: expiresAtSec }),
         { status: 200, headers: { "content-type": "application/json" } },
       );
     }
-    throw new Error(`unexpected fetch in test: ${hitUrl}`);
+    if (u.endsWith("/models")) {
+      return new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    throw new Error(`unexpected fetch in test: ${u}`);
   }) as typeof fetch;
   try {
     const fresh = await refreshCredential({
@@ -122,7 +136,7 @@ test("refreshCredential refreshes Copilot Enterprise against the company GitHub 
       enterpriseUrl: "acme.ghe.com",
     });
     // The refresh targeted the COMPANY's GitHub API, not github.com.
-    expect(hitUrl).toContain("api.acme.ghe.com/copilot_internal/v2/token");
+    expect(tokenUrl).toContain("api.acme.ghe.com/copilot_internal/v2/token");
     expect(fresh.accessToken).toBe("tid=ghe-token");
     // The domain rides along so the NEXT refresh keeps targeting the same GHE.
     expect(fresh.enterpriseUrl).toBe("acme.ghe.com");

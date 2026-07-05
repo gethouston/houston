@@ -60,15 +60,13 @@ the `sync` frame catches you up mid-turn).
 
 ### Login flow (subscription OAuth)
 
-1. `POST /auth/:provider/login` → a `LoginInfo`. Which Claude variant you get is
-   decided by the engine's deploy mode (`HOUSTON_HEADLESS`, else inferred from a
-   non-loopback bind host):
-   - **Claude, local** → `{ kind: "url", url }`. Open `url`; the engine catches the
-     redirect on its own loopback (`localhost:53692`). Nothing else to do.
-   - **Claude, headless** → `{ kind: "auth_code", url, instructions? }`. Open `url`,
-     approve, then the user copies the `code#state` Claude shows and submits it →
-     `POST /auth/anthropic/login/complete { code }`. No loopback needed — the same
-     flow Claude Code itself uses for browserless sign-in.
+1. `POST /auth/:provider/login` → a `LoginInfo`.
+   - **Claude (setup token)** → `{ kind: "auth_code", url, instructions? }`. Open
+     `url`, then the user pastes their `sk-ant-oat01…` setup token (from
+     `claude setup-token`) or an `sk-ant-api03…` console key and submits it →
+     `POST /auth/anthropic/login/complete { code }`. The direct OAuth replay is
+     server-blocked (2026-04); the token is stored as an `api_key`. See
+     `src/auth/anthropic-setup-token.ts`.
    - **Codex (`openai-codex`)** → `{ kind: "device_code", verificationUri, userCode }`.
      Show both; the user opens `verificationUri` and enters `userCode` (fully
      headless — the engine polls, no paste step).

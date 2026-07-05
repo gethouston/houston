@@ -5,9 +5,11 @@ import { useTranslation } from "react-i18next";
 import { analytics } from "../../../lib/analytics";
 import { PROVIDERS } from "../../../lib/providers";
 import { type ProviderStatus, tauriProvider } from "../../../lib/tauri";
+import { ProviderLoginDialog } from "../../shell/provider-login-dialog";
 import { ProviderGlyph } from "../../shell/provider-logos";
 import { SetupCard } from "../setup-card";
 import { SuccessCheck } from "../success-check";
+import { useProviderLoginEvents } from "./use-provider-login-events";
 
 interface ProviderLoginMissionProps {
   eyebrow: string;
@@ -48,6 +50,26 @@ export function ProviderLoginMission({
 
   const installed = status?.cli_installed ?? false;
   const connected = installed && (status?.authenticated ?? false);
+
+  // v3 wire: the runtime can't open the user's browser — the adapter surfaces
+  // the OAuth URL as a `ProviderLoginUrl` event and the ACTIVE view must act on
+  // it. The shell's picker/settings handle it there; during onboarding neither
+  // is mounted, so this mission handles its own (desktop opens the browser /
+  // codex loopback; device-code or web/remote clients get the dialog below).
+  // On the legacy Rust wire the CLI opens the browser itself and no local URL
+  // event fires, so this is inert there.
+  const { dialog, closeDialog } = useProviderLoginEvents({
+    providerId,
+    onOpenFailed: (message) => {
+      setError(message);
+      setLoginLaunched(false);
+    },
+    onFailed: (loginError) => {
+      // Benign cancel arrives with a null error: clear the spinner quietly.
+      setError(loginError);
+      setLoginLaunched(false);
+    },
+  });
 
   // The AI provider became connected. Fire the funnel event once, then advance
   // straight to the success screen — the user shouldn't sit on an inline
@@ -163,6 +185,16 @@ export function ProviderLoginMission({
         )}
 
         {error && <p className="text-sm text-destructive">{error}</p>}
+
+        {/* Remote / device-code fallback: the same sign-in dialog the shell
+            uses (one-time code, copy/open URL, paste-back). Desktop's direct
+            browser open and the codex loopback never reach this. */}
+        <ProviderLoginDialog
+          provider={dialog ? (provider ?? null) : null}
+          url={dialog?.url ?? null}
+          userCode={dialog?.userCode}
+          onClose={closeDialog}
+        />
       </div>
     </SetupCard>
   );

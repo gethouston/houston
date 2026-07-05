@@ -43,7 +43,7 @@ export function MemberRoster({
           return (
             <li
               key={member.userId}
-              className="flex items-center gap-3 rounded-xl border border-black/5 bg-card px-4 py-3"
+              className="flex items-center gap-3 rounded-xl border border-foreground/5 bg-card px-4 py-3"
             >
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">

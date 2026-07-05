@@ -1,0 +1,101 @@
+{
+  "hero": {
+    "title": "Modelos de IA",
+    "subtitle": "Usa tu suscripción de ChatGPT, Claude o Copilot, o conecta {{models}}+ modelos de cada gran laboratorio con tus propias claves.",
+    "subtitleFew": "Usa tu suscripción de ChatGPT, Claude o Copilot, o conecta modelos de cada gran laboratorio con tus propias claves."
+  },
+  "tabs": {
+    "providers": "Proveedores",
+    "modelsCount": "Modelos · {{count}}"
+  },
+  "sections": {
+    "connected": "Conectados",
+    "available": "Disponibles",
+    "comingSoon": "Próximamente"
+  },
+  "card": {
+    "connect": "Conectar",
+    "connected": "Conectado",
+    "cancel": "Cancelar",
+    "models_one": "{{count}} modelo",
+    "models_other": "{{count}} modelos",
+    "subscription": "Suscripción",
+    "apiKey": "Tu clave de API",
+    "local": "Se ejecuta en tu computador",
+    "gateway": "Puerta de acceso multimodelo",
+    "comingSoon": "Próximamente"
+  },
+  "providerDetail": {
+    "back": "Todos los proveedores",
+    "models": "Modelos",
+    "searchModels": "Buscar modelos",
+    "signOut": "Cerrar sesión",
+    "noModels": "Los modelos se configuran cuando te conectas."
+  },
+  "directory": {
+    "search": "Busca {{count}}+ modelos",
+    "searchFew": "Buscar modelos",
+    "filters": {
+      "all": "Todos",
+      "reasoning": "Razonamiento",
+      "vision": "Visión"
+    },
+    "providers_one": "{{count}} proveedor",
+    "providers_other": "{{count}} proveedores",
+    "showMore": "Ver más",
+    "empty": {
+      "title": "No se encontraron modelos",
+      "description": "Prueba con otra búsqueda o filtro."
+    }
+  },
+  "model": {
+    "back": "Todos los modelos",
+    "specs": {
+      "context": "Contexto",
+      "output": "Salida máxima",
+      "knowledge": "Conocimiento hasta",
+      "released": "Lanzado",
+      "reasoning": "Razonamiento",
+      "vision": "Visión"
+    },
+    "offers": {
+      "title": "Consíguelo a través de",
+      "subtitle": "Conecta cualquiera de estos para empezar a usar {{model}}.",
+      "subscription": "Incluido con la suscripción",
+      "pricing": "{{input}} de entrada · {{output}} de salida por 1M de tokens"
+    }
+  },
+  "providers": {
+    "openai": {
+      "description": "Inicia sesión con ChatGPT y pon a trabajar los modelos GPT y Codex."
+    },
+    "anthropic": {
+      "description": "Inicia sesión con Claude y trae los modelos detrás de Claude Code."
+    },
+    "github-copilot": {
+      "description": "Una suscripción de Copilot, muchos modelos: Claude, GPT y Gemini en un solo plan."
+    },
+    "opencode-account": {
+      "description": "Una cuenta para modelos de programación seleccionados de cada gran laboratorio, con un plan gratuito para empezar."
+    },
+    "openrouter": {
+      "description": "La puerta de acceso a todo. Una sola clave desbloquea cientos de modelos de cada laboratorio."
+    },
+    "deepseek": {
+      "description": "Razonamiento de frontera a una fracción del precio, directo de DeepSeek."
+    },
+    "google": {
+      "description": "La familia Gemini de Google AI Studio, con un plan gratuito para empezar."
+    },
+    "amazon-bedrock": {
+      "description": "Claude y más en tu propia cuenta de AWS, pensado para empresas."
+    },
+    "minimax": {
+      "description": "Modelos rápidos y económicos ajustados para el trabajo con agentes."
+    },
+    "openai-compatible": {
+      "description": "Ejecuta modelos en tu propio computador con Ollama, LM Studio y similares."
+    }
+  },
+  "toast": {}
+}

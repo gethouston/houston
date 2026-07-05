@@ -5,7 +5,6 @@
     "workspace": "Workspace",
     "workspaceContext": "Workspace context",
     "userContext": "User context",
-    "provider": "AI provider",
     "phone": "Connect phone",
     "shortcuts": "Keyboard shortcuts",
     "reportBug": "Report bug"
@@ -36,10 +35,6 @@
     "placeholder": "e.g. I'm Juan, head of sales. I care about pipeline velocity and prefer short replies.",
     "saving": "Saving…",
     "saved": "Saved"
-  },
-  "provider": {
-    "title": "AI provider",
-    "description": "Houston uses <emph>your own</emph> subscription. We never see your credentials."
   },
   "connectPhone": {
     "title": "Connect phone",

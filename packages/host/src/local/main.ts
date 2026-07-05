@@ -19,6 +19,7 @@ import { buildLocalHost } from "./host";
  *   HOUSTON_HOME              ~/.houston (base for the three paths below)
  *   HOUSTON_WORKSPACES_ROOT   ~/.houston/workspaces
  *   HOUSTON_CREDENTIALS_PATH  ~/.houston/credentials.json
+ *   HOUSTON_AGENTS_DIR        ~/.houston/agents (installed agent-config library)
  *   HOUSTON_CHAT_HISTORY_DB   ~/.houston/db/houston.db (Rust-era chat to migrate)
  *   HOUSTON_HOST_PORT         4318
  *   HOUSTON_HOST_BIND         127.0.0.1 (desktop). Self-host on a VPS sets
@@ -64,6 +65,10 @@ const host = buildLocalHost({
   credentialsPath:
     process.env.HOUSTON_CREDENTIALS_PATH ||
     join(houstonHome, "credentials.json"),
+  // The installed agent-config library — the Rust engine's tree, carried over
+  // so previously installed agents keep showing in the create-agent picker.
+  agentConfigsDir:
+    process.env.HOUSTON_AGENTS_DIR || join(houstonHome, "agents"),
   // The Rust-era chat-history db. Default to the canonical path; the migration
   // is a no-op when it is absent (a fresh install) or already done (marker).
   chatHistoryDbPath:

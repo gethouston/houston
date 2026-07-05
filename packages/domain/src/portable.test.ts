@@ -6,6 +6,7 @@ import {
   portableInventory,
   unpackAgent,
 } from "./portable";
+import { filterPackage } from "./portable-edit";
 import { createRoutine } from "./routines";
 
 /**
@@ -168,4 +169,34 @@ test("malformed routine/learning entries are dropped on unpack", () => {
   const pkg = unpackAgent(bytes);
   expect(pkg.routines.map((r: Routine) => r.id)).toEqual(["ok"]);
   expect(pkg.learnings as Learning[]).toEqual([]);
+});
+
+test("filterPackage keeps only the selected parts", () => {
+  const pkg = unpackAgent(
+    packAgent(content(), { agentName: "Sales", houstonVersion: "0.5.0" }, NOW),
+  );
+  const filtered = filterPackage(pkg, {
+    includeClaudeMd: false,
+    skillSlugs: ["weekly"],
+    routineIds: [],
+    learningIds: ["l1", "does-not-exist"],
+  });
+  expect(filtered.claudeMd).toBeUndefined();
+  expect(filtered.skills.map((s) => s.slug)).toEqual(["weekly"]);
+  expect(filtered.routines).toEqual([]);
+  expect(filtered.learnings.map((l) => l.id)).toEqual(["l1"]);
+  expect(filtered.manifest).toEqual(pkg.manifest);
+});
+
+test("filterPackage with everything selected is the identity", () => {
+  const pkg = unpackAgent(
+    packAgent(content(), { agentName: "Sales", houstonVersion: "0.5.0" }, NOW),
+  );
+  const filtered = filterPackage(pkg, {
+    includeClaudeMd: true,
+    skillSlugs: pkg.skills.map((s) => s.slug),
+    routineIds: pkg.routines.map((r) => r.id),
+    learningIds: pkg.learnings.map((l) => l.id),
+  });
+  expect(filtered).toEqual(pkg);
 });

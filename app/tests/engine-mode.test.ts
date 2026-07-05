@@ -1,11 +1,11 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  codexUsesLoopbackRelay,
   controlPlaneBuild,
   hostedAuthMode,
   hostedGateState,
   hostedOauthLoginActive,
+  isLoopbackHostUrl,
   providerLoginUsesDeviceAuthByDefault,
   resolveEngine,
 } from "../src/lib/engine-mode.ts";
@@ -108,18 +108,32 @@ describe("providerLoginUsesDeviceAuthByDefault", () => {
   });
 });
 
-// Codex/OpenAI (ChatGPT) sign-in uses the desktop's own loopback relay even
-// against a remote engine — the desktop binds its localhost listener and relays
-// the callback code, so unlike providerLoginUsesDeviceAuthByDefault it does NOT
-// fall back to device code just because the engine is remote. A plain browser
-// client has no local listener and still can't relay.
-describe("codexUsesLoopbackRelay", () => {
-  it("uses the loopback relay on the Tauri desktop (even against a remote engine)", () => {
-    strictEqual(codexUsesLoopbackRelay({ isTauri: true }), true);
+// The app-side Codex loopback relay is GONE: pi binds the provider's fixed
+// localhost callback port in-process and completes the exchange itself, so the
+// client's only job is opening the URL. What matters is co-location — and a
+// LOOPBACK VITE_NEW_ENGINE_URL (the dev two-terminal setup) IS co-located.
+describe("isLoopbackHostUrl + the co-located dev URL case", () => {
+  it("recognizes this machine's addresses", () => {
+    strictEqual(isLoopbackHostUrl("http://127.0.0.1:4318"), true);
+    strictEqual(isLoopbackHostUrl("http://localhost:4318"), true);
+    strictEqual(isLoopbackHostUrl("http://[::1]:4318"), true);
   });
 
-  it("does not use the loopback relay in a plain browser client", () => {
-    strictEqual(codexUsesLoopbackRelay({ isTauri: false }), false);
+  it("rejects real hosts, garbage, and absence", () => {
+    strictEqual(isLoopbackHostUrl("https://engine.example.com"), false);
+    strictEqual(isLoopbackHostUrl("not a url"), false);
+    strictEqual(isLoopbackHostUrl(undefined), false);
+    strictEqual(isLoopbackHostUrl(""), false);
+  });
+
+  it("a loopback VITE_NEW_ENGINE_URL keeps the browser flow (co-located)", () => {
+    strictEqual(
+      providerLoginUsesDeviceAuthByDefault(
+        { VITE_NEW_ENGINE_URL: "http://127.0.0.1:4318" },
+        { isTauri: true },
+      ),
+      false,
+    );
   });
 });
 

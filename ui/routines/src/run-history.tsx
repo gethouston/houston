@@ -109,7 +109,7 @@ export function RunHistory({
             key={run.id}
             className={cn(
               "group flex items-center gap-3 px-3 py-2.5 rounded-lg",
-              "bg-background border border-black/[0.04]",
+              "bg-background border border-foreground/[0.04]",
               "transition-shadow duration-150",
               "hover:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
             )}

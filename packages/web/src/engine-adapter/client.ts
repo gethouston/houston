@@ -16,10 +16,21 @@ import type {
   CreateAgent,
   CreateAgentResult,
   CreateSkillRequest,
+  GenerateInstructionsResult,
   InstallCommunityRequest,
+  InstalledConfig,
+  InstallFromGithub,
   InstallFromRepoRequest,
   NewActivity,
   NewRoutine,
+  PortableAnonymizeRequest,
+  PortableAnonymizeResponse,
+  PortableExportRequest,
+  PortableInstalledAgent,
+  PortableInstallRequest,
+  PortableInventoryPreview,
+  PortableScanResponse,
+  PortableUploadPreviewResponse,
   ProjectConfig,
   ProjectFile,
   ProviderStatus,
@@ -42,6 +53,7 @@ import * as agents from "./agents";
 import { bus, emitEvent, emitLocalEcho } from "./bus";
 import type { ControlPlaneConfig } from "./control-plane";
 import * as controlPlane from "./control-plane";
+import * as portable from "./portable";
 import {
   configWriteToSettings,
   credentialSiblings,
@@ -52,8 +64,7 @@ import {
   toNewProvider,
   toOldProvider,
 } from "./synthetic";
-import { toolkitDisplayName } from "./toolkit-names";
-import { historyToFeed } from "./translate";
+import { historyToFeed, isConversationNotFound } from "./translate";
 import { observeConversation, streamTurn } from "./turn-stream";
 
 export interface HoustonClientOptions {
@@ -68,7 +79,20 @@ export class HoustonEngineError extends Error {
     public status: number,
     public body: unknown,
   ) {
-    super(`engine error ${status}`);
+    // Carry the host's own explanation into the message: the v3 host answers
+    // errors as `{error: "reason"}` (some routes as `{error: {message}}`).
+    // Dropping it here would reduce every failure to "engine error <status>"
+    // in the toast/log/Sentry report — the status code without the reason.
+    const detail = (body as { error?: unknown } | null)?.error;
+    const reason =
+      typeof detail === "string"
+        ? detail
+        : typeof (detail as { message?: unknown } | null)?.message === "string"
+          ? (detail as { message: string }).message
+          : undefined;
+    super(
+      reason ? `${reason} (engine error ${status})` : `engine error ${status}`,
+    );
     this.name = "HoustonEngineError";
   }
   get code(): string | undefined {
@@ -81,6 +105,12 @@ export class HoustonEngineError extends Error {
 export function isHoustonEngineError(e: unknown): e is HoustonEngineError {
   return e instanceof HoustonEngineError;
 }
+
+/**
+ * `activeLogins` key segment for a login started before any agent existed
+ * (first-run: it runs in the host's hidden setup runtime, not an agent's).
+ */
+const SETUP_LOGIN_KEY = "__setup__";
 
 /**
  * Drop-in replacement for `@houston-ai/engine-client`'s HoustonClient, backed by
@@ -187,12 +217,17 @@ export class HoustonClient {
     if (!id) throw new Error("Open an agent first, then connect its account.");
     return id;
   }
-  /** Runtime client for provider/auth calls: the selected agent's sandbox in cloud
-   *  (null until an agent is selected), the single runtime locally. */
-  private providerEngine(): HoustonEngineClient | null {
+  /** Runtime client for provider/auth calls: the selected agent's sandbox in
+   *  cloud, the single runtime locally. Before ANY agent exists (first-run
+   *  onboarding), the host's hidden SETUP runtime — provider connect must work
+   *  pre-agent, and its capture lands on the personal workspace so the agent
+   *  created next is already connected. */
+  private providerEngine(): HoustonEngineClient {
     if (!this.cp) return this.engine;
     const id = this.currentAgentId();
-    return id ? controlPlane.runtimeClientFor(this.cp, id) : null;
+    return id
+      ? controlPlane.runtimeClientFor(this.cp, id)
+      : controlPlane.setupRuntimeClientFor(this.cp);
   }
 
   // ---- meta / boot ----
@@ -291,30 +326,42 @@ export class HoustonClient {
     agents.deleteAgent(workspaceId, agentId);
   }
   /**
-   * AI-assisted agent creation: the runtime generates CLAUDE.md content, a
-   * short name, suggested integrations, and (optionally) one routine with a
-   * runtime-validated cron. Cloud: the selected agent's sandbox runs it (the
-   * same per-agent path every provider call takes); local: the single runtime.
-   * Failures throw — the wizard toasts the real reason, never a silent empty
-   * result (the old stub's behavior).
+   * Create-with-AI: one one-shot generation turn on the runtime — the selected
+   * agent's sandbox in cloud / desktop-new-engine mode (same path as
+   * summarizeActivity), the single runtime locally. The dialog's brain picker
+   * sends legacy provider/model ids; migrate them to pi ids first. No engine
+   * reachable (cloud with no agent open yet) throws — the assist step shows the
+   * real reason instead of silently producing an empty agent (HOU-660).
    */
   async generateAgentInstructions(
     description: string,
     opts: { provider?: string; model?: string; signal?: AbortSignal } = {},
-  ) {
+  ): Promise<GenerateInstructionsResult> {
     const engine = this.providerEngine();
     if (!engine)
-      throw new Error("Open an agent first, then use Create with AI.");
-    const r = await engine.generateInstructions(description, {
-      model: opts.model,
+      throw new Error("Open an agent first, then try Create with AI again.");
+    let provider: string | undefined;
+    let model = opts.model;
+    if (opts.provider) {
+      const migrated = migrateProviderModel(opts.provider, opts.model);
+      for (const d of migrated.diagnostics)
+        console.warn(`[engine-adapter] migrated generate model: ${d.message}`);
+      provider = migrated.provider;
+      model = migrated.model;
+    }
+    const r = await engine.generateAgent(description, {
+      provider,
+      model,
       signal: opts.signal,
     });
     return {
       name: r.name,
       instructions: r.instructions,
+      // Nothing renders these yet on the new engine; keep the wire shape so the
+      // create dialog can start consuming them without an adapter change.
       suggestedIntegrations: r.suggestedIntegrations.map((slug) => ({
-        slug,
-        displayName: toolkitDisplayName(slug),
+        slug: slug.toLowerCase(),
+        displayName: slug,
       })),
       suggestedRoutine: r.suggestedRoutine ?? null,
     };
@@ -375,8 +422,18 @@ export class HoustonClient {
     emitLocalEcho("ConfigChanged", { agentPath });
     return config;
   }
-  async listInstalledConfigs() {
-    return [];
+  // Agent-config library: templates the user installed (GitHub) that the
+  // create-agent picker merges alongside the bundled ones. Standalone web has
+  // no host to keep a library — nothing installed there is the honest answer.
+  async listInstalledConfigs(): Promise<InstalledConfig[]> {
+    if (!this.cp) return [];
+    return controlPlane.listInstalledConfigs(this.cp);
+  }
+  async installAgentFromGithub(
+    req: InstallFromGithub,
+  ): Promise<{ agentId: string }> {
+    if (!this.cp) throw new Error("Installing agents needs a cloud workspace.");
+    return controlPlane.installAgentFromGithub(this.cp, req.githubUrl);
   }
 
   // ---- activities (board / missions) ----
@@ -626,17 +683,9 @@ export class HoustonClient {
     // The board/missions list is derived from activities; in cloud those live on
     // the host (this.listActivities un-fakes it), not localStorage.
     const acts = await this.listActivities(agentPath);
-    return acts.map((a) => ({
-      id: a.id,
-      title: a.title,
-      description: a.description,
-      status: a.status,
-      type: "activity",
-      session_key: a.session_key ?? `activity-${a.id}`,
-      updated_at: a.updated_at,
-      agent_path: agentPath,
-      agent_name: agentName,
-    }));
+    return acts.map((a) =>
+      activities.activityToConversation(a, agentPath, agentName),
+    );
   }
   async listAllConversations(
     agentPaths: string[],
@@ -857,14 +906,18 @@ export class HoustonClient {
     }
 
     // Control-plane path (cloud sandbox OR the desktop host sidecar). Start the
-    // login in THIS agent's runtime and surface it on the bus the picker/settings
-    // handler consumes. A remote runtime returns a device_code (we pass its
+    // login in THIS agent's runtime — or, before any agent exists (first-run
+    // onboarding connects the AI ahead of agent creation), in the host's hidden
+    // SETUP runtime — and surface it on the bus the picker/settings handler
+    // consumes. A remote runtime returns a device_code (we pass its
     // `user_code`, which opens the code panel); a co-located desktop client gets
     // a loopback `url` (user_code null) that the handler opens straight in the
     // browser. `provider` MUST be the old/frontend id (the dialog's contract).
-    const agentId = this.requireAgentId();
+    const agentId = this.currentAgentId();
     const old = toOldProvider(pid);
-    const engine = controlPlane.runtimeClientFor(this.cp, agentId);
+    const engine = agentId
+      ? controlPlane.runtimeClientFor(this.cp, agentId)
+      : controlPlane.setupRuntimeClientFor(this.cp);
     const info = await engine.startLogin(pid, deviceAuth, enterpriseDomain);
     if (info.kind === "device_code") {
       emitEvent("ProviderLoginUrl", {
@@ -884,20 +937,31 @@ export class HoustonClient {
   async submitProviderLoginCode(name: string, code: string): Promise<void> {
     const pid = toNewProvider(name);
     if (!pid) return;
-    const engine = this.cp
-      ? controlPlane.runtimeClientFor(this.cp, this.requireAgentId())
-      : this.engine;
+    // Same target the login started in: the agent's runtime, or the setup
+    // runtime when first-run connected pre-agent.
+    const engine = this.cp ? this.providerEngine() : this.engine;
     await engine.completeLogin(pid, code);
   }
   async cancelProviderLogin(name?: string): Promise<void> {
-    if (!name || !toNewProvider(name)) return;
+    const pid = name ? toNewProvider(name) : undefined;
+    if (!name || !pid) return;
     if (this.cp) {
-      const pid = toNewProvider(name);
+      // Key mirrors pollProviderConnect: the agent's id, or the setup-runtime
+      // sentinel when the first-run login started before any agent existed.
       const agentId = this.currentAgentId();
-      if (pid && agentId) this.activeLogins.delete(`${agentId}:${pid}`); // stop the poll
+      this.activeLogins.delete(`${agentId ?? SETUP_LOGIN_KEY}:${pid}`); // stop the poll
+      // Kill the runtime-side login too, in the same runtime the login started
+      // in (the agent's sandbox, or the hidden setup runtime pre-agent) —
+      // otherwise it keeps polling the provider until timeout and a retry
+      // collides with the stale flow ("sign-in already pending", HOU-664 /
+      // the HOU-438 failure class).
+      await this.providerEngine().cancelLogin(pid);
       return;
     }
     this.stopLoginWatch(name);
+    // Cancel the runtime's in-flight OAuth flow for real (frees the loopback
+    // port + login slot), not just the local watcher.
+    await this.engine.cancelLogin(pid);
     // Benign completion: clears the dialog + spinner without an error toast,
     // matching the old engine's cancel semantics.
     emitEvent("ProviderLoginComplete", {
@@ -988,7 +1052,21 @@ export class HoustonClient {
     // that becomes active; the order of the writes doesn't affect that.
     const targets = credentialSiblings(pid);
     if (this.cp) {
-      const agentId = this.requireAgentId();
+      // First-run pre-agent: store through the setup runtime instead — the key
+      // lands on the personal workspace and the agent created next reads it.
+      // No per-agent settings exist yet to flip.
+      const agentId = this.currentAgentId();
+      if (!agentId) {
+        for (const target of targets) {
+          await controlPlane.setSetupApiKey(this.cp, target, apiKey);
+        }
+        emitEvent("ProviderLoginComplete", {
+          provider: name,
+          success: true,
+          error: null,
+        });
+        return;
+      }
       for (const target of targets) {
         await controlPlane.setApiKey(this.cp, agentId, target, apiKey);
       }
@@ -1046,17 +1124,22 @@ export class HoustonClient {
    * polls OpenAI in-process and writes auth.json to the PVC), then make the new
    * provider this agent's active one and signal completion — which closes the
    * dialog and refreshes provider status. Emits a failure on timeout (no silent
-   * stall). Cancellable via `cancelProviderLogin`.
+   * stall). Cancellable via `cancelProviderLogin`. A null `agentId` is the
+   * first-run pre-agent flow: the login ran in the host's hidden SETUP runtime,
+   * so poll + capture there (no per-agent settings to flip yet — the agent
+   * created next carries its provider from creation).
    */
   private async pollProviderConnect(
-    agentId: string,
+    agentId: string | null,
     pid: ProviderId,
     oldProvider: string,
   ): Promise<void> {
     if (!this.cp) return;
-    const key = `${agentId}:${pid}`;
+    const key = `${agentId ?? SETUP_LOGIN_KEY}:${pid}`;
     this.activeLogins.add(key);
-    const engine = controlPlane.runtimeClientFor(this.cp, agentId);
+    const engine = agentId
+      ? controlPlane.runtimeClientFor(this.cp, agentId)
+      : controlPlane.setupRuntimeClientFor(this.cp);
     const deadline = Date.now() + 5 * 60 * 1000;
     try {
       while (Date.now() < deadline) {
@@ -1071,16 +1154,23 @@ export class HoustonClient {
           /* transient — keep polling */
         }
         if (configured) {
-          // Make the just-connected provider this agent's active model so chat uses it.
-          try {
-            await engine.setSettings({ activeProvider: pid });
-          } catch {
-            /* non-fatal: the user can pick the model in the chat header */
+          // Make the just-connected provider this agent's active model so chat
+          // uses it. Skipped pre-agent: the setup runtime has no agent settings.
+          if (agentId) {
+            try {
+              await engine.setSettings({ activeProvider: pid });
+            } catch {
+              /* non-fatal: the user can pick the model in the chat header */
+            }
           }
           // Connect-once: store this credential for the WHOLE workspace, so every
-          // agent (existing + new) shares this one connection.
+          // agent (existing + new + the one onboarding creates next) shares it.
           try {
-            await controlPlane.captureCredential(this.cp, agentId, pid);
+            if (agentId) {
+              await controlPlane.captureCredential(this.cp, agentId, pid);
+            } else {
+              await controlPlane.captureSetupCredential(this.cp, pid);
+            }
           } catch (e) {
             console.error("[connect] workspace credential capture failed", e);
           }
@@ -1173,8 +1263,14 @@ export class HoustonClient {
         );
       }
       return historyToFeed(history.messages);
-    } catch {
-      return [];
+    } catch (err) {
+      // A conversation with no persisted turns yet 404s — that IS an empty
+      // conversation (a fresh card opened before its first turn lands), not
+      // a failure. Anything else (network drop, auth, 5xx) propagates so the
+      // app's `call()` wrapper toasts it with the Report-bug affordance —
+      // returning [] would render a fake empty chat and swallow the error.
+      if (isConversationNotFound(err)) return [];
+      throw err;
     }
   }
   /**
@@ -1203,6 +1299,45 @@ export class HoustonClient {
       /* engine unreachable / not authed / no agent → fall back to truncation */
     }
     return { title: truncated, description: "" };
+  }
+
+  // ---- portable agents (share with / from a friend) — host only ----
+  // The wizards' backend. Preview/export/anonymize/install talk to the
+  // host's v3 portable routes; the uploaded archive is unpacked in the
+  // browser, parked in memory until install, and the threat scan runs on it
+  // right there — the scan is the same pure `@houston/domain` heuristic the
+  // host uses (see ./portable.ts).
+  async portablePreview(agentPath: string): Promise<PortableInventoryPreview> {
+    if (!this.cp) throw new Error("Sharing an agent needs a connected host.");
+    return portable.exportPreview(this.cp, agentPath);
+  }
+  async portablePackage(
+    agentPath: string,
+    req: PortableExportRequest,
+  ): Promise<ArrayBuffer> {
+    if (!this.cp) throw new Error("Sharing an agent needs a connected host.");
+    return portable.exportPackage(this.cp, agentPath, req);
+  }
+  async portableAnonymize(
+    agentPath: string,
+    req: PortableAnonymizeRequest,
+  ): Promise<PortableAnonymizeResponse> {
+    if (!this.cp) throw new Error("Sharing an agent needs a connected host.");
+    return portable.anonymize(this.cp, agentPath, req);
+  }
+  async importPreview(
+    bytes: ArrayBuffer | Uint8Array,
+  ): Promise<PortableUploadPreviewResponse> {
+    return portable.previewUpload(bytes);
+  }
+  async importScan(packageId: string): Promise<PortableScanResponse> {
+    return portable.scanUpload(packageId);
+  }
+  async importInstall(
+    req: PortableInstallRequest,
+  ): Promise<PortableInstalledAgent> {
+    if (!this.cp) throw new Error("Importing an agent needs a connected host.");
+    return portable.install(this.cp, req);
   }
 
   // ---- integrations (Composio, platform mode) — host only ----

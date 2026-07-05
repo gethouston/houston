@@ -4,14 +4,18 @@ import type { FeedItem } from "./types";
 /**
  * Derive the chat-panel status from the feed and the controller's loading
  * flag. The status decides whether [`ChatMessages`](./chat-messages.tsx)
- * renders the thinking indicator (`"submitted"`) or hides it because the
- * actual stream is the progress signal (`"streaming"`).
+ * renders the in-flight loading indicator (`"submitted"`) or hides it
+ * because the actual stream is the progress signal (`"streaming"`).
  *
- * The two streaming-class feed-item types below carry visible
- * progressively-appearing content; while one of them is the most recent
- * item, the indicator would just compete with the streaming text, so we
- * yield "streaming" instead. EVERY other case where a turn is in flight
- * resolves to "submitted" so the user sees a thinking indicator.
+ * Only `assistant_text_streaming` counts as "streaming": it is the one
+ * feed-item type whose progressively-appearing content is VISIBLE, so the
+ * indicator would just compete with it. `thinking_streaming` used to count
+ * too, but since HOU-448 the reasoning streams inside the collapsed-by-
+ * default mission log — nothing on screen moves, so treating it as
+ * "streaming" made the loading helmet flicker off during every thinking
+ * stretch (HOU-655 follow-up). EVERY case where a turn is in flight and no
+ * visible text is streaming resolves to "submitted" so the user sees a
+ * loading indicator.
  *
  * The previous logic returned `"streaming"` whenever `isLoading` was
  * true and the chat had any prior items — which hid the indicator
@@ -25,10 +29,7 @@ export function deriveStatus(
   isLoading: boolean,
 ): ChatStatus {
   const last = items[items.length - 1];
-  if (
-    last?.feed_type === "assistant_text_streaming" ||
-    last?.feed_type === "thinking_streaming"
-  ) {
+  if (last?.feed_type === "assistant_text_streaming") {
     return "streaming";
   }
   // Active turn → indicator visible. Covers:
@@ -36,7 +37,8 @@ export function deriveStatus(
   //   - user just sent (last == user_message)
   //   - provider mid-tool-cycle (last == tool_call / tool_result),
   //     waiting on the model's next chunk
-  //   - thinking block just landed, still waiting on the response
+  //   - reasoning streaming or just landed inside the collapsed
+  //     mission log, still waiting on the response
   //   - any silent gap between tokens for batchy providers (Gemini)
   if (isLoading) return "submitted";
   // Idle but the user just typed and sent — the optimistic

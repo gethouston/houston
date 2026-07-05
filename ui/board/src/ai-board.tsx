@@ -71,6 +71,8 @@ export interface AIBoardProps {
   chatEmptyState?: ReactNode;
   /** Custom thinking indicator for the chat panel. */
   thinkingIndicator?: ReactNode;
+  /** Loader shown for the whole in-flight turn (see ChatPanel). */
+  loadingIndicator?: ReactNode;
   /** Avatar element shown on every kanban card (e.g. small agent icon). */
   cardAvatar?: ReactNode;
   /** Avatar element shown in the detail panel header. */
@@ -258,6 +260,7 @@ export function AIBoard({
   onPanelCloserReady,
   chatEmptyState,
   thinkingIndicator,
+  loadingIndicator,
   cardAvatar,
   panelAvatar,
   panelAgentName,
@@ -340,7 +343,14 @@ export function AIBoard({
         .then((h) => {
           if (h.length > 0) onHistoryLoaded?.(sk, h);
         })
-        .catch(console.error);
+        .catch((err) => {
+          // Un-mark the session so re-selecting the conversation retries the
+          // load instead of permanently rendering it empty. Surfacing the
+          // failure (toast, report) is the parent's job — its loader rejects
+          // through its own error path before landing here.
+          hydratedKeys.current.delete(sk);
+          console.error(err);
+        });
     },
     [onLoadHistory, onHistoryLoaded, sessionKeyFor],
   );
@@ -688,6 +698,7 @@ export function AIBoard({
           }
           emptyState={activeFeed.length === 0 ? chatEmptyState : undefined}
           thinkingIndicator={thinkingIndicator}
+          loadingIndicator={loadingIndicator}
           value={drafts ? (drafts[activeDraftKey] ?? "") : undefined}
           onValueChange={
             onDraftChange
