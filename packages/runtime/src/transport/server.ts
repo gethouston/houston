@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { config } from "../config";
 import { handleConversationRoute } from "./conversation-routes";
 import { applyCors } from "./cors";
+import { handleGenerateRoute } from "./generate-route";
 import {
   authorized,
   json,
@@ -33,6 +34,7 @@ async function handle(ctx: RouteContext) {
   }
   if (await handleProviderRoute(ctx)) return;
   if (await handleConversationRoute(ctx)) return;
+  if (await handleGenerateRoute(ctx)) return;
 
   json(ctx.res, 404, { error: "not found" });
 }
@@ -52,7 +54,6 @@ export function startServer() {
   server.listen(config.port, config.host, () => {
     console.info("runtime listening", {
       auth: config.token ? "bearer_token_required" : "open_local_dev",
-      claude: config.headless ? "headless" : "loopback",
       cors: config.corsOrigin,
       dataDir: config.dataDir,
       mode: "server",

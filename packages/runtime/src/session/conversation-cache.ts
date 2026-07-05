@@ -1,13 +1,16 @@
-import { join } from "node:path";
-import {
-  type AgentSession,
-  createAgentSession,
-  SessionManager,
-} from "@earendil-works/pi-coding-agent";
 import { resolveModel } from "../ai/providers";
 import { authStorage, modelRegistry } from "../auth/storage";
+import { createClaudeBackend } from "../backends/claude/backend";
+import { readAnthropicToken } from "../backends/claude/read-token";
+import { createPiBackend } from "../backends/pi/backend";
+import {
+  backendFor,
+  registerBackend,
+  setDefaultBackend,
+} from "../backends/registry";
+import type { HarnessSession } from "../backends/types";
 import { config } from "../config";
-import { makeAgentLoader } from "./resource-loader";
+import { SYSTEM_PROMPT } from "./resource-loader";
 import { buildToolSelection } from "./tool-selection";
 import { makeClampedFileTools } from "./tools/clamped-fs";
 import { makeIdTokenProvider } from "./tools/gcp-id-token";
@@ -15,11 +18,12 @@ import { makeIntegrationTools } from "./tools/integrations";
 import { makeRunCodeTool } from "./tools/run-code";
 
 /**
- * The long-lived server's per-conversation pi-session cache: the tool wiring
- * shared by every session, the Conversation record (session + turn queue +
- * the tracked provider/model + the executing turn's id), and the lazy
- * build/rehydrate. Turn execution lives in exec-turn.ts; the public turn API
- * (run/cancel/dispose) in chat.ts.
+ * The long-lived server's per-conversation session cache: the tool wiring shared
+ * by every session, the Conversation record (session + turn queue + the tracked
+ * provider/model + the executing turn's id), and the lazy build/rehydrate. Turn
+ * execution runs the session behind the HarnessBackend seam (backends/) — pi is
+ * the default backend, built once here from the module-level deps. Turn logic
+ * lives in exec-turn.ts; the public turn API (run/cancel/dispose) in chat.ts.
  */
 
 // Workspace-clamped file tools (security Gate #1). These shadow pi's builtins
@@ -57,8 +61,52 @@ const runCodeTool = toolSelection.includeRunCode
     })
   : null;
 
+/**
+ * The default backend for this process: pi, wired to the module-level workspace,
+ * credentials, and tool selection. Registered as the fallback so every provider
+ * resolves to it until a provider ships its own harness.
+ */
+const piBackend = createPiBackend({
+  workspaceDir: config.workspaceDir,
+  dataDir: config.dataDir,
+  authStorage,
+  modelRegistry,
+  tools: toolSelection.toolNames,
+  customTools: [
+    ...fileTools,
+    ...(runCodeTool ? [runCodeTool] : []),
+    ...integrationTools,
+  ],
+});
+setDefaultBackend(piBackend);
+
+/**
+ * COMPLIANCE GATE: the `anthropic` provider runs its turns through the Claude
+ * Agent SDK backend — `createClaudeBackend` → the real `claude` subprocess with
+ * the token in `options.env` — NOT pi's in-process Anthropic client. pi-ai
+ * hitting api.anthropic.com with a setup token + hand-set Claude Code beta
+ * headers is exactly the harness-spoofing Anthropic server-blocks, so this
+ * registration reroutes anthropic OFF the pi default above. Every other provider
+ * still resolves to the pi backend. It reuses the SAME `toolSelection` the pi
+ * path computed (so Bash gating / run-code stay identical) and Houston's product
+ * system prompt (full-replace, never the SDK's claude_code preset).
+ *
+ * Server-mode only: the per-request cloud runtime (turn/) builds its own pi
+ * backend per turn and never imports this module, so cloud anthropic stays OFF.
+ */
+registerBackend(
+  "anthropic",
+  createClaudeBackend({
+    workspaceDir: config.workspaceDir,
+    dataDir: config.dataDir,
+    readToken: () => readAnthropicToken(authStorage),
+    toolSelection,
+    systemPrompt: config.systemPrompt || SYSTEM_PROMPT,
+  }),
+);
+
 export type Conversation = {
-  session: AgentSession;
+  session: HarnessSession;
   queue: Promise<unknown>;
   /**
    * The provider/model the live session is currently pointed at. Tracked so a
@@ -82,37 +130,15 @@ export async function getConversation(id: string): Promise<Conversation> {
   const existing = conversations.get(id);
   if (existing) return existing;
 
-  const loader = makeAgentLoader(config.workspaceDir);
-  await loader.reload();
-
-  // Continue this conversation's pi session if one is already on disk, else start
-  // fresh. `create()` would mint a brand-new empty session every time, so a fresh
-  // process (runtime restart, or a cloud sandbox woken from sleep) would silently
-  // lose all prior turns. `continueRecent()` reopens the most recent session in
-  // this conversation's dedicated dir, and createAgentSession rehydrates the
-  // agent's message history from it (see SDK: hasExistingSession → agent.state.messages).
-  const sessionManager = SessionManager.continueRecent(
-    config.workspaceDir,
-    join(config.dataDir, "sessions", id),
-  );
-
   // The model the session is built with — recorded on the Conversation so a
   // later turn can detect when the active provider/model changed under it.
   const builtModel = resolveModel();
-  const { session } = await createAgentSession({
-    cwd: config.workspaceDir,
-    agentDir: config.dataDir,
-    model: builtModel, // active provider's model (Claude or Codex)
-    authStorage,
-    modelRegistry,
-    sessionManager,
-    resourceLoader: loader,
-    tools: toolSelection.toolNames,
-    customTools: [
-      ...fileTools,
-      ...(runCodeTool ? [runCodeTool] : []),
-      ...integrationTools,
-    ],
+  // Resolve the provider's backend (pi by default) and open the conversation's
+  // session through it. The backend rehydrates prior turns from disk when the
+  // conversation already exists — see createPiBackend.
+  const session = await backendFor(builtModel.provider).createSession({
+    conversationId: id,
+    model: builtModel,
   });
 
   const conv: Conversation = {

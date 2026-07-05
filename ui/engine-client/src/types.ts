@@ -204,7 +204,6 @@ export interface Activity {
   claude_session_id?: string | null;
   session_key?: string;
   agent?: string;
-  worktree_path?: string | null;
   routine_id?: string;
   routine_run_id?: string;
   updated_at?: string;
@@ -219,7 +218,6 @@ export interface ActivityUpdate {
   claude_session_id?: string | null;
   session_key?: string;
   agent?: string;
-  worktree_path?: string | null;
   routine_id?: string;
   routine_run_id?: string;
   provider?: string;
@@ -230,7 +228,6 @@ export interface NewActivity {
   title: string;
   description?: string;
   agent?: string;
-  worktree_path?: string;
   provider?: string;
   model?: string;
 }
@@ -373,7 +370,6 @@ export interface ConversationEntry {
   agent_name: string;
   agent?: string;
   routine_id?: string;
-  worktree_path?: string | null;
 }
 
 // ---------- Skills ----------

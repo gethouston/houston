@@ -125,7 +125,6 @@ export function useMissionControl(agents: Agent[]) {
             sessionKey: c.session_key,
             ...(c.agent ? { agent: c.agent } : {}),
             ...(c.routine_id ? { routineId: c.routine_id } : {}),
-            ...(c.worktree_path ? { worktreePath: c.worktree_path } : {}),
           },
         };
       });

@@ -5,6 +5,7 @@ import { SingleUserVerifier } from "./auth/verify";
 import { ProxyChannel, type RuntimeProxy } from "./channel/proxy";
 import { MemoryCredentialStore } from "./credentials/store";
 import type { Agent } from "./domain/types";
+import { CloudPaths } from "./paths";
 import type {
   CredentialVault,
   RuntimeEndpoint,
@@ -14,6 +15,7 @@ import type {
 import { type ControlPlaneDeps, createControlPlaneServer } from "./server";
 import { MemoryWorkspaceStore } from "./store/memory";
 import { startTestFetchServer } from "./testing/fetch-server";
+import { MemoryVfs } from "./vfs";
 
 /**
  * Personal-tier access boundary at the HTTP layer:
@@ -436,6 +438,69 @@ async function startServer(
   const b = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
   return { base: b, close: () => new Promise<void>((r) => s.close(() => r())) };
 }
+
+test("create seeds CLAUDE.md + the seed-file map into the new agent's vfs root", async () => {
+  // The exact path a builtin template (bookkeeping, legal, …) takes: the client
+  // posts `claudeMd` + `seeds`, and the host must write them under the agent
+  // root so pi + the Skills tab read them back. A vfs is required — the module
+  // server has none, so boot a dedicated one.
+  const vfs = new MemoryVfs();
+  const { base: b, close } = await startServer({ ...baseDeps(), vfs });
+  try {
+    const res = await fetch(`${b}/agents`, {
+      method: "POST",
+      headers: { ...auth("alice"), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Bookkeeper",
+        claudeMd: "# Bookkeeper",
+        seeds: {
+          "outputs.json": "[]",
+          ".agents/skills/close-the-books/SKILL.md":
+            "---\nname: Close\n---\nbody",
+        },
+      }),
+    });
+    expect(res.status).toBe(201);
+    const agent = (await res.json()) as Agent;
+    const ws = await store.getOrCreatePersonalWorkspace("alice");
+    const root = new CloudPaths().agentRoot(ws, agent);
+    expect(await vfs.readText(`${root}/CLAUDE.md`)).toBe("# Bookkeeper");
+    expect(await vfs.readText(`${root}/outputs.json`)).toBe("[]");
+    expect(
+      await vfs.readText(`${root}/.agents/skills/close-the-books/SKILL.md`),
+    ).toContain("name: Close");
+    // And the host serves that seeded skill's content back — the exact path the
+    // Skills tab uses (list -> click -> loadSkill). Regression guard for the
+    // adapter that used to stub skill detail to [].
+    const detail = await fetch(
+      `${b}/agents/${encodeURIComponent(agent.id)}/skills/close-the-books`,
+      { headers: auth("alice") },
+    );
+    expect(detail.status).toBe(200);
+    expect(((await detail.json()) as { content: string }).content).toContain(
+      "name: Close",
+    );
+  } finally {
+    await close();
+  }
+});
+
+test("create rejects a seed map with non-string values (400)", async () => {
+  const { base: b, close } = await startServer({
+    ...baseDeps(),
+    vfs: new MemoryVfs(),
+  });
+  try {
+    const res = await fetch(`${b}/agents`, {
+      method: "POST",
+      headers: { ...auth("alice"), "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "X", seeds: { bad: 123 } }),
+    });
+    expect(res.status).toBe(400);
+  } finally {
+    await close();
+  }
+});
 
 test("/admin/* 404s when no admin surface is injected (the local-profile default)", async () => {
   // The module-level server was built without `mountAdmin` — exactly the local

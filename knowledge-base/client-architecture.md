@@ -49,7 +49,7 @@ to each platform. Never flatten a surface into a web port to save effort.
 
 | Piece | Path | README | What lives there |
 | --- | --- | --- | --- |
-| **SDK** | `packages/sdk` | `packages/sdk/README.md` | Headless client. **kernel** (`store.ts` scopes/snapshots, `commands.ts` registry, `ports.ts` injected capabilities, `sdk.ts` composition); **modules** (`session`, `agents`, `conversations`, `turns`); **`react/`** subpath (`@houston/sdk/react` — `useSdkSnapshot`, `useSdkEvent`); **`BRIDGE.md`** the native-host wire spec. |
+| **SDK** | `packages/sdk` | `packages/sdk/README.md` | Headless client. **kernel** (`store.ts` scopes/snapshots, `commands.ts` registry, `ports.ts` injected capabilities, `sdk.ts` composition); **modules** (`session`, `agents`, `conversations`, `turns`); **`react/`** subpath (`@houston/sdk/react` — `useSdkSnapshot`, `useSdkEvent`); **`bridge/`** the shipped native-bridge dispatcher (`createBridge`) + embeddable IIFE bundle (`build:bridge` → `dist/houston-sdk.bridge.js`, gitignored) that backs `fetch`/`storage` natively over the pipe and self-shims JSC globals; **`BRIDGE.md`** its wire spec (§2.1 configure, §9 native ports, §10 host polyfills). |
 | **Design tokens** | `packages/design-tokens` | `packages/design-tokens/README.md` | Two-tier DTCG JSON (`tokens/primitive` + `tokens/semantic` + `tokens/scale`) → Style Dictionary → committed `dist/` (`css/tokens.css`, `ts/tokens.ts`, `swift/HoustonTokens.swift`, `kotlin/HoustonTokens.kt`). |
 | **Component inventory** | `design/inventory` | `design/inventory/README.md` | `inventory.yaml` (versioned cross-surface component spec) + `manifests/{web,ios,android}.yaml` (per-surface status) + `CHANGELOG.md`. Enforced by `scripts/check-parity.mjs` (`pnpm check:parity`). |
 | **Fake host** | `packages/fake-host` | `packages/fake-host/README.md` | In-memory protocol-v3 host for UI/e2e tests. Built from the SAME `@houston/runtime-client` stream pieces as the real host, so it can't drift from the wire. Consumed by `packages/web` Playwright e2e. |
@@ -255,15 +255,20 @@ Real script names (from each `package.json`). Run what you touched; run
   `packages/web`/`app` consumes them yet — the web app still threads its client
   explicitly (`packages/web/src/new-engine/app.tsx`). No `SdkProvider`/`useSdk()`
   context by design; add one only when a real consumer needs it.
-- **The native bridge dispatcher is spec-only.** `BRIDGE.md` fixes the wire; the
-  JS-side dispatcher that wraps `dispatch`/`subscribe`/`on` and marshals strings
-  over the pipe (`packages/sdk/src/bridge.ts`) is on the roadmap, not built. The
-  native side may be written against the doc before that code lands.
-- **iOS/Android manifests are `enforced: false`, `inventoryVersion: 0`.** Every
-  component is `not-started`; `check:parity` reports their lag but never fails on
-  them. The Swift/Kotlin token `dist/` outputs also have **no consumers in this
-  repo yet** (copied/code-generated into the native app projects at their build
-  time).
+- **The native bridge is built.** `BRIDGE.md` fixes the wire; the JS-side
+  dispatcher and its self-contained JavaScriptCore bundle
+  (`packages/sdk/src/bridge/`, built to `packages/sdk/dist/houston-sdk.bridge.js`
+  via `pnpm --filter @houston/sdk build:bridge`) exposing global
+  `HoustonSdkBridge.create({ send })` now exist, with a bundle smoke test.
+- **iOS has a built v1** at `mobile/ios/` (SwiftUI, iOS 17+, zero third-party
+  packages) — a thin surface over `@houston/sdk` running in JavaScriptCore, with
+  UI/copy/status parity governed by `mobile/PARITY.md`. Its manifest is still
+  `enforced: false`, `inventoryVersion: 0` (built but not yet compiled+shipped —
+  see `design/inventory/manifests/ios.yaml` for honest per-component statuses).
+  Android remains all `not-started`. `check:parity` reports each surface's lag
+  but never fails on them. The Swift token `dist/` output is consumed by the iOS
+  app (synced into `mobile/ios/Houston/Generated/` at build time); Kotlin has no
+  consumer yet.
 - **Four web inventory `partial`s** (real structural gaps, extract-before-mobile):
   - `provider-error-card` — feed types + `ProviderError` taxonomy are shared, but
     the rendered cards are app/-locked (`app/src/components/shell/provider-error-cards/*`).

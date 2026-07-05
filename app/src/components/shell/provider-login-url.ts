@@ -48,3 +48,11 @@ export function shouldOpenLoginUrlDirectly(opts: {
 }): boolean {
   return opts.isDesktop && !opts.userCode;
 }
+
+// NOTE: the desktop's own Codex OAuth loopback relay (`shouldUseCodexLoopback`
+// + `beginCodexBrowserLogin`) is GONE. pi runs the whole OAuth flow in-process:
+// for a loopback (no-code) login it binds the fixed localhost callback port
+// itself and completes the token exchange — an app-side listener on the same
+// port could only fight it. Every topology that genuinely can't catch the
+// callback (hosted cloud, a truly remote host) gets the device-code flow from
+// `providerLoginUsesDeviceAuthByDefault` instead.

@@ -141,7 +141,7 @@ export function MissionControlArchived({
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           thinkingIndicator={panel.thinkingIndicator}
-          endOfTurnIndicator={panel.endOfTurnIndicator}
+          loadingIndicator={panel.loadingIndicator}
           panelAgentName={activeAgent?.name ?? selectedItem?.subtitle}
           panelAvatar={
             <AgentPanelAvatar color={activeAgent?.color} running={false} />

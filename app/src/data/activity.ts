@@ -28,7 +28,6 @@ export interface Activity {
   claude_session_id?: string | null;
   session_key?: string;
   agent?: string;
-  worktree_path?: string | null;
   routine_id?: string;
   routine_run_id?: string;
   updated_at?: string;
@@ -43,7 +42,6 @@ export interface ActivityUpdate {
   claude_session_id?: string | null;
   session_key?: string;
   agent?: string;
-  worktree_path?: string | null;
   routine_id?: string;
   routine_run_id?: string;
   provider?: string;
@@ -62,7 +60,6 @@ export async function create(
   title: string,
   description = "",
   agent?: string,
-  worktreePath?: string,
   provider?: string,
   model?: string,
 ): Promise<Activity> {
@@ -74,7 +71,6 @@ export async function create(
     status: "running",
     claude_session_id: null,
     agent,
-    worktree_path: worktreePath ?? null,
     updated_at: now(),
     provider,
     model,

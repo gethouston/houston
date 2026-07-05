@@ -38,6 +38,13 @@ export type ModelUnavailableReason =
   | "unknown";
 
 /**
+ * How a `quota_exhausted` limit is scoped. Mirrors the frontend `QuotaScope`
+ * (`@houston-ai/chat`). Informational today — the card copy keys off `resets_at`,
+ * not this.
+ */
+export type QuotaScope = "free_tier" | "paid_plan" | "organization" | "unknown";
+
+/**
  * A typed provider/auth/model failure for a turn's model request. Mirrors the
  * relevant subset of the frontend `ProviderError` union (`@houston-ai/chat`) so
  * it renders as the matching inline card (UnauthenticatedCard / RateLimitedCard /
@@ -58,6 +65,22 @@ export type ProviderError =
       provider: string;
       model: string | null;
       retry_after_seconds: number | null;
+      message: string;
+    }
+  | {
+      /**
+       * The account is out of credit / lacks the subscription for the requested
+       * model — the "pay or switch" outcome, distinct from a wait-out rate limit
+       * and from auth (the credential is valid). opencode.ai returns this as
+       * `401 CreditsError "Insufficient balance"`, so it must NOT render a
+       * reconnect card. Mirrors the frontend `quota_exhausted` card.
+       */
+      kind: "quota_exhausted";
+      provider: string;
+      model: string | null;
+      scope: QuotaScope;
+      /** Reset hint when the provider gives one; null = open-ended (top up / upgrade). */
+      resets_at: string | null;
       message: string;
     }
   | {

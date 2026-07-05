@@ -1,8 +1,6 @@
 /** Engine client bootstrap for the Houston desktop app. */
 
 import { EngineWebSocket, HoustonClient } from "@houston-ai/engine-client";
-import { isTauri } from "@tauri-apps/api/core";
-import { getEngineConnection } from "./engine-connection";
 import { pullEngineHandshakeWithRetry } from "./engine-handshake";
 import { controlPlaneBuild, resolveEngine } from "./engine-mode";
 import { installRustEngineLifecycleListeners } from "./engine-tauri-events";
@@ -31,11 +29,9 @@ const HOST_TOKEN: string =
   _env.VITE_HOUSTON_ENGINE_TOKEN ??
   "";
 
-// Fold the build-time engine env flags together with the user's runtime
-// local-vs-remote choice (HOU-621). The choice is read synchronously here at
-// module load — before any HoustonClient is constructed — so applying a new one
-// reloads the webview to re-run this module deterministically (the same
-// "set before any client is built" invariant HOU-546 relies on below).
+// Resolve the engine transport from the build-time env flags, synchronously at
+// module load — before any HoustonClient is constructed (the "set before any
+// client is built" invariant HOU-546 relies on below).
 const RESOLVED = resolveEngine(
   (import.meta.env ?? {}) as unknown as {
     VITE_NEW_ENGINE_URL?: string;
@@ -43,25 +39,16 @@ const RESOLVED = resolveEngine(
     VITE_HOSTED_ENGINE_AUTH?: string;
     VITE_NEW_ENGINE?: string;
   },
-  getEngineConnection(),
-  // Desktop-only chooser. In a browser (packages/web) isTauri() is false, so the
-  // TS-engine web build stays on the injected-config path instead of a chooser
-  // that never renders — see resolveEngine + the packages/web new-engine entry.
-  isTauri(),
 );
 
-// A TS-engine build still awaiting the user's connection choice: engine.ts stays
-// inert (no client, no sidecar handshake) while <ConnectionGate> shows the
-// chooser. Picking an option persists it and reloads, re-running this module.
-const PENDING = RESOLVED.kind === "pending";
 const STATIC_HOST_URL: string | undefined =
   RESOLVED.kind === "static-host" ? RESOLVED.url : undefined;
-// Hosted gateway URL, from either VITE_HOSTED_ENGINE_URL or a runtime `remote`
-// choice. OAuth (the default / every runtime remote) gates the app behind the
-// Supabase Google-login screen and feeds the session token in via
-// setHostedEngineSessionToken, so the gateway only ever sees a verified user
-// JWT. `hosted-static` points straight at the URL with the build's HOST_TOKEN
-// (no login — for service-token smoke tests against e.g. the local kind gateway).
+// Hosted gateway URL (VITE_HOSTED_ENGINE_URL, baked into the build). OAuth (the
+// default) gates the app behind the Supabase Google-login screen and feeds the
+// session token in via setHostedEngineSessionToken, so the gateway only ever
+// sees a verified user JWT. `hosted-static` points straight at the URL with the
+// build's HOST_TOKEN (no login — for service-token smoke tests against e.g. the
+// local kind gateway).
 const HOSTED_ENGINE_URL: string | undefined =
   RESOLVED.kind === "hosted-oauth" || RESOLVED.kind === "hosted-static"
     ? RESOLVED.url
@@ -94,16 +81,14 @@ if (NEW_ENGINE && typeof window !== "undefined") {
 }
 
 function resolveConfig(): { baseUrl: string; token: string } | null {
-  // Awaiting the runtime connection choice — build nothing until the reload.
-  if (PENDING) return null;
   // Host mode wins: point at the v3 host, overriding the Tauri-injected Rust
   // engine handshake.
   if (STATIC_HOST_URL) return { baseUrl: STATIC_HOST_URL, token: HOST_TOKEN };
-  // Hosted OAuth (a managed gateway, OR the runtime `remote` choice): the client
-  // is built ONLY from the Supabase session token via setHostedEngineSessionToken.
-  // Return null here even though the TS-engine chooser build has a Tauri-spawned
-  // sidecar injecting window.__HOUSTON_ENGINE__ (lib.rs) — adopting that would
-  // wrongly point the remote connection at the local sidecar.
+  // Hosted OAuth (a managed gateway): the client is built ONLY from the
+  // Supabase session token via setHostedEngineSessionToken. Return null here
+  // even if a Tauri-spawned sidecar injected window.__HOUSTON_ENGINE__
+  // (lib.rs) — adopting that would wrongly point the hosted connection at the
+  // local sidecar.
   if (HOSTED_OAUTH) return null;
   // Hosted gateway with OAuth disabled: point at the gateway with the static
   // bearer immediately, exactly like STATIC_HOST_URL.
@@ -156,20 +141,11 @@ export function hostedOauthGateActive(): boolean {
 }
 
 /**
- * True while a TS-engine build is waiting for the user's local-vs-remote pick
- * (HOU-621). `<ConnectionGate>` shows the chooser instead of the engine gates
- * until a choice is persisted (which then reloads the webview).
- */
-export function isConnectionPending(): boolean {
-  return PENDING;
-}
-
-/**
  * True when the active engine is NOT co-located with this client — a baked host
- * URL, a hosted gateway, OR the runtime `remote` choice (HOU-621). Callers that
- * decide OAuth loopback-vs-device-code topology must consult this: the runtime's
- * localhost callback lives on the remote host, so provider login has to use the
- * device-code flow. See `providerLoginUsesDeviceAuthByDefault` + `tauri.ts`.
+ * URL or a hosted gateway. Callers that decide OAuth loopback-vs-device-code
+ * topology must consult this: the runtime's localhost callback lives on the
+ * remote host, so provider login has to use the device-code flow. See
+ * `providerLoginUsesDeviceAuthByDefault` + `tauri.ts`.
  */
 export function isRemoteEngine(): boolean {
   return REMOTE_HOST_MODE;
@@ -201,8 +177,7 @@ if (initial) {
 }
 
 // Host mode supplies the config from the env, so skip the Tauri/Rust handshake.
-// PENDING builds stay inert until the chooser reload.
-if (!_client && !REMOTE_HOST_MODE && !PENDING) {
+if (!_client && !REMOTE_HOST_MODE) {
   pullEngineHandshakeWithRetry({
     hasClient: () => _client !== null,
     applyConfig,
@@ -279,7 +254,7 @@ function notifyEngineRestarted() {
   }
 }
 
-if (!REMOTE_HOST_MODE && !PENDING) {
+if (!REMOTE_HOST_MODE) {
   installRustEngineLifecycleListeners({
     hasClient: () => _client !== null,
     applyConfig,

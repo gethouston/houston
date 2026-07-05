@@ -13,7 +13,7 @@
 
 surface: web
 enforced: true
-inventoryVersion: 1
+inventoryVersion: 2
 
 components:
   agent-avatar:
@@ -113,3 +113,24 @@ components:
   toast:
     status: implemented
     ref: "@houston-ai/core sonner / toast-container"
+
+  ai-provider-card:
+    status: partial
+    ref: "app/src/components/ai-hub/provider-card.tsx"
+    notes: >-
+      Ships in the AI models hub but app/-locked; connection state comes from the
+      shared use-provider-connections hook. Extract into ui/ before mobile.
+
+  ai-model-row:
+    status: partial
+    ref: "app/src/components/ai-hub/model-row.tsx + provider-model-list.tsx"
+    notes: >-
+      Directory + provider-list row variants are app/-locked in the hub. Extract
+      the shared row into ui/ before mobile can reuse its structure.
+
+  ai-model-offer-row:
+    status: partial
+    ref: "app/src/components/ai-hub/model-offer-row.tsx (on cards/row-card.tsx)"
+    notes: >-
+      Built on the shared RowCard but composed app-side with the connections
+      layer. Extract into ui/ before mobile.

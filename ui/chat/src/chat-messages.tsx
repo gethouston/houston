@@ -40,9 +40,12 @@ export interface ChatMessagesProps {
   messages: ChatMessage[];
   status: "ready" | "streaming" | "submitted";
   thinkingIndicator: ReactNode;
-  /** Static glyph rendered after the agent's reply once the turn settles
-   *  (e.g. a non-blinking Houston helmet). Omitted → nothing renders. */
-  endOfTurnIndicator?: ReactNode;
+  /** Rendered below the last item for the WHOLE in-flight turn (status
+   *  `"submitted"`), even while an active mission-log header is surfacing
+   *  "Mission in progress: <action>" and the standalone `thinkingIndicator`
+   *  is therefore suppressed (HOU-655: the loading helmet must not vanish
+   *  when a tool label takes over the status line). */
+  loadingIndicator?: ReactNode;
   transformContent?: (content: string) => {
     content: string;
     extra?: ReactNode;
@@ -88,7 +91,7 @@ export function ChatMessages({
   messages,
   status,
   thinkingIndicator,
-  endOfTurnIndicator,
+  loadingIndicator,
   transformContent,
   toolLabels,
   isSpecialTool,
@@ -127,14 +130,6 @@ export function ChatMessages({
     displayItems,
     status,
   );
-  // HOU-471: once the turn settles, the agent's reply ends with a static
-  // (never-blinking) helmet — same slot the loader used. The consumer supplies
-  // the glyph, so it stays opt-in per surface.
-  const lastMessage = messages[messages.length - 1];
-  const showEndOfTurnIndicator =
-    status === "ready" &&
-    lastMessage?.from === "assistant" &&
-    Boolean(endOfTurnIndicator);
   return (
     <Conversation className="flex-1 min-h-0">
       <ConversationAutoScroll status={status} />
@@ -221,14 +216,15 @@ export function ChatMessages({
             </Message>
           );
         })}
-        {showThinkingIndicator ? (
+        {status === "submitted" &&
+        (showThinkingIndicator || loadingIndicator) ? (
           <Message from="assistant">
-            <MessageContent>{thinkingIndicator}</MessageContent>
-          </Message>
-        ) : null}
-        {showEndOfTurnIndicator ? (
-          <Message from="assistant">
-            <MessageContent>{endOfTurnIndicator}</MessageContent>
+            <MessageContent>
+              <div className="flex flex-col items-start gap-4 py-1">
+                {showThinkingIndicator ? thinkingIndicator : null}
+                {loadingIndicator}
+              </div>
+            </MessageContent>
           </Message>
         ) : null}
         {afterMessages}

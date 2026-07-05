@@ -8,13 +8,13 @@
     "src"
   ],
   "peerDependencies": {
+    "@houston-ai/core": "workspace:*",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@houston-ai/core": "workspace:*"
+    "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "lucide-react": "^0.577.0",
-    "framer-motion": "^12.38.0"
+    "framer-motion": "12.42.2",
+    "lucide-react": "0.577.0"
   },
   "scripts": {
     "test": "node --experimental-strip-types --test tests/*.test.ts",

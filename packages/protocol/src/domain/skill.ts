@@ -26,6 +26,28 @@ export interface SkillDetail {
   content: string;
 }
 
+/** A skill in the skills.sh community directory (marketplace search hit). */
+export interface CommunitySkill {
+  id: string;
+  skillId: string;
+  name: string;
+  installs: number;
+  /** GitHub `owner/repo` the skill installs from. */
+  source: string;
+}
+
+/** A skill discovered in a GitHub repo (one per SKILL.md found). */
+export interface RepoSkill {
+  /** The install slug — the SKILL.md's frontmatter name or its directory. */
+  id: string;
+  /** Human-readable title (SKILL.md `# Heading`, or title-cased id). */
+  name: string;
+  /** Short description from the SKILL.md frontmatter, if any. */
+  description: string;
+  /** Full path within the repo (e.g. `research/SKILL.md`). */
+  path: string;
+}
+
 export interface CreateSkill {
   name: string;
   description: string;

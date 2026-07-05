@@ -1,9 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
-  loadLearnings,
-  loadRoutines,
-  loadSkillDetail,
-  type PortableContent,
+  applyOverrides,
+  filterPackage,
   type PortablePackage,
   packAgent,
   portableInventory,
@@ -13,13 +11,17 @@ import {
   skillKey,
   unpackAgent,
 } from "@houston/domain";
-import type { PortableSelection } from "@houston/protocol";
+import type {
+  PortableExportOverrides,
+  PortableSelection,
+} from "@houston/protocol";
 import type { Agent, UserId, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import { CloudPaths } from "../paths";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
 import { json, readJson } from "./http";
+import { gatherPortableContent } from "./portable-content";
 
 /** Bumped independently of the wire protocol; rides in the manifest. */
 const HOUSTON_VERSION = "0.0.0";
@@ -34,8 +36,11 @@ const ctxFile = (root: string) => `${root}/CLAUDE.md`;
 
 /**
  * Export an agent as a `.houstonagent` (agent-scoped: POST
- * .../portable/export with a PortableSelection). Gathers the selected content
- * off the vfs and returns the zip. Returns true when handled.
+ * .../portable/export). The body is either a bare PortableSelection (the
+ * original contract) or `{ selection, overrides?, meta? }` — `overrides`
+ * carries the anonymize diffs the user accepted, `meta.anonymized` stamps
+ * the manifest. Gathers the selected content off the vfs and returns the
+ * zip. Returns true when handled.
  */
 export async function handlePortableExport(
   deps: { vfs?: Vfs; paths?: WorkspacePaths },
@@ -52,33 +57,25 @@ export async function handlePortableExport(
   }
   const paths = deps.paths ?? new CloudPaths();
   const root = paths.agentRoot(ctx.workspace, ctx.agent);
-  // The body claims to be a PortableSelection; the reads below stay defensive
-  // (optional chaining) since it is untrusted input.
-  const sel = (await readJson(req)) as unknown as PortableSelection;
+  // Untrusted wizard input; the reads below stay defensive.
+  const body = await readJson(req);
+  const wrapped = body.selection !== undefined;
+  const sel = (wrapped ? body.selection : body) as PortableSelection;
+  const overrides = wrapped
+    ? (body.overrides as PortableExportOverrides | undefined)
+    : undefined;
+  const anonymized = wrapped
+    ? Boolean((body.meta as { anonymized?: boolean } | undefined)?.anonymized)
+    : false;
 
-  const content: PortableContent = { skills: [], routines: [], learnings: [] };
-  if (sel.includeClaudeMd) {
-    const md = await deps.vfs.readText(ctxFile(root));
-    if (md !== null) content.claudeMd = md;
-  }
-  if (sel.skillSlugs?.length) {
-    for (const slug of sel.skillSlugs) {
-      const detail = await loadSkillDetail(deps.vfs, root, slug);
-      if (detail) content.skills.push({ slug, body: detail.content });
-    }
-  }
-  if (sel.routineIds?.length) {
-    const { items } = await loadRoutines(deps.vfs, root);
-    content.routines = items.filter((r) => sel.routineIds.includes(r.id));
-  }
-  if (sel.learningIds?.length) {
-    const { items } = await loadLearnings(deps.vfs, root);
-    content.learnings = items.filter((l) => sel.learningIds.includes(l.id));
-  }
+  const content = applyOverrides(
+    await gatherPortableContent(deps.vfs, root, sel),
+    overrides,
+  );
 
   const bytes = packAgent(
     content,
-    { agentName: ctx.agent.name, houstonVersion: HOUSTON_VERSION },
+    { agentName: ctx.agent.name, houstonVersion: HOUSTON_VERSION, anonymized },
     new Date().toISOString(),
   );
   res.writeHead(200, {
@@ -154,6 +151,11 @@ export async function handlePortableAccount(
   } catch (err) {
     json(res, 400, { error: err instanceof Error ? err.message : String(err) });
     return true;
+  }
+  // Optional install-time subset: the importer unticked items in the wizard.
+  // Absent selection installs the whole package (the original contract).
+  if (body.selection !== undefined) {
+    pkg = filterPackage(pkg, body.selection as PortableSelection);
   }
 
   const ws = await deps.store.getOrCreatePersonalWorkspace(userId);

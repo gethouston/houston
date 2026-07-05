@@ -107,6 +107,62 @@ test("a runtime that never becomes healthy is killed and not cached (the turn er
   expect(await launcher.status("bad")).toBe("asleep"); // not cached as running
 });
 
+test("concurrent callers during a boot share one spawn and resolve only once healthy", async () => {
+  // HOU-639: on a cold pod the desktop fires chat-history and provider-status
+  // together; the loser of the spawn race used to be handed a port the child
+  // hadn't bound yet and 502'd (rendered as an empty chat / disconnected
+  // provider). Both callers must ride the same boot to the same endpoint.
+  const { spawner, spawns } = recordingSpawner();
+  let releaseHealth!: () => void;
+  const health = new Promise<void>((r) => {
+    releaseHealth = r;
+  });
+  const launcher = new ProcessLauncher(
+    opts(spawner, { waitHealthy: () => health }),
+  );
+  const a = agent("sales");
+
+  const first = launcher.ensureAwake(a);
+  const second = launcher.ensureAwake(a);
+  let secondResolved = false;
+  void second.then(() => {
+    secondResolved = true;
+  });
+  await new Promise((r) => setTimeout(r, 10));
+  expect(secondResolved).toBe(false); // must not resolve before healthy
+
+  releaseHealth();
+  const [ep1, ep2] = await Promise.all([first, second]);
+  expect(ep2).toEqual(ep1);
+  expect(spawns).toHaveLength(1); // one shared spawn, not one per caller
+});
+
+test("a failed shared boot rejects every waiter; the next call respawns fresh", async () => {
+  const { spawner, spawns, killed } = recordingSpawner();
+  let failHealth!: (err: Error) => void;
+  const health = new Promise<void>((_, reject) => {
+    failHealth = reject;
+  });
+  let calls = 0;
+  const launcher = new ProcessLauncher(
+    opts(spawner, {
+      waitHealthy: () => (++calls === 1 ? health : Promise.resolve()),
+    }),
+  );
+  const a = agent("flaky");
+
+  const first = launcher.ensureAwake(a);
+  const second = launcher.ensureAwake(a);
+  failHealth(new Error("never healthy"));
+  await expect(first).rejects.toThrow("never healthy");
+  await expect(second).rejects.toThrow("never healthy");
+  expect(killed).toEqual([5000]); // the dead boot was reaped
+
+  const woken = await launcher.ensureAwake(a);
+  expect(woken.baseUrl).toBe("http://127.0.0.1:5001");
+  expect(spawns).toHaveLength(2);
+});
+
 test("multiple agents get distinct ports + processes", async () => {
   const { spawner } = recordingSpawner();
   const launcher = new ProcessLauncher(opts(spawner));

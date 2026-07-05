@@ -1,0 +1,102 @@
+import type {
+  Capabilities,
+  IntegrationConnection,
+} from "@houston-ai/engine-client";
+// `.ts` extension so the node test runner (extensionless ESM can't resolve)
+// can import this pure helper directly, matching the repo's tested-module
+// convention. The target only imports erased package types, so it loads clean.
+import { INTEGRATION_PROVIDER } from "../../tabs/integrations-tab-model.ts";
+import type { OnboardingStep } from "../tutorial-copy";
+
+/**
+ * Pure routing + matching helpers for the first-run flow, extracted so the
+ * engine-gating decision and the connected-toolkit check are unit-testable
+ * without a live host (HOU-653).
+ *
+ * The email steps (connect an inbox, watch the agent send one real email) only
+ * work where the deployment actually serves the integrations routes: the new
+ * TypeScript engine (desktop host + cloud gateway) advertises the provider in
+ * `capabilities.integrations`; the legacy Rust engine advertises no
+ * capabilities at all (the query is disabled → `null`). So we gate the email
+ * detour on the provider being present and degrade to today's slim finish
+ * everywhere else.
+ */
+
+/**
+ * Whether this boot is a first run that should enter onboarding (HOU-653).
+ *
+ * The legacy Rust wire signals first-run with ZERO WORKSPACES. The v3 control
+ * plane can't: it has no workspace CRUD (single personal workspace,
+ * auto-provisioned server-side), so the engine adapter always reports exactly
+ * one synthetic workspace and a workspace-count gate never fires — which is
+ * how onboarding silently vanished on the TS engine and the cloud gateway.
+ * There the honest signal is ZERO AGENTS in that one workspace.
+ */
+export function isFirstRun(opts: {
+  /** New-engine build (v3 host / cloud gateway) vs the legacy Rust wire. */
+  controlPlane: boolean;
+  workspaceCount: number;
+  agentCount: number;
+}): boolean {
+  return opts.controlPlane ? opts.agentCount === 0 : opts.workspaceCount === 0;
+}
+
+/**
+ * Whether this deployment can run the email-connect detour: the integrations
+ * provider we drive (`composio`) is advertised. Null capabilities (legacy Rust
+ * engine, or still loading) read as unavailable — never guess a route the host
+ * can't serve.
+ */
+export function integrationsAvailable(
+  capabilities: Capabilities | null | undefined,
+): boolean {
+  return capabilities?.integrations?.includes(INTEGRATION_PROVIDER) ?? false;
+}
+
+/**
+ * Where "Continue" on the agent-created screen goes: into the email detour when
+ * integrations are available, straight to the finish line otherwise.
+ */
+export function stepAfterAgentCreated(
+  capabilities: Capabilities | null | undefined,
+): OnboardingStep {
+  return integrationsAvailable(capabilities) ? "connectEmail" : "finished";
+}
+
+/**
+ * Whether the connect-email screen should offer its "skip for now" escape
+ * hatch. Capabilities only say the route EXISTS; the gateway can still be
+ * unready (the Supabase session push hasn't landed, or errored), and a connect
+ * attempt can end without the toolkit landing (abandoned OAuth, provider-side
+ * failure). Both are dead ends with no Continue, so we offer the way out —
+ * but never while a connect flow is still in flight.
+ */
+export function shouldOfferConnectSkip(opts: {
+  /** The provider-status query has resolved (data or error). */
+  statusKnown: boolean;
+  /** The integrations gateway reports the provider usable now. */
+  ready: boolean;
+  /** The user kicked off at least one connect attempt. */
+  attempted: boolean;
+  /** A connect flow (OAuth hop + poll) is currently in flight. */
+  connecting: boolean;
+}): boolean {
+  if (opts.connecting) return false;
+  if (opts.statusKnown && !opts.ready) return true;
+  return opts.attempted;
+}
+
+/**
+ * True once the chosen email toolkit shows up as an ACTIVE connection. A
+ * pending or errored connection does NOT count — the user must finish the app's
+ * OAuth before the flow advances. Pure so the match rule is unit-tested apart
+ * from the query wiring.
+ */
+export function isToolkitConnected(
+  connections: IntegrationConnection[] | undefined,
+  toolkit: string,
+): boolean {
+  return (connections ?? []).some(
+    (c) => c.toolkit === toolkit && c.status === "active",
+  );
+}

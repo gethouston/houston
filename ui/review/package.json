@@ -13,8 +13,8 @@
     "@houston-ai/core": "workspace:*"
   },
   "dependencies": {
-    "lucide-react": "^0.577.0",
-    "react-markdown": "^10.1.0"
+    "lucide-react": "0.577.0",
+    "react-markdown": "10.1.0"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit"

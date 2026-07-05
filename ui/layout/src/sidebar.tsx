@@ -5,13 +5,19 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@houston-ai/core";
-import { PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
-import { type KeyboardEvent, type ReactNode, useState } from "react";
+import { PanelLeftClose, Plus } from "lucide-react";
+import {
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  useState,
+} from "react";
 import { sidebarClasses } from "./sidebar-classes";
 import { SidebarCollapsedItem } from "./sidebar-collapsed-item";
 import type { SidebarItemRowLabels } from "./sidebar-item-row";
 import { SidebarItemRow } from "./sidebar-item-row";
 import { SidebarNavItem } from "./sidebar-nav";
+import { shouldExpandFromRailClick } from "./sidebar-rail-expand";
 
 export interface SidebarItem {
   id: string;
@@ -65,7 +71,6 @@ export interface SidebarProps {
 export interface SidebarLabels extends SidebarItemRowLabels {
   addItem?: string;
   collapseSidebar?: string;
-  expandSidebar?: string;
 }
 
 const DEFAULT_LABELS: Required<SidebarLabels> = {
@@ -74,7 +79,6 @@ const DEFAULT_LABELS: Required<SidebarLabels> = {
   renameItem: "Rename",
   deleteItem: "Delete",
   collapseSidebar: "Collapse sidebar",
-  expandSidebar: "Expand sidebar",
 };
 
 export function AppSidebar({
@@ -124,45 +128,52 @@ export function AppSidebar({
 
   const showLogo = logo && !header;
 
-  const toggleLabel = collapsed ? l.expandSidebar : l.collapseSidebar;
-
+  // Collapse control for the EXPANDED state only. When collapsed, expanding
+  // happens at the top of the rail (the header's monogram doubles as the
+  // expand button) or by clicking anywhere on the rail itself.
   const toggleButton = onToggleCollapsed ? (
     <Tooltip>
       <TooltipTrigger asChild>
         <button
           type="button"
-          aria-label={toggleLabel}
-          aria-pressed={collapsed}
+          aria-label={l.collapseSidebar}
           onClick={onToggleCollapsed}
           className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
-          {collapsed ? (
-            <PanelLeftOpen className="size-4" />
-          ) : (
-            <PanelLeftClose className="size-4" />
-          )}
+          <PanelLeftClose className="size-4" />
         </button>
       </TooltipTrigger>
       <TooltipContent side="right" sideOffset={8}>
-        {toggleLabel}
+        {l.collapseSidebar}
       </TooltipContent>
     </Tooltip>
   ) : null;
 
+  const handleRailClick = (e: MouseEvent<HTMLElement>) => {
+    if (!collapsed || !onToggleCollapsed) return;
+    if (!shouldExpandFromRailClick(e.target as HTMLElement)) return;
+    onToggleCollapsed();
+  };
+
   return (
     <>
+      {/* Rail click-to-expand is a redundant convenience affordance; keyboard
+          users expand via the always-focusable header button. */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: see above */}
       <aside
         data-tour-target="sidebar"
+        onClick={handleRailClick}
         className={cn(
           "bg-sidebar text-sidebar-foreground flex flex-col h-full shrink-0 overflow-hidden",
           "transition-[width] duration-200 ease-out",
-          collapsed ? "w-[56px]" : "w-[220px]",
+          collapsed ? "w-[56px] cursor-pointer" : "w-[220px]",
         )}
       >
         {/* Header + collapse toggle. Expanded: the toggle shares the workspace
-            switcher's row (top-right). Collapsed: just the monogram here — the
-            toggle moves to the BOTTOM of the rail (see footer area). Always
-            visible, never hover-gated. */}
+            switcher's row (top-right). Collapsed: the header's monogram is the
+            expand button (see WorkspaceSwitcher onExpand), and clicking any
+            non-interactive spot on the rail also expands. Always visible,
+            never hover-gated. */}
         {collapsed ? (
           header
         ) : (
@@ -310,11 +321,6 @@ export function AppSidebar({
 
         {/* Footer slot (e.g., update notification) */}
         {footer}
-
-        {/* Collapsed: the toggle lives at the bottom of the rail. */}
-        {collapsed && toggleButton && (
-          <div className="flex justify-center pb-4 pt-1">{toggleButton}</div>
-        )}
       </aside>
 
       {children}

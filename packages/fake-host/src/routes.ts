@@ -129,6 +129,7 @@ export function handleAgents(
       const action = rest[3]; // /auth/:provider/login | /logout
       if (action === "login" && rest[4] === "complete")
         return json({ ok: true });
+      if (action === "login" && rest[4] === "cancel") return json({ ok: true });
       if (action === "login")
         return json({ kind: "url", url: "https://example.test/connect" });
       if (action === "logout") return json({ ok: true });

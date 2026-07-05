@@ -91,6 +91,7 @@ src/
   index.ts           # public entry (kernel + each module's contract)
   modules/           # session, agents, conversations, turns
   react/             # React bindings (exported as @houston/sdk/react)
+  bridge/            # native-bridge dispatcher + embeddable bundle (see below)
 ```
 
 Modules are internal: `HoustonSdk`'s constructor composes each
@@ -103,6 +104,51 @@ same transport and emits one canonical `session/tokenExpired` signal. Tear the
 SDK down with `sdk.dispose()` (stops the agents reactivity stream and every
 in-flight turn stream).
 
+## Native bridge — embedding the SDK in a mobile host
+
+`bridge/` is the JS side of the native bridge: it lets an iOS (JavaScriptCore)
+or Android (Hermes) shell run this exact SDK behind a string message pipe. The
+full wire contract — every message shape, ordering guarantee, error surface, and
+the normative host-polyfill list — is **`BRIDGE.md`**; this is the how-to.
+
+**In-process (tests, web tooling):** import the dispatcher directly.
+
+```ts
+import { createBridge } from "@houston/sdk";
+import { HoustonSdk } from "@houston/sdk";
+
+const bridge = createBridge((config) => new HoustonSdk(config), (msg) => sendToNative(msg));
+bridge.receive(inboundJsonString); // deliver one host→SDK message; never throws
+// … later …
+bridge.dispose();
+```
+
+**Embedded (the real mobile host):** build the self-contained IIFE and load it
+into the JS engine.
+
+```bash
+pnpm --filter @houston/sdk build:bridge   # → dist/houston-sdk.bridge.js (gitignored)
+```
+
+```js
+// inside the engine, after loading the bundle:
+const bridge = HoustonSdkBridge.create({ send: (msg) => postToNative(msg) });
+// first inbound message is always `configure`; the bridge replies `ready`:
+bridge.receive(JSON.stringify({ kind: "configure", baseUrl: "http://127.0.0.1:4317" }));
+// then attach the session token, subscribe to scopes, dispatch commands (BRIDGE.md §6).
+```
+
+The host implements two primitives: `send(msg: string)` (marshal outbound to
+native and return — never call `receive` re-entrantly, BRIDGE.md §8) and calls
+`receive(msg: string)` for each inbound message on one thread. The host also
+services the native ports the SDK needs over the same pipe — `fetch/*` (it does
+the HTTP, streaming the body back as base64 chunks) and `storage/*` (Keychain /
+SecureStore) — see BRIDGE.md §9. The bundle self-shims `Headers`, `Request`,
+`AbortController`, and `TextEncoder`/`TextDecoder`; the host need only provide
+`setTimeout`/`clearTimeout`/`setInterval`/`clearInterval` (BRIDGE.md §10). The
+built bundle is ~33 KiB minified and NOT committed — the iOS/Android build runs
+`build:bridge`.
+
 ## Out of scope for v1
 
 Deliberately not built yet (add when a real surface needs them):
@@ -114,5 +160,6 @@ Deliberately not built yet (add when a real surface needs them):
 - **Full control-plane migration** — the SDK wraps the conversation/agent surface
   first; broader control-plane operations stay on their current paths until
   migrated deliberately.
-- **Native bridge implementation** — the `dispatch`/snapshot contract is native-
-  ready (all JSON), but the actual iOS/Android bridge host is not in this package.
+- **Native host app** — the JS-side bridge dispatcher + embeddable bundle now
+  ship here (`bridge/`, see above), but the actual iOS/Android shell that loads
+  the bundle and backs the native ports lives in its own app, not this package.

@@ -25,8 +25,9 @@
 use std::time::Duration;
 
 use tauri::AppHandle;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpListener;
+
+use crate::loopback_util::{read_request_target, split_target, write_response};
 
 /// Loopback ports we try, in order. EVERY port here must be registered in
 /// the Supabase project's redirect allow-list as
@@ -104,10 +105,7 @@ async fn serve_callback(listener: &TcpListener, app: &AppHandle) -> Result<(), S
             }
         };
 
-        let (path, query) = match target.split_once('?') {
-            Some((p, q)) => (p, q),
-            None => (target.as_str(), ""),
-        };
+        let (path, query) = split_target(&target);
 
         if path != CALLBACK_PATH {
             let _ = write_response(&mut stream, "404 Not Found", "Not found").await;
@@ -125,55 +123,6 @@ async fn serve_callback(listener: &TcpListener, app: &AppHandle) -> Result<(), S
 
         return Ok(());
     }
-}
-
-/// Read just the HTTP request line and pull out the request target
-/// (`/auth/callback?code=...`). We only need the first line, so stop as soon
-/// as we've seen a `\r\n`.
-async fn read_request_target(stream: &mut TcpStream) -> Result<String, String> {
-    let mut buf = Vec::with_capacity(1024);
-    let mut chunk = [0u8; 1024];
-    loop {
-        let n = stream
-            .read(&mut chunk)
-            .await
-            .map_err(|e| format!("read failed: {e}"))?;
-        if n == 0 {
-            return Err("connection closed before request line".into());
-        }
-        buf.extend_from_slice(&chunk[..n]);
-        if let Some(pos) = buf.windows(2).position(|w| w == b"\r\n") {
-            let line = String::from_utf8_lossy(&buf[..pos]);
-            let mut parts = line.split_whitespace();
-            let _method = parts.next().ok_or("empty request line")?;
-            let target = parts.next().ok_or("request line had no target")?;
-            return Ok(target.to_string());
-        }
-        if buf.len() > 8192 {
-            return Err("request line too long".into());
-        }
-    }
-}
-
-/// Write a complete HTTP/1.1 response and close the connection.
-async fn write_response(stream: &mut TcpStream, status: &str, body: &str) -> Result<(), String> {
-    let response = format!(
-        "HTTP/1.1 {status}\r\n\
-         Content-Type: text/html; charset=utf-8\r\n\
-         Content-Length: {len}\r\n\
-         Connection: close\r\n\
-         \r\n\
-         {body}",
-        len = body.len(),
-    );
-    stream
-        .write_all(response.as_bytes())
-        .await
-        .map_err(|e| format!("write failed: {e}"))?;
-    stream
-        .flush()
-        .await
-        .map_err(|e| format!("flush failed: {e}"))
 }
 
 /// Self-contained success page — the loopback serves no other assets, so the

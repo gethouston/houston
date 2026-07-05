@@ -17,15 +17,17 @@ import {
   type ProviderId,
   providerAuthMethod,
 } from "../ai/providers";
-import { config } from "../config";
+import { runAnthropicSetupTokenLogin } from "./anthropic-setup-token";
 import { authStorage, providerConnected } from "./storage";
 
 /**
  * Multi-provider OAuth login, driven server-side and relayed to the webapp.
  *
- * - anthropic (Claude): PKCE. Locally the loopback (127.0.0.1:53692) catches the
- *   redirect (`url`). Headless, the user pastes the code Claude shows (`auth_code`
- *   + completeLogin) — see auth/anthropic-headless.ts.
+ * - anthropic (Claude): the sanctioned setup-token flow. The direct OAuth PKCE
+ *   replay is server-blocked since 2026-04, so we drive Anthropic's own
+ *   `claude setup-token` (or take a pasted token) and store the resulting
+ *   `sk-ant-oat01…` as an api_key. Same `auth_code` + completeLogin wire shape as
+ *   before — see auth/anthropic-setup-token.ts.
  * - openai-codex (ChatGPT/Codex): the CLIENT picks. A co-located desktop client
  *   sends `deviceAuth: false` and gets the browser/loopback login — the user
  *   approves in their own browser and the localhost callback finishes it, no
@@ -39,29 +41,30 @@ type LoginState = {
   info?: LoginInfo;
   error?: string;
   resolvePaste?: (code: string) => void;
+  rejectPaste?: (err: Error) => void;
+  abort?: AbortController;
 };
 
 const active = new Map<ProviderId, LoginState>();
 
 /**
- * Which Codex OAuth flow to run. The browser/loopback login (the user approves
- * in their own browser, the localhost callback finishes it, no code to type) is
- * used ONLY when the client is co-located: it asked for it (`deviceAuth: false`,
- * which only the desktop app sends — `!osIsTauri()`) AND this runtime can host a
- * loopback callback the browser actually reaches (`!headless`). Otherwise the
- * device-code grant, where the user enters a one-time code while the runtime
- * polls. `deviceAuth` is the load-bearing signal — a remote webapp (cloud OR
- * self-host) sends `deviceAuth: true` and gets the device code regardless of how
- * the runtime binds; `headless` only guards the exotic "desktop pointed at a
- * remote headless runtime" case where the loopback can't be reached.
+ * Which Codex OAuth flow to run — decided SOLELY by `deviceAuth`. The
+ * browser/loopback login (the user approves in their own browser, no code to
+ * type) works even against a headless/remote runtime: pi's loginOpenAICodex
+ * races its own local callback server against a manually-relayed code
+ * (`onManualCodeInput`, wired below). The desktop client catches the fixed
+ * `http://localhost:1455/auth/callback` redirect and relays code+state via
+ * `completeLogin`, and the runtime performs the token exchange — so the loopback
+ * never needs to be reachable from the runtime itself. `deviceAuth: false` is
+ * only sent by clients that can catch/relay that loopback callback; everyone
+ * else (a remote webapp, cloud OR self-host) sends `deviceAuth: true` and gets
+ * the device-code grant, where the user types a one-time code while the runtime
+ * polls.
  */
-export function codexLoginMethod(opts: {
-  deviceAuth: boolean;
-  headless: boolean;
-}): string {
-  return !opts.deviceAuth && !opts.headless
-    ? OPENAI_CODEX_BROWSER_LOGIN_METHOD
-    : OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD;
+export function codexLoginMethod(opts: { deviceAuth: boolean }): string {
+  return opts.deviceAuth
+    ? OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD
+    : OPENAI_CODEX_BROWSER_LOGIN_METHOD;
 }
 
 /**
@@ -71,8 +74,8 @@ export function codexLoginMethod(opts: {
  * leaving it unanswered deadlocks the flow (the device code never appears). We
  * answer it programmatically: the company domain for an Enterprise connect, or
  * "" (=> github.com) for individual Copilot. Every other provider's `onPrompt`
- * is the Anthropic headless code-paste, which MUST wait for the user — those
- * return null so the caller hands back the paste promise.
+ * is a manual code-paste that MUST wait for the user — those return null so the
+ * caller hands back the paste promise.
  */
 export function autoPromptAnswer(
   provider: string,
@@ -133,53 +136,90 @@ export async function startLogin(
     return existing.info;
   }
 
-  const state: LoginState = { status: "starting" };
+  const state: LoginState = {
+    status: "starting",
+    abort: new AbortController(),
+  };
   active.set(provider, state);
 
   let resolveInfo!: (i: LoginInfo) => void;
   const infoReady = new Promise<LoginInfo>((r) => (resolveInfo = r));
-  const pastePromise = new Promise<string>((r) => (state.resolvePaste = r));
+  const pastePromise = new Promise<string>((resolve, reject) => {
+    state.resolvePaste = resolve;
+    state.rejectPaste = reject;
+  });
+  // Only the loopback flows consume the paste promise (onPrompt /
+  // onManualCodeInput); cancelling a device-code login rejects it with no
+  // consumer, which must not crash the process as an unhandled rejection.
+  pastePromise.catch(() => {});
 
-  void authStorage
-    .login(provider, {
-      onAuth: ({ url, instructions }) => {
-        // A provider with no loopback server (the headless Claude flow) can't
-        // catch a redirect — the user must paste the code back. Signal that to
-        // the webapp with `auth_code` so it shows a paste box.
-        const needsCode =
-          getOAuthProvider(provider)?.usesCallbackServer === false;
-        state.info = needsCode
-          ? { kind: "auth_code", url, instructions }
-          : { kind: "url", url };
-        state.status = "awaiting_user";
-        resolveInfo(state.info);
-      },
-      onDeviceCode: (info: OAuthDeviceCodeInfo) => {
-        state.info = {
-          kind: "device_code",
-          verificationUri: info.verificationUri,
-          userCode: info.userCode,
-        };
-        state.status = "awaiting_user";
-        resolveInfo(state.info);
-      },
-      // Codex offers browser (loopback) or device-code login; let the client
-      // pick so the co-located desktop redirects to the browser to approve and
-      // remote webapp clients type a code (see codexLoginMethod).
-      onSelect: async () =>
-        codexLoginMethod({ deviceAuth, headless: config.headless }),
-      onPrompt: () => {
-        const auto = autoPromptAnswer(provider, enterpriseDomain);
-        return auto === null ? pastePromise : Promise.resolve(auto);
-      },
-      onManualCodeInput: () => pastePromise,
-      onProgress: (m: string) => console.log(`[oauth:${provider}]`, m),
-    })
+  // Anthropic uses the sanctioned setup-token flow (the direct OAuth replay is
+  // server-blocked), NOT pi's AuthStorage login. It emits the same `auth_code`
+  // wire shape and reuses the paste promise, then stores the captured token as an
+  // api_key credential — see auth/anthropic-setup-token.ts.
+  const login: Promise<unknown> =
+    provider === "anthropic"
+      ? runAnthropicSetupTokenLogin(
+          {
+            onAuth: ({ url, instructions }) => {
+              state.info = { kind: "auth_code", url, instructions };
+              state.status = "awaiting_user";
+              resolveInfo(state.info);
+            },
+            onManualCodeInput: () => pastePromise,
+          },
+          {
+            store: (key) =>
+              authStorage.set("anthropic", { type: "api_key", key }),
+          },
+        )
+      : authStorage.login(provider, {
+          onAuth: ({ url, instructions }) => {
+            // A provider with no loopback server can't catch a redirect — the
+            // user must paste the code back. Signal that to the webapp with
+            // `auth_code` so it shows a paste box.
+            const needsCode =
+              getOAuthProvider(provider)?.usesCallbackServer === false;
+            state.info = needsCode
+              ? { kind: "auth_code", url, instructions }
+              : { kind: "url", url };
+            state.status = "awaiting_user";
+            resolveInfo(state.info);
+          },
+          onDeviceCode: (info: OAuthDeviceCodeInfo) => {
+            state.info = {
+              kind: "device_code",
+              verificationUri: info.verificationUri,
+              userCode: info.userCode,
+            };
+            state.status = "awaiting_user";
+            resolveInfo(state.info);
+          },
+          // Codex offers browser (loopback) or device-code login; let the client
+          // pick so the co-located desktop redirects to the browser to approve
+          // and remote webapp clients type a code (see codexLoginMethod).
+          onSelect: async () => codexLoginMethod({ deviceAuth }),
+          onPrompt: () => {
+            const auto = autoPromptAnswer(provider, enterpriseDomain);
+            return auto === null ? pastePromise : Promise.resolve(auto);
+          },
+          onManualCodeInput: () => pastePromise,
+          onProgress: (m: string) => console.log(`[oauth:${provider}]`, m),
+          signal: state.abort?.signal,
+        });
+
+  void login
     .then(() => {
       state.status = "complete";
       console.log(`[oauth:${provider}] login complete`);
     })
     .catch((e: unknown) => {
+      if (state.abort?.signal.aborted) {
+        // User-initiated cancel (cancelLogin already dropped the state from
+        // `active`): the rejection is the flow unwinding, not a failure.
+        console.log(`[oauth:${provider}] login cancelled`);
+        return;
+      }
       state.status = "error";
       state.error = e instanceof Error ? e.message : String(e);
       console.error(`[oauth:${provider}] failed:`, state.error);
@@ -233,6 +273,26 @@ export function setCustomEndpoint(
   setCustomEndpointConfig(input);
   const key = input.apiKey?.trim() || LOCAL_PLACEHOLDER_KEY;
   authStorage.set(OPENAI_COMPATIBLE, { type: "api_key", key });
+}
+
+/**
+ * Cancel an in-flight OAuth login for real — not just the client's spinner.
+ * Two teardown paths cover every flow pi runs:
+ * - aborting the signal stops the device-code pollers (Codex device, Copilot);
+ * - rejecting the paste promise unwinds the loopback flows (Anthropic, Codex
+ *   browser): their onManualCodeInput rejection handler calls cancelWait(),
+ *   which closes the callback server and frees the port for a retry.
+ * Dropping the state from `active` immediately frees the slot, so a retried
+ * startLogin never collides with the cancelled one ("sign-in already pending",
+ * the HOU-438 failure class). Cancelling when nothing is in flight is benign.
+ */
+export function cancelLogin(providerId: string): void {
+  if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
+  const state = active.get(providerId);
+  if (!state || state.status === "complete") return;
+  active.delete(providerId);
+  state.abort?.abort();
+  state.rejectPaste?.(new Error("login cancelled"));
 }
 
 /** Paste-code completion (Anthropic remote path). */

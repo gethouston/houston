@@ -1,0 +1,125 @@
+# XcodeGen project spec for the Houston iOS app.
+# Regenerate the .xcodeproj with:  cd mobile/ios && xcodegen generate
+# The generated Houston.xcodeproj is NOT committed (see .gitignore) — it is a
+# pure function of this file, so the spec is the single source of truth.
+
+name: Houston
+
+options:
+  bundleIdPrefix: com.gethouston
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+# Project-wide build settings. Signing is left Xcode-managed (Automatic) with an
+# EMPTY development team: set your team once on the Houston target in Xcode
+# (Signing & Capabilities), or export DEVELOPMENT_TEAM in the environment.
+settings:
+  base:
+    SWIFT_VERSION: "5.0"        # Swift 5.9 toolchain, language mode 5
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""        # <-- USER: set your 10-char Apple Team ID here (or in Xcode)
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO   # run-script phases shell out to pnpm/node
+    SWIFT_STRICT_CONCURRENCY: targeted
+    # SE-0411: default-argument expressions adopt the enclosing declaration's
+    # isolation, so a @MainActor member's default of `SdkClient.shared` (itself
+    # @MainActor) is evaluated on the main actor instead of a nonisolated
+    # context. This is Swift-6 semantics, opted into under language mode 5.
+    OTHER_SWIFT_FLAGS: "$(inherited) -enable-upcoming-feature IsolatedDefaultValues"
+
+targets:
+  Houston:
+    type: application
+    platform: iOS
+    sources:
+      # Whole app source tree; the generated Generated/ group is added
+      # explicitly below (it does not exist until the build phases run).
+      - path: Houston
+        excludes:
+          - "Generated/**"
+          - "Info.plist"
+      # Design tokens synced from packages/design-tokens by the pre-build phase.
+      - path: Houston/Generated/HoustonTokens.swift
+        optional: true
+      # SDK bridge bundle built by the pre-build phase, bundled as a resource.
+      - path: Houston/Generated/houston-sdk.bridge.js
+        optional: true
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gethouston.Houston
+        PRODUCT_NAME: Houston
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        TARGETED_DEVICE_FAMILY: "1,2"   # iPhone + iPad
+    info:
+      path: Houston/Info.plist
+      properties:
+        CFBundleDisplayName: Houston
+        UILaunchScreen: {}
+        # OAuth callback deep link: Supabase redirects to houston://auth-callback.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.gethouston.Houston
+            CFBundleURLSchemes:
+              - houston
+        # App Transport Security: keep the secure default (no arbitrary loads).
+        # The gateway and Supabase are HTTPS, so no exceptions are required.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+    preBuildScripts:
+      # (1) Build the @houston/sdk bridge bundle and stage it as a resource.
+      #     Skipped incrementally when the dist bundle is unchanged.
+      - name: Build SDK bundle
+        script: |
+          "${SRCROOT}/scripts/build-sdk-bundle.sh"
+        basedOnDependencyAnalysis: true
+        inputFiles:
+          - $(SRCROOT)/../../packages/sdk/dist/houston-sdk.bridge.js
+        outputFiles:
+          - $(SRCROOT)/Houston/Generated/houston-sdk.bridge.js
+      # (2) Sync the generated SwiftUI design tokens into Generated/ so the
+      #     DesignSystem sources can compile against them.
+      - name: Sync design tokens
+        script: |
+          "${SRCROOT}/scripts/sync-design-tokens.sh"
+        basedOnDependencyAnalysis: true
+        inputFiles:
+          - $(SRCROOT)/../../packages/design-tokens/dist/swift/HoustonTokens.swift
+        outputFiles:
+          - $(SRCROOT)/Houston/Generated/HoustonTokens.swift
+
+  HoustonTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: HoustonTests
+    dependencies:
+      - target: Houston
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gethouston.HoustonTests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Houston.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Houston"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        # Unit-test bundle carries no hand-authored Info.plist; let Xcode
+        # synthesize one (the modern default) so the bundle can be code-signed.
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Houston:
+    build:
+      targets:
+        Houston: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - HoustonTests
+    profile:
+      config: Release
+    archive:
+      config: Release

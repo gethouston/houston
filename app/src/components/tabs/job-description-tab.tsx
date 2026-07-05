@@ -101,6 +101,11 @@ export default function JobDescriptionTab({ agent }: TabProps) {
               loading={surface.skillsLoading}
               loadingSkillName={surface.loadingSkillName}
               onSkillClick={surface.selectSkill}
+              onSearch={surface.handleSearch}
+              onPopular={surface.handlePopular}
+              onInstallCommunity={surface.handleInstallCommunity}
+              onListFromRepo={surface.handleListFromRepo}
+              onInstallFromRepo={surface.handleInstallFromRepo}
               onCreateFromScratch={surface.handleCreateFromScratch}
               installedSkillNames={surface.installedSkillNames}
             />

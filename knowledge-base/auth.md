@@ -247,7 +247,9 @@ until the CLI reports authenticated.
 **`ProviderLoginDialog` is a remote-only affordance.** On desktop the engine
 is the co-located sidecar: the provider CLI opens the user's own browser and
 finishes through its `localhost` OAuth callback, so the connect surfaces
-(`ProviderPicker`, `ProviderSettings`) **drop `ProviderLoginUrl` when
+(`ProviderPicker`, and the AI Hub's provider cards via the
+`useProviderConnections` hook — `app/src/hooks/use-provider-connections.ts` +
+`components/ai-hub`) **drop `ProviderLoginUrl` when
 `osIsTauri()`** and show no dialog — they just wait for `ProviderLoginComplete`
 to flip the card (issue #453). Without that guard claude (which prints its
 `https://claude.com/…` URL unconditionally) flashed a paste-back dialog that
@@ -297,7 +299,8 @@ spinner (no toast). A monotonic per-session token guards the relay's
 end-of-life map cleanup so it can't evict a freshly-spawned retry session that
 reused the same provider id. All three connect surfaces wire to it: the
 onboarding brain mission's "Cancel and try again", the workspace-setup
-`ProviderPicker`, and the settings `ProviderSettings` account rows.
+`ProviderPicker`, and the AI Hub's provider cards (`components/ai-hub`, via the
+`useProviderConnections` hook).
 
 Codex has one extra wrinkle: it can emit retry-shaped 401 messages while it
 refreshes or reconnects, then continue successfully. Treat the synthetic

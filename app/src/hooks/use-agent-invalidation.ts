@@ -45,6 +45,10 @@ export function useAgentInvalidation() {
           qc.invalidateQueries({
             queryKey: queryKeys.skills(p.data.agent_path),
           });
+          // The open skill's detail pane rides a separate key; refresh it too.
+          qc.invalidateQueries({
+            queryKey: ["skill-detail", p.data.agent_path],
+          });
           break;
         case "FilesChanged":
           qc.invalidateQueries({
@@ -103,6 +107,29 @@ export function useAgentInvalidation() {
           if (p.data.status === "completed" || p.data.status === "error") {
             qc.invalidateQueries({ queryKey: ["activity"] });
             qc.invalidateQueries({ queryKey: ["all-conversations"] });
+            // Cloud has NO file watcher and no post-turn sync diff, so a running
+            // agent that writes its own CLAUDE.md / skills / learnings / files
+            // mid-turn never fires a *Changed event. A finished turn is the one
+            // reliable signal that the agent may have edited these surfaces, so
+            // refetch them for this agent — cheap, and it saves the user from
+            // remounting the tab to see self-authored changes (HOU-644). On
+            // desktop this is harmless redundancy with the FS watcher.
+            {
+              const agentPath = p.data.agent_path;
+              qc.invalidateQueries({
+                queryKey: queryKeys.instructions(agentPath),
+              });
+              qc.invalidateQueries({ queryKey: queryKeys.files(agentPath) });
+              qc.invalidateQueries({ queryKey: queryKeys.skills(agentPath) });
+              qc.invalidateQueries({ queryKey: ["skill-detail", agentPath] });
+              qc.invalidateQueries({
+                queryKey: queryKeys.learnings(agentPath),
+              });
+              qc.invalidateQueries({ queryKey: queryKeys.config(agentPath) });
+              qc.invalidateQueries({
+                queryKey: queryKeys.routines(agentPath),
+              });
+            }
           }
           break;
         // A provider OAuth sign-in (or sign-out) finished — refresh the
