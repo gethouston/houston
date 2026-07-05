@@ -676,6 +676,53 @@ export class HoustonClient {
       })
     ).json()) as { created: string };
   }
+  /** Upload browser Files into the workspace (Files tab drag-drop / Browse),
+   * optionally into a subfolder. One request per file, so each request stays
+   * within the host's upload cap regardless of how many files were dropped. */
+  async uploadProjectFiles(
+    agentPath: string,
+    files: File[],
+    targetDir?: string | null,
+  ): Promise<void> {
+    if (files.length === 0) return;
+    if (!this.cp) throw new Error("Uploading files needs a connected host.");
+    for (const f of files) {
+      const contentBase64 = controlPlane.bytesToBase64(
+        new Uint8Array(await f.arrayBuffer()),
+      );
+      await this.cpFilesFetch(agentPath, "files/import", {
+        method: "POST",
+        body: JSON.stringify({
+          dir: targetDir ?? null,
+          files: [{ name: f.name, contentBase64 }],
+        }),
+      });
+    }
+  }
+  /** Move a file/folder into another folder (null = workspace root). */
+  async moveProjectFile(
+    agentPath: string,
+    relPath: string,
+    toDir: string | null,
+  ): Promise<void> {
+    if (!this.cp) throw new Error("Moving files needs a connected host.");
+    await this.cpFilesFetch(agentPath, "files/move", {
+      method: "POST",
+      body: JSON.stringify({ path: relPath, toDir }),
+    });
+  }
+  /** The whole workspace as one zip — "Download all" where there's no local
+   * file manager to reveal in (cloud pods, web builds). */
+  async downloadProjectArchive(
+    agentPath: string,
+  ): Promise<{ blob: Blob; contentType: string }> {
+    if (!this.cp) throw new Error("Downloads need a connected host.");
+    const res = await this.cpFilesFetch(agentPath, "files/archive");
+    return {
+      blob: await res.blob(),
+      contentType: res.headers.get("content-type") ?? "application/zip",
+    };
+  }
 
   // ---- conversations / routines / skills (mostly empty) ----
   async listConversations(agentPath: string): Promise<ConversationEntry[]> {

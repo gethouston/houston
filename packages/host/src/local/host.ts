@@ -297,6 +297,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     integrations,
     integrationGrants,
     agentConfigs,
+    // The desktop shell reveals/opens agent folders in the OS file manager;
+    // give it the REAL directory (the agent id is a route key, not a path).
+    agentDir: (_ws, a) => agentDir(a.id),
     corsOrigin: "*",
   };
 

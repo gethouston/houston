@@ -149,9 +149,12 @@
     "openInFileManager": "Abrir en el Explorador de Archivos",
     "loading": "Cargando…",
     "browseFiles": "Elegir archivos",
+    "uploadFiles": "Subir archivos",
+    "downloadAll": "Descargar todo",
     "columns": {
       "name": "Nombre",
       "dateModified": "Fecha de modificación",
+      "dateCreated": "Fecha de creación",
       "size": "Tamaño",
       "kind": "Tipo"
     },

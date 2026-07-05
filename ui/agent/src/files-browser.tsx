@@ -18,6 +18,7 @@ import { type SortDirection, type SortKey, sortTree } from "./utils";
 export interface FilesBrowserLabels {
   columnName?: string;
   columnDateModified?: string;
+  columnDateCreated?: string;
   columnSize?: string;
   columnKind?: string;
   loading?: string;
@@ -27,6 +28,7 @@ export interface FilesBrowserLabels {
 const DEFAULT_LABELS: Required<FilesBrowserLabels> = {
   columnName: "Name",
   columnDateModified: "Date Modified",
+  columnDateCreated: "Date Created",
   columnSize: "Size",
   columnKind: "Kind",
   loading: "Loading\u2026",
@@ -191,6 +193,13 @@ export function FilesBrowser({
           <HeaderCell
             label={l.columnDateModified}
             col="dateModified"
+            sortKey={sortKey}
+            sortDir={sortDir}
+            onSort={handleSort}
+          />
+          <HeaderCell
+            label={l.columnDateCreated}
+            col="dateCreated"
             sortKey={sortKey}
             sortDir={sortDir}
             onSort={handleSort}

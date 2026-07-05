@@ -3,6 +3,7 @@ import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
 import { json, readJson } from "./deps";
+import { MAX_UPLOAD_BYTES } from "./files-import";
 
 /**
  * Composer attachments — files the user drops on a chat message, uploaded INTO
@@ -29,8 +30,9 @@ import { json, readJson } from "./deps";
 /** The on-disk dir name. Top-level dot-dir → invisible to + untouchable by the Files tab. */
 const ATTACHMENTS_DIR = ".attachments";
 
-/** Cap a single upload request so a runaway/oversized body fails loudly, not silently. */
-const MAX_UPLOAD_BYTES = 64 * 1024 * 1024; // 64 MiB across all files in one request
+// A single request is capped at MAX_UPLOAD_BYTES (shared with files/import so
+// the composer's client-side per-file limit and the host cap can't drift; the
+// client uploads one request per file, so per-file = per-request).
 
 export class AttachmentError extends Error {
   constructor(
@@ -88,7 +90,13 @@ export async function saveAttachments(
   files: readonly UploadFile[],
 ): Promise<string[]> {
   safeSegment(scopeId, "scopeId");
-  const used = new Set<string>();
+  // Seed the dedup set with what this scope already holds, so a batch split
+  // across several requests (the client uploads one request per file to bound
+  // request size) still never silently overwrites an earlier file.
+  const scopePrefix = dirKey(root, scopeId);
+  const used = new Set<string>(
+    (await vfs.list(scopePrefix)).map((k) => k.slice(scopePrefix.length + 1)),
+  );
   const paths: string[] = [];
   for (const f of files) {
     const filename = dedupe(safeSegment(f.name, "filename"), used);

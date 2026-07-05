@@ -252,6 +252,9 @@ importers:
       '@houston/runtime-client':
         specifier: workspace:*
         version: link:../runtime-client
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
     devDependencies:
       '@types/node':
         specifier: 22.20.0
@@ -286,6 +289,9 @@ importers:
       '@houston/runtime-client':
         specifier: workspace:*
         version: link:../runtime-client
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
       tsx:
         specifier: 4.23.0
         version: 4.23.0

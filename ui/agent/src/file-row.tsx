@@ -22,7 +22,7 @@ const BASE_INDENT = 12;
 const TRIANGLE_AREA = 16;
 
 /** Column grid shared between header and rows. */
-export const COL_GRID = "1fr 190px 80px 130px";
+export const COL_GRID = "1fr 160px 160px 80px 130px";
 
 export function FolderSection({
   node,
@@ -93,7 +93,10 @@ export function FolderSection({
           <span className="text-[13px] truncate">{node.name}</span>
         </div>
         <span className="text-[11px] text-muted-foreground truncate px-2">
-          {"\u2014"}
+          {formatFileManagerDate(node.entry?.dateModified)}
+        </span>
+        <span className="text-[11px] text-muted-foreground truncate px-2">
+          {formatFileManagerDate(node.entry?.dateCreated)}
         </span>
         <span className="text-[11px] text-muted-foreground text-right px-2">
           --
@@ -260,6 +263,9 @@ export function FileRow({
         </div>
         <span className={cn("text-[11px] truncate px-2", sec)}>
           {formatFileManagerDate(file.dateModified)}
+        </span>
+        <span className={cn("text-[11px] truncate px-2", sec)}>
+          {formatFileManagerDate(file.dateCreated)}
         </span>
         <span className={cn("text-[11px] text-right px-2", sec)}>
           {formatSize(file.size)}

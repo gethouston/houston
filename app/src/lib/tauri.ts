@@ -180,6 +180,7 @@ function toAgent(a: import("@houston-ai/engine-client").Agent): Agent {
     id: a.id,
     name: a.name,
     folderPath: a.folderPath,
+    localDir: a.localDir,
     configId: a.configId,
     color: a.color,
     createdAt: a.createdAt,
@@ -645,6 +646,7 @@ export const tauriFiles = {
         size: f.size,
         is_directory: f.is_directory,
         dateModified: f.date_modified,
+        dateCreated: f.date_created,
       })),
     ),
   open: (agentPath: string, relativePath: string) =>
@@ -676,6 +678,23 @@ export const tauriFiles = {
     call<void>("create_agent_folder", async () => {
       await getEngine().createFolder(agentPath, name);
     }),
+  /** Upload browser Files into the workspace (drag-drop / Browse), optionally
+   * into a subfolder. */
+  upload: (agentPath: string, files: File[], targetDir?: string | null) =>
+    call<void>("upload_project_files", () =>
+      getEngine().uploadProjectFiles(agentPath, files, targetDir),
+    ),
+  /** Move a file/folder into another folder (null = workspace root). */
+  move: (agentPath: string, relPath: string, toDir: string | null) =>
+    call<void>("move_project_file", () =>
+      getEngine().moveProjectFile(agentPath, relPath, toDir),
+    ),
+  /** The whole workspace as one zip — "Download all" where there is no local
+   * file manager to reveal in (cloud pods, web builds). */
+  downloadArchive: (agentPath: string) =>
+    call<{ blob: Blob; contentType: string }>("download_project_archive", () =>
+      getEngine().downloadProjectArchive(agentPath),
+    ),
   revealAgent: (agentPath: string) => osRevealAgent(agentPath),
 };
 

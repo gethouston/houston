@@ -43,6 +43,9 @@ interface CpAgent {
   workspaceId: string;
   name: string;
   createdAt: number;
+  /** Absolute on-disk directory — present only when the host is co-located
+   * with the files (local profile). Feeds the OS reveal/open commands. */
+  dir?: string;
   assigned?: boolean;
   assignedUserIds?: string[];
 }
@@ -128,6 +131,9 @@ function toUiAgent(a: CpAgent, colors = colorOverlay()): Agent {
     id: a.id,
     name: a.name,
     folderPath: a.id, // the agent id IS the chat route key: /agents/${id}/conversations/...
+    // The REAL directory (local hosts only) — what OS reveal/open needs, since
+    // folderPath here is a route key, not a path (HOU-677).
+    localDir: a.dir,
     configId: DEFAULT_AGENT_CONFIG_ID,
     color: colors[a.id] ?? DEFAULT_AGENT_COLOR,
     createdAt: iso,
@@ -699,20 +705,27 @@ export async function saveAttachments(
   scopeId: string,
   files: readonly File[],
 ): Promise<string[]> {
-  const payload = {
-    scopeId,
-    files: await Promise.all(
-      files.map(async (f) => ({
-        name: f.name,
-        contentBase64: bytesToBase64(new Uint8Array(await f.arrayBuffer())),
-      })),
-    ),
-  };
-  const res = await cpFetch(cfg, `${agentPath(agentId)}/attachments`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  return ((await res.json()) as { paths: string[] }).paths;
+  // One request per file: bounds each request to the client's per-file limit,
+  // so a multi-file drop can't blow past the host's per-request upload cap
+  // (the host dedupes against the scope's existing files across requests).
+  const paths: string[] = [];
+  for (const f of files) {
+    const payload = {
+      scopeId,
+      files: [
+        {
+          name: f.name,
+          contentBase64: bytesToBase64(new Uint8Array(await f.arrayBuffer())),
+        },
+      ],
+    };
+    const res = await cpFetch(cfg, `${agentPath(agentId)}/attachments`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    paths.push(...((await res.json()) as { paths: string[] }).paths);
+  }
+  return paths;
 }
 
 export async function deleteAttachments(
@@ -730,7 +743,7 @@ export async function deleteAttachments(
 }
 
 /** Base64-encode bytes without blowing the call stack on large files (chunked btoa). */
-function bytesToBase64(bytes: Uint8Array): string {
+export function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
   const CHUNK = 0x8000;
   for (let i = 0; i < bytes.length; i += CHUNK) {

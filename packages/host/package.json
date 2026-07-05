@@ -24,6 +24,7 @@
     "@houston/domain": "workspace:*",
     "@houston/protocol": "workspace:*",
     "@houston/runtime-client": "workspace:*",
+    "fflate": "0.8.3",
     "tsx": "4.23.0"
   },
   "devDependencies": {
