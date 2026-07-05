@@ -5,7 +5,12 @@ import {
   type ServerResponse,
 } from "node:http";
 import { type Capabilities, PROTOCOL_VERSION } from "@houston/protocol";
-import type { UserId, WorkspaceRuntime } from "./domain/types";
+import type {
+  Agent,
+  UserId,
+  Workspace,
+  WorkspaceRuntime,
+} from "./domain/types";
 import type { EventHub } from "./events/hub";
 import {
   type FeedbackPayload,
@@ -85,6 +90,12 @@ export interface ControlPlaneDeps {
   events?: EventHub;
   /** What this deployment can do; served at /v1/capabilities for the UI to gate on. */
   capabilities: Capabilities;
+  /**
+   * The agent's absolute on-disk directory, when this deployment is co-located
+   * with the files (local profile). Serialized as `dir` on agent payloads so
+   * the desktop shell can reveal/open in the OS file manager (HOU-677).
+   */
+  agentDir?: (ws: Workspace, agent: Agent) => string;
   /**
    * True when this install carried over a legacy Rust-desktop chat-history db —
    * i.e. the user is migrating from the old desktop build. Surfaced on

@@ -10,6 +10,8 @@ export interface FolderNode {
   /** Relative path from workspace root (e.g. "2025/Investments - Fidelity") */
   path: string;
   children: TreeNode[];
+  /** The folder's own listing entry (dates), when the backend reported one. */
+  entry?: FileEntry;
 }
 
 export interface FileNode {
@@ -51,6 +53,8 @@ export function buildTree(files: FileEntry[]): FolderNode {
         }
         node = child;
       }
+      // This entry IS the folder — keep its metadata (dates) on the node.
+      node.entry = file;
       continue;
     }
 

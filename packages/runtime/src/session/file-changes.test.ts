@@ -14,14 +14,20 @@ afterEach(() => {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-test("detects created user-visible files only", () => {
+test("announces every file the Files tab would show, whatever the extension", () => {
+  // The chat card and the Files tab must agree: an agent-created file that
+  // shows in the tab is announced in chat. The old extension allowlist hid
+  // extensionless files ("create a file named ping") — the tab showed them,
+  // the chat said nothing (HOU-677 follow-up).
   const before = snapshotWorkspace(dir);
 
   writeFileSync(join(dir, "deck.pptx"), "ppt");
+  writeFileSync(join(dir, "ping"), "pong");
   writeFileSync(join(dir, "make_deck.py"), "print('x')");
+  writeFileSync(join(dir, ".env"), "SECRET=1"); // dot-files stay hidden
 
   const changes = diffSnapshots(before, snapshotWorkspace(dir));
-  expect(changes.created).toEqual(["deck.pptx"]);
+  expect(changes.created).toEqual(["deck.pptx", "make_deck.py", "ping"]);
   expect(changes.modified).toEqual([]);
 });
 

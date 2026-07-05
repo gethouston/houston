@@ -43,6 +43,13 @@ export interface AgentRouteDeps {
   events?: EventHub;
   /** Deployment capabilities; gates local-only routes (OpenAI-compatible connect). */
   capabilities?: Capabilities;
+  /**
+   * The agent's absolute on-disk directory, when this deployment is co-located
+   * with the files (local profile). Serialized as `dir` on agent payloads so
+   * the desktop shell can reveal/open the folder in the OS file manager — the
+   * agent id is a route key, not a path (HOU-677). Cloud deployments omit it.
+   */
+  agentDir?: (ws: Workspace, agent: Agent) => string;
 }
 
 const DEFAULT_PATHS = new CloudPaths();
@@ -85,6 +92,11 @@ function channelFor(
 const noChannel = (res: ServerResponse, runtime: WorkspaceRuntime) =>
   json(res, 503, { error: `${runtime} runtime not configured` });
 
+/** Attach the agent's real directory (`dir`) when this deployment has one. */
+function withAgentDir(deps: AgentRouteDeps, ws: Workspace, agent: Agent) {
+  return deps.agentDir ? { ...agent, dir: deps.agentDir(ws, agent) } : agent;
+}
+
 /**
  * The user's agents: list/create/rename/delete, connect-once capture, and the
  * per-agent runtime dispatch (chat, SSE, providers, settings, files) — all
@@ -103,7 +115,12 @@ export async function handleAgents(
   // The user's own agents — their personal workspace, auto-provisioned on first hit.
   if (path === "/agents" && method === "GET") {
     const ws = await deps.store.getOrCreatePersonalWorkspace(userId);
-    json(res, 200, await deps.store.listAgents(ws.id));
+    const agents = await deps.store.listAgents(ws.id);
+    json(
+      res,
+      200,
+      agents.map((a) => withAgentDir(deps, ws, a)),
+    );
     return true;
   }
   if (path === "/agents" && method === "POST") {
@@ -143,7 +160,7 @@ export async function handleAgents(
       type: "AgentsChanged",
       workspaceId: ws.id,
     });
-    json(res, 201, agent);
+    json(res, 201, withAgentDir(deps, ws, agent));
     return true;
   }
 
@@ -172,7 +189,7 @@ export async function handleAgents(
         type: "AgentsChanged",
         workspaceId: authz.workspace.id,
       });
-      json(res, 200, renamed);
+      json(res, 200, withAgentDir(deps, authz.workspace, renamed));
       return true;
     }
 
@@ -533,6 +550,7 @@ export async function handleAgents(
         req,
         res,
         url.searchParams,
+        emit,
       )
     )
       return true;

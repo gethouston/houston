@@ -2,7 +2,11 @@
 
 import { EngineWebSocket, HoustonClient } from "@houston-ai/engine-client";
 import { pullEngineHandshakeWithRetry } from "./engine-handshake";
-import { controlPlaneBuild, resolveEngine } from "./engine-mode";
+import {
+  controlPlaneBuild,
+  isLoopbackHostUrl,
+  resolveEngine,
+} from "./engine-mode";
 import { installRustEngineLifecycleListeners } from "./engine-tauri-events";
 
 declare global {
@@ -149,6 +153,21 @@ export function hostedOauthGateActive(): boolean {
  */
 export function isRemoteEngine(): boolean {
   return REMOTE_HOST_MODE;
+}
+
+/**
+ * True when the active engine runs on THIS machine: the Tauri-spawned sidecar
+ * (Rust engine or TS host), or a dev `VITE_NEW_ENGINE_URL` pointing at
+ * loopback (the two-terminal setup). OS affordances — reveal/open in the file
+ * manager — only make sense then: a remote host's paths don't exist on this
+ * machine, even when that host serves the local capability profile
+ * (self-host VPS). Mirrors the provider-auth co-location rule
+ * (`providerLoginUsesDeviceAuthByDefault`).
+ */
+export function isCoLocatedEngine(): boolean {
+  if (!REMOTE_HOST_MODE) return true;
+  if (STATIC_HOST_URL) return isLoopbackHostUrl(STATIC_HOST_URL);
+  return false; // hosted gateways are always remote
 }
 
 /** Updates the hosted engine bearer token from the current Supabase session. */

@@ -16,7 +16,9 @@ export {
   useCreateFolder,
   useDeleteFile,
   useFiles,
+  useMoveFile,
   useRenameFile,
+  useUploadFiles,
 } from "./use-files";
 export { useInstructions, useSaveInstructions } from "./use-instructions";
 export {

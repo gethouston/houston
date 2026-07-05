@@ -79,6 +79,27 @@ export function runVfsContract(name: string, make: () => Vfs): void {
       expect(await vfs.readText(`ws/w1/agent-2/keep.txt`)).toBe("keep");
     });
 
+    test("listDetailed on a plain-file prefix answers empty, never throws", async () => {
+      const vfs = make();
+      await vfs.writeText(`${P}/workspace/report.txt`, "x");
+      // A file is not a prefix — no keys live UNDER it. The Files tab's delete
+      // path relies on this to tell files from folders.
+      expect(await vfs.listDetailed(`${P}/workspace/report.txt`)).toEqual([]);
+    });
+
+    test("createdMs, when reported, survives overwrite and move", async () => {
+      const vfs = make();
+      await vfs.writeText(`${P}/workspace/doc.txt`, "v1");
+      const first = (await vfs.listDetailed(P))[0];
+      if (first?.createdMs === undefined) return; // backend has no birthtime — allowed
+      await vfs.writeText(`${P}/workspace/doc.txt`, "v2 (longer content)");
+      const overwritten = (await vfs.listDetailed(P))[0];
+      expect(overwritten?.createdMs).toBe(first.createdMs);
+      await vfs.move(`${P}/workspace/doc.txt`, `${P}/workspace/renamed.txt`);
+      const moved = (await vfs.listDetailed(P))[0];
+      expect(moved?.createdMs).toBe(first.createdMs);
+    });
+
     test("traversal keys are rejected, never mapped", async () => {
       const vfs = make();
       await expect(

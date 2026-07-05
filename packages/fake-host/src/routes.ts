@@ -16,6 +16,7 @@
 
 import { cancelChat, openChatStream, sendMessage } from "./chat";
 import { json, noContent } from "./http";
+import { handleWorkspaceFiles } from "./routes-files";
 import * as state from "./state";
 
 /** Canned provider list — one connected, active Claude. */
@@ -177,8 +178,8 @@ export function handleAgents(
     }
 
     case "files":
-      if (method === "GET") return json([]);
-      return noContent();
+      // The Files tab's workspace surface (list/upload/move/…): routes-files.ts.
+      return handleWorkspaceFiles(method, id, rest, req, body);
 
     case "attachments":
       if (method === "POST") return json({ paths: [] });

@@ -64,6 +64,12 @@ export interface Agent {
   createdAt: string;
   lastOpenedAt?: string;
   /**
+   * Absolute on-disk directory, present only when the engine is co-located
+   * with the files (TS host, local profile). What OS reveal/open needs — on
+   * the TS engine `folderPath` is a route key, not a path (HOU-677).
+   */
+  localDir?: string;
+  /**
    * Multiplayer only: whether the CURRENT user is assigned this agent (may use
    * it). Absent in single-player mode. Kept in sync (by hand) with the
    * engine-client `Agent` shape.

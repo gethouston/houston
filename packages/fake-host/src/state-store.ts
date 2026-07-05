@@ -54,6 +54,8 @@ export interface HostState {
   agents: CpAgent[];
   /** `${agentId}:${relPath}` -> file content (the `.houston/**` files-first store) */
   files: Map<string, string>;
+  /** `${agentId}:${relPath}` -> workspace file (the Files tab's real files). */
+  workspace: Map<string, { bytes: Buffer; created: number; modified: number }>;
   /** `${agentId}:${conversationId}` -> message history */
   histories: Map<string, ChatMessage[]>;
   agentSeq: number;
@@ -70,6 +72,21 @@ function freshState(): HostState {
     fileKey(SEED_AGENT_ID, ACTIVITY_PATH),
     JSON.stringify(SEED_ACTIVITIES),
   );
+  // Two seeded workspace files so the Files tab has rows on first paint.
+  const workspace = new Map<
+    string,
+    { bytes: Buffer; created: number; modified: number }
+  >();
+  workspace.set(fileKey(SEED_AGENT_ID, "Q3 report.pdf"), {
+    bytes: Buffer.from("PDF-BYTES"),
+    created: EPOCH,
+    modified: EPOCH + 86_400_000,
+  });
+  workspace.set(fileKey(SEED_AGENT_ID, "Docs/sales.csv"), {
+    bytes: Buffer.from("a,b\n1,2\n"),
+    created: EPOCH,
+    modified: EPOCH,
+  });
   return {
     agents: [
       {
@@ -80,6 +97,7 @@ function freshState(): HostState {
       },
     ],
     files,
+    workspace,
     histories: new Map(),
     agentSeq: 1,
     activitySeq: 2,

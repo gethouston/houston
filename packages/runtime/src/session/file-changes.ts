@@ -4,9 +4,15 @@ import { join } from "node:path";
 /**
  * Per-turn file-change tracking: snapshot the workspace's USER-VISIBLE files
  * before a turn, diff after, and surface what the turn created/modified as a
- * `file_changes` wire frame + `ChatMessage.fileChanges`. Port of the Rust
- * engine's `sessions/file_changes.rs`, sharing its visibility rules so the
- * "files this mission touched" summary behaves identically across engines.
+ * `file_changes` wire frame + `ChatMessage.fileChanges`.
+ *
+ * Visibility matches the Files tab's listing (host `turn/files-ops.ts`): every
+ * file the tab shows is announced in chat, so the two surfaces never disagree
+ * about whether the agent "made a file". The Rust port's extension allowlist
+ * hid anything without a known deliverable extension — an agent creating a
+ * file named `ping` showed in the Files tab but produced no in-chat card
+ * (HOU-677 follow-up). Only dot-files, the seeded role files, and scaffolding
+ * dirs stay hidden.
  *
  * Paths are workspace-RELATIVE with `/` separators (portable across the
  * desktop and cloud pods; the frontend renders basenames either way).
@@ -25,34 +31,8 @@ const SKIP_DIRS = new Set([
 ]);
 
 /**
- * Only user-deliverable file types count as "visible" — documents, images,
- * plain text. Code/config files an agent writes as scaffolding never show up
- * in the chat summary. Mirrors the Rust `USER_EXTENSIONS` allowlist.
- */
-const USER_EXTENSIONS = new Set([
-  "docx",
-  "doc",
-  "xlsx",
-  "xls",
-  "pptx",
-  "ppt",
-  "pdf",
-  "png",
-  "jpg",
-  "jpeg",
-  "svg",
-  "gif",
-  "txt",
-  "rtf",
-  "csv",
-  "md",
-  "markdown",
-]);
-
-/**
- * Markdown passes the extension gate, but the seeded role files must NOT be
- * reported — otherwise every agent's first session would falsely claim it
- * created its own instructions (Rust test: role files ignored, issue #294).
+ * The seeded role files must NOT be reported — otherwise every agent's first
+ * session would falsely claim it created its own instructions (issue #294).
  */
 const HIDDEN_ROLE_FILES = new Set(["claude.md", "agents.md", "gemini.md"]);
 
@@ -67,10 +47,10 @@ export interface FileChanges {
 }
 
 function isUserVisible(name: string): boolean {
-  if (HIDDEN_ROLE_FILES.has(name.toLowerCase())) return false;
-  const dot = name.lastIndexOf(".");
-  if (dot <= 0) return false;
-  return USER_EXTENSIONS.has(name.slice(dot + 1).toLowerCase());
+  // Dot-files are markers/config (.keep, .env, …), never deliverables — and
+  // the Files tab hides them too.
+  if (name.startsWith(".")) return false;
+  return !HIDDEN_ROLE_FILES.has(name.toLowerCase());
 }
 
 function walk(dir: string, rel: string, out: FileSnapshot): void {
