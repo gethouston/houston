@@ -10,6 +10,10 @@ import SwiftUI
 /// latest" affordance appears, and new content no longer yanks them down.
 struct MissionFeed: View {
   let rows: [ChatRow]
+  /// Whether the pending-turn helmet slot renders below the last row (PARITY §1).
+  var showPending: Bool = false
+  /// Whether the pending slot's "Mission in progress..." label shows (PARITY §1).
+  var showPendingLabel: Bool = false
   /// Bumped by the caller when the user sends, to force a scroll to the bottom
   /// even if they were reading history.
   var scrollToBottomSignal: Int
@@ -17,6 +21,7 @@ struct MissionFeed: View {
   @Environment(\.theme) private var theme
   @State private var atBottom = true
   private let bottomAnchor = "houston.chat.bottom"
+  private let pendingAnchor = "houston.chat.pending"
 
   var body: some View {
     ScrollViewReader { proxy in
@@ -26,6 +31,10 @@ struct MissionFeed: View {
             FeedRow(row: row)
               .id(row.id)
               .frame(maxWidth: .infinity, alignment: .leading)
+          }
+          if showPending {
+            PendingTurnIndicator(showLabel: showPendingLabel)
+              .id(pendingAnchor)
           }
           // Bottom sentinel: its visibility is the "am I at the bottom?" signal.
           Color.clear
@@ -48,6 +57,9 @@ struct MissionFeed: View {
       }
       .animation(.smooth(duration: Motion.fast), value: atBottom)
       .onChange(of: rows.last?.id) { _, _ in
+        if atBottom { scroll(proxy, animated: true) }
+      }
+      .onChange(of: showPending) { _, _ in
         if atBottom { scroll(proxy, animated: true) }
       }
       .onChange(of: scrollToBottomSignal) { _, _ in scroll(proxy, animated: true) }

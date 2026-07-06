@@ -4,7 +4,7 @@ import SwiftUI
 /// from the shared `agentsOverview` seam and shows one of three bodies: the
 /// swipeable status pager, the Archived list, or search results — with the agent
 /// filter and search field in a sticky header, and the Archived toggle in the
-/// toolbar. Card actions (Approve / Rename / Archive) run through `MissionActions`.
+/// toolbar. Card actions (Rename / Archive) run through `MissionActions`.
 struct MissionControlView: View {
   @Environment(\.theme) private var theme
   @Environment(\.agentsOverview) private var overview
@@ -106,7 +106,7 @@ struct MissionControlView: View {
     } else {
       MissionControlPager(
         agents: agents, agentFilter: selectedAgentId, selection: $selectedColumn,
-        onOpen: open, onApprove: approve, onRename: startRename, onArchive: startArchive
+        onOpen: open, onRename: startRename, onArchive: startArchive
       )
     }
   }
@@ -114,10 +114,6 @@ struct MissionControlView: View {
   // MARK: Actions
 
   private func open(_ route: ChatRoute) { navPath.append(route) }
-
-  private func approve(_ card: MissionCardData) {
-    run { try await actions.approve(card) }
-  }
 
   private func startRename(_ card: MissionCardData) {
     renameTarget = card

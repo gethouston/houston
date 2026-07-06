@@ -1,8 +1,8 @@
 import Foundation
 
 /// One render-ready row of the mission chat, carrying a STABLE id so a streaming
-/// assistant/thinking bubble updates in place (no flicker, no re-identify) — the
-/// id is the SDK's own `FeedItemVM.id`, preserved across streaming updates
+/// assistant/process row updates in place (no flicker, no re-identify) — the id
+/// is the SDK's own `FeedItemVM.id`, preserved across streaming updates
 /// (`vm-output.ts`).
 struct ChatRow: Identifiable, Equatable {
   let id: String
@@ -11,31 +11,32 @@ struct ChatRow: Identifiable, Equatable {
   enum Kind: Equatable {
     case user(text: String, author: String?)
     case assistant(text: String, streaming: Bool)
-    case thinking(text: String, streaming: Bool)
-    case tool(ToolCall, result: ToolResult?)
+    /// Reasoning + tool activity folded into ONE collapsible process block
+    /// (PARITY §4). `final_result` produces no row.
+    case process(ProcessGroup)
     case toolRuntimeError(ToolRuntimeError)
     case providerError(ProviderError)
     case system(String)
     case contextCompacted
     case providerSwitched(provider: String, summarized: Bool)
     case fileChanges(created: [String], modified: [String])
-    case missionLog(FinalResult)
   }
 }
 
 /// Folds the SDK conversation feed into render-ready rows, mirroring the desktop
-/// UI-layer fold (`ui/chat/src/feed-to-messages.ts`) — the presentation catalog,
-/// not behavior:
-/// - `cancelled` provider errors and unmodeled items are dropped (PARITY §5,
-///   BRIDGE.md §4 inert).
+/// UI-layer fold (`ui/chat/src/feed-to-messages.ts` + `chat-process-groups.ts`) —
+/// the presentation catalog, not behavior:
+/// - `thinking` + `tool_call`/`tool_result` collapse into ONE process block per
+///   run of activity between visible messages (PARITY §4).
+/// - `final_result` renders NOTHING (`feed-to-messages.ts:359` is flush-only);
+///   the reply is the assistant bubble (PARITY §4).
+/// - `cancelled` provider errors and unmodeled items are dropped.
 /// - duplicate provider errors (same kind + provider) collapse to one card.
 /// - a "Session error:" system line is suppressed once an error card covers the
 ///   conversation (no double-reporting).
-/// - a `tool_result` attaches to its most recent unfilled `tool_call` chip.
-/// - user bubbles carry an author label only when the conversation has 2+
-///   distinct authors (multiplayer).
+/// - user bubbles carry an author label only in multiplayer (2+ authors).
 enum MissionFeedFold {
-  static func rows(from feed: [FeedItemVM]) -> [ChatRow] {
+  static func rows(from feed: [FeedItemVM], running: Bool = false) -> [ChatRow] {
     let multiAuthor = distinctAuthorCount(feed) >= 2
     let hasErrorCard = feed.contains { item in
       switch item.item {
@@ -47,84 +48,105 @@ enum MissionFeedFold {
 
     var rows: [ChatRow] = []
     var seenProviderErrors = Set<String>()
-    // Index (into `rows`) of the last tool chip still awaiting its result.
-    var pendingToolRow: Int?
+    var process: [ProcessItem] = []
+    var processId: String?
+    var pendingTool: Int?
+
+    func flushProcess() {
+      defer { process = []; processId = nil; pendingTool = nil }
+      guard let id = processId, !process.isEmpty else { return }
+      rows.append(.init(id: id, kind: .process(ProcessGroup(id: id, items: process, active: false))))
+    }
 
     for entry in feed {
       switch entry.item {
       case let .assistantText(text, streaming):
-        pendingToolRow = nil
+        flushProcess()
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
         rows.append(.init(id: entry.id, kind: .assistant(text: text, streaming: streaming)))
 
       case let .thinking(text, streaming):
-        pendingToolRow = nil
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || streaming else {
           continue
         }
-        rows.append(.init(id: entry.id, kind: .thinking(text: text, streaming: streaming)))
+        if processId == nil { processId = entry.id }
+        process.append(.reasoning(id: entry.id, text: text, streaming: streaming))
+        pendingTool = nil
 
       case let .userMessage(text, author):
-        pendingToolRow = nil
+        flushProcess()
         let label = multiAuthor ? (author?.name ?? author?.userId) : nil
         rows.append(.init(id: entry.id, kind: .user(text: text, author: label)))
 
       case let .toolCall(call):
-        rows.append(.init(id: entry.id, kind: .tool(call, result: nil)))
-        pendingToolRow = rows.count - 1
+        if processId == nil { processId = entry.id }
+        process.append(.tool(id: entry.id, call: call, result: nil))
+        pendingTool = process.count - 1
 
       case let .toolResult(result):
-        attach(result: result, to: pendingToolRow, in: &rows)
-        pendingToolRow = nil
+        if let index = pendingTool, case let .tool(id, call, nil) = process[index] {
+          process[index] = .tool(id: id, call: call, result: result)
+        }
+        pendingTool = nil
 
       case let .toolRuntimeError(err):
-        pendingToolRow = nil
+        flushProcess()
         rows.append(.init(id: entry.id, kind: .toolRuntimeError(err)))
 
       case let .providerError(err):
-        pendingToolRow = nil
+        flushProcess()
         guard err.presentation != nil else { continue }  // drops cancelled / future kinds
         guard seenProviderErrors.insert(err.dedupeKey).inserted else { continue }
         rows.append(.init(id: entry.id, kind: .providerError(err)))
 
       case let .systemMessage(text):
-        pendingToolRow = nil
+        flushProcess()
         if hasErrorCard && text.hasPrefix("Session error:") { continue }
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
         rows.append(.init(id: entry.id, kind: .system(text)))
 
       case .contextCompacted:
-        pendingToolRow = nil
+        flushProcess()
         rows.append(.init(id: entry.id, kind: .contextCompacted))
 
       case let .providerSwitched(data):
-        pendingToolRow = nil
+        flushProcess()
         rows.append(
           .init(
             id: entry.id,
             kind: .providerSwitched(provider: data.provider, summarized: data.summarized)))
 
       case let .fileChanges(data):
-        pendingToolRow = nil
+        flushProcess()
         guard !data.created.isEmpty || !data.modified.isEmpty else { continue }
         rows.append(
           .init(id: entry.id, kind: .fileChanges(created: data.created, modified: data.modified)))
 
-      case let .finalResult(result):
-        pendingToolRow = nil
-        rows.append(.init(id: entry.id, kind: .missionLog(result)))
+      case .finalResult:
+        // PARITY §4: final_result flushes the turn and renders NOTHING; the reply
+        // is the assistant bubble. It never duplicates the reply.
+        flushProcess()
 
       case .unknown:
-        pendingToolRow = nil  // inert: render nothing (BRIDGE.md §4)
-        continue
+        continue  // inert: never breaks an open process group (BRIDGE.md §4)
       }
     }
-    return rows
+    flushProcess()
+    return markTrailingActive(rows, running: running)
   }
 
-  private static func attach(result: ToolResult, to index: Int?, in rows: inout [ChatRow]) {
-    guard let index, case let .tool(call, nil) = rows[index].kind else { return }
-    rows[index] = .init(id: rows[index].id, kind: .tool(call, result: result))
+  /// The trailing process block of a still-running turn is the active one — its
+  /// header shimmers and shows the present-tense verb (`chat-process-block.tsx`
+  /// `isActive`). A settled turn, or one whose last row is a streaming reply,
+  /// leaves every block settled.
+  private static func markTrailingActive(_ rows: [ChatRow], running: Bool) -> [ChatRow] {
+    guard running, let last = rows.indices.last,
+      case let .process(group) = rows[last].kind
+    else { return rows }
+    var rows = rows
+    rows[last] = .init(
+      id: group.id, kind: .process(ProcessGroup(id: group.id, items: group.items, active: true)))
+    return rows
   }
 
   private static func distinctAuthorCount(_ feed: [FeedItemVM]) -> Int {

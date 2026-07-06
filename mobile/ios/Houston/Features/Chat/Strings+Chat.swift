@@ -10,8 +10,9 @@ import Foundation
 // surface agents never collide on the shared file.
 extension Strings {
   enum Chat {
-    // Composer (chat.json:composer).
-    static let composerPlaceholder = "Ask anything..."
+    // Composer (PARITY §2, ai-board.tsx:700-703). New mission vs. follow-up.
+    static let newMissionPlaceholder = "What should the agent work on?"
+    static let followUpPlaceholder = "Send a follow-up..."
     static let send = "Send"
     static let stop = "Stop"
     static let scrollToLatest = "Scroll to latest"
@@ -21,9 +22,10 @@ extension Strings {
     static func missionInProgress(action: String) -> String {
       "Mission in progress: \(action)"
     }
-    /// The settled turn-summary heading (chat.json:process.complete).
+    /// The settled process-block header label (chat.json:process.complete).
+    /// This is ONLY the collapsed header — never a block that repeats the reply.
     static let missionLog = "Mission log"
-    /// Accessibility label for the pending queued-message bubbles (PARITY §5).
+    /// Accessibility label for the pending queued-message bubbles (PARITY §7).
     static let queued = "Queued messages"
 
     // Reasoning block (chat.json:reasoning).
@@ -50,9 +52,6 @@ extension Strings {
     // Tool runtime error (feed-to-messages.ts + chat.json:toolRuntimeError).
     static let toolRuntimeError = "A local tool failed to start."
     static let tryAgain = "Try again."
-
-    // Approve bar (board.json:cardActions.approve, PARITY §5).
-    static let moveToDone = "Move to done"
 
     // Empty chat (chat.json:empty).
     static let emptyTitle = "Start a conversation"

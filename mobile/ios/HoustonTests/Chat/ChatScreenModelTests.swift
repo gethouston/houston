@@ -67,7 +67,7 @@ final class ChatScreenModelTests: XCTestCase {
     XCTAssertEqual(model.draft, "   \n ")
   }
 
-  // MARK: stop + approve
+  // MARK: stop
 
   func testStopDispatchesCancel() async {
     let (model, spy, _, _) = makeModel()
@@ -76,61 +76,81 @@ final class ChatScreenModelTests: XCTestCase {
     XCTAssertEqual(spy.cancelled.last?.conversationId, "activity-42")
   }
 
-  func testApproveDispatchesSetStatusDoneWithResolvedActivityId() async {
-    let (model, spy, _, _) = makeModel(conversationId: "activity-42")
-    await awaitCall(spy) { model.approve() }
-    XCTAssertEqual(spy.statuses.last?.status, "done")
-    XCTAssertEqual(spy.statuses.last?.activityId, "42", "activity-<id> session key → id")
-  }
+  // MARK: pending helmet slot + placeholder (PARITY §1/§2)
 
-  // MARK: activity id resolution
-
-  func testResolvedActivityIdStripsSessionKeyPrefix() {
-    let (model, _, _, _) = makeModel(conversationId: "activity-abc")
-    XCTAssertEqual(model.resolvedActivityId, "abc")
-  }
-
-  func testResolvedActivityIdFallsBackToRawWhenNoPrefix() {
-    let (model, _, _, _) = makeModel(conversationId: "conv-9")
-    XCTAssertEqual(model.resolvedActivityId, "conv-9")
-  }
-
-  // MARK: end-to-end scope binding — Approve bar reads the pair (PARITY §1)
-
-  func testApproveBarShowsOnNeedsYouSettle() throws {
-    let (model, _, client, transport) = makeModel()
-    model.appear()  // retains scopes → subscribe frames delivered
+  private func snapshot(
+    _ model: ChatScreenModel, _ client: SdkClient, _ transport: MockTransport, _ snapshot: JSONValue
+  ) throws {
+    model.appear()
     let sub = try XCTUnwrap(conversationSub(in: transport), "no conversation subscription opened")
-
-    let snapshot = JSONValue.object([
-      "feed": .array([
-        .object(["id": .string("f0"), "feed_type": .string("user_message"), "data": .string("hi")])
-      ]),
-      "running": .bool(false),
-      "sessionStatus": .string("completed"),
-      "boardStatus": .string("needs_you"),
-    ])
     client.receiveOutbound(
       BridgeTestJSON.encode(.snapshot(sub: sub, scope: model.conversation.scope, snapshot: snapshot)))
+  }
 
-    XCTAssertFalse(model.running)
-    XCTAssertTrue(model.showApproveBar, "needs_you + not running → Approve bar")
-    XCTAssertEqual(model.rows.count, 1)
+  func testPendingSlotShowsWhileSubmittedWithLabel() throws {
+    let (model, _, client, transport) = makeModel()
+    try snapshot(
+      model, client, transport,
+      .object([
+        "feed": .array([
+          .object(["id": .string("f0"), "feed_type": .string("user_message"), "data": .string("hi")])
+        ]),
+        "running": .bool(true), "sessionStatus": .string("running"),
+      ]))
+    XCTAssertTrue(model.showPending, "running + no streaming text → helmet slot")
+    XCTAssertTrue(model.showPendingLabel, "no active process yet → label shows above helmet")
     model.disappear()
   }
 
-  func testApproveBarHiddenWhileRunning() throws {
+  func testPendingSlotHiddenWhileAssistantStreams() throws {
     let (model, _, client, transport) = makeModel()
-    model.appear()
-    let sub = try XCTUnwrap(conversationSub(in: transport))
-    let snapshot = JSONValue.object([
-      "feed": .array([]), "running": .bool(true),
-      "sessionStatus": .string("running"), "boardStatus": .string("needs_you"),
-    ])
-    client.receiveOutbound(
-      BridgeTestJSON.encode(.snapshot(sub: sub, scope: model.conversation.scope, snapshot: snapshot)))
-    XCTAssertTrue(model.running)
-    XCTAssertFalse(model.showApproveBar, "a running turn suppresses the Approve bar")
+    try snapshot(
+      model, client, transport,
+      .object([
+        "feed": .array([
+          .object([
+            "id": .string("f0"), "feed_type": .string("assistant_text_streaming"),
+            "data": .string("Draft"),
+          ])
+        ]),
+        "running": .bool(true), "sessionStatus": .string("running"),
+      ]))
+    XCTAssertFalse(model.showPending, "streaming reply is the progress signal — helmet vanishes")
+    model.disappear()
+  }
+
+  func testPendingLabelSuppressedWhenProcessBlockActive() throws {
+    let (model, _, client, transport) = makeModel()
+    try snapshot(
+      model, client, transport,
+      .object([
+        "feed": .array([
+          .object([
+            "id": .string("t0"), "feed_type": .string("tool_call"),
+            "data": .object(["name": .string("Read"), "input": .object(["file_path": .string("a.txt")])]),
+          ])
+        ]),
+        "running": .bool(true), "sessionStatus": .string("running"),
+      ]))
+    XCTAssertTrue(model.showPending, "helmet stays through tool phases")
+    XCTAssertFalse(model.showPendingLabel, "active process header already surfaces the label")
+    model.disappear()
+  }
+
+  func testComposerPlaceholderNewVsFollowUp() throws {
+    let (model, _, client, transport) = makeModel()
+    XCTAssertEqual(model.composerPlaceholder, Strings.Chat.newMissionPlaceholder)
+    try snapshot(
+      model, client, transport,
+      .object([
+        "feed": .array([
+          .object(["id": .string("u0"), "feed_type": .string("user_message"), "data": .string("hi")])
+        ]),
+        "running": .bool(false), "sessionStatus": .string("completed"),
+      ]))
+    XCTAssertEqual(
+      model.composerPlaceholder, Strings.Chat.followUpPlaceholder,
+      "once the user has spoken it is a follow-up")
     model.disappear()
   }
 

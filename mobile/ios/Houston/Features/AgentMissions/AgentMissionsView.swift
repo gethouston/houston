@@ -21,10 +21,6 @@ struct AgentMissionsView: View {
     let agent: AgentListItem
     let onOpenChat: (ChatRoute) -> Void
     let onOpenArchived: () -> Void
-    /// Per-agent AI Models + Integrations, opened from the toolbar menu (both
-    /// surfaces are per-agent — provider credentials per-pod, grants per-agent).
-    let onOpenAIModels: () -> Void
-    let onOpenIntegrations: () -> Void
 
     @State private var retention: ScopeRetention?
     @State private var presentingComposer = false
@@ -53,7 +49,6 @@ struct AgentMissionsView: View {
         .background(theme.background)
         .navigationTitle(agent.name)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { agentMenu } }
         .safeAreaInset(edge: .bottom) { composer }
         .sheet(isPresented: $presentingComposer) { NewMissionSheet(preselectedAgent: agent) }
         .missionActionDialogs(
@@ -75,23 +70,6 @@ struct AgentMissionsView: View {
     }
 
     // MARK: Pieces
-
-    /// Toolbar overflow: this agent's AI Models + Integrations. Kept subtle (a
-    /// single ellipsis menu) so the missions screen stays focused on the work.
-    private var agentMenu: some View {
-        Menu {
-            Button { onOpenAIModels() } label: {
-                Label(Strings.AIModels.title, systemImage: "cpu")
-            }
-            Button { onOpenIntegrations() } label: {
-                Label(Strings.Integrations.title, systemImage: "puzzlepiece.extension")
-            }
-        } label: {
-            Image(systemName: "ellipsis.circle")
-                .foregroundStyle(theme.foreground)
-        }
-        .accessibilityLabel(Strings.AgentMissions.moreMenu)
-    }
 
     private var header: some View {
         HStack(spacing: Spacing.space12) {
@@ -120,8 +98,7 @@ struct AgentMissionsView: View {
             AgentMissionsSectionList(
                 grouping: grouping,
                 onOpen: onOpenChat, onOpenArchived: onOpenArchived,
-                onApprove: approve, onRename: startRename,
-                onArchive: startArchive, onDelete: startDelete
+                onRename: startRename, onArchive: startArchive, onDelete: startDelete
             )
         }
     }
@@ -145,8 +122,6 @@ struct AgentMissionsView: View {
     private var deletePresented: Binding<Bool> {
         Binding(get: { deleteTarget != nil }, set: { if !$0 { deleteTarget = nil } })
     }
-
-    private func approve(_ card: MissionCardData) { run { try await actions.approve(card) } }
 
     private func startRename(_ card: MissionCardData) {
         renameTarget = card

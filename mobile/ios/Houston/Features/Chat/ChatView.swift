@@ -1,13 +1,12 @@
 import SwiftUI
 
-/// The WhatsApp-style mission chat (PARITY §5). Observes the SDK
-/// `conversation/<id>` VM, hydrates + streams via `turns/observe` on appear, and
-/// renders the feed catalog with a live status line, an Approve bar, and a
-/// growing composer above the keyboard.
+/// The mission chat (PARITY): observes the SDK `conversation/<id>` VM, hydrates +
+/// streams via `turns/observe` on appear, and renders the feed catalog with the
+/// pending-turn helmet in the stream and the desktop-parity composer below.
 ///
-/// Behavior lives entirely in `@houston/sdk` (turn lifecycle, folding, board
-/// status); this surface only binds the VM to native UI and dispatches commands
-/// through ``ChatScreenModel`` (client-architecture.md, invariant 1).
+/// Behavior lives entirely in `@houston/sdk` (turn lifecycle, folding, status);
+/// this surface only binds the VM to native UI and dispatches commands through
+/// ``ChatScreenModel`` (client-architecture.md, invariant 1).
 struct ChatView: View {
   @Environment(\.theme) private var theme
   private let title: String
@@ -42,33 +41,34 @@ struct ChatView: View {
   }
 
   @ViewBuilder private var feed: some View {
-    if model.rows.isEmpty {
+    if model.rows.isEmpty && !model.showPending {
       EmptyStateView(
         title: Strings.Chat.emptyTitle,
         description: Strings.Chat.emptyDescription,
         systemImage: "bubble.left.and.bubble.right")
     } else {
-      MissionFeed(rows: model.rows, scrollToBottomSignal: model.sendTick)
+      MissionFeed(
+        rows: model.rows,
+        showPending: model.showPending,
+        showPendingLabel: model.showPendingLabel,
+        scrollToBottomSignal: model.sendTick)
     }
   }
 
   private var footer: some View {
     @Bindable var model = model
     return VStack(spacing: 0) {
-      if model.running {
-        MissionStatusLine(action: nil, showLabel: model.showLoadingLabel) { model.stop() }
-      }
-      if model.showApproveBar {
-        ApproveBar { model.approve() }
-      }
       if !model.queued.isEmpty {
         QueuedMessagesView(messages: model.queued)
       }
-      MissionComposer(text: $model.draft, isSending: model.isSending) { model.send() }
+      MissionComposer(
+        text: $model.draft,
+        isRunning: model.running,
+        placeholder: model.composerPlaceholder,
+        onSend: { model.send() },
+        onStop: { model.stop() })
     }
     .animation(.smooth(duration: Motion.fast), value: model.running)
-    .animation(.smooth(duration: Motion.fast), value: model.showLoadingLabel)
-    .animation(.smooth(duration: Motion.fast), value: model.showApproveBar)
     .animation(.smooth(duration: Motion.fast), value: model.queued)
   }
 
