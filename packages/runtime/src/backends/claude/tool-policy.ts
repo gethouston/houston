@@ -18,12 +18,20 @@ import { WorkspaceGuard } from "../../session/tools/fs-guard";
  *    against a future preset re-introducing one, and it also drops Bash when code
  *    execution is off.
  *
- * Crucially there is NO `allowedTools`: an allow rule pre-approves a tool and
- * SHORT-CIRCUITS `canUseTool`, so listing the file tools there would let the
- * model touch any path with the Gate #1 clamp never running. Instead every call
- * routes through `makeCanUseTool`, which auto-approves in-workspace targets (no
- * human is there to prompt) and denies escapes — reproducing Houston's auto-run
- * plus the workspace wall in one handler.
+ * Crucially the FILE tools carry NO `allowedTools` entry: an allow rule
+ * pre-approves a tool and SHORT-CIRCUITS `canUseTool`, so listing Read/Edit/
+ * Write/Glob/Grep there would let the model touch any path with the Gate #1
+ * clamp never running. Instead every file-tool call routes through
+ * `makeCanUseTool`, which auto-approves in-workspace targets (no human is there
+ * to prompt) and denies escapes — reproducing Houston's auto-run plus the
+ * workspace wall in one handler.
+ *
+ * The in-process MCP custom tools are the one deliberate exception: `backend.ts`
+ * allow-lists their `mcp__houston__*` names (see `custom-tools.ts`), so they run
+ * without a prompt and DO NOT route through `makeCanUseTool`. That is safe —
+ * they hold no path for the workspace guard to clamp, and it matches pi auto-run.
+ * The `{ tools, disallowedTools }` this file builds still governs only the SDK
+ * BUILT-INS.
  */
 
 /** The clamped file tools pi always exposes (SDK names). */
@@ -57,7 +65,7 @@ export interface ToolPolicy {
   disallowedTools: string[];
 }
 
-/** Build the `{ tools, disallowedTools }` SDK options (no `allowedTools` — see above). */
+/** Build the `{ tools, disallowedTools }` SDK options (this object sets no `allowedTools` — see above). */
 export function buildToolPolicy(input: ToolPolicyInput): ToolPolicy {
   const tools = input.localBash ? [...FILE_TOOLS, "Bash"] : [...FILE_TOOLS];
   // Deny Bash outright when code execution is off, on top of omitting it above.

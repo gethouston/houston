@@ -1,11 +1,13 @@
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import type { ToolSelection } from "../../session/tool-selection";
+import type { IntegrationToolOptions } from "../../session/tools/integrations";
 import type {
   CreateSessionOptions,
   HarnessBackend,
   HarnessSession,
 } from "../types";
 import { resolveClaudeExecutable } from "./binary-path";
+import { buildHoustonMcpServer, HOUSTON_MCP_SERVER_NAME } from "./custom-tools";
 import { toSdkModel } from "./model";
 import { claudeLoginConfigDir } from "./paths";
 import { type ClaudeQuery, ClaudeSession } from "./session";
@@ -28,6 +30,14 @@ export interface ClaudeBackendDeps {
   toolSelection: ToolSelection;
   /** Houston's product system prompt (full-replace, not the claude_code preset). */
   systemPrompt: string;
+  /**
+   * Integration proxy config when this runtime can reach its host with a sandbox
+   * token — the SAME gate the pi path applies (`config.controlPlaneUrl &&
+   * config.sandboxToken`). Present → the in-process MCP server also exposes
+   * `request_connection` + `integration_search` + `integration_execute`; absent
+   * → only `ask_user` (which holds no credential and makes no network call).
+   */
+  integrations?: IntegrationToolOptions;
 }
 
 /** Thrown when the optional Claude Agent SDK is not present in this build. */
@@ -61,9 +71,17 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
     id: "anthropic",
     async createSession(opts: CreateSessionOptions): Promise<HarnessSession> {
       let query: ClaudeQuery;
+      let houstonMcp: ReturnType<typeof buildHoustonMcpServer>;
       try {
         const sdk = await import("@anthropic-ai/claude-agent-sdk");
         query = sdk.query as ClaudeQuery;
+        // Build the in-process MCP server that exposes Houston's custom tools to
+        // the subprocess. Built here (not at module load) so the optional SDK's
+        // `createSdkMcpServer` is only touched once the SDK is confirmed present.
+        houstonMcp = buildHoustonMcpServer({
+          createSdkMcpServer: sdk.createSdkMcpServer,
+          integrations: deps.integrations,
+        });
       } catch (err) {
         throw new ClaudeBackendUnavailableError(err);
       }
@@ -81,6 +99,12 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         settingSources: [],
         tools: policy.tools,
         disallowedTools: policy.disallowedTools,
+        // Expose Houston's custom tools (ask_user + gated integration tools) via
+        // the in-process MCP transport, and auto-allow them so the subprocess
+        // runs them without a permission prompt. `tools` above scopes only the
+        // BUILT-INS; MCP tools ride alongside and are not filtered by it.
+        mcpServers: { [HOUSTON_MCP_SERVER_NAME]: houstonMcp.server },
+        allowedTools: houstonMcp.allowedTools,
         canUseTool: makeCanUseTool(deps.workspaceDir),
         systemPrompt: buildSystemPrompt(deps.workspaceDir, deps.systemPrompt),
         includePartialMessages: true,
