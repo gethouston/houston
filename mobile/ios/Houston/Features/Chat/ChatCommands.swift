@@ -10,8 +10,12 @@ protocol ChatCommanding {
   /// Attach to the conversation: hydrates persisted history, then streams live
   /// (`turns/observe` — the gaps agent made it history-first, PARITY §5).
   func observe(agentId: String, conversationId: String) async throws
-  /// Start a turn with the user's message (`turns/send`).
-  func send(agentId: String, conversationId: String, text: String) async throws
+  /// Start a turn with the user's message (`turns/send`). `model`, when set, is
+  /// a per-conversation pin (HOU-695 — the "+" menu's model picker sets it on
+  /// ``ChatScreenModel``); it never touches the agent-wide default and the
+  /// runtime resolves the owning provider from it. `nil` falls back to the
+  /// agent's active provider/model, exactly like an omitted wire field.
+  func send(agentId: String, conversationId: String, text: String, model: String?) async throws
   /// Cancel the in-flight turn (`turns/cancel` — the silent needs_you Stop).
   func cancel(agentId: String, conversationId: String) async throws
   /// Transition a mission's status, e.g. approve → `done` (`activities/setStatus`).
@@ -33,9 +37,10 @@ struct SdkChatCommands: ChatCommanding {
       "turns/observe", ConversationRef(conversationId: conversationId, agentId: agentId))
   }
 
-  func send(agentId: String, conversationId: String, text: String) async throws {
+  func send(agentId: String, conversationId: String, text: String, model: String?) async throws {
     let _: SdkVoid = try await client.command(
-      "turns/send", SendArgs(conversationId: conversationId, text: text, agentId: agentId))
+      "turns/send",
+      SendArgs(conversationId: conversationId, text: text, agentId: agentId, model: model))
   }
 
   func cancel(agentId: String, conversationId: String) async throws {
@@ -69,6 +74,9 @@ struct SdkChatCommands: ChatCommanding {
     let conversationId: String
     let text: String
     let agentId: String
+    /// Per-turn model pin (`TurnSendInput.model`, `turn-inputs.ts`). Absent
+    /// optionals are omitted, matching the TS `undefined`.
+    let model: String?
   }
   private struct SetStatusArgs: Encodable {
     let agentId: String

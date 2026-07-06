@@ -11,6 +11,12 @@ struct ChatView: View {
   @Environment(\.theme) private var theme
   private let title: String
   @State private var model: ChatScreenModel
+  /// The "+" affordance's menu (Choose model / Attach file) and, from it, the
+  /// model picker sheet. Both are ChatView-owned per the composer's contract:
+  /// `MissionComposer` only exposes `onPlus`, the container decides what "+"
+  /// does (today: this menu; PARITY has no desktop equivalent for the shell).
+  @State private var showPlusMenu = false
+  @State private var showModelPicker = false
 
   /// Open a mission chat. `conversationId` is `nil` for a draft — an empty
   /// conversation whose activity is created on the first send (``ChatRoute``).
@@ -40,6 +46,20 @@ struct ChatView: View {
       ) { _ in
         Button(Strings.Chat.dismiss, role: .cancel) { model.actionError = nil }
       } message: { Text($0) }
+      .confirmationDialog(
+        Strings.Chat.PlusMenu.title, isPresented: $showPlusMenu, titleVisibility: .visible
+      ) {
+        Button(Strings.Chat.PlusMenu.chooseModel) { showModelPicker = true }
+        // Attachments aren't wired to the engine send path yet (no silent
+        // no-op though: the label itself says so, and disabled greys the row).
+        Button(Strings.Chat.PlusMenu.attachFile) {}
+          .disabled(true)
+      }
+      .sheet(isPresented: $showModelPicker) {
+        ModelPickerSheet(agentId: model.agentId, selectedModel: model.selectedModel) {
+          model.selectedModel = $0
+        }
+      }
   }
 
   @ViewBuilder private var feed: some View {
@@ -68,7 +88,8 @@ struct ChatView: View {
         isRunning: model.running,
         placeholder: model.composerPlaceholder,
         onSend: { model.send() },
-        onStop: { model.stop() })
+        onStop: { model.stop() },
+        onPlus: { showPlusMenu = true })
     }
     .animation(.smooth(duration: Motion.fast), value: model.running)
     .animation(.smooth(duration: Motion.fast), value: model.queued)
