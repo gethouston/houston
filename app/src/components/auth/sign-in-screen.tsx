@@ -66,7 +66,7 @@ export function SignInScreen() {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-muted text-foreground">
+    <div className="flex h-screen flex-col bg-[var(--ht-canvas-gutter)] text-foreground">
       <div className="flex items-center gap-2 px-8 pt-14 pb-6">
         <HoustonLogo size={24} />
         <span className="text-lg font-semibold tracking-tight">Houston</span>
@@ -117,10 +117,10 @@ export function SignInScreen() {
             {error && <p className="text-xs text-destructive">{error}</p>}
           </div>
 
-          <div className="flex flex-col justify-between gap-6 bg-muted p-8 sm:col-span-1">
+          <div className="flex flex-col justify-between gap-6 bg-primary p-8 text-primary-foreground sm:col-span-1">
             <div className="flex flex-col gap-3">
               <h2 className="text-lg font-medium">Houston for teams</h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-primary-foreground/70">
                 Shared agents, roles, and admin controls for your whole company.
               </p>
             </div>
@@ -128,7 +128,7 @@ export function SignInScreen() {
               variant="ghost"
               size="sm"
               onClick={openExternal("https://gethouston.ai/enterprise")}
-              className="-ml-3 gap-1 self-start"
+              className="-ml-3 gap-1 self-start text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
             >
               Talk to our team
               <ArrowUpRight className="size-4" />
