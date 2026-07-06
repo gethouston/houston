@@ -72,6 +72,9 @@ export function EmptyScreen({
               <span className="text-[11px] text-muted-foreground">
                 {t(`localModel.empty.apps.${kind}`)}
               </span>
+              <span className="mt-0.5 text-[11px] font-medium text-foreground/75">
+                {t(`localModel.empty.hint.${kind}`)}
+              </span>
             </span>
             <button
               type="button"

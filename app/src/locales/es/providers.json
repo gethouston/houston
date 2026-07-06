@@ -136,6 +136,11 @@
         "jan": "Una app de modelos abierta y fácil.",
         "ollama": "Popular y simple de configurar."
       },
+      "hint": {
+        "lmstudio": "Abre su pestaña Developer y activa el servidor.",
+        "jan": "En Configuración, activa el servidor de API local.",
+        "ollama": "Funciona solo una vez instalado. No hay que activar nada."
+      },
       "get": "Descargar",
       "reassure": "Cuando esté abierta, Houston se encarga del resto.",
       "recheck": "Buscar de nuevo"

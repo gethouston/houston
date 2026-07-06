@@ -136,6 +136,11 @@
         "jan": "An open, easy model app.",
         "ollama": "Popular and simple to set up."
       },
+      "hint": {
+        "lmstudio": "Open its Developer tab, then switch the server on.",
+        "jan": "In Settings, turn on the Local API Server.",
+        "ollama": "Runs on its own once installed. Nothing to switch on."
+      },
       "get": "Get it",
       "reassure": "Once it's open, Houston takes care of the rest.",
       "recheck": "Check again"
