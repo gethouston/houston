@@ -353,6 +353,9 @@ pub fn run() {
             commands::terminal::open_terminal,
             commands::portable::save_portable_agent,
             commands::portable::open_portable_agent,
+            // Native "Save as…" for Files-tab downloads — the webview ignores
+            // anchor-download clicks, so the shell writes the bytes itself.
+            commands::save_file::save_download,
             commands::update::current_app_bundle_path,
             commands::update::relaunch_app_from_path,
             // Hidden Sentry smoke command for native stack verification.

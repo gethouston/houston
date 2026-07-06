@@ -44,6 +44,8 @@ export interface FilesBrowserProps {
   onReveal?: (file: FileEntry) => void;
   /** Save the file to the user's machine (browser builds; desktop uses onOpen/onReveal). */
   onDownload?: (file: FileEntry) => void;
+  /** Save a folder's subtree as a zip. Adds a context menu to folder rows. */
+  onDownloadFolder?: (folder: FileEntry) => void;
   onDelete?: (file: FileEntry) => void;
   onFilesDropped?: (files: File[], targetFolder?: string) => void;
   /** Move a file/folder to a new location (null = root) */
@@ -69,6 +71,7 @@ export function FilesBrowser({
   onOpen,
   onReveal,
   onDownload,
+  onDownloadFolder,
   onDelete,
   onFilesDropped,
   onMove,
@@ -270,6 +273,7 @@ export function FilesBrowser({
                     onOpen={onOpen}
                     onReveal={onReveal}
                     onDownload={onDownload}
+                    onDownloadFolder={onDownloadFolder}
                     onDelete={onDelete}
                     onRename={onRename}
                     onFilesDropped={onFilesDropped}

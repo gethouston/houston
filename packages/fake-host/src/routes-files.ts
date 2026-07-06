@@ -37,12 +37,20 @@ export function handleWorkspaceFiles(
   }
 
   if (sub === "archive" && method === "GET") {
-    const files = state.listWorkspaceFiles(id).filter((f) => !f.is_directory);
+    // No `path` → whole workspace; with `path` → that folder's subtree, with
+    // the folder itself as the zip's root entry (like the real host).
+    const folder = query.get("path");
+    const base = folder ? folder.slice(0, folder.lastIndexOf("/") + 1) : "";
+    const files = state
+      .listWorkspaceFiles(id)
+      .filter(
+        (f) => !f.is_directory && (!folder || f.path.startsWith(`${folder}/`)),
+      );
     if (files.length === 0) return json({ error: "no files to download" }, 404);
     const entries: Zippable = {};
     for (const f of files) {
       const w = state.readWorkspaceFile(id, f.path);
-      if (w) entries[f.path] = new Uint8Array(w.bytes);
+      if (w) entries[f.path.slice(base.length)] = new Uint8Array(w.bytes);
     }
     return new Response(new Uint8Array(zipSync(entries)), {
       status: 200,
