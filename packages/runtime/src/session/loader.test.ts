@@ -111,3 +111,16 @@ test("no skills dir, no context file: loader stays empty (nothing discovered fro
   expect(loader.getAgentsFiles().agentsFiles).toHaveLength(0);
   expect(loader.getSystemPrompt()).toBe("You are Houston.");
 });
+
+test("the compaction guard loads as an inline extension despite noExtensions (HOU-709)", async () => {
+  const { ws } = freshWorkspace();
+  const loader = loaderFor(ws);
+  await loader.reload();
+
+  const { extensions, errors } = loader.getExtensions();
+  expect(errors).toHaveLength(0);
+  // The guard is the ONE inline factory; it must survive noExtensions (which
+  // only gates on-disk discovery) and register the compaction handler.
+  expect(extensions).toHaveLength(1);
+  expect(extensions[0]?.handlers.has("session_before_compact")).toBe(true);
+});
