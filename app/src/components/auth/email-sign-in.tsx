@@ -83,6 +83,7 @@ export function EmailSignIn() {
         />
         <Button
           type="submit"
+          variant="outline"
           disabled={pending || code.trim().length === 0}
           className="h-11 w-full rounded-full"
         >

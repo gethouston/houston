@@ -74,6 +74,23 @@ async function signInWithProvider(provider: "google" | "azure"): Promise<void> {
 
   pendingProvider = provider;
 
+  // Microsoft (Entra) needs the standard OIDC trio plus `offline_access` to
+  // issue a refresh token; without it Supabase gets the ID token but no way to
+  // refresh, and the session goes stale on the first reload. The account picker
+  // (`prompt: select_account`) lets multi-account users (work + personal) choose
+  // instead of Microsoft silently reusing the last account — the #1 source of
+  // "wrong account" confusion. We deliberately skip `profile` / `User.Read`:
+  // Houston only needs the email + sub claims. Applied to BOTH flows below —
+  // the web branch used to omit these, so a web Azure session had no refresh
+  // token and died on the first reload.
+  const providerOptions =
+    provider === "azure"
+      ? {
+          scopes: "openid email offline_access",
+          queryParams: { prompt: "select_account" },
+        }
+      : {};
+
   // Web build (no Tauri webview / deep link): a normal in-browser redirect to
   // `/auth/callback`, where Supabase's URL sniffer (detectSessionInUrl) trades
   // the `?code=` for a session. The desktop flow below opens the system browser
@@ -81,7 +98,10 @@ async function signInWithProvider(provider: "google" | "azure"): Promise<void> {
   if (!osIsTauri()) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        ...providerOptions,
+      },
     });
     if (error) throw error;
     return; // Supabase navigates the page to the consent screen.
@@ -98,22 +118,7 @@ async function signInWithProvider(provider: "google" | "azure"): Promise<void> {
       // Don't let Supabase touch window.location — we're in a webview and
       // need the consent page to open in the user's real browser.
       skipBrowserRedirect: true,
-      // Microsoft (Entra) needs the standard OIDC trio plus
-      // `offline_access` to issue a refresh token; without it Supabase
-      // gets the ID token but no way to refresh, and the session goes
-      // stale on the first reload. Matches Supabase's documented azure
-      // default. We deliberately don't request `profile` / `User.Read`
-      // since Houston only needs the email + sub claims for sign-in.
-      ...(provider === "azure"
-        ? {
-            scopes: "openid email offline_access",
-            // Force the account picker so users with multiple Microsoft
-            // accounts (work + personal) can choose; otherwise Microsoft
-            // silently picks the last-used one which is the #1 source of
-            // "wrong account" sign-in confusion.
-            queryParams: { prompt: "select_account" },
-          }
-        : {}),
+      ...providerOptions,
     },
   });
 

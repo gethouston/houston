@@ -1,15 +1,17 @@
 import { Button, Separator } from "@houston-ai/core";
+import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { onAuthError, signInWithGoogle } from "../../lib/auth";
+import {
+  onAuthError,
+  signInWithGoogle,
+  signInWithMicrosoft,
+} from "../../lib/auth";
 import { logger } from "../../lib/logger";
 import { HoustonLogo } from "../shell/experience-card";
 import { prettifyAuthError } from "./auth-errors";
 import { EmailSignIn } from "./email-sign-in";
 
-// Microsoft is intentionally not offered for now. The generic `azure`
-// provider plumbing stays in lib/auth.ts (signInWithMicrosoft) so re-enabling
-// is just re-adding the button below.
-type Provider = "google";
+type Provider = "google" | "azure";
 
 /**
  * Full-screen sign-in overlay. Rendered by App.tsx when Supabase is
@@ -18,8 +20,10 @@ type Provider = "google";
  * copy product-benefit-focused — the audience is non-technical, so no mention
  * of OAuth / tokens / APIs.
  *
- * Two ways in: Google (OAuth via the loopback flow) and passwordless email
- * (6-digit code, fully in-app — see EmailSignIn).
+ * Three equal ways in: Google, Microsoft (both OAuth via the loopback flow),
+ * and passwordless email (6-digit code, fully in-app — see EmailSignIn). The
+ * providers read as one calm set of outline buttons — the only colour is each
+ * brand's own mark — rather than one heavy primary button dominating the rest.
  *
  * Re-click semantics: the loading spinner is only on while the system browser
  * is being opened (a few ms). After that the user is free to click a provider
@@ -44,12 +48,12 @@ export function SignInScreen() {
     setPending(provider);
     setError(null);
     try {
-      await signInWithGoogle();
+      await (provider === "azure" ? signInWithMicrosoft() : signInWithGoogle());
     } catch (e) {
       logger.error(`[auth] ${provider} sign-in failed: ${e}`);
       setError(prettifyAuthError(String(e)));
     } finally {
-      // Re-enable the button immediately once the browser is open. The
+      // Re-enable the buttons immediately once the browser is open. The
       // SignInScreen itself unmounts when the deep-link callback flips the
       // session, so we don't need a "waiting for callback" loading state.
       setPending(null);
@@ -58,35 +62,55 @@ export function SignInScreen() {
 
   return (
     <div className="h-screen flex flex-col items-center justify-center bg-background text-foreground px-6">
-      <div className="flex flex-col items-center gap-6 max-w-sm w-full">
-        <HoustonLogo size={48} />
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold">Welcome to Houston</h1>
-          <p className="text-sm text-muted-foreground mt-2">
-            Sign in to save your agents and keep everything in sync.
-          </p>
+      <div className="flex flex-col items-center gap-7 max-w-xs w-full">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <HoustonLogo size={44} />
+          <div className="flex flex-col gap-1.5">
+            <h1 className="text-xl font-semibold">Welcome to Houston</h1>
+            <p className="text-sm text-muted-foreground text-balance">
+              Sign in to save your agents and keep everything in sync.
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-2 w-full">
-          <Button
-            onClick={handleSignIn("google")}
-            disabled={pending !== null}
-            className="w-full rounded-full h-11 flex items-center justify-center gap-2"
-          >
-            <GoogleIcon />
-            {pending === "google"
-              ? "Opening browser..."
-              : "Continue with Google"}
-          </Button>
-        </div>
+        <div className="flex w-full flex-col gap-3">
+          <div className="flex w-full gap-2">
+            <Button
+              variant="outline"
+              onClick={handleSignIn("google")}
+              disabled={pending !== null}
+              className="h-11 flex-1 rounded-full"
+            >
+              {pending === "google" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <GoogleIcon />
+              )}
+              Google
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleSignIn("azure")}
+              disabled={pending !== null}
+              className="h-11 flex-1 rounded-full"
+            >
+              {pending === "azure" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <MicrosoftIcon />
+              )}
+              Microsoft
+            </Button>
+          </div>
 
-        <div className="flex items-center gap-3 w-full">
-          <Separator className="flex-1" />
-          <span className="text-xs text-muted-foreground">or</span>
-          <Separator className="flex-1" />
-        </div>
+          <div className="flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted-foreground">or</span>
+            <Separator className="flex-1" />
+          </div>
 
-        <EmailSignIn />
+          <EmailSignIn />
+        </div>
 
         {error && (
           <p className="text-xs text-destructive text-center">{error}</p>
@@ -115,6 +139,18 @@ function GoogleIcon() {
         fill="#34A853"
         d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
       />
+    </svg>
+  );
+}
+
+function MicrosoftIcon() {
+  // The official four-square mark. Brand colours are the screen's only accent.
+  return (
+    <svg width="16" height="16" viewBox="0 0 21 21" aria-hidden="true">
+      <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+      <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+      <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+      <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
     </svg>
   );
 }
