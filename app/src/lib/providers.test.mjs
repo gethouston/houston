@@ -295,7 +295,7 @@ test("EFFORT_ORDER is the full ascending spectrum and a superset of every model'
   }
 });
 
-test("getVisibleProviders gates api-key (new engine) and local (desktop) providers", () => {
+test("getVisibleProviders gates api-key (new engine) and local (capability) providers", () => {
   const onNewEngineDesktop = getVisibleProviders({
     newEngine: true,
     desktop: true,
@@ -303,16 +303,18 @@ test("getVisibleProviders gates api-key (new engine) and local (desktop) provide
   const onNewEngineWeb = getVisibleProviders({ newEngine: true });
   const onRustEngine = getVisibleProviders({ newEngine: false });
 
-  // New engine + desktop: every catalog provider is visible.
+  // New engine + desktop, capabilities not yet loaded: desktop shows the local
+  // provider optimistically, so every catalog provider is visible.
   assert.equal(onNewEngineDesktop.length, PROVIDERS.length);
   assert.ok(onNewEngineDesktop.some((p) => p.id === "opencode"));
   assert.ok(onNewEngineDesktop.some((p) => p.id === "opencode-go"));
   assert.ok(onNewEngineDesktop.some((p) => p.id === "minimax"));
   assert.ok(onNewEngineDesktop.some((p) => p.id === "openai-compatible"));
 
-  // New engine in the browser (no desktop): the api-key gateways show, but the
-  // local OpenAI-compatible provider is hidden — its base URL is the user's own
-  // machine, unreachable from a browser/cloud deployment.
+  // New engine in the browser (no desktop), capabilities not yet loaded: the
+  // api-key gateways show, but the local OpenAI-compatible provider stays hidden
+  // until a host explicitly reports the capability, so it never flashes on a
+  // capability-less host.
   assert.ok(onNewEngineWeb.some((p) => p.auth === "apiKey"));
   assert.ok(!onNewEngineWeb.some((p) => p.id === "openai-compatible"));
   assert.equal(
@@ -331,6 +333,35 @@ test("getVisibleProviders gates api-key (new engine) and local (desktop) provide
       (p) => p.auth !== "apiKey" && p.auth !== "openaiCompatible",
     ).length,
   );
+});
+
+test("getVisibleProviders shows the local provider whenever the host reports openaiCompatible, desktop or not", () => {
+  const hasLocal = (opts) =>
+    getVisibleProviders(opts).some((p) => p.id === "openai-compatible");
+  const caps = (openaiCompatible) => ({ providers: [], openaiCompatible });
+
+  // Capability true decides on its own — desktop no longer required. Web/hosted
+  // now gets the local provider (cloud pods gained the capability).
+  assert.ok(
+    hasLocal({ newEngine: true, desktop: true, capabilities: caps(true) }),
+  );
+  assert.ok(hasLocal({ newEngine: true, capabilities: caps(true) }));
+
+  // Capability false hides it even on desktop (host explicitly can't serve it).
+  assert.ok(
+    !hasLocal({ newEngine: true, desktop: true, capabilities: caps(false) }),
+  );
+  assert.ok(!hasLocal({ newEngine: true, capabilities: caps(false) }));
+
+  // Capabilities absent: desktop shows optimistically, web/hosted stays hidden.
+  assert.ok(hasLocal({ newEngine: true, desktop: true }));
+  assert.ok(!hasLocal({ newEngine: true }));
+
+  // Rust engine hides it regardless of a reported capability.
+  assert.ok(
+    !hasLocal({ newEngine: false, desktop: true, capabilities: caps(true) }),
+  );
+  assert.ok(!hasLocal({ newEngine: false, capabilities: caps(true) }));
 });
 
 test("getConnectProviders merges the two OpenCode gateways into one account card", () => {

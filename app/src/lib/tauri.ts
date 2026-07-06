@@ -1137,9 +1137,10 @@ export const tauriProvider = {
       getEngine().setProviderApiKey(provider, apiKey),
     ),
   /**
-   * Connect an OpenAI-compatible (local) server: a base URL + model id the user
-   * runs themselves (Ollama / vLLM / LM Studio). Desktop + new-engine only — the
-   * connect UI shows it only then (see `getVisibleProviders`).
+   * Connect an OpenAI-compatible (local / BYO model) server: a base URL + model
+   * id the user runs themselves (Ollama / vLLM / LM Studio). New-engine only and
+   * gated by the host's `openaiCompatible` capability — the connect UI shows it
+   * only then (see `getVisibleProviders`).
    */
   setCustomEndpoint: (endpoint: CustomEndpoint) =>
     call<void>("set_provider_custom_endpoint", () =>

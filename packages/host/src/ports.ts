@@ -193,11 +193,13 @@ export interface RuntimeChannel {
     apiKey: string,
   ): Promise<void>;
   /**
-   * Connect an OpenAI-compatible (local) server: a base URL + model id the user
-   * runs themselves (Ollama / vLLM / LM Studio). Unlike the credential providers
-   * this is NOT stored centrally — the URL points at the user's own machine, so
-   * a standing-runtime channel just persists the endpoint in the runtime it
-   * supervises. A per-turn / cloud channel rejects it (local profile only).
+   * Connect an OpenAI-compatible server: a base URL + model id. Desktop/self-host
+   * point it at the user's own machine (Ollama / vLLM / LM Studio); a cloud pod
+   * points it at a public HTTPS endpoint (validated at the save route). Unlike the
+   * credential providers the endpoint is NOT a central credential: a standing
+   * runtime (ProxyChannel) persists it in the runtime it supervises; the per-turn
+   * channel (TurnChannel) writes `custom-endpoint.json` into the agent's
+   * object-storage prefix, which the next turn's runtime hydrates.
    */
   saveCustomEndpoint(ctx: ChannelCtx, endpoint: CustomEndpoint): Promise<void>;
   /**

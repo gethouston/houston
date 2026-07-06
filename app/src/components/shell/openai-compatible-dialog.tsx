@@ -20,8 +20,9 @@ import {
  * Connect dialog for an OpenAI-compatible (local) server — Ollama, LM Studio,
  * vLLM, LiteLLM, etc. Unlike the api-key providers this asks for a base URL and
  * the model id the server serves; the key is optional (local servers usually
- * ignore it). Desktop-only: the base URL points at the user's own machine, so
- * the runtime must be co-located (see `getVisibleProviders`).
+ * ignore it). Gated by the host's `openaiCompatible` capability, so the runtime
+ * is co-located with a host that can reach the endpoint (see
+ * `getVisibleProviders`).
  *
  * On success the engine stores the endpoint, makes it the active provider, and
  * the adapter fires `ProviderLoginComplete` — the same signal the OAuth and

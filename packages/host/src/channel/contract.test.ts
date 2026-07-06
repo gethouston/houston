@@ -73,6 +73,8 @@ interface ChannelFixture {
   /** The central store both fixtures back the channel with — so the contract can
    *  assert forgetCredential actually emptied it, channel-agnostically. */
   credentials: MemoryCredentialStore;
+  /** The object store a per-turn channel persists to (TurnChannel only). */
+  vfs?: MemoryVfs;
 }
 
 /** Drive a RuntimeChannel.dispatch through a real HTTP server (it needs req/res). */
@@ -314,6 +316,7 @@ function makeTurnFixture(): ChannelFixture {
   return {
     channel,
     credentials,
+    vfs: objects,
     connect: async () => {
       await credentials.put({
         workspaceId: ws.id,
@@ -331,31 +334,46 @@ runRuntimeChannelContract("ProxyChannel", makeProxyFixture);
 runRuntimeChannelContract("TurnChannel", makeTurnFixture);
 
 // saveCustomEndpoint is the ONE asymmetric channel op (not part of the shared
-// contract): the standing runtime persists the local endpoint; the per-turn /
-// cloud channel rejects it (a cloud runtime can't reach the user's localhost).
-describe("saveCustomEndpoint (local-only, asymmetric)", () => {
+// contract): the standing runtime is POSTed the endpoint live; the per-turn
+// channel has no live runtime, so it persists the endpoint to object storage
+// under the same key/schema the next turn's runtime hydrates.
+describe("saveCustomEndpoint (asymmetric persistence path)", () => {
   test("ProxyChannel forwards the endpoint to the standing runtime", async () => {
     proxyCustomEndpointBody = null;
     const { channel } = makeProxyFixture();
     await channel.saveCustomEndpoint(ctx, {
-      baseUrl: "http://localhost:11434/v1",
+      baseUrl: "https://ollama.example.com/v1",
       model: "llama3.1",
       name: "Llama",
     });
     expect(proxyCustomEndpointBody).toEqual({
-      baseUrl: "http://localhost:11434/v1",
+      baseUrl: "https://ollama.example.com/v1",
       model: "llama3.1",
       name: "Llama",
     });
   });
 
-  test("TurnChannel (cloud per-turn) refuses a local endpoint", async () => {
-    const { channel } = makeTurnFixture();
-    await expect(
-      channel.saveCustomEndpoint(ctx, {
-        baseUrl: "http://localhost:11434/v1",
-        model: "llama3.1",
-      }),
-    ).rejects.toThrow(/cloud|local|own machine/i);
+  test("TurnChannel (cloud per-turn) persists the endpoint to object storage", async () => {
+    const { channel, vfs } = makeTurnFixture();
+    await channel.saveCustomEndpoint(ctx, {
+      baseUrl: "https://ollama.example.com/v1",
+      model: "llama3.1",
+      name: "Llama",
+      contextWindow: 8192,
+      reasoning: true,
+      // The API key is intentionally NOT persisted here (it lives in auth.json,
+      // which the per-turn runtime injects and never hydrates from storage).
+      apiKey: "sk-should-not-be-written",
+    });
+    // Same key the runtime reads: <prefix>/data/custom-endpoint.json.
+    const raw = await vfs?.readText("ws/w1/agent-1/data/custom-endpoint.json");
+    expect(raw).not.toBeNull();
+    expect(JSON.parse(raw ?? "{}")).toEqual({
+      baseUrl: "https://ollama.example.com/v1",
+      model: "llama3.1",
+      name: "Llama",
+      contextWindow: 8192,
+      reasoning: true,
+    });
   });
 });
