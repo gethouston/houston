@@ -16,7 +16,10 @@ struct MissionControlView: View {
   @State private var selectedColumn: BoardColumn = .running
   @State private var didLandInitialColumn = false
   @State private var search = MissionSearchModel()
-  @State private var presentingNewMission = false
+  /// New-mission compose flow: the picker sheet, and the agent it returned
+  /// (opened as a draft chat on dismissal so the push never races the sheet).
+  @State private var presentingPicker = false
+  @State private var pickedAgent: AgentListItem?
 
   // Action UI state.
   @State private var renameTarget: MissionCardData?
@@ -36,10 +39,15 @@ struct MissionControlView: View {
       .background(theme.background)
       .navigationTitle(showingArchived ? Strings.Board.archived : Strings.Board.missionControlTitle)
       .navigationBarTitleDisplayMode(.large)
-      .toolbar { archivedToolbarItem }
+      .toolbar {
+        NewMissionToolbarButton { presentingPicker = true }
+        archivedToolbarItem
+      }
       .navigationDestination(for: ChatRoute.self) { chatViewBuilder($0) }
     }
-    .sheet(isPresented: $presentingNewMission) { NewMissionSheet() }
+    .sheet(isPresented: $presentingPicker, onDismiss: openPickedDraft) {
+      AgentPickerSheet(onPick: { pickedAgent = $0 })
+    }
     .missionActionDialogs(
       renameTarget: $renameTarget, renameText: $renameText,
       archiveTarget: $archiveTarget, actionError: $actionError,
@@ -101,7 +109,7 @@ struct MissionControlView: View {
       EmptyStateView(
         title: Strings.Empty.boardTitle, description: Strings.Empty.boardDescription,
         systemImage: "square.stack.3d.up", ctaTitle: Strings.Board.newMission,
-        ctaAction: { presentingNewMission = true }
+        ctaAction: { presentingPicker = true }
       )
     } else {
       MissionControlPager(
@@ -114,6 +122,14 @@ struct MissionControlView: View {
   // MARK: Actions
 
   private func open(_ route: ChatRoute) { navPath.append(route) }
+
+  /// Open an empty draft chat for the agent the picker returned. Runs on the
+  /// sheet's `onDismiss`, so the draft is pushed after the picker is gone.
+  private func openPickedDraft() {
+    guard let agent = pickedAgent else { return }
+    pickedAgent = nil
+    navPath.append(.draft(agentId: agent.id, title: agent.name))
+  }
 
   private func startRename(_ card: MissionCardData) {
     renameTarget = card

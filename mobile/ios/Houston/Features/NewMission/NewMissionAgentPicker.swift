@@ -2,8 +2,9 @@ import SwiftUI
 
 /// The agent picker (PARITY §6): "Which agent should run this?" / "Pick an agent
 /// to open a fresh conversation." Agents are listed recents-first (by most recent
-/// activity). Picking one pushes the composer. Skipped entirely when the sheet is
-/// opened with a preselected agent.
+/// activity). Picking one hands the agent back to the caller (``AgentPickerSheet``),
+/// which opens an empty draft chat for it. A pure list of agents + an `onPick`
+/// callback, so it stays reusable by the compose buttons on both top tabs.
 struct NewMissionAgentPicker: View {
   @Environment(\.theme) private var theme
   let agents: [AgentListItem]

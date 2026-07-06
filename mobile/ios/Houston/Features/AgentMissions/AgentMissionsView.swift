@@ -23,7 +23,6 @@ struct AgentMissionsView: View {
     let onOpenArchived: () -> Void
 
     @State private var retention: ScopeRetention?
-    @State private var presentingComposer = false
 
     // Action UI state.
     @State private var renameTarget: MissionCardData?
@@ -50,7 +49,6 @@ struct AgentMissionsView: View {
         .navigationTitle(agent.name)
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) { composer }
-        .sheet(isPresented: $presentingComposer) { NewMissionSheet(preselectedAgent: agent) }
         .missionActionDialogs(
             renameTarget: $renameTarget, renameText: $renameText,
             archiveTarget: $archiveTarget, actionError: $actionError,
@@ -103,8 +101,12 @@ struct AgentMissionsView: View {
         }
     }
 
+    /// The bottom new-mission entry, pre-scoped to this agent: it opens an empty
+    /// draft chat directly (no picker — the agent is already known), pushed onto
+    /// the owning Agents stack via `onOpenChat`. The activity is created on the
+    /// chat's first send (``ChatScreenModel``).
     private var composer: some View {
-        Button { presentingComposer = true } label: {
+        Button { onOpenChat(.draft(agentId: agent.id, title: agent.name)) } label: {
             Label(Strings.Board.newMission, systemImage: "plus")
                 .font(Typography.label)
                 .foregroundStyle(theme.primaryFg)

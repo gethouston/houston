@@ -16,6 +16,12 @@ protocol ChatCommanding {
   func cancel(agentId: String, conversationId: String) async throws
   /// Transition a mission's status, e.g. approve → `done` (`activities/setStatus`).
   func setStatus(agentId: String, activityId: String, status: String) async throws
+  /// Create a mission's activity — the first half of a draft's first send
+  /// (`activities/create`). Returns the new activity id + its chat session key.
+  func create(agentId: String, title: String, description: String) async throws -> CreatedActivity
+  /// Delete an activity — the rollback when a draft's first send fails after the
+  /// activity was created (`activities/delete`), so the board keeps no fake card.
+  func delete(agentId: String, activityId: String) async throws
 }
 
 /// The production ``ChatCommanding``: forwards to ``SdkClient``.
@@ -42,6 +48,16 @@ struct SdkChatCommands: ChatCommanding {
       "activities/setStatus", SetStatusArgs(agentId: agentId, id: activityId, status: status))
   }
 
+  func create(agentId: String, title: String, description: String) async throws -> CreatedActivity {
+    try await client.command(
+      "activities/create", CreateArgs(agentId: agentId, title: title, description: description))
+  }
+
+  func delete(agentId: String, activityId: String) async throws {
+    let _: SdkVoid = try await client.command(
+      "activities/delete", DeleteArgs(agentId: agentId, id: activityId))
+  }
+
   // Payload shapes mirror the SDK command validators verbatim
   // (`turns/turn-inputs.ts`, `activities/payloads.ts`): the JSON keys ARE the
   // property names below, so encoding is a straight pass-through.
@@ -59,4 +75,21 @@ struct SdkChatCommands: ChatCommanding {
     let id: String
     let status: String
   }
+  private struct CreateArgs: Encodable {
+    let agentId: String
+    let title: String
+    let description: String
+  }
+  private struct DeleteArgs: Encodable {
+    let agentId: String
+    let id: String
+  }
+}
+
+/// The result of `activities/create`: the new activity id + the chat session to
+/// open (mirrors the SDK's `CreatedActivity`). Consumed by a draft chat's first
+/// send to transition the draft into the real conversation.
+struct CreatedActivity: Decodable, Equatable, Sendable {
+  let id: String
+  let sessionKey: String
 }

@@ -66,3 +66,11 @@ struct RenamePayload: Encodable {
   let id: String
   let title: String
 }
+
+/// Payload for `activities/delete` (mirrors the SDK's `parseDelete`). Used by the
+/// per-agent Delete action; the draft-chat rollback path deletes through the
+/// Chat command seam instead.
+struct DeleteActivityPayload: Encodable {
+  let agentId: String
+  let id: String
+}

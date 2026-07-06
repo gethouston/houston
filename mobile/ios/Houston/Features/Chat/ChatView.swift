@@ -12,7 +12,9 @@ struct ChatView: View {
   private let title: String
   @State private var model: ChatScreenModel
 
-  init(agentId: String, conversationId: String, title: String) {
+  /// Open a mission chat. `conversationId` is `nil` for a draft — an empty
+  /// conversation whose activity is created on the first send (``ChatRoute``).
+  init(agentId: String, conversationId: String?, title: String) {
     self.title = title
     _model = State(
       initialValue: ChatScreenModel(agentId: agentId, conversationId: conversationId))

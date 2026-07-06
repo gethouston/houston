@@ -21,7 +21,7 @@ enum AgentsNavRoute: Hashable {
     private var key: String {
         switch self {
         case let .missions(agent): return "missions:\(agent.id)"
-        case let .chat(route): return "chat:\(route.sessionKey)"
+        case let .chat(route): return "chat:\(route.id)"
         case let .archived(agent): return "archived:\(agent.id)"
         }
     }
