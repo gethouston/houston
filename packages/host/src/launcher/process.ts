@@ -14,7 +14,8 @@ export interface RuntimeHandle {
    * Register a one-shot callback fired when the underlying process exits on its
    * own (crash, OOM, the runtime's own SIGTERM handler). Lets the launcher reap
    * a dead child from its live-set so a phantom "running" entry never hands a
-   * dead endpoint to the next turn. A handle whose process cannot crash (a test
+   * dead endpoint to the next turn — and fail a boot fast when the child dies
+   * before ever answering /health. A handle whose process cannot crash (a test
    * stub) may leave this undefined.
    */
   onExit?(cb: () => void): void;
@@ -79,9 +80,19 @@ function osAllocatePort(): Promise<number> {
   });
 }
 
-/** Default health probe: GET /health until 200 or a ~10s budget elapses. */
+/**
+ * How long a spawned runtime gets to bind its port and answer /health. A cold
+ * boot inside a CPU-capped engine pod measures ~10.5s — the old 10s budget lost
+ * that race by milliseconds and SIGTERM'd runtimes right as they logged
+ * "runtime listening" (surfacing as "never became healthy" on the first message
+ * to a fresh agent). Generous is safe here: a runtime that DIES during boot
+ * fails fast via the launcher's onExit abort and never waits this out.
+ */
+const BOOT_HEALTH_BUDGET_MS = 60_000;
+
+/** Default health probe: GET /health until 200 or the boot budget elapses. */
 async function pollHealth(port: number): Promise<void> {
-  const deadline = Date.now() + 10_000;
+  const deadline = Date.now() + BOOT_HEALTH_BUDGET_MS;
   for (;;) {
     try {
       const r = await fetch(`http://127.0.0.1:${port}/health`);
@@ -93,7 +104,9 @@ async function pollHealth(port: number): Promise<void> {
       // not up yet
     }
     if (Date.now() > deadline)
-      throw new Error(`runtime on port ${port} never became healthy`);
+      throw new Error(
+        `runtime on port ${port} never became healthy within ${BOOT_HEALTH_BUDGET_MS / 1000}s`,
+      );
     await new Promise((r) => setTimeout(r, 100));
   }
 }
@@ -164,17 +177,32 @@ export class ProcessLauncher implements RuntimeLauncher {
     // dies on its own (OOM, panic) lingers as a phantom "running" entry and
     // ensureAwake keeps handing its dead port to every turn. Only evict if the
     // map still points at THIS handle — a sleep()+respawn must not be clobbered.
+    // The SAME (single) registration also aborts a boot in flight: a child that
+    // dies mid-boot fails the caller NOW instead of polling a dead port until
+    // the health budget runs out.
+    let abortBoot: ((err: Error) => void) | undefined;
     handle.onExit?.(() => {
       if (this.running.get(agent.id) === entry) this.running.delete(agent.id);
+      abortBoot?.(new Error("runtime exited before becoming healthy"));
     });
     try {
-      await this.waitHealthy(handle.port, token);
+      // The raced rejection is always observed — race() subscribes to both
+      // promises up front — so an exit after settle can't surface as an
+      // unhandled rejection (and clearing abortBoot below stops it firing at all).
+      await Promise.race([
+        this.waitHealthy(handle.port, token),
+        new Promise<never>((_, reject) => {
+          abortBoot = reject;
+        }),
+      ]);
     } catch (err) {
       // A runtime that never came up must not linger as a zombie nor be cached
       // as "running" — kill it and surface the failure (the turn errors visibly).
       handle.kill();
       this.running.delete(agent.id);
       throw err;
+    } finally {
+      abortBoot = undefined;
     }
     return { baseUrl: `http://127.0.0.1:${handle.port}`, token };
   }

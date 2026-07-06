@@ -107,6 +107,36 @@ test("a runtime that never becomes healthy is killed and not cached (the turn er
   expect(await launcher.status("bad")).toBe("asleep"); // not cached as running
 });
 
+test("a runtime that exits mid-boot fails fast instead of waiting out the health budget", async () => {
+  // The health probe alone can't tell "still booting" from "already dead" — it
+  // would poll a dead port for the full budget. The exit signal must preempt it.
+  const killed: number[] = [];
+  let exitCb: (() => void) | undefined;
+  const spawner: RuntimeSpawner = {
+    spawn() {
+      return {
+        port: 5000,
+        kill: () => killed.push(5000),
+        onExit: (cb) => {
+          exitCb = cb;
+        },
+      };
+    },
+  };
+  const launcher = new ProcessLauncher(
+    opts(spawner, { waitHealthy: () => new Promise(() => {}) }), // never settles
+  );
+
+  const boot = launcher.ensureAwake(agent("crash"));
+  // Let the async spawn (behind allocatePort's await) actually run, then die.
+  await new Promise((r) => setTimeout(r, 0));
+  if (!exitCb) throw new Error("spawn never registered onExit");
+  exitCb(); // the child dies before ever answering /health
+  await expect(boot).rejects.toThrow("exited before becoming healthy");
+  expect(killed).toEqual([5000]); // kill() on an exited child is a safe no-op
+  expect(await launcher.status("crash")).toBe("asleep"); // not cached as running
+});
+
 test("concurrent callers during a boot share one spawn and resolve only once healthy", async () => {
   // HOU-639: on a cold pod the desktop fires chat-history and provider-status
   // together; the loser of the spawn race used to be handed a port the child
