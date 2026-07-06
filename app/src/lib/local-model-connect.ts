@@ -82,6 +82,8 @@ export async function connectDetectedModel(opts: {
   model: string;
   name: string;
   appName: string;
+  /** Surface the model's chain-of-thought as thinking in Houston. */
+  reasoning?: boolean;
   signal?: AbortSignal;
 }): Promise<void> {
   const cred = await tauriProvider.getTunnelCredentials();
@@ -115,6 +117,7 @@ export async function connectDetectedModel(opts: {
     model: opts.model,
     name: opts.name,
     proxyKey: bridge.proxyKey,
+    reasoning: opts.reasoning,
   });
   try {
     await tauriProvider.setCustomEndpoint(endpoint);

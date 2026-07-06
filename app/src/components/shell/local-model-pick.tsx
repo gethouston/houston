@@ -9,7 +9,7 @@ import {
 import { Check, Laptop } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { appDisplayName, type DetectedServer } from "../../lib/local-model";
-import { ManualLink } from "./local-model-dialog-parts";
+import { ManualLink, ReasoningToggle } from "./local-model-dialog-parts";
 
 /**
  * Pick a detected local server + one of its models, then Connect. Non-technical:
@@ -21,6 +21,8 @@ export function PickScreen({
   onSelectServer,
   model,
   onSelectModel,
+  reasoning,
+  onReasoningChange,
   onConnect,
   onManual,
 }: {
@@ -29,6 +31,8 @@ export function PickScreen({
   onSelectServer: (index: number) => void;
   model: string;
   onSelectModel: (model: string) => void;
+  reasoning: boolean;
+  onReasoningChange: (value: boolean) => void;
   onConnect: () => void;
   onManual: () => void;
 }) {
@@ -89,6 +93,7 @@ export function PickScreen({
           </SelectContent>
         </Select>
       </div>
+      <ReasoningToggle checked={reasoning} onChange={onReasoningChange} />
       <div className="flex items-center justify-between gap-2 pt-1">
         <ManualLink onClick={onManual} />
         <Button onClick={onConnect} disabled={!model}>

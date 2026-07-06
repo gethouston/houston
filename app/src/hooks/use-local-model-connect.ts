@@ -10,6 +10,7 @@ import {
   connectDetectedModel,
   detectLocalModels,
 } from "../lib/local-model-connect";
+import { useReasoningToggle } from "./use-reasoning-toggle";
 
 export type LocalModelMode =
   | "detecting"
@@ -61,7 +62,23 @@ export function useLocalModelConnect(opts: {
   const [mode, setMode] = useState<LocalModelMode>("detecting");
   const [servers, setServers] = useState<DetectedServer[]>([]);
   const [selected, setSelected] = useState(0);
-  const [model, setModel] = useState("");
+  const [model, setModelState] = useState("");
+  // "Show the model's thinking" toggle (heuristic default, user can override).
+  const {
+    reasoning,
+    setReasoning,
+    applyModelDefault,
+    reset: resetReasoning,
+  } = useReasoningToggle();
+
+  /** Pick a model and re-apply the reasoning default for it. */
+  const chooseModel = useCallback(
+    (next: string) => {
+      setModelState(next);
+      applyModelDefault(next);
+    },
+    [applyModelDefault],
+  );
 
   // The controller for the current in-flight step (detect or connect); Cancel /
   // close abort it. `mounted` guards setState after the dialog unmounts.
@@ -95,31 +112,32 @@ export function useLocalModelConnect(opts: {
       }
       setServers(found);
       setSelected(0);
-      setModel(defaultModelFor(found[0]));
+      chooseModel(defaultModelFor(found[0]));
       setMode("pick");
     } catch {
       // detectLocalModels already toasted the real reason (Report-bug); an abort
       // is a silent cancel. Either way, land on the calm error state if visible.
       if (!controller.signal.aborted && mounted.current) setMode("error");
     }
-  }, []);
+  }, [chooseModel]);
 
   // Fresh start on every open: guided detection on desktop, manual in a browser.
   useEffect(() => {
     if (!active) return;
     setServers([]);
     setSelected(0);
-    setModel("");
+    resetReasoning();
+    chooseModel("");
     if (desktop) void runDetect();
     else setMode("manual");
-  }, [active, desktop, runDetect]);
+  }, [active, desktop, runDetect, chooseModel, resetReasoning]);
 
   const selectServer = useCallback(
     (index: number) => {
       setSelected(index);
-      setModel(defaultModelFor(servers[index]));
+      chooseModel(defaultModelFor(servers[index]));
     },
-    [servers],
+    [servers, chooseModel],
   );
 
   const connect = useCallback(async () => {
@@ -137,6 +155,7 @@ export function useLocalModelConnect(opts: {
             model,
             name: defaultEndpointName(server.kind, model),
             appName: appDisplayName(server.kind),
+            reasoning,
             signal,
           }),
         CONNECT_TIMEOUT_MS,
@@ -150,7 +169,7 @@ export function useLocalModelConnect(opts: {
       // the bridge back. Show a calm retry state unless we were cancelled/closed.
       if (!controller.signal.aborted && mounted.current) setMode("error");
     }
-  }, [servers, selected, model, onConnected, onClose]);
+  }, [servers, selected, model, reasoning, onConnected, onClose]);
 
   /** Cancel the in-flight detect/connect: abort the work (the connect's own
    *  abort path rolls back any half-open bridge) and close the dialog. */
@@ -169,7 +188,9 @@ export function useLocalModelConnect(opts: {
     servers,
     selected,
     model,
-    setModel,
+    setModel: chooseModel,
+    reasoning,
+    setReasoning,
     selectServer,
     runDetect,
     connect,

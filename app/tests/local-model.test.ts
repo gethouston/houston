@@ -11,6 +11,7 @@ import {
   type SavedBridgeTarget,
   sessionOwnsBridge,
 } from "../src/lib/local-model.ts";
+import { looksLikeReasoningModel } from "../src/lib/local-model-reasoning.ts";
 
 function server(extra: Partial<DetectedServer> = {}): DetectedServer {
   return {
@@ -71,6 +72,49 @@ describe("local-model helpers", () => {
         apiKey: "secret",
       },
     );
+  });
+
+  it("marks the endpoint as reasoning only when the toggle is on", () => {
+    const base = {
+      publicUrl: "https://sub.relay.example.com",
+      model: "deepseek-r1",
+      name: "n",
+      proxyKey: "k",
+    };
+    // Off / omitted => no reasoning key on the payload (kept clean).
+    strictEqual("reasoning" in buildLocalEndpoint(base), false);
+    strictEqual(
+      "reasoning" in buildLocalEndpoint({ ...base, reasoning: false }),
+      false,
+    );
+    // On => reasoning: true.
+    strictEqual(
+      buildLocalEndpoint({ ...base, reasoning: true }).reasoning,
+      true,
+    );
+  });
+
+  it("detects reasoning models by id substring, case-insensitively", () => {
+    for (const id of [
+      "DeepSeek-R1",
+      "deepseek-r1-distill",
+      "QwQ-32B",
+      "Magistral-Small",
+      "phi-4-reasoning",
+      "phi-4-reasoning-plus",
+      "some-thinking-model",
+      "openai/o1-preview",
+      "o3-mini",
+      "Qwen3-30B-A4B",
+    ]) {
+      strictEqual(looksLikeReasoningModel(id), true, id);
+    }
+  });
+
+  it("does not flag ordinary chat models as reasoning", () => {
+    for (const id of ["llama-3.1", "gemma-2-9b", "mistral-7b", "gpt-4o-mini"]) {
+      strictEqual(looksLikeReasoningModel(id), false, id);
+    }
   });
 
   it("does not double the slash when publicUrl has a trailing slash", () => {

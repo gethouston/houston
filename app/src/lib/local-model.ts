@@ -131,12 +131,16 @@ export function buildLocalEndpoint(opts: {
   model: string;
   name: string;
   proxyKey: string;
+  /** Surface the model's chain-of-thought as thinking in Houston. Omitted from
+   *  the payload unless true, to keep saved endpoints clean. */
+  reasoning?: boolean;
 }): CustomEndpoint {
   return {
     baseUrl: `${opts.publicUrl.replace(/\/+$/, "")}/v1`,
     model: opts.model,
     name: opts.name,
     apiKey: opts.proxyKey,
+    ...(opts.reasoning ? { reasoning: true } : {}),
   };
 }
 
