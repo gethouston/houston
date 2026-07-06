@@ -34,6 +34,18 @@ enum SdkScope {
     "activities/\(agentId)"
   }
 
+  /// One agent's AI-provider connect/status VM — `providers/<agentId>`
+  /// (`providersScope`, `packages/sdk/src/modules/providers/types.ts`). Provider
+  /// credentials are per-agent-pod in hosted mode, so the scope is agent-keyed.
+  static func providers(agentId: String) -> String {
+    "providers/\(agentId)"
+  }
+
+  /// The single integrations VM scope — `integrations` (`INTEGRATIONS_SCOPE`,
+  /// `packages/sdk/src/modules/integrations/types.ts`). User-scoped, NOT
+  /// per-agent: integrations are gateway-owned and keyed by the session `sub`.
+  static let integrations = "integrations"
+
   /// The JS `encodeURIComponent` unreserved set: percent-encode everything
   /// EXCEPT `A-Z a-z 0-9 - _ . ! ~ * ' ( )`. Foundation's `.urlQueryAllowed`
   /// differs (it keeps `/`, `?`, `&`, `=`, … and treats non-ASCII letters as

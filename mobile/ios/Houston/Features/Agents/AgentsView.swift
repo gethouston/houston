@@ -75,12 +75,21 @@ struct AgentsView: View {
             AgentMissionsView(
                 agent: agent,
                 onOpenChat: { path.append(.chat($0)) },
-                onOpenArchived: { path.append(.archived(agent)) }
+                onOpenArchived: { path.append(.archived(agent)) },
+                onOpenAIModels: { path.append(.aiModels(agent)) },
+                onOpenIntegrations: { path.append(.integrations(agent)) }
             )
         case let .chat(route):
             ChatView(agentId: route.agentId, conversationId: route.sessionKey, title: route.title)
         case let .archived(agent):
             AgentArchivedMissionsView(agent: agent, onOpen: { path.append(.chat($0)) })
+        case let .aiModels(agent):
+            AIModelsView(agentId: agent.id)
+        case let .integrations(agent):
+            AgentIntegrationsView(
+                agentId: agent.id, onManageAll: { path.append(.globalIntegrations) })
+        case .globalIntegrations:
+            IntegrationsView()
         }
     }
 
