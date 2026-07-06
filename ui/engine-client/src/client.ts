@@ -1022,12 +1022,21 @@ export class HoustonClient {
       )
     ).items;
   }
+  /**
+   * Begin connecting a toolkit's OAuth. Pass `agent` (the agent slug) when the
+   * connect is initiated from a per-agent surface: the gateway then applies that
+   * agent's effective allowlist and auto-grants the toolkit to the agent on a
+   * successful connect (Teams v2). Omit it for the account-level Integrations
+   * page. Single-player/self-host hosts ignore the field.
+   */
   connectIntegration(
     provider: string,
     toolkit: string,
+    agent?: string,
   ): Promise<{ redirectUrl: string; connectionId: string }> {
     return this.request("POST", `/integrations/${this.seg(provider)}/connect`, {
       toolkit,
+      ...(agent ? { agent } : {}),
     });
   }
   /** Poll one connection after connect() until the OAuth finishes. */

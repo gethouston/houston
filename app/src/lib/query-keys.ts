@@ -66,6 +66,12 @@ export const queryKeys = {
   // Multiplayer (org). The current user's org + roster is app-scoped (one org
   // per user); per-agent integration grants are keyed by agent id.
   org: () => ["org"] as const,
+  /** Teams v2: the org audit feed (paged by before-cursor). App-scoped — one
+   *  org per user. Owner sees org-wide; admin their managed agents. */
+  orgAudit: () => ["org-audit"] as const,
+  /** Teams v2: per-agent/user usage counters over a `days` window. Keyed by the
+   *  window so 7- vs 30-day reads don't collide. */
+  orgUsage: (days: number) => ["org-usage", days] as const,
   agentGrants: (agentId: string) => ["agent-grants", agentId] as const,
   /**
    * Teams v2: an agent's allowed-toolkit settings (agent + org ceilings +

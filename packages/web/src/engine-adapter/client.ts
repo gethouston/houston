@@ -1511,9 +1511,10 @@ export class HoustonClient {
   async connectIntegration(
     provider: string,
     toolkit: string,
+    agent?: string,
   ): Promise<{ redirectUrl: string; connectionId: string }> {
     if (!this.cp) throw new Error("Integrations require a connected host");
-    return controlPlane.connectIntegration(this.cp, provider, toolkit);
+    return controlPlane.connectIntegration(this.cp, provider, toolkit, agent);
   }
   async integrationConnection(
     provider: string,

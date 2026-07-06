@@ -22,6 +22,7 @@ import {
 } from "../../agents/standard-tabs";
 import { useActivity } from "../../hooks/queries";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
 import { analytics } from "../../lib/analytics";
 import { osIsTauri } from "../../lib/os-bridge";
@@ -36,6 +37,11 @@ import { CommandPalette } from "../command-palette";
 import { Dashboard } from "../dashboard";
 import { INTEGRATIONS_VIEW_ID, IntegrationsView } from "../integrations-view";
 import { MissionSearchInput } from "../mission-search-input";
+import {
+  canSeeOrganization,
+  ORGANIZATION_VIEW_ID,
+  OrganizationView,
+} from "../organization";
 import { ExportAgentWizard } from "../portable/export-wizard";
 import { ImportAgentWizard } from "../portable/import-wizard";
 import { SettingsView } from "../settings/settings-view";
@@ -88,6 +94,10 @@ export function WorkspaceShell({
     null,
   );
   const { canCreate: canCreateAgents } = useCanCreateAgents();
+  const { capabilities } = useCapabilities();
+  // Teams v2: guard the Organization render so a stale `viewMode` can never show
+  // it to a plain member / single-player (the sidebar already hides the entry).
+  const showOrganization = canSeeOrganization(capabilities);
   const agentDef = currentAgent ? getById(currentAgent.configId) : undefined;
   const { data: activities } = useActivity(currentAgent?.folderPath);
   const needsYouCount = (activities ?? []).filter(
@@ -166,6 +176,8 @@ export function WorkspaceShell({
                   <SettingsView />
                 ) : viewMode === INTEGRATIONS_VIEW_ID ? (
                   <IntegrationsView />
+                ) : viewMode === ORGANIZATION_VIEW_ID && showOrganization ? (
+                  <OrganizationView />
                 ) : currentAgent && agentDef && isAgentView ? (
                   <>
                     <div data-tour-target="tabs">

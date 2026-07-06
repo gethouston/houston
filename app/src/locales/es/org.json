@@ -31,18 +31,5 @@
       "description": "Pierde el acceso a todos los agentes de inmediato. Puedes volver a agregarla después.",
       "confirm": "Quitar"
     }
-  },
-  "assignments": {
-    "title": "Quién puede usar este agente",
-    "description": "Elige las personas que pueden chatear con este agente. Apaga a todos para compartirlo con todo el equipo.",
-    "everyone": "Todo el equipo",
-    "empty": "Todavía no hay nadie más para agregar.",
-    "you": "Tú",
-    "openToAll": {
-      "title": "¿Abrir este agente a todo el equipo?",
-      "description": "Estás quitando a la última persona de la lista. Sin nadie elegido, todo tu equipo puede usar este agente.",
-      "confirm": "Abrir a todos",
-      "cancel": "Cancelar"
-    }
   }
 }

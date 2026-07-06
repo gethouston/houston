@@ -26,7 +26,7 @@ import {
 } from "@houston-ai/chat";
 import { Button } from "@houston-ai/core";
 import { useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Play } from "lucide-react";
+import { Paperclip, Play, Users } from "lucide-react";
 import {
   type ReactNode,
   useCallback,
@@ -54,7 +54,7 @@ import {
 } from "../lib/context-usage";
 import { createMission } from "../lib/create-mission";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
-import { canManageAgentGrants } from "../lib/org-roles";
+import { canManageAgentGrants, isMultiplayer } from "../lib/org-roles";
 import {
   decideHandoffMode,
   estimateConversationTokens,
@@ -106,6 +106,7 @@ import {
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
 import { ToolRuntimeErrorCard } from "./shell/tool-runtime-error-card";
 import { SkillCard } from "./skill-card";
+import { isSharedWithOthers } from "./tabs/agent-access-model";
 import {
   filterProviderAuthFeedItems,
   isProviderAuthMessage,
@@ -172,7 +173,7 @@ export function useAgentChatPanel({
   selectedSessionKey,
   onSelectSession,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
-  const { t } = useTranslation(["board", "chat"]);
+  const { t } = useTranslation(["board", "chat", "teams"]);
   const {
     processLabels,
     getThinkingMessage,
@@ -790,15 +791,34 @@ export function useAgentChatPanel({
     [effectiveProvider],
   );
 
+  // Shared-agent clarity (contract §6): when the agent is shared with more than
+  // one teammate, everyone with access sees this same conversation. Surface a
+  // subtle note above the composer so a teammate isn't surprised their reply is
+  // visible to others. Multiplayer-only; the assignee count is only populated
+  // for callers who receive it (owner / agent-managers).
+  const showSharedNote =
+    !!agent && isMultiplayer(capabilities) && isSharedWithOthers(agent);
+
   const composerHeader = useMemo<AIBoardProps["composerHeader"]>(() => {
-    if (!agent || !activeSkill) return undefined;
+    if (!agent) return undefined;
+    if (!activeSkill && !showSharedNote) return undefined;
     return (
-      <SelectedSkillChip
-        skill={activeSkill}
-        onCancel={() => setActiveSkill(null)}
-      />
+      <div className="flex flex-col gap-1.5">
+        {showSharedNote && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Users className="size-3.5 shrink-0" />
+            <span>{t("teams:share.chatNote")}</span>
+          </div>
+        )}
+        {activeSkill && (
+          <SelectedSkillChip
+            skill={activeSkill}
+            onCancel={() => setActiveSkill(null)}
+          />
+        )}
+      </div>
     );
-  }, [agent, activeSkill]);
+  }, [agent, activeSkill, showSharedNote, t]);
 
   const chatEmptyState = useMemo<AIBoardProps["chatEmptyState"]>(() => {
     if (!agent) return undefined;
