@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { ClaudeBackendUnavailableError } from "./backend";
-import { isBunCompiled, resolveClaudeExecutable } from "./binary-path";
+import {
+  isBunCompiled,
+  looksLikePlaceholder,
+  resolveClaudeExecutable,
+} from "./binary-path";
+
+// The leading bytes of a real native `claude` image (Mach-O magic here) — never
+// a shebang or a batch marker, so it must NOT read as a placeholder.
+const MACHO_MAGIC = "\xcf\xfa\xed\xfe\x0c\x00\x00\x01";
+// The two placeholder stubs build.rs stages when the real binary is absent.
+const POSIX_PLACEHOLDER =
+  "#!/bin/sh\necho 'placeholder external bin' >&2\nexit 1\n";
+const WINDOWS_PLACEHOLDER = "@echo off\r\nexit /b 1\r\n";
 
 describe("isBunCompiled", () => {
   it("is false for a normal Node file:// module url", () => {
@@ -42,6 +54,7 @@ describe("resolveClaudeExecutable", () => {
         seen.push(p);
         return true;
       },
+      readHead: () => MACHO_MAGIC, // a real binary
     });
     expect(path).toBe("/Applications/Houston.app/Contents/MacOS/claude");
     expect(seen).toEqual(["/Applications/Houston.app/Contents/MacOS/claude"]);
@@ -53,6 +66,7 @@ describe("resolveClaudeExecutable", () => {
       execPath: "C:\\Program Files\\Houston\\houston-engine.exe",
       platform: "win32",
       exists: () => true,
+      readHead: () => MACHO_MAGIC,
     });
     expect(path?.endsWith("claude.exe")).toBe(true);
   });
@@ -66,5 +80,57 @@ describe("resolveClaudeExecutable", () => {
         exists: () => false,
       }),
     ).toThrow(ClaudeBackendUnavailableError);
+  });
+
+  it("throws when the sibling is a POSIX placeholder stub (would hang the turn)", () => {
+    // A present-but-placeholder `claude` is the silent-hang bug: the SDK would
+    // spawn it and (historically) sleep forever. Refuse it → loud typed error.
+    expect(() =>
+      resolveClaudeExecutable({
+        moduleUrl: "file:///$bunfs/root/binary-path.ts",
+        execPath: "/Applications/Houston.app/Contents/MacOS/houston-engine",
+        platform: "darwin",
+        exists: () => true,
+        readHead: () => POSIX_PLACEHOLDER,
+      }),
+    ).toThrow(ClaudeBackendUnavailableError);
+  });
+
+  it("throws when the sibling is a Windows batch placeholder", () => {
+    expect(() =>
+      resolveClaudeExecutable({
+        moduleUrl: "file:///B:/~BUN/root/binary-path.ts",
+        execPath: "C:\\Program Files\\Houston\\houston-engine.exe",
+        platform: "win32",
+        exists: () => true,
+        readHead: () => WINDOWS_PLACEHOLDER,
+      }),
+    ).toThrow(ClaudeBackendUnavailableError);
+  });
+});
+
+describe("looksLikePlaceholder", () => {
+  it("flags a POSIX shebang stub", () => {
+    expect(looksLikePlaceholder("/x/claude", () => POSIX_PLACEHOLDER)).toBe(
+      true,
+    );
+  });
+
+  it("flags a Windows batch stub", () => {
+    expect(looksLikePlaceholder("/x/claude", () => WINDOWS_PLACEHOLDER)).toBe(
+      true,
+    );
+  });
+
+  it("passes a real native binary (magic bytes)", () => {
+    expect(looksLikePlaceholder("/x/claude", () => MACHO_MAGIC)).toBe(false);
+  });
+
+  it("treats an unreadable file as non-placeholder (a spawn error is loud enough)", () => {
+    expect(
+      looksLikePlaceholder("/x/claude", () => {
+        throw new Error("ENOENT");
+      }),
+    ).toBe(false);
   });
 });

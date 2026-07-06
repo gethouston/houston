@@ -6,7 +6,10 @@ use std::process::Stdio;
 
 use tokio::process::Command;
 
-/// Executable name of the bundled `claude` sidecar (`.exe` on Windows).
+/// Executable name of the bundled `claude` sidecar (`.exe` on Windows). Only the
+/// release-build sibling-resolution arm reads it; in a debug build that arm is
+/// `cfg`'d out (we use PATH `claude` there), so mark it allowed-unused there.
+#[cfg_attr(debug_assertions, allow(dead_code))]
 fn claude_bin_name() -> &'static str {
     if cfg!(windows) {
         "claude.exe"
@@ -20,10 +23,10 @@ fn claude_bin_name() -> &'static str {
 ///      honored verbatim, even if it points outside a bundle).
 ///   2. Sibling of the current executable — the bundled-sidecar location Tauri
 ///      uses on shipping platforms — IF it exists. RELEASE ONLY: a debug /
-///      `tauri dev` build stages a no-op PLACEHOLDER there (`sleep infinity`;
-///      the real ~232 MB binary ships only in release), and spawning THAT hangs
-///      the login on a spinner forever. So in a debug build we skip the sibling
-///      and use the real `claude` on PATH instead.
+///      `tauri dev` build stages a no-op PLACEHOLDER there (a stub that exits
+///      non-zero; the real ~232 MB binary ships only in release), and spawning
+///      THAT fails the login. So in a debug build we skip the sibling and use
+///      the real `claude` on PATH instead.
 ///   3. Bare `claude`, resolved via `PATH` (the dev/test path). No panics.
 pub(super) fn resolve_claude_binary() -> PathBuf {
     // 1. Explicit env override.

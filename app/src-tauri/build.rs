@@ -283,11 +283,16 @@ fn stage_external_bin(source_stem: &str, dest_stem: &str, label: &str) -> Result
             // Debug builds (typical for `pnpm tauri dev`, which talks to an
             // externally-run host and never spawns this file): Tauri's
             // externalBin bundling still requires the file to exist, so stage
-            // a placeholder.
+            // a placeholder. It EXITS NON-ZERO immediately (never `sleep`s): if
+            // something does spawn it — the engine supervisor, or the Claude
+            // Agent SDK handed this as its `claude` binary — the process must die
+            // loud so the failure surfaces, NOT hang forever waiting on a stub.
+            // (A `sleep`-forever stub here is exactly what hung every Claude turn
+            // on "mission in progress".) Mirrors the frpc placeholder below.
             let placeholder = if cfg!(windows) {
-                "@echo off\r\nexit /b 0\r\n"
+                "@echo off\r\necho placeholder external bin (real binary not staged) - run scripts/build-host-sidecar.sh 1>&2\r\nexit /b 1\r\n"
             } else {
-                "#!/bin/sh\n# placeholder external bin (real binary not staged)\nsleep 2147483647\n"
+                "#!/bin/sh\necho 'placeholder external bin (real binary not staged) - run scripts/build-host-sidecar.sh' >&2\nexit 1\n"
             };
             std::fs::write(&dest, placeholder)
                 .map_err(|e| format!("write placeholder {label}: {e}"))?;
