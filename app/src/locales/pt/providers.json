@@ -37,6 +37,8 @@
   "providerLogin": {
     "title": "Termine de entrar em {{name}}",
     "description": "Abra a página de login no seu navegador, finalize o login e cole aqui o código de verificação.",
+    "authCodeDescription": "Cole um token de configuração para terminar de conectar {{name}}.",
+    "reference": "Referência",
     "openUrl": "Abrir URL",
     "copyUrl": "Copiar URL",
     "urlCopied": "URL copiada para a área de transferência",

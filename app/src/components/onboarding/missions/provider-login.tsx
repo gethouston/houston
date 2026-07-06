@@ -193,6 +193,7 @@ export function ProviderLoginMission({
           provider={dialog ? (provider ?? null) : null}
           url={dialog?.url ?? null}
           userCode={dialog?.userCode}
+          instructions={dialog?.instructions ?? null}
           onClose={closeDialog}
         />
       </div>

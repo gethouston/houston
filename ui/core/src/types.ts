@@ -177,7 +177,20 @@ export type HoustonEvent =
       // one-time code the user enters on the provider's verification page
       // (no paste-back). The relay may emit twice for one device sign-in:
       // first URL-only, then again with the code.
-      data: { provider: string; url: string; user_code: string | null };
+      //
+      // `auth_code` is true for the setup-token paste flow (Claude/Anthropic):
+      // `url` is only a docs reference, NOT a page to auto-open, and the user
+      // finishes by pasting a token. The UI MUST show the paste dialog (never
+      // auto-open the URL) — see `shouldOpenLoginUrlDirectly`. `instructions`
+      // carries the runtime's step-by-step copy to render above the paste
+      // field (absent for the loopback `url` and device-code flows).
+      data: {
+        provider: string;
+        url: string;
+        user_code: string | null;
+        auth_code?: boolean;
+        instructions?: string;
+      };
     }
   | {
       type: "ProviderLoginComplete";

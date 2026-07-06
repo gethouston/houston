@@ -316,12 +316,28 @@ a long-lived `sk-ant-oat01…` token) and PASTES that token into Houston. A cons
 path) and never spawns the `claude` binary for login (it is an Ink TUI that needs
 a real TTY and deadlocks on the runtime's piped stdio).
 
-**Wire shape is unchanged:** `startLogin("anthropic")` emits the same
+**Wire shape:** `startLogin("anthropic")` emits a
 `{ kind:"auth_code", url, instructions }` LoginInfo and reuses `completeLogin`'s
-paste promise, so the existing connect UX (`connect.tsx` /
-`provider-login-dialog.tsx`) works verbatim — the pasted value is a token, not an
-OAuth code. `url` is Anthropic's CLI-reference help page, shown next to the paste
-box.
+paste promise — the pasted value is a token, not an OAuth code. `url` is
+Anthropic's CLI-reference **docs** page, NOT a sign-in page.
+
+**The `auth_code` event flag (the "opens docs instead of paste box" fix).** The
+app adapter (`engine-adapter/client.ts`, both emit paths) forwards
+`auth_code: info.kind === "auth_code"` and the runtime's `instructions` on the
+`ProviderLoginUrl` bus event (`ui/core` `HoustonEvent`, additive fields). This
+is load-bearing: without it a setup-token event (paste flow, docs url, no
+`user_code`) is indistinguishable from a co-located loopback `url`, so on desktop
+`shouldOpenLoginUrlDirectly({isDesktop,userCode})` returned true and the app
+**auto-opened the docs cli-reference page and skipped the paste dialog**. Now
+`shouldOpenLoginUrlDirectly` / `providerLoginFallbackAction` take an `authCode`
+flag and always resolve to the **dialog** for `auth_code` (never auto-open), and
+every `ProviderLoginUrl` consumer (`use-provider-login-events.ts` in
+`hooks/provider-connections` + `onboarding/missions`, `provider-picker.tsx`,
+`provider-login-fallback.tsx`) passes it through. `provider-login-dialog.tsx`
+renders the `instructions` prominently above the paste field and demotes the docs
+`url` to a small optional "Reference" link. The codex loopback relay
+(`shouldUseCodexLoopback`, openai-only) and codex device-code paths are
+unaffected — anthropic is never openai and never carries a `user_code`.
 
 **What's stored + why the shape matters:** the token is persisted under
 `"anthropic"` as pi's **`api_key`** PiCred variant
