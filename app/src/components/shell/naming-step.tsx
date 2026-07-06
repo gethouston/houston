@@ -2,7 +2,7 @@ import {
   AGENT_COLORS,
   Button,
   cn,
-  colorHex,
+  colorValue,
   DialogTitle,
   HoustonAvatar,
   Input,
@@ -95,7 +95,7 @@ export function NamingStep({
       {/* Color palette */}
       <div className="flex items-center gap-2 mb-6">
         {AGENT_COLORS.map((c) => {
-          const hex = colorHex(c);
+          const swatch = colorValue(c);
           const isSelected =
             color === c.id || color === c.light || color === c.dark;
           return (
@@ -109,7 +109,7 @@ export function NamingStep({
                   ? "ring-2 ring-offset-2 ring-foreground/30"
                   : "hover:scale-110",
               )}
-              style={{ backgroundColor: hex }}
+              style={{ backgroundColor: swatch }}
             >
               {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
             </button>

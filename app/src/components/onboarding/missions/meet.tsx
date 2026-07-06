@@ -1,7 +1,7 @@
 import {
   AGENT_COLORS,
   cn,
-  colorHex,
+  colorValue,
   HoustonAvatar,
   Input,
   resolveAgentColor,
@@ -80,7 +80,7 @@ export function MeetMission({
                     ? "ring-2 ring-foreground/30 ring-offset-2"
                     : "hover:scale-110",
                 )}
-                style={{ backgroundColor: colorHex(item) }}
+                style={{ backgroundColor: colorValue(item) }}
               >
                 {selected && <Check className="size-3.5 text-white" />}
               </button>

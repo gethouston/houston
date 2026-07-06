@@ -4,7 +4,7 @@ import {
   Button,
   ConfirmDialog,
   cn,
-  colorHex,
+  colorValue,
 } from "@houston-ai/core";
 import { Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -131,7 +131,7 @@ export function AgentSettingsContent({
                   canEdit ? "hover:scale-110" : "cursor-default opacity-60",
                   isActive && "ring-2 ring-ring",
                 )}
-                style={{ backgroundColor: colorHex(entry) }}
+                style={{ backgroundColor: colorValue(entry) }}
               />
             );
           })}
