@@ -1,3 +1,4 @@
+import { createRequester, EngineError, type Requester } from "./requester";
 import { readEventStream } from "./sse-read";
 import type {
   AuthStatus,
@@ -15,15 +16,7 @@ import type {
   WireFrame,
 } from "./types";
 
-export class EngineError extends Error {
-  constructor(
-    public status: number,
-    public body: string,
-  ) {
-    super(`engine request failed (${status}): ${body}`);
-    this.name = "EngineError";
-  }
-}
+export { EngineError };
 
 export interface EventStreamOptions {
   /** Abort to close the stream (e.g. when switching conversations). */
@@ -69,34 +62,18 @@ export interface SendOptions {
  *   // ac.abort() stops observing; the turn keeps running server-side.
  */
 export class HoustonEngineClient {
-  private base: string;
-  private token?: string;
-  private fetchImpl: typeof fetch;
+  private readonly requester: Requester;
 
   constructor(config: EngineClientConfig) {
-    this.base = config.baseUrl.replace(/\/+$/, "");
-    this.token = config.token;
-    this.fetchImpl = config.fetch ?? globalThis.fetch.bind(globalThis);
+    this.requester = createRequester(config);
   }
 
-  private headers(extra?: Record<string, string>): Record<string, string> {
-    const h: Record<string, string> = { ...extra };
-    if (this.token) h.Authorization = `Bearer ${this.token}`;
-    return h;
+  private request(path: string, init?: RequestInit): Promise<Response> {
+    return this.requester.request(path, init);
   }
 
-  private async request(path: string, init?: RequestInit): Promise<Response> {
-    const res = await this.fetchImpl(this.base + path, {
-      ...init,
-      headers: this.headers(init?.headers as Record<string, string>),
-    });
-    if (!res.ok)
-      throw new EngineError(res.status, await res.text().catch(() => ""));
-    return res;
-  }
-
-  private async json<T>(path: string, init?: RequestInit): Promise<T> {
-    return (await this.request(path, init)).json() as Promise<T>;
+  private json<T>(path: string, init?: RequestInit): Promise<T> {
+    return this.requester.json<T>(path, init);
   }
 
   // --- meta ---

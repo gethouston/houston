@@ -14,33 +14,21 @@
  * → `done`) when the message lands. See translate.ts `streamTurn`.
  */
 
+import type { ProviderId } from "@houston/runtime-client";
 import { cancelChat, openChatStream, sendMessage } from "./chat";
 import { json, noContent } from "./http";
 import { handleWorkspaceFiles } from "./routes-files";
 import * as state from "./state";
 
-/** Canned provider list — one connected, active Claude. */
+/** Flat (non-agent) provider list — the local single-runtime slot's providers,
+ *  seeded with Claude connected + active so the WebApp connect gate clears. */
 export function providersBody() {
-  return [
-    {
-      id: "anthropic",
-      name: "Claude",
-      configured: true,
-      isActive: true,
-      activeModel: "claude-sonnet-4-6",
-      models: ["claude-sonnet-4-6", "claude-opus-4-8"],
-    },
-  ];
+  return state.providerList(state.FLAT_KEY);
 }
 
-/** Auth status with an active provider — clears the WebApp connect gate. */
+/** Flat (non-agent) auth status — the local single-runtime slot. */
 export function authStatusBody() {
-  return {
-    providers: [
-      { provider: "anthropic", name: "Claude", configured: true, login: null },
-    ],
-    activeProvider: "anthropic",
-  };
+  return state.authStatusFor(state.FLAT_KEY);
 }
 
 function makeTitle(text: string): string {
@@ -114,26 +102,45 @@ export function handleAgents(
       return noContent(); // capture / forget
 
     case "providers":
-      return json(providersBody());
+      return json(state.providerList(id));
 
     case "settings":
-      return json({
-        activeProvider: body?.activeProvider ?? "anthropic",
-        models: {},
-      });
+      return json(
+        state.setSettings(id, {
+          activeProvider: body?.activeProvider as ProviderId | undefined,
+          model: typeof body?.model === "string" ? body.model : undefined,
+          effort: typeof body?.effort === "string" ? body.effort : undefined,
+        }),
+      );
 
     case "title":
       return json({ title: makeTitle(String(body?.text ?? "")) });
 
     case "auth": {
-      if (rest[2] === "status") return json(authStatusBody());
-      const action = rest[3]; // /auth/:provider/login | /logout
-      if (action === "login" && rest[4] === "complete")
+      if (rest[2] === "status") return json(state.authStatusFor(id));
+      const provider = rest[2] as ProviderId; // /auth/:provider/...
+      const action = rest[3];
+      if (action === "login" && rest[4] === "complete") {
+        state.completeLogin(id, provider);
         return json({ ok: true });
-      if (action === "login" && rest[4] === "cancel") return json({ ok: true });
-      if (action === "login")
-        return json({ kind: "url", url: "https://example.test/connect" });
-      if (action === "logout") return json({ ok: true });
+      }
+      if (action === "login" && rest[4] === "cancel") {
+        state.cancelLogin(id, provider);
+        return json({ ok: true });
+      }
+      if (action === "login") {
+        const enterpriseDomain =
+          new URL(req.url).searchParams.get("enterpriseDomain") ?? undefined;
+        return json(state.startLogin(id, provider, enterpriseDomain));
+      }
+      if (action === "api-key") {
+        state.setApiKey(id, provider);
+        return json({ ok: true });
+      }
+      if (action === "logout") {
+        state.logout(id, provider);
+        return json({ ok: true });
+      }
       return noContent();
     }
 

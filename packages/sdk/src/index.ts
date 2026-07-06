@@ -74,12 +74,46 @@ export {
   type ConversationListVM,
   conversationListScope,
 } from "./modules/conversations";
+// ===== Integrations module contract ====================================
+export {
+  type ConnectResult,
+  INTEGRATIONS_SCOPE,
+  type IntegrationConnection,
+  IntegrationsCommand,
+  type IntegrationsCommandType,
+  type IntegrationsModule,
+  type IntegrationsUnavailableReason,
+  type IntegrationsViewModel,
+  type IntegrationToolkit,
+} from "./modules/integrations";
 // ===== Mission-search module contract ==================================
 export type {
   MatchedIn,
   MissionMatch,
   MissionsSearchModule,
 } from "./modules/missions-search";
+// ===== Preferences module contract =====================================
+export {
+  PreferencesCommand,
+  type PreferencesCommandType,
+  type PreferencesModule,
+} from "./modules/preferences";
+// ===== Providers module contract =======================================
+export {
+  type LoginInfo,
+  type LoginOptions,
+  type LoginState,
+  mergeProviders,
+  overlayStatus,
+  type ProviderId,
+  ProvidersCommand,
+  type ProvidersCommandType,
+  type ProvidersModule,
+  type ProvidersViewModel,
+  type ProviderVM,
+  providersScope,
+  type SetModelOptions,
+} from "./modules/providers";
 // ===== Session module contract =========================================
 // `createAuthFetch` + `SESSION_TOKEN_KEY` are host-facing: the host composes the
 // auth-fetch into `ports.fetch` before constructing the SDK (see the module).
