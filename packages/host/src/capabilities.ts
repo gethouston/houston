@@ -8,21 +8,23 @@ import type { Capabilities } from "@houston/protocol";
  *
  * The asymmetries are deliberate and contained here (the irreducible local↔cloud
  * differences from the convergence plan): local has the Tauri shell + the user's
- * own machine (reveal-in-OS, terminal, unconfined bash, a reachable local LLM);
- * cloud is the egress-locked remote sandbox or the managed pod (bash confined
- * to the single-tenant container). Cloud
- * offers the SAME connect-once / API-key providers as desktop — only the user's
- * own local LLM (the `openaiCompatible` flag) is desktop-only, because a cloud
- * runtime can't reach a server on the user's machine. Everything NOT listed here
- * is shared behavior served by the same handlers — that's what
- * `dual-profile.test.ts` pins.
+ * own machine (reveal-in-OS, terminal). Every profile offers the SAME connect-once
+ * / API-key providers AND the OpenAI-compatible (bring-your-own endpoint) provider
+ * (`openaiCompatible`): a cloud pod now accepts a public HTTPS endpoint the user
+ * hosts (a tunnel or a directly hosted server), so it is no longer desktop-only —
+ * the old "cloud can't reach the user's localhost" rationale is superseded. What
+ * differs is validation, not availability: a managed cloud pod egresses ONLY to
+ * public TCP 443, so it validates the base URL at save time (custom-endpoint
+ * validation in routes/agents.ts) while desktop/self-host keep accepting
+ * localhost. Everything NOT listed here is shared behavior served by the same
+ * handlers — that's what `dual-profile.test.ts` pins.
  */
 
 /**
  * Every connect-once / API-key provider Houston serves. Shared by all profiles:
  * cloud deployments offer the exact same model providers as desktop. The local
- * LLM is NOT in this list — it rides the separate `openaiCompatible` flag, which
- * only the local profile sets, since it needs a server on the user's own machine.
+ * LLM is NOT in this list — it rides the separate `openaiCompatible` flag (now
+ * set by every profile), because it carries a base URL + model, not a credential.
  */
 const HOSTED_PROVIDERS: readonly string[] = [
   "anthropic",
@@ -44,7 +46,9 @@ export const LOCAL_CAPABILITIES: Capabilities = {
   tunnel: false,
   codeExecution: "local-bash",
   providers: [...HOSTED_PROVIDERS],
-  // The user's own machine can reach a local LLM server (Ollama/vLLM/LM Studio).
+  // The user's own machine can reach a local LLM server (Ollama/vLLM/LM Studio);
+  // desktop accepts any http(s) base URL, including localhost (no cloud egress
+  // limits apply here).
   openaiCompatible: true,
   // Composio (platform model) works in every deployment; the same host code,
   // gated on this flag, not a fork. This is the NOMINAL list — each wiring
@@ -61,10 +65,10 @@ export const CLOUD_CAPABILITIES: Capabilities = {
   terminal: false,
   tunnel: false,
   codeExecution: "remote-sandbox",
-  // Same model providers as desktop; only the user's local LLM is dropped.
   providers: [...HOSTED_PROVIDERS],
-  // A cloud runtime can't reach a server on the user's own machine.
-  openaiCompatible: false,
+  // BYO OpenAI-compatible endpoint, hosted on public HTTPS (tunnel or directly
+  // hosted). The save route validates it reaches only a public :443 host.
+  openaiCompatible: true,
   integrations: ["composio"],
 };
 
@@ -82,6 +86,7 @@ export const MANAGED_CLOUD_CAPABILITIES: Capabilities = {
   tunnel: false,
   codeExecution: "local-bash",
   providers: [...HOSTED_PROVIDERS],
-  openaiCompatible: false,
+  // Same as the cloud profile: a public-HTTPS BYO endpoint, validated on save.
+  openaiCompatible: true,
   integrations: ["composio"],
 };

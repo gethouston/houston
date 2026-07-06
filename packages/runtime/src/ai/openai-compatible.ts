@@ -4,20 +4,18 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 import { config } from "../config";
 
 /**
- * The OpenAI-compatible (local) provider: a server the user runs themselves
- * (Ollama / vLLM / LM Studio), connected by a base URL + model id. Kept out of
- * `providers.ts` so the general provider registry stays focused. The endpoint
- * persists to its own `custom-endpoint.json`; the optional API key lives
- * separately in auth.json (pi's `api_key` variant). LOCAL profile only — the
- * base URL is the user's own machine, unreachable from a cloud runtime.
+ * The OpenAI-compatible (custom endpoint) provider: a server the user points at
+ * by base URL + model id (a local Ollama/vLLM/LM Studio, or a reachable remote).
+ * Kept out of `providers.ts` so the general registry stays focused. The endpoint
+ * persists to its own `custom-endpoint.json`; the optional API key lives in
+ * auth.json (pi's `api_key` variant, a placeholder for a keyless server).
  */
 
 /**
- * The provider id. The SAME string the built model carries (`model.provider`)
+ * The provider id — the SAME string the built model carries (`model.provider`)
  * AND the auth-store key the (optional, placeholder-for-keyless) API key is
- * stored under — pi resolves a request's key by `model.provider`, so the two
- * MUST match. A plain string (not the `ProviderId` union) to avoid a cycle with
- * `providers.ts`; the union there includes this literal.
+ * stored under, since pi resolves a request's key by `model.provider`. A plain
+ * string (not the `ProviderId` union) to avoid a cycle with `providers.ts`.
  */
 export const OPENAI_COMPATIBLE = "openai-compatible";
 
@@ -33,26 +31,34 @@ interface StoredEndpoint {
   reasoning?: boolean;
 }
 
-const endpointFile = join(config.dataDir, "custom-endpoint.json");
+const endpointFileIn = (dataDir: string) =>
+  join(dataDir, "custom-endpoint.json");
 
-function load(): StoredEndpoint {
-  if (!existsSync(endpointFile)) return {};
+/**
+ * Read the stored endpoint. `dataDir` defaults to the live agent's; the per-turn
+ * cloud runtime passes its throwaway hydrated root, since each turn materializes
+ * `custom-endpoint.json` into its OWN dir (turn-session.ts), not `config.dataDir`.
+ */
+function load(dataDir: string = config.dataDir): StoredEndpoint {
+  const file = endpointFileIn(dataDir);
+  if (!existsSync(file)) return {};
   try {
-    return JSON.parse(readFileSync(endpointFile, "utf8")) as StoredEndpoint;
+    return JSON.parse(readFileSync(file, "utf8")) as StoredEndpoint;
   } catch {
     return {};
   }
 }
 
 function save(e: StoredEndpoint): void {
-  const tmp = `${endpointFile}.tmp`;
+  const file = endpointFileIn(config.dataDir);
+  const tmp = `${file}.tmp`;
   writeFileSync(tmp, JSON.stringify(e, null, 2));
-  renameSync(tmp, endpointFile);
+  renameSync(tmp, file);
 }
 
 /** True when a base URL + model are configured (NOT merely that a key exists). */
-export function customEndpointConfigured(): boolean {
-  const e = load();
+export function customEndpointConfigured(dataDir?: string): boolean {
+  const e = load(dataDir);
   return !!(e.baseUrl && e.model);
 }
 
@@ -76,11 +82,9 @@ export interface OpenAiCompatibleEndpoint {
 }
 
 /**
- * Build a pi-ai `Model` for an OpenAI-compatible (local) endpoint. pi has no
- * catalog for an arbitrary local server, so unlike the KnownProviders this model
- * is constructed by hand against pi's `openai-completions` API — the same wire
- * format the OpenCode/OpenRouter gateways use. Pure (no fs) so the mapping is
- * unit-testable.
+ * Build a pi-ai `Model` for an OpenAI-compatible endpoint. pi has no catalog for
+ * an arbitrary server, so unlike the KnownProviders this model is hand-built
+ * against pi's `openai-completions` API. Pure (no fs) so the mapping is testable.
  */
 export function buildOpenAiCompatibleModel(
   endpoint: OpenAiCompatibleEndpoint,
@@ -99,9 +103,8 @@ export function buildOpenAiCompatibleModel(
     contextWindow:
       endpoint.contextWindow ?? config.openaiCompatibleContextWindow,
     maxTokens: CUSTOM_MAX_TOKENS,
-    // Local servers implement varying subsets of the OpenAI API. Disable the
-    // OpenAI-only extras most of them reject (the `developer` role,
-    // `reasoning_effort`) unless the user marked this as a reasoning model.
+    // Servers implement varying subsets of the OpenAI API. Disable the OpenAI-only
+    // extras most reject (`developer` role, `reasoning_effort`) unless reasoning.
     compat: {
       supportsDeveloperRole: false,
       supportsReasoningEffort: reasoning,
@@ -110,16 +113,10 @@ export function buildOpenAiCompatibleModel(
 }
 
 /**
- * Build the active local model from the saved endpoint. The optional `override`
- * (a routine's pinned model) wins over the saved model id; throws when nothing
- * is configured so a never-connected turn surfaces a clear error.
- */
-/**
- * The local endpoint serves exactly its one configured model. Returns an error
- * message when a per-turn override names a DIFFERENT model (e.g. a routine pin
- * carrying ANOTHER provider's model id while this provider is active) — such an
- * id must NOT be shipped to the local base URL, since the local server would
- * answer with a confusing upstream `model_not_supported`. Returns null when the
+ * The endpoint serves exactly its one configured model. Returns an error message
+ * when a per-turn override names a DIFFERENT model (e.g. a routine pin carrying
+ * ANOTHER provider's id while this provider is active) — shipping it to the base
+ * URL would draw a confusing upstream `model_not_supported`. Null when the
  * override is absent or matches. Pure, so the guard is unit-testable.
  */
 export function localOverrideError(
@@ -131,8 +128,17 @@ export function localOverrideError(
     : null;
 }
 
-export function buildActiveCustomModel(override?: string): Model<Api> {
-  const e = load();
+/**
+ * Build the active local model from the saved endpoint. The optional `override`
+ * (a routine's pinned model) wins over the saved model id; throws when nothing is
+ * configured so a never-connected turn surfaces a clear error. `dataDir` defaults
+ * to the live agent's; the per-turn runtime passes its hydrated root.
+ */
+export function buildActiveCustomModel(
+  override?: string,
+  dataDir?: string,
+): Model<Api> {
+  const e = load(dataDir);
   if (!e.baseUrl || !e.model)
     throw new Error(
       "No local model configured. Set a base URL and model for the OpenAI-compatible provider.",

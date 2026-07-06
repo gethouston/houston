@@ -103,10 +103,11 @@ test("capabilities can report the managed cloud pod profile", async () => {
     expect(caps).toEqual({ ...MANAGED_CLOUD_CAPABILITIES, integrations: [] });
     // Pods run the agent's bash in the single-tenant container (HOU-669).
     expect(caps.codeExecution).toBe("local-bash");
-    // Managed pods still offer the full provider set; only the local LLM is cut.
+    // Managed pods offer the full provider set plus a BYO OpenAI-compatible
+    // endpoint (public-HTTPS, validated on save).
     expect(caps.providers).toContain("amazon-bedrock");
     expect(caps.providers).toContain("anthropic");
-    expect(caps.openaiCompatible).toBe(false);
+    expect(caps.openaiCompatible).toBe(true);
   } finally {
     host.stop();
   }

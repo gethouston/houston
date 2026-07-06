@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { seedSchemas } from "@houston/domain";
 import type { CustomEndpoint, HoustonEvent } from "@houston/protocol";
 import { ACTING_AS_HEADER, actingSubFromHeader } from "../auth/acting";
+import { checkPublicHttpsEndpoint } from "../custom-endpoint-validation";
 import type { Agent, UserId, Workspace } from "../domain/types";
 import { isApiKeyProvider } from "../providers";
 import { handleAttachments } from "../turn/attachments";
@@ -269,11 +270,12 @@ export async function handleAgents(
     return true;
   }
 
-  // Connect an OpenAI-compatible (local) server: a base URL + model the user runs
-  // on their own machine (Ollama / vLLM / LM Studio). LOCAL profile ONLY — a
-  // cloud runtime (or a cloud pod behind the proxy channel) can't reach the
-  // user's localhost, so refuse on the deployment capability regardless of
-  // hosting model. Must precede the generic dispatch.
+  // Connect an OpenAI-compatible server: a base URL + model. Desktop/self-host
+  // point it at the user's own machine (Ollama / vLLM / LM Studio); a cloud pod
+  // points it at a public HTTPS endpoint the user hosts (tunnel or directly
+  // hosted). Gated on the deployment capability, then — on the managed cloud
+  // profile only — validated against the pod's public-:443-only egress. Must
+  // precede the generic dispatch.
   const customEndpoint = path.match(
     /^\/agents\/([^/]+)\/provider\/openai-compatible$/,
   );
@@ -288,7 +290,7 @@ export async function handleAgents(
     if (!deps.capabilities?.openaiCompatible) {
       json(res, 400, {
         error:
-          "Local models aren't available on this deployment — connect one from the desktop app.",
+          "This deployment doesn't support custom OpenAI-compatible endpoints.",
       });
       return true;
     }
@@ -321,6 +323,18 @@ export async function handleAgents(
     if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
       json(res, 400, { error: "baseUrl must start with http:// or https://" });
       return true;
+    }
+    // Managed cloud pods (gatewayFronted) egress ONLY to public TCP 443 — the
+    // NetworkPolicy drops private/loopback/link-local and the metadata IP. Reject
+    // an unreachable endpoint at save time with an actionable reason rather than
+    // failing every turn opaquely. Desktop/self-host (not gateway-fronted) keep
+    // accepting localhost, so they skip this check entirely.
+    if (deps.gatewayFronted) {
+      const check = checkPublicHttpsEndpoint(parsedUrl);
+      if (!check.ok) {
+        json(res, 400, { error: check.reason });
+        return true;
+      }
     }
     const channel = channelFor(deps, authz.workspace);
     if (!channel) {

@@ -465,12 +465,14 @@ test("the documented profile asymmetries are exactly the intended ones", async (
     expect(cc.codeExecution).toBe("remote-sandbox");
     expect(lc.providers).toEqual(LOCAL_CAPABILITIES.providers);
     expect(cc.providers).toEqual(CLOUD_CAPABILITIES.providers);
-    // Cloud offers the SAME model providers as desktop; the only provider-side
-    // asymmetry is the user's own local LLM (openaiCompatible), which needs a
-    // server on the user's machine and so is local-only.
+    // Cloud offers the SAME model providers as desktop, including the OpenAI-
+    // compatible (BYO endpoint) provider — no provider-side asymmetry remains.
     expect(cc.providers).toEqual(lc.providers);
+    // The OpenAI-compatible (BYO endpoint) provider is offered on BOTH profiles
+    // now: cloud accepts a public HTTPS endpoint the user hosts. Availability is
+    // symmetric; the cloud-only constraint is base-URL validation at save time.
     expect(lc.openaiCompatible).toBe(true);
-    expect(cc.openaiCompatible).toBe(false);
+    expect(cc.openaiCompatible).toBe(true);
 
     // Agent payloads: only the LOCAL profile reports the agent's real on-disk
     // directory (`dir`) — the desktop shell needs it for OS reveal/open

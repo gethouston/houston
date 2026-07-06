@@ -111,13 +111,15 @@ profile). Cross-link:
 
 Where a row is also meaningful on the web app pointed at a host (cloud or
 self-host profile), the expected result is the same EXCEPT the rows marked
-local-only and the connect-providers asymmetry (cloud offers the same model
-providers as desktop; only the user's own local LLM is local-only).
+local-only. Cloud offers the same model providers as desktop, including the
+OpenAI-compatible BYO endpoint — a cloud pod accepts a public HTTPS endpoint
+(validated to a public `:443` host at save time), while desktop/self-host also
+accept localhost.
 
 | # | Do this | Observe | Pass when |
 |---|---|---|---|
 | 1 | Launch the notarized `.app` (not `pnpm tauri dev`). | The window opens; the Tauri shell spawns the bundled host sidecar (look for `HOUSTON_HOST_LISTENING` in the app log). | No Gatekeeper block; the sidecar comes up and the UI reaches it (board loads, no spinner-of-death). |
-| 2 | Connect a provider via the OAuth flow. | The connect dialog completes; provider status flips to connected. | The flow finishes and the agent can run a turn. Cloud offers the same providers as desktop; only the user's local LLM is desktop-only. |
+| 2 | Connect a provider via the OAuth flow. | The connect dialog completes; provider status flips to connected. | The flow finishes and the agent can run a turn. Cloud offers the same providers as desktop, including the OpenAI-compatible BYO endpoint (cloud requires a public HTTPS `:443` URL; desktop also accepts localhost). |
 | 3 | Open a MIGRATED chat (local-only), then ask the agent about something earlier in it. | History is visible AND the agent's reply shows it remembers the prior context (the synthesized pi session resumed). | Both: the transcript renders and the agent answers with memory of it. |
 | 4 | Send a chat message and watch it stream. | `sync` → `text`/`thinking`/`tool_*` → `done` arrive live; the board card moves to a finished state. | Tokens stream into the bubble; the card does NOT hang in "running" forever. |
 | 5 | Create a routine with a GOOD cron, and (separately) try a BAD cron. | Good saves; bad is rejected inline. Then wait for the good one's scheduled instant. | Good cron saves + actually FIRES on schedule (a run is recorded); the invalid cron is rejected in the UI (400), never silently dropped. |
@@ -145,9 +147,12 @@ These differ by construction and are contained in adapters / capabilities (and
 are asserted to be the ONLY differences by `src/dual-profile.test.ts`):
 
 - **Capabilities** (`src/capabilities.ts`): local has `revealInOs` + `terminal`
-  + `local-bash` + the local LLM (`openaiCompatible`); cloud has none of those +
-  `remote-sandbox`/`disabled`. Both offer the same model providers. The UI gates
-  on these flags, never on "am I web/desktop".
+  + `local-bash`; cloud has none of those + `remote-sandbox`/`disabled`. Both
+  offer the same model providers, including the OpenAI-compatible BYO endpoint
+  (`openaiCompatible` is now `true` on every profile — the only difference is
+  base-URL validation: a managed cloud pod requires a public `:443` HTTPS host,
+  desktop/self-host accept localhost). The UI gates on these flags, never on
+  "am I web/desktop".
 - **Unknown token** → **401 local, 403 cloud** for a *different* user: local is
   single-user (the identity seam rejects any non-owner token at verify time);
   cloud authenticates a real second user then walls them at authorization. Both
