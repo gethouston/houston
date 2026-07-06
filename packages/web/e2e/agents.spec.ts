@@ -64,10 +64,13 @@ test("renames an agent", async ({ page }) => {
   await page.getByRole("menuitem", { name: "Rename" }).click();
 
   // Rename swaps the sidebar row for an inline text field (the search box is a
-  // searchbox role, so this textbox is unambiguous).
+  // searchbox role, so this textbox is unambiguous). It must arrive focused
+  // with the current name selected, so typing replaces it without another
+  // click (HOU-708 follow-up).
   const input = page.getByRole("textbox");
-  await input.fill("Mission Control Bot");
-  await input.press("Enter");
+  await expect(input).toBeFocused();
+  await page.keyboard.type("Mission Control Bot");
+  await page.keyboard.press("Enter");
 
   await expect(page.getByText("Mission Control Bot").first()).toBeVisible();
 });

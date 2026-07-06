@@ -13,10 +13,16 @@ app's UI too: it's the same React tree. (True Tauri-shell E2E would need
 
 ```bash
 pnpm --filter houston-web test:e2e        # headless, starts both servers itself
+pnpm --filter houston-web test:e2e:webkit # same suite on WebKit — what the desktop WKWebView runs
 pnpm --filter houston-web test:e2e:ui     # Playwright UI mode (watch / debug)
 pnpm --filter houston-web test:e2e:report # open the last HTML report
 pnpm --filter houston-web typecheck:e2e   # typecheck the harness
 ```
+
+The WebKit run needs a one-time `pnpm exec playwright install webkit`. Run it
+when a change touches popovers/menus/positioning: Chromium and WebKit disagree
+on overflow clipping and hit-testing (the HOU-708 color submenu was clickable
+on Chromium and dead on WebKit).
 
 Playwright boots two servers automatically (see `playwright.config.ts`):
 

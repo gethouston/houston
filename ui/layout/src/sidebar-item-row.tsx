@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger,
 } from "@houston-ai/core";
 import { MoreHorizontal } from "lucide-react";
-import { type KeyboardEvent, useState } from "react";
+import { type KeyboardEvent, useCallback, useRef, useState } from "react";
 import type { SidebarItem } from "./sidebar";
 import { sidebarItemRowClasses } from "./sidebar-classes";
 
@@ -55,6 +55,16 @@ export function SidebarItemRow({
 }: SidebarItemRowProps) {
   const l = { ...DEFAULT_LABELS, ...labels };
   const [menuOpen, setMenuOpen] = useState(false);
+  // Picking Rename swaps the whole row (trigger included) for the input, so
+  // nothing focuses it by default — the user had to click again before typing.
+  // Focus + select-all when the input mounts (stable callback: a fresh inline
+  // ref would re-run per keystroke and re-select what's being typed), and stop
+  // the closing menu's focus restore from stealing it back.
+  const renameStarted = useRef(false);
+  const focusEditInput = useCallback((el: HTMLInputElement | null) => {
+    el?.focus();
+    el?.select();
+  }, []);
 
   return (
     <div
@@ -65,6 +75,7 @@ export function SidebarItemRow({
     >
       {isEditing ? (
         <input
+          ref={focusEditInput}
           value={editValue}
           onChange={(e) => onEditChange(e.target.value)}
           onBlur={() => onCommitRename(item.id)}
@@ -116,10 +127,22 @@ export function SidebarItemRow({
                   <MoreHorizontal className="size-4" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="bottom">
+              <DropdownMenuContent
+                align="end"
+                side="bottom"
+                onCloseAutoFocus={(e) => {
+                  if (renameStarted.current) {
+                    renameStarted.current = false;
+                    e.preventDefault();
+                  }
+                }}
+              >
                 {onStartRename && (
                   <DropdownMenuItem
-                    onClick={() => onStartRename(item.id, item.name)}
+                    onClick={() => {
+                      renameStarted.current = true;
+                      onStartRename(item.id, item.name);
+                    }}
                   >
                     {l.renameItem}
                   </DropdownMenuItem>
