@@ -70,11 +70,10 @@ function HostedEngineGate({ children }: { children: ReactNode }) {
       // loudly instead of spinning on the "starting" splash forever.
       return <HostedAuthMisconfigured />;
     case "sign-in":
-      // Hosted-gateway login. The paste-the-code fallback is dev-only: a dev
-      // build doesn't own the `houston://` scheme (the callback opens the
-      // installed production app), but production owns it and completes the
-      // deep link natively — never show users the dev paste form (HOU-642).
-      return <SignInScreen allowManualCallback={import.meta.env.DEV} />;
+      // Hosted-gateway login. Dev builds sign in with the passwordless email
+      // code (the `houston://` OAuth callback opens the installed prod app, so
+      // Google sign-in is prod-only there — HOU-642).
+      return <SignInScreen />;
     case "ready":
       return <>{children}</>;
     default:

@@ -1,7 +1,6 @@
 import type { Session } from "@supabase/supabase-js";
 import { listen } from "@tauri-apps/api/event";
 import { analytics } from "./analytics";
-import { toCallbackUrl } from "./auth-callback";
 import { logger } from "./logger";
 import { osIsTauri, osStartOauthLoopback } from "./os-bridge";
 import { queryClient } from "./query-client";
@@ -75,6 +74,23 @@ async function signInWithProvider(provider: "google" | "azure"): Promise<void> {
 
   pendingProvider = provider;
 
+  // Microsoft (Entra) needs the standard OIDC trio plus `offline_access` to
+  // issue a refresh token; without it Supabase gets the ID token but no way to
+  // refresh, and the session goes stale on the first reload. The account picker
+  // (`prompt: select_account`) lets multi-account users (work + personal) choose
+  // instead of Microsoft silently reusing the last account — the #1 source of
+  // "wrong account" confusion. We deliberately skip `profile` / `User.Read`:
+  // Houston only needs the email + sub claims. Applied to BOTH flows below —
+  // the web branch used to omit these, so a web Azure session had no refresh
+  // token and died on the first reload.
+  const providerOptions =
+    provider === "azure"
+      ? {
+          scopes: "openid email offline_access",
+          queryParams: { prompt: "select_account" },
+        }
+      : {};
+
   // Web build (no Tauri webview / deep link): a normal in-browser redirect to
   // `/auth/callback`, where Supabase's URL sniffer (detectSessionInUrl) trades
   // the `?code=` for a session. The desktop flow below opens the system browser
@@ -82,7 +98,10 @@ async function signInWithProvider(provider: "google" | "azure"): Promise<void> {
   if (!osIsTauri()) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        ...providerOptions,
+      },
     });
     if (error) throw error;
     return; // Supabase navigates the page to the consent screen.
@@ -99,22 +118,7 @@ async function signInWithProvider(provider: "google" | "azure"): Promise<void> {
       // Don't let Supabase touch window.location — we're in a webview and
       // need the consent page to open in the user's real browser.
       skipBrowserRedirect: true,
-      // Microsoft (Entra) needs the standard OIDC trio plus
-      // `offline_access` to issue a refresh token; without it Supabase
-      // gets the ID token but no way to refresh, and the session goes
-      // stale on the first reload. Matches Supabase's documented azure
-      // default. We deliberately don't request `profile` / `User.Read`
-      // since Houston only needs the email + sub claims for sign-in.
-      ...(provider === "azure"
-        ? {
-            scopes: "openid email offline_access",
-            // Force the account picker so users with multiple Microsoft
-            // accounts (work + personal) can choose; otherwise Microsoft
-            // silently picks the last-used one which is the #1 source of
-            // "wrong account" sign-in confusion.
-            queryParams: { prompt: "select_account" },
-          }
-        : {}),
+      ...providerOptions,
     },
   });
 
@@ -250,10 +254,9 @@ export function installDeepLinkListener(): () => void {
 
 /**
  * Complete an OAuth callback: pull the `code` (PKCE) or `access_token`
- * (implicit) out of a callback URL and install the Supabase session. Shared by
- * the desktop deep-link listener and the dev-only manual paste fallback
- * (`completeSignInFromPaste`). Errors surface through `emitAuthError`, not by
- * throwing, so both callers' UIs react the same way.
+ * (implicit) out of a callback URL and install the Supabase session. Driven by
+ * the desktop deep-link listener. Errors surface through `emitAuthError`, not by
+ * throwing, so the sign-in UI reacts without an exception.
  */
 async function completeAuthCallback(rawUrl: string): Promise<void> {
   try {
@@ -351,23 +354,4 @@ async function completeAuthCallback(rawUrl: string): Promise<void> {
     logger.error(`[auth] failed to handle callback: ${e}`);
     emitAuthError(String(e));
   }
-}
-
-/**
- * Dev-only sign-in fallback. In a dev build the `houston://auth-callback` deep
- * link opens the INSTALLED production app (both builds share the `houston` URL
- * scheme + `com.houston.app` bundle id), so the dev app stays stuck on the
- * sign-in screen while production swallows the callback. The dev app still holds
- * the PKCE verifier it generated when it opened the flow, so pasting the `code`
- * (or the whole `…/auth/callback?code=…` URL the browser landed on) lets it
- * finish the exchange locally — production is never involved. Gated to dev
- * desktop builds in `SignInScreen`.
- */
-export async function completeSignInFromPaste(input: string): Promise<void> {
-  const rawUrl = toCallbackUrl(input);
-  if (!rawUrl) {
-    emitAuthError("Paste the sign-in code or the full callback URL.");
-    return;
-  }
-  await completeAuthCallback(rawUrl);
 }
