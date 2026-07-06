@@ -113,6 +113,94 @@ export const LOCAL_PROVIDER: ProviderInfo = {
  * Houston provider id (post-rename for OpenAI). pi supplies everything else.
  * Insertion order sets the catalog order (the local provider is appended last).
  */
+/**
+ * Providers pinned to the front of the AI Hub Providers tab, in this order.
+ * Ordering applies ONLY inside the hub (see `orderFeaturedFirst`) — the chat
+ * model picker maps `PROVIDERS` directly and is untouched. The local
+ * OpenAI-compatible provider is capability-gated and may be absent; the ordering
+ * tolerates any id here being missing.
+ */
+export const FEATURED_PROVIDER_IDS = [
+  "anthropic",
+  "openai",
+  "google",
+  "github-copilot",
+  "openai-compatible",
+] as const;
+
+/** A provider's AI-Hub filter bucket. `direct` is the default for unlisted ids. */
+export type ProviderCategory =
+  | "featured"
+  | "gateway"
+  | "direct"
+  | "regional"
+  | "local";
+
+/**
+ * The AI-Hub category each provider id falls in, keyed by Houston provider id
+ * (post-rename: pi's `openai-codex` reads as `openai`). Covers the curated ids
+ * plus the raw pi ids the Providers tab now surfaces. `featured` mirrors
+ * `FEATURED_PROVIDER_IDS` and wins over any other listing (e.g. `google` and
+ * `openai-compatible`, which read as featured, not direct/local). Ids absent
+ * here resolve through `providerCategory`: the regional `*-cn` / `*-sgp` /
+ * `*-ams` / `xiaomi*` pattern, else `direct`.
+ */
+export const PROVIDER_CATEGORY: Readonly<Record<string, ProviderCategory>> = {
+  // Featured (mirrors FEATURED_PROVIDER_IDS; featured wins over every other bucket).
+  anthropic: "featured",
+  openai: "featured",
+  google: "featured",
+  "github-copilot": "featured",
+  "openai-compatible": "featured",
+  // Multi-model gateways: one key, many labs.
+  openrouter: "gateway",
+  opencode: "gateway",
+  "opencode-go": "gateway",
+  "vercel-ai-gateway": "gateway",
+  "cloudflare-ai-gateway": "gateway",
+  "azure-openai-responses": "gateway",
+  // Bring-your-own backend / account.
+  "amazon-bedrock": "local",
+  // Regional deployments (named; the *-cn/*-sgp/*-ams/xiaomi* ids resolve by pattern).
+  "google-vertex": "regional",
+  "cloudflare-workers-ai": "regional",
+  "kimi-coding": "regional",
+  "zai-coding-cn": "regional",
+  "minimax-cn": "regional",
+  "moonshotai-cn": "regional",
+  // Direct first-party APIs.
+  deepseek: "direct",
+  mistral: "direct",
+  xai: "direct",
+  groq: "direct",
+  cerebras: "direct",
+  fireworks: "direct",
+  together: "direct",
+  nvidia: "direct",
+  huggingface: "direct",
+  moonshotai: "direct",
+  zai: "direct",
+  minimax: "direct",
+  "ant-ling": "direct",
+};
+
+/** Regional-deployment id suffixes (China / Singapore / Amsterdam). */
+const REGIONAL_SUFFIX = /-(cn|sgp|ams)$/;
+
+/**
+ * Resolve a provider id to its AI-Hub category. The explicit `PROVIDER_CATEGORY`
+ * map wins; otherwise the regional `*-cn` / `*-sgp` / `*-ams` / `xiaomi*` pattern
+ * catches deployments pi may add without a map entry; everything else is
+ * `direct`. Never throws on an unknown id, so the ~25 uncurated pi providers are
+ * always bucketed.
+ */
+export function providerCategory(id: string): ProviderCategory {
+  const explicit = PROVIDER_CATEGORY[id];
+  if (explicit) return explicit;
+  if (REGIONAL_SUFFIX.test(id) || id.startsWith("xiaomi")) return "regional";
+  return "direct";
+}
+
 export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   openai: {
     name: "OpenAI",

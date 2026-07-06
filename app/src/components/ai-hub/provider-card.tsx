@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { HubCatalog } from "../../lib/ai-hub/catalog-types";
 import type { ProviderInfo } from "../../lib/providers";
 import { ProviderGlyph } from "../shell/provider-logos";
-import { LiveStatus, ModelMark } from "./hub-badges";
+import { ModelMark } from "./hub-badges";
 import { providerDescriptionKey, providerModels } from "./provider-grouping";
 
 /** Multi-model gateways lead their copy with the count; subscriptions stay clean. */
@@ -15,28 +15,33 @@ interface ProviderCardProps {
   catalog: HubCatalog;
   connected: boolean;
   connecting: boolean;
+  signingOut: boolean;
   onOpen: (provider: ProviderInfo) => void;
   onConnect: (provider: ProviderInfo) => void;
   onCancel: (provider: ProviderInfo) => void;
+  onSignOut: (provider: ProviderInfo) => void;
 }
 
 /**
  * A marketplace tile for one provider. The card itself is NOT clickable — every
  * action lives in the footer as a real focusable button: an available provider
  * offers a primary Connect pill plus a ghost "See more" that opens the detail
- * (`onOpen`); a connected provider swaps Connect for a live status readout and
- * keeps "See more" to reopen its modal. Every card wears the same calm gray
- * surface + hairline ring — connected and available look identical, differing
- * only in the footer (live status vs Connect pill). No accent, no glow.
+ * (`onOpen`); a connected provider swaps Connect for a ghost "Sign out" button
+ * (`onSignOut`, opening the shared confirm) and keeps "See more" to reopen its
+ * modal. Every card wears the same calm gray surface + hairline ring — connected
+ * and available look identical, differing only in the footer (Sign out vs
+ * Connect pill). No accent, no glow, no live dot.
  */
 export function ProviderCard({
   provider,
   catalog,
   connected,
   connecting,
+  signingOut,
   onOpen,
   onConnect,
   onCancel,
+  onSignOut,
 }: ProviderCardProps) {
   const { t } = useTranslation("aiHub");
 
@@ -79,9 +84,15 @@ export function ProviderCard({
       <div className="mt-4 flex items-center gap-2">
         {connected ? (
           <>
-            <span className="flex-1">
-              <LiveStatus label={t("card.connected")} />
-            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="flex-1"
+              disabled={signingOut}
+              onClick={() => onSignOut(provider)}
+            >
+              {t("card.signOut")}
+            </Button>
             {seeMore}
           </>
         ) : (

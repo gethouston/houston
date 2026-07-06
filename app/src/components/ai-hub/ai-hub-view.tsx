@@ -86,6 +86,7 @@ export function AiHubView() {
               <HubHero modelCount={catalog.modelCount} />
               <AiHubTabs
                 active={tab}
+                providerCount={connectProviders.length}
                 modelCount={catalog.modelCount}
                 onSelect={setTab}
               />

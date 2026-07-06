@@ -6,6 +6,7 @@
   },
   "tabs": {
     "providers": "Providers",
+    "providersCount": "Providers · {{count}}",
     "modelsCount": "Models · {{count}}"
   },
   "sections": {
@@ -17,6 +18,7 @@
     "connecting": "Connecting",
     "seeMore": "See more",
     "connected": "Connected",
+    "signOut": "Sign out",
     "cancel": "Cancel",
     "models_one": "{{count}} model",
     "models_other": "{{count}} models",
@@ -97,6 +99,20 @@
     }
   },
   "providers": {
+    "search": "Search providers",
+    "empty": {
+      "title": "No providers found",
+      "description": "Try a different search or category."
+    },
+    "category": {
+      "label": "Category",
+      "all": "All",
+      "featured": "Featured",
+      "gateway": "Gateways",
+      "direct": "Direct",
+      "regional": "Regional",
+      "local": "Local"
+    },
     "openai": {
       "description": "Sign in with ChatGPT and put the GPT and Codex models to work."
     },

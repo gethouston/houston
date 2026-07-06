@@ -1,6 +1,11 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  filterByCategory,
+  orderFeaturedFirst,
+  searchProviders,
+} from "../src/components/ai-hub/provider-filtering.ts";
+import {
   authChipKey,
   connectCardByGatewayId,
   groupProviders,
@@ -137,6 +142,115 @@ describe("providerDescriptionKey", () => {
 
   it("falls back to the raw id for an unwired provider (visible, not silent)", () => {
     strictEqual(providerDescriptionKey("brand-new-lab"), "brand-new-lab");
+  });
+});
+
+describe("orderFeaturedFirst", () => {
+  it("pins featured ids in FEATURED order, keeps the rest in catalog order", () => {
+    const ordered = orderFeaturedFirst([
+      provider("deepseek"),
+      provider("google"),
+      provider("openrouter"),
+      provider("anthropic"),
+    ]);
+    deepStrictEqual(
+      ordered.map((p) => p.id),
+      ["anthropic", "google", "deepseek", "openrouter"],
+    );
+  });
+
+  it("tolerates a featured id being absent (capability-gated local provider)", () => {
+    const ordered = orderFeaturedFirst([
+      provider("deepseek"),
+      provider("openai"),
+    ]);
+    deepStrictEqual(
+      ordered.map((p) => p.id),
+      ["openai", "deepseek"],
+    );
+  });
+
+  it("leaves a featured-free list untouched", () => {
+    const ordered = orderFeaturedFirst([
+      provider("deepseek"),
+      provider("openrouter"),
+    ]);
+    deepStrictEqual(
+      ordered.map((p) => p.id),
+      ["deepseek", "openrouter"],
+    );
+  });
+});
+
+describe("searchProviders", () => {
+  const list = [
+    provider("anthropic", { name: "Anthropic", subtitle: "Claude Code" }),
+    provider("openrouter", {
+      name: "OpenRouter",
+      subtitle: "Any model, one key",
+    }),
+    provider("google", { name: "Google Gemini", subtitle: "Free key" }),
+  ];
+
+  it("returns everything for an empty or whitespace query", () => {
+    strictEqual(searchProviders(list, "").length, 3);
+    strictEqual(searchProviders(list, "   ").length, 3);
+  });
+
+  it("matches name, id, and subtitle case-insensitively", () => {
+    deepStrictEqual(
+      searchProviders(list, "GEMINI").map((p) => p.id),
+      ["google"],
+    );
+    deepStrictEqual(
+      searchProviders(list, "openrouter").map((p) => p.id),
+      ["openrouter"],
+    );
+    deepStrictEqual(
+      searchProviders(list, "one key").map((p) => p.id),
+      ["openrouter"],
+    );
+  });
+
+  it("returns an empty list when nothing matches", () => {
+    strictEqual(searchProviders(list, "zzz").length, 0);
+  });
+});
+
+describe("filterByCategory", () => {
+  const list = [
+    provider("anthropic"),
+    provider("openrouter"),
+    provider("deepseek"),
+    provider("amazon-bedrock"),
+    provider("zai-coding-cn"),
+  ];
+
+  it("passes everything through for `all`", () => {
+    strictEqual(filterByCategory(list, "all").length, 5);
+  });
+
+  it("narrows to a single bucket, resolving uncurated ids by pattern", () => {
+    deepStrictEqual(
+      filterByCategory(list, "featured").map((p) => p.id),
+      ["anthropic"],
+    );
+    deepStrictEqual(
+      filterByCategory(list, "gateway").map((p) => p.id),
+      ["openrouter"],
+    );
+    deepStrictEqual(
+      filterByCategory(list, "direct").map((p) => p.id),
+      ["deepseek"],
+    );
+    deepStrictEqual(
+      filterByCategory(list, "local").map((p) => p.id),
+      ["amazon-bedrock"],
+    );
+    deepStrictEqual(
+      filterByCategory(list, "regional").map((p) => p.id),
+      ["zai-coding-cn"],
+    );
   });
 });
 

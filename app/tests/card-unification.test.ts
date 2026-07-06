@@ -15,9 +15,9 @@ import { describe, it } from "node:test";
  *     generic `Sparkles`.
  *  4. `ProviderGlyph` dispatches per provider id — Gemini gets the Gemini
  *     mark, not the OpenAI logo the old `anthropic ? Claude : OpenAI` ternary
- *     handed every non-Anthropic provider — and falls back to the provider's
- *     initial for anything unknown, so a provider can never borrow the wrong
- *     brand's logo.
+ *     handed every non-Anthropic provider — and falls back to a monogram tile
+ *     for anything unknown, so a provider can never borrow the wrong brand's
+ *     logo.
  */
 
 const read = (rel: string) =>
@@ -94,15 +94,18 @@ describe("HOU-467 / HOU-529 card unification", () => {
     ok(src.includes("providerId"), "threads the target provider id");
   });
 
-  it("ProviderGlyph dispatches per provider (Gemini != OpenAI, unknown falls back to initial)", () => {
+  it("ProviderGlyph dispatches per provider (Gemini != OpenAI, unknown falls back to a monogram)", () => {
     const src = read("../src/components/shell/provider-logos.tsx");
     ok(src.includes("export function ProviderGlyph"), "glyph dispatch exists");
-    // Every provider with a brand mark gets its own case. Note Gemini appears
-    // under both its historical id "gemini" and its provider id "google".
-    for (const id of [
+    // Dispatch is a `BrandKey -> mark` registry keyed by the resolver in
+    // provider-logo-map.ts, not the old `anthropic ? Claude : OpenAI` ternary.
+    // Every brand mark gets its own registry entry — Gemini binds to `google`
+    // (its provider id), never OpenAI. (provider-logo-map.test.ts locks the
+    // id -> key folding, incl. the historical "gemini" -> "google" alias.)
+    ok(src.includes("BRAND_LOGOS"), "dispatch is the brand-key registry");
+    for (const key of [
       "anthropic",
       "openai",
-      "gemini",
       "google",
       "github-copilot",
       "openrouter",
@@ -110,12 +113,17 @@ describe("HOU-467 / HOU-529 card unification", () => {
       "deepseek",
       "minimax",
     ]) {
-      ok(src.includes(`case "${id}"`), `has a case for ${id}`);
+      ok(
+        new RegExp(`"?${key}"?:`).test(src),
+        `registry binds a mark for ${key}`,
+      );
     }
-    // The defensive fallback: an unknown provider renders its initial, never a
-    // borrowed brand logo. `slice(0, 1)` is the tell.
-    ok(src.includes("default:"), "has a fallback branch");
-    ok(src.includes("slice(0, 1)"), "fallback uses the provider's initial");
+    // The defensive fallback: an unknown provider renders a monogram tile, never
+    // a borrowed brand logo. `?? <Monogram` is the tell.
+    ok(
+      src.includes("?? <Monogram"),
+      "fallback is the monogram tile, never a borrowed logo",
+    );
   });
 
   it("RowCardButton makes the icon optional + keeps the rage-click guard", () => {
