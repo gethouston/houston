@@ -131,25 +131,18 @@ function SectionHeading({
   const { label, icon } = headingText(section, provider, labels);
   const disconnected = provider?.connection === "disconnected";
   return (
-    <div className="flex items-center gap-2 pt-2 text-[0.65rem] font-semibold tracking-wider text-muted-foreground uppercase">
+    <div className="flex items-center gap-2 pt-2 text-xs font-semibold text-muted-foreground">
       {icon}
       <span>{label}</span>
-      <span className="h-px flex-1 bg-border/60" />
-      {provider &&
-        (disconnected ? (
-          <button
-            type="button"
-            onClick={() => onConnect?.(provider.id)}
-            className="text-[0.7rem] font-semibold text-foreground normal-case transition-colors hover:text-muted-foreground"
-          >
-            {labels.connect} →
-          </button>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 text-[0.7rem] font-medium text-muted-foreground normal-case">
-            <span className="size-1.5 rounded-full bg-muted-foreground" />
-            {labels.connected}
-          </span>
-        ))}
+      {provider && disconnected && (
+        <button
+          type="button"
+          onClick={() => onConnect?.(provider.id)}
+          className="ml-auto text-xs font-semibold text-foreground transition-colors hover:text-muted-foreground"
+        >
+          {labels.connect} →
+        </button>
+      )}
     </div>
   );
 }

@@ -36,17 +36,19 @@ export function ProviderRail({
     <div className="flex w-[60px] shrink-0 flex-col items-center gap-1 overflow-y-auto border-r border-border/60 py-2.5">
       <RailButton
         active={active === "fav"}
+        prominent
         title={labels.favorites}
         onClick={() => onSelect("fav")}
       >
-        <Star className="size-4" />
+        <Star className="size-3.5" />
       </RailButton>
       <RailButton
         active={active === "all"}
+        prominent
         title={labels.all}
         onClick={() => onSelect("all")}
       >
-        <Boxes className="size-4" />
+        <Boxes className="size-3.5" />
       </RailButton>
       {connected.map((p) => (
         <ProviderRailButton
@@ -92,6 +94,7 @@ function ProviderRailButton({
   return (
     <RailButton
       active={active}
+      prominent={!disconnected}
       title={
         disconnected
           ? `${provider.name} · ${labels.notConnected}`
@@ -100,11 +103,14 @@ function ProviderRailButton({
       dimmed={disconnected}
       onClick={() => onSelect(provider.id)}
     >
+      {/* No text color here: the glyph inherits the button's currentColor, so a
+          connected provider reads as foreground (white on dark) and a
+          disconnected one as muted grey. */}
       <ProviderIcon
         providerId={provider.id}
         name={provider.name}
         render={renderProviderIcon}
-        className="size-[26px] rounded-lg text-muted-foreground"
+        className="size-[18px] rounded-md"
       />
     </RailButton>
   );
@@ -112,12 +118,15 @@ function ProviderRailButton({
 
 function RailButton({
   active,
+  prominent,
   title,
   dimmed,
   onClick,
   children,
 }: {
   active: boolean;
+  /** Render at full foreground (connected / always-available) vs muted grey. */
+  prominent?: boolean;
   title: string;
   dimmed?: boolean;
   onClick: () => void;
@@ -131,14 +140,12 @@ function RailButton({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "relative inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+        "inline-flex size-10 items-center justify-center rounded-xl transition-colors hover:bg-accent hover:text-foreground",
+        prominent ? "text-foreground" : "text-muted-foreground",
         active && "bg-accent text-foreground",
         dimmed && "opacity-45",
       )}
     >
-      {active && (
-        <span className="absolute top-1/2 -left-2.5 h-5 w-[3px] -translate-y-1/2 rounded-full bg-foreground" />
-      )}
       {children}
     </button>
   );

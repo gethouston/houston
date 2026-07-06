@@ -53,7 +53,6 @@ export interface ModelPickerLabels {
   favorites: string;
   results: string;
   all: string;
-  connected: string;
   notConnected: string;
   connect: string;
   sort: string;
@@ -98,7 +97,6 @@ export const DEFAULT_MODEL_PICKER_LABELS: ModelPickerLabels = {
   favorites: "Favorites",
   results: "Results",
   all: "All models",
-  connected: "Connected",
   notConnected: "Not connected",
   connect: "Connect",
   sort: "Sort",

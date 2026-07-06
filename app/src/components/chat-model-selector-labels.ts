@@ -19,7 +19,6 @@ export function buildLabels(
     favorites: k("favorites"),
     results: k("results"),
     all: k("all"),
-    connected: k("connected"),
     notConnected: k("notConnected"),
     connect: k("connect"),
     sort: k("sort"),

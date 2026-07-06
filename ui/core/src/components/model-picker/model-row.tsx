@@ -49,15 +49,12 @@ export function ModelRow({
       disabled={disconnected}
       onSelect={() => onSelect(model.id)}
       className={cn(
-        "relative flex cursor-pointer flex-col rounded-xl px-3 py-2.5 outline-none",
+        "flex cursor-pointer flex-col rounded-xl px-3 py-2.5 outline-none",
         "data-[selected=true]:bg-accent",
         selected && "bg-accent",
         disconnected && "cursor-default",
       )}
     >
-      {selected && (
-        <span className="absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-full bg-foreground" />
-      )}
       <div className="flex items-center gap-3">
         <div className={cn("min-w-0 flex-1", disconnected && "opacity-55")}>
           <div className="truncate text-sm font-semibold text-foreground">

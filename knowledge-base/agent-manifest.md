@@ -350,12 +350,30 @@ pinned **Recents** and **Favorites**, and rich rows (brand icon, price tier,
 The library component is props-only and i18n-agnostic (`labels?`); all app
 wiring lives in `app/src/components/chat-model-selector.tsx`.
 
+- **Reused in the create-agent modal too.** `ChatModelSelector` is the ONE model
+  selector: the chat composer AND the create/import-agent flows
+  (`naming-step.tsx`, `ai-assist-step.tsx`, `portable/import-wizard.tsx`) render
+  it with `agent={null}` (never locks — there is no agent yet). The old
+  hand-rolled `InlineModelSelector` (curated-only, hid disconnected providers) is
+  gone; the create flow now gets the same live 300+ catalog + Connect affordance.
 - **Only ever offers runnable `(provider, model)` pairs.** The mapping
   (`app/src/lib/chat-model-picker-map.ts`, pure + unit-tested) encodes each row
   id as `` `${provider}::${model}` `` (split on the FIRST `::`), decoded on
   select back into the existing `handleModelSelect(provider, model)` — so the
   cross-provider `ProviderSwitchDialog` consent, effort selector, and all
   persistence are untouched. The effort control stays a SEPARATE composer button.
+- **Open-catalog providers accept any live id (don't revert it).**
+  `validModelOrNull` (`app/src/lib/providers.ts`) would null any model not in a
+  provider's curated `PROVIDERS[].models`, so the effective-model chain
+  (`validModelOrNull(...) ?? ... ?? getDefaultModel`) silently reverted a live
+  OpenRouter pick to the default. `isOpenCatalogProvider(providerId)` (currently
+  `openrouter` + the local `openai-compatible`) now short-circuits that check so
+  a live id passes through — mirrors the domain's pass-through set (providers
+  absent from `VALID_MODELS`). Caveat: the RUNTIME still resolves ids through
+  pi-ai's generated registry (~259 openrouter models), so a brand-new live id
+  outside that registry persists but fails the turn at `safeGetModel`
+  (`packages/runtime/src/ai/providers.ts`) with a clean "model not available"
+  error — closing that tail needs pi-ai pass-through model construction.
 - **Two data sources, one view-model.** Non-OpenRouter providers enumerate their
   curated `PROVIDERS[].models` (plus the synthesized local `openai-compatible`
   runtime row), enriched with capabilities/pricing/context by an exact
