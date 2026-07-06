@@ -1,7 +1,9 @@
+import { Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUIStore } from "../../../stores/ui";
 import { useWorkspaceStore } from "../../../stores/workspaces";
+import { SettingsControlRow } from "../settings-row";
 
 export function WorkspaceSection() {
   const { t } = useTranslation("settings");
@@ -25,27 +27,18 @@ export function WorkspaceSection() {
   };
 
   return (
-    <section>
-      <h2 className="text-lg font-semibold mb-4">{t("workspace.title")}</h2>
-      <div>
-        <label
-          htmlFor="workspace-name"
-          className="text-xs text-muted-foreground block mb-1.5"
-        >
-          {t("workspace.nameLabel")}
-        </label>
-        <input
-          id="workspace-name"
-          type="text"
-          value={wsName}
-          onChange={(e) => setWsName(e.target.value)}
-          onBlur={handleRename}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleRename();
-          }}
-          className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-ring transition-all"
-        />
-      </div>
-    </section>
+    <SettingsControlRow icon={Settings} title={t("workspace.title")}>
+      <input
+        aria-label={t("workspace.title")}
+        type="text"
+        value={wsName}
+        onChange={(e) => setWsName(e.target.value)}
+        onBlur={handleRename}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+        }}
+        className="w-52 rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none transition-all focus:ring-1 focus:ring-ring"
+      />
+    </SettingsControlRow>
   );
 }

@@ -1,8 +1,10 @@
 import { Button, ConfirmDialog } from "@houston-ai/core";
+import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAgentStore } from "../../../stores/agents";
 import { useWorkspaceStore } from "../../../stores/workspaces";
+import { SettingsControlRow } from "../settings-row";
 
 export function DangerSection() {
   const { t } = useTranslation("settings");
@@ -15,6 +17,8 @@ export function DangerSection() {
 
   if (!currentWorkspace) return null;
 
+  const isOnlyWorkspace = workspaces.length <= 1;
+
   const handleDelete = async () => {
     const remaining = workspaces.filter((w) => w.id !== currentWorkspace.id);
     await deleteWorkspace(currentWorkspace.id);
@@ -26,26 +30,26 @@ export function DangerSection() {
   };
 
   return (
-    <section>
-      <h2 className="text-lg font-semibold text-destructive mb-1">
-        {t("dangerZone.title")}
-      </h2>
-      <p className="text-sm text-muted-foreground mb-4">
-        {t("dangerZone.description")}
-      </p>
-      <Button
-        variant="destructive"
-        className="rounded-full"
-        disabled={workspaces.length <= 1}
-        onClick={() => setShowConfirm(true)}
+    <>
+      <SettingsControlRow
+        icon={Trash2}
+        title={t("nav.danger")}
+        description={
+          isOnlyWorkspace
+            ? t("dangerZone.createAnotherFirst")
+            : t("dangerZone.description")
+        }
+        destructive
       >
-        {t("dangerZone.deleteButton")}
-      </Button>
-      {workspaces.length <= 1 && (
-        <p className="text-xs text-muted-foreground mt-2">
-          {t("dangerZone.createAnotherFirst")}
-        </p>
-      )}
+        <Button
+          variant="destructive"
+          size="sm"
+          disabled={isOnlyWorkspace}
+          onClick={() => setShowConfirm(true)}
+        >
+          {t("dangerZone.confirmLabel")}
+        </Button>
+      </SettingsControlRow>
 
       <ConfirmDialog
         open={showConfirm}
@@ -55,6 +59,6 @@ export function DangerSection() {
         confirmLabel={t("dangerZone.confirmLabel")}
         onConfirm={handleDelete}
       />
-    </section>
+    </>
   );
 }
