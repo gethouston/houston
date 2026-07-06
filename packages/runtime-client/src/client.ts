@@ -42,6 +42,18 @@ export interface EventStreamOptions {
 export interface SendOptions {
   /** Echoed back on the `user` event so the sender can dedupe its own message. */
   nonce?: string;
+  /**
+   * Per-turn provider pin (engine provider id). The turn runs on THIS provider
+   * — never auth-gated onto another one — exactly like a routine's pin. Chats
+   * pass their own pinned provider here so a conversation always runs on the
+   * provider the user picked IN that chat, regardless of the agent-wide
+   * settings (HOU-695). Omitted, the runtime resolves from its settings.
+   */
+  provider?: string;
+  /** Per-turn model pin (must belong to `provider`). */
+  model?: string;
+  /** Per-turn reasoning-effort pin. */
+  effort?: string;
   signal?: AbortSignal;
 }
 
@@ -97,6 +109,20 @@ export class HoustonEngineClient {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
+    });
+  }
+  /**
+   * Claim the active provider after a credential connect: makes `provider`
+   * active ONLY when the agent doesn't already resolve to one (nothing saved,
+   * nothing else connected). A connect must never move an existing chat off
+   * its provider (HOU-695) — switching is `setSettings`' (the model picker's)
+   * job. Returns the settings that ended up saved either way.
+   */
+  claimActiveProvider(provider: ProviderId) {
+    return this.json<Settings>("/settings/claim", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider }),
     });
   }
   authStatus() {
@@ -268,7 +294,13 @@ export class HoustonEngineClient {
     await this.request(`/conversations/${encodeURIComponent(id)}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, nonce: opts.nonce }),
+      body: JSON.stringify({
+        text,
+        nonce: opts.nonce,
+        provider: opts.provider,
+        model: opts.model,
+        effort: opts.effort,
+      }),
       signal: opts.signal,
     });
   }

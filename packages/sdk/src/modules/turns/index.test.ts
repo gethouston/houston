@@ -34,6 +34,7 @@ function harness(frames: WireFrame[] = doneTurn) {
   const commands = new Map<string, CommandHandler>();
   const calls = {
     sends: 0,
+    sendOpts: [] as unknown[],
     cancels: [] as string[],
     settings: [] as unknown[],
     providersListed: 0,
@@ -42,8 +43,9 @@ function harness(frames: WireFrame[] = doneTurn) {
     async streamEvents(_id: string, o: { onEvent: (f: WireFrame) => void }) {
       for (const f of frames) o.onEvent(f);
     },
-    async sendMessage() {
+    async sendMessage(_id: string, _text: string, opts?: unknown) {
       calls.sends++;
+      calls.sendOpts.push(opts);
     },
     async getHistory() {
       return { id: "c", title: "", messages: [] };
@@ -144,7 +146,7 @@ test("an attached external output sees every push, settled exactly once", async 
   expect(items.filter((i) => i.feed_type === "final_result")).toHaveLength(1);
 });
 
-test("a model switch resolves the owning provider and writes BOTH", async () => {
+test("a model pick rides the send as a per-turn pin paired with its owner — never a settings write", async () => {
   const { commands, calls, vm } = harness();
   await commands.get("turns/send")?.({
     conversationId: "c1",
@@ -153,15 +155,20 @@ test("a model switch resolves the owning provider and writes BOTH", async () => 
     effort: "high",
   });
   await waitFor(() => vm()?.sessionStatus === "completed");
-  // The runtime hard-fails a model under the wrong active provider, so the
-  // facade must pair the pick with its owner (mirrors the web adapter).
+  // The runtime hard-fails a model under the wrong provider, so the facade
+  // pairs the pick with its owner (from the live listing) on the wire pin.
   expect(calls.providersListed).toBe(1);
-  expect(calls.settings).toEqual([
-    { activeProvider: "anthropic", model: "claude-opus-4-8", effort: "high" },
-  ]);
+  expect(calls.sendOpts[0]).toMatchObject({
+    provider: "anthropic",
+    model: "claude-opus-4-8",
+    effort: "high",
+  });
+  // HOU-695: the pick pins THIS turn only. Writing it to the agent-wide
+  // settings would move every other conversation's fallback provider.
+  expect(calls.settings).toEqual([]);
 });
 
-test("an effort-only switch never lists providers (no model to resolve)", async () => {
+test("an effort-only pick never lists providers (no model to resolve)", async () => {
   const { commands, calls, vm } = harness();
   await commands.get("turns/send")?.({
     conversationId: "c1",
@@ -170,7 +177,23 @@ test("an effort-only switch never lists providers (no model to resolve)", async 
   });
   await waitFor(() => vm()?.sessionStatus === "completed");
   expect(calls.providersListed).toBe(0);
-  expect(calls.settings).toEqual([{ effort: "high" }]);
+  expect(calls.settings).toEqual([]);
+  expect(calls.sendOpts[0]).toMatchObject({ effort: "high" });
+  expect((calls.sendOpts[0] as { provider?: string }).provider).toBeUndefined();
+});
+
+test("a plain send (no pick) carries no pin — the runtime resolves the conversation's provider", async () => {
+  const { commands, calls, vm } = harness();
+  await commands.get("turns/send")?.({ conversationId: "c1", text: "hi" });
+  await waitFor(() => vm()?.sessionStatus === "completed");
+  const opts = calls.sendOpts[0] as {
+    provider?: string;
+    model?: string;
+    effort?: string;
+  };
+  expect(opts.provider).toBeUndefined();
+  expect(opts.model).toBeUndefined();
+  expect(opts.effort).toBeUndefined();
 });
 
 test("observe surfaces an in-flight turn into the conversation VM", async () => {

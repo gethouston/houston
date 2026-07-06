@@ -160,6 +160,7 @@ export {
   type TurnHistoryInput,
   type TurnObserveInput,
   type TurnSendInput,
+  type TurnWirePin,
   turnErrorMessage,
 } from "./modules/turns";
 export type {

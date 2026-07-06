@@ -73,6 +73,7 @@ import {
   syntheticWorkspace,
   toNewProvider,
   toOldProvider,
+  wireTurnPin,
 } from "./synthetic";
 import { historyToFeed, isConversationNotFound } from "./translate";
 import {
@@ -1239,19 +1240,22 @@ export class HoustonClient {
       for (const target of targets) {
         await controlPlane.setApiKey(this.cp, agentId, target, apiKey);
       }
-      // Make the just-connected provider active so chats use it immediately,
-      // exactly as the OAuth connect path does (pollProviderConnect). Without
-      // this the engine keeps whatever was active (e.g. a still-connected Codex),
-      // and every turn silently runs that model instead of OpenCode. Settings are
-      // PER-AGENT on the host, so this MUST go through the agent's runtime client.
+      // CLAIM (don't set) the active provider: it becomes active only when the
+      // agent doesn't already resolve to one — a first connect on a fresh
+      // agent. Connecting a credential is not a model pick (HOU-695):
+      // unconditionally activating it here used to flip every open chat onto
+      // the new provider (paste an OpenCode key mid-Codex-chat → the next turn
+      // answers, bills, and quota-errors on OpenCode). Switching stays the
+      // model picker's job. Settings are PER-AGENT on the host, so this MUST
+      // go through the agent's runtime client.
       await controlPlane
         .runtimeClientFor(this.cp, agentId)
-        .setSettings({ activeProvider: pid });
+        .claimActiveProvider(pid);
     } else {
       for (const target of targets) {
         await this.engine.setApiKey(target, apiKey);
       }
-      await this.engine.setSettings({ activeProvider: pid });
+      await this.engine.claimActiveProvider(pid);
     }
     // One completion event for the single account the user connected (never one
     // per gateway), so the connect dialog closes and exactly one card flips.
@@ -1264,11 +1268,12 @@ export class HoustonClient {
 
   /**
    * Connect an OpenAI-compatible (local) server: persist the base URL + model
-   * and make it active, then fire `ProviderLoginComplete` like the other connect
-   * paths. LOCAL/desktop only — in cloud the host refuses (the openaiCompatible
-   * capability is off), so the error surfaces to the dialog. Settings are
-   * PER-AGENT on the host, so activation MUST go through the agent's runtime
-   * client (mirrors setProviderApiKey).
+   * and CLAIM it as active (first connect on a fresh agent only — a connect
+   * never moves an agent that already has a provider, HOU-695), then fire
+   * `ProviderLoginComplete` like the other connect paths. LOCAL/desktop only —
+   * in cloud the host refuses (the openaiCompatible capability is off), so the
+   * error surfaces to the dialog. Settings are PER-AGENT on the host, so the
+   * claim MUST go through the agent's runtime client (mirrors setProviderApiKey).
    */
   async setProviderCustomEndpoint(endpoint: CustomEndpoint): Promise<void> {
     if (this.cp) {
@@ -1276,10 +1281,10 @@ export class HoustonClient {
       await controlPlane.setCustomEndpoint(this.cp, agentId, endpoint);
       await controlPlane
         .runtimeClientFor(this.cp, agentId)
-        .setSettings({ activeProvider: "openai-compatible" });
+        .claimActiveProvider("openai-compatible");
     } else {
       await this.engine.setCustomEndpoint(endpoint);
-      await this.engine.setSettings({ activeProvider: "openai-compatible" });
+      await this.engine.claimActiveProvider("openai-compatible");
     }
     emitEvent("ProviderLoginComplete", {
       provider: "openai-compatible",
@@ -1305,9 +1310,10 @@ export class HoustonClient {
 
   /**
    * Poll the agent's sandbox until the device-code login lands (the runtime
-   * polls OpenAI in-process and writes auth.json to the PVC), then make the new
-   * provider this agent's active one and signal completion — which closes the
-   * dialog and refreshes provider status. Emits a failure on timeout (no silent
+   * polls OpenAI in-process and writes auth.json to the PVC), then CLAIM the
+   * new provider as this agent's active one (first connect only — never moves
+   * an agent that already has a provider, HOU-695) and signal completion —
+   * which closes the dialog and refreshes provider status. Emits a failure on timeout (no silent
    * stall). Cancellable via `cancelProviderLogin`. A null `agentId` is the
    * first-run pre-agent flow: the login ran in the host's hidden SETUP runtime,
    * so poll + capture there (no per-agent settings to flip yet — the agent
@@ -1338,11 +1344,13 @@ export class HoustonClient {
           /* transient — keep polling */
         }
         if (configured) {
-          // Make the just-connected provider this agent's active model so chat
-          // uses it. Skipped pre-agent: the setup runtime has no agent settings.
+          // CLAIM (don't set) the active provider: it becomes active only for
+          // a first connect on a fresh agent — a connect never moves an agent
+          // that already has a provider, so no open chat switches (HOU-695).
+          // Skipped pre-agent: the setup runtime has no agent settings.
           if (agentId) {
             try {
-              await engine.setSettings({ activeProvider: pid });
+              await engine.claimActiveProvider(pid);
             } catch {
               /* non-fatal: the user can pick the model in the chat header */
             }
@@ -1393,6 +1401,10 @@ export class HoustonClient {
     if (maybeQueueSend(path, req)) return { sessionKey: req.sessionKey };
     // Fire-and-stream: events flow to the feed store over the bus/WS adapter.
     // The board-status setter is cloud-aware (writes land where the board reads).
+    // The request's provider/model/effort (the chat's OWN pick, app dialect)
+    // ride the send as a per-turn wire pin in engine ids (wireTurnPin), so the
+    // turn runs on this conversation's provider — not the agent-wide settings
+    // some other chat or connect flow last wrote (HOU-695).
     void streamTurn(
       engine,
       path,
@@ -1402,6 +1414,7 @@ export class HoustonClient {
       req.provider,
       undefined,
       req.suppressUserBubble,
+      wireTurnPin(req),
     ).finally(() => {
       // The turn settled (or failed): release anything queued behind it.
       flushQueuedSends(path, req.sessionKey, (r) => {

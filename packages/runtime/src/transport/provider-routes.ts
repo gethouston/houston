@@ -1,5 +1,9 @@
 import { parseClaudeOAuthEnvelope } from "@houston/runtime-client";
-import { listProviders, setSettings } from "../ai/providers";
+import {
+  claimActiveProvider,
+  listProviders,
+  setSettings,
+} from "../ai/providers";
 import { exportCredential } from "../auth/export";
 import {
   cancelLogin,
@@ -32,6 +36,21 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
     const body = await readJson(req);
     try {
       json(res, 200, setSettings(body));
+    } catch (e) {
+      json(res, 400, { error: e instanceof Error ? e.message : String(e) });
+    }
+    return true;
+  }
+  // Connect-flow claim: make the just-connected provider active ONLY when the
+  // agent doesn't already resolve to one. A credential connect must never move
+  // an existing chat off its provider (HOU-695) — that's the model picker's
+  // job (PUT /settings). Served credentials are hydrated first so "already
+  // connected" includes the workspace's connect-once credentials.
+  if (method === "POST" && path === "/settings/claim") {
+    const body = await readJson(req);
+    await syncServedCredentialSafe("settings-claim");
+    try {
+      json(res, 200, claimActiveProvider(String(body.provider || "")));
     } catch (e) {
       json(res, 400, { error: e instanceof Error ? e.message : String(e) });
     }

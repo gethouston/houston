@@ -227,6 +227,76 @@ export function activeProvider(): ProviderId | null {
   return pickActiveProvider(loadSettings().activeProvider, authed);
 }
 
+/**
+ * OpenCode's two gateways — `opencode` (Zen) and `opencode-go` (Go) — share ONE
+ * opencode.ai key: a connect stores the credential under both ids (the client
+ * fans the write out). The claim policy must treat them as a single connect —
+ * after an OpenCode connect the freshly-lit sibling gateway is NOT an "already
+ * connected" provider. Keep in sync with the frontend's `credentialSiblings`
+ * (packages/web engine-adapter/synthetic.ts).
+ */
+const OPENCODE_GATEWAYS: readonly ProviderId[] = ["opencode", "opencode-go"];
+
+function credentialSiblingIds(pid: ProviderId): ProviderId[] {
+  return OPENCODE_GATEWAYS.includes(pid) ? [...OPENCODE_GATEWAYS] : [pid];
+}
+
+/**
+ * Pure claim policy for a JUST-CONNECTED credential (IO wrapper:
+ * `claimActiveProvider`). Connecting a provider is NOT a model pick (HOU-695):
+ * an agent that already resolves to a provider — a saved pick, or the
+ * first-connected fallback serving a fresh agent — must keep it, or every open
+ * chat silently switches onto the new credential (and its quota errors: an
+ * OpenCode key pasted mid-Codex-chat used to answer — and bill — the next turn
+ * on OpenCode). Switching providers is exclusively the model picker's job.
+ *
+ * Returns the provider to SAVE, or `null` to leave settings untouched:
+ * - something saved → `null`. Even a logged-out saved pick stays: the turn
+ *   surfaces its reconnect card (`pickActiveProvider`), and the picker — which
+ *   only offers connected providers — is the explicit way onto the new one.
+ * - nothing saved, another provider (outside the connect's shared-key gateway
+ *   siblings) already connected → THAT provider, now pinned. It was already
+ *   serving turns via the first-connected fallback; writing it down keeps
+ *   registry order from drifting the fallback onto the newcomer.
+ * - nothing saved, nothing else connected → the just-connected provider (the
+ *   fresh-agent first connect, #483's "first turn works without a pick").
+ */
+export function pickClaimedProvider(
+  saved: ProviderId | undefined,
+  authedIds: ProviderId[],
+  connected: ProviderId,
+  connectedSiblings: ProviderId[],
+): ProviderId | null {
+  if (saved) return null;
+  const others = authedIds.filter((id) => !connectedSiblings.includes(id));
+  return others[0] ?? connected;
+}
+
+/**
+ * Claim the active provider for a just-connected credential — the connect-flow
+ * counterpart of `setSettings({activeProvider})`, gated by `pickClaimedProvider`
+ * so a connect can never move an agent that already has a provider (HOU-695).
+ * The route hydrates centrally-served credentials first (`/settings/claim` →
+ * `syncServedCredentialSafe`, kept there to avoid an ai↔auth import cycle) so
+ * "already connected" sees the workspace's connect-once credentials, not just
+ * this runtime's local file.
+ */
+export function claimActiveProvider(pid: string): Settings {
+  if (!isProvider(pid)) throw new Error(`unknown provider: ${pid}`);
+  const s = loadSettings();
+  const authed = PROVIDERS.filter((p) => providerConfigured(p.id)).map(
+    (p) => p.id,
+  );
+  const claim = pickClaimedProvider(
+    s.activeProvider,
+    authed,
+    pid,
+    credentialSiblingIds(pid),
+  );
+  if (!claim || claim === s.activeProvider) return s;
+  return setSettings({ activeProvider: claim });
+}
+
 export function setSettings(input: {
   activeProvider?: string;
   model?: string;

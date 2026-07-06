@@ -11,7 +11,7 @@ import {
   asSendInput,
   type TurnSendInput,
 } from "./turn-inputs";
-import { streamTurn } from "./turn-stream";
+import { streamTurn, type TurnWirePin } from "./turn-stream";
 import { ConversationVmOutput } from "./vm-output";
 
 /**
@@ -38,27 +38,32 @@ export function createTurnsModule(ctx: ModuleContext) {
 
   /**
    * Start a turn against the agent's sandbox client (`clientFor(agentId)` — the
-   * host nests turn/settings routes under `/agents/<id>`). Applies a
-   * model/effort switch first (the engine resolves the model from its own
-   * settings, so a per-turn pick must land there — and MUST pair the model with
-   * its owning provider, see {@link resolveModelSettings}), then fires the
-   * resumable stream into the composed output. Fire-and-forget like the desktop
-   * send: progress and settlement flow reactively through the VM.
+   * host nests turn/settings routes under `/agents/<id>`). A model/effort pick
+   * rides the send as a PER-TURN pin — the model paired with its owning
+   * provider (see {@link resolveModelSettings}; the runtime hard-fails a model
+   * under the wrong provider). Deliberately NOT a `setSettings` write: a pick
+   * for one conversation must never move the agent-wide active provider that
+   * every other conversation falls back to (HOU-695). Fires the resumable
+   * stream into the composed output; fire-and-forget like the desktop send —
+   * progress and settlement flow reactively through the VM.
    */
   const send = async (input: TurnSendInput): Promise<void> => {
     const client = ctx.clientFor(input.agentId ?? "");
-    // Remember the provider the pick resolved to: it labels the typed
-    // reconnect card when the runtime refuses the send as not-connected
+    // Resolve the pick's owning provider: it rides the wire pin AND labels the
+    // typed reconnect card when the runtime refuses the send as not-connected
     // (the refusal itself can't name a provider — nothing is connected).
-    let provider: string | undefined;
+    let pin: TurnWirePin | undefined;
     if (input.model !== undefined || input.effort !== undefined) {
-      const settings = await resolveModelSettings(
+      const resolved = await resolveModelSettings(
         client,
         input.model,
         input.effort,
       );
-      await client.setSettings(settings);
-      provider = settings.activeProvider;
+      pin = {
+        provider: resolved.activeProvider,
+        model: resolved.model,
+        effort: resolved.effort,
+      };
     }
     const output = new MultiplexFeedOutput([vm, ...external]);
     void streamTurn(
@@ -68,7 +73,7 @@ export function createTurnsModule(ctx: ModuleContext) {
       input.text,
       output,
       registry,
-      { nonce: input.nonce, provider },
+      { nonce: input.nonce, provider: pin?.provider, pin },
     );
   };
 
@@ -191,7 +196,11 @@ export type {
   TurnObserveInput,
   TurnSendInput,
 } from "./turn-inputs";
-export { type StreamTurnOptions, streamTurn } from "./turn-stream";
+export {
+  type StreamTurnOptions,
+  streamTurn,
+  type TurnWirePin,
+} from "./turn-stream";
 export {
   type ConversationVM,
   ConversationVmOutput,
