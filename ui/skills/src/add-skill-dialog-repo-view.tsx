@@ -116,11 +116,19 @@ export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
                            disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
+            {/* Fixed width across every label ("Find skills" / "Install N" /
+                spinner) and both branches. The button is right-pinned by the
+                flex-1 input, so any width change slides its LEFT edge; on the
+                dialog's frosted `backdrop-filter` surface WebKit fails to
+                invalidate the vacated rounded cap and leaves a dark ghost of
+                the old fill (HOU skills-from-GitHub bug). A stable width means
+                nothing is ever vacated. min-w-32 = 128px clears the widest
+                label (es/pt "Buscar skills" ~115px). */}
             {stage.kind === "input" || stage.kind === "loading" ? (
               <Button
                 onClick={handleDiscover}
                 disabled={!source.trim() || isLoading}
-                className="rounded-full shrink-0"
+                className="rounded-full shrink-0 min-w-32"
               >
                 {isLoading ? <Spinner className="size-4" /> : l.findSkills}
               </Button>
@@ -128,7 +136,7 @@ export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
               <Button
                 onClick={handleInstall}
                 disabled={selected.size === 0 || isInstalling}
-                className="rounded-full shrink-0"
+                className="rounded-full shrink-0 min-w-32"
               >
                 {isInstalling ? (
                   <Spinner className="size-4" />

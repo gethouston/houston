@@ -31,6 +31,16 @@ export function authStatusBody() {
   return state.authStatusFor(state.FLAT_KEY);
 }
 
+/** Canned repo skills for the Add Skills GitHub tab (list-from-repo). A dozen
+ *  so the install button reads a two-digit "Install 12" the test can compare
+ *  against "Install 0" after a deselect-all. */
+const REPO_SKILLS = Array.from({ length: 12 }, (_, i) => ({
+  id: `repo-skill-${i}`,
+  name: `Repo Skill ${i + 1}`,
+  description: `Canned repo skill number ${i + 1}`,
+  path: `skills/repo-skill-${i}/SKILL.md`,
+}));
+
 function makeTitle(text: string): string {
   return (
     text.replace(/\s+/g, " ").trim().split(" ").slice(0, 6).join(" ") ||
@@ -92,9 +102,24 @@ export function handleAgents(
       return noContent(405);
     }
 
+    case "skills": {
+      // Marketplace + repo reads are agent-scoped (PR #706). Model the GitHub
+      // "list skills from a repo" then "install the selected ones" flow the
+      // Add Skills dialog drives, so the UI test can exercise it end to end.
+      if (rest[2] === "repo" && rest[3] === "list" && method === "POST")
+        return json(REPO_SKILLS);
+      if (rest[2] === "repo" && rest[3] === "install" && method === "POST") {
+        const picked = Array.isArray(body?.skills) ? body.skills : [];
+        return json(
+          picked.map((s) => String((s as { name?: string }).name ?? "skill")),
+        );
+      }
+      if (method === "GET") return json({ items: [] });
+      return noContent(); // create/update/delete/run — accepted no-ops
+    }
+
     case "routines":
     case "routine_runs":
-    case "skills":
       if (method === "GET") return json({ items: [] });
       return noContent(); // create/update/delete/run — accepted no-ops
 
