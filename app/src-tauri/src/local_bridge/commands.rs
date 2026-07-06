@@ -7,7 +7,7 @@ use tauri::{AppHandle, Manager};
 use super::state::{self, SavedBridgeTarget};
 use super::{
     detection, keys, launch, origin_of, stop_internal, BridgeStatusKind, BridgeStatusPayload,
-    DetectedServer, LaunchParams, StartBridgeResult, STATUS,
+    DetectedServer, LaunchParams, StartBridgeResult, BRIDGE_OP, STATUS,
 };
 
 /// Probe the well-known local model-server ports and report what's running.
@@ -39,6 +39,10 @@ pub async fn start_local_bridge(
     // handed back by `saved_bridge_target`. Absent → derived from the origin.
     app_name: Option<String>,
 ) -> Result<StartBridgeResult, String> {
+    // Serialize the whole lifecycle: hold BRIDGE_OP across launch AND the
+    // descriptor write so no concurrent reconnect/stop can interleave (see the
+    // static's doc for the crossed-port hang this prevents).
+    let _op = BRIDGE_OP.lock().await;
     // Resolve the bundled frpc BEFORE starting anything, so a missing binary
     // fails fast without leaking a listener.
     let frpc_binary = resolve_frpc(&app)?;
@@ -86,6 +90,9 @@ pub async fn reconnect_local_bridge(
     subdomain: String,
     token: String,
 ) -> Result<StartBridgeResult, String> {
+    // Serialize against a concurrent start/stop — a boot auto-reconnect and a
+    // manual connect must not run launch() at the same time (see BRIDGE_OP).
+    let _op = BRIDGE_OP.lock().await;
     let desc = state::load()?
         .ok_or_else(|| "no saved local-bridge to reconnect — start one first".to_string())?;
     let frpc_binary = resolve_frpc(&app)?;
@@ -120,6 +127,9 @@ pub fn saved_bridge_target() -> Result<Option<SavedBridgeTarget>, String> {
 /// we never auto-reconnect after an explicit disconnect. Idempotent.
 #[tauri::command]
 pub async fn stop_local_bridge(app: AppHandle) -> Result<(), String> {
+    // Same serializer: a stop must not race a concurrent start/reconnect, or it
+    // could tear down a bridge the other op is mid-way through standing up.
+    let _op = BRIDGE_OP.lock().await;
     stop_internal(&app)?;
     state::delete()
 }

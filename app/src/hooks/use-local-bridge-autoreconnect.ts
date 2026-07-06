@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { providerAppearsConnected } from "../components/shell/provider-reconnect-state";
 import {
+  isBridgeOpInFlight,
   LOCAL_PROVIDER_ID,
   reconnectLocalModel,
 } from "../lib/local-model-connect";
@@ -39,6 +40,11 @@ export function useLocalBridgeAutoReconnect(enabled: boolean): void {
         return null;
       });
       if (!savedTarget) return;
+
+      // A manual connect/reconnect is already running — don't fire a second,
+      // redundant lifecycle op (the native side serializes them, but skipping
+      // avoids a needless teardown-rebuild). Closes the status-read TOCTOU.
+      if (isBridgeOpInFlight()) return;
 
       // Already up (native side kept it, or a prior mount reconnected)? Nothing
       // to do — never restart a healthy bridge.
