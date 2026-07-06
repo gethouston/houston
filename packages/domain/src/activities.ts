@@ -1,4 +1,9 @@
-import type { Activity, ActivityUpdate, NewActivity } from "@houston/protocol";
+import type {
+  Activity,
+  ActivityUpdate,
+  NewActivity,
+  PendingInteraction,
+} from "@houston/protocol";
 import { docKey } from "./layout";
 import {
   type DocDiagnostic,
@@ -18,6 +23,15 @@ export const ACTIVITY_STATUSES = [
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
+
+/** Validate the pending_interaction discriminated union (mirrors the schema):
+ *  a `question` needs a `question` string, a `connect` needs a `toolkit`. */
+const isValidPendingInteraction = (v: unknown): v is PendingInteraction => {
+  if (!isRecord(v)) return false;
+  if (v.kind === "question") return typeof v.question === "string";
+  if (v.kind === "connect") return typeof v.toolkit === "string";
+  return false;
+};
 
 /**
  * Normalize a raw activity array (agents write this file with file tools, so
@@ -45,7 +59,18 @@ export function normalizeActivities(
       typeof entry.title === "string" &&
       typeof entry.status === "string"
     ) {
-      items.push({ description: "", ...entry } as Activity);
+      const activity = { description: "", ...entry } as Activity;
+      if (
+        entry.pending_interaction !== undefined &&
+        !isValidPendingInteraction(entry.pending_interaction)
+      ) {
+        delete activity.pending_interaction;
+        diagnostics.push({
+          key,
+          message: `dropped invalid pending_interaction on activity ${entry.id}: ${JSON.stringify(entry.pending_interaction)?.slice(0, 120)}`,
+        });
+      }
+      items.push(activity);
     } else {
       diagnostics.push({
         key,
@@ -99,10 +124,17 @@ export function applyActivityUpdate(
   update: ActivityUpdate,
   nowIso: string,
 ): Activity {
+  const { pending_interaction, ...rest } = update;
   const defined = Object.fromEntries(
-    Object.entries(update).filter(([, v]) => v !== undefined),
+    Object.entries(rest).filter(([, v]) => v !== undefined),
   );
-  return { ...current, ...defined, updated_at: nowIso } as Activity;
+  const next = { ...current, ...defined, updated_at: nowIso } as Activity;
+  if (pending_interaction === null) {
+    delete next.pending_interaction;
+  } else if (pending_interaction !== undefined) {
+    next.pending_interaction = pending_interaction;
+  }
+  return next;
 }
 
 export function upsertById<T extends { id: string }>(items: T[], item: T): T[] {

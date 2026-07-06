@@ -22,7 +22,39 @@
       "routine_run_id": { "type": "string" },
       "updated_at": { "type": "string", "format": "date-time" },
       "provider": { "type": "string" },
-      "model": { "type": "string" }
+      "model": { "type": "string" },
+      "pending_interaction": {
+        "type": "object",
+        "description": "The one thing this mission is waiting on the user for.",
+        "required": ["kind"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["question", "connect"] },
+          "question": { "type": "string" },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "type": "string" },
+                "label": { "type": "string" }
+              }
+            }
+          },
+          "toolkit": { "type": "string" },
+          "reason": { "type": "string" }
+        },
+        "oneOf": [
+          {
+            "properties": { "kind": { "const": "question" } },
+            "required": ["question"]
+          },
+          {
+            "properties": { "kind": { "const": "connect" } },
+            "required": ["toolkit"]
+          }
+        ]
+      }
     },
     "additionalProperties": false
   }
