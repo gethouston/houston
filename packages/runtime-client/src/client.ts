@@ -122,6 +122,20 @@ export class HoustonEngineClient {
       body: JSON.stringify(input),
     });
   }
+  /**
+   * Claim the active provider after a credential connect: makes `provider`
+   * active ONLY when the agent doesn't already resolve to one (nothing saved,
+   * nothing else connected). A connect must never move an existing chat off
+   * its provider (HOU-695) — switching is `setSettings`' (the model picker's)
+   * job. Returns the settings that ended up saved either way.
+   */
+  claimActiveProvider(provider: ProviderId) {
+    return this.json<Settings>("/settings/claim", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider }),
+    });
+  }
   authStatus() {
     return this.json<AuthStatus>("/auth/status");
   }

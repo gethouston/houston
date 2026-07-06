@@ -13,6 +13,7 @@ import {
 import {
   PROVIDERS,
   pickActiveProvider,
+  pickClaimedProvider,
   providerAuthMethod,
   providerDefaultModel,
   resolveModel,
@@ -139,6 +140,72 @@ test("pickActiveProvider uses the saved provider when it is connected", () => {
   expect(
     pickActiveProvider("openai-codex", ["openai-codex", "openrouter"]),
   ).toBe("openai-codex");
+});
+
+test("pickClaimedProvider never moves a saved provider (HOU-695)", () => {
+  // THE BUG: chatting on Codex, the user pastes an OpenCode key (which lights
+  // BOTH gateways). The connect must NOT flip the agent's provider — the next
+  // turn in every open chat stays on Codex instead of answering (billing,
+  // quota-erroring) on OpenCode.
+  expect(
+    pickClaimedProvider(
+      "openai-codex",
+      ["openai-codex", "opencode", "opencode-go"],
+      "opencode",
+      ["opencode", "opencode-go"],
+    ),
+  ).toBeNull();
+  // Even a LOGGED-OUT saved pick stays: the turn surfaces its reconnect card
+  // (pickActiveProvider's sticky rule) and the model picker is the explicit
+  // way onto the new provider — a connect is not a model pick.
+  expect(
+    pickClaimedProvider(
+      "openai-codex",
+      ["opencode", "opencode-go"],
+      "opencode",
+      ["opencode", "opencode-go"],
+    ),
+  ).toBeNull();
+});
+
+test("pickClaimedProvider pins the already-serving fallback, not the newcomer", () => {
+  // Nothing saved but another provider already serves turns via the
+  // first-connected fallback: the connect pins THAT provider, so registry
+  // order can't silently drift the fallback onto the new credential.
+  expect(
+    pickClaimedProvider(
+      undefined,
+      ["anthropic", "opencode", "opencode-go"],
+      "opencode",
+      ["opencode", "opencode-go"],
+    ),
+  ).toBe("anthropic");
+  // Same protection when the newcomer sorts FIRST in registry order: the
+  // agent was serving turns on OpenCode (the only connected provider before
+  // this anthropic connect), so OpenCode gets pinned — not anthropic.
+  expect(
+    pickClaimedProvider(
+      undefined,
+      ["anthropic", "opencode", "opencode-go"],
+      "anthropic",
+      ["anthropic"],
+    ),
+  ).toBe("opencode");
+});
+
+test("pickClaimedProvider claims for a first connect on a fresh agent", () => {
+  // Nothing saved, nothing else connected (the just-connected credential and
+  // its shared-key sibling don't count) → claim, so the first chat works
+  // without a manual pick (#483).
+  expect(
+    pickClaimedProvider(undefined, ["opencode", "opencode-go"], "opencode", [
+      "opencode",
+      "opencode-go",
+    ]),
+  ).toBe("opencode");
+  expect(pickClaimedProvider(undefined, ["google"], "google", ["google"])).toBe(
+    "google",
+  );
 });
 
 test("pickActiveProvider falls back to the first connected ONLY when nothing is saved", () => {

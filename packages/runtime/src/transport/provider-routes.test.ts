@@ -25,6 +25,65 @@ function mockRes(): {
   return { res, out };
 }
 
+/** A POST req whose async iteration yields one JSON body chunk (readJson's shape). */
+function mockPostReq(body: unknown): IncomingMessage {
+  return {
+    headers: {},
+    async *[Symbol.asyncIterator]() {
+      yield Buffer.from(JSON.stringify(body));
+    },
+  } as unknown as IncomingMessage;
+}
+
+test("POST /settings/claim claims a fresh agent but never moves a saved provider (HOU-695)", async () => {
+  const prevDataDir = process.env.HOUSTON_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), "houston-claim-route-"));
+  process.env.HOUSTON_DATA_DIR = dataDir;
+
+  try {
+    vi.resetModules();
+    const { handleProviderRoute } = await import("./provider-routes");
+    const claim = async (provider: string) => {
+      const { res, out } = mockRes();
+      expect(
+        await handleProviderRoute({
+          method: "POST",
+          path: "/settings/claim",
+          url: new URL("http://runtime.test/settings/claim"),
+          req: mockPostReq({ provider }),
+          res,
+        }),
+      ).toBe(true);
+      return out;
+    };
+
+    // Fresh agent: nothing saved, nothing connected → the first connect claims,
+    // so the first chat runs without a manual model pick (#483).
+    let out = await claim("google");
+    expect(out.status).toBe(200);
+    expect((out.body as { activeProvider?: string }).activeProvider).toBe(
+      "google",
+    );
+
+    // A later connect must NOT move the saved pick — pasting an OpenCode key
+    // while the agent chats on another provider used to flip every open chat
+    // onto OpenCode (and its quota errors). The claim is a no-op.
+    out = await claim("opencode");
+    expect(out.status).toBe(200);
+    expect((out.body as { activeProvider?: string }).activeProvider).toBe(
+      "google",
+    );
+
+    // Junk provider ids fail loudly, exactly like PUT /settings.
+    out = await claim("gemini-cli");
+    expect(out.status).toBe(400);
+    expect((out.body as { error?: string }).error).toMatch(/unknown provider/);
+  } finally {
+    restoreEnv("HOUSTON_DATA_DIR", prevDataDir);
+    vi.resetModules();
+  }
+});
+
 test("GET /providers hydrates served credentials before listing providers", async () => {
   const prevDataDir = process.env.HOUSTON_DATA_DIR;
   const prevControlPlaneUrl = process.env.HOUSTON_CONTROL_PLANE_URL;
