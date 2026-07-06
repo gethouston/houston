@@ -19,6 +19,7 @@ import type {
   PendingWarmingSend,
   ProvisioningEntry,
 } from "./agent-provisioning";
+import { getEngine } from "./engine";
 import { showErrorToast } from "./error-toast";
 import i18n from "./i18n";
 import { logger } from "./logger";
@@ -118,7 +119,19 @@ export async function flushWarmingSends(
     // a no-op. A failure loses only the card — the message still delivers.
     if (send.row) {
       try {
-        await tauriActivity.createWithId(entry.agentPath, send.row);
+        const created = await tauriActivity.createWithId(
+          entry.agentPath,
+          send.row,
+        );
+        if (created.id !== send.row.id) {
+          // Version skew: an engine that predates client-supplied ids
+          // (HOU-693) assigned its own. Stamp our session key on its row so
+          // the board card still opens THIS conversation and the turn's
+          // status writes still resolve (both match session_key first).
+          await getEngine().updateActivity(entry.agentPath, created.id, {
+            session_key: send.sessionKey,
+          });
+        }
       } catch {
         showErrorToast(
           "warming_sends_row",

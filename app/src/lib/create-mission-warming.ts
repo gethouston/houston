@@ -26,6 +26,7 @@ import type {
   CreateMissionOptions,
   CreateMissionResult,
 } from "./create-mission";
+import { getEngine } from "./engine";
 import { showErrorToast } from "./error-toast";
 import i18n from "./i18n";
 import { fallbackMissionTitle } from "./mission-title";
@@ -73,21 +74,28 @@ export function createMissionWhileWarming(
     // The agent turned ready between the caller's provisioning check and the
     // queue — the engine answers now: write the row and send like any turn.
     void (async () => {
-      await tauriActivity
-        .createWithId(agent.folderPath, {
+      try {
+        const created = await tauriActivity.createWithId(agent.folderPath, {
           id: conversationId,
           title,
           description: text,
           agent: opts.agentMode,
           provider: opts.providerOverride,
           model: opts.modelOverride,
-        })
-        .catch(() => {
-          showErrorToast(
-            "create_mission_warming",
-            i18n.t("chat:errors.missionRowFailed"),
-          );
         });
+        if (created.id !== conversationId) {
+          // Version skew: the engine predates client-supplied ids (HOU-693) —
+          // stamp our session key on its row so the card opens this chat.
+          await getEngine().updateActivity(agent.folderPath, created.id, {
+            session_key: sessionKey,
+          });
+        }
+      } catch {
+        showErrorToast(
+          "create_mission_warming",
+          i18n.t("chat:errors.missionRowFailed"),
+        );
+      }
       const prompt = opts.buildPrompt
         ? await opts.buildPrompt(conversationId)
         : text;
