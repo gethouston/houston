@@ -14,7 +14,11 @@ export interface TurnSendInput {
   text: string;
   /** Override the wire nonce (default: a fresh random nonce). */
   nonce?: string;
-  /** Switch the agent's active model for this turn onward. */
+  /**
+   * Model to run THIS turn on (a per-turn pin, paired with its owning provider
+   * on the wire). Never moves the agent-wide settings other conversations
+   * fall back to (HOU-695).
+   */
   model?: string;
   /** Reasoning effort to apply alongside `model`. */
   effort?: string;

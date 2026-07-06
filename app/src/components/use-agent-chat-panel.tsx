@@ -249,9 +249,33 @@ export function useAgentChatPanel({
       ) ?? null
     );
   }, [activities, selectedSessionKey]);
-  const activityProvider = selectedActivity?.provider ?? null;
-  const activityModel = normalizeLegacyModel(selectedActivity?.model ?? null);
   const selectedActivityId = selectedActivity?.id ?? null;
+
+  // A pick applied to the OPEN chat, echoed locally until the activity query
+  // reflects the write (the optimistic flip for the dropdown). Scoped to one
+  // activity id so it can never leak into another chat's dropdown.
+  const [pickedPin, setPickedPin] = useState<{
+    activityId: string;
+    provider: string;
+    model: string;
+  } | null>(null);
+  useEffect(() => {
+    if (!pickedPin) return;
+    if (
+      selectedActivity?.id === pickedPin.activityId &&
+      selectedActivity.provider === pickedPin.provider &&
+      selectedActivity.model === pickedPin.model
+    )
+      setPickedPin(null);
+  }, [selectedActivity, pickedPin]);
+
+  const pinForSelected =
+    pickedPin && pickedPin.activityId === selectedActivityId ? pickedPin : null;
+  const activityProvider =
+    pinForSelected?.provider ?? selectedActivity?.provider ?? null;
+  const activityModel = normalizeLegacyModel(
+    pinForSelected?.model ?? selectedActivity?.model ?? null,
+  );
 
   // Which providers the user is actually logged into (reactive + cached). The
   // fallback below picks an authenticated one rather than a stale preference,
@@ -295,6 +319,29 @@ export function useAgentChatPanel({
     effectiveModel,
     agentEffort,
   );
+
+  // Converge legacy pin-less chats (created before per-conversation pins):
+  // stamp the provider/model this open conversation currently displays — and
+  // would send with — onto its activity, so a later change to the agent
+  // default can never move a chat that already ran (HOU-695). Chats created
+  // now are stamped at creation (createMission); this covers the older ones,
+  // once per activity per mount. Background convergence, not a user action:
+  // a failure only postpones the stamp, so it logs instead of toasting.
+  const stampedActivityIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!path || !selectedActivity || selectedActivity.provider) return;
+    if (!hasMessages) return;
+    if (stampedActivityIds.current.has(selectedActivity.id)) return;
+    stampedActivityIds.current.add(selectedActivity.id);
+    tauriActivity
+      .update(path, selectedActivity.id, {
+        provider: effectiveProvider,
+        model: effectiveModel,
+      })
+      .catch((err) => {
+        console.error("[chat] failed to pin the conversation's model:", err);
+      });
+  }, [path, selectedActivity, hasMessages, effectiveProvider, effectiveModel]);
 
   // ── Context-usage indicator ───────────────────────────────────────────
   // Latest turn's normalized usage from this session's feed, divided by a
@@ -342,27 +389,39 @@ export function useAgentChatPanel({
     [sessionFeedItems],
   );
 
-  // Persist a provider/model choice (agent config, the per-mission activity
-  // override, and the last-used preference) with an optimistic picker flip.
-  // Shared by the plain pick and the post-consent switch path.
+  // Persist a provider/model choice with an optimistic picker flip. Shared by
+  // the plain pick and the post-consent switch path.
+  //
+  // Scope is the whole point (HOU-695): a pick inside an OPEN chat pins THAT
+  // conversation only — its activity record, which every send forwards as the
+  // turn's wire pin — and never touches the agent config other chats fall back
+  // to. Only a pick in a fresh, message-less composer (no activity yet) writes
+  // the agent config: that's the default the NEXT chats start on, and the
+  // mission created on first send stamps it onto its own activity.
   const applyProviderModel = useCallback(
     async (prov: string, mod: string) => {
-      setAgentProvider(prov);
-      setAgentModel(mod);
       try {
-        if (path) {
-          const cfg = await tauriConfig.read(path);
-          await tauriConfig.write(path, {
-            ...cfg,
-            provider: prov as "anthropic" | "openai",
+        if (path && selectedActivityId) {
+          setPickedPin({
+            activityId: selectedActivityId,
+            provider: prov,
             model: mod,
           });
-        }
-        if (path && selectedActivityId) {
           await tauriActivity.update(path, selectedActivityId, {
             provider: prov,
             model: mod,
           });
+        } else {
+          setAgentProvider(prov);
+          setAgentModel(mod);
+          if (path) {
+            const cfg = await tauriConfig.read(path);
+            await tauriConfig.write(path, {
+              ...cfg,
+              provider: prov as "anthropic" | "openai",
+              model: mod,
+            });
+          }
         }
         await tauriProvider.setLastUsed(prov, mod);
       } catch (err) {

@@ -71,6 +71,7 @@ import {
   syntheticWorkspace,
   toNewProvider,
   toOldProvider,
+  wireTurnPin,
 } from "./synthetic";
 import { historyToFeed, isConversationNotFound } from "./translate";
 import {
@@ -1321,6 +1322,10 @@ export class HoustonClient {
     if (maybeQueueSend(path, req)) return { sessionKey: req.sessionKey };
     // Fire-and-stream: events flow to the feed store over the bus/WS adapter.
     // The board-status setter is cloud-aware (writes land where the board reads).
+    // The request's provider/model/effort (the chat's OWN pick, app dialect)
+    // ride the send as a per-turn wire pin in engine ids (wireTurnPin), so the
+    // turn runs on this conversation's provider — not the agent-wide settings
+    // some other chat or connect flow last wrote (HOU-695).
     void streamTurn(
       engine,
       path,
@@ -1330,6 +1335,7 @@ export class HoustonClient {
       req.provider,
       undefined,
       req.suppressUserBubble,
+      wireTurnPin(req),
     ).finally(() => {
       // The turn settled (or failed): release anything queued behind it.
       flushQueuedSends(path, req.sessionKey, (r) => {

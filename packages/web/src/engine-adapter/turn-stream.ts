@@ -9,6 +9,7 @@ import {
   observeConversation as sdkObserveConversation,
   streamTurn as sdkStreamTurn,
   streamKey,
+  type TurnWirePin,
 } from "@houston/sdk";
 import { createBusFeedOutput } from "./feed-output";
 import { conversationStore, conversationVm } from "./vm";
@@ -75,7 +76,9 @@ export function seedConversationVm(
  * already bound to this turn's conversation, so the FeedOutput ignores the
  * (agentPath, sessionKey) it re-supplies. `provider` is the chat's composer
  * pick (frontend id) — it labels the typed reconnect card when the runtime
- * refuses the send as not-connected.
+ * refuses the send as not-connected. `pin` is the same pick in ENGINE ids,
+ * sent on the wire so the turn runs on the conversation's own provider/model
+ * instead of the agent-wide settings (HOU-695) — see `wireTurnPin`.
  */
 export function streamTurn(
   engine: HoustonEngineClient,
@@ -86,6 +89,7 @@ export function streamTurn(
   provider?: string,
   tuning?: StreamTuning,
   suppressUserBubble?: boolean,
+  pin?: TurnWirePin,
 ): Promise<void> {
   return sdkStreamTurn(
     engine,
@@ -98,6 +102,7 @@ export function streamTurn(
       provider,
       tuning,
       suppressUserBubble,
+      pin,
     },
   );
 }

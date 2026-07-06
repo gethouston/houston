@@ -19,6 +19,19 @@ import { TurnSink } from "./turn-sink";
 export { observeConversation } from "./observe-stream";
 export type { StreamRegistry, StreamTuning } from "./stream-registry";
 
+/**
+ * Per-turn provider/model/effort pin, in ENGINE ids, sent on the send wire.
+ * The runtime runs the turn on exactly this provider/model — never auth-gated
+ * onto another one — the same contract as a routine's pin. This is what keeps
+ * every conversation on ITS OWN picked provider regardless of the agent-wide
+ * settings (HOU-695); omitted fields fall back to the runtime's resolution.
+ */
+export interface TurnWirePin {
+  provider?: string;
+  model?: string;
+  effort?: string;
+}
+
 /** Optional knobs for {@link streamTurn}. */
 export interface StreamTurnOptions {
   /** Override the wire nonce (default: a fresh UUID). Its `user` echo names our turnId. */
@@ -27,8 +40,11 @@ export interface StreamTurnOptions {
    * The provider this turn targets (caller's id dialect). Only labels the
    * typed reconnect card when the runtime refuses the send as not-connected —
    * the runtime can't name a provider in that refusal (nothing is connected).
+   * The pin actually sent on the wire is `pin` (engine ids), not this.
    */
   provider?: string;
+  /** The wire pin this turn runs on (see {@link TurnWirePin}). */
+  pin?: TurnWirePin;
   /** Reconnect tuning (tests inject fast backoff). */
   tuning?: StreamTuning;
   /**
@@ -132,7 +148,7 @@ export async function streamTurn(
     }
     after = prior.lastSeq;
     try {
-      await engine.sendMessage(sessionKey, prompt, { nonce });
+      await engine.sendMessage(sessionKey, prompt, { nonce, ...opts.pin });
     } catch (e) {
       registry.endSend(key);
       output.pushFeedItem(agentPath, sessionKey, {
@@ -196,7 +212,7 @@ export async function streamTurn(
     streaming.catch(() => {});
     if (!sent) {
       try {
-        await engine.sendMessage(sessionKey, prompt, { nonce });
+        await engine.sendMessage(sessionKey, prompt, { nonce, ...opts.pin });
         sink.sendAccepted();
       } catch (e) {
         // A definitive failure (engine verdict / our abort) settles below.

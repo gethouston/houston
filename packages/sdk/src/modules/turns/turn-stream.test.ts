@@ -44,6 +44,8 @@ function fakeEngine(
   const afters: Array<number | undefined> = [];
   /** The nonce each sendMessage carried — handlers echo it on `user` frames. */
   const nonces: Array<string | undefined> = [];
+  /** The full options each sendMessage carried (the wire pin assertions). */
+  const sendOpts: Array<Record<string, unknown> | undefined> = [];
   const engine = {
     async streamEvents(_id: string, streamOpts: EventStreamOptions) {
       const h = handlers[Math.min(afters.length, handlers.length - 1)];
@@ -53,16 +55,17 @@ function fakeEngine(
     async sendMessage(
       _id: string,
       _text: string,
-      sendOpts?: { nonce?: string },
+      messageOpts?: { nonce?: string },
     ) {
-      nonces.push(sendOpts?.nonce);
+      nonces.push(messageOpts?.nonce);
+      sendOpts.push(messageOpts as Record<string, unknown> | undefined);
       if (opts.sendError !== undefined) throw opts.sendError;
     },
     async getHistory() {
       return { id: "c", title: "", messages: history };
     },
   } as unknown as HoustonEngineClient;
-  return { engine, afters, nonces };
+  return { engine, afters, nonces, sendOpts };
 }
 
 // Each test drives its own instance registry (no package global); a test that
@@ -428,6 +431,104 @@ test("a turn we send supersedes an active observer — no double subscription", 
   expect(observerAborted).toBe(true);
   expect(afters).toHaveLength(2); // observer + turn, never both live
   expect(finals(items)).toHaveLength(1); // exactly one settle
+});
+
+// ── Per-turn wire pin (HOU-695) ──────────────────────────────────────────────
+
+test("the wire pin rides sendMessage so the turn runs on the conversation's own provider", async () => {
+  const { engine, sendOpts } = fakeEngine([
+    (o) => {
+      o.onEvent(sync(false, "", 0));
+      o.onEvent({ type: "done", data: null, seq: 1 });
+    },
+  ]);
+  const { output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-pin",
+    "hi",
+    output,
+    registry,
+    {
+      tuning: fast,
+      pin: { provider: "openai-codex", model: "gpt-5.5", effort: "high" },
+    },
+  );
+
+  // The pin reaches the wire exactly as given — this is what keeps a chat on
+  // ITS picked provider regardless of the agent-wide settings.
+  expect(sendOpts[0]).toMatchObject({
+    provider: "openai-codex",
+    model: "gpt-5.5",
+    effort: "high",
+  });
+});
+
+test("the wire pin also rides the observer-handoff send", async () => {
+  const { engine, afters, sendOpts } = fakeEngine([
+    (o) => {
+      o.onEvent(sync(true, "partial", 4));
+      return hang(o);
+    },
+    (o) => {
+      o.onEvent({ type: "done", data: null, seq: 5 });
+    },
+  ]);
+  const { output } = makeOutput();
+
+  observeConversation(
+    engine,
+    "Houston/Bo",
+    "activity-pin-handoff",
+    output,
+    1,
+    registry,
+    fast,
+  );
+  await waitFor(() => afters.length === 1);
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-pin-handoff",
+    "hi",
+    output,
+    registry,
+    { tuning: fast, pin: { provider: "anthropic", model: "claude-opus-4-8" } },
+  );
+
+  expect(sendOpts[0]).toMatchObject({
+    provider: "anthropic",
+    model: "claude-opus-4-8",
+  });
+});
+
+test("a pin-less turn sends no provider/model fields (runtime resolution untouched)", async () => {
+  const { engine, sendOpts } = fakeEngine([
+    (o) => {
+      o.onEvent(sync(false, "", 0));
+      o.onEvent({ type: "done", data: null, seq: 1 });
+    },
+  ]);
+  const { output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-nopin",
+    "hi",
+    output,
+    registry,
+    {
+      tuning: fast,
+    },
+  );
+
+  const opts = sendOpts[0] as Record<string, unknown>;
+  expect(opts.provider).toBeUndefined();
+  expect(opts.model).toBeUndefined();
+  expect(opts.effort).toBeUndefined();
 });
 
 // ── Turn identity (turnId) ───────────────────────────────────────────────────
