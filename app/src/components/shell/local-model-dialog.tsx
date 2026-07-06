@@ -50,6 +50,8 @@ export function LocalModelDialog({ provider, onClose, onConnected }: Props) {
     selected,
     model,
     setModel,
+    reasoning,
+    setReasoning,
     selectServer,
     runDetect,
     connect,
@@ -100,6 +102,8 @@ export function LocalModelDialog({ provider, onClose, onConnected }: Props) {
             onSelectServer={selectServer}
             model={model}
             onSelectModel={setModel}
+            reasoning={reasoning}
+            onReasoningChange={setReasoning}
             onConnect={() => void connect()}
             onManual={goManual}
           />

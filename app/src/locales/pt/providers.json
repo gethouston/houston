@@ -152,6 +152,10 @@
       "modelLabel": "Modelo",
       "connect": "Conectar"
     },
+    "reasoning": {
+      "label": "Mostrar o raciocínio do modelo",
+      "help": "Ative isto para modelos de raciocínio (eles pensam antes de responder)."
+    },
     "error": {
       "body": "Algo deu errado ao conectar. Confira se o app ainda está aberto no seu computador e tente de novo.",
       "retry": "Tentar de novo"

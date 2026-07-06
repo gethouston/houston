@@ -1,7 +1,9 @@
 import { Button } from "@houston-ai/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useReasoningToggle } from "../../hooks/use-reasoning-toggle";
 import { connectManualEndpoint } from "../../lib/local-model-connect";
+import { ReasoningToggle } from "./local-model-dialog-parts";
 import {
   LabeledTextField,
   SecretField,
@@ -31,6 +33,14 @@ export function LocalModelManualForm({
   const [showKey, setShowKey] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { reasoning, setReasoning, applyModelDefault } = useReasoningToggle();
+
+  // Typing a model id re-applies the reasoning default until the user flips the
+  // toggle themselves (then their choice sticks).
+  const handleModelChange = (next: string) => {
+    setModel(next);
+    applyModelDefault(next);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +62,7 @@ export function LocalModelManualForm({
         model: trimmedModel,
         name: name.trim() || undefined,
         apiKey: key.trim() || undefined,
+        ...(reasoning ? { reasoning: true } : {}),
       });
       onConnected?.(trimmedModel);
       onClose();
@@ -79,7 +90,7 @@ export function LocalModelManualForm({
         label={t("openaiCompatible.modelLabel")}
         help={t("openaiCompatible.modelHelp")}
         value={model}
-        onChange={setModel}
+        onChange={handleModelChange}
         placeholder={t("openaiCompatible.modelPlaceholder")}
         disabled={submitting}
         mono
@@ -105,6 +116,12 @@ export function LocalModelManualForm({
         onToggleShow={() => setShowKey((v) => !v)}
         showLabel={t("openaiCompatible.show")}
         hideLabel={t("openaiCompatible.hide")}
+      />
+      <ReasoningToggle
+        id="lm-manual-reasoning"
+        checked={reasoning}
+        onChange={setReasoning}
+        disabled={submitting}
       />
 
       {error && (

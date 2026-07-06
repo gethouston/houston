@@ -1,4 +1,4 @@
-import { Button, Spinner } from "@houston-ai/core";
+import { Button, Spinner, Switch } from "@houston-ai/core";
 import { ExternalLink, Laptop } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { appDisplayName, type LocalModelKind } from "../../lib/local-model";
@@ -116,6 +116,48 @@ export function ErrorScreen({
         <ManualLink onClick={onManual} />
         <Button onClick={onRetry}>{t("localModel.error.retry")}</Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Opt-in "show the model's thinking" toggle, shared by the guided pick step and
+ * the manual form. On => the saved endpoint is marked as a reasoning model, so
+ * Houston surfaces its chain-of-thought. Accessible label + microcopy, design
+ * tokens only. `id` keeps the label association unique per host form.
+ */
+export function ReasoningToggle({
+  id = "lm-reasoning",
+  checked,
+  onChange,
+  disabled,
+}: {
+  id?: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  disabled?: boolean;
+}) {
+  const { t } = useTranslation("providers");
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-xl border border-border bg-secondary px-3 py-2.5">
+      <label
+        htmlFor={id}
+        className="flex min-w-0 flex-1 cursor-pointer flex-col"
+      >
+        <span className="text-[13px] font-medium text-foreground">
+          {t("localModel.reasoning.label")}
+        </span>
+        <span className="text-[11px] leading-relaxed text-muted-foreground">
+          {t("localModel.reasoning.help")}
+        </span>
+      </label>
+      <Switch
+        id={id}
+        checked={checked}
+        onCheckedChange={onChange}
+        disabled={disabled}
+        className="mt-0.5"
+      />
     </div>
   );
 }

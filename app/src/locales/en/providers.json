@@ -152,6 +152,10 @@
       "modelLabel": "Model",
       "connect": "Connect"
     },
+    "reasoning": {
+      "label": "Show the model's thinking",
+      "help": "Turn this on for reasoning models (they think before answering)."
+    },
     "error": {
       "body": "Something went wrong while connecting. Make sure the app is still open on your computer, then try again.",
       "retry": "Try again"
