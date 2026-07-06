@@ -1202,6 +1202,18 @@ export const tauriProvider = {
       getEngine().setProviderCustomEndpoint(endpoint),
     ),
   /**
+   * Mint a relay credential for the guided "connect a local model" flow: the
+   * gateway issues a short-lived tunnel token the desktop's frpc sidecar uses to
+   * expose the user's local model server to their CLOUD agent. Hosted + new
+   * engine only. A failure toasts the real reason with a Report-bug affordance
+   * (default `call` surfacing); the guided dialog also shows a calm retry state.
+   */
+  getTunnelCredentials: () =>
+    call<import("@houston-ai/engine-client").TunnelCredentials>(
+      "get_tunnel_credentials",
+      () => getEngine().getTunnelCredentials(),
+    ),
+  /**
    * Save a Gemini API key to `~/.gemini/.env` via the engine (legacy Rust /
    * desktop path). Errors surface through `call`'s standard rejection path;
    * the caller renders them with `errorMessage(err)` + `addToast`.

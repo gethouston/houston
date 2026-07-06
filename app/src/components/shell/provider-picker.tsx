@@ -23,7 +23,7 @@ import {
   tauriSystem,
 } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
-import { OpenAiCompatibleDialog } from "./openai-compatible-dialog";
+import { LocalModelDialog } from "./local-model-dialog";
 import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
 import { ComingSoonCard, ProviderCard } from "./provider-cards";
 import { ProviderLoginDialog } from "./provider-login-dialog";
@@ -427,7 +427,7 @@ export function ProviderPicker({ onSelect }: Props) {
 
       {copilotDialog}
 
-      <OpenAiCompatibleDialog
+      <LocalModelDialog
         provider={customEndpointDialog}
         onConnected={(m) => onSelect("openai-compatible", m)}
         onClose={() => setCustomEndpointDialog(null)}

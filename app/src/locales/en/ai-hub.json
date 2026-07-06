@@ -73,6 +73,7 @@
     "signedInWith": "Signed in with {{provider}}",
     "setDefault": "Set as default",
     "signOut": "Sign out",
+    "disconnect": "Disconnect",
     "connect": "Connect",
     "models": "Models",
     "searchModels": "Search models",

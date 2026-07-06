@@ -14,6 +14,7 @@ import { useAnalyticsSubscriber } from "./hooks/use-analytics-subscriber";
 import { useCanCreateAgents } from "./hooks/use-can-create-agents";
 import { useHoustonInit } from "./hooks/use-houston-init";
 import { useIntegrationSessionSync } from "./hooks/use-integration-session-sync";
+import { useLocalBridgeAutoReconnect } from "./hooks/use-local-bridge-autoreconnect";
 import { useMigrationReconnect } from "./hooks/use-migration-reconnect";
 import { useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
@@ -78,6 +79,11 @@ export default function App() {
   }, []);
 
   const { data: session, isLoading: sessionLoading } = useSession();
+
+  // Desktop boot: if this machine owns a local-model tunnel whose cloud endpoint
+  // is still active, quietly re-establish frpc (dead after a restart). Gated on a
+  // signed-in session — the reconnect mints hosted tunnel credentials.
+  useLocalBridgeAutoReconnect(Boolean(session));
 
   // Tag the user in PostHog AND Sentry on sign-in; reset on sign-out. The
   // install_id stays PostHog's distinct_id (the website UTM bridge + onboarding

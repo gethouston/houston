@@ -31,7 +31,21 @@ sentry = "0.42"
 # unconditionally in logging.rs even when SENTRY_DSN is empty.
 sentry-tracing = "0.42"
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
-reqwest = { version = "0.12", features = ["json", "rustls-tls", "blocking"], default-features = false }
+reqwest = { version = "0.12", features = ["json", "rustls-tls", "blocking", "stream"], default-features = false }
+# Local-bridge auth reverse-proxy (src/local_bridge/proxy.rs). hyper's server is
+# needed because reqwest gives us only a client; a real streaming SSE/chunked
+# proxy needs to OWN the inbound HTTP connection. hyper 1.x + hyper-util +
+# http-body-util are ALREADY in the tree (reqwest pulls them as its client
+# transport), so enabling the server features adds no new crates to compile.
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+bytes = "1"
+# `StreamExt::map` over reqwest's response `bytes_stream()` when piping the
+# upstream body back out unbuffered (SSE pass-through).
+futures-util = "0.3"
+# High-entropy proxy-key generation (src/local_bridge/keys.rs).
+rand = "0.9"
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }

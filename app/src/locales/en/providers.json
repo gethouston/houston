@@ -119,5 +119,52 @@
     "confirmTimeout": "Signed in to Claude, but Houston could not confirm the connection. Please try again.",
     "autoFailedTitle": "Couldn't finish connecting automatically",
     "autoFailedBody": "Paste a Claude setup token to finish connecting."
+  },
+  "localModel": {
+    "title": "Connect a local model",
+    "description": "Run a model on your own computer and let Houston use it. Houston takes care of the connection.",
+    "detecting": "Looking for model apps on your computer...",
+    "cancel": "Cancel",
+    "connecting": {
+      "title": "Connecting your model...",
+      "body": "This takes a few seconds. Keep the app open on your computer."
+    },
+    "empty": {
+      "body": "To run a model on your own computer, install one of these free apps, then open it:",
+      "apps": {
+        "lmstudio": "A friendly app for running models.",
+        "jan": "An open, easy model app.",
+        "ollama": "Popular and simple to set up."
+      },
+      "get": "Get it",
+      "reassure": "Once it's open, Houston takes care of the rest.",
+      "recheck": "Check again"
+    },
+    "pick": {
+      "body": "Houston found these on your computer. Pick the model you'd like to use.",
+      "modelsFound_one": "{{count}} model available",
+      "modelsFound_other": "{{count}} models available",
+      "modelLabel": "Model",
+      "connect": "Connect"
+    },
+    "error": {
+      "body": "Something went wrong while connecting. Make sure the app is still open on your computer, then try again.",
+      "retry": "Try again"
+    },
+    "manual": {
+      "title": "Enter details manually",
+      "description": "Already have a model server address? Enter it here.",
+      "link": "Enter details manually",
+      "back": "Back"
+    },
+    "status": {
+      "online": "Online",
+      "connecting": "Connecting...",
+      "offline": "Offline",
+      "error": "Not reachable",
+      "offlineHint": "Your model isn't reachable right now. Make sure {{app}} is open on this computer.",
+      "yourApp": "the app on your computer",
+      "reconnect": "Reconnect"
+    }
   }
 }

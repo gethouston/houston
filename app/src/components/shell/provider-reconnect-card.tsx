@@ -5,7 +5,7 @@ import { tauriProvider } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 import { RowCard } from "../cards/row-card";
 import { RowCardButton } from "../cards/row-card-button";
-import { OpenAiCompatibleDialog } from "./openai-compatible-dialog";
+import { LocalModelDialog } from "./local-model-dialog";
 import { ProviderGlyph } from "./provider-logos";
 import {
   providerIsAuthenticated,
@@ -152,7 +152,7 @@ export function ProviderReconnectCard({
         }
       />
 
-      <OpenAiCompatibleDialog
+      <LocalModelDialog
         provider={showCustomDialog ? provider : null}
         onClose={() => setShowCustomDialog(false)}
       />
