@@ -60,10 +60,35 @@ direct adapter ignores both (identity is the verified `userId`).
 
 ## 2. Grants model — which agents may use which app
 
-### Multiplayer (cloud gateway, C4)
+### Multiplayer (cloud gateway, C4 + C7)
 Per-`(user, agent)` grant set of toolkit slugs, owned by the cloud gateway. The
 gateway filters `search` to granted toolkits and refuses `execute` of an ungranted
-toolkit. See `convergence/contracts/C4-grants.md` and `C1-integrations-api.md`.
+toolkit. See `cloud/docs/contracts/C4-grants.md` and `C1-integrations-api.md`.
+
+**Grants are bounded by an allowlist CEILING (Teams v2, C7).** Two ceilings sit
+above the grant set: an **org** ceiling (`org_settings`) and a per-**agent**
+ceiling (`agent_settings`). A toolkit is usable only if it is BOTH granted AND
+inside the effective allowlist:
+
+```
+effectiveAllowlist = intersect(orgCeiling ?? ALL, agentCeiling ?? ALL)
+```
+
+`null` = unrestricted (ALL), `[]` = none. The intersection is applied on TOP of
+grants, never instead of them. When a ceiling **shrinks**, the gateway PRUNES
+now-disallowed toolkits from existing grants so revocation takes effect
+immediately. A per-agent **connect carries the agent slug**: the gateway checks
+the toolkit against the effective allowlist and auto-grants it to the agent on a
+successful OAuth (see `connectIntegration(provider, toolkit, agent?)`).
+
+**Client + UI.** `getAgentSettings` / `setAgentSettings` read/replace the agent
+ceiling (`allowedToolkits`, plus the read-only `orgAllowedToolkits` it's
+intersected with and the caller's effective `access`; manager-only write).
+`getOrgSettings` / `setOrgSettings` read/replace the org ceiling (owner-only
+write). Copy lives under `teams:integrations.allowlist` ("Allowed integrations",
+"Restrict to specific apps"); an agent tab also lists apps blocked by the
+ceiling under `teams:integrations.notAllowed`. Full client surface:
+`knowledge-base/teams.md`.
 
 ### Local / self-host grants (NEW — desktop + self-host parity)
 `packages/host/src/integrations/grants.ts` (`LocalIntegrationGrants`) +
