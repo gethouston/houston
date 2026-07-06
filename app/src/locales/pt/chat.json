@@ -27,7 +27,8 @@
   "errors": {
     "sessionStart": "Não foi possível iniciar a sessão: {{error}}",
     "stopSession": "Não foi possível parar a missão: {{error}}",
-    "modelPersistFailed": "Não foi possível salvar a preferência de modelo"
+    "modelPersistFailed": "Não foi possível salvar a preferência de modelo",
+    "missionRowFailed": "Não conseguimos salvar esta missão no seu quadro. Sua mensagem foi enviada."
   },
   "toolRuntimeError": {
     "retryPrompt": "Tente de novo."

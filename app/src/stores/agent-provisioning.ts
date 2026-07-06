@@ -67,6 +67,11 @@ function storageWrite(state: Record<string, ProvisioningEntry>): void {
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+/** Non-reactive read for imperative flows (mission creation). */
+export function isAgentProvisioning(agentId: string): boolean {
+  return Boolean(useAgentProvisioningStore.getState().provisioning[agentId]);
+}
+
 export const useAgentProvisioningStore = create<AgentProvisioningState>(
   (set, get) => ({
     provisioning: {},

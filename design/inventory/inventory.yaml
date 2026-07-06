@@ -144,12 +144,13 @@ components:
       engine is still warming up, so the wait reads as expected, not broken.
     anatomy: [spinner, title, body]
     states: [default]
-    variants: [chat-card, tab-banner]
+    variants: [chat-card, tab-placeholder]
     behavior: >-
       Driven by the client-side provisioning presence map: marked on hosted
       agent create, cleared by a readiness long-poll against the agent's
-      engine. The held send is answered on its own once the engine is up; the
-      card only narrates the wait and unmounts on ready.
+      engine. The tab-placeholder replaces non-activity tab content; the
+      chat-card sits under the user's sent message. The held send is answered
+      on its own once the engine is up; both unmount on ready.
     a11y: status role; spinner decorative, text carries the message.
     since: 3
 

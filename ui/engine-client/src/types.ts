@@ -410,6 +410,13 @@ export interface ActivityUpdate {
 }
 
 export interface NewActivity {
+  /**
+   * Client-generated id, so the caller knows the id (and the derived
+   * `activity-<id>` session key) before the request lands — optimistic
+   * mission creation against a warming engine (HOU-693). Omitted → the
+   * host assigns one.
+   */
+  id?: string;
   title: string;
   description?: string;
   agent?: string;

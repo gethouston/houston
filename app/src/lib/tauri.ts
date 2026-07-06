@@ -776,6 +776,7 @@ function conversationToRaw(
 // ─── Routines (engine-backed: CRUD + scheduler) ───────────────────────
 
 import type {
+  NewActivity as EngineNewActivity,
   NewRoutine as EngineNewRoutine,
   RoutineUpdate as EngineRoutineUpdate,
 } from "@houston-ai/engine-client";
@@ -842,6 +843,21 @@ export const tauriActivity = {
       agent,
       provider,
       model,
+    ),
+  /**
+   * Create the row through the host's single POST (which honors a
+   * client-generated id) instead of the data layer's read-modify-write pair.
+   * Used by the warming-engine mission flow (HOU-693): one request, queued
+   * ahead of the turn start, so the row exists before the turn's first
+   * board-status write once the engine wakes. `toast:false` — the caller
+   * surfaces the failure in its own flow.
+   */
+  createWithId: (agentPath: string, input: EngineNewActivity) =>
+    call(
+      "create_activity",
+      () => getEngine().createActivity(agentPath, input),
+      undefined,
+      { toast: false },
     ),
   update: (
     agentPath: string,

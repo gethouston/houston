@@ -27,7 +27,8 @@
   "errors": {
     "sessionStart": "Failed to start session: {{error}}",
     "stopSession": "Couldn't stop the mission: {{error}}",
-    "modelPersistFailed": "Failed to save model preference"
+    "modelPersistFailed": "Failed to save model preference",
+    "missionRowFailed": "We could not save this mission to your board. Your message was still sent."
   },
   "toolRuntimeError": {
     "retryPrompt": "Try again."

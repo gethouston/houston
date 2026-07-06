@@ -27,7 +27,8 @@
   "errors": {
     "sessionStart": "No se pudo iniciar la sesión: {{error}}",
     "stopSession": "No se pudo detener la misión: {{error}}",
-    "modelPersistFailed": "No se pudo guardar la preferencia de modelo"
+    "modelPersistFailed": "No se pudo guardar la preferencia de modelo",
+    "missionRowFailed": "No pudimos guardar esta misión en tu tablero. Tu mensaje sí fue enviado."
   },
   "toolRuntimeError": {
     "retryPrompt": "Intenta de nuevo."
