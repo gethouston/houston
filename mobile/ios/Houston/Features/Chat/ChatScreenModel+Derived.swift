@@ -31,10 +31,10 @@ extension ChatScreenModel {
   var showPendingLabel: Bool { showPending && !hasActiveProcess }
 
   /// The composer placeholder: a first message starts a mission; once the user
-  /// has spoken it is a follow-up (PARITY §2, ai-board.tsx literals). A draft has
-  /// no feed yet, so it shows the new-mission prompt.
+  /// has spoken it reads like a messenger. A draft has no feed yet, so it shows
+  /// the new-mission prompt (selection lives in ``ComposerLogic/placeholder(hasUserMessage:)``).
   var composerPlaceholder: String {
-    hasUserMessage ? Strings.Chat.followUpPlaceholder : Strings.Chat.newMissionPlaceholder
+    ComposerLogic.placeholder(hasUserMessage: hasUserMessage)
   }
 
   private var hasActiveProcess: Bool {

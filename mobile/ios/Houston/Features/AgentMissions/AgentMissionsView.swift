@@ -2,9 +2,10 @@ import SwiftUI
 
 /// The per-agent missions screen (pushed from a contact row): an agent header,
 /// missions grouped in PARITY order (Needs you incl. error, Running, Done) with
-/// explicit per-mission actions, an Archived entry, and a bottom composer that
-/// opens the new-mission flow PRE-SCOPED to this agent. Tapping a mission opens
-/// its chat.
+/// explicit per-mission actions, and an Archived entry. A new mission starts from
+/// the SAME top `square.and.pencil` compose button used on the Agents tab and
+/// Mission Control — here PRE-SCOPED to this agent (no picker: it opens a draft
+/// chat directly). Tapping an existing mission opens its chat.
 ///
 /// Data comes from the shared `\.agentsOverview` seam — this agent's activities
 /// are already streaming (the Agents tab subscribed every agent's
@@ -48,7 +49,11 @@ struct AgentMissionsView: View {
         .background(theme.background)
         .navigationTitle(agent.name)
         .navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .bottom) { composer }
+        .toolbar {
+            NewMissionToolbarButton {
+                onOpenChat(.draft(agentId: agent.id, title: agent.name))
+            }
+        }
         .missionActionDialogs(
             renameTarget: $renameTarget, renameText: $renameText,
             archiveTarget: $archiveTarget, actionError: $actionError,
@@ -99,24 +104,6 @@ struct AgentMissionsView: View {
                 onRename: startRename, onArchive: startArchive, onDelete: startDelete
             )
         }
-    }
-
-    /// The bottom new-mission entry, pre-scoped to this agent: it opens an empty
-    /// draft chat directly (no picker — the agent is already known), pushed onto
-    /// the owning Agents stack via `onOpenChat`. The activity is created on the
-    /// chat's first send (``ChatScreenModel``).
-    private var composer: some View {
-        Button { onOpenChat(.draft(agentId: agent.id, title: agent.name)) } label: {
-            Label(Strings.Board.newMission, systemImage: "plus")
-                .font(Typography.label)
-                .foregroundStyle(theme.primaryFg)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, Spacing.space12)
-                .background(theme.primary, in: Capsule())
-        }
-        .padding(.horizontal, Spacing.space16)
-        .padding(.vertical, Spacing.space8)
-        .background(.ultraThinMaterial)
     }
 
     // MARK: Actions

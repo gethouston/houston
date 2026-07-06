@@ -1,19 +1,17 @@
 import SwiftUI
 
-/// The two conversational messages (PARITY §3).
+/// The two conversational messages.
 ///
-/// User: right-aligned, `max-w-70%`, faint `bg-muted`, `text-foreground`,
-/// rounded-22, px-4 py-2.5 — NO tail, no avatar, no timestamp.
-///
-/// Assistant: full-width, NO bubble / background / border / tail / avatar — just
-/// `text-foreground` markdown prose. Streaming updates in place under the stable
-/// row id, so a growing reply mutates only this row.
+/// User (you): a right-aligned bubble on a solid `theme.primary` fill — the
+/// "sent" bubble, clearly visible (continuous corner, no tail/avatar/timestamp).
+/// Assistant (the agent): full-width markdown prose, no bubble — the AI-chat
+/// pattern (ChatGPT/Claude) that reads cleanly for long replies with lists/code.
 
-/// A user message bubble, right-aligned on the faint muted fill.
+/// A user message bubble, right-aligned.
 struct UserBubble: View {
   @Environment(\.theme) private var theme
   let text: String
-  /// Author label, shown only in multiplayer conversations (PARITY §3).
+  /// Author label, shown only in multiplayer conversations.
   var author: String?
 
   var body: some View {
@@ -27,10 +25,12 @@ struct UserBubble: View {
         }
         Text(text)
           .font(Typography.body)
-          .foregroundStyle(theme.foreground)
+          .foregroundStyle(theme.primaryFg)
           .padding(.horizontal, Spacing.space16)
           .padding(.vertical, Spacing.space10)
-          .background(theme.muted, in: RoundedRectangle(cornerRadius: ChatMetrics.bubbleRadius))
+          .background(
+            theme.primary,
+            in: RoundedRectangle(cornerRadius: ChatMetrics.bubbleRadius, style: .continuous))
           .textSelection(.enabled)
       }
     }
@@ -39,7 +39,7 @@ struct UserBubble: View {
 
 /// A full-width assistant message: markdown prose, no bubble. The stable row id
 /// keeps a streaming reply mutating this row in place; the text animation keeps
-/// the growth smooth (PARITY §3).
+/// the growth smooth.
 struct AssistantMessage: View {
   let text: String
 
