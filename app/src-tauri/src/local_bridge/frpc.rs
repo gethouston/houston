@@ -9,7 +9,7 @@
 //! loop here; we only parse its logs to drive bridge status.
 
 use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -17,6 +17,7 @@ use std::thread;
 
 use crate::child_guard;
 use crate::local_bridge::log_sanitize;
+use crate::local_bridge::pidfile;
 use crate::local_bridge::BridgeStatusKind;
 
 /// Callback invoked (from log-reader threads) whenever frpc's state changes.
@@ -39,12 +40,21 @@ pub struct FrpcParams<'a> {
 pub struct FrpcSupervisor {
     child: Arc<Mutex<Option<Child>>>,
     stopping: Arc<AtomicBool>,
+    /// Owned copy of the local-bridge config dir (holds `frpc.pid`), so a clean
+    /// [`kill`](FrpcSupervisor::kill) / `Drop` can remove the pidfile.
+    config_dir: PathBuf,
     #[cfg(windows)]
     _job: child_guard::win_job::KillOnCloseJob,
 }
 
 impl FrpcSupervisor {
     pub fn spawn(params: FrpcParams, on_status: StatusCallback) -> Result<Self, String> {
+        // Reap any frpc left orphaned by a previous UNCLEAN app exit (a `tauri
+        // dev` SIGKILL or a production crash never runs `RunEvent::Exit`) BEFORE
+        // spawning a new one, so the orphan can't keep reconnecting and fight the
+        // new frpc over the same subdomain. Best-effort — never blocks the start.
+        pidfile::reap_orphan(params.config_dir);
+
         let config = render_config(&params)?;
         std::fs::create_dir_all(params.config_dir)
             .map_err(|e| format!("frpc: create config dir: {e}"))?;
@@ -92,6 +102,11 @@ impl FrpcSupervisor {
             }
         };
 
+        // Record the new pid so a future UNCLEAN exit can reap THIS frpc. After
+        // a successful spawn (and, on Windows, a successful job bind) so we only
+        // ever persist a pid that really launched. Best-effort.
+        pidfile::write(params.config_dir, child.id());
+
         let stdout = child.stdout.take().ok_or("frpc: no stdout")?;
         let stderr = child.stderr.take().ok_or("frpc: no stderr")?;
         let stopping = Arc::new(AtomicBool::new(false));
@@ -104,6 +119,7 @@ impl FrpcSupervisor {
         Ok(Self {
             child: Arc::new(Mutex::new(Some(child))),
             stopping,
+            config_dir: params.config_dir.to_path_buf(),
             #[cfg(windows)]
             _job,
         })
@@ -121,6 +137,8 @@ impl FrpcSupervisor {
                 let _ = child.wait();
             }
         }
+        // Clean stop: drop the pidfile so the next spawn finds nothing to reap.
+        pidfile::remove(&self.config_dir);
     }
 }
 
@@ -362,6 +380,7 @@ mod tests {
         let sup = FrpcSupervisor {
             child: Arc::new(Mutex::new(Some(child))),
             stopping: Arc::new(AtomicBool::new(false)),
+            config_dir: std::env::temp_dir(),
         };
         sup.kill();
 

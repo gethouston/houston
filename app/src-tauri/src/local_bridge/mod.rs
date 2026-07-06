@@ -16,6 +16,7 @@ mod detection;
 mod frpc;
 mod keys;
 mod log_sanitize;
+mod pidfile;
 mod proxy;
 mod state;
 mod types;
