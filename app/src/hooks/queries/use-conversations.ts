@@ -18,8 +18,6 @@ export function useAllConversations(agentPaths: string[]) {
     queryKey: queryKeys.allConversations(agentPaths),
     queryFn: () => tauriConversations.listAll(agentPaths),
     enabled: agentPaths.length > 0,
-    // The key embeds every agent path, so adding/removing an agent re-keys the
-    // query; without this the sidebar counts render as 0 until the refetch lands.
     placeholderData: keepPreviousData,
   });
 }
