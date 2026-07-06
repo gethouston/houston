@@ -25,7 +25,7 @@
     "runningCount_other": "{{count}} asuntos en curso",
     "collapse": "Contraer barra lateral",
     "expand": "Expandir barra lateral",
-    "createWorkspace": "Crear espacio de trabajo"
+    "createOrganization": "Crear organización"
   },
   "tabActions": {
     "newMission": "Nueva misión",

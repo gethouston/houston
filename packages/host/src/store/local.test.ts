@@ -48,7 +48,7 @@ test("getOrCreatePersonalWorkspace returns the first, or creates the default whe
     mkdtempSync(join(tmpdir(), "houston-empty-")),
   );
   const created = await empty.getOrCreatePersonalWorkspace("local-owner");
-  expect(created.id).toBe("Houston");
+  expect(created.id).toBe("Personal");
 
   const existing = new LocalWorkspaceStore(tree({ Acme: ["Bot"] }));
   expect((await existing.getOrCreatePersonalWorkspace("local-owner")).id).toBe(

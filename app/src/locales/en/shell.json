@@ -25,7 +25,7 @@
     "runningCount_other": "{{count}} issues running",
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",
-    "createWorkspace": "Create workspace"
+    "createOrganization": "Create organization"
   },
   "tabActions": {
     "newMission": "New mission",

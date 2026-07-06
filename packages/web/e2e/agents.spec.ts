@@ -24,8 +24,8 @@ test("creates an agent and shows it in the sidebar", async ({ page }) => {
 /**
  * Switching agents swaps the board. Each agent has its own missions, so the
  * seeded agent's "Plan a trip to Tokyo" must vanish on a fresh agent and return
- * when we switch back. (The agent "Houston" button is `.last()` — the first
- * "Houston" button is the workspace switcher at the top of the sidebar.)
+ * when we switch back. (The agent "Houston" button is `.last()` — kept in case
+ * another "Houston" control appears above it in the sidebar.)
  */
 test("switches between two agents", async ({ page }) => {
   await page.goto("/");
