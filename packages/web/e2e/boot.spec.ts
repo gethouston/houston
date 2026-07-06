@@ -24,7 +24,7 @@ test("boots past every gate to the app shell", async ({ page }) => {
   // None of the boot gates are left on screen.
   await expect(
     page.getByText(
-      /Connecting to engine|Starting Houston|Language · Idioma|Can't reach the engine/i,
+      /Connecting to engine|Loading your workspace|Language · Idioma|Can't reach the engine/i,
     ),
   ).toHaveCount(0);
 });

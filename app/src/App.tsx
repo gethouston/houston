@@ -1,12 +1,12 @@
 import "./styles/globals.css";
 import type { Toast } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import { SignInScreen } from "./components/auth/sign-in-screen";
 import { MigrationReconnectScreen } from "./components/onboarding/migration-reconnect-screen";
 import { isFirstRun } from "./components/onboarding/missions/onboarding-flow";
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
 import { ProviderLoginFallback } from "./components/shell/provider-login-fallback";
+import { WorkspaceLoading } from "./components/shell/workspace-loading";
 import { WorkspaceShell } from "./components/shell/workspace-shell";
 import { useAgentInvalidation } from "./hooks/use-agent-invalidation";
 import { useAnalyticsSubscriber } from "./hooks/use-analytics-subscriber";
@@ -130,7 +130,6 @@ export default function App() {
     return () => document.removeEventListener("contextmenu", handler);
   }, []);
 
-  const { t } = useTranslation("shell");
   const wsLoading = useWorkspaceStore((s) => s.loading);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const agentLoading = useAgentStore((s) => s.loading);
@@ -172,13 +171,7 @@ export default function App() {
   // transient Supabase blip (access token still valid in Keychain)
   // is unlikely because getSession() reads locally, not remotely.
   if (isAuthConfigured() && sessionLoading) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-background text-foreground">
-        <p className="text-muted-foreground text-sm">
-          {t("engineGate.starting")}
-        </p>
-      </div>
-    );
+    return <WorkspaceLoading />;
   }
   if (isAuthConfigured() && !session) {
     // Local account login. Keep the dev-only paste-the-code fallback (#146) — a
@@ -217,13 +210,7 @@ export default function App() {
     capabilitiesLoading ||
     (newEngineActive() && !agentsLoaded)
   ) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-background text-foreground">
-        <p className="text-muted-foreground text-sm">
-          {t("engineGate.starting")}
-        </p>
-      </div>
-    );
+    return <WorkspaceLoading />;
   }
 
   // First-run signal differs by wire (HOU-653): the legacy Rust engine uses

@@ -189,3 +189,26 @@ body {
     animation: none;
   }
 }
+
+/* Boot splash card (WorkspaceLoading) — a gentle rise-in so the card doesn't
+   pop into place; the spinning comet halo supplies the ongoing motion. */
+@keyframes workspace-loading-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.workspace-loading-card {
+  animation: workspace-loading-in 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-loading-card {
+    animation: none;
+  }
+}
