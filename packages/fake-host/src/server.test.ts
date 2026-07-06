@@ -42,6 +42,27 @@ describe("startFakeHost", () => {
     expect(caps.providers).toContain("anthropic");
   });
 
+  it("serves the pi-ai provider catalog at /v1/catalog", async () => {
+    // Regression: the route was missing, so the app's `getCatalog()` 404-degraded
+    // to `[]` and the picker/AI-Models tab fell back to the override-only seed
+    // (all providers, zero models). It must serve the real `ProviderCatalog` the
+    // desktop host would — every runnable provider, each with its models.
+    const res = await fetch(`${host.url}/v1/catalog`);
+    expect(res.status).toBe(200);
+    const catalog = (await res.json()) as Array<{
+      id: string;
+      auth: string;
+      models: Array<{ id: string }>;
+    }>;
+    // The local profile serves the full pi-ai set — many providers, real models.
+    expect(catalog.length).toBeGreaterThan(20);
+    const ids = catalog.map((p) => p.id);
+    for (const id of ["anthropic", "openai-codex", "openrouter"])
+      expect(ids).toContain(id);
+    const totalModels = catalog.reduce((n, p) => n + p.models.length, 0);
+    expect(totalModels).toBeGreaterThan(100);
+  });
+
   it("exposes the __test__ reset control endpoint", async () => {
     const res = await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     expect(res.status).toBe(200);
