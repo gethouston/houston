@@ -37,7 +37,7 @@ if (controlPlaneUrl && window.location.pathname.startsWith("/admin")) {
   // boots in host mode. app/src/lib/engine.ts reads these globals at
   // module-eval (which fires as soon as cloud-login statically imports the app
   // tree), so they MUST be set before that import — otherwise EngineGate hangs
-  // on "Starting Houston engine". CloudApp keeps the token in sync with the
+  // on the "Loading your workspace" splash. CloudApp keeps the token in sync with the
   // live session; the engine adapter reads it live per request.
   window.__HOUSTON_CP__ = true;
   window.__HOUSTON_ENGINE__ = { baseUrl: controlPlaneUrl, token: "" };

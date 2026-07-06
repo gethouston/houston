@@ -271,7 +271,7 @@
     "continueButton": "Continue"
   },
   "engineGate": {
-    "starting": "Starting Houston engine…",
+    "starting": "Loading your workspace…",
     "reconnected": "Houston reconnected",
     "loadFailed": "Couldn't load your available AI models. Check your connection and try again.",
     "authRequiredTitle": "Sign-in required",

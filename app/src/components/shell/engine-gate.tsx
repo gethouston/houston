@@ -12,6 +12,7 @@ import { hostedGateState } from "../../lib/engine-mode";
 import i18n from "../../lib/i18n";
 import { isAuthConfigured, supabase } from "../../lib/supabase";
 import { SignInScreen } from "../auth/sign-in-screen";
+import { WorkspaceLoading } from "./workspace-loading";
 
 /**
  * Blocks app rendering until the selected engine transport is ready. The hosted
@@ -77,7 +78,7 @@ function HostedEngineGate({ children }: { children: ReactNode }) {
     case "ready":
       return <>{children}</>;
     default:
-      return <EngineStarting />;
+      return <WorkspaceLoading />;
   }
 }
 
@@ -94,12 +95,8 @@ function SidecarEngineGate({ children }: { children: ReactNode }) {
     };
   }, [ready]);
 
-  if (!ready) return <EngineStarting />;
+  if (!ready) return <WorkspaceLoading />;
   return <>{children}</>;
-}
-
-function EngineStarting() {
-  return <GateMessage>{i18n.t("shell:engineGate.starting")}</GateMessage>;
 }
 
 function HostedAuthMisconfigured() {

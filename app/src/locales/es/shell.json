@@ -271,7 +271,7 @@
     "continueButton": "Continuar"
   },
   "engineGate": {
-    "starting": "Iniciando el motor de Houston…",
+    "starting": "Cargando tu espacio de trabajo…",
     "reconnected": "Houston se reconectó",
     "loadFailed": "No pudimos cargar tus modelos de IA disponibles. Revisa tu conexión e inténtalo de nuevo.",
     "authRequiredTitle": "Inicio de sesión requerido",
