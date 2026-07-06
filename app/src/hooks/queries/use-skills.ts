@@ -70,9 +70,12 @@ export function useSaveSkill(agentPath: string | undefined) {
   });
 }
 
-export function useListSkillsFromRepo() {
+export function useListSkillsFromRepo(agentPath: string | undefined) {
   return useMutation({
-    mutationFn: (source: string) => tauriSkills.listFromRepo(source),
+    mutationFn: (source: string) => {
+      if (!agentPath) throw new Error("agentPath is required");
+      return tauriSkills.listFromRepo(agentPath, source);
+    },
   });
 }
 

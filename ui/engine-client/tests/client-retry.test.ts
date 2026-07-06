@@ -247,7 +247,7 @@ describe("HoustonClient transport retry (HOU-432)", () => {
     });
     // searchCommunitySkills threads the AbortSignal through to send().
     await rejects(
-      client.searchCommunitySkills("q", controller.signal),
+      client.searchCommunitySkills("Houston/Agent", "q", controller.signal),
       (err: unknown) => err instanceof Error && err.name === "AbortError",
     );
     strictEqual(calls, 0);
@@ -274,7 +274,7 @@ describe("HoustonClient transport retry (HOU-432)", () => {
       },
     });
     await rejects(
-      client.searchCommunitySkills("q", controller.signal),
+      client.searchCommunitySkills("Houston/Agent", "q", controller.signal),
       (err: unknown) => err instanceof Error && err.name === "AbortError",
     );
     strictEqual(calls, 1);

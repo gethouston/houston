@@ -820,7 +820,12 @@ export class HoustonClient {
       workspacePath,
     });
   }
+  // Marketplace reads carry the browsing agent's path: the hosted gateway only
+  // proxies agent-scoped routes, so the adapter needs the scope. Against a
+  // direct host this client reaches the same directory via the top-level
+  // routes, so the path is unused here — the parameter is the wire contract.
   searchCommunitySkills(
+    _agentPath: string,
     query: string,
     signal?: AbortSignal,
   ): Promise<CommunitySkill[]> {
@@ -834,7 +839,10 @@ export class HoustonClient {
       true,
     );
   }
-  popularCommunitySkills(signal?: AbortSignal): Promise<CommunitySkill[]> {
+  popularCommunitySkills(
+    _agentPath: string,
+    signal?: AbortSignal,
+  ): Promise<CommunitySkill[]> {
     // Read-only POST → replay-safe.
     return this.request(
       "POST",
@@ -858,6 +866,7 @@ export class HoustonClient {
     );
   }
   listSkillsFromRepo(
+    _agentPath: string,
     source: string,
     signal?: AbortSignal,
   ): Promise<RepoSkill[]> {

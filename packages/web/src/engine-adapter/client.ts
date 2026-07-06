@@ -925,24 +925,32 @@ export class HoustonClient {
   // web has no marketplace backend — searches answer empty (the dialog shows
   // its "unavailable" state), installs refuse loudly rather than no-op.
   async searchCommunitySkills(
+    agentPath: string,
     query: string,
     signal?: AbortSignal,
   ): Promise<CommunitySkill[]> {
     if (!this.cp) return [];
-    return controlPlane.searchCommunitySkills(this.cp, query, signal);
+    return controlPlane.searchCommunitySkills(
+      this.cp,
+      agentPath,
+      query,
+      signal,
+    );
   }
   async popularCommunitySkills(
+    agentPath: string,
     signal?: AbortSignal,
   ): Promise<CommunitySkill[]> {
     if (!this.cp) return [];
-    return controlPlane.popularCommunitySkills(this.cp, signal);
+    return controlPlane.popularCommunitySkills(this.cp, agentPath, signal);
   }
   async listSkillsFromRepo(
+    agentPath: string,
     source: string,
     signal?: AbortSignal,
   ): Promise<RepoSkill[]> {
     if (!this.cp) return [];
-    return controlPlane.listSkillsFromRepo(this.cp, source, signal);
+    return controlPlane.listSkillsFromRepo(this.cp, agentPath, source, signal);
   }
   async installCommunitySkill(
     req: InstallCommunityRequest,

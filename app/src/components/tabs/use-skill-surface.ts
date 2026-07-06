@@ -76,7 +76,7 @@ export function useSkillSurface(agentPath: string) {
   const deleteSkill = useDeleteSkill(agentPath);
   const createSkill = useCreateSkill(agentPath);
   const installCommunity = useInstallCommunitySkill(agentPath);
-  const listFromRepo = useListSkillsFromRepo();
+  const listFromRepo = useListSkillsFromRepo(agentPath);
   const installFromRepo = useInstallSkillFromRepo(agentPath);
 
   const selectedSkill: Skill | undefined =
@@ -121,13 +121,13 @@ export function useSkillSurface(agentPath: string) {
 
   const handleSearch = useCallback(
     (query: string, signal?: AbortSignal) =>
-      tauriSkills.searchCommunity(query, signal),
-    [],
+      tauriSkills.searchCommunity(agentPath, query, signal),
+    [agentPath],
   );
 
   const handlePopular = useCallback(
-    (signal?: AbortSignal) => tauriSkills.popularCommunity(signal),
-    [],
+    (signal?: AbortSignal) => tauriSkills.popularCommunity(agentPath, signal),
+    [agentPath],
   );
 
   const handleInstallCommunity = useCallback(
