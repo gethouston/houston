@@ -2,8 +2,8 @@ import { Bug, FileText, Keyboard, User, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
 import { useWorkspaceContext } from "../../hooks/queries/use-workspace-context";
+import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
-import { useWorkspaceStore } from "../../stores/workspaces";
 import { AccountSection } from "./sections/account";
 import { AppearanceSection } from "./sections/appearance";
 import { DangerSection } from "./sections/danger";
@@ -36,9 +36,9 @@ export function SettingsIndex({
   onSelect,
 }: SettingsIndexProps) {
   const { t } = useTranslation(["settings", "org"]);
-  const workspace = useWorkspaceStore((s) => s.current);
+  const agentPath = useAgentStore((s) => s.current?.folderPath);
   const org = useOrg(showMembers);
-  const { data: context } = useWorkspaceContext(workspace?.id);
+  const { data: context } = useWorkspaceContext(agentPath);
   const addToast = useUIStore((s) => s.addToast);
 
   const memberCount = org.data?.members?.length ?? 0;

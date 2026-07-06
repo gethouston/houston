@@ -3,7 +3,7 @@ import {
   useSaveWorkspaceContext,
   useWorkspaceContext,
 } from "../../../hooks/queries/use-workspace-context";
-import { useWorkspaceStore } from "../../../stores/workspaces";
+import { useAgentStore } from "../../../stores/agents";
 import {
   InstructionsContent,
   type InstructionsContentLabels,
@@ -12,9 +12,11 @@ import {
 type Slot = "workspace" | "user";
 
 function useSlotEditor(slot: Slot) {
-  const currentWorkspace = useWorkspaceStore((s) => s.current);
-  const { data } = useWorkspaceContext(currentWorkspace?.id);
-  const save = useSaveWorkspaceContext(currentWorkspace?.id);
+  // Stored on the open agent (see use-workspace-context): the files live at its
+  // workspace root and its runtime reads them into the prompt.
+  const agentPath = useAgentStore((s) => s.current?.folderPath);
+  const { data } = useWorkspaceContext(agentPath);
+  const save = useSaveWorkspaceContext(agentPath);
 
   const content = data?.[slot] ?? "";
 
@@ -23,7 +25,7 @@ function useSlotEditor(slot: Slot) {
     await save.mutateAsync({ ...data, [slot]: next });
   };
 
-  return { ready: !!currentWorkspace && !!data, content, onSave };
+  return { ready: !!agentPath && !!data, content, onSave };
 }
 
 function useSlotLabels(

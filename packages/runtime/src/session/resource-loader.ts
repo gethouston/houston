@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { DefaultResourceLoader } from "@earendil-works/pi-coding-agent";
 import { config } from "../config";
 import { makeCompactionGuard } from "./compaction-guard";
+import { buildWorkspaceContextSection } from "./workspace-context";
 
 export const SYSTEM_PROMPT = [
   "You are Houston, a friendly AI assistant for a non-technical user.",
@@ -70,9 +71,14 @@ export function buildAgentLoader(opts: {
  * on-disk layout loads as-is) unless HOUSTON_SKILLS_DIR overrides.
  */
 export function makeAgentLoader(cwd: string) {
+  // WORKSPACE.md + USER.md context is appended to Houston's prompt so every chat
+  // knows the shared workspace + user facts (HOU-711). CLAUDE.md/AGENTS.md still
+  // load separately via agentsFilesOverride below.
+  const base = config.systemPrompt || SYSTEM_PROMPT;
+  const section = buildWorkspaceContextSection(cwd);
   return buildAgentLoader({
     cwd,
     skillsDir: config.skillsDirOverride || join(cwd, ".agents", "skills"),
-    systemPrompt: config.systemPrompt || SYSTEM_PROMPT,
+    systemPrompt: section ? `${base}\n\n${section}` : base,
   });
 }

@@ -72,6 +72,9 @@ export function useAgentInvalidation() {
           qc.invalidateQueries({
             queryKey: queryKeys.instructions(p.data.agent_path),
           });
+          qc.invalidateQueries({
+            queryKey: queryKeys.workspaceContext(p.data.agent_path),
+          });
           break;
         case "ConversationsChanged":
           qc.invalidateQueries({
@@ -126,6 +129,9 @@ export function useAgentInvalidation() {
               const agentPath = p.data.agent_path;
               qc.invalidateQueries({
                 queryKey: queryKeys.instructions(agentPath),
+              });
+              qc.invalidateQueries({
+                queryKey: queryKeys.workspaceContext(agentPath),
               });
               qc.invalidateQueries({ queryKey: queryKeys.files(agentPath) });
               qc.invalidateQueries({ queryKey: queryKeys.skills(agentPath) });

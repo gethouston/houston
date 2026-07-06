@@ -370,12 +370,6 @@ export class HoustonClient {
     const { provider, model } = await this.activeOld();
     return syntheticWorkspace(provider, model);
   }
-  async getWorkspaceContext() {
-    return { workspaceMd: "", userMd: "" };
-  }
-  async setWorkspaceContext(_id: string, body: unknown) {
-    return body;
-  }
   async createAgent(
     workspaceId: string,
     req: CreateAgent,

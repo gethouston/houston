@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { buildWorkspaceContextSection } from "../../session/workspace-context";
 
 /**
  * Build the full-replace `systemPrompt` string for a Claude session: Houston's
@@ -20,7 +21,12 @@ const CONTEXT_CANDIDATES = ["AGENTS.md", "AGENTS.MD", "CLAUDE.md", "CLAUDE.MD"];
 
 export function buildSystemPrompt(cwd: string, systemPrompt: string): string {
   const context = loadWorkspaceContextFile(cwd);
-  return context ? `${systemPrompt}\n\n${context}` : systemPrompt;
+  const base = context ? `${systemPrompt}\n\n${context}` : systemPrompt;
+  // WORKSPACE.md + USER.md context section, injected exactly as the pi backend
+  // does (session/resource-loader.ts) so both engines see the same slots
+  // (HOU-711). The two must stay in step.
+  const section = buildWorkspaceContextSection(cwd);
+  return section ? `${base}\n\n${section}` : base;
 }
 
 /** The first workspace-root context file's contents, or null when none exists. */

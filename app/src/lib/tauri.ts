@@ -166,19 +166,6 @@ export const tauriWorkspaces = {
     call<Workspace>("set_workspace_locale", () =>
       getEngine().setWorkspaceLocale(id, locale),
     ),
-  getContext: (id: string) =>
-    call<import("@houston-ai/engine-client").WorkspaceContext>(
-      "get_workspace_context",
-      () => getEngine().getWorkspaceContext(id),
-    ),
-  setContext: (
-    id: string,
-    body: import("@houston-ai/engine-client").WorkspaceContext,
-  ) =>
-    call<import("@houston-ai/engine-client").WorkspaceContext>(
-      "set_workspace_context",
-      () => getEngine().setWorkspaceContext(id, body),
-    ),
 };
 
 // ─── Agents ───────────────────────────────────────────────────────────
