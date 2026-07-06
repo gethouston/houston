@@ -6,7 +6,7 @@ import { tauriAgents, tauriProvider } from "../../lib/tauri";
 import { AgentSetupForm, type AgentSetupFormValues } from "./agent-setup-form";
 import { serializeFormValues } from "./agent-setup-utils";
 import { AiStepFooter } from "./ai-step-footer";
-import { InlineModelSelector } from "./naming-step";
+import { CreationModelSelector } from "./creation-model-selector";
 
 interface AiAssistStepProps {
   provider: string;
@@ -112,7 +112,7 @@ export function AiAssistStep({
             <p className="text-xs font-medium text-muted-foreground">
               {t("aiAssist.brainLabel")}
             </p>
-            <InlineModelSelector
+            <CreationModelSelector
               provider={provider}
               model={model}
               onSelect={handlePickerChange}

@@ -43,7 +43,7 @@ import { tauriConfig, tauriProvider } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { InlineModelSelector } from "../shell/naming-step";
+import { CreationModelSelector } from "../shell/creation-model-selector";
 
 type StepId = "upload" | "name" | "skills" | "routines" | "learnings";
 
@@ -540,7 +540,7 @@ function NameStep({
           placeholder={t("import.step2.namePlaceholder")}
           className="text-center rounded-full"
         />
-        <InlineModelSelector
+        <CreationModelSelector
           provider={provider}
           model={model}
           onSelect={onProviderChange}

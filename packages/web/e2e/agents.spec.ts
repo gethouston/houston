@@ -22,6 +22,37 @@ test("creates an agent and shows it in the sidebar", async ({ page }) => {
 });
 
 /**
+ * The naming step's model selector opens the same catalog picker the chat
+ * composer uses (search-first command menu), not a bespoke dropdown, and a
+ * pick lands back on the trigger (HOU-702).
+ */
+test("creation dialog model selector opens the catalog picker", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "New agent" }).click();
+  await page.getByText("From scratch").click();
+
+  // The trigger under the name field shows the current model + provider name.
+  const dialog = page.getByRole("dialog");
+  const trigger = dialog.getByRole("button", { name: /Anthropic/ });
+  await trigger.click();
+
+  // The shared catalog picker opens — search it and pick a different model.
+  const search = page.getByPlaceholder(
+    "Search models, providers, capabilities…",
+  );
+  await expect(search).toBeVisible();
+  await search.fill("Opus 4.8");
+  await page.getByText("Opus 4.8", { exact: true }).first().click();
+
+  // The picker closes and the trigger reflects the new selection.
+  await expect(search).toHaveCount(0);
+  await expect(trigger).toContainText("Opus 4.8");
+});
+
+/**
  * Switching agents swaps the board. Each agent has its own missions, so the
  * seeded agent's "Plan a trip to Tokyo" must vanish on a fresh agent and return
  * when we switch back. (The agent "Houston" button is `.last()` — the first
