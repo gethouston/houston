@@ -4,15 +4,17 @@
  * Export preview + packaging go through the host's v3 portable routes. An
  * uploaded `.houstonagent` is unpacked IN THE BROWSER with the same domain
  * code the host runs (`@houston/domain`), held in memory under a packageId,
- * and posted to `/v1/portable/install` when the user confirms — nothing is
- * staged server-side, and the export download is just the route's response
+ * and installed on confirm as a create-with-seeds (`POST /agents`) — nothing
+ * is staged server-side, and the export download is just the route's response
  * bytes (no pod-volume storage on cloud).
  *
  * Pure shape mappings live in `portable-map.ts`.
  */
 
 import {
+  filterPackage,
   type PortablePackage,
+  packageSeed,
   scanContent,
   unpackAgent,
 } from "@houston/domain";
@@ -29,13 +31,13 @@ import type {
 import { HoustonEngineError } from "./client";
 import {
   type ControlPlaneConfig,
+  createAgent,
   gatewayAuthFetch,
-  rememberAgentColor,
 } from "./control-plane";
-import { packagePreview, toBase64, toWireSelection } from "./portable-map";
+import { packagePreview, toWireSelection } from "./portable-map";
 
-/** Uploaded archives awaiting install, keyed by the packageId handed to the wizard. */
-const uploads = new Map<string, { bytes: Uint8Array; pkg: PortablePackage }>();
+/** Unpacked uploads awaiting install, keyed by the packageId handed to the wizard. */
+const uploads = new Map<string, PortablePackage>();
 
 async function hostFetch(
   cfg: ControlPlaneConfig,
@@ -107,8 +109,8 @@ export async function anonymize(
 }
 
 /**
- * Unpack an uploaded `.houstonagent` locally and park the bytes until the
- * user confirms the install. Throws the domain's own message on junk bytes /
+ * Unpack an uploaded `.houstonagent` locally and park it until the user
+ * confirms the install. Throws the domain's own message on junk bytes /
  * future formats — the wizard toasts it verbatim.
  */
 export function previewUpload(
@@ -117,7 +119,7 @@ export function previewUpload(
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   const pkg = unpackAgent(u8);
   const packageId = crypto.randomUUID();
-  uploads.set(packageId, { bytes: u8, pkg });
+  uploads.set(packageId, pkg);
   return { packageId, ...packagePreview(pkg) };
 }
 
@@ -127,40 +129,39 @@ export function previewUpload(
  * pure `@houston/domain` code the host would run.
  */
 export function scanUpload(packageId: string): PortableScanResponse {
-  const upload = uploads.get(packageId);
-  if (!upload) {
+  const pkg = uploads.get(packageId);
+  if (!pkg) {
     throw new Error(
       "The uploaded agent file is no longer available — pick the file again.",
     );
   }
-  return scanContent(upload.pkg);
+  return scanContent(pkg);
 }
 
-/** Install the parked archive as a new agent via the host. */
+/**
+ * Install the parked archive as a new agent — as an ordinary agent create
+ * carrying the selected content as its seed payload (CLAUDE.md + file map).
+ * That pipeline exists on BOTH backends: the local host writes the seeds on
+ * create, and the hosted-cloud gateway (which serves no account-level
+ * portable route) persists them and seeds the new agent's pod with them.
+ */
 export async function install(
   cfg: ControlPlaneConfig,
   req: PortableInstallRequest,
 ): Promise<PortableInstalledAgent> {
-  const upload = uploads.get(req.packageId);
-  if (!upload) {
+  const parked = uploads.get(req.packageId);
+  if (!parked) {
     throw new Error(
       "The uploaded agent file is no longer available — pick the file again.",
     );
   }
-  const res = await hostFetch(cfg, "/v1/portable/install", {
-    method: "POST",
-    body: JSON.stringify({
-      agentName: req.agentName,
-      archive: toBase64(upload.bytes),
-      selection: toWireSelection(req.selection),
-    }),
-  });
-  const { agent } = (await res.json()) as {
-    agent: { id: string; name: string };
-  };
-  // Color is a client-side overlay in control-plane mode (the host model is
-  // id/name only) — same contract as createAgent.
-  if (req.agentColor) rememberAgentColor(agent.id, req.agentColor);
+  const pkg = filterPackage(parked, toWireSelection(req.selection));
+  const agent = await createAgent(
+    cfg,
+    req.agentName,
+    req.agentColor ?? undefined,
+    packageSeed(pkg),
+  );
   uploads.delete(req.packageId);
   return {
     agentPath: agent.id, // in control-plane mode the agent id IS the path key

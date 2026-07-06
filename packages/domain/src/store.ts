@@ -44,11 +44,16 @@ export async function loadJson<T>(
   }
 }
 
+/** The canonical on-disk JSON document form: pretty-printed, trailing newline. */
+export function jsonDoc(value: unknown): string {
+  return `${JSON.stringify(value, null, 2)}\n`;
+}
+
 /** Pretty-printed write: agents and users read these files directly (files-first). */
 export async function saveJson(
   store: TextStore,
   key: string,
   value: unknown,
 ): Promise<void> {
-  await store.writeText(key, `${JSON.stringify(value, null, 2)}\n`);
+  await store.writeText(key, jsonDoc(value));
 }

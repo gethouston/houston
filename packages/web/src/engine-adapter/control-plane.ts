@@ -80,10 +80,6 @@ function writeOverlay(overlay: Record<string, string>): void {
 function setColor(agentId: string, color: string): void {
   writeOverlay({ ...colorOverlay(), [agentId]: color });
 }
-/** Record an agent's overlay color from outside this module (portable install). */
-export function rememberAgentColor(agentId: string, color: string): void {
-  setColor(agentId, color);
-}
 function moveColor(fromId: string, toId: string): void {
   writeOverlay(renameColorOverlay(colorOverlay(), fromId, toId));
 }
