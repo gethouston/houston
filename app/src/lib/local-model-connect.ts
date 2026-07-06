@@ -29,6 +29,25 @@ import { tauriProvider } from "./tauri";
 /** The engine provider id the local endpoint registers under. */
 export const LOCAL_PROVIDER_ID = "openai-compatible";
 
+/**
+ * Set while a bridge lifecycle op (connect/reconnect) is running, so the boot
+ * auto-reconnect can skip when a manual connect is already in flight. The native
+ * side serializes bridge ops regardless (BRIDGE_OP), but this avoids a redundant
+ * teardown-rebuild that the hook's status TOCTOU would otherwise let through.
+ */
+let bridgeOpInFlight = false;
+export function isBridgeOpInFlight(): boolean {
+  return bridgeOpInFlight;
+}
+async function withBridgeOp<T>(fn: () => Promise<T>): Promise<T> {
+  bridgeOpInFlight = true;
+  try {
+    return await fn();
+  } finally {
+    bridgeOpInFlight = false;
+  }
+}
+
 /** Surface a raw native-bridge failure with the standard Report-bug toast. */
 function surfaceRaw(command: string, err: unknown): void {
   const message = err instanceof Error ? err.message : String(err);
@@ -86,47 +105,49 @@ export async function connectDetectedModel(opts: {
   reasoning?: boolean;
   signal?: AbortSignal;
 }): Promise<void> {
-  const cred = await tauriProvider.getTunnelCredentials();
-  if (isAbort(opts.signal)) throw new ConnectAborted();
+  return withBridgeOp(async () => {
+    const cred = await tauriProvider.getTunnelCredentials();
+    if (isAbort(opts.signal)) throw new ConnectAborted();
 
-  let bridge: Awaited<ReturnType<typeof osStartLocalBridge>>;
-  try {
-    bridge = await osStartLocalBridge({
-      targetBaseUrl: opts.server.baseUrl,
-      relayHost: cred.relayHost,
-      relayPort: cred.relayPort,
-      subdomain: cred.subdomain,
-      token: cred.token,
-      transport: cred.transport,
-      appName: opts.appName,
+    let bridge: Awaited<ReturnType<typeof osStartLocalBridge>>;
+    try {
+      bridge = await osStartLocalBridge({
+        targetBaseUrl: opts.server.baseUrl,
+        relayHost: cred.relayHost,
+        relayPort: cred.relayPort,
+        subdomain: cred.subdomain,
+        token: cred.token,
+        transport: cred.transport,
+        appName: opts.appName,
+      });
+    } catch (err) {
+      surfaceRaw("start_local_bridge", err);
+      throw err;
+    }
+
+    // Aborted while frpc came up: tear it back down, don't register a dangling
+    // endpoint or leave a half-open bridge.
+    if (isAbort(opts.signal)) {
+      await stopBridgeSurfaced();
+      throw new ConnectAborted();
+    }
+
+    const endpoint = buildLocalEndpoint({
+      publicUrl: bridge.publicUrl,
+      model: opts.model,
+      name: opts.name,
+      proxyKey: bridge.proxyKey,
+      reasoning: opts.reasoning,
     });
-  } catch (err) {
-    surfaceRaw("start_local_bridge", err);
-    throw err;
-  }
-
-  // Aborted while frpc came up: tear it back down, don't register a dangling
-  // endpoint or leave a half-open bridge.
-  if (isAbort(opts.signal)) {
-    await stopBridgeSurfaced();
-    throw new ConnectAborted();
-  }
-
-  const endpoint = buildLocalEndpoint({
-    publicUrl: bridge.publicUrl,
-    model: opts.model,
-    name: opts.name,
-    proxyKey: bridge.proxyKey,
-    reasoning: opts.reasoning,
+    try {
+      await tauriProvider.setCustomEndpoint(endpoint);
+    } catch (err) {
+      // Roll back the half-open bridge; the primary failure already toasted and
+      // a rollback failure is surfaced too (no silent zombie tunnel).
+      await stopBridgeSurfaced();
+      throw err;
+    }
   });
-  try {
-    await tauriProvider.setCustomEndpoint(endpoint);
-  } catch (err) {
-    // Roll back the half-open bridge; the primary failure already toasted and a
-    // rollback failure is surfaced too (no silent zombie tunnel).
-    await stopBridgeSurfaced();
-    throw err;
-  }
 }
 
 /**
@@ -135,14 +156,16 @@ export async function connectDetectedModel(opts: {
  * reusing the persisted proxyKey so no endpoint re-registration is needed.
  */
 export async function reconnectLocalModel(signal?: AbortSignal): Promise<void> {
-  const cred = await tauriProvider.getTunnelCredentials();
-  if (isAbort(signal)) throw new ConnectAborted();
-  try {
-    await osReconnectLocalBridge(reconnectBridgeArgs(cred));
-  } catch (err) {
-    surfaceRaw("reconnect_local_bridge", err);
-    throw err;
-  }
+  return withBridgeOp(async () => {
+    const cred = await tauriProvider.getTunnelCredentials();
+    if (isAbort(signal)) throw new ConnectAborted();
+    try {
+      await osReconnectLocalBridge(reconnectBridgeArgs(cred));
+    } catch (err) {
+      surfaceRaw("reconnect_local_bridge", err);
+      throw err;
+    }
+  });
 }
 
 /**
