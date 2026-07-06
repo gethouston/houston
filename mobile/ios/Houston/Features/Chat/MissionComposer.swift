@@ -1,78 +1,112 @@
 import SwiftUI
 
-/// The desktop-parity composer (PARITY §2): a `bg-card` glass surface, 1px
-/// border/50, rounded-28, p-2.5, holding a growing multiline textarea (capped at
-/// 208pt then scrolls) and a 36pt filled send button that MORPHS into a solid
-/// Stop square while the turn runs. The textarea is NOT disabled while running.
+/// The chat input bar, built to the mobile-messaging standard (WhatsApp /
+/// Telegram): a full-width bar the chat container pins above the keyboard with
+/// `.safeAreaInset(edge: .bottom)`, a rounded growing text field, and a circular
+/// send button that springs in when there is text and morphs to Stop while a turn
+/// runs. Return inserts a NEWLINE (send is the button, not the key) — the mobile
+/// convention. Attach / emoji / mic are intentionally omitted (out of scope).
 ///
-/// Deferred (PARITY §2): the leading + attach button, the Dictate mic, and the
-/// whole footer row (Skills / model / effort / context gauge).
+/// Pure send-state (send vs. stop vs. disabled) lives in ``ComposerLogic`` so it
+/// is unit-tested without a running UI; this view only draws it.
 struct MissionComposer: View {
   @Environment(\.theme) private var theme
   @Binding var text: String
   /// True while a turn is in flight — the send button becomes Stop.
   var isRunning: Bool
-  /// The placeholder copy (new mission vs. follow-up), chosen by the caller.
+  /// Placeholder copy (fresh mission vs. "Message"), chosen by the caller.
   var placeholder: String
   let onSend: () -> Void
   let onStop: () -> Void
+  /// The leading "+" affordance (WhatsApp layout). Attachments aren't wired to
+  /// the engine send path yet, so this is nil by default — the button still
+  /// shows (the layout the founder asked for) and no-ops until a host provides it.
+  var onPlus: (() -> Void)?
 
   @FocusState private var focused: Bool
 
-  private var hasContent: Bool {
-    !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-  }
+  private var hasContent: Bool { ComposerLogic.hasContent(text) }
+  private var active: Bool { ComposerLogic.isActive(text: text, isRunning: isRunning) }
 
   var body: some View {
     HStack(alignment: .bottom, spacing: Spacing.space8) {
-      textarea
-      trailingButton
+      plusButton
+      field
+      sendButton
     }
-    .padding(Spacing.space10)
-    .background(theme.card, in: RoundedRectangle(cornerRadius: Radius.composer))
-    .overlay(
-      RoundedRectangle(cornerRadius: Radius.composer)
-        .strokeBorder(theme.border.opacity(0.5), lineWidth: 1))
-    .shadow(color: .black.opacity(0.06), radius: 6, y: 1)
-    .padding(.horizontal, Spacing.space16)
-    .padding(.vertical, Spacing.space8)
+    .padding(.horizontal, ChatMetrics.inputBarHInset)
+    .padding(.vertical, ChatMetrics.inputBarVInset)
+    .frame(maxWidth: .infinity)
+    .background(barSurface)
   }
 
-  private var textarea: some View {
+  /// The bar's own surface: a subtle material distinct from the chat background,
+  /// with a hairline top separator. It extends past the home indicator so no chat
+  /// content shows beneath it — the container's `safeAreaInset` tracks the
+  /// keyboard, this only fills the bottom safe area (never the keyboard region).
+  private var barSurface: some View {
+    Rectangle()
+      .fill(.regularMaterial)
+      .overlay(alignment: .top) {
+        Rectangle()
+          .fill(theme.border)
+          .frame(height: ChatMetrics.inputBarHairline)
+      }
+      .ignoresSafeArea(.container, edges: .bottom)
+  }
+
+  /// The leading "+" glyph (no filled circle, WhatsApp/Telegram style), muted so
+  /// it sits quietly beside the field. Aligned to the bottom so it stays centered
+  /// on the first line as the field grows.
+  private var plusButton: some View {
+    Button {
+      onPlus?()
+    } label: {
+      Image(systemName: "plus")
+        .font(.system(size: ChatMetrics.plusGlyphSize, weight: .regular))
+        .foregroundStyle(theme.mutedFg)
+        .frame(width: ChatMetrics.plusButtonSize, height: ChatMetrics.plusButtonSize)
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(Strings.Chat.addAttachment)
+  }
+
+  private var field: some View {
     TextField(placeholder, text: $text, axis: .vertical)
       .textFieldStyle(.plain)
-      .lineLimit(1...8)
+      .lineLimit(1...ChatMetrics.inputFieldMaxLines)
       .font(Typography.body)
       .foregroundStyle(theme.foreground)
       .tint(theme.primary)
-      .frame(maxHeight: ChatMetrics.composerMaxHeight)
-      .padding(.horizontal, Spacing.space8)
-      .padding(.vertical, Spacing.space6)
+      .padding(.horizontal, ChatMetrics.inputFieldHInset)
+      .padding(.vertical, ChatMetrics.inputFieldVInset)
+      .background(
+        RoundedRectangle(cornerRadius: ChatMetrics.inputFieldRadius, style: .continuous)
+          .fill(theme.secondary))
       .focused($focused)
-      .submitLabel(.send)
-      .onSubmit(onSend)
   }
 
-  /// The single 36pt `bg-primary` circle: an ArrowUp send glyph that morphs to a
-  /// solid Stop square while running. Disabled (opacity 30%) when idle + empty.
-  private var trailingButton: some View {
+  /// The 34pt trailing circle: `arrow.up` that springs to full size when there is
+  /// text and symbol-morphs to `stop.fill` while a turn runs. The light send
+  /// haptic is fired by the container (``ChatView``), keeping this purely visual.
+  private var sendButton: some View {
     Button {
       isRunning ? onStop() : onSend()
     } label: {
       ZStack {
-        Circle().fill(theme.primary)
-        Image(systemName: isRunning ? "square.fill" : "arrow.up")
-          .font(.system(
-            size: isRunning ? ChatMetrics.stopGlyphSize : ChatMetrics.sendGlyphSize,
-            weight: .semibold))
-          .foregroundStyle(theme.primaryFg)
+        Circle().fill(active ? theme.primary : theme.muted)
+        Image(systemName: isRunning ? "stop.fill" : "paperplane.fill")
+          .font(.system(size: ChatMetrics.sendGlyphSize, weight: .semibold))
+          .foregroundStyle(active ? theme.primaryFg : theme.mutedFg)
+          .contentTransition(.symbolEffect(.replace))
       }
       .frame(width: ChatMetrics.sendButtonSize, height: ChatMetrics.sendButtonSize)
-      .opacity(isRunning || hasContent ? 1 : 0.3)
-      .animation(.smooth(duration: Motion.fast), value: isRunning)
-      .animation(.smooth(duration: Motion.fast), value: hasContent)
     }
     .buttonStyle(.plain)
+    .scaleEffect(active ? 1 : ChatMetrics.sendIdleScale)
+    .opacity(active ? 1 : ChatMetrics.sendIdleOpacity)
+    .animation(.snappy(duration: Motion.fast), value: active)
+    .animation(.smooth(duration: Motion.fast), value: isRunning)
     .disabled(!isRunning && !hasContent)
     .accessibilityLabel(isRunning ? Strings.Chat.stop : Strings.Chat.send)
   }

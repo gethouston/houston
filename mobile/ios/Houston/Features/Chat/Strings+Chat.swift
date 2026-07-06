@@ -10,11 +10,14 @@ import Foundation
 // surface agents never collide on the shared file.
 extension Strings {
   enum Chat {
-    // Composer (PARITY §2, ai-board.tsx:700-703). New mission vs. follow-up.
+    // Composer. A fresh mission invites the first message (ai-board.tsx:700-703);
+    // an ongoing conversation reads like a messenger. Mobile uses "Message" (not
+    // desktop's "Send a follow-up...") on purpose — WhatsApp / Telegram familiarity.
     static let newMissionPlaceholder = "What should the agent work on?"
-    static let followUpPlaceholder = "Send a follow-up..."
+    static let followUpPlaceholder = "Message"
     static let send = "Send"
     static let stop = "Stop"
+    static let addAttachment = "Add attachment"
     static let scrollToLatest = "Scroll to latest"
 
     // Live status line (chat.json:process).

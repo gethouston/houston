@@ -1,4 +1,6 @@
+import Combine
 import SwiftUI
+import UIKit
 
 /// The scrolling mission transcript. A `LazyVStack` inside a `ScrollView` keyed
 /// by stable feed ids so a streaming bubble mutates only its own row (no whole-
@@ -63,6 +65,14 @@ struct MissionFeed: View {
         if atBottom { scroll(proxy, animated: true) }
       }
       .onChange(of: scrollToBottomSignal) { _, _ in scroll(proxy, animated: true) }
+      // When the keyboard opens it steals the bottom of the viewport; re-pin to
+      // the newest message so it clears the bar — but only if the user was already
+      // at the bottom, so reading history is never yanked.
+      .onReceive(
+        NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)
+      ) { _ in
+        if atBottom { scroll(proxy, animated: true) }
+      }
     }
   }
 
