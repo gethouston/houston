@@ -73,6 +73,7 @@ export function ProviderGrid({
       connecting={connections.busy[provider.id] === "connecting"}
       onOpen={onOpen}
       onConnect={connections.connect}
+      onCancel={connections.cancel}
     />
   );
 

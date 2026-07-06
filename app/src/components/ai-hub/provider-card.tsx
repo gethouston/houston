@@ -1,5 +1,5 @@
 import { AsyncButton, Button } from "@houston-ai/core";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { HubCatalog } from "../../lib/ai-hub/catalog-types";
 import type { ProviderInfo } from "../../lib/providers";
@@ -17,6 +17,7 @@ interface ProviderCardProps {
   connecting: boolean;
   onOpen: (provider: ProviderInfo) => void;
   onConnect: (provider: ProviderInfo) => void;
+  onCancel: (provider: ProviderInfo) => void;
 }
 
 /**
@@ -35,6 +36,7 @@ export function ProviderCard({
   connecting,
   onOpen,
   onConnect,
+  onCancel,
 }: ProviderCardProps) {
   const { t } = useTranslation("aiHub");
 
@@ -85,16 +87,36 @@ export function ProviderCard({
         ) : (
           <>
             <AsyncButton
+              // While connecting the button stays clickable and, on hover, flips
+              // to Cancel — so a stuck or unwanted sign-in can be aborted and
+              // retried instead of the user waiting out a dead spinner.
               size="sm"
               spinner={false}
-              disabled={connecting}
-              className="flex-1"
-              onClick={() => onConnect(provider)}
+              className="group/connect relative flex-1"
+              aria-label={connecting ? t("card.cancel") : undefined}
+              onClick={() =>
+                connecting ? onCancel(provider) : onConnect(provider)
+              }
             >
               {connecting ? (
-                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-              ) : null}
-              {t("card.connect")}
+                <>
+                  {/* Resting: spinner + "Connecting" — fades out on hover. */}
+                  <span className="flex items-center justify-center gap-1.5 transition-opacity group-hover/connect:opacity-0">
+                    <Loader2
+                      className="size-3.5 animate-spin"
+                      aria-hidden="true"
+                    />
+                    {t("card.connecting")}
+                  </span>
+                  {/* Hover: Cancel — click aborts so the user can retry. */}
+                  <span className="absolute inset-0 flex items-center justify-center gap-1.5 opacity-0 transition-opacity group-hover/connect:opacity-100">
+                    <X className="size-3.5" aria-hidden="true" />
+                    {t("card.cancel")}
+                  </span>
+                </>
+              ) : (
+                t("card.connect")
+              )}
             </AsyncButton>
             {seeMore}
           </>
