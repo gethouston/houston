@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useMemo, useRef, useState } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useProviderConnections } from "../../hooks/use-provider-connections";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types";
@@ -7,30 +7,17 @@ import { useHubCatalog } from "../../lib/ai-hub/use-hub-catalog";
 import { newEngineActive } from "../../lib/engine";
 import { osIsTauri } from "../../lib/os-bridge";
 import {
-  COMING_SOON_PROVIDERS,
   EMPTY_PROVIDER_CAPABILITIES,
   getConnectProviders,
   type ProviderInfo,
 } from "../../lib/providers";
 import { AiHubTabs, type HubTab } from "./ai-hub-tabs";
 import { HubHero } from "./hub-hero";
-import { ModelDetail } from "./model-detail";
 import { ModelDirectory } from "./model-directory";
+import { ModelModal } from "./model-modal";
 import { ProviderConnectionDialogs } from "./provider-connection-dialogs";
-import { ProviderDetail } from "./provider-detail";
 import { ProviderGrid } from "./provider-grid";
-
-/**
- * Where in the hub the user is. The two roots (`providers` / `models`) carry the
- * hero + tabs; a drill-in (`provider` / `model`) fills the surface on its own.
- * `model.from` remembers the root or provider it was opened from so a single
- * back step returns there.
- */
-type HubLocation =
-  | { view: "providers" }
-  | { view: "models" }
-  | { view: "provider"; id: string }
-  | { view: "model"; key: string; from: HubLocation };
+import { ProviderModal } from "./provider-modal";
 
 const TRANSITION = {
   initial: { opacity: 0, y: 8 },
@@ -40,16 +27,20 @@ const TRANSITION = {
 };
 
 /**
- * The AI models hub: a top-level marketplace surface. Composes the masthead,
- * the Providers / Models tabs, and the two drill-in details, driven by
- * `useHubCatalog` (the model directory) and `useProviderConnections` (connect /
- * sign-out). The connect-dialog stack renders once here for every card and offer
- * row underneath.
+ * The AI models hub: a top-level marketplace surface. Composes the masthead, the
+ * Providers / Models tabs, and the two surfaces (provider grid + model ledger),
+ * driven by `useHubCatalog` (the model directory) and `useProviderConnections`
+ * (connect / sign-out). A provider card or model row opens a centered MODAL
+ * (`ProviderModal` / `ModelModal`) that fades in over a single dim scrim — the
+ * page stays put (no recede/blur). The connect-dialog stack renders once here
+ * for every card and offer row underneath.
  */
 export function AiHubView() {
   const { catalog, isLoading } = useHubCatalog();
   const connections = useProviderConnections();
-  const [location, setLocation] = useState<HubLocation>({ view: "providers" });
+  const [tab, setTab] = useState<HubTab>("providers");
+  const [openProvider, setOpenProvider] = useState<ProviderInfo | null>(null);
+  const [openModel, setOpenModel] = useState<CatalogModel | null>(null);
 
   const { capabilities } = useCapabilities();
   const newEngine = newEngineActive();
@@ -67,104 +58,98 @@ export function AiHubView() {
     [newEngine, providerCapabilities],
   );
 
-  const openProvider = (provider: ProviderInfo) =>
-    setLocation({ view: "provider", id: provider.id });
-  const openModel = (model: CatalogModel, from: HubLocation) =>
-    setLocation({ view: "model", key: model.key, from });
-
-  const isRoot = location.view === "providers" || location.view === "models";
-  const activeTab: HubTab = location.view === "models" ? "models" : "providers";
+  // Retain the last provider/model while a modal animates out so Radix keeps it
+  // mounted through the exit transition instead of snapping to empty.
+  const lastProvider = useRef<ProviderInfo | null>(null);
+  if (openProvider) lastProvider.current = openProvider;
+  const providerForModal = openProvider ?? lastProvider.current;
+  const lastModel = useRef<CatalogModel | null>(null);
+  if (openModel) lastModel.current = openModel;
+  const modelForModal = openModel ?? lastModel.current;
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto flex max-w-5xl flex-col gap-8 px-8 py-10">
-        {!catalog ? (
+    <div className="flex h-full flex-col">
+      {!catalog ? (
+        <div className="mx-auto flex max-w-5xl flex-col gap-8 px-8 py-10">
           <HubSkeleton loading={isLoading} />
-        ) : (
-          <>
-            {isRoot && (
-              <>
-                <HubHero modelCount={catalog.modelCount} />
-                <AiHubTabs
-                  active={activeTab}
-                  modelCount={catalog.modelCount}
-                  onSelect={(tab) => setLocation({ view: tab })}
-                />
-              </>
-            )}
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div key={locationKey(location)} {...TRANSITION}>
-                {location.view === "providers" && (
-                  <ProviderGrid
-                    providers={connectProviders}
-                    comingSoon={COMING_SOON_PROVIDERS}
-                    connections={connections}
-                    catalog={catalog}
-                    onOpen={openProvider}
-                  />
-                )}
-                {location.view === "models" && (
-                  <ModelDirectory
-                    catalog={catalog}
-                    onOpenModel={(model) =>
-                      openModel(model, { view: "models" })
-                    }
-                  />
-                )}
-                {location.view === "provider" &&
-                  (() => {
-                    const provider = connectProviders.find(
-                      (p) => p.id === location.id,
-                    );
-                    if (!provider) return null;
-                    const from = location;
-                    return (
-                      <ProviderDetail
-                        provider={provider}
-                        connections={connections}
-                        catalog={catalog}
-                        onBack={() => setLocation({ view: "providers" })}
-                        onOpenModel={(key) => {
-                          const model = catalog.byKey.get(key);
-                          if (model) openModel(model, from);
-                        }}
-                      />
-                    );
-                  })()}
-                {location.view === "model" &&
-                  (() => {
-                    const model = catalog.byKey.get(location.key);
-                    if (!model) return null;
-                    const from = location.from;
-                    return (
-                      <ModelDetail
-                        model={model}
-                        connections={connections}
-                        onBack={() => setLocation(from)}
-                        onOpenProvider={openProvider}
-                      />
-                    );
-                  })()}
-              </motion.div>
-            </AnimatePresence>
-          </>
-        )}
-      </div>
+        </div>
+      ) : (
+        <>
+          {/* Fixed masthead: the hero title + tabs never scroll away. Solid
+              `bg-background` so the scrolling list below never bleeds through. */}
+          <div className="shrink-0 bg-background">
+            <div className="mx-auto flex max-w-5xl flex-col gap-6 px-8 pt-10 pb-4">
+              <HubHero modelCount={catalog.modelCount} />
+              <AiHubTabs
+                active={tab}
+                modelCount={catalog.modelCount}
+                onSelect={setTab}
+              />
+            </div>
+          </div>
+
+          {/* Only this region scrolls. `scrollbar-gutter: stable` reserves the
+              scrollbar's gutter permanently, so when a modal's scroll-lock
+              (react-remove-scroll) removes the scrollbar the content width never
+              changes — the grid stays put on modal open. The ModelsBrowser
+              controls/column-header (sticky top-0) pin to the TOP of this
+              region, i.e. right beneath the fixed tabs above. */}
+          <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+            <div className="mx-auto flex max-w-5xl flex-col px-8 pb-10">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div key={tab} {...TRANSITION}>
+                  {tab === "providers" ? (
+                    <ProviderGrid
+                      providers={connectProviders}
+                      connections={connections}
+                      catalog={catalog}
+                      onOpen={setOpenProvider}
+                    />
+                  ) : (
+                    <ModelDirectory
+                      catalog={catalog}
+                      onOpenModel={(key) => {
+                        const model = catalog.byKey.get(key);
+                        if (model) setOpenModel(model);
+                      }}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+        </>
+      )}
+
+      {providerForModal && catalog && (
+        <ProviderModal
+          provider={providerForModal}
+          open={openProvider != null}
+          connections={connections}
+          catalog={catalog}
+          onClose={() => setOpenProvider(null)}
+          onOpenModel={(key) => {
+            setOpenProvider(null);
+            const model = catalog.byKey.get(key);
+            if (model) setOpenModel(model);
+          }}
+        />
+      )}
+      {modelForModal && (
+        <ModelModal
+          model={modelForModal}
+          open={openModel != null}
+          connections={connections}
+          onClose={() => setOpenModel(null)}
+          onOpenProvider={(provider) => {
+            setOpenModel(null);
+            setOpenProvider(provider);
+          }}
+        />
+      )}
       <ProviderConnectionDialogs {...connections.dialogProps} />
     </div>
   );
-}
-
-/** A stable key per location so the transition swaps on any real navigation. */
-function locationKey(location: HubLocation): string {
-  switch (location.view) {
-    case "provider":
-      return `provider:${location.id}`;
-    case "model":
-      return `model:${location.key}`;
-    default:
-      return location.view;
-  }
 }
 
 /**

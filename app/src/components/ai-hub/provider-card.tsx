@@ -1,139 +1,104 @@
-import { Button } from "@houston-ai/core";
-import { ChevronRight, Loader2 } from "lucide-react";
-import type { KeyboardEvent } from "react";
+import { AsyncButton, Button } from "@houston-ai/core";
+import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { ComingSoonProviderInfo, ProviderInfo } from "../../lib/providers";
+import type { HubCatalog } from "../../lib/ai-hub/catalog-types";
+import type { ProviderInfo } from "../../lib/providers";
 import { ProviderGlyph } from "../shell/provider-logos";
-import { SpecChip } from "./hub-badges";
-import { authChipKey, providerDescriptionKey } from "./provider-grouping";
+import { LiveStatus, ModelMark } from "./hub-badges";
+import { providerDescriptionKey, providerModels } from "./provider-grouping";
+
+/** Multi-model gateways lead their copy with the count; subscriptions stay clean. */
+const GATEWAY_MODEL_THRESHOLD = 15;
 
 interface ProviderCardProps {
   provider: ProviderInfo;
+  catalog: HubCatalog;
   connected: boolean;
-  busyState: "connecting" | "signingOut" | undefined;
-  modelCount: number;
-  onOpen: () => void;
-  onConnect: () => void;
-  onCancel: () => void;
+  connecting: boolean;
+  onOpen: (provider: ProviderInfo) => void;
+  onConnect: (provider: ProviderInfo) => void;
 }
 
 /**
- * A marketplace tile for one provider. The whole card opens the provider
- * detail (`onOpen`); the footer carries an always-visible action (Connect
- * pill, a Cancel affordance while connecting, or a success dot + Connected
- * label), and inner buttons stop propagation so they never trigger `onOpen`.
+ * A marketplace tile for one provider. The card itself is NOT clickable — every
+ * action lives in the footer as a real focusable button: an available provider
+ * offers a primary Connect pill plus a ghost "See more" that opens the detail
+ * (`onOpen`); a connected provider swaps Connect for a live status readout and
+ * keeps "See more" to reopen its modal. Every card wears the same calm gray
+ * surface + hairline ring — connected and available look identical, differing
+ * only in the footer (live status vs Connect pill). No accent, no glow.
  */
 export function ProviderCard({
   provider,
+  catalog,
   connected,
-  busyState,
-  modelCount,
+  connecting,
   onOpen,
   onConnect,
-  onCancel,
 }: ProviderCardProps) {
   const { t } = useTranslation("aiHub");
 
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    // Only the card itself activates on Enter/Space; a keypress on a nested
-    // button (Connect / Cancel) must not also open the detail.
-    if (event.target !== event.currentTarget) return;
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onOpen();
-    }
-  };
+  // Multi-model gateways (OpenRouter, OpenCode, Bedrock, Google...) lead their
+  // description with the number of models they unlock; small subscription
+  // providers (Anthropic, OpenAI, Copilot) get no lead.
+  const modelCount = providerModels(catalog, provider).length;
+  const leadCount = modelCount >= GATEWAY_MODEL_THRESHOLD ? modelCount : 0;
 
-  const stop = (fn: () => void) => (event: { stopPropagation: () => void }) => {
-    event.stopPropagation();
-    fn();
-  };
+  const seeMore = (
+    <Button
+      size="sm"
+      variant="ghost"
+      className="flex-1"
+      onClick={() => onOpen(provider)}
+    >
+      {t("card.seeMore")}
+    </Button>
+  );
 
   return (
-    // biome-ignore lint/a11y/useSemanticElements: the card hosts nested action buttons (Connect / Cancel), and a native <button> can't wrap another button; the div stays role="button" with explicit keyboard activation.
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={onKeyDown}
-      className="group flex cursor-pointer flex-col rounded-2xl border border-foreground/5 bg-card p-5 transition-shadow duration-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <div className="flex size-10 items-center justify-center rounded-xl bg-secondary text-foreground">
-        <ProviderGlyph providerId={provider.id} />
+    <div className="ht-hairline flex flex-col rounded-2xl bg-secondary p-[18px] transition-colors duration-200 hover:bg-accent">
+      <div className="flex items-center gap-3">
+        <ModelMark
+          size="lg"
+          mark={<ProviderGlyph providerId={provider.id} />}
+        />
+        <p className="text-[15px] font-medium text-foreground">
+          {provider.name}
+        </p>
       </div>
-      <p className="mt-3 text-sm font-medium text-foreground">
-        {provider.name}
-      </p>
-      <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+      <p className="mt-3 line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
+        {leadCount > 0 ? (
+          <span className="font-semibold text-foreground">
+            {t("card.models", { count: leadCount })}.{" "}
+          </span>
+        ) : null}
         {t(`providers.${providerDescriptionKey(provider.id)}.description`)}
       </p>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        <SpecChip>{t(`card.${authChipKey(provider)}`)}</SpecChip>
-        {modelCount > 0 && (
-          <SpecChip>{t("card.models", { count: modelCount })}</SpecChip>
-        )}
-      </div>
-      <div className="mt-4 flex items-center">
-        {busyState === "connecting" ? (
-          <button
-            type="button"
-            onClick={stop(onCancel)}
-            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-secondary px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <Loader2 className="size-3.5 animate-spin" />
-            {t("card.cancel")}
-          </button>
-        ) : connected ? (
-          <span className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            {busyState === "signingOut" ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <span
-                role="img"
-                aria-label={t("card.connected")}
-                className="size-2 rounded-full bg-success"
-              />
-            )}
-            {t("card.connected")}
-          </span>
+      <div className="mt-4 flex items-center gap-2">
+        {connected ? (
+          <>
+            <span className="flex-1">
+              <LiveStatus label={t("card.connected")} />
+            </span>
+            {seeMore}
+          </>
         ) : (
-          <Button onClick={stop(onConnect)}>{t("card.connect")}</Button>
+          <>
+            <AsyncButton
+              size="sm"
+              spinner={false}
+              disabled={connecting}
+              className="flex-1"
+              onClick={() => onConnect(provider)}
+            >
+              {connecting ? (
+                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              ) : null}
+              {t("card.connect")}
+            </AsyncButton>
+            {seeMore}
+          </>
         )}
-        <ChevronRight
-          aria-hidden="true"
-          className="ml-auto size-4 text-muted-foreground"
-        />
-      </div>
-    </div>
-  );
-}
-
-/**
- * The muted, non-interactive card for a not-yet-available provider. Same tile
- * shape as `ProviderCard` but with a "Coming soon" chip and no action.
- */
-export function ComingSoonProviderCard({
-  provider,
-}: {
-  provider: ComingSoonProviderInfo;
-}) {
-  const { t } = useTranslation("aiHub");
-  return (
-    <div
-      aria-disabled="true"
-      className="flex select-none flex-col rounded-2xl border border-foreground/5 bg-card p-5 opacity-60"
-    >
-      <div className="flex size-10 items-center justify-center rounded-xl bg-secondary text-[11px] font-semibold text-muted-foreground">
-        {provider.mark}
-      </div>
-      <p className="mt-3 text-sm font-medium text-foreground">
-        {provider.name}
-      </p>
-      <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-        {provider.subtitle}
-      </p>
-      <div className="mt-3 flex">
-        <SpecChip>{t("card.comingSoon")}</SpecChip>
       </div>
     </div>
   );

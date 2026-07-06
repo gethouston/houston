@@ -1,18 +1,21 @@
 /**
- * One provider's way to run a model, in the "Get it through" list. Reuses the
- * shared `RowCard`: provider glyph, provider name, and either per-1M pricing or
- * a subscription label. Not connected → a Connect pill; connected → a success
- * dot and a row that opens the provider detail.
+ * One provider's way to run a model, in a model modal's "Get it through" list.
+ * A hub-local row (NOT the shared `RowCard`, which draws a box around its media)
+ * so the provider mark reads as a boxless logo lockup: a `ModelMark` glyph next
+ * to the provider name, matching the ledger. Shows either a per-1M price line or
+ * a subscription label. Not connected -> a Connect pill; connected -> a live
+ * status and a row that opens the provider modal.
  */
 
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections.ts";
 import type { CatalogOffer } from "../../lib/ai-hub/catalog-types.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
-import { RowCard } from "../cards/row-card.tsx";
 import { RowCardButton } from "../cards/row-card-button.tsx";
 import { ProviderGlyph } from "../shell/provider-logos.tsx";
-import { PriceText } from "./hub-badges.tsx";
+import { formatPrice } from "./format.ts";
+import { LiveStatus, ModelMark, PriceText } from "./hub-badges.tsx";
 
 export function ModelOfferRow({
   offer,
@@ -23,55 +26,58 @@ export function ModelOfferRow({
   offer: CatalogOffer;
   provider: ProviderInfo;
   connections: ProviderConnections;
-  onOpenProvider: (provider: ProviderInfo) => void;
+  onOpenProvider?: (provider: ProviderInfo) => void;
 }) {
   const { t } = useTranslation("aiHub");
-  const media = <ProviderGlyph providerId={provider.id} />;
-  const description =
+  const priced =
     !offer.subscription &&
-    (offer.costInput != null || offer.costOutput != null) ? (
-      <PriceText input={offer.costInput} output={offer.costOutput} />
-    ) : (
-      t("model.offers.subscription")
-    );
+    (offer.costInput != null || offer.costOutput != null);
+  const description = priced ? (
+    <PriceText
+      text={t("model.offers.pricing", {
+        input: formatPrice(offer.costInput),
+        output: formatPrice(offer.costOutput),
+      })}
+    />
+  ) : (
+    t("model.offers.subscription")
+  );
+
+  // A boxless logo lockup + copy + action, on the modal's grey slab.
+  const row = (action: ReactNode) => (
+    <span className="flex w-full min-w-0 items-center gap-3 rounded-xl bg-secondary px-3 py-2.5">
+      <ModelMark size="sm" mark={<ProviderGlyph providerId={provider.id} />} />
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate font-medium text-[13px] text-foreground">
+          {provider.name}
+        </span>
+        <span className="text-[11px] text-foreground/70">{description}</span>
+      </span>
+      <span className="flex shrink-0 items-center gap-2">{action}</span>
+    </span>
+  );
 
   if (connections.isConnected(provider)) {
     return (
       <button
         type="button"
-        onClick={() => onOpenProvider(provider)}
-        className="w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={onOpenProvider ? () => onOpenProvider(provider) : undefined}
+        disabled={!onOpenProvider}
+        className="w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
       >
-        <RowCard
-          media={media}
-          title={provider.name}
-          description={description}
-          action={
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-success" />
-              {t("card.connected")}
-            </span>
-          }
-        />
+        {row(<LiveStatus label={t("card.connected")} />)}
       </button>
     );
   }
 
-  return (
-    <RowCard
-      media={media}
-      title={provider.name}
-      description={description}
-      action={
-        <RowCardButton
-          label={t("card.connect")}
-          loading={connections.busy[provider.id] === "connecting"}
-          // Until the first status probe resolves we can't know this offer isn't
-          // already connected, so don't offer an actionable Connect yet.
-          disabled={!connections.ready}
-          onClick={() => connections.connect(provider)}
-        />
-      }
-    />
+  return row(
+    <RowCardButton
+      label={t("card.connect")}
+      loading={connections.busy[provider.id] === "connecting"}
+      // Until the first status probe resolves we can't know this offer isn't
+      // already connected, so don't offer an actionable Connect yet.
+      disabled={!connections.ready}
+      onClick={() => connections.connect(provider)}
+    />,
   );
 }

@@ -10,11 +10,11 @@
   },
   "sections": {
     "connected": "Connected",
-    "available": "Available",
-    "comingSoon": "Coming soon"
+    "available": "Available"
   },
   "card": {
     "connect": "Connect",
+    "seeMore": "See more",
     "connected": "Connected",
     "cancel": "Cancel",
     "models_one": "{{count}} model",
@@ -22,15 +22,7 @@
     "subscription": "Subscription",
     "apiKey": "Your API key",
     "local": "Runs on your computer",
-    "gateway": "Multi-model gateway",
-    "comingSoon": "Coming soon"
-  },
-  "providerDetail": {
-    "back": "All providers",
-    "models": "Models",
-    "searchModels": "Search models",
-    "signOut": "Sign out",
-    "noModels": "Models are configured when you connect."
+    "gateway": "Multi-model gateway"
   },
   "directory": {
     "search": "Search {{count}}+ models",
@@ -38,7 +30,32 @@
     "filters": {
       "all": "All",
       "reasoning": "Reasoning",
-      "vision": "Vision"
+      "images": "Images",
+      "budget": "Budget",
+      "provider": "AI provider",
+      "allProviders": "All providers",
+      "goodAt": "Good at"
+    },
+    "columns": {
+      "model": "Model",
+      "goodAt": "Good at",
+      "memory": "Memory",
+      "cost": "Cost",
+      "offeredBy": "Offered by"
+    },
+    "memory": {
+      "standard": "Standard",
+      "long": "Long",
+      "huge": "Huge"
+    },
+    "cost": {
+      "from": "from {{price}}",
+      "free": "Free",
+      "tiers": {
+        "1": "Budget",
+        "2": "Standard",
+        "3": "Premium"
+      }
     },
     "providers_one": "{{count}} provider",
     "providers_other": "{{count}} providers",
@@ -48,8 +65,20 @@
       "description": "Try a different search or filter."
     }
   },
+  "caps": {
+    "reasoning": "Reasoning",
+    "images": "Images"
+  },
+  "providerModal": {
+    "signedInWith": "Signed in with {{provider}}",
+    "setDefault": "Set as default",
+    "signOut": "Sign out",
+    "connect": "Connect",
+    "models": "Models",
+    "searchModels": "Search models",
+    "noModels": "Models are ready as soon as you connect."
+  },
   "model": {
-    "back": "All models",
     "specs": {
       "context": "Context",
       "output": "Max output",
