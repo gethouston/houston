@@ -79,7 +79,7 @@ export function EmailSignIn() {
           maxLength={6}
           placeholder="123456"
           autoFocus
-          className="h-11 text-center tracking-[0.4em]"
+          className="h-11 rounded-full text-center tracking-[0.4em]"
         />
         <Button
           type="submit"
@@ -124,7 +124,7 @@ export function EmailSignIn() {
         onChange={(e) => setEmail(e.target.value)}
         autoComplete="email"
         placeholder="you@example.com"
-        className="h-11"
+        className="h-11 rounded-full px-5"
       />
       <Button
         type="submit"
