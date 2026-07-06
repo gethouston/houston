@@ -71,6 +71,8 @@ export function SettingsIndex({
 
       <div className="space-y-8">
         <SettingsCard>
+          {/* WorkspaceSection (rename) is deliberately not rendered: the
+              workspace name is fixed for now (HOU-704). */}
           <AppearanceSection />
           <LanguageSection />
           {accountAvailable && <AccountSection />}

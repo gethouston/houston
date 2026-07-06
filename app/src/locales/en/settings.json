@@ -13,6 +13,9 @@
     "signOut": "Sign out",
     "fallbackName": "Signed in"
   },
+  "workspace": {
+    "title": "Workspace name"
+  },
   "workspaceContext": {
     "emptyTitle": "Tell every agent about this workspace",
     "emptyDescription": "The company, the product, the customers. Loaded into every new chat in this workspace.",
@@ -89,6 +92,7 @@
   },
   "version": "Version {{version}}",
   "toasts": {
+    "workspaceRenamed": "Workspace renamed",
     "providerSwitched": "Switched to {{provider}} ({{model}})",
     "versionCopied": "Version copied",
     "versionCopyFailed": "Couldn't copy version"
