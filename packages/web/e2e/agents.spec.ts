@@ -12,7 +12,7 @@ test("creates an agent and shows it in the sidebar", async ({ page }) => {
   await expect(page.getByText("Your Agents")).toBeVisible();
 
   await page.getByRole("button", { name: "New agent" }).click();
-  await page.getByText("Start from scratch").click();
+  await page.getByText("From scratch").click();
 
   await page.getByPlaceholder("e.g. Project Alpha").fill("Marketing Bot");
   await page.getByRole("button", { name: "Create Agent" }).click();
@@ -33,7 +33,7 @@ test("switches between two agents", async ({ page }) => {
 
   // Create a second agent; it becomes selected, with an empty board of its own.
   await page.getByRole("button", { name: "New agent" }).click();
-  await page.getByText("Start from scratch").click();
+  await page.getByText("From scratch").click();
   await page.getByPlaceholder("e.g. Project Alpha").fill("Research Bot");
   await page.getByRole("button", { name: "Create Agent" }).click();
 
