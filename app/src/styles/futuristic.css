@@ -221,7 +221,7 @@ body {
 
 /* ── 7. Kanban card resting fill ────────────────────────────────
    The resting (non-selected) card uses a palette token, --ht-card-rest:
-   #2C2C2B in dark (sampled from the running card), a soft gray in light.
+   #2C2C2B in dark (sampled from the running card), white in light.
    Solid, not translucent. Running cards use the SAME fill for their
    center (--glow-bg) so every non-selected card reads uniformly — only
    the running card's animated border marks it. Selected/highlighted
