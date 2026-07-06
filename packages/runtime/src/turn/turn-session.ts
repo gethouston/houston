@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import type {
+  PendingInteraction,
   ProviderError,
   TokenUsage,
   ToolCallRecord,
@@ -15,7 +16,12 @@ import {
   type FileSnapshot,
   snapshotWorkspace,
 } from "../session/file-changes";
+import {
+  newInteractionHolder,
+  runWithInteractionCapture,
+} from "../session/interaction";
 import { buildToolSelection } from "../session/tool-selection";
+import { makeAskUserTool } from "../session/tools/ask-user";
 import { makeClampedFileTools } from "../session/tools/clamped-fs";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
 import { makeRunCodeTool } from "../session/tools/run-code";
@@ -38,6 +44,13 @@ import { resolveTurnModel } from "./turn-model";
 
 export interface TurnOutcome {
   error?: string;
+  /**
+   * What the model ended the turn waiting on the user for (ask_user), if
+   * anything. The per-turn SERVER carries it on the clean terminal `done` frame
+   * it sends after sync-back — never on an error. request_connection isn't
+   * available here (integrations are off in cloud turn mode).
+   */
+  pendingInteraction?: PendingInteraction;
 }
 
 /** Per-turn model/effort pin (a routine's, when it pinned them). Absent = inherit. */
@@ -141,6 +154,10 @@ export async function runPiTurn(
       tools: toolSelection.toolNames,
       customTools: [
         ...makeClampedFileTools(workspaceDir),
+        // ask_user is available in every mode (holds no credential); its name is
+        // already in toolSelection.toolNames. request_connection is NOT — it is
+        // gated with the integration tools, which are off in cloud turn mode.
+        makeAskUserTool(),
         ...(sandbox ? [sandbox] : []),
       ],
     });
@@ -175,8 +192,12 @@ export async function runPiTurn(
     });
     const onAbort = () => void session.abort();
     signal?.addEventListener("abort", onAbort, { once: true });
+    // A fresh per-turn holder for whatever the model ends up waiting on the user
+    // for (ask_user); established for the prompt's async subtree so the tool
+    // records into it. Read after prompt() resolves, returned on the outcome.
+    const interaction = newInteractionHolder();
     try {
-      await session.prompt(text);
+      await runWithInteractionCapture(interaction, () => session.prompt(text));
     } finally {
       signal?.removeEventListener("abort", onAbort);
       unsub();
@@ -214,7 +235,9 @@ export async function runPiTurn(
       turnId,
     });
     if (fileChanges) emit({ type: "file_changes", data: fileChanges });
-    return {};
+    // Carry the pending question only on a clean turn — never alongside a
+    // provider error (mirrors exec-turn: only the clean `done` carries it).
+    return providerError ? {} : { pendingInteraction: interaction.pending };
   } catch (err) {
     if (assistantText || providerError)
       appendAssistantMessageAt(

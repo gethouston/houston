@@ -130,7 +130,17 @@ async function executeTurn(
 
     if (outcome.error)
       sse.send({ type: "error", data: { message: outcome.error }, turnId });
-    else sse.send({ type: "done", data: null, turnId });
+    else
+      sse.send({
+        type: "done",
+        data: null,
+        turnId,
+        // Carry whatever the model is waiting on the user for (ask_user), so the
+        // board card settles to `needs_you`. Only the clean done ever carries it.
+        ...(outcome.pendingInteraction
+          ? { pendingInteraction: outcome.pendingInteraction }
+          : {}),
+      });
     sse.close();
   } finally {
     await rm(root, { recursive: true, force: true });

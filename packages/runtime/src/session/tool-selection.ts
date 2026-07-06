@@ -1,3 +1,4 @@
+import { ASK_USER_TOOL_NAME } from "./tools/ask-user";
 import { CLAMPED_FILE_TOOL_NAMES } from "./tools/clamped-fs";
 import { INTEGRATION_TOOL_NAMES } from "./tools/integrations";
 
@@ -28,6 +29,9 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
   return {
     toolNames: [
       ...CLAMPED_FILE_TOOL_NAMES,
+      // ask_user is available in EVERY mode/backend — any blocking question,
+      // choice, or approval goes through it instead of plain-text.
+      ASK_USER_TOOL_NAME,
       ...executable,
       ...(input.integrations ? INTEGRATION_TOOL_NAMES : []),
     ],
