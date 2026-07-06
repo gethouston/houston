@@ -27,10 +27,17 @@ export function InstructionsContent({
   content,
   onSave,
   labels,
+  readOnly = false,
 }: {
   content: string;
   onSave: (content: string) => Promise<unknown>;
   labels?: InstructionsContentLabels;
+  /**
+   * Managed-agent read-only mode (matrix v2): a non-manager sees the
+   * instructions but cannot edit them. Hides the "Write" affordance, locks the
+   * textarea, and drops the save-on-blur. The gateway 403s writes regardless.
+   */
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation("agents");
   const resolved: InstructionsContentLabels = labels ?? {
@@ -58,7 +65,7 @@ export function InstructionsContent({
   );
 
   const handleBlur = async () => {
-    if (value === content) return;
+    if (readOnly || value === content) return;
     setState("saving");
     await onSave(value);
     setState("saved");
@@ -72,10 +79,12 @@ export function InstructionsContent({
           <EmptyTitle>{resolved.emptyTitle}</EmptyTitle>
           <EmptyDescription>{resolved.emptyDescription}</EmptyDescription>
         </EmptyHeader>
-        <Button onClick={() => setEditing(true)}>
-          <FileText className="size-4" />
-          {resolved.writeButton}
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setEditing(true)}>
+            <FileText className="size-4" />
+            {resolved.writeButton}
+          </Button>
+        )}
       </div>
     );
   }
@@ -108,6 +117,7 @@ export function InstructionsContent({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onBlur={handleBlur}
+          readOnly={readOnly}
           placeholder={resolved.placeholder}
           rows={Math.max(12, value.split("\n").length + 2)}
           className={cn(
@@ -116,6 +126,7 @@ export function InstructionsContent({
             "bg-background border border-foreground/[0.04] rounded-lg",
             "outline-none resize-none transition-shadow duration-200",
             "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+            readOnly && "cursor-default text-muted-foreground",
           )}
         />
       </section>

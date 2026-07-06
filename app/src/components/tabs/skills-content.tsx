@@ -19,6 +19,7 @@ export function SkillsContent({
   skills,
   loading,
   loadingSkillName,
+  readOnly = false,
   onSkillClick,
   onSearch,
   onPopular,
@@ -32,6 +33,12 @@ export function SkillsContent({
   loading: boolean;
   /** Name of the skill whose detail is loading; its card spins + disables. */
   loadingSkillName?: string | null;
+  /**
+   * Managed-agent read-only mode (matrix v2): a non-manager may view and open
+   * skills but not add/create/install any. Hides the add affordance entirely;
+   * skill detail opens read-only. The gateway 403s writes regardless.
+   */
+  readOnly?: boolean;
   onSkillClick: (name: string) => void;
   onSearch?: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>;
   onPopular?: (signal?: AbortSignal) => Promise<CommunitySkill[]>;
@@ -58,17 +65,18 @@ export function SkillsContent({
     () => [...skills].sort((a, b) => a.name.localeCompare(b.name)),
     [skills],
   );
-  const addDialogProps = onCreateFromScratch
-    ? {
-        onSearch,
-        onPopular,
-        onInstallCommunity,
-        onListFromRepo,
-        onInstallFromRepo,
-        onCreateFromScratch,
-        installedSkillNames,
-      }
-    : null;
+  const addDialogProps =
+    !readOnly && onCreateFromScratch
+      ? {
+          onSearch,
+          onPopular,
+          onInstallCommunity,
+          onListFromRepo,
+          onInstallFromRepo,
+          onCreateFromScratch,
+          installedSkillNames,
+        }
+      : null;
 
   if (loading && sorted.length === 0) {
     return (

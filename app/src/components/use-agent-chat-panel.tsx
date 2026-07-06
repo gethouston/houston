@@ -858,12 +858,14 @@ export function useAgentChatPanel({
           onSelect={handleModelSelect}
           open={modelPickerOpen}
           onOpenChange={setModelPickerOpen}
+          agent={agent}
         />
         <ChatEffortSelector
           provider={effectiveProvider}
           model={effectiveModel}
           effort={effectiveEffort}
           onSelect={handleEffortSelect}
+          agent={agent}
         />
         <div className="ml-auto">
           <ContextIndicator

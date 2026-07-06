@@ -7,8 +7,13 @@ import {
   useIntegrationConnections,
   useIntegrationToolkits,
 } from "../../../hooks/queries";
+import {
+  effectiveAllowlist,
+  useAgentSettings,
+  useSetAgentSettings,
+} from "../../../hooks/queries/use-agent-settings";
 import { useCapabilities } from "../../../hooks/use-capabilities";
-import { canEditAgentGrants } from "../../../lib/org-roles";
+import { canEditAgentGrants, isAgentManager } from "../../../lib/org-roles";
 import type { TabProps } from "../../../lib/types";
 import { useUIStore } from "../../../stores/ui";
 import {
@@ -22,27 +27,33 @@ import {
   useIntegrationsGate,
 } from "../../integrations";
 import { INTEGRATIONS_VIEW_ID } from "../../integrations-view/id";
-import { AgentAccountAppsSection } from "./agent-account-apps-section";
-import { AgentAppsSection, type AppsSectionCopy } from "./agent-apps-section";
+import { AgentAllowlistSection } from "./agent-allowlist-section";
+import { AgentAppsBody } from "./agent-apps-body";
 import { agentIntegrationsView } from "./model";
 
 /**
- * The per-agent Integrations tab, three stacked sections: the apps this agent
- * can use, the account apps ready to activate here (grants mode), and the
+ * The per-agent Integrations tab. Sections: the apps this agent can use, the
+ * account apps ready to activate here (grants mode), the apps a Teams allowlist
+ * forbids, the manager's allowlist editor (Teams + agent-manager only), and the
  * always-visible "Connect more apps" catalog. One tab-level connect flow with
  * `autoGrant` so a brand-new connection auto-activates on this agent. Behind the
  * shared boot gate; the grant view (multiplayer) and degraded view (host without
- * grant routes) are a discriminated union so the two never mix.
+ * grant routes) are a discriminated union so the two never mix. On a Teams host
+ * the effective allowlist (agent ceiling ∩ org ceiling) filters the browse
+ * catalog and splits disallowed connected apps out; non-Teams hosts feature-
+ * detect off and render exactly as before.
  */
 export default function IntegrationsTab({ agent }: TabProps) {
   const { t } = useTranslation("integrations");
   const gate = useIntegrationsGate();
   const ready = gate.kind === "ready";
+  const { capabilities } = useCapabilities();
+  const teamsEnabled = capabilities?.teams === true;
 
   const connections = useIntegrationConnections(INTEGRATION_PROVIDER, ready);
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, ready);
   const grantsQuery = useAgentGrants(agent.id, ready);
-  const { capabilities } = useCapabilities();
+  const settingsQuery = useAgentSettings(agent.id, ready && teamsEnabled);
 
   const grants = grantsQuery.data ?? null;
   const grantsSupported = grants !== null;
@@ -50,7 +61,15 @@ export default function IntegrationsTab({ agent }: TabProps) {
     ? canEditAgentGrants(capabilities, agent)
     : true;
 
+  const settings = settingsQuery.data;
+  const allowlist = useMemo(
+    () => (settings ? effectiveAllowlist(settings) : null),
+    [settings],
+  );
+  const isManager = isAgentManager(capabilities, agent);
+
   const grantMutation = useAgentGrantMutation(agent.id);
+  const settingsMutation = useSetAgentSettings(agent.id);
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const connectFlow = useConnectFlow({
     agentId: agent.id,
@@ -64,30 +83,31 @@ export default function IntegrationsTab({ agent }: TabProps) {
         connections: connections.data ?? [],
         catalog: catalog.data ?? [],
         grants,
+        allowlist,
       }),
-    [connections.data, catalog.data, grants],
+    [connections.data, catalog.data, grants, allowlist],
   );
+
+  // The browse catalog is narrowed to the effective allowlist so a member can
+  // only connect apps the agent is allowed to use (null = unrestricted).
+  const browseCatalog = useMemo(() => {
+    const all = catalog.data ?? [];
+    if (allowlist === null) return all;
+    const set = new Set(allowlist);
+    return all.filter((tk) => set.has(tk.slug));
+  }, [catalog.data, allowlist]);
 
   const bodyLoading =
     ready &&
-    (grantsQuery.isLoading || connections.isLoading || catalog.isLoading);
+    (grantsQuery.isLoading ||
+      connections.isLoading ||
+      catalog.isLoading ||
+      settingsQuery.isLoading);
 
   const removeGrant = (toolkit: string) =>
     grantMutation.mutate({ toolkit, op: "remove" });
   const activate = (toolkit: string) =>
     grantMutation.mutate({ toolkit, op: "add" });
-
-  const grantsCopy: AppsSectionCopy = {
-    title: t("agentTab.activeTitle"),
-    emptyTitle: t("agentTab.empty.title"),
-    emptyBody: t("agentTab.empty.body"),
-  };
-  const degradedCopy: AppsSectionCopy = {
-    title: t("agentTab.allApps.title"),
-    subtitle: t("agentTab.allApps.subtitle"),
-    emptyTitle: t("agentTab.empty.title"),
-    emptyBody: t("agentTab.empty.body"),
-  };
 
   return (
     <div className="h-full overflow-auto">
@@ -111,36 +131,31 @@ export default function IntegrationsTab({ agent }: TabProps) {
               <ReconnectBanner onDismiss={gate.dismissReconnect} />
             )}
 
-            {view.mode === "grants" ? (
-              <>
-                <AgentAppsSection
-                  copy={grantsCopy}
-                  rows={view.activeRows}
-                  canEdit={canEdit}
-                  connectFlow={connectFlow}
-                  onDeactivate={removeGrant}
-                  onRemove={removeGrant}
-                />
-                {canEdit && view.accountRows.length > 0 && (
-                  <AgentAccountAppsSection
-                    rows={view.accountRows}
-                    onActivate={activate}
-                  />
+            <AgentAppsBody
+              view={view}
+              canEdit={canEdit}
+              connectFlow={connectFlow}
+              onRemoveGrant={removeGrant}
+              onActivate={activate}
+              onDisconnect={(toolkit) => disconnect.mutate(toolkit)}
+            />
+
+            {teamsEnabled && settings && isManager && (
+              <AgentAllowlistSection
+                allowedToolkits={settings.allowedToolkits}
+                orgAllowedToolkits={settings.orgAllowedToolkits}
+                catalog={catalog.data ?? []}
+                connectedToolkits={(connections.data ?? []).map(
+                  (c) => c.toolkit,
                 )}
-              </>
-            ) : (
-              <AgentAppsSection
-                copy={degradedCopy}
-                rows={view.rows}
-                canEdit={canEdit}
-                connectFlow={connectFlow}
-                onRemove={(toolkit) => disconnect.mutate(toolkit)}
+                saving={settingsMutation.isPending}
+                onSave={(next) => settingsMutation.mutate(next)}
               />
             )}
 
             <div className="mt-8">
               <ConnectMoreAppsSection
-                catalog={catalog.data ?? []}
+                catalog={browseCatalog}
                 connections={connections.data ?? []}
                 connectFlow={connectFlow}
                 loading={catalog.isLoading}

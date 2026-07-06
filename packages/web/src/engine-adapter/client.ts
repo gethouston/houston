@@ -1531,9 +1531,16 @@ export class HoustonClient {
     if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
     return controlPlane.getOrg(this.cp);
   }
-  async addOrgMember(email: string, role: controlPlane.OrgRole): Promise<void> {
+  async addOrgMember(
+    email: string,
+    role: controlPlane.OrgRole,
+  ): Promise<controlPlane.AddOrgMemberResult> {
     if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
     return controlPlane.addOrgMember(this.cp, email, role);
+  }
+  async deleteOrgInvite(inviteId: string): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.deleteOrgInvite(this.cp, inviteId);
   }
   async removeOrgMember(userId: string): Promise<void> {
     if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
@@ -1550,10 +1557,47 @@ export class HoustonClient {
   // ---- per-agent assignments + integration grants (multiplayer) ----
   async setAgentAssignments(
     agentSlugOrId: string,
-    userIds: string[],
+    assignments: controlPlane.AgentAssignment[] | string[],
   ): Promise<void> {
     if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
-    return controlPlane.setAgentAssignments(this.cp, agentSlugOrId, userIds);
+    return controlPlane.setAgentAssignments(
+      this.cp,
+      agentSlugOrId,
+      assignments,
+    );
+  }
+  async getAgentSettings(
+    agentSlugOrId: string,
+  ): Promise<controlPlane.AgentSettings> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.getAgentSettings(this.cp, agentSlugOrId);
+  }
+  async setAgentSettings(
+    agentSlugOrId: string,
+    settings: { allowedToolkits: string[] | null },
+  ): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.setAgentSettings(this.cp, agentSlugOrId, settings);
+  }
+  async getOrgSettings(): Promise<controlPlane.OrgSettings> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.getOrgSettings(this.cp);
+  }
+  async setOrgSettings(settings: {
+    allowedToolkits: string[] | null;
+  }): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.setOrgSettings(this.cp, settings);
+  }
+  async orgAudit(
+    opts: { before?: number; limit?: number } = {},
+  ): Promise<controlPlane.AuditEntry[]> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.orgAudit(this.cp, opts);
+  }
+  async orgUsage(days: number): Promise<controlPlane.UsageRow[]> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.orgUsage(this.cp, days);
   }
   // Grants degrade gracefully: `null` means "this deployment has no grants
   // model" (the legacy engine path, or a host that 404s the route), which the UI

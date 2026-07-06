@@ -1,3 +1,6 @@
+import type { Agent, Capabilities } from "@houston-ai/engine-client";
+import { canManageAssignments, isMultiplayer } from "../../lib/org-roles.ts";
+
 /**
  * Pure toggle logic for the "Who can use this agent" block. The host convention
  * makes an EMPTY `assignedUserIds` mean "everyone in the org", so toggling off
@@ -6,6 +9,28 @@
  * returned as `confirmOpenToAll` for the UI to confirm-gate. Pure so it's
  * unit-testable.
  */
+
+/**
+ * Should the "Who can use this agent" share block render at all? Two conditions,
+ * both required:
+ *
+ * 1. The deployment is multiplayer — single-player / self-host has no org to
+ *    share within, so the block is meaningless and must degrade to nothing
+ *    (like the grants surface does). `canManageAssignments` alone is NOT enough:
+ *    under matrix v2 it short-circuits to `true` in single-player, so gating on
+ *    it only would resurrect an empty, non-functional org-share block on every
+ *    self-host agent.
+ * 2. The caller can manage this agent's assignments (agent-manager authority).
+ *
+ * Pure so the visibility gate is unit-tested in isolation.
+ */
+export function canShowAgentShareBlock(
+  caps: Capabilities | null | undefined,
+  agent: Pick<Agent, "access">,
+): boolean {
+  return isMultiplayer(caps) && canManageAssignments(caps, agent);
+}
+
 export type AssignmentToggleResult =
   | { kind: "set"; userIds: string[] }
   | { kind: "confirmOpenToAll" };

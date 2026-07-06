@@ -4,15 +4,18 @@ import { useTranslation } from "react-i18next";
 import { useOrg, useSetAgentAssignments } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSession } from "../../hooks/use-session";
-import { canManageAssignments, isMultiplayer } from "../../lib/org-roles";
+import { isMultiplayer } from "../../lib/org-roles";
 import type { Agent } from "../../lib/types";
-import { assignmentToggle } from "./agent-access-model";
+import { assignmentToggle, canShowAgentShareBlock } from "./agent-access-model";
 
 /**
  * The "Who can use this agent" block on an agent's General settings. Lists org
  * members with a per-member toggle backed by `agent.assignedUserIds` (empty =
- * everyone). Owner sees it for any agent; admin only for agents they're
- * assigned to; plain `user` never (the whole block returns null). The gateway
+ * everyone). Rendered only in multiplayer mode AND only for an agent-manager of
+ * this agent (matrix v2): owner for any org agent; an admin only when their
+ * effective `access` on the agent is `"manager"` — mere assignment no longer
+ * qualifies. Single-player / self-host has no org, so the block degrades to
+ * nothing. Plain members and admins-who-only-use never see it. The gateway
  * enforces the same authority — these toggles only drive the call.
  */
 export function AgentAccessSection({ agent }: { agent: Agent }) {
@@ -25,7 +28,7 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
   // (empty set = everyone) — that widening is confirm-gated, never silent.
   const [confirmOpenToAll, setConfirmOpenToAll] = useState(false);
 
-  if (!canManageAssignments(capabilities, agent)) return null;
+  if (!canShowAgentShareBlock(capabilities, agent)) return null;
 
   const selfId = session?.user?.id ?? null;
   const members = org.data?.members ?? [];

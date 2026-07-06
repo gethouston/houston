@@ -80,6 +80,21 @@ export interface Agent {
    * means "everyone in the org". Absent in single-player mode.
    */
   assignedUserIds?: string[];
+  /**
+   * Teams v2: the CURRENT caller's effective access to this agent (`manager`
+   * may reconfigure it, `user` may only use it). Absent in single-player mode.
+   * Drives the client-side read-only gating (org-roles `isAgentManager`);
+   * the gateway is the sole enforcer. Kept in sync (by hand) with the
+   * engine-client `Agent` shape.
+   */
+  access?: "manager" | "user";
+  /**
+   * Teams v2: the full assignee list with per-person access level. Populated
+   * only for callers who may manage assignments (owner or agent-manager);
+   * absent in single-player mode. `assignedUserIds` mirrors these user ids for
+   * back-compat.
+   */
+  assignments?: { userId: string; access: "manager" | "user" }[];
 }
 
 /** Props injected into every tab component */

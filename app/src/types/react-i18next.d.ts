@@ -26,6 +26,7 @@ import type settings from "../locales/en/settings.json";
 import type setup from "../locales/en/setup.json";
 import type shell from "../locales/en/shell.json";
 import type skills from "../locales/en/skills.json";
+import type teams from "../locales/en/teams.json";
 
 declare module "react-i18next" {
   interface CustomTypeOptions {
@@ -50,6 +51,7 @@ declare module "react-i18next" {
       portable: typeof portable;
       context: typeof context;
       org: typeof org;
+      teams: typeof teams;
     };
   }
 }

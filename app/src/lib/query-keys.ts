@@ -67,4 +67,10 @@ export const queryKeys = {
   // per user); per-agent integration grants are keyed by agent id.
   org: () => ["org"] as const,
   agentGrants: (agentId: string) => ["agent-grants", agentId] as const,
+  /**
+   * Teams v2: an agent's allowed-toolkit settings (agent + org ceilings +
+   * caller access). Fetched only on a Teams host; the mutation self-invalidates
+   * this and the agent's grant set (the gateway prunes disallowed grants).
+   */
+  agentSettings: (agentId: string) => ["agent-settings", agentId] as const,
 };
