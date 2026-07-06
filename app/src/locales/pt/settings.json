@@ -13,9 +13,6 @@
     "signOut": "Sair",
     "fallbackName": "Sessão iniciada"
   },
-  "workspace": {
-    "title": "Nome do espaço"
-  },
   "workspaceContext": {
     "emptyTitle": "Conte para todo agente sobre este espaço",
     "emptyDescription": "A empresa, o produto, os clientes. Entra em cada conversa nova deste espaço.",
@@ -92,7 +89,6 @@
   },
   "version": "Versão {{version}}",
   "toasts": {
-    "workspaceRenamed": "Espaço de trabalho renomeado",
     "providerSwitched": "Mudou para {{provider}} ({{model}})",
     "versionCopied": "Versão copiada",
     "versionCopyFailed": "Não foi possível copiar a versão"

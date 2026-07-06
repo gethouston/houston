@@ -8,7 +8,6 @@ import { AccountSection } from "./sections/account";
 import { AppearanceSection } from "./sections/appearance";
 import { DangerSection } from "./sections/danger";
 import { LanguageSection } from "./sections/language";
-import { WorkspaceSection } from "./sections/workspace";
 import { SettingsCard, SettingsRow } from "./settings-row";
 
 /** A settings section that opens on its own screen (a back bar returns here). */
@@ -26,8 +25,8 @@ interface SettingsIndexProps {
 }
 
 /**
- * The settings landing page. Simple settings (workspace name, appearance,
- * language, account, delete) are resolved inline as control rows; the heavier
+ * The settings landing page. Simple settings (appearance, language, account,
+ * delete) are resolved inline as control rows; the heavier
  * ones (context editors, members, shortcuts, bug report) are navigable rows that
  * drill into their own screen. Account and members appear only when applicable.
  */
@@ -72,7 +71,6 @@ export function SettingsIndex({
 
       <div className="space-y-8">
         <SettingsCard>
-          <WorkspaceSection />
           <AppearanceSection />
           <LanguageSection />
           {accountAvailable && <AccountSection />}

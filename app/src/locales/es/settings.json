@@ -13,9 +13,6 @@
     "signOut": "Cerrar sesión",
     "fallbackName": "Sesión iniciada"
   },
-  "workspace": {
-    "title": "Nombre del espacio"
-  },
   "workspaceContext": {
     "emptyTitle": "Cuéntale a todo agente sobre este espacio",
     "emptyDescription": "La empresa, el producto, los clientes. Se carga en cada chat nuevo de este espacio.",
@@ -92,7 +89,6 @@
   },
   "version": "Versión {{version}}",
   "toasts": {
-    "workspaceRenamed": "Espacio de trabajo renombrado",
     "providerSwitched": "Cambiaste a {{provider}} ({{model}})",
     "versionCopied": "Versión copiada",
     "versionCopyFailed": "No se pudo copiar la versión"

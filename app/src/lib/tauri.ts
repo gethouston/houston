@@ -152,10 +152,6 @@ export const tauriWorkspaces = {
     ),
   delete: (id: string) =>
     call<void>("delete_workspace", () => getEngine().deleteWorkspace(id)),
-  rename: (id: string, newName: string) =>
-    call<void>("rename_workspace", async () => {
-      await getEngine().renameWorkspace(id, { newName });
-    }),
   setLocale: (id: string, locale: string | null) =>
     call<Workspace>("set_workspace_locale", () =>
       getEngine().setWorkspaceLocale(id, locale),
