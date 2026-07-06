@@ -19,8 +19,8 @@
         "desc": "Datos y contexto que recuerda."
       },
       "model": {
-        "title": "Modelo de IA",
-        "desc": "El modelo que impulsa este agente."
+        "title": "Modelos permitidos",
+        "desc": "Modelos que este agente puede usar."
       },
       "people": {
         "title": "Personas con acceso",
@@ -29,24 +29,33 @@
       "integrations": {
         "title": "Integraciones permitidas",
         "desc": "Aplicaciones que este agente puede usar."
-      },
-      "general": {
-        "desc": "Nombre, color y eliminación."
-      },
-      "template": {
-        "title": "Guardar como plantilla",
-        "desc": "Reutiliza esta configuración para nuevos agentes."
       }
     },
     "values": {
       "skillCount_one": "{{count}} habilidad",
       "skillCount_other": "{{count}} habilidades",
       "learningCount_one": "{{count}} nota",
-      "learningCount_other": "{{count}} notas"
+      "learningCount_other": "{{count}} notas",
+      "allModels": "Todos los modelos permitidos",
+      "modelCount_one": "{{count}} modelo",
+      "modelCount_other": "{{count}} modelos",
+      "allApps": "Todas las apps permitidas",
+      "appCount_one": "{{count}} app",
+      "appCount_other": "{{count}} apps"
     },
-    "model": {
-      "title": "Modelo de IA",
-      "helper": "Elige el modelo y el nivel de razonamiento que usa este agente."
+    "models": {
+      "title": "Modelos permitidos",
+      "subtitle": "Elige qué modelos puede usar este agente. Los miembros solo pueden elegir los modelos que permitas aquí.",
+      "emptyTitle": "Todos los modelos permitidos",
+      "emptyBody": "Cualquier persona con acceso puede ejecutar este agente con cualquier modelo disponible. Restríngelo para elegir exactamente qué modelos pueden elegir los miembros.",
+      "restrict": "Restringir modelos para este agente",
+      "allowAll": "Permitir todos los modelos",
+      "allowModel": "Permitir {{name}}",
+      "searchModels": "Buscar modelos",
+      "noModels": "No se encontraron modelos",
+      "allowedHeading": "Modelos permitidos",
+      "allowedEmpty": "Aún no hay modelos permitidos. Agrega algunos abajo.",
+      "addHeading": "Agregar modelos"
     },
     "integrations": {
       "unavailable": "Los límites de integraciones no están disponibles aquí."
@@ -56,16 +65,14 @@
     "allowlist": {
       "title": "Integraciones permitidas",
       "subtitle": "Elige qué aplicaciones puede usar este agente. Los miembros solo pueden conectar las que permitas aquí.",
-      "allAllowed": "Todas las integraciones permitidas",
-      "restrict": "Restringir a aplicaciones específicas",
+      "emptyTitle": "Todas las aplicaciones permitidas",
+      "emptyBody": "Cualquier persona con acceso puede conectar este agente a más de 1000 aplicaciones. Restríngelo para elegir exactamente qué aplicaciones puede usar este agente.",
+      "restrict": "Restringir aplicaciones para este agente",
       "allowAll": "Permitir todas las aplicaciones",
-      "none": "Ninguna aplicación permitida. Este agente no puede usar integraciones.",
-      "edit": "Editar",
-      "save": "Guardar",
-      "cancel": "Cancelar",
-      "selectApps": "Seleccionar aplicaciones",
-      "searchApps": "Buscar aplicaciones",
-      "noApps": "No se encontraron aplicaciones"
+      "allowApp": "Permitir {{name}}",
+      "allowedHeading": "Aplicaciones permitidas",
+      "allowedEmpty": "Aún no hay aplicaciones permitidas. Agrega algunas abajo.",
+      "addHeading": "Agregar aplicaciones"
     },
     "notAllowed": {
       "title": "No permitida para este agente",
@@ -81,7 +88,6 @@
     "tabs": {
       "people": "Personas",
       "agents": "Agentes",
-      "templates": "Plantillas",
       "activity": "Actividad",
       "usage": "Uso"
     },
@@ -226,66 +232,5 @@
     },
     "lastOpened": "Abierto {{time}}",
     "open": "Abrir {{name}}"
-  },
-  "templates": {
-    "pickerTitle": "Empezar desde una plantilla",
-    "settingUp": "Configurando tu agente...",
-    "summary": {
-      "skills_one": "{{count}} habilidad",
-      "skills_other": "{{count}} habilidades",
-      "apps_one": "{{count}} app",
-      "apps_other": "{{count}} apps",
-      "allApps": "Todas las apps"
-    },
-    "save": {
-      "sectionTitle": "Guardar como plantilla",
-      "sectionHelper": "Captura la configuración de este agente como una plantilla reutilizable para crear nuevos agentes con tu equipo.",
-      "button": "Guardar como plantilla",
-      "dialog": {
-        "title": "Guardar como plantilla",
-        "subtitle": "Reutiliza la configuración de {{name}} para crear nuevos agentes iguales."
-      },
-      "nameLabel": "Nombre de la plantilla",
-      "namePlaceholder": "ej. Agente de Ventas",
-      "descriptionLabel": "Descripción",
-      "descriptionPlaceholder": "¿Para qué sirve esta plantilla? (opcional)",
-      "capturedTitle": "Lo que se incluye",
-      "summary": {
-        "instructions": "Instrucciones",
-        "skills_one": "{{count}} habilidad",
-        "skills_other": "{{count}} habilidades",
-        "allApps": "Todas las apps permitidas",
-        "apps_one": "{{count}} app permitida",
-        "apps_other": "{{count}} apps permitidas"
-      },
-      "cancel": "Cancelar",
-      "submit": "Guardar plantilla",
-      "toast": {
-        "title": "Plantilla guardada",
-        "body": "{{name}} está lista para reutilizar."
-      }
-    }
-  },
-  "templatesTab": {
-    "error": "No se pudieron cargar las plantillas.",
-    "empty": {
-      "title": "Aún no hay plantillas",
-      "body": "Guarda un agente como plantilla para reutilizar su configuración en todo tu equipo."
-    },
-    "card": {
-      "skills_one": "{{count}} habilidad",
-      "skills_other": "{{count}} habilidades",
-      "apps_one": "{{count}} app",
-      "apps_other": "{{count}} apps",
-      "allApps": "Todas las apps",
-      "createdBy": "Creada por {{name}}"
-    },
-    "deleteLabel": "Eliminar {{name}}",
-    "deleteConfirm": {
-      "title": "¿Eliminar {{name}}?",
-      "description": "Esta plantilla se eliminará para todos en tu organización. Los agentes ya creados a partir de ella no se verán afectados.",
-      "confirm": "Eliminar",
-      "cancel": "Cancelar"
-    }
   }
 }

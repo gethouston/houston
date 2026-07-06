@@ -1,5 +1,4 @@
 import { Input } from "@houston-ai/core";
-import type { TemplateSummary } from "@houston-ai/engine-client";
 import { Search } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,7 +9,6 @@ import {
 import type { AgentDefinition } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { SkillCard } from "../skill-card";
-import { CreateFromTemplatePicker } from "./create-from-template-picker";
 import { AgentCard } from "./experience-card";
 
 interface AgentPickerStepProps {
@@ -19,16 +17,6 @@ interface AgentPickerStepProps {
   agents: AgentDefinition[];
   onSelect: (id: string) => void;
   onCreateWithAi: () => void;
-  /**
-   * Multiplayer only (Teams v2): the org's agent templates. Empty/undefined on
-   * single-player, self-host, or for a plain member — the template section then
-   * never renders and the flow is byte-identical to today.
-   */
-  templates?: TemplateSummary[];
-  /** Id of the template being stamped into an agent, or null. */
-  creatingTemplateId?: string | null;
-  /** Create an agent from the chosen template. */
-  onSelectTemplate?: (id: string) => void;
 }
 
 export function AgentPickerStep({
@@ -37,9 +25,6 @@ export function AgentPickerStep({
   agents,
   onSelect,
   onCreateWithAi,
-  templates,
-  creatingTemplateId = null,
-  onSelectTemplate,
 }: AgentPickerStepProps) {
   const { t, i18n } = useTranslation(["shell", "portable", "agents"]);
   const setImportOpen = useUIStore((s) => s.setImportFromFriendOpen);
@@ -78,17 +63,6 @@ export function AgentPickerStep({
 
   return (
     <>
-      {/* Start from a template (Teams v2) — pinned above "Create" when the org
-          has templates and the caller can stamp them. Absent otherwise, so the
-          non-teams flow is unchanged. */}
-      {templates && templates.length > 0 && onSelectTemplate && (
-        <CreateFromTemplatePicker
-          templates={templates}
-          creatingId={creatingTemplateId}
-          onSelect={onSelectTemplate}
-        />
-      )}
-
       {/* Create — three uniform cards, pinned above the library. These are the
           ways to make a NEW agent, always one click away (search below only
           narrows the library). */}

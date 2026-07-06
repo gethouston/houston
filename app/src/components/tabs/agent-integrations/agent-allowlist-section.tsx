@@ -1,8 +1,19 @@
+import {
+  Button,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  Switch,
+} from "@houston-ai/core";
 import type { IntegrationToolkit } from "@houston-ai/engine-client";
-import { useMemo, useState } from "react";
+import { Blocks } from "lucide-react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { AppCatalogGrid } from "../../integrations/app-catalog-grid";
 import { appDisplay } from "../../integrations/app-display";
-import { ToolkitPicker } from "./toolkit-picker";
+import { AppRow } from "../../integrations/app-row";
 
 interface AgentAllowlistSectionProps {
   /** The agent-level ceiling: `null` = all allowed, else the explicit set. */
@@ -13,7 +24,7 @@ interface AgentAllowlistSectionProps {
   catalog: IntegrationToolkit[];
   /** This user's connected toolkits — the seed when first restricting. */
   connectedToolkits: string[];
-  /** A save is in flight (disables the controls). */
+  /** A write is in flight (disables the toggles). */
   saving: boolean;
   /** Persist the next ceiling: `null` = allow all, else the explicit set. */
   onSave: (next: string[] | null) => void;
@@ -21,10 +32,13 @@ interface AgentAllowlistSectionProps {
 
 /**
  * Agent-manager-only editor for this agent's integration allowlist ceiling
- * (Teams v2). Two resting states: "All integrations allowed" (`null`) with a
- * Restrict affordance, or the explicit allowed set with Edit / Allow-all. Edit
- * opens a multi-select over the org ceiling; Save writes the chosen set. The
- * gateway is the real enforcer (this only previews + writes the ceiling).
+ * (Teams v2), rendered flush on its own Access drill-in pane (no card wrapper).
+ * Two states: the "all apps allowed" empty state (`null`) with one Restrict CTA,
+ * or the restrict state, the same {@link AppCatalogGrid} the Integrations tab
+ * uses with a per-app allow Switch. Writes are instant + optimistic (the query
+ * value drives each Switch); the gateway is the real enforcer. Restricting seeds
+ * the allowed set with the currently-connected apps so it never cuts off apps
+ * already in use.
  */
 export function AgentAllowlistSection({
   allowedToolkits,
@@ -35,8 +49,6 @@ export function AgentAllowlistSection({
   onSave,
 }: AgentAllowlistSectionProps) {
   const { t } = useTranslation("teams");
-  const [editing, setEditing] = useState(false);
-  const [working, setWorking] = useState<Set<string>>(new Set());
 
   // The selectable universe: the org ceiling if one is set, else the whole
   // catalog. A manager can only allow apps the org itself allows.
@@ -49,122 +61,128 @@ export function AgentAllowlistSection({
     () => new Set(universe.map((tk) => tk.slug)),
     [universe],
   );
-  const bySlug = useMemo(
-    () => new Map(catalog.map((tk) => [tk.slug, tk])),
-    [catalog],
+  const allowedSet = useMemo(
+    () => new Set(allowedToolkits ?? []),
+    [allowedToolkits],
+  );
+  // The apps currently allowed (within the org universe), shown as their own
+  // short list so a manager sees the allowed set at a glance instead of hunting
+  // for the toggled-on rows inside the 1000+ app catalog.
+  const allowedApps = useMemo(
+    () => universe.filter((tk) => allowedSet.has(tk.slug)),
+    [universe, allowedSet],
   );
 
-  const startRestrict = () => {
+  const startRestrict = () =>
     // Seed with the apps this user already has connected (kept within the org
     // ceiling) so restricting does not instantly cut off in-use apps.
-    setWorking(new Set(connectedToolkits.filter((s) => universeSlugs.has(s))));
-    setEditing(true);
+    onSave([...connectedToolkits].filter((s) => universeSlugs.has(s)).sort());
+  const toggle = (slug: string) => {
+    const next = new Set(allowedSet);
+    if (next.has(slug)) next.delete(slug);
+    else next.add(slug);
+    onSave([...next].sort());
   };
-  const startEdit = () => {
-    setWorking(new Set(allowedToolkits ?? []));
-    setEditing(true);
-  };
-  const toggle = (slug: string) =>
-    setWorking((prev) => {
-      const next = new Set(prev);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
-    });
-  const save = () => {
-    onSave([...working].sort());
-    setEditing(false);
-  };
+
+  if (allowedToolkits === null) {
+    return (
+      <Empty className="border-0">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Blocks />
+          </EmptyMedia>
+          <EmptyTitle>{t("integrations.allowlist.emptyTitle")}</EmptyTitle>
+          <EmptyDescription>
+            {t("integrations.allowlist.emptyBody")}
+          </EmptyDescription>
+        </EmptyHeader>
+        <Button
+          className="mt-2 rounded-full"
+          size="sm"
+          disabled={saving}
+          onClick={startRestrict}
+        >
+          {t("integrations.allowlist.restrict")}
+        </Button>
+      </Empty>
+    );
+  }
 
   return (
-    <section className="mt-8 rounded-xl border border-border p-4">
-      <div className="mb-1 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-medium text-foreground">
-          {t("integrations.allowlist.title")}
-        </h2>
-        {!editing && allowedToolkits !== null && (
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => onSave(null)}
-            className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:opacity-50"
-          >
-            {t("integrations.allowlist.allowAll")}
-          </button>
-        )}
-      </div>
-      <p className="mb-3 text-xs text-muted-foreground">
-        {t("integrations.allowlist.subtitle")}
-      </p>
-
-      {editing ? (
-        <div className="flex flex-col gap-3">
-          <ToolkitPicker
-            options={universe}
-            selected={working}
-            onToggle={toggle}
-          />
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={save}
-              className="inline-flex h-8 items-center rounded-full bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-            >
-              {t("integrations.allowlist.save")}
-            </button>
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => setEditing(false)}
-              className="inline-flex h-8 items-center rounded-full border border-border bg-background px-4 text-xs font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
-            >
-              {t("integrations.allowlist.cancel")}
-            </button>
-          </div>
-        </div>
-      ) : allowedToolkits === null ? (
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-foreground">
-            {t("integrations.allowlist.allAllowed")}
+    <div>
+      <header className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-medium text-foreground">
+            {t("integrations.allowlist.title")}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("integrations.allowlist.subtitle")}
           </p>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={startRestrict}
-            className="inline-flex h-8 shrink-0 items-center rounded-full border border-border bg-background px-4 text-xs font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
-          >
-            {t("integrations.allowlist.restrict")}
-          </button>
         </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {allowedToolkits.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t("integrations.allowlist.none")}
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {allowedToolkits.map((slug) => (
-                <span
-                  key={slug}
-                  className="rounded-full bg-secondary px-2.5 py-1 text-xs text-foreground"
-                >
-                  {appDisplay(slug, bySlug.get(slug)).name}
-                </span>
-              ))}
-            </div>
-          )}
-          <button
-            type="button"
-            disabled={saving}
-            onClick={startEdit}
-            className="inline-flex h-8 w-fit items-center rounded-full border border-border bg-background px-4 text-xs font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
-          >
-            {t("integrations.allowlist.edit")}
-          </button>
-        </div>
-      )}
-    </section>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => onSave(null)}
+          className="shrink-0 text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:opacity-50"
+        >
+          {t("integrations.allowlist.allowAll")}
+        </button>
+      </header>
+      <section className="mb-8">
+        <h2 className="mb-2 text-sm font-medium text-foreground">
+          {t("integrations.allowlist.allowedHeading")}
+        </h2>
+        {allowedApps.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {t("integrations.allowlist.allowedEmpty")}
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {allowedApps.map((tk) => {
+              const display = appDisplay(tk.slug, tk);
+              return (
+                <AppRow
+                  key={tk.slug}
+                  display={display}
+                  description={display.description}
+                  trailing={
+                    <Switch
+                      aria-label={t("integrations.allowlist.allowApp", {
+                        name: display.name,
+                      })}
+                      checked
+                      disabled={saving}
+                      onCheckedChange={() => toggle(tk.slug)}
+                    />
+                  }
+                />
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-medium text-foreground">
+          {t("integrations.allowlist.addHeading")}
+        </h2>
+        <AppCatalogGrid
+          catalog={universe}
+          excludeToolkits={allowedSet}
+          renderRow={(display, tk) => ({
+            trailing: (
+              <Switch
+                aria-label={t("integrations.allowlist.allowApp", {
+                  name: display.name,
+                })}
+                checked={allowedSet.has(tk.slug)}
+                disabled={saving}
+                onCheckedChange={() => toggle(tk.slug)}
+              />
+            ),
+          })}
+        />
+      </section>
+    </div>
   );
 }

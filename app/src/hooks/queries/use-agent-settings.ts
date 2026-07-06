@@ -59,3 +59,35 @@ export function useSetAgentSettings(agentId: string) {
     },
   });
 }
+
+/**
+ * Teams v2, agent-manager only: replace this agent's AI-model ceiling
+ * (`allowedModels`: `null` = every model allowed, `[]` = none) via the same
+ * `setAgentSettings` PUT. Optimistic whole-value swap with rollback, mirroring
+ * `useSetAgentSettings` — but models carry no server-side grant pruning, so this
+ * only invalidates the agent's settings, not its grant set. No `onError` toast:
+ * `tauriAgentSettings.set` routes through `call()`, which surfaces + reports the
+ * failure once; `onError` here only rolls the optimistic value back.
+ */
+export function useSetAgentAllowedModels(agentId: string) {
+  const qc = useQueryClient();
+  const key = queryKeys.agentSettings(agentId);
+  return useMutation({
+    mutationFn: (allowedModels: string[] | null) =>
+      tauriAgentSettings.set(agentId, { allowedModels }),
+    onMutate: async (allowedModels) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<AgentSettings>(key);
+      if (prev) {
+        qc.setQueryData<AgentSettings>(key, { ...prev, allowedModels });
+      }
+      return { prev };
+    },
+    onError: (_err, _next, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: key });
+    },
+  });
+}

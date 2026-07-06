@@ -17,9 +17,11 @@ import { routineModelPickerDefaults } from "./routines-tab-model";
  * keeps the routine inheriting the agent's config at dispatch. The effort
  * control hides itself for models with no effort levels (e.g. Gemini).
  *
- * The `agent` is threaded into both selectors so a plain org member never sees
- * the AI model here either (Teams matrix v2): the picker HIDES for members, the
- * same as the composer. Managers / single-player keep it fully interactive.
+ * The `agent` is threaded into both selectors so this control's visibility
+ * tracks the composer's (Teams E8). A routine's model is SHARED agent config
+ * (the manager pins which model the scheduled run uses), not a per-user choice,
+ * so it is not ceiling-clamped and `onChange` writes the routine form directly;
+ * the gateway rejects a non-manager's save.
  */
 export function RoutineModelControls({
   agent,

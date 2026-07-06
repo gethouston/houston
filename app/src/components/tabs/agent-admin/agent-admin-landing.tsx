@@ -3,23 +3,19 @@ import {
   Brain,
   Cpu,
   FileText,
-  LayoutTemplate,
   LibraryBig,
   type LucideIcon,
-  Settings,
   Users,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  useAgentConfig,
-  useLearnings,
-  useSkills,
-} from "../../../hooks/queries";
+import { useLearnings, useSkills } from "../../../hooks/queries";
+import { useAgentSettings } from "../../../hooks/queries/use-agent-settings";
 import { useCapabilities } from "../../../hooks/use-capabilities";
-import { getProvider } from "../../../lib/providers.ts";
 import type { Agent } from "../../../lib/types";
 import { SettingsCard, SettingsRow } from "../../settings/settings-row";
+import { AgentAdminDetails } from "./agent-admin-details";
 import { type AgentAdminScreen, agentAdminCards } from "./agent-admin-nav.ts";
+import { ceilingValue } from "./agent-admin-row-values.ts";
 
 const ICONS: Record<AgentAdminScreen, LucideIcon> = {
   instructions: FileText,
@@ -28,14 +24,12 @@ const ICONS: Record<AgentAdminScreen, LucideIcon> = {
   model: Cpu,
   people: Users,
   integrations: Blocks,
-  general: Settings,
-  template: LayoutTemplate,
 };
 
 /**
- * Title + description i18n key per row. Instructions/skills/general reuse the
- * existing `agents:subTabs.*` titles; the rest are new `teams:agentAdmin.*` keys
- * (listed explicitly so every key is type-checked and locale-validated).
+ * Title + description i18n key per row. Instructions/skills reuse the existing
+ * `agents:subTabs.*` titles; the rest are new `teams:agentAdmin.*` keys (listed
+ * explicitly so every key is type-checked and locale-validated).
  */
 const ROW_KEYS = {
   instructions: {
@@ -62,21 +56,15 @@ const ROW_KEYS = {
     title: "agentAdmin.rows.integrations.title",
     desc: "agentAdmin.rows.integrations.desc",
   },
-  general: {
-    title: "agents:subTabs.general",
-    desc: "agentAdmin.rows.general.desc",
-  },
-  template: {
-    title: "agentAdmin.rows.template.title",
-    desc: "agentAdmin.rows.template.desc",
-  },
 } as const satisfies Record<AgentAdminScreen, { title: string; desc: string }>;
 
 /**
  * The Settings-style landing for the manager-only Agent Settings tab. Grouped
- * cards (Configuration / Access / General) whose rows drill into a full-pane
- * screen reusing the existing editors. Card + row visibility is the pure
- * {@link agentAdminCards}; single-player drops the Access card and template row.
+ * cards (Configuration / Access) whose rows drill into a full-pane screen, then
+ * a "General" card of inline name / color / delete rows. Card + row visibility
+ * is the pure {@link agentAdminCards}; single-player drops the Access card. Each
+ * row surfaces its current state inline (skill/note/people counts, and the
+ * model + integration ceilings) so a manager sees it without drilling in.
  */
 export function AgentAdminLanding({
   agent,
@@ -87,11 +75,12 @@ export function AgentAdminLanding({
 }) {
   const { t } = useTranslation(["teams", "agents"]);
   const { capabilities } = useCapabilities();
+  const teams = capabilities?.teams === true;
   const path = agent.folderPath;
   const { data: skills } = useSkills(path);
   const { data: learnings } = useLearnings(path);
-  const { data: config } = useAgentConfig(path);
-  const cards = agentAdminCards(capabilities, agent);
+  const { data: settings } = useAgentSettings(agent.id, teams);
+  const cards = agentAdminCards(capabilities);
 
   const value = (s: AgentAdminScreen): string | undefined => {
     if (s === "skills" && skills?.length) {
@@ -102,7 +91,20 @@ export function AgentAdminLanding({
         count: learnings.entries.length,
       });
     }
-    if (s === "model") return getProvider(config?.provider ?? "")?.name;
+    if (s === "model") {
+      const v = ceilingValue(settings?.allowedModels);
+      if (!v) return undefined;
+      return v.kind === "all"
+        ? t("agentAdmin.values.allModels")
+        : t("agentAdmin.values.modelCount", { count: v.count });
+    }
+    if (s === "integrations") {
+      const v = ceilingValue(settings?.allowedToolkits);
+      if (!v) return undefined;
+      return v.kind === "all"
+        ? t("agentAdmin.values.allApps")
+        : t("agentAdmin.values.appCount", { count: v.count });
+    }
     if (s === "people" && agent.assignments?.length) {
       return t("share.peopleCount", { count: agent.assignments.length });
     }
@@ -135,6 +137,8 @@ export function AgentAdminLanding({
             ))}
           </SettingsCard>
         ))}
+
+        <AgentAdminDetails agent={agent} />
       </div>
     </div>
   );

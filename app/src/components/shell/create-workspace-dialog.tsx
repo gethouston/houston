@@ -11,7 +11,6 @@ import { useTranslation } from "react-i18next";
 import { STORE_TEMPLATE_IDS } from "../../agents/builtin/store-catalog";
 import { loadStoreTemplate } from "../../agents/builtin/store-template-loader";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
-import { useCreateFromTemplate } from "../../hooks/use-create-from-template";
 import { finishAgentSetup } from "../../lib/agent-setup";
 import { getDefaultModel } from "../../lib/providers";
 import { tauriProvider } from "../../lib/tauri";
@@ -55,17 +54,6 @@ export function CreateAgentDialog() {
   const [existingPath, setExistingPath] = useState<string | null>(null);
   const [provider, setProvider] = useState<string>("anthropic");
   const [model, setModel] = useState<string>(getDefaultModel("anthropic"));
-
-  // "Create from template" (Teams v2) — multiplayer + create-capable + open
-  // gated inside the hook; `[]` (and no picker section) everywhere else.
-  const { templates, creatingTemplateId, createFromTemplate } =
-    useCreateFromTemplate({
-      open,
-      onCreated: () => {
-        useUIStore.getState().setViewMode(DEFAULT_TAB_ID);
-        handleClose();
-      },
-    });
 
   // Reset form on close. On open, sync the picker to the sticky last-used
   // pair. Reading on open (not mount) prevents the old "stale workspace
@@ -203,9 +191,6 @@ export function CreateAgentDialog() {
               search={search}
               onSearchChange={setSearch}
               agents={agentDefs}
-              templates={templates}
-              creatingTemplateId={creatingTemplateId}
-              onSelectTemplate={createFromTemplate}
               onSelect={(id) => {
                 setSelectedConfigId(id);
                 setGeneratedClaudeMd(undefined);

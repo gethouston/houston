@@ -6,9 +6,14 @@ import {
 } from "@houston-ai/core";
 import type { Agent } from "@houston-ai/engine-client";
 import { ChevronDown } from "lucide-react";
+import { useMemo } from "react";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useChatModelPicker } from "../hooks/use-chat-model-picker";
-import { shouldShowModelSelector } from "../lib/model-selector-lock";
+import { decodeModelPickerId } from "../lib/chat-model-picker-ids";
+import {
+  isModelAllowed,
+  modelSelectorDecision,
+} from "../lib/model-selector-lock";
 import { ProviderConnectionDialogs } from "./ai-hub/provider-connection-dialogs";
 import { ProviderGlyph } from "./shell/provider-logos";
 
@@ -34,12 +39,19 @@ interface ChatModelSelectorProps {
   onOpenChange?: (open: boolean) => void;
   /**
    * The agent this selector configures, when rendered in an agent-scoped
-   * surface (the composer). Threaded so the picker is HIDDEN for org members
-   * who may not change the agent's AI model (Teams matrix v2): a non-manager
-   * never sees which model the agent uses. Omit outside an agent scope and the
-   * picker always shows; single-player and owners/managers always show it.
+   * surface (the composer). Threaded so the picker follows the Teams matrix:
+   * single-player and managers/owners always see it; a multiplayer Teams member
+   * also sees it (Change 3 reversed E7's hide-for-members), while a member on a
+   * pre-Teams multiplayer host stays hidden. Omit outside an agent scope and the
+   * picker always shows.
    */
   agent?: Pick<Agent, "access"> | null;
+  /**
+   * The agent's effective allowed-models ceiling (Teams E8): the option list is
+   * clamped to it. `null`/`undefined` = no ceiling (every model). When it holds
+   * exactly one model the picker renders that model read-only (still visible).
+   */
+  allowedModels?: string[] | null;
 }
 
 export function ChatModelSelector({
@@ -49,9 +61,10 @@ export function ChatModelSelector({
   open,
   onOpenChange,
   agent,
+  allowedModels,
 }: ChatModelSelectorProps) {
   const { capabilities } = useCapabilities();
-  const show = shouldShowModelSelector(capabilities, agent);
+  const { show } = modelSelectorDecision(capabilities, agent);
   const picker = useChatModelPicker({
     provider,
     model,
@@ -60,10 +73,33 @@ export function ChatModelSelector({
     onOpenChange,
   });
 
-  // A plain org member never sees the agent's model: the picker renders
-  // nothing (the composer row collapses cleanly). The hooks above still run so
-  // the rules-of-hooks order stays stable across the show/hide flip.
+  // Clamp the pickable set to the agent's allowed-models ceiling (Teams E8).
+  // `allowedModels == null` = no ceiling (every model). Providers left with no
+  // model drop out of the rail. `picker.models` is only built while the popover
+  // is open, so this is an empty-in/empty-out no-op when the picker is closed.
+  const models = useMemo(
+    () =>
+      allowedModels == null
+        ? picker.models
+        : picker.models.filter((m) =>
+            isModelAllowed(allowedModels, decodeModelPickerId(m.id).model),
+          ),
+    [picker.models, allowedModels],
+  );
+  const providers = useMemo(() => {
+    if (allowedModels == null) return picker.providers;
+    const ids = new Set(models.map((m) => m.providerId));
+    return picker.providers.filter((p) => ids.has(p.id));
+  }, [picker.providers, models, allowedModels]);
+
+  // A plain member on a pre-Teams multiplayer host never sees the agent's model:
+  // the picker renders nothing. The hooks above still run so the rules-of-hooks
+  // order stays stable across the show/hide flip.
   if (!show) return null;
+
+  // Exactly one allowed model: the pick is fixed, so render it read-only (still
+  // visible) rather than a one-row popover (contract Change 3).
+  const readOnly = allowedModels != null && allowedModels.length === 1;
 
   return (
     // Stop pointer events from bubbling — prevents the board detail panel
@@ -74,41 +110,52 @@ export function ChatModelSelector({
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
     >
-      <Popover open={picker.isOpen} onOpenChange={picker.setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      {readOnly ? (
+        // The one allowed model, read-only: no dropdown affordance signals it is
+        // fixed, and the visible label is its own accessible name.
+        <div className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground">
+          <span className="inline-flex size-3.5 items-center justify-center [&_svg]:size-full">
+            <ProviderGlyph providerId={provider} />
+          </span>
+          <span>{picker.displayLabel}</span>
+        </div>
+      ) : (
+        <Popover open={picker.isOpen} onOpenChange={picker.setOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <span className="inline-flex size-3.5 items-center justify-center [&_svg]:size-full">
+                <ProviderGlyph providerId={provider} />
+              </span>
+              <span>{picker.displayLabel}</span>
+              <ChevronDown className="size-3 opacity-60" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            className="w-auto border-0 bg-transparent p-0 shadow-none"
+            onCloseAutoFocus={(e) => e.preventDefault()}
           >
-            <span className="inline-flex size-3.5 items-center justify-center [&_svg]:size-full">
-              <ProviderGlyph providerId={provider} />
-            </span>
-            <span>{picker.displayLabel}</span>
-            <ChevronDown className="size-3 opacity-60" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="start"
-          className="w-auto border-0 bg-transparent p-0 shadow-none"
-          onCloseAutoFocus={(e) => e.preventDefault()}
-        >
-          <ModelPicker
-            models={picker.models}
-            providers={picker.providers}
-            favorites={picker.favorites}
-            recents={picker.recents}
-            selectedId={picker.selectedId}
-            defaultProviderId={picker.defaultProviderId}
-            catalogState={picker.catalogState}
-            onSelect={picker.onSelect}
-            onToggleFavorite={picker.onToggleFavorite}
-            onConnect={picker.onConnect}
-            renderProviderIcon={picker.renderProviderIcon}
-            labels={picker.labels}
-            className="w-[600px]"
-          />
-        </PopoverContent>
-      </Popover>
+            <ModelPicker
+              models={models}
+              providers={providers}
+              favorites={picker.favorites}
+              recents={picker.recents}
+              selectedId={picker.selectedId}
+              defaultProviderId={picker.defaultProviderId}
+              catalogState={picker.catalogState}
+              onSelect={picker.onSelect}
+              onToggleFavorite={picker.onToggleFavorite}
+              onConnect={picker.onConnect}
+              renderProviderIcon={picker.renderProviderIcon}
+              labels={picker.labels}
+              className="w-[600px]"
+            />
+          </PopoverContent>
+        </Popover>
+      )}
       <ProviderConnectionDialogs {...picker.dialogProps} />
     </fieldset>
   );

@@ -19,8 +19,8 @@
         "desc": "Fatos e contexto que ele lembra."
       },
       "model": {
-        "title": "Modelo de IA",
-        "desc": "O modelo que impulsiona este agente."
+        "title": "Modelos permitidos",
+        "desc": "Modelos que este agente pode usar."
       },
       "people": {
         "title": "Pessoas com acesso",
@@ -29,24 +29,33 @@
       "integrations": {
         "title": "Integrações permitidas",
         "desc": "Aplicativos que este agente pode usar."
-      },
-      "general": {
-        "desc": "Nome, cor e exclusão."
-      },
-      "template": {
-        "title": "Salvar como modelo",
-        "desc": "Reutilize esta configuração para novos agentes."
       }
     },
     "values": {
       "skillCount_one": "{{count}} habilidade",
       "skillCount_other": "{{count}} habilidades",
       "learningCount_one": "{{count}} nota",
-      "learningCount_other": "{{count}} notas"
+      "learningCount_other": "{{count}} notas",
+      "allModels": "Todos os modelos permitidos",
+      "modelCount_one": "{{count}} modelo",
+      "modelCount_other": "{{count}} modelos",
+      "allApps": "Todos os apps permitidos",
+      "appCount_one": "{{count}} app",
+      "appCount_other": "{{count}} apps"
     },
-    "model": {
-      "title": "Modelo de IA",
-      "helper": "Escolha o modelo e o nível de raciocínio que este agente usa."
+    "models": {
+      "title": "Modelos permitidos",
+      "subtitle": "Escolha quais modelos este agente pode usar. Os membros só podem escolher os modelos que você permitir aqui.",
+      "emptyTitle": "Todos os modelos permitidos",
+      "emptyBody": "Qualquer pessoa com acesso pode executar este agente com qualquer modelo disponível. Restrinja para escolher exatamente quais modelos os membros podem escolher.",
+      "restrict": "Restringir modelos para este agente",
+      "allowAll": "Permitir todos os modelos",
+      "allowModel": "Permitir {{name}}",
+      "searchModels": "Buscar modelos",
+      "noModels": "Nenhum modelo encontrado",
+      "allowedHeading": "Modelos permitidos",
+      "allowedEmpty": "Nenhum modelo permitido ainda. Adicione alguns abaixo.",
+      "addHeading": "Adicionar modelos"
     },
     "integrations": {
       "unavailable": "Os limites de integrações não estão disponíveis aqui."
@@ -56,16 +65,14 @@
     "allowlist": {
       "title": "Integrações permitidas",
       "subtitle": "Escolha quais aplicativos este agente pode usar. Os membros só podem conectar os que você permitir aqui.",
-      "allAllowed": "Todas as integrações permitidas",
-      "restrict": "Restringir a aplicativos específicos",
+      "emptyTitle": "Todos os aplicativos permitidos",
+      "emptyBody": "Qualquer pessoa com acesso pode conectar este agente a mais de 1000 aplicativos. Restrinja para escolher exatamente quais aplicativos este agente pode usar.",
+      "restrict": "Restringir aplicativos para este agente",
       "allowAll": "Permitir todos os aplicativos",
-      "none": "Nenhum aplicativo permitido. Este agente não pode usar integrações.",
-      "edit": "Editar",
-      "save": "Salvar",
-      "cancel": "Cancelar",
-      "selectApps": "Selecionar aplicativos",
-      "searchApps": "Buscar aplicativos",
-      "noApps": "Nenhum aplicativo encontrado"
+      "allowApp": "Permitir {{name}}",
+      "allowedHeading": "Apps permitidos",
+      "allowedEmpty": "Nenhum app permitido ainda. Adicione alguns abaixo.",
+      "addHeading": "Adicionar apps"
     },
     "notAllowed": {
       "title": "Não permitido para este agente",
@@ -81,7 +88,6 @@
     "tabs": {
       "people": "Pessoas",
       "agents": "Agentes",
-      "templates": "Modelos",
       "activity": "Atividade",
       "usage": "Uso"
     },
@@ -226,66 +232,5 @@
     },
     "lastOpened": "Aberto {{time}}",
     "open": "Abrir {{name}}"
-  },
-  "templates": {
-    "pickerTitle": "Começar a partir de um modelo",
-    "settingUp": "Configurando seu agente...",
-    "summary": {
-      "skills_one": "{{count}} habilidade",
-      "skills_other": "{{count}} habilidades",
-      "apps_one": "{{count}} app",
-      "apps_other": "{{count}} apps",
-      "allApps": "Todos os apps"
-    },
-    "save": {
-      "sectionTitle": "Salvar como modelo",
-      "sectionHelper": "Capture a configuração deste agente como um modelo reutilizável para criar novos agentes com sua equipe.",
-      "button": "Salvar como modelo",
-      "dialog": {
-        "title": "Salvar como modelo",
-        "subtitle": "Reutilize a configuração de {{name}} para criar novos agentes iguais."
-      },
-      "nameLabel": "Nome do modelo",
-      "namePlaceholder": "ex. Agente de Vendas",
-      "descriptionLabel": "Descrição",
-      "descriptionPlaceholder": "Para que serve este modelo? (opcional)",
-      "capturedTitle": "O que é incluído",
-      "summary": {
-        "instructions": "Instruções",
-        "skills_one": "{{count}} habilidade",
-        "skills_other": "{{count}} habilidades",
-        "allApps": "Todos os apps permitidos",
-        "apps_one": "{{count}} app permitido",
-        "apps_other": "{{count}} apps permitidos"
-      },
-      "cancel": "Cancelar",
-      "submit": "Salvar modelo",
-      "toast": {
-        "title": "Modelo salvo",
-        "body": "{{name}} está pronto para reutilizar."
-      }
-    }
-  },
-  "templatesTab": {
-    "error": "Não foi possível carregar os modelos.",
-    "empty": {
-      "title": "Ainda não há modelos",
-      "body": "Salve um agente como modelo para reutilizar a configuração em toda a sua equipe."
-    },
-    "card": {
-      "skills_one": "{{count}} habilidade",
-      "skills_other": "{{count}} habilidades",
-      "apps_one": "{{count}} app",
-      "apps_other": "{{count}} apps",
-      "allApps": "Todos os apps",
-      "createdBy": "Criado por {{name}}"
-    },
-    "deleteLabel": "Excluir {{name}}",
-    "deleteConfirm": {
-      "title": "Excluir {{name}}?",
-      "description": "Este modelo será removido para todos na sua organização. Os agentes já criados a partir dele não serão afetados.",
-      "confirm": "Excluir",
-      "cancel": "Cancelar"
-    }
   }
 }

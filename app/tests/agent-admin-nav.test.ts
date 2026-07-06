@@ -22,60 +22,47 @@ const caps = (over: Partial<Capabilities> = {}): Capabilities => ({
 const multiplayer = (role: OrgRole): Capabilities =>
   caps({ multiplayer: true, role });
 
-type AgentAccess = "manager" | "user";
 const cardIds = (cards: AgentAdminCard[]) => cards.map((c) => c.id);
 const rowsOf = (cards: AgentAdminCard[], id: string) =>
   cards.find((c) => c.id === id)?.rows ?? null;
 
 describe("agentAdminCards — card + row visibility", () => {
-  it("single-player: Configuration + General only, no Access, no template", () => {
-    for (const access of ["manager", "user", undefined] as const) {
-      const cards = agentAdminCards(caps(), { access });
-      deepStrictEqual(cardIds(cards), ["configuration", "general"]);
-      deepStrictEqual(rowsOf(cards, "general"), ["general"]);
-      strictEqual(
-        cards.some((c) => c.id === "access"),
-        false,
-      );
-    }
+  it("single-player: Configuration only, no Access (name/color/delete are inline)", () => {
+    deepStrictEqual(cardIds(agentAdminCards(caps())), ["configuration"]);
+    strictEqual(
+      agentAdminCards(caps()).some((c) => c.id === "access"),
+      false,
+    );
     // A null capabilities host (legacy / pre-Teams) behaves the same.
-    deepStrictEqual(cardIds(agentAdminCards(null, { access: undefined })), [
-      "configuration",
-      "general",
-    ]);
+    deepStrictEqual(cardIds(agentAdminCards(null)), ["configuration"]);
   });
 
-  it("Configuration always carries the four config rows", () => {
+  it("Configuration always carries the three config rows (no model)", () => {
     for (const c of [caps(), multiplayer("owner"), multiplayer("user")]) {
-      deepStrictEqual(
-        rowsOf(agentAdminCards(c, { access: "manager" }), "configuration"),
-        ["instructions", "skills", "knowledge", "model"],
-      );
+      deepStrictEqual(rowsOf(agentAdminCards(c), "configuration"), [
+        "instructions",
+        "skills",
+        "knowledge",
+      ]);
     }
   });
 
-  it("multiplayer owner: Access card + template row", () => {
-    const cards = agentAdminCards(multiplayer("owner"), { access: undefined });
-    deepStrictEqual(cardIds(cards), ["configuration", "access", "general"]);
-    deepStrictEqual(rowsOf(cards, "access"), ["people", "integrations"]);
-    deepStrictEqual(rowsOf(cards, "general"), ["general", "template"]);
-  });
-
-  it("multiplayer agent-manager (access=manager): Access card + template row", () => {
-    for (const role of ["admin", "user"] as const) {
-      const cards = agentAdminCards(multiplayer(role), { access: "manager" });
-      deepStrictEqual(cardIds(cards), ["configuration", "access", "general"]);
-      deepStrictEqual(rowsOf(cards, "general"), ["general", "template"]);
+  it("single-player has no model row anywhere (model moved to Access)", () => {
+    for (const cards of [agentAdminCards(caps()), agentAdminCards(null)]) {
+      const allRows = cards.flatMap((c) => c.rows);
+      strictEqual(allRows.includes("model"), false);
     }
   });
 
-  it("multiplayer non-manager: Access card shows but NO template row", () => {
-    for (const role of ["admin", "user"] as const) {
-      for (const access of ["user", undefined] as AgentAccess[]) {
-        const cards = agentAdminCards(multiplayer(role), { access });
-        deepStrictEqual(cardIds(cards), ["configuration", "access", "general"]);
-        deepStrictEqual(rowsOf(cards, "general"), ["general"]);
-      }
+  it("multiplayer: adds the Access card (people + integrations + model)", () => {
+    for (const role of ["owner", "admin", "user"] as const) {
+      const cards = agentAdminCards(multiplayer(role));
+      deepStrictEqual(cardIds(cards), ["configuration", "access"]);
+      deepStrictEqual(rowsOf(cards, "access"), [
+        "people",
+        "integrations",
+        "model",
+      ]);
     }
   });
 });
