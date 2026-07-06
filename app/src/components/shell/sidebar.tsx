@@ -1,6 +1,6 @@
 import { ConfirmDialog } from "@houston-ai/core";
 import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
-import { Blocks, LayoutDashboard, Settings, Sparkles } from "lucide-react";
+import { Blocks, Boxes, LayoutDashboard, Settings } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
@@ -166,7 +166,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
             {
               id: "ai-hub",
               label: t("shell:sidebar.aiModels"),
-              icon: <Sparkles className="h-4 w-4" />,
+              icon: <Boxes className="h-4 w-4" />,
               onClick: () => setViewMode("ai-hub"),
             },
             {

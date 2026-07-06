@@ -6,7 +6,6 @@ import {
   groupProviders,
   offerForProvider,
   providerDescriptionKey,
-  providerModelCount,
   providerModels,
 } from "../src/components/ai-hub/provider-grouping.ts";
 import type {
@@ -73,13 +72,13 @@ describe("providerModels", () => {
       providerModels(catalog, opencode).map((m) => m.key),
       ["claude opus 4.8", "glm 5.1", "kimi k2.6"],
     );
-    strictEqual(providerModelCount(catalog, opencode), 3);
+    strictEqual(providerModels(catalog, opencode).length, 3);
   });
 
   it("uses the card's own id when it has no gateway ids", () => {
     const google = provider("google", { auth: "apiKey" });
     const catalog = catalogOf({ google: [model("gemini 3 flash")] });
-    strictEqual(providerModelCount(catalog, google), 1);
+    strictEqual(providerModels(catalog, google).length, 1);
   });
 });
 

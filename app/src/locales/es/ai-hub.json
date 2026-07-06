@@ -10,11 +10,11 @@
   },
   "sections": {
     "connected": "Conectados",
-    "available": "Disponibles",
-    "comingSoon": "Próximamente"
+    "available": "Disponibles"
   },
   "card": {
     "connect": "Conectar",
+    "seeMore": "Ver más",
     "connected": "Conectado",
     "cancel": "Cancelar",
     "models_one": "{{count}} modelo",
@@ -22,15 +22,7 @@
     "subscription": "Suscripción",
     "apiKey": "Tu clave de API",
     "local": "Se ejecuta en tu computador",
-    "gateway": "Puerta de acceso multimodelo",
-    "comingSoon": "Próximamente"
-  },
-  "providerDetail": {
-    "back": "Todos los proveedores",
-    "models": "Modelos",
-    "searchModels": "Buscar modelos",
-    "signOut": "Cerrar sesión",
-    "noModels": "Los modelos se configuran cuando te conectas."
+    "gateway": "Puerta de acceso multimodelo"
   },
   "directory": {
     "search": "Busca {{count}}+ modelos",
@@ -38,7 +30,32 @@
     "filters": {
       "all": "Todos",
       "reasoning": "Razonamiento",
-      "vision": "Visión"
+      "images": "Imágenes",
+      "budget": "Económico",
+      "provider": "Proveedor de IA",
+      "allProviders": "Todos los proveedores",
+      "goodAt": "Ideal para"
+    },
+    "columns": {
+      "model": "Modelo",
+      "goodAt": "Ideal para",
+      "memory": "Memoria",
+      "cost": "Costo",
+      "offeredBy": "Disponible en"
+    },
+    "memory": {
+      "standard": "Estándar",
+      "long": "Amplia",
+      "huge": "Enorme"
+    },
+    "cost": {
+      "from": "desde {{price}}",
+      "free": "Gratis",
+      "tiers": {
+        "1": "Económico",
+        "2": "Estándar",
+        "3": "Premium"
+      }
     },
     "providers_one": "{{count}} proveedor",
     "providers_other": "{{count}} proveedores",
@@ -48,8 +65,20 @@
       "description": "Prueba con otra búsqueda o filtro."
     }
   },
+  "caps": {
+    "reasoning": "Razonamiento",
+    "images": "Imágenes"
+  },
+  "providerModal": {
+    "signedInWith": "Sesión iniciada con {{provider}}",
+    "setDefault": "Usar por defecto",
+    "signOut": "Cerrar sesión",
+    "connect": "Conectar",
+    "models": "Modelos",
+    "searchModels": "Buscar modelos",
+    "noModels": "Los modelos están listos apenas te conectas."
+  },
   "model": {
-    "back": "Todos los modelos",
     "specs": {
       "context": "Contexto",
       "output": "Salida máxima",

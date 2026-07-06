@@ -4,6 +4,7 @@
     "background": { "$value": "{color.base.white}" },
     "foreground": { "$value": "{color.cool.ink}" },
     "card": { "$value": "{color.glass.white-68}" },
+    "card-hover": { "$value": "{color.glass.white-76}" },
     "card-fg": { "$value": "{color.neutral.950}" },
     "popover": { "$value": "{color.glass.white-82}" },
     "popover-fg": { "$value": "{color.neutral.950}" },

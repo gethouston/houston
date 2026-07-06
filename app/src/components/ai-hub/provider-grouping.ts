@@ -61,14 +61,6 @@ export function providerModels(
   return out;
 }
 
-/** How many unique models a card offers across its gateway ids. */
-export function providerModelCount(
-  catalog: HubCatalog,
-  provider: ProviderInfo,
-): number {
-  return providerModels(catalog, provider).length;
-}
-
 /**
  * A reverse lookup from an offer's engine gateway id to the connect card that
  * runs it. The merged OpenCode account (id `opencode`) owns both `opencode` and
