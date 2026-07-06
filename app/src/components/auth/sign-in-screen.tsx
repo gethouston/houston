@@ -20,14 +20,14 @@ type Provider = "google" | "azure";
  * copy product-benefit-focused — the audience is non-technical, so no mention
  * of OAuth / tokens / APIs.
  *
- * Three equal ways in: Google, Microsoft (both OAuth via the loopback flow),
- * and passwordless email (6-digit code, fully in-app — see EmailSignIn). The
- * providers read as one calm set of outline buttons — the only colour is each
- * brand's own mark — rather than one heavy primary button dominating the rest.
+ * A single sober card: the email form is the primary path (labelled field + one
+ * compact primary button); a divider then the two OAuth providers as the
+ * secondary path. Passwordless email is a 6-digit code, fully in-app; Google
+ * and Microsoft run the loopback OAuth flow.
  *
- * Re-click semantics: the loading spinner is only on while the system browser
- * is being opened (a few ms). After that the user is free to click a provider
- * again — the PKCE flow is regenerated each click.
+ * Re-click semantics: the provider spinner is only on while the system browser
+ * is being opened (a few ms). After that the user is free to click again — the
+ * PKCE flow is regenerated each click.
  */
 export function SignInScreen() {
   const [pending, setPending] = useState<Provider | null>(null);
@@ -61,60 +61,58 @@ export function SignInScreen() {
   };
 
   return (
-    <div className="h-screen flex flex-col items-center justify-center bg-background text-foreground px-6">
-      <div className="flex flex-col items-center gap-7 max-w-xs w-full">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <HoustonLogo size={44} />
-          <div className="flex flex-col gap-1.5">
-            <h1 className="text-xl font-semibold">Welcome to Houston</h1>
-            <p className="text-sm text-muted-foreground text-balance">
-              Sign in to save your agents and keep everything in sync.
-            </p>
-          </div>
-        </div>
+    <div className="relative h-screen bg-background text-foreground">
+      <div className="absolute left-6 top-6">
+        <HoustonLogo size={28} />
+      </div>
 
-        <div className="flex w-full flex-col gap-3">
-          <div className="flex w-full gap-2">
+      <div className="flex h-full items-center justify-center px-6">
+        <div className="w-full max-w-sm overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm">
+          <div className="flex flex-col gap-5 px-7 pt-7 pb-6">
+            <div className="flex flex-col gap-1">
+              <h1 className="text-lg font-semibold">Log in to Houston</h1>
+              <p className="text-sm text-muted-foreground">
+                Save your agents and keep everything in sync.
+              </p>
+            </div>
+
+            <EmailSignIn />
+          </div>
+
+          <Separator />
+
+          <div className="flex flex-col gap-2.5 px-7 pt-6 pb-7">
+            <p className="text-xs text-muted-foreground">Or continue with</p>
             <Button
-              variant="outline"
+              variant="secondary"
               onClick={handleSignIn("google")}
               disabled={pending !== null}
-              className="h-11 flex-1 rounded-full"
+              className="h-10 w-full justify-center rounded-full"
             >
               {pending === "google" ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 <GoogleIcon />
               )}
-              Google
+              Continue with Google
             </Button>
             <Button
-              variant="outline"
+              variant="secondary"
               onClick={handleSignIn("azure")}
               disabled={pending !== null}
-              className="h-11 flex-1 rounded-full"
+              className="h-10 w-full justify-center rounded-full"
             >
               {pending === "azure" ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 <MicrosoftIcon />
               )}
-              Microsoft
+              Continue with Microsoft
             </Button>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <Separator className="flex-1" />
-            <span className="text-xs text-muted-foreground">or</span>
-            <Separator className="flex-1" />
+            {error && <p className="text-xs text-destructive">{error}</p>}
           </div>
-
-          <EmailSignIn />
         </div>
-
-        {error && (
-          <p className="text-xs text-destructive text-center">{error}</p>
-        )}
       </div>
     </div>
   );
@@ -144,7 +142,7 @@ function GoogleIcon() {
 }
 
 function MicrosoftIcon() {
-  // The official four-square mark. Brand colours are the screen's only accent.
+  // The official four-square mark. Brand colours are the buttons' only accent.
   return (
     <svg width="16" height="16" viewBox="0 0 21 21" aria-hidden="true">
       <rect x="1" y="1" width="9" height="9" fill="#F25022" />
