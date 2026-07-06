@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { fallbackLogo } from "./integrations/app-display";
+import { useMemo, useState } from "react";
+import { useIntegrationStatus, useIntegrationToolkits } from "../hooks/queries";
+import { appDisplay, INTEGRATION_PROVIDER } from "./integrations";
 
 interface Props {
   /** Composio toolkit slugs the agent is designed to work with. */
@@ -13,15 +14,34 @@ interface Props {
  * agent is designed to use. Purely informational: on the TS engine the user
  * connects apps once in the Integrations tab (Composio), and every agent's
  * skills reach them through the integration tools.
+ *
+ * Logos resolve through the Composio toolkit catalog (the same `appDisplay`
+ * path as the Integrations tab), because the favicon guess alone breaks for
+ * every slug that isn't literally a `.com` domain (googledocs, metaads,
+ * perplexityai, ...). While the catalog hasn't loaded — or on a deployment
+ * with no integration provider wired — `appDisplay` falls back to the guess.
  */
 export function AgentIntegrationChips({ slugs, max = 6 }: Props) {
+  const status = useIntegrationStatus();
+  const ready = !!status.data?.find((p) => p.provider === INTEGRATION_PROVIDER)
+    ?.ready;
+  const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, ready);
+  const bySlug = useMemo(
+    () => new Map((catalog.data ?? []).map((tk) => [tk.slug, tk])),
+    [catalog.data],
+  );
+
   if (slugs.length === 0) return null;
   const shown = slugs.slice(0, max);
   const extra = slugs.length - shown.length;
   return (
     <div className="flex items-center gap-1.5">
       {shown.map((slug) => (
-        <IntegrationPip key={slug} slug={slug} />
+        <IntegrationPip
+          key={slug}
+          slug={slug}
+          logoUrl={appDisplay(slug, bySlug.get(slug)).logoUrl}
+        />
       ))}
       {extra > 0 && (
         <span className="text-[10px] font-medium text-muted-foreground">
@@ -32,9 +52,12 @@ export function AgentIntegrationChips({ slugs, max = 6 }: Props) {
   );
 }
 
-function IntegrationPip({ slug }: { slug: string }) {
-  const [broken, setBroken] = useState(false);
-  if (broken) {
+function IntegrationPip({ slug, logoUrl }: { slug: string; logoUrl: string }) {
+  // Remember WHICH url failed, not just that one did: when the catalog loads
+  // and upgrades the src from the favicon guess to the real logo, a boolean
+  // would keep the letter fallback on screen for the new, working url.
+  const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
+  if (brokenUrl === logoUrl) {
     return (
       <span
         title={slug}
@@ -46,11 +69,11 @@ function IntegrationPip({ slug }: { slug: string }) {
   }
   return (
     <img
-      src={fallbackLogo(slug)}
+      src={logoUrl}
       alt={slug}
       title={slug}
       className="size-4 rounded-[4px] bg-background object-contain"
-      onError={() => setBroken(true)}
+      onError={() => setBrokenUrl(logoUrl)}
     />
   );
 }
