@@ -1044,10 +1044,11 @@ export async function connectIntegration(
   cfg: ControlPlaneConfig,
   provider: string,
   toolkit: string,
+  agent?: string,
 ): Promise<{ redirectUrl: string; connectionId: string }> {
   const res = await cpFetch(cfg, `${integrationPath(provider)}/connect`, {
     method: "POST",
-    body: JSON.stringify({ toolkit }),
+    body: JSON.stringify({ toolkit, ...(agent ? { agent } : {}) }),
   });
   return (await res.json()) as { redirectUrl: string; connectionId: string };
 }

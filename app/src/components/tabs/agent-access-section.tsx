@@ -1,120 +1,88 @@
-import { ConfirmDialog, Spinner, Switch } from "@houston-ai/core";
+import { Avatar, AvatarFallback, Button } from "@houston-ai/core";
+import { UserPlus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useOrg, useSetAgentAssignments } from "../../hooks/queries";
+import { useOrg } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSession } from "../../hooks/use-session";
 import { isMultiplayer } from "../../lib/org-roles";
 import type { Agent } from "../../lib/types";
-import { assignmentToggle, canShowAgentShareBlock } from "./agent-access-model";
+import { buildSharePeople, canShowAgentShareBlock } from "./agent-access-model";
+import { AgentShareDialog } from "./agent-share-dialog";
+
+const MAX_AVATARS = 4;
 
 /**
- * The "Who can use this agent" block on an agent's General settings. Lists org
- * members with a per-member toggle backed by `agent.assignedUserIds` (empty =
- * everyone). Rendered only in multiplayer mode AND only for an agent-manager of
+ * The "Share this agent" block on an agent's General settings — the entry point
+ * to the Drive-style {@link AgentShareDialog}. Shows a stack of avatars and a
+ * count of the people who can use the agent, plus a Share button that opens the
+ * dialog. Rendered only in multiplayer mode AND only for an agent-manager of
  * this agent (matrix v2): owner for any org agent; an admin only when their
- * effective `access` on the agent is `"manager"` — mere assignment no longer
- * qualifies. Single-player / self-host has no org, so the block degrades to
- * nothing. Plain members and admins-who-only-use never see it. The gateway
- * enforces the same authority — these toggles only drive the call.
+ * effective `access` is `"manager"`. Single-player / self-host degrades to
+ * nothing. The gateway enforces the same authority.
  */
 export function AgentAccessSection({ agent }: { agent: Agent }) {
-  const { t } = useTranslation("org");
+  const { t } = useTranslation("teams");
   const { capabilities } = useCapabilities();
   const { data: session } = useSession();
   const org = useOrg(isMultiplayer(capabilities));
-  const setAssignments = useSetAgentAssignments();
-  // Removing the LAST assigned member flips the agent open to the whole org
-  // (empty set = everyone) — that widening is confirm-gated, never silent.
-  const [confirmOpenToAll, setConfirmOpenToAll] = useState(false);
+  const [open, setOpen] = useState(false);
 
   if (!canShowAgentShareBlock(capabilities, agent)) return null;
 
   const selfId = session?.user?.id ?? null;
   const members = org.data?.members ?? [];
-  // Empty `assignedUserIds` means "everyone in the org" (the host convention).
-  const assigned = new Set(agent.assignedUserIds ?? []);
-  const everyone = assigned.size === 0;
-
-  const toggle = (userId: string, on: boolean) => {
-    const result = assignmentToggle({
-      memberIds: members.map((m) => m.userId),
-      assigned,
-      userId,
-      on,
-    });
-    if (result.kind === "confirmOpenToAll") {
-      setConfirmOpenToAll(true);
-      return;
-    }
-    setAssignments.mutate({
-      agentSlugOrId: agent.id,
-      userIds: result.userIds,
-    });
-  };
+  const people = buildSharePeople({ agent, members, selfId });
+  const shown = people.slice(0, MAX_AVATARS);
+  const overflow = people.length - shown.length;
 
   return (
     <section>
-      <h2 className="text-lg font-semibold mb-1">{t("assignments.title")}</h2>
-      <p className="text-sm text-muted-foreground mb-4">
-        {t("assignments.description")}
+      <h2 className="mb-1 text-lg font-semibold">{t("share.sectionTitle")}</h2>
+      <p className="mb-4 text-sm text-muted-foreground">
+        {t("share.sectionHelper")}
       </p>
 
-      {org.isLoading ? (
-        <div className="flex justify-center py-6">
-          <Spinner className="h-5 w-5" />
-        </div>
-      ) : members.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {t("assignments.empty")}
-        </p>
-      ) : (
-        <ul className="space-y-2">
-          {members.map((member) => {
-            const isSelf = member.userId === selfId;
-            const on = everyone || assigned.has(member.userId);
-            return (
-              <li
-                key={member.userId}
-                className="flex items-center gap-3 rounded-xl border border-foreground/5 bg-card px-4 py-3"
-              >
-                <div className="flex-1 min-w-0 text-sm truncate">
-                  {member.email ?? member.userId}
-                  {isSelf && (
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      {t("assignments.you")}
-                    </span>
-                  )}
-                </div>
-                <Switch
-                  checked={on}
-                  onCheckedChange={(checked) => toggle(member.userId, checked)}
-                  aria-label={member.email ?? member.userId}
-                />
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <div className="flex items-center gap-3">
+        <Button
+          variant="secondary"
+          className="rounded-full"
+          onClick={() => setOpen(true)}
+        >
+          <UserPlus className="size-4" />
+          {t("share.button")}
+        </Button>
 
-      {everyone && (
-        <p className="mt-3 text-xs text-muted-foreground">
-          {t("assignments.everyone")}
-        </p>
-      )}
+        {people.length > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="flex -space-x-2">
+              {shown.map((person) => (
+                <Avatar
+                  key={person.userId}
+                  size="sm"
+                  className="ring-2 ring-background"
+                >
+                  <AvatarFallback>
+                    {(person.email ?? person.userId).charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+              {overflow > 0 && (
+                <Avatar size="sm" className="ring-2 ring-background">
+                  <AvatarFallback className="text-xs">
+                    {t("share.overflow", { count: overflow })}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+            </div>
+            <span className="text-sm text-muted-foreground">
+              {t("share.peopleCount", { count: people.length })}
+            </span>
+          </div>
+        )}
+      </div>
 
-      <ConfirmDialog
-        open={confirmOpenToAll}
-        onOpenChange={setConfirmOpenToAll}
-        title={t("assignments.openToAll.title")}
-        description={t("assignments.openToAll.description")}
-        confirmLabel={t("assignments.openToAll.confirm")}
-        cancelLabel={t("assignments.openToAll.cancel")}
-        variant="default"
-        onConfirm={() =>
-          setAssignments.mutate({ agentSlugOrId: agent.id, userIds: [] })
-        }
-      />
+      <AgentShareDialog agent={agent} open={open} onOpenChange={setOpen} />
     </section>
   );
 }

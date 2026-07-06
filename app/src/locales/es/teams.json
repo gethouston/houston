@@ -25,5 +25,158 @@
       "body": "Estas aplicaciones están conectadas a tu cuenta, pero tu organización no permite que este agente las use.",
       "badge": "No permitida"
     }
+  },
+  "org": {
+    "title": "Organización",
+    "subtitle": "Gestiona tu equipo, agentes y actividad en un solo lugar.",
+    "nav": "Organización",
+    "tablistLabel": "Secciones de la organización",
+    "tabs": {
+      "people": "Personas",
+      "agents": "Agentes",
+      "activity": "Actividad",
+      "usage": "Uso"
+    },
+    "loading": "Cargando tu organización...",
+    "unavailable": "No pudimos cargar tu organización."
+  },
+  "share": {
+    "title": "Compartir {{name}}",
+    "subtitle": "Elige quién puede usar este agente.",
+    "button": "Compartir",
+    "sectionTitle": "Compartir este agente",
+    "sectionHelper": "Agrega compañeros que puedan usar este agente y elige quién puede gestionarlo.",
+    "peopleCount_one": "{{count}} persona con acceso",
+    "peopleCount_other": "{{count}} personas con acceso",
+    "overflow": "+{{count}}",
+    "addPeople": "Agregar personas",
+    "searchPeople": "Busca por nombre o correo",
+    "noPeople": "No queda nadie por agregar.",
+    "empty": {
+      "title": "Nadie más tiene acceso todavía",
+      "body": "Agrega a un compañero para que pueda chatear con este agente."
+    },
+    "conversationNote": "Todos los que tienen acceso comparten la conversación de este agente.",
+    "chatNote": "Agente compartido. Todos los que tienen acceso ven esta conversación.",
+    "you": "Tú",
+    "ownerAccess": "Propietario, siempre tiene acceso",
+    "remove": "Quitar",
+    "changeAccessFor": "Cambiar el acceso de {{name}}",
+    "selfNote": "Cambiar tu propio acceso aquí puede quitarte la capacidad de gestionar este agente.",
+    "managerRequiresSeat": "Solo los compañeros con un puesto de Manager pueden gestionar agentes.",
+    "levels": {
+      "manager": "Manager",
+      "user": "Puede usar",
+      "managerHint": "Puede usar y reconfigurar este agente.",
+      "userHint": "Puede chatear con este agente, pero no cambiarlo."
+    },
+    "selfLockout": {
+      "title": "¿Cambiar tu propio acceso?",
+      "description": "Estás a punto de quitarte la capacidad de gestionar este agente. Es posible que no puedas deshacerlo por tu cuenta.",
+      "confirm": "Sí, cambiarlo",
+      "cancel": "Cancelar"
+    }
+  },
+  "people": {
+    "adminNotice": "Puedes ver a tu equipo. Solo el propietario puede agregar o quitar personas.",
+    "add": {
+      "title": "Agregar a alguien",
+      "subtitle": "Invita a un compañero por correo. Si aún no tiene Houston, le enviaremos una invitación.",
+      "emailLabel": "Correo",
+      "emailPlaceholder": "nombre@empresa.com",
+      "roleLabel": "Rol",
+      "submit": "Agregar",
+      "added": "{{email}} se agregó a tu equipo.",
+      "invited": "Invitación enviada a {{email}}. Se unirá cuando inicie sesión."
+    },
+    "roles": {
+      "owner": "Propietario",
+      "admin": "Manager",
+      "user": "Miembro"
+    },
+    "roleHelp": {
+      "admin": "Los managers crean y ejecutan agentes.",
+      "user": "Los miembros usan los agentes que se comparten con ellos."
+    },
+    "invites": {
+      "title": "Invitaciones pendientes",
+      "empty": "No hay invitaciones pendientes.",
+      "invitedBy": "Invitado por {{name}}",
+      "revoke": "Revocar",
+      "revokeLabel": "Revocar la invitación de {{email}}"
+    },
+    "roster": {
+      "title": "Equipo",
+      "you": "(tú)",
+      "changeRole": "Cambiar el rol de {{name}}",
+      "remove": "Quitar",
+      "removeLabel": "Quitar a {{name}}"
+    },
+    "removeConfirm": {
+      "title": "¿Quitar a {{name}}?",
+      "description": "Perderá el acceso a todos los agentes que se le compartieron. Puedes volver a agregarla más tarde.",
+      "confirm": "Quitar",
+      "cancel": "Cancelar"
+    }
+  },
+  "activityTab": {
+    "error": "No pudimos cargar la actividad.",
+    "empty": {
+      "title": "Aún no hay actividad",
+      "body": "Los cambios en tu equipo, agentes y apps aparecen aquí."
+    },
+    "loading": "Cargando...",
+    "showMore": "Mostrar más",
+    "roles": {
+      "owner": "Propietario",
+      "admin": "Manager",
+      "user": "Miembro"
+    },
+    "actions": {
+      "memberAdd": "{{actor}} agregó a {{name}} como {{role}}",
+      "memberRemove": "{{actor}} eliminó a {{name}}",
+      "memberRole": "{{actor}} cambió el rol de {{name}} a {{role}}",
+      "inviteCreate": "{{actor}} invitó a {{email}} como {{role}}",
+      "inviteRevoke": "{{actor}} canceló la invitación para {{email}}",
+      "inviteAccept": "{{actor}} se unió como {{role}}",
+      "agentCreate": "{{actor}} creó {{agent}}",
+      "agentRename": "{{actor}} renombró {{from}} a {{to}}",
+      "agentDelete": "{{actor}} eliminó {{agent}}",
+      "agentAssignments": "{{actor}} cambió quién puede usar {{agent}}",
+      "agentShared_one": "{{actor}} compartió {{agent}} con {{count}} persona",
+      "agentShared_other": "{{actor}} compartió {{agent}} con {{count}} personas",
+      "agentSettings": "{{actor}} cambió qué apps puede usar {{agent}}",
+      "orgSettings": "{{actor}} cambió la configuración de apps de tu organización",
+      "grantsSet": "{{actor}} permitió {{apps}} para {{agent}}",
+      "agentConfigure": "{{actor}} actualizó la configuración de {{agent}}",
+      "unknown": "{{actor}} hizo un cambio ({{action}})"
+    }
+  },
+  "usageTab": {
+    "error": "No pudimos cargar el uso.",
+    "empty": {
+      "title": "Aún no hay uso",
+      "body": "Cuando tu equipo empiece a chatear con los agentes, los conteos de mensajes aparecen aquí."
+    },
+    "summary_one": "{{count}} mensaje en los últimos 30 días",
+    "summary_other": "{{count}} mensajes en los últimos 30 días",
+    "messages_one": "{{count}} mensaje",
+    "messages_other": "{{count}} mensajes"
+  },
+  "agentsTab": {
+    "empty": {
+      "title": "Crea tu primer agente",
+      "body": "Los agentes son los asistentes que tu equipo comparte. Crea uno para empezar.",
+      "action": "Crear agente"
+    },
+    "managedBy": "Gestionado por {{names}}",
+    "access": {
+      "everyone": "Todo tu equipo",
+      "people_one": "{{count}} persona",
+      "people_other": "{{count}} personas",
+      "you": "Puedes usarlo"
+    },
+    "lastOpened": "Abierto {{time}}",
+    "open": "Abrir {{name}}"
   }
 }

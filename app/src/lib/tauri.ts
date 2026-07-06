@@ -13,6 +13,7 @@
 
 import type { LiveCatalog } from "@houston/protocol";
 import type {
+  AgentAssignment,
   CustomEndpoint,
   ComposioAppEntry as EngineComposioAppEntry,
   ComposioStatus as EngineComposioStatus,
@@ -254,10 +255,16 @@ export const tauriAgents = {
       "list_installed_configs",
       () => getEngine().listInstalledConfigs(),
     ),
-  /** Multiplayer: set which org members may use this agent. Empty = everyone. */
-  setAssignments: (agentSlugOrId: string, userIds: string[]) =>
+  /** Multiplayer: set which org members may use this agent, and at what access
+   *  level. Pass the v2 `AgentAssignment[]` (`{userId, access}`) roster from the
+   *  Share dialog; the legacy `string[]` (userIds → access `user`) shape still
+   *  works for older callers. Empty = everyone. */
+  setAssignments: (
+    agentSlugOrId: string,
+    assignments: AgentAssignment[] | string[],
+  ) =>
     call<void>("set_agent_assignments", () =>
-      getEngine().setAgentAssignments(agentSlugOrId, userIds),
+      getEngine().setAgentAssignments(agentSlugOrId, assignments),
     ),
 };
 
@@ -1316,9 +1323,12 @@ export const tauriIntegrations = {
     call("integration_connections", () =>
       getEngine().integrationConnections(provider),
     ),
-  connect: (provider: string, toolkit: string) =>
+  /** Begin an app connection. `agent` (the agent slug) scopes the connect to a
+   *  per-agent surface so the gateway applies the agent's allowlist + auto-grant
+   *  (Teams v2); omit it for the account-level Integrations page. */
+  connect: (provider: string, toolkit: string, agent?: string) =>
     call("integration_connect", () =>
-      getEngine().connectIntegration(provider, toolkit),
+      getEngine().connectIntegration(provider, toolkit, agent),
     ),
   connection: (provider: string, connectionId: string) =>
     call("integration_connection", () =>
@@ -1357,6 +1367,11 @@ export const tauriOrg = {
     email: string,
     role: import("@houston-ai/engine-client").OrgRole,
   ) => call("add_org_member", () => getEngine().addOrgMember(email, role)),
+  /** Revoke a pending invite by id (owner only). */
+  deleteInvite: (inviteId: string) =>
+    call<void>("delete_org_invite", () =>
+      getEngine().deleteOrgInvite(inviteId),
+    ),
   removeMember: (userId: string) =>
     call("remove_org_member", () => getEngine().removeOrgMember(userId)),
   setMemberRole: (
@@ -1366,4 +1381,11 @@ export const tauriOrg = {
     call("set_org_member_role", () =>
       getEngine().setOrgMemberRole(userId, role),
     ),
+  /** Org audit log, newest first, paged by `before` cursor (owner org-wide;
+   *  admin their managed agents; plain members 403). */
+  audit: (opts: { before?: number; limit?: number } = {}) =>
+    call("org_audit", () => getEngine().orgAudit(opts)),
+  /** Per-agent/user usage counters over the last `days` (owner org-wide; admin
+   *  their managed agents; plain members 403). */
+  usage: (days: number) => call("org_usage", () => getEngine().orgUsage(days)),
 };

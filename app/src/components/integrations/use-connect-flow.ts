@@ -96,9 +96,13 @@ export function useConnectFlow(opts: {
       wakerRef.current = waker;
       setState({ toolkit, step: "starting" });
       try {
+        // Agent context: pass the agent slug so the gateway enforces the
+        // agent's effective allowlist and auto-grants the toolkit on connect
+        // (Teams v2). Undefined on the account-level Integrations page.
         const { redirectUrl, connectionId } = await tauriIntegrations.connect(
           INTEGRATION_PROVIDER,
           toolkit,
+          agentId,
         );
         redirectUrlRef.current = redirectUrl;
         await tauriSystem.openUrl(redirectUrl);
