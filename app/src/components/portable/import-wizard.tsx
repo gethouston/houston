@@ -36,10 +36,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { Check } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
+import { finishAgentSetup } from "../../lib/agent-setup";
 import { analytics } from "../../lib/analytics";
 import { getEngine } from "../../lib/engine";
 import { getDefaultModel } from "../../lib/providers";
-import { tauriConfig, tauriProvider } from "../../lib/tauri";
+import { tauriProvider, toAgent } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
@@ -59,7 +61,7 @@ export function ImportAgentWizard() {
   const setOpen = useUIStore((s) => s.setImportFromFriendOpen);
   const addToast = useUIStore((s) => s.addToast);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
-  const loadAgents = useAgentStore((s) => s.loadAgents);
+  const adoptAgent = useAgentStore((s) => s.adopt);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [uploaded, setUploaded] =
@@ -195,18 +197,18 @@ export function ImportAgentWizard() {
           includeLearningIds: Array.from(selection.learningIds),
         },
       });
-      // Always persist provider/model on the imported agent's config — same
-      // contract as the create-agent dialog. Workspace-level defaults are
-      // gone, so a blank field would resolve to the platform default.
-      const cfg = await tauriConfig.read(installed.agentPath);
-      await tauriConfig.write(installed.agentPath, {
-        ...cfg,
-        provider: provider as "anthropic" | "openai",
-        model,
-      });
+      // Keep the sticky last-used in sync (local, so it's cheap to await).
       await tauriProvider.setLastUsed(provider, model);
-      await loadAgents(currentWorkspace.id);
       analytics.track("agent_imported", { agent_slug: installed.agentName });
+      // Reveal the agent NOW — the same optimistic contract as the
+      // create-agent dialog (HOU-710). `adopt` marks the agent provisioning
+      // (HOU-693): the sidebar shows it, chat parks sends behind the "being
+      // created" card, and a readiness probe clears the mark. The provider/
+      // model write dispatches to the agent's engine — on the hosted profile
+      // a pod still cold-starting — so awaiting it here would freeze the
+      // dialog for the whole warm-up; it finishes in the background and
+      // surfaces its own error toast on failure.
+      adoptAgent(toAgent(installed.agent));
       addToast({
         variant: "success",
         title: t("import.toasts.installedTitle"),
@@ -214,8 +216,14 @@ export function ImportAgentWizard() {
           name: installed.agentName,
         }),
       });
+      useUIStore.getState().setViewMode(DEFAULT_TAB_ID);
       setOpen(false);
       reset();
+      void finishAgentSetup(installed.agentPath, {
+        provider,
+        model,
+        routine: null,
+      });
     } catch (err) {
       addToast({
         variant: "error",

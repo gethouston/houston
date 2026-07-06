@@ -44,6 +44,13 @@ interface AgentState {
     options?: { silent?: boolean },
   ) => Promise<void>;
   setCurrent: (agent: Agent) => void;
+  /**
+   * Reveal a freshly created agent: mark it provisioning (HOU-693), append it
+   * to the sidebar optimistically, and select it. The tail of `create`, also
+   * used by flows that create through another pipeline (agent import,
+   * HOU-710) so every creation gets the same optimistic contract.
+   */
+  adopt: (agent: Agent) => void;
   create: (
     workspaceId: string,
     name: string,
@@ -95,6 +102,18 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     startAgentSideEffects(agent);
   },
 
+  adopt: (agent) => {
+    // Hosted profile: the create answered but the agent's engine is still
+    // warming up (HOU-693). Track it so every surface can say so instead of
+    // hanging mutely; a readiness probe clears the mark. No-op co-located.
+    useAgentProvisioningStore.getState().markProvisioning(agent);
+    set((s) => ({
+      agents: [...s.agents, agent],
+      current: agent,
+    }));
+    startAgentSideEffects(agent);
+  },
+
   create: async (
     workspaceId: string,
     name: string,
@@ -119,15 +138,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     );
     analytics.track("agent_created", { config_id: configId });
     const { agent } = result;
-    // Hosted profile: the create answered but the agent's engine is still
-    // warming up (HOU-693). Track it so every surface can say so instead of
-    // hanging mutely; a readiness probe clears the mark. No-op co-located.
-    useAgentProvisioningStore.getState().markProvisioning(agent);
-    set((s) => ({
-      agents: [...s.agents, agent],
-      current: agent,
-    }));
-    startAgentSideEffects(agent);
+    get().adopt(agent);
     return { agent };
   },
 

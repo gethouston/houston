@@ -1204,6 +1204,10 @@ export interface PortableInstalledAgent {
   agentName: string;
   workspaceName: string;
   requiredIntegrations: string[];
+  /** The created agent record, so the wizard can reveal it optimistically
+   *  (same contract as agent create) instead of re-listing behind a warming
+   *  pod (HOU-710). */
+  agent: Agent;
 }
 
 // ── integrations (Composio, platform mode) ───────────────────────────────────

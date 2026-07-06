@@ -116,6 +116,13 @@ test("install creates the agent with the package as its seed payload", async () 
     agentName: "Sales",
     workspaceName: "Houston",
     requiredIntegrations: [],
+    // The created record rides along so the wizard can adopt it into the
+    // agent store optimistically — same reveal contract as create (HOU-710).
+    agent: expect.objectContaining({
+      id: "abcd1234abcd1234",
+      folderPath: "abcd1234abcd1234",
+      name: "Sales",
+    }),
   });
 });
 
