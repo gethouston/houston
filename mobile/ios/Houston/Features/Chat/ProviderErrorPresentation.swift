@@ -38,7 +38,7 @@ extension ProviderError {
         title: C.modelUnavailableTitle,
         detail: C.modelUnavailableBody(model: model, provider: provider))
 
-    case let .unauthenticated(provider, cause, _):
+    case let .unauthenticated(provider, cause, _, _):
       return .init(
         title: C.unauthenticatedTitle(provider: provider),
         detail: Self.unauthDetail(provider: provider, cause: cause))

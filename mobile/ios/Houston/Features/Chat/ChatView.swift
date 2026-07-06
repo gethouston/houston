@@ -56,15 +56,20 @@ struct ChatView: View {
     @Bindable var model = model
     return VStack(spacing: 0) {
       if model.running {
-        MissionStatusLine(action: nil) { model.stop() }
+        MissionStatusLine(action: nil, showLabel: model.showLoadingLabel) { model.stop() }
       }
       if model.showApproveBar {
         ApproveBar { model.approve() }
       }
+      if !model.queued.isEmpty {
+        QueuedMessagesView(messages: model.queued)
+      }
       MissionComposer(text: $model.draft, isSending: model.isSending) { model.send() }
     }
     .animation(.smooth(duration: Motion.fast), value: model.running)
+    .animation(.smooth(duration: Motion.fast), value: model.showLoadingLabel)
     .animation(.smooth(duration: Motion.fast), value: model.showApproveBar)
+    .animation(.smooth(duration: Motion.fast), value: model.queued)
   }
 
   private var errorPresented: Binding<Bool> {

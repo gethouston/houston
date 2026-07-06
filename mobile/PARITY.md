@@ -24,7 +24,21 @@ Unknown statuses are preserved and rendered neutrally. New activities are create
 settles `sessionStatus === "error"` **but** `boardStatus === "needs_you"`. **Read the pair, never
 `sessionStatus` alone** — keying off sessionStatus renders a normal Stop as red.
 `boardStatus:"needs_you"` = handled / your attention; `boardStatus:"error"` = genuine failure.
-`ConversationVM` exposes `{ feed, running, sessionStatus, boardStatus }`.
+`ConversationVM` exposes `{ feed, running, sessionStatus, boardStatus, queued? }` (`queued`
+additive — see §5).
+
+### BRIDGE addressing — the conversation VM scope (agent-qualified)
+`packages/sdk/src/modules/turns/vm-output.ts:83-87` (`conversationScope`): the conversation VM is
+published on **`conversation/<encodeURIComponent(agentPath)>/<encodeURIComponent(sessionKey)>`** —
+agent-qualified, because a `sessionKey` is unique only WITHIN one agent. The `agentPath` segment is
+the SAME string the surface passes as `agentId` to the `turns/*` commands (`index.ts:66,90-98` use
+the command's `agentId` verbatim as the scope's agent segment), so the subscribe scope and the
+publish scope stay in lockstep.
+- **iOS**: `SdkScope.conversation(agentPath:sessionKey:)` builds it; every component is escaped by a
+  from-scratch `encodeURIComponent` (unreserved set `A-Z a-z 0-9 - _ . ! ~ * ' ( )`, UTF-8 bytes,
+  uppercase hex) — Foundation's `.urlQueryAllowed` is NOT equivalent. Pinned to JS-generated fixtures
+  in `SdkScopeTests` (e.g. `"Houston/My Agent"` → `Houston%2FMy%20Agent`). A mismatch subscribes to a
+  scope the SDK never publishes on → the chat feed goes dead, so this is a hard contract.
 
 ### Board columns (kanban) — `app/src/components/mission-board-columns.ts`
 Left-to-right order and status→column mapping (single source of truth):
@@ -117,6 +131,45 @@ Status lines (`chat.json:process`): active = "Mission in progress..."; with acti
 "Mission in progress: {{action}}"; settled = "Mission log". Shimmer while active.
 **There is NO "Stopped by user" string** — a Stop moves the card to Needs you silently
 (the `cancelled` provider_error is dropped).
+
+### Status reclassification — loading indicator vs streaming (`ui/chat/src/chat-status.ts:27-49`)
+`deriveStatus`: only `assistant_text_streaming` counts as **streaming** (its visible growing text
+IS the progress signal, so the loading indicator would just compete with it). `thinking_streaming`,
+tool cycles, and silent gaps all resolve to **submitted** → the loading indicator STAYS VISIBLE
+through reasoning + tool phases (HOU-655: treating `thinking_streaming` as streaming flickered the
+indicator off during every thinking stretch).
+- **iOS**: `ChatStatus.derive(feed:running:)` (pure mirror) + `ChatScreenModel.showLoadingLabel`.
+  The `MissionStatusLine` renders while the turn is `running`; its "Mission in progress..." dot +
+  shimmer label is suppressed while assistant text streams (`showLabel:false`), leaving only the
+  **Stop** control (Stop stays available the entire running turn, matching desktop's composer stop).
+  Pinned in `ChatStatusTests`.
+
+### Queued messages while a turn runs (`ConversationVM.queued`, `vm-output.ts:35-58`)
+Additive optional `queued?: QueuedMessageVM[]` (`{ id, text, attachmentNames? }`): messages typed
+while a turn runs are HELD and flushed as ONE combined send at settle. **Queueing is SDK/engine-
+adapter behavior, never the surface** (desktop: `packages/web/src/engine-adapter/send-queue.ts`) —
+the surface only renders the published list (client-architecture.md invariant 1).
+- **iOS**: `QueuedMessageVM` model + `ConversationVM.queued`; `QueuedMessagesView` renders each as a
+  dimmed, pending, right-aligned bubble (clock glyph) above the composer. **Populate path deferred**:
+  the SDK *bridge* path iOS uses has no send-queue (only the web engine-adapter drives `setQueued`),
+  so `queued` is empty on iOS today — rendering is wired and forward-compatible for when a bridge-side
+  queue lands. The removable affordance stays deferred until the bridge exposes a `removeQueued` seam.
+
+### `failed_prompt` on the unauthenticated reconnect card (`ui/chat/src/types.ts:142-148`)
+The `unauthenticated` provider error gained optional `failed_prompt` (JSON key `failed_prompt`) —
+client-synthesized only (never on the wire; synthesized in `packages/sdk turn-settle.ts:92-104`):
+the prompt whose SEND the engine refused because no provider was connected, so a "Send again"
+affordance can resend THAT exact text.
+- **iOS**: carried on `ProviderError.unauthenticated(..., failedPrompt:)`. The iOS provider-error card
+  (`ProviderErrorCardView`) has **no action buttons** (v1 scope cut), so the "Send again" affordance
+  **stays deferred** — the field is modeled + decoded now so the card can wire it later with no
+  contract change.
+
+### Shell / splash copy
+Desktop shows a startup splash "Loading your workspace…" (`shell.json:278 starting`). **iOS has no
+equivalent splash copy**: `RootView` branches only to the SDK-startup error view, the sign-in gate,
+or the tabs — there is no loading-workspace screen, so nothing to align. (If a mobile startup splash
+is added later, mirror this string.)
 
 ## 6. New-mission flow (wire) — `app/src/lib/create-mission.ts`
 1. Create activity (`status:"running"`), id → session key `activity-{id}`.

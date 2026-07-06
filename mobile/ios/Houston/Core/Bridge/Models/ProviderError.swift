@@ -14,7 +14,8 @@ enum ProviderError: Decodable, Equatable, Sendable {
   case modelUnavailable(
     provider: String, model: String, reason: ModelUnavailableReason,
     suggestedFallback: String?, message: String)
-  case unauthenticated(provider: String, cause: AuthFailureCause, message: String)
+  case unauthenticated(
+    provider: String, cause: AuthFailureCause, message: String, failedPrompt: String?)
   case networkUnreachable(provider: String, message: String)
   case providerInternal(provider: String, httpStatus: Int?, message: String)
   case sessionResumeMissing(provider: String, sessionId: String)
@@ -52,9 +53,12 @@ enum ProviderError: Decodable, Equatable, Sendable {
         reason: ModelUnavailableReason(raw: raw["reason"]?.stringValue),
         suggestedFallback: raw["suggested_fallback"]?.stringValue, message: message)
     case "unauthenticated":
+      // `failed_prompt` is client-synthesized only (never on the wire): the
+      // prompt whose SEND the engine refused because no provider was connected,
+      // so a "Send again" affordance can resend THIS text (turn-settle.ts).
       self = .unauthenticated(
         provider: provider, cause: AuthFailureCause(raw: raw["cause"]?.stringValue),
-        message: message)
+        message: message, failedPrompt: raw["failed_prompt"]?.stringValue)
     case "network_unreachable":
       self = .networkUnreachable(provider: provider, message: message)
     case "provider_internal":
