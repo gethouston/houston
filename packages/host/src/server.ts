@@ -241,8 +241,9 @@ async function handle(
   }
 
   // User-level resources (workspaces, preferences) — no agent in the path.
-  // Marketplace reads (skills.sh search/popular, GitHub repo discovery) are
-  // user-scoped too: browsing has no agent yet; only installs are per-agent.
+  // Marketplace reads (skills.sh search/popular, GitHub repo discovery) also
+  // answer top-level for direct API callers; the shipped clients call them
+  // agent-scoped (skills-remote.ts) so the hosted gateway can proxy them.
   if (await handleSkillsDirectory(method, path, req, res)) return;
   if (await handleAccount(deps, userId, method, path, req, res)) return;
   // Live OpenRouter model catalog for the picker (user-scoped; empty when no key

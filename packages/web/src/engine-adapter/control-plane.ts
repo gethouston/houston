@@ -682,37 +682,48 @@ export async function installAgentFromGithub(
   return (await res.json()) as { agentId: string };
 }
 
-// Marketplace reads are user-scoped (browsing has no agent yet); installs
-// write into a specific agent's skills folder. Mirrors the host's split
-// between /v1/skills/* and /agents/:id/skills/*.
+// Marketplace reads ride the same agent scope as installs: the Add Skills
+// dialog always browses FOR a specific agent, and the hosted gateway proxies
+// nothing but /agents/:slug/* (a top-level /v1/skills/* has no pod to land on
+// and 404s — the "Couldn't load suggestions" failure). The host serves these
+// read routes agent-scoped too (skills-remote.ts), so one path shape works
+// against both the local sidecar and the gateway.
 export async function searchCommunitySkills(
   cfg: ControlPlaneConfig,
+  agentId: string,
   query: string,
   signal?: AbortSignal,
 ): Promise<CommunitySkill[]> {
-  const res = await cpFetch(cfg, "/v1/skills/community/search", {
-    method: "POST",
-    body: JSON.stringify({ query }),
-    signal,
-  });
+  const res = await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/skills/community/search`,
+    {
+      method: "POST",
+      body: JSON.stringify({ query }),
+      signal,
+    },
+  );
   return (await res.json()) as CommunitySkill[];
 }
 export async function popularCommunitySkills(
   cfg: ControlPlaneConfig,
+  agentId: string,
   signal?: AbortSignal,
 ): Promise<CommunitySkill[]> {
-  const res = await cpFetch(cfg, "/v1/skills/community/popular", {
-    method: "POST",
-    signal,
-  });
+  const res = await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/skills/community/popular`,
+    { method: "POST", signal },
+  );
   return (await res.json()) as CommunitySkill[];
 }
 export async function listSkillsFromRepo(
   cfg: ControlPlaneConfig,
+  agentId: string,
   source: string,
   signal?: AbortSignal,
 ): Promise<RepoSkill[]> {
-  const res = await cpFetch(cfg, "/v1/skills/repo/list", {
+  const res = await cpFetch(cfg, `${agentPath(agentId)}/skills/repo/list`, {
     method: "POST",
     body: JSON.stringify({ source }),
     signal,

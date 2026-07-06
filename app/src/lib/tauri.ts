@@ -498,10 +498,10 @@ export const tauriSkills = {
       getEngine().saveSkill(name, { workspacePath: agentPath, content }),
     );
   },
-  listFromRepo: (source: string) =>
+  listFromRepo: (agentPath: string, source: string) =>
     call<RepoSkill[]>(
       "list_skills_from_repo",
-      () => getEngine().listSkillsFromRepo(source),
+      () => getEngine().listSkillsFromRepo(agentPath, source),
       undefined,
       // The Add Skills dialog renders repo failures (typo'd repo, private,
       // no skills) inline with plain-English copy — no red bug toast.
@@ -521,31 +521,35 @@ export const tauriSkills = {
       { toast: false },
     );
   },
-  searchCommunity: (query: string, signal?: AbortSignal) =>
+  searchCommunity: (agentPath: string, query: string, signal?: AbortSignal) =>
     call<CommunitySkillResult[]>(
       "search_community_skills",
       async () =>
-        (await getEngine().searchCommunitySkills(query, signal)).map((s) => ({
-          id: s.id,
-          skillId: s.skillId,
-          name: s.name,
-          installs: s.installs,
-          source: s.source,
-        })),
+        (await getEngine().searchCommunitySkills(agentPath, query, signal)).map(
+          (s) => ({
+            id: s.id,
+            skillId: s.skillId,
+            name: s.name,
+            installs: s.installs,
+            source: s.source,
+          }),
+        ),
       undefined,
       { toast: false },
     ),
-  popularCommunity: (signal?: AbortSignal) =>
+  popularCommunity: (agentPath: string, signal?: AbortSignal) =>
     call<CommunitySkillResult[]>(
       "popular_community_skills",
       async () =>
-        (await getEngine().popularCommunitySkills(signal)).map((s) => ({
-          id: s.id,
-          skillId: s.skillId,
-          name: s.name,
-          installs: s.installs,
-          source: s.source,
-        })),
+        (await getEngine().popularCommunitySkills(agentPath, signal)).map(
+          (s) => ({
+            id: s.id,
+            skillId: s.skillId,
+            name: s.name,
+            installs: s.installs,
+            source: s.source,
+          }),
+        ),
       undefined,
       { toast: false },
     ),

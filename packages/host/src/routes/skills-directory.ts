@@ -6,10 +6,11 @@ import { json, readJson } from "./http";
 
 /**
  * The read-only marketplace surface: skills.sh search/popular and GitHub repo
- * discovery. These touch no workspace, so they're served both top-level
- * (`/v1/skills/...` — what the web/desktop host adapter calls, which has no
- * agent in scope while browsing) and agent-scoped (skills-remote.ts, the
- * engine-client wire). One directory instance per process so the skills.sh
+ * discovery. These touch no workspace, so they're served both agent-scoped
+ * (skills-remote.ts — what the web/desktop adapter and the engine-client wire
+ * call; the hosted gateway proxies ONLY /agents/:slug/*, so this is the shape
+ * that works everywhere) and top-level (`/v1/skills/...` — kept for direct
+ * host API callers). One directory instance per process so the skills.sh
  * cache + request spacing are global (mirrors the Rust engine's static cache).
  */
 
