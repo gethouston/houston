@@ -1,10 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  pickerModelRows,
-  providerPickerState,
-  shouldShowProviderInPicker,
-} from "./model-picker.ts";
+import { pickerModelRows, providerPickerState } from "./model-picker.ts";
 
 const CONNECTED = { cli_installed: true, authenticated: true };
 const INSTALLED_UNAUTH = { cli_installed: true, authenticated: false };
@@ -25,71 +21,6 @@ test("providerPickerState: missing status is 'checking' only while loading", () 
   // Not loading + no status (e.g. the fetch failed) degrades to disconnected
   // rather than spinning forever.
   assert.equal(providerPickerState(undefined, false), "disconnected");
-});
-
-test("shouldShowProviderInPicker: 'checking' keeps every provider visible (#342)", () => {
-  // Before resolution a non-active provider must stay visible so the list does
-  // not collapse to a single "Not connected" entry — the reported bug.
-  assert.equal(
-    shouldShowProviderInPicker({
-      providerId: "openai",
-      state: "checking",
-      isActiveProvider: false,
-    }),
-    true,
-  );
-});
-
-test("shouldShowProviderInPicker: known-disconnected non-active providers are hidden", () => {
-  assert.equal(
-    shouldShowProviderInPicker({
-      providerId: "openai",
-      state: "disconnected",
-      isActiveProvider: false,
-    }),
-    false,
-  );
-});
-
-test("shouldShowProviderInPicker: connected non-active providers are shown", () => {
-  assert.equal(
-    shouldShowProviderInPicker({
-      providerId: "openai",
-      state: "connected",
-      isActiveProvider: false,
-    }),
-    true,
-  );
-});
-
-test("shouldShowProviderInPicker: the active provider is always shown", () => {
-  for (const state of ["connected", "disconnected", "checking"]) {
-    assert.equal(
-      shouldShowProviderInPicker({
-        providerId: "anthropic",
-        state,
-        isActiveProvider: true,
-      }),
-      true,
-      `active provider should show while ${state}`,
-    );
-  }
-});
-
-test("shouldShowProviderInPicker: every connected provider stays selectable (no mid-conversation lock)", () => {
-  // The provider is never locked once a conversation starts: switching
-  // providers mid-stream is supported (the runtime continues the same
-  // conversation across providers).
-  for (const providerId of ["openai", "anthropic"]) {
-    assert.equal(
-      shouldShowProviderInPicker({
-        providerId,
-        state: "connected",
-        isActiveProvider: false,
-      }),
-      true,
-    );
-  }
 });
 
 test("pickerModelRows: a catalogued provider shows its catalog, ignoring the runtime model", () => {

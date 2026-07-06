@@ -84,6 +84,9 @@ importers:
       '@houston-ai/skills':
         specifier: workspace:*
         version: link:../ui/skills
+      '@houston/protocol':
+        specifier: workspace:*
+        version: link:../packages/protocol
       '@houston/runtime-client':
         specifier: workspace:*
         version: link:../packages/runtime-client
@@ -444,6 +447,9 @@ importers:
       '@houston/domain':
         specifier: workspace:*
         version: link:../domain
+      '@houston/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       '@houston/runtime-client':
         specifier: workspace:*
         version: link:../runtime-client

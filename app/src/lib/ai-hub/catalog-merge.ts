@@ -3,6 +3,7 @@
  * cross-provider key into unique `CatalogModel`s. Internal to `catalog.ts`.
  */
 import type { ModelOption } from "../providers.ts";
+import { normalizeKey } from "./catalog-key.ts";
 import { HOME_PROVIDER } from "./catalog-lab.ts";
 import type { RawModel } from "./catalog-snapshot.ts";
 import type { CatalogModel, CatalogOffer, LabId } from "./catalog-types.ts";
@@ -18,11 +19,23 @@ export interface Draft {
 }
 
 /**
- * Keep one candidate per provider, preferring the cleanest (shortest) id, but
- * OR the capability flags across the merge so a dropped variant doesn't take
- * its support down with it — e.g. openrouter's `qwen-plus-0728:thinking` has a
- * longer id than the plain `qwen-plus-0728` yet is the one flagged
- * `reasoning: true`; keeping only the shorter id used to silently lose it.
+ * Keep one candidate per provider. The identity/descriptive base is the
+ * cleanest (shortest) id — that preserves the snapshot's `releaseDate`, name,
+ * and description for a merged model. Two things override that base, so a
+ * dropped variant never silently takes data down with it:
+ *
+ * - Capabilities are OR-ed across the merge — e.g. openrouter's
+ *   `qwen-plus-0728:thinking` has a longer id than the plain `qwen-plus-0728`
+ *   yet is the one flagged `reasoning: true`; keeping only the shorter id used
+ *   to silently lose it.
+ * - Pricing + context come from a LIVE OpenRouter entry (`source: "live"`) when
+ *   one is present for this `(key, providerId)`, never the stale baked snapshot.
+ *   This is deterministic, unlike the id-length tiebreak that decides the base.
+ *
+ * Recency (`releaseDate`) is deliberately NOT taken from live: the host mapper
+ * omits `isNew`, so live entries carry no date and OpenRouter "New" badges stay
+ * snapshot-derived (see `catalog-live.ts`). The base's date wins, falling back
+ * to the other candidate's so a live base does not drop it.
  */
 export function addCandidate(
   drafts: Map<string, Draft>,
@@ -42,15 +55,29 @@ export function addCandidate(
     cand.raw.id.length < existing.raw.id.length ||
     (cand.raw.id.length === existing.raw.id.length &&
       cand.raw.id < existing.raw.id);
-  const survivor = cleaner ? cand : existing;
-  const dropped = cleaner ? existing : cand;
-  survivor.raw = {
-    ...survivor.raw,
-    reasoning: survivor.raw.reasoning || dropped.raw.reasoning || undefined,
-    toolCall: survivor.raw.toolCall || dropped.raw.toolCall || undefined,
-    attachment: survivor.raw.attachment || dropped.raw.attachment || undefined,
+  const base = cleaner ? cand : existing;
+  const other = cleaner ? existing : cand;
+  // Pricing/context authority: the live entry (if either candidate is one),
+  // else the base. Context falls back to the base when live omits it.
+  const live =
+    cand.raw.source === "live"
+      ? cand
+      : existing.raw.source === "live"
+        ? existing
+        : undefined;
+  const econ = live ?? base;
+  base.raw = {
+    ...base.raw,
+    reasoning: base.raw.reasoning || other.raw.reasoning || undefined,
+    toolCall: base.raw.toolCall || other.raw.toolCall || undefined,
+    imageGen: base.raw.imageGen || other.raw.imageGen || undefined,
+    attachment: base.raw.attachment || other.raw.attachment || undefined,
+    releaseDate: base.raw.releaseDate ?? other.raw.releaseDate,
+    context: econ.raw.context ?? base.raw.context,
+    costIn: econ.raw.costIn ?? base.raw.costIn,
+    costOut: econ.raw.costOut ?? base.raw.costOut,
   };
-  draft.byProvider.set(cand.providerId, survivor);
+  draft.byProvider.set(cand.providerId, base);
 }
 
 /** The lab most candidates agree on, ignoring `other` unless it is all there is. */
@@ -111,6 +138,8 @@ export function finalize(key: string, draft: Draft): CatalogModel {
     lab,
     description: pick((r) => r.description),
     reasoning: candidates.some((c) => c.raw.reasoning === true),
+    toolCall: candidates.some((c) => c.raw.toolCall === true),
+    imageGen: candidates.some((c) => c.raw.imageGen === true),
     inputModalities: pick((r) => r.input) ?? [],
     knowledge: pick((r) => r.knowledge),
     releaseDate: candidates
@@ -136,22 +165,11 @@ export function compareModels(a: CatalogModel, b: CatalogModel): number {
   return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
 }
 
-/** Minimal key for a curated model that has no snapshot match (defensive). */
-function fallbackKey(label: string): string {
-  return label
-    .toLowerCase()
-    .replace(/[([{][^)\]}]*[)\]}]/g, " ")
-    .replace(/[^a-z0-9.]+/g, " ")
-    .replace(/\s*\.\s*/g, ".")
-    .replace(/^\.+|\.+$/g, "")
-    .trim();
-}
-
 /** A curated OAuth model as a raw entry: the snapshot match, or a synthetic. */
 export function curatedRaw(model: ModelOption, match?: RawModel): RawModel {
   return (
     match ?? {
-      key: fallbackKey(model.label),
+      key: normalizeKey(model.label),
       id: model.id,
       name: model.label,
       context: model.contextWindow,

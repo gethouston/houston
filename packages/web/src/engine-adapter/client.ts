@@ -1,4 +1,5 @@
 import { agentFileEventType, migrateProviderModel } from "@houston/domain";
+import type { LiveCatalog } from "@houston/protocol";
 import {
   type CustomEndpoint,
   EngineError,
@@ -967,6 +968,35 @@ export class HoustonClient {
         activeModel: p?.activeModel || undefined,
       } as ProviderStatus;
     });
+  }
+  /**
+   * The host's LIVE model catalog for a provider (OpenRouter today) — the
+   * picker's dynamic model list, fetched fresh from the provider rather than the
+   * baked snapshot.
+   *
+   * This is a HOST route, reached the SAME direct way as `capabilities()` /
+   * `version()` (a `/v1/*` GET on `baseUrl`), NOT the control plane: the live
+   * fetch is DESKTOP-first. On desktop `baseUrl` is the local host sidecar,
+   * which holds the OpenRouter key + network egress and returns the REAL
+   * catalog. In cloud the same path reaches the per-agent engine pod's host,
+   * which is intentionally egress-locked and answers `[]`. Live-bearer fetch so
+   * a rotated Supabase token refreshes + replays on 401 (HOU-687), as
+   * capabilities() does.
+   */
+  async listProviderModels(providerId: string): Promise<LiveCatalog> {
+    const res = await controlPlane.gatewayAuthFetch(this.token)(
+      `${this.baseUrl}/v1/providers/${encodeURIComponent(providerId)}/models`,
+    );
+    // 404 = this host has no live-catalog route (an older host, or the
+    // standalone-web / e2e fake host that has no provider egress): the same
+    // honest "no live models here" answer as an egress-locked host's `[]`.
+    // Every other status still throws so the picker's toast path surfaces it.
+    if (res.status === 404) return [];
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new HoustonEngineError(res.status, body);
+    }
+    return (await res.json()) as LiveCatalog;
   }
   // `deviceAuth` is the client's "I can't catch a loopback callback" flag — the
   // co-located desktop sends false (it CAN), remote webapps send true. It steers

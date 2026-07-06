@@ -51,6 +51,19 @@ export interface CatalogModel {
   lab: LabId;
   description?: string;
   reasoning: boolean;
+  /**
+   * The model advertises native tool/function calling. OR-merged across the
+   * providers that offer it (the snapshot's `toolCall` flag), mirroring
+   * `reasoning`: any offering variant flagged tool-capable makes the model
+   * tool-capable.
+   */
+  toolCall: boolean;
+  /**
+   * The model generates images (output modality). Only the LIVE OpenRouter
+   * source carries this signal, so it is `false` for every snapshot-only model
+   * and OR-merged (mirroring `reasoning`/`toolCall`) across offering variants.
+   */
+  imageGen: boolean;
   inputModalities: string[];
   knowledge?: string;
   releaseDate?: string;

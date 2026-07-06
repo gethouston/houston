@@ -48,31 +48,6 @@ export function providerPickerState(
   return isLoading ? "checking" : "disconnected";
 }
 
-/**
- * Whether a provider group should render in the picker.
- *
- * The user may switch providers any time, including mid-conversation: the
- * runtime resolves the provider per turn over a provider-agnostic history (see
- * `lib/provider-switch.ts`), so a switch just continues the same conversation.
- * The picker never locks to one provider. Rules, in order:
- *  1. The active provider is always shown, so the user can see and re-pick the
- *     current selection even when it is disconnected.
- *  2. While `checking`, every provider stays visible — this is the #342 fix:
- *     the list must not collapse to just the active provider before statuses
- *     load.
- *  3. Otherwise show only providers known to be connected; hide the rest.
- */
-export function shouldShowProviderInPicker(opts: {
-  providerId: string;
-  state: ProviderPickerState;
-  isActiveProvider: boolean;
-}): boolean {
-  const { state, isActiveProvider } = opts;
-  if (isActiveProvider) return true;
-  if (state === "checking") return true;
-  return state === "connected";
-}
-
 /** A model row rendered under a provider in the chat picker. */
 export interface PickerModelRow {
   id: string;

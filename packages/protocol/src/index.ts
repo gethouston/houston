@@ -1,3 +1,4 @@
+export * from "./catalog";
 export * from "./conversation";
 export * from "./core";
 export * from "./domain/activity";

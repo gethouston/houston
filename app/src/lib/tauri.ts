@@ -11,6 +11,7 @@
  * VPS where those APIs would be meaningless.
  */
 
+import type { LiveCatalog } from "@houston/protocol";
 import type {
   CustomEndpoint,
   ComposioAppEntry as EngineComposioAppEntry,
@@ -1029,6 +1030,22 @@ export const tauriProvider = {
       await eng.setPreference(DEFAULT_PROVIDER_PREF_KEY, provider);
       await eng.setPreference(DEFAULT_MODEL_PREF_KEY, model);
     }),
+  /**
+   * The provider's LIVE model catalog from the host (`/v1/providers/:id/models`,
+   * OpenRouter today) — the dynamic model list the redesigned picker renders
+   * alongside the baked snapshot. `listProviderModels` is a new-engine-adapter
+   * method absent from the legacy engine-client type, so cast (as
+   * `checkAllStatuses` does). The host answers `[]` when there's no key or the
+   * deployment is cloud-egress-locked; any real failure surfaces as a toast.
+   */
+  listModels: (providerId: string) =>
+    call<LiveCatalog>("list_provider_models", () =>
+      (
+        getEngine() as unknown as {
+          listProviderModels: (providerId: string) => Promise<LiveCatalog>;
+        }
+      ).listProviderModels(providerId),
+    ),
   launchLogin: (
     provider: string,
     opts?: { deviceAuth?: boolean; toast?: boolean; enterpriseDomain?: string },

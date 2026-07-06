@@ -7,6 +7,7 @@ import {
   type Draft,
   finalize,
 } from "./catalog-merge.ts";
+import type { RawModel } from "./catalog-snapshot.ts";
 import { loadRawCatalog } from "./catalog-snapshot.ts";
 import type { CatalogModel, HubCatalog } from "./catalog-types.ts";
 
@@ -29,9 +30,16 @@ const OAUTH_PROVIDERS = ["openai", "anthropic", "github-copilot"];
  * Build the hub catalog from the baked snapshot for a set of visible providers.
  * Offers from non-visible providers are dropped; models with no remaining
  * offer never appear. The snapshot import is memoized; the merge runs per call.
+ *
+ * `liveOpenRouter` folds the LIVE OpenRouter catalog (already mapped to raw
+ * entries by `catalog-live.ts`) into the `openrouter` bucket before the merge,
+ * so a live offer attaches to a matching snapshot model and OpenRouter-only
+ * models appear as new entries. The snapshot singleton is never mutated. Empty
+ * when the deployment can't reach OpenRouter (web/cloud, no key, or offline).
  */
 export async function loadHubCatalog(
   visibleProviderIds: string[],
+  liveOpenRouter: RawModel[] = [],
 ): Promise<HubCatalog> {
   const raw = await loadRawCatalog();
   const visible = new Set(visibleProviderIds);
@@ -42,7 +50,12 @@ export async function loadHubCatalog(
     const isVisible =
       providerId === "opencode" ? opencodeVisible : visible.has(providerId);
     if (!isVisible) continue;
-    for (const model of raw.providers[providerId]?.models ?? [])
+    const snapshotModels = raw.providers[providerId]?.models ?? [];
+    const models =
+      providerId === "openrouter"
+        ? [...snapshotModels, ...liveOpenRouter]
+        : snapshotModels;
+    for (const model of models)
       addCandidate(drafts, {
         providerId,
         raw: model,
