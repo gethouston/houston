@@ -38,6 +38,18 @@ This used to be configurable per agent via a `tabs: AgentTab[]` field in `housto
 
 The per-agent `Integrations` tab is a thin wrapper around the same `IntegrationsView` that the sidebar `Connections` entry renders, so the per-agent and workspace-wide surfaces are intentionally identical. The two entry points are kept because users reach for them at different moments (focused on one agent vs. setting up Houston as a whole).
 
+**Managed-agent read-only gating (Teams v2).** For a plain member of a shared
+agent (`!isAgentManager`), the configure surfaces render **read-only** instead
+of hiding. Agent Settings (`job-description-tab.tsx`) shows a
+`teams:managedAgent.banner` note (`managed-agent-banner.tsx`), driven by
+`job-description-access.ts` off `canEditAgentConfig`; the model + effort pickers
+disable with a `teams:model.lockedTooltip`; the Integrations tab gates its edits
+on `isAgentManager` / `canEditAgentGrants`. The gateway 403s any configure-scope
+write regardless — these gates only avoid showing a dead control. The **Share**
+dialog (`agent-share-dialog.tsx`) — a Drive-style people-with-access sheet
+backed by `setAgentAssignments` v2 — is gated on `canManageAssignments`. See
+`knowledge-base/teams.md`.
+
 ## Locations
 - **Built-in:** `app/src/agents/builtin/` — `personalAssistantAgent`
   (default agent for new workspaces) + `blankAgent` (start-from-scratch).
@@ -100,6 +112,17 @@ New Agent modal is Store-only for non-technical users.
 
 ## Agent creation
 Seeds agent CLAUDE.md from manifest `claudeMd` field or manifest's `CLAUDE.md` file. Fallback: generic template.
+
+**From an org template (Teams v2).** `CreateAgent` carries an optional
+`templateId`; `POST /agents` with it stamps a new agent from a
+`gateway.agent_templates` record. The gateway sets the new agent's allowed-app
+ceiling synchronously and applies the template's instructions/skills/model to
+the pod in the background. Ignored by single-player/self-host hosts (no
+templates). A manager captures a template with **Save as template**
+(`save-as-template-section.tsx`, in Agent Settings, gated on
+`isMultiplayer && isAgentManager`); creation from one runs through
+`use-create-from-template.ts` + `create-workspace-dialog.tsx`. See
+`knowledge-base/teams.md`.
 
 ## Default Personal assistant + tutorial
 
@@ -198,6 +221,7 @@ Engine route: `POST /v1/store/workspaces/install-from-github`. Rust impl: `houst
 | > Dashboard                 |  all agents overview (Mission Control)
 | > AI models                 |  the AI Hub top-level view (viewMode "ai-hub")
 | > Connections               |  workspace-wide integrations
+| > Organization              |  Teams v2 dashboard (owner/admin + multiplayer only)
 |-----------------------------|
 | Your AI Agents              |
 |   > Research Agent    [2]   |  sorted by lastOpenedAt
@@ -212,6 +236,13 @@ running board cards. The row `...` menu replaces the count chip on hover
 and keyboard focus. It keeps the count chip hidden while open. The first-level
 menu shows Rename, Change color, Delete; Change color opens the color picker
 submenu.
+
+**Multiplayer (Teams v2).** The **Organization** entry
+(`ORGANIZATION_VIEW_ID = "organization"`) renders only when
+`canSeeOrganization(capabilities)` (multiplayer owner/admin); hidden for plain
+members and single-player. **New Agent** is gated on `canCreateAgents`
+(`useCanCreateAgents`) — a member with no create right gets no add action. Full
+client model: `knowledge-base/teams.md`.
 
 ## Provider + model wiring
 

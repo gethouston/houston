@@ -233,7 +233,24 @@ create trigger on_auth_user_created after insert on auth.users
 - Houston Cloud API endpoints — this is the identity foundation, not the product surface.
 - Mobile (Capacitor) — Supabase JS works there too; deep-link scheme registered separately per platform.
 - In-app NPS — PostHog has it built in; configure later.
-- Teams / orgs, Stripe billing — future Supabase schema extensions.
+- Stripe billing — future Supabase schema extension.
+
+## Teams / orgs — SHIPPED (multiplayer)
+
+No longer out of scope. Orgs, roles (owner/admin/user), and per-agent access
+levels ship in the paid hosted cloud. The **gateway** owns and enforces all of
+it (org membership lives in the gateway's `gateway` Postgres schema, not the
+Supabase identity project); the open repo carries only the capability-gated
+client surface. Client model: `knowledge-base/teams.md`. Server contracts:
+`cloud/docs/contracts/C3` (roles/assignments), `C7-teams.md`.
+
+**Invite → first-login path.** Adding an unknown email creates a pending invite
+(`POST /org/members` → 202 `{invited:true}`). The invite is consumed
+**atomically on that user's first sign-in**, keyed by email, so the identity
+foundation above is where a new user lands in their org. **One org per user** is
+enforced by a unique index (gateway migration 006); a second pending invite for
+an already-orged user can't double-add them. Ownership transfer is out of scope
+for v1 (`GRANTABLE_ROLES` never includes `owner`).
 
 ## Provider connect + turn execution (TS engine) — CURRENT
 
