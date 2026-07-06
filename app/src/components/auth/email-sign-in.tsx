@@ -94,14 +94,15 @@ export function EmailSignIn() {
             We sent a 6-digit code to {email}.
           </p>
         </div>
+        <Button
+          type="submit"
+          variant="outline"
+          disabled={pending || code.trim().length === 0}
+          className="h-10 w-full rounded-full"
+        >
+          {pending ? "Verifying..." : "Verify code"}
+        </Button>
         <div className="flex items-center gap-4">
-          <Button
-            type="submit"
-            disabled={pending || code.trim().length === 0}
-            className="h-10 rounded-full px-6"
-          >
-            {pending ? "Verifying..." : "Verify code"}
-          </Button>
           <button
             type="button"
             disabled={pending}
@@ -145,10 +146,11 @@ export function EmailSignIn() {
       </div>
       <Button
         type="submit"
+        variant="outline"
         disabled={pending || email.trim().length === 0}
-        className="h-10 self-start rounded-full px-6"
+        className="h-10 w-full rounded-full"
       >
-        {pending ? "Sending..." : "Continue"}
+        {pending ? "Sending..." : "Continue with email"}
       </Button>
       {error && <p className="text-xs text-destructive">{error}</p>}
     </form>

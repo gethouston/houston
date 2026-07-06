@@ -1,5 +1,5 @@
-import { Button, Separator } from "@houston-ai/core";
-import { Loader2 } from "lucide-react";
+import { Button } from "@houston-ai/core";
+import { ArrowUpRight, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   onAuthError,
@@ -7,11 +7,16 @@ import {
   signInWithMicrosoft,
 } from "../../lib/auth";
 import { logger } from "../../lib/logger";
+import { tauriSystem } from "../../lib/tauri";
 import { HoustonLogo } from "../shell/experience-card";
 import { prettifyAuthError } from "./auth-errors";
 import { EmailSignIn } from "./email-sign-in";
 
 type Provider = "google" | "azure";
+
+const openExternal = (url: string) => () => {
+  void tauriSystem.openUrl(url);
+};
 
 /**
  * Full-screen sign-in overlay. Rendered by App.tsx when Supabase is
@@ -20,10 +25,10 @@ type Provider = "google" | "azure";
  * copy product-benefit-focused — the audience is non-technical, so no mention
  * of OAuth / tokens / APIs.
  *
- * A single sober card: the email form is the primary path (labelled field + one
- * compact primary button); a divider then the two OAuth providers as the
- * secondary path. Passwordless email is a 6-digit code, fully in-app; Google
- * and Microsoft run the loopback OAuth flow.
+ * Two-panel card: the LEFT panel is the sign-in itself (Google, Microsoft, and
+ * passwordless email — the 6-digit code stays fully in-app); the RIGHT panel is
+ * a calm value note on a muted surface. Wordmark sits top-left of the screen and
+ * the legal links anchor the footer.
  *
  * Re-click semantics: the provider spinner is only on while the system browser
  * is being opened (a few ms). After that the user is free to click again — the
@@ -61,50 +66,91 @@ export function SignInScreen() {
   };
 
   return (
-    <div className="flex h-screen items-center justify-center bg-muted px-6 text-foreground">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm">
-        <div className="flex flex-col gap-6 px-9 pt-9 pb-7">
-          <div className="flex flex-col gap-4">
-            <HoustonLogo size={32} />
-            <h1 className="text-2xl font-semibold">Welcome to Houston</h1>
+    <div className="flex h-screen flex-col bg-background text-foreground">
+      <div className="flex items-center gap-2 px-8 py-6">
+        <HoustonLogo size={24} />
+        <span className="text-lg font-semibold tracking-tight">Houston</span>
+      </div>
+
+      <div className="flex flex-1 items-center justify-center px-6">
+        <div className="flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border shadow-sm sm:flex-row">
+          <div className="flex flex-col gap-5 bg-card p-8 sm:w-[22rem]">
+            <h1 className="text-xl font-semibold">Welcome to Houston</h1>
+
+            <div className="flex flex-col gap-2.5">
+              <Button
+                variant="outline"
+                onClick={handleSignIn("google")}
+                disabled={pending !== null}
+                className="h-10 w-full justify-center rounded-full"
+              >
+                {pending === "google" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <GoogleIcon />
+                )}
+                Continue with Google
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleSignIn("azure")}
+                disabled={pending !== null}
+                className="h-10 w-full justify-center rounded-full"
+              >
+                {pending === "azure" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <MicrosoftIcon />
+                )}
+                Continue with Microsoft
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground">or</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <EmailSignIn />
+
+            {error && <p className="text-xs text-destructive">{error}</p>}
           </div>
 
-          <EmailSignIn />
+          <div className="flex flex-col gap-3 bg-muted p-8 sm:w-[18rem]">
+            <h2 className="text-base font-semibold">Your AI teammate</h2>
+            <p className="text-sm text-muted-foreground">
+              Houston builds agents that handle your inbox, your calendar, and
+              the busywork, so you can focus on what matters.
+            </p>
+            <button
+              type="button"
+              onClick={openExternal("https://gethouston.ai")}
+              className="mt-1 inline-flex items-center gap-1 self-start text-sm font-medium underline-offset-4 hover:underline"
+            >
+              See how it works
+              <ArrowUpRight className="size-4" />
+            </button>
+          </div>
         </div>
+      </div>
 
-        <Separator />
-
-        <div className="flex flex-col gap-2.5 px-9 pt-7 pb-9">
-          <p className="text-xs text-muted-foreground">Or continue with</p>
-          <Button
-            variant="secondary"
-            onClick={handleSignIn("google")}
-            disabled={pending !== null}
-            className="h-10 w-full justify-center rounded-full"
-          >
-            {pending === "google" ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <GoogleIcon />
-            )}
-            Continue with Google
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={handleSignIn("azure")}
-            disabled={pending !== null}
-            className="h-10 w-full justify-center rounded-full"
-          >
-            {pending === "azure" ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <MicrosoftIcon />
-            )}
-            Continue with Microsoft
-          </Button>
-
-          {error && <p className="text-xs text-destructive">{error}</p>}
-        </div>
+      <div className="flex items-center justify-center gap-3 py-6 text-xs text-muted-foreground">
+        <button
+          type="button"
+          onClick={openExternal("https://gethouston.ai/privacy")}
+          className="underline-offset-4 hover:text-foreground hover:underline"
+        >
+          Privacy Policy
+        </button>
+        <span aria-hidden="true">·</span>
+        <button
+          type="button"
+          onClick={openExternal("https://gethouston.ai/terms")}
+          className="underline-offset-4 hover:text-foreground hover:underline"
+        >
+          Terms of Service
+        </button>
       </div>
     </div>
   );
