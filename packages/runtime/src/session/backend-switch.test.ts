@@ -137,7 +137,10 @@ test("openai→anthropic REBUILDS on the anthropic backend — the pi session is
 
   const events: WireEvent[] = [];
   const unsub = subscribe("conv-a", (e) => events.push(e));
-  await execTurn(conv, "conv-a", "turn-1", "hello");
+  await execTurn(conv, "conv-a", "turn-1", "hello", {
+    author: undefined,
+    priorAuthors: [],
+  });
   unsub();
 
   // The compliance gate: the live pi session must NOT touch this anthropic turn.
@@ -168,7 +171,10 @@ test("anthropic→openai REBUILDS on the pi backend — the Claude session is di
 
   const events: WireEvent[] = [];
   const unsub = subscribe("conv-b", (e) => events.push(e));
-  await execTurn(conv, "conv-b", "turn-1", "hello");
+  await execTurn(conv, "conv-b", "turn-1", "hello", {
+    author: undefined,
+    priorAuthors: [],
+  });
   unsub();
 
   expect(claudeSession.prompts).toEqual([]);
@@ -195,7 +201,10 @@ test("same-backend model change (openai→google, both pi) stays on the setModel
     contextWindow: 1_000_000,
   };
 
-  await execTurn(conv, "conv-c", "turn-1", "hello");
+  await execTurn(conv, "conv-c", "turn-1", "hello", {
+    author: undefined,
+    priorAuthors: [],
+  });
 
   // No teardown: the live session is kept and re-pointed via setModel.
   expect(piSession.disposed).toBe(false);
