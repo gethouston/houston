@@ -156,7 +156,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
               onSwitch={handleWorkspaceSwitch}
               onCreate={handleCreateWorkspace}
               collapsed={collapsed}
-              createLabel={t("shell:sidebar.createWorkspace")}
+              createLabel={t("shell:sidebar.createOrganization")}
               onExpand={() => setSidebarCollapsed(false)}
               expandLabel={t("shell:sidebar.expand")}
             />

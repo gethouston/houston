@@ -63,7 +63,7 @@ export function useSessionEvents() {
           // This listener owns only the OS notification on completion.
           if (status === "completed") {
             const workspace = h.getWorkspace();
-            const workspaceName = workspace?.name ?? "Houston";
+            const workspaceName = workspace?.name ?? "Personal";
 
             // Activity status flip (→ "needs_you") is owned by the
             // engine now — `sessions::start` spawns a task that writes

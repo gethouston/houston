@@ -31,7 +31,7 @@ export function syntheticWorkspace(
 ): Workspace {
   return {
     id: DEFAULT_WORKSPACE_ID,
-    name: "Houston",
+    name: "Personal",
     isDefault: true,
     createdAt: EPOCH,
     locale: null,

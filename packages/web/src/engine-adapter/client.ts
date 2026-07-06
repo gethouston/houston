@@ -340,7 +340,7 @@ export class HoustonClient {
     const { provider, model } = await this.activeOld();
     return {
       ...syntheticWorkspace(provider, model),
-      name: req?.name || "Houston",
+      name: req?.name || "Personal",
     };
   }
   async renameWorkspace(): Promise<Workspace> {

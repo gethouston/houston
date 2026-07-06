@@ -32,7 +32,7 @@ export class LocalWorkspaceStore implements WorkspaceStore {
   constructor(
     private readonly root: string,
     private readonly ownerUserId: UserId = "local-owner",
-    private readonly defaultWorkspace = "Houston",
+    private readonly defaultWorkspace = "Personal",
   ) {
     mkdirSync(root, { recursive: true });
   }
