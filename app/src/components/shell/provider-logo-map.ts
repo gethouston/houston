@@ -10,7 +10,12 @@
  * and fall back to a monogram (see `monogramText`) for anything unmapped.
  */
 
-/** Every brand mark Houston ships a bespoke SVG for. */
+/**
+ * Every brand mark Houston ships a bespoke SVG for. These are the genuinely
+ * correct, pre-existing brand logos only — we deliberately ship NO approximate
+ * hand-authored marks for other providers, since an inexact glyph reads as a
+ * wrong logo. Anything not listed here falls back to the polished monogram.
+ */
 export type BrandKey =
   | "anthropic"
   | "openai"
@@ -21,19 +26,7 @@ export type BrandKey =
   | "opencode"
   | "openai-compatible"
   | "deepseek"
-  | "minimax"
-  | "moonshotai"
-  | "zai"
-  | "groq"
-  | "mistral"
-  | "xai"
-  | "cerebras"
-  | "fireworks"
-  | "together"
-  | "nvidia"
-  | "huggingface"
-  | "vercel"
-  | "cloudflare";
+  | "minimax";
 
 export const BRAND_KEYS: ReadonlySet<BrandKey> = new Set([
   "anthropic",
@@ -46,24 +39,14 @@ export const BRAND_KEYS: ReadonlySet<BrandKey> = new Set([
   "openai-compatible",
   "deepseek",
   "minimax",
-  "moonshotai",
-  "zai",
-  "groq",
-  "mistral",
-  "xai",
-  "cerebras",
-  "fireworks",
-  "together",
-  "nvidia",
-  "huggingface",
-  "vercel",
-  "cloudflare",
 ]);
 
 /**
  * Regional/variant ids and AI-hub lab ids that reuse a parent brand's mark, so a
- * "-cn"/"-coding" spin-off or a lab alias needs no bespoke art. Keyed by the
- * incoming id, valued by the `BrandKey` it borrows.
+ * "-cn" spin-off or a lab alias needs no bespoke art. Keyed by the incoming id,
+ * valued by the `BrandKey` it borrows. Only aliases onto a REAL logo live here —
+ * variants of providers we monogram (moonshot, zai, vercel, cloudflare, ...)
+ * carry no alias and cleanly fall to the monogram themselves.
  */
 export const BRAND_ALIASES: Readonly<Record<string, BrandKey>> = {
   // Provider-id variants from pi's catalog.
@@ -71,16 +54,9 @@ export const BRAND_ALIASES: Readonly<Record<string, BrandKey>> = {
   "opencode-go": "opencode",
   "openai-codex": "openai",
   "minimax-cn": "minimax",
-  "moonshotai-cn": "moonshotai",
-  "kimi-coding": "moonshotai",
-  "zai-coding-cn": "zai",
-  "vercel-ai-gateway": "vercel",
-  "cloudflare-workers-ai": "cloudflare",
-  "cloudflare-ai-gateway": "cloudflare",
   // AI-hub lab ids (see `catalog-lab.ts`) that differ from the provider id.
   gemini: "google",
   amazon: "amazon-bedrock",
-  moonshot: "moonshotai",
 };
 
 /**

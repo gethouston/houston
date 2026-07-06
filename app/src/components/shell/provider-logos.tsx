@@ -29,20 +29,6 @@ import {
   OpenCodeLogo,
   OpenRouterLogo,
 } from "./provider-marks.tsx";
-import {
-  CerebrasLogo,
-  CloudflareLogo,
-  FireworksLogo,
-  GroqLogo,
-  HuggingFaceLogo,
-  MistralLogo,
-  MoonshotLogo,
-  NvidiaLogo,
-  TogetherLogo,
-  VercelLogo,
-  XaiLogo,
-  ZaiLogo,
-} from "./provider-marks-extra.tsx";
 
 /** The one place a `BrandKey` binds to its mark. Exhaustive by construction. */
 const BRAND_LOGOS: Record<BrandKey, (props?: LogoProps) => ReactElement> = {
@@ -56,18 +42,6 @@ const BRAND_LOGOS: Record<BrandKey, (props?: LogoProps) => ReactElement> = {
   "openai-compatible": LocalModelLogo,
   deepseek: DeepSeekLogo,
   minimax: MiniMaxLogo,
-  moonshotai: MoonshotLogo,
-  zai: ZaiLogo,
-  groq: GroqLogo,
-  mistral: MistralLogo,
-  xai: XaiLogo,
-  cerebras: CerebrasLogo,
-  fireworks: FireworksLogo,
-  together: TogetherLogo,
-  nvidia: NvidiaLogo,
-  huggingface: HuggingFaceLogo,
-  vercel: VercelLogo,
-  cloudflare: CloudflareLogo,
 };
 
 /**
