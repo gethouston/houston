@@ -8,7 +8,7 @@
  * then streams in normally.
  */
 
-import { Spinner } from "@houston-ai/core";
+import { HoustonAvatar } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { useAgentProvisioningStore } from "../../stores/agent-provisioning";
 import { RowCard } from "../cards/row-card";
@@ -22,7 +22,7 @@ export function AgentProvisioningCard({ agentId }: { agentId: string }) {
   return (
     <div className="w-full px-1 py-2" role="status">
       <RowCard
-        media={<Spinner className="size-4" />}
+        media={<HoustonAvatar diameter={30} running />}
         title={t("agentProvisioning.title")}
         description={t("agentProvisioning.chatBody")}
       />
