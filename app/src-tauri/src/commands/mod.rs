@@ -2,8 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
-pub mod os;
 pub mod diagnostics;
+pub mod os;
 pub mod portable;
 pub mod terminal;
 pub mod update;

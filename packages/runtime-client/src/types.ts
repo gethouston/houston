@@ -10,6 +10,7 @@ export type {
   AuthStatus,
   ChatMessage,
   ChatRole,
+  ClaudeOAuthCredential,
   ConversationHistory,
   ConversationSummary,
   CustomEndpoint,
@@ -30,6 +31,9 @@ export type {
   WireFrame,
   Workspace,
 } from "@houston/protocol";
+// The Claude-subscription credential VALIDATOR (a value, not just a type) — the
+// runtime's host→pod materialization route validates the pushed envelope with it.
+export { parseClaudeOAuthEnvelope } from "@houston/protocol";
 
 /** The runtime's own conversation-core surface version (`GET /version`). */
 export const PROTOCOL_VERSION = 2;

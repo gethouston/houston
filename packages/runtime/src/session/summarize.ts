@@ -104,7 +104,6 @@ async function claudeTitle(excerpt: string): Promise<string> {
       excerpt,
       titlePrompt: TITLE_PROMPT,
       workspaceDir: config.workspaceDir,
-      dataDir: config.dataDir,
       readToken: () => readAnthropicToken(authStorage),
       modelId: resolveModel().id,
     });

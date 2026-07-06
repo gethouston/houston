@@ -49,7 +49,9 @@ pub async fn start_codex_oauth_loopback(app: AppHandle) -> Result<(), String> {
                  OpenAI requires this exact port, so close whatever is using it and try again."
             )
         })?;
-    tracing::info!("[codex-oauth-loopback] listening on http://127.0.0.1:{CODEX_PORT}{CALLBACK_PATH}");
+    tracing::info!(
+        "[codex-oauth-loopback] listening on http://127.0.0.1:{CODEX_PORT}{CALLBACK_PATH}"
+    );
 
     tokio::spawn(async move {
         match tokio::time::timeout(LISTEN_TIMEOUT, serve_callback(&listener, &app)).await {

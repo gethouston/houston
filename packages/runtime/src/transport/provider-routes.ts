@@ -1,3 +1,4 @@
+import { parseClaudeOAuthEnvelope } from "@houston/runtime-client";
 import { listProviders, setSettings } from "../ai/providers";
 import { exportCredential } from "../auth/export";
 import {
@@ -10,6 +11,9 @@ import {
   startLogin,
 } from "../auth/login";
 import { scrubRefreshTokens, syncServedCredentialSafe } from "../auth/serve";
+import { refreshAnthropicCredential } from "../backends/claude/credential-status";
+import { writeClaudeOAuthCredentialFile } from "../backends/claude/credentials-file";
+import { claudeLoginConfigDir } from "../backends/claude/paths";
 import { json, type RouteContext, readJson } from "./http-helpers";
 
 export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
@@ -17,6 +21,10 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
 
   if (method === "GET" && path === "/providers") {
     await syncServedCredentialSafe("providers");
+    // Warm the anthropic shared-dir credential probe so a just-completed browser
+    // login flips `configured` on this poll (the card-status path goes through
+    // /providers, not /auth/status). listProviders() then reads the fresh cache.
+    await refreshAnthropicCredential();
     json(res, 200, listProviders());
     return true;
   }
@@ -32,7 +40,7 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
 
   if (method === "GET" && path === "/auth/status") {
     await syncServedCredentialSafe("auth");
-    json(res, 200, getAuthStatus());
+    json(res, 200, await getAuthStatus());
     return true;
   }
   if (method === "GET" && path === "/auth/export") {
@@ -46,6 +54,10 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
   }
   if (method === "POST" && path === "/providers/openai-compatible") {
     await handleOpenAiCompatible(ctx);
+    return true;
+  }
+  if (method === "POST" && path === "/auth/anthropic/oauth-credential") {
+    await handleClaudeOAuthCredential(ctx);
     return true;
   }
 
@@ -83,6 +95,37 @@ async function handleOpenAiCompatible(ctx: RouteContext) {
   } catch (e) {
     json(ctx.res, 400, { error: e instanceof Error ? e.message : String(e) });
   }
+}
+
+/**
+ * Materialize a desktop-pushed Claude subscription OAuth credential (host→pod).
+ * Writes the CLI's `<CLAUDE_CONFIG_DIR>/.credentials.json` so the Claude Agent
+ * SDK + `claude auth status` read as logged-in and the SDK self-refreshes from
+ * the refresh token in place. The body is the pinned CLI envelope, validated
+ * STRICTLY — a malformed push is a clear 400 (the desktop falls back to paste),
+ * a write failure a 500. On success the connected signal is warmed so status
+ * flips immediately. The token is never logged.
+ */
+async function handleClaudeOAuthCredential(ctx: RouteContext) {
+  const parsed = parseClaudeOAuthEnvelope(
+    await readJson(ctx.req).catch(() => ({})),
+  );
+  if (!parsed.ok) {
+    json(ctx.res, 400, { error: parsed.error });
+    return;
+  }
+  try {
+    writeClaudeOAuthCredentialFile(claudeLoginConfigDir(), parsed.value);
+  } catch (e) {
+    json(ctx.res, 500, {
+      error: `could not materialize the Claude credential: ${e instanceof Error ? e.message : String(e)}`,
+    });
+    return;
+  }
+  // Warm the shared-dir credential probe so `configured` / `claude auth status`
+  // flips connected on the very next poll instead of after the cache TTL.
+  await refreshAnthropicCredential(undefined, { force: true });
+  json(ctx.res, 200, { ok: true });
 }
 
 async function handleApiKey(ctx: RouteContext, provider: string) {
@@ -123,7 +166,7 @@ async function handleAuthAction(
       json(ctx.res, 200, { ok: true });
       return;
     }
-    logout(provider);
+    await logout(provider);
     json(ctx.res, 200, { ok: true });
   } catch (e) {
     json(ctx.res, 400, { error: e instanceof Error ? e.message : String(e) });

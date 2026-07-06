@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { CustomEndpoint } from "@houston/protocol";
+import type { ClaudeOAuthCredential, CustomEndpoint } from "@houston/protocol";
 import type {
   Agent,
   AgentId,
@@ -191,6 +191,26 @@ export interface RuntimeChannel {
     ctx: ChannelCtx,
     provider: string,
     apiKey: string,
+  ): Promise<void>;
+  /**
+   * Connect-once for the Anthropic Claude subscription in HOSTED mode. The
+   * desktop mints the OAuth credential locally (`claude auth login`), extracts
+   * it, and pushes it here (the CLI's `{claudeAiOauth}` shape). A standing-runtime
+   * channel materializes it onto the pod as the SDK's own
+   * `<CLAUDE_CONFIG_DIR>/.credentials.json`, so the pod's Claude Agent SDK
+   * authenticates AND self-refreshes from the refresh token there — NO central
+   * refresh, and the stale-token bug is gone. It is stored centrally too
+   * (durability + a connected marker) but NEVER served through pi's per-turn
+   * auth.json path (serve.ts bypasses anthropic).
+   *
+   * The refresh token deliberately stays on the pod — a documented, EXPLICITLY
+   * gated departure from Gate #2's "sandbox never holds a refresh token", scoped
+   * to the SINGLE-TENANT, network-policied managed pod only. The multi-tenant
+   * per-turn Cloud Run channel REFUSES this (Anthropic is off there).
+   */
+  saveClaudeOAuthCredential(
+    ctx: ChannelCtx,
+    cred: ClaudeOAuthCredential,
   ): Promise<void>;
   /**
    * Connect an OpenAI-compatible server: a base URL + model id. Desktop/self-host

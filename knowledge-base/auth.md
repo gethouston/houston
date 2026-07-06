@@ -277,12 +277,24 @@ exact replay Anthropic blocks. `title.ts` and `backend.ts` share `tokenEnv` so
 the two paths set the identical auth env var.
 
 How the SDK subprocess runs (`backend.ts`):
-- **Token in `options.env`** — `CLAUDE_CODE_OAUTH_TOKEN` for a `sk-ant-oat01…`
-  setup token, `ANTHROPIC_API_KEY` for a `sk-ant-api03…` console key (`tokenEnv`
-  + `read-token.ts`, selected by prefix). `options.env` REPLACES the child env, so
-  `process.env` is spread in to keep PATH/HOME while pinning the config dir + token.
-- **Isolated `CLAUDE_CONFIG_DIR`** under the agent `dataDir` + `settingSources: []`
-  — nothing on the host machine's `~/.claude` leaks in.
+- **Credential via the SHARED login dir (primary), env token (fallback).** The
+  desktop browser login (`claude auth login`, below) caches its credential in the
+  shared `CLAUDE_CONFIG_DIR` = `claudeLoginConfigDir()`; the SDK reads it there and
+  self-refreshes it, so `buildClaudeEnv` sets NO token env on that path. The
+  degraded setup-token PASTE fallback still stores a token in auth.json, read by
+  `read-token.ts` and set as `CLAUDE_CODE_OAUTH_TOKEN` (`sk-ant-oat01…`) /
+  `ANTHROPIC_API_KEY` (`sk-ant-api03…` console key) via `tokenEnv`. Either way
+  `options.env` REPLACES the child env, so `process.env` is spread in to keep
+  PATH/HOME while pinning the config dir; the three credential env vars are always
+  scrubbed first so an ambient host key never survives.
+- **Shared `CLAUDE_CONFIG_DIR`** = `claudeLoginConfigDir()` (`paths.ts`) =
+  `<HOUSTON_HOME>/claude-login`, WORKSPACE-shared (NOT per-agent) so ONE
+  `claude auth login` connects every agent, and the Tauri shell derives the
+  identical `houston_dir()/claude-login`. `settingSources: []` keeps the host's
+  `~/.claude` out. Per-agent isolation still holds: `sessions.json` (the
+  conversationId → session_id map) stays under the agent `dataDir`, and SDK
+  transcripts under the shared `projects/` tree are namespaced by the agent's cwd
+  slug (unique session_ids), so agents never collide.
 - **Workspace-clamp `canUseTool`** (`tool-policy.ts`): pi's clamped toolset
   (Read/Edit/Write/Glob/Grep, plus Bash only when code execution is local) mirrored
   as the SDK `tools` allowlist + a `disallowedTools` deny of the Claude Code tools
@@ -305,16 +317,52 @@ image strips the `claude` binary and the catalog doesn't advertise `anthropic`;
 only local + self-host + the managed single-tenant pod run it. Config asymmetry,
 not a code fork.
 
-### Anthropic connect UX — the setup-token PASTE flow
+### Anthropic connect UX — desktop browser login (PRIMARY), setup-token PASTE (fallback)
 
-`auth/anthropic-setup-token.ts` + `auth/login.ts`. Replaces the deleted
-`anthropic-headless` direct-OAuth flow.
+**PRIMARY (desktop + co-located engine): zero-terminal browser login.** Clicking
+Connect for Claude on the desktop runs `claude auth login --claudeai` FOR the user
+via a native Tauri command (`app/src-tauri/src/claude_login.rs`,
+`start_claude_login`/`cancel_claude_login`) — NOT the setup-token paste flow, and
+NOT a terminal. The bundled `claude` (Phase-A externalBin sibling of the host
+sidecar) opens the browser, catches its own loopback callback, and caches the
+credential in the shared `CLAUDE_CONFIG_DIR` = `<HOUSTON_HOME>/claude-login`
+(macOS Keychain, scoped by that dir; Linux `<dir>/.credentials.json`). The Rust
+command emits `claude-login://url` (authorize URL, for a "didn't open? open
+sign-in" fallback link) and `claude-login://done` `{ success, error }` (a `null`
+error = benign cancel). Frontend driver: `app/src/lib/claude-login.ts`
+`beginClaudeBrowserLogin`, wired at the ONE choke point `tauriProvider.launchLogin`
+(`lib/tauri.ts`) so every connect surface funnels through it, gated by
+`shouldUseClaudeDesktopLogin` (`provider-login-url.ts`) = anthropic && Tauri &&
+co-located engine. On success it confirms the engine now reads connected
+(`checkStatus` polls `/providers`, which re-probes `claude auth status`) then
+publishes a synthetic `ProviderLoginComplete` on the client bus
+(`events.ts` `publishLocalHoustonEvent`) so all surfaces flip the card / toast /
+clear pending exactly as for a normal OAuth completion. The spinner UI is a shell
+component (`claude-browser-login.tsx`) rendering `ProviderLoginDialog` in
+`browserPending` mode.
 
-**What the user does:** runs `claude setup-token` in their own terminal (it mints
-a long-lived `sk-ant-oat01…` token) and PASTES that token into Houston. A console
-`sk-ant-api03…` API key works too. Houston never replays OAuth itself (the blocked
-path) and never spawns the `claude` binary for login (it is an Ink TUI that needs
-a real TTY and deadlocks on the runtime's piped stdio).
+**Connected signal.** Because the browser-login credential is NOT in auth.json,
+`providerConnected(store, "anthropic")` = `store.has("anthropic")` (fallback token)
+OR `anthropicCredentialCached()` — a cache warmed by `claude auth status --json`
+(the only reliable cross-platform probe; no artifact to stat on macOS). Refreshed
+live by the `/providers` and `/auth/status` routes and primed at boot;
+`getAuthStatus`/`/providers` are now async. `logout("anthropic")` also runs
+`claude auth logout` to clear the shared-dir credential + resets the cache.
+
+**Cloud SEAM (follow-up element):** the browser login assumes a CO-LOCATED engine
+(the cached cred is the very dir the local runtime reads). The local-vs-remote
+branch point is `shouldUseClaudeDesktopLogin`'s co-location check; a REMOTE engine
+(hosted pod) can't read this machine's Keychain, so a later element extracts the
+cred after `claude-login://done` success and pushes it to the pod (TODO markers in
+`claude-login.ts`). Until then remote-engine desktop keeps the setup-token paste
+flow below.
+
+**FALLBACK — the setup-token PASTE flow.** `auth/anthropic-setup-token.ts` +
+`auth/login.ts` (the runtime `startLogin("anthropic")` branch). Kept for web /
+remote-engine clients (and if the bundled binary is unavailable): the user runs
+`claude setup-token` in their own terminal (mints a long-lived `sk-ant-oat01…`
+token) and PASTES it into Houston; a console `sk-ant-api03…` API key works too.
+Houston never replays OAuth itself (the blocked path).
 
 **Wire shape:** `startLogin("anthropic")` emits a
 `{ kind:"auth_code", url, instructions }` LoginInfo and reuses `completeLogin`'s

@@ -293,9 +293,7 @@ impl EngineSubprocess {
             loop {
                 if Instant::now() > deadline {
                     let _ = child.kill();
-                    return Err(format!(
-                        "engine did not emit banner within {timeout:?}"
-                    ));
+                    return Err(format!("engine did not emit banner within {timeout:?}"));
                 }
                 line.clear();
                 let n = reader
@@ -442,9 +440,10 @@ pub fn resolve_engine_binary(resource_dir: Option<&PathBuf>) -> Result<PathBuf, 
 
     // 3. Resources dir — legacy fallback.
     if let Some(resources) = resource_dir {
-        if let Some(hit) =
-            try_candidate(resources.join("binaries").join(bin_name_no_triple()), &mut tried)
-        {
+        if let Some(hit) = try_candidate(
+            resources.join("binaries").join(bin_name_no_triple()),
+            &mut tried,
+        ) {
             return Ok(hit);
         }
         if let Some(hit) = try_candidate(
@@ -683,7 +682,10 @@ mod win_job {
         unsafe {
             let job = CreateJobObjectW(std::ptr::null(), std::ptr::null());
             if job.is_null() {
-                return Err(format!("CreateJobObjectW: {}", std::io::Error::last_os_error()));
+                return Err(format!(
+                    "CreateJobObjectW: {}",
+                    std::io::Error::last_os_error()
+                ));
             }
             let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = std::mem::zeroed();
             info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;

@@ -10,6 +10,13 @@ import {
 import { join } from "node:path";
 import { claudeBaseDir, claudeProjectsDir, claudeSessionsFile } from "./paths";
 
+// NOTE on isolation: `sessions.json` (the conversationId → session_id map) lives
+// per-agent under `dataDir`, but the transcript `projects` tree is SHARED (it
+// sits under `CLAUDE_CONFIG_DIR` = `claudeLoginConfigDir()`, where the SDK
+// actually writes). Each agent's transcripts land in their own cwd-slug subdir
+// and every session_id is globally unique, so the per-conversation lookups below
+// (keyed by session_id filename) never cross agents.
+
 /**
  * The conversationId → Claude Agent SDK `session_id` map, persisted so a fresh
  * runtime process (a desktop restart, a cloud sandbox woken from sleep) resumes
@@ -17,8 +24,8 @@ import { claudeBaseDir, claudeProjectsDir, claudeSessionsFile } from "./paths";
  * `<dataDir>/backends/claude/sessions.json`, written atomically with mode 0600
  * (same discipline as `auth/auth-file.ts`) since it sits beside credential data.
  *
- * The SDK writes each session's transcript JSONL under the isolated config dir
- * (`<dataDir>/backends/claude/config/projects/<project>/<session_id>.jsonl`). If
+ * The SDK writes each session's transcript JSONL under the SHARED config dir
+ * (`<claudeLoginConfigDir>/projects/<cwd-slug>/<session_id>.jsonl`). If
  * that transcript is gone (config dir wiped) a resume would fail, so
  * `resolveResume` verifies the transcript exists by its known filename — no
  * fragile reconstruction of the SDK's project-slug scheme — and drops the dangling
@@ -45,7 +52,7 @@ export interface SessionsStore {
 export function createSessionsStore(dataDir: string): SessionsStore {
   const baseDir = claudeBaseDir(dataDir);
   const filePath = claudeSessionsFile(dataDir);
-  const projectsDir = claudeProjectsDir(dataDir);
+  const projectsDir = claudeProjectsDir();
 
   function read(): Record<string, string> {
     if (!existsSync(filePath)) return {};

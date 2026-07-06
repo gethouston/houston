@@ -1,4 +1,5 @@
 export * from "./catalog";
+export * from "./claude-oauth";
 export * from "./conversation";
 export * from "./core";
 export * from "./domain/activity";

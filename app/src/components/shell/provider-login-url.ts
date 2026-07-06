@@ -83,3 +83,24 @@ export function shouldUseCodexLoopback(opts: {
     !opts.userCode
   );
 }
+
+/**
+ * Decide whether an anthropic connect on THIS click should run the zero-terminal
+ * desktop browser login (`beginClaudeBrowserLogin`) instead of the runtime's
+ * setup-token paste flow.
+ *
+ * True for Claude (`provider === "anthropic"`) on ANY Tauri desktop, co-located
+ * OR remote: both drive the SAME native `claude auth login` browser-approve flow
+ * on this machine (no terminal, no paste). The topology only changes what happens
+ * AFTER the login succeeds — a co-located engine reads the cached credential from
+ * the shared dir directly, while a remote engine has the desktop EXTRACT and PUSH
+ * that credential to the pod (`beginClaudeBrowserLogin` branches on `isRemoteEngine`).
+ * Web (non-Tauri) returns false: a browser tab has no local `claude` to run, so it
+ * keeps the setup-token paste flow.
+ */
+export function shouldUseClaudeDesktopLogin(opts: {
+  provider: string;
+  isTauri: boolean;
+}): boolean {
+  return opts.provider === "anthropic" && opts.isTauri;
+}

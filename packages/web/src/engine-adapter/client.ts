@@ -1181,6 +1181,28 @@ export class HoustonClient {
   }
 
   /**
+   * Push a desktop-extracted Anthropic OAuth credential (the `claude` CLI's
+   * `.credentials.json` JSON) to the given agent's pod, which stores + materializes
+   * it on the PVC. The desktop calls this for a REMOTE engine after a successful
+   * browser login — the pod can't read this machine's Keychain. Cloud-only:
+   * a co-located engine shares the credential dir with its local runtime, so it
+   * never reaches here (a call without a control plane is a programming error).
+   */
+  async pushClaudeOAuthCredential(
+    agentId: string,
+    credentialJson: string,
+  ): Promise<void> {
+    if (!this.cp) {
+      throw new Error("Pushing a Claude credential needs a cloud engine.");
+    }
+    await controlPlane.pushClaudeOAuthCredential(
+      this.cp,
+      agentId,
+      credentialJson,
+    );
+  }
+
+  /**
    * Connect an API-key provider (OpenCode Zen / Go): the user pastes a key, no
    * OAuth dance. Cloud stores it centrally (and pushes it into the agent runtime)
    * via the control plane; local writes it straight to the single runtime. On
