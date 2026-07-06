@@ -105,7 +105,13 @@ echo "  sha256 OK"
 # Extract only the frpc binary.
 echo "  extracting ${BIN}…"
 if [ "$ARCHIVE_EXT" = "zip" ]; then
-  unzip -q -o "$TMP/$ASSET" "${INNER_DIR}/${BIN}" -d "$TMP"
+  # Windows runners don't always ship `unzip`; bsdtar (`tar`, built into
+  # Windows 10+) can extract a single member from a zip, so fall back to it.
+  if command -v unzip >/dev/null 2>&1; then
+    unzip -q -o "$TMP/$ASSET" "${INNER_DIR}/${BIN}" -d "$TMP"
+  else
+    tar -xf "$TMP/$ASSET" -C "$TMP" "${INNER_DIR}/${BIN}"
+  fi
 else
   tar -xzf "$TMP/$ASSET" -C "$TMP" "${INNER_DIR}/${BIN}"
 fi
