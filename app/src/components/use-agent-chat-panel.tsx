@@ -96,6 +96,7 @@ import { integrationsSupported } from "./integrations/model";
 import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
 import { ProviderSwitchDialog } from "./provider-switch-dialog";
 import { SelectedSkillChip } from "./selected-skill-chip";
+import { AgentProvisioningCard } from "./shell/agent-provisioning-card";
 import { ProviderErrorCard } from "./shell/provider-error-card";
 import {
   isInlineAuthCardForChat,
@@ -823,8 +824,17 @@ export function useAgentChatPanel({
       filterAutoContinueFeedItems(filterProviderAuthFeedItems(items)),
     [],
   );
+  const agentId = agent?.id;
   const afterMessages = useCallback(
     ({ feedItems }: { sessionKey: string; feedItems: FeedItem[] }) => {
+      // While a just-created agent's engine is still warming up (HOU-693),
+      // the user's sent message sits with no reply for minutes — say so right
+      // under it. Only once something was sent: an empty chat stays clean.
+      // The card unmounts itself when the readiness probe clears the store.
+      const provisioningCard =
+        agentId && feedItems.length > 0 ? (
+          <AgentProvisioningCard agentId={agentId} />
+        ) : null;
       // The persisted inline `UnauthenticatedCard` (a provider_error feed item)
       // is the stable reconnect surface. When it's already present for THIS
       // chat's provider, don't also render the store-driven card — it flickers
@@ -834,20 +844,23 @@ export function useAgentChatPanel({
       const hasInlineAuthCard = feedItems.some((it) =>
         isInlineAuthCardForChat(it, effectiveProvider),
       );
-      if (hasInlineAuthCard) return null;
+      if (hasInlineAuthCard) return provisioningCard;
       const signalKey = providerAuthSignalKey(feedItems);
       // Always hand the card THIS chat's provider so it can match the global
       // `authRequired` flag against the provider this chat actually uses — a
       // Claude logout must never surface a reconnect button in an OpenAI chat
       // (HOU-410). The card stays hidden unless that provider truly needs auth.
       return (
-        <ProviderReconnectCard
-          providerId={effectiveProvider}
-          signalKey={signalKey ?? undefined}
-        />
+        <>
+          {provisioningCard}
+          <ProviderReconnectCard
+            providerId={effectiveProvider}
+            signalKey={signalKey ?? undefined}
+          />
+        </>
       );
     },
-    [effectiveProvider],
+    [effectiveProvider, agentId],
   );
 
   // Shared-agent clarity (contract §6): when the agent is shared with more than

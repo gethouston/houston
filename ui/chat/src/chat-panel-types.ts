@@ -43,6 +43,10 @@ export interface ChatPanelProps {
   onStop?: () => void;
   onBack?: () => void;
   isLoading: boolean;
+  /** The consumer narrates the pending send itself (inline card): a trailing
+   *  user message with no running turn must not light the in-flight
+   *  indicator. See `deriveStatus`. */
+  suppressPendingIndicator?: boolean;
   placeholder?: string;
   emptyState?: ReactNode;
   value?: string;

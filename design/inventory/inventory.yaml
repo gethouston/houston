@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 2
+version: 3
 
 components:
   - id: agent-avatar
@@ -136,6 +136,24 @@ components:
       card maps each taxonomy variant to its reconnect/upgrade/retry affordance.
     a11y: alert role; each action a labeled button; status-page link where relevant.
     since: 1
+
+  - id: agent-provisioning-card
+    title: Agent provisioning card
+    purpose: >-
+      In-chat notice under a sent message while a just-created agent's hosted
+      engine is still warming up, so the wait reads as expected, not broken.
+    anatomy: [spinner, title, body]
+    states: [default]
+    variants: [chat-card, blocked-write-dialog]
+    behavior: >-
+      Driven by the client-side provisioning presence map: marked on hosted
+      agent create, cleared by a readiness long-poll against the agent's
+      engine. The chat-card sits under the user's sent (queued) message; the
+      blocked-write-dialog opens when a write is attempted while warming —
+      reads stay free (tabs render with empty data). Queued sends deliver on
+      ready; both surfaces dismiss themselves.
+    a11y: status role; spinner decorative, text carries the message.
+    since: 3
 
   - id: system-message
     title: System message / boundary

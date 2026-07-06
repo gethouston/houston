@@ -61,3 +61,5 @@ components:
     status: not-started
   ai-model-offer-row:
     status: not-started
+  agent-provisioning-card:
+    status: not-started

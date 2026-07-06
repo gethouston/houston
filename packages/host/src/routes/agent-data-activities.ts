@@ -36,10 +36,21 @@ export async function handleActivitiesData(
       json(res, 400, { error: "missing 'title'" });
       return;
     }
+    // Optional client-generated id (optimistic creation against a warming
+    // engine, HOU-693). upsertById makes a same-id retry idempotent.
+    if (
+      body.id !== undefined &&
+      (typeof body.id !== "string" ||
+        body.id.trim() === "" ||
+        body.id.length > 64)
+    ) {
+      json(res, 400, { error: "invalid 'id'" });
+      return;
+    }
     const { items } = await loadActivities(store, root);
     const activity = createActivity(
       body as unknown as NewActivity,
-      crypto.randomUUID(),
+      (body.id as string | undefined) ?? crypto.randomUUID(),
       nowIso,
     );
     await saveActivities(store, root, upsertById(items, activity));

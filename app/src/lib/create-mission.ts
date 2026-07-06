@@ -4,7 +4,9 @@
  * and the mobile sync responder so the flow stays identical.
  */
 
+import { isAgentProvisioning } from "../stores/agent-provisioning";
 import { analytics } from "./analytics";
+import { createMissionWhileWarming } from "./create-mission-warming";
 import { logger } from "./logger";
 import { fallbackMissionTitle, refreshMissionTitle } from "./mission-title";
 import { tauriActivity, tauriChat } from "./tauri";
@@ -98,6 +100,12 @@ export async function createMission(
   text: string,
   opts: CreateMissionOptions = {},
 ): Promise<CreateMissionResult> {
+  // A warming engine holds the activity write for the whole cold start —
+  // awaiting it would freeze the composer with the user's text still in it
+  // (HOU-693). The warming path answers immediately instead.
+  if (isAgentProvisioning(agent.id)) {
+    return createMissionWhileWarming(agent, text, opts);
+  }
   const titleText = opts.titleText ?? text;
   const title = opts.title ?? fallbackMissionTitle(titleText);
   const description = text;

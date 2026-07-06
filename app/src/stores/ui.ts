@@ -21,6 +21,8 @@ interface UIState {
   authRequired: string | null;
   toasts: ToastItem[];
   createAgentDialogOpen: boolean;
+  /** "Your agent is still being created" write-blocked notice (HOU-693). */
+  agentWarmingNoticeOpen: boolean;
   /** Callback registered by the board tab to open the new-mission panel */
   onStartMission: (() => void) | null;
   /** Extra create actions registered by the board tab (e.g. "New Planning Session"). */
@@ -75,6 +77,7 @@ interface UIState {
   addToast: (toast: Omit<ToastItem, "id">) => void;
   dismissToast: (id: string) => void;
   setCreateAgentDialogOpen: (open: boolean) => void;
+  setAgentWarmingNoticeOpen: (open: boolean) => void;
   setOnStartMission: (cb: (() => void) | null) => void;
   setBoardActions: (
     actions: Array<{ id: string; label: string; onClick: () => void }>,
@@ -113,6 +116,7 @@ export const useUIStore = create<UIState>()(
       authRequired: null,
       toasts: [],
       createAgentDialogOpen: false,
+      agentWarmingNoticeOpen: false,
       onStartMission: null,
       boardActions: [],
       agentMissionSearchQueries: {},
@@ -172,6 +176,9 @@ export const useUIStore = create<UIState>()(
 
       setCreateAgentDialogOpen: (createAgentDialogOpen) =>
         set({ createAgentDialogOpen }),
+
+      setAgentWarmingNoticeOpen: (agentWarmingNoticeOpen) =>
+        set({ agentWarmingNoticeOpen }),
 
       setOnStartMission: (onStartMission) => set({ onStartMission }),
       setBoardActions: (boardActions) => set({ boardActions }),

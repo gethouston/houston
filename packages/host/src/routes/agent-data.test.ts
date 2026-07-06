@@ -162,6 +162,46 @@ test("activities: full CRUD lifecycle over the host", async () => {
   ).toBe(404);
 });
 
+test("activities: POST honors a client-generated id; a same-id retry is idempotent; a bogus id is rejected (HOU-693)", async () => {
+  const id = crypto.randomUUID();
+  const created = await fetch(`${base}/agents/${agentId}/activities`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({ id, title: "Warm-up mission" }),
+  });
+  expect(created.status).toBe(201);
+  expect(((await created.json()) as Activity).id).toBe(id);
+
+  // Retry with the same id upserts, never duplicates.
+  const retried = await fetch(`${base}/agents/${agentId}/activities`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({ id, title: "Warm-up mission (retry)" }),
+  });
+  expect(retried.status).toBe(201);
+  const list = (await (
+    await fetch(`${base}/agents/${agentId}/activities`, {
+      headers: auth("alice"),
+    })
+  ).json()) as { items: Activity[] };
+  expect(list.items.filter((a) => a.id === id)).toHaveLength(1);
+
+  for (const bogus of ["", "   ", "x".repeat(65), 42]) {
+    const rejected = await fetch(`${base}/agents/${agentId}/activities`, {
+      method: "POST",
+      headers: auth("alice"),
+      body: JSON.stringify({ id: bogus, title: "t" }),
+    });
+    expect(rejected.status).toBe(400);
+  }
+
+  // Clean up so later tests see only their own rows.
+  await fetch(`${base}/agents/${agentId}/activities/${id}`, {
+    method: "DELETE",
+    headers: auth("alice"),
+  });
+});
+
 test("routines: created with schema defaults; a stray per-routine timezone is ignored (HOU-470)", async () => {
   const created = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",

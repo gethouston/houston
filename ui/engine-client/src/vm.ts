@@ -20,3 +20,14 @@ export const conversationStore: ConversationSnapshotSource = {
   subscribe: () => () => {},
   getSnapshot: () => undefined,
 };
+
+/**
+ * Warming-engine send queue (HOU-693) — inert here for the same reason as
+ * `conversationStore`: the aliased adapter's implementation pushes the user's
+ * message into the live VM before any turn exists.
+ */
+export function pushPendingUserMessage(
+  _agentPath: string,
+  _sessionKey: string,
+  _text: string,
+): void {}

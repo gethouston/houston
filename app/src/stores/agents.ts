@@ -9,6 +9,7 @@ import {
   tauriWatcher,
 } from "../lib/tauri";
 import type { Agent } from "../lib/types";
+import { useAgentProvisioningStore } from "./agent-provisioning";
 import { useDraftStore } from "./drafts";
 
 export interface CreatedAgent {
@@ -119,6 +120,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     );
     analytics.track("agent_created", { config_id: configId });
     const { agent } = result;
+    // Hosted profile: the create answered but the agent's engine is still
+    // warming up (HOU-693). Track it so every surface can say so instead of
+    // hanging mutely; a readiness probe clears the mark. No-op co-located.
+    useAgentProvisioningStore.getState().markProvisioning(agent);
     set((s) => ({
       agents: [...s.agents, agent],
       current: agent,
@@ -130,6 +135,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   delete: async (workspaceId, id) => {
     const wasCurrent = get().current?.id === id;
     await tauriAgents.delete(workspaceId, id);
+    // A deleted agent is never "being created" — stop the probe and the UI.
+    useAgentProvisioningStore.getState().clearProvisioning(id);
     // The server confirmed the delete — reflect it in the UI NOW. In cloud
     // mode the attachments cleanup below dispatches into the agent's pod,
     // which this very delete just tore down, so awaiting it here can block
@@ -161,6 +168,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     // later reaches tauriWatcher.start and the watch fails with a "neither a
     // file nor a directory" error toast (#298).
     const updated = await tauriAgents.rename(workspaceId, id, newName);
+    // A rename can change both id and folderPath; a warm-up probe pointed at
+    // the old path would 404 and wrongly read as "ready" (HOU-693).
+    useAgentProvisioningStore.getState().carryRename(id, updated);
     set((s) => ({
       agents: s.agents.map((a) => (a.id === id ? updated : a)),
     }));

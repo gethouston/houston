@@ -46,13 +46,19 @@ async function applyProviderModel(
 ): Promise<void> {
   try {
     const cfg = await tauriConfig.read(agentPath);
-    await tauriConfig.write(agentPath, {
-      ...cfg,
-      ...(options.provider === "anthropic" || options.provider === "openai"
-        ? { provider: options.provider }
-        : {}),
-      ...(options.model ? { model: options.model } : {}),
-    });
+    await tauriConfig.write(
+      agentPath,
+      {
+        ...cfg,
+        ...(options.provider === "anthropic" || options.provider === "openai"
+          ? { provider: options.provider }
+          : {}),
+        ...(options.model ? { model: options.model } : {}),
+      },
+      // Post-create setup rides as a held request that lands when the engine
+      // wakes (HOU-649) — never blocked by the warming-write dialog.
+      { allowWhileWarming: true },
+    );
   } catch (e) {
     // The tauri wrapper already showed a red error toast; leave a breadcrumb.
     logger.error(`[onboarding] provider/model write failed: ${e}`);

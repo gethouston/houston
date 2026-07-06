@@ -42,12 +42,27 @@ export function useHoustonInit() {
         console.error("[init] Failed to restore last workspace:", e);
       }
 
+      // Read BEFORE loadAgents: its auto-selection of agents[0] runs the
+      // same side effects a user selection does, which OVERWRITE this
+      // preference — reading it afterwards always restored agents[0]
+      // (surfaced by HOU-693's relaunch-mid-warm-up flow, but generic).
+      let lastAgentId: string | null = null;
+      try {
+        lastAgentId = await tauriPreferences.get("last_agent_id");
+      } catch (e) {
+        console.error("[init] Failed to read last agent:", e);
+      }
+
       if (currentWorkspace) {
         await loadAgents(currentWorkspace.id);
         // Spin up the routine scheduler for every agent in the workspace so
-        // cron jobs fire even if the user never selects the agent.
+        // cron jobs fire even if the user never selects the agent. NOT
+        // awaited: these are per-agent calls, and against a cold/warming
+        // engine each one is held until that engine wakes — blocking here
+        // stalled the last-agent restore below for the whole warm-up
+        // (HOU-693), leaving the wrong agent selected after a relaunch.
         const agents = useAgentStore.getState().agents;
-        await Promise.all(
+        void Promise.all(
           agents.map((a) =>
             tauriRoutines
               .startScheduler(a.folderPath)
@@ -58,18 +73,13 @@ export function useHoustonInit() {
         );
       }
 
-      try {
-        const lastId = await tauriPreferences.get("last_agent_id");
-        if (lastId) {
-          const agents = useAgentStore.getState().agents;
-          const saved = agents.find((a) => a.id === lastId);
-          if (saved) {
-            setCurrent(saved);
-            setViewMode(DEFAULT_TAB_ID);
-          }
+      if (lastAgentId) {
+        const agents = useAgentStore.getState().agents;
+        const saved = agents.find((a) => a.id === lastAgentId);
+        if (saved) {
+          setCurrent(saved);
+          setViewMode(DEFAULT_TAB_ID);
         }
-      } catch (e) {
-        console.error("[init] Failed to restore last agent:", e);
       }
 
       // Check if the default provider's CLI is available

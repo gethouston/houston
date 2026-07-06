@@ -64,7 +64,7 @@ export function createActivity(
   agentPath: string,
   input: NewActivity,
 ): Activity {
-  const id = crypto.randomUUID();
+  const id = input.id ?? crypto.randomUUID();
   const activity: Activity = {
     id,
     title: input.title || "New chat",

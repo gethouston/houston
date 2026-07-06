@@ -2,6 +2,7 @@ import { AIBoard } from "@houston-ai/board";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { openAgentHref } from "../../lib/open-href";
+import { useAgentProvisioningStore } from "../../stores/agent-provisioning";
 import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { buildMissionBoardColumns } from "../mission-board-columns";
@@ -115,6 +116,13 @@ export function MissionBoard({ source }: { source: BoardSource }) {
 
   const attachmentValidation = useAttachmentRejectionDialog();
 
+  // While the open chat's agent is still warming up, its parked message is
+  // narrated by the provisioning card — the in-flight indicator would promise
+  // a reply from a second place (HOU-693).
+  const suppressPendingIndicator = useAgentProvisioningStore((s) =>
+    source.activeAgent ? Boolean(s.provisioning[source.activeAgent.id]) : false,
+  );
+
   return (
     <>
       {source.toolbar}
@@ -127,6 +135,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           onSelect={source.setSelectedId}
           feedItems={source.feedItems}
           isLoading={source.loading}
+          suppressPendingIndicator={suppressPendingIndicator}
           onDelete={source.onDelete}
           onApprove={source.onApprove}
           onRename={source.onRename}

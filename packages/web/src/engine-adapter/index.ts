@@ -13,6 +13,9 @@ export {
   HoustonEngineError,
   isHoustonEngineError,
 } from "./client";
+// Warming-engine send queue (HOU-693): show the message as sent while the
+// engine boots; the deferred real send suppresses its own bubble.
+export { pushPendingUserMessage } from "./turn-stream";
 // The conversation-VM read side: the app binds this store with
 // `useSdkSnapshot(conversationStore, conversationScope(agentPath, sessionKey))`.
 export { conversationStore } from "./vm";

@@ -322,11 +322,17 @@ async function finishAgentSetup(
     // field blank would make the engine resolver fall back to its platform
     // default rather than the user's pick.
     const cfg = await tauriConfig.read(agentPath);
-    await tauriConfig.write(agentPath, {
-      ...cfg,
-      provider: opts.provider as "anthropic" | "openai",
-      model: opts.model,
-    });
+    await tauriConfig.write(
+      agentPath,
+      {
+        ...cfg,
+        provider: opts.provider as "anthropic" | "openai",
+        model: opts.model,
+      },
+      // Post-create setup rides as a held request that lands when the engine
+      // wakes (HOU-649) — never blocked by the warming-write dialog.
+      { allowWhileWarming: true },
+    );
   } catch (e) {
     logger.error(`[new-agent] provider/model write failed: ${e}`);
   }
@@ -338,15 +344,20 @@ async function finishAgentSetup(
     // picks up the just-written routine; plain syncScheduler would be a no-op
     // for an unstarted agent.
     try {
-      await tauriRoutines.create(agentPath, {
-        name: opts.routine.name,
-        description: opts.routine.description,
-        prompt: opts.routine.prompt,
-        schedule: opts.routine.schedule,
-        enabled: true,
-        suppress_when_silent: opts.routine.suppress_when_silent,
-        chat_mode: opts.routine.chat_mode,
-      });
+      await tauriRoutines.create(
+        agentPath,
+        {
+          name: opts.routine.name,
+          description: opts.routine.description,
+          prompt: opts.routine.prompt,
+          schedule: opts.routine.schedule,
+          enabled: true,
+          suppress_when_silent: opts.routine.suppress_when_silent,
+          chat_mode: opts.routine.chat_mode,
+        },
+        // Same held-request posture as the config write above.
+        { allowWhileWarming: true },
+      );
       await tauriRoutines.startScheduler(agentPath);
     } catch (e) {
       // The tauri wrapper surfaced its own error toast; leave a breadcrumb.
