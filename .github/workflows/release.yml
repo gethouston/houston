@@ -472,7 +472,7 @@ jobs:
       # A missing arch would break half of our Mac users, so fail hard. The
       # `claude` binary is large (~232MB/arch → ~470MB universal), so this step
       # dominates disk + build time.
-      - name: Compile Houston host sidecar + stage claude + frpc (aarch64 + x86_64) + lipo universal
+      - name: Compile Houston host sidecar + stage claude (aarch64 + x86_64) + lipo universal
         run: |
           set -euo pipefail
           for TRIPLE in aarch64-apple-darwin x86_64-apple-darwin; do
@@ -502,27 +502,13 @@ jobs:
           chmod +x app/src-tauri/binaries/claude-universal-apple-darwin
           lipo -info app/src-tauri/binaries/claude-universal-apple-darwin
 
-          echo "=== Fetch + lipo universal frpc tunnel client ==="
-          # frpc (fatedier/frp) is a Tauri externalBin; the universal bundle
-          # needs a fat binaries/frpc-universal-apple-darwin, same as the two
-          # above. fetch-frpc.sh SHA256-verifies each per-arch download.
-          scripts/fetch-frpc.sh aarch64-apple-darwin
-          scripts/fetch-frpc.sh x86_64-apple-darwin
-          lipo -create \
-            target/frpc/frpc-aarch64-apple-darwin \
-            target/frpc/frpc-x86_64-apple-darwin \
-            -output app/src-tauri/binaries/frpc-universal-apple-darwin
-          chmod +x app/src-tauri/binaries/frpc-universal-apple-darwin
-          lipo -info app/src-tauri/binaries/frpc-universal-apple-darwin
-
           ls -la \
             target/host-sidecar/houston-host-aarch64-apple-darwin \
             target/host-sidecar/houston-host-x86_64-apple-darwin \
             target/host-sidecar/claude-aarch64-apple-darwin \
             target/host-sidecar/claude-x86_64-apple-darwin \
             app/src-tauri/binaries/houston-engine-universal-apple-darwin \
-            app/src-tauri/binaries/claude-universal-apple-darwin \
-            app/src-tauri/binaries/frpc-universal-apple-darwin
+            app/src-tauri/binaries/claude-universal-apple-darwin
 
       # Fetch the frpc tunnel client (fatedier/frp, Apache-2.0) for both arches
       # and lipo a universal fat binary, mirroring the host sidecar above.
@@ -1164,18 +1150,6 @@ jobs:
         if: ${{ env.IS_CLOUD == 'true' }}
         shell: bash
         run: bash scripts/ci/point-updater-at-cloud-manifest.sh
-
-      # frpc is a Tauri externalBin (the local-model bridge tunnel client).
-      # Without a real binary, build.rs stages an exit-1 placeholder and the
-      # shipped tunnel is dead. Fetch the SHA256-verified frpc for this arch so
-      # build.rs stages it as binaries/frpc-${{ matrix.target }}.exe.
-      - name: Fetch frpc tunnel client (${{ matrix.target }})
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts/fetch-frpc.sh ${{ matrix.target }}
-          test -f "target/frpc/frpc-${{ matrix.target }}.exe" \
-            || { echo "::error::frpc missing for ${{ matrix.target }}"; exit 1; }
 
       - name: Build Tauri app (Windows MSI)
         uses: tauri-apps/tauri-action@v0
