@@ -128,6 +128,13 @@ export function isHoustonEngineError(e: unknown): e is HoustonEngineError {
 const SETUP_LOGIN_KEY = "__setup__";
 
 /**
+ * localStorage key persisting the selected agent (`setPreference("last_agent_id")`).
+ * `providerEngine()` routes provider connects by it, so it must never name an
+ * agent the host doesn't have — see `dropLastAgentPref`.
+ */
+const LAST_AGENT_PREF = "houston.pref.last_agent_id";
+
+/**
  * Treat a 404 on login/cancel as benign: it means no login was pending (or an
  * older host lacks the cancel route), so cancel's postcondition — the login
  * slot is free — already holds. The reconnect card's every press goes
@@ -236,10 +243,28 @@ export class HoustonClient {
   /** The CP agent the user has selected (persisted as last_agent_id), or null. */
   private currentAgentId(): string | null {
     try {
-      const id = localStorage.getItem("houston.pref.last_agent_id");
+      const id = localStorage.getItem(LAST_AGENT_PREF);
       return id && id !== DEFAULT_AGENT_ID ? id : null;
     } catch {
       return null;
+    }
+  }
+  /**
+   * Forget the persisted agent selection when it names an agent the control
+   * plane no longer has (deleted last agent, wiped user data, account switch).
+   * Credentials are workspace-central (connect-once), so provider connects
+   * don't need an agent — but `providerEngine()` routes them through the
+   * remembered agent's runtime whenever this pref is set. A stale id sent
+   * first-run onboarding logins to `/agents/<dead>/auth/:pid/login` → 404
+   * "agent not found" instead of the pre-agent `/setup-runtime` surface.
+   */
+  private dropLastAgentPref(isStale: (id: string) => boolean): void {
+    try {
+      const id = localStorage.getItem(LAST_AGENT_PREF);
+      if (id && id !== DEFAULT_AGENT_ID && isStale(id))
+        localStorage.removeItem(LAST_AGENT_PREF);
+    } catch {
+      /* storage disabled — currentAgentId() reads null there anyway */
     }
   }
   /** The selected agent id, or a user-facing error if none is open. */
@@ -301,7 +326,14 @@ export class HoustonClient {
     return [syntheticWorkspace(provider, model)];
   }
   async listAgents(workspaceId: string): Promise<Agent[]> {
-    if (this.cp) return controlPlane.listAgents(this.cp);
+    if (this.cp) {
+      const list = await controlPlane.listAgents(this.cp);
+      // CP agent ids are global (the list ignores workspaceId), so this list is
+      // the full truth the selection pref must exist in. Pruning here heals a
+      // stale pref at boot, before the first-run connect surface mounts.
+      this.dropLastAgentPref((id) => !list.some((a) => a.id === id));
+      return list;
+    }
     return agents.listAgents(workspaceId);
   }
   async createWorkspace(req: { name?: string }): Promise<Workspace> {
@@ -365,7 +397,14 @@ export class HoustonClient {
     return agents.updateAgentColor(workspaceId, agentId, req.color);
   }
   async deleteAgent(workspaceId: string, agentId: string): Promise<void> {
-    if (this.cp) return controlPlane.deleteAgent(this.cp, agentId);
+    if (this.cp) {
+      await controlPlane.deleteAgent(this.cp, agentId);
+      // The selection pref must not outlive its agent: when the deleted agent
+      // was the remembered one (and it was the last — the app re-points the
+      // pref otherwise), provider connects must fall back to the setup runtime.
+      this.dropLastAgentPref((id) => id === agentId);
+      return;
+    }
     agents.deleteAgent(workspaceId, agentId);
   }
   /**
