@@ -867,13 +867,36 @@ export function validProviderOrNull(
  * getDefaultModel(provider)` so the picker and the wire call agree on a
  * model the server will actually accept.
  */
+/**
+ * Providers whose model catalog is OPEN: the curated `PROVIDERS[].models` is a
+ * seed for the picker, NOT the exhaustive runnable set, so a live selection must
+ * not be validated against it. OpenRouter serves the 300+ models the picker
+ * fetches live; the local OpenAI-compatible endpoint runs whatever model the
+ * user's server exposes. Mirrors the domain's pass-through set (providers absent
+ * from `VALID_MODELS` in `@houston/domain`).
+ */
+const OPEN_CATALOG_PROVIDERS: ReadonlySet<string> = new Set([
+  "openrouter",
+  "openai-compatible",
+]);
+
+/** Whether `providerId` runs any model id its upstream serves (see above). */
+export function isOpenCatalogProvider(
+  providerId: string | null | undefined,
+): boolean {
+  return !!providerId && OPEN_CATALOG_PROVIDERS.has(providerId);
+}
+
 export function validModelOrNull(
   providerId: string | null | undefined,
   modelId: string | null | undefined,
 ): string | null {
-  return providerId && modelId && getModel(providerId, modelId)
-    ? modelId
-    : null;
+  if (!providerId || !modelId) return null;
+  // Open-catalog providers accept any live id, so never null a picked model
+  // against the small curated seed list — otherwise the effective-model chain
+  // silently reverts a live OpenRouter pick to the provider default.
+  if (isOpenCatalogProvider(providerId)) return modelId;
+  return getModel(providerId, modelId) ? modelId : null;
 }
 
 /**

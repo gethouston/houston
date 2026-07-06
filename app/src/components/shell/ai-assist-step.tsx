@@ -3,10 +3,10 @@ import type { SuggestedRoutine } from "@houston-ai/engine-client";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { tauriAgents, tauriProvider } from "../../lib/tauri";
+import { ChatModelSelector } from "../chat-model-selector";
 import { AgentSetupForm, type AgentSetupFormValues } from "./agent-setup-form";
 import { serializeFormValues } from "./agent-setup-utils";
 import { AiStepFooter } from "./ai-step-footer";
-import { InlineModelSelector } from "./naming-step";
 
 interface AiAssistStepProps {
   provider: string;
@@ -112,10 +112,11 @@ export function AiAssistStep({
             <p className="text-xs font-medium text-muted-foreground">
               {t("aiAssist.brainLabel")}
             </p>
-            <InlineModelSelector
+            <ChatModelSelector
               provider={provider}
               model={model}
               onSelect={handlePickerChange}
+              agent={null}
             />
           </div>
 
