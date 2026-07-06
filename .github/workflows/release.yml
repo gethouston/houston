@@ -510,6 +510,30 @@ jobs:
             app/src-tauri/binaries/houston-engine-universal-apple-darwin \
             app/src-tauri/binaries/claude-universal-apple-darwin
 
+      # Fetch the frpc tunnel client (fatedier/frp, Apache-2.0) for both arches
+      # and lipo a universal fat binary, mirroring the host sidecar above.
+      # build.rs::stage_frpc_sidecar also stages per-arch copies during tauri's
+      # per-arch cargo runs, but the `--target universal-apple-darwin` bundle
+      # ships this fat binary at binaries/frpc-universal-apple-darwin. Without it
+      # the local-model tunnel ships a loud-fail placeholder and never connects.
+      - name: Fetch + lipo universal frpc tunnel client (aarch64 + x86_64)
+        run: |
+          set -euo pipefail
+          for TRIPLE in aarch64-apple-darwin x86_64-apple-darwin; do
+            echo "=== fetching frpc for $TRIPLE ==="
+            scripts/fetch-frpc.sh "$TRIPLE"
+            test -x "target/frpc/frpc-$TRIPLE" \
+              || { echo "::error::frpc missing for $TRIPLE"; exit 1; }
+          done
+          mkdir -p app/src-tauri/binaries
+          echo "=== Lipo universal frpc ==="
+          lipo -create \
+            target/frpc/frpc-aarch64-apple-darwin \
+            target/frpc/frpc-x86_64-apple-darwin \
+            -output app/src-tauri/binaries/frpc-universal-apple-darwin
+          chmod +x app/src-tauri/binaries/frpc-universal-apple-darwin
+          lipo -info app/src-tauri/binaries/frpc-universal-apple-darwin
+
       # Build only — no release creation (no tagName).
       # tauri-action handles certificate import, code signing, .app notarization + stapling.
       #
@@ -1104,6 +1128,20 @@ jobs:
             || { echo "::error::host sidecar missing for ${{ matrix.target }}"; exit 1; }
           echo "Sidecar size:"
           ls -lah target/host-sidecar/houston-host-${{ matrix.target }}.exe
+
+      # Fetch the frpc tunnel client (fatedier/frp, Apache-2.0) for the matrix
+      # target BEFORE tauri build. build.rs::stage_frpc_sidecar copies
+      # target/frpc/frpc-<target>.exe to the externalBin name
+      # binaries/frpc-<target>.exe (same pattern as the host sidecar). Without it
+      # the local-model tunnel ships a loud-fail placeholder and never connects.
+      - name: Fetch frpc tunnel client (${{ matrix.target }})
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/fetch-frpc.sh ${{ matrix.target }}
+          test -x "target/frpc/frpc-${{ matrix.target }}.exe" \
+            || { echo "::error::frpc missing for ${{ matrix.target }}"; exit 1; }
+          ls -lah target/frpc/frpc-${{ matrix.target }}.exe
 
       # CLOUD channel only: repoint the updater at `latest-cloud.json` before the
       # build bakes tauri.conf.json in (see build-macos for the why). The script
