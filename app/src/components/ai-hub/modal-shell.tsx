@@ -76,7 +76,12 @@ export function ModalShell({
             ) : null}
           </div>
         )}
-        <div className="overflow-y-auto">{children}</div>
+        {/* `min-h-0` lets this 1fr grid row shrink below its content so it
+            becomes the SINGLE bounded scroll area. Without it the row's default
+            `min-height: auto` grows to the content, the modal overflows its
+            `max-h`, and the inner scroll never engages — the tall provider model
+            lists then read as a second, janky scroll. */}
+        <div className="min-h-0 overflow-y-auto">{children}</div>
         {footer ? (
           <div className="border-t border-border px-5 py-3">{footer}</div>
         ) : null}
