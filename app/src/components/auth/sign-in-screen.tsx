@@ -67,15 +67,15 @@ export function SignInScreen() {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <div className="flex items-center gap-2 px-8 py-6">
+      <div className="flex items-center gap-2 px-8 pt-10 pb-6">
         <HoustonLogo size={24} />
         <span className="text-lg font-semibold tracking-tight">Houston</span>
       </div>
 
       <div className="flex flex-1 items-center justify-center px-6">
-        <div className="flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border shadow-sm sm:flex-row">
-          <div className="flex flex-col gap-5 bg-card p-8 sm:w-[22rem]">
-            <h1 className="text-xl font-semibold">Welcome to Houston</h1>
+        <div className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border shadow-sm sm:grid-cols-3">
+          <div className="flex flex-col gap-5 bg-card p-8 sm:col-span-2">
+            <h1 className="text-xl font-medium">Log in</h1>
 
             <div className="flex flex-col gap-2.5">
               <Button
@@ -117,18 +117,17 @@ export function SignInScreen() {
             {error && <p className="text-xs text-destructive">{error}</p>}
           </div>
 
-          <div className="flex flex-col gap-3 bg-muted p-8 sm:w-[18rem]">
-            <h2 className="text-base font-semibold">Your AI teammate</h2>
+          <div className="flex flex-col gap-3 bg-muted p-8 sm:col-span-1">
+            <h2 className="text-base font-semibold">Houston for teams</h2>
             <p className="text-sm text-muted-foreground">
-              Houston builds agents that handle your inbox, your calendar, and
-              the busywork, so you can focus on what matters.
+              Shared agents, roles, and admin controls for your whole company.
             </p>
             <button
               type="button"
-              onClick={openExternal("https://gethouston.ai")}
+              onClick={openExternal("https://gethouston.ai/enterprise")}
               className="mt-1 inline-flex items-center gap-1 self-start text-sm font-medium underline-offset-4 hover:underline"
             >
-              See how it works
+              Talk to our team
               <ArrowUpRight className="size-4" />
             </button>
           </div>
