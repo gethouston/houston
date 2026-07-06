@@ -3,7 +3,6 @@ import { join } from "node:path";
 import {
   type Api,
   getModel,
-  getModels,
   type KnownProvider,
   type Model,
 } from "@earendil-works/pi-ai";
@@ -16,6 +15,12 @@ import {
   OPENAI_COMPATIBLE,
   setCustomModelId,
 } from "./openai-compatible";
+import {
+  isPiOAuthProvider,
+  isPiProvider,
+  piModelIds,
+  piProviderIds,
+} from "./pi-catalog";
 
 /**
  * Supported providers. The provider id is the SAME string pi-ai uses for its
@@ -129,18 +134,44 @@ export const PROVIDERS: {
   },
 ];
 
-/** A provider's auth method (defaults to OAuth for an unknown id). */
+/**
+ * A provider's auth method. A curated entry keeps its declared method verbatim.
+ * An UNCURATED but pi-known provider is inferred from pi's registry: OAuth when
+ * pi lists it as an OAuth provider, otherwise a pasted API key — so a pasted key
+ * for e.g. `groq` is accepted (login.ts's setApiKey gate) instead of being sent
+ * down an OAuth flow pi has no login for. A truly unknown id still defaults to
+ * OAuth, so setApiKey rejects it.
+ */
 export function providerAuthMethod(id: string): ProviderAuthMethod {
-  return PROVIDERS.find((p) => p.id === id)?.auth ?? "oauth";
+  const curated = PROVIDERS.find((p) => p.id === id);
+  if (curated) return curated.auth;
+  if (isPiProvider(id)) return isPiOAuthProvider(id) ? "oauth" : "apiKey";
+  return "oauth";
 }
 
-/** A provider's default model id (its catalog default, or the Codex default). */
+/**
+ * A provider's default model id: a curated entry's configured default, else —
+ * for an uncurated pi provider — the first model pi lists for it, else the Codex
+ * default (a non-pi id with no catalog). Never throws / undefined.
+ */
 export function providerDefaultModel(id: string): string {
-  return PROVIDERS.find((p) => p.id === id)?.defaultModel ?? config.codexModel;
+  const curated = PROVIDERS.find((p) => p.id === id);
+  if (curated) return curated.defaultModel;
+  return firstCatalogModel(id) ?? config.codexModel;
 }
 
-const isProvider = (s: string): s is ProviderId =>
-  PROVIDERS.some((p) => p.id === s);
+/** The first model id pi lists for a provider, or undefined when it has none. */
+function firstCatalogModel(id: string): string | undefined {
+  return piModelIds(id)[0];
+}
+
+/**
+ * A provider Houston will accept: a curated id OR any provider pi-ai knows (its
+ * live ~35-provider catalog). Widened additively so a pasted key for an
+ * uncurated pi provider is selectable/resolvable; curated ids are unaffected.
+ */
+export const isProvider = (s: string): s is ProviderId =>
+  PROVIDERS.some((p) => p.id === s) || isPiProvider(s);
 
 type Settings = {
   activeProvider?: ProviderId;
@@ -168,8 +199,12 @@ function saveSettings(s: Settings) {
 
 function defaultModel(provider: ProviderId): string {
   const found = PROVIDERS.find((p) => p.id === provider);
-  if (!found) throw new Error(`unknown provider: ${provider}`);
-  return found.defaultModel;
+  if (found) return found.defaultModel;
+  // Uncurated pi provider: no configured default, so start on the first model
+  // pi lists for it rather than hard-failing the picker/turn.
+  const first = firstCatalogModel(provider);
+  if (first) return first;
+  throw new Error(`unknown provider: ${provider}`);
 }
 
 export function modelFor(provider: ProviderId): string {
@@ -217,18 +252,38 @@ export function pickActiveProvider(
 }
 
 /**
+ * Every provider that could be connected, in selection-precedence order: the
+ * curated registry FIRST (unchanged order, so the first-connected fallback and
+ * claim precedence for curated providers are identical to before), then any
+ * other pi-known provider so a pasted key for an uncurated provider (e.g. groq)
+ * becomes selectable. Extras are appended, never interleaved, so they can only
+ * ever be the fallback when NO curated provider is connected.
+ */
+function candidateProviderIds(): ProviderId[] {
+  const curated = PROVIDERS.map((p) => p.id);
+  const seen = new Set(curated);
+  const extras = piProviderIds().filter((id) => !seen.has(id));
+  return [...curated, ...extras];
+}
+
+/** Connected providers in precedence order (curated first, then pi extras). */
+function connectedProviderIds(): ProviderId[] {
+  // `providerConfigured` over `providerConnected` so the OpenAI-compatible
+  // provider counts when its endpoint is set (it has only a placeholder key).
+  return candidateProviderIds().filter((id) => providerConfigured(id));
+}
+
+/**
  * The provider this agent's turns run on: the saved pick when connected, else —
  * only when nothing is saved — the first connected provider. `null` => no
  * provider connected for the saved pick, so the turn must surface the reconnect
  * card rather than silently switching.
  */
 export function activeProvider(): ProviderId | null {
-  // `providerConfigured` over `providerConnected` so the OpenAI-compatible
-  // provider counts when its endpoint is set (it has only a placeholder key).
-  const authed = PROVIDERS.filter((p) => providerConfigured(p.id)).map(
-    (p) => p.id,
+  return pickActiveProvider(
+    loadSettings().activeProvider,
+    connectedProviderIds(),
   );
-  return pickActiveProvider(loadSettings().activeProvider, authed);
 }
 
 /**
@@ -288,9 +343,7 @@ export function pickClaimedProvider(
 export function claimActiveProvider(pid: string): Settings {
   if (!isProvider(pid)) throw new Error(`unknown provider: ${pid}`);
   const s = loadSettings();
-  const authed = PROVIDERS.filter((p) => providerConfigured(p.id)).map(
-    (p) => p.id,
-  );
+  const authed = connectedProviderIds();
   const claim = pickClaimedProvider(
     s.activeProvider,
     authed,
@@ -417,21 +470,35 @@ function safeModelIds(provider: ProviderId): string[] {
     const m = customModelId();
     return m ? [m] : [];
   }
-  try {
-    return getModels(provider as KnownProvider).map((m: Model<Api>) => m.id);
-  } catch {
-    return [];
-  }
+  return piModelIds(provider);
 }
 
+/** One /providers status row for a provider id. */
+function providerRow(id: ProviderId, name: string, active: ProviderId | null) {
+  return {
+    id,
+    name,
+    configured: providerConfigured(id),
+    isActive: id === active,
+    activeModel: modelFor(id),
+    models: safeModelIds(id),
+  };
+}
+
+/**
+ * The /providers status batch. Curated providers ALWAYS appear (unchanged). An
+ * uncurated pi provider appears once it has a stored credential, so a pasted key
+ * for e.g. groq is reflected — with its runnable pi model ids — while the common
+ * case (nothing uncurated connected) keeps the exact shape it had before. Its
+ * `name` is the raw pi id; the frontend catalog supplies display names/logos.
+ */
 export function listProviders() {
   const active = activeProvider();
-  return PROVIDERS.map((p) => ({
-    id: p.id,
-    name: p.name,
-    configured: providerConfigured(p.id),
-    isActive: p.id === active,
-    activeModel: modelFor(p.id),
-    models: safeModelIds(p.id),
-  }));
+  const curated = new Set(PROVIDERS.map((p) => p.id));
+  const rows = PROVIDERS.map((p) => providerRow(p.id, p.name, active));
+  for (const id of piProviderIds()) {
+    if (!curated.has(id) && providerConfigured(id))
+      rows.push(providerRow(id, id, active));
+  }
+  return rows;
 }

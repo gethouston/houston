@@ -16,21 +16,23 @@ import type { CatalogModel, HubCatalog } from "./catalog-types.ts";
  *
  * pi-ai is authoritative: every hub model exists because pi-ai can run it, with
  * pi's own pricing, context window, reasoning, and vision. The catalog is already
- * scoped to what this host can run (all providers on desktop, ~3 in a cloud pod),
- * so there is no visibility gate — the AI Models tab and the picker's enrichment
- * show ONLY runnable models. The snapshot is folded in second as OPTIONAL
+ * scoped to what this host can run (all providers on desktop, ~3 in a cloud pod).
+ * Pass `visibleProviderIds` (the `getVisibleProviders` set) to scope the hub to
+ * EXACTLY the providers the picker shows, so the AI Models tab and the picker
+ * stay identical. The snapshot is folded in second as OPTIONAL
  * enrichment (`foldEnrichment`): a snapshot model fills the metadata pi-ai lacks
  * (description / toolCall / imageGen / knowledge / releaseDate) on a model that
  * ALSO exists in pi-ai, and a snapshot-only model is dropped.
  */
 export function loadHubCatalog(
   catalog: ProviderCatalog,
-  opts: { enrich?: boolean } = {},
+  opts: { enrich?: boolean; visibleProviderIds?: ReadonlySet<string> } = {},
 ): HubCatalog {
-  const { enrich = true } = opts;
+  const { enrich = true, visibleProviderIds } = opts;
   const drafts = new Map<string, Draft>();
 
-  for (const cand of piCatalogToCandidates(catalog)) addCandidate(drafts, cand);
+  for (const cand of piCatalogToCandidates(catalog, visibleProviderIds))
+    addCandidate(drafts, cand);
   if (enrich) for (const raw of snapshotModels()) foldEnrichment(drafts, raw);
 
   const models = [...drafts.entries()]

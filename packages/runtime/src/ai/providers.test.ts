@@ -11,6 +11,7 @@ import {
   setCustomEndpointConfig,
 } from "./openai-compatible";
 import {
+  isProvider,
   PROVIDERS,
   pickActiveProvider,
   pickClaimedProvider,
@@ -45,6 +46,41 @@ test("api-key providers are registered as api-key providers", () => {
   expect(providerAuthMethod("openai-codex")).toBe("oauth");
   // Unknown providers default to OAuth.
   expect(providerAuthMethod("nope")).toBe("oauth");
+});
+
+/**
+ * pi-ai is the model-catalog source of truth. Any provider it knows (its live
+ * ~35-provider catalog) must be connectable/resolvable from a pasted key WITHOUT
+ * a curated entry — additively, and without changing the curated providers. groq
+ * is an uncurated, api-key (non-OAuth) pi provider used as the representative.
+ */
+test("an uncurated pi provider (groq) is accepted, api-key, and defaults to its first pi model", () => {
+  // Not hand-curated in PROVIDERS...
+  expect(PROVIDERS.map((p) => p.id)).not.toContain("groq");
+  // ...but pi knows it, so the runtime accepts it (isProvider widen).
+  expect(isProvider("groq")).toBe(true);
+  // pi lists it as an api-key (non-OAuth) provider, so a pasted key is accepted
+  // (login.ts's setApiKey gate) rather than routed to an OAuth flow.
+  expect(providerAuthMethod("groq")).toBe("apiKey");
+  // No configured default → the first model pi lists for groq (never throws).
+  expect(providerDefaultModel("groq")).toBe("llama-3.1-8b-instant");
+  // And that model actually resolves through the turn path (safeGetModel).
+  const m = safeGetModel("groq", providerDefaultModel("groq"), false) as {
+    provider?: string;
+    id?: string;
+  };
+  expect(m.provider).toBe("groq");
+  expect(m.id).toBe("llama-3.1-8b-instant");
+});
+
+test("an OAuth pi provider stays OAuth, and a non-pi id is rejected", () => {
+  // openai-codex is a curated OAuth provider AND pi lists it as OAuth: it must
+  // NOT be reclassified as api-key.
+  expect(providerAuthMethod("openai-codex")).toBe("oauth");
+  // A truly unknown id (pi doesn't know it) is not a provider and defaults to
+  // OAuth, so setApiKey rejects it.
+  expect(isProvider("not-a-real-provider")).toBe(false);
+  expect(providerAuthMethod("not-a-real-provider")).toBe("oauth");
 });
 
 test("providerDefaultModel returns each provider's catalog default", () => {

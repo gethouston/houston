@@ -1,5 +1,10 @@
 import type { ProviderId } from "@houston/protocol";
 
+// The api-key-provider gate is pi-derived (any pi provider that isn't OAuth),
+// not the curated catalog below — see ./providers/api-key. Re-exported here so
+// the connect route + dispatch keep importing it from the one provider facade.
+export { isApiKeyProvider } from "./providers/api-key";
+
 /**
  * Host-side provider catalog. The runtime (packages/runtime) owns the full model
  * lists; the host only needs to know which providers exist, how they authenticate,
@@ -157,11 +162,6 @@ export const OPENAI_COMPATIBLE = "openai-compatible";
 export const CLOUD_PROVIDERS: readonly HostProvider[] = PROVIDERS.filter(
   (p) => p.cloud,
 );
-
-/** True when `id` names a known API-key provider (OpenCode Zen / Go). */
-export function isApiKeyProvider(id: string): boolean {
-  return byId.get(id)?.auth === "apiKey";
-}
 
 /** True when `id` is a provider the cloud per-turn runtime offers. */
 export function isCloudProvider(id: string): boolean {

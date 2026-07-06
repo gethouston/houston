@@ -47,12 +47,21 @@ function entryToRaw(entry: CatalogModelEntry): RawModel {
  * under the renamed Houston provider id, marked `subscription` for OAuth
  * providers (their per-token price is never shown). `detectLab` reads the raw
  * (openrouter `vendor/model` prefixes, then name heuristics) to assign the lab.
+ *
+ * `visibleIds`, when given, restricts candidates to those (renamed) provider ids
+ * — the SAME set `getVisibleProviders` shows the picker, so the AI Models tab and
+ * the picker render exactly the same providers (a coming-soon or otherwise-gated
+ * provider in the raw catalog never becomes a hub model the picker can't offer).
  */
-export function piCatalogToCandidates(catalog: ProviderCatalog): Candidate[] {
+export function piCatalogToCandidates(
+  catalog: ProviderCatalog,
+  visibleIds?: ReadonlySet<string>,
+): Candidate[] {
   const candidates: Candidate[] = [];
   for (const provider of catalog) {
     if (DROP_PI_PROVIDERS.has(provider.id)) continue;
     const providerId = PROVIDER_ID_RENAME[provider.id] ?? provider.id;
+    if (visibleIds && !visibleIds.has(providerId)) continue;
     const subscription = provider.auth === "oauth";
     for (const entry of provider.models) {
       const raw = entryToRaw(entry);

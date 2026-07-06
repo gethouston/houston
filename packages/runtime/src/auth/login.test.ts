@@ -75,6 +75,18 @@ test("the OpenAI-compatible provider rejects the OAuth and api-key connect paths
   expect(() => setApiKey("openai-compatible", "k")).toThrow(/API key/);
 });
 
+test("setApiKey rejects an OAuth provider and an id pi-ai doesn't know", () => {
+  // An OAuth pi provider (curated OR uncurated) must NOT accept a pasted key —
+  // it connects via startLogin, so setApiKey turns it away with a clear reason.
+  expect(() => setApiKey("openai-codex", "sk-x")).toThrow(/API key/);
+  expect(() => setApiKey("anthropic", "sk-x")).toThrow(/API key/);
+  // An id pi-ai has never heard of isn't a provider at all: rejected up front so
+  // a typo can't silently persist a dead credential.
+  expect(() => setApiKey("not-a-real-provider", "sk-x")).toThrow(
+    /unknown provider/,
+  );
+});
+
 test("cancelLogin: benign with nothing in flight, throws on an unknown provider", () => {
   // The client fires cancel on dialog dismiss regardless of flow state, so a
   // no-op cancel must never error; a typo'd provider id is a caller bug.

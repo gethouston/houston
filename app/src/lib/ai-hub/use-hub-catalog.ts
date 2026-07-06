@@ -1,5 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { useCapabilities } from "../../hooks/use-capabilities.ts";
+import { useProviderCatalog } from "../../hooks/use-provider-catalog.ts";
+import { newEngineActive } from "../engine.ts";
+import { osIsTauri } from "../os-bridge.ts";
+import {
+  EMPTY_PROVIDER_CAPABILITIES,
+  getVisibleProviders,
+} from "../providers.ts";
 import { tauriProvider } from "../tauri.ts";
 import { loadHubCatalog } from "./catalog.ts";
 import type { HubCatalog } from "./catalog-types.ts";
@@ -37,12 +45,34 @@ export function useHubCatalog(): {
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  // Rebuild only when the fetched catalog changes (`dataUpdatedAt` bumps on every
-  // cache write), keeping the hub reactive to a fresh pi-ai catalog.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on dataUpdatedAt, not the data ref.
+  // Hydrates `PROVIDERS` in place (shares the `["provider-catalog"]` query, no
+  // second fetch); its `updatedAt` re-keys the memo so the visible set is read
+  // AFTER hydration, not from the stale seed.
+  const { updatedAt } = useProviderCatalog();
+  const { capabilities } = useCapabilities();
+  const newEngine = newEngineActive();
+  const desktop = osIsTauri();
+  const providerCapabilities =
+    capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
+
+  // Rebuild only when the fetched catalog, the hydrated `PROVIDERS` set, or the
+  // visibility inputs change. Scope the hub to the SAME providers the picker
+  // shows (`getVisibleProviders`) so the AI Models tab and the picker never drift.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `getVisibleProviders` reads the mutated-in-place PROVIDERS, keyed by `updatedAt`.
   const catalog = useMemo(
-    () => (query.data ? loadHubCatalog(query.data) : undefined),
-    [query.dataUpdatedAt],
+    () =>
+      query.data
+        ? loadHubCatalog(query.data, {
+            visibleProviderIds: new Set(
+              getVisibleProviders({
+                newEngine,
+                desktop,
+                capabilities: providerCapabilities,
+              }).map((p) => p.id),
+            ),
+          })
+        : undefined,
+    [query.dataUpdatedAt, updatedAt, newEngine, desktop, providerCapabilities],
   );
 
   const isLoading = query.isLoading;

@@ -26,6 +26,13 @@ export interface ModelOverride {
   /** One-line picker description (pi ships none). */
   description?: string;
   /**
+   * Starting context-window default (tokens), overriding pi's raw provider
+   * window. Set where Houston shows a different number than pi's raw offer —
+   * notably Codex, whose `/status` reports a 95%-EFFECTIVE window (e.g. 258400
+   * for gpt-5.5's raw 272000). Absent → pi's raw `contextWindow` is used.
+   */
+  contextWindow?: number;
+  /**
    * Snap-up ceiling (tokens) for the self-correcting usage estimate — set only
    * for models whose window is gated upward at runtime (credits/plan). pi
    * reports the default window; this is Houston's known ceiling above it.
@@ -119,26 +126,33 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
         label: "GPT-5.5",
         description: "OpenAI's frontier model.",
         effortLevels: ["low", "medium", "high", "xhigh"],
+        // Codex's `/status` reports the 95%-EFFECTIVE window (0.95 × 272000 raw),
+        // the number the user sees — so the indicator's denominator matches it.
+        contextWindow: 258_400,
         // Codex exposes an opt-in 1M variant (max_context_window 1M × 95%
         // effective); the usage indicator snaps up to it once observed usage
-        // exceeds pi's reported default window.
+        // exceeds the effective default window.
         contextWindowMax: 950_000,
       },
       "gpt-5.4": {
         label: "GPT-5.4",
         description: "Strong model for everyday coding.",
         effortLevels: ["low", "medium", "high", "xhigh"],
+        contextWindow: 258_400,
         contextWindowMax: 950_000,
       },
       "gpt-5.4-mini": {
         label: "GPT-5.4-Mini",
         description: "Small, fast, and cost-efficient for simpler tasks.",
         effortLevels: ["low", "medium", "high", "xhigh"],
+        contextWindow: 258_400,
       },
       "gpt-5.3-codex-spark": {
         label: "GPT-5.3-Codex-Spark",
         description: "Ultra-fast coding model.",
         effortLevels: ["low", "medium", "high", "xhigh"],
+        // 0.95 × 128000 raw (spark's smaller window).
+        contextWindow: 121_600,
       },
     },
   },

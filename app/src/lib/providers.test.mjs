@@ -4,6 +4,7 @@ import {
   COMING_SOON_PROVIDERS,
   EFFORT_ORDER,
   getConnectProviders,
+  getContextWindowConfig,
   getEffortLevels,
   getProvider,
   getVisibleProviders,
@@ -395,13 +396,12 @@ test("EFFORT_ORDER is the full ascending spectrum and a superset of every model'
   }
 });
 
-test("getVisibleProviders gates api-key (new engine) and local (capability) providers", () => {
+test("getVisibleProviders shows the whole runnable /v1/catalog set, gating only local + coming-soon", () => {
   const onNewEngineDesktop = getVisibleProviders({
     newEngine: true,
     desktop: true,
   });
   const onNewEngineWeb = getVisibleProviders({ newEngine: true });
-  const onRustEngine = getVisibleProviders({ newEngine: false });
 
   // New engine + desktop, capabilities not yet loaded: desktop shows the local
   // provider optimistically, so every catalog provider is visible.
@@ -422,17 +422,29 @@ test("getVisibleProviders gates api-key (new engine) and local (capability) prov
     PROVIDERS.filter((p) => p.auth !== "openaiCompatible").length,
   );
 
-  // Rust engine: api-key AND local providers are filtered out, OAuth ones stay.
-  assert.ok(!onRustEngine.some((p) => p.auth === "apiKey"));
-  assert.ok(!onRustEngine.some((p) => p.auth === "openaiCompatible"));
-  assert.ok(onRustEngine.some((p) => p.id === "anthropic"));
-  assert.ok(onRustEngine.some((p) => p.id === "openai"));
-  assert.equal(
-    onRustEngine.length,
-    PROVIDERS.filter(
-      (p) => p.auth !== "apiKey" && p.auth !== "openaiCompatible",
-    ).length,
-  );
+  // No provider in the runnable set is on the coming-soon list.
+  const comingSoon = new Set(COMING_SOON_PROVIDERS.map((p) => p.id));
+  assert.ok(!onNewEngineDesktop.some((p) => comingSoon.has(p.id)));
+});
+
+test("getVisibleProviders no longer gates by capabilities.providers (catalog is the source)", () => {
+  // A narrow capabilities.providers list used to hide everything absent from it,
+  // under-showing the picker. /v1/catalog is the single visibility source now, so
+  // providers NOT in the list still show — only the openaiCompatible capability
+  // still steers the local provider.
+  const visible = getVisibleProviders({
+    newEngine: true,
+    desktop: true,
+    capabilities: { providers: ["anthropic"], openaiCompatible: false },
+  });
+  for (const id of ["anthropic", "openai", "openrouter", "minimax", "google"]) {
+    assert.ok(
+      visible.some((p) => p.id === id),
+      `${id} shows despite not being in capabilities.providers`,
+    );
+  }
+  // The one honored capability: openaiCompatible false hides the local provider.
+  assert.ok(!visible.some((p) => p.id === "openai-compatible"));
 });
 
 test("getVisibleProviders shows the local provider whenever the host reports openaiCompatible, desktop or not", () => {
@@ -498,11 +510,19 @@ test("getConnectProviders merges the two OpenCode gateways into one account card
   }
 });
 
-test("getConnectProviders hides api-key cards on the Rust engine, like getVisibleProviders", () => {
-  const connect = getConnectProviders({ newEngine: false });
-  assert.ok(!connect.some((p) => p.id === "opencode"));
-  assert.ok(!connect.some((p) => p.auth === "apiKey"));
-  assert.ok(connect.some((p) => p.id === "anthropic"));
+test("getConnectProviders covers the full visible set, one card per provider", () => {
+  const connect = getConnectProviders({ newEngine: true, desktop: true });
+  const visible = getVisibleProviders({ newEngine: true, desktop: true });
+  // Every visible provider has a connect card (OpenCode's two gateways merge into
+  // one, so the connect list is exactly one shorter).
+  assert.equal(connect.length, visible.length - 1);
+  for (const p of visible) {
+    if (p.id === "opencode-go") continue; // folded into the merged OpenCode card
+    assert.ok(
+      connect.some((c) => c.id === p.id),
+      `${p.id} has a connect card`,
+    );
+  }
 });
 
 test("providerGatewayIds returns the gateway set, or the provider's own id", () => {
@@ -527,4 +547,82 @@ test("normalized legacy model resolves through validModelOrNull (no Opus->Sonnet
     validModelOrNull("anthropic", normalizeLegacyModel("sonnet")),
     "claude-sonnet-4-6",
   );
+});
+
+test("hydrateProviderCatalog([]) keeps the seed instead of wiping it", () => {
+  // An empty catalog (host 404 / egress-locked pod / fake host) must NOT rebuild
+  // PROVIDERS down to just the local provider. Snapshot the currently-hydrated
+  // set, hydrate empty, and assert it is untouched.
+  const before = PROVIDERS.map((p) => p.id);
+  assert.ok(
+    before.length > 1,
+    "seed/catalog is populated before the empty call",
+  );
+  hydrateProviderCatalog([]);
+  assert.deepEqual(
+    PROVIDERS.map((p) => p.id),
+    before,
+    "empty catalog left the providers intact",
+  );
+  // Real first-class providers survive, not just the local one.
+  assert.ok(getProvider("anthropic"));
+  assert.ok(getProvider("openai"));
+  assert.ok(PROVIDERS.length > 1);
+});
+
+test("model contextWindow: an override default wins over pi's raw window", () => {
+  // Codex reports a raw 272000 window (SAMPLE_CATALOG), but its `/status` shows
+  // the 95%-effective 258400 — the override supplies that as the indicator's
+  // starting denominator, while the snap-up ceiling stays the opt-in-1M window.
+  assert.deepEqual(getContextWindowConfig("openai", "gpt-5.5"), {
+    default: 258_400,
+    max: 950_000,
+  });
+  assert.deepEqual(getContextWindowConfig("openai", "gpt-5.3-codex-spark"), {
+    default: 121_600,
+    max: 121_600,
+  });
+  // A model with no contextWindow override falls back to pi's raw window
+  // (Opus 4.8 = 1M in the sample), so the fallback path stays exercised.
+  assert.deepEqual(getContextWindowConfig("anthropic", "claude-opus-4-8"), {
+    default: 1_000_000,
+    max: 1_000_000,
+  });
+});
+
+test("buildProvider dedupes models that fold to one hub key within a provider", () => {
+  // pi lists Bedrock's regional Opus variants under one provider: different ids,
+  // one display name → one normalizeKey. Two picker rows for it would leave the
+  // un-kept one bare (the hub merges them to a single enriched offer). Hydrate a
+  // provider with such a collision + an exact-id dup and assert one survivor: the
+  // CLEANER id (shortest, then lexical), matching the hub's within-provider offer.
+  const M = (id, name) => ({
+    id,
+    name,
+    pricing: { input: 1, output: 2 },
+    contextWindow: 200000,
+    maxTokens: 8192,
+    reasoning: false,
+    vision: false,
+  });
+  hydrateProviderCatalog([
+    {
+      id: "amazon-bedrock",
+      name: "amazon-bedrock",
+      auth: "apiKey",
+      models: [
+        M("us.anthropic.claude-opus-4-8", "Claude Opus 4.8"),
+        M("anthropic.claude-opus-4-8", "Claude Opus 4.8"), // cleaner id, same key
+        M("eu.anthropic.claude-opus-4-8", "Claude Opus 4.8"),
+        M("amazon.nova-pro-v1:0", "Nova Pro"),
+        M("amazon.nova-pro-v1:0", "Nova Pro"), // exact-id duplicate
+      ],
+    },
+  ]);
+  const bedrock = getProvider("amazon-bedrock");
+  const ids = bedrock.models.map((m) => m.id);
+  // Opus collapses to the cleaner id; Nova's exact dup collapses to one.
+  assert.deepEqual(ids, ["anthropic.claude-opus-4-8", "amazon.nova-pro-v1:0"]);
+  // Restore the shared sample catalog for any later test.
+  hydrateProviderCatalog(SAMPLE_CATALOG);
 });
