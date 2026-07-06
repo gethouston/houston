@@ -1,42 +1,40 @@
+import type { HoustonEvent } from "@houston/protocol";
 import { expect, test } from "vitest";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import { MemoryVfs } from "../vfs";
 import {
   AttachmentError,
-  deleteAttachments,
   handleAttachments,
   saveAttachments,
 } from "./attachments";
 import { listWorkspace } from "./files";
 
 /**
- * Composer attachments over an agent's workspace root. The files land under a
- * top-level `.attachments/<scopeId>/` dot-dir so the runtime's clamped file
- * tools (rooted at the same dir) can Read them at the RELATIVE path returned,
- * while the Files tab — which hides + refuses top-level dot-dirs — never shows
- * or touches them. Path safety stops a hostile scopeId/filename escaping.
+ * Composer attachments over an agent's workspace root. Files land in a VISIBLE
+ * top-level `uploads/` folder (HOU-706): the runtime's clamped file tools
+ * (rooted at the same dir) Read them at the RELATIVE path returned, the Files
+ * tab lists them, and nothing ever deletes them behind the user's back — an
+ * upload from one conversation stays referenceable from every later one.
+ * Path safety stops a hostile filename escaping the folder.
  */
 
 const ROOT = "ws/w1/agent-1/workspace"; // cloud agentRoot
 const PATHS = { agentRoot: () => ROOT } as unknown as WorkspacePaths;
-const CTX = { workspace: {} as Workspace, agent: {} as Agent };
+const CTX = { workspace: {} as Workspace, agent: { id: "a-1" } as Agent };
 
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
 
 test("save returns relative workspace paths; bytes land where the agent reads them", async () => {
   const vfs = new MemoryVfs();
-  const paths = await saveAttachments(vfs, ROOT, "activity-7", [
+  const paths = await saveAttachments(vfs, ROOT, [
     { name: "brief.txt", contentBase64: b64("hello brief") },
     { name: "data.csv", contentBase64: b64("a,b\n1,2") },
   ]);
 
   // The returned paths are relative to the workspace root (what the agent's
-  // Read tool resolves), keyed by scopeId.
-  expect(paths).toEqual([
-    ".attachments/activity-7/brief.txt",
-    ".attachments/activity-7/data.csv",
-  ]);
+  // Read tool resolves).
+  expect(paths).toEqual(["uploads/brief.txt", "uploads/data.csv"]);
   // The bytes are at `<root>/<relPath>` — i.e. resolvable under the clamp root.
   expect(await vfs.readText(`${ROOT}/${paths[0]}`)).toBe("hello brief");
   expect(await vfs.readText(`${ROOT}/${paths[1]}`)).toBe("a,b\n1,2");
@@ -45,7 +43,7 @@ test("save returns relative workspace paths; bytes land where the agent reads th
 test("binary round-trips byte-for-byte through base64", async () => {
   const vfs = new MemoryVfs();
   const payload = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0xff, 0x00, 0x80]);
-  const [rel] = await saveAttachments(vfs, ROOT, "s1", [
+  const [rel] = await saveAttachments(vfs, ROOT, [
     { name: "deck.pptx", contentBase64: payload.toString("base64") },
   ]);
   const stored = await vfs.readBytes(`${ROOT}/${rel}`);
@@ -56,65 +54,56 @@ test("binary round-trips byte-for-byte through base64", async () => {
 
 test("duplicate filenames in one batch are disambiguated, never overwritten", async () => {
   const vfs = new MemoryVfs();
-  const paths = await saveAttachments(vfs, ROOT, "s1", [
+  const paths = await saveAttachments(vfs, ROOT, [
     { name: "report.pdf", contentBase64: b64("first") },
     { name: "report.pdf", contentBase64: b64("second") },
   ]);
-  expect(paths).toEqual([
-    ".attachments/s1/report.pdf",
-    ".attachments/s1/report (1).pdf",
-  ]);
+  expect(paths).toEqual(["uploads/report.pdf", "uploads/report (1).pdf"]);
   expect(await vfs.readText(`${ROOT}/${paths[0]}`)).toBe("first");
   expect(await vfs.readText(`${ROOT}/${paths[1]}`)).toBe("second");
 });
 
-test("attachments are invisible to the Files tab (top-level dot-dir)", async () => {
+test("uploads persist across saves: a later conversation's same-named file never clobbers an earlier one", async () => {
+  const vfs = new MemoryVfs();
+  const first = await saveAttachments(vfs, ROOT, [
+    { name: "report.pdf", contentBase64: b64("from chat one") },
+  ]);
+  // A different conversation, days later, attaches a file with the same name.
+  const second = await saveAttachments(vfs, ROOT, [
+    { name: "report.pdf", contentBase64: b64("from chat two") },
+  ]);
+  expect(first).toEqual(["uploads/report.pdf"]);
+  expect(second).toEqual(["uploads/report (1).pdf"]);
+  expect(await vfs.readText(`${ROOT}/${first[0]}`)).toBe("from chat one");
+  expect(await vfs.readText(`${ROOT}/${second[0]}`)).toBe("from chat two");
+});
+
+test("uploads are visible in the Files tab listing", async () => {
   const vfs = new MemoryVfs();
   await vfs.writeText(`${ROOT}/report.txt`, "visible");
-  await saveAttachments(vfs, ROOT, "s1", [
-    { name: "secret.txt", contentBase64: b64("x") },
+  await saveAttachments(vfs, ROOT, [
+    { name: "attached.txt", contentBase64: b64("x") },
   ]);
   const listed = (await listWorkspace(vfs, ROOT)).map((f) => f.path);
   expect(listed).toContain("report.txt");
-  expect(listed.some((p) => p.startsWith(".attachments"))).toBe(false);
+  expect(listed).toContain("uploads/attached.txt");
 });
 
-test("delete drops the whole scope's batch", async () => {
-  const vfs = new MemoryVfs();
-  await saveAttachments(vfs, ROOT, "s1", [
-    { name: "a.txt", contentBase64: b64("a") },
-    { name: "b.txt", contentBase64: b64("b") },
-  ]);
-  await saveAttachments(vfs, ROOT, "s2", [
-    { name: "c.txt", contentBase64: b64("c") },
-  ]);
-
-  await deleteAttachments(vfs, ROOT, "s1");
-  expect(await vfs.list(`${ROOT}/.attachments/s1`)).toEqual([]);
-  // A different scope is untouched.
-  expect(await vfs.readText(`${ROOT}/.attachments/s2/c.txt`)).toBe("c");
-});
-
-test("traversal in scopeId or filename is rejected, never silently clamped", async () => {
+test("traversal or dotfile in filename is rejected, never silently clamped", async () => {
   const vfs = new MemoryVfs();
   await expect(
-    saveAttachments(vfs, ROOT, "../escape", [
-      { name: "a.txt", contentBase64: b64("a") },
-    ]),
-  ).rejects.toThrow(AttachmentError);
-  await expect(
-    saveAttachments(vfs, ROOT, "s1", [
+    saveAttachments(vfs, ROOT, [
       { name: "../../auth.json", contentBase64: b64("x") },
     ]),
   ).rejects.toThrow(AttachmentError);
   await expect(
-    saveAttachments(vfs, ROOT, "s1", [
+    saveAttachments(vfs, ROOT, [
       { name: "sub/evil.txt", contentBase64: b64("x") },
     ]),
   ).rejects.toThrow(AttachmentError);
-  await expect(deleteAttachments(vfs, ROOT, "..")).rejects.toThrow(
-    AttachmentError,
-  );
+  await expect(
+    saveAttachments(vfs, ROOT, [{ name: ".env", contentBase64: b64("x") }]),
+  ).rejects.toThrow(AttachmentError);
 });
 
 // --- HTTP handler ---
@@ -146,34 +135,44 @@ function fakeReq(body: unknown) {
   } as never;
 }
 
-test("POST uploads then DELETE clears, over the HTTP handler", async () => {
+test("POST uploads over the HTTP handler and fires FilesChanged", async () => {
   const vfs = new MemoryVfs();
+  const events: HoustonEvent[] = [];
 
   const post = fakeRes();
-  const handledPost = await handleAttachments(
+  const handled = await handleAttachments(
     vfs,
     PATHS,
     CTX,
     "POST",
     "attachments",
+    // Legacy clients still send `scopeId` (older pods require it); it must be
+    // accepted and ignored, not 400ed.
     fakeReq({
       scopeId: "activity-1",
       files: [{ name: "n.txt", contentBase64: b64("body") }],
     }),
     post.res,
-    new URLSearchParams(),
+    (e) => events.push(e),
   );
-  expect(handledPost).toBe(true);
+  expect(handled).toBe(true);
   expect(post.state.status).toBe(200);
   expect((post.state.body as { paths: string[] }).paths).toEqual([
-    ".attachments/activity-1/n.txt",
+    "uploads/n.txt",
   ]);
-  expect(await vfs.readText(`${ROOT}/.attachments/activity-1/n.txt`)).toBe(
-    "body",
-  );
+  expect(await vfs.readText(`${ROOT}/uploads/n.txt`)).toBe("body");
+  // The upload landed in a visible folder → other Files tabs must refresh.
+  expect(events).toEqual([{ type: "FilesChanged", agentPath: "a-1" }]);
+});
+
+test("the legacy DELETE (per-scope wipe) is refused — uploads are permanent", async () => {
+  const vfs = new MemoryVfs();
+  await saveAttachments(vfs, ROOT, [
+    { name: "keep.txt", contentBase64: b64("keep") },
+  ]);
 
   const del = fakeRes();
-  await handleAttachments(
+  const handled = await handleAttachments(
     vfs,
     PATHS,
     CTX,
@@ -181,27 +180,28 @@ test("POST uploads then DELETE clears, over the HTTP handler", async () => {
     "attachments",
     fakeReq({}),
     del.res,
-    new URLSearchParams({ scopeId: "activity-1" }),
   );
-  expect(del.state.status).toBe(200);
-  expect(await vfs.list(`${ROOT}/.attachments/activity-1`)).toEqual([]);
+  expect(handled).toBe(true);
+  expect(del.state.status).toBe(405);
+  expect(await vfs.readText(`${ROOT}/uploads/keep.txt`)).toBe("keep");
 });
 
-test("malformed upload bodies fail loudly (400), DELETE without scopeId 400s", async () => {
+test("malformed upload bodies fail loudly (400) and emit nothing", async () => {
   const vfs = new MemoryVfs();
+  const events: HoustonEvent[] = [];
 
-  const noScope = fakeRes();
+  const noFiles = fakeRes();
   await handleAttachments(
     vfs,
     PATHS,
     CTX,
     "POST",
     "attachments",
-    fakeReq({ files: [] }),
-    noScope.res,
-    new URLSearchParams(),
+    fakeReq({}),
+    noFiles.res,
+    (e) => events.push(e),
   );
-  expect(noScope.state.status).toBe(400);
+  expect(noFiles.state.status).toBe(400);
 
   const badFile = fakeRes();
   await handleAttachments(
@@ -210,24 +210,12 @@ test("malformed upload bodies fail loudly (400), DELETE without scopeId 400s", a
     CTX,
     "POST",
     "attachments",
-    fakeReq({ scopeId: "s1", files: [{ name: "n.txt" }] }),
+    fakeReq({ files: [{ name: "n.txt" }] }),
     badFile.res,
-    new URLSearchParams(),
+    (e) => events.push(e),
   );
   expect(badFile.state.status).toBe(400);
-
-  const delNoScope = fakeRes();
-  await handleAttachments(
-    vfs,
-    PATHS,
-    CTX,
-    "DELETE",
-    "attachments",
-    fakeReq({}),
-    delNoScope.res,
-    new URLSearchParams(),
-  );
-  expect(delNoScope.state.status).toBe(400);
+  expect(events).toEqual([]);
 });
 
 test("a missing vfs answers 503 for attachments routes", async () => {
@@ -238,9 +226,8 @@ test("a missing vfs answers 503 for attachments routes", async () => {
     CTX,
     "POST",
     "attachments",
-    fakeReq({ scopeId: "s1", files: [] }),
+    fakeReq({ files: [] }),
     res,
-    new URLSearchParams(),
   );
   expect(handled).toBe(true);
   expect(state.status).toBe(503);
@@ -256,7 +243,6 @@ test("non-attachments rest is not handled (returns false)", async () => {
     "files",
     fakeReq({}),
     res,
-    new URLSearchParams(),
   );
   expect(handled).toBe(false);
 });

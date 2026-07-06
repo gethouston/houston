@@ -152,8 +152,8 @@ export function useMissionControl(agents: Agent[]) {
       const agentPath = pathMapRef.current[item.id];
       if (!agentPath) return;
       await tauriActivity.delete(agentPath, item.id);
-      // Drop any cached attachments for this conversation. Idempotent.
-      await tauriAttachments.delete(`activity-${item.id}`).catch(() => {});
+      // Files attached in this conversation stay in the workspace's uploads/
+      // folder — they are agent context, not conversation scratch (HOU-706).
       if (selectedId === item.id) setSelectedId(null);
     },
     [selectedId],

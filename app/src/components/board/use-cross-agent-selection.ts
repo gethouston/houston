@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { ARCHIVED_STATUS } from "../../lib/mission-selection";
 import { queryKeys } from "../../lib/query-keys";
-import { tauriActivity, tauriAttachments } from "../../lib/tauri";
+import { tauriActivity } from "../../lib/tauri";
 import { useDraftStore } from "../../stores/drafts";
 import type { BoardSelectionModel } from "./board-source";
 import { groupIdsByAgent } from "./group-ids-by-agent";
@@ -63,11 +63,9 @@ export function useCrossAgentSelection({
           tauriActivity.bulkDelete(agentPath, groupIds),
         ),
       );
-      // Per-conversation cleanup is idempotent + best-effort; the bulk delete
-      // above already succeeded, so a stray attachment/draft must not fail the
-      // whole action. Mirrors useBulkDeleteActivity.
+      // Attached files stay in each workspace's uploads/ folder (HOU-706);
+      // only the unsent drafts need clearing. Mirrors useBulkDeleteActivity.
       for (const id of ids) {
-        await tauriAttachments.delete(`activity-${id}`).catch(() => {});
         useDraftStore.getState().clearDraft(`activity-${id}`);
       }
       invalidate(Object.keys(groups));

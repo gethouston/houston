@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
-import { tauriActivity, tauriAttachments } from "../../lib/tauri";
+import { tauriActivity } from "../../lib/tauri";
 import { useDraftStore } from "../../stores/drafts";
 
 export function useActivity(agentPath: string | undefined) {
@@ -71,8 +71,8 @@ export function useDeleteActivity(agentPath: string | undefined) {
     mutationFn: async (activityId: string) => {
       if (!agentPath) throw new Error("agentPath required");
       await tauriActivity.delete(agentPath, activityId);
-      // Wipe any attachments associated with this conversation. Idempotent.
-      await tauriAttachments.delete(`activity-${activityId}`).catch(() => {});
+      // Files attached in this conversation stay in the workspace's uploads/
+      // folder — they are agent context, not conversation scratch (HOU-706).
       // Clear any unsent draft for this conversation.
       useDraftStore.getState().clearDraft(`activity-${activityId}`);
     },
@@ -104,18 +104,15 @@ export function useBulkUpdateActivity(agentPath: string | undefined) {
   });
 }
 
-/** Delete many activities at once, wiping each one's attachments + draft. */
+/** Delete many activities at once, wiping each one's draft. */
 export function useBulkDeleteActivity(agentPath: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (ids: string[]) => {
       if (!agentPath) throw new Error("agentPath required");
       await tauriActivity.bulkDelete(agentPath, ids);
+      // Attached files stay in the workspace's uploads/ folder (HOU-706).
       for (const id of ids) {
-        // Per-conversation cleanup is idempotent + best-effort; the bulk
-        // delete above already succeeded, so a stray attachment/draft must
-        // not fail the whole action.
-        await tauriAttachments.delete(`activity-${id}`).catch(() => {});
         useDraftStore.getState().clearDraft(`activity-${id}`);
       }
     },

@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
@@ -10,25 +11,30 @@ import { MAX_UPLOAD_BYTES } from "./files-import";
  * the agent's workspace so the runtime's clamped file tools can Read them during
  * the turn.
  *
- * Storage: `<agentRoot>/.attachments/<scopeId>/<filename>`. `agentRoot` is
+ * Storage: `<agentRoot>/uploads/<filename>`. `agentRoot` is
  * HOUSTON_WORKSPACE_DIR — the very root the runtime's WorkspaceGuard clamps to —
- * so the RELATIVE path we return (`.attachments/<scopeId>/<filename>`) is exactly
- * what the agent's Read tool resolves and is allowed to open (a leading dot-dir
- * is fine: the clamp only blocks `..` / absolute / `~` escapes). The frontend
- * encodes that path verbatim into the message text ("Read these attached
- * files: …"), so what we store and what we return MUST agree.
+ * so the RELATIVE path we return (`uploads/<filename>`) is exactly what the
+ * agent's Read tool resolves and is allowed to open. The frontend encodes that
+ * path verbatim into the message text ("Read these attached files: …"), so what
+ * we store and what we return MUST agree.
  *
- * `.attachments` is a top-level dot-dir, so the Files tab (which hides + refuses
- * top-level dot-dirs) never shows or clobbers it — same wall that hides
- * `.houston` / `.agents`.
+ * `uploads` is a regular, VISIBLE workspace folder: uploads are permanent agent
+ * context, not per-conversation scratch (HOU-706). The user sees them in the
+ * Files tab, the agent can find them from ANY later conversation, and clearing
+ * or deleting a chat never removes them. (The pre-HOU-706 layout — a hidden
+ * `.attachments/<scopeId>/` dot-dir wiped on chat delete — made every upload
+ * silently vanish from the user's point of view. Files already stored there
+ * stay readable at their old paths; new uploads never land there.)
  *
  * Transport: base64 JSON (dependency-free, binary-safe — the same base64 path
- * `files/read` already uses). `scopeId` keys the per-message folder so
- * `deleteAttachments(scopeId)` can drop the whole batch.
+ * `files/read` already uses). The body's `scopeId` is legacy: older hosts keyed
+ * storage (and a DELETE route) on it. It is accepted and ignored so current
+ * clients — which still send it to stay compatible with not-yet-updated cloud
+ * pods — never 400.
  */
 
-/** The on-disk dir name. Top-level dot-dir → invisible to + untouchable by the Files tab. */
-const ATTACHMENTS_DIR = ".attachments";
+/** The on-disk dir name — a visible, durable folder in the agent's workspace. */
+const UPLOADS_DIR = "uploads";
 
 // A single request is capped at MAX_UPLOAD_BYTES (shared with files/import so
 // the composer's client-side per-file limit and the host cap can't drift; the
@@ -51,64 +57,57 @@ interface UploadFile {
 }
 
 /**
- * Validate a scopeId / filename segment: a single path component, no traversal,
- * no separators, no leading dot (the dot-dir is ours to add). Rejected loudly.
+ * Validate a filename: a single path component, no traversal, no separators,
+ * no leading dot (a dotfile would be invisible in the Files tab, defeating the
+ * whole point of durable uploads). Rejected loudly.
  */
-function safeSegment(seg: string, kind: "scopeId" | "filename"): string {
+function safeFilename(name: string): string {
   if (
-    seg === "" ||
-    seg === "." ||
-    seg === ".." ||
-    seg.includes("/") ||
-    seg.includes("\\") ||
-    seg.startsWith(".")
+    name === "" ||
+    name === "." ||
+    name === ".." ||
+    name.includes("/") ||
+    name.includes("\\") ||
+    name.startsWith(".")
   ) {
-    throw new AttachmentError(400, `invalid attachment ${kind}: ${seg}`);
+    throw new AttachmentError(400, `invalid attachment filename: ${name}`);
   }
-  return seg;
+  return name;
 }
 
-/** The relative path (under agentRoot) the agent's Read tool resolves. */
-function relPath(scopeId: string, filename: string): string {
-  return `${ATTACHMENTS_DIR}/${scopeId}/${filename}`;
-}
-
-const dirKey = (root: string, scopeId: string) =>
-  `${root}/${ATTACHMENTS_DIR}/${scopeId}`;
-const fileKey = (root: string, rel: string) => `${root}/${rel}`;
+const uploadsKey = (root: string) => `${root}/${UPLOADS_DIR}`;
 
 /**
- * Write each uploaded file under `.attachments/<scopeId>/` and return the
- * RELATIVE workspace paths the agent will read. Duplicate filenames in one batch
- * are disambiguated (`name.ext`, `name (1).ext`, …) so nothing is silently
- * overwritten and every returned path resolves to a distinct stored file.
+ * Write each uploaded file under `uploads/` and return the RELATIVE workspace
+ * paths the agent will read. Names colliding with anything already in the
+ * folder — or with each other within a batch — are disambiguated (`name.ext`,
+ * `name (1).ext`, …) so an upload never silently overwrites an earlier one and
+ * every returned path resolves to a distinct stored file.
  */
 export async function saveAttachments(
   vfs: Vfs,
   root: string,
-  scopeId: string,
   files: readonly UploadFile[],
 ): Promise<string[]> {
-  safeSegment(scopeId, "scopeId");
-  // Seed the dedup set with what this scope already holds, so a batch split
-  // across several requests (the client uploads one request per file to bound
-  // request size) still never silently overwrites an earlier file.
-  const scopePrefix = dirKey(root, scopeId);
+  // Seed the dedup set with what the folder already holds: uploads are durable
+  // across conversations, so "report.pdf" attached today must not clobber the
+  // "report.pdf" attached last week.
+  const prefix = uploadsKey(root);
   const used = new Set<string>(
-    (await vfs.list(scopePrefix)).map((k) => k.slice(scopePrefix.length + 1)),
+    (await vfs.list(prefix)).map((k) => k.slice(prefix.length + 1)),
   );
   const paths: string[] = [];
   for (const f of files) {
-    const filename = dedupe(safeSegment(f.name, "filename"), used);
+    const filename = dedupe(safeFilename(f.name), used);
     const bytes = Buffer.from(f.contentBase64, "base64");
-    const rel = relPath(scopeId, filename);
-    await vfs.writeBytes(fileKey(root, rel), bytes);
+    const rel = `${UPLOADS_DIR}/${filename}`;
+    await vfs.writeBytes(`${root}/${rel}`, bytes);
     paths.push(rel);
   }
   return paths;
 }
 
-/** Pick a unique filename within a batch, appending " (n)" before the extension. */
+/** Pick a unique filename within the folder, appending " (n)" before the extension. */
 function dedupe(name: string, used: Set<string>): string {
   if (!used.has(name)) {
     used.add(name);
@@ -126,30 +125,14 @@ function dedupe(name: string, used: Set<string>): string {
   }
 }
 
-/** Drop every file stored for a scope (the whole `.attachments/<scopeId>` dir). */
-export async function deleteAttachments(
-  vfs: Vfs,
-  root: string,
-  scopeId: string,
-): Promise<void> {
-  safeSegment(scopeId, "scopeId");
-  await vfs.deletePrefix(dirKey(root, scopeId));
-}
-
 /** Parse + validate the upload body. Throws AttachmentError (→ 4xx) on any malformed input. */
-function parseUploadBody(body: Record<string, unknown>): {
-  scopeId: string;
-  files: UploadFile[];
-} {
-  const scopeId = body.scopeId;
-  if (typeof scopeId !== "string" || scopeId === "") {
-    throw new AttachmentError(400, "missing 'scopeId'");
-  }
+function parseUploadBody(body: Record<string, unknown>): UploadFile[] {
+  // `scopeId` (legacy per-conversation storage key) is deliberately not read.
   if (!Array.isArray(body.files)) {
     throw new AttachmentError(400, "missing 'files' array");
   }
   let total = 0;
-  const files: UploadFile[] = body.files.map((raw, i) => {
+  return body.files.map((raw, i) => {
     const f = raw as { name?: unknown; contentBase64?: unknown };
     if (typeof f.name !== "string" || typeof f.contentBase64 !== "string") {
       throw new AttachmentError(
@@ -167,7 +150,6 @@ function parseUploadBody(body: Record<string, unknown>): {
     }
     return { name: f.name, contentBase64: f.contentBase64 };
   });
-  return { scopeId, files };
 }
 
 /**
@@ -175,8 +157,16 @@ function parseUploadBody(body: Record<string, unknown>): {
  * runtime channel (the runtime has no /attachments route). Returns true when it
  * owns the request. A missing vfs 503s; malformed input 4xxs. Nothing swallowed.
  *
- *   POST   attachments  { scopeId, files: [{ name, contentBase64 }] } → { paths }
- *   DELETE attachments?scopeId=<id>                                   → { ok }
+ *   POST attachments  { files: [{ name, contentBase64 }] } → { paths }
+ *
+ * DELETE (the legacy per-scope wipe) is gone: uploads are permanent workspace
+ * files the user manages through the Files tab. Old clients still fire a
+ * best-effort DELETE when a chat is cleared; they get the 405 below and ignore
+ * it — and, crucially, nothing they do can remove a stored upload.
+ *
+ * Every upload fires `FilesChanged` through `emit`: the files now land in a
+ * visible folder, so Files tabs (this client's and everyone else's) must
+ * refresh without a manual reload.
  */
 export async function handleAttachments(
   vfs: Vfs | undefined,
@@ -186,7 +176,7 @@ export async function handleAttachments(
   rest: string,
   req: IncomingMessage,
   res: ServerResponse,
-  query: URLSearchParams,
+  emit?: (event: HoustonEvent) => void,
 ): Promise<boolean> {
   if (rest !== "attachments") return false;
   if (!vfs) {
@@ -196,19 +186,11 @@ export async function handleAttachments(
   const root = paths.agentRoot(ctx.workspace, ctx.agent);
   try {
     if (method === "POST") {
-      const { scopeId, files } = parseUploadBody(await readJson(req));
-      const saved = await saveAttachments(vfs, root, scopeId, files);
+      const files = parseUploadBody(await readJson(req));
+      const saved = await saveAttachments(vfs, root, files);
+      if (saved.length > 0)
+        emit?.({ type: "FilesChanged", agentPath: ctx.agent.id });
       json(res, 200, { paths: saved });
-      return true;
-    }
-    if (method === "DELETE") {
-      const scopeId = query.get("scopeId") ?? "";
-      if (!scopeId) {
-        json(res, 400, { error: "missing 'scopeId'" });
-        return true;
-      }
-      await deleteAttachments(vfs, root, scopeId);
-      json(res, 200, { ok: true });
       return true;
     }
     json(res, 405, { error: "method not allowed" });

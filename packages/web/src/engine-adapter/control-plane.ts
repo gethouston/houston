@@ -820,12 +820,17 @@ export async function writeAgentFile(
 }
 
 /**
- * Composer attachments. Upload the dropped files INTO the agent's workspace so
- * the runtime's clamped file tools can Read them during the turn, and return the
- * RELATIVE workspace paths the host stored them at — which the sender encodes
- * verbatim into the message ("Read these attached files: …"). Binary rides as
- * base64 JSON (the host writes the bytes through its Vfs); the agent resolves
- * each path against its workspace root.
+ * Composer attachments. Upload the dropped files INTO the agent's workspace —
+ * its durable, Files-tab-visible `uploads/` folder — so the runtime's clamped
+ * file tools can Read them during this turn and any later conversation
+ * (HOU-706), and return the RELATIVE workspace paths the host stored them at —
+ * which the sender encodes verbatim into the message ("Read these attached
+ * files: …"). Binary rides as base64 JSON (the host writes the bytes through
+ * its Vfs); the agent resolves each path against its workspace root.
+ *
+ * `scopeId` is legacy: current hosts ignore it, but engine pods that predate
+ * the durable-uploads layout still 400 without it — keep sending it until no
+ * pre-HOU-706 pod remains.
  */
 export async function saveAttachments(
   cfg: ControlPlaneConfig,
@@ -854,20 +859,6 @@ export async function saveAttachments(
     paths.push(...((await res.json()) as { paths: string[] }).paths);
   }
   return paths;
-}
-
-export async function deleteAttachments(
-  cfg: ControlPlaneConfig,
-  agentId: string,
-  scopeId: string,
-): Promise<void> {
-  await cpFetch(
-    cfg,
-    `${agentPath(agentId)}/attachments?scopeId=${encodeURIComponent(scopeId)}`,
-    {
-      method: "DELETE",
-    },
-  );
 }
 
 /** Base64-encode bytes without blowing the call stack on large files (chunked btoa). */
