@@ -15,12 +15,25 @@ import snapshot from "./model-catalog.json" with { type: "json" };
 export interface RawModel {
   /** Cross-provider normalized identity key (baked at generation). */
   key: string;
+  /**
+   * Where this raw entry came from. Absent for the baked snapshot; `"live"` for
+   * an entry mapped from a fresh OpenRouter fetch (`catalog-live.ts`). The merge
+   * (`catalog-merge.ts`) makes `"live"` authoritative for pricing/context over a
+   * snapshot entry sharing the same `(key, providerId)`.
+   */
+  source?: "live";
   id: string;
   name: string;
   description?: string;
   family?: string;
   reasoning?: boolean;
   toolCall?: boolean;
+  /**
+   * The model generates images. Never present in the baked snapshot (models.dev
+   * has no such signal); carried only by live-catalog raw entries (see
+   * `catalog-live.ts`).
+   */
+  imageGen?: boolean;
   attachment?: boolean;
   knowledge?: string;
   releaseDate?: string;

@@ -25,6 +25,8 @@ function model(key: string, offers: CatalogOffer[] = []): CatalogModel {
     name: key,
     lab: "other",
     reasoning: false,
+    toolCall: false,
+    imageGen: false,
     inputModalities: [],
     offers,
   } as CatalogModel;

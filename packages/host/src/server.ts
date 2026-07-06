@@ -42,6 +42,7 @@ import {
 } from "./routes/integrations";
 import { handleSandboxIntegrations } from "./routes/integrations-sandbox";
 import { handlePortableAccount } from "./routes/portable";
+import { handleProviderCatalog } from "./routes/provider-catalog";
 import { handleSetupRuntime } from "./routes/setup-runtime";
 import { handleSkillsDirectory } from "./routes/skills-directory";
 import type { Vfs } from "./vfs";
@@ -244,6 +245,9 @@ async function handle(
   // user-scoped too: browsing has no agent yet; only installs are per-agent.
   if (await handleSkillsDirectory(method, path, req, res)) return;
   if (await handleAccount(deps, userId, method, path, req, res)) return;
+  // Live OpenRouter model catalog for the picker (user-scoped; empty when no key
+  // is connected or the deployment is egress-locked).
+  if (await handleProviderCatalog(deps, userId, method, path, res)) return;
   if (await handlePortableAccount(deps, userId, method, path, req, res)) return;
   if (await handleAgentConfigs(deps, userId, method, path, req, res)) return;
   if (await handleIntegrations(deps, userId, method, path, req, res)) return;
