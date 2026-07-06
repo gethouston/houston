@@ -17,14 +17,19 @@ interface ProviderCardProps {
   connecting: boolean;
   onOpen: (provider: ProviderInfo) => void;
   onConnect: (provider: ProviderInfo) => void;
+  /** Abort an in-flight sign-in so a user who closed the OAuth tab isn't
+   *  stuck watching a spinner with no way out. */
+  onCancel: (provider: ProviderInfo) => void;
 }
 
 /**
  * A marketplace tile for one provider. The card itself is NOT clickable — every
  * action lives in the footer as a real focusable button: an available provider
  * offers a primary Connect pill plus a ghost "See more" that opens the detail
- * (`onOpen`); a connected provider swaps Connect for a live status readout and
- * keeps "See more" to reopen its modal. Every card wears the same calm gray
+ * (`onOpen`); while a sign-in is in flight the pill becomes a Cancel button
+ * (spinner + visible label, never a dead disabled spinner) that aborts the
+ * login (`onCancel`); a connected provider swaps Connect for a live status
+ * readout and keeps "See more" to reopen its modal. Every card wears the same calm gray
  * surface + hairline ring — connected and available look identical, differing
  * only in the footer (live status vs Connect pill). No accent, no glow.
  */
@@ -35,6 +40,7 @@ export function ProviderCard({
   connecting,
   onOpen,
   onConnect,
+  onCancel,
 }: ProviderCardProps) {
   const { t } = useTranslation("aiHub");
 
@@ -84,18 +90,27 @@ export function ProviderCard({
           </>
         ) : (
           <>
-            <AsyncButton
-              size="sm"
-              spinner={false}
-              disabled={connecting}
-              className="flex-1"
-              onClick={() => onConnect(provider)}
-            >
-              {connecting ? (
+            {connecting ? (
+              <AsyncButton
+                size="sm"
+                variant="secondary"
+                spinner={false}
+                className="flex-1"
+                onClick={() => onCancel(provider)}
+              >
                 <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-              ) : null}
-              {t("card.connect")}
-            </AsyncButton>
+                {t("card.cancel")}
+              </AsyncButton>
+            ) : (
+              <AsyncButton
+                size="sm"
+                spinner={false}
+                className="flex-1"
+                onClick={() => onConnect(provider)}
+              >
+                {t("card.connect")}
+              </AsyncButton>
+            )}
             {seeMore}
           </>
         )}
