@@ -1,3 +1,4 @@
+import { cn } from "@houston-ai/core";
 import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections";
@@ -13,6 +14,7 @@ import {
 } from "./provider-filtering";
 import { ProviderFilters } from "./provider-filters";
 import { groupProviders } from "./provider-grouping";
+import { useStuckOnScroll } from "./use-stuck-on-scroll";
 
 interface ProviderGridProps {
   providers: readonly ProviderInfo[];
@@ -74,6 +76,7 @@ export function ProviderGrid({
   const { t } = useTranslation("aiHub");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<ProviderCategoryFilter>("all");
+  const { sentinelRef, stuck } = useStuckOnScroll();
 
   // Filter by category, then by the free-text query, then pin featured providers
   // to the front — the hub's Providers tab ordering only (the chat picker is
@@ -114,13 +117,30 @@ export function ProviderGrid({
   );
 
   return (
-    <div className="flex flex-col gap-6">
-      <ProviderFilters
-        query={query}
-        setQuery={setQuery}
-        category={category}
-        setCategory={setCategory}
-      />
+    <div className="flex flex-col">
+      {/* Sentinel marking the filter bar's natural top (see useStuckOnScroll). */}
+      <div ref={sentinelRef} aria-hidden className="h-0" />
+      {/* The search + category bar as ONE sticky unit pinned to the top of the
+          shared scroll region, so the provider grid passes cleanly BEHIND it.
+          Mirrors the Models tab's `ModelsBrowser`: transparent at rest, fading
+          in the frosted-glass `bg-popover` fill (blur masks the scrolling cards)
+          only once pinned — same offset (`top-0`), z-index (`z-20`), rounding
+          (`rounded-2xl`) and `shadow-none!` so the two tabs feel identical. */}
+      <div
+        className={cn(
+          "sticky top-0 z-20 transition-colors",
+          stuck ? "rounded-2xl bg-popover shadow-none!" : "",
+        )}
+      >
+        <div className="pt-1 pb-3">
+          <ProviderFilters
+            query={query}
+            setQuery={setQuery}
+            category={category}
+            setCategory={setCategory}
+          />
+        </div>
+      </div>
       {filtered.length === 0 ? (
         <ProviderEmpty />
       ) : (
