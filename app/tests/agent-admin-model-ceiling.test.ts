@@ -1,7 +1,45 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import type { ProviderCatalog } from "@houston/protocol";
 import { modelCatalog } from "../src/components/tabs/agent-admin/agent-admin-models-catalog.ts";
 import { ceilingValue } from "../src/components/tabs/agent-admin/agent-admin-row-values.ts";
+import { hydrateProviderCatalog } from "../src/lib/providers.ts";
+
+// The model catalog is runtime-hydrated from the host's GET /v1/catalog (#701):
+// `PROVIDERS` seeds with empty model lists, so `modelCatalog()` is empty until
+// `hydrateProviderCatalog` runs. Feed a minimal catalog matching the real
+// payload shape (`ProviderCatalog`) so the picker source has models to expose.
+const CATALOG_FIXTURE: ProviderCatalog = [
+  {
+    id: "anthropic",
+    name: "Anthropic",
+    auth: "oauth",
+    models: [
+      {
+        id: "claude-opus-4-8",
+        name: "Claude Opus 4.8",
+        pricing: { input: 15, output: 75 },
+        contextWindow: 200_000,
+        maxTokens: 64_000,
+        reasoning: true,
+        vision: true,
+        thinkingLevels: ["low", "medium", "high"],
+      },
+      {
+        id: "claude-sonnet-4-6",
+        name: "Claude Sonnet 4.6",
+        pricing: { input: 3, output: 15 },
+        contextWindow: 200_000,
+        maxTokens: 64_000,
+        reasoning: true,
+        vision: true,
+        thinkingLevels: ["low", "medium", "high"],
+      },
+    ],
+  },
+];
+
+hydrateProviderCatalog(CATALOG_FIXTURE);
 
 describe("ceilingValue — inline row state for a ceiling", () => {
   it("undefined (loading / non-Teams host) yields null → show no value yet", () => {

@@ -2,13 +2,13 @@ import { expect, test } from "./support/fixtures";
 
 /**
  * The AI models hub, end to end against the fake host. The marketplace shows the
- * capability-visible provider cards and the directory holds their models. Cards
- * are not whole-card clickable: a "See more" button opens the provider MODAL,
- * which now embeds the same models ledger (search + table) as the Models tab.
- * Flow: sidebar nav → provider grid → "See more" opens the provider modal →
- * Escape closes → Models tab → search → a row opens the model MODAL ("Get it
- * through" offers) → Escape closes. OAuth is never driven (no credentials in the
- * harness); we assert presence + the modal open/close flow only.
+ * capability-visible provider rows and the directory holds their models. The
+ * provider row itself is the open affordance: clicking the row opens the provider
+ * MODAL, which embeds the same models ledger (search + table) as the Models tab.
+ * Flow: sidebar nav → provider list → click a provider row opens the provider
+ * modal → Escape closes → Models tab → search → a row opens the model MODAL ("Get
+ * it through" offers) → Escape closes. OAuth is never driven (no credentials in
+ * the harness); we assert presence + the modal open/close flow only.
  */
 test("opens the AI hub, browses providers and models via modals", async ({
   page,
@@ -22,15 +22,16 @@ test("opens the AI hub, browses providers and models via modals", async ({
   await expect(page.getByRole("tab", { name: "Providers" })).toBeVisible();
   await expect(page.getByRole("tab", { name: /Models/ })).toBeVisible();
 
-  // Cards render with always-visible footer actions (no hover gate): every card
-  // has a "See more", available providers also a "Connect".
+  // Provider rows render as focusable role="button" bodies (no hover gate); the
+  // accessible name leads with the provider name. The Connect / Sign out action
+  // lives inside the row but stops propagation, so it never doubles as the open.
   await expect(page.getByText("Anthropic").first()).toBeVisible();
-  const seeMore = page.getByRole("button", { name: "See more" }).first();
-  await expect(seeMore).toBeVisible();
+  const providerRow = page.getByRole("button", { name: /Anthropic/ }).first();
+  await expect(providerRow).toBeVisible();
 
-  // "See more" opens the provider MODAL: a Radix dialog that embeds the shared
-  // models ledger (its own search box), not a full-page drill-in.
-  await seeMore.click();
+  // Clicking the row opens the provider MODAL: a Radix dialog that embeds the
+  // shared models ledger (its own search box), not a full-page drill-in.
+  await providerRow.click();
   const providerModal = page.getByRole("dialog");
   await expect(providerModal).toBeVisible();
   await expect(providerModal.getByPlaceholder("Search models")).toBeVisible();
