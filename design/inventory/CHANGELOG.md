@@ -6,9 +6,9 @@ Every `version` bump in `inventory.yaml` needs a matching entry here (enforced b
 ## v3 - 2026-07-05
 
 Add `agent-provisioning-card` (HOU-693): the in-chat notice (and its
-tab-placeholder variant) shown while a just-created agent's hosted engine warms
-up. Web ships it app/-locked (`app/src/components/shell/agent-provisioning-*`),
-so it lands as `partial` -- extract before mobile.
+blocked-write-dialog variant) shown while a just-created agent's hosted engine
+warms up. Web ships it app/-locked (`agent-provisioning-card.tsx` +
+`agent-warming-dialog.tsx`), so it lands as `partial` -- extract before mobile.
 
 ## v2 - 2026-07-03
 

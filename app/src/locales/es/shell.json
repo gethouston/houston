@@ -136,7 +136,8 @@
     "title": "Estamos creando tu agente",
     "body": "Esto puede tardar un momento.",
     "chatBody": "Responderá a tu mensaje en cuanto esté listo.",
-    "failed": "No pudimos terminar de crear tu agente. Inténtalo de nuevo en un momento."
+    "failed": "No pudimos terminar de crear tu agente. Inténtalo de nuevo en un momento.",
+    "blockedBody": "Ya casi está listo. Esta acción estará disponible en un momento, en cuanto tu agente termine de configurarse."
   },
   "toolRuntimeError": {
     "title": "Algo se atascó",

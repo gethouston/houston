@@ -29,6 +29,7 @@ export function ChatPanel({
   onStop,
   onBack,
   isLoading,
+  suppressPendingIndicator,
   placeholder = "Type a message...",
   emptyState,
   status: statusProp,
@@ -69,7 +70,8 @@ export function ChatPanel({
   authorLabels,
 }: ChatPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const status = statusProp ?? deriveStatus(feedItems, isLoading);
+  const status =
+    statusProp ?? deriveStatus(feedItems, isLoading, suppressPendingIndicator);
   const messages = useMemo(() => feedItemsToMessages(feedItems), [feedItems]);
   const hasMessages = messages.length > 0;
 

@@ -27,6 +27,14 @@ import type { FeedItem } from "./types";
 export function deriveStatus(
   items: FeedItem[],
   isLoading: boolean,
+  /**
+   * The consumer narrates the pending send itself (e.g. an inline "your
+   * agent is still being created" card), so a trailing user message with no
+   * running turn must NOT light the in-flight indicator — the two would
+   * promise a reply from two places at once. A genuinely running turn
+   * (`isLoading`) still shows it.
+   */
+  suppressPendingIndicator = false,
 ): ChatStatus {
   const last = items[items.length - 1];
   if (last?.feed_type === "assistant_text_streaming") {
@@ -44,6 +52,8 @@ export function deriveStatus(
   // Idle but the user just typed and sent — the optimistic
   // user_message is on the feed and we're waiting for `isLoading`
   // to flip true on the next tick. Treat as in-flight.
-  if (last?.feed_type === "user_message") return "submitted";
+  if (last?.feed_type === "user_message" && !suppressPendingIndicator) {
+    return "submitted";
+  }
   return "ready";
 }

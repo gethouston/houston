@@ -23,6 +23,12 @@ import type {
 } from "@houston-ai/engine-client";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import {
+  blockWriteWhileWarming,
+  blockWriteWhileWarmingById,
+  isAgentPathWarming,
+  type WarmingWriteOptions,
+} from "./agent-warming-guard";
+import {
   beginClaudeBrowserLogin,
   cancelClaudeBrowserLogin,
 } from "./claude-login";
@@ -232,10 +238,13 @@ export const tauriAgents = {
     }),
   delete: (workspaceId: string, id: string) =>
     call<void>("delete_agent", () => getEngine().deleteAgent(workspaceId, id)),
-  rename: (workspaceId: string, id: string, newName: string) =>
-    call<Agent>("rename_agent", async () =>
+  rename: (workspaceId: string, id: string, newName: string) => {
+    // A rename dispatches into the agent's engine — held while it warms up.
+    blockWriteWhileWarmingById(id);
+    return call<Agent>("rename_agent", async () =>
       toAgent(await getEngine().renameAgent(workspaceId, id, newName)),
-    ),
+    );
+  },
   updateColor: (workspaceId: string, id: string, color: string) =>
     call<Agent>("update_agent_color", async () =>
       toAgent(await getEngine().updateAgent(workspaceId, id, { color })),
@@ -355,9 +364,15 @@ export const tauriChat = {
     sessionKey: string,
     opts?: HistoryLoadOptions,
   ) =>
-    call<Array<{ feed_type: string; data: unknown }>>("load_chat_history", () =>
-      getEngine().loadChatHistory(agentPath, sessionKey, opts),
-    ),
+    // Warming agent: nothing is persisted yet and the read (plus the observer
+    // stream it attaches) would be held for the whole warm-up. The open
+    // conversation renders from the local VM (queued bubbles) meanwhile.
+    isAgentPathWarming(agentPath)
+      ? Promise.resolve<Array<{ feed_type: string; data: unknown }>>([])
+      : call<Array<{ feed_type: string; data: unknown }>>(
+          "load_chat_history",
+          () => getEngine().loadChatHistory(agentPath, sessionKey, opts),
+        ),
   summarize: (message: string) =>
     call<{ title: string; description: string }>("summarize_activity", () =>
       getEngine().summarizeActivity(message),
@@ -382,14 +397,31 @@ export const tauriAttachments = {
 // ─── Agent-data files (`.houston/**`) ─────────────────────────────────
 
 export const tauriAgent = {
+  // Warming agent (HOU-693): every per-agent request is held until its
+  // engine wakes. Reads answer instantly with "nothing yet" (a fresh agent
+  // has no data; the ready-time events refetch the real state); writes open
+  // the "almost ready" dialog and reject typed (never toasted).
   readFile: (agentPath: string, relPath: string) =>
-    call<string>("read_agent_file", () =>
-      getEngine().readAgentFile(agentPath, relPath),
-    ),
-  writeFile: (agentPath: string, relPath: string, content: string) =>
-    call<void>("write_agent_file", () =>
+    isAgentPathWarming(agentPath)
+      ? Promise.resolve("")
+      : call<string>("read_agent_file", () =>
+          getEngine().readAgentFile(agentPath, relPath),
+        ),
+  writeFile: (
+    agentPath: string,
+    relPath: string,
+    content: string,
+    opts?: WarmingWriteOptions,
+  ) => {
+    // `allowWhileWarming` marks the app's OWN post-create setup writes
+    // (provider/model config, the AI-routine seed): they intentionally ride
+    // as held requests that land when the engine wakes (HOU-649). Only
+    // user-initiated writes get the "almost ready" dialog.
+    if (!opts?.allowWhileWarming) blockWriteWhileWarming(agentPath);
+    return call<void>("write_agent_file", () =>
       getEngine().writeAgentFile(agentPath, relPath, content),
-    ),
+    );
+  },
   seedSchemas: (agentPath: string) =>
     call<void>("seed_agent_schemas", () =>
       getEngine().seedAgentSchemas(agentPath),
@@ -404,30 +436,32 @@ export const tauriAgent = {
 
 export const tauriSkills = {
   list: (agentPath: string) =>
-    call<SkillSummary[]>("list_skills", async () =>
-      (await getEngine().listSkills(agentPath)).map((s) => ({
-        name: s.name,
-        description: s.description,
-        version: s.version,
-        tags: s.tags,
-        created: s.created,
-        last_used: s.lastUsed,
-        category: s.category ?? null,
-        featured: s.featured ?? false,
-        integrations: s.integrations ?? [],
-        image: s.image ?? null,
-        inputs: (s.inputs ?? []).map((i) => ({
-          name: i.name,
-          label: i.label,
-          placeholder: i.placeholder,
-          type: i.type,
-          required: i.required,
-          default: i.default,
-          options: i.options ?? [],
-        })),
-        prompt_template: s.promptTemplate ?? null,
-      })),
-    ),
+    isAgentPathWarming(agentPath)
+      ? Promise.resolve<SkillSummary[]>([])
+      : call<SkillSummary[]>("list_skills", async () =>
+          (await getEngine().listSkills(agentPath)).map((s) => ({
+            name: s.name,
+            description: s.description,
+            version: s.version,
+            tags: s.tags,
+            created: s.created,
+            last_used: s.lastUsed,
+            category: s.category ?? null,
+            featured: s.featured ?? false,
+            integrations: s.integrations ?? [],
+            image: s.image ?? null,
+            inputs: (s.inputs ?? []).map((i) => ({
+              name: i.name,
+              label: i.label,
+              placeholder: i.placeholder,
+              type: i.type,
+              required: i.required,
+              default: i.default,
+              options: i.options ?? [],
+            })),
+            prompt_template: s.promptTemplate ?? null,
+          })),
+        ),
   load: (agentPath: string, name: string) =>
     call<SkillDetail>(
       "load_skill",
@@ -445,21 +479,29 @@ export const tauriSkills = {
     name: string,
     description: string,
     content: string,
-  ) =>
-    call<void>("create_skill", () =>
+  ) => {
+    blockWriteWhileWarming(agentPath);
+    return call<void>("create_skill", () =>
       getEngine().createSkill({
         workspacePath: agentPath,
         name,
         description,
         content,
       }),
-    ),
-  delete: (agentPath: string, name: string) =>
-    call<void>("delete_skill", () => getEngine().deleteSkill(agentPath, name)),
-  save: (agentPath: string, name: string, content: string) =>
-    call<void>("save_skill", () =>
+    );
+  },
+  delete: (agentPath: string, name: string) => {
+    blockWriteWhileWarming(agentPath);
+    return call<void>("delete_skill", () =>
+      getEngine().deleteSkill(agentPath, name),
+    );
+  },
+  save: (agentPath: string, name: string, content: string) => {
+    blockWriteWhileWarming(agentPath);
+    return call<void>("save_skill", () =>
       getEngine().saveSkill(name, { workspacePath: agentPath, content }),
-    ),
+    );
+  },
   listFromRepo: (source: string) =>
     call<RepoSkill[]>(
       "list_skills_from_repo",
@@ -469,8 +511,9 @@ export const tauriSkills = {
       // no skills) inline with plain-English copy — no red bug toast.
       { toast: false },
     ),
-  installFromRepo: (agentPath: string, source: string, skills: RepoSkill[]) =>
-    call<string[]>(
+  installFromRepo: (agentPath: string, source: string, skills: RepoSkill[]) => {
+    blockWriteWhileWarming(agentPath);
+    return call<string[]>(
       "install_skills_from_repo",
       () =>
         getEngine().installSkillsFromRepo({
@@ -480,7 +523,8 @@ export const tauriSkills = {
         }),
       undefined,
       { toast: false },
-    ),
+    );
+  },
   searchCommunity: (query: string, signal?: AbortSignal) =>
     call<CommunitySkillResult[]>(
       "search_community_skills",
@@ -514,8 +558,9 @@ export const tauriSkills = {
     source: string,
     skillId: string,
     signal?: AbortSignal,
-  ) =>
-    call<string>(
+  ) => {
+    blockWriteWhileWarming(agentPath);
+    return call<string>(
       "install_community_skill",
       () =>
         getEngine().installCommunitySkill(
@@ -528,7 +573,8 @@ export const tauriSkills = {
         ),
       undefined,
       { toast: false },
-    ),
+    );
+  },
 };
 
 // ─── Composio (desktop CLI connections) ───────────────────────────────
@@ -663,17 +709,19 @@ import { osOpenFile, osRevealAgent, osRevealFile } from "./os-bridge";
 
 export const tauriFiles = {
   list: (agentPath: string) =>
-    call<FileEntry[]>("list_project_files", async () =>
-      (await getEngine().listProjectFiles(agentPath)).map((f) => ({
-        path: f.path,
-        name: f.name,
-        extension: f.extension,
-        size: f.size,
-        is_directory: f.is_directory,
-        dateModified: f.date_modified,
-        dateCreated: f.date_created,
-      })),
-    ),
+    isAgentPathWarming(agentPath)
+      ? Promise.resolve<FileEntry[]>([])
+      : call<FileEntry[]>("list_project_files", async () =>
+          (await getEngine().listProjectFiles(agentPath)).map((f) => ({
+            path: f.path,
+            name: f.name,
+            extension: f.extension,
+            size: f.size,
+            is_directory: f.is_directory,
+            dateModified: f.date_modified,
+            dateCreated: f.date_created,
+          })),
+        ),
   open: (agentPath: string, relativePath: string) =>
     osOpenFile(agentPath, relativePath),
   reveal: (agentPath: string, relativePath: string) =>
@@ -691,29 +739,39 @@ export const tauriFiles = {
       { agentPath, relativePath },
       options,
     ),
-  delete: (agentPath: string, relativePath: string) =>
-    call<void>("delete_file", () =>
+  delete: (agentPath: string, relativePath: string) => {
+    blockWriteWhileWarming(agentPath);
+    return call<void>("delete_file", () =>
       getEngine().deleteFile(agentPath, relativePath),
-    ),
-  rename: (agentPath: string, relativePath: string, newName: string) =>
-    call<void>("rename_file", () =>
+    );
+  },
+  rename: (agentPath: string, relativePath: string, newName: string) => {
+    blockWriteWhileWarming(agentPath);
+    return call<void>("rename_file", () =>
       getEngine().renameFile(agentPath, relativePath, newName),
-    ),
-  createFolder: (agentPath: string, name: string) =>
-    call<void>("create_agent_folder", async () => {
+    );
+  },
+  createFolder: (agentPath: string, name: string) => {
+    blockWriteWhileWarming(agentPath);
+    return call<void>("create_agent_folder", async () => {
       await getEngine().createFolder(agentPath, name);
-    }),
+    });
+  },
   /** Upload browser Files into the workspace (drag-drop / Browse), optionally
    * into a subfolder. */
-  upload: (agentPath: string, files: File[], targetDir?: string | null) =>
-    call<void>("upload_project_files", () =>
+  upload: (agentPath: string, files: File[], targetDir?: string | null) => {
+    blockWriteWhileWarming(agentPath);
+    return call<void>("upload_project_files", () =>
       getEngine().uploadProjectFiles(agentPath, files, targetDir),
-    ),
+    );
+  },
   /** Move a file/folder into another folder (null = workspace root). */
-  move: (agentPath: string, relPath: string, toDir: string | null) =>
-    call<void>("move_project_file", () =>
+  move: (agentPath: string, relPath: string, toDir: string | null) => {
+    blockWriteWhileWarming(agentPath);
+    return call<void>("move_project_file", () =>
       getEngine().moveProjectFile(agentPath, relPath, toDir),
-    ),
+    );
+  },
   /** One zip of the whole workspace ("Download all") or, with `relPath`, of a
    * single folder — where there is no local file manager to reveal in (cloud
    * pods, web builds). */
@@ -744,15 +802,24 @@ interface RawConversation {
 
 export const tauriConversations = {
   list: (agentPath: string) =>
-    call<RawConversation[]>("list_conversations", async () =>
-      (await getEngine().listConversations(agentPath)).map(conversationToRaw),
-    ),
-  listAll: (agentPaths: string[]) =>
-    call<RawConversation[]>("list_all_conversations", async () =>
-      (await getEngine().listAllConversations(agentPaths)).map(
+    isAgentPathWarming(agentPath)
+      ? Promise.resolve<RawConversation[]>([])
+      : call<RawConversation[]>("list_conversations", async () =>
+          (await getEngine().listConversations(agentPath)).map(
+            conversationToRaw,
+          ),
+        ),
+  listAll: (agentPaths: string[]) => {
+    // A warming agent has no conversations yet and its read would hold the
+    // whole bulk scan — sweep only the reachable agents.
+    const reachable = agentPaths.filter((p) => !isAgentPathWarming(p));
+    if (reachable.length === 0) return Promise.resolve<RawConversation[]>([]);
+    return call<RawConversation[]>("list_all_conversations", async () =>
+      (await getEngine().listAllConversations(reachable)).map(
         conversationToRaw,
       ),
-    ),
+    );
+  },
 };
 
 function conversationToRaw(
@@ -785,33 +852,53 @@ import * as configData from "../data/config";
 
 export const tauriRoutines = {
   list: (agentPath: string) =>
-    call("list_routines", () => getEngine().listRoutines(agentPath)),
-  create: (agentPath: string, input: EngineNewRoutine) =>
-    call("create_routine", () => getEngine().createRoutine(agentPath, input)),
+    isAgentPathWarming(agentPath)
+      ? Promise.resolve([])
+      : call("list_routines", () => getEngine().listRoutines(agentPath)),
+  create: (
+    agentPath: string,
+    input: EngineNewRoutine,
+    opts?: WarmingWriteOptions,
+  ) => {
+    if (!opts?.allowWhileWarming) blockWriteWhileWarming(agentPath);
+    return call("create_routine", () =>
+      getEngine().createRoutine(agentPath, input),
+    );
+  },
   update: (
     agentPath: string,
     routineId: string,
     updates: EngineRoutineUpdate,
-  ) =>
-    call("update_routine", () =>
+  ) => {
+    blockWriteWhileWarming(agentPath);
+    return call("update_routine", () =>
       getEngine().updateRoutine(agentPath, routineId, updates),
-    ),
-  delete: (agentPath: string, routineId: string) =>
-    call<void>("delete_routine", () =>
+    );
+  },
+  delete: (agentPath: string, routineId: string) => {
+    blockWriteWhileWarming(agentPath);
+    return call<void>("delete_routine", () =>
       getEngine().deleteRoutine(agentPath, routineId),
-    ),
+    );
+  },
   listRuns: (agentPath: string, routineId?: string) =>
-    call("list_routine_runs", () =>
-      getEngine().listRoutineRuns(agentPath, routineId),
-    ),
-  runNow: (agentPath: string, routineId: string) =>
-    call<void>("run_routine_now", () =>
+    isAgentPathWarming(agentPath)
+      ? Promise.resolve([])
+      : call("list_routine_runs", () =>
+          getEngine().listRoutineRuns(agentPath, routineId),
+        ),
+  runNow: (agentPath: string, routineId: string) => {
+    blockWriteWhileWarming(agentPath);
+    return call<void>("run_routine_now", () =>
       getEngine().runRoutineNow(agentPath, routineId),
-    ),
-  cancelRun: (agentPath: string, routineId: string, runId: string) =>
-    call("cancel_routine_run", () =>
+    );
+  },
+  cancelRun: (agentPath: string, routineId: string, runId: string) => {
+    blockWriteWhileWarming(agentPath);
+    return call("cancel_routine_run", () =>
       getEngine().cancelRoutineRun(agentPath, routineId, runId),
-    ),
+    );
+  },
   startScheduler: (agentPath: string) =>
     call<void>("start_routine_scheduler", () =>
       getEngine().startRoutineScheduler(agentPath),
@@ -911,8 +998,11 @@ export const tauriShell = {
 
 export const tauriConfig = {
   read: (agentPath: string) => configData.read(agentPath),
-  write: (agentPath: string, config: configData.Config) =>
-    configData.write(agentPath, config),
+  write: (
+    agentPath: string,
+    config: configData.Config,
+    opts?: WarmingWriteOptions,
+  ) => configData.write(agentPath, config, opts),
 };
 
 // ─── Preferences ──────────────────────────────────────────────────────

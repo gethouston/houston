@@ -64,6 +64,7 @@ export async function writeAgentJson<T>(
   name: string,
   schema: Schema,
   data: T,
+  opts?: import("../lib/agent-warming-guard").WarmingWriteOptions,
 ): Promise<void> {
   const validate = getValidator(name, schema);
   if (!validate(data)) {
@@ -76,6 +77,7 @@ export async function writeAgentJson<T>(
     agentPath,
     relPath(name),
     JSON.stringify(data, null, 2),
+    opts,
   );
 }
 

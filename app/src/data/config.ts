@@ -18,6 +18,10 @@ export async function read(agentPath: string): Promise<Config> {
   return readAgentJson<Config>(agentPath, NAME, s, {});
 }
 
-export async function write(agentPath: string, config: Config): Promise<void> {
-  await writeAgentJson(agentPath, NAME, s, config);
+export async function write(
+  agentPath: string,
+  config: Config,
+  opts?: import("../lib/agent-warming-guard").WarmingWriteOptions,
+): Promise<void> {
+  await writeAgentJson(agentPath, NAME, s, config, opts);
 }

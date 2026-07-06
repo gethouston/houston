@@ -1,3 +1,4 @@
+import { isAgentWarmingError } from "./agent-warming-guard";
 import { analytics, classifyAnalyticsError } from "./analytics";
 import { isBenignLockRejection } from "./benign-rejections";
 import { showErrorToast } from "./error-toast";
@@ -40,6 +41,17 @@ export function installGlobalErrorHandlers(): void {
       event.preventDefault();
       console.debug(
         "[global:unhandledrejection] ignored benign Web Locks contention:",
+        message,
+      );
+      return;
+    }
+    // A write blocked while the agent's engine warms up (HOU-693) already
+    // surfaced as the "almost ready" dialog; most submit handlers don't catch,
+    // so the typed rejection lands here — handled, not a bug.
+    if (isAgentWarmingError(event.reason)) {
+      event.preventDefault();
+      console.debug(
+        "[global:unhandledrejection] write blocked while the agent warms up:",
         message,
       );
       return;

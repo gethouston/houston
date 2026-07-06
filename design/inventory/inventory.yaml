@@ -144,13 +144,14 @@ components:
       engine is still warming up, so the wait reads as expected, not broken.
     anatomy: [spinner, title, body]
     states: [default]
-    variants: [chat-card, tab-placeholder]
+    variants: [chat-card, blocked-write-dialog]
     behavior: >-
       Driven by the client-side provisioning presence map: marked on hosted
       agent create, cleared by a readiness long-poll against the agent's
-      engine. The tab-placeholder replaces non-activity tab content; the
-      chat-card sits under the user's sent message. The held send is answered
-      on its own once the engine is up; both unmount on ready.
+      engine. The chat-card sits under the user's sent (queued) message; the
+      blocked-write-dialog opens when a write is attempted while warming —
+      reads stay free (tabs render with empty data). Queued sends deliver on
+      ready; both surfaces dismiss themselves.
     a11y: status role; spinner decorative, text carries the message.
     since: 3
 

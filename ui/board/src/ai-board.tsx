@@ -44,6 +44,10 @@ export interface AIBoardProps {
   feedItems?: Record<string, FeedItem[]>;
   /** Whether a message is currently being processed, keyed by session key. */
   isLoading?: Record<string, boolean>;
+  /** The consumer narrates pending sends itself (inline card): a trailing
+   *  user message with no running turn must not light the in-flight
+   *  indicator. Forwarded to the open chat panel. */
+  suppressPendingIndicator?: boolean;
   /** Custom empty state when the board has no items. */
   emptyState?: ReactNode;
   /** Maps an activity ID to its session key. Defaults to `activity-${id}`. */
@@ -249,6 +253,7 @@ export function AIBoard({
   onSendMessage,
   feedItems = {},
   isLoading = {},
+  suppressPendingIndicator,
   emptyState,
   sessionKeyFor = defaultSessionKey,
   runningStatuses = ["running"],
@@ -678,6 +683,7 @@ export function AIBoard({
           sessionKey={activeSessionKey ?? "new-conversation"}
           feedItems={activeFeed}
           isLoading={activeLoading}
+          suppressPendingIndicator={suppressPendingIndicator}
           onSend={handleSend}
           onStop={
             activeSessionKey && onStopSession
