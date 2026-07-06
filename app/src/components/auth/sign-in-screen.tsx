@@ -1,12 +1,6 @@
 import { Button, Separator } from "@houston-ai/core";
-import { isTauri } from "@tauri-apps/api/core";
-import { type FormEvent, useEffect, useState } from "react";
-import {
-  completeSignInFromPaste,
-  onAuthError,
-  signInWithGoogle,
-} from "../../lib/auth";
-import { reportBug } from "../../lib/bug-report";
+import { useEffect, useState } from "react";
+import { onAuthError, signInWithGoogle } from "../../lib/auth";
 import { logger } from "../../lib/logger";
 import { HoustonLogo } from "../shell/experience-card";
 import { prettifyAuthError } from "./auth-errors";
@@ -27,34 +21,13 @@ type Provider = "google";
  * Two ways in: Google (OAuth via the loopback flow) and passwordless email
  * (6-digit code, fully in-app — see EmailSignIn).
  *
- * `allowManualCallback` surfaces the paste-the-code fallback. Both call sites
- * pass it only in dev builds (#146: a dev build doesn't own the `houston://`
- * scheme, so the callback opens the installed prod app instead), so production
- * never shows the manual step.
- *
- * Re-click semantics: the loading spinner is only on while the system
- * browser is being opened (a few ms). After that, the user is free to
- * click any provider again — useful when they land on the wrong browser
- * profile and need to retry. The PKCE flow is regenerated each click.
+ * Re-click semantics: the loading spinner is only on while the system browser
+ * is being opened (a few ms). After that the user is free to click a provider
+ * again — the PKCE flow is regenerated each click.
  */
-export function SignInScreen({
-  allowManualCallback = false,
-}: {
-  allowManualCallback?: boolean;
-}) {
+export function SignInScreen() {
   const [pending, setPending] = useState<Provider | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // "Send logs to support" affordance — for non-technical alpha users
-  // who can't reach the in-app Settings → Report Bug flow because they're
-  // stuck on this screen. Three states: idle / sending / sent.
-  const [logsStatus, setLogsStatus] = useState<"idle" | "sending" | "sent">(
-    "idle",
-  );
-  const [logsIssueId, setLogsIssueId] = useState<string | null>(null);
-  // Dev-only manual completion (the `houston://` deep link opens the installed
-  // production app, so a dev build never receives the callback).
-  const [devCode, setDevCode] = useState("");
-  const [devExchanging, setDevExchanging] = useState(false);
 
   // Surface OAuth errors that happen AFTER the browser hands off (provider
   // rejection, code-exchange failure, identity already linked to another
@@ -80,41 +53,6 @@ export function SignInScreen({
       // SignInScreen itself unmounts when the deep-link callback flips the
       // session, so we don't need a "waiting for callback" loading state.
       setPending(null);
-    }
-  };
-
-  const handleDevPaste = async (e: FormEvent) => {
-    e.preventDefault();
-    setDevExchanging(true);
-    setError(null);
-    try {
-      await completeSignInFromPaste(devCode);
-      // Success swaps the session and unmounts this screen; a failure already
-      // surfaced through the onAuthError subscription into `error`.
-    } finally {
-      setDevExchanging(false);
-    }
-  };
-
-  const handleSendLogs = async () => {
-    setLogsStatus("sending");
-    try {
-      const issueId = await reportBug({
-        command: "signin_screen_stuck",
-        error:
-          "User reported they are stuck on the sign-in screen and could not reach the in-app Report Bug flow. Logs attached from the SignInScreen send-logs button.",
-        userEmail: null,
-        timestamp: new Date().toISOString(),
-        appVersion: __APP_VERSION__,
-      });
-      setLogsIssueId(issueId);
-      setLogsStatus("sent");
-    } catch (e) {
-      logger.error(`[auth] send-logs failed: ${e}`);
-      setLogsStatus("idle");
-      setError(
-        `Could not send logs automatically: ${e instanceof Error ? e.message : String(e)}. Email them to support manually.`,
-      );
     }
   };
 
@@ -150,72 +88,8 @@ export function SignInScreen({
 
         <EmailSignIn />
 
-        <p className="text-xs text-muted-foreground text-center">
-          Wrong browser profile? Just click again to retry.
-        </p>
-
         {error && (
           <p className="text-xs text-destructive text-center">{error}</p>
-        )}
-
-        {/* Last-resort "send logs" affordance for non-technical alpha users
-         * stuck on this screen. The in-app Settings → Report Bug flow is
-         * unreachable until they're signed in, so we expose the same
-         * report_bug command here with a fixed description. Hardcoded
-         * English / Spanish copy because this whole screen is currently
-         * English-only and adding i18n is its own scope. */}
-        <div className="mt-2 flex flex-col items-center gap-1">
-          {logsStatus === "sent" ? (
-            <p className="text-xs text-muted-foreground text-center">
-              Logs sent to support
-              {logsIssueId ? ` (ref ${logsIssueId})` : ""}. Thanks, we'll follow
-              up.
-            </p>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void handleSendLogs()}
-              disabled={logsStatus === "sending"}
-              className="text-xs text-muted-foreground underline-offset-2 hover:underline disabled:opacity-50"
-            >
-              {logsStatus === "sending"
-                ? "Sending logs..."
-                : "Stuck? Send logs to support / ¿Atascado? Enviar logs a soporte"}
-            </button>
-          )}
-        </div>
-
-        {/* Dev-only manual sign-in completion. The `houston://auth-callback`
-         * deep link routes to the INSTALLED app that owns the `houston` scheme,
-         * which is not the `pnpm start` dev build running alongside it. Paste
-         * the code (or the full callback URL) the browser landed on to finish
-         * the PKCE exchange locally. Only rendered when the caller opts in via
-         * `allowManualCallback` — every caller gates it on dev builds. */}
-        {allowManualCallback && isTauri() && (
-          <form
-            onSubmit={(e) => void handleDevPaste(e)}
-            className="mt-2 w-full flex flex-col gap-2 border-t border-border pt-4"
-          >
-            <p className="text-xs text-muted-foreground text-center">
-              Dev: the callback opens the production app. Paste the code (or the
-              full callback URL) from the browser here.
-            </p>
-            <input
-              value={devCode}
-              onChange={(e) => setDevCode(e.target.value)}
-              placeholder="code or https://gethouston.ai/auth/callback?code=..."
-              autoComplete="off"
-              spellCheck={false}
-              className="w-full rounded-md border border-border bg-background px-3 h-9 text-xs"
-            />
-            <Button
-              type="submit"
-              disabled={!devCode.trim() || devExchanging}
-              className="w-full rounded-full h-9 text-xs"
-            >
-              {devExchanging ? "Completing sign-in..." : "Complete dev sign-in"}
-            </Button>
-          </form>
         )}
       </div>
     </div>

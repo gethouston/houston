@@ -1,7 +1,6 @@
 import type { Session } from "@supabase/supabase-js";
 import { listen } from "@tauri-apps/api/event";
 import { analytics } from "./analytics";
-import { toCallbackUrl } from "./auth-callback";
 import { logger } from "./logger";
 import { osIsTauri, osStartOauthLoopback } from "./os-bridge";
 import { queryClient } from "./query-client";
@@ -250,10 +249,9 @@ export function installDeepLinkListener(): () => void {
 
 /**
  * Complete an OAuth callback: pull the `code` (PKCE) or `access_token`
- * (implicit) out of a callback URL and install the Supabase session. Shared by
- * the desktop deep-link listener and the dev-only manual paste fallback
- * (`completeSignInFromPaste`). Errors surface through `emitAuthError`, not by
- * throwing, so both callers' UIs react the same way.
+ * (implicit) out of a callback URL and install the Supabase session. Driven by
+ * the desktop deep-link listener. Errors surface through `emitAuthError`, not by
+ * throwing, so the sign-in UI reacts without an exception.
  */
 async function completeAuthCallback(rawUrl: string): Promise<void> {
   try {
@@ -351,23 +349,4 @@ async function completeAuthCallback(rawUrl: string): Promise<void> {
     logger.error(`[auth] failed to handle callback: ${e}`);
     emitAuthError(String(e));
   }
-}
-
-/**
- * Dev-only sign-in fallback. In a dev build the `houston://auth-callback` deep
- * link opens the INSTALLED production app (both builds share the `houston` URL
- * scheme + `com.houston.app` bundle id), so the dev app stays stuck on the
- * sign-in screen while production swallows the callback. The dev app still holds
- * the PKCE verifier it generated when it opened the flow, so pasting the `code`
- * (or the whole `…/auth/callback?code=…` URL the browser landed on) lets it
- * finish the exchange locally — production is never involved. Gated to dev
- * desktop builds in `SignInScreen`.
- */
-export async function completeSignInFromPaste(input: string): Promise<void> {
-  const rawUrl = toCallbackUrl(input);
-  if (!rawUrl) {
-    emitAuthError("Paste the sign-in code or the full callback URL.");
-    return;
-  }
-  await completeAuthCallback(rawUrl);
 }
