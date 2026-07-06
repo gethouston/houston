@@ -19,7 +19,11 @@ fn claude_bin_name() -> &'static str {
 ///   1. Explicit env override `HOUSTON_CLAUDE_BIN` (dev/test escape hatch —
 ///      honored verbatim, even if it points outside a bundle).
 ///   2. Sibling of the current executable — the bundled-sidecar location Tauri
-///      uses on shipping platforms — IF it exists.
+///      uses on shipping platforms — IF it exists. RELEASE ONLY: a debug /
+///      `tauri dev` build stages a no-op PLACEHOLDER there (`sleep infinity`;
+///      the real ~232 MB binary ships only in release), and spawning THAT hangs
+///      the login on a spinner forever. So in a debug build we skip the sibling
+///      and use the real `claude` on PATH instead.
 ///   3. Bare `claude`, resolved via `PATH` (the dev/test path). No panics.
 pub(super) fn resolve_claude_binary() -> PathBuf {
     // 1. Explicit env override.
@@ -27,7 +31,9 @@ pub(super) fn resolve_claude_binary() -> PathBuf {
         return PathBuf::from(p);
     }
 
-    // 2. Sibling of the current executable, if bundled.
+    // 2. Sibling of the current executable, if bundled — release builds only
+    //    (debug stages a `sleep`-forever placeholder; see the doc note above).
+    #[cfg(not(debug_assertions))]
     if let Ok(exe) = std::env::current_exe() {
         if let Some(exe_dir) = exe.parent() {
             let sibling = exe_dir.join(claude_bin_name());
@@ -37,7 +43,8 @@ pub(super) fn resolve_claude_binary() -> PathBuf {
         }
     }
 
-    // 3. Fall back to PATH.
+    // 3. Fall back to PATH (always in a debug build; the release fallback when
+    //    no bundled sibling is present).
     PathBuf::from("claude")
 }
 
@@ -77,6 +84,12 @@ pub(super) fn extract_visit_url(line: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    /// Serializes the tests that mutate the shared process env var
+    /// `HOUSTON_CLAUDE_BIN` — cargo runs tests in parallel, so without this they
+    /// race on the same global and flake.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn extract_visit_url_pulls_the_authorize_url() {
@@ -113,11 +126,24 @@ mod tests {
 
     #[test]
     fn resolve_claude_binary_honors_env_override() {
+        let _guard = ENV_LOCK.lock().unwrap();
         // The override wins verbatim over sibling/PATH resolution.
         let sentinel = "/nonexistent/houston/claude-override";
         std::env::set_var("HOUSTON_CLAUDE_BIN", sentinel);
         let resolved = resolve_claude_binary();
         std::env::remove_var("HOUSTON_CLAUDE_BIN");
         assert_eq!(resolved, PathBuf::from(sentinel));
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    fn resolve_claude_binary_uses_path_in_debug_not_the_placeholder() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        // Tests run in a debug build, where the bundled sibling is a no-op
+        // `sleep`-forever placeholder. Resolution must SKIP it and fall back to
+        // the real `claude` on PATH — spawning the placeholder would hang the
+        // login on a spinner forever (the dev-mode bug this guards).
+        std::env::remove_var("HOUSTON_CLAUDE_BIN");
+        assert_eq!(resolve_claude_binary(), PathBuf::from("claude"));
     }
 }
