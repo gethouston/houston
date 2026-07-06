@@ -1,9 +1,56 @@
 {
-  "managedAgent": {
-    "banner": "Este agente lo administra tu organización. Solo sus administradores pueden hacer cambios."
-  },
-  "model": {
-    "lockedTooltip": "El administrador de tu organización define el modelo de IA de este agente."
+  "agentAdmin": {
+    "title": "Configuración del agente",
+    "subtitle": "Configura cómo funciona este agente y quién puede usarlo.",
+    "groups": {
+      "configuration": "Configuración",
+      "access": "Acceso",
+      "general": "General"
+    },
+    "rows": {
+      "instructions": {
+        "desc": "Lo que este agente debe hacer."
+      },
+      "skills": {
+        "desc": "Habilidades que este agente puede usar."
+      },
+      "knowledge": {
+        "title": "Conocimiento",
+        "desc": "Datos y contexto que recuerda."
+      },
+      "model": {
+        "title": "Modelo de IA",
+        "desc": "El modelo que impulsa este agente."
+      },
+      "people": {
+        "title": "Personas con acceso",
+        "desc": "Quién puede usar este agente."
+      },
+      "integrations": {
+        "title": "Integraciones permitidas",
+        "desc": "Aplicaciones que este agente puede usar."
+      },
+      "general": {
+        "desc": "Nombre, color y eliminación."
+      },
+      "template": {
+        "title": "Guardar como plantilla",
+        "desc": "Reutiliza esta configuración para nuevos agentes."
+      }
+    },
+    "values": {
+      "skillCount_one": "{{count}} habilidad",
+      "skillCount_other": "{{count}} habilidades",
+      "learningCount_one": "{{count}} nota",
+      "learningCount_other": "{{count}} notas"
+    },
+    "model": {
+      "title": "Modelo de IA",
+      "helper": "Elige el modelo y el nivel de razonamiento que usa este agente."
+    },
+    "integrations": {
+      "unavailable": "Los límites de integraciones no están disponibles aquí."
+    }
   },
   "integrations": {
     "allowlist": {

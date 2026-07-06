@@ -1,7 +1,7 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { Capabilities, OrgRole } from "@houston-ai/engine-client";
-import { isModelSelectorLocked } from "../src/lib/model-selector-lock.ts";
+import { shouldShowModelSelector } from "../src/lib/model-selector-lock.ts";
 
 const caps = (over: Partial<Capabilities> = {}): Capabilities => ({
   profile: "cloud",
@@ -18,50 +18,50 @@ const caps = (over: Partial<Capabilities> = {}): Capabilities => ({
 const multiplayer = (role: OrgRole): Capabilities =>
   caps({ multiplayer: true, role });
 
-// The wire type lives on `Agent.access` (engine-client); the lock only reads
+// The wire type lives on `Agent.access` (engine-client); the helper only reads
 // that field, so the fixtures pass a minimal `{ access }` shape.
 const agent = (access?: "manager" | "user") => ({ access });
 
-describe("isModelSelectorLocked", () => {
-  it("never locks when no agent scope is threaded", () => {
-    // A caller who could never edit (multiplayer member) still isn't locked
-    // when the selector isn't tied to a specific agent.
-    strictEqual(isModelSelectorLocked(multiplayer("user"), null), false);
-    strictEqual(isModelSelectorLocked(multiplayer("user"), undefined), false);
-    strictEqual(isModelSelectorLocked(caps(), null), false);
+describe("shouldShowModelSelector", () => {
+  it("always shows when no agent scope is threaded", () => {
+    // A caller who could never edit (multiplayer member) still sees the picker
+    // when it isn't tied to a specific agent (e.g. the routine editor).
+    strictEqual(shouldShowModelSelector(multiplayer("user"), null), true);
+    strictEqual(shouldShowModelSelector(multiplayer("user"), undefined), true);
+    strictEqual(shouldShowModelSelector(caps(), null), true);
   });
 
-  it("never locks in single-player (self-host), even with an agent", () => {
+  it("always shows in single-player (self-host), even with an agent", () => {
     for (const access of ["manager", "user", undefined] as const) {
-      strictEqual(isModelSelectorLocked(caps(), agent(access)), false);
-      strictEqual(isModelSelectorLocked(null, agent(access)), false);
-      strictEqual(isModelSelectorLocked(undefined, agent(access)), false);
+      strictEqual(shouldShowModelSelector(caps(), agent(access)), true);
+      strictEqual(shouldShowModelSelector(null, agent(access)), true);
+      strictEqual(shouldShowModelSelector(undefined, agent(access)), true);
     }
   });
 
-  it("never locks the org owner (manages every agent)", () => {
+  it("always shows for the org owner (manages every agent)", () => {
     for (const access of ["manager", "user", undefined] as const) {
       strictEqual(
-        isModelSelectorLocked(multiplayer("owner"), agent(access)),
-        false,
+        shouldShowModelSelector(multiplayer("owner"), agent(access)),
+        true,
       );
     }
   });
 
-  it("locks a multiplayer non-owner unless their access is manager", () => {
+  it("hides for a multiplayer non-owner unless their access is manager", () => {
     for (const role of ["admin", "user"] as const) {
       strictEqual(
-        isModelSelectorLocked(multiplayer(role), agent("manager")),
+        shouldShowModelSelector(multiplayer(role), agent("manager")),
+        true,
+      );
+      strictEqual(
+        shouldShowModelSelector(multiplayer(role), agent("user")),
         false,
       );
+      // Missing access defaults to hidden (no proof of manager authority).
       strictEqual(
-        isModelSelectorLocked(multiplayer(role), agent("user")),
-        true,
-      );
-      // Missing access defaults to locked (no proof of manager authority).
-      strictEqual(
-        isModelSelectorLocked(multiplayer(role), agent(undefined)),
-        true,
+        shouldShowModelSelector(multiplayer(role), agent(undefined)),
+        false,
       );
     }
   });

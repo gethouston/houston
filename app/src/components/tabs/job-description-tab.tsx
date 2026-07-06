@@ -1,174 +1,45 @@
-import { SkillDetailPage } from "@houston-ai/skills";
-import { Brain, FileText, LibraryBig, Settings } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
-import {
-  useAddLearning,
-  useInstructions,
-  useLearnings,
-  useRemoveLearning,
-  useSaveInstructions,
-  useUpdateLearning,
-} from "../../hooks/queries";
-import { useCapabilities } from "../../hooks/use-capabilities";
+import { useEffect, useState } from "react";
 import type { TabProps } from "../../lib/types";
-import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
-import { useWorkspaceStore } from "../../stores/workspaces";
+import { AgentAdminLanding } from "./agent-admin/agent-admin-landing";
 import {
-  type SidebarSectionItem,
-  SidebarSectionNav,
-} from "../shared/sidebar-section-nav";
-import { AgentAccessSection } from "./agent-access-section";
-import { AgentSettingsContent } from "./agent-settings-content";
-import { isConfigReadOnly } from "./job-description-access";
-import { InstructionsContent, type SubTab } from "./job-description-parts";
-import { LearningsContent } from "./learnings-content";
-import { ManagedAgentBanner } from "./managed-agent-banner";
-import { SaveAsTemplateSection } from "./save-as-template-section";
-import { SkillsContent } from "./skills-content";
-import { useSkillSurface } from "./use-skill-surface";
+  type AgentAdminScreen,
+  targetToScreen,
+} from "./agent-admin/agent-admin-nav.ts";
+import { AgentAdminScreenView } from "./agent-admin/agent-admin-screen";
 
+/**
+ * The manager-only Agent Settings tab, rebuilt as a Settings-style admin page: a
+ * landing of grouped cards ({@link AgentAdminLanding}) whose rows drill into a
+ * full-pane screen with a back bar. Only agent-managers / owners (or the
+ * single-player sole user) ever reach this tab, so every screen is editable —
+ * the old read-only "managed agent" plumbing is gone. A turn-summary file link
+ * deep-links straight into the matching screen via the UI store target.
+ */
 export default function JobDescriptionTab({ agent }: TabProps) {
-  const { t } = useTranslation(["agents", "teams"]);
-  const { capabilities } = useCapabilities();
-  // Matrix v2: non-managers get a read-only "managed by your org" surface across
-  // every sub-tab (instructions, skills, learnings, general). Single-player and
-  // owners/agent-managers are unaffected. The gateway is the real enforcer.
-  const readOnly = isConfigReadOnly(capabilities, agent);
-  const path = agent.folderPath;
-  const surface = useSkillSurface(path);
-  const [activeTab, setActiveTab] = useState<SubTab>("instructions");
-  const targetTab = useUIStore((s) => s.jobDescriptionTarget);
-  const setTargetTab = useUIStore((s) => s.setJobDescriptionTarget);
-  const setShareAgentId = useUIStore((s) => s.setShareAgentId);
-  const currentWorkspace = useWorkspaceStore((s) => s.current);
-  const renameAgent = useAgentStore((s) => s.rename);
-  const deleteAgent = useAgentStore((s) => s.delete);
-  const updateAgentColor = useAgentStore((s) => s.updateColor);
-
-  const { data: instructions } = useInstructions(path);
-  const saveInstructions = useSaveInstructions(path);
-
-  const { data: learningsData } = useLearnings(path);
-  const addLearning = useAddLearning(path);
-  const removeLearning = useRemoveLearning(path);
-  const updateLearning = useUpdateLearning(path);
+  const [screen, setScreen] = useState<AgentAdminScreen | null>(null);
+  const target = useUIStore((s) => s.jobDescriptionTarget);
+  const setTarget = useUIStore((s) => s.setJobDescriptionTarget);
 
   useEffect(() => {
-    if (!targetTab) return;
-    setActiveTab(targetTab);
-    surface.clearSelectedSkill();
-    setTargetTab(null);
-  }, [targetTab, setTargetTab, surface.clearSelectedSkill]);
+    if (!target) return;
+    setScreen(targetToScreen(target));
+    setTarget(null);
+  }, [target, setTarget]);
 
-  const items = useMemo<SidebarSectionItem<SubTab>[]>(
-    () => [
-      { id: "instructions", label: t("subTabs.instructions"), icon: FileText },
-      { id: "skills", label: t("subTabs.skills"), icon: LibraryBig },
-      { id: "learnings", label: t("subTabs.learnings"), icon: Brain },
-      { id: "general", label: t("subTabs.general"), icon: Settings },
-    ],
-    [t],
-  );
-
-  // Skill detail view takes over the whole pane.
-  if (activeTab === "skills" && surface.selectedSkill) {
+  if (screen === null) {
     return (
-      <SkillDetailPage
-        skill={surface.selectedSkill}
-        onBack={surface.clearSelectedSkill}
-        onSave={surface.handleSkillSave}
-        onDelete={surface.handleSkillDelete}
-        readOnly={readOnly}
-        labels={{
-          ...surface.skillDetailLabels,
-          managedNote: t("teams:managedAgent.banner"),
-        }}
-      />
+      <div className="flex-1 overflow-y-auto">
+        <AgentAdminLanding agent={agent} onSelect={setScreen} />
+      </div>
     );
   }
 
   return (
-    <div className="flex-1 flex min-h-0 bg-transparent">
-      <SidebarSectionNav
-        ariaLabel={agent.name}
-        items={items}
-        active={activeTab}
-        onSelect={setActiveTab}
-      />
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
-        {readOnly && <ManagedAgentBanner />}
-
-        {activeTab === "instructions" && (
-          <InstructionsContent
-            content={instructions ?? ""}
-            readOnly={readOnly}
-            onSave={(c) =>
-              saveInstructions.mutateAsync({ name: "CLAUDE.md", content: c })
-            }
-          />
-        )}
-
-        {activeTab === "skills" && (
-          <div className="max-w-3xl mx-auto w-full px-6 pb-12 pt-6 flex-1 flex flex-col">
-            <SkillsContent
-              skills={surface.skills}
-              loading={surface.skillsLoading}
-              loadingSkillName={surface.loadingSkillName}
-              readOnly={readOnly}
-              onSkillClick={surface.selectSkill}
-              onSearch={surface.handleSearch}
-              onPopular={surface.handlePopular}
-              onInstallCommunity={surface.handleInstallCommunity}
-              onListFromRepo={surface.handleListFromRepo}
-              onInstallFromRepo={surface.handleInstallFromRepo}
-              onCreateFromScratch={surface.handleCreateFromScratch}
-              installedSkillNames={surface.installedSkillNames}
-            />
-          </div>
-        )}
-
-        {activeTab === "learnings" && (
-          <LearningsContent
-            entries={learningsData?.entries ?? []}
-            readOnly={readOnly}
-            onAdd={(text) => addLearning.mutateAsync(text)}
-            onRemove={(index) => removeLearning.mutateAsync(index)}
-            onUpdate={(id, text) => updateLearning.mutateAsync({ id, text })}
-          />
-        )}
-
-        {activeTab === "general" && (
-          <>
-            <div className="mx-auto max-w-xl px-8 pt-10 empty:hidden space-y-10">
-              <AgentAccessSection agent={agent} />
-              <SaveAsTemplateSection agent={agent} />
-            </div>
-            <AgentSettingsContent
-              name={agent.name}
-              color={agent.color}
-              canEdit={!readOnly}
-              onRename={(newName) =>
-                currentWorkspace
-                  ? renameAgent(currentWorkspace.id, agent.id, newName)
-                  : Promise.resolve()
-              }
-              onChangeColor={(color) =>
-                currentWorkspace
-                  ? updateAgentColor(currentWorkspace.id, agent.id, color)
-                  : Promise.resolve()
-              }
-              onShare={() => setShareAgentId(agent.id)}
-              onDelete={() =>
-                currentWorkspace
-                  ? deleteAgent(currentWorkspace.id, agent.id)
-                  : Promise.resolve()
-              }
-            />
-          </>
-        )}
-      </div>
-    </div>
+    <AgentAdminScreenView
+      agent={agent}
+      screen={screen}
+      onBack={() => setScreen(null)}
+    />
   );
 }

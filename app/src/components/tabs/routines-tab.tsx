@@ -212,6 +212,7 @@ export default function RoutinesTab({ agent }: TabProps) {
         hasChanges={!formMatchesRoutine(form, baseline)}
         modelPicker={
           <RoutineModelControls
+            agent={agent}
             agentPath={path}
             form={form}
             onChange={handleFormChange}
