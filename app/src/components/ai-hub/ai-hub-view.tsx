@@ -75,9 +75,13 @@ export function AiHubView() {
         </div>
       ) : (
         <>
-          {/* Fixed masthead: the hero title + tabs never scroll away. Solid
-              `bg-background` so the scrolling list below never bleeds through. */}
-          <div className="shrink-0 bg-background">
+          {/* Fixed masthead: the hero title + tabs never scroll away. No
+              background of its own — it's a non-overlapping flex sibling of the
+              scroll region below (nothing renders behind it), so it inherits the
+              `.canvas-screen` glass. An opaque `bg-background` here painted a
+              solid slab that broke the frosted-glass screen in dark mode (the
+              aurora bleeds through everywhere else). */}
+          <div className="shrink-0">
             <div className="mx-auto flex max-w-5xl flex-col gap-6 px-8 pt-10 pb-4">
               <HubHero modelCount={catalog.modelCount} />
               <AiHubTabs
