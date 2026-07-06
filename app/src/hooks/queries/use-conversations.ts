@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriChat, tauriConversations } from "../../lib/tauri";
 
@@ -18,6 +18,7 @@ export function useAllConversations(agentPaths: string[]) {
     queryKey: queryKeys.allConversations(agentPaths),
     queryFn: () => tauriConversations.listAll(agentPaths),
     enabled: agentPaths.length > 0,
+    placeholderData: keepPreviousData,
   });
 }
 
