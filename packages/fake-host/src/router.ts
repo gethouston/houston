@@ -8,8 +8,8 @@
  */
 
 import { buildProviderCatalog } from "@houston/host/src/providers/pi-catalog";
-import type { Capabilities } from "@houston/protocol";
-import { setReplyDelay } from "./chat";
+import type { Capabilities, PendingInteraction } from "@houston/protocol";
+import { setNextInteraction, setReplyDelay } from "./chat";
 import {
   clearChatStreams,
   dropChatStreams,
@@ -79,6 +79,15 @@ export async function handle(req: Request): Promise<Response> {
   if (path === "/__test__/chat-config" && method === "POST") {
     const body = await parseBody(req);
     setReplyDelay(Number(body?.replyDelayMs ?? 15));
+    return json({ ok: true });
+  }
+  // Arm the NEXT scripted turn to end on a pending interaction: its `done`
+  // frame carries it, so the settle lands the card on needs_you + composer card.
+  if (path === "/__test__/chat-interaction" && method === "POST") {
+    const body = await parseBody(req);
+    setNextInteraction(
+      (body?.interaction as PendingInteraction | null) ?? null,
+    );
     return json({ ok: true });
   }
   // Synthesize the dead-pump reaper's terminal error on every running turn.

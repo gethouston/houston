@@ -4,6 +4,7 @@ import {
   conversationScope,
   type FeedFrame,
   MultiplexFeedOutput,
+  type PendingInteraction,
   StreamRegistry,
   type StreamTuning,
   observeConversation as sdkObserveConversation,
@@ -36,11 +37,16 @@ export function disposeAllStreams(): void {
  * state).
  */
 function composedOutput(
-  setActivityStatus: (status: BoardStatus) => Promise<void>,
+  setActivityStatus: (
+    status: BoardStatus,
+    pendingInteraction: PendingInteraction | null,
+  ) => Promise<void>,
 ) {
   return new MultiplexFeedOutput([
     conversationVm,
-    createBusFeedOutput((_a, _s, status) => setActivityStatus(status)),
+    createBusFeedOutput((_a, _s, status, pendingInteraction) =>
+      setActivityStatus(status, pendingInteraction),
+    ),
   ]);
 }
 
@@ -103,7 +109,10 @@ export function streamTurn(
   agentPath: string,
   sessionKey: string,
   prompt: string,
-  setActivityStatus: (status: BoardStatus) => Promise<void>,
+  setActivityStatus: (
+    status: BoardStatus,
+    pendingInteraction: PendingInteraction | null,
+  ) => Promise<void>,
   provider?: string,
   tuning?: StreamTuning,
   suppressUserBubble?: boolean,
@@ -130,7 +139,10 @@ export function observeConversation(
   engine: HoustonEngineClient,
   agentPath: string,
   sessionKey: string,
-  setActivityStatus: (status: BoardStatus) => Promise<void>,
+  setActivityStatus: (
+    status: BoardStatus,
+    pendingInteraction: PendingInteraction | null,
+  ) => Promise<void>,
   messagesAtOpen: number,
   tuning?: StreamTuning,
 ): void {

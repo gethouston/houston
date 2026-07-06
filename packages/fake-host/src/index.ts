@@ -9,8 +9,9 @@
  *  - The host + seed constants (ports, token, seeded agent) from `./config`.
  *
  * The server's `POST /__test__/*` control endpoints (reset, emit, chat-config,
- * drop-chat-streams, kill-turn, turn-boundary) are HTTP routes documented in
- * this package's README; the harness drives them over HTTP, not via exports.
+ * chat-interaction, drop-chat-streams, kill-turn, turn-boundary) are HTTP routes
+ * documented in this package's README; the harness drives them over HTTP, not
+ * via exports.
  */
 
 export {

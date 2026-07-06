@@ -354,6 +354,12 @@ export async function execTurn(
       compaction,
       providerError,
       fileChanges,
+      // Persist what the turn is waiting on the user for under the SAME
+      // condition that puts it on the clean `done` frame below (no provider
+      // error) — so a client that misses the live `done` settles from history
+      // to `needs_you`, never dropping the question/connect card to a false
+      // `done`. A failed/stalled turn (providerError set) never carries it.
+      pendingInteraction: providerError ? undefined : interaction.pending,
       turnId,
     });
     if (fileChanges)

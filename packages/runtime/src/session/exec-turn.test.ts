@@ -9,6 +9,9 @@ import type { HarnessSession } from "../backends/types";
  * execTurn's terminal-frame contract for pending interactions: the clean `done`
  * carries whatever the model recorded via ask_user / request_connection this
  * turn, and NO error path (provider_error or a thrown turn) ever carries it.
+ * It also PERSISTS the same interaction on the assistant message under the same
+ * clean-only condition, so a client that missed the live `done` recovers it
+ * from history (see conversation-file.test.ts + settle-from-history).
  */
 
 process.env.HOUSTON_DATA_DIR = mkdtempSync(
@@ -53,8 +56,18 @@ vi.mock("../store/conversations", () => ({
 const { execTurn } = await import("./exec-turn");
 const { subscribe } = await import("./bus");
 const { recordPendingInteraction } = await import("./interaction");
+const { appendAssistantMessage } = await import("../store/conversations");
 
 afterAll(() => vi.restoreAllMocks());
+
+/** The pendingInteraction persisted on `id`'s assistant message, or undefined. */
+function persistedInteraction(id: string): unknown {
+  const call = vi
+    .mocked(appendAssistantMessage)
+    .mock.calls.find((c) => c[0] === id);
+  return (call?.[2] as { pendingInteraction?: unknown } | undefined)
+    ?.pendingInteraction;
+}
 
 type Conv = Parameters<typeof execTurn>[0];
 
@@ -119,6 +132,11 @@ test("the clean done frame carries the turn's recorded pending interaction", asy
     kind: "question",
     question: "Which date?",
   });
+  // ...and it is persisted on the assistant message for a missed-`done` reload.
+  expect(persistedInteraction(id)).toEqual({
+    kind: "question",
+    question: "Which date?",
+  });
 });
 
 test("the done frame omits pendingInteraction when the model asked nothing", async () => {
@@ -137,6 +155,7 @@ test("the done frame omits pendingInteraction when the model asked nothing", asy
   );
   expect(done).toBeDefined();
   expect(done?.pendingInteraction).toBeUndefined();
+  expect(persistedInteraction(id)).toBeUndefined();
 });
 
 test("a provider_error turn emits no done — the pending interaction never rides an error", async () => {
@@ -159,6 +178,8 @@ test("a provider_error turn emits no done — the pending interaction never ride
 
   expect(events.some((e) => e.type === "done")).toBe(false);
   expect(events.some((e) => e.type === "provider_error")).toBe(true);
+  // The recorded interaction must NOT be persisted on a failed turn either.
+  expect(persistedInteraction(id)).toBeUndefined();
 });
 
 test("a thrown turn emits an error frame and no done", async () => {
@@ -180,4 +201,6 @@ test("a thrown turn emits an error frame and no done", async () => {
     (e): e is Extract<WireEvent, { type: "error" }> => e.type === "error",
   );
   expect(err?.data.message).toContain("kaboom");
+  // A thrown turn settles via the catch path, which never carries the interaction.
+  expect(persistedInteraction(id)).toBeUndefined();
 });

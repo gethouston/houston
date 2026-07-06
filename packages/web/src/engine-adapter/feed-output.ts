@@ -1,4 +1,9 @@
-import type { BoardStatus, FeedOutput, SessionStatusValue } from "@houston/sdk";
+import type {
+  BoardStatus,
+  FeedOutput,
+  PendingInteraction,
+  SessionStatusValue,
+} from "@houston/sdk";
 import { emitEvent } from "./bus";
 import { toOldProvider } from "./synthetic";
 
@@ -42,6 +47,7 @@ export function createBusFeedOutput(
     agentPath: string,
     sessionKey: string,
     status: BoardStatus,
+    pendingInteraction: PendingInteraction | null,
   ) => Promise<void>,
 ): FeedOutput {
   return {
@@ -60,9 +66,19 @@ export function createBusFeedOutput(
         error,
       });
     },
-    async persistBoardStatus(agentPath, sessionKey, status) {
+    async persistBoardStatus(
+      agentPath,
+      sessionKey,
+      status,
+      pendingInteraction,
+    ) {
       try {
-        await setActivityStatus(agentPath, sessionKey, status);
+        await setActivityStatus(
+          agentPath,
+          sessionKey,
+          status,
+          pendingInteraction ?? null,
+        );
       } catch (e) {
         emitEvent("FeedItem", {
           agent_path: agentPath,

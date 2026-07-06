@@ -77,6 +77,11 @@ export function applyTurnFrame(
       stop();
       break;
     case "done":
+      // A clean terminal frame carries the interaction the turn ended on
+      // (ask_user / request_connection) only when the model finished by asking
+      // the user for something. Capture it so finishOk settles the card to
+      // needs_you (present) vs done (absent) and it rides the board persist.
+      if (ev.pendingInteraction) s.pendingInteraction = ev.pendingInteraction;
       finishOk(s);
       stop();
       break;

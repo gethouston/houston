@@ -26,6 +26,7 @@ import type {
   InstallFromRepoRequest,
   NewActivity,
   NewRoutine,
+  PendingInteraction,
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
   PortableExportRequest,
@@ -574,9 +575,15 @@ export class HoustonClient {
     agentPath: string,
     sessionKey: string,
     status: BoardStatus,
+    pendingInteraction: PendingInteraction | null,
   ): Promise<void> {
     if (!this.cp) {
-      activities.setStatusBySessionKey(agentPath, sessionKey, status);
+      activities.setStatusBySessionKey(
+        agentPath,
+        sessionKey,
+        status,
+        pendingInteraction,
+      );
       // Write-through echo: this is the settle path (a turn finishing PATCHes
       // its board status). Without it the card sticks on "running" until a
       // server event that, in hosted mode, historically never comes.
@@ -588,7 +595,12 @@ export class HoustonClient {
       (a) => a.session_key === sessionKey || `activity-${a.id}` === sessionKey,
     );
     if (!match) return; // transient session with no board card — nothing to update
-    await controlPlane.updateActivity(this.cp, agentPath, match.id, { status });
+    // `pending_interaction: null` clears it explicitly (the host route +
+    // domain applyActivityUpdate honor null); a value records the interaction.
+    await controlPlane.updateActivity(this.cp, agentPath, match.id, {
+      status,
+      pending_interaction: pendingInteraction,
+    });
     emitLocalEcho("ActivityChanged", { agentPath });
   }
 
@@ -1465,7 +1477,13 @@ export class HoustonClient {
       path,
       req.sessionKey,
       req.prompt,
-      (status) => this.setActivityStatus(path, req.sessionKey, status),
+      (status, pendingInteraction) =>
+        this.setActivityStatus(
+          path,
+          req.sessionKey,
+          status,
+          pendingInteraction,
+        ),
       req.provider,
       undefined,
       req.suppressUserBubble,
@@ -1497,7 +1515,8 @@ export class HoustonClient {
     // status alone — writing it here too would race that terminal write.
     const { cancelled } = await engine.cancel(sessionKey);
     if (cancelled !== true) {
-      await this.setActivityStatus(agentPath, sessionKey, "needs_you");
+      // Orphan rescue: a user Stop on a dead turn — never a pending interaction.
+      await this.setActivityStatus(agentPath, sessionKey, "needs_you", null);
     }
     return { cancelled: cancelled === true };
   }
@@ -1542,7 +1561,13 @@ export class HoustonClient {
           engine,
           agentPath,
           sessionKey,
-          (status) => this.setActivityStatus(agentPath, sessionKey, status),
+          (status, pendingInteraction) =>
+            this.setActivityStatus(
+              agentPath,
+              sessionKey,
+              status,
+              pendingInteraction,
+            ),
           history.messages.length,
         );
       }
