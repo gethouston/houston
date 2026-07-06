@@ -61,57 +61,49 @@ export function SignInScreen() {
   };
 
   return (
-    <div className="relative h-screen bg-background text-foreground">
-      <div className="absolute left-6 top-6">
-        <HoustonLogo size={28} />
-      </div>
-
-      <div className="flex h-full items-center justify-center px-6">
-        <div className="w-full max-w-sm overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm">
-          <div className="flex flex-col gap-5 px-7 pt-7 pb-6">
-            <div className="flex flex-col gap-1">
-              <h1 className="text-lg font-semibold">Log in to Houston</h1>
-              <p className="text-sm text-muted-foreground">
-                Save your agents and keep everything in sync.
-              </p>
-            </div>
-
-            <EmailSignIn />
+    <div className="flex h-screen items-center justify-center bg-muted px-6 text-foreground">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm">
+        <div className="flex flex-col gap-6 px-9 pt-9 pb-7">
+          <div className="flex flex-col gap-4">
+            <HoustonLogo size={32} />
+            <h1 className="text-2xl font-semibold">Welcome to Houston</h1>
           </div>
 
-          <Separator />
+          <EmailSignIn />
+        </div>
 
-          <div className="flex flex-col gap-2.5 px-7 pt-6 pb-7">
-            <p className="text-xs text-muted-foreground">Or continue with</p>
-            <Button
-              variant="secondary"
-              onClick={handleSignIn("google")}
-              disabled={pending !== null}
-              className="h-10 w-full justify-center rounded-full"
-            >
-              {pending === "google" ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <GoogleIcon />
-              )}
-              Continue with Google
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleSignIn("azure")}
-              disabled={pending !== null}
-              className="h-10 w-full justify-center rounded-full"
-            >
-              {pending === "azure" ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <MicrosoftIcon />
-              )}
-              Continue with Microsoft
-            </Button>
+        <Separator />
 
-            {error && <p className="text-xs text-destructive">{error}</p>}
-          </div>
+        <div className="flex flex-col gap-2.5 px-9 pt-7 pb-9">
+          <p className="text-xs text-muted-foreground">Or continue with</p>
+          <Button
+            variant="secondary"
+            onClick={handleSignIn("google")}
+            disabled={pending !== null}
+            className="h-10 w-full justify-center rounded-full"
+          >
+            {pending === "google" ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <GoogleIcon />
+            )}
+            Continue with Google
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleSignIn("azure")}
+            disabled={pending !== null}
+            className="h-10 w-full justify-center rounded-full"
+          >
+            {pending === "azure" ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <MicrosoftIcon />
+            )}
+            Continue with Microsoft
+          </Button>
+
+          {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
       </div>
     </div>
