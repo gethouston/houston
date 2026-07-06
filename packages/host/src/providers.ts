@@ -150,6 +150,9 @@ export const PROVIDERS: readonly HostProvider[] = [
 
 const byId = new Map(PROVIDERS.map((p) => [p.id as string, p]));
 
+/** The OpenAI-compatible (BYO endpoint) provider id. */
+export const OPENAI_COMPATIBLE = "openai-compatible";
+
 /** A provider the cloud per-turn runtime serves. */
 export const CLOUD_PROVIDERS: readonly HostProvider[] = PROVIDERS.filter(
   (p) => p.cloud,
@@ -163,6 +166,24 @@ export function isApiKeyProvider(id: string): boolean {
 /** True when `id` is a provider the cloud per-turn runtime offers. */
 export function isCloudProvider(id: string): boolean {
   return byId.get(id)?.cloud === true;
+}
+
+/**
+ * Whether the cloud per-turn runtime can SERVE a turn on `provider`. The catalog
+ * `cloud` flag is OVERLOADED: it gates both this dispatch eligibility AND the
+ * curated model-picker list (`CLOUD_PROVIDERS`). openai-compatible is turn-
+ * servable but has NO curated models, so it stays `cloud: false` (out of the
+ * picker) and has its eligibility decided HERE instead — servable iff the agent
+ * has a custom endpoint configured. Every other provider follows the catalog
+ * flag. This is the decoupling of the flag's two meanings; the boolean is passed
+ * in (not read) so this stays pure and the caller owns the vfs lookup.
+ */
+export function isTurnServable(
+  provider: string,
+  hasCustomEndpoint: boolean,
+): boolean {
+  if (provider === OPENAI_COMPATIBLE) return hasCustomEndpoint;
+  return isCloudProvider(provider);
 }
 
 /** Lookup a provider by id. */

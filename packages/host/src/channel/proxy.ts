@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { CustomEndpoint } from "@houston/protocol";
+import type { ClaudeOAuthCredential, CustomEndpoint } from "@houston/protocol";
 import type {
   CaptureResult,
   ChannelCtx,
@@ -318,6 +318,59 @@ export class ProxyChannel implements RuntimeChannel {
     if (!res.ok) {
       throw new Error(
         `key stored, but the agent runtime did not accept it (${res.status}) — try connecting again`,
+      );
+    }
+  }
+
+  /**
+   * Materialize the desktop-pushed Claude subscription OAuth credential onto the
+   * standing pod so its Claude Agent SDK authenticates and self-refreshes.
+   *
+   * Dual write, mirroring saveApiKeyCredential: store it centrally (durability +
+   * a connected record) AND push it into the standing runtime, which writes the
+   * SDK's own `<CLAUDE_CONFIG_DIR>/.credentials.json` and warms the connected
+   * signal so status flips at once.
+   *
+   * DELIBERATE Gate #2 departure, scoped to this SINGLE-TENANT pod: the refresh
+   * token is kept (in the central store AND on the pod). The pod self-refreshes
+   * from it, so anthropic is NEVER served through pi's per-turn access-only
+   * auth.json path (serve.ts excludes it) and is NEVER centrally refreshed —
+   * pulling a stale central access token per turn would fight the pod's file.
+   * The multi-tenant per-turn Cloud Run channel refuses this credential entirely.
+   * The token is never logged.
+   */
+  async saveClaudeOAuthCredential(
+    ctx: ChannelCtx,
+    cred: ClaudeOAuthCredential,
+  ): Promise<void> {
+    await this.opts.credentials.put({
+      workspaceId: ctx.agent.workspaceId,
+      // pi's provider id for Houston's native Anthropic provider.
+      provider: "anthropic",
+      kind: "oauth",
+      accessToken: cred.accessToken,
+      // Central-store durability marker only — the pod authenticates from the
+      // materialized file, not this. A credential without a refresh token /
+      // expiry (both optional in the CLI shape) still stores cleanly.
+      refreshToken: cred.refreshToken ?? "",
+      expiresAt: cred.expiresAt ?? 0,
+    });
+    const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
+    const res = await fetch(
+      `${endpoint.baseUrl}/auth/anthropic/oauth-credential`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: `Bearer ${endpoint.token}`,
+        },
+        // The CLI envelope, forwarded verbatim so the pod writes the exact file.
+        body: JSON.stringify({ claudeAiOauth: cred }),
+      },
+    );
+    if (!res.ok) {
+      throw new Error(
+        `credential stored, but the agent runtime did not accept it (${res.status}) — try connecting again`,
       );
     }
   }

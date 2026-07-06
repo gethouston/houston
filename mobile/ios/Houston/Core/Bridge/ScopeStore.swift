@@ -14,6 +14,16 @@ protocol ScopeSubscribing: AnyObject {
   func closeScopeSubscription(sub: String)
 }
 
+/// The type-erased seam ``SdkClient/purgeUserData()`` uses to reset every cached
+/// ``ScopeStore`` (which are held as `AnyObject`, keyed by scope) on sign-out,
+/// without knowing each store's concrete snapshot type.
+@MainActor
+protocol ScopePurgeable: AnyObject {
+  /// Drop the cached snapshot and detach from the current subscription so a
+  /// different user's session never reads the previous user's data.
+  func purge()
+}
+
 /// A reactive, decoded view of one SDK scope's latest snapshot.
 ///
 /// Observation-driven lifecycle: the bridge subscription opens on the FIRST
@@ -79,6 +89,20 @@ final class ScopeStore<T: Decodable & Sendable> {
       log.error(
         "scope \(self.scope, privacy: .public) decode failed: \(self.lastError ?? "", privacy: .public)")
     }
+  }
+}
+
+extension ScopeStore: ScopePurgeable {
+  /// Reset to the pre-first-snapshot state: publish an unloaded snapshot (so a
+  /// bound view drops the previous user's data instead of showing it until a
+  /// refetch) and forget the current subscription. The bridge `unsubscribe` is
+  /// sent once, centrally, by ``SdkClient/purgeUserData()``; this only clears the
+  /// local `sub`/refcount so a later ``retain()`` reopens a fresh subscription.
+  func purge() {
+    snapshot = nil
+    lastError = nil
+    sub = nil
+    refCount = 0
   }
 }
 

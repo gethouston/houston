@@ -53,6 +53,8 @@ const LEAD_NOISE = new Set(
 
 /**
  * The cross-provider identity key for a model, derived from its display name.
+ * RUNTIME twin: `app/src/lib/ai-hub/catalog-key.ts` `normalizeKey` (live
+ * OpenRouter models derive their key there). Keep the two in sync.
  * Drops parenthetical/bracketed suffixes ("(latest)", "(EU)", "(Fast)"),
  * collapses punctuation to single spaces (dots kept as version separators),
  * strips leading region/vendor echoes, and drops a trailing "latest" word.

@@ -215,6 +215,15 @@ second rounded card with a gutter gap.
 "glitter" over solid surfaces): gutter `#eef1f7`, screen `#fff`, cards `#f4f6fc`,
 cool blue/indigo border. Clean and futuristic by restraint, not decoration.
 
+**Modals are glass, not slabs.** All modal primitives — `DialogContent`
+(`ui/core/components/dialog.tsx`), `AlertDialogContent`, `SheetContent`, and the
+AI-Hub `ModalShell` — render on the translucent **`bg-card`** surface (frosted
+blur + top sheen from futuristic.css), NOT opaque `bg-background`, so the aurora
+canvas bleeds through in dark mode like the kanban columns (`bg-secondary`). The
+scrims are deliberately light for the same reason: Dialog overlay `bg-black/25`,
+Alert/Sheet `bg-black/35` (down from /40–/50). Change the surface centrally in
+those four primitives — no modal should hardcode its own background.
+
 **Primary button** — flat and sober (`[data-variant="default"]:is(button, a)`),
 not a glossy slab. Kanban resting cards use one token, `--ht-card-rest` (`#2c2c2b`
 dark / cool light), unified across resting + running + needs-you.
@@ -230,3 +239,21 @@ Capabilities: `core:window:allow-set-theme` + `…allow-start-dragging`.
 blur, `--ht-card-rest`, the canvas tokens). Dark mode is the loved baseline —
 when adjusting, scope changes to light (`:root`) and pin dark
 (`[data-theme="dark"]`) so it stays put.
+
+**Settings (`app/src/components/settings/`)** — no sidebar. The landing is the
+**overview** (`settings-index.tsx`); its title uses the integrations page font
+(`text-[28px] font-normal`). Two row primitives (`settings-row.tsx`), both with a
+**bare icon** (no tile/background): `SettingsControlRow` resolves a setting in
+place (bare icon · title · right-side control) and `SettingsRow` navigates (adds
+a value + chevron). Simple settings are inline control rows rendered straight
+into the overview — the section files ARE the controls: `WorkspaceSection`
+(name input), `AppearanceSection` (theme pills), `LanguageSection` (locale
+select), `AccountSection` (avatar + sign out), `DangerSection` (red delete +
+confirm). Only the heavier sections navigate: workspace/user context editors,
+members, shortcuts, bug report. Selecting a nav row sets `SettingsView`'s
+`active` (the section-id union lives in `settings-index.tsx`); the two context
+editors render full-width, the rest in a centered `max-w-xl` column, all under a
+`← Settings` back bar. `active === null` is the overview. Account/members rows
+appear only when `accountAvailable` / `showMembers`. Version string = overview
+footer. Nav-row copy + group titles + `Set`/count values live under
+`settings.index.*` / `settings.nav.*` in the three locale files.

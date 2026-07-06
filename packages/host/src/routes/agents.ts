@@ -1,7 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { seedSchemas } from "@houston/domain";
-import type { CustomEndpoint, HoustonEvent } from "@houston/protocol";
+import {
+  type CustomEndpoint,
+  type HoustonEvent,
+  parseClaudeOAuthEnvelope,
+} from "@houston/protocol";
 import { ACTING_AS_HEADER, actingSubFromHeader } from "../auth/acting";
+import { checkPublicHttpsEndpoint } from "../custom-endpoint-validation";
 import type { Agent, UserId, Workspace } from "../domain/types";
 import { isApiKeyProvider } from "../providers";
 import { handleAttachments } from "../turn/attachments";
@@ -269,11 +274,62 @@ export async function handleAgents(
     return true;
   }
 
-  // Connect an OpenAI-compatible (local) server: a base URL + model the user runs
-  // on their own machine (Ollama / vLLM / LM Studio). LOCAL profile ONLY — a
-  // cloud runtime (or a cloud pod behind the proxy channel) can't reach the
-  // user's localhost, so refuse on the deployment capability regardless of
-  // hosting model. Must precede the generic dispatch.
+  // Connect the Claude subscription in HOSTED mode: `claude auth login` mints the
+  // OAuth credential locally on the desktop, which extracts it and pushes it here
+  // so a hosted pod's Claude Agent SDK can authenticate + self-refresh. Same owner
+  // authz as capture. The envelope is validated (accessToken required) — a
+  // malformed push is a clear 4xx (never a false success), so the desktop can fall
+  // back to the paste flow. Must precede the generic dispatch.
+  const claudeOAuth = path.match(
+    /^\/agents\/([^/]+)\/credential\/claude-oauth$/,
+  );
+  if (claudeOAuth && method === "POST") {
+    const agentId = claudeOAuth[1]
+      ? decodeURIComponent(claudeOAuth[1])
+      : undefined;
+    if (!agentId) {
+      json(res, 404, { error: "not found" });
+      return true;
+    }
+    const authz = await authorizeAgent(deps, userId, agentId);
+    if (!authz.ok) {
+      json(res, authz.status, { error: authz.reason });
+      return true;
+    }
+    // A body that isn't valid JSON parses to {} → the validator rejects it as
+    // "missing 'claudeAiOauth'" (a clean 400), never a swallowed accept.
+    const parsed = parseClaudeOAuthEnvelope(
+      await readJson(req).catch(() => ({})),
+    );
+    if (!parsed.ok) {
+      json(res, 400, { error: parsed.error });
+      return true;
+    }
+    const channel = channelFor(deps, authz.workspace);
+    if (!channel) {
+      noChannel(res, authz.workspace.runtime);
+      return true;
+    }
+    try {
+      await channel.saveClaudeOAuthCredential(
+        { workspace: authz.workspace, agent: authz.agent },
+        parsed.value,
+      );
+      json(res, 200, { ok: true });
+    } catch (err) {
+      json(res, 502, {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+    return true;
+  }
+
+  // Connect an OpenAI-compatible server: a base URL + model. Desktop/self-host
+  // point it at the user's own machine (Ollama / vLLM / LM Studio); a cloud pod
+  // points it at a public HTTPS endpoint the user hosts (tunnel or directly
+  // hosted). Gated on the deployment capability, then — on the managed cloud
+  // profile only — validated against the pod's public-:443-only egress. Must
+  // precede the generic dispatch.
   const customEndpoint = path.match(
     /^\/agents\/([^/]+)\/provider\/openai-compatible$/,
   );
@@ -288,7 +344,7 @@ export async function handleAgents(
     if (!deps.capabilities?.openaiCompatible) {
       json(res, 400, {
         error:
-          "Local models aren't available on this deployment — connect one from the desktop app.",
+          "This deployment doesn't support custom OpenAI-compatible endpoints.",
       });
       return true;
     }
@@ -321,6 +377,18 @@ export async function handleAgents(
     if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
       json(res, 400, { error: "baseUrl must start with http:// or https://" });
       return true;
+    }
+    // Managed cloud pods (gatewayFronted) egress ONLY to public TCP 443 — the
+    // NetworkPolicy drops private/loopback/link-local and the metadata IP. Reject
+    // an unreachable endpoint at save time with an actionable reason rather than
+    // failing every turn opaquely. Desktop/self-host (not gateway-fronted) keep
+    // accepting localhost, so they skip this check entirely.
+    if (deps.gatewayFronted) {
+      const check = checkPublicHttpsEndpoint(parsedUrl);
+      if (!check.ok) {
+        json(res, 400, { error: check.reason });
+        return true;
+      }
     }
     const channel = channelFor(deps, authz.workspace);
     if (!channel) {

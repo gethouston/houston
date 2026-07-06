@@ -15,6 +15,7 @@ import type {
   RoutineRun,
   SkillDetail,
   SkillSummary,
+  TunnelCredentials,
   Workspace,
 } from "../../../../ui/engine-client/src/types";
 import { HoustonEngineError } from "./client";
@@ -49,6 +50,10 @@ interface CpAgent {
   dir?: string;
   assigned?: boolean;
   assignedUserIds?: string[];
+  /** Teams v2: the caller's effective access to this agent. */
+  access?: AgentAccess;
+  /** Teams v2: full assignee list with per-person access (managers/owner only). */
+  assignments?: AgentAssignment[];
 }
 
 // Color is a client-side cosmetic the control plane intentionally does not store
@@ -141,6 +146,8 @@ function toUiAgent(a: CpAgent, colors = colorOverlay()): Agent {
     lastOpenedAt: iso,
     assigned: a.assigned,
     assignedUserIds: a.assignedUserIds,
+    access: a.access,
+    assignments: a.assignments,
   };
 }
 
@@ -243,17 +250,23 @@ export async function createAgent(
   cfg: ControlPlaneConfig,
   name: string,
   color?: string,
-  seed?: { claudeMd?: string; seeds?: Record<string, string> },
+  seed?: {
+    claudeMd?: string;
+    seeds?: Record<string, string>;
+    templateId?: string;
+  },
 ): Promise<Agent> {
   const res = await cpFetch(cfg, "/agents", {
     method: "POST",
     // The host seeds CLAUDE.md + the seed-file map on create (builtin
-    // templates, AI-assist instructions). JSON.stringify drops undefined
-    // fields, so a plain create still posts just `{ name }`.
+    // templates, AI-assist instructions). `templateId`, when set, tells a Teams
+    // gateway to stamp the agent from an org template. JSON.stringify drops
+    // undefined fields, so a plain create still posts just `{ name }`.
     body: JSON.stringify({
       name,
       claudeMd: seed?.claudeMd,
       seeds: seed?.seeds,
+      templateId: seed?.templateId,
     }),
   });
   const agent = (await res.json()) as CpAgent;
@@ -325,6 +338,27 @@ export async function captureCredential(
 }
 
 /**
+ * Push a desktop-extracted Anthropic OAuth credential to the agent's pod. The
+ * body is the `claude` CLI's `.credentials.json` shape (`{claudeAiOauth:{...}}`),
+ * already a JSON string; the host stores it centrally and materializes it on the
+ * pod PVC. Used ONLY for a REMOTE engine — a hosted pod can't read this machine's
+ * Keychain, so the co-located desktop (which shares the credential dir with its
+ * local runtime) never calls this. Resolves on 200; throws the host's reason
+ * otherwise so the caller can degrade to the paste flow.
+ */
+export async function pushClaudeOAuthCredential(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  credentialJson: string,
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `/agents/${encodeURIComponent(agentId)}/credential/claude-oauth`,
+    { method: "POST", body: credentialJson },
+  );
+}
+
+/**
  * Connect-once logout: forget the workspace's central credential for a provider,
  * the mirror of captureCredential. Without it, logout cleared only the agent
  * runtime's local auth.json and the next turn re-served the credential from the
@@ -385,6 +419,21 @@ export async function setCustomEndpoint(
       body: JSON.stringify(endpoint),
     },
   );
+}
+
+/**
+ * Mint a short-lived relay credential for the guided "connect a local model"
+ * flow (`POST /v1/tunnel/credentials`, Supabase-authed via cpFetch, mirroring
+ * `/v1/integrations`). The desktop runs its frpc sidecar against the returned
+ * `relayHost:relayPort` so the user's local model server surfaces at `publicUrl`
+ * for their cloud agent. Hosted-only — a non-gateway deployment 404s and cpFetch
+ * throws the host's real error message (never swallowed).
+ */
+export async function getTunnelCredentials(
+  cfg: ControlPlaneConfig,
+): Promise<TunnelCredentials> {
+  const res = await cpFetch(cfg, "/v1/tunnel/credentials", { method: "POST" });
+  return (await res.json()) as TunnelCredentials;
 }
 
 /**
@@ -926,20 +975,41 @@ export function toInvalidationEvent(frame: {
 // keep one import site, and the v1 client agrees).
 
 export type {
+  AddOrgMemberResult,
+  AgentAccess,
+  AgentAssignment,
+  AgentSettings,
+  AuditEntry,
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
   OrgInfo,
+  OrgInvite,
   OrgMember,
   OrgRole,
+  OrgSettings,
+  TemplateRecord,
+  TemplateSpec,
+  TemplateSummary,
+  UsageRow,
 } from "../../../../ui/engine-client/src/types";
 
 import type {
+  AddOrgMemberResult,
+  AgentAccess,
+  AgentAssignment,
+  AgentSettings,
+  AuditEntry,
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
   OrgInfo,
   OrgRole,
+  OrgSettings,
+  TemplateRecord,
+  TemplateSpec,
+  TemplateSummary,
+  UsageRow,
 } from "../../../../ui/engine-client/src/types";
 
 const integrationPath = (provider: string) =>
@@ -1002,10 +1072,11 @@ export async function connectIntegration(
   cfg: ControlPlaneConfig,
   provider: string,
   toolkit: string,
+  agent?: string,
 ): Promise<{ redirectUrl: string; connectionId: string }> {
   const res = await cpFetch(cfg, `${integrationPath(provider)}/connect`, {
     method: "POST",
-    body: JSON.stringify({ toolkit }),
+    body: JSON.stringify({ toolkit, ...(agent ? { agent } : {}) }),
   });
   return (await res.json()) as { redirectUrl: string; connectionId: string };
 }
@@ -1041,10 +1112,20 @@ export async function addOrgMember(
   cfg: ControlPlaneConfig,
   email: string,
   role: OrgRole,
-): Promise<void> {
-  await cpFetch(cfg, "/v1/org/members", {
+): Promise<AddOrgMemberResult> {
+  const res = await cpFetch(cfg, "/v1/org/members", {
     method: "POST",
     body: JSON.stringify({ email, role }),
+  });
+  return (await res.json()) as AddOrgMemberResult;
+}
+
+export async function deleteOrgInvite(
+  cfg: ControlPlaneConfig,
+  inviteId: string,
+): Promise<void> {
+  await cpFetch(cfg, `/v1/org/invites/${encodeURIComponent(inviteId)}`, {
+    method: "DELETE",
   });
 }
 
@@ -1071,13 +1152,80 @@ export async function setOrgMemberRole(
 export async function setAgentAssignments(
   cfg: ControlPlaneConfig,
   agentSlugOrId: string,
-  userIds: string[],
+  assignments: AgentAssignment[] | string[],
 ): Promise<void> {
+  const isV2 = assignments.length > 0 && typeof assignments[0] !== "string";
+  const body = isV2
+    ? { assignments: assignments as AgentAssignment[] }
+    : { userIds: assignments as string[] };
   await cpFetch(
     cfg,
     `/v1/agents/${encodeURIComponent(agentSlugOrId)}/assignments`,
-    { method: "PUT", body: JSON.stringify({ userIds }) },
+    { method: "PUT", body: JSON.stringify(body) },
   );
+}
+
+export async function getAgentSettings(
+  cfg: ControlPlaneConfig,
+  agentSlugOrId: string,
+): Promise<AgentSettings> {
+  const res = await cpFetch(
+    cfg,
+    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/settings`,
+  );
+  return (await res.json()) as AgentSettings;
+}
+
+export async function setAgentSettings(
+  cfg: ControlPlaneConfig,
+  agentSlugOrId: string,
+  settings: { allowedToolkits: string[] | null },
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/settings`,
+    { method: "PUT", body: JSON.stringify(settings) },
+  );
+}
+
+export async function getOrgSettings(
+  cfg: ControlPlaneConfig,
+): Promise<OrgSettings> {
+  const res = await cpFetch(cfg, "/v1/org/settings");
+  return (await res.json()) as OrgSettings;
+}
+
+export async function setOrgSettings(
+  cfg: ControlPlaneConfig,
+  settings: { allowedToolkits: string[] | null },
+): Promise<void> {
+  await cpFetch(cfg, "/v1/org/settings", {
+    method: "PUT",
+    body: JSON.stringify(settings),
+  });
+}
+
+export async function orgAudit(
+  cfg: ControlPlaneConfig,
+  opts: { before?: number; limit?: number } = {},
+): Promise<AuditEntry[]> {
+  const q = new URLSearchParams();
+  if (opts.before !== undefined) q.set("before", opts.before.toString());
+  if (opts.limit !== undefined) q.set("limit", opts.limit.toString());
+  const suffix = q.toString();
+  const res = await cpFetch(cfg, `/v1/org/audit${suffix ? `?${suffix}` : ""}`);
+  return ((await res.json()) as { entries: AuditEntry[] }).entries;
+}
+
+export async function orgUsage(
+  cfg: ControlPlaneConfig,
+  days: number,
+): Promise<UsageRow[]> {
+  const res = await cpFetch(
+    cfg,
+    `/v1/org/usage?days=${encodeURIComponent(days.toString())}`,
+  );
+  return ((await res.json()) as { rows: UsageRow[] }).rows;
 }
 
 /**
@@ -1112,4 +1260,60 @@ export async function setAgentIntegrationGrants(
     `/v1/agents/${encodeURIComponent(agentSlugOrId)}/integration-grants`,
     { method: "PUT", body: JSON.stringify({ toolkits }) },
   );
+}
+
+/**
+ * List the org's agent templates as list-card summaries (Teams v2). Degrades to
+ * `[]` when the gateway does not serve templates (404) — a non-Teams host — so
+ * the surface, already gated on `capabilities.multiplayer`, never hard-fails.
+ */
+export async function listOrgTemplates(
+  cfg: ControlPlaneConfig,
+): Promise<TemplateSummary[]> {
+  try {
+    const res = await cpFetch(cfg, "/v1/org/templates");
+    return ((await res.json()) as { templates: TemplateSummary[] }).templates;
+  } catch (err) {
+    if (err instanceof HoustonEngineError && err.status === 404) return [];
+    throw err;
+  }
+}
+
+/** Fetch one template with its full `spec`, or `null` if gone/unsupported (404). */
+export async function getOrgTemplate(
+  cfg: ControlPlaneConfig,
+  id: string,
+): Promise<TemplateRecord | null> {
+  try {
+    const res = await cpFetch(
+      cfg,
+      `/v1/org/templates/${encodeURIComponent(id)}`,
+    );
+    return (await res.json()) as TemplateRecord;
+  } catch (err) {
+    if (err instanceof HoustonEngineError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+/** Create an org template from a client-assembled spec (manager only). */
+export async function createOrgTemplate(
+  cfg: ControlPlaneConfig,
+  input: { name: string; description: string; spec: TemplateSpec },
+): Promise<TemplateSummary> {
+  const res = await cpFetch(cfg, "/v1/org/templates", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return (await res.json()) as TemplateSummary;
+}
+
+/** Delete an org template (owner, or the admin who created it). */
+export async function deleteOrgTemplate(
+  cfg: ControlPlaneConfig,
+  id: string,
+): Promise<void> {
+  await cpFetch(cfg, `/v1/org/templates/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
 }

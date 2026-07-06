@@ -22,5 +22,7 @@
 export * from "./state-activities";
 export * from "./state-agents";
 export * from "./state-history";
+export * from "./state-integrations";
+export * from "./state-providers";
 export * from "./state-store";
 export * from "./state-workspace";

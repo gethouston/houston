@@ -13,8 +13,21 @@
  */
 
 import type { Activity } from "@houston/protocol";
-import type { ChatMessage, TokenUsage } from "@houston/runtime-client";
+import type {
+  ChatMessage,
+  IntegrationConnection,
+  TokenUsage,
+} from "@houston/runtime-client";
 import { SEED_AGENT_ID, SEED_AGENT_NAME, SEED_WORKSPACE_ID } from "./config";
+import { resetProviders } from "./state-providers";
+
+/**
+ * Gateway integrations readiness, toggled by `/__test__/integrations-mode`:
+ *  - `ready` — a Composio key is configured (the default),
+ *  - `unavailable` — no key → every integrations route 503s,
+ *  - `signin` — the provider reports `ready:false, reason:"signin"`.
+ */
+export type IntegrationsMode = "ready" | "unavailable" | "signin";
 
 /** The host's agent wire model, mapped to the UI `Agent` by control-plane.ts. */
 export interface CpAgent {
@@ -60,6 +73,21 @@ export interface HostState {
   histories: Map<string, ChatMessage[]>;
   agentSeq: number;
   activitySeq: number;
+  // ── user-scoped gateway state (integrations, grants, preferences) ──
+  /** Composio readiness, toggled by the `/__test__/integrations-mode` control. */
+  integrationsMode: IntegrationsMode;
+  /** connectionId -> the acting user's connected account. */
+  connections: Map<string, IntegrationConnection>;
+  /**
+   * agentId -> granted toolkit slugs. PRESENCE is the record: a missing key
+   * means "no grants record" → GET 404 → the client degrades to `null`; a
+   * present key (even `[]`) means "record exists" → GET `{toolkits}`.
+   */
+  grants: Map<string, string[]>;
+  /** Per-user preference key -> value (locale, timezone, …). */
+  preferences: Map<string, string>;
+  /** Monotonic counter for minted connection ids. */
+  connSeq: number;
 }
 
 export function fileKey(agentId: string, relPath: string): string {
@@ -87,6 +115,13 @@ function freshState(): HostState {
     created: EPOCH,
     modified: EPOCH,
   });
+  // One seeded active connection so the connections list has a row on first read.
+  const connections = new Map<string, IntegrationConnection>([
+    [
+      "conn-gmail-0",
+      { toolkit: "gmail", connectionId: "conn-gmail-0", status: "active" },
+    ],
+  ]);
   return {
     agents: [
       {
@@ -101,6 +136,13 @@ function freshState(): HostState {
     histories: new Map(),
     agentSeq: 1,
     activitySeq: 2,
+    integrationsMode: "ready",
+    connections,
+    // No seeded grants record: the seed agent starts "grants unsupported" (404 →
+    // null), so a suite can assert the null→[] distinction by writing one.
+    grants: new Map(),
+    preferences: new Map(),
+    connSeq: 1,
   };
 }
 
@@ -109,6 +151,7 @@ export let state: HostState = freshState();
 /** Restore the seed. Called by the harness before each test. */
 export function reset(): void {
   state = freshState();
+  resetProviders();
   domainListeners.clear();
 }
 

@@ -23,6 +23,7 @@
   --color-background: var(--ht-background);
   --color-foreground: var(--ht-foreground);
   --color-card: var(--ht-card);
+  --color-card-hover: var(--ht-card-hover);
   --color-card-foreground: var(--ht-card-fg);
   --color-popover: var(--ht-popover);
   --color-popover-foreground: var(--ht-popover-fg);

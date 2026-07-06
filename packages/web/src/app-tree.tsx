@@ -16,6 +16,7 @@
 import App from "@houston/app/App";
 import { DisclaimerGate } from "@houston/app/components/shell/disclaimer-gate";
 import { LanguageGate } from "@houston/app/components/shell/language-gate";
+import { WorkspaceLoading } from "@houston/app/components/shell/workspace-loading";
 import { analytics, classifyAnalyticsError } from "@houston/app/lib/analytics";
 import { isEngineReady, whenEngineReady } from "@houston/app/lib/engine";
 import { showErrorToast } from "@houston/app/lib/error-toast";
@@ -120,22 +121,9 @@ function EngineGate({ children }: { children: ReactNode }) {
   }, [ready]);
 
   if (!ready) {
-    // Rendered OUTSIDE <I18nextProvider>; use the i18n singleton directly.
-    return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100vh",
-          fontFamily: "system-ui, sans-serif",
-          color: "#888",
-          fontSize: 14,
-        }}
-      >
-        {i18n.t("shell:engineGate.starting")}
-      </div>
-    );
+    // Rendered OUTSIDE <I18nextProvider> — WorkspaceLoading reads the i18n
+    // singleton directly, so that's fine.
+    return <WorkspaceLoading />;
   }
   return <>{children}</>;
 }

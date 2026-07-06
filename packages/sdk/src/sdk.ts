@@ -13,7 +13,10 @@ import type { ModuleContext } from "./module-context";
 import { createActivitiesModule } from "./modules/activities";
 import { createAgentsModule } from "./modules/agents";
 import { createConversationsModule } from "./modules/conversations";
+import { createIntegrationsModule } from "./modules/integrations";
 import { createMissionsSearchModule } from "./modules/missions-search";
+import { createPreferencesModule } from "./modules/preferences";
+import { createProvidersModule } from "./modules/providers";
 import { createSessionModule } from "./modules/session";
 import { createTurnsModule } from "./modules/turns";
 import type { SdkConfig } from "./ports";
@@ -76,6 +79,12 @@ export class HoustonSdk {
   readonly activities: ReturnType<typeof createActivitiesModule>;
   /** Mission-search facade (ranked full-text search across missions). */
   readonly missions: ReturnType<typeof createMissionsSearchModule>;
+  /** Per-agent AI-provider facade (connect, status, active model). */
+  readonly providers: ReturnType<typeof createProvidersModule>;
+  /** Integrations facade (Composio readiness, connections, per-agent grants). */
+  readonly integrations: ReturnType<typeof createIntegrationsModule>;
+  /** Preferences facade (key/value preferences + workspace locale). */
+  readonly preferences: ReturnType<typeof createPreferencesModule>;
 
   constructor(config: SdkConfig) {
     this.config = config;
@@ -107,6 +116,9 @@ export class HoustonSdk {
     this.turns = createTurnsModule(ctx);
     this.activities = createActivitiesModule(ctx);
     this.missions = createMissionsSearchModule(ctx);
+    this.providers = createProvidersModule(ctx);
+    this.integrations = createIntegrationsModule(ctx);
+    this.preferences = createPreferencesModule(ctx);
     // =====================================================================
   }
 

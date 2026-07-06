@@ -145,6 +145,12 @@ non-technical chat summaries. Markdown deliverables the agent writes
 `USER_EXTENSIONS` / `HIDDEN_ROLE_FILES` in
 `engine/houston-engine-core/src/agents/files.rs`.
 
+> This denylist is cosmetic chat-surface filtering, unrelated to Teams
+> configure-scope enforcement. In multiplayer the cloud gateway separately
+> GATES writes to root-instruction / protected-dir files (CLAUDE.md, skills)
+> to agent-managers — see `knowledge-base/teams.md` and
+> `cloud/docs/contracts/C7-teams.md`.
+
 Attribution is strict only when one session owns a working directory. The
 engine enforces that by holding a per-`working_dir` guard for chat and
 routine sessions. Different worktrees/folders can run in parallel. A

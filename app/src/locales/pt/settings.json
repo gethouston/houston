@@ -1,13 +1,12 @@
 {
   "title": "Configurações",
   "nav": {
-    "account": "Conta",
-    "workspace": "Espaço de trabalho",
     "workspaceContext": "Contexto do espaço",
-    "userContext": "Contexto do usuário",
-    "phone": "Conectar celular",
+    "userContext": "Seu contexto",
+    "language": "Idioma",
     "shortcuts": "Atalhos de teclado",
-    "reportBug": "Reportar bug"
+    "reportBug": "Reportar bug",
+    "danger": "Excluir espaço"
   },
   "account": {
     "title": "Conta",
@@ -15,8 +14,7 @@
     "fallbackName": "Sessão iniciada"
   },
   "workspace": {
-    "title": "Espaço de trabalho",
-    "nameLabel": "Nome"
+    "title": "Nome do espaço"
   },
   "workspaceContext": {
     "emptyTitle": "Conte para todo agente sobre este espaço",
@@ -98,5 +96,24 @@
     "providerSwitched": "Mudou para {{provider}} ({{model}})",
     "versionCopied": "Versão copiada",
     "versionCopyFailed": "Não foi possível copiar a versão"
+  },
+  "index": {
+    "subtitle": "Gerencie seu espaço de trabalho e sua conta.",
+    "groups": {
+      "context": "Contexto",
+      "support": "Suporte"
+    },
+    "rows": {
+      "members": "Pessoas que podem usar seus agentes",
+      "workspaceContext": "O que todo agente sabe sobre este espaço",
+      "userContext": "O que todo agente sabe sobre você",
+      "shortcuts": "Use o Houston sem o mouse",
+      "reportBug": "Algo quebrou? Conte para nós"
+    },
+    "values": {
+      "set": "Definido",
+      "membersCount_one": "{{count}} membro",
+      "membersCount_other": "{{count}} membros"
+    }
   }
 }

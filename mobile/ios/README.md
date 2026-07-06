@@ -53,7 +53,8 @@ mobile/ios/
     Core/Bridge/           SdkClient facade, Codable models, transport + native ports
     Core/Auth/             Supabase auth + SignInView
     DesignSystem/          tokens wrapper, Strings, shared styles
-    Features/              Agents, AgentMissions, Chat, MissionControl, NewMission
+    Features/              Agents, AgentMissions, Chat, MissionControl, NewMission,
+                           Settings, AIModels, Integrations
     Generated/             built at build time (gitignored): SDK bundle + tokens
   HoustonTests/            unit tests
   scripts/                 build-phase shell scripts

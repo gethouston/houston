@@ -15,8 +15,9 @@ import {
   killRunningTurns,
   turnBoundary,
 } from "./chat-controls";
-import { CORS, json, noContent } from "./http";
+import { CORS, json } from "./http";
 import { authStatusBody, handleAgents, providersBody } from "./routes";
+import { handleUserRoutes } from "./routes-integrations";
 import { sseResponse } from "./sse";
 import * as state from "./state";
 
@@ -91,6 +92,23 @@ export async function handle(req: Request): Promise<Response> {
       advanced: turnBoundary(String(body?.nextText ?? "next turn")),
     });
   }
+  // Toggle Composio readiness: "ready" | "unavailable" (503) | "signin".
+  if (path === "/__test__/integrations-mode" && method === "POST") {
+    const body = await parseBody(req);
+    state.setIntegrationsMode(
+      body?.mode === "unavailable" || body?.mode === "signin"
+        ? body.mode
+        : "ready",
+    );
+    return json({ mode: state.integrationsMode() });
+  }
+  // Flip a pending connection to active (models the OAuth completing).
+  if (path === "/__test__/integrations-activate" && method === "POST") {
+    const body = await parseBody(req);
+    return json({
+      activated: state.activateConnection(String(body?.connectionId ?? "")),
+    });
+  }
 
   // --- global reactivity feed ---
   if (path === "/v1/events" && method === "GET") return openDomainStream(req);
@@ -120,13 +138,9 @@ export async function handle(req: Request): Promise<Response> {
     };
     return json(caps);
   }
-  if (segs[0] === "v1" && segs[1] === "workspaces") return json([]);
-  // Composio integrations: report none connected (control-plane.ts wants `{ items }`).
-  if (segs[0] === "v1" && segs[1] === "integrations")
-    return json({ items: [] });
-  if (segs[0] === "v1" && segs[1] === "preferences") {
-    return method === "GET" ? json({ value: null }) : noContent();
-  }
+  // --- user-scoped gateway routes (integrations, grants, preferences, locale) ---
+  const userRoute = handleUserRoutes(method, segs, body);
+  if (userRoute) return userRoute;
 
   // --- everything under /agents/* ---
   if (segs[0] === "agents") {

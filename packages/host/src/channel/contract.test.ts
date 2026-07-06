@@ -73,6 +73,8 @@ interface ChannelFixture {
   /** The central store both fixtures back the channel with — so the contract can
    *  assert forgetCredential actually emptied it, channel-agnostically. */
   credentials: MemoryCredentialStore;
+  /** The object store a per-turn channel persists to (TurnChannel only). */
+  vfs?: MemoryVfs;
 }
 
 /** Drive a RuntimeChannel.dispatch through a real HTTP server (it needs req/res). */
@@ -183,6 +185,8 @@ let proxyRuntimeUrl = "";
 let proxyConnected = false; // flips when connect() succeeds (export exposes a cred)
 /** Last body the fake runtime received on POST /providers/openai-compatible. */
 let proxyCustomEndpointBody: unknown = null;
+/** Last body the fake runtime received on POST /auth/anthropic/oauth-credential. */
+let proxyClaudeOAuthBody: unknown = null;
 
 beforeAll(async () => {
   proxyRuntime = createServer((req, res) => {
@@ -218,6 +222,18 @@ beforeAll(async () => {
             accountId: "acct-9",
           })
         : reply(200, {}); // present but incomplete → "agent is not connected yet"
+    }
+    // Hosted Claude-subscription push: capture the CLI envelope the channel sent.
+    if (path === "/auth/anthropic/oauth-credential") {
+      const chunks: Buffer[] = [];
+      req.on("data", (c) => chunks.push(c as Buffer));
+      req.on("end", () => {
+        proxyClaudeOAuthBody = JSON.parse(
+          Buffer.concat(chunks).toString("utf8") || "{}",
+        );
+        reply(200, { ok: true });
+      });
+      return;
     }
     if (path === "/auth/scrub-refresh") return reply(200, { ok: true });
     // API-key connect pushes the pasted key into the standing runtime.
@@ -314,6 +330,7 @@ function makeTurnFixture(): ChannelFixture {
   return {
     channel,
     credentials,
+    vfs: objects,
     connect: async () => {
       await credentials.put({
         workspaceId: ws.id,
@@ -331,31 +348,83 @@ runRuntimeChannelContract("ProxyChannel", makeProxyFixture);
 runRuntimeChannelContract("TurnChannel", makeTurnFixture);
 
 // saveCustomEndpoint is the ONE asymmetric channel op (not part of the shared
-// contract): the standing runtime persists the local endpoint; the per-turn /
-// cloud channel rejects it (a cloud runtime can't reach the user's localhost).
-describe("saveCustomEndpoint (local-only, asymmetric)", () => {
+// contract): the standing runtime is POSTed the endpoint live; the per-turn
+// channel has no live runtime, so it persists the endpoint to object storage
+// under the same key/schema the next turn's runtime hydrates.
+describe("saveCustomEndpoint (asymmetric persistence path)", () => {
   test("ProxyChannel forwards the endpoint to the standing runtime", async () => {
     proxyCustomEndpointBody = null;
     const { channel } = makeProxyFixture();
     await channel.saveCustomEndpoint(ctx, {
-      baseUrl: "http://localhost:11434/v1",
+      baseUrl: "https://ollama.example.com/v1",
       model: "llama3.1",
       name: "Llama",
     });
     expect(proxyCustomEndpointBody).toEqual({
-      baseUrl: "http://localhost:11434/v1",
+      baseUrl: "https://ollama.example.com/v1",
       model: "llama3.1",
       name: "Llama",
     });
   });
 
-  test("TurnChannel (cloud per-turn) refuses a local endpoint", async () => {
+  test("TurnChannel (cloud per-turn) persists the endpoint to object storage", async () => {
+    const { channel, vfs } = makeTurnFixture();
+    await channel.saveCustomEndpoint(ctx, {
+      baseUrl: "https://ollama.example.com/v1",
+      model: "llama3.1",
+      name: "Llama",
+      contextWindow: 8192,
+      reasoning: true,
+      // The API key is intentionally NOT persisted here (it lives in auth.json,
+      // which the per-turn runtime injects and never hydrates from storage).
+      apiKey: "sk-should-not-be-written",
+    });
+    // Same key the runtime reads: <prefix>/data/custom-endpoint.json.
+    const raw = await vfs?.readText("ws/w1/agent-1/data/custom-endpoint.json");
+    expect(raw).not.toBeNull();
+    expect(JSON.parse(raw ?? "{}")).toEqual({
+      baseUrl: "https://ollama.example.com/v1",
+      model: "llama3.1",
+      name: "Llama",
+      contextWindow: 8192,
+      reasoning: true,
+    });
+  });
+});
+
+// saveClaudeOAuthCredential is the other asymmetric channel op: the single-tenant
+// standing pod materializes the pushed Claude credential (central store + pod
+// file), keeping the refresh token on the pod; the multi-tenant per-turn cloud
+// channel refuses it (Anthropic is off there).
+describe("saveClaudeOAuthCredential (single-tenant only, asymmetric)", () => {
+  const cred = {
+    accessToken: "sk-ant-oat-access",
+    refreshToken: "sk-ant-ort-refresh",
+    expiresAt: 1_800_000_000_000,
+    scopes: ["user:inference"],
+    subscriptionType: "max",
+  };
+
+  test("ProxyChannel dual-writes: central store + the pod's config file", async () => {
+    proxyClaudeOAuthBody = null;
+    const { channel, credentials } = makeProxyFixture();
+    await channel.saveClaudeOAuthCredential(ctx, cred);
+
+    const stored = await credentials.get(ws.id, "anthropic");
+    expect(stored?.kind).toBe("oauth");
+    expect(stored?.accessToken).toBe("sk-ant-oat-access");
+    // Gate #2 departure, scoped here: the refresh token is kept for the pod.
+    expect(stored?.refreshToken).toBe("sk-ant-ort-refresh");
+    expect(stored?.expiresAt).toBe(1_800_000_000_000);
+
+    // The pod received the CLI envelope verbatim.
+    expect(proxyClaudeOAuthBody).toEqual({ claudeAiOauth: cred });
+  });
+
+  test("TurnChannel (cloud per-turn) refuses the Claude credential", async () => {
     const { channel } = makeTurnFixture();
-    await expect(
-      channel.saveCustomEndpoint(ctx, {
-        baseUrl: "http://localhost:11434/v1",
-        model: "llama3.1",
-      }),
-    ).rejects.toThrow(/cloud|local|own machine/i);
+    await expect(channel.saveClaudeOAuthCredential(ctx, cred)).rejects.toThrow(
+      /cloud|per-turn|available/i,
+    );
   });
 });

@@ -24,6 +24,14 @@ import {
   listen,
   type UnlistenFn,
 } from "@tauri-apps/api/event";
+import type {
+  BridgeStatus,
+  DetectedServer,
+  ReconnectBridgeArgs,
+  SavedBridgeTarget,
+  StartBridgeArgs,
+  StartBridgeResult,
+} from "./local-model";
 
 // ── Platform detection ────────────────────────────────────────────────
 
@@ -86,6 +94,36 @@ export function osStartOauthLoopback(): Promise<string> {
  * Mirrors {@link osStartOauthLoopback} (the Supabase Google loopback). */
 export function osStartCodexOauthLoopback(): Promise<void> {
   return invoke<void>("start_codex_oauth_loopback");
+}
+
+/** Run `claude auth login --claudeai` FOR the user on the desktop (zero
+ * terminal): the native side spawns the bundled `claude`, which opens the
+ * browser and catches its own callback, caching the credential in Houston's
+ * shared login dir (the same `CLAUDE_CONFIG_DIR` the engine reads). Emits
+ * `claude-login://url` (the authorize URL, as a fallback for the "didn't open"
+ * link) and `claude-login://done` (`{ success, error }`). Rejects only on an
+ * up-front spawn failure. Desktop + co-located engine only. */
+export function osStartClaudeLogin(): Promise<void> {
+  return invoke<void>("start_claude_login");
+}
+
+/** Extract the Anthropic OAuth credential the `claude` CLI just cached for
+ * Houston's shared login dir, as the CLI's `.credentials.json` JSON string
+ * (`{claudeAiOauth:{...}}`). Used ONLY for a REMOTE engine: the desktop pushes
+ * the extracted cred to the pod (which can't read this machine's Keychain). The
+ * native side reads `<claudeLoginConfigDir>/.credentials.json` or, on macOS, the
+ * `"Claude Code-credentials"` Keychain item; rejects (never a silent empty) on
+ * not-found / parse failure so the caller can fall back to the paste flow. */
+export function osReadClaudeCredential(): Promise<string> {
+  return invoke<string>("read_claude_credential");
+}
+
+/** Cancel an in-flight desktop Claude sign-in (kills the `claude` child). The
+ * native side then emits `claude-login://done` with `error: null` (a benign
+ * dismissal). No-op outside Tauri / when nothing is in flight. */
+export function osCancelClaudeLogin(): Promise<void> {
+  if (!isTauri()) return Promise.resolve();
+  return invoke<void>("cancel_claude_login");
 }
 
 /** Pull the Houston window to the front. Used when a flow finishes in the
@@ -179,4 +217,46 @@ export function osReportBug(payload: unknown): Promise<string | null> {
  * builds can verify Rust/Tauri symbol upload and native stack rendering. */
 export function osTriggerNativeSentrySmokeTest(): Promise<void> {
   return invoke<void>("sentry_native_stack_smoke_test");
+}
+
+// ── Local model bridge (guided "connect a local model") ───────────────────────
+// Native, desktop-only: the Rust shell scans localhost for LM Studio / Jan /
+// Ollama, runs a local auth proxy, and drives an frpc sidecar. These reach the
+// user's OWN machine, so they never move to the (possibly remote) engine.
+
+/** Scan the local machine for OpenAI-compatible model servers. */
+export function osDetectLocalModels(): Promise<DetectedServer[]> {
+  return invoke<DetectedServer[]>("detect_local_models");
+}
+
+/** Start the frpc bridge that exposes a local server at a public URL. */
+export function osStartLocalBridge(
+  args: StartBridgeArgs,
+): Promise<StartBridgeResult> {
+  return invoke<StartBridgeResult>("start_local_bridge", { ...args });
+}
+
+/** Re-establish frpc for the saved target after a restart, reusing the persisted
+ *  proxyKey so the already-registered cloud endpoint stays valid. */
+export function osReconnectLocalBridge(
+  args: ReconnectBridgeArgs,
+): Promise<StartBridgeResult> {
+  return invoke<StartBridgeResult>("reconnect_local_bridge", { ...args });
+}
+
+/** The bridge target this machine has persisted, or `null` when this machine
+ *  owns no local-model tunnel (direct/manual endpoint, or another machine's). */
+export function osSavedBridgeTarget(): Promise<SavedBridgeTarget | null> {
+  return invoke<SavedBridgeTarget | null>("saved_bridge_target");
+}
+
+/** Tear down the running bridge (frpc + local auth proxy). Idempotent. */
+export function osStopLocalBridge(): Promise<void> {
+  return invoke<void>("stop_local_bridge");
+}
+
+/** One-shot read of the bridge's current status (the `local-bridge-status`
+ *  event streams the same shape). */
+export function osLocalBridgeStatus(): Promise<BridgeStatus> {
+  return invoke<BridgeStatus>("local_bridge_status");
 }

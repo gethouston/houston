@@ -30,6 +30,7 @@ import settingsEn from "../locales/en/settings.json";
 import setupEn from "../locales/en/setup.json";
 import shellEn from "../locales/en/shell.json";
 import skillsEn from "../locales/en/skills.json";
+import teamsEn from "../locales/en/teams.json";
 import agentsEs from "../locales/es/agents.json";
 import aiHubEs from "../locales/es/ai-hub.json";
 import boardEs from "../locales/es/board.json";
@@ -49,6 +50,7 @@ import settingsEs from "../locales/es/settings.json";
 import setupEs from "../locales/es/setup.json";
 import shellEs from "../locales/es/shell.json";
 import skillsEs from "../locales/es/skills.json";
+import teamsEs from "../locales/es/teams.json";
 import agentsPt from "../locales/pt/agents.json";
 import aiHubPt from "../locales/pt/ai-hub.json";
 import boardPt from "../locales/pt/board.json";
@@ -68,6 +70,7 @@ import settingsPt from "../locales/pt/settings.json";
 import setupPt from "../locales/pt/setup.json";
 import shellPt from "../locales/pt/shell.json";
 import skillsPt from "../locales/pt/skills.json";
+import teamsPt from "../locales/pt/teams.json";
 import {
   activeWorkspaceLocale,
   isSupported,
@@ -138,6 +141,7 @@ const resources = {
     portable: portableEn,
     context: contextEn,
     org: orgEn,
+    teams: teamsEn,
   },
   es: {
     common: commonEs,
@@ -159,6 +163,7 @@ const resources = {
     portable: portableEs,
     context: contextEs,
     org: orgEs,
+    teams: teamsEs,
   },
   pt: {
     common: commonPt,
@@ -180,6 +185,7 @@ const resources = {
     portable: portablePt,
     context: contextPt,
     org: orgPt,
+    teams: teamsPt,
   },
 } as const;
 
@@ -220,6 +226,7 @@ void i18n
       "portable",
       "context",
       "org",
+      "teams",
     ],
     interpolation: { escapeValue: false }, // react already escapes
     detection: {

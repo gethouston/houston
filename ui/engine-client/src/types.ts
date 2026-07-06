@@ -83,6 +83,13 @@ export interface Capabilities {
   multiplayer?: boolean;
   /** The current user's role in the org, when `multiplayer` is on. */
   role?: OrgRole;
+  /**
+   * Whether this deployment serves the Teams v2 surface (per-agent access
+   * levels, share dialog, org dashboard). A feature-detect flag the frontend
+   * reads to enable the v2 UI; absent/false on hosts that predate Teams so
+   * every existing single-player/self-host profile stays valid.
+   */
+  teams?: boolean;
 }
 
 // ---------- Org / roles (multiplayer) ----------
@@ -104,9 +111,37 @@ export interface OrgMember {
 }
 
 /**
+ * A per-agent access level (Teams v2). `manager` may reconfigure the agent
+ * (instructions, skills, model, allowed toolkits, assignments); `user` may only
+ * use it. Kept in sync (by hand) with the gateway — the server is the source of
+ * truth and clamps a stale `manager` row for a plain `user` member at read time.
+ */
+export type AgentAccess = "manager" | "user";
+
+/** One member's access level for a shared agent. */
+export interface AgentAssignment {
+  userId: string;
+  access: AgentAccess;
+}
+
+/**
+ * A pending invite to the org, surfaced to owner/admin on `GET /org`. `email`
+ * is the invited address; the invite is consumed on that user's first sign-in.
+ * `createdAt` is epoch milliseconds.
+ */
+export interface OrgInvite {
+  id: string;
+  email: string;
+  role: OrgRole;
+  invitedBy: string;
+  createdAt: number;
+}
+
+/**
  * The current user's org, with the caller's own role. `members` is populated
  * only for callers allowed to see the roster (owner/admin); a plain `user`
- * gets just the identity fields.
+ * gets just the identity fields. `invites` (pending, un-consumed) is likewise
+ * owner/admin only.
  */
 export interface OrgInfo {
   id: string;
@@ -114,6 +149,125 @@ export interface OrgInfo {
   name: string;
   role: OrgRole;
   members?: OrgMember[];
+  /** Pending invites, for owner/admin callers only. */
+  invites?: OrgInvite[];
+}
+
+/**
+ * Result of `POST /org/members` (Teams v2). A known Houston user is added
+ * directly (`userId` set); an unknown email creates a pending invite instead
+ * and the host answers `202` with `invited: true`. `role` echoes the requested
+ * role in both cases.
+ */
+export interface AddOrgMemberResult {
+  /** Set when an existing user was added directly (not invited). */
+  userId?: string;
+  role: OrgRole;
+  /** True when an invite was created because the email is not yet a user. */
+  invited?: boolean;
+  /** The invited email, echoed on the invite path. */
+  email?: string;
+}
+
+/**
+ * Per-agent settings (Teams v2), from `GET /agents/:slug/settings`.
+ * `allowedToolkits` is the agent-level integration ceiling (`null` =
+ * unrestricted, `[]` = none); `orgAllowedToolkits` is the org-wide ceiling the
+ * agent ceiling is intersected with; `access` is the caller's effective access.
+ */
+export interface AgentSettings {
+  allowedToolkits: string[] | null;
+  orgAllowedToolkits: string[] | null;
+  access: AgentAccess;
+}
+
+/** Org-wide settings (Teams v2), from `GET /org/settings`. */
+export interface OrgSettings {
+  /** Org-wide integration ceiling; `null` = unrestricted, `[]` = none. */
+  allowedToolkits: string[] | null;
+}
+
+/**
+ * One audit-log entry (Teams v2), newest-first from `GET /org/audit`.
+ * `action` is a stable slug (e.g. `agent.rename`, `member.add`, `grants.set`);
+ * `subject` is action-specific JSON; `createdAt` is epoch milliseconds.
+ */
+export interface AuditEntry {
+  id: number;
+  orgId: string;
+  actor: string;
+  action: string;
+  agentSlug?: string;
+  subject: unknown;
+  createdAt: number;
+}
+
+/**
+ * One usage-counter row (Teams v2) from `GET /org/usage`: message count for a
+ * (agent, user, day) tuple. `day` is a `YYYY-MM-DD` UTC date.
+ */
+export interface UsageRow {
+  agentSlug: string;
+  userId: string;
+  day: string;
+  messages: number;
+}
+
+// ---------- Agent templates (multiplayer) ----------
+
+/**
+ * The captured configuration of an agent, reusable to stamp out new agents
+ * (Teams v2). Assembled CLIENT-SIDE from what a manager is already viewing
+ * (instructions, skills, model config, allowed apps) and stored verbatim by the
+ * gateway. Kept in sync (by hand) with the gateway — the server is the source
+ * of truth and validates shape + size on write.
+ */
+export interface TemplateSpec {
+  /** The agent's CLAUDE.md instructions. */
+  instructions: string;
+  /** Each skill as a `{name, content}` pair (the SKILL.md body). */
+  skills: { name: string; content: string }[];
+  /** The pinned AI model, when the template captures one. */
+  provider?: string;
+  model?: string;
+  effort?: string;
+  /** The allowed-app ceiling; `null` = all apps allowed. */
+  allowedToolkits: string[] | null;
+}
+
+/**
+ * A template as it appears in a list card (Teams v2), from `GET /org/templates`.
+ * The heavy `spec` is intentionally omitted; the derived counts (`skillCount`,
+ * `model`, `allowedToolkitCount`) are enough to describe the template without
+ * shipping every skill body. `createdAt` is epoch milliseconds.
+ */
+export interface TemplateSummary {
+  id: string;
+  name: string;
+  description: string;
+  createdBy: string;
+  createdAt: number;
+  /** Number of skills the template captures. */
+  skillCount: number;
+  /** The pinned model id, when the template captures one. */
+  model?: string;
+  /** Count of allowed apps; `null` = all apps allowed. */
+  allowedToolkitCount: number | null;
+}
+
+/**
+ * A full template (Teams v2) with its `spec`, from `GET /org/templates/:id`.
+ * Fetched lazily only when a caller needs the whole configuration (creating an
+ * agent from it, or inspecting it) — list surfaces use `TemplateSummary`.
+ */
+export interface TemplateRecord {
+  id: string;
+  orgId: string;
+  name: string;
+  description: string;
+  createdBy: string;
+  spec: TemplateSpec;
+  createdAt: number;
 }
 
 // ---------- Workspaces ----------
@@ -180,8 +334,24 @@ export interface Agent {
    * Multiplayer only: the org-member user ids this agent is assigned to.
    * Empty means "everyone in the org". Absent in single-player mode. Only
    * populated for callers who may manage assignments (owner/admin).
+   *
+   * Retained for back-compat alongside the richer `assignments` (Teams v2);
+   * the two carry the same user set for a manager/owner caller.
    */
   assignedUserIds?: string[];
+  /**
+   * Teams v2: the CURRENT caller's effective access to this agent —
+   * `"manager"` (may reconfigure) or `"user"` (may only use). Owner is always
+   * `"manager"`. Absent in single-player mode and on hosts that predate Teams.
+   */
+  access?: AgentAccess;
+  /**
+   * Teams v2: the full assignee list with per-person access level. Populated
+   * only for callers who may manage the agent (owner, or an admin who is an
+   * agent-manager); absent for agents an admin merely uses, and in
+   * single-player mode. `assignedUserIds` mirrors these user ids for back-compat.
+   */
+  assignments?: AgentAssignment[];
 }
 
 export interface CreateAgent {
@@ -192,6 +362,13 @@ export interface CreateAgent {
   installedPath?: string;
   seeds?: Record<string, string>;
   existingPath?: string;
+  /**
+   * Multiplayer only (Teams v2): create this agent from an org template. The
+   * gateway sets the agent's allowed apps synchronously and applies the
+   * template's instructions/skills/model to the pod in the background. Ignored
+   * by single-player/self-host hosts, which have no templates.
+   */
+  templateId?: string;
 }
 
 export interface CreateAgentResult {
@@ -1062,4 +1239,21 @@ export interface CustomEndpoint {
   contextWindow?: number;
   reasoning?: boolean;
   apiKey?: string;
+}
+
+// ── Local-model tunnel credentials ───────────────────────────────────────────
+// One-click "connect a local model" issues a short-lived relay credential from
+// the gateway (`POST /v1/tunnel/credentials`). The desktop then runs an frpc
+// sidecar against `relayHost:relayPort` with `token`/`transport`, which exposes
+// the user's local model server at `publicUrl` (under `subdomain`) so their
+// CLOUD agent can reach it. New-engine + hosted only.
+export interface TunnelCredentials {
+  subdomain: string;
+  publicUrl: string;
+  relayHost: string;
+  relayPort: number;
+  token: string;
+  /** ISO-8601 expiry of `token`; the desktop re-mints before it lapses. */
+  tokenExpiresAt: string;
+  transport: string;
 }

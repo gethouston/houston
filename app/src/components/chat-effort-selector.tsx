@@ -1,5 +1,10 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from "@houston-ai/core";
+import type { Agent } from "@houston-ai/engine-client";
+import { Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useCapabilities } from "../hooks/use-capabilities";
 import { nextEffort } from "../lib/effort-cycle";
+import { isModelSelectorLocked } from "../lib/model-selector-lock";
 import {
   EFFORT_ORDER,
   type EffortLevel,
@@ -16,6 +21,14 @@ interface ChatEffortSelectorProps {
   effort?: string;
   /** Called when the user advances to the next level. */
   onSelect: (effort: EffortLevel) => void;
+  /**
+   * The agent this control configures, when composer-scoped. Threaded so the
+   * effort cycle LOCKS for org members who may not change the agent's model
+   * config (Teams matrix v2) — effort is part of the model pin. A non-manager
+   * sees the current level read-only. Omit outside an agent scope and it never
+   * locks; single-player is never locked.
+   */
+  agent?: Pick<Agent, "access"> | null;
 }
 
 /**
@@ -31,8 +44,12 @@ export function ChatEffortSelector({
   model,
   effort,
   onSelect,
+  agent,
 }: ChatEffortSelectorProps) {
   const { t } = useTranslation("chat");
+  const { t: tTeams } = useTranslation("teams");
+  const { capabilities } = useCapabilities();
+  const locked = isModelSelectorLocked(capabilities, agent);
   const levels = getEffortLevels(provider, model);
   if (levels.length === 0) return null;
 
@@ -62,6 +79,39 @@ export function ChatEffortSelector({
   const activeLabel = activeLevel
     ? labels[activeLevel]
     : t("modelSelector.effort");
+
+  // Teams v2: a non-manager sees the current effort read-only. Mirrors the
+  // locked model selector (`aria-disabled` keeps it focusable so the tooltip
+  // reason reaches keyboard + screen-reader users); effort is part of the
+  // model config pin, so it reuses the same tooltip copy.
+  if (locked) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-disabled="true"
+            aria-label={
+              activeLevel
+                ? t("modelSelector.effortValue", { level: activeLabel })
+                : t("modelSelector.effort")
+            }
+            onClick={(e) => e.preventDefault()}
+            className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground cursor-not-allowed opacity-80 outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <EffortIcon
+              levels={EFFORT_ORDER}
+              active={effort}
+              className="size-3.5"
+            />
+            <span>{activeLabel}</span>
+            <Lock className="size-3 opacity-60" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>{tTeams("model.lockedTooltip")}</TooltipContent>
+      </Tooltip>
+    );
+  }
 
   return (
     <button

@@ -91,4 +91,18 @@ describe("providerLoginFallbackAction", () => {
       "dialog",
     );
   });
+
+  it("shows the dialog for the Claude/Anthropic setup-token paste flow (auth_code), even on desktop", () => {
+    // The event's url is a docs reference, not a sign-in page — auto-opening it
+    // would drop the user on docs and skip the paste box (the reported bug).
+    strictEqual(
+      providerLoginFallbackAction({
+        claimed: false,
+        isDesktop: true,
+        userCode: null,
+        authCode: true,
+      }),
+      "dialog",
+    );
+  });
 });

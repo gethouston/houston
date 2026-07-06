@@ -37,6 +37,8 @@
   "providerLogin": {
     "title": "Termine de entrar em {{name}}",
     "description": "Abra a página de login no seu navegador, finalize o login e cole aqui o código de verificação.",
+    "authCodeDescription": "Cole um token de configuração para terminar de conectar {{name}}.",
+    "reference": "Referência",
     "openUrl": "Abrir URL",
     "copyUrl": "Copiar URL",
     "urlCopied": "URL copiada para a área de transferência",
@@ -59,7 +61,9 @@
     "deviceOpenFailed": "Não foi possível abrir a página de login",
     "deviceSettingsHint": "Não apareceu o pedido de código? Ative o login por código de dispositivo em <link>Configurações do ChatGPT > Segurança</link>.",
     "deviceSettingsOpenFailed": "Não foi possível abrir as configurações do ChatGPT",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "browserDescription": "Aprove o Houston na aba do navegador que abriu. Esta janela é atualizada sozinha quando você terminar.",
+    "browserOpen": "Não abriu? Abrir login"
   },
   "apiKey": {
     "title": "Conectar {{name}}",
@@ -109,5 +113,58 @@
     "save": "Conectar",
     "saving": "Conectando...",
     "cancel": "Cancelar"
+  },
+  "claudeLogin": {
+    "timeout": "O login do Claude expirou. Tente conectar novamente.",
+    "confirmTimeout": "Você entrou no Claude, mas o Houston não conseguiu confirmar a conexão. Tente novamente.",
+    "autoFailedTitle": "Não foi possível concluir a conexão automaticamente",
+    "autoFailedBody": "Cole um token de configuração do Claude para concluir a conexão."
+  },
+  "localModel": {
+    "title": "Conecte um modelo local",
+    "description": "Rode um modelo no seu próprio computador e deixe o Houston usá-lo. O Houston cuida da conexão.",
+    "detecting": "Procurando apps de modelos no seu computador...",
+    "cancel": "Cancelar",
+    "connecting": {
+      "title": "Conectando seu modelo...",
+      "body": "Isso leva alguns segundos. Mantenha o app aberto no seu computador."
+    },
+    "empty": {
+      "body": "Para rodar um modelo no seu próprio computador, instale um destes apps gratuitos e abra:",
+      "apps": {
+        "lmstudio": "Um app simples para rodar modelos.",
+        "jan": "Um app de modelos aberto e fácil.",
+        "ollama": "Popular e simples de configurar."
+      },
+      "get": "Baixar",
+      "reassure": "Assim que estiver aberto, o Houston cuida do resto.",
+      "recheck": "Procurar de novo"
+    },
+    "pick": {
+      "body": "O Houston encontrou estes no seu computador. Escolha o modelo que você quer usar.",
+      "modelsFound_one": "{{count}} modelo disponível",
+      "modelsFound_other": "{{count}} modelos disponíveis",
+      "modelLabel": "Modelo",
+      "connect": "Conectar"
+    },
+    "error": {
+      "body": "Algo deu errado ao conectar. Confira se o app ainda está aberto no seu computador e tente de novo.",
+      "retry": "Tentar de novo"
+    },
+    "manual": {
+      "title": "Inserir dados manualmente",
+      "description": "Já tem o endereço de um servidor de modelos? Insira aqui.",
+      "link": "Inserir dados manualmente",
+      "back": "Voltar"
+    },
+    "status": {
+      "online": "Conectado",
+      "connecting": "Conectando...",
+      "offline": "Desconectado",
+      "error": "Indisponível",
+      "offlineHint": "Seu modelo está indisponível agora. Confira se o {{app}} está aberto neste computador.",
+      "yourApp": "o app no seu computador",
+      "reconnect": "Reconectar"
+    }
   }
 }

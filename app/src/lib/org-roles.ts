@@ -1,10 +1,12 @@
 import type { Agent, Capabilities, OrgRole } from "@houston-ai/engine-client";
 
 /**
- * Pure, DOM-free role logic for the multiplayer org surface. Mirrors the C3
- * role matrix (`convergence/contracts/C3-org-role-model.md`); the GATEWAY is
- * the real enforcer (these gates only hide affordances, never grant power).
- * Extracted so the who-can-see-what rules are unit-tested in isolation.
+ * Pure, DOM-free role logic for the multiplayer org surface. Mirrors the Teams
+ * role matrix v2 (contract §1 — supersedes the old C3 matrix; note the admin
+ * "see all agents" rule is GONE, and per-agent authority is now the agent
+ * `access` level rather than mere assignment). The GATEWAY is the real enforcer
+ * (these gates only hide affordances, never grant power). Extracted so the
+ * who-can-see-what rules are unit-tested in isolation.
  */
 
 /** True when the deployment runs in multiplayer mode (paid org). */
@@ -52,18 +54,54 @@ export function canManageMembers(
 }
 
 /**
+ * Is this caller an "agent-manager" for a specific agent — the per-agent editor
+ * role (Google Drive: managers are editors of the shared folder)? This is the
+ * single per-agent authority gate behind renaming/deleting, sharing, and
+ * configuring an agent (contract §1 matrix v2).
+ *
+ * - Single-player (no org): always true — the sole user owns everything.
+ * - Multiplayer `owner`: always true (owner manages every org agent).
+ * - Otherwise: the caller's effective `access` on this agent is `"manager"`.
+ *
+ * Purely trusts `agent.access`: the gateway already CLAMPS access to the org
+ * role at read/enforcement time, so a role-`user` never carries an effective
+ * `access="manager"` on the wire (a stale `manager` row is clamped away before
+ * it reaches the client). The client therefore does not re-clamp by role —
+ * `access` is already effective. Admins are NOT auto-managers of agents they
+ * merely use; they must hold `access="manager"` (matrix v2 dropped the admin
+ * "see/manage all" rule).
+ */
+export function isAgentManager(
+  caps: Capabilities | null | undefined,
+  agent: Pick<Agent, "access">,
+): boolean {
+  if (!isMultiplayer(caps)) return true;
+  if (orgRole(caps) === "owner") return true;
+  return agent.access === "manager";
+}
+
+/**
+ * Semantic alias of {@link isAgentManager}: can this caller EDIT an agent's
+ * configuration — instructions (CLAUDE.md), skills, the AI model, and agent
+ * settings (allowed toolkits)? Same gate, named for the config-editing call
+ * sites so their intent reads clearly (matrix v2: configure-scope is
+ * agent-manager only; a plain member gets a read-only view and the gateway
+ * 403s any write).
+ */
+export const canEditAgentConfig = isAgentManager;
+
+/**
  * Can this caller manage assignments for a specific agent (the "Who can use
- * this agent" block)? Owner for any org agent; admin only for agents they're
- * themselves assigned to; plain `user` never.
+ * this agent" / share block)? Agent-manager semantics (contract §1): owner for
+ * any org agent; otherwise only when the caller's effective `access` on the
+ * agent is `"manager"`; plain members and admins-who-only-use never can. The
+ * old "admin manages any agent they're assigned to" rule is gone in matrix v2.
  */
 export function canManageAssignments(
   caps: Capabilities | null | undefined,
-  agent: Pick<Agent, "assigned">,
+  agent: Pick<Agent, "access">,
 ): boolean {
-  const role = orgRole(caps);
-  if (role === "owner") return true;
-  if (role === "admin") return agent.assigned === true;
-  return false;
+  return isAgentManager(caps, agent);
 }
 
 /** Can this caller read/edit their own per-agent integration grants? */
@@ -80,7 +118,8 @@ export function canManageAgentGrants(
  * Single-player (no org roles) always can — the sole user owns everything, the
  * same short-circuit the global Integrations page uses; without it a self-host /
  * local sidecar that serves grants would render the agent tab fully read-only.
- * Multiplayer defers to the C3 assignment rule. Whether the host serves grants
+ * Multiplayer defers to the assignment rule (any assigned user gates their OWN
+ * grants, independent of agent-manager authority). Whether the host serves grants
  * at all is a separate concern the caller gates on.
  */
 export function canEditAgentGrants(

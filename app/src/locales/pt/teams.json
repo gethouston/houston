@@ -1,0 +1,244 @@
+{
+  "managedAgent": {
+    "banner": "Este agente é gerenciado pela sua organização. Apenas seus administradores podem fazer alterações."
+  },
+  "model": {
+    "lockedTooltip": "O administrador da sua organização define o modelo de IA deste agente."
+  },
+  "integrations": {
+    "allowlist": {
+      "title": "Integrações permitidas",
+      "subtitle": "Escolha quais aplicativos este agente pode usar. Os membros só podem conectar os que você permitir aqui.",
+      "allAllowed": "Todas as integrações permitidas",
+      "restrict": "Restringir a aplicativos específicos",
+      "allowAll": "Permitir todos os aplicativos",
+      "none": "Nenhum aplicativo permitido. Este agente não pode usar integrações.",
+      "edit": "Editar",
+      "save": "Salvar",
+      "cancel": "Cancelar",
+      "selectApps": "Selecionar aplicativos",
+      "searchApps": "Buscar aplicativos",
+      "noApps": "Nenhum aplicativo encontrado"
+    },
+    "notAllowed": {
+      "title": "Não permitido para este agente",
+      "body": "Estes aplicativos estão conectados à sua conta, mas sua organização não permite que este agente os use.",
+      "badge": "Não permitido"
+    }
+  },
+  "org": {
+    "title": "Organização",
+    "subtitle": "Gerencie sua equipe, agentes e atividade em um só lugar.",
+    "nav": "Organização",
+    "tablistLabel": "Seções da organização",
+    "tabs": {
+      "people": "Pessoas",
+      "agents": "Agentes",
+      "templates": "Modelos",
+      "activity": "Atividade",
+      "usage": "Uso"
+    },
+    "loading": "Carregando sua organização...",
+    "unavailable": "Não foi possível carregar sua organização."
+  },
+  "share": {
+    "title": "Compartilhar {{name}}",
+    "subtitle": "Escolha quem pode usar este agente.",
+    "button": "Compartilhar",
+    "sectionTitle": "Compartilhar este agente",
+    "sectionHelper": "Adicione colegas que possam usar este agente e escolha quem pode gerenciá-lo.",
+    "peopleCount_one": "{{count}} pessoa com acesso",
+    "peopleCount_other": "{{count}} pessoas com acesso",
+    "overflow": "+{{count}}",
+    "addPeople": "Adicionar pessoas",
+    "searchPeople": "Busque por nome ou email",
+    "noPeople": "Ninguém para adicionar.",
+    "empty": {
+      "title": "Ninguém mais tem acesso ainda",
+      "body": "Adicione um colega para que ele possa conversar com este agente."
+    },
+    "conversationNote": "Todos com acesso compartilham a conversa deste agente.",
+    "chatNote": "Agente compartilhado. Todos com acesso veem esta conversa.",
+    "you": "Você",
+    "ownerAccess": "Proprietário, sempre tem acesso",
+    "remove": "Remover",
+    "changeAccessFor": "Alterar o acesso de {{name}}",
+    "selfNote": "Alterar seu próprio acesso aqui pode remover sua capacidade de gerenciar este agente.",
+    "managerRequiresSeat": "Apenas colegas com um assento de Manager podem gerenciar agentes.",
+    "levels": {
+      "manager": "Manager",
+      "user": "Pode usar",
+      "managerHint": "Pode usar e reconfigurar este agente.",
+      "userHint": "Pode conversar com este agente, mas não alterá-lo."
+    },
+    "selfLockout": {
+      "title": "Alterar seu próprio acesso?",
+      "description": "Você está prestes a remover sua própria capacidade de gerenciar este agente. Talvez não consiga desfazer isso sozinho.",
+      "confirm": "Sim, alterar",
+      "cancel": "Cancelar"
+    }
+  },
+  "people": {
+    "adminNotice": "Você pode ver sua equipe. Apenas o proprietário pode adicionar ou remover pessoas.",
+    "add": {
+      "title": "Adicionar alguém",
+      "subtitle": "Convide um colega por e-mail. Se ainda não tiver o Houston, enviaremos um convite.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "nome@empresa.com",
+      "roleLabel": "Função",
+      "submit": "Adicionar",
+      "added": "{{email}} foi adicionado à sua equipe.",
+      "invited": "Convite enviado para {{email}}. Ela entrará quando fizer login."
+    },
+    "roles": {
+      "owner": "Proprietário",
+      "admin": "Manager",
+      "user": "Membro"
+    },
+    "roleHelp": {
+      "admin": "Os managers criam e executam agentes.",
+      "user": "Os membros usam os agentes compartilhados com eles."
+    },
+    "invites": {
+      "title": "Convites pendentes",
+      "empty": "Nenhum convite pendente.",
+      "invitedBy": "Convidado por {{name}}",
+      "revoke": "Revogar",
+      "revokeLabel": "Revogar o convite de {{email}}"
+    },
+    "roster": {
+      "title": "Equipe",
+      "you": "(você)",
+      "changeRole": "Alterar a função de {{name}}",
+      "remove": "Remover",
+      "removeLabel": "Remover {{name}}"
+    },
+    "removeConfirm": {
+      "title": "Remover {{name}}?",
+      "description": "Ela perderá o acesso a todos os agentes compartilhados com ela. Você pode adicioná-la novamente depois.",
+      "confirm": "Remover",
+      "cancel": "Cancelar"
+    }
+  },
+  "activityTab": {
+    "error": "Não foi possível carregar a atividade.",
+    "empty": {
+      "title": "Ainda não há atividade",
+      "body": "As mudanças na sua equipe, agentes e apps aparecem aqui."
+    },
+    "loading": "Carregando...",
+    "showMore": "Mostrar mais",
+    "roles": {
+      "owner": "Proprietário",
+      "admin": "Manager",
+      "user": "Membro"
+    },
+    "actions": {
+      "memberAdd": "{{actor}} adicionou {{name}} como {{role}}",
+      "memberRemove": "{{actor}} removeu {{name}}",
+      "memberRole": "{{actor}} alterou o papel de {{name}} para {{role}}",
+      "inviteCreate": "{{actor}} convidou {{email}} como {{role}}",
+      "inviteRevoke": "{{actor}} cancelou o convite para {{email}}",
+      "inviteAccept": "{{actor}} entrou como {{role}}",
+      "agentCreate": "{{actor}} criou {{agent}}",
+      "agentRename": "{{actor}} renomeou {{from}} para {{to}}",
+      "agentDelete": "{{actor}} excluiu {{agent}}",
+      "agentAssignments": "{{actor}} alterou quem pode usar {{agent}}",
+      "agentShared_one": "{{actor}} compartilhou {{agent}} com {{count}} pessoa",
+      "agentShared_other": "{{actor}} compartilhou {{agent}} com {{count}} pessoas",
+      "agentSettings": "{{actor}} alterou quais apps {{agent}} pode usar",
+      "orgSettings": "{{actor}} alterou as configurações de apps da sua organização",
+      "grantsSet": "{{actor}} permitiu {{apps}} para {{agent}}",
+      "agentConfigure": "{{actor}} atualizou as configurações de {{agent}}",
+      "unknown": "{{actor}} fez uma alteração ({{action}})"
+    }
+  },
+  "usageTab": {
+    "error": "Não foi possível carregar o uso.",
+    "empty": {
+      "title": "Ainda não há uso",
+      "body": "Quando sua equipe começar a conversar com os agentes, as contagens de mensagens aparecem aqui."
+    },
+    "summary_one": "{{count}} mensagem nos últimos 30 dias",
+    "summary_other": "{{count}} mensagens nos últimos 30 dias",
+    "messages_one": "{{count}} mensagem",
+    "messages_other": "{{count}} mensagens"
+  },
+  "agentsTab": {
+    "empty": {
+      "title": "Crie seu primeiro agente",
+      "body": "Agentes são os assistentes que sua equipe compartilha. Crie um para começar.",
+      "action": "Criar agente"
+    },
+    "managedBy": "Gerenciado por {{names}}",
+    "access": {
+      "everyone": "Toda a sua equipe",
+      "people_one": "{{count}} pessoa",
+      "people_other": "{{count}} pessoas",
+      "you": "Você pode usar"
+    },
+    "lastOpened": "Aberto {{time}}",
+    "open": "Abrir {{name}}"
+  },
+  "templates": {
+    "pickerTitle": "Começar a partir de um modelo",
+    "settingUp": "Configurando seu agente...",
+    "summary": {
+      "skills_one": "{{count}} habilidade",
+      "skills_other": "{{count}} habilidades",
+      "apps_one": "{{count}} app",
+      "apps_other": "{{count}} apps",
+      "allApps": "Todos os apps"
+    },
+    "save": {
+      "sectionTitle": "Salvar como modelo",
+      "sectionHelper": "Capture a configuração deste agente como um modelo reutilizável para criar novos agentes com sua equipe.",
+      "button": "Salvar como modelo",
+      "dialog": {
+        "title": "Salvar como modelo",
+        "subtitle": "Reutilize a configuração de {{name}} para criar novos agentes iguais."
+      },
+      "nameLabel": "Nome do modelo",
+      "namePlaceholder": "ex. Agente de Vendas",
+      "descriptionLabel": "Descrição",
+      "descriptionPlaceholder": "Para que serve este modelo? (opcional)",
+      "capturedTitle": "O que é incluído",
+      "summary": {
+        "instructions": "Instruções",
+        "skills_one": "{{count}} habilidade",
+        "skills_other": "{{count}} habilidades",
+        "allApps": "Todos os apps permitidos",
+        "apps_one": "{{count}} app permitido",
+        "apps_other": "{{count}} apps permitidos"
+      },
+      "cancel": "Cancelar",
+      "submit": "Salvar modelo",
+      "toast": {
+        "title": "Modelo salvo",
+        "body": "{{name}} está pronto para reutilizar."
+      }
+    }
+  },
+  "templatesTab": {
+    "error": "Não foi possível carregar os modelos.",
+    "empty": {
+      "title": "Ainda não há modelos",
+      "body": "Salve um agente como modelo para reutilizar a configuração em toda a sua equipe."
+    },
+    "card": {
+      "skills_one": "{{count}} habilidade",
+      "skills_other": "{{count}} habilidades",
+      "apps_one": "{{count}} app",
+      "apps_other": "{{count}} apps",
+      "allApps": "Todos os apps",
+      "createdBy": "Criado por {{name}}"
+    },
+    "deleteLabel": "Excluir {{name}}",
+    "deleteConfirm": {
+      "title": "Excluir {{name}}?",
+      "description": "Este modelo será removido para todos na sua organização. Os agentes já criados a partir dele não serão afetados.",
+      "confirm": "Excluir",
+      "cancel": "Cancelar"
+    }
+  }
+}

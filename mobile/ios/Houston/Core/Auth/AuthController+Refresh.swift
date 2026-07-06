@@ -65,6 +65,9 @@ extension AuthController {
         session = nil
         try? keychain.clear()
         await sdk.setToken(nil)
+        // Same purge as the explicit sign-out: this is the terminal path for a
+        // failed refresh / `tokenExpired`, so drop the previous user's caches.
+        sdk.purgeUserData()
         state = .signedOut
     }
 }

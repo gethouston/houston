@@ -1,92 +1,180 @@
 /**
- * Small shared chips + inline meta for the AI models hub: a base `SpecChip`
- * (grey pill, 12px, muted) and the capability / auth / price / context readouts
- * built on it. Presentational only; every label flows through the `aiHub`
- * namespace so the hub stays translated.
+ * The shared chip + label kit for the AI Hub redesign. `SpecChip` is the base
+ * neutral pill (subtle surface + hairline); every other chip composes it. All
+ * primitives are presentational and props-only: labels arrive already
+ * translated (parents own i18n), colour comes only from token classes, and the
+ * accent stays reserved for the connected/live state (`LiveStatus`). No hard
+ * coded hex, no `useTranslation` here.
  */
 
-import { Brain, Eye } from "lucide-react";
+import { cn } from "@houston-ai/core";
+import { CreditCard, KeyRound, Monitor } from "lucide-react";
 import type { ReactNode } from "react";
-import { useTranslation } from "react-i18next";
-import { formatPrice, formatTokens } from "./format.ts";
 
-/** The base grey pill every hub chip is built from. */
+/** Base neutral pill every hub chip is built from. */
 export function SpecChip({
-  icon,
   children,
+  className,
 }: {
-  icon?: ReactNode;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
-      {icon}
+    <span
+      className={cn(
+        "ht-hairline inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground",
+        className,
+      )}
+    >
       {children}
     </span>
   );
 }
 
-/** A labelled spec value, e.g. "Context · 200K". Muted label, plain value. */
-export function SpecValueChip({
+const AUTH_ICON = {
+  subscription: CreditCard,
+  apiKey: KeyRound,
+  local: Monitor,
+} as const;
+
+/** How a provider is paid for: a neutral chip with an icon + caller's label. */
+export function AuthBadge({
+  kind,
   label,
-  value,
 }: {
+  kind: "subscription" | "apiKey" | "local";
   label: string;
-  value: string;
 }) {
+  const Icon = AUTH_ICON[kind];
   return (
     <SpecChip>
-      <span className="text-muted-foreground/70">{label}</span>
-      <span className="text-foreground/80">{value}</span>
+      <Icon className="size-3" aria-hidden="true" />
+      {label}
     </SpecChip>
   );
 }
 
-/** Marks a model that thinks before it answers. */
-export function ReasoningBadge() {
-  const { t } = useTranslation("aiHub");
+/** A friendly "good at ..." capability, rendered as a neutral chip. */
+export function CapabilityChip({ label }: { label: string }) {
+  return <SpecChip>{label}</SpecChip>;
+}
+
+/** Budget -> premium as three dots. Filled = spend; neutral, never accent. */
+export function CostMeter({
+  tier,
+  title,
+}: {
+  tier: 1 | 2 | 3;
+  title?: string;
+}) {
   return (
-    <SpecChip icon={<Brain className="size-3" />}>
-      {t("model.specs.reasoning")}
-    </SpecChip>
+    <span
+      className="inline-flex items-center gap-1"
+      role="img"
+      aria-label={title}
+    >
+      {[1, 2, 3].map((dot) => (
+        <span
+          key={dot}
+          className={cn(
+            "size-1.5 rounded-full",
+            dot <= tier ? "bg-foreground/70" : "bg-border",
+          )}
+        />
+      ))}
+    </span>
   );
 }
 
-/** Marks a model that can read images. */
-export function VisionBadge() {
-  const { t } = useTranslation("aiHub");
+/** A plain-language memory readout, e.g. "Long" + a muted mono value. */
+export function MemoryLabel({ word, value }: { word: string; value: string }) {
   return (
-    <SpecChip icon={<Eye className="size-3" />}>
-      {t("model.specs.vision")}
-    </SpecChip>
+    <span className="inline-flex items-baseline">
+      <span className="text-[13px] font-medium text-foreground">{word}</span>
+      <span className="ml-1.5 font-mono text-xs text-muted-foreground tabular-nums">
+        {value}
+      </span>
+    </span>
   );
 }
 
-/** A context window as a compact chip, e.g. "200K". */
-export function ContextChip({ tokens }: { tokens: number }) {
-  return <SpecChip>{formatTokens(tokens)}</SpecChip>;
+/** Pre-formatted price text, e.g. "from $3" or "$5.00 / $25.00". */
+export function PriceText({ text }: { text: string }) {
+  return (
+    <span className="font-mono text-[13px] text-muted-foreground tabular-nums">
+      {text}
+    </span>
+  );
 }
+
+/** The only always-green element: a live dot + label for connected state. */
+export function LiveStatus({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span
+        className="size-1.5 rounded-full bg-success ring-2 ring-success/25"
+        aria-hidden="true"
+      />
+      <span className="text-[12.5px] font-medium text-success">{label}</span>
+    </span>
+  );
+}
+
+/** A section title row with an optional live dot and mono count. */
+export function SectionHeader({
+  label,
+  count,
+  live,
+}: {
+  label: string;
+  count?: number;
+  live?: boolean;
+}) {
+  return (
+    <div className="inline-flex items-center gap-2">
+      {live ? (
+        <span
+          className="size-1.5 rounded-full bg-success ring-2 ring-success/25"
+          aria-hidden="true"
+        />
+      ) : null}
+      <span className="text-[13px] font-medium text-foreground">{label}</span>
+      {count != null ? (
+        <span className="font-mono text-xs text-muted-foreground tabular-nums">
+          {count}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+const MARK_SIZE = {
+  sm: "size-5",
+  md: "size-6",
+  lg: "size-8",
+} as const;
 
 /**
- * Per-1M-token pricing as inline text (used as a `RowCard` description). Renders
- * nothing when neither side has a price so the caller can fall back to a
- * subscription label.
+ * A boxless brand mark: a lab/model glyph (a `ProviderGlyph` or lucide icon)
+ * rendered inline as a logo, with NO container box, background, or hairline.
+ * `size` drives the glyph itself — the wrapper forces the child svg to fill it
+ * (`[&_svg]:size-full`) since `ProviderGlyph` draws at a fixed intrinsic size.
  */
-export function PriceText({
-  input,
-  output,
+export function ModelMark({
+  mark,
+  size = "md",
 }: {
-  input?: number;
-  output?: number;
+  mark: ReactNode;
+  size?: "sm" | "md" | "lg";
 }) {
-  const { t } = useTranslation("aiHub");
-  if (input == null && output == null) return null;
   return (
-    <>
-      {t("model.offers.pricing", {
-        input: formatPrice(input),
-        output: formatPrice(output),
-      })}
-    </>
+    <span
+      className={cn(
+        "inline-grid shrink-0 place-items-center [&_svg]:size-full",
+        MARK_SIZE[size],
+      )}
+    >
+      {mark}
+    </span>
   );
 }

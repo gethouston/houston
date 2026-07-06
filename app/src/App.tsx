@@ -1,18 +1,20 @@
 import "./styles/globals.css";
 import type { Toast } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import { SignInScreen } from "./components/auth/sign-in-screen";
 import { MigrationReconnectScreen } from "./components/onboarding/migration-reconnect-screen";
 import { isFirstRun } from "./components/onboarding/missions/onboarding-flow";
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
+import { ClaudeBrowserLogin } from "./components/shell/claude-browser-login";
 import { ProviderLoginFallback } from "./components/shell/provider-login-fallback";
+import { WorkspaceLoading } from "./components/shell/workspace-loading";
 import { WorkspaceShell } from "./components/shell/workspace-shell";
 import { useAgentInvalidation } from "./hooks/use-agent-invalidation";
 import { useAnalyticsSubscriber } from "./hooks/use-analytics-subscriber";
 import { useCanCreateAgents } from "./hooks/use-can-create-agents";
 import { useHoustonInit } from "./hooks/use-houston-init";
 import { useIntegrationSessionSync } from "./hooks/use-integration-session-sync";
+import { useLocalBridgeAutoReconnect } from "./hooks/use-local-bridge-autoreconnect";
 import { useMigrationReconnect } from "./hooks/use-migration-reconnect";
 import { useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
@@ -78,6 +80,11 @@ export default function App() {
 
   const { data: session, isLoading: sessionLoading } = useSession();
 
+  // Desktop boot: if this machine owns a local-model tunnel whose cloud endpoint
+  // is still active, quietly re-establish frpc (dead after a restart). Gated on a
+  // signed-in session — the reconnect mints hosted tunnel credentials.
+  useLocalBridgeAutoReconnect(Boolean(session));
+
   // Tag the user in PostHog AND Sentry on sign-in; reset on sign-out. The
   // install_id stays PostHog's distinct_id (the website UTM bridge + onboarding
   // funnel depend on it); `identifyUser` aliases the Supabase id onto that person
@@ -130,7 +137,6 @@ export default function App() {
     return () => document.removeEventListener("contextmenu", handler);
   }, []);
 
-  const { t } = useTranslation("shell");
   const wsLoading = useWorkspaceStore((s) => s.loading);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const agentLoading = useAgentStore((s) => s.loading);
@@ -172,13 +178,7 @@ export default function App() {
   // transient Supabase blip (access token still valid in Keychain)
   // is unlikely because getSession() reads locally, not remotely.
   if (isAuthConfigured() && sessionLoading) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-background text-foreground">
-        <p className="text-muted-foreground text-sm">
-          {t("engineGate.starting")}
-        </p>
-      </div>
-    );
+    return <WorkspaceLoading />;
   }
   if (isAuthConfigured() && !session) {
     // Local account login. Keep the dev-only paste-the-code fallback (#146) — a
@@ -217,13 +217,7 @@ export default function App() {
     capabilitiesLoading ||
     (newEngineActive() && !agentsLoaded)
   ) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-background text-foreground">
-        <p className="text-muted-foreground text-sm">
-          {t("engineGate.starting")}
-        </p>
-      </div>
-    );
+    return <WorkspaceLoading />;
   }
 
   // First-run signal differs by wire (HOU-653): the legacy Rust engine uses
@@ -253,6 +247,7 @@ export default function App() {
     return (
       <>
         <ProviderLoginFallback />
+        <ClaudeBrowserLogin />
         <MigrationReconnectScreen onDone={migrationReconnect.dismiss} />
       </>
     );
@@ -265,6 +260,7 @@ export default function App() {
   return (
     <>
       <ProviderLoginFallback />
+      <ClaudeBrowserLogin />
       <WorkspaceShell toasts={mappedToasts} onDismissToast={dismissToast} />
     </>
   );

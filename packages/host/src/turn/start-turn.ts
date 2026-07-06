@@ -7,8 +7,8 @@ import {
   type TurnPin,
   type WorkspaceCredential,
 } from "../ports";
-import { isCloudProvider } from "../providers";
-import { json, PROVIDER, prefixFor, readSettings, type TurnDeps } from "./deps";
+import { resolveCloudTurn } from "./cloud-provider";
+import { json, prefixFor, type TurnDeps } from "./deps";
 import { TurnQuotaError } from "./quota";
 
 /**
@@ -37,21 +37,6 @@ export async function freshCredential(
   return cred;
 }
 
-/**
- * The provider a cloud turn should run: the agent's saved active provider when
- * it's one the cloud runtime offers, else Codex (the cloud default). Anthropic
- * is never served in cloud (ToS), so a stale anthropic setting falls back too.
- */
-async function activeCloudSettings(
-  deps: TurnDeps,
-  prefix: string,
-): Promise<{ provider: string; effort?: string }> {
-  const settings = await readSettings(deps, prefix);
-  const saved = settings.activeProvider;
-  const provider = saved && isCloudProvider(saved) ? saved : PROVIDER;
-  return { provider, effort: settings.effort };
-}
-
 /** Outcome of asking the per-turn runtime to start a turn. */
 export type TurnStart =
   | { status: "accepted" }
@@ -73,16 +58,13 @@ export async function dispatchTurn(
   nonce: string | undefined,
   pin?: TurnPin,
 ): Promise<TurnStart> {
-  // A pinned provider the cloud runtime can't serve fails the turn VISIBLY,
-  // before any quota/slot is claimed — the firer marks the run errored with
-  // this message. Substituting the saved provider here would be exactly the
-  // silent switch the pin exists to prevent (and would send the pinned MODEL
-  // to a provider that doesn't offer it).
-  if (pin?.provider && !isCloudProvider(pin.provider)) {
-    throw new Error(
-      `${pin.provider} is not available for cloud agents — edit the routine to pick another provider`,
-    );
-  }
+  const prefix = prefixFor(ws, agent);
+  // Resolve the provider (+ effort) for this turn BEFORE claiming the quota/relay
+  // slot: an unservable pin, or a saved openai-compatible with no endpoint, fails
+  // VISIBLY here (the firer marks the run errored) and leaks no slot. resolveCloudTurn
+  // NEVER silently substitutes Codex for the user's real pick — the routine's pin
+  // wins over the agent's saved active provider, and neither writes settings.
+  const { provider, effort } = await resolveCloudTurn(deps, prefix, pin);
   let release: () => Promise<void>;
   try {
     release = await deps.quota.acquire(ws.id);
@@ -91,16 +73,6 @@ export async function dispatchTurn(
       return { status: "quota", message: err.message };
     throw err;
   }
-  const prefix = prefixFor(ws, agent);
-  const { provider: savedProvider, effort: savedEffort } =
-    await activeCloudSettings(deps, prefix);
-  // The routine's pinned provider wins (validated cloud-servable above). The
-  // pin is per-turn: it never writes settings, so the agent's saved pick is
-  // untouched.
-  const provider = pin?.provider ?? savedProvider;
-  // The routine's pinned effort wins; otherwise the agent's saved effort is
-  // baked into the turn so a normal cloud message honors the picker selection.
-  const effort = pin?.effort ?? savedEffort;
   const started = await deps.relay.start(
     agent.id,
     `${agent.id}/${cid}`,

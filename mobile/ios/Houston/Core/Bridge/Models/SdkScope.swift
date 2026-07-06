@@ -2,7 +2,7 @@ import Foundation
 
 /// Typed builders for the SDK scope strings a surface subscribes to.
 ///
-/// Scopes are opaque strings on the wire (`"agents"`, `"conversation/<id>"`,
+/// Scopes are opaque strings on the wire (`"agents"`, `"conversation/<agent>/<id>"`,
 /// `"activities/<agentId>"`); centralizing their construction here keeps callers
 /// from hand-formatting one and risking a typo. The values mirror the scope
 /// helpers in `packages/sdk/src` verbatim.
@@ -13,15 +13,52 @@ enum SdkScope {
     "conversations/\(agentId)"
   }
 
-  /// One conversation's live feed VM — `conversation/<sessionKey>`
-  /// (`conversationScope`).
-  static func conversation(sessionKey: String) -> String {
-    "conversation/\(sessionKey)"
+  /// One conversation's live feed VM — `conversation/<agentPath>/<sessionKey>`
+  /// (`conversationScope`, `packages/sdk/src/modules/turns/vm-output.ts`).
+  ///
+  /// Agent-qualified: a session key is unique only WITHIN one agent, so the
+  /// scope carries both. Each component is `encodeURIComponent`-escaped exactly
+  /// as the SDK escapes it (`encodeURIComponent(agentPath)/encodeURIComponent(
+  /// sessionKey)`) — a mismatch here silently subscribes to a scope the SDK
+  /// never publishes on, so the chat feed goes dead. `agentPath` is the SAME
+  /// string this surface passes as `agentId` to the `turns/*` commands (the SDK
+  /// uses the command's `agentId` verbatim as the scope's agent segment), which
+  /// keeps the subscribe scope and the publish scope in lockstep.
+  static func conversation(agentPath: String, sessionKey: String) -> String {
+    "conversation/\(encodeURIComponent(agentPath))/\(encodeURIComponent(sessionKey))"
   }
 
   /// One agent's board/missions list — `activities/<agentId>`
   /// (`activitiesScope`).
   static func activities(agentId: String) -> String {
     "activities/\(agentId)"
+  }
+
+  /// One agent's AI-provider connect/status VM — `providers/<agentId>`
+  /// (`providersScope`, `packages/sdk/src/modules/providers/types.ts`). Provider
+  /// credentials are per-agent-pod in hosted mode, so the scope is agent-keyed.
+  static func providers(agentId: String) -> String {
+    "providers/\(agentId)"
+  }
+
+  /// The single integrations VM scope — `integrations` (`INTEGRATIONS_SCOPE`,
+  /// `packages/sdk/src/modules/integrations/types.ts`). User-scoped, NOT
+  /// per-agent: integrations are gateway-owned and keyed by the session `sub`.
+  static let integrations = "integrations"
+
+  /// The JS `encodeURIComponent` unreserved set: percent-encode everything
+  /// EXCEPT `A-Z a-z 0-9 - _ . ! ~ * ' ( )`. Foundation's `.urlQueryAllowed`
+  /// differs (it keeps `/`, `?`, `&`, `=`, … and treats non-ASCII letters as
+  /// allowed), so it is NOT usable here — the set is spelled out ASCII-only.
+  private static let encodeURIComponentAllowed: CharacterSet = CharacterSet(
+    charactersIn:
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()")
+
+  /// Escape one scope component exactly as JS `encodeURIComponent` does:
+  /// UTF-8 bytes, uppercase hex, only the unreserved set left literal.
+  /// `addingPercentEncoding` is total for a native `String` (always valid
+  /// UTF-8), so the force-unwrap is a genuine invariant, not a swallowed error.
+  static func encodeURIComponent(_ component: String) -> String {
+    component.addingPercentEncoding(withAllowedCharacters: encodeURIComponentAllowed)!
   }
 }

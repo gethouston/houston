@@ -91,15 +91,16 @@ test("cancelLogin: tears down the in-flight flow so a retry starts clean (HOU-66
   const first = await startLogin("anthropic");
   expect(first.kind).toBe("auth_code");
   expect(
-    getAuthStatus().providers.find((p) => p.provider === "anthropic")?.login
-      ?.status,
+    (await getAuthStatus()).providers.find((p) => p.provider === "anthropic")
+      ?.login?.status,
   ).toBe("awaiting_user");
 
   cancelLogin("anthropic");
 
   // Slot freed at once: status no longer reports a pending login.
   expect(
-    getAuthStatus().providers.find((p) => p.provider === "anthropic")?.login,
+    (await getAuthStatus()).providers.find((p) => p.provider === "anthropic")
+      ?.login,
   ).toBeNull();
 
   // Let the rejected paste promise unwind the flow...

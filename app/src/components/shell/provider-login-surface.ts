@@ -36,14 +36,19 @@ export function providerLoginSurfaceClaimed(): boolean {
  * What the global fallback should do with a `ProviderLoginUrl` event:
  * nothing when a dedicated surface owns the event; otherwise open the
  * browser directly on desktop loopback flows (no code to show), or surface
- * the dialog for device-code / remote flows. Mirrors the dedicated
- * handlers' own branch (`shouldOpenLoginUrlDirectly`).
+ * the dialog for device-code / remote / setup-token-paste flows. Mirrors the
+ * dedicated handlers' own branch (`shouldOpenLoginUrlDirectly`).
+ *
+ * `authCode` is the Claude/Anthropic setup-token paste flow: its `url` is a
+ * docs reference, not a page to auto-open, so it ALWAYS resolves to "dialog"
+ * even on a co-located desktop.
  */
 export function providerLoginFallbackAction(opts: {
   claimed: boolean;
   isDesktop: boolean;
   userCode: string | null | undefined;
+  authCode?: boolean;
 }): "ignore" | "open" | "dialog" {
   if (opts.claimed) return "ignore";
-  return opts.isDesktop && !opts.userCode ? "open" : "dialog";
+  return opts.isDesktop && !opts.userCode && !opts.authCode ? "open" : "dialog";
 }

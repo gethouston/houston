@@ -238,6 +238,8 @@ function model(
 ): CatalogModel {
   return {
     reasoning: false,
+    toolCall: false,
+    imageGen: false,
     inputModalities: [],
     offers: [],
     ...partial,

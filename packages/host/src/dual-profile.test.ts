@@ -315,6 +315,15 @@ async function battery(base: string): Promise<Step[]> {
   });
   await hit("GET config", `/agents/${a}/config`);
 
+  // Claude subscription push (hosted connect): a malformed body is a strict 400 on
+  // BOTH profiles — validation precedes the runtime channel, so this asserts the
+  // route + its validation gate exist identically without needing a live pod.
+  await hit(
+    "POST claude-oauth (malformed → 400)",
+    `/agents/${a}/credential/claude-oauth`,
+    { method: "POST", body: JSON.stringify({ nope: true }) },
+  );
+
   // Context file (raw agentfile) — also what the portable export reads.
   await hit("PUT agentfile CLAUDE.md", `/agents/${a}/agentfile/CLAUDE.md`, {
     method: "PUT",
@@ -465,12 +474,14 @@ test("the documented profile asymmetries are exactly the intended ones", async (
     expect(cc.codeExecution).toBe("remote-sandbox");
     expect(lc.providers).toEqual(LOCAL_CAPABILITIES.providers);
     expect(cc.providers).toEqual(CLOUD_CAPABILITIES.providers);
-    // Cloud offers the SAME model providers as desktop; the only provider-side
-    // asymmetry is the user's own local LLM (openaiCompatible), which needs a
-    // server on the user's machine and so is local-only.
+    // Cloud offers the SAME model providers as desktop, including the OpenAI-
+    // compatible (BYO endpoint) provider — no provider-side asymmetry remains.
     expect(cc.providers).toEqual(lc.providers);
+    // The OpenAI-compatible (BYO endpoint) provider is offered on BOTH profiles
+    // now: cloud accepts a public HTTPS endpoint the user hosts. Availability is
+    // symmetric; the cloud-only constraint is base-URL validation at save time.
     expect(lc.openaiCompatible).toBe(true);
-    expect(cc.openaiCompatible).toBe(false);
+    expect(cc.openaiCompatible).toBe(true);
 
     // Agent payloads: only the LOCAL profile reports the agent's real on-disk
     // directory (`dir`) — the desktop shell needs it for OS reveal/open

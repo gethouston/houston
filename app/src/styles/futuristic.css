@@ -235,3 +235,132 @@ body {
 .kanban-card.card-running-glow {
   --glow-bg: var(--ht-card-rest);
 }
+
+/* ── 8. AI Hub material primitives (Linear-anchored) ───────────────
+   Shared depth vocabulary for the AI Hub redesign. Depth comes from a
+   surface ladder (--ht-canvas-screen -> bg-card -> bg-card-hover ->
+   bg-popover) plus HAIRLINE INSET RINGS, not opaque borders or drop
+   shadows. Real shadow is reserved for floating chrome (modals/popovers).
+   The accent glow is reserved for the CONNECTED provider (the signature).
+   Component agents apply these classes so no component hardcodes a hex. */
+
+/* Hairline = a 1px inset ring in the --ht-border colour, drawn as an
+   `outline` (not box-shadow) so it composes with the glass sheen AND with
+   Tailwind ring/shadow utilities on the same element. outline-offset pulls
+   it inside; modern engines clip it to border-radius. Use on cards/rows
+   instead of `border` for the Linear hairline look. */
+.ht-hairline {
+  outline: 1px solid var(--ht-border);
+  outline-offset: -1px;
+}
+
+/* Modal / popover depth: two soft ambient layers + an inset hairline ring
+   + a top sheen, all in one box-shadow. Pair with `bg-popover` (surface +
+   blur). Dark needs a darker, deeper ambient to float over the near-black
+   canvas. The ambient rgba are effect values (the sanctioned effects layer,
+   like the glass sheen + active-tab shadow above); the ring references the
+   --ht-border token. */
+.ht-shadow-modal {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 0 0 1px var(--ht-border),
+    0 4px 12px rgba(13, 13, 13, 0.08),
+    0 16px 48px rgba(13, 13, 13, 0.16);
+}
+
+[data-theme="dark"] .ht-shadow-modal {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 0 0 1px var(--ht-border),
+    0 4px 12px rgba(0, 0, 0, 0.36),
+    0 24px 64px rgba(0, 0, 0, 0.5);
+}
+
+/* Live glow (signature) — reserved for the CONNECTED/live provider card.
+   An accent-tinted radial wash painted as a background LAYER (sits over the
+   surface fill, under content, no pointer-events cost) + an accent inset
+   ring via outline. Reuses Houston's brand aurora hues (the same
+   blue #3b82f6 / indigo #818cf8 the aurora + card-running-glow use — the
+   effects-layer brand palette, not tokenized by design). Everything else in
+   the hub stays calm; only the connected card carries this. */
+.ht-live-glow {
+  background-image:
+    radial-gradient(
+      ellipse 90% 70% at 50% -10%,
+      rgba(59, 130, 246, 0.18),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 60% 55% at 108% 112%,
+      rgba(129, 140, 248, 0.14),
+      transparent 70%
+    );
+  outline: 1px solid rgba(59, 130, 246, 0.5);
+  outline-offset: -1px;
+}
+
+/* AI Hub modal — the calm open/close motion. ONE clean gesture: a gentle fade
+   + a small 0.98→1 scale, ~190ms ease-out (exit mirrors it, a touch quicker).
+   Core centres the panel with Tailwind's `translate` property (translate:
+   -50% -50%), which is SEPARATE from `transform`. So the keyframes must animate
+   ONLY `transform: scale()` — re-declaring the translate here would stack on top
+   of the `translate` property and shove the panel half its size up-left during
+   the animation (the top-left-then-centre jump). transform-origin stays centre.
+   No page recede — the scrim is core Dialog's single bg-black/40 overlay.
+   Reduced-motion collapses to opacity only. */
+.ai-hub-modal-surface[data-state="open"] {
+  animation: ai-hub-modal-in 0.19s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-hub-modal-surface[data-state="closed"] {
+  animation: ai-hub-modal-out 0.15s cubic-bezier(0.4, 0, 1, 1);
+}
+
+@keyframes ai-hub-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ai-hub-modal-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-hub-modal-surface[data-state="open"] {
+    animation-name: ai-hub-modal-fade-in;
+  }
+  .ai-hub-modal-surface[data-state="closed"] {
+    animation-name: ai-hub-modal-fade-out;
+  }
+}
+
+@keyframes ai-hub-modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ai-hub-modal-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}

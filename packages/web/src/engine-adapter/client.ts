@@ -1,4 +1,5 @@
 import { agentFileEventType, migrateProviderModel } from "@houston/domain";
+import type { LiveCatalog } from "@houston/protocol";
 import {
   type CustomEndpoint,
   EngineError,
@@ -44,6 +45,7 @@ import type {
   SessionStartRequest,
   SessionStartResponse,
   SkillDetail,
+  TunnelCredentials,
   UpdateAgent,
   Workspace,
 } from "../../../../ui/engine-client/src/types";
@@ -340,6 +342,7 @@ export class HoustonClient {
         agent: await controlPlane.createAgent(this.cp, req.name, req.color, {
           claudeMd: req.claudeMd,
           seeds: req.seeds,
+          templateId: req.templateId,
         }),
       };
     return agents.createAgent(workspaceId, req);
@@ -969,6 +972,35 @@ export class HoustonClient {
       } as ProviderStatus;
     });
   }
+  /**
+   * The host's LIVE model catalog for a provider (OpenRouter today) — the
+   * picker's dynamic model list, fetched fresh from the provider rather than the
+   * baked snapshot.
+   *
+   * This is a HOST route, reached the SAME direct way as `capabilities()` /
+   * `version()` (a `/v1/*` GET on `baseUrl`), NOT the control plane: the live
+   * fetch is DESKTOP-first. On desktop `baseUrl` is the local host sidecar,
+   * which holds the OpenRouter key + network egress and returns the REAL
+   * catalog. In cloud the same path reaches the per-agent engine pod's host,
+   * which is intentionally egress-locked and answers `[]`. Live-bearer fetch so
+   * a rotated Supabase token refreshes + replays on 401 (HOU-687), as
+   * capabilities() does.
+   */
+  async listProviderModels(providerId: string): Promise<LiveCatalog> {
+    const res = await controlPlane.gatewayAuthFetch(this.token)(
+      `${this.baseUrl}/v1/providers/${encodeURIComponent(providerId)}/models`,
+    );
+    // 404 = this host has no live-catalog route (an older host, or the
+    // standalone-web / e2e fake host that has no provider egress): the same
+    // honest "no live models here" answer as an egress-locked host's `[]`.
+    // Every other status still throws so the picker's toast path surfaces it.
+    if (res.status === 404) return [];
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new HoustonEngineError(res.status, body);
+    }
+    return (await res.json()) as LiveCatalog;
+  }
   // `deviceAuth` is the client's "I can't catch a loopback callback" flag — the
   // co-located desktop sends false (it CAN), remote webapps send true. It steers
   // Codex's flow (false → browser/loopback, true → device code); Claude keys off
@@ -1006,6 +1038,11 @@ export class HoustonClient {
         provider: name,
         url,
         user_code: userCode,
+        // `auth_code` (headless Claude setup-token): `url` is only docs, so the
+        // handler must show the paste dialog, never auto-open it. `instructions`
+        // is the runtime's paste-step copy the dialog renders above the field.
+        auth_code: info.kind === "auth_code",
+        instructions: info.kind === "auth_code" ? info.instructions : undefined,
       });
       this.watchLoginCompletion(pid, name);
       return;
@@ -1036,6 +1073,11 @@ export class HoustonClient {
         provider: old,
         url: info.url,
         user_code: null,
+        // Setup-token paste flow (Claude): the url is docs-only, so the handler
+        // shows the paste dialog instead of opening it. `instructions` carries
+        // the runtime's paste-step copy; absent for the loopback `url` kind.
+        auth_code: info.kind === "auth_code",
+        instructions: info.kind === "auth_code" ? info.instructions : undefined,
       });
     }
     void this.pollProviderConnect(agentId, pid, old);
@@ -1142,6 +1184,28 @@ export class HoustonClient {
   }
 
   /**
+   * Push a desktop-extracted Anthropic OAuth credential (the `claude` CLI's
+   * `.credentials.json` JSON) to the given agent's pod, which stores + materializes
+   * it on the PVC. The desktop calls this for a REMOTE engine after a successful
+   * browser login — the pod can't read this machine's Keychain. Cloud-only:
+   * a co-located engine shares the credential dir with its local runtime, so it
+   * never reaches here (a call without a control plane is a programming error).
+   */
+  async pushClaudeOAuthCredential(
+    agentId: string,
+    credentialJson: string,
+  ): Promise<void> {
+    if (!this.cp) {
+      throw new Error("Pushing a Claude credential needs a cloud engine.");
+    }
+    await controlPlane.pushClaudeOAuthCredential(
+      this.cp,
+      agentId,
+      credentialJson,
+    );
+  }
+
+  /**
    * Connect an API-key provider (OpenCode Zen / Go): the user pastes a key, no
    * OAuth dance. Cloud stores it centrally (and pushes it into the agent runtime)
    * via the control plane; local writes it straight to the single runtime. On
@@ -1227,6 +1291,21 @@ export class HoustonClient {
       success: true,
       error: null,
     });
+  }
+
+  /**
+   * Mint a relay credential for the guided "connect a local model" flow: the
+   * desktop tunnels the user's local model server up to their CLOUD agent (see
+   * control-plane.getTunnelCredentials). Cloud/hosted only — locally there is no
+   * gateway to issue one (and no tunnel is needed, the runtime is co-located),
+   * so reject loudly rather than pretend.
+   */
+  async getTunnelCredentials(): Promise<TunnelCredentials> {
+    if (!this.cp)
+      throw new Error(
+        "Connecting a local model to a cloud agent needs a cloud workspace.",
+      );
+    return controlPlane.getTunnelCredentials(this.cp);
   }
 
   /**
@@ -1514,9 +1593,10 @@ export class HoustonClient {
   async connectIntegration(
     provider: string,
     toolkit: string,
+    agent?: string,
   ): Promise<{ redirectUrl: string; connectionId: string }> {
     if (!this.cp) throw new Error("Integrations require a connected host");
-    return controlPlane.connectIntegration(this.cp, provider, toolkit);
+    return controlPlane.connectIntegration(this.cp, provider, toolkit, agent);
   }
   async integrationConnection(
     provider: string,
@@ -1544,9 +1624,16 @@ export class HoustonClient {
     if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
     return controlPlane.getOrg(this.cp);
   }
-  async addOrgMember(email: string, role: controlPlane.OrgRole): Promise<void> {
+  async addOrgMember(
+    email: string,
+    role: controlPlane.OrgRole,
+  ): Promise<controlPlane.AddOrgMemberResult> {
     if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
     return controlPlane.addOrgMember(this.cp, email, role);
+  }
+  async deleteOrgInvite(inviteId: string): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.deleteOrgInvite(this.cp, inviteId);
   }
   async removeOrgMember(userId: string): Promise<void> {
     if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
@@ -1563,10 +1650,73 @@ export class HoustonClient {
   // ---- per-agent assignments + integration grants (multiplayer) ----
   async setAgentAssignments(
     agentSlugOrId: string,
-    userIds: string[],
+    assignments: controlPlane.AgentAssignment[] | string[],
   ): Promise<void> {
     if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
-    return controlPlane.setAgentAssignments(this.cp, agentSlugOrId, userIds);
+    return controlPlane.setAgentAssignments(
+      this.cp,
+      agentSlugOrId,
+      assignments,
+    );
+  }
+  async getAgentSettings(
+    agentSlugOrId: string,
+  ): Promise<controlPlane.AgentSettings> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.getAgentSettings(this.cp, agentSlugOrId);
+  }
+  async setAgentSettings(
+    agentSlugOrId: string,
+    settings: { allowedToolkits: string[] | null },
+  ): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.setAgentSettings(this.cp, agentSlugOrId, settings);
+  }
+  async getOrgSettings(): Promise<controlPlane.OrgSettings> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.getOrgSettings(this.cp);
+  }
+  async setOrgSettings(settings: {
+    allowedToolkits: string[] | null;
+  }): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.setOrgSettings(this.cp, settings);
+  }
+  async orgAudit(
+    opts: { before?: number; limit?: number } = {},
+  ): Promise<controlPlane.AuditEntry[]> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.orgAudit(this.cp, opts);
+  }
+  async orgUsage(days: number): Promise<controlPlane.UsageRow[]> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.orgUsage(this.cp, days);
+  }
+
+  // ---- agent templates (multiplayer) — hosted gateway only ----
+  // Reads degrade to `[]`/`null` without a host (mirrors grants): a non-Teams
+  // surface never renders templates. Writes require the gateway and throw.
+  async listOrgTemplates(): Promise<controlPlane.TemplateSummary[]> {
+    if (!this.cp) return [];
+    return controlPlane.listOrgTemplates(this.cp);
+  }
+  async getOrgTemplate(
+    id: string,
+  ): Promise<controlPlane.TemplateRecord | null> {
+    if (!this.cp) return null;
+    return controlPlane.getOrgTemplate(this.cp, id);
+  }
+  async createOrgTemplate(input: {
+    name: string;
+    description: string;
+    spec: controlPlane.TemplateSpec;
+  }): Promise<controlPlane.TemplateSummary> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.createOrgTemplate(this.cp, input);
+  }
+  async deleteOrgTemplate(id: string): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.deleteOrgTemplate(this.cp, id);
   }
   // Grants degrade gracefully: `null` means "this deployment has no grants
   // model" (the legacy engine path, or a host that 404s the route), which the UI

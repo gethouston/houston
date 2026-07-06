@@ -109,6 +109,9 @@ final class AuthController {
             errorMessage = Self.describe(error)
         }
         await sdk.setToken(nil)
+        // Purge the previous user's cached scope snapshots so a different user
+        // signing in on this device never reads them (fixed scope keys).
+        sdk.purgeUserData()
         state = .signedOut
     }
 

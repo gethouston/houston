@@ -1,13 +1,12 @@
 {
   "title": "Settings",
   "nav": {
-    "account": "Account",
-    "workspace": "Workspace",
     "workspaceContext": "Workspace context",
-    "userContext": "User context",
-    "phone": "Connect phone",
+    "userContext": "Your context",
+    "language": "Language",
     "shortcuts": "Keyboard shortcuts",
-    "reportBug": "Report bug"
+    "reportBug": "Report bug",
+    "danger": "Delete workspace"
   },
   "account": {
     "title": "Account",
@@ -15,8 +14,7 @@
     "fallbackName": "Signed in"
   },
   "workspace": {
-    "title": "Workspace",
-    "nameLabel": "Name"
+    "title": "Workspace name"
   },
   "workspaceContext": {
     "emptyTitle": "Tell every agent about this workspace",
@@ -98,5 +96,24 @@
     "providerSwitched": "Switched to {{provider}} ({{model}})",
     "versionCopied": "Version copied",
     "versionCopyFailed": "Couldn't copy version"
+  },
+  "index": {
+    "subtitle": "Manage your workspace and account.",
+    "groups": {
+      "context": "Context",
+      "support": "Support"
+    },
+    "rows": {
+      "members": "People who can use your agents",
+      "workspaceContext": "What every agent knows about this workspace",
+      "userContext": "What every agent knows about you",
+      "shortcuts": "Run Houston without the mouse",
+      "reportBug": "Something broke? Tell us"
+    },
+    "values": {
+      "set": "Set",
+      "membersCount_one": "{{count}} member",
+      "membersCount_other": "{{count}} members"
+    }
   }
 }

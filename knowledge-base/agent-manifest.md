@@ -38,6 +38,18 @@ This used to be configurable per agent via a `tabs: AgentTab[]` field in `housto
 
 The per-agent `Integrations` tab is a thin wrapper around the same `IntegrationsView` that the sidebar `Connections` entry renders, so the per-agent and workspace-wide surfaces are intentionally identical. The two entry points are kept because users reach for them at different moments (focused on one agent vs. setting up Houston as a whole).
 
+**Managed-agent read-only gating (Teams v2).** For a plain member of a shared
+agent (`!isAgentManager`), the configure surfaces render **read-only** instead
+of hiding. Agent Settings (`job-description-tab.tsx`) shows a
+`teams:managedAgent.banner` note (`managed-agent-banner.tsx`), driven by
+`job-description-access.ts` off `canEditAgentConfig`; the model + effort pickers
+disable with a `teams:model.lockedTooltip`; the Integrations tab gates its edits
+on `isAgentManager` / `canEditAgentGrants`. The gateway 403s any configure-scope
+write regardless — these gates only avoid showing a dead control. The **Share**
+dialog (`agent-share-dialog.tsx`) — a Drive-style people-with-access sheet
+backed by `setAgentAssignments` v2 — is gated on `canManageAssignments`. See
+`knowledge-base/teams.md`.
+
 ## Locations
 - **Built-in:** `app/src/agents/builtin/` — `personalAssistantAgent`
   (default agent for new workspaces) + `blankAgent` (start-from-scratch).
@@ -100,6 +112,17 @@ New Agent modal is Store-only for non-technical users.
 
 ## Agent creation
 Seeds agent CLAUDE.md from manifest `claudeMd` field or manifest's `CLAUDE.md` file. Fallback: generic template.
+
+**From an org template (Teams v2).** `CreateAgent` carries an optional
+`templateId`; `POST /agents` with it stamps a new agent from a
+`gateway.agent_templates` record. The gateway sets the new agent's allowed-app
+ceiling synchronously and applies the template's instructions/skills/model to
+the pod in the background. Ignored by single-player/self-host hosts (no
+templates). A manager captures a template with **Save as template**
+(`save-as-template-section.tsx`, in Agent Settings, gated on
+`isMultiplayer && isAgentManager`); creation from one runs through
+`use-create-from-template.ts` + `create-workspace-dialog.tsx`. See
+`knowledge-base/teams.md`.
 
 ## Default Personal assistant + tutorial
 
@@ -198,6 +221,7 @@ Engine route: `POST /v1/store/workspaces/install-from-github`. Rust impl: `houst
 | > Dashboard                 |  all agents overview (Mission Control)
 | > AI models                 |  the AI Hub top-level view (viewMode "ai-hub")
 | > Connections               |  workspace-wide integrations
+| > Organization              |  Teams v2 dashboard (owner/admin + multiplayer only)
 |-----------------------------|
 | Your AI Agents              |
 |   > Research Agent    [2]   |  sorted by lastOpenedAt
@@ -212,6 +236,13 @@ running board cards. The row `...` menu replaces the count chip on hover
 and keyboard focus. It keeps the count chip hidden while open. The first-level
 menu shows Rename, Change color, Delete; Change color opens the color picker
 submenu.
+
+**Multiplayer (Teams v2).** The **Organization** entry
+(`ORGANIZATION_VIEW_ID = "organization"`) renders only when
+`canSeeOrganization(capabilities)` (multiplayer owner/admin); hidden for plain
+members and single-player. **New Agent** is gated on `canCreateAgents`
+(`useCanCreateAgents`) — a member with no create right gets no add action. Full
+client model: `knowledge-base/teams.md`.
 
 ## Provider + model wiring
 
@@ -306,6 +337,61 @@ Notes:
   `api.<domain>/copilot_internal/v2/token`); Personal passes no domain (github.com).
   One card + one slot means no per-card status disambiguation. Full design:
   `convergence/README.md`.
+
+### The chat model picker (search-first redesign)
+
+The composer's model picker is a **search-first command menu**
+(`@houston-ai/core` `ModelPicker`, built on cmdk) that replaced the old
+provider-grouped radix dropdown. It scales from a provider's two models to
+OpenRouter's 300+ on one surface: search + sort (relevance / price / context /
+newest) + capability & price filters, a provider rail with connection state,
+pinned **Recents** and **Favorites**, and rich rows (brand icon, price tier,
+"New" badge, favorite star, capability icons, a `ⓘ` detail with exact $/Mtok).
+The library component is props-only and i18n-agnostic (`labels?`); all app
+wiring lives in `app/src/components/chat-model-selector.tsx`.
+
+- **Only ever offers runnable `(provider, model)` pairs.** The mapping
+  (`app/src/lib/chat-model-picker-map.ts`, pure + unit-tested) encodes each row
+  id as `` `${provider}::${model}` `` (split on the FIRST `::`), decoded on
+  select back into the existing `handleModelSelect(provider, model)` — so the
+  cross-provider `ProviderSwitchDialog` consent, effort selector, and all
+  persistence are untouched. The effort control stays a SEPARATE composer button.
+- **Two data sources, one view-model.** Non-OpenRouter providers enumerate their
+  curated `PROVIDERS[].models` (plus the synthesized local `openai-compatible`
+  runtime row), enriched with capabilities/pricing/context by an exact
+  `${providerId}::${modelId}` lookup into the AI Hub catalog. **OpenRouter is the
+  300+ case:** its rows come from the **live** catalog, falling back to the
+  curated OpenRouter list when live is empty (offline / no key / cloud).
+- **Live OpenRouter catalog.** `GET /v1/providers/openrouter/models`
+  (`packages/host/src/routes/provider-catalog.ts`) fetches OpenRouter's
+  `/api/v1/models` host-side using the `CredentialStore` key, maps it via the
+  pure `packages/host/src/providers/openrouter-catalog.ts` (prices ×1e6,
+  modalities→vision/imageGen, `supported_parameters`→reasoning/tools), and caches
+  ~10 min. **Desktop-only** — cloud is egress-locked (`openrouter` is
+  `cloud:false`), so the route returns `[]` there. Wire type `LiveCatalog`
+  (`@houston/protocol` `catalog.ts`). Adapter: `listProviderModels` (direct host
+  transport, mirrors `capabilities()`, 404→`[]`) → `tauriProvider.listModels`.
+- **Catalog layer** (`app/src/lib/ai-hub/`): live models fold into the baked
+  models.dev snapshot through the existing merge (`catalog-live.ts` +
+  `catalog-key.ts` derives the same key as the bake-time generator so a live
+  model attaches to its snapshot twin as another `CatalogOffer`, not a
+  duplicate). `CatalogModel` gained `imageGen` (live-sourced). `useHubCatalog()`
+  exposes `{ catalog, isLoading, status: "loading"|"ready"|"offline", offline }`;
+  the picker maps `status` → its `catalogState`. Loading is **progressive**:
+  curated content shows instantly, a "loading more" footer signals the live
+  catalog streaming in, and skeletons only take over on a genuinely empty cold
+  load. Capability/price projection: `app/src/lib/ai-hub/capabilities.ts`
+  (`capabilitiesOf`, `priceTier`).
+- **Favorites & recents** persist per-user via `tauriPreferences` (JSON string
+  arrays under `favorite_models` / `recent_models`), exposed by
+  `app/src/hooks/use-model-favorites.ts` (`useModelFavorites()`). Ids are the
+  same encoded `${provider}::${model}` strings the picker uses.
+- **Connecting from the picker.** A disconnected provider still appears (dimmed,
+  with a "Connect →" affordance) instead of being hidden — `onConnect` reuses the
+  AI Hub's `useProviderConnections()` flow (the removed `shouldShowProviderInPicker`
+  gate is obsolete). Zen and Go remain separate sections as before.
+- **Design tokens** (`packages/design-tokens`): price tiers `--ht-price-{free,
+  low,mid,high}`, capability chip `--ht-cap-fg`/`--ht-cap-bg`, favorite `--ht-star`.
 
 ### Switching provider mid-conversation
 

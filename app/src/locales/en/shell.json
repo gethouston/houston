@@ -1,7 +1,7 @@
 {
   "sidebar": {
     "missionControl": "Mission Control",
-    "aiModels": "AI models",
+    "aiModels": "AI Models",
     "integrations": "Integrations",
     "settings": "Settings",
     "yourAgents": "Your Agents",
@@ -169,7 +169,7 @@
     "dismissAction": "Dismiss update for now"
   },
   "store": {
-    "searchPlaceholder": "Search the store...",
+    "searchPlaceholder": "Search the library...",
     "noResults": "No agents match your search"
   },
   "naming": {
@@ -181,7 +181,11 @@
     "createAgent": "Create Agent"
   },
   "newAgent": {
-    "dialogTitle": "New agent"
+    "dialogTitle": "New agent",
+    "createSection": "Create",
+    "librarySection": "From library",
+    "fromScratchCard": "From scratch",
+    "fromScratchDescription": "A blank agent with no instructions or actions. Build it your way."
   },
   "aiAssist": {
     "brainLabel": "Set up with",
@@ -271,7 +275,7 @@
     "continueButton": "Continue"
   },
   "engineGate": {
-    "starting": "Starting Houston engine…",
+    "starting": "Loading your workspace…",
     "reconnected": "Houston reconnected",
     "loadFailed": "Couldn't load your available AI models. Check your connection and try again.",
     "authRequiredTitle": "Sign-in required",

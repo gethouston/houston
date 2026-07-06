@@ -11,12 +11,15 @@ export function LearningCard({
   onDelete,
   onCancel,
   isDraft,
+  readOnly = false,
 }: {
   initialText: string;
   onSave: (text: string) => Promise<unknown> | unknown;
   onDelete?: () => void;
   onCancel?: () => void;
   isDraft?: boolean;
+  /** Managed-agent read-only: preview only, no edit/delete affordances. */
+  readOnly?: boolean;
 }) {
   const [value, setValue] = useState(initialText);
   const [expanded, setExpanded] = useState(false);
@@ -64,7 +67,7 @@ export function LearningCard({
 
   return (
     <article className="rounded-xl border border-foreground/[0.05] bg-secondary px-4 py-3 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
-      {editing ? (
+      {editing && !readOnly ? (
         <LearningEditor
           value={value}
           saving={saving}
@@ -80,8 +83,8 @@ export function LearningCard({
           expanded={expanded}
           canExpand={canExpand}
           onToggle={() => setExpanded((next) => !next)}
-          onEdit={startEditing}
-          onDelete={onDelete}
+          onEdit={readOnly ? undefined : startEditing}
+          onDelete={readOnly ? undefined : onDelete}
         />
       )}
     </article>

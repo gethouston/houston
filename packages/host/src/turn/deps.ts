@@ -54,6 +54,9 @@ export async function readJson(
 export const prefixFor = (ws: Workspace, agent: Agent) =>
   `ws/${ws.id}/${agent.id}`;
 export const settingsKey = (p: string) => `${p}/data/settings.json`;
+/** The OpenAI-compatible endpoint file, the same path/schema the runtime reads. */
+export const customEndpointKey = (p: string) =>
+  `${p}/data/custom-endpoint.json`;
 export const conversationKey = (p: string, cid: string) =>
   `${p}/data/conversations/${encodeURIComponent(cid)}.json`;
 

@@ -14,9 +14,13 @@ import { planAttachmentUploadBatches } from "./attachments.ts";
 import type {
   Activity,
   ActivityUpdate,
+  AddOrgMemberResult,
   Agent,
+  AgentAssignment,
+  AgentSettings,
   AttachmentManifest,
   AttachmentUploadResult,
+  AuditEntry,
   Capabilities,
   ChatHistoryEntry,
   ClaudeStatus,
@@ -51,6 +55,7 @@ import type {
   NewRoutine,
   OrgInfo,
   OrgRole,
+  OrgSettings,
   PairingCode,
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
@@ -82,9 +87,14 @@ import type {
   StoreListing,
   SummarizeOptions,
   SummarizeResult,
+  TemplateRecord,
+  TemplateSpec,
+  TemplateSummary,
+  TunnelCredentials,
   TunnelStatus,
   UpdateAgent,
   UpdateProvider,
+  UsageRow,
   VersionResponse,
   Workspace,
   WorkspaceContext,
@@ -973,6 +983,20 @@ export class HoustonClient {
   setProviderCustomEndpoint(_endpoint: CustomEndpoint): Promise<void> {
     return Promise.reject(new Error("Local models require the new engine."));
   }
+  /**
+   * Mint a relay credential so a local model server can be tunnelled to a CLOUD
+   * agent (guided "connect a local model" flow). Hosted + new-engine only — the
+   * legacy Rust engine has no gateway to issue one, and the UI is gated on the
+   * `openaiCompatible` capability, so this is never hit here. Reject loudly
+   * rather than pretend (no silent failure).
+   */
+  getTunnelCredentials(): Promise<TunnelCredentials> {
+    return Promise.reject(
+      new Error(
+        "Connecting a local model to a cloud agent requires the new engine.",
+      ),
+    );
+  }
   // "Sign in with Google" for Gemini goes through the standard
   // `providerLogin("gemini")` call — the engine detects the gemini id
   // and delegates to gemini-cli's own OAuth via the ACP `authenticate`
@@ -1016,12 +1040,21 @@ export class HoustonClient {
       )
     ).items;
   }
+  /**
+   * Begin connecting a toolkit's OAuth. Pass `agent` (the agent slug) when the
+   * connect is initiated from a per-agent surface: the gateway then applies that
+   * agent's effective allowlist and auto-grants the toolkit to the agent on a
+   * successful connect (Teams v2). Omit it for the account-level Integrations
+   * page. Single-player/self-host hosts ignore the field.
+   */
   connectIntegration(
     provider: string,
     toolkit: string,
+    agent?: string,
   ): Promise<{ redirectUrl: string; connectionId: string }> {
     return this.request("POST", `/integrations/${this.seg(provider)}/connect`, {
       toolkit,
+      ...(agent ? { agent } : {}),
     });
   }
   /** Poll one connection after connect() until the OAuth finishes. */
@@ -1063,9 +1096,18 @@ export class HoustonClient {
   getOrg(): Promise<OrgInfo> {
     return this.request("GET", "/org");
   }
-  /** Invite a member by email at a role. Owner/admin only (enforced by the host). */
-  async addOrgMember(email: string, role: OrgRole): Promise<void> {
-    await this.request("POST", "/org/members", { email, role });
+  /**
+   * Add a member by email at a role (owner only; enforced by the host). A known
+   * Houston user is added directly; an unknown email creates a pending invite
+   * instead (host answers `202 {invited:true,...}`). The parsed body is returned
+   * so the caller can tell the two apart (`invited` / `userId`).
+   */
+  addOrgMember(email: string, role: OrgRole): Promise<AddOrgMemberResult> {
+    return this.request("POST", "/org/members", { email, role });
+  }
+  /** Revoke a pending invite by id (owner only). */
+  async deleteOrgInvite(inviteId: string): Promise<void> {
+    await this.request("DELETE", `/org/invites/${this.seg(inviteId)}`);
   }
   /** Remove a member from the org. */
   async removeOrgMember(userId: string): Promise<void> {
@@ -1079,18 +1121,93 @@ export class HoustonClient {
   // ---------- per-agent assignments + integration grants (multiplayer) ----------
 
   /**
-   * Set which org members may use this agent. Empty `userIds` means "everyone".
-   * Owner/admin only.
+   * Set who may use this agent, and at what access level (Teams v2).
+   *
+   * Pass `AgentAssignment[]` (`{userId, access}`) to send the v2 body
+   * `{assignments}` — the host set-replaces the roster and honors each
+   * per-person `manager`/`user` level. Pass a plain `string[]` of user ids to
+   * send the legacy body `{userIds}` (mapped to `access: "user"` server-side,
+   * except users who already had `manager` keep it). An empty array takes the
+   * legacy `{userIds: []}` path, preserving the old "empty = everyone" meaning.
+   * Gate: owner any agent; admin only if agent-manager (enforced by the host).
    */
   async setAgentAssignments(
     agentSlugOrId: string,
-    userIds: string[],
+    assignments: AgentAssignment[] | string[],
   ): Promise<void> {
+    const isV2 = assignments.length > 0 && typeof assignments[0] !== "string";
+    const body = isV2
+      ? { assignments: assignments as AgentAssignment[] }
+      : { userIds: assignments as string[] };
     await this.request(
       "PUT",
       `/agents/${this.seg(agentSlugOrId)}/assignments`,
-      { userIds },
+      body,
     );
+  }
+  /**
+   * Read this agent's Teams settings (any assigned caller or owner):
+   * `allowedToolkits` (agent integration ceiling), `orgAllowedToolkits` (org
+   * ceiling it's intersected with), and the caller's effective `access`.
+   */
+  getAgentSettings(agentSlugOrId: string): Promise<AgentSettings> {
+    return this.request("GET", `/agents/${this.seg(agentSlugOrId)}/settings`);
+  }
+  /**
+   * Replace this agent's allowed-toolkit ceiling (agent-manager only). `null`
+   * means unrestricted, `[]` means none. The host also prunes now-disallowed
+   * toolkits from existing grants so revocation takes effect immediately.
+   */
+  async setAgentSettings(
+    agentSlugOrId: string,
+    settings: { allowedToolkits: string[] | null },
+  ): Promise<void> {
+    await this.request(
+      "PUT",
+      `/agents/${this.seg(agentSlugOrId)}/settings`,
+      settings,
+    );
+  }
+  /** Read the org-wide allowed-toolkit ceiling (any member). */
+  getOrgSettings(): Promise<OrgSettings> {
+    return this.request("GET", "/org/settings");
+  }
+  /** Replace the org-wide allowed-toolkit ceiling (owner only). */
+  async setOrgSettings(settings: {
+    allowedToolkits: string[] | null;
+  }): Promise<void> {
+    await this.request("PUT", "/org/settings", settings);
+  }
+  /**
+   * Read the org audit log, newest first (owner org-wide; admin filtered to
+   * their managed agents; plain members 403). `before` pages by entry id,
+   * `limit` caps the page (host clamps to ≤ 200).
+   */
+  async orgAudit(
+    opts: { before?: number; limit?: number } = {},
+  ): Promise<AuditEntry[]> {
+    return (
+      await this.request<{ entries: AuditEntry[] }>(
+        "GET",
+        "/org/audit",
+        undefined,
+        {
+          before: opts.before?.toString(),
+          limit: opts.limit?.toString(),
+        },
+      )
+    ).entries;
+  }
+  /**
+   * Read per-agent/user usage counters over the last `days` (owner org-wide;
+   * admin their managed agents; plain members 403). Host clamps `days` to ≤ 90.
+   */
+  async orgUsage(days: number): Promise<UsageRow[]> {
+    return (
+      await this.request<{ rows: UsageRow[] }>("GET", "/org/usage", undefined, {
+        days: days.toString(),
+      })
+    ).rows;
   }
   /**
    * The integration toolkit slugs granted to this agent, or `null` when the host
@@ -1124,6 +1241,53 @@ export class HoustonClient {
       `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
       { toolkits },
     );
+  }
+
+  // ---------- agent templates (multiplayer) — hosted gateway only ----------
+  //
+  // Reusable agent configurations, owned by the org. Only a Teams gateway serves
+  // these routes; every other host (single-player, self-host, legacy engine)
+  // 404s them, so the reads degrade to `[]`/`null` and the UI — already gated on
+  // `capabilities.multiplayer` — never shows the surface. The writes are only
+  // ever invoked from that gated surface, so they throw normally.
+
+  /** List the org's templates as list-card summaries (newest first). */
+  async listOrgTemplates(): Promise<TemplateSummary[]> {
+    try {
+      return (
+        await this.request<{ templates: TemplateSummary[] }>(
+          "GET",
+          "/org/templates",
+        )
+      ).templates;
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return [];
+      throw err;
+    }
+  }
+  /** Fetch one template with its full `spec`, or `null` if it's gone/unsupported. */
+  async getOrgTemplate(id: string): Promise<TemplateRecord | null> {
+    try {
+      return await this.request<TemplateRecord>(
+        "GET",
+        `/org/templates/${this.seg(id)}`,
+      );
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return null;
+      throw err;
+    }
+  }
+  /** Create an org template from a client-assembled spec (manager only). */
+  createOrgTemplate(input: {
+    name: string;
+    description: string;
+    spec: TemplateSpec;
+  }): Promise<TemplateSummary> {
+    return this.request("POST", "/org/templates", input);
+  }
+  /** Delete an org template (owner, or the admin who created it). */
+  async deleteOrgTemplate(id: string): Promise<void> {
+    await this.request("DELETE", `/org/templates/${this.seg(id)}`);
   }
 
   // ---------- store ----------

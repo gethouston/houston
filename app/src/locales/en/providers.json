@@ -37,6 +37,8 @@
   "providerLogin": {
     "title": "Finish signing in to {{name}}",
     "description": "Open the sign-in page in your browser, complete sign-in, then paste the verification code back here.",
+    "authCodeDescription": "Paste a setup token to finish connecting {{name}}.",
+    "reference": "Reference",
     "openUrl": "Open URL",
     "copyUrl": "Copy URL",
     "urlCopied": "URL copied to clipboard",
@@ -59,7 +61,9 @@
     "deviceOpenFailed": "Couldn't open the sign-in page",
     "deviceSettingsHint": "Not seeing a code prompt? Turn on device-code sign-in in <link>ChatGPT Settings > Security</link>.",
     "deviceSettingsOpenFailed": "Couldn't open ChatGPT settings",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "browserDescription": "Approve Houston in the browser tab that just opened. This window updates on its own when you finish.",
+    "browserOpen": "Didn't open? Open sign-in"
   },
   "apiKey": {
     "title": "Connect {{name}}",
@@ -109,5 +113,58 @@
     "save": "Connect",
     "saving": "Connecting...",
     "cancel": "Cancel"
+  },
+  "claudeLogin": {
+    "timeout": "Claude sign-in timed out. Please try connecting again.",
+    "confirmTimeout": "Signed in to Claude, but Houston could not confirm the connection. Please try again.",
+    "autoFailedTitle": "Couldn't finish connecting automatically",
+    "autoFailedBody": "Paste a Claude setup token to finish connecting."
+  },
+  "localModel": {
+    "title": "Connect a local model",
+    "description": "Run a model on your own computer and let Houston use it. Houston takes care of the connection.",
+    "detecting": "Looking for model apps on your computer...",
+    "cancel": "Cancel",
+    "connecting": {
+      "title": "Connecting your model...",
+      "body": "This takes a few seconds. Keep the app open on your computer."
+    },
+    "empty": {
+      "body": "To run a model on your own computer, install one of these free apps, then open it:",
+      "apps": {
+        "lmstudio": "A friendly app for running models.",
+        "jan": "An open, easy model app.",
+        "ollama": "Popular and simple to set up."
+      },
+      "get": "Get it",
+      "reassure": "Once it's open, Houston takes care of the rest.",
+      "recheck": "Check again"
+    },
+    "pick": {
+      "body": "Houston found these on your computer. Pick the model you'd like to use.",
+      "modelsFound_one": "{{count}} model available",
+      "modelsFound_other": "{{count}} models available",
+      "modelLabel": "Model",
+      "connect": "Connect"
+    },
+    "error": {
+      "body": "Something went wrong while connecting. Make sure the app is still open on your computer, then try again.",
+      "retry": "Try again"
+    },
+    "manual": {
+      "title": "Enter details manually",
+      "description": "Already have a model server address? Enter it here.",
+      "link": "Enter details manually",
+      "back": "Back"
+    },
+    "status": {
+      "online": "Online",
+      "connecting": "Connecting...",
+      "offline": "Offline",
+      "error": "Not reachable",
+      "offlineHint": "Your model isn't reachable right now. Make sure {{app}} is open on this computer.",
+      "yourApp": "the app on your computer",
+      "reconnect": "Reconnect"
+    }
   }
 }

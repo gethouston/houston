@@ -1,10 +1,17 @@
 import { ConfirmDialog } from "@houston-ai/core";
 import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
-import { Blocks, LayoutDashboard, Settings, Sparkles } from "lucide-react";
+import {
+  Blocks,
+  Boxes,
+  Building2,
+  LayoutDashboard,
+  Settings,
+} from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import { orderAgents } from "../../lib/agent-order";
 import { resolveAutoCollapse } from "../../lib/sidebar-auto-collapse";
 import { isTopLevelView } from "../../lib/top-level-views";
@@ -12,6 +19,7 @@ import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
+import { canSeeOrganization, ORGANIZATION_VIEW_ID } from "../organization";
 import { buildAgentSidebarItems } from "./agent-sidebar-items";
 import { UpdateChecker } from "./update-checker";
 import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
@@ -19,7 +27,7 @@ import { UserMenu } from "./user-menu";
 import { CreateWorkspaceDialog } from "./workspace-dialog";
 
 export function Sidebar({ children }: { children: ReactNode }) {
-  const { t } = useTranslation(["shell", "common", "portable"]);
+  const { t } = useTranslation(["shell", "common", "portable", "teams"]);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrent);
@@ -38,6 +46,11 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const setViewMode = useUIStore((s) => s.setViewMode);
   const setDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
   const { canCreate: canCreateAgents } = useCanCreateAgents();
+  const { capabilities } = useCapabilities();
+  // Teams v2: the Organization dashboard is owner/admin-only and multiplayer-
+  // only. Hidden entirely for plain members and single-player (canSeeOrganization
+  // is the same gate as the members roster).
+  const showOrganization = canSeeOrganization(capabilities);
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useUIStore((s) => s.toggleSidebarCollapsed);
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed);
@@ -166,9 +179,19 @@ export function Sidebar({ children }: { children: ReactNode }) {
             {
               id: "ai-hub",
               label: t("shell:sidebar.aiModels"),
-              icon: <Sparkles className="h-4 w-4" />,
+              icon: <Boxes className="h-4 w-4" />,
               onClick: () => setViewMode("ai-hub"),
             },
+            ...(showOrganization
+              ? [
+                  {
+                    id: ORGANIZATION_VIEW_ID,
+                    label: t("teams:org.nav"),
+                    icon: <Building2 className="h-4 w-4" />,
+                    onClick: () => setViewMode(ORGANIZATION_VIEW_ID),
+                  },
+                ]
+              : []),
             {
               id: "settings",
               label: t("shell:sidebar.settings"),

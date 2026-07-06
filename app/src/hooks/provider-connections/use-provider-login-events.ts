@@ -70,6 +70,9 @@ export function useProviderLoginEvents({
           shouldOpenLoginUrlDirectly({
             isDesktop: osIsTauri(),
             userCode: ev.data.user_code,
+            // Claude/Anthropic setup-token: url is docs-only, so never auto-open
+            // — fall through to the paste dialog below.
+            authCode: ev.data.auth_code,
           })
         ) {
           // Desktop: the runtime is co-located, so a loopback OAuth flow
@@ -97,6 +100,7 @@ export function useProviderLoginEvents({
             userCode:
               ev.data.user_code ??
               (current?.provider.id === prov.id ? current.userCode : null),
+            instructions: ev.data.instructions,
           }));
         }
       } else if (ev.type === "ProviderLoginComplete") {

@@ -429,31 +429,57 @@ jobs:
 
           rm -f "$CERT_FILE"
 
-      # Compile the Houston HOST sidecar (the TS engine) for BOTH macOS arches,
-      # then lipo them into the single universal binary Tauri's
-      # `--target universal-apple-darwin` bundler expects at
-      # `binaries/houston-engine-universal-apple-darwin`.
+      # The universal build lipos BOTH arch slices of the SDK's native `claude`
+      # binary into one fat Mach-O, so BOTH per-arch Claude SDK platform packages
+      # must be in the pnpm store before build-host-sidecar.sh stages each slice.
+      # `pnpm install` resolves only the runner-native optional package
+      # (@anthropic-ai/claude-agent-sdk-darwin-arm64 on the arm64 macOS runner),
+      # so force-install both at the version packages/runtime pins — the same
+      # requirement the SDK README documents for `bun build --compile`
+      # cross-target packaging (see scripts/build-host-sidecar.sh). Edits only the
+      # runner's checkout (never committed). No-op if a package is already present.
+      - name: Force-install both macOS Claude SDK platform packages (universal lipo)
+        run: |
+          set -euo pipefail
+          SDK_VER=$(jq -r '.dependencies["@anthropic-ai/claude-agent-sdk"]' packages/runtime/package.json)
+          echo "Claude Agent SDK version pinned by packages/runtime: $SDK_VER"
+          pnpm add -w \
+            "@anthropic-ai/claude-agent-sdk-darwin-arm64@$SDK_VER" \
+            "@anthropic-ai/claude-agent-sdk-darwin-x64@$SDK_VER" \
+            --force
+
+      # Compile the Houston HOST sidecar (the TS engine) for BOTH macOS arches
+      # and stage the SDK's native `claude` binary alongside each, then lipo both
+      # into the single universal binaries Tauri's `--target universal-apple-darwin`
+      # bundler expects at `binaries/houston-engine-universal-apple-darwin` and
+      # `binaries/claude-universal-apple-darwin`.
       #
       # `scripts/build-host-sidecar.sh <triple>` bun-compiles a self-contained
-      # binary (embeds the Bun runtime — no `bun`/node needed at runtime) to
-      # `target/host-sidecar/houston-host-<triple>`. Bun links its own libc, so
-      # one macOS runner cross-compiles both arches. `build.rs::stage_host_sidecar`
-      # also stages per-triple copies to
-      # `binaries/houston-engine-<triple>` during tauri's per-arch cargo runs;
-      # the fat binary we lipo here is what the universal bundle actually ships.
-      # A missing arch would break half of our Mac users, so fail hard.
-      - name: Compile Houston host sidecar (aarch64 + x86_64) + lipo universal
+      # host binary (embeds the Bun runtime — no `bun`/node needed at runtime) to
+      # `target/host-sidecar/houston-host-<triple>` AND stages the matching
+      # `target/host-sidecar/claude-<triple>` from the pnpm store. Bun links its
+      # own libc, so one macOS runner cross-compiles both arches.
+      # `build.rs` also stages per-triple copies to
+      # `binaries/{houston-engine,claude}-<triple>` during tauri's per-arch cargo
+      # runs; the fat binaries we lipo here are what the universal bundle ships.
+      # A missing arch would break half of our Mac users, so fail hard. The
+      # `claude` binary is large (~232MB/arch → ~470MB universal), so this step
+      # dominates disk + build time.
+      - name: Compile Houston host sidecar + stage claude (aarch64 + x86_64) + lipo universal
         run: |
           set -euo pipefail
           for TRIPLE in aarch64-apple-darwin x86_64-apple-darwin; do
-            echo "=== Bun-compiling host sidecar for $TRIPLE ==="
+            echo "=== Bun-compiling host sidecar + staging claude for $TRIPLE ==="
             scripts/build-host-sidecar.sh "$TRIPLE"
             test -x "target/host-sidecar/houston-host-$TRIPLE" \
               || { echo "::error::host sidecar missing for $TRIPLE"; exit 1; }
+            test -x "target/host-sidecar/claude-$TRIPLE" \
+              || { echo "::error::claude binary missing for $TRIPLE"; exit 1; }
           done
 
-          echo "=== Lipo universal sidecar ==="
           mkdir -p app/src-tauri/binaries
+
+          echo "=== Lipo universal host sidecar ==="
           lipo -create \
             target/host-sidecar/houston-host-aarch64-apple-darwin \
             target/host-sidecar/houston-host-x86_64-apple-darwin \
@@ -461,10 +487,21 @@ jobs:
           chmod +x app/src-tauri/binaries/houston-engine-universal-apple-darwin
           lipo -info app/src-tauri/binaries/houston-engine-universal-apple-darwin
 
+          echo "=== Lipo universal claude binary ==="
+          lipo -create \
+            target/host-sidecar/claude-aarch64-apple-darwin \
+            target/host-sidecar/claude-x86_64-apple-darwin \
+            -output app/src-tauri/binaries/claude-universal-apple-darwin
+          chmod +x app/src-tauri/binaries/claude-universal-apple-darwin
+          lipo -info app/src-tauri/binaries/claude-universal-apple-darwin
+
           ls -la \
             target/host-sidecar/houston-host-aarch64-apple-darwin \
             target/host-sidecar/houston-host-x86_64-apple-darwin \
-            app/src-tauri/binaries/houston-engine-universal-apple-darwin
+            target/host-sidecar/claude-aarch64-apple-darwin \
+            target/host-sidecar/claude-x86_64-apple-darwin \
+            app/src-tauri/binaries/houston-engine-universal-apple-darwin \
+            app/src-tauri/binaries/claude-universal-apple-darwin
 
       # Build only — no release creation (no tagName).
       # tauri-action handles certificate import, code signing, .app notarization + stapling.
@@ -611,6 +648,67 @@ jobs:
           fi
 
           echo "=== Sidecar checks passed ==="
+
+      # The Claude Code binary ships as a SECOND universal Mach-O sibling of the
+      # host sidecar in Contents/MacOS/ (externalBin `binaries/claude` → tauri
+      # strips the triple suffix to `claude`). The desktop app runs it for
+      # `claude auth login`, and the Bun-compiled runtime resolves it as a
+      # sibling of the sidecar (packages/runtime/src/backends/claude/binary-path.ts).
+      # tauri-action's deep sign reaches it there, so assert the SAME invariants
+      # as the host sidecar — a broken signature would fail launch/notarization:
+      # valid signature, Developer ID (Gatekeeper), hardened runtime, both arches.
+      - name: Verify Claude Code binary signing
+        run: |
+          APP="${{ steps.artifacts.outputs.app }}"
+
+          # Tauri strips the triple suffix on bundle; fall back to glob if it doesn't.
+          CLAUDE="$APP/Contents/MacOS/claude"
+          if [ ! -f "$CLAUDE" ]; then
+            CLAUDE=$(find "$APP/Contents" -type f -name 'claude*' ! -name '*.dSYM*' | head -1)
+          fi
+
+          if [ -z "$CLAUDE" ] || [ ! -x "$CLAUDE" ]; then
+            echo "::error::Claude Code binary missing or not executable inside .app"
+            echo "--- .app contents ---"
+            find "$APP/Contents" -type f | head -50
+            exit 1
+          fi
+          echo "Claude binary: $CLAUDE"
+
+          echo "=== 1. Signature valid ==="
+          codesign -vvv "$CLAUDE"
+
+          echo "=== 2. Signed with Developer ID (not ad-hoc) ==="
+          AUTH=$(codesign -dvv "$CLAUDE" 2>&1 | grep '^Authority=' | head -1)
+          echo "$AUTH"
+          if ! echo "$AUTH" | grep -q 'Developer ID Application'; then
+            echo "::error::claude binary not signed with Developer ID — Gatekeeper will kill it on first launch"
+            codesign -dvv "$CLAUDE" 2>&1 || true
+            exit 1
+          fi
+
+          echo "=== 3. Hardened runtime enabled ==="
+          FLAGS=$(codesign -dv "$CLAUDE" 2>&1 | grep -E '^CodeDirectory.*flags=' | head -1)
+          echo "$FLAGS"
+          if ! echo "$FLAGS" | grep -q 'runtime'; then
+            echo "::error::claude binary missing hardened runtime flag — required for notarization + subprocess execution"
+            codesign -dv "$CLAUDE" 2>&1 || true
+            exit 1
+          fi
+
+          echo "=== 4. Universal (fat) binary — both arm64 + x86_64 ==="
+          LIPO=$(lipo -info "$CLAUDE" 2>&1 || true)
+          echo "$LIPO"
+          if ! echo "$LIPO" | grep -q 'arm64'; then
+            echo "::error::claude binary missing arm64 slice — Apple Silicon users can't run claude auth login"
+            exit 1
+          fi
+          if ! echo "$LIPO" | grep -q 'x86_64'; then
+            echo "::error::claude binary missing x86_64 slice — Intel Mac users can't run claude auth login"
+            exit 1
+          fi
+
+          echo "=== Claude binary checks passed ==="
 
       # Sentry upload: source maps (Vite output in app/dist/) + Rust debug
       # symbols for the Tauri app binary and both per-triple houston-engine

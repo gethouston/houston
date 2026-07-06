@@ -25,6 +25,7 @@ export function AgentSettingsContent({
   onChangeColor,
   onShare,
   onDelete,
+  canEdit = true,
 }: {
   name: string;
   color: string | undefined;
@@ -32,6 +33,13 @@ export function AgentSettingsContent({
   onChangeColor: (color: string) => Promise<unknown>;
   onShare: () => void;
   onDelete: () => Promise<unknown>;
+  /**
+   * Whether the caller may reconfigure the agent (matrix v2: agent-manager).
+   * When false the rename field is locked, the color swatches are disabled, and
+   * the danger/delete section is hidden — rename + delete are manager-scope on
+   * the wire. Defaults to true so single-player is unchanged.
+   */
+  canEdit?: boolean;
 }) {
   const { t } = useTranslation(["agents", "shell", "common", "portable"]);
   const [draftName, setDraftName] = useState(name);
@@ -85,8 +93,12 @@ export function AgentSettingsContent({
           onKeyDown={(e) => {
             if (e.key === "Enter") void handleRename();
           }}
+          readOnly={!canEdit}
           placeholder={t("agents:agentSettings.namePlaceholder")}
-          className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-ring transition-all"
+          className={cn(
+            "w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-ring transition-all",
+            !canEdit && "cursor-default text-muted-foreground",
+          )}
         />
       </section>
 
@@ -111,10 +123,12 @@ export function AgentSettingsContent({
                 aria-label={label}
                 aria-pressed={isActive}
                 title={label}
+                disabled={!canEdit}
                 onClick={() => void onChangeColor(entry.id)}
                 className={cn(
-                  "size-7 rounded-full transition-transform hover:scale-110",
+                  "size-7 rounded-full transition-transform",
                   "ring-offset-2 ring-offset-background",
+                  canEdit ? "hover:scale-110" : "cursor-default opacity-60",
                   isActive && "ring-2 ring-ring",
                 )}
                 style={{ backgroundColor: colorHex(entry) }}
@@ -137,21 +151,23 @@ export function AgentSettingsContent({
         </Button>
       </section>
 
-      <section>
-        <h2 className="text-lg font-semibold text-destructive mb-1">
-          {t("agents:agentSettings.dangerTitle")}
-        </h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          {t("agents:agentSettings.dangerHelper")}
-        </p>
-        <Button
-          variant="destructive"
-          className="rounded-full"
-          onClick={() => setShowConfirm(true)}
-        >
-          {t("common:actions.delete")}
-        </Button>
-      </section>
+      {canEdit && (
+        <section>
+          <h2 className="text-lg font-semibold text-destructive mb-1">
+            {t("agents:agentSettings.dangerTitle")}
+          </h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            {t("agents:agentSettings.dangerHelper")}
+          </p>
+          <Button
+            variant="destructive"
+            className="rounded-full"
+            onClick={() => setShowConfirm(true)}
+          >
+            {t("common:actions.delete")}
+          </Button>
+        </section>
+      )}
 
       <ConfirmDialog
         open={showConfirm}

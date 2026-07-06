@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   providerLoginUrlHost,
   shouldOpenLoginUrlDirectly,
+  shouldUseClaudeDesktopLogin,
   shouldUseCodexLoopback,
 } from "../src/components/shell/provider-login-url.ts";
 
@@ -94,6 +95,38 @@ describe("shouldOpenLoginUrlDirectly", () => {
   it("treats an empty user code as no code", () => {
     strictEqual(
       shouldOpenLoginUrlDirectly({ isDesktop: true, userCode: "" }),
+      true,
+    );
+  });
+
+  it("keeps the dialog for the Claude/Anthropic setup-token paste flow (auth_code) — its url is docs, not a sign-in page", () => {
+    // Desktop must NOT auto-open the docs URL: the user needs the paste dialog.
+    strictEqual(
+      shouldOpenLoginUrlDirectly({
+        isDesktop: true,
+        userCode: null,
+        authCode: true,
+      }),
+      false,
+    );
+    // Web behaves the same (it always dialogs anyway).
+    strictEqual(
+      shouldOpenLoginUrlDirectly({
+        isDesktop: false,
+        userCode: null,
+        authCode: true,
+      }),
+      false,
+    );
+  });
+
+  it("still opens directly on desktop for a loopback flow that is explicitly not auth_code", () => {
+    strictEqual(
+      shouldOpenLoginUrlDirectly({
+        isDesktop: true,
+        userCode: null,
+        authCode: false,
+      }),
       true,
     );
   });
@@ -193,6 +226,35 @@ describe("shouldUseCodexLoopback", () => {
         isTauri: true,
         userCode: null,
       }),
+      false,
+    );
+  });
+});
+
+// The zero-terminal Claude browser login runs for anthropic on a CO-LOCATED
+// Tauri desktop only: the credential `claude auth login` caches locally is the
+// same dir the local runtime reads. Remote-engine desktop keeps the setup-token
+// paste flow (the pod can't read this machine's Keychain — hosted follow-up).
+describe("shouldUseClaudeDesktopLogin", () => {
+  it("runs for anthropic on ANY Tauri desktop — co-located AND remote", () => {
+    // Both topologies drive the same browser login on this machine; the remote
+    // case pushes the extracted credential to the pod afterwards.
+    strictEqual(
+      shouldUseClaudeDesktopLogin({ provider: "anthropic", isTauri: true }),
+      true,
+    );
+  });
+
+  it("does not run for a web / non-desktop client", () => {
+    strictEqual(
+      shouldUseClaudeDesktopLogin({ provider: "anthropic", isTauri: false }),
+      false,
+    );
+  });
+
+  it("does not run for a non-anthropic provider", () => {
+    strictEqual(
+      shouldUseClaudeDesktopLogin({ provider: "openai", isTauri: true }),
       false,
     );
   });

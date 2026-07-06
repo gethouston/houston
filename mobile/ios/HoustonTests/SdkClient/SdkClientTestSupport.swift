@@ -59,6 +59,13 @@ enum BridgeTestJSON {
     return (try? JSONDecoder().decode(Wrap.self, from: data))?.sub
   }
 
+  /// The `scope` of a captured `subscribe` inbound message.
+  static func scope(from raw: String) -> String? {
+    struct Wrap: Decodable { let scope: String? }
+    guard let data = raw.data(using: .utf8) else { return nil }
+    return (try? JSONDecoder().decode(Wrap.self, from: data))?.scope
+  }
+
   /// Decode a JSON string literal into a model type.
   static func decode<T: Decodable>(_ type: T.Type, _ json: String) throws -> T {
     try JSONDecoder().decode(T.self, from: Data(json.utf8))

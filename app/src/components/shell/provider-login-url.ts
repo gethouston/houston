@@ -43,12 +43,18 @@ export function providerLoginUrlHost(url: string): string | null {
  * user can read it, and remote / headless web clients always use the dialog
  * because their runtime can't reach a local browser. Mirrors the runtime's own
  * loopback-vs-headless split (see the runtime's `codexLoginMethod`).
+ *
+ * `authCode` is the Claude/Anthropic setup-token paste flow: the event's `url`
+ * is only a docs reference, not a page to sign in on, and the user finishes by
+ * pasting a token. It ALWAYS needs the dialog — never auto-open — so an
+ * `authCode` event returns false even on a co-located desktop.
  */
 export function shouldOpenLoginUrlDirectly(opts: {
   isDesktop: boolean;
   userCode: string | null | undefined;
+  authCode?: boolean;
 }): boolean {
-  return opts.isDesktop && !opts.userCode;
+  return opts.isDesktop && !opts.userCode && !opts.authCode;
 }
 
 /**
@@ -76,4 +82,25 @@ export function shouldUseCodexLoopback(opts: {
     codexUsesLoopbackRelay(opts.env, { isTauri: opts.isTauri }) &&
     !opts.userCode
   );
+}
+
+/**
+ * Decide whether an anthropic connect on THIS click should run the zero-terminal
+ * desktop browser login (`beginClaudeBrowserLogin`) instead of the runtime's
+ * setup-token paste flow.
+ *
+ * True for Claude (`provider === "anthropic"`) on ANY Tauri desktop, co-located
+ * OR remote: both drive the SAME native `claude auth login` browser-approve flow
+ * on this machine (no terminal, no paste). The topology only changes what happens
+ * AFTER the login succeeds — a co-located engine reads the cached credential from
+ * the shared dir directly, while a remote engine has the desktop EXTRACT and PUSH
+ * that credential to the pod (`beginClaudeBrowserLogin` branches on `isRemoteEngine`).
+ * Web (non-Tauri) returns false: a browser tab has no local `claude` to run, so it
+ * keeps the setup-token paste flow.
+ */
+export function shouldUseClaudeDesktopLogin(opts: {
+  provider: string;
+  isTauri: boolean;
+}): boolean {
+  return opts.provider === "anthropic" && opts.isTauri;
 }

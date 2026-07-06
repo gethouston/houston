@@ -1,13 +1,29 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { CustomEndpoint } from "@houston/protocol";
 import type {
   CaptureResult,
   ChannelCtx,
   RuntimeChannel,
   TurnPin,
 } from "../ports";
-import { PROVIDER, prefixFor, type TurnDeps } from "../turn/deps";
+import { OPENAI_COMPATIBLE } from "../providers";
+import {
+  customEndpointKey,
+  PROVIDER,
+  prefixFor,
+  type TurnDeps,
+} from "../turn/deps";
 import { dispatchCloudrun } from "../turn/dispatch";
 import { dispatchTurn } from "../turn/start-turn";
+
+/**
+ * Placeholder API key for a keyless local server. Keyless endpoints (Ollama /
+ * LM Studio / vLLM) ignore Authorization, but pi requires SOME key to resolve a
+ * request, so a blank key becomes this. Mirrors the runtime's own constant
+ * (`runtime/src/auth/login.ts` LOCAL_PLACEHOLDER_KEY) — the value only needs to
+ * be non-empty; the two packages share no code across the host/runtime boundary.
+ */
+const LOCAL_PLACEHOLDER_KEY = "houston-local";
 
 /**
  * The per-turn channel: no standing runtime — every request is served against
@@ -118,14 +134,56 @@ export class TurnChannel implements RuntimeChannel {
   }
 
   /**
-   * OpenAI-compatible (local) servers are unreachable from the cloud per-turn
-   * runtime — its egress sandbox can't dial the user's localhost. The host route
-   * already refuses this on the `openaiCompatible` capability; this is the
-   * defense-in-depth backstop so a cloud channel never silently accepts one.
+   * The multi-tenant per-turn Cloud Run image keeps Anthropic OFF — a
+   * subscription credential (and its refresh token) must never land in a shared
+   * per-turn process. Hosted Anthropic runs only on the single-tenant standing
+   * pod (ProxyChannel), so this channel refuses the push. This is the explicit
+   * gate that scopes the refresh-token-on-pod decision to single-tenant only.
    */
-  async saveCustomEndpoint(): Promise<void> {
+  async saveClaudeOAuthCredential(): Promise<void> {
     throw new Error(
-      "Local models aren't available in the cloud — they run on your own machine. Use the desktop app.",
+      "Claude subscription connect isn't available in the cloud per-turn runtime.",
     );
+  }
+
+  /**
+   * Persist an OpenAI-compatible endpoint for the per-turn runtime. There is no
+   * standing runtime to POST to (unlike ProxyChannel): the per-turn runtime
+   * hydrates its data dir from this object-storage prefix at the start of each
+   * turn, so writing `custom-endpoint.json` under the SAME key/schema the runtime
+   * reads (packages/runtime/src/ai/openai-compatible.ts) is what a later turn
+   * picks up. The endpoint (base URL + model) rides that hydrated file; the
+   * matching AUTH rides a central credential (below), served per turn.
+   */
+  async saveCustomEndpoint(
+    ctx: ChannelCtx,
+    endpoint: CustomEndpoint,
+  ): Promise<void> {
+    const stored = {
+      baseUrl: endpoint.baseUrl,
+      model: endpoint.model,
+      name: endpoint.name,
+      contextWindow: endpoint.contextWindow,
+      reasoning: endpoint.reasoning,
+    };
+    await this.deps.vfs.writeText(
+      customEndpointKey(prefixFor(ctx.workspace, ctx.agent)),
+      JSON.stringify(stored, null, 2),
+    );
+    // The per-turn runtime authenticates the endpoint from a SERVED credential:
+    // dispatchTurn → freshCredential(ws, "openai-compatible") → the runtime's
+    // applyServedCredential writes auth.json, where pi reads the key by
+    // model.provider. Store one now — the user's key, or the keyless placeholder
+    // — as an api_key credential (never expires, no refresh). WITHOUT it every
+    // turn hard-errors "No provider connected", and the endpoint's key must never
+    // sit in the hydrated custom-endpoint.json (that file is not auth).
+    await this.deps.credentials.put({
+      workspaceId: ctx.workspace.id,
+      provider: OPENAI_COMPATIBLE,
+      accessToken: endpoint.apiKey?.trim() || LOCAL_PLACEHOLDER_KEY,
+      refreshToken: "",
+      expiresAt: 0,
+      kind: "api_key",
+    });
   }
 }

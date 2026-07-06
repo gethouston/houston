@@ -77,10 +77,11 @@ export interface ProviderInfo {
    * How the user connects this provider. Default (absent) is subscription OAuth
    * (Claude / Codex). `"apiKey"` providers ask the user to
    * paste a key instead. Houston opens `apiKeyUrl` for them to grab one.
-   * `"openaiCompatible"` providers (a local server: Ollama / vLLM / LM Studio)
-   * ask for a base URL + model id. Both run only on the new TS engine, and
-   * `openaiCompatible` is desktop-only (the URL is the user's own machine) — see
-   * `getVisibleProviders`.
+   * `"openaiCompatible"` providers (an OpenAI-compatible server: Ollama / vLLM /
+   * LM Studio, reached directly or through a tunnel) ask for a base URL + model
+   * id. Both run only on the new TS engine, and `openaiCompatible` surfaces
+   * wherever the host reports the `openaiCompatible` capability (desktop, cloud,
+   * or self-host) — see `getVisibleProviders`.
    */
   auth?: "oauth" | "apiKey" | "openaiCompatible";
   /** For `auth: "apiKey"`: the dashboard URL where the user creates/copies the key. */
@@ -661,10 +662,11 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     installUrl: "https://ollama.com",
     loginCommand: "",
     cost: "Runs on your computer, free",
-    // Connects by base URL + model id (no pasted gateway key). Desktop-only and
-    // new-engine-only (see getVisibleProviders). The model list is whatever the
-    // user's server serves, so there's no static catalog here — the runtime
-    // reports the one configured model.
+    // Connects by base URL + model id (no pasted gateway key). New-engine-only,
+    // gated by the host's `openaiCompatible` capability (see
+    // getVisibleProviders). The model list is whatever the user's server serves,
+    // so there's no static catalog here — the runtime reports the one configured
+    // model.
     auth: "openaiCompatible",
     models: [],
     defaultModel: "",
@@ -690,32 +692,44 @@ function capabilityIdsForProvider(provider: ProviderInfo): readonly string[] {
   return [provider.id];
 }
 
+/** Options common to the provider-visibility helpers. */
+interface ProviderVisibilityOpts {
+  newEngine: boolean;
+  desktop?: boolean;
+  capabilities?: Pick<Capabilities, "providers" | "openaiCompatible">;
+}
+
+/**
+ * Whether to show the OpenAI-compatible (local / BYO model) provider. It runs
+ * only on the new TS engine, and the host's `openaiCompatible` capability
+ * decides — desktop hosts report it, and cloud/pod hosts now can too, so this is
+ * no longer desktop-gated. When capabilities have loaded, an explicit `true` is
+ * required. Before they load, desktop shows it optimistically (its co-located
+ * host always supports it) while web/hosted stays hidden, so the option never
+ * flashes on a Rust-engine or capability-less host.
+ */
+function showOpenaiCompatible(opts: ProviderVisibilityOpts): boolean {
+  if (!opts.newEngine) return false;
+  if (opts.capabilities) return opts.capabilities.openaiCompatible === true;
+  return !!opts.desktop;
+}
+
 /**
  * Providers to show in connect UIs. API-key providers run
  * only on the new TS engine — they paste a key Houston serves through the host —
  * so they're hidden when the legacy Rust engine is active. The OpenAI-compatible
- * (local) provider is additionally desktop-only: its base URL points at the
- * user's own machine, unreachable from a browser/cloud deployment (the host
- * enforces the same via its `openaiCompatible` capability). Pass
- * `newEngineActive()` and `osIsTauri()` from the caller.
+ * (local / BYO model) provider is gated by the host's `openaiCompatible`
+ * capability (see `showOpenaiCompatible`). Pass `newEngineActive()` and
+ * `osIsTauri()` from the caller.
  */
-export function getVisibleProviders(opts: {
-  newEngine: boolean;
-  desktop?: boolean;
-  capabilities?: Pick<Capabilities, "providers" | "openaiCompatible">;
-}): readonly ProviderInfo[] {
+export function getVisibleProviders(
+  opts: ProviderVisibilityOpts,
+): readonly ProviderInfo[] {
   const allowed = opts.capabilities
     ? new Set(opts.capabilities.providers)
     : null;
   return PROVIDERS.filter((p) => {
-    if (p.auth === "openaiCompatible") {
-      if (opts.capabilities) {
-        return (
-          opts.newEngine && !!opts.desktop && opts.capabilities.openaiCompatible
-        );
-      }
-      return opts.newEngine && !!opts.desktop;
-    }
+    if (p.auth === "openaiCompatible") return showOpenaiCompatible(opts);
     if (allowed)
       return capabilityIdsForProvider(p).some((id) => allowed.has(id));
     if (p.auth === "apiKey") return opts.newEngine;
@@ -757,14 +771,13 @@ const OPENCODE_ACCOUNT: ProviderInfo = {
 /**
  * Providers for the CONNECT surfaces (settings account list + onboarding
  * picker), where the two OpenCode gateways collapse into one "OpenCode" account
- * card. Otherwise identical to `getVisibleProviders` (same new-engine / desktop
- * gating), preserving catalog order — the merged card takes OpenCode's slot.
+ * card. Otherwise identical to `getVisibleProviders` (same new-engine /
+ * capability gating), preserving catalog order — the merged card takes
+ * OpenCode's slot.
  */
-export function getConnectProviders(opts: {
-  newEngine: boolean;
-  desktop?: boolean;
-  capabilities?: Pick<Capabilities, "providers" | "openaiCompatible">;
-}): readonly ProviderInfo[] {
+export function getConnectProviders(
+  opts: ProviderVisibilityOpts,
+): readonly ProviderInfo[] {
   const out: ProviderInfo[] = [];
   let mergedOpenCode = false;
   for (const p of getVisibleProviders(opts)) {

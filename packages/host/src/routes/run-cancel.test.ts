@@ -38,6 +38,7 @@ class SpyChannel implements RuntimeChannel {
   }
   async forgetCredential() {}
   async saveApiKeyCredential() {}
+  async saveClaudeOAuthCredential() {}
   async saveCustomEndpoint() {}
 }
 

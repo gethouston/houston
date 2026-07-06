@@ -7,6 +7,7 @@
     "ht-canvas-gutter": "#eef1f7",
     "ht-canvas-screen": "#ffffff",
     "ht-card": "rgba(255, 255, 255, 0.68)",
+    "ht-card-hover": "rgba(255, 255, 255, 0.76)",
     "ht-card-fg": "#0d0d0d",
     "ht-card-rest": "#f4f6fc",
     "ht-destructive": "#e02e2a",
@@ -32,7 +33,14 @@
     "ht-success": "#00a240",
     "ht-success-fg": "#ffffff",
     "ht-warning": "#e0ac00",
-    "ht-warning-fg": "#ffffff"
+    "ht-warning-fg": "#ffffff",
+    "ht-price-free": "#00a240",
+    "ht-price-low": "#00a240",
+    "ht-price-mid": "#e0ac00",
+    "ht-price-high": "#e02e2a",
+    "ht-cap-fg": "#7c3aed",
+    "ht-cap-bg": "rgba(124, 58, 237, 0.1)",
+    "ht-star": "#e0ac00"
   },
   "dark": {
     "ht-accent": "rgba(255, 255, 255, 0.08)",
@@ -42,6 +50,7 @@
     "ht-canvas-gutter": "#141416",
     "ht-canvas-screen": "rgba(38, 38, 40, 0.55)",
     "ht-card": "rgba(40, 40, 40, 0.5)",
+    "ht-card-hover": "rgba(50, 50, 52, 0.58)",
     "ht-card-fg": "#e5e5e5",
     "ht-card-rest": "#2c2c2b",
     "ht-destructive": "#ef4444",
@@ -67,6 +76,13 @@
     "ht-success": "#22c55e",
     "ht-success-fg": "#000000",
     "ht-warning": "#eab308",
-    "ht-warning-fg": "#000000"
+    "ht-warning-fg": "#000000",
+    "ht-price-free": "#22c55e",
+    "ht-price-low": "#22c55e",
+    "ht-price-mid": "#eab308",
+    "ht-price-high": "#ef4444",
+    "ht-cap-fg": "#a78bfa",
+    "ht-cap-bg": "rgba(167, 139, 250, 0.16)",
+    "ht-star": "#eab308"
   }
 }

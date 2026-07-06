@@ -37,11 +37,19 @@ export {
 } from "./use-learnings";
 export {
   useAddMember,
+  useDeleteInvite,
   useOrg,
   useRemoveMember,
-  useSetAgentAssignments,
   useSetMemberRole,
 } from "./use-org";
+export { useOrgAudit } from "./use-org-audit";
+export {
+  useCreateTemplate,
+  useDeleteTemplate,
+  useOrgTemplate,
+  useOrgTemplates,
+} from "./use-org-templates";
+export { USAGE_DEFAULT_DAYS, useOrgUsage } from "./use-org-usage";
 export {
   useCancelRoutineRun,
   useCreateRoutine,

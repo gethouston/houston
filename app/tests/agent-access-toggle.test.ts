@@ -1,81 +1,60 @@
-import { deepStrictEqual } from "node:assert";
+import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { assignmentToggle } from "../src/components/tabs/agent-access-model.ts";
+import type { Capabilities } from "@houston-ai/engine-client";
+import { canShowAgentShareBlock } from "../src/components/tabs/agent-access-model.ts";
 
-const MEMBERS = ["alice", "bob", "carol"];
+describe("canShowAgentShareBlock", () => {
+  const SINGLE_PLAYER: Capabilities = {};
+  const SINGLE_PLAYER_EXPLICIT: Capabilities = { multiplayer: false };
+  const OWNER: Capabilities = { multiplayer: true, role: "owner" };
+  const ADMIN: Capabilities = { multiplayer: true, role: "admin" };
+  const MEMBER: Capabilities = { multiplayer: true, role: "user" };
 
-describe("assignmentToggle", () => {
-  it("toggling someone ON adds them to an explicit set", () => {
-    deepStrictEqual(
-      assignmentToggle({
-        memberIds: MEMBERS,
-        assigned: new Set(["alice"]),
-        userId: "bob",
-        on: true,
-      }),
-      { kind: "set", userIds: ["alice", "bob"] },
+  it("single-player NEVER renders the share block, even though the caller manages everything", () => {
+    // Regression guard: canManageAssignments short-circuits to true in
+    // single-player (matrix v2), so gating on it alone would resurrect an
+    // empty, non-functional org-share block on every self-host agent.
+    strictEqual(
+      canShowAgentShareBlock(SINGLE_PLAYER, { access: undefined }),
+      false,
+    );
+    strictEqual(
+      canShowAgentShareBlock(SINGLE_PLAYER, { access: "manager" }),
+      false,
+    );
+    strictEqual(
+      canShowAgentShareBlock(SINGLE_PLAYER_EXPLICIT, { access: "manager" }),
+      false,
+    );
+    strictEqual(canShowAgentShareBlock(null, { access: "manager" }), false);
+    strictEqual(
+      canShowAgentShareBlock(undefined, { access: "manager" }),
+      false,
     );
   });
 
-  it("toggling someone OFF removes them from an explicit set", () => {
-    deepStrictEqual(
-      assignmentToggle({
-        memberIds: MEMBERS,
-        assigned: new Set(["alice", "bob"]),
-        userId: "bob",
-        on: false,
-      }),
-      { kind: "set", userIds: ["alice"] },
-    );
+  it("multiplayer owner sees the block for any agent", () => {
+    strictEqual(canShowAgentShareBlock(OWNER, { access: undefined }), true);
+    strictEqual(canShowAgentShareBlock(OWNER, { access: "user" }), true);
+    strictEqual(canShowAgentShareBlock(OWNER, { access: "manager" }), true);
   });
 
-  it("everyone mode (empty set) expands to the full roster minus the toggled member", () => {
-    deepStrictEqual(
-      assignmentToggle({
-        memberIds: MEMBERS,
-        assigned: new Set(),
-        userId: "bob",
-        on: false,
-      }),
-      { kind: "set", userIds: ["alice", "carol"] },
-    );
+  it("multiplayer admin sees the block only as an agent-manager, never by mere use", () => {
+    strictEqual(canShowAgentShareBlock(ADMIN, { access: "manager" }), true);
+    strictEqual(canShowAgentShareBlock(ADMIN, { access: "user" }), false);
+    strictEqual(canShowAgentShareBlock(ADMIN, { access: undefined }), false);
   });
 
-  it("toggling OFF the last assigned member asks for confirmation instead of PUTting []", () => {
-    // Empty assignedUserIds means "everyone in the org" (host convention), so
-    // this click would silently WIDEN access — it must be confirm-gated.
-    deepStrictEqual(
-      assignmentToggle({
-        memberIds: MEMBERS,
-        assigned: new Set(["bob"]),
-        userId: "bob",
-        on: false,
-      }),
-      { kind: "confirmOpenToAll" },
-    );
+  it("multiplayer plain member with a use/absent access never sees the block", () => {
+    strictEqual(canShowAgentShareBlock(MEMBER, { access: "user" }), false);
+    strictEqual(canShowAgentShareBlock(MEMBER, { access: undefined }), false);
   });
 
-  it("a one-member org toggling that member off also confirm-gates", () => {
-    deepStrictEqual(
-      assignmentToggle({
-        memberIds: ["alice"],
-        assigned: new Set(),
-        userId: "alice",
-        on: false,
-      }),
-      { kind: "confirmOpenToAll" },
-    );
-  });
-
-  it("toggling ON never confirm-gates, even from an empty roster expansion", () => {
-    deepStrictEqual(
-      assignmentToggle({
-        memberIds: MEMBERS,
-        assigned: new Set(),
-        userId: "bob",
-        on: true,
-      }),
-      { kind: "set", userIds: ["alice", "bob", "carol"] },
-    );
+  it("the client trusts the wire `access` field, which the gateway clamps by role", () => {
+    // A role-`user` never carries `access="manager"` on the wire (the gateway
+    // clamps stale rows away before they reach the client), so this pairing is
+    // an impossible state. The pure gate trusts the already-effective `access`
+    // rather than re-clamping by role, matching isAgentManager.
+    strictEqual(canShowAgentShareBlock(MEMBER, { access: "manager" }), true);
   });
 });

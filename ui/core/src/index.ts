@@ -23,6 +23,7 @@ export * from "./components/hover-card";
 export * from "./components/input";
 export * from "./components/input-group";
 export * from "./components/kbd";
+export * from "./components/model-picker";
 export * from "./components/popover";
 export * from "./components/progress";
 export * from "./components/resizable";

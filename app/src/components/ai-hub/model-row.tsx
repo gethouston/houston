@@ -1,15 +1,36 @@
 /**
- * A single quiet row in the model directory: lab glyph, model name + one-line
- * description, and right-aligned meta (how many providers offer it, context
- * window, reasoning). The whole row is a keyboard-focusable button that opens
- * the model detail. No hover-only affordances — every element reads at rest.
+ * One ledger row in the models directory, laid out on the shared column grid
+ * (`LEDGER_GRID`) so it aligns with the header: Model (glyph + name + maker),
+ * Good at (friendly capability chips), Memory (word + muted mono value), Cost
+ * (a budget->premium meter + "from $X"), and how many providers offer it. The
+ * whole row is a keyboard-focusable button; nothing is hover-only.
  */
 
+import { cn } from "@houston-ai/core";
 import { Box } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { CatalogModel, LabId } from "../../lib/ai-hub/catalog-types.ts";
 import { ProviderGlyph } from "../shell/provider-logos.tsx";
-import { ContextChip, ReasoningBadge } from "./hub-badges.tsx";
+import {
+  capabilityKeys,
+  cheapestInput,
+  costTier,
+  formatPrice,
+  formatTokens,
+  labName,
+  memoryKey,
+} from "./format.ts";
+import {
+  CapabilityChip,
+  CostMeter,
+  MemoryLabel,
+  ModelMark,
+  PriceText,
+} from "./hub-badges.tsx";
+
+/** Shared grid template for the header and every row, so columns line up. */
+export const LEDGER_GRID =
+  "grid grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_120px_160px_120px] items-center gap-x-4 px-5";
 
 /** Labs whose id is also a provider id `ProviderGlyph` draws a real logo for. */
 const GLYPH_LABS = new Set<LabId>([
@@ -20,43 +41,92 @@ const GLYPH_LABS = new Set<LabId>([
   "minimax",
 ]);
 
+/** Literal i18n keys (kept literal so the typed `t()` accepts them). */
+const CAP_KEY = {
+  reasoning: "caps.reasoning",
+  images: "caps.images",
+} as const;
+const MEMORY_KEY = {
+  standard: "directory.memory.standard",
+  long: "directory.memory.long",
+  huge: "directory.memory.huge",
+} as const;
+const TIER_KEY = {
+  1: "directory.cost.tiers.1",
+  2: "directory.cost.tiers.2",
+  3: "directory.cost.tiers.3",
+} as const;
+
 export function ModelRow({
   model,
   onOpen,
 }: {
   model: CatalogModel;
-  onOpen: (model: CatalogModel) => void;
+  onOpen: () => void;
 }) {
   const { t } = useTranslation("aiHub");
+  const caps = capabilityKeys(model);
+  const cheapest = cheapestInput(model.offers);
+  const tier = costTier(cheapest);
+
   return (
     <button
       type="button"
-      onClick={() => onOpen(model)}
-      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      onClick={onOpen}
+      className={cn(
+        LEDGER_GRID,
+        "w-full cursor-pointer py-4 text-left transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+      )}
     >
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-foreground">
-        {GLYPH_LABS.has(model.lab) ? (
-          <ProviderGlyph providerId={model.lab} />
-        ) : (
-          <Box className="size-4 text-muted-foreground" />
-        )}
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-[13px] font-medium text-foreground">
-          {model.name}
-        </span>
-        {model.description && (
-          <span className="truncate text-xs text-muted-foreground">
-            {model.description}
+      <span className="flex min-w-0 items-center gap-3">
+        <ModelMark
+          size="md"
+          mark={
+            GLYPH_LABS.has(model.lab) ? (
+              <ProviderGlyph providerId={model.lab} />
+            ) : (
+              <Box className="text-muted-foreground" />
+            )
+          }
+        />
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate font-medium text-foreground text-sm">
+            {model.name}
           </span>
-        )}
-      </span>
-      <span className="flex shrink-0 items-center gap-2">
-        <span className="hidden text-[11px] text-muted-foreground sm:inline">
-          {t("directory.providers", { count: model.offers.length })}
+          <span className="truncate text-[13px] text-muted-foreground">
+            {labName(model.lab)}
+          </span>
         </span>
-        {model.context != null && <ContextChip tokens={model.context} />}
-        {model.reasoning && <ReasoningBadge />}
+      </span>
+
+      <span className="flex flex-wrap items-center gap-1">
+        {caps.map((key) => (
+          <CapabilityChip key={key} label={t(CAP_KEY[key])} />
+        ))}
+      </span>
+
+      <span>
+        {model.context != null ? (
+          <MemoryLabel
+            word={t(MEMORY_KEY[memoryKey(model.context)])}
+            value={formatTokens(model.context)}
+          />
+        ) : null}
+      </span>
+
+      <span className="flex items-center justify-end gap-2">
+        <CostMeter tier={tier} title={t(TIER_KEY[tier])} />
+        <PriceText
+          text={
+            cheapest != null
+              ? t("directory.cost.from", { price: formatPrice(cheapest) })
+              : t("directory.cost.free")
+          }
+        />
+      </span>
+
+      <span className="text-right text-muted-foreground text-sm tabular-nums">
+        {t("directory.providers", { count: model.offers.length })}
       </span>
     </button>
   );

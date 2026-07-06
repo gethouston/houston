@@ -81,6 +81,7 @@ class FakeChannel implements RuntimeChannel {
     _ctx: ChannelCtx,
     _e: CustomEndpoint,
   ): Promise<void> {}
+  async saveClaudeOAuthCredential(): Promise<void> {}
   async forgetCredential(): Promise<void> {}
 }
 

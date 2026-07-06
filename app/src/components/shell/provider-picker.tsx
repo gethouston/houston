@@ -23,7 +23,7 @@ import {
   tauriSystem,
 } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
-import { OpenAiCompatibleDialog } from "./openai-compatible-dialog";
+import { LocalModelDialog } from "./local-model-dialog";
 import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
 import { ComingSoonCard, ProviderCard } from "./provider-cards";
 import { ProviderLoginDialog } from "./provider-login-dialog";
@@ -55,6 +55,7 @@ export function ProviderPicker({ onSelect }: Props) {
     provider: ProviderInfo;
     url: string;
     userCode: string | null;
+    instructions?: string | null;
   } | null>(null);
   // The paste-a-key dialog for API-key providers (OpenCode Zen / Go).
   const [apiKeyDialog, setApiKeyDialog] = useState<ProviderInfo | null>(null);
@@ -179,6 +180,9 @@ export function ProviderPicker({ onSelect }: Props) {
           shouldOpenLoginUrlDirectly({
             isDesktop: osIsTauri(),
             userCode: ev.data.user_code,
+            // Claude/Anthropic setup-token: url is docs-only, so never auto-open
+            // — fall through to the paste dialog below.
+            authCode: ev.data.auth_code,
           })
         ) {
           // Desktop: the runtime is co-located, so a loopback OAuth flow
@@ -208,6 +212,7 @@ export function ProviderPicker({ onSelect }: Props) {
             userCode:
               ev.data.user_code ??
               (current?.provider.id === prov.id ? current.userCode : null),
+            instructions: ev.data.instructions,
           }));
         }
       } else if (ev.type === "ProviderLoginComplete") {
@@ -411,6 +416,7 @@ export function ProviderPicker({ onSelect }: Props) {
         provider={loginDialog?.provider ?? null}
         url={loginDialog?.url ?? null}
         userCode={loginDialog?.userCode ?? null}
+        instructions={loginDialog?.instructions ?? null}
         onClose={() => setLoginDialog(null)}
       />
 
@@ -421,7 +427,7 @@ export function ProviderPicker({ onSelect }: Props) {
 
       {copilotDialog}
 
-      <OpenAiCompatibleDialog
+      <LocalModelDialog
         provider={customEndpointDialog}
         onConnected={(m) => onSelect("openai-compatible", m)}
         onClose={() => setCustomEndpointDialog(null)}

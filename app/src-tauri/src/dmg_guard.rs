@@ -280,7 +280,8 @@ mod tests {
 
     #[test]
     fn finds_enclosing_app() {
-        let exe = PathBuf::from("/Volumes/Houston Installer/Houston.app/Contents/MacOS/houston-app");
+        let exe =
+            PathBuf::from("/Volumes/Houston Installer/Houston.app/Contents/MacOS/houston-app");
         assert_eq!(
             enclosing_app_bundle(&exe),
             Some(PathBuf::from("/Volumes/Houston Installer/Houston.app"))

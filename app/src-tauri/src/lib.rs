@@ -1,11 +1,14 @@
 mod auth;
 mod bug_report;
+mod child_guard;
+mod claude_login;
 mod codex_oauth_loopback;
 mod commands;
 #[cfg(target_os = "macos")]
 mod dmg_guard;
 mod engine_supervisor;
 mod houston_prompt;
+mod local_bridge;
 mod logging;
 mod loopback_util;
 mod notification;
@@ -13,7 +16,7 @@ mod oauth_loopback;
 mod window_focus;
 
 use engine_supervisor::{
-    resolve_engine_binary, reserve_free_port, spawn_supervisor, wait_until_host_healthy,
+    reserve_free_port, resolve_engine_binary, spawn_supervisor, wait_until_host_healthy,
     EngineHandshake, SupervisorCallbacks,
 };
 use std::path::PathBuf;
@@ -176,8 +179,7 @@ pub fn run() {
     // Dev builds suppress Sentry unless SENTRY_SEND_IN_DEV is set, so a dev
     // running with the prod DSN exported doesn't pollute the prod project
     // (HOU-469). `option_env!` reads it at compile time, matching SENTRY_DSN.
-    let sentry_send_in_dev =
-        sentry_send_in_dev_enabled(option_env!("SENTRY_SEND_IN_DEV"));
+    let sentry_send_in_dev = sentry_send_in_dev_enabled(option_env!("SENTRY_SEND_IN_DEV"));
     let sentry_active = sentry_should_activate(
         sentry_dsn.is_empty(),
         cfg!(debug_assertions),
@@ -221,14 +223,10 @@ pub fn run() {
     // running app natively, no second instance is ever spawned.
     #[cfg(any(target_os = "windows", target_os = "linux"))]
     {
-        builder = builder.plugin(tauri_plugin_single_instance::init(
-            |app, _argv, _cwd| {
-                tracing::info!(
-                    "[single-instance] secondary launch routed to primary"
-                );
-                window_focus::bring_to_front(app);
-            },
-        ));
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            tracing::info!("[single-instance] secondary launch routed to primary");
+            window_focus::bring_to_front(app);
+        }));
     }
 
     // Sentry plugin — only if DSN was provided
@@ -265,6 +263,11 @@ pub fn run() {
                     }
                 });
             }
+
+            // Cancel-side state for the native Claude sign-in. Managed
+            // unconditionally so `start_claude_login` / `cancel_claude_login`
+            // work in both remote-host and bundled-sidecar modes.
+            app.manage(claude_login::ClaudeLoginState::default());
 
             let houston = houston_dir();
 
@@ -306,9 +309,7 @@ pub fn run() {
                             .unwrap_or(false)
                     });
             if host_mode {
-                tracing::info!(
-                    "[host] remote host mode — skipping the local host sidecar"
-                );
+                tracing::info!("[host] remote host mode — skipping the local host sidecar");
                 // Keep get_engine_handshake callable (the frontend skips it here).
                 app.manage(EngineHandshakeState::default());
             } else {
@@ -380,9 +381,30 @@ pub fn run() {
             // binds the fixed port 1455 OpenAI registered and forwards the raw
             // callback query to the webview as `codex-oauth://callback`.
             codex_oauth_loopback::start_codex_oauth_loopback,
+            // Native `claude auth login --claudeai` — runs the browser-approve
+            // sign-in for the user (no terminal) and reports back over the
+            // `claude-login://url` / `claude-login://done` events.
+            claude_login::start_claude_login,
+            claude_login::cancel_claude_login,
+            // Extract the cached credential to push to a REMOTE engine pod
+            // (a hosted pod can't read this machine's Keychain).
+            claude_login::credential::read_claude_credential,
             // Pull the app to the foreground when a flow finishes in the
             // browser (e.g. a Composio integration connection landing).
             window_focus::focus_main_window,
+            // Local-model bridge: detect a local OpenAI-compatible server, front
+            // it with a bearer-gated loopback proxy, and tunnel it out via the
+            // bundled frpc so the cloud agent can reach it. Kept callable in
+            // host/cloud mode (the hosted frontend drives them).
+            local_bridge::commands::detect_local_models,
+            local_bridge::commands::start_local_bridge,
+            local_bridge::commands::stop_local_bridge,
+            local_bridge::commands::local_bridge_status,
+            // Persistence/reconnect: expose the saved (redacted) target and
+            // re-establish the tunnel after a restart, reusing the persisted
+            // proxy key so the cloud endpoint's apiKey stays valid.
+            local_bridge::commands::saved_bridge_target,
+            local_bridge::commands::reconnect_local_bridge,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -407,6 +429,11 @@ pub fn run() {
                 // Sentry event on quit, especially the Windows force-kill path).
                 tauri::RunEvent::Exit => {
                     engine_supervisor::mark_shutting_down();
+                    // Statics are never dropped at process exit, and frpc runs
+                    // in its own process group with null stdin — so without an
+                    // explicit teardown here it orphans on macOS/Linux and keeps
+                    // its subdomain alive. Mirrors the engine sidecar handling.
+                    local_bridge::shutdown();
                 }
                 _ => {}
             }
@@ -588,7 +615,10 @@ fn migrate_legacy_docs_dir(houston: &std::path::Path) {
     }
 
     if let Err(e) = std::fs::create_dir_all(&new_root) {
-        tracing::warn!("[migrate] create_dir_all({}) failed: {e}", new_root.display());
+        tracing::warn!(
+            "[migrate] create_dir_all({}) failed: {e}",
+            new_root.display()
+        );
         return;
     }
 
@@ -683,12 +713,21 @@ mod tests {
 
     #[test]
     fn engine_sentry_env_forwards_core_three_when_active() {
-        let env = engine_sentry_env(true, false, "https://dsn", "houston-app@1.2.3", "production");
+        let env = engine_sentry_env(
+            true,
+            false,
+            "https://dsn",
+            "houston-app@1.2.3",
+            "production",
+        );
         assert_eq!(
             env,
             vec![
                 ("SENTRY_DSN".to_string(), "https://dsn".to_string()),
-                ("SENTRY_RELEASE".to_string(), "houston-app@1.2.3".to_string()),
+                (
+                    "SENTRY_RELEASE".to_string(),
+                    "houston-app@1.2.3".to_string()
+                ),
                 ("SENTRY_ENVIRONMENT".to_string(), "production".to_string()),
             ]
         );
@@ -700,8 +739,13 @@ mod tests {
     fn engine_sentry_env_forwards_send_in_dev_when_opted_in() {
         // The symmetric invariant: opting in injects the DSN AND the flag, so
         // the debug engine sidecar's own dev gate agrees instead of suppressing.
-        let env =
-            engine_sentry_env(true, true, "https://dsn", "houston-app@1.2.3-dev", "development");
+        let env = engine_sentry_env(
+            true,
+            true,
+            "https://dsn",
+            "houston-app@1.2.3-dev",
+            "development",
+        );
         assert!(env.contains(&("SENTRY_SEND_IN_DEV".to_string(), "1".to_string())));
         assert!(env.iter().any(|(k, _)| k == "SENTRY_DSN"));
         assert!(env.iter().any(|(k, _)| k == "SENTRY_ENVIRONMENT"));

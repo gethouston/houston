@@ -10,11 +10,11 @@
   },
   "sections": {
     "connected": "Conectados",
-    "available": "Disponíveis",
-    "comingSoon": "Em breve"
+    "available": "Disponíveis"
   },
   "card": {
     "connect": "Conectar",
+    "seeMore": "Ver mais",
     "connected": "Conectado",
     "cancel": "Cancelar",
     "models_one": "{{count}} modelo",
@@ -22,15 +22,7 @@
     "subscription": "Assinatura",
     "apiKey": "Sua chave de API",
     "local": "Roda no seu computador",
-    "gateway": "Gateway multimodelo",
-    "comingSoon": "Em breve"
-  },
-  "providerDetail": {
-    "back": "Todos os provedores",
-    "models": "Modelos",
-    "searchModels": "Buscar modelos",
-    "signOut": "Sair",
-    "noModels": "Os modelos são configurados quando você conecta."
+    "gateway": "Gateway multimodelo"
   },
   "directory": {
     "search": "Busque {{count}}+ modelos",
@@ -38,7 +30,32 @@
     "filters": {
       "all": "Todos",
       "reasoning": "Raciocínio",
-      "vision": "Visão"
+      "images": "Imagens",
+      "budget": "Econômico",
+      "provider": "Provedor de IA",
+      "allProviders": "Todos os provedores",
+      "goodAt": "Ideal para"
+    },
+    "columns": {
+      "model": "Modelo",
+      "goodAt": "Ideal para",
+      "memory": "Memória",
+      "cost": "Custo",
+      "offeredBy": "Disponível em"
+    },
+    "memory": {
+      "standard": "Padrão",
+      "long": "Ampla",
+      "huge": "Enorme"
+    },
+    "cost": {
+      "from": "a partir de {{price}}",
+      "free": "Grátis",
+      "tiers": {
+        "1": "Econômico",
+        "2": "Padrão",
+        "3": "Premium"
+      }
     },
     "providers_one": "{{count}} provedor",
     "providers_other": "{{count}} provedores",
@@ -48,8 +65,21 @@
       "description": "Tente outra busca ou filtro."
     }
   },
+  "caps": {
+    "reasoning": "Raciocínio",
+    "images": "Imagens"
+  },
+  "providerModal": {
+    "signedInWith": "Conectado com {{provider}}",
+    "setDefault": "Usar como padrão",
+    "signOut": "Sair",
+    "disconnect": "Desconectar",
+    "connect": "Conectar",
+    "models": "Modelos",
+    "searchModels": "Buscar modelos",
+    "noModels": "Os modelos ficam prontos assim que você conecta."
+  },
   "model": {
-    "back": "Todos os modelos",
     "specs": {
       "context": "Contexto",
       "output": "Saída máxima",

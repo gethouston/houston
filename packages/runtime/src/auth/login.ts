@@ -17,6 +17,10 @@ import {
   type ProviderId,
   providerAuthMethod,
 } from "../ai/providers";
+import {
+  logoutAnthropicCredential,
+  refreshAnthropicCredential,
+} from "../backends/claude/credential-status";
 import { runAnthropicSetupTokenLogin } from "./anthropic-setup-token";
 import { authStorage, providerConnected } from "./storage";
 
@@ -87,7 +91,12 @@ export function autoPromptAnswer(
 const known = (id: string): id is ProviderId =>
   PROVIDERS.some((p) => p.id === id);
 
-export function getAuthStatus() {
+export async function getAuthStatus() {
+  // Live-refresh the anthropic shared-dir credential signal (Keychain / file,
+  // scoped by the login config dir) so the first poll after a browser login
+  // reads connected AND the sync turn-time path (`activeProvider` →
+  // `providerConnected`) sees a warm cache. Never throws.
+  await refreshAnthropicCredential();
   return {
     providers: PROVIDERS.map((p) => {
       const st = active.get(p.id);
@@ -303,10 +312,15 @@ export function completeLogin(providerId: string, code: string): void {
   state.resolvePaste(code);
 }
 
-export function logout(providerId: string): void {
+export async function logout(providerId: string): Promise<void> {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   authStorage.logout(providerId);
   active.delete(providerId);
+  // Anthropic's primary credential is the browser-login one cached in the shared
+  // dir (Keychain / file), NOT auth.json — so clear it via `claude auth logout`
+  // and reset the probe cache, else the card would re-read connected on the next
+  // poll. `authStorage.logout` above still clears the degraded fallback token.
+  if (providerId === "anthropic") await logoutAnthropicCredential();
   // Disconnecting the local provider also forgets its endpoint, else the next
   // turn would re-resolve a base URL with no (real) key behind it.
   if (providerId === OPENAI_COMPATIBLE) clearCustomEndpointConfig();

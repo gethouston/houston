@@ -36,6 +36,7 @@ class SpyChannel implements RuntimeChannel {
   }
   async forgetCredential() {}
   async saveApiKeyCredential() {}
+  async saveClaudeOAuthCredential() {}
   async saveCustomEndpoint(_ctx: ChannelCtx, endpoint: CustomEndpoint) {
     this.saved.push(endpoint);
     if (this.throwMessage) throw new Error(this.throwMessage);
@@ -60,6 +61,13 @@ const CLOUD_CAPS: Capabilities = {
   profile: "cloud",
   openaiCompatible: false,
 };
+// The managed cloud pod: the provider is available, but the base URL is
+// validated against the pod's public-:443-only egress (gatewayFronted).
+const MANAGED_CLOUD_CAPS: Capabilities = {
+  ...baseCaps,
+  profile: "cloud",
+  openaiCompatible: true,
+};
 
 const auth = (who: string) => ({
   Authorization: `Bearer tok:${who}`,
@@ -68,7 +76,10 @@ const auth = (who: string) => ({
 
 let server: Server | null = null;
 
-async function setup(capabilities: Capabilities): Promise<{
+async function setup(
+  capabilities: Capabilities,
+  gatewayFronted = false,
+): Promise<{
   base: string;
   agentId: string;
   channel: SpyChannel;
@@ -83,6 +94,7 @@ async function setup(capabilities: Capabilities): Promise<{
     channels: { gke: channel },
     vfs: new MemoryVfs(),
     capabilities,
+    gatewayFronted,
   };
   server = createControlPlaneServer(deps);
   await new Promise<void>((r) => server?.listen(0, "127.0.0.1", () => r()));
@@ -184,4 +196,57 @@ test("another user cannot connect the agent's local model (403)", async () => {
   );
   expect(res.status).toBe(403);
   expect(channel.saved).toHaveLength(0);
+});
+
+// ── Managed cloud (gatewayFronted): public-:443-HTTPS-only base-URL validation ──
+
+test("managed cloud forwards a valid public HTTPS endpoint to the channel", async () => {
+  const { base, agentId, channel } = await setup(MANAGED_CLOUD_CAPS, true);
+  const res = await connect(base, agentId, {
+    baseUrl: "https://ollama.example.com/v1",
+    model: "llama3.1",
+  });
+  expect(res.status).toBe(200);
+  expect(channel.saved).toHaveLength(1);
+  expect(channel.saved[0]).toMatchObject({
+    baseUrl: "https://ollama.example.com/v1",
+    model: "llama3.1",
+  });
+});
+
+test("managed cloud rejects localhost with an actionable 400, never forwarded", async () => {
+  const { base, agentId, channel } = await setup(MANAGED_CLOUD_CAPS, true);
+  const res = await connect(base, agentId, {
+    baseUrl: "http://localhost:11434/v1",
+    model: "llama3.1",
+  });
+  expect(res.status).toBe(400);
+  const { error } = (await res.json()) as { error: string };
+  expect(error).toMatch(/public HTTPS endpoints on port 443/);
+  expect(channel.saved).toHaveLength(0);
+});
+
+test.each([
+  ["plain http", "http://api.example.com/v1"],
+  ["a non-443 port", "https://api.example.com:8443/v1"],
+  ["a private IPv4", "https://192.168.1.10/v1"],
+  ["the metadata IP", "https://169.254.169.254/v1"],
+  ["an IPv6 loopback", "https://[::1]/v1"],
+])("managed cloud rejects %s (400, never forwarded)", async (_label, baseUrl) => {
+  const { base, agentId, channel } = await setup(MANAGED_CLOUD_CAPS, true);
+  const res = await connect(base, agentId, { baseUrl, model: "m" });
+  expect(res.status).toBe(400);
+  expect(channel.saved).toHaveLength(0);
+});
+
+test("localhost IS accepted when NOT managed cloud (desktop/self-host)", async () => {
+  // Same LOCAL profile, gatewayFronted defaulting to false: no egress limits, so
+  // the localhost endpoint is forwarded exactly as before.
+  const { base, agentId, channel } = await setup(LOCAL_CAPS);
+  const res = await connect(base, agentId, {
+    baseUrl: "http://localhost:11434/v1",
+    model: "llama3.1",
+  });
+  expect(res.status).toBe(200);
+  expect(channel.saved).toHaveLength(1);
 });

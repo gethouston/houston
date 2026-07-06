@@ -7,11 +7,14 @@
 # STATUS OF THIS SURFACE (2026-07): a full v1 has been BUILT on @houston/sdk
 # (JavaScriptCore bridge + native fetch/storage ports, Supabase auth, the
 # DesignSystem over @houston/design-tokens, and the Agents / Mission Control /
-# New Mission / Chat surfaces). Per-component statuses below reflect what is
-# actually built. inventoryVersion STAYS 0 and enforced STAYS false because the
-# app has not yet been compiled+shipped: the build environment has no Xcode, so
-# the Swift is disciplined-but-compiler-unverified. Raise inventoryVersion only
-# once it compiles, tests pass on a simulator, and it ships at that version.
+# New Mission / Chat / Settings / AI Models / Integrations surfaces). Per-component
+# statuses below reflect what is actually built. The app now COMPILES with Xcode
+# and its unit suite passes on a simulator (iPhone 17 Pro) — the Swift is no
+# longer compiler-unverified. inventoryVersion STAYS 0 and enforced STAYS false
+# because the app has not yet SHIPPED; raise inventoryVersion only once it ships,
+# at that version. Note: the Settings, Appearance, Language, Account, and
+# Integrations surfaces are not represented by inventory.yaml component ids, so
+# they have no rows here (only the inventoried AI-models components do).
 
 surface: ios
 enforced: false
@@ -102,8 +105,25 @@ components:
     status: not-started
     notes: No toast system in mobile v1; action failures surface via alerts carrying the real reason.
   ai-provider-card:
-    status: not-started
+    status: implemented
+    ref: mobile/ios/Houston/Features/AIModels/ProviderCardView.swift
+    notes: >-
+      Per-agent provider grid tile (logo via ProviderGlyph, name, description,
+      model-count) with available/connected/connecting/coming-soon states and a
+      footer action; opens the connect flow (ProviderConnectSheet) or the
+      connected detail (ProviderDetailSheet). Connection state is read from the
+      per-agent providers/<agentId> scope, never hardcoded.
   ai-model-row:
-    status: not-started
+    status: partial
+    ref: mobile/ios/Houston/Features/AIModels/ModelPickerView.swift
+    notes: >-
+      provider-model-row variant built — the per-agent model picker and the
+      connected provider's model list (ProviderDetailSheet) with context/effort
+      badges. The cross-provider "Models · N" directory-row variant is not ported
+      (iOS is provider-first; there is no standalone model directory yet).
   ai-model-offer-row:
     status: not-started
+    notes: >-
+      No cross-model detail / "Get it through" offers list on iOS. Connecting a
+      provider-model happens from the provider card + detail instead of a
+      per-model offer row.

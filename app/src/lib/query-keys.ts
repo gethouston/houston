@@ -66,5 +66,26 @@ export const queryKeys = {
   // Multiplayer (org). The current user's org + roster is app-scoped (one org
   // per user); per-agent integration grants are keyed by agent id.
   org: () => ["org"] as const,
+  /** Teams v2: the org audit feed (paged by before-cursor). App-scoped — one
+   *  org per user. Owner sees org-wide; admin their managed agents. */
+  orgAudit: () => ["org-audit"] as const,
+  /** Teams v2: per-agent/user usage counters over a `days` window. Keyed by the
+   *  window so 7- vs 30-day reads don't collide. */
+  orgUsage: (days: number) => ["org-usage", days] as const,
   agentGrants: (agentId: string) => ["agent-grants", agentId] as const,
+  /**
+   * Teams v2: an agent's allowed-toolkit settings (agent + org ceilings +
+   * caller access). Fetched only on a Teams host; the mutation self-invalidates
+   * this and the agent's grant set (the gateway prunes disallowed grants).
+   */
+  agentSettings: (agentId: string) => ["agent-settings", agentId] as const,
+  /**
+   * Teams v2: the org's agent templates. `orgTemplates` is the list of
+   * summaries (app-scoped — one org per user); `orgTemplate` is one template's
+   * full spec, fetched lazily by id only when a caller needs the whole
+   * configuration (creating an agent from it). Both are served only by a Teams
+   * gateway; the surface gates on `capabilities.multiplayer`.
+   */
+  orgTemplates: () => ["org-templates"] as const,
+  orgTemplate: (id: string) => ["org-template", id] as const,
 };

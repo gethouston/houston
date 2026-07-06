@@ -1,7 +1,7 @@
 import { ConfirmDialog } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnectionDialogProps } from "../../hooks/use-provider-connections";
-import { OpenAiCompatibleDialog } from "../shell/openai-compatible-dialog";
+import { LocalModelDialog } from "../shell/local-model-dialog";
 import { ProviderApiKeyDialog } from "../shell/provider-api-key-dialog";
 import { ProviderLoginDialog } from "../shell/provider-login-dialog";
 
@@ -49,6 +49,7 @@ export function ProviderConnectionDialogs({
         provider={loginDialog?.provider ?? null}
         url={loginDialog?.url ?? null}
         userCode={loginDialog?.userCode ?? null}
+        instructions={loginDialog?.instructions ?? null}
         onClose={onCloseLoginDialog}
       />
 
@@ -59,7 +60,7 @@ export function ProviderConnectionDialogs({
 
       {copilotDialog}
 
-      <OpenAiCompatibleDialog
+      <LocalModelDialog
         provider={customEndpointDialog}
         onClose={onCloseCustomEndpointDialog}
       />

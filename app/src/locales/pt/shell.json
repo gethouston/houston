@@ -169,7 +169,7 @@
     "dismissAction": "Dispensar atualização por enquanto"
   },
   "store": {
-    "searchPlaceholder": "Buscar na loja...",
+    "searchPlaceholder": "Buscar na biblioteca...",
     "noResults": "Nenhum agente corresponde à sua busca"
   },
   "naming": {
@@ -181,7 +181,11 @@
     "createAgent": "Criar agente"
   },
   "newAgent": {
-    "dialogTitle": "Novo agente"
+    "dialogTitle": "Novo agente",
+    "createSection": "Criar",
+    "librarySection": "Da biblioteca",
+    "fromScratchCard": "Do zero",
+    "fromScratchDescription": "Um agente em branco, sem instruções ou ações. Construa do seu jeito."
   },
   "aiAssist": {
     "brainLabel": "Configurar com",
@@ -261,7 +265,7 @@
     "continueButton": "Continuar"
   },
   "engineGate": {
-    "starting": "Iniciando o motor do Houston…",
+    "starting": "Carregando seu espaço de trabalho…",
     "reconnected": "Houston reconectou",
     "loadFailed": "Não foi possível carregar seus modelos de IA disponíveis. Verifique sua conexão e tente novamente.",
     "authRequiredTitle": "Login necessário",

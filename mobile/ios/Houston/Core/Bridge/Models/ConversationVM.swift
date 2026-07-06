@@ -16,6 +16,22 @@ struct ConversationVM: Decodable, Equatable, Sendable {
   /// handled-vs-error signal: `needsYou` = handled / attention, `error` = a real
   /// failure.
   var boardStatus: BoardStatus?
+  /// Messages typed while a turn runs — held and flushed as ONE combined send
+  /// when the turn settles (additive; absent when none). Rendered as pending
+  /// bubbles above the composer so the user sees their queued texts. Queueing
+  /// itself is behavior owned by the SDK/engine adapter, never the surface; this
+  /// surface only mirrors the published list (client-architecture.md invariant 1).
+  var queued: [QueuedMessageVM]?
+}
+
+/// A message queued while a turn runs (SDK `QueuedMessageVM`, `vm-output.ts`):
+/// a stable id, the user's text, and any attachment names. Rendered visually
+/// pending; removable once the SDK bridge exposes the remove seam.
+struct QueuedMessageVM: Decodable, Equatable, Identifiable, Sendable {
+  let id: String
+  let text: String
+  /// Attachment file names shown alongside the queued text; absent when none.
+  var attachmentNames: [String]?
 }
 
 /// A single reactive feed entry: a stable id plus the raw push payload. The

@@ -7,12 +7,14 @@
  * other.
  */
 import { INTEGRATIONS_VIEW_ID } from "../components/integrations-view/id";
+import { ORGANIZATION_VIEW_ID } from "../components/organization/id";
 
 export const TOP_LEVEL_VIEWS = new Set<string>([
   "dashboard",
   "settings",
   "ai-hub",
   INTEGRATIONS_VIEW_ID,
+  ORGANIZATION_VIEW_ID,
 ]);
 
 /** Whether a `viewMode` is a top-level (non-agent) view. */

@@ -1,0 +1,244 @@
+{
+  "managedAgent": {
+    "banner": "This agent is managed by your organization. Only its managers can make changes."
+  },
+  "model": {
+    "lockedTooltip": "Your organization's manager sets this agent's AI model."
+  },
+  "integrations": {
+    "allowlist": {
+      "title": "Allowed integrations",
+      "subtitle": "Choose which apps this agent can use. Members can only connect apps you allow here.",
+      "allAllowed": "All integrations allowed",
+      "restrict": "Restrict to specific apps",
+      "allowAll": "Allow all apps",
+      "none": "No apps allowed. This agent cannot use any integrations.",
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "selectApps": "Select apps",
+      "searchApps": "Search apps",
+      "noApps": "No apps found"
+    },
+    "notAllowed": {
+      "title": "Not allowed for this agent",
+      "body": "These apps are connected to your account, but your organization does not allow this agent to use them.",
+      "badge": "Not allowed"
+    }
+  },
+  "org": {
+    "title": "Organization",
+    "subtitle": "Manage your team, agents, and activity in one place.",
+    "nav": "Organization",
+    "tablistLabel": "Organization sections",
+    "tabs": {
+      "people": "People",
+      "agents": "Agents",
+      "templates": "Templates",
+      "activity": "Activity",
+      "usage": "Usage"
+    },
+    "loading": "Loading your organization...",
+    "unavailable": "We couldn't load your organization."
+  },
+  "share": {
+    "title": "Share {{name}}",
+    "subtitle": "Choose who can use this agent.",
+    "button": "Share",
+    "sectionTitle": "Share this agent",
+    "sectionHelper": "Add teammates who can use this agent, and pick who can manage it.",
+    "peopleCount_one": "{{count}} person with access",
+    "peopleCount_other": "{{count}} people with access",
+    "overflow": "+{{count}}",
+    "addPeople": "Add people",
+    "searchPeople": "Search by name or email",
+    "noPeople": "No one left to add.",
+    "empty": {
+      "title": "No one else has access yet",
+      "body": "Add a teammate to let them chat with this agent."
+    },
+    "conversationNote": "Everyone with access shares this agent's conversation.",
+    "chatNote": "Shared agent. Everyone with access sees this conversation.",
+    "you": "You",
+    "ownerAccess": "Owner, always has access",
+    "remove": "Remove",
+    "changeAccessFor": "Change access for {{name}}",
+    "selfNote": "Changing your own access here can remove your ability to manage this agent.",
+    "managerRequiresSeat": "Only teammates with a Manager seat can manage agents.",
+    "levels": {
+      "manager": "Manager",
+      "user": "Can use",
+      "managerHint": "Can use and reconfigure this agent.",
+      "userHint": "Can chat with this agent, but not change it."
+    },
+    "selfLockout": {
+      "title": "Change your own access?",
+      "description": "You are about to remove your own ability to manage this agent. You may not be able to undo this yourself.",
+      "confirm": "Yes, change it",
+      "cancel": "Cancel"
+    }
+  },
+  "people": {
+    "adminNotice": "You can view your team. Only the owner can add or remove people.",
+    "add": {
+      "title": "Add someone",
+      "subtitle": "Invite a teammate by email. If they don't have Houston yet, we'll send an invitation.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "name@company.com",
+      "roleLabel": "Role",
+      "submit": "Add",
+      "added": "{{email}} was added to your team.",
+      "invited": "Invitation sent to {{email}}. They'll join when they sign in."
+    },
+    "roles": {
+      "owner": "Owner",
+      "admin": "Manager",
+      "user": "Member"
+    },
+    "roleHelp": {
+      "admin": "Managers create and run agents.",
+      "user": "Members use agents shared with them."
+    },
+    "invites": {
+      "title": "Pending invitations",
+      "empty": "No pending invitations.",
+      "invitedBy": "Invited by {{name}}",
+      "revoke": "Revoke",
+      "revokeLabel": "Revoke invitation for {{email}}"
+    },
+    "roster": {
+      "title": "Team",
+      "you": "(you)",
+      "changeRole": "Change role for {{name}}",
+      "remove": "Remove",
+      "removeLabel": "Remove {{name}}"
+    },
+    "removeConfirm": {
+      "title": "Remove {{name}}?",
+      "description": "They'll lose access to every agent shared with them. You can add them again later.",
+      "confirm": "Remove",
+      "cancel": "Cancel"
+    }
+  },
+  "activityTab": {
+    "error": "We couldn't load the activity feed.",
+    "empty": {
+      "title": "No activity yet",
+      "body": "Changes to your team, agents, and apps show up here."
+    },
+    "loading": "Loading...",
+    "showMore": "Show more",
+    "roles": {
+      "owner": "Owner",
+      "admin": "Manager",
+      "user": "Member"
+    },
+    "actions": {
+      "memberAdd": "{{actor}} added {{name}} as a {{role}}",
+      "memberRemove": "{{actor}} removed {{name}}",
+      "memberRole": "{{actor}} changed {{name}}'s role to {{role}}",
+      "inviteCreate": "{{actor}} invited {{email}} as a {{role}}",
+      "inviteRevoke": "{{actor}} canceled the invite for {{email}}",
+      "inviteAccept": "{{actor}} joined as a {{role}}",
+      "agentCreate": "{{actor}} created {{agent}}",
+      "agentRename": "{{actor}} renamed {{from}} to {{to}}",
+      "agentDelete": "{{actor}} deleted {{agent}}",
+      "agentAssignments": "{{actor}} changed who can use {{agent}}",
+      "agentShared_one": "{{actor}} shared {{agent}} with {{count}} person",
+      "agentShared_other": "{{actor}} shared {{agent}} with {{count}} people",
+      "agentSettings": "{{actor}} changed which apps {{agent}} can use",
+      "orgSettings": "{{actor}} changed your organization's app settings",
+      "grantsSet": "{{actor}} allowed {{apps}} for {{agent}}",
+      "agentConfigure": "{{actor}} updated {{agent}}'s settings",
+      "unknown": "{{actor}} made a change ({{action}})"
+    }
+  },
+  "usageTab": {
+    "error": "We couldn't load usage.",
+    "empty": {
+      "title": "No usage yet",
+      "body": "Once your team starts chatting with agents, message counts show up here."
+    },
+    "summary_one": "{{count}} message in the last 30 days",
+    "summary_other": "{{count}} messages in the last 30 days",
+    "messages_one": "{{count}} message",
+    "messages_other": "{{count}} messages"
+  },
+  "agentsTab": {
+    "empty": {
+      "title": "Create your first agent",
+      "body": "Agents are the assistants your team shares. Create one to get started.",
+      "action": "Create agent"
+    },
+    "managedBy": "Managed by {{names}}",
+    "access": {
+      "everyone": "Everyone on your team",
+      "people_one": "{{count}} person",
+      "people_other": "{{count}} people",
+      "you": "You can use this"
+    },
+    "lastOpened": "Opened {{time}}",
+    "open": "Open {{name}}"
+  },
+  "templates": {
+    "pickerTitle": "Start from a template",
+    "settingUp": "Setting up your agent...",
+    "summary": {
+      "skills_one": "{{count}} skill",
+      "skills_other": "{{count}} skills",
+      "apps_one": "{{count}} app",
+      "apps_other": "{{count}} apps",
+      "allApps": "All apps"
+    },
+    "save": {
+      "sectionTitle": "Save as template",
+      "sectionHelper": "Capture this agent's setup as a reusable template your team can start new agents from.",
+      "button": "Save as template",
+      "dialog": {
+        "title": "Save as template",
+        "subtitle": "Reuse {{name}}'s setup to start new agents just like it."
+      },
+      "nameLabel": "Template name",
+      "namePlaceholder": "e.g. Sales Agent",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "What is this template for? (optional)",
+      "capturedTitle": "What this captures",
+      "summary": {
+        "instructions": "Instructions",
+        "skills_one": "{{count}} skill",
+        "skills_other": "{{count}} skills",
+        "allApps": "All apps allowed",
+        "apps_one": "{{count}} allowed app",
+        "apps_other": "{{count}} allowed apps"
+      },
+      "cancel": "Cancel",
+      "submit": "Save template",
+      "toast": {
+        "title": "Template saved",
+        "body": "{{name}} is ready to reuse."
+      }
+    }
+  },
+  "templatesTab": {
+    "error": "Couldn't load templates.",
+    "empty": {
+      "title": "No templates yet",
+      "body": "Save an agent as a template to reuse its setup across your team."
+    },
+    "card": {
+      "skills_one": "{{count}} skill",
+      "skills_other": "{{count}} skills",
+      "apps_one": "{{count}} app",
+      "apps_other": "{{count}} apps",
+      "allApps": "All apps",
+      "createdBy": "Created by {{name}}"
+    },
+    "deleteLabel": "Delete {{name}}",
+    "deleteConfirm": {
+      "title": "Delete {{name}}?",
+      "description": "This template will be removed for everyone in your organization. Agents already created from it aren't affected.",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    }
+  }
+}

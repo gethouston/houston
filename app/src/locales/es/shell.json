@@ -169,7 +169,7 @@
     "dismissAction": "Descartar actualización por ahora"
   },
   "store": {
-    "searchPlaceholder": "Buscar en la tienda...",
+    "searchPlaceholder": "Buscar en la biblioteca...",
     "noResults": "Ningún agente coincide con tu búsqueda"
   },
   "naming": {
@@ -181,7 +181,11 @@
     "createAgent": "Crear agente"
   },
   "newAgent": {
-    "dialogTitle": "Nuevo agente"
+    "dialogTitle": "Nuevo agente",
+    "createSection": "Crear",
+    "librarySection": "De la biblioteca",
+    "fromScratchCard": "Desde cero",
+    "fromScratchDescription": "Un agente en blanco, sin instrucciones ni acciones. Constrúyelo a tu manera."
   },
   "aiAssist": {
     "brainLabel": "Configurar con",
@@ -271,7 +275,7 @@
     "continueButton": "Continuar"
   },
   "engineGate": {
-    "starting": "Iniciando el motor de Houston…",
+    "starting": "Cargando tu espacio de trabajo…",
     "reconnected": "Houston se reconectó",
     "loadFailed": "No pudimos cargar tus modelos de IA disponibles. Revisa tu conexión e inténtalo de nuevo.",
     "authRequiredTitle": "Inicio de sesión requerido",

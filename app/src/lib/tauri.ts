@@ -11,7 +11,9 @@
  * VPS where those APIs would be meaningless.
  */
 
+import type { LiveCatalog } from "@houston/protocol";
 import type {
+  AgentAssignment,
   CustomEndpoint,
   ComposioAppEntry as EngineComposioAppEntry,
   ComposioStatus as EngineComposioStatus,
@@ -19,6 +21,11 @@ import type {
   GenerateInstructionsResult,
   ProviderAuthState,
 } from "@houston-ai/engine-client";
+import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
+import {
+  beginClaudeBrowserLogin,
+  cancelClaudeBrowserLogin,
+} from "./claude-login";
 import { COMPOSIO_ALREADY_CONNECTED_KIND } from "./composio-already-connected";
 import { getEngine, isRemoteEngine } from "./engine";
 import { engineCallSurface } from "./engine-call-policy";
@@ -186,6 +193,8 @@ function toAgent(a: import("@houston-ai/engine-client").Agent): Agent {
     lastOpenedAt: a.lastOpenedAt,
     assigned: a.assigned,
     assignedUserIds: a.assignedUserIds,
+    access: a.access,
+    assignments: a.assignments,
   };
 }
 
@@ -204,6 +213,7 @@ export const tauriAgents = {
     installedPath?: string,
     seeds?: Record<string, string>,
     existingPath?: string,
+    templateId?: string,
   ) =>
     call<CreateAgentResult>("create_agent", async () => {
       const r = await getEngine().createAgent(workspaceId, {
@@ -214,6 +224,7 @@ export const tauriAgents = {
         installedPath,
         seeds,
         existingPath,
+        templateId,
       });
       return {
         agent: toAgent(r.agent),
@@ -246,10 +257,37 @@ export const tauriAgents = {
       "list_installed_configs",
       () => getEngine().listInstalledConfigs(),
     ),
-  /** Multiplayer: set which org members may use this agent. Empty = everyone. */
-  setAssignments: (agentSlugOrId: string, userIds: string[]) =>
+  /** Multiplayer: set which org members may use this agent, and at what access
+   *  level. Pass the v2 `AgentAssignment[]` (`{userId, access}`) roster from the
+   *  Share dialog; the legacy `string[]` (userIds → access `user`) shape still
+   *  works for older callers. Empty = everyone. */
+  setAssignments: (
+    agentSlugOrId: string,
+    assignments: AgentAssignment[] | string[],
+  ) =>
     call<void>("set_agent_assignments", () =>
-      getEngine().setAgentAssignments(agentSlugOrId, userIds),
+      getEngine().setAgentAssignments(agentSlugOrId, assignments),
+    ),
+};
+
+/**
+ * Teams v2: an agent's allowed-toolkit ceiling. `get` reads the agent + org
+ * ceilings plus the caller's effective access; `set` (agent-manager only)
+ * replaces the agent ceiling (`null` = all allowed, `[]` = none), and the host
+ * prunes now-disallowed toolkits from existing grants. Both route through
+ * `call()` so failures surface as toasts with a Report-bug affordance.
+ */
+export const tauriAgentSettings = {
+  get: (agentSlugOrId: string) =>
+    call("get_agent_settings", () =>
+      getEngine().getAgentSettings(agentSlugOrId),
+    ),
+  set: (
+    agentSlugOrId: string,
+    settings: { allowedToolkits: string[] | null },
+  ) =>
+    call<void>("set_agent_settings", () =>
+      getEngine().setAgentSettings(agentSlugOrId, settings),
     ),
 };
 
@@ -1006,6 +1044,22 @@ export const tauriProvider = {
       await eng.setPreference(DEFAULT_PROVIDER_PREF_KEY, provider);
       await eng.setPreference(DEFAULT_MODEL_PREF_KEY, model);
     }),
+  /**
+   * The provider's LIVE model catalog from the host (`/v1/providers/:id/models`,
+   * OpenRouter today) — the dynamic model list the redesigned picker renders
+   * alongside the baked snapshot. `listProviderModels` is a new-engine-adapter
+   * method absent from the legacy engine-client type, so cast (as
+   * `checkAllStatuses` does). The host answers `[]` when there's no key or the
+   * deployment is cloud-egress-locked; any real failure surfaces as a toast.
+   */
+  listModels: (providerId: string) =>
+    call<LiveCatalog>("list_provider_models", () =>
+      (
+        getEngine() as unknown as {
+          listProviderModels: (providerId: string) => Promise<LiveCatalog>;
+        }
+      ).listProviderModels(providerId),
+    ),
   launchLogin: (
     provider: string,
     opts?: { deviceAuth?: boolean; toast?: boolean; enterpriseDomain?: string },
@@ -1020,8 +1074,25 @@ export const tauriProvider = {
     // domain the user typed on the Enterprise card; absent for every other login.
     call<void>(
       "launch_provider_login",
-      () =>
-        getEngine().providerLogin(provider, {
+      () => {
+        // Anthropic on a co-located desktop runs the zero-terminal browser login
+        // FOR the user (native `claude auth login`), never the runtime's
+        // setup-token paste flow. This is the single choke point every connect
+        // surface funnels through, so the intercept lives here (not per-surface).
+        // beginClaudeBrowserLogin drives the whole flow and reports the outcome
+        // as a synthetic ProviderLoginComplete, so `call` resolves and never
+        // double-toasts. On a REMOTE-engine desktop it also extracts + pushes the
+        // credential to the pod (and degrades to the paste flow on any failure).
+        // Web (non-Tauri) falls through to providerLogin.
+        if (
+          shouldUseClaudeDesktopLogin({
+            provider,
+            isTauri: osIsTauri(),
+          })
+        ) {
+          return beginClaudeBrowserLogin(provider);
+        }
+        return getEngine().providerLogin(provider, {
           deviceAuth:
             opts?.deviceAuth ??
             // Codex/OpenAI on a Tauri desktop against a REMOTE engine uses the
@@ -1063,7 +1134,8 @@ export const tauriProvider = {
                   { isTauri: osIsTauri() },
                 )),
           enterpriseDomain: opts?.enterpriseDomain,
-        }),
+        });
+      },
       undefined,
       // Callers that render their OWN failure toast (the picker, settings) pass
       // `toast: false` so `call`'s generic toast does not fire on top of theirs
@@ -1098,9 +1170,17 @@ export const tauriProvider = {
    * pending spinners clear without an error toast.
    */
   cancelLogin: (provider: string) =>
-    call<void>("cancel_provider_login", () =>
-      getEngine().cancelProviderLogin(provider),
-    ),
+    call<void>("cancel_provider_login", () => {
+      // Anthropic on the desktop ran the native browser login (not the runtime),
+      // so its cancel must kill THAT child — the runtime's cancelProviderLogin
+      // would be a no-op and leave the `claude` helper running. Mirror the
+      // launchLogin intercept.
+      if (shouldUseClaudeDesktopLogin({ provider, isTauri: osIsTauri() })) {
+        cancelClaudeBrowserLogin(provider);
+        return Promise.resolve();
+      }
+      return getEngine().cancelProviderLogin(provider);
+    }),
   /**
    * Connect an API-key provider (OpenRouter, Google Gemini, Amazon Bedrock,
    * OpenCode Zen / Go):
@@ -1114,13 +1194,26 @@ export const tauriProvider = {
       getEngine().setProviderApiKey(provider, apiKey),
     ),
   /**
-   * Connect an OpenAI-compatible (local) server: a base URL + model id the user
-   * runs themselves (Ollama / vLLM / LM Studio). Desktop + new-engine only — the
-   * connect UI shows it only then (see `getVisibleProviders`).
+   * Connect an OpenAI-compatible (local / BYO model) server: a base URL + model
+   * id the user runs themselves (Ollama / vLLM / LM Studio). New-engine only and
+   * gated by the host's `openaiCompatible` capability — the connect UI shows it
+   * only then (see `getVisibleProviders`).
    */
   setCustomEndpoint: (endpoint: CustomEndpoint) =>
     call<void>("set_provider_custom_endpoint", () =>
       getEngine().setProviderCustomEndpoint(endpoint),
+    ),
+  /**
+   * Mint a relay credential for the guided "connect a local model" flow: the
+   * gateway issues a short-lived tunnel token the desktop's frpc sidecar uses to
+   * expose the user's local model server to their CLOUD agent. Hosted + new
+   * engine only. A failure toasts the real reason with a Report-bug affordance
+   * (default `call` surfacing); the guided dialog also shows a calm retry state.
+   */
+  getTunnelCredentials: () =>
+    call<import("@houston-ai/engine-client").TunnelCredentials>(
+      "get_tunnel_credentials",
+      () => getEngine().getTunnelCredentials(),
     ),
   /**
    * Save a Gemini API key to `~/.gemini/.env` via the engine (legacy Rust /
@@ -1244,9 +1337,12 @@ export const tauriIntegrations = {
     call("integration_connections", () =>
       getEngine().integrationConnections(provider),
     ),
-  connect: (provider: string, toolkit: string) =>
+  /** Begin an app connection. `agent` (the agent slug) scopes the connect to a
+   *  per-agent surface so the gateway applies the agent's allowlist + auto-grant
+   *  (Teams v2); omit it for the account-level Integrations page. */
+  connect: (provider: string, toolkit: string, agent?: string) =>
     call("integration_connect", () =>
-      getEngine().connectIntegration(provider, toolkit),
+      getEngine().connectIntegration(provider, toolkit, agent),
     ),
   connection: (provider: string, connectionId: string) =>
     call("integration_connection", () =>
@@ -1285,6 +1381,11 @@ export const tauriOrg = {
     email: string,
     role: import("@houston-ai/engine-client").OrgRole,
   ) => call("add_org_member", () => getEngine().addOrgMember(email, role)),
+  /** Revoke a pending invite by id (owner only). */
+  deleteInvite: (inviteId: string) =>
+    call<void>("delete_org_invite", () =>
+      getEngine().deleteOrgInvite(inviteId),
+    ),
   removeMember: (userId: string) =>
     call("remove_org_member", () => getEngine().removeOrgMember(userId)),
   setMemberRole: (
@@ -1294,4 +1395,33 @@ export const tauriOrg = {
     call("set_org_member_role", () =>
       getEngine().setOrgMemberRole(userId, role),
     ),
+  /** Org audit log, newest first, paged by `before` cursor (owner org-wide;
+   *  admin their managed agents; plain members 403). */
+  audit: (opts: { before?: number; limit?: number } = {}) =>
+    call("org_audit", () => getEngine().orgAudit(opts)),
+  /** Per-agent/user usage counters over the last `days` (owner org-wide; admin
+   *  their managed agents; plain members 403). */
+  usage: (days: number) => call("org_usage", () => getEngine().orgUsage(days)),
+  /**
+   * Agent templates (Teams v2). Reads degrade to `[]`/`null` on a non-Teams
+   * host (the engine-client/adapter swallow the 404); the surface gates on
+   * `capabilities.multiplayer`. Every call routes through `call()` so a failure
+   * reaches the user as a toast + Report bug, same as the wrappers above.
+   */
+  templates: {
+    list: () =>
+      call("list_org_templates", () => getEngine().listOrgTemplates()),
+    get: (id: string) =>
+      call("get_org_template", () => getEngine().getOrgTemplate(id)),
+    create: (input: {
+      name: string;
+      description: string;
+      spec: import("@houston-ai/engine-client").TemplateSpec;
+    }) =>
+      call("create_org_template", () => getEngine().createOrgTemplate(input)),
+    remove: (id: string) =>
+      call<void>("delete_org_template", () =>
+        getEngine().deleteOrgTemplate(id),
+      ),
+  },
 };

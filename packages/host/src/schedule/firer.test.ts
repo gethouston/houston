@@ -83,6 +83,7 @@ function recordingChannel(): RuntimeChannel & {
     },
     async forgetCredential() {},
     async saveApiKeyCredential() {},
+    async saveClaudeOAuthCredential() {},
     async saveCustomEndpoint() {},
   };
 }

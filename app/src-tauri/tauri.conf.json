@@ -46,7 +46,11 @@
     "createUpdaterArtifacts": true,
     "active": true,
     "targets": ["app", "dmg", "msi"],
-    "externalBin": ["binaries/houston-engine"],
+    "externalBin": [
+      "binaries/houston-engine",
+      "binaries/claude",
+      "binaries/frpc"
+    ],
     "resources": {
       "../../store": "store"
     },

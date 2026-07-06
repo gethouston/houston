@@ -198,58 +198,27 @@ describe("AI Hub review fixes (component source contracts)", () => {
     );
   });
 
-  it("Finding 2: provider card keydown guards target === currentTarget", () => {
-    const card = read("../src/components/ai-hub/provider-card.tsx");
-    ok(
-      card.includes("event.target === event.currentTarget") ||
-        card.includes("event.target !== event.currentTarget"),
-      "Enter/Space only opens when the card itself is focused",
-    );
-  });
-
-  it("Finding 4/9: one chip primitive, no HubChip, no unused AuthBadge", () => {
+  it("Finding 4/9: SpecChip is the shared chip primitive, no local HubChip", () => {
     const badges = read("../src/components/ai-hub/hub-badges.tsx");
-    ok(!badges.includes("AuthBadge"), "unused AuthBadge removed");
     ok(
       badges.includes("export function SpecChip"),
       "SpecChip is the primitive",
     );
     const card = read("../src/components/ai-hub/provider-card.tsx");
     ok(!card.includes("function HubChip"), "HubChip primitive is gone");
-    ok(card.includes("SpecChip"), "provider card uses the shared SpecChip");
   });
 
-  it("Finding 10: both drill-in titles are h2 text-xl font-semibold", () => {
-    const provider = read("../src/components/ai-hub/provider-detail.tsx");
+  it("Finding 10: provider/model detail now open as centered modals (ModalShell)", () => {
+    const provider = read("../src/components/ai-hub/provider-modal.tsx");
     ok(
-      /<h2 className="text-xl font-semibold/.test(provider),
-      "provider detail title is an h2 text-xl font-semibold",
+      provider.includes("ModalShell"),
+      "provider detail is a ModalShell modal",
     );
-    ok(!/<h1 /.test(provider), "no h1 in the drill-in");
-    const model = read("../src/components/ai-hub/model-detail.tsx");
-    ok(
-      /<h2 className="text-xl font-semibold/.test(model),
-      "model detail title matches",
-    );
+    const model = read("../src/components/ai-hub/model-modal.tsx");
+    ok(model.includes("ModalShell"), "model detail is a ModalShell modal");
   });
 
-  it("Finding 11: every provider card shows a quiet ChevronRight cue", () => {
-    const card = read("../src/components/ai-hub/provider-card.tsx");
-    ok(card.includes("ChevronRight"), "an affordance chevron is rendered");
-    ok(
-      card.includes("text-muted-foreground") && card.includes("size-4"),
-      "quiet, muted, 16px",
-    );
-  });
-
-  it("Finding 3: provider model list drops the duplicate formatters", () => {
-    const list = read("../src/components/ai-hub/provider-model-list.tsx");
-    ok(!list.includes("formatCost"), "no formatCost");
-    ok(!list.includes("formatContext"), "no formatContext");
-    ok(
-      list.includes("formatPrice") || list.includes("PriceText"),
-      "uses the shared price formatter",
-    );
+  it("Finding 3: the duplicate formatters stay out of provider-grouping", () => {
     const grouping = read("../src/components/ai-hub/provider-grouping.ts");
     ok(!grouping.includes("formatCost"), "formatCost deleted from grouping");
     ok(

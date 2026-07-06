@@ -25,6 +25,7 @@
     "@houston-ai/review": "workspace:*",
     "@houston-ai/routines": "workspace:*",
     "@houston-ai/skills": "workspace:*",
+    "@houston/protocol": "workspace:*",
     "@houston/runtime-client": "workspace:*",
     "@houston/sdk": "workspace:*",
     "@sentry/browser": "10.63.0",

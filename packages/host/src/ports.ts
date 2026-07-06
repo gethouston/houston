@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { CustomEndpoint } from "@houston/protocol";
+import type { ClaudeOAuthCredential, CustomEndpoint } from "@houston/protocol";
 import type {
   Agent,
   AgentId,
@@ -193,11 +193,33 @@ export interface RuntimeChannel {
     apiKey: string,
   ): Promise<void>;
   /**
-   * Connect an OpenAI-compatible (local) server: a base URL + model id the user
-   * runs themselves (Ollama / vLLM / LM Studio). Unlike the credential providers
-   * this is NOT stored centrally — the URL points at the user's own machine, so
-   * a standing-runtime channel just persists the endpoint in the runtime it
-   * supervises. A per-turn / cloud channel rejects it (local profile only).
+   * Connect-once for the Anthropic Claude subscription in HOSTED mode. The
+   * desktop mints the OAuth credential locally (`claude auth login`), extracts
+   * it, and pushes it here (the CLI's `{claudeAiOauth}` shape). A standing-runtime
+   * channel materializes it onto the pod as the SDK's own
+   * `<CLAUDE_CONFIG_DIR>/.credentials.json`, so the pod's Claude Agent SDK
+   * authenticates AND self-refreshes from the refresh token there — NO central
+   * refresh, and the stale-token bug is gone. It is stored centrally too
+   * (durability + a connected marker) but NEVER served through pi's per-turn
+   * auth.json path (serve.ts bypasses anthropic).
+   *
+   * The refresh token deliberately stays on the pod — a documented, EXPLICITLY
+   * gated departure from Gate #2's "sandbox never holds a refresh token", scoped
+   * to the SINGLE-TENANT, network-policied managed pod only. The multi-tenant
+   * per-turn Cloud Run channel REFUSES this (Anthropic is off there).
+   */
+  saveClaudeOAuthCredential(
+    ctx: ChannelCtx,
+    cred: ClaudeOAuthCredential,
+  ): Promise<void>;
+  /**
+   * Connect an OpenAI-compatible server: a base URL + model id. Desktop/self-host
+   * point it at the user's own machine (Ollama / vLLM / LM Studio); a cloud pod
+   * points it at a public HTTPS endpoint (validated at the save route). Unlike the
+   * credential providers the endpoint is NOT a central credential: a standing
+   * runtime (ProxyChannel) persists it in the runtime it supervises; the per-turn
+   * channel (TurnChannel) writes `custom-endpoint.json` into the agent's
+   * object-storage prefix, which the next turn's runtime hydrates.
    */
   saveCustomEndpoint(ctx: ChannelCtx, endpoint: CustomEndpoint): Promise<void>;
   /**

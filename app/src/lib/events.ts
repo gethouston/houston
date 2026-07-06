@@ -27,6 +27,15 @@ function toHandler<T>(handler: (ev: T) => void) {
 }
 
 /**
+ * The set of live `subscribeHoustonEvents` handlers, so a purely LOCAL flow can
+ * fan an event out to the exact same subscribers the engine WS feeds. The
+ * desktop Claude browser login completes entirely on this machine (no runtime
+ * round-trip), so it has no server `ProviderLoginComplete` to ride — it
+ * publishes a synthetic one here and every provider surface reacts identically.
+ */
+const localHandlers = new Set<(ev: HoustonEvent) => void>();
+
+/**
  * Subscribe to every `HoustonEvent` emitted by the backend.
  *
  * Idempotent: calling this multiple times is safe — the underlying
@@ -38,7 +47,22 @@ export function subscribeHoustonEvents(
 ): Unsub {
   const ws = getEngineWs();
   ws.subscribe([topics.firehose]);
-  return ws.onEvent(toHandler(handler));
+  const offWs = ws.onEvent(toHandler(handler));
+  localHandlers.add(handler);
+  return () => {
+    offWs();
+    localHandlers.delete(handler);
+  };
+}
+
+/**
+ * Deliver a client-synthesized `HoustonEvent` to every `subscribeHoustonEvents`
+ * subscriber, exactly as if the engine had emitted it. ONLY for flows that
+ * genuinely complete client-side (the desktop Claude browser login) — everything
+ * else must come from the engine so state stays authoritative.
+ */
+export function publishLocalHoustonEvent(ev: HoustonEvent): void {
+  for (const handler of localHandlers) handler(ev);
 }
 
 /**

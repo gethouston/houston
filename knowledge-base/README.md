@@ -12,6 +12,7 @@ Load on demand.
 | [files-first.md](files-first.md) | `.houston/` layout, atomic writes, schemas, AI-native reactivity |
 | [skills.md](skills.md) | Skills on disk + UI — frontmatter schema, picker rendering, invocation marker |
 | [agent-manifest.md](agent-manifest.md) | Three tiers, manifest shape, workspace templates, sidebar |
+| [teams.md](teams.md) | Multiplayer orgs (client surface) — roles/access, role matrix v2, org dashboard, share dialog, templates, allowlists; gateway is sole enforcer |
 | [auth.md](auth.md) | Supabase auth, Google SSO, Keychain |
 | [i18n.md](i18n.md) | Translating UI strings — namespaces, `labels` prop pattern, `t()` rules |
 | [ui-testing.md](ui-testing.md) | Automated UI / e2e tests — Playwright, web build, fake host, TS engine |
@@ -20,6 +21,7 @@ Load on demand.
 | [data-rituals.md](data-rituals.md) | Daily/weekly/monthly data rituals + dashboard reading guide |
 | [windows-testing.md](windows-testing.md) | Windows testing loop from a Mac — UTM VM, SSH bridge, cross-compile |
 | [provider-errors.md](provider-errors.md) | Provider error taxonomy + card surface (now owned by the TS host / pi) |
+| [local-models.md](local-models.md) | BYO local model (LM Studio / Jan / Ollama) → cloud agent via the desktop tunnel bridge |
 | [platform-matrix.md](platform-matrix.md) | _HISTORICAL_ — Windows support status at the (removed) Rust engine surface |
 
 **Custom-frontend integration** — the standalone `examples/smartbooks/` reference was REMOVED in the convergence sweep. The frontend-agnostic contract still holds; the canonical non-Tauri consumer is now `packages/web` (the full desktop UI over the host's protocol v3).
