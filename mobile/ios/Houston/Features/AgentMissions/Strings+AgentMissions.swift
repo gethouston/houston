@@ -16,5 +16,10 @@ extension Strings {
         /// reuses `Strings.Board.delete` ("Delete").
         static let deleteConfirmTitle = "Delete mission?"
         static let deleteConfirmBody = "This removes the mission and its chat for good. You can't undo this."
+
+        /// Accessibility label for the toolbar overflow menu that opens this
+        /// agent's AI Models + Integrations. Product-voice (desktop reaches these
+        /// from top-level nav, not a per-agent menu).
+        static let moreMenu = "Agent settings"
     }
 }

@@ -14,6 +14,12 @@ import SwiftUI
 /// (the aggregate `needs_you` count across agents — see `PARITY.md` §4).
 struct RootTabs: View {
     @Environment(BadgeModel.self) private var badge
+    @Environment(\.colorScheme) private var systemScheme
+
+    /// Device-local appearance choice (Settings › Appearance). Read here so the
+    /// whole signed-in shell re-themes: nothing else applies `houstonTheme(...)`,
+    /// so this is where the app's light/dark resolves. See `AppearancePreference`.
+    @AppStorage(AppearancePreference.storageKey) private var appearance = ""
 
     @State private var selection: Tab = .agents
     /// The last *real* tab, restored when the New Mission tab is intercepted.
@@ -24,6 +30,12 @@ struct RootTabs: View {
         case agents
         case newMission   // sentinel — never actually shown
         case missionControl
+        case settings
+    }
+
+    private var themeMode: HoustonTheme {
+        AppearancePreference.resolve(
+            stored: appearance.isEmpty ? nil : appearance, system: systemScheme)
     }
 
     var body: some View {
@@ -46,7 +58,14 @@ struct RootTabs: View {
                 }
                 .badge(badge.needsYouCount)
                 .tag(Tab.missionControl)
+
+            SettingsView()
+                .tabItem {
+                    Label(Strings.Tabs.settings, systemImage: "gearshape")
+                }
+                .tag(Tab.settings)
         }
+        .houstonTheme(themeMode)
         .onChange(of: selection) { _, newValue in
             guard newValue == .newMission else {
                 lastRealSelection = newValue

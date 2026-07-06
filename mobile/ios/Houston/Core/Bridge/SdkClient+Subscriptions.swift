@@ -43,4 +43,30 @@ extension SdkClient {
   func deliverSnapshot(sub: String, value: JSONValue) {
     subscriptions[sub]?.sink(value)
   }
+
+  /// Drop every trace of the signed-in user's SCOPE data so a different user
+  /// signing in on the same device never reads the previous user's snapshots
+  /// (the scope keys `agents`/`integrations` are fixed, so a stale snapshot would
+  /// otherwise show through until a refetch landed). Closes every live scope
+  /// subscription on the bridge, clears the subscription table, and resets every
+  /// cached ``ScopeStore`` to an unloaded snapshot (bound views drop stale data).
+  ///
+  /// Event sinks and in-flight commands are transient — not cached user data —
+  /// and are intentionally left intact so the app-lifetime `tokenExpired`
+  /// observer (``AuthController/observeSdkFatal()``) keeps working across the next
+  /// sign-in. Call from EVERY sign-out exit (``AuthController/signOut()`` and the
+  /// `forceSignOut`/`tokenExpired` terminal path).
+  func purgeUserData() {
+    for sub in subscriptions.keys {
+      do {
+        try deliver(.unsubscribe(sub: sub))
+      } catch {
+        log.error("purge unsubscribe \(sub, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+      }
+    }
+    subscriptions.removeAll()
+    for store in scopeStores.values {
+      (store as? ScopePurgeable)?.purge()
+    }
+  }
 }
