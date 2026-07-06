@@ -16,16 +16,30 @@ import { EngineError, FatalResumeError } from "@houston/runtime-client";
  * A fatal stream refusal (FatalResumeError) unwraps to the EngineError it carries.
  */
 export function turnErrorMessage(e: unknown): string {
+  const verdict = engineVerdictMessage(e);
+  if (verdict !== undefined) return verdict;
   if (e instanceof FatalResumeError) e = e.cause;
-  if (e instanceof EngineError) {
-    try {
-      const body = JSON.parse(e.body) as { error?: string };
-      if (body?.error) return body.error;
-    } catch {
-      /* body wasn't JSON — fall through to the generic message */
-    }
-  }
   return e instanceof Error ? e.message : String(e);
+}
+
+/**
+ * The engine's own error copy when `e` carries one, else undefined. Only an
+ * {@link EngineError} (directly or inside a FatalResumeError) with a JSON
+ * `{ error }` body qualifies — that string is authored product copy. Anything
+ * else (a transport failure, the resume loop's own watchdog abort — WebKit's
+ * "Fetch is aborted" / "Load failed") is developer speak that must never
+ * reach the chat (HOU-705); callers substitute their product-voice fallback.
+ */
+export function engineVerdictMessage(e: unknown): string | undefined {
+  if (e instanceof FatalResumeError) e = e.cause;
+  if (!(e instanceof EngineError)) return undefined;
+  try {
+    const body = JSON.parse(e.body) as { error?: string };
+    if (body?.error) return body.error;
+  } catch {
+    /* body wasn't JSON — no product copy to surface */
+  }
+  return undefined;
 }
 
 /**
