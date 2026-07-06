@@ -32,7 +32,7 @@
     "warning-fg": { "$value": "{color.base.white}" },
     "highlight": { "$value": "{color.brand.highlight-45}" },
     "highlight-fg": { "$value": "{color.status.highlight-ink-light}" },
-    "card-rest": { "$value": "{color.cool.surface}" },
+    "card-rest": { "$value": "{color.base.white}" },
     "canvas-gutter": { "$value": "{color.cool.gutter}" },
     "canvas-screen": { "$value": "{color.base.white}" },
     "agent": {

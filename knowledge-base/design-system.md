@@ -226,7 +226,7 @@ those four primitives — no modal should hardcode its own background.
 
 **Primary button** — flat and sober (`[data-variant="default"]:is(button, a)`),
 not a glossy slab. Kanban resting cards use one token, `--ht-card-rest` (`#2c2c2b`
-dark / cool light), unified across resting + running + needs-you.
+dark / white light), unified across resting + running + needs-you.
 
 **Seamless title bar (macOS desktop only)** — `titleBarStyle: "Overlay"` +
 `hiddenTitle`; the content extends to the top so the traffic lights float over

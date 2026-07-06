@@ -9,7 +9,7 @@
     "ht-card": "rgba(255, 255, 255, 0.68)",
     "ht-card-hover": "rgba(255, 255, 255, 0.76)",
     "ht-card-fg": "#0d0d0d",
-    "ht-card-rest": "#f4f6fc",
+    "ht-card-rest": "#ffffff",
     "ht-destructive": "#e02e2a",
     "ht-destructive-fg": "#ffffff",
     "ht-foreground": "#14161d",
