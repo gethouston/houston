@@ -546,6 +546,27 @@ once from `connections.dialogProps`. The hub view renders both once and passes
 dialogs (co-located browser callback); see `knowledge-base/auth.md` for the
 connect/re-auth event contract.
 
+### Where a provider connect executes (agent runtime vs setup runtime)
+
+Credentials are **workspace-central** (connect-once): a captured credential
+lands on the personal workspace and every agent runtime is served from it
+(`/sandbox/credential`). But the OAuth dance itself still needs a runtime to
+run in, so the web adapter's `providerEngine()` routes the connect surface
+(status, login, complete, cancel) by the persisted selection pref
+`houston.pref.last_agent_id`:
+
+- pref names an agent → that agent's runtime (`/agents/:id/auth/...`);
+- pref absent → the host's hidden **setup runtime** (`/setup-runtime/auth/...`,
+  `packages/host/src/routes/setup-runtime.ts`) — the pre-agent first-run path.
+
+**Invariant: the pref never names an agent the control plane doesn't have.**
+The adapter prunes it in cp `listAgents` (boot runs that before any connect
+surface mounts) and clears it in cp `deleteAgent` when the deleted agent was
+the remembered one (`packages/web/tests/stale-agent-pref.test.ts`). A stale
+pref (deleted last agent, wiped `~/.houston` with surviving localStorage,
+account switch) used to send first-run onboarding logins to
+`/agents/<dead>/auth/:pid/login` → 404 "agent not found".
+
 ### Removed / moved
 
 - **Settings no longer manages providers.** Deleted: `provider-settings.tsx`,
