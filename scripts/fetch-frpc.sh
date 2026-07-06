@@ -23,7 +23,7 @@
 # Supported <rust-triple>:
 #   aarch64-apple-darwin, x86_64-apple-darwin,
 #   x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu,
-#   x86_64-pc-windows-msvc
+#   x86_64-pc-windows-msvc, aarch64-pc-windows-msvc
 #
 # Override the frp version with FRP_VERSION (default below).
 # ============================================================================
@@ -61,6 +61,7 @@ case "$TRIPLE" in
   x86_64-unknown-linux-gnu)   FRP_OS="linux";   FRP_ARCH="amd64"; ARCHIVE_EXT="tar.gz"; BIN="frpc" ;;
   aarch64-unknown-linux-gnu)  FRP_OS="linux";   FRP_ARCH="arm64"; ARCHIVE_EXT="tar.gz"; BIN="frpc" ;;
   x86_64-pc-windows-msvc)     FRP_OS="windows"; FRP_ARCH="amd64"; ARCHIVE_EXT="zip";    BIN="frpc.exe" ;;
+  aarch64-pc-windows-msvc)    FRP_OS="windows"; FRP_ARCH="arm64"; ARCHIVE_EXT="zip";    BIN="frpc.exe" ;;
   *) echo "ERROR: unsupported triple '$TRIPLE'" >&2; exit 1 ;;
 esac
 
@@ -104,7 +105,13 @@ echo "  sha256 OK"
 # Extract only the frpc binary.
 echo "  extracting ${BIN}…"
 if [ "$ARCHIVE_EXT" = "zip" ]; then
-  unzip -q -o "$TMP/$ASSET" "${INNER_DIR}/${BIN}" -d "$TMP"
+  # Windows runners don't always ship `unzip`; bsdtar (`tar`, built into
+  # Windows 10+) can extract a single member from a zip, so fall back to it.
+  if command -v unzip >/dev/null 2>&1; then
+    unzip -q -o "$TMP/$ASSET" "${INNER_DIR}/${BIN}" -d "$TMP"
+  else
+    tar -xf "$TMP/$ASSET" -C "$TMP" "${INNER_DIR}/${BIN}"
+  fi
 else
   tar -xzf "$TMP/$ASSET" -C "$TMP" "${INNER_DIR}/${BIN}"
 fi
