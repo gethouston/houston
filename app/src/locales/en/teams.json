@@ -1,9 +1,56 @@
 {
-  "managedAgent": {
-    "banner": "This agent is managed by your organization. Only its managers can make changes."
-  },
-  "model": {
-    "lockedTooltip": "Your organization's manager sets this agent's AI model."
+  "agentAdmin": {
+    "title": "Agent settings",
+    "subtitle": "Configure how this agent works and who can use it.",
+    "groups": {
+      "configuration": "Configuration",
+      "access": "Access",
+      "general": "General"
+    },
+    "rows": {
+      "instructions": {
+        "desc": "What this agent should do."
+      },
+      "skills": {
+        "desc": "Abilities this agent can use."
+      },
+      "knowledge": {
+        "title": "Knowledge",
+        "desc": "Facts and context it remembers."
+      },
+      "model": {
+        "title": "AI model",
+        "desc": "The model that powers this agent."
+      },
+      "people": {
+        "title": "People with access",
+        "desc": "Who can use this agent."
+      },
+      "integrations": {
+        "title": "Allowed integrations",
+        "desc": "Apps this agent is allowed to use."
+      },
+      "general": {
+        "desc": "Name, color, and deletion."
+      },
+      "template": {
+        "title": "Save as template",
+        "desc": "Reuse this setup for new agents."
+      }
+    },
+    "values": {
+      "skillCount_one": "{{count}} skill",
+      "skillCount_other": "{{count}} skills",
+      "learningCount_one": "{{count}} note",
+      "learningCount_other": "{{count}} notes"
+    },
+    "model": {
+      "title": "AI model",
+      "helper": "Choose the model and reasoning effort this agent uses."
+    },
+    "integrations": {
+      "unavailable": "Integration limits are not available here."
+    }
   },
   "integrations": {
     "allowlist": {

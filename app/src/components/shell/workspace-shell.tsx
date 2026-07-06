@@ -16,9 +16,11 @@ import { Compass, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  agentTabFallback,
   DEFAULT_TAB_ID,
+  isVisibleAgentTab,
   STANDARD_TAB_IDS,
-  STANDARD_TABS,
+  visibleAgentTabs,
 } from "../../agents/standard-tabs";
 import { useActivity } from "../../hooks/queries";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
@@ -51,7 +53,7 @@ import { DetailPanelProvider } from "./detail-panel-context";
 import { HoustonLogo } from "./experience-card";
 import { AgentRenderer } from "./experience-renderer";
 import { Sidebar } from "./sidebar";
-import { UiTour } from "./ui-tour";
+import { UiTour, type UiTourStep } from "./ui-tour";
 
 interface WorkspaceShellProps {
   toasts: Toast[];
@@ -104,14 +106,26 @@ export function WorkspaceShell({
     (a) => a.status === "needs_you",
   ).length;
   const isAgentView = !isTopLevelView(viewMode);
+  // Resolve against the CALLER-visible tab set, not the raw standard ids:
+  // `job-description` (Agent Settings) is a standard id but hidden from plain
+  // members, so a STANDARD_TAB_IDS check would let a member's viewMode land on
+  // it and strand them on a blank pane (AgentRenderer marks no visible tab
+  // active). With no current agent the standard set is the only thing we can
+  // check, and the empty state renders regardless.
   const tabOr = (id: string) =>
-    STANDARD_TAB_IDS.has(id) ? id : DEFAULT_TAB_ID;
+    currentAgent
+      ? agentTabFallback(capabilities, currentAgent, id)
+      : STANDARD_TAB_IDS.has(id)
+        ? id
+        : DEFAULT_TAB_ID;
 
   useEffect(() => {
-    if (isAgentView && !STANDARD_TAB_IDS.has(viewMode)) {
-      setViewMode(DEFAULT_TAB_ID);
-    }
-  }, [isAgentView, setViewMode, viewMode]);
+    if (!isAgentView) return;
+    const valid = currentAgent
+      ? isVisibleAgentTab(capabilities, currentAgent, viewMode)
+      : STANDARD_TAB_IDS.has(viewMode);
+    if (!valid) setViewMode(DEFAULT_TAB_ID);
+  }, [capabilities, currentAgent, isAgentView, setViewMode, viewMode]);
 
   useEffect(() => {
     if (!currentAgent && agents.length > 0) {
@@ -183,16 +197,18 @@ export function WorkspaceShell({
                     <div data-tour-target="tabs">
                       <TabBar
                         title={currentAgent.name}
-                        tabs={STANDARD_TABS.map((tab) => ({
-                          id: tab.id,
-                          label: t(`agents:tabLabels.${tab.id}`, {
-                            defaultValue: tab.label,
+                        tabs={visibleAgentTabs(capabilities, currentAgent).map(
+                          (tab) => ({
+                            id: tab.id,
+                            label: t(`agents:tabLabels.${tab.id}`, {
+                              defaultValue: tab.label,
+                            }),
+                            badge:
+                              tab.badge === "activity"
+                                ? needsYouCount
+                                : undefined,
                           }),
-                          badge:
-                            tab.badge === "activity"
-                              ? needsYouCount
-                              : undefined,
-                        }))}
+                        )}
                         activeTab={viewMode}
                         onTabChange={setViewMode}
                         actions={
@@ -354,88 +370,103 @@ export function WorkspaceShell({
       </div>
       {uiTourActive && (
         <UiTour
-          steps={[
-            {
-              title: t("shell:uiTour.steps.assistant.title"),
-              body: t("shell:uiTour.steps.assistant.body"),
-              targetSelector: "[data-tour-target='agents']",
-              onEnter: () => setViewMode(DEFAULT_TAB_ID),
-            },
-            {
-              title: t("shell:uiTour.steps.board.title"),
-              body: t("shell:uiTour.steps.board.body"),
-              targetSelector: "[data-tour-target='main']",
-              onEnter: () => setViewMode(DEFAULT_TAB_ID),
-            },
-            {
-              title: t("shell:uiTour.steps.newMission.title"),
-              body: t("shell:uiTour.steps.newMission.body"),
-              targetSelector: "[data-tour-target='newMission']",
-              onEnter: () => setViewMode(DEFAULT_TAB_ID),
-            },
-            {
-              title: t("shell:uiTour.steps.tabActivity.title"),
-              body: t("shell:uiTour.steps.tabActivity.body"),
-              targetSelector: "[data-tour-target='tab-activity']",
-              onEnter: () => setViewMode(tabOr("activity")),
-            },
-            {
-              title: t("shell:uiTour.steps.tabRoutines.title"),
-              body: t("shell:uiTour.steps.tabRoutines.body"),
-              targetSelector: "[data-tour-target='tab-routines']",
-              onEnter: () => setViewMode(tabOr("routines")),
-            },
-            {
-              title: t("shell:uiTour.steps.tabFiles.title"),
-              body: t("shell:uiTour.steps.tabFiles.body"),
-              targetSelector: "[data-tour-target='tab-files']",
-              onEnter: () => setViewMode(tabOr("files")),
-            },
-            {
-              title: t("shell:uiTour.steps.tabJobDescription.title"),
-              body: t("shell:uiTour.steps.tabJobDescription.body"),
-              targetSelector: "[data-tour-target='tab-job-description']",
-              onEnter: () => setViewMode(tabOr("job-description")),
-            },
-            {
-              title: t("shell:uiTour.steps.missionControl.title"),
-              body: t("shell:uiTour.steps.missionControl.body"),
-              targetSelector: "[data-tour-target='nav-dashboard']",
-              onEnter: () => setViewMode("dashboard"),
-            },
-            {
-              title: t("shell:uiTour.steps.appTour.title"),
-              body: t("shell:uiTour.steps.appTour.body"),
-              targetSelector: "[data-tour-target='appTour']",
-              onEnter: () => {
-                setCreateAgentDialogOpen(false);
-                setViewMode(DEFAULT_TAB_ID);
+          steps={(
+            [
+              {
+                title: t("shell:uiTour.steps.assistant.title"),
+                body: t("shell:uiTour.steps.assistant.body"),
+                targetSelector: "[data-tour-target='agents']",
+                onEnter: () => setViewMode(DEFAULT_TAB_ID),
               },
-            },
-            {
-              title: t("shell:uiTour.steps.newAgent.title"),
-              body: t("shell:uiTour.steps.newAgent.body"),
-              targetSelector: "[data-tour-target='newAgent']",
-              onEnter: () => {
-                setCreateAgentDialogOpen(false);
-                setViewMode(DEFAULT_TAB_ID);
+              {
+                title: t("shell:uiTour.steps.board.title"),
+                body: t("shell:uiTour.steps.board.body"),
+                targetSelector: "[data-tour-target='main']",
+                onEnter: () => setViewMode(DEFAULT_TAB_ID),
               },
-            },
-            {
-              title: t("shell:uiTour.steps.agentStore.title"),
-              body: t("shell:uiTour.steps.agentStore.body"),
-              targetSelector: "[data-tour-target='agentStore']",
-              spotlightPadding: 4,
-              placement: "viewport-right",
-              onEnter: () => setCreateAgentDialogOpen(true),
-            },
-            {
-              title: t("shell:uiTour.steps.outro.title"),
-              body: t("shell:uiTour.steps.outro.body"),
-              confirmLabel: t("shell:uiTour.steps.outro.confirm"),
-              onEnter: () => setCreateAgentDialogOpen(false),
-            },
-          ]}
+              {
+                title: t("shell:uiTour.steps.newMission.title"),
+                body: t("shell:uiTour.steps.newMission.body"),
+                targetSelector: "[data-tour-target='newMission']",
+                onEnter: () => setViewMode(DEFAULT_TAB_ID),
+              },
+              {
+                title: t("shell:uiTour.steps.tabActivity.title"),
+                body: t("shell:uiTour.steps.tabActivity.body"),
+                targetSelector: "[data-tour-target='tab-activity']",
+                onEnter: () => setViewMode(tabOr("activity")),
+              },
+              {
+                title: t("shell:uiTour.steps.tabRoutines.title"),
+                body: t("shell:uiTour.steps.tabRoutines.body"),
+                targetSelector: "[data-tour-target='tab-routines']",
+                onEnter: () => setViewMode(tabOr("routines")),
+              },
+              {
+                title: t("shell:uiTour.steps.tabFiles.title"),
+                body: t("shell:uiTour.steps.tabFiles.body"),
+                targetSelector: "[data-tour-target='tab-files']",
+                onEnter: () => setViewMode(tabOr("files")),
+              },
+              {
+                title: t("shell:uiTour.steps.tabJobDescription.title"),
+                body: t("shell:uiTour.steps.tabJobDescription.body"),
+                targetSelector: "[data-tour-target='tab-job-description']",
+                onEnter: () => setViewMode(tabOr("job-description")),
+              },
+              {
+                title: t("shell:uiTour.steps.missionControl.title"),
+                body: t("shell:uiTour.steps.missionControl.body"),
+                targetSelector: "[data-tour-target='nav-dashboard']",
+                onEnter: () => setViewMode("dashboard"),
+              },
+              {
+                title: t("shell:uiTour.steps.appTour.title"),
+                body: t("shell:uiTour.steps.appTour.body"),
+                targetSelector: "[data-tour-target='appTour']",
+                onEnter: () => {
+                  setCreateAgentDialogOpen(false);
+                  setViewMode(DEFAULT_TAB_ID);
+                },
+              },
+              {
+                title: t("shell:uiTour.steps.newAgent.title"),
+                body: t("shell:uiTour.steps.newAgent.body"),
+                targetSelector: "[data-tour-target='newAgent']",
+                onEnter: () => {
+                  setCreateAgentDialogOpen(false);
+                  setViewMode(DEFAULT_TAB_ID);
+                },
+              },
+              {
+                title: t("shell:uiTour.steps.agentStore.title"),
+                body: t("shell:uiTour.steps.agentStore.body"),
+                targetSelector: "[data-tour-target='agentStore']",
+                spotlightPadding: 4,
+                placement: "viewport-right",
+                onEnter: () => setCreateAgentDialogOpen(true),
+              },
+              {
+                title: t("shell:uiTour.steps.outro.title"),
+                body: t("shell:uiTour.steps.outro.body"),
+                confirmLabel: t("shell:uiTour.steps.outro.confirm"),
+                onEnter: () => setCreateAgentDialogOpen(false),
+              },
+            ] satisfies UiTourStep[]
+          ).filter(
+            // The Agent Settings (job-description) step targets a tab plain
+            // members never see. Drop it for them so the tour never highlights a
+            // missing anchor or leaves them on a blank agent pane.
+            (step) =>
+              step.targetSelector !==
+                "[data-tour-target='tab-job-description']" ||
+              (!!currentAgent &&
+                isVisibleAgentTab(
+                  capabilities,
+                  currentAgent,
+                  "job-description",
+                )),
+          )}
           onDismiss={() => {
             setUiTourActive(false);
             setCreateAgentDialogOpen(false);

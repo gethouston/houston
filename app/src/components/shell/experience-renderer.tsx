@@ -1,7 +1,8 @@
 import { Spinner } from "@houston-ai/core";
 import { Suspense } from "react";
-import { STANDARD_TABS } from "../../agents/standard-tabs";
+import { visibleAgentTabs } from "../../agents/standard-tabs";
 import { resolveTabComponent } from "../../agents/tab-resolver";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import type { Agent, AgentDefinition } from "../../lib/types";
 
 interface AgentRendererProps {
@@ -15,9 +16,10 @@ export function AgentRenderer({
   agent,
   activeTabId,
 }: AgentRendererProps) {
+  const { capabilities } = useCapabilities();
   return (
     <div className="h-full w-full relative min-h-0">
-      {STANDARD_TABS.map((tab) => {
+      {visibleAgentTabs(capabilities, agent).map((tab) => {
         const TabComponent = resolveTabComponent(tab);
         const isActive = tab.id === activeTabId;
         return (

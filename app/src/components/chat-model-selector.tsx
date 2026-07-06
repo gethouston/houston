@@ -3,16 +3,12 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
 } from "@houston-ai/core";
 import type { Agent } from "@houston-ai/engine-client";
-import { ChevronDown, Lock } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { ChevronDown } from "lucide-react";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useChatModelPicker } from "../hooks/use-chat-model-picker";
-import { isModelSelectorLocked } from "../lib/model-selector-lock";
+import { shouldShowModelSelector } from "../lib/model-selector-lock";
 import { ProviderConnectionDialogs } from "./ai-hub/provider-connection-dialogs";
 import { ProviderGlyph } from "./shell/provider-logos";
 
@@ -38,10 +34,10 @@ interface ChatModelSelectorProps {
   onOpenChange?: (open: boolean) => void;
   /**
    * The agent this selector configures, when rendered in an agent-scoped
-   * surface (the composer). Threaded so the picker can LOCK for org members
+   * surface (the composer). Threaded so the picker is HIDDEN for org members
    * who may not change the agent's AI model (Teams matrix v2): a non-manager
-   * sees the pinned provider/model read-only. Omit outside an agent scope and
-   * the picker never locks; single-player is never locked.
+   * never sees which model the agent uses. Omit outside an agent scope and the
+   * picker always shows; single-player and owners/managers always show it.
    */
   agent?: Pick<Agent, "access"> | null;
 }
@@ -54,9 +50,8 @@ export function ChatModelSelector({
   onOpenChange,
   agent,
 }: ChatModelSelectorProps) {
-  const { t: tTeams } = useTranslation("teams");
   const { capabilities } = useCapabilities();
-  const locked = isModelSelectorLocked(capabilities, agent);
+  const show = shouldShowModelSelector(capabilities, agent);
   const picker = useChatModelPicker({
     provider,
     model,
@@ -65,38 +60,10 @@ export function ChatModelSelector({
     onOpenChange,
   });
 
-  if (locked) {
-    // Members see WHICH model the agent uses (a feature, not a leak) but can't
-    // change it: no picker, no provider/effort switch. `aria-disabled` (not the
-    // native `disabled` attribute) keeps the trigger focusable so the tooltip
-    // reason still reaches keyboard + screen-reader users.
-    return (
-      <fieldset
-        className="contents border-0 p-0 m-0"
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              aria-disabled="true"
-              onClick={(e) => e.preventDefault()}
-              className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground cursor-not-allowed opacity-80 outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <span className="inline-flex size-3.5 items-center justify-center [&_svg]:size-full">
-                <ProviderGlyph providerId={provider} />
-              </span>
-              <span>{picker.displayLabel}</span>
-              <Lock className="size-3 opacity-60" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>{tTeams("model.lockedTooltip")}</TooltipContent>
-        </Tooltip>
-      </fieldset>
-    );
-  }
+  // A plain org member never sees the agent's model: the picker renders
+  // nothing (the composer row collapses cleanly). The hooks above still run so
+  // the rules-of-hooks order stays stable across the show/hide flip.
+  if (!show) return null;
 
   return (
     // Stop pointer events from bubbling — prevents the board detail panel

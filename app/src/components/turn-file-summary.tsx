@@ -3,6 +3,8 @@ import type { TFunction } from "i18next";
 import { ChevronDownIcon, Lightbulb, Play, ScrollText } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { isVisibleAgentTab } from "../agents/standard-tabs";
+import { useCapabilities } from "../hooks/use-capabilities";
 import { tauriFiles } from "../lib/tauri";
 import {
   groupTurnSummaryItems,
@@ -21,6 +23,7 @@ interface TurnFileSummaryProps {
 
 export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
   const { t } = useTranslation("chat");
+  const { capabilities } = useCapabilities();
   const [openUpdates, setOpenUpdates] = useState(false);
   const [openFiles, setOpenFiles] = useState(false);
 
@@ -36,14 +39,18 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
       const agents = useAgentStore.getState().agents;
       const agent = agents.find((a) => a.folderPath === agentPath);
       const ui = useUIStore.getState();
-      if (agent) {
+      // Agent Settings (job-description) is hidden from plain org members, so a
+      // member's deep-link must not navigate there — it would land on a blank
+      // pane (AgentRenderer marks no visible tab active). Only navigate when the
+      // caller may actually see the tab; otherwise just close the mission panel.
+      if (agent && isVisibleAgentTab(capabilities, agent, "job-description")) {
         useAgentStore.getState().setCurrent(agent);
         ui.setJobDescriptionTarget(semanticTarget(kind));
         ui.setViewMode("job-description");
       }
       ui.setMissionPanelOpen(false);
     },
-    [agentPath],
+    [agentPath, capabilities],
   );
 
   if (items.length === 0) return null;

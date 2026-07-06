@@ -10,10 +10,9 @@ import {
 import {
   effectiveAllowlist,
   useAgentSettings,
-  useSetAgentSettings,
 } from "../../../hooks/queries/use-agent-settings";
 import { useCapabilities } from "../../../hooks/use-capabilities";
-import { canEditAgentGrants, isAgentManager } from "../../../lib/org-roles";
+import { canEditAgentGrants } from "../../../lib/org-roles";
 import type { TabProps } from "../../../lib/types";
 import { useUIStore } from "../../../stores/ui";
 import {
@@ -27,15 +26,15 @@ import {
   useIntegrationsGate,
 } from "../../integrations";
 import { INTEGRATIONS_VIEW_ID } from "../../integrations-view/id";
-import { AgentAllowlistSection } from "./agent-allowlist-section";
 import { AgentAppsBody } from "./agent-apps-body";
 import { agentIntegrationsView } from "./model";
 
 /**
  * The per-agent Integrations tab. Sections: the apps this agent can use, the
  * account apps ready to activate here (grants mode), the apps a Teams allowlist
- * forbids, the manager's allowlist editor (Teams + agent-manager only), and the
- * always-visible "Connect more apps" catalog. One tab-level connect flow with
+ * forbids, and the always-visible "Connect more apps" catalog. The allowlist
+ * editor lives in Agent Settings > Access, not here, so this tab renders
+ * identically for members and managers. One tab-level connect flow with
  * `autoGrant` so a brand-new connection auto-activates on this agent. Behind the
  * shared boot gate; the grant view (multiplayer) and degraded view (host without
  * grant routes) are a discriminated union so the two never mix. On a Teams host
@@ -66,10 +65,7 @@ export default function IntegrationsTab({ agent }: TabProps) {
     () => (settings ? effectiveAllowlist(settings) : null),
     [settings],
   );
-  const isManager = isAgentManager(capabilities, agent);
-
   const grantMutation = useAgentGrantMutation(agent.id);
-  const settingsMutation = useSetAgentSettings(agent.id);
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const connectFlow = useConnectFlow({
     agentId: agent.id,
@@ -139,19 +135,6 @@ export default function IntegrationsTab({ agent }: TabProps) {
               onActivate={activate}
               onDisconnect={(toolkit) => disconnect.mutate(toolkit)}
             />
-
-            {teamsEnabled && settings && isManager && (
-              <AgentAllowlistSection
-                allowedToolkits={settings.allowedToolkits}
-                orgAllowedToolkits={settings.orgAllowedToolkits}
-                catalog={catalog.data ?? []}
-                connectedToolkits={(connections.data ?? []).map(
-                  (c) => c.toolkit,
-                )}
-                saving={settingsMutation.isPending}
-                onSave={(next) => settingsMutation.mutate(next)}
-              />
-            )}
 
             <div className="mt-8">
               <ConnectMoreAppsSection

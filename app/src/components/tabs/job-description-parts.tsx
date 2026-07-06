@@ -9,8 +9,6 @@ import { FileText } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-export type SubTab = "instructions" | "skills" | "learnings" | "general";
-
 type SaveState = "idle" | "saving" | "saved";
 
 export interface InstructionsContentLabels {

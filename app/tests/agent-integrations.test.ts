@@ -1,10 +1,14 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import type {
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
 import { agentIntegrationsView } from "../src/components/tabs/agent-integrations/model.ts";
+
+const read = (rel: string) =>
+  readFileSync(new URL(rel, import.meta.url), "utf8");
 
 const tk = (slug: string, name: string): IntegrationToolkit => ({
   slug,
@@ -150,5 +154,36 @@ describe("agentIntegrationsView", () => {
     });
     if (view.mode !== "degraded") throw new Error("unreachable");
     strictEqual(view.rows[0]?.app.name, "obscure_app");
+  });
+});
+
+/**
+ * E7 (task B): the allowlist EDITOR left the Integrations tab for Agent
+ * Settings > Access, so the tab now renders identically for members and
+ * managers. The node runner has no DOM, so these guard the refactor's
+ * user-visible contract on the tab source (the repo's React-test idiom):
+ * the editor and its write path are gone, while the read-only effective-
+ * allowlist FILTERING of the browse catalog stays.
+ */
+describe("E7 integrations tab source", () => {
+  const src = read(
+    "../src/components/tabs/agent-integrations/agent-integrations-tab.tsx",
+  );
+
+  it("no longer renders or imports the allowlist editor", () => {
+    ok(!src.includes("AgentAllowlistSection"), "editor section removed");
+    ok(!src.includes("agent-allowlist-section"), "editor import removed");
+  });
+
+  it("drops the manager-only settings write path", () => {
+    ok(!src.includes("useSetAgentSettings"), "settings mutation hook dropped");
+    ok(!src.includes("isAgentManager"), "manager gate no longer needed");
+  });
+
+  it("keeps the effective-allowlist filtering of the browse catalog", () => {
+    ok(src.includes("effectiveAllowlist"), "still computes the ceiling");
+    ok(src.includes("useAgentSettings"), "still reads agent settings");
+    ok(src.includes("browseCatalog"), "still narrows the browse catalog");
+    ok(src.includes("ConnectMoreAppsSection"), "browse section stays");
   });
 });
