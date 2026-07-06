@@ -38,6 +38,7 @@ function harness(frames: WireFrame[] = doneTurn) {
     cancels: [] as string[],
     settings: [] as unknown[],
     providersListed: 0,
+    boardPersists: [] as Array<{ sessionKey: string; status: string }>,
   };
   const client = {
     async streamEvents(_id: string, o: { onEvent: (f: WireFrame) => void }) {
@@ -74,8 +75,12 @@ function harness(frames: WireFrame[] = doneTurn) {
     },
   } as unknown as HoustonEngineClient;
 
+  const logger = { debug() {}, info() {}, warn() {}, error() {} };
   const ctx: ModuleContext = {
-    config: { baseUrl: "http://x", ports: {} as SdkConfig["ports"] },
+    config: {
+      baseUrl: "http://x",
+      ports: { logger } as unknown as SdkConfig["ports"],
+    },
     store,
     // One injected engine for any agent id — this suite asserts through the
     // recorded calls, not per-agent URLs (see conversations for those).
@@ -83,7 +88,16 @@ function harness(frames: WireFrame[] = doneTurn) {
     authExpiry: createAuthExpiryNotifier(store),
     registerCommand: (type, handler) => commands.set(type, handler),
   };
-  const mod = createTurnsModule(ctx);
+  // The default board-status persister the turns module drives on every turn
+  // (backed by the activities module in the real SDK) — recorded here.
+  const persistBoardStatus = async (
+    _agentId: string,
+    sessionKey: string,
+    status: string,
+  ) => {
+    calls.boardPersists.push({ sessionKey, status });
+  };
+  const mod = createTurnsModule(ctx, persistBoardStatus);
   // Sends in this suite carry no agentId, so the VM lands on the "" agent slot.
   const vm = () =>
     store.getSnapshot(conversationScope("", "c1")) as ConversationVM;
@@ -144,6 +158,19 @@ test("an attached external output sees every push, settled exactly once", async 
   // The external output got the same feed, and the sink settled ONCE.
   expect(items.some((i) => i.feed_type === "assistant_text")).toBe(true);
   expect(items.filter((i) => i.feed_type === "final_result")).toHaveLength(1);
+});
+
+test("the default board-status persister fires running at start and terminal on settle", async () => {
+  const { mod, vm, calls } = harness();
+  await mod.send({ conversationId: "c1", text: "hi" });
+  await waitFor(() => vm()?.sessionStatus === "completed");
+  // A running turn PATCHes the card to running, then to its terminal status
+  // (needs_you) — the write the SDK path used to drop, keyed by the chat's id.
+  expect(calls.boardPersists.map((p) => p.status)).toEqual([
+    "running",
+    "needs_you",
+  ]);
+  expect(calls.boardPersists.every((p) => p.sessionKey === "c1")).toBe(true);
 });
 
 test("a model pick rides the send as a per-turn pin paired with its owner — never a settings write", async () => {
