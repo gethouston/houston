@@ -1005,6 +1005,11 @@ export class HoustonClient {
         provider: name,
         url,
         user_code: userCode,
+        // `auth_code` (headless Claude setup-token): `url` is only docs, so the
+        // handler must show the paste dialog, never auto-open it. `instructions`
+        // is the runtime's paste-step copy the dialog renders above the field.
+        auth_code: info.kind === "auth_code",
+        instructions: info.kind === "auth_code" ? info.instructions : undefined,
       });
       this.watchLoginCompletion(pid, name);
       return;
@@ -1035,6 +1040,11 @@ export class HoustonClient {
         provider: old,
         url: info.url,
         user_code: null,
+        // Setup-token paste flow (Claude): the url is docs-only, so the handler
+        // shows the paste dialog instead of opening it. `instructions` carries
+        // the runtime's paste-step copy; absent for the loopback `url` kind.
+        auth_code: info.kind === "auth_code",
+        instructions: info.kind === "auth_code" ? info.instructions : undefined,
       });
     }
     void this.pollProviderConnect(agentId, pid, old);

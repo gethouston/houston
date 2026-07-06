@@ -11,6 +11,8 @@ import { shouldOpenLoginUrlDirectly } from "../../shell/provider-login-url";
 export interface LoginDialogState {
   url: string;
   userCode: string | null;
+  /** Setup-token paste-flow steps (Claude/Anthropic). Absent for other flows. */
+  instructions?: string | null;
 }
 
 /**
@@ -72,6 +74,9 @@ export function useProviderLoginEvents(opts: {
           shouldOpenLoginUrlDirectly({
             isDesktop: osIsTauri(),
             userCode: ev.data.user_code,
+            // Claude/Anthropic setup-token: url is docs-only, so never auto-open
+            // — fall through to the paste dialog below.
+            authCode: ev.data.auth_code,
           })
         ) {
           // Open the browser and step aside: pi's own in-process loopback
@@ -90,6 +95,7 @@ export function useProviderLoginEvents(opts: {
         setDialog((current) => ({
           url: ev.data.url,
           userCode: ev.data.user_code ?? current?.userCode ?? null,
+          instructions: ev.data.instructions,
         }));
         return;
       }

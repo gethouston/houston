@@ -22,8 +22,14 @@ import { providerLoginUrlHost } from "./provider-login-url";
  * engine surfaces the sign-in URL via a `ProviderLoginUrl` WS event; this
  * dialog shows it plus the per-provider completion step:
  *
- *  - Paste-back (Claude): a text input relays the verification code to
- *    `POST /v1/providers/:name/login/code` (written to the CLI's stdin).
+ *  - Setup-token paste (Claude/Anthropic): the event carries `instructions`
+ *    (e.g. "Run `claude setup-token`…, paste the token — starts with
+ *    sk-ant-oat01") and `url` is only a docs REFERENCE, not a sign-in page.
+ *    We render the instructions prominently above the paste field and demote
+ *    the url to a small optional "Reference" link — never auto-opened. This is
+ *    the ONE flow that shows on desktop too (see `shouldOpenLoginUrlDirectly`).
+ *  - Paste-back (Claude, no instructions): a text input relays the verification
+ *    code to `POST /v1/providers/:name/login/code` (written to the CLI's stdin).
  *  - Device-grant (codex `--device-auth`): when the event carries
  *    `userCode`, we render <ProviderDeviceCode> with that one-time code
  *    for the user to enter on the provider's verification page. The CLI
@@ -31,16 +37,21 @@ import { providerLoginUrlHost } from "./provider-login-url";
  *    dialog waits for `ProviderLoginComplete` (handled by the parent) to
  *    auto-close.
  *
- * Desktop no longer shows this dialog: there the picker/settings handler opens
- * the user's browser directly for the co-located loopback flow (see
- * `shouldOpenLoginUrlDirectly`), so the dialog is now a remote / headless-only
- * affordance (issue #453).
+ * Apart from the setup-token flow above, desktop opens the user's browser
+ * directly for the co-located loopback flow (see `shouldOpenLoginUrlDirectly`),
+ * so for those the dialog is a remote / headless-only affordance (issue #453).
  */
 interface Props {
   provider: ProviderInfo | null;
   url: string | null;
   /** Device-grant one-time code (codex). Null/absent = paste-back flow. */
   userCode?: string | null;
+  /**
+   * Setup-token paste-flow steps (Claude/Anthropic). When present, `url` is a
+   * docs reference (not a sign-in page): we show these steps prominently and
+   * demote the url to a small "Reference" link. Absent for other flows.
+   */
+  instructions?: string | null;
   onClose: () => void;
 }
 
@@ -48,6 +59,7 @@ export function ProviderLoginDialog({
   provider,
   url,
   userCode,
+  instructions,
   onClose,
 }: Props) {
   const { t } = useTranslation("providers");
@@ -83,6 +95,12 @@ export function ProviderLoginDialog({
   // Friendly destination shown in place of the raw URL. Null when the URL
   // isn't parseable; we then just omit the hint.
   const host = providerLoginUrlHost(url);
+
+  // Setup-token paste flow (Claude/Anthropic): `url` is a docs reference, not a
+  // sign-in page. We surface the runtime's step-by-step `instructions` above the
+  // paste field and demote the url to a small "Reference" link, rather than the
+  // Open/Copy/reveal button row meant for a real OAuth URL.
+  const isAuthCode = !!instructions;
 
   const handleCopyUrl = async () => {
     try {
@@ -130,67 +148,94 @@ export function ProviderLoginDialog({
             {t("providerLogin.title", { name: provider.name })}
           </DialogTitle>
           <DialogDescription>
-            {userCode
-              ? t("providerLogin.deviceDescription", { name: provider.name })
-              : t("providerLogin.description", { name: provider.name })}
+            {isAuthCode
+              ? t("providerLogin.authCodeDescription", { name: provider.name })
+              : userCode
+                ? t("providerLogin.deviceDescription", { name: provider.name })
+                : t("providerLogin.description", { name: provider.name })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {host && (
-            <p className="text-[13px] text-muted-foreground">
-              {t("providerLogin.destinationHint", { host })}
-            </p>
-          )}
-
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => void tauriSystem.openUrl(url)}
-            >
-              <ExternalLink className="size-3.5" />
-              {t("providerLogin.openUrl")}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={handleCopyUrl}
-            >
-              <Copy className="size-3.5" />
-              {t("providerLogin.copyUrl")}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              aria-expanded={showUrl}
-              aria-controls="provider-login-url"
-              onClick={() => setShowUrl((v) => !v)}
-            >
-              {showUrl ? (
-                <EyeOff className="size-3.5" />
-              ) : (
-                <Eye className="size-3.5" />
+          {isAuthCode ? (
+            <>
+              {/* Setup-token steps from the runtime, shown prominently above
+                  the paste field. The docs `url` is only a small reference
+                  link (opened on click) — never auto-opened. */}
+              <p className="rounded-md border bg-muted/40 p-3 text-[13px] whitespace-pre-line">
+                {instructions}
+              </p>
+              {host && (
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="h-auto gap-1.5 p-0 text-muted-foreground"
+                  onClick={() => void tauriSystem.openUrl(url)}
+                >
+                  <ExternalLink className="size-3.5" />
+                  {t("providerLogin.reference")}
+                </Button>
               )}
-              {showUrl
-                ? t("providerLogin.hideUrl")
-                : t("providerLogin.showUrl")}
-            </Button>
-          </div>
+            </>
+          ) : (
+            <>
+              {host && (
+                <p className="text-[13px] text-muted-foreground">
+                  {t("providerLogin.destinationHint", { host })}
+                </p>
+              )}
 
-          {showUrl && (
-            <div
-              id="provider-login-url"
-              className="max-h-24 select-all overflow-y-auto rounded-md border bg-muted/40 p-3 text-[12px] break-all font-mono"
-            >
-              {url}
-            </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => void tauriSystem.openUrl(url)}
+                >
+                  <ExternalLink className="size-3.5" />
+                  {t("providerLogin.openUrl")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={handleCopyUrl}
+                >
+                  <Copy className="size-3.5" />
+                  {t("providerLogin.copyUrl")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5"
+                  aria-expanded={showUrl}
+                  aria-controls="provider-login-url"
+                  onClick={() => setShowUrl((v) => !v)}
+                >
+                  {showUrl ? (
+                    <EyeOff className="size-3.5" />
+                  ) : (
+                    <Eye className="size-3.5" />
+                  )}
+                  {showUrl
+                    ? t("providerLogin.hideUrl")
+                    : t("providerLogin.showUrl")}
+                </Button>
+              </div>
+
+              {showUrl && (
+                <div
+                  id="provider-login-url"
+                  className="max-h-24 select-all overflow-y-auto rounded-md border bg-muted/40 p-3 text-[12px] break-all font-mono"
+                >
+                  {url}
+                </div>
+              )}
+            </>
           )}
 
           {userCode ? (

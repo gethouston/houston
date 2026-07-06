@@ -37,6 +37,8 @@
   "providerLogin": {
     "title": "Finish signing in to {{name}}",
     "description": "Open the sign-in page in your browser, complete sign-in, then paste the verification code back here.",
+    "authCodeDescription": "Paste a setup token to finish connecting {{name}}.",
+    "reference": "Reference",
     "openUrl": "Open URL",
     "copyUrl": "Copy URL",
     "urlCopied": "URL copied to clipboard",

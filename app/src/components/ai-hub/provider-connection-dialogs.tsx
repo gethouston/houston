@@ -49,6 +49,7 @@ export function ProviderConnectionDialogs({
         provider={loginDialog?.provider ?? null}
         url={loginDialog?.url ?? null}
         userCode={loginDialog?.userCode ?? null}
+        instructions={loginDialog?.instructions ?? null}
         onClose={onCloseLoginDialog}
       />
 

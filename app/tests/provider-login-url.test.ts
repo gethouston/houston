@@ -97,6 +97,38 @@ describe("shouldOpenLoginUrlDirectly", () => {
       true,
     );
   });
+
+  it("keeps the dialog for the Claude/Anthropic setup-token paste flow (auth_code) — its url is docs, not a sign-in page", () => {
+    // Desktop must NOT auto-open the docs URL: the user needs the paste dialog.
+    strictEqual(
+      shouldOpenLoginUrlDirectly({
+        isDesktop: true,
+        userCode: null,
+        authCode: true,
+      }),
+      false,
+    );
+    // Web behaves the same (it always dialogs anyway).
+    strictEqual(
+      shouldOpenLoginUrlDirectly({
+        isDesktop: false,
+        userCode: null,
+        authCode: true,
+      }),
+      false,
+    );
+  });
+
+  it("still opens directly on desktop for a loopback flow that is explicitly not auth_code", () => {
+    strictEqual(
+      shouldOpenLoginUrlDirectly({
+        isDesktop: true,
+        userCode: null,
+        authCode: false,
+      }),
+      true,
+    );
+  });
 });
 
 // The Codex loopback relay drives ChatGPT sign-in for openai on a Tauri desktop

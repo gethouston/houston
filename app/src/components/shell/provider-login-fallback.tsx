@@ -17,6 +17,7 @@ interface FallbackDialogState {
   provider: ProviderInfo;
   url: string;
   userCode: string | null;
+  instructions?: string | null;
 }
 
 /**
@@ -60,6 +61,9 @@ export function ProviderLoginFallback() {
           claimed,
           isDesktop: osIsTauri(),
           userCode: ev.data.user_code,
+          // Claude/Anthropic setup-token: url is docs-only, so resolve to the
+          // paste dialog, never an auto-open.
+          authCode: ev.data.auth_code,
         });
         if (action === "ignore") return;
         const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
@@ -88,6 +92,7 @@ export function ProviderLoginFallback() {
             userCode:
               ev.data.user_code ??
               (current?.provider.id === prov.id ? current.userCode : null),
+            instructions: ev.data.instructions,
           }));
         }
         return;
@@ -108,6 +113,7 @@ export function ProviderLoginFallback() {
       provider={dialog.provider}
       url={dialog.url}
       userCode={dialog.userCode}
+      instructions={dialog.instructions ?? null}
       onClose={() => setDialog(null)}
     />
   );

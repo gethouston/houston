@@ -20,13 +20,17 @@ export type ProvidersT = (
 /**
  * OAuth relay dialog state for remote/headless engines. The engine surfaces the
  * fallback sign-in URL via `ProviderLoginUrl`; `userCode` is set for codex's
- * device-grant flow (null for Claude's paste-back). Desktop never opens this
- * dialog (it opens the browser directly — see `shouldOpenLoginUrlDirectly`).
+ * device-grant flow (null for Claude's paste-back). Desktop opens the browser
+ * directly for a co-located loopback flow (see `shouldOpenLoginUrlDirectly`),
+ * but the Claude/Anthropic setup-token paste flow (`instructions` present)
+ * always shows this dialog so the user can read the steps and paste the token.
  */
 export interface ProviderLoginDialogState {
   provider: ProviderInfo;
   url: string;
   userCode: string | null;
+  /** Setup-token paste-flow steps (Claude/Anthropic). Absent for other flows. */
+  instructions?: string | null;
 }
 
 /** Which provider card is mid-flight, and for which action. Only one at a time. */

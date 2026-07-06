@@ -43,12 +43,18 @@ export function providerLoginUrlHost(url: string): string | null {
  * user can read it, and remote / headless web clients always use the dialog
  * because their runtime can't reach a local browser. Mirrors the runtime's own
  * loopback-vs-headless split (see the runtime's `codexLoginMethod`).
+ *
+ * `authCode` is the Claude/Anthropic setup-token paste flow: the event's `url`
+ * is only a docs reference, not a page to sign in on, and the user finishes by
+ * pasting a token. It ALWAYS needs the dialog — never auto-open — so an
+ * `authCode` event returns false even on a co-located desktop.
  */
 export function shouldOpenLoginUrlDirectly(opts: {
   isDesktop: boolean;
   userCode: string | null | undefined;
+  authCode?: boolean;
 }): boolean {
-  return opts.isDesktop && !opts.userCode;
+  return opts.isDesktop && !opts.userCode && !opts.authCode;
 }
 
 /**
