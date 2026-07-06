@@ -53,6 +53,7 @@ interface AgentState {
     installedPath?: string,
     seeds?: Record<string, string>,
     existingPath?: string,
+    templateId?: string,
   ) => Promise<CreatedAgent>;
   delete: (workspaceId: string, id: string) => Promise<void>;
   rename: (workspaceId: string, id: string, newName: string) => Promise<void>;
@@ -103,6 +104,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     installedPath?: string,
     seeds?: Record<string, string>,
     existingPath?: string,
+    templateId?: string,
   ) => {
     const result = await tauriAgents.create(
       workspaceId,
@@ -113,6 +115,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       installedPath,
       seeds,
       existingPath,
+      templateId,
     );
     analytics.track("agent_created", { config_id: configId });
     const { agent } = result;

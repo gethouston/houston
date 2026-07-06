@@ -87,6 +87,9 @@ import type {
   StoreListing,
   SummarizeOptions,
   SummarizeResult,
+  TemplateRecord,
+  TemplateSpec,
+  TemplateSummary,
   TunnelCredentials,
   TunnelStatus,
   UpdateAgent,
@@ -1238,6 +1241,53 @@ export class HoustonClient {
       `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
       { toolkits },
     );
+  }
+
+  // ---------- agent templates (multiplayer) — hosted gateway only ----------
+  //
+  // Reusable agent configurations, owned by the org. Only a Teams gateway serves
+  // these routes; every other host (single-player, self-host, legacy engine)
+  // 404s them, so the reads degrade to `[]`/`null` and the UI — already gated on
+  // `capabilities.multiplayer` — never shows the surface. The writes are only
+  // ever invoked from that gated surface, so they throw normally.
+
+  /** List the org's templates as list-card summaries (newest first). */
+  async listOrgTemplates(): Promise<TemplateSummary[]> {
+    try {
+      return (
+        await this.request<{ templates: TemplateSummary[] }>(
+          "GET",
+          "/org/templates",
+        )
+      ).templates;
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return [];
+      throw err;
+    }
+  }
+  /** Fetch one template with its full `spec`, or `null` if it's gone/unsupported. */
+  async getOrgTemplate(id: string): Promise<TemplateRecord | null> {
+    try {
+      return await this.request<TemplateRecord>(
+        "GET",
+        `/org/templates/${this.seg(id)}`,
+      );
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return null;
+      throw err;
+    }
+  }
+  /** Create an org template from a client-assembled spec (manager only). */
+  createOrgTemplate(input: {
+    name: string;
+    description: string;
+    spec: TemplateSpec;
+  }): Promise<TemplateSummary> {
+    return this.request("POST", "/org/templates", input);
+  }
+  /** Delete an org template (owner, or the admin who created it). */
+  async deleteOrgTemplate(id: string): Promise<void> {
+    await this.request("DELETE", `/org/templates/${this.seg(id)}`);
   }
 
   // ---------- store ----------

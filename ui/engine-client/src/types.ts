@@ -213,6 +213,63 @@ export interface UsageRow {
   messages: number;
 }
 
+// ---------- Agent templates (multiplayer) ----------
+
+/**
+ * The captured configuration of an agent, reusable to stamp out new agents
+ * (Teams v2). Assembled CLIENT-SIDE from what a manager is already viewing
+ * (instructions, skills, model config, allowed apps) and stored verbatim by the
+ * gateway. Kept in sync (by hand) with the gateway — the server is the source
+ * of truth and validates shape + size on write.
+ */
+export interface TemplateSpec {
+  /** The agent's CLAUDE.md instructions. */
+  instructions: string;
+  /** Each skill as a `{name, content}` pair (the SKILL.md body). */
+  skills: { name: string; content: string }[];
+  /** The pinned AI model, when the template captures one. */
+  provider?: string;
+  model?: string;
+  effort?: string;
+  /** The allowed-app ceiling; `null` = all apps allowed. */
+  allowedToolkits: string[] | null;
+}
+
+/**
+ * A template as it appears in a list card (Teams v2), from `GET /org/templates`.
+ * The heavy `spec` is intentionally omitted; the derived counts (`skillCount`,
+ * `model`, `allowedToolkitCount`) are enough to describe the template without
+ * shipping every skill body. `createdAt` is epoch milliseconds.
+ */
+export interface TemplateSummary {
+  id: string;
+  name: string;
+  description: string;
+  createdBy: string;
+  createdAt: number;
+  /** Number of skills the template captures. */
+  skillCount: number;
+  /** The pinned model id, when the template captures one. */
+  model?: string;
+  /** Count of allowed apps; `null` = all apps allowed. */
+  allowedToolkitCount: number | null;
+}
+
+/**
+ * A full template (Teams v2) with its `spec`, from `GET /org/templates/:id`.
+ * Fetched lazily only when a caller needs the whole configuration (creating an
+ * agent from it, or inspecting it) — list surfaces use `TemplateSummary`.
+ */
+export interface TemplateRecord {
+  id: string;
+  orgId: string;
+  name: string;
+  description: string;
+  createdBy: string;
+  spec: TemplateSpec;
+  createdAt: number;
+}
+
 // ---------- Workspaces ----------
 
 export interface Workspace {
@@ -305,6 +362,13 @@ export interface CreateAgent {
   installedPath?: string;
   seeds?: Record<string, string>;
   existingPath?: string;
+  /**
+   * Multiplayer only (Teams v2): create this agent from an org template. The
+   * gateway sets the agent's allowed apps synchronously and applies the
+   * template's instructions/skills/model to the pod in the background. Ignored
+   * by single-player/self-host hosts, which have no templates.
+   */
+  templateId?: string;
 }
 
 export interface CreateAgentResult {

@@ -7,13 +7,14 @@ import { canSeeMembers } from "../../lib/org-roles.ts";
  * (node:test), never importing React.
  */
 
-/** The four sections of the Organization dashboard, in tab order. */
-export type OrgTabId = "people" | "agents" | "activity" | "usage";
+/** The sections of the Organization dashboard, in tab order. */
+export type OrgTabId = "people" | "agents" | "templates" | "activity" | "usage";
 
 /** Tab ids in display order. Labels are supplied by the app via `t()`. */
 export const ORG_TAB_IDS: readonly OrgTabId[] = [
   "people",
   "agents",
+  "templates",
   "activity",
   "usage",
 ] as const;

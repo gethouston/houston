@@ -34,6 +34,7 @@
     "tabs": {
       "people": "People",
       "agents": "Agents",
+      "templates": "Templates",
       "activity": "Activity",
       "usage": "Usage"
     },
@@ -178,5 +179,66 @@
     },
     "lastOpened": "Opened {{time}}",
     "open": "Open {{name}}"
+  },
+  "templates": {
+    "pickerTitle": "Start from a template",
+    "settingUp": "Setting up your agent...",
+    "summary": {
+      "skills_one": "{{count}} skill",
+      "skills_other": "{{count}} skills",
+      "apps_one": "{{count}} app",
+      "apps_other": "{{count}} apps",
+      "allApps": "All apps"
+    },
+    "save": {
+      "sectionTitle": "Save as template",
+      "sectionHelper": "Capture this agent's setup as a reusable template your team can start new agents from.",
+      "button": "Save as template",
+      "dialog": {
+        "title": "Save as template",
+        "subtitle": "Reuse {{name}}'s setup to start new agents just like it."
+      },
+      "nameLabel": "Template name",
+      "namePlaceholder": "e.g. Sales Agent",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "What is this template for? (optional)",
+      "capturedTitle": "What this captures",
+      "summary": {
+        "instructions": "Instructions",
+        "skills_one": "{{count}} skill",
+        "skills_other": "{{count}} skills",
+        "allApps": "All apps allowed",
+        "apps_one": "{{count}} allowed app",
+        "apps_other": "{{count}} allowed apps"
+      },
+      "cancel": "Cancel",
+      "submit": "Save template",
+      "toast": {
+        "title": "Template saved",
+        "body": "{{name}} is ready to reuse."
+      }
+    }
+  },
+  "templatesTab": {
+    "error": "Couldn't load templates.",
+    "empty": {
+      "title": "No templates yet",
+      "body": "Save an agent as a template to reuse its setup across your team."
+    },
+    "card": {
+      "skills_one": "{{count}} skill",
+      "skills_other": "{{count}} skills",
+      "apps_one": "{{count}} app",
+      "apps_other": "{{count}} apps",
+      "allApps": "All apps",
+      "createdBy": "Created by {{name}}"
+    },
+    "deleteLabel": "Delete {{name}}",
+    "deleteConfirm": {
+      "title": "Delete {{name}}?",
+      "description": "This template will be removed for everyone in your organization. Agents already created from it aren't affected.",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    }
   }
 }
