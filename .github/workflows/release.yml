@@ -441,7 +441,14 @@ jobs:
       - name: Force-install both macOS Claude SDK platform packages (universal lipo)
         run: |
           set -euo pipefail
-          SDK_VER=$(jq -r '.dependencies["@anthropic-ai/claude-agent-sdk"]' packages/runtime/package.json)
+          # The SDK is pinned under optionalDependencies (the platform binaries
+          # are optional per-arch packages), so read both blocks. Fail hard if
+          # the pin is absent — a null version would silently `pnpm add …@null`.
+          SDK_VER=$(jq -r '.dependencies["@anthropic-ai/claude-agent-sdk"] // .optionalDependencies["@anthropic-ai/claude-agent-sdk"] // ""' packages/runtime/package.json)
+          if [ -z "$SDK_VER" ] || [ "$SDK_VER" = "null" ]; then
+            echo "ERROR: @anthropic-ai/claude-agent-sdk is not pinned in packages/runtime/package.json (.dependencies or .optionalDependencies)" >&2
+            exit 1
+          fi
           echo "Claude Agent SDK version pinned by packages/runtime: $SDK_VER"
           pnpm add -w \
             "@anthropic-ai/claude-agent-sdk-darwin-arm64@$SDK_VER" \
