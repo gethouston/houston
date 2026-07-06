@@ -15,7 +15,7 @@ import {
   conversations,
   getConversation,
 } from "./conversation-cache";
-import { execTurn, type TurnPin } from "./exec-turn";
+import { execTurn, recordUserTurn, type TurnPin } from "./exec-turn";
 import { withWorkdirLock } from "./workdir-lock";
 
 /**
@@ -120,11 +120,18 @@ export async function runTurn(
   // mutating the same files concurrently (the Rust engine's workdir_locks
   // behavior). The conv.queue link resolves before the lock is requested, so
   // the two layers can't deadlock.
-  const run = conv.queue.then(() =>
-    withWorkdirLock(config.workspaceDir, () =>
-      execTurn(conv, id, turnId, text, nonce, pin, acting),
-    ),
-  );
+  const run = conv.queue.then(() => {
+    // Persist + announce the user message BEFORE taking the workdir lock, so a
+    // brand-new conversation's message is durable and visible (GET /messages)
+    // the instant the turn is accepted — even while ANOTHER conversation holds
+    // the lock in a stalled provider call. The transcript write is a
+    // per-conversation file already ordered by conv.queue; only the turn's
+    // file-mutating body needs the workspace-wide lock.
+    const recorded = recordUserTurn(conv, id, turnId, text, nonce, acting);
+    return withWorkdirLock(config.workspaceDir, () =>
+      execTurn(conv, id, turnId, text, recorded, pin, acting),
+    );
+  });
   // Keep the queue chain alive past a turn. execTurn already surfaces its own
   // failure as an `error` event, so this guard never swallows a user-visible one.
   conv.queue = run.catch(() => {});

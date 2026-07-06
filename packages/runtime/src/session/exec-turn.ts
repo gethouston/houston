@@ -14,7 +14,11 @@ import {
   getHistory,
 } from "../store/conversations";
 import { type ActingContext, runWithActingContext } from "./acting-context";
-import { decodeActingAuthor, framePrompt } from "./attribution";
+import {
+  decodeActingAuthor,
+  framePrompt,
+  type MessageAuthor,
+} from "./attribution";
 import { needsAutocompact } from "./autocompact";
 import { publish } from "./bus";
 import { type Conversation, switchBackendIfNeeded } from "./conversation-cache";
@@ -24,6 +28,7 @@ import {
   snapshotWorkspace,
 } from "./file-changes";
 import { switchNeedsCompaction } from "./provider-switch";
+import { createStallWatchdog } from "./stall-watchdog";
 
 /** A routine's pinned provider/model/effort for this turn. Absent = keep the session's current. */
 export interface TurnPin {
@@ -32,26 +37,41 @@ export interface TurnPin {
   effort?: string | null;
 }
 
+/**
+ * A turn's user message, already persisted + announced by `recordUserTurn`, plus
+ * the framing inputs `execTurn` still needs. Splitting the record step OUT of
+ * `execTurn` is what lets it run BEFORE the workdir lock (chat.ts) — see the note
+ * on `recordUserTurn`.
+ */
+export interface RecordedUserTurn {
+  author: MessageAuthor | undefined;
+  priorAuthors: ReadonlyArray<MessageAuthor | undefined>;
+}
+
 const errMessage = (err: unknown) =>
   err instanceof Error ? err.message : String(err);
 
 /**
- * Execute one turn: record the user + assistant messages durably and publish
- * every event to the conversation's bus. Self-contained: any failure is published
- * as an `error` event and never rethrown, so the per-conversation queue survives.
+ * Persist the user's message durably + announce it on the conversation bus, and
+ * return the inputs the model-framing decision needs. Called by `runTurn` BEFORE
+ * it takes the per-workspace workdir lock: the transcript is a per-conversation
+ * file already ordered by `conv.queue`, and never needed the workspace-wide lock
+ * (which serializes concurrent FILE mutations BETWEEN conversations). Recording
+ * here means a brand-new conversation's message lands on disk — and so is visible
+ * to `GET /conversations` + `/messages` — the instant the turn is accepted, even
+ * while ANOTHER conversation holds the lock in a stalled provider call. This
+ * write used to live inside the lock, so a stalled routine hid the user's next
+ * message (404, empty chat) for as long as it hung.
  */
-export async function execTurn(
+export function recordUserTurn(
   conv: Conversation,
   id: string,
   turnId: string,
   text: string,
   nonce?: string,
-  pin?: TurnPin,
   acting?: ActingContext,
-) {
-  // Every frame and persisted message of this turn carries `turnId`, so a
-  // client (resyncing, or watching another writer's turn — a teammate, a
-  // second tab, a routine) can attribute what it sees to exactly one turn.
+): RecordedUserTurn {
+  // Stamp the executing turn's id up front so a cancel/stop settles this turn.
   conv.turnId = turnId;
   // WHO wrote this message (C5): decode the acting-as token's payload (the
   // gateway already verified it; the runtime only reads it). Absent → no author,
@@ -74,6 +94,26 @@ export async function execTurn(
     data: { content: text, ts: Date.now(), nonce, author },
     turnId,
   });
+  return { author, priorAuthors };
+}
+
+/**
+ * Execute one turn: run the model, record the assistant reply durably, and
+ * publish every event to the conversation's bus. The user message is already
+ * persisted + announced (`recordUserTurn`, run before the workdir lock).
+ * Self-contained: any failure is published as an `error`/`provider_error` and
+ * never rethrown, so the per-conversation queue survives.
+ */
+export async function execTurn(
+  conv: Conversation,
+  id: string,
+  turnId: string,
+  text: string,
+  recorded: RecordedUserTurn,
+  pin?: TurnPin,
+  acting?: ActingContext,
+) {
+  const { author, priorAuthors } = recorded;
 
   let assistantText = "";
   let usage: TokenUsage | null = null;
@@ -84,6 +124,22 @@ export async function execTurn(
   // assistant message (so the inline card survives a reload) AND skip the clean
   // `done` that would settle the chat as a success on top of the error.
   let providerError: ProviderError | undefined;
+
+  // Stall watchdog: a provider stream that goes silent mid-turn resolves neither
+  // success nor error and would hold the workdir lock until the socket dies.
+  // When it trips, `stalled` turns the aborted (contentless) turn into a typed
+  // error below — see stall-watchdog.ts. Fed every wire event by the
+  // subscription; armed/disarmed around the model round-trip only.
+  let stalled = false;
+  const watchdog = createStallWatchdog({
+    timeoutMs: config.turnStallTimeoutMs,
+    onStall: () => {
+      stalled = true;
+      // Fire-and-forget: the awaited prompt() resolves once pi unwinds the
+      // aborted stream; that resolution, not this call, advances the turn.
+      void conv.session.abort();
+    },
+  });
 
   // Subscribes THIS turn's session once it is settled on the correct backend
   // (a cross-backend switch below rebuilds `conv.session`, so the subscription
@@ -99,6 +155,9 @@ export async function execTurn(
         const t = tools[tools.length - 1];
         if (t) t.isError = wire.data.isError;
       } else if (wire.type === "provider_error") providerError = wire.data;
+      // Every event proves the provider is alive → reset the stall clock (the
+      // watchdog suspends itself while a tool runs and re-arms when it ends).
+      watchdog.onEvent(wire);
       publish(id, { ...wire, turnId });
     });
   };
@@ -230,8 +289,33 @@ export async function execTurn(
     }
     // Hold the turn's acting-as identity (C2) for the DURATION of the prompt so
     // the integration tools' proxy calls (which run inside this async subtree)
-    // attach it. Absent → runs plainly (act as owner).
-    await runWithActingContext(acting, () => conv.session.prompt(promptText));
+    // attach it. Absent → runs plainly (act as owner). The watchdog covers the
+    // model round-trip only — tools run inside prompt() and re-arm/suspend it as
+    // they start/end; the finally disarms it whether prompt() resolves or throws.
+    watchdog.arm();
+    try {
+      await runWithActingContext(acting, () => conv.session.prompt(promptText));
+    } finally {
+      watchdog.disarm();
+    }
+    // A stall-abort resolves prompt() the same way a user Stop does (pi marks it
+    // "aborted" and emits no provider_error), so synthesize the typed failure
+    // here — else the empty, contentless turn would settle below as a clean
+    // success. `provider_internal` is the honest card: the request DID reach the
+    // provider (the socket was live) and it then failed to deliver — a
+    // provider-side fault, "try again in a moment", NOT the user's connectivity.
+    // No HTTP status: the stream went silent, it never returned a response code.
+    if (stalled && !providerError) {
+      providerError = {
+        kind: "provider_internal",
+        provider: model.provider,
+        http_status: null,
+        message: `The AI provider stopped responding (no response for ${Math.round(
+          config.turnStallTimeoutMs / 1000,
+        )}s). Please try again.`,
+      };
+      publish(id, { type: "provider_error", data: providerError, turnId });
+    }
     // Diff what this turn created/modified. Skipped on a failed turn — a
     // provider error means the model never finished, so attributing partial
     // writes would be noise (mirrors the Rust engine's error gate).
@@ -289,6 +373,8 @@ export async function execTurn(
     publish(id, { type: "error", data: { message: errMessage(err) }, turnId });
   } finally {
     conv.turnId = undefined;
+    // Never leak the stall timer past the turn (no-op if it threw before arming).
+    watchdog.disarm();
     // Undefined only if resolveModel/switchBackendIfNeeded threw before we
     // subscribed (a bad pin) — nothing to tear down in that case.
     unsub?.();

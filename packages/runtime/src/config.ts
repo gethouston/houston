@@ -134,6 +134,21 @@ export const config = {
   runCodeMaxConcurrent: Number(env.HOUSTON_RUN_CODE_MAX_CONCURRENT || 2),
   runCodePerMinute: Number(env.HOUSTON_RUN_CODE_PER_MINUTE || 10),
 
+  /**
+   * How long a turn's model request may go with NO activity — no wire event,
+   * while no tool is running — before the runtime treats the provider as stalled,
+   * aborts it, and surfaces a typed error. A healthy turn streams text/thinking/
+   * tool events continuously; a stalled provider stream (a chatgpt.com SSE read
+   * that never returns another byte) emits nothing and, absent this, holds the
+   * per-workspace turn lock until the OS socket dies (19 min observed in prod;
+   * pi's SSE reader has no idle timeout, only its WebSocket path does).
+   * Defaults to pi's own 5-minute idle default, deliberately generous so it never
+   * clips a long-reasoning turn that streams no intermediate events; ops can lower
+   * it. `0` disables the watchdog. Non-finite/negative also disable (fail-safe:
+   * no false aborts). Tool execution is exempt — a long bash/build is silent.
+   */
+  turnStallTimeoutMs: Number(env.HOUSTON_TURN_STALL_TIMEOUT_MS || 300_000),
+
   version: "0.0.0",
 };
 
