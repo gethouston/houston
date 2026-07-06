@@ -15,7 +15,8 @@ export function LearningPreview({
   expanded: boolean;
   canExpand: boolean;
   onToggle: () => void;
-  onEdit: () => void;
+  /** Omitted in read-only mode: no edit affordance is rendered. */
+  onEdit?: () => void;
   onDelete?: () => void;
 }) {
   const { t } = useTranslation(["agents", "common"]);
@@ -57,24 +58,28 @@ export function LearningPreview({
       >
         {expanded || !canExpand ? text : learningPreviewText(text)}
       </p>
-      <div className="flex shrink-0 items-center gap-1">
-        <IconButton
-          label={t("agents:learnings.editAria")}
-          title={t("common:actions.edit")}
-          onClick={onEdit}
-        >
-          <Pencil className="size-3.5" />
-        </IconButton>
-        {onDelete && (
-          <IconButton
-            label={t("agents:learnings.removeAria")}
-            onClick={onDelete}
-            danger
-          >
-            <Trash2 className="size-3.5" />
-          </IconButton>
-        )}
-      </div>
+      {(onEdit || onDelete) && (
+        <div className="flex shrink-0 items-center gap-1">
+          {onEdit && (
+            <IconButton
+              label={t("agents:learnings.editAria")}
+              title={t("common:actions.edit")}
+              onClick={onEdit}
+            >
+              <Pencil className="size-3.5" />
+            </IconButton>
+          )}
+          {onDelete && (
+            <IconButton
+              label={t("agents:learnings.removeAria")}
+              onClick={onDelete}
+              danger
+            >
+              <Trash2 className="size-3.5" />
+            </IconButton>
+          )}
+        </div>
+      )}
     </div>
   );
 }

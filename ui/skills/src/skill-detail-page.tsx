@@ -1,14 +1,7 @@
-import {
-  Button,
-  ConfirmDialog,
-  cn,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@houston-ai/core";
-import { ArrowLeft, MoreHorizontal, Trash2 } from "lucide-react";
+import { Button, ConfirmDialog, cn } from "@houston-ai/core";
+import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { SkillDetailHeaderActions } from "./skill-detail-header-actions";
 import type { Skill } from "./types";
 
 export interface SkillDetailPageLabels {
@@ -22,6 +15,8 @@ export interface SkillDetailPageLabels {
   deleteDescription?: string;
   deleteConfirmLabel?: string;
   instructionsPlaceholder?: string;
+  /** Note shown in the header when `readOnly` — e.g. "Managed by your org". */
+  managedNote?: string;
 }
 
 const DEFAULT_LABELS: Required<SkillDetailPageLabels> = {
@@ -36,6 +31,7 @@ const DEFAULT_LABELS: Required<SkillDetailPageLabels> = {
     "This removes the skill from your agent. You can reinstall it later.",
   deleteConfirmLabel: "Delete",
   instructionsPlaceholder: "Instructions for this skill...",
+  managedNote: "Managed by your organization",
 };
 
 export interface SkillDetailPageProps {
@@ -43,6 +39,13 @@ export interface SkillDetailPageProps {
   onBack: () => void;
   onSave: (skillName: string, instructions: string) => Promise<void>;
   onDelete: (skillName: string) => Promise<void>;
+  /**
+   * Read-only mode: the skill is visible but not editable (a non-manager on a
+   * managed agent). Hides the Save + Delete affordances and locks the textarea;
+   * shows `labels.managedNote` in the header instead. The gateway enforces this
+   * for real.
+   */
+  readOnly?: boolean;
   labels?: SkillDetailPageLabels;
 }
 
@@ -51,6 +54,7 @@ export function SkillDetailPage({
   onBack,
   onSave,
   onDelete,
+  readOnly = false,
   labels,
 }: SkillDetailPageProps) {
   const l = { ...DEFAULT_LABELS, ...labels };
@@ -116,36 +120,15 @@ export function SkillDetailPage({
             {displayName}
           </p>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={!isDirty || saving || deleting}
-            >
-              {saving ? l.savingChanges : l.saveChanges}
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={l.moreOptions}
-                  disabled={deleting}
-                >
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => setConfirmOpen(true)}
-                >
-                  <Trash2 className="size-3.5" />
-                  {l.delete}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <SkillDetailHeaderActions
+            readOnly={readOnly}
+            isDirty={isDirty}
+            saving={saving}
+            deleting={deleting}
+            onSave={handleSave}
+            onRequestDelete={() => setConfirmOpen(true)}
+            labels={l}
+          />
         </div>
       </header>
 
@@ -170,6 +153,7 @@ export function SkillDetailPage({
             <textarea
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
+              readOnly={readOnly}
               rows={18}
               placeholder={l.instructionsPlaceholder}
               className={cn(
@@ -178,6 +162,7 @@ export function SkillDetailPage({
                 "bg-background border border-border/20 rounded-lg",
                 "outline-none resize-y transition-shadow duration-200",
                 "focus:shadow-sm",
+                readOnly && "cursor-default text-muted-foreground resize-none",
               )}
             />
           </section>

@@ -22,12 +22,19 @@ export function LearningsContent({
   onRemove,
   onUpdate,
   layout = "full",
+  readOnly = false,
 }: {
   entries: LearningEntry[];
   onAdd: (text: string) => Promise<unknown>;
   onRemove: (index: number) => Promise<unknown>;
   onUpdate: (id: string, text: string) => Promise<unknown>;
   layout?: "full" | "section";
+  /**
+   * Managed-agent read-only mode (matrix v2): learnings shape agent behavior, so
+   * a non-manager may read them but not add/edit/delete. Hides the add
+   * affordance and renders each card read-only. The gateway 403s writes.
+   */
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation("agents");
   const [drafts, setDrafts] = useState<string[]>([]);
@@ -64,10 +71,12 @@ export function LearningsContent({
           <EmptyTitle>{t("learnings.emptyTitle")}</EmptyTitle>
           <EmptyDescription>{t("learnings.emptyDescription")}</EmptyDescription>
         </EmptyHeader>
-        <Button onClick={addDraft}>
-          <Plus className="size-4" />
-          {t("learnings.addLearning")}
-        </Button>
+        {!readOnly && (
+          <Button onClick={addDraft}>
+            <Plus className="size-4" />
+            {t("learnings.addLearning")}
+          </Button>
+        )}
       </div>
     );
   }
@@ -82,26 +91,30 @@ export function LearningsContent({
         <p className="text-xs text-muted-foreground max-w-md">
           {t("learnings.helper")}
         </p>
-        <Button size="sm" onClick={addDraft} className="shrink-0">
-          <Plus className="size-3.5" />
-          {t("learnings.addLearning")}
-        </Button>
+        {!readOnly && (
+          <Button size="sm" onClick={addDraft} className="shrink-0">
+            <Plus className="size-3.5" />
+            {t("learnings.addLearning")}
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-col gap-3">
-        {drafts.map((localId) => (
-          <LearningCard
-            key={localId}
-            initialText=""
-            isDraft
-            onSave={(text) => handleSaveDraft(localId, text)}
-            onCancel={() => removeDraft(localId)}
-          />
-        ))}
+        {!readOnly &&
+          drafts.map((localId) => (
+            <LearningCard
+              key={localId}
+              initialText=""
+              isDraft
+              onSave={(text) => handleSaveDraft(localId, text)}
+              onCancel={() => removeDraft(localId)}
+            />
+          ))}
         {entries.map((entry) => (
           <LearningCard
             key={entry.id}
             initialText={entry.text}
+            readOnly={readOnly}
             onSave={(text) => onUpdate(entry.id, text)}
             onDelete={() => setPendingRemove(entry)}
           />

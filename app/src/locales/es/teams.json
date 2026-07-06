@@ -1,0 +1,29 @@
+{
+  "managedAgent": {
+    "banner": "Este agente lo administra tu organización. Solo sus administradores pueden hacer cambios."
+  },
+  "model": {
+    "lockedTooltip": "El administrador de tu organización define el modelo de IA de este agente."
+  },
+  "integrations": {
+    "allowlist": {
+      "title": "Integraciones permitidas",
+      "subtitle": "Elige qué aplicaciones puede usar este agente. Los miembros solo pueden conectar las que permitas aquí.",
+      "allAllowed": "Todas las integraciones permitidas",
+      "restrict": "Restringir a aplicaciones específicas",
+      "allowAll": "Permitir todas las aplicaciones",
+      "none": "Ninguna aplicación permitida. Este agente no puede usar integraciones.",
+      "edit": "Editar",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "selectApps": "Seleccionar aplicaciones",
+      "searchApps": "Buscar aplicaciones",
+      "noApps": "No se encontraron aplicaciones"
+    },
+    "notAllowed": {
+      "title": "No permitida para este agente",
+      "body": "Estas aplicaciones están conectadas a tu cuenta, pero tu organización no permite que este agente las use.",
+      "badge": "No permitida"
+    }
+  }
+}

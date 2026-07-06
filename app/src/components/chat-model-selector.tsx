@@ -2,8 +2,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@houston-ai/core";
-import { ChevronDown } from "lucide-react";
+import type { Agent } from "@houston-ai/engine-client";
+import { ChevronDown, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
@@ -12,6 +16,7 @@ import {
   providerPickerState,
   shouldShowProviderInPicker,
 } from "../lib/model-picker";
+import { isModelSelectorLocked } from "../lib/model-selector-lock";
 import { osIsTauri } from "../lib/os-bridge";
 import {
   EMPTY_PROVIDER_CAPABILITIES,
@@ -42,6 +47,14 @@ interface ChatModelSelectorProps {
    */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /**
+   * The agent this selector configures, when rendered in an agent-scoped
+   * surface (the composer). Threaded so the picker can LOCK for org members
+   * who may not change the agent's AI model (Teams matrix v2): a non-manager
+   * sees the pinned provider/model read-only. Omit outside an agent scope and
+   * the picker never locks; single-player is never locked.
+   */
+  agent?: Pick<Agent, "access"> | null;
 }
 
 export function ChatModelSelector({
@@ -50,10 +63,13 @@ export function ChatModelSelector({
   onSelect,
   open,
   onOpenChange,
+  agent,
 }: ChatModelSelectorProps) {
   const { t } = useTranslation("chat");
+  const { t: tTeams } = useTranslation("teams");
   const { statuses, isLoading } = useProviderStatuses();
   const { capabilities } = useCapabilities();
+  const locked = isModelSelectorLocked(capabilities, agent);
   const newEngine = newEngineActive();
   const providerCapabilities =
     capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
@@ -74,6 +90,37 @@ export function ChatModelSelector({
     (model || undefined) ??
     currentProvider?.subtitle ??
     t("modelSelector.selectModel");
+
+  if (locked) {
+    // Members see WHICH model the agent uses (a feature, not a leak) but can't
+    // change it: no dropdown, no provider/effort switch. `aria-disabled` (not
+    // the native `disabled` attribute) keeps the trigger focusable so the
+    // tooltip reason still reaches keyboard + screen-reader users.
+    return (
+      <fieldset
+        className="contents border-0 p-0 m-0"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-disabled="true"
+              onClick={(e) => e.preventDefault()}
+              className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground cursor-not-allowed opacity-80 outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <ProviderIcon providerId={provider} className="size-3.5" />
+              <span>{displayLabel}</span>
+              <Lock className="size-3 opacity-60" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{tTeams("model.lockedTooltip")}</TooltipContent>
+        </Tooltip>
+      </fieldset>
+    );
+  }
 
   return (
     // Stop pointer events from bubbling — prevents the board detail panel

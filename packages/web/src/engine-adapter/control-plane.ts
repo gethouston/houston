@@ -49,6 +49,10 @@ interface CpAgent {
   dir?: string;
   assigned?: boolean;
   assignedUserIds?: string[];
+  /** Teams v2: the caller's effective access to this agent. */
+  access?: AgentAccess;
+  /** Teams v2: full assignee list with per-person access (managers/owner only). */
+  assignments?: AgentAssignment[];
 }
 
 // Color is a client-side cosmetic the control plane intentionally does not store
@@ -141,6 +145,8 @@ function toUiAgent(a: CpAgent, colors = colorOverlay()): Agent {
     lastOpenedAt: iso,
     assigned: a.assigned,
     assignedUserIds: a.assignedUserIds,
+    access: a.access,
+    assignments: a.assignments,
   };
 }
 
@@ -926,20 +932,35 @@ export function toInvalidationEvent(frame: {
 // keep one import site, and the v1 client agrees).
 
 export type {
+  AddOrgMemberResult,
+  AgentAccess,
+  AgentAssignment,
+  AgentSettings,
+  AuditEntry,
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
   OrgInfo,
+  OrgInvite,
   OrgMember,
   OrgRole,
+  OrgSettings,
+  UsageRow,
 } from "../../../../ui/engine-client/src/types";
 
 import type {
+  AddOrgMemberResult,
+  AgentAccess,
+  AgentAssignment,
+  AgentSettings,
+  AuditEntry,
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
   OrgInfo,
   OrgRole,
+  OrgSettings,
+  UsageRow,
 } from "../../../../ui/engine-client/src/types";
 
 const integrationPath = (provider: string) =>
@@ -1041,10 +1062,20 @@ export async function addOrgMember(
   cfg: ControlPlaneConfig,
   email: string,
   role: OrgRole,
-): Promise<void> {
-  await cpFetch(cfg, "/v1/org/members", {
+): Promise<AddOrgMemberResult> {
+  const res = await cpFetch(cfg, "/v1/org/members", {
     method: "POST",
     body: JSON.stringify({ email, role }),
+  });
+  return (await res.json()) as AddOrgMemberResult;
+}
+
+export async function deleteOrgInvite(
+  cfg: ControlPlaneConfig,
+  inviteId: string,
+): Promise<void> {
+  await cpFetch(cfg, `/v1/org/invites/${encodeURIComponent(inviteId)}`, {
+    method: "DELETE",
   });
 }
 
@@ -1071,13 +1102,80 @@ export async function setOrgMemberRole(
 export async function setAgentAssignments(
   cfg: ControlPlaneConfig,
   agentSlugOrId: string,
-  userIds: string[],
+  assignments: AgentAssignment[] | string[],
 ): Promise<void> {
+  const isV2 = assignments.length > 0 && typeof assignments[0] !== "string";
+  const body = isV2
+    ? { assignments: assignments as AgentAssignment[] }
+    : { userIds: assignments as string[] };
   await cpFetch(
     cfg,
     `/v1/agents/${encodeURIComponent(agentSlugOrId)}/assignments`,
-    { method: "PUT", body: JSON.stringify({ userIds }) },
+    { method: "PUT", body: JSON.stringify(body) },
   );
+}
+
+export async function getAgentSettings(
+  cfg: ControlPlaneConfig,
+  agentSlugOrId: string,
+): Promise<AgentSettings> {
+  const res = await cpFetch(
+    cfg,
+    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/settings`,
+  );
+  return (await res.json()) as AgentSettings;
+}
+
+export async function setAgentSettings(
+  cfg: ControlPlaneConfig,
+  agentSlugOrId: string,
+  settings: { allowedToolkits: string[] | null },
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/settings`,
+    { method: "PUT", body: JSON.stringify(settings) },
+  );
+}
+
+export async function getOrgSettings(
+  cfg: ControlPlaneConfig,
+): Promise<OrgSettings> {
+  const res = await cpFetch(cfg, "/v1/org/settings");
+  return (await res.json()) as OrgSettings;
+}
+
+export async function setOrgSettings(
+  cfg: ControlPlaneConfig,
+  settings: { allowedToolkits: string[] | null },
+): Promise<void> {
+  await cpFetch(cfg, "/v1/org/settings", {
+    method: "PUT",
+    body: JSON.stringify(settings),
+  });
+}
+
+export async function orgAudit(
+  cfg: ControlPlaneConfig,
+  opts: { before?: number; limit?: number } = {},
+): Promise<AuditEntry[]> {
+  const q = new URLSearchParams();
+  if (opts.before !== undefined) q.set("before", opts.before.toString());
+  if (opts.limit !== undefined) q.set("limit", opts.limit.toString());
+  const suffix = q.toString();
+  const res = await cpFetch(cfg, `/v1/org/audit${suffix ? `?${suffix}` : ""}`);
+  return ((await res.json()) as { entries: AuditEntry[] }).entries;
+}
+
+export async function orgUsage(
+  cfg: ControlPlaneConfig,
+  days: number,
+): Promise<UsageRow[]> {
+  const res = await cpFetch(
+    cfg,
+    `/v1/org/usage?days=${encodeURIComponent(days.toString())}`,
+  );
+  return ((await res.json()) as { rows: UsageRow[] }).rows;
 }
 
 /**

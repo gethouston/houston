@@ -10,6 +10,7 @@ import {
   useSaveInstructions,
   useUpdateLearning,
 } from "../../hooks/queries";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import type { TabProps } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
@@ -20,13 +21,20 @@ import {
 } from "../shared/sidebar-section-nav";
 import { AgentAccessSection } from "./agent-access-section";
 import { AgentSettingsContent } from "./agent-settings-content";
+import { isConfigReadOnly } from "./job-description-access";
 import { InstructionsContent, type SubTab } from "./job-description-parts";
 import { LearningsContent } from "./learnings-content";
+import { ManagedAgentBanner } from "./managed-agent-banner";
 import { SkillsContent } from "./skills-content";
 import { useSkillSurface } from "./use-skill-surface";
 
 export default function JobDescriptionTab({ agent }: TabProps) {
-  const { t } = useTranslation("agents");
+  const { t } = useTranslation(["agents", "teams"]);
+  const { capabilities } = useCapabilities();
+  // Matrix v2: non-managers get a read-only "managed by your org" surface across
+  // every sub-tab (instructions, skills, learnings, general). Single-player and
+  // owners/agent-managers are unaffected. The gateway is the real enforcer.
+  const readOnly = isConfigReadOnly(capabilities, agent);
   const path = agent.folderPath;
   const surface = useSkillSurface(path);
   const [activeTab, setActiveTab] = useState<SubTab>("instructions");
@@ -71,7 +79,11 @@ export default function JobDescriptionTab({ agent }: TabProps) {
         onBack={surface.clearSelectedSkill}
         onSave={surface.handleSkillSave}
         onDelete={surface.handleSkillDelete}
-        labels={surface.skillDetailLabels}
+        readOnly={readOnly}
+        labels={{
+          ...surface.skillDetailLabels,
+          managedNote: t("teams:managedAgent.banner"),
+        }}
       />
     );
   }
@@ -85,9 +97,12 @@ export default function JobDescriptionTab({ agent }: TabProps) {
         onSelect={setActiveTab}
       />
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+        {readOnly && <ManagedAgentBanner />}
+
         {activeTab === "instructions" && (
           <InstructionsContent
             content={instructions ?? ""}
+            readOnly={readOnly}
             onSave={(c) =>
               saveInstructions.mutateAsync({ name: "CLAUDE.md", content: c })
             }
@@ -100,6 +115,7 @@ export default function JobDescriptionTab({ agent }: TabProps) {
               skills={surface.skills}
               loading={surface.skillsLoading}
               loadingSkillName={surface.loadingSkillName}
+              readOnly={readOnly}
               onSkillClick={surface.selectSkill}
               onSearch={surface.handleSearch}
               onPopular={surface.handlePopular}
@@ -115,6 +131,7 @@ export default function JobDescriptionTab({ agent }: TabProps) {
         {activeTab === "learnings" && (
           <LearningsContent
             entries={learningsData?.entries ?? []}
+            readOnly={readOnly}
             onAdd={(text) => addLearning.mutateAsync(text)}
             onRemove={(index) => removeLearning.mutateAsync(index)}
             onUpdate={(id, text) => updateLearning.mutateAsync({ id, text })}
@@ -129,6 +146,7 @@ export default function JobDescriptionTab({ agent }: TabProps) {
             <AgentSettingsContent
               name={agent.name}
               color={agent.color}
+              canEdit={!readOnly}
               onRename={(newName) =>
                 currentWorkspace
                   ? renameAgent(currentWorkspace.id, agent.id, newName)

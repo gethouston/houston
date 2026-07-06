@@ -186,6 +186,8 @@ function toAgent(a: import("@houston-ai/engine-client").Agent): Agent {
     lastOpenedAt: a.lastOpenedAt,
     assigned: a.assigned,
     assignedUserIds: a.assignedUserIds,
+    access: a.access,
+    assignments: a.assignments,
   };
 }
 
@@ -250,6 +252,27 @@ export const tauriAgents = {
   setAssignments: (agentSlugOrId: string, userIds: string[]) =>
     call<void>("set_agent_assignments", () =>
       getEngine().setAgentAssignments(agentSlugOrId, userIds),
+    ),
+};
+
+/**
+ * Teams v2: an agent's allowed-toolkit ceiling. `get` reads the agent + org
+ * ceilings plus the caller's effective access; `set` (agent-manager only)
+ * replaces the agent ceiling (`null` = all allowed, `[]` = none), and the host
+ * prunes now-disallowed toolkits from existing grants. Both route through
+ * `call()` so failures surface as toasts with a Report-bug affordance.
+ */
+export const tauriAgentSettings = {
+  get: (agentSlugOrId: string) =>
+    call("get_agent_settings", () =>
+      getEngine().getAgentSettings(agentSlugOrId),
+    ),
+  set: (
+    agentSlugOrId: string,
+    settings: { allowedToolkits: string[] | null },
+  ) =>
+    call<void>("set_agent_settings", () =>
+      getEngine().setAgentSettings(agentSlugOrId, settings),
     ),
 };
 
