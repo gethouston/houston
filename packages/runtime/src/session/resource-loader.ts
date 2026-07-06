@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DefaultResourceLoader } from "@earendil-works/pi-coding-agent";
 import { config } from "../config";
+import { makeCompactionGuard } from "./compaction-guard";
 
 export const SYSTEM_PROMPT = [
   "You are Houston, a friendly AI assistant for a non-technical user.",
@@ -51,6 +52,10 @@ export function buildAgentLoader(opts: {
     noPromptTemplates: true,
     noThemes: true,
     noContextFiles: true,
+    // Inline factories load even with noExtensions (that flag only gates
+    // on-disk discovery). The guard keeps compaction's summarization request
+    // within the model's window — see compaction-guard.ts (HOU-709).
+    extensionFactories: [makeCompactionGuard()],
     additionalSkillPaths: existsSync(opts.skillsDir) ? [opts.skillsDir] : [],
     agentsFilesOverride: () => ({
       agentsFiles: loadWorkspaceContextFile(opts.cwd),
