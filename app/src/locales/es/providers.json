@@ -119,5 +119,52 @@
     "confirmTimeout": "Iniciaste sesión en Claude, pero Houston no pudo confirmar la conexión. Inténtalo de nuevo.",
     "autoFailedTitle": "No se pudo completar la conexión automáticamente",
     "autoFailedBody": "Pega un token de configuración de Claude para terminar de conectar."
+  },
+  "localModel": {
+    "title": "Conecta un modelo local",
+    "description": "Ejecuta un modelo en tu propio computador y deja que Houston lo use. Houston se encarga de la conexión.",
+    "detecting": "Buscando apps de modelos en tu computador...",
+    "cancel": "Cancelar",
+    "connecting": {
+      "title": "Conectando tu modelo...",
+      "body": "Esto toma unos segundos. Mantén la app abierta en tu computador."
+    },
+    "empty": {
+      "body": "Para ejecutar un modelo en tu propio computador, instala una de estas apps gratuitas y ábrela:",
+      "apps": {
+        "lmstudio": "Una app sencilla para ejecutar modelos.",
+        "jan": "Una app de modelos abierta y fácil.",
+        "ollama": "Popular y simple de configurar."
+      },
+      "get": "Descargar",
+      "reassure": "Cuando esté abierta, Houston se encarga del resto.",
+      "recheck": "Buscar de nuevo"
+    },
+    "pick": {
+      "body": "Houston encontró estos en tu computador. Elige el modelo que quieres usar.",
+      "modelsFound_one": "{{count}} modelo disponible",
+      "modelsFound_other": "{{count}} modelos disponibles",
+      "modelLabel": "Modelo",
+      "connect": "Conectar"
+    },
+    "error": {
+      "body": "Algo salió mal al conectar. Asegúrate de que la app siga abierta en tu computador e inténtalo de nuevo.",
+      "retry": "Intentar de nuevo"
+    },
+    "manual": {
+      "title": "Ingresar datos manualmente",
+      "description": "¿Ya tienes la dirección de un servidor de modelos? Ingrésala aquí.",
+      "link": "Ingresar datos manualmente",
+      "back": "Volver"
+    },
+    "status": {
+      "online": "En línea",
+      "connecting": "Conectando...",
+      "offline": "Desconectado",
+      "error": "No disponible",
+      "offlineHint": "Tu modelo no está disponible ahora. Asegúrate de que {{app}} esté abierta en este computador.",
+      "yourApp": "la app en tu computador",
+      "reconnect": "Reconectar"
+    }
   }
 }

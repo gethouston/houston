@@ -9,13 +9,16 @@
  * `ProviderConnections`, exactly as the old provider-settings drove it.
  */
 
-import { AsyncButton, Button } from "@houston-ai/core";
+import { Button } from "@houston-ai/core";
 import { X } from "lucide-react";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocalBridgeStatus } from "../../hooks/use-local-bridge-status.ts";
 import type { ProviderConnections } from "../../hooks/use-provider-connections.ts";
 import type { HubCatalog } from "../../lib/ai-hub/catalog-types.ts";
+import { disconnectLocalModel } from "../../lib/local-model-connect.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
+import { LocalModelStatusPill } from "../shell/local-model-status.tsx";
 import { ProviderGlyph } from "../shell/provider-logos.tsx";
 import { AuthBadge, LiveStatus, ModelMark, SpecChip } from "./hub-badges.tsx";
 import { ModalShell } from "./modal-shell.tsx";
@@ -25,6 +28,7 @@ import {
   providerDescriptionKey,
   providerModels,
 } from "./provider-grouping.ts";
+import { ConnectButton } from "./provider-modal-connect-button.tsx";
 
 /** Map the four-way auth chip key onto the three `AuthBadge` icon families. */
 function authBadgeKind(key: ReturnType<typeof authChipKey>) {
@@ -61,6 +65,33 @@ export function ProviderModal({
   const isLocal = provider.auth === "openaiCompatible";
   const authKey = authChipKey(provider);
 
+  // Local model: the bridge's live online/offline state + a "disconnect" that
+  // also tears the tunnel down (not just clears the credential). The tunnel pill
+  // shows ONLY when THIS session owns/owned a bridge; a direct/manual endpoint
+  // (or a tunnel another machine manages) reads as normally connected instead.
+  const localConnected = isLocal && connected;
+  const {
+    status: bridge,
+    ownsBridge,
+    appName: bridgeAppName,
+    reconnect: reconnectBridge,
+    reconnecting,
+  } = useLocalBridgeStatus(localConnected);
+  const showTunnelPill = localConnected && ownsBridge;
+  const showConnectedBadge = connected && (!isLocal || !ownsBridge);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const disconnectLocal = useCallback(async () => {
+    setDisconnecting(true);
+    try {
+      await disconnectLocalModel();
+      connections.refresh();
+    } catch {
+      // disconnectLocalModel already toasted the real reason (Report-bug).
+    } finally {
+      setDisconnecting(false);
+    }
+  }, [connections]);
+
   const header = (
     <div className="flex items-start gap-3 px-5 pt-5 pb-4">
       <ModelMark mark={<ProviderGlyph providerId={provider.id} />} size="lg" />
@@ -79,8 +110,16 @@ export function ProviderModal({
           {models.length > 0 && (
             <SpecChip>{t("card.models", { count: models.length })}</SpecChip>
           )}
-          {connected && <LiveStatus label={t("card.connected")} />}
+          {showConnectedBadge && <LiveStatus label={t("card.connected")} />}
         </div>
+        {showTunnelPill && (
+          <LocalModelStatusPill
+            status={bridge?.status ?? "connecting"}
+            appName={bridgeAppName}
+            onRetry={reconnectBridge}
+            retrying={reconnecting}
+          />
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {!connected && (
@@ -107,10 +146,12 @@ export function ProviderModal({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => connections.signOut(provider)}
-          disabled={busy === "signingOut"}
+          onClick={() =>
+            isLocal ? void disconnectLocal() : connections.signOut(provider)
+          }
+          disabled={busy === "signingOut" || disconnecting}
         >
-          {t("providerModal.signOut")}
+          {isLocal ? t("providerModal.disconnect") : t("providerModal.signOut")}
         </Button>
         {onSetDefault && (
           <Button size="sm" onClick={() => onSetDefault(provider)}>
@@ -144,38 +185,5 @@ export function ProviderModal({
         />
       )}
     </ModalShell>
-  );
-}
-
-/** The header's Connect CTA: disabled until probed, Cancel while connecting. */
-function ConnectButton({
-  provider,
-  connections,
-}: {
-  provider: ProviderInfo;
-  connections: ProviderConnections;
-}) {
-  const { t } = useTranslation("aiHub");
-  const busy = connections.busy[provider.id];
-
-  if (busy === "connecting") {
-    return (
-      <AsyncButton
-        size="sm"
-        variant="secondary"
-        onClick={() => connections.cancel(provider)}
-      >
-        {t("card.cancel")}
-      </AsyncButton>
-    );
-  }
-  return (
-    <Button
-      size="sm"
-      disabled={!connections.ready}
-      onClick={() => connections.connect(provider)}
-    >
-      {t("providerModal.connect")}
-    </Button>
   );
 }

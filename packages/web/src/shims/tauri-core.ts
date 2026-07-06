@@ -167,6 +167,12 @@ export async function invoke<T = unknown>(
     case "focus_main_window":
       // The web build is a single browser tab; there's no OS window to raise.
       return undefined as T;
+    case "saved_bridge_target":
+      // The web app never runs a local-model bridge (no native frpc), so it can
+      // never own a saved target. Returning null is the honest answer and keeps
+      // the tunnel-vs-direct pill rule correct: a connected openai-compatible
+      // endpoint on web reads as normally connected, not as a bridge.
+      return null as T;
 
     // ── Desktop-only: surface a clear error if a user triggers them ─────
     case "start_oauth_loopback": // desktop uses a native loopback listener; web uses the redirect flow
@@ -176,6 +182,16 @@ export async function invoke<T = unknown>(
     case "read_claude_credential": // reads this machine's Keychain/cred file; web has neither
 
     case "get_engine_handshake": // web injects window.__HOUSTON_ENGINE__ directly
+    // The guided "connect a local model" bridge scans localhost and runs an
+    // frpc sidecar — both need the native desktop shell. The browser build
+    // gates the guided flow on isTauri() and shows the manual endpoint form
+    // instead, so these are never reached here; surface a clear error if they
+    // somehow are (no silent failure).
+    case "detect_local_models":
+    case "start_local_bridge":
+    case "reconnect_local_bridge":
+    case "stop_local_bridge":
+    case "local_bridge_status":
     case "pick_directory":
     case "reveal_file":
     case "reveal_agent":

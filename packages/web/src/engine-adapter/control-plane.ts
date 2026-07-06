@@ -15,6 +15,7 @@ import type {
   RoutineRun,
   SkillDetail,
   SkillSummary,
+  TunnelCredentials,
   Workspace,
 } from "../../../../ui/engine-client/src/types";
 import { HoustonEngineError } from "./client";
@@ -412,6 +413,21 @@ export async function setCustomEndpoint(
       body: JSON.stringify(endpoint),
     },
   );
+}
+
+/**
+ * Mint a short-lived relay credential for the guided "connect a local model"
+ * flow (`POST /v1/tunnel/credentials`, Supabase-authed via cpFetch, mirroring
+ * `/v1/integrations`). The desktop runs its frpc sidecar against the returned
+ * `relayHost:relayPort` so the user's local model server surfaces at `publicUrl`
+ * for their cloud agent. Hosted-only — a non-gateway deployment 404s and cpFetch
+ * throws the host's real error message (never swallowed).
+ */
+export async function getTunnelCredentials(
+  cfg: ControlPlaneConfig,
+): Promise<TunnelCredentials> {
+  const res = await cpFetch(cfg, "/v1/tunnel/credentials", { method: "POST" });
+  return (await res.json()) as TunnelCredentials;
 }
 
 /**

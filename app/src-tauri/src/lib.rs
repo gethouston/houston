@@ -1,5 +1,6 @@
 mod auth;
 mod bug_report;
+mod child_guard;
 mod claude_login;
 mod codex_oauth_loopback;
 mod commands;
@@ -7,6 +8,7 @@ mod commands;
 mod dmg_guard;
 mod engine_supervisor;
 mod houston_prompt;
+mod local_bridge;
 mod logging;
 mod loopback_util;
 mod notification;
@@ -390,6 +392,19 @@ pub fn run() {
             // Pull the app to the foreground when a flow finishes in the
             // browser (e.g. a Composio integration connection landing).
             window_focus::focus_main_window,
+            // Local-model bridge: detect a local OpenAI-compatible server, front
+            // it with a bearer-gated loopback proxy, and tunnel it out via the
+            // bundled frpc so the cloud agent can reach it. Kept callable in
+            // host/cloud mode (the hosted frontend drives them).
+            local_bridge::commands::detect_local_models,
+            local_bridge::commands::start_local_bridge,
+            local_bridge::commands::stop_local_bridge,
+            local_bridge::commands::local_bridge_status,
+            // Persistence/reconnect: expose the saved (redacted) target and
+            // re-establish the tunnel after a restart, reusing the persisted
+            // proxy key so the cloud endpoint's apiKey stays valid.
+            local_bridge::commands::saved_bridge_target,
+            local_bridge::commands::reconnect_local_bridge,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -414,6 +429,11 @@ pub fn run() {
                 // Sentry event on quit, especially the Windows force-kill path).
                 tauri::RunEvent::Exit => {
                     engine_supervisor::mark_shutting_down();
+                    // Statics are never dropped at process exit, and frpc runs
+                    // in its own process group with null stdin — so without an
+                    // explicit teardown here it orphans on macOS/Linux and keeps
+                    // its subdomain alive. Mirrors the engine sidecar handling.
+                    local_bridge::shutdown();
                 }
                 _ => {}
             }

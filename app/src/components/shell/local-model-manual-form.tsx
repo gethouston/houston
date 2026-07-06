@@ -1,0 +1,136 @@
+import { Button } from "@houston-ai/core";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { connectManualEndpoint } from "../../lib/local-model-connect";
+import {
+  LabeledTextField,
+  SecretField,
+} from "./openai-compatible-dialog-parts";
+
+/**
+ * The advanced / manual path of the local-model connect flow (and the web
+ * fallback where no native bridge exists): the user types the server address +
+ * model directly, with no tunnel. Reuses the field parts and copy from the
+ * original manual dialog; the guided screens link here via "Enter details
+ * manually".
+ */
+export function LocalModelManualForm({
+  onConnected,
+  onClose,
+  onBack,
+}: {
+  onConnected?: (model: string) => void;
+  onClose: () => void;
+  onBack?: () => void;
+}) {
+  const { t } = useTranslation("providers");
+  const [baseUrl, setBaseUrl] = useState("");
+  const [model, setModel] = useState("");
+  const [name, setName] = useState("");
+  const [key, setKey] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedUrl = baseUrl.trim();
+    const trimmedModel = model.trim();
+    if (!trimmedUrl) {
+      setError(t("openaiCompatible.baseUrlRequired"));
+      return;
+    }
+    if (!trimmedModel) {
+      setError(t("openaiCompatible.modelRequired"));
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await connectManualEndpoint({
+        baseUrl: trimmedUrl,
+        model: trimmedModel,
+        name: name.trim() || undefined,
+        apiKey: key.trim() || undefined,
+      });
+      onConnected?.(trimmedModel);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 py-1">
+      <LabeledTextField
+        id="lm-base-url"
+        label={t("openaiCompatible.baseUrlLabel")}
+        help={t("openaiCompatible.baseUrlHelp")}
+        value={baseUrl}
+        onChange={setBaseUrl}
+        placeholder={t("openaiCompatible.baseUrlPlaceholder")}
+        disabled={submitting}
+        mono
+        inputMode="url"
+      />
+      <LabeledTextField
+        id="lm-model"
+        label={t("openaiCompatible.modelLabel")}
+        help={t("openaiCompatible.modelHelp")}
+        value={model}
+        onChange={setModel}
+        placeholder={t("openaiCompatible.modelPlaceholder")}
+        disabled={submitting}
+        mono
+      />
+      <LabeledTextField
+        id="lm-name"
+        label={t("openaiCompatible.nameLabel")}
+        help={t("openaiCompatible.nameHelp")}
+        value={name}
+        onChange={setName}
+        placeholder={t("openaiCompatible.namePlaceholder")}
+        disabled={submitting}
+      />
+      <SecretField
+        id="lm-key"
+        label={t("openaiCompatible.keyLabel")}
+        help={t("openaiCompatible.keyHelp")}
+        value={key}
+        onChange={setKey}
+        placeholder={t("openaiCompatible.keyPlaceholder")}
+        disabled={submitting}
+        show={showKey}
+        onToggleShow={() => setShowKey((v) => !v)}
+        showLabel={t("openaiCompatible.show")}
+        hideLabel={t("openaiCompatible.hide")}
+      />
+
+      {error && (
+        <p className="text-[12px] text-destructive" role="alert">
+          {error}
+        </p>
+      )}
+
+      <div className="flex items-center justify-between gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onBack ?? onClose}
+        >
+          {onBack ? t("localModel.manual.back") : t("openaiCompatible.cancel")}
+        </Button>
+        <Button
+          type="submit"
+          disabled={submitting || !baseUrl.trim() || !model.trim()}
+        >
+          {submitting
+            ? t("openaiCompatible.saving")
+            : t("openaiCompatible.save")}
+        </Button>
+      </div>
+    </form>
+  );
+}

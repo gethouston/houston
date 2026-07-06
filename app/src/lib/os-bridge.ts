@@ -24,6 +24,14 @@ import {
   listen,
   type UnlistenFn,
 } from "@tauri-apps/api/event";
+import type {
+  BridgeStatus,
+  DetectedServer,
+  ReconnectBridgeArgs,
+  SavedBridgeTarget,
+  StartBridgeArgs,
+  StartBridgeResult,
+} from "./local-model";
 
 // ── Platform detection ────────────────────────────────────────────────
 
@@ -209,4 +217,46 @@ export function osReportBug(payload: unknown): Promise<string | null> {
  * builds can verify Rust/Tauri symbol upload and native stack rendering. */
 export function osTriggerNativeSentrySmokeTest(): Promise<void> {
   return invoke<void>("sentry_native_stack_smoke_test");
+}
+
+// ── Local model bridge (guided "connect a local model") ───────────────────────
+// Native, desktop-only: the Rust shell scans localhost for LM Studio / Jan /
+// Ollama, runs a local auth proxy, and drives an frpc sidecar. These reach the
+// user's OWN machine, so they never move to the (possibly remote) engine.
+
+/** Scan the local machine for OpenAI-compatible model servers. */
+export function osDetectLocalModels(): Promise<DetectedServer[]> {
+  return invoke<DetectedServer[]>("detect_local_models");
+}
+
+/** Start the frpc bridge that exposes a local server at a public URL. */
+export function osStartLocalBridge(
+  args: StartBridgeArgs,
+): Promise<StartBridgeResult> {
+  return invoke<StartBridgeResult>("start_local_bridge", { ...args });
+}
+
+/** Re-establish frpc for the saved target after a restart, reusing the persisted
+ *  proxyKey so the already-registered cloud endpoint stays valid. */
+export function osReconnectLocalBridge(
+  args: ReconnectBridgeArgs,
+): Promise<StartBridgeResult> {
+  return invoke<StartBridgeResult>("reconnect_local_bridge", { ...args });
+}
+
+/** The bridge target this machine has persisted, or `null` when this machine
+ *  owns no local-model tunnel (direct/manual endpoint, or another machine's). */
+export function osSavedBridgeTarget(): Promise<SavedBridgeTarget | null> {
+  return invoke<SavedBridgeTarget | null>("saved_bridge_target");
+}
+
+/** Tear down the running bridge (frpc + local auth proxy). Idempotent. */
+export function osStopLocalBridge(): Promise<void> {
+  return invoke<void>("stop_local_bridge");
+}
+
+/** One-shot read of the bridge's current status (the `local-bridge-status`
+ *  event streams the same shape). */
+export function osLocalBridgeStatus(): Promise<BridgeStatus> {
+  return invoke<BridgeStatus>("local_bridge_status");
 }

@@ -47,6 +47,16 @@ fn main() {
         println!("cargo:warning=claude binary staging skipped: {e}");
     }
 
+    // Stage the bundled frpc tunnel client into `binaries/frpc-<triple>` for
+    // Tauri's `externalBin`. Unlike the host sidecar, a missing frpc NEVER fails
+    // the build (even release) — it stages a placeholder that exits non-zero so
+    // a tunnel attempt surfaces a clear error instead of blocking packaging. A
+    // shippable tunnel needs `scripts/fetch-frpc.sh <triple>` run first (release
+    // CI wires this in, same as build-host-sidecar.sh).
+    if let Err(e) = stage_frpc_sidecar() {
+        println!("cargo:warning=frpc staging skipped: {e}");
+    }
+
     tauri_build::build()
 }
 
@@ -296,6 +306,81 @@ fn stage_external_bin(source_stem: &str, dest_stem: &str, label: &str) -> Result
             .permissions();
         perms.set_mode(0o755);
         std::fs::set_permissions(&dest, perms).map_err(|e| format!("chmod {label}: {e}"))?;
+    }
+    Ok(())
+}
+
+/// Stage the bundled frpc tunnel client as the Tauri externalBin
+/// `binaries/frpc-<triple>`.
+///
+/// Source: `target/frpc/frpc-<triple>[.exe]`, produced by
+/// `scripts/fetch-frpc.sh` (or the release CI frpc-fetch step). Missing frpc →
+/// a placeholder that exits non-zero (so a tunnel attempt fails loudly), NOT a
+/// build failure: frp is only needed when the user actually tunnels a local
+/// model, so an app build must never hard-depend on having fetched it.
+fn stage_frpc_sidecar() -> Result<(), String> {
+    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let workspace = manifest
+        .parent()
+        .and_then(|p| p.parent())
+        .ok_or("could not resolve workspace root from CARGO_MANIFEST_DIR")?;
+    let triple = std::env::var("TARGET").unwrap_or_default();
+    let ext = if cfg!(windows) { ".exe" } else { "" };
+
+    let src_dir = workspace.join("target").join("frpc");
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if !triple.is_empty() {
+        candidates.push(src_dir.join(format!("frpc-{triple}{ext}")));
+    }
+    candidates.push(src_dir.join(format!("frpc{ext}")));
+
+    // Re-run when a fetched frpc appears/changes so a staged placeholder is
+    // replaced on the next build (mirrors the host-sidecar staging).
+    for candidate in &candidates {
+        println!("cargo:rerun-if-changed={}", candidate.display());
+    }
+
+    let dest_dir = manifest.join("binaries");
+    std::fs::create_dir_all(&dest_dir).map_err(|e| format!("mkdir binaries: {e}"))?;
+    let dest_name = if triple.is_empty() {
+        format!("frpc{ext}")
+    } else {
+        format!("frpc-{triple}{ext}")
+    };
+    let dest = dest_dir.join(&dest_name);
+
+    match candidates.iter().find(|p| p.exists()) {
+        Some(src) => {
+            std::fs::copy(src, &dest).map_err(|e| format!("copy frpc: {e}"))?;
+            println!(
+                "cargo:warning=frpc: staged {} -> {}",
+                src.display(),
+                dest.display()
+            );
+        }
+        None => {
+            let placeholder = if cfg!(windows) {
+                "@echo off\r\necho frpc not bundled - run scripts/fetch-frpc.sh 1>&2\r\nexit /b 1\r\n"
+            } else {
+                "#!/bin/sh\necho 'frpc not bundled - run scripts/fetch-frpc.sh' >&2\nexit 1\n"
+            };
+            std::fs::write(&dest, placeholder)
+                .map_err(|e| format!("write frpc placeholder: {e}"))?;
+            println!(
+                "cargo:warning=frpc binary not fetched - staged a placeholder at {} (run scripts/fetch-frpc.sh for a real tunnel)",
+                dest.display()
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&dest)
+            .map_err(|e| format!("stat frpc: {e}"))?
+            .permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&dest, perms).map_err(|e| format!("chmod frpc: {e}"))?;
     }
     Ok(())
 }

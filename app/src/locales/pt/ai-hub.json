@@ -73,6 +73,7 @@
     "signedInWith": "Conectado com {{provider}}",
     "setDefault": "Usar como padrão",
     "signOut": "Sair",
+    "disconnect": "Desconectar",
     "connect": "Conectar",
     "models": "Modelos",
     "searchModels": "Buscar modelos",

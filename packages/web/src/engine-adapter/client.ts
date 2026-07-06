@@ -45,6 +45,7 @@ import type {
   SessionStartRequest,
   SessionStartResponse,
   SkillDetail,
+  TunnelCredentials,
   UpdateAgent,
   Workspace,
 } from "../../../../ui/engine-client/src/types";
@@ -1284,6 +1285,21 @@ export class HoustonClient {
       success: true,
       error: null,
     });
+  }
+
+  /**
+   * Mint a relay credential for the guided "connect a local model" flow: the
+   * desktop tunnels the user's local model server up to their CLOUD agent (see
+   * control-plane.getTunnelCredentials). Cloud/hosted only — locally there is no
+   * gateway to issue one (and no tunnel is needed, the runtime is co-located),
+   * so reject loudly rather than pretend.
+   */
+  async getTunnelCredentials(): Promise<TunnelCredentials> {
+    if (!this.cp)
+      throw new Error(
+        "Connecting a local model to a cloud agent needs a cloud workspace.",
+      );
+    return controlPlane.getTunnelCredentials(this.cp);
   }
 
   /**
