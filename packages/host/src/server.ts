@@ -32,6 +32,7 @@ import {
   handleAgentConfigs,
 } from "./routes/agent-configs";
 import { handleAgents } from "./routes/agents";
+import { handleCatalog } from "./routes/catalog";
 import { handleSandboxCredential } from "./routes/credential";
 import { handleEventStream } from "./routes/events-stream";
 import { bearer, json, readJson } from "./routes/http";
@@ -42,7 +43,6 @@ import {
 } from "./routes/integrations";
 import { handleSandboxIntegrations } from "./routes/integrations-sandbox";
 import { handlePortableAccount } from "./routes/portable";
-import { handleProviderCatalog } from "./routes/provider-catalog";
 import { handleSetupRuntime } from "./routes/setup-runtime";
 import { handleSkillsDirectory } from "./routes/skills-directory";
 import type { Vfs } from "./vfs";
@@ -197,6 +197,10 @@ async function handle(
   if (method === "GET" && path === "/v1/capabilities") {
     return json(res, 200, deps.capabilities);
   }
+  // pi-ai's full static model catalog (every runnable provider + model),
+  // profile-gated. Static + not user-scoped, so it rides the public meta surface
+  // next to capabilities — the picker/AI-Models tab read it to shape themselves.
+  if (handleCatalog(deps.capabilities, method, path, res)) return;
 
   // Sandbox-facing credential serve (HMAC sandbox token, not a user JWT).
   if (await handleSandboxCredential(deps, method, path, url, req, res)) return;
@@ -246,9 +250,6 @@ async function handle(
   // agent-scoped (skills-remote.ts) so the hosted gateway can proxy them.
   if (await handleSkillsDirectory(method, path, req, res)) return;
   if (await handleAccount(deps, userId, method, path, req, res)) return;
-  // Live OpenRouter model catalog for the picker (user-scoped; empty when no key
-  // is connected or the deployment is egress-locked).
-  if (await handleProviderCatalog(deps, userId, method, path, res)) return;
   if (await handlePortableAccount(deps, userId, method, path, req, res)) return;
   if (await handleAgentConfigs(deps, userId, method, path, req, res)) return;
   if (await handleIntegrations(deps, userId, method, path, req, res)) return;

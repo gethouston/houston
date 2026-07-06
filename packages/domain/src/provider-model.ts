@@ -38,14 +38,19 @@ export type { ProviderId } from "./provider-model-catalog";
 export { DEFAULT_PROVIDER } from "./provider-model-catalog";
 
 /**
- * Resolve a stored provider string to a pi ProviderId: a valid id passes
- * through, a known legacy alias maps, anything else is null. The ONE
- * alias-resolution ladder — every consumer (agent-config migration, routine
- * pins, write-time validation) wraps this with its own fallback policy.
+ * Resolve a stored provider string to a pi ProviderId: a known id passes
+ * through, a known legacy alias maps ("openai" → "openai-codex"), and any other
+ * NON-EMPTY id passes through UNCHANGED — the pi-ai catalog is open (~35
+ * providers, drifting), so a genuinely new id ("groq", "mistral") is NOT invalid
+ * and must not be silently rewritten to the default. Only an empty/nullish id is
+ * null. The ONE alias-resolution ladder — every consumer (agent-config
+ * migration, routine pins, write-time validation) wraps this with its own
+ * fallback policy.
  */
 export function canonicalProviderId(raw: string): ProviderId | null {
+  if (!raw) return null;
   if (isProviderId(raw)) return raw;
-  return PROVIDER_ALIASES[raw] ?? null;
+  return PROVIDER_ALIASES[raw] ?? raw;
 }
 
 /**
@@ -83,6 +88,14 @@ function mapProvider(
   return DEFAULT_PROVIDER;
 }
 
+/** A provider's catalog default model, or the universal floor (the
+ * DEFAULT_PROVIDER's model) when a new, catalog-less pi provider has no entry in
+ * DEFAULT_MODEL. Never undefined — DEFAULT_MODEL is now `Partial` over an open
+ * ProviderId, so a missing key must fall back, not crash. */
+function defaultModelFor(provider: ProviderId): string {
+  return DEFAULT_MODEL[provider] ?? DEFAULT_MODEL[DEFAULT_PROVIDER] ?? "";
+}
+
 /** Map a stored model to a valid pi model for `provider`, recording a
  * diagnostic when it can't be placed and falls back to the provider default. */
 function mapModel(
@@ -91,14 +104,15 @@ function mapModel(
   diagnostics: DocDiagnostic[],
   key: string,
 ): string {
-  if (!raw) return DEFAULT_MODEL[provider];
+  if (!raw) return defaultModelFor(provider);
   const canonical = canonicalModelId(provider, raw);
   if (canonical) return canonical;
+  const fallback = defaultModelFor(provider);
   diagnostics.push({
     key,
-    message: `unknown ${provider} model ${JSON.stringify(raw)} → falling back to ${DEFAULT_MODEL[provider]}`,
+    message: `unknown ${provider} model ${JSON.stringify(raw)} → falling back to ${fallback}`,
   });
-  return DEFAULT_MODEL[provider];
+  return fallback;
 }
 
 export interface MigratedProviderModel {

@@ -37,7 +37,11 @@ export type ProviderId =
   | "google"
   | "amazon-bedrock"
   | "minimax"
-  | "openai-compatible";
+  | "openai-compatible"
+  // Any other pi-ai provider id (the catalog is ~35 providers and drifts). The
+  // `(string & {})` widening accepts any provider id while keeping literal
+  // autocomplete for the named ids above.
+  | (string & {});
 
 /**
  * How a provider authenticates:

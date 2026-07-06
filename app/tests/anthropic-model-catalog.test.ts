@@ -1,14 +1,18 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
-import { describe, it } from "node:test";
+import { before, describe, it } from "node:test";
 import {
   getContextWindowConfig,
   getEffortLevels,
   getModel,
+  hydrateProviderCatalog,
 } from "../src/lib/providers.ts";
+import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 
 // Regression guards for HOU-618 (Sonnet 5 context window) plus the Fable 5
-// picker restore. The Anthropic catalog is plain data, so these lock in the
-// exact per-model context-window and effort facts that were wrong / absent.
+// picker restore. Anthropic's models now come from pi (windows) + the Houston
+// override (labels, effort, snap-up ceiling); the sample catalog carries pi's
+// windows, so these lock in the hydrated result the picker reads.
+before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
 
 describe("Sonnet 5 catalog (HOU-618)", () => {
   it("has a flat 1M context window — no 200k snap-up (unlike Sonnet 4.6)", () => {

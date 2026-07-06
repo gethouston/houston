@@ -5,9 +5,9 @@
  *
  * This is the RUNTIME twin of the bake-time `normalizeKey` in
  * `scripts/generate-model-catalog.mjs`: the snapshot's keys are baked with that
- * copy, and a LIVE OpenRouter model must derive the SAME key here so its offer
- * folds onto the matching snapshot model instead of appearing twice. The two
- * MUST stay identical — change one, change the other.
+ * copy, and a pi-ai model must derive the SAME key here (`catalog-pi.ts`) so its
+ * offer folds onto the matching snapshot model for enrichment instead of missing
+ * it. The two MUST stay identical — change one, change the other.
  */
 
 // Leading tokens stripped from a name before it becomes a key: deployment

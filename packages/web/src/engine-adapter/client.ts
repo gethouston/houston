@@ -1,5 +1,5 @@
 import { agentFileEventType, migrateProviderModel } from "@houston/domain";
-import type { LiveCatalog } from "@houston/protocol";
+import type { ProviderCatalog } from "@houston/protocol";
 import {
   type CustomEndpoint,
   EngineError,
@@ -1029,33 +1029,33 @@ export class HoustonClient {
     });
   }
   /**
-   * The host's LIVE model catalog for a provider (OpenRouter today) — the
-   * picker's dynamic model list, fetched fresh from the provider rather than the
-   * baked snapshot.
+   * pi-ai's FULL static model catalog — every provider and every runnable model
+   * with the picker/settings metadata (`GET /v1/catalog`, wire `ProviderCatalog`).
    *
-   * This is a HOST route, reached the SAME direct way as `capabilities()` /
-   * `version()` (a `/v1/*` GET on `baseUrl`), NOT the control plane: the live
-   * fetch is DESKTOP-first. On desktop `baseUrl` is the local host sidecar,
-   * which holds the OpenRouter key + network egress and returns the REAL
-   * catalog. In cloud the same path reaches the per-agent engine pod's host,
-   * which is intentionally egress-locked and answers `[]`. Live-bearer fetch so
-   * a rotated Supabase token refreshes + replays on 401 (HOU-687), as
+   * Reached the SAME direct way as `capabilities()` / `version()` (a `/v1/*` GET
+   * on `baseUrl`), NOT the control plane:
+   * `/v1/catalog` is served by the PUBLIC meta surface of the LOCAL host
+   * (desktop) and the per-agent engine pod (cloud) — not the cloud control
+   * plane. The catalog is built from pi-ai's baked registry (no egress), so it's
+   * identical on desktop and inside an egress-locked pod. Live-bearer fetch so a
+   * rotated Supabase token refreshes + replays on 401 (HOU-687), as
    * capabilities() does.
    */
-  async listProviderModels(providerId: string): Promise<LiveCatalog> {
+  async getCatalog(): Promise<ProviderCatalog> {
     const res = await controlPlane.gatewayAuthFetch(this.token)(
-      `${this.baseUrl}/v1/providers/${encodeURIComponent(providerId)}/models`,
+      `${this.baseUrl}/v1/catalog`,
     );
-    // 404 = this host has no live-catalog route (an older host, or the
-    // standalone-web / e2e fake host that has no provider egress): the same
-    // honest "no live models here" answer as an egress-locked host's `[]`.
-    // Every other status still throws so the picker's toast path surfaces it.
+    // 404 = this host has no catalog route (an older host, or the
+    // standalone-web / e2e fake host that doesn't serve it): the frontend keeps
+    // a static seed catalog as its fallback, so an empty catalog must degrade
+    // instead of throwing. Every other status still throws so a real failure
+    // surfaces rather than silently emptying the picker.
     if (res.status === 404) return [];
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new HoustonEngineError(res.status, body);
     }
-    return (await res.json()) as LiveCatalog;
+    return (await res.json()) as ProviderCatalog;
   }
   // `deviceAuth` is the client's "I can't catch a loopback callback" flag — the
   // co-located desktop sends false (it CAN), remote webapps send true. It steers

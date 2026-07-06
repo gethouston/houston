@@ -32,7 +32,11 @@ export type ProviderId =
   | "minimax"
   | "opencode"
   | "opencode-go"
-  | "openai-compatible";
+  | "openai-compatible"
+  // Any other pi-ai provider id (the catalog is ~35 providers and drifts). The
+  // `(string & {})` widening accepts any provider id on the wire while keeping
+  // literal autocomplete for the named ids above.
+  | (string & {});
 
 export type LoginStatus = "starting" | "awaiting_user" | "complete" | "error";
 

@@ -355,7 +355,7 @@ wiring lives in `app/src/components/chat-model-selector.tsx`.
   (`naming-step.tsx`, `ai-assist-step.tsx`, `portable/import-wizard.tsx`) render
   it with `agent={null}` (never locks — there is no agent yet). The old
   hand-rolled `InlineModelSelector` (curated-only, hid disconnected providers) is
-  gone; the create flow now gets the same live 300+ catalog + Connect affordance.
+  gone; the create flow now gets the same full runnable catalog + Connect affordance.
 - **Only ever offers runnable `(provider, model)` pairs.** The mapping
   (`app/src/lib/chat-model-picker-map.ts`, pure + unit-tested) encodes each row
   id as `` `${provider}::${model}` `` (split on the FIRST `::`), decoded on
@@ -374,26 +374,25 @@ wiring lives in `app/src/components/chat-model-selector.tsx`.
   outside that registry persists but fails the turn at `safeGetModel`
   (`packages/runtime/src/ai/providers.ts`) with a clean "model not available"
   error — closing that tail needs pi-ai pass-through model construction.
-- **Two data sources, one view-model.** Non-OpenRouter providers enumerate their
-  curated `PROVIDERS[].models` (plus the synthesized local `openai-compatible`
-  runtime row), enriched with capabilities/pricing/context by an exact
-  `${providerId}::${modelId}` lookup into the AI Hub catalog. **OpenRouter is the
-  300+ case:** its rows come from the **live** catalog, falling back to the
-  curated OpenRouter list when live is empty (offline / no key / cloud).
-- **Live OpenRouter catalog.** `GET /v1/providers/openrouter/models`
-  (`packages/host/src/routes/provider-catalog.ts`) fetches OpenRouter's
-  `/api/v1/models` host-side using the `CredentialStore` key, maps it via the
-  pure `packages/host/src/providers/openrouter-catalog.ts` (prices ×1e6,
-  modalities→vision/imageGen, `supported_parameters`→reasoning/tools), and caches
-  ~10 min. **Desktop-only** — cloud is egress-locked (`openrouter` is
-  `cloud:false`), so the route returns `[]` there. Wire type `LiveCatalog`
-  (`@houston/protocol` `catalog.ts`). Adapter: `listProviderModels` (direct host
-  transport, mirrors `capabilities()`, 404→`[]`) → `tauriProvider.listModels`.
-- **Catalog layer** (`app/src/lib/ai-hub/`): live models fold into the baked
-  models.dev snapshot through the existing merge (`catalog-live.ts` +
-  `catalog-key.ts` derives the same key as the bake-time generator so a live
-  model attaches to its snapshot twin as another `CatalogOffer`, not a
-  duplicate). `CatalogModel` gained `imageGen` (live-sourced). `useHubCatalog()`
+- **pi-ai's `/v1/catalog` is the source of truth.** `GET /v1/catalog`
+  (`packages/host/src/routes/catalog.ts` + `providers/pi-catalog.ts`) returns the
+  wire `ProviderCatalog` (`@houston/protocol` `provider-catalog.ts`): every
+  runnable provider (~35 on desktop / 979 models; ~3 in an egress-locked cloud
+  pod) with each model's pricing/context/maxTokens/reasoning/vision and
+  `thinkingLevels`. Built from pi-ai's **baked in-process registry** (no egress,
+  no key) — so the set is **runnable-by-construction** (a model is offered iff pi
+  can run it) and identical on desktop and inside a pod. Effort levels derive from
+  pi `thinkingLevels`. Adapter: `getCatalog` (direct host transport, mirrors
+  `capabilities()`, 404→`[]`) → `tauriProvider.getCatalog`; the app hydrates the
+  `PROVIDERS` cache from it (`use-provider-catalog.ts`, `providers.ts`).
+  **The live-OpenRouter fetch is RETIRED** — the old
+  `GET /v1/providers/openrouter/models` route + `openrouter-catalog` mapper + the
+  `LiveCatalog` wire type + `listProviderModels`/`listModels` adapter are deleted.
+- **One view-model, models.dev is optional enrichment.** Every provider's rows now
+  come from the hydrated `PROVIDERS` catalog (seeded by `/v1/catalog`). The
+  checked-in models.dev snapshot (`app/src/lib/ai-hub/model-catalog.json`) is only
+  supplemental metadata folded in by an exact `${providerId}::${modelId}` lookup —
+  not the runnable set. `useHubCatalog()`
   exposes `{ catalog, isLoading, status: "loading"|"ready"|"offline", offline }`;
   the picker maps `status` → its `catalogState`. Loading is **progressive**:
   curated content shows instantly, a "loading more" footer signals the live

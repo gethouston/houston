@@ -11,17 +11,18 @@
 
 import snapshot from "./model-catalog.json" with { type: "json" };
 
-/** A model entry as written by `scripts/generate-model-catalog.mjs`. */
+/**
+ * A model entry as written by `scripts/generate-model-catalog.mjs`.
+ *
+ * This is also the internal carrier the pi-ai mapper (`catalog-pi.ts`) emits, so
+ * pi-derived candidates flow through the SAME merge primitives as the snapshot.
+ * The pi mapper fills the runnable facts (id/name/pricing/context/reasoning/
+ * vision); the snapshot supplies only the enrichment metadata pi can't
+ * (`description`/`toolCall`/`imageGen`/`knowledge`/`releaseDate`).
+ */
 export interface RawModel {
   /** Cross-provider normalized identity key (baked at generation). */
   key: string;
-  /**
-   * Where this raw entry came from. Absent for the baked snapshot; `"live"` for
-   * an entry mapped from a fresh OpenRouter fetch (`catalog-live.ts`). The merge
-   * (`catalog-merge.ts`) makes `"live"` authoritative for pricing/context over a
-   * snapshot entry sharing the same `(key, providerId)`.
-   */
-  source?: "live";
   id: string;
   name: string;
   description?: string;
@@ -30,8 +31,8 @@ export interface RawModel {
   toolCall?: boolean;
   /**
    * The model generates images. Never present in the baked snapshot (models.dev
-   * has no such signal); carried only by live-catalog raw entries (see
-   * `catalog-live.ts`).
+   * has no such signal), so it stays `false` for every catalog model today; the
+   * field is kept because the merge threads it through as an enrichment gap.
    */
   imageGen?: boolean;
   attachment?: boolean;
@@ -49,7 +50,13 @@ export interface RawCatalog {
   providers: Record<string, { models: RawModel[] }>;
 }
 
-/** The baked snapshot, parsed once (module singleton). */
-export function loadRawCatalog(): Promise<RawCatalog> {
-  return Promise.resolve(snapshot as RawCatalog);
+/**
+ * Every baked snapshot model, flattened across providers. Used only as the
+ * OPTIONAL enrichment source for the pi-ai catalog: matched by `key`, a snapshot
+ * model fills metadata gaps on a pi-ai model that already exists. Snapshot models
+ * with no pi-ai twin never surface (see `foldEnrichment`). Module singleton.
+ */
+export function snapshotModels(): RawModel[] {
+  const cat = snapshot as RawCatalog;
+  return Object.values(cat.providers).flatMap((p) => p.models);
 }

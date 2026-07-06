@@ -22,7 +22,11 @@ export type ProviderId =
   | "google"
   | "amazon-bedrock"
   | "minimax"
-  | "openai-compatible";
+  | "openai-compatible"
+  // Any other pi-ai provider id (the catalog is ~35 providers and drifts). The
+  // `(string & {})` widening accepts any provider id while keeping literal
+  // autocomplete for the named ids above.
+  | (string & {});
 
 const PROVIDER_IDS: readonly ProviderId[] = [
   "anthropic",
@@ -49,11 +53,15 @@ export const isProviderId = (s: string): s is ProviderId =>
 export const DEFAULT_PROVIDER: ProviderId = "openai-codex";
 
 /**
- * Each provider's default model. These MUST match the runtime's env defaults
- * (`packages/runtime/src/config.ts`: HOUSTON_MODEL / HOUSTON_CODEX_MODEL / ...).
- * A migration that can't place the stored model lands here.
+ * Each KNOWN provider's default model. These MUST match the runtime's env
+ * defaults (`packages/runtime/src/config.ts`: HOUSTON_MODEL / HOUSTON_CODEX_MODEL
+ * / ...). A migration that can't place the stored model lands here.
+ *
+ * `Partial` because `ProviderId` is now open (any pi-ai id): a new provider not
+ * in this table has no catalog default here — readers must handle the missing
+ * key (see `provider-model.ts` `defaultModelFor`), never assume a value.
  */
-export const DEFAULT_MODEL: Record<ProviderId, string> = {
+export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   anthropic: "claude-sonnet-4-6",
   "openai-codex": "gpt-5.5",
   // Copilot uses DOTTED model ids (claude-sonnet-4.6), unlike native Anthropic.

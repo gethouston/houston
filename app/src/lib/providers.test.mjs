@@ -7,12 +7,112 @@ import {
   getEffortLevels,
   getProvider,
   getVisibleProviders,
+  hydrateProviderCatalog,
   normalizeLegacyModel,
   PROVIDERS,
   providerGatewayIds,
   validEffortOrDefault,
   validModelOrNull,
 } from "./providers.ts";
+
+// The catalog is dynamic now: models come from the host's pi-ai catalog. This
+// inline sample mirrors the host's `/v1/catalog` shape (pi ids, pi raw windows,
+// pi thinking-level ladders) so hydration reproduces the curated catalog the
+// picker reads. It carries pi's `openai-codex` (renamed to `openai`) + pi's
+// direct `openai` (dropped), and every first-class provider these tests assert.
+const PI_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"];
+const rm = (id, ctx) => ({
+  id,
+  name: id,
+  pricing: { input: 1, output: 2 },
+  contextWindow: ctx,
+  maxTokens: 8192,
+  reasoning: true,
+  vision: false,
+  thinkingLevels: PI_LEVELS,
+});
+const tm = (id, ctx) => ({
+  id,
+  name: id,
+  pricing: { input: 1, output: 2 },
+  contextWindow: ctx,
+  maxTokens: 8192,
+  reasoning: false,
+  vision: false,
+});
+const prov = (id, auth, models) => ({ id, name: id, auth, models });
+
+const SAMPLE_CATALOG = [
+  prov("openai", "apiKey", [tm("gpt-4o", 128000)]),
+  prov("openai-codex", "oauth", [
+    rm("gpt-5.5", 272000),
+    rm("gpt-5.4", 272000),
+    rm("gpt-5.4-mini", 272000),
+    rm("gpt-5.3-codex-spark", 128000),
+  ]),
+  prov("anthropic", "oauth", [
+    rm("claude-sonnet-5", 1000000),
+    rm("claude-sonnet-4-6", 200000),
+    rm("claude-opus-4-8", 1000000),
+    rm("claude-fable-5", 1000000),
+    rm("claude-opus-4-7", 1000000),
+  ]),
+  prov("github-copilot", "oauth", [
+    tm("gpt-4.1", 200000),
+    rm("claude-sonnet-4.6", 1000000),
+    rm("claude-opus-4.8", 200000),
+    tm("claude-haiku-4.5", 200000),
+    rm("gpt-5.5", 400000),
+    rm("gpt-5-mini", 264000),
+    rm("gemini-3-flash-preview", 128000),
+  ]),
+  prov("opencode", "apiKey", [
+    rm("claude-sonnet-4-6", 1000000),
+    rm("claude-opus-4-8", 1000000),
+    rm("gpt-5.5", 1050000),
+    rm("gemini-3.5-flash", 1048576),
+    rm("deepseek-v4-flash-free", 200000),
+    tm("mimo-v2.5-free", 200000),
+    tm("nemotron-3-ultra-free", 1000000),
+  ]),
+  prov("opencode-go", "apiKey", [
+    tm("glm-5.1", 202752),
+    tm("kimi-k2.6", 262144),
+    rm("minimax-m3", 512000),
+    tm("qwen3.7-max", 1000000),
+    rm("deepseek-v4-pro", 1000000),
+  ]),
+  prov("openrouter", "apiKey", [
+    tm("openrouter/free", 200000),
+    rm("anthropic/claude-sonnet-4.6", 1000000),
+    rm("anthropic/claude-opus-4.8", 1000000),
+    rm("google/gemini-3-flash-preview", 1048576),
+    rm("deepseek/deepseek-v4-pro", 1048576),
+  ]),
+  prov("deepseek", "apiKey", [
+    rm("deepseek-v4-flash", 1000000),
+    rm("deepseek-v4-pro", 1000000),
+  ]),
+  prov("google", "apiKey", [
+    rm("gemini-3-flash-preview", 1048576),
+    rm("gemini-3-pro-preview", 1048576),
+    rm("gemini-2.5-flash", 1048576),
+    rm("gemini-2.5-pro", 1048576),
+  ]),
+  prov("amazon-bedrock", "apiKey", [
+    rm("anthropic.claude-sonnet-4-6", 1000000),
+    rm("anthropic.claude-opus-4-8", 1000000),
+    tm("amazon.nova-pro-v1:0", 300000),
+    tm("amazon.nova-lite-v1:0", 300000),
+  ]),
+  prov("minimax", "apiKey", [
+    rm("MiniMax-M3", 512000),
+    rm("MiniMax-M2.7", 204800),
+    rm("MiniMax-M2.7-highspeed", 204800),
+  ]),
+];
+
+test.before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
 
 test("effort levels are per model", () => {
   // Codex: has xhigh, no max. Every catalogued GPT model shares this set

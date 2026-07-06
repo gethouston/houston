@@ -1,84 +1,37 @@
-import { PROVIDERS } from "../providers.ts";
-import { detectLab } from "./catalog-lab.ts";
+import type { ProviderCatalog } from "@houston/protocol";
 import {
   addCandidate,
   compareModels,
-  curatedRaw,
   type Draft,
   finalize,
+  foldEnrichment,
 } from "./catalog-merge.ts";
-import type { RawModel } from "./catalog-snapshot.ts";
-import { loadRawCatalog } from "./catalog-snapshot.ts";
+import { piCatalogToCandidates } from "./catalog-pi.ts";
+import { snapshotModels } from "./catalog-snapshot.ts";
 import type { CatalogModel, HubCatalog } from "./catalog-types.ts";
 
-// API-key gateways contribute their full model lists straight from the snapshot.
-// `opencode` already includes OpenCode Go's models (folded at generation).
-const API_KEY_GATEWAYS = [
-  "opencode",
-  "openrouter",
-  "deepseek",
-  "google",
-  "amazon-bedrock",
-  "minimax",
-];
-// Subscription providers: the plan can only run the curated set from PROVIDERS,
-// so their offers come from there (enriched with snapshot specs), never the
-// full snapshot list.
-const OAUTH_PROVIDERS = ["openai", "anthropic", "github-copilot"];
-
 /**
- * Build the hub catalog from the baked snapshot for a set of visible providers.
- * Offers from non-visible providers are dropped; models with no remaining
- * offer never appear. The snapshot import is memoized; the merge runs per call.
+ * Build the hub catalog from the pi-ai catalog (the host's `GET /v1/catalog` =
+ * the RUNNABLE set), optionally enriched by the baked models.dev snapshot.
  *
- * `liveOpenRouter` folds the LIVE OpenRouter catalog (already mapped to raw
- * entries by `catalog-live.ts`) into the `openrouter` bucket before the merge,
- * so a live offer attaches to a matching snapshot model and OpenRouter-only
- * models appear as new entries. The snapshot singleton is never mutated. Empty
- * when the deployment can't reach OpenRouter (web/cloud, no key, or offline).
+ * pi-ai is authoritative: every hub model exists because pi-ai can run it, with
+ * pi's own pricing, context window, reasoning, and vision. The catalog is already
+ * scoped to what this host can run (all providers on desktop, ~3 in a cloud pod),
+ * so there is no visibility gate — the AI Models tab and the picker's enrichment
+ * show ONLY runnable models. The snapshot is folded in second as OPTIONAL
+ * enrichment (`foldEnrichment`): a snapshot model fills the metadata pi-ai lacks
+ * (description / toolCall / imageGen / knowledge / releaseDate) on a model that
+ * ALSO exists in pi-ai, and a snapshot-only model is dropped.
  */
-export async function loadHubCatalog(
-  visibleProviderIds: string[],
-  liveOpenRouter: RawModel[] = [],
-): Promise<HubCatalog> {
-  const raw = await loadRawCatalog();
-  const visible = new Set(visibleProviderIds);
-  const opencodeVisible = visible.has("opencode") || visible.has("opencode-go");
+export function loadHubCatalog(
+  catalog: ProviderCatalog,
+  opts: { enrich?: boolean } = {},
+): HubCatalog {
+  const { enrich = true } = opts;
   const drafts = new Map<string, Draft>();
 
-  for (const providerId of API_KEY_GATEWAYS) {
-    const isVisible =
-      providerId === "opencode" ? opencodeVisible : visible.has(providerId);
-    if (!isVisible) continue;
-    const snapshotModels = raw.providers[providerId]?.models ?? [];
-    const models =
-      providerId === "openrouter"
-        ? [...snapshotModels, ...liveOpenRouter]
-        : snapshotModels;
-    for (const model of models)
-      addCandidate(drafts, {
-        providerId,
-        raw: model,
-        subscription: false,
-        lab: detectLab(providerId, model),
-      });
-  }
-
-  for (const providerId of OAUTH_PROVIDERS) {
-    if (!visible.has(providerId)) continue;
-    const bucket = raw.providers[providerId]?.models ?? [];
-    const byId = new Map(bucket.map((m) => [m.id, m]));
-    const curated = PROVIDERS.find((p) => p.id === providerId)?.models ?? [];
-    for (const model of curated) {
-      const entry = curatedRaw(model, byId.get(model.id));
-      addCandidate(drafts, {
-        providerId,
-        raw: entry,
-        subscription: true,
-        lab: detectLab(providerId, entry),
-      });
-    }
-  }
+  for (const cand of piCatalogToCandidates(catalog)) addCandidate(drafts, cand);
+  if (enrich) for (const raw of snapshotModels()) foldEnrichment(drafts, raw);
 
   const models = [...drafts.entries()]
     .map(([key, draft]) => finalize(key, draft))

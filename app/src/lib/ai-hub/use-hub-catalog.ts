@@ -1,64 +1,29 @@
 import { useQuery } from "@tanstack/react-query";
-import { useCapabilities } from "../../hooks/use-capabilities.ts";
-import { newEngineActive } from "../engine.ts";
-import { osIsTauri } from "../os-bridge.ts";
-import {
-  EMPTY_PROVIDER_CAPABILITIES,
-  getVisibleProviders,
-} from "../providers.ts";
+import { useMemo } from "react";
 import { tauriProvider } from "../tauri.ts";
 import { loadHubCatalog } from "./catalog.ts";
-import { liveCatalogToRaw } from "./catalog-live.ts";
-import type { RawModel } from "./catalog-snapshot.ts";
 import type { HubCatalog } from "./catalog-types.ts";
 
 /**
- * The catalog's live-data state, for the picker to reflect:
- * - `loading` — the query is in flight (no catalog yet).
- * - `ready` — the catalog is built (live OpenRouter merged in, or none was
- *   available: web/cloud, no key, or the provider isn't visible).
- * - `offline` — the live OpenRouter fetch THREW; the catalog degraded to the
- *   baked snapshot. The failure is already surfaced (toast + Sentry) by the
- *   engine-call wrapper; this flag lets the UI show a degraded-catalog hint.
+ * The catalog's data state, for the picker to reflect:
+ * - `loading` — the pi-ai catalog query is in flight (no catalog yet).
+ * - `ready` — the catalog is built from the pi-ai catalog.
+ * - `offline` — retained for the picker's `catalogState` mapping, but never
+ *   reached: the pi-ai catalog is local (no network), so it can't degrade.
  */
 export type HubCatalogStatus = "loading" | "ready" | "offline";
 
-interface LiveMerge {
-  models: RawModel[];
-  offline: boolean;
-}
-
 /**
- * Fetch + map the live OpenRouter catalog, degrading to snapshot-only (with an
- * `offline` flag) when the fetch throws. Only fetched when OpenRouter is visible
- * — otherwise its offers would be dropped by the merge's visibility gate anyway,
- * and the host answers `[]` when there's no key, so a fetch would be wasted.
+ * The AI Hub catalog, DERIVED FROM the pi-ai catalog (the host's `GET /v1/catalog`
+ * = the runnable set) enriched by the baked models.dev snapshot. Reads the SAME
+ * `["provider-catalog"]` query the app hydrates `PROVIDERS` from (`useProviderCatalog`),
+ * so there is no second fetch — react-query shares the cache entry. The hub
+ * catalog is rebuilt whenever the query data changes (`dataUpdatedAt`).
  *
- * NOT a silent swallow: `tauriProvider.listModels` runs through the engine-call
- * wrapper, which has already shown the error toast and reported to Sentry before
- * it rethrows here. We catch only to keep the whole hook from erroring (the
- * snapshot still renders) and to raise the `offline` signal.
- */
-async function fetchLiveOpenRouter(visibleIds: string[]): Promise<LiveMerge> {
-  if (!visibleIds.includes("openrouter")) return { models: [], offline: false };
-  try {
-    const live = await tauriProvider.listModels("openrouter");
-    return { models: liveCatalogToRaw(live), offline: false };
-  } catch {
-    return { models: [], offline: true };
-  }
-}
-
-/**
- * The AI Hub catalog, scoped to the providers this deployment can connect to,
- * with the LIVE OpenRouter catalog folded into the baked snapshot.
- *
- * Resolves visible providers from host capabilities (same gating as the connect
- * surfaces via `getVisibleProviders`) so counts and offers stay honest on the
- * legacy engine and on the web, where API-key or local providers are hidden.
- * A change in the visible set (capabilities finishing their load) re-keys and
- * rebuilds. `status` tells the picker whether the live data merged, is still
- * loading, or degraded to snapshot-only (`offline`).
+ * Because the source is local, only ONLY runnable models appear and `offline` is
+ * always false; `status` is `loading` until the catalog resolves, then `ready`.
+ * The `status`/`offline` fields are kept so the picker's `catalogState` mapping
+ * still compiles.
  */
 export function useHubCatalog(): {
   catalog: HubCatalog | undefined;
@@ -66,33 +31,22 @@ export function useHubCatalog(): {
   status: HubCatalogStatus;
   offline: boolean;
 } {
-  const { capabilities, isLoading: capsLoading } = useCapabilities();
-  const newEngine = newEngineActive();
-  const providerCapabilities =
-    capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
-  const visibleIds = getVisibleProviders({
-    newEngine,
-    desktop: osIsTauri(),
-    capabilities: providerCapabilities,
-  }).map((p) => p.id);
-
   const query = useQuery({
-    queryKey: ["ai-hub-catalog", [...visibleIds].sort()],
-    queryFn: async () => {
-      const live = await fetchLiveOpenRouter(visibleIds);
-      const catalog = await loadHubCatalog(visibleIds, live.models);
-      return { catalog, offline: live.offline };
-    },
+    queryKey: ["provider-catalog"],
+    queryFn: () => tauriProvider.getCatalog(),
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  const isLoading = capsLoading || query.isLoading;
-  const offline = query.data?.offline ?? false;
-  const status: HubCatalogStatus = isLoading
-    ? "loading"
-    : offline
-      ? "offline"
-      : "ready";
+  // Rebuild only when the fetched catalog changes (`dataUpdatedAt` bumps on every
+  // cache write), keeping the hub reactive to a fresh pi-ai catalog.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on dataUpdatedAt, not the data ref.
+  const catalog = useMemo(
+    () => (query.data ? loadHubCatalog(query.data) : undefined),
+    [query.dataUpdatedAt],
+  );
 
-  return { catalog: query.data?.catalog, isLoading, status, offline };
+  const isLoading = query.isLoading;
+  const status: HubCatalogStatus = isLoading ? "loading" : "ready";
+
+  return { catalog, isLoading, status, offline: false };
 }

@@ -8,6 +8,7 @@ import {
 import { queryKeys } from "../lib/query-keys";
 import { type ProviderStatus, tauriProvider } from "../lib/tauri";
 import { useCapabilities } from "./use-capabilities";
+import { useProviderCatalog } from "./use-provider-catalog";
 
 export interface ProviderStatusesState {
   /** Status by provider id. Empty until the first fetch resolves. */
@@ -38,8 +39,18 @@ export function useProviderStatuses(): ProviderStatusesState {
   const newEngine = newEngineActive();
   const providerCapabilities =
     capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
+  // The pi-ai catalog hydrates `PROVIDERS` IN PLACE, so `getVisibleProviders`
+  // grows from the override-only seed to the full runnable set with no React
+  // signal. Fold `updatedAt` into the query key so statuses are re-probed for
+  // the FULL set the moment the catalog resolves — not just the seed captured on
+  // first mount. `useProviderCatalog` shares the `["provider-catalog"]` query, so
+  // this reads the cache and never triggers a second catalog fetch.
+  const { updatedAt: catalogUpdatedAt } = useProviderCatalog();
   const query = useQuery({
-    queryKey: queryKeys.providerStatuses(capabilities?.providers ?? null),
+    queryKey: [
+      ...queryKeys.providerStatuses(capabilities?.providers ?? null),
+      catalogUpdatedAt,
+    ],
     queryFn: async (): Promise<Record<string, ProviderStatus>> => {
       const providers = getVisibleProviders({
         newEngine,

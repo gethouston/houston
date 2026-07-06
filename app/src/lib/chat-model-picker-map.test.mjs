@@ -60,7 +60,7 @@ test("isRecentRelease: only a date within the window and not in the future is ne
 const RECENT = "2026-06-30";
 const NOW = Date.parse("2026-07-06");
 
-const curatedModel = {
+const testModel = {
   key: "m1",
   name: "M1",
   lab: "other",
@@ -83,6 +83,8 @@ const curatedModel = {
   ],
 };
 
+// An OpenRouter model in the hub catalog, keyed by its openrouter-native offer id
+// so the offer index enriches the matching PROVIDERS row.
 const orModel = {
   key: "or1",
   name: "OR One",
@@ -107,13 +109,13 @@ const orModel = {
 };
 
 const catalog = {
-  models: [curatedModel, orModel],
+  models: [testModel, orModel],
   byKey: new Map([
-    ["m1", curatedModel],
+    ["m1", testModel],
     ["or1", orModel],
   ]),
   byProvider: new Map([
-    ["testprov", [curatedModel]],
+    ["testprov", [testModel]],
     ["openrouter", [orModel]],
   ]),
   modelCount: 2,
@@ -126,25 +128,19 @@ const testProv = {
   subtitle: "sub",
   models: [{ id: "m1", label: "M1 label", description: "curated desc" }],
 };
+// OpenRouter is no longer special: `PROVIDERS` carries its full runnable set as
+// ordinary rows (hydrated from the pi-ai catalog), built by the SAME path as
+// every other provider.
 const orProv = {
-  id: "openrouter",
-  name: "OpenRouter",
-  subtitle: "",
-  models: [],
-};
-// OpenRouter as it really is in PROVIDERS: a small curated list used as the
-// cold-start stand-in shown only while the catalog is still loading.
-const orProvCurated = {
   id: "openrouter",
   name: "OpenRouter",
   subtitle: "",
   models: [
     {
-      id: "anthropic/claude-sonnet-4.6",
-      label: "Claude Sonnet",
-      description: "curated",
+      id: "vendor/or-1",
+      label: "OR One label",
+      description: "or curated",
     },
-    { id: "openrouter/free", label: "Free model", description: "free curated" },
   ],
 };
 const localProv = {
@@ -154,7 +150,7 @@ const localProv = {
   models: [],
 };
 
-test("buildPickerModels: a curated row is enriched from its matching catalog offer", () => {
+test("buildPickerModels: a provider row is enriched from its matching catalog offer", () => {
   const [m] = buildPickerModels({
     visibleProviders: [testProv],
     statuses: {},
@@ -163,7 +159,7 @@ test("buildPickerModels: a curated row is enriched from its matching catalog off
   });
   assert.equal(m.id, "testprov::m1");
   assert.equal(m.providerId, "testprov");
-  assert.equal(m.name, "M1 label"); // the curated label, not the catalog name
+  assert.equal(m.name, "M1 label"); // the PROVIDERS label, not the catalog name
   assert.deepEqual(m.capabilities, {
     vision: true,
     reasoning: true,
@@ -177,7 +173,7 @@ test("buildPickerModels: a curated row is enriched from its matching catalog off
   assert.equal(m.isNew, true);
 });
 
-test("buildPickerModels: a curated row with no catalog match falls back gracefully", () => {
+test("buildPickerModels: a provider row with no catalog match falls back gracefully", () => {
   const [m] = buildPickerModels({
     visibleProviders: [testProv],
     statuses: {},
@@ -197,19 +193,20 @@ test("buildPickerModels: a curated row with no catalog match falls back graceful
   assert.equal(m.isNew, undefined);
 });
 
-test("buildPickerModels: OpenRouter rows come from the live catalog, preserving the run id", () => {
+test("buildPickerModels: OpenRouter sources rows from PROVIDERS, enriched by the offer index", () => {
   const models = buildPickerModels({
     visibleProviders: [orProv],
     statuses: {},
     catalog,
     now: NOW,
   });
+  // One PROVIDERS row → one picker row, built by the uniform path (NOT byProvider).
   assert.equal(models.length, 1);
   const [m] = models;
-  assert.equal(m.id, "openrouter::vendor/or-1"); // upstream id preserved
+  assert.equal(m.id, "openrouter::vendor/or-1"); // openrouter-native id preserved
   assert.equal(decodeModelPickerId(m.id).model, "vendor/or-1");
-  assert.equal(m.name, "OR One");
-  assert.equal(m.priceTier, "free"); // costInput 0
+  assert.equal(m.name, "OR One label"); // the PROVIDERS label, not the catalog name
+  assert.equal(m.priceTier, "free"); // enriched: costInput 0
   assert.deepEqual(m.capabilities, {
     vision: false,
     reasoning: true,
@@ -218,19 +215,32 @@ test("buildPickerModels: OpenRouter rows come from the live catalog, preserving 
   });
 });
 
-test("buildPickerModels: OpenRouter falls back to curated models while the catalog is still loading", () => {
+test("buildPickerModels: every provider (incl openrouter) is built by one uniform path", () => {
   const models = buildPickerModels({
-    visibleProviders: [orProvCurated],
+    visibleProviders: [testProv, orProv],
     statuses: {},
-    catalog: undefined, // cold start: catalog not yet loaded (the only fallback case)
+    catalog,
     now: NOW,
   });
-  assert.equal(models.length, 2);
+  // Both providers contribute their PROVIDERS rows in order, each enriched by the
+  // `${providerId}::${modelId}` offer index — no per-provider branch.
   assert.deepEqual(
     models.map((m) => m.id),
-    ["openrouter::anthropic/claude-sonnet-4.6", "openrouter::openrouter/free"],
+    ["testprov::m1", "openrouter::vendor/or-1"],
   );
-  // Curated rows are runnable pairs, just un-enriched without a catalog match.
+  assert.equal(models[0].priceTier, "mid");
+  assert.equal(models[1].priceTier, "free");
+});
+
+test("buildPickerModels: an OpenRouter row with no catalog match still renders (un-enriched)", () => {
+  const models = buildPickerModels({
+    visibleProviders: [orProv],
+    statuses: {},
+    catalog: undefined, // cold start: catalog not yet loaded
+    now: NOW,
+  });
+  assert.equal(models.length, 1);
+  assert.equal(models[0].id, "openrouter::vendor/or-1");
   assert.equal(models[0].providerId, "openrouter");
   assert.deepEqual(models[0].capabilities, {
     vision: false,
@@ -238,18 +248,6 @@ test("buildPickerModels: OpenRouter falls back to curated models while the catal
     tools: false,
     imageGen: false,
   });
-});
-
-test("buildPickerModels: OpenRouter prefers the live catalog over curated when both exist", () => {
-  const models = buildPickerModels({
-    visibleProviders: [orProvCurated],
-    statuses: {},
-    catalog, // has one live OpenRouter model (vendor/or-1)
-    now: NOW,
-  });
-  // Live wins outright: the single live model, curated not appended (no dupes).
-  assert.equal(models.length, 1);
-  assert.equal(models[0].id, "openrouter::vendor/or-1");
 });
 
 test("buildPickerModels: the catalog-less local provider surfaces its runtime model", () => {
@@ -264,7 +262,7 @@ test("buildPickerModels: the catalog-less local provider surfaces its runtime mo
   assert.equal(models[0].name, "llama3.1");
 });
 
-test("buildPickerModels: the describe callback localizes a curated row's description", () => {
+test("buildPickerModels: the describe callback localizes a provider row's description", () => {
   const [m] = buildPickerModels({
     visibleProviders: [testProv],
     statuses: {},

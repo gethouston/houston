@@ -45,23 +45,22 @@ export interface CatalogOffer {
 
 /** A unique model, merged across every provider that offers it. */
 export interface CatalogModel {
-  /** Cross-provider normalized identity key (baked into the snapshot). */
+  /** Cross-provider normalized identity key (`normalizeKey` of the name). */
   key: string;
   name: string;
   lab: LabId;
   description?: string;
   reasoning: boolean;
   /**
-   * The model advertises native tool/function calling. OR-merged across the
-   * providers that offer it (the snapshot's `toolCall` flag), mirroring
-   * `reasoning`: any offering variant flagged tool-capable makes the model
-   * tool-capable.
+   * The model advertises native tool/function calling. pi-ai's catalog carries
+   * no tool-call signal, so this comes from the models.dev snapshot enrichment
+   * (`foldEnrichment`) on a pi-ai model that has a snapshot twin.
    */
   toolCall: boolean;
   /**
-   * The model generates images (output modality). Only the LIVE OpenRouter
-   * source carries this signal, so it is `false` for every snapshot-only model
-   * and OR-merged (mirroring `reasoning`/`toolCall`) across offering variants.
+   * The model generates images (output modality). No source carries this signal
+   * today (pi-ai has no field; models.dev has none), so it is effectively always
+   * `false`; the field is kept for when an enrichment source supplies it.
    */
   imageGen: boolean;
   inputModalities: string[];
@@ -72,7 +71,7 @@ export interface CatalogModel {
   offers: CatalogOffer[];
 }
 
-/** The built catalog for a given set of visible providers. */
+/** The built catalog, derived from the pi-ai runnable set. */
 export interface HubCatalog {
   models: CatalogModel[];
   byKey: Map<string, CatalogModel>;

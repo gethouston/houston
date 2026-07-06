@@ -1,10 +1,15 @@
 import { strictEqual } from "node:assert";
-import { describe, it } from "node:test";
+import { before, describe, it } from "node:test";
 import {
   getDefaultModel,
+  hydrateProviderCatalog,
   isOpenCatalogProvider,
   validModelOrNull,
 } from "../src/lib/providers.ts";
+import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
+
+// Models come from the hydrated pi catalog now, so populate the cache first.
+before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
 
 describe("isOpenCatalogProvider", () => {
   it("is true for pass-through catalogs (OpenRouter, local endpoint)", () => {
