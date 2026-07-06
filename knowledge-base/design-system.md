@@ -215,6 +215,15 @@ second rounded card with a gutter gap.
 "glitter" over solid surfaces): gutter `#eef1f7`, screen `#fff`, cards `#f4f6fc`,
 cool blue/indigo border. Clean and futuristic by restraint, not decoration.
 
+**Modals are glass, not slabs.** All modal primitives — `DialogContent`
+(`ui/core/components/dialog.tsx`), `AlertDialogContent`, `SheetContent`, and the
+AI-Hub `ModalShell` — render on the translucent **`bg-card`** surface (frosted
+blur + top sheen from futuristic.css), NOT opaque `bg-background`, so the aurora
+canvas bleeds through in dark mode like the kanban columns (`bg-secondary`). The
+scrims are deliberately light for the same reason: Dialog overlay `bg-black/25`,
+Alert/Sheet `bg-black/35` (down from /40–/50). Change the surface centrally in
+those four primitives — no modal should hardcode its own background.
+
 **Primary button** — flat and sober (`[data-variant="default"]:is(button, a)`),
 not a glossy slab. Kanban resting cards use one token, `--ht-card-rest` (`#2c2c2b`
 dark / cool light), unified across resting + running + needs-you.

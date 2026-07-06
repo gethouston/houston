@@ -1,10 +1,10 @@
 /**
  * The redesign's modal primitive. Built on the app's shared Radix Dialog
  * (`@houston-ai/core`) so focus-trap, ESC and aria come for free; the panel is
- * a three-row grid (fixed header, scrolling body, thin footer) on a SOLID
- * `bg-background` surface (opaque white in light, solid near-black in dark — no
- * glass, no page bleed-through) with `ht-shadow-modal` for float. Core's
- * DialogContent renders the ONE scrim (`bg-black/40`); we don't stack a second.
+ * a three-row grid (fixed header, scrolling body, thin footer) on the shared
+ * glass modal surface (`bg-card` — translucent + frosted blur, so the aurora
+ * canvas bleeds through in dark mode) with `ht-shadow-modal` for float. Core's
+ * DialogContent renders the ONE scrim (`bg-black/25`); we don't stack a second.
  * The calm entry (fade + a small 0.98→1 scale, reduced-motion honored) lives in
  * `.ai-hub-modal-surface` (futuristic.css). Presentational and props-only:
  * titles/labels arrive already translated (parents own i18n).
@@ -54,7 +54,7 @@ export function ModalShell({
       <DialogContent
         showCloseButton={false}
         className={cn(
-          "grid max-h-[84vh] min-h-[60vh] w-[min(620px,calc(100vw-2.5rem))] max-w-none grid-rows-[auto_1fr_auto] gap-0 overflow-hidden rounded-2xl border-0 bg-background p-0 ht-shadow-modal ai-hub-modal-surface sm:max-w-none",
+          "grid max-h-[84vh] min-h-[60vh] w-[min(620px,calc(100vw-2.5rem))] max-w-none grid-rows-[auto_1fr_auto] gap-0 overflow-hidden rounded-2xl border-0 bg-card p-0 ht-shadow-modal ai-hub-modal-surface sm:max-w-none",
           className,
         )}
       >
