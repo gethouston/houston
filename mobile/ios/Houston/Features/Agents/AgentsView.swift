@@ -20,6 +20,10 @@ struct AgentsView: View {
 
     @State private var path: [AgentsNavRoute] = []
     @State private var retention: ScopeRetention?
+    /// New-mission compose flow: the picker sheet, and the agent it returned
+    /// (opened as a draft chat on the sheet's dismissal so the push never races).
+    @State private var presentingPicker = false
+    @State private var pickedAgent: AgentListItem?
 
     private var overviews: [AgentOverview] { AgentsOverviewBuilder.build(overview.agents) }
     private var totalNeedsYou: Int { overviews.reduce(0) { $0 + $1.needsYouCount } }
@@ -29,11 +33,23 @@ struct AgentsView: View {
             content
                 .navigationTitle(Strings.Agents.title)
                 .background(theme.background)
+                .toolbar { NewMissionToolbarButton { presentingPicker = true } }
                 .navigationDestination(for: AgentsNavRoute.self, destination: destination)
+        }
+        .sheet(isPresented: $presentingPicker, onDismiss: openPickedDraft) {
+            AgentPickerSheet(onPick: { pickedAgent = $0 })
         }
         .onAppear { if retention == nil { retention = overview.retain() } }
         .onDisappear { retention?.cancel(); retention = nil }
         .onChange(of: totalNeedsYou, initial: true) { _, total in badge.needsYouCount = total }
+    }
+
+    /// Open an empty draft chat for the agent the picker returned. Runs on the
+    /// sheet's `onDismiss`, so the draft is pushed after the picker is gone.
+    private func openPickedDraft() {
+        guard let agent = pickedAgent else { return }
+        pickedAgent = nil
+        path.append(.chat(.draft(agentId: agent.id, title: agent.name)))
     }
 
     // MARK: Content

@@ -10,6 +10,13 @@ final class SpyChatCommands: ChatCommanding {
   private(set) var sent: [(agentId: String, conversationId: String, text: String)] = []
   private(set) var cancelled: [(agentId: String, conversationId: String)] = []
   private(set) var statuses: [(agentId: String, activityId: String, status: String)] = []
+  private(set) var created: [(agentId: String, title: String, description: String)] = []
+  private(set) var deleted: [(agentId: String, activityId: String)] = []
+  /// Command names to throw `StubError` on (draft failure paths): "create",
+  /// "send", "delete".
+  var failOn: Set<String> = []
+  /// The activity `activities/create` returns on the happy path.
+  var createResult = CreatedActivity(id: "m1", sessionKey: "activity-m1")
   var onCall: (() -> Void)?
 
   func observe(agentId: String, conversationId: String) async throws {
@@ -17,6 +24,7 @@ final class SpyChatCommands: ChatCommanding {
   }
   func send(agentId: String, conversationId: String, text: String) async throws {
     sent.append((agentId, conversationId, text)); onCall?()
+    if failOn.contains("send") { throw StubError() }
   }
   func cancel(agentId: String, conversationId: String) async throws {
     cancelled.append((agentId, conversationId)); onCall?()
@@ -24,12 +32,21 @@ final class SpyChatCommands: ChatCommanding {
   func setStatus(agentId: String, activityId: String, status: String) async throws {
     statuses.append((agentId, activityId, status)); onCall?()
   }
+  func create(agentId: String, title: String, description: String) async throws -> CreatedActivity {
+    created.append((agentId, title, description)); onCall?()
+    if failOn.contains("create") { throw StubError() }
+    return createResult
+  }
+  func delete(agentId: String, activityId: String) async throws {
+    deleted.append((agentId, activityId)); onCall?()
+    if failOn.contains("delete") { throw StubError() }
+  }
 }
 
 @MainActor
 final class ChatScreenModelTests: XCTestCase {
   private func makeModel(
-    conversationId: String = "activity-42"
+    conversationId: String? = "activity-42"
   ) -> (ChatScreenModel, SpyChatCommands, SdkClient, MockTransport) {
     let transport = MockTransport()
     let client = SdkClient(transport: transport)
@@ -83,8 +100,9 @@ final class ChatScreenModelTests: XCTestCase {
   ) throws {
     model.appear()
     let sub = try XCTUnwrap(conversationSub(in: transport), "no conversation subscription opened")
+    let scope = try XCTUnwrap(model.conversation?.scope, "no conversation scope bound")
     client.receiveOutbound(
-      BridgeTestJSON.encode(.snapshot(sub: sub, scope: model.conversation.scope, snapshot: snapshot)))
+      BridgeTestJSON.encode(.snapshot(sub: sub, scope: scope, snapshot: snapshot)))
   }
 
   func testPendingSlotShowsWhileSubmittedWithLabel() throws {
@@ -152,6 +170,79 @@ final class ChatScreenModelTests: XCTestCase {
       model.composerPlaceholder, Strings.Chat.followUpPlaceholder,
       "once the user has spoken it is a follow-up")
     model.disappear()
+  }
+
+  // MARK: draft first-send state machine (PARITY §6 / create-mission.ts)
+
+  /// Await the model's fire-and-forget send `Task` by polling until it settles.
+  private func awaitSettled(_ model: ChatScreenModel) async {
+    let exp = expectation(description: "send task settled")
+    Task { @MainActor in
+      while model.isSending { try? await Task.sleep(for: .milliseconds(5)) }
+      exp.fulfill()
+    }
+    await fulfillment(of: [exp], timeout: 2)
+  }
+
+  func testDraftFirstSendCreatesThenSendsThenBindsAndObserves() async {
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    XCTAssertNil(model.conversationId, "starts as an unsent draft")
+    model.draft = "  Draft the launch email \n"
+    model.send()
+    await awaitSettled(model)
+
+    XCTAssertEqual(spy.created.count, 1)
+    XCTAssertEqual(spy.created.last?.title, "Draft the launch email", "fallback title from the text")
+    XCTAssertEqual(spy.created.last?.description, "Draft the launch email")
+    XCTAssertEqual(spy.sent.last?.conversationId, "activity-m1", "sends into the new session")
+    XCTAssertEqual(spy.sent.last?.text, "Draft the launch email")
+    XCTAssertEqual(spy.observed.last?.conversationId, "activity-m1", "observes the now-real chat")
+    XCTAssertEqual(model.conversationId, "activity-m1", "draft transitioned into the real conversation")
+    XCTAssertNotNil(model.conversation, "conversation scope bound")
+    XCTAssertEqual(model.draft, "", "draft cleared on success")
+    XCTAssertNil(model.actionError)
+    XCTAssertTrue(spy.deleted.isEmpty, "no rollback on the happy path")
+    model.disappear()
+  }
+
+  func testDraftSendFailureRollsBackDeletesAndRestoresDraft() async {
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    spy.failOn = ["send"]
+    model.draft = "do the thing"
+    model.send()
+    await awaitSettled(model)
+
+    XCTAssertEqual(spy.created.count, 1)
+    XCTAssertEqual(spy.sent.count, 1, "send was attempted")
+    XCTAssertEqual(spy.deleted.last?.activityId, "m1", "the just-created activity is rolled back")
+    XCTAssertNil(model.conversationId, "draft unbound after rollback")
+    XCTAssertNil(model.conversation)
+    XCTAssertEqual(model.draft, "do the thing", "draft restored so the user can retry")
+    XCTAssertNotNil(model.actionError, "the failure is surfaced, never silent")
+  }
+
+  func testDraftCreateFailureNeverSendsAndRestoresDraft() async {
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    spy.failOn = ["create"]
+    model.draft = "hello"
+    model.send()
+    await awaitSettled(model)
+
+    XCTAssertEqual(spy.created.count, 1)
+    XCTAssertTrue(spy.sent.isEmpty, "no turn is sent when create fails")
+    XCTAssertTrue(spy.deleted.isEmpty, "nothing to roll back — create never succeeded")
+    XCTAssertNil(model.conversationId)
+    XCTAssertEqual(model.draft, "hello", "draft restored")
+    XCTAssertNotNil(model.actionError)
+  }
+
+  func testDraftBlankSendDoesNothing() {
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    model.draft = "   \n "
+    model.send()
+    XCTAssertTrue(spy.created.isEmpty)
+    XCTAssertNil(model.conversationId)
+    XCTAssertEqual(model.sendTick, 0)
   }
 
   /// Find the `sub` id of the subscribe frame targeting the `conversation/` scope.
