@@ -20,8 +20,8 @@ enum Strings {
         static let archived = "Archived"
         static let allAgents = "All agents"
 
-        // Card actions (board.json:cardActions).
-        static let approve = "Move to done"
+        // Card actions (board.json:cardActions). Move-to-done was removed from
+        // the lists; a mission-moving affordance is a later design.
         static let rename = "Change title"
         static let delete = "Delete"
 

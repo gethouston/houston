@@ -3,8 +3,8 @@ import Foundation
 // Per-agent missions-screen copy. Added as a namespaced extension on the shared
 // `Strings` (DesignSystem/Strings.swift) so this surface never edits — or
 // collides on — that shared file. Section headers ("Needs you" / "Running" /
-// "Done"), the Archived row, the composer, and the Approve / Rename / Archive
-// action labels all reuse the existing desktop-exact copy (`Strings.Board.*` /
+// "Done"), the Archived row, the composer, and the Rename / Archive action labels
+// all reuse the existing desktop-exact copy (`Strings.Board.*` /
 // `Strings.MissionControl.*`); only the Delete confirmation is new here.
 //
 // The Delete confirmation has no desktop dialog to mirror (desktop deletes from
@@ -16,10 +16,5 @@ extension Strings {
         /// reuses `Strings.Board.delete` ("Delete").
         static let deleteConfirmTitle = "Delete mission?"
         static let deleteConfirmBody = "This removes the mission and its chat for good. You can't undo this."
-
-        /// Accessibility label for the toolbar overflow menu that opens this
-        /// agent's AI Models + Integrations. Product-voice (desktop reaches these
-        /// from top-level nav, not a per-agent menu).
-        static let moreMenu = "Agent settings"
     }
 }

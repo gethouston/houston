@@ -11,7 +11,6 @@ struct MissionControlPager: View {
   let agentFilter: String?
   @Binding var selection: BoardColumn
   let onOpen: (ChatRoute) -> Void
-  let onApprove: (MissionCardData) -> Void
   let onRename: (MissionCardData) -> Void
   let onArchive: (MissionCardData) -> Void
 
@@ -34,7 +33,7 @@ struct MissionControlPager: View {
       ForEach(cards) { card in
         MissionCardRow(
           card: card, onOpen: onOpen,
-          onApprove: onApprove, onRename: onRename, onArchive: onArchive
+          onRename: onRename, onArchive: onArchive
         )
       }
     }

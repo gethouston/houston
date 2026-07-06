@@ -1,9 +1,13 @@
 import Foundation
 
-/// The write side of a mission card's explicit actions (PARITY §1/§2): Approve
-/// (→ done), Archive, Rename. Each is one `activities/*` command through the
-/// shared runner; the scope republishes and the board updates reactively, so
-/// these return once the command settles and never mutate local state directly.
+/// The write side of a mission card's explicit actions (PARITY §1/§2): Archive
+/// and Rename. Each is one `activities/*` command through the shared runner; the
+/// scope republishes and the board updates reactively, so these return once the
+/// command settles and never mutate local state directly.
+///
+/// `setStatus` stays general (any status) — the move-to-done affordance was
+/// removed from the lists, but the status mutation is still used by Archive and
+/// remains available for the mission-moving flow the founder will design later.
 ///
 /// Errors are propagated, never swallowed — the caller surfaces them.
 @MainActor
@@ -12,11 +16,6 @@ struct MissionActions {
 
   init(runner: any MissionCommandRunning = SdkClient.shared) {
     self.runner = runner
-  }
-
-  /// Approve a `needs_you` mission: move it to Done ("Move to done").
-  func approve(_ card: MissionCardData) async throws {
-    try await setStatus(agentId: card.agentId, id: card.activityId, status: "done")
   }
 
   /// Archive a mission (status → `archived`, PARITY §2). Reversible by replying.
