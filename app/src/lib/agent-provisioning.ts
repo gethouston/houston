@@ -31,12 +31,48 @@ export const PROVISIONING_RETRY_MS = 3_000;
  */
 export const PROVISIONING_TTL_MS = 10 * 60_000;
 
+/**
+ * A message sent while the engine was still warming up. The wire send is NOT
+ * fired then (a held request dies with load-balancer timeouts or a reload) —
+ * the message shows as a local bubble and the real send fires the moment the
+ * readiness probe clears. Persisted with the entry so a relaunch mid-warm-up
+ * still delivers it. Attachments can't persist: after a relaunch the send
+ * falls back to `text`.
+ */
+export interface PendingWarmingSend {
+  /** Unique per queued message — keys its in-memory prompt builder. */
+  id: string;
+  sessionKey: string;
+  /** What the user typed — the bubble, and the fallback wire prompt. */
+  text: string;
+  /**
+   * Board row to (up)create right before this send — carried by the FIRST
+   * message of a new conversation. Writing it at flush time (engine awake,
+   * id-upsert idempotent) is the only way it survives: a write fired during
+   * the warm-up is a held request that dies with a reload.
+   */
+  row?: {
+    id: string;
+    title: string;
+    description: string;
+    agent?: string;
+    provider?: string;
+    model?: string;
+  };
+  promptFile?: string;
+  provider?: string;
+  model?: string;
+  effort?: string;
+}
+
 export interface ProvisioningEntry {
   agentId: string;
   /** What the engine client addresses the agent by (`agent.folderPath`). */
   agentPath: string;
   /** Epoch ms of the create call — the TTL anchor. */
   since: number;
+  /** Messages queued while warming, flushed on ready (in order). */
+  pendingSends?: PendingWarmingSend[];
 }
 
 /**
@@ -67,16 +103,32 @@ export function parsePersistedProvisioning(
     return [];
   }
   if (!Array.isArray(parsed)) return [];
-  return parsed.filter((e): e is ProvisioningEntry => {
-    if (!e || typeof e !== "object") return false;
-    const { agentId, agentPath, since } = e as Partial<ProvisioningEntry>;
-    return (
-      typeof agentId === "string" &&
-      typeof agentPath === "string" &&
-      typeof since === "number" &&
-      now - since < PROVISIONING_TTL_MS
+  return parsed
+    .filter((e): e is ProvisioningEntry => {
+      if (!e || typeof e !== "object") return false;
+      const { agentId, agentPath, since } = e as Partial<ProvisioningEntry>;
+      return (
+        typeof agentId === "string" &&
+        typeof agentPath === "string" &&
+        typeof since === "number" &&
+        now - since < PROVISIONING_TTL_MS
+      );
+    })
+    .map((e) =>
+      Array.isArray(e.pendingSends)
+        ? {
+            ...e,
+            pendingSends: e.pendingSends.filter(
+              (s): s is PendingWarmingSend =>
+                !!s &&
+                typeof s === "object" &&
+                typeof (s as PendingWarmingSend).id === "string" &&
+                typeof (s as PendingWarmingSend).sessionKey === "string" &&
+                typeof (s as PendingWarmingSend).text === "string",
+            ),
+          }
+        : e,
     );
-  });
 }
 
 export interface ProbeDeps {

@@ -57,6 +57,17 @@ describe("parsePersistedProvisioning", () => {
       [fresh],
     );
   });
+
+  it("keeps well-formed pending sends and drops malformed ones", () => {
+    const send = { id: "s1", sessionKey: "activity-a", text: "hi" };
+    const parsed = parsePersistedProvisioning(
+      JSON.stringify([
+        { ...fresh, pendingSends: [send, { text: 5 }, null, { id: "x" }] },
+      ]),
+      now,
+    );
+    deepStrictEqual(parsed[0].pendingSends, [send]);
+  });
 });
 
 describe("runProvisioningProbe", () => {

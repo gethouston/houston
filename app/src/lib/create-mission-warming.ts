@@ -4,21 +4,22 @@
  * The normal `createMission` awaits the activity write before starting the
  * turn — against a warming engine that write is held for the whole cold
  * start, so the composer froze with the user's text still in it. This path
- * inverts the flow around one platform guarantee: per-agent requests are
- * answered in arrival order once the engine wakes.
+ * answers immediately instead:
  *
- *  1. Generate the activity id client-side (the host honors it, HOU-693).
- *  2. Queue the board-row POST first — not awaited; it lands when the engine
- *     is up, and being first keeps it ahead of the turn's board-status write.
- *  3. Start the turn immediately: the SDK pushes the user's bubble into the
- *     conversation VM synchronously, and the wire send is held until the
- *     engine answers — so the reply streams in on its own, nothing to resend.
+ *  1. Generate the activity id client-side (the host honors it, HOU-693) and
+ *     fire the board-row POST without awaiting — it lands when the engine
+ *     wakes, and the request itself nudges the warm-up along.
+ *  2. Render the user's message as a local bubble and QUEUE the send with the
+ *     provisioning entry (`lib/warming-sends.ts`). No held wire send: a held
+ *     request dies with infrastructure timeouts or a reload, silently eating
+ *     the message. The queued send fires when the readiness probe clears, and
+ *     survives a relaunch via the entry's persisted mirror.
  *
  * The caller gets the id/sessionKey back right away, so the panel opens on
- * the new conversation with the user's message (and the provisioning card)
- * visible.
+ * the new conversation with the message (and the provisioning card) visible.
  */
 
+import { useAgentProvisioningStore } from "../stores/agent-provisioning";
 import { analytics } from "./analytics";
 import type {
   CreateMissionAgent,
@@ -27,64 +28,81 @@ import type {
 } from "./create-mission";
 import { showErrorToast } from "./error-toast";
 import i18n from "./i18n";
-import { fallbackMissionTitle, refreshMissionTitle } from "./mission-title";
+import { fallbackMissionTitle } from "./mission-title";
 import { tauriActivity, tauriChat } from "./tauri";
 
-export async function createMissionWhileWarming(
+export function createMissionWhileWarming(
   agent: CreateMissionAgent,
   text: string,
   opts: CreateMissionOptions = {},
-): Promise<CreateMissionResult> {
+): CreateMissionResult {
   const titleText = opts.titleText ?? text;
   const title = opts.title ?? fallbackMissionTitle(titleText);
   const conversationId = crypto.randomUUID();
   const sessionKey = `activity-${conversationId}`;
 
-  // Fire-and-forget with its own surface: the caller returns before this
-  // settles, so a failure here must not stay silent (beta policy).
-  void tauriActivity
-    .createWithId(agent.folderPath, {
-      id: conversationId,
-      title,
-      description: text,
-      agent: opts.agentMode,
-      provider: opts.providerOverride,
-      model: opts.modelOverride,
-    })
-    .catch(() => {
-      // call() already captured the error for Sentry (toast:false); this is
-      // the user-facing half. The turn itself still runs and stays visible
-      // in the open panel — only the board card is missing.
-      showErrorToast(
-        "create_mission_warming",
-        i18n.t("chat:errors.missionRowFailed"),
-      );
-    });
-
-  // No files → resolves synchronously; with files the uploads are held until
-  // the engine wakes, and the bubble follows them.
-  const prompt = opts.buildPrompt
-    ? await opts.buildPrompt(conversationId)
-    : text;
-
-  await tauriChat.send(agent.folderPath, prompt, sessionKey, {
-    mode: opts.promptFile,
-    providerOverride: opts.providerOverride,
-    modelOverride: opts.modelOverride,
-    effortOverride: opts.effortOverride,
-  });
-
-  analytics.track("mission_created", { agent_mode: opts.agentMode });
-
-  if (!opts.title) {
-    void refreshMissionTitle({
+  // The board row rides the queued send and is written at FLUSH time (engine
+  // awake, id-upsert idempotent) — a write fired now would be a held request
+  // that dies with a reload, silently losing the mission from the board. The
+  // board can't render the row during the warm-up anyway: its own list read
+  // is held just the same. No AI title refresh either — the fallback title is
+  // on the row (cosmetic).
+  const queued = useAgentProvisioningStore
+    .getState()
+    .queueWarmingSend(agent.id, {
       agentPath: agent.folderPath,
-      activityId: conversationId,
-      text: titleText,
+      sessionKey,
+      text,
+      buildPrompt: opts.buildPrompt
+        ? () => opts.buildPrompt?.(conversationId) ?? text
+        : undefined,
+      row: {
+        id: conversationId,
+        title,
+        description: text,
+        agent: opts.agentMode,
+        provider: opts.providerOverride,
+        model: opts.modelOverride,
+      },
+      promptFile: opts.promptFile,
       provider: opts.providerOverride,
       model: opts.modelOverride,
+      effort: opts.effortOverride,
+    });
+  if (!queued) {
+    // The agent turned ready between the caller's provisioning check and the
+    // queue — the engine answers now: write the row and send like any turn.
+    void (async () => {
+      await tauriActivity
+        .createWithId(agent.folderPath, {
+          id: conversationId,
+          title,
+          description: text,
+          agent: opts.agentMode,
+          provider: opts.providerOverride,
+          model: opts.modelOverride,
+        })
+        .catch(() => {
+          showErrorToast(
+            "create_mission_warming",
+            i18n.t("chat:errors.missionRowFailed"),
+          );
+        });
+      const prompt = opts.buildPrompt
+        ? await opts.buildPrompt(conversationId)
+        : text;
+      await tauriChat.send(agent.folderPath, prompt, sessionKey, {
+        mode: opts.promptFile,
+        providerOverride: opts.providerOverride,
+        modelOverride: opts.modelOverride,
+        effortOverride: opts.effortOverride,
+      });
+    })().catch(() => {
+      // tauriChat.send toasted the real reason already.
     });
   }
+
+  analytics.track("mission_created", { agent_mode: opts.agentMode });
 
   return {
     conversationId,

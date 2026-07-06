@@ -224,15 +224,26 @@ export class HoustonClient {
       // /providers on the base client has no route and a stale token → 401.
       const engine = this.providerEngine();
       if (engine) {
-        const providers = await engine.listProviders();
-        const active =
-          providers.find((p) => p.isActive) ??
-          providers.find((p) => p.configured);
-        if (active)
-          return {
-            provider: toOldProvider(active.id),
-            model: active.activeModel,
-          };
+        // Bounded: this call sits on the BOOT path (listWorkspaces → the app's
+        // wsLoading splash), and a per-agent read against a cold/warming
+        // engine is held until the engine wakes — minutes. The value only
+        // labels the synthetic workspace, so after a short budget fall back
+        // to the defaults instead of wedging the first paint (HOU-693; same
+        // invariant as "App boot — gate chain must never hang on the engine").
+        const providers = await Promise.race([
+          engine.listProviders(),
+          new Promise<null>((r) => setTimeout(() => r(null), 4_000)),
+        ]);
+        if (providers) {
+          const active =
+            providers.find((p) => p.isActive) ??
+            providers.find((p) => p.configured);
+          if (active)
+            return {
+              provider: toOldProvider(active.id),
+              model: active.activeModel,
+            };
+        }
       }
     } catch {
       /* engine unreachable / no agent selected / not authed → defaults below */

@@ -25,6 +25,13 @@ import {
 import { getEngine, isCoLocatedEngine, whenEngineReady } from "../lib/engine";
 import { reportError, showErrorToast } from "../lib/error-toast";
 import i18n from "../lib/i18n";
+import {
+  buildWarmingSend,
+  flushWarmingSends,
+  isFlushingWarmingSends,
+  type QueueWarmingSendArgs,
+  restoreWarmingBubbles,
+} from "../lib/warming-sends";
 
 const STORAGE_KEY = "houston.agent-provisioning";
 
@@ -38,6 +45,13 @@ interface AgentProvisioningState {
     oldId: string,
     agent: { id: string; folderPath: string },
   ) => void;
+  /**
+   * Park a chat send until the engine is ready (see `lib/warming-sends.ts`):
+   * renders the bubble and appends to the entry's queue. Returns false — and
+   * renders nothing — when the agent isn't marked (or its flush already
+   * started): the caller sends normally.
+   */
+  queueWarmingSend: (agentId: string, args: QueueWarmingSendArgs) => boolean;
   /**
    * Stop tracking. With `onlyIf`, clears only while that exact entry is still
    * current — a probe's own settle must not clear a newer re-mark of the id.
@@ -90,11 +104,27 @@ export const useAgentProvisioningStore = create<AgentProvisioningState>(
       if (!previous) return;
       get().clearProvisioning(oldId);
       // Keep the original TTL anchor: the rename didn't restart the warm-up.
+      // Queued sends move with the agent (their session keys are stable).
       startEntry({
         agentId: agent.id,
         agentPath: agent.folderPath,
         since: previous.since,
+        pendingSends: previous.pendingSends,
       });
+    },
+
+    queueWarmingSend: (agentId, args) => {
+      const entry = get().provisioning[agentId];
+      if (!entry || isFlushingWarmingSends(entry)) return false;
+      // Mutate in place: replacing the entry object would retire its live
+      // probe (the probe's exit switch is entry identity). Presence didn't
+      // change, so no set() — only the mirror needs the new send.
+      entry.pendingSends = [
+        ...(entry.pendingSends ?? []),
+        buildWarmingSend(args),
+      ];
+      storageWrite(get().provisioning);
+      return true;
     },
 
     clearProvisioning: (agentId, onlyIf) => {
@@ -126,7 +156,13 @@ function startProbe(entry: ProvisioningEntry): void {
     // Identity, not presence: a re-mark of the same id retires this probe.
     isMarked: (id) =>
       useAgentProvisioningStore.getState().provisioning[id] === entry,
-    onReady: (id) => store.clearProvisioning(id, entry),
+    onReady: (id) => {
+      // Deliver the queued messages FIRST (their turns register before any
+      // new composer send can), then drop the card/placeholder.
+      void flushWarmingSends(entry).finally(() =>
+        store.clearProvisioning(id, entry),
+      );
+    },
     onTimeout: (id, lastError) => {
       store.clearProvisioning(id, entry);
       showErrorToast(
@@ -152,5 +188,10 @@ void whenEngineReady().then(() => {
     if (raw !== null) storageWrite({});
     return;
   }
-  for (const entry of fresh) startEntry(entry);
+  for (const entry of fresh) {
+    startEntry(entry);
+    // The relaunch emptied the in-memory VM: re-render the queued bubbles so
+    // the sent-but-not-yet-delivered messages stay visible.
+    restoreWarmingBubbles(entry);
+  }
 });

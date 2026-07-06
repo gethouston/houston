@@ -134,7 +134,7 @@
   },
   "agentProvisioning": {
     "title": "Estamos creando tu agente",
-    "body": "Esto puede tardar un par de minutos.",
+    "body": "Esto puede tardar un momento.",
     "chatBody": "Responderá a tu mensaje en cuanto esté listo.",
     "failed": "No pudimos terminar de crear tu agente. Inténtalo de nuevo en un momento."
   },

@@ -11,6 +11,7 @@ import { queryKeys } from "../../lib/query-keys";
 import { formatVisibleMessageText } from "../../lib/queued-chat";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
 import type { Agent, AgentDefinition } from "../../lib/types";
+import { useAgentProvisioningStore } from "../../stores/agent-provisioning";
 import { useUIStore } from "../../stores/ui";
 import type { SendOverrides } from "./board-source";
 
@@ -152,6 +153,34 @@ export function useAgentBoardSend({
       // Activity status flip (→ "running") is owned by the engine; don't
       // pre-write from the UI.
       const scopeId = activity ? `activity-${activity.id}` : sessionKey;
+      // A follow-up into a still-warming agent parks with the same queue the
+      // first message used (HOU-693): rendered now, delivered on ready. A
+      // held wire send would die with infrastructure timeouts or a reload.
+      const warmingMode = agentModes?.find((m) => m.id === activity?.agent);
+      const queuedWarm = useAgentProvisioningStore
+        .getState()
+        .queueWarmingSend(agent.id, {
+          agentPath: path,
+          sessionKey,
+          text,
+          buildPrompt:
+            files.length > 0
+              ? async () => {
+                  const saved = await tauriAttachments.save(scopeId, files);
+                  return buildAttachmentPrompt(text, files, saved);
+                }
+              : undefined,
+          promptFile: warmingMode?.promptFile,
+          provider: overrides.providerOverride,
+          model: overrides.modelOverride,
+        });
+      if (queuedWarm) {
+        setLoading((prev) => ({ ...prev, [sessionKey]: true }));
+        analytics.track("chat_message_sent");
+        for (const f of files)
+          analytics.track("file_attached", { file_kind: classifyFileKind(f) });
+        return;
+      }
       try {
         const paths = await tauriAttachments.save(scopeId, files);
         const prompt = buildAttachmentPrompt(text, files, paths);
@@ -182,7 +211,7 @@ export function useAgentBoardSend({
         throw err;
       }
     },
-    [path, addToast, rawItems, agentModes, t],
+    [path, agent.id, addToast, rawItems, agentModes, t],
   );
 
   const stopSession = useCallback(

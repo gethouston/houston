@@ -69,6 +69,24 @@ export function seedConversationVm(
 }
 
 /**
+ * Show a user's message in the conversation VM BEFORE any turn exists — the
+ * warming-engine send queue (HOU-693): the message is held client-side until
+ * the just-created agent's engine answers, but the user must see it as sent
+ * immediately. The eventual real send goes out with `suppressUserBubble` so
+ * the bubble is never doubled.
+ */
+export function pushPendingUserMessage(
+  agentPath: string,
+  sessionKey: string,
+  text: string,
+): void {
+  conversationVm.pushFeedItem(agentPath, sessionKey, {
+    feed_type: "user_message",
+    data: text,
+  });
+}
+
+/**
  * The web adapter's turn entry. The turn/feed machinery lives in `@houston/sdk`
  * now; this drives it with a bus-backed {@link createBusFeedOutput} FeedOutput
  * and keeps the historical `(…, setActivityStatus)` signature shape so app
