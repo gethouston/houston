@@ -34,6 +34,8 @@ export interface ChatModelPicker {
   isOpen: boolean;
   setOpen: (next: boolean) => void;
   displayLabel: string;
+  /** The current model's provider, so the rail opens focused on it. */
+  defaultProviderId: string;
   models: ModelPickerModel[];
   providers: ModelPickerProvider[];
   favorites: string[];
@@ -123,6 +125,7 @@ export function useChatModelPicker(opts: {
     isOpen,
     setOpen,
     displayLabel: view.displayLabel,
+    defaultProviderId: provider,
     models: view.models,
     providers: view.providers,
     favorites,

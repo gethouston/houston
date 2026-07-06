@@ -20,7 +20,6 @@ export function ModelList({
   selectedId,
   favorites,
   openDetailId,
-  renderProviderIcon,
   onSelect,
   onToggleFavorite,
   onToggleDetail,
@@ -34,7 +33,6 @@ export function ModelList({
   selectedId?: string;
   favorites: ReadonlySet<string>;
   openDetailId?: string;
-  renderProviderIcon?: (id: string, className?: string) => React.ReactNode;
   onSelect: (id: string) => void;
   onToggleFavorite: (id: string) => void;
   onToggleDetail: (id: string) => void;
@@ -95,7 +93,6 @@ export function ModelList({
               favorite={favorites.has(model.id)}
               detailOpen={openDetailId === model.id}
               labels={labels}
-              renderProviderIcon={renderProviderIcon}
               onSelect={onSelect}
               onToggleFavorite={onToggleFavorite}
               onToggleDetail={onToggleDetail}
@@ -143,13 +140,13 @@ function SectionHeading({
           <button
             type="button"
             onClick={() => onConnect?.(provider.id)}
-            className="text-[0.7rem] font-semibold text-primary normal-case"
+            className="text-[0.7rem] font-semibold text-foreground normal-case transition-colors hover:text-muted-foreground"
           >
             {labels.connect} →
           </button>
         ) : (
           <span className="inline-flex items-center gap-1.5 text-[0.7rem] font-medium text-muted-foreground normal-case">
-            <span className="size-1.5 rounded-full bg-success" />
+            <span className="size-1.5 rounded-full bg-muted-foreground" />
             {labels.connected}
           </span>
         ))}
@@ -176,13 +173,12 @@ function headingText(
 
 function SkeletonRow() {
   return (
-    <div className="grid grid-cols-[30px_1fr_auto] items-center gap-3 px-3 py-2.5 motion-reduce:[&_*]:animate-none">
-      <Skeleton className="size-[30px] rounded-lg" />
-      <div className="space-y-1.5">
+    <div className="flex items-center gap-3 px-3 py-2.5 motion-reduce:[&_*]:animate-none">
+      <div className="flex-1 space-y-1.5">
         <Skeleton className="h-3 w-2/5" />
         <Skeleton className="h-2.5 w-3/5" />
       </div>
-      <Skeleton className="h-5 w-20" />
+      <Skeleton className="size-7 rounded-md" />
     </div>
   );
 }

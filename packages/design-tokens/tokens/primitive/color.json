@@ -38,11 +38,6 @@
       "highlight-ink-light": { "$value": "#3f2d00" },
       "highlight-ink-dark": { "$value": "#fde68a" }
     },
-    "accent": {
-      "$type": "color",
-      "violet": { "$value": "#7c3aed" },
-      "violet-bright": { "$value": "#a78bfa" }
-    },
     "agent": {
       "$type": "color",
       "charcoal": { "$value": "#1a1a1a" },

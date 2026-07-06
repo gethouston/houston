@@ -1,6 +1,6 @@
 import type { ModelPriceTier } from "./types";
 
-/** Number of filled `$` glyphs for a non-free tier. */
+/** Number of filled `$` glyphs for a non-free tier (also the info-panel scale). */
 export const PRICE_TIER_DOLLARS: Record<
   Exclude<ModelPriceTier, "free">,
   number
@@ -10,32 +10,18 @@ export const PRICE_TIER_DOLLARS: Record<
   high: 3,
 };
 
-/** CSS var carrying the accent color for a price tier (created by the tokens agent). */
-export const PRICE_TIER_VAR: Record<ModelPriceTier, string> = {
-  free: "var(--ht-price-free)",
-  low: "var(--ht-price-low)",
-  mid: "var(--ht-price-mid)",
-  high: "var(--ht-price-high)",
-};
+/** Coarse context bucket: 1 = Low, 2 = Medium, 3 = High. */
+export type ContextLevel = 1 | 2 | 3;
 
-/** `200000` → `"200K"`, `1000000` → `"1M"`. */
-export function formatContext(tokens: number | undefined): string {
-  if (tokens === undefined) return "·";
-  if (tokens >= 1_000_000) return `${trim(tokens / 1_000_000)}M`;
-  if (tokens >= 1_000) return `${trim(tokens / 1_000)}K`;
-  return String(tokens);
-}
-
-/** `0` → free (caller decides label); otherwise `"$3 / Mtok"`. */
-export function formatPricePerMtok(
-  price: number | undefined,
-  freeLabel: string,
-): string {
-  if (price === undefined) return "·";
-  if (price === 0) return freeLabel;
-  return `$${trim(price)} / Mtok`;
-}
-
-function trim(n: number): string {
-  return Number.parseFloat(n.toFixed(2)).toString();
+/**
+ * Bucket a context window into three ascending levels for the info panel's
+ * bar indicator. Thresholds are deliberately coarse: `< 128K` tokens reads as
+ * Low, `<= 400K` as Medium, anything larger as High. Unknown windows fall back
+ * to Low so the indicator never renders empty.
+ */
+export function contextLevel(tokens: number | undefined): ContextLevel {
+  if (tokens === undefined) return 1;
+  if (tokens < 128_000) return 1;
+  if (tokens <= 400_000) return 2;
+  return 3;
 }

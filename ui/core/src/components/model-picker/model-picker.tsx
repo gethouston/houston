@@ -7,7 +7,7 @@ import { Command } from "../command";
 import { ModelList } from "./model-list";
 import { ModelPickerHeader } from "./model-picker-header";
 import { ProviderRail, type RailProvider } from "./provider-rail";
-import { buildView } from "./sections";
+import { buildView, resolveInitialProvider } from "./sections";
 import { DEFAULT_MODEL_PICKER_LABELS, type ModelPickerProps } from "./types";
 import { useModelPicker } from "./use-model-picker";
 
@@ -23,6 +23,7 @@ export function ModelPicker({
   favorites,
   recents,
   selectedId,
+  defaultProviderId,
   catalogState = "ready",
   onSelect,
   onToggleFavorite,
@@ -32,7 +33,13 @@ export function ModelPicker({
   className,
 }: ModelPickerProps) {
   const labels = { ...DEFAULT_MODEL_PICKER_LABELS, ...labelsProp };
-  const c = useModelPicker();
+  // Open focused on a provider (resolved once); All/Favorites/Recents are
+  // opt-in via the rail. Providers is effectively stable per open.
+  const initialProvider = useMemo(
+    () => resolveInitialProvider(defaultProviderId, providers),
+    [defaultProviderId, providers],
+  );
+  const c = useModelPicker(initialProvider);
 
   const favoritesSet = useMemo(() => new Set(favorites), [favorites]);
   const providersMap = useMemo(
@@ -45,28 +52,13 @@ export function ModelPicker({
   );
 
   // Rail entries follow the provider prop order, keeping only providers that
-  // actually own models, and carrying a live count badge.
+  // actually own models.
   const railProviders = useMemo<RailProvider[]>(() => {
-    const counts = new Map<string, number>();
-    for (const m of models) {
-      counts.set(m.providerId, (counts.get(m.providerId) ?? 0) + 1);
-    }
+    const withModels = new Set(models.map((m) => m.providerId));
     return providers
-      .filter((p) => (counts.get(p.id) ?? 0) > 0)
-      .map((p) => ({
-        id: p.id,
-        name: p.name,
-        count: counts.get(p.id) ?? 0,
-        connection: p.connection,
-      }));
+      .filter((p) => withModels.has(p.id))
+      .map((p) => ({ id: p.id, name: p.name, connection: p.connection }));
   }, [models, providers]);
-
-  // Count favorites the list can actually show (present in `models`), so the rail
-  // badge matches the Favorites section — stale favorite ids don't inflate it.
-  const favoritesCount = useMemo(
-    () => models.reduce((n, m) => n + (favoritesSet.has(m.id) ? 1 : 0), 0),
-    [models, favoritesSet],
-  );
 
   const view = useMemo(
     () =>
@@ -105,14 +97,7 @@ export function ModelPicker({
       />
 
       {catalogState === "offline" && (
-        <div
-          className="flex items-center gap-2 border-b border-border/60 px-4 py-2 text-xs"
-          style={{
-            color: "var(--ht-warning)",
-            background:
-              "color-mix(in srgb, var(--ht-warning) 12%, transparent)",
-          }}
-        >
+        <div className="flex items-center gap-2 border-b border-border/60 bg-secondary px-4 py-2 text-xs text-muted-foreground">
           <TriangleAlert className="size-3.5 shrink-0" />
           {labels.offline}
         </div>
@@ -121,8 +106,6 @@ export function ModelPicker({
       <div className="flex min-h-0 flex-1">
         <ProviderRail
           providers={railProviders}
-          favoritesCount={favoritesCount}
-          totalCount={models.length}
           active={c.filter.provider}
           labels={labels}
           renderProviderIcon={renderProviderIcon}
@@ -137,7 +120,6 @@ export function ModelPicker({
           selectedId={selectedId}
           favorites={favoritesSet}
           openDetailId={c.openDetailId}
-          renderProviderIcon={renderProviderIcon}
           onSelect={onSelect}
           onToggleFavorite={onToggleFavorite}
           onToggleDetail={c.toggleDetail}

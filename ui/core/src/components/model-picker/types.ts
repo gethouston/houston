@@ -66,7 +66,6 @@ export interface ModelPickerLabels {
   price: string;
   clearFilters: string;
   favoritesOnly: string;
-  new: string;
   free: string;
   priceFree: string;
   priceLow: string;
@@ -81,10 +80,11 @@ export interface ModelPickerLabels {
   capTools: string;
   capImageGen: string;
   detailContext: string;
-  detailInput: string;
-  detailOutput: string;
   detailCapabilities: string;
-  detailModelId: string;
+  /** Context-window buckets shown beside the info-panel bar indicator. */
+  contextLow: string;
+  contextMedium: string;
+  contextHigh: string;
   /** e.g. singular/plural noun for the result count. */
   model: string;
   models: string;
@@ -111,7 +111,6 @@ export const DEFAULT_MODEL_PICKER_LABELS: ModelPickerLabels = {
   price: "Price",
   clearFilters: "Clear filters",
   favoritesOnly: "Favorites only",
-  new: "New",
   free: "Free",
   priceFree: "Free",
   priceLow: "$ Cheap",
@@ -126,10 +125,10 @@ export const DEFAULT_MODEL_PICKER_LABELS: ModelPickerLabels = {
   capTools: "Tools",
   capImageGen: "Image gen",
   detailContext: "Context",
-  detailInput: "Input",
-  detailOutput: "Output",
   detailCapabilities: "Capabilities",
-  detailModelId: "Model id",
+  contextLow: "Low",
+  contextMedium: "Medium",
+  contextHigh: "High",
   model: "model",
   models: "models",
   selected: "Selected",
@@ -144,6 +143,12 @@ export interface ModelPickerProps {
   /** Recently used model ids, most-recent first. */
   recents: string[];
   selectedId?: string;
+  /**
+   * Provider the picker opens focused on. Resolved to: this id when it names a
+   * provider in `providers`, else the first `connected` provider, else `"all"`.
+   * Recents/Favorites/All stay opt-in via the rail.
+   */
+  defaultProviderId?: string;
   /** Catalog freshness; default `"ready"`. */
   catalogState?: ModelPickerCatalogState;
   onSelect: (id: string) => void;

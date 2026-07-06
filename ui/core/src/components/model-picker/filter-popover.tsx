@@ -42,13 +42,12 @@ export function FilterPopover({
           aria-label={labels.filters}
           className={cn(
             "relative inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-            hasActiveFilter &&
-              "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary",
+            hasActiveFilter && "bg-accent text-foreground hover:bg-accent",
           )}
         >
           <Filter className="size-4" />
           {hasActiveFilter && (
-            <span className="absolute top-1 right-1 size-1.5 rounded-full bg-primary" />
+            <span className="absolute top-1 right-1 size-1.5 rounded-full bg-foreground" />
           )}
         </button>
       </PopoverTrigger>
@@ -124,8 +123,7 @@ function Chip({
       aria-pressed={active}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground",
-        active &&
-          "border-primary/40 bg-primary/10 text-primary hover:text-primary",
+        active && "border-foreground/30 bg-accent text-foreground",
       )}
     >
       {children}

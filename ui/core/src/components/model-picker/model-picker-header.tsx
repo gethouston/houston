@@ -55,9 +55,8 @@ export function ModelPickerHeader({
           aria-label={labels.favoritesOnly}
           className={cn(
             "inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-            filter.favOnly && "bg-primary/10 hover:bg-primary/10",
+            filter.favOnly && "bg-accent text-foreground hover:bg-accent",
           )}
-          style={filter.favOnly ? { color: "var(--ht-star)" } : undefined}
         >
           <Star
             className="size-[17px]"
