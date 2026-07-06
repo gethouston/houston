@@ -7,7 +7,8 @@ import XCTest
 @MainActor
 final class SpyChatCommands: ChatCommanding {
   private(set) var observed: [(agentId: String, conversationId: String)] = []
-  private(set) var sent: [(agentId: String, conversationId: String, text: String)] = []
+  private(set) var sent:
+    [(agentId: String, conversationId: String, text: String, model: String?)] = []
   private(set) var cancelled: [(agentId: String, conversationId: String)] = []
   private(set) var statuses: [(agentId: String, activityId: String, status: String)] = []
   private(set) var created: [(agentId: String, title: String, description: String)] = []
@@ -22,8 +23,8 @@ final class SpyChatCommands: ChatCommanding {
   func observe(agentId: String, conversationId: String) async throws {
     observed.append((agentId, conversationId)); onCall?()
   }
-  func send(agentId: String, conversationId: String, text: String) async throws {
-    sent.append((agentId, conversationId, text)); onCall?()
+  func send(agentId: String, conversationId: String, text: String, model: String?) async throws {
+    sent.append((agentId, conversationId, text, model)); onCall?()
     if failOn.contains("send") { throw StubError() }
   }
   func cancel(agentId: String, conversationId: String) async throws {
@@ -71,8 +72,28 @@ final class ChatScreenModelTests: XCTestCase {
     await awaitCall(spy) { model.send() }
     XCTAssertEqual(spy.sent.last?.text, "hi there")
     XCTAssertEqual(spy.sent.last?.conversationId, "activity-42")
+    XCTAssertNil(spy.sent.last?.model, "no pin set: falls back to the agent's active model")
     XCTAssertEqual(model.draft, "")
     XCTAssertEqual(model.sendTick, 1, "send fires exactly one haptic tick")
+  }
+
+  // MARK: selectedModel (HOU-695 per-conversation pin)
+
+  func testSendThreadsSelectedModelIntoExistingConversation() async {
+    let (model, spy, _, _) = makeModel()
+    model.selectedModel = "claude-opus-4"
+    model.draft = "hi"
+    await awaitCall(spy) { model.send() }
+    XCTAssertEqual(spy.sent.last?.model, "claude-opus-4")
+  }
+
+  func testDraftFirstSendThreadsSelectedModel() async {
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    model.selectedModel = "gpt-5"
+    model.draft = "hello"
+    model.send()
+    await awaitSettled(model)
+    XCTAssertEqual(spy.sent.last?.model, "gpt-5", "the draft's first send also carries the pin")
   }
 
   func testSendIgnoresBlankDraft() {

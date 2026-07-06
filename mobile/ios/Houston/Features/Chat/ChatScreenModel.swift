@@ -26,6 +26,11 @@ final class ChatScreenModel {
 
   /// The composer draft. Two-way bound by the composer field.
   var draft: String = ""
+  /// A per-conversation model pin (HOU-695): the "+" menu's model picker sets
+  /// this, and it is passed on every `turns/send` for THIS conversation only —
+  /// it never becomes the agent-wide default. `nil` falls back to the agent's
+  /// active provider/model.
+  var selectedModel: String?
   /// True while a `turns/send` (or a draft's create+send) is in flight.
   private(set) var isSending = false
   /// Monotonic ticks a view watches with `.sensoryFeedback` for haptics.
@@ -89,7 +94,8 @@ final class ChatScreenModel {
       if let conversationId {
         await run {
           try await self.commands.send(
-            agentId: self.agentId, conversationId: conversationId, text: text)
+            agentId: self.agentId, conversationId: conversationId, text: text,
+            model: self.selectedModel)
         }
       } else {
         await createAndSend(text: text)
@@ -107,7 +113,8 @@ final class ChatScreenModel {
       let created = try await commands.create(agentId: agentId, title: title, description: text)
       do {
         bindConversation(sessionKey: created.sessionKey)
-        try await commands.send(agentId: agentId, conversationId: created.sessionKey, text: text)
+        try await commands.send(
+          agentId: agentId, conversationId: created.sessionKey, text: text, model: selectedModel)
       } catch {
         unbindConversation()
         await rollback(activityId: created.id)
