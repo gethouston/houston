@@ -134,13 +134,17 @@ export async function handleFiles(
       return true;
     }
     if (method === "GET" && rest === "files/archive") {
-      const zip = await archiveWorkspace(vfs, root);
+      // No `path` → the whole workspace ("Download all"); with `path` → just
+      // that folder's subtree (the folder row's Download).
+      const rawFolder = query.get("path");
+      const folder = rawFolder ? safeRel(rawFolder) : undefined;
+      const zip = await archiveWorkspace(vfs, root, folder);
+      const zipName = folder
+        ? `${folder.split("/").pop()}.zip`
+        : `${ctx.agent.name} files.zip`;
       res.writeHead(200, {
         "Content-Type": "application/zip",
-        "Content-Disposition": contentDisposition(
-          "attachment",
-          `${ctx.agent.name} files.zip`,
-        ),
+        "Content-Disposition": contentDisposition("attachment", zipName),
         "Content-Length": zip.length,
         "Cache-Control": "no-store",
       });

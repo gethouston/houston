@@ -173,6 +173,13 @@
       "download": "Download",
       "close": "Close",
       "errorTitle": "Couldn't load the file"
+    },
+    "toasts": {
+      "savedTitle": "File saved",
+      "savedDescription": "{{name}} was saved to your computer.",
+      "revealAction": "Show in File Manager",
+      "revealFailed": "Couldn't show the file",
+      "saveFailedTitle": "Couldn't save the file"
     }
   }
 }

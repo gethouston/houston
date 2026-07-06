@@ -1940,6 +1940,7 @@ dependencies = [
  "notify-rust",
  "objc2",
  "objc2-app-kit",
+ "percent-encoding",
  "rand",
  "reqwest 0.12.28",
  "rfd",

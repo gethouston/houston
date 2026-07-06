@@ -80,6 +80,24 @@ test("renames and deletes a file from the context menu", async ({ page }) => {
   await expect(page.getByText("Q3 final.pdf")).toHaveCount(0);
 });
 
+test("a folder downloads as its own zip from the context menu", async ({
+  page,
+}) => {
+  await openFilesTab(page);
+
+  await page.getByText("Docs", { exact: true }).click({ button: "right" });
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("menu").getByText("Download").click(),
+  ]);
+  const file = await download.path();
+  const { readFileSync } = await import("node:fs");
+  const zip = readFileSync(file);
+  expect(zip.subarray(0, 2).toString("latin1")).toBe("PK");
+  // Zip entry names are stored verbatim; the folder is the archive's root.
+  expect(zip.toString("latin1")).toContain("Docs/sales.csv");
+});
+
 test("Download all saves the whole workspace as one zip", async ({ page }) => {
   await openFilesTab(page);
 

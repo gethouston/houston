@@ -9,7 +9,7 @@ import {
 } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { saveBlob } from "../../lib/save-blob";
+import { useSaveDownload } from "../../hooks/use-save-download";
 import { tauriFiles } from "../../lib/tauri";
 
 /**
@@ -43,6 +43,7 @@ export function FilePreviewDialog({
   onClose,
 }: Props) {
   const { t } = useTranslation("agents");
+  const save = useSaveDownload();
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
 
   useEffect(() => {
@@ -143,7 +144,7 @@ export function FilePreviewDialog({
             {t("files.preview.close")}
           </Button>
           {blob && (
-            <Button type="button" onClick={() => saveBlob(fileName, blob)}>
+            <Button type="button" onClick={() => void save(fileName, blob)}>
               {t("files.preview.download")}
             </Button>
           )}

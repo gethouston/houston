@@ -714,11 +714,14 @@ export const tauriFiles = {
     call<void>("move_project_file", () =>
       getEngine().moveProjectFile(agentPath, relPath, toDir),
     ),
-  /** The whole workspace as one zip — "Download all" where there is no local
-   * file manager to reveal in (cloud pods, web builds). */
-  downloadArchive: (agentPath: string) =>
-    call<{ blob: Blob; contentType: string }>("download_project_archive", () =>
-      getEngine().downloadProjectArchive(agentPath),
+  /** One zip of the whole workspace ("Download all") or, with `relPath`, of a
+   * single folder — where there is no local file manager to reveal in (cloud
+   * pods, web builds). */
+  downloadArchive: (agentPath: string, relPath?: string) =>
+    call<{ blob: Blob; contentType: string }>(
+      "download_project_archive",
+      () => getEngine().downloadProjectArchive(agentPath, relPath),
+      { agentPath, relPath },
     ),
   revealAgent: (agentPath: string) => osRevealAgent(agentPath),
 };

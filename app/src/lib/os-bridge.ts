@@ -157,6 +157,21 @@ export function osRevealPath(path: string): Promise<void> {
   return invoke<void>("reveal_path", { path });
 }
 
+/** Native "Save as…" for downloaded bytes — the desktop webview ignores
+ * anchor-download clicks (no download delegate), so the shell shows the OS
+ * save dialog and writes the file itself (HOU-703). The bytes travel as a raw
+ * IPC payload (not JSON) so large archives don't freeze the webview; the
+ * filename rides in the percent-encoded `x-download-name` header. Resolves
+ * with the chosen path, or null when the user cancelled the dialog. */
+export function osSaveDownload(
+  fileName: string,
+  bytes: Uint8Array,
+): Promise<string | null> {
+  return invoke<string | null>("save_download", bytes, {
+    headers: { "x-download-name": encodeURIComponent(fileName) },
+  });
+}
+
 /** Open an agent-relative file with the user's default application. */
 export function osOpenFile(
   agentPath: string,

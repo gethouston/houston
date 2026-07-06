@@ -652,6 +652,7 @@ export class HoustonClient {
    * it is never offered in the UI here, so refuse loudly if reached. */
   async downloadProjectArchive(
     _agentPath: string,
+    _path?: string,
   ): Promise<{ blob: Blob; contentType: string }> {
     throw new Error("Downloading all files is not supported on this engine.");
   }

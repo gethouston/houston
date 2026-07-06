@@ -753,13 +753,18 @@ export class HoustonClient {
       body: JSON.stringify({ path: relPath, toDir }),
     });
   }
-  /** The whole workspace as one zip — "Download all" where there's no local
-   * file manager to reveal in (cloud pods, web builds). */
+  /** One zip of the workspace ("Download all") or, with `path`, of a single
+   * folder's subtree — for deployments with no local file manager to reveal
+   * in (cloud pods, web builds). */
   async downloadProjectArchive(
     agentPath: string,
+    path?: string,
   ): Promise<{ blob: Blob; contentType: string }> {
     if (!this.cp) throw new Error("Downloads need a connected host.");
-    const res = await this.cpFilesFetch(agentPath, "files/archive");
+    const res = await this.cpFilesFetch(
+      agentPath,
+      `files/archive${path ? `?path=${encodeURIComponent(path)}` : ""}`,
+    );
     return {
       blob: await res.blob(),
       contentType: res.headers.get("content-type") ?? "application/zip",

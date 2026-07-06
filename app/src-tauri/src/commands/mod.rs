@@ -3,8 +3,10 @@
 use std::path::{Path, PathBuf};
 
 pub mod diagnostics;
+mod dialogs;
 pub mod os;
 pub mod portable;
+pub mod save_file;
 pub mod terminal;
 pub mod update;
 

@@ -23,7 +23,11 @@ export function isTauri(): boolean {
   return false;
 }
 
-type InvokeArgs = Record<string, unknown> | undefined;
+type InvokeArgs = Record<string, unknown> | Uint8Array | undefined;
+
+/** Mirror of `@tauri-apps/api`'s InvokeOptions (headers ride the raw-payload
+ * IPC on desktop). The web shim has no native IPC, so they're ignored. */
+type InvokeOptions = { headers?: Record<string, string> };
 
 function notAvailable(cmd: string): never {
   throw new Error(
@@ -89,8 +93,12 @@ function pickFileBytes(accept: string): Promise<number[] | null> {
 
 export async function invoke<T = unknown>(
   cmd: string,
-  args?: InvokeArgs,
+  rawArgs?: InvokeArgs,
+  _options?: InvokeOptions,
 ): Promise<T> {
+  // Raw-payload invokes (desktop's binary IPC) carry bytes, not a record.
+  const payload = rawArgs instanceof Uint8Array ? rawArgs : undefined;
+  const args = rawArgs instanceof Uint8Array ? undefined : rawArgs;
   switch (cmd) {
     // ── Implemented with a browser-native equivalent ────────────────────
     case "open_url": {
@@ -133,6 +141,14 @@ export async function invoke<T = unknown>(
     case "open_portable_agent": {
       const bytes = await pickFileBytes(".houstonagent,application/zip");
       return bytes as T;
+    }
+    case "save_download": {
+      // Unreachable in practice: `saveBlob` checks isTauri() (false here) and
+      // uses the anchor download directly. Keep an honest fallback anyway —
+      // returning null means "the browser manages the download", so the
+      // caller shows no desktop-style saved toast.
+      if (payload) downloadBytes("download", Array.from(payload));
+      return null as T;
     }
 
     case "report_bug": {

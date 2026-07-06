@@ -3,8 +3,9 @@ import type { Vfs } from "../vfs";
 import { FileOpError, fileKey, listWorkspace } from "./files-ops";
 
 /**
- * Zip the agent's visible workspace files — the Files tab's "Download all" on
- * deployments with no local OS to reveal a folder in (cloud pods, web builds).
+ * Zip the agent's visible workspace files — the Files tab's "Download all"
+ * (whole workspace) and per-folder Download on deployments with no local OS
+ * to reveal a folder in (cloud pods, web builds, desktop → remote host).
  * Same visibility rules as the listing (`listWorkspace`): internal dot-dirs and
  * `.keep` markers never land in the archive. STORE-only (level 0): the
  * deliverables agents produce (pdf/docx/xlsx/png) are already compressed, and a
@@ -22,9 +23,16 @@ const ZIP_MTIME_MAX = Date.UTC(2099, 0, 1);
 export async function archiveWorkspace(
   vfs: Vfs,
   root: string,
+  folder?: string,
 ): Promise<Buffer> {
-  const files = (await listWorkspace(vfs, root)).filter((f) => !f.is_directory);
+  const all = (await listWorkspace(vfs, root)).filter((f) => !f.is_directory);
+  const files = folder
+    ? all.filter((f) => f.path.startsWith(`${folder}/`))
+    : all;
   if (files.length === 0) throw new FileOpError(404, "no files to download");
+  // Zip a folder the way Finder does: the folder itself is the archive's root
+  // entry, so entry names are relative to the folder's PARENT.
+  const base = folder ? folder.slice(0, folder.lastIndexOf("/") + 1) : "";
   const total = files.reduce((sum, f) => sum + f.size, 0);
   if (total > MAX_ARCHIVE_BYTES) {
     throw new FileOpError(
@@ -39,7 +47,7 @@ export async function archiveWorkspace(
     const mtime = f.date_modified;
     const validMtime =
       mtime !== undefined && mtime >= ZIP_MTIME_MIN && mtime <= ZIP_MTIME_MAX;
-    entries[f.path] = [
+    entries[f.path.slice(base.length)] = [
       new Uint8Array(buf),
       { level: 0, ...(validMtime ? { mtime } : {}) },
     ];

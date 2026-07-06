@@ -35,3 +35,30 @@ test("an empty workspace answers 404, not an empty zip", async () => {
     "no files to download",
   );
 });
+
+test("a folder subtree zips with the folder as the archive root", async () => {
+  const vfs = new MemoryVfs();
+  await vfs.writeText(`${ROOT}/report.md`, "# Q3");
+  await vfs.writeText(`${ROOT}/Decks/2025/deck.md`, "slides");
+  await vfs.writeText(`${ROOT}/Decks/notes.md`, "n");
+
+  const zip = await archiveWorkspace(vfs, ROOT, "Decks");
+  const entries = unzipSync(new Uint8Array(zip));
+  expect(Object.keys(entries).sort()).toEqual([
+    "Decks/2025/deck.md",
+    "Decks/notes.md",
+  ]);
+
+  // A nested folder becomes the root entry itself (parent prefix stripped).
+  const nested = await archiveWorkspace(vfs, ROOT, "Decks/2025");
+  const nestedEntries = unzipSync(new Uint8Array(nested));
+  expect(Object.keys(nestedEntries)).toEqual(["2025/deck.md"]);
+});
+
+test("a missing or empty folder answers 404, and prefixes don't false-match", async () => {
+  const vfs = new MemoryVfs();
+  await vfs.writeText(`${ROOT}/Decks2/other.md`, "x"); // sibling with the same prefix
+  await expect(archiveWorkspace(vfs, ROOT, "Decks")).rejects.toThrow(
+    "no files to download",
+  );
+});

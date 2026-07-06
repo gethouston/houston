@@ -32,6 +32,7 @@ export function FolderSection({
   onOpen,
   onReveal,
   onDownload,
+  onDownloadFolder,
   onDelete,
   onRename,
   onFilesDropped,
@@ -46,6 +47,8 @@ export function FolderSection({
   onOpen?: (file: FileEntry) => void;
   onReveal?: (file: FileEntry) => void;
   onDownload?: (file: FileEntry) => void;
+  /** Download the folder's subtree (as a zip). Adds a context menu to folder rows. */
+  onDownloadFolder?: (folder: FileEntry) => void;
   onDelete?: (file: FileEntry) => void;
   onRename?: (file: FileEntry, newName: string) => void;
   onFilesDropped?: (files: File[], targetFolder?: string) => void;
@@ -54,6 +57,7 @@ export function FolderSection({
   menuLabels?: FileMenuLabels;
 }) {
   const [open, setOpen] = useState(true);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const { isOver, folderHandlers } = useFolderDropTarget();
 
@@ -62,6 +66,15 @@ export function FolderSection({
   }, [isOver, node.path, onDragActive]);
 
   const padLeft = BASE_INDENT + depth * DEPTH_INDENT;
+  // The menu reuses FileMenu, which speaks FileEntry — implied parent folders
+  // have no listing entry, so synthesize one from the node.
+  const folderEntry: FileEntry = node.entry ?? {
+    path: node.path,
+    name: node.name,
+    extension: "",
+    size: 0,
+    is_directory: true,
+  };
 
   return (
     <>
@@ -76,6 +89,11 @@ export function FolderSection({
         onDragEnd={() => setDragging(false)}
         onClick={() => setOpen(!open)}
         onKeyDown={(e) => e.key === "Enter" && setOpen(!open)}
+        onContextMenu={(e) => {
+          if (!onDownloadFolder) return;
+          e.preventDefault();
+          setMenu({ x: e.clientX, y: e.clientY });
+        }}
         className={cn(
           "h-[24px] select-none cursor-default items-center w-full text-left",
           isOver ? "!bg-[rgba(0,122,255,0.12)] !rounded-lg" : "",
@@ -105,6 +123,15 @@ export function FolderSection({
           Folder
         </span>
       </button>
+      {menu && (
+        <FileMenu
+          file={folderEntry}
+          position={menu}
+          onClose={() => setMenu(null)}
+          onDownload={onDownloadFolder}
+          labels={menuLabels}
+        />
+      )}
       {open &&
         node.children.map((child) =>
           child.kind === "folder" ? (
@@ -117,6 +144,7 @@ export function FolderSection({
               onOpen={onOpen}
               onReveal={onReveal}
               onDownload={onDownload}
+              onDownloadFolder={onDownloadFolder}
               onDelete={onDelete}
               onRename={onRename}
               onFilesDropped={onFilesDropped}

@@ -12,8 +12,8 @@ import {
   useUploadFiles,
 } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { useSaveDownload } from "../../hooks/use-save-download";
 import { isCoLocatedEngine, newEngineActive } from "../../lib/engine";
-import { saveBlob } from "../../lib/save-blob";
 import { tauriFiles } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
 import { FilePreviewDialog } from "./file-preview-dialog";
@@ -62,17 +62,25 @@ export default function FilesTab({ agent }: TabProps) {
   const uploadFiles = useUploadFiles(path);
   const moveFile = useMoveFile(path);
 
+  // save() surfaces its own success/failure toasts and never rejects; the
+  // empty catch below only silences the fetch failure call() already toasted.
+  const save = useSaveDownload();
   const downloadFile = (file: FileEntry) => {
-    // call() already toasts + captures the failure; nothing more to surface.
     tauriFiles
       .download(path, file.path)
-      .then(({ blob }) => saveBlob(file.name, blob))
+      .then(({ blob }) => save(file.name, blob))
+      .catch(() => {});
+  };
+  const downloadFolder = (folder: FileEntry) => {
+    tauriFiles
+      .downloadArchive(path, folder.path)
+      .then(({ blob }) => save(`${folder.name}.zip`, blob))
       .catch(() => {});
   };
   const downloadAll = () => {
     tauriFiles
       .downloadArchive(path)
-      .then(({ blob }) => saveBlob(`${agent.name} files.zip`, blob))
+      .then(({ blob }) => save(`${agent.name} files.zip`, blob))
       .catch(() => {});
   };
   const pickFiles = () => fileInput.current?.click();
@@ -104,6 +112,7 @@ export default function FilesTab({ agent }: TabProps) {
             : undefined
         }
         onDownload={canUseLocalFiles ? undefined : downloadFile}
+        onDownloadFolder={canUseLocalFiles ? undefined : downloadFolder}
         onDelete={(file) => deleteFile.mutate(file.path)}
         onRename={(file, newName) =>
           renameFile.mutate({ relativePath: file.path, newName })
