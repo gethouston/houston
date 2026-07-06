@@ -250,17 +250,23 @@ export async function createAgent(
   cfg: ControlPlaneConfig,
   name: string,
   color?: string,
-  seed?: { claudeMd?: string; seeds?: Record<string, string> },
+  seed?: {
+    claudeMd?: string;
+    seeds?: Record<string, string>;
+    templateId?: string;
+  },
 ): Promise<Agent> {
   const res = await cpFetch(cfg, "/agents", {
     method: "POST",
     // The host seeds CLAUDE.md + the seed-file map on create (builtin
-    // templates, AI-assist instructions). JSON.stringify drops undefined
-    // fields, so a plain create still posts just `{ name }`.
+    // templates, AI-assist instructions). `templateId`, when set, tells a Teams
+    // gateway to stamp the agent from an org template. JSON.stringify drops
+    // undefined fields, so a plain create still posts just `{ name }`.
     body: JSON.stringify({
       name,
       claudeMd: seed?.claudeMd,
       seeds: seed?.seeds,
+      templateId: seed?.templateId,
     }),
   });
   const agent = (await res.json()) as CpAgent;
@@ -982,6 +988,9 @@ export type {
   OrgMember,
   OrgRole,
   OrgSettings,
+  TemplateRecord,
+  TemplateSpec,
+  TemplateSummary,
   UsageRow,
 } from "../../../../ui/engine-client/src/types";
 
@@ -997,6 +1006,9 @@ import type {
   OrgInfo,
   OrgRole,
   OrgSettings,
+  TemplateRecord,
+  TemplateSpec,
+  TemplateSummary,
   UsageRow,
 } from "../../../../ui/engine-client/src/types";
 
@@ -1248,4 +1260,60 @@ export async function setAgentIntegrationGrants(
     `/v1/agents/${encodeURIComponent(agentSlugOrId)}/integration-grants`,
     { method: "PUT", body: JSON.stringify({ toolkits }) },
   );
+}
+
+/**
+ * List the org's agent templates as list-card summaries (Teams v2). Degrades to
+ * `[]` when the gateway does not serve templates (404) — a non-Teams host — so
+ * the surface, already gated on `capabilities.multiplayer`, never hard-fails.
+ */
+export async function listOrgTemplates(
+  cfg: ControlPlaneConfig,
+): Promise<TemplateSummary[]> {
+  try {
+    const res = await cpFetch(cfg, "/v1/org/templates");
+    return ((await res.json()) as { templates: TemplateSummary[] }).templates;
+  } catch (err) {
+    if (err instanceof HoustonEngineError && err.status === 404) return [];
+    throw err;
+  }
+}
+
+/** Fetch one template with its full `spec`, or `null` if gone/unsupported (404). */
+export async function getOrgTemplate(
+  cfg: ControlPlaneConfig,
+  id: string,
+): Promise<TemplateRecord | null> {
+  try {
+    const res = await cpFetch(
+      cfg,
+      `/v1/org/templates/${encodeURIComponent(id)}`,
+    );
+    return (await res.json()) as TemplateRecord;
+  } catch (err) {
+    if (err instanceof HoustonEngineError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+/** Create an org template from a client-assembled spec (manager only). */
+export async function createOrgTemplate(
+  cfg: ControlPlaneConfig,
+  input: { name: string; description: string; spec: TemplateSpec },
+): Promise<TemplateSummary> {
+  const res = await cpFetch(cfg, "/v1/org/templates", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return (await res.json()) as TemplateSummary;
+}
+
+/** Delete an org template (owner, or the admin who created it). */
+export async function deleteOrgTemplate(
+  cfg: ControlPlaneConfig,
+  id: string,
+): Promise<void> {
+  await cpFetch(cfg, `/v1/org/templates/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
 }

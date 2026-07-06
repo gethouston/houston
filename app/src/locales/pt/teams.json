@@ -34,6 +34,7 @@
     "tabs": {
       "people": "Pessoas",
       "agents": "Agentes",
+      "templates": "Modelos",
       "activity": "Atividade",
       "usage": "Uso"
     },
@@ -178,5 +179,66 @@
     },
     "lastOpened": "Aberto {{time}}",
     "open": "Abrir {{name}}"
+  },
+  "templates": {
+    "pickerTitle": "Começar a partir de um modelo",
+    "settingUp": "Configurando seu agente...",
+    "summary": {
+      "skills_one": "{{count}} habilidade",
+      "skills_other": "{{count}} habilidades",
+      "apps_one": "{{count}} app",
+      "apps_other": "{{count}} apps",
+      "allApps": "Todos os apps"
+    },
+    "save": {
+      "sectionTitle": "Salvar como modelo",
+      "sectionHelper": "Capture a configuração deste agente como um modelo reutilizável para criar novos agentes com sua equipe.",
+      "button": "Salvar como modelo",
+      "dialog": {
+        "title": "Salvar como modelo",
+        "subtitle": "Reutilize a configuração de {{name}} para criar novos agentes iguais."
+      },
+      "nameLabel": "Nome do modelo",
+      "namePlaceholder": "ex. Agente de Vendas",
+      "descriptionLabel": "Descrição",
+      "descriptionPlaceholder": "Para que serve este modelo? (opcional)",
+      "capturedTitle": "O que é incluído",
+      "summary": {
+        "instructions": "Instruções",
+        "skills_one": "{{count}} habilidade",
+        "skills_other": "{{count}} habilidades",
+        "allApps": "Todos os apps permitidos",
+        "apps_one": "{{count}} app permitido",
+        "apps_other": "{{count}} apps permitidos"
+      },
+      "cancel": "Cancelar",
+      "submit": "Salvar modelo",
+      "toast": {
+        "title": "Modelo salvo",
+        "body": "{{name}} está pronto para reutilizar."
+      }
+    }
+  },
+  "templatesTab": {
+    "error": "Não foi possível carregar os modelos.",
+    "empty": {
+      "title": "Ainda não há modelos",
+      "body": "Salve um agente como modelo para reutilizar a configuração em toda a sua equipe."
+    },
+    "card": {
+      "skills_one": "{{count}} habilidade",
+      "skills_other": "{{count}} habilidades",
+      "apps_one": "{{count}} app",
+      "apps_other": "{{count}} apps",
+      "allApps": "Todos os apps",
+      "createdBy": "Criado por {{name}}"
+    },
+    "deleteLabel": "Excluir {{name}}",
+    "deleteConfirm": {
+      "title": "Excluir {{name}}?",
+      "description": "Este modelo será removido para todos na sua organização. Os agentes já criados a partir dele não serão afetados.",
+      "confirm": "Excluir",
+      "cancel": "Cancelar"
+    }
   }
 }

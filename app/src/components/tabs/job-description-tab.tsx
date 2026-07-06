@@ -25,6 +25,7 @@ import { isConfigReadOnly } from "./job-description-access";
 import { InstructionsContent, type SubTab } from "./job-description-parts";
 import { LearningsContent } from "./learnings-content";
 import { ManagedAgentBanner } from "./managed-agent-banner";
+import { SaveAsTemplateSection } from "./save-as-template-section";
 import { SkillsContent } from "./skills-content";
 import { useSkillSurface } from "./use-skill-surface";
 
@@ -140,8 +141,9 @@ export default function JobDescriptionTab({ agent }: TabProps) {
 
         {activeTab === "general" && (
           <>
-            <div className="mx-auto max-w-xl px-8 pt-10 empty:hidden">
+            <div className="mx-auto max-w-xl px-8 pt-10 empty:hidden space-y-10">
               <AgentAccessSection agent={agent} />
+              <SaveAsTemplateSection agent={agent} />
             </div>
             <AgentSettingsContent
               name={agent.name}

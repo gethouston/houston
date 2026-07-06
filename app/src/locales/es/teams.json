@@ -34,6 +34,7 @@
     "tabs": {
       "people": "Personas",
       "agents": "Agentes",
+      "templates": "Plantillas",
       "activity": "Actividad",
       "usage": "Uso"
     },
@@ -178,5 +179,66 @@
     },
     "lastOpened": "Abierto {{time}}",
     "open": "Abrir {{name}}"
+  },
+  "templates": {
+    "pickerTitle": "Empezar desde una plantilla",
+    "settingUp": "Configurando tu agente...",
+    "summary": {
+      "skills_one": "{{count}} habilidad",
+      "skills_other": "{{count}} habilidades",
+      "apps_one": "{{count}} app",
+      "apps_other": "{{count}} apps",
+      "allApps": "Todas las apps"
+    },
+    "save": {
+      "sectionTitle": "Guardar como plantilla",
+      "sectionHelper": "Captura la configuración de este agente como una plantilla reutilizable para crear nuevos agentes con tu equipo.",
+      "button": "Guardar como plantilla",
+      "dialog": {
+        "title": "Guardar como plantilla",
+        "subtitle": "Reutiliza la configuración de {{name}} para crear nuevos agentes iguales."
+      },
+      "nameLabel": "Nombre de la plantilla",
+      "namePlaceholder": "ej. Agente de Ventas",
+      "descriptionLabel": "Descripción",
+      "descriptionPlaceholder": "¿Para qué sirve esta plantilla? (opcional)",
+      "capturedTitle": "Lo que se incluye",
+      "summary": {
+        "instructions": "Instrucciones",
+        "skills_one": "{{count}} habilidad",
+        "skills_other": "{{count}} habilidades",
+        "allApps": "Todas las apps permitidas",
+        "apps_one": "{{count}} app permitida",
+        "apps_other": "{{count}} apps permitidas"
+      },
+      "cancel": "Cancelar",
+      "submit": "Guardar plantilla",
+      "toast": {
+        "title": "Plantilla guardada",
+        "body": "{{name}} está lista para reutilizar."
+      }
+    }
+  },
+  "templatesTab": {
+    "error": "No se pudieron cargar las plantillas.",
+    "empty": {
+      "title": "Aún no hay plantillas",
+      "body": "Guarda un agente como plantilla para reutilizar su configuración en todo tu equipo."
+    },
+    "card": {
+      "skills_one": "{{count}} habilidad",
+      "skills_other": "{{count}} habilidades",
+      "apps_one": "{{count}} app",
+      "apps_other": "{{count}} apps",
+      "allApps": "Todas las apps",
+      "createdBy": "Creada por {{name}}"
+    },
+    "deleteLabel": "Eliminar {{name}}",
+    "deleteConfirm": {
+      "title": "¿Eliminar {{name}}?",
+      "description": "Esta plantilla se eliminará para todos en tu organización. Los agentes ya creados a partir de ella no se verán afectados.",
+      "confirm": "Eliminar",
+      "cancel": "Cancelar"
+    }
   }
 }

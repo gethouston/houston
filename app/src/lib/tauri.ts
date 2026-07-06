@@ -213,6 +213,7 @@ export const tauriAgents = {
     installedPath?: string,
     seeds?: Record<string, string>,
     existingPath?: string,
+    templateId?: string,
   ) =>
     call<CreateAgentResult>("create_agent", async () => {
       const r = await getEngine().createAgent(workspaceId, {
@@ -223,6 +224,7 @@ export const tauriAgents = {
         installedPath,
         seeds,
         existingPath,
+        templateId,
       });
       return {
         agent: toAgent(r.agent),
@@ -1400,4 +1402,26 @@ export const tauriOrg = {
   /** Per-agent/user usage counters over the last `days` (owner org-wide; admin
    *  their managed agents; plain members 403). */
   usage: (days: number) => call("org_usage", () => getEngine().orgUsage(days)),
+  /**
+   * Agent templates (Teams v2). Reads degrade to `[]`/`null` on a non-Teams
+   * host (the engine-client/adapter swallow the 404); the surface gates on
+   * `capabilities.multiplayer`. Every call routes through `call()` so a failure
+   * reaches the user as a toast + Report bug, same as the wrappers above.
+   */
+  templates: {
+    list: () =>
+      call("list_org_templates", () => getEngine().listOrgTemplates()),
+    get: (id: string) =>
+      call("get_org_template", () => getEngine().getOrgTemplate(id)),
+    create: (input: {
+      name: string;
+      description: string;
+      spec: import("@houston-ai/engine-client").TemplateSpec;
+    }) =>
+      call("create_org_template", () => getEngine().createOrgTemplate(input)),
+    remove: (id: string) =>
+      call<void>("delete_org_template", () =>
+        getEngine().deleteOrgTemplate(id),
+      ),
+  },
 };
