@@ -252,6 +252,9 @@ importers:
 
   packages/fake-host:
     dependencies:
+      '@houston/host':
+        specifier: workspace:*
+        version: link:../host
       '@houston/protocol':
         specifier: workspace:*
         version: link:../protocol

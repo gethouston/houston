@@ -6,7 +6,7 @@
  * scrolls up past the enclosing scroll container's top edge. Self-contained — it
  * walks up to find the nearest scrollable ancestor, so every mount (the Models
  * tab, the Providers tab, the provider modal's body) works without threading a
- * scroll ref. Shared by `ModelsBrowser` and `ProviderGrid` so both pinned bars
+ * scroll ref. Shared by `ModelsBrowser` and `ProviderList` so both pinned bars
  * behave identically.
  */
 

@@ -3,9 +3,9 @@ import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections";
 import type { HubCatalog } from "../../lib/ai-hub/catalog-types";
+import { providerCategory } from "../../lib/provider-overrides";
 import type { ProviderInfo } from "../../lib/providers";
 import { SectionHeader } from "./hub-badges";
-import { ProviderCard } from "./provider-card";
 import {
   filterByCategory,
   orderFeaturedFirst,
@@ -13,17 +13,18 @@ import {
   searchProviders,
 } from "./provider-filtering";
 import { ProviderFilters } from "./provider-filters";
-import { groupProviders } from "./provider-grouping";
+import { groupProviders, providerModels } from "./provider-grouping";
+import { ProviderRow } from "./provider-row";
 import { useStuckOnScroll } from "./use-stuck-on-scroll";
 
-interface ProviderGridProps {
+interface ProviderListProps {
   providers: readonly ProviderInfo[];
   connections: ProviderConnections;
   catalog: HubCatalog;
   onOpen: (provider: ProviderInfo) => void;
 }
 
-/** A titled grid of cards. Hidden when it has no children. */
+/** A titled, hairline-divided list of rows. Hidden when it has no children. */
 function Section({
   label,
   count,
@@ -35,11 +36,9 @@ function Section({
 }) {
   if (children.length === 0) return null;
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-2">
       <SectionHeader label={label} count={count} />
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {children}
-      </div>
+      <div className="divide-y divide-border">{children}</div>
     </section>
   );
 }
@@ -60,27 +59,30 @@ function ProviderEmpty() {
 }
 
 /**
- * The provider marketplace: a search + category filter bar, then Connected cards
- * (featured providers pinned first) followed by Available. Cards render
- * statically — no `layout` animation — so the grid never reflows or resizes when
- * a modal opens and the scroll-lock changes the content width. The tab crossfade
- * in the parent view supplies the only entrance motion; a connect that flips a
- * provider between groups just re-renders.
+ * The provider marketplace: a sticky search + category filter bar, then a quiet,
+ * scannable LIST — Connected rows first (featured pinned to the front), then
+ * Available. A list beats a card grid now that ~35 providers surface; each row
+ * carries the brand glyph, name, a muted secondary, and one Connect / Sign out
+ * action, and opens the provider modal on body click (see `ProviderRow`). Rows
+ * render statically (no `layout` animation) so the list never reflows when a
+ * modal's scroll-lock changes the content width; the parent's tab crossfade is
+ * the only entrance motion, and a connect that flips a provider between groups
+ * just re-renders. The Providers-tab ordering only — the chat picker is
+ * untouched.
  */
-export function ProviderGrid({
+export function ProviderList({
   providers,
   connections,
   catalog,
   onOpen,
-}: ProviderGridProps) {
+}: ProviderListProps) {
   const { t } = useTranslation("aiHub");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<ProviderCategoryFilter>("all");
   const { sentinelRef, stuck } = useStuckOnScroll();
 
   // Filter by category, then by the free-text query, then pin featured providers
-  // to the front — the hub's Providers tab ordering only (the chat picker is
-  // untouched). Grouping preserves this order within each section.
+  // to the front. Grouping preserves this order within each section.
   const filtered = useMemo(
     () =>
       orderFeaturedFirst(
@@ -93,7 +95,7 @@ export function ProviderGrid({
   // connected, so a live Connect button would be the wrong state. Hold a quiet
   // skeleton in place instead of guessing.
   if (!connections.ready) {
-    return <ProviderGridSkeleton count={providers.length || 6} />;
+    return <ProviderListSkeleton count={providers.length || 8} />;
   }
 
   const { connected, available } = groupProviders(
@@ -101,11 +103,20 @@ export function ProviderGrid({
     connections.isConnected,
   );
 
-  const card = (provider: ProviderInfo) => (
-    <ProviderCard
+  // Muted secondary line: the curated subtitle when present, otherwise the model
+  // count (falling back to the category so a bare pi provider still reads).
+  const secondaryOf = (provider: ProviderInfo) => {
+    if (provider.subtitle) return provider.subtitle;
+    const count = providerModels(catalog, provider).length;
+    if (count > 0) return t("card.models", { count });
+    return t(`providers.category.${providerCategory(provider.id)}`);
+  };
+
+  const row = (provider: ProviderInfo) => (
+    <ProviderRow
       key={provider.id}
       provider={provider}
-      catalog={catalog}
+      secondary={secondaryOf(provider)}
       connected={connections.isConnected(provider)}
       connecting={connections.busy[provider.id] === "connecting"}
       signingOut={connections.busy[provider.id] === "signingOut"}
@@ -121,9 +132,9 @@ export function ProviderGrid({
       {/* Sentinel marking the filter bar's natural top (see useStuckOnScroll). */}
       <div ref={sentinelRef} aria-hidden className="h-0" />
       {/* The search + category bar as ONE sticky unit pinned to the top of the
-          shared scroll region, so the provider grid passes cleanly BEHIND it.
+          shared scroll region, so the provider list passes cleanly BEHIND it.
           Mirrors the Models tab's `ModelsBrowser`: transparent at rest, fading
-          in the frosted-glass `bg-popover` fill (blur masks the scrolling cards)
+          in the frosted-glass `bg-popover` fill (blur masks the scrolling rows)
           only once pinned — same offset (`top-0`), z-index (`z-20`), rounding
           (`rounded-2xl`) and `shadow-none!` so the two tabs feel identical. */}
       <div
@@ -146,10 +157,10 @@ export function ProviderGrid({
       ) : (
         <div className="flex flex-col gap-8">
           <Section label={t("sections.connected")} count={connected.length}>
-            {connected.map(card)}
+            {connected.map(row)}
           </Section>
           <Section label={t("sections.available")} count={available.length}>
-            {available.map(card)}
+            {available.map(row)}
           </Section>
         </div>
       )}
@@ -158,26 +169,25 @@ export function ProviderGrid({
 }
 
 /**
- * Placeholder grid shown while the first provider-status probe is in flight.
- * Muted, pulsing card shapes — enough to hold the layout without implying any
- * connect state before we actually know it.
+ * Placeholder list shown while the first provider-status probe is in flight.
+ * Muted, pulsing rows — enough to hold the layout without implying any connect
+ * state before we actually know it.
  */
-function ProviderGridSkeleton({ count }: { count: number }) {
+function ProviderListSkeleton({ count }: { count: number }) {
   return (
-    <div
-      aria-hidden="true"
-      className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
-    >
+    <div aria-hidden="true" className="divide-y divide-border">
       {Array.from({ length: count }, (_, i) => (
         <div
           // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length static placeholder list, no reordering.
           key={i}
-          className="ht-hairline flex flex-col rounded-2xl bg-secondary p-[18px]"
+          className="flex items-center gap-3 px-4 py-3"
         >
-          <div className="size-10 animate-pulse rounded-lg bg-accent" />
-          <div className="mt-3 h-4 w-24 animate-pulse rounded bg-accent" />
-          <div className="mt-2 h-3 w-full animate-pulse rounded bg-accent" />
-          <div className="mt-4 h-8 w-24 animate-pulse rounded-full bg-accent" />
+          <div className="size-6 animate-pulse rounded-md bg-accent" />
+          <div className="flex flex-1 flex-col gap-1.5">
+            <div className="h-3.5 w-28 animate-pulse rounded bg-accent" />
+            <div className="h-3 w-40 animate-pulse rounded bg-accent" />
+          </div>
+          <div className="h-8 w-20 animate-pulse rounded-full bg-accent" />
         </div>
       ))}
     </div>

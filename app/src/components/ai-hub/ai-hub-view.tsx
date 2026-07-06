@@ -16,7 +16,7 @@ import { HubHero } from "./hub-hero";
 import { ModelDirectory } from "./model-directory";
 import { ModelModal } from "./model-modal";
 import { ProviderConnectionDialogs } from "./provider-connection-dialogs";
-import { ProviderGrid } from "./provider-grid";
+import { ProviderList } from "./provider-list";
 import { ProviderModal } from "./provider-modal";
 
 const TRANSITION = {
@@ -28,9 +28,9 @@ const TRANSITION = {
 
 /**
  * The AI models hub: a top-level marketplace surface. Composes the masthead, the
- * Providers / Models tabs, and the two surfaces (provider grid + model ledger),
+ * Providers / Models tabs, and the two surfaces (provider list + model ledger),
  * driven by `useHubCatalog` (the model directory) and `useProviderConnections`
- * (connect / sign-out). A provider card or model row opens a centered MODAL
+ * (connect / sign-out). A provider row or model row opens a centered MODAL
  * (`ProviderModal` / `ModelModal`) that fades in over a single dim scrim — the
  * page stays put (no recede/blur). The connect-dialog stack renders once here
  * for every card and offer row underneath.
@@ -96,7 +96,7 @@ export function AiHubView() {
           {/* Only this region scrolls. `scrollbar-gutter: stable` reserves the
               scrollbar's gutter permanently, so when a modal's scroll-lock
               (react-remove-scroll) removes the scrollbar the content width never
-              changes — the grid stays put on modal open. The ModelsBrowser
+              changes — the list stays put on modal open. The ModelsBrowser
               controls/column-header (sticky top-0) pin to the TOP of this
               region, i.e. right beneath the fixed tabs above. */}
           <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
@@ -104,7 +104,7 @@ export function AiHubView() {
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div key={tab} {...TRANSITION}>
                   {tab === "providers" ? (
-                    <ProviderGrid
+                    <ProviderList
                       providers={connectProviders}
                       connections={connections}
                       catalog={catalog}

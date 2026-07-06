@@ -185,16 +185,18 @@ describe("formatReleaseDate parses a YYYY-MM-DD knowledge cutoff", () => {
 // repo's React-test idiom; the node runner has no DOM — see card-unification).
 // ---------------------------------------------------------------------------
 describe("AI Hub review fixes (component source contracts)", () => {
-  it("Finding 1: connections expose a `ready` flag gating the grid", () => {
+  it("Finding 1: connections expose a `ready` flag gating the list", () => {
     const hook = read("../src/hooks/use-provider-connections.ts");
     ok(hook.includes("ready"), "hook returns a ready flag");
     ok(hook.includes("loading"), "reads the status loading flag");
     const types = read("../src/hooks/provider-connections/types.ts");
     ok(types.includes("ready"), "ready is on the ProviderConnections type");
-    const grid = read("../src/components/ai-hub/provider-grid.tsx");
+    // The card grid was redesigned into `ProviderList`; the ready gate moved
+    // with it (renders a skeleton list before the first status probe resolves).
+    const list = read("../src/components/ai-hub/provider-list.tsx");
     ok(
-      grid.includes("connections.ready"),
-      "the grid gates on ready (renders skeletons before the first probe)",
+      list.includes("connections.ready"),
+      "the list gates on ready (renders skeletons before the first probe)",
     );
   });
 
@@ -204,8 +206,18 @@ describe("AI Hub review fixes (component source contracts)", () => {
       badges.includes("export function SpecChip"),
       "SpecChip is the primitive",
     );
-    const card = read("../src/components/ai-hub/provider-card.tsx");
-    ok(!card.includes("function HubChip"), "HubChip primitive is gone");
+    // `provider-card.tsx` (which once carried the local HubChip) was deleted in
+    // the list redesign; the provider detail surface is now `provider-modal`.
+    // It consumes the shared SpecChip and declares no local chip primitive.
+    const providerModal = read("../src/components/ai-hub/provider-modal.tsx");
+    ok(
+      providerModal.includes("SpecChip"),
+      "the provider surface uses the shared SpecChip",
+    );
+    ok(
+      !providerModal.includes("function HubChip"),
+      "no local HubChip primitive",
+    );
   });
 
   it("Finding 10: provider/model detail now open as centered modals (ModalShell)", () => {

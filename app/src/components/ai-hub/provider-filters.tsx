@@ -2,7 +2,7 @@
  * The Providers-tab filter bar: a search box + a category dropdown. The search
  * markup mirrors `ModelsBrowser` (pill Input with a leading magnifier) and the
  * Select mirrors `DirectoryFilters` (token-styled pill trigger) so the two tabs
- * read identically. Filter state lives in the parent (`ProviderGrid`); this owns
+ * read identically. Filter state lives in the parent (`ProviderList`); this owns
  * nothing but its own layout.
  */
 

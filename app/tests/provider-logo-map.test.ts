@@ -65,11 +65,36 @@ describe("providerBrandKey", () => {
     }
   });
 
-  it("maps regional/variant ids onto their parent brand (real logos only)", () => {
+  it("maps variant ids models.dev defaults on onto a parent brand's real mark", () => {
     strictEqual(providerBrandKey("minimax-cn"), "minimax");
-    strictEqual(providerBrandKey("google-vertex"), "google");
-    strictEqual(providerBrandKey("opencode-go"), "opencode");
     strictEqual(providerBrandKey("openai-codex"), "openai");
+    strictEqual(providerBrandKey("moonshotai-cn"), "moonshotai");
+    strictEqual(providerBrandKey("kimi-coding"), "moonshotai");
+    strictEqual(providerBrandKey("zai-coding-cn"), "zai");
+    strictEqual(providerBrandKey("vercel-ai-gateway"), "vercel");
+    strictEqual(providerBrandKey("xiaomi-token-plan-ams"), "xiaomi");
+    strictEqual(providerBrandKey("xiaomi-token-plan-cn"), "xiaomi");
+    strictEqual(providerBrandKey("xiaomi-token-plan-sgp"), "xiaomi");
+  });
+
+  it("keeps ids with their OWN models.dev logo as distinct marks", () => {
+    // These have a distinct real logo on models.dev, so they are NOT aliased to
+    // a parent (Vertex AI != Gemini, OpenCode Go != OpenCode Zen).
+    strictEqual(providerBrandKey("google-vertex"), "google-vertex");
+    strictEqual(providerBrandKey("opencode-go"), "opencode-go");
+    strictEqual(
+      providerBrandKey("cloudflare-workers-ai"),
+      "cloudflare-workers-ai",
+    );
+    strictEqual(
+      providerBrandKey("cloudflare-ai-gateway"),
+      "cloudflare-ai-gateway",
+    );
+    strictEqual(providerBrandKey("xiaomi"), "xiaomi");
+    strictEqual(
+      providerBrandKey("azure-openai-responses"),
+      "azure-openai-responses",
+    );
   });
 
   it("maps AI-hub lab ids that differ from the provider id", () => {
@@ -77,54 +102,45 @@ describe("providerBrandKey", () => {
     strictEqual(providerBrandKey("amazon"), "amazon-bedrock");
   });
 
-  it("draws bespoke marks only for the genuinely-correct pre-existing logos", () => {
+  it("draws a real models.dev mark for every covered provider id", () => {
     for (const id of [
       "anthropic",
       "openai",
       "google",
+      "google-vertex",
       "github-copilot",
       "openrouter",
       "amazon-bedrock",
       "opencode",
+      "opencode-go",
       "openai-compatible",
       "deepseek",
       "minimax",
+      "mistral",
+      "groq",
+      "cerebras",
+      "huggingface",
+      "cloudflare-workers-ai",
+      "cloudflare-ai-gateway",
+      "xai",
+      "vercel",
+      "nvidia",
+      "together",
+      "moonshotai",
+      "zai",
+      "fireworks",
+      "xiaomi",
+      "azure-openai-responses",
     ]) {
       strictEqual(hasProviderBrandMark(id), true, `expected mark for ${id}`);
     }
   });
 
-  it("falls back to the monogram for ids with no genuine brand logo", () => {
-    // These providers had approximate hand-authored marks removed — an inexact
-    // glyph reads as a wrong logo, so they now render the polished monogram. Any
-    // "-cn"/"-coding" variant or lab alias of them falls the same way.
-    for (const id of [
-      "ant-ling",
-      "azure-openai-responses",
-      "xiaomi",
-      "xiaomi-token-plan-ams",
-      "xiaomi-token-plan-cn",
-      "xiaomi-token-plan-sgp",
-      "groq",
-      "mistral",
-      "xai",
-      "cerebras",
-      "fireworks",
-      "together",
-      "nvidia",
-      "huggingface",
-      "moonshotai",
-      "moonshotai-cn",
-      "kimi-coding",
-      "moonshot",
-      "zai",
-      "zai-coding-cn",
-      "vercel-ai-gateway",
-      "cloudflare-workers-ai",
-      "cloudflare-ai-gateway",
-    ]) {
-      strictEqual(providerBrandKey(id), null, `expected monogram for ${id}`);
-    }
+  it("falls back to the monogram only for ids models.dev has no logo for", () => {
+    // `ant-ling` is the only Houston provider models.dev serves its generic
+    // default for and that has no parent brand to borrow — it renders the
+    // polished monogram rather than an inexact hand-authored glyph.
+    strictEqual(providerBrandKey("ant-ling"), null);
   });
 });
 
@@ -157,20 +173,23 @@ describe("monogramText", () => {
 // keys the registry binds. (Registry lives in the .tsx; this asserts the count
 // the map file publishes so a stray key addition is caught here too.)
 describe("BRAND_KEYS", () => {
-  it("has the expected 10 genuinely-correct bespoke marks", () => {
-    strictEqual(BRAND_KEYS.size, 10);
+  it("has the expected 27 real models.dev marks", () => {
+    strictEqual(BRAND_KEYS.size, 27);
   });
 
-  it("holds no approximate marks for providers we monogram", () => {
+  it("covers the providers sourced from models.dev", () => {
     deepStrictEqual(
       [
-        BRAND_KEYS.has("groq" as never),
-        BRAND_KEYS.has("nvidia" as never),
-        BRAND_KEYS.has("xai" as never),
-        BRAND_KEYS.has("vercel" as never),
-        BRAND_KEYS.has("cloudflare" as never),
+        BRAND_KEYS.has("groq"),
+        BRAND_KEYS.has("nvidia"),
+        BRAND_KEYS.has("xai"),
+        BRAND_KEYS.has("vercel"),
+        BRAND_KEYS.has("cloudflare-workers-ai"),
+        BRAND_KEYS.has("mistral"),
+        BRAND_KEYS.has("fireworks"),
+        BRAND_KEYS.has("xiaomi"),
       ],
-      [false, false, false, false, false],
+      [true, true, true, true, true, true, true, true],
     );
   });
 });

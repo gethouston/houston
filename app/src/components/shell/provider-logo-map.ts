@@ -11,49 +11,95 @@
  */
 
 /**
- * Every brand mark Houston ships a bespoke SVG for. These are the genuinely
- * correct, pre-existing brand logos only — we deliberately ship NO approximate
- * hand-authored marks for other providers, since an inexact glyph reads as a
- * wrong logo. Anything not listed here falls back to the polished monogram.
+ * Every brand mark Houston ships a real SVG for. Each is a genuine single-color
+ * brand logo sourced verbatim from models.dev (github.com/sst/models.dev, MIT)
+ * via its per-provider logo endpoint (models.dev/logos/<id>.svg) — we ship NO
+ * hand-approximated glyphs, since an inexact mark reads as a wrong logo. A
+ * provider models.dev serves its generic default for (and that has no parent
+ * brand to borrow) falls back to the polished monogram.
+ *
+ * Keys are the provider ids that resolve to their OWN mark. Regional/variant ids
+ * that models.dev serves the default for reuse a parent via `BRAND_ALIASES`.
  */
 export type BrandKey =
   | "anthropic"
   | "openai"
   | "google"
+  | "google-vertex"
   | "github-copilot"
   | "openrouter"
   | "amazon-bedrock"
   | "opencode"
+  | "opencode-go"
   | "openai-compatible"
   | "deepseek"
-  | "minimax";
+  | "minimax"
+  | "mistral"
+  | "groq"
+  | "cerebras"
+  | "huggingface"
+  | "cloudflare-workers-ai"
+  | "cloudflare-ai-gateway"
+  | "xai"
+  | "vercel"
+  | "nvidia"
+  | "together"
+  | "moonshotai"
+  | "zai"
+  | "fireworks"
+  | "xiaomi"
+  | "azure-openai-responses";
 
 export const BRAND_KEYS: ReadonlySet<BrandKey> = new Set([
   "anthropic",
   "openai",
   "google",
+  "google-vertex",
   "github-copilot",
   "openrouter",
   "amazon-bedrock",
   "opencode",
+  "opencode-go",
   "openai-compatible",
   "deepseek",
   "minimax",
+  "mistral",
+  "groq",
+  "cerebras",
+  "huggingface",
+  "cloudflare-workers-ai",
+  "cloudflare-ai-gateway",
+  "xai",
+  "vercel",
+  "nvidia",
+  "together",
+  "moonshotai",
+  "zai",
+  "fireworks",
+  "xiaomi",
+  "azure-openai-responses",
 ]);
 
 /**
  * Regional/variant ids and AI-hub lab ids that reuse a parent brand's mark, so a
- * "-cn" spin-off or a lab alias needs no bespoke art. Keyed by the incoming id,
- * valued by the `BrandKey` it borrows. Only aliases onto a REAL logo live here —
- * variants of providers we monogram (moonshot, zai, vercel, cloudflare, ...)
- * carry no alias and cleanly fall to the monogram themselves.
+ * "-cn" spin-off, a "-gateway"/"-workers" edge variant, or a lab alias needs no
+ * bespoke art. Keyed by the incoming id, valued by the `BrandKey` it borrows.
+ * Only aliases onto a REAL logo live here; a variant of a provider we still
+ * monogram (xiaomi, ant-ling, azure-openai-responses, ...) carries no alias and
+ * cleanly falls to the monogram itself.
  */
 export const BRAND_ALIASES: Readonly<Record<string, BrandKey>> = {
-  // Provider-id variants from pi's catalog.
-  "google-vertex": "google",
-  "opencode-go": "opencode",
+  // Variant ids models.dev serves the generic default for — reuse a parent
+  // brand's real mark rather than a monogram.
   "openai-codex": "openai",
   "minimax-cn": "minimax",
+  "moonshotai-cn": "moonshotai",
+  "kimi-coding": "moonshotai",
+  "zai-coding-cn": "zai",
+  "vercel-ai-gateway": "vercel",
+  "xiaomi-token-plan-ams": "xiaomi",
+  "xiaomi-token-plan-cn": "xiaomi",
+  "xiaomi-token-plan-sgp": "xiaomi",
   // AI-hub lab ids (see `catalog-lab.ts`) that differ from the provider id.
   gemini: "google",
   amazon: "amazon-bedrock",

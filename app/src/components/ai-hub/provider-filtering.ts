@@ -1,7 +1,7 @@
 /**
  * Pure filtering / ordering for the AI Hub Providers tab: the free-text search,
  * the category narrowing, and the featured-first pin. Applied ONLY inside the
- * hub (`ProviderGrid`) — the chat model picker maps `PROVIDERS` directly and
+ * hub (`ProviderList`) — the chat model picker maps `PROVIDERS` directly and
  * never calls any of these, so its order and behavior stay untouched. Kept
  * component-free so it unit-tests with `node --test`
  * (`app/tests/provider-grouping.test.ts`).
