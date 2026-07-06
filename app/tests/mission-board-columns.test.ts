@@ -28,7 +28,7 @@ describe("mission board columns", () => {
           label: "Needs you",
           statuses: ["needs_you", "error"],
         },
-        { id: "done", label: "Done", statuses: ["done", "cancelled"] },
+        { id: "done", label: "Done", statuses: ["done"] },
       ],
     );
     strictEqual(columns[0].onAdd, openNewMission);

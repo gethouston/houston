@@ -2,6 +2,8 @@
 // .houston schemas (ui/agent-schemas) — files-first: the wire mirrors disk.
 // `claude_session_id` is a legacy field name baked into user data; it stays.
 
+import type { PendingInteraction } from "./interaction";
+
 export interface Activity {
   id: string;
   title: string;
@@ -16,6 +18,9 @@ export interface Activity {
   updated_at?: string;
   provider?: string;
   model?: string;
+  /** The one thing this mission is waiting on the user for, if any. Present
+   *  drives the `needs_you` card; absent means the mission needs nothing. */
+  pending_interaction?: PendingInteraction;
 }
 
 export interface ActivityUpdate {
@@ -30,6 +35,8 @@ export interface ActivityUpdate {
   routine_run_id?: string;
   provider?: string;
   model?: string;
+  /** Set to record a new pending interaction; `null` clears it explicitly. */
+  pending_interaction?: PendingInteraction | null;
 }
 
 export interface NewActivity {

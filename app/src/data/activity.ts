@@ -5,6 +5,7 @@
  * Written atomically on every mutation (the backend handles the temp-file + rename).
  */
 
+import type { PendingInteraction } from "@houston/protocol";
 import schema from "@houston-ai/agent-schemas/activity.schema.json";
 import { applyBulkPatch, applyBulkRemove, applyRemove } from "./activity-bulk";
 import { newId, now, readAgentJson, writeAgentJson } from "./agent-file";
@@ -33,6 +34,7 @@ export interface Activity {
   updated_at?: string;
   provider?: string;
   model?: string;
+  pending_interaction?: PendingInteraction;
 }
 
 export interface ActivityUpdate {

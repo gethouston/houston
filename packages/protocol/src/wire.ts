@@ -5,6 +5,7 @@
  */
 
 import type { TokenUsage } from "./conversation";
+import type { PendingInteraction } from "./domain/interaction";
 import type { ProviderError } from "./provider-error";
 
 /**
@@ -125,7 +126,19 @@ export type WireEvent =
       type: "file_changes";
       data: { created: string[]; modified: string[] };
     }
-  | { type: "done"; data: null }
+  | {
+      /**
+       * The turn ended normally. `pendingInteraction` is present only when the
+       * model finished by asking the user for something (ask_user /
+       * request_connection) — the turn settles the board card to `needs_you`
+       * and carries the interaction to render; absent means the card settles to
+       * `done`. Also persisted on the turn's assistant `ChatMessage` so it
+       * survives a reload.
+       */
+      type: "done";
+      data: null;
+      pendingInteraction?: PendingInteraction;
+    }
   | { type: "error"; data: { message: string } };
 
 export type WireEventType = WireEvent["type"];

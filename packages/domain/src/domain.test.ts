@@ -4,6 +4,7 @@ import {
   applyActivityUpdate,
   createActivity,
   loadActivities,
+  normalizeActivities,
   removeById,
   saveActivities,
   upsertById,
@@ -93,6 +94,85 @@ test("activity update: undefined leaves fields alone, updated_at bumps", () => {
   expect(next.status).toBe("done");
   expect(next.title).toBe("T");
   expect(next.updated_at).toBe(NOW);
+});
+
+test("normalize: a valid pending_interaction survives, an invalid one is stripped with a diagnostic", () => {
+  const { items, diagnostics } = normalizeActivities(
+    [
+      {
+        id: "q",
+        title: "Ask",
+        status: "needs_you",
+        description: "",
+        pending_interaction: {
+          kind: "question",
+          question: "Which deck?",
+          options: [{ id: "q2", label: "Q2" }],
+        },
+      },
+      {
+        id: "c",
+        title: "Connect",
+        status: "needs_you",
+        description: "",
+        pending_interaction: { kind: "connect", toolkit: "gmail" },
+      },
+      {
+        id: "bad",
+        title: "Broken",
+        status: "needs_you",
+        description: "",
+        // missing the required `question` for kind=question
+        pending_interaction: { kind: "question" },
+      },
+    ],
+    "k",
+  );
+
+  expect(items.map((a) => a.id)).toEqual(["q", "c", "bad"]); // activity kept, only the field dropped
+  expect(items[0]?.pending_interaction).toEqual({
+    kind: "question",
+    question: "Which deck?",
+    options: [{ id: "q2", label: "Q2" }],
+  });
+  expect(items[1]?.pending_interaction).toEqual({
+    kind: "connect",
+    toolkit: "gmail",
+  });
+  expect(items[2]?.pending_interaction).toBeUndefined();
+  expect(diagnostics).toHaveLength(1);
+  expect(diagnostics[0]?.message).toContain("pending_interaction");
+});
+
+test("activity update: pending_interaction set / clear / untouched", () => {
+  const withInteraction = applyActivityUpdate(
+    createActivity({ title: "T" }, "a1", NOW),
+    { pending_interaction: { kind: "connect", toolkit: "slack" } },
+    NOW,
+  );
+  expect(withInteraction.pending_interaction).toEqual({
+    kind: "connect",
+    toolkit: "slack",
+  });
+
+  // undefined leaves the current interaction alone
+  const untouched = applyActivityUpdate(
+    withInteraction,
+    { status: "running" },
+    NOW,
+  );
+  expect(untouched.pending_interaction).toEqual({
+    kind: "connect",
+    toolkit: "slack",
+  });
+
+  // explicit null clears the field entirely (not stored as null)
+  const cleared = applyActivityUpdate(
+    withInteraction,
+    { pending_interaction: null },
+    NOW,
+  );
+  expect("pending_interaction" in cleared).toBe(false);
 });
 
 test("upsert/remove by id", () => {
