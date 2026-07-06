@@ -61,7 +61,9 @@
     "deviceOpenFailed": "Couldn't open the sign-in page",
     "deviceSettingsHint": "Not seeing a code prompt? Turn on device-code sign-in in <link>ChatGPT Settings > Security</link>.",
     "deviceSettingsOpenFailed": "Couldn't open ChatGPT settings",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "browserDescription": "Approve Houston in the browser tab that just opened. This window updates on its own when you finish.",
+    "browserOpen": "Didn't open? Open sign-in"
   },
   "apiKey": {
     "title": "Connect {{name}}",
@@ -111,5 +113,9 @@
     "save": "Connect",
     "saving": "Connecting...",
     "cancel": "Cancel"
+  },
+  "claudeLogin": {
+    "timeout": "Claude sign-in timed out. Please try connecting again.",
+    "confirmTimeout": "Signed in to Claude, but Houston could not confirm the connection. Please try again."
   }
 }

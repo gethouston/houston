@@ -5,6 +5,7 @@ import { SignInScreen } from "./components/auth/sign-in-screen";
 import { MigrationReconnectScreen } from "./components/onboarding/migration-reconnect-screen";
 import { isFirstRun } from "./components/onboarding/missions/onboarding-flow";
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
+import { ClaudeBrowserLogin } from "./components/shell/claude-browser-login";
 import { ProviderLoginFallback } from "./components/shell/provider-login-fallback";
 import { WorkspaceLoading } from "./components/shell/workspace-loading";
 import { WorkspaceShell } from "./components/shell/workspace-shell";
@@ -240,6 +241,7 @@ export default function App() {
     return (
       <>
         <ProviderLoginFallback />
+        <ClaudeBrowserLogin />
         <MigrationReconnectScreen onDone={migrationReconnect.dismiss} />
       </>
     );
@@ -252,6 +254,7 @@ export default function App() {
   return (
     <>
       <ProviderLoginFallback />
+      <ClaudeBrowserLogin />
       <WorkspaceShell toasts={mappedToasts} onDismissToast={dismissToast} />
     </>
   );

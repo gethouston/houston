@@ -88,6 +88,25 @@ export function osStartCodexOauthLoopback(): Promise<void> {
   return invoke<void>("start_codex_oauth_loopback");
 }
 
+/** Run `claude auth login --claudeai` FOR the user on the desktop (zero
+ * terminal): the native side spawns the bundled `claude`, which opens the
+ * browser and catches its own callback, caching the credential in Houston's
+ * shared login dir (the same `CLAUDE_CONFIG_DIR` the engine reads). Emits
+ * `claude-login://url` (the authorize URL, as a fallback for the "didn't open"
+ * link) and `claude-login://done` (`{ success, error }`). Rejects only on an
+ * up-front spawn failure. Desktop + co-located engine only. */
+export function osStartClaudeLogin(): Promise<void> {
+  return invoke<void>("start_claude_login");
+}
+
+/** Cancel an in-flight desktop Claude sign-in (kills the `claude` child). The
+ * native side then emits `claude-login://done` with `error: null` (a benign
+ * dismissal). No-op outside Tauri / when nothing is in flight. */
+export function osCancelClaudeLogin(): Promise<void> {
+  if (!isTauri()) return Promise.resolve();
+  return invoke<void>("cancel_claude_login");
+}
+
 /** Pull the Houston window to the front. Used when a flow finishes in the
  * user's browser (e.g. a Composio integration connection lands) and we want
  * the app to surface itself — the same snap-back the sign-in loopback does.

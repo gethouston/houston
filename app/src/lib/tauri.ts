@@ -20,6 +20,8 @@ import type {
   GenerateInstructionsResult,
   ProviderAuthState,
 } from "@houston-ai/engine-client";
+import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
+import { beginClaudeBrowserLogin } from "./claude-login";
 import { COMPOSIO_ALREADY_CONNECTED_KIND } from "./composio-already-connected";
 import { getEngine, isRemoteEngine } from "./engine";
 import { engineCallSurface } from "./engine-call-policy";
@@ -1060,8 +1062,27 @@ export const tauriProvider = {
     // domain the user typed on the Enterprise card; absent for every other login.
     call<void>(
       "launch_provider_login",
-      () =>
-        getEngine().providerLogin(provider, {
+      () => {
+        // Anthropic on a co-located desktop runs the zero-terminal browser login
+        // FOR the user (native `claude auth login`), never the runtime's
+        // setup-token paste flow. This is the single choke point every connect
+        // surface funnels through, so the intercept lives here (not per-surface).
+        // beginClaudeBrowserLogin drives the whole flow and reports the outcome
+        // as a synthetic ProviderLoginComplete, so `call` resolves and never
+        // double-toasts. Remote-engine desktop / web fall through to providerLogin.
+        if (
+          shouldUseClaudeDesktopLogin({
+            provider,
+            env: (import.meta.env ?? {}) as {
+              VITE_NEW_ENGINE_URL?: string;
+              VITE_HOSTED_ENGINE_URL?: string;
+            },
+            isTauri: osIsTauri(),
+          })
+        ) {
+          return beginClaudeBrowserLogin(provider);
+        }
+        return getEngine().providerLogin(provider, {
           deviceAuth:
             opts?.deviceAuth ??
             // Codex/OpenAI on a Tauri desktop against a REMOTE engine uses the
@@ -1103,7 +1124,8 @@ export const tauriProvider = {
                   { isTauri: osIsTauri() },
                 )),
           enterpriseDomain: opts?.enterpriseDomain,
-        }),
+        });
+      },
       undefined,
       // Callers that render their OWN failure toast (the picker, settings) pass
       // `toast: false` so `call`'s generic toast does not fire on top of theirs

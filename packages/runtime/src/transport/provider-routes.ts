@@ -10,6 +10,7 @@ import {
   startLogin,
 } from "../auth/login";
 import { scrubRefreshTokens, syncServedCredentialSafe } from "../auth/serve";
+import { refreshAnthropicCredential } from "../backends/claude/credential-status";
 import { json, type RouteContext, readJson } from "./http-helpers";
 
 export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
@@ -17,6 +18,10 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
 
   if (method === "GET" && path === "/providers") {
     await syncServedCredentialSafe("providers");
+    // Warm the anthropic shared-dir credential probe so a just-completed browser
+    // login flips `configured` on this poll (the card-status path goes through
+    // /providers, not /auth/status). listProviders() then reads the fresh cache.
+    await refreshAnthropicCredential();
     json(res, 200, listProviders());
     return true;
   }
@@ -32,7 +37,7 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
 
   if (method === "GET" && path === "/auth/status") {
     await syncServedCredentialSafe("auth");
-    json(res, 200, getAuthStatus());
+    json(res, 200, await getAuthStatus());
     return true;
   }
   if (method === "GET" && path === "/auth/export") {
@@ -123,7 +128,7 @@ async function handleAuthAction(
       json(ctx.res, 200, { ok: true });
       return;
     }
-    logout(provider);
+    await logout(provider);
     json(ctx.res, 200, { ok: true });
   } catch (e) {
     json(ctx.res, 400, { error: e instanceof Error ? e.message : String(e) });

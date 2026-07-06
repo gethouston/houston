@@ -61,7 +61,9 @@
     "deviceOpenFailed": "Não foi possível abrir a página de login",
     "deviceSettingsHint": "Não apareceu o pedido de código? Ative o login por código de dispositivo em <link>Configurações do ChatGPT > Segurança</link>.",
     "deviceSettingsOpenFailed": "Não foi possível abrir as configurações do ChatGPT",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "browserDescription": "Aprove o Houston na aba do navegador que abriu. Esta janela é atualizada sozinha quando você terminar.",
+    "browserOpen": "Não abriu? Abrir login"
   },
   "apiKey": {
     "title": "Conectar {{name}}",
@@ -111,5 +113,9 @@
     "save": "Conectar",
     "saving": "Conectando...",
     "cancel": "Cancelar"
+  },
+  "claudeLogin": {
+    "timeout": "O login do Claude expirou. Tente conectar novamente.",
+    "confirmTimeout": "Você entrou no Claude, mas o Houston não conseguiu confirmar a conexão. Tente novamente."
   }
 }

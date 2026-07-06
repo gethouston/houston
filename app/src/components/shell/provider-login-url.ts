@@ -9,7 +9,10 @@
  * dialog stays a thin render layer and the host parse is unit-testable.
  */
 
-import { codexUsesLoopbackRelay } from "../../lib/engine-mode.ts";
+import {
+  codexUsesLoopbackRelay,
+  providerLoginUsesDeviceAuthByDefault,
+} from "../../lib/engine-mode.ts";
 
 /**
  * Friendly host for the "you'll be taken to …" hint. Returns the bare
@@ -81,5 +84,30 @@ export function shouldUseCodexLoopback(opts: {
     opts.provider === "openai" &&
     codexUsesLoopbackRelay(opts.env, { isTauri: opts.isTauri }) &&
     !opts.userCode
+  );
+}
+
+/**
+ * Decide whether an anthropic connect on THIS click should run the zero-terminal
+ * desktop browser login (`beginClaudeBrowserLogin`) instead of the runtime's
+ * setup-token paste flow.
+ *
+ * True only for Claude (`provider === "anthropic"`) on a Tauri desktop whose
+ * engine is CO-LOCATED (`!providerLoginUsesDeviceAuthByDefault`): the credential
+ * `claude auth login` caches on this machine is the very dir the local runtime
+ * reads, so login and engine share it with no push. A REMOTE-engine desktop
+ * (hosted pod) returns false and keeps the setup-token paste flow — the pod
+ * can't read this machine's Keychain, so pushing the cred to it is the hosted
+ * follow-up element's job (the local-vs-remote branch point). Web returns false.
+ */
+export function shouldUseClaudeDesktopLogin(opts: {
+  provider: string;
+  env: { VITE_NEW_ENGINE_URL?: string; VITE_HOSTED_ENGINE_URL?: string };
+  isTauri: boolean;
+}): boolean {
+  return (
+    opts.provider === "anthropic" &&
+    opts.isTauri &&
+    !providerLoginUsesDeviceAuthByDefault(opts.env, { isTauri: opts.isTauri })
   );
 }

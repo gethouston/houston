@@ -61,7 +61,9 @@
     "deviceOpenFailed": "No se pudo abrir la página de inicio de sesión",
     "deviceSettingsHint": "¿No aparece la solicitud de código? Activa el inicio de sesión con código de dispositivo en <link>Configuración de ChatGPT > Seguridad</link>.",
     "deviceSettingsOpenFailed": "No se pudo abrir la configuración de ChatGPT",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "browserDescription": "Aprueba Houston en la pestaña del navegador que se abrió. Esta ventana se actualiza sola cuando termines.",
+    "browserOpen": "¿No se abrió? Abrir inicio de sesión"
   },
   "apiKey": {
     "title": "Conectar {{name}}",
@@ -111,5 +113,9 @@
     "save": "Conectar",
     "saving": "Conectando...",
     "cancel": "Cancelar"
+  },
+  "claudeLogin": {
+    "timeout": "El inicio de sesión de Claude expiró. Intenta conectarte de nuevo.",
+    "confirmTimeout": "Iniciaste sesión en Claude, pero Houston no pudo confirmar la conexión. Inténtalo de nuevo."
   }
 }

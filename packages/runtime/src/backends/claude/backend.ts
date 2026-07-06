@@ -7,7 +7,7 @@ import type {
 } from "../types";
 import { resolveClaudeExecutable } from "./binary-path";
 import { toSdkModel } from "./model";
-import { claudeConfigDir } from "./paths";
+import { claudeLoginConfigDir } from "./paths";
 import { type ClaudeQuery, ClaudeSession } from "./session";
 import { createSessionsStore } from "./sessions-store";
 import { buildSystemPrompt } from "./system-prompt";
@@ -45,10 +45,13 @@ export class ClaudeBackendUnavailableError extends Error {
  * The SDK is an OPTIONAL dependency, so it is imported lazily inside
  * `createSession` — never at module load — and its absence throws a typed
  * `ClaudeBackendUnavailableError` rather than crashing the runtime. The session
- * runs the SDK subprocess with an ISOLATED config dir (`CLAUDE_CONFIG_DIR` under
- * `dataDir`) and no filesystem settings (`settingSources: []`), so nothing on the
- * host machine leaks in. `options.env` REPLACES the subprocess environment, so
- * `process.env` is spread to keep PATH/HOME while pinning the config dir + token.
+ * runs the SDK subprocess against Houston's SHARED credential dir
+ * (`CLAUDE_CONFIG_DIR` = `claudeLoginConfigDir()`, the same dir the desktop
+ * `claude auth login` caches into, so the SDK reads that cached credential and
+ * self-refreshes it) and no filesystem settings (`settingSources: []`), so
+ * nothing else on the host machine leaks in. `options.env` REPLACES the
+ * subprocess environment, so `process.env` is spread to keep PATH/HOME while
+ * pinning the config dir + any degraded-fallback token.
  */
 export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
   return {
@@ -73,7 +76,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
       const pathToClaudeCodeExecutable = resolveClaudeExecutable();
       const baseOptions: Options = {
         cwd: deps.workspaceDir,
-        env: buildClaudeEnv(claudeConfigDir(deps.dataDir), deps.readToken()),
+        env: buildClaudeEnv(claudeLoginConfigDir(), deps.readToken()),
         ...(pathToClaudeCodeExecutable ? { pathToClaudeCodeExecutable } : {}),
         settingSources: [],
         tools: policy.tools,

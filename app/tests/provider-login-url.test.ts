@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   providerLoginUrlHost,
   shouldOpenLoginUrlDirectly,
+  shouldUseClaudeDesktopLogin,
   shouldUseCodexLoopback,
 } from "../src/components/shell/provider-login-url.ts";
 
@@ -224,6 +225,70 @@ describe("shouldUseCodexLoopback", () => {
         env: hosted,
         isTauri: true,
         userCode: null,
+      }),
+      false,
+    );
+  });
+});
+
+// The zero-terminal Claude browser login runs for anthropic on a CO-LOCATED
+// Tauri desktop only: the credential `claude auth login` caches locally is the
+// same dir the local runtime reads. Remote-engine desktop keeps the setup-token
+// paste flow (the pod can't read this machine's Keychain — hosted follow-up).
+describe("shouldUseClaudeDesktopLogin", () => {
+  const hosted = { VITE_HOSTED_ENGINE_URL: "https://cloud.example" };
+  const remoteHost = { VITE_NEW_ENGINE_URL: "https://houston.example.com" };
+  const loopbackDev = { VITE_NEW_ENGINE_URL: "http://127.0.0.1:4318" };
+
+  it("runs for anthropic on a co-located desktop (packaged sidecar / loopback dev)", () => {
+    strictEqual(
+      shouldUseClaudeDesktopLogin({
+        provider: "anthropic",
+        env: {},
+        isTauri: true,
+      }),
+      true,
+    );
+    strictEqual(
+      shouldUseClaudeDesktopLogin({
+        provider: "anthropic",
+        env: loopbackDev,
+        isTauri: true,
+      }),
+      true,
+    );
+  });
+
+  it("does NOT run on a remote-engine desktop (hosted / VPS) — that is the follow-up's push path", () => {
+    for (const env of [hosted, remoteHost]) {
+      strictEqual(
+        shouldUseClaudeDesktopLogin({
+          provider: "anthropic",
+          env,
+          isTauri: true,
+        }),
+        false,
+      );
+    }
+  });
+
+  it("does not run for a web / non-desktop client", () => {
+    strictEqual(
+      shouldUseClaudeDesktopLogin({
+        provider: "anthropic",
+        env: {},
+        isTauri: false,
+      }),
+      false,
+    );
+  });
+
+  it("does not run for a non-anthropic provider", () => {
+    strictEqual(
+      shouldUseClaudeDesktopLogin({
+        provider: "openai",
+        env: {},
+        isTauri: true,
       }),
       false,
     );

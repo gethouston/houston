@@ -45,7 +45,6 @@ test("titleWithClaude scrubs a stale API key when an OAuth token is connected", 
     excerpt: "hello",
     titlePrompt: "title it",
     workspaceDir: "/ws",
-    dataDir: "/data",
     readToken: () => oauth,
     query,
   });

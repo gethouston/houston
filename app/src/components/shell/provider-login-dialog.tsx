@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
-import { Copy, ExternalLink, Eye, EyeOff } from "lucide-react";
+import { Copy, ExternalLink, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderInfo } from "../../lib/providers";
@@ -52,6 +52,13 @@ interface Props {
    * demote the url to a small "Reference" link. Absent for other flows.
    */
   instructions?: string | null;
+  /**
+   * Desktop Claude BROWSER login: the native `claude auth login` already opened
+   * the browser and is catching its own callback, so there is nothing to paste.
+   * We show a spinner + "Approve Claude in your browser" and demote `url` to a
+   * "Didn't open? Open sign-in" fallback link. Closing cancels the sign-in.
+   */
+  browserPending?: boolean;
   onClose: () => void;
 }
 
@@ -60,6 +67,7 @@ export function ProviderLoginDialog({
   url,
   userCode,
   instructions,
+  browserPending,
   onClose,
 }: Props) {
   const { t } = useTranslation("providers");
@@ -91,6 +99,49 @@ export function ProviderLoginDialog({
   }, [provider, url]);
 
   if (!provider || !url) return null;
+
+  // Desktop Claude browser login: the native helper drives the whole flow and
+  // the app just waits. Spinner + a fallback link, no paste/device/URL controls.
+  if (browserPending) {
+    return (
+      <Dialog
+        open
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t("providerLogin.title", { name: provider.name })}
+            </DialogTitle>
+            <DialogDescription>
+              {t("providerLogin.browserDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-3 py-2 text-[13px] text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+            <span>{t("providerLogin.deviceWaiting")}</span>
+          </div>
+          <DialogFooter className="items-center justify-between gap-2 sm:justify-between">
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto gap-1.5 p-0 text-muted-foreground"
+              onClick={() => void tauriSystem.openUrl(url)}
+            >
+              <ExternalLink className="size-3.5" />
+              {t("providerLogin.browserOpen")}
+            </Button>
+            <Button type="button" variant="outline" onClick={onClose}>
+              {t("providerLogin.cancel")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   // Friendly destination shown in place of the raw URL. Null when the URL
   // isn't parseable; we then just omit the hint.

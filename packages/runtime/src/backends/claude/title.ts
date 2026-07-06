@@ -6,7 +6,7 @@ import {
 } from "./backend";
 import { resolveClaudeExecutable } from "./binary-path";
 import { toSdkModel } from "./model";
-import { claudeConfigDir } from "./paths";
+import { claudeLoginConfigDir } from "./paths";
 import type { ClaudeQuery } from "./session";
 import { createStreamTranslator } from "./translate";
 
@@ -19,8 +19,9 @@ import { createStreamTranslator } from "./translate";
  *
  * It is deliberately minimal vs a `ClaudeSession`: `allowedTools: []` (titles need
  * no tools), NO session persistence (no resume, no sessions.json write — a title
- * is a throwaway), and the isolated `CLAUDE_CONFIG_DIR` so nothing on the host
- * leaks in. Text is collected via the SAME stream translator turns use, so a
+ * is a throwaway), and the SAME shared `CLAUDE_CONFIG_DIR` (`claudeLoginConfigDir`)
+ * a turn uses, so it reads the identical cached credential. Text is collected via
+ * the SAME stream translator turns use, so a
  * `provider_error` (rate limit, auth) simply yields no text → the caller falls
  * back to a truncated title rather than throwing.
  */
@@ -30,7 +31,6 @@ export interface ClaudeTitleParams {
   /** The product-neutral title system prompt (owned by the caller). */
   titlePrompt: string;
   workspaceDir: string;
-  dataDir: string;
   readToken: () => ClaudeToken | undefined;
   /** pi model id to title with; mapped to the SDK model string. */
   modelId?: string;
@@ -54,7 +54,7 @@ export async function titleWithClaude(p: ClaudeTitleParams): Promise<string> {
   const pathToClaudeCodeExecutable = resolveClaudeExecutable();
   const options: Options = {
     cwd: p.workspaceDir,
-    env: buildClaudeEnv(claudeConfigDir(p.dataDir), p.readToken()),
+    env: buildClaudeEnv(claudeLoginConfigDir(), p.readToken()),
     ...(pathToClaudeCodeExecutable ? { pathToClaudeCodeExecutable } : {}),
     settingSources: [],
     allowedTools: [],

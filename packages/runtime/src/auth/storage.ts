@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { registerHoustonBedrockProvider } from "../ai/bedrock";
+import { anthropicCredentialCached } from "../backends/claude/credential-status";
 import { config } from "../config";
 
 registerHoustonBedrockProvider();
@@ -28,12 +29,20 @@ export const authStorage = AuthStorage.create(
  * `AuthStorage.getAuthStatus()` draws the exact same line: a stored credential
  * is `configured`, env / override / fallback are not.
  *
- * Pure (takes the store) so the rule is unit-testable without the singleton.
+ * ANTHROPIC is the exception: its primary desktop credential is NOT in auth.json
+ * at all — the browser login (`claude auth login`) caches it in the shared login
+ * dir (Keychain / `.credentials.json`), read only by the `claude` binary. So it
+ * counts as connected when EITHER a setup-token was pasted into auth.json (the
+ * degraded fallback, `has`) OR the shared-dir credential probe reads logged-in
+ * (`anthropicCredentialCached`, warmed by `getAuthStatus`).
+ *
+ * Pure over its inputs (store + the cached probe) so the rule stays testable.
  */
 export function providerConnected(
   store: Pick<AuthStorage, "has">,
   id: string,
 ): boolean {
+  if (id === "anthropic") return store.has(id) || anthropicCredentialCached();
   return store.has(id);
 }
 

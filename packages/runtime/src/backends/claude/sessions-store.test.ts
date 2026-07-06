@@ -7,28 +7,32 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { claudeProjectsDir } from "./paths";
 import { createSessionsStore } from "./sessions-store";
 
+// The transcript `projects` tree is SHARED (under CLAUDE_CONFIG_DIR =
+// HOUSTON_HOME/claude-login), so point HOUSTON_HOME at a temp dir per test.
+const savedHome = process.env.HOUSTON_HOME;
+
 beforeEach(() => {
   vi.spyOn(console, "warn").mockImplementation(() => {});
+  process.env.HOUSTON_HOME = mkdtempSync(join(tmpdir(), "claude-home-"));
 });
 
+afterEach(() => {
+  if (savedHome === undefined) delete process.env.HOUSTON_HOME;
+  else process.env.HOUSTON_HOME = savedHome;
+});
+
+/** A fresh per-agent data dir (holds only sessions.json). */
 function dataDir(): string {
   return mkdtempSync(join(tmpdir(), "claude-data-"));
 }
 
-/** Write a fake SDK transcript for `sessionId` under the isolated config dir. */
-function writeTranscript(dir: string, sessionId: string): void {
-  const projects = join(
-    dir,
-    "backends",
-    "claude",
-    "config",
-    "projects",
-    "proj",
-  );
+/** Write a fake SDK transcript for `sessionId` under the SHARED projects dir. */
+function writeTranscript(sessionId: string): void {
+  const projects = join(claudeProjectsDir(), "proj");
   mkdirSync(projects, { recursive: true });
   writeFileSync(join(projects, `${sessionId}.jsonl`), "{}");
 }
@@ -58,7 +62,7 @@ test("resolveResume returns the id when its transcript exists", () => {
   const dir = dataDir();
   const store = createSessionsStore(dir);
   store.setSessionId("c1", "sess-1");
-  writeTranscript(dir, "sess-1");
+  writeTranscript("sess-1");
   expect(store.resolveResume("c1")).toBe("sess-1");
 });
 
@@ -82,8 +86,8 @@ test("purge drops the mapping AND deletes the transcript", () => {
   const dir = dataDir();
   const store = createSessionsStore(dir);
   store.setSessionId("c1", "sess-1");
-  writeTranscript(dir, "sess-1");
-  const transcript = join(claudeProjectsDir(dir), "proj", "sess-1.jsonl");
+  writeTranscript("sess-1");
+  const transcript = join(claudeProjectsDir(), "proj", "sess-1.jsonl");
   expect(existsSync(transcript)).toBe(true);
 
   store.purge("c1");
@@ -103,4 +107,17 @@ test("a corrupt sessions.json degrades to empty rather than throwing", () => {
   mkdirSync(join(dir, "backends", "claude"), { recursive: true });
   writeFileSync(join(dir, "backends", "claude", "sessions.json"), "{not json");
   expect(createSessionsStore(dir).getSessionId("c1")).toBeUndefined();
+});
+
+test("two agents' transcripts under the shared projects dir don't collide", () => {
+  // Different per-agent data dirs, DIFFERENT session ids → each resolves only
+  // its own transcript even though the projects tree is shared.
+  const a = createSessionsStore(dataDir());
+  const b = createSessionsStore(dataDir());
+  a.setSessionId("c", "sess-a");
+  b.setSessionId("c", "sess-b");
+  writeTranscript("sess-a");
+  expect(a.resolveResume("c")).toBe("sess-a");
+  // b's transcript isn't on disk yet → b starts fresh, doesn't pick up sess-a.
+  expect(b.resolveResume("c")).toBeUndefined();
 });

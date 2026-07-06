@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { primeAnthropicCredential } from "../backends/claude/credential-status";
 import { config } from "../config";
 import { handleConversationRoute } from "./conversation-routes";
 import { applyCors } from "./cors";
@@ -50,6 +51,10 @@ export function createRuntimeServer() {
 }
 
 export function startServer() {
+  // Warm the anthropic shared-dir credential probe so the turn-time sync path
+  // (`activeProvider`) sees a connected credential even before the first
+  // /auth/status poll. Fire-and-forget; failures self-log (never connected).
+  primeAnthropicCredential();
   const server = createRuntimeServer();
   server.listen(config.port, config.host, () => {
     console.info("runtime listening", {
