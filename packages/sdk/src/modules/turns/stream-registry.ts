@@ -14,11 +14,17 @@ export interface StreamTuning {
 }
 
 /**
- * Consecutive frameless connection attempts before a subscription gives up
- * (~30s at the default backoff cap): a turn settles as an error (the old
- * dead-server UX, not an eternal spinner); an observer disposes silently.
+ * Consecutive frameless connection attempts before a subscription gives up:
+ * a turn settles as an error (the old dead-server UX, not an eternal
+ * spinner); an observer disposes silently. Attempts that fail FAST (dead
+ * local sidecar refusing the connection) spend it in ~45s of backoff; an
+ * attempt that HANGS costs a full 45s idle watchdog, so the budget must
+ * outlast the cloud gateway's cold-wake hold — ensureAwake keeps every
+ * request open for up to 300s while the agent pod starts, and a budget of 6
+ * used to give up at ~283s, moments before a slow wake would have delivered
+ * (HOU-705). 8 hung attempts ≈ 6+ minutes, past the gateway's own verdict.
  */
-export const STREAM_FAILURE_BUDGET = 6;
+export const STREAM_FAILURE_BUDGET = 8;
 /** Budget-exhaustion copy when no attempt surfaced a concrete error. */
 export const STREAM_LOST_MESSAGE = "Lost the connection to the engine.";
 /**

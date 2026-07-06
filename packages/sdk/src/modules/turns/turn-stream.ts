@@ -13,7 +13,11 @@ import {
   type StreamTuning,
   streamKey,
 } from "./stream-registry";
-import { isAmbiguousSendFailure, turnErrorMessage } from "./turn-errors";
+import {
+  engineVerdictMessage,
+  isAmbiguousSendFailure,
+  turnErrorMessage,
+} from "./turn-errors";
 import { TurnSink } from "./turn-sink";
 
 export { observeConversation } from "./observe-stream";
@@ -199,10 +203,11 @@ export async function streamTurn(
       onRetry: ({ consecutiveFailures, error }) => {
         if (consecutiveFailures < STREAM_FAILURE_BUDGET) return;
         // The engine has been unreachable for the whole budget: settle with
-        // the real reason (old dead-server UX) instead of spinning forever.
-        sink.fail(
-          error === undefined ? STREAM_LOST_MESSAGE : turnErrorMessage(error),
-        );
+        // the engine's own verdict when the last attempt got one, else the
+        // product copy. Never the raw transport error — a watchdog-aborted
+        // hang rejects with WebKit's "Fetch is aborted", which is developer
+        // speak, not a message (HOU-705).
+        sink.fail(engineVerdictMessage(error) ?? STREAM_LOST_MESSAGE);
         ac.abort();
       },
       ...opts.tuning,

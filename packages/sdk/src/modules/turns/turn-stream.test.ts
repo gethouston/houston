@@ -727,10 +727,75 @@ test("the failure budget settles a dead-server turn instead of spinning forever"
     },
   );
 
-  expect(afters).toHaveLength(6); // exactly the budget, then settle + abort
+  expect(afters).toHaveLength(8); // exactly the budget, then settle + abort
   expect(items).toContainEqual({
     feed_type: "system_message",
     data: STREAM_LOST_MESSAGE,
+  });
+  expect(sessionStatuses).toEqual(["running", "error"]);
+});
+
+// HOU-705: a cold cloud wake holds the SSE connect with no bytes, the resume
+// loop's idle watchdog aborts each held attempt, and the budget settle used to
+// surface that abort's raw message — WebKit's "Fetch is aborted" — in the chat.
+test("budget exhaustion on aborted/hung attempts settles with product copy, never the raw transport error", async () => {
+  const { engine, afters } = fakeEngine([
+    () => {
+      const e = new Error("Fetch is aborted"); // WebKit's AbortError message
+      e.name = "AbortError";
+      throw e;
+    },
+  ]);
+  const { items, sessionStatuses, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-budget-abort",
+    "hi",
+    output,
+    registry,
+    { tuning: fast },
+  );
+
+  expect(afters).toHaveLength(8);
+  expect(items).toContainEqual({
+    feed_type: "system_message",
+    data: STREAM_LOST_MESSAGE,
+  });
+  expect(items).not.toContainEqual({
+    feed_type: "system_message",
+    data: "Fetch is aborted",
+  });
+  expect(sessionStatuses).toEqual(["running", "error"]);
+});
+
+test("budget exhaustion keeps the engine's own verdict when the attempts got one", async () => {
+  // The gateway answering 503 after a failed wake IS a verdict with product
+  // copy — that survives; only transport-level messages are replaced.
+  const { engine } = fakeEngine([
+    () => {
+      throw new EngineError(
+        503,
+        JSON.stringify({ error: "engine unavailable" }),
+      );
+    },
+  ]);
+  const { items, sessionStatuses, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-budget-verdict",
+    "hi",
+    output,
+    registry,
+    { tuning: fast },
+  );
+
+  expect(items).toContainEqual({
+    feed_type: "system_message",
+    data: "engine unavailable",
   });
   expect(sessionStatuses).toEqual(["running", "error"]);
 });
