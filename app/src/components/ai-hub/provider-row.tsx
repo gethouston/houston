@@ -1,7 +1,9 @@
 /**
  * One provider row in the marketplace LIST (Providers tab). A quiet, scannable
- * line — small brand glyph + name + a muted secondary (subtitle / model count) —
- * with a single right-aligned action: a Connect pill when disconnected (which,
+ * line — small brand glyph + name + a secondary line that leads with the live
+ * model count in bold (`{N} models`), a middot, then a muted one-line provider
+ * description — with a single right-aligned action: a Connect pill when
+ * disconnected (which,
  * while a connect is in flight, flips to Cancel on hover so a stuck sign-in can
  * be aborted) or a ghost Sign out when connected (opening the shared confirm).
  * The row body is the open affordance: clicking anywhere but the action button
@@ -21,8 +23,14 @@ import { ModelMark } from "./hub-badges";
 
 interface ProviderRowProps {
   provider: ProviderInfo;
-  /** Muted secondary line: the provider's subtitle or its model count. */
-  secondary: string;
+  /**
+   * Live model count for this provider from the catalog. Rendered bold as
+   * `{N} models` at the head of the secondary line; when 0 (unknown) the line is
+   * the description alone.
+   */
+  modelCount: number;
+  /** Muted one-line provider description, after the bold count + middot. */
+  description: string;
   connected: boolean;
   connecting: boolean;
   signingOut: boolean;
@@ -34,7 +42,8 @@ interface ProviderRowProps {
 
 export function ProviderRow({
   provider,
-  secondary,
+  modelCount,
+  description,
   connected,
   connecting,
   signingOut,
@@ -77,7 +86,15 @@ export function ProviderRow({
           {provider.name}
         </span>
         <span className="truncate text-[13px] text-muted-foreground">
-          {secondary}
+          {modelCount > 0 && (
+            <>
+              <span className="font-medium text-foreground">
+                {t("card.models", { count: modelCount })}
+              </span>
+              {" · "}
+            </>
+          )}
+          {description}
         </span>
       </div>
 

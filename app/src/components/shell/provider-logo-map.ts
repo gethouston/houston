@@ -101,8 +101,13 @@ export const BRAND_ALIASES: Readonly<Record<string, BrandKey>> = {
   "xiaomi-token-plan-cn": "xiaomi",
   "xiaomi-token-plan-sgp": "xiaomi",
   // AI-hub lab ids (see `catalog-lab.ts`) that differ from the provider id.
+  // Most lab ids ARE provider ids (anthropic, openai, mistral, deepseek, xai,
+  // minimax, zai, nvidia, ...) so `providerBrandKey` resolves them directly;
+  // only the ids that spell the brand differently need an alias. Labs with no
+  // shipped mark (meta, qwen, cohere, other) carry none and fall to the monogram.
   gemini: "google",
   amazon: "amazon-bedrock",
+  moonshot: "moonshotai",
 };
 
 /**

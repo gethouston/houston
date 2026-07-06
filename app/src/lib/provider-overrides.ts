@@ -53,6 +53,15 @@ export interface ProviderOverride {
   /** Brand label (pi's `name` is a titleized id or an OAuth subscription string). */
   name?: string;
   subtitle?: string;
+  /**
+   * One-line provider description for the Providers LIST row (what the provider
+   * is / its niche), rendered muted after the bold live model count. Kept short
+   * (~60 chars) so it fits the compact row. Plain English, rendered directly
+   * (the overrides layer is i18n-agnostic, matching `subtitle`) — NOT the longer
+   * marketing copy the provider modal reads from `aiHub:providers.*.description`.
+   * Every provider id resolves to one via `providerDescription`.
+   */
+  description?: string;
   cost?: string;
   installUrl?: string;
   /** For api-key providers: the dashboard URL where the user creates/copies the key. */
@@ -205,6 +214,7 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   openai: {
     name: "OpenAI",
     subtitle: "Codex",
+    description: "GPT and Codex via your ChatGPT subscription.",
     cost: "Your ChatGPT subscription",
     installUrl: "https://github.com/openai/codex",
     auth: "oauth",
@@ -247,6 +257,7 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   anthropic: {
     name: "Anthropic",
     subtitle: "Claude Code",
+    description: "Claude models via your Claude subscription.",
     cost: "Your Claude subscription",
     installUrl: "https://docs.anthropic.com/en/docs/claude-code/overview",
     auth: "oauth",
@@ -293,6 +304,7 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     // ids use the DOTTED form (claude-sonnet-4.6).
     name: "GitHub Copilot",
     subtitle: "Personal or your company's plan",
+    description: "Claude, GPT, and Gemini on one Copilot plan.",
     cost: "Your GitHub Copilot subscription",
     installUrl: "https://github.com/features/copilot",
     auth: "oauth",
@@ -342,6 +354,7 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   opencode: {
     name: "OpenCode Zen",
     subtitle: "Curated frontier models",
+    description: "Curated frontier coding models, one key.",
     cost: "Pay as you go",
     installUrl: "https://opencode.ai/auth",
     apiKeyUrl: "https://opencode.ai/auth",
@@ -389,6 +402,7 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   "opencode-go": {
     name: "OpenCode Go",
     subtitle: "Open coding models",
+    description: "Open coding models on a flat monthly plan.",
     cost: "$10 / month",
     installUrl: "https://opencode.ai/auth",
     apiKeyUrl: "https://opencode.ai/auth",
@@ -424,6 +438,7 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   openrouter: {
     name: "OpenRouter",
     subtitle: "Any model, one key",
+    description: "Any model from one key.",
     cost: "Pay-as-you-go on your OpenRouter account",
     installUrl: "https://openrouter.ai",
     apiKeyUrl: "https://openrouter.ai/settings/keys",
@@ -459,6 +474,7 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   deepseek: {
     name: "DeepSeek",
     subtitle: "Official DeepSeek API",
+    description: "Frontier reasoning at low cost, from DeepSeek.",
     cost: "Pay-as-you-go on your DeepSeek account",
     installUrl: "https://platform.deepseek.com",
     apiKeyUrl: "https://platform.deepseek.com/api_keys",
@@ -479,6 +495,7 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   google: {
     name: "Google Gemini",
     subtitle: "Free key from AI Studio",
+    description: "Gemini models, free key from AI Studio.",
     cost: "Free tier on your Google account",
     installUrl: "https://ai.google.dev",
     apiKeyUrl: "https://aistudio.google.com/apikey",
@@ -509,6 +526,7 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   "amazon-bedrock": {
     name: "Amazon Bedrock",
     subtitle: "Use Bedrock with your AWS account",
+    description: "Claude and Nova on your own AWS account.",
     cost: "Pay-as-you-go on your AWS account",
     installUrl: "https://aws.amazon.com/bedrock/",
     apiKeyUrl: "https://console.aws.amazon.com/bedrock/home#/api-keys",
@@ -539,6 +557,7 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   minimax: {
     name: "MiniMax",
     subtitle: "Global API",
+    description: "Fast, affordable models for agent work.",
     cost: "Pay-as-you-go on your MiniMax account",
     installUrl: "https://platform.minimax.io",
     apiKeyUrl: "https://platform.minimax.io",
@@ -562,3 +581,59 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     },
   },
 };
+
+/**
+ * One-line row descriptions for every pi provider that has no curated
+ * `PROVIDER_OVERRIDES` entry (plus the local `openai-compatible` provider, whose
+ * `ProviderInfo` is appended verbatim, not built from an override). Accurate and
+ * concise (~60 chars) — what the provider is / its niche, not marketing. Named
+ * regional variants are listed so they read on their own; any other `*-cn` /
+ * `*-sgp` / `*-ams` id falls back to its parent's description (see
+ * `providerDescription`). Curated providers' row copy lives on their override's
+ * `description` field, which wins over this map.
+ */
+export const DESCRIPTION_BY_ID: Readonly<Record<string, string>> = {
+  "openai-compatible": "Local models via Ollama, LM Studio, or vLLM.",
+  groq: "Ultra-low-latency inference on custom LPU hardware.",
+  mistral: "European open-weight and frontier models.",
+  xai: "Grok models from xAI.",
+  cerebras: "Wafer-scale inference, very fast.",
+  fireworks: "Fast serverless inference for open models.",
+  together: "Open-weight models, hosted and fast.",
+  nvidia: "Open models served on NVIDIA NIM.",
+  huggingface: "Open models via Hugging Face Inference.",
+  moonshotai: "Kimi models from Moonshot AI.",
+  zai: "GLM open models from Z.ai.",
+  cohere: "Enterprise RAG and Command models.",
+  perplexity: "Search-grounded Sonar models.",
+  "ant-ling": "Ling open models from Ant Group.",
+  "vercel-ai-gateway": "One key for many models, from Vercel.",
+  "cloudflare-ai-gateway": "Route to many models through Cloudflare.",
+  "cloudflare-workers-ai": "Open models on Cloudflare's edge network.",
+  "azure-openai-responses": "OpenAI models on Microsoft Azure.",
+  "google-vertex": "Gemini and more on Google Cloud Vertex AI.",
+  // Named regional / subscription variants (reuse the lab's niche).
+  "kimi-coding": "Kimi coding subscription from Moonshot AI.",
+  "zai-coding": "GLM coding subscription from Z.ai.",
+};
+
+/**
+ * Resolve a provider id to its one-line row description. A curated override's
+ * `description` wins, then the `DESCRIPTION_BY_ID` map, then — for a regional
+ * `*-cn` / `*-sgp` / `*-ams` id with no entry of its own — its parent provider's
+ * description. Returns `""` only for a provider we have never described (so the
+ * row shows nothing rather than a wrong niche). Never throws on an unknown id.
+ */
+export function providerDescription(id: string): string {
+  const curated = PROVIDER_OVERRIDES[id]?.description;
+  if (curated) return curated;
+  const direct = DESCRIPTION_BY_ID[id];
+  if (direct) return direct;
+  const parent = id.replace(REGIONAL_SUFFIX, "");
+  if (parent !== id) {
+    return (
+      PROVIDER_OVERRIDES[parent]?.description ?? DESCRIPTION_BY_ID[parent] ?? ""
+    );
+  }
+  return "";
+}

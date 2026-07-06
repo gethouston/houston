@@ -3,7 +3,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections";
 import type { HubCatalog } from "../../lib/ai-hub/catalog-types";
-import { providerCategory } from "../../lib/provider-overrides";
+import { providerDescription } from "../../lib/provider-overrides";
 import type { ProviderInfo } from "../../lib/providers";
 import { SectionHeader } from "./hub-badges";
 import {
@@ -103,20 +103,15 @@ export function ProviderList({
     connections.isConnected,
   );
 
-  // Muted secondary line: the curated subtitle when present, otherwise the model
-  // count (falling back to the category so a bare pi provider still reads).
-  const secondaryOf = (provider: ProviderInfo) => {
-    if (provider.subtitle) return provider.subtitle;
-    const count = providerModels(catalog, provider).length;
-    if (count > 0) return t("card.models", { count });
-    return t(`providers.category.${providerCategory(provider.id)}`);
-  };
-
+  // Secondary line: the live model count (bold, in the row) then a one-line
+  // provider description. Every provider id resolves to a description; the count
+  // comes from the hydrated catalog.
   const row = (provider: ProviderInfo) => (
     <ProviderRow
       key={provider.id}
       provider={provider}
-      secondary={secondaryOf(provider)}
+      modelCount={providerModels(catalog, provider).length}
+      description={providerDescription(provider.id)}
       connected={connections.isConnected(provider)}
       connecting={connections.busy[provider.id] === "connecting"}
       signingOut={connections.busy[provider.id] === "signingOut"}

@@ -7,9 +7,8 @@
  */
 
 import { cn } from "@houston-ai/core";
-import { Box } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { CatalogModel, LabId } from "../../lib/ai-hub/catalog-types.ts";
+import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
 import { ProviderGlyph } from "../shell/provider-logos.tsx";
 import {
   capabilityKeys,
@@ -31,15 +30,6 @@ import {
 /** Shared grid template for the header and every row, so columns line up. */
 export const LEDGER_GRID =
   "grid grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_120px_160px_120px] items-center gap-x-4 px-5";
-
-/** Labs whose id is also a provider id `ProviderGlyph` draws a real logo for. */
-const GLYPH_LABS = new Set<LabId>([
-  "anthropic",
-  "openai",
-  "google",
-  "deepseek",
-  "minimax",
-]);
 
 /** Literal i18n keys (kept literal so the typed `t()` accepts them). */
 const CAP_KEY = {
@@ -79,16 +69,7 @@ export function ModelRow({
       )}
     >
       <span className="flex min-w-0 items-center gap-3">
-        <ModelMark
-          size="md"
-          mark={
-            GLYPH_LABS.has(model.lab) ? (
-              <ProviderGlyph providerId={model.lab} />
-            ) : (
-              <Box className="text-muted-foreground" />
-            )
-          }
-        />
+        <ModelMark size="md" mark={<ProviderGlyph providerId={model.lab} />} />
         <span className="flex min-w-0 flex-col">
           <span className="truncate font-medium text-foreground text-sm">
             {model.name}
