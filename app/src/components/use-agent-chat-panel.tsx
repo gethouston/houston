@@ -36,7 +36,12 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { useActivity, useSkills } from "../hooks/queries";
+import {
+  useActivity,
+  useAgentModelChoice,
+  useSetAgentModelChoice,
+  useSkills,
+} from "../hooks/queries";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useConversationFeed } from "../hooks/use-conversation-vm";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
@@ -54,6 +59,10 @@ import {
 } from "../lib/context-usage";
 import { createMission } from "../lib/create-mission";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
+import {
+  modelSelectorDecision,
+  resolvePersonalModelPin,
+} from "../lib/model-selector-lock";
 import { canManageAgentGrants, isMultiplayer } from "../lib/org-roles";
 import {
   decideHandoffMode,
@@ -196,6 +205,21 @@ export function useAgentChatPanel({
   const { capabilities } = useCapabilities();
   const integrationsEnabled = integrationsSupported(capabilities);
 
+  // Teams E8: in a multiplayer Teams org the composer's model + effort pickers
+  // read+write the ACTING user's PERSONAL per-agent choice (clamped to the
+  // agent's allowed-models ceiling), not the shared agent config. Single-player
+  // / self-host keeps the shared-config behavior (personal=false, no ceiling).
+  // The gateway is the sole enforcer of the ceiling per turn.
+  const modelDecision = modelSelectorDecision(capabilities, agent);
+  const { data: modelChoiceInfo } = useAgentModelChoice(
+    agent?.id ?? "",
+    modelDecision.personal,
+  );
+  const setModelChoice = useSetAgentModelChoice(agent?.id ?? "");
+  const allowedModels = modelDecision.personal
+    ? (modelChoiceInfo?.allowedModels ?? null)
+    : null;
+
   const path = agent?.folderPath ?? null;
   const agentModes = agentDef?.config.agents;
 
@@ -320,6 +344,35 @@ export function useAgentChatPanel({
     effectiveProvider,
     effectiveModel,
     agentEffort,
+  );
+
+  // The provider/model/effort the composer picker DISPLAYS. In personal (Teams)
+  // mode this is the acting user's stored choice, falling back to the clamped
+  // agent default; in shared mode it is the effective pin resolved above. The
+  // SEND path still forwards the effective pin (below) — the gateway strips it
+  // and re-injects each acting user's clamped choice per turn — so the two never
+  // need to agree on the wire, only on screen.
+  const displayModelPin = useMemo(
+    () =>
+      modelDecision.personal
+        ? resolvePersonalModelPin(modelChoiceInfo?.choice, allowedModels, {
+            provider: effectiveProvider,
+            model: effectiveModel,
+            effort: effectiveEffort,
+          })
+        : {
+            provider: effectiveProvider,
+            model: effectiveModel,
+            effort: effectiveEffort,
+          },
+    [
+      modelDecision.personal,
+      modelChoiceInfo?.choice,
+      allowedModels,
+      effectiveProvider,
+      effectiveModel,
+      effectiveEffort,
+    ],
   );
 
   // Converge legacy pin-less chats (created before per-conversation pins):
@@ -500,6 +553,52 @@ export function useAgentChatPanel({
       }
     },
     [path, addToast, t],
+  );
+
+  // Route a composer model / effort pick. In personal (Teams) mode it writes the
+  // acting user's per-agent choice (the gateway clamps it to the ceiling and
+  // applies it per turn); in shared mode it keeps the existing agent-config /
+  // activity-pin behavior. `.mutate` fires and forgets — the tauri wrapper's
+  // `call()` surfaces any failure (e.g. `model_not_allowed`) as a toast once, so
+  // awaiting here would only double-toast.
+  const selectModel = useCallback(
+    (prov: string, mod: string) => {
+      if (modelDecision.personal) {
+        setModelChoice.mutate({
+          provider: prov,
+          model: mod,
+          effort: displayModelPin.effort,
+        });
+        return;
+      }
+      void handleModelSelect(prov, mod);
+    },
+    [
+      modelDecision.personal,
+      setModelChoice,
+      displayModelPin.effort,
+      handleModelSelect,
+    ],
+  );
+  const selectEffort = useCallback(
+    (effort: EffortLevel) => {
+      if (modelDecision.personal) {
+        setModelChoice.mutate({
+          provider: displayModelPin.provider,
+          model: displayModelPin.model,
+          effort,
+        });
+        return;
+      }
+      void handleEffortSelect(effort);
+    },
+    [
+      modelDecision.personal,
+      setModelChoice,
+      displayModelPin.provider,
+      displayModelPin.model,
+      handleEffortSelect,
+    ],
   );
 
   // ── File-tool rendering (per-agent path) ──────────────────────────────
@@ -754,7 +853,7 @@ export function useAgentChatPanel({
             }}
             onSwitchModel={
               isModelUnsupported
-                ? () => handleModelSelect("openai", "gpt-5.5")
+                ? () => selectModel("openai", "gpt-5.5")
                 : undefined
             }
           />
@@ -800,9 +899,7 @@ export function useAgentChatPanel({
             // "Pick another model" pops the MODEL picker (not the Skills picker);
             // "Switch to <fallback>" applies it directly on the same provider.
             onSwitchModel={() => setModelPickerOpen(true)}
-            onApplyModel={(model) =>
-              handleModelSelect(effectiveProvider, model)
-            }
+            onApplyModel={(model) => selectModel(effectiveProvider, model)}
           />
         );
       }
@@ -813,7 +910,7 @@ export function useAgentChatPanel({
       effectiveModel,
       effectiveProvider,
       effectiveEffort,
-      handleModelSelect,
+      selectModel,
       path,
       selectedSessionKey,
       t,
@@ -945,18 +1042,19 @@ export function useAgentChatPanel({
           {t("composerSkill.browse")}
         </button>
         <ChatModelSelector
-          provider={effectiveProvider}
-          model={effectiveModel}
-          onSelect={handleModelSelect}
+          provider={displayModelPin.provider}
+          model={displayModelPin.model}
+          onSelect={selectModel}
           open={modelPickerOpen}
           onOpenChange={setModelPickerOpen}
           agent={agent}
+          allowedModels={allowedModels}
         />
         <ChatEffortSelector
-          provider={effectiveProvider}
-          model={effectiveModel}
-          effort={effectiveEffort}
-          onSelect={handleEffortSelect}
+          provider={displayModelPin.provider}
+          model={displayModelPin.model}
+          effort={displayModelPin.effort}
+          onSelect={selectEffort}
           agent={agent}
         />
         <div className="ml-auto">
@@ -970,11 +1068,10 @@ export function useAgentChatPanel({
   }, [
     agent,
     t,
-    effectiveProvider,
-    effectiveModel,
-    effectiveEffort,
-    handleModelSelect,
-    handleEffortSelect,
+    displayModelPin,
+    selectModel,
+    selectEffort,
+    allowedModels,
     contextUsage,
     contextWindow,
     modelPickerOpen,

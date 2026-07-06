@@ -7,7 +7,6 @@ import ActivityTab from "./activity-tab";
 import AgentsTab from "./agents-tab";
 import MembersTab from "./members-tab";
 import { ORG_TAB_IDS, type OrgTabId } from "./org-view-model";
-import TemplatesTab from "./templates-tab";
 import UsageTab from "./usage-tab";
 
 /**
@@ -31,7 +30,6 @@ export interface OrgTabProps {
 const TAB_COMPONENTS: Record<OrgTabId, (props: OrgTabProps) => ReactNode> = {
   people: MembersTab,
   agents: AgentsTab,
-  templates: TemplatesTab,
   activity: ActivityTab,
   usage: UsageTab,
 };

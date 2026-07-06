@@ -37,10 +37,7 @@ describe("canSeeOrganization", () => {
 
 describe("ORG_TAB_IDS", () => {
   it("is the sections in display order", () => {
-    strictEqual(
-      ORG_TAB_IDS.join(","),
-      "people,agents,templates,activity,usage",
-    );
+    strictEqual(ORG_TAB_IDS.join(","), "people,agents,activity,usage");
   });
 });
 

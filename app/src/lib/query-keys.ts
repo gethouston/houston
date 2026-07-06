@@ -80,12 +80,11 @@ export const queryKeys = {
    */
   agentSettings: (agentId: string) => ["agent-settings", agentId] as const,
   /**
-   * Teams v2: the org's agent templates. `orgTemplates` is the list of
-   * summaries (app-scoped — one org per user); `orgTemplate` is one template's
-   * full spec, fetched lazily by id only when a caller needs the whole
-   * configuration (creating an agent from it). Both are served only by a Teams
-   * gateway; the surface gates on `capabilities.multiplayer`.
+   * Teams v2: the ACTING user's per-agent model choice plus the agent's
+   * effective `allowedModels` ceiling (`GET /agents/:slug/model-choice`). Keyed
+   * by agent id; served only by a Teams gateway (degrades to `null` elsewhere).
+   * The set mutation self-invalidates this key.
    */
-  orgTemplates: () => ["org-templates"] as const,
-  orgTemplate: (id: string) => ["org-template", id] as const,
+  agentModelChoice: (agentId: string) =>
+    ["agent-model-choice", agentId] as const,
 };

@@ -113,16 +113,10 @@ New Agent modal is Store-only for non-technical users.
 ## Agent creation
 Seeds agent CLAUDE.md from manifest `claudeMd` field or manifest's `CLAUDE.md` file. Fallback: generic template.
 
-**From an org template (Teams v2).** `CreateAgent` carries an optional
-`templateId`; `POST /agents` with it stamps a new agent from a
-`gateway.agent_templates` record. The gateway sets the new agent's allowed-app
-ceiling synchronously and applies the template's instructions/skills/model to
-the pod in the background. Ignored by single-player/self-host hosts (no
-templates). A manager captures a template with **Save as template**
-(`save-as-template-section.tsx`, in Agent Settings, gated on
-`isMultiplayer && isAgentManager`); creation from one runs through
-`use-create-from-template.ts` + `create-workspace-dialog.tsx`. See
-`knowledge-base/teams.md`.
+(The E5 "create from org template" path — `CreateAgent.templateId` +
+`gateway.agent_templates` — was removed in E8. Teams agents are created like any
+other; the manager configures instructions/skills/model/allowlist afterward. See
+`knowledge-base/teams.md`.)
 
 ## Default Personal assistant + tutorial
 

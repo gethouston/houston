@@ -87,7 +87,11 @@ intersected with and the caller's effective `access`; manager-only write).
 `getOrgSettings` / `setOrgSettings` read/replace the org ceiling (owner-only
 write). Copy lives under `teams:integrations.allowlist` ("Allowed integrations",
 "Restrict to specific apps"); an agent tab also lists apps blocked by the
-ceiling under `teams:integrations.notAllowed`. Full client surface:
+ceiling under `teams:integrations.notAllowed`. The manager editor lives in Agent
+Settings > **Access** > **Allowed integrations** (`AgentAllowlistSection`); its
+editing surface is `AllowlistAppGrid` — the Integrations-tab app catalog
+(search + paginated app cards via the shared `AppRow`/`appDisplay`) with a
+per-app allow toggle, not a dense checklist. Full client surface:
 `knowledge-base/teams.md`.
 
 ### Local / self-host grants (NEW — desktop + self-host parity)

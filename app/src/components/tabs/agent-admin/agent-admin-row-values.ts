@@ -1,0 +1,21 @@
+/**
+ * A row's resting-state ceiling value, shared by the AI-model (`allowedModels`)
+ * and allowed-integrations (`allowedToolkits`) rows since both have the same
+ * shape. `undefined` settings (still loading / not a Teams host) → `null` (show
+ * no value yet); a `null` ceiling → "all"; else the explicit count. Pure and
+ * DOM/i18n-free so the landing's inline-state logic is unit-tested; the caller
+ * maps the descriptor to the right i18n key (allModels/allApps, count plurals).
+ */
+export type CeilingValue =
+  | { kind: "all" }
+  | { kind: "count"; count: number }
+  | null;
+
+export function ceilingValue(
+  allowed: string[] | null | undefined,
+): CeilingValue {
+  if (allowed === undefined) return null;
+  return allowed === null
+    ? { kind: "all" }
+    : { kind: "count", count: allowed.length };
+}

@@ -17,6 +17,8 @@ import type {
   AddOrgMemberResult,
   Agent,
   AgentAssignment,
+  AgentModelChoice,
+  AgentModelChoiceInfo,
   AgentSettings,
   AttachmentManifest,
   AttachmentUploadResult,
@@ -87,9 +89,6 @@ import type {
   StoreListing,
   SummarizeOptions,
   SummarizeResult,
-  TemplateRecord,
-  TemplateSpec,
-  TemplateSummary,
   TunnelCredentials,
   TunnelStatus,
   UpdateAgent,
@@ -1164,18 +1163,59 @@ export class HoustonClient {
     return this.request("GET", `/agents/${this.seg(agentSlugOrId)}/settings`);
   }
   /**
-   * Replace this agent's allowed-toolkit ceiling (agent-manager only). `null`
-   * means unrestricted, `[]` means none. The host also prunes now-disallowed
-   * toolkits from existing grants so revocation takes effect immediately.
+   * Replace this agent's manager-set ceilings (agent-manager only). Pass
+   * `allowedToolkits` (the integration ceiling: `null` = unrestricted, `[]` =
+   * none — the host also prunes now-disallowed toolkits from existing grants so
+   * revocation takes effect immediately) and/or `allowedModels` (the AI-model
+   * ceiling: `null` = every model allowed, `[]` = none). Both fields are
+   * optional so a caller can update one ceiling without touching the other.
    */
   async setAgentSettings(
     agentSlugOrId: string,
-    settings: { allowedToolkits: string[] | null },
+    settings: {
+      allowedToolkits?: string[] | null;
+      allowedModels?: string[] | null;
+    },
   ): Promise<void> {
     await this.request(
       "PUT",
       `/agents/${this.seg(agentSlugOrId)}/settings`,
       settings,
+    );
+  }
+  /**
+   * Read the ACTING user's model choice for this agent plus the agent's
+   * effective `allowedModels` ceiling (any assigned caller / owner). Returns
+   * `null` when the host does not serve model choices (404) — a non-Teams host —
+   * so the composer degrades to its single-player behavior; every other error
+   * throws.
+   */
+  async getAgentModelChoice(
+    agentSlugOrId: string,
+  ): Promise<AgentModelChoiceInfo | null> {
+    try {
+      return await this.request<AgentModelChoiceInfo>(
+        "GET",
+        `/agents/${this.seg(agentSlugOrId)}/model-choice`,
+      );
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return null;
+      throw err;
+    }
+  }
+  /**
+   * Set the ACTING user's model choice for this agent (any assigned caller). The
+   * gateway validates the model is within the agent's `allowedModels` ceiling
+   * and answers `400 {code:"model_not_allowed"}` otherwise.
+   */
+  setAgentModelChoice(
+    agentSlugOrId: string,
+    choice: AgentModelChoice,
+  ): Promise<void> {
+    return this.request(
+      "PUT",
+      `/agents/${this.seg(agentSlugOrId)}/model-choice`,
+      choice,
     );
   }
   /** Read the org-wide allowed-toolkit ceiling (any member). */
@@ -1251,53 +1291,6 @@ export class HoustonClient {
       `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
       { toolkits },
     );
-  }
-
-  // ---------- agent templates (multiplayer) — hosted gateway only ----------
-  //
-  // Reusable agent configurations, owned by the org. Only a Teams gateway serves
-  // these routes; every other host (single-player, self-host, legacy engine)
-  // 404s them, so the reads degrade to `[]`/`null` and the UI — already gated on
-  // `capabilities.multiplayer` — never shows the surface. The writes are only
-  // ever invoked from that gated surface, so they throw normally.
-
-  /** List the org's templates as list-card summaries (newest first). */
-  async listOrgTemplates(): Promise<TemplateSummary[]> {
-    try {
-      return (
-        await this.request<{ templates: TemplateSummary[] }>(
-          "GET",
-          "/org/templates",
-        )
-      ).templates;
-    } catch (err) {
-      if (isHoustonEngineError(err) && err.status === 404) return [];
-      throw err;
-    }
-  }
-  /** Fetch one template with its full `spec`, or `null` if it's gone/unsupported. */
-  async getOrgTemplate(id: string): Promise<TemplateRecord | null> {
-    try {
-      return await this.request<TemplateRecord>(
-        "GET",
-        `/org/templates/${this.seg(id)}`,
-      );
-    } catch (err) {
-      if (isHoustonEngineError(err) && err.status === 404) return null;
-      throw err;
-    }
-  }
-  /** Create an org template from a client-assembled spec (manager only). */
-  createOrgTemplate(input: {
-    name: string;
-    description: string;
-    spec: TemplateSpec;
-  }): Promise<TemplateSummary> {
-    return this.request("POST", "/org/templates", input);
-  }
-  /** Delete an org template (owner, or the admin who created it). */
-  async deleteOrgTemplate(id: string): Promise<void> {
-    await this.request("DELETE", `/org/templates/${this.seg(id)}`);
   }
 
   // ---------- store ----------

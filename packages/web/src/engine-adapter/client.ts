@@ -385,7 +385,6 @@ export class HoustonClient {
         agent: await controlPlane.createAgent(this.cp, req.name, req.color, {
           claudeMd: req.claudeMd,
           seeds: req.seeds,
-          templateId: req.templateId,
         }),
       };
     return agents.createAgent(workspaceId, req);
@@ -1723,10 +1722,26 @@ export class HoustonClient {
   }
   async setAgentSettings(
     agentSlugOrId: string,
-    settings: { allowedToolkits: string[] | null },
+    settings: {
+      allowedToolkits?: string[] | null;
+      allowedModels?: string[] | null;
+    },
   ): Promise<void> {
     if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
     return controlPlane.setAgentSettings(this.cp, agentSlugOrId, settings);
+  }
+  async getAgentModelChoice(
+    agentSlugOrId: string,
+  ): Promise<controlPlane.AgentModelChoiceInfo | null> {
+    if (!this.cp) return null;
+    return controlPlane.getAgentModelChoice(this.cp, agentSlugOrId);
+  }
+  async setAgentModelChoice(
+    agentSlugOrId: string,
+    choice: controlPlane.AgentModelChoice,
+  ): Promise<void> {
+    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
+    return controlPlane.setAgentModelChoice(this.cp, agentSlugOrId, choice);
   }
   async getOrgSettings(): Promise<controlPlane.OrgSettings> {
     if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
@@ -1749,31 +1764,6 @@ export class HoustonClient {
     return controlPlane.orgUsage(this.cp, days);
   }
 
-  // ---- agent templates (multiplayer) — hosted gateway only ----
-  // Reads degrade to `[]`/`null` without a host (mirrors grants): a non-Teams
-  // surface never renders templates. Writes require the gateway and throw.
-  async listOrgTemplates(): Promise<controlPlane.TemplateSummary[]> {
-    if (!this.cp) return [];
-    return controlPlane.listOrgTemplates(this.cp);
-  }
-  async getOrgTemplate(
-    id: string,
-  ): Promise<controlPlane.TemplateRecord | null> {
-    if (!this.cp) return null;
-    return controlPlane.getOrgTemplate(this.cp, id);
-  }
-  async createOrgTemplate(input: {
-    name: string;
-    description: string;
-    spec: controlPlane.TemplateSpec;
-  }): Promise<controlPlane.TemplateSummary> {
-    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
-    return controlPlane.createOrgTemplate(this.cp, input);
-  }
-  async deleteOrgTemplate(id: string): Promise<void> {
-    if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
-    return controlPlane.deleteOrgTemplate(this.cp, id);
-  }
   // Grants degrade gracefully: `null` means "this deployment has no grants
   // model" (the legacy engine path, or a host that 404s the route), which the UI
   // treats as unsupported rather than a hard failure. A host that serves grants

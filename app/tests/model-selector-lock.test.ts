@@ -1,7 +1,11 @@
-import { strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { Capabilities, OrgRole } from "@houston-ai/engine-client";
-import { shouldShowModelSelector } from "../src/lib/model-selector-lock.ts";
+import {
+  isModelAllowed,
+  modelSelectorDecision,
+  resolvePersonalModelPin,
+} from "../src/lib/model-selector-lock.ts";
 
 const caps = (over: Partial<Capabilities> = {}): Capabilities => ({
   profile: "cloud",
@@ -15,54 +19,135 @@ const caps = (over: Partial<Capabilities> = {}): Capabilities => ({
   ...over,
 });
 
-const multiplayer = (role: OrgRole): Capabilities =>
+/** A multiplayer host with the Teams v2 surface (per-user model choice). */
+const teams = (role: OrgRole): Capabilities =>
+  caps({ multiplayer: true, role, teams: true });
+
+/** A multiplayer host predating Teams (no per-user model-choice route). */
+const preTeams = (role: OrgRole): Capabilities =>
   caps({ multiplayer: true, role });
 
-// The wire type lives on `Agent.access` (engine-client); the helper only reads
+// The wire type lives on `Agent.access` (engine-client); the helpers only read
 // that field, so the fixtures pass a minimal `{ access }` shape.
 const agent = (access?: "manager" | "user") => ({ access });
 
-describe("shouldShowModelSelector", () => {
-  it("always shows when no agent scope is threaded", () => {
-    // A caller who could never edit (multiplayer member) still sees the picker
-    // when it isn't tied to a specific agent (e.g. the routine editor).
-    strictEqual(shouldShowModelSelector(multiplayer("user"), null), true);
-    strictEqual(shouldShowModelSelector(multiplayer("user"), undefined), true);
-    strictEqual(shouldShowModelSelector(caps(), null), true);
-  });
-
-  it("always shows in single-player (self-host), even with an agent", () => {
-    for (const access of ["manager", "user", undefined] as const) {
-      strictEqual(shouldShowModelSelector(caps(), agent(access)), true);
-      strictEqual(shouldShowModelSelector(null, agent(access)), true);
-      strictEqual(shouldShowModelSelector(undefined, agent(access)), true);
+describe("modelSelectorDecision", () => {
+  it("shows shared (never personal) when no agent scope is threaded", () => {
+    // A free-standing picker (routine editor with no agent, create wizard) is
+    // always shown and never wired to a per-user choice, even for a member.
+    for (const c of [
+      teams("user"),
+      preTeams("user"),
+      caps(),
+      null,
+      undefined,
+    ]) {
+      deepStrictEqual(modelSelectorDecision(c, null), {
+        show: true,
+        personal: false,
+      });
+      deepStrictEqual(modelSelectorDecision(c, undefined), {
+        show: true,
+        personal: false,
+      });
     }
   });
 
-  it("always shows for the org owner (manages every agent)", () => {
+  it("shows shared in single-player / self-host, whatever the access", () => {
     for (const access of ["manager", "user", undefined] as const) {
-      strictEqual(
-        shouldShowModelSelector(multiplayer("owner"), agent(access)),
-        true,
-      );
+      for (const c of [caps(), null, undefined]) {
+        deepStrictEqual(modelSelectorDecision(c, agent(access)), {
+          show: true,
+          personal: false,
+        });
+      }
     }
   });
 
-  it("hides for a multiplayer non-owner unless their access is manager", () => {
+  it("shows PERSONAL for EVERYONE on a Teams host (members included)", () => {
+    for (const role of ["owner", "admin", "user"] as const) {
+      for (const access of ["manager", "user", undefined] as const) {
+        deepStrictEqual(modelSelectorDecision(teams(role), agent(access)), {
+          show: true,
+          personal: true,
+        });
+      }
+    }
+  });
+
+  it("falls back to the E7 manager gate on a pre-Teams multiplayer host", () => {
+    // Owner + any manager see it (shared); a plain member is hidden.
+    deepStrictEqual(modelSelectorDecision(preTeams("owner"), agent("user")), {
+      show: true,
+      personal: false,
+    });
     for (const role of ["admin", "user"] as const) {
-      strictEqual(
-        shouldShowModelSelector(multiplayer(role), agent("manager")),
-        true,
-      );
-      strictEqual(
-        shouldShowModelSelector(multiplayer(role), agent("user")),
-        false,
-      );
-      // Missing access defaults to hidden (no proof of manager authority).
-      strictEqual(
-        shouldShowModelSelector(multiplayer(role), agent(undefined)),
-        false,
-      );
+      deepStrictEqual(modelSelectorDecision(preTeams(role), agent("manager")), {
+        show: true,
+        personal: false,
+      });
+      deepStrictEqual(modelSelectorDecision(preTeams(role), agent("user")), {
+        show: false,
+        personal: false,
+      });
+      deepStrictEqual(modelSelectorDecision(preTeams(role), agent(undefined)), {
+        show: false,
+        personal: false,
+      });
     }
+  });
+});
+
+describe("isModelAllowed", () => {
+  it("treats null / undefined ceiling as no ceiling (all models allowed)", () => {
+    strictEqual(isModelAllowed(null, "gpt-5.5"), true);
+    strictEqual(isModelAllowed(undefined, "gpt-5.5"), true);
+  });
+
+  it("gates on membership when a ceiling is set", () => {
+    strictEqual(isModelAllowed(["gpt-5.5", "claude"], "gpt-5.5"), true);
+    strictEqual(isModelAllowed(["gpt-5.5"], "claude"), false);
+    strictEqual(isModelAllowed([], "gpt-5.5"), false);
+  });
+});
+
+describe("resolvePersonalModelPin", () => {
+  const fallback = { provider: "anthropic", model: "claude", effort: "high" };
+
+  it("uses the user's stored choice when present", () => {
+    deepStrictEqual(
+      resolvePersonalModelPin(
+        { provider: "openai", model: "gpt-5.5", effort: "low" },
+        ["gpt-5.5"],
+        fallback,
+      ),
+      { provider: "openai", model: "gpt-5.5", effort: "low" },
+    );
+  });
+
+  it("keeps the fallback when there is no ceiling", () => {
+    deepStrictEqual(resolvePersonalModelPin(null, null, fallback), fallback);
+    deepStrictEqual(
+      resolvePersonalModelPin(undefined, undefined, fallback),
+      fallback,
+    );
+  });
+
+  it("keeps the fallback when its model is inside the ceiling", () => {
+    deepStrictEqual(
+      resolvePersonalModelPin(null, ["claude", "gpt-5.5"], fallback),
+      fallback,
+    );
+  });
+
+  it("snaps to the ceiling's first model when the fallback is outside it", () => {
+    deepStrictEqual(
+      resolvePersonalModelPin(null, ["gpt-5.5", "gemini"], fallback),
+      { provider: "anthropic", model: "gpt-5.5", effort: "high" },
+    );
+  });
+
+  it("keeps the fallback for an empty ceiling (no model to snap to)", () => {
+    deepStrictEqual(resolvePersonalModelPin(null, [], fallback), fallback);
   });
 });

@@ -77,17 +77,13 @@
   "subTabs": {
     "instructions": "Instrucciones",
     "skills": "Skills",
-    "learnings": "Aprendizajes",
-    "general": "General"
+    "learnings": "Aprendizajes"
   },
   "agentSettings": {
     "nameTitle": "Nombre",
-    "nameLabel": "Cómo se llama tu agente",
     "namePlaceholder": "Nombra a tu agente",
     "colorTitle": "Color",
     "colorHelper": "Elige un color para el avatar de tu agente.",
-    "shareTitle": "Compartir",
-    "shareHelper": "Envía una copia de este agente a un amigo.",
     "dangerTitle": "Eliminar agente",
     "dangerHelper": "Elimina este agente y todo lo que ha hecho de forma permanente. Esto no se puede deshacer."
   },

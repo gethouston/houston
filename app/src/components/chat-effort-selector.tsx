@@ -2,7 +2,7 @@ import type { Agent } from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { nextEffort } from "../lib/effort-cycle";
-import { shouldShowModelSelector } from "../lib/model-selector-lock";
+import { modelSelectorDecision } from "../lib/model-selector-lock";
 import {
   EFFORT_ORDER,
   type EffortLevel,
@@ -20,11 +20,11 @@ interface ChatEffortSelectorProps {
   /** Called when the user advances to the next level. */
   onSelect: (effort: EffortLevel) => void;
   /**
-   * The agent this control configures, when composer-scoped. Threaded so the
-   * effort cycle is HIDDEN for org members who may not change the agent's model
-   * config (Teams matrix v2) — effort is part of the model pin, so it hides
-   * alongside the model selector. Omit outside an agent scope and it always
-   * shows; single-player and owners/managers always show it.
+   * The agent this control configures, when composer-scoped. Threaded so effort
+   * follows the same audience as the model selector (Teams E8): shown for
+   * everyone in a Teams org (effort is part of the acting user's per-agent
+   * choice) and in single-player, hidden only for a member on a pre-Teams
+   * multiplayer host. Omit outside an agent scope and it always shows.
    */
   agent?: Pick<Agent, "access"> | null;
 }
@@ -47,10 +47,10 @@ export function ChatEffortSelector({
   const { t } = useTranslation("chat");
   const { capabilities } = useCapabilities();
   const levels = getEffortLevels(provider, model);
-  // Hidden entirely for org members (effort is part of the model pin they may
-  // not see), and for any model without effort levels (e.g. Gemini) so the
+  // Hidden only for a member on a pre-Teams multiplayer host (mirrors the model
+  // selector), and for any model without effort levels (e.g. Gemini) so the
   // composer row collapses cleanly.
-  if (!shouldShowModelSelector(capabilities, agent)) return null;
+  if (!modelSelectorDecision(capabilities, agent).show) return null;
   if (levels.length === 0) return null;
 
   const labels: Record<EffortLevel, string> = {

@@ -1,7 +1,7 @@
 # Teams (multiplayer orgs) — the open-repo client surface
 
 The client side of Houston Teams: how the open repo (`app/`, `ui/engine-client`)
-renders orgs, roles, per-agent access, sharing, templates, and the org dashboard.
+renders orgs, roles, per-agent access, sharing, and the org dashboard.
 
 > **The gateway is the sole enforcer.** Every gate in this doc only HIDES an
 > affordance the caller can't act on. The private cloud gateway classifies each
@@ -9,11 +9,11 @@ renders orgs, roles, per-agent access, sharing, templates, and the org dashboard
 > a role/access level isn't allowed to do — the client NEVER re-clamps and a
 > stale/spoofed field can't widen power. Server contracts:
 > `cloud/docs/contracts/C3` (roles/assignments, v2 matrix), `C4` (grants +
-> effective allowlist), `C7-teams.md` (the v2 layer), `C8-templates.md`.
+> effective allowlist), `C7-teams.md` (the v2 layer).
 > Wire surface: `cloud/INTEGRATION.md`.
 
 Everything here is **capability-gated**: absent/single-player hosts (desktop,
-self-host, legacy engine) never mount any of it, and the org/template routes
+self-host, legacy engine) never mount any of it, and the org routes
 404 → the reads degrade to `[]`/`null` silently.
 
 ---
@@ -91,15 +91,14 @@ Top-level view `ORGANIZATION_VIEW_ID = "organization"`
 the `workspace-shell` render branch both guard on it, so it never mounts for a
 plain member or single-player.
 
-Five tabs (`ORG_TAB_IDS`, order fixed in `org-view-model.ts`):
-**People / Agents / Templates / Activity / Usage**. `organization-view.tsx` is a
+Four tabs (`ORG_TAB_IDS`, order fixed in `org-view-model.ts`):
+**People / Agents / Activity / Usage**. `organization-view.tsx` is a
 shell — it loads `GET /org` once, builds the shared `OrgViewContext`
 (`{org, role, isOwner}`), and each tab owns its own data + UI:
 
 - **People** (`members-tab.tsx`) — roster + pending invites. Owner mutates
   (add/remove/re-role, revoke invite); admin sees it read-only.
 - **Agents** (`agents-tab.tsx`) — org agents with assignment counts.
-- **Templates** (`templates-tab.tsx`) — the org's reusable agent configs.
 - **Activity** (`activity-tab.tsx`) — the audit log, paged.
 - **Usage** (`usage-tab.tsx`) — per-agent/user message counters.
 
@@ -126,7 +125,16 @@ configure surfaces render read-only instead of hiding:
   (`isConfigReadOnly`) drives the read-only state off `canEditAgentConfig`.
   `managed-agent-banner.tsx` is the shared banner.
 - **Model / effort pickers** (`chat-model-selector.tsx`,
-  `chat-effort-selector.tsx`) disable with a `teams:model.lockedTooltip`.
+  `chat-effort-selector.tsx`) are NOT hidden/locked for members (E8 reversed E7).
+  In a Teams org the composer shows them to EVERYONE, clamps the option list to
+  the agent's `allowedModels` ceiling, and reads+writes the caller's PERSONAL
+  per-agent choice (`useAgentModelChoice` / `useSetAgentModelChoice`) — never the
+  shared agent config. The gateway clamps every turn to the acting user's choice
+  (client picker is convenience only). A single-model ceiling renders read-only
+  but still visible. Single-player / self-host is unchanged: shared config, no
+  ceiling. The pure decision + clamp + resting-pin helpers live in
+  `app/src/lib/model-selector-lock.ts` (`modelSelectorDecision`, `isModelAllowed`,
+  `resolvePersonalModelPin`); the composer wires them in `use-agent-chat-panel.tsx`.
 - **Integrations tab** gates its edit affordances on `isAgentManager` /
   `canEditAgentGrants`.
 
@@ -135,24 +143,36 @@ showing a dead control.
 
 ---
 
-## Agent templates
+## Allowed-models ceiling + per-user model choice
 
-Reusable agent configs owned by the org (`C8-templates.md`,
-`gateway.agent_templates`). A `TemplateSpec` is assembled **client-side** from
-what a manager is already viewing — instructions (CLAUDE.md), skills
-(`{name, content}`), pinned provider/model/effort, and the allowed-app ceiling —
-and stored verbatim by the gateway (which validates shape + size).
+The model surface mirrors the integration allowlist: the manager sets a **ceiling**
+(which models the agent may run on), and each member picks their own model **within**
+it. (The E5 org-templates feature that used to live here was removed in E8.)
 
-- **Save as template** — `save-as-template-section.tsx` (in Agent Settings,
-  gated on `isMultiplayer && isAgentManager`) → dialog → `createOrgTemplate`.
-- **Create from template** — `use-create-from-template.ts` +
-  `create-workspace-dialog.tsx`: `POST /agents` with `templateId`. The gateway
-  sets the new agent's allowed apps synchronously and applies the template's
-  instructions/skills/model to the pod in the background.
-- Types: `TemplateSpec` (full), `TemplateSummary` (list card — derived counts,
-  no skill bodies), `TemplateRecord` (one template + `spec`, fetched lazily).
-- Client: `listOrgTemplates` / `getOrgTemplate` / `createOrgTemplate` /
-  `deleteOrgTemplate` (delete = owner or the admin who created it).
+- **Ceiling** — `agent_settings.allowedModels: string[] | null` (`null` = all models
+  allowed; a set = restricted; treat `[]` defensively). Edited manager-only in Agent
+  Settings > **Access** > **Allowed models** (`agent-admin-model.tsx` → `AgentModelsSection`
+  over a deduped `modelCatalog()`), written via `setAgentSettings({allowedModels})`
+  (`useSetAgentAllowedModels`). Two resting states like the allowlist: "All models
+  allowed" / Restrict, or an explicit set with Edit / Allow-all; the editing surface is
+  `ModelToggleList` (a searchable card list with a per-model allow toggle, mirroring the
+  allowed-integrations app grid). The **AI-model row lives in the Access card**, which is
+  multiplayer-only, so single-player never shows it: the sole user has no ceiling and
+  picks a model in the composer (the old single-player Agent-Settings model pin +
+  `useSaveAgentModel` were removed).
+- **Per-user choice** — each acting user's own `{provider, model, effort?}` for one
+  shared agent (`gateway.agent_model_choices`), read/written by the composer pickers in
+  multiplayer (see "Managed-agent read-only surfaces" above), never the shared config.
+- **Enforcement** — the gateway is the sole enforcer: it clamps every turn to the acting
+  user's choice ∩ ceiling and strips any client-supplied model/provider. The client picker
+  is convenience only.
+- Types: `AgentSettings.allowedModels`, `AgentModelChoice` (`{provider, model, effort?}`),
+  `AgentModelChoiceInfo` (`{choice, allowedModels}`).
+- Client: `getAgentModelChoice` (404-degrades to `null` off-Teams) / `setAgentModelChoice`
+  (`GET`/`PUT /agents/:slug/model-choice`); `setAgentSettings` widened to
+  `{allowedToolkits?, allowedModels?}`. Hooks: `useAgentModelChoice` /
+  `useSetAgentModelChoice` (`hooks/queries/use-agent-model-choice.ts`),
+  `useSetAgentAllowedModels` (`hooks/queries/use-agent-settings.ts`).
 
 ---
 
@@ -190,15 +210,15 @@ owner-only). UI under `teams:integrations.allowlist`.
 
 Wire types in `ui/engine-client/src/types.ts`: `OrgRole`, `OrgMember`,
 `OrgInfo`, `OrgInvite`, `AddOrgMemberResult`, `AgentAccess`, `AgentAssignment`,
-`AgentSettings`, `OrgSettings`, `AuditEntry`, `UsageRow`, `TemplateSpec` /
-`TemplateSummary` / `TemplateRecord`. `Agent` gains multiplayer-only
-`assigned` / `assignedUserIds` / `access` / `assignments`; `CreateAgent` gains
-`templateId`. All hand-maintained against the gateway (the server is source of
-truth). Methods in `client.ts`: `getOrg`, `addOrgMember`, `deleteOrgInvite`,
-`removeOrgMember`, `setOrgMemberRole`, `setAgentAssignments` (v2 `{assignments}`
-or legacy `{userIds}`), `getAgentSettings` / `setAgentSettings`, `getOrgSettings`
-/ `setOrgSettings`, `orgAudit`, `orgUsage`, `list/get/create/deleteOrgTemplate`,
-and `connectIntegration(provider, toolkit, agent?)`.
+`AgentSettings` (with `allowedModels`), `OrgSettings`, `AuditEntry`, `UsageRow`,
+`AgentModelChoice` / `AgentModelChoiceInfo`. `Agent` gains multiplayer-only
+`assigned` / `assignedUserIds` / `access` / `assignments`. All hand-maintained
+against the gateway (the server is source of truth). Methods in `client.ts`:
+`getOrg`, `addOrgMember`, `deleteOrgInvite`, `removeOrgMember`, `setOrgMemberRole`,
+`setAgentAssignments` (v2 `{assignments}` or legacy `{userIds}`), `getAgentSettings`
+/ `setAgentSettings`, `getOrgSettings` / `setOrgSettings`, `getAgentModelChoice` /
+`setAgentModelChoice`, `orgAudit`, `orgUsage`, and
+`connectIntegration(provider, toolkit, agent?)`.
 
 ---
 
@@ -206,7 +226,9 @@ and `connectIntegration(provider, toolkit, agent?)`.
 
 All Teams copy lives in the `teams` namespace
 (`app/src/locales/{en,es,pt}/teams.json`, registered in `app/src/lib/i18n.ts`).
-Top-level groups: `managedAgent`, `model`, `integrations`, `org`, `share`,
-`people`, `activityTab`, `usageTab`, `agentsTab`, `templates`, `templatesTab`.
+Top-level groups: `agentAdmin` (`groups` incl. the inline `general` card, `rows`,
+`models` ceiling, inline `values`),
+`managedAgent`, `integrations`, `org`, `share`, `people`, `activityTab`,
+`usageTab`, `agentsTab`.
 (There is also a separate `org` namespace for pre-v2 org strings.) See
 `i18n.md`.

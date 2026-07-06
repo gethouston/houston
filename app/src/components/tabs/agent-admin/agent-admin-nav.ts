@@ -1,10 +1,12 @@
-import type { Agent, Capabilities } from "@houston-ai/engine-client";
-import { isAgentManager, isMultiplayer } from "../../../lib/org-roles.ts";
+import type { Capabilities } from "@houston-ai/engine-client";
+import { isMultiplayer } from "../../../lib/org-roles.ts";
 
 /**
  * The full-pane screens the manager-only Agent Settings tab can drill into. Row
- * ids on the landing map 1:1 to a screen (the "general" card also carries a
- * "template" row). Pure, DOM-free so the card/row visibility is unit-tested.
+ * ids on the landing map 1:1 to a screen. Name / color / delete are NOT screens
+ * anymore — they render as inline control rows on the landing (see
+ * `agent-admin-details`), so there is no "general" or "template" concept here.
+ * Pure, DOM-free so the card/row visibility is unit-tested.
  */
 export type AgentAdminScreen =
   | "instructions"
@@ -12,11 +14,9 @@ export type AgentAdminScreen =
   | "knowledge"
   | "model"
   | "people"
-  | "integrations"
-  | "general"
-  | "template";
+  | "integrations";
 
-export type AgentAdminCardId = "configuration" | "access" | "general";
+export type AgentAdminCardId = "configuration" | "access";
 
 export interface AgentAdminCard {
   id: AgentAdminCardId;
@@ -24,39 +24,35 @@ export interface AgentAdminCard {
 }
 
 /**
- * Which grouped cards + rows the Agent Settings landing shows for this caller.
+ * Which grouped drill-in cards + rows the Agent Settings landing shows for this
+ * caller.
  *
- * - **Configuration** (always): instructions, skills, knowledge, AI model.
- * - **Access** (multiplayer only): people with access, allowed integrations.
- * - **General** (always): general details, plus "Save as template" only in
- *   multiplayer for an agent-manager.
+ * - **Configuration** (always): instructions, skills, knowledge.
+ * - **Access** (multiplayer only): people with access, allowed integrations,
+ *   allowed models — the two governance ceilings sit next to "people". Allowed
+ *   models lives here (not Configuration) because the ceiling is a multiplayer
+ *   concept: single-player has no ceiling, and its sole user picks a model in the
+ *   composer, so single-player never shows a model row at all.
  *
- * Single-player / self-host gets Configuration + General only — no Access card
- * and no template row. Only managers/owners (or the single-player sole user)
- * ever reach this tab, so everything here is editable; the gateway is the real
- * enforcer.
+ * Name / color / delete render below these as an inline "General" card
+ * (always), so they are not part of this model. Single-player / self-host gets
+ * Configuration only — no Access card (no sharing / no ceilings). Only
+ * managers/owners (or the single-player sole user) ever reach this tab, so
+ * everything here is editable; the gateway is the real enforcer.
  */
 export function agentAdminCards(
   caps: Capabilities | null | undefined,
-  agent: Pick<Agent, "access">,
 ): AgentAdminCard[] {
-  const multiplayer = isMultiplayer(caps);
-  const manager = isAgentManager(caps, agent);
-
   const cards: AgentAdminCard[] = [
     {
       id: "configuration",
-      rows: ["instructions", "skills", "knowledge", "model"],
+      rows: ["instructions", "skills", "knowledge"],
     },
   ];
 
-  if (multiplayer) {
-    cards.push({ id: "access", rows: ["people", "integrations"] });
+  if (isMultiplayer(caps)) {
+    cards.push({ id: "access", rows: ["people", "integrations", "model"] });
   }
-
-  const general: AgentAdminScreen[] = ["general"];
-  if (multiplayer && manager) general.push("template");
-  cards.push({ id: "general", rows: general });
 
   return cards;
 }
