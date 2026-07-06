@@ -132,6 +132,12 @@
     "tryAgain": "Tentar de novo",
     "launchError": "Não foi possível abrir o login. Tente de novo."
   },
+  "agentProvisioning": {
+    "title": "Seu agente está quase pronto",
+    "banner": "Estamos criando seu agente. Isso pode levar alguns minutos.",
+    "chatBody": "Estamos terminando de criar seu agente. Ele vai responder à sua mensagem assim que estiver pronto.",
+    "failed": "Não conseguimos terminar de criar seu agente. Tente novamente em instantes."
+  },
   "toolRuntimeError": {
     "title": "Algo travou",
     "body": "Uma ferramenta local não iniciou corretamente. Tente de novo e reporte se continuar acontecendo.",

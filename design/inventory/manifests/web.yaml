@@ -13,7 +13,7 @@
 
 surface: web
 enforced: true
-inventoryVersion: 2
+inventoryVersion: 3
 
 components:
   agent-avatar:
@@ -53,6 +53,13 @@ components:
     notes: >-
       Feed types + ProviderError taxonomy live in @houston-ai/chat, but the
       rendered cards are app/-locked. Extract into ui/ before mobile can reuse.
+
+  agent-provisioning-card:
+    status: partial
+    ref: "app/src/components/shell/agent-provisioning-card.tsx (+ -banner variant)"
+    notes: >-
+      Card + banner are app/-locked and read the app's Zustand provisioning
+      store directly. Extract a props-driven ui/ piece before mobile.
 
   system-message:
     status: implemented

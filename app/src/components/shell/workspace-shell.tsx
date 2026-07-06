@@ -46,6 +46,7 @@ import { ExportAgentWizard } from "../portable/export-wizard";
 import { ImportAgentWizard } from "../portable/import-wizard";
 import { SettingsView } from "../settings/settings-view";
 import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
+import { AgentProvisioningBanner } from "./agent-provisioning-banner";
 import { CreateAgentDialog } from "./create-workspace-dialog";
 import { DetailPanelProvider } from "./detail-panel-context";
 import { HoustonLogo } from "./experience-card";
@@ -299,6 +300,12 @@ export function WorkspaceShell({
                         }
                       />
                     </div>
+                    {/* The activity tab is excluded: there the in-chat
+                        AgentProvisioningCard carries the message at send
+                        time (HOU-693). */}
+                    {viewMode !== DEFAULT_TAB_ID && (
+                      <AgentProvisioningBanner agentId={currentAgent.id} />
+                    )}
                     <main className="min-h-0 flex-1 overflow-hidden">
                       <AgentRenderer
                         agentDef={agentDef}

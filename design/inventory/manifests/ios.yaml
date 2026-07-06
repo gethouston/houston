@@ -127,3 +127,6 @@ components:
       No cross-model detail / "Get it through" offers list on iOS. Connecting a
       provider-model happens from the provider card + detail instead of a
       per-model offer row.
+  agent-provisioning-card:
+    status: not-started
+    notes: Hosted-engine warm-up notice (HOU-693); mobile v1 has no create-agent flow yet.

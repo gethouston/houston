@@ -132,6 +132,12 @@
     "tryAgain": "Intentar de nuevo",
     "launchError": "No se pudo abrir el inicio de sesión. Intenta otra vez."
   },
+  "agentProvisioning": {
+    "title": "Tu agente está casi listo",
+    "banner": "Estamos creando tu agente. Esto puede tardar un par de minutos.",
+    "chatBody": "Estamos terminando de crear tu agente. Responderá a tu mensaje en cuanto esté listo.",
+    "failed": "No pudimos terminar de crear tu agente. Inténtalo de nuevo en un momento."
+  },
   "toolRuntimeError": {
     "title": "Algo se atascó",
     "body": "Una herramienta local no se inició correctamente. Intenta de nuevo y repórtalo si sigue pasando.",

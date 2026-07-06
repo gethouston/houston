@@ -132,6 +132,12 @@
     "tryAgain": "Try again",
     "launchError": "Could not open sign-in. Try again."
   },
+  "agentProvisioning": {
+    "title": "Your agent is almost ready",
+    "banner": "We are creating your agent. This can take a couple of minutes.",
+    "chatBody": "We are finishing creating your agent. It will reply to your message as soon as it is ready.",
+    "failed": "We could not finish creating your agent. Please try again in a moment."
+  },
   "toolRuntimeError": {
     "title": "Something got stuck",
     "body": "A local tool did not start correctly. Try again, and report it if this keeps happening.",
