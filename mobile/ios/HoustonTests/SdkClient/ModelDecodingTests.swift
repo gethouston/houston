@@ -61,6 +61,47 @@ final class ModelDecodingTests: XCTestCase {
     XCTAssertEqual(result.usage?.contextTokens, 8000)
   }
 
+  func testConversationVMDecodesQueuedMessages() throws {
+    // Additive `queued` list: messages typed while a turn runs (vm-output.ts).
+    let json = """
+      {"feed":[],"running":true,"sessionStatus":"running","boardStatus":"running",
+       "queued":[{"id":"q0","text":"and also check email","attachmentNames":["report.pdf"]},
+                 {"id":"q1","text":"thanks"}]}
+      """
+    let vm = try BridgeTestJSON.decode(ConversationVM.self, json)
+    XCTAssertEqual(vm.queued?.count, 2)
+    XCTAssertEqual(vm.queued?.first?.id, "q0")
+    XCTAssertEqual(vm.queued?.first?.text, "and also check email")
+    XCTAssertEqual(vm.queued?.first?.attachmentNames, ["report.pdf"])
+    XCTAssertNil(vm.queued?.last?.attachmentNames, "attachmentNames absent → nil")
+  }
+
+  func testConversationVMQueuedAbsentIsNil() throws {
+    // The field is omitted when empty; the decode must not require it.
+    let vm = try BridgeTestJSON.decode(
+      ConversationVM.self,
+      #"{"feed":[],"running":false,"sessionStatus":"idle"}"#)
+    XCTAssertNil(vm.queued)
+  }
+
+  func testUnauthenticatedCarriesFailedPrompt() throws {
+    // Client-synthesized `failed_prompt` rides the not-connected reconnect card
+    // (turn-settle.ts) so a "Send again" affordance can resend the exact text.
+    let error = try BridgeTestJSON.decode(
+      ProviderError.self,
+      #"{"kind":"unauthenticated","provider":"claude","cause":"no_credentials","message":"m","failed_prompt":"draft an invoice"}"#)
+    guard case let .unauthenticated(_, _, _, failedPrompt) = error else { return XCTFail() }
+    XCTAssertEqual(failedPrompt, "draft an invoice")
+  }
+
+  func testUnauthenticatedFailedPromptAbsentIsNil() throws {
+    let error = try BridgeTestJSON.decode(
+      ProviderError.self,
+      #"{"kind":"unauthenticated","provider":"claude","cause":"token_expired","message":"m"}"#)
+    guard case let .unauthenticated(_, _, _, failedPrompt) = error else { return XCTFail() }
+    XCTAssertNil(failedPrompt)
+  }
+
   func testFeedItemUnknownTypeFallsBack() throws {
     let vm = try BridgeTestJSON.decode(
       ConversationVM.self,

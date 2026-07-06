@@ -38,7 +38,8 @@ final class ChatScreenModel {
   ) {
     self.agentId = agentId
     self.conversationId = conversationId
-    self.conversation = client.scope(SdkScope.conversation(sessionKey: conversationId))
+    self.conversation = client.scope(
+      SdkScope.conversation(agentPath: agentId, sessionKey: conversationId))
     self.activities = client.scope(SdkScope.activities(agentId: agentId))
     self.commands = commands ?? SdkChatCommands(client: client)
   }
@@ -49,6 +50,21 @@ final class ChatScreenModel {
   var rows: [ChatRow] { MissionFeedFold.rows(from: vm?.feed ?? []) }
   var running: Bool { vm?.running ?? false }
   var isEmpty: Bool { vm?.feed.isEmpty ?? true }
+
+  /// Messages queued while the turn runs, rendered as pending bubbles above the
+  /// composer (PARITY §5). Empty until the SDK bridge publishes a `queued` list.
+  var queued: [QueuedMessageVM] { vm?.queued ?? [] }
+
+  /// The in-flight display status (mirrors desktop `deriveStatus`). Drives the
+  /// loading indicator: shown while ``running`` UNLESS assistant text is
+  /// streaming (then the visible bubble is the progress signal); the Stop
+  /// control stays available throughout the running turn regardless.
+  var chatStatus: ChatStatus { ChatStatus.derive(feed: vm?.feed ?? [], running: running) }
+
+  /// Whether the "Mission in progress..." loading label shows: only when a turn
+  /// is in flight and no assistant text is streaming. Reasoning + tool phases
+  /// keep it visible (`chat-status.ts`, HOU-655).
+  var showLoadingLabel: Bool { running && chatStatus != .streaming }
 
   /// The Approve bar shows only when the board card is `needs_you` AND no turn is
   /// running — read the pair, never `sessionStatus` alone (PARITY §1/§5).

@@ -23,6 +23,8 @@ extension Strings {
     }
     /// The settled turn-summary heading (chat.json:process.complete).
     static let missionLog = "Mission log"
+    /// Accessibility label for the pending queued-message bubbles (PARITY §5).
+    static let queued = "Queued messages"
 
     // Reasoning block (chat.json:reasoning).
     static let thinking = "Thinking..."

@@ -147,7 +147,7 @@ extension ProviderError {
     case let .quotaExhausted(p, _, _, _, _): return "quota_exhausted:\(p)"
     case let .usageLimitPaused(p, _, _): return "usage_limit_paused:\(p)"
     case let .modelUnavailable(p, _, _, _, _): return "model_unavailable:\(p)"
-    case let .unauthenticated(p, _, _): return "unauthenticated:\(p)"
+    case let .unauthenticated(p, _, _, _): return "unauthenticated:\(p)"
     case let .networkUnreachable(p, _): return "network_unreachable:\(p)"
     case let .providerInternal(p, _, _): return "provider_internal:\(p)"
     case let .sessionResumeMissing(p, _): return "session_resume_missing:\(p)"
