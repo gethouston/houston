@@ -110,6 +110,16 @@ registerBackend(
     readToken: () => readAnthropicToken(authStorage),
     toolSelection,
     systemPrompt: config.systemPrompt || SYSTEM_PROMPT,
+    // SAME integrations gate as the pi path above: present only when this
+    // runtime can reach its host with a sandbox token, so the Claude backend's
+    // in-process MCP server exposes the identical integration tool set.
+    integrations:
+      config.controlPlaneUrl && config.sandboxToken
+        ? {
+            baseUrl: config.controlPlaneUrl,
+            sandboxToken: config.sandboxToken,
+          }
+        : undefined,
   }),
 );
 

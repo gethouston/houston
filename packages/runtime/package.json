@@ -18,7 +18,8 @@
     "@google-cloud/storage": "7.21.0",
     "@houston/runtime-client": "workspace:*",
     "tsx": "4.23.0",
-    "typebox": "1.1.38"
+    "typebox": "1.1.38",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@types/node": "22.20.0",
