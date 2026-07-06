@@ -1,5 +1,6 @@
 export type { EventStreamOptions, SendOptions } from "./client";
 export { EngineError, HoustonEngineClient } from "./client";
+export { IntegrationsClient, PreferencesClient } from "./client-integrations";
 export type { GlobalEventsOptions } from "./global-events";
 export { streamGlobalEvents } from "./global-events";
 export type { SequencedFrame } from "./replay";
@@ -10,6 +11,7 @@ export {
   REPLAY_BUFFER_CAP,
   ReplayLog,
 } from "./replay";
+export type { Requester } from "./requester";
 export { streamEventsResumable } from "./resume";
 export type {
   ConversationEventSource,
