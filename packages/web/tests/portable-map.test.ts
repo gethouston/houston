@@ -2,7 +2,6 @@ import { packAgent, unpackAgent } from "@houston/domain";
 import { expect, test } from "vitest";
 import {
   packagePreview,
-  toBase64,
   toWireSelection,
 } from "../src/engine-adapter/portable-map";
 
@@ -99,10 +98,4 @@ test("a package without CLAUDE.md previews claudeMd as null", () => {
     ),
   );
   expect(packagePreview(bare).preview.claudeMd).toBeNull();
-});
-
-test("toBase64 survives payloads larger than one chunk", () => {
-  const big = new Uint8Array(0x8000 * 2 + 17).map((_, i) => i % 251);
-  const decoded = Uint8Array.from(atob(toBase64(big)), (c) => c.charCodeAt(0));
-  expect(decoded).toEqual(big);
 });

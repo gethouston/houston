@@ -6,7 +6,7 @@ import {
   portableInventory,
   unpackAgent,
 } from "./portable";
-import { filterPackage } from "./portable-edit";
+import { filterPackage, packageSeed } from "./portable-edit";
 import { createRoutine } from "./routines";
 
 /**
@@ -199,4 +199,36 @@ test("filterPackage with everything selected is the identity", () => {
     learningIds: pkg.learnings.map((l) => l.id),
   });
   expect(filtered).toEqual(pkg);
+});
+
+test("packageSeed lays content out exactly like a direct install", () => {
+  const c = content();
+  const seed = packageSeed(c);
+
+  expect(seed.claudeMd).toBe(c.claudeMd);
+  expect(Object.keys(seed.seeds).sort()).toEqual([
+    ".agents/skills/research/SKILL.md",
+    ".agents/skills/weekly/SKILL.md",
+    ".houston/learnings/learnings.json",
+    ".houston/routines/routines.json",
+  ]);
+  expect(seed.seeds[".agents/skills/research/SKILL.md"]).toBe(
+    c.skills[0]?.body,
+  );
+  // The JSON docs are the canonical on-disk form and parse back to the items.
+  expect(
+    JSON.parse(seed.seeds[".houston/routines/routines.json"] ?? ""),
+  ).toEqual(c.routines);
+  expect(
+    JSON.parse(seed.seeds[".houston/learnings/learnings.json"] ?? ""),
+  ).toEqual(c.learnings);
+  expect(seed.seeds[".houston/routines/routines.json"]?.endsWith("\n")).toBe(
+    true,
+  );
+});
+
+test("packageSeed omits what the package lacks (no empty docs, no CLAUDE.md key)", () => {
+  const seed = packageSeed({ skills: [], routines: [], learnings: [] });
+  expect(seed).toEqual({ seeds: {} });
+  expect("claudeMd" in seed).toBe(false);
 });

@@ -4,11 +4,9 @@ import {
   filterPackage,
   type PortablePackage,
   packAgent,
+  packageSeed,
   portableInventory,
-  saveLearnings,
-  saveRoutines,
   seedSchemas,
-  skillKey,
   unpackAgent,
 } from "@houston/domain";
 import type {
@@ -20,6 +18,7 @@ import type { WorkspacePaths } from "../paths";
 import { CloudPaths } from "../paths";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
+import { writeAgentSeeds } from "./agent-seed";
 import { json, readJson } from "./http";
 import { gatherPortableContent } from "./portable-content";
 
@@ -31,8 +30,6 @@ async function readBytes(req: IncomingMessage): Promise<Buffer> {
   for await (const c of req) chunks.push(c as Buffer);
   return Buffer.concat(chunks);
 }
-
-const ctxFile = (root: string) => `${root}/CLAUDE.md`;
 
 /**
  * Export an agent as a `.houstonagent` (agent-scoped: POST
@@ -165,13 +162,9 @@ export async function handlePortableAccount(
   });
   const root = paths.agentRoot(ws, agent);
   await seedSchemas(deps.vfs, root);
-
-  if (pkg.claudeMd !== undefined)
-    await deps.vfs.writeText(ctxFile(root), pkg.claudeMd);
-  for (const s of pkg.skills)
-    await deps.vfs.writeText(skillKey(root, s.slug), s.body);
-  if (pkg.routines.length) await saveRoutines(deps.vfs, root, pkg.routines);
-  if (pkg.learnings.length) await saveLearnings(deps.vfs, root, pkg.learnings);
+  // The SAME serialization the browser adapter sends through create-with-seeds
+  // on hosted cloud — one layout, wherever the install lands.
+  await writeAgentSeeds(deps.vfs, root, packageSeed(pkg));
 
   json(res, 201, { agent, installed: portableInventory(pkg) });
   return true;
