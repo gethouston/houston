@@ -10,7 +10,23 @@ import {
   type ModelPickerFilterState,
   sortModels,
 } from "./catalog";
-import type { ModelPickerModel } from "./types";
+import type { ModelPickerModel, ModelPickerProvider } from "./types";
+
+/**
+ * Which rail entry the picker opens on. `defaultProviderId` wins when it names a
+ * provider that's actually present; otherwise the first `connected` provider;
+ * otherwise the `"all"` view. Keeps the open state focused on a provider rather
+ * than the full catalog.
+ */
+export function resolveInitialProvider(
+  defaultProviderId: string | undefined,
+  providers: ModelPickerProvider[],
+): string {
+  if (defaultProviderId && providers.some((p) => p.id === defaultProviderId)) {
+    return defaultProviderId;
+  }
+  return providers.find((p) => p.connection === "connected")?.id ?? "all";
+}
 
 export interface ModelPickerSectionVM {
   /** Stable key for React + cmdk group. */

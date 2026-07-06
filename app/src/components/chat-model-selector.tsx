@@ -131,6 +131,7 @@ export function ChatModelSelector({
             favorites={picker.favorites}
             recents={picker.recents}
             selectedId={picker.selectedId}
+            defaultProviderId={picker.defaultProviderId}
             catalogState={picker.catalogState}
             onSelect={picker.onSelect}
             onToggleFavorite={picker.onToggleFavorite}

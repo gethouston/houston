@@ -24,9 +24,7 @@
       "$type": "color",
       "border-wash": { "$value": "rgba(60, 70, 120, 0.1)" },
       "highlight-45": { "$value": "rgba(250, 204, 21, 0.45)" },
-      "highlight-34": { "$value": "rgba(234, 179, 8, 0.34)" },
-      "violet-a10": { "$value": "rgba(124, 58, 237, 0.1)" },
-      "violet-a16": { "$value": "rgba(167, 139, 250, 0.16)" }
+      "highlight-34": { "$value": "rgba(234, 179, 8, 0.34)" }
     }
   }
 }

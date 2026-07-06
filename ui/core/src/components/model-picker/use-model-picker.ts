@@ -22,9 +22,12 @@ export interface ModelPickerController {
   hasActiveFilter: boolean;
 }
 
-export function useModelPicker(): ModelPickerController {
+export function useModelPicker(
+  /** Rail selection to open on (resolved by the caller); defaults to `"all"`. */
+  initialProvider = "all",
+): ModelPickerController {
   const [query, setQuery] = useState("");
-  const [provider, setProvider] = useState("all");
+  const [provider, setProvider] = useState(initialProvider);
   const [favOnly, setFavOnly] = useState(false);
   const [caps, setCaps] = useState<ReadonlySet<ModelCapabilityKey>>(
     () => new Set(),

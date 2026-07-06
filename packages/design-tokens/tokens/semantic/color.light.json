@@ -35,17 +35,6 @@
     "card-rest": { "$value": "{color.cool.surface}" },
     "canvas-gutter": { "$value": "{color.cool.gutter}" },
     "canvas-screen": { "$value": "{color.base.white}" },
-    "price": {
-      "free": { "$value": "{color.status.success}" },
-      "low": { "$value": "{color.status.success}" },
-      "mid": { "$value": "{color.status.warning}" },
-      "high": { "$value": "{color.status.danger}" }
-    },
-    "cap": {
-      "fg": { "$value": "{color.accent.violet}" },
-      "bg": { "$value": "{color.brand.violet-a10}" }
-    },
-    "star": { "$value": "{color.status.warning}" },
     "agent": {
       "charcoal": { "$value": "{color.agent.charcoal}" },
       "forest": { "$value": "{color.agent.forest}" },

@@ -47,7 +47,7 @@ export function SortMenu({
             }}
             className={cn(
               "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-              key === sort && "text-primary hover:text-primary",
+              key === sort && "text-foreground",
             )}
           >
             <span className="flex-1">{names[key]}</span>
