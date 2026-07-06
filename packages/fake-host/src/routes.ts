@@ -192,6 +192,19 @@ export function handleAgents(
       if (method === "POST") return json({ paths: [] });
       return noContent();
 
+    case "portable":
+      // Share-with-a-friend export inventory. An empty (but well-shaped)
+      // preview is enough for the wizard to open; the default `{items: []}`
+      // fallthrough made `preview.skills.map` throw, silently closing it.
+      if (rest[2] === "preview" && method === "GET")
+        return json({
+          claudeMd: null,
+          skills: [],
+          routines: [],
+          learnings: [],
+        });
+      return noContent(405);
+
     default:
       console.warn(
         `[fake-host] unmodeled route ${method} /agents/${id}/${rest.slice(1).join("/")}`,

@@ -82,7 +82,14 @@ test("renames and deletes a file from the context menu", async ({ page }) => {
 
 test("a folder downloads as its own zip from the context menu", async ({
   page,
+  browserName,
 }) => {
+  // Playwright WebKit never emits `download` for blob-anchor saves; the real
+  // desktop WKWebView doesn't use this path at all (native save_download IPC).
+  test.skip(
+    browserName === "webkit",
+    "no download events on Playwright WebKit",
+  );
   await openFilesTab(page);
 
   await page.getByText("Docs", { exact: true }).click({ button: "right" });
@@ -98,7 +105,14 @@ test("a folder downloads as its own zip from the context menu", async ({
   expect(zip.toString("latin1")).toContain("Docs/sales.csv");
 });
 
-test("Download all saves the whole workspace as one zip", async ({ page }) => {
+test("Download all saves the whole workspace as one zip", async ({
+  page,
+  browserName,
+}) => {
+  test.skip(
+    browserName === "webkit",
+    "no download events on Playwright WebKit",
+  );
   await openFilesTab(page);
 
   const [download] = await Promise.all([

@@ -13,6 +13,7 @@
     "typecheck:e2e": "tsgo --noEmit -p e2e/tsconfig.json",
     "test": "vitest run ./tests --testTimeout=30000",
     "test:e2e": "playwright test --fail-on-flaky-tests",
+    "test:e2e:webkit": "playwright test --config playwright.webkit.config.ts --fail-on-flaky-tests",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "fake-host": "pnpm --filter @houston/fake-host start",
