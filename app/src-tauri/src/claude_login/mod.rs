@@ -28,7 +28,13 @@
 //! Split across submodules to stay under the 200-line file limit:
 //!   * [`resolve`] — binary/config-dir resolution, command building, URL parse.
 //!   * [`runner`] — the spawn/stream/wait state machine (`run_login_child`).
+//!   * [`credential`] — extract the cached credential to PUSH to a remote pod.
 
+// `pub(crate)` so `generate_handler!` in `lib.rs` can name the command at its
+// defining path (`claude_login::credential::read_claude_credential`) — the macro
+// resolves the sibling `__cmd__*` items in the module where the command lives, so
+// a re-export of just the fn would not carry them.
+pub(crate) mod credential;
 mod resolve;
 mod runner;
 
@@ -50,8 +56,10 @@ const EVENT_URL: &str = "claude-login://url";
 const EVENT_DONE: &str = "claude-login://done";
 
 /// Houston's shared Claude login dir, used as `CLAUDE_CONFIG_DIR` for both this
-/// login AND the engine so the cached credential is visible to the engine.
-fn claude_login_config_dir() -> PathBuf {
+/// login AND the engine so the cached credential is visible to the engine. The
+/// `credential` submodule reads back from the same dir to push the cred to a
+/// remote pod.
+pub(super) fn claude_login_config_dir() -> PathBuf {
     crate::houston_dir().join("claude-login")
 }
 
@@ -85,6 +93,18 @@ pub async fn start_claude_login(
             config_dir.display()
         )
     })?;
+
+    // Cancel any still-running login before starting a fresh one: flipping the
+    // previous attempt's flag makes its background task kill that child. Without
+    // this, a retry (or a Connect click after a card-level Cancel) would leave two
+    // `claude auth login` children racing their loopbacks and two live done
+    // listeners firing conflicting completions.
+    {
+        let guard = state.0.lock().await;
+        if let Some(prev) = guard.as_ref() {
+            prev.cancel.store(true, Ordering::SeqCst);
+        }
+    }
 
     let bin = resolve_claude_binary();
     // Spawn synchronously so a launch failure surfaces as a toast (Err) rather

@@ -185,6 +185,8 @@ let proxyRuntimeUrl = "";
 let proxyConnected = false; // flips when connect() succeeds (export exposes a cred)
 /** Last body the fake runtime received on POST /providers/openai-compatible. */
 let proxyCustomEndpointBody: unknown = null;
+/** Last body the fake runtime received on POST /auth/anthropic/oauth-credential. */
+let proxyClaudeOAuthBody: unknown = null;
 
 beforeAll(async () => {
   proxyRuntime = createServer((req, res) => {
@@ -220,6 +222,18 @@ beforeAll(async () => {
             accountId: "acct-9",
           })
         : reply(200, {}); // present but incomplete → "agent is not connected yet"
+    }
+    // Hosted Claude-subscription push: capture the CLI envelope the channel sent.
+    if (path === "/auth/anthropic/oauth-credential") {
+      const chunks: Buffer[] = [];
+      req.on("data", (c) => chunks.push(c as Buffer));
+      req.on("end", () => {
+        proxyClaudeOAuthBody = JSON.parse(
+          Buffer.concat(chunks).toString("utf8") || "{}",
+        );
+        reply(200, { ok: true });
+      });
+      return;
     }
     if (path === "/auth/scrub-refresh") return reply(200, { ok: true });
     // API-key connect pushes the pasted key into the standing runtime.
@@ -375,5 +389,42 @@ describe("saveCustomEndpoint (asymmetric persistence path)", () => {
       contextWindow: 8192,
       reasoning: true,
     });
+  });
+});
+
+// saveClaudeOAuthCredential is the other asymmetric channel op: the single-tenant
+// standing pod materializes the pushed Claude credential (central store + pod
+// file), keeping the refresh token on the pod; the multi-tenant per-turn cloud
+// channel refuses it (Anthropic is off there).
+describe("saveClaudeOAuthCredential (single-tenant only, asymmetric)", () => {
+  const cred = {
+    accessToken: "sk-ant-oat-access",
+    refreshToken: "sk-ant-ort-refresh",
+    expiresAt: 1_800_000_000_000,
+    scopes: ["user:inference"],
+    subscriptionType: "max",
+  };
+
+  test("ProxyChannel dual-writes: central store + the pod's config file", async () => {
+    proxyClaudeOAuthBody = null;
+    const { channel, credentials } = makeProxyFixture();
+    await channel.saveClaudeOAuthCredential(ctx, cred);
+
+    const stored = await credentials.get(ws.id, "anthropic");
+    expect(stored?.kind).toBe("oauth");
+    expect(stored?.accessToken).toBe("sk-ant-oat-access");
+    // Gate #2 departure, scoped here: the refresh token is kept for the pod.
+    expect(stored?.refreshToken).toBe("sk-ant-ort-refresh");
+    expect(stored?.expiresAt).toBe(1_800_000_000_000);
+
+    // The pod received the CLI envelope verbatim.
+    expect(proxyClaudeOAuthBody).toEqual({ claudeAiOauth: cred });
+  });
+
+  test("TurnChannel (cloud per-turn) refuses the Claude credential", async () => {
+    const { channel } = makeTurnFixture();
+    await expect(channel.saveClaudeOAuthCredential(ctx, cred)).rejects.toThrow(
+      /cloud|per-turn|available/i,
+    );
   });
 });

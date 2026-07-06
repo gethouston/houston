@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -102,7 +102,44 @@ test("concurrent syncServedCredential calls share one in-flight sync (no auth.js
     expect(b).toEqual([]);
     expect(c).toEqual([]);
     // Three concurrent callers, but only ONE batch of per-provider probes ran.
-    expect(calls).toBe(PROVIDERS.length);
+    // Anthropic is bypassed (materialized as the pod's own .credentials.json, not
+    // served here), so the sweep probes every provider EXCEPT anthropic.
+    expect(calls).toBe(PROVIDERS.filter((p) => p.id !== "anthropic").length);
+  });
+});
+
+test("anthropic is bypassed: a central anthropic credential is never served to auth.json", async () => {
+  // The pod materializes the Claude subscription as its own .credentials.json and
+  // the SDK self-refreshes it there — so serve mode must never probe anthropic nor
+  // write an access-only (refresh-stripped) anthropic entry into auth.json.
+  const requested: string[] = [];
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    const provider = new URL(String(input)).searchParams.get("provider");
+    if (provider) requested.push(provider);
+    if (provider === "anthropic") {
+      // The host WOULD serve it if asked — prove the runtime never asks.
+      return new Response(
+        JSON.stringify({
+          provider: "anthropic",
+          kind: "oauth",
+          access: "AT-anthropic",
+          expires: 1_900_000_000_000,
+          accountId: null,
+        }),
+        { status: 200 },
+      );
+    }
+    return notConnected404();
+  }) as unknown as typeof globalThis.fetch;
+  await withServeMode(fetchImpl, async () => {
+    expect(await syncServedCredential()).toEqual([]);
+    expect(requested).not.toContain("anthropic");
+    // No anthropic entry was written (auth.json may not exist at all).
+    const path = join(config.dataDir, "auth.json");
+    const auth = existsSync(path)
+      ? (JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>)
+      : {};
+    expect(auth.anthropic).toBeUndefined();
   });
 });
 

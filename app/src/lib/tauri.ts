@@ -21,7 +21,10 @@ import type {
   ProviderAuthState,
 } from "@houston-ai/engine-client";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
-import { beginClaudeBrowserLogin } from "./claude-login";
+import {
+  beginClaudeBrowserLogin,
+  cancelClaudeBrowserLogin,
+} from "./claude-login";
 import { COMPOSIO_ALREADY_CONNECTED_KIND } from "./composio-already-connected";
 import { getEngine, isRemoteEngine } from "./engine";
 import { engineCallSurface } from "./engine-call-policy";
@@ -1069,14 +1072,12 @@ export const tauriProvider = {
         // surface funnels through, so the intercept lives here (not per-surface).
         // beginClaudeBrowserLogin drives the whole flow and reports the outcome
         // as a synthetic ProviderLoginComplete, so `call` resolves and never
-        // double-toasts. Remote-engine desktop / web fall through to providerLogin.
+        // double-toasts. On a REMOTE-engine desktop it also extracts + pushes the
+        // credential to the pod (and degrades to the paste flow on any failure).
+        // Web (non-Tauri) falls through to providerLogin.
         if (
           shouldUseClaudeDesktopLogin({
             provider,
-            env: (import.meta.env ?? {}) as {
-              VITE_NEW_ENGINE_URL?: string;
-              VITE_HOSTED_ENGINE_URL?: string;
-            },
             isTauri: osIsTauri(),
           })
         ) {
@@ -1160,9 +1161,17 @@ export const tauriProvider = {
    * pending spinners clear without an error toast.
    */
   cancelLogin: (provider: string) =>
-    call<void>("cancel_provider_login", () =>
-      getEngine().cancelProviderLogin(provider),
-    ),
+    call<void>("cancel_provider_login", () => {
+      // Anthropic on the desktop ran the native browser login (not the runtime),
+      // so its cancel must kill THAT child — the runtime's cancelProviderLogin
+      // would be a no-op and leave the `claude` helper running. Mirror the
+      // launchLogin intercept.
+      if (shouldUseClaudeDesktopLogin({ provider, isTauri: osIsTauri() })) {
+        cancelClaudeBrowserLogin(provider);
+        return Promise.resolve();
+      }
+      return getEngine().cancelProviderLogin(provider);
+    }),
   /**
    * Connect an API-key provider (OpenRouter, Google Gemini, Amazon Bedrock,
    * OpenCode Zen / Go):

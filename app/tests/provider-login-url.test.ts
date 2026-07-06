@@ -236,60 +236,25 @@ describe("shouldUseCodexLoopback", () => {
 // same dir the local runtime reads. Remote-engine desktop keeps the setup-token
 // paste flow (the pod can't read this machine's Keychain — hosted follow-up).
 describe("shouldUseClaudeDesktopLogin", () => {
-  const hosted = { VITE_HOSTED_ENGINE_URL: "https://cloud.example" };
-  const remoteHost = { VITE_NEW_ENGINE_URL: "https://houston.example.com" };
-  const loopbackDev = { VITE_NEW_ENGINE_URL: "http://127.0.0.1:4318" };
-
-  it("runs for anthropic on a co-located desktop (packaged sidecar / loopback dev)", () => {
+  it("runs for anthropic on ANY Tauri desktop — co-located AND remote", () => {
+    // Both topologies drive the same browser login on this machine; the remote
+    // case pushes the extracted credential to the pod afterwards.
     strictEqual(
-      shouldUseClaudeDesktopLogin({
-        provider: "anthropic",
-        env: {},
-        isTauri: true,
-      }),
+      shouldUseClaudeDesktopLogin({ provider: "anthropic", isTauri: true }),
       true,
     );
-    strictEqual(
-      shouldUseClaudeDesktopLogin({
-        provider: "anthropic",
-        env: loopbackDev,
-        isTauri: true,
-      }),
-      true,
-    );
-  });
-
-  it("does NOT run on a remote-engine desktop (hosted / VPS) — that is the follow-up's push path", () => {
-    for (const env of [hosted, remoteHost]) {
-      strictEqual(
-        shouldUseClaudeDesktopLogin({
-          provider: "anthropic",
-          env,
-          isTauri: true,
-        }),
-        false,
-      );
-    }
   });
 
   it("does not run for a web / non-desktop client", () => {
     strictEqual(
-      shouldUseClaudeDesktopLogin({
-        provider: "anthropic",
-        env: {},
-        isTauri: false,
-      }),
+      shouldUseClaudeDesktopLogin({ provider: "anthropic", isTauri: false }),
       false,
     );
   });
 
   it("does not run for a non-anthropic provider", () => {
     strictEqual(
-      shouldUseClaudeDesktopLogin({
-        provider: "openai",
-        env: {},
-        isTauri: true,
-      }),
+      shouldUseClaudeDesktopLogin({ provider: "openai", isTauri: true }),
       false,
     );
   });

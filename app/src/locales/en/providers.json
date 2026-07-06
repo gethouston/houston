@@ -116,6 +116,8 @@
   },
   "claudeLogin": {
     "timeout": "Claude sign-in timed out. Please try connecting again.",
-    "confirmTimeout": "Signed in to Claude, but Houston could not confirm the connection. Please try again."
+    "confirmTimeout": "Signed in to Claude, but Houston could not confirm the connection. Please try again.",
+    "autoFailedTitle": "Couldn't finish connecting automatically",
+    "autoFailedBody": "Paste a Claude setup token to finish connecting."
   }
 }

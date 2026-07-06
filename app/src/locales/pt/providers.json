@@ -116,6 +116,8 @@
   },
   "claudeLogin": {
     "timeout": "O login do Claude expirou. Tente conectar novamente.",
-    "confirmTimeout": "Você entrou no Claude, mas o Houston não conseguiu confirmar a conexão. Tente novamente."
+    "confirmTimeout": "Você entrou no Claude, mas o Houston não conseguiu confirmar a conexão. Tente novamente.",
+    "autoFailedTitle": "Não foi possível concluir a conexão automaticamente",
+    "autoFailedBody": "Cole um token de configuração do Claude para concluir a conexão."
   }
 }

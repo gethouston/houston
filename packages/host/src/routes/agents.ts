@@ -1,6 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { seedSchemas } from "@houston/domain";
-import type { CustomEndpoint, HoustonEvent } from "@houston/protocol";
+import {
+  type CustomEndpoint,
+  type HoustonEvent,
+  parseClaudeOAuthEnvelope,
+} from "@houston/protocol";
 import { ACTING_AS_HEADER, actingSubFromHeader } from "../auth/acting";
 import { checkPublicHttpsEndpoint } from "../custom-endpoint-validation";
 import type { Agent, UserId, Workspace } from "../domain/types";
@@ -262,6 +266,56 @@ export async function handleAgents(
         key.trim(),
       );
       json(res, 200, { ok: true, provider });
+    } catch (err) {
+      json(res, 502, {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+    return true;
+  }
+
+  // Connect the Claude subscription in HOSTED mode: `claude auth login` mints the
+  // OAuth credential locally on the desktop, which extracts it and pushes it here
+  // so a hosted pod's Claude Agent SDK can authenticate + self-refresh. Same owner
+  // authz as capture. The envelope is validated (accessToken required) — a
+  // malformed push is a clear 4xx (never a false success), so the desktop can fall
+  // back to the paste flow. Must precede the generic dispatch.
+  const claudeOAuth = path.match(
+    /^\/agents\/([^/]+)\/credential\/claude-oauth$/,
+  );
+  if (claudeOAuth && method === "POST") {
+    const agentId = claudeOAuth[1]
+      ? decodeURIComponent(claudeOAuth[1])
+      : undefined;
+    if (!agentId) {
+      json(res, 404, { error: "not found" });
+      return true;
+    }
+    const authz = await authorizeAgent(deps, userId, agentId);
+    if (!authz.ok) {
+      json(res, authz.status, { error: authz.reason });
+      return true;
+    }
+    // A body that isn't valid JSON parses to {} → the validator rejects it as
+    // "missing 'claudeAiOauth'" (a clean 400), never a swallowed accept.
+    const parsed = parseClaudeOAuthEnvelope(
+      await readJson(req).catch(() => ({})),
+    );
+    if (!parsed.ok) {
+      json(res, 400, { error: parsed.error });
+      return true;
+    }
+    const channel = channelFor(deps, authz.workspace);
+    if (!channel) {
+      noChannel(res, authz.workspace.runtime);
+      return true;
+    }
+    try {
+      await channel.saveClaudeOAuthCredential(
+        { workspace: authz.workspace, agent: authz.agent },
+        parsed.value,
+      );
+      json(res, 200, { ok: true });
     } catch (err) {
       json(res, 502, {
         error: err instanceof Error ? err.message : String(err),

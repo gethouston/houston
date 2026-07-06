@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+import { cancelClaudeBrowserLogin } from "../../lib/claude-login";
 import { listenOsEvent } from "../../lib/events";
-import { osCancelClaudeLogin } from "../../lib/os-bridge";
 import { PROVIDERS } from "../../lib/providers";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 
@@ -42,9 +42,10 @@ export function ClaudeBrowserLogin() {
       userCode={null}
       browserPending
       onClose={() => {
-        // Cancel kills the native `claude` child; its `done { error: null }`
-        // clears the pending card without an error toast.
-        void osCancelClaudeLogin();
+        // Cancel kills the native `claude` child and clears the pending card
+        // silently (single cancel path — kills the child + announces a benign
+        // dismissal so every surface's spinner clears).
+        cancelClaudeBrowserLogin(ANTHROPIC.id);
         setUrl(null);
       }}
     />

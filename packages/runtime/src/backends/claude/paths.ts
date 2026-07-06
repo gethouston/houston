@@ -42,6 +42,20 @@ export function claudeLoginConfigDir(home: string = houstonHome()): string {
 }
 
 /**
+ * The Claude CLI's credential file on Linux: `<CLAUDE_CONFIG_DIR>/.credentials.json`.
+ * `claude auth login` writes it locally, and on a hosted pod the runtime
+ * MATERIALIZES it from a credential the desktop pushed — it is what the Claude
+ * Agent SDK and `claude auth status` read to authenticate (and what the SDK
+ * self-refreshes in place). Rooted under the login config dir so login and every
+ * agent's SDK backend agree. The `configDir` arg is injectable for tests.
+ */
+export function claudeCredentialsFile(
+  configDir: string = claudeLoginConfigDir(),
+): string {
+  return join(configDir, ".credentials.json");
+}
+
+/**
  * Where the SDK writes per-session transcripts: `<CLAUDE_CONFIG_DIR>/projects`.
  * SHARED (under the login config dir, where the SDK actually writes), but each
  * agent's transcripts land in their own cwd-slug subdir, so the sessions store's

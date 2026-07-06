@@ -99,6 +99,17 @@ export function osStartClaudeLogin(): Promise<void> {
   return invoke<void>("start_claude_login");
 }
 
+/** Extract the Anthropic OAuth credential the `claude` CLI just cached for
+ * Houston's shared login dir, as the CLI's `.credentials.json` JSON string
+ * (`{claudeAiOauth:{...}}`). Used ONLY for a REMOTE engine: the desktop pushes
+ * the extracted cred to the pod (which can't read this machine's Keychain). The
+ * native side reads `<claudeLoginConfigDir>/.credentials.json` or, on macOS, the
+ * `"Claude Code-credentials"` Keychain item; rejects (never a silent empty) on
+ * not-found / parse failure so the caller can fall back to the paste flow. */
+export function osReadClaudeCredential(): Promise<string> {
+  return invoke<string>("read_claude_credential");
+}
+
 /** Cancel an in-flight desktop Claude sign-in (kills the `claude` child). The
  * native side then emits `claude-login://done` with `error: null` (a benign
  * dismissal). No-op outside Tauri / when nothing is in flight. */

@@ -1,7 +1,8 @@
 import { execFile } from "node:child_process";
+import { existsSync, rmSync } from "node:fs";
 import { buildClaudeEnv } from "./backend";
 import { resolveClaudeExecutable } from "./binary-path";
-import { claudeLoginConfigDir } from "./paths";
+import { claudeCredentialsFile, claudeLoginConfigDir } from "./paths";
 
 /**
  * Whether a Claude credential is cached FOR Houston's shared login dir.
@@ -23,6 +24,21 @@ import { claudeLoginConfigDir } from "./paths";
 
 /** Last known `claude auth status` result for the shared login dir. */
 let cache: boolean | undefined;
+
+/** When the cache was last populated (ms epoch), for the coalescing TTL. */
+let lastProbeAt = 0;
+
+/** An in-flight probe, so concurrent callers share ONE subprocess. */
+let inFlight: Promise<boolean> | null = null;
+
+/**
+ * How long a fresh probe result is reused before re-spawning `claude auth
+ * status`. The frontend polls `/providers` and `/auth/status` on a tight React
+ * Query cadence and each hits this; without coalescing every poll would spawn a
+ * subprocess. Short enough that a just-connected user flips within a poll cycle,
+ * long enough to collapse a burst of polls into one spawn.
+ */
+const PROBE_TTL_MS = 2_000;
 
 /** The probe: resolve a `claude` credential's presence for the shared dir. */
 export type CredentialProbe = () => Promise<boolean>;
@@ -80,20 +96,55 @@ function spawnStatusProbe(): Promise<boolean> {
  */
 export async function refreshAnthropicCredential(
   probe: CredentialProbe = spawnStatusProbe,
+  opts: { force?: boolean } = {},
 ): Promise<boolean> {
-  try {
-    cache = await probe();
-  } catch (err) {
-    console.warn(
-      `[claude] could not read anthropic credential status (${err instanceof Error ? err.message : String(err)}); treating as not connected`,
-    );
-    cache = false;
+  // Reuse a fresh-enough result so a burst of status polls collapses to one
+  // spawn. `force` (after a materialize/logout that changed the credential)
+  // bypasses the TTL; the first probe (cache still undefined) always runs.
+  if (
+    !opts.force &&
+    cache !== undefined &&
+    Date.now() - lastProbeAt < PROBE_TTL_MS
+  ) {
+    return cache;
   }
-  return cache;
+  // Coalesce concurrent callers onto one in-flight subprocess.
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
+    try {
+      cache = await probe();
+    } catch (err) {
+      console.warn(
+        `[claude] could not read anthropic credential status (${err instanceof Error ? err.message : String(err)}); treating as not connected`,
+      );
+      cache = false;
+    }
+    lastProbeAt = Date.now();
+    return cache;
+  })();
+  try {
+    return await inFlight;
+  } finally {
+    inFlight = null;
+  }
 }
 
-/** The cached shared-dir credential signal (false until the first refresh). */
+/**
+ * The sync "is anthropic connected?" signal, hit at turn time by
+ * `activeProvider`/`providerConnected`.
+ *
+ * On the POD (Linux) the credential is materialized as a file — a sync stat is
+ * instant, needs no subprocess, and is correct the moment the file is written,
+ * so there is no cold-start race and no probe spam on the turn path. macOS-local
+ * caches in the Keychain (no file to stat), so there we fall back to the last
+ * `claude auth status` probe result (warmed by `getAuthStatus`).
+ */
 export function anthropicCredentialCached(): boolean {
+  try {
+    if (existsSync(claudeCredentialsFile())) return true;
+  } catch {
+    // A stat failure just defers to the probe cache below.
+  }
   return cache ?? false;
 }
 
@@ -108,6 +159,10 @@ export function primeAnthropicCredential(): void {
  */
 export function resetAnthropicCredentialCache(value = false): void {
   cache = value;
+  // Zero the TTL so the next `refreshAnthropicCredential` re-probes immediately
+  // (a logout/reset must reflect right away, not after the TTL window).
+  lastProbeAt = 0;
+  inFlight = null;
 }
 
 /**
@@ -124,6 +179,14 @@ export function logoutAnthropicCredential(): Promise<void> {
       ["auth", "logout"],
       { env, timeout: 10_000 },
       (err) => {
+        // Remove the materialized file too (the pod's connected signal is the
+        // file's existence); `claude auth logout` clears the Keychain, but the
+        // file — if any — must go for the sync signal to flip off.
+        try {
+          rmSync(claudeCredentialsFile(), { force: true });
+        } catch {
+          // Best-effort; the status cache reset below still reports disconnected.
+        }
         resetAnthropicCredentialCache(false);
         // ENOENT = no bundled binary to log out with; nothing was cached through
         // it either, so treat the local logout as done rather than blocking the

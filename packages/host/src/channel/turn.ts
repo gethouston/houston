@@ -134,6 +134,19 @@ export class TurnChannel implements RuntimeChannel {
   }
 
   /**
+   * The multi-tenant per-turn Cloud Run image keeps Anthropic OFF — a
+   * subscription credential (and its refresh token) must never land in a shared
+   * per-turn process. Hosted Anthropic runs only on the single-tenant standing
+   * pod (ProxyChannel), so this channel refuses the push. This is the explicit
+   * gate that scopes the refresh-token-on-pod decision to single-tenant only.
+   */
+  async saveClaudeOAuthCredential(): Promise<void> {
+    throw new Error(
+      "Claude subscription connect isn't available in the cloud per-turn runtime.",
+    );
+  }
+
+  /**
    * Persist an OpenAI-compatible endpoint for the per-turn runtime. There is no
    * standing runtime to POST to (unlike ProxyChannel): the per-turn runtime
    * hydrates its data dir from this object-storage prefix at the start of each

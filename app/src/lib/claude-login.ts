@@ -14,20 +14,26 @@
  * surface (settings, picker, onboarding, reconnect card) reacts EXACTLY as it
  * does for a normal OAuth completion — flips the card, toasts, clears pending.
  *
- * SEAM for the hosted-cloud follow-up: this path assumes a CO-LOCATED engine
- * (the credential the desktop just cached is the very dir the local runtime
- * reads). A REMOTE engine (hosted pod) can't read this machine's Keychain, so a
- * later element must, after `claude-login://done` with success, EXTRACT the cred
- * (`<claudeLoginConfigDir>/.credentials.json` on Linux, or the macOS Keychain
- * item `security find-generic-password -s "Claude Code-credentials"`) and PUSH
- * it to the pod. The local-vs-remote branch point is `isCoLocatedEngine()` in
- * `shouldUseClaudeDesktopLogin` (provider-login-url.ts): remote-engine desktop
- * keeps the setup-token paste flow until that element lands. See TODO below.
+ * TOPOLOGY: the SAME browser login runs on this machine for both a co-located
+ * and a remote engine (`shouldUseClaudeDesktopLogin` is now any Tauri desktop).
+ * What differs is what happens AFTER `claude-login://done` with success:
+ *   * CO-LOCATED — the credential the desktop just cached is the very dir the
+ *     local runtime reads, so we only poll until the runtime reads it connected.
+ *   * REMOTE (hosted pod) — the pod can't read this machine's Keychain, so we
+ *     EXTRACT the cached credential and PUSH it to the pod (see
+ *     `claude-login-remote.ts`), then poll. Any failure there degrades to the
+ *     setup-token paste flow, never a dead spinner.
  */
 
+import { finishRemoteClaudeLogin } from "./claude-login-remote";
+import { isRemoteEngine } from "./engine";
 import { publishLocalHoustonEvent } from "./events";
 import i18n from "./i18n";
-import { legacyListen, osStartClaudeLogin } from "./os-bridge";
+import {
+  legacyListen,
+  osCancelClaudeLogin,
+  osStartClaudeLogin,
+} from "./os-bridge";
 import { tauriProvider } from "./tauri";
 
 /** Native event carrying the login result `{ success, error }`. */
@@ -52,6 +58,29 @@ function announce(provider: string, success: boolean, error: string | null) {
     type: "ProviderLoginComplete",
     data: { provider, success, error },
   });
+}
+
+/**
+ * The single in-flight browser login's teardown, or null when none is running.
+ * Claude's `claude auth login` binds a loopback and this module keeps one raw
+ * `done` listener per attempt, so two concurrent attempts would race two
+ * loopbacks and fire conflicting completions. We enforce single-flight: a new
+ * login (or an explicit cancel) tears the previous one down first.
+ */
+let activeCancel: (() => void) | null = null;
+
+/**
+ * Cancel the in-flight desktop Claude login, if any: kill the native `claude`
+ * child (its `done { success:false, error:null }` unwinds the listener) and clear
+ * the pending card silently. Routed here from `cancelLogin` for anthropic on the
+ * desktop — the runtime never ran this login, so its own cancel is a no-op. Safe
+ * to call with nothing in flight.
+ */
+export function cancelClaudeBrowserLogin(frontendProviderId: string): void {
+  if (!activeCancel) return;
+  void osCancelClaudeLogin();
+  activeCancel();
+  announce(frontendProviderId, false, null);
 }
 
 /** Poll the engine until anthropic reads connected (the fresh credential is
@@ -97,7 +126,18 @@ export async function beginClaudeBrowserLogin(
       unlisten();
       unlisten = null;
     }
+    if (activeCancel === cleanup) activeCancel = null;
   };
+
+  // Single-flight by IGNORING re-entry: if a login is already in flight, a
+  // second Connect click is a no-op (the "approve in your browser" dialog is
+  // already up). Superseding instead would register a new listener that then
+  // catches the OLD child's kill-`done` (the events carry no attempt id) and
+  // self-cancel the retry. A stuck login is freed by Cancel or the 5-min
+  // timeout, then a fresh Connect proceeds. The Rust `start_claude_login` still
+  // kills any prior child as a backstop.
+  if (activeCancel) return;
+  activeCancel = cleanup;
 
   // Register the `done` listener BEFORE invoking so a fast completion can't race
   // ahead of us. The result rides a raw Tauri event (`claude-login://done`), the
@@ -110,11 +150,22 @@ export async function beginClaudeBrowserLogin(
         cleanup();
         const { success, error } = ev.payload;
         if (!success) {
-          // TODO(cloud): a future hosted-engine element extracts + pushes the
-          // credential here when isCoLocatedEngine() is false. Local path stops.
+          // The browser login itself failed (declined) or was cancelled
+          // (error: null → silent dismissal). Not a remote-handoff failure.
           announce(frontendProviderId, false, error);
           return;
         }
+        if (isRemoteEngine()) {
+          // Remote pod: extract this machine's cred + push it, then confirm.
+          // Guarantees fallback-to-paste on any failure inside.
+          void finishRemoteClaudeLogin(
+            frontendProviderId,
+            confirmConnected,
+            announce,
+          );
+          return;
+        }
+        // Co-located: the runtime already reads the shared dir; just confirm.
         void confirmConnected(frontendProviderId).then((ok) => {
           announce(
             frontendProviderId,

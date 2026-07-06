@@ -331,6 +331,27 @@ export async function captureCredential(
 }
 
 /**
+ * Push a desktop-extracted Anthropic OAuth credential to the agent's pod. The
+ * body is the `claude` CLI's `.credentials.json` shape (`{claudeAiOauth:{...}}`),
+ * already a JSON string; the host stores it centrally and materializes it on the
+ * pod PVC. Used ONLY for a REMOTE engine — a hosted pod can't read this machine's
+ * Keychain, so the co-located desktop (which shares the credential dir with its
+ * local runtime) never calls this. Resolves on 200; throws the host's reason
+ * otherwise so the caller can degrade to the paste flow.
+ */
+export async function pushClaudeOAuthCredential(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  credentialJson: string,
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `/agents/${encodeURIComponent(agentId)}/credential/claude-oauth`,
+    { method: "POST", body: credentialJson },
+  );
+}
+
+/**
  * Connect-once logout: forget the workspace's central credential for a provider,
  * the mirror of captureCredential. Without it, logout cleared only the agent
  * runtime's local auth.json and the next turn re-served the credential from the

@@ -1,3 +1,4 @@
+import { parseClaudeOAuthEnvelope } from "@houston/runtime-client";
 import { listProviders, setSettings } from "../ai/providers";
 import { exportCredential } from "../auth/export";
 import {
@@ -11,6 +12,8 @@ import {
 } from "../auth/login";
 import { scrubRefreshTokens, syncServedCredentialSafe } from "../auth/serve";
 import { refreshAnthropicCredential } from "../backends/claude/credential-status";
+import { writeClaudeOAuthCredentialFile } from "../backends/claude/credentials-file";
+import { claudeLoginConfigDir } from "../backends/claude/paths";
 import { json, type RouteContext, readJson } from "./http-helpers";
 
 export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
@@ -53,6 +56,10 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
     await handleOpenAiCompatible(ctx);
     return true;
   }
+  if (method === "POST" && path === "/auth/anthropic/oauth-credential") {
+    await handleClaudeOAuthCredential(ctx);
+    return true;
+  }
 
   const apiKeyMatch = path.match(/^\/auth\/([^/]+)\/api-key$/);
   if (method === "POST" && apiKeyMatch) {
@@ -88,6 +95,37 @@ async function handleOpenAiCompatible(ctx: RouteContext) {
   } catch (e) {
     json(ctx.res, 400, { error: e instanceof Error ? e.message : String(e) });
   }
+}
+
+/**
+ * Materialize a desktop-pushed Claude subscription OAuth credential (host→pod).
+ * Writes the CLI's `<CLAUDE_CONFIG_DIR>/.credentials.json` so the Claude Agent
+ * SDK + `claude auth status` read as logged-in and the SDK self-refreshes from
+ * the refresh token in place. The body is the pinned CLI envelope, validated
+ * STRICTLY — a malformed push is a clear 400 (the desktop falls back to paste),
+ * a write failure a 500. On success the connected signal is warmed so status
+ * flips immediately. The token is never logged.
+ */
+async function handleClaudeOAuthCredential(ctx: RouteContext) {
+  const parsed = parseClaudeOAuthEnvelope(
+    await readJson(ctx.req).catch(() => ({})),
+  );
+  if (!parsed.ok) {
+    json(ctx.res, 400, { error: parsed.error });
+    return;
+  }
+  try {
+    writeClaudeOAuthCredentialFile(claudeLoginConfigDir(), parsed.value);
+  } catch (e) {
+    json(ctx.res, 500, {
+      error: `could not materialize the Claude credential: ${e instanceof Error ? e.message : String(e)}`,
+    });
+    return;
+  }
+  // Warm the shared-dir credential probe so `configured` / `claude auth status`
+  // flips connected on the very next poll instead of after the cache TTL.
+  await refreshAnthropicCredential(undefined, { force: true });
+  json(ctx.res, 200, { ok: true });
 }
 
 async function handleApiKey(ctx: RouteContext, provider: string) {

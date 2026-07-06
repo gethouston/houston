@@ -315,6 +315,15 @@ async function battery(base: string): Promise<Step[]> {
   });
   await hit("GET config", `/agents/${a}/config`);
 
+  // Claude subscription push (hosted connect): a malformed body is a strict 400 on
+  // BOTH profiles — validation precedes the runtime channel, so this asserts the
+  // route + its validation gate exist identically without needing a live pod.
+  await hit(
+    "POST claude-oauth (malformed → 400)",
+    `/agents/${a}/credential/claude-oauth`,
+    { method: "POST", body: JSON.stringify({ nope: true }) },
+  );
+
   // Context file (raw agentfile) — also what the portable export reads.
   await hit("PUT agentfile CLAUDE.md", `/agents/${a}/agentfile/CLAUDE.md`, {
     method: "PUT",
