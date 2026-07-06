@@ -6,6 +6,7 @@
   },
   "tabs": {
     "providers": "Provedores",
+    "providersCount": "Provedores · {{count}}",
     "modelsCount": "Modelos · {{count}}"
   },
   "sections": {
@@ -17,6 +18,7 @@
     "connecting": "Conectando",
     "seeMore": "Ver mais",
     "connected": "Conectado",
+    "signOut": "Sair",
     "cancel": "Cancelar",
     "models_one": "{{count}} modelo",
     "models_other": "{{count}} modelos",
@@ -97,6 +99,20 @@
     }
   },
   "providers": {
+    "search": "Buscar provedores",
+    "empty": {
+      "title": "Nenhum provedor encontrado",
+      "description": "Tente outra busca ou categoria."
+    },
+    "category": {
+      "label": "Categoria",
+      "all": "Todos",
+      "featured": "Destaques",
+      "gateway": "Gateways",
+      "direct": "Diretos",
+      "regional": "Regionais",
+      "local": "Locais"
+    },
     "openai": {
       "description": "Entre com o ChatGPT e coloque os modelos GPT e Codex para trabalhar."
     },

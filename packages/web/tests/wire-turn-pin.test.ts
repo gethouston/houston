@@ -38,12 +38,16 @@ test("an unknown model pins the provider only — a strict-validated pin would f
   });
 });
 
-test("an unknown provider drops the pin so the runtime resolves (and surfaces its own cards)", () => {
-  expect(
-    wireTurnPin({ provider: "not-a-provider", model: "x" }),
-  ).toBeUndefined();
-  // ... unless an effort still needs pinning.
-  expect(wireTurnPin({ provider: "not-a-provider", effort: "low" })).toEqual({
+test("a new pi-ai provider passes through — the open catalog means the adapter no longer gatekeeps provider ids", () => {
+  // Validity is enforced upstream (the frontend's effective-provider resolution
+  // against the live /v1/catalog) and by the runtime; the adapter can't know
+  // every pi-ai id, so a genuinely new provider must pin, not be dropped.
+  expect(wireTurnPin({ provider: "groq", model: "llama-3.3-70b" })).toEqual({
+    provider: "groq",
+    model: "llama-3.3-70b",
+  });
+  expect(wireTurnPin({ provider: "groq", effort: "low" })).toEqual({
+    provider: "groq",
     effort: "low",
   });
 });

@@ -21,7 +21,6 @@ import { Search } from "lucide-react";
 import {
   useCallback,
   useDeferredValue,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -41,6 +40,7 @@ import {
   type ProviderValue,
 } from "./model-directory-filters.tsx";
 import { LedgerHeader, ModelsLedger } from "./models-ledger.tsx";
+import { useStuckOnScroll } from "./use-stuck-on-scroll.ts";
 
 export function ModelsBrowser({
   models,
@@ -68,34 +68,8 @@ export function ModelsBrowser({
 
   // Scroll-aware chrome: the sticky bar is transparent while it sits at rest and
   // only fades in its frosted `bg-popover` (+ divider) once rows scroll BEHIND
-  // it. A zero-height sentinel at the bar's natural top marks when the bar has
-  // pinned — it stays put while the sentinel scrolls up past the scroll
-  // container's top edge. Self-contained so both mounts (the Models tab's scroll
-  // region and the provider modal's body) work without threading a scroll ref.
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const [stuck, setStuck] = useState(false);
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    let scroller = sentinel.parentElement;
-    while (scroller) {
-      const overflowY = getComputedStyle(scroller).overflowY;
-      if (overflowY === "auto" || overflowY === "scroll") break;
-      scroller = scroller.parentElement;
-    }
-    const update = () => {
-      const top = scroller ? scroller.getBoundingClientRect().top : 0;
-      setStuck(sentinel.getBoundingClientRect().top < top - 0.5);
-    };
-    update();
-    const target: HTMLElement | Window = scroller ?? window;
-    target.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      target.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, []);
+  // it — see `useStuckOnScroll` (shared with the Providers tab).
+  const { sentinelRef, stuck } = useStuckOnScroll();
 
   const results = useMemo(() => {
     const byFilter = filterModels(models, {

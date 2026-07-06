@@ -126,16 +126,21 @@ test("an unknown model id falls soft to the provider default WITH a diagnostic",
   assertValid(r, "unknown anthropic model");
 });
 
-test("an unknown provider falls soft to the default provider WITH a diagnostic", () => {
-  // Gemini was dropped — a stored gemini agent must not throw, it must land on
-  // the default provider with a recorded diagnostic.
-  const r = migrateProviderModel("gemini", "gemini-2.5-pro");
-  expect(r.provider).toBe(DEFAULT_PROVIDER);
-  // The gemini model can't be a codex model either → also a model diagnostic.
-  expect(r.model).toBe("gpt-5.5");
-  expect(r.diagnostics.length).toBeGreaterThanOrEqual(1);
-  expect(r.diagnostics.some((d) => d.message.includes("gemini"))).toBe(true);
-  assertValid(r, "unknown provider");
+test("a genuinely new pi-ai provider id passes through UNCHANGED (not → Codex)", () => {
+  // The pi-ai catalog is open (~35 providers, and it drifts). A provider id we
+  // don't enumerate ("groq", "mistral") is a REAL provider, not a legacy typo —
+  // it must pass through verbatim, never get silently rewritten to the cloud
+  // default. Its model (open catalog for an unknown provider) passes through
+  // too, with no diagnostic. This is the "unknown → Codex" trap we removed.
+  const groq = migrateProviderModel("groq", "llama-3.3-70b");
+  expect(groq.provider).toBe("groq");
+  expect(groq.model).toBe("llama-3.3-70b");
+  expect(groq.diagnostics).toEqual([]);
+
+  const mistral = migrateProviderModel("mistral", "mistral-large-latest");
+  expect(mistral.provider).toBe("mistral");
+  expect(mistral.model).toBe("mistral-large-latest");
+  expect(mistral.diagnostics).toEqual([]);
 });
 
 test("missing provider/model fall soft to the defaults with provider diagnostic", () => {
@@ -191,10 +196,13 @@ test("deepseek provider models migrate against its finite pi catalog", () => {
 });
 
 test("the diagnostic key defaults to the config doc path and is overridable", () => {
-  expect(migrateProviderModel("gemini", "x").diagnostics[0]?.key).toBe(
-    ".houston/config/config.json",
-  );
+  // Any input that produces a diagnostic (here: an unknown anthropic model on a
+  // finite-catalog provider) — the key names the source doc.
   expect(
-    migrateProviderModel("gemini", "x", "Work/Sales").diagnostics[0]?.key,
+    migrateProviderModel("anthropic", "totally-made-up").diagnostics[0]?.key,
+  ).toBe(".houston/config/config.json");
+  expect(
+    migrateProviderModel("anthropic", "totally-made-up", "Work/Sales")
+      .diagnostics[0]?.key,
   ).toBe("Work/Sales");
 });

@@ -4,11 +4,10 @@
  * no store/hook imports — deterministic and unit-tested (`capabilities.test.mjs`)
  * so the picker components stay presentational.
  *
- * These derive strictly from fields the catalog actually carries. `imageGen`
- * comes only from the live OpenRouter source (folded into `CatalogModel` via
- * `catalog-live.ts`); a snapshot-only model carries `imageGen: false` because
- * models.dev has no image-generation signal (see `catalog-snapshot.ts`
- * `RawModel` and `scripts/generate-model-catalog.mjs`).
+ * These derive strictly from fields the catalog actually carries. The base
+ * source is the pi-ai catalog (the runnable set); the models.dev snapshot only
+ * enriches it. Neither carries an image-generation signal today, so `imageGen`
+ * is effectively always false (see `catalog-snapshot.ts` `RawModel`).
  */
 
 import type { CatalogModel } from "./catalog-types.ts";
@@ -16,14 +15,13 @@ import type { CatalogModel } from "./catalog-types.ts";
 /**
  * A model's user-facing capability. `vision` = accepts image input;
  * `reasoning` = extended thinking; `tools` = native tool/function calling;
- * `imageGen` = generates images (from a live OpenRouter offer, see module note).
+ * `imageGen` = generates images (see module note).
  */
 export type ModelCapability = "vision" | "reasoning" | "tools" | "imageGen";
 
 /**
  * The capabilities a catalog model advertises, derived from its real fields.
- * `imageGen` is only ever true for a model with a live OpenRouter offer that
- * reported it (snapshot-only models carry `imageGen: false`).
+ * `imageGen` is effectively always false today (no source carries the signal).
  */
 export function capabilitiesOf(model: CatalogModel): Set<ModelCapability> {
   const caps = new Set<ModelCapability>();

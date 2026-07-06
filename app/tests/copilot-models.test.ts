@@ -1,10 +1,15 @@
 import { ok, strictEqual } from "node:assert";
-import { describe, it } from "node:test";
+import { before, describe, it } from "node:test";
 import {
   getDefaultModel,
   getModel,
   getProvider,
+  hydrateProviderCatalog,
 } from "../src/lib/providers.ts";
+import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
+
+// The Copilot model list is hydrated from pi + the override now, so populate it.
+before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
 
 // HOU-578: GitHub Copilot Free serves only BASE models via the editor API;
 // premium models (Claude / GPT-5.x / Gemini) need Copilot Pro and 404

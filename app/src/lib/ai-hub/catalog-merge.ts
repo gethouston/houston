@@ -1,9 +1,8 @@
 /**
- * Merge primitives for the catalog build: fold provider model entries by their
- * cross-provider key into unique `CatalogModel`s. Internal to `catalog.ts`.
+ * Merge primitives for the catalog build: fold the pi-ai catalog's per-provider
+ * model entries by their cross-provider key into unique `CatalogModel`s, then
+ * enrich them from the models.dev snapshot. Internal to `catalog.ts`.
  */
-import type { ModelOption } from "../providers.ts";
-import { normalizeKey } from "./catalog-key.ts";
 import { HOME_PROVIDER } from "./catalog-lab.ts";
 import type { RawModel } from "./catalog-snapshot.ts";
 import type { CatalogModel, CatalogOffer, LabId } from "./catalog-types.ts";
@@ -14,28 +13,33 @@ export interface Candidate {
   subscription: boolean;
   lab: LabId;
 }
+
+/**
+ * The snapshot-derived metadata pi-ai can't supply, folded onto a draft that
+ * already exists from the pi-ai catalog. Never creates existence, an offer, or
+ * economics — only fills these gaps.
+ */
+export interface Enrichment {
+  description?: string;
+  toolCall?: boolean;
+  imageGen?: boolean;
+  knowledge?: string;
+  releaseDate?: string;
+}
+
 export interface Draft {
   byProvider: Map<string, Candidate>;
+  enrich?: Enrichment;
 }
 
 /**
- * Keep one candidate per provider. The identity/descriptive base is the
- * cleanest (shortest) id — that preserves the snapshot's `releaseDate`, name,
- * and description for a merged model. Two things override that base, so a
- * dropped variant never silently takes data down with it:
- *
- * - Capabilities are OR-ed across the merge — e.g. openrouter's
- *   `qwen-plus-0728:thinking` has a longer id than the plain `qwen-plus-0728`
- *   yet is the one flagged `reasoning: true`; keeping only the shorter id used
- *   to silently lose it.
- * - Pricing + context come from a LIVE OpenRouter entry (`source: "live"`) when
- *   one is present for this `(key, providerId)`, never the stale baked snapshot.
- *   This is deterministic, unlike the id-length tiebreak that decides the base.
- *
- * Recency (`releaseDate`) is deliberately NOT taken from live: the host mapper
- * omits `isNew`, so live entries carry no date and OpenRouter "New" badges stay
- * snapshot-derived (see `catalog-live.ts`). The base's date wins, falling back
- * to the other candidate's so a live base does not drop it.
+ * Keep one candidate per provider for a model. pi-ai lists some models more than
+ * once under the SAME provider (e.g. Bedrock's regional Opus 4.8 variants); those
+ * collapse to a single offer. The identity/economics base is the cleanest
+ * (shortest, then lexically-first) id, so a dropped variant never silently takes
+ * data down with it: every capability flag (reasoning, vision/image input,
+ * toolCall, attachment, imageGen) is OR-ed across the merge, and the base's
+ * context/pricing win with the other's as a fallback.
  */
 export function addCandidate(
   drafts: Map<string, Draft>,
@@ -57,27 +61,46 @@ export function addCandidate(
       cand.raw.id < existing.raw.id);
   const base = cleaner ? cand : existing;
   const other = cleaner ? existing : cand;
-  // Pricing/context authority: the live entry (if either candidate is one),
-  // else the base. Context falls back to the base when live omits it.
-  const live =
-    cand.raw.source === "live"
-      ? cand
-      : existing.raw.source === "live"
-        ? existing
-        : undefined;
-  const econ = live ?? base;
+  const hasImage =
+    base.raw.input?.includes("image") || other.raw.input?.includes("image");
   base.raw = {
     ...base.raw,
     reasoning: base.raw.reasoning || other.raw.reasoning || undefined,
     toolCall: base.raw.toolCall || other.raw.toolCall || undefined,
-    imageGen: base.raw.imageGen || other.raw.imageGen || undefined,
     attachment: base.raw.attachment || other.raw.attachment || undefined,
-    releaseDate: base.raw.releaseDate ?? other.raw.releaseDate,
-    context: econ.raw.context ?? base.raw.context,
-    costIn: econ.raw.costIn ?? base.raw.costIn,
-    costOut: econ.raw.costOut ?? base.raw.costOut,
+    imageGen: base.raw.imageGen || other.raw.imageGen || undefined,
+    input: hasImage ? ["text", "image"] : base.raw.input,
+    context: base.raw.context ?? other.raw.context,
+    output: base.raw.output ?? other.raw.output,
+    costIn: base.raw.costIn ?? other.raw.costIn,
+    costOut: base.raw.costOut ?? other.raw.costOut,
   };
   draft.byProvider.set(cand.providerId, base);
+}
+
+/**
+ * Fold ONE models.dev snapshot model into the catalog as OPTIONAL enrichment.
+ * Matched by `key`, it fills the metadata pi-ai's runnable catalog lacks
+ * (description / toolCall / imageGen / knowledge / releaseDate) on a model that
+ * ALREADY exists from pi-ai. It no-ops when no pi-ai draft carries the key, so a
+ * snapshot-only model NEVER appears and the runnable set stays pi-ai's. It never
+ * touches existence, offers, pricing, context, reasoning, or vision — those are
+ * pi-ai's authority.
+ */
+export function foldEnrichment(
+  drafts: Map<string, Draft>,
+  raw: RawModel,
+): void {
+  const draft = drafts.get(raw.key);
+  if (!draft) return;
+  const e = draft.enrich ?? {};
+  if (raw.description && !e.description) e.description = raw.description;
+  if (raw.knowledge && !e.knowledge) e.knowledge = raw.knowledge;
+  if (raw.toolCall) e.toolCall = true;
+  if (raw.imageGen) e.imageGen = true;
+  if (raw.releaseDate && (!e.releaseDate || raw.releaseDate > e.releaseDate))
+    e.releaseDate = raw.releaseDate;
+  draft.enrich = e;
 }
 
 /** The lab most candidates agree on, ignoring `other` unless it is all there is. */
@@ -114,6 +137,7 @@ function buildOffer(cand: Candidate): CatalogOffer {
 /** Collapse a draft's per-provider candidates into one merged model. */
 export function finalize(key: string, draft: Draft): CatalogModel {
   const candidates = [...draft.byProvider.values()];
+  const enrich = draft.enrich;
   const lab = pickLab(candidates);
   const home = HOME_PROVIDER[lab];
   const canonical =
@@ -136,14 +160,18 @@ export function finalize(key: string, draft: Draft): CatalogModel {
     key,
     name: canonical.raw.name,
     lab,
-    description: pick((r) => r.description),
+    description: pick((r) => r.description) ?? enrich?.description,
     reasoning: candidates.some((c) => c.raw.reasoning === true),
-    toolCall: candidates.some((c) => c.raw.toolCall === true),
-    imageGen: candidates.some((c) => c.raw.imageGen === true),
+    toolCall:
+      candidates.some((c) => c.raw.toolCall === true) || !!enrich?.toolCall,
+    imageGen:
+      candidates.some((c) => c.raw.imageGen === true) || !!enrich?.imageGen,
     inputModalities: pick((r) => r.input) ?? [],
-    knowledge: pick((r) => r.knowledge),
-    releaseDate: candidates
-      .map((c) => c.raw.releaseDate)
+    knowledge: pick((r) => r.knowledge) ?? enrich?.knowledge,
+    releaseDate: [
+      ...candidates.map((c) => c.raw.releaseDate),
+      enrich?.releaseDate,
+    ]
       .filter((d): d is string => !!d)
       .sort()
       .at(-1),
@@ -163,16 +191,4 @@ export function compareModels(a: CatalogModel, b: CatalogModel): number {
   const rb = b.releaseDate ?? "";
   if (ra !== rb) return ra < rb ? 1 : -1;
   return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
-}
-
-/** A curated OAuth model as a raw entry: the snapshot match, or a synthetic. */
-export function curatedRaw(model: ModelOption, match?: RawModel): RawModel {
-  return (
-    match ?? {
-      key: normalizeKey(model.label),
-      id: model.id,
-      name: model.label,
-      context: model.contextWindow,
-    }
-  );
 }

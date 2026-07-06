@@ -11,8 +11,10 @@ import {
   OPENAI_COMPATIBLE,
   setCustomEndpointConfig,
 } from "../ai/openai-compatible";
+import { piProviderIds } from "../ai/pi-catalog";
 import {
   activeProvider,
+  isProvider,
   PROVIDERS,
   type ProviderId,
   providerAuthMethod,
@@ -88,8 +90,28 @@ export function autoPromptAnswer(
   return provider === "github-copilot" ? (enterpriseDomain ?? "") : null;
 }
 
-const known = (id: string): id is ProviderId =>
-  PROVIDERS.some((p) => p.id === id);
+// A provider the connect flow will act on: a curated id OR any provider pi-ai
+// knows. Widened via `isProvider` so a pasted key for an uncurated pi provider
+// (e.g. groq) is accepted here; setApiKey's own `providerAuthMethod` check then
+// confirms it is an api-key (not OAuth) provider before storing the key.
+const known = (id: string): id is ProviderId => isProvider(id);
+
+/** One /auth/status row for a provider id (curated or uncurated pi). */
+function authStatusRow(id: ProviderId, name: string) {
+  const st = active.get(id);
+  // Copilot Enterprise: surface the connected credential's company domain so the
+  // connect UI can tell the Enterprise card apart from individual Copilot (both
+  // are the same engine provider; the domain is the only difference). `get` is
+  // in-memory (pi caches auth.json), so this stays cheap per poll.
+  const cred = authStorage.get(id) as { enterpriseUrl?: string } | undefined;
+  return {
+    provider: id,
+    name,
+    configured: providerConnected(authStorage, id),
+    enterpriseUrl: cred?.enterpriseUrl ?? null,
+    login: st ? { status: st.status, info: st.info, error: st.error } : null,
+  };
+}
 
 export async function getAuthStatus() {
   // Live-refresh the anthropic shared-dir credential signal (Keychain / file,
@@ -97,28 +119,17 @@ export async function getAuthStatus() {
   // reads connected AND the sync turn-time path (`activeProvider` →
   // `providerConnected`) sees a warm cache. Never throws.
   await refreshAnthropicCredential();
-  return {
-    providers: PROVIDERS.map((p) => {
-      const st = active.get(p.id);
-      // Copilot Enterprise: surface the connected credential's company domain so
-      // the connect UI can tell the Enterprise card apart from individual Copilot
-      // (both are the same engine provider; the domain is the only difference).
-      // `get` is in-memory (pi caches auth.json), so this stays cheap per poll.
-      const cred = authStorage.get(p.id) as
-        | { enterpriseUrl?: string }
-        | undefined;
-      return {
-        provider: p.id,
-        name: p.name,
-        configured: providerConnected(authStorage, p.id),
-        enterpriseUrl: cred?.enterpriseUrl ?? null,
-        login: st
-          ? { status: st.status, info: st.info, error: st.error }
-          : null,
-      };
-    }),
-    activeProvider: activeProvider(),
-  };
+  const providers = PROVIDERS.map((p) => authStatusRow(p.id, p.name));
+  // Mirror listProviders: a connected uncurated pi provider (a pasted key for a
+  // non-curated provider) also reports as configured here, so every status
+  // surface agrees. Unconnected uncurated ids stay out (shape unchanged for the
+  // common case); the frontend catalog supplies their display name.
+  const curated = new Set(PROVIDERS.map((p) => p.id));
+  for (const id of piProviderIds()) {
+    if (!curated.has(id) && providerConnected(authStorage, id))
+      providers.push(authStatusRow(id, id));
+  }
+  return { providers, activeProvider: activeProvider() };
 }
 
 // `deviceAuth` is the client's declaration that it CANNOT receive a loopback

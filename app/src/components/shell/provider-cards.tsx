@@ -1,69 +1,23 @@
 import { Loader2, LogIn, LogOut } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ComingSoonProviderInfo, ProviderInfo } from "../../lib/providers";
-import {
-  AmazonBedrockLogo,
-  ClaudeLogo,
-  DeepSeekLogo,
-  GeminiLogo,
-  GitHubCopilotLogo,
-  LocalModelLogo,
-  MiniMaxLogo,
-  OpenAILogo,
-  OpenCodeLogo,
-  OpenRouterLogo,
-} from "./provider-logos";
+import { Monogram, providerLogo } from "./provider-logos";
 
 /**
- * Exhaustive logo dispatch for active providers. Adding a new entry to
- * `PROVIDERS` MUST come with a `case` here, otherwise the user sees the
- * fallback mark (first letter of the provider name) instead of a real logo.
+ * Logo for an active provider: the shared brand mark when the id has one, else
+ * the polished `Monogram` tile seeded from the provider name. Both come from the
+ * single registry in `provider-logos.tsx`, so a new provider is one edit there.
  */
 function ProviderLogo({ provider }: { provider: ProviderInfo }) {
-  switch (provider.id) {
-    case "anthropic":
-      return <ClaudeLogo />;
-    case "openai":
-      return <OpenAILogo />;
-    case "github-copilot":
-      return <GitHubCopilotLogo />;
-    case "openrouter":
-      return <OpenRouterLogo />;
-    case "deepseek":
-      return <DeepSeekLogo />;
-    case "google":
-      return <GeminiLogo />;
-    case "amazon-bedrock":
-      return <AmazonBedrockLogo />;
-    case "minimax":
-      return <MiniMaxLogo />;
-    case "opencode":
-    case "opencode-go":
-      return <OpenCodeLogo />;
-    case "openai-compatible":
-      return <LocalModelLogo />;
-    default:
-      return (
-        <span className="text-[10px] font-semibold tracking-tight text-muted-foreground">
-          {provider.name.slice(0, 1).toUpperCase()}
-        </span>
-      );
-  }
+  return providerLogo(provider.id) ?? <Monogram seed={provider.name} />;
 }
 
+/**
+ * Logo for a coming-soon provider: the shared brand mark when known, else the
+ * `Monogram` tile seeded from the provider's curated `mark`.
+ */
 function ComingSoonLogo({ provider }: { provider: ComingSoonProviderInfo }) {
-  switch (provider.id) {
-    case "deepseek":
-      return <DeepSeekLogo />;
-    case "minimax":
-      return <MiniMaxLogo />;
-    default:
-      return (
-        <span className="text-[10px] font-semibold tracking-tight text-muted-foreground">
-          {provider.mark}
-        </span>
-      );
-  }
+  return providerLogo(provider.id) ?? <Monogram seed={provider.mark} />;
 }
 
 export function ProviderCard({

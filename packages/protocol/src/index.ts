@@ -1,4 +1,3 @@
-export * from "./catalog";
 export * from "./claude-oauth";
 export * from "./conversation";
 export * from "./core";
@@ -9,5 +8,6 @@ export * from "./domain/routine";
 export * from "./domain/skill";
 export * from "./domain/workspace";
 export * from "./events";
+export * from "./provider-catalog";
 export * from "./provider-error";
 export * from "./wire";

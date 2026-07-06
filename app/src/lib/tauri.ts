@@ -11,7 +11,7 @@
  * VPS where those APIs would be meaningless.
  */
 
-import type { LiveCatalog } from "@houston/protocol";
+import type { ProviderCatalog } from "@houston/protocol";
 import type {
   AgentAssignment,
   CustomEndpoint,
@@ -1156,20 +1156,21 @@ export const tauriProvider = {
       await eng.setPreference(DEFAULT_MODEL_PREF_KEY, model);
     }),
   /**
-   * The provider's LIVE model catalog from the host (`/v1/providers/:id/models`,
-   * OpenRouter today) — the dynamic model list the redesigned picker renders
-   * alongside the baked snapshot. `listProviderModels` is a new-engine-adapter
-   * method absent from the legacy engine-client type, so cast (as
-   * `checkAllStatuses` does). The host answers `[]` when there's no key or the
-   * deployment is cloud-egress-locked; any real failure surfaces as a toast.
+   * pi-ai's FULL static model catalog from the host (`/v1/catalog`) — every
+   * provider and every runnable model, the source the picker + AI Models
+   * settings tab render (alongside the frontend's static seed). `getCatalog` is
+   * a new-engine-adapter method absent from the legacy engine-client type, so
+   * cast (as `checkAllStatuses` does). The host answers `[]` when
+   * it doesn't serve the route; the seed fallback covers that, so a real failure
+   * surfaces as a toast while an empty catalog stays silent.
    */
-  listModels: (providerId: string) =>
-    call<LiveCatalog>("list_provider_models", () =>
+  getCatalog: () =>
+    call<ProviderCatalog>("get_catalog", () =>
       (
         getEngine() as unknown as {
-          listProviderModels: (providerId: string) => Promise<LiveCatalog>;
+          getCatalog: () => Promise<ProviderCatalog>;
         }
-      ).listProviderModels(providerId),
+      ).getCatalog(),
     ),
   launchLogin: (
     provider: string,

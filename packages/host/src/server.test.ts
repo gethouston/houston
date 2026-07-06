@@ -417,6 +417,82 @@ test("a different user CANNOT forget someone else's credential → 403", async (
   expect(await credentials.get(aliceWs.id, "openai-codex")).not.toBeNull(); // untouched
 });
 
+// The api-key connect gate is pi-DERIVED: any provider pi-ai can run with a
+// pasted key (not just the curated cloud set) connects, while OAuth providers and
+// ids pi-ai never heard of are still 400d. These exercise the real per-agent
+// route end to end (gate → channel → central store + runtime push).
+
+test("connect an ARBITRARY pi api-key provider (groq): gate opens, key stored + pushed", async () => {
+  // groq is a pi provider Houston never hand-listed. A fake runtime stands in for
+  // the standing pod the key is pushed into (like the capture test's runtime).
+  let pushedTo: string | null = null;
+  const fakeRuntime = await startTestFetchServer((req) => {
+    const u = new URL(req.url);
+    if (u.pathname === "/auth/groq/api-key" && req.method === "POST") {
+      pushedTo = u.pathname;
+      return Response.json({ ok: true });
+    }
+    return new Response("not found", { status: 404 });
+  });
+  const deps: ControlPlaneDeps = {
+    ...baseDeps(),
+    channels: channelsWith({
+      ...sandboxes,
+      async ensureAwake(): Promise<RuntimeEndpoint> {
+        return { baseUrl: fakeRuntime.baseUrl, token: "runtime-token" };
+      },
+    }),
+  };
+  const { base: b, close } = await startServer(deps);
+  try {
+    const r = await fetch(`${b}/agents/${aliceSalesId}/credential/api-key`, {
+      method: "POST",
+      headers: { ...auth("alice"), "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: "groq", apiKey: "gsk-test-key" }),
+    });
+    expect(r.status).toBe(200);
+    expect(pushedTo).toBe("/auth/groq/api-key");
+    const aliceWs = await store.getOrCreatePersonalWorkspace("alice");
+    const stored = await credentials.get(aliceWs.id, "groq");
+    expect(stored?.accessToken).toBe("gsk-test-key");
+    expect(stored?.kind).toBe("api_key");
+  } finally {
+    await close();
+    await fakeRuntime.stop();
+  }
+});
+
+test("connect an OAuth provider by the api-key route is rejected (400), never stored", async () => {
+  // anthropic authenticates via OAuth, so the key route must refuse it up front —
+  // before any channel/runtime call.
+  const r = await fetch(`${base}/agents/${aliceSalesId}/credential/api-key`, {
+    method: "POST",
+    headers: { ...auth("alice"), "Content-Type": "application/json" },
+    body: JSON.stringify({ provider: "anthropic", apiKey: "sk-nope" }),
+  });
+  expect(r.status).toBe(400);
+  expect((await r.json()) as { error: string }).toEqual({
+    error: "unknown API-key provider",
+  });
+  const aliceWs = await store.getOrCreatePersonalWorkspace("alice");
+  expect(await credentials.get(aliceWs.id, "anthropic")).toBeNull();
+});
+
+test("connect an id pi-ai does not know is rejected (400), never stored", async () => {
+  const r = await fetch(`${base}/agents/${aliceSalesId}/credential/api-key`, {
+    method: "POST",
+    headers: { ...auth("alice"), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      provider: "definitely-not-a-provider",
+      apiKey: "k",
+    }),
+  });
+  expect(r.status).toBe(400);
+  expect((await r.json()) as { error: string }).toEqual({
+    error: "unknown API-key provider",
+  });
+});
+
 // The `mountAdmin` seam: an injected request hook for a private deployment's
 // admin surface. The closed operator dashboard that used to bind it was retired
 // with `@houston/host-cloud`, so the seam's behavior is proven here in the open

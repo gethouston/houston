@@ -120,24 +120,16 @@ export function LiveStatus({ label }: { label: string }) {
   );
 }
 
-/** A section title row with an optional live dot and mono count. */
+/** A section title row with a label and an optional mono count. */
 export function SectionHeader({
   label,
   count,
-  live,
 }: {
   label: string;
   count?: number;
-  live?: boolean;
 }) {
   return (
     <div className="inline-flex items-center gap-2">
-      {live ? (
-        <span
-          className="size-1.5 rounded-full bg-success ring-2 ring-success/25"
-          aria-hidden="true"
-        />
-      ) : null}
       <span className="text-[13px] font-medium text-foreground">{label}</span>
       {count != null ? (
         <span className="font-mono text-xs text-muted-foreground tabular-nums">

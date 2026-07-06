@@ -124,8 +124,11 @@ export function credentialSiblings(pid: NewProviderId): NewProviderId[] {
  * pin instead of falling back to the agent-wide settings.
  *
  * Fail-soft — never a hard turn failure, and never a pin the user can't see:
- * - an unknown provider string drops the whole provider/model pin (the runtime
- *   resolves as before and surfaces its own cards) with a console diagnostic;
+ * - a legacy alias maps to its engine id (openai→openai-codex); any other
+ *   non-empty provider passes through unchanged, since the pi-ai catalog is open
+ *   and the adapter can't enumerate every valid id — the frontend's
+ *   effective-provider resolution (against the live catalog) already drops stale
+ *   providers before send, and the runtime is the final authority;
  * - a model the mapped provider doesn't own drops just the model (the turn
  *   runs the provider's default) with a diagnostic — an unknown PINNED model
  *   id would hard-fail the turn (the runtime validates pins strictly);
@@ -178,7 +181,10 @@ export function wireTurnPin(req: {
 export function configWriteToSettings(
   relPath: string,
   content: string,
-): { activeProvider: NewProviderId; model?: string; effort?: string } | null {
+): { activeProvider: string; model?: string; effort?: string } | null {
+  // `activeProvider` is whatever `migrateProviderModel` yields — since the wire
+  // ProviderId now accepts any pi-ai id, a genuinely new provider passes through
+  // as a plain string rather than being narrowed to the known `NewProviderId`.
   if (!relPath.endsWith(".houston/config/config.json")) return null;
   let cfg: { provider?: unknown; model?: unknown; effort?: unknown };
   try {

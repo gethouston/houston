@@ -29,6 +29,7 @@ import {
   getVisibleProviders,
 } from "../lib/providers";
 import { useCapabilities } from "./use-capabilities";
+import { useProviderCatalog } from "./use-provider-catalog";
 import { useProviderStatuses } from "./use-provider-statuses";
 
 /** The capability subset the picker's provider-visibility logic consumes. */
@@ -48,7 +49,7 @@ export interface PickerViewModels {
   models: ModelPickerModel[];
   providers: ModelPickerProvider[];
   selectedId: string;
-  catalogState: ReturnType<typeof useHubCatalog>["status"] | "ready";
+  catalogState: "loading" | "ready";
   displayLabel: string;
   statuses: ReturnType<typeof useProviderStatuses>["statuses"];
   connectContext: PickerConnectContext;
@@ -64,15 +65,22 @@ export function usePickerViewModels(opts: {
   const { t } = useTranslation("chat");
   const { statuses, isLoading } = useProviderStatuses();
   const { capabilities } = useCapabilities();
-  const { catalog, status: catalogStatus } = useHubCatalog();
+  const { catalog } = useHubCatalog();
+  // The pi-ai catalog hydrates `PROVIDERS` IN PLACE with no React signal, so the
+  // `getVisibleProviders` memo below must re-key on `updatedAt` — otherwise the
+  // picker stays pinned to the empty override-only seed captured on first render.
+  const { isReady: catalogReady, updatedAt: catalogUpdatedAt } =
+    useProviderCatalog();
 
   const newEngine = newEngineActive();
   const desktop = osIsTauri();
   const providerCapabilities =
     capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
   // Memoized on stable inputs (`capabilities` is a stable query ref, the frozen
-  // EMPTY constant otherwise) so the model build below is not re-run on every
-  // parent re-render.
+  // EMPTY constant otherwise), plus `catalogUpdatedAt` so the list rebuilds off
+  // the freshly-hydrated `PROVIDERS` the moment the pi-ai catalog resolves —
+  // `getVisibleProviders` reads the mutated-in-place cache, invisible to biome.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: catalogUpdatedAt keys the in-place PROVIDERS hydration.
   const visibleProviders = useMemo(
     () =>
       getVisibleProviders({
@@ -80,9 +88,8 @@ export function usePickerViewModels(opts: {
         desktop,
         capabilities: providerCapabilities,
       }),
-    [newEngine, desktop, providerCapabilities],
+    [newEngine, desktop, providerCapabilities, catalogUpdatedAt],
   );
-  const openRouterVisible = visibleProviders.some((p) => p.id === "openrouter");
 
   // Localize a curated row's description via the same `modelDescriptions` key
   // scheme the old dropdown used, falling back to the catalog English.
@@ -132,9 +139,10 @@ export function usePickerViewModels(opts: {
       statuses[provider]?.active_model,
     ),
   );
-  // Live catalog freshness only matters when OpenRouter (the live-sourced
-  // provider) is on show; every other provider is a static list, always ready.
-  const catalogState = openRouterVisible ? catalogStatus : "ready";
+  // The pi-ai catalog is the source of the runnable set, so the picker is
+  // "loading" until it resolves and "ready" after (the hub catalog is only
+  // enrichment on top). Never "offline": the pi-ai catalog is local.
+  const catalogState: "loading" | "ready" = catalogReady ? "ready" : "loading";
 
   const currentModel = getModel(provider, model);
   const currentProvider = getProvider(provider);

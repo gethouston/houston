@@ -16,6 +16,7 @@ import { useHoustonInit } from "./hooks/use-houston-init";
 import { useIntegrationSessionSync } from "./hooks/use-integration-session-sync";
 import { useLocalBridgeAutoReconnect } from "./hooks/use-local-bridge-autoreconnect";
 import { useMigrationReconnect } from "./hooks/use-migration-reconnect";
+import { useProviderCatalog } from "./hooks/use-provider-catalog";
 import { useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
 import { analytics } from "./lib/analytics";
@@ -38,6 +39,9 @@ export default function App() {
   useAgentInvalidation();
   useAnalyticsSubscriber();
   useIntegrationSessionSync();
+  // Fetch the host's pi-ai catalog once and hydrate the PROVIDERS cache app-wide,
+  // so every provider/model surface renders the real runnable set from load.
+  useProviderCatalog();
 
   // NOTE: install identity, `install_created`, `session_started`, and theme
   // load run in <StartupEffects> at the top of the tree (main.tsx), NOT here.

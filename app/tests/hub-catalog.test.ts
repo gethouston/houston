@@ -3,12 +3,20 @@ import { describe, it } from "node:test";
 import { loadHubCatalog } from "../src/lib/ai-hub/catalog.ts";
 import type { CatalogModel } from "../src/lib/ai-hub/catalog-types.ts";
 import { filterModels, searchModels } from "../src/lib/ai-hub/search.ts";
+import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 
-// Every provider the hub can connect to, all visible (new-engine desktop). The
-// two OpenCode gateways are both passed; the catalog folds them into one.
-const ALL_VISIBLE = [
-  "anthropic",
+// The hub catalog is now DERIVED FROM the pi-ai `ProviderCatalog` (the runnable
+// set), enriched by the baked models.dev snapshot. `loadHubCatalog` takes the
+// catalog directly (no visibility array, no live OpenRouter fetch) and is
+// synchronous. Every hub model exists because pi-ai can run it.
+const all = loadHubCatalog(SAMPLE_CATALOG);
+
+// The Houston provider ids the sample pi catalog resolves to: `openai-codex` is
+// renamed to `openai`, pi's colliding DIRECT api-key `openai` is dropped, and
+// every other provider passes through. No offer may carry any other id.
+const HOUSTON_PROVIDERS = new Set([
   "openai",
+  "anthropic",
   "github-copilot",
   "opencode",
   "opencode-go",
@@ -17,163 +25,149 @@ const ALL_VISIBLE = [
   "google",
   "amazon-bedrock",
   "minimax",
-];
-
-// The curated ids PROVIDERS lists for each subscription provider. Their offers
-// must be EXACTLY these, never the provider's full models.dev list.
-const CURATED = {
-  anthropic: [
-    "claude-fable-5",
-    "claude-opus-4-7",
-    "claude-opus-4-8",
-    "claude-sonnet-4-6",
-    "claude-sonnet-5",
-  ],
-  openai: ["gpt-5.3-codex-spark", "gpt-5.4", "gpt-5.4-mini", "gpt-5.5"],
-} as const;
-
-const all = await loadHubCatalog(ALL_VISIBLE);
+  "groq",
+]);
 
 function offerProviders(model: CatalogModel | undefined): string[] {
   return (model?.offers ?? []).map((o) => o.providerId).sort();
 }
 
-describe("cross-provider key normalization", () => {
-  it("merges the anthropic / bedrock / copilot / opencode / openrouter variants of Claude Opus 4.8", () => {
-    const opus = all.byKey.get("claude opus 4.8");
-    ok(opus, "expected a merged 'claude opus 4.8' model");
-    deepStrictEqual(offerProviders(opus), [
-      "amazon-bedrock",
-      "anthropic",
+describe("offers carry Houston provider ids + pi model ids", () => {
+  it("renames openai-codex → openai and preserves the pi model id", () => {
+    // `gpt-5.5` is offered by the OAuth Codex provider (renamed `openai`),
+    // Copilot, and OpenCode: it folds to one model with three offers.
+    const gpt = all.byKey.get("gpt 5.5");
+    ok(gpt, "expected a merged 'gpt 5.5' model");
+    deepStrictEqual(offerProviders(gpt), [
       "github-copilot",
+      "openai",
       "opencode",
-      "openrouter",
     ]);
-    strictEqual(opus?.lab, "anthropic");
+    const openai = gpt?.offers.find((o) => o.providerId === "openai");
+    // The pi model id is preserved verbatim so the picker's
+    // `${providerId}::${modelId}` lookup matches PROVIDERS.
+    strictEqual(openai?.modelId, "gpt-5.5");
   });
 
-  it("collapses Bedrock regional duplicates into a single offer per provider", () => {
-    // Bedrock lists Opus 4.8 six times (au/eu/us/global/jp + base). They share
-    // one key and must produce exactly one amazon-bedrock offer, not six.
-    const opus = all.byKey.get("claude opus 4.8");
-    const bedrock =
-      opus?.offers.filter((o) => o.providerId === "amazon-bedrock") ?? [];
-    strictEqual(bedrock.length, 1);
-    ok(
-      !bedrock[0]?.modelId.startsWith("eu."),
-      "should keep the cleanest (region-less) Bedrock id",
+  it("drops pi's direct api-key openai provider (its models never surface)", () => {
+    for (const model of all.models)
+      for (const offer of model.offers)
+        ok(
+          offer.modelId !== "gpt-4o" && offer.modelId !== "gpt-4o-mini",
+          "the dropped direct openai provider's models must not appear",
+        );
+  });
+
+  it("keeps a gateway-prefixed pi model id verbatim on its offer", () => {
+    const gemini = all.byKey.get("gemini 3 flash preview");
+    const openrouter = gemini?.offers.find(
+      (o) => o.providerId === "openrouter",
     );
+    strictEqual(openrouter?.modelId, "google/gemini-3-flash-preview");
   });
 
-  it("keeps every offer's key stable so no model appears twice", () => {
-    strictEqual(all.byKey.size, all.models.length);
+  it("only ever uses renamed Houston provider ids", () => {
+    for (const model of all.models)
+      for (const offer of model.offers)
+        ok(
+          HOUSTON_PROVIDERS.has(offer.providerId),
+          `unexpected provider id ${offer.providerId}`,
+        );
+    deepStrictEqual(
+      [...all.byProvider.keys()].sort(),
+      [...HOUSTON_PROVIDERS].sort(),
+    );
   });
 });
 
-describe("catalog coverage (all providers visible)", () => {
-  it("exposes hundreds of unique models across every provider", () => {
-    // NOTE: the pinned snapshot yields 378 unique models (the spec's estimated
-    // 400+ is not reachable: the snapshot has only 393 unique keys total, and
-    // subscription providers contribute their curated set, not full lists). The
-    // floor below proves the merge stays rich without asserting a false number.
-    ok(
-      all.modelCount >= 350,
-      `expected >= 350 unique models, got ${all.modelCount}`,
-    );
-    ok(all.offerCount >= 450, `expected >= 450 offers, got ${all.offerCount}`);
-    ok(
-      all.modelCount < all.offerCount,
-      "offers should outnumber unique models (cross-provider merge)",
-    );
-  });
-
-  it("every visible provider contributes offers", () => {
-    for (const id of ALL_VISIBLE) {
-      if (id === "opencode-go") continue; // folded into opencode
-      ok(
-        (all.byProvider.get(id)?.length ?? 0) > 0,
-        `provider ${id} should offer at least one model`,
-      );
+describe("pricing and subscription flags come from pi", () => {
+  it("marks OAuth (subscription) offers with no per-token price", () => {
+    const gpt = all.byKey.get("gpt 5.5");
+    const oauth = gpt?.offers.filter((o) => o.subscription) ?? [];
+    // Codex + Copilot are OAuth; OpenCode is api-key.
+    deepStrictEqual(oauth.map((o) => o.providerId).sort(), [
+      "github-copilot",
+      "openai",
+    ]);
+    for (const offer of oauth) {
+      strictEqual(offer.costInput, undefined);
+      strictEqual(offer.costOutput, undefined);
     }
   });
 
-  it("sorts models newest-first", () => {
+  it("carries the pi per-1M price on an api-key offer", () => {
+    const gpt = all.byKey.get("gpt 5.5");
+    const opencode = gpt?.offers.find((o) => o.providerId === "opencode");
+    strictEqual(opencode?.subscription, false);
+    strictEqual(opencode?.costInput, 1);
+    strictEqual(opencode?.costOutput, 2);
+  });
+
+  it("exposes exactly the pi catalog's models for an OAuth provider (no curation gate)", () => {
+    const ids = new Set<string>();
+    for (const model of all.models)
+      for (const offer of model.offers)
+        if (offer.providerId === "anthropic") ids.add(offer.modelId);
+    deepStrictEqual([...ids].sort(), [
+      "claude-fable-5",
+      "claude-opus-4-7",
+      "claude-opus-4-8",
+      "claude-sonnet-4-6",
+      "claude-sonnet-5",
+    ]);
+  });
+});
+
+describe("capabilities map through the pi → hub pipeline", () => {
+  it("turns pi vision into an image input modality and keeps reasoning", () => {
+    const sonnet5 = all.byKey.get("claude sonnet 5");
+    ok(sonnet5, "expected 'claude sonnet 5'");
+    ok(sonnet5?.inputModalities.includes("image"), "vision → image modality");
+    strictEqual(sonnet5?.reasoning, true);
+  });
+
+  it("leaves a non-vision model without the image modality", () => {
+    const spark = all.byKey.get("gpt 5.3 codex spark");
+    ok(spark, "expected 'gpt 5.3 codex spark'");
+    ok(!spark?.inputModalities.includes("image"));
+  });
+});
+
+describe("pi-ai is the runnable set; the snapshot only enriches", () => {
+  it("never surfaces a model with no pi offer (no snapshot-only leak)", () => {
+    strictEqual(
+      all.models.filter((m) => m.offers.length === 0).length,
+      0,
+      "every hub model must be backed by at least one pi offer",
+    );
+  });
+
+  it("enriches pi models with snapshot metadata (description / release date)", () => {
+    ok(
+      all.models.some((m) => m.description),
+      "some pi models should gain a snapshot description",
+    );
+    ok(
+      all.models.some((m) => m.releaseDate),
+      "some pi models should gain a snapshot release date",
+    );
+  });
+
+  it("folds cross-provider duplicates by key so offers outnumber models", () => {
+    strictEqual(all.byKey.size, all.models.length);
+    ok(all.modelCount > 0, "expected a non-empty catalog");
+    ok(
+      all.offerCount > all.modelCount,
+      `offers (${all.offerCount}) should outnumber unique models (${all.modelCount})`,
+    );
+  });
+
+  it("sorts models newest-first among the dated ones", () => {
     const dates = all.models
       .map((m) => m.releaseDate)
       .filter((d): d is string => !!d);
     const sorted = [...dates].sort().reverse();
     deepStrictEqual(dates, sorted);
-  });
-});
-
-describe("subscription (OAuth) providers offer only curated models", () => {
-  it("anthropic offers are exactly the curated ids, all subscription, no price", () => {
-    const ids = new Set<string>();
-    for (const model of all.models)
-      for (const offer of model.offers)
-        if (offer.providerId === "anthropic") {
-          ids.add(offer.modelId);
-          strictEqual(offer.subscription, true);
-          strictEqual(offer.costInput, undefined);
-          strictEqual(offer.costOutput, undefined);
-        }
-    deepStrictEqual([...ids].sort(), [...CURATED.anthropic]);
-  });
-
-  it("does not expose a non-curated anthropic model (e.g. Claude Opus 4.5)", () => {
-    const legacy = all.byKey.get("claude opus 4.5");
-    ok(
-      !offerProviders(legacy).includes("anthropic"),
-      "Opus 4.5 is not in the curated Claude set, so no anthropic offer",
-    );
-  });
-
-  it("openai offers are exactly the curated ids", () => {
-    const ids = new Set<string>();
-    for (const model of all.models)
-      for (const offer of model.offers)
-        if (offer.providerId === "openai") ids.add(offer.modelId);
-    deepStrictEqual([...ids].sort(), [...CURATED.openai]);
-  });
-});
-
-describe("visibility filtering drops offers and models", () => {
-  it("keeps only visible providers' offers on a single-provider view", async () => {
-    const only = await loadHubCatalog(["openrouter"]);
-    deepStrictEqual([...only.byProvider.keys()], ["openrouter"]);
-    for (const model of only.models)
-      for (const offer of model.offers)
-        strictEqual(offer.providerId, "openrouter");
-    const opus = only.byKey.get("claude opus 4.8");
-    deepStrictEqual(offerProviders(opus), ["openrouter"]);
-  });
-
-  it("drops the whole catalog down to curated models on the OAuth-only (legacy engine) set", async () => {
-    const oauth = await loadHubCatalog([
-      "anthropic",
-      "openai",
-      "github-copilot",
-    ]);
-    ok(oauth.modelCount > 0 && oauth.modelCount < 40);
-    deepStrictEqual([...oauth.byProvider.keys()].sort(), [
-      "anthropic",
-      "github-copilot",
-      "openai",
-    ]);
-  });
-
-  it("lights up OpenCode offers when only OpenCode Go is visible (fold)", async () => {
-    const go = await loadHubCatalog(["opencode-go"]);
-    ok(
-      (go.byProvider.get("opencode")?.length ?? 0) > 0,
-      "opencode-go visibility should surface the folded opencode offers",
-    );
-  });
-
-  it("returns an empty catalog when nothing is visible", async () => {
-    const none = await loadHubCatalog([]);
-    strictEqual(none.modelCount, 0);
-    strictEqual(none.offerCount, 0);
   });
 });
 

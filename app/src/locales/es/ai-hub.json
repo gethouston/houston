@@ -6,6 +6,7 @@
   },
   "tabs": {
     "providers": "Proveedores",
+    "providersCount": "Proveedores · {{count}}",
     "modelsCount": "Modelos · {{count}}"
   },
   "sections": {
@@ -17,6 +18,7 @@
     "connecting": "Conectando",
     "seeMore": "Ver más",
     "connected": "Conectado",
+    "signOut": "Cerrar sesión",
     "cancel": "Cancelar",
     "models_one": "{{count}} modelo",
     "models_other": "{{count}} modelos",
@@ -97,6 +99,20 @@
     }
   },
   "providers": {
+    "search": "Buscar proveedores",
+    "empty": {
+      "title": "No se encontraron proveedores",
+      "description": "Prueba con otra búsqueda o categoría."
+    },
+    "category": {
+      "label": "Categoría",
+      "all": "Todos",
+      "featured": "Destacados",
+      "gateway": "Puertas de acceso",
+      "direct": "Directos",
+      "regional": "Regionales",
+      "local": "Locales"
+    },
     "openai": {
       "description": "Inicia sesión con ChatGPT y pon a trabajar los modelos GPT y Codex."
     },

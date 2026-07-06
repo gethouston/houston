@@ -33,24 +33,6 @@ body {
   display: block;
 }
 
-/*
- * OpenCode brand mark — the exact two-tone colors from opencode.ai/brand's light
- * and dark exports (see OpenCodeLogo). One SVG, fills follow the theme so the
- * mark reads correctly on the light vs dark logo tile.
- */
-.opencode-logo-frame {
-  fill: #211e1e;
-}
-.opencode-logo-block {
-  fill: #cfcecd;
-}
-[data-theme="dark"] .opencode-logo-frame {
-  fill: #f1ecec;
-}
-[data-theme="dark"] .opencode-logo-block {
-  fill: #4b4646;
-}
-
 /* Style links in assistant chat messages as xs primary pill buttons */
 .group.is-assistant a[href] {
   display: inline-flex;

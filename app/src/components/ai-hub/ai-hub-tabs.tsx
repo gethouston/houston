@@ -10,21 +10,26 @@ export type HubTab = "providers" | "models";
  * tabs from the hub's centered column, so this thin adapter mirrors TabBar's
  * tab-strip markup verbatim — identical `gap-5`, `pb-2.5 text-sm`, active
  * `font-medium` + `h-[2px] bg-primary` underline, muted hover — minus that
- * chrome. Keep the two visually in sync. The Models tab carries the live
- * catalog count inline via `tabs.modelsCount`.
+ * chrome. Keep the two visually in sync. Both tabs carry their live count
+ * inline via `tabs.providersCount` / `tabs.modelsCount`.
  */
 export function AiHubTabs({
   active,
+  providerCount,
   modelCount,
   onSelect,
 }: {
   active: HubTab;
+  providerCount: number;
   modelCount: number;
   onSelect: (tab: HubTab) => void;
 }) {
   const { t } = useTranslation("aiHub");
   const tabs: { id: HubTab; label: string }[] = [
-    { id: "providers", label: t("tabs.providers") },
+    {
+      id: "providers",
+      label: t("tabs.providersCount", { count: providerCount }),
+    },
     { id: "models", label: t("tabs.modelsCount", { count: modelCount }) },
   ];
   return (

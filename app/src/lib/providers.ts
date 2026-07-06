@@ -1,4 +1,13 @@
+import type { CatalogModelEntry, ProviderCatalog } from "@houston/protocol";
 import type { Capabilities } from "@houston-ai/engine-client";
+import { normalizeKey } from "./ai-hub/catalog-key.ts";
+import {
+  DROP_PI_PROVIDERS,
+  LOCAL_PROVIDER,
+  PROVIDER_ID_RENAME,
+  PROVIDER_OVERRIDES,
+  type ProviderOverride,
+} from "./provider-overrides.ts";
 
 /**
  * Reasoning-effort levels, ordered low→high. The set a given model accepts
@@ -67,9 +76,7 @@ export interface ProviderInfo {
   id: string;
   name: string;
   subtitle: string;
-  cliName: string;
   installUrl: string;
-  loginCommand: string;
   cost: string;
   models: readonly ModelOption[];
   defaultModel: string;
@@ -106,572 +113,183 @@ export interface ProviderInfo {
 }
 
 /**
- * GitHub Copilot's curated models, shared by the individual and Enterprise cards
- * (both drive the single `github-copilot` engine provider). pi-ai
- * `github-copilot` ids — note the DOTTED form (claude-sonnet-4.6), distinct from
- * the native Anthropic provider's dashed claude-sonnet-4-6. `contextWindow`s are
- * the FIXED windows the Copilot gateway serves per model (from pi-ai) — not
- * plan/credit-gated like a direct Claude/Codex subscription, so no snap-up
- * `contextWindowMax`. `effortLevels` mirror the same underlying model's native
- * catalog entry (pi-ai clamps per model); Haiku has no effort row by convention.
+ * pi-ai's per-model `thinkingLevels` → Houston `EffortLevel`s, low→high. Drops
+ * pi's `off` and `minimal` (Houston's effort scale starts at `low`) and passes
+ * `low|medium|high|xhigh` through 1:1. pi has no `max` — that level only ever
+ * comes from a curated override. Non-reasoning models, or reasoning models with
+ * no thinking levels, get `[]`, so the picker hides the effort row. Input order
+ * (pi emits ascending) is preserved.
  */
-const COPILOT_MODELS: readonly ModelOption[] = [
-  {
-    id: "gpt-4.1",
-    label: "GPT-4.1",
-    // The one BASE model every Copilot plan serves, INCLUDING Copilot Free —
-    // the premium models below (Claude / GPT-5.x / Gemini) need Copilot Pro and
-    // answer `model_not_supported` on Free (HOU-578). Listed first as the safe,
-    // always-works default. gpt-4o is also base but isn't in pi-ai's catalog, so
-    // the engine can't resolve it — gpt-4.1 is the only selectable base model.
-    description: "Available on every plan, including Copilot Free.",
-    contextWindow: 200_000,
-  },
-  {
-    id: "claude-sonnet-4.6",
-    label: "Claude Sonnet 4.6",
-    description: "Best balance of speed and quality. Needs Copilot Pro.",
-    effortLevels: ["low", "medium", "high", "max"],
-    contextWindow: 1_000_000,
-  },
-  {
-    id: "claude-opus-4.8",
-    label: "Claude Opus 4.8",
-    description:
-      "Anthropic's flagship. Most capable, slower. Needs Copilot Pro.",
-    effortLevels: ["low", "medium", "high", "xhigh", "max"],
-    // Copilot's gateway caps Opus at 200k (smaller than a direct Max plan).
-    contextWindow: 200_000,
-  },
-  {
-    id: "claude-haiku-4.5",
-    label: "Claude Haiku 4.5",
-    description: "Anthropic's fastest, for quick tasks. Needs Copilot Pro.",
-    contextWindow: 200_000,
-  },
-  {
-    id: "gpt-5.5",
-    label: "GPT-5.5",
-    description: "OpenAI's frontier model. Needs Copilot Pro.",
-    effortLevels: ["low", "medium", "high", "xhigh"],
-    contextWindow: 400_000,
-  },
-  {
-    id: "gpt-5-mini",
-    label: "GPT-5 Mini",
-    description: "OpenAI's fast, lightweight model. Needs Copilot Pro.",
-    effortLevels: ["low", "medium", "high"],
-    contextWindow: 264_000,
-  },
-  {
-    id: "gemini-3-flash-preview",
-    label: "Gemini 3 Flash",
-    description: "Google's fast model. Needs Copilot Pro.",
-    effortLevels: ["low", "medium", "high"],
-    contextWindow: 128_000,
-  },
-];
+const PI_EFFORT_MAP: Readonly<Record<string, EffortLevel>> = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+  xhigh: "xhigh",
+};
 
-export const PROVIDERS: readonly ProviderInfo[] = [
-  {
-    id: "openai",
-    name: "OpenAI",
-    subtitle: "Codex",
-    cliName: "codex",
-    installUrl: "https://github.com/openai/codex",
-    loginCommand: "codex login",
-    cost: "Your ChatGPT subscription",
-    models: [
-      {
-        id: "gpt-5.5",
-        label: "GPT-5.5",
-        description: "OpenAI's frontier model.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
-        // Codex's EFFECTIVE window = raw context_window (272k) x
-        // effective_context_window_percent (95%) = 258_400. Confirmed in
-        // Codex's own models_cache.json and the rollout's `model_context_window`
-        // — it's the number Codex `/status` shows, so it's what we divide by.
-        // The opt-in 1M gpt-5.5 variant maxes at 1_000_000 x 95% = 950_000, the
-        // snap-up ceiling reached only when observed usage exceeds 258_400
-        // (analogous to Claude's credit-gated 1M). The numerator comes from the
-        // rollout's last_token_usage (see engine `codex_rollout`), not the
-        // cumulative `turn.completed.usage`.
-        contextWindow: 258_400,
-        contextWindowMax: 950_000,
-      },
-      {
-        id: "gpt-5.4",
-        label: "GPT-5.4",
-        description: "Strong model for everyday coding.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
-        // Same window math as gpt-5.5: raw context_window 272k × 95%
-        // effective = 258_400 default. gpt-5.4 also exposes the opt-in 1M
-        // variant (max_context_window 1_000_000 in Codex's models_cache.json),
-        // so the snap-up ceiling is 1_000_000 × 95% = 950_000, reached only
-        // once observed usage exceeds the default.
-        contextWindow: 258_400,
-        contextWindowMax: 950_000,
-      },
-      {
-        id: "gpt-5.4-mini",
-        label: "GPT-5.4-Mini",
-        description: "Small, fast, and cost-efficient for simpler tasks.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
-        // 272k raw × 95% = 258_400. No 1M opt-in (max_context_window == base in
-        // models_cache.json), so no snap-up ceiling.
-        contextWindow: 258_400,
-      },
-      {
-        id: "gpt-5.3-codex-spark",
-        label: "GPT-5.3-Codex-Spark",
-        description: "Ultra-fast coding model.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
-        // Smaller window than the 5.4/5.5 line: 128k raw × 95% = 121_600. No
-        // upward gating (max_context_window == base in models_cache.json).
-        contextWindow: 121_600,
-      },
-    ],
-    defaultModel: "gpt-5.5",
-  },
-  {
-    id: "anthropic",
-    name: "Anthropic",
-    subtitle: "Claude Code",
-    cliName: "claude",
-    installUrl: "https://docs.anthropic.com/en/docs/claude-code/overview",
-    loginCommand: "claude login",
-    cost: "Your Claude subscription",
-    models: [
-      {
-        id: "claude-sonnet-5",
-        label: "Sonnet 5",
-        description: "Newest Sonnet. Stronger agentic coding and tool use.",
-        // Sonnet 5 accepts the full effort range, INCLUDING `xhigh` (unlike
-        // Sonnet 4.6, which has `max` but not `xhigh`). API default is `high`.
-        effortLevels: ["low", "medium", "high", "xhigh", "max"],
-        // Unlike Sonnet 4.6 (whose 1M is a credit-gated opt-in over a 200k
-        // default), Sonnet 5's 1M window is the default AND the only variant:
-        // per Anthropic, "1M tokens is both the default and the maximum; there
-        // is no smaller context variant," and it's the Claude Code default on
-        // Pro and up. So a flat 1M denominator with no snap-up, like Opus 4.8.
-        contextWindow: 1_000_000,
-      },
-      {
-        id: "claude-sonnet-4-6",
-        label: "Sonnet 4.6",
-        description: "Best balance of speed and quality.",
-        // Sonnet 4.6: has `max`, no `xhigh`.
-        effortLevels: ["low", "medium", "high", "max"],
-        // Sonnet 4.6 in Claude Code defaults to 200k on EVERY plan; the
-        // 1M window is opt-in via usage credits (`/extra-usage`) and is NOT
-        // part of any automatic upgrade. So start at 200k and snap to 1M only
-        // once observed usage proves the credits-enabled window is active.
-        contextWindow: 200_000,
-        contextWindowMax: 1_000_000,
-      },
-      {
-        id: "claude-opus-4-8",
-        label: "Opus 4.8",
-        description:
-          "Latest Opus. Better alignment and agentic coding than 4.7.",
-        // Opus 4.8: full range (same as 4.7). NOTE: `ultracode` is a Claude
-        // Code harness mode, NOT an effort level — never add it here.
-        effortLevels: ["low", "medium", "high", "xhigh", "max"],
-        // Opus 4.x auto-upgrades to 1M on Max/Team/Enterprise (the power-user
-        // default; matches what `/context` shows there). Pro WITHOUT usage
-        // credits actually runs 200k — the one case this over-estimates, and
-        // it can't self-correct downward, so the dialog flags it as estimated.
-        contextWindow: 1_000_000,
-      },
-      {
-        id: "claude-fable-5",
-        label: "Fable 5",
-        description: "Most capable model. Costs 2x more credits than Opus 4.8.",
-        // Fable 5: full range like Opus 4.8. ultracode is a harness mode, not
-        // an effort level — it is intentionally excluded for this model.
-        effortLevels: ["low", "medium", "high", "xhigh", "max"],
-        contextWindow: 1_000_000,
-      },
-      {
-        id: "claude-opus-4-7",
-        label: "Opus 4.7",
-        description:
-          "Previous flagship. Strong coding autonomy and complex reasoning.",
-        // Opus 4.7: full range. Same 1M-on-Max default as Opus 4.8 above.
-        effortLevels: ["low", "medium", "high", "xhigh", "max"],
-        contextWindow: 1_000_000,
-      },
-    ],
-    defaultModel: "claude-sonnet-4-6",
-  },
-  {
-    // ONE Copilot card. Connecting opens a dialog to choose Personal (github.com)
-    // or Company / GitHub Enterprise (which collects the company GitHub domain) —
-    // both drive this single `github-copilot` engine provider. See
-    // `useCopilotConnect` + `provider-copilot-connect-dialog`.
-    id: "github-copilot",
-    name: "GitHub Copilot",
-    subtitle: "Personal or your company's plan",
-    cliName: "github-copilot",
-    installUrl: "https://github.com/features/copilot",
-    loginCommand: "",
-    cost: "Your GitHub Copilot subscription",
-    copilotConnect: true,
-    models: COPILOT_MODELS,
-    // Base model that works on EVERY Copilot plan incl. Free (HOU-578); premium
-    // models 404 on Free. Mirrors the engine's `config.githubCopilotModel`.
-    defaultModel: "gpt-4.1",
-  },
-  {
-    id: "opencode",
-    name: "OpenCode Zen",
-    subtitle: "Curated frontier models",
-    cliName: "opencode",
-    installUrl: "https://opencode.ai/auth",
-    loginCommand: "",
-    cost: "Pay as you go",
-    auth: "apiKey",
-    apiKeyUrl: "https://opencode.ai/auth",
-    // Context windows are the FIXED windows the OpenCode Zen gateway serves per
-    // model (from pi-ai) — unlike a Claude/Codex subscription, they are not
-    // plan/credit-gated, so no snap-up `contextWindowMax` is needed.
-    // `effortLevels` come from models.dev's `reasoning_options.effort.values`
-    // (the source OpenCode itself uses), intersected with what the installed
-    // pi-ai actually maps to the gateway. Most open models expose only a
-    // reasoning on/off toggle (not discrete levels), so they omit effortLevels.
-    models: [
-      {
-        id: "claude-sonnet-4-6",
-        label: "Sonnet 4.6",
-        description: "Best balance of speed and quality.",
-        contextWindow: 1_000_000,
-        // models.dev: low/medium/high/max; pi-ai can't reach this gateway's
-        // "max" yet, so cap at high.
-        effortLevels: ["low", "medium", "high"],
-      },
-      {
-        id: "claude-opus-4-8",
-        label: "Opus 4.8",
-        description: "Most capable Claude, slower.",
-        contextWindow: 1_000_000,
-        effortLevels: ["low", "medium", "high", "xhigh"],
-      },
-      {
-        id: "gpt-5.5",
-        label: "GPT-5.5",
-        description: "OpenAI's frontier model.",
-        contextWindow: 1_050_000,
-        effortLevels: ["low", "medium", "high", "xhigh"],
-      },
-      {
-        id: "gemini-3.5-flash",
-        label: "Gemini 3.5 Flash",
-        description: "Fast and capable.",
-        contextWindow: 1_048_576,
-        // No discrete effort on this gateway model (models.dev lists none).
-      },
-      // Free trial models (OpenCode Zen) — test the provider without spending credits.
-      {
-        id: "deepseek-v4-flash-free",
-        label: "DeepSeek V4 Flash (Free)",
-        description: "Fast. Free to try.",
-        contextWindow: 200_000,
-        // models.dev effort = [high, max] (plus a reasoning on/off toggle).
-        effortLevels: ["high", "max"],
-      },
-      {
-        id: "mimo-v2.5-free",
-        label: "MiMo V2.5 (Free)",
-        description: "Free to try.",
-        contextWindow: 200_000,
-      },
-      {
-        id: "nemotron-3-ultra-free",
-        label: "Nemotron 3 Ultra (Free)",
-        description: "NVIDIA. Free to try.",
-        contextWindow: 1_000_000,
-      },
-    ],
-    defaultModel: "claude-sonnet-4-6",
-  },
-  {
-    id: "opencode-go",
-    name: "OpenCode Go",
-    subtitle: "Open coding models",
-    cliName: "opencode-go",
-    installUrl: "https://opencode.ai/auth",
-    loginCommand: "",
-    cost: "$10 / month",
-    auth: "apiKey",
-    apiKeyUrl: "https://opencode.ai/auth",
-    // Fixed per-model context windows the OpenCode Go gateway serves (from pi-ai).
-    // effortLevels come from models.dev's reasoning_options; the open models here
-    // expose only a reasoning toggle (no discrete effort), so they omit it.
-    models: [
-      {
-        id: "glm-5.1",
-        label: "GLM-5.1",
-        description: "Strong open coding model.",
-        contextWindow: 202_752,
-      },
-      {
-        id: "kimi-k2.6",
-        label: "Kimi K2.6",
-        description: "Fast, capable open model.",
-        contextWindow: 262_144,
-      },
-      {
-        id: "minimax-m3",
-        label: "MiniMax M3",
-        description: "Capable open model.",
-        contextWindow: 512_000,
-      },
-      {
-        id: "qwen3.7-max",
-        label: "Qwen3.7 Max",
-        description: "Large open model.",
-        contextWindow: 1_000_000,
-      },
-      {
-        id: "deepseek-v4-pro",
-        label: "DeepSeek V4 Pro",
-        description: "Strong reasoning.",
-        contextWindow: 1_000_000,
-        // models.dev effort = [high, max].
-        effortLevels: ["high", "max"],
-      },
-    ],
-    defaultModel: "glm-5.1",
-  },
-  {
-    id: "openrouter",
-    name: "OpenRouter",
-    subtitle: "Any model, one key",
-    cliName: "openrouter",
-    installUrl: "https://openrouter.ai",
-    loginCommand: "",
-    cost: "Pay-as-you-go on your OpenRouter account",
-    auth: "apiKey",
-    apiKeyUrl: "https://openrouter.ai/settings/keys",
-    // A small curated set of strong models OpenRouter routes to (pi-ai
-    // `openrouter` ids). OpenRouter exposes hundreds; these are sensible
-    // defaults, not the full catalog. `effortLevels` come from models.dev's
-    // per-model `reasoning_options.effort.values` (the same source OpenCode
-    // uses), intersected with what pi-ai actually maps; `minimal` is dropped
-    // (Houston's effort scale starts at `low`). Context windows are pi-ai's.
-    models: [
-      {
-        id: "openrouter/free",
-        label: "Free (auto-routed)",
-        description: "OpenRouter's free tier. Good for testing, no cost.",
-        // models.dev lists no discrete effort for this meta-router, so no row.
-        contextWindow: 200_000,
-      },
-      {
-        id: "anthropic/claude-sonnet-4.6",
-        label: "Claude Sonnet 4.6",
-        description: "Anthropic's balanced model, via OpenRouter.",
-        effortLevels: ["low", "medium", "high", "max"],
-        contextWindow: 1_000_000,
-      },
-      {
-        id: "anthropic/claude-opus-4.8",
-        label: "Claude Opus 4.8",
-        description: "Anthropic's flagship, via OpenRouter.",
-        effortLevels: ["low", "medium", "high", "xhigh", "max"],
-        contextWindow: 1_000_000,
-      },
-      {
-        id: "google/gemini-3-flash-preview",
-        label: "Gemini 3 Flash",
-        description: "Google's fast model, via OpenRouter.",
-        effortLevels: ["low", "medium", "high"],
-        contextWindow: 1_048_576,
-      },
-      {
-        id: "deepseek/deepseek-v4-pro",
-        label: "DeepSeek V4 Pro",
-        description: "DeepSeek's flagship, via OpenRouter.",
-        effortLevels: ["high", "xhigh"],
-        contextWindow: 1_048_576,
-      },
-    ],
-    defaultModel: "anthropic/claude-sonnet-4.6",
-  },
-  {
-    id: "deepseek",
-    name: "DeepSeek",
-    subtitle: "Official DeepSeek API",
-    cliName: "deepseek",
-    installUrl: "https://platform.deepseek.com",
-    loginCommand: "",
-    cost: "Pay-as-you-go on your DeepSeek account",
-    auth: "apiKey",
-    apiKeyUrl: "https://platform.deepseek.com/api_keys",
-    // pi-ai `deepseek` model ids. Direct DeepSeek supports reasoning at high
-    // and max; pi maps Houston's xhigh to DeepSeek's max.
-    models: [
-      {
-        id: "deepseek-v4-flash",
-        label: "DeepSeek V4 Flash",
-        description: "Fast, low-cost DeepSeek model.",
-        effortLevels: ["high", "xhigh"],
-        contextWindow: 1_000_000,
-      },
-      {
-        id: "deepseek-v4-pro",
-        label: "DeepSeek V4 Pro",
-        description: "DeepSeek's most capable model.",
-        effortLevels: ["high", "xhigh"],
-        contextWindow: 1_000_000,
-      },
-    ],
-    defaultModel: "deepseek-v4-flash",
-  },
-  {
-    id: "google",
-    name: "Google Gemini",
-    subtitle: "Free key from AI Studio",
-    cliName: "google",
-    installUrl: "https://ai.google.dev",
-    loginCommand: "",
-    cost: "Free tier on your Google account",
-    auth: "apiKey",
-    apiKeyUrl: "https://aistudio.google.com/apikey",
-    // pi-ai `google` model ids. `effortLevels` from models.dev's
-    // `reasoning_options.effort.values` (minus `minimal`): Gemini 3 Flash =
-    // low/medium/high, Gemini 3 Pro = low/high (its only two), and the 2.5
-    // models expose budget-mapped low/medium/high via pi-ai. Windows = 1 MiB.
-    models: [
-      {
-        id: "gemini-3-flash-preview",
-        label: "Gemini 3 Flash",
-        description: "Fast and capable. Best default.",
-        effortLevels: ["low", "medium", "high"],
-        contextWindow: 1_048_576,
-      },
-      {
-        id: "gemini-3-pro-preview",
-        label: "Gemini 3 Pro",
-        description: "Google's most capable, slower.",
-        effortLevels: ["low", "high"],
-        contextWindow: 1_048_576,
-      },
-      {
-        id: "gemini-2.5-flash",
-        label: "Gemini 2.5 Flash",
-        description: "Previous fast model.",
-        effortLevels: ["low", "medium", "high"],
-        contextWindow: 1_048_576,
-      },
-      {
-        id: "gemini-2.5-pro",
-        label: "Gemini 2.5 Pro",
-        description: "Previous flagship.",
-        effortLevels: ["low", "medium", "high"],
-        contextWindow: 1_048_576,
-      },
-    ],
-    defaultModel: "gemini-3-flash-preview",
-  },
-  {
-    id: "amazon-bedrock",
-    name: "Amazon Bedrock",
-    subtitle: "Use Bedrock with your AWS account",
-    cliName: "amazon-bedrock",
-    installUrl: "https://aws.amazon.com/bedrock/",
-    loginCommand: "",
-    cost: "Pay-as-you-go on your AWS account",
-    auth: "apiKey",
-    apiKeyUrl: "https://console.aws.amazon.com/bedrock/home#/api-keys",
-    // pi-ai `amazon-bedrock` model ids. Houston's paste-a-key flow stores a
-    // Bedrock API key, which the runtime maps to pi's provider-specific
-    // `bearerToken` option before each request.
-    models: [
-      {
-        id: "anthropic.claude-sonnet-4-6",
-        label: "Claude Sonnet 4.6",
-        description: "Anthropic's balanced model, via Bedrock.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
-        contextWindow: 1_000_000,
-      },
-      {
-        id: "anthropic.claude-opus-4-8",
-        label: "Claude Opus 4.8",
-        description: "Anthropic's flagship, via Bedrock.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
-        contextWindow: 1_000_000,
-      },
-      {
-        id: "amazon.nova-pro-v1:0",
-        label: "Nova Pro",
-        description: "Amazon's capable general-purpose model.",
-        contextWindow: 300_000,
-      },
-      {
-        id: "amazon.nova-lite-v1:0",
-        label: "Nova Lite",
-        description: "Amazon's fast, lower-cost model.",
-        contextWindow: 300_000,
-      },
-    ],
-    defaultModel: "anthropic.claude-sonnet-4-6",
-  },
-  {
-    id: "minimax",
-    name: "MiniMax",
-    subtitle: "Global API",
-    cliName: "minimax",
-    installUrl: "https://platform.minimax.io",
-    loginCommand: "",
-    cost: "Pay-as-you-go on your MiniMax account",
-    auth: "apiKey",
-    apiKeyUrl: "https://platform.minimax.io",
-    // pi-ai `minimax` model ids from the global endpoint (api.minimax.io), NOT
-    // the separate `minimax-cn` provider (api.minimaxi.com).
-    models: [
-      {
-        id: "MiniMax-M3",
-        label: "MiniMax M3",
-        description: "Best default. Long-context multimodal model.",
-        effortLevels: ["low", "medium", "high"],
-        contextWindow: 512_000,
-      },
-      {
-        id: "MiniMax-M2.7",
-        label: "MiniMax M2.7",
-        description: "Lower cost. Text-only reasoning model.",
-        effortLevels: ["low", "medium", "high"],
-        contextWindow: 204_800,
-      },
-      {
-        id: "MiniMax-M2.7-highspeed",
-        label: "MiniMax M2.7 Highspeed",
-        description: "Faster M2.7 tier for latency-sensitive chats.",
-        effortLevels: ["low", "medium", "high"],
-        contextWindow: 204_800,
-      },
-    ],
-    defaultModel: "MiniMax-M3",
-  },
-  {
-    id: "openai-compatible",
-    name: "Local model",
-    subtitle: "Ollama, LM Studio, vLLM…",
-    cliName: "openai-compatible",
-    installUrl: "https://ollama.com",
-    loginCommand: "",
-    cost: "Runs on your computer, free",
-    // Connects by base URL + model id (no pasted gateway key). New-engine-only,
-    // gated by the host's `openaiCompatible` capability (see
-    // getVisibleProviders). The model list is whatever the user's server serves,
-    // so there's no static catalog here — the runtime reports the one configured
-    // model.
-    auth: "openaiCompatible",
-    models: [],
-    defaultModel: "",
-  },
-] as const;
+export function deriveEffortLevels(
+  thinkingLevels: string[] | undefined,
+  reasoning: boolean,
+): EffortLevel[] {
+  if (!reasoning || !thinkingLevels) return [];
+  const out: EffortLevel[] = [];
+  for (const level of thinkingLevels) {
+    const mapped = PI_EFFORT_MAP[level];
+    if (mapped) out.push(mapped);
+  }
+  return out;
+}
+
+/**
+ * Collapse pi model entries that fold to the SAME picker identity within one
+ * provider, so a provider never yields two rows the hub catalog merges into a
+ * single enriched entry (which would leave the other row bare + un-enriched).
+ * Two entries collapse when their display names normalize to the same
+ * cross-provider key (e.g. Bedrock's regional `us.`/`eu.` Opus variants). The
+ * survivor is the SAME one the hub keeps as its offer — the CLEANER id (shortest,
+ * then lexicographically first) — so the surviving row's `${providerId}::${id}`
+ * matches the hub offer and gets enriched. First-seen order is preserved.
+ */
+function dedupeModelEntries(
+  entries: readonly CatalogModelEntry[],
+): CatalogModelEntry[] {
+  const indexByKey = new Map<string, number>();
+  const out: CatalogModelEntry[] = [];
+  for (const entry of entries) {
+    const key = normalizeKey(entry.name);
+    const at = indexByKey.get(key);
+    if (at === undefined) {
+      indexByKey.set(key, out.length);
+      out.push(entry);
+      continue;
+    }
+    const kept = out[at];
+    const cleaner =
+      entry.id.length < kept.id.length ||
+      (entry.id.length === kept.id.length && entry.id < kept.id);
+    if (cleaner) out[at] = entry;
+  }
+  return out;
+}
+
+/**
+ * Build one `ProviderInfo` from a pi catalog provider + its Houston override. pi
+ * supplies the runnable model set (ids, windows, thinking levels, reasoning); the
+ * override layers on the brand name, per-model label/description/effort, and the
+ * credit-gated snap-up ceiling pi can't know. `finalId` is the Houston provider
+ * id (post-rename), which selects the override and the frontend logo/card.
+ */
+function buildProvider(
+  piProvider: ProviderCatalog[number],
+  finalId: string,
+  override: ProviderOverride | undefined,
+): ProviderInfo {
+  const models: ModelOption[] = dedupeModelEntries(piProvider.models).map(
+    (entry) => {
+      const mo = override?.models?.[entry.id];
+      const effort =
+        mo?.effortLevels ??
+        deriveEffortLevels(entry.thinkingLevels, entry.reasoning);
+      return {
+        id: entry.id,
+        label: mo?.label ?? entry.name,
+        description: mo?.description ?? "",
+        // pi reports the raw provider window; the override carries Houston's
+        // 95%-effective window (the number the provider's `/status` shows, e.g.
+        // Codex's 258k for gpt-5.5) when it differs — see `ModelOverride`.
+        contextWindow: mo?.contextWindow ?? entry.contextWindow,
+        contextWindowMax: mo?.contextWindowMax,
+        // Empty → omit, so `getEffortLevels`/the picker treat it as no effort row.
+        effortLevels: effort.length > 0 ? effort : undefined,
+      };
+    },
+  );
+  return {
+    id: finalId,
+    name: override?.name ?? piProvider.name,
+    subtitle: override?.subtitle ?? "",
+    installUrl: override?.installUrl ?? "",
+    cost: override?.cost ?? "",
+    models,
+    defaultModel: override?.defaultModel ?? models[0]?.id ?? "",
+    auth: override?.auth ?? (piProvider.auth === "oauth" ? "oauth" : "apiKey"),
+    apiKeyUrl: override?.apiKeyUrl,
+    copilotConnect: override?.copilotConnect,
+    gatewayIds: override?.gatewayIds,
+  };
+}
+
+/**
+ * The full provider list built from a pi catalog: drop the pi providers that
+ * collide with a rename (`DROP_PI_PROVIDERS`, applied first), rename ids
+ * (`PROVIDER_ID_RENAME` — pi `openai-codex` → Houston `openai`), layer on the
+ * Houston overrides, then append the local OpenAI-compatible provider pi has no
+ * concept of.
+ */
+function buildCatalog(catalog: ProviderCatalog): ProviderInfo[] {
+  const built: ProviderInfo[] = [];
+  for (const piProvider of catalog) {
+    if (DROP_PI_PROVIDERS.has(piProvider.id)) continue;
+    const finalId = PROVIDER_ID_RENAME[piProvider.id] ?? piProvider.id;
+    built.push(buildProvider(piProvider, finalId, PROVIDER_OVERRIDES[finalId]));
+  }
+  built.push({ ...LOCAL_PROVIDER });
+  return built;
+}
+
+/**
+ * Seed the provider list from the Houston overrides ALONE — every first-class
+ * provider with its metadata but an EMPTY model list, plus the local provider —
+ * so every helper below works before the pi catalog has loaded (nothing throws,
+ * the connect surfaces render their cards) and the picker fills in models once
+ * `hydrateProviderCatalog` runs.
+ */
+function buildSeed(): ProviderInfo[] {
+  const seed: ProviderInfo[] = [];
+  for (const [id, override] of Object.entries(PROVIDER_OVERRIDES)) {
+    seed.push({
+      id,
+      name: override.name ?? id,
+      subtitle: override.subtitle ?? "",
+      installUrl: override.installUrl ?? "",
+      cost: override.cost ?? "",
+      models: [],
+      defaultModel: override.defaultModel ?? "",
+      auth: override.auth ?? "apiKey",
+      apiKeyUrl: override.apiKeyUrl,
+      copilotConnect: override.copilotConnect,
+      gatewayIds: override.gatewayIds,
+    });
+  }
+  seed.push({ ...LOCAL_PROVIDER });
+  return seed;
+}
+
+/**
+ * The live provider catalog. A MUTABLE array with a STABLE reference: it starts
+ * as the override-only seed and is rebuilt IN PLACE by `hydrateProviderCatalog`
+ * from the host's `/v1/catalog` payload, so every module that imported `PROVIDERS`
+ * sees the hydrated set at read time without re-importing. All the helpers below
+ * read this array.
+ */
+export const PROVIDERS: ProviderInfo[] = buildSeed();
+
+/**
+ * Replace `PROVIDERS` in place with the catalog built from the host's pi-ai
+ * catalog (`useProviderCatalog` calls this on fetch). Mutates the existing array
+ * rather than reassigning so live `PROVIDERS` importers pick up the new set.
+ */
+export function hydrateProviderCatalog(catalog: ProviderCatalog): void {
+  // An empty catalog is NOT a deployment with zero providers: it's the host
+  // returning `[]` (a 404 on the catalog route — deploy skew, an egress-locked
+  // pod, or the e2e fake host). Rebuilding from it would wipe the override seed
+  // down to just the local provider, emptying the picker + connect surfaces.
+  // Keep the seed instead so the UI stays populated. Covers every caller.
+  if (catalog.length === 0) return;
+  const built = buildCatalog(catalog);
+  PROVIDERS.length = 0;
+  PROVIDERS.push(...built);
+}
 
 /** Find a provider by id. */
 export function getProvider(id: string): ProviderInfo | undefined {
@@ -686,11 +304,6 @@ export const EMPTY_PROVIDER_CAPABILITIES: Pick<
   providers: [],
   openaiCompatible: false,
 });
-
-function capabilityIdsForProvider(provider: ProviderInfo): readonly string[] {
-  if (provider.id === "openai") return ["openai", "openai-codex"];
-  return [provider.id];
-}
 
 /** Options common to the provider-visibility helpers. */
 interface ProviderVisibilityOpts {
@@ -715,24 +328,23 @@ function showOpenaiCompatible(opts: ProviderVisibilityOpts): boolean {
 }
 
 /**
- * Providers to show in connect UIs. API-key providers run
- * only on the new TS engine — they paste a key Houston serves through the host —
- * so they're hidden when the legacy Rust engine is active. The OpenAI-compatible
- * (local / BYO model) provider is gated by the host's `openaiCompatible`
- * capability (see `showOpenaiCompatible`). Pass `newEngineActive()` and
- * `osIsTauri()` from the caller.
+ * Providers to show in connect UIs. `/v1/catalog` is the SINGLE visibility
+ * source: `PROVIDERS` is hydrated from it, so it already IS this deployment's
+ * runnable set (all ~35 on desktop, ~3 in a cloud pod) — the host profile-gates
+ * the catalog, so no `capabilities.providers` re-gate is applied here (that
+ * narrower list under-showed the picker). Only two exclusions remain: the local
+ * OpenAI-compatible (BYO model) provider is gated by the host's `openaiCompatible`
+ * capability (see `showOpenaiCompatible`), and any provider still on the
+ * `COMING_SOON` list is held back. Pass `newEngineActive()` and `osIsTauri()`
+ * from the caller (they steer the local-provider gate).
  */
 export function getVisibleProviders(
   opts: ProviderVisibilityOpts,
 ): readonly ProviderInfo[] {
-  const allowed = opts.capabilities
-    ? new Set(opts.capabilities.providers)
-    : null;
+  const comingSoon = new Set(COMING_SOON_PROVIDERS.map((p) => p.id));
   return PROVIDERS.filter((p) => {
+    if (comingSoon.has(p.id)) return false;
     if (p.auth === "openaiCompatible") return showOpenaiCompatible(opts);
-    if (allowed)
-      return capabilityIdsForProvider(p).some((id) => allowed.has(id));
-    if (p.auth === "apiKey") return opts.newEngine;
     return true;
   });
 }
@@ -755,9 +367,7 @@ const OPENCODE_ACCOUNT: ProviderInfo = {
   id: "opencode",
   name: "OpenCode",
   subtitle: "Zen models or the Go subscription, one key",
-  cliName: "opencode",
   installUrl: "https://opencode.ai/auth",
-  loginCommand: "",
   cost: "Pay as you go, or $10 / month with Go",
   auth: "apiKey",
   apiKeyUrl: "https://opencode.ai/auth",
@@ -868,15 +478,20 @@ export function validProviderOrNull(
  * model the server will actually accept.
  */
 /**
- * Providers whose model catalog is OPEN: the curated `PROVIDERS[].models` is a
- * seed for the picker, NOT the exhaustive runnable set, so a live selection must
- * not be validated against it. OpenRouter serves the 300+ models the picker
- * fetches live; the local OpenAI-compatible endpoint runs whatever model the
- * user's server exposes. Mirrors the domain's pass-through set (providers absent
- * from `VALID_MODELS` in `@houston/domain`).
+ * Providers whose model catalog is OPEN: the hydrated `PROVIDERS[].models` is the
+ * pi-ai runnable set for the picker, NOT the exhaustive set the gateway can
+ * route, so a live selection must not be validated against it. OpenRouter serves
+ * the 300+ models the picker fetches live; the two OpenCode gateways route to
+ * models pi's static catalog doesn't enumerate; the local OpenAI-compatible
+ * endpoint runs whatever model the user's server exposes. For every OTHER
+ * provider, pi-ai's catalog IS the runnable set, so `getModel` is authoritative.
+ * Mirrors the domain's pass-through set (providers absent from `VALID_MODELS` in
+ * `@houston/domain`).
  */
 const OPEN_CATALOG_PROVIDERS: ReadonlySet<string> = new Set([
   "openrouter",
+  "opencode",
+  "opencode-go",
   "openai-compatible",
 ]);
 
