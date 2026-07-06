@@ -168,5 +168,6 @@ export async function install(
     agentName: agent.name,
     workspaceName: req.workspaceName,
     requiredIntegrations: [],
+    agent,
   };
 }

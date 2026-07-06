@@ -187,7 +187,9 @@ export interface CreateAgentResult {
   agent: Agent;
 }
 
-function toAgent(a: import("@houston-ai/engine-client").Agent): Agent {
+/** Engine wire agent → app Agent. Exported for flows that receive an agent
+ *  record outside the tauriAgents wrappers (the import wizard, HOU-710). */
+export function toAgent(a: import("@houston-ai/engine-client").Agent): Agent {
   return {
     id: a.id,
     name: a.name,
