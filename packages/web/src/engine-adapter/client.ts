@@ -654,10 +654,11 @@ export class HoustonClient {
   async migrateAgentFiles(): Promise<void> {}
 
   // ---- composer attachments ----
-  // Cloud: upload the dropped files into the selected agent's workspace via the
-  // host's /agents/:id/attachments route; the runtime's clamped file tools then
-  // Read them at the relative paths returned here (the sender encodes those paths
-  // into the message). Standalone web has no workspace to write into — fail loud.
+  // Upload the dropped files into the selected agent's workspace (its durable
+  // `uploads/` folder) via the host's /agents/:id/attachments route; the
+  // runtime's clamped file tools then Read them at the relative paths returned
+  // here (the sender encodes those paths into the message), in this turn or any
+  // later conversation. Standalone web has no workspace to write into — fail loud.
   async saveAttachments(scopeId: string, files: File[]): Promise<string[]> {
     if (files.length === 0) return [];
     if (!this.cp) throw new Error("Attachments need a cloud workspace.");
@@ -666,14 +667,6 @@ export class HoustonClient {
       this.requireAgentId(),
       scopeId,
       files,
-    );
-  }
-  async deleteAttachments(scopeId: string): Promise<void> {
-    if (!this.cp) throw new Error("Attachments need a cloud workspace.");
-    return controlPlane.deleteAttachments(
-      this.cp,
-      this.requireAgentId(),
-      scopeId,
     );
   }
 

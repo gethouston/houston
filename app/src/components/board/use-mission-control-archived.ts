@@ -9,7 +9,6 @@ import { missionCardTags } from "../../lib/mission-card";
 import {
   type HistoryLoadOptions,
   tauriActivity,
-  tauriAttachments,
   tauriChat,
 } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
@@ -142,7 +141,8 @@ export function useMissionControlArchived(agents: Agent[]) {
       const agentPath = pathMapRef.current[item.id];
       if (!agentPath) return;
       await tauriActivity.delete(agentPath, item.id);
-      await tauriAttachments.delete(`activity-${item.id}`).catch(() => {});
+      // Files attached in this conversation stay in the workspace's uploads/
+      // folder — they are agent context, not conversation scratch (HOU-706).
       if (selectedId === item.id) setSelectedId(null);
     },
     [selectedId],

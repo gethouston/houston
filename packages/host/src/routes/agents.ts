@@ -511,8 +511,9 @@ export async function handleAgents(
       )
     )
       return true;
-    // Composer attachments: uploaded into the workspace so the runtime's clamped
-    // file tools can Read them during the turn (the runtime has no /attachments).
+    // Composer attachments: uploaded into the workspace's visible `uploads/`
+    // folder so the runtime's clamped file tools can Read them during this turn
+    // AND any later conversation (the runtime has no /attachments).
     if (
       await handleAttachments(
         deps.vfs,
@@ -522,7 +523,7 @@ export async function handleAgents(
         rest,
         req,
         res,
-        url.searchParams,
+        emit,
       )
     )
       return true;

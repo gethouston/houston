@@ -388,10 +388,6 @@ export const tauriAttachments = {
       getEngine().saveAttachments(scopeId, files),
     );
   },
-  delete: (scopeId: string) =>
-    call<void>("delete_attachments", () =>
-      getEngine().deleteAttachments(scopeId),
-    ),
 };
 
 // ─── Agent-data files (`.houston/**`) ─────────────────────────────────
