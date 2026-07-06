@@ -1,6 +1,7 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
+import { recordPendingInteraction } from "../interaction";
 
 /**
  * The agent's window into the user's connected third-party apps (Gmail, Google
@@ -36,6 +37,30 @@ const ExecuteParams = Type.Object({
 });
 type ExecuteParams = Static<typeof ExecuteParams>;
 
+const ConnectParams = Type.Object({
+  toolkit: Type.String({
+    description:
+      "The app's toolkit slug — the identifier from integration_search results (e.g. 'gmail', 'slack', 'notion').",
+  }),
+  reason: Type.Optional(
+    Type.String({
+      description:
+        "A short, plain-language reason to show the user for why this app is needed.",
+    }),
+  ),
+});
+type ConnectParams = Static<typeof ConnectParams>;
+
+/**
+ * Canonical toolkit slug: trimmed + lowercased, matching the connection/catalog
+ * lists the connect card compares against (app-side `normalizeToolkitSlug`). A
+ * model-authored slug can carry stray casing or whitespace; comparing raw would
+ * silently miss a real connection and leave the card stuck on "Connect".
+ */
+function normalizeToolkitSlug(slug: string): string {
+  return slug.trim().toLowerCase();
+}
+
 export interface IntegrationToolOptions {
   /** The host control-plane base URL (HOUSTON_CONTROL_PLANE_URL). */
   baseUrl: string;
@@ -54,12 +79,12 @@ interface ToolMatch {
 
 /**
  * The instruction appended to search results (and connection-shaped execute
- * failures) that teaches the model the in-chat connect hand-off (HOU-670):
- * a markdown link carrying the `#houston_toolkit=<slug>` fragment, which the
- * Houston chat renders as a rich connect card with a one-click button.
+ * failures) that teaches the model the in-chat connect hand-off: call the
+ * `request_connection` tool, which records the pending connection so Houston
+ * renders a one-click connect card in place of the chat input.
  */
-const CONNECT_LINK_GUIDANCE =
-  "To let the user connect an app, include a markdown link in your reply whose URL ends with `#houston_toolkit=<toolkit>` — exactly like `[Connect Gmail](https://gethouston.ai/connect#houston_toolkit=gmail)`. Houston renders it as a connect button. After the user connects, Houston automatically sends you a message so you can continue — do not ask them to confirm.";
+const REQUEST_CONNECTION_GUIDANCE =
+  "To let the user connect an app, call the request_connection tool with that app's toolkit (the slug shown in the results). Houston shows the user a one-click connect card in place of the chat input, then automatically sends you a message once the connection is live so you can continue — do not ask the user to confirm.";
 interface ActionResult {
   successful: boolean;
   data?: unknown;
@@ -149,9 +174,9 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         })
         .join("\n");
       // Some matches need a connection first → teach the hand-off inline, at
-      // the moment the model actually faces a not-connected app (HOU-670).
+      // the moment the model actually faces a not-connected app.
       const text = items.some((m) => m.connected === false)
-        ? `${list}\n\nActions marked NOT CONNECTED will fail until the user connects that app. ${CONNECT_LINK_GUIDANCE}`
+        ? `${list}\n\nActions marked NOT CONNECTED will fail until the user connects that app. ${REQUEST_CONNECTION_GUIDANCE}`
         : list;
       return {
         content: [{ type: "text" as const, text }],
@@ -182,9 +207,9 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       if (!result.successful) {
         const reason = result.error ?? "unknown error";
         // A missing connection is an actionable state, not a dead end: hand
-        // the model the connect-card instruction right in the error (HOU-670).
+        // the model the connect-card instruction right in the error.
         const hint = /connected account|not connected/i.test(reason)
-          ? ` The user has not connected this app. ${CONNECT_LINK_GUIDANCE}`
+          ? ` The user has not connected this app. ${REQUEST_CONNECTION_GUIDANCE}`
           : "";
         throw new Error(`"${params.action}" did not succeed: ${reason}${hint}`);
       }
@@ -196,11 +221,47 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     },
   });
 
-  return [search, execute];
+  // The in-chat connect hand-off. Records the pending connection for this turn
+  // (carried on the terminal `done` frame → a one-click connect card rendered in
+  // place of the chat input). Gated with the integration tools because it only
+  // makes sense where the user can actually connect apps. Holds no credential
+  // and makes no network call — it just records the request.
+  const requestConnection = defineTool({
+    name: "request_connection",
+    label: "Ask the user to connect an app",
+    description:
+      "Ask the user to connect one of their apps (Gmail, Slack, Notion, and many more) when an action needs it. Houston shows a one-click connect card in place of the chat input; end your turn right after calling this. Never spell out the app's slug or a link in your reply — Houston sends you a message automatically once the connection is live.",
+    promptSnippet: "Ask the user to connect an app so an action can run",
+    parameters: ConnectParams,
+    executionMode: "sequential",
+    async execute(_id: string, params: ConnectParams) {
+      const toolkit = normalizeToolkitSlug(params.toolkit);
+      if (!toolkit)
+        throw new Error("request_connection needs a non-empty toolkit slug.");
+      const reason = params.reason?.trim();
+      recordPendingInteraction({
+        kind: "connect",
+        toolkit,
+        ...(reason ? { reason } : {}),
+      });
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "Houston is now showing the user a one-click card to connect this app in place of the chat input. End your turn now. Do not spell out the app's slug or any link in your reply, and do not ask the user to confirm — Houston sends you a message automatically once the connection is live.",
+          },
+        ],
+        details: { toolkit },
+      };
+    },
+  });
+
+  return [search, execute, requestConnection];
 }
 
 /** The tool names — pi's allowlist needs the names alongside the objects. */
 export const INTEGRATION_TOOL_NAMES = [
   "integration_search",
   "integration_execute",
+  "request_connection",
 ];

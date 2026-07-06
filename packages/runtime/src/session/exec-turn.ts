@@ -27,6 +27,7 @@ import {
   type FileSnapshot,
   snapshotWorkspace,
 } from "./file-changes";
+import { newInteractionHolder, runWithInteractionCapture } from "./interaction";
 import { switchNeedsCompaction } from "./provider-switch";
 import { createStallWatchdog } from "./stall-watchdog";
 
@@ -287,6 +288,12 @@ export async function execTurn(
     } catch (err) {
       console.warn("[turn] file snapshot failed:", errMessage(err));
     }
+    // A fresh, per-turn holder for whatever the model ends up waiting on the
+    // user for (ask_user / request_connection). Fresh every turn IS the reset;
+    // established for the DURATION of the prompt (like the acting context) so
+    // the tools, running inside this async subtree, record into THIS turn's
+    // holder. Read after prompt() resolves and attached to the clean `done`.
+    const interaction = newInteractionHolder();
     // Hold the turn's acting-as identity (C2) for the DURATION of the prompt so
     // the integration tools' proxy calls (which run inside this async subtree)
     // attach it. Absent → runs plainly (act as owner). The watchdog covers the
@@ -294,7 +301,11 @@ export async function execTurn(
     // they start/end; the finally disarms it whether prompt() resolves or throws.
     watchdog.arm();
     try {
-      await runWithActingContext(acting, () => conv.session.prompt(promptText));
+      await runWithActingContext(acting, () =>
+        runWithInteractionCapture(interaction, () =>
+          conv.session.prompt(promptText),
+        ),
+      );
     } finally {
       watchdog.disarm();
     }
@@ -350,8 +361,18 @@ export async function execTurn(
     // Skip the clean `done` when the turn failed: the provider_error frame is the
     // turn's terminal surface (the web adapter settles on it), and a `done` would
     // settle the chat as a clean success — firing the "mission complete"
-    // notification on top of the error.
-    if (!providerError) publish(id, { type: "done", data: null, turnId });
+    // notification on top of the error. On the clean-done path, carry whatever
+    // the model is now waiting on the user for so the board card settles to
+    // `needs_you` (absent → `done`). Only the clean done ever carries it.
+    if (!providerError)
+      publish(id, {
+        type: "done",
+        data: null,
+        turnId,
+        ...(interaction.pending
+          ? { pendingInteraction: interaction.pending }
+          : {}),
+      });
   } catch (err) {
     // Persist the failure even when nothing streamed: a thrown turn (bad pin,
     // missing credential, stale model id) must leave the same durable trace a

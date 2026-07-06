@@ -58,15 +58,27 @@ mod tests {
     fn pi_prompt_swaps_cli_guidance_for_integration_tools() {
         let prompt = system_prompt_pi();
 
-        // The pi runtime has in-process tools + the in-chat connect card…
+        // The pi runtime has in-process tools + the request_connection card…
         assert!(prompt.contains("integration_search"));
         assert!(prompt.contains("integration_execute"));
-        assert!(prompt.contains("#houston_toolkit=<toolkit>"));
+        assert!(prompt.contains("request_connection"));
         assert!(prompt.contains("I've connected Gmail. Please continue."));
+        // …the markdown-link connect hack is gone…
+        assert!(!prompt.contains("houston_toolkit"));
+        assert!(!prompt.contains("markdown link"));
         // …and none of the retired CLI guidance.
         assert!(!prompt.contains("Composio CLI"));
         assert!(!prompt.contains("composio link"));
         assert!(!prompt.contains("houston_composio_signin"));
+    }
+
+    #[test]
+    fn prompt_routes_questions_through_the_ask_user_tool() {
+        let prompt = system_prompt_pi();
+
+        assert!(prompt.contains("ask_user"));
+        assert!(prompt.contains("never leave a question sitting in plain text"));
+        assert!(prompt.contains("Always request that approval through the `ask_user` tool"));
     }
 
     #[test]

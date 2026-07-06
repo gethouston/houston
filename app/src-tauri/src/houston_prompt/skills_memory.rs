@@ -40,7 +40,7 @@ Skill rules:
 - `image` should be a Fluent emoji slug or a full https URL.
 - `featured: yes` makes the Skill visible in the chat empty state.
 - `integrations` lists Composio toolkit slugs when the Skill needs connected apps.
-- If a Skill needs missing details, the procedure should ask one targeted question and continue when answered.
+- If a Skill needs missing details, the procedure should ask one targeted question through the `ask_user` tool and continue when the answer arrives.
 - The desktop adds an explicit `Use the <skill> skill.` prefix so invocation stays deterministic.
 
 The Skill body is allowed to contain technical procedure details. But any text it tells the AI to say to the user must follow the user-voice rules above.

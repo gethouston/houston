@@ -13,6 +13,7 @@ import { config } from "../config";
 import type { TurnPin } from "./exec-turn";
 import { SYSTEM_PROMPT } from "./resource-loader";
 import { buildToolSelection } from "./tool-selection";
+import { makeAskUserTool } from "./tools/ask-user";
 import { makeClampedFileTools } from "./tools/clamped-fs";
 import { makeIdTokenProvider } from "./tools/gcp-id-token";
 import { makeIntegrationTools } from "./tools/integrations";
@@ -32,6 +33,11 @@ import { makeRunCodeTool } from "./tools/run-code";
 // prompt-injected agent could read /etc/passwd or its own auth.json with no
 // bash tool. See tools/clamped-fs.ts.
 const fileTools = makeClampedFileTools(config.workspaceDir);
+
+// The blocking-question tool: available in EVERY mode (holds no credential,
+// makes no network call). Records the turn's pending question so it rides the
+// terminal `done` frame and Houston renders it as a card in place of the input.
+const askUserTool = makeAskUserTool();
 
 // Integration tools (Composio, platform mode): available whenever this runtime
 // can reach its host with a sandbox token (server mode — local desktop +
@@ -75,6 +81,7 @@ const piBackend = createPiBackend({
   tools: toolSelection.toolNames,
   customTools: [
     ...fileTools,
+    askUserTool,
     ...(runCodeTool ? [runCodeTool] : []),
     ...integrationTools,
   ],

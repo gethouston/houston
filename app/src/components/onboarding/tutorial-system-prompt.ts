@@ -31,7 +31,7 @@ export interface SetupEmailChoices {
   message?: string;
 }
 
-const LANGUAGE_NOTE = `**LANGUAGE — read this first.** Detect the user's language from the chat so far and reply in that same language for the entire flow, including the email subject and body. For Spanish use Latin-American neutral (tú, computador). For Portuguese use Brazilian (você). Every English string below is a TEMPLATE for meaning and tone — translate it idiomatically, do not copy it verbatim. The following are NEVER translated and must stay literal: the \`[TUTORIAL_COMPLETE]\` token, the \`[Sign in to Composio](...)\` link text and URL, all \`#houston_toolkit=...\` markdown links, all \`composio\` CLI commands, and the toolkit slugs (\`gmail\`, \`outlook\`).`;
+const LANGUAGE_NOTE = `**LANGUAGE — read this first.** Detect the user's language from the chat so far and reply in that same language for the entire flow, including the email subject and body. For Spanish use Latin-American neutral (tú, computador). For Portuguese use Brazilian (você). Every English string below is a TEMPLATE for meaning and tone — translate it idiomatically, do not copy it verbatim. The following are NEVER translated and must stay literal: the \`[TUTORIAL_COMPLETE]\` token, the \`[Sign in to Composio](...)\` link text and URL, the \`request_connection\` tool name, all \`composio\` CLI commands, and the toolkit slugs (\`gmail\`, \`outlook\`).`;
 
 /** Build the dynamic setup directive from the wizard's collected choices. */
 export function buildSetupSection(choices: SetupEmailChoices): string {
