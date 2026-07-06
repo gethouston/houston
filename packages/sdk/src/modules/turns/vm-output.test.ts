@@ -129,8 +129,34 @@ test("running is derived from sessionStatus, and boardStatus defaults to null", 
   vm.pushFeedItem("a", "c1", { feed_type: "system_message", data: "hi" });
   expect(snap().running).toBe(false);
   expect(snap().boardStatus).toBe(null); // no board persist yet
+  expect(snap().pendingInteraction).toBe(null); // no interaction yet
   vm.sessionStatus("a", "c1", "running");
   expect(snap().running).toBe(true);
+});
+
+test("a clean settle folds the pending interaction into the VM; turn start clears it", async () => {
+  const { snap, vm } = harness();
+  const interaction = {
+    kind: "question" as const,
+    question: "Which one?",
+    options: [{ id: "a", label: "A" }],
+  };
+  // Settle carrying the interaction: needs_you + the interaction on the VM.
+  await vm.persistBoardStatus("a", "c1", "needs_you", interaction);
+  expect(snap().boardStatus).toBe("needs_you");
+  expect(snap().pendingInteraction).toEqual(interaction);
+
+  // Turn start re-runs the card: running + null clears the stored interaction.
+  await vm.persistBoardStatus("a", "c1", "running", null);
+  expect(snap().boardStatus).toBe("running");
+  expect(snap().pendingInteraction).toBe(null);
+});
+
+test("a clean settle with no interaction lands boardStatus done and no interaction", async () => {
+  const { snap, vm } = harness();
+  await vm.persistBoardStatus("a", "c1", "done", null);
+  expect(snap().boardStatus).toBe("done");
+  expect(snap().pendingInteraction).toBe(null);
 });
 
 test("distinct conversations get distinct scopes", () => {

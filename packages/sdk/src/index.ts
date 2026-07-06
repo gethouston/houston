@@ -144,6 +144,7 @@ export {
   isStoppedByUser,
   MultiplexFeedOutput,
   observeConversation,
+  type PendingInteraction,
   type QueuedMessageVM,
   SEND_IN_FLIGHT_MESSAGE,
   type SessionStatusValue,

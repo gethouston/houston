@@ -347,6 +347,21 @@ export interface UpdateAgent {
 
 // ---------- Agents / agent-data files ----------
 
+export interface InteractionOption {
+  id: string;
+  label: string;
+}
+
+/**
+ * The one thing a mission is waiting on the user for — recorded when the model
+ * ends a turn by asking (ask_user / request_connection). Present drives the
+ * `needs_you` board card and the composer-replacing card; absent means the
+ * mission needs nothing.
+ */
+export type PendingInteraction =
+  | { kind: "question"; question: string; options?: InteractionOption[] }
+  | { kind: "connect"; toolkit: string; reason?: string };
+
 export interface Activity {
   id: string;
   title: string;
@@ -360,6 +375,7 @@ export interface Activity {
   updated_at?: string;
   provider?: string;
   model?: string;
+  pending_interaction?: PendingInteraction;
 }
 
 export interface ActivityUpdate {
@@ -373,6 +389,8 @@ export interface ActivityUpdate {
   routine_run_id?: string;
   provider?: string;
   model?: string;
+  /** Set to record a new pending interaction; `null` clears it explicitly. */
+  pending_interaction?: PendingInteraction | null;
 }
 
 export interface NewActivity {

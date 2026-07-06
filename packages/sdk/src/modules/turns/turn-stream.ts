@@ -118,9 +118,10 @@ export async function streamTurn(
     });
   }
   // Flip the card to "running" for this turn (re-running a needs_you/done
-  // activity must reset it). Fire concurrently so it never delays turn start;
-  // persistBoardStatus surfaces its own failure.
-  void output.persistBoardStatus(agentPath, sessionKey, "running");
+  // activity must reset it) and CLEAR any interaction the prior settle stored
+  // (null) — a re-run is no longer waiting on the user. Fire concurrently so it
+  // never delays turn start; persistBoardStatus surfaces its own failure.
+  void output.persistBoardStatus(agentPath, sessionKey, "running", null);
 
   const key = streamKey(agentPath, sessionKey);
   const nonce = opts.nonce ?? randomNonce();
@@ -249,5 +250,10 @@ export async function streamTurn(
   // the board reads. An externally disposed stream (logout teardown) settles
   // nothing and persists nothing: the client is gone.
   if (sink.terminal)
-    await output.persistBoardStatus(agentPath, sessionKey, sink.terminal);
+    await output.persistBoardStatus(
+      agentPath,
+      sessionKey,
+      sink.terminal,
+      sink.terminalInteraction,
+    );
 }

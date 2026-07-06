@@ -166,7 +166,9 @@ describe("send -> stream -> settle (bridge-fetch streaming path)", () => {
     expect(settled).toEqual({
       running: false,
       sessionStatus: "completed",
-      boardStatus: "needs_you",
+      // A clean turn with nothing outstanding settles to `done`.
+      boardStatus: "done",
+      pendingInteraction: null,
       feed: [
         // The optimistic push — the ONE user bubble (its echo never renders).
         { id: "f0", feed_type: "user_message", data: "Ping" },

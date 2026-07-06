@@ -73,6 +73,11 @@ function adoptReply(s: TurnState, reply: ChatMessage): void {
   }
   s.text = reply.content;
   if (reply.usage) s.usage = reply.usage;
+  // A turn that ended asking the user for something persisted its interaction
+  // (runtime, clean path only). Adopt it BEFORE finishOk so a settle from
+  // history splits to `needs_you` with the interaction — matching the live
+  // `done` frame we missed — instead of collapsing to a false `done`.
+  if (reply.pendingInteraction) s.pendingInteraction = reply.pendingInteraction;
   finishOk(s);
 }
 

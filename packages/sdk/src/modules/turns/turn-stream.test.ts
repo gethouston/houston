@@ -2,6 +2,7 @@ import type {
   ChatMessage,
   EventStreamOptions,
   HoustonEngineClient,
+  PendingInteraction,
   WireFrame,
 } from "@houston/runtime-client";
 import { EngineError } from "@houston/runtime-client";
@@ -80,6 +81,9 @@ function makeOutput() {
   const items: Item[] = [];
   const sessionStatuses: string[] = [];
   const board: string[] = [];
+  // The interaction each board persist carried (parallel to `board`): null on
+  // the "running" start-clear, the captured interaction (or null) on settle.
+  const boardInteractions: Array<PendingInteraction | null | undefined> = [];
   const output: FeedOutput = {
     pushFeedItem: (_a, _s, item) => {
       items.push(item as Item);
@@ -87,11 +91,12 @@ function makeOutput() {
     sessionStatus: (_a, _s, status) => {
       sessionStatuses.push(status);
     },
-    persistBoardStatus: async (_a, _s, status) => {
+    persistBoardStatus: async (_a, _s, status, pendingInteraction) => {
       board.push(status);
+      boardInteractions.push(pendingInteraction);
     },
   };
-  return { items, sessionStatuses, board, output };
+  return { items, sessionStatuses, board, boardInteractions, output };
 }
 
 async function waitFor(cond: () => boolean, ms = 2_000): Promise<void> {
@@ -155,7 +160,44 @@ test("a silent stream close mid-turn reconnects with the cursor and settles on t
   expect(
     (finals(items)[0]?.data as { result?: string } | undefined)?.result,
   ).toBe("Hello");
+  // A clean `done` with NO interaction settles the card to `done`.
+  expect(board).toEqual(["running", "done"]);
+});
+
+test("a clean done carrying a pending interaction settles needs_you and persists the interaction", async () => {
+  const interaction: PendingInteraction = {
+    kind: "question",
+    question: "Which flight?",
+    options: [{ id: "m", label: "Morning" }],
+  };
+  const { engine } = fakeEngine([
+    (o) => {
+      o.onEvent(sync(false, "", 0));
+      o.onEvent({ type: "text", data: "Options:", seq: 1 });
+      o.onEvent({
+        type: "done",
+        data: null,
+        pendingInteraction: interaction,
+        seq: 2,
+      });
+    },
+  ]);
+  const { board, boardInteractions, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-ask",
+    "hi",
+    output,
+    registry,
+    { tuning: fast },
+  );
+
+  // Turn start clears (running + null); the settle lands needs_you and the
+  // interaction rides the terminal persist for the composer card to render.
   expect(board).toEqual(["running", "needs_you"]);
+  expect(boardInteractions).toEqual([null, interaction]);
 });
 
 test("a resync after the turn ended settles from refreshed history, not partial text", async () => {
@@ -209,7 +251,8 @@ test("a resync after the turn ended settles from refreshed history, not partial 
     | undefined;
   expect(final?.result).toBe("Hello world");
   expect(final?.usage?.context_tokens).toBe(42);
-  expect(board).toEqual(["running", "needs_you"]);
+  // Settled from refreshed history (clean, no interaction) → `done`.
+  expect(board).toEqual(["running", "done"]);
 });
 
 test("a resync for a turn that died unpersisted settles from the streamed text", async () => {
@@ -339,7 +382,7 @@ test("observer mode surfaces a running turn (spinner + partial) and settles on d
     registry,
     fast,
   );
-  await waitFor(() => board.includes("needs_you"));
+  await waitFor(() => board.includes("done"));
 
   // The spinner flipped on for the observed turn, then completed.
   expect(sessionStatuses).toEqual(["running", "completed"]);
@@ -349,7 +392,8 @@ test("observer mode surfaces a running turn (spinner + partial) and settles on d
   expect(streaming[0]?.data).toBe("Hi the"); // the sync partial seeded the bubble
   const texts = items.filter((i) => i.feed_type === "assistant_text");
   expect(texts).toEqual([{ feed_type: "assistant_text", data: "Hi there" }]);
-  expect(board).toEqual(["needs_you"]); // terminal persist only, no "running" rewrite
+  // Clean observed done, no interaction → `done`; observer never writes "running".
+  expect(board).toEqual(["done"]);
 });
 
 test("observer mode closes silently on an idle conversation", async () => {
@@ -1312,7 +1356,8 @@ test("a transport-failed send whose turn actually started renders and settles no
   // No misleading transport-error line reached the feed.
   expect(items.map((i) => i.data)).not.toContain("Load failed");
   expect(items.map((i) => i.data)).not.toContain(SEND_LOST_MESSAGE);
-  expect(board).toEqual(["running", "needs_you"]);
+  // Clean `done`, no interaction → `done`.
+  expect(board).toEqual(["running", "done"]);
 });
 
 test("a transport-failed send with no evidence of the turn settles as lost after the verdict window", async () => {

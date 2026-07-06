@@ -102,6 +102,11 @@ export function observeConversation(
       registry.release(key, entry);
     }
     if (sink.terminal)
-      await output.persistBoardStatus(agentPath, sessionKey, sink.terminal);
+      await output.persistBoardStatus(
+        agentPath,
+        sessionKey,
+        sink.terminal,
+        sink.terminalInteraction,
+      );
   })();
 }

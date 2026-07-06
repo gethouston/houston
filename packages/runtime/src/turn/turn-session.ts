@@ -232,6 +232,11 @@ export async function runPiTurn(
       usage,
       providerError,
       fileChanges,
+      // Same clean-only condition as the returned outcome (below): persist the
+      // pending question only when the turn ended without a provider error, so
+      // a reload of this cloud conversation settles to `needs_you`, not a false
+      // `done`. Mirrors exec-turn — only the clean turn carries it.
+      pendingInteraction: providerError ? undefined : interaction.pending,
       turnId,
     });
     if (fileChanges) emit({ type: "file_changes", data: fileChanges });

@@ -171,6 +171,7 @@ export {
   type BoardStatus,
   type FeedOutput,
   MultiplexFeedOutput,
+  type PendingInteraction,
   type SessionStatusValue,
   type TerminalBoardStatus,
 } from "./feed-output";

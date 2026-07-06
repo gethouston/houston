@@ -1,8 +1,13 @@
 import type { ChatMessage } from "@houston/runtime-client";
 import { expect, test } from "vitest";
-import type { FeedOutput } from "./feed-output";
+import type { FeedOutput, PendingInteraction } from "./feed-output";
 import { settleFromHistory, TURN_DIED_MESSAGE } from "./settle-from-history";
-import { finishErr, newTurnState, type TurnState } from "./turn-settle";
+import {
+  finishErr,
+  finishOk,
+  newTurnState,
+  type TurnState,
+} from "./turn-settle";
 
 /**
  * settleFromHistory — the "terminal frame was lost" settle. With a turnId the
@@ -57,7 +62,9 @@ test("matches the assistant reply by turnId and adopts its text + usage", () => 
     "t-1",
   );
   expect(s.settled).toBe(true);
-  expect(s.terminal).toBe("needs_you");
+  // New semantics: a clean settle with NO pending interaction lands on `done`
+  // (the reloaded reply carries none — the terminal `done` frame was lost).
+  expect(s.terminal).toBe("done");
   expect(items).toContainEqual({
     feed_type: "assistant_text",
     data: "Full reply",
@@ -68,6 +75,34 @@ test("matches the assistant reply by turnId and adopts its text + usage", () => 
   };
   expect(final.result).toBe("Full reply");
   expect(final.usage).toEqual(usage);
+  expect(statuses).toEqual([["completed", undefined]]);
+});
+
+test("a persisted pendingInteraction recovers on reload: needs_you + the interaction", () => {
+  const interaction: PendingInteraction = {
+    kind: "question",
+    question: "Which date?",
+    options: [{ id: "a", label: "Fri" }],
+  };
+  const { s, statuses } = run(
+    [
+      { role: "user", content: "book it", ts: 1, turnId: "t-1" },
+      {
+        role: "assistant",
+        content: "which date?",
+        ts: 2,
+        turnId: "t-1",
+        pendingInteraction: interaction,
+      },
+    ],
+    "t-1",
+  );
+  expect(s.settled).toBe(true);
+  // The live `done` was missed; recovering the persisted interaction lands the
+  // card on needs_you (not a false `done`) and carries it for the terminal
+  // persist — the element-3 machinery reads s.pendingInteraction from here.
+  expect(s.terminal).toBe("needs_you");
+  expect(s.pendingInteraction).toEqual(interaction);
   expect(statuses).toEqual([["completed", undefined]]);
 });
 
@@ -129,7 +164,7 @@ test("legacy: a rejected guard settles the streamed accumulation as completed", 
     undefined,
     { guard: false, streamed: "what we streamed" },
   );
-  expect(s.terminal).toBe("needs_you");
+  expect(s.terminal).toBe("done"); // clean settle, no interaction
   expect(items).toContainEqual({
     feed_type: "assistant_text",
     data: "what we streamed",
@@ -152,7 +187,7 @@ test("legacy: a rejected guard with NOTHING streamed settles as the dead-turn er
 
 test("a failed history reload (null) still settles: streamed text as completed, nothing as error", () => {
   const withText = run(null, "t-1", { streamed: "partial tail" });
-  expect(withText.s.terminal).toBe("needs_you");
+  expect(withText.s.terminal).toBe("done"); // clean settle, no interaction
   expect(withText.items).toContainEqual({
     feed_type: "assistant_text",
     data: "partial tail",
@@ -160,6 +195,41 @@ test("a failed history reload (null) still settles: streamed text as completed, 
 
   const withoutText = run(null, "t-1");
   expect(withoutText.s.terminal).toBe("error");
+});
+
+/**
+ * finishOk — the clean-settle board split (element 3). A turn that ended with
+ * a captured pending interaction lands `needs_you` (and the interaction rides
+ * the persist via the sink); one with nothing outstanding lands `done`. The
+ * session status is `completed` either way.
+ */
+
+test("finishOk without a captured interaction settles the card to done", () => {
+  const { statuses, output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity-done", output);
+  s.text = "all set";
+  finishOk(s);
+  expect(s.settled).toBe(true);
+  expect(s.terminal).toBe("done");
+  expect(s.pendingInteraction).toBe(null);
+  expect(statuses).toEqual([["completed", undefined]]);
+});
+
+test("finishOk with a captured interaction settles needs_you and keeps the interaction", () => {
+  const { statuses, output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity-ask", output);
+  s.text = "which one?";
+  const interaction: PendingInteraction = {
+    kind: "question",
+    question: "Pick a flight?",
+    options: [{ id: "a", label: "Morning" }],
+  };
+  // The `done` frame stashes the interaction before finishOk (turn-frames.ts).
+  s.pendingInteraction = interaction;
+  finishOk(s);
+  expect(s.terminal).toBe("needs_you");
+  expect(s.pendingInteraction).toEqual(interaction);
+  expect(statuses).toEqual([["completed", undefined]]);
 });
 
 /**

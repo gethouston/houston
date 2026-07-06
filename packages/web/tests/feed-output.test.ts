@@ -84,13 +84,24 @@ test("sessionStatus emits a SessionStatus event", () => {
   });
 });
 
-test("persistBoardStatus forwards to the injected setter", async () => {
-  const seen: Array<[string, string, string]> = [];
-  const out = createBusFeedOutput(async (a, s, status) => {
-    seen.push([a, s, status]);
+test("persistBoardStatus forwards status + interaction to the injected setter", async () => {
+  const seen: Array<[string, string, string, unknown]> = [];
+  const out = createBusFeedOutput(async (a, s, status, pi) => {
+    seen.push([a, s, status, pi]);
   });
-  await out.persistBoardStatus("Houston/Bo", "c1", "needs_you");
-  expect(seen).toEqual([["Houston/Bo", "c1", "needs_you"]]);
+  const interaction = {
+    kind: "question" as const,
+    question: "Which one?",
+    options: [{ id: "a", label: "A" }],
+  };
+  // A settle carrying an interaction forwards it verbatim...
+  await out.persistBoardStatus("Houston/Bo", "c1", "needs_you", interaction);
+  // ...and one with no interaction (omitted) forwards `null` (the clear).
+  await out.persistBoardStatus("Houston/Bo", "c1", "done");
+  expect(seen).toEqual([
+    ["Houston/Bo", "c1", "needs_you", interaction],
+    ["Houston/Bo", "c1", "done", null],
+  ]);
 });
 
 test("a failing board persist surfaces in the feed, not silently", async () => {

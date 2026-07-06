@@ -1,4 +1,4 @@
-import type { WireFrame } from "@houston/runtime-client";
+import type { PendingInteraction, WireFrame } from "@houston/runtime-client";
 import type { TerminalBoardStatus } from "./feed-output";
 import { reloadAndSettle } from "./settle-from-history";
 import { applyTurnFrame } from "./turn-frames";
@@ -46,6 +46,10 @@ export class TurnSink {
   }
   get terminal(): TerminalBoardStatus | null {
     return this.s.terminal;
+  }
+  /** The interaction a clean turn settled on (rides the terminal persist), or null. */
+  get terminalInteraction(): PendingInteraction | null {
+    return this.s.pendingInteraction;
   }
   /** Whether a turn was ever observed in flight on this subscription. */
   get active(): boolean {
