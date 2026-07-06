@@ -1,7 +1,7 @@
 import {
   AGENT_COLORS,
   agentColorId,
-  colorHex,
+  colorValue,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSub,
@@ -55,7 +55,7 @@ export function AgentSidebarColorMenu({
               <span
                 aria-hidden="true"
                 className="size-3 rounded-full"
-                style={{ backgroundColor: colorHex(entry) }}
+                style={{ backgroundColor: colorValue(entry) }}
               />
               {t(
                 AGENT_COLOR_LABEL_KEYS[entry.id] ??

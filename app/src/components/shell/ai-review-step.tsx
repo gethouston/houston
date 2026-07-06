@@ -1,7 +1,7 @@
 import {
   AGENT_COLORS,
   cn,
-  colorHex,
+  colorValue,
   DialogTitle,
   HoustonAvatar,
   Input,
@@ -54,7 +54,7 @@ export function AiReviewStep({
             <HoustonAvatar color={resolvedColor} diameter={72} />
             <div className="flex items-center gap-2">
               {AGENT_COLORS.map((c) => {
-                const hex = colorHex(c);
+                const swatch = colorValue(c);
                 const isSelected =
                   color === c.id || color === c.light || color === c.dark;
                 return (
@@ -68,7 +68,7 @@ export function AiReviewStep({
                         ? "ring-2 ring-offset-2 ring-foreground/30"
                         : "hover:scale-110",
                     )}
-                    style={{ backgroundColor: hex }}
+                    style={{ backgroundColor: swatch }}
                   >
                     {isSelected && <Check className="h-3 w-3 text-white" />}
                   </button>

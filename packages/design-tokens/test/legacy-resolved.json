@@ -40,7 +40,14 @@
     "ht-price-high": "#e02e2a",
     "ht-cap-fg": "#7c3aed",
     "ht-cap-bg": "rgba(124, 58, 237, 0.1)",
-    "ht-star": "#e0ac00"
+    "ht-star": "#e0ac00",
+    "ht-agent-charcoal": "#1a1a1a",
+    "ht-agent-forest": "#1b6b3a",
+    "ht-agent-navy": "#1e4d8c",
+    "ht-agent-purple": "#5b21b6",
+    "ht-agent-crimson": "#a3261a",
+    "ht-agent-orange": "#b45309",
+    "ht-agent-golden": "#a16207"
   },
   "dark": {
     "ht-accent": "rgba(255, 255, 255, 0.08)",
@@ -83,6 +90,13 @@
     "ht-price-high": "#ef4444",
     "ht-cap-fg": "#a78bfa",
     "ht-cap-bg": "rgba(167, 139, 250, 0.16)",
-    "ht-star": "#eab308"
+    "ht-star": "#eab308",
+    "ht-agent-charcoal": "#d4d4d4",
+    "ht-agent-forest": "#4ade80",
+    "ht-agent-navy": "#60a5fa",
+    "ht-agent-purple": "#a78bfa",
+    "ht-agent-crimson": "#f87171",
+    "ht-agent-orange": "#fb923c",
+    "ht-agent-golden": "#fbbf24"
   }
 }
