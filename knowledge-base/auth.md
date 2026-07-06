@@ -328,6 +328,21 @@ How the SDK subprocess runs (`backend.ts`):
   SDK at the `<dir of sidecar>/claude` sibling via `pathToClaudeCodeExecutable`.
   Which images carry vs strip the ~250 MB binary (and the deferred desktop
   externalBin wiring) is in `convergence/README.md`.
+  - **Placeholder guard (silent-hang bug fixed 2026-07):** `build.rs` stages a
+    stub in `binaries/claude-<triple>` when the real binary isn't compiled in
+    (any local/dev bundle built WITHOUT `scripts/build-host-sidecar.sh`; release
+    CI always stages the real one and `build.rs` panics if it can't). The stub
+    was historically `sleep 2147483647` — so a debug bundle that spawned the
+    sidecar handed the SDK a sleep-forever "claude" and EVERY Claude turn hung on
+    "mission in progress" with no output and no error (`prompt()` awaits a
+    generator that never yields → no catch, no `done`). Two guards now: (1) the
+    stub EXITS NON-ZERO instead of sleeping (build.rs, like the frpc stub); (2)
+    `resolveClaudeExecutable` sniffs the sibling's first bytes and throws
+    `ClaudeBackendUnavailableError` for a `#!`/`@echo` stub BEFORE spawning, so
+    the turn fails loud (surfaced via exec-turn's catch → `error` frame) instead
+    of hanging. To actually USE Claude in a local bundle, run
+    `scripts/build-host-sidecar.sh <triple>` first (stages the real binary); the
+    external-host dev loop (`pnpm dev:host`, Node) self-resolves and needs nothing.
 
 **Cloud per-turn keeps Anthropic OFF** (ToS). The multi-tenant per-turn Cloud Run
 image strips the `claude` binary and the catalog doesn't advertise `anthropic`;
