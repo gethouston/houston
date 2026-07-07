@@ -1,19 +1,20 @@
 /**
  * One provider CARD in the marketplace grid (Providers tab). A colorful,
- * recognition-first tile mirroring the Integrations tab's `AppRow`: a full-color
- * brand tile + name + a muted secondary line (the friendly cost story, e.g.
- * "Your Claude subscription", NOT a spec-heavy model count — non-technical users
- * care about the money, and the modal still lists models) + a single
- * right-aligned action: a Connect pill when disconnected (which, while a connect
- * is in flight, flips to Cancel on hover so a stuck sign-in can be aborted) or a
- * ghost Sign out when connected (opening the shared confirm). The card body is
- * the open affordance: clicking anywhere but the action button opens the provider
- * modal (`onOpen`); the action button stops propagation so it never doubles as an
- * open. Keyboard-focusable, nothing hover-only.
+ * recognition-first card mirroring the Integrations tab's `AppRow`: a boxless
+ * full-color brand mark + name + a secondary line leading with the live model
+ * count in bold (`{N} models`), a middot, then the muted friendly cost story
+ * (e.g. "Your Claude subscription") + two right-aligned controls: an
+ * always-visible info button that opens the provider modal (the explicit
+ * affordance — body click alone was not discoverable) and a Connect pill when
+ * disconnected (which, while a connect is in flight, flips to Cancel on hover so
+ * a stuck sign-in can be aborted) or a ghost Sign out when connected (opening
+ * the shared confirm). The card body still opens the modal on click; both
+ * buttons stop propagation so they never double as an open.
+ * Keyboard-focusable, nothing hover-only.
  */
 
 import { AsyncButton, Button } from "@houston-ai/core";
-import { Loader2, X } from "lucide-react";
+import { Info, Loader2, X } from "lucide-react";
 import type { KeyboardEvent, MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderInfo } from "../../lib/providers";
@@ -21,6 +22,12 @@ import { BrandMark } from "./brand-mark";
 
 interface ProviderRowProps {
   provider: ProviderInfo;
+  /**
+   * Live model count for this provider from the catalog. Rendered bold as
+   * `{N} models` at the head of the secondary line; when 0 (unknown) the line is
+   * the description alone.
+   */
+  modelCount: number;
   /** Muted one-line secondary: the friendly cost prose or provider description. */
   description: string;
   connected: boolean;
@@ -34,6 +41,7 @@ interface ProviderRowProps {
 
 export function ProviderRow({
   provider,
+  modelCount,
   description,
   connected,
   connecting,
@@ -71,15 +79,36 @@ export function ProviderRow({
       onKeyDown={onRowKeyDown}
       className="flex cursor-pointer items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 text-left transition-colors hover:bg-foreground/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
     >
-      <BrandMark providerId={provider.id} size="md" />
+      <BrandMark providerId={provider.id} size="lg" />
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-[13px] font-medium text-foreground">
           {provider.name}
         </span>
         <span className="truncate text-[11px] text-muted-foreground">
+          {modelCount > 0 && (
+            <>
+              <span className="font-medium text-foreground">
+                {t("card.models", { count: modelCount })}
+              </span>
+              {" · "}
+            </>
+          )}
           {description}
         </span>
       </div>
+
+      {/* An always-visible, explicit "details" affordance: the body click alone
+          was too discoverable-by-accident-only. Opens the same provider modal. */}
+      <Button
+        size="icon-sm"
+        variant="ghost"
+        className="shrink-0 text-muted-foreground"
+        aria-label={t("card.details")}
+        title={t("card.details")}
+        onClick={stop(() => onOpen(provider))}
+      >
+        <Info className="size-4" aria-hidden="true" />
+      </Button>
 
       {connected ? (
         <Button

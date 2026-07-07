@@ -98,13 +98,14 @@ export function ModelsBrowser({
           framing lines: no bottom divider, and `shadow-none!` kills the inset top
           sheen `bg-popover` carries in the futuristic theme. An opaque
           `bg-background` slab here broke the aurora glass screen in dark mode,
-          and a permanent fill looked heavy at rest. `rounded-2xl` makes the fill
-          read as a floating panel (the bg + its backdrop blur follow the
-          radius). */}
+          and a permanent fill looked heavy at rest. `rounded-b-2xl` rounds only
+          the bottom edge — the pinned bar sits flush under the masthead, so a
+          rounded top read as a detached floating slab; the bg + its backdrop
+          blur follow the radius. */}
       <div
         className={cn(
           "sticky top-0 z-20 transition-colors",
-          stuck ? "rounded-2xl bg-popover shadow-none!" : "",
+          stuck ? "rounded-b-2xl bg-popover shadow-none!" : "",
         )}
       >
         <div className="flex flex-wrap items-center gap-3 pt-1 pb-3">

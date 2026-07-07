@@ -2,6 +2,7 @@ import { cn } from "@houston-ai/core";
 import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections";
+import type { HubCatalog } from "../../lib/ai-hub/catalog-types";
 import {
   providerCostLine,
   providerDescription,
@@ -15,13 +16,14 @@ import {
   searchProviders,
 } from "./provider-filtering";
 import { ProviderFilters } from "./provider-filters";
-import { groupProviders } from "./provider-grouping";
+import { groupProviders, providerModels } from "./provider-grouping";
 import { ProviderRow } from "./provider-row";
 import { useStuckOnScroll } from "./use-stuck-on-scroll";
 
 interface ProviderListProps {
   providers: readonly ProviderInfo[];
   connections: ProviderConnections;
+  catalog: HubCatalog;
   onOpen: (provider: ProviderInfo) => void;
 }
 
@@ -63,9 +65,9 @@ function ProviderEmpty() {
  * The provider marketplace: a sticky search + quick-filter bar, then a colorful
  * 2-column CARD GRID — Connected first (featured pinned to the front), then
  * Available. The grid mirrors the Integrations tab so the two surfaces read as
- * one system: recognition over specs — a full-color brand tile the eye lands on,
- * the name, and the friendly cost story, not a spec-heavy model count. Each card
- * opens the provider modal on body click (see `ProviderRow`). Cards render
+ * one system: recognition first — a big full-color brand mark the eye lands on,
+ * the name, then the bold live model count and the friendly cost story. Each
+ * card opens the provider modal on body click or its info button. Cards render
  * statically (no `layout` animation) so the grid never reflows when a modal's
  * scroll-lock changes the content width; the parent's tab crossfade is the only
  * entrance motion, and a connect that flips a provider between groups just
@@ -74,6 +76,7 @@ function ProviderEmpty() {
 export function ProviderList({
   providers,
   connections,
+  catalog,
   onOpen,
 }: ProviderListProps) {
   const { t } = useTranslation("aiHub");
@@ -103,13 +106,15 @@ export function ProviderList({
     connections.isConnected,
   );
 
-  // Secondary line: the friendly cost prose (the money story a non-technical
-  // user cares about), falling back to the one-line provider description for the
-  // uncurated providers that carry no cost line.
+  // Secondary line: the live model count (bold, in the card), then the friendly
+  // cost prose (the money story a non-technical user cares about), falling back
+  // to the one-line provider description for the uncurated providers that carry
+  // no cost line.
   const row = (provider: ProviderInfo) => (
     <ProviderRow
       key={provider.id}
       provider={provider}
+      modelCount={providerModels(catalog, provider).length}
       description={
         providerCostLine(provider.id) ?? providerDescription(provider.id)
       }
@@ -132,11 +137,13 @@ export function ProviderList({
           Mirrors the Models tab's `ModelsBrowser`: transparent at rest, fading
           in the frosted-glass `bg-popover` fill (blur masks the scrolling rows)
           only once pinned — same offset (`top-0`), z-index (`z-20`), rounding
-          (`rounded-2xl`) and `shadow-none!` so the two tabs feel identical. */}
+          (`rounded-b-2xl`: the pinned bar sits flush under the masthead, so only
+          its bottom edge floats over content) and `shadow-none!` so the two tabs
+          feel identical. */}
       <div
         className={cn(
           "sticky top-0 z-20 transition-colors",
-          stuck ? "rounded-2xl bg-popover shadow-none!" : "",
+          stuck ? "rounded-b-2xl bg-popover shadow-none!" : "",
         )}
       >
         <div className="pt-1 pb-3">
@@ -178,7 +185,7 @@ function ProviderListSkeleton({ count }: { count: number }) {
           key={i}
           className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5"
         >
-          <div className="size-8 shrink-0 animate-pulse rounded-lg bg-accent" />
+          <div className="size-10 shrink-0 animate-pulse rounded-lg bg-accent" />
           <div className="flex flex-1 flex-col gap-1.5">
             <div className="h-3 w-24 animate-pulse rounded bg-accent" />
             <div className="h-2.5 w-32 animate-pulse rounded bg-accent" />
