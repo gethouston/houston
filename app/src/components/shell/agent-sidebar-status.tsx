@@ -1,5 +1,4 @@
 import { Badge, cn, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
-import type { CSSProperties } from "react";
 
 interface AgentSidebarIconProps {
   color?: string;
@@ -22,9 +21,8 @@ export function AgentSidebarIcon({
     <span
       className={cn(
         "size-6 shrink-0 rounded-full flex items-center justify-center",
-        "card-running-glow",
+        "avatar-running-ring",
       )}
-      style={{ "--glow-bg": "var(--color-sidebar)" } as CSSProperties}
       title={runningLabel}
     >
       {avatar}
