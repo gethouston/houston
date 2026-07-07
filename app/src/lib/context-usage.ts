@@ -61,6 +61,11 @@ export function sessionContextUsage(
  * The result is floored at the observed peak, so even a mis-catalogued ceiling
  * can't make the indicator read over 100% — that guarantee lives here in the
  * data layer, with the component's clamp as defense in depth.
+ *
+ * The snap-up rule here is mirrored by `effectiveModelWindow` in
+ * `@houston/protocol`, which the runtime's autocompact uses — same table of
+ * `{ default, max }` numbers (see `getContextWindowConfig`), same math, so the
+ * gauge and the engine's compaction point stay in lockstep.
  */
 export function effectiveContextWindow(
   cfg: ContextWindowConfig | undefined,
@@ -73,9 +78,12 @@ export function effectiveContextWindow(
 
 /**
  * How full the context window is, 0-100, or `null` when usage or the window
- * isn't known. Rounded and clamped so the displayed gauge and the runtime's
- * trigger agree on the same number. Shared by `ContextIndicator` (display) and
- * `shouldAutocompactForSession` (the trigger decision).
+ * isn't known. Rounded and clamped for the displayed gauge (`ContextIndicator`).
+ * The runtime owns the autocompact TRIGGER separately (`needsAutocompact` in
+ * `packages/runtime`), but the two now agree on the denominator: both size the
+ * window from the shared `@houston/protocol` table (`effectiveModelWindow` there
+ * mirrors `effectiveContextWindow` above), so the gauge and the compaction point
+ * line up.
  */
 export function contextFillPercent(
   usage: TokenUsage | null,

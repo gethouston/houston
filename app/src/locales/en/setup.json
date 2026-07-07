@@ -32,7 +32,8 @@
     "missionLabel": "Set up: {{title}}",
     "upNext": "Up next",
     "errors": {
-      "setupFailed": "We couldn't finish setting up your workspace. Please try again."
+      "setupFailed": "We couldn't finish setting up your workspace. Please try again.",
+      "noProviderModel": "Connect an AI provider before creating your assistant."
     },
     "welcome": {
       "title": "Welcome to Houston",
@@ -77,23 +78,9 @@
           "send": "Send your first email"
         }
       },
-      "brain": {
-        "title": "Log in to your AI subscription",
-        "body": "Choose the AI you already pay for. You bring your own subscription, so Houston never sees your password or your bill.",
-        "continue": "Create my assistant",
-        "creating": "Creating",
-        "continueHint": "Houston will create your assistant and open the next mission."
-      },
-      "providerLogin": {
-        "title": "Log in to {{provider}}",
-        "body": "Sign in once so your agent can use {{provider}} on your behalf.",
-        "loginButton": "Log in to {{provider}}",
-        "waiting": "Waiting for {{provider}}...",
-        "cancel": "Cancel",
-        "connected": {
-          "title": "You're all set",
-          "body": "We found {{provider}} on this computer. You're signed in with your own subscription, so there's nothing to set up here."
-        }
+      "connect": {
+        "title": "Connect your AI",
+        "body": "Choose the AI you already pay for and sign in. You bring your own subscription, so Houston never sees your password or your bill."
       },
       "meet": {
         "title": "Create your first agent",

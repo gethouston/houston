@@ -197,10 +197,11 @@ async function handle(
   if (method === "GET" && path === "/v1/capabilities") {
     return json(res, 200, deps.capabilities);
   }
-  // pi-ai's full static model catalog (every runnable provider + model),
-  // profile-gated. Static + not user-scoped, so it rides the public meta surface
-  // next to capabilities — the picker/AI-Models tab read it to shape themselves.
-  if (handleCatalog(deps.capabilities, method, path, res)) return;
+  // pi-ai's full static model catalog (every runnable provider + model), the
+  // SAME on every deployment. Static + not user-scoped, so it rides the public
+  // meta surface next to capabilities — the picker/AI-Models tab read it to
+  // shape themselves.
+  if (handleCatalog(method, path, res)) return;
 
   // Sandbox-facing credential serve (HMAC sandbox token, not a user JWT).
   if (await handleSandboxCredential(deps, method, path, url, req, res)) return;

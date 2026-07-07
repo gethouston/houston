@@ -423,15 +423,6 @@ export function WorkspaceShell({
                 onEnter: () => setViewMode("dashboard"),
               },
               {
-                title: t("shell:uiTour.steps.appTour.title"),
-                body: t("shell:uiTour.steps.appTour.body"),
-                targetSelector: "[data-tour-target='appTour']",
-                onEnter: () => {
-                  setCreateAgentDialogOpen(false);
-                  setViewMode(DEFAULT_TAB_ID);
-                },
-              },
-              {
                 title: t("shell:uiTour.steps.newAgent.title"),
                 body: t("shell:uiTour.steps.newAgent.body"),
                 targetSelector: "[data-tour-target='newAgent']",
@@ -447,6 +438,15 @@ export function WorkspaceShell({
                 spotlightPadding: 4,
                 placement: "viewport-right",
                 onEnter: () => setCreateAgentDialogOpen(true),
+              },
+              {
+                title: t("shell:uiTour.steps.appTour.title"),
+                body: t("shell:uiTour.steps.appTour.body"),
+                targetSelector: "[data-tour-target='appTour']",
+                onEnter: () => {
+                  setCreateAgentDialogOpen(false);
+                  setViewMode(DEFAULT_TAB_ID);
+                },
               },
               {
                 title: t("shell:uiTour.steps.outro.title"),

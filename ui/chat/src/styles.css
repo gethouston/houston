@@ -1,3 +1,14 @@
 /* @houston-ai/chat — Tell Tailwind to scan this package's components */
 @source "./ai-elements";
 @source ".";
+
+/* ChatInteractionCard step swap: content fades, the card frame + input stay put.
+   Gated at the call site by the `motion-safe:` variant (prefers-reduced-motion). */
+@keyframes interaction-step-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

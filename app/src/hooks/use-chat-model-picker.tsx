@@ -1,9 +1,9 @@
 /**
  * The interaction half of `ChatModelSelector`: owns the popover open state and
- * the select / connect / favorite handlers, and wraps the derived view-models
- * (`usePickerViewModels`) into the single object the container's JSX renders.
- * Split from both the component and the derivation hook so each stays under the
- * file-size budget.
+ * the select handler, wires the "Connect more providers…" footer to the AI Hub,
+ * and wraps the derived view-models (`usePickerViewModels`) into the single
+ * object the container's JSX renders. Split from both the component and the
+ * derivation hook so each stays under the file-size budget.
  */
 
 import {
@@ -17,37 +17,23 @@ import { useTranslation } from "react-i18next";
 import { buildLabels } from "../components/chat-model-selector-labels";
 import { ProviderGlyph } from "../components/shell/provider-logos";
 import { decodeModelPickerId } from "../lib/chat-model-picker-ids";
-import {
-  getConnectProviders,
-  getProvider,
-  providerGatewayIds,
-} from "../lib/providers";
-import { useModelFavorites } from "./use-model-favorites";
-import {
-  type PickerConnectContext,
-  usePickerViewModels,
-} from "./use-picker-view-models";
-import { useProviderConnections } from "./use-provider-connections";
+import { useUIStore } from "../stores/ui";
+import { usePickerViewModels } from "./use-picker-view-models";
 
 /** Everything `ChatModelSelector`'s JSX needs to render the picker. */
 export interface ChatModelPicker {
   isOpen: boolean;
   setOpen: (next: boolean) => void;
   displayLabel: string;
-  /** The current model's provider, so the rail opens focused on it. */
-  defaultProviderId: string;
   models: ModelPickerModel[];
   providers: ModelPickerProvider[];
-  favorites: string[];
-  recents: string[];
   selectedId: string;
   catalogState: ReturnType<typeof usePickerViewModels>["catalogState"];
   labels: Partial<ModelPickerLabels>;
   onSelect: (id: string) => void;
-  onToggleFavorite: (id: string) => Promise<void>;
-  onConnect: (providerId: string) => void;
+  /** Opens the AI Hub, the app's provider-connection surface. */
+  onConnectMore: () => void;
   renderProviderIcon: (providerId: string, className?: string) => ReactNode;
-  dialogProps: ReturnType<typeof useProviderConnections>["dialogProps"];
 }
 
 /** Render a provider's glyph in a square, size-following wrapper. */
@@ -78,9 +64,7 @@ export function useChatModelPicker(opts: {
 }): ChatModelPicker {
   const { provider, model, onSelect, open, onOpenChange } = opts;
   const { t } = useTranslation("chat");
-  const { favorites, recents, toggleFavorite, pushRecent } =
-    useModelFavorites();
-  const connections = useProviderConnections();
+  const setViewMode = useUIStore((s) => s.setViewMode);
 
   // Merge controlled + uncontrolled open so selecting a row closes the picker
   // even when no parent owns the state (the old dropdown auto-closed on pick).
@@ -100,24 +84,19 @@ export function useChatModelPicker(opts: {
     (id: string) => {
       const decoded = decodeModelPickerId(id);
       onSelect(decoded.provider, decoded.model);
-      void pushRecent(id);
       setOpen(false);
     },
-    [onSelect, pushRecent, setOpen],
+    [onSelect, setOpen],
   );
 
-  // Reuse the AI Hub's connect flow (OAuth / api-key / local dialogs). The two
-  // OpenCode gateways collapse into one merged account whose key fans out to
-  // both, so map the picker's per-gateway id back to that connect card.
-  const connect = connections.connect;
-  const ctx = view.connectContext;
-  const handleConnect = useCallback(
-    (providerId: string) => {
-      const target = resolveConnectTarget(providerId, ctx);
-      if (target) connect(target);
-    },
-    [connect, ctx],
-  );
+  // "Connect more providers…" leaves chat for the AI Hub — the one surface that
+  // lists every provider and owns the full connect flow (OAuth / api-key /
+  // local). The per-provider inline connect cards are gone: disconnected
+  // providers never appear in the picker anymore.
+  const onConnectMore = useCallback(() => {
+    setOpen(false);
+    setViewMode("ai-hub");
+  }, [setOpen, setViewMode]);
 
   const labels = useMemo<Partial<ModelPickerLabels>>(() => buildLabels(t), [t]);
 
@@ -125,34 +104,13 @@ export function useChatModelPicker(opts: {
     isOpen,
     setOpen,
     displayLabel: view.displayLabel,
-    defaultProviderId: provider,
     models: view.models,
     providers: view.providers,
-    favorites,
-    recents,
     selectedId: view.selectedId,
     catalogState: view.catalogState,
     labels,
     onSelect: handleSelect,
-    onToggleFavorite: toggleFavorite,
-    onConnect: handleConnect,
+    onConnectMore,
     renderProviderIcon,
-    dialogProps: connections.dialogProps,
   };
-}
-
-/** Map a picker gateway id back to the connect card that authenticates it. */
-function resolveConnectTarget(
-  providerId: string,
-  ctx: PickerConnectContext,
-): ReturnType<typeof getProvider> {
-  const connectProviders = getConnectProviders({
-    newEngine: ctx.newEngine,
-    desktop: ctx.desktop,
-    capabilities: ctx.providerCapabilities,
-  });
-  return (
-    connectProviders.find((p) => providerGatewayIds(p).includes(providerId)) ??
-    getProvider(providerId)
-  );
 }

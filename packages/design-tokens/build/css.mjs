@@ -8,7 +8,11 @@ const HEADER = `/**
  * These are the same --ht-* variable names the app and @houston-ai/* packages
  * already consume; @theme (in @houston-ai/core) re-exports them to Tailwind's
  * --color-* utilities. Light lives on :root, dark on [data-theme="dark"] —
- * mirroring how app/src/lib/theme.ts toggles the theme.
+ * mirroring how app/src/lib/theme.ts toggles the theme. The light values are
+ * ALSO emitted under [data-theme="light"] so any subtree can pin the light look
+ * regardless of the app theme (e.g. the sign-in card): custom properties
+ * inherit, so a scoped re-declaration re-resolves every var(--ht-*) — and thus
+ * every Tailwind --color-* utility — inside that subtree.
  */`;
 
 function block(selector, entries) {
@@ -26,6 +30,8 @@ export function buildCss(light, dark) {
     HEADER,
     "",
     block(":root", colors(light)),
+    "",
+    block('[data-theme="light"]', colors(light)),
     "",
     block('[data-theme="dark"]', colors(dark)),
     "",

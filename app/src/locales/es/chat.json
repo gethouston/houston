@@ -5,7 +5,20 @@
     "dropTitle": "Suelta tus archivos",
     "dropDescription": "Suéltalos aquí para añadirlos a la conversación",
     "imagePasteUnavailable": "No se pudo leer la imagen pegada. Prueba a arrastrar el archivo.",
-    "addFiles": "Agregar archivos"
+    "addFiles": "Agregar archivos",
+    "dictation": {
+      "start": "Iniciar dictado por voz",
+      "stop": "Detener e insertar",
+      "cancel": "Cancelar",
+      "recording": "Grabando",
+      "transcribing": "Transcribiendo...",
+      "setupTitle": "Configurar dictado por voz",
+      "setupBody": "Descarga única de unos {{sizeMb}} MB.",
+      "setupConfirm": "Descargar",
+      "setupProgress": "Descargando... {{pct}}%",
+      "micDenied": "Houston necesita acceso al micrófono. Permítelo en la configuración del sistema y vuelve a intentarlo.",
+      "noMic": "No se encontró ningún micrófono."
+    }
   },
   "attribution": {
     "you": "Tú"
@@ -23,6 +36,16 @@
   "empty": {
     "title": "Empieza una conversación",
     "description": "Escribe un mensaje para hablar con tu asistente."
+  },
+  "questionCard": {
+    "placeholder": "Escribe tu respuesta...",
+    "send": "Enviar",
+    "back": "Atrás",
+    "forward": "Siguiente",
+    "progress": "{{current}} de {{total}}"
+  },
+  "interaction": {
+    "connectedLine": "Conectaste {{name}}."
   },
   "errors": {
     "sessionStart": "No se pudo iniciar la sesión: {{error}}",
@@ -62,6 +85,16 @@
     "signedIn": "Conectado",
     "signIn": "Iniciar sesión"
   },
+  "modeSelector": {
+    "mode": "Modo",
+    "modeValue": "Modo: {{mode}}",
+    "doer": "Ejecutor",
+    "doerDescription": "Hace las cosas y te pregunta si tiene dudas.",
+    "planner": "Planificador",
+    "plannerDescription": "Primero escribe un plan para que lo apruebes. No hace cambios.",
+    "autopilot": "Piloto automático",
+    "autopilotDescription": "Termina la tarea por su cuenta con lo que tiene. No hace preguntas."
+  },
   "modelSelector": {
     "selectModel": "Elige un modelo",
     "model": "Modelo",
@@ -73,56 +106,25 @@
       "low": "Bajo",
       "medium": "Medio",
       "high": "Alto",
-      "xhigh": "Muy alto",
-      "max": "Máximo"
+      "xhigh": "Muy alto"
     },
     "effortDescriptions": {
       "low": "Más rápido, menos análisis.",
       "medium": "Equilibrio entre velocidad y profundidad.",
       "high": "Análisis más profundo para tareas difíciles.",
-      "xhigh": "Ideal para tareas complejas.",
-      "max": "Análisis máximo, sin límite de tokens."
+      "xhigh": "Ideal para tareas complejas."
     },
     "picker": {
-      "searchPlaceholder": "Busca modelos, proveedores, capacidades…",
-      "recent": "Recientes",
-      "favorites": "Favoritos",
-      "results": "Resultados",
-      "all": "Todos los modelos",
-      "notConnected": "Sin conexión",
-      "connect": "Conectar",
-      "sort": "Ordenar",
-      "sortRelevance": "Relevancia",
-      "sortPrice": "Precio · de menor a mayor",
-      "sortContext": "Contexto · de mayor a menor",
-      "sortNewest": "Más recientes primero",
-      "filters": "Filtros",
-      "capabilities": "Capacidades",
-      "price": "Precio",
-      "clearFilters": "Limpiar filtros",
-      "favoritesOnly": "Solo favoritos",
-      "free": "Gratis",
-      "priceFree": "Gratis",
-      "priceLow": "$ Económico",
-      "priceMid": "$$ Medio",
-      "priceHigh": "$$$ Premium",
-      "empty": "No hay modelos que coincidan.",
-      "emptyHint": "Quita un filtro o prueba otro término.",
-      "loading": "Obteniendo el catálogo más reciente…",
-      "offline": "Mostrando el catálogo en caché. Los precios y los modelos nuevos pueden estar desactualizados.",
-      "capVision": "Visión",
-      "capReasoning": "Razonamiento",
-      "capTools": "Herramientas",
-      "capImageGen": "Generación de imágenes",
-      "detailContext": "Contexto",
-      "detailCapabilities": "Capacidades",
-      "contextLow": "Bajo",
-      "contextMedium": "Medio",
-      "contextHigh": "Alto",
-      "model": "modelo",
-      "models": "modelos",
-      "selected": "Seleccionado",
-      "keyboardHint": "↑↓ navegar · ↵ seleccionar · esc cerrar"
+      "searchPlaceholder": "Busca modelos…",
+      "connectMore": "Conecta más proveedores…",
+      "back": "Atrás",
+      "providersLabel": "Proveedores",
+      "modelsLabel": "Modelos",
+      "resultsLabel": "Resultados",
+      "loading": "Cargando proveedores…",
+      "empty": "No se encontraron modelos.",
+      "emptyHint": "Prueba otro término de búsqueda.",
+      "noProviders": "Aún no hay proveedores conectados."
     },
     "modelDescriptions": {
       "gpt-5_5": "El modelo más avanzado de OpenAI.",

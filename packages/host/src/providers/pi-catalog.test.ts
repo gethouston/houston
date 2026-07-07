@@ -1,6 +1,10 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { expect, test } from "vitest";
-import { piModelToCatalogEntry, piProviderToCatalog } from "./pi-catalog";
+import {
+  buildProviderCatalog,
+  piModelToCatalogEntry,
+  piProviderToCatalog,
+} from "./pi-catalog";
 
 /**
  * The pure mappers turn pi-ai `Model`s into the `ProviderCatalog` wire shape
@@ -90,4 +94,46 @@ test("derives auth: apiKey for a non-OAuth provider", () => {
     auth: "apiKey",
     models: [piModelToCatalogEntry(TEXT_ONLY)],
   });
+});
+
+/**
+ * The built catalog is the FULL pi-ai registry on every deployment — no profile
+ * gating. This is the guard for the "hosted users see every provider" product
+ * decision: OAuth subscriptions AND the API-key providers must all be present,
+ * each with a non-empty, wire-shaped model list.
+ */
+test("buildProviderCatalog serves the full pi-ai registry", () => {
+  const catalog = buildProviderCatalog();
+  expect(catalog.length).toBeGreaterThanOrEqual(30);
+
+  const ids = new Set(catalog.map((p) => p.id));
+  for (const required of [
+    "anthropic",
+    "openai-codex",
+    "github-copilot",
+    "opencode",
+    "opencode-go",
+    "openrouter",
+    "google",
+    "deepseek",
+  ]) {
+    expect(ids.has(required)).toBe(true);
+  }
+
+  const oauth = catalog.filter((p) => p.auth === "oauth").map((p) => p.id);
+  expect(new Set(oauth)).toEqual(
+    new Set(["anthropic", "github-copilot", "openai-codex"]),
+  );
+
+  for (const provider of catalog) {
+    expect(provider.models.length).toBeGreaterThan(0);
+    for (const model of provider.models) {
+      expect(model.id.length).toBeGreaterThan(0);
+      expect(model.contextWindow).toBeGreaterThan(0);
+      expect(model.maxTokens).toBeGreaterThan(0);
+      if (model.reasoning) {
+        expect((model.thinkingLevels ?? []).length).toBeGreaterThan(0);
+      }
+    }
+  }
 });

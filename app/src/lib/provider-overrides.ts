@@ -8,11 +8,16 @@ import type { EffortLevel, ProviderInfo } from "./providers.ts";
  *
  * pi-ai does NOT ship the Houston-specific presentation metadata, though: brand
  * names (its provider `name` is a titleized id like "Openrouter" or an OAuth
- * subscription string), per-model marketing labels/descriptions, the credit-gated
- * snap-up ceilings (`contextWindowMax`), or the curated per-gateway effort sets
- * (pi has no `"max"` level, and the same model exposes different effort via
- * different gateways). This module carries ONLY that missing metadata, keyed by
- * the Houston provider id, so the hydrator can layer it over pi's catalog.
+ * subscription string) and per-model marketing labels/descriptions. This module
+ * carries ONLY that missing metadata, keyed by the Houston provider id, so the
+ * hydrator can layer it over pi's catalog. A model's reasoning-effort set is NO
+ * longer curated here: it is derived from pi's per-model thinking levels
+ * (`deriveEffortLevels`), the same source the runtime clamps against, so the two
+ * can't drift. An override may still pin `effortLevels` for a genuine gateway cap
+ * pi doesn't encode, but none currently need it. The per-model CONTEXT-WINDOW
+ * overrides (defaults + credit-gated
+ * snap-up ceilings) live in `@houston/protocol` (`MODEL_WINDOW_OVERRIDES`), shared
+ * verbatim with the runtime's autocompact so the bar and the engine agree.
  *
  * It also defines the two constructs pi-ai has no concept of: the local
  * OpenAI-compatible provider (appended verbatim), and the `openai-codex → openai`
@@ -26,24 +31,14 @@ export interface ModelOverride {
   /** One-line picker description (pi ships none). */
   description?: string;
   /**
-   * Starting context-window default (tokens), overriding pi's raw provider
-   * window. Set where Houston shows a different number than pi's raw offer —
-   * notably Codex, whose `/status` reports a 95%-EFFECTIVE window (e.g. 258400
-   * for gpt-5.5's raw 272000). Absent → pi's raw `contextWindow` is used.
-   */
-  contextWindow?: number;
-  /**
-   * Snap-up ceiling (tokens) for the self-correcting usage estimate — set only
-   * for models whose window is gated upward at runtime (credits/plan). pi
-   * reports the default window; this is Houston's known ceiling above it.
-   */
-  contextWindowMax?: number;
-  /**
-   * Curated reasoning-effort set, overriding what `deriveEffortLevels` would
-   * produce from pi's `thinkingLevels`. Present where the curation differs from
-   * pi (adds Houston's `"max"`, caps a gateway that can't reach a level, or
-   * pins `[]` to hide the effort row for a model pi marks reasoning). An empty
-   * array explicitly hides the effort row.
+   * ESCAPE HATCH for a genuine gateway cap `deriveEffortLevels` can't see. By
+   * default a model's effort set is derived from pi's per-model thinking levels;
+   * set this ONLY when a specific gateway documents a real ceiling below what pi
+   * reports (then comment the source), or `[]` to hide the effort row for a
+   * model pi wrongly flags as reasoning. Do NOT use it to merely duplicate or
+   * trim the derived list — that is the exact drift this catalog removed, and
+   * the drift guard test rejects any id here that pi doesn't ship. None are set
+   * today.
    */
   effortLevels?: readonly EffortLevel[];
 }
@@ -63,6 +58,15 @@ export interface ProviderOverride {
    */
   description?: string;
   cost?: string;
+  /**
+   * Has a usable free tier the user can start on without paying (the friendly
+   * "free" quick-filter facet reads this). Curated and conservative — set only
+   * where the provider verifiably lets a new user run models at no cost today
+   * (Google's free AI Studio key, Groq/Cerebras free tiers, Hugging Face's
+   * monthly credits, OpenRouter's free-routed models). Local models cost
+   * nothing too, but that facet is derived from the auth chip, not this flag.
+   */
+  freeTier?: boolean;
   installUrl?: string;
   /** For api-key providers: the dashboard URL where the user creates/copies the key. */
   apiKeyUrl?: string;
@@ -92,6 +96,42 @@ export interface ProviderOverride {
 export const PROVIDER_ID_RENAME: Readonly<Record<string, string>> = {
   "openai-codex": "openai",
 };
+
+/** Inverse of `PROVIDER_ID_RENAME`: DISPLAY id → engine id (openai → openai-codex). */
+const PROVIDER_ID_UNRENAME: Readonly<Record<string, string>> =
+  Object.fromEntries(
+    Object.entries(PROVIDER_ID_RENAME).map(([engine, display]) => [
+      display,
+      engine,
+    ]),
+  );
+
+/**
+ * ENGINE provider id → the DISPLAY id the picker/logos use (applies
+ * `PROVIDER_ID_RENAME`: openai-codex → openai; everything else passes through).
+ * Used to map a stored model-choice back to the display dialect on READ, mirror
+ * of the engine-adapter's `toOldProvider` and `@houston/domain`'s
+ * `PROVIDER_ALIASES` — duplicated here (not imported) because `app/` does not
+ * depend on those packages, exactly as `use-conversation-vm` duplicates
+ * `toOldProvider`.
+ */
+export function toDisplayProviderId(id: string): string {
+  return PROVIDER_ID_RENAME[id] ?? id;
+}
+
+/**
+ * DISPLAY provider id → the canonical ENGINE id (the inverse: openai →
+ * openai-codex). The picker offers `openai` (Houston's rename of pi's
+ * `openai-codex`), but the gateway/runtime resolve pi's `openai-codex`, so a
+ * model-choice WRITE must canonicalize before it leaves the client — the same
+ * mapping the direct-send path applies via `@houston/domain`
+ * `canonicalProviderId` / `PROVIDER_ALIASES`. Houston never offers pi's raw
+ * platform-key `openai`; if it ever does, this alias AND `PROVIDER_ID_RENAME`
+ * must be removed together.
+ */
+export function toCanonicalProviderId(id: string): string {
+  return PROVIDER_ID_UNRENAME[id] ?? id;
+}
 
 /**
  * pi providers dropped BEFORE the rename is applied. pi's direct api-key `openai`
@@ -137,78 +177,8 @@ export const FEATURED_PROVIDER_IDS = [
   "openai-compatible",
 ] as const;
 
-/** A provider's AI-Hub filter bucket. `direct` is the default for unlisted ids. */
-export type ProviderCategory =
-  | "featured"
-  | "gateway"
-  | "direct"
-  | "regional"
-  | "local";
-
-/**
- * The AI-Hub category each provider id falls in, keyed by Houston provider id
- * (post-rename: pi's `openai-codex` reads as `openai`). Covers the curated ids
- * plus the raw pi ids the Providers tab now surfaces. `featured` mirrors
- * `FEATURED_PROVIDER_IDS` and wins over any other listing (e.g. `google` and
- * `openai-compatible`, which read as featured, not direct/local). Ids absent
- * here resolve through `providerCategory`: the regional `*-cn` / `*-sgp` /
- * `*-ams` / `xiaomi*` pattern, else `direct`.
- */
-export const PROVIDER_CATEGORY: Readonly<Record<string, ProviderCategory>> = {
-  // Featured (mirrors FEATURED_PROVIDER_IDS; featured wins over every other bucket).
-  anthropic: "featured",
-  openai: "featured",
-  google: "featured",
-  "github-copilot": "featured",
-  "openai-compatible": "featured",
-  // Multi-model gateways: one key, many labs.
-  openrouter: "gateway",
-  opencode: "gateway",
-  "opencode-go": "gateway",
-  "vercel-ai-gateway": "gateway",
-  "cloudflare-ai-gateway": "gateway",
-  "azure-openai-responses": "gateway",
-  // Bring-your-own backend / account.
-  "amazon-bedrock": "local",
-  // Regional deployments (named; the *-cn/*-sgp/*-ams/xiaomi* ids resolve by pattern).
-  "google-vertex": "regional",
-  "cloudflare-workers-ai": "regional",
-  "kimi-coding": "regional",
-  "zai-coding-cn": "regional",
-  "minimax-cn": "regional",
-  "moonshotai-cn": "regional",
-  // Direct first-party APIs.
-  deepseek: "direct",
-  mistral: "direct",
-  xai: "direct",
-  groq: "direct",
-  cerebras: "direct",
-  fireworks: "direct",
-  together: "direct",
-  nvidia: "direct",
-  huggingface: "direct",
-  moonshotai: "direct",
-  zai: "direct",
-  minimax: "direct",
-  "ant-ling": "direct",
-};
-
 /** Regional-deployment id suffixes (China / Singapore / Amsterdam). */
 const REGIONAL_SUFFIX = /-(cn|sgp|ams)$/;
-
-/**
- * Resolve a provider id to its AI-Hub category. The explicit `PROVIDER_CATEGORY`
- * map wins; otherwise the regional `*-cn` / `*-sgp` / `*-ams` / `xiaomi*` pattern
- * catches deployments pi may add without a map entry; everything else is
- * `direct`. Never throws on an unknown id, so the ~25 uncurated pi providers are
- * always bucketed.
- */
-export function providerCategory(id: string): ProviderCategory {
-  const explicit = PROVIDER_CATEGORY[id];
-  if (explicit) return explicit;
-  if (REGIONAL_SUFFIX.test(id) || id.startsWith("xiaomi")) return "regional";
-  return "direct";
-}
 
 export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   openai: {
@@ -223,34 +193,18 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       "gpt-5.5": {
         label: "GPT-5.5",
         description: "OpenAI's frontier model.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
-        // Codex's `/status` reports the 95%-EFFECTIVE window (0.95 × 272000 raw),
-        // the number the user sees — so the indicator's denominator matches it.
-        contextWindow: 258_400,
-        // Codex exposes an opt-in 1M variant (max_context_window 1M × 95%
-        // effective); the usage indicator snaps up to it once observed usage
-        // exceeds the effective default window.
-        contextWindowMax: 950_000,
       },
       "gpt-5.4": {
         label: "GPT-5.4",
         description: "Strong model for everyday coding.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
-        contextWindow: 258_400,
-        contextWindowMax: 950_000,
       },
       "gpt-5.4-mini": {
         label: "GPT-5.4-Mini",
         description: "Small, fast, and cost-efficient for simpler tasks.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
-        contextWindow: 258_400,
       },
       "gpt-5.3-codex-spark": {
         label: "GPT-5.3-Codex-Spark",
         description: "Ultra-fast coding model.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
-        // 0.95 × 128000 raw (spark's smaller window).
-        contextWindow: 121_600,
       },
     },
   },
@@ -263,38 +217,23 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     auth: "oauth",
     defaultModel: "claude-sonnet-4-6",
     models: {
-      "claude-sonnet-5": {
-        label: "Sonnet 5",
-        description: "Newest Sonnet. Stronger agentic coding and tool use.",
-        // Sonnet 5 accepts the full range INCLUDING `xhigh` and `max`; pi has
-        // no `max`, so the curated set carries it.
-        effortLevels: ["low", "medium", "high", "xhigh", "max"],
-      },
       "claude-sonnet-4-6": {
         label: "Sonnet 4.6",
         description: "Best balance of speed and quality.",
-        // Sonnet 4.6: has `max`, no `xhigh`.
-        effortLevels: ["low", "medium", "high", "max"],
-        // Credit-gated 1M window over pi's reported default (200k on every plan).
-        contextWindowMax: 1_000_000,
       },
       "claude-opus-4-8": {
         label: "Opus 4.8",
         description:
           "Latest Opus. Better alignment and agentic coding than 4.7.",
-        // Full range. `ultracode` is a harness mode, not an effort level.
-        effortLevels: ["low", "medium", "high", "xhigh", "max"],
       },
       "claude-fable-5": {
         label: "Fable 5",
         description: "Most capable model. Costs 2x more credits than Opus 4.8.",
-        effortLevels: ["low", "medium", "high", "xhigh", "max"],
       },
       "claude-opus-4-7": {
         label: "Opus 4.7",
         description:
           "Previous flagship. Strong coding autonomy and complex reasoning.",
-        effortLevels: ["low", "medium", "high", "xhigh", "max"],
       },
     },
   },
@@ -315,39 +254,31 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       "gpt-4.1": {
         label: "GPT-4.1",
         description: "Available on every plan, including Copilot Free.",
-        // Base model, no effort row.
-        effortLevels: [],
       },
       "claude-sonnet-4.6": {
         label: "Claude Sonnet 4.6",
         description: "Best balance of speed and quality. Needs Copilot Pro.",
-        effortLevels: ["low", "medium", "high", "max"],
       },
       "claude-opus-4.8": {
         label: "Claude Opus 4.8",
         description:
           "Anthropic's flagship. Most capable, slower. Needs Copilot Pro.",
-        effortLevels: ["low", "medium", "high", "xhigh", "max"],
       },
       "claude-haiku-4.5": {
         label: "Claude Haiku 4.5",
         description: "Anthropic's fastest, for quick tasks. Needs Copilot Pro.",
-        effortLevels: [],
       },
       "gpt-5.5": {
         label: "GPT-5.5",
         description: "OpenAI's frontier model. Needs Copilot Pro.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
       },
       "gpt-5-mini": {
         label: "GPT-5 Mini",
         description: "OpenAI's fast, lightweight model. Needs Copilot Pro.",
-        effortLevels: ["low", "medium", "high"],
       },
       "gemini-3-flash-preview": {
         label: "Gemini 3 Flash",
         description: "Google's fast model. Needs Copilot Pro.",
-        effortLevels: ["low", "medium", "high"],
       },
     },
   },
@@ -363,39 +294,30 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       "claude-sonnet-4-6": {
         label: "Sonnet 4.6",
         description: "Best balance of speed and quality.",
-        // models.dev lists max; pi can't reach this gateway's max, cap at high.
-        effortLevels: ["low", "medium", "high"],
       },
       "claude-opus-4-8": {
         label: "Opus 4.8",
         description: "Most capable Claude, slower.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
       },
       "gpt-5.5": {
         label: "GPT-5.5",
         description: "OpenAI's frontier model.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
       },
       "gemini-3.5-flash": {
         label: "Gemini 3.5 Flash",
         description: "Fast and capable.",
-        // No discrete effort on this gateway model.
-        effortLevels: [],
       },
       "deepseek-v4-flash-free": {
         label: "DeepSeek V4 Flash (Free)",
         description: "Fast. Free to try.",
-        effortLevels: ["high", "max"],
       },
       "mimo-v2.5-free": {
         label: "MiMo V2.5 (Free)",
         description: "Free to try.",
-        effortLevels: [],
       },
       "nemotron-3-ultra-free": {
         label: "Nemotron 3 Ultra (Free)",
         description: "NVIDIA. Free to try.",
-        effortLevels: [],
       },
     },
   },
@@ -411,27 +333,22 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       "glm-5.1": {
         label: "GLM-5.1",
         description: "Strong open coding model.",
-        effortLevels: [],
       },
       "kimi-k2.6": {
         label: "Kimi K2.6",
         description: "Fast, capable open model.",
-        effortLevels: [],
       },
       "minimax-m3": {
         label: "MiniMax M3",
         description: "Capable open model.",
-        effortLevels: [],
       },
       "qwen3.7-max": {
         label: "Qwen3.7 Max",
         description: "Large open model.",
-        effortLevels: [],
       },
       "deepseek-v4-pro": {
         label: "DeepSeek V4 Pro",
         description: "Strong reasoning.",
-        effortLevels: ["high", "max"],
       },
     },
   },
@@ -439,7 +356,8 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     name: "OpenRouter",
     subtitle: "Any model, one key",
     description: "Any model from one key.",
-    cost: "Pay-as-you-go on your OpenRouter account",
+    cost: "Free models, then pay as you go",
+    freeTier: true,
     installUrl: "https://openrouter.ai",
     apiKeyUrl: "https://openrouter.ai/settings/keys",
     defaultModel: "anthropic/claude-sonnet-4.6",
@@ -447,27 +365,22 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       "openrouter/free": {
         label: "Free (auto-routed)",
         description: "OpenRouter's free tier. Good for testing, no cost.",
-        effortLevels: [],
       },
       "anthropic/claude-sonnet-4.6": {
         label: "Claude Sonnet 4.6",
         description: "Anthropic's balanced model, via OpenRouter.",
-        effortLevels: ["low", "medium", "high", "max"],
       },
       "anthropic/claude-opus-4.8": {
         label: "Claude Opus 4.8",
         description: "Anthropic's flagship, via OpenRouter.",
-        effortLevels: ["low", "medium", "high", "xhigh", "max"],
       },
       "google/gemini-3-flash-preview": {
         label: "Gemini 3 Flash",
         description: "Google's fast model, via OpenRouter.",
-        effortLevels: ["low", "medium", "high"],
       },
       "deepseek/deepseek-v4-pro": {
         label: "DeepSeek V4 Pro",
         description: "DeepSeek's flagship, via OpenRouter.",
-        effortLevels: ["high", "xhigh"],
       },
     },
   },
@@ -483,12 +396,10 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       "deepseek-v4-flash": {
         label: "DeepSeek V4 Flash",
         description: "Fast, low-cost DeepSeek model.",
-        effortLevels: ["high", "xhigh"],
       },
       "deepseek-v4-pro": {
         label: "DeepSeek V4 Pro",
         description: "DeepSeek's most capable model.",
-        effortLevels: ["high", "xhigh"],
       },
     },
   },
@@ -497,6 +408,7 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     subtitle: "Free key from AI Studio",
     description: "Gemini models, free key from AI Studio.",
     cost: "Free tier on your Google account",
+    freeTier: true,
     installUrl: "https://ai.google.dev",
     apiKeyUrl: "https://aistudio.google.com/apikey",
     defaultModel: "gemini-3-flash-preview",
@@ -504,22 +416,18 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       "gemini-3-flash-preview": {
         label: "Gemini 3 Flash",
         description: "Fast and capable. Best default.",
-        effortLevels: ["low", "medium", "high"],
       },
       "gemini-3-pro-preview": {
         label: "Gemini 3 Pro",
         description: "Google's most capable, slower.",
-        effortLevels: ["low", "high"],
       },
       "gemini-2.5-flash": {
         label: "Gemini 2.5 Flash",
         description: "Previous fast model.",
-        effortLevels: ["low", "medium", "high"],
       },
       "gemini-2.5-pro": {
         label: "Gemini 2.5 Pro",
         description: "Previous flagship.",
-        effortLevels: ["low", "medium", "high"],
       },
     },
   },
@@ -535,22 +443,18 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       "anthropic.claude-sonnet-4-6": {
         label: "Claude Sonnet 4.6",
         description: "Anthropic's balanced model, via Bedrock.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
       },
       "anthropic.claude-opus-4-8": {
         label: "Claude Opus 4.8",
         description: "Anthropic's flagship, via Bedrock.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
       },
       "amazon.nova-pro-v1:0": {
         label: "Nova Pro",
         description: "Amazon's capable general-purpose model.",
-        effortLevels: [],
       },
       "amazon.nova-lite-v1:0": {
         label: "Nova Lite",
         description: "Amazon's fast, lower-cost model.",
-        effortLevels: [],
       },
     },
   },
@@ -566,25 +470,50 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       "MiniMax-M3": {
         label: "MiniMax M3",
         description: "Best default. Long-context multimodal model.",
-        effortLevels: ["low", "medium", "high"],
       },
       "MiniMax-M2.7": {
         label: "MiniMax M2.7",
         description: "Lower cost. Text-only reasoning model.",
-        effortLevels: ["low", "medium", "high"],
       },
       "MiniMax-M2.7-highspeed": {
         label: "MiniMax M2.7 Highspeed",
         description: "Faster M2.7 tier for latency-sensitive chats.",
-        effortLevels: ["low", "medium", "high"],
       },
     },
+  },
+  // Free-tier curation: these entries exist so the "Free to try" quick filter
+  // and the card's cost line can tell users they can start at no cost. Row
+  // descriptions still come from `DESCRIPTION_BY_ID` (no `description` here);
+  // names are set because every override entry seeds a pre-hydration card.
+  groq: {
+    name: "Groq",
+    subtitle: "Fast inference",
+    cost: "Free tier, then pay as you go",
+    freeTier: true,
+    installUrl: "https://groq.com",
+    apiKeyUrl: "https://console.groq.com/keys",
+  },
+  cerebras: {
+    name: "Cerebras",
+    subtitle: "Very fast inference",
+    cost: "Free tier, then pay as you go",
+    freeTier: true,
+    installUrl: "https://www.cerebras.ai",
+    apiKeyUrl: "https://cloud.cerebras.ai",
+  },
+  huggingface: {
+    name: "Hugging Face",
+    subtitle: "Open models hub",
+    cost: "Free monthly credits, then pay as you go",
+    freeTier: true,
+    installUrl: "https://huggingface.co",
+    apiKeyUrl: "https://huggingface.co/settings/tokens",
   },
 };
 
 /**
- * One-line row descriptions for every pi provider that has no curated
- * `PROVIDER_OVERRIDES` entry (plus the local `openai-compatible` provider, whose
+ * One-line row descriptions for every pi provider whose override carries no
+ * `description` field (plus the local `openai-compatible` provider, whose
  * `ProviderInfo` is appended verbatim, not built from an override). Accurate and
  * concise (~60 chars) — what the provider is / its niche, not marketing. Named
  * regional variants are listed so they read on their own; any other `*-cn` /
@@ -636,4 +565,16 @@ export function providerDescription(id: string): string {
     );
   }
   return "";
+}
+
+/**
+ * The friendly one-line cost prose for a provider (e.g. "Your Claude
+ * subscription", "Pay as you go"), read from its curated override's `cost`.
+ * Returns `undefined` for any id without a curated cost line (the ~25 uncurated
+ * pi providers, plus the local `openai-compatible` provider whose cost lives on
+ * its `ProviderInfo`, not an override) so the card can omit the line rather than
+ * show a wrong or empty one. The provider cards render this.
+ */
+export function providerCostLine(id: string): string | undefined {
+  return PROVIDER_OVERRIDES[id]?.cost;
 }

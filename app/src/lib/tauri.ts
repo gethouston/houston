@@ -11,7 +11,6 @@
  * VPS where those APIs would be meaningless.
  */
 
-import type { ProviderCatalog } from "@houston/protocol";
 import type {
   AgentAssignment,
   CustomEndpoint,
@@ -335,6 +334,14 @@ export const tauriChat = {
       providerOverride?: string;
       modelOverride?: string;
       effortOverride?: string;
+      /**
+       * Per-turn mode pin (composer "Mode" selector). `"plan"` pins a read-only
+       * planning turn; `"auto"` (Autopilot) drops the blocking tools so the turn
+       * runs fire-and-forget; `"execute"` (or omitted) is a normal turn. Distinct
+       * from the legacy `mode`/`promptFile` opts above (Rust-era prompt profiles,
+       * dropped at this boundary) — never collides with them.
+       */
+      modeOverride?: "execute" | "plan" | "auto";
       /** Resend of a prompt whose bubble is already in the feed (see SessionStartRequest). */
       suppressUserBubble?: boolean;
       /** Queue display (user's words + attachment names) if the send is held (see SessionStartRequest). */
@@ -354,6 +361,7 @@ export const tauriChat = {
         provider: opts?.providerOverride,
         model: opts?.modelOverride,
         effort: opts?.effortOverride,
+        mode: opts?.modeOverride,
         suppressUserBubble: opts?.suppressUserBubble,
         queuedPreview: opts?.queuedPreview,
       });
@@ -1164,23 +1172,6 @@ export const tauriProvider = {
       await eng.setPreference(DEFAULT_PROVIDER_PREF_KEY, provider);
       await eng.setPreference(DEFAULT_MODEL_PREF_KEY, model);
     }),
-  /**
-   * pi-ai's FULL static model catalog from the host (`/v1/catalog`) — every
-   * provider and every runnable model, the source the picker + AI Models
-   * settings tab render (alongside the frontend's static seed). `getCatalog` is
-   * a new-engine-adapter method absent from the legacy engine-client type, so
-   * cast (as `checkAllStatuses` does). The host answers `[]` when
-   * it doesn't serve the route; the seed fallback covers that, so a real failure
-   * surfaces as a toast while an empty catalog stays silent.
-   */
-  getCatalog: () =>
-    call<ProviderCatalog>("get_catalog", () =>
-      (
-        getEngine() as unknown as {
-          getCatalog: () => Promise<ProviderCatalog>;
-        }
-      ).getCatalog(),
-    ),
   launchLogin: (
     provider: string,
     opts?: { deviceAuth?: boolean; toast?: boolean; enterpriseDomain?: string },

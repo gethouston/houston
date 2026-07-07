@@ -3,7 +3,9 @@ import {
   type BoardStatus,
   conversationScope,
   type FeedFrame,
+  type FeedOutput,
   MultiplexFeedOutput,
+  type PendingInteraction,
   StreamRegistry,
   type StreamTuning,
   observeConversation as sdkObserveConversation,
@@ -11,6 +13,7 @@ import {
   streamKey,
   type TurnWirePin,
 } from "@houston/sdk";
+import { writeCachedConversation } from "./conversation-cache";
 import { createBusFeedOutput } from "./feed-output";
 import { conversationStore, conversationVm } from "./vm";
 
@@ -30,17 +33,53 @@ export function disposeAllStreams(): void {
 }
 
 /**
- * Every stream folds into BOTH halves: the conversation VM (the app's one
- * turn-state source, read via `useSdkSnapshot`) and the legacy event bus
+ * Persist the VM's folded feed to the local conversation cache when a turn
+ * (or observed turn) settles, so the transcript a cold reopen paints includes
+ * everything sent THIS session — not just the state at the last history read
+ * (HOU-712). Frames were already folded by the VM (first in the multiplex);
+ * this just snapshots them. Cloud-only by construction: the cache no-ops
+ * without a gateway identity. Fire-and-forget — a cache write must never
+ * delay a settle.
+ */
+function cachePersistOutput(): FeedOutput {
+  return {
+    pushFeedItem() {},
+    sessionStatus() {},
+    async persistBoardStatus(agentPath, sessionKey, status) {
+      if (status === "running") return;
+      const snapshot = conversationStore.getSnapshot(
+        conversationScope(agentPath, sessionKey),
+      ) as { feed?: { feed_type: string; data: unknown }[] } | undefined;
+      const frames = snapshot?.feed;
+      if (!frames || frames.length === 0) return;
+      void writeCachedConversation(
+        agentPath,
+        sessionKey,
+        frames.map((f) => ({ feed_type: f.feed_type, data: f.data })),
+      );
+    },
+  };
+}
+
+/**
+ * Every stream folds into ALL halves: the conversation VM (the app's one
+ * turn-state source, read via `useSdkSnapshot`), the legacy event bus
  * (which still drives query invalidation and notifications — events, not
- * state).
+ * state), and the settle-time local-cache persist (order matters: the VM
+ * folds first so the cache snapshots a settled feed).
  */
 function composedOutput(
-  setActivityStatus: (status: BoardStatus) => Promise<void>,
+  setActivityStatus: (
+    status: BoardStatus,
+    pendingInteraction: PendingInteraction | null,
+  ) => Promise<void>,
 ) {
   return new MultiplexFeedOutput([
     conversationVm,
-    createBusFeedOutput((_a, _s, status) => setActivityStatus(status)),
+    createBusFeedOutput((_a, _s, status, pendingInteraction) =>
+      setActivityStatus(status, pendingInteraction),
+    ),
+    cachePersistOutput(),
   ]);
 }
 
@@ -66,6 +105,21 @@ export function seedConversationVm(
   ) as { feed?: unknown[] } | undefined;
   if ((current?.feed?.length ?? 0) >= frames.length) return;
   conversationVm.seedHistory(agentPath, sessionKey, frames);
+}
+
+/**
+ * Empty a conversation's VM — the cache-seeded-then-404 cleanup (HOU-712): the
+ * server says the conversation is gone, so a transcript painted from the local
+ * cache must not linger. Guarded like a seed: a live turn or observer owns its
+ * VM (its feed IS the conversation — e.g. a first send racing the history read
+ * that 404s because no turn has persisted yet), so never wipe under it.
+ */
+export function clearConversationVm(
+  agentPath: string,
+  sessionKey: string,
+): void {
+  if (registry.get(streamKey(agentPath, sessionKey))) return;
+  conversationVm.seedHistory(agentPath, sessionKey, []);
 }
 
 /**
@@ -103,7 +157,10 @@ export function streamTurn(
   agentPath: string,
   sessionKey: string,
   prompt: string,
-  setActivityStatus: (status: BoardStatus) => Promise<void>,
+  setActivityStatus: (
+    status: BoardStatus,
+    pendingInteraction: PendingInteraction | null,
+  ) => Promise<void>,
   provider?: string,
   tuning?: StreamTuning,
   suppressUserBubble?: boolean,
@@ -130,7 +187,10 @@ export function observeConversation(
   engine: HoustonEngineClient,
   agentPath: string,
   sessionKey: string,
-  setActivityStatus: (status: BoardStatus) => Promise<void>,
+  setActivityStatus: (
+    status: BoardStatus,
+    pendingInteraction: PendingInteraction | null,
+  ) => Promise<void>,
   messagesAtOpen: number,
   tuning?: StreamTuning,
 ): void {

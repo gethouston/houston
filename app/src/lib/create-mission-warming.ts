@@ -69,6 +69,7 @@ export function createMissionWhileWarming(
       provider: opts.providerOverride,
       model: opts.modelOverride,
       effort: opts.effortOverride,
+      mode: opts.modeOverride,
     });
   if (!queued) {
     // The agent turned ready between the caller's provisioning check and the
@@ -93,7 +94,9 @@ export function createMissionWhileWarming(
       } catch {
         showErrorToast(
           "create_mission_warming",
-          i18n.t("chat:errors.missionRowFailed"),
+          "mission row create/update failed",
+          undefined,
+          { userMessage: i18n.t("chat:errors.missionRowFailed") },
         );
       }
       const prompt = opts.buildPrompt
@@ -104,6 +107,7 @@ export function createMissionWhileWarming(
         providerOverride: opts.providerOverride,
         modelOverride: opts.modelOverride,
         effortOverride: opts.effortOverride,
+        modeOverride: opts.modeOverride,
       });
     })().catch(() => {
       // tauriChat.send toasted the real reason already.

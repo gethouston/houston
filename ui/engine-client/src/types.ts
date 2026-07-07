@@ -347,6 +347,35 @@ export interface UpdateAgent {
 
 // ---------- Agents / agent-data files ----------
 
+export interface InteractionOption {
+  id: string;
+  label: string;
+}
+
+/** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for
+ *  question steps, `c1`..`cN` for connect steps) so each step's outcome is
+ *  addressable. */
+export type InteractionStep =
+  | {
+      kind: "question";
+      id: string;
+      question: string;
+      options?: InteractionOption[];
+    }
+  | { kind: "connect"; id: string; toolkit: string; reason?: string };
+
+/**
+ * The ordered steps a mission is waiting on the user for — recorded when the
+ * model ends a turn by asking (ask_user) and/or requesting a connection
+ * (request_connection). Present drives the `needs_you` board card and the
+ * composer-replacing card, which walks the user through the steps one at a time;
+ * absent means the mission needs nothing. Question steps come first (at most 3),
+ * then connect steps.
+ */
+export interface PendingInteraction {
+  steps: InteractionStep[];
+}
+
 export interface Activity {
   id: string;
   title: string;
@@ -360,6 +389,7 @@ export interface Activity {
   updated_at?: string;
   provider?: string;
   model?: string;
+  pending_interaction?: PendingInteraction;
 }
 
 export interface ActivityUpdate {
@@ -373,6 +403,8 @@ export interface ActivityUpdate {
   routine_run_id?: string;
   provider?: string;
   model?: string;
+  /** Set to record a new pending interaction; `null` clears it explicitly. */
+  pending_interaction?: PendingInteraction | null;
 }
 
 export interface NewActivity {
@@ -792,6 +824,14 @@ export interface SessionStartRequest {
    * blow up the session.
    */
   effort?: string;
+  /**
+   * Per-turn agent mode. `"plan"` runs the turn read-only (no file writes or
+   * side effects); `"auto"` (Autopilot) removes the blocking tools (ask_user,
+   * request_connection) so the turn runs fire-and-forget; `"execute"` (the
+   * default when omitted) runs it normally. Forwarded verbatim to the runtime,
+   * which enforces it.
+   */
+  mode?: "execute" | "plan" | "auto";
   /**
    * Skip the turn stream's optimistic user bubble — for resends of a prompt
    * whose bubble is already in the conversation VM (a refused not-connected

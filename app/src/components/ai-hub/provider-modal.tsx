@@ -18,16 +18,16 @@ import type { ProviderConnections } from "../../hooks/use-provider-connections.t
 import type { HubCatalog } from "../../lib/ai-hub/catalog-types.ts";
 import { disconnectLocalModel } from "../../lib/local-model-connect.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
-import { LocalModelStatusPill } from "../shell/local-model-status.tsx";
-import { ProviderGlyph } from "../shell/provider-logos.tsx";
-import { AuthBadge, LiveStatus, ModelMark, SpecChip } from "./hub-badges.tsx";
-import { ModalShell } from "./modal-shell.tsx";
-import { ModelsBrowser } from "./models-browser.tsx";
+import { BrandMark } from "../provider-browser/brand-mark.tsx";
 import {
   authChipKey,
   providerDescriptionKey,
   providerModels,
-} from "./provider-grouping.ts";
+} from "../provider-browser/provider-grouping.ts";
+import { LocalModelStatusPill } from "../shell/local-model-status.tsx";
+import { AuthBadge, LiveStatus, SpecChip } from "./hub-badges.tsx";
+import { ModalShell } from "./modal-shell.tsx";
+import { ModelsBrowser } from "./models-browser.tsx";
 import { ConnectButton } from "./provider-modal-connect-button.tsx";
 
 /** Map the four-way auth chip key onto the three `AuthBadge` icon families. */
@@ -94,7 +94,7 @@ export function ProviderModal({
 
   const header = (
     <div className="flex items-start gap-3 px-5 pt-5 pb-4">
-      <ModelMark mark={<ProviderGlyph providerId={provider.id} />} size="lg" />
+      <BrandMark providerId={provider.id} size="lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <span className="text-lg font-semibold text-foreground tracking-[-0.01em]">
           {provider.name}
@@ -181,6 +181,7 @@ export function ProviderModal({
         <ModelsBrowser
           models={models}
           onOpenModel={onOpenModel}
+          compact
           className="px-5 pb-4"
         />
       )}

@@ -87,6 +87,7 @@ export function useAgentBoardSend({
       files,
       providerOverride,
       modelOverride,
+      modeOverride,
     }: { text: string; files: File[] } & SendOverrides) => {
       const agentMode = pendingAgentMode ?? agentModes?.[0]?.id;
       const mode = agentModes?.find((m) => m.id === agentMode);
@@ -106,6 +107,7 @@ export function useAgentBoardSend({
           promptFile: mode?.promptFile,
           providerOverride,
           modelOverride,
+          modeOverride,
           titleText: visible,
           buildPrompt: async (activityId) => {
             const saved = await tauriAttachments.save(
@@ -180,6 +182,7 @@ export function useAgentBoardSend({
           promptFile: warmingMode?.promptFile,
           provider: overrides.providerOverride,
           model: overrides.modelOverride,
+          mode: overrides.modeOverride,
         });
       if (queuedWarm) {
         // No loading flag: while the message is parked the provisioning card
@@ -198,6 +201,7 @@ export function useAgentBoardSend({
           mode: mode?.promptFile,
           providerOverride: overrides.providerOverride,
           modelOverride: overrides.modelOverride,
+          modeOverride: overrides.modeOverride,
           // If the conversation is mid-turn the adapter holds this send; the
           // queued bubble shows the user's words, not the built prompt.
           queuedPreview: {

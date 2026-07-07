@@ -42,7 +42,7 @@ now removed.)
 | `QuotaExhausted`           | Long-window / billing-period limit. Wait won't help.                                    | Upgrade plan (`upgrade_url`), Switch provider.       |
 | `UsageLimitPaused`         | Plan-window limit hit (today: Anthropic claude-code's 5-hour subscription session limit). Fires from `rate_limit_event` `status:"rejected"` (structured `resetsAt` epoch), a `429` result whose body names a session/usage limit + reset, or the stderr "usage limit ... reset at" banner. Retrying now fails — wait for the reset. | Chat: `UsageLimitPausedCard` (title + "resets at {time}" from `resets_at`, plus Switch model — a different provider has its own limit). Routines surface "Waiting · resumes at HH:MM" via `routine_run.paused_until`. |
 | `ModelUnavailable`         | The requested model isn't available to this account (preview, deprecated, regioned).    | Switch to `suggested_fallback`, Pick another model.  |
-| `Unauthenticated`          | Auth missing/expired/invalid. `cause` narrows the body copy.                            | Reconnect (drives `tauriProvider.launchLogin`); the card then WAITS on the `ProviderLoginComplete` WS event (launchLogin resolves at CLI spawn, not completion) and flips to a green "Reconnected" state with a retry CTA, or shows the failure and re-arms. |
+| `Unauthenticated`          | Auth missing/expired/invalid. `cause` narrows the body copy.                            | Reconnect (drives `tauriProvider.launchLogin`); the card then WAITS on the `ProviderLoginComplete` WS event (launchLogin resolves at CLI spawn, not completion) and flips to a green "Reconnected" state with a "Send my message" CTA (`providerError.unauthenticated.sendAgain`, only shown when there's a failed prompt to resend) or a disabled "Signed in" badge, or shows the failure and re-arms with "Reconnect". |
 | `NetworkUnreachable`       | Cannot reach the provider's API (DNS, connect refused, ECONNRESET).                     | Retry, Check status page.                            |
 | `ProviderInternal`         | 5xx from upstream, transient infra failure.                                             | Retry, Check status page.                            |
 | `SessionResumeMissing`     | Resume target is gone or unrecoverable. Codex: `no rollout found`. Anthropic: claude exits with `result/error_during_execution/duration_ms:0` on the very first stdout line — the `~/.claude/projects/<encoded-cwd>/<id>.jsonl` transcript is corrupt. Both runners auto-restart fresh; the card is informational. | Try again (re-sends after the auto-restart in case the fresh attempt also failed). |
@@ -177,6 +177,21 @@ feed already carries an inline `provider_error` `unauthenticated` card for
 this chat's provider — the persisted inline card is the stable surface.
 (The underlying probe false-positive is still unfixed; it needs a
 server-validating auth check.)
+
+**Two cards, two copy sets, kept deliberately distinct.** The inline
+`UnauthenticatedCard` (above) and the store `ProviderReconnectCard` used to
+share ambiguous "Try again" / "Reconnect" wording across two different
+actions (resend a message vs. relaunch sign-in). Their phase-to-copy mappings
+are now pure, unit-tested lookups: `resolveAuthCardPresentation`
+(`app/src/components/shell/provider-error-cards/auth-presentation.ts`) for the
+inline card's 4-phase machine (`idle | waiting | done | failed`), and
+`resolveReconnectCardPresentation`
+(`app/src/components/shell/provider-reconnect-presentation.ts`) for the store
+card's 2-state machine (`loginLaunched`). The store card's launched-state
+button now names its real action, `providerReconnect.signInAgain` ("Sign in
+again"), instead of borrowing the shared `common:actions.tryAgain`; the
+now-unused `providerReconnect.reconnect` / `providerReconnect.tryAgain` i18n
+keys were deleted.
 
 **Where the card actually mounts (don't let this regress).** A
 `FeedItem::ProviderError` becomes a `ChatMessage` with `providerError` set

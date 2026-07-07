@@ -1,3 +1,4 @@
+import { DEFAULT_TURN_MODE, type TurnMode } from "@houston/protocol";
 import { resolveModel } from "../ai/providers";
 import { authStorage, modelRegistry } from "../auth/storage";
 import { createClaudeBackend } from "../backends/claude/backend";
@@ -13,6 +14,7 @@ import { config } from "../config";
 import type { TurnPin } from "./exec-turn";
 import { SYSTEM_PROMPT } from "./resource-loader";
 import { buildToolSelection } from "./tool-selection";
+import { makeAskUserTool } from "./tools/ask-user";
 import { makeClampedFileTools } from "./tools/clamped-fs";
 import { makeIdTokenProvider } from "./tools/gcp-id-token";
 import { makeIntegrationTools } from "./tools/integrations";
@@ -33,6 +35,11 @@ import type { ProvidedContext } from "./workspace-context";
 // prompt-injected agent could read /etc/passwd or its own auth.json with no
 // bash tool. See tools/clamped-fs.ts.
 const fileTools = makeClampedFileTools(config.workspaceDir);
+
+// The blocking-question tool: available in EVERY mode (holds no credential,
+// makes no network call). Records the turn's pending question so it rides the
+// terminal `done` frame and Houston renders it as a card in place of the input.
+const askUserTool = makeAskUserTool();
 
 // Integration tools (Composio, platform mode): available whenever this runtime
 // can reach its host with a sandbox token (server mode — local desktop +
@@ -76,6 +83,7 @@ const piBackend = createPiBackend({
   tools: toolSelection.toolNames,
   customTools: [
     ...fileTools,
+    askUserTool,
     ...(runCodeTool ? [runCodeTool] : []),
     ...integrationTools,
   ],
@@ -104,6 +112,16 @@ registerBackend(
     readToken: () => readAnthropicToken(authStorage),
     toolSelection,
     systemPrompt: config.systemPrompt || SYSTEM_PROMPT,
+    // SAME integrations gate as the pi path above: present only when this
+    // runtime can reach its host with a sandbox token, so the Claude backend's
+    // in-process MCP server exposes the identical integration tool set.
+    integrations:
+      config.controlPlaneUrl && config.sandboxToken
+        ? {
+            baseUrl: config.controlPlaneUrl,
+            sandboxToken: config.sandboxToken,
+          }
+        : undefined,
   }),
 );
 
@@ -126,6 +144,21 @@ export type Conversation = {
    * Claude subprocess). Compared against `backendFor(model.provider).id` each turn.
    */
   backendId: string;
+  /**
+   * The execution mode the live session was built with ("execute" by default,
+   * "plan" for a read-only planning session). A per-turn mode flip that differs
+   * from this REBUILDS the session on the same backend — plan and execute need
+   * different tool allowlists + system prompts, which are fixed at build time.
+   * See `switchModeIfNeeded`.
+   */
+  mode: TurnMode;
+  /**
+   * The workspace + user context the session was FIRST built with (HOU-711,
+   * cloud). Reused verbatim when a mode/backend switch rebuilds the session, so a
+   * conversation keeps its startup context across a plan ⇄ execute flip — matching
+   * how it keeps its history; a context edit only lands in a NEW conversation.
+   */
+  context?: ProvidedContext;
   /**
    * The wire id of the turn EXECUTING right now (undefined between turns).
    * cancelTurn stamps it on the "Stopped by user" terminal frame so the stop
@@ -154,9 +187,13 @@ export async function getConversation(
   // session through it. The backend rehydrates prior turns from disk when the
   // conversation already exists — see createPiBackend.
   const backend = backendFor(builtModel.provider);
+  // The first turn's mode fixes how the session is built (read-only + planning
+  // overlay for "plan"). A later flip rebuilds via `switchModeIfNeeded`.
+  const mode = pin?.mode ?? DEFAULT_TURN_MODE;
   const session = await backend.createSession({
     conversationId: id,
     model: builtModel,
+    mode,
     // Only used when the session is FIRST built (new conversation) — a later
     // message in the same conversation reuses this session, so context edits
     // take effect on the next chat, matching the local file behavior (HOU-711).
@@ -169,6 +206,8 @@ export async function getConversation(
     provider: builtModel.provider,
     model: builtModel.id,
     backendId: backend.id,
+    mode,
+    ...(context ? { context } : {}),
   };
   conversations.set(id, conv);
   return conv;
@@ -197,6 +236,7 @@ export async function switchBackendIfNeeded(
   conv: Conversation,
   conversationId: string,
   model: ResolvedModel,
+  mode: TurnMode,
 ): Promise<{ rebuilt: boolean; preTokens: number | null }> {
   const backend = backendFor(model.provider);
   if (backend.id === conv.backendId) return { rebuilt: false, preTokens: null };
@@ -205,12 +245,54 @@ export async function switchBackendIfNeeded(
   // so the switch can still be sized against the new model's window downstream.
   const preTokens = conv.session.getContextUsage()?.tokens ?? null;
   conv.session.dispose();
+  // Build the new backend's session directly at the requested mode, so a switch
+  // that ALSO flips mode lands on it in ONE rebuild — `switchModeIfNeeded` then
+  // no-ops (conv.mode is already the requested mode).
   conv.session = await backend.createSession({
     conversationId,
     model,
+    mode,
+    // Preserve the conversation's startup context across the rebuild (HOU-711).
+    ...(conv.context ? { context: conv.context } : {}),
   });
   conv.backendId = backend.id;
   conv.provider = model.provider;
   conv.model = model.id;
+  conv.mode = mode;
   return { rebuilt: true, preTokens };
+}
+
+/**
+ * Ensure the live session sits in the requested execution mode, REBUILDING it on
+ * the SAME backend when the mode flips (execute ⇄ plan). Plan and execute differ
+ * in the tool allowlist AND the system prompt — both fixed at session-build time
+ * — so a flip cannot be applied to a live session; it is rebuilt.
+ *
+ * History is NOT lost across the rebuild: the backend reopens THIS conversation's
+ * persisted session by id (pi via `SessionManager.continueRecent` on the
+ * conversation's dedicated sessions dir; Claude via its `sessions.json` +
+ * transcript store keyed by conversationId), so prior turns rehydrate into the
+ * fresh session. Nothing is cleared here.
+ *
+ * A mode flip is INTERNAL — same provider, same model — so it emits NO
+ * `provider_switched` frame (unlike a cross-backend switch). No-op when the mode
+ * is unchanged, so the common execute→execute turn keeps the live session.
+ */
+export async function switchModeIfNeeded(
+  conv: Conversation,
+  conversationId: string,
+  model: ResolvedModel,
+  mode: TurnMode,
+): Promise<{ rebuilt: boolean }> {
+  if (conv.mode === mode) return { rebuilt: false };
+  conv.session.dispose();
+  conv.session = await backendFor(model.provider).createSession({
+    conversationId,
+    model,
+    mode,
+    // Preserve the conversation's startup context across the rebuild (HOU-711).
+    ...(conv.context ? { context: conv.context } : {}),
+  });
+  conv.mode = mode;
+  return { rebuilt: true };
 }

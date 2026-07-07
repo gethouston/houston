@@ -1,3 +1,4 @@
+import { normalizeTurnMode } from "@houston/protocol";
 import type { ActingContext } from "../session/acting-context";
 import { evict } from "../session/bus";
 import {
@@ -127,6 +128,7 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
     model,
     effort,
     provider,
+    mode,
     workspaceContext,
     userContext,
   } = await readJson(ctx.req);
@@ -134,6 +136,9 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
     json(ctx.res, 400, { error: "missing 'text'" });
     return;
   }
+  // Never trust the wire: only the known mode literals ("plan", "auto") pass;
+  // everything else (absent, garbage, unknown) normalizes to "execute".
+  const turnMode = normalizeTurnMode(mode);
   // The hosting gateway (cloud) puts the org + caller context on the turn body
   // from its own store (HOU-711). Either field present means "use these" (each
   // defaults to ""), so a new session's prompt is built from them instead of the
@@ -170,6 +175,7 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
       provider: pinnedProvider,
       model: typeof model === "string" ? model : undefined,
       effort: typeof effort === "string" ? effort : undefined,
+      mode: turnMode,
     },
     acting,
     context,

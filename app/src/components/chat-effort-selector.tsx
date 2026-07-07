@@ -7,6 +7,7 @@ import {
   EFFORT_ORDER,
   type EffortLevel,
   getEffortLevels,
+  normalizeEffort,
 } from "../lib/providers";
 import { EffortIcon } from "./effort-icon";
 
@@ -32,7 +33,7 @@ interface ChatEffortSelectorProps {
 /**
  * Reasoning-effort cycle button, rendered beside {@link ChatModelSelector} in
  * the composer. One click advances to the next level the active model accepts,
- * wrapping after the last (low → … → max → low). The icon's filled bars and
+ * wrapping after the last (low → … → xhigh → low). The icon's filled bars and
  * the label both track the level, so the control reads at a glance without a
  * menu. Renders nothing when the model has no effort control (e.g. Gemini), so
  * the composer row collapses cleanly.
@@ -58,23 +59,24 @@ export function ChatEffortSelector({
     medium: t("modelSelector.effortLevels.medium"),
     high: t("modelSelector.effortLevels.high"),
     xhigh: t("modelSelector.effortLevels.xhigh"),
-    max: t("modelSelector.effortLevels.max"),
   };
   const descriptions: Record<EffortLevel, string> = {
     low: t("modelSelector.effortDescriptions.low"),
     medium: t("modelSelector.effortDescriptions.medium"),
     high: t("modelSelector.effortDescriptions.high"),
     xhigh: t("modelSelector.effortDescriptions.xhigh"),
-    max: t("modelSelector.effortDescriptions.max"),
   };
 
+  // Normalize a persisted legacy `max` to `xhigh` so an agent carrying it still
+  // reads as its top tier (not "unset") until the next pick rewrites it.
+  const current = normalizeEffort(effort);
   // The current level (only when the stored value is one this model accepts)
   // and the level a click advances to, wrapping past the last back to the first.
   const activeLevel =
-    effort && levels.includes(effort as EffortLevel)
-      ? (effort as EffortLevel)
+    current && levels.includes(current as EffortLevel)
+      ? (current as EffortLevel)
       : undefined;
-  const nextLevel = nextEffort(levels, effort);
+  const nextLevel = nextEffort(levels, current);
 
   const activeLabel = activeLevel
     ? labels[activeLevel]
@@ -105,7 +107,7 @@ export function ChatEffortSelector({
           so the gauge looks identical across models — a 2-level model no longer
           renders as a lone short + tall bar. Cycling still uses the model's own
           `levels` above. */}
-      <EffortIcon levels={EFFORT_ORDER} active={effort} className="size-3.5" />
+      <EffortIcon levels={EFFORT_ORDER} active={current} className="size-3.5" />
       <span>{activeLabel}</span>
     </button>
   );

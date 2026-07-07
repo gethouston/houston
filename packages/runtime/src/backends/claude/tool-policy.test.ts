@@ -53,6 +53,39 @@ test("buildToolPolicy grants Bash only when code execution is local", () => {
   expect(off.disallowedTools).toContain("Bash");
 });
 
+test("plan mode clamps built-ins to Read/Glob/Grep and denies Edit/Write/Bash", () => {
+  const plan = buildToolPolicy({ localBash: true, mode: "plan" });
+  expect(plan.tools).toEqual(["Read", "Glob", "Grep"]);
+  for (const denied of ["Edit", "Write", "Bash"])
+    expect(plan.disallowedTools).toContain(denied);
+  // The pi-lacking set is still denied on top of the write/exec denials.
+  expect(plan.disallowedTools).toContain("WebSearch");
+  // localBash is irrelevant in plan mode: no Bash either way.
+  const planNoBash = buildToolPolicy({ localBash: false, mode: "plan" });
+  expect(planNoBash.tools).toEqual(["Read", "Glob", "Grep"]);
+  expect(planNoBash.disallowedTools).toContain("Bash");
+});
+
+test("execute mode is unchanged by the added mode param", () => {
+  expect(buildToolPolicy({ localBash: true, mode: "execute" })).toEqual(
+    buildToolPolicy({ localBash: true }),
+  );
+  expect(buildToolPolicy({ localBash: false, mode: "execute" })).toEqual(
+    buildToolPolicy({ localBash: false }),
+  );
+});
+
+test("auto mode keeps the SAME built-in policy as execute (file tools + Bash per localBash)", () => {
+  // Auto's "never wait" rule is enforced on the MCP side (ask_user dropped), not
+  // in the built-in policy — the Claude built-ins have no blocking tool to clamp.
+  expect(buildToolPolicy({ localBash: true, mode: "auto" })).toEqual(
+    buildToolPolicy({ localBash: true }),
+  );
+  expect(buildToolPolicy({ localBash: false, mode: "auto" })).toEqual(
+    buildToolPolicy({ localBash: false }),
+  );
+});
+
 test("the pi-lacking Claude Code tools are always disallowed", () => {
   const { disallowedTools } = buildToolPolicy({ localBash: true });
   for (const t of [

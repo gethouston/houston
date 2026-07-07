@@ -14,6 +14,10 @@
  * are the same ones the desktop UI reacts to, carried along unchanged.
  */
 
+import type { PendingInteraction } from "@houston/runtime-client";
+
+export type { PendingInteraction } from "@houston/runtime-client";
+
 /**
  * The session statuses a streamed turn produces. The desktop reacts to exactly
  * these: `running` drives the spinner/loading flag, `completed` the
@@ -22,8 +26,15 @@
  */
 export type SessionStatusValue = "starting" | "running" | "completed" | "error";
 
-/** Terminal board-card status, persisted once the turn settles. */
-export type TerminalBoardStatus = "needs_you" | "error";
+/**
+ * Terminal board-card status, persisted once the turn settles. A clean turn
+ * splits on its pending interaction: it ended asking the user for something
+ * (ask_user / connect) → `needs_you` and the interaction rides the persist;
+ * it ended with nothing outstanding → `done`. A handled non-success (user Stop,
+ * logged-out provider) also lands `needs_you` (never carrying an interaction);
+ * a real failure is `error`.
+ */
+export type TerminalBoardStatus = "needs_you" | "error" | "done";
 
 /** Board-card statuses a streamed turn writes: running in flight, then terminal. */
 export type BoardStatus = "running" | TerminalBoardStatus;
@@ -44,11 +55,17 @@ export interface FeedOutput {
     status: SessionStatusValue,
     error?: string,
   ): void;
-  /** Persist the board-card status through the host's (cloud-aware) seam. */
+  /**
+   * Persist the board-card status through the host's (cloud-aware) seam.
+   * `pendingInteraction` rides the terminal persist: the interaction a clean
+   * turn ended on (drives `needs_you`), or `null` to clear it (turn start, and
+   * every settle that carries no interaction). Omitted is treated as `null`.
+   */
   persistBoardStatus(
     agentPath: string,
     sessionKey: string,
     status: BoardStatus,
+    pendingInteraction?: PendingInteraction | null,
   ): Promise<void>;
 }
 
@@ -79,10 +96,11 @@ export class MultiplexFeedOutput implements FeedOutput {
     agentPath: string,
     sessionKey: string,
     status: BoardStatus,
+    pendingInteraction?: PendingInteraction | null,
   ): Promise<void> {
     await Promise.all(
       this.outputs.map((o) =>
-        o.persistBoardStatus(agentPath, sessionKey, status),
+        o.persistBoardStatus(agentPath, sessionKey, status, pendingInteraction),
       ),
     );
   }

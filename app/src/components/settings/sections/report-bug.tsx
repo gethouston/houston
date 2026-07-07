@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { reportBug } from "../../../lib/bug-report";
 import { getCurrentUserEmail } from "../../../lib/current-user";
+import { genericErrorDescription } from "../../../lib/error-toast";
 import { useUIStore } from "../../../stores/ui";
 import { useWorkspaceStore } from "../../../stores/workspaces";
 
@@ -39,7 +40,7 @@ export function ReportBugSection() {
     } catch (e) {
       addToast({
         title: t("reportBug.toasts.errorTitle"),
-        description: e instanceof Error ? e.message : String(e),
+        description: genericErrorDescription("manual_report", e),
         variant: "error",
       });
     } finally {

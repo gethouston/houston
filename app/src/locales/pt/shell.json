@@ -37,6 +37,7 @@
   },
   "errorToast": {
     "problemTitle": "Houston, temos um problema!",
+    "genericDescription": "Algo inesperado deu errado. Tente novamente.",
     "reportSentTitle": "Houston, relatório enviado",
     "reportSentDescription": "Referência #{{id}}.",
     "copyId": "Copiar código"
@@ -127,9 +128,8 @@
   "providerReconnect": {
     "title": "Sessão expirada",
     "body": "Sua conexão com o {{provider}} encerrou, isso acontece de vez em quando. Entre de novo e está tudo certo.",
-    "reconnect": "Reconectar ao {{provider}}",
     "waiting": "Aguardando o login no navegador...",
-    "tryAgain": "Tentar de novo",
+    "signInAgain": "Entrar novamente",
     "launchError": "Não foi possível abrir o login. Tente de novo."
   },
   "agentProvisioning": {
@@ -183,7 +183,7 @@
     "dialogTitle": "Dê um nome ao seu agente",
     "newAgentFallback": "Novo agente",
     "tagline": "Escolha uma cor e dê um nome ao seu agente",
-    "namePlaceholder": "ex. Projeto Alpha",
+    "namePlaceholder": "ex. Gerente de produto, Vendas, Jerry",
     "linkExistingProject": "Vincular projeto existente",
     "createAgent": "Criar agente"
   },
@@ -195,62 +195,28 @@
     "fromScratchDescription": "Um agente em branco, sem instruções ou ações. Construa do seu jeito."
   },
   "aiAssist": {
-    "brainLabel": "Configurar com",
     "cardTitle": "Criar com IA",
-    "cardDescription": "Responda algumas perguntas rápidas e escreveremos as instruções do seu agente",
-    "stepTitle": "Configure seu agente",
-    "generateButton": "Gerar instruções",
-    "generatingMessage": "Escrevendo as instruções do seu agente...",
+    "cardDescription": "Descreva seu trabalho e um consultor de IA desenha o agente para você",
+    "stepTitle": "Oriente seu consultor de IA",
+    "stepDescription": "Conte sobre seu papel, as tarefas que consomem seu tempo e as ferramentas que você usa. Seu consultor desenha o trabalho do agente em torno disso.",
+    "briefLabel": "O que este agente deve tirar da sua rotina?",
+    "briefPlaceholder": "ex. Cuido das vendas em uma agência pequena. Passo horas cobrando follow-ups, atualizando a planilha do funil e escrevendo e-mails de resumo depois das ligações...",
+    "examplesLabel": "Ou comece a partir de um exemplo",
+    "examples": {
+      "sales": "Lidero as vendas e perco horas com e-mails de follow-up e mantendo o CRM em dia",
+      "inbox": "Minha caixa de entrada está lotada. Quero um resumo pela manhã e rascunhos para respostas rotineiras",
+      "reports": "Toda sexta eu monto um relatório de status da equipe a partir de atualizações e planilhas espalhadas",
+      "research": "Preciso de pesquisa de mercado e da concorrência resumida em briefings que eu possa compartilhar"
+    },
+    "generateButton": "Projetar meu agente",
+    "generatingMessage": "Seu consultor está desenhando o agente...",
     "cancelButton": "Cancelar",
     "generatedTitle": "Aqui estão as instruções do seu agente",
     "generatedHelper": "Revise e edite as instruções abaixo, depois continue quando estiver pronto",
     "nameLabel": "Nome do agente",
     "namePlaceholder": "ex. Gerenciador de caixa de entrada",
     "errorTitle": "Falha na geração",
-    "errorDescription": "Não foi possível gerar as instruções. Verifique se seu provedor de IA está conectado e tente de novo.",
-    "form": {
-      "focusLabel": "Com o que este agente deve ajudar?",
-      "focusRequired": "Escolha uma área de foco para continuar",
-      "traitsLabel": "Escolha até 3 características",
-      "traitsHint": "{{selected}}/{{max}} selecionadas",
-      "verbosityLabel": "Quão detalhadas devem ser as respostas?",
-      "verbosityMin": "Breve",
-      "verbosityMax": "Exaustivo",
-      "askFirstLabel": "Deve fazer perguntas antes de responder?",
-      "askFirstHint": "O agente vai esclarecer sua solicitação antes de começar",
-      "extraLabel": "Instruções adicionais",
-      "extraOptional": "opcional",
-      "extraPlaceholder": "Outras preferências, regras ou contexto para este agente..."
-    },
-    "focus": {
-      "personalProductivity": "Produtividade pessoal",
-      "workBusiness": "Trabalho e negócios",
-      "researchLearning": "Pesquisa e aprendizado",
-      "writingEditing": "Escrita e edição",
-      "codingDev": "Programação e desenvolvimento",
-      "customerSupport": "Suporte ao cliente",
-      "dataAnalysis": "Dados e análise",
-      "creativeDesign": "Criatividade e design"
-    },
-    "traits": {
-      "concise": "Conciso",
-      "thorough": "Detalhado",
-      "friendly": "Amigável",
-      "professional": "Profissional",
-      "creative": "Criativo",
-      "analytical": "Analítico",
-      "proactive": "Proativo",
-      "cautious": "Cauteloso",
-      "structured": "Estruturado",
-      "casual": "Informal"
-    },
-    "verbosity": {
-      "1": "Muito breve",
-      "2": "Breve",
-      "3": "Equilibrado",
-      "4": "Detalhado",
-      "5": "Muito detalhado"
-    }
+    "errorDescription": "Não foi possível gerar as instruções. Verifique se seu provedor de IA está conectado e tente de novo."
   },
   "aiReview": {
     "stepTitle": "Revise seu agente",
@@ -272,7 +238,7 @@
     "continueButton": "Continuar"
   },
   "engineGate": {
-    "starting": "Carregando seu espaço de trabalho…",
+    "starting": "Carregando seus agentes…",
     "reconnected": "Houston reconectou",
     "loadFailed": "Não foi possível carregar seus modelos de IA disponíveis. Verifique sua conexão e tente novamente.",
     "authRequiredTitle": "Login necessário",
@@ -313,8 +279,8 @@
       "reconnectedBody": "Você entrou de novo. Continue de onde parou.",
       "reconnectedResending": "Você entrou de novo. O Houston está respondendo sua mensagem agora.",
       "signedIn": "Sessão iniciada",
-      "sendAgain": "Tentar novamente",
-      "failedBody": "O login de {{provider}} não foi concluído. Tente novamente. {{detail}}"
+      "sendAgain": "Enviar minha mensagem",
+      "failedBody": "O login de {{provider}} não foi concluído. Entre novamente. {{detail}}"
     },
     "networkUnreachable": {
       "title": "Não foi possível alcançar o {{provider}}",

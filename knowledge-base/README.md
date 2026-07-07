@@ -22,6 +22,7 @@ Load on demand.
 | [windows-testing.md](windows-testing.md) | Windows testing loop from a Mac — UTM VM, SSH bridge, cross-compile |
 | [provider-errors.md](provider-errors.md) | Provider error taxonomy + card surface (now owned by the TS host / pi) |
 | [local-models.md](local-models.md) | BYO local model (LM Studio / Jan / Ollama) → cloud agent via the desktop tunnel bridge |
+| [dictation.md](dictation.md) | Desktop-only voice typing — whisper.cpp sidecar, model download UX, platform constraints |
 | [platform-matrix.md](platform-matrix.md) | _HISTORICAL_ — Windows support status at the (removed) Rust engine surface |
 
 **Custom-frontend integration** — the standalone `examples/smartbooks/` reference was REMOVED in the convergence sweep. The frontend-agnostic contract still holds; the canonical non-Tauri consumer is now `packages/web` (the full desktop UI over the host's protocol v3).

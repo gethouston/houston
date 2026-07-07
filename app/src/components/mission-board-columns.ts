@@ -13,7 +13,7 @@ interface MissionBoardColumnLabels {
 const COLUMN_STATUSES = {
   running: ["running"],
   needs_you: ["needs_you", "error"],
-  done: ["done", "cancelled"],
+  done: ["done"],
 } as const;
 
 export function buildMissionBoardColumns(

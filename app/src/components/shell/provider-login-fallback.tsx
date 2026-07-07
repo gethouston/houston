@@ -2,6 +2,7 @@ import type { HoustonEvent } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { tryBeginCodexLoopbackLogin } from "../../lib/codex-loopback";
+import { genericErrorDescription } from "../../lib/error-toast";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
 import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
@@ -76,7 +77,10 @@ export function ProviderLoginFallback() {
               title: t("toast.signInFailed", {
                 provider: prov?.name ?? ev.data.provider,
               }),
-              description: err instanceof Error ? err.message : String(err),
+              description: genericErrorDescription(
+                "provider_login_open_url",
+                err,
+              ),
               variant: "error",
             });
           });

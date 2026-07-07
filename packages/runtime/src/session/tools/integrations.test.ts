@@ -1,6 +1,10 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test } from "vitest";
 import { runWithActingContext } from "../acting-context";
+import {
+  newInteractionHolder,
+  runWithInteractionCapture,
+} from "../interaction";
 import { makeIntegrationTools } from "./integrations";
 
 /**
@@ -43,11 +47,12 @@ function mockFetch(
   return calls;
 }
 
-const [search, execute] = makeIntegrationTools({
+const [search, execute, requestConnection] = makeIntegrationTools({
   baseUrl: "https://host.test/",
   sandboxToken: "sb-tok",
 });
-if (!search || !execute) throw new Error("expected two integration tools");
+if (!search || !execute || !requestConnection)
+  throw new Error("expected three integration tools");
 
 // pi's tool.execute takes (id, params, signal, onUpdate, ctx); the last two are
 // irrelevant to these proxies, so one helper supplies them.
@@ -55,10 +60,11 @@ const ctx = {} as unknown as ExtensionContext;
 const run = (tool: typeof search, params: unknown) =>
   tool.execute("id", params as never, undefined, undefined, ctx);
 
-test("returns exactly the two generic tools, correctly named", () => {
-  expect([search.name, execute.name]).toEqual([
+test("returns the generic tools plus request_connection, correctly named", () => {
+  expect([search.name, execute.name, requestConnection.name]).toEqual([
     "integration_search",
     "integration_execute",
+    "request_connection",
   ]);
 });
 
@@ -91,7 +97,7 @@ test("search POSTs to the host proxy with the sandbox token + formats matches", 
   expect(text).not.toContain("#houston_toolkit=");
 });
 
-test("search marks not-connected matches and teaches the connect link (HOU-670)", async () => {
+test("search marks not-connected matches and teaches request_connection", async () => {
   mockFetch(() => ({
     body: {
       items: [
@@ -117,11 +123,11 @@ test("search marks not-connected matches and teaches the connect link (HOU-670)"
     "- GMAIL_SEND_EMAIL (gmail, NOT CONNECTED): Send an email",
   );
   // The hand-off instruction rides with the results, at the moment the model
-  // actually faces a not-connected app.
-  expect(text).toContain("#houston_toolkit=<toolkit>");
-  expect(text).toContain(
-    "[Connect Gmail](https://gethouston.ai/connect#houston_toolkit=gmail)",
-  );
+  // actually faces a not-connected app — the request_connection tool, NOT the
+  // retired markdown-link hack.
+  expect(text).toContain("request_connection tool");
+  expect(text).not.toContain("#houston_toolkit=");
+  expect(text).not.toContain("](https://");
 });
 
 test("execute runs an action and returns its data; a failed action surfaces", async () => {
@@ -140,13 +146,14 @@ test("execute runs an action and returns its data; a failed action surfaces", as
   ).rejects.toThrow(/did not succeed: missing recipient/);
 });
 
-test("a no-connected-account failure carries the connect-link hand-off (HOU-670)", async () => {
+test("a no-connected-account failure hands off to request_connection", async () => {
   mockFetch(() => ({
     body: { successful: false, error: "no connected account found for user" },
   }));
   const failure = run(execute, { action: "GMAIL_SEND_EMAIL", params: {} });
   await expect(failure).rejects.toThrow(/has not connected this app/);
-  await expect(failure).rejects.toThrow(/#houston_toolkit=<toolkit>/);
+  await expect(failure).rejects.toThrow(/request_connection tool/);
+  await expect(failure).rejects.not.toThrow(/#houston_toolkit=/);
 
   // An ordinary app rejection stays hint-free — no false connect offers.
   mockFetch(() => ({
@@ -155,6 +162,55 @@ test("a no-connected-account failure carries the connect-link hand-off (HOU-670)
   await expect(
     run(execute, { action: "GMAIL_SEND_EMAIL", params: {} }),
   ).rejects.toThrow(/did not succeed: quota exceeded$/);
+});
+
+test("request_connection records a connect interaction with a normalized slug", async () => {
+  const holder = newInteractionHolder();
+  const out = await runWithInteractionCapture(holder, () =>
+    run(requestConnection, {
+      toolkit: "  Gmail  ",
+      reason: "to send your email",
+    }),
+  );
+  // The slug is trimmed + lowercased so it matches the catalog/connection lists.
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "connect",
+        id: "c1",
+        toolkit: "gmail",
+        reason: "to send your email",
+      },
+    ],
+  });
+  // The tool tells the model to end its turn without spelling out a slug/link.
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toMatch(/end your turn/i);
+  expect(text).not.toContain("#houston_toolkit=");
+});
+
+test("request_connection omits an empty reason and rejects an empty slug", async () => {
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, () =>
+    run(requestConnection, { toolkit: "slack" }),
+  );
+  expect(holder.pending).toEqual({
+    steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
+  });
+
+  await runWithInteractionCapture(newInteractionHolder(), () =>
+    expect(run(requestConnection, { toolkit: "   " })).rejects.toThrow(
+      /non-empty toolkit/i,
+    ),
+  );
+});
+
+test("request_connection records nothing outside a turn (no ambient holder)", async () => {
+  // No runWithInteractionCapture wrapper → recordConnection is a no-op,
+  // so a direct call still succeeds and simply records nowhere.
+  await expect(
+    run(requestConnection, { toolkit: "gmail" }),
+  ).resolves.toBeDefined();
 });
 
 test("a 409 (not connected) becomes an actionable message, not a crash dump", async () => {

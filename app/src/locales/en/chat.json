@@ -5,7 +5,20 @@
     "dropTitle": "Drop your files",
     "dropDescription": "Drop them here to add them to the conversation",
     "imagePasteUnavailable": "Couldn't read the pasted image. Try dragging the file in instead.",
-    "addFiles": "Add files"
+    "addFiles": "Add files",
+    "dictation": {
+      "start": "Start voice typing",
+      "stop": "Stop and insert",
+      "cancel": "Cancel",
+      "recording": "Recording",
+      "transcribing": "Transcribing...",
+      "setupTitle": "Set up voice typing",
+      "setupBody": "One-time download, about {{sizeMb}} MB.",
+      "setupConfirm": "Download",
+      "setupProgress": "Downloading... {{pct}}%",
+      "micDenied": "Houston needs microphone access. Allow it in system settings, then try again.",
+      "noMic": "No microphone was found."
+    }
   },
   "attribution": {
     "you": "You"
@@ -23,6 +36,16 @@
   "empty": {
     "title": "Start a conversation",
     "description": "Type a message to talk to your assistant."
+  },
+  "questionCard": {
+    "placeholder": "Type your answer...",
+    "send": "Send",
+    "back": "Back",
+    "forward": "Next",
+    "progress": "{{current}} of {{total}}"
+  },
+  "interaction": {
+    "connectedLine": "Connected {{name}}."
   },
   "errors": {
     "sessionStart": "Failed to start session: {{error}}",
@@ -62,6 +85,16 @@
     "signedIn": "Signed in",
     "signIn": "Sign in"
   },
+  "modeSelector": {
+    "mode": "Mode",
+    "modeValue": "Mode: {{mode}}",
+    "doer": "Doer",
+    "doerDescription": "Gets things done and asks you when unsure.",
+    "planner": "Planner",
+    "plannerDescription": "Writes a plan for you to approve first. Makes no changes.",
+    "autopilot": "Autopilot",
+    "autopilotDescription": "Finishes the task on its own with what it has. No questions asked."
+  },
   "modelSelector": {
     "selectModel": "Select model",
     "model": "Model",
@@ -73,56 +106,25 @@
       "low": "Low",
       "medium": "Medium",
       "high": "High",
-      "xhigh": "Extra high",
-      "max": "Max"
+      "xhigh": "Extra high"
     },
     "effortDescriptions": {
       "low": "Fastest, lightest thinking.",
       "medium": "Balanced speed and depth.",
       "high": "Deeper thinking for harder work.",
-      "xhigh": "Best for complex, agentic tasks.",
-      "max": "Deepest thinking, no token limit."
+      "xhigh": "Best for complex, agentic tasks."
     },
     "picker": {
-      "searchPlaceholder": "Search models, providers, capabilities…",
-      "recent": "Recent",
-      "favorites": "Favorites",
-      "results": "Results",
-      "all": "All models",
-      "notConnected": "Not connected",
-      "connect": "Connect",
-      "sort": "Sort",
-      "sortRelevance": "Relevance",
-      "sortPrice": "Price · low → high",
-      "sortContext": "Context · high → low",
-      "sortNewest": "Newest first",
-      "filters": "Filters",
-      "capabilities": "Capabilities",
-      "price": "Price",
-      "clearFilters": "Clear filters",
-      "favoritesOnly": "Favorites only",
-      "free": "Free",
-      "priceFree": "Free",
-      "priceLow": "$ Cheap",
-      "priceMid": "$$ Mid",
-      "priceHigh": "$$$ Premium",
-      "empty": "No models match.",
-      "emptyHint": "Clear a filter or try another term.",
-      "loading": "Fetching latest catalog…",
-      "offline": "Showing cached catalog. Prices and new models may be stale.",
-      "capVision": "Vision",
-      "capReasoning": "Reasoning",
-      "capTools": "Tools",
-      "capImageGen": "Image gen",
-      "detailContext": "Context",
-      "detailCapabilities": "Capabilities",
-      "contextLow": "Low",
-      "contextMedium": "Medium",
-      "contextHigh": "High",
-      "model": "model",
-      "models": "models",
-      "selected": "Selected",
-      "keyboardHint": "↑↓ navigate · ↵ select · esc close"
+      "searchPlaceholder": "Search models…",
+      "connectMore": "Connect more providers…",
+      "back": "Back",
+      "providersLabel": "Providers",
+      "modelsLabel": "Models",
+      "resultsLabel": "Results",
+      "loading": "Loading providers…",
+      "empty": "No models found.",
+      "emptyHint": "Try another search term.",
+      "noProviders": "No providers connected yet."
     },
     "modelDescriptions": {
       "gpt-5_5": "OpenAI's frontier model.",

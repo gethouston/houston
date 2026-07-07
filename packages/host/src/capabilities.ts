@@ -1,3 +1,4 @@
+import { getProviders } from "@earendil-works/pi-ai";
 import type { Capabilities } from "@houston/protocol";
 
 /**
@@ -21,21 +22,17 @@ import type { Capabilities } from "@houston/protocol";
  */
 
 /**
- * Every connect-once / API-key provider Houston serves. Shared by all profiles:
- * cloud deployments offer the exact same model providers as desktop. The local
- * LLM is NOT in this list — it rides the separate `openaiCompatible` flag (now
- * set by every profile), because it carries a base URL + model, not a credential.
+ * Every model provider Houston serves, as a capabilities HINT. Derived from
+ * pi-ai's baked provider registry (sorted for a stable order) so it CANNOT drift
+ * from the real runnable set — the authoritative list is `GET /v1/catalog`
+ * (`providers/pi-catalog.ts`), which enumerates the same registry. Shared by all
+ * profiles: the managed cloud pod runs the same host/runtime as desktop and its
+ * egress reaches every provider, so cloud and desktop offer the identical set.
+ * The OpenAI-compatible (BYO endpoint) provider is NOT here — it is a Houston
+ * concept, not a pi-ai provider, and rides the separate `openaiCompatible` flag
+ * because it carries a base URL + model, not a credential.
  */
-const HOSTED_PROVIDERS: readonly string[] = [
-  "anthropic",
-  "openai-codex",
-  "github-copilot",
-  "opencode",
-  "opencode-go",
-  "openrouter",
-  "google",
-  "amazon-bedrock",
-];
+const HOSTED_PROVIDERS: readonly string[] = [...getProviders()].sort();
 
 /** What a desktop deployment can do — the Tauri shell handles OS-native bits. */
 export const LOCAL_CAPABILITIES: Capabilities = {

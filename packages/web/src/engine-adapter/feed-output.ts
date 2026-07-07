@@ -1,4 +1,9 @@
-import type { BoardStatus, FeedOutput, SessionStatusValue } from "@houston/sdk";
+import type {
+  BoardStatus,
+  FeedOutput,
+  PendingInteraction,
+  SessionStatusValue,
+} from "@houston/sdk";
 import { emitEvent } from "./bus";
 import { toOldProvider } from "./synthetic";
 
@@ -42,6 +47,7 @@ export function createBusFeedOutput(
     agentPath: string,
     sessionKey: string,
     status: BoardStatus,
+    pendingInteraction: PendingInteraction | null,
   ) => Promise<void>,
 ): FeedOutput {
   return {
@@ -60,16 +66,28 @@ export function createBusFeedOutput(
         error,
       });
     },
-    async persistBoardStatus(agentPath, sessionKey, status) {
+    async persistBoardStatus(
+      agentPath,
+      sessionKey,
+      status,
+      pendingInteraction,
+    ) {
       try {
-        await setActivityStatus(agentPath, sessionKey, status);
+        await setActivityStatus(
+          agentPath,
+          sessionKey,
+          status,
+          pendingInteraction ?? null,
+        );
       } catch (e) {
+        // The raw cause is dev speak — log it, show product voice (HOU-721).
+        console.error("[feed-output] board status update failed:", e);
         emitEvent("FeedItem", {
           agent_path: agentPath,
           session_key: sessionKey,
           item: {
             feed_type: "system_message",
-            data: `Couldn't update the board status: ${e instanceof Error ? e.message : String(e)}`,
+            data: "Couldn't update the board status. Please try again.",
           },
         });
       }

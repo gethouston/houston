@@ -39,6 +39,16 @@ interface RowCardProps {
   inline?: boolean;
   /** Text density — `md` for the modal dialog heading. */
   size?: "sm" | "md";
+  /**
+   * The surface this card sits ON, which sets the slab tone so it always reads
+   * as raised:
+   *  - `"base"` (default): on a `bg-background` surface → grey `bg-secondary`
+   *    slab (the feed / inline-prose look).
+   *  - `"secondary"`: on a `bg-secondary` surface (e.g. inside the interaction
+   *    card) → white `bg-background` slab with a hairline border, so it matches
+   *    the raised chip hierarchy of the sibling option rows and input.
+   */
+  surface?: "base" | "secondary";
 }
 
 export function RowCard({
@@ -49,9 +59,19 @@ export function RowCard({
   truncate = false,
   inline = false,
   size = "sm",
+  surface = "base",
 }: RowCardProps) {
   const Wrapper = inline ? "span" : "div";
-  const rowClass = `${inline ? "inline-flex" : "flex w-full"} items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 min-w-0`;
+  // Invert against the parent surface so the slab (and its media well) never go
+  // tone-on-tone: on `bg-secondary` the slab flips to `bg-background` (raised
+  // white chip, hairline border matching the option rows) and the media well
+  // flips to `bg-secondary`.
+  const raised = surface === "secondary";
+  const slabTone = raised
+    ? "rounded-2xl border border-border/50 bg-background"
+    : "rounded-xl bg-secondary";
+  const mediaTone = raised ? "bg-secondary" : "bg-background";
+  const rowClass = `${inline ? "inline-flex" : "flex w-full"} items-center gap-3 ${slabTone} px-3 py-2.5 min-w-0`;
   const titleSize =
     size === "md" ? "text-[15px] font-semibold" : "text-[13px] font-medium";
   const bodySize = size === "md" ? "text-[13px]" : "text-[11px]";
@@ -60,7 +80,9 @@ export function RowCard({
 
   const row = (
     <Wrapper className={rowClass}>
-      <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-background text-foreground">
+      <span
+        className={`flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg ${mediaTone} text-foreground`}
+      >
         {media}
       </span>
       <span className="flex min-w-0 flex-1 flex-col">

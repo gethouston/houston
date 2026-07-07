@@ -1,3 +1,5 @@
+import { DEFAULT_TURN_MODE, type TurnMode } from "@houston/protocol";
+import { effectiveModelWindow } from "@houston/protocol/model-windows";
 import type {
   ChatMessage,
   ProviderError,
@@ -21,12 +23,17 @@ import {
 } from "./attribution";
 import { needsAutocompact } from "./autocompact";
 import { publish } from "./bus";
-import { type Conversation, switchBackendIfNeeded } from "./conversation-cache";
+import {
+  type Conversation,
+  switchBackendIfNeeded,
+  switchModeIfNeeded,
+} from "./conversation-cache";
 import {
   diffSnapshots,
   type FileSnapshot,
   snapshotWorkspace,
 } from "./file-changes";
+import { newInteractionHolder, runWithInteractionCapture } from "./interaction";
 import { switchNeedsCompaction } from "./provider-switch";
 import { createStallWatchdog } from "./stall-watchdog";
 
@@ -35,6 +42,12 @@ export interface TurnPin {
   provider?: string | null;
   model?: string | null;
   effort?: string | null;
+  /**
+   * The turn's execution mode ("plan" = read-only + planning overlay). Rides the
+   * per-turn pin ONLY — never `Settings` — so an unpinned turn is always
+   * "execute". A flip from the live session's mode rebuilds the session.
+   */
+  mode?: TurnMode | null;
 }
 
 /**
@@ -177,6 +190,9 @@ export async function execTurn(
     // firing on ITS provider no matter what other chats picked in between.
     // A bad model id throws here → surfaces as the turn's error event.
     const model = resolveModel(pin?.model, pin?.provider);
+    // The turn's execution mode: the pin's, else execute. Never inherited from
+    // Settings — an unpinned turn (incl. every routine + cloud turn) is execute.
+    const mode = pin?.mode ?? DEFAULT_TURN_MODE;
     const providerChanged = model.provider !== conv.provider;
     const modelChanged = model.id !== conv.model;
     // COMPLIANCE GATE: when this turn's model crosses a BACKEND boundary
@@ -184,10 +200,17 @@ export async function execTurn(
     // the correct backend rather than `setModel` a foreign model into the live
     // one — the harness-spoofing route the whole backend seam exists to prevent.
     // A same-backend change falls through to the cheap `setModel` fast path below.
+    // The rebuild lands directly on `mode`, so a switch that also flips mode is a
+    // single rebuild and `switchModeIfNeeded` below then no-ops.
     const { rebuilt, preTokens: rebuiltPreTokens } =
-      await switchBackendIfNeeded(conv, id, model);
+      await switchBackendIfNeeded(conv, id, model, mode);
+    // MODE FLIP: a plan⇄execute change on the SAME backend rebuilds the session
+    // read-only (or back). History rehydrates from disk; no provider_switched
+    // frame (same provider/model). No-op when the mode is unchanged — including
+    // right after a cross-backend rebuild that already landed on `mode`.
+    await switchModeIfNeeded(conv, id, model, mode);
     // Attach the turn's listeners to the SETTLED session (the rebuilt one when we
-    // crossed a backend, else the session we entered with).
+    // crossed a backend or flipped mode, else the session we entered with).
     subscribeSession();
     if (rebuilt) {
       // Cross-backend rebuild: the new session starts fresh (no in-memory history
@@ -218,8 +241,18 @@ export async function execTurn(
         // Mid-session PROVIDER switch. Carry the conversation verbatim when it
         // comfortably fits the new model's window (replay); otherwise compact it
         // first so it fits — pi summarizes with the now-active target model.
+        // Size the target window with Houston's effective rule (same as the bar),
+        // not pi's raw registry number; observed usage on the fresh target is 0,
+        // so it starts at the default — matching the frontend's peak reset on a
+        // provider switch.
+        const targetWindow = effectiveModelWindow(
+          model.provider,
+          model.id,
+          model.contextWindow,
+          0,
+        );
         let summarized = false;
-        if (switchNeedsCompaction(preTokens, model.contextWindow)) {
+        if (switchNeedsCompaction(preTokens, targetWindow)) {
           await conv.session.compact();
           summarized = true;
         }
@@ -248,7 +281,18 @@ export async function execTurn(
     // never re-compacts.
     if (!providerSwitch?.summarized) {
       const fill = conv.session.getContextUsage()?.tokens ?? null;
-      if (needsAutocompact(fill, model.contextWindow)) {
+      // Divide by Houston's EFFECTIVE window (default, snapping up to the ceiling
+      // once observed fill proves the larger plan/credit-gated window is active),
+      // the SAME denominator the frontend context bar uses — so the runtime
+      // compacts a 200k-real Claude chat pi reports as 1M, and does NOT
+      // needlessly compact a Gemini chat pi under-reports as 128k.
+      const window = effectiveModelWindow(
+        model.provider,
+        model.id,
+        model.contextWindow,
+        fill ?? 0,
+      );
+      if (needsAutocompact(fill, window)) {
         await conv.session.compact();
         compaction = { trigger: "proactive", pre_tokens: fill };
         // Stream the boundary so the chat draws the divider + resets its
@@ -287,6 +331,12 @@ export async function execTurn(
     } catch (err) {
       console.warn("[turn] file snapshot failed:", errMessage(err));
     }
+    // A fresh, per-turn holder for whatever the model ends up waiting on the
+    // user for (ask_user / request_connection). Fresh every turn IS the reset;
+    // established for the DURATION of the prompt (like the acting context) so
+    // the tools, running inside this async subtree, record into THIS turn's
+    // holder. Read after prompt() resolves and attached to the clean `done`.
+    const interaction = newInteractionHolder();
     // Hold the turn's acting-as identity (C2) for the DURATION of the prompt so
     // the integration tools' proxy calls (which run inside this async subtree)
     // attach it. Absent → runs plainly (act as owner). The watchdog covers the
@@ -294,7 +344,11 @@ export async function execTurn(
     // they start/end; the finally disarms it whether prompt() resolves or throws.
     watchdog.arm();
     try {
-      await runWithActingContext(acting, () => conv.session.prompt(promptText));
+      await runWithActingContext(acting, () =>
+        runWithInteractionCapture(interaction, () =>
+          conv.session.prompt(promptText),
+        ),
+      );
     } finally {
       watchdog.disarm();
     }
@@ -343,6 +397,12 @@ export async function execTurn(
       compaction,
       providerError,
       fileChanges,
+      // Persist what the turn is waiting on the user for under the SAME
+      // condition that puts it on the clean `done` frame below (no provider
+      // error) — so a client that misses the live `done` settles from history
+      // to `needs_you`, never dropping the question/connect card to a false
+      // `done`. A failed/stalled turn (providerError set) never carries it.
+      pendingInteraction: providerError ? undefined : interaction.pending,
       turnId,
     });
     if (fileChanges)
@@ -350,8 +410,18 @@ export async function execTurn(
     // Skip the clean `done` when the turn failed: the provider_error frame is the
     // turn's terminal surface (the web adapter settles on it), and a `done` would
     // settle the chat as a clean success — firing the "mission complete"
-    // notification on top of the error.
-    if (!providerError) publish(id, { type: "done", data: null, turnId });
+    // notification on top of the error. On the clean-done path, carry whatever
+    // the model is now waiting on the user for so the board card settles to
+    // `needs_you` (absent → `done`). Only the clean done ever carries it.
+    if (!providerError)
+      publish(id, {
+        type: "done",
+        data: null,
+        turnId,
+        ...(interaction.pending
+          ? { pendingInteraction: interaction.pending }
+          : {}),
+      });
   } catch (err) {
     // Persist the failure even when nothing streamed: a thrown turn (bad pin,
     // missing credential, stale model id) must leave the same durable trace a

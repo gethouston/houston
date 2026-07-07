@@ -1,6 +1,8 @@
 import { join } from "node:path";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
+import type { TurnMode } from "@houston/protocol";
 import type {
+  PendingInteraction,
   ProviderError,
   TokenUsage,
   ToolCallRecord,
@@ -15,7 +17,12 @@ import {
   type FileSnapshot,
   snapshotWorkspace,
 } from "../session/file-changes";
+import {
+  newInteractionHolder,
+  runWithInteractionCapture,
+} from "../session/interaction";
 import { buildToolSelection } from "../session/tool-selection";
+import { makeAskUserTool } from "../session/tools/ask-user";
 import { makeClampedFileTools } from "../session/tools/clamped-fs";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
 import { makeRunCodeTool } from "../session/tools/run-code";
@@ -38,6 +45,13 @@ import { resolveTurnModel } from "./turn-model";
 
 export interface TurnOutcome {
   error?: string;
+  /**
+   * What the model ended the turn waiting on the user for (ask_user), if
+   * anything. The per-turn SERVER carries it on the clean terminal `done` frame
+   * it sends after sync-back — never on an error. request_connection isn't
+   * available here (integrations are off in cloud turn mode).
+   */
+  pendingInteraction?: PendingInteraction;
 }
 
 /** Per-turn model/effort pin (a routine's, when it pinned them). Absent = inherit. */
@@ -57,6 +71,12 @@ export interface PiTurnRequest {
   nonce?: string;
   pin?: TurnModelPin;
   /**
+   * The turn's execution mode ("plan" = read-only + planning overlay). Absent =
+   * execute. Threaded into the pi session's tool allowlist + system prompt via
+   * `createSession`, identical to the long-lived server path.
+   */
+  mode?: TurnMode;
+  /**
    * The turn's wire identity, minted by the per-turn SERVER (which also stamps
    * it on the terminal frame it sends after sync-back) — stamped here on every
    * emitted frame and persisted on both stored messages.
@@ -68,7 +88,8 @@ export async function runPiTurn(
   root: string,
   turn: PiTurnRequest,
 ): Promise<TurnOutcome> {
-  const { conversationId, text, provider, signal, nonce, pin, turnId } = turn;
+  const { conversationId, text, provider, signal, nonce, pin, mode, turnId } =
+    turn;
   const emit = (e: WireFrame) => turn.emit({ ...e, turnId });
   const workspaceDir = join(root, "workspace");
   const dataDir = join(root, "data");
@@ -141,6 +162,10 @@ export async function runPiTurn(
       tools: toolSelection.toolNames,
       customTools: [
         ...makeClampedFileTools(workspaceDir),
+        // ask_user is available in every mode (holds no credential); its name is
+        // already in toolSelection.toolNames. request_connection is NOT — it is
+        // gated with the integration tools, which are off in cloud turn mode.
+        makeAskUserTool(),
         ...(sandbox ? [sandbox] : []),
       ],
     });
@@ -148,6 +173,13 @@ export async function runPiTurn(
       conversationId,
       model,
       ...(thinkingLevel ? { thinkingLevel } : {}),
+      // The turn's mode clamps this pi session's tools + overlays its prompt,
+      // exactly as the long-lived server path does (createPiBackend applies
+      // `toolNamesForMode` + the loader overlay from `opts.mode`): plan →
+      // read-only, auto → no blocking tools. In cloud turn mode ask_user is the
+      // only blocking tool present (integrations are off), so an auto turn here
+      // simply drops it.
+      ...(mode ? { mode } : {}),
     });
 
     // Snapshot the hydrated workspace so the turn's created/modified files can
@@ -175,8 +207,12 @@ export async function runPiTurn(
     });
     const onAbort = () => void session.abort();
     signal?.addEventListener("abort", onAbort, { once: true });
+    // A fresh per-turn holder for whatever the model ends up waiting on the user
+    // for (ask_user); established for the prompt's async subtree so the tool
+    // records into it. Read after prompt() resolves, returned on the outcome.
+    const interaction = newInteractionHolder();
     try {
-      await session.prompt(text);
+      await runWithInteractionCapture(interaction, () => session.prompt(text));
     } finally {
       signal?.removeEventListener("abort", onAbort);
       unsub();
@@ -211,10 +247,17 @@ export async function runPiTurn(
       usage,
       providerError,
       fileChanges,
+      // Same clean-only condition as the returned outcome (below): persist the
+      // pending question only when the turn ended without a provider error, so
+      // a reload of this cloud conversation settles to `needs_you`, not a false
+      // `done`. Mirrors exec-turn — only the clean turn carries it.
+      pendingInteraction: providerError ? undefined : interaction.pending,
       turnId,
     });
     if (fileChanges) emit({ type: "file_changes", data: fileChanges });
-    return {};
+    // Carry the pending question only on a clean turn — never alongside a
+    // provider error (mirrors exec-turn: only the clean `done` carries it).
+    return providerError ? {} : { pendingInteraction: interaction.pending };
   } catch (err) {
     if (assistantText || providerError)
       appendAssistantMessageAt(

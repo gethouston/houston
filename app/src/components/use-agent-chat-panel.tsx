@@ -20,6 +20,8 @@
 import type { AIBoardProps } from "@houston-ai/board";
 import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
 import {
+  type ChatInteractionAnswer,
+  ChatInteractionCard,
   decodeAttachmentMessage,
   UserAttachmentMessage,
   type UserAttachmentMessageLabels,
@@ -43,10 +45,14 @@ import {
   useSkills,
 } from "../hooks/queries";
 import { useCapabilities } from "../hooks/use-capabilities";
-import { useConversationFeed } from "../hooks/use-conversation-vm";
+import {
+  useConversationFeed,
+  useConversationVm,
+} from "../hooks/use-conversation-vm";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import { useSession } from "../hooks/use-session";
+import { deriveActiveInteraction } from "../lib/active-interaction";
 import { analytics } from "../lib/analytics";
 import { attachmentReferences } from "../lib/attachment-message";
 import {
@@ -58,12 +64,17 @@ import {
   sessionContextUsage,
 } from "../lib/context-usage";
 import { createMission } from "../lib/create-mission";
+import { resolveDictationLangHint } from "../lib/dictation/types";
+import { useDictation } from "../lib/dictation/use-dictation";
+import { genericErrorDescription } from "../lib/error-toast";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
+import { composeInteractionReply } from "../lib/interaction-reply";
 import {
   modelSelectorDecision,
   resolvePersonalModelPin,
 } from "../lib/model-selector-lock";
 import { canManageAgentGrants, isMultiplayer } from "../lib/org-roles";
+import { osIsTauri } from "../lib/os-bridge";
 import {
   decideHandoffMode,
   estimateConversationTokens,
@@ -92,13 +103,18 @@ import {
   tauriProvider,
   withAttachmentPaths,
 } from "../lib/tauri";
+import { normalizeTurnMode, type TurnMode } from "../lib/turn-mode";
 import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
+import { useDraftStore } from "../stores/drafts";
 import { useUIStore } from "../stores/ui";
+import { ChatConnectInteractionCard } from "./chat-connect-interaction-card";
 import { resolveEffectiveProvider } from "./chat-effective-provider";
 import { ChatEffortSelector } from "./chat-effort-selector";
+import { ChatModeSelector } from "./chat-mode-selector";
 import { ChatModelSelector } from "./chat-model-selector";
 import { ContextCompactedDivider } from "./context-compacted-divider";
 import { ContextIndicator } from "./context-indicator";
+import { DictationSetupDialog } from "./dictation-setup-dialog";
 import { IntegrationConnectCard } from "./integration-connect-card";
 import { parseToolkitFromHref } from "./integration-connect-card-state";
 import { integrationsSupported } from "./integrations/model";
@@ -142,6 +158,10 @@ interface AgentChatPanelProps {
   chatEmptyState: AIBoardProps["chatEmptyState"];
   /** Selected Skill chip rendered above the prompt input. */
   composerHeader: AIBoardProps["composerHeader"];
+  /** Replaces the whole composer with the interaction card (ask_user /
+   *  request_connection) when the mission is waiting on the user. Undefined
+   *  when nothing is pending or a turn is running. */
+  composerOverride: AIBoardProps["composerOverride"];
   /** Submit can run the selected Skill without extra text. */
   canSendEmpty: AIBoardProps["canSendEmpty"];
   /** Intercepts composer submit while a Skill is selected. */
@@ -170,11 +190,17 @@ interface AgentChatPanelProps {
   /** Effective provider/model for sending. */
   effectiveProvider: string;
   effectiveModel: string;
+  /** The composer's turn mode (execute | plan); consumers forward it as
+   *  `modeOverride` on user-typed sends — an unpinned turn is execute. */
+  turnMode: TurnMode;
   /** Multiplayer only (C5): the signed-in viewer's user id, for attributing
    *  teammates' messages. Undefined when signed out / single-player. */
   currentUserId: ChatPanelProps["currentUserId"];
   /** Localized author-attribution labels forwarded to ChatPanel. */
   authorLabels: ChatPanelProps["authorLabels"];
+  /** Prop-driven dictation control for the composer mic. Undefined on web
+   *  (no native mic capture) — ChatPanel hides the mic entirely. */
+  dictation: ChatPanelProps["dictation"];
 }
 
 export function useAgentChatPanel({
@@ -183,7 +209,7 @@ export function useAgentChatPanel({
   selectedSessionKey,
   onSelectSession,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
-  const { t } = useTranslation(["board", "chat", "teams"]);
+  const { t, i18n } = useTranslation(["board", "chat", "teams"]);
   const {
     processLabels,
     getThinkingMessage,
@@ -198,6 +224,29 @@ export function useAgentChatPanel({
   const { data: session } = useSession();
   const currentUserId = session?.user.id;
   const authorLabels = undefined;
+
+  // ── Dictation (desktop-only voice typing) ──────────────────────────────
+  // Transcript text is appended to the SAME draft store AIBoard's
+  // `drafts`/`onDraftChange` read from (`useBoardDrafts` in mission-board.tsx)
+  // — the key mirrors AIBoard's own `activeSessionKey ?? "new-conversation"`
+  // derivation, so dictating into a fresh composer lands in the same draft
+  // the user would see if they typed instead.
+  const draftKey = selectedSessionKey ?? "new-conversation";
+  const handleDictationTranscript = useCallback(
+    (text: string) => {
+      const current = useDraftStore.getState().drafts[draftKey]?.text ?? "";
+      const needsSpace = current.length > 0 && !current.endsWith(" ");
+      useDraftStore
+        .getState()
+        .setDraftText(draftKey, `${current}${needsSpace ? " " : ""}${text}`);
+    },
+    [draftKey],
+  );
+  const { dictation, modelSetup } = useDictation({
+    onTranscript: handleDictationTranscript,
+    langHint: resolveDictationLangHint(i18n.resolvedLanguage),
+    enabled: osIsTauri(),
+  });
 
   // Integration connect cards are a new-engine feature: the host advertises
   // its wired providers in capabilities; the legacy Rust engine (null) and
@@ -234,11 +283,15 @@ export function useAgentChatPanel({
   const [agentProvider, setAgentProvider] = useState<string | null>(null);
   const [agentModel, setAgentModel] = useState<string | null>(null);
   const [agentEffort, setAgentEffort] = useState<string | null>(null);
+  // Composer "Mode" pin (execute/plan). Loaded from config as memory only; the
+  // send path forwards it as `modeOverride`. Unknown/legacy values → execute.
+  const [turnMode, setTurnMode] = useState<TurnMode>("execute");
   useEffect(() => {
     if (!path) {
       setAgentProvider(null);
       setAgentModel(null);
       setAgentEffort(null);
+      setTurnMode("execute");
       return;
     }
     tauriConfig
@@ -247,6 +300,7 @@ export function useAgentChatPanel({
         setAgentProvider((cfg.provider as string) ?? null);
         setAgentModel(normalizeLegacyModel((cfg.model as string) ?? null));
         setAgentEffort((cfg.effort as string) ?? null);
+        setTurnMode(normalizeTurnMode(cfg.mode));
       })
       .catch(() => {});
   }, [path]);
@@ -319,6 +373,12 @@ export function useAgentChatPanel({
   // turn-state source (history seeded by the adapter on load; live turns
   // folded by the SDK machinery).
   const sessionFeedItems = useConversationFeed(path, selectedSessionKey);
+
+  // The live turn state for this conversation, for the pending-interaction
+  // override: `running` gates the card (a running turn shows the composer, not
+  // the card) and `pendingInteraction` is the live source the derivation
+  // prefers over the persisted activity fallback.
+  const conversationVm = useConversationVm(path, selectedSessionKey);
 
   // Whether the open conversation already has turns. Once it does, the chat's
   // provider is frozen (see resolveEffectiveProvider): a provider that logs out
@@ -482,7 +542,7 @@ export function useAgentChatPanel({
       } catch (err) {
         addToast({
           title: t("chat:errors.modelPersistFailed"),
-          description: String(err),
+          description: genericErrorDescription("model_persist_failed", err),
           variant: "error",
         });
       }
@@ -547,7 +607,28 @@ export function useAgentChatPanel({
       } catch (err) {
         addToast({
           title: t("chat:errors.modelPersistFailed"),
-          description: String(err),
+          description: genericErrorDescription("model_persist_failed", err),
+          variant: "error",
+        });
+      }
+    },
+    [path, addToast, t],
+  );
+  const handleModeSelect = useCallback(
+    async (mode: TurnMode) => {
+      // Mode is per-agent composer memory (never synced to engine Settings):
+      // persist it so the pill reopens where the user left it. Optimistic flip;
+      // the actual plan/execute pin rides each send as `modeOverride`.
+      setTurnMode(mode);
+      try {
+        if (path) {
+          const cfg = await tauriConfig.read(path);
+          await tauriConfig.write(path, { ...cfg, mode });
+        }
+      } catch (err) {
+        addToast({
+          title: t("chat:errors.modelPersistFailed"),
+          description: genericErrorDescription("model_persist_failed", err),
           variant: "error",
         });
       }
@@ -681,6 +762,7 @@ export function useAgentChatPanel({
           providerOverride: effectiveProvider,
           modelOverride: effectiveModel,
           effortOverride: effectiveEffort,
+          modeOverride: turnMode,
         });
       } else {
         // New conversation: createMission with `title` override so the
@@ -703,6 +785,7 @@ export function useAgentChatPanel({
             providerOverride: effectiveProvider,
             modelOverride: effectiveModel,
             effortOverride: effectiveEffort,
+            modeOverride: turnMode,
             buildPrompt: async (activityId) => {
               const paths = await tauriAttachments.save(
                 `activity-${activityId}`,
@@ -737,6 +820,7 @@ export function useAgentChatPanel({
       effectiveProvider,
       effectiveModel,
       effectiveEffort,
+      turnMode,
       queryClient,
     ],
   );
@@ -771,11 +855,12 @@ export function useAgentChatPanel({
           providerOverride: effectiveProvider,
           modelOverride: effectiveModel,
           effortOverride: effectiveEffort,
+          modeOverride: turnMode,
         })
         .catch((err) => {
           addToast({
             title: t("chat:composio.followupFailed", { name: appName }),
-            description: String(err),
+            description: genericErrorDescription("integration_followup", err),
             variant: "error",
           });
         });
@@ -786,6 +871,7 @@ export function useAgentChatPanel({
       effectiveProvider,
       effectiveModel,
       effectiveEffort,
+      turnMode,
       addToast,
       t,
     ],
@@ -806,6 +892,132 @@ export function useAgentChatPanel({
     },
     [integrationsEnabled, agent, capabilities, handleIntegrationConnected],
   );
+
+  // ── Pending-interaction override (ask_user / request_connection) ──────
+  // The one thing the mission is waiting on the user for: the live VM
+  // interaction if this client settled the turn, else the activity's persisted
+  // one (reload / observer). Gated on `running` so a fresh turn's composer wins
+  // and the card disappears the instant the user answers.
+  const activeInteraction = deriveActiveInteraction({
+    running: conversationVm?.running ?? false,
+    live: conversationVm?.pendingInteraction,
+    persisted: selectedActivity?.pending_interaction,
+  });
+
+  // Sends the composed interaction reply as a normal user message through the
+  // existing follow-up send path; the turn start clears the interaction, so the
+  // card retires through the same reactivity. A failure surfaces (no silent
+  // swallow) — the composer is gone, so a toast is the only channel left.
+  const sendInteractionMessage = useCallback(
+    (text: string) => {
+      if (!path || !selectedSessionKey) return;
+      tauriChat
+        .send(path, text, selectedSessionKey, {
+          providerOverride: effectiveProvider,
+          modelOverride: effectiveModel,
+          effortOverride: effectiveEffort,
+          modeOverride: turnMode,
+        })
+        .catch((err) => {
+          addToast({
+            title: t("chat:errors.sessionStart", { error: String(err) }),
+            variant: "error",
+          });
+        });
+    },
+    [
+      path,
+      selectedSessionKey,
+      effectiveProvider,
+      effectiveModel,
+      effectiveEffort,
+      turnMode,
+      addToast,
+      t,
+    ],
+  );
+
+  const interactionLabels = useMemo(
+    () => ({
+      placeholder: t("chat:questionCard.placeholder"),
+      send: t("chat:questionCard.send"),
+      back: t("chat:questionCard.back"),
+      forward: t("chat:questionCard.forward"),
+      progress: (current: number, total: number) =>
+        t("chat:questionCard.progress", { current, total }),
+    }),
+    [t],
+  );
+
+  // The mission is waiting on a sequence of steps (questions then connections).
+  // ONE ChatInteractionCard walks them one at a time; `onComplete` fires after
+  // the LAST step, never before, so the card lives until every connection has
+  // landed.
+  //
+  // Completion composes ONE reply: `"<question>: <answer>"` per answered
+  // question, then `"Connected <app>."` per connection that landed. A sequence
+  // with questions sends that reply visibly (the user typed those answers). A
+  // connect-ONLY sequence has no user-typed text, so it sends the SAME reply as
+  // a hidden auto-continue message: the agent resumes without a fake user
+  // bubble in the transcript. The reply fires ONCE at completion; firing it
+  // per-connect would start a turn that tore the card down before later connect
+  // steps could complete.
+  //
+  // `connectedNames` accumulates the display names of connections made during
+  // THIS sequence. It lives in the memo body (not a ref) because
+  // `deriveActiveInteraction` returns a STABLE reference for a given pending
+  // interaction, so the memo does not recompute — and the accumulator does not
+  // reset — while the user walks the steps; a fresh interaction gets a fresh
+  // array.
+  const composerOverride = useMemo<AIBoardProps["composerOverride"]>(() => {
+    if (!agent || !activeInteraction) return undefined;
+    const steps = activeInteraction.steps;
+    const hasQuestionSteps = steps.some((step) => step.kind === "question");
+    const connectedNames: string[] = [];
+    return (
+      <ChatInteractionCard
+        steps={steps}
+        labels={interactionLabels}
+        onComplete={(answers: ChatInteractionAnswer[]) => {
+          // ONE send after the LAST step: a sequence with questions replies with
+          // the user's visible answers; a connect-only sequence resumes the
+          // agent with a hidden auto-continue message (no fake user bubble).
+          sendInteractionMessage(
+            composeInteractionReply({
+              answers,
+              connectedNames,
+              hasQuestionSteps,
+              connectedLine: (name) =>
+                t("chat:interaction.connectedLine", { name }),
+            }),
+          );
+        }}
+        renderConnect={(step, api) => (
+          <ChatConnectInteractionCard
+            toolkit={step.toolkit}
+            agentId={agent.id}
+            autoGrant={canManageAgentGrants(capabilities, agent)}
+            reason={step.reason}
+            onConnected={(_toolkit, appName) => {
+              // Record the app and advance ONLY. The composed `onComplete`
+              // reply resumes the agent once EVERY step is done; starting a
+              // turn here would tear the card down before later connect steps
+              // could complete.
+              connectedNames.push(appName);
+              api.onConnected();
+            }}
+          />
+        )}
+      />
+    );
+  }, [
+    agent,
+    activeInteraction,
+    interactionLabels,
+    sendInteractionMessage,
+    capabilities,
+    t,
+  ]);
 
   // ── Built JSX bundles ─────────────────────────────────────────────────
   const renderUserMessage = useCallback(
@@ -849,6 +1061,7 @@ export function useAgentChatPanel({
                 providerOverride: effectiveProvider,
                 modelOverride: effectiveModel,
                 effortOverride: effectiveEffort,
+                modeOverride: turnMode,
               });
             }}
             onSwitchModel={
@@ -891,6 +1104,7 @@ export function useAgentChatPanel({
                 providerOverride: effectiveProvider,
                 modelOverride: effectiveModel,
                 effortOverride: effectiveEffort,
+                modeOverride: turnMode,
                 // A refused not-connected send left its prompt's bubble in
                 // the feed already — resending it must not add a second one.
                 suppressUserBubble: resendsOriginalPrompt(providerError),
@@ -910,6 +1124,7 @@ export function useAgentChatPanel({
       effectiveModel,
       effectiveProvider,
       effectiveEffort,
+      turnMode,
       selectModel,
       path,
       selectedSessionKey,
@@ -1041,6 +1256,11 @@ export function useAgentChatPanel({
           <Play className="size-3 fill-current" />
           {t("composerSkill.browse")}
         </button>
+        <ChatModeSelector
+          mode={turnMode}
+          onSelect={handleModeSelect}
+          agent={agent}
+        />
         <ChatModelSelector
           provider={displayModelPin.provider}
           model={displayModelPin.model}
@@ -1071,6 +1291,8 @@ export function useAgentChatPanel({
     displayModelPin,
     selectModel,
     selectEffort,
+    turnMode,
+    handleModeSelect,
     allowedModels,
     contextUsage,
     contextWindow,
@@ -1120,12 +1342,14 @@ export function useAgentChatPanel({
         onConfirm={confirmProviderSwitch}
         onCancel={() => setSwitchDialog(null)}
       />
+      <DictationSetupDialog modelSetup={modelSetup} />
     </>
   ) : null;
 
   return {
     chatEmptyState,
     composerHeader,
+    composerOverride,
     canSendEmpty: activeSkill != null,
     onComposerSubmit: handleSkillComposerSubmit,
     footer,
@@ -1145,7 +1369,9 @@ export function useAgentChatPanel({
     pickerDialog,
     effectiveProvider,
     effectiveModel,
+    turnMode,
     currentUserId,
     authorLabels,
+    dictation,
   };
 }

@@ -167,8 +167,9 @@ function startProbe(entry: ProvisioningEntry): void {
       store.clearProvisioning(id, entry);
       showErrorToast(
         "agent_provisioning",
-        i18n.t("shell:agentProvisioning.failed"),
+        lastError instanceof Error ? lastError.message : String(lastError),
         lastError,
+        { userMessage: i18n.t("shell:agentProvisioning.failed") },
       );
     },
     sleep,

@@ -42,6 +42,10 @@ export interface ConversationView {
   sessionStatus: ConversationVM["sessionStatus"];
   boardStatus: ConversationVM["boardStatus"];
   queued: ConversationVM["queued"];
+  /** What this conversation ended waiting on the user for (ask_user /
+   *  request_connection), or null. Set on settle, cleared on the next turn
+   *  start — drives the composer-replacing interaction card. */
+  pendingInteraction: ConversationVM["pendingInteraction"];
 }
 
 const EMPTY_FEED: FeedItem[] = [];
@@ -53,6 +57,7 @@ function toView(vm: ConversationVM): ConversationView {
     sessionStatus: vm.sessionStatus,
     boardStatus: vm.boardStatus,
     queued: vm.queued,
+    pendingInteraction: vm.pendingInteraction,
   };
 }
 
@@ -110,4 +115,39 @@ export function getConversationStatus(
     conversationScope(agentPath, sessionKey),
   ) as ConversationVM | undefined;
   return vm?.sessionStatus;
+}
+
+/**
+ * Synchronous, non-reactive read of a conversation's settled interaction — for
+ * the completion-notification body (use-session-events). The VM folds it via
+ * `persistBoardStatus`, which runs AFTER the `SessionStatus` bus event but
+ * BEFORE the `ActivityChanged` echo that same persist emits, so reading here on
+ * that echo sees the settled value. `undefined` = nothing published for this
+ * conversation yet; `null` = settled with nothing outstanding.
+ */
+export function getConversationInteraction(
+  agentPath: string,
+  sessionKey: string,
+): ConversationVM["pendingInteraction"] | undefined {
+  const vm = conversationStore.getSnapshot(
+    conversationScope(agentPath, sessionKey),
+  ) as ConversationVM | undefined;
+  return vm?.pendingInteraction;
+}
+
+/**
+ * Synchronous, non-reactive read of a conversation's board-card status — the
+ * completion latch's readiness gate (use-session-events). `persistBoardStatus`
+ * flips it from "running" to a terminal value in the SAME fold that stamps the
+ * settled interaction, so "not running" is the signal the notification body is
+ * readable. `undefined`/`null` = no board card folded for this conversation.
+ */
+export function getConversationBoardStatus(
+  agentPath: string,
+  sessionKey: string,
+): ConversationVM["boardStatus"] | undefined {
+  const vm = conversationStore.getSnapshot(
+    conversationScope(agentPath, sessionKey),
+  ) as ConversationVM | undefined;
+  return vm?.boardStatus;
 }

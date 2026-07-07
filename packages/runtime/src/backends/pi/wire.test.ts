@@ -85,7 +85,30 @@ test("normalizeUsage: missing/garbage usage degrades to null (no misleading zero
   expect(normalizeUsage(undefined)).toBeNull();
   expect(normalizeUsage(null)).toBeNull();
   expect(normalizeUsage({})).toBeNull();
-  expect(normalizeUsage({ output: 5 })).toBeNull(); // no totalTokens
+  // Output alone carries no context signal, and there is no totalTokens to derive
+  // one from → null rather than a misleading empty context.
+  expect(normalizeUsage({ output: 5 })).toBeNull();
+  expect(normalizeUsage({ output: 5, totalTokens: "x" })).toBeNull();
+});
+
+test("normalizeUsage: no totalTokens → synthesizes context from the components", () => {
+  // The Gemini-through-pi case: components present, but pi never summed them.
+  // context_tokens = input + cacheRead + cacheWrite (everything but output).
+  expect(
+    normalizeUsage({ input: 100, output: 20, cacheRead: 300, cacheWrite: 50 }),
+  ).toEqual({ context_tokens: 450, output_tokens: 20, cached_tokens: 300 });
+  // Input only (no cache, no total): context is the input.
+  expect(normalizeUsage({ input: 5000, output: 100 })).toEqual({
+    context_tokens: 5000,
+    output_tokens: 100,
+    cached_tokens: 0,
+  });
+  // A lone cacheRead is a valid context signal on its own.
+  expect(normalizeUsage({ cacheRead: 200 })).toEqual({
+    context_tokens: 200,
+    output_tokens: 0,
+    cached_tokens: 200,
+  });
 });
 
 test("normalizeUsage: clamps a degenerate output > total to zero, never negative", () => {

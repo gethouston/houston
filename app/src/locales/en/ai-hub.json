@@ -15,8 +15,9 @@
   },
   "card": {
     "connect": "Connect",
+    "connectName": "Connect {{name}}",
     "connecting": "Connecting",
-    "seeMore": "See more",
+    "details": "View {{name}} details",
     "connected": "Connected",
     "signOut": "Sign out",
     "cancel": "Cancel",
@@ -102,16 +103,16 @@
     "search": "Search providers",
     "empty": {
       "title": "No providers found",
-      "description": "Try a different search or category."
+      "description": "Try a different search or filter."
     },
-    "category": {
-      "label": "Category",
-      "all": "All",
-      "featured": "Featured",
-      "gateway": "Gateways",
-      "direct": "Direct",
-      "regional": "Regional",
-      "local": "Local"
+    "filter": {
+      "label": "Filter providers",
+      "all": "All providers",
+      "popular": "Popular",
+      "subscription": "Included with a subscription",
+      "free": "Free to try",
+      "payg": "Pay per use",
+      "local": "Runs on your computer"
     },
     "openai": {
       "description": "Sign in with ChatGPT and put the GPT and Codex models to work."

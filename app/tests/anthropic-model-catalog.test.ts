@@ -8,35 +8,14 @@ import {
 } from "../src/lib/providers.ts";
 import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 
-// Regression guards for HOU-618 (Sonnet 5 context window) plus the Fable 5
-// picker restore. Anthropic's models now come from pi (windows) + the Houston
-// override (labels, effort, snap-up ceiling); the sample catalog carries pi's
-// windows, so these lock in the hydrated result the picker reads.
+// Regression guards for the Anthropic window sizing plus the Fable 5 picker
+// restore. Anthropic's models now come from pi (windows + effort) + the Houston
+// override (labels, snap-up ceiling); the sample catalog carries pi's windows,
+// so these lock in the hydrated result the picker reads. `claude-sonnet-5` is
+// intentionally NOT asserted: pi-ai 0.79.10 ships no such id, its curated
+// override was orphaned and removed, and the drift guard
+// (provider-overrides-drift.test.ts) now rejects any override id pi lacks.
 before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
-
-describe("Sonnet 5 catalog (HOU-618)", () => {
-  it("has a flat 1M context window — no 200k snap-up (unlike Sonnet 4.6)", () => {
-    // Sonnet 5's 1M is the default AND only variant (no credit-gated 200k),
-    // so default === max === 1M. The bug started the estimate at 200k by
-    // copying Sonnet 4.6's credit-gated snap-up, which doesn't apply here.
-    deepStrictEqual(getContextWindowConfig("anthropic", "claude-sonnet-5"), {
-      default: 1_000_000,
-      max: 1_000_000,
-    });
-  });
-
-  it("keeps all five effort levels including max", () => {
-    // Anthropic's effort docs list Sonnet 5 for both `xhigh` and `max`, so
-    // `max` stays in the picker (it is not an Opus-only level).
-    deepStrictEqual(getEffortLevels("anthropic", "claude-sonnet-5"), [
-      "low",
-      "medium",
-      "high",
-      "xhigh",
-      "max",
-    ]);
-  });
-});
 
 describe("Sonnet 4.6 still credit-gates its 1M window", () => {
   it("starts at 200k and snaps up to 1M (unchanged by HOU-618)", () => {
@@ -61,13 +40,12 @@ describe("Fable 5 restored to the picker", () => {
     });
   });
 
-  it("accepts all five effort levels", () => {
+  it("derives its effort straight from pi (low→xhigh, no retired max)", () => {
     deepStrictEqual(getEffortLevels("anthropic", "claude-fable-5"), [
       "low",
       "medium",
       "high",
       "xhigh",
-      "max",
     ]);
   });
 });

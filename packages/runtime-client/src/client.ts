@@ -54,6 +54,15 @@ export interface SendOptions {
   model?: string;
   /** Per-turn reasoning-effort pin. */
   effort?: string;
+  /**
+   * Per-turn execution mode. "execute" (the default for an unpinned turn) =
+   * full read/write/act; "plan" = read-only tools plus a planning overlay;
+   * "auto" (Autopilot) = acts with everything except the blocking tools, never
+   * waiting on the user. Omitted, the runtime runs the turn as "execute".
+   * Mirrors the protocol's `TurnMode` (kept inline — this package stays zero-dep,
+   * like `effort`).
+   */
+  mode?: "execute" | "plan" | "auto";
   signal?: AbortSignal;
 }
 
@@ -300,6 +309,7 @@ export class HoustonEngineClient {
         provider: opts.provider,
         model: opts.model,
         effort: opts.effort,
+        mode: opts.mode,
       }),
       signal: opts.signal,
     });

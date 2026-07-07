@@ -1,4 +1,5 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
   BRAND_KEYS,
@@ -6,6 +7,9 @@ import {
   monogramText,
   providerBrandKey,
 } from "../src/components/shell/provider-logo-map.ts";
+
+const read = (rel: string) =>
+  readFileSync(new URL(rel, import.meta.url), "utf8");
 
 /**
  * Every provider id pi-ai exposes today (from `@earendil-works/pi-ai`'s catalog),
@@ -105,6 +109,10 @@ describe("providerBrandKey", () => {
   it("draws a real models.dev mark for every covered provider id", () => {
     for (const id of [
       "anthropic",
+      "ant-ling",
+      "cohere",
+      "meta",
+      "qwen",
       "openai",
       "google",
       "google-vertex",
@@ -136,11 +144,27 @@ describe("providerBrandKey", () => {
     }
   });
 
-  it("falls back to the monogram only for ids models.dev has no logo for", () => {
-    // `ant-ling` is the only Houston provider models.dev serves its generic
-    // default for and that has no parent brand to borrow — it renders the
-    // polished monogram rather than an inexact hand-authored glyph.
-    strictEqual(providerBrandKey("ant-ling"), null);
+  it("ships a real mark for every Houston provider (no monograms in the list)", () => {
+    // `ant-ling` was the last monogram holdout: models.dev serves its generic
+    // default for it, so its Ant Group mark ships from LobeHub's icon set
+    // instead. An unknown id still resolves to null (the monogram).
+    strictEqual(providerBrandKey("ant-ling"), "ant-ling");
+    strictEqual(providerBrandKey("some-future-provider"), null);
+  });
+});
+
+describe("OpenCode provider art", () => {
+  it("uses OpenCode's official O mark, not the old Zen Z mark", () => {
+    const src = read("../src/components/shell/provider-marks-extra.tsx");
+    ok(src.includes("export const OpenCodeLogo"), "OpenCodeLogo exists");
+    ok(
+      src.includes("M240 300H0V0H240V300ZM180 60H60V240H180V60Z"),
+      "OpenCodeLogo draws the official O ring from opencode.ai/brand",
+    );
+    ok(
+      !src.includes("M8.40005 17.4H19.2001V21H4.80005V13.8H8.40005V17.4"),
+      "OpenCodeLogo no longer draws the Z-shaped Zen mark",
+    );
   });
 });
 
@@ -173,8 +197,10 @@ describe("monogramText", () => {
 // keys the registry binds. (Registry lives in the .tsx; this asserts the count
 // the map file publishes so a stray key addition is caught here too.)
 describe("BRAND_KEYS", () => {
-  it("has the expected 27 real models.dev marks", () => {
-    strictEqual(BRAND_KEYS.size, 27);
+  it("has the expected 31 real brand marks", () => {
+    // 27 straight from models.dev's per-provider endpoint, plus meta (its
+    // `llama` art), qwen (its `alibaba` art), cohere, and ant-ling (LobeHub).
+    strictEqual(BRAND_KEYS.size, 31);
   });
 
   it("covers the providers sourced from models.dev", () => {

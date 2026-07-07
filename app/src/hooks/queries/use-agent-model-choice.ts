@@ -1,7 +1,38 @@
-import type { AgentModelChoice } from "@houston-ai/engine-client";
+import type {
+  AgentModelChoice,
+  AgentModelChoiceInfo,
+} from "@houston-ai/engine-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  toCanonicalProviderId,
+  toDisplayProviderId,
+} from "../../lib/provider-overrides";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriAgentModelChoice } from "../../lib/tauri";
+
+/**
+ * The stored model choice crosses a provider-id DIALECT boundary here, the
+ * single read+write seam for it. The gateway stores + injects the CANONICAL
+ * engine id (pi's `openai-codex`); the whole app UI speaks the DISPLAY id
+ * (Houston renames it to `openai`, see `PROVIDER_ID_RENAME`). So a read maps
+ * engine → display and a write maps display → engine, keeping every downstream
+ * comparison (picker highlight, `resolvePersonalModelPin`, the effort re-write)
+ * in the display dialect it already assumes while the wire stays canonical — the
+ * client mirror of the runtime's `canonicalPinProvider` backstop. Only Codex
+ * differs; every other id is identical on both sides.
+ */
+function toDisplayChoice(
+  info: AgentModelChoiceInfo | null,
+): AgentModelChoiceInfo | null {
+  if (!info?.choice) return info;
+  return {
+    ...info,
+    choice: {
+      ...info.choice,
+      provider: toDisplayProviderId(info.choice.provider),
+    },
+  };
+}
 
 /**
  * Teams v2: the ACTING user's model choice for one shared agent plus the agent's
@@ -16,7 +47,8 @@ import { tauriAgentModelChoice } from "../../lib/tauri";
 export function useAgentModelChoice(agentId: string, enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.agentModelChoice(agentId),
-    queryFn: () => tauriAgentModelChoice.get(agentId),
+    queryFn: async () =>
+      toDisplayChoice(await tauriAgentModelChoice.get(agentId)),
     enabled,
     staleTime: 30_000,
   });
@@ -34,7 +66,10 @@ export function useSetAgentModelChoice(agentId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (choice: AgentModelChoice) =>
-      tauriAgentModelChoice.set(agentId, choice),
+      tauriAgentModelChoice.set(agentId, {
+        ...choice,
+        provider: toCanonicalProviderId(choice.provider),
+      }),
     onSuccess: () =>
       qc.invalidateQueries({
         queryKey: queryKeys.agentModelChoice(agentId),

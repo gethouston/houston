@@ -28,9 +28,20 @@ cd ..  # workspace root
 rm -rf app/src-tauri/target/universal-apple-darwin/release/bundle
 rm -rf app/dist
 
-# 2. Build engine sidecar for BOTH arches (required for universal)
-cargo build --release --target aarch64-apple-darwin -p houston-engine-server
-cargo build --release --target x86_64-apple-darwin -p houston-engine-server
+# 2. Bun-compile the host sidecar for BOTH arches (required for universal).
+#    This produces target/host-sidecar/houston-host-<triple> (+ stamps it with
+#    HEAD and stages the sibling `claude` binary); build.rs stages both into the
+#    bundle and, for a --release build, FAILS if the sidecar's inputs changed
+#    since it was compiled (staleness guard). --verify boots the native slice and
+#    curls /v1/capabilities + /v1/catalog, so run it on the host-native arch only.
+#
+#    Cross-arch note: the non-native slice needs its Claude SDK platform package
+#    force-installed first (the pnpm store only has the host-matching one). On an
+#    Apple Silicon Mac the x86_64 slice needs the darwin-x64 package — match the
+#    @anthropic-ai/claude-agent-sdk version in packages/runtime/package.json:
+#    pnpm add -w @anthropic-ai/claude-agent-sdk-darwin-x64@<version> --force
+scripts/build-host-sidecar.sh aarch64-apple-darwin --verify   # native on Apple Silicon
+scripts/build-host-sidecar.sh x86_64-apple-darwin             # cross-arch slice
 
 # 3. Build + auto-sign the app (universal fat binary)
 cd app

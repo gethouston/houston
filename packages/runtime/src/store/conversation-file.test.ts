@@ -136,6 +136,39 @@ test("assistant message with no switch stores no providerSwitch field", () => {
   expect(msg?.providerSwitch ?? null).toBeNull();
 });
 
+test("assistant message persists the pending interaction so a reload settles needs_you", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "book it", { turnId: "t-1" });
+  appendAssistantMessageAt(dir, "c1", "which date?", {
+    turnId: "t-1",
+    pendingInteraction: {
+      steps: [{ kind: "question", id: "q1", question: "Which date?" }],
+    },
+  });
+
+  const history = getHistoryAt(dir, "c1");
+  if (!history) throw new Error("getHistoryAt returned null after append");
+  const msg = history.messages.find((m) => m.role === "assistant");
+  if (!msg) throw new Error("no assistant message found in history");
+  expect(msg.pendingInteraction).toEqual({
+    steps: [{ kind: "question", id: "q1", question: "Which date?" }],
+  });
+});
+
+test("assistant message with no pending interaction stays interaction-free in the JSON", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "hi");
+  appendAssistantMessageAt(dir, "c1", "all done");
+
+  const msg = getHistoryAt(dir, "c1")?.messages.find(
+    (m) => m.role === "assistant",
+  );
+  expect(msg?.pendingInteraction ?? null).toBeNull();
+  // Absent, not present-and-undefined — a plain turn's record is unchanged.
+  const raw = readFileSync(join(dir, "c1.json"), "utf8");
+  expect(raw).not.toContain("pendingInteraction");
+});
+
 test("a user message from an acting-as token persists its author (C5), served on read-back", () => {
   const dir = freshDir();
   // The runtime decodes WHO the turn acts as off the C2 token, then stamps it.

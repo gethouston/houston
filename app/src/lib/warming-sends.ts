@@ -48,6 +48,7 @@ export interface QueueWarmingSendArgs {
   provider?: string;
   model?: string;
   effort?: string;
+  mode?: "execute" | "plan" | "auto";
 }
 
 /**
@@ -68,6 +69,7 @@ export function buildWarmingSend(
     provider: args.provider,
     model: args.model,
     effort: args.effort,
+    mode: args.mode,
   };
   if (args.buildPrompt) promptBuilders.set(send.id, args.buildPrompt);
   return send;
@@ -135,7 +137,9 @@ export async function flushWarmingSends(
       } catch {
         showErrorToast(
           "warming_sends_row",
-          i18n.t("chat:errors.missionRowFailed"),
+          "mission row create/update failed",
+          undefined,
+          { userMessage: i18n.t("chat:errors.missionRowFailed") },
         );
       }
     }
@@ -151,6 +155,7 @@ export async function flushWarmingSends(
         providerOverride: send.provider,
         modelOverride: send.model,
         effortOverride: send.effort,
+        modeOverride: send.mode,
         suppressUserBubble: suppress,
       });
     } catch (e) {

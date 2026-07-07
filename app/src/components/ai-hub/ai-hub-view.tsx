@@ -1,3 +1,4 @@
+import { cn } from "@houston-ai/core";
 import { AnimatePresence, motion } from "framer-motion";
 import { type ReactNode, useMemo, useRef, useState } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
@@ -11,12 +12,12 @@ import {
   getConnectProviders,
   type ProviderInfo,
 } from "../../lib/providers";
+import { ProviderBrowser } from "../provider-browser/provider-browser";
+import { ProviderConnectionDialogs } from "../provider-browser/provider-connection-dialogs";
 import { AiHubTabs, type HubTab } from "./ai-hub-tabs";
 import { HubHero } from "./hub-hero";
 import { ModelDirectory } from "./model-directory";
 import { ModelModal } from "./model-modal";
-import { ProviderConnectionDialogs } from "./provider-connection-dialogs";
-import { ProviderList } from "./provider-list";
 import { ProviderModal } from "./provider-modal";
 
 const TRANSITION = {
@@ -58,6 +59,11 @@ export function AiHubView() {
     [newEngine, providerCapabilities],
   );
 
+  // While a modal is up, freeze the page scroller behind it. Radix's scroll
+  // lock only locks <body>; this inner region kept its own live scrollbar,
+  // which sat next to the modal's as a second, draggable vertical scroll.
+  const modalOpen = openProvider !== null || openModel !== null;
+
   // Retain the last provider/model while a modal animates out so Radix keeps it
   // mounted through the exit transition instead of snapping to empty.
   const lastProvider = useRef<ProviderInfo | null>(null);
@@ -93,22 +99,31 @@ export function AiHubView() {
             </div>
           </div>
 
-          {/* Only this region scrolls. `scrollbar-gutter: stable` reserves the
-              scrollbar's gutter permanently, so when a modal's scroll-lock
-              (react-remove-scroll) removes the scrollbar the content width never
-              changes — the list stays put on modal open. The ModelsBrowser
-              controls/column-header (sticky top-0) pin to the TOP of this
-              region, i.e. right beneath the fixed tabs above. */}
-          <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+          {/* Only this region scrolls. While a modal is open it flips to
+              `overflow-y-hidden` — Radix's scroll lock covers only <body>, so
+              this region's scrollbar stayed live behind the modal (a second
+              draggable vertical scroll). Hidden boxes are still scroll
+              containers, so `scrollbar-gutter: stable` keeps the gutter
+              reserved and the scroll offset holds — the list stays put on
+              modal open/close. The ModelsBrowser controls/column-header
+              (sticky top-0) pin to the TOP of this region, i.e. right beneath
+              the fixed tabs above. */}
+          <div
+            className={cn(
+              "flex-1 [scrollbar-gutter:stable]",
+              modalOpen ? "overflow-y-hidden" : "overflow-y-auto",
+            )}
+          >
             <div className="mx-auto flex max-w-5xl flex-col px-8 pb-10">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div key={tab} {...TRANSITION}>
                   {tab === "providers" ? (
-                    <ProviderList
+                    <ProviderBrowser
                       providers={connectProviders}
                       connections={connections}
                       catalog={catalog}
                       onOpen={setOpenProvider}
+                      renderDialogs={false}
                     />
                   ) : (
                     <ModelDirectory

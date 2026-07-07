@@ -10,6 +10,7 @@ import {
 import { Copy, ExternalLink, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { genericErrorDescription } from "../../lib/error-toast";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider, tauriSystem } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
@@ -160,7 +161,7 @@ export function ProviderLoginDialog({
     } catch (err) {
       addToast({
         title: t("providerLogin.urlCopyFailed"),
-        description: err instanceof Error ? err.message : String(err),
+        description: genericErrorDescription("provider_login_copy_url", err),
         variant: "error",
       });
     }
@@ -181,7 +182,7 @@ export function ProviderLoginDialog({
       // sees the CLI actually finish the exchange. The parent listens for
       // that event and calls `onClose`.
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(genericErrorDescription("provider_login_submit_code", err));
       setSubmitting(false);
     }
   };

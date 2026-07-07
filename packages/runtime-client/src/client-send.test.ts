@@ -44,4 +44,19 @@ test("a pin-less sendMessage omits the pin fields entirely", async () => {
   // JSON.stringify drops undefined values — the runtime must see NO pin keys,
   // so its `typeof x === "string"` guards leave the turn on its own resolution.
   expect(bodies[0]).toEqual({ text: "hi", nonce: "n1" });
+  // The plan-mode pin is part of that contract: an unpinned send carries NO
+  // `mode` key, so the runtime defaults the turn to "execute".
+  expect(bodies[0]).not.toHaveProperty("mode");
+});
+
+test("sendMessage carries the per-turn plan mode on the wire", async () => {
+  const { client, bodies } = capture();
+  await client.sendMessage("c1", "hi", { nonce: "n1", mode: "plan" });
+  expect(bodies[0]).toEqual({ text: "hi", nonce: "n1", mode: "plan" });
+});
+
+test("sendMessage carries the per-turn auto (Autopilot) mode on the wire", async () => {
+  const { client, bodies } = capture();
+  await client.sendMessage("c1", "hi", { nonce: "n1", mode: "auto" });
+  expect(bodies[0]).toEqual({ text: "hi", nonce: "n1", mode: "auto" });
 });

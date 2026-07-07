@@ -1,6 +1,11 @@
 import type { HoustonEvent } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  completionInteractionReady,
+  interactionNotificationBodyKey,
+  interactionQuestionCount,
+} from "../lib/active-interaction";
 import { listenOsEvent, subscribeHoustonEvents } from "../lib/events";
 import { logger } from "../lib/logger";
 import {
@@ -11,12 +16,24 @@ import { isMac } from "../lib/platform";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
+import { CompletionLatches } from "./completion-latches";
 import {
   consumePendingNav,
   describePendingNotificationNav,
   listenForNotificationFocus,
   sendSessionNotification,
 } from "./session-notifications";
+import {
+  getConversationBoardStatus,
+  getConversationInteraction,
+} from "./use-conversation-vm";
+
+/**
+ * How long a completed session waits for its settle `ActivityChanged` echo
+ * before its notification fires with the plain body. The echo normally lands
+ * within a tick; this is only the no-board-card backstop.
+ */
+const COMPLETION_INTERACTION_GRACE_MS = 2000;
 
 /**
  * Subscribe to "houston-event" from the engine bus.
@@ -46,6 +63,18 @@ export function useSessionEvents() {
     getAgent: () => useAgentStore.getState().current,
     t,
   };
+
+  // Completion notifications latched at `SessionStatus completed` and fired on
+  // the settle's `ActivityChanged` echo — the ordering where the interaction the
+  // turn ended on (folded into the conversation VM by `persistBoardStatus`) is
+  // readable, so the body reads question / connect / plain finish. A latch fires
+  // only once ITS session's settle has folded (`completionInteractionReady`), so
+  // a sibling session's echo or an unrelated `.houston` write — `ActivityChanged`
+  // carries no session key — can't fire it early with the plain body. The grace
+  // timer is the backstop for a completed session with no folded board card.
+  const latchesRef = useRef(
+    new CompletionLatches(COMPLETION_INTERACTION_GRACE_MS),
+  );
 
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
@@ -93,15 +122,49 @@ export function useSessionEvents() {
               );
             }
 
-            sendSessionNotification(
-              h.t("common:notifications.sessionComplete.title", {
-                workspace: workspaceName,
-                agent: agentName,
-              }),
-              h.t("common:notifications.sessionComplete.body"),
-              nav,
+            const title = h.t("common:notifications.sessionComplete.title", {
+              workspace: workspaceName,
+              agent: agentName,
+            });
+            // Latch: the body depends on the interaction the turn settled on,
+            // which `persistBoardStatus` folds into the VM AFTER this event but
+            // BEFORE the settle's `ActivityChanged` echo. `ready` gates the echo
+            // fire on that fold having landed; the send reads the settled body.
+            latchesRef.current.latch(
+              agent_path,
+              session_key,
+              () =>
+                completionInteractionReady(
+                  getConversationBoardStatus(agent_path, session_key),
+                ),
+              () => {
+                const interaction =
+                  getConversationInteraction(agent_path, session_key) ?? null;
+                const bodyKey = interactionNotificationBodyKey(interaction);
+                const body =
+                  bodyKey === "sessionComplete.question"
+                    ? handlersRef.current.t(
+                        "common:notifications.sessionComplete.question",
+                        { count: interactionQuestionCount(interaction) },
+                      )
+                    : bodyKey === "sessionComplete.connect"
+                      ? handlersRef.current.t(
+                          "common:notifications.sessionComplete.connect",
+                        )
+                      : handlersRef.current.t(
+                          "common:notifications.sessionComplete.body",
+                        );
+                sendSessionNotification(title, body, nav);
+              },
             );
           }
+          break;
+        }
+        case "ActivityChanged": {
+          // The settle's write-through echo: fire any completion latched for
+          // this agent whose own settle has folded (a premature echo — sibling
+          // session or unrelated write — leaves the rest for their own echo).
+          latchesRef.current.fireForAgent(payload.data.agent_path);
           break;
         }
         case "Toast":
@@ -197,7 +260,9 @@ export function useSessionEvents() {
     // Fallback: Tauri window focus event (macOS only — see listenForNotificationFocus).
     const unlistenTauriFocus = listenForNotificationFocus();
 
+    const latches = latchesRef.current;
     return () => {
+      latches.dispose();
       unlisten();
       unlistenActivated();
       unlistenNotifClick();
