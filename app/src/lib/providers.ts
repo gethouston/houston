@@ -14,27 +14,27 @@ import {
 } from "./provider-overrides.ts";
 
 /**
- * Reasoning-effort levels, ordered low→high. The set a given model accepts
- * is model-specific (see `ModelOption.effortLevels`):
- * - Codex `model_reasoning_effort`: low/medium/high/xhigh (no `max`).
- * - Claude `--effort`: Opus 4.7/4.8 and Sonnet 5 = all five; Sonnet 4.6 =
- *   low/medium/high/max (no `xhigh`). Claude self-clamps an unsupported
- *   value; Codex does not.
+ * Reasoning-effort levels, ordered low→high. `xhigh` is the top tier: it is the
+ * deepest reasoning any provider actually exposes (pi's ceiling, which the
+ * Claude backend maps to the SDK's `max` effort). Houston used to carry a fifth
+ * `max` tier above `xhigh`, but the two produced the byte-identical API request
+ * on every provider — a label with no effect — so it was removed. The set a
+ * given model accepts is model-specific (see `ModelOption.effortLevels`),
+ * derived from pi's per-model thinking levels (`deriveEffortLevels`).
  */
-export type EffortLevel = "low" | "medium" | "high" | "xhigh" | "max";
+export type EffortLevel = "low" | "medium" | "high" | "xhigh";
 
 /**
  * The full effort vocabulary, ascending. Drives the composer's effort-gauge so
  * the icon always shows the SAME number of bars (filled to the active level's
  * position), regardless of how many levels a given model offers — a model with
- * only `high`/`max` reads as a full gauge filled high, not two lone bars.
+ * only `high`/`xhigh` reads as a nearly-full gauge, not two lone bars.
  */
 export const EFFORT_ORDER: readonly EffortLevel[] = [
   "low",
   "medium",
   "high",
   "xhigh",
-  "max",
 ];
 
 /** Effort applied when nothing else is configured. Mirrors the engine. */
@@ -119,10 +119,12 @@ export interface ProviderInfo {
 /**
  * pi-ai's per-model `thinkingLevels` → Houston `EffortLevel`s, low→high. Drops
  * pi's `off` and `minimal` (Houston's effort scale starts at `low`) and passes
- * `low|medium|high|xhigh` through 1:1. pi has no `max` — that level only ever
- * comes from a curated override. Non-reasoning models, or reasoning models with
- * no thinking levels, get `[]`, so the picker hides the effort row. Input order
- * (pi emits ascending) is preserved.
+ * `low|medium|high|xhigh` through 1:1. This is the DEFAULT source of a model's
+ * effort set — pi's per-model reasoning ladder is authoritative, so the catalog
+ * stays honest as pi adds models without a hand-curated list to maintain.
+ * Non-reasoning models, or reasoning models with no thinking levels, get `[]`,
+ * so the picker hides the effort row. Input order (pi emits ascending) is
+ * preserved.
  */
 const PI_EFFORT_MAP: Readonly<Record<string, EffortLevel>> = {
   low: "low",
@@ -575,11 +577,29 @@ export function getEffortLevels(
 }
 
 /**
+ * Normalize a persisted effort value. Configs written by older Houston builds
+ * may still carry the retired `"max"` tier; it always meant "the deepest
+ * reasoning this model offers", which is now `"xhigh"` (the two produced the
+ * identical API request), so map it there. Every other value passes through
+ * unchanged, and `null`/`undefined` stay as-is so it composes in `??` chains.
+ * The runtime still ACCEPTS `"max"` on the wire (`toThinkingLevel` maps it to
+ * pi's `xhigh`), so a stored `"max"` runs correctly even before it is re-picked;
+ * this keeps the UI honest by surfacing the level the user actually gets.
+ */
+export function normalizeEffort(
+  effort: string | null | undefined,
+): string | null | undefined {
+  return effort === "max" ? "xhigh" : effort;
+}
+
+/**
  * The effort to actually use for a provider+model: the requested value when
  * the model accepts it, otherwise the shared default (or the lowest level if
- * the model somehow lacks `medium`). Returns `undefined` when the model has
- * no effort control, so callers omit the flag entirely. Mirrors the engine's
- * `sessions::resolve_effort`, keeping the picker honest about what will run.
+ * the model somehow lacks `medium`). A legacy `"max"` is normalized to `"xhigh"`
+ * first, so an agent carrying it keeps its top-tier reasoning instead of being
+ * silently reset to the default. Returns `undefined` when the model has no
+ * effort control, so callers omit the flag entirely. Mirrors the engine's
+ * effort resolution, keeping the picker honest about what will run.
  */
 export function validEffortOrDefault(
   providerId: string | null | undefined,
@@ -588,8 +608,9 @@ export function validEffortOrDefault(
 ): EffortLevel | undefined {
   const levels = getEffortLevels(providerId, modelId);
   if (levels.length === 0) return undefined;
-  if (effort && levels.includes(effort as EffortLevel))
-    return effort as EffortLevel;
+  const normalized = normalizeEffort(effort);
+  if (normalized && levels.includes(normalized as EffortLevel))
+    return normalized as EffortLevel;
   return levels.includes(DEFAULT_EFFORT) ? DEFAULT_EFFORT : levels[0];
 }
 
