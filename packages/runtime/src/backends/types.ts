@@ -1,6 +1,7 @@
 import type { TurnMode } from "@houston/protocol";
 import type { WireEvent } from "@houston/runtime-client";
 import type { PiThinkingLevel } from "../ai/effort";
+import type { ProvidedContext } from "../session/workspace-context";
 
 /**
  * The HarnessBackend seam: turn execution abstracted behind a provider-agnostic
@@ -68,6 +69,13 @@ export interface CreateSessionOptions {
    * session (see `switchModeIfNeeded`), so this is fixed for the session's life.
    */
   mode?: TurnMode;
+  /**
+   * Gateway-provided workspace + user context for the prompt (HOU-711, cloud).
+   * Present when the hosting gateway sourced it from Supabase and put it on the
+   * turn body; absent on local/self-host, where the runtime reads the two
+   * WORKSPACE.md / USER.md files instead.
+   */
+  context?: ProvidedContext;
 }
 
 /** A pluggable turn-execution backend for a provider. */
