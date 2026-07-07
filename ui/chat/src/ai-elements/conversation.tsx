@@ -18,7 +18,17 @@ export const Conversation = ({ className, ...props }: ConversationProps) => (
     // keep role="log" + tabIndex={-1} on the outer so the app shell
     // can focus it on Escape; the programmatic chat-scroll lives in
     // use-keyboard-shortcuts and targets the inner pane by class.
-    className={cn("relative flex-1 outline-none", className)}
+    //
+    // The top mask fades scrolled-out content over the first 16px (the
+    // content pane's own top padding) so a streaming line dissolves as it
+    // leaves the viewport instead of hard-clipping mid-glyph against the
+    // panel header's border. An alpha mask, so it holds in both themes.
+    className={cn(
+      "relative flex-1 outline-none",
+      "[-webkit-mask-image:linear-gradient(to_bottom,transparent,black_16px)]",
+      "[mask-image:linear-gradient(to_bottom,transparent,black_16px)]",
+      className,
+    )}
     initial="smooth"
     resize="smooth"
     role="log"

@@ -82,6 +82,15 @@ test("mid-interview: no board card, tab switch leaves a Continue banner", async 
     timeout: 15_000,
   });
 
+  // The ask_user question card REPLACES the composer once the turn settles —
+  // this is the interview's whole interaction surface, so the setup panel
+  // must forward composerOverride like the board panel does.
+  await expect(page.getByText("What should the routine do?")).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByRole("radio")).toHaveCount(2);
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+
   // No VISIBLE card on the Activity board (the setup surface's own hidden
   // list still holds the item, so assert visibility, not count).
   await page.locator('[data-tour-target="tab-activity"]').click();

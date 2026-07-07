@@ -13,6 +13,7 @@ import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { useAgentBoardSend } from "../board/use-agent-board-send";
+import { useBoardLabels } from "../board/use-board-labels";
 import { useBoardSendQueue } from "../board/use-board-send-queue";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import { useDetailPanelContainer } from "../shell/detail-panel-context";
@@ -40,7 +41,9 @@ export function RoutineSetupChat({ agent, agentDef, showBanner }: Props) {
   const path = agent.folderPath;
   const panelContainer = useDetailPanelContainer();
   const queuedLabels = useQueuedMessageLabels();
+  const { composerLabels } = useBoardLabels();
   const attachmentValidation = useAttachmentRejectionDialog();
+  const addToast = useUIStore((s) => s.addToast);
   const viewMode = useUIStore((s) => s.viewMode);
   const openAgentId = useUIStore((s) => s.routineSetupChatAgentId);
   const setOpenAgentId = useUIStore((s) => s.setRoutineSetupChatAgentId);
@@ -203,6 +206,12 @@ export function RoutineSetupChat({ agent, agentDef, showBanner }: Props) {
           onStopSession={send.stopSession}
           onPanelOpenChange={setMissionPanelOpen}
           onOpenLink={(url) => openAgentHref(url, path)}
+          onNotice={(message) => addToast({ title: message })}
+          // The ask_user question card that replaces the composer when the
+          // turn settles needs_you — the interview IS this card, so dropping
+          // it turns the guided setup into a dead chat.
+          composerOverride={panel.composerOverride}
+          composerLabels={composerLabels}
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           thinkingIndicator={panel.thinkingIndicator}
