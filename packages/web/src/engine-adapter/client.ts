@@ -48,6 +48,7 @@ import type {
   TunnelCredentials,
   UpdateAgent,
   Workspace,
+  WorkspaceContext,
 } from "../../../../ui/engine-client/src/types";
 import * as activities from "./activities";
 import {
@@ -126,6 +127,11 @@ export function isHoustonEngineError(e: unknown): e is HoustonEngineError {
  * (first-run: it runs in the host's hidden setup runtime, not an agent's).
  */
 const SETUP_LOGIN_KEY = "__setup__";
+
+/** The two workspace-root context files backing Settings on local/self-host
+ *  (HOU-711). In cloud the same two blobs live in Supabase, not on the volume. */
+const WORKSPACE_MD = "WORKSPACE.md";
+const USER_MD = "USER.md";
 
 /**
  * localStorage key persisting the selected agent (`setPreference("last_agent_id")`).
@@ -642,6 +648,42 @@ export class HoustonClient {
         err,
       );
     }
+  }
+  /**
+   * Workspace + user context (HOU-711). Cloud: the two Supabase-backed blobs the
+   * gateway splices into every turn — org-wide `workspace` + the caller's `user`,
+   * never on the agent volume. Local/self-host: the two files on the agent, read
+   * through the same agent-file path the CLAUDE.md instructions use.
+   */
+  async getWorkspaceContext(agentPath: string): Promise<WorkspaceContext> {
+    if (this.cp) {
+      const [workspace, user] = await Promise.all([
+        controlPlane.getContext(this.cp, "workspace"),
+        controlPlane.getContext(this.cp, "user"),
+      ]);
+      return { workspace, user };
+    }
+    const [workspace, user] = await Promise.all([
+      this.readAgentFile(agentPath, WORKSPACE_MD),
+      this.readAgentFile(agentPath, USER_MD),
+    ]);
+    return { workspace, user };
+  }
+  /** Write ONE context slot: cloud → its gateway resource, local → its file. */
+  async setWorkspaceContextSlot(
+    agentPath: string,
+    slot: "workspace" | "user",
+    content: string,
+  ): Promise<void> {
+    if (this.cp) {
+      await controlPlane.setContext(this.cp, slot, content);
+      return;
+    }
+    await this.writeAgentFile(
+      agentPath,
+      slot === "workspace" ? WORKSPACE_MD : USER_MD,
+      content,
+    );
   }
   async seedAgentSchemas(): Promise<void> {}
   async migrateAgentFiles(): Promise<void> {}

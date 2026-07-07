@@ -45,7 +45,7 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
   return {
     id: "pi",
     async createSession(opts: CreateSessionOptions): Promise<HarnessSession> {
-      const loader = makeAgentLoader(deps.workspaceDir);
+      const loader = makeAgentLoader(deps.workspaceDir, opts.context);
       await loader.reload();
       const { session } = await createAgentSession({
         cwd: deps.workspaceDir,

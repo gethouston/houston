@@ -67,3 +67,42 @@ test("returns null outside a real workspace (no .houston dir)", () => {
   writeFileSync(join(dir, WORKSPACE_MD), "stray file");
   expect(buildWorkspaceContextSection(dir)).toBeNull();
 });
+
+// ── cloud: gateway-provided content (HOU-711) ────────────────────────────────
+
+test("provided (cloud) content wins over the volume and drops file guidance", () => {
+  const dir = freshWorkspace();
+  // A file on disk must be IGNORED when the gateway provides context.
+  writeFileSync(join(dir, WORKSPACE_MD), "FROM FILE — must be ignored");
+
+  const out = buildWorkspaceContextSection(dir, {
+    workspace: "Acme Corp.",
+    user: "Bob, sales lead.",
+  });
+  expect(out).not.toBeNull();
+  expect(out).toContain("Acme Corp.");
+  expect(out).toContain("Bob, sales lead.");
+  expect(out).not.toContain("FROM FILE");
+  // Cloud mode names no files and gives no write instruction (Supabase is truth).
+  expect(out).not.toContain(WORKSPACE_MD);
+  expect(out).not.toContain(USER_MD);
+  expect(out).toContain("maintained by the user");
+});
+
+test("provided (cloud) with both blobs empty injects nothing", () => {
+  const dir = freshWorkspace();
+  expect(
+    buildWorkspaceContextSection(dir, { workspace: "", user: "   " }),
+  ).toBeNull();
+});
+
+test("provided (cloud) needs no .houston dir and renders a one-sided section", () => {
+  const dir = freshWorkspace(false);
+  const out = buildWorkspaceContextSection(dir, {
+    workspace: "Acme only",
+    user: "",
+  });
+  expect(out).not.toBeNull();
+  expect(out).toContain("Acme only");
+  expect(out).toContain("(none provided.)"); // the empty user slot's marker
+});

@@ -82,7 +82,11 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         tools: policy.tools,
         disallowedTools: policy.disallowedTools,
         canUseTool: makeCanUseTool(deps.workspaceDir),
-        systemPrompt: buildSystemPrompt(deps.workspaceDir, deps.systemPrompt),
+        systemPrompt: buildSystemPrompt(
+          deps.workspaceDir,
+          deps.systemPrompt,
+          opts.context,
+        ),
         includePartialMessages: true,
         permissionMode: "default",
       };

@@ -17,6 +17,7 @@ import { makeClampedFileTools } from "./tools/clamped-fs";
 import { makeIdTokenProvider } from "./tools/gcp-id-token";
 import { makeIntegrationTools } from "./tools/integrations";
 import { makeRunCodeTool } from "./tools/run-code";
+import type { ProvidedContext } from "./workspace-context";
 
 /**
  * The long-lived server's per-conversation session cache: the tool wiring shared
@@ -139,6 +140,7 @@ export const conversations = new Map<string, Conversation>();
 export async function getConversation(
   id: string,
   pin?: TurnPin,
+  context?: ProvidedContext,
 ): Promise<Conversation> {
   const existing = conversations.get(id);
   if (existing) return existing;
@@ -155,6 +157,10 @@ export async function getConversation(
   const session = await backend.createSession({
     conversationId: id,
     model: builtModel,
+    // Only used when the session is FIRST built (new conversation) — a later
+    // message in the same conversation reuses this session, so context edits
+    // take effect on the next chat, matching the local file behavior (HOU-711).
+    ...(context ? { context } : {}),
   });
 
   const conv: Conversation = {

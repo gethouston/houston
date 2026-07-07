@@ -3,7 +3,10 @@ import { join } from "node:path";
 import { DefaultResourceLoader } from "@earendil-works/pi-coding-agent";
 import { config } from "../config";
 import { makeCompactionGuard } from "./compaction-guard";
-import { buildWorkspaceContextSection } from "./workspace-context";
+import {
+  buildWorkspaceContextSection,
+  type ProvidedContext,
+} from "./workspace-context";
 
 export const SYSTEM_PROMPT = [
   "You are Houston, a friendly AI assistant for a non-technical user.",
@@ -70,12 +73,13 @@ export function buildAgentLoader(opts: {
  * <workspace>/.agents/skills (Agent Skills standard — Houston's existing
  * on-disk layout loads as-is) unless HOUSTON_SKILLS_DIR overrides.
  */
-export function makeAgentLoader(cwd: string) {
-  // WORKSPACE.md + USER.md context is appended to Houston's prompt so every chat
-  // knows the shared workspace + user facts (HOU-711). CLAUDE.md/AGENTS.md still
-  // load separately via agentsFilesOverride below.
+export function makeAgentLoader(cwd: string, provided?: ProvidedContext) {
+  // Workspace + user context is appended to Houston's prompt so every chat knows
+  // the shared workspace + user facts (HOU-711). `provided` is the gateway's
+  // Supabase copy (cloud); without it the two files at cwd are read (local).
+  // CLAUDE.md/AGENTS.md still load separately via agentsFilesOverride below.
   const base = config.systemPrompt || SYSTEM_PROMPT;
-  const section = buildWorkspaceContextSection(cwd);
+  const section = buildWorkspaceContextSection(cwd, provided);
   return buildAgentLoader({
     cwd,
     skillsDir: config.skillsDirOverride || join(cwd, ".agents", "skills"),

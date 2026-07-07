@@ -2,77 +2,115 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * Workspace-level context files at the agent's workspace root:
+ * Workspace + user context folded into an agent's system prompt (HOU-711),
+ * from ONE of two sources:
  *
- * - `WORKSPACE.md` — facts about the company / product / shared environment.
- * - `USER.md` — facts about the human running this workspace.
- *
- * Both are user-editable (the Settings "Workspace context" / "Your context"
- * screens) and agent-editable (the agent can update them with its file-write
- * tool when the user shares something new). They are appended to every chat's
- * system prompt at session start, so edits take effect on the NEXT chat.
- *
- * Ported from the removed Rust engine's `workspace_context::build_prompt_section`
- * (feature #153) after the TS-engine cutover dropped it (HOU-711).
+ *  - LOCAL / self-host — two files at the agent's workspace root, `WORKSPACE.md`
+ *    and `USER.md`, editable by the user (Settings) AND the agent (its file
+ *    tool). Read here from `cwd`.
+ *  - CLOUD — the gateway supplies both blobs on the turn body from Supabase (the
+ *    single source of truth); nothing is on the volume and the agent can't
+ *    self-edit them (the user maintains them in the app).
  */
 export const WORKSPACE_MD = "WORKSPACE.md";
 export const USER_MD = "USER.md";
 
-const WORKSPACE_EMPTY =
+/** Gateway-provided context (cloud): the two blobs read from Supabase. */
+export interface ProvidedContext {
+  workspace: string;
+  user: string;
+}
+
+const WORKSPACE_HEADING = "# Workspace Context";
+const USER_HEADING = "# User Context";
+
+// File-mode empty markers (local): the agent is told to write the files.
+const FILE_WORKSPACE_EMPTY =
   "(empty so far. When the user shares anything about the company, product, " +
   "customers, or workspace conventions, write it to the file path below.)";
-const USER_EMPTY =
+const FILE_USER_EMPTY =
   "(empty so far. When the user tells you about their role, goals, or how they " +
   "like to work, write it to the file path below.)";
+
+// Cloud-mode marker: the user maintains these outside the chat.
+const MANAGED_EMPTY = "(none provided.)";
 
 function readOrEmpty(path: string): string {
   try {
     return existsSync(path) ? readFileSync(path, "utf8") : "";
   } catch {
     // A context file we cannot read is treated as empty rather than failing the
-    // whole session start — the agent still gets its instructions + the slot
-    // markers, and the read is retried on the next chat.
+    // whole session start — the read is retried on the next chat.
     return "";
   }
 }
 
+function section(
+  workspace: string,
+  user: string,
+  workspaceEmpty: string,
+  userEmpty: string,
+  trailer: string,
+): string {
+  return [
+    WORKSPACE_HEADING,
+    "",
+    workspace.trim() ? workspace : workspaceEmpty,
+    "",
+    USER_HEADING,
+    "",
+    user.trim() ? user : userEmpty,
+    "",
+    trailer,
+  ].join("\n");
+}
+
 /**
  * Build the "# Workspace Context" / "# User Context" section appended to an
- * agent's system prompt, loaded from `WORKSPACE.md` + `USER.md` at `cwd` (the
- * agent's workspace root).
+ * agent's system prompt, or null when there is nothing to inject.
  *
- * Always present for a real agent workspace (one with a `.houston/` dir), even
- * when both files are empty or missing: the section tells the agent the slots
- * exist, what they hold, and that it is authorized to write them. Returns null
- * for a dir that is NOT a real workspace (no `.houston/`), so ad-hoc/test
- * working dirs are not polluted with stub paths.
+ * When `provided` is set (CLOUD) the blobs come from the gateway (Supabase), the
+ * user maintains them in the app, and the section is skipped entirely when both
+ * are empty. When `provided` is omitted (LOCAL / self-host) the two files at the
+ * workspace root are read instead; the section is always present for a real
+ * agent workspace (one with a `.houston/` dir) so the agent knows the slots
+ * exist and may write them, and is null for a dir that is not one (test/ad-hoc
+ * working dirs are not polluted with stub paths).
  */
-export function buildWorkspaceContextSection(cwd: string): string | null {
-  if (!existsSync(join(cwd, ".houston"))) return null;
+export function buildWorkspaceContextSection(
+  cwd: string,
+  provided?: ProvidedContext,
+): string | null {
+  if (provided) {
+    const workspace = provided.workspace.trimEnd();
+    const user = provided.user.trimEnd();
+    if (!workspace.trim() && !user.trim()) return null;
+    return section(
+      workspace,
+      user,
+      MANAGED_EMPTY,
+      MANAGED_EMPTY,
+      "The two sections above describe the user and their workspace. They are " +
+        "maintained by the user and refresh at the start of each chat; you do " +
+        "not edit them yourself.",
+    );
+  }
 
+  if (!existsSync(join(cwd, ".houston"))) return null;
   const workspacePath = join(cwd, WORKSPACE_MD);
   const userPath = join(cwd, USER_MD);
-  const workspace = readOrEmpty(workspacePath).trimEnd();
-  const user = readOrEmpty(userPath).trimEnd();
-
-  return [
-    "# Workspace Context",
-    "",
-    workspace.trim() ? workspace : WORKSPACE_EMPTY,
-    "",
-    "# User Context",
-    "",
-    user.trim() ? user : USER_EMPTY,
-    "",
-    "The two sections above are loaded from these files at the root of the workspace:",
-    `- \`${workspacePath}\` — facts about the workspace, shared by every agent here.`,
-    `- \`${userPath}\` — facts about the user running this workspace.`,
-    "",
-    "When the user tells you something new about themselves or about the " +
-      "workspace, update the matching file using its path above so future chats " +
-      "remember it. These two files are an explicit exception to your " +
-      "working-directory rule: you are allowed to read and write them. Edits " +
-      "take effect on the next chat; the current chat keeps the copy loaded at " +
-      "startup.",
-  ].join("\n");
+  return section(
+    readOrEmpty(workspacePath).trimEnd(),
+    readOrEmpty(userPath).trimEnd(),
+    FILE_WORKSPACE_EMPTY,
+    FILE_USER_EMPTY,
+    "The two sections above are loaded from these files at the root of the " +
+      `workspace:\n- \`${workspacePath}\` — facts about the workspace, shared ` +
+      `by every agent here.\n- \`${userPath}\` — facts about the user running ` +
+      "this workspace.\n\nWhen the user tells you something new about " +
+      "themselves or about the workspace, update the matching file using its " +
+      "path above so future chats remember it. These two files are an explicit " +
+      "exception to your working-directory rule: you are allowed to read and " +
+      "write them. Edits take effect on the next chat.",
+  );
 }

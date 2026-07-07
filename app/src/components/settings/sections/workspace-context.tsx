@@ -21,8 +21,7 @@ function useSlotEditor(slot: Slot) {
   const content = data?.[slot] ?? "";
 
   const onSave = async (next: string) => {
-    if (!data) return;
-    await save.mutateAsync({ ...data, [slot]: next });
+    await save.mutateAsync({ slot, content: next });
   };
 
   return { ready: !!agentPath && !!data, content, onSave };
