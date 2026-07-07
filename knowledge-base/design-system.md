@@ -16,7 +16,18 @@ Visual language: ChatGPT-like. Near-black primary, monochrome, clean typography,
 Colour, typography scale, spacing, radii, motion and elevation are defined ONCE
 in **`packages/design-tokens`** (`@houston/design-tokens`), authored as W3C DTCG
 JSON (primitive layer + semantic `--ht-*` alias layer, light + dark) and compiled
-by Style Dictionary to every surface: `dist/css/tokens.css` (web/desktop),
+by Style Dictionary to every surface. The CSS emits the light values on **both
+`:root` and `[data-theme="light"]`** (and dark on `[data-theme="dark"]`), so any
+subtree can **pin the light look regardless of the app theme** by setting
+`data-theme="light"` on a wrapper — custom properties inherit, so the scoped
+re-declaration re-resolves every `var(--ht-*)`, and thus every Tailwind
+`--color-*` utility, inside it (used by the sign-in card). The `dark` Tailwind
+variant (`ui/core/src/globals.css`) and every `[data-theme="dark"]` descendant
+rule (`futuristic.css`, app `globals.css`) carry a
+`:not(:where([data-theme="light"], [data-theme="light"] *))` guard so dark
+chrome never leaks into a pinned subtree through the `<html>` ancestor — keep
+the guard on any new dark-scoped descendant rule. Outputs:
+`dist/css/tokens.css` (web/desktop),
 `dist/ts/tokens.ts` (JS values), `dist/swift/*.swift` + `dist/kotlin/*.kt`
 (native, no consumers yet). `@houston-ai/core`'s `globals.css` imports the CSS;
 `@theme` there re-exports `--ht-*` to Tailwind `--color-*` as before.
@@ -65,6 +76,20 @@ live values. Historic light-mode reference: `--background #fff` · `--foreground
 #0d0d0d` · `--secondary #f9f9f9` · `--muted-foreground #5d5d5d` · `--border
 #e5e5e5` · `--ring #0d0d0d` · `--accent #f5f5f5` (the futuristic layer now shifts
 several of these — the JSON is authoritative).
+
+### `--ht-space-*` (sign-in backdrop)
+A deliberately **theme-invariant** group — both `color.light.json` and
+`color.dark.json` alias the same `color.space.*` primitives, so the deep-space
+backdrop reads identically in light and dark. Feeds only the sign-in
+`SpaceBackground` (see Animation → Sign-in space backdrop): `--ht-space-canvas`
+`#07080f` (near-black indigo base) · `-canvas-glow` `#101430` (gradient top) ·
+`-nebula-1` `#38346b` (violet mid) / `-nebula-2` `#14384c` (teal accent) — the
+nebula-shader palette + the fallback radial glows · `-nebula-core` `#b8b2e8`
+(near-white violet highlight in the shader) / `-nebula-dust` `#04050c` (dark
+dust-lane tint) · `-star` `#dce2f7` (cool-white starfield) · `-star-warm` `#f6e7cd` (the warm ~10%
+of stars) · `-haze` `#8f9bc9` (the faint painted Milky-Way band) · `-foreground`
+`#ffffff` (pure-white wordmark + logo, currentColor) · `-foreground-muted`
+`#8e96b8` (footer links).
 
 ### Borders (opacity)
 5%/15%/15%/25% = light/medium/heavy/xheavy. Use `rgba(13,13,13,X)`.
@@ -172,6 +197,56 @@ Composer shadow = main depth cue. Else flat or 1px edge: `0 1px 0 rgba(0,0,0,0.0
 Duration: fast 0.2s / common 0.667s / bounce 0.833s / elegant 0.582s. Under 0.3s for interactions.
 
 Rules: `layout` prop on reordering items. `AnimatePresence mode="popLayout"` for lists. Spring > CSS easing.
+
+### Sign-in space backdrop
+`SpaceBackground` (`app/src/components/auth/space-background.tsx`) is the
+deep-space layer behind the sign-in card — an `aria-hidden`, `pointer-events-none`
+absolute layer, all colour from the theme-invariant `--ht-space-*` tokens
+(Mercury pattern: dark backdrop, light card). Three stacked sublayers:
+
+**(1) Base gradient** — a near-black indigo `linear-gradient` (canvas-glow → canvas),
+always present; it is also the base the WebGL fallback draws over.
+
+**(2) Nebula — WebGL fragment shader** (`nebula-gl.tsx` + `nebula-shader.ts` +
+`nebula-noise.ts` + `nebula-program.ts`). A fullscreen GLSL ES 1.00 shader (runs on
+`webgl2`, falls back to `webgl`), no textures, no libs. Technique: **5-octave FBM**
+(lacunarity 2, gain 0.5) with a **double domain warp**
+(`palette(fbm(p + K·fbm(p + K·fbm(p))))`, **K = 2.5**) so it reads as filamentary
+nebula, not cloud; the **inner** warp coordinate drifts with time
+(**0.004 units/s**) so the nebula *morphs in place* — nothing translates. **Ridged
+abs-noise** carves dark dust lanes; a knee-at-0.16 highlight-only tone curve plus a
+per-pixel **hash dither** kill banding (this replaced the old canvas grain — no
+double noise). Brightness is **biased along the Milky-Way diagonal** using the exact
+`starfield-model.ts` geometry (direction `(w, -h)`, screen centre, half-width
+`0.175·diag`) so nebula + star band read as one structure. **Peak luminance is
+clamped to ≤ 0.22** (Rec.709 luma) so the card is always the brightest thing on
+screen. Noise is Stefan Gustavson / Ian McEwan's **public-domain** simplex (NOT a
+Shadertoy port). Palette = six `vec3` uniforms read once from `--ht-space-canvas`,
+`-canvas-glow`, `-nebula-1` (violet mid), `-nebula-2` (teal accent), `-nebula-core`
+(near-white violet highlight), `-nebula-dust` (dark lane tint) — no colour literal
+in code. Perf: internal resolution = css · `min(DPR, 1.5)` · 0.6 (GPU-upscaled);
+**30 fps** cap (skipped rAF ticks); paused on `visibilitychange`; **adaptive
+degrade** — if the draw dispatch stays > 8 ms it drops 5 → 3 octaves, then freezes
+to a static frame. `prefers-reduced-motion` → exactly one frame. If WebGL is
+unavailable or the context is lost (`webglcontextlost`), `NebulaGL` calls back and
+`SpaceBackground` swaps in the **fallback**: two heavily-blurred (130px) barely-there
+`--ht-space-nebula-1/2` radial glows drifting on 78–88s mirrored framer-motion loops
+(the previous implementation, kept as the fallback branch).
+
+**(3) Starfield** (`starfield.tsx` + `starfield-model.ts` + `starfield-sprites.ts`),
+the middle layer over the nebula. Magnitude-skewed brightness (`pow(rand, 2.5)` — most
+faint, few bright, radius correlated), colour temperature (~65% cool-white
+`--ht-space-star` / ~25% neutral / ~10% warm `--ht-space-star-warm`), a diagonal
+**Milky-Way band** (~57% of near stars biased into a ~35%-of-diagonal strip at ~2.5×
+density, plus a faint painted `--ht-space-haze` band). A **far depth layer** adds
+~60% more stars (0.2–0.4px, alpha ≤ 0.15, half drift speed) for parallax depth.
+**Bloom** on the brightest ~8% uses one of **three temperature-tinted** sprites
+(white-hot core, tinted outer glare) keyed by the star's temperature bucket. Only
+faint stars twinkle (±15%, 5–12s); drift is near-still (≤0.8px/s). The static layer
+keeps the haze band + corner **vignette** but no longer paints grain (the shader
+dither supersedes it). The draw loop is allocation-free (precomputed `fillStyle` per
+star, twinkle via `globalAlpha`, offscreen sprites `drawImage`d). `prefers-reduced-motion`
+→ a single static frame. Restraint over spectacle — it is a backdrop, never the show.
 
 ## Icons
 Lucide React only. 20px standard (`h-5 w-5`), 16px small, 24px large. Stroke 2px (or 1.5px lighter). `currentColor`.

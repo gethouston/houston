@@ -97,7 +97,7 @@ export function EmailSignIn() {
             maxLength={6}
             placeholder="123456"
             autoFocus
-            className="h-10 flex-1 rounded-full px-4 text-center tracking-[0.3em]"
+            className="h-10 flex-1 rounded-full border-foreground/40 px-4 text-center tracking-[0.3em]"
           />
           <SendButton disabled={pending || code.trim().length === 0} />
         </div>
@@ -139,7 +139,7 @@ export function EmailSignIn() {
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
           placeholder="you@example.com"
-          className="h-10 flex-1 rounded-full px-4"
+          className="h-10 flex-1 rounded-full border-foreground/40 px-4"
         />
         <SendButton disabled={pending || email.trim().length === 0} />
       </div>

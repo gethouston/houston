@@ -9,13 +9,23 @@
 
 /* The app toggles dark mode via data-theme="dark" on <html> (see
    app/src/lib/theme.ts) — NOT a .dark class. The variant must key on the
-   attribute or every `dark:` utility silently never applies. */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+   attribute or every `dark:` utility silently never applies.
+
+   A subtree can pin itself to the light theme with data-theme="light" (the
+   tokens ship a matching [data-theme="light"] scope) — the :not() keeps
+   `dark:` utilities from leaking into such a subtree via the <html> ancestor.
+   Exact today because theme.ts only ever puts "dark" on <html> and "light"
+   only ever appears on pinned subtrees. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *):not(:where([data-theme="light"], [data-theme="light"] *)));
 
 /* Dark mode needs the native form controls / scrollbars to follow suit; the
-   colour values themselves come from the imported tokens above. */
+   colour values themselves come from the imported tokens above. A light-pinned
+   subtree flips them back. */
 [data-theme="dark"] {
   color-scheme: dark;
+}
+[data-theme="light"] {
+  color-scheme: light;
 }
 
 /* @theme references the intermediate vars — Tailwind generates utilities from these */

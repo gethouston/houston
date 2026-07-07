@@ -16,6 +16,14 @@ One-click Google sign-in on first launch. CI release tokens live in macOS Keycha
 8. Rust handler in `app/src-tauri/src/auth.rs::emit_deep_link` forwards the URL on a Tauri event (`auth://deep-link`).
 9. Frontend listener in `app/src/lib/auth.ts::installDeepLinkListener` extracts `code`, calls `supabase.auth.exchangeCodeForSession(code)` — Supabase reads the verifier from configured auth storage, exchanges, writes the session back.
 10. `supabase.auth.onAuthStateChange` fires → `useSession()` re-queries → `App.tsx` dismisses `SignInScreen` → sidebar footer `UserMenu` + Settings → Account section appear.
+
+`SignInScreen` (`app/src/components/auth/sign-in-screen.tsx`) renders a two-panel
+sign-in card over a `SpaceBackground` deep-space backdrop layer
+(`space-background.tsx`) — a theme-invariant starfield-canvas + framer-motion
+nebula field on the `--ht-space-*` tokens, reduced-motion-aware (see
+`knowledge-base/design-system.md` → Sign-in space backdrop). The card wordmark
+and footer links draw from the `--ht-space-foreground*` tokens so they read on the
+dark canvas in both themes.
 11. PostHog: `analytics.alias(userId, { email, name })` merges the anonymous `install_id` history into the identified user.
 
 ## Web / Cloud (same components, browser flow)
