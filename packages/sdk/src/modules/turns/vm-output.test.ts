@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { ScopeStore } from "../../store";
 import {
   type ConversationVM,
@@ -162,6 +162,68 @@ test("a clean settle with no interaction lands boardStatus done and no interacti
   await vm.persistBoardStatus("a", "c1", "done", null);
   expect(snap().boardStatus).toBe("done");
   expect(snap().pendingInteraction).toBe(null);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+test("a live push without ts is stamped Date.now() at push time", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1_700_000_000_000);
+  const { vm, snap } = harness();
+  vm.pushFeedItem("a", "c1", { feed_type: "system_message", data: "hi" });
+  expect(snap().feed[0]?.ts).toBe(1_700_000_000_000);
+});
+
+test("a live push carrying a ts keeps it (not re-stamped)", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1_700_000_000_000);
+  const { vm, snap } = harness();
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "system_message",
+    data: "hi",
+    ts: 42,
+  });
+  expect(snap().feed[0]?.ts).toBe(42); // the supplied ts wins over the clock
+});
+
+test("a streaming update keeps the entry's original ts through finalization", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1000);
+  const { vm, snap } = harness();
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "assistant_text_streaming",
+    data: "He",
+  });
+  const openedTs = snap().feed[0]?.ts;
+  expect(openedTs).toBe(1000); // stamped when the stream opened
+
+  // Later deltas (and the final flush) arrive with the wall clock advanced —
+  // the entry keeps the ts it opened with, never re-stamps per delta.
+  vi.setSystemTime(9999);
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "assistant_text_streaming",
+    data: "Hello",
+  });
+  expect(snap().feed[0]?.ts).toBe(openedTs);
+
+  vm.pushFeedItem("a", "c1", { feed_type: "assistant_text", data: "Hello!" });
+  expect(snap().feed).toHaveLength(1);
+  expect(snap().feed[0]?.feed_type).toBe("assistant_text");
+  expect(snap().feed[0]?.ts).toBe(openedTs); // finalization preserves it
+});
+
+test("seedHistory carries a frame's ts through and stamps nothing when absent", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(5_000_000);
+  const { vm, snap } = harness();
+  vm.seedHistory("a", "c1", [
+    { feed_type: "user_message", data: "hi", ts: 111 },
+    { feed_type: "assistant_text", data: "yo" }, // pre-ts transcript: no ts
+  ]);
+  expect(snap().feed[0]?.ts).toBe(111); // historical ts preserved
+  expect(snap().feed[1]?.ts).toBeUndefined(); // NOT stamped with the wall clock
 });
 
 test("distinct conversations get distinct scopes", () => {

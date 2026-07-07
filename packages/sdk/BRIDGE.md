@@ -453,6 +453,17 @@ The conversation feed snapshot's `live` block projects the runtime-client
   (`wire.ts` per-conversation, strictly monotonic, process-lifetime). The host
   treats it as **opaque** — it may ignore it entirely. It does **not** manage
   resume cursors.
+- **`ts` (optional epoch-ms) — a message/feed-entry timestamp.** Each `messages[]`
+  entry carries `ts` (the persisted `ChatMessage.ts`), and the SDK's built-in
+  conversation VM stamps the same field on every feed entry it publishes: a
+  seeded history frame carries its source message's `ts`; a live push that lacks
+  one is stamped with the wall clock when it first appears; a streaming/finalizing
+  update keeps the entry's ORIGINAL `ts` (a reply is timed by when its bubble
+  opened, not per delta). It is **optional** per §4 — **absent** for a transcript
+  written before timestamps existed and for a frame not tied to a message — so a
+  host renders relative time only when `ts` is present and never assumes it. It is
+  a plain JSON number of milliseconds; do not confuse it with the opaque `seq`
+  watermark (which orders frames but is not a clock).
 - **Resume is invisible to the host.** A dropped SSE connection is healed
   beneath the bridge by `streamEventsResumable`. Frames inside the replay window
   are re-sent with no gap or duplicate; a cursor too old to serve produces a

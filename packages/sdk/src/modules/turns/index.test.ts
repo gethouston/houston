@@ -131,7 +131,12 @@ test("turns/send drives the conversation VM to a settled reply", async () => {
   expect(vm().running).toBe(false);
   const texts = vm().feed.filter((f) => f.feed_type === "assistant_text");
   expect(texts).toEqual([
-    { id: texts[0]?.id ?? "", feed_type: "assistant_text", data: "hi there" },
+    {
+      id: texts[0]?.id ?? "",
+      feed_type: "assistant_text",
+      data: "hi there",
+      ts: expect.any(Number), // a live push is stamped at push time
+    },
   ]);
 });
 

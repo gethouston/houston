@@ -41,11 +41,39 @@ struct FeedItemVM: Decodable, Equatable, Identifiable, Sendable {
   let id: String
   let feedType: String
   let data: JSONValue
+  /// Wall-clock time this frame is attributed to, projected from the SDK's
+  /// optional `ts` (epoch milliseconds → `Date`). The SDK sets it only for frames
+  /// it can attribute to a source message (`history.ts` / `vm-output.ts`), so it
+  /// is ABSENT on older data and on unattributable frames — every consumer treats
+  /// it as optional. Decoded by hand because the wire value is a millisecond
+  /// number, not a `Date` the default strategy would understand.
+  let ts: Date?
 
   private enum CodingKeys: String, CodingKey {
     case id
     case feedType = "feed_type"
     case data
+    case ts
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(String.self, forKey: .id)
+    feedType = try container.decode(String.self, forKey: .feedType)
+    data = try container.decode(JSONValue.self, forKey: .data)
+    if let millis = try container.decodeIfPresent(Double.self, forKey: .ts) {
+      ts = Date(timeIntervalSince1970: millis / 1000)
+    } else {
+      ts = nil
+    }
+  }
+
+  /// Direct construction for tests and in-memory feeds; `ts` defaults absent.
+  init(id: String, feedType: String, data: JSONValue, ts: Date? = nil) {
+    self.id = id
+    self.feedType = feedType
+    self.data = data
+    self.ts = ts
   }
 }
 

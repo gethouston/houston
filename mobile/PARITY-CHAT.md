@@ -44,8 +44,9 @@ The helmet is also the process-block header glyph at size 13 (see §5).
 
 ## 3. Messages — desktop: ui/chat/src/ai-elements/message.tsx
 - User bubble: right, `ml-auto max-w-[70%]`, `rounded-[22px] bg-muted px-4 py-2.5
-  text-foreground text-base leading-6`. **NO tail, no avatar, no timestamp.**
+  text-foreground text-base leading-6`. **NO tail, no avatar.**
   (iOS today: near-black primary bubble + WhatsApp tail — recolor to muted, drop the tail, r=22.)
+  **iOS SUPERSEDED (§8): the user bubble now carries an in-bubble bottom-right timestamp.**
 - Assistant: **full-width, NO bubble/background/border/tail/avatar**, `text-foreground
   text-base leading-6`. (iOS today: card bubble — remove the bubble entirely.)
 - Markdown: desktop renders full markdown. iOS: build a native SwiftUI markdown view using
@@ -54,7 +55,9 @@ The helmet is also the process-block header glyph at size 13 (see §5).
   fenced code blocks (monospace slab, NO syntax highlighting v1), inline bold/italic/code/links.
   No third-party packages. Math/mermaid deferred (render fenced/raw). Streaming text updates in
   place (stable row id). Assistant prose is the common case for the non-technical target user.
-- No timestamps anywhere.
+- ~~No timestamps anywhere.~~ **SUPERSEDED by a founder directive (2026-07-06) — see §8.**
+  The mobile thread adopts WhatsApp/Telegram anatomy: in-bubble user timestamps, day
+  separators, a floating date pill, and 60s grouping. Desktop is unchanged.
 
 ## 4. Feed catalog dispositions (desktop: ui/chat/src/feed-to-messages.ts)
 - assistant_text/_streaming → full-width markdown assistant message.
@@ -94,3 +97,52 @@ Settings tab = ONLY: Account (identity + sign in / sign out) and Appearance (lig
 workspace name, language, contexts, report bug, danger zone, version rows. Hide the AI Models and
 Integrations entry points (Settings nav rows + the agent-screen overflow-menu items) — KEEP the
 Feature code (tested; reversible), just make it unreachable. Note the removals in code.
+
+## 8. Mobile thread = WhatsApp/Telegram anatomy (founder directive, 2026-07-06)
+SUPERSEDES the §3/§5 "no timestamps anywhere" decision **for mobile only**. Desktop is
+untouched — this is a native-thread affordance layered on top of the parity feed, not a
+cross-surface change. It rides ONE additive, client-only SDK field: an optional epoch-ms
+`ts` on each feed VM entry (seeded from `ChatMessage.ts`, live-stamped when absent,
+preserved across streaming/finalization; `packages/protocol` and the wire are unchanged).
+See `packages/sdk/BRIDGE.md` §7. `ts` is OPTIONAL: older data has none, so every consumer
+degrades gracefully (a flat, separator-less feed; no crash).
+
+- **In-bubble user timestamp** — bottom-right inside the user bubble (WhatsApp convention),
+  `Typography.caption`, `primaryFg` @ opacity `0.6` (`ChatMetrics.bubbleTimeOpacity`),
+  `Date.FormatStyle(time: .shortened)` (locale clock: 3:45 PM / 15:45), rendered in the
+  device's local time zone. A custom `TimedBubbleLayout` (`Layout`) places it inline on the
+  last line, or drops it to its own bottom-right line when the block is full — never overlaps.
+  Files: `ChatBubbles.swift` (UserBubble), `TimedBubbleLayout.swift`, `ChatBubbleTime.swift`.
+  Assistant prose gets NO in-line time and NO Copy menu (text selection is kept instead — on
+  iOS 17 `.contextMenu` and `.textSelection` conflict). Only the user bubble times/menus.
+- **Day-separator pills** — a centered pill between days (Today / Yesterday / weekday within
+  the last 6 days / medium date), inserted only between dated rows by the pure
+  `ChatTimeline.rows(from:timestamps:)` fold. Labels: `TimelineDayLabel`. Strings:
+  `Strings.Chat.Timeline.today` / `.yesterday`.
+- **Floating date pill** — a top-center pill naming the day at the viewport top, shown while
+  scrolling history, hidden ~1s after scrolling settles and immediately at the bottom.
+  Driven by `FloatingDatePillModel` + `TimelineDayTracker` off scroll-space day anchors
+  (`DayAnchor`/`DayAnchorsKey`). Honors Reduce Motion. Files: `ChatTimelineScroll.swift`,
+  `ChatTimelineViews.swift`.
+- **60s user-message grouping** — consecutive user messages within 60s and the same day render
+  tight (`Spacing.space2` top pad) with no separator between them; other rows use
+  `Spacing.space10`. Grouping is part of the `ChatTimeline` fold.
+- **Unread badge** — the jump-to-bottom button gains a count badge (`UnreadBadge`) of unread
+  MESSAGES that arrived while scrolled away — a folded process block (reasoning + tools) is not a
+  message, so a turn increments by one, matching WhatsApp (`ChatRow.countsAsUnreadMessage`). The
+  count is capped at "99+" (`Strings.cappedCount`); the first observation only seeds the baseline;
+  returning to the bottom clears it. State: `UnreadCounter` (`ChatTimelineScroll.swift`).
+- **Title bar (principal)** — a WhatsApp-style bar: agent avatar (`HoustonAvatar`, 26pt) + the
+  agent name (line 1, `bodyMedium`) + a status line (line 2, `caption`): "Working…" (shimmer,
+  `mutedFg`) while running, "Needs your attention" (`warning`) when settled needs-you, else
+  hidden. Derivation: `ChatTitleStatus.derive(running:boardStatus:)`. Files: `ChatTitleView.swift`,
+  `ChatTitleStatus.swift`, `Strings.Chat.TitleBar`. The name is threaded via
+  `ChatView(agentId:conversationId:title:agentName:)` (optional; Mission Control opens a chat by
+  mission, so it falls back to the mission title).
+- **Draft composer auto-focus** — a draft chat (`conversationId == nil`) auto-focuses the composer
+  once on appear (deferred past the push transition); existing missions never do.
+  Files: `ChatView.swift` (`isDraft`), `MissionComposer.swift` (`autoFocus`).
+
+Timeline logic is pure and unit-tested (`HoustonTests/Chat/ChatTimelineTests`,
+`ChatBubbleTimeTests`, `ChatTitleStatusTests`). All layout values come from DesignSystem
+tokens (Spacing / Typography / Radius / Theme roles); no raw hex or spacing literals.

@@ -21,6 +21,30 @@ struct ChatRow: Identifiable, Equatable {
     case providerSwitched(provider: String, summarized: Bool)
     case fileChanges(created: [String], modified: [String])
   }
+
+  /// Whether this row is a discrete message for the scroll-to-latest unread badge.
+  /// The folded ``Kind/process`` block (reasoning + tool activity collapsed into
+  /// one collapsible block, PARITY §4) is NOT a message — it's activity that
+  /// belongs to the surrounding turn — so a normal turn (process block + reply)
+  /// counts as ONE unread message, matching WhatsApp. Every other row is content
+  /// the user hasn't seen: a bubble, an error card, or an inline notice.
+  var countsAsUnreadMessage: Bool {
+    switch kind {
+    case .process:
+      return false
+    case .user, .assistant, .toolRuntimeError, .providerError, .system,
+      .contextCompacted, .providerSwitched, .fileChanges:
+      return true
+    }
+  }
+}
+
+extension Sequence where Element == ChatRow {
+  /// The number of discrete unread messages in the feed — folded process blocks
+  /// don't count (see ``ChatRow/countsAsUnreadMessage``). Drives ``UnreadCounter``.
+  var unreadMessageCount: Int {
+    reduce(0) { $0 + ($1.countsAsUnreadMessage ? 1 : 0) }
+  }
 }
 
 /// Folds the SDK conversation feed into render-ready rows, mirroring the desktop
