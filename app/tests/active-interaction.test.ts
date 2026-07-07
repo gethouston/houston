@@ -75,6 +75,58 @@ describe("deriveActiveInteraction", () => {
   });
 });
 
+// Interactions persisted by OLDER builds (pre-step shapes without `steps`)
+// outlive the code that wrote them. They must read as "nothing pending",
+// never crash (`undefined is not an object (evaluating 'steps.some')`).
+const legacyQuestion = {
+  kind: "question",
+  question: "Which account?",
+  options: [{ id: "a", label: "Work" }],
+} as unknown as PendingInteraction;
+const legacyConnect = {
+  kind: "connect",
+  toolkit: "gmail",
+} as unknown as PendingInteraction;
+
+describe("legacy persisted shapes (no steps)", () => {
+  it("deriveActiveInteraction treats them as absent, both sources", () => {
+    strictEqual(
+      deriveActiveInteraction({
+        running: false,
+        live: legacyQuestion,
+        persisted: legacyConnect,
+      }),
+      null,
+    );
+  });
+
+  it("falls through an invalid live value to a valid persisted one", () => {
+    strictEqual(
+      deriveActiveInteraction({
+        running: false,
+        live: legacyQuestion,
+        persisted: connect,
+      }),
+      connect,
+    );
+  });
+
+  it("notification body falls back to the plain body without throwing", () => {
+    strictEqual(
+      interactionNotificationBodyKey(legacyQuestion),
+      "sessionComplete.body",
+    );
+    strictEqual(
+      interactionNotificationBodyKey(legacyConnect),
+      "sessionComplete.body",
+    );
+  });
+
+  it("question count is 0 without throwing", () => {
+    strictEqual(interactionQuestionCount(legacyQuestion), 0);
+  });
+});
+
 describe("interactionNotificationBodyKey", () => {
   it("maps a pending question to the question body", () => {
     strictEqual(

@@ -1,4 +1,8 @@
 import type { PendingInteraction } from "@houston/protocol";
+// Subpath import (like @houston/protocol/model-windows): the app's node:test
+// runner loads value imports for real, and the package index's extensionless
+// import chain only resolves under bundler resolution.
+import { isPendingInteraction } from "@houston/protocol/interaction";
 import type { BoardStatus } from "@houston/sdk";
 
 /**
@@ -24,7 +28,12 @@ export function deriveActiveInteraction(args: {
   persisted: PendingInteraction | null | undefined;
 }): PendingInteraction | null {
   if (args.running) return null;
-  return args.live ?? args.persisted ?? null;
+  // Both sources are persisted data that can outlive the code that wrote it
+  // (an activity or message from a pre-step build has no `steps`): render only
+  // a structurally valid sequence, treat anything else as absent.
+  if (isPendingInteraction(args.live)) return args.live;
+  if (isPendingInteraction(args.persisted)) return args.persisted;
+  return null;
 }
 
 /**
@@ -36,9 +45,8 @@ export function deriveActiveInteraction(args: {
 export function interactionQuestionCount(
   interaction: PendingInteraction | null | undefined,
 ): number {
-  return (
-    interaction?.steps.filter((step) => step.kind === "question").length ?? 0
-  );
+  if (!isPendingInteraction(interaction)) return 0;
+  return interaction.steps.filter((step) => step.kind === "question").length;
 }
 
 /**
@@ -56,7 +64,10 @@ export function interactionNotificationBodyKey(
   | "sessionComplete.connect" {
   if (interactionQuestionCount(interaction) > 0)
     return "sessionComplete.question";
-  if (interaction?.steps.some((step) => step.kind === "connect"))
+  if (
+    isPendingInteraction(interaction) &&
+    interaction.steps.some((step) => step.kind === "connect")
+  )
     return "sessionComplete.connect";
   return "sessionComplete.body";
 }
