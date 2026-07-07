@@ -51,6 +51,9 @@ test("guided setup: the panel opens on the Routines tab and the agent speaks fir
 test("mid-interview: no board card, tab switch leaves a Continue banner", async ({
   page,
 }) => {
+  // Settle-dependent (the interaction rides the DONE frame): triple budget
+  // for a CI drop + resync cycle, same as the cleanup test below.
+  test.slow();
   // Arm the turn to settle on an ask_user interaction — mid-interview state.
   await fetch(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
     method: "POST",
@@ -84,9 +87,10 @@ test("mid-interview: no board card, tab switch leaves a Continue banner", async 
 
   // The ask_user question card REPLACES the composer once the turn settles —
   // this is the interview's whole interaction surface, so the setup panel
-  // must forward composerOverride like the board panel does.
+  // must forward composerOverride like the board panel does. Settle-dependent,
+  // so generous for a CI drop + resync cycle.
   await expect(page.getByText("What should the routine do?")).toBeVisible({
-    timeout: 15_000,
+    timeout: 45_000,
   });
   await expect(page.getByRole("radio")).toHaveCount(2);
   await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
@@ -113,6 +117,10 @@ test("mid-interview: no board card, tab switch leaves a Continue banner", async 
 test("finished setup chat cleans itself up after the panel closes", async ({
   page,
 }) => {
+  // Triple budget: this test depends on the turn's DONE frame landing, and on
+  // a loaded CI machine a connection blip can force the chat stream through a
+  // full drop + resync cycle before the settle arrives.
+  test.slow();
   await page.goto("/");
   await openRoutinesTab(page);
   await startSetupChat(page);
@@ -121,10 +129,11 @@ test("finished setup chat cleans itself up after the panel closes", async ({
   });
   // Wait for the turn to SETTLE (the composer's Stop flips back to Submit):
   // self-archive only triggers on a "done" activity, and switching tabs
-  // mid-turn would race the settle's own status write.
+  // mid-turn would race the settle's own status write. Generous timeout for
+  // the drop + resync worst case.
   await expect(
     page.getByRole("button", { name: "Submit" }).first(),
-  ).toBeVisible({ timeout: 15_000 });
+  ).toBeVisible({ timeout: 45_000 });
 
   // The canned turn settled "done" with no pending interaction. Leaving the
   // tab closes the panel; the finished chat archives itself — no banner, no
