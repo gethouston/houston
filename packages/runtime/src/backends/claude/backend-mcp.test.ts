@@ -44,10 +44,13 @@ const model: ResolvedModel = {
   contextWindow: 200_000,
 };
 
-async function runTurn(integrations?: {
-  baseUrl: string;
-  sandboxToken: string;
-}): Promise<Options> {
+async function runTurn(
+  integrations?: {
+    baseUrl: string;
+    sandboxToken: string;
+  },
+  mode?: "execute" | "plan",
+): Promise<Options> {
   h.capturedOptions = undefined;
   h.capturedMcp = undefined;
   const root = mkdtempSync(join(tmpdir(), "houston-mcp-test-"));
@@ -59,7 +62,11 @@ async function runTurn(integrations?: {
     systemPrompt: "system",
     integrations,
   });
-  const session = await backend.createSession({ conversationId: "c1", model });
+  const session = await backend.createSession({
+    conversationId: "c1",
+    model,
+    ...(mode ? { mode } : {}),
+  });
   await session.prompt("hi");
   const options = h.capturedOptions;
   if (!options) throw new Error("query was not called");
@@ -88,4 +95,18 @@ test("without the integrations gate only ask_user is allow-listed", async () => 
 test("AskUserQuestion stays disabled — Houston ships its own ask_user", async () => {
   const options = await runTurn(undefined);
   expect(options.disallowedTools).toContain("AskUserQuestion");
+});
+
+test("plan mode builds the MCP server WITHOUT integrations — only ask_user", async () => {
+  // Even with the integrations gate present, plan mode withholds the integration
+  // tools (they act on the user's connected apps), leaving just ask_user.
+  const options = await runTurn(
+    { baseUrl: "http://host.local", sandboxToken: "tok" },
+    "plan",
+  );
+  expect(options.mcpServers?.houston).toBeDefined();
+  expect(options.allowedTools).toEqual(["mcp__houston__ask_user"]);
+  expect(h.capturedMcp?.tools.map((t) => t.name)).toEqual(["ask_user"]);
+  // And the built-ins are the read-only plan subset.
+  expect(options.tools).toEqual(["Read", "Glob", "Grep"]);
 });

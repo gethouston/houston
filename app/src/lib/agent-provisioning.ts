@@ -63,6 +63,8 @@ export interface PendingWarmingSend {
   provider?: string;
   model?: string;
   effort?: string;
+  /** Per-turn mode pin (composer "Mode" selector), forwarded at flush time. */
+  mode?: "execute" | "plan";
 }
 
 export interface ProvisioningEntry {

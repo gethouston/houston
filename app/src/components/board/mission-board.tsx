@@ -69,8 +69,9 @@ export function MissionBoard({ source }: { source: BoardSource }) {
     () => ({
       providerOverride: panel.effectiveProvider,
       modelOverride: panel.effectiveModel,
+      modeOverride: panel.turnMode,
     }),
-    [panel.effectiveProvider, panel.effectiveModel],
+    [panel.effectiveProvider, panel.effectiveModel, panel.turnMode],
   );
 
   const sendQueue = useBoardSendQueue({

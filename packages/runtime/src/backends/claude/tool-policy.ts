@@ -3,6 +3,7 @@ import type {
   CanUseTool,
   PermissionResult,
 } from "@anthropic-ai/claude-agent-sdk";
+import type { TurnMode } from "@houston/protocol";
 import { WorkspaceGuard } from "../../session/tools/fs-guard";
 
 /**
@@ -55,9 +56,18 @@ const PI_LACKS = [
   "SlashCommand",
 ] as const;
 
+/** The read-only file tools plan mode allows (SDK names). No Edit/Write. */
+const PLAN_FILE_TOOLS = ["Read", "Glob", "Grep"] as const;
+
 export interface ToolPolicyInput {
   /** True when code execution is local — the only mode that grants Bash. */
   localBash: boolean;
+  /**
+   * The turn's execution mode. "plan" clamps the SDK built-ins to the read-only
+   * subset (Read/Glob/Grep) and denies Edit/Write/Bash; absent or "execute" is
+   * the full policy gated only by `localBash`.
+   */
+  mode?: TurnMode;
 }
 
 export interface ToolPolicy {
@@ -67,6 +77,16 @@ export interface ToolPolicy {
 
 /** Build the `{ tools, disallowedTools }` SDK options (this object sets no `allowedTools` — see above). */
 export function buildToolPolicy(input: ToolPolicyInput): ToolPolicy {
+  // Plan mode: read-only built-ins only, and deny every write/exec tool. We do
+  // NOT switch the SDK to permissionMode "plan" — that forces the ExitPlanMode
+  // tool (which pi lacks) and the SDK's own plan prompt; Houston keeps
+  // permissionMode "default" and enforces plan via this allowlist + the overlay.
+  if (input.mode === "plan") {
+    return {
+      tools: [...PLAN_FILE_TOOLS],
+      disallowedTools: [...PI_LACKS, "Edit", "Write", "Bash"],
+    };
+  }
   const tools = input.localBash ? [...FILE_TOOLS, "Bash"] : [...FILE_TOOLS];
   // Deny Bash outright when code execution is off, on top of omitting it above.
   const disallowedTools = input.localBash

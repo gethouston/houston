@@ -134,13 +134,27 @@ export function credentialSiblings(pid: NewProviderId): NewProviderId[] {
  *   id would hard-fail the turn (the runtime validates pins strictly);
  * - a model with no provider can't be ownership-checked, so it is dropped too;
  * - effort passes through verbatim; an effort-only send still pins it.
+ * - mode passes through verbatim; a mode-only send still pins it.
  */
 export function wireTurnPin(req: {
   provider?: string;
   model?: string;
   effort?: string;
-}): { provider?: string; model?: string; effort?: string } | undefined {
-  const pin: { provider?: string; model?: string; effort?: string } = {};
+  mode?: "execute" | "plan";
+}):
+  | {
+      provider?: string;
+      model?: string;
+      effort?: string;
+      mode?: "execute" | "plan";
+    }
+  | undefined {
+  const pin: {
+    provider?: string;
+    model?: string;
+    effort?: string;
+    mode?: "execute" | "plan";
+  } = {};
   if (req.provider) {
     const provider = canonicalProviderId(req.provider);
     if (provider) {
@@ -164,7 +178,8 @@ export function wireTurnPin(req: {
     );
   }
   if (req.effort) pin.effort = req.effort;
-  return pin.provider || pin.effort ? pin : undefined;
+  if (req.mode) pin.mode = req.mode;
+  return pin.provider || pin.effort || pin.mode ? pin : undefined;
 }
 
 /**

@@ -8,6 +8,7 @@ import {
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
 import { makeAgentLoader } from "../../session/resource-loader";
+import { planToolNames } from "../../session/tool-selection";
 import type {
   CreateSessionOptions,
   HarnessBackend,
@@ -45,7 +46,12 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
   return {
     id: "pi",
     async createSession(opts: CreateSessionOptions): Promise<HarnessSession> {
-      const loader = makeAgentLoader(deps.workspaceDir);
+      // Plan mode overlays the planning prompt (via the loader) and clamps the
+      // allowlist to the read-only subset. The customTools list is UNCHANGED —
+      // pi gates its custom tools by the `tools` name allowlist, so filtering
+      // the names here drops edit/write/run_code/integration tools from the
+      // model's reach without rebuilding the tool objects.
+      const loader = makeAgentLoader(deps.workspaceDir, opts.mode);
       await loader.reload();
       const { session } = await createAgentSession({
         cwd: deps.workspaceDir,
@@ -59,7 +65,7 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
           join(deps.dataDir, "sessions", opts.conversationId),
         ),
         resourceLoader: loader,
-        tools: deps.tools,
+        tools: opts.mode === "plan" ? planToolNames(deps.tools) : deps.tools,
         customTools: deps.customTools,
       });
       return new PiSession(session);

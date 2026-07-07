@@ -2,6 +2,7 @@ import type { KanbanItem, NewPanelOpener } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
 import type { ReactNode } from "react";
 import type { HistoryLoadOptions } from "../../lib/tauri";
+import type { TurnMode } from "../../lib/turn-mode";
 import type { Agent, AgentDefinition } from "../../lib/types";
 
 /**
@@ -27,6 +28,8 @@ import type { Agent, AgentDefinition } from "../../lib/types";
 export interface SendOverrides {
   providerOverride: string;
   modelOverride: string;
+  /** Turn mode pin for user-typed sends; absent = execute. */
+  modeOverride?: TurnMode;
 }
 
 /**

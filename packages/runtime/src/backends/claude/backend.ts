@@ -80,14 +80,18 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         // `createSdkMcpServer` is only touched once the SDK is confirmed present.
         houstonMcp = buildHoustonMcpServer({
           createSdkMcpServer: sdk.createSdkMcpServer,
-          integrations: deps.integrations,
+          // Plan mode is read-only + takes no real-world action, so the MCP
+          // server exposes only `ask_user` — the integration tools (which act on
+          // the user's connected apps) are withheld exactly as in an unconnected
+          // runtime, mirroring the pi path's `planToolNames` drop.
+          integrations: opts.mode === "plan" ? undefined : deps.integrations,
         });
       } catch (err) {
         throw new ClaudeBackendUnavailableError(err);
       }
 
       const localBash = deps.toolSelection.toolNames.includes("bash");
-      const policy = buildToolPolicy({ localBash });
+      const policy = buildToolPolicy({ localBash, mode: opts.mode });
       // undefined on the Node path (self-host / engine-pod / per-turn Docker +
       // dev/tests): the SDK resolves its own native binary. Only set inside the
       // Bun-compiled desktop sidecar, where require.resolve can't reach it.
@@ -106,7 +110,11 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         mcpServers: { [HOUSTON_MCP_SERVER_NAME]: houstonMcp.server },
         allowedTools: houstonMcp.allowedTools,
         canUseTool: makeCanUseTool(deps.workspaceDir),
-        systemPrompt: buildSystemPrompt(deps.workspaceDir, deps.systemPrompt),
+        systemPrompt: buildSystemPrompt(
+          deps.workspaceDir,
+          deps.systemPrompt,
+          opts.mode,
+        ),
         includePartialMessages: true,
         permissionMode: "default",
       };

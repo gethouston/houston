@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
+import type { TurnMode } from "@houston/protocol";
 import type {
   PendingInteraction,
   ProviderError,
@@ -70,6 +71,12 @@ export interface PiTurnRequest {
   nonce?: string;
   pin?: TurnModelPin;
   /**
+   * The turn's execution mode ("plan" = read-only + planning overlay). Absent =
+   * execute. Threaded into the pi session's tool allowlist + system prompt via
+   * `createSession`, identical to the long-lived server path.
+   */
+  mode?: TurnMode;
+  /**
    * The turn's wire identity, minted by the per-turn SERVER (which also stamps
    * it on the terminal frame it sends after sync-back) — stamped here on every
    * emitted frame and persisted on both stored messages.
@@ -81,7 +88,8 @@ export async function runPiTurn(
   root: string,
   turn: PiTurnRequest,
 ): Promise<TurnOutcome> {
-  const { conversationId, text, provider, signal, nonce, pin, turnId } = turn;
+  const { conversationId, text, provider, signal, nonce, pin, mode, turnId } =
+    turn;
   const emit = (e: WireFrame) => turn.emit({ ...e, turnId });
   const workspaceDir = join(root, "workspace");
   const dataDir = join(root, "data");
@@ -165,6 +173,10 @@ export async function runPiTurn(
       conversationId,
       model,
       ...(thinkingLevel ? { thinkingLevel } : {}),
+      // Plan mode clamps this pi session read-only + overlays the planning
+      // prompt, exactly as the long-lived server path does (createPiBackend
+      // applies `planToolNames` + the loader overlay from `opts.mode`).
+      ...(mode ? { mode } : {}),
     });
 
     // Snapshot the hydrated workspace so the turn's created/modified files can

@@ -1,10 +1,13 @@
 import type { HoustonEngineClient, ProviderId } from "@houston/runtime-client";
 
-/** A per-turn model/effort pick, resolved to its owning provider. */
+/** A per-turn model/effort/mode pick, resolved to its owning provider. */
 export interface ModelSettings {
   activeProvider?: ProviderId;
   model?: string;
   effort?: string;
+  /** Per-turn execution mode ("plan" = read-only + planning overlay); a pure
+   *  passthrough like `effort`, never gated by the provider resolution. */
+  mode?: "execute" | "plan";
 }
 
 /**
@@ -24,8 +27,9 @@ export async function resolveModelSettings(
   client: HoustonEngineClient,
   model: string | undefined,
   effort: string | undefined,
+  mode: "execute" | "plan" | undefined,
 ): Promise<ModelSettings> {
-  if (model === undefined) return { effort };
+  if (model === undefined) return { effort, mode };
   let activeProvider: ProviderId | undefined;
   try {
     const providers = await client.listProviders();
@@ -36,5 +40,5 @@ export async function resolveModelSettings(
     // Engine unreachable / no provider selected: fall through to a bare model
     // write. The runtime settles the provider on its side.
   }
-  return { activeProvider, model, effort };
+  return { activeProvider, model, effort, mode };
 }

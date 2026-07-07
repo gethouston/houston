@@ -825,6 +825,12 @@ export interface SessionStartRequest {
    */
   effort?: string;
   /**
+   * Per-turn agent mode. `"plan"` runs the turn read-only (no file writes or
+   * side effects), `"execute"` (the default when omitted) runs it normally.
+   * Forwarded verbatim to the runtime, which enforces it.
+   */
+  mode?: "execute" | "plan";
+  /**
    * Skip the turn stream's optimistic user bubble — for resends of a prompt
    * whose bubble is already in the conversation VM (a refused not-connected
    * send being retried verbatim).

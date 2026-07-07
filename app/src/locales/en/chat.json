@@ -72,6 +72,14 @@
     "signedIn": "Signed in",
     "signIn": "Sign in"
   },
+  "modeSelector": {
+    "mode": "Mode",
+    "modeValue": "Mode: {{mode}}",
+    "chat": "Chat",
+    "chatDescription": "Houston can read, act, and make changes.",
+    "plan": "Plan",
+    "planDescription": "Houston only looks and writes up a plan for you to approve. It won't make changes or use your apps."
+  },
   "modelSelector": {
     "selectModel": "Select model",
     "model": "Model",

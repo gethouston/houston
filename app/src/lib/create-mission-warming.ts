@@ -69,6 +69,7 @@ export function createMissionWhileWarming(
       provider: opts.providerOverride,
       model: opts.modelOverride,
       effort: opts.effortOverride,
+      mode: opts.modeOverride,
     });
   if (!queued) {
     // The agent turned ready between the caller's provisioning check and the
@@ -104,6 +105,7 @@ export function createMissionWhileWarming(
         providerOverride: opts.providerOverride,
         modelOverride: opts.modelOverride,
         effortOverride: opts.effortOverride,
+        modeOverride: opts.modeOverride,
       });
     })().catch(() => {
       // tauriChat.send toasted the real reason already.

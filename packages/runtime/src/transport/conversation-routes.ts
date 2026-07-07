@@ -121,11 +121,16 @@ async function handleConversationTitle(ctx: RouteContext, id: string) {
 }
 
 async function handleStartTurn(ctx: RouteContext, id: string) {
-  const { text, nonce, model, effort, provider } = await readJson(ctx.req);
+  const { text, nonce, model, effort, provider, mode } = await readJson(
+    ctx.req,
+  );
   if (!text || typeof text !== "string") {
     json(ctx.res, 400, { error: "missing 'text'" });
     return;
   }
+  // Never trust the wire: only the exact string "plan" turns plan mode on;
+  // everything else (absent, garbage, "execute") is execute.
+  const turnMode = mode === "plan" ? "plan" : "execute";
   // A provider-pinned turn (a routine) is never auth-gated on the ACTIVE
   // provider — the pin names its own; a disconnected pin surfaces as the
   // turn's provider error. The credential sync inside ensureProviderForTurn
@@ -150,6 +155,7 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
       provider: pinnedProvider,
       model: typeof model === "string" ? model : undefined,
       effort: typeof effort === "string" ? effort : undefined,
+      mode: turnMode,
     },
     acting,
   );

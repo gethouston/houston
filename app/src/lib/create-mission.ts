@@ -71,6 +71,8 @@ export interface CreateMissionOptions {
   modelOverride?: string;
   /** Reasoning-effort override forwarded to tauriChat.send. */
   effortOverride?: string;
+  /** Per-turn mode pin (composer "Mode" selector) forwarded to tauriChat.send. */
+  modeOverride?: "execute" | "plan";
   /**
    * Explicit activity title. Overrides the default `autoTitleFromText(text)`.
    * Used by action invocations where `text` is a structured marker that
@@ -131,6 +133,7 @@ export async function createMission(
       providerOverride: opts.providerOverride,
       modelOverride: opts.modelOverride,
       effortOverride: opts.effortOverride,
+      modeOverride: opts.modeOverride,
     });
 
     analytics.track("mission_created", { agent_mode: opts.agentMode });

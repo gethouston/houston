@@ -99,11 +99,13 @@ import {
   tauriProvider,
   withAttachmentPaths,
 } from "../lib/tauri";
+import { normalizeTurnMode, type TurnMode } from "../lib/turn-mode";
 import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
 import { useUIStore } from "../stores/ui";
 import { ChatConnectInteractionCard } from "./chat-connect-interaction-card";
 import { resolveEffectiveProvider } from "./chat-effective-provider";
 import { ChatEffortSelector } from "./chat-effort-selector";
+import { ChatModeSelector } from "./chat-mode-selector";
 import { ChatModelSelector } from "./chat-model-selector";
 import { ContextCompactedDivider } from "./context-compacted-divider";
 import { ContextIndicator } from "./context-indicator";
@@ -182,6 +184,9 @@ interface AgentChatPanelProps {
   /** Effective provider/model for sending. */
   effectiveProvider: string;
   effectiveModel: string;
+  /** The composer's turn mode (execute | plan); consumers forward it as
+   *  `modeOverride` on user-typed sends — an unpinned turn is execute. */
+  turnMode: TurnMode;
   /** Multiplayer only (C5): the signed-in viewer's user id, for attributing
    *  teammates' messages. Undefined when signed out / single-player. */
   currentUserId: ChatPanelProps["currentUserId"];
@@ -246,11 +251,15 @@ export function useAgentChatPanel({
   const [agentProvider, setAgentProvider] = useState<string | null>(null);
   const [agentModel, setAgentModel] = useState<string | null>(null);
   const [agentEffort, setAgentEffort] = useState<string | null>(null);
+  // Composer "Mode" pin (execute/plan). Loaded from config as memory only; the
+  // send path forwards it as `modeOverride`. Unknown/legacy values → execute.
+  const [turnMode, setTurnMode] = useState<TurnMode>("execute");
   useEffect(() => {
     if (!path) {
       setAgentProvider(null);
       setAgentModel(null);
       setAgentEffort(null);
+      setTurnMode("execute");
       return;
     }
     tauriConfig
@@ -259,6 +268,7 @@ export function useAgentChatPanel({
         setAgentProvider((cfg.provider as string) ?? null);
         setAgentModel(normalizeLegacyModel((cfg.model as string) ?? null));
         setAgentEffort((cfg.effort as string) ?? null);
+        setTurnMode(normalizeTurnMode(cfg.mode));
       })
       .catch(() => {});
   }, [path]);
@@ -572,6 +582,27 @@ export function useAgentChatPanel({
     },
     [path, addToast, t],
   );
+  const handleModeSelect = useCallback(
+    async (mode: TurnMode) => {
+      // Mode is per-agent composer memory (never synced to engine Settings):
+      // persist it so the pill reopens where the user left it. Optimistic flip;
+      // the actual plan/execute pin rides each send as `modeOverride`.
+      setTurnMode(mode);
+      try {
+        if (path) {
+          const cfg = await tauriConfig.read(path);
+          await tauriConfig.write(path, { ...cfg, mode });
+        }
+      } catch (err) {
+        addToast({
+          title: t("chat:errors.modelPersistFailed"),
+          description: String(err),
+          variant: "error",
+        });
+      }
+    },
+    [path, addToast, t],
+  );
 
   // Route a composer model / effort pick. In personal (Teams) mode it writes the
   // acting user's per-agent choice (the gateway clamps it to the ceiling and
@@ -699,6 +730,7 @@ export function useAgentChatPanel({
           providerOverride: effectiveProvider,
           modelOverride: effectiveModel,
           effortOverride: effectiveEffort,
+          modeOverride: turnMode,
         });
       } else {
         // New conversation: createMission with `title` override so the
@@ -721,6 +753,7 @@ export function useAgentChatPanel({
             providerOverride: effectiveProvider,
             modelOverride: effectiveModel,
             effortOverride: effectiveEffort,
+            modeOverride: turnMode,
             buildPrompt: async (activityId) => {
               const paths = await tauriAttachments.save(
                 `activity-${activityId}`,
@@ -755,6 +788,7 @@ export function useAgentChatPanel({
       effectiveProvider,
       effectiveModel,
       effectiveEffort,
+      turnMode,
       queryClient,
     ],
   );
@@ -789,6 +823,7 @@ export function useAgentChatPanel({
           providerOverride: effectiveProvider,
           modelOverride: effectiveModel,
           effortOverride: effectiveEffort,
+          modeOverride: turnMode,
         })
         .catch((err) => {
           addToast({
@@ -804,6 +839,7 @@ export function useAgentChatPanel({
       effectiveProvider,
       effectiveModel,
       effectiveEffort,
+      turnMode,
       addToast,
       t,
     ],
@@ -848,6 +884,7 @@ export function useAgentChatPanel({
           providerOverride: effectiveProvider,
           modelOverride: effectiveModel,
           effortOverride: effectiveEffort,
+          modeOverride: turnMode,
         })
         .catch((err) => {
           addToast({
@@ -862,6 +899,7 @@ export function useAgentChatPanel({
       effectiveProvider,
       effectiveModel,
       effectiveEffort,
+      turnMode,
       addToast,
       t,
     ],
@@ -991,6 +1029,7 @@ export function useAgentChatPanel({
                 providerOverride: effectiveProvider,
                 modelOverride: effectiveModel,
                 effortOverride: effectiveEffort,
+                modeOverride: turnMode,
               });
             }}
             onSwitchModel={
@@ -1033,6 +1072,7 @@ export function useAgentChatPanel({
                 providerOverride: effectiveProvider,
                 modelOverride: effectiveModel,
                 effortOverride: effectiveEffort,
+                modeOverride: turnMode,
                 // A refused not-connected send left its prompt's bubble in
                 // the feed already — resending it must not add a second one.
                 suppressUserBubble: resendsOriginalPrompt(providerError),
@@ -1052,6 +1092,7 @@ export function useAgentChatPanel({
       effectiveModel,
       effectiveProvider,
       effectiveEffort,
+      turnMode,
       selectModel,
       path,
       selectedSessionKey,
@@ -1183,6 +1224,11 @@ export function useAgentChatPanel({
           <Play className="size-3 fill-current" />
           {t("composerSkill.browse")}
         </button>
+        <ChatModeSelector
+          mode={turnMode}
+          onSelect={handleModeSelect}
+          agent={agent}
+        />
         <ChatModelSelector
           provider={displayModelPin.provider}
           model={displayModelPin.model}
@@ -1213,6 +1259,8 @@ export function useAgentChatPanel({
     displayModelPin,
     selectModel,
     selectEffort,
+    turnMode,
+    handleModeSelect,
     allowedModels,
     contextUsage,
     contextWindow,
@@ -1288,6 +1336,7 @@ export function useAgentChatPanel({
     pickerDialog,
     effectiveProvider,
     effectiveModel,
+    turnMode,
     currentUserId,
     authorLabels,
   };
