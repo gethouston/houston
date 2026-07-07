@@ -20,7 +20,8 @@
 import type { AIBoardProps } from "@houston-ai/board";
 import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
 import {
-  ChatQuestionCard,
+  type ChatInteractionAnswer,
+  ChatInteractionCard,
   decodeAttachmentMessage,
   UserAttachmentMessage,
   type UserAttachmentMessageLabels,
@@ -64,6 +65,7 @@ import {
 } from "../lib/context-usage";
 import { createMission } from "../lib/create-mission";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
+import { composeInteractionReply } from "../lib/interaction-reply";
 import {
   modelSelectorDecision,
   resolvePersonalModelPin,
@@ -834,11 +836,11 @@ export function useAgentChatPanel({
     persisted: selectedActivity?.pending_interaction,
   });
 
-  // Answering a question sends the text as a normal user message through the
+  // Sends the composed interaction reply as a normal user message through the
   // existing follow-up send path; the turn start clears the interaction, so the
   // card retires through the same reactivity. A failure surfaces (no silent
   // swallow) — the composer is gone, so a toast is the only channel left.
-  const handleInteractionAnswer = useCallback(
+  const sendInteractionMessage = useCallback(
     (text: string) => {
       if (!path || !selectedSessionKey) return;
       tauriChat
@@ -865,41 +867,86 @@ export function useAgentChatPanel({
     ],
   );
 
-  const questionCardLabels = useMemo(
+  const interactionLabels = useMemo(
     () => ({
       placeholder: t("chat:questionCard.placeholder"),
       send: t("chat:questionCard.send"),
+      back: t("chat:questionCard.back"),
+      forward: t("chat:questionCard.forward"),
+      progress: (current: number, total: number) =>
+        t("chat:questionCard.progress", { current, total }),
     }),
     [t],
   );
 
+  // The mission is waiting on a sequence of steps (questions then connections).
+  // ONE ChatInteractionCard walks them one at a time; `onComplete` fires after
+  // the LAST step, never before, so the card lives until every connection has
+  // landed.
+  //
+  // Completion composes ONE reply: `"<question>: <answer>"` per answered
+  // question, then `"Connected <app>."` per connection that landed. A sequence
+  // with questions sends that reply visibly (the user typed those answers). A
+  // connect-ONLY sequence has no user-typed text, so it sends the SAME reply as
+  // a hidden auto-continue message: the agent resumes without a fake user
+  // bubble in the transcript. The reply fires ONCE at completion; firing it
+  // per-connect would start a turn that tore the card down before later connect
+  // steps could complete.
+  //
+  // `connectedNames` accumulates the display names of connections made during
+  // THIS sequence. It lives in the memo body (not a ref) because
+  // `deriveActiveInteraction` returns a STABLE reference for a given pending
+  // interaction, so the memo does not recompute — and the accumulator does not
+  // reset — while the user walks the steps; a fresh interaction gets a fresh
+  // array.
   const composerOverride = useMemo<AIBoardProps["composerOverride"]>(() => {
     if (!agent || !activeInteraction) return undefined;
-    if (activeInteraction.kind === "question") {
-      return (
-        <ChatQuestionCard
-          questions={activeInteraction.questions}
-          onAnswer={handleInteractionAnswer}
-          labels={questionCardLabels}
-        />
-      );
-    }
+    const steps = activeInteraction.steps;
+    const hasQuestionSteps = steps.some((step) => step.kind === "question");
+    const connectedNames: string[] = [];
     return (
-      <ChatConnectInteractionCard
-        toolkit={activeInteraction.toolkit}
-        agentId={agent.id}
-        autoGrant={canManageAgentGrants(capabilities, agent)}
-        reason={activeInteraction.reason}
-        onConnected={handleIntegrationConnected}
+      <ChatInteractionCard
+        steps={steps}
+        labels={interactionLabels}
+        onComplete={(answers: ChatInteractionAnswer[]) => {
+          // ONE send after the LAST step: a sequence with questions replies with
+          // the user's visible answers; a connect-only sequence resumes the
+          // agent with a hidden auto-continue message (no fake user bubble).
+          sendInteractionMessage(
+            composeInteractionReply({
+              answers,
+              connectedNames,
+              hasQuestionSteps,
+              connectedLine: (name) =>
+                t("chat:interaction.connectedLine", { name }),
+            }),
+          );
+        }}
+        renderConnect={(step, api) => (
+          <ChatConnectInteractionCard
+            toolkit={step.toolkit}
+            agentId={agent.id}
+            autoGrant={canManageAgentGrants(capabilities, agent)}
+            reason={step.reason}
+            onConnected={(_toolkit, appName) => {
+              // Record the app and advance ONLY. The composed `onComplete`
+              // reply resumes the agent once EVERY step is done; starting a
+              // turn here would tear the card down before later connect steps
+              // could complete.
+              connectedNames.push(appName);
+              api.onConnected();
+            }}
+          />
+        )}
       />
     );
   }, [
     agent,
     activeInteraction,
-    handleInteractionAnswer,
-    questionCardLabels,
+    interactionLabels,
+    sendInteractionMessage,
     capabilities,
-    handleIntegrationConnected,
+    t,
   ]);
 
   // ── Built JSX bundles ─────────────────────────────────────────────────

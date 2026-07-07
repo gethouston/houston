@@ -8,9 +8,9 @@ import { ASK_USER_TOOL_NAME, makeAskUserTool } from "./ask-user";
 
 /**
  * The always-available blocking-question tool. These pin: the tool assigns
- * `q1`..`qN` ids and records a `question` interaction on the turn's holder (with
- * per-question options when offered), tells the model to end its turn, rejects a
- * batch over 3, and last-call-wins when asked twice.
+ * `q1`..`qN` ids and records the question STEPS of the turn's interaction
+ * sequence (with per-question options when offered), tells the model to end its
+ * turn, rejects a batch over 3, and REPLACES the questions when asked twice.
  */
 
 const askUser = makeAskUserTool();
@@ -32,8 +32,7 @@ test("records a single open question with a q1 id and ends the turn", async () =
     run({ questions: [{ question: "What city are you in?" }] }),
   );
   expect(holder.pending).toEqual({
-    kind: "question",
-    questions: [{ id: "q1", question: "What city are you in?" }],
+    steps: [{ kind: "question", id: "q1", question: "What city are you in?" }],
   });
   const text = (out.content[0] as { text: string }).text;
   expect(text).toMatch(/end your turn/i);
@@ -57,10 +56,10 @@ test("batches up to three questions, assigning q1..qN ids and keeping options", 
     }),
   );
   expect(holder.pending).toEqual({
-    kind: "question",
-    questions: [
-      { id: "q1", question: "What city are you in?" },
+    steps: [
+      { kind: "question", id: "q1", question: "What city are you in?" },
       {
+        kind: "question",
         id: "q2",
         question: "Send it?",
         options: [
@@ -68,7 +67,7 @@ test("batches up to three questions, assigning q1..qN ids and keeping options", 
           { id: "no", label: "Cancel" },
         ],
       },
-      { id: "q3", question: "Anything to add?" },
+      { kind: "question", id: "q3", question: "Anything to add?" },
     ],
   });
 });
@@ -79,8 +78,7 @@ test("an empty options array on a question is dropped (recorded as open)", async
     run({ questions: [{ question: "Anything else?", options: [] }] }),
   );
   expect(holder.pending).toEqual({
-    kind: "question",
-    questions: [{ id: "q1", question: "Anything else?" }],
+    steps: [{ kind: "question", id: "q1", question: "Anything else?" }],
   });
 });
 
@@ -106,14 +104,13 @@ test("throws when given no questions", async () => {
   await expect(run({ questions: [] })).rejects.toThrow(/1 to 3 questions/i);
 });
 
-test("last call wins when the model asks twice in a turn", async () => {
+test("a second ask_user call replaces the questions of the first", async () => {
   const holder = newInteractionHolder();
   await runWithInteractionCapture(holder, async () => {
     await run({ questions: [{ question: "first?" }] });
     await run({ questions: [{ question: "second?" }] });
   });
   expect(holder.pending).toEqual({
-    kind: "question",
-    questions: [{ id: "q1", question: "second?" }],
+    steps: [{ kind: "question", id: "q1", question: "second?" }],
   });
 });

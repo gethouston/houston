@@ -24,25 +24,25 @@ export const ACTIVITY_STATUSES = [
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** One batched question is valid when it carries a string `id` + `question`. */
-const isValidInteractionQuestion = (v: unknown): boolean =>
-  isRecord(v) && typeof v.id === "string" && typeof v.question === "string";
-
-/** Validate the pending_interaction discriminated union (mirrors the schema):
- *  a `question` needs a non-empty `questions` array (each with id + question),
- *  a `connect` needs a `toolkit`. An old singular-`question` shape fails here,
- *  so a persisted value from before the batching change is dropped. */
-const isValidPendingInteraction = (v: unknown): v is PendingInteraction => {
-  if (!isRecord(v)) return false;
-  if (v.kind === "question")
-    return (
-      Array.isArray(v.questions) &&
-      v.questions.length > 0 &&
-      v.questions.every(isValidInteractionQuestion)
-    );
+/** One interaction step is valid when it carries a string `id` and the fields
+ *  its `kind` requires: a `question` needs a string `question`, a `connect`
+ *  needs a string `toolkit`. */
+const isValidInteractionStep = (v: unknown): boolean => {
+  if (!isRecord(v) || typeof v.id !== "string") return false;
+  if (v.kind === "question") return typeof v.question === "string";
   if (v.kind === "connect") return typeof v.toolkit === "string";
   return false;
 };
+
+/** Validate the pending_interaction shape (mirrors the schema): a non-empty
+ *  `steps` array, each step a valid question or connect. An old top-level
+ *  `{kind, questions}` / `{kind, toolkit}` shape has no `steps`, so a value
+ *  persisted before the step-sequence change is dropped. */
+const isValidPendingInteraction = (v: unknown): v is PendingInteraction =>
+  isRecord(v) &&
+  Array.isArray(v.steps) &&
+  v.steps.length > 0 &&
+  v.steps.every(isValidInteractionStep);
 
 /**
  * Normalize a raw activity array (agents write this file with file tools, so

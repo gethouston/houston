@@ -166,9 +166,9 @@ test("a silent stream close mid-turn reconnects with the cursor and settles on t
 
 test("a clean done carrying a pending interaction settles needs_you and persists the interaction", async () => {
   const interaction: PendingInteraction = {
-    kind: "question",
-    questions: [
+    steps: [
       {
+        kind: "question",
         id: "q1",
         question: "Which flight?",
         options: [{ id: "m", label: "Morning" }],

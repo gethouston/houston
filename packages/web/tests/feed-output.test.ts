@@ -90,9 +90,13 @@ test("persistBoardStatus forwards status + interaction to the injected setter", 
     seen.push([a, s, status, pi]);
   });
   const interaction = {
-    kind: "question" as const,
-    questions: [
-      { id: "q1", question: "Which one?", options: [{ id: "a", label: "A" }] },
+    steps: [
+      {
+        kind: "question" as const,
+        id: "q1",
+        question: "Which one?",
+        options: [{ id: "a", label: "A" }],
+      },
     ],
   };
   // A settle carrying an interaction forwards it verbatim...

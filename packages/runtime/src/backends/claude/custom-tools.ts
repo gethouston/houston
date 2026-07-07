@@ -32,7 +32,7 @@ import {
  * `SdkMcpToolDefinition`.
  *
  * Because the handlers run IN THIS runtime process (not the subprocess),
- * `recordPendingInteraction` and the `/sandbox/integrations/*` proxy calls work
+ * the interaction record calls and the `/sandbox/integrations/*` proxy calls work
  * exactly as they do on the pi path: the SDK spawns its subprocess-stream reader
  * (which dispatches these handlers) synchronously inside `query()` — invoked
  * within `session.prompt()`, itself wrapped by exec-turn's

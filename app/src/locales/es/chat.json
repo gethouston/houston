@@ -26,7 +26,13 @@
   },
   "questionCard": {
     "placeholder": "Escribe tu respuesta...",
-    "send": "Enviar"
+    "send": "Enviar",
+    "back": "Atrás",
+    "forward": "Siguiente",
+    "progress": "{{current}} de {{total}}"
+  },
+  "interaction": {
+    "connectedLine": "Conectaste {{name}}."
   },
   "errors": {
     "sessionStart": "No se pudo iniciar la sesión: {{error}}",

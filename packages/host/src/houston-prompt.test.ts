@@ -79,6 +79,16 @@ test("the prompt tells the agent to batch questions into one ask_user call", () 
   expect(p).not.toContain("one question at a time");
 });
 
+test("a task needing answers AND a connection uses both tools in one turn (email example)", () => {
+  const p = houstonSystemPrompt();
+  expect(p).toContain(
+    "call `ask_user` and `request_connection` in the SAME turn",
+  );
+  expect(p).toContain("one card the user completes step by step");
+  // The email example the sequence was designed around.
+  expect(p).toContain("to send an email you were asked to send");
+});
+
 test("the guidance is provider-agnostic and CLI-free (Composio CLI cut in the convergence)", () => {
   const p = houstonSystemPrompt();
   expect(p).not.toContain("Composio");

@@ -63,5 +63,5 @@ components:
     status: not-started
   agent-provisioning-card:
     status: not-started
-  question-card:
+  interaction-card:
     status: not-started

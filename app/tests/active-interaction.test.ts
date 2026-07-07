@@ -5,19 +5,29 @@ import {
   completionInteractionReady,
   deriveActiveInteraction,
   interactionNotificationBodyKey,
+  interactionQuestionCount,
 } from "../src/lib/active-interaction.ts";
 
 const question: PendingInteraction = {
-  kind: "question",
-  questions: [
+  steps: [
     {
+      kind: "question",
       id: "q1",
       question: "Which account?",
       options: [{ id: "a", label: "Work" }],
     },
   ],
 };
-const connect: PendingInteraction = { kind: "connect", toolkit: "gmail" };
+const connect: PendingInteraction = {
+  steps: [{ kind: "connect", id: "c1", toolkit: "gmail" }],
+};
+const mixed: PendingInteraction = {
+  steps: [
+    { kind: "question", id: "q1", question: "To whom?" },
+    { kind: "question", id: "q2", question: "Saying what?" },
+    { kind: "connect", id: "c1", toolkit: "gmail" },
+  ],
+};
 
 describe("deriveActiveInteraction", () => {
   it("hides the override while a turn is running", () => {
@@ -73,10 +83,17 @@ describe("interactionNotificationBodyKey", () => {
     );
   });
 
-  it("maps a pending connect to the connect body", () => {
+  it("maps a connect-only sequence to the connect body", () => {
     strictEqual(
       interactionNotificationBodyKey(connect),
       "sessionComplete.connect",
+    );
+  });
+
+  it("maps a mixed sequence (has questions) to the question body", () => {
+    strictEqual(
+      interactionNotificationBodyKey(mixed),
+      "sessionComplete.question",
     );
   });
 
@@ -86,6 +103,19 @@ describe("interactionNotificationBodyKey", () => {
       interactionNotificationBodyKey(undefined),
       "sessionComplete.body",
     );
+  });
+});
+
+describe("interactionQuestionCount", () => {
+  it("counts the question steps, ignoring connect steps", () => {
+    strictEqual(interactionQuestionCount(question), 1);
+    strictEqual(interactionQuestionCount(mixed), 2);
+    strictEqual(interactionQuestionCount(connect), 0);
+  });
+
+  it("is 0 with no pending interaction", () => {
+    strictEqual(interactionQuestionCount(null), 0);
+    strictEqual(interactionQuestionCount(undefined), 0);
   });
 });
 

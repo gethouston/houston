@@ -2,35 +2,53 @@ import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
 
 /**
- * Element 4: the pending-interaction hand-off. When a turn ends on an
- * `ask_user` / `request_connection`, its `done` frame carries a
- * `PendingInteraction`; the SDK settles the board to `needs_you` and the app
- * REPLACES the composer with the interaction card (`composerOverride`). These
- * specs arm the fake host's `/__test__/chat-interaction` control so the next
- * scripted turn ends on an interaction, then drive the whole seam end-to-end:
- * card replaces composer -> user answers -> normal composer returns.
+ * Element 4 (v3): the pending-interaction hand-off, now a STEPPER. When a turn
+ * ends on an `ask_user` / `request_connection`, its `done` frame carries a
+ * `PendingInteraction { steps }`; the SDK settles the board to `needs_you` and
+ * the app REPLACES the composer with ONE `ChatInteractionCard` that walks the
+ * user through the steps ONE AT A TIME with a "N of X" progress indicator. These
+ * specs arm the fake host's `/__test__/chat-interaction` control with the new
+ * `{ steps }` shape, then drive the whole seam: card replaces composer -> user
+ * answers each step -> normal composer returns.
  *
- * `ask_user` batches up to three questions into ONE call. The card stacks them
- * vertically, renders each question's options as single-select rows, and keeps
- * a free-text input ALWAYS visible at the bottom.
+ * A turn's steps are the question steps (from one ask_user call, 1 to 3) FOLLOWED
+ * BY the connect steps (one per request_connection). Question answers compose one
+ * user message on completion; a connect-only sequence keeps the hidden
+ * auto-continue.
  */
 
+/** Kick off a fresh mission whose next turn ends on the armed interaction. */
+async function startMission(
+  page: import("@playwright/test").Page,
+  text: string,
+) {
+  await page.goto("/");
+  await page.locator('[data-tour-target="newMission"]').click();
+  const composer = page.getByPlaceholder("What should the agent work on?");
+  await expect(composer).toBeVisible();
+  await composer.fill(text);
+  await composer.press("Enter");
+  await expect(page.getByText(/Roger that\. You said:/)).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
 /**
- * A batched (three-question) interaction: the card stacks the questions with
- * their option rows and an always-visible free-text field, the user answers two
- * by option and adds free text, and Send composes them into ONE user message.
+ * The three-question stepper: only ONE step shows at a time with a "N of 3"
+ * progress. Answer step 1 by option, step 2 by free text, step 3 by option; the
+ * completion composes ONE user message carrying all three answers, and the
+ * normal follow-up composer returns.
  */
-test("batches three questions in one card and composes a single reply", async ({
+test("walks three questions one at a time and composes a single reply", async ({
   page,
   request,
 }) => {
-  // Arm the NEXT turn to end asking three questions (mixed with/without options).
   await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
     data: {
       interaction: {
-        kind: "question",
-        questions: [
+        steps: [
           {
+            kind: "question",
             id: "q1",
             question: "Which city are you flying to?",
             options: [
@@ -39,10 +57,12 @@ test("batches three questions in one card and composes a single reply", async ({
             ],
           },
           {
+            kind: "question",
             id: "q2",
             question: "Anything special I should know about the trip?",
           },
           {
+            kind: "question",
             id: "q3",
             question: "Morning or evening flight?",
             options: [
@@ -55,72 +75,132 @@ test("batches three questions in one card and composes a single reply", async ({
     },
   });
 
-  await page.goto("/");
-  await page.locator('[data-tour-target="newMission"]').click();
+  await startMission(page, "plan my trip");
 
-  const composer = page.getByPlaceholder("What should the agent work on?");
-  await expect(composer).toBeVisible();
-  await composer.fill("plan my trip");
-  await composer.press("Enter");
-
-  await expect(page.getByText(/Roger that\. You said:/)).toBeVisible({
-    timeout: 15_000,
-  });
-
-  // The card has taken over the composer slot. All three questions stack
-  // vertically at once (not one-per-turn).
+  // Step 1 of 3 only: the first question, its options, the always-visible input.
   await expect(page.getByText("Which city are you flying to?")).toBeVisible({
     timeout: 15_000,
   });
+  await expect(page.getByText("1 of 3")).toBeVisible();
+  // The other questions are NOT on screen yet (one step at a time).
   await expect(
     page.getByText("Anything special I should know about the trip?"),
-  ).toBeVisible();
-  await expect(page.getByText("Morning or evening flight?")).toBeVisible();
+  ).toHaveCount(0);
+  await expect(page.getByText("Morning or evening flight?")).toHaveCount(0);
 
-  // Two questions offer single-select option rows (the third is free-text only).
-  await expect(page.getByRole("radiogroup")).toHaveCount(2);
-  await expect(page.getByRole("radio")).toHaveCount(4);
-
-  // The free-text field is ALWAYS visible (no toggle), and the normal follow-up
-  // composer is gone.
+  // Exactly this step's two options, plus the escape-hatch free-text field, and
+  // the normal follow-up composer is gone.
+  await expect(page.getByRole("radio")).toHaveCount(2);
   const freeText = page.getByPlaceholder("Type your answer...");
   await expect(freeText).toBeVisible();
   await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
 
-  // Answer two questions by option; clicking does NOT send (more than one
-  // question), it selects.
+  // Answer step 1 by option -> advances to step 2 of 3 (a free-text-only
+  // question). On a multi-step sequence the click advances, it does not send.
   await page.getByRole("radio", { name: "Paris" }).click();
-  await page.getByRole("radio", { name: "Morning flight" }).click();
-  await expect(page.getByRole("radio", { name: "Paris" })).toHaveAttribute(
-    "aria-checked",
-    "true",
-  );
-  // Still on the card — nothing sent yet.
+  await expect(
+    page.getByText("Anything special I should know about the trip?"),
+  ).toBeVisible();
+  await expect(page.getByText("2 of 3")).toBeVisible();
+  await expect(page.getByText("Which city are you flying to?")).toHaveCount(0);
+  await expect(page.getByRole("radio")).toHaveCount(0);
   await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
 
-  // Add free text and Send.
+  // Answer step 2 by free text -> advances to step 3 of 3.
   await freeText.fill("Window seat please");
   await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("Morning or evening flight?")).toBeVisible();
+  await expect(page.getByText("3 of 3")).toBeVisible();
 
-  // ONE composed user message carries both option answers and the free text.
+  // Answer the LAST step by option -> completes and sends ONE composed message.
+  await page.getByRole("radio", { name: "Evening flight" }).click();
+
   const composed = page
     .locator(".is-user")
     .filter({ hasText: "Window seat please" });
   await expect(composed).toHaveCount(1);
   await expect(composed).toContainText("Paris");
-  await expect(composed).toContainText("Morning flight");
+  await expect(composed).toContainText("Evening flight");
 
   // The answering turn starts, so the card retires and the composer returns.
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByRole("radiogroup")).toHaveCount(0);
+  await expect(page.getByText("1 of 3")).toHaveCount(0);
 });
 
 /**
- * The single-question fast path: one question with options and an empty input.
- * Clicking an option sends immediately (no separate Send press), the composed
- * reply is one user message, and the follow-up composer returns.
+ * The back chevron: from step 2 it returns to the previous, already-answered step
+ * with that answer pre-selected, and re-answering replaces it.
+ */
+test("back chevron returns to the previous answered step, pre-selected", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "question",
+            id: "q1",
+            question: "Which city are you flying to?",
+            options: [
+              { id: "paris", label: "Paris" },
+              { id: "tokyo", label: "Tokyo" },
+            ],
+          },
+          {
+            kind: "question",
+            id: "q2",
+            question: "Morning or evening flight?",
+            options: [
+              { id: "morning", label: "Morning flight" },
+              { id: "evening", label: "Evening flight" },
+            ],
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "plan my trip");
+
+  // Answer step 1 (Paris) and land on step 2.
+  await expect(page.getByText("Which city are you flying to?")).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByText("1 of 2")).toBeVisible();
+  await page.getByRole("radio", { name: "Paris" }).click();
+  await expect(page.getByText("Morning or evening flight?")).toBeVisible();
+  await expect(page.getByText("2 of 2")).toBeVisible();
+
+  // Back -> step 1 again, with Paris pre-selected (the committed answer).
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByText("Which city are you flying to?")).toBeVisible();
+  await expect(page.getByText("1 of 2")).toBeVisible();
+  await expect(page.getByRole("radio", { name: "Paris" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+
+  // Re-answer with the other option -> replaces the answer and advances again.
+  await page.getByRole("radio", { name: "Tokyo" }).click();
+  await expect(page.getByText("Morning or evening flight?")).toBeVisible();
+  await expect(page.getByText("2 of 2")).toBeVisible();
+
+  // Finish; the composed message carries the REPLACED answer (Tokyo, not Paris).
+  await page.getByRole("radio", { name: "Evening flight" }).click();
+  const composed = page.locator(".is-user").filter({ hasText: "Tokyo" });
+  await expect(composed).toHaveCount(1);
+  await expect(composed).toContainText("Evening flight");
+  await expect(composed).not.toContainText("Paris");
+});
+
+/**
+ * The single-question fast path: one question with options and no progress
+ * chrome (total is 1). Clicking an option completes immediately — click = answer
+ * = send — and the follow-up composer returns.
  */
 test("single question with options sends on option click (fast path)", async ({
   page,
@@ -129,9 +209,9 @@ test("single question with options sends on option click (fast path)", async ({
   await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
     data: {
       interaction: {
-        kind: "question",
-        questions: [
+        steps: [
           {
+            kind: "question",
             id: "q1",
             question: "Do you want the morning or evening flight?",
             options: [
@@ -144,38 +224,25 @@ test("single question with options sends on option click (fast path)", async ({
     },
   });
 
-  await page.goto("/");
-  await page.locator('[data-tour-target="newMission"]').click();
+  await startMission(page, "book my flight");
 
-  const composer = page.getByPlaceholder("What should the agent work on?");
-  await expect(composer).toBeVisible();
-  await composer.fill("book my flight");
-  await composer.press("Enter");
-
-  await expect(page.getByText(/Roger that\. You said:/)).toBeVisible({
-    timeout: 15_000,
-  });
-
-  // The question card owns the composer slot; its options are always-visible
-  // rows and the normal follow-up composer is gone.
+  // The lone question owns the composer slot; a single step shows NO progress
+  // indicator and NO back chevron (the one-tap feel is preserved).
   await expect(
     page.getByText("Do you want the morning or evening flight?"),
   ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/ of /)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Back" })).toHaveCount(0);
   const morning = page.getByRole("radio", { name: "Morning flight" });
   await expect(morning).toBeVisible();
-  await expect(
-    page.getByRole("radio", { name: "Evening flight" }),
-  ).toBeVisible();
   await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
 
-  // Clicking an option sends immediately as one composed user message...
+  // Clicking an option completes immediately as one composed user message...
   await morning.click();
-
   await expect(
     page.locator(".is-user").filter({ hasText: "Morning flight" }),
   ).toHaveCount(1);
-  // ...the answering turn starts, so the card retires (its option rows are gone)
-  // and the normal composer returns through the same reactivity.
+  // ...the answering turn starts, so the card retires and the composer returns.
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible({
     timeout: 15_000,
   });
@@ -185,42 +252,98 @@ test("single question with options sends on option click (fast path)", async ({
 });
 
 /**
- * A connect interaction: the card replaces the composer with the reason and the
- * rich integration connect card (the same `IntegrationConnectCard` the inline
- * `#houston_toolkit` link renders) for the toolkit the agent asked for.
+ * A mixed sequence (question THEN connect): answering the question advances the
+ * SAME card to the connect step as the final step, with "2 of 2" progress and
+ * the rich integration connect card. (The connect can't complete real OAuth in
+ * the harness, so this asserts the render, not the landing.)
  */
-test("shows the connect card in the composer slot for a request_connection", async ({
+test("advances from a question to a connect step in one sequence", async ({
   page,
   request,
 }) => {
   await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
     data: {
       interaction: {
-        kind: "connect",
-        toolkit: "gmail",
-        reason: "I need access to your Gmail to send the trip itinerary.",
+        steps: [
+          {
+            kind: "question",
+            id: "q1",
+            question: "Who should I send the itinerary to?",
+          },
+          {
+            kind: "connect",
+            id: "c1",
+            toolkit: "gmail",
+            reason: "I need access to your Gmail to send the trip itinerary.",
+          },
+        ],
       },
     },
   });
 
-  await page.goto("/");
-  await page.locator('[data-tour-target="newMission"]').click();
+  await startMission(page, "email me the itinerary");
 
-  const composer = page.getByPlaceholder("What should the agent work on?");
-  await expect(composer).toBeVisible();
-  await composer.fill("email me the itinerary");
-  await composer.press("Enter");
+  // Step 1 of 2: the question, free-text only (no options), no connect card yet.
+  await expect(
+    page.getByText("Who should I send the itinerary to?"),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("1 of 2")).toBeVisible();
+  await expect(
+    page.getByText("I need access to your Gmail to send the trip itinerary."),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Connect" })).toHaveCount(0);
 
-  await expect(page.getByText(/Roger that\. You said:/)).toBeVisible({
-    timeout: 15_000,
+  // Answer the question -> advance to the connect step (2 of 2). The reason and
+  // the rich IntegrationConnectCard (its Connect action is the proof it rendered)
+  // now own the card; the question text is gone.
+  const freeText = page.getByPlaceholder("Type your answer...");
+  await freeText.fill("john@example.com");
+  await page.getByRole("button", { name: "Send" }).click();
+
+  await expect(page.getByText("2 of 2")).toBeVisible();
+  await expect(
+    page.getByText("I need access to your Gmail to send the trip itinerary."),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Connect" })).toBeVisible();
+  await expect(
+    page.getByText("Who should I send the itinerary to?"),
+  ).toHaveCount(0);
+  // The composer is still replaced: the sequence isn't complete until connect.
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+});
+
+/**
+ * A connect-only sequence (single request_connection, no questions): the card
+ * shows the reason plus the rich integration connect card as the ONLY step, with
+ * no progress chrome, unchanged from before the stepper.
+ */
+test("shows a lone connect step for a connect-only sequence", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "connect",
+            id: "c1",
+            toolkit: "gmail",
+            reason: "I need access to your Gmail to send the trip itinerary.",
+          },
+        ],
+      },
+    },
   });
 
+  await startMission(page, "email me the itinerary");
+
   // The connect card owns the composer slot: the reason plus the rich
-  // integration connect card (its Connect action is the distinctive proof the
-  // IntegrationConnectCard rendered), with the normal composer gone.
+  // integration connect card, a single step (no progress), composer gone.
   await expect(
     page.getByText("I need access to your Gmail to send the trip itinerary."),
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("button", { name: "Connect" })).toBeVisible();
+  await expect(page.getByText(/ of /)).toHaveCount(0);
   await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
 });

@@ -352,22 +352,29 @@ export interface InteractionOption {
   label: string;
 }
 
-/** One question in a batched `ask_user` card (`id` is `q1`..`qN`). */
-export interface InteractionQuestion {
-  id: string;
-  question: string;
-  options?: InteractionOption[];
-}
+/** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for
+ *  question steps, `c1`..`cN` for connect steps) so each step's outcome is
+ *  addressable. */
+export type InteractionStep =
+  | {
+      kind: "question";
+      id: string;
+      question: string;
+      options?: InteractionOption[];
+    }
+  | { kind: "connect"; id: string; toolkit: string; reason?: string };
 
 /**
- * The one thing a mission is waiting on the user for — recorded when the model
- * ends a turn by asking (ask_user / request_connection). Present drives the
- * `needs_you` board card and the composer-replacing card; absent means the
- * mission needs nothing. `ask_user` batches 1 to 3 questions into one card.
+ * The ordered steps a mission is waiting on the user for — recorded when the
+ * model ends a turn by asking (ask_user) and/or requesting a connection
+ * (request_connection). Present drives the `needs_you` board card and the
+ * composer-replacing card, which walks the user through the steps one at a time;
+ * absent means the mission needs nothing. Question steps come first (at most 3),
+ * then connect steps.
  */
-export type PendingInteraction =
-  | { kind: "question"; questions: InteractionQuestion[] }
-  | { kind: "connect"; toolkit: string; reason?: string };
+export interface PendingInteraction {
+  steps: InteractionStep[];
+}
 
 export interface Activity {
   id: string;

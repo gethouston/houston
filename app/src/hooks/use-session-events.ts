@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   completionInteractionReady,
   interactionNotificationBodyKey,
+  interactionQuestionCount,
 } from "../lib/active-interaction";
 import { listenOsEvent, subscribeHoustonEvents } from "../lib/events";
 import { logger } from "../lib/logger";
@@ -144,12 +145,7 @@ export function useSessionEvents() {
                   bodyKey === "sessionComplete.question"
                     ? handlersRef.current.t(
                         "common:notifications.sessionComplete.question",
-                        {
-                          count:
-                            interaction?.kind === "question"
-                              ? interaction.questions.length
-                              : 1,
-                        },
+                        { count: interactionQuestionCount(interaction) },
                       )
                     : bodyKey === "sessionComplete.connect"
                       ? handlersRef.current.t(

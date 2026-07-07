@@ -219,9 +219,13 @@ test("the ask_user handler records a question interaction into the turn holder",
     ),
   );
   expect(holder.pending).toEqual({
-    kind: "question",
-    questions: [
-      { id: "q1", question: "Proceed?", options: [{ id: "y", label: "Yes" }] },
+    steps: [
+      {
+        kind: "question",
+        id: "q1",
+        question: "Proceed?",
+        options: [{ id: "y", label: "Yes" }],
+      },
     ],
   });
 });
@@ -235,9 +239,9 @@ test("the request_connection handler records a connect interaction", async () =>
   );
   // toolkit is normalized (lowercased/trimmed) by the reused pi implementation.
   expect(holder.pending).toEqual({
-    kind: "connect",
-    toolkit: "gmail",
-    reason: "to send mail",
+    steps: [
+      { kind: "connect", id: "c1", toolkit: "gmail", reason: "to send mail" },
+    ],
   });
 });
 
@@ -271,7 +275,7 @@ test("an ask_user call dispatched during a Claude-session turn lands in the turn
   // async boundary. The task inherits whatever AsyncLocalStorage context was
   // active when `query()` was called — i.e. the turn's interaction holder that
   // exec-turn establishes around `session.prompt()`. If ALS did NOT propagate,
-  // the handler's `recordPendingInteraction` would be a no-op and this fails.
+  // the handler's `recordQuestions` call would be a no-op and this fails.
   const query: ClaudeQuery = () => {
     const dispatched = (async () => {
       await Promise.resolve();
@@ -304,7 +308,6 @@ test("an ask_user call dispatched during a Claude-session turn lands in the turn
   // This is exactly the value exec-turn reads after prompt() resolves and
   // attaches to the clean `done` frame as `pendingInteraction`.
   expect(holder.pending).toEqual({
-    kind: "question",
-    questions: [{ id: "q1", question: "Ready to send?" }],
+    steps: [{ kind: "question", id: "q1", question: "Ready to send?" }],
   });
 });

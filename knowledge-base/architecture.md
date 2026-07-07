@@ -136,21 +136,27 @@ missing integration — it never leaves the ask sitting in plain text. Two runti
 tools drive ONE lifecycle across runtime → protocol → SDK → UI:
 
 - **Tool → holder.** `ask_user` (all modes) and `request_connection`
-  (integration-gated) record the interaction into a per-turn holder — an
-  `AsyncLocalStorage` established for the duration of `session.prompt()`
-  (`packages/runtime/src/session/interaction.ts`, mirrors acting-context). Last
-  call wins; a fresh holder per turn IS the reset; recording outside a turn is a
-  no-op. The Claude-SDK subprocess backend (a `claude` subprocess that only sees
-  SDK built-ins) reaches the SAME tools through an in-process MCP server
-  ("houston", tools surface as `mcp__houston__*`) in
-  `packages/runtime/src/backends/claude/custom-tools.ts` — so an `anthropic`-backed
-  agent is not told to use tools it lacks.
+  (integration-gated) record into a per-turn holder — an `AsyncLocalStorage`
+  established for the duration of `session.prompt()`
+  (`packages/runtime/src/session/interaction.ts`, mirrors acting-context). The
+  holder MERGES the two tools into ONE step sequence: `ask_user` supplies the
+  question steps (1–3 per call, a second call replaces them), each
+  `request_connection` appends a connect step (deduped by toolkit); questions
+  always order before connects. The prompt tells the model to batch everything
+  blocking into one turn — e.g. "send an email to john" becomes two question
+  steps (recipient, content) plus a connect step (email app). A fresh holder per
+  turn IS the reset; recording outside a turn is a no-op. The Claude-SDK
+  subprocess backend (a `claude` subprocess that only sees SDK built-ins) reaches
+  the SAME tools through an in-process MCP server ("houston", tools surface as
+  `mcp__houston__*`) in `packages/runtime/src/backends/claude/custom-tools.ts` —
+  so an `anthropic`-backed agent is not told to use tools it lacks.
 - **Holder → done frame.** After `prompt()` resolves, exec-turn (and the cloud
   per-turn path) reads the holder and attaches its value to the clean terminal
   `done` frame's optional `pendingInteraction` (`PendingInteraction` =
-  `{kind:"question", question, options?}` | `{kind:"connect", toolkit, reason?}`,
-  `packages/protocol`, wire v3). Only the clean path carries it; an error frame
-  never does.
+  `{ steps: InteractionStep[] }`, each step
+  `{kind:"question", id, question, options?}` | `{kind:"connect", id, toolkit,
+  reason?}`, `packages/protocol`, wire v3). Only the clean path carries it; an
+  error frame never does.
 - **Done frame → settle split.** The SDK folds the frame
   (`packages/sdk/src/modules/turns/turn-settle.ts`): a clean turn WITH an
   interaction settles `boardStatus: needs_you` and carries the interaction; a
@@ -162,10 +168,15 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   `ChatMessage` persists `pendingInteraction`, so a `needs_you` card survives
   reload.
 - **Settle → composer card → answer-as-new-turn.** A pending interaction REPLACES
-  the composer: `ChatQuestionCard` (`@houston-ai/chat`, inventory v4) for a
-  question/choice, `IntegrationConnectCard` (auto-continue) for a connect. The
-  user's answer comes back as an ordinary next-turn user message — nothing special
-  on the wire.
+  the composer with `ChatInteractionCard` (`@houston-ai/chat`, inventory v6): a
+  one-step-at-a-time stepper ("1 of X" progress, back chevron, gray surface with
+  white option rows and an always-visible free-text escape hatch on question
+  steps). Connect steps render through the `renderConnect` prop (the app injects
+  `IntegrationConnectCard`; already-connected toolkits auto-advance). Answers are
+  held until the sequence completes, then sent as ONE composed user message
+  (`question: answer` lines, plus `Connected <app>.` lines); connect-ONLY
+  sequences keep the hidden auto-continue, fired on sequence completion — nothing
+  special on the wire.
 
 The old `#houston_toolkit=` markdown-link connect hack is GONE from the prompt and
 tool guidance; the app's legacy link-card renderer survives only to render old

@@ -80,9 +80,9 @@ test("matches the assistant reply by turnId and adopts its text + usage", () => 
 
 test("a persisted pendingInteraction recovers on reload: needs_you + the interaction", () => {
   const interaction: PendingInteraction = {
-    kind: "question",
-    questions: [
+    steps: [
       {
+        kind: "question",
         id: "q1",
         question: "Which date?",
         options: [{ id: "a", label: "Fri" }],
@@ -225,9 +225,9 @@ test("finishOk with a captured interaction settles needs_you and keeps the inter
   const s = newTurnState("Houston/Bo", "activity-ask", output);
   s.text = "which one?";
   const interaction: PendingInteraction = {
-    kind: "question",
-    questions: [
+    steps: [
       {
+        kind: "question",
         id: "q1",
         question: "Pick a flight?",
         options: [{ id: "a", label: "Morning" }],
