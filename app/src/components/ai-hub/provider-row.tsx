@@ -1,25 +1,22 @@
 /**
- * One provider row in the marketplace LIST (Providers tab). A quiet, scannable
- * line — small brand glyph + name + a secondary line that leads with the live
- * model count in bold (`{N} models`), a middot, then a muted one-line provider
- * description — with a single right-aligned action: a Connect pill when
- * disconnected (which,
- * while a connect is in flight, flips to Cancel on hover so a stuck sign-in can
- * be aborted) or a ghost Sign out when connected (opening the shared confirm).
- * The row body is the open affordance: clicking anywhere but the action button
- * opens the provider modal (`onOpen`); the action button stops propagation so it
- * never doubles as an open. Keyboard-focusable, nothing hover-only. Mirrors the
- * Models tab's `ModelRow` rhythm (hairline dividers, `hover:bg-secondary`) so the
- * two tabs read as one system.
+ * One provider CARD in the marketplace grid (Providers tab). A colorful,
+ * recognition-first card mirroring the Integrations tab's `AppRow`: a boxless
+ * full-color brand mark + name + a secondary line leading with the live model
+ * count in bold (`{N} models`), a middot, then the muted friendly cost story
+ * (e.g. "Your Claude subscription") + two right-aligned controls: an
+ * always-visible info button that opens the provider modal (the ONE open
+ * affordance — the body itself is deliberately not clickable, an invisible
+ * click target was not discoverable) and a Connect pill when disconnected
+ * (which, while a connect is in flight, flips to Cancel on hover so a stuck
+ * sign-in can be aborted) or a ghost Sign out when connected (opening the
+ * shared confirm). Nothing hover-only.
  */
 
 import { AsyncButton, Button } from "@houston-ai/core";
-import { Loader2, X } from "lucide-react";
-import type { KeyboardEvent, MouseEvent } from "react";
+import { Info, Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ProviderInfo } from "../../lib/providers";
-import { ProviderGlyph } from "../shell/provider-logos";
-import { ModelMark } from "./hub-badges";
+import { BrandMark } from "./brand-mark";
 
 interface ProviderRowProps {
   provider: ProviderInfo;
@@ -29,7 +26,7 @@ interface ProviderRowProps {
    * the description alone.
    */
   modelCount: number;
-  /** Muted one-line provider description, after the bold count + middot. */
+  /** Muted one-line secondary: the friendly cost prose or provider description. */
   description: string;
   connected: boolean;
   connecting: boolean;
@@ -54,38 +51,14 @@ export function ProviderRow({
 }: ProviderRowProps) {
   const { t } = useTranslation("aiHub");
 
-  // Enter / Space opens the modal, but only when the row itself holds focus —
-  // a key press on the inner action button must run that button, not open.
-  const onRowKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget) return;
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onOpen(provider);
-    }
-  };
-
-  // The action button lives inside the clickable row, so every handler stops
-  // propagation — a Connect / Sign out click must never also open the modal.
-  const stop = (fn: () => void) => (event: MouseEvent) => {
-    event.stopPropagation();
-    fn();
-  };
-
   return (
-    // biome-ignore lint/a11y/useSemanticElements: the row wraps a real <button> (the action), so it can't itself be a <button>; role+tabIndex+keydown make the body openable.
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onOpen(provider)}
-      onKeyDown={onRowKeyDown}
-      className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-    >
-      <ModelMark size="md" mark={<ProviderGlyph providerId={provider.id} />} />
+    <div className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 text-left">
+      <BrandMark providerId={provider.id} size="md" />
       <div className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-sm font-medium text-foreground">
+        <span className="truncate text-[13px] font-medium text-foreground">
           {provider.name}
         </span>
-        <span className="truncate text-[13px] text-muted-foreground">
+        <span className="truncate text-[11px] text-muted-foreground">
           {modelCount > 0 && (
             <>
               <span className="font-medium text-foreground">
@@ -98,13 +71,27 @@ export function ProviderRow({
         </span>
       </div>
 
+      {/* The ONE open affordance: an explicit info button (the card body is not
+          clickable). The label carries the provider name so every card's button
+          reads distinctly to screen readers. */}
+      <Button
+        size="icon-sm"
+        variant="ghost"
+        className="shrink-0 text-muted-foreground"
+        aria-label={t("card.details", { name: provider.name })}
+        title={t("card.details", { name: provider.name })}
+        onClick={() => onOpen(provider)}
+      >
+        <Info className="size-4" aria-hidden="true" />
+      </Button>
+
       {connected ? (
         <Button
           size="sm"
           variant="ghost"
           className="shrink-0 text-muted-foreground"
           disabled={signingOut}
-          onClick={stop(() => onSignOut(provider))}
+          onClick={() => onSignOut(provider)}
         >
           {t("card.signOut")}
         </Button>
@@ -117,9 +104,9 @@ export function ProviderRow({
           spinner={false}
           className="group/connect relative min-w-[92px] shrink-0"
           aria-label={connecting ? t("card.cancel") : undefined}
-          onClick={stop(() =>
-            connecting ? onCancel(provider) : onConnect(provider),
-          )}
+          onClick={() =>
+            connecting ? onCancel(provider) : onConnect(provider)
+          }
         >
           {connecting ? (
             <>

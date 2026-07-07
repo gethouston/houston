@@ -1,7 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  filterByCategory,
+  filterByQuickFilter,
   orderFeaturedFirst,
   searchProviders,
 } from "../src/components/ai-hub/provider-filtering.ts";
@@ -18,6 +18,10 @@ import type {
   CatalogOffer,
   HubCatalog,
 } from "../src/lib/ai-hub/catalog-types.ts";
+import {
+  PROVIDER_OVERRIDES,
+  providerCostLine,
+} from "../src/lib/provider-overrides.ts";
 import type { ProviderInfo } from "../src/lib/providers.ts";
 
 function provider(id: string, extra: Partial<ProviderInfo> = {}): ProviderInfo {
@@ -217,40 +221,94 @@ describe("searchProviders", () => {
   });
 });
 
-describe("filterByCategory", () => {
+describe("filterByQuickFilter", () => {
+  // anthropic → subscription + popular; google → apiKey (payg) + popular + free
+  // (curated freeTier); openrouter → gateway (payg) + free (curated freeTier);
+  // deepseek → apiKey (payg); openai-compatible → local + popular + free (local
+  // costs nothing).
   const list = [
     provider("anthropic"),
-    provider("openrouter"),
-    provider("deepseek"),
-    provider("amazon-bedrock"),
-    provider("zai-coding-cn"),
+    provider("google", { auth: "apiKey" }),
+    provider("openrouter", { auth: "apiKey" }),
+    provider("deepseek", { auth: "apiKey" }),
+    provider("openai-compatible", { auth: "openaiCompatible" }),
   ];
 
   it("passes everything through for `all`", () => {
-    strictEqual(filterByCategory(list, "all").length, 5);
+    strictEqual(filterByQuickFilter(list, "all").length, 5);
   });
 
-  it("narrows to a single bucket, resolving uncurated ids by pattern", () => {
+  it("`popular` keeps the featured-pinned providers", () => {
     deepStrictEqual(
-      filterByCategory(list, "featured").map((p) => p.id),
+      filterByQuickFilter(list, "popular").map((p) => p.id),
+      ["anthropic", "google", "openai-compatible"],
+    );
+  });
+
+  it("`subscription` keeps only OAuth / plan providers", () => {
+    deepStrictEqual(
+      filterByQuickFilter(list, "subscription").map((p) => p.id),
       ["anthropic"],
     );
+  });
+
+  it("`free` keeps curated free tiers and local models", () => {
     deepStrictEqual(
-      filterByCategory(list, "gateway").map((p) => p.id),
-      ["openrouter"],
+      filterByQuickFilter(list, "free").map((p) => p.id),
+      ["google", "openrouter", "openai-compatible"],
     );
+  });
+
+  it("`payg` keeps pasted-key and gateway providers", () => {
     deepStrictEqual(
-      filterByCategory(list, "direct").map((p) => p.id),
-      ["deepseek"],
+      filterByQuickFilter(list, "payg").map((p) => p.id),
+      ["google", "openrouter", "deepseek"],
     );
+  });
+
+  it("`local` keeps only providers that run on the user's computer", () => {
     deepStrictEqual(
-      filterByCategory(list, "local").map((p) => p.id),
-      ["amazon-bedrock"],
+      filterByQuickFilter(list, "local").map((p) => p.id),
+      ["openai-compatible"],
     );
-    deepStrictEqual(
-      filterByCategory(list, "regional").map((p) => p.id),
-      ["zai-coding-cn"],
-    );
+  });
+
+  it("facets overlap: one provider can match several (google → popular, free, payg)", () => {
+    const only = (id: string) => (p: ProviderInfo) => p.id === id;
+    const google = list.find(only("google"));
+    if (!google) throw new Error("google fixture missing");
+    strictEqual(filterByQuickFilter([google], "popular").length, 1);
+    strictEqual(filterByQuickFilter([google], "free").length, 1);
+    strictEqual(filterByQuickFilter([google], "payg").length, 1);
+    strictEqual(filterByQuickFilter([google], "subscription").length, 0);
+    strictEqual(filterByQuickFilter([google], "local").length, 0);
+  });
+});
+
+describe("providerCostLine / freeTier", () => {
+  it("returns the curated cost prose for a provider that has one", () => {
+    strictEqual(providerCostLine("anthropic"), "Your Claude subscription");
+    strictEqual(providerCostLine("opencode"), "Pay as you go");
+    strictEqual(providerCostLine("google"), "Free tier on your Google account");
+  });
+
+  it("returns undefined for an uncurated id or the local provider", () => {
+    strictEqual(providerCostLine("brand-new-lab"), undefined);
+    strictEqual(providerCostLine("openai-compatible"), undefined);
+  });
+
+  it("marks freeTier only on the curated free-tier entries", () => {
+    for (const id of [
+      "google",
+      "openrouter",
+      "groq",
+      "cerebras",
+      "huggingface",
+    ]) {
+      strictEqual(PROVIDER_OVERRIDES[id].freeTier, true, id);
+    }
+    strictEqual(PROVIDER_OVERRIDES.anthropic.freeTier, undefined);
+    strictEqual(PROVIDER_OVERRIDES.openai.freeTier, undefined);
   });
 });
 

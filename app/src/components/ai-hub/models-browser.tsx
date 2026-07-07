@@ -4,12 +4,14 @@
  * AND the ledger's column header share ONE sticky unit so neither disappears on
  * scroll — the rows below pass cleanly BEHIND it. The bar is transparent at rest
  * and fades in a frosted-glass `bg-popover` (the blur masks the rows; an opaque
- * fill would slab over the theme) only once it pins on scroll. The body
- * (`ModelsLedger`) scrolls horizontally when narrow (e.g. inside the provider
- * modal); an `onScroll` handler mirrors that `scrollLeft` onto the sticky header
- * track so the pinned header stays column-aligned with the rows. Owns the
- * search + lab + good-at filtering. Reused by the Models tab (`ModelDirectory`)
- * and the provider modal so both read identically.
+ * fill would slab over the theme) only once it pins on scroll. On the full
+ * directory the body (`ModelsLedger`) scrolls horizontally when narrow; an
+ * `onScroll` handler mirrors that `scrollLeft` onto the sticky header track so
+ * the pinned header stays column-aligned with the rows. The `compact` variant
+ * (the provider modal) uses the trackless four-column ledger instead — no
+ * horizontal scroll, so no mirroring. Owns the search + lab + good-at
+ * filtering. Reused by the Models tab (`ModelDirectory`) and the provider
+ * modal so both read identically.
  *
  * The "AI provider" dropdown lists only the labs present in the passed `models`
  * and hides itself when they are all one lab (a single useless option); "Good
@@ -46,10 +48,13 @@ export function ModelsBrowser({
   models,
   onOpenModel,
   className,
+  compact = false,
 }: {
   models: CatalogModel[];
   onOpenModel: (key: string) => void;
   className?: string;
+  /** Modal variant: compact four-column ledger, no horizontal scroll track. */
+  compact?: boolean;
 }) {
   const { t } = useTranslation("aiHub");
   const [query, setQuery] = useState("");
@@ -98,13 +103,14 @@ export function ModelsBrowser({
           framing lines: no bottom divider, and `shadow-none!` kills the inset top
           sheen `bg-popover` carries in the futuristic theme. An opaque
           `bg-background` slab here broke the aurora glass screen in dark mode,
-          and a permanent fill looked heavy at rest. `rounded-2xl` makes the fill
-          read as a floating panel (the bg + its backdrop blur follow the
-          radius). */}
+          and a permanent fill looked heavy at rest. `rounded-b-2xl` rounds only
+          the bottom edge — the pinned bar sits flush under the masthead, so a
+          rounded top read as a detached floating slab; the bg + its backdrop
+          blur follow the radius. */}
       <div
         className={cn(
           "sticky top-0 z-20 transition-colors",
-          stuck ? "rounded-2xl bg-popover shadow-none!" : "",
+          stuck ? "rounded-b-2xl bg-popover shadow-none!" : "",
         )}
       >
         <div className="flex flex-wrap items-center gap-3 pt-1 pb-3">
@@ -127,15 +133,19 @@ export function ModelsBrowser({
           />
         </div>
 
-        {results.length > 0 && (
-          <div ref={headerTrackRef} className="overflow-x-hidden">
-            <LedgerHeader />
-          </div>
-        )}
+        {results.length > 0 &&
+          (compact ? (
+            <LedgerHeader compact />
+          ) : (
+            <div ref={headerTrackRef} className="overflow-x-hidden">
+              <LedgerHeader />
+            </div>
+          ))}
       </div>
 
       <ModelsLedger
         models={results}
+        compact={compact}
         onOpenModel={onOpenModel}
         onScroll={onBodyScroll}
       />

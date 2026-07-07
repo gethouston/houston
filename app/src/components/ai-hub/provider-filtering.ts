@@ -1,21 +1,41 @@
 /**
  * Pure filtering / ordering for the AI Hub Providers tab: the free-text search,
- * the category narrowing, and the featured-first pin. Applied ONLY inside the
- * hub (`ProviderList`) — the chat model picker maps `PROVIDERS` directly and
- * never calls any of these, so its order and behavior stay untouched. Kept
- * component-free so it unit-tests with `node --test`
+ * the plain-language quick-filter narrowing, and the featured-first pin. Applied
+ * ONLY inside the hub (`ProviderList`) — the chat model picker maps `PROVIDERS`
+ * directly and never calls any of these, so its order and behavior stay
+ * untouched. Kept component-free so it unit-tests with `node --test`
  * (`app/tests/provider-grouping.test.ts`).
  */
 
 import {
   FEATURED_PROVIDER_IDS,
-  type ProviderCategory,
-  providerCategory,
+  PROVIDER_OVERRIDES,
 } from "../../lib/provider-overrides.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
+import { authChipKey } from "./provider-grouping.ts";
 
-/** The Providers-tab category filter: a real category, or `all` for every one. */
-export type ProviderCategoryFilter = ProviderCategory | "all";
+/**
+ * The Providers-tab quick filter: plain-language facets a non-technical user
+ * understands, plus `all`. These are OVERLAPPING facets, not exclusive buckets —
+ * a provider can match several at once (e.g. Google is both `popular` and
+ * `free`, a local model is both `free` and `local`).
+ */
+export type ProviderQuickFilter =
+  | "all"
+  | "popular"
+  | "subscription"
+  | "free"
+  | "payg"
+  | "local";
+
+export const PROVIDER_QUICK_FILTERS: readonly ProviderQuickFilter[] = [
+  "all",
+  "popular",
+  "subscription",
+  "free",
+  "payg",
+  "local",
+];
 
 /**
  * Pin the featured providers to the front in `FEATURED_PROVIDER_IDS` order; the
@@ -55,11 +75,49 @@ export function searchProviders(
   );
 }
 
-/** Narrow providers to one category; `all` passes everything through unchanged. */
-export function filterByCategory(
+/**
+ * Whether a provider matches one plain-language quick-filter facet. The facets
+ * OVERLAP (a provider may satisfy several) — this answers each independently:
+ *   popular      → pinned in FEATURED_PROVIDER_IDS
+ *   subscription → connects via an OAuth / plan (auth chip "subscription")
+ *   free         → has a curated free tier, OR is a local model (costs nothing)
+ *   payg         → pay-as-you-go: a pasted key or a multi-lab gateway
+ *   local        → runs on the user's own computer
+ */
+function matchesQuickFilter(
+  provider: ProviderInfo,
+  filter: ProviderQuickFilter,
+): boolean {
+  const chip = authChipKey(provider);
+  switch (filter) {
+    case "all":
+      return true;
+    case "popular":
+      return FEATURED_PROVIDER_IDS.includes(
+        provider.id as (typeof FEATURED_PROVIDER_IDS)[number],
+      );
+    case "subscription":
+      return chip === "subscription";
+    case "free":
+      return (
+        PROVIDER_OVERRIDES[provider.id]?.freeTier === true || chip === "local"
+      );
+    case "payg":
+      return chip === "apiKey" || chip === "gateway";
+    case "local":
+      return chip === "local";
+  }
+}
+
+/**
+ * Narrow providers to one quick-filter facet; `all` passes everything through
+ * unchanged. Facets overlap, so this is a plain per-provider membership test,
+ * not a partition. Preserves incoming order.
+ */
+export function filterByQuickFilter(
   providers: readonly ProviderInfo[],
-  category: ProviderCategoryFilter,
+  filter: ProviderQuickFilter,
 ): ProviderInfo[] {
-  if (category === "all") return [...providers];
-  return providers.filter((p) => providerCategory(p.id) === category);
+  if (filter === "all") return [...providers];
+  return providers.filter((p) => matchesQuickFilter(p, filter));
 }

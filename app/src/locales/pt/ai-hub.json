@@ -16,6 +16,7 @@
   "card": {
     "connect": "Conectar",
     "connecting": "Conectando",
+    "details": "Ver detalhes de {{name}}",
     "connected": "Conectado",
     "signOut": "Sair",
     "cancel": "Cancelar",
@@ -101,16 +102,16 @@
     "search": "Buscar provedores",
     "empty": {
       "title": "Nenhum provedor encontrado",
-      "description": "Tente outra busca ou categoria."
+      "description": "Tente outra busca ou outro filtro."
     },
-    "category": {
-      "label": "Categoria",
-      "all": "Todos",
-      "featured": "Destaques",
-      "gateway": "Gateways",
-      "direct": "Diretos",
-      "regional": "Regionais",
-      "local": "Locais"
+    "filter": {
+      "label": "Filtrar provedores",
+      "all": "Todos os provedores",
+      "popular": "Populares",
+      "subscription": "Incluído na sua assinatura",
+      "free": "Grátis para testar",
+      "payg": "Pague pelo uso",
+      "local": "Roda no seu computador"
     },
     "openai": {
       "description": "Entre com o ChatGPT e coloque os modelos GPT e Codex para trabalhar."

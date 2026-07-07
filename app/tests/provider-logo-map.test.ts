@@ -105,6 +105,10 @@ describe("providerBrandKey", () => {
   it("draws a real models.dev mark for every covered provider id", () => {
     for (const id of [
       "anthropic",
+      "ant-ling",
+      "cohere",
+      "meta",
+      "qwen",
       "openai",
       "google",
       "google-vertex",
@@ -136,11 +140,12 @@ describe("providerBrandKey", () => {
     }
   });
 
-  it("falls back to the monogram only for ids models.dev has no logo for", () => {
-    // `ant-ling` is the only Houston provider models.dev serves its generic
-    // default for and that has no parent brand to borrow — it renders the
-    // polished monogram rather than an inexact hand-authored glyph.
-    strictEqual(providerBrandKey("ant-ling"), null);
+  it("ships a real mark for every Houston provider (no monograms in the list)", () => {
+    // `ant-ling` was the last monogram holdout: models.dev serves its generic
+    // default for it, so its Ant Group mark ships from LobeHub's icon set
+    // instead. An unknown id still resolves to null (the monogram).
+    strictEqual(providerBrandKey("ant-ling"), "ant-ling");
+    strictEqual(providerBrandKey("some-future-provider"), null);
   });
 });
 
@@ -173,8 +178,10 @@ describe("monogramText", () => {
 // keys the registry binds. (Registry lives in the .tsx; this asserts the count
 // the map file publishes so a stray key addition is caught here too.)
 describe("BRAND_KEYS", () => {
-  it("has the expected 27 real models.dev marks", () => {
-    strictEqual(BRAND_KEYS.size, 27);
+  it("has the expected 31 real brand marks", () => {
+    // 27 straight from models.dev's per-provider endpoint, plus meta (its
+    // `llama` art), qwen (its `alibaba` art), cohere, and ant-ling (LobeHub).
+    strictEqual(BRAND_KEYS.size, 31);
   });
 
   it("covers the providers sourced from models.dev", () => {
