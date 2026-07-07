@@ -280,8 +280,8 @@ export const PROVIDERS: ProviderInfo[] = buildSeed();
  * rather than reassigning so live `PROVIDERS` importers pick up the new set.
  */
 export function hydrateProviderCatalog(catalog: ProviderCatalog): void {
-  // An empty catalog is NOT a deployment with zero providers: it's a host that
-  // answered `[]` (an egress-locked pod, or a genuinely empty registry).
+  // An empty catalog is NOT a deployment with zero providers: every deployment
+  // serves the full pi-ai set, so `[]` means a broken host or empty registry.
   // Rebuilding from it would wipe the override seed down to just the local
   // provider, emptying the picker + connect surfaces. Keep the seed instead so
   // the UI stays populated, but warn — an empty catalog is never expected on a
@@ -336,8 +336,8 @@ function showOpenaiCompatible(opts: ProviderVisibilityOpts): boolean {
 /**
  * Providers to show in connect UIs. `/v1/catalog` is the SINGLE visibility
  * source: `PROVIDERS` is hydrated from it, so it already IS this deployment's
- * runnable set (all ~35 on desktop, ~3 in a cloud pod) — the host profile-gates
- * the catalog, so no `capabilities.providers` re-gate is applied here (that
+ * runnable set (the full pi-ai catalog, ~35, on every deployment) — no
+ * `capabilities.providers` re-gate is applied here (that
  * narrower list under-showed the picker). Only two exclusions remain: the local
  * OpenAI-compatible (BYO model) provider is gated by the host's `openaiCompatible`
  * capability (see `showOpenaiCompatible`), and any provider still on the

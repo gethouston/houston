@@ -16,8 +16,8 @@ let hydratedFrom: ProviderCatalog | null = null;
 /**
  * Fetch the host's pi-ai provider catalog (`GET /v1/catalog`) once and hydrate
  * the module-level `PROVIDERS` cache with it, so the picker + connect surfaces
- * render the real runnable providers/models for this host (all ~35 on desktop,
- * ~3 on cloud) instead of the override-only seed.
+ * render the real runnable providers/models (the full pi-ai set, ~35, on every
+ * deployment — desktop and hosted alike) instead of the override-only seed.
  *
  * The catalog is static per host session (pi's baked registry — no network,
  * identical across a session), so it is cached with an infinite `staleTime`; a

@@ -12,8 +12,8 @@ interface ConnectAiMissionProps {
 /**
  * The single "Connect your AI" setup step. Replaces the old pick-then-login pair
  * with the SAME `<ProviderPicker>` the settings account list and the migration
- * screen use, so onboarding shows this deployment's real runnable providers (all
- * ~35 on desktop, ~3 in a cloud pod) and connects via EVERY auth type: OAuth
+ * screen use, so onboarding shows the real runnable providers (the full pi-ai
+ * set, ~35, on every deployment) and connects via EVERY auth type: OAuth
  * subscriptions, pasted API keys, an OpenAI-compatible endpoint, and Copilot's
  * enterprise-domain flow. The picker owns the connect interactions, the status
  * polling, and the failure toasts (no silent failures) and fires `onSelect` the

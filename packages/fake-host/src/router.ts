@@ -151,12 +151,12 @@ export async function handle(req: Request): Promise<Response> {
   // pi-ai's full static model catalog (`GET /v1/catalog`, wire `ProviderCatalog`).
   // Built from the SAME real `buildProviderCatalog` the host route uses, so the
   // mock can't drift from the wire contract — the app's `getCatalog()` hydrates
-  // the picker + AI Models tab from it. `"local"` matches the profile the fake
-  // host reports above, so it returns every runnable provider (as a desktop host
-  // would). Without this the route 404'd, `getCatalog()` degraded to `[]`, and
-  // the picker fell back to the override-only seed (no models).
+  // the picker + AI Models tab from it. It returns every runnable provider on
+  // every deployment (no profile gating). Without this the route 404'd,
+  // `getCatalog()` degraded to `[]`, and the picker fell back to the override-only
+  // seed (no models).
   if (path === "/v1/catalog" && method === "GET") {
-    return json(buildProviderCatalog("local"));
+    return json(buildProviderCatalog());
   }
   // --- user-scoped gateway routes (integrations, grants, preferences, locale) ---
   const userRoute = handleUserRoutes(method, segs, body);

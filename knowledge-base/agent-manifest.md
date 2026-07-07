@@ -378,8 +378,9 @@ wiring lives in `app/src/components/chat-model-selector.tsx`.
 - **pi-ai's `/v1/catalog` is the source of truth.** `GET /v1/catalog`
   (`packages/host/src/routes/catalog.ts` + `providers/pi-catalog.ts`) returns the
   wire `ProviderCatalog` (`@houston/protocol` `provider-catalog.ts`): every
-  runnable provider (~35 on desktop / 979 models; ~3 in an egress-locked cloud
-  pod) with each model's pricing/context/maxTokens/reasoning/vision and
+  runnable provider (~35 / 979 models — the SAME full set on every deployment,
+  desktop and managed pod; no profile gating) with each model's
+  pricing/context/maxTokens/reasoning/vision and
   `thinkingLevels`. Built from pi-ai's **baked in-process registry** (no egress,
   no key) — so the set is **runnable-by-construction** (a model is offered iff pi
   can run it) and identical on desktop and inside a pod. Effort levels derive from

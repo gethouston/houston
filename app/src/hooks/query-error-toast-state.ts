@@ -29,7 +29,7 @@ export function nextErrorToastState(
 
 /**
  * Stable sentinel identity for the "host returned an empty catalog" failure. A
- * healthy host never answers `[]` (local ~35 providers, cloud exactly 3), so an
+ * healthy host never answers `[]` (every deployment serves the full ~35), so an
  * empty 200 is a real failure that must reach the user — but it carries no error
  * object, so the once-per-occurrence toast keys on this shared reference.
  */
