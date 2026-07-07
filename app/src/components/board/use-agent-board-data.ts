@@ -9,6 +9,7 @@ import {
   useUpdateActivity,
 } from "../../hooks/queries";
 import { useConversationFeed } from "../../hooks/use-conversation-vm";
+import { useWarmingBoardRows } from "../../hooks/use-warming-board-rows";
 import { missionCardTags } from "../../lib/mission-card";
 import { canDropMission, selectActive } from "../../lib/mission-selection";
 import {
@@ -17,6 +18,7 @@ import {
   tauriChat,
 } from "../../lib/tauri";
 import type { Agent, AgentDefinition } from "../../lib/types";
+import { mergeWarmingRows } from "../../lib/warming-board-rows";
 import { useUIStore } from "../../stores/ui";
 import { missionColumnIdForStatus } from "../mission-board-columns";
 
@@ -41,9 +43,20 @@ export function useAgentBoardData({
   const path = agent.folderPath;
   const agentModes = agentDef.config.agents;
   const addToast = useUIStore((s) => s.addToast);
-  const { data: rawItems } = useActivity(path);
+  const { data: fetchedItems } = useActivity(path);
   const deleteActivity = useDeleteActivity(path);
   const updateActivity = useUpdateActivity(path);
+
+  // While the engine warms up the list read above is held for the whole cold
+  // start — overlay the queued missions so the card shows up as `running` the
+  // moment the user sends it (HOU-713). Identity pass-through when nothing is
+  // queued, so the normal path (including its `undefined` = "still loading"
+  // contract) is untouched.
+  const warmingRows = useWarmingBoardRows(agent.id);
+  const rawItems = useMemo(
+    () => mergeWarmingRows(fetchedItems, warmingRows),
+    [fetchedItems, warmingRows],
+  );
 
   const activeRaw = useMemo(() => selectActive(rawItems ?? []), [rawItems]);
   const items: KanbanItem[] = useMemo(

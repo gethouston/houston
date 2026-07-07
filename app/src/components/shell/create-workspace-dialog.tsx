@@ -12,6 +12,7 @@ import { STORE_TEMPLATE_IDS } from "../../agents/builtin/store-catalog";
 import { loadStoreTemplate } from "../../agents/builtin/store-template-loader";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { finishAgentSetup } from "../../lib/agent-setup";
+import { startAgentWelcomeMission } from "../../lib/agent-welcome";
 import { getDefaultModel } from "../../lib/providers";
 import { tauriProvider } from "../../lib/tauri";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
@@ -104,6 +105,7 @@ export function CreateAgentDialog() {
     // AI-generated instructions take priority over the template's claudeMd.
     let claudeMd = generatedClaudeMd ?? selectedDef?.config.claudeMd;
     let seeds = selectedDef?.config.agentSeeds;
+    let created: { id: string; name: string; color?: string };
     let agentPath: string;
     try {
       // First-party "store" templates (bookkeeping, legal, …) keep their
@@ -126,6 +128,7 @@ export function CreateAgentDialog() {
         seeds,
         existingPath ?? undefined,
       );
+      created = agent;
       agentPath = agent.folderPath;
     } catch (err) {
       setError(String(err));
@@ -146,6 +149,19 @@ export function CreateAgentDialog() {
       model,
       routine: routineAccepted ? routineForm : null,
     });
+    // The agent's own first mission (HOU-713): a board card appears right
+    // away and the agent opens the conversation by introducing itself once
+    // its engine answers. Fire-and-forget — a failure surfaces its own toast
+    // and the agent itself is already created and revealed.
+    void startAgentWelcomeMission(
+      {
+        id: created.id,
+        name: created.name,
+        color: created.color,
+        folderPath: agentPath,
+      },
+      { provider, model },
+    );
   };
 
   const handleSubmit = async (e: FormEvent) => {

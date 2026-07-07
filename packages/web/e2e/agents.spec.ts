@@ -21,6 +21,10 @@ test("creates an agent and shows it in the sidebar", async ({ page }) => {
 
   // The new agent shows up (sidebar list + selected header both carry the name).
   await expect(page.getByText("Marketing Bot").first()).toBeVisible();
+
+  // The agent's own first mission (HOU-713): a welcome card is created right
+  // away and its conversation opens so the agent can introduce itself.
+  await expect(page.getByText("Meet Marketing Bot").first()).toBeVisible();
 });
 
 /**

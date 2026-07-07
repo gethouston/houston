@@ -65,6 +65,14 @@ export interface PendingWarmingSend {
   effort?: string;
   /** Per-turn mode pin (composer "Mode" selector), forwarded at flush time. */
   mode?: "execute" | "plan" | "auto";
+  /** Epoch ms the message was queued — orders the optimistic board rows. */
+  queuedAt?: number;
+  /**
+   * Source text for the async AI title pass, carried only when the caller
+   * wanted one (no explicit title). The pass can't run at queue time — the
+   * engine can't answer — so the flush fires it after the row lands (HOU-713).
+   */
+  titleText?: string;
 }
 
 export interface ProvisioningEntry {

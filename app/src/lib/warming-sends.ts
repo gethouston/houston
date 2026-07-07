@@ -23,6 +23,7 @@ import { getEngine } from "./engine";
 import { showErrorToast } from "./error-toast";
 import i18n from "./i18n";
 import { logger } from "./logger";
+import { refreshMissionTitle } from "./mission-title";
 import { tauriActivity, tauriChat } from "./tauri";
 
 /** Prompt builders keyed by send id — in-memory only, lost on reload. */
@@ -49,6 +50,8 @@ export interface QueueWarmingSendArgs {
   model?: string;
   effort?: string;
   mode?: "execute" | "plan" | "auto";
+  /** Set = run the async AI title pass on this text once the flush lands. */
+  titleText?: string;
 }
 
 /**
@@ -70,6 +73,8 @@ export function buildWarmingSend(
     model: args.model,
     effort: args.effort,
     mode: args.mode,
+    queuedAt: Date.now(),
+    titleText: args.titleText,
   };
   if (args.buildPrompt) promptBuilders.set(send.id, args.buildPrompt);
   return send;
@@ -119,12 +124,14 @@ export async function flushWarmingSends(
     // The conversation's board row lands here, not at send time: the engine
     // is awake now, and the id-upsert makes a retry of an already-landed row
     // a no-op. A failure loses only the card — the message still delivers.
+    let rowId: string | null = null;
     if (send.row) {
       try {
         const created = await tauriActivity.createWithId(
           entry.agentPath,
           send.row,
         );
+        rowId = created.id;
         if (created.id !== send.row.id) {
           // Version skew: an engine that predates client-supplied ids
           // (HOU-693) assigned its own. Stamp our session key on its row so
@@ -158,6 +165,18 @@ export async function flushWarmingSends(
         modeOverride: send.mode,
         suppressUserBubble: suppress,
       });
+      // The AI title pass this mission skipped at queue time (HOU-713): the
+      // row just landed and the engine answers now. Fire-and-forget — a
+      // failure keeps the fallback title (refreshMissionTitle logs it).
+      if (rowId && send.titleText) {
+        void refreshMissionTitle({
+          agentPath: entry.agentPath,
+          activityId: rowId,
+          text: send.titleText,
+          provider: send.provider,
+          model: send.model,
+        });
+      }
     } catch (e) {
       // tauriChat.send already toasted the real reason; keep flushing the
       // rest — one refused turn must not strand the queue.

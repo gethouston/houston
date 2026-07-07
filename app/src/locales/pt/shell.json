@@ -139,6 +139,12 @@
     "failed": "Não conseguimos terminar de criar seu agente. Tente novamente em instantes.",
     "blockedBody": "Está quase pronto. Essa ação estará disponível em instantes, assim que seu agente terminar de se configurar."
   },
+  "agentWelcome": {
+    "missionTitle": "Conheça {{name}}",
+    "missionDescription": "Seu novo agente se apresenta",
+    "prompt": "Você acabou de ser criado como o novo agente do usuário, chamado {{name}}. Apresente-se com uma mensagem curta e amigável: diga em uma frase para que você está aqui, mencione duas ou três coisas concretas em que pode ajudar de acordo com suas instruções e termine perguntando com o que a pessoa gostaria de começar. Seja breve e claro, sem detalhes técnicos.",
+    "failed": "Não conseguimos iniciar o primeiro chat do seu novo agente. Você ainda pode enviar uma mensagem para ele."
+  },
   "toolRuntimeError": {
     "title": "Algo travou",
     "body": "Uma ferramenta local não iniciou corretamente. Tente de novo e reporte se continuar acontecendo.",
