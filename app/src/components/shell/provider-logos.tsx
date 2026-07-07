@@ -37,6 +37,7 @@ import {
   MiniMaxLogo,
 } from "./provider-marks.tsx";
 import {
+  KimiLogo,
   MistralLogo,
   MoonshotLogo,
   NvidiaLogo,
@@ -81,6 +82,7 @@ const BRAND_LOGOS: Record<BrandKey, (props?: LogoProps) => ReactElement> = {
   nvidia: NvidiaLogo,
   together: TogetherLogo,
   moonshotai: MoonshotLogo,
+  "kimi-coding": KimiLogo,
   zai: ZaiLogo,
   fireworks: FireworksLogo,
   xiaomi: XiaomiLogo,

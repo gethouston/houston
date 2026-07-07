@@ -53,6 +53,7 @@ export type BrandKey =
   | "nvidia"
   | "together"
   | "moonshotai"
+  | "kimi-coding"
   | "zai"
   | "fireworks"
   | "xiaomi"
@@ -86,6 +87,7 @@ export const BRAND_KEYS: ReadonlySet<BrandKey> = new Set([
   "nvidia",
   "together",
   "moonshotai",
+  "kimi-coding",
   "zai",
   "fireworks",
   "xiaomi",
@@ -105,7 +107,6 @@ export const BRAND_ALIASES: Readonly<Record<string, BrandKey>> = {
   "openai-codex": "openai",
   "minimax-cn": "minimax",
   "moonshotai-cn": "moonshotai",
-  "kimi-coding": "moonshotai",
   "zai-coding-cn": "zai",
   "vercel-ai-gateway": "vercel",
   "xiaomi-token-plan-ams": "xiaomi",
