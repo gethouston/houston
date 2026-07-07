@@ -142,7 +142,6 @@
   "agentWelcome": {
     "missionTitle": "Meet {{name}}",
     "missionDescription": "Your new agent introduces itself",
-    "prompt": "You have just been created as the user's new agent, named {{name}}. Introduce yourself in a short, friendly message: say in one sentence what you are here to do for them, mention two or three concrete things you can help with based on your instructions, and finish by asking what they would like to start with. Keep it brief and plain, with no technical details.",
     "failed": "We could not start your new agent's first chat. You can still send it a message yourself."
   },
   "toolRuntimeError": {

@@ -1,4 +1,7 @@
 {
+  "welcome": {
+    "greeting": "Hi! I'm {{name}}, your new agent. I'm all set up and ready to help with the job you created me for. What would you like to start with?"
+  },
   "composer": {
     "placeholder": "Ask anything...",
     "fileAlreadyInChat": "File already in chat",

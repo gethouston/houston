@@ -62,6 +62,17 @@ interface AgentProvisioningState {
    */
   queueWarmingSend: (agentId: string, args: QueueWarmingSendArgs) => boolean;
   /**
+   * Flip the status a queued row will land with (the welcome mission
+   * settling to needs_you once its greeting reveals, HOU-713). False when
+   * the agent isn't marked, the flush already started, or no queued send
+   * carries that row — the caller patches the real row instead.
+   */
+  setQueuedRowStatus: (
+    agentId: string,
+    activityId: string,
+    status: string,
+  ) => boolean;
+  /**
    * Stop tracking. With `onlyIf`, clears only while that exact entry is still
    * current — a probe's own settle must not clear a newer re-mark of the id.
    */
@@ -133,6 +144,22 @@ export const useAgentProvisioningStore = create<AgentProvisioningState>(
         ...(entry.pendingSends ?? []),
         buildWarmingSend(args),
       ];
+      set((s) => ({ sendsVersion: s.sendsVersion + 1 }));
+      storageWrite(get().provisioning);
+      return true;
+    },
+
+    setQueuedRowStatus: (agentId, activityId, status) => {
+      const entry = get().provisioning[agentId];
+      if (!entry || isFlushingWarmingSends(entry)) return false;
+      if (!entry.pendingSends?.some((s) => s.row?.id === activityId)) {
+        return false;
+      }
+      // Same in-place posture as queueWarmingSend: keep the entry object (a
+      // live probe's exit switch) but swap the array so selectors see it.
+      entry.pendingSends = entry.pendingSends.map((s) =>
+        s.row?.id === activityId ? { ...s, row: { ...s.row, status } } : s,
+      );
       set((s) => ({ sendsVersion: s.sendsVersion + 1 }));
       storageWrite(get().provisioning);
       return true;

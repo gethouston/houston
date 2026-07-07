@@ -58,7 +58,20 @@ export interface PendingWarmingSend {
     agent?: string;
     provider?: string;
     model?: string;
+    /**
+     * Status the row should land with (default `running`). The create route
+     * can't carry it, so the flush patches it right after the create. The
+     * welcome mission settles its queued row to `needs_you` when the
+     * greeting reveals (HOU-713).
+     */
+    status?: string;
   };
+  /**
+   * A row-only entry (HOU-713): the board row IS the payload — no bubble, no
+   * wire send at flush. Carried by the welcome mission, whose greeting is
+   * client-rendered.
+   */
+  rowOnly?: boolean;
   promptFile?: string;
   provider?: string;
   model?: string;

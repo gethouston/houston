@@ -52,6 +52,8 @@ export interface QueueWarmingSendArgs {
   mode?: "execute" | "plan" | "auto";
   /** Set = run the async AI title pass on this text once the flush lands. */
   titleText?: string;
+  /** Row-only entry: no bubble now, no wire send at flush (HOU-713). */
+  rowOnly?: boolean;
 }
 
 /**
@@ -62,7 +64,10 @@ export interface QueueWarmingSendArgs {
 export function buildWarmingSend(
   args: QueueWarmingSendArgs,
 ): PendingWarmingSend {
-  pushPendingUserMessage(args.agentPath, args.sessionKey, args.text);
+  // A row-only entry carries no user message — nothing to render.
+  if (!args.rowOnly) {
+    pushPendingUserMessage(args.agentPath, args.sessionKey, args.text);
+  }
   const send: PendingWarmingSend = {
     id: crypto.randomUUID(),
     sessionKey: args.sessionKey,
@@ -75,6 +80,7 @@ export function buildWarmingSend(
     mode: args.mode,
     queuedAt: Date.now(),
     titleText: args.titleText,
+    rowOnly: args.rowOnly,
   };
   if (args.buildPrompt) promptBuilders.set(send.id, args.buildPrompt);
   return send;
@@ -87,6 +93,7 @@ export function buildWarmingSend(
  */
 export function restoreWarmingBubbles(entry: ProvisioningEntry): void {
   for (const send of entry.pendingSends ?? []) {
+    if (send.rowOnly) continue;
     if (getConversationFeed(entry.agentPath, send.sessionKey).length === 0) {
       pushPendingUserMessage(entry.agentPath, send.sessionKey, send.text);
     }
@@ -127,19 +134,29 @@ export async function flushWarmingSends(
     let rowId: string | null = null;
     if (send.row) {
       try {
+        // `status` settles via the patch below — the create route can't
+        // carry it, and its zod may reject unknown keys.
+        const { status: rowStatus, ...createInput } = send.row;
         const created = await tauriActivity.createWithId(
           entry.agentPath,
-          send.row,
+          createInput,
         );
         rowId = created.id;
-        if (created.id !== send.row.id) {
-          // Version skew: an engine that predates client-supplied ids
-          // (HOU-693) assigned its own. Stamp our session key on its row so
-          // the board card still opens THIS conversation and the turn's
-          // status writes still resolve (both match session_key first).
-          await getEngine().updateActivity(entry.agentPath, created.id, {
-            session_key: send.sessionKey,
-          });
+        // One patch for whatever the create couldn't carry: a non-standard
+        // session key — a `welcome-` chat, or version skew where an engine
+        // predating client-supplied ids (HOU-693) assigned its own id — so
+        // the board card still opens THIS conversation and the turn's status
+        // writes still resolve (both match session_key first); plus a status
+        // settled while queued (the welcome card's needs_you).
+        const patch: { session_key?: string; status?: string } = {};
+        if (send.sessionKey !== `activity-${created.id}`) {
+          patch.session_key = send.sessionKey;
+        }
+        if (rowStatus && rowStatus !== created.status) {
+          patch.status = rowStatus;
+        }
+        if (Object.keys(patch).length > 0) {
+          await getEngine().updateActivity(entry.agentPath, created.id, patch);
         }
       } catch {
         showErrorToast(
@@ -150,6 +167,8 @@ export async function flushWarmingSends(
         );
       }
     }
+    // Row-only entry (the welcome mission): the row IS the payload.
+    if (send.rowOnly) continue;
     // The bubble is already on screen (pushed at queue time, or restored on
     // rehydrate) — never double it. If the scope is somehow empty (renamed
     // agent moved the VM scope), let the turn push it.

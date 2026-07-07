@@ -39,7 +39,7 @@ export function createMissionWhileWarming(
 ): CreateMissionResult {
   const titleText = opts.titleText ?? text;
   const title = opts.title ?? fallbackMissionTitle(titleText);
-  const description = opts.description ?? text;
+  const description = text;
   const conversationId = crypto.randomUUID();
   const sessionKey = `activity-${conversationId}`;
 

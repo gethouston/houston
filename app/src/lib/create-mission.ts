@@ -81,12 +81,6 @@ export interface CreateMissionOptions {
   title?: string;
   /** Source text used for async AI title generation. Defaults to `text`. */
   titleText?: string;
-  /**
-   * Card description stored on the activity row. Defaults to `text`. Used
-   * when the wire prompt is an agent-bound marker message (the agent-welcome
-   * kickoff) that must never leak onto the board card.
-   */
-  description?: string;
 }
 
 export interface CreateMissionResult {
@@ -116,7 +110,7 @@ export async function createMission(
   }
   const titleText = opts.titleText ?? text;
   const title = opts.title ?? fallbackMissionTitle(titleText);
-  const description = opts.description ?? text;
+  const description = text;
 
   const item = await tauriActivity.create(
     agent.folderPath,

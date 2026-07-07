@@ -149,17 +149,13 @@ export function CreateAgentDialog() {
       model,
       routine: routineAccepted ? routineForm : null,
     });
-    // The agent's own first mission (HOU-713): a board card appears right
-    // away and the agent opens the conversation by introducing itself once
-    // its engine answers. Fire-and-forget — a failure surfaces its own toast
-    // and the agent itself is already created and revealed.
+    // The agent's own first mission (HOU-713): a "Meet {name}" card appears
+    // right away, its chat opens, and after a short beat the agent greets the
+    // user with a hardcoded message — no model turn, so it works instantly
+    // even while the engine cold-starts. Fire-and-forget: a failure surfaces
+    // its own toast and the agent itself is already created and revealed.
     void startAgentWelcomeMission(
-      {
-        id: created.id,
-        name: created.name,
-        color: created.color,
-        folderPath: agentPath,
-      },
+      { id: created.id, name: created.name, folderPath: agentPath },
       { provider, model },
     );
   };

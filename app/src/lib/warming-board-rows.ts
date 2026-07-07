@@ -29,7 +29,7 @@ export function warmingBoardRows(
       id: send.row.id,
       title: send.row.title,
       description: send.row.description,
-      status: "running",
+      status: send.row.status ?? "running",
       session_key: send.sessionKey,
       agent: send.row.agent,
       provider: send.row.provider,

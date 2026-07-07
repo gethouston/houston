@@ -53,7 +53,9 @@ import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import { useSession } from "../hooks/use-session";
 import { useStoreSkillLocaleMigration } from "../hooks/use-store-skill-locale-migration";
+import { useWelcomeGreetingRevealed } from "../hooks/use-welcome-greeting";
 import { deriveActiveInteraction } from "../lib/active-interaction";
+import { isWelcomeSessionKey } from "../lib/agent-welcome";
 import { analytics } from "../lib/analytics";
 import { attachmentReferences } from "../lib/attachment-message";
 import {
@@ -1147,10 +1149,28 @@ export function useAgentChatPanel({
       t,
     ],
   );
+  // The welcome chat's greeting (HOU-713): a hardcoded, localized agent
+  // message derived from the `welcome-` session key — prepended at render
+  // time (it survives reloads for free), held back for a short beat on the
+  // run that created the mission.
+  const welcomeGreetingRevealed =
+    useWelcomeGreetingRevealed(selectedSessionKey);
+  const agentName = agent?.name;
   const mapFeedItems = useCallback(
-    ({ items }: { sessionKey: string; items: FeedItem[] }) =>
-      filterAutoContinueFeedItems(filterProviderAuthFeedItems(items)),
-    [],
+    ({ sessionKey, items }: { sessionKey: string; items: FeedItem[] }) => {
+      const mapped = filterAutoContinueFeedItems(
+        filterProviderAuthFeedItems(items),
+      );
+      if (isWelcomeSessionKey(sessionKey) && welcomeGreetingRevealed) {
+        const greeting: FeedItem = {
+          feed_type: "assistant_text",
+          data: t("chat:welcome.greeting", { name: agentName }),
+        };
+        return [greeting, ...mapped];
+      }
+      return mapped;
+    },
+    [welcomeGreetingRevealed, agentName, t],
   );
   const agentId = agent?.id;
   const afterMessages = useCallback(
@@ -1222,6 +1242,9 @@ export function useAgentChatPanel({
 
   const chatEmptyState = useMemo<AIBoardProps["chatEmptyState"]>(() => {
     if (!agent) return undefined;
+    // The welcome chat is only "empty" for the pre-greeting beat — skill
+    // cards flashing there and vanishing under the greeting reads as a bug.
+    if (isWelcomeSessionKey(selectedSessionKey)) return undefined;
     if (activeSkill) return null;
     if (emptySkillShowcase.length === 0) return undefined;
     return (
@@ -1257,7 +1280,15 @@ export function useAgentChatPanel({
         </div>
       </div>
     );
-  }, [agent, activeSkill, emptySkillShowcase, moreSkillsCount, t, applySkill]);
+  }, [
+    agent,
+    activeSkill,
+    emptySkillShowcase,
+    moreSkillsCount,
+    t,
+    applySkill,
+    selectedSessionKey,
+  ]);
 
   const footer = useMemo<AIBoardProps["footer"]>(() => {
     if (!agent) return undefined;

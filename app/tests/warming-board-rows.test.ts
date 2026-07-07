@@ -49,6 +49,20 @@ describe("warmingBoardRows", () => {
     deepStrictEqual(warmingBoardRows(undefined, SINCE), []);
   });
 
+  it("renders the status a queued row settled to (welcome → needs_you)", () => {
+    const welcome = send({
+      rowOnly: true,
+      row: {
+        id: "w1",
+        title: "Meet Maya",
+        description: "",
+        status: "needs_you",
+      },
+    });
+    const [row] = warmingBoardRows([welcome], SINCE);
+    strictEqual(row.status, "needs_you");
+  });
+
   it("carries the row's agent mode and provider/model pins", () => {
     const pinned = send({
       row: {

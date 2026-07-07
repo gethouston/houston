@@ -142,7 +142,6 @@
   "agentWelcome": {
     "missionTitle": "Conoce a {{name}}",
     "missionDescription": "Tu nuevo agente se presenta",
-    "prompt": "Acabas de ser creado como el nuevo agente del usuario, llamado {{name}}. Preséntate con un mensaje corto y amigable: di en una frase para qué estás aquí, menciona dos o tres cosas concretas en las que puedes ayudar según tus instrucciones y termina preguntando con qué le gustaría empezar. Sé breve y claro, sin detalles técnicos.",
     "failed": "No pudimos iniciar el primer chat de tu nuevo agente. Igual puedes enviarle un mensaje tú mismo."
   },
   "toolRuntimeError": {
