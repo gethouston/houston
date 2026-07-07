@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import type { PromptInputMessage } from "./ai-elements/prompt-input";
 import {
   PromptInput,
@@ -12,7 +12,8 @@ import {
   ChatInputAttachments,
 } from "./chat-input-attachments";
 import type { ChatInputProps } from "./chat-input-types";
-import { isDictationCapturing } from "./dictation-types";
+import { isDictationActive, isDictationCapturing } from "./dictation-types";
+import { DictationWaveform } from "./dictation-waveform";
 import { QueuedMessageList } from "./queued-message-list";
 import { useComposerAttachments } from "./use-composer-attachments";
 import { useControllable } from "./use-file-drop-zone";
@@ -105,6 +106,23 @@ export function ChatInput({
   );
 
   const hasContent = canSendEmpty || text.trim().length > 0 || files.length > 0;
+  const dictating = isDictationActive(dictation);
+
+  // While capturing, the textarea (which owns the keydown handler) is replaced
+  // by the waveform, so Escape-to-cancel has no focus target. Listen globally
+  // for the duration of the capture instead.
+  const capturing = isDictationCapturing(dictation);
+  useEffect(() => {
+    if (!capturing) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        dictation?.onCancel();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [capturing, dictation]);
 
   return (
     <div className="shrink-0 px-4 pb-6 pt-2">
@@ -133,13 +151,17 @@ export function ChatInput({
           />
 
           <PromptInputBody>
-            <PromptInputTextarea
-              onChange={handleTextChange}
-              onKeyDown={handleKeyDown}
-              onPaste={handlePaste}
-              value={text}
-              placeholder={placeholder}
-            />
+            {dictating && dictation ? (
+              <DictationWaveform control={dictation} />
+            ) : (
+              <PromptInputTextarea
+                onChange={handleTextChange}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                value={text}
+                placeholder={placeholder}
+              />
+            )}
           </PromptInputBody>
 
           <ComposerTrailing

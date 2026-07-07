@@ -7,6 +7,7 @@ import type {
 import {
   DEFAULT_DICTATION_LABELS,
   formatElapsed,
+  isDictationActive,
   isDictationBusy,
   isDictationCapturing,
   resolveDictationView,
@@ -33,10 +34,9 @@ describe("resolveDictationView", () => {
     deepEqual(resolveDictationView(control("idle")), { kind: "idle" });
   });
 
-  it("shows the recording view while requesting, with no start time yet", () => {
+  it("shows a distinct requesting view (empty track, no bars yet)", () => {
     deepEqual(resolveDictationView(control("requesting")), {
-      kind: "recording",
-      startedAt: undefined,
+      kind: "requesting",
     });
   });
 
@@ -51,6 +51,19 @@ describe("resolveDictationView", () => {
     deepEqual(resolveDictationView(control("transcribing")), {
       kind: "transcribing",
     });
+  });
+});
+
+describe("isDictationActive (composer takeover)", () => {
+  it("is false when absent or idle", () => {
+    equal(isDictationActive(undefined), false);
+    equal(isDictationActive(control("idle")), false);
+  });
+
+  it("is true for requesting, recording, and transcribing", () => {
+    equal(isDictationActive(control("requesting")), true);
+    equal(isDictationActive(control("recording")), true);
+    equal(isDictationActive(control("transcribing")), true);
   });
 });
 
