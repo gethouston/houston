@@ -80,8 +80,8 @@ several of these — the JSON is authoritative).
 ### `--ht-space-*` (sign-in backdrop)
 A deliberately **theme-invariant** group — both `color.light.json` and
 `color.dark.json` alias the same `color.space.*` primitives, so the deep-space
-backdrop reads identically in light and dark. Feeds only the sign-in
-`SpaceBackground` (see Animation → Sign-in space backdrop): `--ht-space-canvas`
+backdrop reads identically in light and dark. Feeds the shared
+`SpaceScreen` backdrop (see Animation → Space screen backdrop): `--ht-space-canvas`
 `#07080f` (near-black indigo base) · `-canvas-glow` `#101430` (gradient top) ·
 `-nebula-1` `#38346b` (violet mid) / `-nebula-2` `#14384c` (teal accent) — the
 nebula-shader palette + the fallback radial glows · `-nebula-core` `#b8b2e8`
@@ -198,11 +198,20 @@ Duration: fast 0.2s / common 0.667s / bounce 0.833s / elegant 0.582s. Under 0.3s
 
 Rules: `layout` prop on reordering items. `AnimatePresence mode="popLayout"` for lists. Spring > CSS easing.
 
-### Sign-in space backdrop
-`SpaceBackground` (`app/src/components/auth/space-background.tsx`) is the
-deep-space layer behind the sign-in card — an `aria-hidden`, `pointer-events-none`
-absolute layer, all colour from the theme-invariant `--ht-space-*` tokens
-(Mercury pattern: dark backdrop, light card). Three stacked sublayers:
+### Space screen backdrop
+`SpaceScreen` (`app/src/components/space/space-screen.tsx`) is the **shared
+full-screen space layout**: the `--ht-space-canvas` base, the `SpaceBackground`
+deep-space backdrop, and a `z-10` content slot on top. Both the **sign-in
+screen** (`components/auth/sign-in-screen.tsx`) and the **workspace-loading
+splash** (`components/shell/workspace-loading.tsx`) render inside it, so the whole
+boot experience reads as one continuous space. In both, the card floating on the
+backdrop is pinned to the **light palette** (`data-theme="light"`) so it stays a
+bright, calm card regardless of app theme (Mercury pattern: dark backdrop, light
+card). The whole space rendering cluster lives in **`app/src/components/space/`**.
+
+`SpaceBackground` (`app/src/components/space/space-background.tsx`) is the
+deep-space layer itself — an `aria-hidden`, `pointer-events-none` absolute layer,
+all colour from the theme-invariant `--ht-space-*` tokens. Three stacked sublayers:
 
 **(1) Base gradient** — a near-black indigo `linear-gradient` (canvas-glow → canvas),
 always present; it is also the base the WebGL fallback draws over.
