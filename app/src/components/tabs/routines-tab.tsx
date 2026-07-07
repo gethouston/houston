@@ -19,6 +19,7 @@ import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { RoutineCreateChoiceDialog } from "./routine-create-choice-dialog";
 import { RoutineModelControls } from "./routine-model-controls";
+import { RoutineSetupChat } from "./routine-setup-chat";
 import {
   EMPTY_FORM,
   formMatchesRoutine,
@@ -29,7 +30,7 @@ import {
 } from "./routines-tab-model";
 import { useRoutineChatSetup } from "./use-routine-chat-setup";
 
-export default function RoutinesTab({ agent }: TabProps) {
+export default function RoutinesTab({ agent, agentDef }: TabProps) {
   const { t } = useTranslation("routines");
   const labels = useRoutineLabels();
   const path = agent.folderPath;
@@ -205,46 +206,55 @@ export default function RoutinesTab({ agent }: TabProps) {
       ? (allRuns ?? []).filter((r) => r.routine_id === view.editId)
       : [];
 
+    // data-keep-panel-open: interacting with routines content must not
+    // dismiss the setup-chat panel via AIBoard's outside-click close.
     return (
-      <RoutineEditor
-        value={form}
-        onChange={handleFormChange}
-        onBack={() => setView({ type: "grid" })}
-        onSubmit={handleSubmit}
-        routine={editing}
-        runs={editingRuns}
-        onRunNow={editing ? () => handleRunNow(editing.id) : undefined}
-        runNowPending={runNow.isPending}
-        onCancelRun={
-          editing
-            ? (runId: string) => handleCancelRun(editing.id, runId)
-            : undefined
-        }
-        onToggle={
-          editing ? (enabled) => handleToggle(editing.id, enabled) : undefined
-        }
-        onDelete={editing ? () => handleDelete(editing.id) : undefined}
-        accountTimezone={tz.timezone}
-        hasChanges={!formMatchesRoutine(form, baseline)}
-        modelPicker={
-          <RoutineModelControls
-            agent={agent}
-            agentPath={path}
-            form={form}
-            onChange={handleFormChange}
-          />
-        }
-        labels={labels.editor}
-        scheduleLabels={labels.schedule}
-        nextFireLabels={labels.nextFire}
-        runHistoryLabels={labels.runHistory}
-        locale={labels.locale}
-      />
+      <div className="contents" data-keep-panel-open>
+        <RoutineSetupChat
+          agent={agent}
+          agentDef={agentDef}
+          showBanner={false}
+        />
+        <RoutineEditor
+          value={form}
+          onChange={handleFormChange}
+          onBack={() => setView({ type: "grid" })}
+          onSubmit={handleSubmit}
+          routine={editing}
+          runs={editingRuns}
+          onRunNow={editing ? () => handleRunNow(editing.id) : undefined}
+          runNowPending={runNow.isPending}
+          onCancelRun={
+            editing
+              ? (runId: string) => handleCancelRun(editing.id, runId)
+              : undefined
+          }
+          onToggle={
+            editing ? (enabled) => handleToggle(editing.id, enabled) : undefined
+          }
+          onDelete={editing ? () => handleDelete(editing.id) : undefined}
+          accountTimezone={tz.timezone}
+          hasChanges={!formMatchesRoutine(form, baseline)}
+          modelPicker={
+            <RoutineModelControls
+              agent={agent}
+              agentPath={path}
+              form={form}
+              onChange={handleFormChange}
+            />
+          }
+          labels={labels.editor}
+          scheduleLabels={labels.schedule}
+          nextFireLabels={labels.nextFire}
+          runHistoryLabels={labels.runHistory}
+          locale={labels.locale}
+        />
+      </div>
     );
   }
 
   return (
-    <>
+    <div className="contents" data-keep-panel-open>
       <RoutineCreateChoiceDialog
         open={choiceOpen}
         onOpenChange={setChoiceOpen}
@@ -252,6 +262,7 @@ export default function RoutinesTab({ agent }: TabProps) {
         onForm={handleCreateWithForm}
         busy={chatSetup.pending}
       />
+      <RoutineSetupChat agent={agent} agentDef={agentDef} showBanner />
       <RoutinesGrid
         routines={routines ?? []}
         lastRuns={lastRuns}
@@ -267,6 +278,6 @@ export default function RoutinesTab({ agent }: TabProps) {
         nextFireLabels={labels.nextFire}
         locale={labels.locale}
       />
-    </>
+    </div>
   );
 }

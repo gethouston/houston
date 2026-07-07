@@ -18,9 +18,13 @@
     "chatDescription": "Tell your agent what you need. It asks a few questions and schedules the routine for you.",
     "formTitle": "Fill in the details myself",
     "formDescription": "Set the name, schedule, and instructions with the form.",
-    "cardTitle": "Set up a routine",
-    "cardDescription": "Your agent will ask a few questions and schedule it for you.",
     "missionTitle": "Set up a new routine"
+  },
+  "setupChat": {
+    "bannerTitle": "You are creating a routine in chat",
+    "bannerDescription": "Pick up where you left off, or discard the draft chat.",
+    "continue": "Continue",
+    "discard": "Discard"
   },
   "editor": {
     "back": "Back to routines",

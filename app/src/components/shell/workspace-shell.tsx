@@ -29,6 +29,7 @@ import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
 import { analytics } from "../../lib/analytics";
 import { osIsTauri } from "../../lib/os-bridge";
 import { isMac } from "../../lib/platform";
+import { isRoutineSetupMode } from "../../lib/routine-chat-setup";
 import { shortcutLabel } from "../../lib/shortcuts";
 import { isTopLevelView } from "../../lib/top-level-views";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
@@ -104,7 +105,7 @@ export function WorkspaceShell({
   const agentDef = currentAgent ? getById(currentAgent.configId) : undefined;
   const { data: activities } = useActivity(currentAgent?.folderPath);
   const needsYouCount = (activities ?? []).filter(
-    (a) => a.status === "needs_you",
+    (a) => a.status === "needs_you" && !isRoutineSetupMode(a.agent),
   ).length;
   const isAgentView = !isTopLevelView(viewMode);
   // Resolve against the CALLER-visible tab set, not the raw standard ids:

@@ -1,48 +1,94 @@
-import { ok, strictEqual } from "node:assert/strict";
+import { deepStrictEqual, ok } from "node:assert/strict";
 import { describe, it } from "node:test";
-// Deep import: the @houston-ai/chat barrel drags in React components that
-// node:test cannot resolve; the decoder module itself is dependency-free.
-import { decodeSkillMessage } from "../../ui/chat/src/skill-message.ts";
+import { buildAgentActivitySummaries } from "../src/components/shell/agent-activity-summary-model.ts";
+import {
+  filterAutoContinueFeedItems,
+  isAutoContinueMessage,
+} from "../src/lib/auto-continue-message.ts";
+import { selectActive, selectArchived } from "../src/lib/mission-selection.ts";
 import {
   encodeRoutineSetupMessage,
+  isRoutineSetupMode,
+  ROUTINE_SETUP_AGENT_MODE,
   ROUTINE_SETUP_PROMPT,
 } from "../src/lib/routine-chat-setup.ts";
 
-// The "Create it in chat" first message must round-trip through the shared
-// skill-marker decoder: the renderer draws a friendly card from the marker
-// payload while the model reads only the kickoff prompt after it. If either
-// side drifts, non-technical users see raw interview instructions as their
-// own message.
-
-const LABELS = {
-  title: "Set up a routine",
-  description: "Your agent will ask a few questions and schedule it for you.",
-};
+// The "Create it in chat" kickoff is Houston-sent, not user-typed: it must
+// ride the auto-continue marker so the transcript hides the bubble (live and
+// on reload) and the conversation opens with the AGENT's greeting. If the
+// marker drifts, non-technical users see raw interview instructions as their
+// own first message.
 
 describe("routine chat setup message", () => {
-  it("decodes as a skill-invocation card with the localized labels", () => {
-    const body = encodeRoutineSetupMessage(LABELS);
-    const invocation = decodeSkillMessage(body);
-    ok(invocation, "marker must decode");
-    strictEqual(invocation.displayName, LABELS.title);
-    strictEqual(invocation.description, LABELS.description);
-    // No composer text: the mission-card subtitle falls back to the
-    // description instead of leaking prompt internals.
-    strictEqual(invocation.message, "");
-    strictEqual(invocation.attachments.length, 0);
+  it("is tagged as an auto-continue message and filtered from the feed", () => {
+    const body = encodeRoutineSetupMessage();
+    ok(isAutoContinueMessage(body));
+    const filtered = filterAutoContinueFeedItems([
+      { feed_type: "user_message", data: body },
+    ]);
+    ok(filtered.length === 0, "kickoff bubble must not render");
   });
 
   it("carries the kickoff prompt as the model-facing body", () => {
-    const body = encodeRoutineSetupMessage(LABELS);
-    ok(body.startsWith("<!--houston:skill "));
-    ok(body.endsWith(ROUTINE_SETUP_PROMPT));
+    ok(encodeRoutineSetupMessage().endsWith(ROUTINE_SETUP_PROMPT));
   });
 
-  it("kickoff prompt covers the interview the issue asks for", () => {
-    // Load-bearing beats: interview via ask_user, chat-mode choice, quiet
-    // runs, approval gate, and no model/provider questions for
-    // non-technical users.
+  it("setup chats never surface as missions", () => {
+    const setup = {
+      id: "s1",
+      status: "needs_you",
+      agent: ROUTINE_SETUP_AGENT_MODE,
+    };
+    const archivedSetup = {
+      id: "s2",
+      status: "archived",
+      agent: ROUTINE_SETUP_AGENT_MODE,
+    };
+    const normal = { id: "n1", status: "needs_you", agent: "researcher" };
+    const archivedNormal = { id: "n2", status: "archived" };
+    ok(isRoutineSetupMode(ROUTINE_SETUP_AGENT_MODE));
+    ok(!isRoutineSetupMode("researcher"));
+    ok(!isRoutineSetupMode(null));
+    // Active board: only the normal mission survives.
+    deepStrictEqual(
+      selectActive([setup, archivedSetup, normal, archivedNormal]).map(
+        (i) => i.id,
+      ),
+      ["n1"],
+    );
+    // Archived tab: closed setup chats stay invisible too.
+    deepStrictEqual(
+      selectArchived([setup, archivedSetup, normal, archivedNormal]).map(
+        (i) => i.id,
+      ),
+      ["n2"],
+    );
+  });
+
+  it("setup chats never count toward the needs-you badge", () => {
+    const agents = [{ id: "a", folderPath: "/w/a" }];
+    const summaries = buildAgentActivitySummaries(agents, [
+      {
+        agent_path: "/w/a",
+        type: "activity",
+        status: "needs_you",
+        agent: ROUTINE_SETUP_AGENT_MODE,
+      },
+      { agent_path: "/w/a", type: "activity", status: "needs_you" },
+    ]);
+    deepStrictEqual(summaries.a, { needsYouCount: 1, runningCount: 0 });
+  });
+
+  it("kickoff prompt covers the guided interview the issue asks for", () => {
+    // Load-bearing beats: the agent opens the conversation, asks exactly one
+    // question per ask_user call, covers the chat-mode and quiet-run choices,
+    // gates creation on approval, and never quizzes non-technical users
+    // about models or providers.
     for (const needle of [
+      "The user has not said anything yet",
+      "greeting the user",
+      "exactly ONE question at a time",
+      "never batch",
       "ask_user",
       "one ongoing chat",
       "fresh chat",
@@ -55,10 +101,5 @@ describe("routine chat setup message", () => {
         `prompt must mention: ${needle}`,
       );
     }
-  });
-
-  it("card labels never leak into the model prompt", () => {
-    // The prompt is a fixed constant; labels live only in the marker JSON.
-    ok(!ROUTINE_SETUP_PROMPT.includes(LABELS.description));
   });
 });

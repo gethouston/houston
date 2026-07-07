@@ -4,6 +4,8 @@
  * testable and reusable from both the board tab and the archived tab.
  */
 
+import { isRoutineSetupMode } from "./routine-chat-setup.ts";
+
 /** The status that hides a mission from the active board and surfaces it in
  *  the Archived missions tab. Matches `activity.schema.json`. */
 export const ARCHIVED_STATUS = "archived";
@@ -64,12 +66,24 @@ export function isArchived<T extends { status: string }>(item: T): boolean {
   return item.status === ARCHIVED_STATUS;
 }
 
-/** Missions shown on the active board (everything not archived). */
-export function selectActive<T extends { status: string }>(items: T[]): T[] {
-  return items.filter((item) => !isArchived(item));
+interface SelectableMission {
+  status: string;
+  /** Agent-mode id; the routine-setup sentinel hides the mission entirely. */
+  agent?: string | null;
 }
 
-/** Missions shown in the Archived missions tab. */
-export function selectArchived<T extends { status: string }>(items: T[]): T[] {
-  return items.filter(isArchived);
+/** Missions shown on the active board (not archived, not a routine-setup
+ *  chat — that guided chat lives in the Routines tab, never as a card). */
+export function selectActive<T extends SelectableMission>(items: T[]): T[] {
+  return items.filter(
+    (item) => !isArchived(item) && !isRoutineSetupMode(item.agent),
+  );
+}
+
+/** Missions shown in the Archived missions tab. Closed routine-setup chats
+ *  stay out of here too: they were never a mission the user managed. */
+export function selectArchived<T extends SelectableMission>(items: T[]): T[] {
+  return items.filter(
+    (item) => isArchived(item) && !isRoutineSetupMode(item.agent),
+  );
 }

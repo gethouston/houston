@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
 import { useAllConversations } from "../hooks/queries";
 import { orderAgents } from "../lib/agent-order";
+import { isRoutineSetupMode } from "../lib/routine-chat-setup";
 import { shortcutLabel } from "../lib/shortcuts";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
@@ -62,7 +63,12 @@ export function CommandPalette() {
       convos
         // Archived missions live in the per-agent Archived tab, not the
         // quick-switcher's recent list.
-        .filter((c) => c.type === "activity" && c.status !== "archived")
+        .filter(
+          (c) =>
+            c.type === "activity" &&
+            c.status !== "archived" &&
+            !isRoutineSetupMode(c.agent),
+        )
         .slice()
         .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""))
         .slice(0, RECENT_MISSION_LIMIT)

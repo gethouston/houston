@@ -18,9 +18,13 @@
     "chatDescription": "Cuéntale a tu agente lo que necesitas. Te hará algunas preguntas y programará la rutina por ti.",
     "formTitle": "Completar los detalles por mi cuenta",
     "formDescription": "Define el nombre, el horario y las instrucciones con el formulario.",
-    "cardTitle": "Configurar una rutina",
-    "cardDescription": "Tu agente te hará algunas preguntas y la programará por ti.",
     "missionTitle": "Configurar una nueva rutina"
+  },
+  "setupChat": {
+    "bannerTitle": "Estás creando una rutina en el chat",
+    "bannerDescription": "Retoma donde quedaste o descarta el chat en curso.",
+    "continue": "Continuar",
+    "discard": "Descartar"
   },
   "editor": {
     "back": "Volver a rutinas",
