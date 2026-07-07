@@ -105,9 +105,8 @@
         "body": "Choose Start from scratch for a blank agent, or pick one of ours from the store and tweak it to fit."
       },
       "outro": {
-        "title": "Now go build something amazing",
-        "body": "That's the whole tour. The rest is on you, have fun.",
-        "confirm": "I'll do something amazing"
+        "title": "You're almost set",
+        "body": "You have the basics. One last button shows you this tour again whenever you need it."
       }
     }
   },

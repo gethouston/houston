@@ -105,9 +105,8 @@
         "body": "Elige Empezar desde cero para un agente en blanco, o toma uno de los nuestros desde la tienda y ajústalo a tu medida."
       },
       "outro": {
-        "title": "Ahora ve a construir algo increíble",
-        "body": "Ese es todo el tour. Lo demás depende de ti, diviértete.",
-        "confirm": "Voy a hacer algo increíble"
+        "title": "Ya casi estás listo",
+        "body": "Ya tienes lo básico. Un último botón te muestra este tour otra vez cuando lo necesites."
       }
     }
   },
