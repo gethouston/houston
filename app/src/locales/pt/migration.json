@@ -1,0 +1,49 @@
+{
+  "offer": {
+    "title": "Que bom ter você de volta",
+    "body": "Você tem assistentes de antes neste computador. Leve-os com você e continue de onde parou.",
+    "foundAgents_one": "{{count}} assistente",
+    "foundAgents_other": "{{count}} assistentes",
+    "foundWorkspaces_one": "{{count}} espaço de trabalho",
+    "foundWorkspaces_other": "{{count}} espaços de trabalho",
+    "found": "Encontramos {{agents}} em {{workspaces}} neste computador.",
+    "foundWithHistory": "Encontramos {{agents}} em {{workspaces}} neste computador, junto com suas conversas anteriores.",
+    "timeNote": "Levar tudo pode demorar alguns minutos.",
+    "start": "Levar meus dados",
+    "startFresh": "Começar do zero",
+    "startFreshHint": "Você pode continuar usando o Houston sem os dados antigos. Eles ficam seguros neste computador."
+  },
+  "progress": {
+    "title": "Levando seus dados",
+    "body": "Seus assistentes estão sendo preparados na nuvem. Isso pode demorar alguns minutos enquanto suas conversas chegam.",
+    "preparing": "Preparando seus dados. Isso pode demorar alguns minutos.",
+    "startFailed": "Não conseguimos ler seus dados antigos.",
+    "retry": "Tentar de novo",
+    "overall": "{{done}} de {{total}} assistentes prontos",
+    "continueAnyway": "Continuar sem o resto",
+    "step": {
+      "pending": "Aguardando",
+      "creating": "Criando seu assistente",
+      "warming": "Deixando tudo pronto",
+      "uploading": "Movendo seus arquivos ({{current}} de {{total}})",
+      "finalizing": "Finalizando",
+      "done": "Pronto",
+      "error": "Algo deu errado"
+    }
+  },
+  "done": {
+    "title": "Seus assistentes chegaram",
+    "summary_one": "{{count}} assistente já está na nuvem, com tudo o que precisa.",
+    "summary_other": "{{count}} assistentes já estão na nuvem, com tudo o que precisam.",
+    "leftBehindTitle": "Ainda neste computador",
+    "leftBehindBody": "Estes assistentes não vieram desta vez. Os dados deles ficam seguros neste computador.",
+    "excludedTitle": "Alguns arquivos grandes ficaram neste computador",
+    "rejectedTitle": "Algumas coisas não puderam vir",
+    "reconnectAiTitle": "Reconecte sua IA",
+    "reconnectAiBody": "Para sua segurança, seu login de IA não é transferido. Conecte uma vez e tudo volta ao normal.",
+    "aiConnected": "Sua IA está conectada.",
+    "reconnectAppsTitle": "Reconecte seus aplicativos",
+    "reconnectAppsBody": "Seus assistentes usavam estes aplicativos. Você pode conectá-los de novo quando quiser na seção de Aplicativos.",
+    "finish": "Ir para o Houston"
+  }
+}

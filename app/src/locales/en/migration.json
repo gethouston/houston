@@ -1,0 +1,49 @@
+{
+  "offer": {
+    "title": "Welcome back",
+    "body": "You have assistants on this computer from before. Bring them with you and pick up right where you left off.",
+    "foundAgents_one": "{{count}} assistant",
+    "foundAgents_other": "{{count}} assistants",
+    "foundWorkspaces_one": "{{count}} workspace",
+    "foundWorkspaces_other": "{{count}} workspaces",
+    "found": "We found {{agents}} across {{workspaces}} on this computer.",
+    "foundWithHistory": "We found {{agents}} across {{workspaces}} on this computer, along with your past conversations.",
+    "timeNote": "Bringing everything over can take a few minutes.",
+    "start": "Bring my data",
+    "startFresh": "Start fresh instead",
+    "startFreshHint": "You can keep using Houston without your old data. It stays safe on this computer."
+  },
+  "progress": {
+    "title": "Bringing your data over",
+    "body": "Your assistants are being set up in the cloud. This can take a few minutes while your conversations come along.",
+    "preparing": "Getting your data ready. This can take a few minutes.",
+    "startFailed": "We couldn't read your old data.",
+    "retry": "Try again",
+    "overall": "{{done}} of {{total}} assistants moved",
+    "continueAnyway": "Continue without the rest",
+    "step": {
+      "pending": "Waiting",
+      "creating": "Creating your assistant",
+      "warming": "Getting it ready",
+      "uploading": "Moving your files ({{current}} of {{total}})",
+      "finalizing": "Finishing up",
+      "done": "Done",
+      "error": "Something went wrong"
+    }
+  },
+  "done": {
+    "title": "Your assistants made it",
+    "summary_one": "{{count}} assistant is now in the cloud, with everything it needs.",
+    "summary_other": "{{count}} assistants are now in the cloud, with everything they need.",
+    "leftBehindTitle": "Still on this computer",
+    "leftBehindBody": "These assistants didn't come along this time. Their data stays safe on this computer.",
+    "excludedTitle": "Some larger files stayed on this computer",
+    "rejectedTitle": "A few items couldn't come along",
+    "reconnectAiTitle": "Reconnect your AI",
+    "reconnectAiBody": "For your security, your AI sign-in doesn't carry over. Connect it once and you're back to normal.",
+    "aiConnected": "Your AI is connected.",
+    "reconnectAppsTitle": "Reconnect your apps",
+    "reconnectAppsBody": "Your assistants used these apps before. You can connect them again anytime from the Apps section.",
+    "finish": "Go to Houston"
+  }
+}

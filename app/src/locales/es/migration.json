@@ -1,0 +1,49 @@
+{
+  "offer": {
+    "title": "Qué bueno verte de nuevo",
+    "body": "Tienes asistentes de antes en este computador. Llévalos contigo y retoma justo donde quedaste.",
+    "foundAgents_one": "{{count}} asistente",
+    "foundAgents_other": "{{count}} asistentes",
+    "foundWorkspaces_one": "{{count}} espacio de trabajo",
+    "foundWorkspaces_other": "{{count}} espacios de trabajo",
+    "found": "Encontramos {{agents}} en {{workspaces}} en este computador.",
+    "foundWithHistory": "Encontramos {{agents}} en {{workspaces}} en este computador, junto con tus conversaciones anteriores.",
+    "timeNote": "Llevar todo puede tomar unos minutos.",
+    "start": "Llevar mis datos",
+    "startFresh": "Empezar de cero",
+    "startFreshHint": "Puedes seguir usando Houston sin tus datos anteriores. Quedan seguros en este computador."
+  },
+  "progress": {
+    "title": "Llevando tus datos",
+    "body": "Tus asistentes se están preparando en la nube. Esto puede tomar unos minutos mientras llegan tus conversaciones.",
+    "preparing": "Preparando tus datos. Esto puede tomar unos minutos.",
+    "startFailed": "No pudimos leer tus datos anteriores.",
+    "retry": "Intentar de nuevo",
+    "overall": "{{done}} de {{total}} asistentes listos",
+    "continueAnyway": "Continuar sin el resto",
+    "step": {
+      "pending": "En espera",
+      "creating": "Creando tu asistente",
+      "warming": "Dejándolo listo",
+      "uploading": "Moviendo tus archivos ({{current}} de {{total}})",
+      "finalizing": "Terminando",
+      "done": "Listo",
+      "error": "Algo salió mal"
+    }
+  },
+  "done": {
+    "title": "Tus asistentes ya llegaron",
+    "summary_one": "{{count}} asistente ya está en la nube, con todo lo que necesita.",
+    "summary_other": "{{count}} asistentes ya están en la nube, con todo lo que necesitan.",
+    "leftBehindTitle": "Todavía en este computador",
+    "leftBehindBody": "Estos asistentes no vinieron esta vez. Sus datos quedan seguros en este computador.",
+    "excludedTitle": "Algunos archivos grandes se quedaron en este computador",
+    "rejectedTitle": "Algunas cosas no pudieron venir",
+    "reconnectAiTitle": "Reconecta tu IA",
+    "reconnectAiBody": "Por tu seguridad, tu inicio de sesión de IA no se transfiere. Conéctalo una vez y todo vuelve a la normalidad.",
+    "aiConnected": "Tu IA está conectada.",
+    "reconnectAppsTitle": "Reconecta tus aplicaciones",
+    "reconnectAppsBody": "Tus asistentes usaban estas aplicaciones. Puedes conectarlas de nuevo cuando quieras desde la sección de Aplicaciones.",
+    "finish": "Ir a Houston"
+  }
+}

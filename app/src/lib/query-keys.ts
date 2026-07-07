@@ -57,6 +57,10 @@ export const queryKeys = {
   migrationReconnect: () => ["migration-reconnect"] as const,
   migrationReconnectDismissed: () => ["migration-reconnect-dismissed"] as const,
 
+  /** First-run cloud-migration wizard (HOU-719): the `detect_legacy_houston`
+   *  scan for old desktop data on this machine. Stable for the app's life. */
+  cloudMigrationDetect: () => ["cloud-migration-detect"] as const,
+
   // Integrations are user-level (shared across the user's agents), so they are
   // NOT keyed by agentPath even though they surface in a per-agent tab.
   integrationStatus: () => ["integration-status"] as const,

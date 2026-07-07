@@ -132,6 +132,17 @@ export function hostedOauthGateActive(): boolean {
 }
 
 /**
+ * True when the active engine is a REMOTE GATEWAY (`hosted-oauth` or
+ * `hosted-static` — a baked `VITE_HOSTED_ENGINE_URL`): agent-scoped requests go
+ * through the cloud gateway to per-agent pods. The first-run cloud-migration
+ * wizard (HOU-719) gates on this — it imports into cloud agents, so it must
+ * never show for the local sidecar or an external `VITE_NEW_ENGINE_URL` host.
+ */
+export function isHostedGatewayEngine(): boolean {
+  return Boolean(HOSTED_ENGINE_URL);
+}
+
+/**
  * True when the active engine is NOT co-located with this client — a baked host
  * URL or a hosted gateway. Callers that decide OAuth loopback-vs-device-code
  * topology must consult this: the runtime's localhost callback lives on the

@@ -280,6 +280,35 @@ export function osLocalBridgeStatus(): Promise<BridgeStatus> {
   return invoke<BridgeStatus>("local_bridge_status");
 }
 
+// ── First-run cloud migration (HOU-719) ──────────────────────────────────
+// Native, desktop-only: only the shell can read the OLD local install's
+// `~/.houston` tree and spawn the bundled host against it. The wizard exports
+// each legacy agent over loopback HTTP and uploads it to the cloud gateway.
+
+import type { LegacyDetection } from "./cloud-migration";
+
+/** Scan for legacy desktop data worth migrating. Fast, read-only. */
+export function osDetectLegacyHouston(): Promise<LegacyDetection> {
+  return invoke<LegacyDetection>("detect_legacy_houston");
+}
+
+/** Spawn (or return the already-running) passive migration-source host against
+ *  the legacy tree. Can block for MINUTES — its boot converts a big chat db
+ *  before the banner prints — so callers show a "preparing" state. Idempotent. */
+export function osStartMigrationSourceHost(): Promise<{
+  baseUrl: string;
+  token: string;
+}> {
+  return invoke<{ baseUrl: string; token: string }>(
+    "start_migration_source_host",
+  );
+}
+
+/** Kill the migration-source host. Idempotent — absent is success. */
+export function osStopMigrationSourceHost(): Promise<void> {
+  return invoke<void>("stop_migration_source_host");
+}
+
 // ── On-device dictation (bundled whisper.cpp sidecar) ──────────────────────
 // Native, desktop-only: transcription runs entirely on the user's machine, so
 // (like the local-model bridge above) this never moves to the engine.
