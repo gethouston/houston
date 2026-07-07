@@ -52,8 +52,6 @@ export function NewMissionPickerDialog({
   const activeAgentPath = lockedAgent
     ? lockedAgent.folderPath
     : pickedAgentPath || (agents.length === 1 ? agents[0].folderPath : "");
-  const activeAgent =
-    lockedAgent ?? agents.find((a) => a.folderPath === activeAgentPath);
 
   const { data: skills, isLoading: skillsLoading } = useSkills(
     activeAgentPath || undefined,
@@ -192,7 +190,6 @@ export function NewMissionPickerDialog({
               agentReady={!needsAgent}
               loading={skillsLoading}
               skills={sortedSkills}
-              configId={activeAgent?.configId}
               emptyLabel={
                 activeTabId
                   ? t("skillPicker.skillsEmpty")

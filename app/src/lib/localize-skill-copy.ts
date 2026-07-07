@@ -15,9 +15,10 @@ interface CatalogEntry {
 
 /**
  * English reference generated from `store/agents/*` by
- * `scripts/gen-skill-catalog-i18n.mjs`. Doubles as the edit-detection
- * baseline: a skill whose on-disk description drifted from the packaged
- * copy is shown verbatim (see below).
+ * `scripts/gen-skill-catalog-i18n.mjs`. Keys are
+ * `catalog.<storeAgentId>.<slug>` — the store agent id disambiguates the
+ * slugs two store agents both ship with different copy (`research-a-topic`,
+ * `calibrate-my-voice`).
  */
 const EN_CATALOG = (
   enSkills as { catalog: Record<string, Record<string, CatalogEntry>> }
@@ -33,44 +34,65 @@ export function normalizeSkillCopy(text: string): string {
   return text.replace(/—/g, "-");
 }
 
+/** slug → the catalog entries (one per store agent) shipping that slug. */
+let bySlug: Map<
+  string,
+  Array<{ storeAgentId: string; description: string }>
+> | null = null;
+
+function catalogBySlug() {
+  if (!bySlug) {
+    bySlug = new Map();
+    for (const [storeAgentId, entries] of Object.entries(EN_CATALOG)) {
+      for (const [slug, entry] of Object.entries(entries)) {
+        const list = bySlug.get(slug) ?? [];
+        list.push({ storeAgentId, description: entry.description });
+        bySlug.set(slug, list);
+      }
+    }
+  }
+  return bySlug;
+}
+
 /**
- * Localized display name + description for a skill, mirroring
+ * Localized display name + description for a skill, the skills sibling of
  * `localizeCatalogCopy` (agent store cards, HOU-587).
  *
- * Keys live under `skills:catalog.<configId>.<slug>` — keyed by the agent's
- * persisted `configId` because two store agents may ship the same slug with
- * different copy (`research-a-topic` in marketing vs operations), and because
- * an agent created from a third-party definition must keep its author's
- * language (its configId has no catalog entry, so it falls through).
+ * A skill is recognized by its `(slug, packaged English description)` pair:
+ * the host does not persist which template an agent was created from (the
+ * engine adapter fabricates `Agent.configId`, so it cannot key anything),
+ * and installed skills are user-owned copies after seeding. Matching the
+ * description against the generated English reference is therefore both the
+ * identity check and the edit gate in one:
  *
- * Skills are user-owned copies after seeding (agents self-improve them), so
- * the description is only localized while it still matches the packaged
- * English copy; an edited skill shows its real, current description instead
- * of a stale translation. The name always localizes: the slug is the
- * directory identity, so it can't drift without becoming a different skill.
+ * - an unedited store skill matches its packaged copy exactly and renders
+ *   the `skills:catalog.<storeAgentId>.<slug>` translation — including the
+ *   right variant when two store agents ship the same slug;
+ * - an edited / self-improved skill, or any third-party / user-authored
+ *   skill, matches nothing and renders its real copy verbatim (author's
+ *   language wins).
  */
 export function localizeSkillCopy(
   skill: { name: string; description?: string | null },
-  configId: string | undefined,
   t: TFunction,
 ): SkillCopy {
   const fallback = {
     title: humanizeSkillName(skill.name),
     description: skill.description ?? "",
   };
-  if (!configId) return fallback;
-  const entry = EN_CATALOG[configId]?.[skill.name];
-  if (!entry) return fallback;
+  const candidates = catalogBySlug().get(skill.name);
+  if (!candidates) return fallback;
+  const normalized = normalizeSkillCopy(fallback.description);
+  const match = candidates.find((c) => c.description === normalized);
+  if (!match) return fallback;
   return {
-    title: t(`skills:catalog.${configId}.${skill.name}.name`, {
+    title: t(`skills:catalog.${match.storeAgentId}.${skill.name}.name`, {
       defaultValue: fallback.title,
     }),
-    description:
-      normalizeSkillCopy(fallback.description) === entry.description
-        ? t(`skills:catalog.${configId}.${skill.name}.description`, {
-            defaultValue: fallback.description,
-          })
-        : fallback.description,
+    description: t(
+      `skills:catalog.${match.storeAgentId}.${skill.name}.description`,
+      { defaultValue: fallback.description },
+    ),
   };
 }
 

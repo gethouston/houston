@@ -732,7 +732,7 @@ export function useAgentChatPanel({
       if (!skill || !agent || !path) return false;
 
       const claudePrompt = buildSkillClaudePrompt(skill, text);
-      const copy = localizeSkillCopy(skill, agent.configId, t);
+      const copy = localizeSkillCopy(skill, t);
       const encoded = encodeSkillMessage(skill, copy, text, claudePrompt);
       const friendlyTitle = copy.title;
 
@@ -1200,7 +1200,6 @@ export function useAgentChatPanel({
         {activeSkill && (
           <SelectedSkillChip
             skill={activeSkill}
-            configId={agent.configId}
             onCancel={() => setActiveSkill(null)}
           />
         )}
@@ -1224,7 +1223,7 @@ export function useAgentChatPanel({
             </p>
           </div>
           {emptySkillShowcase.map((s) => {
-            const copy = localizeSkillCopy(s, agent.configId, t);
+            const copy = localizeSkillCopy(s, t);
             return (
               <SkillCard
                 key={s.name}

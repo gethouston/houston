@@ -21,9 +21,7 @@ export function AgentAdminSkills({ agent, onBack }: AgentAdminScreenProps) {
     return (
       <SkillDetailPage
         skill={surface.selectedSkill}
-        displayName={
-          localizeSkillCopy(surface.selectedSkill, agent.configId, t).title
-        }
+        displayName={localizeSkillCopy(surface.selectedSkill, t).title}
         onBack={surface.clearSelectedSkill}
         onSave={surface.handleSkillSave}
         onDelete={surface.handleSkillDelete}
@@ -39,7 +37,6 @@ export function AgentAdminSkills({ agent, onBack }: AgentAdminScreenProps) {
           skills={surface.skills}
           loading={surface.skillsLoading}
           loadingSkillName={surface.loadingSkillName}
-          configId={agent.configId}
           onSkillClick={surface.selectSkill}
           onSearch={surface.handleSearch}
           onPopular={surface.handlePopular}

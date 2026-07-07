@@ -6,14 +6,12 @@ import { SkillIcon } from "./skill-icon";
 
 interface Props {
   skill: SkillSummary;
-  /** The owning agent's configId — keys first-party skill translations. */
-  configId?: string;
   onCancel: () => void;
 }
 
-export function SelectedSkillChip({ skill, configId, onCancel }: Props) {
+export function SelectedSkillChip({ skill, onCancel }: Props) {
   const { t } = useTranslation("board");
-  const copy = localizeSkillCopy(skill, configId, t);
+  const copy = localizeSkillCopy(skill, t);
 
   return (
     <div className="flex w-full items-start gap-2 rounded-2xl bg-secondary/70 px-2.5 py-2 text-left">

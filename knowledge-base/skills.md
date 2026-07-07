@@ -76,7 +76,7 @@ Step-by-step instructions Claude follows when the Skill runs.
 1. **Engine** parses SKILL.md frontmatter via `serde_yml` (`engine/houston-skills/src/format.rs`). Unknown fields are silently ignored — old skills with `icon:` / `starter_prompt:` still parse.
 2. Engine returns the full `SkillSummaryResponse` on `GET /v1/skills`.
 3. **App** (`useSkills` query → `tauri.ts` → `engine-client`) maps the snake/camel-case wire shape back to app's `SkillSummary`.
-4. **Skill cards** use `app/src/components/skill-card.tsx` across the chat empty state, picker, and Skills tab. Keep these in sync by reusing the component, not recreating card markup. Titles/descriptions of **first-party store skills** are display-localized (en/es/pt) at every render site via `localizeSkillCopy` (`app/src/lib/localize-skill-copy.ts`), keyed `skills:catalog.<configId>.<slug>` — see `knowledge-base/i18n.md` § "Store skill catalog". SKILL.md content stays English (model-facing).
+4. **Skill cards** use `app/src/components/skill-card.tsx` across the chat empty state, picker, and Skills tab. Keep these in sync by reusing the component, not recreating card markup. Titles/descriptions of **first-party store skills** are display-localized (en/es/pt) at every render site via `localizeSkillCopy` (`app/src/lib/localize-skill-copy.ts`), matched by `(slug, packaged English description)` — never by `Agent.configId`, which the engine adapter fabricates — see `knowledge-base/i18n.md` § "Store skill catalog". SKILL.md content stays English (model-facing).
 5. **`useAgentChatPanel`** (`app/src/components/use-agent-chat-panel.tsx`) — single source of truth for the per-agent panel UX. Owns:
    - skill discovery (featured cards on empty state)
    - selected Skill chip above the composer

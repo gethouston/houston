@@ -19,7 +19,6 @@ export function SkillsContent({
   skills,
   loading,
   loadingSkillName,
-  configId,
   readOnly = false,
   onSkillClick,
   onSearch,
@@ -34,8 +33,6 @@ export function SkillsContent({
   loading: boolean;
   /** Name of the skill whose detail is loading; its card spins + disables. */
   loadingSkillName?: string | null;
-  /** The owning agent's configId — keys first-party skill translations. */
-  configId?: string;
   /**
    * Managed-agent read-only mode (matrix v2): a non-manager may view and open
    * skills but not add/create/install any. Hides the add affordance entirely;
@@ -136,7 +133,7 @@ export function SkillsContent({
       </div>
       <div className="flex flex-col gap-2">
         {sorted.map((skill) => {
-          const copy = localizeSkillCopy(skill, configId, t);
+          const copy = localizeSkillCopy(skill, t);
           return (
             <SkillCard
               key={skill.name}

@@ -8,7 +8,6 @@ export function SkillList({
   agentReady,
   loading,
   skills,
-  configId,
   emptyLabel,
   pickAgentLabel,
   loadingLabel,
@@ -18,8 +17,6 @@ export function SkillList({
   agentReady: boolean;
   loading: boolean;
   skills: SkillSummary[];
-  /** The owning agent's configId — keys first-party skill translations. */
-  configId?: string;
   emptyLabel: string;
   pickAgentLabel: string;
   loadingLabel: string;
@@ -45,7 +42,7 @@ export function SkillList({
   return (
     <>
       {skills.map((s) => {
-        const copy = localizeSkillCopy(s, configId, t);
+        const copy = localizeSkillCopy(s, t);
         return (
           <SkillCard
             key={s.name}
