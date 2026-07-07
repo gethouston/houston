@@ -37,6 +37,71 @@ test("toolkitForAction resolves a granted custom toolkit by exact slug", () => {
   expect(toolkitForAction("CUSTOM_ACME_CRM_REQUEST", ["acme"])).toBeNull();
 });
 
+test("actionInToolkit matches an MCP action against its server slug (prefix + tool)", () => {
+  // MCP_<SLUG>_<TOOL>: the slug must be a `_`-boundary prefix of the remainder.
+  expect(actionInToolkit("MCP_ACME_TRACKER_LIST_ISSUES", "acme_tracker")).toBe(
+    true,
+  );
+  // A shorter server slug also technically prefixes it (longest wins is decided
+  // by toolkitForAction, not here).
+  expect(actionInToolkit("MCP_ACME_TRACKER_LIST_ISSUES", "acme")).toBe(true);
+  // A slug that is not a prefix, or has no trailing tool, does not match.
+  expect(actionInToolkit("MCP_ACME_TRACKER_LIST_ISSUES", "acme_trackerx")).toBe(
+    false,
+  );
+  expect(actionInToolkit("MCP_ACME", "acme")).toBe(false);
+  // An MCP action never matches a composio/custom toolkit shape.
+  expect(actionInToolkit("MCP_ACME_LIST", "gmail")).toBe(false);
+});
+
+test("toolkitForAction picks the LONGEST matching MCP server slug", () => {
+  // Both "acme" and "acme_tracker" prefix the action; the longer one wins so a
+  // shorter server can never borrow a longer server's tools.
+  expect(
+    toolkitForAction("MCP_ACME_TRACKER_LIST_ISSUES", ["acme", "acme_tracker"]),
+  ).toBe("acme_tracker");
+  // Order-independent: same winner regardless of grant order.
+  expect(
+    toolkitForAction("MCP_ACME_TRACKER_LIST_ISSUES", ["acme_tracker", "acme"]),
+  ).toBe("acme_tracker");
+  // The user owns ONLY "acme" (it is the whole universe) → it legitimately owns
+  // the action.
+  expect(toolkitForAction("MCP_ACME_TRACKER_LIST_ISSUES", ["acme"])).toBe(
+    "acme",
+  );
+  // No granted server prefixes it → null (denied).
+  expect(toolkitForAction("MCP_OTHER_LIST", ["acme_tracker"])).toBeNull();
+});
+
+test("toolkitForAction resolves the MCP owner from ALL servers, then checks the grant", () => {
+  // The user owns "acme" (granted) AND "acme_tracker" (NOT granted). The true
+  // owner of MCP_ACME_TRACKER_* is acme_tracker — a shorter granted "acme" must
+  // NOT swallow it just because "acme_" prefixes the remainder. Denied.
+  expect(
+    toolkitForAction(
+      "MCP_ACME_TRACKER_LIST_ISSUES",
+      ["acme"],
+      ["acme", "acme_tracker"],
+    ),
+  ).toBeNull();
+  // Same universe, but the longer server IS granted → it owns the action.
+  expect(
+    toolkitForAction(
+      "MCP_ACME_TRACKER_LIST_ISSUES",
+      ["acme", "acme_tracker"],
+      ["acme", "acme_tracker"],
+    ),
+  ).toBe("acme_tracker");
+  // Owner exists but the shorter granted server truly owns a shorter action.
+  expect(
+    toolkitForAction(
+      "MCP_ACME_LIST_ISSUES",
+      ["acme"],
+      ["acme", "acme_tracker"],
+    ),
+  ).toBe("acme");
+});
+
 test("grantedToolkits derives the distinct toolkit set from accounts", () => {
   expect(
     grantedToolkits([

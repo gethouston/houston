@@ -1204,6 +1204,37 @@ export interface CustomIntegrationConfig {
   description: string;
 }
 
+// ── Remote MCP server integrations (provider "mcp") ──────────────────────────
+// A remote Model Context Protocol server (Streamable HTTP transport) the user
+// connects as an integration. Its tools surface through integration_search /
+// integration_execute like any other integration. The server's auth secret is
+// sealed in the gateway and NEVER reaches the agent, pod, model, or transcript
+// — the gateway performs the MCP calls and injects the token gateway-side.
+
+/**
+ * How the gateway authenticates to the remote MCP server. `bearer` sends
+ * `Authorization: Bearer <value>`; `header` sends `<header>: <value>`; `none`
+ * sends no auth. The secret VALUE is carried separately as `authValue` (only on
+ * create/update) and is never returned in any response.
+ */
+export type McpServerAuth =
+  | { type: "none" }
+  | { type: "bearer" }
+  | { type: "header"; header: string };
+
+/**
+ * A remote MCP server's non-secret config. The auth value travels separately
+ * (only on create/update, in `authValue`) and is never returned. `url` is the
+ * server's Streamable HTTP endpoint (https only, no embedded credentials);
+ * `description` is optional agent-facing context.
+ */
+export interface McpServerConfig {
+  name: string;
+  url: string;
+  auth: McpServerAuth;
+  description?: string;
+}
+
 // ── OpenAI-compatible (local) provider ───────────────────────────────────────
 // A local LLM server the user runs (Ollama / vLLM / LM Studio), connected by
 // base URL + model id. New-engine + desktop only (the URL is the user's own

@@ -1,6 +1,10 @@
 import type { ServerResponse } from "node:http";
 import { enrichAccountsAcrossRegistry } from "../integrations/account-enrich";
-import { providerForAction } from "../integrations/action-routing";
+import {
+  isMcpAction,
+  MCP_PROVIDER_ID,
+  providerForAction,
+} from "../integrations/action-routing";
 import {
   filterMatchesToGranted,
   grantedToolkits,
@@ -13,6 +17,7 @@ import type { IntegrationRegistry } from "../integrations/registry";
 import {
   mergeSearchAccounts,
   mergeSearchItems,
+  mergeSearchWarnings,
   searchAllProviders,
 } from "../integrations/sandbox-fanout";
 import { json } from "./http";
@@ -49,8 +54,16 @@ export async function runSandboxSearch(
     ctx.acting,
   );
   const items = mergeSearchItems(searches);
+  // Non-fatal per-server failures (e.g. an unreachable MCP server) ride back as
+  // warnings verbatim — never silently dropped — regardless of grant filtering.
+  const warnings = mergeSearchWarnings(searches);
+  const withWarnings = warnings.length > 0 ? { warnings } : {};
   if (!ctx.granted) {
-    json(res, 200, { items, accounts: mergeSearchAccounts(searches) });
+    json(res, 200, {
+      items,
+      accounts: mergeSearchAccounts(searches),
+      ...withWarnings,
+    });
     return;
   }
   json(res, 200, {
@@ -60,11 +73,12 @@ export async function runSandboxSearch(
       ctx.userId,
       ctx.granted,
     ),
+    ...withWarnings,
   });
 }
 
-/** Route the action to its owning provider (CUSTOM_* → custom) and execute,
- *  enforcing grants when the agent has a record. */
+/** Route the action to its owning provider (CUSTOM_* → custom, MCP_* → mcp) and
+ *  execute, enforcing grants when the agent has a record. */
 export async function runSandboxExecute(
   ctx: SandboxOpCtx,
   action: string,
@@ -89,8 +103,15 @@ export async function runSandboxExecute(
   }
 
   // Enforced: the action's toolkit must be granted, then pin one of that
-  // toolkit's granted accounts (resolving any label the model passed).
-  const toolkit = toolkitForAction(action, grantedToolkits(ctx.granted));
+  // toolkit's granted accounts (resolving any label the model passed). For an
+  // MCP action the true owner is the LONGEST slug among ALL the user's servers
+  // (fail closed if we cannot list them), resolved BEFORE the grant check, so a
+  // shorter granted server cannot borrow a longer ungranted server's tools.
+  const granted = grantedToolkits(ctx.granted);
+  const owners = isMcpAction(action)
+    ? await mcpServerSlugs(ctx.registry, ctx.userId)
+    : granted;
+  const toolkit = toolkitForAction(action, granted, owners);
   if (!toolkit) {
     json(res, 403, { error: "toolkit_not_granted" });
     return;
@@ -121,4 +142,16 @@ export async function runSandboxExecute(
       account: resolution.connectionId,
     }),
   );
+}
+
+/** Every server slug the user owns on the mcp provider (the owner universe for
+ *  resolving an MCP action, independent of what is granted). Empty when the mcp
+ *  provider is not wired — owner resolution then fails closed (403). */
+async function mcpServerSlugs(
+  registry: IntegrationRegistry,
+  userId: string,
+): Promise<string[]> {
+  if (!registry.has(MCP_PROVIDER_ID)) return [];
+  const conns = await registry.get(MCP_PROVIDER_ID).listConnections(userId);
+  return [...new Set(conns.map((c) => c.toolkit))];
 }

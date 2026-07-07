@@ -2,13 +2,11 @@ import type {
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import {
-  useDisconnectIntegration,
   useIntegrationConnections,
   useIntegrationToolkits,
 } from "../../hooks/queries";
-import { CUSTOM_INTEGRATION_PROVIDER } from "../../hooks/queries/custom-integration-keys";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { canEditAgentGrants } from "../../lib/org-roles";
 import { useAgentStore } from "../../stores/agents";
@@ -20,6 +18,8 @@ import {
   toAgentChip,
   useAllAgentGrants,
   useCustomIntegrations,
+  useMcpIntegrations,
+  useProviderDisconnect,
 } from "../integrations";
 import type { ActiveAppCard, RecoveringAppRow } from "./connected-apps-list";
 import {
@@ -38,7 +38,11 @@ export interface ConnectedApps {
   customSlugs: ReadonlySet<string>;
   /** The host serves the custom provider (drives the "add custom" CTA). */
   customEnabled: boolean;
-  /** Disconnect an account, routed to its provider (composio or custom). */
+  /** Toolkit slugs (== connectionIds) that are remote MCP server integrations. */
+  mcpSlugs: ReadonlySet<string>;
+  /** The host serves the mcp provider (drives the "add MCP server" CTA). */
+  mcpEnabled: boolean;
+  /** Disconnect an account, routed to its provider (composio, custom, or mcp). */
   disconnect: (connectionId: string) => void;
   chipById: ReadonlyMap<string, AgentChip>;
   /** `connectionId -> agent ids that have THAT account granted`. */
@@ -69,6 +73,7 @@ export function useConnectedApps(): ConnectedApps {
   const connections = useIntegrationConnections(INTEGRATION_PROVIDER, true);
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, true);
   const custom = useCustomIntegrations(true);
+  const mcp = useMcpIntegrations(true);
 
   const agentChips = useMemo(() => agents.map(toAgentChip), [agents]);
   const agentIds = useMemo(() => agents.map((a) => a.id), [agents]);
@@ -79,13 +84,13 @@ export function useConnectedApps(): ConnectedApps {
   // only (custom apps are added via the "add custom" CTA, not the OAuth grid).
   const composioConns = connections.data ?? [];
   const connData = useMemo(
-    () => [...composioConns, ...custom.connections],
-    [composioConns, custom.connections],
+    () => [...composioConns, ...custom.connections, ...mcp.connections],
+    [composioConns, custom.connections, mcp.connections],
   );
   const catalogData = catalog.data ?? [];
   const displayCatalog = useMemo(
-    () => [...catalogData, ...custom.toolkits],
-    [catalogData, custom.toolkits],
+    () => [...catalogData, ...custom.toolkits, ...mcp.toolkits],
+    [catalogData, custom.toolkits, mcp.toolkits],
   );
   const accountAgents = useMemo(
     () => accountAgentIds(grants.byAgent),
@@ -142,21 +147,9 @@ export function useConnectedApps(): ConnectedApps {
   // (single-player has no roles and is always editable; the gateway enforces).
   const canEdit = agents.every((a) => canEditAgentGrants(capabilities, a));
 
-  // Disconnect routes to the owning provider: a custom integration lives on the
-  // "custom" provider (delete + prune), every other app on composio. `custom.slugs`
-  // is keyed by connectionId (== slug for custom), so the id alone picks the route.
-  const disconnectComposio = useDisconnectIntegration(INTEGRATION_PROVIDER);
-  const disconnectCustom = useDisconnectIntegration(
-    CUSTOM_INTEGRATION_PROVIDER,
-  );
-  const disconnect = useCallback(
-    (connectionId: string) =>
-      (custom.slugs.has(connectionId)
-        ? disconnectCustom
-        : disconnectComposio
-      ).mutate(connectionId),
-    [custom.slugs, disconnectComposio, disconnectCustom],
-  );
+  // Disconnect routes to the owning provider (composio / custom / mcp), keyed by
+  // connectionId; the shared hook holds the three-way routing.
+  const disconnect = useProviderDisconnect(custom.slugs, mcp.slugs);
 
   return {
     agentChips,
@@ -165,6 +158,8 @@ export function useConnectedApps(): ConnectedApps {
     bySlug,
     customSlugs: custom.slugs,
     customEnabled: custom.supported,
+    mcpSlugs: mcp.slugs,
+    mcpEnabled: mcp.supported,
     disconnect,
     chipById,
     accountAgents,
@@ -182,6 +177,7 @@ export function useConnectedApps(): ConnectedApps {
       connections.isLoading ||
       catalog.isLoading ||
       grants.isLoading ||
-      custom.isLoading,
+      custom.isLoading ||
+      mcp.isLoading,
   };
 }

@@ -188,9 +188,9 @@ test("a configured integrations gateway advertises composio + custom and wins ov
     const caps = (await (
       await fetch(`${base}/v1/capabilities`)
     ).json()) as Capabilities;
-    // The gateway serves BOTH the composio catalog and per-user custom
-    // integrations (a second remote adapter against the same upstream).
-    expect(caps.integrations).toEqual(["composio", "custom"]);
+    // The gateway serves the composio catalog, per-user custom integrations,
+    // and remote MCP servers (three remote adapters against the same upstream).
+    expect(caps.integrations).toEqual(["composio", "custom", "mcp"]);
     // Desktop gateway before sign-in: present but signin-gated, never a 503.
     const status = await (
       await fetch(`${base}/v1/integrations`, { headers: auth })
@@ -198,6 +198,7 @@ test("a configured integrations gateway advertises composio + custom and wins ov
     expect(status.items).toEqual([
       { provider: "composio", ready: false, reason: "signin" },
       { provider: "custom", ready: false, reason: "signin" },
+      { provider: "mcp", ready: false, reason: "signin" },
     ]);
   } finally {
     host.stop();

@@ -3,8 +3,10 @@ import type {
   CustomIntegrationHost,
   ExecuteOptions,
   IntegrationProvider,
+  McpIntegrationHost,
 } from "./provider";
 import { makeCustomForwarders } from "./remote-custom";
+import { makeMcpForwarders } from "./remote-mcp";
 import {
   type ActionResult,
   type Connection,
@@ -62,6 +64,14 @@ export interface RemoteIntegrationOptions {
    * the provider-routes 404 create/update rather than forward a doomed request.
    */
   custom?: boolean;
+  /**
+   * This upstream serves remote MCP server integrations, so expose the
+   * `McpIntegrationHost` create/update methods (forwarded to
+   * `/v1/integrations/<id>/create|update`). Off for composio/custom adapters,
+   * whose upstreams have no MCP routes; keeping it off makes `supportsMcp` false
+   * so the provider-routes 404 create/update rather than forward a doomed request.
+   */
+  mcp?: boolean;
   /** Injected for tests; defaults to global fetch. */
   fetch?: typeof fetch;
 }
@@ -79,6 +89,13 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
    */
   createCustom?: CustomIntegrationHost["createCustom"];
   updateCustom?: CustomIntegrationHost["updateCustom"];
+  /**
+   * Present only when this adapter serves MCP integrations (opts.mcp):
+   * `supportsMcp` duck-types on these, so leaving them undefined on the
+   * composio/custom adapters makes the provider-routes 404 create/update for them.
+   */
+  createMcpServer?: McpIntegrationHost["createMcpServer"];
+  updateMcpServer?: McpIntegrationHost["updateMcpServer"];
 
   constructor(opts: RemoteIntegrationOptions) {
     this.id = opts.id;
@@ -92,6 +109,13 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
       });
       this.createCustom = forwarders.createCustom;
       this.updateCustom = forwarders.updateCustom;
+    }
+    if (opts.mcp) {
+      const forwarders = makeMcpForwarders({
+        postConnection: (path, body) => this.postConnection(path, body),
+      });
+      this.createMcpServer = forwarders.createMcpServer;
+      this.updateMcpServer = forwarders.updateMcpServer;
     }
   }
 

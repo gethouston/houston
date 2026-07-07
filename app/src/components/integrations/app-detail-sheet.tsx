@@ -7,6 +7,7 @@ import type { AgentChip } from "./agent-chip";
 import type { AppDisplay } from "./app-display";
 import { AppLogo } from "./app-logo";
 import { CustomBadge } from "./custom-badge";
+import { McpBadge } from "./mcp-badge";
 
 interface AppDetailSheetProps {
   open: boolean;
@@ -32,12 +33,14 @@ interface AppDetailSheetProps {
   connectInFlight: boolean;
   description?: string;
   /**
-   * A custom API-key integration (provider `"custom"`): shows a "Custom" badge,
-   * swaps the "Add another account" footer for Edit + Delete, and hides the
-   * per-account rename/disconnect (there is one implicit account, managed here).
+   * A user-managed integration the caller owns end-to-end: a custom API-key
+   * integration (`"custom"`) or a remote MCP server (`"mcp"`). Either shows its
+   * provider badge, swaps the "Add another account" footer for Edit + Delete,
+   * and hides the per-account rename/disconnect (there is one implicit account,
+   * managed here). Undefined = a normal OAuth catalog app.
    */
-  custom?: boolean;
-  /** Open the edit form. Required in `custom` mode. */
+  manageKind?: "custom" | "mcp";
+  /** Open the edit form. Required when `manageKind` is set. */
   onEdit?: () => void;
 }
 
@@ -63,10 +66,12 @@ export function AppDetailSheet({
   onAddAccount,
   connectInFlight,
   description,
-  custom,
+  manageKind,
   onEdit,
 }: AppDetailSheetProps) {
   const { t } = useTranslation("integrations");
+  const managed = manageKind !== undefined;
+  const isMcp = manageKind === "mcp";
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex w-full flex-col gap-0 sm:max-w-md">
@@ -76,9 +81,9 @@ export function AppDetailSheet({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <SheetTitle className="truncate">{display.name}</SheetTitle>
-                {custom && <CustomBadge />}
+                {managed && (isMcp ? <McpBadge /> : <CustomBadge />)}
               </div>
-              {!custom && (
+              {!managed && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   {t("account.count", { count: connections.length })}
                 </p>
@@ -113,13 +118,13 @@ export function AppDetailSheet({
               onRename={(alias) => onRename(connection.connectionId, alias)}
               onReconnect={() => onReconnect(connection.connectionId)}
               onDisconnect={() => onDisconnect(connection.connectionId)}
-              hideAccountActions={custom}
+              hideAccountActions={managed}
             />
           ))}
         </div>
 
         <div className="border-t border-border px-4 py-3">
-          {custom ? (
+          {managed ? (
             <div className="flex gap-2">
               <button
                 type="button"
@@ -127,7 +132,7 @@ export function AppDetailSheet({
                 className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
               >
                 <Pencil className="size-4" />
-                {t("custom.edit")}
+                {isMcp ? t("mcp.edit") : t("custom.edit")}
               </button>
               <button
                 type="button"
@@ -137,7 +142,7 @@ export function AppDetailSheet({
                 className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
               >
                 <Trash2 className="size-4" />
-                {t("custom.delete")}
+                {isMcp ? t("mcp.delete") : t("custom.delete")}
               </button>
             </div>
           ) : (

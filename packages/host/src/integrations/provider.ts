@@ -4,6 +4,8 @@ import type {
   ConnectStart,
   CustomIntegrationCreate,
   CustomIntegrationPatch,
+  McpServerCreate,
+  McpServerPatch,
   ProviderReadiness,
   SearchResult,
   Toolkit,
@@ -134,5 +136,38 @@ export function supportsCustom(
   const c = provider as Partial<CustomIntegrationHost>;
   return (
     typeof c.createCustom === "function" && typeof c.updateCustom === "function"
+  );
+}
+
+/**
+ * The OPTIONAL port extension for the MCP provider: registering + editing a
+ * remote MCP server. Mirrors `CustomIntegrationHost` (the rest of the lifecycle
+ * is the generic `IntegrationProvider` surface); only create/update are
+ * MCP-shaped because they carry the sealed auth secret (`authValue`). The
+ * provider-routes mount create/update ONLY when a provider implements this (else
+ * 404), so a provider without MCP support is never asked to.
+ */
+export interface McpIntegrationHost {
+  /** Register a new MCP server integration; returns its mapped connection. */
+  createMcpServer(userId: string, config: McpServerCreate): Promise<Connection>;
+  /**
+   * Edit an existing MCP server (any subset of its config; an omitted authValue
+   * keeps the stored secret). Renaming keeps the slug/connectionId stable.
+   */
+  updateMcpServer(
+    userId: string,
+    connectionId: string,
+    patch: McpServerPatch,
+  ): Promise<Connection>;
+}
+
+/** Narrow a provider to one that supports MCP-server create/update. */
+export function supportsMcp(
+  provider: IntegrationProvider,
+): provider is IntegrationProvider & McpIntegrationHost {
+  const c = provider as Partial<McpIntegrationHost>;
+  return (
+    typeof c.createMcpServer === "function" &&
+    typeof c.updateMcpServer === "function"
   );
 }

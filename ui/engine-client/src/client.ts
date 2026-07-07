@@ -49,6 +49,7 @@ import type {
   IntegrationProviderStatus,
   IntegrationToolkit,
   ListWorktreesRequest,
+  McpServerConfig,
   NewActivity,
   NewRoutine,
   OrgInfo,
@@ -1131,6 +1132,45 @@ export class HoustonClient {
     provider: string,
     connectionId: string,
     patch: Partial<CustomIntegrationConfig> & { apiKey?: string },
+  ): Promise<IntegrationConnection> {
+    return (
+      await this.request<{ connection: IntegrationConnection }>(
+        "POST",
+        `/integrations/${this.seg(provider)}/update`,
+        { connectionId, ...patch },
+      )
+    ).connection;
+  }
+  /**
+   * Connect a remote MCP server (provider `"mcp"`): the gateway verifies the
+   * server is reachable, seals the auth secret at rest, and returns the
+   * resulting connection (its server-generated slug is both `toolkit` and
+   * `connectionId`). Mutating POST — never auto-replayed. `authValue` carries
+   * the bearer token / header value and is only ever sent here + on
+   * `updateMcpServer`; it is never returned in any response.
+   */
+  async createMcpServer(
+    provider: string,
+    config: McpServerConfig & { authValue?: string },
+  ): Promise<IntegrationConnection> {
+    return (
+      await this.request<{ connection: IntegrationConnection }>(
+        "POST",
+        `/integrations/${this.seg(provider)}/create`,
+        config,
+      )
+    ).connection;
+  }
+  /**
+   * Edit a remote MCP server. Any omitted field is left unchanged; an omitted
+   * `authValue` keeps the stored secret (so the UI can offer "leave blank to
+   * keep"). Renaming keeps the slug/connectionId stable. Returns the updated
+   * connection.
+   */
+  async updateMcpServer(
+    provider: string,
+    connectionId: string,
+    patch: Partial<McpServerConfig> & { authValue?: string },
   ): Promise<IntegrationConnection> {
     return (
       await this.request<{ connection: IntegrationConnection }>(

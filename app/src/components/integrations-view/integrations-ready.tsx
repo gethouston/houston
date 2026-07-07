@@ -1,24 +1,15 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useRenameIntegrationConnection } from "../../hooks/queries/use-integrations";
 import {
-  AppDetailSheet,
-  accountDisplayLabel,
-  appDisplay,
   ConnectMoreAppsSection,
-  type CustomDialogTarget,
-  CustomIntegrationDialog,
-  INTEGRATION_PROVIDER,
-  IntegrationDisconnectDialog,
   ReconnectBanner,
   useConnectFlow,
 } from "../integrations";
+import { AppDetailOverlay } from "./app-detail-overlay";
 import {
   ConnectedAppsList,
   ConnectedAppsListSkeleton,
 } from "./connected-apps-list";
-import { agentChipsFor } from "./integrations-view-model";
-import { useAgentGrantToggle } from "./use-agent-grant-toggle";
 import { useConnectedApps } from "./use-connected-apps";
 
 interface IntegrationsReadyProps {
@@ -33,7 +24,7 @@ interface IntegrationsReadyProps {
  * adding another account, with pending / errored connections shown full-width
  * per account for recovery), then the full "Connect more apps" catalog. ONE
  * connect flow lives here (connect-only, no auto-grant) and is handed to the
- * catalog, the recovery callouts, and the detail sheet so closing any of them
+ * catalog, the recovery callouts, and the detail overlay so closing any of them
  * never kills an in-flight OAuth poll.
  */
 export function IntegrationsReady({
@@ -43,37 +34,10 @@ export function IntegrationsReady({
   const { t } = useTranslation("integrations");
   const apps = useConnectedApps();
   const connectFlow = useConnectFlow({ autoGrant: false });
-  const rename = useRenameIntegrationConnection(INTEGRATION_PROVIDER);
-  const toggle = useAgentGrantToggle();
 
-  // The sheet is keyed by TOOLKIT so it shows every account of the app; the
-  // disconnect dialog is keyed by the single ACCOUNT the user is removing. Both
-  // resolve against the live connection list, so a disconnect elsewhere drops
-  // the row and (when it was the last account) closes the sheet on its own.
+  // The detail overlay is keyed by TOOLKIT so it shows every account of the app;
+  // the grid below sets it. The overlay owns its own edit / disconnect dialogs.
   const [selectedToolkit, setSelectedToolkit] = useState<string | null>(null);
-  const [disconnectConnId, setDisconnectConnId] = useState<string | null>(null);
-  // The custom-integration edit dialog (opened from the detail sheet's "Edit").
-  const [customEdit, setCustomEdit] = useState<CustomDialogTarget | null>(null);
-  const selectedIsCustom =
-    selectedToolkit !== null && apps.customSlugs.has(selectedToolkit);
-
-  const selectedConnections = selectedToolkit
-    ? apps.connData.filter((c) => c.toolkit === selectedToolkit)
-    : [];
-  const selectedApp =
-    selectedToolkit && selectedConnections.length > 0
-      ? appDisplay(selectedToolkit, apps.bySlug.get(selectedToolkit))
-      : null;
-
-  const disconnectConn = disconnectConnId
-    ? apps.connData.find((c) => c.connectionId === disconnectConnId)
-    : undefined;
-  const disconnectApp = disconnectConn
-    ? appDisplay(
-        disconnectConn.toolkit,
-        apps.bySlug.get(disconnectConn.toolkit),
-      )
-    : null;
 
   const hasConnections = apps.connData.length > 0;
 
@@ -111,6 +75,7 @@ export function IntegrationsReady({
                 onManage={setSelectedToolkit}
                 onRemove={apps.disconnect}
                 customToolkits={apps.customSlugs}
+                mcpToolkits={apps.mcpSlugs}
               />
             )}
           </section>
@@ -122,78 +87,15 @@ export function IntegrationsReady({
           connectFlow={connectFlow}
           loading={apps.catalogLoading}
           customEnabled={apps.customEnabled}
+          mcpEnabled={apps.mcpEnabled}
         />
       </div>
 
-      {selectedApp && (
-        <AppDetailSheet
-          open
-          onOpenChange={(open) => {
-            if (!open) setSelectedToolkit(null);
-          }}
-          display={selectedApp}
-          connections={selectedConnections}
-          agents={apps.agentChips}
-          activeAgentIdsByConnection={apps.activeAgentIdsByConnection}
-          grantsSupported={apps.grantsSupported}
-          canEdit={apps.canEdit}
-          connectInFlight={connectFlow.state !== null}
-          onToggleAgent={(connectionId, agentId, active) =>
-            toggle.mutate({ agentId, connectionId, active })
-          }
-          onRename={(connectionId, alias) =>
-            rename.mutate({ connectionId, alias })
-          }
-          onReconnect={(connectionId) => {
-            const conn = selectedConnections.find(
-              (c) => c.connectionId === connectionId,
-            );
-            if (conn) void connectFlow.connect(conn.toolkit);
-            setSelectedToolkit(null);
-          }}
-          onDisconnect={setDisconnectConnId}
-          onAddAccount={(toolkit) => void connectFlow.connect(toolkit)}
-          custom={selectedIsCustom}
-          onEdit={() => {
-            setCustomEdit({
-              mode: "edit",
-              connectionId: selectedApp.toolkit,
-              name: selectedApp.name,
-              description: selectedApp.description,
-            });
-            setSelectedToolkit(null);
-          }}
-        />
-      )}
-
-      <CustomIntegrationDialog
-        target={customEdit}
-        onClose={() => setCustomEdit(null)}
-        autoGrant={false}
-      />
-
-      <IntegrationDisconnectDialog
-        app={disconnectApp}
-        connectionId={disconnectConnId}
-        accountLabel={
-          disconnectConn
-            ? accountDisplayLabel(disconnectConn, t("account.unnamed"))
-            : undefined
-        }
-        scope="everywhere"
-        affectedAgents={
-          disconnectConnId
-            ? agentChipsFor(
-                apps.accountAgents.get(disconnectConnId) ?? [],
-                apps.chipById,
-              )
-            : undefined
-        }
-        onClose={() => setDisconnectConnId(null)}
-        onConfirm={(connectionId) => {
-          apps.disconnect(connectionId);
-          setDisconnectConnId(null);
-        }}
+      <AppDetailOverlay
+        apps={apps}
+        connectFlow={connectFlow}
+        selectedToolkit={selectedToolkit}
+        onClose={() => setSelectedToolkit(null)}
       />
     </>
   );

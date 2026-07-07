@@ -25,8 +25,9 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** Validate the pending_interaction discriminated union (mirrors the schema):
- *  a `question` needs a `question` string, a `connect` needs a `toolkit`, and a
+ *  a `question` needs a `question` string, a `connect` needs a `toolkit`, a
  *  `custom_integration` needs a proposal with name/baseUrl/description strings
+ *  and an auth object, and an `mcp_server` needs a proposal with name/url strings
  *  and an auth object. */
 const isValidPendingInteraction = (v: unknown): v is PendingInteraction => {
   if (!isRecord(v)) return false;
@@ -39,6 +40,15 @@ const isValidPendingInteraction = (v: unknown): v is PendingInteraction => {
       typeof p.name === "string" &&
       typeof p.baseUrl === "string" &&
       typeof p.description === "string" &&
+      isRecord(p.auth)
+    );
+  }
+  if (v.kind === "mcp_server") {
+    const p = v.proposal;
+    return (
+      isRecord(p) &&
+      typeof p.name === "string" &&
+      typeof p.url === "string" &&
       isRecord(p.auth)
     );
   }

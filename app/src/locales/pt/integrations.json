@@ -173,5 +173,54 @@
       "authPrefix": "O prefixo é muito longo (máximo de 16 caracteres).",
       "apiKey": "Digite a chave de API."
     }
+  },
+  "mcp": {
+    "addCta": "Adicionar um servidor MCP",
+    "addTitle": "Adicionar um servidor MCP",
+    "editTitle": "Editar servidor MCP",
+    "name": "Nome",
+    "namePlaceholder": "ex.: Acme Tracker",
+    "url": "URL do servidor",
+    "urlPlaceholder": "https://mcp.example.com",
+    "urlKeep": "Deixe em branco para manter a URL atual.",
+    "authType": "Autenticação",
+    "authNone": "Nenhuma",
+    "authBearer": "Token Bearer",
+    "authHeader": "Cabeçalho personalizado",
+    "authKeep": "Manter a autenticação atual",
+    "authHeaderName": "Nome do cabeçalho",
+    "authHeaderNamePlaceholder": "X-API-Key",
+    "secret": "Segredo",
+    "secretPlaceholder": "Cole o token",
+    "secretKeep": "Deixe em branco para manter o segredo atual.",
+    "description": "Descrição",
+    "descriptionHint": "Os agentes leem isto para saber quando e como usar o servidor.",
+    "descriptionPlaceholder": "O que este servidor faz e quando usá-lo.",
+    "show": "Mostrar segredo",
+    "hide": "Ocultar segredo",
+    "save": "Adicionar servidor",
+    "saveEdit": "Salvar alterações",
+    "cancel": "Cancelar",
+    "edit": "Editar",
+    "delete": "Excluir",
+    "badge": "MCP",
+    "created": "Servidor MCP adicionado.",
+    "errors": {
+      "name": "Insira um nome de até 64 caracteres.",
+      "url": "Insira uma URL https válida sem usuário ou senha.",
+      "description": "Insira uma descrição de até 500 caracteres.",
+      "authHeader": "Insira um nome de cabeçalho válido.",
+      "authValue": "Insira o valor do segredo."
+    },
+    "card": {
+      "secret": "Segredo",
+      "secretPlaceholder": "Cole o token",
+      "securityNote": "Seu segredo é armazenado com segurança. O agente nunca o vê e ele nunca aparece no chat.",
+      "add": "Adicionar",
+      "notNow": "Agora não",
+      "show": "Mostrar segredo",
+      "hide": "Ocultar segredo",
+      "added": "{{name}} adicionado."
+    }
   }
 }

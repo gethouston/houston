@@ -247,6 +247,17 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           podToken: opts.integrations.podToken,
           custom: true,
         }),
+        // Remote MCP server integrations run behind the SAME upstream — a third
+        // remote adapter whose create/update forward the sealed auth secret to
+        // the gateway (`mcp: true`); the gateway runs the MCP client and surfaces
+        // each server's tools through the standard search/execute path.
+        new RemoteIntegrationProvider({
+          id: "mcp",
+          upstreamUrl: opts.integrations.gatewayUrl,
+          token: () => sessionToken.current,
+          podToken: opts.integrations.podToken,
+          mcp: true,
+        }),
       ])
     : opts.integrations?.composioApiKey
       ? new IntegrationRegistry([

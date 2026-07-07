@@ -4,6 +4,7 @@ import { IntegrationRegistry } from "./registry";
 import {
   mergeSearchAccounts,
   mergeSearchItems,
+  mergeSearchWarnings,
   type ProviderSearch,
   searchAllProviders,
 } from "./sandbox-fanout";
@@ -91,4 +92,26 @@ test("mergeSearchAccounts concatenates provider-attached accounts", () => {
     "c1",
     "acme",
   ]);
+});
+
+test("mergeSearchWarnings concatenates per-provider warnings; none → empty", () => {
+  const searches: ProviderSearch[] = [
+    { id: "composio", result: { items: [] } },
+    {
+      id: "mcp",
+      result: {
+        items: [],
+        warnings: ["MCP server Acme Tracker is unreachable"],
+      },
+    },
+    {
+      id: "mcp",
+      result: { items: [], warnings: ["MCP server Beta timed out"] },
+    },
+  ];
+  expect(mergeSearchWarnings(searches)).toEqual([
+    "MCP server Acme Tracker is unreachable",
+    "MCP server Beta timed out",
+  ]);
+  expect(mergeSearchWarnings([{ id: "x", result: { items: [] } }])).toEqual([]);
 });

@@ -424,3 +424,59 @@ test("gateway-fronted (no grants dep) → sandbox forwards account verbatim, no 
     stop();
   }
 });
+
+test("sandbox execute: MCP action resolves the true (longest) owner across ALL the user's servers, not a shorter granted prefix", async () => {
+  // The agent owns two MCP servers whose slugs share an underscore boundary:
+  // "acme" (granted) and "acme_tracker" (NOT granted). A tool of acme_tracker is
+  // MCP_ACME_TRACKER_LIST_ISSUES. Enforcement must resolve the LONGEST owning
+  // slug among ALL the user's servers (acme_tracker), then check the grant — a
+  // shorter granted "acme" must never borrow acme_tracker's tools.
+  const mcp = new FakeIntegrationProvider({
+    id: "mcp",
+    mcp: true,
+    actions: [
+      {
+        action: "MCP_ACME_TRACKER_LIST_ISSUES",
+        toolkit: "acme_tracker",
+        description: "list issues",
+      },
+      { action: "MCP_ACME_PING", toolkit: "acme", description: "ping" },
+    ],
+  });
+  const { base, ws, agent, vault, grantStore, stop } = await setupWith(mcp);
+  try {
+    // Register both servers as the user's connections (slug == connectionId).
+    await mcp.createMcpServer?.(USER, {
+      name: "acme",
+      url: "https://acme.test",
+      auth: { type: "none" },
+    });
+    await mcp.createMcpServer?.(USER, {
+      name: "acme_tracker",
+      url: "https://acme-tracker.test",
+      auth: { type: "none" },
+    });
+    // Grant ONLY the shorter server.
+    await grantStore.put(agent.id, [{ connectionId: "acme", toolkit: "acme" }]);
+    const sb = vault.sandboxToken(ws.id, agent.id);
+
+    // The ungranted longer server's tool must be denied.
+    const denied = await sandbox(base, sb, "execute", {
+      action: "MCP_ACME_TRACKER_LIST_ISSUES",
+      params: {},
+    });
+    expect(denied.status).toBe(403);
+    expect((await denied.json()).error).toBe("toolkit_not_granted");
+    expect(mcp.lastExecutedAction).toBeUndefined(); // never reached the provider
+
+    // The granted server's own tool still runs.
+    const allowed = await sandbox(base, sb, "execute", {
+      action: "MCP_ACME_PING",
+      params: {},
+    });
+    expect(allowed.status).toBe(200);
+    expect(mcp.lastExecutedAction).toBe("MCP_ACME_PING");
+  } finally {
+    stop();
+  }
+});

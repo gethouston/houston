@@ -173,5 +173,54 @@
       "authPrefix": "The prefix is too long (16 characters max).",
       "apiKey": "Enter the API key."
     }
+  },
+  "mcp": {
+    "addCta": "Add an MCP server",
+    "addTitle": "Add an MCP server",
+    "editTitle": "Edit MCP server",
+    "name": "Name",
+    "namePlaceholder": "e.g. Acme Tracker",
+    "url": "Server URL",
+    "urlPlaceholder": "https://mcp.example.com",
+    "urlKeep": "Leave blank to keep the current URL.",
+    "authType": "Authentication",
+    "authNone": "None",
+    "authBearer": "Bearer token",
+    "authHeader": "Custom header",
+    "authKeep": "Keep current authentication",
+    "authHeaderName": "Header name",
+    "authHeaderNamePlaceholder": "X-API-Key",
+    "secret": "Secret",
+    "secretPlaceholder": "Paste the token",
+    "secretKeep": "Leave blank to keep the current secret.",
+    "description": "Description",
+    "descriptionHint": "Agents read this to know when and how to use the server.",
+    "descriptionPlaceholder": "What this server does and when to use it.",
+    "show": "Show secret",
+    "hide": "Hide secret",
+    "save": "Add server",
+    "saveEdit": "Save changes",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "badge": "MCP",
+    "created": "MCP server added.",
+    "errors": {
+      "name": "Enter a name of up to 64 characters.",
+      "url": "Enter a valid https URL with no username or password.",
+      "description": "Enter a description of up to 500 characters.",
+      "authHeader": "Enter a valid header name.",
+      "authValue": "Enter the secret value."
+    },
+    "card": {
+      "secret": "Secret",
+      "secretPlaceholder": "Paste the token",
+      "securityNote": "Your secret is stored securely. The agent never sees it and it never appears in chat.",
+      "add": "Add",
+      "notNow": "Not now",
+      "show": "Show secret",
+      "hide": "Hide secret",
+      "added": "{{name}} added."
+    }
   }
 }

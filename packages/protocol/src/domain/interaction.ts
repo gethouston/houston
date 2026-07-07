@@ -19,6 +19,17 @@ export type CustomIntegrationAuth =
   | { type: "header"; header: string; prefix?: string }
   | { type: "query"; param: string };
 
+/**
+ * How a remote MCP server authenticates. As with {@link CustomIntegrationAuth}
+ * the secret VALUE never travels on this shape (nor on any PendingInteraction) —
+ * only how to attach it: a bearer token, a custom header carrying the raw value,
+ * or nothing at all. The gateway injects the stored value at request time.
+ */
+export type McpServerAuth =
+  | { type: "none" }
+  | { type: "bearer" }
+  | { type: "header"; header: string };
+
 export type PendingInteraction =
   | { kind: "question"; question: string; options?: InteractionOption[] }
   | { kind: "connect"; toolkit: string; reason?: string }
@@ -32,6 +43,19 @@ export type PendingInteraction =
         baseUrl: string;
         auth: CustomIntegrationAuth;
         description: string;
+      };
+      reason?: string;
+    }
+  // The model proposed connecting a remote MCP server, described by name/URL/auth
+  // scheme. Carries NO secret — the user supplies the bearer token or header value
+  // in the card that renders in place of the chat input.
+  | {
+      kind: "mcp_server";
+      proposal: {
+        name: string;
+        url: string;
+        auth: McpServerAuth;
+        description?: string;
       };
       reason?: string;
     };

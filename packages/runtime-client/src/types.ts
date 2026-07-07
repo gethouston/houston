@@ -20,6 +20,7 @@ export type {
   LoginInfo,
   LoginState,
   LoginStatus,
+  McpServerAuth,
   PendingInteraction,
   ProviderAuth,
   ProviderError,

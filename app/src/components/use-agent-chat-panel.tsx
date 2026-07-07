@@ -106,7 +106,10 @@ import { parseToolkitFromHref } from "./integration-connect-card-state";
 import {
   customIntegrationsSupported,
   integrationsSupported,
+  mcpIntegrationsSupported,
 } from "./integrations/capabilities";
+import { McpServerCard } from "./mcp-server-card";
+import { resolveMcpCardTarget } from "./mcp-server-card-state";
 import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
 import { ProviderSwitchDialog } from "./provider-switch-dialog";
 import { SelectedSkillChip } from "./selected-skill-chip";
@@ -220,6 +223,10 @@ export function useAgentChatPanel({
   // proposal, but has no `custom` provider to create against. Gate the setup
   // card on this narrower predicate so it never renders where Add would 404.
   const customIntegrationsEnabled = customIntegrationsSupported(capabilities);
+  // The remote MCP-server provider is likewise a strict subset: a host without
+  // the `mcp` provider can still emit an `mcp_server` proposal, but has nothing
+  // to create against. Gate the MCP setup card on this narrower predicate too.
+  const mcpIntegrationsEnabled = mcpIntegrationsSupported(capabilities);
 
   // Teams E8: in a multiplayer Teams org the composer's model + effort pickers
   // read+write the ACTING user's PERSONAL per-agent choice (clamped to the
@@ -823,42 +830,71 @@ export function useAgentChatPanel({
     [integrationsEnabled, agent, capabilities, handleIntegrationConnected],
   );
 
-  // ── Custom-integration setup card (in place of the composer) ───────────
-  // When the open conversation is waiting on a `custom_integration` proposal,
-  // take over the composer with a secure card that collects the API key and
-  // creates + grants the integration. `resolvedProposals` suppresses a card the
-  // user already added or dismissed (keyed by activity + proposal so a LATER,
-  // different proposal on the same activity still shows) until the server clears
-  // the pending interaction on the next turn.
+  // ── Integration setup cards (in place of the composer) ─────────────────
+  // When the open conversation is waiting on a `custom_integration` or
+  // `mcp_server` proposal, take over the composer with a secure card that
+  // collects the secret and creates + grants the integration. `resolvedProposals`
+  // suppresses a card the user already added or dismissed (keyed by activity +
+  // proposal so a LATER, different proposal on the same activity still shows)
+  // until the server clears the pending interaction on the next turn. At most one
+  // proposal is pending at a time (one `pending_interaction`), so the two
+  // resolvers never both match; custom is checked first purely for order.
   const [resolvedProposals, setResolvedProposals] = useState<Set<string>>(
     () => new Set(),
   );
   const composerOverride = useMemo<AIBoardProps["composerOverride"]>(() => {
     if (!agent) return undefined;
-    const target = resolveCustomCardTarget(
+    const settle = (dismissKey: string) => () =>
+      setResolvedProposals((prev) => new Set(prev).add(dismissKey));
+    const pending = selectedActivity?.pending_interaction;
+    const customTarget = resolveCustomCardTarget(
       customIntegrationsEnabled,
       selectedActivityId,
-      selectedActivity?.pending_interaction,
+      pending,
       resolvedProposals,
     );
-    if (!target) return undefined;
-    const settle = () =>
-      setResolvedProposals((prev) => new Set(prev).add(target.dismissKey));
-    return (
-      <CustomIntegrationCard
-        proposal={target.proposal}
-        reason={target.reason}
-        agentId={agent.id}
-        autoGrant={canManageAgentGrants(capabilities, agent)}
-        onAdded={(name) => {
-          settle();
-          handleIntegrationConnected(name, name);
-        }}
-        onDismiss={settle}
-      />
+    if (customTarget) {
+      const done = settle(customTarget.dismissKey);
+      return (
+        <CustomIntegrationCard
+          proposal={customTarget.proposal}
+          reason={customTarget.reason}
+          agentId={agent.id}
+          autoGrant={canManageAgentGrants(capabilities, agent)}
+          onAdded={(name) => {
+            done();
+            handleIntegrationConnected(name, name);
+          }}
+          onDismiss={done}
+        />
+      );
+    }
+    const mcpTarget = resolveMcpCardTarget(
+      mcpIntegrationsEnabled,
+      selectedActivityId,
+      pending,
+      resolvedProposals,
     );
+    if (mcpTarget) {
+      const done = settle(mcpTarget.dismissKey);
+      return (
+        <McpServerCard
+          proposal={mcpTarget.proposal}
+          reason={mcpTarget.reason}
+          agentId={agent.id}
+          autoGrant={canManageAgentGrants(capabilities, agent)}
+          onAdded={(name) => {
+            done();
+            handleIntegrationConnected(name, name);
+          }}
+          onDismiss={done}
+        />
+      );
+    }
+    return undefined;
   }, [
     customIntegrationsEnabled,
+    mcpIntegrationsEnabled,
     agent,
     selectedActivityId,
     selectedActivity,

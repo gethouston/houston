@@ -64,6 +64,7 @@ describe("buildToolSelection", () => {
       "integration_execute",
       "request_connection",
       "propose_custom_integration",
+      "propose_mcp_server",
     ]);
   });
 });

@@ -48,3 +48,13 @@ export function mergeSearchAccounts(
 ): ConnectedAccountInfo[] {
   return searches.flatMap((s) => s.result.accounts ?? []);
 }
+
+/**
+ * Merge each provider's non-fatal warnings (a provider that queries several
+ * remote servers, like MCP, can have some fail while others succeed). Surfaced to
+ * the agent verbatim so a failing server is never silently dropped. No warnings
+ * anywhere → an empty list.
+ */
+export function mergeSearchWarnings(searches: ProviderSearch[]): string[] {
+  return searches.flatMap((s) => s.result.warnings ?? []);
+}

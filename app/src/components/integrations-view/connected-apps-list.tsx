@@ -9,6 +9,7 @@ import {
   accountDisplayLabel,
   type ConnectFlow,
   CustomBadge,
+  McpBadge,
   PendingConnectionCallout,
 } from "../integrations";
 
@@ -36,6 +37,8 @@ interface ConnectedAppsListProps {
   onRemove: (connectionId: string) => void;
   /** Toolkit slugs that are custom API-key integrations (get a "Custom" badge). */
   customToolkits?: ReadonlySet<string>;
+  /** Toolkit slugs that are remote MCP server integrations (get an "MCP" badge). */
+  mcpToolkits?: ReadonlySet<string>;
 }
 
 /**
@@ -55,6 +58,7 @@ export function ConnectedAppsList({
   onManage,
   onRemove,
   customToolkits,
+  mcpToolkits,
 }: ConnectedAppsListProps) {
   const { t } = useTranslation("integrations");
   return (
@@ -85,7 +89,13 @@ export function ConnectedAppsList({
               key={toolkit}
               display={app}
               status="active"
-              badge={customToolkits?.has(toolkit) ? <CustomBadge /> : undefined}
+              badge={
+                customToolkits?.has(toolkit) ? (
+                  <CustomBadge />
+                ) : mcpToolkits?.has(toolkit) ? (
+                  <McpBadge />
+                ) : undefined
+              }
               description={
                 connections.length > 1
                   ? t("account.count", { count: connections.length })

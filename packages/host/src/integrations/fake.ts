@@ -3,6 +3,7 @@ import type {
   CustomIntegrationHost,
   ExecuteOptions,
   IntegrationProvider,
+  McpIntegrationHost,
 } from "./provider";
 import {
   type ActionResult,
@@ -11,6 +12,8 @@ import {
   type CustomIntegrationCreate,
   type CustomIntegrationPatch,
   IntegrationSigninRequiredError,
+  type McpServerCreate,
+  type McpServerPatch,
   type ProviderReadiness,
   type SearchResult,
   type Toolkit,
@@ -49,6 +52,15 @@ export class FakeIntegrationProvider implements IntegrationProvider {
    */
   createCustom?: CustomIntegrationHost["createCustom"];
   updateCustom?: CustomIntegrationHost["updateCustom"];
+  /**
+   * Present only when constructed with `mcp: true` — the double for an
+   * `McpIntegrationHost` provider (create/update record an in-memory MCP server).
+   * `supportsMcp` duck-types on these, so a plain fake stays a non-MCP provider.
+   */
+  createMcpServer?: McpIntegrationHost["createMcpServer"];
+  updateMcpServer?: McpIntegrationHost["updateMcpServer"];
+  /** Test helper: non-fatal warnings this fake's search returns (unreachable server). */
+  searchWarnings?: string[];
   private seq = 0;
 
   constructor(
@@ -57,6 +69,7 @@ export class FakeIntegrationProvider implements IntegrationProvider {
       toolkits?: Toolkit[];
       actions?: ToolMatch[];
       custom?: boolean;
+      mcp?: boolean;
     } = {},
   ) {
     this.id = opts.id ?? "fake";
@@ -73,6 +86,42 @@ export class FakeIntegrationProvider implements IntegrationProvider {
       this.updateCustom = (userId, connectionId, patch) =>
         this.editCustom(userId, connectionId, patch);
     }
+    if (opts.mcp) {
+      this.createMcpServer = (userId, config) => this.addMcp(userId, config);
+      this.updateMcpServer = (userId, connectionId, patch) =>
+        this.editMcp(userId, connectionId, patch);
+    }
+  }
+
+  /** An MCP server maps to one active connection keyed by a slug (like custom). */
+  private async addMcp(
+    userId: string,
+    config: McpServerCreate,
+  ): Promise<Connection> {
+    const slug = config.name.toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+    const conn: Connection = {
+      toolkit: slug,
+      connectionId: slug,
+      status: "active",
+      accountLabel: config.name,
+    };
+    const list = this.connections.get(userId) ?? [];
+    list.push(conn);
+    this.connections.set(userId, list);
+    return { ...conn };
+  }
+
+  private async editMcp(
+    userId: string,
+    connectionId: string,
+    patch: McpServerPatch,
+  ): Promise<Connection> {
+    const conn = (this.connections.get(userId) ?? []).find(
+      (c) => c.connectionId === connectionId,
+    );
+    if (!conn) throw new Error(`fake: mcp '${connectionId}' not found`);
+    if (patch.name) conn.accountLabel = patch.name; // rename keeps the slug stable
+    return { ...conn };
   }
 
   /** A custom integration maps to one active connection keyed by a slug. */
@@ -197,8 +246,12 @@ export class FakeIntegrationProvider implements IntegrationProvider {
           a.action.toLowerCase().includes(q),
       )
       .map((a) => ({ ...a, connected: activeToolkits.has(a.toolkit) }));
-    // Raw adapter: `items` only — the policy layer adds `accounts`.
-    return { items };
+    // Raw adapter: `items` (+ optional non-fatal `warnings`); the policy layer
+    // adds `accounts`.
+    return {
+      items,
+      ...(this.searchWarnings ? { warnings: this.searchWarnings } : {}),
+    };
   }
 
   async execute(

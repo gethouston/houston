@@ -6,12 +6,12 @@ import { useUIStore } from "../stores/ui";
 import {
   type CustomProposal,
   canSubmitKey,
-  customFaviconUrl,
   deriveCustomCardView,
   hostnameFromBaseUrl,
 } from "./custom-integration-card-state";
 import { CustomBadge } from "./integrations";
 import { useCustomIntegrationFlow } from "./integrations/use-custom-integration-flow";
+import { ProposalLogo } from "./proposal-logo";
 
 interface CustomIntegrationCardProps {
   /** The agent-authored proposal (name, base URL, auth scheme, description). */
@@ -85,7 +85,7 @@ export function CustomIntegrationCard({
   return (
     <div className="rounded-[22px] border border-border/50 bg-card p-4 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
       <div className="flex items-center gap-3">
-        <ProposalLogo name={proposal.name} baseUrl={proposal.baseUrl} />
+        <ProposalLogo name={proposal.name} url={proposal.baseUrl} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate text-sm font-semibold text-foreground">
@@ -159,31 +159,5 @@ export function CustomIntegrationCard({
         </div>
       </form>
     </div>
-  );
-}
-
-/**
- * A hostname-favicon logo with an initial-letter fallback (span-free block form,
- * since this card replaces the composer rather than nesting in prose).
- */
-function ProposalLogo({ name, baseUrl }: { name: string; baseUrl: string }) {
-  const [imgError, setImgError] = useState(false);
-  const favicon = customFaviconUrl(baseUrl);
-  if (imgError || !favicon) {
-    return (
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent">
-        <span className="text-xs font-semibold text-muted-foreground">
-          {name.charAt(0).toUpperCase()}
-        </span>
-      </div>
-    );
-  }
-  return (
-    <img
-      src={favicon}
-      alt={name}
-      className="size-8 shrink-0 rounded-lg object-contain"
-      onError={() => setImgError(true)}
-    />
   );
 }

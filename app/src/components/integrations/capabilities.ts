@@ -51,3 +51,28 @@ export function customSlugSet(
 ): Set<string> {
   return new Set(connections.map((c) => c.connectionId));
 }
+
+/**
+ * Whether this deployment ALSO serves the remote MCP server provider (a third
+ * provider that runs in the cloud gateway, advertised as `"mcp"` in
+ * `/v1/capabilities`). Separate from `customIntegrationsSupported` because a host
+ * can serve one without the other, and the MCP "add" CTA + MCP cards must stay
+ * hidden where the gateway does not run it. The literal mirrors
+ * `MCP_INTEGRATION_PROVIDER` (kept in the query-keys module to avoid a
+ * pure-module → hooks import).
+ */
+export function mcpIntegrationsSupported(
+  capabilities: Pick<Capabilities, "integrations"> | null,
+): boolean {
+  return capabilities?.integrations.includes("mcp") ?? false;
+}
+
+/**
+ * The set of slugs behind a list of MCP server connections. For an MCP server
+ * the slug IS both the `toolkit` and the `connectionId`, so a single set answers
+ * "is this row / this connection an MCP server?" by either key (routes the detail
+ * sheet, the disconnect provider, and the "add another account" suppression).
+ */
+export function mcpSlugSet(connections: IntegrationConnection[]): Set<string> {
+  return new Set(connections.map((c) => c.connectionId));
+}

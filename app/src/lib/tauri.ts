@@ -18,6 +18,7 @@ import type {
   CustomIntegrationConfig,
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
+  McpServerConfig,
   ProviderAuthState,
 } from "@houston-ai/engine-client";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
@@ -1381,6 +1382,24 @@ export const tauriIntegrations = {
   ) =>
     call("integration_update_custom", () =>
       getEngine().updateCustomIntegration(provider, connectionId, patch),
+    ),
+  /** Connect a remote MCP server (provider `"mcp"`). The auth secret is sealed
+   *  server-side and never returned; the gateway performs the MCP calls. */
+  createMcp: (
+    provider: string,
+    config: McpServerConfig & { authValue?: string },
+  ) =>
+    call("integration_create_mcp", () =>
+      getEngine().createMcpServer(provider, config),
+    ),
+  /** Edit an MCP server; an omitted `authValue` keeps the stored secret. */
+  updateMcp: (
+    provider: string,
+    connectionId: string,
+    patch: Partial<McpServerConfig> & { authValue?: string },
+  ) =>
+    call("integration_update_mcp", () =>
+      getEngine().updateMcpServer(provider, connectionId, patch),
     ),
   /** Dismiss the reconnect notice (deletes the legacy credentials server-side). */
   dismissReconnectNotice: () =>

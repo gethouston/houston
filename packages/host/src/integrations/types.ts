@@ -106,6 +106,35 @@ export type CustomIntegrationPatch = Partial<CustomIntegrationConfig> & {
 };
 
 /**
+ * How a remote MCP server integration (Streamable HTTP transport) authenticates.
+ * `bearer` sends `Authorization: Bearer <value>`; `header` sends
+ * `<header>: <value>`; `none` is unauthenticated. The secret VALUE is never part
+ * of this shape — it rides separately as a write-only `authValue`, stored sealed
+ * and injected gateway-side only, so it is never echoed back to a client.
+ */
+export type McpServerAuth =
+  | { type: "none" }
+  | { type: "bearer" }
+  | { type: "header"; header: string };
+
+/** The non-secret configuration of a remote MCP server integration. */
+export interface McpServerConfig {
+  name: string;
+  url: string;
+  auth: McpServerAuth;
+  description?: string;
+}
+
+/** A create body: the config plus the (write-only) auth secret to seal at rest. */
+export type McpServerCreate = McpServerConfig & { authValue?: string };
+
+/**
+ * An update body: any subset of the config; an omitted `authValue` keeps the
+ * stored secret (the gateway reseals only when a new value is supplied).
+ */
+export type McpServerPatch = Partial<McpServerConfig> & { authValue?: string };
+
+/**
  * The result of a search(): the matched actions, plus (when the policy layer
  * adds them) the acting agent's granted accounts so the model can pick one to
  * pass to execute(). Direct adapters return `items` only.
@@ -113,6 +142,14 @@ export type CustomIntegrationPatch = Partial<CustomIntegrationConfig> & {
 export interface SearchResult {
   items: ToolMatch[];
   accounts?: ConnectedAccountInfo[];
+  /**
+   * Human-readable, NON-fatal per-provider failures surfaced to the agent
+   * verbatim (e.g. "MCP server Acme Tracker is unreachable"). A provider that
+   * queries several remote servers (MCP) can have some fail while others succeed:
+   * those failures become warnings rather than dropping the whole search or
+   * silently shrinking the results. Absent when nothing failed.
+   */
+  warnings?: string[];
 }
 
 /** The outcome of running an action. */

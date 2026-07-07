@@ -15,6 +15,8 @@ export {
   customIntegrationsSupported,
   customSlugSet,
   integrationsSupported,
+  mcpIntegrationsSupported,
+  mcpSlugSet,
 } from "./capabilities";
 export { ConnectMoreAppsSection } from "./connect-more-apps";
 export {
@@ -44,6 +46,23 @@ export {
   validateEdit,
 } from "./custom-integration-model";
 export { IntegrationDisconnectDialog } from "./integration-disconnect-dialog";
+export { McpBadge } from "./mcp-badge";
+export { type McpDialogTarget, McpServerDialog } from "./mcp-server-dialog";
+export {
+  buildMcpAuth,
+  editMcpForm,
+  emptyMcpForm,
+  MCP_AUTH_TYPES,
+  type McpAuthMode,
+  type McpAuthType,
+  type McpCreateResult,
+  type McpFieldError,
+  type McpFormValues,
+  type McpPatch,
+  type McpPatchResult,
+  validateCreate as validateMcpCreate,
+  validateEdit as validateMcpEdit,
+} from "./mcp-server-model";
 export {
   accountDisplayLabel,
   BROWSE_PAGE_SIZE,
@@ -82,3 +101,9 @@ export {
   type IntegrationsGate,
   useIntegrationsGate,
 } from "./use-integrations-gate";
+export {
+  type McpIntegrationsData,
+  useMcpIntegrations,
+} from "./use-mcp-integrations";
+export { type McpServerFlow, useMcpServerFlow } from "./use-mcp-server-flow";
+export { useProviderDisconnect } from "./use-provider-disconnect";

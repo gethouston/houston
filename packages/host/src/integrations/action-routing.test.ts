@@ -3,6 +3,9 @@ import {
   CUSTOM_PROVIDER_ID,
   customActionSlug,
   isCustomAction,
+  isMcpAction,
+  MCP_PROVIDER_ID,
+  mcpActionRemainder,
   providerForAction,
 } from "./action-routing";
 
@@ -43,4 +46,37 @@ test("providerForAction: empty registry throws (never a silent default)", () => 
   expect(() => providerForAction("CUSTOM_ACME_REQUEST", [])).toThrow(
     /no providers registered/,
   );
+});
+
+test("isMcpAction recognizes the MCP_ prefix (case-insensitive)", () => {
+  expect(isMcpAction("MCP_ACME_TRACKER_LIST_ISSUES")).toBe(true);
+  expect(isMcpAction("mcp_acme_list")).toBe(true);
+  expect(isMcpAction("GMAIL_SEND_EMAIL")).toBe(false);
+  expect(isMcpAction("MYMCP_X")).toBe(false);
+});
+
+test("mcpActionRemainder strips the MCP_ prefix, lowercased", () => {
+  expect(mcpActionRemainder("MCP_ACME_TRACKER_LIST_ISSUES")).toBe(
+    "acme_tracker_list_issues",
+  );
+  expect(mcpActionRemainder("MCP_X_DO")).toBe("x_do");
+  // Not an MCP action, or nothing after the prefix → null.
+  expect(mcpActionRemainder("GMAIL_SEND_EMAIL")).toBeNull();
+  expect(mcpActionRemainder("MCP_")).toBeNull();
+});
+
+test("providerForAction: MCP_ routes to mcp when registered, else the default", () => {
+  expect(
+    providerForAction("MCP_ACME_LIST", ["composio", MCP_PROVIDER_ID]),
+  ).toBe("mcp");
+  // CUSTOM_ and MCP_ are independent branches over the same registry.
+  expect(
+    providerForAction("CUSTOM_ACME_REQUEST", [
+      "composio",
+      CUSTOM_PROVIDER_ID,
+      MCP_PROVIDER_ID,
+    ]),
+  ).toBe("custom");
+  // No mcp provider registered → default (first) provider, never a throw.
+  expect(providerForAction("MCP_ACME_LIST", ["composio"])).toBe("composio");
 });

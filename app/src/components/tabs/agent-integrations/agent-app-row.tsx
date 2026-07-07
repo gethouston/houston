@@ -6,6 +6,7 @@ import {
   type ConnectFlow,
   ConnectionStatusBadge,
   CustomBadge,
+  McpBadge,
   PendingConnectionCallout,
 } from "../../integrations";
 import type { AgentAppRow as AgentAppRowVM } from "./model";
@@ -40,15 +41,15 @@ export function AgentAppRow({
   onAddAccount,
 }: AgentAppRowProps) {
   const { t } = useTranslation("integrations");
-  const { connection, app, showAccountLabel, custom } = row;
+  const { connection, app, showAccountLabel, custom, mcp } = row;
   const status = connection.status;
   const description = showAccountLabel
     ? accountDisplayLabel(connection, t("account.unnamed"))
     : app.description;
-  // Custom API-key integrations have a single implicit account, so no "add
-  // another account" affordance (there is no second login to link).
-  const canAddAccount = onAddAccount != null && !custom;
-  const badge = custom ? <CustomBadge /> : undefined;
+  // Custom API-key integrations and MCP servers have a single implicit account,
+  // so no "add another account" affordance (there is no second login to link).
+  const canAddAccount = onAddAccount != null && !custom && !mcp;
+  const badge = custom ? <CustomBadge /> : mcp ? <McpBadge /> : undefined;
 
   if (status === "active") {
     const showActions = canEdit && (canAddAccount || onDeactivate != null);

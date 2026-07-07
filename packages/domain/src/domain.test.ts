@@ -138,6 +138,22 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
         },
       },
       {
+        id: "mcp",
+        title: "MCP",
+        status: "needs_you",
+        description: "",
+        pending_interaction: {
+          kind: "mcp_server",
+          proposal: {
+            name: "Acme Tracker",
+            url: "https://mcp.acme.example",
+            auth: { type: "bearer" },
+            description: "Acme issue tracker",
+          },
+          reason: "to read your open issues",
+        },
+      },
+      {
         id: "bad",
         title: "Broken",
         status: "needs_you",
@@ -149,7 +165,7 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
     "k",
   );
 
-  expect(items.map((a) => a.id)).toEqual(["q", "c", "ci", "bad"]); // activity kept, only the field dropped
+  expect(items.map((a) => a.id)).toEqual(["q", "c", "ci", "mcp", "bad"]); // activity kept, only the field dropped
   expect(items[0]?.pending_interaction).toEqual({
     kind: "question",
     question: "Which deck?",
@@ -169,7 +185,17 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
     },
     reason: "to read your CRM contacts",
   });
-  expect(items[3]?.pending_interaction).toBeUndefined();
+  expect(items[3]?.pending_interaction).toEqual({
+    kind: "mcp_server",
+    proposal: {
+      name: "Acme Tracker",
+      url: "https://mcp.acme.example",
+      auth: { type: "bearer" },
+      description: "Acme issue tracker",
+    },
+    reason: "to read your open issues",
+  });
+  expect(items[4]?.pending_interaction).toBeUndefined();
   expect(diagnostics).toHaveLength(1);
   expect(diagnostics[0]?.message).toContain("pending_interaction");
 });

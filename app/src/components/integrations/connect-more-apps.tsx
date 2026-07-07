@@ -12,6 +12,7 @@ import {
   type CustomDialogTarget,
   CustomIntegrationDialog,
 } from "./custom-integration-dialog";
+import { type McpDialogTarget, McpServerDialog } from "./mcp-server-dialog";
 import type { ConnectFlow } from "./use-connect-flow";
 
 interface ConnectMoreAppsSectionProps {
@@ -26,6 +27,11 @@ interface ConnectMoreAppsSectionProps {
    * provider render exactly as before.
    */
   customEnabled?: boolean;
+  /**
+   * When the MCP server provider is wired, the footer shows the "add an MCP
+   * server" CTA beside the custom one. Off (default) hides it.
+   */
+  mcpEnabled?: boolean;
   /** Agent context: a newly added custom integration auto-grants to this agent. */
   agentId?: string;
   autoGrant?: boolean;
@@ -46,6 +52,7 @@ export function ConnectMoreAppsSection({
   connectFlow,
   loading,
   customEnabled,
+  mcpEnabled,
   agentId,
   autoGrant,
 }: ConnectMoreAppsSectionProps) {
@@ -53,6 +60,7 @@ export function ConnectMoreAppsSection({
   const [customTarget, setCustomTarget] = useState<CustomDialogTarget | null>(
     null,
   );
+  const [mcpTarget, setMcpTarget] = useState<McpDialogTarget | null>(null);
   const bySlug = useMemo(
     () => new Map(catalog.map((tk) => [tk.slug, tk])),
     [catalog],
@@ -108,23 +116,42 @@ export function ConnectMoreAppsSection({
         onConnect={(toolkit) => void connectFlow.connect(toolkit)}
       />
 
-      {customEnabled && (
-        <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+      {(customEnabled || mcpEnabled) && (
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
           <span className="text-muted-foreground">{t("custom.cantFind")}</span>
-          <button
-            type="button"
-            onClick={() => setCustomTarget({ mode: "create" })}
-            className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4 decoration-dotted transition-colors hover:text-primary"
-          >
-            <Plus className="size-3.5" />
-            {t("custom.addCta")}
-          </button>
+          {customEnabled && (
+            <button
+              type="button"
+              onClick={() => setCustomTarget({ mode: "create" })}
+              className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4 decoration-dotted transition-colors hover:text-primary"
+            >
+              <Plus className="size-3.5" />
+              {t("custom.addCta")}
+            </button>
+          )}
+          {mcpEnabled && (
+            <button
+              type="button"
+              onClick={() => setMcpTarget({ mode: "create" })}
+              className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4 decoration-dotted transition-colors hover:text-primary"
+            >
+              <Plus className="size-3.5" />
+              {t("mcp.addCta")}
+            </button>
+          )}
         </div>
       )}
 
       <CustomIntegrationDialog
         target={customTarget}
         onClose={() => setCustomTarget(null)}
+        agentId={agentId}
+        autoGrant={autoGrant ?? false}
+      />
+
+      <McpServerDialog
+        target={mcpTarget}
+        onClose={() => setMcpTarget(null)}
         agentId={agentId}
         autoGrant={autoGrant ?? false}
       />

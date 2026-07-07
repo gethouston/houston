@@ -47,13 +47,13 @@ function mockFetch(
   return calls;
 }
 
-const [search, execute, requestConnection, proposeCustom] =
+const [search, execute, requestConnection, proposeCustom, proposeMcp] =
   makeIntegrationTools({
     baseUrl: "https://host.test/",
     sandboxToken: "sb-tok",
   });
-if (!search || !execute || !requestConnection || !proposeCustom)
-  throw new Error("expected four integration tools");
+if (!search || !execute || !requestConnection || !proposeCustom || !proposeMcp)
+  throw new Error("expected five integration tools");
 
 // pi's tool.execute takes (id, params, signal, onUpdate, ctx); the last two are
 // irrelevant to these proxies, so one helper supplies them.
@@ -61,17 +61,19 @@ const ctx = {} as unknown as ExtensionContext;
 const run = (tool: typeof search, params: unknown) =>
   tool.execute("id", params as never, undefined, undefined, ctx);
 
-test("returns the generic tools plus the two hand-off tools, correctly named", () => {
+test("returns the generic tools plus the three hand-off tools, correctly named", () => {
   expect([
     search.name,
     execute.name,
     requestConnection.name,
     proposeCustom.name,
+    proposeMcp.name,
   ]).toEqual([
     "integration_search",
     "integration_execute",
     "request_connection",
     "propose_custom_integration",
+    "propose_mcp_server",
   ]);
 });
 
@@ -212,6 +214,40 @@ test("search stays quiet when every granted app has a single account", async () 
   const text = (out.content[0] as { text: string }).text;
   expect(text).not.toContain("Accounts for");
   expect(text).not.toContain("pass the account parameter");
+});
+
+test("search appends per-server warnings verbatim after the matches", async () => {
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "MCP_ACME_TRACKER_LIST_ISSUES",
+          toolkit: "acme_tracker",
+          description: "List issues",
+          connected: true,
+        },
+      ],
+      warnings: ["MCP server Acme Tracker is unreachable"],
+    },
+  }));
+  const out = await run(search, { query: "list issues" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain("- MCP_ACME_TRACKER_LIST_ISSUES (acme_tracker):");
+  // A failing server is never silently dropped — its warning rides at the end.
+  expect(text).toContain("MCP server Acme Tracker is unreachable");
+});
+
+test("search surfaces warnings even when nothing matched", async () => {
+  mockFetch(() => ({
+    body: {
+      items: [],
+      warnings: ["MCP server Acme Tracker is unreachable"],
+    },
+  }));
+  const out = await run(search, { query: "nothing here" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain('No actions found for "nothing here".');
+  expect(text).toContain("MCP server Acme Tracker is unreachable");
 });
 
 test("execute runs an action and returns its data; a failed action surfaces", async () => {
@@ -410,6 +446,96 @@ test("propose_custom_integration rejects blank required fields", async () => {
         description: "records",
       }),
     ).rejects.toThrow(/non-empty authField/i),
+  );
+});
+
+test("propose_mcp_server records a bearer-auth proposal, no secret handling", async () => {
+  const holder = newInteractionHolder();
+  const out = await runWithInteractionCapture(holder, () =>
+    run(proposeMcp, {
+      name: "  Acme Tracker  ",
+      url: "  https://mcp.acme.com/sse  ",
+      authType: "bearer",
+      description: "  Acme issue tracker  ",
+      reason: "  to read your open issues  ",
+    }),
+  );
+  // Trimmed fields; bearer auth maps to { type: "bearer" } with no secret.
+  expect(holder.pending).toEqual({
+    kind: "mcp_server",
+    proposal: {
+      name: "Acme Tracker",
+      url: "https://mcp.acme.com/sse",
+      auth: { type: "bearer" },
+      description: "Acme issue tracker",
+    },
+    reason: "to read your open issues",
+  });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toMatch(/end your turn/i);
+  expect(text).toMatch(/do not ask the user to paste a token/i);
+});
+
+test("propose_mcp_server maps header auth and omits empty description/reason", async () => {
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, () =>
+    run(proposeMcp, {
+      name: "Widgets",
+      url: "https://mcp.widgets.io",
+      authType: "header",
+      authHeader: "  X-Api-Key  ",
+    }),
+  );
+  // Header auth maps to { type: "header", header }; no description, no reason.
+  expect(holder.pending).toEqual({
+    kind: "mcp_server",
+    proposal: {
+      name: "Widgets",
+      url: "https://mcp.widgets.io",
+      auth: { type: "header", header: "X-Api-Key" },
+    },
+  });
+});
+
+test("propose_mcp_server maps none auth for a public server", async () => {
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, () =>
+    run(proposeMcp, {
+      name: "Public MCP",
+      url: "https://mcp.public.io",
+      authType: "none",
+    }),
+  );
+  expect(holder.pending).toEqual({
+    kind: "mcp_server",
+    proposal: {
+      name: "Public MCP",
+      url: "https://mcp.public.io",
+      auth: { type: "none" },
+    },
+  });
+});
+
+test("propose_mcp_server rejects blank name/url and a header without a name", async () => {
+  await runWithInteractionCapture(newInteractionHolder(), () =>
+    expect(
+      run(proposeMcp, { name: "  ", url: "https://mcp.io", authType: "none" }),
+    ).rejects.toThrow(/non-empty name/i),
+  );
+  await runWithInteractionCapture(newInteractionHolder(), () =>
+    expect(
+      run(proposeMcp, { name: "X", url: "  ", authType: "none" }),
+    ).rejects.toThrow(/non-empty url/i),
+  );
+  await runWithInteractionCapture(newInteractionHolder(), () =>
+    expect(
+      run(proposeMcp, {
+        name: "X",
+        url: "https://mcp.io",
+        authType: "header",
+        authHeader: "   ",
+      }),
+    ).rejects.toThrow(/non-empty authHeader/i),
   );
 });
 

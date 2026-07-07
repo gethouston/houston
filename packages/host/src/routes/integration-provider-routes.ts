@@ -3,10 +3,13 @@ import type { UserId } from "../domain/types";
 import {
   type IntegrationProvider,
   supportsCustom,
+  supportsMcp,
 } from "../integrations/provider";
 import type {
   CustomIntegrationCreate,
   CustomIntegrationPatch,
+  McpServerCreate,
+  McpServerPatch,
 } from "../integrations/types";
 import { json, readJson } from "./http";
 
@@ -95,6 +98,31 @@ export async function handleProviderSubRoute(
       userId,
       connectionId,
       patch as CustomIntegrationPatch,
+    );
+    json(res, 200, { connection });
+    return true;
+  }
+  // MCP server create/update — the same generic passthrough as custom, to a
+  // provider that implements McpIntegrationHost (the gateway does the real
+  // reachability + SSRF/shape validation, mode 1). A provider without the
+  // capability falls through to the caller's 404.
+  if (sub === "create" && method === "POST" && supportsMcp(provider)) {
+    const config = (await readJson(req)) as unknown as McpServerCreate;
+    const connection = await provider.createMcpServer(userId, config);
+    json(res, 200, { connection });
+    return true;
+  }
+  if (sub === "update" && method === "POST" && supportsMcp(provider)) {
+    const body = await readJson(req);
+    if (typeof body.connectionId !== "string" || body.connectionId.length < 1) {
+      json(res, 400, { error: "missing 'connectionId'" });
+      return true;
+    }
+    const { connectionId, ...patch } = body;
+    const connection = await provider.updateMcpServer(
+      userId,
+      connectionId,
+      patch as McpServerPatch,
     );
     json(res, 200, { connection });
     return true;

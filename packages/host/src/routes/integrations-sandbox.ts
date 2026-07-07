@@ -21,8 +21,8 @@ import {
  * `integration_execute` tools call THIS, never the provider directly — no
  * integration secret ever sits in the agent runtime. The host resolves the
  * sandbox → its workspace owner → that user's id with the provider. Search fans
- * out over ALL wired providers (composio + custom) and execute routes by the
- * action name; the actual ops live in integrations-sandbox-ops.ts, the
+ * out over ALL wired providers (composio + custom + mcp) and execute routes by
+ * the action name; the actual ops live in integrations-sandbox-ops.ts, the
  * user-facing routes in integrations.ts.
  */
 export async function handleSandboxIntegrations(

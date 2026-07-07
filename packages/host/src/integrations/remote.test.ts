@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { supportsCustom } from "./provider";
+import { supportsCustom, supportsMcp } from "./provider";
 import { RemoteIntegrationProvider } from "./remote";
 import {
   IntegrationSigninRequiredError,
@@ -25,7 +25,7 @@ function harness(
   handler: (url: URL, method: string) => Reply,
   token?: string,
   podToken?: string,
-  opts: { id?: string; custom?: boolean } = {},
+  opts: { id?: string; custom?: boolean; mcp?: boolean } = {},
 ) {
   const calls: Recorded[] = [];
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -49,6 +49,7 @@ function harness(
     token: () => token ?? null,
     podToken,
     custom: opts.custom,
+    mcp: opts.mcp,
     fetch: fetchImpl,
   });
   return { provider, calls };
@@ -253,6 +254,68 @@ test("a custom adapter forwards update with the connectionId + patch (omitted ke
 test("a plain (composio) adapter does NOT support custom create/update", () => {
   const { provider } = harness(() => ({ body: {} }), "jwt-1");
   expect(supportsCustom(provider)).toBe(false);
+});
+
+// ── MCP server integrations: create/update forwarding ────────────────────────
+
+test("an mcp adapter supportsMcp and forwards create → /mcp/create, unwrapping {connection}", async () => {
+  const connection = {
+    toolkit: "acme_tracker",
+    connectionId: "acme_tracker",
+    status: "active" as const,
+    accountLabel: "Acme Tracker",
+  };
+  const { provider, calls } = harness(
+    () => ({ body: { connection } }),
+    "jwt-1",
+    undefined,
+    { id: "mcp", mcp: true },
+  );
+  // supportsMcp true, and it does NOT masquerade as a custom provider.
+  expect(supportsMcp(provider)).toBe(true);
+  expect(supportsCustom(provider)).toBe(false);
+  if (!supportsMcp(provider)) throw new Error("unreachable");
+
+  const config = {
+    name: "Acme Tracker",
+    url: "https://mcp.acme.test",
+    auth: { type: "bearer" as const },
+    description: "Acme issue tracker",
+    authValue: "sk-secret",
+  };
+  expect(await provider.createMcpServer("ignored", config)).toEqual(connection);
+  expect(calls[0]?.url).toBe("https://cloud.test/v1/integrations/mcp/create");
+  expect(calls[0]?.method).toBe("POST");
+  expect(calls[0]?.headers.authorization).toBe("Bearer jwt-1");
+  expect(calls[0]?.body).toEqual(config); // the sealed secret is forwarded, mode 1
+});
+
+test("an mcp adapter forwards update with the connectionId + patch (omitted secret kept)", async () => {
+  const connection = {
+    toolkit: "acme_tracker",
+    connectionId: "acme_tracker",
+    status: "active" as const,
+  };
+  const { provider, calls } = harness(
+    () => ({ body: { connection } }),
+    "jwt-1",
+    undefined,
+    { id: "mcp", mcp: true },
+  );
+  if (!supportsMcp(provider)) throw new Error("expected mcp support");
+  await provider.updateMcpServer("ignored", "acme_tracker", {
+    description: "new",
+  });
+  expect(calls[0]?.url).toBe("https://cloud.test/v1/integrations/mcp/update");
+  expect(calls[0]?.body).toEqual({
+    connectionId: "acme_tracker",
+    description: "new",
+  });
+});
+
+test("a plain (composio) adapter does NOT support mcp create/update", () => {
+  const { provider } = harness(() => ({ body: {} }), "jwt-1");
+  expect(supportsMcp(provider)).toBe(false);
 });
 
 // ── Acting-as (C2): the three per-call auth modes on search/execute ───────────

@@ -238,6 +238,26 @@ describe("agentIntegrationsView", () => {
     });
     if (view.mode !== "degraded") throw new Error("unreachable");
     strictEqual(view.rows[0]?.custom, false);
+    strictEqual(view.rows[0]?.mcp, false);
+  });
+
+  it("marks mcp-provider rows so the UI badges + suppresses add-account", () => {
+    // An MCP server (slug == toolkit == connectionId) mixed with composio.
+    const view = agentIntegrationsView({
+      connections: [
+        conn("gmail"),
+        conn("acme_tracker", "active", "acme_tracker"),
+      ],
+      catalog: [...CATALOG, tk("acme_tracker", "Acme Tracker")],
+      grants: ["ca_gmail", "acme_tracker"],
+      mcpToolkits: new Set(["acme_tracker"]),
+    });
+    if (view.mode !== "grants") throw new Error("unreachable");
+    const byToolkit = new Map(
+      view.activeRows.map((r) => [r.connection.toolkit, r.mcp]),
+    );
+    strictEqual(byToolkit.get("acme_tracker"), true);
+    strictEqual(byToolkit.get("gmail"), false);
   });
 });
 

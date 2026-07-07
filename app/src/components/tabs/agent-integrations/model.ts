@@ -24,17 +24,23 @@ export interface AgentAppRow {
    * and hides "add another account" (custom has a single implicit account).
    */
   custom: boolean;
+  /**
+   * A remote MCP server integration (provider `"mcp"`): gets the "MCP" badge and
+   * hides "add another account" (an MCP server has a single implicit account).
+   */
+  mcp: boolean;
 }
 
 /**
  * Resolve connections to display rows, then flag every row that shares its
  * toolkit with another row in the SAME list so the UI labels those accounts.
- * `customToolkits` marks the custom-provider rows. Pure so the multi-account +
- * custom flags are unit-testable.
+ * `customToolkits` / `mcpToolkits` mark the custom- and mcp-provider rows. Pure
+ * so the multi-account + provider flags are unit-testable.
  */
 function toAgentRows(
   rows: ConnectionRow[],
   customToolkits: ReadonlySet<string>,
+  mcpToolkits: ReadonlySet<string>,
 ): AgentAppRow[] {
   const perToolkit = new Map<string, number>();
   for (const row of rows) {
@@ -48,6 +54,7 @@ function toAgentRows(
     app: row.app,
     showAccountLabel: (perToolkit.get(row.connection.toolkit) ?? 0) > 1,
     custom: customToolkits.has(row.connection.toolkit),
+    mcp: mcpToolkits.has(row.connection.toolkit),
   }));
 }
 
@@ -99,12 +106,19 @@ export function agentIntegrationsView(opts: {
   allowlist?: string[] | null;
   /** Toolkit slugs that are custom API-key integrations (default: none). */
   customToolkits?: ReadonlySet<string>;
+  /** Toolkit slugs that are remote MCP server integrations (default: none). */
+  mcpToolkits?: ReadonlySet<string>;
 }): AgentIntegrationsView {
   const custom = opts.customToolkits ?? EMPTY_SET;
+  const mcp = opts.mcpToolkits ?? EMPTY_SET;
   if (opts.grants === null) {
     return {
       mode: "degraded",
-      rows: toAgentRows(connectionRows(opts.connections, opts.catalog), custom),
+      rows: toAgentRows(
+        connectionRows(opts.connections, opts.catalog),
+        custom,
+        mcp,
+      ),
     };
   }
   const grantSet = new Set(opts.grants);
@@ -126,17 +140,19 @@ export function agentIntegrationsView(opts: {
   const grantedToolkits = new Set(granted.map((c) => c.toolkit));
   return {
     mode: "grants",
-    activeRows: toAgentRows(connectionRows(granted, opts.catalog), custom),
+    activeRows: toAgentRows(connectionRows(granted, opts.catalog), custom, mcp),
     accountRows: toAgentRows(
       connectionRows(
         available.filter((c) => c.status === "active"),
         opts.catalog,
       ),
       custom,
+      mcp,
     ),
     disallowedRows: toAgentRows(
       connectionRows(disallowedConns, opts.catalog),
       custom,
+      mcp,
     ),
     grantedToolkits,
   };

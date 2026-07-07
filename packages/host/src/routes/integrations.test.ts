@@ -37,6 +37,7 @@ async function setup(
   opts: {
     withIntegrations?: boolean;
     withCustom?: boolean;
+    withMcp?: boolean;
     reconnectNotice?: {
       active(): boolean;
       dismiss(): void | Promise<void>;
@@ -63,7 +64,25 @@ async function setup(
       { action: "CUSTOM_ACME_REQUEST", toolkit: "acme", description: "acme" },
     ],
   });
-  const providers = opts.withCustom ? [fake, custom] : [fake];
+  // A third provider serving one remote MCP server whose tool is
+  // MCP_<SLUG>_<TOOL>, implementing McpIntegrationHost (create/update), so the
+  // fan-out + routing and the create/update passthrough can be driven end-to-end.
+  const mcp = new FakeIntegrationProvider({
+    id: "mcp",
+    mcp: true,
+    actions: [
+      {
+        action: "MCP_ACME_TRACKER_LIST_ISSUES",
+        toolkit: "acme_tracker",
+        description: "list issues",
+      },
+    ],
+  });
+  const providers = [
+    fake,
+    ...(opts.withCustom ? [custom] : []),
+    ...(opts.withMcp ? [mcp] : []),
+  ];
   const deps: ControlPlaneDeps = {
     verifier,
     store,
@@ -87,7 +106,7 @@ async function setup(
   const addr = server.address();
   const base = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
   const ws = await store.getOrCreatePersonalWorkspace(USER);
-  return { base, ws, vault, fake, custom, stop: () => server.close() };
+  return { base, ws, vault, fake, custom, mcp, stop: () => server.close() };
 }
 
 const auth = {
@@ -694,6 +713,135 @@ test("integration routes 503 when integrations are not configured", async () => 
     expect(
       (await fetch(`${base}/v1/integrations`, { headers: auth })).status,
     ).toBe(503);
+  } finally {
+    stop();
+  }
+});
+
+// ── MCP server integrations: fan-out, routing, passthrough, warnings ─────────
+
+test("GET /v1/integrations lists the mcp provider alongside composio + custom", async () => {
+  const { base, stop } = await setup({ withCustom: true, withMcp: true });
+  try {
+    const status = await (
+      await fetch(`${base}/v1/integrations`, { headers: auth })
+    ).json();
+    expect(status.items).toEqual([
+      { provider: "composio", ready: true },
+      { provider: "custom", ready: true },
+      { provider: "mcp", ready: true },
+    ]);
+  } finally {
+    stop();
+  }
+});
+
+test("sandbox execute routes an MCP_ action to the mcp provider", async () => {
+  const { base, ws, vault, fake, mcp, stop } = await setup({ withMcp: true });
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    await fetch(`${base}/sandbox/integrations/execute`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "MCP_ACME_TRACKER_LIST_ISSUES",
+        params: {},
+      }),
+    });
+    expect(mcp.lastExecutedAction).toBe("MCP_ACME_TRACKER_LIST_ISSUES");
+    expect(fake.lastExecutedAction).toBeUndefined();
+  } finally {
+    stop();
+  }
+});
+
+test("sandbox search surfaces per-server warnings verbatim (never dropped)", async () => {
+  const { base, ws, vault, mcp, stop } = await setup({ withMcp: true });
+  mcp.searchWarnings = ["MCP server Acme Tracker is unreachable"];
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const res = await fetch(`${base}/sandbox/integrations/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: "" }),
+    });
+    expect((await res.json()).warnings).toEqual([
+      "MCP server Acme Tracker is unreachable",
+    ]);
+  } finally {
+    stop();
+  }
+});
+
+test("POST /v1/integrations/mcp/create forwards to the provider and returns {connection}", async () => {
+  const { base, mcp, stop } = await setup({ withMcp: true });
+  try {
+    const res = await fetch(`${base}/v1/integrations/mcp/create`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({
+        name: "Acme Tracker",
+        url: "https://mcp.acme.test",
+        auth: { type: "bearer" },
+        description: "Acme issue tracker",
+        authValue: "sk-secret",
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).connection).toEqual({
+      toolkit: "acme_tracker",
+      connectionId: "acme_tracker",
+      status: "active",
+      accountLabel: "Acme Tracker",
+    });
+    expect(await mcp.listConnections(USER)).toHaveLength(1);
+  } finally {
+    stop();
+  }
+});
+
+test("POST /v1/integrations/mcp/update renames but keeps the slug/connectionId", async () => {
+  const { base, mcp, stop } = await setup({ withMcp: true });
+  try {
+    await mcp.createMcpServer?.(USER, {
+      name: "Acme Tracker",
+      url: "https://mcp.acme.test",
+      auth: { type: "none" },
+      description: "d",
+    });
+    const res = await fetch(`${base}/v1/integrations/mcp/update`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({
+        connectionId: "acme_tracker",
+        name: "Acme Renamed",
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).connection).toMatchObject({
+      connectionId: "acme_tracker",
+      accountLabel: "Acme Renamed",
+    });
+  } finally {
+    stop();
+  }
+});
+
+test("mcp create/update 404 on a provider that does not support MCP", async () => {
+  const { base, stop } = await setup({ withMcp: true });
+  try {
+    const res = await fetch(`${base}/v1/integrations/composio/create`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ name: "x" }),
+    });
+    expect(res.status).toBe(404);
   } finally {
     stop();
   }

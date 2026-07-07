@@ -1,5 +1,8 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
-import type { CustomIntegrationAuth } from "@houston/runtime-client";
+import type {
+  CustomIntegrationAuth,
+  McpServerAuth,
+} from "@houston/runtime-client";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { recordPendingInteraction } from "../interaction";
@@ -94,6 +97,43 @@ const ProposeCustomParams = Type.Object({
 });
 type ProposeCustomParams = Static<typeof ProposeCustomParams>;
 
+const ProposeMcpParams = Type.Object({
+  name: Type.String({
+    description:
+      "Short, human-readable name for the MCP server (e.g. 'Acme Tracker'). Shown to the user on the setup card.",
+  }),
+  url: Type.String({
+    description:
+      "The MCP server's HTTPS endpoint URL (Streamable HTTP transport, e.g. 'https://mcp.acme.com/sse'). Must not embed any credentials.",
+  }),
+  authType: Type.Union(
+    [Type.Literal("none"), Type.Literal("bearer"), Type.Literal("header")],
+    {
+      description:
+        "How the server authenticates: 'none' for a public server, 'bearer' for a bearer token, 'header' for a custom header whose value is the secret.",
+    },
+  ),
+  authHeader: Type.Optional(
+    Type.String({
+      description:
+        "The name of the custom header that carries the secret value (e.g. 'X-Api-Key'). Required for 'header' auth; leave unset otherwise.",
+    }),
+  ),
+  description: Type.Optional(
+    Type.String({
+      description:
+        "One or two sentences on what the server does and what you'd use it for. Future agent turns read this to know when to reach for it.",
+    }),
+  ),
+  reason: Type.Optional(
+    Type.String({
+      description:
+        "A short, plain-language reason to show the user for why this server is needed.",
+    }),
+  ),
+});
+type ProposeMcpParams = Static<typeof ProposeMcpParams>;
+
 /**
  * Canonical toolkit slug: trimmed + lowercased, matching the connection/catalog
  * lists the connect card compares against (app-side `normalizeToolkitSlug`). A
@@ -138,6 +178,12 @@ interface ConnectedAccountInfo {
 interface SearchResult {
   items: ToolMatch[];
   accounts?: ConnectedAccountInfo[];
+  /**
+   * Non-fatal per-provider failures (e.g. an MCP server was unreachable this
+   * turn). Human-readable, already localized by the host. Surfaced verbatim to
+   * the model so a failing server is never silently dropped from the results.
+   */
+  warnings?: string[];
 }
 
 /**
@@ -199,6 +245,16 @@ function formatMultiAccounts(
   }
   if (lines.length === 0) return "";
   return `\n\n${lines.join("\n")}\nWhen running an action for those apps, pass the account parameter (the id or label above) to choose which account to use.`;
+}
+
+/**
+ * The host reports non-fatal per-provider failures (an MCP server unreachable
+ * this turn, say) as human-readable warnings. Surface them verbatim after the
+ * matches so a failing server is never silently dropped from the results.
+ */
+function formatWarnings(warnings: string[] | undefined): string {
+  if (!warnings?.length) return "";
+  return `\n\n${warnings.join("\n")}`;
 }
 interface ActionResult {
   successful: boolean;
@@ -275,17 +331,19 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       params: SearchParams,
       signal: AbortSignal | undefined,
     ) {
-      const { items, accounts } = await post<SearchResult>(
+      const { items, accounts, warnings } = await post<SearchResult>(
         "search",
         { query: params.query },
         signal,
       );
       if (items.length === 0) {
+        // Even with no matches, a failing server must be surfaced (never
+        // silently dropped) — append any warnings to the empty-result text.
         return {
           content: [
             {
               type: "text" as const,
-              text: `No actions found for "${params.query}".`,
+              text: `No actions found for "${params.query}".${formatWarnings(warnings)}`,
             },
           ],
           details: { matches: 0, actions: [] as string[] },
@@ -306,8 +364,8 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         ? `${list}\n\nActions marked NOT CONNECTED will fail until the user connects that app. ${REQUEST_CONNECTION_GUIDANCE}`
         : list;
       // When the agent has several accounts for an app, list them so the model
-      // can pass the right one on execute.
-      const text = `${body}${formatMultiAccounts(accounts)}`;
+      // can pass the right one on execute; per-server warnings ride at the end.
+      const text = `${body}${formatMultiAccounts(accounts)}${formatWarnings(warnings)}`;
       return {
         content: [{ type: "text" as const, text }],
         details: { matches: items.length, actions: items.map((m) => m.action) },
@@ -464,7 +522,69 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     },
   });
 
-  return [search, execute, requestConnection, proposeCustomIntegration];
+  // The in-chat MCP-server hand-off. When the user wants to connect a remote MCP
+  // server (Streamable HTTP transport), the model proposes it (name + URL + auth
+  // scheme) and Houston renders a secure setup card in place of the chat input
+  // where the user supplies any bearer token or header value. Like the other
+  // hand-offs this holds NO secret and makes no network call — it just records
+  // the proposal for this turn.
+  const proposeMcpServer = defineTool({
+    name: "propose_mcp_server",
+    label: "Offer to connect an MCP server",
+    description:
+      "Offer to connect a remote MCP server (Model Context Protocol, Streamable HTTP) by describing it (name, HTTPS URL, and how it authenticates). Use this when the user wants to connect an MCP server. Houston shows the user a secure card, in place of the chat input, where they paste any token or header value — NEVER ask the user to type a token or secret into the chat; the card collects it safely. End your turn right after calling this; Houston messages you once the server is connected.",
+    promptSnippet: "Offer to connect a remote MCP server the user asks for",
+    parameters: ProposeMcpParams,
+    executionMode: "sequential",
+    async execute(_id: string, params: ProposeMcpParams) {
+      const name = params.name.trim();
+      const url = params.url.trim();
+      if (!name) throw new Error("propose_mcp_server needs a non-empty name.");
+      if (!url) throw new Error("propose_mcp_server needs a non-empty url.");
+      let auth: McpServerAuth;
+      if (params.authType === "header") {
+        const header = params.authHeader?.trim();
+        if (!header)
+          throw new Error(
+            "propose_mcp_server needs a non-empty authHeader when authType is 'header'.",
+          );
+        auth = { type: "header", header };
+      } else if (params.authType === "bearer") {
+        auth = { type: "bearer" };
+      } else {
+        auth = { type: "none" };
+      }
+      const description = params.description?.trim();
+      const reason = params.reason?.trim();
+      recordPendingInteraction({
+        kind: "mcp_server",
+        proposal: {
+          name,
+          url,
+          auth,
+          ...(description ? { description } : {}),
+        },
+        ...(reason ? { reason } : {}),
+      });
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "Houston is now showing the user a secure card to connect this MCP server in place of the chat input. End your turn now. Do NOT ask the user to paste a token or any secret into the chat, and do not ask them to confirm — Houston sends you a message automatically once the server is connected.",
+          },
+        ],
+        details: { name },
+      };
+    },
+  });
+
+  return [
+    search,
+    execute,
+    requestConnection,
+    proposeCustomIntegration,
+    proposeMcpServer,
+  ];
 }
 
 /** The tool names — pi's allowlist needs the names alongside the objects. */
@@ -473,4 +593,5 @@ export const INTEGRATION_TOOL_NAMES = [
   "integration_execute",
   "request_connection",
   "propose_custom_integration",
+  "propose_mcp_server",
 ];

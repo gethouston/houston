@@ -46,6 +46,7 @@ export {
   useRemoveLearning,
   useUpdateLearning,
 } from "./use-learnings";
+export { useCreateMcpServer, useUpdateMcpServer } from "./use-mcp-servers";
 export {
   useAddMember,
   useDeleteInvite,

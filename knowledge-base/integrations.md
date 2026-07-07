@@ -1,10 +1,11 @@
 # Integrations (Composio, platform mode)
 
 How Houston connects third-party apps (Gmail, Slack, …) so agents can act on
-them. Composio is the primary provider, wired **behind a port** so a second
-provider slots in without touching anything above it — and one now does: **custom
-API-key integrations** (provider `"custom"`, §5). This doc covers the host
-architecture, the grants model (multiplayer + local grants), and the UI map.
+them. Composio is the primary provider, wired **behind a port** so more providers
+slot in without touching anything above it — and two now do: **custom API-key
+integrations** (provider `"custom"`, §5) and **remote MCP servers** (provider
+`"mcp"`, §6). This doc covers the host architecture, the grants model (multiplayer
++ local grants), and the UI map.
 
 > **Grant unit = the connected ACCOUNT (`connectionId`), not the toolkit.** A user
 > can connect several accounts of the SAME app (two Gmail logins, a work + personal
@@ -380,3 +381,81 @@ chat renders a card (mirrors the connect-card pattern) with the proposal summary
 a secure password field for the key; Add → `createCustomIntegration` → grant to the
 current agent → resolve the interaction. i18n lives under the `integrations`
 namespace, `custom.*` (form) and `custom.card.*` (card), en/es/pt, no em dashes.
+
+---
+
+## 6. Remote MCP server integrations (provider `"mcp"`)
+
+**Concept.** A user connects a remote MCP server (Model Context Protocol,
+Streamable HTTP transport only in v1) as an integration. This is a THIRD
+`IntegrationProvider` (`id: "mcp"`) running directly in the cloud gateway beside
+`ComposioProvider` and the custom provider. Each server's tools surface through
+`integration_search` / `integration_execute` like any other integration; server
+auth (bearer token or a custom header value) is sealed at rest and injected
+gateway-side only. A server maps to `Connection { toolkit, connectionId, status:
+"active", accountLabel: <name> }` and `Toolkit { slug, name, description? }` where
+**`slug == toolkit == connectionId`** (server-generated from the name, lowercase
+`[a-z0-9_]`, 2..32, numeric suffix on collision, UNIQUE PER USER across BOTH the
+custom and mcp tables). Advertised as `"mcp"` in `/v1/capabilities` `integrations[]`.
+
+**Action naming.** `MCP_<SLUG UPPER>_<TOOLNAME sanitized [A-Za-z0-9_] UPPER>`
+(slug `acme_tracker`, tool `list_issues` → `MCP_ACME_TRACKER_LIST_ISSUES`).
+Reverse resolution matches the LONGEST caller's-server slug that prefixes the
+action after `MCP_`, remainder = tool name. Host routing:
+`action-routing.ts` `/^MCP_/` → provider `"mcp"` when registered; grant matching
+(`grant-policy.ts`) resolves the longest granted mcp slug that `_`-boundary-prefixes
+the remainder, so a shorter server can never borrow a longer one's tools. The actual
+slug/tool split against a server's real tool list happens gateway-side (cloud).
+
+**Warnings, never silent drops.** `SearchResult` gained `warnings?: string[]`
+(host + protocol). A per-server failure (unreachable, auth) becomes a
+human-readable warning (e.g. "MCP server Acme Tracker is unreachable"); the runtime
+`integration_search` appends the warning lines verbatim after the matches (and on
+the zero-match path), so a failing server is surfaced, never dropped. Host
+sandbox fan-out merges warnings across providers (`sandbox-fanout.ts`
+`mergeSearchWarnings`).
+
+**Wire + host plumbing.** Gateway routes under `/v1/integrations/mcp/*` (cloud
+repo; create/update/disconnect are user-JWT MODE 1 only, reachability-verified with
+initialize+tools/list, `mcp_unreachable` on failure). On desktop a THIRD
+`RemoteIntegrationProvider { id: "mcp" }` forwards to the same gateway
+(`local/host.ts`); self-host direct mode uses the optional `McpIntegrationHost`
+port extension (`createMcpServer` / `updateMcpServer`, `provider.ts`,
+`remote-mcp.ts` reusing the shared `ConnectionForwardTransport`), routes 404 when
+a provider lacks it (`integration-provider-routes.ts`).
+
+**Protocol + runtime.** `McpServerAuth = { type: "none" } | { type: "bearer" } |
+{ type: "header"; header: string }` (the secret VALUE rides separately as
+`authValue`, never echoed) + `PendingInteraction { kind: "mcp_server"; proposal:
+{ name, url, auth, description? }; reason? }` (`packages/protocol`, validated in
+`domain/activities.ts`). Runtime tool `propose_mcp_server { name, url, authType,
+authHeader?, description?, reason? }` records the pending interaction (holds no
+secret, no network call); in `INTEGRATION_TOOL_NAMES`. Prompt guidance sentence in
+`houston-prompt.ts` + `houston_prompt/integrations.rs` (identical).
+
+**Client + engine-client.** `createMcpServer` / `updateMcpServer` on the engine
+client (`ui/engine-client`; omitted `authValue` on update keeps the stored
+secret); `McpServerAuth` / `McpServerConfig` types there and in `packages/protocol`.
+App mutation hooks live in `hooks/queries/use-mcp-servers.ts` (keys in
+`mcp-server-keys.ts`, `MCP_INTEGRATION_PROVIDER = "mcp"`).
+
+**UI map (`app/src/components/`).** Feature-detected via
+`mcpIntegrationsSupported(capabilities)` (`integrations/capabilities.ts`); all props
+optional so hosts without it render unchanged. `useMcpIntegrations` (shared hook)
+returns the caller's mcp connections + toolkits + `slugs` routing set. Both surfaces
+MERGE mcp connections into their card/row lists with an "MCP" badge (`McpBadge`,
+keyed by `connectionId` across providers); the browse catalog stays composio-only:
+- **Global page** (`integrations-view/`): `use-connected-apps.ts` merges mcp
+  connections/toolkits, routes disconnect to the mcp provider, and the detail sheet
+  swaps "Add another account" for Edit + Delete (`manageKind: "custom" | "mcp"`);
+  Edit opens `McpServerDialog`. "Add an MCP server" is the second footer CTA in
+  `ConnectMoreAppsSection` beside "Add a custom integration".
+- **Agent tab** (`tabs/agent-integrations/`): merged mcp rows carry an `mcp` flag
+  (badge + no "add another account"); the CTA auto-grants the new connection to the
+  current agent (`useMcpServerFlow`); the allowlist still bounds them.
+
+**AI-assisted card.** `propose_mcp_server` → `PendingInteraction { kind:
+"mcp_server" }` → chat renders `McpServerCard` (mirrors the custom card) with the
+proposal summary and a secure password field for the token, gated on the mcp
+provider being served. i18n under `integrations`, `mcp.*` (form) and `mcp.card.*`
+(card), en/es/pt, no em dashes.
