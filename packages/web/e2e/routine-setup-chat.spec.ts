@@ -117,25 +117,35 @@ test("mid-interview: no board card, tab switch leaves a Continue banner", async 
 test("finished setup chat cleans itself up after the panel closes", async ({
   page,
 }) => {
-  // Triple budget: this test depends on the turn's DONE frame landing, and on
-  // a loaded CI machine a connection blip can force the chat stream through a
-  // full drop + resync cycle before the settle arrives.
-  test.slow();
   await page.goto("/");
   await openRoutinesTab(page);
   await startSetupChat(page);
   await expect(page.getByText(/Roger that\./)).toBeVisible({
     timeout: 15_000,
   });
-  // Wait for the turn to SETTLE (the composer's Stop flips back to Submit):
-  // self-archive only triggers on a "done" activity, and switching tabs
-  // mid-turn would race the settle's own status write. Generous timeout for
-  // the drop + resync worst case.
-  await expect(
-    page.getByRole("button", { name: "Submit" }).first(),
-  ).toBeVisible({ timeout: 45_000 });
 
-  // The canned turn settled "done" with no pending interaction. Leaving the
+  // Drive the settled state deterministically: PATCH the setup activity to
+  // "done" through the fake host's REST (which emits ActivityChanged, so the
+  // app refetches). The archive-on-close logic under test only consumes the
+  // persisted status — waiting on the LIVE settle here made the test hostage
+  // to done-frame delivery on loaded CI machines, which chat.spec's
+  // reconnect coverage already owns.
+  const agents = (await (await fetch(`${FAKE_HOST_URL}/agents`)).json()) as {
+    id: string;
+  }[];
+  const agentId = agents[0].id;
+  const { items } = (await (
+    await fetch(`${FAKE_HOST_URL}/agents/${agentId}/activities`)
+  ).json()) as { items: { id: string; title: string }[] };
+  const setup = items.find((a) => a.title === "Set up a new routine");
+  expect(setup).toBeTruthy();
+  await fetch(`${FAKE_HOST_URL}/agents/${agentId}/activities/${setup?.id}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ status: "done" }),
+  });
+
+  // A "done" setup chat cleans itself up once the panel closes. Leaving the
   // tab closes the panel; the finished chat archives itself — no banner, no
   // board card, nothing left behind.
   await page.locator('[data-tour-target="tab-activity"]').click();
