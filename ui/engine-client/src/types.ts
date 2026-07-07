@@ -569,6 +569,11 @@ export interface ConversationEntry {
 
 export interface SkillSummary {
   name: string;
+  /**
+   * Display title from frontmatter `title:` — accents/casing the directory
+   * slug can't carry (translated store skills). Null → humanize the slug.
+   */
+  title: string | null;
   description: string;
   version: number;
   tags: string[];
@@ -601,6 +606,8 @@ export interface SkillInputDef {
 
 export interface SkillDetail {
   name: string;
+  /** Display title from frontmatter `title:`; null → humanize the slug. */
+  title: string | null;
   description: string;
   version: number;
   content: string;

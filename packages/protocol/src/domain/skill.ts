@@ -4,6 +4,14 @@
 
 export interface SkillSummary {
   name: string;
+  /**
+   * Display title from frontmatter `title:` — the human phrase shown on
+   * cards, with accents/casing a directory slug can't carry (translated
+   * store skills ship one, e.g. slug `planear-una-campana`, title
+   * "Planear una campaña"). Null → UI humanizes the slug. Loading still
+   * resolves by `name` (the directory slug) everywhere.
+   */
+  title: string | null;
   description: string;
   version: number;
   tags: string[];
@@ -21,6 +29,8 @@ export interface SkillSummary {
 
 export interface SkillDetail {
   name: string;
+  /** Display title from frontmatter `title:`; see {@link SkillSummary.title}. */
+  title: string | null;
   description: string;
   version: number;
   content: string;

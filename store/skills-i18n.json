@@ -1,0 +1,1289 @@
+{
+  "version": 1,
+  "categories": {
+    "es": {
+      "Advisory": "Asesoría",
+      "Bookkeeping": "Contabilidad",
+      "Compliance": "Cumplimiento",
+      "Contracts": "Contratos",
+      "Drafting": "Redacción",
+      "Entity": "Entidad",
+      "IP": "Propiedad intelectual",
+      "Inbox": "Bandeja de entrada",
+      "Marketing": "Marketing",
+      "Operations": "Operaciones",
+      "Outbound": "Prospección",
+      "People": "Personal",
+      "Sales": "Ventas",
+      "Setup": "Configuración",
+      "Support": "Soporte",
+      "Tracking": "Seguimiento"
+    },
+    "pt": {
+      "Advisory": "Consultoria",
+      "Bookkeeping": "Contabilidade",
+      "Compliance": "Conformidade",
+      "Contracts": "Contratos",
+      "Drafting": "Redação",
+      "Entity": "Entidade",
+      "IP": "Propriedade intelectual",
+      "Inbox": "Caixa de entrada",
+      "Marketing": "Marketing",
+      "Operations": "Operações",
+      "Outbound": "Prospecção",
+      "People": "Pessoas",
+      "Sales": "Vendas",
+      "Setup": "Configuração",
+      "Support": "Suporte",
+      "Tracking": "Acompanhamento"
+    }
+  },
+  "skills": {
+    "bookkeeping": {
+      "audit-my-books": {
+        "es": {
+          "slug": "auditar-mis-libros",
+          "title": "Auditar mis libros"
+        },
+        "pt": {
+          "slug": "auditar-meus-livros",
+          "title": "Auditar meus livros"
+        }
+      },
+      "build-my-chart-of-accounts": {
+        "es": {
+          "slug": "crear-mi-plan-de-cuentas",
+          "title": "Crear mi plan de cuentas"
+        },
+        "pt": {
+          "slug": "criar-meu-plano-de-contas",
+          "title": "Criar meu plano de contas"
+        }
+      },
+      "categorize-my-transactions": {
+        "es": {
+          "slug": "categorizar-mis-transacciones",
+          "title": "Categorizar mis transacciones"
+        },
+        "pt": {
+          "slug": "categorizar-minhas-transacoes",
+          "title": "Categorizar minhas transações"
+        }
+      },
+      "check-my-burn-and-runway": {
+        "es": {
+          "slug": "revisar-mi-quema-de-caja-y-runway",
+          "title": "Revisar mi quema de caja y runway"
+        },
+        "pt": {
+          "slug": "verificar-minha-queima-de-caixa-e-runway",
+          "title": "Verificar minha queima de caixa e runway"
+        }
+      },
+      "check-my-sales-tax-nexus": {
+        "es": {
+          "slug": "revisar-mi-nexo-de-impuesto-sobre-ventas",
+          "title": "Revisar mi nexo de impuesto sobre ventas"
+        },
+        "pt": {
+          "slug": "verificar-meu-nexo-de-imposto-sobre-vendas",
+          "title": "Verificar meu nexo de imposto sobre vendas"
+        }
+      },
+      "close-my-month": {
+        "es": {
+          "slug": "cerrar-mi-mes",
+          "title": "Cerrar mi mes"
+        },
+        "pt": {
+          "slug": "fechar-meu-mes",
+          "title": "Fechar meu mês"
+        }
+      },
+      "draft-a-journal-entry": {
+        "es": {
+          "slug": "redactar-un-asiento-contable",
+          "title": "Redactar un asiento contable"
+        },
+        "pt": {
+          "slug": "elaborar-um-lancamento-contabil",
+          "title": "Elaborar um lançamento contábil"
+        }
+      },
+      "explain-my-variance": {
+        "es": {
+          "slug": "explicar-mi-variacion",
+          "title": "Explicar mi variación"
+        },
+        "pt": {
+          "slug": "explicar-minha-variacao",
+          "title": "Explicar minha variação"
+        }
+      },
+      "hand-off-to-my-tax-preparer": {
+        "es": {
+          "slug": "entregar-a-mi-preparador-de-impuestos",
+          "title": "Entregar a mi preparador de impuestos"
+        },
+        "pt": {
+          "slug": "entregar-ao-meu-contador-de-impostos",
+          "title": "Entregar ao meu contador de impostos"
+        }
+      },
+      "import-my-prior-books": {
+        "es": {
+          "slug": "importar-mis-libros-anteriores",
+          "title": "Importar mis libros anteriores"
+        },
+        "pt": {
+          "slug": "importar-meus-livros-anteriores",
+          "title": "Importar meus livros anteriores"
+        }
+      },
+      "log-an-expense": {
+        "es": {
+          "slug": "registrar-un-gasto",
+          "title": "Registrar un gasto"
+        },
+        "pt": {
+          "slug": "registrar-uma-despesa",
+          "title": "Registrar uma despesa"
+        }
+      },
+      "prep-my-1099s": {
+        "es": {
+          "slug": "preparar-mis-1099",
+          "title": "Preparar mis 1099"
+        },
+        "pt": {
+          "slug": "preparar-meus-1099",
+          "title": "Preparar meus 1099"
+        }
+      },
+      "prepare-my-financials": {
+        "es": {
+          "slug": "preparar-mis-estados-financieros",
+          "title": "Preparar mis estados financieros"
+        },
+        "pt": {
+          "slug": "preparar-minhas-demonstracoes-financeiras",
+          "title": "Preparar minhas demonstrações financeiras"
+        }
+      },
+      "prepare-my-investor-pack": {
+        "es": {
+          "slug": "preparar-mi-paquete-para-inversionistas",
+          "title": "Preparar mi paquete para inversionistas"
+        },
+        "pt": {
+          "slug": "preparar-meu-pacote-para-investidores",
+          "title": "Preparar meu pacote para investidores"
+        }
+      },
+      "process-my-statements": {
+        "es": {
+          "slug": "procesar-mis-estados-de-cuenta",
+          "title": "Procesar mis estados de cuenta"
+        },
+        "pt": {
+          "slug": "processar-meus-extratos",
+          "title": "Processar meus extratos"
+        }
+      },
+      "reconcile-my-accounts": {
+        "es": {
+          "slug": "conciliar-mis-cuentas",
+          "title": "Conciliar mis cuentas"
+        },
+        "pt": {
+          "slug": "conciliar-minhas-contas",
+          "title": "Conciliar minhas contas"
+        }
+      },
+      "review-my-accruals": {
+        "es": {
+          "slug": "revisar-mis-devengos",
+          "title": "Revisar mis devengos"
+        },
+        "pt": {
+          "slug": "revisar-minhas-provisoes",
+          "title": "Revisar minhas provisões"
+        }
+      },
+      "schedule-my-revenue": {
+        "es": {
+          "slug": "programar-mi-reconocimiento-de-ingresos",
+          "title": "Programar mi reconocimiento de ingresos"
+        },
+        "pt": {
+          "slug": "programar-meu-reconhecimento-de-receita",
+          "title": "Programar meu reconhecimento de receita"
+        }
+      },
+      "set-up-my-books": {
+        "es": {
+          "slug": "configurar-mis-libros",
+          "title": "Configurar mis libros"
+        },
+        "pt": {
+          "slug": "configurar-meus-livros",
+          "title": "Configurar meus livros"
+        }
+      },
+      "tag-my-rd-spend": {
+        "es": {
+          "slug": "etiquetar-mi-gasto-de-i-d",
+          "title": "Etiquetar mi gasto de I+D"
+        },
+        "pt": {
+          "slug": "marcar-meu-gasto-de-p-d",
+          "title": "Marcar meu gasto de P&D"
+        }
+      }
+    },
+    "legal": {
+      "answer-a-legal-question": {
+        "es": {
+          "slug": "responder-una-pregunta-legal",
+          "title": "Responder una pregunta legal"
+        },
+        "pt": {
+          "slug": "responder-a-uma-pergunta-juridica",
+          "title": "Responder a uma pergunta jurídica"
+        }
+      },
+      "answer-a-security-questionnaire": {
+        "es": {
+          "slug": "responder-un-cuestionario-de-seguridad",
+          "title": "Responder un cuestionario de seguridad"
+        },
+        "pt": {
+          "slug": "responder-a-um-questionario-de-seguranca",
+          "title": "Responder a um questionário de segurança"
+        }
+      },
+      "audit-compliance": {
+        "es": {
+          "slug": "auditar-el-cumplimiento",
+          "title": "Auditar el cumplimiento"
+        },
+        "pt": {
+          "slug": "auditar-a-conformidade",
+          "title": "Auditar a conformidade"
+        }
+      },
+      "check-a-trademark": {
+        "es": {
+          "slug": "verificar-una-marca",
+          "title": "Verificar una marca"
+        },
+        "pt": {
+          "slug": "verificar-uma-marca",
+          "title": "Verificar uma marca"
+        }
+      },
+      "draft-a-legal-document": {
+        "es": {
+          "slug": "redactar-un-documento-legal",
+          "title": "Redactar un documento legal"
+        },
+        "pt": {
+          "slug": "redigir-um-documento-juridico",
+          "title": "Redigir um documento jurídico"
+        }
+      },
+      "plan-contract-pushback": {
+        "es": {
+          "slug": "planear-objeciones-a-un-contrato",
+          "title": "Planear objeciones a un contrato"
+        },
+        "pt": {
+          "slug": "planejar-contestacoes-a-um-contrato",
+          "title": "Planejar contestações a um contrato"
+        }
+      },
+      "prepare-the-delaware-annual-filing": {
+        "es": {
+          "slug": "preparar-la-declaracion-anual-de-delaware",
+          "title": "Preparar la declaración anual de Delaware"
+        },
+        "pt": {
+          "slug": "preparar-a-declaracao-anual-de-delaware",
+          "title": "Preparar a declaração anual de Delaware"
+        }
+      },
+      "review-a-contract": {
+        "es": {
+          "slug": "revisar-un-contrato",
+          "title": "Revisar un contrato"
+        },
+        "pt": {
+          "slug": "revisar-um-contrato",
+          "title": "Revisar um contrato"
+        }
+      },
+      "set-up-my-legal-info": {
+        "es": {
+          "slug": "configurar-mi-informacion-legal",
+          "title": "Configurar mi información legal"
+        },
+        "pt": {
+          "slug": "configurar-minhas-informacoes-juridicas",
+          "title": "Configurar minhas informações jurídicas"
+        }
+      },
+      "sort-my-legal-inbox": {
+        "es": {
+          "slug": "organizar-mi-bandeja-legal",
+          "title": "Organizar mi bandeja legal"
+        },
+        "pt": {
+          "slug": "organizar-minha-caixa-de-entrada-juridica",
+          "title": "Organizar minha caixa de entrada jurídica"
+        }
+      },
+      "track-deadlines-and-signatures": {
+        "es": {
+          "slug": "seguir-plazos-y-firmas",
+          "title": "Seguir plazos y firmas"
+        },
+        "pt": {
+          "slug": "acompanhar-prazos-e-assinaturas",
+          "title": "Acompanhar prazos e assinaturas"
+        }
+      }
+    },
+    "marketing": {
+      "audit-a-surface": {
+        "es": {
+          "slug": "auditar-una-superficie",
+          "title": "Auditar una superficie"
+        },
+        "pt": {
+          "slug": "auditar-uma-superficie",
+          "title": "Auditar uma superfície"
+        }
+      },
+      "check-my-marketing": {
+        "es": {
+          "slug": "revisar-mi-marketing",
+          "title": "Revisar mi marketing"
+        },
+        "pt": {
+          "slug": "verificar-meu-marketing",
+          "title": "Verificar meu marketing"
+        }
+      },
+      "measure-my-marketing": {
+        "es": {
+          "slug": "medir-mi-marketing",
+          "title": "Medir mi marketing"
+        },
+        "pt": {
+          "slug": "medir-meu-marketing",
+          "title": "Medir meu marketing"
+        }
+      },
+      "mine-my-sales-calls": {
+        "es": {
+          "slug": "analizar-mis-llamadas-de-ventas",
+          "title": "Analizar mis llamadas de ventas"
+        },
+        "pt": {
+          "slug": "analisar-minhas-ligacoes-de-vendas",
+          "title": "Analisar minhas ligações de vendas"
+        }
+      },
+      "pitch-me-on-podcasts": {
+        "es": {
+          "slug": "proponerme-para-podcasts",
+          "title": "Proponerme para podcasts"
+        },
+        "pt": {
+          "slug": "me-colocar-em-podcasts",
+          "title": "Me colocar em podcasts"
+        }
+      },
+      "plan-a-campaign": {
+        "es": {
+          "slug": "planear-una-campana",
+          "title": "Planear una campaña"
+        },
+        "pt": {
+          "slug": "planejar-uma-campanha",
+          "title": "Planejar uma campanha"
+        }
+      },
+      "plan-my-social-week": {
+        "es": {
+          "slug": "planear-mi-semana-en-redes",
+          "title": "Planear mi semana en redes"
+        },
+        "pt": {
+          "slug": "planejar-minha-semana-nas-redes",
+          "title": "Planejar minha semana nas redes"
+        }
+      },
+      "profile-my-customer": {
+        "es": {
+          "slug": "perfilar-a-mi-cliente",
+          "title": "Perfilar a mi cliente"
+        },
+        "pt": {
+          "slug": "tracar-o-perfil-do-meu-cliente",
+          "title": "Traçar o perfil do meu cliente"
+        }
+      },
+      "repurpose-my-content": {
+        "es": {
+          "slug": "reutilizar-mi-contenido",
+          "title": "Reutilizar mi contenido"
+        },
+        "pt": {
+          "slug": "reaproveitar-meu-conteudo",
+          "title": "Reaproveitar meu conteúdo"
+        }
+      },
+      "research-a-topic": {
+        "es": {
+          "slug": "investigar-un-tema",
+          "title": "Investigar un tema"
+        },
+        "pt": {
+          "slug": "pesquisar-um-tema",
+          "title": "Pesquisar um tema"
+        }
+      },
+      "research-my-seo": {
+        "es": {
+          "slug": "investigar-mi-seo",
+          "title": "Investigar mi SEO"
+        },
+        "pt": {
+          "slug": "pesquisar-meu-seo",
+          "title": "Pesquisar meu SEO"
+        }
+      },
+      "set-up-my-marketing-info": {
+        "es": {
+          "slug": "configurar-mi-informacion-de-marketing",
+          "title": "Configurar mi información de marketing"
+        },
+        "pt": {
+          "slug": "configurar-minhas-informacoes-de-marketing",
+          "title": "Configurar minhas informações de marketing"
+        }
+      },
+      "watch-my-competitors": {
+        "es": {
+          "slug": "vigilar-a-mis-competidores",
+          "title": "Vigilar a mis competidores"
+        },
+        "pt": {
+          "slug": "vigiar-meus-concorrentes",
+          "title": "Vigiar meus concorrentes"
+        }
+      },
+      "write-a-case-study": {
+        "es": {
+          "slug": "escribir-un-caso-de-exito",
+          "title": "Escribir un caso de éxito"
+        },
+        "pt": {
+          "slug": "escrever-um-case-de-sucesso",
+          "title": "Escrever um case de sucesso"
+        }
+      },
+      "write-a-post": {
+        "es": {
+          "slug": "escribir-una-publicacion",
+          "title": "Escribir una publicación"
+        },
+        "pt": {
+          "slug": "escrever-uma-publicacao",
+          "title": "Escrever uma publicação"
+        }
+      },
+      "write-copy-variants": {
+        "es": {
+          "slug": "escribir-variantes-de-copy",
+          "title": "Escribir variantes de copy"
+        },
+        "pt": {
+          "slug": "escrever-variantes-de-copy",
+          "title": "Escrever variantes de copy"
+        }
+      },
+      "write-my-page-copy": {
+        "es": {
+          "slug": "escribir-el-copy-de-mi-pagina",
+          "title": "Escribir el copy de mi página"
+        },
+        "pt": {
+          "slug": "escrever-o-copy-da-minha-pagina",
+          "title": "Escrever o copy da minha página"
+        }
+      }
+    },
+    "operations": {
+      "analyze-my-data": {
+        "es": {
+          "slug": "analizar-mis-datos",
+          "title": "Analizar mis datos"
+        },
+        "pt": {
+          "slug": "analisar-meus-dados",
+          "title": "Analisar meus dados"
+        }
+      },
+      "ask-a-data-question": {
+        "es": {
+          "slug": "preguntar-sobre-mis-datos",
+          "title": "Preguntar sobre mis datos"
+        },
+        "pt": {
+          "slug": "perguntar-sobre-meus-dados",
+          "title": "Perguntar sobre meus dados"
+        }
+      },
+      "audit-my-saas-spend": {
+        "es": {
+          "slug": "auditar-mi-gasto-en-saas",
+          "title": "Auditar mi gasto en SaaS"
+        },
+        "pt": {
+          "slug": "auditar-meus-gastos-com-saas",
+          "title": "Auditar meus gastos com SaaS"
+        }
+      },
+      "book-a-meeting": {
+        "es": {
+          "slug": "agendar-una-reunion",
+          "title": "Agendar una reunión"
+        },
+        "pt": {
+          "slug": "agendar-uma-reuniao",
+          "title": "Agendar uma reunião"
+        }
+      },
+      "brief-me": {
+        "es": {
+          "slug": "ponerme-al-dia",
+          "title": "Ponerme al día"
+        },
+        "pt": {
+          "slug": "me-atualizar",
+          "title": "Me atualizar"
+        }
+      },
+      "collect-my-team-updates": {
+        "es": {
+          "slug": "recolectar-las-actualizaciones-de-mi-equipo",
+          "title": "Recolectar las actualizaciones de mi equipo"
+        },
+        "pt": {
+          "slug": "coletar-as-atualizacoes-da-minha-equipe",
+          "title": "Coletar as atualizações da minha equipe"
+        }
+      },
+      "draft-a-message": {
+        "es": {
+          "slug": "redactar-un-mensaje",
+          "title": "Redactar un mensaje"
+        },
+        "pt": {
+          "slug": "redigir-uma-mensagem",
+          "title": "Redigir uma mensagem"
+        }
+      },
+      "find-my-bottlenecks": {
+        "es": {
+          "slug": "encontrar-mis-cuellos-de-botella",
+          "title": "Encontrar mis cuellos de botella"
+        },
+        "pt": {
+          "slug": "encontrar-meus-gargalos",
+          "title": "Encontrar meus gargalos"
+        }
+      },
+      "log-a-decision": {
+        "es": {
+          "slug": "registrar-una-decision",
+          "title": "Registrar una decisión"
+        },
+        "pt": {
+          "slug": "registrar-uma-decisao",
+          "title": "Registrar uma decisão"
+        }
+      },
+      "plan-a-trip": {
+        "es": {
+          "slug": "planear-un-viaje",
+          "title": "Planear un viaje"
+        },
+        "pt": {
+          "slug": "planejar-uma-viagem",
+          "title": "Planejar uma viagem"
+        }
+      },
+      "prep-an-investor-package": {
+        "es": {
+          "slug": "preparar-un-paquete-para-inversionistas",
+          "title": "Preparar un paquete para inversionistas"
+        },
+        "pt": {
+          "slug": "preparar-um-pacote-para-investidores",
+          "title": "Preparar um pacote para investidores"
+        }
+      },
+      "read-a-contract": {
+        "es": {
+          "slug": "leer-un-contrato",
+          "title": "Leer un contrato"
+        },
+        "pt": {
+          "slug": "ler-um-contrato",
+          "title": "Ler um contrato"
+        }
+      },
+      "research-a-topic": {
+        "es": {
+          "slug": "investigar-un-tema",
+          "title": "Investigar un tema"
+        },
+        "pt": {
+          "slug": "pesquisar-um-tema",
+          "title": "Pesquisar um tema"
+        }
+      },
+      "run-my-ops-review": {
+        "es": {
+          "slug": "ejecutar-mi-revision-operativa",
+          "title": "Ejecutar mi revisión operativa"
+        },
+        "pt": {
+          "slug": "executar-minha-revisao-operacional",
+          "title": "Executar minha revisão operacional"
+        }
+      },
+      "score-an-inbound": {
+        "es": {
+          "slug": "evaluar-una-propuesta-entrante",
+          "title": "Evaluar una propuesta entrante"
+        },
+        "pt": {
+          "slug": "avaliar-uma-proposta-recebida",
+          "title": "Avaliar uma proposta recebida"
+        }
+      },
+      "set-up-my-ops-info": {
+        "es": {
+          "slug": "configurar-mi-informacion-operativa",
+          "title": "Configurar mi información operativa"
+        },
+        "pt": {
+          "slug": "configurar-minhas-informacoes-operacionais",
+          "title": "Configurar minhas informações operacionais"
+        }
+      },
+      "set-up-tracking": {
+        "es": {
+          "slug": "configurar-el-seguimiento",
+          "title": "Configurar el seguimiento"
+        },
+        "pt": {
+          "slug": "configurar-o-monitoramento",
+          "title": "Configurar o monitoramento"
+        }
+      },
+      "track-my-goals": {
+        "es": {
+          "slug": "dar-seguimiento-a-mis-metas",
+          "title": "Dar seguimiento a mis metas"
+        },
+        "pt": {
+          "slug": "acompanhar-minhas-metas",
+          "title": "Acompanhar minhas metas"
+        }
+      },
+      "track-my-renewals": {
+        "es": {
+          "slug": "dar-seguimiento-a-mis-renovaciones",
+          "title": "Dar seguimiento a mis renovaciones"
+        },
+        "pt": {
+          "slug": "acompanhar-minhas-renovacoes",
+          "title": "Acompanhar minhas renovações"
+        }
+      },
+      "triage-a-surface": {
+        "es": {
+          "slug": "ordenar-mi-bandeja-o-calendario",
+          "title": "Ordenar mi bandeja o calendario"
+        },
+        "pt": {
+          "slug": "organizar-minha-caixa-ou-agenda",
+          "title": "Organizar minha caixa ou agenda"
+        }
+      },
+      "vet-a-vendor": {
+        "es": {
+          "slug": "evaluar-un-proveedor",
+          "title": "Evaluar un proveedor"
+        },
+        "pt": {
+          "slug": "avaliar-um-fornecedor",
+          "title": "Avaliar um fornecedor"
+        }
+      }
+    },
+    "outbound": {
+      "airtable-lead-loader": {
+        "es": {
+          "slug": "cargar-leads-en-airtable",
+          "title": "Cargar leads en Airtable"
+        },
+        "pt": {
+          "slug": "carregar-leads-no-airtable",
+          "title": "Carregar leads no Airtable"
+        }
+      },
+      "apollo-enrichment": {
+        "es": {
+          "slug": "enriquecer-leads-con-apollo",
+          "title": "Enriquecer leads con Apollo"
+        },
+        "pt": {
+          "slug": "enriquecer-leads-com-o-apollo",
+          "title": "Enriquecer leads com o Apollo"
+        }
+      },
+      "cold-email-sequence": {
+        "es": {
+          "slug": "escribir-secuencia-de-correos-en-frio",
+          "title": "Escribir secuencia de correos en frío"
+        },
+        "pt": {
+          "slug": "escrever-sequencia-de-e-mails-frios",
+          "title": "Escrever sequência de e-mails frios"
+        }
+      },
+      "instantly-campaign": {
+        "es": {
+          "slug": "crear-campana-en-instantly",
+          "title": "Crear campaña en Instantly"
+        },
+        "pt": {
+          "slug": "criar-campanha-no-instantly",
+          "title": "Criar campanha no Instantly"
+        }
+      },
+      "linkedin-comment-scraper": {
+        "es": {
+          "slug": "extraer-comentarios-de-linkedin",
+          "title": "Extraer comentarios de LinkedIn"
+        },
+        "pt": {
+          "slug": "extrair-comentarios-do-linkedin",
+          "title": "Extrair comentários do LinkedIn"
+        }
+      },
+      "linkedin-comment-to-outreach": {
+        "es": {
+          "slug": "convertir-comentarios-de-linkedin-en-prospeccion",
+          "title": "Convertir comentarios de LinkedIn en prospección"
+        },
+        "pt": {
+          "slug": "transformar-comentarios-do-linkedin-em-prospeccao",
+          "title": "Transformar comentários do LinkedIn em prospecção"
+        }
+      },
+      "linkedin-reaction-scraper": {
+        "es": {
+          "slug": "extraer-reacciones-de-linkedin",
+          "title": "Extraer reacciones de LinkedIn"
+        },
+        "pt": {
+          "slug": "extrair-reacoes-do-linkedin",
+          "title": "Extrair reações do LinkedIn"
+        }
+      },
+      "linkedin-reaction-to-outreach": {
+        "es": {
+          "slug": "convertir-reacciones-de-linkedin-en-prospeccion",
+          "title": "Convertir reacciones de LinkedIn en prospección"
+        },
+        "pt": {
+          "slug": "transformar-reacoes-do-linkedin-em-prospeccao",
+          "title": "Transformar reações do LinkedIn em prospecção"
+        }
+      }
+    },
+    "people": {
+      "answer-a-policy-question": {
+        "es": {
+          "slug": "responder-una-pregunta-de-politica",
+          "title": "Responder una pregunta de política"
+        },
+        "pt": {
+          "slug": "responder-a-uma-pergunta-de-politica",
+          "title": "Responder a uma pergunta de política"
+        }
+      },
+      "calibrate-my-voice": {
+        "es": {
+          "slug": "calibrar-mi-voz",
+          "title": "Calibrar mi voz"
+        },
+        "pt": {
+          "slug": "calibrar-minha-voz",
+          "title": "Calibrar minha voz"
+        }
+      },
+      "coordinate-an-interview-loop": {
+        "es": {
+          "slug": "coordinar-un-proceso-de-entrevistas",
+          "title": "Coordinar un proceso de entrevistas"
+        },
+        "pt": {
+          "slug": "coordenar-um-processo-de-entrevistas",
+          "title": "Coordenar um processo de entrevistas"
+        }
+      },
+      "debrief-an-interview-loop": {
+        "es": {
+          "slug": "resumir-un-proceso-de-entrevistas",
+          "title": "Resumir un proceso de entrevistas"
+        },
+        "pt": {
+          "slug": "resumir-um-processo-de-entrevistas",
+          "title": "Resumir um processo de entrevistas"
+        }
+      },
+      "draft-a-people-document": {
+        "es": {
+          "slug": "redactar-un-documento-de-personal",
+          "title": "Redactar un documento de personal"
+        },
+        "pt": {
+          "slug": "redigir-um-documento-de-pessoas",
+          "title": "Redigir um documento de pessoas"
+        }
+      },
+      "evaluate-a-candidate": {
+        "es": {
+          "slug": "evaluar-a-un-candidato",
+          "title": "Evaluar a un candidato"
+        },
+        "pt": {
+          "slug": "avaliar-um-candidato",
+          "title": "Avaliar um candidato"
+        }
+      },
+      "prep-an-interviewer": {
+        "es": {
+          "slug": "preparar-a-un-entrevistador",
+          "title": "Preparar a un entrevistador"
+        },
+        "pt": {
+          "slug": "preparar-um-entrevistador",
+          "title": "Preparar um entrevistador"
+        }
+      },
+      "prep-the-review-cycle": {
+        "es": {
+          "slug": "preparar-el-ciclo-de-evaluacion",
+          "title": "Preparar el ciclo de evaluación"
+        },
+        "pt": {
+          "slug": "preparar-o-ciclo-de-avaliacao",
+          "title": "Preparar o ciclo de avaliação"
+        }
+      },
+      "profile-an-employee": {
+        "es": {
+          "slug": "crear-el-perfil-de-un-empleado",
+          "title": "Crear el perfil de un empleado"
+        },
+        "pt": {
+          "slug": "criar-o-perfil-de-um-funcionario",
+          "title": "Criar o perfil de um funcionário"
+        }
+      },
+      "set-up-my-people-info": {
+        "es": {
+          "slug": "configurar-mi-informacion-de-personal",
+          "title": "Configurar mi información de personal"
+        },
+        "pt": {
+          "slug": "configurar-minhas-informacoes-de-pessoas",
+          "title": "Configurar minhas informações de pessoas"
+        }
+      },
+      "source-candidates": {
+        "es": {
+          "slug": "buscar-candidatos",
+          "title": "Buscar candidatos"
+        },
+        "pt": {
+          "slug": "buscar-candidatos",
+          "title": "Buscar candidatos"
+        }
+      },
+      "track-compliance-deadlines": {
+        "es": {
+          "slug": "rastrear-plazos-de-cumplimiento",
+          "title": "Rastrear plazos de cumplimiento"
+        },
+        "pt": {
+          "slug": "rastrear-prazos-de-compliance",
+          "title": "Rastrear prazos de compliance"
+        }
+      }
+    },
+    "sales": {
+      "brief-me-for-today": {
+        "es": {
+          "slug": "preparar-mi-dia",
+          "title": "Preparar mi día"
+        },
+        "pt": {
+          "slug": "preparar-meu-dia",
+          "title": "Preparar meu dia"
+        }
+      },
+      "build-a-battlecard": {
+        "es": {
+          "slug": "armar-una-battlecard",
+          "title": "Armar una battlecard"
+        },
+        "pt": {
+          "slug": "montar-um-battlecard",
+          "title": "Montar um battlecard"
+        }
+      },
+      "capture-my-call-notes": {
+        "es": {
+          "slug": "capturar-mis-notas-de-llamada",
+          "title": "Capturar mis notas de llamada"
+        },
+        "pt": {
+          "slug": "capturar-minhas-notas-da-call",
+          "title": "Capturar minhas notas da call"
+        }
+      },
+      "check-my-sales": {
+        "es": {
+          "slug": "revisar-mis-ventas",
+          "title": "Revisar mis ventas"
+        },
+        "pt": {
+          "slug": "conferir-minhas-vendas",
+          "title": "Conferir minhas vendas"
+        }
+      },
+      "find-me-leads": {
+        "es": {
+          "slug": "buscar-leads",
+          "title": "Buscar leads"
+        },
+        "pt": {
+          "slug": "buscar-leads",
+          "title": "Buscar leads"
+        }
+      },
+      "find-my-expansions": {
+        "es": {
+          "slug": "encontrar-mis-expansiones",
+          "title": "Encontrar mis expansiones"
+        },
+        "pt": {
+          "slug": "encontrar-minhas-expansoes",
+          "title": "Encontrar minhas expansões"
+        }
+      },
+      "handle-an-objection": {
+        "es": {
+          "slug": "manejar-una-objecion",
+          "title": "Manejar una objeción"
+        },
+        "pt": {
+          "slug": "lidar-com-uma-objecao",
+          "title": "Lidar com uma objeção"
+        }
+      },
+      "manage-my-crm": {
+        "es": {
+          "slug": "gestionar-mi-crm",
+          "title": "Gestionar mi CRM"
+        },
+        "pt": {
+          "slug": "gerenciar-meu-crm",
+          "title": "Gerenciar meu CRM"
+        }
+      },
+      "plan-an-onboarding": {
+        "es": {
+          "slug": "planear-un-onboarding",
+          "title": "Planear un onboarding"
+        },
+        "pt": {
+          "slug": "planejar-um-onboarding",
+          "title": "Planejar um onboarding"
+        }
+      },
+      "prep-a-meeting": {
+        "es": {
+          "slug": "preparar-una-reunion",
+          "title": "Preparar una reunión"
+        },
+        "pt": {
+          "slug": "preparar-uma-reuniao",
+          "title": "Preparar uma reunião"
+        }
+      },
+      "profile-my-buyer": {
+        "es": {
+          "slug": "perfilar-a-mi-comprador",
+          "title": "Perfilar a mi comprador"
+        },
+        "pt": {
+          "slug": "tracar-o-perfil-do-meu-comprador",
+          "title": "Traçar o perfil do meu comprador"
+        }
+      },
+      "research-an-account": {
+        "es": {
+          "slug": "investigar-una-cuenta",
+          "title": "Investigar una cuenta"
+        },
+        "pt": {
+          "slug": "pesquisar-uma-conta",
+          "title": "Pesquisar uma conta"
+        }
+      },
+      "run-my-forecast": {
+        "es": {
+          "slug": "ejecutar-mi-forecast",
+          "title": "Ejecutar mi forecast"
+        },
+        "pt": {
+          "slug": "rodar-meu-forecast",
+          "title": "Rodar meu forecast"
+        }
+      },
+      "score-my-pipeline": {
+        "es": {
+          "slug": "calificar-mi-pipeline",
+          "title": "Calificar mi pipeline"
+        },
+        "pt": {
+          "slug": "pontuar-meu-pipeline",
+          "title": "Pontuar meu pipeline"
+        }
+      },
+      "set-up-my-sales-info": {
+        "es": {
+          "slug": "configurar-mi-informacion-de-ventas",
+          "title": "Configurar mi información de ventas"
+        },
+        "pt": {
+          "slug": "configurar-minhas-informacoes-de-vendas",
+          "title": "Configurar minhas informações de vendas"
+        }
+      },
+      "write-a-close-plan": {
+        "es": {
+          "slug": "escribir-un-plan-de-cierre",
+          "title": "Escribir un plan de cierre"
+        },
+        "pt": {
+          "slug": "escrever-um-plano-de-fechamento",
+          "title": "Escrever um plano de fechamento"
+        }
+      },
+      "write-a-proposal": {
+        "es": {
+          "slug": "escribir-una-propuesta",
+          "title": "Escribir una propuesta"
+        },
+        "pt": {
+          "slug": "escrever-uma-proposta",
+          "title": "Escrever uma proposta"
+        }
+      },
+      "write-my-outreach": {
+        "es": {
+          "slug": "escribir-mi-outreach",
+          "title": "Escribir mi outreach"
+        },
+        "pt": {
+          "slug": "escrever-meu-outreach",
+          "title": "Escrever meu outreach"
+        }
+      }
+    },
+    "support": {
+      "calibrate-my-voice": {
+        "es": {
+          "slug": "calibrar-mi-voz",
+          "title": "Calibrar mi voz"
+        },
+        "pt": {
+          "slug": "calibrar-minha-voz",
+          "title": "Calibrar minha voz"
+        }
+      },
+      "catch-me-up-on-a-thread": {
+        "es": {
+          "slug": "ponerme-al-dia-con-un-hilo",
+          "title": "Ponerme al día con un hilo"
+        },
+        "pt": {
+          "slug": "me-atualizar-sobre-uma-conversa",
+          "title": "Me atualizar sobre uma conversa"
+        }
+      },
+      "check-my-inbox": {
+        "es": {
+          "slug": "revisar-mi-bandeja-de-entrada",
+          "title": "Revisar mi bandeja de entrada"
+        },
+        "pt": {
+          "slug": "verificar-minha-caixa-de-entrada",
+          "title": "Verificar minha caixa de entrada"
+        }
+      },
+      "draft-a-lifecycle-message": {
+        "es": {
+          "slug": "redactar-mensaje-de-ciclo-de-vida",
+          "title": "Redactar mensaje de ciclo de vida"
+        },
+        "pt": {
+          "slug": "redigir-mensagem-de-ciclo-de-vida",
+          "title": "Redigir mensagem de ciclo de vida"
+        }
+      },
+      "draft-a-playbook": {
+        "es": {
+          "slug": "redactar-un-playbook",
+          "title": "Redactar un playbook"
+        },
+        "pt": {
+          "slug": "redigir-um-playbook",
+          "title": "Redigir um playbook"
+        }
+      },
+      "draft-a-reply": {
+        "es": {
+          "slug": "redactar-una-respuesta",
+          "title": "Redactar una respuesta"
+        },
+        "pt": {
+          "slug": "redigir-uma-resposta",
+          "title": "Redigir uma resposta"
+        }
+      },
+      "find-my-docs-gaps": {
+        "es": {
+          "slug": "encontrar-huecos-en-mi-documentacion",
+          "title": "Encontrar huecos en mi documentación"
+        },
+        "pt": {
+          "slug": "encontrar-lacunas-na-minha-documentacao",
+          "title": "Encontrar lacunas na minha documentação"
+        }
+      },
+      "flag-a-signal": {
+        "es": {
+          "slug": "marcar-una-senal",
+          "title": "Marcar una señal"
+        },
+        "pt": {
+          "slug": "sinalizar-um-alerta",
+          "title": "Sinalizar um alerta"
+        }
+      },
+      "look-up-a-customer": {
+        "es": {
+          "slug": "buscar-un-cliente",
+          "title": "Buscar un cliente"
+        },
+        "pt": {
+          "slug": "consultar-um-cliente",
+          "title": "Consultar um cliente"
+        }
+      },
+      "mine-my-tickets": {
+        "es": {
+          "slug": "analizar-mis-tickets",
+          "title": "Analizar mis tickets"
+        },
+        "pt": {
+          "slug": "minerar-meus-tickets",
+          "title": "Minerar meus tickets"
+        }
+      },
+      "review-my-support": {
+        "es": {
+          "slug": "revisar-mi-soporte",
+          "title": "Revisar mi soporte"
+        },
+        "pt": {
+          "slug": "revisar-meu-suporte",
+          "title": "Revisar meu suporte"
+        }
+      },
+      "set-up-my-support-info": {
+        "es": {
+          "slug": "configurar-mi-informacion-de-soporte",
+          "title": "Configurar mi información de soporte"
+        },
+        "pt": {
+          "slug": "configurar-minhas-informacoes-de-suporte",
+          "title": "Configurar minhas informações de suporte"
+        }
+      },
+      "track-my-promises": {
+        "es": {
+          "slug": "rastrear-mis-promesas",
+          "title": "Rastrear mis promesas"
+        },
+        "pt": {
+          "slug": "acompanhar-minhas-promessas",
+          "title": "Acompanhar minhas promessas"
+        }
+      },
+      "triage-a-ticket": {
+        "es": {
+          "slug": "clasificar-un-ticket",
+          "title": "Clasificar un ticket"
+        },
+        "pt": {
+          "slug": "triar-um-ticket",
+          "title": "Triar um ticket"
+        }
+      },
+      "tune-my-routing": {
+        "es": {
+          "slug": "ajustar-mis-reglas-de-enrutamiento",
+          "title": "Ajustar mis reglas de enrutamiento"
+        },
+        "pt": {
+          "slug": "ajustar-meu-roteamento",
+          "title": "Ajustar meu roteamento"
+        }
+      },
+      "write-an-article": {
+        "es": {
+          "slug": "escribir-un-articulo",
+          "title": "Escribir un artículo"
+        },
+        "pt": {
+          "slug": "escrever-um-artigo",
+          "title": "Escrever um artigo"
+        }
+      }
+    }
+  }
+}

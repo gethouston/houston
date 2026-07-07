@@ -1,6 +1,4 @@
 import { SkillDetailPage } from "@houston-ai/skills";
-import { useTranslation } from "react-i18next";
-import { localizeSkillCopy } from "../../../lib/localize-skill-copy";
 import { SkillsContent } from "../skills-content";
 import { useSkillSurface } from "../use-skill-surface";
 import {
@@ -15,13 +13,11 @@ import {
  */
 export function AgentAdminSkills({ agent, onBack }: AgentAdminScreenProps) {
   const surface = useSkillSurface(agent.folderPath);
-  const { t } = useTranslation("skills");
 
   if (surface.selectedSkill) {
     return (
       <SkillDetailPage
         skill={surface.selectedSkill}
-        displayName={localizeSkillCopy(surface.selectedSkill, t).title}
         onBack={surface.clearSelectedSkill}
         onSave={surface.handleSkillSave}
         onDelete={surface.handleSkillDelete}

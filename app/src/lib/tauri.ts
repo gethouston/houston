@@ -468,6 +468,7 @@ export const tauriSkills = {
       : call<SkillSummary[]>("list_skills", async () =>
           (await getEngine().listSkills(agentPath)).map((s) => ({
             name: s.name,
+            title: s.title ?? null,
             description: s.description,
             version: s.version,
             tags: s.tags,

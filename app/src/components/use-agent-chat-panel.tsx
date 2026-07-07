@@ -52,6 +52,7 @@ import {
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import { useSession } from "../hooks/use-session";
+import { useStoreSkillLocaleMigration } from "../hooks/use-store-skill-locale-migration";
 import { deriveActiveInteraction } from "../lib/active-interaction";
 import { analytics } from "../lib/analytics";
 import { attachmentReferences } from "../lib/attachment-message";
@@ -66,8 +67,8 @@ import {
 import { createMission } from "../lib/create-mission";
 import { resolveDictationLangHint } from "../lib/dictation/types";
 import { useDictation } from "../lib/dictation/use-dictation";
+import { skillDisplayTitle } from "../lib/humanize-skill-name";
 import { composeInteractionReply } from "../lib/interaction-reply";
-import { localizeSkillCopy } from "../lib/localize-skill-copy";
 import {
   modelSelectorDecision,
   resolvePersonalModelPin,
@@ -687,6 +688,9 @@ export function useAgentChatPanel({
 
   // ── Skills + selected-skill state ─────────────────────────────────────
   const { data: allSkills } = useSkills(path ?? undefined);
+  // Swap unedited English store skills for the workspace language's versions
+  // (agents created before translated templates shipped, or in English).
+  useStoreSkillLocaleMigration(agent);
   const emptySkillShowcase = useMemo(() => {
     const skills = allSkills ?? [];
     const featured = skills.filter((s) => s.featured);
@@ -732,9 +736,8 @@ export function useAgentChatPanel({
       if (!skill || !agent || !path) return false;
 
       const claudePrompt = buildSkillClaudePrompt(skill, text);
-      const copy = localizeSkillCopy(skill, t);
-      const encoded = encodeSkillMessage(skill, copy, text, claudePrompt);
-      const friendlyTitle = copy.title;
+      const encoded = encodeSkillMessage(skill, text, claudePrompt);
+      const friendlyTitle = skillDisplayTitle(skill);
 
       if (sessionKey) {
         // Mid-conversation: optimistic feed push + send, mirrors the
@@ -744,7 +747,6 @@ export function useAgentChatPanel({
         const prompt = withAttachmentPaths(claudePrompt, attachmentPaths);
         const encodedWithAttachments = encodeSkillMessage(
           skill,
-          copy,
           text,
           prompt,
           attachmentReferences(files, attachmentPaths),
@@ -795,7 +797,6 @@ export function useAgentChatPanel({
               const prompt = withAttachmentPaths(claudePrompt, paths);
               return encodeSkillMessage(
                 skill,
-                copy,
                 text,
                 prompt,
                 attachmentReferences(files, paths),
@@ -824,7 +825,6 @@ export function useAgentChatPanel({
       effectiveEffort,
       turnMode,
       queryClient,
-      t,
     ],
   );
 
@@ -1222,18 +1222,15 @@ export function useAgentChatPanel({
               {t("chatEmpty.subheading")}
             </p>
           </div>
-          {emptySkillShowcase.map((s) => {
-            const copy = localizeSkillCopy(s, t);
-            return (
-              <SkillCard
-                key={s.name}
-                image={s.image}
-                title={copy.title}
-                description={copy.description}
-                onClick={() => applySkill(s)}
-              />
-            );
-          })}
+          {emptySkillShowcase.map((s) => (
+            <SkillCard
+              key={s.name}
+              image={s.image}
+              title={skillDisplayTitle(s)}
+              description={s.description}
+              onClick={() => applySkill(s)}
+            />
+          ))}
           {moreSkillsCount > 0 && (
             <Button
               size="sm"

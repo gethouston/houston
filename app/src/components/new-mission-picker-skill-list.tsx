@@ -1,6 +1,5 @@
 import { Spinner } from "@houston-ai/core";
-import { useTranslation } from "react-i18next";
-import { localizeSkillCopy } from "../lib/localize-skill-copy";
+import { skillDisplayTitle } from "../lib/humanize-skill-name";
 import type { SkillSummary } from "../lib/types";
 import { SkillCard } from "./skill-card";
 
@@ -23,7 +22,6 @@ export function SkillList({
   hideEmpty?: boolean;
   onSkill: (name: string) => void;
 }) {
-  const { t } = useTranslation("skills");
   if (!agentReady) {
     return <p className="text-sm text-muted-foreground">{pickAgentLabel}</p>;
   }
@@ -41,18 +39,15 @@ export function SkillList({
   }
   return (
     <>
-      {skills.map((s) => {
-        const copy = localizeSkillCopy(s, t);
-        return (
-          <SkillCard
-            key={s.name}
-            image={s.image}
-            title={copy.title}
-            description={copy.description}
-            onClick={() => onSkill(s.name)}
-          />
-        );
-      })}
+      {skills.map((s) => (
+        <SkillCard
+          key={s.name}
+          image={s.image}
+          title={skillDisplayTitle(s)}
+          description={s.description}
+          onClick={() => onSkill(s.name)}
+        />
+      ))}
     </>
   );
 }

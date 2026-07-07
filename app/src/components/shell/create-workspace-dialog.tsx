@@ -27,7 +27,7 @@ import { NamingStep } from "./naming-step";
 type Step = 1 | "ai-assist" | "ai-routine" | "ai-review" | 2;
 
 export function CreateAgentDialog() {
-  const { t } = useTranslation("shell");
+  const { t, i18n } = useTranslation("shell");
   const open = useUIStore((s) => s.createAgentDialogOpen);
   const setOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
   const uiTourActive = useUIStore((s) => s.uiTourActive);
@@ -107,10 +107,12 @@ export function CreateAgentDialog() {
     let agentPath: string;
     try {
       // First-party "store" templates (bookkeeping, legal, …) keep their
-      // CLAUDE.md + skills/data seeds in a lazily-loaded payload kept out of the
-      // initial bundle; pull it now so the host seeds the new agent with them.
+      // CLAUDE.md + skills/data seeds in a lazily-loaded payload kept out of
+      // the initial bundle; pull it now so the host seeds the new agent with
+      // them. The active UI language picks the translated variant, so a
+      // Spanish workspace seeds Spanish skills.
       if (!generatedClaudeMd && STORE_TEMPLATE_IDS.has(selectedConfigId)) {
-        const tpl = await loadStoreTemplate(selectedConfigId);
+        const tpl = await loadStoreTemplate(selectedConfigId, i18n.language);
         claudeMd = tpl.claudeMd;
         seeds = tpl.seeds;
       }

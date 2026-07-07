@@ -84,6 +84,7 @@ export function useSkillSurface(agentPath: string) {
       ? {
           id: selectedSkillName,
           name: skillDetail.name,
+          title: skillDetail.title,
           description: skillDetail.description,
           instructions: skillDetail.content,
           file_path: selectedSkillName,

@@ -41,6 +41,11 @@ Source of truth: `engine/houston-skills/src/lib.rs` (`SkillSummary`). Parsed by 
 name: research-company             # slug, kebab-case
 description: Deep-dive on pricing  # one-liner Claude uses for tool matching
 
+# Display (optional)
+title: "Investigar una empresa"    # human title shown on cards; carries the
+                                   # accents/casing the ASCII slug can't.
+                                   # Missing → UI humanizes the slug.
+
 # Bookkeeping (optional, set by engine on create)
 version: 1
 created: 2026-04-25
@@ -63,6 +68,7 @@ Step-by-step instructions Claude follows when the Skill runs.
 | Field | Type | Default | Notes |
 |------|------|---------|-------|
 | `name` | string | — | Required slug. Drives the file path + Claude's tool name. |
+| `title` | string | unset | Display phrase (accents/casing). UI shows `title ?? humanize(slug)`; loading always resolves by the directory slug, so a drifting title can never 404. |
 | `description` | string | `""` | One line. Claude semantically matches user intent against this. **Specific = reliable invocation.** |
 | `version` | int | `1` | Engine increments on edit. |
 | `created` / `last_used` | string | unset | YYYY-MM-DD. Engine maintains. |
@@ -76,7 +82,7 @@ Step-by-step instructions Claude follows when the Skill runs.
 1. **Engine** parses SKILL.md frontmatter via `serde_yml` (`engine/houston-skills/src/format.rs`). Unknown fields are silently ignored — old skills with `icon:` / `starter_prompt:` still parse.
 2. Engine returns the full `SkillSummaryResponse` on `GET /v1/skills`.
 3. **App** (`useSkills` query → `tauri.ts` → `engine-client`) maps the snake/camel-case wire shape back to app's `SkillSummary`.
-4. **Skill cards** use `app/src/components/skill-card.tsx` across the chat empty state, picker, and Skills tab. Keep these in sync by reusing the component, not recreating card markup. Titles/descriptions of **first-party store skills** are display-localized (en/es/pt) at every render site via `localizeSkillCopy` (`app/src/lib/localize-skill-copy.ts`), matched by `(slug, packaged English description)` — never by `Agent.configId`, which the engine adapter fabricates — see `knowledge-base/i18n.md` § "Store skill catalog". SKILL.md content stays English (model-facing).
+4. **Skill cards** use `app/src/components/skill-card.tsx` across the chat empty state, picker, and Skills tab. Keep these in sync by reusing the component, not recreating card markup. **First-party store skills ship fully translated** (en/es/pt SKILL.md trees; a Spanish workspace seeds Spanish skills, the agent runs the Spanish procedure, editing is in Spanish). Display names come from the frontmatter `title:` field via `skillDisplayTitle` (accents the ASCII slug can't carry), falling back to `humanize(slug)`. See `knowledge-base/i18n.md` § "Store skills are translated at the CONTENT level".
 5. **`useAgentChatPanel`** (`app/src/components/use-agent-chat-panel.tsx`) — single source of truth for the per-agent panel UX. Owns:
    - skill discovery (featured cards on empty state)
    - selected Skill chip above the composer

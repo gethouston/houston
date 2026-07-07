@@ -105,10 +105,12 @@ export function SkillDetailPage({
   }
 
   const isDirty = instructions !== skill.instructions;
-  // Fall back to the id (the directory slug — the canonical skill identity)
-  // when a detail response carries no name, so the header stays meaningful.
+  // Prefer the explicit override, then the skill's own display title, then
+  // fall back to humanizing the id (the directory slug — the canonical skill
+  // identity) so the header stays meaningful on a bare detail response.
   const displayName =
-    displayNameOverride ?? humanizeSkillName(skill.name || skill.id);
+    displayNameOverride ??
+    (skill.title?.trim() || humanizeSkillName(skill.name || skill.id));
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-background">

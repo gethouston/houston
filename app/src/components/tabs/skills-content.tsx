@@ -10,7 +10,7 @@ import { AddSkillDialog } from "@houston-ai/skills";
 import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { localizeSkillCopy } from "../../lib/localize-skill-copy";
+import { skillDisplayTitle } from "../../lib/humanize-skill-name";
 import type { SkillSummary } from "../../lib/types";
 import { SkillCard } from "../skill-card";
 import { useSkillDialogLabels } from "./use-skill-surface-labels";
@@ -132,20 +132,17 @@ export function SkillsContent({
         )}
       </div>
       <div className="flex flex-col gap-2">
-        {sorted.map((skill) => {
-          const copy = localizeSkillCopy(skill, t);
-          return (
-            <SkillCard
-              key={skill.name}
-              image={skill.image}
-              title={copy.title}
-              description={copy.description}
-              onClick={() => onSkillClick(skill.name)}
-              busy={loadingSkillName === skill.name}
-              disabled={loadingSkillName === skill.name}
-            />
-          );
-        })}
+        {sorted.map((skill) => (
+          <SkillCard
+            key={skill.name}
+            image={skill.image}
+            title={skillDisplayTitle(skill)}
+            description={skill.description}
+            onClick={() => onSkillClick(skill.name)}
+            busy={loadingSkillName === skill.name}
+            disabled={loadingSkillName === skill.name}
+          />
+        ))}
       </div>
       {addDialogProps && (
         <AddSkillDialog

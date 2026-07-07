@@ -8,7 +8,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSkills } from "../hooks/queries";
-import { localizeSkillCategory } from "../lib/localize-skill-copy";
+import { localizeSkillCategory } from "../lib/localize-skill-category";
 import type { Agent, SkillSummary } from "../lib/types";
 import { SkillList } from "./new-mission-picker-skill-list";
 import {

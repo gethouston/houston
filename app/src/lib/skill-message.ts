@@ -21,7 +21,7 @@ import {
   type SkillInvocation,
   type SkillInvocationField,
 } from "@houston-ai/chat";
-import type { SkillCopy } from "./localize-skill-copy";
+import { skillDisplayTitle } from "./humanize-skill-name";
 import type { SkillSummary } from "./types";
 
 export type { SkillInvocation, SkillInvocationField };
@@ -35,14 +35,9 @@ const MARKER_SUFFIX = "-->";
 /**
  * Wrap an explicit Claude prompt with the Skill marker so the chat
  * renderer can show a card and the engine can persist a single value.
- *
- * `copy` is the localized display copy (see `localizeSkillCopy`); it is
- * captured into the persisted marker, so the card renders in the language
- * the user sent the Skill in.
  */
 export function encodeSkillMessage(
   skill: SkillSummary,
-  copy: SkillCopy,
   userText: string,
   claudePrompt: string,
   attachments: readonly AttachmentReference[] = [],
@@ -50,9 +45,9 @@ export function encodeSkillMessage(
   const trimmedText = userText.trim();
   const payload: SkillInvocation = {
     skill: skill.name,
-    displayName: copy.title,
+    displayName: skillDisplayTitle(skill),
     image: skill.image,
-    description: copy.description,
+    description: skill.description,
     integrations: skill.integrations,
     fields: [],
     message: trimmedText,
