@@ -89,10 +89,9 @@ nebula-shader palette + the fallback radial glows · `-nebula-core` `#b8b2e8`
 dust-lane tint) · `-star` `#dce2f7` (cool-white starfield) · `-star-warm` `#f6e7cd` (the warm ~10%
 of stars) · `-haze` `#8f9bc9` (the faint painted Milky-Way band) · `-foreground`
 `#ffffff` (pure-white wordmark + logo, currentColor) · `-foreground-muted`
-`#8e96b8` (footer links) · `-comet-warm` `#fbbf24` (amber) / `-comet-cool` `#3b82f6`
-(blue) — the `OrbitLoader` comet trail's warm-head → cool-tail sweep, deliberately
-the endpoints of the `card-running-glow` halo gradient so the two share one comet
-language.
+`#8e96b8` (footer links). The `OrbitLoader` rocket + comet trail reuse
+`-foreground` (pure white, head) and `-star` (cool white, tail) — no dedicated
+comet tokens.
 
 ### Borders (opacity)
 5%/15%/15%/25% = light/medium/heavy/xheavy. Use `rgba(13,13,13,X)`.
@@ -221,13 +220,16 @@ The whole space rendering cluster lives in **`app/src/components/space/`**.
 `space/orbit-path.ts`) is the loading centrepiece that replaced the old scaled-up
 `HoustonAvatar running` card: a 240px inline-SVG scene — a soft pulsing core
 (the workspace being assembled), a barely-there tilted elliptical orbit ring
-(`--ht-space-star` @ 0.16), and a sleek dart ship travelling the ellipse via SMIL
-`<animateMotion rotate="auto">` (6s lap, unhurried). The comet streak is 12
-soft blurred capsule ellipses riding the SAME `<mpath>` path with negative `begin`
-offsets + decreasing opacity/scale, so they overlap into one continuous glowing
-streak rather than reading as discrete darts, coloured `--ht-space-comet-warm` →
-`-comet-cool` (amber head → blue tail) to echo the `card-running-glow` halo. No JS loop, no per-frame
-allocation, no colour literals. SMIL ignores `prefers-reduced-motion`, so it
+(`--ht-space-star` @ 0.16), and a rocket ship (a single closed compound `<path>`:
+ogive nose cone, cylindrical body, swept tail fins, tapered engine base) travelling
+the ellipse via SMIL `<animateMotion rotate="auto">` (6s lap, unhurried; the path
+points nose-first along +x). The comet streak is 12 soft blurred capsule ellipses
+riding the SAME `<mpath>` path with negative `begin` offsets + decreasing
+opacity/scale, so they overlap into one continuous glowing streak rather than
+reading as discrete blobs. All white: it fades mainly via opacity, with a subtle
+tone shift from `--ht-space-foreground` (pure white, head) to `--ht-space-star`
+(cool white, tail) for depth — no amber/blue, no colour literals. No JS loop, no
+per-frame allocation. SMIL ignores `prefers-reduced-motion`, so it
 branches on framer-motion `useReducedMotion()` → a single static ship parked on
 the ring beside the static core, zero `<animate*>` elements.
 

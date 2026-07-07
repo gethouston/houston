@@ -120,23 +120,3 @@ export function LiveStatus({ label }: { label: string }) {
     </span>
   );
 }
-
-/** A section title row with a label and an optional mono count. */
-export function SectionHeader({
-  label,
-  count,
-}: {
-  label: string;
-  count?: number;
-}) {
-  return (
-    <div className="inline-flex items-center gap-2">
-      <span className="text-[13px] font-medium text-foreground">{label}</span>
-      {count != null ? (
-        <span className="font-mono text-xs text-muted-foreground tabular-nums">
-          {count}
-        </span>
-      ) : null}
-    </div>
-  );
-}

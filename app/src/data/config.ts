@@ -14,11 +14,11 @@ export interface Config {
   /**
    * Composer "Mode" selector memory ONLY: the last mode the user picked for this
    * agent, so the pill reopens where they left it. Per-agent, local. It is NEVER
-   * synced to engine Settings — the actual plan/execute pin rides each send as
-   * `modeOverride` (an unpinned turn is `execute`). Unknown values normalize to
+   * synced to engine Settings — the actual execute/plan/auto pin rides each send
+   * as `modeOverride` (an unpinned turn is `execute`). Unknown values normalize to
    * `execute` at the UI boundary (see `normalizeTurnMode`).
    */
-  mode?: "execute" | "plan";
+  mode?: "execute" | "plan" | "auto";
   [extra: string]: unknown;
 }
 

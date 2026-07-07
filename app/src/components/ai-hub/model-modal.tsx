@@ -13,7 +13,8 @@ import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections.ts";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
-import { BrandMark } from "./brand-mark.tsx";
+import { BrandMark } from "../provider-browser/brand-mark.tsx";
+import { connectCardByGatewayId } from "../provider-browser/provider-grouping.ts";
 import {
   capabilityKeys,
   formatReleaseDate,
@@ -25,7 +26,6 @@ import {
 import { CapabilityChip, SpecChip } from "./hub-badges.tsx";
 import { ModalShell } from "./modal-shell.tsx";
 import { ModelOfferRow } from "./model-offer-row.tsx";
-import { connectCardByGatewayId } from "./provider-grouping.ts";
 
 export function ModelModal({
   model,

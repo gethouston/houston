@@ -129,10 +129,11 @@ First-run onboarding is a seven-mission guided setup driven by
 1. Welcome screen offers start vs. skip.
 2. **Meet** — name + color the assistant.
 3. **Connect** — connect your AI in a single `connect` step
-   (`missions/connect-ai.tsx`) that embeds the shared `<ProviderPicker>`, so
-   onboarding lists this deployment's full runnable catalog and connects through
-   every auth type (OAuth, API key, OpenAI-compatible endpoint, Copilot
-   enterprise). Replaces the old bespoke `brain` (OpenAI/Anthropic pick) +
+   (`missions/connect-ai.tsx`) that embeds the shared `<ProviderBrowser>` (the
+   same ai-hub marketplace surface, via `useProviderBrowserData`), so onboarding
+   lists this deployment's full runnable catalog with search + quick-filter and
+   connects through every auth type (OAuth, API key, OpenAI-compatible endpoint,
+   Copilot enterprise). Replaces the old bespoke `brain` (OpenAI/Anthropic pick) +
    `providerLogin` pair; it fires the `ai_provider_connected` funnel event
    (ref-guarded, once per install) and auto-advances to the `aiConnected` success
    screen the instant a provider connects. The workspace + assistant are
@@ -531,10 +532,11 @@ the real vendored pi-ai registry, not a test fixture).
 ### Turn mode
 
 A separate per-turn "Mode" pill sits next to the model + effort controls in
-the composer footer, labeled **Doer** (`execute`) vs **Planner** (`plan`,
-read-only investigation). Unlike
+the composer footer, with three labels — **Planner** (`plan`, read-only
+investigation), **Doer** (`execute`), and **Autopilot** (`auto`,
+fire-and-forget: no blocking tools). Unlike
 effort it is NOT synced through `Settings` — full mechanics, the runtime
-enforcement (tool clamp + planning overlay), and the "forgotten `modeOverride`
+enforcement (tool clamp + overlay), and the "forgotten `modeOverride`
 silently degrades to execute" gotcha are in `knowledge-base/architecture.md`
 ("Turn modes").
 
@@ -546,13 +548,19 @@ marketplace, not a settings pane. Entry: `app/src/components/ai-hub/ai-hub-view.
 (`AiHubView`), rendered by `workspace-shell.tsx` like any other top-level view.
 
 **Four surfaces, one view:**
-- **Provider grid** (`provider-grid.tsx` / `provider-card.tsx`, grouped by
-  `provider-grouping.ts`): cards in Connected / Available / Coming soon groups.
-- **Provider detail** (`provider-detail.tsx` + `provider-model-list.tsx`):
-  connect / sign-out plus that provider's model list.
+- **Provider grid** — the shared `ProviderBrowser`
+  (`components/provider-browser/provider-browser.tsx`, rows in
+  `provider-browser/provider-row.tsx`, grouped by
+  `provider-browser/provider-grouping.ts`): brand-colored cards in Connected /
+  Available sections, featured pinned first, with the search + quick-filter bar.
+  The SAME component renders onboarding's connect step, the migration reconnect
+  screen, and workspace setup (they pass `onSelect`/`selectOnMount`; the hub
+  passes `onOpen` + `renderDialogs={false}`). Coming-soon tiles are gone.
+- **Provider detail** (`provider-modal.tsx`): connect / sign-out plus that
+  provider's model list.
 - **Model directory** (`model-directory.tsx` / `model-row.tsx`): the
   cross-provider catalog (~378 unique models), searchable (`ai-hub/search.ts`).
-- **Model detail** (`model-detail.tsx` + `model-offer-row.tsx`): one model's
+- **Model detail** (`model-modal.tsx` + `model-offer-row.tsx`): one model's
   per-provider offers ("Get it through" + pricing / subscription).
 
 Navigation is local `useState<HubLocation>` inside `AiHubView` (roots

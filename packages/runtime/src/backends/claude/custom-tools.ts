@@ -7,8 +7,10 @@ import type {
   AgentToolResult,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import type { TurnMode } from "@houston/protocol";
 import type { TSchema } from "typebox";
 import { z } from "zod";
+import { toolNamesForMode } from "../../session/tool-selection";
 import { makeAskUserTool } from "../../session/tools/ask-user";
 import {
   type IntegrationToolOptions,
@@ -64,9 +66,17 @@ export interface HoustonMcpInput {
    * Integration proxy config when this runtime can reach its host with a sandbox
    * token — the SAME gate as the pi path (`config.controlPlaneUrl &&
    * config.sandboxToken`). Present → `request_connection` + `integration_search`
-   * + `integration_execute` are exposed; absent → only `ask_user` is.
+   * + `integration_execute` are built; absent → only `ask_user` is.
    */
   integrations?: IntegrationToolOptions;
+  /**
+   * The turn's execution mode, applied as the SAME tool filter the pi path uses
+   * (`toolNamesForMode`): "plan" keeps only `ask_user` (the acting integration
+   * tools are withheld), "auto" drops the blocking tools (`ask_user`,
+   * `request_connection`) while KEEPING `integration_search` /
+   * `integration_execute`, and "execute" (or absent) exposes the full built set.
+   */
+  mode?: TurnMode;
 }
 
 /**
@@ -103,14 +113,26 @@ const NOOP_CTX = {} as ExtensionContext;
  * Claude backend, plus the `allowedTools` entries that auto-approve them.
  */
 export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
-  // Reuse the EXISTING tool implementations verbatim; gate the integration tools
-  // exactly as the pi path does. The variance between a concrete pi
-  // `ToolDefinition<S>` and the widened adapter shape is bridged by one
-  // documented assertion at this single boundary.
-  const piTools = [
+  // Reuse the EXISTING tool implementations verbatim; build the full set this
+  // runtime could expose (ask_user always, the integration tools when the gate
+  // is open), then apply the turn's mode filter — the SAME `toolNamesForMode`
+  // the pi path clamps its name allowlist with, so the two backends never drift
+  // on what a mode allows. On the pi path filtering the NAME list is enough (pi
+  // gates custom tools by name); here the MCP server exposes exactly the tools it
+  // is handed, so we filter the tool OBJECTS to the mode's allowed names. The
+  // variance between a concrete pi `ToolDefinition<S>` and the widened adapter
+  // shape is bridged by one documented assertion at this single boundary.
+  const built = [
     makeAskUserTool(),
     ...(input.integrations ? makeIntegrationTools(input.integrations) : []),
   ] as unknown as BridgedPiTool[];
+  const allowed = new Set(
+    toolNamesForMode(
+      input.mode,
+      built.map((t) => t.name),
+    ),
+  );
+  const piTools = built.filter((t) => allowed.has(t.name));
 
   const tools = piTools.map(adaptTool);
   const server = input.createSdkMcpServer({

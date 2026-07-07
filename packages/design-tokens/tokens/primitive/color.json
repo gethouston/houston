@@ -39,9 +39,7 @@
       "star-warm": { "$value": "#f6e7cd" },
       "haze": { "$value": "#8f9bc9" },
       "foreground": { "$value": "#ffffff" },
-      "foreground-muted": { "$value": "#8e96b8" },
-      "comet-warm": { "$value": "#fbbf24" },
-      "comet-cool": { "$value": "#3b82f6" }
+      "foreground-muted": { "$value": "#8e96b8" }
     },
     "status": {
       "$type": "color",

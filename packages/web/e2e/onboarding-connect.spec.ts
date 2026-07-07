@@ -5,28 +5,34 @@ import { expect, test } from "./support/fixtures";
  * First-run onboarding's "Connect your AI" step, end to end against the fake
  * host. This is the regression guard for HOU-onboarding-connect: the step used
  * to map the RAW override-only seed (11 providers, OAuth-only), so every
- * API-key provider dead-ended. It now embeds the shared `<ProviderPicker>`, so
- * it must (a) show this deployment's FULL `/v1/catalog` provider set (well
- * beyond the 11-entry seed) and (b) open the paste-a-key dialog for an API-key
- * provider instead of an OAuth wait screen.
+ * API-key provider dead-ended. It now embeds the shared `<ProviderBrowser>` (the
+ * same marketplace surface the AI Hub shows), so it must (a) show this
+ * deployment's FULL `/v1/catalog` provider set (well beyond the 11-entry seed),
+ * (b) open the paste-a-key dialog for an API-key provider instead of an OAuth
+ * wait screen, and (c) filter the list from the search box.
  *
- * (a) also guards the picker's IN-COMPONENT catalog reactivity: `ProviderPicker`
- * itself now depends on `useProviderCatalog().updatedAt` (no external `key=`
- * remount), so a card count past the 11-entry seed proves the async
- * `/v1/catalog` hydration reaches the picker's memo after mount.
+ * (a) also guards the surface's catalog reactivity: `useProviderBrowserData`
+ * re-keys its connect-list memo on `useProviderCatalog().updatedAt` (no external
+ * `key=` remount), so a card count past the 11-entry seed proves the async
+ * `/v1/catalog` hydration reaches the memo after mount.
+ *
+ * Selector strategy: every provider is unconnected in the harness (no
+ * credentials, the status route 404s), so each renders a Connect pill whose
+ * accessible name is `Connect {name}` (an aria-label the row sets so each pill
+ * reads distinctly). We select by role+name — no title attribute and no
+ * data-testid needed. The search box is selected by its placeholder.
  *
  * Not covered here: the re-entry strand fix (a connected local
  * OpenAI-compatible provider resolving its model via `active_model` so the step
- * auto-advances instead of stranding). The fake host 404s the onboarding
- * picker's status route (`/setup-runtime/providers`), so NO provider ever
- * reports connected in this harness and there is no control to seed a custom
- * endpoint's `active_model` — the scenario can't be simulated without a
- * fake-host change out of this task's scope.
+ * auto-advances instead of stranding). The fake host 404s the status route, so
+ * NO provider ever reports connected in this harness and there is no control to
+ * seed a custom endpoint's `active_model` — the scenario can't be simulated
+ * without a fake-host change out of this task's scope.
  *
  * Reaching first-run: onboarding shows when the v3 host reports ZERO agents, so
  * we delete the seeded agent over the API before boot (no fake-host change).
  */
-test("onboarding connect step shows the full catalog and opens the API-key dialog", async ({
+test("onboarding connect step shows the full catalog, filters, and opens the API-key dialog", async ({
   page,
   request,
 }) => {
@@ -49,22 +55,37 @@ test("onboarding connect step shows the full catalog and opens the API-key dialo
     page.getByRole("heading", { name: "Connect your AI" }),
   ).toBeVisible();
 
-  // (a) The picker renders the hydrated catalog, not the override-only seed.
-  // Every card is unconnected in the harness (no credentials), so each is a
-  // "Connect {name}" button. The seed is 11 providers; the local catalog is
-  // ~30+, so a count past the seed proves `/v1/catalog` hydration reached the
-  // onboarding surface.
-  const connectCards = page.getByTitle(/^Connect /);
-  await expect(connectCards.first()).toBeVisible();
-  expect(await connectCards.count()).toBeGreaterThan(11);
+  // (a) The surface renders the hydrated catalog, not the override-only seed.
+  // Every card is unconnected in the harness, so each is a "Connect {name}"
+  // pill. The seed is 11 providers; the local catalog is ~30+, so a count past
+  // the seed proves `/v1/catalog` hydration reached the onboarding surface.
+  const connectPills = page.getByRole("button", { name: /^Connect / });
+  await expect(connectPills.first()).toBeVisible();
+  expect(await connectPills.count()).toBeGreaterThan(11);
   // Names only the hydrated catalog carries (absent from the OAuth-only seed
   // path the old screen showed).
-  await expect(page.getByTitle("Connect OpenRouter")).toBeVisible();
-  await expect(page.getByTitle("Connect Google Gemini")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Connect OpenRouter" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Connect Google Gemini" }),
+  ).toBeVisible();
+
+  // (c) The search box narrows the list — the connect surfaces carry the same
+  // search + quick-filter bar the hub does. Typing a provider name filters down
+  // to that one card.
+  await page.getByPlaceholder("Search providers").fill("openrouter");
+  await expect(connectPills).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { name: "Connect OpenRouter" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Connect Google Gemini" }),
+  ).toHaveCount(0);
 
   // (b) An API-key provider opens the paste-a-key dialog, NOT an OAuth wait
   // screen. OpenRouter connects with a pasted key (`auth: "apiKey"`).
-  await page.getByTitle("Connect OpenRouter").click();
+  await page.getByRole("button", { name: "Connect OpenRouter" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText(/Paste your OpenRouter API key/)).toBeVisible();

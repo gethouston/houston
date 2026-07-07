@@ -191,12 +191,15 @@ describe("AI Hub review fixes (component source contracts)", () => {
     ok(hook.includes("loading"), "reads the status loading flag");
     const types = read("../src/hooks/provider-connections/types.ts");
     ok(types.includes("ready"), "ready is on the ProviderConnections type");
-    // The card grid was redesigned into `ProviderList`; the ready gate moved
-    // with it (renders a skeleton list before the first status probe resolves).
-    const list = read("../src/components/ai-hub/provider-list.tsx");
+    // The card grid was extracted into the reusable `ProviderBrowser`; the ready
+    // gate moved with it (renders a skeleton list before the first status probe
+    // resolves).
+    const list = read(
+      "../src/components/provider-browser/provider-browser.tsx",
+    );
     ok(
       list.includes("connections.ready"),
-      "the list gates on ready (renders skeletons before the first probe)",
+      "the browser gates on ready (renders skeletons before the first probe)",
     );
   });
 
@@ -231,7 +234,9 @@ describe("AI Hub review fixes (component source contracts)", () => {
   });
 
   it("Finding 3: the duplicate formatters stay out of provider-grouping", () => {
-    const grouping = read("../src/components/ai-hub/provider-grouping.ts");
+    const grouping = read(
+      "../src/components/provider-browser/provider-grouping.ts",
+    );
     ok(!grouping.includes("formatCost"), "formatCost deleted from grouping");
     ok(
       !grouping.includes("formatContext"),

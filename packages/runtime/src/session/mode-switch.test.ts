@@ -173,6 +173,37 @@ test("switchModeIfNeeded rebuilds on a flip and the rebuilt session keeps prior 
   expect(built[1].prompts).toEqual(["earlier turn"]);
 });
 
+test("switchModeIfNeeded rebuilds execute→auto and the rebuilt session keeps prior history", async () => {
+  const disk = new Map<string, string[]>([["c", ["earlier turn"]]]);
+  const built: HistSession[] = [];
+  setDefaultBackend(histBackend("pi", disk, built));
+  const session = new HistSession("pi", "execute", disk.get("c") as string[]);
+  const conv = {
+    session,
+    queue: Promise.resolve(),
+    provider: "openai-codex",
+    model: "gpt-5-codex",
+    backendId: "pi",
+    mode: "execute",
+  } as unknown as Conversation;
+
+  const res = await switchModeIfNeeded(conv, "c", OPENAI, "auto");
+  expect(res.rebuilt).toBe(true);
+  expect(session.disposed).toBe(true);
+  expect(conv.mode).toBe("auto");
+  expect(built).toHaveLength(1);
+  // Rebuilt at auto, prior turn rehydrated (same conversation disk).
+  expect(built[0].builtMode).toBe("auto");
+  expect(built[0].prompts).toEqual(["earlier turn"]);
+  // A flip auto→plan rebuilds again and still sees the history — the switch is
+  // value-agnostic across all three modes.
+  const toPlan = await switchModeIfNeeded(conv, "c", OPENAI, "plan");
+  expect(toPlan.rebuilt).toBe(true);
+  expect(conv.mode).toBe("plan");
+  expect(built[1].builtMode).toBe("plan");
+  expect(built[1].prompts).toEqual(["earlier turn"]);
+});
+
 test("getConversation records the pin's mode and builds the session at it", async () => {
   const disk = new Map<string, string[]>();
   const built: HistSession[] = [];

@@ -31,7 +31,8 @@ interface ProviderRowProps {
   connected: boolean;
   connecting: boolean;
   signingOut: boolean;
-  onOpen: (provider: ProviderInfo) => void;
+  /** Open the provider's detail. When omitted the info button is hidden (no dead affordance). */
+  onOpen?: (provider: ProviderInfo) => void;
   onConnect: (provider: ProviderInfo) => void;
   onCancel: (provider: ProviderInfo) => void;
   onSignOut: (provider: ProviderInfo) => void;
@@ -73,17 +74,20 @@ export function ProviderRow({
 
       {/* The ONE open affordance: an explicit info button (the card body is not
           clickable). The label carries the provider name so every card's button
-          reads distinctly to screen readers. */}
-      <Button
-        size="icon-sm"
-        variant="ghost"
-        className="shrink-0 text-muted-foreground"
-        aria-label={t("card.details", { name: provider.name })}
-        title={t("card.details", { name: provider.name })}
-        onClick={() => onOpen(provider)}
-      >
-        <Info className="size-4" aria-hidden="true" />
-      </Button>
+          reads distinctly to screen readers. Hidden when no `onOpen` is wired,
+          so a browser without a detail surface shows no dead button. */}
+      {onOpen && (
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          className="shrink-0 text-muted-foreground"
+          aria-label={t("card.details", { name: provider.name })}
+          title={t("card.details", { name: provider.name })}
+          onClick={() => onOpen(provider)}
+        >
+          <Info className="size-4" aria-hidden="true" />
+        </Button>
+      )}
 
       {connected ? (
         <Button
@@ -103,7 +107,14 @@ export function ProviderRow({
           variant="secondary"
           spinner={false}
           className="group/connect relative min-w-[92px] shrink-0"
-          aria-label={connecting ? t("card.cancel") : undefined}
+          // Per-provider accessible name so every Connect pill reads distinctly
+          // to screen readers (the visible label is just "Connect"); flips to
+          // "Cancel" while a connect is in flight.
+          aria-label={
+            connecting
+              ? t("card.cancel")
+              : t("card.connectName", { name: provider.name })
+          }
           onClick={() =>
             connecting ? onCancel(provider) : onConnect(provider)
           }

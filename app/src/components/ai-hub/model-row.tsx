@@ -11,7 +11,7 @@
 import { cn } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
-import { BrandMark } from "./brand-mark.tsx";
+import { BrandMark } from "../provider-browser/brand-mark.tsx";
 import {
   capabilityKeys,
   cheapestInput,

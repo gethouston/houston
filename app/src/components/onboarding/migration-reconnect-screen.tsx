@@ -2,8 +2,9 @@ import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { genericErrorDescription } from "../../lib/error-toast";
 import { useUIStore } from "../../stores/ui";
+import { ProviderBrowser } from "../provider-browser/provider-browser";
+import { useProviderBrowserData } from "../provider-browser/use-provider-browser-data";
 import { HoustonLogo } from "../shell/experience-card";
-import { ProviderPicker } from "../shell/provider-picker";
 
 interface MigrationReconnectScreenProps {
   /**
@@ -19,18 +20,20 @@ interface MigrationReconnectScreenProps {
  * legacy desktop build. Their agents and history migrated, but their AI sign-in
  * did not, so we welcome them back and walk them through reconnecting once.
  *
- * The connect flow is the SAME `<ProviderPicker>` used in onboarding and
- * settings — it owns the OAuth launch, the device-code / login dialogs, the
+ * The connect flow is the SAME `<ProviderBrowser>` used in onboarding and the
+ * AI Hub — it owns the OAuth launch, the device-code / login dialogs, the
  * status polling, and the failure toasts (no silent failures), and fires
  * `onSelect` the instant a provider connects. We react to that by persisting
  * the "seen" flag and dismissing; the App-level gate then falls through to the
- * normal shell.
+ * normal shell. `selectOnMount` finishes the moment we detect an
+ * already-connected provider on the first status snapshot too.
  */
 export function MigrationReconnectScreen({
   onDone,
 }: MigrationReconnectScreenProps) {
   const { t } = useTranslation("setup");
   const addToast = useUIStore((s) => s.addToast);
+  const { providers, connections, catalog } = useProviderBrowserData();
 
   const finish = (source: "connected" | "skipped") => {
     analytics.track("migration_reconnect_completed", { source });
@@ -61,8 +64,14 @@ export function MigrationReconnectScreen({
           {t("migrationReconnect.body")}
         </p>
 
-        <div className="w-full">
-          <ProviderPicker onSelect={() => finish("connected")} />
+        <div className="w-full text-left">
+          <ProviderBrowser
+            providers={providers}
+            connections={connections}
+            catalog={catalog}
+            onSelect={() => finish("connected")}
+            selectOnMount
+          />
         </div>
 
         <button

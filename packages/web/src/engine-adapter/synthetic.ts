@@ -140,20 +140,20 @@ export function wireTurnPin(req: {
   provider?: string;
   model?: string;
   effort?: string;
-  mode?: "execute" | "plan";
+  mode?: "execute" | "plan" | "auto";
 }):
   | {
       provider?: string;
       model?: string;
       effort?: string;
-      mode?: "execute" | "plan";
+      mode?: "execute" | "plan" | "auto";
     }
   | undefined {
   const pin: {
     provider?: string;
     model?: string;
     effort?: string;
-    mode?: "execute" | "plan";
+    mode?: "execute" | "plan" | "auto";
   } = {};
   if (req.provider) {
     const provider = canonicalProviderId(req.provider);
