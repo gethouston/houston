@@ -6,7 +6,7 @@ import {
 } from "@houston-ai/core";
 import type { Agent } from "@houston-ai/engine-client";
 import type { LucideIcon } from "lucide-react";
-import { Check, ChevronDown, ClipboardList, MessageSquare } from "lucide-react";
+import { Check, ChevronDown, NotebookPen, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { modelSelectorDecision } from "../lib/model-selector-lock";
@@ -27,20 +27,23 @@ interface ChatModeSelectorProps {
   agent?: Pick<Agent, "access"> | null;
 }
 
+/** Doer = execute (acts on the world), Planner = plan (read-only, writes a
+ *  plan). Wire values stay `execute`/`plan`; only the persona labels change. */
 const MODE_ICONS: Record<TurnMode, LucideIcon> = {
-  execute: MessageSquare,
-  plan: ClipboardList,
+  execute: Zap,
+  plan: NotebookPen,
 };
 
 const MODE_ORDER: readonly TurnMode[] = ["execute", "plan"];
 
 /**
- * "Mode" dropdown, rendered beside {@link ChatModelSelector} in the composer.
- * Two entries — Chat (execute) and Plan (read-only planning) — each with an
- * icon and a one-line description. The trigger pill shows the active mode's
- * icon + label so the row reads at a glance. Hidden only for a member on a
- * pre-Teams multiplayer host (mirrors the model + effort selectors); otherwise
- * always available.
+ * "Mode" picker, rendered beside {@link ChatModelSelector} in the composer.
+ * Two personas — Doer (execute) and Planner (read-only planning) — each with an
+ * icon in a soft tile, a name, and a one-line description. The trigger is the
+ * same h-7 muted pill as the model + effort selectors; the menu matches the
+ * model picker's card (rounded-2xl, bordered, shadowed, roomy rows). Hidden only
+ * for a member on a pre-Teams multiplayer host (mirrors the other selectors);
+ * otherwise always available.
  */
 export function ChatModeSelector({
   mode,
@@ -52,12 +55,12 @@ export function ChatModeSelector({
   if (!modelSelectorDecision(capabilities, agent).show) return null;
 
   const labels: Record<TurnMode, string> = {
-    execute: t("modeSelector.chat"),
-    plan: t("modeSelector.plan"),
+    execute: t("modeSelector.doer"),
+    plan: t("modeSelector.planner"),
   };
   const descriptions: Record<TurnMode, string> = {
-    execute: t("modeSelector.chatDescription"),
-    plan: t("modeSelector.planDescription"),
+    execute: t("modeSelector.doerDescription"),
+    plan: t("modeSelector.plannerDescription"),
   };
 
   const ActiveIcon = MODE_ICONS[mode];
@@ -84,9 +87,12 @@ export function ChatModeSelector({
             <ChevronDown className="size-3 opacity-60" />
           </button>
         </DropdownMenuTrigger>
+        {/* Match the model picker card: rounded-2xl, hairline border, soft
+            shadow, roomy 1.5 padding — not the default menu slab. */}
         <DropdownMenuContent
           align="start"
-          className="w-[300px]"
+          sideOffset={6}
+          className="w-[300px] rounded-2xl border-border p-1.5 shadow-lg"
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           {MODE_ORDER.map((m) => {
@@ -96,18 +102,22 @@ export function ChatModeSelector({
               <DropdownMenuItem
                 key={m}
                 onSelect={() => onSelect(m)}
-                className="items-start gap-2.5 py-2"
+                className="items-start gap-3 rounded-xl px-2.5 py-2.5"
               >
-                <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                <span className="mt-px flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-foreground">
+                  <Icon className="size-4 text-foreground" />
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="text-sm font-medium text-foreground">
                     {labels[m]}
-                    {active && <Check className="size-3.5 text-primary" />}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="line-clamp-2 text-xs text-muted-foreground">
                     {descriptions[m]}
                   </span>
                 </div>
+                {active && (
+                  <Check className="mt-1 size-4 shrink-0 text-foreground" />
+                )}
               </DropdownMenuItem>
             );
           })}

@@ -88,10 +88,10 @@
   "modeSelector": {
     "mode": "Modo",
     "modeValue": "Modo: {{mode}}",
-    "chat": "Chat",
-    "chatDescription": "O Houston pode ler, agir e fazer alterações.",
-    "plan": "Plano",
-    "planDescription": "O Houston apenas observa e escreve um plano para você aprovar. Ele não fará alterações nem usará seus aplicativos."
+    "doer": "Executor",
+    "doerDescription": "Faz as coisas: lê, age e faz alterações.",
+    "planner": "Planejador",
+    "plannerDescription": "Primeiro escreve um plano para você aprovar. Não faz alterações."
   },
   "modelSelector": {
     "selectModel": "Escolha um modelo",
