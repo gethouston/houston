@@ -67,7 +67,7 @@ function ProviderEmpty() {
  * Available. The grid mirrors the Integrations tab so the two surfaces read as
  * one system: recognition first — a big full-color brand mark the eye lands on,
  * the name, then the bold live model count and the friendly cost story. Each
- * card opens the provider modal on body click or its info button. Cards render
+ * card opens the provider modal via its explicit info button. Cards render
  * statically (no `layout` animation) so the grid never reflows when a modal's
  * scroll-lock changes the content width; the parent's tab crossfade is the only
  * entrance motion, and a connect that flips a provider between groups just

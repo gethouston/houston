@@ -16,7 +16,7 @@
   "card": {
     "connect": "Conectar",
     "connecting": "Conectando",
-    "details": "Ver detalhes",
+    "details": "Ver detalhes de {{name}}",
     "connected": "Conectado",
     "signOut": "Sair",
     "cancel": "Cancelar",
