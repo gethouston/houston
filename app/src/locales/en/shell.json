@@ -396,5 +396,22 @@
     "successWithId": "Mission control is on it. Reference: {{id}}",
     "successNoId": "Mission control is on it.",
     "errorTitle": "Couldn't send report"
+  },
+  "migration": {
+    "title": "Houston is moving to the cloud",
+    "body": "A new version of Houston is ready. Your agents, files, and history come with you. For security, your AI sign-in can't carry over, so you'll connect your AI once after updating.",
+    "checking": "Checking for the new version...",
+    "updateNow": "Update now",
+    "notNow": "Not now",
+    "downloading": "Downloading the new version...",
+    "downloadingProgress": "Downloading the new version... {{progress}}%",
+    "ready": "Update installed. Restart Houston to finish.",
+    "relaunch": "Restart Houston",
+    "errorInstall": "Houston couldn't install the update. Try again in a moment.",
+    "errorRelaunch": "Update installed, but Houston couldn't restart itself. Restart manually or try again.",
+    "checkFailedTitle": "Couldn't check for the new version",
+    "checkFailedBody": "Houston couldn't reach the update service. Check your internet connection and try again, or keep using the current version for now.",
+    "tryAgain": "Try again",
+    "continueCurrent": "Continue with current version"
   }
 }

@@ -30,7 +30,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/gethouston/houston/releases/latest/download/latest.json"
+        "https://github.com/gethouston/houston/releases/download/cloud-latest/latest-cloud.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJDQTdCMzc1MURERDRFQkQKUldTOVR0MGRkYk9uTEE4SUNnNElWZzVEN3QvcFQzczl6Y2NTMUpLSXJYZkxyK2g5azk4UHpRdmcK"
     },

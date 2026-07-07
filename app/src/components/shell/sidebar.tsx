@@ -6,7 +6,6 @@ import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
-import { UpdateChecker } from "./update-checker";
 import { UserMenu } from "./user-menu";
 import { CreateWorkspaceDialog } from "./workspace-dialog";
 import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
@@ -154,7 +153,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
         footer={
           <div className="flex flex-col">
             <UserMenu />
-            <UpdateChecker />
           </div>
         }
       >
