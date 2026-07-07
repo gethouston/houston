@@ -2,6 +2,7 @@ import { Button, DialogFooter, Spinner } from "@houston-ai/core";
 import { Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
+import { genericErrorDescription } from "../../lib/error-toast";
 import { tauriSystem } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 
@@ -72,7 +73,7 @@ export function ProviderDeviceCode({
     tauriSystem.openUrl(verificationUri).catch((err) => {
       addToast({
         title: t("providerLogin.deviceOpenFailed"),
-        description: err instanceof Error ? err.message : String(err),
+        description: genericErrorDescription("provider_device_open_url", err),
         variant: "error",
       });
     });
@@ -87,7 +88,7 @@ export function ProviderDeviceCode({
     } catch (err) {
       addToast({
         title: t("providerLogin.codeCopyFailed"),
-        description: err instanceof Error ? err.message : String(err),
+        description: genericErrorDescription("provider_device_copy_code", err),
         variant: "error",
       });
     }
@@ -98,7 +99,10 @@ export function ProviderDeviceCode({
     tauriSystem.openUrl(settingsUrl).catch((err) => {
       addToast({
         title: t("providerLogin.deviceSettingsOpenFailed"),
-        description: err instanceof Error ? err.message : String(err),
+        description: genericErrorDescription(
+          "provider_device_open_settings",
+          err,
+        ),
         variant: "error",
       });
     });

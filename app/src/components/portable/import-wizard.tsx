@@ -40,6 +40,7 @@ import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { finishAgentSetup } from "../../lib/agent-setup";
 import { analytics } from "../../lib/analytics";
 import { getEngine } from "../../lib/engine";
+import { genericErrorDescription } from "../../lib/error-toast";
 import { getDefaultModel } from "../../lib/providers";
 import { tauriProvider, toAgent } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";
@@ -159,7 +160,7 @@ export function ImportAgentWizard() {
       addToast({
         variant: "error",
         title: t("import.errors.uploadFailed"),
-        description: String(err),
+        description: genericErrorDescription("import_upload", err),
       });
     }
   };
@@ -228,7 +229,7 @@ export function ImportAgentWizard() {
       addToast({
         variant: "error",
         title: t("import.errors.installFailed"),
-        description: String(err),
+        description: genericErrorDescription("import_install", err),
       });
     } finally {
       setInstalling(false);

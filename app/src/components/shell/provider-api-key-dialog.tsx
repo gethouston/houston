@@ -10,6 +10,7 @@ import {
 import { ExternalLink, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { genericErrorDescription } from "../../lib/error-toast";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider, tauriSystem } from "../../lib/tauri";
 
@@ -64,7 +65,7 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
       // toasts. Close here so the dialog doesn't linger over the connected state.
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(genericErrorDescription("provider_api_key_submit", err));
       setSubmitting(false);
     }
   };

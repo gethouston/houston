@@ -66,6 +66,7 @@ import {
 import { createMission } from "../lib/create-mission";
 import { resolveDictationLangHint } from "../lib/dictation/types";
 import { useDictation } from "../lib/dictation/use-dictation";
+import { genericErrorDescription } from "../lib/error-toast";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
 import { composeInteractionReply } from "../lib/interaction-reply";
 import {
@@ -541,7 +542,7 @@ export function useAgentChatPanel({
       } catch (err) {
         addToast({
           title: t("chat:errors.modelPersistFailed"),
-          description: String(err),
+          description: genericErrorDescription("model_persist_failed", err),
           variant: "error",
         });
       }
@@ -606,7 +607,7 @@ export function useAgentChatPanel({
       } catch (err) {
         addToast({
           title: t("chat:errors.modelPersistFailed"),
-          description: String(err),
+          description: genericErrorDescription("model_persist_failed", err),
           variant: "error",
         });
       }
@@ -627,7 +628,7 @@ export function useAgentChatPanel({
       } catch (err) {
         addToast({
           title: t("chat:errors.modelPersistFailed"),
-          description: String(err),
+          description: genericErrorDescription("model_persist_failed", err),
           variant: "error",
         });
       }
@@ -859,7 +860,7 @@ export function useAgentChatPanel({
         .catch((err) => {
           addToast({
             title: t("chat:composio.followupFailed", { name: appName }),
-            description: String(err),
+            description: genericErrorDescription("integration_followup", err),
             variant: "error",
           });
         });

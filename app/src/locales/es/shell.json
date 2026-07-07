@@ -37,6 +37,7 @@
   },
   "errorToast": {
     "problemTitle": "Houston, tenemos un problema.",
+    "genericDescription": "Algo inesperado salió mal. Inténtalo de nuevo.",
     "reportSentTitle": "Houston, reporte enviado",
     "reportSentDescription": "Referencia #{{id}}.",
     "copyId": "Copiar código"

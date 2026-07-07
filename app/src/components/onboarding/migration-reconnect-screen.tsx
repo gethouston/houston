@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
+import { genericErrorDescription } from "../../lib/error-toast";
 import { useUIStore } from "../../stores/ui";
 import { ProviderBrowser } from "../provider-browser/provider-browser";
 import { useProviderBrowserData } from "../provider-browser/use-provider-browser-data";
@@ -43,7 +44,10 @@ export function MigrationReconnectScreen({
       // session re-evaluates the flag, so at worst the moment shows once more.
       addToast({
         title: t("migrationReconnect.dismissError"),
-        description: err instanceof Error ? err.message : String(err),
+        description: genericErrorDescription(
+          "migration_reconnect_dismiss",
+          err,
+        ),
         variant: "error",
       });
     });

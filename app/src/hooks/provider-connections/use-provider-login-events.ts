@@ -3,6 +3,7 @@ import { type Dispatch, type SetStateAction, useEffect } from "react";
 import { claimProviderLoginSurface } from "../../components/shell/provider-login-surface";
 import { shouldOpenLoginUrlDirectly } from "../../components/shell/provider-login-url";
 import { tryBeginCodexLoopbackLogin } from "../../lib/codex-loopback";
+import { genericErrorDescription } from "../../lib/error-toast";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
 import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
@@ -84,7 +85,10 @@ export function useProviderLoginEvents({
               title: t("toast.signInFailed", {
                 provider: prov?.name ?? ev.data.provider,
               }),
-              description: err instanceof Error ? err.message : String(err),
+              description: genericErrorDescription(
+                "provider_open_login_url",
+                err,
+              ),
               variant: "error",
             });
           });

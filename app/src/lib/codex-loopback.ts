@@ -16,6 +16,7 @@
 
 import { shouldUseCodexLoopback } from "../components/shell/provider-login-url";
 import { useUIStore } from "../stores/ui";
+import { genericErrorDescription } from "./error-toast";
 import i18n from "./i18n";
 import {
   legacyListen,
@@ -48,7 +49,7 @@ function failCodexLogin(frontendProviderId: string, err: unknown): void {
     frontendProviderId;
   useUIStore.getState().addToast({
     title: i18n.t("providers:toast.signInFailed", { provider: name }),
-    description: err instanceof Error ? err.message : String(err),
+    description: genericErrorDescription("codex_loopback_login", err),
     variant: "error",
   });
 }

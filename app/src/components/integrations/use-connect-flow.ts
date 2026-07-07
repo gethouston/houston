@@ -132,12 +132,16 @@ export function useConnectFlow(opts: {
         if (outcome === "timeout") {
           showErrorToast(
             "integration_connect_timeout",
-            t("connectResult.timeout"),
+            "integration connect timed out",
+            undefined,
+            { userMessage: t("connectResult.timeout") },
           );
         } else if (outcome === "error") {
           showErrorToast(
             "integration_connect_failed",
-            t("connectResult.failed"),
+            "integration connect failed",
+            undefined,
+            { userMessage: t("connectResult.failed") },
           );
         }
         // outcome === "cancelled": no toast; the server connection may stay

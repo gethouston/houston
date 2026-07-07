@@ -22,6 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { getEngine } from "../../lib/engine";
+import { genericErrorDescription } from "../../lib/error-toast";
 import { osRevealPath } from "../../lib/os-bridge";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
@@ -98,7 +99,7 @@ export function ExportAgentWizard() {
         addToast({
           variant: "error",
           title: t("export.errors.previewFailed"),
-          description: String(err),
+          description: genericErrorDescription("export_preview", err),
         });
         setAgentId(null);
       } finally {
@@ -151,7 +152,7 @@ export function ExportAgentWizard() {
       addToast({
         variant: "error",
         title: t("export.errors.anonymizeFailed"),
-        description: String(err),
+        description: genericErrorDescription("export_anonymize", err),
       });
     } finally {
       setAnonymizing(false);
@@ -227,7 +228,7 @@ export function ExportAgentWizard() {
                 addToast({
                   variant: "error",
                   title: t("export.errors.revealFailed"),
-                  description: String(err),
+                  description: genericErrorDescription("export_reveal", err),
                 }),
               );
             },
@@ -239,7 +240,7 @@ export function ExportAgentWizard() {
       addToast({
         variant: "error",
         title: t("export.errors.saveFailed"),
-        description: String(err),
+        description: genericErrorDescription("export_save", err),
       });
     } finally {
       setSaving(false);
