@@ -1,3 +1,4 @@
+import { clearConversationCache } from "@houston-ai/engine-client";
 import type { Session } from "@supabase/supabase-js";
 import { listen } from "@tauri-apps/api/event";
 import { analytics } from "./analytics";
@@ -223,6 +224,9 @@ export async function signOut(): Promise<void> {
   } catch (e) {
     logger.warn(`[auth] signOut failed: ${e}`);
   }
+  // Cached cloud transcripts are per-user data on this machine — wipe them so
+  // nothing from the account lingers after sign-out (HOU-712). Never throws.
+  await clearConversationCache();
   analytics.track("user_signed_out");
   analytics.reset();
 }
