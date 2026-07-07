@@ -30,6 +30,14 @@ export interface TurnState {
   prompt: string | null;
   text: string;
   thinking: string;
+  /**
+   * How many of this turn's `tool_call` feed items were already pushed (live
+   * frames + sync replay) — the dedup cursor a running `sync`'s tool replay
+   * starts from, so a resync never doubles a tool row (HOU-717).
+   */
+  toolsSeen: number;
+  /** Same cursor for `tool_result` pushes. */
+  toolResultsSeen: number;
   usage: TokenUsage | null;
   settled: boolean;
   terminal: TerminalBoardStatus | null;
@@ -58,6 +66,8 @@ export function newTurnState(
     prompt: send?.prompt ?? null,
     text: "",
     thinking: "",
+    toolsSeen: 0,
+    toolResultsSeen: 0,
     usage: null,
     settled: false,
     terminal: null,

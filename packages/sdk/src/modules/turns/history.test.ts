@@ -102,6 +102,30 @@ describe("historyToFeed", () => {
     });
   });
 
+  it("replays persisted reasoning before the tool calls, with their inputs (HOU-717)", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "run it", ts: 1 },
+      {
+        role: "assistant",
+        content: "done",
+        ts: 2,
+        thinking: "first list the files, then decide",
+        tools: [{ name: "bash", input: { cmd: "ls" }, isError: false }],
+      },
+    ]);
+    const thinkingIdx = feed.findIndex((f) => f.feed_type === "thinking");
+    const toolIdx = feed.findIndex((f) => f.feed_type === "tool_call");
+    expect(feed[thinkingIdx]).toEqual({
+      feed_type: "thinking",
+      data: "first list the files, then decide",
+    });
+    expect(thinkingIdx).toBeLessThan(toolIdx);
+    expect(feed[toolIdx]).toEqual({
+      feed_type: "tool_call",
+      data: { name: "bash", input: { cmd: "ls" } },
+    });
+  });
+
   it("replays a persisted file-change summary after the assistant text", () => {
     const feed = historyToFeed([
       { role: "user", content: "make a report", ts: 1 },

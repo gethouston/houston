@@ -210,6 +210,57 @@ test("the turns/observe command drives the same observe path", async () => {
   expect(vm().feed.some((f) => f.data === "observed reply")).toBe(true);
 });
 
+test("observe replays the running turn's thinking + tools from the sync, deduped across a resync (HOU-717)", async () => {
+  const activityTurn: WireFrame[] = [
+    {
+      type: "sync",
+      data: {
+        running: true,
+        partial: "",
+        seq: 2,
+        thinking: "planning the steps",
+        tools: [
+          { name: "bash", input: { cmd: "ls" }, isError: false },
+          { name: "read", input: { path: "a.txt" } }, // still running
+        ],
+      },
+      seq: 2,
+    },
+    // Reconnect resync: same activity again (must NOT double), and the
+    // still-running tool has since ended (its result must land).
+    {
+      type: "sync",
+      data: {
+        running: true,
+        partial: "",
+        seq: 3,
+        resync: true,
+        thinking: "planning the steps",
+        tools: [
+          { name: "bash", input: { cmd: "ls" }, isError: false },
+          { name: "read", input: { path: "a.txt" }, isError: false },
+        ],
+      },
+      seq: 3,
+    },
+    { type: "text", data: "observed reply", seq: 4 },
+    { type: "done", data: null, seq: 5 },
+  ];
+  const { mod, vm } = harness(activityTurn);
+  await mod.observe("c1");
+  await waitFor(() => vm()?.sessionStatus === "completed");
+  const feed = vm().feed;
+  const thinking = feed.filter((f) => f.feed_type === "thinking");
+  expect(thinking).toHaveLength(1);
+  expect(thinking[0].data).toBe("planning the steps");
+  const calls = feed.filter((f) => f.feed_type === "tool_call");
+  expect(calls.map((f) => f.data)).toEqual([
+    { name: "bash", input: { cmd: "ls" } },
+    { name: "read", input: { path: "a.txt" } },
+  ]);
+  expect(feed.filter((f) => f.feed_type === "tool_result")).toHaveLength(2);
+});
+
 test("turns/cancel aborts the conversation's turn", async () => {
   const { commands, calls } = harness();
   await commands.get("turns/cancel")?.({ conversationId: "c1" });

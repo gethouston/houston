@@ -48,6 +48,20 @@ export type WireEvent =
         resync?: boolean;
         /** The RUNNING turn's id (see WireFrame.turnId). Absent when idle. */
         turnId?: string;
+        /**
+         * The running turn's reasoning so far (cumulative, like `partial`).
+         * A client attaching mid-turn replays it so the mission log shows the
+         * thinking that streamed before it connected (HOU-717). Absent when
+         * idle, when the turn produced none, or from a pre-field server.
+         */
+        thinking?: string;
+        /**
+         * The running turn's tool calls so far, in stream order. `isError`
+         * present means the tool has ENDED (with that error flag); absent
+         * means it is still running — only the last entry can be. Same
+         * absence semantics as `thinking`.
+         */
+        tools?: { name: string; input?: unknown; isError?: boolean }[];
       };
     }
   | {

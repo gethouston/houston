@@ -129,6 +129,9 @@ export async function execTurn(
   const { author, priorAuthors } = recorded;
 
   let assistantText = "";
+  // The turn's reasoning, accumulated for persistence so a history reload can
+  // replay it in the mission log (HOU-717) — same lifecycle as assistantText.
+  let thinkingText = "";
   let usage: TokenUsage | null = null;
   const tools: ToolCallRecord[] = [];
   // A typed provider failure for this turn. pi resolves the turn rather than
@@ -162,8 +165,10 @@ export async function execTurn(
   const subscribeSession = () => {
     unsub = conv.session.subscribe((wire: WireEvent) => {
       if (wire.type === "text") assistantText += wire.data;
+      else if (wire.type === "thinking") thinkingText += wire.data;
       else if (wire.type === "usage") usage = wire.data;
-      else if (wire.type === "tool_start") tools.push({ name: wire.data.name });
+      else if (wire.type === "tool_start")
+        tools.push({ name: wire.data.name, input: wire.data.args });
       else if (wire.type === "tool_end") {
         const t = tools[tools.length - 1];
         if (t) t.isError = wire.data.isError;
@@ -392,6 +397,7 @@ export async function execTurn(
     // (pi resolves the turn, it does not throw) with empty text, not in the catch.
     appendAssistantMessage(id, assistantText, {
       tools,
+      thinking: thinkingText || undefined,
       usage,
       providerSwitch,
       compaction,
@@ -430,6 +436,7 @@ export async function execTurn(
     // with a vague error 15 minutes later.
     appendAssistantMessage(id, assistantText, {
       tools,
+      thinking: thinkingText || undefined,
       usage,
       providerSwitch,
       compaction,

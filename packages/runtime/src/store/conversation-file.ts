@@ -65,6 +65,8 @@ export interface UserMessageMeta {
 /** Optional fields of a persisted assistant message. */
 export interface AssistantMessageMeta {
   tools?: ToolCallRecord[];
+  /** The turn's reasoning text, replayed into the mission log on reload (HOU-717). */
+  thinking?: string;
   usage?: TokenUsage | null;
   providerSwitch?: ChatMessage["providerSwitch"];
   compaction?: ChatMessage["compaction"];
@@ -124,6 +126,7 @@ export function appendAssistantMessageAt(
     content,
     ts: Date.now(),
     tools: meta.tools?.length ? meta.tools : undefined,
+    thinking: meta.thinking || undefined,
     usage: meta.usage ?? undefined,
     providerSwitch: meta.providerSwitch,
     compaction: meta.compaction,
