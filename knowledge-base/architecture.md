@@ -182,6 +182,39 @@ The old `#houston_toolkit=` markdown-link connect hack is GONE from the prompt a
 tool guidance; the app's legacy link-card renderer survives only to render old
 transcripts. Client-side settle detail: `knowledge-base/client-architecture.md`.
 
+## Turn modes (execute / plan)
+
+Each turn optionally pins a `TurnMode`: `"execute" | "plan"`
+(`packages/protocol/src/conversation.ts`). `execute` is full read/write/act,
+today's only behavior for an UNPINNED turn — routines and per-turn cloud
+workspaces never inherit a mode, so they always execute. Deliberately NOT part
+of `Settings` (which persists `effort`): mode rides the per-turn pin only, so
+an unpinned turn can never accidentally end up read-only.
+
+`plan` clamps the turn to a read-only tool subset — `PLAN_MODE_TOOL_NAMES`
+(`read, ls, grep, find, ask_user`, `packages/runtime/src/session/tool-selection.ts`)
+with `edit, write, bash, run_code`, and every integration tool dropped — plus a
+system-prompt overlay (`PLAN_MODE_OVERLAY`,
+`packages/runtime/src/session/plan-overlay.ts`) that tells the model to
+investigate and propose a plan rather than act. `switchModeIfNeeded`
+(`packages/runtime/src/session/conversation-cache.ts`) rebuilds the session
+when the pinned mode differs from the live one, keyed by conversation id. Both
+backends honor it: the pi backend swaps its tool allowlist; the Claude-SDK
+backend keeps its SDK `permissionMode` default and simply gets no integration
+tools, so plan mode still holds.
+
+App side: a Mode pill in the composer footer
+(`app/src/components/chat-mode-selector.tsx`), remembered per-agent as `mode`
+in `.houston/config/config.json` (composer memory only — never synced to
+engine `Settings`). Every user-typed send forwards the pin explicitly as
+`modeOverride`.
+
+**Gotcha.** Mode must ride EVERY send path explicitly, unlike effort (which
+syncs through `Settings` and so is implicitly present on every send) — a send
+path that forgets `modeOverride` silently degrades to `execute`. Per-turn
+cloud workspaces drop chat-body pins entirely; that's pre-existing and not
+specific to plan mode.
+
 ## Current gap to vision
 
 | Goal | Status |
