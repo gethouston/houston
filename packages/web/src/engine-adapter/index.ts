@@ -14,8 +14,10 @@ export {
   isHoustonEngineError,
 } from "./client";
 // Local conversation cache (HOU-712): sign-out wipes the per-user cached
-// transcripts so nothing lingers on a shared machine.
+// transcripts so nothing lingers on a shared machine. The scope helper also
+// keys the app's list-query persistence to the same gateway+user identity.
 export { clearConversationCache } from "./conversation-cache";
+export { conversationCacheScope } from "./conversation-cache-identity";
 // Warming-engine send queue (HOU-693): show the message as sent while the
 // engine boots; the deferred real send suppresses its own bubble.
 export { pushPendingUserMessage } from "./turn-stream";
