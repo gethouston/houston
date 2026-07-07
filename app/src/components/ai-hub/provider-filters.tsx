@@ -1,9 +1,11 @@
 /**
- * The Providers-tab filter bar: a search box + a category dropdown. The search
- * markup mirrors `ModelsBrowser` (pill Input with a leading magnifier) and the
- * Select mirrors `DirectoryFilters` (token-styled pill trigger) so the two tabs
- * read identically. Filter state lives in the parent (`ProviderList`); this owns
- * nothing but its own layout.
+ * The Providers-tab filter bar: a search box + a plain-language quick-filter
+ * dropdown. The search markup mirrors `ModelsBrowser` (pill Input with a leading
+ * magnifier) and the Select mirrors `DirectoryFilters` (token-styled pill
+ * trigger) so the two tabs read identically. Each option pairs a lucide glyph
+ * with a non-technical label so a first-time user can tell the facets apart at a
+ * glance. Filter state lives in the parent (`ProviderList`); this owns nothing
+ * but its own layout.
  */
 
 import {
@@ -14,34 +16,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@houston-ai/core";
-import { Search } from "lucide-react";
+import {
+  Coins,
+  CreditCard,
+  Gift,
+  LayoutGrid,
+  type LucideIcon,
+  Monitor,
+  Search,
+  Sparkles,
+} from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
-import type { ProviderCategoryFilter } from "./provider-filtering.ts";
+import {
+  PROVIDER_QUICK_FILTERS,
+  type ProviderQuickFilter,
+} from "./provider-filtering.ts";
 
 const TRIGGER =
   "h-9 rounded-full border-border bg-secondary px-4 text-[13px] font-medium text-foreground shadow-none data-[placeholder]:text-muted-foreground focus-visible:ring-2";
 
-/** All / featured / gateway / direct / regional / local, in dropdown order. */
-const CATEGORIES: readonly ProviderCategoryFilter[] = [
-  "all",
-  "featured",
-  "gateway",
-  "direct",
-  "regional",
-  "local",
-];
+/** The lucide glyph paired with each quick-filter facet. */
+const FILTER_ICON: Record<ProviderQuickFilter, LucideIcon> = {
+  all: LayoutGrid,
+  popular: Sparkles,
+  subscription: CreditCard,
+  free: Gift,
+  payg: Coins,
+  local: Monitor,
+};
 
 export function ProviderFilters({
   query,
   setQuery,
-  category,
-  setCategory,
+  filter,
+  setFilter,
 }: {
   query: string;
   setQuery: Dispatch<SetStateAction<string>>;
-  category: ProviderCategoryFilter;
-  setCategory: Dispatch<SetStateAction<ProviderCategoryFilter>>;
+  filter: ProviderQuickFilter;
+  setFilter: Dispatch<SetStateAction<ProviderQuickFilter>>;
 }) {
   const { t } = useTranslation("aiHub");
   return (
@@ -57,21 +71,30 @@ export function ProviderFilters({
       </div>
 
       <Select
-        value={category}
-        onValueChange={(value) => setCategory(value as ProviderCategoryFilter)}
+        value={filter}
+        onValueChange={(value) => setFilter(value as ProviderQuickFilter)}
       >
         <SelectTrigger
           className={TRIGGER}
-          aria-label={t("providers.category.label")}
+          aria-label={t("providers.filter.label")}
         >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {CATEGORIES.map((c) => (
-            <SelectItem key={c} value={c}>
-              {t(`providers.category.${c}`)}
-            </SelectItem>
-          ))}
+          {PROVIDER_QUICK_FILTERS.map((key) => {
+            const Icon = FILTER_ICON[key];
+            return (
+              <SelectItem key={key} value={key}>
+                <span className="flex items-center gap-2">
+                  <Icon
+                    className="size-3.5 text-muted-foreground"
+                    aria-hidden
+                  />
+                  {t(`providers.filter.${key}`)}
+                </span>
+              </SelectItem>
+            );
+          })}
         </SelectContent>
       </Select>
     </div>

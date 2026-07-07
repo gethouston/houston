@@ -63,6 +63,15 @@ export interface ProviderOverride {
    */
   description?: string;
   cost?: string;
+  /**
+   * Has a usable free tier the user can start on without paying (the friendly
+   * "free" quick-filter facet reads this). Curated and conservative — set only
+   * where the provider verifiably lets a new user run models at no cost today
+   * (Google's free AI Studio key, Groq/Cerebras free tiers, Hugging Face's
+   * monthly credits, OpenRouter's free-routed models). Local models cost
+   * nothing too, but that facet is derived from the auth chip, not this flag.
+   */
+  freeTier?: boolean;
   installUrl?: string;
   /** For api-key providers: the dashboard URL where the user creates/copies the key. */
   apiKeyUrl?: string;
@@ -137,78 +146,8 @@ export const FEATURED_PROVIDER_IDS = [
   "openai-compatible",
 ] as const;
 
-/** A provider's AI-Hub filter bucket. `direct` is the default for unlisted ids. */
-export type ProviderCategory =
-  | "featured"
-  | "gateway"
-  | "direct"
-  | "regional"
-  | "local";
-
-/**
- * The AI-Hub category each provider id falls in, keyed by Houston provider id
- * (post-rename: pi's `openai-codex` reads as `openai`). Covers the curated ids
- * plus the raw pi ids the Providers tab now surfaces. `featured` mirrors
- * `FEATURED_PROVIDER_IDS` and wins over any other listing (e.g. `google` and
- * `openai-compatible`, which read as featured, not direct/local). Ids absent
- * here resolve through `providerCategory`: the regional `*-cn` / `*-sgp` /
- * `*-ams` / `xiaomi*` pattern, else `direct`.
- */
-export const PROVIDER_CATEGORY: Readonly<Record<string, ProviderCategory>> = {
-  // Featured (mirrors FEATURED_PROVIDER_IDS; featured wins over every other bucket).
-  anthropic: "featured",
-  openai: "featured",
-  google: "featured",
-  "github-copilot": "featured",
-  "openai-compatible": "featured",
-  // Multi-model gateways: one key, many labs.
-  openrouter: "gateway",
-  opencode: "gateway",
-  "opencode-go": "gateway",
-  "vercel-ai-gateway": "gateway",
-  "cloudflare-ai-gateway": "gateway",
-  "azure-openai-responses": "gateway",
-  // Bring-your-own backend / account.
-  "amazon-bedrock": "local",
-  // Regional deployments (named; the *-cn/*-sgp/*-ams/xiaomi* ids resolve by pattern).
-  "google-vertex": "regional",
-  "cloudflare-workers-ai": "regional",
-  "kimi-coding": "regional",
-  "zai-coding-cn": "regional",
-  "minimax-cn": "regional",
-  "moonshotai-cn": "regional",
-  // Direct first-party APIs.
-  deepseek: "direct",
-  mistral: "direct",
-  xai: "direct",
-  groq: "direct",
-  cerebras: "direct",
-  fireworks: "direct",
-  together: "direct",
-  nvidia: "direct",
-  huggingface: "direct",
-  moonshotai: "direct",
-  zai: "direct",
-  minimax: "direct",
-  "ant-ling": "direct",
-};
-
 /** Regional-deployment id suffixes (China / Singapore / Amsterdam). */
 const REGIONAL_SUFFIX = /-(cn|sgp|ams)$/;
-
-/**
- * Resolve a provider id to its AI-Hub category. The explicit `PROVIDER_CATEGORY`
- * map wins; otherwise the regional `*-cn` / `*-sgp` / `*-ams` / `xiaomi*` pattern
- * catches deployments pi may add without a map entry; everything else is
- * `direct`. Never throws on an unknown id, so the ~25 uncurated pi providers are
- * always bucketed.
- */
-export function providerCategory(id: string): ProviderCategory {
-  const explicit = PROVIDER_CATEGORY[id];
-  if (explicit) return explicit;
-  if (REGIONAL_SUFFIX.test(id) || id.startsWith("xiaomi")) return "regional";
-  return "direct";
-}
 
 export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   openai: {
@@ -439,7 +378,8 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     name: "OpenRouter",
     subtitle: "Any model, one key",
     description: "Any model from one key.",
-    cost: "Pay-as-you-go on your OpenRouter account",
+    cost: "Free models, then pay as you go",
+    freeTier: true,
     installUrl: "https://openrouter.ai",
     apiKeyUrl: "https://openrouter.ai/settings/keys",
     defaultModel: "anthropic/claude-sonnet-4.6",
@@ -497,6 +437,7 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     subtitle: "Free key from AI Studio",
     description: "Gemini models, free key from AI Studio.",
     cost: "Free tier on your Google account",
+    freeTier: true,
     installUrl: "https://ai.google.dev",
     apiKeyUrl: "https://aistudio.google.com/apikey",
     defaultModel: "gemini-3-flash-preview",
@@ -580,11 +521,39 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       },
     },
   },
+  // Free-tier curation: these entries exist so the "Free to try" quick filter
+  // and the card's cost line can tell users they can start at no cost. Row
+  // descriptions still come from `DESCRIPTION_BY_ID` (no `description` here);
+  // names are set because every override entry seeds a pre-hydration card.
+  groq: {
+    name: "Groq",
+    subtitle: "Fast inference",
+    cost: "Free tier, then pay as you go",
+    freeTier: true,
+    installUrl: "https://groq.com",
+    apiKeyUrl: "https://console.groq.com/keys",
+  },
+  cerebras: {
+    name: "Cerebras",
+    subtitle: "Very fast inference",
+    cost: "Free tier, then pay as you go",
+    freeTier: true,
+    installUrl: "https://www.cerebras.ai",
+    apiKeyUrl: "https://cloud.cerebras.ai",
+  },
+  huggingface: {
+    name: "Hugging Face",
+    subtitle: "Open models hub",
+    cost: "Free monthly credits, then pay as you go",
+    freeTier: true,
+    installUrl: "https://huggingface.co",
+    apiKeyUrl: "https://huggingface.co/settings/tokens",
+  },
 };
 
 /**
- * One-line row descriptions for every pi provider that has no curated
- * `PROVIDER_OVERRIDES` entry (plus the local `openai-compatible` provider, whose
+ * One-line row descriptions for every pi provider whose override carries no
+ * `description` field (plus the local `openai-compatible` provider, whose
  * `ProviderInfo` is appended verbatim, not built from an override). Accurate and
  * concise (~60 chars) — what the provider is / its niche, not marketing. Named
  * regional variants are listed so they read on their own; any other `*-cn` /
@@ -636,4 +605,16 @@ export function providerDescription(id: string): string {
     );
   }
   return "";
+}
+
+/**
+ * The friendly one-line cost prose for a provider (e.g. "Your Claude
+ * subscription", "Pay as you go"), read from its curated override's `cost`.
+ * Returns `undefined` for any id without a curated cost line (the ~25 uncurated
+ * pi providers, plus the local `openai-compatible` provider whose cost lives on
+ * its `ProviderInfo`, not an override) so the card can omit the line rather than
+ * show a wrong or empty one. The provider cards render this.
+ */
+export function providerCostLine(id: string): string | undefined {
+  return PROVIDER_OVERRIDES[id]?.cost;
 }

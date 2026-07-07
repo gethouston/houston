@@ -1,16 +1,15 @@
 /**
- * One provider row in the marketplace LIST (Providers tab). A quiet, scannable
- * line — small brand glyph + name + a secondary line that leads with the live
- * model count in bold (`{N} models`), a middot, then a muted one-line provider
- * description — with a single right-aligned action: a Connect pill when
- * disconnected (which,
- * while a connect is in flight, flips to Cancel on hover so a stuck sign-in can
- * be aborted) or a ghost Sign out when connected (opening the shared confirm).
- * The row body is the open affordance: clicking anywhere but the action button
- * opens the provider modal (`onOpen`); the action button stops propagation so it
- * never doubles as an open. Keyboard-focusable, nothing hover-only. Mirrors the
- * Models tab's `ModelRow` rhythm (hairline dividers, `hover:bg-secondary`) so the
- * two tabs read as one system.
+ * One provider CARD in the marketplace grid (Providers tab). A colorful,
+ * recognition-first tile mirroring the Integrations tab's `AppRow`: a full-color
+ * brand tile + name + a muted secondary line (the friendly cost story, e.g.
+ * "Your Claude subscription", NOT a spec-heavy model count — non-technical users
+ * care about the money, and the modal still lists models) + a single
+ * right-aligned action: a Connect pill when disconnected (which, while a connect
+ * is in flight, flips to Cancel on hover so a stuck sign-in can be aborted) or a
+ * ghost Sign out when connected (opening the shared confirm). The card body is
+ * the open affordance: clicking anywhere but the action button opens the provider
+ * modal (`onOpen`); the action button stops propagation so it never doubles as an
+ * open. Keyboard-focusable, nothing hover-only.
  */
 
 import { AsyncButton, Button } from "@houston-ai/core";
@@ -18,18 +17,11 @@ import { Loader2, X } from "lucide-react";
 import type { KeyboardEvent, MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderInfo } from "../../lib/providers";
-import { ProviderGlyph } from "../shell/provider-logos";
-import { ModelMark } from "./hub-badges";
+import { BrandMark } from "./brand-mark";
 
 interface ProviderRowProps {
   provider: ProviderInfo;
-  /**
-   * Live model count for this provider from the catalog. Rendered bold as
-   * `{N} models` at the head of the secondary line; when 0 (unknown) the line is
-   * the description alone.
-   */
-  modelCount: number;
-  /** Muted one-line provider description, after the bold count + middot. */
+  /** Muted one-line secondary: the friendly cost prose or provider description. */
   description: string;
   connected: boolean;
   connecting: boolean;
@@ -42,7 +34,6 @@ interface ProviderRowProps {
 
 export function ProviderRow({
   provider,
-  modelCount,
   description,
   connected,
   connecting,
@@ -78,22 +69,14 @@ export function ProviderRow({
       tabIndex={0}
       onClick={() => onOpen(provider)}
       onKeyDown={onRowKeyDown}
-      className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+      className="flex cursor-pointer items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 text-left transition-colors hover:bg-foreground/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
     >
-      <ModelMark size="md" mark={<ProviderGlyph providerId={provider.id} />} />
+      <BrandMark providerId={provider.id} size="md" />
       <div className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-sm font-medium text-foreground">
+        <span className="truncate text-[13px] font-medium text-foreground">
           {provider.name}
         </span>
-        <span className="truncate text-[13px] text-muted-foreground">
-          {modelCount > 0 && (
-            <>
-              <span className="font-medium text-foreground">
-                {t("card.models", { count: modelCount })}
-              </span>
-              {" · "}
-            </>
-          )}
+        <span className="truncate text-[11px] text-muted-foreground">
           {description}
         </span>
       </div>

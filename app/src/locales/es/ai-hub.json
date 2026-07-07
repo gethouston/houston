@@ -101,16 +101,16 @@
     "search": "Buscar proveedores",
     "empty": {
       "title": "No se encontraron proveedores",
-      "description": "Prueba con otra búsqueda o categoría."
+      "description": "Prueba con otra búsqueda u otro filtro."
     },
-    "category": {
-      "label": "Categoría",
-      "all": "Todos",
-      "featured": "Destacados",
-      "gateway": "Puertas de acceso",
-      "direct": "Directos",
-      "regional": "Regionales",
-      "local": "Locales"
+    "filter": {
+      "label": "Filtrar proveedores",
+      "all": "Todos los proveedores",
+      "popular": "Populares",
+      "subscription": "Incluido con tu suscripción",
+      "free": "Gratis para probar",
+      "payg": "Paga por uso",
+      "local": "Funciona en tu computador"
     },
     "openai": {
       "description": "Inicia sesión con ChatGPT y pon a trabajar los modelos GPT y Codex."

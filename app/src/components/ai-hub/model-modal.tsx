@@ -13,7 +13,7 @@ import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections.ts";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
-import { ProviderGlyph } from "../shell/provider-logos.tsx";
+import { BrandMark } from "./brand-mark.tsx";
 import {
   capabilityKeys,
   formatReleaseDate,
@@ -21,7 +21,7 @@ import {
   labName,
   sortOffers,
 } from "./format.ts";
-import { CapabilityChip, ModelMark, SpecChip } from "./hub-badges.tsx";
+import { CapabilityChip, SpecChip } from "./hub-badges.tsx";
 import { ModalShell } from "./modal-shell.tsx";
 import { ModelOfferRow } from "./model-offer-row.tsx";
 import { connectCardByGatewayId } from "./provider-grouping.ts";
@@ -65,7 +65,7 @@ export function ModelModal({
 
   const header = (
     <div className="flex items-start gap-3 px-5 pt-5 pb-4">
-      <ModelMark mark={<ProviderGlyph providerId={model.lab} />} size="lg" />
+      <BrandMark providerId={model.lab} size="lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-lg font-semibold text-foreground tracking-[-0.01em]">
           {model.name}

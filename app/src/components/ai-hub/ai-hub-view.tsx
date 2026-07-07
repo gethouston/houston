@@ -107,7 +107,6 @@ export function AiHubView() {
                     <ProviderList
                       providers={connectProviders}
                       connections={connections}
-                      catalog={catalog}
                       onOpen={setOpenProvider}
                     />
                   ) : (

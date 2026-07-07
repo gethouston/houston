@@ -1,6 +1,6 @@
 /**
  * One ledger row in the models directory, laid out on the shared column grid
- * (`LEDGER_GRID`) so it aligns with the header: Model (glyph + name + maker),
+ * (`LEDGER_GRID`) so it aligns with the header: Model (brand mark + name + maker),
  * Good at (friendly capability chips), Memory (word + muted mono value), Cost
  * (a budget->premium meter + "from $X"), and how many providers offer it. The
  * whole row is a keyboard-focusable button; nothing is hover-only.
@@ -9,7 +9,7 @@
 import { cn } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
-import { ProviderGlyph } from "../shell/provider-logos.tsx";
+import { BrandMark } from "./brand-mark.tsx";
 import {
   capabilityKeys,
   cheapestInput,
@@ -23,7 +23,6 @@ import {
   CapabilityChip,
   CostMeter,
   MemoryLabel,
-  ModelMark,
   PriceText,
 } from "./hub-badges.tsx";
 
@@ -69,7 +68,7 @@ export function ModelRow({
       )}
     >
       <span className="flex min-w-0 items-center gap-3">
-        <ModelMark size="md" mark={<ProviderGlyph providerId={model.lab} />} />
+        <BrandMark providerId={model.lab} size="sm" />
         <span className="flex min-w-0 flex-col">
           <span className="truncate font-medium text-foreground text-sm">
             {model.name}
