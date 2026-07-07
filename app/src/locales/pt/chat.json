@@ -24,6 +24,11 @@
     "title": "Comece uma conversa",
     "description": "Digite uma mensagem para falar com seu assistente."
   },
+  "questionCard": {
+    "typeOwnAnswer": "Responda com suas próprias palavras",
+    "placeholder": "Digite sua resposta...",
+    "send": "Enviar"
+  },
   "errors": {
     "sessionStart": "Não foi possível iniciar a sessão: {{error}}",
     "stopSession": "Não foi possível parar a missão: {{error}}",
