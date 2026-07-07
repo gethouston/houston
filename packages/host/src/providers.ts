@@ -158,7 +158,15 @@ const byId = new Map(PROVIDERS.map((p) => [p.id as string, p]));
 /** The OpenAI-compatible (BYO endpoint) provider id. */
 export const OPENAI_COMPATIBLE = "openai-compatible";
 
-/** A provider the cloud per-turn runtime serves. */
+/**
+ * A provider the cloud per-turn runtime serves.
+ *
+ * Mirrored by the hosted gateway's synthesized `GET /v1/catalog`
+ * (cloud repo, `src/gateway/catalog.ts` `CLOUD_PROVIDER_IDS`). Flipping a
+ * provider's `cloud` flag here changes the engine pod's catalog but NOT the
+ * gateway's; update the gateway allowlist in the same change or hosted
+ * clients will never see the new provider.
+ */
 export const CLOUD_PROVIDERS: readonly HostProvider[] = PROVIDERS.filter(
   (p) => p.cloud,
 );
