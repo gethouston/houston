@@ -146,11 +146,13 @@ export function reduceSnapshot(
       // clears the in-flight snapshot — otherwise a late subscriber's `sync`
       // would report the turn as still running forever.
       return { running: false, partial: "", seq };
+    case "turn_start":
     case "provider_switched":
     case "context_compacted":
-      // Boundary markers (a mid-session provider switch / a proactive context
-      // compaction), not turn progress — published while a turn is live, so
-      // leave running/partial untouched.
+      // Boundary / metadata markers (the turn's provider+model announcement, a
+      // mid-session provider switch, a proactive context compaction), not turn
+      // progress — published while a turn is live, so leave running/partial
+      // untouched.
       return {
         running: prev.running,
         partial: prev.partial,

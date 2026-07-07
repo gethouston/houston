@@ -166,6 +166,10 @@ export async function runPiTurn(
     console.log(
       `[turn] provider=${provider} model=${m.id} baseUrl=${m.baseUrl}`,
     );
+    // Announce the turn's resolved provider + model to observers (turn_start).
+    // Emitted here — the first point the concrete model is known (after applying
+    // the pin) — so it carries the real model id, not the raw pin.
+    emit({ type: "turn_start", data: { provider, model: m.id ?? "" } });
     // Effort → pi's thinking level. The turn's pin (the host bakes the agent's
     // saved effort into it) wins; if none and the model can reason, default to
     // medium so a "thinking" model actually reasons (pi enables reasoning only
