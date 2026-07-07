@@ -221,6 +221,50 @@ owner-only). UI under `teams:integrations.allowlist`.
 
 ---
 
+## Mission attribution + the board surface
+
+Who created and collaborated on each Kanban mission (`.houston/activity/activity.json`),
+shown as avatar face stacks and a filter-by-person control. Multiplayer-gated on
+`caps.multiplayer`; single-player never renders or resolves any of it.
+
+**The data is server-stamped, never agent-written.** Two optional fields on
+`Activity`: `created_by?: string` (the human who created the mission) and
+`contributors?: {user_id, name?}[]` (everyone who started or collaborated). The
+host derives them from the gateway's `x-houston-acting-as` header
+(`actingAuthorFromHeader`, `packages/host/src/auth/acting.ts`) and writes them on
+mission **create**, **PATCH** edit, and each **user turn** — only when
+`deps.gatewayFronted`. Off the gateway (desktop / self-host) `author` is null and
+nothing is stamped, so an `activity.json` there stays **byte-identical** (no
+attribution keys). Turn stamping (`stampTurnContributor`,
+`packages/host/src/routes/activity-attribution.ts`) matches the mission by
+`session_key` or `activity-<id>`, is best-effort, and NEVER blocks or fails a turn
+(a stamping error is swallowed with a log). Schema:
+`ui/agent-schemas/src/activity.schema.json`; domain writes in
+`createActivity` / `applyActivityUpdate` / `upsertContributor`
+(`packages/domain`). More on the files side → `knowledge-base/files-first.md`.
+
+**Threading to the UI.** engine-client `Activity` / `ConversationEntry` carry the
+fields → web engine-adapter → app `RawConversation` → `use-mission-control` builds
+each `KanbanItem.people` via `app/src/lib/mission-people.ts` (pure, DOM-free,
+unit-tested: creator first, deduped; label falls back **profile name > stored
+`name` > 8-char id slice**; avatar is the profile image when known).
+
+**Board surface (`@houston-ai/board`).** Generic `KanbanPerson`
+(`{id, label, imageUrl?}`) + a `KanbanPeople` overlapping face stack (max 3 faces
++ a "+N" chip, initials fallback when no/broken image) render on cards
+(`kanban-card.tsx`) and the detail panel (`kanban-detail-panel.tsx`). Props-only,
+i18n-agnostic (label passed in). Alongside the agent filter, the app adds
+`mission-person-filter.tsx` — a dropdown of **Everyone / My missions / each person
+on the board** (roster from `distinctBoardPeople`), itself gated on
+`isMultiplayer` and a signed-in user.
+
+**Teammate names + photos** resolve client-side from Supabase `public.profiles`
+(an anon, column-scoped read of `user_id, name, avatar_url`) via `useUserProfiles`
+(`app/src/hooks/queries/use-user-profiles.ts`), enabled only when configured +
+multiplayer + at least one id, 5-minute `staleTime`. A fetch error surfaces
+through React Query `isError` (no swallow); missing avatars are cosmetic and fall
+back to initials. i18n: `dashboard:peopleFilter.*`, `board:people.label` (en/es/pt).
+
 ## engine-client types + methods
 
 Wire types in `ui/engine-client/src/types.ts`: `OrgRole`, `OrgMember`,

@@ -418,6 +418,12 @@ export interface Activity {
   provider?: string;
   model?: string;
   pending_interaction?: PendingInteraction;
+  /** The human who created this mission (Teams attribution). Server-stamped
+   *  from the gateway acting-as identity; absent on desktop/single-player. */
+  created_by?: string;
+  /** Humans who started or collaborated on this mission (Teams attribution).
+   *  Server-stamped in multiplayer only; absent on desktop/single-player. */
+  contributors?: { user_id: string; name?: string }[];
 }
 
 export interface ActivityUpdate {
@@ -597,6 +603,12 @@ export interface ConversationEntry {
   agent_name: string;
   agent?: string;
   routine_id?: string;
+  /** The human who created this mission (Teams attribution). Server-stamped
+   *  from the gateway acting-as identity; absent on desktop/single-player. */
+  created_by?: string;
+  /** Humans who started or collaborated on this mission (Teams attribution).
+   *  Server-stamped in multiplayer only; absent on desktop/single-player. */
+  contributors?: { user_id: string; name?: string }[];
 }
 
 // ---------- Skills ----------

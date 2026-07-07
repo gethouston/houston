@@ -8,6 +8,11 @@
   "filter": {
     "allAgents": "Todos os agentes"
   },
+  "peopleFilter": {
+    "label": "Filtrar por pessoa",
+    "everyone": "Todos",
+    "mine": "Minhas missões"
+  },
   "search": {
     "placeholder": "Buscar missões",
     "placeholderShort": "Buscar...",

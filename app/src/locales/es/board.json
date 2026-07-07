@@ -13,6 +13,9 @@
   "tags": {
     "routine": "Rutina"
   },
+  "people": {
+    "label": "Personas en esta misión"
+  },
   "empty": {
     "title": "Aún no hay conversaciones",
     "description": "Inicia una conversación nueva para delegarle trabajo a un agente.",

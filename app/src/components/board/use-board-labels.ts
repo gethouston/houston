@@ -22,6 +22,7 @@ export function useBoardLabels(): {
         t("board:deleteCard.titleWithName", { name }),
       deleteDescription: t("board:deleteCard.description"),
       selectTooltip: t("board:cardActions.select"),
+      people: t("board:people.label"),
     },
     composerLabels: {
       fileAlreadyInChat: t("chat:composer.fileAlreadyInChat"),

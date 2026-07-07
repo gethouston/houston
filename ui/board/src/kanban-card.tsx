@@ -7,6 +7,7 @@ import {
 } from "@houston-ai/core";
 import { Check, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { KanbanPeople } from "./kanban-people";
 import type { KanbanItem } from "./types";
 
 export interface KanbanCardLabels {
@@ -21,6 +22,8 @@ export interface KanbanCardLabels {
   deleteDescription?: string;
   /** Accessible label for the multi-select checkbox. */
   selectTooltip?: string;
+  /** Accessible group label for the card's people face stack. */
+  people?: string;
 }
 
 const DEFAULT_LABELS: Required<KanbanCardLabels> = {
@@ -31,6 +34,7 @@ const DEFAULT_LABELS: Required<KanbanCardLabels> = {
   deleteTitle: (name) => `Delete "${name}"?`,
   deleteDescription: "This item and its history will be permanently removed.",
   selectTooltip: "Select",
+  people: "People",
 };
 
 export interface KanbanCardProps {
@@ -341,7 +345,7 @@ export function KanbanCard({
         {/* Footer: tags + custom actions. The Approve action moved to the
            top-right icon row (see above) so it's visually consistent with
            Rename / Delete and the tooltip explains exactly what it does. */}
-        {(item.tags?.length || actions) && (
+        {(item.tags?.length || item.people?.length || actions) && (
           <div className="flex items-center justify-between mt-2.5">
             <div className="flex items-center gap-1 flex-wrap min-w-0">
               {item.tags?.map((tag) => (
@@ -353,7 +357,10 @@ export function KanbanCard({
                 </span>
               ))}
             </div>
-            <div className="shrink-0">{actions}</div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <KanbanPeople people={item.people} size="sm" label={l.people} />
+              {actions}
+            </div>
           </div>
         )}
       </div>

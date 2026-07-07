@@ -818,6 +818,12 @@ interface RawConversation {
   agent_name: string;
   agent?: string;
   routine_id?: string;
+  /** The human who created this mission (Teams attribution). Server-stamped
+   *  from the gateway acting-as identity; absent on desktop/single-player. */
+  created_by?: string;
+  /** Humans who started or collaborated on this mission (Teams attribution).
+   *  Server-stamped in multiplayer only; absent on desktop/single-player. */
+  contributors?: { user_id: string; name?: string }[];
 }
 
 export const tauriConversations = {
@@ -857,6 +863,8 @@ function conversationToRaw(
     agent_name: c.agent_name,
     agent: c.agent,
     routine_id: c.routine_id,
+    created_by: c.created_by,
+    contributors: c.contributors,
   };
 }
 

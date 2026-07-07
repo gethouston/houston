@@ -1,6 +1,8 @@
 import { cn } from "@houston-ai/core";
 import { Loader2, XIcon } from "lucide-react";
 import { forwardRef } from "react";
+import { KanbanPeople } from "./kanban-people";
+import type { KanbanPerson } from "./types";
 
 const STATUS_LABEL: Record<string, string> = {
   running: "Running",
@@ -24,6 +26,10 @@ export interface KanbanDetailPanelProps {
   avatar?: React.ReactNode;
   /** Name displayed next to the avatar (e.g. "Houston") */
   agentName?: string;
+  /** Human contributors shown as an avatar face stack in the header. */
+  people?: KanbanPerson[];
+  /** Accessible group label for the people face stack (English default "People"). */
+  peopleLabel?: string;
   runningStatuses?: string[];
   statusLabels?: Record<string, string>;
 }
@@ -41,6 +47,8 @@ export const KanbanDetailPanel = forwardRef<
     actions,
     avatar,
     agentName,
+    people,
+    peopleLabel = "People",
     runningStatuses = ["running"],
     statusLabels,
   },
@@ -78,6 +86,14 @@ export const KanbanDetailPanel = forwardRef<
           </div>
           {isRunning && (
             <Loader2 className="size-4 animate-spin text-blue-500 shrink-0" />
+          )}
+          {people && people.length > 0 && (
+            <KanbanPeople
+              people={people}
+              size="md"
+              label={peopleLabel}
+              className="shrink-0"
+            />
           )}
           {actions}
           {onClose && (

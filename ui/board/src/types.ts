@@ -1,6 +1,16 @@
 import type { HighlightRange } from "@houston-ai/core";
 import type React from "react";
 
+/** A human contributor shown as a face in a card/panel avatar stack. Generic,
+ *  store-agnostic: the app maps its own user/attribution model into this. */
+export interface KanbanPerson {
+  id: string;
+  /** Display name used for initials, `title`, and accessible labels. */
+  label: string;
+  /** Optional avatar image URL; falls back to initials when absent/broken. */
+  imageUrl?: string;
+}
+
 export interface KanbanItem {
   id: string;
   title: string;
@@ -14,6 +24,8 @@ export interface KanbanItem {
   updatedAt: string;
   icon?: React.ReactNode;
   metadata?: Record<string, unknown>;
+  /** Human contributors shown as an avatar face stack on the card. */
+  people?: KanbanPerson[];
 }
 
 /** A matched body fragment shown below a board item during search. `text` is

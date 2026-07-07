@@ -1,9 +1,15 @@
 import {
   type Activity,
+  type ActivityContributor,
   type ActivityUpdate,
   isPendingInteraction,
   type NewActivity,
 } from "@houston/protocol";
+import {
+  cloneContributor,
+  sanitizeContributors,
+  upsertContributor,
+} from "./contributors";
 import { docKey } from "./layout";
 import {
   type DocDiagnostic,
@@ -57,6 +63,16 @@ export function normalizeActivities(
       typeof entry.status === "string"
     ) {
       const activity = { description: "", ...entry } as Activity;
+      if (typeof entry.created_by !== "string") {
+        delete activity.created_by;
+      }
+      if (entry.contributors !== undefined) {
+        if (Array.isArray(entry.contributors)) {
+          activity.contributors = sanitizeContributors(entry.contributors);
+        } else {
+          delete activity.contributors;
+        }
+      }
       if (
         entry.pending_interaction !== undefined &&
         !isValidPendingInteraction(entry.pending_interaction)
@@ -94,11 +110,17 @@ export async function saveActivities(
   await saveJson(store, docKey(root, "activity"), items);
 }
 
-/** Materialize a NewActivity. Caller supplies identity + clock (domain stays pure). */
+/**
+ * Materialize a NewActivity. Caller supplies identity + clock (domain stays
+ * pure). When `author` is present (hosted Teams acting-as identity) the mission
+ * is stamped with `created_by` + a single-entry `contributors`; without it the
+ * output is byte-identical to a single-player mission (no attribution keys).
+ */
 export function createActivity(
   input: NewActivity,
   id: string,
   nowIso: string,
+  author?: ActivityContributor,
 ): Activity {
   return {
     id,
@@ -112,14 +134,25 @@ export function createActivity(
       : {}),
     ...(input.provider !== undefined ? { provider: input.provider } : {}),
     ...(input.model !== undefined ? { model: input.model } : {}),
+    ...(author !== undefined
+      ? {
+          created_by: author.user_id,
+          contributors: [cloneContributor(author)],
+        }
+      : {}),
   };
 }
 
-/** Apply a partial update; undefined fields leave the current value alone (explicit null clears). */
+/**
+ * Apply a partial update; undefined fields leave the current value alone
+ * (explicit null clears). When `author` is present (hosted Teams acting-as
+ * identity) the actor is recorded as a contributor on the resulting mission.
+ */
 export function applyActivityUpdate(
   current: Activity,
   update: ActivityUpdate,
   nowIso: string,
+  author?: ActivityContributor,
 ): Activity {
   const { pending_interaction, ...rest } = update;
   const defined = Object.fromEntries(
@@ -136,7 +169,7 @@ export function applyActivityUpdate(
     if (isValidPendingInteraction(pending_interaction))
       next.pending_interaction = pending_interaction;
   }
-  return next;
+  return author !== undefined ? upsertContributor(next, author) : next;
 }
 
 export function upsertById<T extends { id: string }>(items: T[], item: T): T[] {
