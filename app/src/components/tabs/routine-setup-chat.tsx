@@ -2,10 +2,11 @@ import type { KanbanItem } from "@houston-ai/board";
 import { AIBoard } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
 import { Button } from "@houston-ai/core";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useUpdateActivity } from "../../hooks/queries";
 import { useConversationFeed } from "../../hooks/use-conversation-vm";
+import { logger } from "../../lib/logger";
 import { openAgentHref } from "../../lib/open-href";
 import { type HistoryLoadOptions, tauriChat } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
@@ -62,17 +63,22 @@ export function RoutineSetupChat({ agent, agentDef, showBanner }: Props) {
   }, [viewMode, open, setOpen]);
 
   // Self-cleanup: a setup chat that settled "done" with its panel closed is
-  // finished — archive it (archived setup chats render nowhere).
-  const archivedIdsRef = useRef(new Set<string>());
+  // finished — archive it (archived setup chats render nowhere). No once-only
+  // guard: the settle's own status write can race this archive and resurrect
+  // "done" (client-side read-modify-write), so the effect must be free to
+  // re-fire on the next refetch until the archive sticks. `isPending` keeps
+  // it to one write at a time; the archive itself is idempotent.
   useEffect(() => {
     if (!activity || open || activity.status !== "done") return;
-    if (archivedIdsRef.current.has(activity.id)) return;
-    archivedIdsRef.current.add(activity.id);
-    updateActivity.mutate({
-      activityId: activity.id,
-      update: { status: "archived" },
-    });
-  }, [activity, open, updateActivity.mutate]);
+    if (updateActivity.isPending) return;
+    updateActivity.mutate(
+      { activityId: activity.id, update: { status: "archived" } },
+      {
+        onError: (err) =>
+          logger.error(`[routine-setup] auto-archive failed: ${err}`),
+      },
+    );
+  }, [activity, open, updateActivity.isPending, updateActivity.mutate]);
 
   const sessionKey = activity
     ? (activity.session_key ?? `activity-${activity.id}`)

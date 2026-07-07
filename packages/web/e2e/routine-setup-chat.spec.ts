@@ -110,8 +110,14 @@ test("finished setup chat cleans itself up after the panel closes", async ({
   await expect(page.getByText(/Roger that\./)).toBeVisible({
     timeout: 15_000,
   });
+  // Wait for the turn to SETTLE (the composer's Stop flips back to Submit):
+  // self-archive only triggers on a "done" activity, and switching tabs
+  // mid-turn would race the settle's own status write.
+  await expect(
+    page.getByRole("button", { name: "Submit" }).first(),
+  ).toBeVisible({ timeout: 15_000 });
 
-  // The canned turn settles "done" with no pending interaction. Leaving the
+  // The canned turn settled "done" with no pending interaction. Leaving the
   // tab closes the panel; the finished chat archives itself — no banner, no
   // board card, nothing left behind.
   await page.locator('[data-tour-target="tab-activity"]').click();
