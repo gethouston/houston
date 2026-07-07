@@ -69,6 +69,16 @@ test("blocking questions, choices, and approvals route through the ask_user tool
   expect(p).not.toMatch(/ask: "Want me to remember/);
 });
 
+test("the prompt tells the agent to batch questions into one ask_user call", () => {
+  const p = houstonSystemPrompt();
+  expect(p).toContain("up to 3 questions");
+  expect(p).toContain("never one question per turn");
+  expect(p).toContain("Three is a cap, not a target");
+  // The old one-question-per-turn drip is gone.
+  expect(p).not.toContain("one thing at a time");
+  expect(p).not.toContain("one question at a time");
+});
+
 test("the guidance is provider-agnostic and CLI-free (Composio CLI cut in the convergence)", () => {
   const p = houstonSystemPrompt();
   expect(p).not.toContain("Composio");

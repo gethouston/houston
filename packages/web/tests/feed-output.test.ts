@@ -91,8 +91,9 @@ test("persistBoardStatus forwards status + interaction to the injected setter", 
   });
   const interaction = {
     kind: "question" as const,
-    question: "Which one?",
-    options: [{ id: "a", label: "A" }],
+    questions: [
+      { id: "q1", question: "Which one?", options: [{ id: "a", label: "A" }] },
+    ],
   };
   // A settle carrying an interaction forwards it verbatim...
   await out.persistBoardStatus("Houston/Bo", "c1", "needs_you", interaction);

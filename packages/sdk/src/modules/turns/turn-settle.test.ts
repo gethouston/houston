@@ -81,8 +81,13 @@ test("matches the assistant reply by turnId and adopts its text + usage", () => 
 test("a persisted pendingInteraction recovers on reload: needs_you + the interaction", () => {
   const interaction: PendingInteraction = {
     kind: "question",
-    question: "Which date?",
-    options: [{ id: "a", label: "Fri" }],
+    questions: [
+      {
+        id: "q1",
+        question: "Which date?",
+        options: [{ id: "a", label: "Fri" }],
+      },
+    ],
   };
   const { s, statuses } = run(
     [
@@ -221,8 +226,13 @@ test("finishOk with a captured interaction settles needs_you and keeps the inter
   s.text = "which one?";
   const interaction: PendingInteraction = {
     kind: "question",
-    question: "Pick a flight?",
-    options: [{ id: "a", label: "Morning" }],
+    questions: [
+      {
+        id: "q1",
+        question: "Pick a flight?",
+        options: [{ id: "a", label: "Morning" }],
+      },
+    ],
   };
   // The `done` frame stashes the interaction before finishOk (turn-frames.ts).
   s.pendingInteraction = interaction;

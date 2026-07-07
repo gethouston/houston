@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 4
+version: 5
 
 components:
   - id: agent-avatar
@@ -229,16 +229,19 @@ components:
 
   - id: question-card
     title: Question card
-    purpose: In-chat surface shown when the agent pauses mid-turn to ask the user a question; replaces the composer until answered.
-    anatomy: [question-prompt, option-buttons, own-answer-toggle, free-text-input, send-action]
-    states: [with-options, free-text-only, free-text-open, disabled]
-    variants: [choice, open-ended]
+    purpose: In-chat surface shown when the agent pauses mid-turn to ask the user 1-3 questions; replaces the composer until answered.
+    anatomy: [question-block, option-row, free-text-input, send-action]
+    states: [single, batched, with-options, free-text-only, disabled]
+    variants: [choice, open-ended, batched]
     behavior: >-
-      Rendered from the turn's pending interaction (kind=question). Option click
-      answers with that option's label; the toggle reveals an inline free-text
-      answer (shown directly when no options). Answering resumes the turn;
-      disabled while another turn is active.
-    a11y: question announced as the primary prompt; options and the free-text toggle are labeled buttons visible at rest (no hover gate).
+      Rendered from the turn's pending interaction (kind=question,
+      questions[1..3]). Questions stack vertically; each offers vertical
+      single-select option rows (toggle on re-click). A free-text field is
+      ALWAYS visible at the bottom (no toggle). Fast path: one question with
+      options and empty input sends on option click. Otherwise send composes one
+      "<question>: <label>" line per answered question plus appended free text.
+      Answering resumes the turn; disabled while another turn is active.
+    a11y: questions announced in order; option rows are role=radio in a radiogroup, keyboard-toggleable and visible at rest (no hover gate); free-text input always present.
     since: 4
 
   - id: deliverable-card

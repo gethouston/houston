@@ -115,7 +115,10 @@ test("the clean done frame carries the turn's recorded pending interaction", asy
   const { events, unsub } = collect(id);
   const conv = fakeConv((emit) => {
     emit({ type: "text", data: "on it" });
-    recordPendingInteraction({ kind: "question", question: "Which date?" });
+    recordPendingInteraction({
+      kind: "question",
+      questions: [{ id: "q1", question: "Which date?" }],
+    });
   });
 
   await execTurn(conv, id, "turn-1", "book it", {
@@ -130,12 +133,12 @@ test("the clean done frame carries the turn's recorded pending interaction", asy
   expect(done).toBeDefined();
   expect(done?.pendingInteraction).toEqual({
     kind: "question",
-    question: "Which date?",
+    questions: [{ id: "q1", question: "Which date?" }],
   });
   // ...and it is persisted on the assistant message for a missed-`done` reload.
   expect(persistedInteraction(id)).toEqual({
     kind: "question",
-    question: "Which date?",
+    questions: [{ id: "q1", question: "Which date?" }],
   });
 });
 
@@ -186,7 +189,10 @@ test("a thrown turn emits an error frame and no done", async () => {
   const id = "exec-pending-thrown";
   const { events, unsub } = collect(id);
   const conv = fakeConv(() => {
-    recordPendingInteraction({ kind: "question", question: "lost?" });
+    recordPendingInteraction({
+      kind: "question",
+      questions: [{ id: "q1", question: "lost?" }],
+    });
     throw new Error("kaboom");
   });
 

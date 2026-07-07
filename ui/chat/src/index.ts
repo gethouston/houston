@@ -213,6 +213,7 @@ export { ProgressPanel } from "./progress-panel";
 // The in-chat surface shown when the agent pauses to ask the user something;
 // replaces the composer while a pending interaction is awaiting an answer.
 export type {
+  ChatQuestion,
   ChatQuestionCardProps,
   ChatQuestionOption,
 } from "./question-card";

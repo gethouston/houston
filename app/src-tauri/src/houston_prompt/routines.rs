@@ -8,7 +8,7 @@ Do not confuse Routines with other persistent behavior:
 - A reusable workflow the user runs manually is a Skill.
 - Automatic future work on a schedule is a Routine.
 
-Before creating or updating a Routine, confirm the following with the user (ask through the `ask_user` tool, one question at a time, then end your turn):
+Before creating or updating a Routine, confirm the following with the user (ask through the `ask_user` tool, batching what you still need into one call, up to 3 questions, then end your turn):
 - What should happen.
 - When it should run.
 - What information is needed.

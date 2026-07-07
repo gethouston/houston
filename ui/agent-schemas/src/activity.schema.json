@@ -29,15 +29,28 @@
         "required": ["kind"],
         "properties": {
           "kind": { "type": "string", "enum": ["question", "connect"] },
-          "question": { "type": "string" },
-          "options": {
+          "questions": {
             "type": "array",
+            "description": "1 to 3 questions asked together as one card.",
+            "minItems": 1,
+            "maxItems": 3,
             "items": {
               "type": "object",
-              "required": ["id", "label"],
+              "required": ["id", "question"],
               "properties": {
                 "id": { "type": "string" },
-                "label": { "type": "string" }
+                "question": { "type": "string" },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "label"],
+                    "properties": {
+                      "id": { "type": "string" },
+                      "label": { "type": "string" }
+                    }
+                  }
+                }
               }
             }
           },
@@ -47,7 +60,7 @@
         "oneOf": [
           {
             "properties": { "kind": { "const": "question" } },
-            "required": ["question"]
+            "required": ["questions"]
           },
           {
             "properties": { "kind": { "const": "connect" } },

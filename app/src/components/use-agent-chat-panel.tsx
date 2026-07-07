@@ -867,7 +867,6 @@ export function useAgentChatPanel({
 
   const questionCardLabels = useMemo(
     () => ({
-      typeOwnAnswer: t("chat:questionCard.typeOwnAnswer"),
       placeholder: t("chat:questionCard.placeholder"),
       send: t("chat:questionCard.send"),
     }),
@@ -879,8 +878,7 @@ export function useAgentChatPanel({
     if (activeInteraction.kind === "question") {
       return (
         <ChatQuestionCard
-          question={activeInteraction.question}
-          options={activeInteraction.options}
+          questions={activeInteraction.questions}
           onAnswer={handleInteractionAnswer}
           labels={questionCardLabels}
         />
