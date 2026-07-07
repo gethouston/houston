@@ -204,20 +204,22 @@ export type {
   ToolEntry,
 } from "./feed-to-messages";
 export { distinctAuthorCount } from "./feed-to-messages";
+// === Interaction Card ===
+// The in-chat surface shown when the agent pauses to gather what it needs before
+// continuing; a stepper (one question or connect step at a time) that replaces
+// the composer while a pending interaction is awaiting the user.
+export type {
+  ChatInteractionAnswer,
+  ChatInteractionCardProps,
+  ChatInteractionOption,
+  ChatInteractionStep,
+} from "./interaction-card";
+export { ChatInteractionCard } from "./interaction-card";
 // Clean, human-readable preview of a persisted user-message body: decodes the
 // Skill / attachment markers so cards and lists never show the raw marker.
 export { messagePreviewText } from "./message-preview";
 export type { ProgressPanelProps } from "./progress-panel";
 export { ProgressPanel } from "./progress-panel";
-// === Question Card ===
-// The in-chat surface shown when the agent pauses to ask the user something;
-// replaces the composer while a pending interaction is awaiting an answer.
-export type {
-  ChatQuestion,
-  ChatQuestionCardProps,
-  ChatQuestionOption,
-} from "./question-card";
-export { ChatQuestionCard } from "./question-card";
 export type {
   QueuedChatMessage,
   QueuedMessageLabels,

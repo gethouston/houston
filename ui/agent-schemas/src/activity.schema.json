@@ -25,19 +25,17 @@
       "model": { "type": "string" },
       "pending_interaction": {
         "type": "object",
-        "description": "The one thing this mission is waiting on the user for.",
-        "required": ["kind"],
+        "description": "The ordered steps this mission is waiting on the user for, walked one at a time: question steps first (at most 3), then connect steps.",
+        "required": ["steps"],
         "properties": {
-          "kind": { "type": "string", "enum": ["question", "connect"] },
-          "questions": {
+          "steps": {
             "type": "array",
-            "description": "1 to 3 questions asked together as one card.",
             "minItems": 1,
-            "maxItems": 3,
             "items": {
               "type": "object",
-              "required": ["id", "question"],
+              "required": ["kind", "id"],
               "properties": {
+                "kind": { "type": "string", "enum": ["question", "connect"] },
                 "id": { "type": "string" },
                 "question": { "type": "string" },
                 "options": {
@@ -50,23 +48,23 @@
                       "label": { "type": "string" }
                     }
                   }
+                },
+                "toolkit": { "type": "string" },
+                "reason": { "type": "string" }
+              },
+              "oneOf": [
+                {
+                  "properties": { "kind": { "const": "question" } },
+                  "required": ["question"]
+                },
+                {
+                  "properties": { "kind": { "const": "connect" } },
+                  "required": ["toolkit"]
                 }
-              }
+              ]
             }
-          },
-          "toolkit": { "type": "string" },
-          "reason": { "type": "string" }
-        },
-        "oneOf": [
-          {
-            "properties": { "kind": { "const": "question" } },
-            "required": ["questions"]
-          },
-          {
-            "properties": { "kind": { "const": "connect" } },
-            "required": ["toolkit"]
           }
-        ]
+        }
       }
     },
     "additionalProperties": false

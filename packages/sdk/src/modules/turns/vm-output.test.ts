@@ -137,9 +137,13 @@ test("running is derived from sessionStatus, and boardStatus defaults to null", 
 test("a clean settle folds the pending interaction into the VM; turn start clears it", async () => {
   const { snap, vm } = harness();
   const interaction = {
-    kind: "question" as const,
-    questions: [
-      { id: "q1", question: "Which one?", options: [{ id: "a", label: "A" }] },
+    steps: [
+      {
+        kind: "question" as const,
+        id: "q1",
+        question: "Which one?",
+        options: [{ id: "a", label: "A" }],
+      },
     ],
   };
   // Settle carrying the interaction: needs_you + the interaction on the VM.

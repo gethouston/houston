@@ -1,5 +1,5 @@
 import { Check, ExternalLink, Loader2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useIntegrationConnections,
@@ -15,6 +15,7 @@ import {
   findCatalogToolkit,
   isToolkitConnected,
   normalizeToolkitSlug,
+  shouldAutoContinueConnected,
 } from "./integration-connect-card-state";
 import {
   appDisplay,
@@ -35,6 +36,21 @@ interface IntegrationConnectCardProps {
    * continue.") so the task resumes without the user having to type.
    */
   onConnected?: (toolkit: string, appName: string) => void;
+  /**
+   * Stepper mode (a `request_connection` step inside the interaction sequence):
+   * when the toolkit is ALREADY connected there is no Connect button to click,
+   * so fire `onConnected` once the status resolves to advance the sequence
+   * instead of soft-locking on a dead "Connected" badge. The inline
+   * markdown-link card leaves this off and stays a passive badge.
+   */
+  autoContinueWhenConnected?: boolean;
+  /**
+   * The surface the card sits on. Inline in chat prose it sits on `bg-background`
+   * (default `"base"`); inside the interaction sequence it sits on the card's
+   * `bg-secondary`, so it passes `"secondary"` to read as a raised white chip
+   * matching the question option rows. Forwarded to {@link RowCard}.
+   */
+  surface?: "base" | "secondary";
 }
 
 /**
@@ -56,6 +72,8 @@ export function IntegrationConnectCard({
   agentId,
   autoGrant,
   onConnected,
+  autoContinueWhenConnected = false,
+  surface = "base",
 }: IntegrationConnectCardProps) {
   const { t } = useTranslation("chat");
   const addToast = useUIStore((s) => s.addToast);
@@ -92,12 +110,40 @@ export function IntegrationConnectCard({
     });
   };
 
+  // Stepper mode: an already-connected toolkit shows only a badge, so nothing
+  // the user can click ever advances the sequence. Self-report once the status
+  // (and the catalog, for a real display name) resolves so the queued answers
+  // still get sent. Shares `followupFired` with `startConnect` so a card can
+  // speak at most once. No analytics/toast here: the user connected earlier,
+  // this only unblocks the flow.
+  useEffect(() => {
+    if (
+      !shouldAutoContinueConnected({
+        autoContinue: autoContinueWhenConnected,
+        isConnected,
+        catalogSettled: catalog.isFetched,
+        alreadyFired: followupFired.current,
+      })
+    )
+      return;
+    followupFired.current = true;
+    onConnected?.(slug, displayName);
+  }, [
+    autoContinueWhenConnected,
+    isConnected,
+    catalog.isFetched,
+    slug,
+    displayName,
+    onConnected,
+  ]);
+
   const view = deriveConnectCardView(isConnected, connectState !== null);
 
   return (
     <RowCard
       inline
       truncate
+      surface={surface}
       media={<AppLogo name={displayName} logoUrl={app.logoUrl} />}
       title={displayName}
       description={

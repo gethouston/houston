@@ -1,7 +1,7 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
-import { recordPendingInteraction } from "../interaction";
+import { recordConnection } from "../interaction";
 
 /**
  * The agent's window into the user's connected third-party apps (Gmail, Google
@@ -221,16 +221,17 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     },
   });
 
-  // The in-chat connect hand-off. Records the pending connection for this turn
-  // (carried on the terminal `done` frame → a one-click connect card rendered in
-  // place of the chat input). Gated with the integration tools because it only
-  // makes sense where the user can actually connect apps. Holds no credential
-  // and makes no network call — it just records the request.
+  // The in-chat connect hand-off. Appends a connect step to this turn's
+  // interaction sequence (carried on the terminal `done` frame → a card rendered
+  // in place of the chat input that walks the user through every queued step).
+  // Gated with the integration tools because it only makes sense where the user
+  // can actually connect apps. Holds no credential and makes no network call —
+  // it just records the request.
   const requestConnection = defineTool({
     name: "request_connection",
     label: "Ask the user to connect an app",
     description:
-      "Ask the user to connect one of their apps (Gmail, Slack, Notion, and many more) when an action needs it. Houston shows a one-click connect card in place of the chat input; end your turn right after calling this. Never spell out the app's slug or a link in your reply — Houston sends you a message automatically once the connection is live.",
+      "Ask the user to connect one of their apps (Gmail, Slack, Notion, and many more) when an action needs it. This adds a connect step to the one interaction card Houston shows in place of the chat input; queue any questions you also need (via ask_user) in the SAME turn, then end your turn. Never spell out the app's slug or a link in your reply — Houston sends you a message automatically once the connection is live.",
     promptSnippet: "Ask the user to connect an app so an action can run",
     parameters: ConnectParams,
     executionMode: "sequential",
@@ -239,16 +240,12 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       if (!toolkit)
         throw new Error("request_connection needs a non-empty toolkit slug.");
       const reason = params.reason?.trim();
-      recordPendingInteraction({
-        kind: "connect",
-        toolkit,
-        ...(reason ? { reason } : {}),
-      });
+      recordConnection({ toolkit, ...(reason ? { reason } : {}) });
       return {
         content: [
           {
             type: "text" as const,
-            text: "Houston is now showing the user a one-click card to connect this app in place of the chat input. End your turn now. Do not spell out the app's slug or any link in your reply, and do not ask the user to confirm — Houston sends you a message automatically once the connection is live.",
+            text: "This app was added as a connect step to the one interaction card Houston shows the user in place of the chat input. Queue everything else this task needs now (call ask_user for any questions in this same turn), then end your turn. Do not spell out the app's slug or any link in your reply, and do not ask the user to confirm — Houston sends you a message automatically once the connection is live.",
           },
         ],
         details: { toolkit },

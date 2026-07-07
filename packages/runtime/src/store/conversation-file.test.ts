@@ -142,8 +142,7 @@ test("assistant message persists the pending interaction so a reload settles nee
   appendAssistantMessageAt(dir, "c1", "which date?", {
     turnId: "t-1",
     pendingInteraction: {
-      kind: "question",
-      questions: [{ id: "q1", question: "Which date?" }],
+      steps: [{ kind: "question", id: "q1", question: "Which date?" }],
     },
   });
 
@@ -152,8 +151,7 @@ test("assistant message persists the pending interaction so a reload settles nee
   const msg = history.messages.find((m) => m.role === "assistant");
   if (!msg) throw new Error("no assistant message found in history");
   expect(msg.pendingInteraction).toEqual({
-    kind: "question",
-    questions: [{ id: "q1", question: "Which date?" }],
+    steps: [{ kind: "question", id: "q1", question: "Which date?" }],
   });
 });
 

@@ -16,6 +16,7 @@ export type {
   CustomEndpoint,
   GenerateAgentResponse,
   InteractionOption,
+  InteractionStep,
   LoginInfo,
   LoginState,
   LoginStatus,

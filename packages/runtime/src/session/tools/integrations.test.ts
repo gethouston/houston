@@ -174,9 +174,14 @@ test("request_connection records a connect interaction with a normalized slug", 
   );
   // The slug is trimmed + lowercased so it matches the catalog/connection lists.
   expect(holder.pending).toEqual({
-    kind: "connect",
-    toolkit: "gmail",
-    reason: "to send your email",
+    steps: [
+      {
+        kind: "connect",
+        id: "c1",
+        toolkit: "gmail",
+        reason: "to send your email",
+      },
+    ],
   });
   // The tool tells the model to end its turn without spelling out a slug/link.
   const text = (out.content[0] as { text: string }).text;
@@ -189,7 +194,9 @@ test("request_connection omits an empty reason and rejects an empty slug", async
   await runWithInteractionCapture(holder, () =>
     run(requestConnection, { toolkit: "slack" }),
   );
-  expect(holder.pending).toEqual({ kind: "connect", toolkit: "slack" });
+  expect(holder.pending).toEqual({
+    steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
+  });
 
   await runWithInteractionCapture(newInteractionHolder(), () =>
     expect(run(requestConnection, { toolkit: "   " })).rejects.toThrow(
@@ -199,7 +206,7 @@ test("request_connection omits an empty reason and rejects an empty slug", async
 });
 
 test("request_connection records nothing outside a turn (no ambient holder)", async () => {
-  // No runWithInteractionCapture wrapper → recordPendingInteraction is a no-op,
+  // No runWithInteractionCapture wrapper → recordConnection is a no-op,
   // so a direct call still succeeds and simply records nowhere.
   await expect(
     run(requestConnection, { toolkit: "gmail" }),

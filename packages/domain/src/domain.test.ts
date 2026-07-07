@@ -105,13 +105,14 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
         status: "needs_you",
         description: "",
         pending_interaction: {
-          kind: "question",
-          questions: [
+          steps: [
             {
+              kind: "question",
               id: "q1",
               question: "Which deck?",
               options: [{ id: "q2", label: "Q2" }],
             },
+            { kind: "connect", id: "c1", toolkit: "gmail" },
           ],
         },
       },
@@ -120,14 +121,16 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
         title: "Connect",
         status: "needs_you",
         description: "",
-        pending_interaction: { kind: "connect", toolkit: "gmail" },
+        pending_interaction: {
+          steps: [{ kind: "connect", id: "c1", toolkit: "gmail" }],
+        },
       },
       {
         id: "bad",
         title: "Broken",
         status: "needs_you",
         description: "",
-        // the old singular-`question` shape is no longer valid after batching
+        // the old top-level `{kind, questions}` shape has no `steps` → dropped
         pending_interaction: { kind: "question", question: "Which deck?" },
       },
     ],
@@ -136,18 +139,18 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
 
   expect(items.map((a) => a.id)).toEqual(["q", "c", "bad"]); // activity kept, only the field dropped
   expect(items[0]?.pending_interaction).toEqual({
-    kind: "question",
-    questions: [
+    steps: [
       {
+        kind: "question",
         id: "q1",
         question: "Which deck?",
         options: [{ id: "q2", label: "Q2" }],
       },
+      { kind: "connect", id: "c1", toolkit: "gmail" },
     ],
   });
   expect(items[1]?.pending_interaction).toEqual({
-    kind: "connect",
-    toolkit: "gmail",
+    steps: [{ kind: "connect", id: "c1", toolkit: "gmail" }],
   });
   expect(items[2]?.pending_interaction).toBeUndefined();
   expect(diagnostics).toHaveLength(1);
@@ -157,12 +160,15 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
 test("activity update: pending_interaction set / clear / untouched", () => {
   const withInteraction = applyActivityUpdate(
     createActivity({ title: "T" }, "a1", NOW),
-    { pending_interaction: { kind: "connect", toolkit: "slack" } },
+    {
+      pending_interaction: {
+        steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
+      },
+    },
     NOW,
   );
   expect(withInteraction.pending_interaction).toEqual({
-    kind: "connect",
-    toolkit: "slack",
+    steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
   });
 
   // undefined leaves the current interaction alone
@@ -172,8 +178,7 @@ test("activity update: pending_interaction set / clear / untouched", () => {
     NOW,
   );
   expect(untouched.pending_interaction).toEqual({
-    kind: "connect",
-    toolkit: "slack",
+    steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
   });
 
   // explicit null clears the field entirely (not stored as null)

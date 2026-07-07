@@ -28,10 +28,25 @@ export function deriveActiveInteraction(args: {
 }
 
 /**
- * Which completion-notification body an ended turn takes. `question` and
- * `connect` are the two "the agent needs you" settles; everything else (a clean
- * finish, a user stop, a provider error) reads as the plain "finished" body.
- * Pure so the copy mapping is unit-tested without the event plumbing.
+ * How many question steps a pending interaction carries (0 when none). Drives
+ * the pluralized "question(s)" completion copy — a mixed sequence counts only
+ * its questions, never its connect steps. Pure so the count is unit-tested
+ * without the event plumbing.
+ */
+export function interactionQuestionCount(
+  interaction: PendingInteraction | null | undefined,
+): number {
+  return (
+    interaction?.steps.filter((step) => step.kind === "question").length ?? 0
+  );
+}
+
+/**
+ * Which completion-notification body an ended turn takes. A sequence with ANY
+ * question steps reads as the (pluralized) question body; a connect-only
+ * sequence reads as the connect body; everything else (a clean finish, a user
+ * stop, a provider error) reads as the plain "finished" body. Pure so the copy
+ * mapping is unit-tested without the event plumbing.
  */
 export function interactionNotificationBodyKey(
   interaction: PendingInteraction | null | undefined,
@@ -39,8 +54,10 @@ export function interactionNotificationBodyKey(
   | "sessionComplete.body"
   | "sessionComplete.question"
   | "sessionComplete.connect" {
-  if (interaction?.kind === "question") return "sessionComplete.question";
-  if (interaction?.kind === "connect") return "sessionComplete.connect";
+  if (interactionQuestionCount(interaction) > 0)
+    return "sessionComplete.question";
+  if (interaction?.steps.some((step) => step.kind === "connect"))
+    return "sessionComplete.connect";
   return "sessionComplete.body";
 }
 

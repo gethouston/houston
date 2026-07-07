@@ -94,6 +94,16 @@ mod tests {
     }
 
     #[test]
+    fn prompt_combines_questions_and_a_connection_in_one_turn() {
+        let prompt = system_prompt_pi();
+
+        assert!(prompt.contains("call `ask_user` and `request_connection` in the SAME turn"));
+        assert!(prompt.contains("one card the user completes step by step"));
+        // The email example the step sequence was designed around.
+        assert!(prompt.contains("to send an email you were asked to send"));
+    }
+
+    #[test]
     fn memory_guidance_requires_user_opt_in() {
         let prompt = system_prompt_pi();
 

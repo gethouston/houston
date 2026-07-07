@@ -87,9 +87,9 @@ components:
     status: implemented
     ref: "@houston-ai/review ReviewItem / ReviewDetailPanel / DeliverableCard"
 
-  question-card:
+  interaction-card:
     status: implemented
-    ref: "@houston-ai/chat ChatQuestionCard (question-card + question-card-logic)"
+    ref: "@houston-ai/chat ChatInteractionCard (interaction-card + interaction-card-logic)"
 
   deliverable-card:
     status: implemented
