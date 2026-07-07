@@ -46,8 +46,6 @@
     "space-haze": { "$value": "{color.space.haze}" },
     "space-foreground": { "$value": "{color.space.foreground}" },
     "space-foreground-muted": { "$value": "{color.space.foreground-muted}" },
-    "space-comet-warm": { "$value": "{color.space.comet-warm}" },
-    "space-comet-cool": { "$value": "{color.space.comet-cool}" },
     "agent": {
       "charcoal": { "$value": "{color.agent.charcoal}" },
       "forest": { "$value": "{color.agent.forest}" },

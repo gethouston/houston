@@ -22,15 +22,21 @@ export const ORBIT_PERIOD = "6s";
  *  motion coordinates stay simple and the riders bank inside the tilted plane. */
 export const ORBIT_PATH = `M ${ORBIT_CENTER - ORBIT_RX} ${ORBIT_CENTER} A ${ORBIT_RX} ${ORBIT_RY} 0 1 1 ${ORBIT_CENTER + ORBIT_RX} ${ORBIT_CENTER} A ${ORBIT_RX} ${ORBIT_RY} 0 1 1 ${ORBIT_CENTER - ORBIT_RX} ${ORBIT_CENTER}`;
 
-/** Sleek dart pointing along +x (the axis animateMotion rotate="auto" aligns to
- *  the travel direction), centred on the origin so it rides the path point. */
-export const SHIP_POINTS = "11,0 -9,-6.8 -4.5,0 -9,6.8";
+/** Rocket pointing along +x (the axis animateMotion rotate="auto" aligns to the
+ *  travel direction): an ogive nose cone, a cylindrical body, swept tail fins,
+ *  and a tapered engine base. A single closed compound path, centred on the
+ *  origin so it rides the path point, sized to a ~17px span so its silhouette
+ *  still reads as a rocket at small scale. */
+export const SHIP_PATH =
+  "M 10 0 Q 6 -1.9 1.5 -2.2 L -2.5 -2.2 L -5 -4.8 L -5 -2.2 L -6 -2.2 L -6.5 -1.3 L -6.5 1.3 L -6 2.2 L -5 2.2 L -5 4.8 L -2.5 2.2 L 1.5 2.2 Q 6 1.9 10 0 Z";
 
-const WARM = "var(--ht-space-comet-warm)";
-const COOL = "var(--ht-space-comet-cool)";
-/** Warm(amber)->cool(blue) along the streak: `warm` is the percent of comet-warm
- *  mixed over comet-cool. 100 = pure amber (head), 0 = pure blue (tail tip). */
-const mix = (warm: number) => `color-mix(in srgb, ${WARM} ${warm}%, ${COOL})`;
+const WHITE = "var(--ht-space-foreground)";
+const STAR = "var(--ht-space-star)";
+/** White streak: `head` is the percent of pure-white foreground mixed over the
+ *  cool-white star. 100 = pure white (head), 0 = cool white (tail tip). The
+ *  streak fades mainly via opacity; this adds only a subtle tonal shift for
+ *  depth, no hue change. */
+const mix = (head: number) => `color-mix(in srgb, ${WHITE} ${head}%, ${STAR})`;
 
 /**
  * One soft blurred capsule in the comet streak. Each rides {@link ORBIT_PATH}
@@ -51,9 +57,9 @@ export interface TrailCapsule {
 
 /**
  * Comet streak, tail-first (faintest drawn first) so the bright head paints on
- * top. Colour ramps cool -> warm toward the head, echoing the running
- * HoustonAvatar halo's warm->cool comet sweep so this reads as the same design
- * system. Close `begin` spacing keeps the blurred capsules overlapping.
+ * top. All white: opacity ramps up toward the head while the tone shifts subtly
+ * from cool-white star (tail) to pure-white foreground (head) for a touch of
+ * depth. Close `begin` spacing keeps the blurred capsules overlapping.
  */
 export const TRAIL: TrailCapsule[] = [
   { begin: "-1.04s", rx: 4.4, ry: 1.9, opacity: 0.22, fill: mix(0) },

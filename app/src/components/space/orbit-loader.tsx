@@ -8,22 +8,21 @@ import {
   ORBIT_RY,
   ORBIT_TILT,
   ORBIT_VIEWBOX,
-  SHIP_POINTS,
+  SHIP_PATH,
   STATIC_SHIP,
   TRAIL,
 } from "./orbit-path";
 
 /**
- * OrbitLoader — the workspace-loading centrepiece: a dart ship on a calm,
+ * OrbitLoader — the workspace-loading centrepiece: a rocket ship on a calm,
  * continuous elliptical orbit around a bright pulsing core, trailing a glowing
- * comet streak (amber head -> blue tail, the same warm->cool language as the
- * running {@link HoustonAvatar} halo, so it belongs to the same design system).
- * The streak is a run of soft blurred capsules, tightly spaced and banked along
- * travel, that overlap into one continuous glow rather than reading as discrete
- * darts. The core ({@link OrbitCore}) is a soft bloom + a slow coalescing energy
- * ring + a bright point. Pure inline SVG + SMIL <animateMotion>: no JS animation
- * loop, no per-frame allocation. All colour comes from theme-invariant
- * `--ht-space-*` tokens.
+ * white comet streak (a pure-white foreground head fading to a cool-white star
+ * tail). The streak is a run of soft blurred capsules, tightly spaced and banked
+ * along travel, that overlap into one continuous glow rather than reading as
+ * discrete blobs. The core ({@link OrbitCore}) is a soft bloom + a slow
+ * coalescing energy ring + a bright point. Pure inline SVG + SMIL
+ * <animateMotion>: no JS animation loop, no per-frame allocation. All colour
+ * comes from theme-invariant `--ht-space-*` tokens.
  *
  * SMIL ignores `prefers-reduced-motion`, so we branch on framer-motion's
  * {@link useReducedMotion}: reduced motion renders a single ship parked on the
@@ -55,9 +54,9 @@ export function OrbitLoader() {
           strokeWidth="1.2"
         />
         {reduce ? (
-          <polygon
-            points={SHIP_POINTS}
-            fill="var(--ht-space-comet-warm)"
+          <path
+            d={SHIP_PATH}
+            fill="var(--ht-space-foreground)"
             transform={`translate(${STATIC_SHIP.x} ${STATIC_SHIP.y})`}
           />
         ) : (
@@ -93,8 +92,8 @@ export function OrbitLoader() {
                 <mpath href="#orbit-path" xlinkHref="#orbit-path" />
               </animateMotion>
             </circle>
-            {/* Crisp dart ship at the head, painted on top of its streak. */}
-            <polygon points={SHIP_POINTS} fill="var(--ht-space-comet-warm)">
+            {/* Crisp rocket ship at the head, painted on top of its streak. */}
+            <path d={SHIP_PATH} fill="var(--ht-space-foreground)">
               <animateMotion
                 dur={ORBIT_PERIOD}
                 begin="0s"
@@ -103,7 +102,7 @@ export function OrbitLoader() {
               >
                 <mpath href="#orbit-path" xlinkHref="#orbit-path" />
               </animateMotion>
-            </polygon>
+            </path>
           </>
         )}
       </g>
