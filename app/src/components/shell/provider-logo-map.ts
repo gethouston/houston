@@ -16,10 +16,11 @@
  * via its per-provider logo endpoint (models.dev/logos/<id>.svg) — we ship NO
  * hand-approximated glyphs, since an inexact mark reads as a wrong logo.
  * Off-endpoint sourcing, same rule: `meta` carries models.dev's `llama` art,
- * `qwen` its `alibaba` art, and `ant-ling` the Ant Group mark from LobeHub's
- * icon set (github.com/lobehub/lobe-icons, MIT) — real marks under different
- * ids, never approximations. An id with no real mark anywhere falls back to
- * the polished monogram.
+ * `qwen` its `alibaba` art, `ant-ling` the Ant Group mark from LobeHub's icon
+ * set (github.com/lobehub/lobe-icons, MIT), and `opencode` the official O mark
+ * from opencode.ai/brand — real marks under different ids, never
+ * approximations. An id with no real mark anywhere falls back to the polished
+ * monogram.
  *
  * Keys are the provider ids that resolve to their OWN mark. Regional/variant ids
  * that models.dev serves the default for reuse a parent via `BRAND_ALIASES`.

@@ -1,9 +1,10 @@
 /**
- * Provider brand marks (M-Z) — continued from `provider-marks.tsx`. Every mark
- * is a REAL single-color brand logo sourced verbatim from models.dev
- * (github.com/sst/models.dev, MIT) via its per-provider logo endpoint, rendered
- * in `currentColor` through the shared `Glyph` wrapper. Consumed via the
- * `BRAND_LOGOS` registry in `provider-logos.tsx`.
+ * Provider brand marks (M-Z) — continued from `provider-marks.tsx`. Marks are
+ * REAL single-color brand logos, rendered in `currentColor` through the shared
+ * `Glyph` wrapper. Most are sourced verbatim from models.dev
+ * (github.com/sst/models.dev, MIT) via its per-provider logo endpoint; OpenCode
+ * uses the official O mark from opencode.ai/brand. Consumed via the `BRAND_LOGOS`
+ * registry in `provider-logos.tsx`.
  */
 import { Glyph, type LogoProps } from "./provider-glyph-svg.tsx";
 
@@ -44,11 +45,16 @@ export const OpenAILogo = ({ className }: LogoProps = {}) => (
 );
 
 export const OpenCodeLogo = ({ className }: LogoProps = {}) => (
-  <Glyph label="OpenCode" className={className} viewBox="0 0 24 24">
-    <path
-      d="M8.40005 17.4H19.2001V21H4.80005V13.8H8.40005V17.4ZM15.6001 10.2V13.8H8.40005V10.2H15.6001ZM19.2001 10.2H15.6001V6.6H4.80005V3H19.2001V10.2Z"
-      fill="currentColor"
-    />
+  <Glyph label="OpenCode" className={className} viewBox="0 0 300 300">
+    <g transform="translate(30 0)">
+      <path d="M180 240H60V120H180V240Z" fill="currentColor" opacity="0.25" />
+      <path
+        d="M240 300H0V0H240V300ZM180 60H60V240H180V60Z"
+        fill="currentColor"
+        fillRule="evenodd"
+        clipRule="evenodd"
+      />
+    </g>
   </Glyph>
 );
 
