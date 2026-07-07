@@ -9,8 +9,13 @@ import {
 
 const question: PendingInteraction = {
   kind: "question",
-  question: "Which account?",
-  options: [{ id: "a", label: "Work" }],
+  questions: [
+    {
+      id: "q1",
+      question: "Which account?",
+      options: [{ id: "a", label: "Work" }],
+    },
+  ],
 };
 const connect: PendingInteraction = { kind: "connect", toolkit: "gmail" };
 

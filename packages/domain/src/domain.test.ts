@@ -106,8 +106,13 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
         description: "",
         pending_interaction: {
           kind: "question",
-          question: "Which deck?",
-          options: [{ id: "q2", label: "Q2" }],
+          questions: [
+            {
+              id: "q1",
+              question: "Which deck?",
+              options: [{ id: "q2", label: "Q2" }],
+            },
+          ],
         },
       },
       {
@@ -122,8 +127,8 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
         title: "Broken",
         status: "needs_you",
         description: "",
-        // missing the required `question` for kind=question
-        pending_interaction: { kind: "question" },
+        // the old singular-`question` shape is no longer valid after batching
+        pending_interaction: { kind: "question", question: "Which deck?" },
       },
     ],
     "k",
@@ -132,8 +137,13 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
   expect(items.map((a) => a.id)).toEqual(["q", "c", "bad"]); // activity kept, only the field dropped
   expect(items[0]?.pending_interaction).toEqual({
     kind: "question",
-    question: "Which deck?",
-    options: [{ id: "q2", label: "Q2" }],
+    questions: [
+      {
+        id: "q1",
+        question: "Which deck?",
+        options: [{ id: "q2", label: "Q2" }],
+      },
+    ],
   });
   expect(items[1]?.pending_interaction).toEqual({
     kind: "connect",

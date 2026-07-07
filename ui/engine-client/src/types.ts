@@ -352,14 +352,21 @@ export interface InteractionOption {
   label: string;
 }
 
+/** One question in a batched `ask_user` card (`id` is `q1`..`qN`). */
+export interface InteractionQuestion {
+  id: string;
+  question: string;
+  options?: InteractionOption[];
+}
+
 /**
  * The one thing a mission is waiting on the user for — recorded when the model
  * ends a turn by asking (ask_user / request_connection). Present drives the
  * `needs_you` board card and the composer-replacing card; absent means the
- * mission needs nothing.
+ * mission needs nothing. `ask_user` batches 1 to 3 questions into one card.
  */
 export type PendingInteraction =
-  | { kind: "question"; question: string; options?: InteractionOption[] }
+  | { kind: "question"; questions: InteractionQuestion[] }
   | { kind: "connect"; toolkit: string; reason?: string };
 
 export interface Activity {

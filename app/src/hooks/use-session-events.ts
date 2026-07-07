@@ -144,6 +144,12 @@ export function useSessionEvents() {
                   bodyKey === "sessionComplete.question"
                     ? handlersRef.current.t(
                         "common:notifications.sessionComplete.question",
+                        {
+                          count:
+                            interaction?.kind === "question"
+                              ? interaction.questions.length
+                              : 1,
+                        },
                       )
                     : bodyKey === "sessionComplete.connect"
                       ? handlersRef.current.t(

@@ -3,6 +3,22 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v5 - 2026-07-06
+
+Redesign `question-card` to the composer family and batch questions. `ask_user`
+now asks 1-3 questions in one call (protocol `question` variant carries
+`questions[]`). The card stacks questions vertically, each with vertical
+single-select option rows (role=radio, toggle on re-click), and a free-text
+field that is ALWAYS visible at the bottom (the "own-answer-toggle" is removed,
+satisfying no-hover-only-affordances directly). The surface adopts the
+composer's exact vocabulary — `rounded-[28px]` `bg-card`, soft shadow with a
+focus-within lift, a borderless inline textarea, and the round `PromptInputSubmit`
+send — so card and composer read as one family. Fast path: a single question
+with options and empty input sends on option click. Send otherwise composes one
+`"<question>: <label>"` line per answered question plus appended free text.
+Still shared web (`@houston-ai/chat` `ChatQuestionCard`), so it stays
+`implemented`.
+
 ## v4 - 2026-07-06
 
 Add `question-card`: the in-chat surface shown when the agent pauses mid-turn to

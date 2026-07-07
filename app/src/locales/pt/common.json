@@ -40,7 +40,8 @@
     "sessionComplete": {
       "title": "{{workspace}} · {{agent}}",
       "body": "Seu agente terminou de trabalhar.",
-      "question": "Seu agente tem uma pergunta para você.",
+      "question_one": "Seu agente tem uma pergunta para você.",
+      "question_other": "Seu agente tem perguntas para você.",
       "connect": "Seu agente precisa que você conecte um aplicativo."
     }
   }

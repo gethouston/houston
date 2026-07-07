@@ -24,11 +24,22 @@ export const ACTIVITY_STATUSES = [
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
+/** One batched question is valid when it carries a string `id` + `question`. */
+const isValidInteractionQuestion = (v: unknown): boolean =>
+  isRecord(v) && typeof v.id === "string" && typeof v.question === "string";
+
 /** Validate the pending_interaction discriminated union (mirrors the schema):
- *  a `question` needs a `question` string, a `connect` needs a `toolkit`. */
+ *  a `question` needs a non-empty `questions` array (each with id + question),
+ *  a `connect` needs a `toolkit`. An old singular-`question` shape fails here,
+ *  so a persisted value from before the batching change is dropped. */
 const isValidPendingInteraction = (v: unknown): v is PendingInteraction => {
   if (!isRecord(v)) return false;
-  if (v.kind === "question") return typeof v.question === "string";
+  if (v.kind === "question")
+    return (
+      Array.isArray(v.questions) &&
+      v.questions.length > 0 &&
+      v.questions.every(isValidInteractionQuestion)
+    );
   if (v.kind === "connect") return typeof v.toolkit === "string";
   return false;
 };

@@ -138,8 +138,9 @@ test("a clean settle folds the pending interaction into the VM; turn start clear
   const { snap, vm } = harness();
   const interaction = {
     kind: "question" as const,
-    question: "Which one?",
-    options: [{ id: "a", label: "A" }],
+    questions: [
+      { id: "q1", question: "Which one?", options: [{ id: "a", label: "A" }] },
+    ],
   };
   // Settle carrying the interaction: needs_you + the interaction on the VM.
   await vm.persistBoardStatus("a", "c1", "needs_you", interaction);

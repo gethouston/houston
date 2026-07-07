@@ -82,6 +82,18 @@ mod tests {
     }
 
     #[test]
+    fn prompt_tells_the_agent_to_batch_questions_into_one_call() {
+        let prompt = system_prompt_pi();
+
+        assert!(prompt.contains("up to 3 questions"));
+        assert!(prompt.contains("never one question per turn"));
+        assert!(prompt.contains("Three is a cap, not a target"));
+        // The old one-question-per-turn drip is gone.
+        assert!(!prompt.contains("one thing at a time"));
+        assert!(!prompt.contains("one question at a time"));
+    }
+
+    #[test]
     fn memory_guidance_requires_user_opt_in() {
         let prompt = system_prompt_pi();
 

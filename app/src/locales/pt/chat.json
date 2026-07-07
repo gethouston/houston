@@ -25,7 +25,6 @@
     "description": "Digite uma mensagem para falar com seu assistente."
   },
   "questionCard": {
-    "typeOwnAnswer": "Responda com suas próprias palavras",
     "placeholder": "Digite sua resposta...",
     "send": "Enviar"
   },

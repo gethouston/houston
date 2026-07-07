@@ -151,19 +151,22 @@ test("bridged schemas expose the same property keys as the pi tool params", () =
 
 test("bridged schemas enforce the same required vs optional split as pi", () => {
   const { tools } = build(INTEGRATIONS);
-  // ask_user: question required, options optional.
+  // ask_user: a `questions` array is required; each question needs `question`,
+  // options optional.
   const ask = z.object(byName(tools, "ask_user").inputSchema);
-  expect(ask.safeParse({ question: "Proceed?" }).success).toBe(true);
+  expect(ask.safeParse({ questions: [{ question: "Proceed?" }] }).success).toBe(
+    true,
+  );
   expect(ask.safeParse({}).success).toBe(false);
   expect(
     ask.safeParse({
-      question: "Pick",
-      options: [{ id: "y", label: "Yes" }],
+      questions: [{ question: "Pick", options: [{ id: "y", label: "Yes" }] }],
     }).success,
   ).toBe(true);
   // A malformed option (missing label) is rejected — nested object shape matched.
   expect(
-    ask.safeParse({ question: "Pick", options: [{ id: "y" }] }).success,
+    ask.safeParse({ questions: [{ question: "Pick", options: [{ id: "y" }] }] })
+      .success,
   ).toBe(false);
 
   // integration_execute: action required, params (a record) optional.
@@ -206,12 +209,20 @@ test("the ask_user handler records a question interaction into the turn holder",
   const handler = handlerOf(byName(tools, "ask_user"));
   const holder = newInteractionHolder();
   await runWithInteractionCapture(holder, () =>
-    handler({ question: "Proceed?", options: [{ id: "y", label: "Yes" }] }, {}),
+    handler(
+      {
+        questions: [
+          { question: "Proceed?", options: [{ id: "y", label: "Yes" }] },
+        ],
+      },
+      {},
+    ),
   );
   expect(holder.pending).toEqual({
     kind: "question",
-    question: "Proceed?",
-    options: [{ id: "y", label: "Yes" }],
+    questions: [
+      { id: "q1", question: "Proceed?", options: [{ id: "y", label: "Yes" }] },
+    ],
   });
 });
 
@@ -233,7 +244,7 @@ test("the request_connection handler records a connect interaction", async () =>
 test("a handler run outside any turn records nothing and still returns content", async () => {
   const { tools } = build(INTEGRATIONS);
   const result = await handlerOf(byName(tools, "ask_user"))(
-    { question: "Anyone there?" },
+    { questions: [{ question: "Anyone there?" }] },
     {},
   );
   expect(result.content[0]).toMatchObject({ type: "text" });
@@ -264,7 +275,7 @@ test("an ask_user call dispatched during a Claude-session turn lands in the turn
   const query: ClaudeQuery = () => {
     const dispatched = (async () => {
       await Promise.resolve();
-      await handler({ question: "Ready to send?" }, {});
+      await handler({ questions: [{ question: "Ready to send?" }] }, {});
     })();
     // A stream that yields nothing but only reports done once the background
     // dispatch (the handler call) has run — mirrors a turn whose sole effect was
@@ -294,6 +305,6 @@ test("an ask_user call dispatched during a Claude-session turn lands in the turn
   // attaches to the clean `done` frame as `pendingInteraction`.
   expect(holder.pending).toEqual({
     kind: "question",
-    question: "Ready to send?",
+    questions: [{ id: "q1", question: "Ready to send?" }],
   });
 });

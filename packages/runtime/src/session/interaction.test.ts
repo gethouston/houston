@@ -15,19 +15,34 @@ import {
 test("records the interaction on the ambient holder", () => {
   const holder = newInteractionHolder();
   runWithInteractionCapture(holder, () => {
-    recordPendingInteraction({ kind: "question", question: "Which one?" });
+    recordPendingInteraction({
+      kind: "question",
+      questions: [{ id: "q1", question: "Which one?" }],
+    });
   });
-  expect(holder.pending).toEqual({ kind: "question", question: "Which one?" });
+  expect(holder.pending).toEqual({
+    kind: "question",
+    questions: [{ id: "q1", question: "Which one?" }],
+  });
 });
 
 test("last call wins within a single turn", () => {
   const holder = newInteractionHolder();
   runWithInteractionCapture(holder, () => {
-    recordPendingInteraction({ kind: "question", question: "first?" });
+    recordPendingInteraction({
+      kind: "question",
+      questions: [{ id: "q1", question: "first?" }],
+    });
     recordPendingInteraction({ kind: "connect", toolkit: "gmail" });
-    recordPendingInteraction({ kind: "question", question: "final?" });
+    recordPendingInteraction({
+      kind: "question",
+      questions: [{ id: "q1", question: "final?" }],
+    });
   });
-  expect(holder.pending).toEqual({ kind: "question", question: "final?" });
+  expect(holder.pending).toEqual({
+    kind: "question",
+    questions: [{ id: "q1", question: "final?" }],
+  });
 });
 
 test("a fresh holder each turn is the reset — nothing leaks across turns", () => {
@@ -49,7 +64,10 @@ test("a fresh holder each turn is the reset — nothing leaks across turns", () 
 test("recording outside a turn is a no-op (undefined store)", () => {
   // No runWithInteractionCapture → getStore() is undefined → nothing recorded.
   expect(() =>
-    recordPendingInteraction({ kind: "question", question: "orphan?" }),
+    recordPendingInteraction({
+      kind: "question",
+      questions: [{ id: "q1", question: "orphan?" }],
+    }),
   ).not.toThrow();
 });
 
@@ -57,10 +75,13 @@ test("the holder survives async work inside the capture (ALS propagation)", asyn
   const holder = newInteractionHolder();
   await runWithInteractionCapture(holder, async () => {
     await Promise.resolve();
-    recordPendingInteraction({ kind: "question", question: "after await?" });
+    recordPendingInteraction({
+      kind: "question",
+      questions: [{ id: "q1", question: "after await?" }],
+    });
   });
   expect(holder.pending).toEqual({
     kind: "question",
-    question: "after await?",
+    questions: [{ id: "q1", question: "after await?" }],
   });
 });

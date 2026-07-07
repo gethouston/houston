@@ -1,137 +1,129 @@
 "use client";
 
-import { Button, cn, Textarea } from "@houston-ai/core";
+import { cn } from "@houston-ai/core";
 import { type KeyboardEvent, useCallback, useState } from "react";
+import { PromptInputSubmit } from "./ai-elements/prompt-input";
 import {
-  type ChatQuestionOption,
-  hasSelectableOptions,
-  normalizeAnswer,
-  OWN_ANSWER_TOGGLE_CLASS,
-  QUESTION_TEXT_CLASS,
+  type ChatQuestion,
+  canSend,
+  composeReply,
+  isFastPath,
+  type QuestionSelections,
+} from "./question-card-logic";
+import { QuestionBlock } from "./question-card-parts";
+
+export type {
+  ChatQuestion,
+  ChatQuestionOption,
 } from "./question-card-logic";
 
-export type { ChatQuestionOption } from "./question-card-logic";
-
 export interface ChatQuestionCardProps {
-  question: string;
-  options?: ChatQuestionOption[];
-  /** Option click sends the option's label; free-text sends the typed text. */
+  /** 1..3 questions, rendered in order. */
+  questions: ChatQuestion[];
+  /** Receives the fully composed reply (see composeReply). */
   onAnswer: (text: string) => void;
   disabled?: boolean;
-  labels?: { typeOwnAnswer?: string; placeholder?: string; send?: string };
+  labels?: { placeholder?: string; send?: string };
 }
 
 /**
  * The in-chat surface shown when the agent pauses to ask the user something.
- * It REPLACES the composer, so it must read as "the one thing to do now":
- * a prominent question, always-visible option buttons, and a quiet toggle to
- * an inline free-text answer. With no options, the text input shows directly.
+ * It REPLACES the composer, so it is built from the composer's own vocabulary
+ * (rounded-[28px] bg-card surface, borderless inline textarea, round submit)
+ * and reads as one family with ChatInput. Questions stack vertically; each
+ * offers single-select option rows; a free-text field is ALWAYS visible at the
+ * bottom as the "answer in your own words" channel.
  */
 export function ChatQuestionCard({
-  question,
-  options,
+  questions,
   onAnswer,
   disabled = false,
   labels,
 }: ChatQuestionCardProps) {
-  const hasOptions = hasSelectableOptions(options);
-  // No options → free-text is the only way to answer, so show it immediately
-  // rather than behind a toggle.
-  const [showFreeText, setShowFreeText] = useState(!hasOptions);
-  const [text, setText] = useState("");
+  const [selections, setSelections] = useState<QuestionSelections>({});
+  const [freeText, setFreeText] = useState("");
 
-  const typeOwnAnswerLabel =
-    labels?.typeOwnAnswer ?? "Answer in your own words";
   const placeholder = labels?.placeholder ?? "Type your answer...";
   const sendLabel = labels?.send ?? "Send";
+  const batched = questions.length > 1;
 
-  const answer = useCallback(
-    (value: string) => {
+  const send = useCallback(
+    (state: QuestionSelections, text: string) => {
       if (disabled) return;
-      const normalized = normalizeAnswer(value);
-      if (normalized === null) return;
-      onAnswer(normalized);
+      const reply = composeReply(questions, state, text);
+      if (reply === null) return;
+      onAnswer(reply);
     },
-    [disabled, onAnswer],
+    [disabled, questions, onAnswer],
   );
 
-  const submitFreeText = useCallback(() => {
-    answer(text);
-    setText("");
-  }, [answer, text]);
+  const handleSelect = useCallback(
+    (questionId: string, optionId: string) => {
+      if (disabled) return;
+      // Fast path: one question with options + empty input → send on click.
+      if (isFastPath(questions, freeText)) {
+        send({ [questionId]: optionId }, freeText);
+        return;
+      }
+      setSelections((prev) => ({
+        ...prev,
+        [questionId]: prev[questionId] === optionId ? null : optionId,
+      }));
+    },
+    [disabled, questions, freeText, send],
+  );
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        submitFreeText();
+        send(selections, freeText);
       }
     },
-    [submitFreeText],
+    [send, selections, freeText],
   );
 
-  // A pure card: the composer slot that hosts it owns the outer layout
-  // (padding + max-width + centering), so this component adds none — it sits
-  // consistently beside the connect interaction card in the same slot.
   return (
     <div
       aria-disabled={disabled || undefined}
       className={cn(
-        "rounded-3xl border border-border/60 bg-card p-5 shadow-sm",
+        "overflow-clip rounded-[28px] border border-border/50 bg-card p-2.5",
+        "shadow-[0_1px_6px_rgba(0,0,0,0.06)] focus-within:shadow-[0_1px_10px_rgba(0,0,0,0.1)]",
+        "dark:shadow-[0_1px_6px_rgba(0,0,0,0.2)] dark:focus-within:shadow-[0_1px_10px_rgba(0,0,0,0.3)]",
         disabled && "opacity-50",
       )}
     >
-      <p className={QUESTION_TEXT_CLASS}>{question}</p>
-
-      {hasOptions && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {options?.map((option) => (
-            <Button
-              className="rounded-full"
+      <div className="flex flex-col px-2.5 pt-2 pb-2">
+        {questions.map((question, i) => (
+          <div className={cn(i > 0 && "mt-8")} key={question.id}>
+            <QuestionBlock
+              batched={batched}
               disabled={disabled}
-              key={option.id}
-              onClick={() => answer(option.label)}
-              type="button"
-              variant="outline"
-            >
-              {option.label}
-            </Button>
-          ))}
-        </div>
-      )}
+              onSelect={(optionId) => handleSelect(question.id, optionId)}
+              question={question}
+              selectedId={selections[question.id] ?? null}
+            />
+          </div>
+        ))}
 
-      {hasOptions && !showFreeText && (
-        <button
-          className={OWN_ANSWER_TOGGLE_CLASS}
-          disabled={disabled}
-          onClick={() => setShowFreeText(true)}
-          type="button"
-        >
-          {typeOwnAnswerLabel}
-        </button>
-      )}
-
-      {showFreeText && (
-        <div className={cn("flex items-end gap-2", hasOptions && "mt-4")}>
-          <Textarea
-            className="min-h-11 flex-1 resize-none rounded-2xl"
+        <div className="mt-4 flex items-end gap-2 rounded-2xl border border-border/50 bg-background px-3 py-2 transition-colors focus-within:border-border">
+          <textarea
+            className="max-h-40 flex-1 resize-none border-none bg-transparent py-1 text-base text-foreground leading-[1.2] outline-none placeholder:text-muted-foreground/50"
             disabled={disabled}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => setFreeText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             rows={1}
-            value={text}
+            value={freeText}
           />
-          <Button
-            className="rounded-full"
-            disabled={disabled || normalizeAnswer(text) === null}
-            onClick={submitFreeText}
-            type="button"
-          >
-            {sendLabel}
-          </Button>
+          <PromptInputSubmit
+            aria-label={sendLabel}
+            className="shrink-0"
+            disabled={disabled || !canSend(questions, selections, freeText)}
+            onClick={() => send(selections, freeText)}
+          />
         </div>
-      )}
+      </div>
     </div>
   );
 }
