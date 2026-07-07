@@ -17,6 +17,7 @@ import { analytics } from "../../lib/analytics";
 import { genericErrorDescription } from "../../lib/error-toast";
 import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
+import { RoutineCreateChoiceDialog } from "./routine-create-choice-dialog";
 import { RoutineModelControls } from "./routine-model-controls";
 import {
   EMPTY_FORM,
@@ -26,6 +27,7 @@ import {
   routineToFormData,
   type View,
 } from "./routines-tab-model";
+import { useRoutineChatSetup } from "./use-routine-chat-setup";
 
 export default function RoutinesTab({ agent }: TabProps) {
   const { t } = useTranslation("routines");
@@ -43,6 +45,8 @@ export default function RoutinesTab({ agent }: TabProps) {
   const cancelRun = useCancelRoutineRun(path);
 
   const [view, setView] = useState<View>(() => freshRoutinesState().view);
+  const [choiceOpen, setChoiceOpen] = useState(false);
+  const chatSetup = useRoutineChatSetup(agent);
   const [form, setForm] = useState<RoutineFormData>(
     () => freshRoutinesState().form,
   );
@@ -65,16 +69,27 @@ export default function RoutinesTab({ agent }: TabProps) {
     setView(fresh.view);
     setForm(fresh.form);
     setBaseline(fresh.baseline);
+    setChoiceOpen(false);
   }
 
   // Most recent run per routine, for the grid's "last run" badges.
   const lastRuns = useMemo(() => latestRunByRoutine(allRuns), [allRuns]);
 
-  const handleCreate = useCallback(() => {
+  // "New routine" opens a chooser: guided setup in chat, or the form.
+  const handleCreate = useCallback(() => setChoiceOpen(true), []);
+
+  const handleCreateWithForm = useCallback(() => {
+    setChoiceOpen(false);
     setForm(EMPTY_FORM);
     setBaseline(EMPTY_FORM);
     setView({ type: "editor" });
   }, []);
+
+  const handleCreateInChat = useCallback(async () => {
+    // On success the view switches to the new conversation, so only close
+    // the dialog then — a failed start keeps the chooser up for a retry.
+    if (await chatSetup.start()) setChoiceOpen(false);
+  }, [chatSetup]);
 
   const openEditor = useCallback(
     (routineId: string) => {
@@ -229,20 +244,29 @@ export default function RoutinesTab({ agent }: TabProps) {
   }
 
   return (
-    <RoutinesGrid
-      routines={routines ?? []}
-      lastRuns={lastRuns}
-      accountTimezone={tz.timezone}
-      onTimezoneChange={handleTimezoneChange}
-      loading={isLoading}
-      onSelect={openEditor}
-      onCreate={handleCreate}
-      onToggle={handleToggle}
-      labels={labels.grid}
-      rowLabels={labels.rowLabels}
-      scheduleSummaryLabels={labels.schedule.summary}
-      nextFireLabels={labels.nextFire}
-      locale={labels.locale}
-    />
+    <>
+      <RoutineCreateChoiceDialog
+        open={choiceOpen}
+        onOpenChange={setChoiceOpen}
+        onChat={handleCreateInChat}
+        onForm={handleCreateWithForm}
+        busy={chatSetup.pending}
+      />
+      <RoutinesGrid
+        routines={routines ?? []}
+        lastRuns={lastRuns}
+        accountTimezone={tz.timezone}
+        onTimezoneChange={handleTimezoneChange}
+        loading={isLoading}
+        onSelect={openEditor}
+        onCreate={handleCreate}
+        onToggle={handleToggle}
+        labels={labels.grid}
+        rowLabels={labels.rowLabels}
+        scheduleSummaryLabels={labels.schedule.summary}
+        nextFireLabels={labels.nextFire}
+        locale={labels.locale}
+      />
+    </>
   );
 }

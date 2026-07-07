@@ -11,6 +11,17 @@
     "timezoneSearchPlaceholder": "Search timezones…",
     "timezoneNoResults": "No timezones found"
   },
+  "createChoice": {
+    "title": "New routine",
+    "description": "How would you like to set it up?",
+    "chatTitle": "Create it in chat",
+    "chatDescription": "Tell your agent what you need. It asks a few questions and schedules the routine for you.",
+    "formTitle": "Fill in the details myself",
+    "formDescription": "Set the name, schedule, and instructions with the form.",
+    "cardTitle": "Set up a routine",
+    "cardDescription": "Your agent will ask a few questions and schedule it for you.",
+    "missionTitle": "Set up a new routine"
+  },
   "editor": {
     "back": "Back to routines",
     "newRoutine": "New routine",
@@ -150,6 +161,7 @@
   },
   "toasts": {
     "timezoneSet": "Timezone set to {{zone}}",
-    "timezoneError": "Couldn't update the timezone"
+    "timezoneError": "Couldn't update the timezone",
+    "chatSetupError": "Couldn't start the routine setup chat"
   }
 }
