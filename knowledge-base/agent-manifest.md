@@ -615,6 +615,6 @@ The per-agent board tab AND cross-agent Mission Control render **one** component
 
 Adding a board capability = add it to `<MissionBoard>` (both board views get it) or to one `BoardSource` (just that view). `archived-tab.tsx` (per-agent) still renders `AIBoard` directly (list layout) and shares the same primitives.
 
-Status transitions: session completes → `useSessionEvents` (listens to the WS `*` firehose) → activity status flipped to `needs_you` via the engine update route. The emitted `ActivityChanged` event auto-invalidates TanStack Query → board refreshes.
+Status transitions: when a turn settles, the SDK persists the board status through the `persistBoardStatus` seam (the web adapter PATCHes `{ status, pending_interaction }`) — a clean turn with nothing outstanding → `done`; a turn that ended on `ask_user`/`request_connection` → `needs_you` carrying the pending interaction; a handled Stop / logged-out provider → `needs_you`; a real failure → `error`. The resulting `ActivityChanged` event auto-invalidates TanStack Query → board refreshes. (The `done`-vs-`needs_you` split and the `sessionStatus`/`boardStatus` pair: `knowledge-base/client-architecture.md`; full interaction lifecycle: `knowledge-base/architecture.md`.)
 
 Columns can have `onAdd` callback → renders "+" button for creating activities from board.

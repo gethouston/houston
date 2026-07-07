@@ -319,6 +319,18 @@ How the SDK subprocess runs (`backend.ts`):
   auto-approves in-workspace targets and denies escapes. There is deliberately NO
   `allowedTools` — an allow rule short-circuits `canUseTool` and would bypass the
   clamp.
+- **Houston's custom tools reach the subprocess via an in-process MCP server.** The
+  SDK backend does NOT only see file built-ins: `custom-tools.ts` registers an
+  in-process MCP server (`"houston"`, tools surface as `mcp__houston__*`) that
+  bridges Houston's pi-shaped `ask_user` / `request_connection` /
+  `integration_search` / `integration_execute` onto the SDK's `createSdkMcpServer`,
+  reusing the SAME implementations verbatim. WHY: the shared system prompt MANDATES
+  `ask_user` for every blocking question and `request_connection` for connect
+  hand-offs; without this bridge an `anthropic`-backed agent would be told to use
+  tools it lacks. Handlers run in THIS runtime process, so `recordPendingInteraction`
+  and the sandbox integration proxy work exactly as on the pi path (the per-turn
+  AsyncLocalStorage stores propagate in). See `knowledge-base/architecture.md`
+  (interaction lifecycle).
 - **SDK is an OPTIONAL dep**, lazily imported inside `createSession`/`titleWithClaude`;
   its absence throws typed `ClaudeBackendUnavailableError`, never crashes the runtime.
 - **Binary resolution** (`binary-path.ts`): on Node (self-host / engine-pod /

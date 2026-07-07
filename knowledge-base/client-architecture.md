@@ -107,7 +107,7 @@ Behavior is **never** written in surface code. Change it in the SDK, then bind.
      the same `@houston/runtime-client` pieces, so a wire mismatch fails there
      (`pnpm --filter houston-web test:e2e`).
    - **VM snapshot changes ARE contract changes.** A change to `ConversationVM`
-     (`feed`, `running`, `sessionStatus`, `boardStatus`) or any published
+     (`feed`, `running`, `sessionStatus`, `boardStatus`, `pendingInteraction`) or any published
      snapshot is a change to what every surface and the native bridge observes.
      Treat it exactly like a protocol change: **additive only** (procedure e /
      `BRIDGE.md` §4). Update the VM's own tests AND, if the shape changed, the
@@ -130,8 +130,12 @@ Behavior is **never** written in surface code. Change it in the SDK, then bind.
 > a logged-out provider) settles `sessionStatus === "error"` but
 > `boardStatus === "needs_you"`. A surface keying off `sessionStatus` alone
 > renders a normal Stop as a red failure. `boardStatus` is the handled-vs-error
-> signal: `needs_you` = handled / your attention, `error` = genuine failure.
-> (`packages/sdk/src/modules/turns/vm-output.ts`.)
+> signal: `needs_you` = handled / your attention, `error` = genuine failure. A
+> *clean* turn splits on whether it ended on an interaction: nothing outstanding →
+> the terminal `done`; ended on `ask_user`/`request_connection` → `needs_you`
+> carrying the `pendingInteraction` VM field (the composer-replacing question /
+> connect card). (`packages/sdk/src/modules/turns/turn-settle.ts` /
+> `vm-output.ts`; full lifecycle in `knowledge-base/architecture.md`.)
 
 ### b. Visual change → tokens procedure
 
@@ -282,7 +286,9 @@ Real script names (from each `package.json`). Run what you touched; run
 - **`sessionStatus`-vs-`boardStatus` nuance** (see procedure a) — a persistent
   trap: a Stop / logged-out provider is `sessionStatus: "error"` but
   `boardStatus: "needs_you"`. Always read the pair; never render red off
-  `sessionStatus` alone.
+  `sessionStatus` alone. A clean turn is the terminal `done` unless it ended on
+  `ask_user`/`request_connection`, which settles `needs_you` + a
+  `pendingInteraction` the composer renders as a card.
 
 ---
 
