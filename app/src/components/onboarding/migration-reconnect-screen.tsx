@@ -58,7 +58,7 @@ export function MigrationReconnectScreen({
         </p>
 
         <div className="w-full">
-          <ProviderPicker value={null} onSelect={() => finish("connected")} />
+          <ProviderPicker onSelect={() => finish("connected")} />
         </div>
 
         <button

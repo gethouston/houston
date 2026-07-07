@@ -1056,12 +1056,12 @@ export class HoustonClient {
     const res = await controlPlane.gatewayAuthFetch(this.token)(
       `${this.baseUrl}/v1/catalog`,
     );
-    // 404 = this host has no catalog route (an older host, or the
-    // standalone-web / e2e fake host that doesn't serve it): the frontend keeps
-    // a static seed catalog as its fallback, so an empty catalog must degrade
-    // instead of throwing. Every other status still throws so a real failure
-    // surfaces rather than silently emptying the picker.
-    if (res.status === 404) return [];
+    // No 404 tolerance: `/v1/catalog` is served by every current host AND by the
+    // e2e/standalone-web fake host (packages/fake-host serves it via the real
+    // `buildProviderCatalog`). A 404 therefore means a genuinely stale host, and
+    // silently degrading to `[]` is what shipped the packaged app with providers
+    // but zero models. Throw like every other route so the failure surfaces (the
+    // caller keeps the seed so the UI still renders — but loudly).
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new HoustonEngineError(res.status, body);

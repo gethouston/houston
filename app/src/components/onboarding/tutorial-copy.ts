@@ -5,22 +5,23 @@
  *
  *  intro (overview of all steps)
  *  ── Setup ──────────────────────────────────────────
- *  brain → providerLogin → aiConnected ✓
+ *  connect → aiConnected ✓
  *  ── Onboarding ─────────────────────────────────────
  *  meet (name) → agentCreated ✓
  *  connectEmail (Gmail/Outlook) → emailConnected ✓
  *  emailChat (send to myself) → emailSent ✓
  *  finished (tour or connect more)
  *
- * The email steps run only where the host serves integrations
+ * The `connect` step embeds the shared `<ProviderPicker>` (all catalog
+ * providers, every auth type) and auto-advances to `aiConnected` the instant a
+ * provider connects. The email steps run only where the host serves integrations
  * (`stepAfterAgentCreated`); the legacy Rust engine goes agentCreated →
- * finished. `numbered` steps that drive the "Setup · N of M" eyebrow: brain,
- * providerLogin, meet, connectEmail, emailChat.
+ * finished. `numbered` steps that drive the "Setup · N of M" eyebrow: connect,
+ * meet, connectEmail, emailChat.
  */
 export type OnboardingStep =
   | "intro"
-  | "brain"
-  | "providerLogin"
+  | "connect"
   | "aiConnected"
   | "onboardingIntro"
   | "meet"

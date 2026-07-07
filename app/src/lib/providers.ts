@@ -280,12 +280,18 @@ export const PROVIDERS: ProviderInfo[] = buildSeed();
  * rather than reassigning so live `PROVIDERS` importers pick up the new set.
  */
 export function hydrateProviderCatalog(catalog: ProviderCatalog): void {
-  // An empty catalog is NOT a deployment with zero providers: it's the host
-  // returning `[]` (a 404 on the catalog route — deploy skew, an egress-locked
-  // pod, or the e2e fake host). Rebuilding from it would wipe the override seed
-  // down to just the local provider, emptying the picker + connect surfaces.
-  // Keep the seed instead so the UI stays populated. Covers every caller.
-  if (catalog.length === 0) return;
+  // An empty catalog is NOT a deployment with zero providers: it's a host that
+  // answered `[]` (an egress-locked pod, or a genuinely empty registry).
+  // Rebuilding from it would wipe the override seed down to just the local
+  // provider, emptying the picker + connect surfaces. Keep the seed instead so
+  // the UI stays populated, but warn — an empty catalog is never expected on a
+  // healthy host and points at a deploy/registry problem worth investigating.
+  if (catalog.length === 0) {
+    console.warn(
+      "[providers] hydrateProviderCatalog called with an empty catalog; keeping the seed",
+    );
+    return;
+  }
   const built = buildCatalog(catalog);
   PROVIDERS.length = 0;
   PROVIDERS.push(...built);

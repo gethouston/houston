@@ -1,10 +1,9 @@
 import type { Capabilities } from "@houston-ai/engine-client";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
 import { getEngine, newEngineActive } from "../lib/engine";
-import { showErrorToast } from "../lib/error-toast";
 import i18n from "../lib/i18n";
 import { queryKeys } from "../lib/query-keys";
+import { useQueryErrorToast } from "./use-query-error-toast.ts";
 
 /**
  * Returns host-advertised deployment capabilities for new-engine builds.
@@ -30,21 +29,13 @@ export function useCapabilities(): {
     retry: 3,
   });
 
-  const reportedError = useRef<unknown>(null);
-  useEffect(() => {
-    if (!query.isError) {
-      reportedError.current = null;
-      return;
-    }
-    // Toast once per distinct error so a background refetch loop can't spam.
-    if (reportedError.current === query.error) return;
-    reportedError.current = query.error;
-    showErrorToast(
-      "capabilities_fetch",
-      i18n.t("shell:engineGate.loadFailed"),
-      query.error,
-    );
-  }, [query.isError, query.error]);
+  // Toast once per distinct error so a background refetch loop can't spam.
+  useQueryErrorToast(
+    query.isError,
+    query.error,
+    "capabilities_fetch",
+    i18n.t("shell:engineGate.loadFailed"),
+  );
 
   return {
     capabilities: query.data ?? null,

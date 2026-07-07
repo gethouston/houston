@@ -77,14 +77,12 @@ export function showErrorToast(
   originalError?: unknown,
 ): void {
   const addToast = useUIStore.getState().addToast;
-  analytics.track("app_error_shown", {
-    source: command,
-    error_kind: classifyAnalyticsError(message),
-  });
 
   if (isDuplicateToast(message, Date.now())) {
     // Still worth the report (Sentry dedupes server-side); just not a second
-    // identical red toast within the window.
+    // identical red toast within the window. The analytics event, though, tracks
+    // a SHOWN toast — so it fires only past the dedupe, else N concurrent calls
+    // failing on one root cause (HOU-687) would N-count a single problem.
     const error = createSentryReportError(command, message, originalError);
     if (!sentrySuppressedInDev) {
       void sentryCapture(error, {
@@ -96,6 +94,11 @@ export function showErrorToast(
     }
     return;
   }
+
+  analytics.track("app_error_shown", {
+    source: command,
+    error_kind: classifyAnalyticsError(message),
+  });
 
   addToast({
     title: i18n.t("shell:errorToast.problemTitle"),

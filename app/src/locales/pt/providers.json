@@ -32,7 +32,8 @@
     "signInFailed": "Não foi possível abrir o login de {{provider}}",
     "signOutFailed": "Não foi possível sair de {{provider}}",
     "signInSucceeded": "Conectado a {{provider}}",
-    "cancelFailed": "Não foi possível cancelar o login de {{provider}}"
+    "cancelFailed": "Não foi possível cancelar o login de {{provider}}",
+    "catalogLoadFailed": "Não foi possível carregar seus modelos de IA disponíveis. A lista pode estar incompleta até isso funcionar."
   },
   "providerLogin": {
     "title": "Termine de entrar em {{name}}",
