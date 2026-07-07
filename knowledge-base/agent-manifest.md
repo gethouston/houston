@@ -464,9 +464,23 @@ on the new provider seeded with prior context, reusing the compaction machinery:
 spend tokens, scaling with the current conversation size), with mode-specific
 copy. The switch is staged only on confirm.
 
-The size decision is frontend-only — the context-window catalog lives in
-`app/src/lib/providers.ts` (`app/src/lib/provider-switch.ts::decideHandoffMode`).
-The choice is staged in `app/src/stores/provider-switch.ts`, forwarded on the
+The size decision (`app/src/lib/provider-switch.ts::decideHandoffMode`) reads
+the SAME per-model context-window numbers the runtime's autocompact uses:
+`resolveModelWindow` / `effectiveModelWindow`
+(`@houston/protocol/model-windows`, a dependency-free subpath export) is the
+ONE `{default, max}` table, imported by both the frontend catalog
+(`app/src/lib/providers.ts`) and the runtime
+(`packages/runtime/src/session/exec-turn.ts`, autocompact + provider-switch
+sizing) — the context bar and the engine's compaction trigger always divide by
+the same denominator now. `default` is the starting estimate; the estimate
+snaps UP to `max` once observed usage exceeds `default`, proving the larger
+(plan/credit-gated) window is actually active. Anthropic's flagships
+(`claude-sonnet-4-6`, `claude-opus-4-7`, `claude-opus-4-8`) default to 200k and
+snap to 1M. `normalizeUsage` (`packages/runtime/src/backends/pi/wire.ts`)
+synthesizes `context_tokens` from the component fields when a provider's usage
+event omits a summed `totalTokens`, so a provider that under-reports usage
+still feeds the window estimate instead of going null. The choice is staged in
+`app/src/stores/provider-switch.ts`, forwarded on the
 next send as `POST .../sessions { providerSwitch: { mode, fromProvider } }`, and
 the engine reseeds in `houston_engine_core::sessions::run_start`: it clears the
 resolved provider's current resume id (so a switch-**back** never resumes a
@@ -481,37 +495,47 @@ event, so a failed switch is retried on the next send.
 
 ### Reasoning effort
 
+Four tiers, ascending: `low`, `medium`, `high`, `xhigh` (`EffortLevel` in
+`app/src/lib/providers.ts`). A fifth `max` tier used to sit above `xhigh`; it
+produced the byte-identical request as `xhigh` on every provider (a label with
+no effect), so it was removed. A persisted `"max"` (an older agent config; the
+JSON schema `ui/agent-schemas/src/config.schema.json` and
+`app/src/data/config.ts` still list it in the type for that reason) normalizes
+to `"xhigh"` on read (`normalizeEffort`); the runtime's own wire mapping
+(`toThinkingLevel`, `packages/runtime/src/ai/effort.ts`) also still accepts
+`"max"` and maps it to `xhigh`, so an unmigrated agent's turns run correctly
+even before the value is re-picked in the UI.
+
 Effort is **per-agent and model-gated**. Stored as `effort` in the agent's
-`.houston/config/config.json` (schema `ui/agent-schemas/src/config.schema.json`),
-set from the model picker (`app/src/components/chat-model-selector.tsx`), which
-shows only the levels the active model accepts.
+`.houston/config/config.json`, set from the model picker
+(`app/src/components/chat-model-selector.tsx`), which shows only the levels
+the active model accepts (`getEffortLevels`). `validEffortOrDefault` resolves
+the level actually used: the requested value if the model accepts it, else
+`DEFAULT_EFFORT` (`medium`) if the model offers it, else the model's lowest
+level; a model with no effort control gets `undefined` and the flag is omitted
+entirely.
 
-- The engine resolves it in `houston_engine_core::sessions::resolve_effort`
-  (`engine/houston-engine-core/src/sessions/provider.rs`): the configured value
-  when the **final** provider accepts it, else the provider's `default_effort`
-  (`medium`), else `None` for providers with no effort control. An explicit
-  `effort` on `POST .../sessions` (the onboarding tutorial) still wins over
-  config. Applies to chat, board missions, routines, and onboarding alike.
-- Valid levels live on the `ProviderAdapter` (`effort_levels` / `default_effort`)
-  as a provider-level **superset** used for validation; per-model availability
-  is a picker concern (`ModelOption.effortLevels` in `providers.ts`).
+**Per-model levels derive from pi by default, not a hand-maintained table.**
+`deriveEffortLevels` (`app/src/lib/providers.ts`) maps each model's pi-ai
+`thinkingLevels` (pi's `getSupportedThinkingLevels`, vendored
+`@earendil-works/pi-ai`, surfaced via `/v1/catalog`) straight onto Houston's
+four-tier scale, dropping pi's `off`/`minimal` (Houston's scale starts at
+`low`). This keeps the effort set honest as pi adds/changes models, with no
+curated list to fall out of date. `PROVIDER_OVERRIDES[].models[id].effortLevels`
+(`app/src/lib/provider-overrides.ts`) is an escape hatch ONLY for a genuine
+gateway-imposed cap that differs from what pi reports — no override sets it
+today. If one is added naming a model id the shipped pi-ai catalog doesn't
+carry, `app/tests/provider-overrides-drift.test.ts` fails the build (it reads
+the real vendored pi-ai registry, not a test fixture).
 
-| Provider | Model | Effort levels offered | CLI flag |
-|---|---|---|---|
-| `anthropic` | `claude-fable-5` (Fable 5) | low, medium, high, xhigh, max | `--effort <v>` |
-| `anthropic` | `claude-opus-4-8` (Opus 4.8) | low, medium, high, xhigh, max | `--effort <v>` |
-| `anthropic` | `claude-opus-4-7` (Opus 4.7) | low, medium, high, xhigh, max | `--effort <v>` |
-| `anthropic` | `claude-sonnet-5` (Sonnet 5) | low, medium, high, xhigh, max | `--effort <v>` |
-| `anthropic` | `claude-sonnet-4-6` (Sonnet 4.6) | low, medium, high, max (no `xhigh`) | `--effort <v>` |
-| `openai` | `gpt-5.5` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
-| `openai` | `gpt-5.4` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
-| `openai` | `gpt-5.4-mini` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
-| `openai` | `gpt-5.3-codex-spark` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
-| `gemini` | any | none | (no flag) |
+### Turn mode
 
-Claude self-clamps an unsupported `--effort` down to its highest supported
-level; codex has no such fallback, so `max` (an unknown variant to codex) is
-never offered for OpenAI. Default for every effort-capable provider is `medium`.
+A separate per-turn "Mode" pill sits next to the model + effort controls in
+the composer footer (`execute` vs `plan`, read-only investigation). Unlike
+effort it is NOT synced through `Settings` — full mechanics, the runtime
+enforcement (tool clamp + planning overlay), and the "forgotten `modeOverride`
+silently degrades to execute" gotcha are in `knowledge-base/architecture.md`
+("Turn modes").
 
 ## AI models hub
 
