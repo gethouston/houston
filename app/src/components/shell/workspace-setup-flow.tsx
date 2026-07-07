@@ -2,7 +2,8 @@ import { Button, Input } from "@houston-ai/core";
 import { ArrowLeft } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { ProviderPicker } from "./provider-picker";
+import { ProviderBrowser } from "../provider-browser/provider-browser";
+import { useProviderBrowserData } from "../provider-browser/use-provider-browser-data";
 
 interface Props {
   /** "page" = full-page onboarding, "dialog" = inside a modal */
@@ -17,6 +18,10 @@ export function WorkspaceSetupFlow({ mode, onComplete }: Props) {
   const [name, setName] = useState("Personal");
   const [provider, setProvider] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
+  // Resolved unconditionally (hooks rule) even though the browser only renders
+  // in step 2; the catalog + status queries are cached, so probing during the
+  // name step is harmless.
+  const { providers, connections, catalog } = useProviderBrowserData();
 
   const handleNameSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -110,7 +115,13 @@ export function WorkspaceSetupFlow({ mode, onComplete }: Props) {
         </div>
 
         {/* Provider picker */}
-        <ProviderPicker onSelect={handleProviderSelect} />
+        <ProviderBrowser
+          providers={providers}
+          connections={connections}
+          catalog={catalog}
+          onSelect={handleProviderSelect}
+          selectOnMount
+        />
 
         {/* Continue */}
         <div

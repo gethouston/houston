@@ -1,19 +1,4 @@
 {
-  "card": {
-    "connected": "Connected",
-    "notConnected": "Not connected",
-    "comingSoon": "Coming soon",
-    "connecting": "Connecting...",
-    "connectTitle": "Connect {{name}}",
-    "signOutTitle": "Sign out of {{name}}",
-    "cancel": "Cancel",
-    "cancelTitle": "Cancel sign-in to {{name}}"
-  },
-  "row": {
-    "connect": "Connect",
-    "signOut": "Sign out",
-    "cancel": "Cancel"
-  },
   "setup": {
     "installHint": "Install the {{cli}} CLI on your machine. Houston will pick it up automatically.",
     "installGuide": "Install guide",

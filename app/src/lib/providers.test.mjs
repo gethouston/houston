@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  COMING_SOON_PROVIDERS,
   EFFORT_ORDER,
   getConnectProviders,
   getContextWindowConfig,
@@ -337,10 +336,6 @@ test("MiniMax is an active api-key provider backed by pi-ai's global provider", 
     );
     assert.deepEqual(m.effortLevels, ["low", "medium", "high", "xhigh"]);
   }
-  assert.ok(
-    !COMING_SOON_PROVIDERS.some((provider) => provider.id === "minimax"),
-    "MiniMax is no longer coming soon",
-  );
 });
 
 test("EFFORT_ORDER is the full ascending spectrum and a superset of every model's levels", () => {
@@ -375,7 +370,7 @@ test("EFFORT_ORDER is the full ascending spectrum and a superset of every model'
   }
 });
 
-test("getVisibleProviders shows the whole runnable /v1/catalog set, gating only local + coming-soon", () => {
+test("getVisibleProviders shows the whole runnable /v1/catalog set, gating only local", () => {
   const onNewEngineDesktop = getVisibleProviders({
     newEngine: true,
     desktop: true,
@@ -401,9 +396,9 @@ test("getVisibleProviders shows the whole runnable /v1/catalog set, gating only 
     PROVIDERS.filter((p) => p.auth !== "openaiCompatible").length,
   );
 
-  // No provider in the runnable set is on the coming-soon list.
-  const comingSoon = new Set(COMING_SOON_PROVIDERS.map((p) => p.id));
-  assert.ok(!onNewEngineDesktop.some((p) => comingSoon.has(p.id)));
+  // SubQ was never a pi-ai provider, so it never appears in the runnable set —
+  // no coming-soon list is needed to hold it back.
+  assert.ok(!onNewEngineDesktop.some((p) => p.id === "subq"));
 });
 
 test("getVisibleProviders no longer gates by capabilities.providers (catalog is the source)", () => {
