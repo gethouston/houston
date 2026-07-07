@@ -20,6 +20,7 @@
 import type { AIBoardProps } from "@houston-ai/board";
 import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
 import {
+  ChatQuestionCard,
   decodeAttachmentMessage,
   UserAttachmentMessage,
   type UserAttachmentMessageLabels,
@@ -43,10 +44,14 @@ import {
   useSkills,
 } from "../hooks/queries";
 import { useCapabilities } from "../hooks/use-capabilities";
-import { useConversationFeed } from "../hooks/use-conversation-vm";
+import {
+  useConversationFeed,
+  useConversationVm,
+} from "../hooks/use-conversation-vm";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import { useSession } from "../hooks/use-session";
+import { deriveActiveInteraction } from "../lib/active-interaction";
 import { analytics } from "../lib/analytics";
 import { attachmentReferences } from "../lib/attachment-message";
 import {
@@ -94,6 +99,7 @@ import {
 } from "../lib/tauri";
 import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
 import { useUIStore } from "../stores/ui";
+import { ChatConnectInteractionCard } from "./chat-connect-interaction-card";
 import { resolveEffectiveProvider } from "./chat-effective-provider";
 import { ChatEffortSelector } from "./chat-effort-selector";
 import { ChatModelSelector } from "./chat-model-selector";
@@ -142,6 +148,10 @@ interface AgentChatPanelProps {
   chatEmptyState: AIBoardProps["chatEmptyState"];
   /** Selected Skill chip rendered above the prompt input. */
   composerHeader: AIBoardProps["composerHeader"];
+  /** Replaces the whole composer with the interaction card (ask_user /
+   *  request_connection) when the mission is waiting on the user. Undefined
+   *  when nothing is pending or a turn is running. */
+  composerOverride: AIBoardProps["composerOverride"];
   /** Submit can run the selected Skill without extra text. */
   canSendEmpty: AIBoardProps["canSendEmpty"];
   /** Intercepts composer submit while a Skill is selected. */
@@ -319,6 +329,12 @@ export function useAgentChatPanel({
   // turn-state source (history seeded by the adapter on load; live turns
   // folded by the SDK machinery).
   const sessionFeedItems = useConversationFeed(path, selectedSessionKey);
+
+  // The live turn state for this conversation, for the pending-interaction
+  // override: `running` gates the card (a running turn shows the composer, not
+  // the card) and `pendingInteraction` is the live source the derivation
+  // prefers over the persisted activity fallback.
+  const conversationVm = useConversationVm(path, selectedSessionKey);
 
   // Whether the open conversation already has turns. Once it does, the chat's
   // provider is frozen (see resolveEffectiveProvider): a provider that logs out
@@ -807,6 +823,87 @@ export function useAgentChatPanel({
     [integrationsEnabled, agent, capabilities, handleIntegrationConnected],
   );
 
+  // ── Pending-interaction override (ask_user / request_connection) ──────
+  // The one thing the mission is waiting on the user for: the live VM
+  // interaction if this client settled the turn, else the activity's persisted
+  // one (reload / observer). Gated on `running` so a fresh turn's composer wins
+  // and the card disappears the instant the user answers.
+  const activeInteraction = deriveActiveInteraction({
+    running: conversationVm?.running ?? false,
+    live: conversationVm?.pendingInteraction,
+    persisted: selectedActivity?.pending_interaction,
+  });
+
+  // Answering a question sends the text as a normal user message through the
+  // existing follow-up send path; the turn start clears the interaction, so the
+  // card retires through the same reactivity. A failure surfaces (no silent
+  // swallow) — the composer is gone, so a toast is the only channel left.
+  const handleInteractionAnswer = useCallback(
+    (text: string) => {
+      if (!path || !selectedSessionKey) return;
+      tauriChat
+        .send(path, text, selectedSessionKey, {
+          providerOverride: effectiveProvider,
+          modelOverride: effectiveModel,
+          effortOverride: effectiveEffort,
+        })
+        .catch((err) => {
+          addToast({
+            title: t("chat:errors.sessionStart", { error: String(err) }),
+            variant: "error",
+          });
+        });
+    },
+    [
+      path,
+      selectedSessionKey,
+      effectiveProvider,
+      effectiveModel,
+      effectiveEffort,
+      addToast,
+      t,
+    ],
+  );
+
+  const questionCardLabels = useMemo(
+    () => ({
+      typeOwnAnswer: t("chat:questionCard.typeOwnAnswer"),
+      placeholder: t("chat:questionCard.placeholder"),
+      send: t("chat:questionCard.send"),
+    }),
+    [t],
+  );
+
+  const composerOverride = useMemo<AIBoardProps["composerOverride"]>(() => {
+    if (!agent || !activeInteraction) return undefined;
+    if (activeInteraction.kind === "question") {
+      return (
+        <ChatQuestionCard
+          question={activeInteraction.question}
+          options={activeInteraction.options}
+          onAnswer={handleInteractionAnswer}
+          labels={questionCardLabels}
+        />
+      );
+    }
+    return (
+      <ChatConnectInteractionCard
+        toolkit={activeInteraction.toolkit}
+        agentId={agent.id}
+        autoGrant={canManageAgentGrants(capabilities, agent)}
+        reason={activeInteraction.reason}
+        onConnected={handleIntegrationConnected}
+      />
+    );
+  }, [
+    agent,
+    activeInteraction,
+    handleInteractionAnswer,
+    questionCardLabels,
+    capabilities,
+    handleIntegrationConnected,
+  ]);
+
   // ── Built JSX bundles ─────────────────────────────────────────────────
   const renderUserMessage = useCallback(
     (msg: { content: string }) => {
@@ -1126,6 +1223,7 @@ export function useAgentChatPanel({
   return {
     chatEmptyState,
     composerHeader,
+    composerOverride,
     canSendEmpty: activeSkill != null,
     onComposerSubmit: handleSkillComposerSubmit,
     footer,

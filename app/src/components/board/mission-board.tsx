@@ -177,6 +177,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           {...(selectionProps ?? {})}
           chatEmptyState={panel.chatEmptyState}
           composerHeader={panel.composerHeader}
+          composerOverride={panel.composerOverride}
           canSendEmpty={panel.canSendEmpty}
           onComposerSubmit={panel.onComposerSubmit}
           footer={panel.footer}

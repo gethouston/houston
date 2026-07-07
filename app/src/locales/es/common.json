@@ -39,7 +39,9 @@
   "notifications": {
     "sessionComplete": {
       "title": "{{workspace}} · {{agent}}",
-      "body": "Tu agente terminó de trabajar."
+      "body": "Tu agente terminó de trabajar.",
+      "question": "Tu agente tiene una pregunta para ti.",
+      "connect": "Tu agente necesita que conectes una aplicación."
     }
   }
 }

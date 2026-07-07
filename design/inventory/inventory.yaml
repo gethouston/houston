@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 3
+version: 4
 
 components:
   - id: agent-avatar
@@ -226,6 +226,20 @@ components:
       mission, feedback returns it to the agent. Status drives the indicator.
     a11y: needs-you item announced; approve is a labeled primary button; live status.
     since: 1
+
+  - id: question-card
+    title: Question card
+    purpose: In-chat surface shown when the agent pauses mid-turn to ask the user a question; replaces the composer until answered.
+    anatomy: [question-prompt, option-buttons, own-answer-toggle, free-text-input, send-action]
+    states: [with-options, free-text-only, free-text-open, disabled]
+    variants: [choice, open-ended]
+    behavior: >-
+      Rendered from the turn's pending interaction (kind=question). Option click
+      answers with that option's label; the toggle reveals an inline free-text
+      answer (shown directly when no options). Answering resumes the turn;
+      disabled while another turn is active.
+    a11y: question announced as the primary prompt; options and the free-text toggle are labeled buttons visible at rest (no hover gate).
+    since: 4
 
   - id: deliverable-card
     title: Deliverable card

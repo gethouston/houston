@@ -3,6 +3,15 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v4 - 2026-07-06
+
+Add `question-card`: the in-chat surface shown when the agent pauses mid-turn to
+ask the user a question (protocol `PendingInteraction` kind=question). Replaces
+the composer until answered; prominent prompt, always-visible option buttons, a
+quiet toggle to an inline free-text answer (shown directly when there are no
+options). Web ships it as a shared `ui/` piece (`@houston-ai/chat`
+`ChatQuestionCard`), so it lands `implemented`.
+
 ## v3 - 2026-07-05
 
 Add `agent-provisioning-card` (HOU-693): the in-chat notice (and its

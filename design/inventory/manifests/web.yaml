@@ -13,7 +13,7 @@
 
 surface: web
 enforced: true
-inventoryVersion: 3
+inventoryVersion: 4
 
 components:
   agent-avatar:
@@ -86,6 +86,10 @@ components:
   approval-surface:
     status: implemented
     ref: "@houston-ai/review ReviewItem / ReviewDetailPanel / DeliverableCard"
+
+  question-card:
+    status: implemented
+    ref: "@houston-ai/chat ChatQuestionCard (question-card + question-card-logic)"
 
   deliverable-card:
     status: implemented

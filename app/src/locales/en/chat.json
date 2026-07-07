@@ -24,6 +24,11 @@
     "title": "Start a conversation",
     "description": "Type a message to talk to your assistant."
   },
+  "questionCard": {
+    "typeOwnAnswer": "Answer in your own words",
+    "placeholder": "Type your answer...",
+    "send": "Send"
+  },
   "errors": {
     "sessionStart": "Failed to start session: {{error}}",
     "stopSession": "Couldn't stop the mission: {{error}}",

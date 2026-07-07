@@ -24,6 +24,11 @@
     "title": "Empieza una conversación",
     "description": "Escribe un mensaje para hablar con tu asistente."
   },
+  "questionCard": {
+    "typeOwnAnswer": "Responde con tus propias palabras",
+    "placeholder": "Escribe tu respuesta...",
+    "send": "Enviar"
+  },
   "errors": {
     "sessionStart": "No se pudo iniciar la sesión: {{error}}",
     "stopSession": "No se pudo detener la misión: {{error}}",

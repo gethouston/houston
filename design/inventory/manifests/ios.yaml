@@ -130,3 +130,6 @@ components:
   agent-provisioning-card:
     status: not-started
     notes: Hosted-engine warm-up notice (HOU-693); mobile v1 has no create-agent flow yet.
+  question-card:
+    status: not-started
+    notes: In-chat ask-the-user question surface; mid-turn pending-interaction flow not in mobile v1.

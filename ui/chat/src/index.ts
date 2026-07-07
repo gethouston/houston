@@ -209,6 +209,14 @@ export { distinctAuthorCount } from "./feed-to-messages";
 export { messagePreviewText } from "./message-preview";
 export type { ProgressPanelProps } from "./progress-panel";
 export { ProgressPanel } from "./progress-panel";
+// === Question Card ===
+// The in-chat surface shown when the agent pauses to ask the user something;
+// replaces the composer while a pending interaction is awaiting an answer.
+export type {
+  ChatQuestionCardProps,
+  ChatQuestionOption,
+} from "./question-card";
+export { ChatQuestionCard } from "./question-card";
 export type {
   QueuedChatMessage,
   QueuedMessageLabels,
