@@ -1,5 +1,6 @@
 import type {
   ActingContext,
+  CustomIntegrationHost,
   ExecuteOptions,
   IntegrationProvider,
 } from "./provider";
@@ -7,6 +8,8 @@ import {
   type ActionResult,
   type Connection,
   type ConnectStart,
+  type CustomIntegrationCreate,
+  type CustomIntegrationPatch,
   IntegrationSigninRequiredError,
   type ProviderReadiness,
   type SearchResult,
@@ -36,10 +39,25 @@ export class FakeIntegrationProvider implements IntegrationProvider {
   lastActing: ActingContext | undefined;
   /** Test helper: the pinned account of the most recent execute call. */
   lastAccount: string | undefined;
+  /** Test helper: the action of the most recent execute call (which instance ran). */
+  lastExecutedAction: string | undefined;
+  /**
+   * Present only when constructed with `custom: true` — the double for a
+   * `CustomIntegrationHost` provider (create/update record an in-memory custom
+   * integration). `supportsCustom` duck-types on these, so a plain fake stays a
+   * non-custom provider.
+   */
+  createCustom?: CustomIntegrationHost["createCustom"];
+  updateCustom?: CustomIntegrationHost["updateCustom"];
   private seq = 0;
 
   constructor(
-    opts: { id?: string; toolkits?: Toolkit[]; actions?: ToolMatch[] } = {},
+    opts: {
+      id?: string;
+      toolkits?: Toolkit[];
+      actions?: ToolMatch[];
+      custom?: boolean;
+    } = {},
   ) {
     this.id = opts.id ?? "fake";
     this.toolkits = opts.toolkits ?? [{ slug: "gmail", name: "Gmail" }];
@@ -50,6 +68,42 @@ export class FakeIntegrationProvider implements IntegrationProvider {
         description: "Send an email",
       },
     ];
+    if (opts.custom) {
+      this.createCustom = (userId, config) => this.addCustom(userId, config);
+      this.updateCustom = (userId, connectionId, patch) =>
+        this.editCustom(userId, connectionId, patch);
+    }
+  }
+
+  /** A custom integration maps to one active connection keyed by a slug. */
+  private async addCustom(
+    userId: string,
+    config: CustomIntegrationCreate,
+  ): Promise<Connection> {
+    const slug = config.name.toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+    const conn: Connection = {
+      toolkit: slug,
+      connectionId: slug,
+      status: "active",
+      accountLabel: config.name,
+    };
+    const list = this.connections.get(userId) ?? [];
+    list.push(conn);
+    this.connections.set(userId, list);
+    return { ...conn };
+  }
+
+  private async editCustom(
+    userId: string,
+    connectionId: string,
+    patch: CustomIntegrationPatch,
+  ): Promise<Connection> {
+    const conn = (this.connections.get(userId) ?? []).find(
+      (c) => c.connectionId === connectionId,
+    );
+    if (!conn) throw new Error(`fake: custom '${connectionId}' not found`);
+    if (patch.name) conn.accountLabel = patch.name; // rename keeps the slug stable
+    return { ...conn };
   }
 
   /** Test helper: make readiness report signin-required (gateway signed out). */
@@ -155,6 +209,7 @@ export class FakeIntegrationProvider implements IntegrationProvider {
   ): Promise<ActionResult> {
     this.lastActing = opts?.acting;
     this.lastAccount = opts?.account;
+    this.lastExecutedAction = action;
     if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
     if (this.throwSearchExecute) throw this.throwSearchExecute;
     return { successful: true, data: { action, params } };

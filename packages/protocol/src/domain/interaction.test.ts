@@ -8,9 +8,20 @@ test("the protocol index re-exports PendingInteraction", () => {
     options: [{ id: "q2", label: "Q2 review" }],
   };
   const connect: PendingInteraction = { kind: "connect", toolkit: "gmail" };
+  const custom: PendingInteraction = {
+    kind: "custom_integration",
+    proposal: {
+      name: "Acme CRM",
+      baseUrl: "https://api.acme.example",
+      auth: { type: "header", header: "Authorization", prefix: "Bearer " },
+      description: "Acme CRM records",
+    },
+    reason: "to read your CRM contacts",
+  };
 
   expectTypeOf(question).toMatchTypeOf<PendingInteraction>();
   expectTypeOf(connect).toMatchTypeOf<PendingInteraction>();
+  expectTypeOf(custom).toMatchTypeOf<PendingInteraction>();
   // @ts-expect-error — `kind` is the discriminant; other values are not assignable
   const bad: PendingInteraction = { kind: "unknown" };
   void bad;

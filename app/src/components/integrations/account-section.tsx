@@ -18,13 +18,14 @@ interface AccountSectionProps {
   onRename: (alias: string) => void;
   onReconnect: () => void;
   onDisconnect: () => void;
+  /** Hide inline rename + Disconnect (custom integrations manage via the sheet). */
+  hideAccountActions?: boolean;
 }
 
 /**
- * One connected account within an app's detail sheet: its label (with an inline
- * rename affordance), live status, the per-agent grant switches for THIS
- * account, and the account-scoped Reconnect (pending/error only) + Disconnect
- * actions. A single app may have several of these stacked in the sheet.
+ * One connected account within an app's detail sheet: its label (inline rename),
+ * live status, the per-agent grant switches for THIS account, and account-scoped
+ * Reconnect (pending/error only) + Disconnect. Several may stack in one sheet.
  */
 export function AccountSection({
   connection,
@@ -36,6 +37,7 @@ export function AccountSection({
   onRename,
   onReconnect,
   onDisconnect,
+  hideAccountActions,
 }: AccountSectionProps) {
   const { t } = useTranslation("integrations");
   const [editing, setEditing] = useState(false);
@@ -65,7 +67,7 @@ export function AccountSection({
                 <ConnectionStatusBadge status={connection.status} />
               </div>
             </div>
-            {canEdit && (
+            {canEdit && !hideAccountActions && (
               <button
                 type="button"
                 onClick={() => setEditing(true)}
@@ -114,26 +116,28 @@ export function AccountSection({
           </div>
         )}
 
-        <div className="mt-2.5 flex gap-2">
-          {needsReconnect && (
+        {!hideAccountActions && (
+          <div className="mt-2.5 flex gap-2">
+            {needsReconnect && (
+              <button
+                type="button"
+                onClick={onReconnect}
+                className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+              >
+                <RotateCw className="size-3.5" />
+                {t("detail.reconnect")}
+              </button>
+            )}
             <button
               type="button"
-              onClick={onReconnect}
-              className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+              onClick={onDisconnect}
+              className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
             >
-              <RotateCw className="size-3.5" />
-              {t("detail.reconnect")}
+              <Unplug className="size-3.5" />
+              {t("detail.disconnect")}
             </button>
-          )}
-          <button
-            type="button"
-            onClick={onDisconnect}
-            className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
-          >
-            <Unplug className="size-3.5" />
-            {t("detail.disconnect")}
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </section>
   );

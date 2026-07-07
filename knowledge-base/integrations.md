@@ -1,9 +1,10 @@
 # Integrations (Composio, platform mode)
 
 How Houston connects third-party apps (Gmail, Slack, …) so agents can act on
-them. Composio is the first and only provider today, wired **behind a port** so a
-second provider slots in without touching anything above it. This doc covers the
-host architecture, the grants model (multiplayer + local grants), and the UI map.
+them. Composio is the primary provider, wired **behind a port** so a second
+provider slots in without touching anything above it — and one now does: **custom
+API-key integrations** (provider `"custom"`, §5). This doc covers the host
+architecture, the grants model (multiplayer + local grants), and the UI map.
 
 > **Grant unit = the connected ACCOUNT (`connectionId`), not the toolkit.** A user
 > can connect several accounts of the SAME app (two Gmail logins, a work + personal
@@ -312,3 +313,70 @@ The agent's two generic tools carry the account model to the model:
   (`houston-prompt.ts` INTEGRATIONS + `houston_prompt/integrations.rs`) gained one
   non-technical sentence telling the agent a person may connect several accounts of
   one app and to ask which to use when unclear.
+
+---
+
+## 5. Custom API-key integrations (provider `"custom"`)
+
+**Concept.** For services outside the ~1000-app Composio catalog, a user adds their
+own integration by storing an API key. This is a SECOND `IntegrationProvider`
+(`id: "custom"`) that runs directly in the cloud gateway alongside `ComposioProvider`
+— no OAuth, no catalog. Each custom integration surfaces exactly ONE generic HTTP
+tool (`CUSTOM_<SLUG>_REQUEST`); the gateway performs the HTTP call and injects the
+key. A custom integration maps to `Connection { toolkit, connectionId, status:
+"active", accountLabel }` and `Toolkit { slug, name, description }` where **`slug ==
+toolkit == connectionId`** (server-generated from the name, lowercase `[a-z0-9_]`,
+unique per user). Advertised as `"custom"` in `/v1/capabilities` `integrations[]`, so
+a host serves it independently of composio.
+
+**Security invariant (load-bearing).** The API key NEVER reaches the agent, the pod,
+the model, or the chat transcript. It is sealed at rest (AES-256-GCM, same crypto as
+org credentials) and injected by the gateway per request; it appears in no response,
+log, or error. SSRF is guarded at create AND per request (https only, no embedded
+credentials, hostname must resolve to PUBLIC IPs; loopback/RFC1918/link-local/CGNAT
+rejected), redirects are `manual` (never followed), 30s timeout.
+
+**Wire surface.** All gateway routes under `/v1/integrations/custom/*` (cloud repo;
+create/update/disconnect are user-JWT MODE 1 only, never acting-as). `toolkits`
+returns the CALLER'S integrations (not a global catalog); `search`/`execute` are
+grant-enforced in mode 2. Action routing: `/^CUSTOM_/` → provider `"custom"`, else
+default (`"composio"`) — the pure helper lives in `packages/host/src/integrations/`
+(`action-routing.ts`, unit-tested); custom grant matching strips the `CUSTOM_`
+prefix to compare against `<slug>`. The sandbox route fans `search` out over ALL
+registry providers (merged, provider-tagged; any provider error fails the whole
+call — no silent partials) and routes `execute` by `providerForAction`. On desktop a
+SECOND `RemoteIntegrationProvider { id: "custom" }` forwards to the same gateway;
+self-host direct mode uses the optional `CustomIntegrationHost` port extension
+(`createCustom`/`updateCustom`), routes 404 when a provider lacks it.
+
+**Client + engine-client.** `createCustomIntegration` / `updateCustomIntegration`
+(omitted `apiKey` on update keeps the stored key); everything else reuses the shared
+`connections`/`toolkits`/`disconnect` port. `CustomIntegrationAuth` (header|query
+discriminated union) + `CustomIntegrationConfig` live in `ui/engine-client` and
+`packages/protocol`.
+
+**UI map (`app/src/components/`).** Custom is feature-detected via
+`customIntegrationsSupported(capabilities)` (`integrations/capabilities.ts`); all
+props are optional so hosts without it render unchanged. `useCustomIntegrations`
+(shared hook) fetches the caller's custom connections + toolkits and returns
+`slugs` (the `slug==connectionId==toolkit` routing set). Both surfaces MERGE custom
+connections into their normal card/row lists (grant toggles work as-is, keyed by
+`connectionId` across providers) while the BROWSE catalog stays composio-only:
+- **Global page** (`integrations-view/`): custom connections render as cards with a
+  "Custom" badge; the detail sheet swaps "Add another account" for Edit + Delete and
+  hides per-account rename/reconnect (one implicit account). `useConnectedApps`
+  exposes a provider-aware `disconnect(connectionId)` (routes custom → custom
+  provider delete+prune). "Can't find your app? Add a custom integration" CTA at the
+  bottom of `ConnectMoreAppsSection`.
+- **Agent tab** (`tabs/agent-integrations/`): the CTA auto-grants the new
+  `connectionId` to the current agent (`useCustomIntegrationFlow`, mirrors
+  `useConnectFlow`); merged custom rows carry a `custom` flag (badge + no
+  "add another account"); allowlist still bounds them.
+
+**AI-assisted card.** When `integration_search` can't find a service, the agent
+calls the runtime tool `propose_custom_integration` (never asks the user to paste a
+key into chat) → records a `PendingInteraction { kind: "custom_integration" }`. The
+chat renders a card (mirrors the connect-card pattern) with the proposal summary and
+a secure password field for the key; Add → `createCustomIntegration` → grant to the
+current agent → resolve the interaction. i18n lives under the `integrations`
+namespace, `custom.*` (form) and `custom.card.*` (card), en/es/pt, no em dashes.

@@ -25,11 +25,23 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** Validate the pending_interaction discriminated union (mirrors the schema):
- *  a `question` needs a `question` string, a `connect` needs a `toolkit`. */
+ *  a `question` needs a `question` string, a `connect` needs a `toolkit`, and a
+ *  `custom_integration` needs a proposal with name/baseUrl/description strings
+ *  and an auth object. */
 const isValidPendingInteraction = (v: unknown): v is PendingInteraction => {
   if (!isRecord(v)) return false;
   if (v.kind === "question") return typeof v.question === "string";
   if (v.kind === "connect") return typeof v.toolkit === "string";
+  if (v.kind === "custom_integration") {
+    const p = v.proposal;
+    return (
+      isRecord(p) &&
+      typeof p.name === "string" &&
+      typeof p.baseUrl === "string" &&
+      typeof p.description === "string" &&
+      isRecord(p.auth)
+    );
+  }
   return false;
 };
 

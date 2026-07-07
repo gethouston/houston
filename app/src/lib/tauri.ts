@@ -15,6 +15,7 @@ import type { ProviderCatalog } from "@houston/protocol";
 import type {
   AgentAssignment,
   CustomEndpoint,
+  CustomIntegrationConfig,
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
   ProviderAuthState,
@@ -1362,6 +1363,24 @@ export const tauriIntegrations = {
   rename: (provider: string, connectionId: string, alias: string) =>
     call("integration_rename_connection", () =>
       getEngine().renameIntegrationConnection(provider, connectionId, alias),
+    ),
+  /** Add a custom API-key integration (provider `"custom"`). The key is sealed
+   *  server-side and never returned; the gateway performs the HTTP calls. */
+  createCustom: (
+    provider: string,
+    config: CustomIntegrationConfig & { apiKey: string },
+  ) =>
+    call("integration_create_custom", () =>
+      getEngine().createCustomIntegration(provider, config),
+    ),
+  /** Edit a custom integration; an omitted `apiKey` keeps the stored key. */
+  updateCustom: (
+    provider: string,
+    connectionId: string,
+    patch: Partial<CustomIntegrationConfig> & { apiKey?: string },
+  ) =>
+    call("integration_update_custom", () =>
+      getEngine().updateCustomIntegration(provider, connectionId, patch),
     ),
   /** Dismiss the reconnect notice (deletes the legacy credentials server-side). */
   dismissReconnectNotice: () =>

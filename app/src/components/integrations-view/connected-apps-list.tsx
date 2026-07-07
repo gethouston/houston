@@ -8,6 +8,7 @@ import {
   AppRow,
   accountDisplayLabel,
   type ConnectFlow,
+  CustomBadge,
   PendingConnectionCallout,
 } from "../integrations";
 
@@ -33,6 +34,8 @@ interface ConnectedAppsListProps {
   connectFlow: ConnectFlow;
   onManage: (toolkit: string) => void;
   onRemove: (connectionId: string) => void;
+  /** Toolkit slugs that are custom API-key integrations (get a "Custom" badge). */
+  customToolkits?: ReadonlySet<string>;
 }
 
 /**
@@ -51,6 +54,7 @@ export function ConnectedAppsList({
   connectFlow,
   onManage,
   onRemove,
+  customToolkits,
 }: ConnectedAppsListProps) {
   const { t } = useTranslation("integrations");
   return (
@@ -81,6 +85,7 @@ export function ConnectedAppsList({
               key={toolkit}
               display={app}
               status="active"
+              badge={customToolkits?.has(toolkit) ? <CustomBadge /> : undefined}
               description={
                 connections.length > 1
                   ? t("account.count", { count: connections.length })

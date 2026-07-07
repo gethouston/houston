@@ -1,6 +1,13 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { UserId } from "../domain/types";
-import type { IntegrationProvider } from "../integrations/provider";
+import {
+  type IntegrationProvider,
+  supportsCustom,
+} from "../integrations/provider";
+import type {
+  CustomIntegrationCreate,
+  CustomIntegrationPatch,
+} from "../integrations/types";
 import { json, readJson } from "./http";
 
 /**
@@ -65,6 +72,31 @@ export async function handleProviderSubRoute(
     }
     await provider.rename(userId, decodeURIComponent(renameId), trimmed);
     json(res, 200, { ok: true });
+    return true;
+  }
+  // Custom (per-user API-key) integration create/update — a generic passthrough
+  // to a provider that implements CustomIntegrationHost (the gateway does the
+  // real SSRF/shape validation, mode 1). A provider without the capability falls
+  // through to the caller's 404, so a plain composio provider never serves them.
+  if (sub === "create" && method === "POST" && supportsCustom(provider)) {
+    const config = (await readJson(req)) as unknown as CustomIntegrationCreate;
+    const connection = await provider.createCustom(userId, config);
+    json(res, 200, { connection });
+    return true;
+  }
+  if (sub === "update" && method === "POST" && supportsCustom(provider)) {
+    const body = await readJson(req);
+    if (typeof body.connectionId !== "string" || body.connectionId.length < 1) {
+      json(res, 400, { error: "missing 'connectionId'" });
+      return true;
+    }
+    const { connectionId, ...patch } = body;
+    const connection = await provider.updateCustom(
+      userId,
+      connectionId,
+      patch as CustomIntegrationPatch,
+    );
+    json(res, 200, { connection });
     return true;
   }
   if (sub === "search" && method === "POST") {

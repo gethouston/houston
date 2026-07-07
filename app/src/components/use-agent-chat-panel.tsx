@@ -99,9 +99,14 @@ import { ChatEffortSelector } from "./chat-effort-selector";
 import { ChatModelSelector } from "./chat-model-selector";
 import { ContextCompactedDivider } from "./context-compacted-divider";
 import { ContextIndicator } from "./context-indicator";
+import { CustomIntegrationCard } from "./custom-integration-card";
+import { resolveCustomCardTarget } from "./custom-integration-card-state";
 import { IntegrationConnectCard } from "./integration-connect-card";
 import { parseToolkitFromHref } from "./integration-connect-card-state";
-import { integrationsSupported } from "./integrations/model";
+import {
+  customIntegrationsSupported,
+  integrationsSupported,
+} from "./integrations/capabilities";
 import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
 import { ProviderSwitchDialog } from "./provider-switch-dialog";
 import { SelectedSkillChip } from "./selected-skill-chip";
@@ -154,6 +159,12 @@ interface AgentChatPanelProps {
   renderUserMessage: AIBoardProps["renderUserMessage"];
   /** Renders agent-authored `#houston_toolkit=` links as connect cards. */
   renderLink: AIBoardProps["renderLink"];
+  /**
+   * Replaces the composer with a secure setup card when the open conversation is
+   * waiting on a `custom_integration` proposal (the agent asked to add a service
+   * the catalog can't offer). Undefined otherwise, so the composer shows.
+   */
+  composerOverride: AIBoardProps["composerOverride"];
   /** Forwarded to AIBoard / ChatPanel for tool rendering. */
   isSpecialTool: ChatPanelProps["isSpecialTool"];
   renderToolResult: ChatPanelProps["renderToolResult"];
@@ -204,6 +215,11 @@ export function useAgentChatPanel({
   // unconfigured deployments fall back to plain markdown links.
   const { capabilities } = useCapabilities();
   const integrationsEnabled = integrationsSupported(capabilities);
+  // The custom API-key provider is a strict subset: a composio-only host (self-
+  // host direct, no gateway) still lets the model emit a `custom_integration`
+  // proposal, but has no `custom` provider to create against. Gate the setup
+  // card on this narrower predicate so it never renders where Add would 404.
+  const customIntegrationsEnabled = customIntegrationsSupported(capabilities);
 
   // Teams E8: in a multiplayer Teams org the composer's model + effort pickers
   // read+write the ACTING user's PERSONAL per-agent choice (clamped to the
@@ -807,6 +823,50 @@ export function useAgentChatPanel({
     [integrationsEnabled, agent, capabilities, handleIntegrationConnected],
   );
 
+  // ── Custom-integration setup card (in place of the composer) ───────────
+  // When the open conversation is waiting on a `custom_integration` proposal,
+  // take over the composer with a secure card that collects the API key and
+  // creates + grants the integration. `resolvedProposals` suppresses a card the
+  // user already added or dismissed (keyed by activity + proposal so a LATER,
+  // different proposal on the same activity still shows) until the server clears
+  // the pending interaction on the next turn.
+  const [resolvedProposals, setResolvedProposals] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const composerOverride = useMemo<AIBoardProps["composerOverride"]>(() => {
+    if (!agent) return undefined;
+    const target = resolveCustomCardTarget(
+      customIntegrationsEnabled,
+      selectedActivityId,
+      selectedActivity?.pending_interaction,
+      resolvedProposals,
+    );
+    if (!target) return undefined;
+    const settle = () =>
+      setResolvedProposals((prev) => new Set(prev).add(target.dismissKey));
+    return (
+      <CustomIntegrationCard
+        proposal={target.proposal}
+        reason={target.reason}
+        agentId={agent.id}
+        autoGrant={canManageAgentGrants(capabilities, agent)}
+        onAdded={(name) => {
+          settle();
+          handleIntegrationConnected(name, name);
+        }}
+        onDismiss={settle}
+      />
+    );
+  }, [
+    customIntegrationsEnabled,
+    agent,
+    selectedActivityId,
+    selectedActivity,
+    resolvedProposals,
+    capabilities,
+    handleIntegrationConnected,
+  ]);
+
   // ── Built JSX bundles ─────────────────────────────────────────────────
   const renderUserMessage = useCallback(
     (msg: { content: string }) => {
@@ -1132,6 +1192,7 @@ export function useAgentChatPanel({
     attachMenu,
     renderUserMessage,
     renderLink,
+    composerOverride,
     isSpecialTool,
     renderToolResult,
     processLabels,

@@ -1,8 +1,10 @@
 import type {
   ActingContext,
+  CustomIntegrationHost,
   ExecuteOptions,
   IntegrationProvider,
 } from "./provider";
+import { makeCustomForwarders } from "./remote-custom";
 import {
   type ActionResult,
   type Connection,
@@ -52,6 +54,14 @@ export interface RemoteIntegrationOptions {
    * so a routine turn there falls through to signin-required rather than
    * authenticating as the pod. */
   podToken?: string;
+  /**
+   * This upstream serves custom (per-user API-key) integrations, so expose the
+   * `CustomIntegrationHost` create/update methods (forwarded to
+   * `/v1/integrations/<id>/create|update`). Off for the composio adapter, whose
+   * upstream has no such routes; keeping it off makes `supportsCustom` false so
+   * the provider-routes 404 create/update rather than forward a doomed request.
+   */
+  custom?: boolean;
   /** Injected for tests; defaults to global fetch. */
   fetch?: typeof fetch;
 }
@@ -62,6 +72,13 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
   private readonly token: () => string | null;
   private readonly podToken?: string;
   private readonly fetchImpl: typeof fetch;
+  /**
+   * Present only when this adapter serves custom integrations (opts.custom):
+   * `supportsCustom` duck-types on these, so leaving them undefined on the
+   * composio adapter makes the provider-routes 404 create/update for it.
+   */
+  createCustom?: CustomIntegrationHost["createCustom"];
+  updateCustom?: CustomIntegrationHost["updateCustom"];
 
   constructor(opts: RemoteIntegrationOptions) {
     this.id = opts.id;
@@ -69,6 +86,13 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
     this.token = opts.token;
     this.podToken = opts.podToken;
     this.fetchImpl = opts.fetch ?? fetch;
+    if (opts.custom) {
+      const forwarders = makeCustomForwarders({
+        postConnection: (path, body) => this.postConnection(path, body),
+      });
+      this.createCustom = forwarders.createCustom;
+      this.updateCustom = forwarders.updateCustom;
+    }
   }
 
   /**
@@ -225,5 +249,17 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
       acting: opts?.acting,
     });
     return this.must(body, "POST /execute");
+  }
+
+  /** An authenticated POST that unwraps the `{ connection }` custom-route reply. */
+  private async postConnection(
+    path: "/create" | "/update",
+    body: unknown,
+  ): Promise<Connection> {
+    const reply = await this.call<{ connection: Connection }>(path, {
+      method: "POST",
+      body,
+    });
+    return this.must(reply, `POST ${path}`).connection;
   }
 }

@@ -183,6 +183,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           attachMenu={panel.attachMenu}
           renderUserMessage={panel.renderUserMessage}
           renderLink={panel.renderLink}
+          composerOverride={panel.composerOverride}
           renderSystemMessage={panel.renderSystemMessage}
           mapFeedItems={panel.mapFeedItems}
           afterMessages={panel.afterMessages}

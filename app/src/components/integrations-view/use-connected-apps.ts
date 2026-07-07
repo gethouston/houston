@@ -2,11 +2,13 @@ import type {
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import {
+  useDisconnectIntegration,
   useIntegrationConnections,
   useIntegrationToolkits,
 } from "../../hooks/queries";
+import { CUSTOM_INTEGRATION_PROVIDER } from "../../hooks/queries/custom-integration-keys";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { canEditAgentGrants } from "../../lib/org-roles";
 import { useAgentStore } from "../../stores/agents";
@@ -17,6 +19,7 @@ import {
   INTEGRATION_PROVIDER,
   toAgentChip,
   useAllAgentGrants,
+  useCustomIntegrations,
 } from "../integrations";
 import type { ActiveAppCard, RecoveringAppRow } from "./connected-apps-list";
 import {
@@ -31,6 +34,12 @@ export interface ConnectedApps {
   connData: IntegrationConnection[];
   catalogData: IntegrationToolkit[];
   bySlug: ReadonlyMap<string, IntegrationToolkit>;
+  /** Toolkit slugs (== connectionIds) that are custom API-key integrations. */
+  customSlugs: ReadonlySet<string>;
+  /** The host serves the custom provider (drives the "add custom" CTA). */
+  customEnabled: boolean;
+  /** Disconnect an account, routed to its provider (composio or custom). */
+  disconnect: (connectionId: string) => void;
   chipById: ReadonlyMap<string, AgentChip>;
   /** `connectionId -> agent ids that have THAT account granted`. */
   accountAgents: ReadonlyMap<string, string[]>;
@@ -59,13 +68,25 @@ export function useConnectedApps(): ConnectedApps {
   const { capabilities } = useCapabilities();
   const connections = useIntegrationConnections(INTEGRATION_PROVIDER, true);
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, true);
+  const custom = useCustomIntegrations(true);
 
   const agentChips = useMemo(() => agents.map(toAgentChip), [agents]);
   const agentIds = useMemo(() => agents.map((a) => a.id), [agents]);
   const grants = useAllAgentGrants(agentIds, agentIds.length > 0);
 
-  const connData = connections.data ?? [];
+  // Custom integrations render as normal app cards, so they merge into the
+  // connection + display-catalog lists here; the BROWSE catalog stays composio
+  // only (custom apps are added via the "add custom" CTA, not the OAuth grid).
+  const composioConns = connections.data ?? [];
+  const connData = useMemo(
+    () => [...composioConns, ...custom.connections],
+    [composioConns, custom.connections],
+  );
   const catalogData = catalog.data ?? [];
+  const displayCatalog = useMemo(
+    () => [...catalogData, ...custom.toolkits],
+    [catalogData, custom.toolkits],
+  );
   const accountAgents = useMemo(
     () => accountAgentIds(grants.byAgent),
     [grants.byAgent],
@@ -78,8 +99,8 @@ export function useConnectedApps(): ConnectedApps {
     return map;
   }, [accountAgents]);
   const bySlug = useMemo(
-    () => new Map(catalogData.map((tk) => [tk.slug, tk])),
-    [catalogData],
+    () => new Map(displayCatalog.map((tk) => [tk.slug, tk])),
+    [displayCatalog],
   );
   const chipById = useMemo(
     () => new Map(agentChips.map((c) => [c.id, c])),
@@ -121,11 +142,30 @@ export function useConnectedApps(): ConnectedApps {
   // (single-player has no roles and is always editable; the gateway enforces).
   const canEdit = agents.every((a) => canEditAgentGrants(capabilities, a));
 
+  // Disconnect routes to the owning provider: a custom integration lives on the
+  // "custom" provider (delete + prune), every other app on composio. `custom.slugs`
+  // is keyed by connectionId (== slug for custom), so the id alone picks the route.
+  const disconnectComposio = useDisconnectIntegration(INTEGRATION_PROVIDER);
+  const disconnectCustom = useDisconnectIntegration(
+    CUSTOM_INTEGRATION_PROVIDER,
+  );
+  const disconnect = useCallback(
+    (connectionId: string) =>
+      (custom.slugs.has(connectionId)
+        ? disconnectCustom
+        : disconnectComposio
+      ).mutate(connectionId),
+    [custom.slugs, disconnectComposio, disconnectCustom],
+  );
+
   return {
     agentChips,
     connData,
     catalogData,
     bySlug,
+    customSlugs: custom.slugs,
+    customEnabled: custom.supported,
+    disconnect,
     chipById,
     accountAgents,
     activeAgentIdsByConnection,
@@ -138,6 +178,10 @@ export function useConnectedApps(): ConnectedApps {
     // just connections + catalog: rendering a toggle before an agent's grant set
     // has loaded lets a click PUT a replace-set built from an empty base and
     // silently wipe that agent's real grants (and flashes "No agents yet").
-    isLoading: connections.isLoading || catalog.isLoading || grants.isLoading,
+    isLoading:
+      connections.isLoading ||
+      catalog.isLoading ||
+      grants.isLoading ||
+      custom.isLoading,
   };
 }

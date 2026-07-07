@@ -63,6 +63,7 @@ describe("buildToolSelection", () => {
       "integration_search",
       "integration_execute",
       "request_connection",
+      "propose_custom_integration",
     ]);
   });
 });

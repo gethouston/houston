@@ -35,6 +35,7 @@ import type {
   CreateWorkspace,
   CreateWorktreeRequest,
   CustomEndpoint,
+  CustomIntegrationConfig,
   ErrorBody,
   GenerateInstructionsResult,
   HealthResponse,
@@ -1101,6 +1102,43 @@ export class HoustonClient {
    */
   async dismissIntegrationsReconnectNotice(): Promise<void> {
     await this.request("POST", "/integrations/reconnect-notice/dismiss");
+  }
+  /**
+   * Add a custom API-key integration (provider `"custom"`): the gateway seals
+   * the key at rest and returns the resulting connection (its server-generated
+   * slug is both `toolkit` and `connectionId`). Mutating POST — never
+   * auto-replayed. The key is only ever sent here + on `updateCustomIntegration`
+   * and is never returned in any response.
+   */
+  async createCustomIntegration(
+    provider: string,
+    config: CustomIntegrationConfig & { apiKey: string },
+  ): Promise<IntegrationConnection> {
+    return (
+      await this.request<{ connection: IntegrationConnection }>(
+        "POST",
+        `/integrations/${this.seg(provider)}/create`,
+        config,
+      )
+    ).connection;
+  }
+  /**
+   * Edit a custom integration. Any omitted field is left unchanged; an omitted
+   * `apiKey` keeps the stored key (so the UI can offer "leave blank to keep").
+   * Renaming keeps the slug/connectionId stable. Returns the updated connection.
+   */
+  async updateCustomIntegration(
+    provider: string,
+    connectionId: string,
+    patch: Partial<CustomIntegrationConfig> & { apiKey?: string },
+  ): Promise<IntegrationConnection> {
+    return (
+      await this.request<{ connection: IntegrationConnection }>(
+        "POST",
+        `/integrations/${this.seg(provider)}/update`,
+        { connectionId, ...patch },
+      )
+    ).connection;
   }
 
   // ---------- org / roles (multiplayer) — v3 host only ----------

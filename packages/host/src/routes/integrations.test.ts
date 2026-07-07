@@ -36,6 +36,7 @@ const CAPS: Capabilities = {
 async function setup(
   opts: {
     withIntegrations?: boolean;
+    withCustom?: boolean;
     reconnectNotice?: {
       active(): boolean;
       dismiss(): void | Promise<void>;
@@ -52,6 +53,17 @@ async function setup(
   const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
   const vault = new EnvCredentialVault({ secret: "test-secret" });
   const fake = new FakeIntegrationProvider({ id: "composio" });
+  // A second provider whose one action is a custom HTTP request, and which
+  // implements CustomIntegrationHost (create/update), so the fan-out + routing
+  // and the create/update passthrough can be driven end-to-end.
+  const custom = new FakeIntegrationProvider({
+    id: "custom",
+    custom: true,
+    actions: [
+      { action: "CUSTOM_ACME_REQUEST", toolkit: "acme", description: "acme" },
+    ],
+  });
+  const providers = opts.withCustom ? [fake, custom] : [fake];
   const deps: ControlPlaneDeps = {
     verifier,
     store,
@@ -61,7 +73,7 @@ async function setup(
     capabilities: CAPS,
     integrations: withIntegrations
       ? {
-          registry: new IntegrationRegistry([fake]),
+          registry: new IntegrationRegistry(providers),
           ...(opts.reconnectNotice
             ? { reconnectNotice: opts.reconnectNotice }
             : {}),
@@ -75,7 +87,7 @@ async function setup(
   const addr = server.address();
   const base = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
   const ws = await store.getOrCreatePersonalWorkspace(USER);
-  return { base, ws, vault, fake, stop: () => server.close() };
+  return { base, ws, vault, fake, custom, stop: () => server.close() };
 }
 
 const auth = {
@@ -535,6 +547,142 @@ test("integration routes relay upstream policy status and body", async () => {
     });
     expect(sandbox.status).toBe(403);
     expect(await sandbox.json()).toEqual(body);
+  } finally {
+    stop();
+  }
+});
+
+// ── Custom (per-user API-key) integrations: fan-out, routing, passthrough ────
+
+test("GET /v1/integrations lists every provider (composio + custom)", async () => {
+  const { base, stop } = await setup({ withCustom: true });
+  try {
+    const status = await (
+      await fetch(`${base}/v1/integrations`, { headers: auth })
+    ).json();
+    expect(status.items).toEqual([
+      { provider: "composio", ready: true },
+      { provider: "custom", ready: true },
+    ]);
+  } finally {
+    stop();
+  }
+});
+
+test("sandbox search fans out over providers, tagging each match with its provider", async () => {
+  const { base, ws, vault, stop } = await setup({ withCustom: true });
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const res = await fetch(`${base}/sandbox/integrations/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: "" }),
+    });
+    const items = (await res.json()).items as {
+      action: string;
+      provider: string;
+    }[];
+    expect(items.map((i) => [i.action, i.provider]).sort()).toEqual([
+      ["CUSTOM_ACME_REQUEST", "custom"],
+      ["GMAIL_SEND_EMAIL", "composio"],
+    ]);
+  } finally {
+    stop();
+  }
+});
+
+test("sandbox execute routes a CUSTOM_ action to the custom provider, others to composio", async () => {
+  const { base, ws, vault, fake, custom, stop } = await setup({
+    withCustom: true,
+  });
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const run = (action: string) =>
+      fetch(`${base}/sandbox/integrations/execute`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${sb}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action, params: {} }),
+      });
+
+    await run("CUSTOM_ACME_REQUEST");
+    expect(custom.lastExecutedAction).toBe("CUSTOM_ACME_REQUEST");
+    expect(fake.lastExecutedAction).toBeUndefined();
+
+    await run("GMAIL_SEND_EMAIL");
+    expect(fake.lastExecutedAction).toBe("GMAIL_SEND_EMAIL");
+  } finally {
+    stop();
+  }
+});
+
+test("POST /v1/integrations/custom/create forwards to the provider and returns {connection}", async () => {
+  const { base, custom, stop } = await setup({ withCustom: true });
+  try {
+    const res = await fetch(`${base}/v1/integrations/custom/create`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({
+        name: "Acme",
+        baseUrl: "https://api.acme.test",
+        auth: { type: "header", header: "Authorization", prefix: "Bearer " },
+        description: "Acme CRM",
+        apiKey: "sk-secret",
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).connection).toEqual({
+      toolkit: "acme",
+      connectionId: "acme",
+      status: "active",
+      accountLabel: "Acme",
+    });
+    // The integration is now one of the user's connections.
+    expect(await custom.listConnections(USER)).toHaveLength(1);
+  } finally {
+    stop();
+  }
+});
+
+test("POST /v1/integrations/custom/update renames but keeps the slug/connectionId", async () => {
+  const { base, custom, stop } = await setup({ withCustom: true });
+  try {
+    await custom.createCustom?.(USER, {
+      name: "Acme",
+      baseUrl: "https://api.acme.test",
+      auth: { type: "header", header: "Authorization" },
+      description: "d",
+      apiKey: "k",
+    });
+    const res = await fetch(`${base}/v1/integrations/custom/update`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ connectionId: "acme", name: "Acme Renamed" }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).connection).toMatchObject({
+      connectionId: "acme",
+      accountLabel: "Acme Renamed",
+    });
+  } finally {
+    stop();
+  }
+});
+
+test("create/update 404 on a provider that does not support custom integrations", async () => {
+  const { base, stop } = await setup({ withCustom: true });
+  try {
+    const res = await fetch(`${base}/v1/integrations/composio/create`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ name: "x" }),
+    });
+    expect(res.status).toBe(404);
   } finally {
     stop();
   }

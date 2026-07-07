@@ -19,14 +19,23 @@ export interface AgentAppRow {
    * accounts apart. A single account of an app needs no label.
    */
   showAccountLabel: boolean;
+  /**
+   * A custom API-key integration (provider `"custom"`): gets the "Custom" badge
+   * and hides "add another account" (custom has a single implicit account).
+   */
+  custom: boolean;
 }
 
 /**
  * Resolve connections to display rows, then flag every row that shares its
  * toolkit with another row in the SAME list so the UI labels those accounts.
- * Pure so the multi-account flag is unit-testable.
+ * `customToolkits` marks the custom-provider rows. Pure so the multi-account +
+ * custom flags are unit-testable.
  */
-function toAgentRows(rows: ConnectionRow[]): AgentAppRow[] {
+function toAgentRows(
+  rows: ConnectionRow[],
+  customToolkits: ReadonlySet<string>,
+): AgentAppRow[] {
   const perToolkit = new Map<string, number>();
   for (const row of rows) {
     perToolkit.set(
@@ -38,6 +47,7 @@ function toAgentRows(rows: ConnectionRow[]): AgentAppRow[] {
     connection: row.connection,
     app: row.app,
     showAccountLabel: (perToolkit.get(row.connection.toolkit) ?? 0) > 1,
+    custom: customToolkits.has(row.connection.toolkit),
   }));
 }
 
@@ -87,11 +97,14 @@ export function agentIntegrationsView(opts: {
   catalog: IntegrationToolkit[];
   grants: string[] | null;
   allowlist?: string[] | null;
+  /** Toolkit slugs that are custom API-key integrations (default: none). */
+  customToolkits?: ReadonlySet<string>;
 }): AgentIntegrationsView {
+  const custom = opts.customToolkits ?? EMPTY_SET;
   if (opts.grants === null) {
     return {
       mode: "degraded",
-      rows: toAgentRows(connectionRows(opts.connections, opts.catalog)),
+      rows: toAgentRows(connectionRows(opts.connections, opts.catalog), custom),
     };
   }
   const grantSet = new Set(opts.grants);
@@ -113,17 +126,23 @@ export function agentIntegrationsView(opts: {
   const grantedToolkits = new Set(granted.map((c) => c.toolkit));
   return {
     mode: "grants",
-    activeRows: toAgentRows(connectionRows(granted, opts.catalog)),
+    activeRows: toAgentRows(connectionRows(granted, opts.catalog), custom),
     accountRows: toAgentRows(
       connectionRows(
         available.filter((c) => c.status === "active"),
         opts.catalog,
       ),
+      custom,
     ),
-    disallowedRows: toAgentRows(connectionRows(disallowedConns, opts.catalog)),
+    disallowedRows: toAgentRows(
+      connectionRows(disallowedConns, opts.catalog),
+      custom,
+    ),
     grantedToolkits,
   };
 }
+
+const EMPTY_SET: ReadonlySet<string> = new Set();
 
 /**
  * The effective integration allowlist for an agent: the agent-level ceiling

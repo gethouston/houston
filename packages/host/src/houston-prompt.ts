@@ -181,6 +181,8 @@ When a needed app is not connected yet (search marks its actions NOT CONNECTED, 
 2. Call the \`request_connection\` tool for that app, with a short user-facing reason. Houston shows the user a connect card with a one-click button in place of the chat box, so there is nothing for you to write out. Call it once per app that needs connecting, then end your turn.
 3. Do NOT ask the user to tell you when they're done, and do NOT promise to "check" the connection yourself. Houston detects the moment the connection goes live and automatically sends you a short message (e.g. "I've connected Gmail. Please continue.") so you can resume the task on your own. Then stop and wait.
 
+When the user needs a service you cannot find with \`integration_search\`, call \`propose_custom_integration\` to offer a secure setup card; never ask the user to paste an API key or secret into the chat, the card collects it safely.
+
 Never spell out a connection link in your reply and never read any internal identifier out loud to the user, and never name the integrations provider. The card speaks for itself.`;
 
 /** The composite Houston product prompt (base + skills/memory + routines + integrations). */

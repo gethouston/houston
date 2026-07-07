@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { supportsCustom } from "./provider";
 import { RemoteIntegrationProvider } from "./remote";
 import {
   IntegrationSigninRequiredError,
@@ -24,6 +25,7 @@ function harness(
   handler: (url: URL, method: string) => Reply,
   token?: string,
   podToken?: string,
+  opts: { id?: string; custom?: boolean } = {},
 ) {
   const calls: Recorded[] = [];
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -42,10 +44,11 @@ function harness(
     });
   }) as typeof fetch;
   const provider = new RemoteIntegrationProvider({
-    id: "composio",
+    id: opts.id ?? "composio",
     upstreamUrl: "https://cloud.test/",
     token: () => token ?? null,
     podToken,
+    custom: opts.custom,
     fetch: fetchImpl,
   });
   return { provider, calls };
@@ -181,6 +184,75 @@ test("non-401 upstream errors carry status and body for route relay", async () =
   await expect(provider.execute("u", "X", {})).rejects.toThrow(
     IntegrationUpstreamError,
   );
+});
+
+// ── Custom (per-user API-key) integrations: create/update forwarding ─────────
+
+test("a custom adapter supportsCustom and forwards create → /custom/create, unwrapping {connection}", async () => {
+  const connection = {
+    toolkit: "acme",
+    connectionId: "acme",
+    status: "active" as const,
+    accountLabel: "Acme",
+  };
+  const { provider, calls } = harness(
+    () => ({ body: { connection } }),
+    "jwt-1",
+    undefined,
+    {
+      id: "custom",
+      custom: true,
+    },
+  );
+  expect(supportsCustom(provider)).toBe(true);
+  if (!supportsCustom(provider)) throw new Error("unreachable");
+
+  const config = {
+    name: "Acme",
+    baseUrl: "https://api.acme.test",
+    auth: {
+      type: "header" as const,
+      header: "Authorization",
+      prefix: "Bearer ",
+    },
+    description: "Acme CRM",
+    apiKey: "sk-secret",
+  };
+  expect(await provider.createCustom("ignored", config)).toEqual(connection);
+  expect(calls[0]?.url).toBe(
+    "https://cloud.test/v1/integrations/custom/create",
+  );
+  expect(calls[0]?.method).toBe("POST");
+  expect(calls[0]?.headers.authorization).toBe("Bearer jwt-1");
+  expect(calls[0]?.body).toEqual(config); // the sealed key is forwarded, mode 1
+});
+
+test("a custom adapter forwards update with the connectionId + patch (omitted key kept upstream)", async () => {
+  const connection = {
+    toolkit: "acme",
+    connectionId: "acme",
+    status: "active" as const,
+  };
+  const { provider, calls } = harness(
+    () => ({ body: { connection } }),
+    "jwt-1",
+    undefined,
+    {
+      id: "custom",
+      custom: true,
+    },
+  );
+  if (!supportsCustom(provider)) throw new Error("expected custom support");
+  await provider.updateCustom("ignored", "acme", { description: "new" });
+  expect(calls[0]?.url).toBe(
+    "https://cloud.test/v1/integrations/custom/update",
+  );
+  expect(calls[0]?.body).toEqual({ connectionId: "acme", description: "new" });
+});
+
+test("a plain (composio) adapter does NOT support custom create/update", () => {
+  const { provider } = harness(() => ({ body: {} }), "jwt-1");
+  expect(supportsCustom(provider)).toBe(false);
 });
 
 // ── Acting-as (C2): the three per-call auth modes on search/execute ───────────

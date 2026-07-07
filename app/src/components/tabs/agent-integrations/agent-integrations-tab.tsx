@@ -7,6 +7,7 @@ import {
   useIntegrationConnections,
   useIntegrationToolkits,
 } from "../../../hooks/queries";
+import { CUSTOM_INTEGRATION_PROVIDER } from "../../../hooks/queries/custom-integration-keys";
 import {
   effectiveAllowlist,
   useAgentSettings,
@@ -23,6 +24,7 @@ import {
   SigninState,
   UnavailableState,
   useConnectFlow,
+  useCustomIntegrations,
   useIntegrationsGate,
 } from "../../integrations";
 import { INTEGRATIONS_VIEW_ID } from "../../integrations-view/id";
@@ -51,6 +53,7 @@ export default function IntegrationsTab({ agent }: TabProps) {
 
   const connections = useIntegrationConnections(INTEGRATION_PROVIDER, ready);
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, ready);
+  const custom = useCustomIntegrations(ready);
   const grantsQuery = useAgentGrants(agent.id, ready);
   const settingsQuery = useAgentSettings(agent.id, ready && teamsEnabled);
 
@@ -67,21 +70,36 @@ export default function IntegrationsTab({ agent }: TabProps) {
   );
   const grantMutation = useAgentGrantMutation(agent.id);
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
+  const disconnectCustom = useDisconnectIntegration(
+    CUSTOM_INTEGRATION_PROVIDER,
+  );
   const connectFlow = useConnectFlow({
     agentId: agent.id,
     autoGrant: grantsSupported && canEdit,
   });
   const setViewMode = useUIStore((s) => s.setViewMode);
 
+  // Custom integrations merge into the agent's app list (grant toggles work the
+  // same, keyed by connectionId), so they appear as usable/activatable rows;
+  // the allowlist still bounds them. The browse catalog below stays composio.
   const view = useMemo(
     () =>
       agentIntegrationsView({
-        connections: connections.data ?? [],
-        catalog: catalog.data ?? [],
+        connections: [...(connections.data ?? []), ...custom.connections],
+        catalog: [...(catalog.data ?? []), ...custom.toolkits],
         grants,
         allowlist,
+        customToolkits: custom.slugs,
       }),
-    [connections.data, catalog.data, grants, allowlist],
+    [
+      connections.data,
+      catalog.data,
+      custom.connections,
+      custom.toolkits,
+      custom.slugs,
+      grants,
+      allowlist,
+    ],
   );
 
   // The browse catalog is narrowed to the effective allowlist so a member can
@@ -98,12 +116,19 @@ export default function IntegrationsTab({ agent }: TabProps) {
     (grantsQuery.isLoading ||
       connections.isLoading ||
       catalog.isLoading ||
+      custom.isLoading ||
       settingsQuery.isLoading);
 
   const removeGrant = (connectionId: string) =>
     grantMutation.mutate({ connectionId, op: "remove" });
   const activate = (connectionId: string) =>
     grantMutation.mutate({ connectionId, op: "add" });
+  // Degraded mode (no grant routes) disconnects fully; route to the owning
+  // provider so a custom integration is deleted from the custom provider.
+  const disconnectAccount = (connectionId: string) =>
+    (custom.slugs.has(connectionId) ? disconnectCustom : disconnect).mutate(
+      connectionId,
+    );
 
   return (
     <div className="h-full overflow-auto">
@@ -133,7 +158,7 @@ export default function IntegrationsTab({ agent }: TabProps) {
               connectFlow={connectFlow}
               onRemoveGrant={removeGrant}
               onActivate={activate}
-              onDisconnect={(connectionId) => disconnect.mutate(connectionId)}
+              onDisconnect={disconnectAccount}
               onAddAccount={(toolkit) => void connectFlow.connect(toolkit)}
             />
 
@@ -143,6 +168,9 @@ export default function IntegrationsTab({ agent }: TabProps) {
                 connections={connections.data ?? []}
                 connectFlow={connectFlow}
                 loading={catalog.isLoading}
+                customEnabled={custom.supported}
+                agentId={agent.id}
+                autoGrant={grantsSupported && canEdit}
               />
             </div>
 

@@ -1177,6 +1177,33 @@ export interface IntegrationConnection {
   accountLabel?: string;
 }
 
+// ── Custom API-key integrations (provider "custom") ──────────────────────────
+// A service outside the Composio catalog, connected by storing an API key. The
+// key is sealed in the gateway and NEVER reaches the agent, pod, model, or
+// chat transcript — the gateway performs the HTTP request and injects the key.
+// Each custom integration surfaces ONE generic authenticated-HTTP-request tool.
+
+/**
+ * How the gateway injects the stored key on each request. `header` sends
+ * `<header>: <prefix><key>` (prefix used verbatim, e.g. `"Bearer "`); `query`
+ * appends `<param>=<key>` to the URL.
+ */
+export type CustomIntegrationAuth =
+  | { type: "header"; header: string; prefix?: string }
+  | { type: "query"; param: string };
+
+/**
+ * A custom integration's non-secret config. The API key travels separately
+ * (only on create/update) and is never returned. `baseUrl` is the origin +
+ * path prefix every request is confined to; `description` is agent-facing.
+ */
+export interface CustomIntegrationConfig {
+  name: string;
+  baseUrl: string;
+  auth: CustomIntegrationAuth;
+  description: string;
+}
+
 // ── OpenAI-compatible (local) provider ───────────────────────────────────────
 // A local LLM server the user runs (Ollama / vLLM / LM Studio), connected by
 // base URL + model id. New-engine + desktop only (the URL is the user's own

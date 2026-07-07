@@ -175,7 +175,7 @@ test("managed credential config serves sandbox credentials from the gateway", as
   }
 });
 
-test("a configured integrations gateway advertises composio and wins over a direct key", async () => {
+test("a configured integrations gateway advertises composio + custom and wins over a direct key", async () => {
   const { host, base } = await setup({
     // Both configured (the dev prod-simulation shape) → the gateway wins, so
     // the signin-gated remote adapter is what serves, never the direct key.
@@ -188,13 +188,16 @@ test("a configured integrations gateway advertises composio and wins over a dire
     const caps = (await (
       await fetch(`${base}/v1/capabilities`)
     ).json()) as Capabilities;
-    expect(caps.integrations).toEqual(["composio"]);
+    // The gateway serves BOTH the composio catalog and per-user custom
+    // integrations (a second remote adapter against the same upstream).
+    expect(caps.integrations).toEqual(["composio", "custom"]);
     // Desktop gateway before sign-in: present but signin-gated, never a 503.
     const status = await (
       await fetch(`${base}/v1/integrations`, { headers: auth })
     ).json();
     expect(status.items).toEqual([
       { provider: "composio", ready: false, reason: "signin" },
+      { provider: "custom", ready: false, reason: "signin" },
     ]);
   } finally {
     host.stop();

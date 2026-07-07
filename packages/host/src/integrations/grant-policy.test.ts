@@ -17,6 +17,26 @@ test("actionInToolkit matches the full slug prefix (single- and multi-word)", ()
   expect(actionInToolkit("NOTELY_CREATE", "note")).toBe(false);
 });
 
+test("actionInToolkit matches a custom action against its slug EXACTLY", () => {
+  // CUSTOM_<SLUG>_REQUEST binds to the toolkit whose slug is exactly <slug>.
+  expect(actionInToolkit("CUSTOM_ACME_REQUEST", "acme")).toBe(true);
+  expect(actionInToolkit("CUSTOM_ACME_CRM_REQUEST", "acme_crm")).toBe(true);
+  // A different custom integration must NOT borrow another's grant, even when
+  // one slug is a leading segment of the other (exact match, not prefix).
+  expect(actionInToolkit("CUSTOM_ACME_CRM_REQUEST", "acme")).toBe(false);
+  // A CUSTOM_ action never matches a composio toolkit.
+  expect(actionInToolkit("CUSTOM_ACME_REQUEST", "gmail")).toBe(false);
+  // A malformed CUSTOM_ action belongs to no toolkit.
+  expect(actionInToolkit("CUSTOM_ACME_LIST", "acme")).toBe(false);
+});
+
+test("toolkitForAction resolves a granted custom toolkit by exact slug", () => {
+  expect(
+    toolkitForAction("CUSTOM_ACME_CRM_REQUEST", ["gmail", "acme_crm"]),
+  ).toBe("acme_crm");
+  expect(toolkitForAction("CUSTOM_ACME_CRM_REQUEST", ["acme"])).toBeNull();
+});
+
 test("grantedToolkits derives the distinct toolkit set from accounts", () => {
   expect(
     grantedToolkits([

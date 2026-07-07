@@ -17,6 +17,7 @@ export function AppRow({
   status,
   onClick,
   trailing,
+  badge,
   children,
 }: {
   display: AppDisplay;
@@ -24,6 +25,8 @@ export function AppRow({
   status?: ConnectionStatus;
   onClick?: () => void;
   trailing?: React.ReactNode;
+  /** An inline pill after the name (e.g. the "Custom" badge for API-key apps). */
+  badge?: React.ReactNode;
   children?: React.ReactNode;
 }) {
   const body = (
@@ -32,6 +35,7 @@ export function AppRow({
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5 truncate text-[13px] font-medium text-foreground">
           <span className="truncate">{display.name}</span>
+          {badge}
           {status && <StatusDot status={status} />}
         </p>
         {description && (

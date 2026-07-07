@@ -2,6 +2,8 @@ import type {
   ActionResult,
   Connection,
   ConnectStart,
+  CustomIntegrationCreate,
+  CustomIntegrationPatch,
   ProviderReadiness,
   SearchResult,
   Toolkit,
@@ -98,4 +100,39 @@ export interface IntegrationProvider {
     params: Record<string, unknown>,
     opts?: ExecuteOptions,
   ): Promise<ActionResult>;
+}
+
+/**
+ * An OPTIONAL port extension for providers that let a user register their own
+ * bring-your-own-API-key integrations (the custom provider). The rest of the
+ * lifecycle — list/disconnect/search/execute — is the generic `IntegrationProvider`
+ * surface; only creating and editing an integration is custom-shaped, because it
+ * carries the sealed API key. The provider-routes mount create/update ONLY when
+ * a provider implements this (else 404), so a plain provider is never asked to.
+ */
+export interface CustomIntegrationHost {
+  /** Register a new custom integration; returns its mapped connection. */
+  createCustom(
+    userId: string,
+    config: CustomIntegrationCreate,
+  ): Promise<Connection>;
+  /**
+   * Edit an existing custom integration (any subset of its config; an omitted
+   * apiKey keeps the stored one). Renaming keeps the slug/connectionId stable.
+   */
+  updateCustom(
+    userId: string,
+    connectionId: string,
+    patch: CustomIntegrationPatch,
+  ): Promise<Connection>;
+}
+
+/** Narrow a provider to one that supports custom-integration create/update. */
+export function supportsCustom(
+  provider: IntegrationProvider,
+): provider is IntegrationProvider & CustomIntegrationHost {
+  const c = provider as Partial<CustomIntegrationHost>;
+  return (
+    typeof c.createCustom === "function" && typeof c.updateCustom === "function"
+  );
 }

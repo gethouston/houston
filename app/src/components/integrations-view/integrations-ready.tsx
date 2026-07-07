@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useDisconnectIntegration } from "../../hooks/queries";
 import { useRenameIntegrationConnection } from "../../hooks/queries/use-integrations";
 import {
   AppDetailSheet,
   accountDisplayLabel,
   appDisplay,
   ConnectMoreAppsSection,
+  type CustomDialogTarget,
+  CustomIntegrationDialog,
   INTEGRATION_PROVIDER,
   IntegrationDisconnectDialog,
   ReconnectBanner,
@@ -42,7 +43,6 @@ export function IntegrationsReady({
   const { t } = useTranslation("integrations");
   const apps = useConnectedApps();
   const connectFlow = useConnectFlow({ autoGrant: false });
-  const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const rename = useRenameIntegrationConnection(INTEGRATION_PROVIDER);
   const toggle = useAgentGrantToggle();
 
@@ -52,6 +52,10 @@ export function IntegrationsReady({
   // the row and (when it was the last account) closes the sheet on its own.
   const [selectedToolkit, setSelectedToolkit] = useState<string | null>(null);
   const [disconnectConnId, setDisconnectConnId] = useState<string | null>(null);
+  // The custom-integration edit dialog (opened from the detail sheet's "Edit").
+  const [customEdit, setCustomEdit] = useState<CustomDialogTarget | null>(null);
+  const selectedIsCustom =
+    selectedToolkit !== null && apps.customSlugs.has(selectedToolkit);
 
   const selectedConnections = selectedToolkit
     ? apps.connData.filter((c) => c.toolkit === selectedToolkit)
@@ -105,7 +109,8 @@ export function IntegrationsReady({
                 grantsSupported={apps.grantsSupported}
                 connectFlow={connectFlow}
                 onManage={setSelectedToolkit}
-                onRemove={(connectionId) => disconnect.mutate(connectionId)}
+                onRemove={apps.disconnect}
+                customToolkits={apps.customSlugs}
               />
             )}
           </section>
@@ -116,6 +121,7 @@ export function IntegrationsReady({
           connections={apps.connData}
           connectFlow={connectFlow}
           loading={apps.catalogLoading}
+          customEnabled={apps.customEnabled}
         />
       </div>
 
@@ -147,8 +153,24 @@ export function IntegrationsReady({
           }}
           onDisconnect={setDisconnectConnId}
           onAddAccount={(toolkit) => void connectFlow.connect(toolkit)}
+          custom={selectedIsCustom}
+          onEdit={() => {
+            setCustomEdit({
+              mode: "edit",
+              connectionId: selectedApp.toolkit,
+              name: selectedApp.name,
+              description: selectedApp.description,
+            });
+            setSelectedToolkit(null);
+          }}
         />
       )}
+
+      <CustomIntegrationDialog
+        target={customEdit}
+        onClose={() => setCustomEdit(null)}
+        autoGrant={false}
+      />
 
       <IntegrationDisconnectDialog
         app={disconnectApp}
@@ -169,7 +191,7 @@ export function IntegrationsReady({
         }
         onClose={() => setDisconnectConnId(null)}
         onConfirm={(connectionId) => {
-          disconnect.mutate(connectionId);
+          apps.disconnect(connectionId);
           setDisconnectConnId(null);
         }}
       />

@@ -47,12 +47,13 @@ function mockFetch(
   return calls;
 }
 
-const [search, execute, requestConnection] = makeIntegrationTools({
-  baseUrl: "https://host.test/",
-  sandboxToken: "sb-tok",
-});
-if (!search || !execute || !requestConnection)
-  throw new Error("expected three integration tools");
+const [search, execute, requestConnection, proposeCustom] =
+  makeIntegrationTools({
+    baseUrl: "https://host.test/",
+    sandboxToken: "sb-tok",
+  });
+if (!search || !execute || !requestConnection || !proposeCustom)
+  throw new Error("expected four integration tools");
 
 // pi's tool.execute takes (id, params, signal, onUpdate, ctx); the last two are
 // irrelevant to these proxies, so one helper supplies them.
@@ -60,11 +61,17 @@ const ctx = {} as unknown as ExtensionContext;
 const run = (tool: typeof search, params: unknown) =>
   tool.execute("id", params as never, undefined, undefined, ctx);
 
-test("returns the generic tools plus request_connection, correctly named", () => {
-  expect([search.name, execute.name, requestConnection.name]).toEqual([
+test("returns the generic tools plus the two hand-off tools, correctly named", () => {
+  expect([
+    search.name,
+    execute.name,
+    requestConnection.name,
+    proposeCustom.name,
+  ]).toEqual([
     "integration_search",
     "integration_execute",
     "request_connection",
+    "propose_custom_integration",
   ]);
 });
 
@@ -128,6 +135,32 @@ test("search marks not-connected matches and teaches request_connection", async 
   expect(text).toContain("request_connection tool");
   expect(text).not.toContain("#houston_toolkit=");
   expect(text).not.toContain("](https://");
+});
+
+test("search tolerates a provider-tagged match and never leaks the tag", async () => {
+  // The sandbox multi-provider fan-out stamps each match with its owning
+  // provider; the agent-facing tools key on the unique action slug, so the tag
+  // is carried for tolerance only and must not surface in the model-facing text.
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "CUSTOM_ACME_CRM_REQUEST",
+          toolkit: "acme_crm",
+          description: "Acme CRM: records. Generic authenticated HTTP request.",
+          connected: true,
+          provider: "custom",
+        },
+      ],
+    },
+  }));
+  const out = await run(search, { query: "acme crm" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain(
+    "- CUSTOM_ACME_CRM_REQUEST (acme_crm): Acme CRM: records.",
+  );
+  // The provider tag is internal routing metadata, never rendered for the model.
+  expect(text).not.toContain("provider");
 });
 
 test("search lists an app's accounts when the agent has more than one", async () => {
@@ -299,6 +332,84 @@ test("request_connection omits an empty reason and rejects an empty slug", async
     expect(run(requestConnection, { toolkit: "   " })).rejects.toThrow(
       /non-empty toolkit/i,
     ),
+  );
+});
+
+test("propose_custom_integration records a header-auth proposal, no key handling", async () => {
+  const holder = newInteractionHolder();
+  const out = await runWithInteractionCapture(holder, () =>
+    run(proposeCustom, {
+      name: "  Acme CRM  ",
+      baseUrl: "  https://api.acme.com/v2  ",
+      authType: "header",
+      authField: "  Authorization  ",
+      authPrefix: "Bearer ",
+      description: "  Acme CRM records  ",
+      reason: "  to read your contacts  ",
+    }),
+  );
+  // Trimmed fields; header auth maps to { type: "header", header, prefix }.
+  expect(holder.pending).toEqual({
+    kind: "custom_integration",
+    proposal: {
+      name: "Acme CRM",
+      baseUrl: "https://api.acme.com/v2",
+      auth: { type: "header", header: "Authorization", prefix: "Bearer " },
+      description: "Acme CRM records",
+    },
+    reason: "to read your contacts",
+  });
+  // The tool never solicits a key in chat and tells the model to end its turn.
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toMatch(/end your turn/i);
+  expect(text).toMatch(/do not ask the user to paste an api key/i);
+});
+
+test("propose_custom_integration maps query auth and omits an empty prefix/reason", async () => {
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, () =>
+    run(proposeCustom, {
+      name: "Widgets",
+      baseUrl: "https://api.widgets.io",
+      authType: "query",
+      authField: "api_key",
+      description: "Widget catalog",
+    }),
+  );
+  // Query auth maps to { type: "query", param }; no prefix, no reason keys.
+  expect(holder.pending).toEqual({
+    kind: "custom_integration",
+    proposal: {
+      name: "Widgets",
+      baseUrl: "https://api.widgets.io",
+      auth: { type: "query", param: "api_key" },
+      description: "Widget catalog",
+    },
+  });
+});
+
+test("propose_custom_integration rejects blank required fields", async () => {
+  await runWithInteractionCapture(newInteractionHolder(), () =>
+    expect(
+      run(proposeCustom, {
+        name: "   ",
+        baseUrl: "https://api.acme.com",
+        authType: "header",
+        authField: "Authorization",
+        description: "records",
+      }),
+    ).rejects.toThrow(/non-empty name/i),
+  );
+  await runWithInteractionCapture(newInteractionHolder(), () =>
+    expect(
+      run(proposeCustom, {
+        name: "Acme",
+        baseUrl: "https://api.acme.com",
+        authType: "header",
+        authField: "   ",
+        description: "records",
+      }),
+    ).rejects.toThrow(/non-empty authField/i),
   );
 });
 

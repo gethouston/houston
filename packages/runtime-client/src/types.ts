@@ -14,6 +14,7 @@ export type {
   ConversationHistory,
   ConversationSummary,
   CustomEndpoint,
+  CustomIntegrationAuth,
   GenerateAgentResponse,
   InteractionOption,
   LoginInfo,

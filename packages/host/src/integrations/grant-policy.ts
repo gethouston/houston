@@ -1,3 +1,4 @@
+import { customActionSlug, isCustomAction } from "./action-routing";
 import type { GrantAccount } from "./grant-store";
 import type { ConnectedAccountInfo, ToolMatch } from "./types";
 
@@ -15,8 +16,17 @@ import type { ConnectedAccountInfo, ToolMatch } from "./types";
  * underscore boundary — never the segment before the first `_`, which would
  * mis-attribute `GOOGLE_MAPS_GET_ROUTE` to a nonexistent `google` toolkit and so
  * 403 a genuinely-granted `google_maps`.
+ *
+ * Custom (per-user API-key) integrations name their one tool
+ * `CUSTOM_<SLUG>_REQUEST`; the toolkit IS that slug, so strip the `CUSTOM_`
+ * wrapper and match the slug EXACTLY (never the loose prefix — a custom
+ * integration must not borrow another's grant). A `CUSTOM_` action that is not
+ * a well-formed request belongs to no toolkit.
  */
 export function actionInToolkit(action: string, toolkit: string): boolean {
+  const slug = customActionSlug(action);
+  if (slug !== null) return slug === toolkit.toLowerCase();
+  if (isCustomAction(action)) return false;
   const a = action.toLowerCase();
   const t = toolkit.toLowerCase();
   return a === t || a.startsWith(`${t}_`);

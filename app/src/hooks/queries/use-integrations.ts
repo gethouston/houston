@@ -1,8 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { integrationsSupported } from "../../components/integrations/model";
+import type { CustomIntegrationConfig } from "@houston-ai/engine-client";
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { integrationsSupported } from "../../components/integrations/capabilities";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations } from "../../lib/tauri";
 import { useCapabilities } from "../use-capabilities";
+import {
+  CUSTOM_INTEGRATION_PROVIDER,
+  customIntegrationInvalidationKeys,
+} from "./custom-integration-keys";
 import {
   applyGrantChange,
   applyGrantChangeNullable,
@@ -167,5 +177,56 @@ export function useAgentGrantMutation(agentId: string) {
       );
     },
     onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+/** Refetch the custom provider's connections + toolkits after a create/edit. */
+function invalidateCustomIntegration(qc: QueryClient): Promise<void> {
+  return Promise.all(
+    customIntegrationInvalidationKeys().map((queryKey) =>
+      qc.invalidateQueries({ queryKey }),
+    ),
+  ).then(() => undefined);
+}
+
+/**
+ * Create a custom API-key integration (provider `"custom"`). On success it
+ * refetches the custom provider's connection list AND toolkit catalog (for this
+ * provider the toolkits ARE the caller's integrations). Carries no `onError`
+ * for the same reason as the mutations above: the `call()` wrapper already
+ * surfaces + reports the failure once, so an `onError` here would double-toast.
+ * The auto-grant of the new connection to the current agent is the caller's job
+ * (it needs the agent context), done off this mutation's resolved connection.
+ */
+export function useCreateCustomIntegration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (config: CustomIntegrationConfig & { apiKey: string }) =>
+      tauriIntegrations.createCustom(CUSTOM_INTEGRATION_PROVIDER, config),
+    onSuccess: () => invalidateCustomIntegration(qc),
+  });
+}
+
+/**
+ * Edit a custom integration. An omitted `apiKey` in `patch` keeps the stored
+ * key. Invalidates the same custom-provider queries as create. No `onError`
+ * toast — the `call()` wrapper surfaces it once.
+ */
+export function useUpdateCustomIntegration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      connectionId,
+      patch,
+    }: {
+      connectionId: string;
+      patch: Partial<CustomIntegrationConfig> & { apiKey?: string };
+    }) =>
+      tauriIntegrations.updateCustom(
+        CUSTOM_INTEGRATION_PROVIDER,
+        connectionId,
+        patch,
+      ),
+    onSuccess: () => invalidateCustomIntegration(qc),
   });
 }

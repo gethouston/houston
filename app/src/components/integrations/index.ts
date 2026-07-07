@@ -11,11 +11,38 @@ export {
 } from "./app-display";
 export { AppLogo } from "./app-logo";
 export { AppRow } from "./app-row";
+export {
+  customIntegrationsSupported,
+  customSlugSet,
+  integrationsSupported,
+} from "./capabilities";
 export { ConnectMoreAppsSection } from "./connect-more-apps";
 export {
   type ConnectionStatus,
   ConnectionStatusBadge,
 } from "./connection-status-badge";
+export { CustomBadge } from "./custom-badge";
+export {
+  type CustomDialogTarget,
+  CustomIntegrationDialog,
+} from "./custom-integration-dialog";
+export {
+  baseUrlError,
+  buildAuth,
+  type CreateResult,
+  type CustomAuthType,
+  type CustomFieldError,
+  type CustomFormValues,
+  type CustomPatch,
+  editCustomForm,
+  emptyCustomForm,
+  type PatchResult,
+  PREFIX_PRESETS,
+  type PrefixPreset,
+  presetPrefix,
+  validateCreate,
+  validateEdit,
+} from "./custom-integration-model";
 export { IntegrationDisconnectDialog } from "./integration-disconnect-dialog";
 export {
   accountDisplayLabel,
@@ -43,6 +70,14 @@ export {
   type ConnectState,
   useConnectFlow,
 } from "./use-connect-flow";
+export {
+  type CustomIntegrationFlow,
+  useCustomIntegrationFlow,
+} from "./use-custom-integration-flow";
+export {
+  type CustomIntegrationsData,
+  useCustomIntegrations,
+} from "./use-custom-integrations";
 export {
   type IntegrationsGate,
   useIntegrationsGate,

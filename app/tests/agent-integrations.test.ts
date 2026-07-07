@@ -213,6 +213,32 @@ describe("agentIntegrationsView", () => {
     if (view.mode !== "degraded") throw new Error("unreachable");
     strictEqual(view.rows[0]?.app.name, "obscure_app");
   });
+
+  it("marks custom-provider rows so the UI badges + suppresses add-account", () => {
+    // A custom integration (slug == toolkit == connectionId) mixed with composio.
+    const view = agentIntegrationsView({
+      connections: [conn("gmail"), conn("acme_crm", "active", "acme_crm")],
+      catalog: [...CATALOG, tk("acme_crm", "Acme CRM")],
+      grants: ["ca_gmail", "acme_crm"],
+      customToolkits: new Set(["acme_crm"]),
+    });
+    if (view.mode !== "grants") throw new Error("unreachable");
+    const byToolkit = new Map(
+      view.activeRows.map((r) => [r.connection.toolkit, r.custom]),
+    );
+    strictEqual(byToolkit.get("acme_crm"), true);
+    strictEqual(byToolkit.get("gmail"), false);
+  });
+
+  it("defaults every row to non-custom when no customToolkits are given", () => {
+    const view = agentIntegrationsView({
+      connections: [conn("gmail")],
+      catalog: CATALOG,
+      grants: null,
+    });
+    if (view.mode !== "degraded") throw new Error("unreachable");
+    strictEqual(view.rows[0]?.custom, false);
+  });
 });
 
 /**

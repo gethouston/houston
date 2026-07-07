@@ -5,6 +5,7 @@ import {
   accountDisplayLabel,
   type ConnectFlow,
   ConnectionStatusBadge,
+  CustomBadge,
   PendingConnectionCallout,
 } from "../../integrations";
 import type { AgentAppRow as AgentAppRowVM } from "./model";
@@ -39,24 +40,28 @@ export function AgentAppRow({
   onAddAccount,
 }: AgentAppRowProps) {
   const { t } = useTranslation("integrations");
-  const { connection, app, showAccountLabel } = row;
+  const { connection, app, showAccountLabel, custom } = row;
   const status = connection.status;
   const description = showAccountLabel
     ? accountDisplayLabel(connection, t("account.unnamed"))
     : app.description;
+  // Custom API-key integrations have a single implicit account, so no "add
+  // another account" affordance (there is no second login to link).
+  const canAddAccount = onAddAccount != null && !custom;
+  const badge = custom ? <CustomBadge /> : undefined;
 
   if (status === "active") {
-    const showActions =
-      canEdit && (onAddAccount != null || onDeactivate != null);
+    const showActions = canEdit && (canAddAccount || onDeactivate != null);
     return (
       <AppRow
         display={app}
         description={description}
         status="active"
+        badge={badge}
         trailing={
           showActions ? (
             <div className="flex items-center gap-1">
-              {onAddAccount && (
+              {canAddAccount && onAddAccount && (
                 <button
                   type="button"
                   onClick={() => onAddAccount(connection.toolkit)}
@@ -89,6 +94,7 @@ export function AgentAppRow({
       display={app}
       description={description}
       status={status}
+      badge={badge}
       trailing={
         !canEdit ? <ConnectionStatusBadge status={status} /> : undefined
       }

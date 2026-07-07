@@ -68,7 +68,42 @@ export interface ToolMatch {
    * connect card instead (HOU-670). Absent = unknown (older adapters).
    */
   connected?: boolean;
+  /**
+   * Which registered provider surfaced this match, stamped by the sandbox
+   * search fan-out when several providers are wired (e.g. "composio",
+   * "custom"). Raw adapters leave it unset; the fan-out fills it so a later
+   * execute can route back to the right provider. Absent = single-provider.
+   */
+  provider?: string;
 }
+
+/**
+ * How a custom (bring-your-own-API-key) integration authenticates its HTTP
+ * requests. `header` injects `<header>: <prefix><key>` (prefix used verbatim,
+ * e.g. "Bearer "); `query` appends `<param>=<key>` to the URL. The key itself
+ * is never part of this shape — it is stored sealed and injected gateway-side.
+ */
+export type CustomIntegrationAuth =
+  | { type: "header"; header: string; prefix?: string }
+  | { type: "query"; param: string };
+
+/** The non-secret configuration of a custom integration (name/target/auth-shape). */
+export interface CustomIntegrationConfig {
+  name: string;
+  baseUrl: string;
+  auth: CustomIntegrationAuth;
+  description: string;
+}
+
+/** A create body: the config plus the (write-only) API key to seal at rest. */
+export type CustomIntegrationCreate = CustomIntegrationConfig & {
+  apiKey: string;
+};
+
+/** An update body: any subset of the config; an omitted `apiKey` keeps the stored key. */
+export type CustomIntegrationPatch = Partial<CustomIntegrationConfig> & {
+  apiKey?: string;
+};
 
 /**
  * The result of a search(): the matched actions, plus (when the policy layer

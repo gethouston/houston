@@ -118,6 +118,26 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
         pending_interaction: { kind: "connect", toolkit: "gmail" },
       },
       {
+        id: "ci",
+        title: "Custom",
+        status: "needs_you",
+        description: "",
+        pending_interaction: {
+          kind: "custom_integration",
+          proposal: {
+            name: "Acme CRM",
+            baseUrl: "https://api.acme.example",
+            auth: {
+              type: "header",
+              header: "Authorization",
+              prefix: "Bearer ",
+            },
+            description: "Acme CRM records",
+          },
+          reason: "to read your CRM contacts",
+        },
+      },
+      {
         id: "bad",
         title: "Broken",
         status: "needs_you",
@@ -129,7 +149,7 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
     "k",
   );
 
-  expect(items.map((a) => a.id)).toEqual(["q", "c", "bad"]); // activity kept, only the field dropped
+  expect(items.map((a) => a.id)).toEqual(["q", "c", "ci", "bad"]); // activity kept, only the field dropped
   expect(items[0]?.pending_interaction).toEqual({
     kind: "question",
     question: "Which deck?",
@@ -139,7 +159,17 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
     kind: "connect",
     toolkit: "gmail",
   });
-  expect(items[2]?.pending_interaction).toBeUndefined();
+  expect(items[2]?.pending_interaction).toEqual({
+    kind: "custom_integration",
+    proposal: {
+      name: "Acme CRM",
+      baseUrl: "https://api.acme.example",
+      auth: { type: "header", header: "Authorization", prefix: "Bearer " },
+      description: "Acme CRM records",
+    },
+    reason: "to read your CRM contacts",
+  });
+  expect(items[3]?.pending_interaction).toBeUndefined();
   expect(diagnostics).toHaveLength(1);
   expect(diagnostics[0]?.message).toContain("pending_interaction");
 });

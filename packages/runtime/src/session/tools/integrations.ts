@@ -1,4 +1,5 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
+import type { CustomIntegrationAuth } from "@houston/runtime-client";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { recordPendingInteraction } from "../interaction";
@@ -57,6 +58,42 @@ const ConnectParams = Type.Object({
 });
 type ConnectParams = Static<typeof ConnectParams>;
 
+const ProposeCustomParams = Type.Object({
+  name: Type.String({
+    description:
+      "Short, human-readable name for the service (e.g. 'Acme CRM'). Shown to the user on the setup card.",
+  }),
+  baseUrl: Type.String({
+    description:
+      "The service's HTTPS API base URL, including any shared path prefix (e.g. 'https://api.acme.com/v2'). Requests are confined to this origin and prefix.",
+  }),
+  authType: Type.Union([Type.Literal("header"), Type.Literal("query")], {
+    description:
+      "How the service authenticates: 'header' sends the key in a request header, 'query' sends it as a URL query parameter.",
+  }),
+  authField: Type.String({
+    description:
+      "The name of the header (e.g. 'Authorization') or query parameter (e.g. 'api_key') that carries the key.",
+  }),
+  authPrefix: Type.Optional(
+    Type.String({
+      description:
+        "Text prepended to the key inside a header, used verbatim (e.g. 'Bearer '). Header auth only; leave unset when the header value is the raw key.",
+    }),
+  ),
+  description: Type.String({
+    description:
+      "One or two sentences on what the service does and what you'd use it for. Future agent turns read this to know when to reach for it.",
+  }),
+  reason: Type.Optional(
+    Type.String({
+      description:
+        "A short, plain-language reason to show the user for why this service is needed.",
+    }),
+  ),
+});
+type ProposeCustomParams = Static<typeof ProposeCustomParams>;
+
 /**
  * Canonical toolkit slug: trimmed + lowercased, matching the connection/catalog
  * lists the connect card compares against (app-side `normalizeToolkitSlug`). A
@@ -81,6 +118,13 @@ interface ToolMatch {
   inputParams?: unknown;
   /** Host-reported: does the user have this action's app connected? */
   connected?: boolean;
+  /**
+   * Host-reported provider that owns this match, set by the sandbox route's
+   * multi-provider fan-out ("composio" | "custom" | …). The agent-facing tools
+   * key on the unique action slug (custom actions are CUSTOM_<SLUG>_REQUEST), so
+   * this is carried for tolerance only — not rendered into the results text.
+   */
+  provider?: string;
 }
 
 /** One connected account the acting agent is granted, as reported by the host. */
@@ -364,7 +408,63 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     },
   });
 
-  return [search, execute, requestConnection];
+  // The in-chat custom-integration hand-off. When the user wants a service the
+  // catalog can't offer, the model proposes it (name + base URL + auth scheme)
+  // and Houston renders a secure setup card in place of the chat input where the
+  // user supplies the API key. Like request_connection this holds NO credential
+  // and makes no network call — it just records the proposal for this turn.
+  const proposeCustomIntegration = defineTool({
+    name: "propose_custom_integration",
+    label: "Offer to add a custom integration",
+    description:
+      "Offer to connect a service that integration_search cannot find, by describing its HTTP API (name, HTTPS base URL, and how it authenticates). Houston shows the user a secure card, in place of the chat input, where they paste their API key — NEVER ask the user to type an API key or secret into the chat; the card collects it safely. End your turn right after calling this; Houston messages you once the service is connected.",
+    promptSnippet:
+      "Offer to add a custom service that integration_search cannot find",
+    parameters: ProposeCustomParams,
+    executionMode: "sequential",
+    async execute(_id: string, params: ProposeCustomParams) {
+      const name = params.name.trim();
+      const baseUrl = params.baseUrl.trim();
+      const description = params.description.trim();
+      const authField = params.authField.trim();
+      if (!name)
+        throw new Error("propose_custom_integration needs a non-empty name.");
+      if (!baseUrl)
+        throw new Error(
+          "propose_custom_integration needs a non-empty baseUrl.",
+        );
+      if (!description)
+        throw new Error(
+          "propose_custom_integration needs a non-empty description.",
+        );
+      if (!authField)
+        throw new Error(
+          "propose_custom_integration needs a non-empty authField (the header or query parameter name).",
+        );
+      const prefix = params.authPrefix;
+      const auth: CustomIntegrationAuth =
+        params.authType === "header"
+          ? { type: "header", header: authField, ...(prefix ? { prefix } : {}) }
+          : { type: "query", param: authField };
+      const reason = params.reason?.trim();
+      recordPendingInteraction({
+        kind: "custom_integration",
+        proposal: { name, baseUrl, auth, description },
+        ...(reason ? { reason } : {}),
+      });
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "Houston is now showing the user a secure card to add this service in place of the chat input. End your turn now. Do NOT ask the user to paste an API key or any secret into the chat, and do not ask them to confirm — Houston sends you a message automatically once the service is connected.",
+          },
+        ],
+        details: { name },
+      };
+    },
+  });
+
+  return [search, execute, requestConnection, proposeCustomIntegration];
 }
 
 /** The tool names — pi's allowlist needs the names alongside the objects. */
@@ -372,4 +472,5 @@ export const INTEGRATION_TOOL_NAMES = [
   "integration_search",
   "integration_execute",
   "request_connection",
+  "propose_custom_integration",
 ];

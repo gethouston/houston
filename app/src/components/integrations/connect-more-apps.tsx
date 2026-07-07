@@ -2,11 +2,16 @@ import type {
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
-import { useMemo } from "react";
+import { Plus } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { appDisplay } from "./app-display";
 import { CatalogBrowser } from "./catalog-browser";
 import { ConnectWaitingPanel } from "./connect-waiting-panel";
+import {
+  type CustomDialogTarget,
+  CustomIntegrationDialog,
+} from "./custom-integration-dialog";
 import type { ConnectFlow } from "./use-connect-flow";
 
 interface ConnectMoreAppsSectionProps {
@@ -15,6 +20,15 @@ interface ConnectMoreAppsSectionProps {
   connectFlow: ConnectFlow;
   /** The catalog is still fetching (show a loader, not a "no apps" message). */
   loading?: boolean;
+  /**
+   * When the custom-integration provider is wired, the footer shows the "add a
+   * custom integration" CTA. Off (default) hides it, so hosts without the
+   * provider render exactly as before.
+   */
+  customEnabled?: boolean;
+  /** Agent context: a newly added custom integration auto-grants to this agent. */
+  agentId?: string;
+  autoGrant?: boolean;
 }
 
 /**
@@ -31,8 +45,14 @@ export function ConnectMoreAppsSection({
   connections,
   connectFlow,
   loading,
+  customEnabled,
+  agentId,
+  autoGrant,
 }: ConnectMoreAppsSectionProps) {
   const { t } = useTranslation("integrations");
+  const [customTarget, setCustomTarget] = useState<CustomDialogTarget | null>(
+    null,
+  );
   const bySlug = useMemo(
     () => new Map(catalog.map((tk) => [tk.slug, tk])),
     [catalog],
@@ -86,6 +106,27 @@ export function ConnectMoreAppsSection({
         excludeToolkits={connectedToolkits}
         loading={loading}
         onConnect={(toolkit) => void connectFlow.connect(toolkit)}
+      />
+
+      {customEnabled && (
+        <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+          <span className="text-muted-foreground">{t("custom.cantFind")}</span>
+          <button
+            type="button"
+            onClick={() => setCustomTarget({ mode: "create" })}
+            className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4 decoration-dotted transition-colors hover:text-primary"
+          >
+            <Plus className="size-3.5" />
+            {t("custom.addCta")}
+          </button>
+        </div>
+      )}
+
+      <CustomIntegrationDialog
+        target={customTarget}
+        onClose={() => setCustomTarget(null)}
+        agentId={agentId}
+        autoGrant={autoGrant ?? false}
       />
     </section>
   );

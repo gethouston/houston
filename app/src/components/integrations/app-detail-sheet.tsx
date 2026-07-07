@@ -1,11 +1,12 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@houston-ai/core";
 import type { IntegrationConnection } from "@houston-ai/engine-client";
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AccountSection } from "./account-section";
 import type { AgentChip } from "./agent-chip";
 import type { AppDisplay } from "./app-display";
 import { AppLogo } from "./app-logo";
+import { CustomBadge } from "./custom-badge";
 
 interface AppDetailSheetProps {
   open: boolean;
@@ -30,6 +31,14 @@ interface AppDetailSheetProps {
   /** A connect flow is running, so "Add another account" is disabled. */
   connectInFlight: boolean;
   description?: string;
+  /**
+   * A custom API-key integration (provider `"custom"`): shows a "Custom" badge,
+   * swaps the "Add another account" footer for Edit + Delete, and hides the
+   * per-account rename/disconnect (there is one implicit account, managed here).
+   */
+  custom?: boolean;
+  /** Open the edit form. Required in `custom` mode. */
+  onEdit?: () => void;
 }
 
 /**
@@ -54,6 +63,8 @@ export function AppDetailSheet({
   onAddAccount,
   connectInFlight,
   description,
+  custom,
+  onEdit,
 }: AppDetailSheetProps) {
   const { t } = useTranslation("integrations");
   return (
@@ -63,10 +74,15 @@ export function AppDetailSheet({
           <div className="flex items-center gap-3">
             <AppLogo display={display} size="lg" />
             <div className="min-w-0 flex-1">
-              <SheetTitle className="truncate">{display.name}</SheetTitle>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t("account.count", { count: connections.length })}
-              </p>
+              <div className="flex items-center gap-2">
+                <SheetTitle className="truncate">{display.name}</SheetTitle>
+                {custom && <CustomBadge />}
+              </div>
+              {!custom && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t("account.count", { count: connections.length })}
+                </p>
+              )}
             </div>
           </div>
           {(description || display.description) && (
@@ -97,20 +113,44 @@ export function AppDetailSheet({
               onRename={(alias) => onRename(connection.connectionId, alias)}
               onReconnect={() => onReconnect(connection.connectionId)}
               onDisconnect={() => onDisconnect(connection.connectionId)}
+              hideAccountActions={custom}
             />
           ))}
         </div>
 
         <div className="border-t border-border px-4 py-3">
-          <button
-            type="button"
-            disabled={connectInFlight}
-            onClick={() => onAddAccount(display.toolkit)}
-            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-60"
-          >
-            <Plus className="size-4" />
-            {t("account.addAnother")}
-          </button>
+          {custom ? (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onEdit}
+                className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+              >
+                <Pencil className="size-4" />
+                {t("custom.edit")}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  connections[0] && onDisconnect(connections[0].connectionId)
+                }
+                className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+              >
+                <Trash2 className="size-4" />
+                {t("custom.delete")}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={connectInFlight}
+              onClick={() => onAddAccount(display.toolkit)}
+              className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-60"
+            >
+              <Plus className="size-4" />
+              {t("account.addAnother")}
+            </button>
+          )}
         </div>
       </SheetContent>
     </Sheet>
