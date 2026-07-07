@@ -125,11 +125,10 @@ test("finished setup chat cleans itself up after the panel closes", async ({
   });
 
   // Drive the settled state deterministically: PATCH the setup activity to
-  // "done" through the fake host's REST (which emits ActivityChanged, so the
-  // app refetches). The archive-on-close logic under test only consumes the
-  // persisted status — waiting on the LIVE settle here made the test hostage
-  // to done-frame delivery on loaded CI machines, which chat.spec's
-  // reconnect coverage already owns.
+  // "done" through the fake host's REST. Waiting for the LIVE settle here
+  // made the test hostage to done-frame/event delivery on loaded CI
+  // machines — transport robustness is chat.spec's reconnect coverage, not
+  // this test's subject.
   const agents = (await (await fetch(`${FAKE_HOST_URL}/agents`)).json()) as {
     id: string;
   }[];
@@ -145,15 +144,17 @@ test("finished setup chat cleans itself up after the panel closes", async ({
     body: JSON.stringify({ status: "done" }),
   });
 
-  // A "done" setup chat cleans itself up once the panel closes. Leaving the
-  // tab closes the panel; the finished chat archives itself — no banner, no
-  // board card, nothing left behind.
-  await page.locator('[data-tour-target="tab-activity"]').click();
-  await expect(
-    page.getByText("Set up a new routine", { exact: true }),
-  ).not.toBeVisible();
+  // Fresh visit (the real user journey: finish the interview, come back
+  // later): the app boots on the "done" setup chat with its panel closed,
+  // and the self-cleanup archives it — no banner, no board card, nothing
+  // left behind.
+  await page.reload();
   await openRoutinesTab(page);
   await expect(
     page.getByText("You are creating a routine in chat"),
   ).toHaveCount(0);
+  await page.locator('[data-tour-target="tab-activity"]').click();
+  await expect(
+    page.getByText("Set up a new routine", { exact: true }),
+  ).not.toBeVisible();
 });
