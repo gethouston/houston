@@ -3,7 +3,12 @@ import { loadRoutineRuns } from "@houston/domain";
 import type { Capabilities, Routine, RoutineRun } from "@houston/protocol";
 import { beforeEach, expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
-import type { ChannelCtx, RuntimeChannel, TokenVerifier } from "../ports";
+import type {
+  ChannelCtx,
+  RuntimeChannel,
+  TokenVerifier,
+  TurnPin,
+} from "../ports";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
@@ -25,15 +30,16 @@ const verifier: TokenVerifier = {
 
 /** A channel that records every fireTurn; optionally throws to exercise the error path. */
 class SpyChannel implements RuntimeChannel {
-  fired: { conversationId: string; text: string }[] = [];
+  fired: { conversationId: string; text: string; pin?: TurnPin }[] = [];
   throwMessage: string | null = null;
   async dispatch() {}
   async fireTurn(
     _ctx: ChannelCtx,
     conversationId: string,
     text: string,
+    pin?: TurnPin,
   ): Promise<void> {
-    this.fired.push({ conversationId, text });
+    this.fired.push({ conversationId, text, pin });
     if (this.throwMessage) throw new Error(this.throwMessage);
   }
   async cancelTurn() {
@@ -134,6 +140,7 @@ test("fires the routine now: records a running run and calls fireTurn with the p
   if (!fired0) throw new Error("expected channel.fired[0] to exist");
   expect(fired0.text).toBe("send the weekly digest");
   expect(fired0.conversationId).toBe(`routine-${routine.id}`);
+  expect(fired0.pin?.mode).toBe("auto");
 
   // A run was recorded (the same record a scheduled fire writes).
   const ws = await store.getOrCreatePersonalWorkspace("alice");

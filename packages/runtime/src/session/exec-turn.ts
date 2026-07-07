@@ -38,15 +38,15 @@ import { newInteractionHolder, runWithInteractionCapture } from "./interaction";
 import { switchNeedsCompaction } from "./provider-switch";
 import { createStallWatchdog } from "./stall-watchdog";
 
-/** A routine's pinned provider/model/effort for this turn. Absent = keep the session's current. */
+/** A turn's pinned provider/model/effort/mode. Absent = keep current/default. */
 export interface TurnPin {
   provider?: string | null;
   model?: string | null;
   effort?: string | null;
   /**
-   * The turn's execution mode ("plan" = read-only + planning overlay). Rides the
-   * per-turn pin ONLY — never `Settings` — so an unpinned turn is always
-   * "execute". A flip from the live session's mode rebuilds the session.
+   * The turn's execution mode ("plan" = read-only + planning overlay, "auto" =
+   * Autopilot). Rides the per-turn pin ONLY — never `Settings` — so an unpinned
+   * turn is always "execute". A flip from the live session's mode rebuilds it.
    */
   mode?: TurnMode | null;
 }
@@ -192,7 +192,7 @@ export async function execTurn(
     // A bad model id throws here → surfaces as the turn's error event.
     const model = resolveModel(pin?.model, pin?.provider);
     // The turn's execution mode: the pin's, else execute. Never inherited from
-    // Settings — an unpinned turn (incl. every routine + cloud turn) is execute.
+    // Settings. Routine fire paths pin auto; an actually unpinned turn is execute.
     const mode = pin?.mode ?? DEFAULT_TURN_MODE;
     const providerChanged = model.provider !== conv.provider;
     const modelChanged = model.id !== conv.model;

@@ -95,9 +95,11 @@ export async function dispatchTurn(
               conversationId: cid,
               text,
               nonce,
-              // Model/effort for this turn (omitted when absent → runtime inherits).
+              // Model/effort/mode for this turn (omitted when absent →
+              // runtime inherits/defaults).
               ...(pin?.model ? { model: pin.model } : {}),
               ...(effort ? { effort } : {}),
+              ...(pin?.mode ? { mode: pin.mode } : {}),
               gcsPrefix: prefix,
               credential: cred
                 ? {

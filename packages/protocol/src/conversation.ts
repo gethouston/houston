@@ -121,9 +121,9 @@ export interface Settings {
 
 /**
  * Per-turn agent execution mode. "execute" = full read/write/act (the default
- * for unpinned turns — routines and cloud turns never inherit a pinned mode);
- * "plan" = read-only tools plus a planning overlay, producing a plan for the
- * user to approve; "auto" (Autopilot) = acts with everything EXCEPT the two
+ * for unpinned turns; routine fire paths explicitly pin "auto"); "plan" =
+ * read-only tools plus a planning overlay, producing a plan for the user to
+ * approve; "auto" (Autopilot) = acts with everything EXCEPT the two
  * blocking/interactive tools (`ask_user`, `request_connection`) — it never waits
  * on the user, makes its own sensible choices, and reports back at the end.
  * Deliberately NOT part of `Settings`: mode rides the per-turn pin only, so an
