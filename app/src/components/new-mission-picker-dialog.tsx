@@ -8,6 +8,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSkills } from "../hooks/queries";
+import { localizeSkillCategory } from "../lib/localize-skill-copy";
 import type { Agent, SkillSummary } from "../lib/types";
 import { SkillList } from "./new-mission-picker-skill-list";
 import {
@@ -51,6 +52,8 @@ export function NewMissionPickerDialog({
   const activeAgentPath = lockedAgent
     ? lockedAgent.folderPath
     : pickedAgentPath || (agents.length === 1 ? agents[0].folderPath : "");
+  const activeAgent =
+    lockedAgent ?? agents.find((a) => a.folderPath === activeAgentPath);
 
   const { data: skills, isLoading: skillsLoading } = useSkills(
     activeAgentPath || undefined,
@@ -83,6 +86,7 @@ export function NewMissionPickerDialog({
         hasOther,
         featuredLabel: t("skillPicker.featuredTab"),
         otherLabel: t("skillPicker.otherTab"),
+        categoryLabel: (category) => localizeSkillCategory(category, t),
       }),
     [categoryNames, hasFeatured, hasOther, t],
   );
@@ -188,6 +192,7 @@ export function NewMissionPickerDialog({
               agentReady={!needsAgent}
               loading={skillsLoading}
               skills={sortedSkills}
+              configId={activeAgent?.configId}
               emptyLabel={
                 activeTabId
                   ? t("skillPicker.skillsEmpty")

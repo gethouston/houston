@@ -90,5 +90,533 @@
     "deleteTitle": "Excluir \"{{name}}\"?",
     "deleteDescription": "Isso remove o skill do seu agente. Você pode reinstalar depois.",
     "instructionsPlaceholder": "Instruções para este skill..."
+  },
+  "categories": {
+    "Advisory": "Consultoria",
+    "Bookkeeping": "Contabilidade",
+    "Compliance": "Conformidade",
+    "Contracts": "Contratos",
+    "Drafting": "Redação",
+    "Entity": "Entidade",
+    "IP": "Propriedade intelectual",
+    "Inbox": "Caixa de entrada",
+    "Marketing": "Marketing",
+    "Operations": "Operações",
+    "Outbound": "Prospecção",
+    "People": "Pessoas",
+    "Sales": "Vendas",
+    "Setup": "Configuração",
+    "Support": "Suporte",
+    "Tracking": "Acompanhamento"
+  },
+  "catalog": {
+    "bookkeeping": {
+      "audit-my-books": {
+        "name": "Auditar meus livros",
+        "description": "Receba uma lista de verificação sobre se seus livros estão em ordem: itens sem categorizar, diferenças de conciliação, provisões vencidas, candidatos a corte de período, lançamentos contábeis em rascunho, saldos de abertura ausentes, fornecedores duplicados. Eu classifico os problemas pelo impacto em dólares e aponto uma ação para 'resolver esta semana'. O submodo `mode=audit-response` para solicitações de auditor ou de diligência prévia monta um pacote de resposta com amostra rastreável e sementes aleatórias documentadas para que o auditor possa reproduzir a seleção. Eu nunca lanço nem apresento nada."
+      },
+      "build-my-chart-of-accounts": {
+        "name": "Criar meu plano de contas",
+        "description": "Elaboro um plano de contas otimizado para startups, ajustado à sua entidade, método contábil e modelo de receita, com detalhamento de despesas operacionais de P&D / Vendas e Marketing / Gerais e Administrativas, linhas de receita diferida e PTO provisionado, linhas de notas SAFE e capital conversível, e uma sublinha de caixa para cada conta bancária registrada. Permite revisões no próprio documento que preservam todo código inalterado para que as categorizações históricas não sejam redirecionadas silenciosamente. Eu nunca envio o plano de contas para o QuickBooks ou Xero, você ou seu contador replicam lá."
+      },
+      "categorize-my-transactions": {
+        "name": "Categorizar minhas transações",
+        "description": "Categorizo um lote de transações pendentes da sua fila do QuickBooks ou Xero, um CSV enviado, ou uma tabela colada. Normalizo cada contraparte, aplico primeiro suas regras salvas, depois a memória do ano anterior, e então raciocínio calibrado em relação ao seu plano de contas travado; tudo abaixo de 0.90 de confiança vai para Suspenso em vez de passar silenciosamente. O submodo `mode=rule-add` cria ou atualiza uma regra permanente `{party: gl_code}` depois de verificar que o código de conta existe. Somente rascunhos, eu nunca lanço no QuickBooks nem no Xero, eu nunca invento um código de conta."
+      },
+      "check-my-burn-and-runway": {
+        "name": "Verificar minha queima de caixa e runway",
+        "description": "Receba o resumo de uma página para fundadores: caixa disponível, queima líquida dos últimos 3 e 6 meses, meses de runway, uma tabela de sensibilidade de ±20%, e os 3 principais fatores de custo por trás da queima. Os saldos de caixa vêm do QuickBooks / Xero / seu feed bancário quando conectado, ou do extrato mais recente caso contrário. Cada número cita sua fonte: saldo bancário com carimbo de data e hora, linha da DRE com o caminho do arquivo, ids de lançamentos contábeis nos fatores de custo. Eu mostro os números e você decide onde cortar."
+      },
+      "check-my-sales-tax-nexus": {
+        "name": "Verificar meu nexo de imposto sobre vendas",
+        "description": "Descubra onde você deve imposto sobre vendas. Somo a receita e o número de transações por estado dos EUA a partir do Stripe (ou QuickBooks / Xero / faturas como alternativa), comparo os totais de cada estado com seu limite de nexo econômico para o trimestre e os últimos 12 meses, identifico o mês exato em que cada estado ultrapassado foi acionado, e sinalizo os estados com nexo físico (funcionários W-2, escritórios, estoque / FBA). Classifico a exposição do maior para o menor valor em dólares e destaco os estados mais próximos de ultrapassar o limite como alertas antecipados. Eu preparo, você registra e recolhe através da Avalara, TaxJar, ou diretamente no portal do estado."
+      },
+      "close-my-month": {
+        "name": "Fechar meu mês",
+        "description": "Executo um fechamento mensal completo de ponta a ponta: concilio cada conta registrada, atualizo o registro de provisões, elaboro cada lançamento contábil padrão pendente (reversão, provisão, despesa antecipada, folha de pagamento, reconhecimento de receita, depreciação, remuneração em ações, ajuste), faço uma verificação de corte para transações lançadas no período errado, gero a DRE, o balanço patrimonial e o fluxo de caixa, faço uma análise de variações, e monto um pacote de fechamento com os quatro alertas de pendências (diferenças de conciliação > $100, sem categorizar > 10%, provisões vencidas > 90 dias, lançamentos ainda em rascunho) no topo. A subinvocação `step=cutoff-check` executa a etapa de corte de forma independente. Somente rascunhos, eu nunca lanço lançamentos contábeis, nunca apresento nada, nunca movimento dinheiro."
+      },
+      "draft-a-journal-entry": {
+        "name": "Elaborar um lançamento contábil",
+        "description": "Use quando disser 'lance o lançamento da provisão' / 'elabore o lançamento de depreciação do Q1' / 'contabilize a amortização da despesa antecipada' / 'reconhecimento de receita deste período' / 'lançamento de remuneração em ações' / 'reclassifique esta despesa'. Eu elaboro um lançamento contábil de partida dobrada balanceado que se ramifica conforme `type`: `accrual` | `prepaid` | `payroll` | `revrec` | `depreciation` | `stock-comp` | `adjustment` | `reclass`. Cada lançamento é validado para bater até o centavo, cada código de conta é validado contra `config/chart-of-accounts.json`, e o lançamento é gravado com `status: \"draft\"`. O submodo `type=accrual mode=reversing` reverte automaticamente cada provisão ativa marcada `reversing=true`. Somente rascunho, eu nunca lanço no QuickBooks Online nem no Xero."
+      },
+      "explain-my-variance": {
+        "name": "Explicar minha variação",
+        "description": "Me diga por que uma linha da DRE se moveu. Comparo os valores realizados com o orçamento (se você tiver um), o período anterior, e o mesmo período do ano anterior, decomponho cada variação relevante em fatores de preço / volume / mix / eventos pontuais vinculados a lançamentos contábeis e fornecedores específicos, e escrevo uma narrativa de 3 a 5 parágrafos sobre as maiores movimentações. O limite de materialidade é de 5% e $1.000 por padrão, e pode ser configurado a cada execução. Os resíduos não explicados são mostrados, nunca absorvidos silenciosamente. Somente rascunhos, eu nunca reclassifico nem lanço nada para 'limpar' uma variação."
+      },
+      "hand-off-to-my-tax-preparer": {
+        "name": "Entregar ao meu contador de impostos",
+        "description": "Monto o pacote de fim de ano para o seu contador de impostos. Exijo uma auditoria limpa como pré-requisito (`audit-my-books` roda primeiro; pendências bloqueiam a entrega), e depois reúno o balancete, as conciliações por conta, os cronogramas de ativo fixo e depreciação, a lista de 1099, a classificação de P&D (se elegível), os candidatos a ajuste M-1 (não dedutibilidade de refeições em 50% / 100%, diferenças de tempo entre livro e fiscal na remuneração em ações, diferenças entre regime de competência e caixa, imposto de renda federal, receita diferida, despesas não dedutíveis), e um registro das decisões de julgamento tomadas. Espelho opcional no Google Drive compartilhado com seu contador como comentarista. Eu redijo o e-mail para o seu contador, nunca envio e nunca apresento nada."
+      },
+      "import-my-prior-books": {
+        "name": "Importar meus livros anteriores",
+        "description": "Recupero a memória do seu sistema anterior: uma exportação do QuickBooks Online ou Xero, um CSV, ou uma planilha do seu contador anterior. Inicializo seu plano de contas (somente se você ainda não tiver um), construo um balanço de abertura a partir dos saldos de fechamento do período anterior, e aprendo regras de fornecedor para código de conta a partir do histórico de transações com um limite de maioria de 80% de confiança para que fornecedores ruidosos não contaminem a categorização futura. É estritamente leitura em um único sentido, eu nunca envio nada de volta para o QuickBooks Online ou Xero, nunca reescrevo os livros anteriores."
+      },
+      "log-an-expense": {
+        "name": "Registrar uma despesa",
+        "description": "Registro uma única despesa a partir de um recibo encaminhado (imagem, PDF, ou e-mail) e produzo uma despesa categorizada mais um lançamento contábil balanceado. Extraio o fornecedor, a data, o valor e os itens de linha por leitura multimodal, escolho um código de conta contra o seu plano de contas travado (tudo abaixo de 0.90 de confiança vai para Suspenso com o recibo anexado), e elaboro o lançamento de partida dobrada com o lado do crédito definido conforme a forma de pagamento (cartão corporativo, empréstimo do fundador, dinheiro, ou ACH). O submodo `mode=batch` agrupa N recibos em um único lançamento contábil resumo que credita Empréstimo do Fundador a Pagar ou Reembolsos a Provisionar. Somente rascunho, eu nunca lanço nada."
+      },
+      "prep-my-1099s": {
+        "name": "Preparar meus 1099",
+        "description": "Preparo sua lista de 1099-NEC e 1099-MISC para o ano fiscal. Somo os pagamentos acumulados do ano por fornecedor a partir do seu histórico de pagamentos, sinalizo os fornecedores elegíveis (não corporativos, ≥ $600), separo NEC de MISC, cruzo o status do W-9 com os W-9 que você tem arquivados, e elaboro e-mails de cobrança para os W-9 faltantes como rascunhos do Gmail / Outlook (ou como arquivos `.md` simples se nenhuma caixa de entrada estiver conectada). Eu preparo, você declara via IRS FIRE, Track1099, ou Tax1099. Eu nunca declaro e nunca envio."
+      },
+      "prepare-my-financials": {
+        "name": "Preparar minhas demonstrações financeiras",
+        "description": "Elaboro uma demonstração financeira para o período que você escolher, uma demonstração por chamada: `statement=pnl | balance-sheet | cash-flow | trial-balance`. Produzo a demonstração a partir dos seus lançamentos contábeis, saldos de abertura, e plano de contas, com comparações do período e ano anteriores, e de 3 a 5 notas geradas automaticamente que citam lançamentos contábeis específicos, sem fatores inventados. As visões de caixa e de competência são calculadas ambas sobre livros em regime de competência; os alertas de descasamento e saldos incomuns aparecem no topo. Somente rascunhos, você assina, você declara."
+      },
+      "prepare-my-investor-pack": {
+        "name": "Preparar meu pacote para investidores",
+        "description": "Monto um pacote financeiro pronto para o conselho a partir do último fechamento: um resumo executivo de uma página (caixa, queima, runway, receita mensal / receita anual, margem bruta, número de funcionários, as 3 principais variações) seguido da DRE, balanço patrimonial, fluxo de caixa, KPIs de SaaS (cascata de receita mensal, NRR, margem bruta, payback de CAC), retenção por coortes se você tiver ≥ 6 coortes, e sensibilidade do runway. `mode=saas-metrics` pula o pacote completo e atualiza apenas receita mensal / receita anual / margem bruta / NRR. Espelho opcional no Google Docs para que o conselho possa comentar. Somente rascunhos, eu nunca envio nada."
+      },
+      "process-my-statements": {
+        "name": "Processar meus extratos",
+        "description": "Processo um lote de extratos bancários e de cartão de crédito em PDF ou CSV de ponta a ponta: extraio cada transação (subagentes Haiku em paralelo), normalizo os nomes das contrapartes, categorizo contra o seu plano de contas travado (subagentes Sonnet em paralelo), detecto transferências entre contas, e monto uma planilha do Google Sheets revisada com uma DRE baseada em fórmulas. As divergências de conciliação aparecem como avisos, as categorizações de baixa confiança vão para Suspenso, eu nunca invento um código de conta, nunca insiro um número silenciosamente, nunca lanço no seu sistema contábil."
+      },
+      "reconcile-my-accounts": {
+        "name": "Conciliar minhas contas",
+        "description": "Concilio uma única conta (banco, cartão de crédito, processador de pagamentos, ou subconta auxiliar) para o período que você escolher. Bato o razão geral de um lado, o extrato externo do outro, mostro os itens não conciliados agrupados em faixas de 0 a 30 / 31 a 60 / 61 a 90 / mais de 90 dias, e gero uma prova de três vias com os números reais. O submodo `mode=transfer-detect` encontra pares de débito/crédito entre todas as suas contas dentro de uma janela de ±2 dias e os marca como Transferências Internas para que fiquem fora da DRE. Eu nunca insiro uma diferença silenciosamente e nunca forço uma correspondência no QuickBooks Online ou Xero."
+      },
+      "review-my-accruals": {
+        "name": "Revisar minhas provisões",
+        "description": "Use quando disser 'liste nossas provisões ativas' / 'atualize o registro de provisões' / 'alguma provisão está vencida?' / 'quais lançamentos de reversão estão pendentes?'. Recalculo os saldos atuais de cada provisão ativa (aluguel antecipado, SaaS antecipado, receita diferida, PTO, folha de pagamento provisionada, juros provisionados), sinalizo os itens vencidos, e mostro os candidatos a lançamentos de reversão. Leio `accruals.json` + `journal-entries.json` + o plano de contas; reescrevo `accruals/register.md` e atualizo ou crio `accruals.json`."
+      },
+      "schedule-my-revenue": {
+        "name": "Programar meu reconhecimento de receita",
+        "description": "Distribuo um contrato de cliente em um cronograma de reconhecimento limpo sob ASC 606, um arquivo por contrato organizado por cliente. Cuido dos padrões comuns em startups (pagamento anual antecipado com reconhecimento mensal proporcional, baseado em uso com um piso, diferimento da taxa de implementação, modificações de contrato com ajuste prospectivo vs. cumulativo), e sinalizo as decisões de julgamento (contraprestação variável, financiamento significativo, itens não monetários) com opções e impacto em dólares. Eu elaboro e mostro, nunca decido por você e nunca lanço nada."
+      },
+      "set-up-my-books": {
+        "name": "Configurar meus livros",
+        "description": "Configuro seus livros do zero com uma única entrevista ao fundador que captura a entidade, o ano fiscal, o método contábil, as contas registradas, a postura de folha de pagamento, o modelo de receita, a frequência de reporte a investidores, e o contador de impostos, e depois escreve o resumo contábil vivo que todas as outras habilidades leem primeiro. O submodo `mode=opening-balances` captura seu balanço de abertura a partir de uma planilha, um CSV, ou uma exportação do seu contador anterior. Eu nunca conecto um banco, nunca lanço em um razão geral, nem movimento dinheiro a partir desta habilidade, só fatos e um resumo, ponto final."
+      },
+      "tag-my-rd-spend": {
+        "name": "Marcar meu gasto de P&D",
+        "description": "Marco seu gasto qualificado de P&D para dar suporte à Seção 174 e ao crédito federal de P&D. Agrupo o gasto nas quatro categorias do IRS (salários qualificados por função do funcionário e proporção de tempo, suprimentos, locação de nuvem / computadores, pesquisa contratada a 65%), aloco entre seus projetos (ou um único grupo 'P&D não alocado' se não houver lista de projetos), e sinalizo as exclusões típicas (correções pós-lançamento, análises de rotina, pesquisa financiada por terceiros). Apenas um pacote de suporte, seu contador de impostos declara o Formulário 6765 e quaisquer equivalentes estaduais."
+      }
+    },
+    "legal": {
+      "answer-a-legal-question": {
+        "name": "Responder a uma pergunta jurídica",
+        "description": "Obtenha uma resposta rápida para uma pergunta jurídica, como 'preciso de um NDA com os investidores?' ou 'a GDPR se aplica a mim?'. Você recebe um memorando curto com a resposta, o raciocínio, as fontes e os próximos passos. Perguntas sensíveis ou incomuns são sinalizadas para um advogado de verdade."
+      },
+      "answer-a-security-questionnaire": {
+        "name": "Responder a um questionário de segurança",
+        "description": "Um cliente grande te enviou um questionário de segurança? Eu leio, preencho tudo o que já sei sobre a sua empresa e agrupo o resto por tema para que você resolva várias de uma vez. Cada resposta que eu salvo é reaproveitada na próxima vez, então o segundo questionário é bem mais rápido que o primeiro."
+      },
+      "audit-compliance": {
+        "name": "Auditar a conformidade",
+        "description": "Verifique se a sua conformidade jurídica continua em dia. Escolha o que revisar: sua política de privacidade, sua lista de fornecedores de privacidade ou seus modelos de contrato. Eu mostro o que ficou desatualizado ou fora do padrão e o que corrigir. Eu nunca mudo nada por conta própria."
+      },
+      "check-a-trademark": {
+        "name": "Verificar uma marca",
+        "description": "Verifique rapidamente se um nome está livre para ser usado como marca. Eu pesquiso na base de dados oficial de marcas dos EUA por resultados exatos, semelhantes na pronúncia e semelhantes na aparência, depois classifico o risco como Baixo, Médio ou Alto e digo o que fazer a seguir. Aviso: isso é uma checagem rápida, não uma autorização jurídica completa, para isso você precisa de um advogado especialista em marcas de verdade."
+      },
+      "draft-a-legal-document": {
+        "name": "Redigir um documento jurídico",
+        "description": "Redijo um documento jurídico para você, como um NDA, um contrato com cliente, uma carta de oferta, uma política de privacidade, termos de serviço, uma decisão do conselho, uma resposta a uma solicitação de dados de cliente ou um resumo para enviar a um advogado de verdade. Eu trabalho a partir dos seus modelos existentes, se eu os tiver, ou com redação padrão de mercado com uma nota clara. Apenas rascunhos, nunca enviados ou assinados."
+      },
+      "plan-contract-pushback": {
+        "name": "Planejar contestações a um contrato",
+        "description": "Depois de revisar um contrato, planeje exatamente o que contestar. Eu classifico os pontos em indispensáveis, desejáveis e não vale a pena brigar, escrevo o texto exato que você pode colar no seu e-mail de contraproposta, e adiciono uma alternativa caso a outra parte diga não. Você precisa ter revisado o contrato antes."
+      },
+      "prepare-the-delaware-annual-filing": {
+        "name": "Preparar a declaração anual de Delaware",
+        "description": "Prepare-se para o seu relatório anual de Delaware e o imposto de franquia (com vencimento em 1º de março de cada ano). Eu calculo de duas formas e escolho a mais barata, que costuma ser de 10 a 100 vezes menor que o número assustador que Delaware mostra por padrão. Você recebe um guia passo a passo de exatamente o que preencher no site do estado. Você declara, eu preparo."
+      },
+      "review-a-contract": {
+        "name": "Revisar um contrato",
+        "description": "Eu leio um contrato que alguém te enviou e te digo o que ele contém. Escolha o nível de profundidade: um veredito rápido sobre se é seguro assinar, uma checagem rápida de NDA, ou um mapa cláusula por cláusula sem veredito. Cada cláusula que precisa de atenção recebe uma nota clara e, quando necessário, uma redação sugerida para contestar."
+      },
+      "set-up-my-legal-info": {
+        "name": "Configurar minhas informações jurídicas",
+        "description": "Me conte o básico sobre a sua empresa para que eu possa te dar uma assessoria jurídica melhor. Eu faço algumas perguntas rápidas sobre a sua entidade, o cap table, os contratos vigentes, os modelos e quaisquer riscos em aberto. Você só precisa fazer isso uma vez, e eu mantenho tudo atualizado conforme as coisas mudam."
+      },
+      "sort-my-legal-inbox": {
+        "name": "Organizar minha caixa de entrada jurídica",
+        "description": "Eu reviso a sua caixa de entrada em busca de assuntos jurídicos (contratos para revisar, NDAs, solicitações de dados de clientes, qualquer coisa que precise da atenção de um advogado) e te digo o que precisa de você e o que não precisa. Eu só organizo e resumo, nunca respondo."
+      },
+      "track-deadlines-and-signatures": {
+        "name": "Acompanhar prazos e assinaturas",
+        "description": "Mantenha o controle do que está pendente no lado jurídico. Escolha o que você precisa: cobrar assinaturas pendentes, registrar um contrato recém-assinado, ver quais prazos estão chegando, ou receber um resumo da semana toda segunda-feira. Eu mantenho uma lista contínua para que nada passe despercebido."
+      }
+    },
+    "marketing": {
+      "audit-a-surface": {
+        "name": "Auditar uma superfície",
+        "description": "Avalio uma superfície de marketing específica e te dou uma lista de correções priorizada. Escolha o que auditar: a saúde de SEO do seu site, sua visibilidade em buscadores com IA como ChatGPT e Perplexity, uma landing page avaliada em seis dimensões, ou um formulário que está perdendo conversões. Cada descoberta é classificada por impacto e facilidade."
+      },
+      "check-my-marketing": {
+        "name": "Verificar meu marketing",
+        "description": "Te dou um diagnóstico real de como seu marketing está indo. Escolha o que você precisa: uma leitura de funil que aponta o maior vazamento com experimentos para rodar, uma análise de lacunas de conteúdo frente a um concorrente, ou um resumo semanal de tudo que entreguei e o que falta. Números e próximos passos, não um painel."
+      },
+      "measure-my-marketing": {
+        "name": "Medir meu marketing",
+        "description": "Configuro a medição que você precisa para você parar de adivinhar. Escolha o que você precisa: um plano de rastreamento de eventos que você pode entregar a um desenvolvedor, uma especificação completa de teste A/B com hipótese e tamanho de amostra, ou um resumo semanal do LinkedIn mostrando como suas publicações se saíram e com quem vale a pena interagir."
+      },
+      "mine-my-sales-calls": {
+        "name": "Analisar minhas ligações de vendas",
+        "description": "Extraio as palavras exatas que seus clientes usam nas gravações das suas ligações de vendas. Puxo frases de dor textuais, padrões de objeções e sinais de posicionamento das transcrições do Gong ou Fireflies, classificados por frequência. Esta é a melhor fonte para títulos, textos de anúncios e landing pages que soem como o seu comprador."
+      },
+      "pitch-me-on-podcasts": {
+        "name": "Me colocar em podcasts",
+        "description": "Encontro podcasts onde seu cliente ideal escuta e escrevo um pitch personalizado para cada um. Faço uma pré-seleção dos programas por afinidade de público, verifico se estão ativos e escrevo e-mails por programa com um gancho que menciona um episódio real. Nada de spam de modelo pronto, você envia da sua própria caixa de entrada."
+      },
+      "plan-a-campaign": {
+        "name": "Planejar uma campanha",
+        "description": "Planejo uma especificação completa de campanha baseada no seu posicionamento. Escolha o tipo: uma campanha paga com público e orçamento, um plano de lançamento de produto, uma sequência de ciclo de vida, uma série de boas-vindas, um e-mail para reter clientes em risco de cancelamento, ou um anúncio de funcionalidade com copy para e-mail e dentro do app. Apenas especificações, nunca envio nem lanço nada."
+      },
+      "plan-my-social-week": {
+        "name": "Planejar minha semana nas redes",
+        "description": "Construo seu plano de publicações nas redes sociais para a semana. Preencho de segunda a sexta nas suas plataformas ativas com uma mistura de publicações originais, conteúdo reaproveitado e blocos de engajamento. Sem ângulos repetidos, sem enchimento genérico."
+      },
+      "profile-my-customer": {
+        "name": "Traçar o perfil do meu cliente",
+        "description": "Construo um perfil detalhado do cliente que você está tentando conquistar. Puxo dados do seu CRM ou do que você colar, e te dou uma persona com jobs-to-be-done, dores ordenadas por prioridade, gatilhos de compra, padrões de objeções e contas âncora reais. Todo anúncio, landing page e e-mail que escrevo parte daqui."
+      },
+      "repurpose-my-content": {
+        "name": "Reaproveitar meu conteúdo",
+        "description": "Transformo algo que você já tem em algo novo. Me dê um post de blog, um vídeo do YouTube, um artigo, ou uma publicação de um concorrente, e me diga o formato de destino. Eu reformato para o novo canal na sua voz. Sem plágio, sem deixar genérico."
+      },
+      "research-a-topic": {
+        "name": "Pesquisar um tema",
+        "description": "Te dou um briefing estruturado sobre qualquer tema que você precise entender antes de tomar uma decisão de marketing. Faço uma pesquisa profunda, cito cada fonte e entrego ângulos que valem a pena desenvolver. Alimenta rascunhos de blog, estratégias de anúncios e planos de conteúdo."
+      },
+      "research-my-seo": {
+        "name": "Pesquisar meu SEO",
+        "description": "Construo a base de SEO que você precisa para rankear. Escolha o foco: pesquisa de palavras-chave que agrupa termos por intenção e dificuldade e define os pilares que vale a pena dominar, ou um plano de backlinks que encontra sites alvo e redige um pitch personalizado para cada um. Os dois baseados no seu posicionamento para você buscar o tráfego certo."
+      },
+      "set-up-my-marketing-info": {
+        "name": "Configurar minhas informações de marketing",
+        "description": "Me conte o básico sobre sua empresa, seu cliente e como você fala para eu poder te dar uma ajuda de marketing melhor. Faço algumas perguntas rápidas sobre seu produto, posicionamento, cliente ideal, voz e o que você está vendendo agora. Você só precisa fazer isso uma vez, e eu mantenho atualizado conforme as coisas mudam."
+      },
+      "watch-my-competitors": {
+        "name": "Vigiar meus concorrentes",
+        "description": "Fico de olho no que seus concorrentes estão fazendo e se algo disso realmente importa. Escolha o que vigiar: os movimentos de produto e mudanças de mensagem deles, os anúncios que estão rodando, ou publicações no seu feed que valem a pena aproveitar. Ameaças reais versus ruído, não uma descarga de notícias."
+      },
+      "write-a-case-study": {
+        "name": "Escrever um case de sucesso",
+        "description": "Transformo o sucesso de um cliente em um case de sucesso que você pode colocar no seu site ou entregar para vendas. Estruturo como desafio, abordagem e resultados com números reais na sua voz. Qualquer número que eu não consiga verificar fica marcado para você confirmar."
+      },
+      "write-a-post": {
+        "name": "Escrever uma publicação",
+        "description": "Redijo um conteúdo na sua voz, baseado no seu posicionamento. Escolha o canal: um post de blog longo, uma publicação no LinkedIn, uma thread no X, uma newsletter, ou uma resposta no Reddit. Copy nativo do canal que soa como você, não como uma fábrica de conteúdo. Apenas rascunhos, você sempre publica."
+      },
+      "write-copy-variants": {
+        "name": "Escrever variantes de copy",
+        "description": "Consiga variantes de copy para a peça que mais precisa de ajuda agora. Escolha a tarefa: variantes de título para uma página, opções de botão de CTA, copy de anúncio para uma campanha, ou uma revisão para deixar um copy existente mais enxuto. Cada variante se baseia em uma citação real de cliente ou uma afirmação de posicionamento, classificadas para você saber o que testar primeiro. Apenas rascunhos."
+      },
+      "write-my-page-copy": {
+        "name": "Escrever o copy da minha página",
+        "description": "Reescrevo o copy de qualquer página ou superfície dentro do produto. Escolha a superfície: página inicial, preços, sobre, uma landing page, seu fluxo de cadastro, onboarding dentro do app, paywall de upgrade, ou um popup. Você recebe o atual versus o proposto com o raciocínio por trás de cada mudança. Apenas rascunhos."
+      }
+    },
+    "operations": {
+      "analyze-my-data": {
+        "name": "Analisar meus dados",
+        "description": "Receba uma análise rigorosa do que seus dados estão realmente dizendo. Escolha o que você precisa: um relatório de experimento com o lift, a significância estatística, os intervalos de confiança e uma recomendação explícita de lançar, descartar, iterar ou inconclusivo; uma varredura de anomalias que sinaliza métricas que se desviam das suas linhas de base móveis com causas hipotéticas; ou uma auditoria de qualidade de dados que verifica nulos, duplicatas, atualidade e integridade referencial nas tabelas que importam para você."
+      },
+      "ask-a-data-question": {
+        "name": "Perguntar sobre meus dados",
+        "description": "Faça qualquer pergunta sobre seus dados em linguagem simples e receba uma resposta real. Eu traduzo isso para SQL somente leitura no seu warehouse conectado, aviso antes de executar algo custoso, executo, salvo a consulta para reutilização e retorno o resultado destacando qualquer ressalva, para que você não acabe usando um número que na verdade está errado."
+      },
+      "audit-my-saas-spend": {
+        "name": "Auditar meus gastos com SaaS",
+        "description": "Veja seus gastos reais anualizados com SaaS em um só lugar, incluindo as assinaturas que você esqueceu que tinha. Eu agrego tudo que vem do seu provedor de faturamento, dos recibos na sua caixa de entrada e da sua biblioteca de contratos, sinalizo duplicatas e ferramentas sem uso, e mostro os três principais candidatos ao cancelamento com a justificativa. A maioria dos fundadores se surpreende com o número total na primeira vez."
+      },
+      "book-a-meeting": {
+        "name": "Agendar uma reunião",
+        "description": "Consiga marcar uma reunião sem que a troca de mensagens consuma sua semana. Eu proponho três horários que respeitam seus blocos de foco, seu limite diário de reuniões e suas folgas entre compromissos, redijo a mensagem para a outra parte na sua voz, ajusto conforme as respostas, e só crio o evento depois que você disser explicitamente para agendar."
+      },
+      "brief-me": {
+        "name": "Me atualizar",
+        "description": "Receba o resumo que você precisa para chegar preparado ao seu dia ou à sua reunião. Escolha o que você precisa: um resumo diário que reúne sua caixa de entrada, seu calendário, seu chat e seus documentos recentes no plano de hoje; uma leitura prévia detalhada para os participantes de uma próxima reunião com a pauta e os possíveis pedidos; ou notas pós-reunião que transformam uma transcrição em decisões, responsáveis e próximos passos."
+      },
+      "collect-my-team-updates": {
+        "name": "Coletar as atualizações da minha equipe",
+        "description": "Execute o ciclo semanal de atualizações sem precisar cobrar sua equipe pessoalmente. Eu envio a mensagem pelo Slack ou e-mail na sua voz, coleto o que vem de volta, e analiso cada atualização em relação às suas prioridades ativas para que você veja o que está no caminho certo, o que está se desviando, quem está bloqueado e quem não respondeu. Fica inativo com uma mensagem amigável se você ainda não tiver uma seção de equipe nas suas informações operacionais."
+      },
+      "draft-a-message": {
+        "name": "Redigir uma mensagem",
+        "description": "Receba uma mensagem redigida na sua voz e salva na sua caixa de entrada, para que você só precise clicar em enviar. Escolha o que você precisa: uma resposta a uma conversa recebida; um follow-up que registra um compromisso no seu registro ou redige o cumprimento dele quando vence; ou contato com fornecedores para renovações, cancelamentos, testes ou verificação de referências, baseado nos termos reais do seu contrato."
+      },
+      "find-my-bottlenecks": {
+        "name": "Encontrar meus gargalos",
+        "description": "Descubra o que está realmente travando sua empresa para que você possa destravar. Eu agrupo evidências das suas revisões recentes, decisões pendentes, anomalias em aberto e metas fora do trilho em gargalos nomeados, cada um com uma hipótese e um responsável proposto para destravá-lo. Use isso quando algo parecer travado e você não conseguir identificar o porquê."
+      },
+      "log-a-decision": {
+        "name": "Registrar uma decisão",
+        "description": "Registre uma decisão da forma correta para ter um histórico ao qual recorrer depois. Eu escrevo uma entrada estilo ADR com contexto, alternativas consideradas, prós e contras, a decisão em si, a justificativa e as consequências. Me diga o que você decidiu e eu guardo no seu registro de decisões."
+      },
+      "plan-a-trip": {
+        "name": "Planejar uma viagem",
+        "description": "Receba um pacote de viagem pronto para que você possa viajar sem largar o resto da sua semana. Eu monto um resumo da viagem, um roteiro com critérios de busca de voos e hotéis, e uma lista de itens para a mala adaptada ao destino e ao tipo de viagem. Me diga onde e quando; eu redijo, você reserva."
+      },
+      "prep-an-investor-package": {
+        "name": "Preparar um pacote para investidores",
+        "description": "Redija o pacote que você precisa para o seu conselho ou seus investidores sem partir de uma página em branco. Escolha o que você precisa: um pacote para o conselho com as 8 seções padrão (resumo executivo, atualização do negócio, métricas, metas, conquistas, desafios, pedidos e anexo); ou uma atualização mensal ou trimestral para investidores escrita na sua voz e baseada no avanço real das suas metas, decisões e métricas. Eu sinalizo cada dado pendente em vez de inventar números."
+      },
+      "read-a-contract": {
+        "name": "Ler um contrato",
+        "description": "Extraia as cláusulas padrão de um contrato ou de uma pasta inteira deles sem precisar ler o juridiquês você mesmo. Eu extraio os limites de responsabilidade, os termos de rescisão, a renovação automática, os termos de pagamento, a propriedade intelectual, o tratamento de dados, os compromissos de disponibilidade e a exclusividade, cada um com a citação literal, um resumo em linguagem simples e um alerta sobre qualquer coisa desfavorável para sua postura com fornecedores. O calendário de renovações é atualizado automaticamente."
+      },
+      "research-a-topic": {
+        "name": "Pesquisar um tema",
+        "description": "Receba um briefing estruturado e com fontes citadas sobre um tema, uma empresa, uma pessoa ou seu feed social, em vez de precisar vasculhar tudo você mesmo. Me diga o que investigar e eu busco em provedores de notícias e pesquisa, classifico o que importa segundo suas prioridades, e escrevo um resumo executivo mais uma seção de 'o que isso significa para nós'. Cada afirmação vem acompanhada de uma URL de origem."
+      },
+      "run-my-ops-review": {
+        "name": "Executar minha revisão operacional",
+        "description": "Reúna o que foi entregue e o que avançou em toda a sua superfície operacional. Escolha o que você precisa: uma revisão semanal que agrega a saída de cada habilidade, cruza prioridades e renovações, sinaliza lacunas e recomenda o próximo movimento; ou um resumo de métricas que percorre cada métrica monitorada, calcula a variação semana a semana e mostra o que olhar primeiro."
+      },
+      "score-an-inbound": {
+        "name": "Avaliar uma proposta recebida",
+        "description": "Avalie qualquer proposta recebida que precise da sua decisão com base em critérios reais, em vez de decidir no feeling. Coloque a proposta de um advisor, um pedido de parceria, uma solicitação de imprensa ou uma candidatura genérica de fornecedor, e eu avalio contra seus critérios salvos, reúno evidências de sinais públicos, e gero uma recomendação de aprovar, recusar ou pedir mais informações, junto com a linha de evidência mais relevante."
+      },
+      "set-up-my-ops-info": {
+        "name": "Configurar minhas informações operacionais",
+        "description": "Me conte como sua empresa realmente funciona para que as outras habilidades operacionais parem de fazer as mesmas perguntas. Eu registro suas prioridades do trimestre, seu ritmo operacional, seus contatos principais, sua postura com fornecedores, seus limites inegociáveis e sua voz, tudo em um único documento vivo. Você faz isso apenas uma vez e eu mantenho atualizado conforme as coisas mudam."
+      },
+      "set-up-tracking": {
+        "name": "Configurar o monitoramento",
+        "description": "Configure o monitoramento operacional que você precisa para não voar às cegas. Escolha o que você precisa: uma única métrica que eu capturo diariamente no seu warehouse, ou uma especificação completa de dashboard com seções, visualizações, cadência e SQL somente leitura por trás de cada gráfico. Eu redijo a especificação, você ou sua ferramenta de BI a renderiza."
+      },
+      "track-my-goals": {
+        "name": "Acompanhar minhas metas",
+        "description": "Veja onde você realmente está com suas metas sem precisar montar tudo na mão. Eu atualizo o valor atual de cada métrica de meta a partir do seu rastreador de metas conectado, classifico como no caminho certo, em risco ou fora do caminho em relação à curva de cumprimento esperada, e mostro as causas raiz prováveis a partir de decisões e prioridades vinculadas. Execute semanalmente ou sempre que alguém perguntar como está o trimestre."
+      },
+      "track-my-renewals": {
+        "name": "Acompanhar minhas renovações",
+        "description": "Pare de ser pego de surpresa pelas renovações automáticas. Eu vasculho seus contratos e qualquer drive conectado em busca de datas de renovação, prazos de aviso prévio e cláusulas de renovação automática, e depois mantenho um calendário de renovações vivo, agrupado por nível de antecedência, para que você sempre saiba o que vem a seguir. Também produzo um resumo trimestral com candidatos a negociação e tudo o que já passou do prazo de cancelamento."
+      },
+      "triage-a-surface": {
+        "name": "Organizar minha caixa ou agenda",
+        "description": "Corte caminho na sua caixa de entrada ou na sua agenda para saber o que realmente precisa de você hoje. Escolha o que você precisa: uma triagem de caixa de entrada que organiza as últimas 24 horas em precisa-de-mim-hoje, pode-esperar e ignorar, com uma ação específica de verbo mais objeto para cada conversa; ou uma varredura de agenda que sinaliza compromissos sobrepostos, folgas faltando, conflitos com blocos de foco, horários VIP desprotegidos e reuniões sem preparo nos próximos 7 dias."
+      },
+      "vet-a-vendor": {
+        "name": "Avaliar um fornecedor",
+        "description": "Faça a due diligence de um fornecedor antes de assinar. Escolha o que você precisa: uma avaliação de encaixe que dá uma nota de 1 a 10 segundo seus critérios, com nível de risco e recomendação, ou uma verificação de compliance que confirma os frameworks deles, identifica os responsáveis pela segurança e mostra incidentes públicos. Cada afirmação vem com uma fonte."
+      }
+    },
+    "outbound": {
+      "airtable-lead-loader": {
+        "name": "Carregar leads no Airtable",
+        "description": "Crio uma nova tabela no Airtable com o esquema completo de acompanhamento de leads (campos do lead + campos de enriquecimento + status de prospecção) e carrego os registros em lote a partir de um arquivo de scraping. Uso 4 agentes em paralelo para carregar 4 vezes mais rápido, contornando o limite do Airtable de um registro por chamada. É a fase 2 dos dois pipelines, e também pode ser executada de forma independente se você tiver uma lista de leads em JSON."
+      },
+      "apollo-enrichment": {
+        "name": "Enriquecer leads com o Apollo",
+        "description": "Busco e-mails verificados para uma lista de leads usando o bulk match do Apollo (em lotes de 10), atualizo as linhas do Airtable com e-mail, empresa, cargo e localização, e crio contatos no Apollo sob um rótulo nomeado para que os leads apareçam nos seus fluxos de trabalho do CRM da Apollo. É a fase 3 dos dois pipelines, e pode ser executada de forma independente se você tiver uma tabela do Airtable já carregada pelo carregador de leads."
+      },
+      "cold-email-sequence": {
+        "name": "Escrever sequência de e-mails frios",
+        "description": "Escrevo com você uma sequência de 3 e-mails de prospecção fria, um e-mail de cada vez, seguindo o método de James Shields: assunto personalizado (não o corpo), 3 frases mais um PS, uma oferta irresistível e uma chamada para ação de baixa fricção para responder. Fecho cada e-mail com você antes de passar para o próximo, para que o tom, a prova social e a oferta permaneçam consistentes. É a fase 4 dos dois pipelines, e também pode ser executada de forma independente se você já tiver uma lista de contatos verificados e quiser textos novos."
+      },
+      "instantly-campaign": {
+        "name": "Criar campanha no Instantly",
+        "description": "Crio uma campanha de e-mail frio em pausa no Instantly, com todos os leads carregados e todas as contas de envio conectadas. Leio a sequência que você fechou comigo, limpo os corpos dos e-mails (o Instantly descarta corpos que contêm o caractere & literal, é um bug documentado), carrego até 1000 leads por chamada, e configuro o horário com um fuso horário que o Instantly aceita (America/Vancouver para o horário do Pacífico, que lida com o horário de verão automaticamente). Sempre fica em pausa para você revisar, nunca lanço automaticamente."
+      },
+      "linkedin-comment-scraper": {
+        "name": "Extrair comentários do LinkedIn",
+        "description": "Extraio todas as pessoas que comentaram em uma publicação do LinkedIn usando o Apify. Obtenho nomes, títulos, URLs de perfil, o texto do comentário e o número de reações, removo duplicados pela URL do perfil, descarto perfis nulos, e salvo a lista em um arquivo por execução. É a fase 1 do pipeline de comentários para prospecção, mas também pode ser executada de forma independente se você só precisar da lista."
+      },
+      "linkedin-comment-to-outreach": {
+        "name": "Transformar comentários do LinkedIn em prospecção",
+        "description": "Transformo a URL de uma única publicação do LinkedIn em uma campanha de e-mail frio em pausa no Instantly. Extraio todas as pessoas que comentaram, salvo tudo no Airtable, busco e-mails verificados com o Apollo, escrevo com você uma sequência de 3 e-mails, e depois carrego tudo no Instantly. Do início ao fim leva de 30 a 60 minutos, a maior parte na redação dos e-mails. Sempre fica em pausa para você revisar, eu nunca lanço automaticamente. Use para públicos de maior intenção e menor volume (comentar exige esforço)."
+      },
+      "linkedin-reaction-scraper": {
+        "name": "Extrair reações do LinkedIn",
+        "description": "Extraio todas as pessoas que reagiram a uma publicação do LinkedIn usando o Apify com profileScraperMode=main, para que cada linha volte com o perfil completo do LinkedIn: histórico de experiência, formação, habilidades, certificações, localização e número de conexões. Gera de 5 a 10 vezes mais leads do que a extração de comentários, com dados muito mais ricos por lead. É a fase 1 do pipeline de reações para prospecção, e também pode ser executada de forma independente."
+      },
+      "linkedin-reaction-to-outreach": {
+        "name": "Transformar reações do LinkedIn em prospecção",
+        "description": "É o mesmo pipeline do início ao fim da versão de comentários, mas para as pessoas que reagiram a uma publicação do LinkedIn. Gera de 5 a 10 vezes mais leads do que os comentaristas, e a extração retorna perfis completos do LinkedIn (experiência, formação, habilidades, certificações, localização, número de conexões) em uma única etapa. É ideal para estratégias de público mais amplo, quando você quer volume e dados ricos para personalização. Sempre fica em pausa para você revisar, eu nunca lanço automaticamente."
+      }
+    },
+    "people": {
+      "answer-a-policy-question": {
+        "name": "Responder a uma pergunta de política",
+        "description": "Respondo a uma pergunta de política de pessoas, como 'será que {employee} se qualifica para {benefit}' ou 'qual é a nossa política de trabalho remoto, equipamentos ou licenças'. Você recebe uma resposta direta quando a política é clara, e uma nota de escalonamento quando a pergunta vai além do seu roteiro escrito."
+      },
+      "calibrate-my-voice": {
+        "name": "Calibrar minha voz",
+        "description": "Analiso suas comunicações anteriores de RH (ofertas, check-ins, conversas difíceis) para conseguir imitar seu tom em cada rascunho. Conecte o Gmail ou o Outlook para obter a leitura mais precisa da sua voz, ou cole de três a cinco exemplos."
+      },
+      "coordinate-an-interview-loop": {
+        "name": "Coordenar um processo de entrevistas",
+        "description": "Agendo o processo de entrevistas de um candidato: encontro horários que funcionem para todo o painel, redijo um resumo para cada entrevistador e te entrego o cronograma para você confirmar. Eu nunca envio os convites, isso é você quem faz."
+      },
+      "debrief-an-interview-loop": {
+        "name": "Resumir um processo de entrevistas",
+        "description": "Reúno os comentários do painel depois de um processo de entrevistas e organizo tudo em temas, contradições, notas da rubrica e um memorando de contratar ou não contratar. Você decide, eu só te dou a leitura mais clara do que o painel realmente disse."
+      },
+      "draft-a-people-document": {
+        "name": "Redigir um documento de pessoas",
+        "description": "Redijo um documento de pessoas para você, como uma carta de oferta, um plano de onboarding, um plano de melhoria de desempenho (PIP) ou um roteiro para uma conversa de retenção. Redijo com base nas suas faixas salariais, na sua voz, no seu framework de níveis e nos seus limites inegociáveis, para que pareça que você mesmo escreveu. São apenas rascunhos, você é quem envia cada um."
+      },
+      "evaluate-a-candidate": {
+        "name": "Avaliar um candidato",
+        "description": "Avalio um candidato em relação a uma vaga aberta. Cole um currículo ou compartilhe uma URL do LinkedIn, e eu te dou uma nota conforme a rubrica, as evidências por trás dela, os sinais de alerta e o que explorar nas entrevistas. Ramifica de acordo com `source`: `resume` ou `linkedin`."
+      },
+      "prep-an-interviewer": {
+        "name": "Preparar um entrevistador",
+        "description": "Receba um resumo de uma página para se preparar antes de entrar na entrevista, seja você ou alguém do painel: histórico do candidato, as perguntas que vale a pena fazer, os sinais de alerta da rubrica e a folha de pontuação. Dá para ler em dois minutos."
+      },
+      "prep-the-review-cycle": {
+        "name": "Preparar o ciclo de avaliação",
+        "description": "Preparo o seu próximo ciclo de avaliação de desempenho: modelo de autoavaliação, modelo para gestores, documento de calibração e o cronograma completo. Tudo ancorado no seu ritmo de avaliações e no seu framework de níveis, para que não pareça genérico."
+      },
+      "profile-an-employee": {
+        "name": "Criar o perfil de um funcionário",
+        "description": "Reúno tudo o que sei sobre um funcionário em uma única página: perfil de RH, plano de onboarding, check-ins recentes e histórico do processo de entrevistas. Útil antes de uma reunião 1:1, uma conversa sobre remuneração ou uma reunião difícil."
+      },
+      "set-up-my-people-info": {
+        "name": "Configurar minhas informações de pessoas",
+        "description": "Me conte como você faz a gestão de RH: valores, níveis (para colaboradores individuais e gestores, de L1 a L5), faixas salariais, ritmo do ciclo de avaliações, políticas oficiais, regras de escalonamento, sua voz e seus limites inegociáveis, para que eu possa te dar rascunhos e respostas precisos. Este é o documento base que toda outra Ação de pessoas lê primeiro."
+      },
+      "source-candidates": {
+        "name": "Buscar candidatos",
+        "description": "Trago uma lista classificada de candidatos para uma vaga aberta, vindos do GitHub, LinkedIn, comunidades ou contribuidores de código aberto. Avalio cada um de acordo com a rubrica da vaga para você não precisar ler 200 perfis do LinkedIn. Você também pode usar essa habilidade para criar a rubrica de uma nova vaga antes de buscar candidatos."
+      },
+      "track-compliance-deadlines": {
+        "name": "Rastrear prazos de compliance",
+        "description": "Mantenho um calendário vivo de compliance de pessoas: status dos formulários I-9 e W-4, renovações de visto, prazos de vesting, datas do ciclo de avaliações e a frequência de atualização das políticas. Verifico o seu sistema de RH, atualizo o calendário diretamente e te aviso antes que algo vença."
+      }
+    },
+    "sales": {
+      "brief-me-for-today": {
+        "name": "Preparar meu dia",
+        "description": "Acorde com um resumo de uma tela só: as reuniões de hoje, os rascunhos esperando sua aprovação, os três principais movimentos que eu faria hoje, e sua lista de observação de negócios travados ou clientes vermelhos. O calendário é a âncora, eu nunca invento reuniões."
+      },
+      "build-a-battlecard": {
+        "name": "Montar um battlecard",
+        "description": "Construo um battlecard para um negócio específico contra um concorrente específico, não uma folha de comparação genérica. Uma grade de três critérios ancorada no que importa para esse prospect, três perguntas de descoberta com armadilha embutida, três respostas a objeções fundamentadas nos seus diferenciais reais, e dois pontos de prova das suas contas âncora. Cada afirmação cita uma fonte."
+      },
+      "capture-my-call-notes": {
+        "name": "Capturar minhas notas da call",
+        "description": "Transformo uma transcrição ou gravação em notas estruturadas: a pauta real versus a planejada, os participantes, as dores nas palavras deles, as decisões, os itens de ação divididos entre internos e externos, e o próximo passo. Relaciono a call com o lead certo, atualizo o dossiê dele, e só sincronizo com seu CRM com sua aprovação."
+      },
+      "check-my-sales": {
+        "name": "Conferir minhas vendas",
+        "description": "Tenha um diagnóstico real de como está seu processo de vendas. Escolha o que você precisa: um resumo de segunda-feira em todas as frentes, uma síntese entre calls com ajustes no playbook, uma leitura de padrões de ganhos e perdas, uma análise profunda de uma call de descoberta específica, ou uma foto do pipeline com o estágio que mais vaza. Cada leitura termina com uma ação concreta, não com um dashboard."
+      },
+      "find-me-leads": {
+        "name": "Buscar leads",
+        "description": "Encontro leads novos em um segmento a partir da fonte que você escolher: parecidos com seus ganhos no CRM, uma thread de comentários no LinkedIn, um feed de rodadas de investimento recentes, uma busca no Google Maps, ou um subreddit. Faço uma pontuação rápida de cada um contra os desqualificadores duros do seu playbook e só mantenho os VERDE e AMARELO. Cada linha cita o sinal que fez ele aparecer."
+      },
+      "find-my-expansions": {
+        "name": "Encontrar minhas expansões",
+        "description": "Reviso seus clientes VERDE em busca de sinais de expansão (picos de uso que passam dos limites do plano, crescimento do tamanho do time, padrões de pedidos de funcionalidades, adoção de novos produtos) e classifico as oportunidades de upsell, cross-sell, add-on e expansão de assentos pela receita anual potencial frente ao esforço de fechamento. Cada linha cita o sinal para você saber por que eu trouxe isso à tona."
+      },
+      "handle-an-objection": {
+        "name": "Lidar com uma objeção",
+        "description": "Redijo uma reformulação certeira de três frases para usar na call (reconhecer → exemplo concreto de uma conta âncora → próximo passo com data), mais um e-mail de acompanhamento curto no seu tom de voz. Busco a objeção no seu playbook e nos insights de calls recentes para que a resposta seja fundamentada, não improvisada."
+      },
+      "manage-my-crm": {
+        "name": "Gerenciar meu CRM",
+        "description": "Executo a ação de CRM que você precisar: uma limpeza que detecta duplicados e incompatibilidades de estágio sem alterar nada, uma consulta somente leitura em linguagem natural, um roteamento que atribui VERDE, nutre AMARELO e descarta VERMELHO, ou uma tarefa de acompanhamento enviada para sua ferramenta de tarefas. Eu nunca altero nada sem sua aprovação linha por linha."
+      },
+      "plan-an-onboarding": {
+        "name": "Planejar um onboarding",
+        "description": "Planejo os primeiros noventa dias de um cliente novo: a pauta do kickoff, a métrica de sucesso travada nas palavras dele desde o início, os marcos de tempo até o valor, os champions e bloqueadores identificados por nome, e a lista de riscos dos primeiros trinta dias. A base da qual toda revisão de conta e renovação futura parte."
+      },
+      "prep-a-meeting": {
+        "name": "Preparar uma reunião",
+        "description": "Te preparo para uma reunião no formato que fizer sentido: uma folha de preparação de uma página com as perguntas certas para o pilar de qualificação mais fraco do negócio, ou um pacote de revisão de conta com resultados entregues, tendência de uso, riscos e prazo até a renovação. Os dois partem do seu playbook e do histórico do negócio ou cliente, sem modelos genéricos."
+      },
+      "profile-my-buyer": {
+        "name": "Traçar o perfil do meu comprador",
+        "description": "Construo um perfil certeiro de quem realmente compra em um segmento: champion, comprador econômico, bloqueador, desqualificadores, contas âncora. Parto da sua lista de ganhos no CRM ou trabalho com os exemplos que você me der. Todo e-mail frio, preparação de call e proposta que eu redijo parte daqui."
+      },
+      "research-an-account": {
+        "name": "Pesquisar uma conta",
+        "description": "Pesquiso uma conta alvo ou contato na profundidade que você precisar: uma qualificação de 30 segundos a partir de uma URL, um relatório completo com fontes citadas que inclui varredura do site e doze semanas de notícias, um enriquecimento de uma pessoa específica, ou uma busca de conexões próximas no seu CRM e LinkedIn. Cada afirmação cita uma fonte real, sem notícias, rodadas de investimento ou conexões inventadas."
+      },
+      "run-my-forecast": {
+        "name": "Rodar meu forecast",
+        "description": "Trago cada negócio aberto do seu CRM, classifico de acordo com os critérios de saída de estágio do seu playbook em Commit / Best / Pipeline / Omit, somo a receita anual por categoria, e comparo com o forecast da semana passada para marcar qualquer atraso. A confiança de cada negócio é o mínimo entre o avanço de estágio, o quanto a qualificação está completa, e o quanto o plano de fechamento está completo, sem achismo."
+      },
+      "score-my-pipeline": {
+        "name": "Pontuar meu pipeline",
+        "description": "Pontuo o que você precisar pontuar. Escolha o assunto: cada lead sem pontuação frente ao seu perfil de cliente ideal, o encaixe e ângulo de um único lead, cada negócio aberto de acordo com seus fatores de saúde, ou a cor de cada cliente. Nomeio os dois principais fatores de cada linha para que nenhum número seja uma caixa preta."
+      },
+      "set-up-my-sales-info": {
+        "name": "Configurar minhas informações de vendas",
+        "description": "Me conte o básico sobre sua empresa, seu cliente ideal, sua postura de preços, os estágios dos seus negócios, e como você lida com objeções para que eu possa te dar uma ajuda melhor em vendas. Faço algumas perguntas rápidas e escrevo o playbook que todas as outras skills consultam primeiro. Você só precisa fazer isso uma vez, e eu mantenho tudo atualizado conforme as coisas mudam."
+      },
+      "write-a-close-plan": {
+        "name": "Escrever um plano de fechamento",
+        "description": "Construo um plano de ação mútuo com o prospect: uma linha do tempo compartilhada que cobre compras, revisão de segurança, aprovação de orçamento e jurídico, com responsáveis (os seus e os deles) e marcos com data. Aponto explicitamente os três principais riscos e qualquer stakeholder desconhecido para você saber o que descobrir na próxima call."
+      },
+      "write-a-proposal": {
+        "name": "Escrever uma proposta",
+        "description": "Redijo uma proposta de uma página fundamentada no negócio: o problema deles nas próprias palavras, sua abordagem proposta, o escopo (o que entra e o que não entra), o preço dentro da postura do seu playbook, os termos, as métricas de sucesso, o cronograma e o próximo passo. Qualquer coisa fora dos seus inegociáveis de preço é sinalizada para sua aprovação, nunca é comprometida em silêncio."
+      },
+      "write-my-outreach": {
+        "name": "Escrever meu outreach",
+        "description": "Redijo o outreach que você precisar: um e-mail frio fundamentado, um roteiro de ligação fria de sessenta segundos, um acompanhamento pós call, uma resposta a um lead inbound, uma nota de renovação, ou um e-mail para salvar uma conta em risco de cancelar. Cada rascunho imita o tom da sua caixa de enviados, se ancora no seu playbook, e fica em um arquivo até você copiar e enviar."
+      }
+    },
+    "support": {
+      "calibrate-my-voice": {
+        "name": "Calibrar minha voz",
+        "description": "Eu puxo suas respostas recentes a clientes na sua caixa de entrada conectada, leio como você realmente escreve, e destilo isso em um perfil de voz que todo rascunho futuro vai seguir. Capto seu jeito de cumprimentar, o ritmo das frases, a despedida, as frases favoritas, e o jargão corporativo que você nunca usa. Depois que isso rodar, cada resposta, artigo e mensagem de ciclo de vida vai soar como se você mesmo tivesse escrito."
+      },
+      "catch-me-up-on-a-thread": {
+        "name": "Me atualizar sobre uma conversa",
+        "description": "Aponte para uma conversa com um cliente e eu te dou a versão resumida: como estão as coisas, o que você prometeu, e o que o cliente está esperando. Três tópicos em vez de reler uma conversa de 20 mensagens. Especialmente útil antes de você redigir uma resposta para algo que ficou parado."
+      },
+      "check-my-inbox": {
+        "name": "Verificar minha caixa de entrada",
+        "description": "Tenha uma visão rápida da sua caixa de suporte. Escolha o que você precisa: um resumo matinal que classifica os 5 a 10 tickets que realmente precisam de você hoje, uma checagem de atrasados que sinaliza tudo que está prestes a estourar o prazo de resposta ou que já está atrasado, ou uma varredura de conversas paradas que pega aquelas que você deixou de lado. Eu analiso, classifico e digo por onde começar."
+      },
+      "draft-a-lifecycle-message": {
+        "name": "Redigir mensagem de ciclo de vida",
+        "description": "Eu redijo as mensagens que conduzem seus clientes pelo ciclo de vida. Uma série de boas-vindas que leva novos cadastros até a primeira conquista em cinco contatos, uma sequência de renovação de 90/60/30 dias baseada no que a conta realmente alcançou, um lembrete pontual de expansão quando os dados de uso mostram que alguém está batendo no teto, ou uma mensagem de retenção quando um cliente sinaliza que quer sair. Cada rascunho referencia dados reais da conta e suas políticas reais, nada inventado."
+      },
+      "draft-a-playbook": {
+        "name": "Redigir um playbook",
+        "description": "Eu escrevo um playbook de resposta a incidentes passo a passo, para que na próxima vez que algo quebrar você já saiba quem acionar, o que dizer aos clientes e quando publicar atualizações. Cobre desde a detecção até o post-mortem, com nomes reais, canais reais e modelos de comunicação na sua voz. Um documento que você escreve uma vez e usa sempre."
+      },
+      "draft-a-reply": {
+        "name": "Redigir uma resposta",
+        "description": "Me diga qual conversa e eu escrevo sua resposta. Eu busco o histórico do cliente, leio suas mensagens anteriores para acertar sua voz, e redijo algo que realmente responda ao que foi perguntado, seja um bug, um passo a passo ou uma questão de cobrança. Eu nunca envio e nunca prometo uma data que você não tenha aprovado."
+      },
+      "find-my-docs-gaps": {
+        "name": "Encontrar lacunas na minha documentação",
+        "description": "Eu olho o que seus clientes ficam perguntando e descubro onde a sua central de ajuda está deixando a desejar. Classifico as lacunas por quantas pessoas esbarram nelas e o quanto esses clientes valem, te dou as três principais com os tickets reais por trás de cada uma, e me ofereço para redigir os artigos na hora."
+      },
+      "flag-a-signal": {
+        "name": "Sinalizar um alerta",
+        "description": "Eu percebo algo em um ticket que é maior que o próprio ticket e registro isso do jeito certo. Um relato de bug é documentado com passos de reprodução e severidade, para que a engenharia possa agir. Um pedido de funcionalidade é atribuído ao cliente que pediu. E se eu vir a mesma pergunta aparecer três vezes ou mais sem um artigo de ajuda, sinalizo a lacuna na documentação e me ofereço para escrever um."
+      },
+      "look-up-a-customer": {
+        "name": "Consultar um cliente",
+        "description": "Me dê o nome de um cliente e escolha o que você precisa: um dossiê com o plano, histórico e pendências dele; uma linha do tempo completa de cada interação; uma pontuação de saúde (verde/amarelo/vermelho) com os três sinais por trás dela; ou uma checagem de risco de cancelamento que te diz se ele está se afastando e o que fazer a respeito. Um cliente, quatro ângulos."
+      },
+      "mine-my-tickets": {
+        "name": "Minerar meus tickets",
+        "description": "Eu passo pelos seus tickets recentes e extraio o que os clientes estão realmente dizendo. Agrupo as reclamações literais, os pedidos de funcionalidade, os pontos de fricção onde sua mensagem não bate com a realidade, e as frases que valem a pena roubar para a sua landing page. O melhor insumo para sua próxima conversa de roadmap, ajuste de posicionamento, ou atualização para investidores."
+      },
+      "review-my-support": {
+        "name": "Revisar meu suporte",
+        "description": "Receba um relatório estruturado de como o suporte está indo. Um resumo semanal que cobre todas as áreas com volume, principais temas, promessas atrasadas e alertas de cancelamento abertos. Um resumo da central de ajuda que mostra os temas dos tickets, a velocidade dos pedidos, e o artigo mais útil para escrever a seguir. Ou uma revisão por conta que mapeia vitórias, pedidos entregues, fricções em aberto, e próximos passos, para você chegar preparado na ligação."
+      },
+      "set-up-my-support-info": {
+        "name": "Configurar minhas informações de suporte",
+        "description": "Me conte o básico sobre seu produto, seus clientes, e como você lida com o suporte, para que eu possa te ajudar melhor. Faço algumas perguntas rápidas sobre seu produto, metas de tempo de resposta, lista VIP, regras de roteamento, e as pegadinhas conhecidas. Você só precisa fazer isso uma vez, e eu mantenho tudo atualizado conforme as coisas mudam."
+      },
+      "track-my-promises": {
+        "name": "Acompanhar minhas promessas",
+        "description": "Toda vez que você diz a um cliente que vai fazer algo até uma certa data, eu anoto isso com um prazo para não deixar passar. Extraio a promessa direto da sua resposta, interpreto a data limite, e vinculo à conversa. Isso aparece automaticamente no seu resumo matinal, para que nada escape."
+      },
+      "triage-a-ticket": {
+        "name": "Triar um ticket",
+        "description": "Me passe um ticket novo e eu faço a triagem para você. Leio a mensagem, identifico do que se trata (bug, passo a passo, cobrança, pedido de funcionalidade), verifico se o cliente é VIP, atribuo uma prioridade com base nas suas regras de roteamento, e coloco na sua fila para que você saiba exatamente o que precisa de atenção e com que urgência."
+      },
+      "tune-my-routing": {
+        "name": "Ajustar meu roteamento",
+        "description": "Atualizo as regras que decidem como os tickets recebidos são classificados e para onde vão. Mudo o que conta como bug versus pedido de funcionalidade, redireciono bugs para um novo sistema de rastreamento, atualizo quem aprova reembolsos, adiciono uma nova categoria, ou ajusto o roteamento VIP. Toda triagem depois da atualização segue automaticamente as novas regras."
+      },
+      "write-an-article": {
+        "name": "Escrever um artigo",
+        "description": "Eu transformo um ticket resolvido em um artigo da central de ajuda, redijo uma página de status para um problema conhecido quando algo quebra, envio notas personalizadas de 'você pediu, a gente lançou' para os clientes que pediram uma funcionalidade, ou sinalizo artigos desatualizados que precisam de uma revisão depois de uma mudança no produto. Escolha o tipo e receba um rascunho pronto para publicar, baseado em conversas reais e na sua voz."
+      }
+    }
   }
 }

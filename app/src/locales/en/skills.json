@@ -90,5 +90,533 @@
     "deleteTitle": "Delete \"{{name}}\"?",
     "deleteDescription": "This removes the skill from your agent. You can reinstall it later.",
     "instructionsPlaceholder": "Instructions for this skill..."
+  },
+  "categories": {
+    "Advisory": "Advisory",
+    "Bookkeeping": "Bookkeeping",
+    "Compliance": "Compliance",
+    "Contracts": "Contracts",
+    "Drafting": "Drafting",
+    "Entity": "Entity",
+    "Inbox": "Inbox",
+    "IP": "IP",
+    "Marketing": "Marketing",
+    "Operations": "Operations",
+    "Outbound": "Outbound",
+    "People": "People",
+    "Sales": "Sales",
+    "Setup": "Setup",
+    "Support": "Support",
+    "Tracking": "Tracking"
+  },
+  "catalog": {
+    "bookkeeping": {
+      "audit-my-books": {
+        "name": "Audit my books",
+        "description": "Get a punch-list read on whether your books are clean: uncategorized items, recon breaks, stale accruals, cutoff candidates, draft journal entries, missing opening balances, duplicate vendors. I rank issues by dollar impact and call out one 'close this week' move. Sub-mode `mode=audit-response` for auditor or diligence requests assembles a sample-traceable response packet with documented random seeds so the auditor can reproduce the selection. I never post or file."
+      },
+      "build-my-chart-of-accounts": {
+        "name": "Build my chart of accounts",
+        "description": "Draft a startup-optimized chart of accounts shaped for your entity, accounting method, and revenue model - with R&D / Sales & Marketing / General & Admin operating expenses breakouts, deferred revenue and accrued PTO lines, SAFE-note and convertible equity lines, and one cash sub-line per registered bank account. Supports in-place revisions that preserve every unchanged code so historical categorizations don't silently reroute. I never push the chart of accounts to QuickBooks or Xero - you or your accountant mirror it in."
+      },
+      "categorize-my-transactions": {
+        "name": "Categorize my transactions",
+        "description": "Categorize a batch of pending transactions from your QuickBooks or Xero queue, a dropped CSV, or a pasted table. I canonicalize each party, apply your saved rules first, then prior-year memory, then calibrated reasoning against your locked chart of accounts; anything below 0.90 confidence lands in Suspense rather than getting silently pushed through. Sub-mode `mode=rule-add` upserts a permanent `{party: gl_code}` rule after verifying the account code exists. Drafts only - I never post to QuickBooks or Xero, I never invent an account code."
+      },
+      "check-my-burn-and-runway": {
+        "name": "Check my burn and runway",
+        "description": "Get the founder one-pager: cash on hand, trailing 3- and 6-month net burn, runway months, a ±20% sensitivity table, and the top-3 cost drivers behind the burn. Cash balances come from QuickBooks / Xero / your bank feed where connected, the most recent statement otherwise. Every number cites a source - bank balance with timestamp, P&L line with file path, journal entry ids on the cost drivers. I surface the math and let you decide where to cut."
+      },
+      "check-my-sales-tax-nexus": {
+        "name": "Check my sales tax nexus",
+        "description": "See where you owe sales tax. I total revenue and transaction counts per US state from Stripe (or QuickBooks / Xero / invoices as fallback), compare each state's totals against its economic-nexus threshold for the quarter and trailing 12 months, pinpoint the month each crossed state was triggered, and flag physical-nexus states (W-2 employees, offices, inventory / FBA). I rank exposure highest-dollar first and call out the closest pre-crossing states as early warnings. I prep - you register and remit through Avalara, TaxJar, or the state portal directly."
+      },
+      "close-my-month": {
+        "name": "Close my month",
+        "description": "Run a full monthly close end-to-end: reconcile every registered account, refresh the accrual register, draft every due standard journal entry (reversing, accrual, prepaid, payroll, revenue recognition, depreciation, stock-comp, adjustment), run a cutoff check for transactions booked in the wrong period, generate P&L plus balance sheet plus cash flow, run variance analysis, and assemble a close package with the four open-items flags (recon breaks > $100, uncategorized > 10%, stale accruals > 90 days, journal entries still in draft) at the top. Sub-invocation `step=cutoff-check` runs the cutoff step standalone. Drafts only - I never post journal entries, never file, never move money."
+      },
+      "draft-a-journal-entry": {
+        "name": "Draft a journal entry",
+        "description": "Use when the user says 'book the accrual journal entry' / 'draft the depreciation journal entry for Q1' / 'post the prepaid amortization' / 'revenue recognition this period' / 'stock-comp journal entry' / 'reclass this expense'  -  I draft a balanced double-entry journal entry that branches on `type`: `accrual` | `prepaid` | `payroll` | `revrec` | `depreciation` | `stock-comp` | `adjustment` | `reclass`. Every journal entry is validated balanced to 1 cent, every account code is validated against `config/chart-of-accounts.json`, and the entry is written at `status: \"draft\"`. Sub-mode `type=accrual mode=reversing` auto-reverses every active accrual flagged `reversing=true`. Draft-only  -  I never post to QuickBooks Online / Xero."
+      },
+      "explain-my-variance": {
+        "name": "Explain my variance",
+        "description": "Tell me why a P&L line moved. I compare actuals against budget (if you have one), prior period, and same period prior year, decompose every material swing into price / volume / mix / one-time drivers tied to specific journal entries and vendors, and write a 3–5 paragraph narrative on the biggest movers. Materiality threshold defaults to 5% and $1k and is configurable per run. Unexplained residuals are surfaced, never quietly absorbed. Drafts only - I never re-classify or post to clean up a variance."
+      },
+      "hand-off-to-my-tax-preparer": {
+        "name": "Hand off to my tax preparer",
+        "description": "Assemble the year-end package for your tax preparer. I gate on a clean audit (`audit-my-books` runs first; open items block the handoff), then put together the trial balance, per-account reconciliations, fixed-asset and depreciation schedules, 1099 list, R&D classification (if eligible), M-1 adjustment candidates (meals 50% / 100% disallowance, stock-based compensation book vs. tax timing, accrual-to-cash deltas, federal income tax, deferred revenue, non-deductibles), and a judgment-call audit trail. Optional Google Drive mirror shared with your preparer as commenter. Drafts email to your preparer - I never send and I never file."
+      },
+      "import-my-prior-books": {
+        "name": "Import my prior books",
+        "description": "Backfill memory from your prior system: a QuickBooks Online or Xero export, a CSV, or a spreadsheet from your prior accountant. I seed your chart of accounts (only if you don't have one), build an opening trial balance from the prior period's closing balances, and learn vendor-to-account-code rules from transaction history with an 80%-confidence majority threshold so noisy parties don't poison future categorization. Strictly one-way read - I never push back to QuickBooks Online or Xero, never rewrite the prior books."
+      },
+      "log-an-expense": {
+        "name": "Log an expense",
+        "description": "Log a single expense from a forwarded receipt - image, PDF, or email - and produce one categorized expense plus one balanced journal entry. I extract vendor, date, amount, and line items via multimodal read, pick an account code against your locked chart of accounts (anything below 0.90 confidence lands in Suspense with the receipt attached), and draft the double-entry journal entry with the credit side keyed off how it was paid (corp card, founder loan, cash, or ACH). Sub-mode `mode=batch` rolls N receipts into one summary journal entry crediting Founder Loan Payable or Accrued Reimbursements. Draft only - I never post."
+      },
+      "prep-my-1099s": {
+        "name": "Prep my 1099s",
+        "description": "Prep your 1099-NEC and 1099-MISC list for the tax year. I total year-to-date payments per vendor from your run history, flag eligible vendors (non-corporate, ≥ $600), split NEC from MISC, cross-reference W-9 status against the W-9s you have on file, and draft chase emails for missing W-9s as Gmail / Outlook drafts (or as plain `.md` files if no inbox is connected). I prep, you file via IRS FIRE, Track1099, or Tax1099. I never file and I never send."
+      },
+      "prepare-my-financials": {
+        "name": "Prepare my financials",
+        "description": "Draft a financial statement for the period you pick, one statement per call: `statement=pnl | balance-sheet | cash-flow | trial-balance`. I produce the statement against your journal entries, opening balances, and chart of accounts, with prior-period and prior-year comparisons and 3-5 auto-generated notes that cite specific journal entries - no invented drivers. Cash and accrual views both run on accrual books; out-of-balance and unusual-balance flags surface at the top. Drafts only - you sign, you file."
+      },
+      "prepare-my-investor-pack": {
+        "name": "Prepare my investor pack",
+        "description": "Assemble a board-ready financial pack from the latest close: a one-page exec summary (cash, burn, runway, monthly revenue / annual revenue, gross margin, headcount, top-3 variance) followed by P&L, balance sheet, cash flow, SaaS KPIs (monthly revenue waterfall, NRR, gross margin, CAC payback), cohort retention if you have ≥ 6 cohorts, and runway sensitivity. `mode=saas-metrics` skips the full pack and refreshes just monthly revenue / annual revenue / gross margin / NRR. Optional Google Docs mirror so the board can comment. Drafts only - I never send."
+      },
+      "process-my-statements": {
+        "name": "Process my statements",
+        "description": "Process a batch of PDF or CSV bank and credit-card statements end to end: extract every transaction (parallel Haiku subagents), canonicalize the party names, categorize against your locked chart of accounts (parallel Sonnet subagents), detect inter-account transfers, and assemble a reviewed Google Sheets workbook with a formula-driven P&L. Reconciliation mismatches surface as warnings, low-confidence categorizations land in Suspense - I never invent an account code, never silently plug a number, never post to your accounting system."
+      },
+      "reconcile-my-accounts": {
+        "name": "Reconcile my accounts",
+        "description": "Reconcile a single account - bank, credit card, payment processor, or subledger - for the period you pick. I tie the general ledger one side, the external statement the other, surface unmatched items aged into 0–30 / 31–60 / 61–90 / >90 day buckets, and render a three-way proof with the real numbers. Sub-mode `mode=transfer-detect` finds debit/credit pairs across all your accounts within ±2 days and tags them as Internal Transfers so they fall out of the P&L. I never silently plug a difference and I never force-match in QuickBooks Online or Xero."
+      },
+      "review-my-accruals": {
+        "name": "Review my accruals",
+        "description": "Use when the user says 'list our active accruals' / 'refresh the accruals register' / 'are any accruals stale' / 'what reversing entries are due'  -  I recompute current balances for every active accrual (prepaid rent, prepaid SaaS, deferred revenue, PTO, accrued payroll, accrued interest), flag stale items, and surface reversing-entry candidates. Reads `accruals.json` + `journal-entries.json` + chart of accounts; rewrites `accruals/register.md` and upserts `accruals.json`."
+      },
+      "schedule-my-revenue": {
+        "name": "Schedule my revenue",
+        "description": "Spread a customer contract into a clean ASC 606 recognition schedule, one artifact per contract organized by customer. I handle the common startup patterns - annual upfront with monthly ratable, usage-based with a floor, implementation-fee deferral, contract modifications (prospective vs. cumulative catch-up) - and I flag the judgment calls (variable consideration, significant financing, non-cash) with options and dollar impact. I draft and surface; I never decide for you and I never post."
+      },
+      "set-up-my-books": {
+        "name": "Set up my books",
+        "description": "Set up your books from scratch with one founder interview that captures entity, fiscal year, accounting method, registered accounts, payroll posture, revenue model, investor cadence, and tax preparer, then writes the live bookkeeping brief every other skill reads first. Sub-mode `mode=opening-balances` captures your opening trial balance from a spreadsheet, CSV, or prior-accountant export. I never connect a bank, post to a general ledger, or move money from this skill - facts and a brief, full stop."
+      },
+      "tag-my-rd-spend": {
+        "name": "Tag my rd spend",
+        "description": "Tag your qualified R&D spend for Section 174 / federal R&D credit support. I bucket spend into the four IRS categories - qualified wages by employee role and time share, supplies, cloud / computer leasing, contract research at 65% - allocate it across your projects (or one 'Unallocated R&D' bucket if no project list), and call out the typical exclusions (post-release fixes, routine analytics, funded research). Support package only - your tax preparer files Form 6765 and any state equivalents."
+      }
+    },
+    "legal": {
+      "answer-a-legal-question": {
+        "name": "Answer a legal question",
+        "description": "Get a quick answer to a legal question, like 'do I need an NDA with investors?' or 'does GDPR apply to me?'. You get a short memo with the answer, the reasoning, the sources, and what to do next. Sensitive or unusual questions get flagged for a real lawyer."
+      },
+      "answer-a-security-questionnaire": {
+        "name": "Answer a security questionnaire",
+        "description": "A big customer sent you a security questionnaire? I read it, fill in everything I already know about your company, and group the rest by topic so you can knock out many in one sitting. Every answer I save reuses next time, so the second one is much faster than the first."
+      },
+      "audit-compliance": {
+        "name": "Audit compliance",
+        "description": "Check that your legal compliance is still in good shape. Pick what to check: your privacy policy, your privacy vendor list, or your contract templates. I surface what's drifted or out of date and what to fix. I never change anything on my own."
+      },
+      "check-a-trademark": {
+        "name": "Check a trademark",
+        "description": "Quickly check if a name is free to use as a trademark. I search the official US trademark database for exact, sound-alike, and look-alike hits, then rate the risk Low / Medium / High and tell you what to do next. Heads up: this is a quick check, not a full legal clearance - for that you need a real trademark lawyer."
+      },
+      "draft-a-legal-document": {
+        "name": "Draft a legal document",
+        "description": "Draft a legal document for you, like an NDA, a customer contract, an offer letter, a privacy policy, terms of service, a board decision, a reply to a customer data request, or a brief to send a real lawyer. I work from your existing templates if I have them, or from market-standard wording with a clear note. Drafts only, never sent or signed."
+      },
+      "plan-contract-pushback": {
+        "name": "Plan contract pushback",
+        "description": "After reviewing a contract, plan exactly what to push back on. I sort the issues into must-haves, nice-to-haves, and not-worth-fighting, write the exact wording you can paste into your counter-email, and add a fallback if the other side says no. You need to have reviewed the contract first."
+      },
+      "prepare-the-delaware-annual-filing": {
+        "name": "Prepare the delaware annual filing",
+        "description": "Get ready for your Delaware annual report and franchise tax (due March 1 every year). I run the math two ways and pick the cheaper one, which is usually 10x to 100x lower than the scary number Delaware shows by default. You get a step-by-step pack of exactly what to enter on the state's website. You file, I prep."
+      },
+      "review-a-contract": {
+        "name": "Review a contract",
+        "description": "Read a contract someone sent you and tell you what's in it. Pick how deep: a quick verdict on whether it's safe to sign, a fast NDA check, or a clause-by-clause map without a verdict. Every clause that needs attention gets a clear note and, when needed, suggested wording to push back with."
+      },
+      "set-up-my-legal-info": {
+        "name": "Set up my legal info",
+        "description": "Tell me the basics about your company so I can give you better legal help. I ask a few quick questions about your entity, cap table, contracts in force, templates, and any open risks. You only need to do this once, and I keep it updated as things change."
+      },
+      "sort-my-legal-inbox": {
+        "name": "Sort my legal inbox",
+        "description": "Sweep your inbox for legal stuff (contracts to review, NDAs, customer data requests, anything that needs a lawyer's attention) and tell you what needs you and what doesn't. I just sort and summarize, I never reply."
+      },
+      "track-deadlines-and-signatures": {
+        "name": "Track deadlines and signatures",
+        "description": "Keep tabs on what's outstanding on the legal side. Pick what you need: chase pending signatures, log a freshly signed agreement, see what deadlines are coming up, or get a Monday rollup of the week. I keep a running list so nothing slips."
+      }
+    },
+    "marketing": {
+      "audit-a-surface": {
+        "name": "Audit a surface",
+        "description": "Grade a specific marketing surface and get a prioritized fix list. Pick what to audit: your site's SEO health, your visibility in AI search engines like ChatGPT and Perplexity, a landing page scored on six dimensions, or a form that's leaking conversions. Every finding ranked by impact and ease."
+      },
+      "check-my-marketing": {
+        "name": "Check my marketing",
+        "description": "Get a read on how your marketing is actually doing. Pick what you need: a funnel readout that flags the biggest leak with experiments to run, a content gap analysis vs a competitor, or a weekly rollup of everything I shipped and what's missing. Numbers and next moves, not a dashboard."
+      },
+      "measure-my-marketing": {
+        "name": "Measure my marketing",
+        "description": "Set up the measurement you need so you're not guessing. Pick what you need: an event tracking plan you can hand a developer, a full A/B test spec with hypothesis and sample size, or a weekly LinkedIn digest showing how your posts performed and who's worth engaging with."
+      },
+      "mine-my-sales-calls": {
+        "name": "Mine my sales calls",
+        "description": "Pull the exact words your customers use from your sales call recordings. I extract verbatim pain phrases, objection patterns, and positioning signals from Gong or Fireflies transcripts, ranked by frequency. This is the single best source for headlines, ad copy, and landing pages that sound like your buyer."
+      },
+      "pitch-me-on-podcasts": {
+        "name": "Pitch me on podcasts",
+        "description": "Find podcasts where your ideal customer listens and draft a personalized pitch for each one. I shortlist shows by audience fit, check they're active, and write per-show emails with a hook that references a real episode. No template spam, you send from your own inbox."
+      },
+      "plan-a-campaign": {
+        "name": "Plan a campaign",
+        "description": "Plan a full campaign spec grounded in your positioning. Pick the type: a paid campaign with audience and budget, a product launch plan, a lifecycle drip, a welcome series, a churn-save email, or a feature announcement with email plus in-app copy. Specs only, I never send or launch."
+      },
+      "plan-my-social-week": {
+        "name": "Plan my social week",
+        "description": "Build your social posting plan for the week. I fill Monday through Friday across your active platforms with a mix of original posts, repurposed content, and engagement blocks. No duplicate angles, no generic filler."
+      },
+      "profile-my-customer": {
+        "name": "Profile my customer",
+        "description": "Build a detailed profile of the customer you're trying to win. I pull from your CRM or what you paste, and give you a persona with jobs-to-be-done, ranked pains, buying triggers, objection patterns, and real anchor accounts. Every ad, landing page, and email I write pulls from here."
+      },
+      "repurpose-my-content": {
+        "name": "Repurpose my content",
+        "description": "Turn something you already have into something new. Give me a blog post, a YouTube video, an article, or a competitor post, and tell me the target format. I reshape it for the new channel in your voice. No plagiarism, no generic-ify."
+      },
+      "research-a-topic": {
+        "name": "Research a topic",
+        "description": "Get a structured brief on any topic you need to understand before making a marketing decision. I run deep research, cite every source, and deliver angles worth writing about. Feeds blog drafts, ad strategies, and content plans."
+      },
+      "research-my-seo": {
+        "name": "Research my seo",
+        "description": "Build the SEO foundation you need to rank. Pick the focus: keyword research that clusters terms by intent and difficulty and names the pillars worth owning, or a backlink plan that finds target sites and drafts a personalized pitch for each one. Both grounded in your positioning so you chase the right traffic."
+      },
+      "set-up-my-marketing-info": {
+        "name": "Set up my marketing info",
+        "description": "Tell me the basics about your company, your customer, and how you talk so I can give you better marketing help. I ask a few quick questions about your product, positioning, ideal customer, voice, and what you're selling right now. You only need to do this once, and I keep it updated as things change."
+      },
+      "watch-my-competitors": {
+        "name": "Watch my competitors",
+        "description": "Keep tabs on what your competitors are doing and whether any of it matters. Pick what to watch: their product moves and messaging changes, the ads they're running, or posts in your feed worth jumping on. Real threats vs noise, not a news dump."
+      },
+      "write-a-case-study": {
+        "name": "Write a case study",
+        "description": "Turn a customer win into a case study you can put on your site or hand to sales. I structure it as challenge, approach, and results with real numbers in your voice. Any number I can't verify gets flagged for you to confirm."
+      },
+      "write-a-post": {
+        "name": "Write a post",
+        "description": "Draft a piece of content in your voice, grounded in your positioning. Pick the channel: a long-form blog post, a LinkedIn post, an X thread, a newsletter, or a Reddit reply. Channel-native copy that sounds like you, not a content mill. Drafts only, you always post."
+      },
+      "write-copy-variants": {
+        "name": "Write copy variants",
+        "description": "Get copy variants for the piece that needs the most help right now. Pick the job: headline variants for a page, CTA button options, ad copy for a campaign, or a tightening pass on existing copy. Every variant is grounded in a real customer quote or positioning claim, ranked so you know what to test first. Drafts only."
+      },
+      "write-my-page-copy": {
+        "name": "Write my page copy",
+        "description": "Rewrite the copy on any page or in-product surface. Pick the surface: homepage, pricing, about, a landing page, your signup flow, in-app onboarding, upgrade paywall, or a popup. You get current vs proposed with the reasoning behind each change. Drafts only."
+      }
+    },
+    "operations": {
+      "analyze-my-data": {
+        "name": "Analyze my data",
+        "description": "Get a rigorous readout on what your data is actually telling you. Pick what you need: an experiment readout with lift, significance, confidence intervals, and an explicit ship / kill / iterate / inconclusive call; an anomaly sweep that flags metrics deviating past rolling baselines with hypothesized causes; or a data-quality audit that checks nulls, dupes, freshness, and referential integrity on the tables you care about."
+      },
+      "ask-a-data-question": {
+        "name": "Ask a data question",
+        "description": "Ask any question about your data in plain English and get a real answer. I translate to read-only SQL against your connected warehouse, warn you before anything expensive runs, execute, save the query for reuse, and return the result with caveats called out so you don't ship a number that's quietly wrong."
+      },
+      "audit-my-saas-spend": {
+        "name": "Audit my saas spend",
+        "description": "See your real annualized SaaS spend in one place, including the subscriptions you forgot about. I aggregate everything from your billing provider, your inbox receipts, and your contract library, flag duplicates and unused tools, and surface the top three cancel candidates with rationale. Most founders are surprised by the headline number the first time."
+      },
+      "book-a-meeting": {
+        "name": "Book a meeting",
+        "description": "Get a meeting on the calendar without the back-and-forth eating your week. I propose three times that respect your focus blocks, daily meeting cap, and buffers, draft the counterparty message in your voice, iterate as they reply, and only create the event after you explicitly say to book it."
+      },
+      "brief-me": {
+        "name": "Brief me",
+        "description": "Get the brief you need to walk into your day or your meeting prepared. Pick what you need: a daily roll-up of your inbox, calendar, chat, and recent docs into today's plan; a deep attendee pre-read for an upcoming meeting with agenda and likely asks; or post-meeting notes that turn a transcript into decisions, owners, and follow-ups."
+      },
+      "collect-my-team-updates": {
+        "name": "Collect my team updates",
+        "description": "Run the weekly update loop without nagging your team yourself. I send the prompt over Slack or email in your voice, collect what comes back, and analyze each update against your active priorities so you can see what's on track, what's drifting, who's blocked, and who didn't answer. Stays dormant with a friendly message if you don't have a team section in your ops info yet."
+      },
+      "draft-a-message": {
+        "name": "Draft a message",
+        "description": "Get a message drafted in your voice and saved to your inbox so you only have to hit send. Pick what you need: a reply to an inbound thread; a follow-up that either logs a commitment to your ledger or drafts the fulfillment when one comes due; or vendor outreach for renewals, cancellations, trials, or reference checks grounded in your real contract terms."
+      },
+      "find-my-bottlenecks": {
+        "name": "Find my bottlenecks",
+        "description": "Find what's actually slowing your company down so you can unblock it. I cluster evidence from your recent reviews, pending decisions, open anomalies, and off-track goals into named bottlenecks, each with a hypothesis and a proposed owner to unblock it. Use this when something feels stuck and you can't put your finger on why."
+      },
+      "log-a-decision": {
+        "name": "Log a decision",
+        "description": "Capture a decision properly so you have a record you can point at later. I write an ADR-style entry with context, alternatives considered, trade-offs, the decision itself, rationale, and consequences. Tell me what you decided and I keep it in your decision ledger."
+      },
+      "plan-a-trip": {
+        "name": "Plan a trip",
+        "description": "Get a trip pack drafted so you can travel without dropping the rest of your week. I assemble a trip summary, an itinerary with flight and hotel search criteria, and a packing checklist adapted to the destination and trip type. Tell me where and when; I draft, you book."
+      },
+      "prep-an-investor-package": {
+        "name": "Prep an investor package",
+        "description": "Draft the package you need for your board or your investors without starting from a blank page. Pick what you need: a board pack with the standard 8 sections (TL;DR, business update, metrics, goals, wins, challenges, asks, appendix); or a monthly or quarterly investor update written in your voice grounded in real goal movement, decisions, and metrics. I flag every TBD instead of inventing numbers."
+      },
+      "read-a-contract": {
+        "name": "Read a contract",
+        "description": "Get the standard clauses out of a contract or a whole folder of them without reading legalese yourself. I extract liability caps, termination terms, auto-renewal, payment terms, IP, data handling, uptime commitments, and exclusivity, each with the verbatim quote, a plain-language summary, and a flag on anything unfavorable for your vendor posture. The renewal calendar updates automatically."
+      },
+      "research-a-topic": {
+        "name": "Research a topic",
+        "description": "Get a cited, structured briefing on a topic, a company or person, or your social feed instead of scanning everything yourself. Tell me what to dig into and I pull from news and research providers, rank what matters against your priorities, and write a TL;DR plus a 'so what for us' section. Every claim ships with a source URL."
+      },
+      "run-my-ops-review": {
+        "name": "Run my ops review",
+        "description": "Roll up what shipped and what moved across your whole ops surface. Pick what you need: a weekly review that aggregates every skill's output, cross-references priorities and renewals, flags gaps, and recommends the one move; or a metrics-rollup that walks every tracked metric, computes week-over-week change, and surfaces what to look at first."
+      },
+      "score-an-inbound": {
+        "name": "Score an inbound",
+        "description": "Score any inbound that needs your decision against a real rubric instead of going by gut. Drop in an advisor pitch, a partnership ask, a press request, or a generic vendor application and I run it against your saved criteria, gather public-signal evidence, and produce an approve / decline / more-info recommendation with the one line of evidence that matters most."
+      },
+      "set-up-my-ops-info": {
+        "name": "Set up my ops info",
+        "description": "Tell me how your company actually runs so every other ops skill stops asking the same questions. I capture your priorities for the quarter, your operating rhythm, key contacts, vendor posture, hard nos, and voice into one living doc. You only do this once and I keep it updated as things change."
+      },
+      "set-up-tracking": {
+        "name": "Set up tracking",
+        "description": "Set up the operational tracking you need so you're not flying blind. Pick what you need: a single metric I snapshot daily against your warehouse, or a full dashboard spec with sections, visualizations, cadence, and read-only SQL behind every chart. I draft the spec, you or your BI tool renders it."
+      },
+      "track-my-goals": {
+        "name": "Track my goals",
+        "description": "See where you actually stand on your goals without piecing it together by hand. I refresh each goal metric's current value from your connected goal tracker, classify on-track / at-risk / off-track against the expected attainment curve, and surface likely root causes from linked decisions and priorities. Run it weekly or whenever someone asks how the quarter's going."
+      },
+      "track-my-renewals": {
+        "name": "Track my renewals",
+        "description": "Stop getting surprised by auto-renewals. I scan your contracts and any connected drive for renewal dates, notice windows, and auto-renew language, then maintain a living renewal calendar grouped by lead-time tier so you always know what's next. I also produce a quarterly digest with negotiation candidates and anything past the cancel window."
+      },
+      "triage-a-surface": {
+        "name": "Triage a surface",
+        "description": "Cut through your inbox or calendar so you know what actually needs you today. Pick what you need: an inbox triage that sorts the last 24 hours into needs-me-today, can-wait, and ignore with a specific verb-plus-object action per thread; or a calendar scan that flags overbooks, missing buffers, focus-block clashes, unprotected VIP slots, and meetings without prep across the next 7 days."
+      },
+      "vet-a-vendor": {
+        "name": "Vet a vendor",
+        "description": "Run due-diligence on a vendor before you sign. Pick what you need: a fit evaluation that scores them 1-10 against your rubric with risk tier and recommendation, or a compliance check that verifies their frameworks, names their security leadership, and surfaces public incidents. Every claim cited."
+      }
+    },
+    "outbound": {
+      "airtable-lead-loader": {
+        "name": "Airtable lead loader",
+        "description": "Create a new Airtable table with the full lead-tracking schema (lead fields + enrichment fields + outreach status) and batch-load records from a scrape file. Uses 4 parallel agents to load 4x faster, working around Airtable's one-record-per-call limit. Phase 2 of both pipelines, also runnable standalone if you have a JSON list of leads."
+      },
+      "apollo-enrichment": {
+        "name": "Apollo enrichment",
+        "description": "Find verified emails for a list of leads via Apollo's bulk match (batches of 10), update the Airtable rows with email + company + title + location, and create Apollo contacts under a named label so the leads show up in your Apollo CRM workflows. Phase 3 of both pipelines, runnable standalone if you have an Airtable table populated by the loader."
+      },
+      "cold-email-sequence": {
+        "name": "Cold email sequence",
+        "description": "Co-write a 3-email cold outreach sequence with you, one email at a time, using the James Shields framework: personalized subject (not body), 3 sentences plus PS, irresistible offer, low-friction reply CTA. I lock each email with you before moving to the next so voice, social proof, and offer all stay tight. Phase 4 of both pipelines, also runnable standalone if you have a verified contact list and want fresh copy."
+      },
+      "instantly-campaign": {
+        "name": "Instantly campaign",
+        "description": "Create a paused cold email campaign in Instantly with all leads loaded and all sending accounts attached. I read your locked sequence, sanitize bodies (Instantly drops bodies that contain a literal ampersand - documented bug), bulk-load up to 1000 leads per call, and configure the schedule with a timezone Instantly accepts (America/Vancouver for Pacific, handles DST automatically). Always paused for your review - never auto-launched."
+      },
+      "linkedin-comment-scraper": {
+        "name": "Linkedin comment scraper",
+        "description": "Scrape every commenter on a LinkedIn post via Apify. I pull names, headlines, profile URLs, comment text, and reaction counts; dedupe by profile URL; drop null profiles; save the list to a per-run file. Phase 1 of the comment-to-outreach pipeline, but also runnable standalone if you only need the list."
+      },
+      "linkedin-comment-to-outreach": {
+        "name": "Linkedin comment to outreach",
+        "description": "Turn a single LinkedIn post URL into a paused cold email campaign in Instantly. I scrape every commenter, store them in Airtable, find verified emails through Apollo, co-write a 3-email sequence with you, then load it all into Instantly. End to end takes 30-60 minutes, most of it in the email copy. Always paused for your review - I never auto-launch. Use for higher-intent, lower-volume audiences (commenting takes effort)."
+      },
+      "linkedin-reaction-scraper": {
+        "name": "Linkedin reaction scraper",
+        "description": "Scrape every reactor on a LinkedIn post via Apify with profileScraperMode=main, so each row comes back with a full LinkedIn profile attached: experience history, education, skills, certifications, location, connections count. 5-10x more leads than the comment scrape and far richer data per lead. Phase 1 of the reaction-to-outreach pipeline, also runnable standalone."
+      },
+      "linkedin-reaction-to-outreach": {
+        "name": "Linkedin reaction to outreach",
+        "description": "Same end-to-end pipeline as the comment version, but for people who reacted to a LinkedIn post. 5-10x more leads than commenters and the scrape returns full LinkedIn profiles (experience, education, skills, certifications, location, connections count) in one shot. Best for broader-audience plays where you want volume + rich personalization data. Always paused for your review - I never auto-launch."
+      }
+    },
+    "people": {
+      "answer-a-policy-question": {
+        "name": "Answer a policy question",
+        "description": "Answer a people policy question, like 'does {employee} qualify for {benefit}' or 'what's our policy on remote work, equipment, or leave'. You get a direct answer when the policy is clear, an escalation note when the question goes beyond your written rubric."
+      },
+      "calibrate-my-voice": {
+        "name": "Calibrate my voice",
+        "description": "Sample your past HR comms  -  offers, check-ins, hard conversations  -  so I can match your tone in every draft. Connect Gmail or Outlook for the sharpest fingerprint, or paste three to five examples."
+      },
+      "coordinate-an-interview-loop": {
+        "name": "Coordinate an interview loop",
+        "description": "Schedule a candidate's interview loop  -  find times that work across the panel, draft per-panelist briefs, and hand you the slate to confirm. I never send invites, you do."
+      },
+      "debrief-an-interview-loop": {
+        "name": "Debrief an interview loop",
+        "description": "Pull together panel feedback after an interview loop into themes, contradictions, rubric scores, and a hire / no-hire memo. You decide; I just give you the cleanest read of what the panel actually said."
+      },
+      "draft-a-people-document": {
+        "name": "Draft a people document",
+        "description": "Draft a people document for you, like an offer letter, an onboarding plan, a performance improvement plan (PIP), or a stay conversation script. I draft against your comp bands, voice, leveling framework, and hard nos so it sounds like you wrote it. Drafts only, you ship every one."
+      },
+      "evaluate-a-candidate": {
+        "name": "Evaluate a candidate",
+        "description": "Score a candidate against an open role  -  paste a resume or share a LinkedIn URL and I give you a rubric score, the evidence behind it, red flags, and what to probe in interviews. Branches on `source`: `resume` or `linkedin`."
+      },
+      "prep-an-interviewer": {
+        "name": "Prep an interviewer",
+        "description": "Get a one-page interview prep brief before you (or a panelist) walk in  -  candidate background, the questions worth asking, red flags from the rubric, and the scoring sheet. Scannable in two minutes."
+      },
+      "prep-the-review-cycle": {
+        "name": "Prep the review cycle",
+        "description": "Prep your next performance-review cycle  -  self-review template, manager template, calibration doc, and the full timeline. Anchored on your review rhythm and leveling so it doesn't feel generic."
+      },
+      "profile-an-employee": {
+        "name": "Profile an employee",
+        "description": "Pull together everything I know about an employee into a one-pager  -  HR profile, onboarding plan, recent check-ins, interview loop history. Useful before a 1:1, a comp conversation, or a hard meeting."
+      },
+      "set-up-my-people-info": {
+        "name": "Set up my people info",
+        "description": "Tell me how you do HR  -  values, leveling (IC and manager, L1-L5), comp bands, review-cycle rhythm, policy canon, escalation rules, voice, and hard nos  -  so I can give you sharp drafts and answers. This is the foundation doc every other people Action reads first."
+      },
+      "source-candidates": {
+        "name": "Source candidates",
+        "description": "Pull a ranked list of candidates for an open role from GitHub, LinkedIn, communities, or open-source contributors. I score each one against your role rubric so you don't have to read 200 LinkedIn pages. You can also use this skill to seed the rubric for a new req before sourcing."
+      },
+      "track-compliance-deadlines": {
+        "name": "Track compliance deadlines",
+        "description": "Keep a living people-compliance calendar  -  I-9 / W-4 status, visa renewals, vesting cliffs, review-cycle dates, policy-refresh cadence. I scan your HR system, update the calendar in place, and nudge you before things expire."
+      }
+    },
+    "sales": {
+      "brief-me-for-today": {
+        "name": "Brief me for today",
+        "description": "Wake up with a one-screen brief: today's meetings, drafts waiting on your sign-off, the top three moves I'd make today, and your watch list of stalled deals or red customers. Calendar is the anchor; I never invent meetings."
+      },
+      "build-a-battlecard": {
+        "name": "Build a battlecard",
+        "description": "Build a battlecard for one specific deal versus one specific competitor - not a generic comparison sheet. Three-criterion grid anchored in what this prospect cares about, three trap-set discovery questions, three objection rebuttals grounded in your real differentiators, and two proof points from anchor accounts. Every claim cites a source."
+      },
+      "capture-my-call-notes": {
+        "name": "Capture my call notes",
+        "description": "Turn a transcript or recording into structured notes: agenda actual versus intended, attendees, pains in their words, decisions, action items split internal versus external, and the next step. I match the call to the right lead, update their dossier, and only sync to your CRM with your nod."
+      },
+      "check-my-sales": {
+        "name": "Check my sales",
+        "description": "Get a read on how your sales motion is actually doing. Pick what you need: a Monday rollup across every domain, a cross-call synthesis with playbook edits, a win-loss pattern read, a deep read on a single discovery call, or a pipeline snapshot with the leakiest stage. Every read ends with a concrete next move, not a dashboard."
+      },
+      "find-me-leads": {
+        "name": "Find me leads",
+        "description": "Surface fresh leads in a segment from a source you pick: your CRM closed-won lookalikes, a LinkedIn comment thread, a recent-funding feed, a Google Maps search, or a subreddit. I quick-score each against your playbook's hard disqualifiers and only keep GREEN and YELLOW. Every row cites the trigger signal that surfaced them."
+      },
+      "find-my-expansions": {
+        "name": "Find my expansions",
+        "description": "Scan your GREEN customers for expansion signals - usage spikes past tier thresholds, team-size growth, feature-request patterns, new-product adoption - and rank upsell, cross-sell, add-on, and seat-expansion opportunities by annual revenue upside over effort to close. Every row cites the signal so you know why I surfaced it."
+      },
+      "handle-an-objection": {
+        "name": "Handle an objection",
+        "description": "Draft a sharp three-sentence reframe to use on the call (acknowledge → concrete anchor-account example → dated next step) plus a short follow-up email in your voice. I look up the objection in your playbook and recent call insights so the response is grounded, not improvised."
+      },
+      "manage-my-crm": {
+        "name": "Manage my crm",
+        "description": "Run the CRM action you need: a hygiene sweep that diffs dupes and stage mismatches without mutating, a natural-language read-only query, a routing pass that assigns GREEN, nurtures YELLOW, and drops RED, or a follow-up task pushed to your task tool. I never mutate without your per-row approval."
+      },
+      "plan-an-onboarding": {
+        "name": "Plan an onboarding",
+        "description": "Plan a new customer's first ninety days: kickoff agenda, success metric locked in their words at kickoff, time-to-value milestones, named champions and blockers, and the first-thirty-day risk list. The anchor every later account review and renewal pulls from."
+      },
+      "prep-a-meeting": {
+        "name": "Prep a meeting",
+        "description": "Prep me for a meeting in the shape that fits: a one-page call prep with the right questions for the deal's weakest qualification pillar, or an account review pack with shipped outcomes, usage trend, risks, and renewal runway. Both pull from your playbook and the deal or customer history - no generic templates."
+      },
+      "profile-my-buyer": {
+        "name": "Profile my buyer",
+        "description": "Build a sharp profile of who actually buys in a segment - champion, economic buyer, blocker, disqualifiers, anchor accounts. I pull from your CRM closed-won list or work from the examples you give me. Every cold email, call prep, and proposal I draft pulls from here."
+      },
+      "research-an-account": {
+        "name": "Research an account",
+        "description": "Research a target account or contact at the depth you need: a 30-second qualify on a URL, a full cited brief with site scrape and twelve weeks of news, an enrichment on a named person, or a warm-paths search across your CRM and LinkedIn. Every claim cites a real source - no invented news, funding, or connections."
+      },
+      "run-my-forecast": {
+        "name": "Run my forecast",
+        "description": "Pull every open deal from your CRM, classify against the playbook's deal-stage exit criteria into Commit / Best / Pipeline / Omit, roll up annual revenue per bucket, and compare to last week's forecast to flag slippage. Confidence per deal is the minimum of stage progress, qualification completeness, and close-plan completeness - no gut calls."
+      },
+      "score-my-pipeline": {
+        "name": "Score my pipeline",
+        "description": "Score what you need scored. Pick the subject: every un-scored lead against your ideal customer profile, a single lead's fit and angle, every open deal on health drivers, or every customer's color. I name the top two drivers per row so nothing is a black-box number."
+      },
+      "set-up-my-sales-info": {
+        "name": "Set up my sales info",
+        "description": "Tell me the basics about your company, your ideal customer, your pricing stance, deal stages, and how you handle objections so I can give you better sales help. I ask a few quick questions and write the playbook every other skill reads first. You only need to do this once, and I keep it updated as things change."
+      },
+      "write-a-close-plan": {
+        "name": "Write a close plan",
+        "description": "Build a mutual action plan with the prospect: a shared timeline across procurement, security review, budget approval, and legal - with owners (yours and theirs) and dated milestones. Top three risks and any unknown stakeholder surfaced explicitly so you know what to learn on the next call."
+      },
+      "write-a-proposal": {
+        "name": "Write a proposal",
+        "description": "Draft a one-page proposal grounded in the deal: their verbatim problem statement, your proposed approach, scope (in and out), pricing within your playbook's stance, terms, success metrics, timeline, and next step. Anything outside your pricing non-negotiables gets flagged for your approval, never silently committed."
+      },
+      "write-my-outreach": {
+        "name": "Write my outreach",
+        "description": "Draft the outreach you need: a grounded cold email, a sixty-second cold-call script, a post-call follow-up, an inbound reply, a renewal note, or a churn-save email. Every draft is voice-matched to your sent inbox, anchored in your playbook, and stays in a file until you copy and send."
+      }
+    },
+    "support": {
+      "calibrate-my-voice": {
+        "name": "Calibrate my voice",
+        "description": "Pull your recent customer replies from your connected inbox, read how you actually write, and distill it into a voice profile that every future draft matches. Catches your greeting style, sentence rhythm, sign-off, favorite phrases, and the corporate fluff you never use. After this runs, every reply, article, and lifecycle message sounds like you wrote it."
+      },
+      "catch-me-up-on-a-thread": {
+        "name": "Catch me up on a thread",
+        "description": "Point me at a customer conversation and I give you the short version: where things stand, what you promised, and what the customer is waiting for. Three bullets instead of re-reading a 20-message thread. Especially useful before you draft a reply on something that's been sitting."
+      },
+      "check-my-inbox": {
+        "name": "Check my inbox",
+        "description": "Get a quick read on your support inbox. Pick what you need: a morning brief that ranks the 5-10 tickets that actually need you today, an overdue check that flags anything about to miss response-time targets or already past due, or a stale-threads sweep that catches conversations you dropped. I scan, rank, and tell you where to start."
+      },
+      "draft-a-lifecycle-message": {
+        "name": "Draft a lifecycle message",
+        "description": "Draft the messages that move customers through your lifecycle. A welcome series that walks new signups to their first win across five touches, a 90/60/30-day renewal sequence grounded in what the account actually achieved, a one-off expansion nudge when usage data shows someone hitting a ceiling, or a save message when a customer signals they want to leave. Every draft references real account data and your actual policies, nothing invented."
+      },
+      "draft-a-playbook": {
+        "name": "Draft a playbook",
+        "description": "Write a step-by-step incident response playbook so the next time something breaks, you already know who to page, what to tell customers, and when to post updates. Covers detection through post-mortem, with real names, real channels, and comms templates in your voice. One doc you write once and run every time."
+      },
+      "draft-a-reply": {
+        "name": "Draft a reply",
+        "description": "Tell me which conversation and I write your reply. I pull up the customer's history, read your past messages to match your voice, and draft something that actually addresses what they asked, whether it's a bug, a how-to, or a billing question. I never send it and I never promise a date you haven't approved."
+      },
+      "find-my-docs-gaps": {
+        "name": "Find my docs gaps",
+        "description": "Look at what your customers keep asking about and figure out where your help center is falling short. Ranks the gaps by how many people hit them and how valuable those customers are, gives you the top three with the actual tickets behind each one, and offers to draft the articles right there."
+      },
+      "flag-a-signal": {
+        "name": "Flag a signal",
+        "description": "Spot something in a ticket that's bigger than the ticket itself and I file it properly. A bug report gets logged with repro steps and severity so engineering can act on it. A feature request gets attributed to the customer who asked. And if I see the same question come up three or more times without a help article, I flag the docs gap and offer to write one."
+      },
+      "look-up-a-customer": {
+        "name": "Look up a customer",
+        "description": "Give me a customer name and pick what you need: a dossier with their plan, history, and open items; a full timeline of every interaction; a health score (green/yellow/red) with the three signals driving it; or a churn-risk check that tells you if they're slipping and what to do about it. One customer, four angles."
+      },
+      "mine-my-tickets": {
+        "name": "Mine my tickets",
+        "description": "Go through your recent tickets and pull out what customers are actually saying. Clusters the verbatim pains, feature requests, friction points where your messaging doesn't match reality, and quotes worth stealing for your landing page. The single best input for your next roadmap conversation, positioning tweak, or investor update."
+      },
+      "review-my-support": {
+        "name": "Review my support",
+        "description": "Get a structured readout of how support is going. A weekly rollup that covers every domain with volume, top themes, overdue promises, and churn flags opened. A help-center digest that surfaces ticket themes, request velocity, and the single most useful article to write next. Or a per-account review that maps wins, shipped requests, open friction, and next moves so you walk into the call prepared."
+      },
+      "set-up-my-support-info": {
+        "name": "Set up my support info",
+        "description": "Tell me the basics about your product, your customers, and how you handle support so I can give you better help. I ask a few quick questions about your product, response-time targets, VIP list, routing rules, and known gotchas. You only need to do this once, and I keep it updated as things change."
+      },
+      "track-my-promises": {
+        "name": "Track my promises",
+        "description": "Every time you tell a customer you'll do something by a certain date, I write it down with a deadline so it doesn't slip. I pull the promise straight from your reply, parse the due date, and link it to the thread. These show up in your morning brief automatically, so nothing falls through the cracks."
+      },
+      "triage-a-ticket": {
+        "name": "Triage a ticket",
+        "description": "Hand me a new ticket and I sort it for you. I read the message, figure out what it is (bug, how-to, billing, feature request), check if the customer is a VIP, assign a priority based on your routing rules, and slot it into your queue so you know exactly what needs attention and how fast."
+      },
+      "tune-my-routing": {
+        "name": "Tune my routing",
+        "description": "Update the rules that decide how incoming tickets get sorted and where they go. Change what counts as a bug versus a feature request, point bugs at a new tracker, update who approves refunds, add a new category, or adjust VIP routing. Every triage after the update automatically follows the new rules."
+      },
+      "write-an-article": {
+        "name": "Write an article",
+        "description": "Turn a resolved ticket into a help-center article, draft a known-issue status page when something breaks, send personalized 'you asked, we shipped' notes to the customers who requested a feature, or flag stale articles that need a refresh after a product change. Pick the flavor and get a publish-ready draft grounded in real conversations and your voice."
+      }
+    }
   }
 }

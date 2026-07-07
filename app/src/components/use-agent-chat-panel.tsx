@@ -66,8 +66,8 @@ import {
 import { createMission } from "../lib/create-mission";
 import { resolveDictationLangHint } from "../lib/dictation/types";
 import { useDictation } from "../lib/dictation/use-dictation";
-import { humanizeSkillName } from "../lib/humanize-skill-name";
 import { composeInteractionReply } from "../lib/interaction-reply";
+import { localizeSkillCopy } from "../lib/localize-skill-copy";
 import {
   modelSelectorDecision,
   resolvePersonalModelPin,
@@ -732,8 +732,9 @@ export function useAgentChatPanel({
       if (!skill || !agent || !path) return false;
 
       const claudePrompt = buildSkillClaudePrompt(skill, text);
-      const encoded = encodeSkillMessage(skill, text, claudePrompt);
-      const friendlyTitle = humanizeSkillName(skill.name);
+      const copy = localizeSkillCopy(skill, agent.configId, t);
+      const encoded = encodeSkillMessage(skill, copy, text, claudePrompt);
+      const friendlyTitle = copy.title;
 
       if (sessionKey) {
         // Mid-conversation: optimistic feed push + send, mirrors the
@@ -743,6 +744,7 @@ export function useAgentChatPanel({
         const prompt = withAttachmentPaths(claudePrompt, attachmentPaths);
         const encodedWithAttachments = encodeSkillMessage(
           skill,
+          copy,
           text,
           prompt,
           attachmentReferences(files, attachmentPaths),
@@ -793,6 +795,7 @@ export function useAgentChatPanel({
               const prompt = withAttachmentPaths(claudePrompt, paths);
               return encodeSkillMessage(
                 skill,
+                copy,
                 text,
                 prompt,
                 attachmentReferences(files, paths),
@@ -821,6 +824,7 @@ export function useAgentChatPanel({
       effectiveEffort,
       turnMode,
       queryClient,
+      t,
     ],
   );
 
@@ -1196,6 +1200,7 @@ export function useAgentChatPanel({
         {activeSkill && (
           <SelectedSkillChip
             skill={activeSkill}
+            configId={agent.configId}
             onCancel={() => setActiveSkill(null)}
           />
         )}
@@ -1218,15 +1223,18 @@ export function useAgentChatPanel({
               {t("chatEmpty.subheading")}
             </p>
           </div>
-          {emptySkillShowcase.map((s) => (
-            <SkillCard
-              key={s.name}
-              image={s.image}
-              title={humanizeSkillName(s.name)}
-              description={s.description}
-              onClick={() => applySkill(s)}
-            />
-          ))}
+          {emptySkillShowcase.map((s) => {
+            const copy = localizeSkillCopy(s, agent.configId, t);
+            return (
+              <SkillCard
+                key={s.name}
+                image={s.image}
+                title={copy.title}
+                description={copy.description}
+                onClick={() => applySkill(s)}
+              />
+            );
+          })}
           {moreSkillsCount > 0 && (
             <Button
               size="sm"

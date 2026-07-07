@@ -36,6 +36,12 @@ const DEFAULT_LABELS: Required<SkillDetailPageLabels> = {
 
 export interface SkillDetailPageProps {
   skill: Skill | undefined;
+  /**
+   * Localized display name override. Defaults to humanizing the skill's
+   * slug — consumers with a translation catalog pass the localized name in
+   * (this package stays i18n-agnostic).
+   */
+  displayName?: string;
   onBack: () => void;
   onSave: (skillName: string, instructions: string) => Promise<void>;
   onDelete: (skillName: string) => Promise<void>;
@@ -51,6 +57,7 @@ export interface SkillDetailPageProps {
 
 export function SkillDetailPage({
   skill,
+  displayName: displayNameOverride,
   onBack,
   onSave,
   onDelete,
@@ -100,7 +107,8 @@ export function SkillDetailPage({
   const isDirty = instructions !== skill.instructions;
   // Fall back to the id (the directory slug — the canonical skill identity)
   // when a detail response carries no name, so the header stays meaningful.
-  const displayName = humanizeSkillName(skill.name || skill.id);
+  const displayName =
+    displayNameOverride ?? humanizeSkillName(skill.name || skill.id);
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-background">

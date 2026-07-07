@@ -10,7 +10,7 @@ import { AddSkillDialog } from "@houston-ai/skills";
 import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { humanizeSkillName } from "../../lib/humanize-skill-name";
+import { localizeSkillCopy } from "../../lib/localize-skill-copy";
 import type { SkillSummary } from "../../lib/types";
 import { SkillCard } from "../skill-card";
 import { useSkillDialogLabels } from "./use-skill-surface-labels";
@@ -19,6 +19,7 @@ export function SkillsContent({
   skills,
   loading,
   loadingSkillName,
+  configId,
   readOnly = false,
   onSkillClick,
   onSearch,
@@ -33,6 +34,8 @@ export function SkillsContent({
   loading: boolean;
   /** Name of the skill whose detail is loading; its card spins + disables. */
   loadingSkillName?: string | null;
+  /** The owning agent's configId — keys first-party skill translations. */
+  configId?: string;
   /**
    * Managed-agent read-only mode (matrix v2): a non-manager may view and open
    * skills but not add/create/install any. Hides the add affordance entirely;
@@ -132,17 +135,20 @@ export function SkillsContent({
         )}
       </div>
       <div className="flex flex-col gap-2">
-        {sorted.map((skill) => (
-          <SkillCard
-            key={skill.name}
-            image={skill.image}
-            title={humanizeSkillName(skill.name)}
-            description={skill.description}
-            onClick={() => onSkillClick(skill.name)}
-            busy={loadingSkillName === skill.name}
-            disabled={loadingSkillName === skill.name}
-          />
-        ))}
+        {sorted.map((skill) => {
+          const copy = localizeSkillCopy(skill, configId, t);
+          return (
+            <SkillCard
+              key={skill.name}
+              image={skill.image}
+              title={copy.title}
+              description={copy.description}
+              onClick={() => onSkillClick(skill.name)}
+              busy={loadingSkillName === skill.name}
+              disabled={loadingSkillName === skill.name}
+            />
+          );
+        })}
       </div>
       {addDialogProps && (
         <AddSkillDialog
