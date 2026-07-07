@@ -14,6 +14,10 @@
     "./model-windows": {
       "types": "./src/model-windows.ts",
       "import": "./src/model-windows.ts"
+    },
+    "./interaction": {
+      "types": "./src/domain/interaction.ts",
+      "import": "./src/domain/interaction.ts"
     }
   },
   "files": [

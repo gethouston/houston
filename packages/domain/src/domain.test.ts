@@ -190,6 +190,33 @@ test("activity update: pending_interaction set / clear / untouched", () => {
   expect("pending_interaction" in cleared).toBe(false);
 });
 
+test("activity update: an invalid (pre-step legacy) pending_interaction is not persisted", () => {
+  const current = applyActivityUpdate(
+    createActivity({ title: "T" }, "a1", NOW),
+    {
+      pending_interaction: {
+        steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
+      },
+    },
+    NOW,
+  );
+  // A PATCH carrying the old top-level shape (no `steps`) must leave the
+  // current value alone instead of storing a shape the UI cannot render.
+  const legacy = applyActivityUpdate(
+    current,
+    {
+      pending_interaction: {
+        kind: "question",
+        question: "Which deck?",
+      } as unknown as import("@houston/protocol").PendingInteraction,
+    },
+    NOW,
+  );
+  expect(legacy.pending_interaction).toEqual({
+    steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
+  });
+});
+
 test("upsert/remove by id", () => {
   const a = createActivity({ title: "A" }, "a", NOW);
   const b = createActivity({ title: "B" }, "b", NOW);

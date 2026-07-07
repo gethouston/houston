@@ -111,6 +111,32 @@ test("a persisted pendingInteraction recovers on reload: needs_you + the interac
   expect(statuses).toEqual([["completed", undefined]]);
 });
 
+test("a legacy pre-step pendingInteraction on a persisted reply is ignored, not adopted", () => {
+  // Written by an older build: no `steps`. Adopting it would crash every
+  // consumer that reads interaction.steps ("undefined is not an object").
+  const legacy = {
+    kind: "question",
+    question: "which date?",
+    options: [{ id: "a", label: "Fri" }],
+  } as unknown as PendingInteraction;
+  const { s } = run(
+    [
+      { role: "user", content: "book it", ts: 1, turnId: "t-1" },
+      {
+        role: "assistant",
+        content: "which date?",
+        ts: 2,
+        turnId: "t-1",
+        pendingInteraction: legacy,
+      },
+    ],
+    "t-1",
+  );
+  expect(s.settled).toBe(true);
+  expect(s.pendingInteraction).toBeNull();
+  expect(s.terminal).toBe("done");
+});
+
 test("a persisted providerError for our turn settles as the typed card", () => {
   const providerError = {
     kind: "rate_limited",

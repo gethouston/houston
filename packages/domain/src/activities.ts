@@ -1,8 +1,8 @@
-import type {
-  Activity,
-  ActivityUpdate,
-  NewActivity,
-  PendingInteraction,
+import {
+  type Activity,
+  type ActivityUpdate,
+  isPendingInteraction,
+  type NewActivity,
 } from "@houston/protocol";
 import { docKey } from "./layout";
 import {
@@ -24,25 +24,11 @@ export const ACTIVITY_STATUSES = [
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** One interaction step is valid when it carries a string `id` and the fields
- *  its `kind` requires: a `question` needs a string `question`, a `connect`
- *  needs a string `toolkit`. */
-const isValidInteractionStep = (v: unknown): boolean => {
-  if (!isRecord(v) || typeof v.id !== "string") return false;
-  if (v.kind === "question") return typeof v.question === "string";
-  if (v.kind === "connect") return typeof v.toolkit === "string";
-  return false;
-};
-
-/** Validate the pending_interaction shape (mirrors the schema): a non-empty
- *  `steps` array, each step a valid question or connect. An old top-level
- *  `{kind, questions}` / `{kind, toolkit}` shape has no `steps`, so a value
- *  persisted before the step-sequence change is dropped. */
-const isValidPendingInteraction = (v: unknown): v is PendingInteraction =>
-  isRecord(v) &&
-  Array.isArray(v.steps) &&
-  v.steps.length > 0 &&
-  v.steps.every(isValidInteractionStep);
+/** Validate the pending_interaction shape (mirrors the schema). The canonical
+ *  structural guard lives beside the type in @houston/protocol: an old
+ *  top-level `{kind, questions}` / `{kind, toolkit}` shape has no `steps`, so a
+ *  value persisted before the step-sequence change is dropped. */
+const isValidPendingInteraction = isPendingInteraction;
 
 /**
  * Normalize a raw activity array (agents write this file with file tools, so
@@ -143,7 +129,12 @@ export function applyActivityUpdate(
   if (pending_interaction === null) {
     delete next.pending_interaction;
   } else if (pending_interaction !== undefined) {
-    next.pending_interaction = pending_interaction;
+    // PATCH bodies are untrusted at runtime (an old client or stale message can
+    // carry a pre-step shape the compile-time type can't catch): only a
+    // structurally valid sequence is persisted; anything else leaves the
+    // current value alone.
+    if (isValidPendingInteraction(pending_interaction))
+      next.pending_interaction = pending_interaction;
   }
   return next;
 }
