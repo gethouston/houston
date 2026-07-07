@@ -351,12 +351,15 @@ pinned **Recents** and **Favorites**, and rich rows (brand icon, price tier,
 The library component is props-only and i18n-agnostic (`labels?`); all app
 wiring lives in `app/src/components/chat-model-selector.tsx`.
 
-- **Reused in the create-agent modal too.** `ChatModelSelector` is the ONE model
-  selector: the chat composer AND the create/import-agent flows
-  (`naming-step.tsx`, `ai-assist-step.tsx`, `portable/import-wizard.tsx`) render
-  it with `agent={null}` (never locks — there is no agent yet). The old
+- **Reused in the import-agent wizard too.** `ChatModelSelector` is the ONE model
+  selector: the chat composer AND the import flow (`portable/import-wizard.tsx`)
+  render it with `agent={null}` (never locks — there is no agent yet). The old
   hand-rolled `InlineModelSelector` (curated-only, hid disconnected providers) is
-  gone; the create flow now gets the same full runnable catalog + Connect affordance.
+  gone. The **create-agent dialog has NO model picker**: `naming-step.tsx` and
+  `ai-assist-step.tsx` silently use the sticky last-used provider/model
+  (loaded on dialog open in `create-workspace-dialog.tsx`, baked into the new
+  agent via `finishAgentSetup`); users change the model later from the chat
+  composer.
 - **Only ever offers runnable `(provider, model)` pairs.** The mapping
   (`app/src/lib/chat-model-picker-map.ts`, pure + unit-tested) encodes each row
   id as `` `${provider}::${model}` `` (split on the FIRST `::`), decoded on

@@ -183,7 +183,7 @@
     "dialogTitle": "Nombra tu agente",
     "newAgentFallback": "Nuevo agente",
     "tagline": "Elige un color y pon nombre a tu agente",
-    "namePlaceholder": "p. ej. Proyecto Alpha",
+    "namePlaceholder": "p. ej. Gerente de producto, Ventas, Jerry",
     "linkExistingProject": "Vincular un proyecto existente",
     "createAgent": "Crear agente"
   },
@@ -195,62 +195,28 @@
     "fromScratchDescription": "Un agente en blanco, sin instrucciones ni acciones. Constrúyelo a tu manera."
   },
   "aiAssist": {
-    "brainLabel": "Configurar con",
     "cardTitle": "Crear con IA",
-    "cardDescription": "Responde algunas preguntas rápidas y escribiremos las instrucciones de tu agente",
-    "stepTitle": "Configura tu agente",
-    "generateButton": "Generar instrucciones",
-    "generatingMessage": "Escribiendo las instrucciones de tu agente...",
+    "cardDescription": "Describe tu trabajo y un consultor de IA diseña el agente por ti",
+    "stepTitle": "Informa a tu consultor de IA",
+    "stepDescription": "Cuéntanos sobre tu rol, las tareas que te quitan tiempo y las herramientas que usas. Tu consultor diseña el trabajo del agente en torno a eso.",
+    "briefLabel": "¿Qué debería quitarte de encima este agente?",
+    "briefPlaceholder": "p. ej. Dirijo las ventas en una agencia pequeña. Paso horas persiguiendo seguimientos, actualizando la hoja del pipeline y escribiendo correos de resumen después de las llamadas...",
+    "examplesLabel": "O empieza desde un ejemplo",
+    "examples": {
+      "sales": "Lidero las ventas y pierdo horas en correos de seguimiento y en mantener el CRM al día",
+      "inbox": "Mi bandeja de entrada está desbordada. Quiero un resumen matutino y borradores para respuestas rutinarias",
+      "reports": "Cada viernes armo un informe de estado del equipo a partir de actualizaciones y hojas dispersas",
+      "research": "Necesito investigación de mercado y de la competencia resumida en informes que pueda compartir"
+    },
+    "generateButton": "Diseñar mi agente",
+    "generatingMessage": "Tu consultor está diseñando el agente...",
     "cancelButton": "Cancelar",
     "generatedTitle": "Aquí están las instrucciones de tu agente",
     "generatedHelper": "Revisa y edita las instrucciones abajo, luego continúa cuando estés listo",
     "nameLabel": "Nombre del agente",
     "namePlaceholder": "p. ej. Gestor de bandeja de entrada",
     "errorTitle": "Error en la generación",
-    "errorDescription": "No se pudieron generar las instrucciones. Asegúrate de que tu proveedor de IA esté conectado e intenta de nuevo.",
-    "form": {
-      "focusLabel": "¿Con qué debe ayudar este agente?",
-      "focusRequired": "Elige un área de enfoque para continuar",
-      "traitsLabel": "Elige hasta 3 rasgos",
-      "traitsHint": "{{selected}}/{{max}} seleccionados",
-      "verbosityLabel": "¿Qué tan detalladas deben ser las respuestas?",
-      "verbosityMin": "Breve",
-      "verbosityMax": "Exhaustivo",
-      "askFirstLabel": "¿Debe hacer preguntas antes de responder?",
-      "askFirstHint": "El agente aclarará tu solicitud antes de comenzar",
-      "extraLabel": "Instrucciones adicionales",
-      "extraOptional": "opcional",
-      "extraPlaceholder": "Otras preferencias, reglas o contexto para este agente..."
-    },
-    "focus": {
-      "personalProductivity": "Productividad personal",
-      "workBusiness": "Trabajo y negocios",
-      "researchLearning": "Investigación y aprendizaje",
-      "writingEditing": "Escritura y edición",
-      "codingDev": "Programación y desarrollo",
-      "customerSupport": "Atención al cliente",
-      "dataAnalysis": "Datos y análisis",
-      "creativeDesign": "Creatividad y diseño"
-    },
-    "traits": {
-      "concise": "Conciso",
-      "thorough": "Exhaustivo",
-      "friendly": "Amigable",
-      "professional": "Profesional",
-      "creative": "Creativo",
-      "analytical": "Analítico",
-      "proactive": "Proactivo",
-      "cautious": "Cauteloso",
-      "structured": "Estructurado",
-      "casual": "Informal"
-    },
-    "verbosity": {
-      "1": "Muy breve",
-      "2": "Breve",
-      "3": "Equilibrado",
-      "4": "Detallado",
-      "5": "Muy detallado"
-    }
+    "errorDescription": "No se pudieron generar las instrucciones. Asegúrate de que tu proveedor de IA esté conectado e intenta de nuevo."
   },
   "aiReview": {
     "stepTitle": "Revisa tu agente",

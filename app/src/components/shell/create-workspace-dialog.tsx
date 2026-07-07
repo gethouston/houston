@@ -40,6 +40,7 @@ export function CreateAgentDialog() {
   const [generatedClaudeMd, setGeneratedClaudeMd] = useState<
     string | undefined
   >(undefined);
+  const [brief, setBrief] = useState("");
   const [routineForm, setRoutineForm] = useState<RoutineFormData | null>(null);
   const [routineAccepted, setRoutineAccepted] = useState(false);
   // The AI suggestion the current routineForm was seeded from. Used to
@@ -55,15 +56,17 @@ export function CreateAgentDialog() {
   const [provider, setProvider] = useState<string>("anthropic");
   const [model, setModel] = useState<string>(getDefaultModel("anthropic"));
 
-  // Reset form on close. On open, sync the picker to the sticky last-used
-  // pair. Reading on open (not mount) prevents the old "stale workspace
-  // default baked into the new agent's config" bug: the picker always
-  // reflects whatever the user actually picked last.
+  // Reset form on close. On open, load the sticky last-used provider/model —
+  // there is no picker in this flow anymore; the pair silently becomes the new
+  // agent's brain (and the generation brain on the AI path). Reading on open
+  // (not mount) prevents the old "stale workspace default baked into the new
+  // agent's config" bug.
   useEffect(() => {
     if (!open) {
       setStep(1);
       setSelectedConfigId(null);
       setGeneratedClaudeMd(undefined);
+      setBrief("");
       setRoutineForm(null);
       setRoutineAccepted(false);
       seededRoutineRef.current = null;
@@ -127,9 +130,6 @@ export function CreateAgentDialog() {
       setCreating(false);
       return;
     }
-    // Keep the sticky last-used in sync so the next new agent inherits the
-    // user's most recent choice (local, so it's cheap to await).
-    await tauriProvider.setLastUsed(provider, model);
     // Reveal the agent NOW. The provider/model write and routine setup dispatch
     // to the agent's engine, which on the hosted profile is a pod still
     // cold-starting — awaiting them here would re-block the dialog for the whole
@@ -207,10 +207,8 @@ export function CreateAgentDialog() {
           <AiAssistStep
             provider={provider}
             model={model}
-            onProviderChange={(p, m) => {
-              setProvider(p);
-              setModel(m);
-            }}
+            brief={brief}
+            onBriefChange={setBrief}
             onBack={() => setStep(1)}
             onContinue={(instructions, suggestedName, routine) => {
               setGeneratedClaudeMd(instructions);
@@ -267,8 +265,6 @@ export function CreateAgentDialog() {
             color={color}
             error={error}
             existingPath={existingPath}
-            provider={provider}
-            model={model}
             creating={creating}
             showLinkProject={selectedDef?.config.features?.includes(
               "link-project",
@@ -276,10 +272,6 @@ export function CreateAgentDialog() {
             onNameChange={setName}
             onColorChange={setColor}
             onExistingPathChange={setExistingPath}
-            onProviderChange={(p, m) => {
-              setProvider(p);
-              setModel(m);
-            }}
             onBack={() => setStep(1)}
             onSubmit={handleSubmit}
           />

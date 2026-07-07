@@ -15,7 +15,6 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { localizeCatalogCopy } from "../../agents/catalog-labels";
 import type { AgentDefinition } from "../../lib/types";
-import { ChatModelSelector } from "../chat-model-selector";
 
 interface NamingStepProps {
   selectedAgent: AgentDefinition | undefined;
@@ -23,8 +22,6 @@ interface NamingStepProps {
   color: string | undefined;
   error: string | null;
   existingPath: string | null;
-  provider: string;
-  model: string;
   /** The create request is in flight — lock the submit and show progress. */
   creating: boolean;
   /** Show "Link existing project" option (opt-in via agent features). */
@@ -32,7 +29,6 @@ interface NamingStepProps {
   onNameChange: (value: string) => void;
   onColorChange: (value: string) => void;
   onExistingPathChange: (path: string | null) => void;
-  onProviderChange: (provider: string, model: string) => void;
   onBack: () => void;
   onSubmit: (e: FormEvent) => void;
 }
@@ -43,14 +39,11 @@ export function NamingStep({
   color,
   error,
   existingPath,
-  provider,
-  model,
   creating,
   onNameChange,
   onColorChange,
   onExistingPathChange,
   showLinkProject,
-  onProviderChange,
   onBack,
   onSubmit,
 }: NamingStepProps) {
@@ -165,16 +158,6 @@ export function NamingStep({
             )}
           </div>
         )}
-
-        {/* AI model selector */}
-        <div className="flex justify-center">
-          <ChatModelSelector
-            provider={provider}
-            model={model}
-            onSelect={onProviderChange}
-            agent={null}
-          />
-        </div>
 
         {error && (
           <p className="text-xs text-destructive text-center">{error}</p>

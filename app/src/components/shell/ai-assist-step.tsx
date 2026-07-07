@@ -2,18 +2,17 @@ import { DialogTitle } from "@houston-ai/core";
 import type { SuggestedRoutine } from "@houston-ai/engine-client";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { tauriAgents, tauriProvider } from "../../lib/tauri";
-import { ChatModelSelector } from "../chat-model-selector";
-import { AgentSetupForm, type AgentSetupFormValues } from "./agent-setup-form";
-import { serializeFormValues } from "./agent-setup-utils";
+import { tauriAgents } from "../../lib/tauri";
+import { AgentBriefForm } from "./agent-brief-form";
 import { AiStepFooter } from "./ai-step-footer";
 
 interface AiAssistStepProps {
   provider: string;
   model: string;
-  /** Lift the picker change so the parent dialog can use it as the brain for
-   * the assist call AND the saved provider/model on the created agent. */
-  onProviderChange: (provider: string, model: string) => void;
+  /** The consultant brief lives in the dialog so navigating back from the
+   * routine/review steps doesn't wipe the user's typed text. */
+  brief: string;
+  onBriefChange: (value: string) => void;
   onBack: () => void;
   /** Called with the final CLAUDE.md content, suggested name, and an optional routine. */
   onContinue: (
@@ -23,35 +22,20 @@ interface AiAssistStepProps {
   ) => void;
 }
 
-const DEFAULT_FORM: AgentSetupFormValues = {
-  focus: "",
-  traits: [],
-  verbosity: 3,
-  askFirst: false,
-  extra: "",
-};
-
 export function AiAssistStep({
   provider,
   model,
-  onProviderChange,
+  brief,
+  onBriefChange,
   onBack,
   onContinue,
 }: AiAssistStepProps) {
   const { t } = useTranslation("shell");
-  const [form, setForm] = useState<AgentSetupFormValues>(DEFAULT_FORM);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const handlePickerChange = (next: string, nextModel: string) => {
-    onProviderChange(next, nextModel);
-    // Sticky default is updated only after the user actually generates with
-    // this brain (see handleGenerate). Updating on every dropdown poke would
-    // make the next new agent inherit a model the user never committed to.
-  };
-
-  const canGenerate = !!form.focus && !generating;
+  const canGenerate = !!brief.trim() && !generating;
 
   const handleCancel = () => {
     abortRef.current?.abort();
@@ -60,15 +44,12 @@ export function AiAssistStep({
   };
 
   const handleGenerate = async () => {
-    const description = serializeFormValues(form);
+    const description = brief.trim();
     setError(null);
     setGenerating(true);
     const controller = new AbortController();
     abortRef.current = controller;
     try {
-      // Persist the brain choice once the user commits to generating. This
-      // keeps the sticky default in sync with what actually built the agent.
-      await tauriProvider.setLastUsed(provider, model);
       const result = await tauriAgents.generateInstructions(description, {
         provider,
         model,
@@ -104,25 +85,13 @@ export function AiAssistStep({
               {t("aiAssist.stepTitle")}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {t("aiAssist.cardDescription")}
+              {t("aiAssist.stepDescription")}
             </p>
           </div>
 
-          <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">
-              {t("aiAssist.brainLabel")}
-            </p>
-            <ChatModelSelector
-              provider={provider}
-              model={model}
-              onSelect={handlePickerChange}
-              agent={null}
-            />
-          </div>
-
-          <AgentSetupForm
-            values={form}
-            onChange={setForm}
+          <AgentBriefForm
+            value={brief}
+            onChange={onBriefChange}
             disabled={generating}
           />
 
