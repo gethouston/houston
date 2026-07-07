@@ -57,7 +57,7 @@
     "retryPrompt": "Intenta de nuevo."
   },
   "providerError": {
-    "reconnectedContinue": "Ya inicié sesión de nuevo. Por favor continúa donde quedaste."
+    "reconnectedContinue": "Ya inicié sesión de nuevo. Por favor continúa donde quedaste. Si aún no has respondido mi último mensaje, respóndelo ahora."
   },
   "attachmentIssues": {
     "title": "Algunos archivos no se adjuntaron",

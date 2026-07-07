@@ -217,6 +217,10 @@ test("a prompt-time credential throw becomes a typed provider_error frame, not r
   expect(providerError?.data).toMatchObject({
     kind: "unauthenticated",
     cause: "no_credentials",
+    // pi threw BEFORE recording the message in its session store, so the card
+    // carries the text for the reconnect retry to re-deliver — a bare
+    // "continue" would meet a model that never saw the message.
+    undelivered_prompt: "hey",
   });
   // The typed frame IS the terminal: no generic error, no clean done.
   expect(events.some((e) => e.type === "error")).toBe(false);
@@ -225,6 +229,7 @@ test("a prompt-time credential throw becomes a typed provider_error frame, not r
   expect(persistedProviderError(id)).toMatchObject({
     kind: "unauthenticated",
     cause: "no_credentials",
+    undelivered_prompt: "hey",
   });
 });
 

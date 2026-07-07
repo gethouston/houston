@@ -127,6 +127,7 @@ import {
   continuesTaskAfterReconnect,
   isInlineAuthCardForChat,
   providerErrorRetryText,
+  reconnectContinueText,
   resendsOriginalPrompt,
   resolveProviderErrorForChat,
 } from "./shell/provider-error-cards/not-connected";
@@ -1102,7 +1103,10 @@ export function useAgentChatPanel({
               // other failures keep the generic visible retry prompt.
               const text = continuesTaskAfterReconnect(providerError)
                 ? encodeAutoContinueMessage(
-                    t("chat:providerError.reconnectedContinue"),
+                    reconnectContinueText(
+                      providerError,
+                      t("chat:providerError.reconnectedContinue"),
+                    ),
                   )
                 : providerErrorRetryText(
                     providerError,

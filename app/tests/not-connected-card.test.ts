@@ -5,6 +5,7 @@ import {
   continuesTaskAfterReconnect,
   isInlineAuthCardForChat,
   providerErrorRetryText,
+  reconnectContinueText,
   resendsOriginalPrompt,
   resolveProviderErrorForChat,
 } from "../src/components/shell/provider-error-cards/not-connected.ts";
@@ -92,6 +93,42 @@ describe("continuesTaskAfterReconnect", () => {
         message: "slow down",
       }),
       false,
+    );
+  });
+});
+
+describe("reconnectContinueText", () => {
+  it("re-delivers the undelivered prompt when the model never received it", () => {
+    // pi's prompt-time credential guard raised before recording the message
+    // in its session store — a bare "continue" would meet a model that never
+    // saw the message ("I don't see a previous task").
+    strictEqual(
+      reconnectContinueText(
+        {
+          kind: "unauthenticated",
+          provider: "openai",
+          cause: "no_credentials",
+          message: "No API key found for openai-codex.",
+          undelivered_prompt: "is this working",
+        },
+        "Please continue.",
+      ),
+      "is this working",
+    );
+  });
+
+  it("keeps the generic nudge for a streamed mid-turn failure (context intact)", () => {
+    strictEqual(
+      reconnectContinueText(
+        {
+          kind: "unauthenticated",
+          provider: "anthropic",
+          cause: "token_expired",
+          message: "session expired",
+        },
+        "Please continue.",
+      ),
+      "Please continue.",
     );
   });
 });

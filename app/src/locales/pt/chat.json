@@ -57,7 +57,7 @@
     "retryPrompt": "Tente de novo."
   },
   "providerError": {
-    "reconnectedContinue": "Entrei de novo. Por favor, continue de onde parou."
+    "reconnectedContinue": "Entrei de novo. Por favor, continue de onde parou. Se ainda não respondeu minha última mensagem, responda agora."
   },
   "attachmentIssues": {
     "title": "Alguns arquivos não foram anexados",

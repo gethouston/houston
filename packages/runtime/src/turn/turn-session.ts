@@ -275,6 +275,15 @@ export async function runPiTurn(
         model: pin?.model ?? null,
         message,
       });
+      // Prompt-time credential guard: pi raised BEFORE recording the user
+      // message in its session store, so the reconnect retry must re-deliver
+      // the text (mirrors exec-turn).
+      if (
+        thrown.kind === "unauthenticated" &&
+        !assistantText &&
+        tools.length === 0
+      )
+        thrown.undelivered_prompt = text;
       if (thrown.kind !== "unknown") {
         appendAssistantMessageAt(
           conversationsDir,

@@ -445,6 +445,17 @@ export async function execTurn(
         model: pin?.model ?? null,
         message: errMessage(err),
       });
+    // An auth throw with NOTHING streamed = pi's prompt-time credential guard,
+    // which raises BEFORE recording the user message in pi's session store —
+    // neither the live context nor a rebuild will ever see it. Carry the text
+    // on the card so the reconnect retry re-delivers it to the model.
+    if (
+      thrown.kind === "unauthenticated" &&
+      !providerError &&
+      !assistantText &&
+      tools.length === 0
+    )
+      thrown.undelivered_prompt = text;
     const typed = thrown.kind !== "unknown" ? thrown : undefined;
     appendAssistantMessage(id, assistantText, {
       tools,
