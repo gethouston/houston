@@ -204,7 +204,9 @@ backend keeps its SDK `permissionMode` default and simply gets no integration
 tools, so plan mode still holds.
 
 App side: a Mode pill in the composer footer
-(`app/src/components/chat-mode-selector.tsx`), remembered per-agent as `mode`
+(`app/src/components/chat-mode-selector.tsx`) — persona labels **Doer**
+(`execute`) and **Planner** (`plan`), the wire values are unchanged — remembered
+per-agent as `mode`
 in `.houston/config/config.json` (composer memory only — never synced to
 engine `Settings`). Every user-typed send forwards the pin explicitly as
 `modeOverride`.
