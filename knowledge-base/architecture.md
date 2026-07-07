@@ -129,6 +129,48 @@ third-party devs to install — the TypeScript front door to the host's protocol
 `.houston/<type>/<type>.json` layout; `packages/domain` seeds them into each
 agent on create.
 
+## User interaction lifecycle (ask_user / request_connection)
+
+When an agent must block on the user — a question, a choice, an approval, or a
+missing integration — it never leaves the ask sitting in plain text. Two runtime
+tools drive ONE lifecycle across runtime → protocol → SDK → UI:
+
+- **Tool → holder.** `ask_user` (all modes) and `request_connection`
+  (integration-gated) record the interaction into a per-turn holder — an
+  `AsyncLocalStorage` established for the duration of `session.prompt()`
+  (`packages/runtime/src/session/interaction.ts`, mirrors acting-context). Last
+  call wins; a fresh holder per turn IS the reset; recording outside a turn is a
+  no-op. The Claude-SDK subprocess backend (a `claude` subprocess that only sees
+  SDK built-ins) reaches the SAME tools through an in-process MCP server
+  ("houston", tools surface as `mcp__houston__*`) in
+  `packages/runtime/src/backends/claude/custom-tools.ts` — so an `anthropic`-backed
+  agent is not told to use tools it lacks.
+- **Holder → done frame.** After `prompt()` resolves, exec-turn (and the cloud
+  per-turn path) reads the holder and attaches its value to the clean terminal
+  `done` frame's optional `pendingInteraction` (`PendingInteraction` =
+  `{kind:"question", question, options?}` | `{kind:"connect", toolkit, reason?}`,
+  `packages/protocol`, wire v3). Only the clean path carries it; an error frame
+  never does.
+- **Done frame → settle split.** The SDK folds the frame
+  (`packages/sdk/src/modules/turns/turn-settle.ts`): a clean turn WITH an
+  interaction settles `boardStatus: needs_you` and carries the interaction; a
+  clean turn WITHOUT one settles the NEW terminal `boardStatus: done`. A user Stop
+  / logged-out provider is a handled `needs_you` (never carrying an interaction);
+  a real failure is `error`. `persistBoardStatus` writes `{ status,
+  pending_interaction }` (the web adapter PATCHes it); Activity persists
+  `pending_interaction` (null-cleared at turn start) and the assistant
+  `ChatMessage` persists `pendingInteraction`, so a `needs_you` card survives
+  reload.
+- **Settle → composer card → answer-as-new-turn.** A pending interaction REPLACES
+  the composer: `ChatQuestionCard` (`@houston-ai/chat`, inventory v4) for a
+  question/choice, `IntegrationConnectCard` (auto-continue) for a connect. The
+  user's answer comes back as an ordinary next-turn user message — nothing special
+  on the wire.
+
+The old `#houston_toolkit=` markdown-link connect hack is GONE from the prompt and
+tool guidance; the app's legacy link-card renderer survives only to render old
+transcripts. Client-side settle detail: `knowledge-base/client-architecture.md`.
+
 ## Current gap to vision
 
 | Goal | Status |

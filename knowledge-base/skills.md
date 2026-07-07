@@ -82,7 +82,7 @@ Step-by-step instructions Claude follows when the Skill runs.
    - selected Skill chip above the composer
    - Skill-only send interception
    - composer model selector + Skills button
-   - Composio link card renderer
+   - legacy Composio connect-link card renderer (old transcripts only; new connects go through the `request_connection` tool → a composer connect card — see `integrations.md`)
    - file-tool result renderer
    - `renderUserMessage` — decodes skill + attachment markers into cards
 6. Both **BoardTab** (per-agent kanban) and **Dashboard** (Mission Control / cross-agent kanban) consume this hook so the right panel is identical in both views.
