@@ -237,7 +237,7 @@
     "continueButton": "Continuar"
   },
   "engineGate": {
-    "starting": "Carregando seu espaço de trabalho…",
+    "starting": "Carregando seus agentes…",
     "reconnected": "Houston reconectou",
     "loadFailed": "Não foi possível carregar seus modelos de IA disponíveis. Verifique sua conexão e tente novamente.",
     "authRequiredTitle": "Login necessário",

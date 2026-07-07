@@ -89,7 +89,10 @@ nebula-shader palette + the fallback radial glows · `-nebula-core` `#b8b2e8`
 dust-lane tint) · `-star` `#dce2f7` (cool-white starfield) · `-star-warm` `#f6e7cd` (the warm ~10%
 of stars) · `-haze` `#8f9bc9` (the faint painted Milky-Way band) · `-foreground`
 `#ffffff` (pure-white wordmark + logo, currentColor) · `-foreground-muted`
-`#8e96b8` (footer links).
+`#8e96b8` (footer links) · `-comet-warm` `#fbbf24` (amber) / `-comet-cool` `#3b82f6`
+(blue) — the `OrbitLoader` comet trail's warm-head → cool-tail sweep, deliberately
+the endpoints of the `card-running-glow` halo gradient so the two share one comet
+language.
 
 ### Borders (opacity)
 5%/15%/15%/25% = light/medium/heavy/xheavy. Use `rgba(13,13,13,X)`.
@@ -206,10 +209,27 @@ full-screen space layout**: the `--ht-space-canvas` base, the `SpaceBackground`
 deep-space backdrop, and a `z-10` content slot on top. Both the **sign-in
 screen** (`components/auth/sign-in-screen.tsx`) and the **workspace-loading
 splash** (`components/shell/workspace-loading.tsx`) render inside it, so the whole
-boot experience reads as one continuous space. In both, the card floating on the
-backdrop is pinned to the **light palette** (`data-theme="light"`) so it stays a
-bright, calm card regardless of app theme (Mercury pattern: dark backdrop, light
-card). The whole space rendering cluster lives in **`app/src/components/space/`**.
+boot experience reads as one continuous space. The **sign-in screen** floats a
+card pinned to the **light palette** (`data-theme="light"`) so it stays a bright,
+calm card regardless of app theme (Mercury pattern: dark backdrop, light card).
+The **workspace-loading splash has NO card** — the `OrbitLoader` + status line sit
+directly on the dark backdrop, using the space-foreground token family
+(`--ht-space-foreground` / `-foreground-muted`, same as the sign-in wordmark/footer).
+The whole space rendering cluster lives in **`app/src/components/space/`**.
+
+**`OrbitLoader`** (`space/orbit-loader.tsx` + geometry/trail constants in
+`space/orbit-path.ts`) is the loading centrepiece that replaced the old scaled-up
+`HoustonAvatar running` card: a 240px inline-SVG scene — a soft pulsing core
+(the workspace being assembled), a barely-there tilted elliptical orbit ring
+(`--ht-space-star` @ 0.16), and a sleek dart ship travelling the ellipse via SMIL
+`<animateMotion rotate="auto">` (6s lap, unhurried). The comet streak is 12
+soft blurred capsule ellipses riding the SAME `<mpath>` path with negative `begin`
+offsets + decreasing opacity/scale, so they overlap into one continuous glowing
+streak rather than reading as discrete darts, coloured `--ht-space-comet-warm` →
+`-comet-cool` (amber head → blue tail) to echo the `card-running-glow` halo. No JS loop, no per-frame
+allocation, no colour literals. SMIL ignores `prefers-reduced-motion`, so it
+branches on framer-motion `useReducedMotion()` → a single static ship parked on
+the ring beside the static core, zero `<animate*>` elements.
 
 `SpaceBackground` (`app/src/components/space/space-background.tsx`) is the
 deep-space layer itself — an `aria-hidden`, `pointer-events-none` absolute layer,
