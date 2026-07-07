@@ -31,3 +31,10 @@ export function pushPendingUserMessage(
   _sessionKey: string,
   _text: string,
 ): void {}
+
+/**
+ * Local conversation cache (HOU-712) — inert here for the same reason: the
+ * aliased adapter's implementation wipes the per-user cached transcripts on
+ * sign-out. This package's client never caches, so there is nothing to clear.
+ */
+export async function clearConversationCache(): Promise<void> {}
