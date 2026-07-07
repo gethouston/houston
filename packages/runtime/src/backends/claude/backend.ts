@@ -117,6 +117,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
           deps.workspaceDir,
           deps.systemPrompt,
           opts.mode,
+          opts.context,
         ),
         includePartialMessages: true,
         permissionMode: "default",

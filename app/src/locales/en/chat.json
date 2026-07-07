@@ -56,6 +56,9 @@
   "toolRuntimeError": {
     "retryPrompt": "Try again."
   },
+  "providerError": {
+    "reconnectedContinue": "I'm signed in again. Please continue where you left off. If my last message hasn't been answered yet, answer it now."
+  },
   "attachmentIssues": {
     "title": "Some files were not attached",
     "description": "Houston kept your prompt and the files it can use.",
