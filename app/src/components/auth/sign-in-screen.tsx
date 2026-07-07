@@ -9,10 +9,10 @@ import {
 import { logger } from "../../lib/logger";
 import { tauriSystem } from "../../lib/tauri";
 import { HoustonLogo } from "../shell/experience-card";
+import { SpaceScreen } from "../space/space-screen";
 import { prettifyAuthError } from "./auth-errors";
 import { EmailSignIn } from "./email-sign-in";
 import { GoogleIcon, MicrosoftIcon } from "./provider-brand-icons";
-import { SpaceBackground } from "./space-background";
 
 type Provider = "google" | "azure";
 
@@ -68,15 +68,13 @@ export function SignInScreen() {
   };
 
   return (
-    <div className="relative flex h-screen flex-col bg-[var(--ht-space-canvas)] text-foreground">
-      <SpaceBackground />
-
-      <div className="relative z-10 flex items-center gap-2 px-8 pt-14 pb-6 text-[var(--ht-space-foreground)]">
+    <SpaceScreen>
+      <div className="flex items-center gap-2 px-8 pt-14 pb-6 text-[var(--ht-space-foreground)]">
         <HoustonLogo size={24} />
         <span className="text-lg font-semibold tracking-tight">Houston</span>
       </div>
 
-      <div className="relative z-10 flex flex-1 items-center justify-center px-6">
+      <div className="flex flex-1 items-center justify-center px-6">
         {/* data-theme="light" pins the whole card to the light palette so it
             reads identically in both app themes (white card on the
             theme-invariant space backdrop). */}
@@ -148,7 +146,7 @@ export function SignInScreen() {
         </div>
       </div>
 
-      <div className="relative z-10 flex items-center justify-center gap-3 py-6 text-xs text-[var(--ht-space-foreground-muted)]">
+      <div className="flex items-center justify-center gap-3 py-6 text-xs text-[var(--ht-space-foreground-muted)]">
         <button
           type="button"
           onClick={openExternal("https://gethouston.ai/privacy")}
@@ -165,6 +163,6 @@ export function SignInScreen() {
           Terms of Service
         </button>
       </div>
-    </div>
+    </SpaceScreen>
   );
 }
