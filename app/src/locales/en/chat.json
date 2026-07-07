@@ -5,7 +5,20 @@
     "dropTitle": "Drop your files",
     "dropDescription": "Drop them here to add them to the conversation",
     "imagePasteUnavailable": "Couldn't read the pasted image. Try dragging the file in instead.",
-    "addFiles": "Add files"
+    "addFiles": "Add files",
+    "dictation": {
+      "start": "Start voice typing",
+      "stop": "Stop and insert",
+      "cancel": "Cancel",
+      "recording": "Recording",
+      "transcribing": "Transcribing...",
+      "setupTitle": "Set up voice typing",
+      "setupBody": "One-time download, about {{sizeMb}} MB.",
+      "setupConfirm": "Download",
+      "setupProgress": "Downloading... {{pct}}%",
+      "micDenied": "Houston needs microphone access. Allow it in system settings, then try again.",
+      "noMic": "No microphone was found."
+    }
   },
   "attribution": {
     "you": "You"

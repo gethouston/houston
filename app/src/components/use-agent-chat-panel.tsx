@@ -64,6 +64,8 @@ import {
   sessionContextUsage,
 } from "../lib/context-usage";
 import { createMission } from "../lib/create-mission";
+import { resolveDictationLangHint } from "../lib/dictation/types";
+import { useDictation } from "../lib/dictation/use-dictation";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
 import { composeInteractionReply } from "../lib/interaction-reply";
 import {
@@ -71,6 +73,7 @@ import {
   resolvePersonalModelPin,
 } from "../lib/model-selector-lock";
 import { canManageAgentGrants, isMultiplayer } from "../lib/org-roles";
+import { osIsTauri } from "../lib/os-bridge";
 import {
   decideHandoffMode,
   estimateConversationTokens,
@@ -101,6 +104,7 @@ import {
 } from "../lib/tauri";
 import { normalizeTurnMode, type TurnMode } from "../lib/turn-mode";
 import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
+import { useDraftStore } from "../stores/drafts";
 import { useUIStore } from "../stores/ui";
 import { ChatConnectInteractionCard } from "./chat-connect-interaction-card";
 import { resolveEffectiveProvider } from "./chat-effective-provider";
@@ -109,6 +113,7 @@ import { ChatModeSelector } from "./chat-mode-selector";
 import { ChatModelSelector } from "./chat-model-selector";
 import { ContextCompactedDivider } from "./context-compacted-divider";
 import { ContextIndicator } from "./context-indicator";
+import { DictationSetupDialog } from "./dictation-setup-dialog";
 import { IntegrationConnectCard } from "./integration-connect-card";
 import { parseToolkitFromHref } from "./integration-connect-card-state";
 import { integrationsSupported } from "./integrations/model";
@@ -192,6 +197,9 @@ interface AgentChatPanelProps {
   currentUserId: ChatPanelProps["currentUserId"];
   /** Localized author-attribution labels forwarded to ChatPanel. */
   authorLabels: ChatPanelProps["authorLabels"];
+  /** Prop-driven dictation control for the composer mic. Undefined on web
+   *  (no native mic capture) — ChatPanel hides the mic entirely. */
+  dictation: ChatPanelProps["dictation"];
 }
 
 export function useAgentChatPanel({
@@ -200,7 +208,7 @@ export function useAgentChatPanel({
   selectedSessionKey,
   onSelectSession,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
-  const { t } = useTranslation(["board", "chat", "teams"]);
+  const { t, i18n } = useTranslation(["board", "chat", "teams"]);
   const {
     processLabels,
     getThinkingMessage,
@@ -215,6 +223,29 @@ export function useAgentChatPanel({
   const { data: session } = useSession();
   const currentUserId = session?.user.id;
   const authorLabels = undefined;
+
+  // ── Dictation (desktop-only voice typing) ──────────────────────────────
+  // Transcript text is appended to the SAME draft store AIBoard's
+  // `drafts`/`onDraftChange` read from (`useBoardDrafts` in mission-board.tsx)
+  // — the key mirrors AIBoard's own `activeSessionKey ?? "new-conversation"`
+  // derivation, so dictating into a fresh composer lands in the same draft
+  // the user would see if they typed instead.
+  const draftKey = selectedSessionKey ?? "new-conversation";
+  const handleDictationTranscript = useCallback(
+    (text: string) => {
+      const current = useDraftStore.getState().drafts[draftKey]?.text ?? "";
+      const needsSpace = current.length > 0 && !current.endsWith(" ");
+      useDraftStore
+        .getState()
+        .setDraftText(draftKey, `${current}${needsSpace ? " " : ""}${text}`);
+    },
+    [draftKey],
+  );
+  const { dictation, modelSetup } = useDictation({
+    onTranscript: handleDictationTranscript,
+    langHint: resolveDictationLangHint(i18n.resolvedLanguage),
+    enabled: osIsTauri(),
+  });
 
   // Integration connect cards are a new-engine feature: the host advertises
   // its wired providers in capabilities; the legacy Rust engine (null) and
@@ -1310,6 +1341,7 @@ export function useAgentChatPanel({
         onConfirm={confirmProviderSwitch}
         onCancel={() => setSwitchDialog(null)}
       />
+      <DictationSetupDialog modelSetup={modelSetup} />
     </>
   ) : null;
 
@@ -1339,5 +1371,6 @@ export function useAgentChatPanel({
     turnMode,
     currentUserId,
     authorLabels,
+    dictation,
   };
 }

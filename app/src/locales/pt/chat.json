@@ -5,7 +5,20 @@
     "dropTitle": "Solte seus arquivos",
     "dropDescription": "Solte-os aqui para adicioná-los à conversa",
     "imagePasteUnavailable": "Não foi possível ler a imagem colada. Tente arrastar o arquivo.",
-    "addFiles": "Adicionar arquivos"
+    "addFiles": "Adicionar arquivos",
+    "dictation": {
+      "start": "Iniciar ditado por voz",
+      "stop": "Parar e inserir",
+      "cancel": "Cancelar",
+      "recording": "Gravando",
+      "transcribing": "Transcrevendo...",
+      "setupTitle": "Configurar ditado por voz",
+      "setupBody": "Download único de cerca de {{sizeMb}} MB.",
+      "setupConfirm": "Baixar",
+      "setupProgress": "Baixando... {{pct}}%",
+      "micDenied": "O Houston precisa de acesso ao microfone. Permita nas configurações do sistema e tente novamente.",
+      "noMic": "Nenhum microfone foi encontrado."
+    }
   },
   "attribution": {
     "you": "Você"

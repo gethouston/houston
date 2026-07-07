@@ -25,6 +25,10 @@ import {
   type UnlistenFn,
 } from "@tauri-apps/api/event";
 import type {
+  DictationModelProgress,
+  DictationModelStatus,
+} from "./dictation/types";
+import type {
   BridgeStatus,
   DetectedServer,
   ReconnectBridgeArgs,
@@ -274,4 +278,46 @@ export function osStopLocalBridge(): Promise<void> {
  *  event streams the same shape). */
 export function osLocalBridgeStatus(): Promise<BridgeStatus> {
   return invoke<BridgeStatus>("local_bridge_status");
+}
+
+// ── On-device dictation (bundled whisper.cpp sidecar) ──────────────────────
+// Native, desktop-only: transcription runs entirely on the user's machine, so
+// (like the local-model bridge above) this never moves to the engine.
+
+/** Transcribe a recorded WAV clip. The raw bytes ride the IPC payload (same
+ *  raw-payload pattern as `osSaveDownload`) so a multi-megabyte clip can't
+ *  freeze the webview; the language hint rides the `x-dictation-lang` header.
+ *  Rejects with the exact string "model-not-ready" when the model hasn't
+ *  been downloaded yet, or "transcription-timeout" on a stalled transcribe. */
+export function osTranscribeAudio(
+  wav: Uint8Array,
+  langHint: string,
+): Promise<string> {
+  return invoke<string>("transcribe_audio", wav, {
+    headers: { "x-dictation-lang": langHint },
+  });
+}
+
+/** Whether the pinned dictation model is on disk. */
+export function osDictationModelStatus(): Promise<DictationModelStatus> {
+  return invoke<DictationModelStatus>("dictation_model_status");
+}
+
+/** Download (and sha256-verify) the pinned dictation model. Idempotent —
+ *  resolves immediately if already ready. Progress rides the
+ *  `dictation-model-progress` event; subscribe via
+ *  {@link onDictationModelProgress} before calling this. */
+export function osDownloadDictationModel(): Promise<void> {
+  return invoke<void>("download_dictation_model");
+}
+
+/** Subscribe to `dictation-model-progress` ticks emitted while
+ *  {@link osDownloadDictationModel} runs. Mirrors how `local-bridge-status`
+ *  is consumed (see `useLocalBridgeStatus`) — resolves with the unlisten fn. */
+export function onDictationModelProgress(
+  handler: (progress: DictationModelProgress) => void,
+): Promise<UnlistenFn> {
+  return listen<DictationModelProgress>("dictation-model-progress", (ev) =>
+    handler(ev.payload),
+  );
 }

@@ -194,6 +194,9 @@ export interface AIBoardProps {
   currentUserId?: ChatPanelProps["currentUserId"];
   /** Localized author-attribution labels. Forwarded to ChatPanel. */
   authorLabels?: ChatPanelProps["authorLabels"];
+  /** Prop-driven dictation control for the composer mic. Forwarded to
+   *  ChatPanel; omit (or ChatPanel's own default) hides the mic entirely. */
+  dictation?: ChatPanelProps["dictation"];
   /** Left-pane layout. "board" = kanban columns (default); "list" = a single
    *  column-less vertical list (used by the Archived missions tab). */
   layout?: "board" | "list";
@@ -306,6 +309,7 @@ export function AIBoard({
   composerLabels,
   currentUserId,
   authorLabels,
+  dictation,
   layout = "board",
   listAlign,
   searchSnippets,
@@ -724,6 +728,7 @@ export function AIBoard({
           renderUserMessage={renderUserMessage}
           currentUserId={currentUserId}
           authorLabels={authorLabels}
+          dictation={dictation}
           afterMessages={renderedAfterMessages}
           onNotice={onNotice}
           prepareAttachments={prepareAttachments}
