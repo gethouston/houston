@@ -6,7 +6,7 @@ import {
 } from "@houston-ai/core";
 import type { Agent } from "@houston-ai/engine-client";
 import type { LucideIcon } from "lucide-react";
-import { Check, ChevronDown, NotebookPen, Zap } from "lucide-react";
+import { Check, ChevronDown, NotebookPen, Rocket, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { modelSelectorDecision } from "../lib/model-selector-lock";
@@ -28,18 +28,23 @@ interface ChatModeSelectorProps {
 }
 
 /** Doer = execute (acts on the world), Planner = plan (read-only, writes a
- *  plan). Wire values stay `execute`/`plan`; only the persona labels change. */
+ *  plan), Autopilot = auto (fire-and-forget, no blocking tools). Wire values
+ *  stay `execute`/`plan`/`auto`; only the persona labels change. */
 const MODE_ICONS: Record<TurnMode, LucideIcon> = {
   execute: Zap,
   plan: NotebookPen,
+  auto: Rocket,
 };
 
-const MODE_ORDER: readonly TurnMode[] = ["execute", "plan"];
+// Top→bottom as an autonomy dial: Planner (looks, doesn't touch) → Doer (acts,
+// asks when unsure) → Autopilot (acts and never stops to ask).
+const MODE_ORDER: readonly TurnMode[] = ["plan", "execute", "auto"];
 
 /**
  * "Mode" picker, rendered beside {@link ChatModelSelector} in the composer.
- * Two personas — Doer (execute) and Planner (read-only planning) — each with an
- * icon in a soft tile, a name, and a one-line description. The trigger is the
+ * Three personas — Planner (read-only planning), Doer (execute), and Autopilot
+ * (auto, fire-and-forget) — each with an icon in a soft tile, a name, and a
+ * one-line description. The trigger is the
  * same h-7 muted pill as the model + effort selectors; the menu matches the
  * model picker's card (rounded-2xl, bordered, shadowed, roomy rows). Hidden only
  * for a member on a pre-Teams multiplayer host (mirrors the other selectors);
@@ -57,10 +62,12 @@ export function ChatModeSelector({
   const labels: Record<TurnMode, string> = {
     execute: t("modeSelector.doer"),
     plan: t("modeSelector.planner"),
+    auto: t("modeSelector.autopilot"),
   };
   const descriptions: Record<TurnMode, string> = {
     execute: t("modeSelector.doerDescription"),
     plan: t("modeSelector.plannerDescription"),
+    auto: t("modeSelector.autopilotDescription"),
   };
 
   const ActiveIcon = MODE_ICONS[mode];

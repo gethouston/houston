@@ -48,7 +48,7 @@ export interface QueueWarmingSendArgs {
   provider?: string;
   model?: string;
   effort?: string;
-  mode?: "execute" | "plan";
+  mode?: "execute" | "plan" | "auto";
 }
 
 /**

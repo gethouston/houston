@@ -49,7 +49,7 @@ async function runTurn(
     baseUrl: string;
     sandboxToken: string;
   },
-  mode?: "execute" | "plan",
+  mode?: "execute" | "plan" | "auto",
 ): Promise<Options> {
   h.capturedOptions = undefined;
   h.capturedMcp = undefined;
@@ -109,4 +109,29 @@ test("plan mode builds the MCP server WITHOUT integrations — only ask_user", a
   expect(h.capturedMcp?.tools.map((t) => t.name)).toEqual(["ask_user"]);
   // And the built-ins are the read-only plan subset.
   expect(options.tools).toEqual(["Read", "Glob", "Grep"]);
+});
+
+test("auto mode builds the MCP with integrations ON and ask_user OFF", async () => {
+  // Autopilot is the inverse of plan: it KEEPS the acting integration tools but
+  // drops the two blocking tools (ask_user, request_connection) so the agent
+  // never waits on the user.
+  const options = await runTurn(
+    { baseUrl: "http://host.local", sandboxToken: "tok" },
+    "auto",
+  );
+  expect(options.mcpServers?.houston).toBeDefined();
+  const exposed = h.capturedMcp?.tools.map((t) => t.name) ?? [];
+  expect(new Set(exposed)).toEqual(
+    new Set(["integration_search", "integration_execute"]),
+  );
+  expect(exposed).not.toContain("ask_user");
+  expect(exposed).not.toContain("request_connection");
+  expect(new Set(options.allowedTools)).toEqual(
+    new Set([
+      "mcp__houston__integration_search",
+      "mcp__houston__integration_execute",
+    ]),
+  );
+  // Built-ins keep the full execute policy — auto acts with everything else.
+  expect(options.tools).toEqual(["Read", "Edit", "Write", "Glob", "Grep"]);
 });

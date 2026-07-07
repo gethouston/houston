@@ -1,3 +1,4 @@
+import { normalizeTurnMode } from "@houston/protocol";
 import type { ActingContext } from "../session/acting-context";
 import { evict } from "../session/bus";
 import {
@@ -128,9 +129,9 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
     json(ctx.res, 400, { error: "missing 'text'" });
     return;
   }
-  // Never trust the wire: only the exact string "plan" turns plan mode on;
-  // everything else (absent, garbage, "execute") is execute.
-  const turnMode = mode === "plan" ? "plan" : "execute";
+  // Never trust the wire: only the known mode literals ("plan", "auto") pass;
+  // everything else (absent, garbage, unknown) normalizes to "execute".
+  const turnMode = normalizeTurnMode(mode);
   // A provider-pinned turn (a routine) is never auth-gated on the ACTIVE
   // provider — the pin names its own; a disconnected pin surfaces as the
   // turn's provider error. The credential sync inside ensureProviderForTurn

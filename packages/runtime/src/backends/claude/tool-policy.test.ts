@@ -75,6 +75,17 @@ test("execute mode is unchanged by the added mode param", () => {
   );
 });
 
+test("auto mode keeps the SAME built-in policy as execute (file tools + Bash per localBash)", () => {
+  // Auto's "never wait" rule is enforced on the MCP side (ask_user dropped), not
+  // in the built-in policy — the Claude built-ins have no blocking tool to clamp.
+  expect(buildToolPolicy({ localBash: true, mode: "auto" })).toEqual(
+    buildToolPolicy({ localBash: true }),
+  );
+  expect(buildToolPolicy({ localBash: false, mode: "auto" })).toEqual(
+    buildToolPolicy({ localBash: false }),
+  );
+});
+
 test("the pi-lacking Claude Code tools are always disallowed", () => {
   const { disallowedTools } = buildToolPolicy({ localBash: true });
   for (const t of [

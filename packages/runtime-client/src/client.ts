@@ -56,11 +56,13 @@ export interface SendOptions {
   effort?: string;
   /**
    * Per-turn execution mode. "execute" (the default for an unpinned turn) =
-   * full read/write/act; "plan" = read-only tools plus a planning overlay.
-   * Omitted, the runtime runs the turn as "execute". Mirrors the protocol's
-   * `TurnMode` (kept inline — this package stays zero-dep, like `effort`).
+   * full read/write/act; "plan" = read-only tools plus a planning overlay;
+   * "auto" (Autopilot) = acts with everything except the blocking tools, never
+   * waiting on the user. Omitted, the runtime runs the turn as "execute".
+   * Mirrors the protocol's `TurnMode` (kept inline — this package stays zero-dep,
+   * like `effort`).
    */
-  mode?: "execute" | "plan";
+  mode?: "execute" | "plan" | "auto";
   signal?: AbortSignal;
 }
 

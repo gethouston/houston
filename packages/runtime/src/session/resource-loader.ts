@@ -4,7 +4,7 @@ import { DefaultResourceLoader } from "@earendil-works/pi-coding-agent";
 import type { TurnMode } from "@houston/protocol";
 import { config } from "../config";
 import { makeCompactionGuard } from "./compaction-guard";
-import { withPlanOverlay } from "./plan-overlay";
+import { withModeOverlay } from "./mode-overlays";
 
 export const SYSTEM_PROMPT = [
   "You are Houston, a friendly AI assistant for a non-technical user.",
@@ -75,8 +75,9 @@ export function makeAgentLoader(cwd: string, mode?: TurnMode) {
   return buildAgentLoader({
     cwd,
     skillsDir: config.skillsDirOverride || join(cwd, ".agents", "skills"),
-    // Plan mode appends the planning overlay to the agent's system prompt; an
-    // execute (or absent) mode passes it through unchanged.
-    systemPrompt: withPlanOverlay(config.systemPrompt || SYSTEM_PROMPT, mode),
+    // Plan mode appends the planning overlay to the agent's system prompt; auto
+    // mode appends the Autopilot overlay; an execute (or absent) mode passes it
+    // through unchanged.
+    systemPrompt: withModeOverlay(config.systemPrompt || SYSTEM_PROMPT, mode),
   });
 }

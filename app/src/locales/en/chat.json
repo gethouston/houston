@@ -89,9 +89,11 @@
     "mode": "Mode",
     "modeValue": "Mode: {{mode}}",
     "doer": "Doer",
-    "doerDescription": "Gets things done: reads, acts, and makes changes.",
+    "doerDescription": "Gets things done and asks you when unsure.",
     "planner": "Planner",
-    "plannerDescription": "Writes a plan for you to approve first. Makes no changes."
+    "plannerDescription": "Writes a plan for you to approve first. Makes no changes.",
+    "autopilot": "Autopilot",
+    "autopilotDescription": "Finishes the task on its own with what it has. No questions asked."
   },
   "modelSelector": {
     "selectModel": "Select model",
