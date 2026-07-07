@@ -30,6 +30,14 @@ export interface FeedItemVM {
   id: string;
   feed_type: string;
   data: unknown;
+  /**
+   * Epoch-ms timestamp of this entry. A seeded history frame carries its source
+   * `ChatMessage.ts`; a LIVE push that lacks one is stamped `Date.now()` at push
+   * time, and a streaming/finalizing update keeps the entry's ORIGINAL `ts` (the
+   * bubble is timed by when it opened, not each delta). Optional/additive: absent
+   * for a pre-`ts` seeded frame; every consumer treats it as optional.
+   */
+  ts?: number;
 }
 
 /** A message queued while a turn runs — rendered in the composer, removable. */
@@ -122,13 +130,17 @@ export class ConversationVmOutput implements FeedOutput {
   seedHistory(
     agentPath: string,
     sessionKey: string,
-    frames: readonly { feed_type: string; data: unknown }[],
+    frames: readonly { feed_type: string; data: unknown; ts?: number }[],
   ): void {
     const s = this.state(agentPath, sessionKey);
+    // History frames carry their source `ChatMessage.ts` (absent for a pre-`ts`
+    // transcript); pass it through verbatim — a seeded frame is historical, so
+    // it is never stamped with the wall clock the way a live push is.
     s.feed = frames.map((f) => ({
       id: `f${s.seq++}`,
       feed_type: f.feed_type,
       data: f.data,
+      ...(f.ts !== undefined ? { ts: f.ts } : {}),
     }));
     s.streaming.clear();
     this.publish(agentPath, sessionKey, s);
@@ -136,20 +148,27 @@ export class ConversationVmOutput implements FeedOutput {
 
   pushFeedItem(agentPath: string, sessionKey: string, item: unknown): void {
     const s = this.state(agentPath, sessionKey);
-    const { feed_type, data } = item as { feed_type: string; data: unknown };
+    const { feed_type, data, ts } = item as {
+      feed_type: string;
+      data: unknown;
+      ts?: number;
+    };
     const finalOf = FINAL_OF[feed_type];
     if (feed_type.endsWith("_streaming")) {
-      this.upsertStreaming(s, feed_type, data);
+      this.upsertStreaming(s, feed_type, data, ts);
     } else if (finalOf !== undefined && s.streaming.has(finalOf)) {
       const id = s.streaming.get(finalOf);
       const entry = s.feed.find((f) => f.id === id);
       if (entry) {
+        // Finalizing an open stream mutates the SAME entry: keep its original
+        // `ts` (the bubble is timed by when it opened), only swap type + data.
         entry.feed_type = feed_type;
         entry.data = data;
       }
       s.streaming.delete(finalOf);
     } else {
-      s.feed.push({ id: `f${s.seq++}`, feed_type, data });
+      // A fresh entry: carry a supplied `ts`, else stamp the wall clock now.
+      s.feed.push({ id: `f${s.seq++}`, feed_type, data, ts: ts ?? Date.now() });
     }
     this.publish(agentPath, sessionKey, s);
   }
@@ -158,17 +177,21 @@ export class ConversationVmOutput implements FeedOutput {
     s: ConvState,
     feed_type: string,
     data: unknown,
+    ts?: number,
   ): void {
     const existingId = s.streaming.get(feed_type);
     if (existingId !== undefined) {
       const entry = s.feed.find((f) => f.id === existingId);
       if (entry) {
+        // A streaming delta updates data only — the entry keeps the `ts` it was
+        // stamped with when the stream opened.
         entry.data = data;
         return;
       }
     }
+    // Opening the stream's entry: carry a supplied `ts`, else stamp now.
     const id = `f${s.seq++}`;
-    s.feed.push({ id, feed_type, data });
+    s.feed.push({ id, feed_type, data, ts: ts ?? Date.now() });
     s.streaming.set(feed_type, id);
   }
 

@@ -94,7 +94,9 @@ struct AgentsView: View {
                 onOpenArchived: { path.append(.archived(agent)) }
             )
         case let .chat(route):
-            ChatView(agentId: route.agentId, conversationId: route.sessionKey, title: route.title)
+            ChatView(
+                agentId: route.agentId, conversationId: route.sessionKey,
+                title: route.title, agentName: agent(for: route.agentId)?.name)
         case let .archived(agent):
             AgentArchivedMissionsView(agent: agent, onOpen: { path.append(.chat($0)) })
         }

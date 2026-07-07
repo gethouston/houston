@@ -146,6 +146,56 @@ final class MissionFeedFoldTests: XCTestCase {
     XCTAssertTrue(rows.isEmpty)
   }
 
+  // MARK: unread badge counts messages, not folded rows
+
+  func testOneAgentTurnCountsAsOneUnreadMessage() {
+    // A normal turn — reasoning + tool + reply — FOLDS into two rows (a process
+    // block + the reply) but is ONE new message; WhatsApp's badge would show 1.
+    let feed = [
+      vm("t0", "thinking", .string("planning")),
+      vm("c0", "tool_call", .object(["name": .string("Read"), "input": .object(["file_path": .string("a.txt")])])),
+      vm("r0", "tool_result", .object(["content": .string("data"), "is_error": .bool(false)])),
+      vm("a0", "assistant_text", .string("Done!")),
+    ]
+    let rows = MissionFeedFold.rows(from: feed)
+    XCTAssertEqual(rows.count, 2, "the turn folds into a process block + the reply")
+    XCTAssertEqual(rows.unreadMessageCount, 1, "the process block is not a message")
+
+    // The user was scrolled up on an empty transcript; the turn then streams in.
+    var unread = UnreadCounter()
+    unread.update(messageCount: 0, atBottom: false)  // baseline
+    unread.update(messageCount: rows.unreadMessageCount, atBottom: false)  // turn arrives
+    XCTAssertEqual(unread.count, 1, "one turn is one unread message, not two folded rows")
+  }
+
+  func testProcessBlockAloneIsNotAnUnreadMessage() {
+    // A turn that is still only reasoning/tools (no reply yet) folds to one
+    // process row and must not bump the unread badge.
+    let feed = [
+      vm("t0", "thinking", .string("planning")),
+      vm("c0", "tool_call", .object(["name": .string("Bash"), "input": .object(["command": .string("ls")])])),
+    ]
+    let rows = MissionFeedFold.rows(from: feed)
+    XCTAssertEqual(rows.count, 1, "reasoning + tool fold into one process block")
+    XCTAssertEqual(rows.unreadMessageCount, 0, "an open process block is activity, not a message")
+
+    var unread = UnreadCounter()
+    unread.update(messageCount: 0, atBottom: false)
+    unread.update(messageCount: rows.unreadMessageCount, atBottom: false)
+    XCTAssertEqual(unread.count, 0)
+  }
+
+  func testCardsAndBubblesEachCountAsAnUnreadMessage() {
+    // Discrete cards/bubbles the user hasn't seen each count once.
+    let feed = [
+      vm("u0", "user_message", .object(["text": .string("go")])),
+      vm("a0", "assistant_text", .string("done")),
+      vm("s0", "system_message", .string("Heads up")),
+    ]
+    let rows = MissionFeedFold.rows(from: feed)
+    XCTAssertEqual(rows.unreadMessageCount, 3)
+  }
+
   // MARK: author label only in multiplayer
 
   func testAuthorLabelOnlyWhenTwoDistinctAuthors() {

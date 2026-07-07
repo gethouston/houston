@@ -5,11 +5,15 @@ import SwiftUI
 /// paired, reasoning+tools folded), so this is a pure, total switch.
 struct FeedRow: View {
   let row: ChatRow
+  /// Wall-clock time of this row's source message, threaded to the user bubble
+  /// only (assistant prose and other feed types show no in-line time this wave;
+  /// day separators are handled by the feed). Optional: absent renders as before.
+  let timestamp: Date?
 
   var body: some View {
     switch row.kind {
     case let .user(text, author):
-      UserBubble(text: text, author: author)
+      UserBubble(text: text, author: author, timestamp: timestamp)
     case let .assistant(text, _):
       AssistantMessage(text: text)
     case let .process(group):

@@ -25,6 +25,14 @@ export interface FeedFrame {
   data: unknown;
   /** Multiplayer only: who wrote a `user_message`. Absent single-player. */
   author?: { userId: string; name?: string };
+  /**
+   * Epoch-ms timestamp of the source `ChatMessage` this frame was folded from
+   * (`ChatMessage.ts`). Carried on every frame attributable to a message so a
+   * client can render a relative time on reload. Optional/additive: absent for
+   * pre-`ts` transcripts and for frames not tied to a message. Plain JSON — it
+   * crosses the SDK/bridge boundary unchanged.
+   */
+  ts?: number;
 }
 
 /** Identity provider map — the SDK default (carry the pi id through). */
@@ -43,11 +51,15 @@ export function historyToFeed(
 ): FeedFrame[] {
   const out: FeedFrame[] = [];
   for (const m of messages) {
+    // Every frame folded from a message carries that message's epoch-ms `ts`
+    // (additive; a pre-`ts` transcript simply folds frames with `ts: undefined`).
+    const ts = m.ts;
     if (m.role === "user") {
       out.push({
         feed_type: "user_message",
         data: m.content,
         author: m.author,
+        ts,
       });
       continue;
     }
@@ -61,6 +73,7 @@ export function historyToFeed(
           summarized: m.providerSwitch.summarized,
           pre_tokens: m.providerSwitch.pre_tokens,
         },
+        ts,
       });
     }
     // A persisted proactive compaction: replay the boundary divider so it
@@ -72,6 +85,7 @@ export function historyToFeed(
           trigger: m.compaction.trigger,
           pre_tokens: m.compaction.pre_tokens,
         },
+        ts,
       });
     }
     // A persisted provider failure: replay the typed card so the inline
@@ -83,20 +97,27 @@ export function historyToFeed(
           ...m.providerError,
           provider: mapProvider(m.providerError.provider),
         },
+        ts,
       });
     }
     for (const t of m.tools ?? []) {
-      out.push({ feed_type: "tool_call", data: { name: t.name, input: {} } });
+      out.push({
+        feed_type: "tool_call",
+        data: { name: t.name, input: {} },
+        ts,
+      });
       out.push({
         feed_type: "tool_result",
         data: { content: "", is_error: !!t.isError },
+        ts,
       });
     }
-    if (m.content) out.push({ feed_type: "assistant_text", data: m.content });
+    if (m.content)
+      out.push({ feed_type: "assistant_text", data: m.content, ts });
     // A persisted file-change summary: replay it AFTER the assistant text so
     // the chat attaches it to this turn's assistant message on reload.
     if (m.fileChanges) {
-      out.push({ feed_type: "file_changes", data: m.fileChanges });
+      out.push({ feed_type: "file_changes", data: m.fileChanges, ts });
     }
     if (m.usage) {
       out.push({
@@ -107,6 +128,7 @@ export function historyToFeed(
           duration_ms: null,
           usage: m.usage,
         },
+        ts,
       });
     }
   }

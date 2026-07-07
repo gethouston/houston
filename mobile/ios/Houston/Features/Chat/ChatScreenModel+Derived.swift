@@ -12,6 +12,19 @@ extension ChatScreenModel {
   var running: Bool { vm?.running ?? false }
   var isEmpty: Bool { vm?.feed.isEmpty ?? true }
 
+  /// Wall-clock times keyed by ``ChatRow`` id, for the timeline's day separators,
+  /// grouping, and floating date pill (``MissionFeed``). A folded row's id is its
+  /// first feed entry's id, so keying by feed-entry id resolves every row. Frames
+  /// without a `ts` (older data, unattributable frames) are simply omitted, so the
+  /// timeline degrades to a flat feed — a read-only projection, no behavior.
+  var timestampsById: [String: Date] {
+    var map: [String: Date] = [:]
+    for entry in vm?.feed ?? [] {
+      if let ts = entry.ts { map[entry.id] = ts }
+    }
+    return map
+  }
+
   /// Messages queued while the turn runs, rendered as pending bubbles above the
   /// composer (PARITY §7). Empty until the SDK bridge publishes a `queued` list.
   var queued: [QueuedMessageVM] { vm?.queued ?? [] }

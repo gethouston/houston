@@ -65,7 +65,14 @@ describe("turn send → stream → settle", () => {
       "turn settled (running=false)",
     );
 
-    expect(convVm(h.sdk, cid)).toEqual({
+    const vm = convVm(h.sdk, cid);
+    // Every feed entry now carries a stamped epoch-ms `ts`; assert it is present
+    // and numeric, then compare the rest of the VM structurally (ts stripped).
+    for (const f of vm?.feed ?? []) expect(typeof f.ts).toBe("number");
+    expect({
+      ...vm,
+      feed: (vm?.feed ?? []).map(({ ts, ...rest }) => rest),
+    }).toEqual({
       running: false,
       sessionStatus: "completed",
       // The persisted board status now rides the VM (the handled-vs-error

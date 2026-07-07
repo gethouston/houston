@@ -16,6 +16,10 @@ struct MissionComposer: View {
   var isRunning: Bool
   /// Placeholder copy (fresh mission vs. "Message"), chosen by the caller.
   var placeholder: String
+  /// Focus the field once on appear (a draft's WhatsApp new-chat behavior). The
+  /// focus is deferred past the push transition so it never fights it; existing
+  /// missions pass `false` and never steal focus.
+  var autoFocus: Bool = false
   let onSend: () -> Void
   let onStop: () -> Void
   /// The leading "+" affordance (WhatsApp layout). Attachments aren't wired to
@@ -24,6 +28,9 @@ struct MissionComposer: View {
   var onPlus: (() -> Void)?
 
   @FocusState private var focused: Bool
+  /// Guards the auto-focus to a single shot (the field must never re-grab focus
+  /// on a later re-appear, e.g. after the draft becomes a real conversation).
+  @State private var didAutoFocus = false
 
   private var hasContent: Bool { ComposerLogic.hasContent(text) }
   private var active: Bool { ComposerLogic.isActive(text: text, isRunning: isRunning) }
@@ -38,6 +45,18 @@ struct MissionComposer: View {
     .padding(.vertical, ChatMetrics.inputBarVInset)
     .frame(maxWidth: .infinity)
     .background(barSurface)
+    .task { await autoFocusIfNeeded() }
+  }
+
+  /// Open the keyboard once for a draft, after the navigation push settles so the
+  /// focus animation doesn't fight the transition. No-op for existing missions
+  /// (`autoFocus == false`) and after the first run.
+  private func autoFocusIfNeeded() async {
+    guard autoFocus, !didAutoFocus else { return }
+    didAutoFocus = true
+    try? await Task.sleep(for: .seconds(Motion.elegant))
+    guard !Task.isCancelled else { return }
+    focused = true
   }
 
   /// The bar's own surface: a subtle material distinct from the chat background,
