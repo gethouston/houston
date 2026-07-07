@@ -113,6 +113,21 @@ chmod +x "$OUT"
 SIZE="$(du -h "$OUT" | cut -f1)"
 echo "Built host sidecar: $OUT ($SIZE)"
 
+# --- Stamp the sidecar with the workspace git HEAD at compile time -----------
+# `build.rs` reads this stamp for RELEASE builds and refuses to ship a sidecar
+# whose stamp doesn't match the current HEAD — that catches a stale binary left
+# over from a previous commit (e.g. a rebase) that would otherwise be bundled
+# silently. The stamp lives next to the binary so it travels with it and is
+# per-triple (so a cross-arch build stamps each slice independently).
+STAMP="${OUT}.stamp"
+GIT_HEAD="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || true)"
+if [ -z "$GIT_HEAD" ]; then
+  echo "ERROR: could not resolve git HEAD to stamp the sidecar (a git checkout is required)." >&2
+  exit 1
+fi
+printf '%s\n' "$GIT_HEAD" >"$STAMP"
+echo "Stamped host sidecar with HEAD $GIT_HEAD -> $STAMP"
+
 # --- Stage the Claude Code native binary next to the sidecar ------------------
 # The Bun-compiled sidecar can't resolve the SDK's native `claude` binary at
 # runtime (it lives outside Bun's $bunfs virtual FS — see
@@ -222,3 +237,22 @@ case "$RESP" in
   *'"profile":"local"'*) echo "VERIFIED: host served /v1/capabilities (profile=local)" ;;
   *) echo "ERROR: unexpected /v1/capabilities response" >&2; exit 1 ;;
 esac
+
+# --- Verify the pi-ai model catalog route ------------------------------------
+# The shipped host MUST serve `GET /v1/catalog` with a non-empty array — a host
+# that predates the route 404s, which is exactly the staleness that shipped an
+# empty model picker. `-f` makes curl fail the script on any non-200, so this
+# also enforces HTTP 200.
+echo "=== Verifying the compiled host serves /v1/catalog ==="
+CATALOG="$(curl -fsS -H "Authorization: Bearer ${TOKEN}" "http://localhost:${PORT}/v1/catalog")"
+echo "GET /v1/catalog → $(printf '%s' "$CATALOG" | head -c 120)…"
+
+case "$CATALOG" in
+  \[*) ;; # A JSON array, as the ProviderCatalog wire type requires.
+  *) echo "ERROR: /v1/catalog did not return a JSON array" >&2; exit 1 ;;
+esac
+if [ "$(printf '%s' "$CATALOG" | tr -d '[:space:]')" = "[]" ]; then
+  echo "ERROR: /v1/catalog returned an EMPTY array (no providers/models)" >&2
+  exit 1
+fi
+echo "VERIFIED: host served a non-empty /v1/catalog"
