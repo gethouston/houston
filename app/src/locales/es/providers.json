@@ -32,7 +32,8 @@
     "signInFailed": "No se pudo abrir el inicio de sesión de {{provider}}",
     "signOutFailed": "No se pudo cerrar sesión de {{provider}}",
     "signInSucceeded": "Sesión iniciada en {{provider}}",
-    "cancelFailed": "No se pudo cancelar el inicio de sesión de {{provider}}"
+    "cancelFailed": "No se pudo cancelar el inicio de sesión de {{provider}}",
+    "catalogLoadFailed": "No se pudieron cargar tus modelos de IA disponibles. La lista puede estar incompleta hasta que esto funcione."
   },
   "providerLogin": {
     "title": "Termina de iniciar sesión en {{name}}",

@@ -3,6 +3,7 @@ import { ConfirmDialog, Spinner } from "@houston-ai/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { useProviderCatalog } from "../../hooks/use-provider-catalog";
 import { analytics } from "../../lib/analytics";
 import { tryBeginCodexLoopbackLogin } from "../../lib/codex-loopback";
 import { newEngineActive } from "../../lib/engine";
@@ -32,10 +33,7 @@ import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
 import { useCopilotConnect } from "./use-copilot-connect";
 
 interface Props {
-  /** Current workspace provider id (used to push the new default after sign-in). */
-  value: string | null;
-  model?: string | null;
-  /** Fired with (providerId, defaultModel) after a successful sign-in. */
+  /** Fired with (providerId, model) after a successful sign-in. */
   onSelect: (provider: string, model: string) => void;
 }
 
@@ -69,9 +67,18 @@ export function ProviderPicker({ onSelect }: Props) {
   const newEngine = newEngineActive();
   const providerCapabilities =
     capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
+  // The pi-ai catalog hydrates `PROVIDERS` IN PLACE with no React signal, so the
+  // `getConnectProviders` memo below must re-key on `updatedAt` — otherwise the
+  // picker stays pinned to the override-only seed captured on first render, the
+  // moment `/v1/catalog` resolves after mount. Same reactivity the model picker
+  // uses (`use-picker-view-models`, `use-hub-catalog`).
+  const { updatedAt } = useProviderCatalog();
 
   // API-key providers (OpenCode) run only on the new TS engine; hide them on the
-  // Rust engine. Computed once — the engine doesn't change mid-session.
+  // Rust engine. Rebuilds off the freshly-hydrated `PROVIDERS` when the catalog
+  // resolves — `getConnectProviders` reads the mutated-in-place cache, invisible
+  // to biome.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: updatedAt keys the in-place PROVIDERS hydration.
   const visibleProviders = useMemo(
     () =>
       getConnectProviders({
@@ -79,7 +86,7 @@ export function ProviderPicker({ onSelect }: Props) {
         desktop: osIsTauri(),
         capabilities: providerCapabilities,
       }),
-    [newEngine, providerCapabilities],
+    [newEngine, providerCapabilities, updatedAt],
   );
 
   const prevStatuses = useRef<Record<string, ProviderStatus>>({});
@@ -105,10 +112,14 @@ export function ProviderPicker({ onSelect }: Props) {
         next[prov.id]?.cli_installed && next[prov.id]?.authenticated;
       if (!wasConnected && isConnected) {
         analytics.track("provider_configured", { provider: prov.id });
-        // Skip the auto-select when the catalog has no default model — the local
-        // OpenAI-compatible provider's model id is user-supplied, delivered by
-        // the connect dialog's onConnected callback, not a static default.
-        if (prov.defaultModel) onSelect(prov.id, prov.defaultModel);
+        // Auto-select on connect. The local OpenAI-compatible provider has no
+        // static defaultModel (its model id is user-supplied); the engine
+        // reports the configured id as `active_model`, so a fresh connect gets
+        // it from the dialog's onConnected AND a re-entry where the provider is
+        // already connected (onboarding restarted before agent creation) still
+        // resolves a model here and advances instead of stranding the user.
+        const model = prov.defaultModel || next[prov.id]?.active_model;
+        if (model) onSelect(prov.id, model);
       }
     }
     prevStatuses.current = next;

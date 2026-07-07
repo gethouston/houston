@@ -8,23 +8,22 @@ import {
 } from "@earendil-works/pi-ai";
 import { getOAuthProviders } from "@earendil-works/pi-ai/oauth";
 import type {
-  Capabilities,
   CatalogModelEntry,
   CatalogProvider,
   ProviderCatalog,
 } from "@houston/protocol";
-import { isCloudProvider } from "../providers";
 
 /**
  * Builds the `GET /v1/catalog` body from pi-ai's static, in-process model
  * registry — every provider and every model the runtime can actually run. The
- * registry is baked (no network), so this is identical on desktop and inside an
- * egress-locked cloud pod.
+ * registry is baked (no network), so this is identical on every deployment:
+ * desktop and the managed cloud pod serve the SAME full provider set (the pod
+ * runs the local-profile host/runtime, and pod egress reaches every provider's
+ * public :443 endpoint — there is no cloud provider subset).
  *
  * Split into PURE mappers (`piModelToCatalogEntry`, `piProviderToCatalog`) that
  * take plain pi-ai values so they unit-test without touching the live registry,
- * and `buildProviderCatalog`, the thin orchestrator that enumerates pi-ai and
- * applies profile gating.
+ * and `buildProviderCatalog`, the thin orchestrator that enumerates pi-ai.
  */
 
 /** A pi-ai model of any api — the mappers never look at the `TApi` specifics. */
@@ -94,33 +93,19 @@ function providerDisplayName(
 }
 
 /**
- * Whether this deployment actually runs `providerId`. The local/desktop profile
- * runs every pi-ai provider (open egress, in-process), while an egress-locked
- * cloud deployment runs only the providers its per-turn sandbox can reach —
- * `isCloudProvider` (the host catalog's `cloud: true` set: `CLOUD_PROVIDERS`).
+ * Enumerate pi-ai and build the `ProviderCatalog` — EVERY pi-ai provider and
+ * model, on every deployment. There is no profile gating: the managed cloud pod
+ * runs the same local-profile host/runtime as desktop and its egress reaches
+ * every provider's public :443 endpoint, so a hosted user sees the full catalog
+ * too. Deterministic — no clock, no IO.
  */
-function reachable(
-  profile: Capabilities["profile"],
-  providerId: string,
-): boolean {
-  return profile === "local" || isCloudProvider(providerId);
-}
-
-/**
- * Enumerate pi-ai and build the profile-gated `ProviderCatalog`. Desktop/local
- * returns ALL pi-ai providers; an egress-locked cloud profile returns only the
- * providers it can run (see `reachable`). Deterministic — no clock, no IO.
- */
-export function buildProviderCatalog(
-  profile: Capabilities["profile"],
-): ProviderCatalog {
+export function buildProviderCatalog(): ProviderCatalog {
   const oauthProviders = getOAuthProviders();
   const oauthIds = new Set(oauthProviders.map((p) => p.id));
   const oauthNames = new Map(oauthProviders.map((p) => [p.id, p.name]));
 
   const catalog: ProviderCatalog = [];
   for (const id of getProviders()) {
-    if (!reachable(profile, id)) continue;
     catalog.push(
       piProviderToCatalog(
         id,

@@ -128,8 +128,15 @@ First-run onboarding is a seven-mission guided setup driven by
 
 1. Welcome screen offers start vs. skip.
 2. **Meet** — name + color the assistant.
-3. **Brain** — pick provider (OpenAI / Anthropic) and create the workspace +
-   assistant.
+3. **Connect** — connect your AI in a single `connect` step
+   (`missions/connect-ai.tsx`) that embeds the shared `<ProviderPicker>`, so
+   onboarding lists this deployment's full runnable catalog and connects through
+   every auth type (OAuth, API key, OpenAI-compatible endpoint, Copilot
+   enterprise). Replaces the old bespoke `brain` (OpenAI/Anthropic pick) +
+   `providerLogin` pair; it fires the `ai_provider_connected` funnel event
+   (ref-guarded, once per install) and auto-advances to the `aiConnected` success
+   screen the instant a provider connects. The workspace + assistant are
+   provisioned by the create-agent step, not here.
 4. **Tools** — sign into Composio so the agent has hands.
 5. **Try** — one real mission (`Plan my next working day`). The agent reads
    inbox + calendar in parallel, cross-references them, posts a structured
@@ -371,14 +378,24 @@ wiring lives in `app/src/components/chat-model-selector.tsx`.
 - **pi-ai's `/v1/catalog` is the source of truth.** `GET /v1/catalog`
   (`packages/host/src/routes/catalog.ts` + `providers/pi-catalog.ts`) returns the
   wire `ProviderCatalog` (`@houston/protocol` `provider-catalog.ts`): every
-  runnable provider (~35 on desktop / 979 models; ~3 in an egress-locked cloud
-  pod) with each model's pricing/context/maxTokens/reasoning/vision and
+  runnable provider (~35 / 979 models — the SAME full set on every deployment,
+  desktop and managed pod; no profile gating) with each model's
+  pricing/context/maxTokens/reasoning/vision and
   `thinkingLevels`. Built from pi-ai's **baked in-process registry** (no egress,
   no key) — so the set is **runnable-by-construction** (a model is offered iff pi
   can run it) and identical on desktop and inside a pod. Effort levels derive from
-  pi `thinkingLevels`. Adapter: `getCatalog` (direct host transport, mirrors
-  `capabilities()`, 404→`[]`) → `tauriProvider.getCatalog`; the app hydrates the
-  `PROVIDERS` cache from it (`use-provider-catalog.ts`, `providers.ts`).
+  pi `thinkingLevels`. `use-provider-catalog.ts` is the SOLE owner of the
+  `["provider-catalog"]` query: it calls `getEngine().getCatalog()` directly (NOT
+  the toasting `call()` wrapper, so it renders its own friendly toast instead of a
+  raw "engine error 404") and hydrates the `PROVIDERS` cache from the result
+  (`providers.ts`). A failure is NEVER swallowed: the adapter's `getCatalog` no
+  longer degrades a 404 to `[]` (every current host and the e2e fake host serve
+  the route, so a 404 means a stale host), it throws, and the hook surfaces both
+  an error AND a 200-but-empty payload as a `providers:toast.catalogLoadFailed`
+  toast while the seed keeps the UI rendering. (Silently emptying the picker is the
+  bug that shipped v0.5.2 with providers but zero models.) `useHubCatalog()` derives
+  its view from this same query rather than registering a second observer; the old
+  `tauriProvider.getCatalog` is deleted.
   **The live-OpenRouter fetch is RETIRED** — the old
   `GET /v1/providers/openrouter/models` route + `openrouter-catalog` mapper + the
   `LiveCatalog` wire type + `listProviderModels`/`listModels` adapter are deleted.

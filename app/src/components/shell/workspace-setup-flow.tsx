@@ -110,11 +110,7 @@ export function WorkspaceSetupFlow({ mode, onComplete }: Props) {
         </div>
 
         {/* Provider picker */}
-        <ProviderPicker
-          value={provider}
-          model={model}
-          onSelect={handleProviderSelect}
-        />
+        <ProviderPicker onSelect={handleProviderSelect} />
 
         {/* Continue */}
         <div

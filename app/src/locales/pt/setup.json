@@ -32,7 +32,8 @@
     "missionLabel": "Configuração: {{title}}",
     "upNext": "A seguir",
     "errors": {
-      "setupFailed": "Não conseguimos terminar de configurar seu espaço de trabalho. Tente novamente."
+      "setupFailed": "Não conseguimos terminar de configurar seu espaço de trabalho. Tente novamente.",
+      "noProviderModel": "Conecte um provedor de IA antes de criar seu assistente."
     },
     "welcome": {
       "title": "Bem-vindo ao Houston",
@@ -77,23 +78,9 @@
           "send": "Envie seu primeiro e-mail"
         }
       },
-      "brain": {
-        "title": "Entre na sua assinatura de IA",
-        "body": "Escolha a IA que você já paga. Você usa sua própria assinatura, então o Houston nunca vê sua senha nem sua fatura.",
-        "continue": "Criar meu assistente",
-        "creating": "Criando",
-        "continueHint": "O Houston vai criar seu assistente e abrir a próxima missão."
-      },
-      "providerLogin": {
-        "title": "Entre no {{provider}}",
-        "body": "Entre uma vez para que seu agente possa usar o {{provider}} por você.",
-        "loginButton": "Entrar no {{provider}}",
-        "waiting": "Aguardando o {{provider}}...",
-        "cancel": "Cancelar",
-        "connected": {
-          "title": "Tudo pronto",
-          "body": "Encontramos o {{provider}} neste computador. Você já está conectado com sua própria assinatura, então não há nada para configurar aqui."
-        }
+      "connect": {
+        "title": "Conecte sua IA",
+        "body": "Escolha a IA que você já paga e entre. Você usa sua própria assinatura, então o Houston nunca vê sua senha nem sua fatura."
       },
       "meet": {
         "title": "Crie seu primeiro agente",

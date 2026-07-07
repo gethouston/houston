@@ -11,7 +11,6 @@
  * VPS where those APIs would be meaningless.
  */
 
-import type { ProviderCatalog } from "@houston/protocol";
 import type {
   AgentAssignment,
   CustomEndpoint,
@@ -1177,23 +1176,6 @@ export const tauriProvider = {
       await eng.setPreference(DEFAULT_PROVIDER_PREF_KEY, provider);
       await eng.setPreference(DEFAULT_MODEL_PREF_KEY, model);
     }),
-  /**
-   * pi-ai's FULL static model catalog from the host (`/v1/catalog`) — every
-   * provider and every runnable model, the source the picker + AI Models
-   * settings tab render (alongside the frontend's static seed). `getCatalog` is
-   * a new-engine-adapter method absent from the legacy engine-client type, so
-   * cast (as `checkAllStatuses` does). The host answers `[]` when
-   * it doesn't serve the route; the seed fallback covers that, so a real failure
-   * surfaces as a toast while an empty catalog stays silent.
-   */
-  getCatalog: () =>
-    call<ProviderCatalog>("get_catalog", () =>
-      (
-        getEngine() as unknown as {
-          getCatalog: () => Promise<ProviderCatalog>;
-        }
-      ).getCatalog(),
-    ),
   launchLogin: (
     provider: string,
     opts?: { deviceAuth?: boolean; toast?: boolean; enterpriseDomain?: string },

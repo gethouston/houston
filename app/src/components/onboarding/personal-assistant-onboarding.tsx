@@ -6,13 +6,12 @@ import { analytics } from "../../lib/analytics";
 import { getDefaultModel } from "../../lib/providers";
 import { stepSection } from "../../lib/setup-steps";
 import { useUIStore } from "../../stores/ui";
-import { BrainMission } from "./missions/brain";
+import { ConnectAiMission } from "./missions/connect-ai";
 import { ConnectEmailMission } from "./missions/connect-email";
 import { EmailMission } from "./missions/email";
 import { FinishedMission } from "./missions/finished";
 import { MeetMission } from "./missions/meet";
 import { stepAfterAgentCreated } from "./missions/onboarding-flow";
-import { ProviderLoginMission } from "./missions/provider-login";
 import { TUTORIAL_MISSION } from "./personal-assistant-missions";
 import { SetupProgress } from "./setup-progress";
 import type { OnboardingStep } from "./tutorial-copy";
@@ -68,6 +67,9 @@ export function PersonalAssistantOnboarding({
   // Fire one step-viewed event per screen reached so a single funnel shows
   // exactly where people drop off. Guarded so re-renders / Back don't refire.
   const viewedSteps = useRef(new Set<string>());
+  // The once-per-install "ai_provider_connected" funnel event fires on the first
+  // successful connect only; a Back → reconnect must not re-emit it.
+  const aiConnectedTracked = useRef(false);
   useEffect(() => {
     if (!viewedSteps.current.has(step)) {
       viewedSteps.current.add(step);
@@ -91,9 +93,20 @@ export function PersonalAssistantOnboarding({
   };
 
   // The create-agent step owns provisioning the workspace + assistant. By here
-  // provider/model are picked; reused creation is deduped inside the hook.
+  // provider/model are picked in the connect step; reused creation is deduped
+  // inside the hook. The connect step gates the path to `meet`, so this should
+  // be unreachable without both set, but per the no-silent-failure policy we
+  // surface a toast rather than no-op if it ever is (a stranded user with a
+  // dead Create button is exactly the bug we want reported).
   const handleCreateAgent = async () => {
-    if (!provider || !model) return;
+    if (!provider || !model) {
+      addToast({
+        title: t("setup:tutorial.errors.setupFailed"),
+        description: t("setup:tutorial.errors.noProviderModel"),
+        variant: "error",
+      });
+      return;
+    }
     try {
       analytics.track("onboarding_assistant_named");
       await create(provider, model);
@@ -166,28 +179,25 @@ export function PersonalAssistantOnboarding({
           message={t("setup:tutorial.missions.intro.body")}
           done={[]}
           ctaLabel={t("setup:tutorial.missions.intro.cta")}
-          onContinue={() => setStep("brain")}
+          onContinue={() => setStep("connect")}
         />
       )}
 
-      {step === "brain" && (
-        <BrainMission
-          eyebrow={stepEyebrow("brain")}
-          provider={provider}
+      {step === "connect" && (
+        <ConnectAiMission
+          eyebrow={stepEyebrow("connect")}
           onBack={() => setStep("intro")}
-          onSelect={(p, m) => {
+          onConnected={(p, m) => {
+            // Once-per-install onboarding funnel step (production-infra.md).
+            // Ref-guarded so a Back → reconnect can't double-fire it.
+            if (!aiConnectedTracked.current) {
+              aiConnectedTracked.current = true;
+              analytics.track("ai_provider_connected", { provider: p });
+            }
             setProvider(p);
             setModel(m);
+            setStep("aiConnected");
           }}
-          onContinue={() => setStep("providerLogin")}
-        />
-      )}
-      {step === "providerLogin" && provider && (
-        <ProviderLoginMission
-          eyebrow={stepEyebrow("providerLogin")}
-          providerId={provider}
-          onBack={() => setStep("brain")}
-          onContinue={() => setStep("aiConnected")}
         />
       )}
       {step === "aiConnected" && (

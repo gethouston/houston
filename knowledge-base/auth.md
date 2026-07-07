@@ -424,8 +424,10 @@ is load-bearing: without it a setup-token event (paste flow, docs url, no
 `shouldOpenLoginUrlDirectly` / `providerLoginFallbackAction` take an `authCode`
 flag and always resolve to the **dialog** for `auth_code` (never auto-open), and
 every `ProviderLoginUrl` consumer (`use-provider-login-events.ts` in
-`hooks/provider-connections` + `onboarding/missions`, `provider-picker.tsx`,
-`provider-login-fallback.tsx`) passes it through. `provider-login-dialog.tsx`
+`hooks/provider-connections`, `provider-picker.tsx`,
+`provider-login-fallback.tsx`) passes it through. (The onboarding flow now
+connects through the shared `<ProviderPicker>` too, so its bespoke
+`onboarding/missions/use-provider-login-events.ts` was deleted.) `provider-login-dialog.tsx`
 renders the `instructions` prominently above the paste field and demotes the docs
 `url` to a small optional "Reference" link. The codex loopback relay
 (`shouldUseCodexLoopback`, openai-only) and codex device-code paths are

@@ -32,7 +32,8 @@
     "signInFailed": "Couldn't open {{provider}} sign-in",
     "signOutFailed": "Couldn't sign out of {{provider}}",
     "signInSucceeded": "Signed in to {{provider}}",
-    "cancelFailed": "Couldn't cancel {{provider}} sign-in"
+    "cancelFailed": "Couldn't cancel {{provider}} sign-in",
+    "catalogLoadFailed": "Couldn't load your available AI models. The list may be incomplete until this succeeds."
   },
   "providerLogin": {
     "title": "Finish signing in to {{name}}",
