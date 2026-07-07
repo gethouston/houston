@@ -191,6 +191,20 @@ export type { ChatSidebarProps } from "./chat-sidebar";
 export { ChatSidebar } from "./chat-sidebar";
 export type { ChatStatusLineProps } from "./chat-status-line";
 export { ChatStatusLine } from "./chat-status-line";
+// === Dictation ===
+export type {
+  DictationControl,
+  DictationLabels,
+  DictationState,
+  DictationView,
+} from "./dictation-types";
+export {
+  DEFAULT_DICTATION_LABELS,
+  formatElapsed,
+  isDictationBusy,
+  isDictationCapturing,
+  resolveDictationView,
+} from "./dictation-types";
 export type { MergeFeedOptions, PendingUserEcho } from "./feed-merge";
 export {
   mergeFeedHistory,

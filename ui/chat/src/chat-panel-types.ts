@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { ToolsAndCardsProps } from "./chat-helpers";
 import type { ChatMessagesProps } from "./chat-messages";
+import type { DictationControl } from "./dictation-types";
 import type { ChatMessage } from "./feed-to-messages";
 import type {
   QueuedChatMessage,
@@ -97,6 +98,9 @@ export interface ChatPanelProps {
   renderLink?: ChatMessagesProps["renderLink"];
   composerOverride?: ReactNode;
   composerLabels?: ChatComposerLabels;
+  /** Prop-driven dictation control for the composer. Omit to hide the mic
+   *  affordance entirely (e.g. the web build with no speech capture). */
+  dictation?: DictationControl;
   /**
    * Multiplayer only (C5): the signed-in viewer's user id, so the panel can tell
    * the viewer's own bubbles from teammates'. Absent in single-player mode.

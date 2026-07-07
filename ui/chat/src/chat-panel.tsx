@@ -66,6 +66,7 @@ export function ChatPanel({
   canSendEmpty,
   composerOverride,
   composerLabels,
+  dictation,
   currentUserId,
   authorLabels,
 }: ChatPanelProps) {
@@ -199,6 +200,7 @@ export function ChatPanel({
           queuedLabels={queuedLabels}
           canSendEmpty={canSendEmpty}
           labels={composerLabels}
+          dictation={dictation}
         />
       )}
     </div>

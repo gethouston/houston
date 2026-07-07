@@ -47,6 +47,10 @@ bytes = "1"
 futures-util = "0.3"
 # High-entropy proxy-key generation (src/local_bridge/keys.rs).
 rand = "0.9"
+# sha256 verification of the downloaded whisper.cpp dictation model
+# (src/dictation/model.rs). Streamed into the hasher during download so the
+# 181 MB file is never read twice.
+sha2 = "0.10"
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }

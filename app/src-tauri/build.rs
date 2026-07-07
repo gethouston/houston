@@ -57,6 +57,19 @@ fn main() {
         println!("cargo:warning=frpc staging skipped: {e}");
     }
 
+    // Stage the bundled whisper.cpp dictation sidecar into
+    // `binaries/whisper-cli-<triple>` for Tauri's `externalBin`. Like frpc (and
+    // unlike the host sidecar), a missing whisper-cli NEVER fails the build —
+    // not even a release build. It is deliberately kept OUT of the fail-closed
+    // host-sidecar stamp guard: a broken/absent whisper build must be caught by
+    // the release workflow's own `test -x` gate (scripts/build-whisper.sh runs
+    // there before `tauri build`), not by build.rs, so a local `pnpm tauri
+    // build` never hard-depends on having built whisper first. Missing → a
+    // placeholder that exits non-zero, so a dictation attempt fails loudly.
+    if let Err(e) = stage_whisper_sidecar() {
+        println!("cargo:warning=whisper staging skipped: {e}");
+    }
+
     tauri_build::build()
 }
 
@@ -571,6 +584,84 @@ fn stage_frpc_sidecar() -> Result<(), String> {
             .permissions();
         perms.set_mode(0o755);
         std::fs::set_permissions(&dest, perms).map_err(|e| format!("chmod frpc: {e}"))?;
+    }
+    Ok(())
+}
+
+/// Stage the bundled whisper.cpp dictation sidecar as the Tauri externalBin
+/// `binaries/whisper-cli-<triple>`.
+///
+/// Source: `target/whisper/whisper-cli-<triple>[.exe]`, produced by
+/// `scripts/build-whisper.sh` (or the release CI whisper-build step). Missing
+/// whisper-cli → a placeholder that exits non-zero (so a dictation attempt
+/// fails loudly), NOT a build failure — even for a release build. Local
+/// dictation is only exercised when the user voice-types, so an app build must
+/// never hard-depend on having built it. This staging is deliberately kept
+/// independent of the host-sidecar fail-closed stamp guard: a broken whisper
+/// build is caught by the release workflow's `test -x` gate, not build.rs.
+fn stage_whisper_sidecar() -> Result<(), String> {
+    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let workspace = manifest
+        .parent()
+        .and_then(|p| p.parent())
+        .ok_or("could not resolve workspace root from CARGO_MANIFEST_DIR")?;
+    let triple = std::env::var("TARGET").unwrap_or_default();
+    let ext = if cfg!(windows) { ".exe" } else { "" };
+
+    let src_dir = workspace.join("target").join("whisper");
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if !triple.is_empty() {
+        candidates.push(src_dir.join(format!("whisper-cli-{triple}{ext}")));
+    }
+    candidates.push(src_dir.join(format!("whisper-cli{ext}")));
+
+    // Re-run when a built whisper-cli appears/changes so a staged placeholder is
+    // replaced on the next build (mirrors the frpc + host-sidecar staging).
+    for candidate in &candidates {
+        println!("cargo:rerun-if-changed={}", candidate.display());
+    }
+
+    let dest_dir = manifest.join("binaries");
+    std::fs::create_dir_all(&dest_dir).map_err(|e| format!("mkdir binaries: {e}"))?;
+    let dest_name = if triple.is_empty() {
+        format!("whisper-cli{ext}")
+    } else {
+        format!("whisper-cli-{triple}{ext}")
+    };
+    let dest = dest_dir.join(&dest_name);
+
+    match candidates.iter().find(|p| p.exists()) {
+        Some(src) => {
+            std::fs::copy(src, &dest).map_err(|e| format!("copy whisper-cli: {e}"))?;
+            println!(
+                "cargo:warning=whisper-cli: staged {} -> {}",
+                src.display(),
+                dest.display()
+            );
+        }
+        None => {
+            let placeholder = if cfg!(windows) {
+                "@echo off\r\necho whisper-cli not built - run scripts/build-whisper.sh 1>&2\r\nexit /b 1\r\n"
+            } else {
+                "#!/bin/sh\necho 'whisper-cli not built - run scripts/build-whisper.sh' >&2\nexit 1\n"
+            };
+            std::fs::write(&dest, placeholder)
+                .map_err(|e| format!("write whisper-cli placeholder: {e}"))?;
+            println!(
+                "cargo:warning=whisper-cli binary not built - staged a placeholder at {} (run scripts/build-whisper.sh for local dictation)",
+                dest.display()
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&dest)
+            .map_err(|e| format!("stat whisper-cli: {e}"))?
+            .permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&dest, perms).map_err(|e| format!("chmod whisper-cli: {e}"))?;
     }
     Ok(())
 }

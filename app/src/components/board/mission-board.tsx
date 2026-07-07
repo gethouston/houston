@@ -159,6 +159,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           composerLabels={composerLabels}
           currentUserId={panel.currentUserId}
           authorLabels={panel.authorLabels}
+          dictation={panel.dictation}
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           onOpenLink={handleOpenLink}

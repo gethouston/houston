@@ -4,6 +4,7 @@ mod child_guard;
 mod claude_login;
 mod codex_oauth_loopback;
 mod commands;
+mod dictation;
 #[cfg(target_os = "macos")]
 mod dmg_guard;
 mod engine_supervisor;
@@ -408,6 +409,11 @@ pub fn run() {
             // proxy key so the cloud endpoint's apiKey stays valid.
             local_bridge::commands::saved_bridge_target,
             local_bridge::commands::reconnect_local_bridge,
+            // On-device dictation: transcribe recorded audio with the bundled
+            // whisper.cpp sidecar, and download/verify its pinned model.
+            dictation::transcribe_audio,
+            dictation::dictation_model_status,
+            dictation::download_dictation_model,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

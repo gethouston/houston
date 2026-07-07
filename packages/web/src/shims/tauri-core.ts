@@ -208,6 +208,12 @@ export async function invoke<T = unknown>(
     case "reconnect_local_bridge":
     case "stop_local_bridge":
     case "local_bridge_status":
+    // On-device dictation runs a bundled whisper.cpp sidecar — desktop-only,
+    // no browser equivalent. `useDictation` gates on `osIsTauri()` so the web
+    // build never triggers these; surface a clear error if it somehow does.
+    case "transcribe_audio":
+    case "dictation_model_status":
+    case "download_dictation_model":
     case "pick_directory":
     case "reveal_file":
     case "reveal_agent":
