@@ -8,11 +8,13 @@ import type { EffortLevel, ProviderInfo } from "./providers.ts";
  *
  * pi-ai does NOT ship the Houston-specific presentation metadata, though: brand
  * names (its provider `name` is a titleized id like "Openrouter" or an OAuth
- * subscription string), per-model marketing labels/descriptions, the credit-gated
- * snap-up ceilings (`contextWindowMax`), or the curated per-gateway effort sets
- * (pi has no `"max"` level, and the same model exposes different effort via
- * different gateways). This module carries ONLY that missing metadata, keyed by
- * the Houston provider id, so the hydrator can layer it over pi's catalog.
+ * subscription string), per-model marketing labels/descriptions, or the curated
+ * per-gateway effort sets (pi has no `"max"` level, and the same model exposes
+ * different effort via different gateways). This module carries ONLY that missing
+ * metadata, keyed by the Houston provider id, so the hydrator can layer it over
+ * pi's catalog. The per-model CONTEXT-WINDOW overrides (defaults + credit-gated
+ * snap-up ceilings) live in `@houston/protocol` (`MODEL_WINDOW_OVERRIDES`), shared
+ * verbatim with the runtime's autocompact so the bar and the engine agree.
  *
  * It also defines the two constructs pi-ai has no concept of: the local
  * OpenAI-compatible provider (appended verbatim), and the `openai-codex → openai`
@@ -25,19 +27,6 @@ export interface ModelOverride {
   label?: string;
   /** One-line picker description (pi ships none). */
   description?: string;
-  /**
-   * Starting context-window default (tokens), overriding pi's raw provider
-   * window. Set where Houston shows a different number than pi's raw offer —
-   * notably Codex, whose `/status` reports a 95%-EFFECTIVE window (e.g. 258400
-   * for gpt-5.5's raw 272000). Absent → pi's raw `contextWindow` is used.
-   */
-  contextWindow?: number;
-  /**
-   * Snap-up ceiling (tokens) for the self-correcting usage estimate — set only
-   * for models whose window is gated upward at runtime (credits/plan). pi
-   * reports the default window; this is Houston's known ceiling above it.
-   */
-  contextWindowMax?: number;
   /**
    * Curated reasoning-effort set, overriding what `deriveEffortLevels` would
    * produce from pi's `thinkingLevels`. Present where the curation differs from
@@ -224,33 +213,21 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
         label: "GPT-5.5",
         description: "OpenAI's frontier model.",
         effortLevels: ["low", "medium", "high", "xhigh"],
-        // Codex's `/status` reports the 95%-EFFECTIVE window (0.95 × 272000 raw),
-        // the number the user sees — so the indicator's denominator matches it.
-        contextWindow: 258_400,
-        // Codex exposes an opt-in 1M variant (max_context_window 1M × 95%
-        // effective); the usage indicator snaps up to it once observed usage
-        // exceeds the effective default window.
-        contextWindowMax: 950_000,
       },
       "gpt-5.4": {
         label: "GPT-5.4",
         description: "Strong model for everyday coding.",
         effortLevels: ["low", "medium", "high", "xhigh"],
-        contextWindow: 258_400,
-        contextWindowMax: 950_000,
       },
       "gpt-5.4-mini": {
         label: "GPT-5.4-Mini",
         description: "Small, fast, and cost-efficient for simpler tasks.",
         effortLevels: ["low", "medium", "high", "xhigh"],
-        contextWindow: 258_400,
       },
       "gpt-5.3-codex-spark": {
         label: "GPT-5.3-Codex-Spark",
         description: "Ultra-fast coding model.",
         effortLevels: ["low", "medium", "high", "xhigh"],
-        // 0.95 × 128000 raw (spark's smaller window).
-        contextWindow: 121_600,
       },
     },
   },
@@ -275,8 +252,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
         description: "Best balance of speed and quality.",
         // Sonnet 4.6: has `max`, no `xhigh`.
         effortLevels: ["low", "medium", "high", "max"],
-        // Credit-gated 1M window over pi's reported default (200k on every plan).
-        contextWindowMax: 1_000_000,
       },
       "claude-opus-4-8": {
         label: "Opus 4.8",

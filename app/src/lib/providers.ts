@@ -1,4 +1,8 @@
 import type { CatalogModelEntry, ProviderCatalog } from "@houston/protocol";
+// Value import via the self-contained subpath (NOT the barrel): the app's
+// node --experimental-strip-types test runner can't resolve the barrel's
+// extensionless re-exports, and this leaf module has no imports of its own.
+import { resolveModelWindow } from "@houston/protocol/model-windows";
 import type { Capabilities } from "@houston-ai/engine-client";
 import { normalizeKey } from "./ai-hub/catalog-key.ts";
 import {
@@ -190,15 +194,24 @@ function buildProvider(
       const effort =
         mo?.effortLevels ??
         deriveEffortLevels(entry.thinkingLevels, entry.reasoning);
+      // Window sizing comes from the SHARED `@houston/protocol` table (keyed by
+      // pi's provider id — pre-rename, so Codex is `openai-codex` here), the same
+      // source the runtime's autocompact reads, so the bar and the engine divide
+      // by identical numbers. Falls back to pi's raw window when uncurated.
+      const window = resolveModelWindow(
+        piProvider.id,
+        entry.id,
+        entry.contextWindow,
+      );
       return {
         id: entry.id,
         label: mo?.label ?? entry.name,
         description: mo?.description ?? "",
-        // pi reports the raw provider window; the override carries Houston's
-        // 95%-effective window (the number the provider's `/status` shows, e.g.
-        // Codex's 258k for gpt-5.5) when it differs — see `ModelOverride`.
-        contextWindow: mo?.contextWindow ?? entry.contextWindow,
-        contextWindowMax: mo?.contextWindowMax,
+        contextWindow: window.default,
+        // Omit when there is no upward gating, matching the "absent = no snap"
+        // contract `getContextWindowConfig` reads.
+        contextWindowMax:
+          window.max !== window.default ? window.max : undefined,
         // Empty → omit, so `getEffortLevels`/the picker treat it as no effort row.
         effortLevels: effort.length > 0 ? effort : undefined,
       };

@@ -9,6 +9,7 @@ export * from "./domain/routine";
 export * from "./domain/skill";
 export * from "./domain/workspace";
 export * from "./events";
+export * from "./model-windows";
 export * from "./provider-catalog";
 export * from "./provider-error";
 export * from "./wire";

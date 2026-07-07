@@ -335,6 +335,9 @@ importers:
       '@google-cloud/storage':
         specifier: 7.21.0
         version: 7.21.0
+      '@houston/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       '@houston/runtime-client':
         specifier: workspace:*
         version: link:../runtime-client

@@ -11,18 +11,53 @@ import { classifyProviderError } from "../../ai/provider-error";
  * the same shape), so the prompt that occupies the context window is everything
  * but `output`: `context_tokens = totalTokens - output`. `cached_tokens` is the
  * cache-read portion. This mirrors the Rust engine's `ClaudeUsageRaw::normalize`.
+ *
+ * Some providers (notably Gemini through pi's OpenAI-completions path) deliver
+ * the component fields WITHOUT a summed `totalTokens`. Rather than drop that turn
+ * to null (an empty context bar that never triggers autocompact), synthesize the
+ * window fill from the components: `context_tokens = input + cacheRead + cacheWrite`.
+ * `output` alone says nothing about context size, so a usage with no
+ * context-contributing field left stays null (no misleading zero).
  */
 export function normalizeUsage(u: unknown): TokenUsage | null {
   const usage = u as
-    | { totalTokens?: number; output?: number; cacheRead?: number }
+    | {
+        totalTokens?: number;
+        input?: number;
+        output?: number;
+        cacheRead?: number;
+        cacheWrite?: number;
+      }
     | null
     | undefined;
-  if (!usage || typeof usage.totalTokens !== "number") return null;
-  const output = usage.output ?? 0;
+  if (!usage) return null;
+  const num = (v: unknown): number | undefined =>
+    typeof v === "number" && Number.isFinite(v) ? v : undefined;
+  const output = num(usage.output) ?? 0;
+  const cacheRead = num(usage.cacheRead) ?? 0;
+  const total = num(usage.totalTokens);
+  if (total !== undefined) {
+    return {
+      context_tokens: Math.max(0, total - output),
+      output_tokens: output,
+      cached_tokens: cacheRead,
+    };
+  }
+  // No totalTokens: fall back to the components. Require at least one
+  // context-contributing field (input / cacheRead / cacheWrite); output-only or
+  // an empty object carries no window signal and degrades to null.
+  const input = num(usage.input);
+  const cacheWrite = num(usage.cacheWrite);
+  if (
+    input === undefined &&
+    cacheWrite === undefined &&
+    num(usage.cacheRead) === undefined
+  )
+    return null;
   return {
-    context_tokens: Math.max(0, usage.totalTokens - output),
+    context_tokens: Math.max(0, (input ?? 0) + cacheRead + (cacheWrite ?? 0)),
     output_tokens: output,
-    cached_tokens: usage.cacheRead ?? 0,
+    cached_tokens: cacheRead,
   };
 }
 

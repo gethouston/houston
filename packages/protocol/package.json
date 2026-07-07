@@ -10,6 +10,10 @@
     ".": {
       "types": "./src/index.ts",
       "import": "./src/index.ts"
+    },
+    "./model-windows": {
+      "types": "./src/model-windows.ts",
+      "import": "./src/model-windows.ts"
     }
   },
   "files": [
