@@ -425,6 +425,28 @@ export function safeGetModel(
 }
 
 /**
+ * Canonicalize a wire provider id arriving on a turn PIN / provider override.
+ *
+ * Houston's UI RENAMES pi's `openai-codex` subscription to the display id
+ * `openai` and never offers pi's raw platform-key `openai` provider (frontend
+ * `PROVIDER_ID_RENAME` in `app/src/lib/provider-overrides.ts`; shared alias
+ * table `PROVIDER_ALIASES` in `@houston/domain`). So on the wire a bare `openai`
+ * ALWAYS means the Codex product. The frontend's `wireTurnPin` already applies
+ * this before send; we enforce the SAME mapping here — the single pin-entry seam
+ * every turn's provider override flows through (exec-turn, conversation-cache,
+ * generate-agent) — so NO caller (the hosted Teams model-choice path, a routine
+ * pin, a hand-crafted request body) can land a turn on pi's raw `openai`
+ * provider and miss the `openai-codex` credential.
+ *
+ * TRADEOFF: this hard-codes that wire `openai` == Codex. If Houston ever offers
+ * platform-key OpenAI as its own provider, THIS alias and the frontend rename
+ * must be removed together.
+ */
+function canonicalPinProvider(id: string): string {
+  return id === "openai" ? "openai-codex" : id;
+}
+
+/**
  * Resolve the pi-ai model for the active provider (used when starting a turn).
  * An optional `override` (a routine's pinned model) wins over the saved model;
  * a bad pin surfaces as the turn's error, while a stale SAVED id falls back to
@@ -445,9 +467,10 @@ export function resolveModel(
 ): Model<Api> {
   let provider: ProviderId | null;
   if (providerOverride) {
-    if (!isProvider(providerOverride))
+    const canonical = canonicalPinProvider(providerOverride);
+    if (!isProvider(canonical))
       throw new Error(`unknown provider: ${providerOverride}`);
-    provider = providerOverride;
+    provider = canonical;
   } else {
     provider = activeProvider();
   }
