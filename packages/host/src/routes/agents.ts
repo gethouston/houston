@@ -22,6 +22,7 @@ import { handleAgentData } from "./agent-data";
 import { handleAgentFile } from "./agent-file";
 import { asSeedRecord, writeAgentSeeds } from "./agent-seed";
 import { json, readJson } from "./http";
+import { handleMigration } from "./migration";
 import { handlePortableExport } from "./portable";
 import { handlePortableAnonymize } from "./portable-anonymize";
 import { handlePortablePreview } from "./portable-preview";
@@ -557,6 +558,25 @@ export async function handleAgents(
         rest,
         req,
         res,
+      )
+    )
+      return true;
+    // Desktop→cloud migration (HOU-719): export on the source host, import +
+    // completion marker on the target. agentDir anchors re-synthesized pi
+    // sessions on deployments with a real on-disk tree.
+    if (
+      await handleMigration(
+        {
+          vfs: deps.vfs,
+          paths,
+          agentDir: deps.agentDir?.(authz.workspace, authz.agent),
+        },
+        ctx,
+        method,
+        rest,
+        req,
+        res,
+        emit,
       )
     )
       return true;

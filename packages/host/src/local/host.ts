@@ -118,6 +118,14 @@ export interface LocalHostOptions {
     podToken?: string;
   };
   /**
+   * Passive mode (env `HOUSTON_PASSIVE=1`): boot migrations + serve, but keep
+   * the scheduler and the FS watcher OFF. The one-click migration (HOU-719)
+   * spawns this host briefly against the old `~/.houston` purely to convert
+   * and read data — a read-only source must never fire routines (spawning
+   * credential-less runtimes) or churn watch events while the cloud app copies.
+   */
+  passive?: boolean;
+  /**
    * True only when a trusted gateway fronts EVERY request to this host (the
    * managed cloud pod: the gateway enforces the pod token and mints/strips
    * `x-houston-acting-as` itself). Relays that header to the runtime so a
@@ -385,8 +393,10 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       await new Promise<void>((resolve) =>
         server.listen(opts.port, bind, () => resolve()),
       );
-      watcher.start();
-      scheduler.start();
+      if (!opts.passive) {
+        watcher.start();
+        scheduler.start();
+      }
       // The banner the Tauri supervisor parses (mirrors the runtime's contract).
       // The full token rides ONLY for the desktop sidecar; a pod/self-host token
       // is env-supplied and redacted so it never lands in plaintext logs.
