@@ -181,6 +181,7 @@ export function ProviderModal({
         <ModelsBrowser
           models={models}
           onOpenModel={onOpenModel}
+          compact
           className="px-5 pb-4"
         />
       )}

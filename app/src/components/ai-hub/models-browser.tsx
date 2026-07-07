@@ -4,12 +4,14 @@
  * AND the ledger's column header share ONE sticky unit so neither disappears on
  * scroll — the rows below pass cleanly BEHIND it. The bar is transparent at rest
  * and fades in a frosted-glass `bg-popover` (the blur masks the rows; an opaque
- * fill would slab over the theme) only once it pins on scroll. The body
- * (`ModelsLedger`) scrolls horizontally when narrow (e.g. inside the provider
- * modal); an `onScroll` handler mirrors that `scrollLeft` onto the sticky header
- * track so the pinned header stays column-aligned with the rows. Owns the
- * search + lab + good-at filtering. Reused by the Models tab (`ModelDirectory`)
- * and the provider modal so both read identically.
+ * fill would slab over the theme) only once it pins on scroll. On the full
+ * directory the body (`ModelsLedger`) scrolls horizontally when narrow; an
+ * `onScroll` handler mirrors that `scrollLeft` onto the sticky header track so
+ * the pinned header stays column-aligned with the rows. The `compact` variant
+ * (the provider modal) uses the trackless four-column ledger instead — no
+ * horizontal scroll, so no mirroring. Owns the search + lab + good-at
+ * filtering. Reused by the Models tab (`ModelDirectory`) and the provider
+ * modal so both read identically.
  *
  * The "AI provider" dropdown lists only the labs present in the passed `models`
  * and hides itself when they are all one lab (a single useless option); "Good
@@ -46,10 +48,13 @@ export function ModelsBrowser({
   models,
   onOpenModel,
   className,
+  compact = false,
 }: {
   models: CatalogModel[];
   onOpenModel: (key: string) => void;
   className?: string;
+  /** Modal variant: compact four-column ledger, no horizontal scroll track. */
+  compact?: boolean;
 }) {
   const { t } = useTranslation("aiHub");
   const [query, setQuery] = useState("");
@@ -128,15 +133,19 @@ export function ModelsBrowser({
           />
         </div>
 
-        {results.length > 0 && (
-          <div ref={headerTrackRef} className="overflow-x-hidden">
-            <LedgerHeader />
-          </div>
-        )}
+        {results.length > 0 &&
+          (compact ? (
+            <LedgerHeader compact />
+          ) : (
+            <div ref={headerTrackRef} className="overflow-x-hidden">
+              <LedgerHeader />
+            </div>
+          ))}
       </div>
 
       <ModelsLedger
         models={results}
+        compact={compact}
         onOpenModel={onOpenModel}
         onScroll={onBodyScroll}
       />
