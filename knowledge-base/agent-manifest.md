@@ -532,10 +532,11 @@ the real vendored pi-ai registry, not a test fixture).
 ### Turn mode
 
 A separate per-turn "Mode" pill sits next to the model + effort controls in
-the composer footer, labeled **Doer** (`execute`) vs **Planner** (`plan`,
-read-only investigation). Unlike
+the composer footer, with three labels — **Planner** (`plan`, read-only
+investigation), **Doer** (`execute`), and **Autopilot** (`auto`,
+fire-and-forget: no blocking tools). Unlike
 effort it is NOT synced through `Settings` — full mechanics, the runtime
-enforcement (tool clamp + planning overlay), and the "forgotten `modeOverride`
+enforcement (tool clamp + overlay), and the "forgotten `modeOverride`
 silently degrades to execute" gotcha are in `knowledge-base/architecture.md`
 ("Turn modes").
 

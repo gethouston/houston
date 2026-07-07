@@ -173,9 +173,12 @@ export async function runPiTurn(
       conversationId,
       model,
       ...(thinkingLevel ? { thinkingLevel } : {}),
-      // Plan mode clamps this pi session read-only + overlays the planning
-      // prompt, exactly as the long-lived server path does (createPiBackend
-      // applies `planToolNames` + the loader overlay from `opts.mode`).
+      // The turn's mode clamps this pi session's tools + overlays its prompt,
+      // exactly as the long-lived server path does (createPiBackend applies
+      // `toolNamesForMode` + the loader overlay from `opts.mode`): plan →
+      // read-only, auto → no blocking tools. In cloud turn mode ask_user is the
+      // only blocking tool present (integrations are off), so an auto turn here
+      // simply drops it.
       ...(mode ? { mode } : {}),
     });
 

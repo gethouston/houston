@@ -5,9 +5,10 @@ export interface ModelSettings {
   activeProvider?: ProviderId;
   model?: string;
   effort?: string;
-  /** Per-turn execution mode ("plan" = read-only + planning overlay); a pure
-   *  passthrough like `effort`, never gated by the provider resolution. */
-  mode?: "execute" | "plan";
+  /** Per-turn execution mode ("plan" = read-only + planning overlay; "auto" =
+   *  Autopilot); a pure passthrough like `effort`, never gated by the provider
+   *  resolution. */
+  mode?: "execute" | "plan" | "auto";
 }
 
 /**
@@ -27,7 +28,7 @@ export async function resolveModelSettings(
   client: HoustonEngineClient,
   model: string | undefined,
   effort: string | undefined,
-  mode: "execute" | "plan" | undefined,
+  mode: "execute" | "plan" | "auto" | undefined,
 ): Promise<ModelSettings> {
   if (model === undefined) return { effort, mode };
   let activeProvider: ProviderId | undefined;

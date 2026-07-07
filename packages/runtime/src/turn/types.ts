@@ -1,4 +1,4 @@
-import type { TurnMode } from "@houston/protocol";
+import { normalizeTurnMode, type TurnMode } from "@houston/protocol";
 import type { ServedCredential } from "../auth/auth-file";
 
 /**
@@ -23,8 +23,9 @@ export interface TurnRequest {
   /** Per-turn reasoning-effort override (a routine's pinned effort). Absent = inherit. */
   effort?: string;
   /**
-   * Per-turn execution mode ("plan" = read-only + planning overlay). Absent =
-   * execute. Routines never set plan; a plan turn here is a user-initiated one.
+   * Per-turn execution mode ("plan" = read-only + planning overlay; "auto" =
+   * Autopilot, acts without the blocking tools). Absent = execute. Routines never
+   * set a mode; a non-execute turn here is a user-initiated one.
    */
   mode?: TurnMode;
 }
@@ -80,7 +81,8 @@ export function parseTurnRequest(body: unknown): TurnRequest {
     credential,
     model: typeof b.model === "string" ? b.model : undefined,
     effort: typeof b.effort === "string" ? b.effort : undefined,
-    // Never trust the wire: only the exact string "plan" enables plan mode.
-    mode: b.mode === "plan" ? "plan" : "execute",
+    // Never trust the wire: only the known mode literals ("plan", "auto") pass;
+    // anything else normalizes to "execute".
+    mode: normalizeTurnMode(b.mode),
   };
 }

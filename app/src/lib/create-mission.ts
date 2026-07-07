@@ -72,7 +72,7 @@ export interface CreateMissionOptions {
   /** Reasoning-effort override forwarded to tauriChat.send. */
   effortOverride?: string;
   /** Per-turn mode pin (composer "Mode" selector) forwarded to tauriChat.send. */
-  modeOverride?: "execute" | "plan";
+  modeOverride?: "execute" | "plan" | "auto";
   /**
    * Explicit activity title. Overrides the default `autoTitleFromText(text)`.
    * Used by action invocations where `text` is a structured marker that

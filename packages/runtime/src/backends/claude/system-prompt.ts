@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { TurnMode } from "@houston/protocol";
-import { withPlanOverlay } from "../../session/plan-overlay";
+import { withModeOverlay } from "../../session/mode-overlays";
 
 /**
  * Build the full-replace `systemPrompt` string for a Claude session: Houston's
@@ -27,9 +27,10 @@ export function buildSystemPrompt(
 ): string {
   const context = loadWorkspaceContextFile(cwd);
   const base = context ? `${systemPrompt}\n\n${context}` : systemPrompt;
-  // Plan overlay LAST — after Houston's prompt AND the workspace context file —
-  // so its read-only mandate is the final word the model reads.
-  return withPlanOverlay(base, mode);
+  // Mode overlay LAST — after Houston's prompt AND the workspace context file —
+  // so the plan (read-only) or auto (Autopilot) mandate is the final word the
+  // model reads. Execute passes through unchanged.
+  return withModeOverlay(base, mode);
 }
 
 /** The first workspace-root context file's contents, or null when none exists. */

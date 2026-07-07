@@ -89,9 +89,11 @@
     "mode": "Modo",
     "modeValue": "Modo: {{mode}}",
     "doer": "Executor",
-    "doerDescription": "Faz as coisas: lê, age e faz alterações.",
+    "doerDescription": "Faz as coisas e pergunta a você quando tem dúvidas.",
     "planner": "Planejador",
-    "plannerDescription": "Primeiro escreve um plano para você aprovar. Não faz alterações."
+    "plannerDescription": "Primeiro escreve um plano para você aprovar. Não faz alterações.",
+    "autopilot": "Piloto automático",
+    "autopilotDescription": "Conclui a tarefa sozinho com o que tem. Não faz perguntas."
   },
   "modelSelector": {
     "selectModel": "Escolha um modelo",

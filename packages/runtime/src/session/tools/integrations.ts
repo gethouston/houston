@@ -228,7 +228,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
   // can actually connect apps. Holds no credential and makes no network call —
   // it just records the request.
   const requestConnection = defineTool({
-    name: "request_connection",
+    name: REQUEST_CONNECTION_TOOL_NAME,
     label: "Ask the user to connect an app",
     description:
       "Ask the user to connect one of their apps (Gmail, Slack, Notion, and many more) when an action needs it. This adds a connect step to the one interaction card Houston shows in place of the chat input; queue any questions you also need (via ask_user) in the SAME turn, then end your turn. Never spell out the app's slug or a link in your reply — Houston sends you a message automatically once the connection is live.",
@@ -256,9 +256,17 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
   return [search, execute, requestConnection];
 }
 
+/**
+ * The in-chat connect hand-off tool. A blocking/interactive tool (it waits for
+ * the user to connect an app), so — like `ask_user` — it is EXCLUDED from
+ * Autopilot ("auto") mode, which never waits on the user. Named here so the
+ * mode tool filter can reference it without a string literal.
+ */
+export const REQUEST_CONNECTION_TOOL_NAME = "request_connection";
+
 /** The tool names — pi's allowlist needs the names alongside the objects. */
 export const INTEGRATION_TOOL_NAMES = [
   "integration_search",
   "integration_execute",
-  "request_connection",
+  REQUEST_CONNECTION_TOOL_NAME,
 ];
