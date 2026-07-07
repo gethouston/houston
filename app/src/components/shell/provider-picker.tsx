@@ -7,6 +7,7 @@ import { useProviderCatalog } from "../../hooks/use-provider-catalog";
 import { analytics } from "../../lib/analytics";
 import { tryBeginCodexLoopbackLogin } from "../../lib/codex-loopback";
 import { newEngineActive } from "../../lib/engine";
+import { genericErrorDescription } from "../../lib/error-toast";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
 import {
@@ -206,7 +207,10 @@ export function ProviderPicker({ onSelect }: Props) {
               title: t("toast.signInFailed", {
                 provider: prov?.name ?? ev.data.provider,
               }),
-              description: err instanceof Error ? err.message : String(err),
+              description: genericErrorDescription(
+                "provider_picker_open_url",
+                err,
+              ),
               variant: "error",
             });
           });
@@ -286,14 +290,9 @@ export function ProviderPicker({ onSelect }: Props) {
         enterpriseDomain,
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(
-        `[provider-picker] launchLogin(${provider.id}) failed:`,
-        msg,
-      );
       addToast({
         title: t("toast.signInFailed", { provider: provider.name }),
-        description: msg,
+        description: genericErrorDescription("provider_picker_login", err),
         variant: "error",
       });
       setPendingId(null);
@@ -330,14 +329,9 @@ export function ProviderPicker({ onSelect }: Props) {
     try {
       await tauriProvider.cancelLogin(provider.id);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(
-        `[provider-picker] cancelLogin(${provider.id}) failed:`,
-        msg,
-      );
       addToast({
         title: t("toast.cancelFailed", { provider: provider.name }),
-        description: msg,
+        description: genericErrorDescription("provider_picker_cancel", err),
         variant: "error",
       });
     } finally {
@@ -354,14 +348,9 @@ export function ProviderPicker({ onSelect }: Props) {
       await tauriProvider.launchLogout(provider.id);
       await loadStatuses();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(
-        `[provider-picker] launchLogout(${provider.id}) failed:`,
-        msg,
-      );
       addToast({
         title: t("toast.signOutFailed", { provider: provider.name }),
-        description: msg,
+        description: genericErrorDescription("provider_picker_signout", err),
         variant: "error",
       });
     } finally {

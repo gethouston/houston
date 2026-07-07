@@ -35,8 +35,15 @@ export function reportError(
 /**
  * Surface an error to the user as a toast pair:
  *
- *   1. Red toast — the branded "we have a problem" title + the error itself.
- *      Shown immediately, no action button (auto-report supersedes it).
+ *   1. Red toast — the branded "we have a problem" title + a friendly,
+ *      localized body. Shown immediately, no action button (auto-report
+ *      supersedes it). The body is `options.userMessage` when the caller has
+ *      authored product copy for the failure, else the generic fallback —
+ *      NEVER the raw `message`: diagnostics like "Engine error 202" or
+ *      WebKit's "Load failed" are developer speak, not something a
+ *      non-technical user can act on (HOU-721). The raw `message` still
+ *      reaches the frontend log (callers log before toasting), Sentry, and
+ *      analytics classification, so genericizing the copy costs us nothing.
  *   2. Green follow-up toast — "report sent" + the Sentry event ID, ~700ms
  *      later, with a "Copy code" action that copies the FULL event id so it
  *      can be quoted to support / looked up in Sentry.
@@ -53,10 +60,13 @@ export function reportError(
  * shown. This is the right behavior for forks / personal builds and for
  * network failures where we cannot honestly say the report was sent.
  *
- * A message identical to one toasted moments ago is deduped (toast pair
- * skipped, Sentry capture kept): one root cause failing N concurrent calls —
- * a dozen queries all hitting the same rejected bearer during a cloud deploy
- * (HOU-687) — must read as ONE problem, not a toast storm.
+ * A toast whose DISPLAYED body is identical to one shown moments ago is
+ * deduped (toast pair skipped, Sentry capture kept): one root cause failing N
+ * concurrent calls — a dozen queries all hitting the same rejected bearer
+ * during a cloud deploy (HOU-687) — must read as ONE problem, not a toast
+ * storm. Keying on the displayed body (not the raw diagnostic) means a burst
+ * of distinct engine failures also collapses into one generic toast, which is
+ * exactly how a non-technical user should experience it.
  */
 const TOAST_DEDUPE_WINDOW_MS = 5_000;
 const recentToasts = new Map<string, number>();
@@ -71,14 +81,40 @@ function isDuplicateToast(message: string, now: number): boolean {
   return last !== undefined && now - last <= TOAST_DEDUPE_WINDOW_MS;
 }
 
+export interface ErrorToastOptions {
+  /** Authored, localized product copy to show as the toast body instead of
+   *  the generic fallback. Pass ONLY curated copy (a `t()` result), never a
+   *  raw `err.message` — raw diagnostics belong in `message`, which is
+   *  reported but not displayed. */
+  userMessage?: string;
+}
+
+/**
+ * Localized generic body for an ad-hoc error toast whose title already names
+ * the failed action. Logs the raw diagnostic first (console.error is mirrored
+ * to the frontend log) so the friendlier copy never costs us the detail.
+ */
+export function genericErrorDescription(command: string, err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  console.error(`[${command}] ${raw}`);
+  return i18n.t("shell:errorToast.genericDescription");
+}
+
 export function showErrorToast(
   command: string,
   message: string,
   originalError?: unknown,
+  options?: ErrorToastOptions,
 ): void {
   const addToast = useUIStore.getState().addToast;
+  const description =
+    options?.userMessage ?? i18n.t("shell:errorToast.genericDescription");
 
-  if (isDuplicateToast(message, Date.now())) {
+  // The raw diagnostic no longer appears in the toast, so guarantee it in the
+  // frontend log (console.error is mirrored there) regardless of the caller.
+  console.error(`[toast:${command}] ${message}`);
+
+  if (isDuplicateToast(description, Date.now())) {
     // Still worth the report (Sentry dedupes server-side); just not a second
     // identical red toast within the window. The analytics event, though, tracks
     // a SHOWN toast — so it fires only past the dedupe, else N concurrent calls
@@ -102,7 +138,7 @@ export function showErrorToast(
 
   addToast({
     title: i18n.t("shell:errorToast.problemTitle"),
-    description: message,
+    description,
     variant: "error",
   });
 

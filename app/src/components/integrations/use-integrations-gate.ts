@@ -79,7 +79,12 @@ export function useIntegrationsGate(): IntegrationsGate {
       // The auth layer's onAuthError listener only lives in SignInScreen (not
       // mounted here), so surface the kickoff failure ourselves.
       setSigningIn(false);
-      showErrorToast("integrations_sign_in", t("signin.failed"), err);
+      showErrorToast(
+        "integrations_sign_in",
+        err instanceof Error ? err.message : String(err),
+        err,
+        { userMessage: t("signin.failed") },
+      );
     }
   }, [t]);
 

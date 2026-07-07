@@ -157,6 +157,7 @@ export {
   streamTurn,
   type TerminalBoardStatus,
   TURN_DIED_MESSAGE,
+  TURN_FAILED_MESSAGE,
   type TurnCancelInput,
   type TurnHistoryInput,
   type TurnObserveInput,

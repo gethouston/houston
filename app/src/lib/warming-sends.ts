@@ -137,7 +137,9 @@ export async function flushWarmingSends(
       } catch {
         showErrorToast(
           "warming_sends_row",
-          i18n.t("chat:errors.missionRowFailed"),
+          "mission row create/update failed",
+          undefined,
+          { userMessage: i18n.t("chat:errors.missionRowFailed") },
         );
       }
     }

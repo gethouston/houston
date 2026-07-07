@@ -2,6 +2,7 @@ import { Button } from "@houston-ai/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useReasoningToggle } from "../../hooks/use-reasoning-toggle";
+import { genericErrorDescription } from "../../lib/error-toast";
 import { connectManualEndpoint } from "../../lib/local-model-connect";
 import { ReasoningToggle } from "./local-model-dialog-parts";
 import {
@@ -67,7 +68,7 @@ export function LocalModelManualForm({
       onConnected?.(trimmedModel);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(genericErrorDescription("local_model_manual_connect", err));
       setSubmitting(false);
     }
   };

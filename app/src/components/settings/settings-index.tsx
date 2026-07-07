@@ -2,6 +2,7 @@ import { Bug, FileText, Keyboard, User, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
 import { useWorkspaceContext } from "../../hooks/queries/use-workspace-context";
+import { genericErrorDescription } from "../../lib/error-toast";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { AccountSection } from "./sections/account";
@@ -52,7 +53,7 @@ export function SettingsIndex({
     } catch (err) {
       addToast({
         title: t("settings:toasts.versionCopyFailed"),
-        description: err instanceof Error ? err.message : String(err),
+        description: genericErrorDescription("copy_version", err),
         variant: "error",
       });
     }

@@ -80,12 +80,14 @@ export function createBusFeedOutput(
           pendingInteraction ?? null,
         );
       } catch (e) {
+        // The raw cause is dev speak — log it, show product voice (HOU-721).
+        console.error("[feed-output] board status update failed:", e);
         emitEvent("FeedItem", {
           agent_path: agentPath,
           session_key: sessionKey,
           item: {
             feed_type: "system_message",
-            data: `Couldn't update the board status: ${e instanceof Error ? e.message : String(e)}`,
+            data: "Couldn't update the board status. Please try again.",
           },
         });
       }

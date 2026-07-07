@@ -1,4 +1,5 @@
 import { type Dispatch, type SetStateAction, useCallback } from "react";
+import { genericErrorDescription } from "../../lib/error-toast";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider } from "../../lib/tauri";
 import type {
@@ -70,7 +71,7 @@ export function useProviderConnectActions({
         );
         addToast({
           title: t("toast.signInFailed", { provider: provider.name }),
-          description: msg,
+          description: genericErrorDescription("provider_sign_in", err),
           variant: "error",
         });
         setPending(null);
@@ -121,7 +122,7 @@ export function useProviderConnectActions({
         );
         addToast({
           title: t("toast.cancelFailed", { provider: provider.name }),
-          description: msg,
+          description: genericErrorDescription("provider_cancel_login", err),
           variant: "error",
         });
       } finally {
@@ -151,7 +152,7 @@ export function useProviderConnectActions({
         );
         addToast({
           title: t("toast.signOutFailed", { provider: provider.name }),
-          description: msg,
+          description: genericErrorDescription("provider_sign_out", err),
           variant: "error",
         });
       } finally {

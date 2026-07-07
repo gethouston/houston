@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { analytics } from "../../lib/analytics";
+import { genericErrorDescription } from "../../lib/error-toast";
 import { getDefaultModel } from "../../lib/providers";
 import { stepSection } from "../../lib/setup-steps";
 import { useUIStore } from "../../stores/ui";
@@ -114,7 +115,7 @@ export function PersonalAssistantOnboarding({
     } catch (err) {
       addToast({
         title: t("setup:tutorial.errors.setupFailed"),
-        description: String(err),
+        description: genericErrorDescription("onboarding_create_agent", err),
         variant: "error",
       });
     }
