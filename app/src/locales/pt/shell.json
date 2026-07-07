@@ -101,8 +101,9 @@
         "body": "Escolha Começar do zero para um agente em branco, ou pegue um dos nossos na loja e ajuste do seu jeito."
       },
       "outro": {
-        "title": "Você está quase pronto",
-        "body": "Você já viu o básico. Um último botão mostra este tour de novo quando precisar."
+        "title": "Agora vai construir algo incrível",
+        "body": "Esse é o tour inteiro. O resto é com você, divirta-se.",
+        "confirm": "Vou fazer algo incrível"
       },
       "integrations": {
         "title": "Integrações",

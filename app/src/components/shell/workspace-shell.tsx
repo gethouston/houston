@@ -440,11 +440,6 @@ export function WorkspaceShell({
                 onEnter: () => setCreateAgentDialogOpen(true),
               },
               {
-                title: t("shell:uiTour.steps.outro.title"),
-                body: t("shell:uiTour.steps.outro.body"),
-                onEnter: () => setCreateAgentDialogOpen(false),
-              },
-              {
                 title: t("shell:uiTour.steps.appTour.title"),
                 body: t("shell:uiTour.steps.appTour.body"),
                 targetSelector: "[data-tour-target='appTour']",
@@ -452,6 +447,12 @@ export function WorkspaceShell({
                   setCreateAgentDialogOpen(false);
                   setViewMode(DEFAULT_TAB_ID);
                 },
+              },
+              {
+                title: t("shell:uiTour.steps.outro.title"),
+                body: t("shell:uiTour.steps.outro.body"),
+                confirmLabel: t("shell:uiTour.steps.outro.confirm"),
+                onEnter: () => setCreateAgentDialogOpen(false),
               },
             ] satisfies UiTourStep[]
           ).filter(
