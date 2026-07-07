@@ -77,15 +77,13 @@
       "low": "Bajo",
       "medium": "Medio",
       "high": "Alto",
-      "xhigh": "Muy alto",
-      "max": "Máximo"
+      "xhigh": "Muy alto"
     },
     "effortDescriptions": {
       "low": "Más rápido, menos análisis.",
       "medium": "Equilibrio entre velocidad y profundidad.",
       "high": "Análisis más profundo para tareas difíciles.",
-      "xhigh": "Ideal para tareas complejas.",
-      "max": "Análisis máximo, sin límite de tokens."
+      "xhigh": "Ideal para tareas complejas."
     },
     "picker": {
       "searchPlaceholder": "Busca modelos…",

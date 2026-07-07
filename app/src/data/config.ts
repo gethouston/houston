@@ -7,6 +7,9 @@ export interface Config {
   name?: string;
   provider?: "anthropic" | "openai";
   model?: string;
+  // The active vocabulary is `low|medium|high|xhigh`; a legacy `"max"` may still
+  // sit in older on-disk configs. It is tolerated on read and normalized to
+  // `xhigh` at the UI boundary (see `normalizeEffort`), so it stays here.
   effort?: "low" | "medium" | "high" | "xhigh" | "max";
   [extra: string]: unknown;
 }

@@ -5,9 +5,9 @@
  *
  * One ascending bar per level the active model accepts, solid up to (and
  * including) the current level and dimmed beyond it, so the glyph itself
- * encodes the effort. Bar count tracks the model's own level set (Codex = 4,
- * Opus/Fable = 5), keeping the provider > model > effort cascade legible at a
- * glance.
+ * encodes the effort. Bar count tracks the model's own level set (up to the
+ * four-tier low→xhigh spectrum), keeping the provider > model > effort cascade
+ * legible at a glance.
  */
 
 /** Square viewBox the bars are laid out in (bottom-aligned). */

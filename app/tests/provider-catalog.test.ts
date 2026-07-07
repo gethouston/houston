@@ -8,6 +8,7 @@ import {
   getModel,
   getProvider,
   hydrateProviderCatalog,
+  normalizeEffort,
   normalizeLegacyModel,
   PROVIDERS,
   validEffortOrDefault,
@@ -71,23 +72,26 @@ describe("hydrateProviderCatalog: model metadata", () => {
     });
   });
 
-  it("keeps the curated effort set (incl. `max`, which pi can't supply)", () => {
+  it("derives the effort set straight from pi (no hand-curated per-model list)", () => {
+    // Both are reasoning models with pi's full ladder in the fixture → the
+    // four-tier low→xhigh spectrum, with no retired `max`.
     deepStrictEqual(getEffortLevels("anthropic", "claude-sonnet-4-6"), [
       "low",
       "medium",
       "high",
-      "max",
+      "xhigh",
     ]);
     deepStrictEqual(getEffortLevels("anthropic", "claude-opus-4-8"), [
       "low",
       "medium",
       "high",
       "xhigh",
-      "max",
     ]);
   });
 
-  it("hides the effort row for models the override pins empty", () => {
+  it("hides the effort row for a non-reasoning model", () => {
+    // gpt-4.1 is non-reasoning in the fixture → pi reports no thinking levels,
+    // so the derived set is empty and the effort row is omitted (no override).
     strictEqual(getModel("github-copilot", "gpt-4.1")?.effortLevels, undefined);
     strictEqual(getEffortLevels("github-copilot", "gpt-4.1").length, 0);
   });
@@ -121,6 +125,17 @@ describe("hydrateProviderCatalog: a genuinely new provider (no override)", () =>
   });
 });
 
+describe("normalizeEffort (legacy `max` tolerance)", () => {
+  it("maps a persisted `max` to `xhigh`, passes everything else through", () => {
+    strictEqual(normalizeEffort("max"), "xhigh");
+    strictEqual(normalizeEffort("low"), "low");
+    strictEqual(normalizeEffort("xhigh"), "xhigh");
+    // null/undefined stay as-is so it composes in `??` chains.
+    strictEqual(normalizeEffort(null), null);
+    strictEqual(normalizeEffort(undefined), undefined);
+  });
+});
+
 describe("helpers read the hydrated cache", () => {
   it("getDefaultModel: override pick for curated, first model for new providers", () => {
     strictEqual(getDefaultModel("anthropic"), "claude-sonnet-4-6");
@@ -142,13 +157,19 @@ describe("helpers read the hydrated cache", () => {
   });
 
   it("validEffortOrDefault clamps against the hydrated model's levels", () => {
+    // A persisted legacy `max` normalizes to the top tier the model accepts,
+    // so an agent carrying it keeps its top-tier reasoning (not the default).
     strictEqual(
       validEffortOrDefault("anthropic", "claude-sonnet-4-6", "max"),
-      "max",
+      "xhigh",
     );
-    // Sonnet 4.6 has no xhigh → clamp to the shared default.
     strictEqual(
       validEffortOrDefault("anthropic", "claude-sonnet-4-6", "xhigh"),
+      "xhigh",
+    );
+    // Garbage clamps to the shared default.
+    strictEqual(
+      validEffortOrDefault("anthropic", "claude-sonnet-4-6", "bogus"),
       "medium",
     );
     // A model with no effort row → undefined (caller omits the flag).
