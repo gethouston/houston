@@ -17,7 +17,7 @@ export function HubHero({ modelCount }: { modelCount: number }) {
       <h1 className="text-[28px] font-normal text-foreground">
         {t("hero.title")}
       </h1>
-      <p className="mt-1 max-w-[46ch] text-sm text-muted-foreground">
+      <p className="mt-1 text-sm text-muted-foreground">
         {fewModels(modelCount)
           ? t("hero.subtitleFew")
           : t("hero.subtitle", { models: roundedModelCount(modelCount) })}
