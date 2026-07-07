@@ -87,9 +87,11 @@ The phases themselves are in the workspace CLAUDE.md. In this repo they mean:
 | packages/web | `pnpm --filter houston-web typecheck` (runs Tauri shim-parity guard + tsgo) | — | `pnpm --filter houston-web build` |
 | packages/web UI tests | `pnpm --filter houston-web test:e2e` (Playwright; `typecheck:e2e` for the harness) — see `knowledge-base/ui-testing.md` | — | — |
 
-### Host sidecar staleness (dev only)
+### Host sidecar staleness
 
-The normal dev loop (`pnpm dev` → mprocs, or `pnpm dev:host` + `pnpm dev:app`) points the app at an **externally-run** host (`VITE_NEW_ENGINE_URL=http://127.0.0.1:4318`), so the Tauri shell does NOT spawn the bundled sidecar — host changes are picked up by restarting `pnpm dev:host`. A packaged build (or a `pnpm tauri dev` with no host URL) spawns the staged `binaries/houston-engine-<triple>`, which `build.rs` stages from `target/host-sidecar/houston-host-<triple>`: run `scripts/build-host-sidecar.sh <triple>` first, else `build.rs` stages a no-op placeholder (the dev loop never runs it). Production users never hit staleness — release CI bun-compiles the host from scratch on every tag.
+The normal dev loop (`pnpm dev` → mprocs, or `pnpm dev:host` + `pnpm dev:app`) points the app at an **externally-run** host (`VITE_NEW_ENGINE_URL=http://127.0.0.1:4318`), so the Tauri shell does NOT spawn the bundled sidecar — host changes are picked up by restarting `pnpm dev:host`. A packaged build (or a `pnpm tauri dev` with no host URL) spawns the staged `binaries/houston-engine-<triple>`, which `build.rs` stages from `target/host-sidecar/houston-host-<triple>`: run `scripts/build-host-sidecar.sh <triple>` first, else `build.rs` stages a no-op placeholder (the dev loop never runs it).
+
+**Release builds are guarded (fail-closed).** A stale sidecar left from a previous commit once shipped: packaged v0.5.2 bundled a host predating the `/v1/catalog` route, so the app showed its provider seed with zero models. Two guards now prevent this. `scripts/build-host-sidecar.sh` writes a `<binary>.stamp` recording the git HEAD it compiled at, and its `--verify` step asserts `/v1/catalog` returns a non-empty JSON array. On a RELEASE build `build.rs` reads that stamp and panics if any of the sidecar's input paths (`packages/{host,runtime,runtime-client,domain,protocol}`, `ui/agent-schemas`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `package.json`, `scripts/build-host-sidecar.sh`) changed since the stamp commit — committed, staged, unstaged, or untracked. Unrelated docs-only or frontend-only commits do NOT force a rebuild. Debug builds skip the stamp check.
 
 ---
 
