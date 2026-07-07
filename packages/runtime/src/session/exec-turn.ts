@@ -1,3 +1,4 @@
+import { effectiveModelWindow } from "@houston/protocol/model-windows";
 import type {
   ChatMessage,
   ProviderError,
@@ -219,8 +220,18 @@ export async function execTurn(
         // Mid-session PROVIDER switch. Carry the conversation verbatim when it
         // comfortably fits the new model's window (replay); otherwise compact it
         // first so it fits — pi summarizes with the now-active target model.
+        // Size the target window with Houston's effective rule (same as the bar),
+        // not pi's raw registry number; observed usage on the fresh target is 0,
+        // so it starts at the default — matching the frontend's peak reset on a
+        // provider switch.
+        const targetWindow = effectiveModelWindow(
+          model.provider,
+          model.id,
+          model.contextWindow,
+          0,
+        );
         let summarized = false;
-        if (switchNeedsCompaction(preTokens, model.contextWindow)) {
+        if (switchNeedsCompaction(preTokens, targetWindow)) {
           await conv.session.compact();
           summarized = true;
         }
@@ -249,7 +260,18 @@ export async function execTurn(
     // never re-compacts.
     if (!providerSwitch?.summarized) {
       const fill = conv.session.getContextUsage()?.tokens ?? null;
-      if (needsAutocompact(fill, model.contextWindow)) {
+      // Divide by Houston's EFFECTIVE window (default, snapping up to the ceiling
+      // once observed fill proves the larger plan/credit-gated window is active),
+      // the SAME denominator the frontend context bar uses — so the runtime
+      // compacts a 200k-real Claude chat pi reports as 1M, and does NOT
+      // needlessly compact a Gemini chat pi under-reports as 128k.
+      const window = effectiveModelWindow(
+        model.provider,
+        model.id,
+        model.contextWindow,
+        fill ?? 0,
+      );
+      if (needsAutocompact(fill, window)) {
         await conv.session.compact();
         compaction = { trigger: "proactive", pre_tokens: fill };
         // Stream the boundary so the chat draws the divider + resets its

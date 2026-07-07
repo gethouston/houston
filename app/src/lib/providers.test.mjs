@@ -582,11 +582,30 @@ test("model contextWindow: an override default wins over pi's raw window", () =>
     default: 121_600,
     max: 121_600,
   });
-  // A model with no contextWindow override falls back to pi's raw window
-  // (Opus 4.8 = 1M in the sample), so the fallback path stays exercised.
-  assert.deepEqual(getContextWindowConfig("anthropic", "claude-opus-4-8"), {
+  // A model with no window override falls back to pi's raw window (Fable 5 = 1M
+  // in the sample, un-gated), so the fallback path stays exercised.
+  assert.deepEqual(getContextWindowConfig("anthropic", "claude-fable-5"), {
     default: 1_000_000,
     max: 1_000_000,
+  });
+});
+
+test("model contextWindow: the Anthropic flagships credit-gate 1M behind a 200k default", () => {
+  // pi reports a flat 1M for Opus 4.7/4.8 (SAMPLE_CATALOG), but standard plans
+  // get 200k; the shared @houston/protocol table starts the estimate at 200k and
+  // snaps to 1M once observed usage proves the credit-gated window — the same
+  // numbers the runtime autocompact divides by. Drift here fails CI.
+  for (const id of ["claude-opus-4-8", "claude-opus-4-7"]) {
+    assert.deepEqual(getContextWindowConfig("anthropic", id), {
+      default: 200_000,
+      max: 1_000_000,
+    });
+  }
+  // Gemini via the native google provider is already correct in pi (1,048,576),
+  // so it gets NO override — the bar and the engine both divide by the full 1M.
+  assert.deepEqual(getContextWindowConfig("google", "gemini-3-flash-preview"), {
+    default: 1_048_576,
+    max: 1_048_576,
   });
 });
 
