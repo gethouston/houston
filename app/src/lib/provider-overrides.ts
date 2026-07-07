@@ -97,6 +97,42 @@ export const PROVIDER_ID_RENAME: Readonly<Record<string, string>> = {
   "openai-codex": "openai",
 };
 
+/** Inverse of `PROVIDER_ID_RENAME`: DISPLAY id → engine id (openai → openai-codex). */
+const PROVIDER_ID_UNRENAME: Readonly<Record<string, string>> =
+  Object.fromEntries(
+    Object.entries(PROVIDER_ID_RENAME).map(([engine, display]) => [
+      display,
+      engine,
+    ]),
+  );
+
+/**
+ * ENGINE provider id → the DISPLAY id the picker/logos use (applies
+ * `PROVIDER_ID_RENAME`: openai-codex → openai; everything else passes through).
+ * Used to map a stored model-choice back to the display dialect on READ, mirror
+ * of the engine-adapter's `toOldProvider` and `@houston/domain`'s
+ * `PROVIDER_ALIASES` — duplicated here (not imported) because `app/` does not
+ * depend on those packages, exactly as `use-conversation-vm` duplicates
+ * `toOldProvider`.
+ */
+export function toDisplayProviderId(id: string): string {
+  return PROVIDER_ID_RENAME[id] ?? id;
+}
+
+/**
+ * DISPLAY provider id → the canonical ENGINE id (the inverse: openai →
+ * openai-codex). The picker offers `openai` (Houston's rename of pi's
+ * `openai-codex`), but the gateway/runtime resolve pi's `openai-codex`, so a
+ * model-choice WRITE must canonicalize before it leaves the client — the same
+ * mapping the direct-send path applies via `@houston/domain`
+ * `canonicalProviderId` / `PROVIDER_ALIASES`. Houston never offers pi's raw
+ * platform-key `openai`; if it ever does, this alias AND `PROVIDER_ID_RENAME`
+ * must be removed together.
+ */
+export function toCanonicalProviderId(id: string): string {
+  return PROVIDER_ID_UNRENAME[id] ?? id;
+}
+
 /**
  * pi providers dropped BEFORE the rename is applied. pi's direct api-key `openai`
  * provider collides with the `openai-codex → openai` rename (Houston surfaces the
