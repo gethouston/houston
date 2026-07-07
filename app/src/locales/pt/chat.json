@@ -72,6 +72,14 @@
     "signedIn": "Conectado",
     "signIn": "Entrar"
   },
+  "modeSelector": {
+    "mode": "Modo",
+    "modeValue": "Modo: {{mode}}",
+    "chat": "Chat",
+    "chatDescription": "O Houston pode ler, agir e fazer alterações.",
+    "plan": "Plano",
+    "planDescription": "O Houston apenas observa e escreve um plano para você aprovar. Ele não fará alterações nem usará seus aplicativos."
+  },
   "modelSelector": {
     "selectModel": "Escolha um modelo",
     "model": "Modelo",

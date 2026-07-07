@@ -1,3 +1,4 @@
+import { DEFAULT_TURN_MODE, type TurnMode } from "@houston/protocol";
 import { effectiveModelWindow } from "@houston/protocol/model-windows";
 import type {
   ChatMessage,
@@ -22,7 +23,11 @@ import {
 } from "./attribution";
 import { needsAutocompact } from "./autocompact";
 import { publish } from "./bus";
-import { type Conversation, switchBackendIfNeeded } from "./conversation-cache";
+import {
+  type Conversation,
+  switchBackendIfNeeded,
+  switchModeIfNeeded,
+} from "./conversation-cache";
 import {
   diffSnapshots,
   type FileSnapshot,
@@ -37,6 +42,12 @@ export interface TurnPin {
   provider?: string | null;
   model?: string | null;
   effort?: string | null;
+  /**
+   * The turn's execution mode ("plan" = read-only + planning overlay). Rides the
+   * per-turn pin ONLY — never `Settings` — so an unpinned turn is always
+   * "execute". A flip from the live session's mode rebuilds the session.
+   */
+  mode?: TurnMode | null;
 }
 
 /**
@@ -179,6 +190,9 @@ export async function execTurn(
     // firing on ITS provider no matter what other chats picked in between.
     // A bad model id throws here → surfaces as the turn's error event.
     const model = resolveModel(pin?.model, pin?.provider);
+    // The turn's execution mode: the pin's, else execute. Never inherited from
+    // Settings — an unpinned turn (incl. every routine + cloud turn) is execute.
+    const mode = pin?.mode ?? DEFAULT_TURN_MODE;
     const providerChanged = model.provider !== conv.provider;
     const modelChanged = model.id !== conv.model;
     // COMPLIANCE GATE: when this turn's model crosses a BACKEND boundary
@@ -186,10 +200,17 @@ export async function execTurn(
     // the correct backend rather than `setModel` a foreign model into the live
     // one — the harness-spoofing route the whole backend seam exists to prevent.
     // A same-backend change falls through to the cheap `setModel` fast path below.
+    // The rebuild lands directly on `mode`, so a switch that also flips mode is a
+    // single rebuild and `switchModeIfNeeded` below then no-ops.
     const { rebuilt, preTokens: rebuiltPreTokens } =
-      await switchBackendIfNeeded(conv, id, model);
+      await switchBackendIfNeeded(conv, id, model, mode);
+    // MODE FLIP: a plan⇄execute change on the SAME backend rebuilds the session
+    // read-only (or back). History rehydrates from disk; no provider_switched
+    // frame (same provider/model). No-op when the mode is unchanged — including
+    // right after a cross-backend rebuild that already landed on `mode`.
+    await switchModeIfNeeded(conv, id, model, mode);
     // Attach the turn's listeners to the SETTLED session (the rebuilt one when we
-    // crossed a backend, else the session we entered with).
+    // crossed a backend or flipped mode, else the session we entered with).
     subscribeSession();
     if (rebuilt) {
       // Cross-backend rebuild: the new session starts fresh (no in-memory history

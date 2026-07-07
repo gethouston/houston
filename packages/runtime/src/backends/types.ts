@@ -1,3 +1,4 @@
+import type { TurnMode } from "@houston/protocol";
 import type { WireEvent } from "@houston/runtime-client";
 import type { PiThinkingLevel } from "../ai/effort";
 
@@ -60,6 +61,13 @@ export interface CreateSessionOptions {
   conversationId: string;
   model: ResolvedModel;
   thinkingLevel?: ThinkingLevel;
+  /**
+   * The turn's execution mode. "plan" opens the session with the read-only tool
+   * subset + the planning prompt overlay; absent or "execute" is the full
+   * read/write/act session. A mode change on a live conversation rebuilds the
+   * session (see `switchModeIfNeeded`), so this is fixed for the session's life.
+   */
+  mode?: TurnMode;
 }
 
 /** A pluggable turn-execution backend for a provider. */

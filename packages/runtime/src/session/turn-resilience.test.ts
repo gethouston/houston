@@ -122,6 +122,7 @@ function convWith(session: HarnessSession): Conversation {
     provider: "openai-codex",
     model: "gpt-5-codex",
     backendId: "pi",
+    mode: "execute",
   } as unknown as Conversation;
 }
 

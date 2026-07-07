@@ -138,10 +138,13 @@ export function createProviderOps(ctx: ModuleContext): ProviderOps {
     const client = ctx.clientFor(agentId);
     // Reuse the shared resolver: it pairs a model with its owning provider (the
     // runtime hard-fails a model that belongs to a different active provider).
+    // `mode` is a per-turn pin only — never an agent-wide setting (HOU-695) —
+    // so a settings write always resolves it as undefined.
     const settings = await resolveModelSettings(
       client,
       opts.model,
       opts.effort,
+      undefined,
     );
     if (opts.provider !== undefined) settings.activeProvider = opts.provider;
     await client.setSettings(settings);

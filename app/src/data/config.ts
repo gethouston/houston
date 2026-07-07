@@ -11,6 +11,14 @@ export interface Config {
   // sit in older on-disk configs. It is tolerated on read and normalized to
   // `xhigh` at the UI boundary (see `normalizeEffort`), so it stays here.
   effort?: "low" | "medium" | "high" | "xhigh" | "max";
+  /**
+   * Composer "Mode" selector memory ONLY: the last mode the user picked for this
+   * agent, so the pill reopens where they left it. Per-agent, local. It is NEVER
+   * synced to engine Settings — the actual plan/execute pin rides each send as
+   * `modeOverride` (an unpinned turn is `execute`). Unknown values normalize to
+   * `execute` at the UI boundary (see `normalizeTurnMode`).
+   */
+  mode?: "execute" | "plan";
   [extra: string]: unknown;
 }
 

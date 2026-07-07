@@ -44,6 +44,7 @@ vi.mock("./conversation-cache", () => ({
     rebuilt: false,
     preTokens: null,
   })),
+  switchModeIfNeeded: vi.fn(async () => ({ rebuilt: false })),
 }));
 
 // The durable store is irrelevant to the frame contract under test.
@@ -57,6 +58,7 @@ const { execTurn } = await import("./exec-turn");
 const { subscribe } = await import("./bus");
 const { recordQuestions, recordConnection } = await import("./interaction");
 const { appendAssistantMessage } = await import("../store/conversations");
+const { switchModeIfNeeded } = await import("./conversation-cache");
 
 afterAll(() => vi.restoreAllMocks());
 
@@ -101,6 +103,7 @@ function fakeConv(
     provider: "openai",
     model: "gpt-x",
     backendId: "pi",
+    mode: "execute",
   } as Conv;
 }
 
@@ -178,6 +181,38 @@ test("a provider_error turn emits no done — the pending interaction never ride
   expect(events.some((e) => e.type === "provider_error")).toBe(true);
   // The recorded interaction must NOT be persisted on a failed turn either.
   expect(persistedInteraction(id)).toBeUndefined();
+});
+
+test("pin.mode is threaded into switchModeIfNeeded for the turn", async () => {
+  vi.mocked(switchModeIfNeeded).mockClear();
+  const id = "exec-mode-plan";
+  const conv = fakeConv((emit) => emit({ type: "text", data: "planning" }));
+
+  await execTurn(
+    conv,
+    id,
+    "turn-1",
+    "plan it",
+    { author: undefined, priorAuthors: [] },
+    { mode: "plan" },
+  );
+
+  expect(switchModeIfNeeded).toHaveBeenCalledTimes(1);
+  // (conv, id, model, mode) — the pin's "plan" reaches the mode arg.
+  expect(vi.mocked(switchModeIfNeeded).mock.calls[0][3]).toBe("plan");
+});
+
+test("an absent pin defaults the turn to execute mode", async () => {
+  vi.mocked(switchModeIfNeeded).mockClear();
+  const id = "exec-mode-default";
+  const conv = fakeConv((emit) => emit({ type: "text", data: "doing" }));
+
+  await execTurn(conv, id, "turn-1", "do it", {
+    author: undefined,
+    priorAuthors: [],
+  });
+
+  expect(vi.mocked(switchModeIfNeeded).mock.calls[0][3]).toBe("execute");
 });
 
 test("a thrown turn emits an error frame and no done", async () => {

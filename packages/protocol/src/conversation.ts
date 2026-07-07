@@ -119,6 +119,17 @@ export interface Settings {
   effort?: string;
 }
 
+/**
+ * Per-turn agent execution mode. "execute" = full read/write/act (the default
+ * and today's only behavior for unpinned turns — routines and cloud turns never
+ * inherit plan); "plan" = read-only tools plus a planning overlay, producing a
+ * plan for the user to approve. Deliberately NOT part of `Settings`: mode rides
+ * the per-turn pin only, so an unpinned turn is always "execute".
+ */
+export type TurnMode = "execute" | "plan";
+export const TURN_MODES: readonly TurnMode[] = ["execute", "plan"];
+export const DEFAULT_TURN_MODE: TurnMode = "execute";
+
 export type ChatRole = "user" | "assistant";
 
 export interface ToolCallRecord {

@@ -347,6 +347,13 @@ export const tauriChat = {
       providerOverride?: string;
       modelOverride?: string;
       effortOverride?: string;
+      /**
+       * Per-turn mode pin (composer "Mode" selector). `"plan"` pins a read-only
+       * planning turn; `"execute"` (or omitted) is a normal turn. Distinct from
+       * the legacy `mode`/`promptFile` opts above (Rust-era prompt profiles,
+       * dropped at this boundary) — never collides with them.
+       */
+      modeOverride?: "execute" | "plan";
       /** Resend of a prompt whose bubble is already in the feed (see SessionStartRequest). */
       suppressUserBubble?: boolean;
       /** Queue display (user's words + attachment names) if the send is held (see SessionStartRequest). */
@@ -366,6 +373,7 @@ export const tauriChat = {
         provider: opts?.providerOverride,
         model: opts?.modelOverride,
         effort: opts?.effortOverride,
+        mode: opts?.modeOverride,
         suppressUserBubble: opts?.suppressUserBubble,
         queuedPreview: opts?.queuedPreview,
       });

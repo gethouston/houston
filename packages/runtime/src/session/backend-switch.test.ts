@@ -107,6 +107,7 @@ function convWith(session: SpySession, provider: string, model: string) {
     provider,
     model,
     backendId: session.backendId,
+    mode: "execute",
   } as unknown as Conversation;
 }
 
