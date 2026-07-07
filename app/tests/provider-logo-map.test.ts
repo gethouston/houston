@@ -73,6 +73,7 @@ describe("providerBrandKey", () => {
     strictEqual(providerBrandKey("minimax-cn"), "minimax");
     strictEqual(providerBrandKey("openai-codex"), "openai");
     strictEqual(providerBrandKey("moonshotai-cn"), "moonshotai");
+    strictEqual(providerBrandKey("kimi-coding"), "moonshotai");
     strictEqual(providerBrandKey("zai-coding-cn"), "zai");
     strictEqual(providerBrandKey("vercel-ai-gateway"), "vercel");
     strictEqual(providerBrandKey("xiaomi-token-plan-ams"), "xiaomi");
@@ -82,9 +83,7 @@ describe("providerBrandKey", () => {
 
   it("keeps ids with their OWN models.dev logo as distinct marks", () => {
     // These have a distinct real logo on models.dev, so they are NOT aliased to
-    // a parent (Kimi Coding != Moonshot, Vertex AI != Gemini, OpenCode Go !=
-    // OpenCode Zen).
-    strictEqual(providerBrandKey("kimi-coding"), "kimi-coding");
+    // a parent (Vertex AI != Gemini, OpenCode Go != OpenCode Zen).
     strictEqual(providerBrandKey("google-vertex"), "google-vertex");
     strictEqual(providerBrandKey("opencode-go"), "opencode-go");
     strictEqual(
@@ -136,7 +135,6 @@ describe("providerBrandKey", () => {
       "nvidia",
       "together",
       "moonshotai",
-      "kimi-coding",
       "zai",
       "fireworks",
       "xiaomi",
@@ -170,21 +168,6 @@ describe("OpenCode provider art", () => {
   });
 });
 
-describe("Kimi Coding provider art", () => {
-  it("uses Kimi's own currentColor mark, not Moonshot AI's logo", () => {
-    const src = read("../src/components/shell/provider-marks-extra.tsx");
-    ok(src.includes("export const KimiLogo"), "KimiLogo exists");
-    ok(
-      src.includes("M9.8132 15.9038L9 18.75L8.1868 15.9038"),
-      "KimiLogo draws the Kimi spark mark from models.dev",
-    );
-    ok(
-      src.includes('stroke="currentColor"'),
-      "KimiLogo inherits color for light and dark themes",
-    );
-  });
-});
-
 describe("monogramText", () => {
   it("keeps a pre-shortened 1-2 char mark verbatim, uppercased", () => {
     strictEqual(monogramText("SQ"), "SQ");
@@ -214,10 +197,10 @@ describe("monogramText", () => {
 // keys the registry binds. (Registry lives in the .tsx; this asserts the count
 // the map file publishes so a stray key addition is caught here too.)
 describe("BRAND_KEYS", () => {
-  it("has the expected 32 real brand marks", () => {
-    // Most are straight from models.dev's per-provider endpoint; the remaining
-    // sourced marks are documented beside `BrandKey`.
-    strictEqual(BRAND_KEYS.size, 32);
+  it("has the expected 31 real brand marks", () => {
+    // 27 straight from models.dev's per-provider endpoint, plus meta (its
+    // `llama` art), qwen (its `alibaba` art), cohere, and ant-ling (LobeHub).
+    strictEqual(BRAND_KEYS.size, 31);
   });
 
   it("covers the providers sourced from models.dev", () => {
