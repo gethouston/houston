@@ -20,9 +20,11 @@ import {
 import {
   AmazonBedrockLogo,
   AnthropicLogo,
+  AntLingLogo,
   AzureLogo,
   CerebrasLogo,
   CloudflareLogo,
+  CohereLogo,
   DeepSeekLogo,
   FireworksLogo,
   GitHubCopilotLogo,
@@ -31,6 +33,7 @@ import {
   GroqLogo,
   HuggingFaceLogo,
   LocalModelLogo,
+  MetaLogo,
   MiniMaxLogo,
 } from "./provider-marks.tsx";
 import {
@@ -41,6 +44,7 @@ import {
   OpenCodeGoLogo,
   OpenCodeLogo,
   OpenRouterLogo,
+  QwenLogo,
   TogetherLogo,
   VercelLogo,
   XaiLogo,
@@ -51,6 +55,10 @@ import {
 /** The one place a `BrandKey` binds to its mark. Exhaustive by construction. */
 const BRAND_LOGOS: Record<BrandKey, (props?: LogoProps) => ReactElement> = {
   anthropic: AnthropicLogo,
+  "ant-ling": AntLingLogo,
+  cohere: CohereLogo,
+  meta: MetaLogo,
+  qwen: QwenLogo,
   openai: OpenAILogo,
   google: GoogleLogo,
   "google-vertex": GoogleVertexLogo,

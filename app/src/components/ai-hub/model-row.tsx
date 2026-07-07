@@ -20,6 +20,7 @@ import {
   formatTokens,
   labName,
   memoryKey,
+  modelMarkId,
 } from "./format.ts";
 import {
   CapabilityChip,
@@ -81,7 +82,7 @@ export function ModelRow({
       )}
     >
       <span className="flex min-w-0 items-center gap-3">
-        <BrandMark providerId={model.lab} size="sm" />
+        <BrandMark providerId={modelMarkId(model)} size="sm" />
         <span className="flex min-w-0 flex-col">
           <span className="truncate font-medium text-foreground text-sm">
             {model.name}

@@ -14,15 +14,22 @@
  * Every brand mark Houston ships a real SVG for. Each is a genuine single-color
  * brand logo sourced verbatim from models.dev (github.com/sst/models.dev, MIT)
  * via its per-provider logo endpoint (models.dev/logos/<id>.svg) — we ship NO
- * hand-approximated glyphs, since an inexact mark reads as a wrong logo. A
- * provider models.dev serves its generic default for (and that has no parent
- * brand to borrow) falls back to the polished monogram.
+ * hand-approximated glyphs, since an inexact mark reads as a wrong logo.
+ * Off-endpoint sourcing, same rule: `meta` carries models.dev's `llama` art,
+ * `qwen` its `alibaba` art, and `ant-ling` the Ant Group mark from LobeHub's
+ * icon set (github.com/lobehub/lobe-icons, MIT) — real marks under different
+ * ids, never approximations. An id with no real mark anywhere falls back to
+ * the polished monogram.
  *
  * Keys are the provider ids that resolve to their OWN mark. Regional/variant ids
  * that models.dev serves the default for reuse a parent via `BRAND_ALIASES`.
  */
 export type BrandKey =
   | "anthropic"
+  | "ant-ling"
+  | "cohere"
+  | "meta"
+  | "qwen"
   | "openai"
   | "google"
   | "google-vertex"
@@ -52,6 +59,10 @@ export type BrandKey =
 
 export const BRAND_KEYS: ReadonlySet<BrandKey> = new Set([
   "anthropic",
+  "ant-ling",
+  "cohere",
+  "meta",
+  "qwen",
   "openai",
   "google",
   "google-vertex",
@@ -84,9 +95,8 @@ export const BRAND_KEYS: ReadonlySet<BrandKey> = new Set([
  * Regional/variant ids and AI-hub lab ids that reuse a parent brand's mark, so a
  * "-cn" spin-off, a "-gateway"/"-workers" edge variant, or a lab alias needs no
  * bespoke art. Keyed by the incoming id, valued by the `BrandKey` it borrows.
- * Only aliases onto a REAL logo live here; a variant of a provider we still
- * monogram (xiaomi, ant-ling, azure-openai-responses, ...) carries no alias and
- * cleanly falls to the monogram itself.
+ * Only aliases onto a REAL logo live here; an id with no real mark anywhere
+ * carries no alias and cleanly falls to the monogram itself.
  */
 export const BRAND_ALIASES: Readonly<Record<string, BrandKey>> = {
   // Variant ids models.dev serves the generic default for — reuse a parent
@@ -102,12 +112,15 @@ export const BRAND_ALIASES: Readonly<Record<string, BrandKey>> = {
   "xiaomi-token-plan-sgp": "xiaomi",
   // AI-hub lab ids (see `catalog-lab.ts`) that differ from the provider id.
   // Most lab ids ARE provider ids (anthropic, openai, mistral, deepseek, xai,
-  // minimax, zai, nvidia, ...) so `providerBrandKey` resolves them directly;
-  // only the ids that spell the brand differently need an alias. Labs with no
-  // shipped mark (meta, qwen, cohere, other) carry none and fall to the monogram.
+  // minimax, zai, nvidia, meta, qwen, cohere, ...) so `providerBrandKey`
+  // resolves them directly; only the ids that spell the brand differently need
+  // an alias. The catch-all `other` lab has no mark of its own — the hub falls
+  // back to an offering provider's logo there (see `modelMarkId`).
   gemini: "google",
   amazon: "amazon-bedrock",
   moonshot: "moonshotai",
+  "meta-llama": "meta",
+  llama: "meta",
 };
 
 /**

@@ -19,6 +19,7 @@ import {
   formatReleaseDate,
   formatTokens,
   labName,
+  modelMarkId,
   sortOffers,
 } from "./format.ts";
 import { CapabilityChip, SpecChip } from "./hub-badges.tsx";
@@ -65,7 +66,7 @@ export function ModelModal({
 
   const header = (
     <div className="flex items-start gap-3 px-5 pt-5 pb-4">
-      <BrandMark providerId={model.lab} size="lg" />
+      <BrandMark providerId={modelMarkId(model)} size="lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-lg font-semibold text-foreground tracking-[-0.01em]">
           {model.name}

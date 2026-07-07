@@ -10,6 +10,7 @@ import type {
   CatalogOffer,
   LabId,
 } from "../../lib/ai-hub/catalog-types.ts";
+import { hasProviderBrandMark } from "../shell/provider-logo-map.ts";
 
 /**
  * Token counts as compact labels: `200000 → "200K"`, `1048576 → "1M"`. Values
@@ -140,6 +141,16 @@ export function cheapestInput(
 /** The lab that makes a model, as a brand proper noun (never translated). */
 export function labName(lab: LabId): string {
   return LAB_NAMES[lab];
+}
+
+/**
+ * The id whose brand mark represents this model. Normally the lab, but a lab
+ * with no shipped mark (the catch-all `other`, mostly) falls back to the first
+ * offering provider's logo — a real, recognizable mark beats a letter monogram.
+ */
+export function modelMarkId(model: CatalogModel): string {
+  if (hasProviderBrandMark(model.lab)) return model.lab;
+  return model.offers[0]?.providerId ?? model.lab;
 }
 
 /**
