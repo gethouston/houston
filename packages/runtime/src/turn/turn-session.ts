@@ -10,6 +10,7 @@ import type {
   WireFrame,
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
+import { classifyProviderError } from "../ai/provider-error";
 import { createPiBackend } from "../backends/pi/backend";
 import { config } from "../config";
 import {
@@ -259,6 +260,32 @@ export async function runPiTurn(
     // provider error (mirrors exec-turn: only the clean `done` carries it).
     return providerError ? {} : { pendingInteraction: interaction.pending };
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // Classify the throw before reporting a generic outcome error: pi RAISES
+    // a missing/expired credential at prompt time ("No API key found for
+    // <provider>. Use /login …"), before any stream exists, so this catch is
+    // the only place it can become the typed reconnect card (HOU-718 —
+    // mirrors exec-turn). The typed error is emitted as a provider_error
+    // frame (the terminal the client settles on) and persisted so the card
+    // survives a reload; returning `{}` keeps the per-turn server from
+    // stacking a second, generic error frame on top of it.
+    if (!providerError) {
+      const thrown = classifyProviderError({
+        provider,
+        model: pin?.model ?? null,
+        message,
+      });
+      if (thrown.kind !== "unknown") {
+        appendAssistantMessageAt(
+          conversationsDir,
+          conversationId,
+          assistantText,
+          { tools, usage, providerError: thrown, turnId },
+        );
+        emit({ type: "provider_error", data: thrown });
+        return {};
+      }
+    }
     if (assistantText || providerError)
       appendAssistantMessageAt(
         conversationsDir,
@@ -266,6 +293,6 @@ export async function runPiTurn(
         assistantText,
         { tools, usage, providerError, turnId },
       );
-    return { error: err instanceof Error ? err.message : String(err) };
+    return { error: message };
   }
 }

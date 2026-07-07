@@ -183,6 +183,72 @@ test("a provider_error turn emits no done — the pending interaction never ride
   expect(persistedInteraction(id)).toBeUndefined();
 });
 
+/** The providerError persisted on `id`'s assistant message, or undefined. */
+function persistedProviderError(id: string): unknown {
+  const call = vi
+    .mocked(appendAssistantMessage)
+    .mock.calls.find((c) => c[0] === id);
+  return (call?.[2] as { providerError?: unknown } | undefined)?.providerError;
+}
+
+test("a prompt-time credential throw becomes a typed provider_error frame, not raw error text (HOU-718)", async () => {
+  // pi RAISES a missing credential at prompt time (the user logged out of a
+  // provider that stayed active) — no stream ever exists, so the catch must
+  // classify the throw. Before this, the chat showed pi's raw message
+  // (node_modules doc paths included) and no reconnect card ever appeared.
+  const id = "exec-throw-no-credentials";
+  const { events, unsub } = collect(id);
+  const conv = fakeConv(() => {
+    throw new Error(
+      "No API key found for openai-codex.\n\nUse /login to log into a provider via OAuth or API key. See:\n  /app/docs/providers.md\n  /app/docs/models.md",
+    );
+  });
+
+  await execTurn(conv, id, "turn-1", "hey", {
+    author: undefined,
+    priorAuthors: [],
+  });
+  unsub();
+
+  const providerError = events.find(
+    (e): e is Extract<WireEvent, { type: "provider_error" }> =>
+      e.type === "provider_error",
+  );
+  expect(providerError?.data).toMatchObject({
+    kind: "unauthenticated",
+    cause: "no_credentials",
+  });
+  // The typed frame IS the terminal: no generic error, no clean done.
+  expect(events.some((e) => e.type === "error")).toBe(false);
+  expect(events.some((e) => e.type === "done")).toBe(false);
+  // Persisted too, so the reconnect card survives a reload.
+  expect(persistedProviderError(id)).toMatchObject({
+    kind: "unauthenticated",
+    cause: "no_credentials",
+  });
+});
+
+test("an unrecognized throw keeps the generic error frame and the unknown card", async () => {
+  const id = "exec-throw-unknown";
+  const { events, unsub } = collect(id);
+  const conv = fakeConv(() => {
+    throw new Error("segfault in the flux capacitor");
+  });
+
+  await execTurn(conv, id, "turn-1", "hey", {
+    author: undefined,
+    priorAuthors: [],
+  });
+  unsub();
+
+  expect(events.some((e) => e.type === "provider_error")).toBe(false);
+  const error = events.find(
+    (e): e is Extract<WireEvent, { type: "error" }> => e.type === "error",
+  );
+  expect(error?.data.message).toContain("flux capacitor");
+  expect(persistedProviderError(id)).toMatchObject({ kind: "unknown" });
+});
+
 test("pin.mode is threaded into switchModeIfNeeded for the turn", async () => {
   vi.mocked(switchModeIfNeeded).mockClear();
   const id = "exec-mode-plan";

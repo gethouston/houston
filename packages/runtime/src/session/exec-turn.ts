@@ -8,6 +8,7 @@ import type {
   WireEvent,
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
+import { classifyProviderError } from "../ai/provider-error";
 import { activeEffort, resolveModel } from "../ai/providers";
 import { config } from "../config";
 import {
@@ -428,19 +429,43 @@ export async function execTurn(
     // provider_error frame does — an unattended reader (a routine's reconcile)
     // reads the real reason off this message instead of timing the run out
     // with a vague error 15 minutes later.
+    //
+    // Classify the throw before falling back to `unknown`: pi RAISES a
+    // missing/expired credential at prompt time ("No API key found for
+    // <provider>. Use /login …"), before any stream exists, so this catch is
+    // the only place it can become the typed reconnect card (HOU-718). A
+    // recognized kind is published as a provider_error frame — the turn's
+    // terminal surface, same as the streamed path — so the live chat renders
+    // the card (and auto-continues after reconnect) instead of raw error
+    // text. An unrecognized throw keeps the generic error frame.
+    const thrown =
+      providerError ??
+      classifyProviderError({
+        provider: pin?.provider ?? conv.provider,
+        model: pin?.model ?? null,
+        message: errMessage(err),
+      });
+    const typed = thrown.kind !== "unknown" ? thrown : undefined;
     appendAssistantMessage(id, assistantText, {
       tools,
       usage,
       providerSwitch,
       compaction,
-      providerError: providerError ?? {
+      providerError: typed ?? {
         kind: "unknown",
         provider: pin?.provider ?? conv.provider,
         raw_excerpt: errMessage(err),
       },
       turnId,
     });
-    publish(id, { type: "error", data: { message: errMessage(err) }, turnId });
+    if (typed && !providerError)
+      publish(id, { type: "provider_error", data: typed, turnId });
+    else if (!typed)
+      publish(id, {
+        type: "error",
+        data: { message: errMessage(err) },
+        turnId,
+      });
   } finally {
     conv.turnId = undefined;
     // Never leak the stall timer past the turn (no-op if it threw before arming).
