@@ -1,60 +1,39 @@
 {
   "agentAdmin": {
     "title": "Configuración del agente",
-    "subtitle": "Configura cómo funciona este agente y quién puede usarlo.",
-    "groups": {
-      "configuration": "Configuración",
-      "access": "Acceso",
-      "general": "General"
-    },
     "rows": {
-      "instructions": {
-        "desc": "Lo que este agente debe hacer."
-      },
-      "skills": {
-        "desc": "Habilidades que este agente puede usar."
-      },
       "knowledge": {
-        "title": "Conocimiento",
-        "desc": "Datos y contexto que recuerda."
+        "title": "Conocimiento"
       },
       "model": {
-        "title": "Modelos permitidos",
-        "desc": "Modelos que este agente puede usar."
+        "title": "Modelos de IA"
       },
       "people": {
-        "title": "Personas con acceso",
-        "desc": "Quién puede usar este agente."
+        "title": "Personas con acceso"
       },
       "integrations": {
-        "title": "Integraciones permitidas",
-        "desc": "Aplicaciones que este agente puede usar."
+        "title": "Apps"
       }
     },
     "values": {
-      "skillCount_one": "{{count}} habilidad",
-      "skillCount_other": "{{count}} habilidades",
-      "learningCount_one": "{{count}} nota",
-      "learningCount_other": "{{count}} notas",
-      "allModels": "Todos los modelos permitidos",
-      "modelCount_one": "{{count}} modelo",
-      "modelCount_other": "{{count}} modelos",
-      "allApps": "Todas las apps permitidas",
-      "appCount_one": "{{count}} app",
-      "appCount_other": "{{count}} apps"
+      "allModels": "Cualquier modelo",
+      "modelCount_one": "solo {{count}} modelo",
+      "modelCount_other": "solo {{count}} modelos",
+      "allApps": "Cualquier app",
+      "appCount_one": "solo {{count}} app",
+      "appCount_other": "solo {{count}} apps"
     },
     "models": {
-      "title": "Modelos permitidos",
-      "subtitle": "Elige qué modelos puede usar este agente. Los miembros solo pueden elegir los modelos que permitas aquí.",
-      "emptyTitle": "Todos los modelos permitidos",
-      "emptyBody": "Cualquier persona con acceso puede ejecutar este agente con cualquier modelo disponible. Restríngelo para elegir exactamente qué modelos pueden elegir los miembros.",
-      "restrict": "Restringir modelos para este agente",
-      "allowAll": "Permitir todos los modelos",
+      "question": "¿Qué modelos de IA puede usar este agente?",
+      "anyLabel": "Cualquier modelo",
+      "anyDesc": "Las personas con acceso pueden ejecutar este agente con cualquier modelo disponible.",
+      "pickedLabel": "Solo los modelos que elijas",
+      "pickedDesc": "Las personas con acceso solo pueden usar los modelos que permitas abajo.",
       "allowModel": "Permitir {{name}}",
       "searchModels": "Buscar modelos",
       "noModels": "No se encontraron modelos",
       "allowedHeading": "Modelos permitidos",
-      "allowedEmpty": "Aún no hay modelos permitidos. Agrega algunos abajo.",
+      "allowedEmpty": "Aún no eliges modelos. Agrega modelos abajo.",
       "addHeading": "Agregar modelos"
     },
     "integrations": {
@@ -63,15 +42,14 @@
   },
   "integrations": {
     "allowlist": {
-      "title": "Integraciones permitidas",
-      "subtitle": "Elige qué aplicaciones puede usar este agente. Los miembros solo pueden conectar las que permitas aquí.",
-      "emptyTitle": "Todas las aplicaciones permitidas",
-      "emptyBody": "Cualquier persona con acceso puede conectar este agente a más de 1000 aplicaciones. Restríngelo para elegir exactamente qué aplicaciones puede usar este agente.",
-      "restrict": "Restringir aplicaciones para este agente",
-      "allowAll": "Permitir todas las aplicaciones",
+      "question": "¿Qué apps puede usar este agente?",
+      "anyLabel": "Cualquier app",
+      "anyDesc": "Las personas con acceso pueden conectar este agente a más de 1000 apps.",
+      "pickedLabel": "Solo las apps que elijas",
+      "pickedDesc": "Las personas con acceso solo pueden usar las apps que permitas abajo.",
       "allowApp": "Permitir {{name}}",
       "allowedHeading": "Aplicaciones permitidas",
-      "allowedEmpty": "Aún no hay aplicaciones permitidas. Agrega algunas abajo.",
+      "allowedEmpty": "Aún no eliges apps. Agrega apps abajo.",
       "addHeading": "Agregar aplicaciones"
     },
     "notAllowed": {

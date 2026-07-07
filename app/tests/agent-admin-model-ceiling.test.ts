@@ -2,7 +2,10 @@ import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { ProviderCatalog } from "@houston/protocol";
 import { modelCatalog } from "../src/components/tabs/agent-admin/agent-admin-models-catalog.ts";
-import { ceilingValue } from "../src/components/tabs/agent-admin/agent-admin-row-values.ts";
+import {
+  ceilingMode,
+  ceilingValue,
+} from "../src/components/tabs/agent-admin/agent-admin-row-values.ts";
 import { hydrateProviderCatalog } from "../src/lib/providers.ts";
 
 // The model catalog is runtime-hydrated from the host's GET /v1/catalog (#701):
@@ -56,6 +59,17 @@ describe("ceilingValue — inline row state for a ceiling", () => {
       kind: "count",
       count: 2,
     });
+  });
+});
+
+describe("ceilingMode — the always-visible two-option choice", () => {
+  it("a null ceiling maps to the 'any' (allow-all) option", () => {
+    strictEqual(ceilingMode(null), "any");
+  });
+
+  it("any explicit set (including empty) maps to the 'picked' option", () => {
+    strictEqual(ceilingMode([]), "picked");
+    strictEqual(ceilingMode(["claude-opus-4-8"]), "picked");
   });
 });
 

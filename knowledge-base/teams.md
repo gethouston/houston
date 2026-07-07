@@ -115,15 +115,19 @@ yourself). Render gated by `canManageAssignments`; the gateway is the enforcer.
 
 ---
 
-## Managed-agent read-only surfaces
+## Manager-only configure surfaces
 
 When the caller is a plain member of a shared agent (`!isAgentManager`), the
-configure surfaces render read-only instead of hiding:
+configure surfaces are gated:
 
-- **Agent Settings** (`job-description-tab.tsx`) shows a
-  `teams:managedAgent.banner` note; `job-description-access.ts`
-  (`isConfigReadOnly`) drives the read-only state off `canEditAgentConfig`.
-  `managed-agent-banner.tsx` is the shared banner.
+- **Agent Settings** (`job-description-tab.tsx`) is hidden entirely from
+  non-managers: `standard-tabs.ts` only adds the `job-description` tab for
+  single-player or `isAgentManager` callers, so members never reach it and there
+  is no read-only banner. The tab is a two-column master-detail admin page (a
+  settings nav rail, `agent-admin-sidebar.tsx`, grouping Configuration / Access +
+  the selected section), manager-only and fully editable. Name / color / delete
+  live on the sidebar agent row, not a "General" section (the old landing,
+  back-bar, and General card are gone).
 - **Model / effort pickers** (`chat-model-selector.tsx`,
   `chat-effort-selector.tsx`) are NOT hidden/locked for members (E8 reversed E7).
   In a Teams org the composer shows them to EVERYONE, clamps the option list to
@@ -153,16 +157,17 @@ it. (The E5 org-templates feature that used to live here was removed in E8.)
   allowed; a set = restricted; treat `[]` defensively). Edited manager-only in Agent
   Settings > **Access** > **Allowed models** (`agent-admin-model.tsx` → `AgentModelsSection`
   over a deduped `modelCatalog()`), written via `setAgentSettings({allowedModels})`
-  (`useSetAgentAllowedModels`). Two resting states like the allowlist: "All models
-  allowed" / Restrict, or an explicit set with Edit / Allow-all; the editing surface is
-  `ModelToggleList` (a searchable card list with a per-model allow toggle, mirroring the
-  allowed-integrations app grid). The **AI-model row lives in the Access card**, which is
+  (`useSetAgentAllowedModels`). The editing surface (`AgentModelsSection`) is an
+  always-visible two-option choice (`AccessChoice`: "Any model" saves `null`, "Only
+  models you pick" saves an explicit set) over a searchable card list with a per-model
+  allow toggle, mirroring the allowed-integrations app grid. Copy under
+  `teams:agentAdmin.models.*`. The **AI-model row lives in the Access group**, which is
   multiplayer-only, so single-player never shows it: the sole user has no ceiling and
   picks a model in the composer (the old single-player Agent-Settings model pin +
   `useSaveAgentModel` were removed).
 - **Per-user choice** — each acting user's own `{provider, model, effort?}` for one
   shared agent (`gateway.agent_model_choices`), read/written by the composer pickers in
-  multiplayer (see "Managed-agent read-only surfaces" above), never the shared config.
+  multiplayer (see "Manager-only configure surfaces" above), never the shared config.
 - **Enforcement** — the gateway is the sole enforcer: it clamps every turn to the acting
   user's choice ∩ ceiling and strips any client-supplied model/provider. The client picker
   is convenience only.

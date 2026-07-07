@@ -1,26 +1,18 @@
 import { useInstructions, useSaveInstructions } from "../../../hooks/queries";
 import { InstructionsContent } from "../job-description-parts";
-import {
-  type AgentAdminScreenProps,
-  AgentAdminScreenShell,
-} from "./agent-admin-back-bar";
+import type { AgentAdminScreenProps } from "./agent-admin-nav.ts";
 
-/** Instructions (CLAUDE.md) drill-in. Always editable (managers/owners only). */
-export function AgentAdminInstructions({
-  agent,
-  onBack,
-}: AgentAdminScreenProps) {
+/** Instructions (CLAUDE.md) section. Always editable (managers/owners only). */
+export function AgentAdminInstructions({ agent }: AgentAdminScreenProps) {
   const path = agent.folderPath;
   const { data: instructions } = useInstructions(path);
   const saveInstructions = useSaveInstructions(path);
   return (
-    <AgentAdminScreenShell onBack={onBack}>
-      <InstructionsContent
-        content={instructions ?? ""}
-        onSave={(c) =>
-          saveInstructions.mutateAsync({ name: "CLAUDE.md", content: c })
-        }
-      />
-    </AgentAdminScreenShell>
+    <InstructionsContent
+      content={instructions ?? ""}
+      onSave={(c) =>
+        saveInstructions.mutateAsync({ name: "CLAUDE.md", content: c })
+      }
+    />
   );
 }

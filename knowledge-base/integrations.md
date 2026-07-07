@@ -85,13 +85,16 @@ successful OAuth (see `connectIntegration(provider, toolkit, agent?)`).
 ceiling (`allowedToolkits`, plus the read-only `orgAllowedToolkits` it's
 intersected with and the caller's effective `access`; manager-only write).
 `getOrgSettings` / `setOrgSettings` read/replace the org ceiling (owner-only
-write). Copy lives under `teams:integrations.allowlist` ("Allowed integrations",
-"Restrict to specific apps"); an agent tab also lists apps blocked by the
-ceiling under `teams:integrations.notAllowed`. The manager editor lives in Agent
-Settings > **Access** > **Allowed integrations** (`AgentAllowlistSection`); its
-editing surface is `AllowlistAppGrid` — the Integrations-tab app catalog
-(search + paginated app cards via the shared `AppRow`/`appDisplay`) with a
-per-app allow toggle, not a dense checklist. Full client surface:
+write). Copy lives under `teams:integrations.allowlist` (row titled "Apps"; the
+choice keys `question` / `anyLabel` / `anyDesc` / `pickedLabel` / `pickedDesc`);
+an agent tab also lists apps blocked by the ceiling under
+`teams:integrations.notAllowed`. The manager editor lives in Agent
+Settings > **Access** > **Apps** (`AgentAllowlistSection`); its editing surface
+is an always-visible two-option choice (`AccessChoice`: "Any app" saves `null`,
+"Only apps you pick" saves an explicit set) over the Integrations-tab app catalog
+(`AppCatalogGrid`, search + paginated app cards via the shared
+`AppRow`/`appDisplay`) with a per-app allow toggle, not a dense checklist. Full
+client surface:
 `knowledge-base/teams.md`.
 
 ### Local / self-host grants (NEW — desktop + self-host parity)
