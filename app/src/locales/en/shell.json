@@ -127,9 +127,8 @@
   "providerReconnect": {
     "title": "Session expired",
     "body": "Your {{provider}} connection ended, this happens from time to time. Sign back in and you're good to go.",
-    "reconnect": "Reconnect to {{provider}}",
     "waiting": "Waiting for browser sign-in...",
-    "tryAgain": "Try again",
+    "signInAgain": "Sign in again",
     "launchError": "Could not open sign-in. Try again."
   },
   "agentProvisioning": {
@@ -294,8 +293,8 @@
       "reconnectedBody": "You are signed in again. Pick up where you left off.",
       "reconnectedResending": "You are signed in again. Houston is answering your message now.",
       "signedIn": "Signed in",
-      "sendAgain": "Try again",
-      "failedBody": "The {{provider}} sign-in did not finish. Try again. {{detail}}"
+      "sendAgain": "Send my message",
+      "failedBody": "The {{provider}} sign-in did not finish. Sign in again. {{detail}}"
     },
     "networkUnreachable": {
       "title": "Cannot reach {{provider}}",

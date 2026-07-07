@@ -7,6 +7,7 @@ import { RowCard } from "../cards/row-card";
 import { RowCardButton } from "../cards/row-card-button";
 import { LocalModelDialog } from "./local-model-dialog";
 import { ProviderGlyph } from "./provider-logos";
+import { resolveReconnectCardPresentation } from "./provider-reconnect-presentation";
 import {
   providerIsAuthenticated,
   providerReconnectSignalState,
@@ -125,29 +126,21 @@ export function ProviderReconnectCard({
 
   if (!activeProviderId || !provider) return null;
 
-  const description = loginError
-    ? t("shell:providerReconnect.launchError")
-    : loginLaunched
-      ? t("shell:providerReconnect.waiting")
-      : t("shell:providerReconnect.body", { provider: provider.name });
+  // Two states keyed on loginLaunched: the launched button now names its
+  // action ("Sign in again"), not the ambiguous shared "Try again".
+  const pres = resolveReconnectCardPresentation({ loginLaunched, loginError });
 
   return (
     <div className="w-full px-1 py-2">
       <RowCard
         media={<ProviderGlyph providerId={activeProviderId} />}
         title={t("shell:providerReconnect.title")}
-        description={description}
+        description={t(pres.descriptionKey, { provider: provider.name })}
         action={
           <RowCardButton
-            label={
-              loginLaunched
-                ? t("common:actions.tryAgain")
-                : t("shell:authReconnect.signInWith", {
-                    provider: provider.name,
-                  })
-            }
+            label={t(pres.buttonLabelKey, { provider: provider.name })}
             onClick={handleSignIn}
-            variant={loginLaunched ? "outline" : "default"}
+            variant={pres.buttonVariant}
           />
         }
       />

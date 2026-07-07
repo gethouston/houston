@@ -127,9 +127,8 @@
   "providerReconnect": {
     "title": "Sessão expirada",
     "body": "Sua conexão com o {{provider}} encerrou, isso acontece de vez em quando. Entre de novo e está tudo certo.",
-    "reconnect": "Reconectar ao {{provider}}",
     "waiting": "Aguardando o login no navegador...",
-    "tryAgain": "Tentar de novo",
+    "signInAgain": "Entrar novamente",
     "launchError": "Não foi possível abrir o login. Tente de novo."
   },
   "agentProvisioning": {
@@ -279,8 +278,8 @@
       "reconnectedBody": "Você entrou de novo. Continue de onde parou.",
       "reconnectedResending": "Você entrou de novo. O Houston está respondendo sua mensagem agora.",
       "signedIn": "Sessão iniciada",
-      "sendAgain": "Tentar novamente",
-      "failedBody": "O login de {{provider}} não foi concluído. Tente novamente. {{detail}}"
+      "sendAgain": "Enviar minha mensagem",
+      "failedBody": "O login de {{provider}} não foi concluído. Entre novamente. {{detail}}"
     },
     "networkUnreachable": {
       "title": "Não foi possível alcançar o {{provider}}",
