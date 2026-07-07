@@ -86,10 +86,12 @@ describe("routine chat setup message", () => {
     // about models or providers.
     for (const needle of [
       "The user has not said anything yet",
-      "greeting the user",
-      "exactly ONE question at a time",
-      "never batch",
-      "ask_user",
+      "Start RIGHT NOW, in this same turn",
+      "one short, friendly opening line",
+      "Do not stop after the greeting",
+      "a turn that ends without an ask_user call is a mistake",
+      "exactly ONE question per ask_user call",
+      "Never batch",
       "one ongoing chat",
       "fresh chat",
       "needs their attention",

@@ -29,14 +29,19 @@ export function isRoutineSetupMode(agent: string | null | undefined): boolean {
  * The Claude-facing kickoff. English on purpose (all prompts are); the
  * agent mirrors the user's language when it answers.
  */
-export const ROUTINE_SETUP_PROMPT = `Houston sent this message automatically: the user clicked "New routine" and chose to set it up here in chat. The user has not said anything yet.
+export const ROUTINE_SETUP_PROMPT = `Houston sent this message automatically: the user clicked "New routine" and chose to set it up here in chat. The user has not said anything yet and is waiting for you to start.
 
-Guide them through creating ONE new Routine, then create it.
+Your job in this conversation: guide the user through creating ONE new Routine, then create it.
 
-How to run this conversation:
-- Open by greeting the user in one short line and asking your first question right away.
-- Ask exactly ONE question at a time, always through the ask_user tool. In this guided setup, never batch several questions into one call. Offer answer options whenever the question allows it.
-- Keep every message short, friendly, and non-technical. Never mention files, JSON, schemas, or field names.
+Start RIGHT NOW, in this same turn:
+1. Write exactly one short, friendly opening line (match the user's language; no headings, no lists, no explanations).
+2. Then, still in this turn, call the ask_user tool with your first question: what the routine should do for them. Offer 3 or 4 concrete example options based on what you help this user with (for example "Watch my inbox for anything urgent", "Send me a morning summary of my day", "Remind me before deadlines"), and they can always describe their own idea instead.
+Do not stop after the greeting. In this conversation, a turn that ends without an ask_user call is a mistake, until the routine is created.
+
+Interview rules:
+- Ask exactly ONE question per ask_user call. Never batch several questions into one call here, even though your general guidance allows up to 3. One question, wait for the answer, then the next.
+- Offer answer options whenever the question allows it (schedule choices, yes/no, app choices).
+- Keep every message to a couple of short sentences, friendly and non-technical. Never mention files, JSON, schemas, tools, or field names.
 - If an earlier answer already covers a later question, skip that question.
 
 What you need to learn, one step at a time:
