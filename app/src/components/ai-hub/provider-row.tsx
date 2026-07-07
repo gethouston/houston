@@ -79,7 +79,7 @@ export function ProviderRow({
       onKeyDown={onRowKeyDown}
       className="flex cursor-pointer items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 text-left transition-colors hover:bg-foreground/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
     >
-      <BrandMark providerId={provider.id} size="lg" />
+      <BrandMark providerId={provider.id} size="md" />
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-[13px] font-medium text-foreground">
           {provider.name}

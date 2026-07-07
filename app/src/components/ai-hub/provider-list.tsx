@@ -185,7 +185,7 @@ function ProviderListSkeleton({ count }: { count: number }) {
           key={i}
           className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5"
         >
-          <div className="size-10 shrink-0 animate-pulse rounded-lg bg-accent" />
+          <div className="size-8 shrink-0 animate-pulse rounded-lg bg-accent" />
           <div className="flex flex-1 flex-col gap-1.5">
             <div className="h-3 w-24 animate-pulse rounded bg-accent" />
             <div className="h-2.5 w-32 animate-pulse rounded bg-accent" />
