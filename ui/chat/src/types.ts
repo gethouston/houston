@@ -146,6 +146,15 @@ export type ProviderError =
        * a generic "try again" prompt would arrive with no context to retry.
        */
       failed_prompt?: string;
+      /**
+       * Wire-carried (HOU-718): the turn's user text when the engine PERSISTED
+       * it but the model never received it — pi raises a missing credential at
+       * prompt time, before recording the message in its session store. The
+       * reconnect retry re-delivers this text hidden under the auto-continue
+       * marker: the transcript already shows the original bubble, so unlike
+       * `failed_prompt` the re-send must never render a second one.
+       */
+      undelivered_prompt?: string;
     }
   | { kind: "network_unreachable"; provider: string; message: string }
   | {

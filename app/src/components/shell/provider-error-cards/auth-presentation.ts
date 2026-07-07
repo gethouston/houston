@@ -33,7 +33,7 @@ export function authCauseBodyKey(cause: UnauthCause): string {
 }
 
 /** The action a button fires. A `badge` button is a disabled status pill. */
-export type AuthCardAction = "reconnect" | "cancel" | "sendAgain";
+export type AuthCardAction = "reconnect" | "cancel";
 
 export type AuthCardButton =
   | { kind: "action"; labelKey: string; action: AuthCardAction }
@@ -51,10 +51,10 @@ export interface AuthCardPresentation {
 /**
  * Resolve the card's title/body/button from its phase.
  *
- * - `done` + a refused send (`hasFailedPrompt`): the resend already fired, so
- *   the pill is a disabled "Signed in" badge.
- * - `done`, mid-turn failure: an explicit "Send my message" button (only when
- *   the card can resend — `hasRetry`).
+ * - `done` with a retry handler: the resume already auto-fired, so the pill
+ *   is a disabled "Signed in" badge. The body says what resumed: the refused
+ *   send's message (`hasFailedPrompt`) or the interrupted task.
+ * - `done` without a retry handler: nothing to resume — plain confirmation.
  * - `waiting`: the wait is on the user's browser, so the action is Cancel.
  * - `failed` / `idle`: the Reconnect button relaunches sign-in.
  */
@@ -75,13 +75,19 @@ export function resolveAuthCardPresentation(args: {
         button: { kind: "badge", labelKey: `${K}.signedIn` },
       };
     }
+    if (hasRetry) {
+      return {
+        variant: "done",
+        titleKey: `${K}.reconnectedTitle`,
+        bodyKey: `${K}.reconnectedResuming`,
+        button: { kind: "badge", labelKey: `${K}.signedIn` },
+      };
+    }
     return {
       variant: "done",
       titleKey: `${K}.reconnectedTitle`,
       bodyKey: `${K}.reconnectedBody`,
-      button: hasRetry
-        ? { kind: "action", labelKey: `${K}.sendAgain`, action: "sendAgain" }
-        : null,
+      button: null,
     };
   }
 
