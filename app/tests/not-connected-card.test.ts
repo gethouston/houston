@@ -2,6 +2,7 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { FeedItem, ProviderError } from "@houston-ai/chat";
 import {
+  continuesTaskAfterReconnect,
   isInlineAuthCardForChat,
   providerErrorRetryText,
   resendsOriginalPrompt,
@@ -56,6 +57,34 @@ describe("resendsOriginalPrompt", () => {
     );
     strictEqual(
       resendsOriginalPrompt({
+        kind: "rate_limited",
+        provider: "anthropic",
+        model: null,
+        retry_after_seconds: null,
+        message: "slow down",
+      }),
+      false,
+    );
+  });
+});
+
+describe("continuesTaskAfterReconnect", () => {
+  it("marks the mid-turn auth failure: reconnect resumes the task (HOU-718)", () => {
+    strictEqual(
+      continuesTaskAfterReconnect({
+        kind: "unauthenticated",
+        provider: "anthropic",
+        cause: "token_expired",
+        message: "session expired",
+      }),
+      true,
+    );
+  });
+
+  it("never marks the refused send (it resends its prompt) or other kinds", () => {
+    strictEqual(continuesTaskAfterReconnect(notConnectedCard), false);
+    strictEqual(
+      continuesTaskAfterReconnect({
         kind: "rate_limited",
         provider: "anthropic",
         model: null,

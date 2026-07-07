@@ -11,10 +11,12 @@
  * that frees the login slot and re-arms) until that event flips it to a green
  * confirmation, the failure, or a benign cancel.
  *
- * The confirmation depends on what failed. A refused SEND (`failed_prompt`: the
- * message never reached the engine) resends once — signing in IS the remaining
- * intent — then shows a disabled "Signed in" badge. A mid-turn failure keeps an
- * explicit resend CTA (that turn already has server-side context).
+ * Signing in IS the remaining intent, so a successful reconnect resumes the
+ * conversation automatically (once), then shows a disabled "Signed in" badge.
+ * What gets sent depends on what failed: a refused SEND (`failed_prompt`: the
+ * message never reached the engine) resends the original prompt; a mid-turn
+ * failure sends a hidden auto-continue nudge (that turn already has
+ * server-side context) — the split lives in the panel's `onRetry`.
  *
  * Every launch is cancelLogin -> launchLogin: the engine keeps one login slot
  * per provider and rejects a second launch as "already pending", so a relaunch
@@ -60,9 +62,6 @@ export function UnauthenticatedCard({
   // complete several logins while the chat stays open) would double-send.
   const autoResendFiredRef = useRef(false);
   const provider = providerLabel(error.provider);
-  // A refused SEND (see header): reconnect auto-resends; mid-turn failures keep
-  // the explicit CTA.
-  const autoResend = !!error.failed_prompt;
   // In a ref so the subscription mounts once (resubscribing per render could
   // drop a completion event in the gap).
   const onRetryRef = useRef(onRetry);
@@ -80,7 +79,7 @@ export function UnauthenticatedCard({
         if (useUIStore.getState().authRequired === error.provider) {
           setAuthRequired(null);
         }
-        if (autoResend && onRetryRef.current && !autoResendFiredRef.current) {
+        if (onRetryRef.current && !autoResendFiredRef.current) {
           autoResendFiredRef.current = true;
           setRetrying(true);
           void Promise.resolve(onRetryRef.current())
@@ -99,7 +98,7 @@ export function UnauthenticatedCard({
         setPhase("idle");
       }
     });
-  }, [error.provider, setAuthRequired, autoResend]);
+  }, [error.provider, setAuthRequired]);
 
   const reconnect = async () => {
     if (launching) return;
@@ -126,25 +125,15 @@ export function UnauthenticatedCard({
     }
   };
 
-  const sendAgain = async () => {
-    if (!onRetry || retrying) return;
-    setRetrying(true);
-    try {
-      await onRetry();
-    } finally {
-      setRetrying(false);
-    }
-  };
-
   const pres = resolveAuthCardPresentation({
     phase,
-    hasFailedPrompt: autoResend,
+    hasFailedPrompt: !!error.failed_prompt,
     hasRetry: !!onRetry,
     causeBodyKey: authCauseBodyKey(error.cause),
   });
 
   // Map the resolved button spec to its live handler + pending state. The
-  // "done" resend badge is a disabled status pill that spins during the resend;
+  // "done" resume badge is a disabled status pill that spins during the resume;
   // Cancel (bail out of the browser wait) is the only outline action pill.
   const renderButton = (button: AuthCardButton) => {
     if (!button) return undefined;
@@ -159,23 +148,12 @@ export function UnauthenticatedCard({
         />
       );
     }
-    const handler =
-      button.action === "cancel"
-        ? cancelSignIn
-        : button.action === "sendAgain"
-          ? sendAgain
-          : reconnect;
+    const handler = button.action === "cancel" ? cancelSignIn : reconnect;
     return (
       <RowCardButton
         label={t(button.labelKey)}
         onClick={handler}
-        loading={
-          button.action === "reconnect"
-            ? launching
-            : button.action === "sendAgain"
-              ? retrying
-              : false
-        }
+        loading={button.action === "reconnect" ? launching : false}
         variant={button.action === "cancel" ? "outline" : "default"}
       />
     );

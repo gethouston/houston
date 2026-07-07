@@ -278,8 +278,8 @@
       "reconnectedTitle": "Reconectado a {{provider}}",
       "reconnectedBody": "Você entrou de novo. Continue de onde parou.",
       "reconnectedResending": "Você entrou de novo. O Houston está respondendo sua mensagem agora.",
+      "reconnectedResuming": "Você entrou de novo. O Houston está continuando de onde parou.",
       "signedIn": "Sessão iniciada",
-      "sendAgain": "Enviar minha mensagem",
       "failedBody": "O login de {{provider}} não foi concluído. Entre novamente. {{detail}}"
     },
     "networkUnreachable": {

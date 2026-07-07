@@ -56,6 +56,9 @@
   "toolRuntimeError": {
     "retryPrompt": "Intenta de nuevo."
   },
+  "providerError": {
+    "reconnectedContinue": "Ya inicié sesión de nuevo. Por favor continúa donde quedaste."
+  },
   "attachmentIssues": {
     "title": "Algunos archivos no se adjuntaron",
     "description": "Houston conservó tu mensaje y los archivos que sí puede usar.",

@@ -124,6 +124,7 @@ import { SelectedSkillChip } from "./selected-skill-chip";
 import { AgentProvisioningCard } from "./shell/agent-provisioning-card";
 import { ProviderErrorCard } from "./shell/provider-error-card";
 import {
+  continuesTaskAfterReconnect,
   isInlineAuthCardForChat,
   providerErrorRetryText,
   resendsOriginalPrompt,
@@ -1093,13 +1094,20 @@ export function useAgentChatPanel({
             onRetry={async () => {
               if (!path || !selectedSessionKey) return;
               // A refused not-connected send never reached the engine —
-              // the card resends the original message verbatim (and fires
-              // itself on reconnect). Live-turn failures keep the generic
-              // retry prompt (their context is already server-side).
-              const text = providerErrorRetryText(
-                providerError,
-                t("chat:toolRuntimeError.retryPrompt"),
-              );
+              // the card resends the original message verbatim. A mid-turn
+              // auth failure's context is already server-side, so reconnect
+              // resumes the interrupted task with a hidden auto-continue
+              // nudge (the transcript filters its bubble, see
+              // `mapFeedItems`). Both fire automatically on reconnect;
+              // other failures keep the generic visible retry prompt.
+              const text = continuesTaskAfterReconnect(providerError)
+                ? encodeAutoContinueMessage(
+                    t("chat:providerError.reconnectedContinue"),
+                  )
+                : providerErrorRetryText(
+                    providerError,
+                    t("chat:toolRuntimeError.retryPrompt"),
+                  );
               await tauriChat.send(path, text, selectedSessionKey, {
                 providerOverride: effectiveProvider,
                 modelOverride: effectiveModel,

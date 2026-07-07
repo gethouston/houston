@@ -40,6 +40,19 @@ export function resendsOriginalPrompt(err: ProviderError): boolean {
 }
 
 /**
+ * Whether this card's retry resumes an INTERRUPTED turn (HOU-718) — a
+ * mid-turn auth failure, where the conversation context (including the
+ * user's message) is already persisted server-side. Such a retry fires
+ * automatically once sign-in completes and sends a hidden auto-continue
+ * nudge (see `lib/auto-continue-message.ts`) so the agent picks the task
+ * back up without the user retyping. The refused-send card resends its
+ * original prompt instead (`resendsOriginalPrompt`).
+ */
+export function continuesTaskAfterReconnect(err: ProviderError): boolean {
+  return err.kind === "unauthenticated" && !err.failed_prompt;
+}
+
+/**
  * What the card's retry should send: the refused original prompt when the
  * message never reached the engine, else the caller's generic retry prompt
  * (the turn's context is already server-side for live-turn failures).
