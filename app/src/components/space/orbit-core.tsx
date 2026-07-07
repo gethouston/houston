@@ -32,12 +32,12 @@ export function OrbitDefs({ path }: { path: string }) {
       <radialGradient id="orbit-comet-glow">
         <stop
           offset="0%"
-          stopColor="var(--ht-space-comet-warm)"
+          stopColor="var(--ht-space-foreground)"
           stopOpacity="0.7"
         />
         <stop
           offset="100%"
-          stopColor="var(--ht-space-comet-warm)"
+          stopColor="var(--ht-space-foreground)"
           stopOpacity="0"
         />
       </radialGradient>
