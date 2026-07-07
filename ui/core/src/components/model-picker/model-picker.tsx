@@ -1,143 +1,183 @@
 "use client";
 
-import { TriangleAlert } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
+import type * as React from "react";
 import { useMemo } from "react";
 import { cn } from "../../utils";
-import { Command } from "../command";
-import { ModelList } from "./model-list";
-import { ModelPickerHeader } from "./model-picker-header";
-import { ProviderRail, type RailProvider } from "./provider-rail";
-import { buildView, resolveInitialProvider } from "./sections";
+import { Command, CommandList } from "../command";
+import {
+  connectedProviderIds,
+  modelsForProvider,
+  providerListLoading,
+  searchModels,
+  connectedProviders as selectConnectedProviders,
+} from "./catalog";
+import { ConnectMore } from "./connect-more";
+import { ModelRows } from "./model-list";
+import { ProviderList } from "./provider-list";
+import { SearchField } from "./search-field";
 import { DEFAULT_MODEL_PICKER_LABELS, type ModelPickerProps } from "./types";
 import { useModelPicker } from "./use-model-picker";
 
 /**
- * Search-first model-picker command menu. Owns its own filtering / sorting /
- * grouping (cmdk runs with `shouldFilter={false}`); cmdk provides the accessible
- * input, list semantics, and ↑/↓/Enter roving. All data comes in as props and
- * all mutations go out as callbacks — no store, no i18n, no app types.
+ * Minimal two-level model picker. Level 1 lists the connected providers; clicking
+ * one drills into its models (level 2). The always-visible search field bypasses
+ * both levels with a flat ranked list across every connected provider, and
+ * clearing it returns to the current level. Disconnected providers never appear —
+ * the only path to them is the "Connect more providers…" footer.
+ *
+ * cmdk (with `shouldFilter={false}`) provides the accessible input, list
+ * semantics, and ↑↓/Enter roving; this component owns which rows show. All data
+ * comes in as props and all actions go out as callbacks — no store, no i18n.
  */
 export function ModelPicker({
   models,
   providers,
-  favorites,
-  recents,
   selectedId,
-  defaultProviderId,
   catalogState = "ready",
   onSelect,
-  onToggleFavorite,
-  onConnect,
+  onConnectMore,
   renderProviderIcon,
   labels: labelsProp,
   className,
 }: ModelPickerProps) {
   const labels = { ...DEFAULT_MODEL_PICKER_LABELS, ...labelsProp };
-  // Open focused on a provider (resolved once); All/Favorites/Recents are
-  // opt-in via the rail. Providers is effectively stable per open.
-  const initialProvider = useMemo(
-    () => resolveInitialProvider(defaultProviderId, providers),
-    [defaultProviderId, providers],
-  );
-  const c = useModelPicker(initialProvider);
+  const { nav, setQuery, enterProvider, back } = useModelPicker();
+  const searching = nav.query.trim() !== "";
 
-  const favoritesSet = useMemo(() => new Set(favorites), [favorites]);
-  const providersMap = useMemo(
-    () => new Map(providers.map((p) => [p.id, p])),
+  const connected = useMemo(
+    () => selectConnectedProviders(providers),
     [providers],
   );
-  const providerNames = useMemo(
-    () => new Map(providers.map((p) => [p.id, p.name])),
+  const connectedIds = useMemo(
+    () => connectedProviderIds(providers),
     [providers],
   );
+  const loading = providerListLoading(providers, catalogState);
 
-  // Rail entries follow the provider prop order, keeping only providers that
-  // actually own models.
-  const railProviders = useMemo<RailProvider[]>(() => {
-    const withModels = new Set(models.map((m) => m.providerId));
-    return providers
-      .filter((p) => withModels.has(p.id))
-      .map((p) => ({ id: p.id, name: p.name, connection: p.connection }));
-  }, [models, providers]);
+  const selectedProviderId = useMemo(
+    () => models.find((m) => m.id === selectedId)?.providerId,
+    [models, selectedId],
+  );
 
-  const view = useMemo(
+  const searchResults = useMemo(
+    () => (searching ? searchModels(models, providers, nav.query) : []),
+    [searching, models, providers, nav.query],
+  );
+
+  const view = nav.view;
+  const providerModels = useMemo(
     () =>
-      buildView(
-        models,
-        providers.map((p) => p.id),
-        providerNames,
-        favoritesSet,
-        recents,
-        c.filter,
-      ),
-    [models, providers, providerNames, favoritesSet, recents, c.filter],
+      view.level === "models"
+        ? modelsForProvider(models, connectedIds, view.providerId)
+        : [],
+    [view, models, connectedIds],
   );
 
-  const selectedName = models.find((m) => m.id === selectedId)?.name;
+  const activeProvider =
+    view.level === "models"
+      ? connected.find((p) => p.id === view.providerId)
+      : undefined;
+  const showBack = !searching && activeProvider !== undefined;
+
+  // Escape/Backspace back out of level 2 before Radix closes the popover. An
+  // active query is peeled off first (Escape clears the search), then a second
+  // Escape (or Backspace on an empty query) steps back to the provider list.
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      if (nav.query !== "") {
+        e.preventDefault();
+        e.stopPropagation();
+        setQuery("");
+      } else if (nav.view.level === "models") {
+        e.preventDefault();
+        e.stopPropagation();
+        back();
+      }
+      return;
+    }
+    if (
+      e.key === "Backspace" &&
+      nav.query === "" &&
+      nav.view.level === "models"
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+      back();
+    }
+  };
 
   return (
     <Command
       shouldFilter={false}
+      onKeyDown={handleKeyDown}
       className={cn(
-        "h-[520px] w-full rounded-2xl border border-border shadow-lg",
+        // `h-auto` overrides the wrapper's `h-full` so the picker sizes to its
+        // content (the list caps itself at max-h and scrolls).
+        "h-auto w-full flex-col overflow-hidden rounded-2xl border border-border shadow-lg",
         className,
       )}
     >
-      <ModelPickerHeader
-        filter={c.filter}
-        labels={labels}
-        matchedCount={view.matchedCount}
-        hasActiveFilter={c.hasActiveFilter}
-        onQueryChange={c.setQuery}
-        onToggleFavOnly={c.toggleFavOnly}
-        onToggleCap={c.toggleCap}
-        onTogglePriceTier={c.togglePriceTier}
-        onClearFilters={c.clearFilters}
-        onSortChange={c.setSort}
+      <SearchField
+        value={nav.query}
+        placeholder={labels.searchPlaceholder}
+        onChange={setQuery}
       />
 
-      {catalogState === "offline" && (
-        <div className="flex items-center gap-2 border-b border-border/60 bg-secondary px-4 py-2 text-xs text-muted-foreground">
-          <TriangleAlert className="size-3.5 shrink-0" />
-          {labels.offline}
-        </div>
+      {showBack && activeProvider && (
+        <button
+          type="button"
+          onClick={back}
+          className="flex items-center gap-1.5 border-b border-border/60 px-3 py-2 text-left text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ChevronLeft className="size-4 shrink-0" />
+          <span className="truncate text-foreground">
+            {activeProvider.name}
+          </span>
+        </button>
       )}
 
-      <div className="flex min-h-0 flex-1">
-        <ProviderRail
-          providers={railProviders}
-          active={c.filter.provider}
-          labels={labels}
-          renderProviderIcon={renderProviderIcon}
-          onSelect={c.setProvider}
-        />
-        <ModelList
-          view={view}
-          providers={providersMap}
-          labels={labels}
-          catalogState={catalogState}
-          query={c.filter.query}
-          selectedId={selectedId}
-          favorites={favoritesSet}
-          openDetailId={c.openDetailId}
-          onSelect={onSelect}
-          onToggleFavorite={onToggleFavorite}
-          onToggleDetail={c.toggleDetail}
-          onConnect={onConnect}
-        />
-      </div>
+      <CommandList className="max-h-[360px] overflow-y-auto p-1.5">
+        {searching ? (
+          searchResults.length > 0 ? (
+            <ModelRows
+              scope="search"
+              ariaLabel={labels.resultsLabel}
+              models={searchResults}
+              query={nav.query}
+              selectedId={selectedId}
+              onSelect={onSelect}
+            />
+          ) : (
+            <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+              {labels.empty}
+              <div className="mt-1 text-xs">{labels.emptyHint}</div>
+            </div>
+          )
+        ) : nav.view.level === "providers" ? (
+          <ProviderList
+            providers={connected}
+            loading={loading}
+            selectedProviderId={selectedProviderId}
+            labels={labels}
+            renderProviderIcon={renderProviderIcon}
+            onEnter={enterProvider}
+          />
+        ) : (
+          <ModelRows
+            scope="models"
+            ariaLabel={labels.modelsLabel}
+            models={providerModels}
+            query=""
+            selectedId={selectedId}
+            onSelect={onSelect}
+          />
+        )}
 
-      <div className="flex items-center gap-3 border-t border-border/60 bg-secondary px-4 py-2.5 text-xs text-muted-foreground">
-        <span>
-          {labels.selected}{" "}
-          <span className="font-semibold text-foreground">
-            {selectedName ?? "·"}
-          </span>
-        </span>
-        <span className="ml-auto text-muted-foreground/70">
-          {labels.keyboardHint}
-        </span>
-      </div>
+        {onConnectMore && (
+          <ConnectMore label={labels.connectMore} onSelect={onConnectMore} />
+        )}
+      </CommandList>
     </Command>
   );
 }

@@ -339,17 +339,43 @@ Notes:
   One card + one slot means no per-card status disambiguation. Full design:
   `convergence/README.md`.
 
-### The chat model picker (search-first redesign)
+### The chat model picker (minimal two-level menu)
 
-The composer's model picker is a **search-first command menu**
-(`@houston-ai/core` `ModelPicker`, built on cmdk) that replaced the old
-provider-grouped radix dropdown. It scales from a provider's two models to
-OpenRouter's 300+ on one surface: search + sort (relevance / price / context /
-newest) + capability & price filters, a provider rail with connection state,
-pinned **Recents** and **Favorites**, and rich rows (brand icon, price tier,
-"New" badge, favorite star, capability icons, a `ⓘ` detail with exact $/Mtok).
-The library component is props-only and i18n-agnostic (`labels?`); all app
-wiring lives in `app/src/components/chat-model-selector.tsx`.
+The composer's model picker is a **minimal two-level command menu**
+(`@houston-ai/core` `ModelPicker`, built on cmdk). **Level 1** lists ONLY the
+connected providers (brand glyph + name, a check on the currently-selected
+model's provider) plus a quiet **"Connect more providers…"** footer. Clicking a
+provider drills into **level 2**: a back affordance + that provider's model rows
+(name, a subtle one-line description, a check on the selected model). An
+always-visible **search field** at the top bypasses the levels with a flat
+ranked list across all connected providers; clearing it returns to the current
+level. Keyboard: cmdk roving (↑↓/Enter), Escape clears an active query then steps
+back from level 2, Backspace-on-empty-query steps back. Sizes to content
+(`max-h-[360px]` scroll). The library component is props-only and i18n-agnostic
+(`labels?`); all app wiring lives in `app/src/components/chat-model-selector.tsx`.
+
+- **Disconnected providers never appear.** The picker filters to
+  `connection === "connected"` for both the level-1 list and search; the ONLY
+  path to a disconnected provider is the "Connect more providers…" footer, which
+  navigates to the AI Hub (`setViewMode("ai-hub")`). The old per-row Connect
+  buttons, provider rail, favorites/recents groups, FilterPopover, SortMenu,
+  result-count row, and model detail panel were all **deleted** in the minimal
+  redesign. Pure selectors + the nav reducer live in
+  `ui/core/src/components/model-picker/{catalog,nav}.ts` (unit-tested in
+  `ui/core/tests/`).
+- **#342 flicker guard.** While provider statuses (or the catalog) are still
+  resolving and nothing is connected yet, level 1 shows a neutral loading state,
+  never "no providers" — `providerListLoading()` in `catalog.ts`,
+  `providerPickerState(...)` still yields `checking` app-side
+  (`app/src/lib/model-picker.ts`).
+- **Curated-first ranking.** The pi catalog's raw order is often oldest-first,
+  so `chat-model-picker-map.ts` re-ranks each provider's rows via
+  `rankCuratedFirst`: models with a `PROVIDER_OVERRIDES[provider].models` entry
+  lead, in override key (curation) order, then the rest in catalog order; curated
+  rows carry `curated: true`. Search (`searchModels` in ui/core `catalog.ts`)
+  ranks by match tier (name match beats other-field), then the `curated` flag,
+  then match position, then input order — so "opus" surfaces Opus 4.8/4.7 above
+  Claude Opus 3.
 
 - **Reused in the import-agent wizard too.** `ChatModelSelector` is the ONE model
   selector: the chat composer AND the import flow (`portable/import-wizard.tsx`)
@@ -402,27 +428,25 @@ wiring lives in `app/src/components/chat-model-selector.tsx`.
   **The live-OpenRouter fetch is RETIRED** — the old
   `GET /v1/providers/openrouter/models` route + `openrouter-catalog` mapper + the
   `LiveCatalog` wire type + `listProviderModels`/`listModels` adapter are deleted.
-- **One view-model, models.dev is optional enrichment.** Every provider's rows now
-  come from the hydrated `PROVIDERS` catalog (seeded by `/v1/catalog`). The
-  checked-in models.dev snapshot (`app/src/lib/ai-hub/model-catalog.json`) is only
-  supplemental metadata folded in by an exact `${providerId}::${modelId}` lookup —
-  not the runnable set. `useHubCatalog()`
-  exposes `{ catalog, isLoading, status: "loading"|"ready"|"offline", offline }`;
-  the picker maps `status` → its `catalogState`. Loading is **progressive**:
-  curated content shows instantly, a "loading more" footer signals the live
-  catalog streaming in, and skeletons only take over on a genuinely empty cold
-  load. Capability/price projection: `app/src/lib/ai-hub/capabilities.ts`
-  (`capabilitiesOf`, `priceTier`).
-- **Favorites & recents** persist per-user via `tauriPreferences` (JSON string
-  arrays under `favorite_models` / `recent_models`), exposed by
-  `app/src/hooks/use-model-favorites.ts` (`useModelFavorites()`). Ids are the
-  same encoded `${provider}::${model}` strings the picker uses.
-- **Connecting from the picker.** A disconnected provider still appears (dimmed,
-  with a "Connect →" affordance) instead of being hidden — `onConnect` reuses the
-  AI Hub's `useProviderConnections()` flow (the removed `shouldShowProviderInPicker`
-  gate is obsolete). Zen and Go remain separate sections as before.
-- **Design tokens** (`packages/design-tokens`): price tiers `--ht-price-{free,
-  low,mid,high}`, capability chip `--ht-cap-fg`/`--ht-cap-bg`, favorite `--ht-star`.
+- **One view-model, curated rows only.** Every provider's rows come from the
+  hydrated `PROVIDERS` catalog (seeded by `/v1/catalog`). Each picker row carries
+  only `{ id, providerId, name, description }` — the models.dev capability/price
+  enrichment the old detail panel needed was **dropped from the chat picker**
+  (`chat-model-picker-enrich.ts` deleted; `chat-model-picker-map.ts` no longer
+  takes a `catalog`). The models.dev snapshot + `capabilitiesOf`/`priceTier`
+  (`app/src/lib/ai-hub/capabilities.ts`) still power the **AI Hub**. The picker's
+  `catalogState` ("loading"|"ready") comes from the pi-ai catalog readiness
+  (`useProviderCatalog`), driving the neutral level-1 loading state.
+- **Favorites & recents storage is retained but no longer surfaced.** The
+  per-user prefs (`favorite_models` / `recent_models`) and
+  `app/src/hooks/use-model-favorites.ts` (`useModelFavorites()`) still exist, but
+  the picker renders neither favorites nor recents anymore, and
+  `use-chat-model-picker.tsx` no longer reads/writes them.
+- **Connecting from the picker.** The "Connect more providers…" footer navigates
+  to the AI Hub (`onConnectMore` → `setViewMode("ai-hub")`, closing the popover),
+  the one surface that lists every provider and owns the full connect flow. The
+  old inline per-provider connect stack (`ProviderConnectionDialogs` +
+  `useProviderConnections` inside the picker) is gone.
 
 ### Switching provider mid-conversation
 

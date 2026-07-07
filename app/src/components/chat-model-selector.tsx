@@ -14,7 +14,6 @@ import {
   isModelAllowed,
   modelSelectorDecision,
 } from "../lib/model-selector-lock";
-import { ProviderConnectionDialogs } from "./ai-hub/provider-connection-dialogs";
 import { ProviderGlyph } from "./shell/provider-logos";
 
 interface ChatModelSelectorProps {
@@ -141,22 +140,17 @@ export function ChatModelSelector({
             <ModelPicker
               models={models}
               providers={providers}
-              favorites={picker.favorites}
-              recents={picker.recents}
               selectedId={picker.selectedId}
-              defaultProviderId={picker.defaultProviderId}
               catalogState={picker.catalogState}
               onSelect={picker.onSelect}
-              onToggleFavorite={picker.onToggleFavorite}
-              onConnect={picker.onConnect}
+              onConnectMore={picker.onConnectMore}
               renderProviderIcon={picker.renderProviderIcon}
               labels={picker.labels}
-              className="w-[600px]"
+              className="w-[380px]"
             />
           </PopoverContent>
         </Popover>
       )}
-      <ProviderConnectionDialogs {...picker.dialogProps} />
     </fieldset>
   );
 }
