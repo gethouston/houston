@@ -47,7 +47,7 @@ import type {
  * desktop app is co-located with its engine, so only there can a
  * provider CLI's `localhost` OAuth callback reach the user's browser.
  * Remote clients must request the headless device-code flow instead
- * (see `provider-picker` / the AI hub's `use-provider-connections`). Delegates to
+ * (see the AI hub's `use-provider-connections`). Delegates to
  * `@tauri-apps/api`'s blessed check (the global `isTauri` flag the
  * webview sets) rather than poking internals ourselves.
  */

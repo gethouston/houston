@@ -60,7 +60,7 @@ export function useProviderConnections(): ProviderConnections {
     [newEngine, providerCapabilities],
   );
 
-  const { statuses, loading, loadStatuses, patchAuthState } =
+  const { statuses, loading, probed, loadStatuses, patchAuthState } =
     useProviderStatuses(visibleProviders);
 
   // Only one provider is ever mid-flight; `mode` distinguishes a connect spinner
@@ -173,6 +173,7 @@ export function useProviderConnections(): ProviderConnections {
     // gates its actionable Connect affordances on `ready` so a slow probe can't
     // flash a live Connect button on an already-connected provider.
     ready: !loading,
+    probed,
     refresh: loadStatuses,
     isConnected,
     connect,

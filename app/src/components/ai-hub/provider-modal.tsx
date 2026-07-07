@@ -18,16 +18,16 @@ import type { ProviderConnections } from "../../hooks/use-provider-connections.t
 import type { HubCatalog } from "../../lib/ai-hub/catalog-types.ts";
 import { disconnectLocalModel } from "../../lib/local-model-connect.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
-import { LocalModelStatusPill } from "../shell/local-model-status.tsx";
-import { BrandMark } from "./brand-mark.tsx";
-import { AuthBadge, LiveStatus, SpecChip } from "./hub-badges.tsx";
-import { ModalShell } from "./modal-shell.tsx";
-import { ModelsBrowser } from "./models-browser.tsx";
+import { BrandMark } from "../provider-browser/brand-mark.tsx";
 import {
   authChipKey,
   providerDescriptionKey,
   providerModels,
-} from "./provider-grouping.ts";
+} from "../provider-browser/provider-grouping.ts";
+import { LocalModelStatusPill } from "../shell/local-model-status.tsx";
+import { AuthBadge, LiveStatus, SpecChip } from "./hub-badges.tsx";
+import { ModalShell } from "./modal-shell.tsx";
+import { ModelsBrowser } from "./models-browser.tsx";
 import { ConnectButton } from "./provider-modal-connect-button.tsx";
 
 /** Map the four-way auth chip key onto the three `AuthBadge` icon families. */

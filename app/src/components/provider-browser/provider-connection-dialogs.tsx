@@ -25,7 +25,16 @@ export function ProviderConnectionDialogs({
   customEndpointDialog,
   onCloseCustomEndpointDialog,
   copilotDialog,
-}: ProviderConnectionDialogProps) {
+  onLocalConnected,
+}: ProviderConnectionDialogProps & {
+  /**
+   * Receives the user-typed model id when the local (OpenAI-compatible)
+   * endpoint dialog connects. That model exists nowhere in the catalog or the
+   * patched status snapshot, so auto-advance flows (onboarding) must take it
+   * from the dialog itself; browse surfaces (the hub) omit this.
+   */
+  onLocalConnected?: (model: string) => void;
+}) {
   const { t } = useTranslation("providers");
 
   return (
@@ -62,6 +71,7 @@ export function ProviderConnectionDialogs({
 
       <LocalModelDialog
         provider={customEndpointDialog}
+        onConnected={onLocalConnected}
         onClose={onCloseCustomEndpointDialog}
       />
     </>

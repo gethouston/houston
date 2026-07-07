@@ -69,6 +69,12 @@ export interface ProviderConnections {
   statuses: Record<string, ProviderStatus | undefined>;
   /** False until the first full status probe resolves; gates actionable Connect UI. */
   ready: boolean;
+  /**
+   * True once the first LIVE probe has resolved. `ready` can flip true off the
+   * cached last-scan snapshot; anything that must not act on stale state (the
+   * browser's mount auto-select) gates on `probed` instead.
+   */
+  probed: boolean;
   /** Re-probe every visible provider. */
   refresh(): Promise<void>;
   /** Whether a provider reads as connected (`providerAppearsConnected` over its status). */

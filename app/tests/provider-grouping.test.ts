@@ -4,7 +4,7 @@ import {
   filterByQuickFilter,
   orderFeaturedFirst,
   searchProviders,
-} from "../src/components/ai-hub/provider-filtering.ts";
+} from "../src/components/provider-browser/provider-filtering.ts";
 import {
   authChipKey,
   connectCardByGatewayId,
@@ -12,7 +12,7 @@ import {
   offerForProvider,
   providerDescriptionKey,
   providerModels,
-} from "../src/components/ai-hub/provider-grouping.ts";
+} from "../src/components/provider-browser/provider-grouping.ts";
 import type {
   CatalogModel,
   CatalogOffer,

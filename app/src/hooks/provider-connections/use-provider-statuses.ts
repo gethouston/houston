@@ -20,6 +20,12 @@ export interface ProviderStatusState {
    * paint, no skeleton); otherwise it flips on the first probe's resolution.
    */
   loading: boolean;
+  /**
+   * True once the first LIVE probe (`loadStatuses`) has resolved. The cached
+   * snapshot makes `loading` false instantly, but a stale cache must not drive
+   * decisions that need confirmed state (e.g. the browser's mount auto-select).
+   */
+  probed: boolean;
   loadStatuses(): Promise<void>;
   patchAuthState(providerId: string, authenticated: boolean): void;
 }
@@ -57,6 +63,7 @@ export function useProviderStatuses(
   const [loading, setLoading] = useState(
     () => Object.keys(statuses).length === 0,
   );
+  const [probed, setProbed] = useState(false);
   const hasBaseline = useRef(false);
   const prevStatuses = useRef<Record<string, ProviderStatus>>({});
 
@@ -85,6 +92,7 @@ export function useProviderStatuses(
     prevStatuses.current = next;
     hasBaseline.current = true;
     setLoading(false);
+    setProbed(true);
     // Persist the confirmed scan so the NEXT visit paints instantly.
     saveCachedProviderStatuses(next);
   }, [visibleProviders]);
@@ -108,5 +116,5 @@ export function useProviderStatuses(
     [],
   );
 
-  return { statuses, loading, loadStatuses, patchAuthState };
+  return { statuses, loading, probed, loadStatuses, patchAuthState };
 }
