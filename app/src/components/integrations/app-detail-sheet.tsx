@@ -1,53 +1,58 @@
-import {
-  HoustonAvatar,
-  resolveAgentColor,
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  Switch,
-} from "@houston-ai/core";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@houston-ai/core";
 import type { IntegrationConnection } from "@houston-ai/engine-client";
-import { RotateCw, Unplug } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { AccountSection } from "./account-section";
 import type { AgentChip } from "./agent-chip";
 import type { AppDisplay } from "./app-display";
 import { AppLogo } from "./app-logo";
-import { ConnectionStatusBadge } from "./connection-status-badge";
 
 interface AppDetailSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   display: AppDisplay;
-  connection: IntegrationConnection;
+  /** Every connected account of this one app (always at least one). */
+  connections: IntegrationConnection[];
   agents: AgentChip[];
-  activeAgentIds: ReadonlySet<string>;
+  /** Per account (`connectionId`), the agent ids that have it granted. */
+  activeAgentIdsByConnection: ReadonlyMap<string, ReadonlySet<string>>;
   grantsSupported: boolean;
   canEdit: boolean;
-  onToggleAgent: (agentId: string, active: boolean) => void;
-  onReconnect: () => void;
-  onDisconnect: () => void;
+  onToggleAgent: (
+    connectionId: string,
+    agentId: string,
+    active: boolean,
+  ) => void;
+  onRename: (connectionId: string, alias: string) => void;
+  onReconnect: (connectionId: string) => void;
+  onDisconnect: (connectionId: string) => void;
+  onAddAccount: (toolkit: string) => void;
+  /** A connect flow is running, so "Add another account" is disabled. */
+  connectInFlight: boolean;
   description?: string;
 }
 
 /**
- * The global page's per-app detail: status, which agents may use the app (a
- * per-agent Switch when grants are supported and the caller can edit), and the
- * Reconnect / Disconnect actions. When grants are unsupported the host has no
- * per-agent notion, so every agent can use the app (a single note, no toggles).
+ * The per-app detail sheet. One card per app; each connected ACCOUNT of that app
+ * renders its own section (label, status, per-agent grant switches, rename,
+ * reconnect, disconnect). A footer "Add another account" re-runs the connect
+ * flow for this toolkit so a user can link a second login of the same app.
  */
 export function AppDetailSheet({
   open,
   onOpenChange,
   display,
-  connection,
+  connections,
   agents,
-  activeAgentIds,
+  activeAgentIdsByConnection,
   grantsSupported,
   canEdit,
   onToggleAgent,
+  onRename,
   onReconnect,
   onDisconnect,
+  onAddAccount,
+  connectInFlight,
   description,
 }: AppDetailSheetProps) {
   const { t } = useTranslation("integrations");
@@ -59,9 +64,9 @@ export function AppDetailSheet({
             <AppLogo display={display} size="lg" />
             <div className="min-w-0 flex-1">
               <SheetTitle className="truncate">{display.name}</SheetTitle>
-              <div className="mt-1">
-                <ConnectionStatusBadge status={connection.status} />
-              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("account.count", { count: connections.length })}
+              </p>
             </div>
           </div>
           {(description || display.description) && (
@@ -71,65 +76,45 @@ export function AppDetailSheet({
           )}
         </SheetHeader>
 
-        <div className="flex-1 overflow-auto px-4 py-4">
-          <h3 className="mb-2 text-sm font-medium text-foreground">
-            {t("detail.activeOn")}
+        <div className="flex-1 space-y-3 overflow-auto px-4 py-4">
+          <h3 className="text-sm font-medium text-foreground">
+            {t("detail.accounts")}
           </h3>
-          {!grantsSupported ? (
-            <p className="rounded-xl bg-secondary px-3 py-3 text-xs text-muted-foreground">
-              {t("detail.allAgentsNote")}
-            </p>
-          ) : agents.length === 0 ? (
-            <p className="rounded-xl bg-secondary px-3 py-3 text-xs text-muted-foreground">
-              {t("detail.noAgents")}
-            </p>
-          ) : (
-            <div className="space-y-1">
-              {agents.map((agent) => (
-                <div
-                  key={agent.id}
-                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5"
-                >
-                  <HoustonAvatar
-                    color={resolveAgentColor(agent.color)}
-                    diameter={24}
-                  />
-                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                    {agent.name}
-                  </span>
-                  <Switch
-                    checked={activeAgentIds.has(agent.id)}
-                    disabled={!canEdit}
-                    aria-label={agent.name}
-                    onCheckedChange={(active) =>
-                      onToggleAgent(agent.id, active)
-                    }
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          {connections.map((connection) => (
+            <AccountSection
+              key={connection.connectionId}
+              connection={connection}
+              agents={agents}
+              grantsSupported={grantsSupported}
+              canEdit={canEdit}
+              activeAgentIds={
+                activeAgentIdsByConnection.get(connection.connectionId) ??
+                EMPTY_SET
+              }
+              onToggleAgent={(agentId, active) =>
+                onToggleAgent(connection.connectionId, agentId, active)
+              }
+              onRename={(alias) => onRename(connection.connectionId, alias)}
+              onReconnect={() => onReconnect(connection.connectionId)}
+              onDisconnect={() => onDisconnect(connection.connectionId)}
+            />
+          ))}
         </div>
 
-        <div className="flex gap-2 border-t border-border px-4 py-3">
+        <div className="border-t border-border px-4 py-3">
           <button
             type="button"
-            onClick={onReconnect}
-            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+            disabled={connectInFlight}
+            onClick={() => onAddAccount(display.toolkit)}
+            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-60"
           >
-            <RotateCw className="size-4" />
-            {t("detail.reconnect")}
-          </button>
-          <button
-            type="button"
-            onClick={onDisconnect}
-            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
-          >
-            <Unplug className="size-4" />
-            {t("detail.disconnect")}
+            <Plus className="size-4" />
+            {t("account.addAnother")}
           </button>
         </div>
       </SheetContent>
     </Sheet>
   );
 }
+
+const EMPTY_SET: ReadonlySet<string> = new Set();

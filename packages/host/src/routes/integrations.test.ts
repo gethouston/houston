@@ -284,7 +284,7 @@ test("toolkits/connect/poll/disconnect — the full OAuth hand-off, no provider 
     await fetch(`${base}/v1/integrations/composio/disconnect`, {
       method: "POST",
       headers: auth,
-      body: JSON.stringify({ toolkit: "gmail" }),
+      body: JSON.stringify({ connectionId: connect.connectionId }),
     });
     expect(
       (
@@ -334,6 +334,59 @@ test("user-facing search/execute exist (the desktop gateway forwards here)", asy
       })
     ).json();
     expect(exec.successful).toBe(true);
+  } finally {
+    stop();
+  }
+});
+
+test("user-facing execute forwards the chosen account verbatim (gateway resolves)", async () => {
+  const { base, fake, stop } = await setup();
+  try {
+    const res = await fetch(`${base}/v1/integrations/composio/execute`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ action: "GMAIL_SEND_EMAIL", account: "acc-1" }),
+    });
+    expect(res.status).toBe(200);
+    expect(fake.lastAccount).toBe("acc-1");
+  } finally {
+    stop();
+  }
+});
+
+test("disconnect requires a connectionId; rename validates the alias length", async () => {
+  const { base, fake, stop } = await setup();
+  try {
+    const { connectionId } = await fake.connect(USER, "gmail");
+    fake.completeConnection(USER, connectionId);
+
+    // disconnect: missing connectionId → 400.
+    const noId = await fetch(`${base}/v1/integrations/composio/disconnect`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({}),
+    });
+    expect(noId.status).toBe(400);
+
+    // rename: empty / over-long aliases → 400; a valid one persists.
+    const rename = (alias: unknown) =>
+      fetch(
+        `${base}/v1/integrations/composio/connections/${connectionId}/rename`,
+        { method: "POST", headers: auth, body: JSON.stringify({ alias }) },
+      );
+    expect((await rename("   ")).status).toBe(400);
+    expect((await rename("x".repeat(65))).status).toBe(400);
+    const ok = await rename("  Work  ");
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ ok: true });
+
+    const conn = await (
+      await fetch(
+        `${base}/v1/integrations/composio/connections/${connectionId}`,
+        { headers: auth },
+      )
+    ).json();
+    expect(conn.accountLabel).toBe("Work"); // trimmed
   } finally {
     stop();
   }

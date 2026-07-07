@@ -5,9 +5,11 @@ import type {
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
 import {
+  accountDisplayLabel,
   browseCatalog,
   categoriesOf,
   categoryLabel,
+  groupConnectionsByToolkit,
   splitByGrant,
 } from "../src/components/integrations/model.ts";
 
@@ -140,25 +142,33 @@ describe("categoriesOf / categoryLabel (new module)", () => {
 const conn = (
   toolkit: string,
   status: IntegrationConnection["status"] = "active",
+  connectionId = `ca_${toolkit}`,
+  accountLabel?: string,
 ): IntegrationConnection => ({
   toolkit,
-  connectionId: `ca_${toolkit}`,
+  connectionId,
   status,
+  ...(accountLabel !== undefined ? { accountLabel } : {}),
 });
 
 describe("splitByGrant (new module)", () => {
-  it("puts granted connections under granted, the rest under available", () => {
+  it("buckets by granted connectionId, not toolkit", () => {
+    // Two Gmail accounts; only the first connectionId is granted.
     const { granted, available } = splitByGrant({
-      connections: [conn("gmail"), conn("slack", "pending"), conn("notion")],
-      grants: new Set(["gmail", "notion"]),
+      connections: [
+        conn("gmail", "active", "ca_g1"),
+        conn("gmail", "active", "ca_g2"),
+        conn("slack", "pending", "ca_s1"),
+      ],
+      grants: new Set(["ca_g1"]),
     });
     deepStrictEqual(
-      granted.map((c) => c.toolkit),
-      ["gmail", "notion"],
+      granted.map((c) => c.connectionId),
+      ["ca_g1"],
     );
     deepStrictEqual(
-      available.map((c) => c.toolkit),
-      ["slack"],
+      available.map((c) => c.connectionId),
+      ["ca_g2", "ca_s1"],
     );
   });
 
@@ -174,18 +184,82 @@ describe("splitByGrant (new module)", () => {
     );
   });
 
-  it("preserves connection order within each bucket", () => {
-    const { granted, available } = splitByGrant({
-      connections: [conn("z"), conn("a"), conn("m"), conn("b")],
-      grants: new Set(["z", "m"]),
+  it("ignores a granted id with no matching connection", () => {
+    const { granted } = splitByGrant({
+      connections: [conn("gmail", "active", "ca_g1")],
+      grants: new Set(["ca_g1", "ca_ghost"]),
     });
     deepStrictEqual(
-      granted.map((c) => c.toolkit),
-      ["z", "m"],
+      granted.map((c) => c.connectionId),
+      ["ca_g1"],
+    );
+  });
+
+  it("preserves connection order within each bucket", () => {
+    const { granted, available } = splitByGrant({
+      connections: [
+        conn("z", "active", "cz"),
+        conn("a", "active", "ca"),
+        conn("m", "active", "cm"),
+        conn("b", "active", "cb"),
+      ],
+      grants: new Set(["cz", "cm"]),
+    });
+    deepStrictEqual(
+      granted.map((c) => c.connectionId),
+      ["cz", "cm"],
     );
     deepStrictEqual(
-      available.map((c) => c.toolkit),
-      ["a", "b"],
+      available.map((c) => c.connectionId),
+      ["ca", "cb"],
+    );
+  });
+});
+
+describe("groupConnectionsByToolkit (new module)", () => {
+  it("groups accounts under one entry per toolkit, first-seen order", () => {
+    const result = groupConnectionsByToolkit([
+      conn("gmail", "active", "ca_g1"),
+      conn("slack", "active", "ca_s1"),
+      conn("gmail", "error", "ca_g2"),
+    ]);
+    deepStrictEqual(
+      result.map((g) => g.toolkit),
+      ["gmail", "slack"],
+    );
+    deepStrictEqual(
+      result[0].connections.map((c) => c.connectionId),
+      ["ca_g1", "ca_g2"],
+    );
+    deepStrictEqual(
+      result[1].connections.map((c) => c.connectionId),
+      ["ca_s1"],
+    );
+  });
+
+  it("returns an empty array for no connections", () => {
+    deepStrictEqual(groupConnectionsByToolkit([]), []);
+  });
+});
+
+describe("accountDisplayLabel (new module)", () => {
+  it("uses the account's own label when present", () => {
+    strictEqual(
+      accountDisplayLabel(
+        conn("gmail", "active", "ca_abcd1234", "Work"),
+        "Unnamed account",
+      ),
+      "Work",
+    );
+  });
+
+  it("falls back to the unnamed word plus the last 4 id chars", () => {
+    strictEqual(
+      accountDisplayLabel(
+        conn("gmail", "active", "ca_abcd1234"),
+        "Unnamed account",
+      ),
+      "Unnamed account 1234",
     );
   });
 });

@@ -3,9 +3,10 @@ import { describe, it } from "node:test";
 import type { IntegrationConnection } from "@houston-ai/engine-client";
 import type { AgentChip } from "../src/components/integrations/agent-chip.ts";
 import {
+  accountAgentIds,
   agentChipsFor,
   partitionConnections,
-  toolkitAgentIds,
+  unionAgentIds,
 } from "../src/components/integrations-view/integrations-view-model.ts";
 
 const conn = (
@@ -13,29 +14,39 @@ const conn = (
   status: IntegrationConnection["status"] = "active",
 ): IntegrationConnection => ({ toolkit, connectionId: `c-${toolkit}`, status });
 
-describe("toolkitAgentIds", () => {
-  it("inverts per-agent grants into toolkit -> agent ids", () => {
+describe("accountAgentIds", () => {
+  it("inverts per-agent grants into connectionId -> agent ids", () => {
     const byAgent = new Map<string, string[] | null>([
-      ["a1", ["gmail", "slack"]],
-      ["a2", ["gmail"]],
+      ["a1", ["conn-gmail-1", "conn-slack"]],
+      ["a2", ["conn-gmail-1"]],
     ]);
-    const result = toolkitAgentIds(byAgent);
+    const result = accountAgentIds(byAgent);
     deepStrictEqual(
       [...result.entries()],
       [
-        ["gmail", ["a1", "a2"]],
-        ["slack", ["a1"]],
+        ["conn-gmail-1", ["a1", "a2"]],
+        ["conn-slack", ["a1"]],
       ],
     );
+  });
+
+  it("keeps two accounts of one app independent", () => {
+    const byAgent = new Map<string, string[] | null>([
+      ["a1", ["conn-gmail-work"]],
+      ["a2", ["conn-gmail-personal"]],
+    ]);
+    const result = accountAgentIds(byAgent);
+    deepStrictEqual(result.get("conn-gmail-work"), ["a1"]);
+    deepStrictEqual(result.get("conn-gmail-personal"), ["a2"]);
   });
 
   it("skips agents with a null (unsupported) grant set", () => {
     const byAgent = new Map<string, string[] | null>([
       ["a1", null],
-      ["a2", ["slack"]],
+      ["a2", ["conn-slack"]],
     ]);
-    const result = toolkitAgentIds(byAgent);
-    deepStrictEqual([...result.entries()], [["slack", ["a2"]]]);
+    const result = accountAgentIds(byAgent);
+    deepStrictEqual([...result.entries()], [["conn-slack", ["a2"]]]);
   });
 
   it("returns an empty map when no agent has grants", () => {
@@ -43,15 +54,47 @@ describe("toolkitAgentIds", () => {
       ["a1", []],
       ["a2", null],
     ]);
-    deepStrictEqual([...toolkitAgentIds(byAgent).entries()], []);
+    deepStrictEqual([...accountAgentIds(byAgent).entries()], []);
   });
 
   it("preserves agent-id insertion order", () => {
     const byAgent = new Map<string, string[] | null>([
-      ["z", ["gmail"]],
-      ["a", ["gmail"]],
+      ["z", ["conn-gmail"]],
+      ["a", ["conn-gmail"]],
     ]);
-    deepStrictEqual(toolkitAgentIds(byAgent).get("gmail"), ["z", "a"]);
+    deepStrictEqual(accountAgentIds(byAgent).get("conn-gmail"), ["z", "a"]);
+  });
+});
+
+describe("unionAgentIds", () => {
+  const byConnection = new Map<string, string[]>([
+    ["c1", ["a1", "a2"]],
+    ["c2", ["a2", "a3"]],
+    ["c3", []],
+  ]);
+
+  it("unions the agents across an app's accounts, first-seen order", () => {
+    deepStrictEqual(unionAgentIds(["c1", "c2"], byConnection), [
+      "a1",
+      "a2",
+      "a3",
+    ]);
+  });
+
+  it("de-duplicates an agent granted on several accounts", () => {
+    deepStrictEqual(unionAgentIds(["c2", "c1"], byConnection), [
+      "a2",
+      "a3",
+      "a1",
+    ]);
+  });
+
+  it("treats an ungranted account as contributing nothing", () => {
+    deepStrictEqual(unionAgentIds(["c3", "c1"], byConnection), ["a1", "a2"]);
+  });
+
+  it("returns an empty array for no accounts", () => {
+    deepStrictEqual(unionAgentIds([], byConnection), []);
   });
 });
 

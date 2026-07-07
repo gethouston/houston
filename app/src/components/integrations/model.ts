@@ -74,9 +74,12 @@ export function browseCatalog(opts: {
  *  - `granted`   — connected AND in this agent's grant set.
  *  - `available` — connected but NOT granted.
  *
- * A grant slug with no matching connection is ignored (a grant only means
- * something once the app is actually connected). Connection order is preserved
- * within each bucket. Pure so it's unit-testable.
+ * The grant unit is the CONNECTED ACCOUNT (`connectionId`), not the toolkit: a
+ * user can connect several accounts of one app and grant each independently, so
+ * `grants` is a set of granted `connectionId`s. A granted id with no matching
+ * connection is ignored (a grant only means something once the account is
+ * actually connected). Connection order is preserved within each bucket. Pure
+ * so it's unit-testable.
  */
 export function splitByGrant(opts: {
   connections: IntegrationConnection[];
@@ -85,9 +88,48 @@ export function splitByGrant(opts: {
   const granted: IntegrationConnection[] = [];
   const available: IntegrationConnection[] = [];
   for (const c of opts.connections) {
-    (opts.grants.has(c.toolkit) ? granted : available).push(c);
+    (opts.grants.has(c.connectionId) ? granted : available).push(c);
   }
   return { granted, available };
+}
+
+/**
+ * Group a flat connection list into per-app buckets keyed by toolkit slug,
+ * preserving first-seen order both across toolkits and within each toolkit's
+ * accounts. One app card renders per returned entry; multiple accounts of the
+ * same app become labeled rows inside it. The caller sorts the result by app
+ * display name. Pure so it's unit-testable.
+ */
+export function groupConnectionsByToolkit(
+  connections: IntegrationConnection[],
+): { toolkit: string; connections: IntegrationConnection[] }[] {
+  const byToolkit = new Map<string, IntegrationConnection[]>();
+  for (const c of connections) {
+    const bucket = byToolkit.get(c.toolkit);
+    if (bucket) bucket.push(c);
+    else byToolkit.set(c.toolkit, [c]);
+  }
+  return [...byToolkit.entries()].map(([toolkit, conns]) => ({
+    toolkit,
+    connections: conns,
+  }));
+}
+
+/**
+ * The human label for one connected account: the account's own `accountLabel`
+ * (an alias the user set, or a derived email/username) when present, else a
+ * stable fallback of the localized "unnamed" word plus the last 4 characters of
+ * the `connectionId` so two unnamed accounts of one app stay distinguishable.
+ * `unnamedLabel` is already localized by the caller. Pure so it's unit-testable.
+ */
+export function accountDisplayLabel(
+  connection: IntegrationConnection,
+  unnamedLabel: string,
+): string {
+  return (
+    connection.accountLabel ??
+    `${unnamedLabel} ${connection.connectionId.slice(-4)}`
+  );
 }
 
 /** Every category present in the catalog, sorted by display label. */

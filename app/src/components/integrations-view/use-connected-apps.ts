@@ -13,15 +13,17 @@ import { useAgentStore } from "../../stores/agents";
 import {
   type AgentChip,
   appDisplay,
+  groupConnectionsByToolkit,
   INTEGRATION_PROVIDER,
   toAgentChip,
   useAllAgentGrants,
 } from "../integrations";
-import type { ActiveAppRow, RecoveringAppRow } from "./connected-apps-list";
+import type { ActiveAppCard, RecoveringAppRow } from "./connected-apps-list";
 import {
+  accountAgentIds,
   agentChipsFor,
   partitionConnections,
-  toolkitAgentIds,
+  unionAgentIds,
 } from "./integrations-view-model";
 
 export interface ConnectedApps {
@@ -30,8 +32,13 @@ export interface ConnectedApps {
   catalogData: IntegrationToolkit[];
   bySlug: ReadonlyMap<string, IntegrationToolkit>;
   chipById: ReadonlyMap<string, AgentChip>;
-  grantMap: ReadonlyMap<string, string[]>;
-  activeRows: ActiveAppRow[];
+  /** `connectionId -> agent ids that have THAT account granted`. */
+  accountAgents: ReadonlyMap<string, string[]>;
+  /** `connectionId -> agent ids as a set`, for the detail sheet's switches. */
+  activeAgentIdsByConnection: ReadonlyMap<string, ReadonlySet<string>>;
+  /** One card per connected app; multiple accounts collapse into it. */
+  activeCards: ActiveAppCard[];
+  /** Pending / errored connections, kept PER ACCOUNT for recovery. */
   recoveringRows: RecoveringAppRow[];
   grantsSupported: boolean;
   canEdit: boolean;
@@ -41,10 +48,11 @@ export interface ConnectedApps {
 }
 
 /**
- * All the derived read-model for the global Integrations page in one place:
- * the connection + catalog queries, the per-agent grant map, and the sorted
- * active / recovering rows (each active row carrying the agents that use it).
- * Kept out of the view so the JSX stays a thin render of these values.
+ * All the derived read-model for the global Integrations page in one place: the
+ * connection + catalog queries, the per-account grant map, the active apps
+ * grouped one-card-per-app (each carrying the union of agents across its
+ * accounts), and the per-account recovering rows. Kept out of the view so the
+ * JSX stays a thin render of these values.
  */
 export function useConnectedApps(): ConnectedApps {
   const agents = useAgentStore((s) => s.agents);
@@ -58,10 +66,17 @@ export function useConnectedApps(): ConnectedApps {
 
   const connData = connections.data ?? [];
   const catalogData = catalog.data ?? [];
-  const grantMap = useMemo(
-    () => toolkitAgentIds(grants.byAgent),
+  const accountAgents = useMemo(
+    () => accountAgentIds(grants.byAgent),
     [grants.byAgent],
   );
+  const activeAgentIdsByConnection = useMemo(() => {
+    const map = new Map<string, ReadonlySet<string>>();
+    for (const [connectionId, ids] of accountAgents) {
+      map.set(connectionId, new Set(ids));
+    }
+    return map;
+  }, [accountAgents]);
   const bySlug = useMemo(
     () => new Map(catalogData.map((tk) => [tk.slug, tk])),
     [catalogData],
@@ -71,18 +86,25 @@ export function useConnectedApps(): ConnectedApps {
     [agentChips],
   );
 
-  const { activeRows, recoveringRows } = useMemo(() => {
+  const { activeCards, recoveringRows } = useMemo(() => {
     const { active, recovering } = partitionConnections(connData);
     const byName = (
       a: { app: { name: string } },
       b: { app: { name: string } },
     ) => a.app.name.localeCompare(b.app.name);
     return {
-      activeRows: active
-        .map((c) => ({
-          connection: c,
-          app: appDisplay(c.toolkit, bySlug.get(c.toolkit)),
-          chips: agentChipsFor(grantMap.get(c.toolkit) ?? [], chipById),
+      activeCards: groupConnectionsByToolkit(active)
+        .map(({ toolkit, connections: conns }) => ({
+          toolkit,
+          app: appDisplay(toolkit, bySlug.get(toolkit)),
+          connections: conns,
+          chips: agentChipsFor(
+            unionAgentIds(
+              conns.map((c) => c.connectionId),
+              accountAgents,
+            ),
+            chipById,
+          ),
         }))
         .sort(byName),
       recoveringRows: recovering
@@ -92,7 +114,7 @@ export function useConnectedApps(): ConnectedApps {
         }))
         .sort(byName),
     };
-  }, [connData, bySlug, grantMap, chipById]);
+  }, [connData, bySlug, accountAgents, chipById]);
 
   // A single boolean gates every toggle in the detail sheet, so editing is
   // allowed only when the caller can manage grants for every agent shown
@@ -105,8 +127,9 @@ export function useConnectedApps(): ConnectedApps {
     catalogData,
     bySlug,
     chipById,
-    grantMap,
-    activeRows,
+    accountAgents,
+    activeAgentIdsByConnection,
+    activeCards,
     recoveringRows,
     grantsSupported: grants.supported,
     canEdit,

@@ -11,6 +11,8 @@ import type { AppDisplay } from "./app-display";
  */
 export function IntegrationDisconnectDialog({
   app,
+  connectionId,
+  accountLabel,
   scope,
   onClose,
   onConfirm,
@@ -18,9 +20,13 @@ export function IntegrationDisconnectDialog({
 }: {
   /** The app pending disconnect, or null when the dialog is closed. */
   app: AppDisplay | null;
+  /** The account being disconnected; passed back to `onConfirm`. */
+  connectionId: string | null;
+  /** The account's display label, named in the body so the user knows which. */
+  accountLabel?: string;
   scope: "agent" | "everywhere";
   onClose: () => void;
-  onConfirm: (toolkit: string) => void;
+  onConfirm: (connectionId: string) => void;
   affectedAgents?: AgentChip[];
 }) {
   const { t } = useTranslation("integrations");
@@ -37,10 +43,17 @@ export function IntegrationDisconnectDialog({
           action: "connected.disconnect.confirmAction",
         } as const);
 
+  const account = accountLabel
+    ? t("disconnect.account", { label: accountLabel })
+    : "";
   const affected = affectedAgents?.length
     ? t("disconnect.affected", { count: affectedAgents.length })
     : "";
-  const description = [t(keys.body, { name: app?.name ?? "" }), affected]
+  const description = [
+    t(keys.body, { name: app?.name ?? "" }),
+    account,
+    affected,
+  ]
     .filter(Boolean)
     .join(" ");
 
@@ -56,7 +69,7 @@ export function IntegrationDisconnectDialog({
       cancelLabel={t("connected.disconnect.cancel")}
       variant="destructive"
       onConfirm={() => {
-        if (app) onConfirm(app.toolkit);
+        if (connectionId) onConfirm(connectionId);
       }}
     />
   );

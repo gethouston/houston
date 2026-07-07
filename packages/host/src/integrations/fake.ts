@@ -1,10 +1,15 @@
-import type { ActingContext, IntegrationProvider } from "./provider";
+import type {
+  ActingContext,
+  ExecuteOptions,
+  IntegrationProvider,
+} from "./provider";
 import {
   type ActionResult,
   type Connection,
   type ConnectStart,
   IntegrationSigninRequiredError,
   type ProviderReadiness,
+  type SearchResult,
   type Toolkit,
   type ToolMatch,
 } from "./types";
@@ -29,6 +34,8 @@ export class FakeIntegrationProvider implements IntegrationProvider {
   throwSearchExecute?: Error;
   /** Test helper: the acting context of the most recent search/execute call. */
   lastActing: ActingContext | undefined;
+  /** Test helper: the pinned account of the most recent execute call. */
+  lastAccount: string | undefined;
   private seq = 0;
 
   constructor(
@@ -91,18 +98,35 @@ export class FakeIntegrationProvider implements IntegrationProvider {
     return conn ? { ...conn } : null;
   }
 
-  async disconnect(userId: string, toolkit: string): Promise<void> {
+  async disconnect(userId: string, connectionId: string): Promise<void> {
+    // Per account: verify ownership, then drop just that one — a miss surfaces
+    // rather than silently no-op (parity with the real ownership guard).
+    const list = this.connections.get(userId) ?? [];
+    if (!list.some((c) => c.connectionId === connectionId))
+      throw new Error(`fake: connection '${connectionId}' not found`);
     this.connections.set(
       userId,
-      (this.connections.get(userId) ?? []).filter((c) => c.toolkit !== toolkit),
+      list.filter((c) => c.connectionId !== connectionId),
     );
+  }
+
+  async rename(
+    userId: string,
+    connectionId: string,
+    alias: string,
+  ): Promise<void> {
+    const conn = (this.connections.get(userId) ?? []).find(
+      (c) => c.connectionId === connectionId,
+    );
+    if (!conn) throw new Error(`fake: connection '${connectionId}' not found`);
+    conn.accountLabel = alias;
   }
 
   async search(
     userId: string,
     query: string,
     acting?: ActingContext,
-  ): Promise<ToolMatch[]> {
+  ): Promise<SearchResult> {
     this.lastActing = acting;
     if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
     if (this.throwSearchExecute) throw this.throwSearchExecute;
@@ -112,22 +136,25 @@ export class FakeIntegrationProvider implements IntegrationProvider {
         .filter((c) => c.status === "active")
         .map((c) => c.toolkit),
     );
-    return this.actions
+    const items: ToolMatch[] = this.actions
       .filter(
         (a) =>
           a.description.toLowerCase().includes(q) ||
           a.action.toLowerCase().includes(q),
       )
       .map((a) => ({ ...a, connected: activeToolkits.has(a.toolkit) }));
+    // Raw adapter: `items` only — the policy layer adds `accounts`.
+    return { items };
   }
 
   async execute(
     _userId: string,
     action: string,
     params: Record<string, unknown>,
-    acting?: ActingContext,
+    opts?: ExecuteOptions,
   ): Promise<ActionResult> {
-    this.lastActing = acting;
+    this.lastActing = opts?.acting;
+    this.lastAccount = opts?.account;
     if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
     if (this.throwSearchExecute) throw this.throwSearchExecute;
     return { successful: true, data: { action, params } };

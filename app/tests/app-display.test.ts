@@ -1,8 +1,12 @@
-import { strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { IntegrationToolkit } from "@houston-ai/engine-client";
+import type {
+  IntegrationConnection,
+  IntegrationToolkit,
+} from "@houston-ai/engine-client";
 import {
   appDisplay,
+  connectionRows,
   fallbackLogo,
 } from "../src/components/integrations/app-display.ts";
 
@@ -42,5 +46,27 @@ describe("appDisplay logo resolution", () => {
     const app = appDisplay("quickbooks", undefined);
     strictEqual(app.name, "quickbooks");
     strictEqual(app.logoUrl, fallbackLogo("quickbooks"));
+  });
+});
+
+describe("connectionRows", () => {
+  const cx = (
+    toolkit: string,
+    connectionId: string,
+  ): IntegrationConnection => ({ toolkit, connectionId, status: "active" });
+
+  it("keeps one row per account, sorted by app name, exposing connectionId", () => {
+    const rows = connectionRows(
+      [cx("slack", "ca_s1"), cx("gmail", "ca_g1"), cx("gmail", "ca_g2")],
+      [tk("gmail", "Gmail"), tk("slack", "Slack")],
+    );
+    // Sorted by name (Gmail before Slack); the two Gmail accounts both kept.
+    deepStrictEqual(
+      rows.map((r) => r.connectionId),
+      ["ca_g1", "ca_g2", "ca_s1"],
+    );
+    // connectionId is exposed at the top level, not only inside `connection`.
+    strictEqual(rows[0].connectionId, rows[0].connection.connectionId);
+    strictEqual(rows[0].app.name, "Gmail");
   });
 });

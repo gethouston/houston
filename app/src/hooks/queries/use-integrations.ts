@@ -64,8 +64,8 @@ export function useIntegrationToolkits(provider: string, enabled: boolean) {
 export function useDisconnectIntegration(provider: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (toolkit: string) =>
-      tauriIntegrations.disconnect(provider, toolkit),
+    mutationFn: (connectionId: string) =>
+      tauriIntegrations.disconnect(provider, connectionId),
     onSuccess: () =>
       qc.invalidateQueries({
         queryKey: queryKeys.integrationConnections(provider),
@@ -74,10 +74,35 @@ export function useDisconnectIntegration(provider: string) {
 }
 
 /**
- * Multiplayer only: the integration toolkit slugs this agent may use (the
- * per-(user, agent) grant set from C4). Gated on the `multiplayer` capability
- * via `enabled` — the local/desktop engine has no grant routes, so the query
- * stays idle in single-player and the tab renders without grant sections.
+ * Rename ONE connected account (set its user-facing alias). Invalidates the
+ * provider's connections so the new label is reflected everywhere the account
+ * is listed. Carries no `onError` for the same reason as the mutations here:
+ * the `call()` wrapper already surfaces + reports the failure once.
+ */
+export function useRenameIntegrationConnection(provider: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      connectionId,
+      alias,
+    }: {
+      connectionId: string;
+      alias: string;
+    }) => tauriIntegrations.rename(provider, connectionId, alias),
+    onSuccess: () =>
+      qc.invalidateQueries({
+        queryKey: queryKeys.integrationConnections(provider),
+      }),
+  });
+}
+
+/**
+ * Multiplayer only: the connected-account ids this agent may use (the
+ * per-(user, agent) grant set from C4). The grant unit is the connected
+ * account, not the toolkit — one app can have several accounts, each granted
+ * independently. Gated on the `multiplayer` capability via `enabled` — the
+ * local/desktop engine has no grant routes, so the query stays idle in
+ * single-player and the tab renders without grant sections.
  *
  * Data is `string[] | null`: `null` means the host answered 404 = grants
  * unsupported (a build that predates grants), which the caller renders as
@@ -92,8 +117,8 @@ export function useAgentGrants(agentId: string, enabled: boolean) {
 }
 
 /**
- * Multiplayer only: add or remove ONE toolkit in this agent's grant set. The
- * host API is a replace-set PUT (C4), so the next set is computed inside
+ * Multiplayer only: add or remove ONE connected account in this agent's grant
+ * set. The host API is a replace-set PUT (C4), so the next set is computed inside
  * `mutationFn` from the freshest cache value at mutate time — never from a set
  * a component captured earlier (a stale snapshot would wipe grants made in
  * between, e.g. while the OAuth poll was running). An optimistic `onMutate`

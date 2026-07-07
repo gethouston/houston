@@ -1,10 +1,12 @@
 export { useAllAgentGrants } from "../../hooks/queries/use-all-agent-grants";
+export { AccountSection } from "./account-section";
 export { type AgentChip, toAgentChip } from "./agent-chip";
 export { AgentChips } from "./agent-chips";
 export { AppDetailSheet } from "./app-detail-sheet";
 export {
   type AppDisplay,
   appDisplay,
+  type ConnectionRow,
   connectionRows,
 } from "./app-display";
 export { AppLogo } from "./app-logo";
@@ -16,10 +18,12 @@ export {
 } from "./connection-status-badge";
 export { IntegrationDisconnectDialog } from "./integration-disconnect-dialog";
 export {
+  accountDisplayLabel,
   BROWSE_PAGE_SIZE,
   browseCatalog,
   categoriesOf,
   categoryLabel,
+  groupConnectionsByToolkit,
   INTEGRATION_PROVIDER,
   POLL_INTERVAL_MS,
   POLL_MAX_ATTEMPTS,

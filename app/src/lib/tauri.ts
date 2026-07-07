@@ -15,8 +15,6 @@ import type { ProviderCatalog } from "@houston/protocol";
 import type {
   AgentAssignment,
   CustomEndpoint,
-  ComposioAppEntry as EngineComposioAppEntry,
-  ComposioStatus as EngineComposioStatus,
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
   ProviderAuthState,
@@ -32,7 +30,6 @@ import {
   beginClaudeBrowserLogin,
   cancelClaudeBrowserLogin,
 } from "./claude-login";
-import { COMPOSIO_ALREADY_CONNECTED_KIND } from "./composio-already-connected";
 import { getEngine, isRemoteEngine } from "./engine";
 import { engineCallSurface } from "./engine-call-policy";
 import {
@@ -599,132 +596,6 @@ export const tauriSkills = {
       { toast: false },
     );
   },
-};
-
-// ─── Composio (desktop CLI connections) ───────────────────────────────
-
-export interface ComposioAppEntry {
-  toolkit: string;
-  name: string;
-  description: string;
-  logo_url: string;
-  categories: string[];
-}
-
-export type ComposioStatus = EngineComposioStatus;
-
-export interface StartLoginResponse {
-  login_url: string;
-  cli_key: string;
-}
-
-export interface StartLinkResponse {
-  redirect_url: string;
-  connected_account_id: string;
-  toolkit: string;
-}
-
-export interface ReconnectResult {
-  /** URL to open for OAuth re-consent, or null when refreshed silently. */
-  redirectUrl: string | null;
-}
-
-export const tauriConnections = {
-  list: () =>
-    call<ComposioStatus>("list_composio_connections", () =>
-      getEngine().composioStatus(),
-    ),
-  listApps: () =>
-    call<ComposioAppEntry[]>("list_composio_apps", async () =>
-      (await getEngine().composioListApps()).map(
-        (a: EngineComposioAppEntry) => ({
-          toolkit: a.toolkit,
-          name: a.name,
-          description: a.description,
-          logo_url: a.logo_url,
-          categories: a.categories,
-        }),
-      ),
-    ),
-  listConnectedToolkits: () =>
-    call<string[]>("list_composio_connected_toolkits", () =>
-      getEngine().composioListConnections(),
-    ),
-  connectApp: (toolkit: string) =>
-    call<StartLinkResponse>(
-      "connect_composio_app",
-      async () => {
-        const r = await getEngine().composioConnectApp(toolkit);
-        return {
-          redirect_url: r.redirect_url,
-          connected_account_id: r.connected_account_id,
-          toolkit: r.toolkit,
-        };
-      },
-      { toolkit },
-      // "Already connected" is an expected state, not a Houston bug: the
-      // caller refreshes the connected-toolkits list so the card flips to
-      // connected (HOU-463). Silence it so it gets no red bug toast and no
-      // Sentry report — the prior over-reporting was the source of this issue.
-      { silenceKinds: [COMPOSIO_ALREADY_CONNECTED_KIND] },
-    ),
-  disconnectApp: (toolkit: string) =>
-    call<void>(
-      "disconnect_composio_app",
-      () => getEngine().composioDisconnect(toolkit),
-      { toolkit },
-    ),
-  reconnectApp: (toolkit: string) =>
-    call<ReconnectResult>(
-      "reconnect_composio_app",
-      async () => {
-        const r = await getEngine().composioReconnect(toolkit);
-        return { redirectUrl: r.redirectUrl };
-      },
-      { toolkit },
-    ),
-  watchConnection: (toolkit: string) =>
-    call<void>(
-      "watch_composio_connection",
-      () => getEngine().composioWatchConnection(toolkit),
-      { toolkit },
-      // Fire-and-forget — caller awaits only to know the request was
-      // accepted; the result is delivered as a `ComposioConnectionAdded`
-      // WS event. Don't toast OR report; failure here just means we fall
-      // back to the client-side watcher.
-      { toast: false, capture: false },
-    ),
-  startOAuth: () =>
-    call<StartLoginResponse>(
-      "start_composio_oauth",
-      async () => {
-        const r = await getEngine().composioStartLogin();
-        return { login_url: r.login_url, cli_key: r.cli_key };
-      },
-      undefined,
-      // "Already signed in" is a benign no-op (the CLI prints nothing when
-      // creds already exist); the dialog handles that kind as success, so no
-      // red bug toast and no Sentry report.
-      { silenceKinds: ["composio_already_signed_in"] },
-    ),
-  completeLogin: (cliKey: string) =>
-    call<void>(
-      "complete_composio_login",
-      () => getEngine().composioCompleteLogin(cliKey),
-      undefined,
-      // The sign-in dialog renders failures inline, so don't double-surface
-      // as a toast. The expected `composio_login_timeout` (user closed the
-      // tab) is fully silenced; genuine faults still capture to Sentry.
-      { toast: false, silenceKinds: ["composio_login_timeout"] },
-    ),
-  logout: () =>
-    call<void>("logout_composio", () => getEngine().composioLogout()),
-  isCliInstalled: () =>
-    call<boolean>("is_composio_cli_installed", () =>
-      getEngine().composioCliInstalled(),
-    ),
-  installCli: () =>
-    call<void>("install_composio_cli", () => getEngine().composioInstallCli()),
 };
 
 // ─── Project files (browser) ──────────────────────────────────────────
@@ -1482,24 +1353,30 @@ export const tauriIntegrations = {
     call("integration_connection", () =>
       getEngine().integrationConnection(provider, connectionId),
     ),
-  disconnect: (provider: string, toolkit: string) =>
+  /** Disconnect ONE connected account (by connection id), not a whole toolkit. */
+  disconnect: (provider: string, connectionId: string) =>
     call("integration_disconnect", () =>
-      getEngine().disconnectIntegration(provider, toolkit),
+      getEngine().disconnectIntegration(provider, connectionId),
+    ),
+  /** Rename ONE connected account: set its user-facing alias. */
+  rename: (provider: string, connectionId: string, alias: string) =>
+    call("integration_rename_connection", () =>
+      getEngine().renameIntegrationConnection(provider, connectionId, alias),
     ),
   /** Dismiss the reconnect notice (deletes the legacy credentials server-side). */
   dismissReconnectNotice: () =>
     call("integration_dismiss_reconnect_notice", () =>
       getEngine().dismissIntegrationsReconnectNotice(),
     ),
-  /** Multiplayer: the integration toolkit slugs granted to an agent. */
+  /** Multiplayer: the connected-account ids granted to an agent. */
   grants: (agentSlugOrId: string) =>
     call("agent_integration_grants", () =>
       getEngine().agentIntegrationGrants(agentSlugOrId),
     ),
-  /** Multiplayer: replace the integration toolkit slugs granted to an agent. */
-  setGrants: (agentSlugOrId: string, toolkits: string[]) =>
+  /** Multiplayer: replace the connected-account ids granted to an agent. */
+  setGrants: (agentSlugOrId: string, accounts: string[]) =>
     call("set_agent_integration_grants", () =>
-      getEngine().setAgentIntegrationGrants(agentSlugOrId, toolkits),
+      getEngine().setAgentIntegrationGrants(agentSlugOrId, accounts),
     ),
 };
 

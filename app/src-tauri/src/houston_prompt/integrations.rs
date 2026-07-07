@@ -10,6 +10,10 @@ many more) with two tools: `integration_search` finds an action and its \
 input parameters; `integration_execute` runs it. Search first, then \
 execute. The user's own account is used automatically - you never handle \
 credentials.\n\n\
+A person may connect more than one account of the same app (for example \
+two Gmail inboxes). When a search shows more than one account for an app, \
+use the `account` value to pick which one to run against, and if it is not \
+clear which the user means, ask them first.\n\n\
 When a needed app is not connected yet (search marks its actions NOT \
 CONNECTED, or execute fails because no account is linked):\n\n\
 1. Briefly say what must be connected and why, in plain language.\n\

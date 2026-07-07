@@ -3,9 +3,21 @@ import type {
   Connection,
   ConnectStart,
   ProviderReadiness,
+  SearchResult,
   Toolkit,
-  ToolMatch,
 } from "./types";
+
+/**
+ * Per-call execution options. `acting` names the user the agent is acting as
+ * this turn (C2); `account` pins WHICH connected account to run as when the
+ * toolkit has more than one (a connected_account_id for direct adapters — the
+ * policy layer resolves any label the model passed to an id first; a gateway
+ * adapter forwards it verbatim for the upstream to resolve).
+ */
+export interface ExecuteOptions {
+  acting?: ActingContext;
+  account?: string;
+}
 
 /**
  * WHO the agent runtime is acting as for one integration call (C2). Read off the
@@ -59,28 +71,31 @@ export interface IntegrationProvider {
   connect(userId: string, toolkit: string): Promise<ConnectStart>;
   /** One connection by id (poll after connect() until it turns active). */
   connection(userId: string, connectionId: string): Promise<Connection | null>;
-  /** Remove a toolkit connection. */
-  disconnect(userId: string, toolkit: string): Promise<void>;
+  /** Remove ONE connected account by id (ownership-checked). */
+  disconnect(userId: string, connectionId: string): Promise<void>;
+  /** Rename ONE connected account (its user-facing alias; ownership-checked). */
+  rename(userId: string, connectionId: string, alias: string): Promise<void>;
 
   // ── Execution (what the agent's generic tools call) ───────────────────────
   /**
    * Discover actions matching a natural-language query (slug + param schema).
    * `acting` (optional) names the user the agent is acting as this turn (C2);
    * a gateway adapter authenticates upstream as that user, direct adapters
-   * ignore it.
+   * ignore it. Returns `{ items }`; the policy layer may attach `accounts`.
    */
   search(
     userId: string,
     query: string,
     acting?: ActingContext,
-  ): Promise<ToolMatch[]>;
+  ): Promise<SearchResult>;
   /**
-   * Run one action by slug with its params. `acting` (optional) as in `search`.
+   * Run one action by slug with its params. `opts.acting` as in `search`;
+   * `opts.account` pins the connected account when the toolkit has several.
    */
   execute(
     userId: string,
     action: string,
     params: Record<string, unknown>,
-    acting?: ActingContext,
+    opts?: ExecuteOptions,
   ): Promise<ActionResult>;
 }

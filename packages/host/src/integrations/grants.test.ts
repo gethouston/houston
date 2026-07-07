@@ -1,15 +1,19 @@
 import { expect, test } from "vitest";
+import type {
+  GrantAccount,
+  GrantRecord,
+  IntegrationGrantStore,
+} from "./grant-store";
 import { MemoryIntegrationGrantStore } from "./grant-store";
-import {
-  actionInToolkit,
-  filterMatchesToGranted,
-  isActionGranted,
-  LocalIntegrationGrants,
-  normalizeToolkits,
-} from "./grants";
-import type { IntegrationProvider } from "./provider";
+import { LocalIntegrationGrants } from "./grants";
+import type { ActingContext, IntegrationProvider } from "./provider";
 import { IntegrationRegistry } from "./registry";
-import type { Connection, ProviderReadiness, ToolMatch } from "./types";
+import type {
+  ActionResult,
+  Connection,
+  ProviderReadiness,
+  SearchResult,
+} from "./types";
 
 /** A provider that counts listConnections calls and can gate them behind a
  *  manually-resolved barrier, to prove concurrent first-reads materialize once. */
@@ -43,91 +47,38 @@ class CountingProvider implements IntegrationProvider {
     return null;
   }
   async disconnect() {}
-  async search(): Promise<ToolMatch[]> {
-    return [];
+  async rename() {}
+  async search(
+    _userId: string,
+    _query: string,
+    _acting?: ActingContext,
+  ): Promise<SearchResult> {
+    return { items: [] };
   }
-  async execute() {
+  async execute(): Promise<ActionResult> {
     return { successful: true };
   }
 }
 
-test("actionInToolkit matches the full slug prefix (single- and multi-word)", () => {
-  expect(actionInToolkit("GMAIL_SEND_EMAIL", "gmail")).toBe(true);
-  expect(actionInToolkit("SLACK_POST_MESSAGE", "slack")).toBe(true);
-  // Multi-word slug: the action keeps the underscore, and the FULL slug matches.
-  expect(actionInToolkit("GOOGLE_MAPS_GET_ROUTE", "google_maps")).toBe(true);
-  // The buggy first-`_` prefix would have said `google`; it must NOT match here.
-  expect(actionInToolkit("GOOGLE_MAPS_GET_ROUTE", "google")).toBe(true); // prefix-of, documented residual
-  // A shorter slug must not swallow a different, longer toolkit's actions.
-  expect(actionInToolkit("GMAIL_SEND", "gm")).toBe(false);
-  expect(actionInToolkit("NOTELY_CREATE", "note")).toBe(false);
-});
+/** A store that hands back a fixed record (for the legacy-upgrade path). */
+class FixedStore implements IntegrationGrantStore {
+  saved: GrantAccount[] | null = null;
+  constructor(private readonly record: GrantRecord) {}
+  async get(): Promise<GrantRecord> {
+    return this.saved ? { stored: true, accounts: this.saved } : this.record;
+  }
+  async put(_agentId: string, accounts: GrantAccount[]): Promise<void> {
+    this.saved = accounts;
+  }
+}
 
-test("isActionGranted lets a granted multi-word toolkit execute (regression)", () => {
-  // The confirmed break: a granted `google_maps` was 403'd on GOOGLE_MAPS_*.
-  expect(isActionGranted("GOOGLE_MAPS_GET_ROUTE", ["google_maps"])).toBe(true);
-  expect(isActionGranted("GOOGLE_MAPS_GEOCODE_ADDRESS", ["google_maps"])).toBe(
-    true,
-  );
-  // A different multi-word toolkit is still refused.
-  expect(isActionGranted("GOOGLE_DRIVE_UPLOAD", ["google_maps"])).toBe(false);
-});
-
-test("normalizeToolkits validates + dedupes; rejects non-slugs", () => {
-  expect(normalizeToolkits(["gmail", "gmail", "slack"])).toEqual({
-    ok: true,
-    toolkits: ["gmail", "slack"],
-  });
-  expect(normalizeToolkits([]).ok).toBe(true);
-  expect(normalizeToolkits("gmail").ok).toBe(false);
-  expect(normalizeToolkits([1]).ok).toBe(false);
-  expect(normalizeToolkits(["Bad Slug"]).ok).toBe(false);
-});
-
-test("filter + grant checks are case-insensitive on the toolkit", () => {
-  const matches: ToolMatch[] = [
-    { action: "GMAIL_SEND", toolkit: "Gmail", description: "" },
-    { action: "SLACK_POST", toolkit: "slack", description: "" },
-  ];
-  expect(
-    filterMatchesToGranted(matches, ["gmail"]).map((m) => m.action),
-  ).toEqual(["GMAIL_SEND"]);
-  expect(isActionGranted("GMAIL_SEND_EMAIL", ["GMAIL"])).toBe(true);
-  expect(isActionGranted("SLACK_POST", ["gmail"])).toBe(false);
-});
-
-test("not-connected matches pass the grant filter (in-chat connect discovery)", () => {
-  const matches: ToolMatch[] = [
-    {
-      action: "GMAIL_SEND",
-      toolkit: "gmail",
-      description: "",
-      connected: true,
-    },
-    // Connected but ungranted → hidden from this agent.
-    {
-      action: "SLACK_POST",
-      toolkit: "slack",
-      description: "",
-      connected: true,
-    },
-    // Not connected → can never be granted; must survive so the agent can
-    // offer the connect card (HOU-670).
-    {
-      action: "NOTION_ADD",
-      toolkit: "notion",
-      description: "",
-      connected: false,
-    },
-  ];
-  expect(
-    filterMatchesToGranted(matches, ["gmail"]).map((m) => m.action),
-  ).toEqual(["GMAIL_SEND", "NOTION_ADD"]);
-});
-
-test("concurrent first-reads materialize + persist exactly once", async () => {
+test("concurrent first-reads materialize + persist exactly once (accounts)", async () => {
   const provider = new CountingProvider([
     { toolkit: "gmail", connectionId: "c1", status: "active" },
+    // A second gmail account + an errored slack are both materialized; the
+    // pending github is excluded.
+    { toolkit: "gmail", connectionId: "c2", status: "error" },
+    { toolkit: "github", connectionId: "c3", status: "pending" },
   ]);
   const store = new MemoryIntegrationGrantStore();
   const grants = new LocalIntegrationGrants({
@@ -140,19 +91,85 @@ test("concurrent first-reads materialize + persist exactly once", async () => {
   provider.open();
   const [ra, rb] = await Promise.all([a, b]);
 
-  expect(ra).toEqual(["gmail"]);
-  expect(rb).toEqual(["gmail"]);
+  const expected: GrantAccount[] = [
+    { connectionId: "c1", toolkit: "gmail" },
+    { connectionId: "c2", toolkit: "gmail" },
+  ];
+  expect(ra).toEqual(expected);
+  expect(rb).toEqual(expected);
   expect(provider.listCalls).toBe(1); // guarded — not double-materialized
-  expect(await store.get("W/A")).toEqual({ stored: true, toolkits: ["gmail"] });
+  expect(await store.get("W/A")).toEqual({ stored: true, accounts: expected });
 });
 
-test("grantedOrNull returns null when no record exists (backward-compat)", async () => {
+test("provider not ready → read returns [] WITHOUT persisting", async () => {
+  const provider = new CountingProvider([
+    { toolkit: "gmail", connectionId: "c1", status: "active" },
+  ]);
+  provider.ready = false;
+  provider.open();
+  const store = new MemoryIntegrationGrantStore();
+  const grants = new LocalIntegrationGrants({
+    store,
+    registry: new IntegrationRegistry([provider]),
+  });
+  expect(await grants.read("W/A", "alice")).toEqual([]);
+  expect(await store.get("W/A")).toEqual({ stored: false });
+});
+
+test("a legacy {toolkits} record materializes only those toolkits' accounts, then persists", async () => {
+  const provider = new CountingProvider([
+    { toolkit: "gmail", connectionId: "c1", status: "active" },
+    { toolkit: "slack", connectionId: "c2", status: "active" },
+    { toolkit: "notion", connectionId: "c3", status: "error" },
+  ]);
+  provider.open();
+  // Legacy granted gmail + notion (NOT slack).
+  const store = new FixedStore({
+    stored: false,
+    legacyToolkits: ["gmail", "notion"],
+  });
+  const grants = new LocalIntegrationGrants({
+    store,
+    registry: new IntegrationRegistry([provider]),
+  });
+  const read = await grants.read("W/A", "alice");
+  expect(read).toEqual([
+    { connectionId: "c1", toolkit: "gmail" },
+    { connectionId: "c3", toolkit: "notion" },
+  ]);
+  // Upgrade persisted → the record is now a v2 accounts record.
+  expect(store.saved).toEqual(read);
+});
+
+test("grantedOrNull: null with no record; stored accounts once written", async () => {
   const store = new MemoryIntegrationGrantStore();
   const grants = new LocalIntegrationGrants({
     store,
     registry: new IntegrationRegistry([new CountingProvider([])]),
   });
-  expect(await grants.grantedOrNull("W/A")).toBeNull();
-  await grants.replace("W/A", ["gmail"]);
-  expect(await grants.grantedOrNull("W/A")).toEqual(["gmail"]);
+  expect(await grants.grantedOrNull("W/A", "alice")).toBeNull();
+
+  const accounts: GrantAccount[] = [{ connectionId: "c1", toolkit: "gmail" }];
+  await grants.replace("W/A", accounts);
+  expect(await grants.grantedOrNull("W/A", "alice")).toEqual(accounts);
+});
+
+test("grantedOrNull ENFORCES a legacy {toolkits} file (no fail-open) + upgrades it once", async () => {
+  // A v1 restrictive file granted gmail only, while slack is also connected for
+  // other agents. Enforcement must materialize the gmail-only account set — NOT
+  // return null (which the sandbox reads as "no filtering", escalating access).
+  const provider = new CountingProvider([
+    { toolkit: "gmail", connectionId: "c1", status: "active" },
+    { toolkit: "slack", connectionId: "c2", status: "active" },
+  ]);
+  provider.open();
+  const store = new FixedStore({ stored: false, legacyToolkits: ["gmail"] });
+  const legacy = new LocalIntegrationGrants({
+    store,
+    registry: new IntegrationRegistry([provider]),
+  });
+  const expected: GrantAccount[] = [{ connectionId: "c1", toolkit: "gmail" }];
+  expect(await legacy.grantedOrNull("W/A", "alice")).toEqual(expected);
+  // One-time upgrade persisted the restricted set as a v2 accounts record.
+  expect(store.saved).toEqual(expected);
 });

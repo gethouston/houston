@@ -34,6 +34,12 @@ const ExecuteParams = Type.Object({
         "Arguments for the action, matching its input parameters from integration_search.",
     }),
   ),
+  account: Type.Optional(
+    Type.String({
+      description:
+        "id or label of the connected account; needed only when the user has more than one account for that app.",
+    }),
+  ),
 });
 type ExecuteParams = Static<typeof ExecuteParams>;
 
@@ -77,6 +83,42 @@ interface ToolMatch {
   connected?: boolean;
 }
 
+/** One connected account the acting agent is granted, as reported by the host. */
+interface ConnectedAccountInfo {
+  toolkit: string;
+  connectionId: string;
+  accountLabel?: string;
+}
+
+/** The host's search reply: matches plus the agent's granted accounts. */
+interface SearchResult {
+  items: ToolMatch[];
+  accounts?: ConnectedAccountInfo[];
+}
+
+/**
+ * The host asked which account to use (HTTP 400 `account_required`): the app has
+ * more than one granted account and none was pinned. Not a failure to surface as
+ * a crash — the model should retry with `account` — so it carries the choices.
+ */
+class AccountRequiredError extends Error {
+  constructor(readonly accounts: ConnectedAccountInfo[]) {
+    super("account_required");
+    this.name = "AccountRequiredError";
+  }
+}
+
+/** Parse a JSON body, tolerating a non-JSON error payload (returns undefined). */
+function safeJson(
+  text: string,
+): { error?: string; accounts?: unknown } | undefined {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * The instruction appended to search results (and connection-shaped execute
  * failures) that teaches the model the in-chat connect hand-off: call the
@@ -85,6 +127,35 @@ interface ToolMatch {
  */
 const REQUEST_CONNECTION_GUIDANCE =
   "To let the user connect an app, call the request_connection tool with that app's toolkit (the slug shown in the results). Houston shows the user a one-click connect card in place of the chat input, then automatically sends you a message once the connection is live so you can continue — do not ask the user to confirm.";
+
+/** Render one account as `"label" (connectionId)` for a model-facing line. */
+function accountEntry(a: ConnectedAccountInfo): string {
+  return `"${a.accountLabel ?? "unnamed"}" (${a.connectionId})`;
+}
+
+/**
+ * The trailing block appended to search results when the agent is granted more
+ * than one account for an app: list each such app's accounts and one line
+ * telling the model to pass `account` on execute for those apps.
+ */
+function formatMultiAccounts(
+  accounts: ConnectedAccountInfo[] | undefined,
+): string {
+  if (!accounts?.length) return "";
+  const byToolkit = new Map<string, ConnectedAccountInfo[]>();
+  for (const a of accounts) {
+    const list = byToolkit.get(a.toolkit) ?? [];
+    list.push(a);
+    byToolkit.set(a.toolkit, list);
+  }
+  const lines: string[] = [];
+  for (const [toolkit, list] of byToolkit) {
+    if (list.length < 2) continue;
+    lines.push(`Accounts for ${toolkit}: ${list.map(accountEntry).join(", ")}`);
+  }
+  if (lines.length === 0) return "";
+  return `\n\n${lines.join("\n")}\nWhen running an action for those apps, pass the account parameter (the id or label above) to choose which account to use.`;
+}
 interface ActionResult {
   successful: boolean;
   data?: unknown;
@@ -128,6 +199,18 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           "Connected apps aren't available yet: the user needs to sign in to Houston (Settings), then connect their apps in Integrations. Ask them to do that, then try again.",
         );
       }
+      // The app has several granted accounts and none was pinned → the model
+      // must choose one and retry. Carry the choices instead of crashing.
+      if (res.status === 400) {
+        const parsed = safeJson(detail);
+        if (parsed?.error === "account_required") {
+          throw new AccountRequiredError(
+            Array.isArray(parsed.accounts)
+              ? (parsed.accounts as ConnectedAccountInfo[])
+              : [],
+          );
+        }
+      }
       throw new Error(
         `integrations ${path} failed (${res.status}): ${detail.slice(0, 300)}`,
       );
@@ -148,7 +231,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       params: SearchParams,
       signal: AbortSignal | undefined,
     ) {
-      const { items } = await post<{ items: ToolMatch[] }>(
+      const { items, accounts } = await post<SearchResult>(
         "search",
         { query: params.query },
         signal,
@@ -175,9 +258,12 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         .join("\n");
       // Some matches need a connection first → teach the hand-off inline, at
       // the moment the model actually faces a not-connected app.
-      const text = items.some((m) => m.connected === false)
+      const body = items.some((m) => m.connected === false)
         ? `${list}\n\nActions marked NOT CONNECTED will fail until the user connects that app. ${REQUEST_CONNECTION_GUIDANCE}`
         : list;
+      // When the agent has several accounts for an app, list them so the model
+      // can pass the right one on execute.
+      const text = `${body}${formatMultiAccounts(accounts)}`;
       return {
         content: [{ type: "text" as const, text }],
         details: { matches: items.length, actions: items.map((m) => m.action) },
@@ -198,11 +284,33 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       params: ExecuteParams,
       signal: AbortSignal | undefined,
     ) {
-      const result = await post<ActionResult>(
-        "execute",
-        { action: params.action, params: params.params ?? {} },
-        signal,
-      );
+      const requestBody: Record<string, unknown> = {
+        action: params.action,
+        params: params.params ?? {},
+      };
+      // Only pin an account when the model named one — omitting it lets the host
+      // auto-pin when exactly one account is granted.
+      if (params.account) requestBody.account = params.account;
+      let result: ActionResult;
+      try {
+        result = await post<ActionResult>("execute", requestBody, signal);
+      } catch (err) {
+        // Not an error to crash on: the app has several accounts and none was
+        // pinned. Tell the model which ones exist so it retries with `account`.
+        if (err instanceof AccountRequiredError) {
+          const choices = err.accounts.map(accountEntry).join(", ");
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `This app has more than one connected account. Retry integration_execute with the account parameter set to one of: ${choices}.`,
+              },
+            ],
+            details: { action: params.action, accountRequired: true },
+          };
+        }
+        throw err;
+      }
       // The action ran but the app rejected it → surface, don't pretend success.
       if (!result.successful) {
         const reason = result.error ?? "unknown error";
@@ -216,7 +324,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       const text = result.data ? JSON.stringify(result.data, null, 2) : "Done.";
       return {
         content: [{ type: "text" as const, text }],
-        details: { action: params.action },
+        details: { action: params.action, accountRequired: false },
       };
     },
   });

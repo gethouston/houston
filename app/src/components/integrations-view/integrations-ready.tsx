@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDisconnectIntegration } from "../../hooks/queries";
+import { useRenameIntegrationConnection } from "../../hooks/queries/use-integrations";
 import {
   AppDetailSheet,
+  accountDisplayLabel,
   appDisplay,
   ConnectMoreAppsSection,
   INTEGRATION_PROVIDER,
@@ -25,13 +27,13 @@ interface IntegrationsReadyProps {
 
 /**
  * The ready state of the global Integrations page. Two always-present sections:
- * the apps the user has connected (a two-column grid of cards, each opening the
- * detail sheet for per-agent access, with pending / errored connections shown
- * full-width for recovery), then the full "Connect more apps" catalog so a
- * brand-new user immediately sees the 1000+ connectable apps. ONE connect flow
- * lives here (connect-only, no auto-grant) and is handed to the catalog, the
- * recovery callouts, and the detail sheet so closing any of them never kills an
- * in-flight OAuth poll.
+ * the apps the user has connected (a two-column grid of cards, ONE per app, each
+ * opening the detail sheet for per-ACCOUNT access, rename, disconnect, and
+ * adding another account, with pending / errored connections shown full-width
+ * per account for recovery), then the full "Connect more apps" catalog. ONE
+ * connect flow lives here (connect-only, no auto-grant) and is handed to the
+ * catalog, the recovery callouts, and the detail sheet so closing any of them
+ * never kills an in-flight OAuth poll.
  */
 export function IntegrationsReady({
   reconnectNotice,
@@ -41,27 +43,32 @@ export function IntegrationsReady({
   const apps = useConnectedApps();
   const connectFlow = useConnectFlow({ autoGrant: false });
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
+  const rename = useRenameIntegrationConnection(INTEGRATION_PROVIDER);
   const toggle = useAgentGrantToggle();
 
-  const [selectedConnId, setSelectedConnId] = useState<string | null>(null);
-  const [disconnectToolkit, setDisconnectToolkit] = useState<string | null>(
-    null,
-  );
+  // The sheet is keyed by TOOLKIT so it shows every account of the app; the
+  // disconnect dialog is keyed by the single ACCOUNT the user is removing. Both
+  // resolve against the live connection list, so a disconnect elsewhere drops
+  // the row and (when it was the last account) closes the sheet on its own.
+  const [selectedToolkit, setSelectedToolkit] = useState<string | null>(null);
+  const [disconnectConnId, setDisconnectConnId] = useState<string | null>(null);
 
-  // The detail sheet reflects the LIVE connection, re-resolved by the exact
-  // connection id the user opened (a toolkit can have more than one account,
-  // e.g. an active login next to a leftover pending one — keying by toolkit
-  // would resolve the wrong row). A disconnect elsewhere drops it and closes.
-  const connKey = (c: { connectionId: string; toolkit: string }) =>
-    c.connectionId || c.toolkit;
-  const selectedConn = selectedConnId
-    ? apps.connData.find((c) => connKey(c) === selectedConnId)
+  const selectedConnections = selectedToolkit
+    ? apps.connData.filter((c) => c.toolkit === selectedToolkit)
+    : [];
+  const selectedApp =
+    selectedToolkit && selectedConnections.length > 0
+      ? appDisplay(selectedToolkit, apps.bySlug.get(selectedToolkit))
+      : null;
+
+  const disconnectConn = disconnectConnId
+    ? apps.connData.find((c) => c.connectionId === disconnectConnId)
     : undefined;
-  const selectedApp = selectedConn
-    ? appDisplay(selectedConn.toolkit, apps.bySlug.get(selectedConn.toolkit))
-    : null;
-  const disconnectApp = disconnectToolkit
-    ? appDisplay(disconnectToolkit, apps.bySlug.get(disconnectToolkit))
+  const disconnectApp = disconnectConn
+    ? appDisplay(
+        disconnectConn.toolkit,
+        apps.bySlug.get(disconnectConn.toolkit),
+      )
     : null;
 
   const hasConnections = apps.connData.length > 0;
@@ -93,12 +100,12 @@ export function IntegrationsReady({
               <ConnectedAppsListSkeleton />
             ) : (
               <ConnectedAppsList
-                active={apps.activeRows}
+                active={apps.activeCards}
                 recovering={apps.recoveringRows}
                 grantsSupported={apps.grantsSupported}
                 connectFlow={connectFlow}
-                onManage={(c) => setSelectedConnId(connKey(c))}
-                onRemove={(toolkit) => disconnect.mutate(toolkit)}
+                onManage={setSelectedToolkit}
+                onRemove={(connectionId) => disconnect.mutate(connectionId)}
               />
             )}
           </section>
@@ -112,49 +119,58 @@ export function IntegrationsReady({
         />
       </div>
 
-      {selectedConn && selectedApp && (
+      {selectedApp && (
         <AppDetailSheet
           open
           onOpenChange={(open) => {
-            if (!open) setSelectedConnId(null);
+            if (!open) setSelectedToolkit(null);
           }}
           display={selectedApp}
-          connection={selectedConn}
+          connections={selectedConnections}
           agents={apps.agentChips}
-          activeAgentIds={
-            new Set(apps.grantMap.get(selectedConn.toolkit) ?? [])
-          }
+          activeAgentIdsByConnection={apps.activeAgentIdsByConnection}
           grantsSupported={apps.grantsSupported}
           canEdit={apps.canEdit}
-          onToggleAgent={(agentId, active) =>
-            toggle.mutate({ agentId, toolkit: selectedConn.toolkit, active })
+          connectInFlight={connectFlow.state !== null}
+          onToggleAgent={(connectionId, agentId, active) =>
+            toggle.mutate({ agentId, connectionId, active })
           }
-          onReconnect={() => {
-            void connectFlow.connect(selectedConn.toolkit);
-            setSelectedConnId(null);
+          onRename={(connectionId, alias) =>
+            rename.mutate({ connectionId, alias })
+          }
+          onReconnect={(connectionId) => {
+            const conn = selectedConnections.find(
+              (c) => c.connectionId === connectionId,
+            );
+            if (conn) void connectFlow.connect(conn.toolkit);
+            setSelectedToolkit(null);
           }}
-          onDisconnect={() => {
-            setDisconnectToolkit(selectedConn.toolkit);
-            setSelectedConnId(null);
-          }}
+          onDisconnect={setDisconnectConnId}
+          onAddAccount={(toolkit) => void connectFlow.connect(toolkit)}
         />
       )}
 
       <IntegrationDisconnectDialog
         app={disconnectApp}
+        connectionId={disconnectConnId}
+        accountLabel={
+          disconnectConn
+            ? accountDisplayLabel(disconnectConn, t("account.unnamed"))
+            : undefined
+        }
         scope="everywhere"
         affectedAgents={
-          disconnectApp
+          disconnectConnId
             ? agentChipsFor(
-                apps.grantMap.get(disconnectApp.toolkit) ?? [],
+                apps.accountAgents.get(disconnectConnId) ?? [],
                 apps.chipById,
               )
             : undefined
         }
-        onClose={() => setDisconnectToolkit(null)}
-        onConfirm={(toolkit) => {
-          disconnect.mutate(toolkit);
-          setDisconnectToolkit(null);
+        onClose={() => setDisconnectConnId(null)}
+        onConfirm={(connectionId) => {
+          disconnect.mutate(connectionId);
+          setDisconnectConnId(null);
         }}
       />
     </>

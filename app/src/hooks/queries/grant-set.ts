@@ -1,5 +1,7 @@
 /**
- * Pure set arithmetic for per-agent integration grants. The host API is a
+ * Pure set arithmetic for per-agent integration grants. The grant unit is the
+ * connected ACCOUNT (its connection id), not the toolkit — a user may connect
+ * several accounts of one app and grant each independently. The host API is a
  * replace-set PUT, so every add/remove must be computed against the FRESHEST
  * known set at mutate time — never a set captured in a closure (a stale
  * snapshot silently wipes grants made in between, e.g. during the 5-minute
@@ -7,7 +9,7 @@
  * Pure so it's unit-testable.
  */
 export interface GrantChange {
-  toolkit: string;
+  connectionId: string;
   op: "add" | "remove";
 }
 
@@ -17,11 +19,11 @@ export function applyGrantChange(
   change: GrantChange,
 ): string[] {
   if (change.op === "add") {
-    return current.includes(change.toolkit)
+    return current.includes(change.connectionId)
       ? [...current]
-      : [...current, change.toolkit];
+      : [...current, change.connectionId];
   }
-  return current.filter((g) => g !== change.toolkit);
+  return current.filter((g) => g !== change.connectionId);
 }
 
 /** Reverse one grant change (the optimistic-update rollback on error). */
@@ -30,7 +32,7 @@ export function reverseGrantChange(
   change: GrantChange,
 ): string[] {
   return applyGrantChange(current, {
-    toolkit: change.toolkit,
+    connectionId: change.connectionId,
     op: change.op === "add" ? "remove" : "add",
   });
 }

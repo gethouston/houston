@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
-import { AppRow } from "../../integrations";
+import { AppRow, accountDisplayLabel } from "../../integrations";
 import type { AgentAppRow as AgentAppRowVM } from "./model";
 
 interface AgentDisallowedAppsSectionProps {
-  /** Connected apps the agent's Teams allowlist ceiling forbids. */
+  /** Connected accounts the agent's Teams allowlist ceiling forbids. */
   rows: AgentAppRowVM[];
 }
 
@@ -17,7 +17,7 @@ interface AgentDisallowedAppsSectionProps {
 export function AgentDisallowedAppsSection({
   rows,
 }: AgentDisallowedAppsSectionProps) {
-  const { t } = useTranslation("teams");
+  const { t } = useTranslation(["teams", "integrations"]);
 
   return (
     <section className="mt-8">
@@ -29,11 +29,18 @@ export function AgentDisallowedAppsSection({
       </p>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {rows.map(({ connection, app }) => (
+        {rows.map(({ connection, app, showAccountLabel }) => (
           <AppRow
-            key={connection.connectionId || connection.toolkit}
+            key={connection.connectionId}
             display={app}
-            description={app.description}
+            description={
+              showAccountLabel
+                ? accountDisplayLabel(
+                    connection,
+                    t("integrations:account.unnamed"),
+                  )
+                : app.description
+            }
             trailing={
               <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                 {t("integrations.notAllowed.badge")}

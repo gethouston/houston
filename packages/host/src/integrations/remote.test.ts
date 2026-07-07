@@ -81,6 +81,7 @@ test("signed in: forwards to the upstream /v1/integrations routes with the beare
     if (url.pathname.endsWith("/execute"))
       return { body: { successful: true } };
     if (url.pathname.endsWith("/disconnect")) return { body: { ok: true } };
+    if (url.pathname.endsWith("/rename")) return { body: { ok: true } };
     return { status: 404 };
   }, "jwt-1");
 
@@ -109,8 +110,50 @@ test("signed in: forwards to the upstream /v1/integrations routes with the beare
     action: "GMAIL_SEND_EMAIL",
     params: { to: "a@b" },
   });
-  await provider.disconnect("ignored", "gmail");
-  expect(calls[6]?.body).toEqual({ toolkit: "gmail" });
+  // disconnect + rename are PER ACCOUNT (connectionId), not per toolkit.
+  await provider.disconnect("ignored", "ca_1");
+  expect(calls[6]?.body).toEqual({ connectionId: "ca_1" });
+  await provider.rename("ignored", "ca_1", "Work");
+  expect(calls[7]?.url).toBe(
+    "https://cloud.test/v1/integrations/composio/connections/ca_1/rename",
+  );
+  expect(calls[7]?.body).toEqual({ alias: "Work" });
+});
+
+test("execute forwards the pinned account; search relays the upstream accounts verbatim", async () => {
+  const { provider, calls } = harness((url) => {
+    if (url.pathname.endsWith("/execute"))
+      return { body: { successful: true } };
+    if (url.pathname.endsWith("/search"))
+      return {
+        body: {
+          items: [{ action: "GMAIL_SEND_EMAIL", toolkit: "gmail" }],
+          accounts: [
+            { toolkit: "gmail", connectionId: "ca_1", accountLabel: "Work" },
+          ],
+        },
+      };
+    return { status: 404 };
+  }, "jwt-1");
+
+  await provider.execute(
+    "u",
+    "GMAIL_SEND_EMAIL",
+    { to: "a@b" },
+    {
+      account: "ca_work",
+    },
+  );
+  expect(calls[0]?.body).toEqual({
+    action: "GMAIL_SEND_EMAIL",
+    params: { to: "a@b" },
+    account: "ca_work",
+  });
+
+  const result = await provider.search("u", "email");
+  expect(result.accounts).toEqual([
+    { toolkit: "gmail", connectionId: "ca_1", accountLabel: "Work" },
+  ]);
 });
 
 test("upstream 401 (expired session) becomes the typed signin error; 404 poll → null; 500 throws", async () => {
@@ -151,7 +194,14 @@ test("acting mode a: an acting-as token authenticates AS that user (overrides th
     "pod-secret",
   );
   await provider.search("owner", "email", { actingAs: "acting-v1.tok" });
-  await provider.execute("owner", "X", {}, { actingAs: "acting-v1.tok" });
+  await provider.execute(
+    "owner",
+    "X",
+    {},
+    {
+      acting: { actingAs: "acting-v1.tok" },
+    },
+  );
   expect(calls[0]?.headers.authorization).toBe("Bearer acting-v1.tok");
   expect(calls[0]?.headers["x-houston-acting-user"]).toBeUndefined();
   expect(calls[1]?.headers.authorization).toBe("Bearer acting-v1.tok");
@@ -163,7 +213,14 @@ test("acting mode b: a routine actingUser + pod token → pod bearer + acting-us
     undefined, // signed out on the frontend session — irrelevant to the routine path
     "pod-secret",
   );
-  await provider.execute("owner", "X", {}, { actingUser: "sub-123" });
+  await provider.execute(
+    "owner",
+    "X",
+    {},
+    {
+      acting: { actingUser: "sub-123" },
+    },
+  );
   expect(calls[0]?.headers.authorization).toBe("Bearer pod-secret");
   expect(calls[0]?.headers["x-houston-acting-user"]).toBe("sub-123");
 });
@@ -179,7 +236,14 @@ test("acting mode c: no acting context falls back to the session token (else sig
   // nothing ever leaves the machine unauthenticated.
   const noPod = harness(() => ({ body: {} }));
   await expect(
-    noPod.provider.execute("owner", "X", {}, { actingUser: "sub-123" }),
+    noPod.provider.execute(
+      "owner",
+      "X",
+      {},
+      {
+        acting: { actingUser: "sub-123" },
+      },
+    ),
   ).rejects.toThrow(IntegrationSigninRequiredError);
   expect(noPod.calls).toEqual([]);
 });

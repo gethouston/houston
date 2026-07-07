@@ -1,31 +1,34 @@
+import type { IntegrationConnection } from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
 import { ConnectWaitingPanel } from "./connect-waiting-panel";
 import type { ConnectFlow } from "./use-connect-flow";
 
 /**
- * The recovery affordance for a connection that never went active, so a user who
- * abandoned the OAuth mid-flow ALWAYS has a way back:
+ * The recovery affordance for one connected ACCOUNT that never went active, so a
+ * user who abandoned the OAuth mid-flow ALWAYS has a way back:
  *
  *  - while a connect flow is waiting for THIS toolkit → the waiting panel
  *    (Reopen / I have finished / Cancel);
  *  - otherwise `pending` → Finish connecting (a fresh link) + Remove;
  *  - otherwise `error` → Reconnect (a fresh link) + Remove.
+ *
+ * Keyed on the account (`connection`) so several pending accounts of one app
+ * each get their own callout; Remove targets this account's `connectionId`.
  */
 export function PendingConnectionCallout({
-  status,
-  toolkit,
+  connection,
   connectFlow,
   onRemove,
   appName,
 }: {
-  status: "pending" | "error";
-  toolkit: string;
+  connection: IntegrationConnection;
   connectFlow: ConnectFlow;
-  onRemove: () => void;
+  onRemove: (connectionId: string) => void;
   /** Nicer than the raw slug in the copy; falls back to the toolkit. */
   appName?: string;
 }) {
   const { t } = useTranslation("integrations");
+  const { toolkit, status } = connection;
   const name = appName ?? toolkit;
   const waitingHere =
     connectFlow.state?.toolkit === toolkit &&
@@ -67,7 +70,7 @@ export function PendingConnectionCallout({
         </button>
         <button
           type="button"
-          onClick={onRemove}
+          onClick={() => onRemove(connection.connectionId)}
           className="inline-flex h-7 items-center rounded-full px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary"
         >
           {copy.remove}

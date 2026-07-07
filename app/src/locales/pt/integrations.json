@@ -73,8 +73,20 @@
     "more": "+{{count}}"
   },
   "disconnect": {
+    "account": "Isso afeta a conta {{label}}.",
     "affected_one": "Usado por {{count}} agente",
     "affected_other": "Usado por {{count}} agentes"
+  },
+  "account": {
+    "unnamed": "Conta sem nome",
+    "addAnother": "Adicionar outra conta",
+    "rename": "Renomear",
+    "renameTitle": "Renomear conta",
+    "renamePlaceholder": "ex.: Trabalho, Pessoal",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "count_one": "{{count}} conta",
+    "count_other": "{{count}} contas"
   },
   "home": {
     "title": "Integrações",
@@ -85,6 +97,7 @@
   },
   "detail": {
     "activeOn": "Agentes que podem usar",
+    "accounts": "Contas",
     "reconnect": "Reconectar",
     "disconnect": "Desconectar",
     "noAgents": "Nenhum agente pode usar ainda. Ative um acima.",

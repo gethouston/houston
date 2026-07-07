@@ -951,41 +951,6 @@ export interface ClaudeStatus {
   lastInstallError: ClaudeInstallError | null;
 }
 
-// ---------- Composio ----------
-
-export type ComposioStatus =
-  | { status: "not_installed" }
-  | { status: "needs_auth" }
-  | { status: "ok"; email: string | null; org_name: string | null }
-  | { status: "error"; message: string };
-
-export interface ComposioAppEntry {
-  toolkit: string;
-  name: string;
-  description: string;
-  logo_url: string;
-  categories: string[];
-}
-
-export interface ComposioStartLoginResponse {
-  login_url: string;
-  cli_key: string;
-}
-
-export interface ComposioStartLinkResponse {
-  redirect_url: string;
-  connected_account_id: string;
-  toolkit: string;
-}
-
-export interface ComposioReconnectResponse {
-  /**
-   * Browser URL the user must open to finish OAuth re-consent, or `null`
-   * when the auth scheme refreshed silently (e.g. API-key connections).
-   */
-  redirectUrl: string | null;
-}
-
 // ────────────────────────────────────────────────────────────────────────
 // Portable agent (share / import "from a friend")
 // ────────────────────────────────────────────────────────────────────────
@@ -1203,6 +1168,13 @@ export interface IntegrationConnection {
   toolkit: string;
   connectionId: string;
   status: "active" | "pending" | "error";
+  /**
+   * Human label for this connected account: the user's alias if set, else a
+   * value derived from the account state (email / username / workspace …).
+   * Absent when nothing nameable could be derived — the UI falls back to a
+   * "Unnamed account" label with the connection id's last characters.
+   */
+  accountLabel?: string;
 }
 
 // ── OpenAI-compatible (local) provider ───────────────────────────────────────

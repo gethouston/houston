@@ -1,4 +1,8 @@
-import type { ActingContext, IntegrationProvider } from "./provider";
+import type {
+  ActingContext,
+  ExecuteOptions,
+  IntegrationProvider,
+} from "./provider";
 import {
   type ActionResult,
   type Connection,
@@ -6,8 +10,8 @@ import {
   IntegrationSigninRequiredError,
   integrationUpstreamErrorFromResponse,
   type ProviderReadiness,
+  type SearchResult,
   type Toolkit,
-  type ToolMatch,
 } from "./types";
 
 /**
@@ -174,33 +178,51 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
     );
   }
 
-  async disconnect(_userId: string, toolkit: string): Promise<void> {
-    await this.call("/disconnect", { method: "POST", body: { toolkit } });
+  async disconnect(_userId: string, connectionId: string): Promise<void> {
+    await this.call("/disconnect", { method: "POST", body: { connectionId } });
+  }
+
+  async rename(
+    _userId: string,
+    connectionId: string,
+    alias: string,
+  ): Promise<void> {
+    await this.call(`/connections/${encodeURIComponent(connectionId)}/rename`, {
+      method: "POST",
+      body: { alias },
+    });
   }
 
   async search(
     _userId: string,
     query: string,
     acting?: ActingContext,
-  ): Promise<ToolMatch[]> {
-    const body = await this.call<{ items: ToolMatch[] }>("/search", {
+  ): Promise<SearchResult> {
+    // The upstream policy layer returns the full SearchResult ({ items,
+    // accounts? }); relay it verbatim.
+    const body = await this.call<SearchResult>("/search", {
       method: "POST",
       body: { query },
       acting,
     });
-    return this.must(body, "POST /search").items;
+    return this.must(body, "POST /search");
   }
 
   async execute(
     _userId: string,
     action: string,
     params: Record<string, unknown>,
-    acting?: ActingContext,
+    opts?: ExecuteOptions,
   ): Promise<ActionResult> {
+    // Forward `account` verbatim; the upstream resolves any label to an id.
     const body = await this.call<ActionResult>("/execute", {
       method: "POST",
-      body: { action, params },
-      acting,
+      body: {
+        action,
+        params,
+        ...(opts?.account ? { account: opts.account } : {}),
+      },
+      acting: opts?.acting,
     });
     return this.must(body, "POST /execute");
   }

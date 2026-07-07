@@ -30,14 +30,24 @@ export function appDisplay(
   };
 }
 
+/** One display row per connected account. `connectionId` is exposed at the top
+ * level (not only inside `connection`) so callers keying per account never have
+ * to reach through the nested object. */
+export interface ConnectionRow {
+  connectionId: string;
+  connection: IntegrationConnection;
+  app: AppDisplay;
+}
+
 /** Resolve + sort a connection list into display rows by app name. */
 export function connectionRows(
   connections: IntegrationConnection[],
   catalog: IntegrationToolkit[],
-): { connection: IntegrationConnection; app: AppDisplay }[] {
+): ConnectionRow[] {
   const bySlug = new Map(catalog.map((tk) => [tk.slug, tk]));
   return connections
     .map((c) => ({
+      connectionId: c.connectionId,
       connection: c,
       app: appDisplay(c.toolkit, bySlug.get(c.toolkit)),
     }))

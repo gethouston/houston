@@ -100,10 +100,10 @@ export default function IntegrationsTab({ agent }: TabProps) {
       catalog.isLoading ||
       settingsQuery.isLoading);
 
-  const removeGrant = (toolkit: string) =>
-    grantMutation.mutate({ toolkit, op: "remove" });
-  const activate = (toolkit: string) =>
-    grantMutation.mutate({ toolkit, op: "add" });
+  const removeGrant = (connectionId: string) =>
+    grantMutation.mutate({ connectionId, op: "remove" });
+  const activate = (connectionId: string) =>
+    grantMutation.mutate({ connectionId, op: "add" });
 
   return (
     <div className="h-full overflow-auto">
@@ -133,7 +133,8 @@ export default function IntegrationsTab({ agent }: TabProps) {
               connectFlow={connectFlow}
               onRemoveGrant={removeGrant}
               onActivate={activate}
-              onDisconnect={(toolkit) => disconnect.mutate(toolkit)}
+              onDisconnect={(connectionId) => disconnect.mutate(connectionId)}
+              onAddAccount={(toolkit) => void connectFlow.connect(toolkit)}
             />
 
             <div className="mt-8">

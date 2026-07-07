@@ -10,14 +10,18 @@ import {
   type RawTool,
   type RawToolkit,
 } from "./composio-wire";
-import type { ActingContext, IntegrationProvider } from "./provider";
+import type {
+  ActingContext,
+  ExecuteOptions,
+  IntegrationProvider,
+} from "./provider";
 import type {
   ActionResult,
   Connection,
   ConnectStart,
   ProviderReadiness,
+  SearchResult,
   Toolkit,
-  ToolMatch,
 } from "./types";
 
 /**
@@ -110,6 +114,9 @@ export class ComposioProvider implements IntegrationProvider {
       body: {
         auth_config_id: authConfigId,
         user_id: userId,
+        // A user may connect the same app more than once (two Gmail logins);
+        // without this Composio reuses/overwrites the single account.
+        allow_multiple: true,
         ...(this.callbackUrl ? { callback_url: this.callbackUrl } : {}),
       },
     });
@@ -126,36 +133,56 @@ export class ComposioProvider implements IntegrationProvider {
     userId: string,
     connectionId: string,
   ): Promise<Connection | null> {
+    const body = await this.ownedAccount(userId, connectionId);
+    return body ? mapConnection(body) : null;
+  }
+
+  /**
+   * Fetch one connected account only if it belongs to `userId`. Fails CLOSED:
+   * a 404, or a body without a matching string `user_id`, proves nothing about
+   * ownership and yields null — the guard behind connection/disconnect/rename
+   * so a guessed id can never touch another user's account.
+   */
+  private async ownedAccount(
+    userId: string,
+    connectionId: string,
+  ): Promise<RawConnection | null> {
     const body = await this.http.call<RawConnection>(
       `/api/v3/connected_accounts/${encodeURIComponent(connectionId)}`,
       { nullStatuses: [404] },
     );
     if (!body) return null;
-    // Never surface another user's connection, even to a guessed id. Fail
-    // CLOSED: a response without a usable user_id proves nothing about
-    // ownership, so it is treated as not this user's account.
     if (typeof body.user_id !== "string" || body.user_id !== userId)
       return null;
-    return mapConnection(body);
+    return body;
   }
 
-  async disconnect(userId: string, toolkit: string): Promise<void> {
-    // Remove every connected account for the toolkit (a toolkit can have more
-    // than one, e.g. two Gmail logins). List, then DELETE all in parallel —
-    // the deletes are independent; any failure still rejects (surfaces).
-    const accounts = await this.http.call<{ items?: RawConnection[] }>(
-      "/api/v3/connected_accounts",
-      { query: { user_ids: userId, toolkit_slugs: toolkit, limit: "100" } },
+  async disconnect(userId: string, connectionId: string): Promise<void> {
+    // Ownership-checked, per account: verify it is this user's, then DELETE.
+    // A miss is not a silent no-op — the caller asked to remove a specific
+    // account and must learn it was not theirs / not found.
+    if (!(await this.ownedAccount(userId, connectionId)))
+      throw new Error(
+        `composio: connected account '${connectionId}' not found for this user`,
+      );
+    await this.http.call(
+      `/api/v3/connected_accounts/${encodeURIComponent(connectionId)}`,
+      { method: "DELETE" },
     );
-    await Promise.all(
-      (accounts?.items ?? [])
-        .flatMap((acct) => (acct.id ? [acct.id] : []))
-        .map((id) =>
-          this.http.call(
-            `/api/v3/connected_accounts/${encodeURIComponent(id)}`,
-            { method: "DELETE" },
-          ),
-        ),
+  }
+
+  async rename(
+    userId: string,
+    connectionId: string,
+    alias: string,
+  ): Promise<void> {
+    if (!(await this.ownedAccount(userId, connectionId)))
+      throw new Error(
+        `composio: connected account '${connectionId}' not found for this user`,
+      );
+    await this.http.call(
+      `/api/v3/connected_accounts/${encodeURIComponent(connectionId)}`,
+      { method: "PATCH", body: { alias } },
     );
   }
 
@@ -163,7 +190,7 @@ export class ComposioProvider implements IntegrationProvider {
     userId: string,
     query: string,
     _acting?: ActingContext,
-  ): Promise<ToolMatch[]> {
+  ): Promise<SearchResult> {
     // The direct adapter owns the platform key and derives identity from the
     // verified `userId`; there is no upstream to re-authenticate as, so the
     // acting context is intentionally ignored (self-host / dev only).
@@ -191,15 +218,18 @@ export class ComposioProvider implements IntegrationProvider {
         return { ...match, connected: isConnected(match.toolkit) };
       });
     };
+    // Direct adapter: the port returns `items` only — the granted-accounts
+    // enrichment (`accounts`) is added by the policy layer above, not here.
     // No connections yet → global search, so the agent can still discover
     // what to suggest connecting (every match reports connected:false).
-    if (slugs.length === 0) return tools({ query, limit: "10" });
+    if (slugs.length === 0)
+      return { items: await tools({ query, limit: "10" }) };
     const matched = await tools({
       query,
       limit: "10",
       toolkit_slug: slugs.join(","),
     });
-    if (matched.length > 0) return matched;
+    if (matched.length > 0) return { items: matched };
     // The scoped query missed. Two distinct reasons, both worth answering:
     //  - Composio's full-text match is naive AND-ish: an everyday phrasing
     //    like "read my latest 5 emails" scores ZERO against GMAIL_FETCH_EMAILS
@@ -213,19 +243,29 @@ export class ComposioProvider implements IntegrationProvider {
       tools({ limit: "50", toolkit_slug: slugs.join(",") }),
       tools({ query, limit: "10" }),
     ]);
-    return [...listing, ...global.filter((t) => !t.connected)];
+    return { items: [...listing, ...global.filter((t) => !t.connected)] };
   }
 
   async execute(
     userId: string,
     action: string,
     params: Record<string, unknown>,
-    _acting?: ActingContext,
+    opts?: ExecuteOptions,
   ): Promise<ActionResult> {
     // Acting context ignored — see search(): identity is the verified userId.
+    // `opts.account` is already a connected_account_id (the policy layer
+    // resolved any label the model passed); pin it when present so the right
+    // account runs, omit it otherwise (Composio picks the sole account).
     const body = await this.http.call<RawExecute>(
       `/api/v3/tools/execute/${encodeURIComponent(action)}`,
-      { method: "POST", body: { user_id: userId, arguments: params } },
+      {
+        method: "POST",
+        body: {
+          user_id: userId,
+          arguments: params,
+          ...(opts?.account ? { connected_account_id: opts.account } : {}),
+        },
+      },
     );
     return mapExecute(body);
   }

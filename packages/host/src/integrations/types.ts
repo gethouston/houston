@@ -27,6 +27,23 @@ export interface Connection {
   toolkit: string;
   connectionId: string;
   status: "active" | "pending" | "error";
+  /**
+   * Human-readable name for THIS account (a toolkit can have several — two
+   * Gmail logins). The user's alias if they set one, else a value derived from
+   * the account (email/username/…); absent when nothing identifies it.
+   */
+  accountLabel?: string;
+}
+
+/**
+ * One connected account of the acting agent, surfaced alongside search results
+ * so the model can name the account to pass to execute() when a toolkit has
+ * more than one. The policy layer attaches these; raw adapters do not.
+ */
+export interface ConnectedAccountInfo {
+  toolkit: string;
+  connectionId: string;
+  accountLabel?: string;
 }
 
 /** The OAuth hand-off to authorize a toolkit (returned by connect()). */
@@ -51,6 +68,16 @@ export interface ToolMatch {
    * connect card instead (HOU-670). Absent = unknown (older adapters).
    */
   connected?: boolean;
+}
+
+/**
+ * The result of a search(): the matched actions, plus (when the policy layer
+ * adds them) the acting agent's granted accounts so the model can pick one to
+ * pass to execute(). Direct adapters return `items` only.
+ */
+export interface SearchResult {
+  items: ToolMatch[];
+  accounts?: ConnectedAccountInfo[];
 }
 
 /** The outcome of running an action. */

@@ -130,6 +130,57 @@ test("search marks not-connected matches and teaches request_connection", async 
   expect(text).not.toContain("](https://");
 });
 
+test("search lists an app's accounts when the agent has more than one", async () => {
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "GMAIL_SEND_EMAIL",
+          toolkit: "gmail",
+          description: "Send an email",
+          connected: true,
+        },
+      ],
+      accounts: [
+        { toolkit: "gmail", connectionId: "ca_1", accountLabel: "Work" },
+        { toolkit: "gmail", connectionId: "ca_2", accountLabel: "Personal" },
+        // A single-account app is NOT listed (no ambiguity to resolve).
+        { toolkit: "slack", connectionId: "ca_9", accountLabel: "Acme" },
+      ],
+    },
+  }));
+  const out = await run(search, { query: "send an email" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain(
+    'Accounts for gmail: "Work" (ca_1), "Personal" (ca_2)',
+  );
+  expect(text).toContain("pass the account parameter");
+  // Slack has one account → nothing to disambiguate, so it stays out.
+  expect(text).not.toContain("Accounts for slack");
+});
+
+test("search stays quiet when every granted app has a single account", async () => {
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "GMAIL_SEND_EMAIL",
+          toolkit: "gmail",
+          description: "Send an email",
+          connected: true,
+        },
+      ],
+      accounts: [
+        { toolkit: "gmail", connectionId: "ca_1", accountLabel: "Work" },
+      ],
+    },
+  }));
+  const out = await run(search, { query: "send an email" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).not.toContain("Accounts for");
+  expect(text).not.toContain("pass the account parameter");
+});
+
 test("execute runs an action and returns its data; a failed action surfaces", async () => {
   mockFetch(() => ({ body: { successful: true, data: { id: "msg1" } } }));
   const out = await run(execute, {
@@ -144,6 +195,59 @@ test("execute runs an action and returns its data; a failed action surfaces", as
   await expect(
     run(execute, { action: "GMAIL_SEND_EMAIL", params: {} }),
   ).rejects.toThrow(/did not succeed: missing recipient/);
+});
+
+test("execute forwards a pinned account, and omits it when unset", async () => {
+  const withAccount = mockFetch(() => ({
+    body: { successful: true, data: { id: "msg1" } },
+  }));
+  await run(execute, {
+    action: "GMAIL_SEND_EMAIL",
+    params: { to: "a@b.com" },
+    account: "ca_2",
+  });
+  expect(withAccount[0]?.body).toEqual({
+    action: "GMAIL_SEND_EMAIL",
+    params: { to: "a@b.com" },
+    account: "ca_2",
+  });
+
+  // No account named → the key is absent so the host can auto-pin a lone account.
+  const noAccount = mockFetch(() => ({ body: { successful: true } }));
+  await run(execute, { action: "GMAIL_SEND_EMAIL", params: {} });
+  expect(noAccount[0]?.body).toEqual({
+    action: "GMAIL_SEND_EMAIL",
+    params: {},
+  });
+});
+
+test("execute 400 account_required returns the choices, does not throw", async () => {
+  mockFetch(() => ({
+    status: 400,
+    body: {
+      error: "account_required",
+      accounts: [
+        { toolkit: "gmail", connectionId: "ca_1", accountLabel: "Work" },
+        { toolkit: "gmail", connectionId: "ca_2", accountLabel: "Personal" },
+      ],
+    },
+  }));
+  const out = await run(execute, { action: "GMAIL_SEND_EMAIL", params: {} });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain("more than one connected account");
+  expect(text).toContain('"Work" (ca_1)');
+  expect(text).toContain('"Personal" (ca_2)');
+  expect(text).toContain("account parameter");
+  expect((out.details as { accountRequired?: boolean }).accountRequired).toBe(
+    true,
+  );
+});
+
+test("a 400 that is not account_required still surfaces as an error", async () => {
+  mockFetch(() => ({ status: 400, body: { error: "bad_request" } }));
+  await expect(
+    run(execute, { action: "GMAIL_SEND_EMAIL", params: {} }),
+  ).rejects.toThrow(/execute failed \(400\)/);
 });
 
 test("a no-connected-account failure hands off to request_connection", async () => {

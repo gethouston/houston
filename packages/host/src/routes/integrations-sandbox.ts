@@ -1,9 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { enrichAccounts } from "../integrations/account-enrich";
 import {
   filterMatchesToGranted,
-  isActionGranted,
-  type LocalIntegrationGrants,
-} from "../integrations/grants";
+  grantedToolkits,
+  resolveExecuteAccount,
+  toolkitForAction,
+} from "../integrations/grant-policy";
+import type { LocalIntegrationGrants } from "../integrations/grants";
 import { IntegrationSigninRequiredError } from "../integrations/types";
 import type { CredentialVault, WorkspaceStore } from "../ports";
 import { bearer, header, json, readJson } from "./http";
@@ -29,8 +32,9 @@ export async function handleSandboxIntegrations(
     /**
      * Per-agent grants (LOCAL / self-host only; absent on gateway-fronted pods,
      * where the gateway already enforced before the request reached here). When
-     * the acting agent HAS a stored record, search is filtered to granted
-     * toolkits and execute of an ungranted toolkit is refused with 403.
+     * the acting agent HAS a stored record, search is filtered to the granted
+     * toolkits, execute of an ungranted toolkit is refused, and execute pins the
+     * granted account for the toolkit (resolving any label the model passed).
      */
     integrationGrants?: LocalIntegrationGrants;
   },
@@ -74,6 +78,7 @@ export async function handleSandboxIntegrations(
     json(res, 404, { error: "workspace not found" });
     return true;
   }
+  const userId = ws.ownerUserId;
 
   // WHO the runtime is acting as this turn (C2): the gateway-minted acting-as
   // token for a live user, OR the routine creator's sub for a fired routine.
@@ -83,11 +88,15 @@ export async function handleSandboxIntegrations(
   const acting = actingAs || actingUser ? { actingAs, actingUser } : undefined;
 
   // The grant set for THIS agent (the sandbox token binds its id). null ⇒ no
-  // record ⇒ backward-compatible pass-through (every connected app). Absent on
-  // gateway-fronted pods, where the gateway already enforced upstream.
+  // record ⇒ backward-compatible pass-through. Absent on gateway-fronted pods,
+  // where the gateway already enforced upstream (and resolved the account).
   const granted = deps.integrationGrants
-    ? await deps.integrationGrants.grantedOrNull(claim.agentId)
+    ? await deps.integrationGrants.grantedOrNull(claim.agentId, userId)
     : null;
+  const account =
+    typeof body.account === "string" && body.account.length > 0
+      ? body.account
+      : undefined;
 
   try {
     if (m[1] === "search") {
@@ -95,9 +104,17 @@ export async function handleSandboxIntegrations(
         json(res, 400, { error: "missing 'query'" });
         return true;
       }
-      const items = await provider.search(ws.ownerUserId, body.query, acting);
+      const result = await provider.search(userId, body.query, acting);
+      // No record (or gateway-fronted) → pass the adapter result through
+      // verbatim, including any upstream-attached accounts.
+      if (!granted) {
+        json(res, 200, result);
+        return true;
+      }
+      const toolkits = grantedToolkits(granted);
       json(res, 200, {
-        items: granted ? filterMatchesToGranted(items, granted) : items,
+        items: filterMatchesToGranted(result.items, toolkits),
+        accounts: await enrichAccounts(provider, userId, granted),
       });
       return true;
     }
@@ -107,19 +124,57 @@ export async function handleSandboxIntegrations(
       json(res, 400, { error: "missing 'action'" });
       return true;
     }
-    // Grant check before the upstream call — an ungranted toolkit never runs.
-    if (granted && !isActionGranted(body.action, granted)) {
-      json(res, 403, { error: "toolkit_not_granted" });
-      return true;
-    }
     const params =
       body.params && typeof body.params === "object"
         ? (body.params as Record<string, unknown>)
         : {};
+
+    // No record (or gateway-fronted) → forward the account verbatim; the
+    // upstream (or the direct adapter's single account) resolves it.
+    if (!granted) {
+      json(
+        res,
+        200,
+        await provider.execute(userId, body.action, params, {
+          acting,
+          account,
+        }),
+      );
+      return true;
+    }
+
+    // Enforced: the action's toolkit must be granted…
+    const toolkit = toolkitForAction(body.action, grantedToolkits(granted));
+    if (!toolkit) {
+      json(res, 403, { error: "toolkit_not_granted" });
+      return true;
+    }
+    // …then pin one of that toolkit's granted accounts.
+    const forToolkit = granted.filter(
+      (a) => a.toolkit.toLowerCase() === toolkit.toLowerCase(),
+    );
+    const resolution = resolveExecuteAccount(
+      await enrichAccounts(provider, userId, forToolkit),
+      account,
+    );
+    if (!resolution.ok) {
+      if (resolution.error === "account_required") {
+        json(res, 400, {
+          error: "account_required",
+          accounts: resolution.accounts,
+        });
+      } else {
+        json(res, 403, { error: "account_not_granted" });
+      }
+      return true;
+    }
     json(
       res,
       200,
-      await provider.execute(ws.ownerUserId, body.action, params, acting),
+      await provider.execute(userId, body.action, params, {
+        acting,
+        account: resolution.connectionId,
+      }),
     );
     return true;
   } catch (err) {

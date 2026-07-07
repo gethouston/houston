@@ -20,10 +20,13 @@ const tk = (slug: string, name: string): IntegrationToolkit => ({
 const conn = (
   toolkit: string,
   status: IntegrationConnection["status"] = "active",
+  connectionId = `ca_${toolkit}`,
+  accountLabel?: string,
 ): IntegrationConnection => ({
   toolkit,
-  connectionId: `ca_${toolkit}`,
+  connectionId,
   status,
+  ...(accountLabel ? { accountLabel } : {}),
 });
 
 const CATALOG: IntegrationToolkit[] = [
@@ -56,7 +59,7 @@ describe("agentIntegrationsView", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail"), conn("slack"), conn("notion")],
       catalog: CATALOG,
-      grants: ["slack", "gmail"],
+      grants: ["ca_slack", "ca_gmail"],
     });
     strictEqual(view.mode, "grants");
     if (view.mode !== "grants") throw new Error("unreachable");
@@ -65,15 +68,17 @@ describe("agentIntegrationsView", () => {
       view.activeRows.map((r) => r.connection.toolkit),
       ["gmail", "slack"],
     );
+    // grantedToolkits is the app-level view of the granted ACCOUNTS.
     strictEqual(view.grantedToolkits.has("notion"), false);
     strictEqual(view.grantedToolkits.has("slack"), true);
+    strictEqual(view.grantedToolkits.has("gmail"), true);
   });
 
   it("grants mode exposes connected-but-not-granted active apps as accountRows", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail"), conn("slack"), conn("notion")],
       catalog: CATALOG,
-      grants: ["gmail"],
+      grants: ["ca_gmail"],
     });
     if (view.mode !== "grants") throw new Error("unreachable");
     // Section 1 has the granted app; Section 2 has the rest, name-sorted.
@@ -102,7 +107,7 @@ describe("agentIntegrationsView", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail"), conn("slack")],
       catalog: CATALOG,
-      grants: ["gmail", "slack"],
+      grants: ["ca_gmail", "ca_slack"],
     });
     if (view.mode !== "grants") throw new Error("unreachable");
     deepStrictEqual(view.accountRows, []);
@@ -119,11 +124,11 @@ describe("agentIntegrationsView", () => {
     deepStrictEqual(view.activeRows, []);
   });
 
-  it("a granted slug with no matching connection is ignored", () => {
+  it("a granted id with no matching connection is ignored", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail")],
       catalog: CATALOG,
-      grants: ["gmail", "slack"],
+      grants: ["ca_gmail", "ca_slack"],
     });
     if (view.mode !== "grants") throw new Error("unreachable");
     deepStrictEqual(
@@ -136,7 +141,7 @@ describe("agentIntegrationsView", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail", "error"), conn("slack", "pending")],
       catalog: CATALOG,
-      grants: ["gmail", "slack"],
+      grants: ["ca_gmail", "ca_slack"],
     });
     if (view.mode !== "grants") throw new Error("unreachable");
     const byToolkit = new Map(
@@ -144,6 +149,59 @@ describe("agentIntegrationsView", () => {
     );
     strictEqual(byToolkit.get("gmail"), "error");
     strictEqual(byToolkit.get("slack"), "pending");
+  });
+
+  it("labels every account of a toolkit that has more than one in the list", () => {
+    const view = agentIntegrationsView({
+      connections: [
+        conn("gmail", "active", "ca_work", "work@acme.com"),
+        conn("gmail", "active", "ca_home", "me@home.com"),
+        conn("slack", "active", "ca_slack"),
+      ],
+      catalog: CATALOG,
+      grants: ["ca_work", "ca_home", "ca_slack"],
+    });
+    if (view.mode !== "grants") throw new Error("unreachable");
+    const byId = new Map(
+      view.activeRows.map((r) => [
+        r.connection.connectionId,
+        r.showAccountLabel,
+      ]),
+    );
+    // Both gmail accounts share a toolkit → labelled so they stay apart.
+    strictEqual(byId.get("ca_work"), true);
+    strictEqual(byId.get("ca_home"), true);
+    // The lone slack account needs no per-account label.
+    strictEqual(byId.get("ca_slack"), false);
+  });
+
+  it("flags multi-account labelling per list, not across lists", () => {
+    // One gmail granted, another gmail still an accountRow: each list has a
+    // single gmail, so neither is labelled (the flag is scoped to its list).
+    const view = agentIntegrationsView({
+      connections: [
+        conn("gmail", "active", "ca_work", "work@acme.com"),
+        conn("gmail", "active", "ca_home", "me@home.com"),
+      ],
+      catalog: CATALOG,
+      grants: ["ca_work"],
+    });
+    if (view.mode !== "grants") throw new Error("unreachable");
+    strictEqual(view.activeRows[0]?.showAccountLabel, false);
+    strictEqual(view.accountRows[0]?.showAccountLabel, false);
+  });
+
+  it("labels multi-account toolkits in degraded mode too", () => {
+    const view = agentIntegrationsView({
+      connections: [
+        conn("gmail", "active", "ca_a", "a@x.com"),
+        conn("gmail", "active", "ca_b", "b@x.com"),
+      ],
+      catalog: CATALOG,
+      grants: null,
+    });
+    if (view.mode !== "degraded") throw new Error("unreachable");
+    ok(view.rows.every((r) => r.showAccountLabel));
   });
 
   it("falls back to the slug when the catalog lacks the toolkit", () => {
