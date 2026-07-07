@@ -1,10 +1,10 @@
-import { clearConversationCache } from "@houston-ai/engine-client";
 import type { Session } from "@supabase/supabase-js";
 import { listen } from "@tauri-apps/api/event";
 import { analytics } from "./analytics";
 import { logger } from "./logger";
 import { osIsTauri, osStartOauthLoopback } from "./os-bridge";
 import { queryClient } from "./query-client";
+import { clearPersistedLocalData } from "./query-persist";
 import { isAuthConfigured, supabase } from "./supabase";
 import { tauriSystem } from "./tauri";
 
@@ -224,9 +224,10 @@ export async function signOut(): Promise<void> {
   } catch (e) {
     logger.warn(`[auth] signOut failed: ${e}`);
   }
-  // Cached cloud transcripts are per-user data on this machine — wipe them so
-  // nothing from the account lingers after sign-out (HOU-712). Never throws.
-  await clearConversationCache();
+  // Locally persisted server copies (conversation transcripts + list queries)
+  // are per-user data on this machine — wipe them so nothing from the account
+  // lingers after sign-out (HOU-712). Never throws.
+  await clearPersistedLocalData();
   analytics.track("user_signed_out");
   analytics.reset();
 }

@@ -38,3 +38,15 @@ export function pushPendingUserMessage(
  * sign-out. This package's client never caches, so there is nothing to clear.
  */
 export async function clearConversationCache(): Promise<void> {}
+
+/**
+ * Cache-scope identity (HOU-712) — inert twin of the adapter's helper (a
+ * per-gateway+user key derived from the bearer's JWT `sub`). Null here: this
+ * package's client never caches, so nothing may key on it.
+ */
+export function conversationCacheScope(
+  _baseUrl: string,
+  _token: string,
+): string | null {
+  return null;
+}
