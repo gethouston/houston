@@ -79,14 +79,6 @@
     "skills": "Skills",
     "learnings": "Learnings"
   },
-  "agentSettings": {
-    "nameTitle": "Name",
-    "namePlaceholder": "Name your agent",
-    "colorTitle": "Color",
-    "colorHelper": "Pick a color for your agent's avatar.",
-    "dangerTitle": "Delete agent",
-    "dangerHelper": "Permanently remove this agent and everything it has done. This cannot be undone."
-  },
   "tabLabels": {
     "activity": "Activity",
     "archived": "Completed",

@@ -1,16 +1,10 @@
-import {
-  Button,
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  Switch,
-} from "@houston-ai/core";
-import { Cpu, Search } from "lucide-react";
+import { Switch } from "@houston-ai/core";
+import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AccessChoice } from "./access-choice.tsx";
 import type { ModelCatalogEntry } from "./agent-admin-models-catalog.ts";
+import { type AccessMode, ceilingMode } from "./agent-admin-row-values.ts";
 
 interface AgentModelsSectionProps {
   /** The agent-level model ceiling: `null` = all allowed, else the explicit set. */
@@ -25,13 +19,13 @@ interface AgentModelsSectionProps {
 
 /**
  * Agent-manager-only editor for this agent's AI-model ceiling (Teams v2),
- * rendered flush on its Access drill-in pane (no card wrapper). Mirrors
- * {@link AgentAllowlistSection}: an "all models allowed" empty state (`null`)
- * with one Restrict CTA, or the restrict state, a searchable list of model rows
- * each with an allow Switch (the same row/Switch styling as the apps editor, no
- * category dropdown since the model catalog is small). Writes are instant +
- * optimistic; each member then picks their own model from the allowed set. The
- * gateway is the real enforcer.
+ * rendered flush in the Access section's right pane (no card wrapper). Mirrors
+ * {@link AgentAllowlistSection}: an always-visible two-option choice ("Any
+ * model" saves `null`, "Only models you pick" saves an explicit set), and when
+ * restricting, a searchable list of model rows each with an allow Switch (the
+ * same row/Switch styling as the apps editor, no category dropdown since the
+ * model catalog is small). Writes are instant + optimistic; each member then
+ * picks their own model from the allowed set. The gateway is the real enforcer.
  */
 export function AgentModelsSection({
   allowedModels,
@@ -60,6 +54,7 @@ export function AgentModelsSection({
     return base.filter((m) => m.label.toLowerCase().includes(q));
   }, [catalog, search, allowedSet]);
 
+  const onChoice = (mode: AccessMode) => onSave(mode === "any" ? null : []);
   const toggle = (id: string) => {
     const next = new Set(allowedSet);
     if (next.has(id)) next.delete(id);
@@ -84,90 +79,74 @@ export function AgentModelsSection({
     </div>
   );
 
-  if (allowedModels === null) {
-    return (
-      <Empty className="border-0">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <Cpu />
-          </EmptyMedia>
-          <EmptyTitle>{t("agentAdmin.models.emptyTitle")}</EmptyTitle>
-          <EmptyDescription>
-            {t("agentAdmin.models.emptyBody")}
-          </EmptyDescription>
-        </EmptyHeader>
-        <Button
-          className="mt-2 rounded-full"
-          size="sm"
-          disabled={saving}
-          onClick={() => onSave([])}
-        >
-          {t("agentAdmin.models.restrict")}
-        </Button>
-      </Empty>
-    );
-  }
-
   return (
     <div>
-      <header className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-medium text-foreground">
-            {t("agentAdmin.models.title")}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("agentAdmin.models.subtitle")}
-          </p>
-        </div>
-        <button
-          type="button"
-          disabled={saving}
-          onClick={() => onSave(null)}
-          className="shrink-0 text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:opacity-50"
-        >
-          {t("agentAdmin.models.allowAll")}
-        </button>
-      </header>
+      <h2 className="mb-4 text-lg font-medium text-foreground">
+        {t("agentAdmin.models.question")}
+      </h2>
 
-      <section className="mb-8">
-        <h2 className="mb-2 text-sm font-medium text-foreground">
-          {t("agentAdmin.models.allowedHeading")}
-        </h2>
-        {allowedList.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {t("agentAdmin.models.allowedEmpty")}
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {allowedList.map(renderModel)}
-          </div>
-        )}
-      </section>
+      <AccessChoice
+        question={t("agentAdmin.models.question")}
+        value={ceilingMode(allowedModels)}
+        disabled={saving}
+        onChange={onChoice}
+        options={[
+          {
+            value: "any",
+            label: t("agentAdmin.models.anyLabel"),
+            description: t("agentAdmin.models.anyDesc"),
+          },
+          {
+            value: "picked",
+            label: t("agentAdmin.models.pickedLabel"),
+            description: t("agentAdmin.models.pickedDesc"),
+          },
+        ]}
+      />
 
-      <section>
-        <h2 className="mb-3 text-sm font-medium text-foreground">
-          {t("agentAdmin.models.addHeading")}
-        </h2>
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("agentAdmin.models.searchModels")}
-            className="h-9 w-full rounded-full border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
-          />
+      {allowedModels !== null && (
+        <div className="mt-6">
+          <section className="mb-8">
+            <h3 className="mb-2 text-sm font-medium text-foreground">
+              {t("agentAdmin.models.allowedHeading")}
+            </h3>
+            {allowedList.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {t("agentAdmin.models.allowedEmpty")}
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {allowedList.map(renderModel)}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h3 className="mb-3 text-sm font-medium text-foreground">
+              {t("agentAdmin.models.addHeading")}
+            </h3>
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("agentAdmin.models.searchModels")}
+                className="h-9 w-full rounded-full border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
+              />
+            </div>
+            {results.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                {t("agentAdmin.models.noModels")}
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {results.map(renderModel)}
+              </div>
+            )}
+          </section>
         </div>
-        {results.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            {t("agentAdmin.models.noModels")}
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {results.map(renderModel)}
-          </div>
-        )}
-      </section>
+      )}
     </div>
   );
 }

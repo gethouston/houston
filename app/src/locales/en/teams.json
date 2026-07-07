@@ -1,60 +1,39 @@
 {
   "agentAdmin": {
     "title": "Agent settings",
-    "subtitle": "Configure how this agent works and who can use it.",
-    "groups": {
-      "configuration": "Configuration",
-      "access": "Access",
-      "general": "General"
-    },
     "rows": {
-      "instructions": {
-        "desc": "What this agent should do."
-      },
-      "skills": {
-        "desc": "Abilities this agent can use."
-      },
       "knowledge": {
-        "title": "Knowledge",
-        "desc": "Facts and context it remembers."
+        "title": "Knowledge"
       },
       "model": {
-        "title": "Allowed models",
-        "desc": "Models this agent is allowed to use."
+        "title": "AI models"
       },
       "people": {
-        "title": "People with access",
-        "desc": "Who can use this agent."
+        "title": "People with access"
       },
       "integrations": {
-        "title": "Allowed integrations",
-        "desc": "Apps this agent is allowed to use."
+        "title": "Apps"
       }
     },
     "values": {
-      "skillCount_one": "{{count}} skill",
-      "skillCount_other": "{{count}} skills",
-      "learningCount_one": "{{count}} note",
-      "learningCount_other": "{{count}} notes",
-      "allModels": "All models allowed",
-      "modelCount_one": "{{count}} model",
-      "modelCount_other": "{{count}} models",
-      "allApps": "All apps allowed",
-      "appCount_one": "{{count}} app",
-      "appCount_other": "{{count}} apps"
+      "allModels": "Any model",
+      "modelCount_one": "{{count}} model only",
+      "modelCount_other": "{{count}} models only",
+      "allApps": "Any app",
+      "appCount_one": "{{count}} app only",
+      "appCount_other": "{{count}} apps only"
     },
     "models": {
-      "title": "Allowed models",
-      "subtitle": "Choose which models this agent can use. Members can only pick models you allow here.",
-      "emptyTitle": "All models allowed",
-      "emptyBody": "Everyone with access can run this agent on any available model. Restrict it to choose exactly which models members may pick.",
-      "restrict": "Restrict models for this agent",
-      "allowAll": "Allow all models",
+      "question": "Which AI models can this agent use?",
+      "anyLabel": "Any model",
+      "anyDesc": "People with access can run this agent on any available model.",
+      "pickedLabel": "Only models you pick",
+      "pickedDesc": "People with access can only use the models you allow below.",
       "allowModel": "Allow {{name}}",
       "searchModels": "Search models",
       "noModels": "No models found",
       "allowedHeading": "Allowed models",
-      "allowedEmpty": "No models allowed yet. Add some below.",
+      "allowedEmpty": "No models picked yet. Add models below.",
       "addHeading": "Add models"
     },
     "integrations": {
@@ -63,15 +42,14 @@
   },
   "integrations": {
     "allowlist": {
-      "title": "Allowed integrations",
-      "subtitle": "Choose which apps this agent can use. Members can only connect apps you allow here.",
-      "emptyTitle": "All apps allowed",
-      "emptyBody": "Everyone with access can connect this agent to any of 1000+ apps. Restrict it to choose exactly which apps this agent may use.",
-      "restrict": "Restrict apps for this agent",
-      "allowAll": "Allow all apps",
+      "question": "Which apps can this agent use?",
+      "anyLabel": "Any app",
+      "anyDesc": "People with access can connect this agent to any of 1000+ apps.",
+      "pickedLabel": "Only apps you pick",
+      "pickedDesc": "People with access can only use the apps you allow below.",
       "allowApp": "Allow {{name}}",
       "allowedHeading": "Allowed apps",
-      "allowedEmpty": "No apps allowed yet. Add some below.",
+      "allowedEmpty": "No apps picked yet. Add apps below.",
       "addHeading": "Add apps"
     },
     "notAllowed": {

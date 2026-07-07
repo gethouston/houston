@@ -38,14 +38,13 @@ This used to be configurable per agent via a `tabs: AgentTab[]` field in `housto
 
 The per-agent `Integrations` tab is a thin wrapper around the same `IntegrationsView` that the sidebar `Connections` entry renders, so the per-agent and workspace-wide surfaces are intentionally identical. The two entry points are kept because users reach for them at different moments (focused on one agent vs. setting up Houston as a whole).
 
-**Managed-agent read-only gating (Teams v2).** For a plain member of a shared
-agent (`!isAgentManager`), the configure surfaces render **read-only** instead
-of hiding. Agent Settings (`job-description-tab.tsx`) shows a
-`teams:managedAgent.banner` note (`managed-agent-banner.tsx`), driven by
-`job-description-access.ts` off `canEditAgentConfig`; the model + effort pickers
-disable with a `teams:model.lockedTooltip`; the Integrations tab gates its edits
-on `isAgentManager` / `canEditAgentGrants`. The gateway 403s any configure-scope
-write regardless — these gates only avoid showing a dead control. The **Share**
+**Manager-only configure gating (Teams v2).** Agent Settings
+(`job-description-tab.tsx`) is **hidden** from a plain member of a shared agent:
+`standard-tabs.ts` only adds the `job-description` tab for single-player or
+`isAgentManager` callers, so it is a manager-only two-column admin page with no
+read-only variant. The Integrations tab gates its edits on `isAgentManager` /
+`canEditAgentGrants`. The gateway 403s any configure-scope write regardless —
+these gates only avoid showing a dead control. The **Share**
 dialog (`agent-share-dialog.tsx`) — a Drive-style people-with-access sheet
 backed by `setAgentAssignments` v2 — is gated on `canManageAssignments`. See
 `knowledge-base/teams.md`.
