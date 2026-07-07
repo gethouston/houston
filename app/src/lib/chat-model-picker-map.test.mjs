@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isRecentRelease } from "./chat-model-picker-enrich.ts";
 import {
   decodeModelPickerId,
   encodeModelPickerId,
@@ -9,6 +8,7 @@ import {
 import {
   buildPickerModels,
   buildPickerProviders,
+  rankCuratedFirst,
 } from "./chat-model-picker-map.ts";
 
 // ── id encode / decode ────────────────────────────────────────────────────
@@ -44,83 +44,7 @@ test("resolveSelectedModelId: catalog-less provider resolves to the runtime mode
   );
 });
 
-// ── recency badge ─────────────────────────────────────────────────────────
-
-test("isRecentRelease: only a date within the window and not in the future is new", () => {
-  const now = Date.parse("2026-07-06");
-  assert.equal(isRecentRelease("2026-06-30", now), true);
-  assert.equal(isRecentRelease("2026-01-01", now), false); // too old
-  assert.equal(isRecentRelease("2026-12-01", now), false); // future
-  assert.equal(isRecentRelease(undefined, now), false);
-  assert.equal(isRecentRelease("not-a-date", now), false);
-});
-
 // ── model list building ───────────────────────────────────────────────────
-
-const RECENT = "2026-06-30";
-const NOW = Date.parse("2026-07-06");
-
-const testModel = {
-  key: "m1",
-  name: "M1",
-  lab: "other",
-  description: "catalog desc",
-  reasoning: true,
-  toolCall: true,
-  imageGen: false,
-  inputModalities: ["text", "image"],
-  releaseDate: RECENT,
-  context: 123456,
-  offers: [
-    {
-      providerId: "testprov",
-      modelId: "m1",
-      costInput: 2,
-      costOutput: 6,
-      context: 123456,
-      subscription: true,
-    },
-  ],
-};
-
-// An OpenRouter model in the hub catalog, keyed by its openrouter-native offer id
-// so the offer index enriches the matching PROVIDERS row.
-const orModel = {
-  key: "or1",
-  name: "OR One",
-  lab: "anthropic",
-  description: "or desc",
-  reasoning: true,
-  toolCall: false,
-  imageGen: true,
-  inputModalities: ["text"],
-  releaseDate: "2000-01-01",
-  context: 200000,
-  offers: [
-    {
-      providerId: "openrouter",
-      modelId: "vendor/or-1",
-      costInput: 0,
-      costOutput: 0,
-      context: 200000,
-      subscription: false,
-    },
-  ],
-};
-
-const catalog = {
-  models: [testModel, orModel],
-  byKey: new Map([
-    ["m1", testModel],
-    ["or1", orModel],
-  ]),
-  byProvider: new Map([
-    ["testprov", [testModel]],
-    ["openrouter", [orModel]],
-  ]),
-  modelCount: 2,
-  offerCount: 2,
-};
 
 const testProv = {
   id: "testprov",
@@ -136,11 +60,7 @@ const orProv = {
   name: "OpenRouter",
   subtitle: "",
   models: [
-    {
-      id: "vendor/or-1",
-      label: "OR One label",
-      description: "or curated",
-    },
+    { id: "vendor/or-1", label: "OR One label", description: "or curated" },
   ],
 };
 const localProv = {
@@ -150,127 +70,123 @@ const localProv = {
   models: [],
 };
 
-test("buildPickerModels: a provider row is enriched from its matching catalog offer", () => {
-  const [m] = buildPickerModels({
-    visibleProviders: [testProv],
-    statuses: {},
-    catalog,
-    now: NOW,
-  });
-  assert.equal(m.id, "testprov::m1");
-  assert.equal(m.providerId, "testprov");
-  assert.equal(m.name, "M1 label"); // the PROVIDERS label, not the catalog name
-  assert.deepEqual(m.capabilities, {
-    vision: true,
-    reasoning: true,
-    tools: true,
-    imageGen: false,
-  });
-  assert.equal(m.priceTier, "mid"); // cheapest input 2 → mid
-  assert.equal(m.priceInPerMtok, 2);
-  assert.equal(m.priceOutPerMtok, 6);
-  assert.equal(m.contextWindow, 123456);
-  assert.equal(m.isNew, true);
-});
-
-test("buildPickerModels: a provider row with no catalog match falls back gracefully", () => {
-  const [m] = buildPickerModels({
-    visibleProviders: [testProv],
-    statuses: {},
-    catalog: undefined, // no catalog loaded yet
-    now: NOW,
-  });
-  assert.equal(m.id, "testprov::m1");
-  assert.deepEqual(m.capabilities, {
-    vision: false,
-    reasoning: false,
-    tools: false,
-    imageGen: false,
-  });
-  assert.equal(m.priceTier, undefined);
-  // testprov isn't a real Houston provider, so no static context window either.
-  assert.equal(m.contextWindow, undefined);
-  assert.equal(m.isNew, undefined);
-});
-
-test("buildPickerModels: OpenRouter sources rows from PROVIDERS, enriched by the offer index", () => {
-  const models = buildPickerModels({
-    visibleProviders: [orProv],
-    statuses: {},
-    catalog,
-    now: NOW,
-  });
-  // One PROVIDERS row → one picker row, built by the uniform path (NOT byProvider).
-  assert.equal(models.length, 1);
-  const [m] = models;
-  assert.equal(m.id, "openrouter::vendor/or-1"); // openrouter-native id preserved
-  assert.equal(decodeModelPickerId(m.id).model, "vendor/or-1");
-  assert.equal(m.name, "OR One label"); // the PROVIDERS label, not the catalog name
-  assert.equal(m.priceTier, "free"); // enriched: costInput 0
-  assert.deepEqual(m.capabilities, {
-    vision: false,
-    reasoning: true,
-    tools: false,
-    imageGen: true,
+test("buildPickerModels: a provider row carries only id, provider, name, description", () => {
+  const [m] = buildPickerModels({ visibleProviders: [testProv], statuses: {} });
+  assert.deepEqual(m, {
+    id: "testprov::m1",
+    providerId: "testprov",
+    name: "M1 label", // the PROVIDERS label, not any catalog name
+    description: "curated desc",
   });
 });
 
-test("buildPickerModels: every provider (incl openrouter) is built by one uniform path", () => {
+test("buildPickerModels: every provider is built by one uniform path, in order", () => {
   const models = buildPickerModels({
     visibleProviders: [testProv, orProv],
     statuses: {},
-    catalog,
-    now: NOW,
   });
-  // Both providers contribute their PROVIDERS rows in order, each enriched by the
-  // `${providerId}::${modelId}` offer index — no per-provider branch.
   assert.deepEqual(
     models.map((m) => m.id),
     ["testprov::m1", "openrouter::vendor/or-1"],
   );
-  assert.equal(models[0].priceTier, "mid");
-  assert.equal(models[1].priceTier, "free");
-});
-
-test("buildPickerModels: an OpenRouter row with no catalog match still renders (un-enriched)", () => {
-  const models = buildPickerModels({
-    visibleProviders: [orProv],
-    statuses: {},
-    catalog: undefined, // cold start: catalog not yet loaded
-    now: NOW,
-  });
-  assert.equal(models.length, 1);
-  assert.equal(models[0].id, "openrouter::vendor/or-1");
-  assert.equal(models[0].providerId, "openrouter");
-  assert.deepEqual(models[0].capabilities, {
-    vision: false,
-    reasoning: false,
-    tools: false,
-    imageGen: false,
-  });
+  // openrouter-native id preserved through the codec.
+  assert.equal(decodeModelPickerId(models[1].id).model, "vendor/or-1");
+  assert.equal(models[1].name, "OR One label");
 });
 
 test("buildPickerModels: the catalog-less local provider surfaces its runtime model", () => {
   const models = buildPickerModels({
     visibleProviders: [localProv],
     statuses: { "openai-compatible": { active_model: "llama3.1" } },
-    catalog,
-    now: NOW,
   });
   assert.equal(models.length, 1);
   assert.equal(models[0].id, "openai-compatible::llama3.1");
   assert.equal(models[0].name, "llama3.1");
 });
 
+test("buildPickerModels: a local provider with no runtime model yet yields no rows", () => {
+  const models = buildPickerModels({
+    visibleProviders: [localProv],
+    statuses: {},
+  });
+  assert.deepEqual(models, []);
+});
+
 test("buildPickerModels: the describe callback localizes a provider row's description", () => {
   const [m] = buildPickerModels({
     visibleProviders: [testProv],
     statuses: {},
-    catalog,
-    now: NOW,
     describe: (_p, id, fallback) => `t:${id}:${fallback}`,
   });
   assert.equal(m.description, "t:m1:curated desc");
+});
+
+// ── curated-first ranking ─────────────────────────────────────────────────
+
+test("rankCuratedFirst: curated ids lead in curation order, rest keep input order", () => {
+  const rows = [
+    { id: "legacy-1" },
+    { id: "flagship-b" },
+    { id: "legacy-2" },
+    { id: "flagship-a" },
+  ];
+  assert.deepEqual(
+    rankCuratedFirst(rows, ["flagship-a", "flagship-b"]).map((r) => r.id),
+    ["flagship-a", "flagship-b", "legacy-1", "legacy-2"],
+  );
+});
+
+test("rankCuratedFirst: no curated ids is an order-preserving copy", () => {
+  const rows = [{ id: "b" }, { id: "a" }];
+  const out = rankCuratedFirst(rows, []);
+  assert.deepEqual(out, rows);
+  assert.notEqual(out, rows); // fresh array, input not aliased
+});
+
+test("rankCuratedFirst: curated ids missing from the rows are simply skipped", () => {
+  const rows = [{ id: "x" }, { id: "flag" }];
+  assert.deepEqual(
+    rankCuratedFirst(rows, ["not-runnable", "flag"]).map((r) => r.id),
+    ["flag", "x"],
+  );
+});
+
+test("buildPickerModels: a real provider's rows rank curated-first with the flag set", () => {
+  // Raw pi-catalog order: legacy models first — the defect this ranking fixes.
+  const anthropic = {
+    id: "anthropic",
+    name: "Anthropic",
+    subtitle: "",
+    models: [
+      { id: "claude-opus-3", label: "Claude Opus 3", description: "" },
+      { id: "claude-sonnet-3-5", label: "Claude Sonnet 3.5", description: "" },
+      { id: "claude-opus-4-7", label: "Claude Opus 4.7", description: "" },
+      { id: "claude-fable-5", label: "Fable 5", description: "" },
+      { id: "claude-opus-4-8", label: "Claude Opus 4.8", description: "" },
+      { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", description: "" },
+    ],
+  };
+  const models = buildPickerModels({
+    visibleProviders: [anthropic],
+    statuses: {},
+  });
+  // Curated (PROVIDER_OVERRIDES.anthropic.models key order: sonnet-5 [absent],
+  // sonnet-4-6, opus-4-8, fable-5, opus-4-7) first, then legacy in catalog order.
+  assert.deepEqual(
+    models.map((m) => decodeModelPickerId(m.id).model),
+    [
+      "claude-sonnet-4-6",
+      "claude-opus-4-8",
+      "claude-fable-5",
+      "claude-opus-4-7",
+      "claude-opus-3",
+      "claude-sonnet-3-5",
+    ],
+  );
+  assert.deepEqual(
+    models.map((m) => m.curated === true),
+    [true, true, true, true, false, false],
+  );
 });
 
 // ── provider list building ────────────────────────────────────────────────
@@ -288,7 +204,8 @@ test("buildPickerProviders: keeps only providers that own models, with connectio
     providers.map((p) => [p.id, p.connection]),
     [
       ["testprov", "connected"],
-      // No status + not loading → disconnected (still shown, offers Connect).
+      // No status + not loading → disconnected (the picker hides it; the only
+      // path to it is the "Connect more providers…" footer).
       ["openrouter", "disconnected"],
     ],
   );

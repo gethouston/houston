@@ -1,135 +1,53 @@
 import { Command as CommandPrimitive } from "cmdk";
-import { Info, Star } from "lucide-react";
-import type * as React from "react";
+import { Check } from "lucide-react";
 import { cn } from "../../utils";
 import { HighlightedText } from "../highlighted-text";
 import { matchRange } from "./catalog";
-import { ModelRowDetail } from "./model-row-detail";
-import type {
-  ModelPickerLabels,
-  ModelPickerModel,
-  ModelPickerProvider,
-} from "./types";
+import type { ModelPickerModel } from "./types";
 
-/** A single selectable model row, with an expandable detail panel. */
+/** A single selectable model row: name, an optional one-line description, and a
+ *  check on the selected model. Nothing else. */
 export function ModelRow({
-  sectionId,
+  scope,
   model,
-  provider,
   query,
   selected,
-  favorite,
-  detailOpen,
-  labels,
   onSelect,
-  onToggleFavorite,
-  onToggleDetail,
-  onConnect,
 }: {
-  /** Owning section id — makes the cmdk `value` unique per (section, model). */
-  sectionId: string;
+  /** Namespaces the cmdk `value` so the same model can appear in two scopes
+   *  (e.g. search vs. a provider list) without a duplicate-key collision. */
+  scope: string;
   model: ModelPickerModel;
-  provider: ModelPickerProvider | undefined;
   query: string;
   selected: boolean;
-  favorite: boolean;
-  detailOpen: boolean;
-  labels: ModelPickerLabels;
   onSelect: (id: string) => void;
-  onToggleFavorite: (id: string) => void;
-  onToggleDetail: (id: string) => void;
-  onConnect?: (providerId: string) => void;
 }) {
-  const disconnected = provider?.connection === "disconnected";
   const range = matchRange(model.name, query);
   return (
     <CommandPrimitive.Item
-      value={`${sectionId}:${model.id}`}
-      keywords={[model.providerId, provider?.name ?? ""]}
-      disabled={disconnected}
+      value={`${scope}:${model.id}`}
+      keywords={[model.name, model.providerId]}
       onSelect={() => onSelect(model.id)}
       className={cn(
-        "flex cursor-pointer flex-col rounded-xl px-3 py-2.5 outline-none",
+        "flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 outline-none",
         "data-[selected=true]:bg-accent",
-        selected && "bg-accent",
-        disconnected && "cursor-default",
       )}
     >
-      <div className="flex items-center gap-3">
-        <div className={cn("min-w-0 flex-1", disconnected && "opacity-55")}>
-          <div className="truncate text-sm font-semibold text-foreground">
-            <HighlightedText
-              text={model.name}
-              ranges={range ? [range] : undefined}
-              markClassName="bg-accent text-foreground"
-            />
-          </div>
-          {model.description && (
-            <div className="truncate text-xs text-muted-foreground">
-              {model.description}
-            </div>
-          )}
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-semibold text-foreground">
+          <HighlightedText
+            text={model.name}
+            ranges={range ? [range] : undefined}
+            markClassName="bg-accent text-foreground"
+          />
         </div>
-        {disconnected ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onConnect?.(model.providerId);
-            }}
-            className="rounded-lg border border-border bg-secondary px-2.5 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-accent"
-          >
-            {labels.connect}
-          </button>
-        ) : (
-          <div className="flex items-center gap-1">
-            <IconButton
-              label={labels.favorites}
-              onClick={() => onToggleFavorite(model.id)}
-            >
-              <Star
-                className="size-4"
-                fill={favorite ? "currentColor" : "none"}
-              />
-            </IconButton>
-            <IconButton
-              label={labels.detailContext}
-              onClick={() => onToggleDetail(model.id)}
-            >
-              <Info className="size-4" />
-            </IconButton>
+        {model.description && (
+          <div className="truncate text-xs text-muted-foreground">
+            {model.description}
           </div>
         )}
       </div>
-      {detailOpen && !disconnected && (
-        <ModelRowDetail model={model} labels={labels} />
-      )}
+      {selected && <Check className="size-4 shrink-0 text-foreground" />}
     </CommandPrimitive.Item>
-  );
-}
-
-/** Bare icon button: always visible + muted, gains a subtle neutral bg on hover. */
-function IconButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-    >
-      {children}
-    </button>
   );
 }

@@ -27,6 +27,7 @@
     "tailwind-merge": "3.6.0"
   },
   "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
     "typecheck": "tsgo --noEmit"
   }
 }

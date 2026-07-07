@@ -1,17 +1,15 @@
 /**
  * The memoized derivation half of the chat model picker: turns fetched provider
- * statuses + the hub catalog into the picker's model/provider view-models, the
- * selected-row id, catalog freshness, and the trigger's display label. Split
- * from `use-chat-model-picker` so neither the derivation nor the interaction
- * half breaches the file-size budget; the memos live here in one place because
- * the composer footer re-renders on every streamed token.
+ * statuses into the picker's model/provider view-models, the selected-row id,
+ * catalog freshness, and the trigger's display label. Split from
+ * `use-chat-model-picker` so neither the derivation nor the interaction half
+ * breaches the file-size budget; the memos live here in one place because the
+ * composer footer re-renders on every streamed token.
  */
 
 import type { ModelPickerModel, ModelPickerProvider } from "@houston-ai/core";
-import type { Capabilities } from "@houston-ai/engine-client";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useHubCatalog } from "../lib/ai-hub/use-hub-catalog";
 import {
   encodeModelPickerId,
   resolveSelectedModelId,
@@ -32,27 +30,13 @@ import { useCapabilities } from "./use-capabilities";
 import { useProviderCatalog } from "./use-provider-catalog";
 import { useProviderStatuses } from "./use-provider-statuses";
 
-/** The capability subset the picker's provider-visibility logic consumes. */
-export type PickerCapabilities =
-  | Pick<Capabilities, "providers" | "openaiCompatible">
-  | undefined;
-
-/** The engine/runtime context the connect flow needs (recomputed once here). */
-export interface PickerConnectContext {
-  newEngine: boolean;
-  desktop: boolean;
-  providerCapabilities: PickerCapabilities;
-}
-
-/** The derived view-models + raw inputs the interaction half also needs. */
+/** The derived view-models the interaction half renders. */
 export interface PickerViewModels {
   models: ModelPickerModel[];
   providers: ModelPickerProvider[];
   selectedId: string;
   catalogState: "loading" | "ready";
   displayLabel: string;
-  statuses: ReturnType<typeof useProviderStatuses>["statuses"];
-  connectContext: PickerConnectContext;
 }
 
 /** Build the picker's view-models for the current selection + open state. */
@@ -65,7 +49,6 @@ export function usePickerViewModels(opts: {
   const { t } = useTranslation("chat");
   const { statuses, isLoading } = useProviderStatuses();
   const { capabilities } = useCapabilities();
-  const { catalog } = useHubCatalog();
   // The pi-ai catalog hydrates `PROVIDERS` IN PLACE with no React signal, so the
   // `getVisibleProviders` memo below must re-key on `updatedAt` — otherwise the
   // picker stays pinned to the empty override-only seed captured on first render.
@@ -105,16 +88,8 @@ export function usePickerViewModels(opts: {
   // panel is unmounted otherwise, so there is nothing to feed when closed.
   const models = useMemo(
     () =>
-      isOpen
-        ? buildPickerModels({
-            visibleProviders,
-            statuses,
-            catalog,
-            now: Date.now(),
-            describe,
-          })
-        : [],
-    [isOpen, visibleProviders, statuses, catalog, describe],
+      isOpen ? buildPickerModels({ visibleProviders, statuses, describe }) : [],
+    [isOpen, visibleProviders, statuses, describe],
   );
   const withModels = useMemo(
     () => new Set(models.map((m) => m.providerId)),
@@ -140,8 +115,8 @@ export function usePickerViewModels(opts: {
     ),
   );
   // The pi-ai catalog is the source of the runnable set, so the picker is
-  // "loading" until it resolves and "ready" after (the hub catalog is only
-  // enrichment on top). Never "offline": the pi-ai catalog is local.
+  // "loading" until it resolves and "ready" after. This drives the picker's
+  // neutral level-1 loading state (#342 guard) while providers resolve.
   const catalogState: "loading" | "ready" = catalogReady ? "ready" : "loading";
 
   const currentModel = getModel(provider, model);
@@ -156,13 +131,5 @@ export function usePickerViewModels(opts: {
     currentProvider?.subtitle ??
     t("modelSelector.selectModel");
 
-  return {
-    models,
-    providers,
-    selectedId,
-    catalogState,
-    displayLabel,
-    statuses,
-    connectContext: { newEngine, desktop, providerCapabilities },
-  };
+  return { models, providers, selectedId, catalogState, displayLabel };
 }
