@@ -25,7 +25,17 @@
     "runningCount_other": "{{count}} asuntos en curso",
     "collapse": "Contraer barra lateral",
     "expand": "Expandir barra lateral",
-    "createOrganization": "Crear organización"
+    "createOrganization": "Crear organización",
+    "groups": {
+      "new": "Nuevo grupo",
+      "newDefault": "Nuevo grupo",
+      "rename": "Renombrar grupo",
+      "delete": "Eliminar grupo",
+      "menu": "Opciones de grupo",
+      "namePlaceholder": "Nombre del grupo",
+      "emptyHint": "Arrastra agentes aquí",
+      "ungrouped": "Sin grupo"
+    }
   },
   "tabActions": {
     "newMission": "Nueva misión",

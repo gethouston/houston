@@ -323,14 +323,23 @@ second rounded card with a gutter gap.
 "glitter" over solid surfaces): gutter `#eef1f7`, screen `#fff`, cards `#f4f6fc`,
 cool blue/indigo border. Clean and futuristic by restraint, not decoration.
 
-**Modals are glass, not slabs.** All modal primitives — `DialogContent`
-(`ui/core/components/dialog.tsx`), `AlertDialogContent`, `SheetContent`, and the
-AI-Hub `ModalShell` — render on the translucent **`bg-card`** surface (frosted
-blur + top sheen from futuristic.css), NOT opaque `bg-background`, so the aurora
-canvas bleeds through in dark mode like the kanban columns (`bg-secondary`). The
-scrims are deliberately light for the same reason: Dialog overlay `bg-black/25`,
-Alert/Sheet `bg-black/35` (down from /40–/50). Change the surface centrally in
-those four primitives — no modal should hardcode its own background.
+**Modals: glass in dark, solid white in light.** All modal primitives —
+`DialogContent` (`ui/core/components/dialog.tsx`), `AlertDialogContent`,
+`SheetContent`, and the AI-Hub `ModalShell` — render on the dedicated
+**`bg-dialog`** surface token, NOT `bg-card` and NOT opaque `bg-background`. In
+**dark** the token is the same translucent glass as `card`
+(`{color.glass.neutral-50}`) with frosted blur + top sheen from futuristic.css,
+so the aurora canvas bleeds through like the kanban columns. In **light** it is
+solid `{color.base.white}` — light mode has no aurora to bleed, so a translucent
+modal just read as see-through (the bug fixed here); the futuristic `.bg-dialog`
+blur becomes a no-op on the opaque fill. The token is separate from `card` on
+purpose: `card` stays glass in both modes for non-modal surfaces, only modals
+go solid in light. Wired: light/dark `dialog` in `tokens/semantic/color.{light,
+dark}.json` → `--ht-dialog` → `@theme --color-dialog` (`ui/core/src/globals.css`)
+→ Tailwind `bg-dialog`; frosted-glass rule + dark sheen in `futuristic.css`.
+The scrims are deliberately light: Dialog overlay `bg-black/25`, Alert/Sheet
+`bg-black/35`. Change the surface centrally in those four primitives — no modal
+should hardcode its own background.
 
 **Primary button** — flat and sober (`[data-variant="default"]:is(button, a)`),
 not a glossy slab. Kanban resting cards use one token, `--ht-card-rest` (`#2c2c2b`

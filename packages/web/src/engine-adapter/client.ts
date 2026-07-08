@@ -45,6 +45,7 @@ import type {
   SaveSkillRequest,
   SessionStartRequest,
   SessionStartResponse,
+  SidebarLayout,
   SkillDetail,
   TunnelCredentials,
   UpdateAgent,
@@ -159,6 +160,33 @@ const LAST_AGENT_PREF = "houston.pref.last_agent_id";
 function benignCancelMiss(e: unknown): void {
   if (e instanceof EngineError && e.status === 404) return;
   throw e;
+}
+
+const SIDEBAR_LAYOUT_PREF = "houston.sidebar-layout";
+const EMPTY_SIDEBAR_LAYOUT: SidebarLayout = {
+  groups: [],
+  ungroupedOrder: [],
+};
+
+/** Pure-local (no control plane) sidebar-layout persistence, mirroring how this
+ *  adapter keeps other preferences in `localStorage`. */
+function readLocalSidebarLayout(workspaceId: string): SidebarLayout {
+  try {
+    const raw = localStorage.getItem(`${SIDEBAR_LAYOUT_PREF}.${workspaceId}`);
+    return raw ? (JSON.parse(raw) as SidebarLayout) : EMPTY_SIDEBAR_LAYOUT;
+  } catch {
+    return EMPTY_SIDEBAR_LAYOUT;
+  }
+}
+function writeLocalSidebarLayout(workspaceId: string, layout: SidebarLayout) {
+  try {
+    localStorage.setItem(
+      `${SIDEBAR_LAYOUT_PREF}.${workspaceId}`,
+      JSON.stringify(layout),
+    );
+  } catch {
+    /* storage disabled */
+  }
 }
 
 /**
@@ -394,6 +422,21 @@ export class HoustonClient {
   async setWorkspaceProvider(): Promise<Workspace> {
     const { provider, model } = await this.activeOld();
     return syntheticWorkspace(provider, model);
+  }
+  // Sidebar order + grouping is per-workspace UI state, persisted to
+  // localStorage exactly like the adapter's other preferences (getPreference).
+  // Deliberately NOT host-backed: it must work regardless of the engine's
+  // version, and a stale sidecar without the route would otherwise 404 every
+  // create-group / drag write.
+  async getSidebarLayout(workspaceId: string): Promise<SidebarLayout> {
+    return readLocalSidebarLayout(workspaceId);
+  }
+  async setSidebarLayout(
+    workspaceId: string,
+    layout: SidebarLayout,
+  ): Promise<SidebarLayout> {
+    writeLocalSidebarLayout(workspaceId, layout);
+    return layout;
   }
   async createAgent(
     workspaceId: string,

@@ -15,11 +15,13 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
 import { useAllConversations } from "../hooks/queries";
-import { orderAgents } from "../lib/agent-order";
+import { useSidebarLayout } from "../hooks/use-sidebar-layout";
+import { flatSidebarOrder } from "../lib/agent-order";
 import { isRoutineSetupMode } from "../lib/routine-chat-setup";
 import { shortcutLabel } from "../lib/shortcuts";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
+import { useWorkspaceStore } from "../stores/workspaces";
 
 // 28px outer circle so the inner helmet (forced to 20px by cmdk's
 // `[&_[cmdk-item]_svg]:h-5` rule) sits at roughly its native 65%
@@ -53,7 +55,12 @@ export function CommandPalette() {
   const setCheatsheetOpen = useUIStore((s) => s.setCheatsheetOpen);
   const agents = useAgentStore((s) => s.agents);
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
-  const orderedAgents = useMemo(() => orderAgents(agents), [agents]);
+  const workspaceId = useWorkspaceStore((s) => s.current?.id);
+  const { layout } = useSidebarLayout(workspaceId);
+  const orderedAgents = useMemo(
+    () => flatSidebarOrder(agents, layout),
+    [agents, layout],
+  );
   const agentPaths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
   const { data: convos } = useAllConversations(agentPaths);
 
