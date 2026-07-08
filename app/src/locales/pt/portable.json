@@ -27,6 +27,8 @@
       "anonymizeBody": "Remove nomes, e-mails, empresas, chaves de API e outros dados pessoais.",
       "reviewLabel": "Veja o que mudou",
       "working": "Houston está revisando seu conteúdo.",
+      "startReview": "Começar a revisão",
+      "checkAgain": "Revisar de novo",
       "workingProgress": "Houston está revisando seu conteúdo ({{done}} de {{total}} prontos).",
       "slowNotice": "Isso está demorando mais que o normal. Você pode ficar com o que já está pronto e terminar o resto do jeito rápido.",
       "stopWait": "Usar o que está pronto",

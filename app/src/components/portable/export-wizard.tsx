@@ -335,11 +335,16 @@ export function ExportAgentWizard() {
 
   if (!open) return null;
 
+  // On the anonymize step, choosing "help me" is not enough — a run must
+  // have completed, else the export would stamp anonymized: true with zero
+  // redactions actually applied.
   const canAdvance =
     currentStep === "pick"
       ? !loading && !!preview
       : currentStep === "anonymize"
-        ? wantAnonymize !== null && !anonymizing
+        ? wantAnonymize !== null &&
+          !anonymizing &&
+          (!wantAnonymize || anonymized !== null)
         : true;
 
   return (
@@ -369,18 +374,10 @@ export function ExportAgentWizard() {
           ) : currentStep === "anonymize" ? (
             <AnonymizeStep
               wantAnonymize={wantAnonymize}
-              onChoose={(v) => {
-                setWantAnonymize(v);
-                if (v && !anonymized) void runAnonymize();
-              }}
+              onChoose={setWantAnonymize}
               useAi={useAi}
-              onToggleAi={(v) => {
-                setUseAi(v);
-                if (wantAnonymize) {
-                  setAnonymized(null);
-                  void runAnonymize(v);
-                }
-              }}
+              onToggleAi={setUseAi}
+              onStart={() => void runAnonymize()}
               anonymizing={anonymizing}
               progress={progress}
               slow={slow}
@@ -537,6 +534,7 @@ function AnonymizeStep({
   onChoose,
   useAi,
   onToggleAi,
+  onStart,
   anonymizing,
   progress,
   slow,
@@ -550,6 +548,7 @@ function AnonymizeStep({
   onChoose: (v: boolean) => void;
   useAi: boolean;
   onToggleAi: (v: boolean) => void;
+  onStart: () => void;
   anonymizing: boolean;
   progress: { done: number; total: number } | null;
   slow: boolean;
@@ -614,9 +613,24 @@ function AnonymizeStep({
             />
           </div>
 
-          <h2 className="text-sm font-medium">
-            {t("export.step2.reviewLabel")}
-          </h2>
+          {!anonymizing && (
+            <Button
+              size="sm"
+              variant={anonymized ? "outline" : "default"}
+              className="rounded-full"
+              onClick={onStart}
+            >
+              {anonymized
+                ? t("export.step2.checkAgain")
+                : t("export.step2.startReview")}
+            </Button>
+          )}
+
+          {(anonymizing || anonymized) && (
+            <h2 className="text-sm font-medium">
+              {t("export.step2.reviewLabel")}
+            </h2>
+          )}
           {anonymizing && (
             <div className="space-y-3">
               <div className="running-glow-line bg-foreground/5" aria-hidden />
