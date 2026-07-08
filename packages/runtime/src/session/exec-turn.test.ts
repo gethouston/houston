@@ -189,7 +189,10 @@ test("the turn's thinking and tool inputs are persisted on the assistant message
     emit({ type: "thinking", data: "first list, " });
     emit({ type: "thinking", data: "then decide" });
     emit({ type: "tool_start", data: { name: "bash", args: { cmd: "ls" } } });
-    emit({ type: "tool_end", data: { name: "bash", isError: false } });
+    emit({
+      type: "tool_end",
+      data: { name: "bash", isError: false, content: "file-a\nfile-b" },
+    });
     emit({ type: "text", data: "done" });
   });
 
@@ -206,7 +209,12 @@ test("the turn's thinking and tool inputs are persisted on the assistant message
     | undefined;
   expect(meta?.thinking).toBe("first list, then decide");
   expect(meta?.tools).toEqual([
-    { name: "bash", input: { cmd: "ls" }, isError: false },
+    {
+      name: "bash",
+      input: { cmd: "ls" },
+      result: "file-a\nfile-b",
+      isError: false,
+    },
   ]);
 });
 

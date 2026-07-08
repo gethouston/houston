@@ -99,7 +99,7 @@ export function historyToFeed(
       });
       out.push({
         feed_type: "tool_result",
-        data: { content: "", is_error: !!t.isError },
+        data: { content: t.result ?? "", is_error: !!t.isError },
       });
     }
     if (m.content) out.push({ feed_type: "assistant_text", data: m.content });

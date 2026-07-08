@@ -56,17 +56,25 @@ test("thinking + tools accumulate for the running turn and reset on the next (HO
   });
   s = reduceSnapshot(s, {
     type: "tool_end",
-    data: { name: "bash", isError: false },
+    data: { name: "bash", isError: false, content: "file-a\nfile-b" },
     seq: 5,
   });
   s = reduceSnapshot(s, { type: "text", data: "done", seq: 6 });
-  // text carries the activity through; tool_end stamps the ended flag.
+  // text carries the activity through; tool_end stamps the ended flag and
+  // the output preview.
   expect(s).toEqual({
     running: true,
     partial: "done",
     seq: 6,
     thinking: "plan steps",
-    tools: [{ name: "bash", input: { cmd: "ls" }, isError: false }],
+    tools: [
+      {
+        name: "bash",
+        input: { cmd: "ls" },
+        isError: false,
+        content: "file-a\nfile-b",
+      },
+    ],
   });
   // A NEW turn starts clean: no inherited thinking/tools (and the omitted
   // fields must not serialize).

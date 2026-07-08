@@ -157,6 +157,12 @@ export interface ToolCallRecord {
    * (HOU-717). Absent on records written before this field existed.
    */
   input?: unknown;
+  /**
+   * The tool's output preview, as the live `tool_end` frame carried it
+   * (already clipped to `TOOL_RESULT_PREVIEW_MAX` at the backend). Same
+   * reload story and absence semantics as `input`.
+   */
+  result?: string;
   isError?: boolean;
 }
 

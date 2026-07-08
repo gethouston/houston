@@ -110,7 +110,14 @@ describe("historyToFeed", () => {
         content: "done",
         ts: 2,
         thinking: "first list the files, then decide",
-        tools: [{ name: "bash", input: { cmd: "ls" }, isError: false }],
+        tools: [
+          {
+            name: "bash",
+            input: { cmd: "ls" },
+            result: "file-a\nfile-b",
+            isError: false,
+          },
+        ],
       },
     ]);
     const thinkingIdx = feed.findIndex((f) => f.feed_type === "thinking");
@@ -123,6 +130,11 @@ describe("historyToFeed", () => {
     expect(feed[toolIdx]).toEqual({
       feed_type: "tool_call",
       data: { name: "bash", input: { cmd: "ls" } },
+    });
+    // The persisted output preview replays as the tool's result.
+    expect(feed[toolIdx + 1]).toEqual({
+      feed_type: "tool_result",
+      data: { content: "file-a\nfile-b", is_error: false },
     });
   });
 

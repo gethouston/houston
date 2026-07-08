@@ -19,8 +19,15 @@ import type { WireFrame } from "./types";
  * the terminal frame it synthesizes.
  */
 /** One of the running turn's tool calls, as the snapshot tracks it. `isError`
- *  present = the tool ENDED (with that flag); absent = still running. */
-export type SnapshotTool = { name: string; input?: unknown; isError?: boolean };
+ *  present = the tool ENDED (with that flag); absent = still running.
+ *  `content` is an ended tool's output preview (already clipped at the
+ *  emitting backend). */
+export type SnapshotTool = {
+  name: string;
+  input?: unknown;
+  isError?: boolean;
+  content?: string;
+};
 
 export type ConversationSnapshot = {
   running: boolean;
@@ -105,7 +112,11 @@ export function reduceSnapshot(
       for (let i = tools.length - 1; i >= 0; i--) {
         const t = tools[i];
         if (t && t.isError === undefined) {
-          tools[i] = { ...t, isError: event.data.isError };
+          tools[i] = {
+            ...t,
+            isError: event.data.isError,
+            ...(event.data.content ? { content: event.data.content } : {}),
+          };
           break;
         }
       }

@@ -172,7 +172,11 @@ export async function execTurn(
         tools.push({ name: wire.data.name, input: wire.data.args });
       else if (wire.type === "tool_end") {
         const t = tools[tools.length - 1];
-        if (t) t.isError = wire.data.isError;
+        if (t) {
+          t.isError = wire.data.isError;
+          // Already clipped at the backend — persist for reload replay.
+          if (wire.data.content) t.result = wire.data.content;
+        }
       } else if (wire.type === "provider_error") providerError = wire.data;
       // Every event proves the provider is alive → reset the stall clock (the
       // watchdog suspends itself while a tool runs and re-arms when it ends).

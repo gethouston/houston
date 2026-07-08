@@ -41,7 +41,7 @@ export function applyTurnFrame(
       s.toolResultsSeen++;
       push(s, {
         feed_type: "tool_result",
-        data: { content: "", is_error: ev.data.isError },
+        data: { content: ev.data.content ?? "", is_error: ev.data.isError },
       });
       break;
     case "usage":

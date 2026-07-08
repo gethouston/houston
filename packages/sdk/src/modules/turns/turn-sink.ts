@@ -8,6 +8,14 @@ import type { TurnSinkOptions } from "./turn-sink-options";
 
 export type { TurnSinkOptions } from "./turn-sink-options";
 
+/** One of the running turn's tools, as the `sync` frame reports it. */
+type SyncTool = {
+  name: string;
+  input?: unknown;
+  isError?: boolean;
+  content?: string;
+};
+
 /**
  * Folds one conversation's wire frames into FeedItem + SessionStatus pushes on
  * the sink's {@link FeedOutput}, and settles the turn ONLY on a terminal frame
@@ -130,7 +138,7 @@ export class TurnSink {
     resync?: boolean;
     turnId?: string;
     thinking?: string;
-    tools?: { name: string; input?: unknown; isError?: boolean }[];
+    tools?: SyncTool[];
   }): void {
     // Any sync after the first is a reconnect catch-up: seq servers only
     // re-sync when our cursor was unserviceable (`resync: true`), legacy
@@ -158,7 +166,7 @@ export class TurnSink {
     partial: string;
     turnId?: string;
     thinking?: string;
-    tools?: { name: string; input?: unknown; isError?: boolean }[];
+    tools?: SyncTool[];
   }): void {
     const mayAdopt = this.o.mode === "observer" || this.accepted;
     switch (classifyRunningSync(this.turnId, data.turnId, mayAdopt)) {
@@ -198,7 +206,7 @@ export class TurnSink {
    */
   private replaySyncActivity(data: {
     thinking?: string;
-    tools?: { name: string; input?: unknown; isError?: boolean }[];
+    tools?: SyncTool[];
   }): void {
     const s = this.s;
     if (data.thinking && data.thinking !== s.thinking) {
@@ -210,11 +218,11 @@ export class TurnSink {
     // A tool whose call we already pushed may have ENDED while we were away —
     // close it first (tools run serially, so results land in call order).
     while (s.toolResultsSeen < Math.min(s.toolsSeen, tools.length)) {
-      const ended = tools[s.toolResultsSeen].isError;
-      if (ended === undefined) break;
+      const t = tools[s.toolResultsSeen];
+      if (t.isError === undefined) break;
       push(s, {
         feed_type: "tool_result",
-        data: { content: "", is_error: ended },
+        data: { content: t.content ?? "", is_error: t.isError },
       });
       s.toolResultsSeen++;
     }
@@ -229,7 +237,7 @@ export class TurnSink {
       if (t.isError !== undefined) {
         push(s, {
           feed_type: "tool_result",
-          data: { content: "", is_error: t.isError },
+          data: { content: t.content ?? "", is_error: t.isError },
         });
         s.toolResultsSeen++;
       }

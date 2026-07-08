@@ -58,10 +58,16 @@ export type WireEvent =
         /**
          * The running turn's tool calls so far, in stream order. `isError`
          * present means the tool has ENDED (with that error flag); absent
-         * means it is still running — only the last entry can be. Same
-         * absence semantics as `thinking`.
+         * means it is still running — only the last entry can be. `content`
+         * is an ended tool's output preview (already clipped). Same absence
+         * semantics as `thinking`.
          */
-        tools?: { name: string; input?: unknown; isError?: boolean }[];
+        tools?: {
+          name: string;
+          input?: unknown;
+          isError?: boolean;
+          content?: string;
+        }[];
       };
     }
   | {
@@ -81,7 +87,20 @@ export type WireEvent =
   | { type: "text"; data: string }
   | { type: "thinking"; data: string }
   | { type: "tool_start"; data: { name: string; args: unknown } }
-  | { type: "tool_end"; data: { name: string; isError: boolean } }
+  | {
+      type: "tool_end";
+      data: {
+        name: string;
+        isError: boolean;
+        /**
+         * The tool's output text (what the model saw), clipped to
+         * {@link TOOL_RESULT_PREVIEW_MAX} at the emitting backend so the
+         * mission log can show WHAT a tool returned (HOU-717). Absent from
+         * pre-field servers and from tools that produced no text.
+         */
+        content?: string;
+      };
+    }
   | { type: "usage"; data: TokenUsage }
   | {
       /**
@@ -156,6 +175,22 @@ export type WireEvent =
   | { type: "error"; data: { message: string } };
 
 export type WireEventType = WireEvent["type"];
+
+/**
+ * Cap for the tool-output preview carried on `tool_end` (and persisted /
+ * replayed from it). Applied at the EMITTING backend, so everything
+ * downstream — feed, snapshot, conversation file — carries already-clipped
+ * text. Generous enough for the mission log's truncated code block; a full
+ * transcript is the model's context, not the UI's.
+ */
+export const TOOL_RESULT_PREVIEW_MAX = 4_000;
+
+/** Clip a tool-output preview to {@link TOOL_RESULT_PREVIEW_MAX}. */
+export function clipToolResult(text: string): string {
+  return text.length <= TOOL_RESULT_PREVIEW_MAX
+    ? text
+    : `${text.slice(0, TOOL_RESULT_PREVIEW_MAX)}\n… (truncated)`;
+}
 
 /**
  * A conversation-stream frame: a WireEvent plus its position in the stream.

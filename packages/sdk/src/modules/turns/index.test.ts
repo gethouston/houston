@@ -220,7 +220,7 @@ test("observe replays the running turn's thinking + tools from the sync, deduped
         seq: 2,
         thinking: "planning the steps",
         tools: [
-          { name: "bash", input: { cmd: "ls" }, isError: false },
+          { name: "bash", input: { cmd: "ls" }, isError: false, content: "ok" },
           { name: "read", input: { path: "a.txt" } }, // still running
         ],
       },
@@ -237,8 +237,13 @@ test("observe replays the running turn's thinking + tools from the sync, deduped
         resync: true,
         thinking: "planning the steps",
         tools: [
-          { name: "bash", input: { cmd: "ls" }, isError: false },
-          { name: "read", input: { path: "a.txt" }, isError: false },
+          { name: "bash", input: { cmd: "ls" }, isError: false, content: "ok" },
+          {
+            name: "read",
+            input: { path: "a.txt" },
+            isError: false,
+            content: "the file body",
+          },
         ],
       },
       seq: 3,
@@ -258,7 +263,12 @@ test("observe replays the running turn's thinking + tools from the sync, deduped
     { name: "bash", input: { cmd: "ls" } },
     { name: "read", input: { path: "a.txt" } },
   ]);
-  expect(feed.filter((f) => f.feed_type === "tool_result")).toHaveLength(2);
+  // Both results landed exactly once, carrying their output previews.
+  const results = feed.filter((f) => f.feed_type === "tool_result");
+  expect(results.map((f) => f.data)).toEqual([
+    { content: "ok", is_error: false },
+    { content: "the file body", is_error: false },
+  ]);
 });
 
 test("turns/cancel aborts the conversation's turn", async () => {
