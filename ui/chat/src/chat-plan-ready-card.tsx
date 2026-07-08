@@ -42,7 +42,8 @@ const ACTION_ICONS: Record<PlanReadyActionKey, LucideIcon> = {
  * grey `bg-secondary` surface) with the plan text raised as the prominent head.
  * The options render as the composer mode menu's rows: each a full-width row
  * with its icon inline with the title and a description on its own line below
- * (icon in the title's foreground color), a rounded-xl hover background, and
+ * (icon in the title's foreground color), each option raised on its own
+ * bordered card so it reads clickable, and
  * everything visible at rest (no hover gate). Primary emphasis comes from row
  * order + title weight, not a filled button. `disabled` gates all three rows.
  */
@@ -71,18 +72,18 @@ export function ChatPlanReadyCard({
       )}
     >
       <div className="flex flex-col px-2.5 pt-2 pb-2">
-        <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+        <p className="font-medium text-muted-foreground text-xs">
           {labels.title}
         </p>
         <p className="mt-1.5 text-base text-foreground leading-relaxed">
           {summary}
         </p>
-        <div className="mt-3 flex flex-col gap-0.5">
+        <div className="mt-3 flex flex-col gap-1.5">
           {actions.map((action) => {
             const Icon = ACTION_ICONS[action.key];
             return (
               <button
-                className="flex w-full items-center rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-accent disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex w-full items-center rounded-xl border border-border bg-background px-3 py-2.5 text-left shadow-xs transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 disabled={action.disabled}
                 key={action.key}
                 onClick={handlers[action.key]}
