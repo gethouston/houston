@@ -7,6 +7,7 @@ import { subscribeHoustonEvents } from "../lib/events";
 import { logger } from "../lib/logger";
 import { osFocusWindow } from "../lib/os-bridge";
 import { queryKeys } from "../lib/query-keys";
+import { tauriConversations } from "../lib/tauri";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
@@ -22,6 +23,32 @@ export function useAgentInvalidation() {
   const { t } = useTranslation("shell");
 
   useEffect(() => {
+    // Refresh ONE agent's slice of every cached all-conversations list.
+    // Deliberately not `invalidateQueries({ queryKey: ["all-conversations"] })`:
+    // that refetch fans out one request to EVERY agent's pod, and in hosted
+    // mode each of those requests resets the pod's idle-sleep clock — so a
+    // single busy agent's event stream used to keep the whole fleet awake for
+    // as long as the app was open. Events name their agent; only that agent's
+    // pod is touched (it just emitted, so it is awake by definition), and the
+    // sidebar badges / Mission Control read the patched cache unchanged.
+    const patchAllConversations = (agentPath: string) => {
+      void tauriConversations
+        .list(agentPath)
+        .then((rows) => {
+          qc.setQueriesData<{ agent_path: string }[]>(
+            { queryKey: ["all-conversations"] },
+            (old) =>
+              old && [
+                ...old.filter((c) => c.agent_path !== agentPath),
+                ...rows,
+              ],
+          );
+        })
+        .catch((e) => {
+          // Stale badge until the agent's next event — never a broken app.
+          logger.warn(`[invalidation] conversations patch failed: ${e}`);
+        });
+    };
     const offEngineRestarted = onEngineRestarted(() => {
       qc.invalidateQueries({ queryKey: ["activity"] });
       qc.invalidateQueries({ queryKey: ["all-conversations"] });
@@ -47,7 +74,7 @@ export function useAgentInvalidation() {
           qc.invalidateQueries({
             queryKey: queryKeys.activity(p.data.agent_path),
           });
-          qc.invalidateQueries({ queryKey: ["all-conversations"] });
+          patchAllConversations(p.data.agent_path);
           break;
         case "SkillsChanged":
           qc.invalidateQueries({
@@ -80,7 +107,7 @@ export function useAgentInvalidation() {
           qc.invalidateQueries({
             queryKey: queryKeys.conversations(p.data.agent_path),
           });
-          qc.invalidateQueries({ queryKey: ["all-conversations"] });
+          patchAllConversations(p.data.agent_path);
           // A message landing in ANY of this agent's conversations (e.g. a
           // teammate's turn) must reach an open chat live. The event carries
           // no session key, so invalidate the agent's whole chat-history
@@ -117,7 +144,7 @@ export function useAgentInvalidation() {
         case "SessionStatus":
           if (p.data.status === "completed" || p.data.status === "error") {
             qc.invalidateQueries({ queryKey: ["activity"] });
-            qc.invalidateQueries({ queryKey: ["all-conversations"] });
+            patchAllConversations(p.data.agent_path);
             // Cloud has NO file watcher and no post-turn sync diff, so a running
             // agent that writes its own CLAUDE.md / skills / learnings / files
             // mid-turn never fires a *Changed event. A finished turn is the one
