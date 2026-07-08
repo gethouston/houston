@@ -141,8 +141,13 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   (`packages/runtime/src/session/interaction.ts`, mirrors acting-context). The
   holder MERGES the two tools into ONE step sequence: `ask_user` supplies the
   question steps (1–3 per call, a second call replaces them), each
-  `request_connection` appends a connect step (deduped by toolkit); questions
-  always order before connects. The prompt tells the model to batch everything
+  `request_connection` appends a connect step (deduped by toolkit), and a 409
+  `signin_required` from the integrations proxy queues AT MOST ONE `signin`
+  step (`recordSignin`, id `s1`); order is questions → signin → connects. The
+  runtime classifies integration failures by the host error body code, not
+  bare HTTP status: signed-out queues the signin step, not-configured gets
+  honest "not set up in this install" guidance, and transient upstream errors
+  stay transient. The prompt tells the model to batch everything
   blocking into one turn — e.g. "send an email to john" becomes two question
   steps (recipient, content) plus a connect step (email app). A fresh holder per
   turn IS the reset; recording outside a turn is a no-op. The Claude-SDK
@@ -168,15 +173,18 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   `ChatMessage` persists `pendingInteraction`, so a `needs_you` card survives
   reload.
 - **Settle → composer card → answer-as-new-turn.** A pending interaction REPLACES
-  the composer with `ChatInteractionCard` (`@houston-ai/chat`, inventory v6): a
+  the composer with `ChatInteractionCard` (`@houston-ai/chat`, inventory v7): a
   one-step-at-a-time stepper ("1 of X" progress, back chevron, gray surface with
   white option rows and an always-visible free-text escape hatch on question
   steps). Connect steps render through the `renderConnect` prop (the app injects
-  `IntegrationConnectCard`; already-connected toolkits auto-advance). Answers are
-  held until the sequence completes, then sent as ONE composed user message
-  (`question: answer` lines, plus `Connected <app>.` lines); connect-ONLY
-  sequences keep the hidden auto-continue, fired on sequence completion — nothing
-  special on the wire.
+  `IntegrationConnectCard`; already-connected toolkits auto-advance); signin
+  steps through `renderSignin` (the app injects a card on the
+  `use-integrations-gate` Google-SSO machinery; already-signed-in auto-advances).
+  Answers are held until the sequence completes, then sent as ONE composed user
+  message (`question: answer` lines, plus `Signed in to Houston.` and
+  `Connected <app>.` lines); connect-ONLY and signin-ONLY sequences keep the
+  hidden auto-continue, fired once on sequence completion — nothing special on
+  the wire.
 
 The old `#houston_toolkit=` markdown-link connect hack is GONE from the prompt and
 tool guidance; the app's legacy link-card renderer survives only to render old
