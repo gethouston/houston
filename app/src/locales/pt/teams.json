@@ -31,9 +31,14 @@
       "pickedDesc": "Pessoas com acesso só podem usar os modelos que você permitir abaixo.",
       "allowModel": "Permitir {{name}}",
       "searchModels": "Buscar modelos",
+      "labFilter": "Filtrar por laboratório",
+      "allLabs": "Todos os laboratórios",
+      "searchLabs": "Buscar laboratórios",
+      "noLabs": "Nenhum laboratório encontrado",
       "noModels": "Nenhum modelo encontrado",
       "allowedHeading": "Modelos permitidos",
       "allowedEmpty": "Você ainda não escolheu modelos. Adicione modelos abaixo.",
+      "allowedEmptyLab": "Você ainda não escolheu modelos deste laboratório.",
       "addHeading": "Adicionar modelos"
     },
     "integrations": {
@@ -50,6 +55,7 @@
       "allowApp": "Permitir {{name}}",
       "allowedHeading": "Apps permitidos",
       "allowedEmpty": "Você ainda não escolheu apps. Adicione apps abaixo.",
+      "allowedEmptyCategory": "Ainda não há apps permitidos nesta categoria.",
       "addHeading": "Adicionar apps"
     },
     "notAllowed": {

@@ -1,48 +1,46 @@
-import { deepStrictEqual, ok, strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { ProviderCatalog } from "@houston/protocol";
-import { modelCatalog } from "../src/components/tabs/agent-admin/agent-admin-models-catalog.ts";
 import {
   ceilingMode,
   ceilingValue,
 } from "../src/components/tabs/agent-admin/agent-admin-row-values.ts";
-import { hydrateProviderCatalog } from "../src/lib/providers.ts";
+import {
+  allowedListView,
+  allowedModelCount,
+  modelChecked,
+  toggleModel,
+} from "../src/components/tabs/agent-admin/model-allowlist.ts";
+import type { CatalogModel } from "../src/lib/ai-hub/catalog-types.ts";
 
-// The model catalog is runtime-hydrated from the host's GET /v1/catalog (#701):
-// `PROVIDERS` seeds with empty model lists, so `modelCatalog()` is empty until
-// `hydrateProviderCatalog` runs. Feed a minimal catalog matching the real
-// payload shape (`ProviderCatalog`) so the picker source has models to expose.
-const CATALOG_FIXTURE: ProviderCatalog = [
-  {
-    id: "anthropic",
-    name: "Anthropic",
-    auth: "oauth",
-    models: [
-      {
-        id: "claude-opus-4-8",
-        name: "Claude Opus 4.8",
-        pricing: { input: 15, output: 75 },
-        contextWindow: 200_000,
-        maxTokens: 64_000,
-        reasoning: true,
-        vision: true,
-        thinkingLevels: ["low", "medium", "high"],
-      },
-      {
-        id: "claude-sonnet-4-6",
-        name: "Claude Sonnet 4.6",
-        pricing: { input: 3, output: 15 },
-        contextWindow: 200_000,
-        maxTokens: 64_000,
-        reasoning: true,
-        vision: true,
-        thinkingLevels: ["low", "medium", "high"],
-      },
-    ],
-  },
-];
+/** A minimal `CatalogModel` fixture: only the fields the allowlist helpers read. */
+function model(
+  key: string,
+  offerIds: string[],
+  extra: Partial<CatalogModel> = {},
+): CatalogModel {
+  return {
+    key,
+    name: key,
+    lab: "other",
+    reasoning: false,
+    toolCall: false,
+    imageGen: false,
+    inputModalities: ["text"],
+    offers: offerIds.map((modelId, i) => ({
+      providerId: `p${i}`,
+      modelId,
+      subscription: false,
+    })),
+    ...extra,
+  };
+}
 
-hydrateProviderCatalog(CATALOG_FIXTURE);
+// Two labs' worth of models, one single-offer and one multi-offer, so the
+// helpers exercise the "one model spans several ids" path.
+const OPUS = model("opus", ["anthropic/claude-opus", "bedrock/opus"]);
+const SONNET = model("sonnet", ["anthropic/claude-sonnet"]);
+const GPT = model("gpt", ["openai/gpt-5", "openrouter/gpt-5"]);
+const MODELS = [OPUS, SONNET, GPT];
 
 describe("ceilingValue — inline row state for a ceiling", () => {
   it("undefined (loading / non-Teams host) yields null → show no value yet", () => {
@@ -73,30 +71,132 @@ describe("ceilingMode — the always-visible two-option choice", () => {
   });
 });
 
-describe("modelCatalog — the allowed-models picker source", () => {
-  const catalog = modelCatalog();
-
-  it("is non-empty and deduped by model id", () => {
-    ok(catalog.length > 0);
-    const ids = catalog.map((m) => m.id);
-    strictEqual(new Set(ids).size, ids.length);
+describe("modelChecked — a model is allowed when ANY offer id is present", () => {
+  it("false when none of the model's offer ids are in the set", () => {
+    strictEqual(modelChecked(OPUS, new Set()), false);
+    strictEqual(modelChecked(OPUS, new Set(["openai/gpt-5"])), false);
   });
 
-  it("is sorted A-Z by label (then id) for a stable picker order", () => {
-    for (let i = 1; i < catalog.length; i++) {
-      const prev = catalog[i - 1];
-      const cur = catalog[i];
-      ok(
-        prev.label.localeCompare(cur.label) < 0 ||
-          (prev.label === cur.label && prev.id.localeCompare(cur.id) <= 0),
-      );
-    }
+  it("true when at least one offer id is present (partial set counts)", () => {
+    strictEqual(modelChecked(OPUS, new Set(["bedrock/opus"])), true);
+    strictEqual(
+      modelChecked(OPUS, new Set(["anthropic/claude-opus", "bedrock/opus"])),
+      true,
+    );
+  });
+});
+
+describe("toggleModel — flips ALL of a model's offer ids at once", () => {
+  it("turning a model ON adds every one of its offer ids", () => {
+    deepStrictEqual(toggleModel(OPUS, []), [
+      "anthropic/claude-opus",
+      "bedrock/opus",
+    ]);
   });
 
-  it("every entry carries a human label", () => {
-    for (const entry of catalog) {
-      ok(entry.id.length > 0);
-      ok(entry.label.length > 0);
-    }
+  it("turning a model OFF removes every one of its offer ids", () => {
+    deepStrictEqual(
+      toggleModel(OPUS, ["anthropic/claude-opus", "bedrock/opus"]),
+      [],
+    );
+  });
+
+  it("a partial set counts as ON, so toggling clears all its offer ids", () => {
+    deepStrictEqual(toggleModel(OPUS, ["bedrock/opus"]), []);
+  });
+
+  it("leaves other models' ids and unknown ids untouched", () => {
+    deepStrictEqual(toggleModel(OPUS, ["openai/gpt-5", "stale-id"]), [
+      "anthropic/claude-opus",
+      "bedrock/opus",
+      "openai/gpt-5",
+      "stale-id",
+    ]);
+  });
+
+  it("returns a de-duplicated, stable-sorted array", () => {
+    const out = toggleModel(GPT, ["openai/gpt-5"]);
+    // GPT was partially on, so it clears; only the untouched entries remain.
+    deepStrictEqual(out, []);
+    const on = toggleModel(SONNET, ["z-id", "a-id"]);
+    deepStrictEqual(on, ["a-id", "anthropic/claude-sonnet", "z-id"]);
+  });
+});
+
+describe("allowedListView — which empty-state variant the allowed list shows", () => {
+  it("renders the list whenever any model is visible after the lab filter", () => {
+    strictEqual(
+      allowedListView({ visibleCount: 2, hasPicked: true, labFiltered: false }),
+      "list",
+    );
+    // A visible list wins even while a lab filter is active.
+    strictEqual(
+      allowedListView({ visibleCount: 1, hasPicked: true, labFiltered: true }),
+      "list",
+    );
+  });
+
+  it("shows the plain empty copy when nothing is picked at all", () => {
+    strictEqual(
+      allowedListView({
+        visibleCount: 0,
+        hasPicked: false,
+        labFiltered: false,
+      }),
+      "empty",
+    );
+    // Even with a lab filter active, "nothing picked" stays the plain empty.
+    strictEqual(
+      allowedListView({ visibleCount: 0, hasPicked: false, labFiltered: true }),
+      "empty",
+    );
+  });
+
+  it("shows the lab-aware copy when models are picked but the filter hides them all", () => {
+    strictEqual(
+      allowedListView({ visibleCount: 0, hasPicked: true, labFiltered: true }),
+      "empty-lab",
+    );
+  });
+
+  it("without a lab filter, an empty visible list means nothing is picked", () => {
+    // hasPicked cannot be true here (no filter to hide picks), but guard anyway:
+    strictEqual(
+      allowedListView({
+        visibleCount: 0,
+        hasPicked: true,
+        labFiltered: false,
+      }),
+      "empty",
+    );
+  });
+});
+
+describe("allowedModelCount — counts models, surfacing unknown ids", () => {
+  it("counts each model with at least one allowed offer once", () => {
+    strictEqual(allowedModelCount(["bedrock/opus"], MODELS), 1);
+    strictEqual(
+      allowedModelCount(
+        ["anthropic/claude-opus", "bedrock/opus", "openai/gpt-5"],
+        MODELS,
+      ),
+      2,
+    );
+  });
+
+  it("adds unknown ids (matching no catalog offer) so they are never dropped", () => {
+    strictEqual(allowedModelCount(["stale-id"], MODELS), 1);
+    strictEqual(allowedModelCount(["bedrock/opus", "stale-id"], MODELS), 2);
+  });
+
+  it("an empty ceiling counts zero", () => {
+    strictEqual(allowedModelCount([], MODELS), 0);
+  });
+
+  it("counts a model once even when several of its offers are allowed", () => {
+    strictEqual(
+      allowedModelCount(["anthropic/claude-opus", "bedrock/opus"], MODELS),
+      1,
+    );
   });
 });
