@@ -8,15 +8,32 @@ import {
 } from "./providers.ts";
 
 test("effort levels are per model", () => {
-  // Codex: has xhigh, no max. Every catalogued GPT model shares this set
-  // (verified against Codex's models_cache.json supported_reasoning_levels).
-  for (const id of ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex-spark"]) {
+  // Codex pre-5.6 models: xhigh top, no max (the server 400-rejects `max`
+  // on them; verified live against gpt-5.5). GPT-5.6 Terra/Luna stay on the
+  // same range until OpenAI confirms `max` beyond Sol.
+  for (const id of [
+    "gpt-5.5",
+    "gpt-5.4",
+    "gpt-5.4-mini",
+    "gpt-5.3-codex-spark",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+  ]) {
     assert.deepEqual(
       getEffortLevels("openai", id),
       ["low", "medium", "high", "xhigh"],
       id,
     );
   }
+  // GPT-5.6 Sol: the one Codex model with `max` (announced with 5.6).
+  // "ultra" is a subagent mode, not an effort level — never listed.
+  assert.deepEqual(getEffortLevels("openai", "gpt-5.6-sol"), [
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max",
+  ]);
   // Sonnet 4.6: has max, no xhigh.
   assert.deepEqual(getEffortLevels("anthropic", "claude-sonnet-4-6"), [
     "low",
@@ -84,7 +101,15 @@ test("validModelOrNull rejects retired aliases and accepts catalog IDs", () => {
   assert.equal(validModelOrNull("anthropic", "claude-sonnet-4-6"), "claude-sonnet-4-6");
   // Full Codex lineup is catalogued (gpt-5.5 + the gpt-5.4 / mini / spark
   // models added in HOU-589); the phantom gpt-5.5-codex never shipped.
-  for (const id of ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex-spark"]) {
+  for (const id of [
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+    "gpt-5.5",
+    "gpt-5.4",
+    "gpt-5.4-mini",
+    "gpt-5.3-codex-spark",
+  ]) {
     assert.equal(validModelOrNull("openai", id), id);
   }
   assert.equal(validModelOrNull("openai", "gpt-5.5-codex"), null);
