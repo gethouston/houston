@@ -3,11 +3,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivity } from "../../hooks/queries";
+import { useProviderStatuses } from "../../hooks/use-provider-statuses";
 import { analytics } from "../../lib/analytics";
 import { createMission } from "../../lib/create-mission";
 import { logger } from "../../lib/logger";
+import { providerName } from "../../lib/providers";
 import { queryKeys } from "../../lib/query-keys";
 import {
+  type ConnectedProviderRef,
   encodeRoutineModifyMessage,
   encodeRoutineSetupMessage,
   findDraftSetupActivity,
@@ -43,6 +46,18 @@ export function useRoutineChatSetup(
   );
   const { data: rawItems } = useActivity(path);
   const [pending, setPending] = useState(false);
+
+  // The kickoffs name the user's connected providers so the agent never pins
+  // a routine to one that isn't (e.g. "use deepseek" with no DeepSeek login).
+  // While statuses are still loading, `null` keeps the prompt generic instead
+  // of wrongly claiming nothing is connected.
+  const providerStatuses = useProviderStatuses();
+  const connectedProvidersRef = useRef<ConnectedProviderRef[] | null>(null);
+  connectedProvidersRef.current = providerStatuses.isLoading
+    ? null
+    : Object.values(providerStatuses.statuses)
+        .filter((s) => s.authenticated)
+        .map((s) => ({ id: s.provider, name: providerName(s.provider) }));
 
   /** The one unlinked, live create-chat for this agent, if any. */
   const draftActivity = findDraftSetupActivity(rawItems, routines);
@@ -128,7 +143,8 @@ export function useRoutineChatSetup(
         title: t("setupChat.missionTitle"),
         agentMode: ROUTINE_SETUP_AGENT_MODE,
         modeOverride: await readAgentTurnMode(path, tauriConfig.read),
-        buildPrompt: (activityId) => encodeRoutineSetupMessage(activityId),
+        buildPrompt: (activityId) =>
+          encodeRoutineSetupMessage(activityId, connectedProvidersRef.current),
       });
       // createMission bypasses useCreateActivity — refetch so the panel's
       // backing activity exists before it tries to render.
@@ -164,7 +180,7 @@ export function useRoutineChatSetup(
       try {
         const { conversationId } = await createMission(
           agent,
-          encodeRoutineModifyMessage(routine),
+          encodeRoutineModifyMessage(routine, connectedProvidersRef.current),
           {
             title: routine.name,
             agentMode: ROUTINE_SETUP_AGENT_MODE,

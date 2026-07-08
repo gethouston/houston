@@ -177,6 +177,12 @@ export interface AIBoardProps {
    */
   disableOutsideClose?: boolean;
   /**
+   * Hide the detail panel's close button. For a panel that is a permanent
+   * part of its host view (the routine editor's chat), there is nothing for
+   * an X to mean — combine with `disableOutsideClose`.
+   */
+  hidePanelClose?: boolean;
+  /**
    * Draft text keyed by session key. Used to persist composer text across
    * navigation so users don't lose what they've typed. The key
    * "new-conversation" is used for the new-mission panel.
@@ -286,6 +292,7 @@ export function AIBoard({
   panelActions,
   panelContainer,
   disableOutsideClose,
+  hidePanelClose,
   drafts,
   onDraftChange,
   isSpecialTool,
@@ -682,7 +689,7 @@ export function AIBoard({
     <KanbanDetailPanel
       ref={panelRef}
       title={panelTitle}
-      onClose={closePanel}
+      onClose={hidePanelClose ? undefined : closePanel}
       avatar={panelAvatar}
       agentName={panelAgentName ?? selectedItem?.group}
       actions={selectedItem ? panelActions?.(selectedItem) : undefined}

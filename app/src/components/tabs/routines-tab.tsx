@@ -1,6 +1,6 @@
 import type { RoutineFormData } from "@houston-ai/routines";
 import { RoutineEditor, RoutinesGrid } from "@houston-ai/routines";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useCancelRoutineRun,
@@ -123,19 +123,16 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
     setBaseline,
   });
 
-  // Returning to the Routines tab with a routine open: the tab switch closed
-  // the shared panel (all tabs portal into one container), so reopen the
-  // routine's chat — the two are one surface now. Transition-gated so a
-  // manual close while ON the tab stays closed.
-  const prevViewModeRef = useRef(viewMode);
+  // While a routine is open on the active Routines tab, its chat stays open
+  // — the panel is part of the view (HOU-725), so any stray close (a tab
+  // round-trip drops the shared panel container, another surface steals it)
+  // reopens it and the previous conversation is right there to continue.
+  const panelOpenAgentId = useUIStore((s) => s.routineSetupChatAgentId);
   useEffect(() => {
-    const entered =
-      prevViewModeRef.current !== "routines" && viewMode === "routines";
-    prevViewModeRef.current = viewMode;
-    if (entered && view.type === "editor" && setupActivity) {
-      chatSetup.openPanel();
-    }
-  }, [viewMode, view, setupActivity, chatSetup]);
+    if (viewMode !== "routines" || view.type !== "editor") return;
+    if (!setupActivity || panelOpenAgentId === agent.id) return;
+    chatSetup.openPanel();
+  }, [viewMode, view, setupActivity, panelOpenAgentId, agent.id, chatSetup]);
 
   const handleSubmit = useCallback(async () => {
     if (view.type !== "editor") return;
@@ -254,6 +251,7 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
           agentDef={agentDef}
           activity={setupActivity}
           showBanner={false}
+          dismissable={false}
           onContinue={chatSetup.openPanel}
         />
         <RoutineEditor
@@ -301,6 +299,7 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
         agentDef={agentDef}
         activity={chatSetup.draftActivity ?? null}
         showBanner
+        dismissable
         onContinue={handleCreate}
       />
       <RoutinesGrid

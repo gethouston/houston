@@ -131,12 +131,39 @@ export function findRoutineChatHeal(
   return null;
 }
 
+/** A provider the user has actually connected, for the kickoff prompts. */
+export interface ConnectedProviderRef {
+  id: string;
+  name: string;
+}
+
+/**
+ * The kickoffs tell the agent which model providers the user actually has
+ * connected: without this it happily pins a routine to any provider the user
+ * names (e.g. "use deepseek"), and the routine then fails at fire time.
+ * `null` means the statuses haven't loaded yet — stay generic rather than
+ * wrongly claiming nothing is connected.
+ */
+function providerAwareness(connected: ConnectedProviderRef[] | null): string {
+  if (connected === null) {
+    return `Model providers: a routine can pin a specific provider and model, but only ones the user has actually connected in this app. If the user asks for a specific provider or model and you cannot confirm it is connected, do not set it — leave the routine's model setup unchanged and suggest they check the app's model settings.`;
+  }
+  const list = connected.length
+    ? connected.map((c) => `"${c.id}" (${c.name})`).join(", ")
+    : "none";
+  return `Model providers: the only providers connected for this user are: ${list}. A routine's "provider" may only be one of those ids (or absent, to use this agent's own settings), and its "model" only a model that belongs to that provider. If the user asks to run the routine on any other provider or model, do NOT set it: tell them that provider is not connected yet (they can connect it from the app's model settings) and leave the routine's model setup unchanged. Never invent provider or model names.`;
+}
+
 /**
  * The Claude-facing create kickoff. English on purpose (all prompts are);
  * the agent mirrors the user's language when it answers. Takes the setup
- * chat's own activity id so the agent can link the routine back to it.
+ * chat's own activity id so the agent can link the routine back to it, and
+ * the user's connected providers so it never pins an unconnected one.
  */
-export function routineSetupPrompt(activityId: string): string {
+export function routineSetupPrompt(
+  activityId: string,
+  connectedProviders: ConnectedProviderRef[] | null,
+): string {
   return `Houston sent this message automatically: the user clicked "New routine". The routine form just opened next to this chat, empty, and this chat is where you help them set it up. The user has not said anything yet and is waiting for you to start.
 
 Your job in this conversation: guide the user through creating ONE new Routine, then create it. This chat stays attached to the routine forever — the user can come back to it any time to change the routine.
@@ -160,7 +187,9 @@ What you need to learn, one step at a time:
 4. Whether every run should add to one ongoing chat, or each run should start a fresh chat.
 5. Whether they want to hear about every run, or only when something needs their attention.
 
-Do not ask about models, providers, or other technical settings. The routine uses this agent's settings. Propose a short name yourself.
+Do not ask about models, providers, or other technical settings — the routine uses this agent's settings unless the user brings it up. Propose a short name yourself.
+
+${providerAwareness(connectedProviders)}
 
 When you have everything, summarize the routine in a few plain lines and ask for approval with ask_user (Yes / No). Only create it after a Yes. When you save the routine, set its "setup_activity_id" field to exactly "${activityId}" — that keeps this chat attached to it; never mention this field or any other technical detail to the user. Then confirm it is scheduled and remind them they can change it right here, in this same chat, or in the form next to it, any time.
 
@@ -172,29 +201,38 @@ If the user creates the routine themselves with the form while you are still ask
  * the form, or from before chats were persisted). One calm greeting, no
  * interview — the routine already exists.
  */
-export function routineModifyPrompt(routine: {
-  id: string;
-  name: string;
-}): string {
+export function routineModifyPrompt(
+  routine: { id: string; name: string },
+  connectedProviders: ConnectedProviderRef[] | null,
+): string {
   return `Houston sent this message automatically: the user opened their existing routine "${routine.name}", and this chat just appeared next to the routine's form. This chat stays attached to this routine from now on. The user has not said anything yet.
 
 Right now, write exactly one short, friendly line (match the user's language) saying you can change this routine for them any time — what it does, when it runs, anything — they just have to tell you. Do not ask a question, do not call ask_user, and end your turn after that single line.
 
-Later in this conversation, when the user asks for changes: update THIS routine — the one whose id is "${routine.id}" — in place. Never create a second routine for a change request. Change only the fields the user asked about and keep every other field of the routine's entry exactly as it already is on disk. Ask for approval with ask_user (Yes / No) before saving a change, keep every message short and non-technical, and never mention files, JSON, schemas, ids, or field names to the user.`;
+Later in this conversation, when the user asks for changes: update THIS routine — the one whose id is "${routine.id}" — in place. Never create a second routine for a change request. Change only the fields the user asked about and keep every other field of the routine's entry exactly as it already is on disk. Ask for approval with ask_user (Yes / No) before saving a change, keep every message short and non-technical, and never mention files, JSON, schemas, ids, or field names to the user.
+
+${providerAwareness(connectedProviders)}`;
 }
 
 /**
  * The full first-message body for a new-routine chat: marker (hides the
  * bubble) + create kickoff (what the model acts on).
  */
-export function encodeRoutineSetupMessage(activityId: string): string {
-  return encodeAutoContinueMessage(routineSetupPrompt(activityId));
+export function encodeRoutineSetupMessage(
+  activityId: string,
+  connectedProviders: ConnectedProviderRef[] | null,
+): string {
+  return encodeAutoContinueMessage(
+    routineSetupPrompt(activityId, connectedProviders),
+  );
 }
 
 /** The full first-message body for an existing routine's first-ever chat. */
-export function encodeRoutineModifyMessage(routine: {
-  id: string;
-  name: string;
-}): string {
-  return encodeAutoContinueMessage(routineModifyPrompt(routine));
+export function encodeRoutineModifyMessage(
+  routine: { id: string; name: string },
+  connectedProviders: ConnectedProviderRef[] | null,
+): string {
+  return encodeAutoContinueMessage(
+    routineModifyPrompt(routine, connectedProviders),
+  );
 }

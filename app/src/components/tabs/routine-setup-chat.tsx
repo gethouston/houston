@@ -31,6 +31,12 @@ interface Props extends TabProps {
   activity: Activity | null;
   /** Render the "continue setting up" banner (grid view only). */
   showBanner: boolean;
+  /**
+   * Whether the panel offers a close button. The grid's draft chat is
+   * dismissable (the banner brings it back); a routine's chat in the editor
+   * is a fixed part of the view (HOU-725) and offers no X.
+   */
+  dismissable: boolean;
   /** Reopen the chat panel (the banner's Continue button). */
   onContinue: () => void;
 }
@@ -49,6 +55,7 @@ export function RoutineSetupChat({
   agentDef,
   activity,
   showBanner,
+  dismissable,
   onContinue,
 }: Props) {
   const { t } = useTranslation("routines");
@@ -189,8 +196,11 @@ export function RoutineSetupChat({
           panelContainer={panelContainer}
           // The chat is a persistent companion of the routine view (HOU-725):
           // clicking app chrome (sidebar, titlebar — including the
-          // double-click that maximizes the window) must not dismiss it.
+          // double-click that maximizes the window) must not dismiss it, and
+          // in the editor there is no X either — the routine and its chat
+          // are one surface.
           disableOutsideClose
+          hidePanelClose={!dismissable}
           feedItems={feedItems}
           isLoading={send.effectiveLoading}
           sessionKeyFor={() => sessionKey ?? ""}

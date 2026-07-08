@@ -27,8 +27,8 @@ import {
 describe("routine chat setup message", () => {
   it("is tagged as an auto-continue message and filtered from the feed", () => {
     for (const body of [
-      encodeRoutineSetupMessage("act-1"),
-      encodeRoutineModifyMessage({ id: "r1", name: "Morning brief" }),
+      encodeRoutineSetupMessage("act-1", null),
+      encodeRoutineModifyMessage({ id: "r1", name: "Morning brief" }, null),
     ]) {
       ok(isAutoContinueMessage(body));
       const filtered = filterAutoContinueFeedItems([
@@ -40,12 +40,14 @@ describe("routine chat setup message", () => {
 
   it("carries the kickoff prompt as the model-facing body", () => {
     ok(
-      encodeRoutineSetupMessage("act-1").endsWith(routineSetupPrompt("act-1")),
+      encodeRoutineSetupMessage("act-1", null).endsWith(
+        routineSetupPrompt("act-1", null),
+      ),
     );
     const routine = { id: "r1", name: "Morning brief" };
     ok(
-      encodeRoutineModifyMessage(routine).endsWith(
-        routineModifyPrompt(routine),
+      encodeRoutineModifyMessage(routine, null).endsWith(
+        routineModifyPrompt(routine, null),
       ),
     );
   });
@@ -103,7 +105,9 @@ describe("routine chat setup message", () => {
     // about models or providers. HOU-725 adds the persistence beats: the
     // greeting says the chat stays available for later changes, and the
     // routine is linked back to this chat via setup_activity_id.
-    const prompt = routineSetupPrompt("act-42");
+    const prompt = routineSetupPrompt("act-42", [
+      { id: "anthropic", name: "Claude" },
+    ]);
     for (const needle of [
       "The user has not said anything yet",
       "Start RIGHT NOW, in this same turn",
@@ -225,10 +229,37 @@ describe("routine chat setup message", () => {
     );
   });
 
+  it("kickoffs name the connected providers so the agent never pins others", () => {
+    // The reported bug: "use deepseek" pinned a provider the user never
+    // connected, and the routine would only fail at fire time.
+    const connected = [
+      { id: "anthropic", name: "Claude" },
+      { id: "openai", name: "ChatGPT" },
+    ];
+    for (const prompt of [
+      routineSetupPrompt("act-1", connected),
+      routineModifyPrompt({ id: "r1", name: "R" }, connected),
+    ]) {
+      ok(
+        prompt.includes(
+          'the only providers connected for this user are: "anthropic" (Claude), "openai" (ChatGPT)',
+        ),
+      );
+      ok(prompt.includes("do NOT set it"));
+      ok(prompt.includes("Never invent provider or model names"));
+    }
+    // Statuses not loaded yet → generic caution, never a false "none".
+    const unknown = routineSetupPrompt("act-1", null);
+    ok(unknown.includes("cannot confirm it is connected"));
+    ok(!unknown.includes("only providers connected"));
+  });
+
   it("modify kickoff greets once and pins the routine it may edit", () => {
     // The routine already exists: no interview, exactly one greeting line,
     // and every later edit targets THIS routine (never a duplicate).
-    const prompt = routineModifyPrompt({ id: "r-7", name: "Morning brief" });
+    const prompt = routineModifyPrompt({ id: "r-7", name: "Morning brief" }, [
+      { id: "anthropic", name: "Claude" },
+    ]);
     for (const needle of [
       'routine "Morning brief"',
       "exactly one short, friendly line",

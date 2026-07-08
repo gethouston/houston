@@ -175,9 +175,18 @@ test("the chat is claimed by the created routine and resumes on reopen", async (
   await expect(page.getByText("Mission: Set up a new routine")).toBeVisible({
     timeout: 10_000,
   });
-  await expect(page.getByText(/Roger that\./)).toBeVisible({
+  await expect(page.getByText(/Roger that\./).first()).toBeVisible({
     timeout: 15_000,
   });
+
+  // …and it can be CONTINUED: a follow-up goes to the same session and the
+  // agent answers in the same thread (a second canned reply appears).
+  await page.getByPlaceholder("Send a follow-up...").fill("Make it weekly");
+  await page.keyboard.press("Enter");
+  // The canned reply echoes the message back — same session, same thread.
+  await expect(
+    page.getByText('Roger that. You said: "Make it weekly"'),
+  ).toBeVisible({ timeout: 15_000 });
 });
 
 test("a routine without a chat gets one on first open, linked from then on", async ({
