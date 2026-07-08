@@ -1,8 +1,8 @@
 /**
  * The mirrored amplitude envelope — the audio-editor curve at the heart of the
  * dictation waveform. Given a `WaveformLayout`, it traces a smooth Catmull-Rom
- * curve through the level points, mirrors it about the centerline, fills the
- * body, and strokes a crisp 1px edge. Pure layout lives in
+ * curve through the level points, mirrors it about the centerline, and fills
+ * one solid body (a single shape, no separate outline). Pure layout lives in
  * `dictation-waveform-math.ts`; the orchestration (leader, head, modes) lives in
  * `dictation-waveform-draw.ts`. All color derives from the passed `currentColor`
  * string — only alpha varies, so it themes without hardcoded hex.
@@ -17,7 +17,7 @@ import {
 
 const MIN_HALF_PX = 0.75; // silence hairline (half-height)
 const OLDEST_FADE_FRACTION = 0.1; // gentle alpha falloff on the oldest slice
-export const EDGE_ALPHA = 0.9; // crisp 1px outline along the envelope
+export const EDGE_ALPHA = 0.9; // solid envelope body (one shape, one alpha)
 
 /** Replace the alpha of a `rgb(...)`/`rgba(...)` color string. */
 export function withAlpha(color: string, alpha: number): string {
@@ -67,35 +67,10 @@ function tracePath(
   ctx.closePath();
 }
 
-/** Stroke just the top + bottom edge curves (the crisp outline). */
-function traceEdges(
-  ctx: CanvasRenderingContext2D,
-  top: readonly Point[],
-  midY: number,
-): void {
-  const segs = catmullRomToBezier(top);
-  const first = top[0];
-  if (!first) return;
-  ctx.beginPath();
-  ctx.moveTo(first.x, first.y);
-  for (const s of segs)
-    ctx.bezierCurveTo(s.c1.x, s.c1.y, s.c2.x, s.c2.y, s.p1.x, s.p1.y);
-  ctx.moveTo(first.x, 2 * midY - first.y);
-  for (const s of segs)
-    ctx.bezierCurveTo(
-      s.c1.x,
-      2 * midY - s.c1.y,
-      s.c2.x,
-      2 * midY - s.c2.y,
-      s.p1.x,
-      2 * midY - s.p1.y,
-    );
-}
-
 /**
- * Fill + outline the mirrored envelope for `layout` at `bodyAlpha`. A single
- * point degrades to a small dot; while scrolling, the oldest slice fades so
- * buckets don't pop as they slide off the left edge.
+ * Fill the mirrored envelope for `layout` at `bodyAlpha` — one solid shape.
+ * A single point degrades to a small dot; while scrolling, the oldest slice
+ * fades so buckets don't pop as they slide off the left edge.
  */
 export function drawEnvelope(
   ctx: CanvasRenderingContext2D,
@@ -127,12 +102,4 @@ export function drawEnvelope(
     ctx.fillStyle = withAlpha(color, bodyAlpha);
   }
   ctx.fill();
-  traceEdges(ctx, top, midY);
-  ctx.lineWidth = 1;
-  ctx.lineJoin = "round";
-  ctx.strokeStyle = withAlpha(
-    color,
-    layout.full ? EDGE_ALPHA * 0.85 : EDGE_ALPHA,
-  );
-  ctx.stroke();
 }

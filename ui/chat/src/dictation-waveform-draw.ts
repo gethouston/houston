@@ -3,7 +3,7 @@
  * layers per frame: the mirrored amplitude envelope (`dictation-waveform-
  * envelope.ts`), a hairline dotted leader over the not-yet-recorded remainder,
  * and a soft playhead cap at the head. Handles the three states — recording
- * (live envelope + head emphasis), requesting (all-dots), transcribing (frozen
+ * (one solid live envelope), requesting (all-dots), transcribing (frozen
  * envelope dimmed under a scanning shimmer). Pure layout lives in
  * `dictation-waveform-math.ts`; color derives from the passed `currentColor`.
  */
@@ -16,9 +16,7 @@ import {
 import { SLOT_PITCH_PX, type WaveformLayout } from "./dictation-waveform-math";
 
 const MAX_HALF_FRACTION = 0.44; // tallest half-envelope as a fraction of height
-const BODY_ALPHA = 0.4; // filled envelope body
-const HEAD_BODY_ALPHA = 0.64; // brighter leading slice (alive at the head)
-const HEAD_EMPHASIS_PX = 18; // width of the brightened leading slice
+const BODY_ALPHA = 0.82; // the one solid envelope body
 const LEADER_ALPHA = 0.28; // idle dotted leader
 const LEADER_DOT_R = 0.9;
 const HEAD_DOT_R = 2; // soft playhead cap
@@ -104,18 +102,8 @@ export function drawWaveform(
     return;
   }
 
-  // recording
+  // recording: one solid envelope — a single wave, no inner layers.
   drawEnvelope(ctx, layout, cssW, midY, maxHalf, color, BODY_ALPHA);
-  // A brighter leading slice makes the head feel alive; clipped to the tip so
-  // the motion never touches the pixel-stable history behind it.
-  if (layout.points.length > 1) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(layout.headX - HEAD_EMPHASIS_PX, 0, HEAD_EMPHASIS_PX + 3, cssH);
-    ctx.clip();
-    drawEnvelope(ctx, layout, cssW, midY, maxHalf, color, HEAD_BODY_ALPHA);
-    ctx.restore();
-  }
   drawLeader(ctx, layout.leaderFromX, cssW, midY, color);
   if (layout.points.length > 0) drawHead(ctx, layout.headX, midY, color);
 }
