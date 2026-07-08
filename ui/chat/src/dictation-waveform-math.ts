@@ -5,11 +5,12 @@
  * Model (audio-editor style): every 100ms amplitude bucket owns a FIXED-width
  * slot. While the track has room, buckets render left→right at stable slots and
  * previously drawn buckets NEVER move or change width — the only motion is the
- * head gliding forward within the current slot. Once the track fills, the whole
- * strip scrolls left (`shift` px): the newest bucket sits at the right edge and
- * the oldest slides off. The scroll offset interpolates the sub-bucket fraction
- * from elapsed time so it glides rather than stepping one slot per 100ms. There
- * is no global re-compression — a bucket's content-x is `index * pitch`, always.
+ * head gliding forward. Once the track fills, the whole strip scrolls left
+ * (`shift` px) and the oldest slides off. Head and shift derive from ONE clock:
+ * continuous elapsed time (`continuousProgress`). The bucket COUNT never feeds
+ * them — audio buckets arrive in bursts, and mixing the two clocks made the
+ * head jiggle a slot back and forth at every bucket boundary. There is no
+ * global re-compression — a bucket's content-x is `index * pitch`, always.
  */
 
 /** One bucket owns this many px of track (mark + gap). DPR-1 css pixels. */
@@ -50,33 +51,26 @@ export function visibleSlotCount(widthPx: number): number {
 }
 
 /**
- * Fraction (0..1) into the current, not-yet-completed bucket. Drives the smooth
- * sub-bucket glide of the head / scroll offset. Monotonic within a bucket
- * window (rises 0→1, then resets as the next bucket starts).
+ * Continuous bucket position derived from elapsed time alone: 1.0 per bucket
+ * window. Monotonic (elapsed only ever grows), so everything positioned from it
+ * (head, scroll shift) glides forward and can never step backward — regardless
+ * of when the recorder's audio buckets actually land.
  */
-export function subBucketFraction(
+export function continuousProgress(
   elapsedMs: number,
   bucketMs: number = WAVEFORM_BUCKET_MS,
 ): number {
   if (!(elapsedMs > 0) || bucketMs <= 0) return 0;
-  return clamp01((elapsedMs % bucketMs) / bucketMs);
+  return elapsedMs / bucketMs;
 }
 
 /**
- * Px the strip is scrolled left. 0 while the whole content still fits (history
- * pixel-stable); positive once the newest bucket would pass the right edge. At a
- * bucket boundary (`frac = 0`) the shift pins the newest bucket exactly to the
- * right edge; the `frac * pitch` term glides it there smoothly in between.
+ * Px the strip is scrolled left. 0 while the head still fits (history
+ * pixel-stable); positive once the head would pass the right edge. Driven by
+ * the continuous time progress only, so it advances smoothly and monotonically.
  */
-export function trackShiftPx(
-  bucketCount: number,
-  widthPx: number,
-  elapsedMs: number,
-  bucketMs: number = WAVEFORM_BUCKET_MS,
-): number {
-  if (bucketCount <= 0) return 0;
-  const frac = subBucketFraction(elapsedMs, bucketMs);
-  const raw = (bucketCount + frac) * SLOT_PITCH_PX - widthPx;
+export function trackShiftPx(progress: number, widthPx: number): number {
+  const raw = progress * SLOT_PITCH_PX + MARGIN_PX * 2 - widthPx;
   return raw > 0 ? raw : 0;
 }
 
@@ -86,16 +80,15 @@ export function bucketScreenX(index: number, shiftPx: number): number {
 }
 
 /**
- * Screen x of the leading edge. Glides right within the current slot while the
- * track has room; pinned to the right edge (`width - margin`) once scrolling.
+ * Screen x of the leading edge. Glides right with elapsed time while the track
+ * has room; pinned EXACTLY to the right edge (`width - margin`) once scrolling
+ * (computed as a min, not via the shift, so float cancellation can't make the
+ * pinned head wobble). Never moves left: `progress` is monotonic.
  */
-export function headScreenX(
-  bucketCount: number,
-  shiftPx: number,
-  frac: number,
-): number {
-  if (bucketCount <= 0) return MARGIN_PX - shiftPx;
-  return bucketScreenX(bucketCount - 1, shiftPx) + frac * SLOT_PITCH_PX;
+export function headScreenX(progress: number, widthPx: number): number {
+  const raw = progress * SLOT_PITCH_PX + MARGIN_PX;
+  const pin = widthPx - MARGIN_PX;
+  return raw < pin ? raw : pin;
 }
 
 /**
@@ -120,9 +113,9 @@ export function computeWaveformLayout(
   bucketMs: number = WAVEFORM_BUCKET_MS,
 ): WaveformLayout {
   const n = levels.length;
-  const frac = subBucketFraction(elapsedMs, bucketMs);
-  const shift = trackShiftPx(n, widthPx, elapsedMs, bucketMs);
-  const headX = headScreenX(n, shift, frac);
+  const progress = continuousProgress(elapsedMs, bucketMs);
+  const shift = trackShiftPx(progress, widthPx);
+  const headX = headScreenX(progress, widthPx);
   const start = firstVisibleIndex(shift);
   const points: WaveformPoint[] = [];
   for (let i = start; i < n; i++) {

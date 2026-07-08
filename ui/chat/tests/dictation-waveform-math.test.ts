@@ -4,10 +4,10 @@ import {
   bucketScreenX,
   catmullRomToBezier,
   computeWaveformLayout,
+  continuousProgress,
   envelopeHalfHeight,
   headScreenX,
   SLOT_PITCH_PX,
-  subBucketFraction,
   trackShiftPx,
   visibleSlotCount,
   WAVEFORM_BUCKET_MS,
@@ -25,29 +25,29 @@ describe("visibleSlotCount", () => {
   });
 });
 
-describe("subBucketFraction", () => {
+describe("continuousProgress", () => {
   it("is 0 before the recording starts", () => {
-    equal(subBucketFraction(0), 0);
-    equal(subBucketFraction(-100), 0);
+    equal(continuousProgress(0), 0);
+    equal(continuousProgress(-100), 0);
   });
 
-  it("rises monotonically across a bucket window, then resets", () => {
-    const a = subBucketFraction(WAVEFORM_BUCKET_MS * 3 + 10);
-    const b = subBucketFraction(WAVEFORM_BUCKET_MS * 3 + 50);
-    const c = subBucketFraction(WAVEFORM_BUCKET_MS * 3 + 90);
-    ok(a < b && b < c, "monotonic within a bucket");
-    equal(subBucketFraction(WAVEFORM_BUCKET_MS * 4), 0); // resets at boundary
+  it("grows monotonically with elapsed time and never resets", () => {
+    const a = continuousProgress(WAVEFORM_BUCKET_MS * 3 + 10);
+    const b = continuousProgress(WAVEFORM_BUCKET_MS * 3 + 50);
+    const c = continuousProgress(WAVEFORM_BUCKET_MS * 4);
+    ok(a < b && b < c, "monotonic across bucket boundaries");
+    equal(continuousProgress(WAVEFORM_BUCKET_MS * 4), 4);
   });
 });
 
 describe("trackShiftPx", () => {
-  it("stays 0 while the content still fits", () => {
-    equal(trackShiftPx(5, WIDTH, WAVEFORM_BUCKET_MS * 5), 0);
-    equal(trackShiftPx(19, WIDTH, WAVEFORM_BUCKET_MS * 19), 0);
+  it("stays 0 while the head still fits", () => {
+    equal(trackShiftPx(5, WIDTH), 0);
+    equal(trackShiftPx(18, WIDTH), 0);
   });
 
-  it("becomes positive once the track is full", () => {
-    ok(trackShiftPx(40, WIDTH, WAVEFORM_BUCKET_MS * 40) > 0);
+  it("becomes positive once the head reaches the right edge", () => {
+    ok(trackShiftPx(40, WIDTH) > 0);
   });
 });
 
@@ -55,38 +55,42 @@ describe("bucketScreenX (slot stability)", () => {
   it("gives a fixed slot independent of how many buckets exist (pre-scroll)", () => {
     // shift is 0 pre-scroll, so bucket 7 sits at the same x whether there are
     // 8 buckets or 15 — previously-drawn history never moves.
-    const early = bucketScreenX(
-      7,
-      trackShiftPx(8, WIDTH, WAVEFORM_BUCKET_MS * 8),
-    );
-    const later = bucketScreenX(
-      7,
-      trackShiftPx(15, WIDTH, WAVEFORM_BUCKET_MS * 15),
-    );
+    const early = bucketScreenX(7, trackShiftPx(8, WIDTH));
+    const later = bucketScreenX(7, trackShiftPx(15, WIDTH));
     equal(early, later);
     equal(early, 7 * SLOT_PITCH_PX + MARGIN);
   });
 });
 
 describe("headScreenX", () => {
-  it("glides right within the current slot before the track fills", () => {
-    const shift = trackShiftPx(5, WIDTH, WAVEFORM_BUCKET_MS * 5); // 0
-    const atStart = headScreenX(5, shift, 0);
-    const midway = headScreenX(
-      5,
-      trackShiftPx(5, WIDTH, WAVEFORM_BUCKET_MS * 5 + 50),
-      0.5,
-    );
-    ok(midway > atStart, "head advances rightward");
+  it("advances monotonically with elapsed time, never backward", () => {
+    let prev = Number.NEGATIVE_INFINITY;
+    for (let ms = 0; ms <= WAVEFORM_BUCKET_MS * 60; ms += 37) {
+      const progress = continuousProgress(ms);
+      const head = headScreenX(progress, WIDTH);
+      ok(head >= prev, `head never steps left (at ${ms}ms)`);
+      prev = head;
+    }
   });
 
-  it("is pinned to the right edge once scrolling (newest bucket at right edge)", () => {
-    const n = 60;
+  it("is independent of how many audio buckets have actually landed", () => {
+    // The jitter bug: head derived from bucket count jumped back a slot when
+    // the wall clock wrapped before the recorder appended the next bucket.
+    // Same elapsed time must give the same head regardless of bucket arrival.
+    const elapsed = WAVEFORM_BUCKET_MS * 8 + 30;
+    const a = computeWaveformLayout([0.5, 0.5, 0.5], WIDTH, elapsed);
+    const b = computeWaveformLayout(new Array(9).fill(0.5), WIDTH, elapsed);
+    equal(a.headX, b.headX);
+  });
+
+  it("is pinned to the right edge once scrolling", () => {
     for (const frac of [0, 0.25, 0.5, 0.9]) {
-      const elapsed = WAVEFORM_BUCKET_MS * n + WAVEFORM_BUCKET_MS * frac;
-      const shift = trackShiftPx(n, WIDTH, elapsed);
+      const progress = continuousProgress(
+        WAVEFORM_BUCKET_MS * 60 + WAVEFORM_BUCKET_MS * frac,
+      );
+      const shift = trackShiftPx(progress, WIDTH);
       ok(shift > 0, "is scrolling");
-      const head = headScreenX(n, shift, subBucketFraction(elapsed));
+      const head = headScreenX(progress, WIDTH);
       ok(
         Math.abs(head - (WIDTH - MARGIN)) < 1e-9,
         `head pinned at frac=${frac}`,
@@ -125,12 +129,12 @@ describe("computeWaveformLayout", () => {
     equal(before.points[3]?.x, after.points[3]?.x);
   });
 
-  it("pins the newest bucket to the right edge at a bucket boundary when full", () => {
+  it("keeps the newest bucket at the head when full (one clock)", () => {
     const n = 50;
     const l = computeWaveformLayout(levels(n), WIDTH, WAVEFORM_BUCKET_MS * n);
     ok(l.full, "is scrolling");
     const newest = l.points[l.points.length - 1];
-    ok(newest !== undefined && Math.abs(newest.x - (WIDTH - MARGIN)) < 1e-9);
+    ok(newest !== undefined && Math.abs(newest.x - l.headX) <= SLOT_PITCH_PX);
   });
 
   it("scrolls the whole strip left monotonically as elapsed grows within a bucket", () => {
