@@ -372,6 +372,13 @@ lang: es
     #ruta{display:block !important}
     section[data-pane]{border-top:1px solid var(--border)}
   }
+
+  /* workshop video embed */
+  .gvideo{margin:22px 0 4px}
+  .gvideo .vlabel{display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--gray7); margin-bottom:10px}
+  .gvideo .vlabel svg{width:16px; height:16px}
+  .gvideo .vframe{position:relative; width:100%; aspect-ratio:16/9; border-radius:16px; overflow:hidden; border:1px solid var(--border); box-shadow:0 6px 24px rgba(13,13,13,0.07); background:#0f1115}
+  .gvideo .vframe iframe{position:absolute; inset:0; width:100%; height:100%; border:0}
 </style>
 {% endblock %}
 {% block body %}
@@ -448,6 +455,13 @@ lang: es
       </span>
     </div>
   </header>
+    <div class="gvideo">
+      <div class="vlabel"><svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M4 5h16v14H4z" stroke-linejoin="round"/><path d="M10 9l5 3-5 3z" fill="#c2560c" stroke="none"/></svg>Mira el workshop completo (video)</div>
+      <div class="vframe">
+        <iframe id="gyt" src="https://www.youtube-nocookie.com/embed/5oPoU71rlok?rel=0&enablejsapi=1" title="Workshop: Crea tu Agente de Revenue Management con IA" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+    </div>
+
 
   <!-- WHAT YOU WILL BUILD -->
   <section id="que-vas-a-construir" data-pane="0">
@@ -964,6 +978,39 @@ lang: es
     show(start, false);
   }
   window.addEventListener('beforeprint', function(){ applyFull(true); });
+})();
+</script>
+
+
+<script>
+(function(){
+  function track(name, props){
+    var payload = props || {};
+    if (window.posthog && window.posthog.capture){ try { window.posthog.capture(name, payload); } catch(e){} }
+    if (typeof window.gtag === 'function'){ try { window.gtag('event', name, payload); } catch(e){} }
+  }
+  var el = document.getElementById('gyt');
+  if (!el) return;
+  var fired = false;
+  function onReady(){
+    try {
+      var player = new YT.Player('gyt', {
+        events: {
+          onStateChange: function(e){
+            if (e.data === YT.PlayerState.PLAYING && !fired){
+              fired = true;
+              track('guide_video_play', { guide: 'Revenue Manager Agent', lang: 'es' });
+            }
+          }
+        }
+      });
+    } catch(e){}
+  }
+  var tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+  if (window.YT && window.YT.Player){ onReady(); }
+  else { window.onYouTubeIframeAPIReady = onReady; }
 })();
 </script>
 
