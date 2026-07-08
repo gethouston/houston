@@ -4,13 +4,19 @@ import Foundation
 /// convention), a pure projection of an ``AgentOverview`` so the selection rule
 /// unit-tests without a view.
 ///
-/// Selection (PARITY §4): a `needs_you` agent keeps its product-voice
-/// last-activity line; an agent that is only running (has a running mission and
-/// no needs-you) shows the localized "working…" signal, tinted the accent role
-/// like WhatsApp's "typing…"; an idle agent shows its last-activity line, or the
+/// Selection (PARITY §4 — ONE signal per state): a running agent shows the
+/// localized "working…" signal, tinted the accent role like WhatsApp's
+/// "typing…", REGARDLESS of any needs-you count — the filled `NeedsYouChip` is
+/// the one-and-only needs-you signal, so the preview never repeats it (WhatsApp
+/// shows "typing…" even with an unread badge). The ONE exception is an errored
+/// most-recent mission: `error` is NOT folded into `needsYouCount`, so it carries
+/// NO badge, and the line is its only surface — it must win over "working…" or a
+/// co-existing running mission would silently swallow the failure. An agent with
+/// no running mission (and no errored last mission) shows its last-activity line,
+/// which itself carries NO needs-you phrasing (the badge says the rest); or the
 /// no-missions line when it has none.
 enum AgentRowPreview: Equatable {
-    /// Only running (no needs-you): the "working…" typing-style signal.
+    /// The agent has a running mission: the "working…" typing-style signal.
     case working
     /// The most-recent-mission line (needs-you agents and idle agents alike).
     case activity(MissionState, String)
@@ -18,7 +24,12 @@ enum AgentRowPreview: Equatable {
     case none
 
     static func derive(_ overview: AgentOverview) -> AgentRowPreview {
-        if overview.summary.needsYouCount == 0, overview.summary.runningCount > 0 {
+        // An errored most-recent mission has no badge (error is not counted into
+        // needsYouCount), so its line is the only surface — it must beat "working…".
+        if let last = overview.lastActivity, last.state == .error {
+            return .activity(last.state, last.title)
+        }
+        if overview.summary.runningCount > 0 {
             return .working
         }
         guard let last = overview.lastActivity else { return .none }

@@ -86,6 +86,43 @@ final class AgentsOverviewBuilderTests: XCTestCase {
         XCTAssertEqual(out.map(\.id), ["needs", "running", "recent", "old"])
     }
 
+    // MARK: Preview over the real fold (ONE signal per state, PARITY §4)
+
+    func testRunningAndNeedsYouFoldPreviewsWorkingWithBadge() {
+        // A running mission + a needs-you mission: the fold counts both, the
+        // preview shows "working…" (the badge is the sole needs-you signal).
+        let out = AgentsOverviewBuilder.build([entry("a", [
+            MissionFixture.activity(id: "r", title: "Deploy", status: "running",
+                                    updatedAt: "2026-07-02T10:00:00Z"),
+            MissionFixture.activity(id: "n", title: "Taxes", status: "needs_you",
+                                    updatedAt: "2026-07-01T10:00:00Z"),
+        ])])
+        XCTAssertEqual(AgentRowPreview.derive(out[0]), .working)
+        XCTAssertEqual(out[0].needsYouCount, 1) // badge still visible
+    }
+
+    func testNeedsYouOnlyFoldPreviewsBareTitleWithBadge() {
+        let out = AgentsOverviewBuilder.build([entry("a", [
+            MissionFixture.activity(id: "n", title: "Taxes", status: "needs_you",
+                                    updatedAt: "2026-07-01T10:00:00Z"),
+        ])])
+        XCTAssertEqual(AgentRowPreview.derive(out[0]), .activity(.needsYou, "Taxes"))
+        XCTAssertEqual(AgentRowPreview.derive(out[0]).text, "Taxes") // bare title
+        XCTAssertEqual(out[0].needsYouCount, 1)
+    }
+
+    func testErrorOnlyFoldPreviewsSnagLineWithNoBadge() {
+        // error is NOT counted into needsYouCount, so no badge carries it — the
+        // preview keeps "Hit a snag on …" as genuine information.
+        let out = AgentsOverviewBuilder.build([entry("a", [
+            MissionFixture.activity(id: "e", title: "Report", status: "error",
+                                    updatedAt: "2026-07-01T10:00:00Z"),
+        ])])
+        XCTAssertEqual(AgentRowPreview.derive(out[0]), .activity(.error, "Report"))
+        XCTAssertEqual(AgentRowPreview.derive(out[0]).text, "Hit a snag on Report")
+        XCTAssertEqual(out[0].needsYouCount, 0)
+    }
+
     func testNeedsYouAgentSortsAheadEvenWithOlderActivity() {
         // Attention beats recency: a needs-you agent with an OLD timestamp still
         // outranks a purely-idle agent with a newer one.

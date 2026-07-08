@@ -1,11 +1,11 @@
 import SwiftUI
 
-/// One mission on the per-agent missions screen: a tappable `List` row that opens
-/// the chat, with explicit actions via context menu and trailing swipe (PARITY §1
-/// — no drag). The visual is the shared ``MissionCardView`` (title, description
-/// preview, status chip, updatedAt); only the affordance set differs from Mission
-/// Control's row — this screen adds **Delete** to Rename / Archive. (Move-to-done
-/// was removed from the lists; a mission-moving affordance is a later design.)
+/// One mission on the per-agent missions screen: a slim, sober `List` row (the
+/// WhatsApp-style conversation line — ``MissionRowContent``, no avatar/card) that
+/// opens the chat on tap, with explicit actions via context menu and trailing
+/// swipe (PARITY §1 — no drag). This screen adds **Delete** to Rename / Archive.
+/// Rows are plain List rows: default background and the List's inset hairline
+/// separators, inset from the text start.
 struct AgentMissionRow: View {
     let card: MissionCardData
     let onOpen: (ChatRoute) -> Void
@@ -15,13 +15,11 @@ struct AgentMissionRow: View {
 
     var body: some View {
         Button { onOpen(card.chatRoute) } label: {
-            MissionCardView(card: card)
+            MissionRowContent(line: MissionRowLine.derive(card))
         }
         .buttonStyle(.plain)
-        .listRowInsets(EdgeInsets(top: Spacing.space6, leading: Spacing.space16,
-                                  bottom: Spacing.space6, trailing: Spacing.space16))
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: Spacing.space10, leading: Spacing.space16,
+                                  bottom: Spacing.space10, trailing: Spacing.space16))
         .contextMenu { menu }
         .swipeActions(edge: .trailing) { swipe }
     }

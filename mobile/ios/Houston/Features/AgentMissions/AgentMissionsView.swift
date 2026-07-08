@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// The per-agent missions screen (pushed from a contact row): an agent header,
-/// missions grouped in PARITY order (Needs you incl. error, Running, Done) with
+/// The per-agent missions screen (pushed from a contact row): a sober,
+/// WhatsApp-style conversation list — no header, no avatar (the inline nav title
+/// already names the agent, the helmet already lives on the home row). Missions
+/// are grouped in PARITY order (Needs you incl. error, Running, Done) with
 /// explicit per-mission actions, and an Archived entry. A new mission starts from
 /// the SAME top `square.and.pencil` compose button used on the Agents tab and
 /// Mission Control — here PRE-SCOPED to this agent (no picker: it opens a draft
@@ -42,49 +44,34 @@ struct AgentMissionsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            content
-        }
-        .background(theme.background)
-        .navigationTitle(agent.name)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            NewMissionToolbarButton {
-                onOpenChat(.draft(agentId: agent.id, title: agent.name))
+        content
+            .background(theme.background)
+            .navigationTitle(agent.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                NewMissionToolbarButton {
+                    onOpenChat(.draft(agentId: agent.id, title: agent.name))
+                }
             }
-        }
-        .missionActionDialogs(
-            renameTarget: $renameTarget, renameText: $renameText,
-            archiveTarget: $archiveTarget, actionError: $actionError,
-            onCommitRename: commitRename, onCommitArchive: commitArchive
-        )
-        .confirmationDialog(
-            Strings.AgentMissions.deleteConfirmTitle,
-            isPresented: deletePresented, titleVisibility: .visible, presenting: deleteTarget
-        ) { card in
-            Button(Strings.Board.delete, role: .destructive) { commitDelete(card) }
-            Button(Strings.MissionControl.cancel, role: .cancel) {}
-        } message: { _ in
-            Text(Strings.AgentMissions.deleteConfirmBody)
-        }
-        .onAppear { if retention == nil { retention = overview.retain() } }
-        .onDisappear { retention?.cancel(); retention = nil }
+            .missionActionDialogs(
+                renameTarget: $renameTarget, renameText: $renameText,
+                archiveTarget: $archiveTarget, actionError: $actionError,
+                onCommitRename: commitRename, onCommitArchive: commitArchive
+            )
+            .confirmationDialog(
+                Strings.AgentMissions.deleteConfirmTitle,
+                isPresented: deletePresented, titleVisibility: .visible, presenting: deleteTarget
+            ) { card in
+                Button(Strings.Board.delete, role: .destructive) { commitDelete(card) }
+                Button(Strings.MissionControl.cancel, role: .cancel) {}
+            } message: { _ in
+                Text(Strings.AgentMissions.deleteConfirmBody)
+            }
+            .onAppear { if retention == nil { retention = overview.retain() } }
+            .onDisappear { retention?.cancel(); retention = nil }
     }
 
     // MARK: Pieces
-
-    private var header: some View {
-        HStack(spacing: Spacing.space12) {
-            HoustonAvatar(agentColorHex: nil, diameter: 40, running: grouping.hasRunning)
-            Text(agent.name)
-                .font(Typography.title)
-                .foregroundStyle(theme.foreground)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, Spacing.space16)
-        .padding(.vertical, Spacing.space12)
-    }
 
     @ViewBuilder private var content: some View {
         if grouping.isEmpty && grouping.archivedCount == 0 {

@@ -107,15 +107,54 @@ final class AgentRowTimeTests: XCTestCase {
         XCTAssertEqual(preview.text, Strings.Chat.TitleBar.working)
     }
 
-    func testNeedsYouAgentKeepsActivityPreview() {
-        // needs_you wins over running: the row keeps its product-voice line.
-        let preview = AgentRowPreview.derive(
-            overview(last: last("2026-07-08T10:00:00Z", state: .needsYou, title: "Taxes"),
-                     needsYou: 1, running: 1)
-        )
+    func testRunningWinsOverNeedsYouSoBadgeIsTheOnlyNeedsYouSignal() {
+        // ONE signal per state (PARITY §4): a running agent shows "working…" even
+        // with a needs-you count — the filled NeedsYouChip is the sole needs-you
+        // signal, so the preview never repeats it (WhatsApp "typing…" + unread).
+        let ov = overview(last: last("2026-07-08T10:00:00Z", state: .needsYou, title: "Taxes"),
+                          needsYou: 1, running: 1)
+        let preview = AgentRowPreview.derive(ov)
+        XCTAssertEqual(preview, .working)
+        XCTAssertTrue(preview.isWorking)
+        XCTAssertEqual(preview.text, Strings.Chat.TitleBar.working)
+        // Badge still shows: the count survives and the row renders the chip.
+        XCTAssertEqual(ov.needsYouCount, 1)
+    }
+
+    func testNeedsYouOnlyPreviewsBareTitleWithBadge() {
+        // No running mission: the last-activity line drops all needs-you phrasing
+        // (bare title) because the badge carries it — no duplicate signal.
+        let ov = overview(last: last("2026-07-08T10:00:00Z", state: .needsYou, title: "Taxes"),
+                          needsYou: 1, running: 0)
+        let preview = AgentRowPreview.derive(ov)
         XCTAssertEqual(preview, .activity(.needsYou, "Taxes"))
         XCTAssertFalse(preview.isWorking)
-        XCTAssertEqual(preview.text, Strings.Agents.lastActivity(state: .needsYou, title: "Taxes"))
+        XCTAssertEqual(preview.text, "Taxes")
+        XCTAssertEqual(ov.needsYouCount, 1)
+    }
+
+    func testErrorPreviewKeepsSnagLineAndNoBadge() {
+        // Error is NOT folded into needsYouCount (see AgentsOverviewBuilder), so it
+        // carries no badge — the line keeps "Hit a snag on …" as real information.
+        let ov = overview(last: last("2026-07-08T10:00:00Z", state: .error, title: "Report"),
+                          needsYou: 0, running: 0)
+        let preview = AgentRowPreview.derive(ov)
+        XCTAssertEqual(preview, .activity(.error, "Report"))
+        XCTAssertEqual(preview.text, "Hit a snag on Report")
+        XCTAssertEqual(ov.needsYouCount, 0)
+    }
+
+    func testErrorSurvivesACoexistingRunningMission() {
+        // An errored most-recent mission carries NO badge (error is not folded into
+        // needsYouCount), so the preview line is its ONLY surface. A co-existing
+        // running mission must NOT overwrite it with "working…" — the failure would
+        // otherwise vanish from the home row entirely (no line, no chip).
+        let ov = overview(last: last("2026-07-08T12:00:00Z", state: .error, title: "Report"),
+                          needsYou: 1, running: 1)
+        let preview = AgentRowPreview.derive(ov)
+        XCTAssertEqual(preview, .activity(.error, "Report"))
+        XCTAssertFalse(preview.isWorking)
+        XCTAssertEqual(preview.text, "Hit a snag on Report")
     }
 
     func testIdleAgentPreviewsLastActivity() {
@@ -123,6 +162,7 @@ final class AgentRowTimeTests: XCTestCase {
             overview(last: last("2026-07-01T10:00:00Z", state: .done, title: "Report"))
         )
         XCTAssertEqual(preview, .activity(.done, "Report"))
+        XCTAssertEqual(preview.text, "Finished Report")
     }
 
     func testEmptyAgentPreviewsNoActivity() {

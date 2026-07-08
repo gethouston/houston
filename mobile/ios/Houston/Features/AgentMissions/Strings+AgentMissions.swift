@@ -12,6 +12,13 @@ import Foundation
 // files/JSON/CLI mentions, no em dash — matching the Houston voice rules.
 extension Strings {
     enum AgentMissions {
+        /// The errored-mission second line — the same "snag" phrasing as the
+        /// Agents-home row (`Strings.Agents.lastActivity(state: .error, …)`), but
+        /// title-less here because the mission title already sits on line 1.
+        /// Keeping the title off avoids the duplicate-signal this sober list is
+        /// built to remove. (`working` reuses `Strings.Chat.TitleBar.working`.)
+        static let snag = "Hit a snag"
+
         /// Destructive delete confirmation (title + body); the confirm button
         /// reuses `Strings.Board.delete` ("Delete").
         static let deleteConfirmTitle = "Delete mission?"

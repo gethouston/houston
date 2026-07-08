@@ -60,7 +60,5 @@ struct AgentMissionsSectionList: View {
         .buttonStyle(.plain)
         .listRowInsets(EdgeInsets(top: Spacing.space12, leading: Spacing.space16,
                                   bottom: Spacing.space12, trailing: Spacing.space16))
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
     }
 }

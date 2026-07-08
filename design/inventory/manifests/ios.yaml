@@ -52,8 +52,12 @@ components:
       WhatsApp chat-list cell — line 1: avatar + name + right-aligned relative time
       (AgentRowTime.swift, from AgentOverview.lastActivityAt parsed by
       ActivityTimestamp.swift); line 2: preview text + trailing FILLED needs-you
-      count chip. Preview (AgentRowPreview.swift): accent-tinted "Working…" while
-      running, else activity/idle. The list adds pull-down .searchable name filter
+      count chip. Preview (AgentRowPreview.swift) follows the ONE-signal rule:
+      accent-tinted "Working…" whenever runningCount>0 (regardless of needs-you —
+      the filled chip is the sole needs-you signal, so the preview never repeats
+      it); else the last-activity line, which renders a BARE title for needs_you
+      (badge says the rest) and keeps "Hit a snag on …" for error (a genuine
+      failure carries no badge); else the no-missions line. The list adds pull-down .searchable name filter
       (AgentSearch.swift, pure/diacritic-insensitive) with a "No results" state and
       an animated tier/recency reorder (AgentsView.swift, Strings+AgentSearch.swift).
   conversation-feed:
@@ -148,7 +152,18 @@ components:
   mission-card:
     status: implemented
     ref: mobile/ios/Houston/Features/MissionControl/MissionCardView.swift
-    notes: Avatar, title, description, tags, running-glow / destructive-error border; actions via context menu + swipe (mobile's model for the desktop drag-handle/select-checkbox).
+    notes: >-
+      Avatar, title, description, tags, running-glow / destructive-error border;
+      actions via context menu + swipe (mobile's model for the desktop
+      drag-handle/select-checkbox). Used ONLY on the Mission Control board now.
+      The per-agent missions screen (AgentMissions/) deliberately does NOT use
+      this card: it renders a sober WhatsApp-style conversation list of slim
+      two-line rows (MissionRowContent.swift, derived by the pure
+      MissionRowLine.swift) — no avatar/name/tags/card chrome, List inset hairline
+      separators, line 1 = title + relative time, line 2 = accent "Working…" /
+      destructive snag / muted description, collapsing away when empty. That row
+      is native-only styling of the same MissionCardData, not a separate inventory
+      component (the archived list reuses it).
   mission-board:
     status: implemented
     ref: mobile/ios/Houston/Features/MissionControl/MissionControlPager.swift

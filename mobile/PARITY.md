@@ -120,8 +120,14 @@ aggregation (`needsYouCount`/`runningCount`) and avatar rules above are unchange
   `ChatBubbleTime`); yesterday → `Strings.Chat.Timeline.yesterday`; ≤6 days → weekday; older → short
   date. `nil` when no dated mission. Injectable `now`/`calendar`/`locale`; formatters pinned to the
   calendar's timezone.
-- **Preview line** (`AgentRowPreview.derive`): running → "Working…" (`Strings.Chat.TitleBar.working`,
-  accent-tinted); else needs-you/idle activity text; else none.
+- **Preview line — ONE signal per state** (`AgentRowPreview.derive`): running → "Working…"
+  (`Strings.Chat.TitleBar.working`, accent-tinted) **whenever `runningCount > 0`, regardless of any
+  needs-you count** — the filled `NeedsYouChip` is the sole needs-you signal, so the preview never
+  repeats it (WhatsApp shows "typing…" even with an unread badge). No running mission → the
+  last-activity line (`Strings.Agents.lastActivity`), which renders a **bare title** for `needs_you`
+  (the badge carries the rest) and keeps **"Hit a snag on …"** for `error` (a genuine failure is
+  information and carries no badge — the fold does not count `error` into `needsYouCount`). No
+  missions → the no-missions line.
 - **Filled needs-you badge** — `NeedsYouChip` now defaults to `.filled` (`warning` fill + `warningFg`
   text) instead of the outline capsule; the "99+" cap is unchanged (`StatusChip.swift`). `AgentRow`
   is its only caller; Mission Control uses the native `BadgeModel`, not this chip.
@@ -133,6 +139,27 @@ aggregation (`needsYouCount`/`runningCount`) and avatar rules above are unchange
 
 Row derivations are pure and unit-tested (`HoustonTests/Agents/AgentRowTimeTests`,
 `AgentSearchTests`, `AgentsOverviewBuilderTests`).
+
+### iOS per-agent missions screen — a sober conversation list (founder directive 2026-07-06)
+Tapping a home row pushes the agent's missions screen (`AgentMissions/AgentMissionsView.swift`),
+rebuilt from a card grid into a WhatsApp-style conversation list. Native-only; the grouping/order and
+`MissionCardData` are unchanged — this is layout.
+- **No header** — the inline `navigationTitle` already names the agent and the home row already shows
+  the helmet, so the old 40pt avatar + title block was removed. Body is just the grouped list.
+- **Slim two-line rows** (`MissionRowContent.swift`, derived by the pure `MissionRowLine.swift`):
+  line 1 = mission title + right-aligned relative time (`MissionTimestamp.relativeLabel`, hidden when
+  unparseable); line 2 = a state signal that **collapses away when empty** — accent "Working…" (reuses
+  `Strings.Chat.TitleBar.working`) while running, destructive `Strings.AgentMissions.snag`
+  ("Hit a snag", title-less — the title is already on line 1) for error, else a muted description
+  preview. Running dominates, then error, then description. **No** avatar / agent name / tags / card
+  border / fill / glow; the `List` supplies inset hairline separators; rows keep a ~44pt tap target.
+- **Grouping unchanged** — one `Section` per non-empty group in PARITY order (Needs you incl. error,
+  Running, Done) with `BoardColumn.label` headers, plus a trailing Archived row. `needs_you`/`done`
+  add no per-row chrome: the section header is the signal (sober = trust the structure).
+- **Archived list** (`AgentArchivedMissionsView.swift`) reuses the SAME `MissionRowContent`, restyled
+  to match (plain rows, inset separators) so the two screens read as one list.
+- `MissionCardView` (the card) is now used ONLY by Mission Control's board (`MissionCardRow.swift`).
+- Derivation is pure and unit-tested (`HoustonTests/AgentMissions/MissionRowLineTests`).
 
 ## 5. Mission chat feed catalog
 `FeedItem` union: `ui/chat/src/types.ts`. Fold: `ui/chat/src/feed-to-messages.ts`.
