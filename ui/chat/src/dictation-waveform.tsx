@@ -1,12 +1,19 @@
 /**
  * Live recording waveform for the composer takeover (audio-editor style). While
  * recording, each 100ms amplitude bucket owns a fixed-width slot: buckets fill
- * left→right as a smooth mirrored envelope, the head carries a soft playhead
- * cap, and the remainder of the track is a hairline dotted leader. Once the
- * track fills, the strip scrolls left with the newest bucket at the right edge —
- * previously drawn history stays pixel-stable, never re-compressed. Requesting
- * shows an all-dots pulse; transcribing freezes the final envelope (same stable
- * layout) at reduced opacity under a gentle scanning shimmer.
+ * left→right as a smooth mirrored envelope, and the remainder of the track is a
+ * solid hairline leader. Once the track fills, the strip scrolls left with the
+ * newest bucket at the right edge — previously drawn history stays pixel-stable,
+ * never re-compressed. Requesting shows a full-width hairline pulse; transcribing
+ * freezes the final envelope (same stable layout) at reduced opacity under a
+ * gentle scanning shimmer.
+ *
+ * The leading edge (playhead) is a small lucide Rocket "flying" right along the
+ * track: an absolutely-positioned DOM overlay (NOT drawn on canvas) moved each
+ * rAF frame via `style.transform` on a ref, so per-frame motion never triggers a
+ * React re-render. It rides the track midline at `layout.headX` — the left start
+ * while requesting, gliding with the head while recording, pinned to the right
+ * edge once scrolling — and is hidden while transcribing.
  *
  * Rendered on a devicePixelRatio-scaled <canvas> for crisp, cheap drawing.
  * Colors come from `currentColor` (the wrapper carries `text-muted-foreground`)
@@ -14,10 +21,14 @@
  * — never through React state — so per-frame updates never trigger a re-render.
  */
 
+import { RocketIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { DictationControl } from "./dictation-types";
 import { drawWaveform, type WaveformMode } from "./dictation-waveform-draw";
 import { computeWaveformLayout } from "./dictation-waveform-math";
+
+/** Rocket overlay size (px). Nose points up-right at rest; +45° faces it right. */
+const ROCKET_PX = 15;
 
 function parseColor(canvas: HTMLCanvasElement): string {
   const c = getComputedStyle(canvas).color;
@@ -37,6 +48,7 @@ interface Frozen {
 
 export function DictationWaveform({ control }: { control: DictationControl }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rocketRef = useRef<HTMLSpanElement>(null);
   const frozenRef = useRef<Frozen>({ levels: [], elapsedMs: 0 });
   const controlRef = useRef(control);
   controlRef.current = control;
@@ -90,6 +102,20 @@ export function DictationWaveform({ control }: { control: DictationControl }) {
       );
       const shimmer = mode === "transcribing" ? (Date.now() / 1400) % 1 : 0;
       drawWaveform(ctx, cssW, cssH, color, layout, { mode, shimmer });
+
+      // Fly the rocket to the leading edge. The overlay sits at the container's
+      // left/top:50% (the canvas midline); translate centers it on headX and the
+      // track midline, rotate(+45deg) turns lucide's up-right nose to face right.
+      const rocket = rocketRef.current;
+      if (rocket) {
+        if (mode === "transcribing") {
+          rocket.style.opacity = "0";
+        } else {
+          rocket.style.opacity = "1";
+          const x = layout.headX - ROCKET_PX / 2;
+          rocket.style.transform = `translate(${x}px, -50%) rotate(45deg)`;
+        }
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -108,7 +134,7 @@ export function DictationWaveform({ control }: { control: DictationControl }) {
 
   return (
     <div
-      className="flex h-9 min-w-0 flex-1 items-center text-muted-foreground"
+      className="relative flex h-9 min-w-0 flex-1 items-center text-muted-foreground"
       role="status"
       aria-live="polite"
     >
@@ -117,6 +143,14 @@ export function DictationWaveform({ control }: { control: DictationControl }) {
         ref={canvasRef}
         className={`h-6 w-full ${pulsing ? "animate-pulse" : ""}`}
       />
+      <span
+        ref={rocketRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute left-0 top-1/2 text-foreground"
+        style={{ opacity: 0, willChange: "transform" }}
+      >
+        <RocketIcon style={{ width: ROCKET_PX, height: ROCKET_PX }} />
+      </span>
     </div>
   );
 }

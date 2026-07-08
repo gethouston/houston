@@ -109,8 +109,10 @@ export function ChatInput({
   const dictating = isDictationActive(dictation);
 
   // While capturing, the textarea (which owns the keydown handler) is replaced
-  // by the waveform, so Escape-to-cancel has no focus target. Listen globally
-  // for the duration of the capture instead.
+  // by the waveform, so Escape/Enter have no focus target. Listen globally for
+  // the duration of the capture instead: Escape discards, Enter (no shift)
+  // accepts — the same as clicking ✓ (stop + transcribe). During transcribing
+  // this effect is inactive (not a capturing state), so Enter does nothing.
   const capturing = isDictationCapturing(dictation);
   useEffect(() => {
     if (!capturing) return;
@@ -118,6 +120,11 @@ export function ChatInput({
       if (e.key === "Escape") {
         e.preventDefault();
         dictation?.onCancel();
+        return;
+      }
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        dictation?.onStop();
       }
     };
     document.addEventListener("keydown", onKey);

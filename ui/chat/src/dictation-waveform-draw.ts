@@ -1,25 +1,20 @@
 /**
- * Canvas orchestration for the dictation waveform. Composes the three visual
- * layers per frame: the mirrored amplitude envelope (`dictation-waveform-
- * envelope.ts`), a hairline dotted leader over the not-yet-recorded remainder,
- * and a soft playhead cap at the head. Handles the three states — recording
- * (one solid live envelope), requesting (all-dots), transcribing (frozen
+ * Canvas orchestration for the dictation waveform. Composes the visual layers
+ * per frame: the mirrored amplitude envelope (`dictation-waveform-envelope.ts`)
+ * and a solid hairline leader over the not-yet-recorded remainder. The leading
+ * edge (playhead) is a DOM overlay rocket owned by `dictation-waveform.tsx`, not
+ * drawn on canvas. Handles the three states — recording (one solid live
+ * envelope + leader), requesting (full-width hairline), transcribing (frozen
  * envelope dimmed under a scanning shimmer). Pure layout lives in
  * `dictation-waveform-math.ts`; color derives from the passed `currentColor`.
  */
 
-import {
-  drawEnvelope,
-  EDGE_ALPHA,
-  withAlpha,
-} from "./dictation-waveform-envelope";
-import { SLOT_PITCH_PX, type WaveformLayout } from "./dictation-waveform-math";
+import { drawEnvelope, withAlpha } from "./dictation-waveform-envelope";
+import type { WaveformLayout } from "./dictation-waveform-math";
 
 const MAX_HALF_FRACTION = 0.44; // tallest half-envelope as a fraction of height
 const BODY_ALPHA = 0.82; // the one solid envelope body
-const LEADER_ALPHA = 0.28; // idle dotted leader
-const LEADER_DOT_R = 0.9;
-const HEAD_DOT_R = 2; // soft playhead cap
+const LEADER_ALPHA = 0.28; // solid hairline leader
 const FROZEN_ALPHA = 0.5; // transcribing dim
 const SHIMMER_HALF_PX = 26; // half-width of the transcribing scan band
 
@@ -31,6 +26,7 @@ export interface DrawOpts {
   shimmer: number;
 }
 
+/** Solid 1px hairline at the centerline over the not-yet-recorded remainder. */
 function drawLeader(
   ctx: CanvasRenderingContext2D,
   fromX: number,
@@ -38,29 +34,13 @@ function drawLeader(
   midY: number,
   color: string,
 ): void {
-  ctx.fillStyle = withAlpha(color, LEADER_ALPHA);
-  for (let x = fromX + SLOT_PITCH_PX; x < toX; x += SLOT_PITCH_PX) {
-    ctx.beginPath();
-    ctx.arc(x, midY, LEADER_DOT_R, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-/** Soft playhead cap at the head — the only lively motion, confined to the tip. */
-function drawHead(
-  ctx: CanvasRenderingContext2D,
-  headX: number,
-  midY: number,
-  color: string,
-): void {
-  ctx.fillStyle = withAlpha(color, EDGE_ALPHA);
+  if (toX <= fromX) return;
+  ctx.strokeStyle = withAlpha(color, LEADER_ALPHA);
+  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.arc(headX, midY, HEAD_DOT_R, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = withAlpha(color, 0.18);
-  ctx.beginPath();
-  ctx.arc(headX, midY, HEAD_DOT_R * 2.4, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(fromX, midY);
+  ctx.lineTo(toX, midY);
+  ctx.stroke();
 }
 
 export function drawWaveform(
@@ -102,8 +82,7 @@ export function drawWaveform(
     return;
   }
 
-  // recording: one solid envelope — a single wave, no inner layers.
+  // recording: one solid envelope + a solid hairline leader ahead of the head.
   drawEnvelope(ctx, layout, cssW, midY, maxHalf, color, BODY_ALPHA);
   drawLeader(ctx, layout.leaderFromX, cssW, midY, color);
-  if (layout.points.length > 0) drawHead(ctx, layout.headX, midY, color);
 }
