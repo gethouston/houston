@@ -61,7 +61,7 @@ lang: en
   .coming-head h2 .accent{background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent}
   .coming-head p{margin:8px 0 0; color:var(--muted); font-size:15.5px}
   .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; padding:24px 0 90px}
-  .ccard{display:flex; flex-direction:column; text-decoration:none; color:var(--ink); background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden; transition:.15s border-color, .15s transform, .15s box-shadow}
+  .ccard{display:flex; flex-direction:column; color:var(--ink); background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden; transition:.15s border-color, .15s transform, .15s box-shadow}
   .ccard:hover{border-color:#cfd4dc; transform:translateY(-2px); box-shadow:0 8px 24px rgba(13,13,13,0.06)}
   .cthumb{position:relative; aspect-ratio:2.6; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:center; text-align:center; padding:0 14px; background:
     radial-gradient(ellipse 80% 60% at 50% -10%, rgba(59,130,246,0.10), transparent),
@@ -70,11 +70,10 @@ lang: en
   .cthumb .cname{font-weight:600; letter-spacing:-0.03em; font-size:20.5px; line-height:1.1}
   .cthumb .cname .grad{background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent}
   .cthumb::after{content:""; position:absolute; right:13px; bottom:11px; width:9px; height:9px; border-radius:50%; background:linear-gradient(150deg,#818cf8,#3b82f6 38%,#fb923c 78%,#f97316)}
-  .cthumb .cs{position:absolute; top:10px; left:12px; font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--gray6); background:rgba(255,255,255,0.85); border:1px solid var(--border); border-radius:999px; padding:3px 9px}
-  .cpad{padding:13px 16px 15px; display:flex; flex-direction:column; gap:5px; flex:1}
+  .cthumb .cs{position:absolute; top:10px; left:12px; font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--gray6); background:rgba(255,255,255,0.85); border-radius:999px; padding:3px 9px}
+  .cpad{padding:13px 16px 17px; display:flex; flex-direction:column; gap:5px; flex:1}
   .ccat{font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:#3b82f6}
   .cpad p{margin:0; color:var(--muted); font-size:13px; line-height:1.5}
-  .cpad .notify{margin-top:auto; padding-top:10px; font-size:12.5px; font-weight:600; color:var(--ink)}
   .skl{display:flex; flex-wrap:wrap; gap:6px; margin-top:3px}
   .skl span{font-size:11px; font-weight:500; color:var(--muted); background:#f2f3f6; border-radius:999px; padding:3.5px 10px}
   @media (max-width:900px){ .grid3{grid-template-columns:repeat(2,1fr)} }
@@ -158,7 +157,7 @@ lang: en
   </header>
 
   <div class="grid">
-    <a class="gcard" href="/guides/revenue-manager/">
+    <a class="gcard" data-guide="Revenue Manager Agent" data-status="live" href="/guides/revenue-manager/">
       <div class="thumb"><img src="/guides/assets/revenue-manager/en/hub-card.png" alt="Revenue Manager workshop guide" loading="lazy"></div>
       <div class="pad">
         <span class="cat">Workshop · Airbnb</span>
@@ -171,70 +170,70 @@ lang: en
 
   <div class="coming-head">
     <h2>Coming <span class="accent">soon</span></h2>
-    <p>Every new workshop becomes a guide. Click one and we will let you know when it ships.</p>
+    <p>Every new workshop becomes a guide. New ones ship here first.</p>
   </div>
 
   <div class="grid3">
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Notify%20me%3A%20Chief%20of%20Staff%20Agent%20guide">
+    <div class="ccard" data-guide="Chief of Staff Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Chief of Staff <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Operations</span><p>Runs your week: priorities, follow-through and the Monday brief.</p><div class="skl"><span>Weekly priorities & OKR tracking</span><span>Meeting notes to action items</span><span>Monday briefing</span></div><span class="notify">Get notified →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Notify%20me%3A%20Fundraising%20Agent%20guide">
+      <div class="cpad"><span class="ccat">Operations</span><p>Runs your week: priorities, follow-through and the Monday brief.</p><div class="skl"><span>Weekly priorities & OKR tracking</span><span>Meeting notes to action items</span><span>Monday briefing</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Fundraising Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Fundraising <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Fundraising</span><p>One agent that runs your raise end to end.</p><div class="skl"><span>Investor research & outreach</span><span>Investor updates</span><span>Data room prep</span></div><span class="notify">Get notified →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Notify%20me%3A%20Sales%20Rep%20Agent%20guide">
+      <div class="cpad"><span class="ccat">Fundraising</span><p>One agent that runs your raise end to end.</p><div class="skl"><span>Investor research & outreach</span><span>Investor updates</span><span>Data room prep</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Sales Rep Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Sales Rep <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Sales</span><p>Fills your pipeline and keeps every deal warm.</p><div class="skl"><span>Lead sourcing</span><span>Personalized outreach</span><span>Follow-ups & CRM updates</span></div><span class="notify">Get notified →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Notify%20me%3A%20Finance%20Agent%20guide">
+      <div class="cpad"><span class="ccat">Sales</span><p>Fills your pipeline and keeps every deal warm.</p><div class="skl"><span>Lead sourcing</span><span>Personalized outreach</span><span>Follow-ups & CRM updates</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Finance Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Finance <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Finance</span><p>Your back office: books closed, cash watched, invoices collected.</p><div class="skl"><span>Bookkeeping & monthly close</span><span>Cash flow & runway</span><span>Invoice chasing</span></div><span class="notify">Get notified →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Notify%20me%3A%20Marketing%20Agent%20guide">
+      <div class="cpad"><span class="ccat">Finance</span><p>Your back office: books closed, cash watched, invoices collected.</p><div class="skl"><span>Bookkeeping & monthly close</span><span>Cash flow & runway</span><span>Invoice chasing</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Marketing Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Marketing <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Marketing</span><p>Turns one idea into a week of content in your voice.</p><div class="skl"><span>Blog & newsletter</span><span>LinkedIn & social calendar</span><span>Content repurposing</span></div><span class="notify">Get notified →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Notify%20me%3A%20Business%20Analyst%20Agent%20guide">
+      <div class="cpad"><span class="ccat">Marketing</span><p>Turns one idea into a week of content in your voice.</p><div class="skl"><span>Blog & newsletter</span><span>LinkedIn & social calendar</span><span>Content repurposing</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Business Analyst Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Business Analyst <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Strategy</span><p>Watches the market and your metrics, and briefs you weekly.</p><div class="skl"><span>Competitor watch</span><span>Weekly KPI digest</span><span>Deep-dive research</span></div><span class="notify">Get notified →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Notify%20me%3A%20Support%20Agent%20guide">
+      <div class="cpad"><span class="ccat">Strategy</span><p>Watches the market and your metrics, and briefs you weekly.</p><div class="skl"><span>Competitor watch</span><span>Weekly KPI digest</span><span>Deep-dive research</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Support Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Support <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Customer support</span><p>Answers customers from your own docs and escalates what matters.</p><div class="skl"><span>Answers from your docs</span><span>Draft replies</span><span>Smart escalation</span></div><span class="notify">Get notified →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Notify%20me%3A%20Recruiter%20Agent%20guide">
+      <div class="cpad"><span class="ccat">Customer support</span><p>Answers customers from your own docs and escalates what matters.</p><div class="skl"><span>Answers from your docs</span><span>Draft replies</span><span>Smart escalation</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Recruiter Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Recruiter <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">People</span><p>Sources, screens and schedules while you sleep.</p><div class="skl"><span>Candidate sourcing</span><span>Resume screening</span><span>Interview scheduling</span></div><span class="notify">Get notified →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Notify%20me%3A%20Personal%20Assistant%20guide">
+      <div class="cpad"><span class="ccat">People</span><p>Sources, screens and schedules while you sleep.</p><div class="skl"><span>Candidate sourcing</span><span>Resume screening</span><span>Interview scheduling</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Personal Assistant" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Personal <span class="grad">Assistant</span></div></div>
-      <div class="cpad"><span class="ccat">Productivity</span><p>Your day, handled: inbox, calendar and meeting prep.</p><div class="skl"><span>Inbox triage</span><span>Calendar protection</span><span>Meeting prep</span></div><span class="notify">Get notified →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Notify%20me%3A%20Legal%20Agent%20guide">
+      <div class="cpad"><span class="ccat">Productivity</span><p>Your day, handled: inbox, calendar and meeting prep.</p><div class="skl"><span>Inbox triage</span><span>Calendar protection</span><span>Meeting prep</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Legal Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Legal <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Legal</span><p>First-pass legal review before you pay a lawyer.</p><div class="skl"><span>Contract review</span><span>NDA redlines</span><span>Risky-clause flags</span></div><span class="notify">Get notified →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Notify%20me%3A%20Product%20Manager%20Agent%20guide">
+      <div class="cpad"><span class="ccat">Legal</span><p>First-pass legal review before you pay a lawyer.</p><div class="skl"><span>Contract review</span><span>NDA redlines</span><span>Risky-clause flags</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Product Manager Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Product Manager <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Product</span><p>Turns user feedback into specs your team can build.</p><div class="skl"><span>Feedback synthesis</span><span>PRDs & user stories</span><span>Launch checklists</span></div><span class="notify">Get notified →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Notify%20me%3A%20Customer%20Success%20Agent%20guide">
+      <div class="cpad"><span class="ccat">Product</span><p>Turns user feedback into specs your team can build.</p><div class="skl"><span>Feedback synthesis</span><span>PRDs & user stories</span><span>Launch checklists</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Customer Success Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Customer Success <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Customer success</span><p>Keeps customers healthy: check-ins, renewals and QBRs.</p><div class="skl"><span>Account health watch</span><span>Renewal follow-ups</span><span>QBR prep</span></div><span class="notify">Get notified →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Notify%20me%3A%20E-commerce%20Agent%20guide">
+      <div class="cpad"><span class="ccat">Customer success</span><p>Keeps customers healthy: check-ins, renewals and QBRs.</p><div class="skl"><span>Account health watch</span><span>Renewal follow-ups</span><span>QBR prep</span></div></div>
+    </div>
+    <div class="ccard" data-guide="E-commerce Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">E-commerce <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Commerce</span><p>Keeps your store sharp: listings, reviews and stock.</p><div class="skl"><span>Listing optimization</span><span>Review responses</span><span>Inventory alerts</span></div><span class="notify">Get notified →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Notify%20me%3A%20Proposal%20Agent%20guide">
+      <div class="cpad"><span class="ccat">Commerce</span><p>Keeps your store sharp: listings, reviews and stock.</p><div class="skl"><span>Listing optimization</span><span>Review responses</span><span>Inventory alerts</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Proposal Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">Proposal <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Sales</span><p>Drafts proposals, quotes and RFP answers that win work.</p><div class="skl"><span>Proposal & quote drafting</span><span>RFP answers</span><span>SOW templates</span></div><span class="notify">Get notified →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Notify%20me%3A%20PR%20Agent%20guide">
+      <div class="cpad"><span class="ccat">Sales</span><p>Drafts proposals, quotes and RFP answers that win work.</p><div class="skl"><span>Proposal & quote drafting</span><span>RFP answers</span><span>SOW templates</span></div></div>
+    </div>
+    <div class="ccard" data-guide="PR Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Coming soon</span><div class="cname">PR <span class="grad">Agent</span></div></div>
-      <div class="cpad"><span class="ccat">Communications</span><p>Gets you press: media lists, pitches and mention tracking.</p><div class="skl"><span>Media list building</span><span>Pitch drafting</span><span>Mention tracking</span></div><span class="notify">Get notified →</span></div>
-    </a>
+      <div class="cpad"><span class="ccat">Communications</span><p>Gets you press: media lists, pitches and mention tracking.</p><div class="skl"><span>Media list building</span><span>Pitch drafting</span><span>Mention tracking</span></div></div>
+    </div>
   </div>
 </div>
 
@@ -244,4 +243,31 @@ lang: en
     <span><a href="https://gethouston.ai">gethouston.ai</a></span>
   </div>
 </footer>
+
+<script>
+(function(){
+  // Mirrors the homepage track() helper: PostHog + GA4, both optional.
+  function track(name, props) {
+    if (typeof window === 'undefined') return;
+    var payload = props || {};
+    if (window.posthog && window.posthog.capture) {
+      try { window.posthog.capture(name, payload); } catch (e) {}
+    }
+    if (typeof window.gtag === 'function') {
+      try { window.gtag('event', name, payload); } catch (e) {}
+    }
+  }
+  var lang = document.documentElement.lang || 'en';
+  document.querySelectorAll('[data-guide]').forEach(function(el){
+    el.addEventListener('click', function(){
+      track('guide_card_clicked', {
+        guide: el.getAttribute('data-guide'),
+        status: el.getAttribute('data-status') || 'coming_soon',
+        lang: lang
+      });
+    });
+  });
+})();
+</script>
+
 {% endblock %}

@@ -61,7 +61,7 @@ lang: es
   .coming-head h2 .accent{background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent}
   .coming-head p{margin:8px 0 0; color:var(--muted); font-size:15.5px}
   .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; padding:24px 0 90px}
-  .ccard{display:flex; flex-direction:column; text-decoration:none; color:var(--ink); background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden; transition:.15s border-color, .15s transform, .15s box-shadow}
+  .ccard{display:flex; flex-direction:column; color:var(--ink); background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden; transition:.15s border-color, .15s transform, .15s box-shadow}
   .ccard:hover{border-color:#cfd4dc; transform:translateY(-2px); box-shadow:0 8px 24px rgba(13,13,13,0.06)}
   .cthumb{position:relative; aspect-ratio:2.6; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:center; text-align:center; padding:0 14px; background:
     radial-gradient(ellipse 80% 60% at 50% -10%, rgba(59,130,246,0.10), transparent),
@@ -70,11 +70,10 @@ lang: es
   .cthumb .cname{font-weight:600; letter-spacing:-0.03em; font-size:20.5px; line-height:1.1}
   .cthumb .cname .grad{background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent}
   .cthumb::after{content:""; position:absolute; right:13px; bottom:11px; width:9px; height:9px; border-radius:50%; background:linear-gradient(150deg,#818cf8,#3b82f6 38%,#fb923c 78%,#f97316)}
-  .cthumb .cs{position:absolute; top:10px; left:12px; font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--gray6); background:rgba(255,255,255,0.85); border:1px solid var(--border); border-radius:999px; padding:3px 9px}
-  .cpad{padding:13px 16px 15px; display:flex; flex-direction:column; gap:5px; flex:1}
+  .cthumb .cs{position:absolute; top:10px; left:12px; font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--gray6); background:rgba(255,255,255,0.85); border-radius:999px; padding:3px 9px}
+  .cpad{padding:13px 16px 17px; display:flex; flex-direction:column; gap:5px; flex:1}
   .ccat{font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:#3b82f6}
   .cpad p{margin:0; color:var(--muted); font-size:13px; line-height:1.5}
-  .cpad .notify{margin-top:auto; padding-top:10px; font-size:12.5px; font-weight:600; color:var(--ink)}
   .skl{display:flex; flex-wrap:wrap; gap:6px; margin-top:3px}
   .skl span{font-size:11px; font-weight:500; color:var(--muted); background:#f2f3f6; border-radius:999px; padding:3.5px 10px}
   @media (max-width:900px){ .grid3{grid-template-columns:repeat(2,1fr)} }
@@ -158,7 +157,7 @@ lang: es
   </header>
 
   <div class="grid">
-    <a class="gcard" href="/guides/es/revenue-manager/">
+    <a class="gcard" data-guide="Revenue Manager Agent" data-status="live" href="/guides/es/revenue-manager/">
       <div class="thumb"><img src="/guides/assets/revenue-manager/es/hub-card.png" alt="Guía del workshop del Revenue Manager" loading="lazy"></div>
       <div class="pad">
         <span class="cat">Workshop · Airbnb</span>
@@ -171,70 +170,70 @@ lang: es
 
   <div class="coming-head">
     <h2>Muy <span class="accent">pronto</span></h2>
-    <p>Cada nuevo workshop se convierte en guía. Haz clic en una y te avisamos cuando salga.</p>
+    <p>Cada nuevo workshop se convierte en guía. Las nuevas salen primero aquí.</p>
   </div>
 
   <div class="grid3">
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Av%C3%ADsame%3A%20gu%C3%ADa%20Agente%20Chief%20of%20Staff">
+    <div class="ccard" data-guide="Chief of Staff Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Próximamente</span><div class="cname">Agente <span class="grad">Chief of Staff</span></div></div>
-      <div class="cpad"><span class="ccat">Operaciones</span><p>Corre tu semana: prioridades, seguimiento y el brief del lunes.</p><div class="skl"><span>Prioridades semanales y OKRs</span><span>Notas de reunión a acciones</span><span>Brief del lunes</span></div><span class="notify">Avísame →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Av%C3%ADsame%3A%20gu%C3%ADa%20Agente%20de%20Fundraising">
+      <div class="cpad"><span class="ccat">Operaciones</span><p>Corre tu semana: prioridades, seguimiento y el brief del lunes.</p><div class="skl"><span>Prioridades semanales y OKRs</span><span>Notas de reunión a acciones</span><span>Brief del lunes</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Fundraising Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Próximamente</span><div class="cname">Agente de <span class="grad">Fundraising</span></div></div>
-      <div class="cpad"><span class="ccat">Levantamiento de capital</span><p>Un agente que corre tu levantamiento de punta a punta.</p><div class="skl"><span>Investigación de inversionistas y outreach</span><span>Updates a inversionistas</span><span>Data room</span></div><span class="notify">Avísame →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Av%C3%ADsame%3A%20gu%C3%ADa%20Agente%20Vendedor">
+      <div class="cpad"><span class="ccat">Levantamiento de capital</span><p>Un agente que corre tu levantamiento de punta a punta.</p><div class="skl"><span>Investigación de inversionistas y outreach</span><span>Updates a inversionistas</span><span>Data room</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Sales Rep Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Próximamente</span><div class="cname">Agente <span class="grad">Vendedor</span></div></div>
-      <div class="cpad"><span class="ccat">Ventas</span><p>Llena tu pipeline y mantiene cada negocio caliente.</p><div class="skl"><span>Búsqueda de leads</span><span>Outreach personalizado</span><span>Seguimiento y CRM</span></div><span class="notify">Avísame →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Av%C3%ADsame%3A%20gu%C3%ADa%20Agente%20de%20Finanzas">
+      <div class="cpad"><span class="ccat">Ventas</span><p>Llena tu pipeline y mantiene cada negocio caliente.</p><div class="skl"><span>Búsqueda de leads</span><span>Outreach personalizado</span><span>Seguimiento y CRM</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Finance Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Próximamente</span><div class="cname">Agente de <span class="grad">Finanzas</span></div></div>
-      <div class="cpad"><span class="ccat">Finanzas</span><p>Tu back office: libros cerrados, caja vigilada, facturas cobradas.</p><div class="skl"><span>Contabilidad y cierre mensual</span><span>Flujo de caja y runway</span><span>Cobranza de facturas</span></div><span class="notify">Avísame →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Av%C3%ADsame%3A%20gu%C3%ADa%20Agente%20de%20Marketing">
+      <div class="cpad"><span class="ccat">Finanzas</span><p>Tu back office: libros cerrados, caja vigilada, facturas cobradas.</p><div class="skl"><span>Contabilidad y cierre mensual</span><span>Flujo de caja y runway</span><span>Cobranza de facturas</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Marketing Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Próximamente</span><div class="cname">Agente de <span class="grad">Marketing</span></div></div>
-      <div class="cpad"><span class="ccat">Marketing</span><p>Convierte una idea en una semana de contenido con tu voz.</p><div class="skl"><span>Blog y newsletter</span><span>LinkedIn y calendario social</span><span>Reutilización de contenido</span></div><span class="notify">Avísame →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Av%C3%ADsame%3A%20gu%C3%ADa%20Agente%20Analista">
+      <div class="cpad"><span class="ccat">Marketing</span><p>Convierte una idea en una semana de contenido con tu voz.</p><div class="skl"><span>Blog y newsletter</span><span>LinkedIn y calendario social</span><span>Reutilización de contenido</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Business Analyst Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Próximamente</span><div class="cname">Agente <span class="grad">Analista</span></div></div>
-      <div class="cpad"><span class="ccat">Estrategia</span><p>Vigila el mercado y tus métricas, y te informa cada semana.</p><div class="skl"><span>Monitoreo de competencia</span><span>Resumen semanal de KPIs</span><span>Investigación a fondo</span></div><span class="notify">Avísame →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Av%C3%ADsame%3A%20gu%C3%ADa%20Agente%20de%20Soporte">
+      <div class="cpad"><span class="ccat">Estrategia</span><p>Vigila el mercado y tus métricas, y te informa cada semana.</p><div class="skl"><span>Monitoreo de competencia</span><span>Resumen semanal de KPIs</span><span>Investigación a fondo</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Support Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Próximamente</span><div class="cname">Agente de <span class="grad">Soporte</span></div></div>
-      <div class="cpad"><span class="ccat">Soporte</span><p>Responde a clientes con tus propios documentos y escala lo importante.</p><div class="skl"><span>Respuestas desde tus documentos</span><span>Borradores de respuesta</span><span>Escalamiento inteligente</span></div><span class="notify">Avísame →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Av%C3%ADsame%3A%20gu%C3%ADa%20Agente%20Reclutador">
+      <div class="cpad"><span class="ccat">Soporte</span><p>Responde a clientes con tus propios documentos y escala lo importante.</p><div class="skl"><span>Respuestas desde tus documentos</span><span>Borradores de respuesta</span><span>Escalamiento inteligente</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Recruiter Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Próximamente</span><div class="cname">Agente <span class="grad">Reclutador</span></div></div>
-      <div class="cpad"><span class="ccat">Personas</span><p>Busca, filtra y agenda mientras duermes.</p><div class="skl"><span>Búsqueda de candidatos</span><span>Filtro de hojas de vida</span><span>Agenda de entrevistas</span></div><span class="notify">Avísame →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Av%C3%ADsame%3A%20gu%C3%ADa%20Asistente%20Personal">
+      <div class="cpad"><span class="ccat">Personas</span><p>Busca, filtra y agenda mientras duermes.</p><div class="skl"><span>Búsqueda de candidatos</span><span>Filtro de hojas de vida</span><span>Agenda de entrevistas</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Personal Assistant" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Próximamente</span><div class="cname">Asistente <span class="grad">Personal</span></div></div>
-      <div class="cpad"><span class="ccat">Productividad</span><p>Tu día, resuelto: correo, calendario y preparación de reuniones.</p><div class="skl"><span>Orden del inbox</span><span>Protección del calendario</span><span>Preparación de reuniones</span></div><span class="notify">Avísame →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Av%C3%ADsame%3A%20gu%C3%ADa%20Agente%20Legal">
+      <div class="cpad"><span class="ccat">Productividad</span><p>Tu día, resuelto: correo, calendario y preparación de reuniones.</p><div class="skl"><span>Orden del inbox</span><span>Protección del calendario</span><span>Preparación de reuniones</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Legal Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Próximamente</span><div class="cname">Agente <span class="grad">Legal</span></div></div>
-      <div class="cpad"><span class="ccat">Legal</span><p>La primera revisión legal antes de pagarle a un abogado.</p><div class="skl"><span>Revisión de contratos</span><span>Ajustes de NDA</span><span>Alertas de cláusulas riesgosas</span></div><span class="notify">Avísame →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Av%C3%ADsame%3A%20gu%C3%ADa%20Agente%20Product%20Manager">
+      <div class="cpad"><span class="ccat">Legal</span><p>La primera revisión legal antes de pagarle a un abogado.</p><div class="skl"><span>Revisión de contratos</span><span>Ajustes de NDA</span><span>Alertas de cláusulas riesgosas</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Product Manager Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Próximamente</span><div class="cname">Agente <span class="grad">Product Manager</span></div></div>
-      <div class="cpad"><span class="ccat">Producto</span><p>Convierte el feedback de usuarios en specs que tu equipo puede construir.</p><div class="skl"><span>Síntesis de feedback</span><span>PRDs e historias de usuario</span><span>Checklists de lanzamiento</span></div><span class="notify">Avísame →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Av%C3%ADsame%3A%20gu%C3%ADa%20Agente%20de%20Customer%20Success">
+      <div class="cpad"><span class="ccat">Producto</span><p>Convierte el feedback de usuarios en specs que tu equipo puede construir.</p><div class="skl"><span>Síntesis de feedback</span><span>PRDs e historias de usuario</span><span>Checklists de lanzamiento</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Customer Success Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Próximamente</span><div class="cname">Agente de <span class="grad">Customer Success</span></div></div>
-      <div class="cpad"><span class="ccat">Éxito del cliente</span><p>Mantiene clientes sanos: check-ins, renovaciones y QBRs.</p><div class="skl"><span>Monitoreo de salud de cuentas</span><span>Seguimiento de renovaciones</span><span>Preparación de QBRs</span></div><span class="notify">Avísame →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Av%C3%ADsame%3A%20gu%C3%ADa%20Agente%20E-commerce">
+      <div class="cpad"><span class="ccat">Éxito del cliente</span><p>Mantiene clientes sanos: check-ins, renovaciones y QBRs.</p><div class="skl"><span>Monitoreo de salud de cuentas</span><span>Seguimiento de renovaciones</span><span>Preparación de QBRs</span></div></div>
+    </div>
+    <div class="ccard" data-guide="E-commerce Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Próximamente</span><div class="cname">Agente <span class="grad">E-commerce</span></div></div>
-      <div class="cpad"><span class="ccat">Comercio</span><p>Mantiene tu tienda al día: publicaciones, reseñas e inventario.</p><div class="skl"><span>Optimización de publicaciones</span><span>Respuesta a reseñas</span><span>Alertas de inventario</span></div><span class="notify">Avísame →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Av%C3%ADsame%3A%20gu%C3%ADa%20Agente%20de%20Propuestas">
+      <div class="cpad"><span class="ccat">Comercio</span><p>Mantiene tu tienda al día: publicaciones, reseñas e inventario.</p><div class="skl"><span>Optimización de publicaciones</span><span>Respuesta a reseñas</span><span>Alertas de inventario</span></div></div>
+    </div>
+    <div class="ccard" data-guide="Proposal Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Próximamente</span><div class="cname">Agente de <span class="grad">Propuestas</span></div></div>
-      <div class="cpad"><span class="ccat">Ventas</span><p>Redacta propuestas, cotizaciones y RFPs que ganan contratos.</p><div class="skl"><span>Propuestas y cotizaciones</span><span>Respuestas a RFPs</span><span>Plantillas de SOW</span></div><span class="notify">Avísame →</span></div>
-    </a>
-    <a class="ccard" href="mailto:hello@gethouston.ai?subject=Av%C3%ADsame%3A%20gu%C3%ADa%20Agente%20de%20Prensa">
+      <div class="cpad"><span class="ccat">Ventas</span><p>Redacta propuestas, cotizaciones y RFPs que ganan contratos.</p><div class="skl"><span>Propuestas y cotizaciones</span><span>Respuestas a RFPs</span><span>Plantillas de SOW</span></div></div>
+    </div>
+    <div class="ccard" data-guide="PR Agent" data-status="coming_soon">
       <div class="cthumb"><span class="cs">Próximamente</span><div class="cname">Agente de <span class="grad">Prensa</span></div></div>
-      <div class="cpad"><span class="ccat">Comunicaciones</span><p>Te consigue prensa: listas de medios, pitches y monitoreo de menciones.</p><div class="skl"><span>Listas de medios</span><span>Redacción de pitches</span><span>Monitoreo de menciones</span></div><span class="notify">Avísame →</span></div>
-    </a>
+      <div class="cpad"><span class="ccat">Comunicaciones</span><p>Te consigue prensa: listas de medios, pitches y monitoreo de menciones.</p><div class="skl"><span>Listas de medios</span><span>Redacción de pitches</span><span>Monitoreo de menciones</span></div></div>
+    </div>
   </div>
 </div>
 
@@ -244,4 +243,31 @@ lang: es
     <span><a href="https://gethouston.ai">gethouston.ai</a></span>
   </div>
 </footer>
+
+<script>
+(function(){
+  // Mirrors the homepage track() helper: PostHog + GA4, both optional.
+  function track(name, props) {
+    if (typeof window === 'undefined') return;
+    var payload = props || {};
+    if (window.posthog && window.posthog.capture) {
+      try { window.posthog.capture(name, payload); } catch (e) {}
+    }
+    if (typeof window.gtag === 'function') {
+      try { window.gtag('event', name, payload); } catch (e) {}
+    }
+  }
+  var lang = document.documentElement.lang || 'en';
+  document.querySelectorAll('[data-guide]').forEach(function(el){
+    el.addEventListener('click', function(){
+      track('guide_card_clicked', {
+        guide: el.getAttribute('data-guide'),
+        status: el.getAttribute('data-status') || 'coming_soon',
+        lang: lang
+      });
+    });
+  });
+})();
+</script>
+
 {% endblock %}
