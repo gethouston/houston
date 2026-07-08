@@ -33,6 +33,10 @@ Houston = open platform. Organized as **products + code libraries**.
 | Houston Always On | ~~`always-on/`~~ **REMOVED** | Was a one-click VPS deploy of the Rust engine. Superseded by `selfhost/` (the TS host in Docker behind Caddy); `always-on/` is deleted. |
 | Houston Teams | (no dir) | Hosted multiplayer orgs — roles, per-agent access, sharing, templates. **LIVE (beta).** No dedicated app dir: the gateway (private `cloud/` repo) enforces it and the open repo carries a capability-gated client surface across `app/` + `ui/engine-client`. See `knowledge-base/teams.md`. |
 
+### Common misconception: "the desktop app = a local product"
+
+The **app being local does not mean the engine is local**. The desktop app is a shell (window, tray, OS glue); the engine it talks to is chosen at build time (`app/src/lib/engine-mode.ts`) and for the managed product it is the **hosted cloud engine** (`VITE_HOSTED_ENGINE_URL` → gateway). **Product direction (decided 2026-07): the local sidecar engine is being discontinued as a consumer path** — the shipped app always connects to the cloud engine; the local host remains for development and self-host. Code has not fully caught up with this yet (the sidecar spawn path still exists); don't design new features around the local-engine case without checking this note.
+
 ## Code libraries
 
 | Library | Dir | What | Consumers |
