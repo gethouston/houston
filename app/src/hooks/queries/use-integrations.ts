@@ -1,8 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { integrationsSupported } from "../../components/integrations/model";
+import type { CustomIntegrationConfig } from "@houston-ai/engine-client";
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { integrationsSupported } from "../../components/integrations/capabilities";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations } from "../../lib/tauri";
 import { useCapabilities } from "../use-capabilities";
+import {
+  CUSTOM_INTEGRATION_PROVIDER,
+  customIntegrationInvalidationKeys,
+} from "./custom-integration-keys";
 import {
   applyGrantChange,
   applyGrantChangeNullable,
@@ -64,8 +74,8 @@ export function useIntegrationToolkits(provider: string, enabled: boolean) {
 export function useDisconnectIntegration(provider: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (toolkit: string) =>
-      tauriIntegrations.disconnect(provider, toolkit),
+    mutationFn: (connectionId: string) =>
+      tauriIntegrations.disconnect(provider, connectionId),
     onSuccess: () =>
       qc.invalidateQueries({
         queryKey: queryKeys.integrationConnections(provider),
@@ -74,10 +84,35 @@ export function useDisconnectIntegration(provider: string) {
 }
 
 /**
- * Multiplayer only: the integration toolkit slugs this agent may use (the
- * per-(user, agent) grant set from C4). Gated on the `multiplayer` capability
- * via `enabled` — the local/desktop engine has no grant routes, so the query
- * stays idle in single-player and the tab renders without grant sections.
+ * Rename ONE connected account (set its user-facing alias). Invalidates the
+ * provider's connections so the new label is reflected everywhere the account
+ * is listed. Carries no `onError` for the same reason as the mutations here:
+ * the `call()` wrapper already surfaces + reports the failure once.
+ */
+export function useRenameIntegrationConnection(provider: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      connectionId,
+      alias,
+    }: {
+      connectionId: string;
+      alias: string;
+    }) => tauriIntegrations.rename(provider, connectionId, alias),
+    onSuccess: () =>
+      qc.invalidateQueries({
+        queryKey: queryKeys.integrationConnections(provider),
+      }),
+  });
+}
+
+/**
+ * Multiplayer only: the connected-account ids this agent may use (the
+ * per-(user, agent) grant set from C4). The grant unit is the connected
+ * account, not the toolkit — one app can have several accounts, each granted
+ * independently. Gated on the `multiplayer` capability via `enabled` — the
+ * local/desktop engine has no grant routes, so the query stays idle in
+ * single-player and the tab renders without grant sections.
  *
  * Data is `string[] | null`: `null` means the host answered 404 = grants
  * unsupported (a build that predates grants), which the caller renders as
@@ -92,8 +127,8 @@ export function useAgentGrants(agentId: string, enabled: boolean) {
 }
 
 /**
- * Multiplayer only: add or remove ONE toolkit in this agent's grant set. The
- * host API is a replace-set PUT (C4), so the next set is computed inside
+ * Multiplayer only: add or remove ONE connected account in this agent's grant
+ * set. The host API is a replace-set PUT (C4), so the next set is computed inside
  * `mutationFn` from the freshest cache value at mutate time — never from a set
  * a component captured earlier (a stale snapshot would wipe grants made in
  * between, e.g. while the OAuth poll was running). An optimistic `onMutate`
@@ -142,5 +177,56 @@ export function useAgentGrantMutation(agentId: string) {
       );
     },
     onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+/** Refetch the custom provider's connections + toolkits after a create/edit. */
+function invalidateCustomIntegration(qc: QueryClient): Promise<void> {
+  return Promise.all(
+    customIntegrationInvalidationKeys().map((queryKey) =>
+      qc.invalidateQueries({ queryKey }),
+    ),
+  ).then(() => undefined);
+}
+
+/**
+ * Create a custom API-key integration (provider `"custom"`). On success it
+ * refetches the custom provider's connection list AND toolkit catalog (for this
+ * provider the toolkits ARE the caller's integrations). Carries no `onError`
+ * for the same reason as the mutations above: the `call()` wrapper already
+ * surfaces + reports the failure once, so an `onError` here would double-toast.
+ * The auto-grant of the new connection to the current agent is the caller's job
+ * (it needs the agent context), done off this mutation's resolved connection.
+ */
+export function useCreateCustomIntegration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (config: CustomIntegrationConfig & { apiKey: string }) =>
+      tauriIntegrations.createCustom(CUSTOM_INTEGRATION_PROVIDER, config),
+    onSuccess: () => invalidateCustomIntegration(qc),
+  });
+}
+
+/**
+ * Edit a custom integration. An omitted `apiKey` in `patch` keeps the stored
+ * key. Invalidates the same custom-provider queries as create. No `onError`
+ * toast — the `call()` wrapper surfaces it once.
+ */
+export function useUpdateCustomIntegration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      connectionId,
+      patch,
+    }: {
+      connectionId: string;
+      patch: Partial<CustomIntegrationConfig> & { apiKey?: string };
+    }) =>
+      tauriIntegrations.updateCustom(
+        CUSTOM_INTEGRATION_PROVIDER,
+        connectionId,
+        patch,
+      ),
+    onSuccess: () => invalidateCustomIntegration(qc),
   });
 }

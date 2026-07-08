@@ -92,7 +92,7 @@ describe("agentIntegrationsView (allowlist overlay)", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail"), conn("slack")],
       catalog: CATALOG,
-      grants: ["gmail", "slack"],
+      grants: ["ca_gmail", "ca_slack"],
     });
     if (view.mode !== "grants") throw new Error("unreachable");
     deepStrictEqual(view.disallowedRows, []);
@@ -106,7 +106,7 @@ describe("agentIntegrationsView (allowlist overlay)", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail"), conn("slack")],
       catalog: CATALOG,
-      grants: ["gmail", "slack"],
+      grants: ["ca_gmail", "ca_slack"],
       allowlist: ["gmail"],
     });
     if (view.mode !== "grants") throw new Error("unreachable");
@@ -125,7 +125,7 @@ describe("agentIntegrationsView (allowlist overlay)", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail"), conn("notion")],
       catalog: CATALOG,
-      grants: ["gmail"],
+      grants: ["ca_gmail"],
       allowlist: ["gmail"],
     });
     if (view.mode !== "grants") throw new Error("unreachable");
@@ -141,7 +141,7 @@ describe("agentIntegrationsView (allowlist overlay)", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail"), conn("slack")],
       catalog: CATALOG,
-      grants: ["gmail", "slack"],
+      grants: ["ca_gmail", "ca_slack"],
       allowlist: [],
     });
     if (view.mode !== "grants") throw new Error("unreachable");

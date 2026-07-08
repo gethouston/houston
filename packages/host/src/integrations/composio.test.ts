@@ -145,6 +145,8 @@ test("connect reuses the project's enabled auth config and mints a link session"
   expect(calls[1]?.body).toEqual({
     auth_config_id: "ac_gmail",
     user_id: USER,
+    // A user may connect an app more than once.
+    allow_multiple: true,
     callback_url: "https://gethouston.ai/connected",
   });
 
@@ -289,23 +291,87 @@ test("connection FAILS CLOSED when Composio omits user_id — ownership unproven
   expect(await provider.connection(USER, "ca_weird")).toBeNull();
 });
 
-test("disconnect deletes every connected account for the toolkit", async () => {
+test("disconnect removes ONE account after an ownership check", async () => {
   const deleted: string[] = [];
-  const { provider } = harness((url, method) => {
-    if (url.pathname === "/api/v3/connected_accounts" && method === "GET") {
-      return { body: { items: [{ id: "ca_1" }, { id: "ca_2" }] } };
-    }
+  const { provider, calls } = harness((url, method) => {
+    if (
+      url.pathname === "/api/v3/connected_accounts/ca_mine" &&
+      method === "GET"
+    )
+      return { body: { id: "ca_mine", user_id: USER, status: "ACTIVE" } };
     if (method === "DELETE") {
       deleted.push(url.pathname);
       return { status: 204 };
     }
     return { status: 404 };
   });
-  await provider.disconnect(USER, "gmail");
-  expect(deleted).toEqual([
-    "/api/v3/connected_accounts/ca_1",
-    "/api/v3/connected_accounts/ca_2",
-  ]);
+  await provider.disconnect(USER, "ca_mine");
+  // GET (ownership) THEN DELETE — never the reverse, never a toolkit sweep.
+  expect(calls[0]?.method).toBe("GET");
+  expect(deleted).toEqual(["/api/v3/connected_accounts/ca_mine"]);
+});
+
+test("disconnect FAILS CLOSED on another user's account — no DELETE fires", async () => {
+  const deleted: string[] = [];
+  const { provider } = harness((url, method) => {
+    if (
+      url.pathname === "/api/v3/connected_accounts/ca_theirs" &&
+      method === "GET"
+    )
+      return { body: { id: "ca_theirs", user_id: "someone-else" } };
+    if (method === "DELETE") {
+      deleted.push(url.pathname);
+      return { status: 204 };
+    }
+    return { status: 404 };
+  });
+  await expect(provider.disconnect(USER, "ca_theirs")).rejects.toThrow(
+    /not found for this user/,
+  );
+  await expect(provider.disconnect(USER, "ca_gone")).rejects.toThrow(
+    /not found for this user/,
+  );
+  expect(deleted).toEqual([]);
+});
+
+test("rename PATCHes the alias after the same ownership check", async () => {
+  const { provider, calls } = harness((url, method) => {
+    if (
+      url.pathname === "/api/v3/connected_accounts/ca_mine" &&
+      method === "GET"
+    )
+      return { body: { id: "ca_mine", user_id: USER, status: "ACTIVE" } };
+    if (
+      url.pathname === "/api/v3/connected_accounts/ca_mine" &&
+      method === "PATCH"
+    )
+      return { status: 204 };
+    return { status: 404 };
+  });
+  await provider.rename(USER, "ca_mine", "Work");
+  expect(calls[0]?.method).toBe("GET");
+  expect(calls[1]?.method).toBe("PATCH");
+  expect(calls[1]?.body).toEqual({ alias: "Work" });
+});
+
+test("rename FAILS CLOSED on a foreign/unknown account — no PATCH fires", async () => {
+  const patched: string[] = [];
+  const { provider } = harness((url, method) => {
+    if (
+      url.pathname === "/api/v3/connected_accounts/ca_theirs" &&
+      method === "GET"
+    )
+      return { body: { id: "ca_theirs", user_id: "someone-else" } };
+    if (method === "PATCH") {
+      patched.push(url.pathname);
+      return { status: 204 };
+    }
+    return { status: 404 };
+  });
+  await expect(provider.rename(USER, "ca_theirs", "X")).rejects.toThrow(
+    /not found for this user/,
+  );
+  expect(patched).toEqual([]);
 });
 
 test("search scopes to the user's connected toolkits and maps tools", async () => {
@@ -336,15 +402,17 @@ test("search scopes to the user's connected toolkits and maps tools", async () =
       },
     };
   });
-  expect(await provider.search(USER, "send an email")).toEqual([
-    {
-      action: "GMAIL_SEND_EMAIL",
-      toolkit: "gmail",
-      description: "Send an email",
-      inputParams: { type: "object" },
-      connected: true,
-    },
-  ]);
+  expect(await provider.search(USER, "send an email")).toEqual({
+    items: [
+      {
+        action: "GMAIL_SEND_EMAIL",
+        toolkit: "gmail",
+        description: "Send an email",
+        inputParams: { type: "object" },
+        connected: true,
+      },
+    ],
+  });
   // Scoped to the ACTIVE connected toolkits (deduped) — Composio's global
   // full-text search ranks unrelated tools above the obvious match.
   expect(calls[1]?.path).toBe(
@@ -378,8 +446,8 @@ test("a zero-hit scoped query degrades to listing the connected toolkits' action
     };
   });
   const found = await provider.search(USER, "read my latest 5 emails");
-  expect(found.map((t) => t.action)).toEqual(["GMAIL_FETCH_EMAILS"]);
-  expect(found[0]?.connected).toBe(true);
+  expect(found.items.map((t) => t.action)).toEqual(["GMAIL_FETCH_EMAILS"]);
+  expect(found.items[0]?.connected).toBe(true);
   expect(calls[2]?.path).toBe("/api/v3/tools?limit=50&toolkit_slug=gmail");
 });
 
@@ -430,7 +498,7 @@ test("a scoped miss also surfaces global matches marked NOT connected (HOU-670)"
     };
   });
   const found = await provider.search(USER, "send an email via gmail");
-  expect(found.map((t) => [t.action, t.connected])).toEqual([
+  expect(found.items.map((t) => [t.action, t.connected])).toEqual([
     ["SLACK_SEND_MESSAGE", true],
     ["GMAIL_SEND_EMAIL", false],
   ]);
@@ -456,7 +524,7 @@ test("search falls back to the global catalog when nothing is connected", async 
   });
   const found = await provider.search(USER, "send an email");
   // Discoverable but marked not-connected → the agent offers the card.
-  expect(found.map((t) => [t.action, t.connected])).toEqual([
+  expect(found.items.map((t) => [t.action, t.connected])).toEqual([
     ["GMAIL_SEND_EMAIL", false],
   ]);
   expect(calls[1]?.path).toBe("/api/v3/tools?query=send+an+email&limit=10");
@@ -487,6 +555,27 @@ test("execute posts user_id + arguments and maps success and failure", async () 
     successful: false,
     data: undefined,
     error: "no connected account found",
+  });
+});
+
+test("execute pins the account as connected_account_id when opts.account is set", async () => {
+  const { provider, calls } = harness(() => ({ body: { successful: true } }));
+  await provider.execute(
+    USER,
+    "GMAIL_SEND_EMAIL",
+    { to: "a@b.com" },
+    { account: "ca_work" },
+  );
+  expect(calls[0]?.body).toEqual({
+    user_id: USER,
+    arguments: { to: "a@b.com" },
+    connected_account_id: "ca_work",
+  });
+  // Absent account → the key is omitted (Composio picks the sole account).
+  await provider.execute(USER, "GMAIL_SEND_EMAIL", { to: "a@b.com" });
+  expect(calls[1]?.body).toEqual({
+    user_id: USER,
+    arguments: { to: "a@b.com" },
   });
 });
 

@@ -2,10 +2,26 @@ import type {
   ActionResult,
   Connection,
   ConnectStart,
+  CustomIntegrationCreate,
+  CustomIntegrationPatch,
+  McpServerCreate,
+  McpServerPatch,
   ProviderReadiness,
+  SearchResult,
   Toolkit,
-  ToolMatch,
 } from "./types";
+
+/**
+ * Per-call execution options. `acting` names the user the agent is acting as
+ * this turn (C2); `account` pins WHICH connected account to run as when the
+ * toolkit has more than one (a connected_account_id for direct adapters — the
+ * policy layer resolves any label the model passed to an id first; a gateway
+ * adapter forwards it verbatim for the upstream to resolve).
+ */
+export interface ExecuteOptions {
+  acting?: ActingContext;
+  account?: string;
+}
 
 /**
  * WHO the agent runtime is acting as for one integration call (C2). Read off the
@@ -59,28 +75,99 @@ export interface IntegrationProvider {
   connect(userId: string, toolkit: string): Promise<ConnectStart>;
   /** One connection by id (poll after connect() until it turns active). */
   connection(userId: string, connectionId: string): Promise<Connection | null>;
-  /** Remove a toolkit connection. */
-  disconnect(userId: string, toolkit: string): Promise<void>;
+  /** Remove ONE connected account by id (ownership-checked). */
+  disconnect(userId: string, connectionId: string): Promise<void>;
+  /** Rename ONE connected account (its user-facing alias; ownership-checked). */
+  rename(userId: string, connectionId: string, alias: string): Promise<void>;
 
   // ── Execution (what the agent's generic tools call) ───────────────────────
   /**
    * Discover actions matching a natural-language query (slug + param schema).
    * `acting` (optional) names the user the agent is acting as this turn (C2);
    * a gateway adapter authenticates upstream as that user, direct adapters
-   * ignore it.
+   * ignore it. Returns `{ items }`; the policy layer may attach `accounts`.
    */
   search(
     userId: string,
     query: string,
     acting?: ActingContext,
-  ): Promise<ToolMatch[]>;
+  ): Promise<SearchResult>;
   /**
-   * Run one action by slug with its params. `acting` (optional) as in `search`.
+   * Run one action by slug with its params. `opts.acting` as in `search`;
+   * `opts.account` pins the connected account when the toolkit has several.
    */
   execute(
     userId: string,
     action: string,
     params: Record<string, unknown>,
-    acting?: ActingContext,
+    opts?: ExecuteOptions,
   ): Promise<ActionResult>;
+}
+
+/**
+ * An OPTIONAL port extension for providers that let a user register their own
+ * bring-your-own-API-key integrations (the custom provider). The rest of the
+ * lifecycle — list/disconnect/search/execute — is the generic `IntegrationProvider`
+ * surface; only creating and editing an integration is custom-shaped, because it
+ * carries the sealed API key. The provider-routes mount create/update ONLY when
+ * a provider implements this (else 404), so a plain provider is never asked to.
+ */
+export interface CustomIntegrationHost {
+  /** Register a new custom integration; returns its mapped connection. */
+  createCustom(
+    userId: string,
+    config: CustomIntegrationCreate,
+  ): Promise<Connection>;
+  /**
+   * Edit an existing custom integration (any subset of its config; an omitted
+   * apiKey keeps the stored one). Renaming keeps the slug/connectionId stable.
+   */
+  updateCustom(
+    userId: string,
+    connectionId: string,
+    patch: CustomIntegrationPatch,
+  ): Promise<Connection>;
+}
+
+/** Narrow a provider to one that supports custom-integration create/update. */
+export function supportsCustom(
+  provider: IntegrationProvider,
+): provider is IntegrationProvider & CustomIntegrationHost {
+  const c = provider as Partial<CustomIntegrationHost>;
+  return (
+    typeof c.createCustom === "function" && typeof c.updateCustom === "function"
+  );
+}
+
+/**
+ * The OPTIONAL port extension for the MCP provider: registering + editing a
+ * remote MCP server. Mirrors `CustomIntegrationHost` (the rest of the lifecycle
+ * is the generic `IntegrationProvider` surface); only create/update are
+ * MCP-shaped because they carry the sealed auth secret (`authValue`). The
+ * provider-routes mount create/update ONLY when a provider implements this (else
+ * 404), so a provider without MCP support is never asked to.
+ */
+export interface McpIntegrationHost {
+  /** Register a new MCP server integration; returns its mapped connection. */
+  createMcpServer(userId: string, config: McpServerCreate): Promise<Connection>;
+  /**
+   * Edit an existing MCP server (any subset of its config; an omitted authValue
+   * keeps the stored secret). Renaming keeps the slug/connectionId stable.
+   */
+  updateMcpServer(
+    userId: string,
+    connectionId: string,
+    patch: McpServerPatch,
+  ): Promise<Connection>;
+}
+
+/** Narrow a provider to one that supports MCP-server create/update. */
+export function supportsMcp(
+  provider: IntegrationProvider,
+): provider is IntegrationProvider & McpIntegrationHost {
+  const c = provider as Partial<McpIntegrationHost>;
+  return (
+    typeof c.createMcpServer === "function" &&
+    typeof c.updateMcpServer === "function"
+  );
 }

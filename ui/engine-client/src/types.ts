@@ -354,7 +354,9 @@ export interface InteractionOption {
 
 /** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for
  *  question steps, `s1` for the single signin step, `c1`..`cN` for connect
- *  steps) so each step's outcome is addressable. */
+ *  steps, `x1`..`xN` for custom-integration proposals, `m1`..`mN` for MCP-server
+ *  proposals) so each step's outcome is addressable. Proposal steps carry the
+ *  agent-authored config (NO secret) the user supplies the key/token for. */
 export type InteractionStep =
   | {
       kind: "question";
@@ -363,7 +365,29 @@ export type InteractionStep =
       options?: InteractionOption[];
     }
   | { kind: "signin"; id: string; reason?: string }
-  | { kind: "connect"; id: string; toolkit: string; reason?: string };
+  | { kind: "connect"; id: string; toolkit: string; reason?: string }
+  | {
+      kind: "custom_integration";
+      id: string;
+      proposal: {
+        name: string;
+        baseUrl: string;
+        auth: CustomIntegrationAuth;
+        description: string;
+      };
+      reason?: string;
+    }
+  | {
+      kind: "mcp_server";
+      id: string;
+      proposal: {
+        name: string;
+        url: string;
+        auth: McpServerAuth;
+        description?: string;
+      };
+      reason?: string;
+    };
 
 /**
  * The ordered steps a mission is waiting on the user for — recorded when the
@@ -1005,41 +1029,6 @@ export interface ClaudeStatus {
   lastInstallError: ClaudeInstallError | null;
 }
 
-// ---------- Composio ----------
-
-export type ComposioStatus =
-  | { status: "not_installed" }
-  | { status: "needs_auth" }
-  | { status: "ok"; email: string | null; org_name: string | null }
-  | { status: "error"; message: string };
-
-export interface ComposioAppEntry {
-  toolkit: string;
-  name: string;
-  description: string;
-  logo_url: string;
-  categories: string[];
-}
-
-export interface ComposioStartLoginResponse {
-  login_url: string;
-  cli_key: string;
-}
-
-export interface ComposioStartLinkResponse {
-  redirect_url: string;
-  connected_account_id: string;
-  toolkit: string;
-}
-
-export interface ComposioReconnectResponse {
-  /**
-   * Browser URL the user must open to finish OAuth re-consent, or `null`
-   * when the auth scheme refreshed silently (e.g. API-key connections).
-   */
-  redirectUrl: string | null;
-}
-
 // ────────────────────────────────────────────────────────────────────────
 // Portable agent (share / import "from a friend")
 // ────────────────────────────────────────────────────────────────────────
@@ -1255,6 +1244,71 @@ export interface IntegrationConnection {
   toolkit: string;
   connectionId: string;
   status: "active" | "pending" | "error";
+  /**
+   * Human label for this connected account: the user's alias if set, else a
+   * value derived from the account state (email / username / workspace …).
+   * Absent when nothing nameable could be derived — the UI falls back to a
+   * "Unnamed account" label with the connection id's last characters.
+   */
+  accountLabel?: string;
+}
+
+// ── Custom API-key integrations (provider "custom") ──────────────────────────
+// A service outside the Composio catalog, connected by storing an API key. The
+// key is sealed in the gateway and NEVER reaches the agent, pod, model, or
+// chat transcript — the gateway performs the HTTP request and injects the key.
+// Each custom integration surfaces ONE generic authenticated-HTTP-request tool.
+
+/**
+ * How the gateway injects the stored key on each request. `header` sends
+ * `<header>: <prefix><key>` (prefix used verbatim, e.g. `"Bearer "`); `query`
+ * appends `<param>=<key>` to the URL.
+ */
+export type CustomIntegrationAuth =
+  | { type: "header"; header: string; prefix?: string }
+  | { type: "query"; param: string };
+
+/**
+ * A custom integration's non-secret config. The API key travels separately
+ * (only on create/update) and is never returned. `baseUrl` is the origin +
+ * path prefix every request is confined to; `description` is agent-facing.
+ */
+export interface CustomIntegrationConfig {
+  name: string;
+  baseUrl: string;
+  auth: CustomIntegrationAuth;
+  description: string;
+}
+
+// ── Remote MCP server integrations (provider "mcp") ──────────────────────────
+// A remote Model Context Protocol server (Streamable HTTP transport) the user
+// connects as an integration. Its tools surface through integration_search /
+// integration_execute like any other integration. The server's auth secret is
+// sealed in the gateway and NEVER reaches the agent, pod, model, or transcript
+// — the gateway performs the MCP calls and injects the token gateway-side.
+
+/**
+ * How the gateway authenticates to the remote MCP server. `bearer` sends
+ * `Authorization: Bearer <value>`; `header` sends `<header>: <value>`; `none`
+ * sends no auth. The secret VALUE is carried separately as `authValue` (only on
+ * create/update) and is never returned in any response.
+ */
+export type McpServerAuth =
+  | { type: "none" }
+  | { type: "bearer" }
+  | { type: "header"; header: string };
+
+/**
+ * A remote MCP server's non-secret config. The auth value travels separately
+ * (only on create/update, in `authValue`) and is never returned. `url` is the
+ * server's Streamable HTTP endpoint (https only, no embedded credentials);
+ * `description` is optional agent-facing context.
+ */
+export interface McpServerConfig {
+  name: string;
+  url: string;
+  auth: McpServerAuth;
+  description?: string;
 }
 
 // ── OpenAI-compatible (local) provider ───────────────────────────────────────

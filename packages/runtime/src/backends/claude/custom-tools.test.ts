@@ -84,6 +84,8 @@ test("exposes ask_user + integration tools when the integrations gate is open", 
       "integration_search",
       "integration_execute",
       "request_connection",
+      "propose_custom_integration",
+      "propose_mcp_server",
     ]),
   );
   expect(new Set(mcp.allowedTools)).toEqual(
@@ -92,6 +94,8 @@ test("exposes ask_user + integration tools when the integrations gate is open", 
       "mcp__houston__integration_search",
       "mcp__houston__integration_execute",
       "mcp__houston__request_connection",
+      "mcp__houston__propose_custom_integration",
+      "mcp__houston__propose_mcp_server",
     ]),
   );
 });

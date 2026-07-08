@@ -15,9 +15,11 @@ interface AgentAppsSectionProps {
   rows: AgentAppRowVM[];
   canEdit: boolean;
   connectFlow: ConnectFlow;
-  /** Grants mode only: drop this agent's grant for an active app. */
-  onDeactivate?: (toolkit: string) => void;
-  onRemove: (toolkit: string) => void;
+  /** Grants mode only: drop this agent's grant for an active account. */
+  onDeactivate?: (connectionId: string) => void;
+  onRemove: (connectionId: string) => void;
+  /** Re-run the connect flow for a toolkit to link another login of it. */
+  onAddAccount?: (toolkit: string) => void;
 }
 
 /**
@@ -33,6 +35,7 @@ export function AgentAppsSection({
   connectFlow,
   onDeactivate,
   onRemove,
+  onAddAccount,
 }: AgentAppsSectionProps) {
   return (
     <section className="mt-6">
@@ -64,6 +67,7 @@ export function AgentAppsSection({
               canEdit={canEdit}
               onDeactivate={onDeactivate}
               onRemove={onRemove}
+              onAddAccount={onAddAccount}
             />
           ))}
         </div>

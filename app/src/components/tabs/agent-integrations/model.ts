@@ -4,26 +4,73 @@ import type {
 } from "@houston-ai/engine-client";
 import {
   type AppDisplay,
+  type ConnectionRow,
   connectionRows,
 } from "../../integrations/app-display.ts";
 import { splitByGrant } from "../../integrations/model.ts";
 
-/** One connected app resolved for display in this agent's list. */
+/** One connected ACCOUNT resolved for display in this agent's list. */
 export interface AgentAppRow {
   connection: IntegrationConnection;
   app: AppDisplay;
+  /**
+   * Render the per-account label (email / alias) because this toolkit has more
+   * than one account in the SAME list, so the app name alone can't tell the
+   * accounts apart. A single account of an app needs no label.
+   */
+  showAccountLabel: boolean;
+  /**
+   * A custom API-key integration (provider `"custom"`): gets the "Custom" badge
+   * and hides "add another account" (custom has a single implicit account).
+   */
+  custom: boolean;
+  /**
+   * A remote MCP server integration (provider `"mcp"`): gets the "MCP" badge and
+   * hides "add another account" (an MCP server has a single implicit account).
+   */
+  mcp: boolean;
+}
+
+/**
+ * Resolve connections to display rows, then flag every row that shares its
+ * toolkit with another row in the SAME list so the UI labels those accounts.
+ * `customToolkits` / `mcpToolkits` mark the custom- and mcp-provider rows. Pure
+ * so the multi-account + provider flags are unit-testable.
+ */
+function toAgentRows(
+  rows: ConnectionRow[],
+  customToolkits: ReadonlySet<string>,
+  mcpToolkits: ReadonlySet<string>,
+): AgentAppRow[] {
+  const perToolkit = new Map<string, number>();
+  for (const row of rows) {
+    perToolkit.set(
+      row.connection.toolkit,
+      (perToolkit.get(row.connection.toolkit) ?? 0) + 1,
+    );
+  }
+  return rows.map((row) => ({
+    connection: row.connection,
+    app: row.app,
+    showAccountLabel: (perToolkit.get(row.connection.toolkit) ?? 0) > 1,
+    custom: customToolkits.has(row.connection.toolkit),
+    mcp: mcpToolkits.has(row.connection.toolkit),
+  }));
 }
 
 /**
  * The per-agent integrations surface has exactly two shapes, kept as a
  * discriminated union so the tab can never mix them:
  *
- *  - `grants`   — the host supports per-agent grants (C4). `activeRows` are the
- *                 apps this agent may act on; `accountRows` are apps connected
- *                 to the user's account but not yet granted here, each activated
- *                 with a one-click grant-add (the promoted "Ready to activate"
- *                 group). Only ACTIVE connections are activatable — a pending or
- *                 errored connection is not a usable app to hand this agent.
+ *  - `grants`   — the host supports per-agent grants (C4). The grant unit is the
+ *                 connected ACCOUNT (`connectionId`), not the toolkit, so a user
+ *                 can hand this agent one login of an app and withhold another.
+ *                 `activeRows` are the accounts this agent may act on;
+ *                 `accountRows` are accounts connected to the user's account but
+ *                 not yet granted here, each activated with a one-click grant-add
+ *                 (the promoted "Ready to activate" group). Only ACTIVE
+ *                 connections are activatable — a pending or errored connection
+ *                 is not a usable account to hand this agent.
  *                 `disallowedRows` are connected apps the agent's Teams allowlist
  *                 ceiling forbids (visible, non-connectable, for transparency);
  *                 empty unless a Teams host serves a restrictive allowlist.
@@ -57,14 +104,24 @@ export function agentIntegrationsView(opts: {
   catalog: IntegrationToolkit[];
   grants: string[] | null;
   allowlist?: string[] | null;
+  /** Toolkit slugs that are custom API-key integrations (default: none). */
+  customToolkits?: ReadonlySet<string>;
+  /** Toolkit slugs that are remote MCP server integrations (default: none). */
+  mcpToolkits?: ReadonlySet<string>;
 }): AgentIntegrationsView {
+  const custom = opts.customToolkits ?? EMPTY_SET;
+  const mcp = opts.mcpToolkits ?? EMPTY_SET;
   if (opts.grants === null) {
     return {
       mode: "degraded",
-      rows: connectionRows(opts.connections, opts.catalog),
+      rows: toAgentRows(
+        connectionRows(opts.connections, opts.catalog),
+        custom,
+        mcp,
+      ),
     };
   }
-  const grantedToolkits = new Set(opts.grants);
+  const grantSet = new Set(opts.grants);
   const allowed = opts.allowlist == null ? null : new Set(opts.allowlist);
   const allowedConns: IntegrationConnection[] = [];
   const disallowedConns: IntegrationConnection[] = [];
@@ -76,19 +133,32 @@ export function agentIntegrationsView(opts: {
   }
   const { granted, available } = splitByGrant({
     connections: allowedConns,
-    grants: grantedToolkits,
+    grants: grantSet,
   });
+  // The distinct toolkits behind the granted ACCOUNTS — the app-level view of
+  // what this agent can act on (catalog auto-grant + ConnectMoreApps behavior).
+  const grantedToolkits = new Set(granted.map((c) => c.toolkit));
   return {
     mode: "grants",
-    activeRows: connectionRows(granted, opts.catalog),
-    accountRows: connectionRows(
-      available.filter((c) => c.status === "active"),
-      opts.catalog,
+    activeRows: toAgentRows(connectionRows(granted, opts.catalog), custom, mcp),
+    accountRows: toAgentRows(
+      connectionRows(
+        available.filter((c) => c.status === "active"),
+        opts.catalog,
+      ),
+      custom,
+      mcp,
     ),
-    disallowedRows: connectionRows(disallowedConns, opts.catalog),
+    disallowedRows: toAgentRows(
+      connectionRows(disallowedConns, opts.catalog),
+      custom,
+      mcp,
+    ),
     grantedToolkits,
   };
 }
+
+const EMPTY_SET: ReadonlySet<string> = new Set();
 
 /**
  * The effective integration allowlist for an agent: the agent-level ceiling

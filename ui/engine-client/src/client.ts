@@ -27,11 +27,6 @@ import type {
   ChatHistoryEntry,
   ClaudeStatus,
   CommunitySkill,
-  ComposioAppEntry,
-  ComposioReconnectResponse,
-  ComposioStartLinkResponse,
-  ComposioStartLoginResponse,
-  ComposioStatus,
   ConversationEntry,
   CreateAgent,
   CreateAgentResult,
@@ -40,6 +35,7 @@ import type {
   CreateWorkspace,
   CreateWorktreeRequest,
   CustomEndpoint,
+  CustomIntegrationConfig,
   ErrorBody,
   GenerateInstructionsResult,
   HealthResponse,
@@ -53,6 +49,7 @@ import type {
   IntegrationProviderStatus,
   IntegrationToolkit,
   ListWorktreesRequest,
+  McpServerConfig,
   NewActivity,
   NewRoutine,
   OrgInfo,
@@ -1076,14 +1073,27 @@ export class HoustonClient {
       `/integrations/${this.seg(provider)}/connections/${this.seg(connectionId)}`,
     );
   }
+  /** Disconnect ONE connected account (by its connection id), not a toolkit. */
   async disconnectIntegration(
     provider: string,
-    toolkit: string,
+    connectionId: string,
   ): Promise<void> {
     await this.request(
       "POST",
       `/integrations/${this.seg(provider)}/disconnect`,
-      { toolkit },
+      { connectionId },
+    );
+  }
+  /** Rename ONE connected account: sets its user-facing alias (1..64 chars). */
+  async renameIntegrationConnection(
+    provider: string,
+    connectionId: string,
+    alias: string,
+  ): Promise<void> {
+    await this.request(
+      "POST",
+      `/integrations/${this.seg(provider)}/connections/${this.seg(connectionId)}/rename`,
+      { alias },
     );
   }
   /**
@@ -1093,6 +1103,82 @@ export class HoustonClient {
    */
   async dismissIntegrationsReconnectNotice(): Promise<void> {
     await this.request("POST", "/integrations/reconnect-notice/dismiss");
+  }
+  /**
+   * Add a custom API-key integration (provider `"custom"`): the gateway seals
+   * the key at rest and returns the resulting connection (its server-generated
+   * slug is both `toolkit` and `connectionId`). Mutating POST — never
+   * auto-replayed. The key is only ever sent here + on `updateCustomIntegration`
+   * and is never returned in any response.
+   */
+  async createCustomIntegration(
+    provider: string,
+    config: CustomIntegrationConfig & { apiKey: string },
+  ): Promise<IntegrationConnection> {
+    return (
+      await this.request<{ connection: IntegrationConnection }>(
+        "POST",
+        `/integrations/${this.seg(provider)}/create`,
+        config,
+      )
+    ).connection;
+  }
+  /**
+   * Edit a custom integration. Any omitted field is left unchanged; an omitted
+   * `apiKey` keeps the stored key (so the UI can offer "leave blank to keep").
+   * Renaming keeps the slug/connectionId stable. Returns the updated connection.
+   */
+  async updateCustomIntegration(
+    provider: string,
+    connectionId: string,
+    patch: Partial<CustomIntegrationConfig> & { apiKey?: string },
+  ): Promise<IntegrationConnection> {
+    return (
+      await this.request<{ connection: IntegrationConnection }>(
+        "POST",
+        `/integrations/${this.seg(provider)}/update`,
+        { connectionId, ...patch },
+      )
+    ).connection;
+  }
+  /**
+   * Connect a remote MCP server (provider `"mcp"`): the gateway verifies the
+   * server is reachable, seals the auth secret at rest, and returns the
+   * resulting connection (its server-generated slug is both `toolkit` and
+   * `connectionId`). Mutating POST — never auto-replayed. `authValue` carries
+   * the bearer token / header value and is only ever sent here + on
+   * `updateMcpServer`; it is never returned in any response.
+   */
+  async createMcpServer(
+    provider: string,
+    config: McpServerConfig & { authValue?: string },
+  ): Promise<IntegrationConnection> {
+    return (
+      await this.request<{ connection: IntegrationConnection }>(
+        "POST",
+        `/integrations/${this.seg(provider)}/create`,
+        config,
+      )
+    ).connection;
+  }
+  /**
+   * Edit a remote MCP server. Any omitted field is left unchanged; an omitted
+   * `authValue` keeps the stored secret (so the UI can offer "leave blank to
+   * keep"). Renaming keeps the slug/connectionId stable. Returns the updated
+   * connection.
+   */
+  async updateMcpServer(
+    provider: string,
+    connectionId: string,
+    patch: Partial<McpServerConfig> & { authValue?: string },
+  ): Promise<IntegrationConnection> {
+    return (
+      await this.request<{ connection: IntegrationConnection }>(
+        "POST",
+        `/integrations/${this.seg(provider)}/update`,
+        { connectionId, ...patch },
+      )
+    ).connection;
   }
 
   // ---------- org / roles (multiplayer) — v3 host only ----------
@@ -1260,36 +1346,37 @@ export class HoustonClient {
     ).rows;
   }
   /**
-   * The integration toolkit slugs granted to this agent, or `null` when the host
+   * The connected-account ids granted to this agent, or `null` when the host
    * does not serve grants (404) — a deployment without per-agent grants (e.g. a
    * managed cloud pod whose gateway owns the policy). Callers treat `null` as
    * "grants unsupported here" and degrade silently; every other error still
-   * throws. Any host that DOES serve grants answers 200 with the set.
+   * throws. Any host that DOES serve grants answers 200 with the set. The grant
+   * unit is the connected account (connection id), not the toolkit.
    */
   async agentIntegrationGrants(
     agentSlugOrId: string,
   ): Promise<string[] | null> {
     try {
       return (
-        await this.request<{ toolkits: string[] }>(
+        await this.request<{ accounts: string[] }>(
           "GET",
           `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
         )
-      ).toolkits;
+      ).accounts;
     } catch (err) {
       if (isHoustonEngineError(err) && err.status === 404) return null;
       throw err;
     }
   }
-  /** Replace the integration toolkit slugs granted to this agent. */
+  /** Replace the connected-account ids granted to this agent (replace-set PUT). */
   async setAgentIntegrationGrants(
     agentSlugOrId: string,
-    toolkits: string[],
+    accounts: string[],
   ): Promise<void> {
     await this.request(
       "PUT",
       `/agents/${this.seg(agentSlugOrId)}/integration-grants`,
-      { toolkits },
+      { accounts },
     );
   }
 
@@ -1583,63 +1670,6 @@ export class HoustonClient {
    */
   claudeInstall(): Promise<void> {
     return this.request("POST", "/claude/install");
-  }
-
-  // ---------- composio ----------
-
-  composioStatus(): Promise<ComposioStatus> {
-    return this.request("GET", "/composio/status");
-  }
-  composioCliInstalled(): Promise<boolean> {
-    return this.request<{ installed: boolean }>(
-      "GET",
-      "/composio/cli-installed",
-    ).then((r) => r.installed);
-  }
-  composioInstallCli(): Promise<void> {
-    return this.request("POST", "/composio/cli");
-  }
-  composioStartLogin(): Promise<ComposioStartLoginResponse> {
-    return this.request("POST", "/composio/login");
-  }
-  composioCompleteLogin(cliKey: string): Promise<void> {
-    return this.request("POST", "/composio/login/complete", { cliKey });
-  }
-  composioLogout(): Promise<void> {
-    return this.request("POST", "/composio/logout");
-  }
-  composioListApps(): Promise<ComposioAppEntry[]> {
-    return this.request("GET", "/composio/apps");
-  }
-  composioListConnections(): Promise<string[]> {
-    return this.request("GET", "/composio/connections");
-  }
-  composioConnectApp(toolkit: string): Promise<ComposioStartLinkResponse> {
-    return this.request("POST", "/composio/connections", { toolkit });
-  }
-  /** Disconnect a toolkit: removes its connected account(s). */
-  composioDisconnect(toolkit: string): Promise<void> {
-    return this.request("POST", "/composio/connections/disconnect", {
-      toolkit,
-    });
-  }
-  /**
-   * Reconnect a toolkit by refreshing its auth. Resolves to a browser URL
-   * the user must open to complete OAuth re-consent, or `null` when the
-   * auth scheme refreshed silently.
-   */
-  composioReconnect(toolkit: string): Promise<ComposioReconnectResponse> {
-    return this.request("POST", "/composio/connections/reconnect", { toolkit });
-  }
-  /**
-   * Ask the engine to actively watch for `toolkit` to land in the
-   * consumer connections list and emit `ComposioConnectionAdded` over
-   * the WS firehose when it does. Idempotent — duplicate calls while
-   * a watch is active are no-ops on the engine. Returns immediately;
-   * the result arrives as a WS event.
-   */
-  composioWatchConnection(toolkit: string): Promise<void> {
-    return this.request("POST", "/composio/connections/watch", { toolkit });
   }
 
   // ---------- portable agent share / import ----------

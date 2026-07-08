@@ -1,10 +1,13 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { canUseAgent } from "../domain/access";
 import type { UserId } from "../domain/types";
+import { normalizeAccountIds } from "../integrations/grant-policy";
+import type { GrantAccount } from "../integrations/grant-store";
 import type { LocalIntegrationGrants } from "../integrations/grants";
-import { normalizeToolkits } from "../integrations/grants";
+import { IntegrationSigninRequiredError } from "../integrations/types";
 import type { WorkspaceStore } from "../ports";
 import { json, readJson } from "./http";
+import { type IntegrationDeps, signinRequired } from "./integrations";
 
 /**
  * Per-agent integration grants — LOCAL / self-host profile ONLY. Mounted only
@@ -14,11 +17,16 @@ import { json, readJson } from "./http";
  * handler no-ops and the request 404s, which the client reads as "grants
  * unsupported" and degrades without a toast.
  *
- *   GET /v1/agents/:agentId/integration-grants  -> {toolkits}
- *   PUT  same {toolkits}                          -> {toolkits} (replace-set)
+ * The grant unit is a connected ACCOUNT: the wire carries `connectionId`s. A PUT
+ * validates every id against the user's live connections (unknown → 400) and
+ * captures each id's toolkit server-side.
+ *
+ *   GET /v1/agents/:agentId/integration-grants  -> {accounts: connectionId[]}
+ *   PUT  same {accounts: connectionId[]}          -> {accounts} (replace-set)
  */
 export interface IntegrationGrantsDeps {
   store: WorkspaceStore;
+  integrations?: IntegrationDeps;
   integrationGrants?: LocalIntegrationGrants;
 }
 
@@ -37,6 +45,51 @@ async function authorize(
     status: access.reason === "agent not found" ? 404 : 403,
     reason: access.reason,
   };
+}
+
+/** Map each of the user's live connections to its toolkit, across all providers. */
+async function connectionToolkits(
+  integrations: IntegrationDeps | undefined,
+  userId: UserId,
+): Promise<Map<string, string>> {
+  const byId = new Map<string, string>();
+  if (!integrations) return byId;
+  for (const id of integrations.registry.ids()) {
+    const provider = integrations.registry.get(id);
+    for (const c of await provider.listConnections(userId)) {
+      byId.set(c.connectionId, c.toolkit);
+    }
+  }
+  return byId;
+}
+
+async function handlePut(
+  deps: IntegrationGrantsDeps,
+  grants: LocalIntegrationGrants,
+  userId: UserId,
+  agentId: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  const validation = normalizeAccountIds((await readJson(req)).accounts);
+  if (!validation.ok) {
+    json(res, 400, { error: validation.error });
+    return;
+  }
+  // Every id must be one of the user's live connections — capture its toolkit
+  // server-side rather than trusting the client for it.
+  const toolkits = await connectionToolkits(deps.integrations, userId);
+  const accounts: GrantAccount[] = [];
+  for (const connectionId of validation.ids) {
+    const toolkit = toolkits.get(connectionId);
+    if (!toolkit) {
+      json(res, 400, { error: "invalid_accounts" });
+      return;
+    }
+    accounts.push({ connectionId, toolkit });
+  }
+  const stored = await grants.replace(agentId, accounts);
+  json(res, 200, { accounts: stored.map((a) => a.connectionId) });
 }
 
 export async function handleIntegrationGrants(
@@ -61,23 +114,19 @@ export async function handleIntegrationGrants(
     return true;
   }
 
-  if (method === "GET") {
-    json(res, 200, {
-      toolkits: await deps.integrationGrants.read(agentId, userId),
-    });
+  try {
+    if (method === "GET") {
+      const accounts = await deps.integrationGrants.read(agentId, userId);
+      json(res, 200, { accounts: accounts.map((a) => a.connectionId) });
+      return true;
+    }
+    await handlePut(deps, deps.integrationGrants, userId, agentId, req, res);
     return true;
+  } catch (err) {
+    if (err instanceof IntegrationSigninRequiredError) {
+      signinRequired(res);
+      return true;
+    }
+    throw err;
   }
-
-  const validation = normalizeToolkits((await readJson(req)).toolkits);
-  if (!validation.ok) {
-    json(res, 400, { error: validation.error });
-    return true;
-  }
-  json(res, 200, {
-    toolkits: await deps.integrationGrants.replace(
-      agentId,
-      validation.toolkits,
-    ),
-  });
-  return true;
 }

@@ -1,0 +1,178 @@
+import {
+  customActionSlug,
+  isCustomAction,
+  isMcpAction,
+  mcpActionRemainder,
+} from "./action-routing";
+import type { GrantAccount } from "./grant-store";
+import type { ConnectedAccountInfo, ToolMatch } from "./types";
+
+/**
+ * Pure grant-policy helpers (no I/O) shared by the grant routes + the sandbox
+ * proxy. The grant unit is a connected ACCOUNT; enforcement derives the granted
+ * toolkit SET from the accounts and resolves which account an execute pins.
+ */
+
+/**
+ * Composio slug convention: an action is named `<TOOLKIT>_<REST>` with the
+ * toolkit slug uppercased VERBATIM, so a multi-word slug keeps its underscores
+ * (`google_maps` → `GOOGLE_MAPS_GET_ROUTE`, `gmail` → `GMAIL_SEND_EMAIL`). Attach
+ * an action to a toolkit by matching the FULL slug as a prefix up to an
+ * underscore boundary — never the segment before the first `_`, which would
+ * mis-attribute `GOOGLE_MAPS_GET_ROUTE` to a nonexistent `google` toolkit and so
+ * 403 a genuinely-granted `google_maps`.
+ *
+ * Custom (per-user API-key) integrations name their one tool
+ * `CUSTOM_<SLUG>_REQUEST`; the toolkit IS that slug, so strip the `CUSTOM_`
+ * wrapper and match the slug EXACTLY (never the loose prefix — a custom
+ * integration must not borrow another's grant). A `CUSTOM_` action that is not
+ * a well-formed request belongs to no toolkit.
+ *
+ * MCP server integrations name their tools `MCP_<SLUG>_<TOOL>`; the toolkit is
+ * the server slug. Because both the slug and the tool name can contain
+ * underscores, a single toolkit cannot decide membership on its own — a server
+ * belongs to the action when its slug is a `_`-boundary PREFIX of the remainder,
+ * and `toolkitForAction` picks the LONGEST such slug so a shorter server can
+ * never swallow a longer one's tools.
+ */
+export function actionInToolkit(action: string, toolkit: string): boolean {
+  if (isMcpAction(action)) {
+    const rest = mcpActionRemainder(action);
+    if (rest === null) return false;
+    return rest.startsWith(`${toolkit.toLowerCase()}_`);
+  }
+  const slug = customActionSlug(action);
+  if (slug !== null) return slug === toolkit.toLowerCase();
+  if (isCustomAction(action)) return false;
+  const a = action.toLowerCase();
+  const t = toolkit.toLowerCase();
+  return a === t || a.startsWith(`${t}_`);
+}
+
+/** The distinct toolkit slugs covered by a granted-account set. */
+export function grantedToolkits(accounts: GrantAccount[]): string[] {
+  const seen = new Set<string>();
+  for (const a of accounts) seen.add(a.toolkit);
+  return [...seen];
+}
+
+/** The LONGEST slug in `toolkits` that owns an MCP action (`<slug>_` prefixes the
+ *  remainder), or null when none does. */
+function longestMcpOwner(action: string, toolkits: string[]): string | null {
+  let best: string | null = null;
+  let bestLen = -1;
+  for (const t of toolkits) {
+    if (actionInToolkit(action, t) && t.length > bestLen) {
+      best = t;
+      bestLen = t.length;
+    }
+  }
+  return best;
+}
+
+/**
+ * The granted toolkit an action belongs to, or null when none matches.
+ *
+ * For MCP actions the owner is resolved against `allToolkits` — the FULL set of
+ * the caller's server slugs, not just the granted ones — because a slug and a
+ * tool name both carry underscores, so `MCP_ACME_TRACKER_*` is owned by
+ * `acme_tracker` whenever that server exists, even when only a shorter `acme` is
+ * granted. Resolving the LONGEST owner across all servers FIRST, then checking
+ * the grant, stops a shorter granted server from borrowing a longer (ungranted)
+ * server's tools by underscore-boundary aliasing. `allToolkits` defaults to the
+ * granted set for callers that pass a single list (owner == granted match).
+ *
+ * Every non-MCP action has at most one match, so the first granted hit is
+ * authoritative and `allToolkits` is unused.
+ */
+export function toolkitForAction(
+  action: string,
+  granted: string[],
+  allToolkits: string[] = granted,
+): string | null {
+  if (isMcpAction(action)) {
+    const owner = longestMcpOwner(action, allToolkits);
+    if (owner === null) return null;
+    const grantedSet = new Set(granted.map((t) => t.toLowerCase()));
+    return grantedSet.has(owner.toLowerCase()) ? owner : null;
+  }
+  return granted.find((t) => actionInToolkit(action, t)) ?? null;
+}
+
+/**
+ * Keep the matches whose toolkit is granted (case-insensitive) — plus every
+ * match marked NOT connected. Grants only exist over connected toolkits, so a
+ * `connected: false` match can never be granted; dropping it would kill the
+ * in-chat connect discovery (HOU-670: search surfaces not-connected apps so
+ * the agent can offer the connect card). Execute stays fully enforced.
+ */
+export function filterMatchesToGranted(
+  matches: ToolMatch[],
+  toolkits: string[],
+): ToolMatch[] {
+  const set = new Set(toolkits.map((t) => t.toLowerCase()));
+  return matches.filter(
+    (m) => m.connected === false || set.has(m.toolkit.toLowerCase()),
+  );
+}
+
+/**
+ * Pick the connected account an execute runs against, from the toolkit's granted
+ * accounts (already enriched with labels):
+ *  - a requested id/label → match by exact `connectionId` OR case-insensitive
+ *    `accountLabel`; no match ⇒ `account_not_granted`.
+ *  - none requested + exactly one granted account ⇒ auto-pin it.
+ *  - none requested + more than one ⇒ `account_required` (list them so the caller
+ *    can retry with an explicit account).
+ */
+export type AccountResolution =
+  | { ok: true; connectionId: string }
+  | { ok: false; error: "account_not_granted" }
+  | { ok: false; error: "account_required"; accounts: ConnectedAccountInfo[] };
+
+export function resolveExecuteAccount(
+  accounts: ConnectedAccountInfo[],
+  requested: string | undefined,
+): AccountResolution {
+  if (requested !== undefined) {
+    const needle = requested.toLowerCase();
+    const match = accounts.find(
+      (a) =>
+        a.connectionId === requested ||
+        a.accountLabel?.toLowerCase() === needle,
+    );
+    return match
+      ? { ok: true, connectionId: match.connectionId }
+      : { ok: false, error: "account_not_granted" };
+  }
+  const [only] = accounts;
+  if (only && accounts.length === 1) {
+    return { ok: true, connectionId: only.connectionId };
+  }
+  return { ok: false, error: "account_required", accounts };
+}
+
+export type AccountIdValidation =
+  | { ok: true; ids: string[] }
+  | { ok: false; error: string };
+
+/** Validate + dedupe a replace-set PUT body: an array of connection ids. Real
+ *  membership (does the id belong to the user) is checked by the route against
+ *  the provider; this only guards shape. */
+export function normalizeAccountIds(input: unknown): AccountIdValidation {
+  if (!Array.isArray(input)) {
+    return { ok: false, error: "missing 'accounts' (array of connection ids)" };
+  }
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const raw of input) {
+    if (typeof raw !== "string" || raw.length === 0) {
+      return { ok: false, error: `invalid account id: ${JSON.stringify(raw)}` };
+    }
+    if (!seen.has(raw)) {
+      seen.add(raw);
+      ids.push(raw);
+    }
+  }
+  return { ok: true, ids };
+}

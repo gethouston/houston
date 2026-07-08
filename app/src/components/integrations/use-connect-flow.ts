@@ -116,13 +116,14 @@ export function useConnectFlow(opts: {
           intervalMs: POLL_INTERVAL_MS,
         });
 
-        // Agent context, connected from this agent → auto-grant so the app lands
+        // Agent context, connected from this agent → auto-grant the NEW account
+        // (grants are keyed per connectionId, not per toolkit) so the app lands
         // as active for it. The grant mutation computes the next set from the
         // FRESHEST cache at mutate time and no-ops when grants are unsupported;
         // its failure surfaces via call() but must NOT mask the connection.
         if (outcome === "active" && autoGrant && agentId) {
           try {
-            await mutateGrant({ toolkit, op: "add" });
+            await mutateGrant({ connectionId, op: "add" });
           } catch {
             // Surfaced by call(); the connection itself still succeeded.
           }

@@ -5,7 +5,8 @@ import { tauriIntegrations } from "../../lib/tauri";
 
 /**
  * The grant sets for MANY agents at once (the global Integrations page: which
- * agents may use each connected app). Runs one query per agent through
+ * agents may use each connected account — the grant unit is the account's
+ * connection id, not the toolkit). Runs one query per agent through
  * `useQueries`, sharing the same `queryKeys.agentGrants(id)` cache entries the
  * per-agent tab uses, so a toggle on one surface is reflected on the other.
  *

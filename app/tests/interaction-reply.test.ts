@@ -5,6 +5,7 @@ import { isAutoContinueMessage } from "../src/lib/auto-continue-message.ts";
 import { composeInteractionReply } from "../src/lib/interaction-reply.ts";
 
 const connectedLine = (name: string) => `Connected ${name}.`;
+const declinedLine = (name: string) => `I decided not to add ${name} for now.`;
 const signedInLine = "Signed in to Houston.";
 const signedInFollowup = "I've signed in. Please continue.";
 
@@ -137,5 +138,44 @@ describe("composeInteractionReply", () => {
     strictEqual(isAutoContinueMessage(reply), true);
     strictEqual(reply.endsWith("I've signed in. Please continue."), true);
     strictEqual(reply.includes("Signed in to Houston."), false);
+  });
+
+  // ── Custom-integration / MCP-server proposals ──────────────────────────────
+  // An added proposal rides the same "Connected <name>." line via connectedNames;
+  // a DECLINED proposal contributes its own line so the agent learns the outcome.
+  it("hides a declined-only proposal reply with the declined line", () => {
+    const reply = composeInteractionReply({
+      answers: [],
+      connectedNames: [],
+      declinedNames: ["Acme CRM"],
+      hasQuestionSteps: false,
+      signedIn: false,
+      connectedLine,
+      declinedLine,
+      signedInLine,
+      signedInFollowup,
+    });
+    strictEqual(isAutoContinueMessage(reply), true);
+    strictEqual(reply.endsWith("I decided not to add Acme CRM for now."), true);
+  });
+
+  it("appends declined lines after connected lines in a mixed proposal sequence", () => {
+    const reply = composeInteractionReply({
+      answers,
+      connectedNames: ["Acme CRM"],
+      declinedNames: ["Acme Tracker"],
+      hasQuestionSteps: true,
+      signedIn: false,
+      connectedLine,
+      declinedLine,
+      signedInLine,
+      signedInFollowup,
+    });
+    strictEqual(isAutoContinueMessage(reply), false);
+    strictEqual(
+      reply.indexOf("Connected Acme CRM.") <
+        reply.indexOf("I decided not to add Acme Tracker for now."),
+      true,
+    );
   });
 });

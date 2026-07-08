@@ -49,6 +49,7 @@
   },
   "interaction": {
     "connectedLine": "Conectou {{name}}.",
+    "declinedLine": "Decidi não adicionar {{name}} por enquanto.",
     "signedInLine": "Sessão iniciada no Houston.",
     "signedInFollowup": "Já entrei. Pode continuar.",
     "signinReason": "Entre no Houston para continuar.",

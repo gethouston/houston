@@ -49,6 +49,7 @@
   },
   "interaction": {
     "connectedLine": "Connected {{name}}.",
+    "declinedLine": "I decided not to add {{name}} for now.",
     "signedInLine": "Signed in to Houston.",
     "signedInFollowup": "I've signed in. Please continue.",
     "signinReason": "Sign in to Houston to continue.",

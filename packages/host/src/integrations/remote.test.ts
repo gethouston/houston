@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { supportsCustom, supportsMcp } from "./provider";
 import { RemoteIntegrationProvider } from "./remote";
 import {
   IntegrationSigninRequiredError,
@@ -24,6 +25,7 @@ function harness(
   handler: (url: URL, method: string) => Reply,
   token?: string,
   podToken?: string,
+  opts: { id?: string; custom?: boolean; mcp?: boolean } = {},
 ) {
   const calls: Recorded[] = [];
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -42,10 +44,12 @@ function harness(
     });
   }) as typeof fetch;
   const provider = new RemoteIntegrationProvider({
-    id: "composio",
+    id: opts.id ?? "composio",
     upstreamUrl: "https://cloud.test/",
     token: () => token ?? null,
     podToken,
+    custom: opts.custom,
+    mcp: opts.mcp,
     fetch: fetchImpl,
   });
   return { provider, calls };
@@ -81,6 +85,7 @@ test("signed in: forwards to the upstream /v1/integrations routes with the beare
     if (url.pathname.endsWith("/execute"))
       return { body: { successful: true } };
     if (url.pathname.endsWith("/disconnect")) return { body: { ok: true } };
+    if (url.pathname.endsWith("/rename")) return { body: { ok: true } };
     return { status: 404 };
   }, "jwt-1");
 
@@ -109,8 +114,50 @@ test("signed in: forwards to the upstream /v1/integrations routes with the beare
     action: "GMAIL_SEND_EMAIL",
     params: { to: "a@b" },
   });
-  await provider.disconnect("ignored", "gmail");
-  expect(calls[6]?.body).toEqual({ toolkit: "gmail" });
+  // disconnect + rename are PER ACCOUNT (connectionId), not per toolkit.
+  await provider.disconnect("ignored", "ca_1");
+  expect(calls[6]?.body).toEqual({ connectionId: "ca_1" });
+  await provider.rename("ignored", "ca_1", "Work");
+  expect(calls[7]?.url).toBe(
+    "https://cloud.test/v1/integrations/composio/connections/ca_1/rename",
+  );
+  expect(calls[7]?.body).toEqual({ alias: "Work" });
+});
+
+test("execute forwards the pinned account; search relays the upstream accounts verbatim", async () => {
+  const { provider, calls } = harness((url) => {
+    if (url.pathname.endsWith("/execute"))
+      return { body: { successful: true } };
+    if (url.pathname.endsWith("/search"))
+      return {
+        body: {
+          items: [{ action: "GMAIL_SEND_EMAIL", toolkit: "gmail" }],
+          accounts: [
+            { toolkit: "gmail", connectionId: "ca_1", accountLabel: "Work" },
+          ],
+        },
+      };
+    return { status: 404 };
+  }, "jwt-1");
+
+  await provider.execute(
+    "u",
+    "GMAIL_SEND_EMAIL",
+    { to: "a@b" },
+    {
+      account: "ca_work",
+    },
+  );
+  expect(calls[0]?.body).toEqual({
+    action: "GMAIL_SEND_EMAIL",
+    params: { to: "a@b" },
+    account: "ca_work",
+  });
+
+  const result = await provider.search("u", "email");
+  expect(result.accounts).toEqual([
+    { toolkit: "gmail", connectionId: "ca_1", accountLabel: "Work" },
+  ]);
 });
 
 test("upstream 401 (expired session) becomes the typed signin error; 404 poll → null; 500 throws", async () => {
@@ -140,6 +187,137 @@ test("non-401 upstream errors carry status and body for route relay", async () =
   );
 });
 
+// ── Custom (per-user API-key) integrations: create/update forwarding ─────────
+
+test("a custom adapter supportsCustom and forwards create → /custom/create, unwrapping {connection}", async () => {
+  const connection = {
+    toolkit: "acme",
+    connectionId: "acme",
+    status: "active" as const,
+    accountLabel: "Acme",
+  };
+  const { provider, calls } = harness(
+    () => ({ body: { connection } }),
+    "jwt-1",
+    undefined,
+    {
+      id: "custom",
+      custom: true,
+    },
+  );
+  expect(supportsCustom(provider)).toBe(true);
+  if (!supportsCustom(provider)) throw new Error("unreachable");
+
+  const config = {
+    name: "Acme",
+    baseUrl: "https://api.acme.test",
+    auth: {
+      type: "header" as const,
+      header: "Authorization",
+      prefix: "Bearer ",
+    },
+    description: "Acme CRM",
+    apiKey: "sk-secret",
+  };
+  expect(await provider.createCustom("ignored", config)).toEqual(connection);
+  expect(calls[0]?.url).toBe(
+    "https://cloud.test/v1/integrations/custom/create",
+  );
+  expect(calls[0]?.method).toBe("POST");
+  expect(calls[0]?.headers.authorization).toBe("Bearer jwt-1");
+  expect(calls[0]?.body).toEqual(config); // the sealed key is forwarded, mode 1
+});
+
+test("a custom adapter forwards update with the connectionId + patch (omitted key kept upstream)", async () => {
+  const connection = {
+    toolkit: "acme",
+    connectionId: "acme",
+    status: "active" as const,
+  };
+  const { provider, calls } = harness(
+    () => ({ body: { connection } }),
+    "jwt-1",
+    undefined,
+    {
+      id: "custom",
+      custom: true,
+    },
+  );
+  if (!supportsCustom(provider)) throw new Error("expected custom support");
+  await provider.updateCustom("ignored", "acme", { description: "new" });
+  expect(calls[0]?.url).toBe(
+    "https://cloud.test/v1/integrations/custom/update",
+  );
+  expect(calls[0]?.body).toEqual({ connectionId: "acme", description: "new" });
+});
+
+test("a plain (composio) adapter does NOT support custom create/update", () => {
+  const { provider } = harness(() => ({ body: {} }), "jwt-1");
+  expect(supportsCustom(provider)).toBe(false);
+});
+
+// ── MCP server integrations: create/update forwarding ────────────────────────
+
+test("an mcp adapter supportsMcp and forwards create → /mcp/create, unwrapping {connection}", async () => {
+  const connection = {
+    toolkit: "acme_tracker",
+    connectionId: "acme_tracker",
+    status: "active" as const,
+    accountLabel: "Acme Tracker",
+  };
+  const { provider, calls } = harness(
+    () => ({ body: { connection } }),
+    "jwt-1",
+    undefined,
+    { id: "mcp", mcp: true },
+  );
+  // supportsMcp true, and it does NOT masquerade as a custom provider.
+  expect(supportsMcp(provider)).toBe(true);
+  expect(supportsCustom(provider)).toBe(false);
+  if (!supportsMcp(provider)) throw new Error("unreachable");
+
+  const config = {
+    name: "Acme Tracker",
+    url: "https://mcp.acme.test",
+    auth: { type: "bearer" as const },
+    description: "Acme issue tracker",
+    authValue: "sk-secret",
+  };
+  expect(await provider.createMcpServer("ignored", config)).toEqual(connection);
+  expect(calls[0]?.url).toBe("https://cloud.test/v1/integrations/mcp/create");
+  expect(calls[0]?.method).toBe("POST");
+  expect(calls[0]?.headers.authorization).toBe("Bearer jwt-1");
+  expect(calls[0]?.body).toEqual(config); // the sealed secret is forwarded, mode 1
+});
+
+test("an mcp adapter forwards update with the connectionId + patch (omitted secret kept)", async () => {
+  const connection = {
+    toolkit: "acme_tracker",
+    connectionId: "acme_tracker",
+    status: "active" as const,
+  };
+  const { provider, calls } = harness(
+    () => ({ body: { connection } }),
+    "jwt-1",
+    undefined,
+    { id: "mcp", mcp: true },
+  );
+  if (!supportsMcp(provider)) throw new Error("expected mcp support");
+  await provider.updateMcpServer("ignored", "acme_tracker", {
+    description: "new",
+  });
+  expect(calls[0]?.url).toBe("https://cloud.test/v1/integrations/mcp/update");
+  expect(calls[0]?.body).toEqual({
+    connectionId: "acme_tracker",
+    description: "new",
+  });
+});
+
+test("a plain (composio) adapter does NOT support mcp create/update", () => {
+  const { provider } = harness(() => ({ body: {} }), "jwt-1");
+  expect(supportsMcp(provider)).toBe(false);
+});
+
 // ── Acting-as (C2): the three per-call auth modes on search/execute ───────────
 
 test("acting mode a: an acting-as token authenticates AS that user (overrides the session)", async () => {
@@ -151,7 +329,14 @@ test("acting mode a: an acting-as token authenticates AS that user (overrides th
     "pod-secret",
   );
   await provider.search("owner", "email", { actingAs: "acting-v1.tok" });
-  await provider.execute("owner", "X", {}, { actingAs: "acting-v1.tok" });
+  await provider.execute(
+    "owner",
+    "X",
+    {},
+    {
+      acting: { actingAs: "acting-v1.tok" },
+    },
+  );
   expect(calls[0]?.headers.authorization).toBe("Bearer acting-v1.tok");
   expect(calls[0]?.headers["x-houston-acting-user"]).toBeUndefined();
   expect(calls[1]?.headers.authorization).toBe("Bearer acting-v1.tok");
@@ -163,7 +348,14 @@ test("acting mode b: a routine actingUser + pod token → pod bearer + acting-us
     undefined, // signed out on the frontend session — irrelevant to the routine path
     "pod-secret",
   );
-  await provider.execute("owner", "X", {}, { actingUser: "sub-123" });
+  await provider.execute(
+    "owner",
+    "X",
+    {},
+    {
+      acting: { actingUser: "sub-123" },
+    },
+  );
   expect(calls[0]?.headers.authorization).toBe("Bearer pod-secret");
   expect(calls[0]?.headers["x-houston-acting-user"]).toBe("sub-123");
 });
@@ -179,7 +371,14 @@ test("acting mode c: no acting context falls back to the session token (else sig
   // nothing ever leaves the machine unauthenticated.
   const noPod = harness(() => ({ body: {} }));
   await expect(
-    noPod.provider.execute("owner", "X", {}, { actingUser: "sub-123" }),
+    noPod.provider.execute(
+      "owner",
+      "X",
+      {},
+      {
+        acting: { actingUser: "sub-123" },
+      },
+    ),
   ).rejects.toThrow(IntegrationSigninRequiredError);
   expect(noPod.calls).toEqual([]);
 });

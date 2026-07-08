@@ -27,7 +27,8 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 /** Validate the pending_interaction shape (mirrors the schema). The canonical
  *  structural guard lives beside the type in @houston/protocol: an old
  *  top-level `{kind, questions}` / `{kind, toolkit}` shape has no `steps`, so a
- *  value persisted before the step-sequence change is dropped. */
+ *  value persisted before the step-sequence change is dropped. The guard also
+ *  validates the newer `custom_integration` / `mcp_server` proposal steps. */
 const isValidPendingInteraction = isPendingInteraction;
 
 /**

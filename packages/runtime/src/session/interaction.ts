@@ -37,6 +37,8 @@ import type {
 type QuestionStep = Extract<InteractionStep, { kind: "question" }>;
 type SigninStep = Extract<InteractionStep, { kind: "signin" }>;
 type ConnectStep = Extract<InteractionStep, { kind: "connect" }>;
+type CustomStep = Extract<InteractionStep, { kind: "custom_integration" }>;
+type McpStep = Extract<InteractionStep, { kind: "mcp_server" }>;
 
 export interface InteractionHolder {
   /** Question steps from the last `ask_user` call this turn (replace semantics). */
@@ -45,9 +47,13 @@ export interface InteractionHolder {
   readonly signin: SigninStep | undefined;
   /** Connect steps appended by `request_connection`, deduped by toolkit. */
   readonly connects: ConnectStep[];
+  /** Custom-integration proposal steps appended by `propose_custom_integration`. */
+  readonly customs: CustomStep[];
+  /** MCP-server proposal steps appended by `propose_mcp_server`. */
+  readonly mcps: McpStep[];
   /** The recorded sequence — question steps, then the signin step, then connect
-   *  steps — or undefined when the model asked for nothing this turn. Derived:
-   *  read after prompt(). */
+   *  steps, then proposal steps — or undefined when the model asked for nothing
+   *  this turn. Derived: read after prompt(). */
   readonly pending: PendingInteraction | undefined;
 }
 
@@ -55,12 +61,16 @@ class Holder implements InteractionHolder {
   readonly questions: QuestionStep[] = [];
   signin: SigninStep | undefined;
   readonly connects: ConnectStep[] = [];
+  readonly customs: CustomStep[] = [];
+  readonly mcps: McpStep[] = [];
 
   get pending(): PendingInteraction | undefined {
     const steps = [
       ...this.questions,
       ...(this.signin ? [this.signin] : []),
       ...this.connects,
+      ...this.customs,
+      ...this.mcps,
     ];
     return steps.length > 0 ? { steps } : undefined;
   }
@@ -129,6 +139,44 @@ export function recordConnection(input: {
     kind: "connect",
     id: `c${holder.connects.length + 1}`,
     toolkit: input.toolkit,
+    ...(input.reason ? { reason: input.reason } : {}),
+  });
+}
+
+/**
+ * Append a custom-integration proposal step for this turn (id `x1`..`xN`): the
+ * model proposed a service `integration_search` can't offer, described by
+ * name/base URL/auth scheme. Carries NO secret. A no-op outside a turn.
+ */
+export function recordCustomIntegration(input: {
+  proposal: CustomStep["proposal"];
+  reason?: string;
+}): void {
+  const holder = store.getStore();
+  if (!holder) return;
+  (holder as Holder).customs.push({
+    kind: "custom_integration",
+    id: `x${(holder as Holder).customs.length + 1}`,
+    proposal: input.proposal,
+    ...(input.reason ? { reason: input.reason } : {}),
+  });
+}
+
+/**
+ * Append an MCP-server proposal step for this turn (id `m1`..`mN`): the model
+ * proposed connecting a remote MCP server, described by name/URL/auth scheme.
+ * Carries NO secret. A no-op outside a turn.
+ */
+export function recordMcpServer(input: {
+  proposal: McpStep["proposal"];
+  reason?: string;
+}): void {
+  const holder = store.getStore();
+  if (!holder) return;
+  (holder as Holder).mcps.push({
+    kind: "mcp_server",
+    id: `m${(holder as Holder).mcps.length + 1}`,
+    proposal: input.proposal,
     ...(input.reason ? { reason: input.reason } : {}),
   });
 }

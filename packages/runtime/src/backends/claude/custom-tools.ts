@@ -73,8 +73,9 @@ export interface HoustonMcpInput {
    * The turn's execution mode, applied as the SAME tool filter the pi path uses
    * (`toolNamesForMode`): "plan" keeps only `ask_user` (the acting integration
    * tools are withheld), "auto" drops the blocking tools (`ask_user`,
-   * `request_connection`) while KEEPING `integration_search` /
-   * `integration_execute`, and "execute" (or absent) exposes the full built set.
+   * `request_connection`, `propose_custom_integration`, `propose_mcp_server`)
+   * while KEEPING `integration_search` / `integration_execute`, and "execute" (or
+   * absent) exposes the full built set.
    */
   mode?: TurnMode;
 }

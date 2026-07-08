@@ -47,12 +47,13 @@ function mockFetch(
   return calls;
 }
 
-const [search, execute, requestConnection] = makeIntegrationTools({
-  baseUrl: "https://host.test/",
-  sandboxToken: "sb-tok",
-});
-if (!search || !execute || !requestConnection)
-  throw new Error("expected three integration tools");
+const [search, execute, requestConnection, proposeCustom, proposeMcp] =
+  makeIntegrationTools({
+    baseUrl: "https://host.test/",
+    sandboxToken: "sb-tok",
+  });
+if (!search || !execute || !requestConnection || !proposeCustom || !proposeMcp)
+  throw new Error("expected five integration tools");
 
 // pi's tool.execute takes (id, params, signal, onUpdate, ctx); the last two are
 // irrelevant to these proxies, so one helper supplies them.
@@ -60,11 +61,19 @@ const ctx = {} as unknown as ExtensionContext;
 const run = (tool: typeof search, params: unknown) =>
   tool.execute("id", params as never, undefined, undefined, ctx);
 
-test("returns the generic tools plus request_connection, correctly named", () => {
-  expect([search.name, execute.name, requestConnection.name]).toEqual([
+test("returns the generic tools plus the three hand-off tools, correctly named", () => {
+  expect([
+    search.name,
+    execute.name,
+    requestConnection.name,
+    proposeCustom.name,
+    proposeMcp.name,
+  ]).toEqual([
     "integration_search",
     "integration_execute",
     "request_connection",
+    "propose_custom_integration",
+    "propose_mcp_server",
   ]);
 });
 
@@ -130,6 +139,117 @@ test("search marks not-connected matches and teaches request_connection", async 
   expect(text).not.toContain("](https://");
 });
 
+test("search tolerates a provider-tagged match and never leaks the tag", async () => {
+  // The sandbox multi-provider fan-out stamps each match with its owning
+  // provider; the agent-facing tools key on the unique action slug, so the tag
+  // is carried for tolerance only and must not surface in the model-facing text.
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "CUSTOM_ACME_CRM_REQUEST",
+          toolkit: "acme_crm",
+          description: "Acme CRM: records. Generic authenticated HTTP request.",
+          connected: true,
+          provider: "custom",
+        },
+      ],
+    },
+  }));
+  const out = await run(search, { query: "acme crm" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain(
+    "- CUSTOM_ACME_CRM_REQUEST (acme_crm): Acme CRM: records.",
+  );
+  // The provider tag is internal routing metadata, never rendered for the model.
+  expect(text).not.toContain("provider");
+});
+
+test("search lists an app's accounts when the agent has more than one", async () => {
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "GMAIL_SEND_EMAIL",
+          toolkit: "gmail",
+          description: "Send an email",
+          connected: true,
+        },
+      ],
+      accounts: [
+        { toolkit: "gmail", connectionId: "ca_1", accountLabel: "Work" },
+        { toolkit: "gmail", connectionId: "ca_2", accountLabel: "Personal" },
+        // A single-account app is NOT listed (no ambiguity to resolve).
+        { toolkit: "slack", connectionId: "ca_9", accountLabel: "Acme" },
+      ],
+    },
+  }));
+  const out = await run(search, { query: "send an email" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain(
+    'Accounts for gmail: "Work" (ca_1), "Personal" (ca_2)',
+  );
+  expect(text).toContain("pass the account parameter");
+  // Slack has one account → nothing to disambiguate, so it stays out.
+  expect(text).not.toContain("Accounts for slack");
+});
+
+test("search stays quiet when every granted app has a single account", async () => {
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "GMAIL_SEND_EMAIL",
+          toolkit: "gmail",
+          description: "Send an email",
+          connected: true,
+        },
+      ],
+      accounts: [
+        { toolkit: "gmail", connectionId: "ca_1", accountLabel: "Work" },
+      ],
+    },
+  }));
+  const out = await run(search, { query: "send an email" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).not.toContain("Accounts for");
+  expect(text).not.toContain("pass the account parameter");
+});
+
+test("search appends per-server warnings verbatim after the matches", async () => {
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "MCP_ACME_TRACKER_LIST_ISSUES",
+          toolkit: "acme_tracker",
+          description: "List issues",
+          connected: true,
+        },
+      ],
+      warnings: ["MCP server Acme Tracker is unreachable"],
+    },
+  }));
+  const out = await run(search, { query: "list issues" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain("- MCP_ACME_TRACKER_LIST_ISSUES (acme_tracker):");
+  // A failing server is never silently dropped — its warning rides at the end.
+  expect(text).toContain("MCP server Acme Tracker is unreachable");
+});
+
+test("search surfaces warnings even when nothing matched", async () => {
+  mockFetch(() => ({
+    body: {
+      items: [],
+      warnings: ["MCP server Acme Tracker is unreachable"],
+    },
+  }));
+  const out = await run(search, { query: "nothing here" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain('No actions found for "nothing here".');
+  expect(text).toContain("MCP server Acme Tracker is unreachable");
+});
+
 test("execute runs an action and returns its data; a failed action surfaces", async () => {
   mockFetch(() => ({ body: { successful: true, data: { id: "msg1" } } }));
   const out = await run(execute, {
@@ -144,6 +264,59 @@ test("execute runs an action and returns its data; a failed action surfaces", as
   await expect(
     run(execute, { action: "GMAIL_SEND_EMAIL", params: {} }),
   ).rejects.toThrow(/did not succeed: missing recipient/);
+});
+
+test("execute forwards a pinned account, and omits it when unset", async () => {
+  const withAccount = mockFetch(() => ({
+    body: { successful: true, data: { id: "msg1" } },
+  }));
+  await run(execute, {
+    action: "GMAIL_SEND_EMAIL",
+    params: { to: "a@b.com" },
+    account: "ca_2",
+  });
+  expect(withAccount[0]?.body).toEqual({
+    action: "GMAIL_SEND_EMAIL",
+    params: { to: "a@b.com" },
+    account: "ca_2",
+  });
+
+  // No account named → the key is absent so the host can auto-pin a lone account.
+  const noAccount = mockFetch(() => ({ body: { successful: true } }));
+  await run(execute, { action: "GMAIL_SEND_EMAIL", params: {} });
+  expect(noAccount[0]?.body).toEqual({
+    action: "GMAIL_SEND_EMAIL",
+    params: {},
+  });
+});
+
+test("execute 400 account_required returns the choices, does not throw", async () => {
+  mockFetch(() => ({
+    status: 400,
+    body: {
+      error: "account_required",
+      accounts: [
+        { toolkit: "gmail", connectionId: "ca_1", accountLabel: "Work" },
+        { toolkit: "gmail", connectionId: "ca_2", accountLabel: "Personal" },
+      ],
+    },
+  }));
+  const out = await run(execute, { action: "GMAIL_SEND_EMAIL", params: {} });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain("more than one connected account");
+  expect(text).toContain('"Work" (ca_1)');
+  expect(text).toContain('"Personal" (ca_2)');
+  expect(text).toContain("account parameter");
+  expect((out.details as { accountRequired?: boolean }).accountRequired).toBe(
+    true,
+  );
+});
+
+test("a 400 that is not account_required still surfaces as an error", async () => {
+  mockFetch(() => ({ status: 400, body: { error: "bad_request" } }));
+  await expect(
+    run(execute, { action: "GMAIL_SEND_EMAIL", params: {} }),
+  ).rejects.toThrow(/execute failed \(400\)/);
 });
 
 test("a no-connected-account failure hands off to request_connection", async () => {
@@ -202,6 +375,199 @@ test("request_connection omits an empty reason and rejects an empty slug", async
     expect(run(requestConnection, { toolkit: "   " })).rejects.toThrow(
       /non-empty toolkit/i,
     ),
+  );
+});
+
+test("propose_custom_integration records a header-auth proposal, no key handling", async () => {
+  const holder = newInteractionHolder();
+  const out = await runWithInteractionCapture(holder, () =>
+    run(proposeCustom, {
+      name: "  Acme CRM  ",
+      baseUrl: "  https://api.acme.com/v2  ",
+      authType: "header",
+      authField: "  Authorization  ",
+      authPrefix: "Bearer ",
+      description: "  Acme CRM records  ",
+      reason: "  to read your contacts  ",
+    }),
+  );
+  // Trimmed fields; header auth maps to { type: "header", header, prefix }.
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "custom_integration",
+        id: "x1",
+        proposal: {
+          name: "Acme CRM",
+          baseUrl: "https://api.acme.com/v2",
+          auth: { type: "header", header: "Authorization", prefix: "Bearer " },
+          description: "Acme CRM records",
+        },
+        reason: "to read your contacts",
+      },
+    ],
+  });
+  // The tool never solicits a key in chat and tells the model to end its turn.
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toMatch(/end your turn/i);
+  expect(text).toMatch(/do not ask the user to paste an api key/i);
+});
+
+test("propose_custom_integration maps query auth and omits an empty prefix/reason", async () => {
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, () =>
+    run(proposeCustom, {
+      name: "Widgets",
+      baseUrl: "https://api.widgets.io",
+      authType: "query",
+      authField: "api_key",
+      description: "Widget catalog",
+    }),
+  );
+  // Query auth maps to { type: "query", param }; no prefix, no reason keys.
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "custom_integration",
+        id: "x1",
+        proposal: {
+          name: "Widgets",
+          baseUrl: "https://api.widgets.io",
+          auth: { type: "query", param: "api_key" },
+          description: "Widget catalog",
+        },
+      },
+    ],
+  });
+});
+
+test("propose_custom_integration rejects blank required fields", async () => {
+  await runWithInteractionCapture(newInteractionHolder(), () =>
+    expect(
+      run(proposeCustom, {
+        name: "   ",
+        baseUrl: "https://api.acme.com",
+        authType: "header",
+        authField: "Authorization",
+        description: "records",
+      }),
+    ).rejects.toThrow(/non-empty name/i),
+  );
+  await runWithInteractionCapture(newInteractionHolder(), () =>
+    expect(
+      run(proposeCustom, {
+        name: "Acme",
+        baseUrl: "https://api.acme.com",
+        authType: "header",
+        authField: "   ",
+        description: "records",
+      }),
+    ).rejects.toThrow(/non-empty authField/i),
+  );
+});
+
+test("propose_mcp_server records a bearer-auth proposal, no secret handling", async () => {
+  const holder = newInteractionHolder();
+  const out = await runWithInteractionCapture(holder, () =>
+    run(proposeMcp, {
+      name: "  Acme Tracker  ",
+      url: "  https://mcp.acme.com/sse  ",
+      authType: "bearer",
+      description: "  Acme issue tracker  ",
+      reason: "  to read your open issues  ",
+    }),
+  );
+  // Trimmed fields; bearer auth maps to { type: "bearer" } with no secret.
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "mcp_server",
+        id: "m1",
+        proposal: {
+          name: "Acme Tracker",
+          url: "https://mcp.acme.com/sse",
+          auth: { type: "bearer" },
+          description: "Acme issue tracker",
+        },
+        reason: "to read your open issues",
+      },
+    ],
+  });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toMatch(/end your turn/i);
+  expect(text).toMatch(/do not ask the user to paste a token/i);
+});
+
+test("propose_mcp_server maps header auth and omits empty description/reason", async () => {
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, () =>
+    run(proposeMcp, {
+      name: "Widgets",
+      url: "https://mcp.widgets.io",
+      authType: "header",
+      authHeader: "  X-Api-Key  ",
+    }),
+  );
+  // Header auth maps to { type: "header", header }; no description, no reason.
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "mcp_server",
+        id: "m1",
+        proposal: {
+          name: "Widgets",
+          url: "https://mcp.widgets.io",
+          auth: { type: "header", header: "X-Api-Key" },
+        },
+      },
+    ],
+  });
+});
+
+test("propose_mcp_server maps none auth for a public server", async () => {
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, () =>
+    run(proposeMcp, {
+      name: "Public MCP",
+      url: "https://mcp.public.io",
+      authType: "none",
+    }),
+  );
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "mcp_server",
+        id: "m1",
+        proposal: {
+          name: "Public MCP",
+          url: "https://mcp.public.io",
+          auth: { type: "none" },
+        },
+      },
+    ],
+  });
+});
+
+test("propose_mcp_server rejects blank name/url and a header without a name", async () => {
+  await runWithInteractionCapture(newInteractionHolder(), () =>
+    expect(
+      run(proposeMcp, { name: "  ", url: "https://mcp.io", authType: "none" }),
+    ).rejects.toThrow(/non-empty name/i),
+  );
+  await runWithInteractionCapture(newInteractionHolder(), () =>
+    expect(
+      run(proposeMcp, { name: "X", url: "  ", authType: "none" }),
+    ).rejects.toThrow(/non-empty url/i),
+  );
+  await runWithInteractionCapture(newInteractionHolder(), () =>
+    expect(
+      run(proposeMcp, {
+        name: "X",
+        url: "https://mcp.io",
+        authType: "header",
+        authHeader: "   ",
+      }),
+    ).rejects.toThrow(/non-empty authHeader/i),
   );
 });
 

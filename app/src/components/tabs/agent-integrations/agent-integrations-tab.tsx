@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import {
   useAgentGrantMutation,
   useAgentGrants,
-  useDisconnectIntegration,
   useIntegrationConnections,
   useIntegrationToolkits,
 } from "../../../hooks/queries";
@@ -23,7 +22,10 @@ import {
   SigninState,
   UnavailableState,
   useConnectFlow,
+  useCustomIntegrations,
   useIntegrationsGate,
+  useMcpIntegrations,
+  useProviderDisconnect,
 } from "../../integrations";
 import { INTEGRATIONS_VIEW_ID } from "../../integrations-view/id";
 import { AgentAppsBody } from "./agent-apps-body";
@@ -51,6 +53,8 @@ export default function IntegrationsTab({ agent }: TabProps) {
 
   const connections = useIntegrationConnections(INTEGRATION_PROVIDER, ready);
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, ready);
+  const custom = useCustomIntegrations(ready);
+  const mcp = useMcpIntegrations(ready);
   const grantsQuery = useAgentGrants(agent.id, ready);
   const settingsQuery = useAgentSettings(agent.id, ready && teamsEnabled);
 
@@ -66,22 +70,43 @@ export default function IntegrationsTab({ agent }: TabProps) {
     [settings],
   );
   const grantMutation = useAgentGrantMutation(agent.id);
-  const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
+  const disconnectAccount = useProviderDisconnect(custom.slugs, mcp.slugs);
   const connectFlow = useConnectFlow({
     agentId: agent.id,
     autoGrant: grantsSupported && canEdit,
   });
   const setViewMode = useUIStore((s) => s.setViewMode);
 
+  // Custom integrations and MCP servers merge into the agent's app list (grant
+  // toggles work the same, keyed by connectionId), so they appear as
+  // usable/activatable rows; the allowlist still bounds them. The browse catalog
+  // below stays composio.
   const view = useMemo(
     () =>
       agentIntegrationsView({
-        connections: connections.data ?? [],
-        catalog: catalog.data ?? [],
+        connections: [
+          ...(connections.data ?? []),
+          ...custom.connections,
+          ...mcp.connections,
+        ],
+        catalog: [...(catalog.data ?? []), ...custom.toolkits, ...mcp.toolkits],
         grants,
         allowlist,
+        customToolkits: custom.slugs,
+        mcpToolkits: mcp.slugs,
       }),
-    [connections.data, catalog.data, grants, allowlist],
+    [
+      connections.data,
+      catalog.data,
+      custom.connections,
+      custom.toolkits,
+      custom.slugs,
+      mcp.connections,
+      mcp.toolkits,
+      mcp.slugs,
+      grants,
+      allowlist,
+    ],
   );
 
   // The browse catalog is narrowed to the effective allowlist so a member can
@@ -98,12 +123,14 @@ export default function IntegrationsTab({ agent }: TabProps) {
     (grantsQuery.isLoading ||
       connections.isLoading ||
       catalog.isLoading ||
+      custom.isLoading ||
+      mcp.isLoading ||
       settingsQuery.isLoading);
 
-  const removeGrant = (toolkit: string) =>
-    grantMutation.mutate({ toolkit, op: "remove" });
-  const activate = (toolkit: string) =>
-    grantMutation.mutate({ toolkit, op: "add" });
+  const removeGrant = (connectionId: string) =>
+    grantMutation.mutate({ connectionId, op: "remove" });
+  const activate = (connectionId: string) =>
+    grantMutation.mutate({ connectionId, op: "add" });
 
   return (
     <div className="h-full overflow-auto">
@@ -133,7 +160,8 @@ export default function IntegrationsTab({ agent }: TabProps) {
               connectFlow={connectFlow}
               onRemoveGrant={removeGrant}
               onActivate={activate}
-              onDisconnect={(toolkit) => disconnect.mutate(toolkit)}
+              onDisconnect={disconnectAccount}
+              onAddAccount={(toolkit) => void connectFlow.connect(toolkit)}
             />
 
             <div className="mt-8">
@@ -142,6 +170,10 @@ export default function IntegrationsTab({ agent }: TabProps) {
                 connections={connections.data ?? []}
                 connectFlow={connectFlow}
                 loading={catalog.isLoading}
+                customEnabled={custom.supported}
+                mcpEnabled={mcp.supported}
+                agentId={agent.id}
+                autoGrant={grantsSupported && canEdit}
               />
             </div>
 

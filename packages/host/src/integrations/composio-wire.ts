@@ -30,6 +30,12 @@ export interface RawConnection {
   status?: string;
   /** The Composio user this account belongs to — the ownership guard's input. */
   user_id?: string;
+  /** The user's chosen name for this account (set via rename); wins the label. */
+  alias?: string;
+  /** OAuth/connection state; `val` carries identifying fields (email, …). */
+  state?: { val?: Record<string, unknown> };
+  /** Composio's human-ish account id (e.g. a Slack workspace) — last resort. */
+  word_id?: string;
 }
 export interface RawTool {
   slug?: string;
@@ -65,11 +71,56 @@ export function mapConnection(c: RawConnection): Connection {
     typeof c.toolkit === "string"
       ? c.toolkit
       : (c.toolkit?.slug ?? c.slug ?? "");
+  const accountLabel = deriveAccountLabel(c);
   return {
     toolkit,
     connectionId: c.connected_account_id ?? c.id ?? "",
     status: mapStatus(c.status),
+    ...(accountLabel ? { accountLabel } : {}),
   };
+}
+
+/**
+ * The identifying fields Composio stashes under `state.val`, in preference
+ * order — the first non-empty one names the account when the user set no alias.
+ */
+const LABEL_STATE_KEYS = [
+  "email",
+  "user_email",
+  "username",
+  "account",
+  "account_id",
+  "login",
+  "domain",
+  "subdomain",
+  "workspace",
+  "team",
+  "name",
+] as const;
+
+/**
+ * A display name for one connected account: the user's alias if they set one,
+ * else the first identifying field Composio carries in `state.val`, else its
+ * `word_id`, else undefined (the UI then falls back to the id's last 4 chars).
+ */
+export function deriveAccountLabel(c: RawConnection): string | undefined {
+  const alias = nonEmpty(c.alias);
+  if (alias) return alias;
+  const val = c.state?.val;
+  if (val) {
+    for (const key of LABEL_STATE_KEYS) {
+      const found = nonEmpty(val[key]);
+      if (found) return found;
+    }
+  }
+  return nonEmpty(c.word_id);
+}
+
+/** A trimmed non-empty string, or undefined for anything else. */
+function nonEmpty(v: unknown): string | undefined {
+  if (typeof v !== "string") return undefined;
+  const trimmed = v.trim();
+  return trimmed ? trimmed : undefined;
 }
 
 /** Composio's connected-account statuses → the port's three. */

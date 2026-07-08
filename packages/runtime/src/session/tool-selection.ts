@@ -3,6 +3,8 @@ import { ASK_USER_TOOL_NAME } from "./tools/ask-user";
 import { CLAMPED_FILE_TOOL_NAMES } from "./tools/clamped-fs";
 import {
   INTEGRATION_TOOL_NAMES,
+  PROPOSE_CUSTOM_INTEGRATION_TOOL_NAME,
+  PROPOSE_MCP_SERVER_TOOL_NAME,
   REQUEST_CONNECTION_TOOL_NAME,
 } from "./tools/integrations";
 
@@ -51,16 +53,20 @@ export function planToolNames(all: readonly string[]): string[] {
 }
 
 /**
- * The two blocking/interactive tools Autopilot ("auto") mode drops: `ask_user`
- * (holds the turn open on a question) and `request_connection` (holds it open on
- * a connect card). Auto never waits on the user, so both are removed. EVERYTHING
- * else an execute turn had — the clamped-fs read AND write tools, `bash` /
- * `run_code`, and the acting integration tools (`integration_search`,
- * `integration_execute`) — stays: auto acts, it just never blocks.
+ * The blocking/interactive tools Autopilot ("auto") mode drops: `ask_user`
+ * (holds the turn open on a question), `request_connection` (holds it open on a
+ * connect card), and the two proposal hand-offs `propose_custom_integration` /
+ * `propose_mcp_server` (each holds it open on a secure setup card the user fills
+ * in). Auto never waits on the user, so all are removed. EVERYTHING else an
+ * execute turn had — the clamped-fs read AND write tools, `bash` / `run_code`,
+ * and the acting integration tools (`integration_search`, `integration_execute`)
+ * — stays: auto acts, it just never blocks.
  */
 export const AUTO_MODE_EXCLUDED_TOOL_NAMES: readonly string[] = [
   ASK_USER_TOOL_NAME,
   REQUEST_CONNECTION_TOOL_NAME,
+  PROPOSE_CUSTOM_INTEGRATION_TOOL_NAME,
+  PROPOSE_MCP_SERVER_TOOL_NAME,
 ];
 
 /**

@@ -32,14 +32,18 @@ test("the full lifecycle runs through the IntegrationProvider port", async () =>
   expect(await p.listConnections("someone-else")).toEqual([]);
   expect(await p.connection("someone-else", start.connectionId)).toBeNull();
 
-  // search + execute
+  // search returns the SearchResult wrapper (items; policy layer adds accounts)
   const matches = await p.search(USER, "send an email");
-  expect(matches.map((m) => m.action)).toContain("GMAIL_SEND_EMAIL");
+  expect(matches.items.map((m) => m.action)).toContain("GMAIL_SEND_EMAIL");
   const result = await p.execute(USER, "GMAIL_SEND_EMAIL", { to: "a@b.com" });
   expect(result.successful).toBe(true);
 
-  // disconnect
-  await p.disconnect(USER, "gmail");
+  // rename names THIS account; disconnect removes THIS account by id.
+  await p.rename(USER, start.connectionId, "Work");
+  expect(await p.connection(USER, start.connectionId)).toMatchObject({
+    accountLabel: "Work",
+  });
+  await p.disconnect(USER, start.connectionId);
   expect(await p.listConnections(USER)).toEqual([]);
 });
 

@@ -118,10 +118,16 @@ import { ChatModelSelector } from "./chat-model-selector";
 import { ChatSigninInteractionCard } from "./chat-signin-interaction-card";
 import { ContextCompactedDivider } from "./context-compacted-divider";
 import { ContextIndicator } from "./context-indicator";
+import { CustomIntegrationCard } from "./custom-integration-card";
 import { DictationSetupDialog } from "./dictation-setup-dialog";
 import { IntegrationConnectCard } from "./integration-connect-card";
 import { parseToolkitFromHref } from "./integration-connect-card-state";
-import { integrationsSupported } from "./integrations/model";
+import {
+  customIntegrationsSupported,
+  integrationsSupported,
+  mcpIntegrationsSupported,
+} from "./integrations/capabilities";
+import { McpServerCard } from "./mcp-server-card";
 import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
 import { ProviderSwitchDialog } from "./provider-switch-dialog";
 import { SelectedSkillChip } from "./selected-skill-chip";
@@ -163,9 +169,11 @@ interface AgentChatPanelProps {
   chatEmptyState: AIBoardProps["chatEmptyState"];
   /** Selected Skill chip rendered above the prompt input. */
   composerHeader: AIBoardProps["composerHeader"];
-  /** Replaces the whole composer with the interaction card (ask_user /
-   *  request_connection) when the mission is waiting on the user. Undefined
-   *  when nothing is pending or a turn is running. */
+  /** Replaces the whole composer with the interaction card when the mission is
+   *  waiting on the user: `ask_user` questions, a `request_connection` connect
+   *  step, a sign-in step, and/or a `custom_integration` / `mcp_server` proposal
+   *  setup card — all walked one step at a time. Undefined when nothing is
+   *  pending or a turn is running. */
   composerOverride: AIBoardProps["composerOverride"];
   /** Submit can run the selected Skill without extra text. */
   canSendEmpty: AIBoardProps["canSendEmpty"];
@@ -253,6 +261,15 @@ export function useAgentChatPanel({
   // unconfigured deployments fall back to plain markdown links.
   const { capabilities } = useCapabilities();
   const integrationsEnabled = integrationsSupported(capabilities);
+  // The custom API-key provider is a strict subset: a composio-only host (self-
+  // host direct, no gateway) still lets the model emit a `custom_integration`
+  // proposal, but has no `custom` provider to create against. Gate the setup
+  // card on this narrower predicate so it never renders where Add would 404.
+  const customIntegrationsEnabled = customIntegrationsSupported(capabilities);
+  // The remote MCP-server provider is likewise a strict subset: a host without
+  // the `mcp` provider can still emit an `mcp_server` proposal, but has nothing
+  // to create against. Gate the MCP setup card on this narrower predicate too.
+  const mcpIntegrationsEnabled = mcpIntegrationsSupported(capabilities);
 
   // Teams E8: in a multiplayer Teams org the composer's model + effort pickers
   // read+write the ACTING user's PERSONAL per-agent choice (clamped to the
@@ -896,7 +913,8 @@ export function useAgentChatPanel({
     [integrationsEnabled, agent, capabilities, handleIntegrationConnected],
   );
 
-  // ── Pending-interaction override (ask_user / request_connection) ──────
+  // ── Pending-interaction override (ask_user / request_connection / sign-in /
+  //    custom-integration + MCP-server proposals) ────────────────────────────
   // The one thing the mission is waiting on the user for: the live VM
   // interaction if this client settled the turn, else the activity's persisted
   // one (reload / observer). Gated on `running` so a fresh turn's composer wins
@@ -952,51 +970,65 @@ export function useAgentChatPanel({
     [t],
   );
 
-  // The mission is waiting on a sequence of steps (questions then connections).
-  // ONE ChatInteractionCard walks them one at a time; `onComplete` fires after
-  // the LAST step, never before, so the card lives until every connection has
-  // landed.
+  // The mission is waiting on a sequence of steps (questions, then sign-in, then
+  // connections, then custom-integration / MCP-server proposals). ONE
+  // ChatInteractionCard walks them one at a time; `onComplete` fires after the
+  // LAST step, never before, so the card lives until every step has landed.
   //
   // Completion composes ONE reply: `"<question>: <answer>"` per answered
-  // question, then `"Connected <app>."` per connection that landed. A sequence
-  // with questions sends that reply visibly (the user typed those answers). A
-  // connect-ONLY sequence has no user-typed text, so it sends the SAME reply as
-  // a hidden auto-continue message: the agent resumes without a fake user
-  // bubble in the transcript. The reply fires ONCE at completion; firing it
-  // per-connect would start a turn that tore the card down before later connect
-  // steps could complete.
+  // question, then `"Signed in."` if a sign-in step completed, then `"Connected
+  // <app>."` per connection / integration that landed, then a declined line per
+  // proposal the user waved off. A sequence with questions sends that reply
+  // visibly (the user typed those answers); a signin/connect/proposal-only
+  // sequence sends the SAME reply as a hidden auto-continue message so the agent
+  // resumes without a fake user bubble. The reply fires ONCE at completion.
   //
-  // `connectedNames` accumulates the display names of connections made during
-  // THIS sequence. It lives in the memo body (not a ref) because
-  // `deriveActiveInteraction` returns a STABLE reference for a given pending
-  // interaction, so the memo does not recompute — and the accumulator does not
-  // reset — while the user walks the steps; a fresh interaction gets a fresh
-  // array.
+  // `connectedNames` / `declinedNames` accumulate the display names of the
+  // integrations added / declined during THIS sequence. They live in the memo
+  // body (not refs) because `deriveActiveInteraction` returns a STABLE reference
+  // for a given pending interaction, so the memo does not recompute — and the
+  // accumulators do not reset — while the user walks the steps; a fresh
+  // interaction gets fresh arrays.
+  //
+  // A `custom_integration` / `mcp_server` proposal step is dropped from the walk
+  // on a deployment whose host can't create that provider (the model may still
+  // emit it): filtering it mirrors the old per-proposal capability gate, and an
+  // all-filtered sequence falls back to the normal composer.
   const composerOverride = useMemo<AIBoardProps["composerOverride"]>(() => {
     if (!agent || !activeInteraction) return undefined;
-    const steps = activeInteraction.steps;
+    const steps = activeInteraction.steps.filter((step) => {
+      if (step.kind === "custom_integration") return customIntegrationsEnabled;
+      if (step.kind === "mcp_server") return mcpIntegrationsEnabled;
+      return true;
+    });
+    if (steps.length === 0) return undefined;
     const hasQuestionSteps = steps.some((step) => step.kind === "question");
     // A completed sequence has walked EVERY step, so a signin step present here
     // means the user signed in (the step advances only via `onSignedIn`) — no
     // separate accumulator needed, unlike connections which carry a display name.
     const hasSigninStep = steps.some((step) => step.kind === "signin");
     const connectedNames: string[] = [];
+    const declinedNames: string[] = [];
     return (
       <ChatInteractionCard
         steps={steps}
         labels={interactionLabels}
         onComplete={(answers: ChatInteractionAnswer[]) => {
           // ONE send after the LAST step: a sequence with questions replies with
-          // the user's visible answers; a signin/connect-only sequence resumes
-          // the agent with a hidden auto-continue message (no fake user bubble).
+          // the user's visible answers; a signin/connect/proposal-only sequence
+          // resumes the agent with a hidden auto-continue message (no fake user
+          // bubble).
           sendInteractionMessage(
             composeInteractionReply({
               answers,
               connectedNames,
+              declinedNames,
               hasQuestionSteps,
               signedIn: hasSigninStep,
               connectedLine: (name) =>
                 t("chat:interaction.connectedLine", { name }),
+              declinedLine: (name) =>
+                t("chat:interaction.declinedLine", { name }),
               signedInLine: t("chat:interaction.signedInLine"),
               signedInFollowup: t("chat:interaction.signedInFollowup"),
             }),
@@ -1024,6 +1056,40 @@ export function useAgentChatPanel({
             }}
           />
         )}
+        renderCustomIntegration={(step, api) => (
+          <CustomIntegrationCard
+            proposal={step.proposal}
+            reason={step.reason}
+            agentId={agent.id}
+            autoGrant={canManageAgentGrants(capabilities, agent)}
+            onAdded={(name) => {
+              // Record the integration and advance ONLY; the composed
+              // `onComplete` reply resumes the agent once every step is done.
+              connectedNames.push(name);
+              api.onAdded();
+            }}
+            onDismiss={() => {
+              declinedNames.push(step.proposal.name);
+              api.onDismiss();
+            }}
+          />
+        )}
+        renderMcpServer={(step, api) => (
+          <McpServerCard
+            proposal={step.proposal}
+            reason={step.reason}
+            agentId={agent.id}
+            autoGrant={canManageAgentGrants(capabilities, agent)}
+            onAdded={(name) => {
+              connectedNames.push(name);
+              api.onAdded();
+            }}
+            onDismiss={() => {
+              declinedNames.push(step.proposal.name);
+              api.onDismiss();
+            }}
+          />
+        )}
       />
     );
   }, [
@@ -1032,6 +1098,8 @@ export function useAgentChatPanel({
     interactionLabels,
     sendInteractionMessage,
     capabilities,
+    customIntegrationsEnabled,
+    mcpIntegrationsEnabled,
     t,
   ]);
 

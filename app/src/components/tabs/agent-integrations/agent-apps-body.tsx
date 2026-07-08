@@ -9,12 +9,14 @@ interface AgentAppsBodyProps {
   view: AgentIntegrationsView;
   canEdit: boolean;
   connectFlow: ConnectFlow;
-  /** Grants mode: drop this agent's grant for an active app. */
-  onRemoveGrant: (toolkit: string) => void;
-  /** Grants mode: grant an already-connected account app to this agent. */
-  onActivate: (toolkit: string) => void;
-  /** Degraded mode: fully disconnect the app from the account. */
-  onDisconnect: (toolkit: string) => void;
+  /** Grants mode: drop this agent's grant for an active account. */
+  onRemoveGrant: (connectionId: string) => void;
+  /** Grants mode: grant an already-connected account to this agent. */
+  onActivate: (connectionId: string) => void;
+  /** Degraded mode: fully disconnect the account from the user's app. */
+  onDisconnect: (connectionId: string) => void;
+  /** Re-run the connect flow for a toolkit to link another login of it. */
+  onAddAccount: (toolkit: string) => void;
 }
 
 /**
@@ -31,6 +33,7 @@ export function AgentAppsBody({
   onRemoveGrant,
   onActivate,
   onDisconnect,
+  onAddAccount,
 }: AgentAppsBodyProps) {
   const { t } = useTranslation("integrations");
 
@@ -48,6 +51,7 @@ export function AgentAppsBody({
         canEdit={canEdit}
         connectFlow={connectFlow}
         onRemove={onDisconnect}
+        onAddAccount={onAddAccount}
       />
     );
   }
@@ -66,6 +70,7 @@ export function AgentAppsBody({
         connectFlow={connectFlow}
         onDeactivate={onRemoveGrant}
         onRemove={onRemoveGrant}
+        onAddAccount={onAddAccount}
       />
       {canEdit && view.accountRows.length > 0 && (
         <AgentAccountAppsSection

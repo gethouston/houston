@@ -1,10 +1,21 @@
-import type { ActingContext, IntegrationProvider } from "./provider";
+import type {
+  ActingContext,
+  CustomIntegrationHost,
+  ExecuteOptions,
+  IntegrationProvider,
+  McpIntegrationHost,
+} from "./provider";
 import {
   type ActionResult,
   type Connection,
   type ConnectStart,
+  type CustomIntegrationCreate,
+  type CustomIntegrationPatch,
   IntegrationSigninRequiredError,
+  type McpServerCreate,
+  type McpServerPatch,
   type ProviderReadiness,
+  type SearchResult,
   type Toolkit,
   type ToolMatch,
 } from "./types";
@@ -29,10 +40,37 @@ export class FakeIntegrationProvider implements IntegrationProvider {
   throwSearchExecute?: Error;
   /** Test helper: the acting context of the most recent search/execute call. */
   lastActing: ActingContext | undefined;
+  /** Test helper: the pinned account of the most recent execute call. */
+  lastAccount: string | undefined;
+  /** Test helper: the action of the most recent execute call (which instance ran). */
+  lastExecutedAction: string | undefined;
+  /**
+   * Present only when constructed with `custom: true` — the double for a
+   * `CustomIntegrationHost` provider (create/update record an in-memory custom
+   * integration). `supportsCustom` duck-types on these, so a plain fake stays a
+   * non-custom provider.
+   */
+  createCustom?: CustomIntegrationHost["createCustom"];
+  updateCustom?: CustomIntegrationHost["updateCustom"];
+  /**
+   * Present only when constructed with `mcp: true` — the double for an
+   * `McpIntegrationHost` provider (create/update record an in-memory MCP server).
+   * `supportsMcp` duck-types on these, so a plain fake stays a non-MCP provider.
+   */
+  createMcpServer?: McpIntegrationHost["createMcpServer"];
+  updateMcpServer?: McpIntegrationHost["updateMcpServer"];
+  /** Test helper: non-fatal warnings this fake's search returns (unreachable server). */
+  searchWarnings?: string[];
   private seq = 0;
 
   constructor(
-    opts: { id?: string; toolkits?: Toolkit[]; actions?: ToolMatch[] } = {},
+    opts: {
+      id?: string;
+      toolkits?: Toolkit[];
+      actions?: ToolMatch[];
+      custom?: boolean;
+      mcp?: boolean;
+    } = {},
   ) {
     this.id = opts.id ?? "fake";
     this.toolkits = opts.toolkits ?? [{ slug: "gmail", name: "Gmail" }];
@@ -43,6 +81,78 @@ export class FakeIntegrationProvider implements IntegrationProvider {
         description: "Send an email",
       },
     ];
+    if (opts.custom) {
+      this.createCustom = (userId, config) => this.addCustom(userId, config);
+      this.updateCustom = (userId, connectionId, patch) =>
+        this.editCustom(userId, connectionId, patch);
+    }
+    if (opts.mcp) {
+      this.createMcpServer = (userId, config) => this.addMcp(userId, config);
+      this.updateMcpServer = (userId, connectionId, patch) =>
+        this.editMcp(userId, connectionId, patch);
+    }
+  }
+
+  /** An MCP server maps to one active connection keyed by a slug (like custom). */
+  private async addMcp(
+    userId: string,
+    config: McpServerCreate,
+  ): Promise<Connection> {
+    const slug = config.name.toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+    const conn: Connection = {
+      toolkit: slug,
+      connectionId: slug,
+      status: "active",
+      accountLabel: config.name,
+    };
+    const list = this.connections.get(userId) ?? [];
+    list.push(conn);
+    this.connections.set(userId, list);
+    return { ...conn };
+  }
+
+  private async editMcp(
+    userId: string,
+    connectionId: string,
+    patch: McpServerPatch,
+  ): Promise<Connection> {
+    const conn = (this.connections.get(userId) ?? []).find(
+      (c) => c.connectionId === connectionId,
+    );
+    if (!conn) throw new Error(`fake: mcp '${connectionId}' not found`);
+    if (patch.name) conn.accountLabel = patch.name; // rename keeps the slug stable
+    return { ...conn };
+  }
+
+  /** A custom integration maps to one active connection keyed by a slug. */
+  private async addCustom(
+    userId: string,
+    config: CustomIntegrationCreate,
+  ): Promise<Connection> {
+    const slug = config.name.toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+    const conn: Connection = {
+      toolkit: slug,
+      connectionId: slug,
+      status: "active",
+      accountLabel: config.name,
+    };
+    const list = this.connections.get(userId) ?? [];
+    list.push(conn);
+    this.connections.set(userId, list);
+    return { ...conn };
+  }
+
+  private async editCustom(
+    userId: string,
+    connectionId: string,
+    patch: CustomIntegrationPatch,
+  ): Promise<Connection> {
+    const conn = (this.connections.get(userId) ?? []).find(
+      (c) => c.connectionId === connectionId,
+    );
+    if (!conn) throw new Error(`fake: custom '${connectionId}' not found`);
+    if (patch.name) conn.accountLabel = patch.name; // rename keeps the slug stable
+    return { ...conn };
   }
 
   /** Test helper: make readiness report signin-required (gateway signed out). */
@@ -91,18 +201,35 @@ export class FakeIntegrationProvider implements IntegrationProvider {
     return conn ? { ...conn } : null;
   }
 
-  async disconnect(userId: string, toolkit: string): Promise<void> {
+  async disconnect(userId: string, connectionId: string): Promise<void> {
+    // Per account: verify ownership, then drop just that one — a miss surfaces
+    // rather than silently no-op (parity with the real ownership guard).
+    const list = this.connections.get(userId) ?? [];
+    if (!list.some((c) => c.connectionId === connectionId))
+      throw new Error(`fake: connection '${connectionId}' not found`);
     this.connections.set(
       userId,
-      (this.connections.get(userId) ?? []).filter((c) => c.toolkit !== toolkit),
+      list.filter((c) => c.connectionId !== connectionId),
     );
+  }
+
+  async rename(
+    userId: string,
+    connectionId: string,
+    alias: string,
+  ): Promise<void> {
+    const conn = (this.connections.get(userId) ?? []).find(
+      (c) => c.connectionId === connectionId,
+    );
+    if (!conn) throw new Error(`fake: connection '${connectionId}' not found`);
+    conn.accountLabel = alias;
   }
 
   async search(
     userId: string,
     query: string,
     acting?: ActingContext,
-  ): Promise<ToolMatch[]> {
+  ): Promise<SearchResult> {
     this.lastActing = acting;
     if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
     if (this.throwSearchExecute) throw this.throwSearchExecute;
@@ -112,22 +239,30 @@ export class FakeIntegrationProvider implements IntegrationProvider {
         .filter((c) => c.status === "active")
         .map((c) => c.toolkit),
     );
-    return this.actions
+    const items: ToolMatch[] = this.actions
       .filter(
         (a) =>
           a.description.toLowerCase().includes(q) ||
           a.action.toLowerCase().includes(q),
       )
       .map((a) => ({ ...a, connected: activeToolkits.has(a.toolkit) }));
+    // Raw adapter: `items` (+ optional non-fatal `warnings`); the policy layer
+    // adds `accounts`.
+    return {
+      items,
+      ...(this.searchWarnings ? { warnings: this.searchWarnings } : {}),
+    };
   }
 
   async execute(
     _userId: string,
     action: string,
     params: Record<string, unknown>,
-    acting?: ActingContext,
+    opts?: ExecuteOptions,
   ): Promise<ActionResult> {
-    this.lastActing = acting;
+    this.lastActing = opts?.acting;
+    this.lastAccount = opts?.account;
+    this.lastExecutedAction = action;
     if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
     if (this.throwSearchExecute) throw this.throwSearchExecute;
     return { successful: true, data: { action, params } };

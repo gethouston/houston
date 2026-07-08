@@ -126,6 +126,52 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
         },
       },
       {
+        id: "ci",
+        title: "Custom",
+        status: "needs_you",
+        description: "",
+        pending_interaction: {
+          steps: [
+            {
+              kind: "custom_integration",
+              id: "x1",
+              proposal: {
+                name: "Acme CRM",
+                baseUrl: "https://api.acme.example",
+                auth: {
+                  type: "header",
+                  header: "Authorization",
+                  prefix: "Bearer ",
+                },
+                description: "Acme CRM records",
+              },
+              reason: "to read your CRM contacts",
+            },
+          ],
+        },
+      },
+      {
+        id: "mcp",
+        title: "MCP",
+        status: "needs_you",
+        description: "",
+        pending_interaction: {
+          steps: [
+            {
+              kind: "mcp_server",
+              id: "m1",
+              proposal: {
+                name: "Acme Tracker",
+                url: "https://mcp.acme.example",
+                auth: { type: "bearer" },
+                description: "Acme issue tracker",
+              },
+              reason: "to read your open issues",
+            },
+          ],
+        },
+      },
+      {
         id: "bad",
         title: "Broken",
         status: "needs_you",
@@ -137,7 +183,7 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
     "k",
   );
 
-  expect(items.map((a) => a.id)).toEqual(["q", "c", "bad"]); // activity kept, only the field dropped
+  expect(items.map((a) => a.id)).toEqual(["q", "c", "ci", "mcp", "bad"]); // activity kept, only the field dropped
   expect(items[0]?.pending_interaction).toEqual({
     steps: [
       {
@@ -152,7 +198,37 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
   expect(items[1]?.pending_interaction).toEqual({
     steps: [{ kind: "connect", id: "c1", toolkit: "gmail" }],
   });
-  expect(items[2]?.pending_interaction).toBeUndefined();
+  expect(items[2]?.pending_interaction).toEqual({
+    steps: [
+      {
+        kind: "custom_integration",
+        id: "x1",
+        proposal: {
+          name: "Acme CRM",
+          baseUrl: "https://api.acme.example",
+          auth: { type: "header", header: "Authorization", prefix: "Bearer " },
+          description: "Acme CRM records",
+        },
+        reason: "to read your CRM contacts",
+      },
+    ],
+  });
+  expect(items[3]?.pending_interaction).toEqual({
+    steps: [
+      {
+        kind: "mcp_server",
+        id: "m1",
+        proposal: {
+          name: "Acme Tracker",
+          url: "https://mcp.acme.example",
+          auth: { type: "bearer" },
+          description: "Acme issue tracker",
+        },
+        reason: "to read your open issues",
+      },
+    ],
+  });
+  expect(items[4]?.pending_interaction).toBeUndefined();
   expect(diagnostics).toHaveLength(1);
   expect(diagnostics[0]?.message).toContain("pending_interaction");
 });

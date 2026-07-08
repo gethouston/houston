@@ -12,9 +12,11 @@ import {
 } from "./interaction-card-model.ts";
 
 export type {
+  ChatCustomIntegrationAuth,
   ChatInteractionAnswer,
   ChatInteractionOption,
   ChatInteractionStep,
+  ChatMcpServerAuth,
 } from "./interaction-card-model.ts";
 export {
   hasSelectableOptions,
@@ -207,6 +209,24 @@ export function advanceConnect(
 
 /** Advance past a signin step once the app reports the user signed in. */
 export function advanceSignin(
+  state: StepperState,
+  steps: ChatInteractionStep[],
+): Transition {
+  return advance(state, steps);
+}
+
+/** Advance past a custom-integration proposal step once the user has added it
+ *  or declined it (the app decides which line, if any, the reply carries). */
+export function advanceCustomIntegration(
+  state: StepperState,
+  steps: ChatInteractionStep[],
+): Transition {
+  return advance(state, steps);
+}
+
+/** Advance past an MCP-server proposal step once the user has added it or
+ *  declined it. */
+export function advanceMcpServer(
   state: StepperState,
   steps: ChatInteractionStep[],
 ): Transition {

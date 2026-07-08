@@ -1,4 +1,12 @@
-import type { ActingContext, IntegrationProvider } from "./provider";
+import type {
+  ActingContext,
+  CustomIntegrationHost,
+  ExecuteOptions,
+  IntegrationProvider,
+  McpIntegrationHost,
+} from "./provider";
+import { makeCustomForwarders } from "./remote-custom";
+import { makeMcpForwarders } from "./remote-mcp";
 import {
   type ActionResult,
   type Connection,
@@ -6,8 +14,8 @@ import {
   IntegrationSigninRequiredError,
   integrationUpstreamErrorFromResponse,
   type ProviderReadiness,
+  type SearchResult,
   type Toolkit,
-  type ToolMatch,
 } from "./types";
 
 /**
@@ -48,6 +56,22 @@ export interface RemoteIntegrationOptions {
    * so a routine turn there falls through to signin-required rather than
    * authenticating as the pod. */
   podToken?: string;
+  /**
+   * This upstream serves custom (per-user API-key) integrations, so expose the
+   * `CustomIntegrationHost` create/update methods (forwarded to
+   * `/v1/integrations/<id>/create|update`). Off for the composio adapter, whose
+   * upstream has no such routes; keeping it off makes `supportsCustom` false so
+   * the provider-routes 404 create/update rather than forward a doomed request.
+   */
+  custom?: boolean;
+  /**
+   * This upstream serves remote MCP server integrations, so expose the
+   * `McpIntegrationHost` create/update methods (forwarded to
+   * `/v1/integrations/<id>/create|update`). Off for composio/custom adapters,
+   * whose upstreams have no MCP routes; keeping it off makes `supportsMcp` false
+   * so the provider-routes 404 create/update rather than forward a doomed request.
+   */
+  mcp?: boolean;
   /** Injected for tests; defaults to global fetch. */
   fetch?: typeof fetch;
 }
@@ -58,6 +82,20 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
   private readonly token: () => string | null;
   private readonly podToken?: string;
   private readonly fetchImpl: typeof fetch;
+  /**
+   * Present only when this adapter serves custom integrations (opts.custom):
+   * `supportsCustom` duck-types on these, so leaving them undefined on the
+   * composio adapter makes the provider-routes 404 create/update for it.
+   */
+  createCustom?: CustomIntegrationHost["createCustom"];
+  updateCustom?: CustomIntegrationHost["updateCustom"];
+  /**
+   * Present only when this adapter serves MCP integrations (opts.mcp):
+   * `supportsMcp` duck-types on these, so leaving them undefined on the
+   * composio/custom adapters makes the provider-routes 404 create/update for them.
+   */
+  createMcpServer?: McpIntegrationHost["createMcpServer"];
+  updateMcpServer?: McpIntegrationHost["updateMcpServer"];
 
   constructor(opts: RemoteIntegrationOptions) {
     this.id = opts.id;
@@ -65,6 +103,20 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
     this.token = opts.token;
     this.podToken = opts.podToken;
     this.fetchImpl = opts.fetch ?? fetch;
+    if (opts.custom) {
+      const forwarders = makeCustomForwarders({
+        postConnection: (path, body) => this.postConnection(path, body),
+      });
+      this.createCustom = forwarders.createCustom;
+      this.updateCustom = forwarders.updateCustom;
+    }
+    if (opts.mcp) {
+      const forwarders = makeMcpForwarders({
+        postConnection: (path, body) => this.postConnection(path, body),
+      });
+      this.createMcpServer = forwarders.createMcpServer;
+      this.updateMcpServer = forwarders.updateMcpServer;
+    }
   }
 
   /**
@@ -174,34 +226,64 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
     );
   }
 
-  async disconnect(_userId: string, toolkit: string): Promise<void> {
-    await this.call("/disconnect", { method: "POST", body: { toolkit } });
+  async disconnect(_userId: string, connectionId: string): Promise<void> {
+    await this.call("/disconnect", { method: "POST", body: { connectionId } });
+  }
+
+  async rename(
+    _userId: string,
+    connectionId: string,
+    alias: string,
+  ): Promise<void> {
+    await this.call(`/connections/${encodeURIComponent(connectionId)}/rename`, {
+      method: "POST",
+      body: { alias },
+    });
   }
 
   async search(
     _userId: string,
     query: string,
     acting?: ActingContext,
-  ): Promise<ToolMatch[]> {
-    const body = await this.call<{ items: ToolMatch[] }>("/search", {
+  ): Promise<SearchResult> {
+    // The upstream policy layer returns the full SearchResult ({ items,
+    // accounts? }); relay it verbatim.
+    const body = await this.call<SearchResult>("/search", {
       method: "POST",
       body: { query },
       acting,
     });
-    return this.must(body, "POST /search").items;
+    return this.must(body, "POST /search");
   }
 
   async execute(
     _userId: string,
     action: string,
     params: Record<string, unknown>,
-    acting?: ActingContext,
+    opts?: ExecuteOptions,
   ): Promise<ActionResult> {
+    // Forward `account` verbatim; the upstream resolves any label to an id.
     const body = await this.call<ActionResult>("/execute", {
       method: "POST",
-      body: { action, params },
-      acting,
+      body: {
+        action,
+        params,
+        ...(opts?.account ? { account: opts.account } : {}),
+      },
+      acting: opts?.acting,
     });
     return this.must(body, "POST /execute");
+  }
+
+  /** An authenticated POST that unwraps the `{ connection }` custom-route reply. */
+  private async postConnection(
+    path: "/create" | "/update",
+    body: unknown,
+  ): Promise<Connection> {
+    const reply = await this.call<{ connection: Connection }>(path, {
+      method: "POST",
+      body,
+    });
+    return this.must(reply, `POST ${path}`).connection;
   }
 }

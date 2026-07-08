@@ -1,12 +1,12 @@
 import { useTranslation } from "react-i18next";
-import { AppRow } from "../../integrations";
+import { AppRow, accountDisplayLabel } from "../../integrations";
 import type { AgentAppRow as AgentAppRowVM } from "./model";
 
 interface AgentAccountAppsSectionProps {
-  /** Connected-but-not-granted, active apps (grants mode + editor only). */
+  /** Connected-but-not-granted, active accounts (grants mode + editor only). */
   rows: AgentAppRowVM[];
-  /** Grant this already-connected app to this agent (no OAuth). */
-  onActivate: (toolkit: string) => void;
+  /** Grant this already-connected account to this agent (no OAuth). */
+  onActivate: (connectionId: string) => void;
 }
 
 /**
@@ -30,15 +30,19 @@ export function AgentAccountAppsSection({
       </h2>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {rows.map(({ connection, app }) => (
+        {rows.map(({ connection, app, showAccountLabel }) => (
           <AppRow
-            key={connection.connectionId || connection.toolkit}
+            key={connection.connectionId}
             display={app}
-            description={app.description}
+            description={
+              showAccountLabel
+                ? accountDisplayLabel(connection, t("account.unnamed"))
+                : app.description
+            }
             trailing={
               <button
                 type="button"
-                onClick={() => onActivate(connection.toolkit)}
+                onClick={() => onActivate(connection.connectionId)}
                 className="inline-flex h-7 shrink-0 items-center rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 {t("agentTab.activate")}

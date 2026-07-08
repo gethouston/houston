@@ -70,6 +70,8 @@ describe("buildToolSelection", () => {
       "integration_search",
       "integration_execute",
       "request_connection",
+      "propose_custom_integration",
+      "propose_mcp_server",
     ]);
   });
 });
@@ -132,7 +134,12 @@ describe("autoToolNames", () => {
       "integration_search",
       "integration_execute",
     ]);
-    for (const dropped of ["ask_user", "request_connection"])
+    for (const dropped of [
+      "ask_user",
+      "request_connection",
+      "propose_custom_integration",
+      "propose_mcp_server",
+    ])
       expect(autoToolNames(local.toolNames)).not.toContain(dropped);
     // …and it keeps the file WRITE tools + bash, unlike plan.
     for (const kept of ["edit", "write", "bash"])
@@ -161,10 +168,12 @@ describe("autoToolNames", () => {
     ]);
   });
 
-  test("the excluded set is exactly ask_user + request_connection", () => {
+  test("the excluded set is ask_user + request_connection + the proposal tools", () => {
     expect([...AUTO_MODE_EXCLUDED_TOOL_NAMES]).toEqual([
       "ask_user",
       "request_connection",
+      "propose_custom_integration",
+      "propose_mcp_server",
     ]);
   });
 });

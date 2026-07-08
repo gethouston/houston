@@ -27,6 +27,23 @@ export interface Connection {
   toolkit: string;
   connectionId: string;
   status: "active" | "pending" | "error";
+  /**
+   * Human-readable name for THIS account (a toolkit can have several — two
+   * Gmail logins). The user's alias if they set one, else a value derived from
+   * the account (email/username/…); absent when nothing identifies it.
+   */
+  accountLabel?: string;
+}
+
+/**
+ * One connected account of the acting agent, surfaced alongside search results
+ * so the model can name the account to pass to execute() when a toolkit has
+ * more than one. The policy layer attaches these; raw adapters do not.
+ */
+export interface ConnectedAccountInfo {
+  toolkit: string;
+  connectionId: string;
+  accountLabel?: string;
 }
 
 /** The OAuth hand-off to authorize a toolkit (returned by connect()). */
@@ -51,6 +68,88 @@ export interface ToolMatch {
    * connect card instead (HOU-670). Absent = unknown (older adapters).
    */
   connected?: boolean;
+  /**
+   * Which registered provider surfaced this match, stamped by the sandbox
+   * search fan-out when several providers are wired (e.g. "composio",
+   * "custom"). Raw adapters leave it unset; the fan-out fills it so a later
+   * execute can route back to the right provider. Absent = single-provider.
+   */
+  provider?: string;
+}
+
+/**
+ * How a custom (bring-your-own-API-key) integration authenticates its HTTP
+ * requests. `header` injects `<header>: <prefix><key>` (prefix used verbatim,
+ * e.g. "Bearer "); `query` appends `<param>=<key>` to the URL. The key itself
+ * is never part of this shape — it is stored sealed and injected gateway-side.
+ */
+export type CustomIntegrationAuth =
+  | { type: "header"; header: string; prefix?: string }
+  | { type: "query"; param: string };
+
+/** The non-secret configuration of a custom integration (name/target/auth-shape). */
+export interface CustomIntegrationConfig {
+  name: string;
+  baseUrl: string;
+  auth: CustomIntegrationAuth;
+  description: string;
+}
+
+/** A create body: the config plus the (write-only) API key to seal at rest. */
+export type CustomIntegrationCreate = CustomIntegrationConfig & {
+  apiKey: string;
+};
+
+/** An update body: any subset of the config; an omitted `apiKey` keeps the stored key. */
+export type CustomIntegrationPatch = Partial<CustomIntegrationConfig> & {
+  apiKey?: string;
+};
+
+/**
+ * How a remote MCP server integration (Streamable HTTP transport) authenticates.
+ * `bearer` sends `Authorization: Bearer <value>`; `header` sends
+ * `<header>: <value>`; `none` is unauthenticated. The secret VALUE is never part
+ * of this shape — it rides separately as a write-only `authValue`, stored sealed
+ * and injected gateway-side only, so it is never echoed back to a client.
+ */
+export type McpServerAuth =
+  | { type: "none" }
+  | { type: "bearer" }
+  | { type: "header"; header: string };
+
+/** The non-secret configuration of a remote MCP server integration. */
+export interface McpServerConfig {
+  name: string;
+  url: string;
+  auth: McpServerAuth;
+  description?: string;
+}
+
+/** A create body: the config plus the (write-only) auth secret to seal at rest. */
+export type McpServerCreate = McpServerConfig & { authValue?: string };
+
+/**
+ * An update body: any subset of the config; an omitted `authValue` keeps the
+ * stored secret (the gateway reseals only when a new value is supplied).
+ */
+export type McpServerPatch = Partial<McpServerConfig> & { authValue?: string };
+
+/**
+ * The result of a search(): the matched actions, plus (when the policy layer
+ * adds them) the acting agent's granted accounts so the model can pick one to
+ * pass to execute(). Direct adapters return `items` only.
+ */
+export interface SearchResult {
+  items: ToolMatch[];
+  accounts?: ConnectedAccountInfo[];
+  /**
+   * Human-readable, NON-fatal per-provider failures surfaced to the agent
+   * verbatim (e.g. "MCP server Acme Tracker is unreachable"). A provider that
+   * queries several remote servers (MCP) can have some fail while others succeed:
+   * those failures become warnings rather than dropping the whole search or
+   * silently shrinking the results. Absent when nothing failed.
+   */
+  warnings?: string[];
 }
 
 /** The outcome of running an action. */

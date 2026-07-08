@@ -10,6 +10,8 @@ import {
 import { PromptInputSubmit } from "./ai-elements/prompt-input";
 import {
   advanceConnect,
+  advanceCustomIntegration,
+  advanceMcpServer,
   advanceSignin,
   answerWithOption,
   answerWithText,
@@ -38,6 +40,11 @@ export type {
 
 type ConnectStep = Extract<ChatInteractionStep, { kind: "connect" }>;
 type SigninStep = Extract<ChatInteractionStep, { kind: "signin" }>;
+type CustomIntegrationStep = Extract<
+  ChatInteractionStep,
+  { kind: "custom_integration" }
+>;
+type McpServerStep = Extract<ChatInteractionStep, { kind: "mcp_server" }>;
 
 export interface ChatInteractionCardProps {
   /** The ordered interaction steps: question steps, then at most one signin
@@ -56,6 +63,20 @@ export interface ChatInteractionCardProps {
   renderSignin: (
     step: SigninStep,
     api: { onSignedIn: () => void },
+  ) => ReactNode;
+  /** Renders a custom-integration proposal step's body; call `api.onAdded` once
+   *  the service is created + granted, or `api.onDismiss` if the user declines
+   *  — both advance the stepper. ui/chat stays provider-unaware, so the app
+   *  supplies the secure setup card. */
+  renderCustomIntegration: (
+    step: CustomIntegrationStep,
+    api: { onAdded: () => void; onDismiss: () => void },
+  ) => ReactNode;
+  /** Renders an MCP-server proposal step's body; call `api.onAdded` once the
+   *  server is connected + granted, or `api.onDismiss` if the user declines. */
+  renderMcpServer: (
+    step: McpServerStep,
+    api: { onAdded: () => void; onDismiss: () => void },
   ) => ReactNode;
   disabled?: boolean;
   labels?: {
@@ -80,6 +101,8 @@ export function ChatInteractionCard({
   onComplete,
   renderConnect,
   renderSignin,
+  renderCustomIntegration,
+  renderMcpServer,
   disabled = false,
   labels,
 }: ChatInteractionCardProps) {
@@ -125,6 +148,17 @@ export function ChatInteractionCard({
   const onSignedIn = useCallback(() => {
     apply(advanceSignin(state, steps));
   }, [apply, state, steps]);
+
+  const onProposalResolved = useCallback(
+    (kind: "custom_integration" | "mcp_server") => () => {
+      apply(
+        kind === "custom_integration"
+          ? advanceCustomIntegration(state, steps)
+          : advanceMcpServer(state, steps),
+      );
+    },
+    [apply, state, steps],
+  );
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -189,6 +223,16 @@ export function ChatInteractionCard({
             </>
           ) : step.kind === "signin" ? (
             renderSignin(step, { onSignedIn })
+          ) : step.kind === "custom_integration" ? (
+            renderCustomIntegration(step, {
+              onAdded: onProposalResolved("custom_integration"),
+              onDismiss: onProposalResolved("custom_integration"),
+            })
+          ) : step.kind === "mcp_server" ? (
+            renderMcpServer(step, {
+              onAdded: onProposalResolved("mcp_server"),
+              onDismiss: onProposalResolved("mcp_server"),
+            })
           ) : (
             renderConnect(step, { onConnected })
           )}

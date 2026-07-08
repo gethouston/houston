@@ -1,7 +1,16 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
+import type {
+  CustomIntegrationAuth,
+  McpServerAuth,
+} from "@houston/runtime-client";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
-import { recordConnection, recordSignin } from "../interaction";
+import {
+  recordConnection,
+  recordCustomIntegration,
+  recordMcpServer,
+  recordSignin,
+} from "../interaction";
 
 /**
  * The agent's window into the user's connected third-party apps (Gmail, Google
@@ -34,6 +43,12 @@ const ExecuteParams = Type.Object({
         "Arguments for the action, matching its input parameters from integration_search.",
     }),
   ),
+  account: Type.Optional(
+    Type.String({
+      description:
+        "id or label of the connected account; needed only when the user has more than one account for that app.",
+    }),
+  ),
 });
 type ExecuteParams = Static<typeof ExecuteParams>;
 
@@ -50,6 +65,79 @@ const ConnectParams = Type.Object({
   ),
 });
 type ConnectParams = Static<typeof ConnectParams>;
+
+const ProposeCustomParams = Type.Object({
+  name: Type.String({
+    description:
+      "Short, human-readable name for the service (e.g. 'Acme CRM'). Shown to the user on the setup card.",
+  }),
+  baseUrl: Type.String({
+    description:
+      "The service's HTTPS API base URL, including any shared path prefix (e.g. 'https://api.acme.com/v2'). Requests are confined to this origin and prefix.",
+  }),
+  authType: Type.Union([Type.Literal("header"), Type.Literal("query")], {
+    description:
+      "How the service authenticates: 'header' sends the key in a request header, 'query' sends it as a URL query parameter.",
+  }),
+  authField: Type.String({
+    description:
+      "The name of the header (e.g. 'Authorization') or query parameter (e.g. 'api_key') that carries the key.",
+  }),
+  authPrefix: Type.Optional(
+    Type.String({
+      description:
+        "Text prepended to the key inside a header, used verbatim (e.g. 'Bearer '). Header auth only; leave unset when the header value is the raw key.",
+    }),
+  ),
+  description: Type.String({
+    description:
+      "One or two sentences on what the service does and what you'd use it for. Future agent turns read this to know when to reach for it.",
+  }),
+  reason: Type.Optional(
+    Type.String({
+      description:
+        "A short, plain-language reason to show the user for why this service is needed.",
+    }),
+  ),
+});
+type ProposeCustomParams = Static<typeof ProposeCustomParams>;
+
+const ProposeMcpParams = Type.Object({
+  name: Type.String({
+    description:
+      "Short, human-readable name for the MCP server (e.g. 'Acme Tracker'). Shown to the user on the setup card.",
+  }),
+  url: Type.String({
+    description:
+      "The MCP server's HTTPS endpoint URL (Streamable HTTP transport, e.g. 'https://mcp.acme.com/sse'). Must not embed any credentials.",
+  }),
+  authType: Type.Union(
+    [Type.Literal("none"), Type.Literal("bearer"), Type.Literal("header")],
+    {
+      description:
+        "How the server authenticates: 'none' for a public server, 'bearer' for a bearer token, 'header' for a custom header whose value is the secret.",
+    },
+  ),
+  authHeader: Type.Optional(
+    Type.String({
+      description:
+        "The name of the custom header that carries the secret value (e.g. 'X-Api-Key'). Required for 'header' auth; leave unset otherwise.",
+    }),
+  ),
+  description: Type.Optional(
+    Type.String({
+      description:
+        "One or two sentences on what the server does and what you'd use it for. Future agent turns read this to know when to reach for it.",
+    }),
+  ),
+  reason: Type.Optional(
+    Type.String({
+      description:
+        "A short, plain-language reason to show the user for why this server is needed.",
+    }),
+  ),
+});
+type ProposeMcpParams = Static<typeof ProposeMcpParams>;
 
 /**
  * Canonical toolkit slug: trimmed + lowercased, matching the connection/catalog
@@ -95,6 +183,55 @@ interface ToolMatch {
   inputParams?: unknown;
   /** Host-reported: does the user have this action's app connected? */
   connected?: boolean;
+  /**
+   * Host-reported provider that owns this match, set by the sandbox route's
+   * multi-provider fan-out ("composio" | "custom" | …). The agent-facing tools
+   * key on the unique action slug (custom actions are CUSTOM_<SLUG>_REQUEST), so
+   * this is carried for tolerance only — not rendered into the results text.
+   */
+  provider?: string;
+}
+
+/** One connected account the acting agent is granted, as reported by the host. */
+interface ConnectedAccountInfo {
+  toolkit: string;
+  connectionId: string;
+  accountLabel?: string;
+}
+
+/** The host's search reply: matches plus the agent's granted accounts. */
+interface SearchResult {
+  items: ToolMatch[];
+  accounts?: ConnectedAccountInfo[];
+  /**
+   * Non-fatal per-provider failures (e.g. an MCP server was unreachable this
+   * turn). Human-readable, already localized by the host. Surfaced verbatim to
+   * the model so a failing server is never silently dropped from the results.
+   */
+  warnings?: string[];
+}
+
+/**
+ * The host asked which account to use (HTTP 400 `account_required`): the app has
+ * more than one granted account and none was pinned. Not a failure to surface as
+ * a crash — the model should retry with `account` — so it carries the choices.
+ */
+class AccountRequiredError extends Error {
+  constructor(readonly accounts: ConnectedAccountInfo[]) {
+    super("account_required");
+    this.name = "AccountRequiredError";
+  }
+}
+
+/** Parse a JSON body, tolerating a non-JSON error payload (returns undefined). */
+function safeJson(
+  text: string,
+): { error?: string; accounts?: unknown } | undefined {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -105,6 +242,45 @@ interface ToolMatch {
  */
 const REQUEST_CONNECTION_GUIDANCE =
   "To let the user connect an app, call the request_connection tool with that app's toolkit (the slug shown in the results). Houston shows the user a one-click connect card in place of the chat input, then automatically sends you a message once the connection is live so you can continue — do not ask the user to confirm.";
+
+/** Render one account as `"label" (connectionId)` for a model-facing line. */
+function accountEntry(a: ConnectedAccountInfo): string {
+  return `"${a.accountLabel ?? "unnamed"}" (${a.connectionId})`;
+}
+
+/**
+ * The trailing block appended to search results when the agent is granted more
+ * than one account for an app: list each such app's accounts and one line
+ * telling the model to pass `account` on execute for those apps.
+ */
+function formatMultiAccounts(
+  accounts: ConnectedAccountInfo[] | undefined,
+): string {
+  if (!accounts?.length) return "";
+  const byToolkit = new Map<string, ConnectedAccountInfo[]>();
+  for (const a of accounts) {
+    const list = byToolkit.get(a.toolkit) ?? [];
+    list.push(a);
+    byToolkit.set(a.toolkit, list);
+  }
+  const lines: string[] = [];
+  for (const [toolkit, list] of byToolkit) {
+    if (list.length < 2) continue;
+    lines.push(`Accounts for ${toolkit}: ${list.map(accountEntry).join(", ")}`);
+  }
+  if (lines.length === 0) return "";
+  return `\n\n${lines.join("\n")}\nWhen running an action for those apps, pass the account parameter (the id or label above) to choose which account to use.`;
+}
+
+/**
+ * The host reports non-fatal per-provider failures (an MCP server unreachable
+ * this turn, say) as human-readable warnings. Surface them verbatim after the
+ * matches so a failing server is never silently dropped from the results.
+ */
+function formatWarnings(warnings: string[] | undefined): string {
+  if (!warnings?.length) return "";
+  return `\n\n${warnings.join("\n")}`;
+}
 interface ActionResult {
   successful: boolean;
   data?: unknown;
@@ -170,6 +346,18 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           "Connected apps are not set up in this Houston install. Tell the user plainly that connected apps aren't available here (a self-hoster enables them by setting COMPOSIO_API_KEY), and do not offer to connect any apps.",
         );
       }
+      // The app has several granted accounts and none was pinned → the model
+      // must choose one and retry. Carry the choices instead of crashing.
+      if (res.status === 400) {
+        const parsed = safeJson(detail);
+        if (parsed?.error === "account_required") {
+          throw new AccountRequiredError(
+            Array.isArray(parsed.accounts)
+              ? (parsed.accounts as ConnectedAccountInfo[])
+              : [],
+          );
+        }
+      }
       throw new Error(
         `integrations ${path} failed (${res.status}): ${detail.slice(0, 300)}`,
       );
@@ -190,17 +378,19 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       params: SearchParams,
       signal: AbortSignal | undefined,
     ) {
-      const { items } = await post<{ items: ToolMatch[] }>(
+      const { items, accounts, warnings } = await post<SearchResult>(
         "search",
         { query: params.query },
         signal,
       );
       if (items.length === 0) {
+        // Even with no matches, a failing server must be surfaced (never
+        // silently dropped) — append any warnings to the empty-result text.
         return {
           content: [
             {
               type: "text" as const,
-              text: `No actions found for "${params.query}".`,
+              text: `No actions found for "${params.query}".${formatWarnings(warnings)}`,
             },
           ],
           details: { matches: 0, actions: [] as string[] },
@@ -217,9 +407,12 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         .join("\n");
       // Some matches need a connection first → teach the hand-off inline, at
       // the moment the model actually faces a not-connected app.
-      const text = items.some((m) => m.connected === false)
+      const body = items.some((m) => m.connected === false)
         ? `${list}\n\nActions marked NOT CONNECTED will fail until the user connects that app. ${REQUEST_CONNECTION_GUIDANCE}`
         : list;
+      // When the agent has several accounts for an app, list them so the model
+      // can pass the right one on execute; per-server warnings ride at the end.
+      const text = `${body}${formatMultiAccounts(accounts)}${formatWarnings(warnings)}`;
       return {
         content: [{ type: "text" as const, text }],
         details: { matches: items.length, actions: items.map((m) => m.action) },
@@ -240,11 +433,33 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       params: ExecuteParams,
       signal: AbortSignal | undefined,
     ) {
-      const result = await post<ActionResult>(
-        "execute",
-        { action: params.action, params: params.params ?? {} },
-        signal,
-      );
+      const requestBody: Record<string, unknown> = {
+        action: params.action,
+        params: params.params ?? {},
+      };
+      // Only pin an account when the model named one — omitting it lets the host
+      // auto-pin when exactly one account is granted.
+      if (params.account) requestBody.account = params.account;
+      let result: ActionResult;
+      try {
+        result = await post<ActionResult>("execute", requestBody, signal);
+      } catch (err) {
+        // Not an error to crash on: the app has several accounts and none was
+        // pinned. Tell the model which ones exist so it retries with `account`.
+        if (err instanceof AccountRequiredError) {
+          const choices = err.accounts.map(accountEntry).join(", ");
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `This app has more than one connected account. Retry integration_execute with the account parameter set to one of: ${choices}.`,
+              },
+            ],
+            details: { action: params.action, accountRequired: true },
+          };
+        }
+        throw err;
+      }
       // The action ran but the app rejected it → surface, don't pretend success.
       if (!result.successful) {
         const reason = result.error ?? "unknown error";
@@ -258,7 +473,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       const text = result.data ? JSON.stringify(result.data, null, 2) : "Done.";
       return {
         content: [{ type: "text" as const, text }],
-        details: { action: params.action },
+        details: { action: params.action, accountRequired: false },
       };
     },
   });
@@ -295,7 +510,123 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     },
   });
 
-  return [search, execute, requestConnection];
+  // The in-chat custom-integration hand-off. When the user wants a service the
+  // catalog can't offer, the model proposes it (name + base URL + auth scheme)
+  // and Houston renders a secure setup card in place of the chat input where the
+  // user supplies the API key. Like request_connection this holds NO credential
+  // and makes no network call — it just records the proposal for this turn.
+  const proposeCustomIntegration = defineTool({
+    name: "propose_custom_integration",
+    label: "Offer to add a custom integration",
+    description:
+      "Offer to connect a service that integration_search cannot find, by describing its HTTP API (name, HTTPS base URL, and how it authenticates). Houston shows the user a secure card, in place of the chat input, where they paste their API key — NEVER ask the user to type an API key or secret into the chat; the card collects it safely. End your turn right after calling this; Houston messages you once the service is connected.",
+    promptSnippet:
+      "Offer to add a custom service that integration_search cannot find",
+    parameters: ProposeCustomParams,
+    executionMode: "sequential",
+    async execute(_id: string, params: ProposeCustomParams) {
+      const name = params.name.trim();
+      const baseUrl = params.baseUrl.trim();
+      const description = params.description.trim();
+      const authField = params.authField.trim();
+      if (!name)
+        throw new Error("propose_custom_integration needs a non-empty name.");
+      if (!baseUrl)
+        throw new Error(
+          "propose_custom_integration needs a non-empty baseUrl.",
+        );
+      if (!description)
+        throw new Error(
+          "propose_custom_integration needs a non-empty description.",
+        );
+      if (!authField)
+        throw new Error(
+          "propose_custom_integration needs a non-empty authField (the header or query parameter name).",
+        );
+      const prefix = params.authPrefix;
+      const auth: CustomIntegrationAuth =
+        params.authType === "header"
+          ? { type: "header", header: authField, ...(prefix ? { prefix } : {}) }
+          : { type: "query", param: authField };
+      const reason = params.reason?.trim();
+      recordCustomIntegration({
+        proposal: { name, baseUrl, auth, description },
+        ...(reason ? { reason } : {}),
+      });
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "Houston is now showing the user a secure card to add this service in place of the chat input. End your turn now. Do NOT ask the user to paste an API key or any secret into the chat, and do not ask them to confirm — Houston sends you a message automatically once the service is connected.",
+          },
+        ],
+        details: { name },
+      };
+    },
+  });
+
+  // The in-chat MCP-server hand-off. When the user wants to connect a remote MCP
+  // server (Streamable HTTP transport), the model proposes it (name + URL + auth
+  // scheme) and Houston renders a secure setup card in place of the chat input
+  // where the user supplies any bearer token or header value. Like the other
+  // hand-offs this holds NO secret and makes no network call — it just records
+  // the proposal for this turn.
+  const proposeMcpServer = defineTool({
+    name: "propose_mcp_server",
+    label: "Offer to connect an MCP server",
+    description:
+      "Offer to connect a remote MCP server (Model Context Protocol, Streamable HTTP) by describing it (name, HTTPS URL, and how it authenticates). Use this when the user wants to connect an MCP server. Houston shows the user a secure card, in place of the chat input, where they paste any token or header value — NEVER ask the user to type a token or secret into the chat; the card collects it safely. End your turn right after calling this; Houston messages you once the server is connected.",
+    promptSnippet: "Offer to connect a remote MCP server the user asks for",
+    parameters: ProposeMcpParams,
+    executionMode: "sequential",
+    async execute(_id: string, params: ProposeMcpParams) {
+      const name = params.name.trim();
+      const url = params.url.trim();
+      if (!name) throw new Error("propose_mcp_server needs a non-empty name.");
+      if (!url) throw new Error("propose_mcp_server needs a non-empty url.");
+      let auth: McpServerAuth;
+      if (params.authType === "header") {
+        const header = params.authHeader?.trim();
+        if (!header)
+          throw new Error(
+            "propose_mcp_server needs a non-empty authHeader when authType is 'header'.",
+          );
+        auth = { type: "header", header };
+      } else if (params.authType === "bearer") {
+        auth = { type: "bearer" };
+      } else {
+        auth = { type: "none" };
+      }
+      const description = params.description?.trim();
+      const reason = params.reason?.trim();
+      recordMcpServer({
+        proposal: {
+          name,
+          url,
+          auth,
+          ...(description ? { description } : {}),
+        },
+        ...(reason ? { reason } : {}),
+      });
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "Houston is now showing the user a secure card to connect this MCP server in place of the chat input. End your turn now. Do NOT ask the user to paste a token or any secret into the chat, and do not ask them to confirm — Houston sends you a message automatically once the server is connected.",
+          },
+        ],
+        details: { name },
+      };
+    },
+  });
+
+  return [
+    search,
+    execute,
+    requestConnection,
+    proposeCustomIntegration,
+    proposeMcpServer,
+  ];
 }
 
 /**
@@ -306,9 +637,21 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
  */
 export const REQUEST_CONNECTION_TOOL_NAME = "request_connection";
 
+/**
+ * The two proposal hand-off tools. Like `request_connection` they are
+ * blocking/interactive — each ends the turn on a secure setup card the user
+ * fills in — so both are EXCLUDED from Autopilot ("auto") mode. Named here so the
+ * mode tool filter can reference them without string literals.
+ */
+export const PROPOSE_CUSTOM_INTEGRATION_TOOL_NAME =
+  "propose_custom_integration";
+export const PROPOSE_MCP_SERVER_TOOL_NAME = "propose_mcp_server";
+
 /** The tool names — pi's allowlist needs the names alongside the objects. */
 export const INTEGRATION_TOOL_NAMES = [
   "integration_search",
   "integration_execute",
   REQUEST_CONNECTION_TOOL_NAME,
+  PROPOSE_CUSTOM_INTEGRATION_TOOL_NAME,
+  PROPOSE_MCP_SERVER_TOOL_NAME,
 ];

@@ -7,6 +7,19 @@ export interface ChatInteractionOption {
   label: string;
 }
 
+/** How a proposed custom integration attaches its secret (mirrors the protocol
+ *  `CustomIntegrationAuth`; ui/chat stays protocol-agnostic so it restates it). */
+export type ChatCustomIntegrationAuth =
+  | { type: "header"; header: string; prefix?: string }
+  | { type: "query"; param: string };
+
+/** How a proposed MCP server authenticates (mirrors the protocol
+ *  `McpServerAuth`). */
+export type ChatMcpServerAuth =
+  | { type: "none" }
+  | { type: "bearer" }
+  | { type: "header"; header: string };
+
 export type ChatInteractionStep =
   | {
       kind: "question";
@@ -15,7 +28,29 @@ export type ChatInteractionStep =
       options?: ChatInteractionOption[];
     }
   | { kind: "signin"; id: string; reason?: string }
-  | { kind: "connect"; id: string; toolkit: string; reason?: string };
+  | { kind: "connect"; id: string; toolkit: string; reason?: string }
+  | {
+      kind: "custom_integration";
+      id: string;
+      proposal: {
+        name: string;
+        baseUrl: string;
+        auth: ChatCustomIntegrationAuth;
+        description: string;
+      };
+      reason?: string;
+    }
+  | {
+      kind: "mcp_server";
+      id: string;
+      proposal: {
+        name: string;
+        url: string;
+        auth: ChatMcpServerAuth;
+        description?: string;
+      };
+      reason?: string;
+    };
 
 /** One completed question answer handed to `onComplete`, in step order. */
 export interface ChatInteractionAnswer {

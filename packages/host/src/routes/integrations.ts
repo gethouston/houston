@@ -7,6 +7,7 @@ import {
   IntegrationUpstreamError,
 } from "../integrations/types";
 import { json, readJson } from "./http";
+import { handleProviderSubRoute } from "./integration-provider-routes";
 
 /**
  * Third-party integrations (Composio platform mode first) — the USER routes
@@ -146,60 +147,7 @@ export async function handleIntegrations(
   const sub = m[2] ?? "";
 
   try {
-    if (sub === "toolkits" && method === "GET") {
-      json(res, 200, { items: await provider.listToolkits() });
-      return true;
-    }
-    if (sub === "connections" && method === "GET") {
-      json(res, 200, { items: await provider.listConnections(userId) });
-      return true;
-    }
-    const connPoll = sub.match(/^connections\/([^/]+)$/)?.[1];
-    if (connPoll && method === "GET") {
-      const conn = await provider.connection(userId, connPoll);
-      if (!conn) json(res, 404, { error: "connection not found" });
-      else json(res, 200, conn);
-      return true;
-    }
-    if (sub === "connect" && method === "POST") {
-      const { toolkit } = await readJson(req);
-      if (!toolkit || typeof toolkit !== "string") {
-        json(res, 400, { error: "missing 'toolkit'" });
-        return true;
-      }
-      json(res, 200, await provider.connect(userId, toolkit));
-      return true;
-    }
-    if (sub === "disconnect" && method === "POST") {
-      const { toolkit } = await readJson(req);
-      if (!toolkit || typeof toolkit !== "string") {
-        json(res, 400, { error: "missing 'toolkit'" });
-        return true;
-      }
-      await provider.disconnect(userId, toolkit);
-      json(res, 200, { ok: true });
-      return true;
-    }
-    if (sub === "search" && method === "POST") {
-      const { query } = await readJson(req);
-      if (typeof query !== "string") {
-        json(res, 400, { error: "missing 'query'" });
-        return true;
-      }
-      json(res, 200, { items: await provider.search(userId, query) });
-      return true;
-    }
-    if (sub === "execute" && method === "POST") {
-      const body = await readJson(req);
-      if (typeof body.action !== "string") {
-        json(res, 400, { error: "missing 'action'" });
-        return true;
-      }
-      const params =
-        body.params && typeof body.params === "object"
-          ? (body.params as Record<string, unknown>)
-          : {};
-      json(res, 200, await provider.execute(userId, body.action, params));
+    if (await handleProviderSubRoute(provider, userId, sub, method, req, res)) {
       return true;
     }
   } catch (err) {
