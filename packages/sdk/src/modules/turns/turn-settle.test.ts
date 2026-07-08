@@ -15,7 +15,7 @@ import {
  * guard heuristic. It must NEVER render an empty "completed" turn.
  */
 
-type Item = { feed_type?: string; data?: unknown };
+type Item = { feed_type?: string; data?: unknown; fails_pending?: boolean };
 
 /** A FeedOutput that records every push for assertions. */
 function recorder(): {
@@ -45,11 +45,49 @@ function run(
   const { items, statuses, output } = recorder();
   const s = newTurnState("Houston/Bo", "activity-settle", output);
   s.text = opts.streamed ?? "";
+  // settleFromHistory is only ever reached AFTER the turn was seen live (a
+  // boundary / resync), so the send always landed — model that so a dead turn
+  // keeps its bubble confirmed rather than falsely flagged undelivered.
+  s.delivered = true;
   settleFromHistory(s, messages, turnId, () => opts.guard ?? false);
   return { s, items, statuses };
 }
 
 const usage = { context_tokens: 42, output_tokens: 7, cached_tokens: 0 };
+
+// ── finishErr: a send that never landed must fail the optimistic bubble ───────
+// The clock→tick mapping is boolean; a settle that clears `pending` without
+// evidence flips the bubble to a "Sent" check that contradicts the error the
+// same turn surfaces. A genuine send failure must instead FAIL the pending
+// bubble (`fails_pending` on the settle push), while a delivered-then-stopped
+// turn keeps its confirmation — the message DID reach the agent.
+
+test("a not-connected refusal fails the optimistic bubble (the send never landed)", () => {
+  const { items, output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity", output, { prompt: "hi" });
+  finishErr(s, "No provider connected. Log in with Claude or Codex first.");
+  const card = items.find((i) => i.feed_type === "provider_error");
+  expect(card?.fails_pending).toBe(true);
+});
+
+test("a genuine turn error fails the optimistic bubble", () => {
+  const { items, output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity", output);
+  finishErr(
+    s,
+    "Your message didn't reach the agent. Check your connection and send it again.",
+  );
+  const line = items.find((i) => i.feed_type === "system_message");
+  expect(line?.fails_pending).toBe(true);
+});
+
+test("a user Stop keeps the optimistic bubble confirmed (the message WAS delivered)", () => {
+  const { items, output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity", output);
+  finishErr(s, "Stopped by user");
+  const line = items.find((i) => i.feed_type === "system_message");
+  expect(line?.fails_pending).toBeUndefined();
+});
 
 test("matches the assistant reply by turnId and adopts its text + usage", () => {
   const { s, items, statuses } = run(
@@ -289,6 +327,8 @@ test("a not-connected refusal settles as the typed card carrying provider + fail
   expect(s.terminal).toBe("needs_you");
   expect(items).toContainEqual({
     feed_type: "provider_error",
+    // The refused send never landed → its optimistic bubble is failed.
+    fails_pending: true,
     data: {
       kind: "unauthenticated",
       provider: "openai",
@@ -324,9 +364,12 @@ test("a real turn failure still settles as system_message + red error", () => {
     provider: "openai",
     prompt: "hey",
   });
+  s.delivered = true; // a REAL turn failure: the turn ran, so the send landed
   finishErr(s, "upstream exploded");
   expect(s.terminal).toBe("error");
   expect(items).toContainEqual({
+    // Delivered-then-errored: the red error is about the turn, so the bubble
+    // stays confirmed — no undelivered flag.
     feed_type: "system_message",
     data: "upstream exploded",
   });

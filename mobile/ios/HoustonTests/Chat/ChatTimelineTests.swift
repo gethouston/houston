@@ -220,4 +220,73 @@ final class ChatTimelineTests: XCTestCase {
     let vm = try BridgeTestJSON.decode(ConversationVM.self, json)
     XCTAssertNil(vm.feed.first?.ts, "older data without ts decodes to nil")
   }
+
+  // MARK: pending decode
+
+  func testFeedItemDecodesPendingTrue() throws {
+    let json = """
+      {"feed":[{"id":"f0","feed_type":"user_message","data":"hi","pending":true}],
+       "running":true,"sessionStatus":"running"}
+      """
+    let vm = try BridgeTestJSON.decode(ConversationVM.self, json)
+    XCTAssertEqual(vm.feed.first?.pending, true, "an optimistic push decodes pending true")
+  }
+
+  func testFeedItemDecodesPendingFalse() throws {
+    let json = """
+      {"feed":[{"id":"f0","feed_type":"user_message","data":"hi","pending":false}],
+       "running":false,"sessionStatus":"completed"}
+      """
+    let vm = try BridgeTestJSON.decode(ConversationVM.self, json)
+    XCTAssertEqual(vm.feed.first?.pending, false, "an explicit false decodes false, not nil")
+  }
+
+  func testFeedItemPendingAbsentStaysNil() throws {
+    let json = """
+      {"feed":[{"id":"f0","feed_type":"user_message","data":"hi","ts":1705312800000}],
+       "running":false,"sessionStatus":"completed"}
+      """
+    let vm = try BridgeTestJSON.decode(ConversationVM.self, json)
+    XCTAssertNil(vm.feed.first?.pending, "a confirmed / history frame has no pending flag")
+  }
+
+  // MARK: pending threaded through the timeline
+
+  private func pendingFlags(_ timeline: [TimelineRow]) -> [Bool] {
+    timeline.compactMap { if case let .item(item) = $0 { return item.pending }; return nil }
+  }
+
+  func testPendingIdsMarkOnlyMatchingItems() {
+    let rows = [user("u1"), user("u2")]
+    let ts = ["u1": date("2024-01-15T10:00:00Z"), "u2": date("2024-01-15T10:00:20Z")]
+    let timeline = ChatTimeline.rows(from: rows, timestamps: ts, pendingIds: ["u2"], calendar: utc())
+    XCTAssertEqual(
+      pendingFlags(timeline), [false, true],
+      "only the id in pendingIds carries the clock; the rest are confirmed")
+  }
+
+  func testEmptyPendingIdsLeaveEveryItemConfirmed() {
+    let rows = [user("u1"), assistant("a1")]
+    let ts = ["u1": date("2024-01-15T10:00:00Z"), "a1": date("2024-01-15T10:00:05Z")]
+    let timeline = ChatTimeline.rows(from: rows, timestamps: ts, calendar: utc())
+    XCTAssertEqual(pendingFlags(timeline), [false, false], "no pendingIds ⇒ nothing pending")
+  }
+
+  // MARK: failed delivery threaded through the timeline
+
+  private func failedFlags(_ timeline: [TimelineRow]) -> [Bool] {
+    timeline.compactMap { if case let .item(item) = $0 { return item.failed }; return nil }
+  }
+
+  func testFailedIdsMarkOnlyMatchingItems() {
+    let rows = [user("u1"), user("u2")]
+    let ts = ["u1": date("2024-01-15T10:00:00Z"), "u2": date("2024-01-15T10:00:20Z")]
+    let timeline = ChatTimeline.rows(
+      from: rows, timestamps: ts, failedIds: ["u2"], calendar: utc())
+    XCTAssertEqual(
+      failedFlags(timeline), [false, true],
+      "only the id in failedIds carries the failed tick; the rest are confirmed")
+    // A failed send is never also pending — the flags are mutually exclusive.
+    XCTAssertEqual(pendingFlags(timeline), [false, false])
+  }
 }

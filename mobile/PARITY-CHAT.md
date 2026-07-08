@@ -143,6 +143,47 @@ degrades gracefully (a flat, separator-less feed; no crash).
   once on appear (deferred past the push transition); existing missions never do.
   Files: `ChatView.swift` (`isDraft`), `MissionComposer.swift` (`autoFocus`).
 
+### Messenger naturalness (waves 2+3, founder directive 2026-07-06)
+
+Layered on the §8 timeline; still client-only. Rides a SECOND additive SDK field: an optional
+`pending` boolean on the feed VM entry (BRIDGE.md §7, beside `ts`). `pending` never crosses the
+wire — the built-in conversation VM stamps it `true` on the ONE optimistic user-message push and
+clears it (same id, plain reactive snapshot) on the first server evidence for that turn (any later
+pushed feed item, OR a `sessionStatus` transition to `completed`/`error`). History frames are never
+pending. Optional: absent → confirmed, so every consumer degrades to a plain check.
+
+- **Delivery ticks (clock → check)** — the in-bubble user timestamp gains a trailing tick glyph:
+  `clock` (SF Symbol) while `pending`, `checkmark` once confirmed — WhatsApp's sending/sent cue.
+  Same `Typography.caption` + `primaryFg` @ `0.6` as the time, `.imageScale(.small)`, morphing via
+  `.contentTransition(.symbolEffect(.replace))` + `.animation(.snappy(Motion.fast), value: pending)`.
+  The tick renders only inside the time cluster (no `ts` → no tick). Pure selector:
+  `ChatBubbleTick.symbolName(pending:)`. VoiceOver: `Strings.Chat.deliveryPending` / `.deliverySent`.
+  Seam: `FeedItemVM.pending` → `ChatScreenModel.pendingIds` (feed-entry ids where `pending == true`)
+  → `MissionFeed.pendingIds` → `ChatTimeline.rows(…, pendingIds:)` → `TimelineItem.pending` →
+  `FeedRow.pending` → `UserBubble.pending`. Files: `ChatBubbleTime.swift`, `ChatBubbles.swift`.
+- **Send/receive insertion motion** — newly appended rows slide up + fade in (`FeedMotion`,
+  `.snappy(Motion.fast)`); the initial history load and content arriving while the user reads
+  history do NOT animate. Gated by `FeedMotion.animatesAppend(hasLoadedOnce:atBottom:)` — true only
+  after the first non-empty snapshot has rendered AND the feed is pinned to the bottom. The append
+  animation is keyed on the row-id set (`timeline.map(\.id)`), so a streaming text delta (same ids)
+  never re-transitions; only a genuine insertion does. Reduce Motion → opacity-only transition.
+  Files: `MissionFeed.swift` (`hasLoadedOnce`), `FeedMotion.swift`.
+- **Branded wallpaper** — a faint tiled Houston-helmet doodle behind the whole thread (WhatsApp's
+  patterned backdrop). A static `Canvas` stamps one `HelmetShape` path (`glyphSize` 28) on a
+  deterministic diagonal grid (`columnSpacing` 72, `rowSpacing` 60, one bleed row/col past each
+  edge), drawn in `theme.foreground` @ `patternOpacity` 0.035 over a `theme.background` base — so it
+  adapts light/dark from the token pair with no per-theme branching. No `TimelineView`/animation
+  (the closure re-runs only on size/theme change). Applied `.background { ChatWallpaperView() }`
+  AFTER the composer `safeAreaInset` so it bleeds under the composer material and supplies the base
+  fill the old flat `.background(theme.background)` used to. Gated OFF under Reduce Transparency
+  (`ChatWallpaperVisibility.showsPattern`), then only the flat background renders. `.accessibilityHidden`.
+  The four geometry/opacity values are documented feature constants (`ChatMetrics`/`RunningGlow`
+  precedent), not raw literals. Files: `ChatWallpaperLayout.swift`, `ChatWallpaperView.swift`,
+  `ChatView.swift`.
+
+Wave-2/3 logic is pure and unit-tested (`HoustonTests/Chat/ChatWallpaperTests`, `FeedMotionTests`,
+plus tick/`pendingIds` cases in `ChatBubbleTimeTests` / `ChatTimelineTests`).
+
 Timeline logic is pure and unit-tested (`HoustonTests/Chat/ChatTimelineTests`,
 `ChatBubbleTimeTests`, `ChatTitleStatusTests`). All layout values come from DesignSystem
 tokens (Spacing / Typography / Radius / Theme roles); no raw hex or spacing literals.

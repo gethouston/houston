@@ -9,11 +9,20 @@ struct FeedRow: View {
   /// only (assistant prose and other feed types show no in-line time this wave;
   /// day separators are handled by the feed). Optional: absent renders as before.
   let timestamp: Date?
+  /// Delivery state of this row's source message (`FeedItemVM.pending`), threaded
+  /// to the user bubble only for its WhatsApp tick. Defaults confirmed; ignored by
+  /// every non-user kind.
+  var pending: Bool = false
+  /// Whether this row's source message failed to reach the engine
+  /// (`FeedItemVM.failed`), threaded to the user bubble only for its failed tick.
+  /// Defaults false; ignored by every non-user kind.
+  var failed: Bool = false
 
   var body: some View {
     switch row.kind {
     case let .user(text, author):
-      UserBubble(text: text, author: author, timestamp: timestamp)
+      UserBubble(
+        text: text, author: author, timestamp: timestamp, pending: pending, failed: failed)
     case let .assistant(text, _):
       AssistantMessage(text: text)
     case let .process(group):

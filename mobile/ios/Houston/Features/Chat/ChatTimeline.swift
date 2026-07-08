@@ -29,6 +29,16 @@ struct TimelineItem: Identifiable, Equatable {
   /// True when this and the previous rendered row are BOTH quick successive user
   /// messages (<= 60s apart, no separator between) — render them tightly stacked.
   let groupedWithPrevious: Bool
+  /// Delivery state of the row's source message (`FeedItemVM.pending`): `true`
+  /// while the engine has not confirmed an optimistic user send (clock tick),
+  /// `false`/default confirmed (check tick). Meaningful only for user rows; a
+  /// `var` default keeps construction ergonomic and non-user rows non-pending.
+  var pending: Bool = false
+  /// Delivery FAILED for the row's source message (`FeedItemVM.failed`): `true`
+  /// when an optimistic user send provably never reached the engine (error tick,
+  /// never a check). Meaningful only for user rows and mutually exclusive with
+  /// ``pending``; the `var` default keeps non-user rows unaffected.
+  var failed: Bool = false
 
   var id: String { row.id }
 }
@@ -47,6 +57,8 @@ enum ChatTimeline {
   static func rows(
     from rows: [ChatRow],
     timestamps: [String: Date],
+    pendingIds: Set<String> = [],
+    failedIds: Set<String> = [],
     calendar: Calendar = .current
   ) -> [TimelineRow] {
     var result: [TimelineRow] = []
@@ -70,7 +82,12 @@ enum ChatTimeline {
       let grouped =
         !separatorInserted && isUserMessage(row)
         && groups(ts, with: previousUserTs)
-      result.append(.item(TimelineItem(row: row, ts: ts, groupedWithPrevious: grouped)))
+      result.append(
+        .item(
+          TimelineItem(
+            row: row, ts: ts, groupedWithPrevious: grouped,
+            pending: pendingIds.contains(row.id),
+            failed: failedIds.contains(row.id))))
 
       previousUserTs = isUserMessage(row) ? ts : nil
     }

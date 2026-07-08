@@ -74,7 +74,12 @@ function fakeEngine(
 const registry = new StreamRegistry();
 afterEach(() => registry.disposeAll());
 
-type Item = { feed_type?: string; data?: unknown };
+type Item = {
+  feed_type?: string;
+  data?: unknown;
+  pending?: boolean;
+  fails_pending?: boolean;
+};
 
 /** A recording FeedOutput: the sink's FeedItems, session statuses, board persists. */
 function makeOutput() {
@@ -366,6 +371,53 @@ test("exactly one user bubble: the optimistic push renders, the engine's echo ne
   const bubbles = items.filter((i) => i.feed_type === "user_message");
   expect(bubbles).toHaveLength(1); // ours — the echo never becomes a second one
   expect(bubbles[0]?.data).toBe("hi");
+});
+
+test("the optimistic user bubble is pushed pending (unconfirmed until server evidence)", async () => {
+  const { engine } = fakeEngine([
+    (o) => {
+      o.onEvent(sync(false, "", 0));
+      o.onEvent({ type: "text", data: "yo", seq: 1 });
+      o.onEvent({ type: "done", data: null, seq: 2 });
+    },
+  ]);
+  const { items, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-pending",
+    "hi",
+    output,
+    registry,
+    { tuning: fast },
+  );
+
+  // The ONE optimistic bubble enters pending — a native surface renders a clock.
+  const bubble = items.find((i) => i.feed_type === "user_message");
+  expect(bubble?.pending).toBe(true);
+});
+
+test("suppressUserBubble pushes no optimistic bubble at all (a resend, no clock)", async () => {
+  const { engine } = fakeEngine([
+    (o) => {
+      o.onEvent(sync(false, "", 0));
+      o.onEvent({ type: "done", data: null, seq: 1 });
+    },
+  ]);
+  const { items, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-resend",
+    "hi",
+    output,
+    registry,
+    { tuning: fast, suppressUserBubble: true },
+  );
+
+  expect(items.some((i) => i.feed_type === "user_message")).toBe(false);
 });
 
 test("observer mode surfaces a running turn (spinner + partial) and settles on done", async () => {
@@ -1019,8 +1071,10 @@ test("handoff on 409: the observer keeps rendering; the refusal surfaces without
   expect(observerAborted).toBe(false); // the live observer survived the refusal
   expect(afters).toHaveLength(1); // no second subscription was opened
   expect(items).toContainEqual({
+    // The refused resend never landed → fail its optimistic bubble.
     feed_type: "system_message",
     data: "A turn is already running",
+    fails_pending: true,
   });
   // No terminal settle while a turn demonstrably runs: no error status, no final.
   expect(sessionStatuses).toEqual(["running", "running"]); // observer's + send attempt's
@@ -1237,9 +1291,11 @@ test("a second concurrent send over an observer fails fast — one real send, no
 
   // The loser refused without sending a second real turn.
   expect(nonces).toHaveLength(1);
+  // The refused duplicate never reached the engine → fail its optimistic bubble.
   expect(items).toContainEqual({
     feed_type: "system_message",
     data: SEND_IN_FLIGHT_MESSAGE,
+    fails_pending: true,
   });
 
   release();
@@ -1390,9 +1446,12 @@ test("a transport-failed send with no evidence of the turn settles as lost after
   );
 
   expect(sessionStatuses).toContain("error");
+  // A lost send never landed: its notice must FAIL the optimistic bubble (an
+  // error tick), never let it flip to a "Sent" check.
   expect(items).toContainEqual({
     feed_type: "system_message",
     data: SEND_LOST_MESSAGE,
+    fails_pending: true,
   });
   expect(board).toEqual(["running", "error"]);
 });
@@ -1418,7 +1477,9 @@ test("a definitive send rejection (the engine answered) still fails the turn imm
 
   expect(sessionStatuses).toContain("error");
   expect(items).toContainEqual({
+    // A definitive rejection never reached the engine → fail the bubble.
     feed_type: "system_message",
     data: "A turn is already running",
+    fails_pending: true,
   });
 });

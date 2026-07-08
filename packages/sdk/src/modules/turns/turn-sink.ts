@@ -66,6 +66,9 @@ export class TurnSink {
   /** Turn mode: the send returned 202 — a running turn may now be OURS. */
   sendAccepted(): void {
     this.accepted = true;
+    // The engine acknowledged the send — the message reached it, so the
+    // optimistic bubble is delivered even if the turn later errors.
+    this.s.delivered = true;
   }
   /**
    * Turn mode: the send failed at the TRANSPORT level, so the engine may have
@@ -112,7 +115,10 @@ export class TurnSink {
       case "ours":
         break;
     }
-    if (ev.type !== "done" && ev.type !== "error") this.sawRunning = true;
+    if (ev.type !== "done" && ev.type !== "error") {
+      this.sawRunning = true;
+      this.s.delivered = true; // a real frame proves the turn started
+    }
     applyTurnFrame(this.s, ev, this.o.stop);
   }
 
@@ -124,6 +130,7 @@ export class TurnSink {
       this.turnId = ev.turnId;
       this.accepted = true;
       this.sawRunning = true;
+      this.s.delivered = true; // the engine echoed our send — it landed
       return;
     }
     if (classifyFrame(this.turnId, ev.turnId) === "boundary") {
@@ -255,6 +262,7 @@ export class TurnSink {
       );
     }
     this.sawRunning = true;
+    this.s.delivered = true; // a running sync proves the turn is live on the engine
   }
 
   private settleFromHistorySoon(): void {

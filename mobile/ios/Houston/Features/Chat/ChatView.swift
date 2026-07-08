@@ -8,7 +8,6 @@ import SwiftUI
 /// this surface only binds the VM to native UI and dispatches commands through
 /// ``ChatScreenModel`` (client-architecture.md, invariant 1).
 struct ChatView: View {
-  @Environment(\.theme) private var theme
   /// The agent display name shown as the title bar's first line (WhatsApp-style).
   /// Falls back to ``title`` when the caller can't supply it (e.g. Mission
   /// Control, which addresses a chat by mission, not agent).
@@ -49,7 +48,6 @@ struct ChatView: View {
 
   var body: some View {
     feed
-      .background(theme.background)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .principal) {
@@ -57,6 +55,10 @@ struct ChatView: View {
         }
       }
       .safeAreaInset(edge: .bottom, spacing: 0) { footer }
+      // The signature branded wallpaper sits behind the whole surface — applied
+      // after the composer inset so it bleeds under the composer material (and
+      // supplies the base `theme.background` the flat fill used to provide).
+      .background { ChatWallpaperView() }
       .onAppear { model.appear() }
       .onDisappear { model.disappear() }
       // Haptics: a light tap on send, a success cue when a turn settles.
@@ -97,6 +99,8 @@ struct ChatView: View {
       MissionFeed(
         rows: model.rows,
         timestamps: model.timestampsById,
+        pendingIds: model.pendingIds,
+        failedIds: model.failedIds,
         showPending: model.showPending,
         showPendingLabel: model.showPendingLabel,
         scrollToBottomSignal: model.sendTick)

@@ -464,6 +464,30 @@ The conversation feed snapshot's `live` block projects the runtime-client
   host renders relative time only when `ts` is present and never assumes it. It is
   a plain JSON number of milliseconds; do not confuse it with the opaque `seq`
   watermark (which orders frames but is not a clock).
+- **`pending` (optional boolean) — an unconfirmed optimistic send.** The SDK's
+  built-in conversation VM stamps `pending: true` on the ONE optimistic
+  `user_message` it pushes the instant a turn is sent — before the engine has
+  acknowledged anything — and **clears** it (strips the field, same feed-entry
+  id, a normal snapshot replacement) on the FIRST server evidence for that turn:
+  any subsequent pushed feed item, or a `live.running` transition to settled
+  (`sessionStatus` `completed`/`error`), whichever comes first. Multiple queued
+  optimistic bubbles (send-while-running, resend) each hold their flag until that
+  first evidence, which confirms them all at once. Semantics for a host:
+  `pending === true` -> not yet confirmed by the engine (render a clock,
+  WhatsApp-style); **absent/false** -> confirmed (render a single check). A
+  seeded history frame NEVER carries it. It is **optional** per §4 exactly like
+  `ts` — a surface that does not render send-state simply ignores it — and it is
+  a purely client-side VM projection: nothing about `pending` crosses the wire.
+- **`failed` (optional boolean) — a send that provably never landed.** The same
+  VM sets `failed: true` (and strips `pending`) on the ONE optimistic
+  `user_message` when the turn settles as a send failure with NO server evidence
+  the send reached the engine — a lost send (`SEND_LOST`), a rejected/refused
+  send (a 409, the not-connected card), or a concurrent double-send loser. It is
+  **mutually exclusive** with `pending` and only ever set instead of the
+  clock->check confirmation, so a host renders three delivery states, not two:
+  `pending` -> clock, `failed` -> an error/undelivered tick (NEVER "Sent"),
+  neither -> a check. A delivered-then-errored turn never sets it — real frames
+  confirm the bubble first. Optional and client-side exactly like `pending`.
 - **Resume is invisible to the host.** A dropped SSE connection is healed
   beneath the bridge by `streamEventsResumable`. Frames inside the replay window
   are re-sent with no gap or duplicate; a cursor too old to serve produces a

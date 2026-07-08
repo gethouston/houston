@@ -140,6 +140,34 @@ test("turns/send drives the conversation VM to a settled reply", async () => {
   ]);
 });
 
+test("turns/send pushes the user bubble pending, then confirms it (clock -> check)", async () => {
+  const { store, commands, vm } = harness();
+  const userPending: Array<boolean | undefined> = [];
+  store.subscribe(conversationScope("", "c1"), (s) => {
+    const u = (s as ConversationVM).feed.find(
+      (f) => f.feed_type === "user_message",
+    );
+    if (u) userPending.push(u.pending);
+  });
+
+  await commands.get("turns/send")?.({ conversationId: "c1", text: "hi" });
+  await waitFor(() => vm()?.sessionStatus === "completed");
+
+  // It entered pending (a clock) and the reply's arrival confirmed it (a check).
+  expect(userPending[0]).toBe(true);
+  expect(userPending.at(-1)).toBeUndefined();
+  const finalUser = vm().feed.find((f) => f.feed_type === "user_message");
+  expect(finalUser?.pending).toBeUndefined();
+});
+
+test("an observed (resumed) conversation never shows a pending bubble", async () => {
+  const { mod, vm } = harness(runningTurn);
+  await mod.observe("c1");
+  await waitFor(() => vm()?.sessionStatus === "completed");
+  // observe pushes no optimistic bubble — nothing is unconfirmed on the surface.
+  expect(vm().feed.some((f) => f.pending)).toBe(false);
+});
+
 test("the typed facade send() is the same path as the command", async () => {
   const { mod, vm } = harness();
   await mod.send({ conversationId: "c1", text: "hi" });

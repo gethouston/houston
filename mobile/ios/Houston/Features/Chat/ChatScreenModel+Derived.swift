@@ -25,6 +25,26 @@ extension ChatScreenModel {
     return map
   }
 
+  /// Feed ids whose optimistic user message the engine has not yet confirmed
+  /// (`FeedItemVM.pending == true`), for the WhatsApp delivery tick — clock while
+  /// present, check once the SDK clears the flag on the first server evidence
+  /// (`vm-output.ts`). Keyed by feed-entry id like ``timestampsById``; a user
+  /// message is its own row, so its row id equals its feed-entry id and
+  /// ``ChatTimeline`` resolves it. Empty when nothing is pending.
+  var pendingIds: Set<String> {
+    Set((vm?.feed ?? []).filter { $0.pending == true }.map(\.id))
+  }
+
+  /// Feed ids whose optimistic user message provably never reached the engine
+  /// (`FeedItemVM.failed == true`), for the failed delivery tick — an error glyph
+  /// instead of a check, so a lost / rejected / refused send is never mistaken
+  /// for "Sent". Keyed by feed-entry id like ``pendingIds``. Empty when nothing
+  /// failed. Mutually exclusive with ``pendingIds`` (the SDK strips `pending` on
+  /// failure).
+  var failedIds: Set<String> {
+    Set((vm?.feed ?? []).filter { $0.failed == true }.map(\.id))
+  }
+
   /// Messages queued while the turn runs, rendered as pending bubbles above the
   /// composer (PARITY §7). Empty until the SDK bridge publishes a `queued` list.
   var queued: [QueuedMessageVM] { vm?.queued ?? [] }

@@ -47,6 +47,29 @@ final class ChatBubbleTimeTests: XCTestCase {
     XCTAssertEqual(a, b)
   }
 
+  // MARK: Delivery tick selection
+
+  func testSendingShowsClock() {
+    XCTAssertEqual(ChatBubbleTick.symbolName(for: .sending), "clock")
+  }
+
+  func testSentShowsCheck() {
+    XCTAssertEqual(ChatBubbleTick.symbolName(for: .sent), "checkmark")
+  }
+
+  func testFailedShowsErrorTick() {
+    // A send that never landed reads as failed, NEVER a "Sent" check.
+    XCTAssertEqual(ChatBubbleTick.symbolName(for: .failed), "exclamationmark")
+  }
+
+  func testDeliveryClassifiesFromFlags() {
+    XCTAssertEqual(ChatDelivery(pending: true, failed: false), .sending)
+    XCTAssertEqual(ChatDelivery(pending: false, failed: false), .sent)
+    XCTAssertEqual(ChatDelivery(pending: false, failed: true), .failed)
+    // Failed wins over a stale pending flag (the SDK strips pending on failure).
+    XCTAssertEqual(ChatDelivery(pending: true, failed: true), .failed)
+  }
+
   // MARK: Geometry — inline vs own line
 
   private func resolve(

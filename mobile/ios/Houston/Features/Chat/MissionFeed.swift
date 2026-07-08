@@ -19,6 +19,16 @@ struct MissionFeed: View {
   /// powering day separators, grouping, and the floating pill. Empty renders a
   /// flat, separator-less feed (older data with no `ts`).
   var timestamps: [String: Date] = [:]
+  /// Feed ids whose optimistic user message the engine has not yet confirmed
+  /// (`FeedItemVM.pending`), for the WhatsApp delivery tick (clock while present,
+  /// check once cleared). Keyed like `timestamps` — by feed-entry / row id. Empty
+  /// renders every bubble confirmed (older data, or before the seam is wired).
+  var pendingIds: Set<String> = []
+  /// Feed ids whose optimistic user message provably never reached the engine
+  /// (`FeedItemVM.failed`), for the failed delivery tick — an error glyph instead
+  /// of a check. Keyed like `pendingIds`; empty renders every bubble as sent or
+  /// pending (older data, or nothing failed).
+  var failedIds: Set<String> = []
   /// Whether the pending-turn helmet slot renders below the last row (PARITY §1).
   var showPending: Bool = false
   /// Whether the pending slot's "Mission in progress..." label shows (PARITY §1).
@@ -34,6 +44,9 @@ struct MissionFeed: View {
   @State private var unread = UnreadCounter()
   @State private var topDay: Date?
   @State private var settleTask: Task<Void, Never>?
+  /// Flipped true once the first snapshot has rendered, so the initial history
+  /// load never animates — only appends AFTER it slide in (``FeedMotion``).
+  @State private var hasLoadedOnce = false
 
   private let bottomAnchor = "houston.chat.bottom"
   private let pendingAnchor = "houston.chat.pending"
@@ -42,7 +55,8 @@ struct MissionFeed: View {
   private static let anchorTop = Spacing.space16
 
   private var timeline: [TimelineRow] {
-    ChatTimeline.rows(from: rows, timestamps: timestamps)
+    ChatTimeline.rows(
+      from: rows, timestamps: timestamps, pendingIds: pendingIds, failedIds: failedIds)
   }
 
   /// Unread messages in the feed — folded process blocks don't count, so a turn
@@ -51,9 +65,17 @@ struct MissionFeed: View {
 
   var body: some View {
     ScrollViewReader { proxy in
+      // Fold once and reuse for the rows and the append-animation key. Keying the
+      // animation on the id set (not content) means a streaming text delta — same
+      // ids — never re-transitions; only a genuine insertion does.
+      let timeline = timeline
+      let rowIDs = timeline.map(\.id)
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 0) {
-          ForEach(timeline) { entry in timelineRow(entry) }
+          ForEach(timeline) { entry in
+            timelineRow(entry)
+              .transition(FeedMotion.rowTransition(reduceMotion: reduceMotion))
+          }
           if showPending {
             PendingTurnIndicator(showLabel: showPendingLabel)
               .id(pendingAnchor)
@@ -68,6 +90,13 @@ struct MissionFeed: View {
         }
         .padding(.horizontal, Spacing.space16)
         .padding(.vertical, Spacing.space12)
+        // Animate appends (send/receive slide-up) only once loaded and pinned to
+        // the bottom; `nil` otherwise disables the transition (initial history
+        // load, or content arriving while the user reads history).
+        .animation(
+          FeedMotion.animatesAppend(hasLoadedOnce: hasLoadedOnce, atBottom: atBottom)
+            ? FeedMotion.appendSpring : nil,
+          value: rowIDs)
       }
       .coordinateSpace(name: scrollSpace)
       .defaultScrollAnchor(.bottom)
@@ -77,6 +106,12 @@ struct MissionFeed: View {
       .overlay(alignment: .bottomTrailing) { jumpAffordance(proxy) }
       .animation(.smooth(duration: Motion.fast), value: atBottom)
       .animation(reduceMotion ? nil : .smooth(duration: Motion.fast), value: pill.isVisible)
+      // Mark loaded after the FIRST render, whatever it contained (onChange fires
+      // post-render, so content present on first appear — seeded history — never
+      // transitions). Everything appended after that first render animates,
+      // including the very first message of a chat that opened empty (a draft) —
+      // gating on non-empty would drop that one entrance animation.
+      .onChange(of: rows.isEmpty, initial: true) { _, _ in hasLoadedOnce = true }
       .onChange(of: rows.last?.id) { _, _ in if atBottom { scroll(proxy, animated: true) } }
       .onChange(of: showPending) { _, _ in if atBottom { scroll(proxy, animated: true) } }
       .onChange(of: scrollToBottomSignal) { _, _ in scroll(proxy, animated: true) }
@@ -101,7 +136,7 @@ struct MissionFeed: View {
     case let .daySeparator(day):
       DaySeparatorView(day: day).background(anchor(for: day))
     case let .item(item):
-      FeedRow(row: item.row, timestamp: item.ts)
+      FeedRow(row: item.row, timestamp: item.ts, pending: item.pending, failed: item.failed)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, item.groupedWithPrevious ? Spacing.space2 : Spacing.space10)
     }

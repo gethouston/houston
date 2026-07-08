@@ -21,6 +21,15 @@
 # (additive, client-only; see packages/sdk/BRIDGE.md §7) and is folded into the
 # rows below (conversation-feed, user-message, turn-status). See mobile/PARITY-CHAT.md §8.
 #
+# WAVES 2+3 — "messenger naturalness" (2026-07-06): the home rows adopted the
+# WhatsApp chat-list anatomy (two-line cell, right-aligned relative time, filled
+# needs-you badge, "Working…" preview, pull-down search) and the chat gained
+# delivery ticks (clock -> check), send/receive insertion motion, and a faint
+# tiled Houston-helmet wallpaper. Ticks ride a SECOND additive client-only SDK
+# field, optional `pending` (BRIDGE.md §7, beside `ts`; never crosses the wire).
+# Folded into agent-list-item, conversation-feed, and user-message below.
+# See mobile/PARITY.md §4 and mobile/PARITY-CHAT.md §8.
+#
 # inventoryVersion STAYS 0 and enforced STAYS false
 # because the app has not yet SHIPPED; raise inventoryVersion only once it ships,
 # at that version. Note: the Settings, Appearance, Language, Account, and
@@ -39,7 +48,14 @@ components:
   agent-list-item:
     status: implemented
     ref: mobile/ios/Houston/Features/Agents/AgentRow.swift
-    notes: Contact row — avatar, name, last-activity line, outline needs-you count chip.
+    notes: >-
+      WhatsApp chat-list cell — line 1: avatar + name + right-aligned relative time
+      (AgentRowTime.swift, from AgentOverview.lastActivityAt parsed by
+      ActivityTimestamp.swift); line 2: preview text + trailing FILLED needs-you
+      count chip. Preview (AgentRowPreview.swift): accent-tinted "Working…" while
+      running, else activity/idle. The list adds pull-down .searchable name filter
+      (AgentSearch.swift, pure/diacritic-insensitive) with a "No results" state and
+      an animated tier/recency reorder (AgentsView.swift, Strings+AgentSearch.swift).
   conversation-feed:
     status: implemented
     ref: mobile/ios/Houston/Features/Chat/MissionFeed.swift
@@ -50,7 +66,12 @@ components:
       on the jump button. The pure timeline fold + state machines live in
       ChatTimeline.swift / ChatTimelineLabel.swift / ChatTimelineScroll.swift, with
       views in ChatTimelineViews.swift; separators/grouping key off the optional
-      per-entry `ts` (absent -> flat, separator-less feed).
+      per-entry `ts` (absent -> flat, separator-less feed). Waves 2+3: newly
+      appended rows slide up + fade in (FeedMotion.swift, gated to after first load
+      + at-bottom; Reduce Motion -> opacity-only), and a faint tiled Houston-helmet
+      wallpaper (ChatWallpaperLayout.swift / ChatWallpaperView.swift, static Canvas,
+      theme.foreground @ 0.035, OFF under Reduce Transparency) sits behind the feed
+      via ChatView.swift.
   assistant-message:
     status: partial
     ref: mobile/ios/Houston/Features/Chat/ChatBubbles.swift
@@ -64,6 +85,10 @@ components:
       convention) laid out by TimedBubbleLayout.swift (inline, or dropped to its own
       line when the block is full) and formatted by ChatBubbleTime.swift; a
       long-press Copy context menu. Timestamp is optional (absent -> renders as before).
+      Waves 2+3: a WhatsApp delivery tick beside the in-bubble time — clock while the
+      optimistic send is unconfirmed (FeedItemVM.pending), check once cleared
+      (ChatBubbleTick in ChatBubbleTime.swift, symbolEffect .replace); wired
+      pending -> ChatScreenModel.pendingIds -> MissionFeed -> ChatTimeline -> UserBubble.
   thinking-indicator:
     status: implemented
     ref: mobile/ios/Houston/Features/Chat/HelmetIndicator.swift

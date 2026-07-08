@@ -19,6 +19,17 @@ struct UserBubble: View {
   /// The message's wall-clock time, shown bottom-right in the bubble. Optional:
   /// absent (older data) renders the bubble exactly as before, with no time.
   var timestamp: Date?
+  /// Delivery state (`FeedItemVM.pending`): `true` shows a clock (unconfirmed),
+  /// `false`/default a single check. Rendered only alongside `timestamp` — a
+  /// bubble with no time cluster shows no tick.
+  var pending: Bool = false
+  /// Failed delivery (`FeedItemVM.failed`): `true` shows an error tick instead of
+  /// a check — the send provably never reached the agent. Mutually exclusive with
+  /// `pending`; rendered only alongside `timestamp`.
+  var failed: Bool = false
+
+  /// The resolved WhatsApp-style delivery state for the tick + its VoiceOver label.
+  private var delivery: ChatDelivery { ChatDelivery(pending: pending, failed: failed) }
 
   var body: some View {
     HStack {
@@ -52,14 +63,47 @@ struct UserBubble: View {
 
   @ViewBuilder private var content: some View {
     if let timestamp {
+      // Exactly two subviews for `TimedBubbleLayout`: the text, then the time
+      // cluster (time + delivery tick as ONE trailing unit).
       TimedBubbleLayout {
         messageText
-        Text(ChatBubbleTime.label(for: timestamp))
-          .font(Typography.caption)
-          .foregroundStyle(theme.primaryFg.opacity(ChatMetrics.bubbleTimeOpacity))
+        timeCluster(timestamp)
       }
     } else {
       messageText
+    }
+  }
+
+  /// The bottom-right metadata: the wall-clock time followed by the WhatsApp
+  /// delivery tick. The clock→check swap animates in place via a symbol replace
+  /// (same treatment as the composer's send-button morph); both read as quiet
+  /// metadata at 60% of the bubble's `primaryFg`.
+  private func timeCluster(_ timestamp: Date) -> some View {
+    HStack(spacing: Spacing.space2) {
+      Text(ChatBubbleTime.label(for: timestamp))
+        .font(Typography.caption)
+      Image(systemName: ChatBubbleTick.symbolName(for: delivery))
+        .font(Typography.caption)
+        .imageScale(.small)
+        .contentTransition(.symbolEffect(.replace))
+        // A failed send drops the muted treatment so the error tick reads as an
+        // alert, not quiet metadata; sending/sent stay quiet like the time.
+        .foregroundStyle(
+          delivery == .failed
+            ? theme.primaryFg : theme.primaryFg.opacity(ChatMetrics.bubbleTimeOpacity)
+        )
+        .animation(.snappy(duration: Motion.fast), value: delivery)
+        .accessibilityLabel(deliveryLabel)
+    }
+    .foregroundStyle(theme.primaryFg.opacity(ChatMetrics.bubbleTimeOpacity))
+  }
+
+  /// VoiceOver label for the delivery tick, matching the resolved ``delivery``.
+  private var deliveryLabel: String {
+    switch delivery {
+    case .sending: return Strings.Chat.deliveryPending
+    case .sent: return Strings.Chat.deliverySent
+    case .failed: return Strings.Chat.deliveryFailed
     }
   }
 

@@ -48,12 +48,30 @@ struct FeedItemVM: Decodable, Equatable, Identifiable, Sendable {
   /// it as optional. Decoded by hand because the wire value is a millisecond
   /// number, not a `Date` the default strategy would understand.
   let ts: Date?
+  /// Optimistic-delivery flag, projected from the SDK's optional `pending`
+  /// (`vm-output.ts`): `true` marks a locally-pushed user message the engine has
+  /// NOT yet confirmed (render a clock, WhatsApp-style); absent/false means
+  /// confirmed (render a single check). The SDK sets it only on the ONE optimistic
+  /// `user_message` push and strips it — same id, a normal reactive snapshot
+  /// update — on the turn's first server evidence; history frames NEVER carry it.
+  /// Additive exactly like `ts`: ABSENT on older data, so every consumer treats it
+  /// as optional and a surface that ignores it is unaffected.
+  let pending: Bool?
+  /// Failed-send flag, projected from the SDK's optional `failed` (`vm-output.ts`):
+  /// `true` marks an optimistic `user_message` that provably never reached the
+  /// engine (a lost / rejected / refused send) — render a failed/error tick,
+  /// NEVER the "Sent" check a cleared ``pending`` implies. Mutually exclusive with
+  /// ``pending`` (a failure strips it). Additive and optional exactly like
+  /// ``pending``: ABSENT on delivered or older data.
+  let failed: Bool?
 
   private enum CodingKeys: String, CodingKey {
     case id
     case feedType = "feed_type"
     case data
     case ts
+    case pending
+    case failed
   }
 
   init(from decoder: Decoder) throws {
@@ -66,14 +84,22 @@ struct FeedItemVM: Decodable, Equatable, Identifiable, Sendable {
     } else {
       ts = nil
     }
+    pending = try container.decodeIfPresent(Bool.self, forKey: .pending)
+    failed = try container.decodeIfPresent(Bool.self, forKey: .failed)
   }
 
-  /// Direct construction for tests and in-memory feeds; `ts` defaults absent.
-  init(id: String, feedType: String, data: JSONValue, ts: Date? = nil) {
+  /// Direct construction for tests and in-memory feeds; `ts`/`pending`/`failed`
+  /// default absent.
+  init(
+    id: String, feedType: String, data: JSONValue, ts: Date? = nil,
+    pending: Bool? = nil, failed: Bool? = nil
+  ) {
     self.id = id
     self.feedType = feedType
     self.data = data
     self.ts = ts
+    self.pending = pending
+    self.failed = failed
   }
 }
 

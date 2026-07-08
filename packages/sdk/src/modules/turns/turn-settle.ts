@@ -50,6 +50,16 @@ export interface TurnState {
    * settles (user Stop, provider error) never set it.
    */
   pendingInteraction: PendingInteraction | null;
+  /**
+   * Whether the send was ever confirmed to REACH the engine — the send returned
+   * 202, our nonce echo came back, or the turn produced any frame / running
+   * sync. The sink sets it; the settles read it. An error settle with
+   * `delivered === false` means the message provably never landed (lost /
+   * rejected / refused), so its optimistic bubble is failed rather than
+   * confirmed. An AMBIGUOUS transport failure does NOT set it — only the
+   * verdict window's independent evidence does.
+   */
+  delivered: boolean;
 }
 
 export function newTurnState(
@@ -72,6 +82,7 @@ export function newTurnState(
     settled: false,
     terminal: null,
     pendingInteraction: null,
+    delivered: false,
   };
 }
 
@@ -134,7 +145,17 @@ export function finishErr(s: TurnState, msg: string): void {
     return;
   }
   s.settled = true;
-  push(s, { feed_type: "system_message", data: msg });
+  // Fail the optimistic bubble when the send never reached the engine (a lost /
+  // rejected send: `!delivered`) — never on a user Stop (a HANDLED settle: the
+  // message DID reach the agent, then the user cancelled). For a delivered turn
+  // that later errors, `failPending` is a no-op — server frames already
+  // confirmed the bubble — so this only ever bites a send with no evidence.
+  const failsSend = !s.delivered && !isStoppedByUser(msg);
+  push(s, {
+    feed_type: "system_message",
+    data: msg,
+    ...(failsSend ? { fails_pending: true } : {}),
+  });
   if (isStoppedByUser(msg)) {
     invisibleFinal(s);
     s.output.sessionStatus(s.agentPath, s.sessionKey, "error");
@@ -157,7 +178,15 @@ export function settleProviderErrorCard(
   s: TurnState,
   err: ProviderError & { failed_prompt?: string },
 ): void {
-  push(s, { feed_type: "provider_error", data: { ...err } });
+  // A card for a refused SEND (the not-connected path, `!delivered` — the prompt
+  // never left) fails the optimistic bubble; a mid-turn typed provider error is
+  // `delivered` (frames arrived first), so the flag is omitted and the bubble
+  // stays confirmed.
+  push(s, {
+    feed_type: "provider_error",
+    data: { ...err },
+    ...(s.delivered ? {} : { fails_pending: true }),
+  });
   if (s.settled) return;
   s.settled = true;
   invisibleFinal(s);
