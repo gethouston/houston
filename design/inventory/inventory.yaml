@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 9
+version: 10
 
 components:
   - id: agent-avatar
@@ -255,20 +255,25 @@ components:
 
   - id: plan-ready-card
     title: Plan-ready card
-    purpose: In-chat surface shown when the agent finishes planning (plan mode) and calls plan_ready; presents the drafted plan and three ways forward, replacing the composer until the user chooses.
-    anatomy: [title, plan-summary, start-working-action, run-autopilot-action, keep-planning-action]
+    purpose: In-chat surface shown when the agent finishes planning (plan mode) and calls plan_ready; presents the drafted plan and three ways forward as composer mode-menu rows, replacing the composer until the user chooses.
+    anatomy: [title, plan-summary, coworker-row, autopilot-row, keep-planning-row]
     states: [default, disabled]
     variants: [default]
     behavior: >-
       Rendered from a pending interaction carrying a single plan_ready step
       (summary), exactly like ask_user reaches the frontend. Shows the plan
-      summary above three always-visible actions. "Start working" starts a
-      normal (execute) turn confirming the plan; "Run on Autopilot" starts an
-      autopilot (auto) turn; both flip the composer Mode pill to match and send a
-      visible user message. "Keep planning" dismisses the card LOCALLY (the
-      composer returns, mode stays plan) without sending; a later, different plan
-      re-shows the card. Disabled gates all three actions.
-    a11y: title then plan summary read in order; three labeled buttons visible at rest (no hover gate), keyboard-reachable; disabled state marks the surface aria-disabled and gates every action.
+      summary above three always-visible option rows built in the composer mode
+      menu's idiom: each a full-width row with its icon inline with the title
+      (Handshake / Rocket / ListTodo, matching the mode selector) and a
+      one-line description below, rounded-xl hover background, nothing
+      hover-gated. "Continue in Coworker mode" starts a normal (execute) turn
+      confirming the plan; "Continue in Autopilot mode" starts an autopilot
+      (auto) turn; both flip the composer Mode pill to match and send a visible
+      user message. "Keep planning" dismisses the card LOCALLY (the composer
+      returns, mode stays plan) without sending; a later, different plan
+      re-shows the card. Primary emphasis comes from row order + title weight,
+      not a filled button. Disabled gates all three rows.
+    a11y: title then plan summary read in order; three labeled row buttons visible at rest (no hover gate), keyboard-reachable, each with a foreground-color icon inline with its title; disabled state marks the surface aria-disabled and gates every row.
     since: 9
 
   - id: deliverable-card

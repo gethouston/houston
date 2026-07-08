@@ -8,9 +8,12 @@ import {
 
 const LABELS: ChatPlanReadyLabels = {
   title: "Plan ready",
-  startWorking: "Start working",
-  runAutopilot: "Run on Autopilot",
-  keepPlanning: "Keep planning",
+  coworkerTitle: "Continue in Coworker mode",
+  coworkerDescription: "Works with you and asks when unsure.",
+  autopilotTitle: "Continue in Autopilot mode",
+  autopilotDescription: "Finishes it on its own. No questions asked.",
+  keepPlanningTitle: "Keep planning",
+  keepPlanningDescription: "Stay here and adjust the plan.",
 };
 
 describe("resolvePlanReadyActions", () => {
@@ -22,25 +25,25 @@ describe("resolvePlanReadyActions", () => {
     );
   });
 
-  it("maps each action to its label and button variant", () => {
+  it("maps each action to its localized title and description", () => {
     const actions = resolvePlanReadyActions(LABELS, false);
     assert.deepEqual(actions, [
       {
         key: "startWorking",
-        label: "Start working",
-        variant: "default",
+        title: "Continue in Coworker mode",
+        description: "Works with you and asks when unsure.",
         disabled: false,
       },
       {
         key: "runAutopilot",
-        label: "Run on Autopilot",
-        variant: "outline",
+        title: "Continue in Autopilot mode",
+        description: "Finishes it on its own. No questions asked.",
         disabled: false,
       },
       {
         key: "keepPlanning",
-        label: "Keep planning",
-        variant: "ghost",
+        title: "Keep planning",
+        description: "Stay here and adjust the plan.",
         disabled: false,
       },
     ]);
@@ -60,9 +63,15 @@ describe("resolvePlanReadyActions", () => {
 describe("DEFAULT_PLAN_READY_LABELS", () => {
   it("ships the English fallback copy with no em dashes", () => {
     assert.equal(DEFAULT_PLAN_READY_LABELS.title, "Plan ready");
-    assert.equal(DEFAULT_PLAN_READY_LABELS.startWorking, "Start working");
-    assert.equal(DEFAULT_PLAN_READY_LABELS.runAutopilot, "Run on Autopilot");
-    assert.equal(DEFAULT_PLAN_READY_LABELS.keepPlanning, "Keep planning");
+    assert.equal(
+      DEFAULT_PLAN_READY_LABELS.coworkerTitle,
+      "Continue in Coworker mode",
+    );
+    assert.equal(
+      DEFAULT_PLAN_READY_LABELS.autopilotTitle,
+      "Continue in Autopilot mode",
+    );
+    assert.equal(DEFAULT_PLAN_READY_LABELS.keepPlanningTitle, "Keep planning");
     for (const value of Object.values(DEFAULT_PLAN_READY_LABELS)) {
       assert.ok(!value.includes("—"), `"${value}" must not use an em dash`);
     }

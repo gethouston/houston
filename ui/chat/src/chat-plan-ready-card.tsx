@@ -1,6 +1,8 @@
 "use client";
 
-import { Button, cn } from "@houston-ai/core";
+import { cn } from "@houston-ai/core";
+import type { LucideIcon } from "lucide-react";
+import { Handshake, ListTodo, Rocket } from "lucide-react";
 import {
   type ChatPlanReadyLabels,
   type PlanReadyActionKey,
@@ -24,14 +26,25 @@ export interface ChatPlanReadyCardProps {
   labels: ChatPlanReadyLabels;
 }
 
+/** Each option's icon, matching the composer mode selector: Coworker
+ *  (execute) = Handshake, Autopilot (auto) = Rocket, Keep planning = ListTodo.
+ *  Internal to the card so the labels contract stays icon-free. */
+const ACTION_ICONS: Record<PlanReadyActionKey, LucideIcon> = {
+  startWorking: Handshake,
+  runAutopilot: Rocket,
+  keepPlanning: ListTodo,
+};
+
 /**
  * The in-chat surface shown when the agent finishes planning and calls
  * `plan_ready`: the drafted plan plus three ways forward. It REPLACES the
  * composer, so it borrows the interaction card's vocabulary (rounded-[28px]
  * grey `bg-secondary` surface) with the plan text raised as the prominent head.
- * Every action is visible at rest (no hover gate) and keyboard-reachable; a
- * primary "Start working", a raised-outline "Run on Autopilot", and a quiet
- * ghost "Keep planning" that only dismisses the card.
+ * The options render as the composer mode menu's rows: each a full-width row
+ * with its icon inline with the title and a description on its own line below
+ * (icon in the title's foreground color), a rounded-xl hover background, and
+ * everything visible at rest (no hover gate). Primary emphasis comes from row
+ * order + title weight, not a filled button. `disabled` gates all three rows.
  */
 export function ChatPlanReadyCard({
   summary,
@@ -64,20 +77,29 @@ export function ChatPlanReadyCard({
         <p className="mt-1.5 text-base text-foreground leading-relaxed">
           {summary}
         </p>
-        <div className="mt-4 flex flex-col gap-2">
-          {actions.map((action) => (
-            <Button
-              className="w-full"
-              disabled={action.disabled}
-              key={action.key}
-              onClick={handlers[action.key]}
-              size="lg"
-              type="button"
-              variant={action.variant}
-            >
-              {action.label}
-            </Button>
-          ))}
+        <div className="mt-3 flex flex-col gap-0.5">
+          {actions.map((action) => {
+            const Icon = ACTION_ICONS[action.key];
+            return (
+              <button
+                className="flex w-full items-center rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-accent disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                disabled={action.disabled}
+                key={action.key}
+                onClick={handlers[action.key]}
+                type="button"
+              >
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Icon className="size-4 shrink-0 text-foreground" />
+                    {action.title}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {action.description}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

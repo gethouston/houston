@@ -58,9 +58,12 @@
   },
   "planReady": {
     "title": "Plan listo",
-    "startWorking": "Empezar a trabajar",
-    "runAutopilot": "Usar Piloto automático",
-    "keepPlanning": "Seguir planificando",
+    "coworkerTitle": "Continuar en modo Compañero",
+    "coworkerDescription": "Trabaja contigo y te pregunta si tiene dudas.",
+    "autopilotTitle": "Continuar en modo Piloto automático",
+    "autopilotDescription": "Lo termina por su cuenta. Sin preguntas.",
+    "keepPlanningTitle": "Seguir planificando",
+    "keepPlanningDescription": "Sigue aquí y ajusta el plan.",
     "startWorkingMessage": "Adelante con el plan.",
     "runAutopilotMessage": "Adelante, termínalo por tu cuenta."
   },

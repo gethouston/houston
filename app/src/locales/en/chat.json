@@ -58,9 +58,12 @@
   },
   "planReady": {
     "title": "Plan ready",
-    "startWorking": "Start working",
-    "runAutopilot": "Run on Autopilot",
-    "keepPlanning": "Keep planning",
+    "coworkerTitle": "Continue in Coworker mode",
+    "coworkerDescription": "Works with you and asks when unsure.",
+    "autopilotTitle": "Continue in Autopilot mode",
+    "autopilotDescription": "Finishes it on its own. No questions asked.",
+    "keepPlanningTitle": "Keep planning",
+    "keepPlanningDescription": "Stay here and adjust the plan.",
     "startWorkingMessage": "Go ahead with the plan.",
     "runAutopilotMessage": "Go ahead and finish it on your own."
   },
