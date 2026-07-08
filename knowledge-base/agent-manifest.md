@@ -387,30 +387,37 @@ Notes:
   One card + one slot means no per-card status disambiguation. Full design:
   `convergence/README.md`.
 
-### The chat model picker (minimal two-level menu)
+### The chat model picker (two-level menu, shared dropdown idiom)
 
-The composer's model picker is a **minimal two-level command menu**
-(`@houston-ai/core` `ModelPicker`, built on cmdk). **Level 1** lists ONLY the
-connected providers (brand glyph + name, a check on the currently-selected
-model's provider) plus a quiet **"Connect more providers…"** footer. Clicking a
-provider drills into **level 2**: a back affordance + that provider's model rows
-(name, a subtle one-line description, a check on the selected model). An
-always-visible **search field** at the top bypasses the levels with a flat
-ranked list across all connected providers; clearing it returns to the current
-level. Keyboard: cmdk roving (↑↓/Enter), Escape clears an active query then steps
-back from level 2, Backspace-on-empty-query steps back. Sizes to content
-(`max-h-[360px]` scroll). The library component is props-only and i18n-agnostic
+The composer's model picker is a **two-level command menu in the app's shared
+dropdown idiom** (`@houston-ai/core` `ModelPicker`, built on the shared
+`Command*` primitives — the same Popover + cmdk chrome and row vocabulary as
+`FilterCombobox`). **Level 1** lists ONLY the connected providers (colorful
+`BrandMark` + name, a check on the currently-selected model's provider, a
+trailing drill-in chevron) plus a quiet **"Connect more providers…"** footer.
+Clicking a provider drills into **level 2**: an always-visible back header
+(chevron + provider name) + that provider's model rows (name, a subtle one-line
+description, a check on the selected model). On level 2 an in-dropdown
+`CommandInput` **search** appears once the provider's list runs long (> 8 rows,
+the `FilterCombobox` heuristic) and filters that list via cmdk's built-in
+scorer; short lists omit it. The old always-visible global search (flat ranked
+cross-provider results, `searchModels`/`matchRange`) was **removed** in the
+idiom restyle. Keyboard: cmdk roving (↑↓/Enter), Escape clears an active query
+then steps back from level 2, Backspace-on-empty-query steps back; the Command
+is keyed per screen (fresh cmdk state) and the picker focuses the input or the
+cmdk root itself per screen (the app popover prevents both auto-focus
+directions). Sizes to content (`max-h-[360px]` scroll); the popover supplies
+the border/shadow/radius. The library component is props-only and i18n-agnostic
 (`labels?`); all app wiring lives in `app/src/components/chat-model-selector.tsx`.
 
 - **Disconnected providers never appear.** The picker filters to
-  `connection === "connected"` for both the level-1 list and search; the ONLY
-  path to a disconnected provider is the "Connect more providers…" footer, which
-  navigates to the AI Hub (`setViewMode("ai-hub")`). The old per-row Connect
-  buttons, provider rail, favorites/recents groups, FilterPopover, SortMenu,
-  result-count row, and model detail panel were all **deleted** in the minimal
-  redesign. Pure selectors + the nav reducer live in
-  `ui/core/src/components/model-picker/{catalog,nav}.ts` (unit-tested in
-  `ui/core/tests/`).
+  `connection === "connected"` on both levels; the ONLY path to a disconnected
+  provider is the "Connect more providers…" footer, which navigates to the AI
+  Hub (`setViewMode("ai-hub")`). The old per-row Connect buttons, provider rail,
+  favorites/recents groups, FilterPopover, SortMenu, result-count row, and model
+  detail panel were all **deleted** in the minimal redesign. Pure selectors +
+  the nav reducer live in `ui/core/src/components/model-picker/{catalog,nav}.ts`
+  (unit-tested in `ui/core/tests/`).
 - **#342 flicker guard.** While provider statuses (or the catalog) are still
   resolving and nothing is connected yet, level 1 shows a neutral loading state,
   never "no providers" — `providerListLoading()` in `catalog.ts`,
@@ -419,11 +426,10 @@ back from level 2, Backspace-on-empty-query steps back. Sizes to content
 - **Curated-first ranking.** The pi catalog's raw order is often oldest-first,
   so `chat-model-picker-map.ts` re-ranks each provider's rows via
   `rankCuratedFirst`: models with a `PROVIDER_OVERRIDES[provider].models` entry
-  lead, in override key (curation) order, then the rest in catalog order; curated
-  rows carry `curated: true`. Search (`searchModels` in ui/core `catalog.ts`)
-  ranks by match tier (name match beats other-field), then the `curated` flag,
-  then match position, then input order — so "opus" surfaces Opus 4.8/4.7 above
-  Claude Opus 3.
+  lead, in override key (curation) order, then the rest in catalog order — so a
+  provider's level-2 list opens with Opus 4.8/4.7 above Claude Opus 3. The
+  picker renders rows in this input order; the old `curated` row flag (a search
+  tiebreaker) left with the global search.
 
 - **Reused in the import-agent wizard too.** `ChatModelSelector` is the ONE model
   selector: the chat composer AND the import flow (`portable/import-wizard.tsx`)
