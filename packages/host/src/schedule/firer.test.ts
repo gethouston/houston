@@ -31,7 +31,6 @@ function job(over: Partial<FiringJob> = {}): FiringJob {
     routine: {
       id: "r1",
       name: "R",
-      description: "",
       prompt: "Write the daily report",
       schedule: "0 9 * * *",
       enabled: true,

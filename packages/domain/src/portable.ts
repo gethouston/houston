@@ -65,8 +65,14 @@ export function packAgent(
   if (content.claudeMd !== undefined)
     files[CLAUDE_MD] = strToU8(content.claudeMd);
   for (const s of content.skills) files[skillPath(s.slug)] = strToU8(s.body);
-  if (content.routines.length)
-    files[ROUTINES] = strToU8(JSON.stringify(content.routines, null, 2));
+  if (content.routines.length) {
+    // A setup chat is machine-local: its activity id means nothing on the
+    // importer's side, so shared routines never carry one.
+    const shareable = content.routines.map(
+      ({ setup_activity_id: _local, ...r }) => r,
+    );
+    files[ROUTINES] = strToU8(JSON.stringify(shareable, null, 2));
+  }
   if (content.learnings.length)
     files[LEARNINGS] = strToU8(JSON.stringify(content.learnings, null, 2));
   return zipSync(files);

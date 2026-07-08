@@ -2,11 +2,11 @@ import type { KanbanItem } from "@houston-ai/board";
 import { AIBoard } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
 import { Button } from "@houston-ai/core";
+import type { Activity } from "@houston-ai/engine-client";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useUpdateActivity } from "../../hooks/queries";
 import { useConversationFeed } from "../../hooks/use-conversation-vm";
-import { logger } from "../../lib/logger";
 import { openAgentHref } from "../../lib/open-href";
 import { type HistoryLoadOptions, tauriChat } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
@@ -19,13 +19,20 @@ import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import { useDetailPanelContainer } from "../shell/detail-panel-context";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { useQueuedMessageLabels } from "../use-queued-message-labels";
-import { useRoutineChatSetup } from "./use-routine-chat-setup";
 
 const noop = () => {};
 
 interface Props extends TabProps {
+  /**
+   * The setup chat to render: the agent's draft create-chat (grid + new-
+   * routine editor) or the opened routine's persisted chat. Null renders
+   * nothing — the tab decides which chat belongs to the current view.
+   */
+  activity: Activity | null;
   /** Render the "continue setting up" banner (grid view only). */
   showBanner: boolean;
+  /** Reopen the chat panel (the banner's Continue button). */
+  onContinue: () => void;
 }
 
 /**
@@ -33,10 +40,17 @@ interface Props extends TabProps {
  * under the hood, but every board filters it out — so this component mounts
  * its own AIBoard whose list stays hidden while the detail panel portals
  * into the shared right-side container (the Archived tab does the same).
- * A finished chat cleans itself up: once the interview settles "done" and
- * the panel is closed, the activity is archived and disappears for good.
+ * The chat is permanent (HOU-725): once a routine claims it via
+ * `setup_activity_id`, reopening that routine resumes this same
+ * conversation, so a finished chat is never auto-archived.
  */
-export function RoutineSetupChat({ agent, agentDef, showBanner }: Props) {
+export function RoutineSetupChat({
+  agent,
+  agentDef,
+  activity,
+  showBanner,
+  onContinue,
+}: Props) {
   const { t } = useTranslation("routines");
   const path = agent.folderPath;
   const panelContainer = useDetailPanelContainer();
@@ -49,7 +63,6 @@ export function RoutineSetupChat({ agent, agentDef, showBanner }: Props) {
   const setOpenAgentId = useUIStore((s) => s.setRoutineSetupChatAgentId);
   const setMissionPanelOpen = useUIStore((s) => s.setMissionPanelOpen);
   const updateActivity = useUpdateActivity(path);
-  const { setupActivity: activity, start } = useRoutineChatSetup(agent);
 
   // The flag is agent-scoped, so switching agents shows the other agent's
   // Routines tab closed without clobbering a pending cross-agent nav.
@@ -64,24 +77,6 @@ export function RoutineSetupChat({ agent, agentDef, showBanner }: Props) {
   useEffect(() => {
     if (viewMode !== "routines" && open) setOpen(false);
   }, [viewMode, open, setOpen]);
-
-  // Self-cleanup: a setup chat that settled "done" with its panel closed is
-  // finished — archive it (archived setup chats render nowhere). No once-only
-  // guard: the settle's own status write can race this archive and resurrect
-  // "done" (client-side read-modify-write), so the effect must be free to
-  // re-fire on the next refetch until the archive sticks. `isPending` keeps
-  // it to one write at a time; the archive itself is idempotent.
-  useEffect(() => {
-    if (!activity || open || activity.status !== "done") return;
-    if (updateActivity.isPending) return;
-    updateActivity.mutate(
-      { activityId: activity.id, update: { status: "archived" } },
-      {
-        onError: (err) =>
-          logger.error(`[routine-setup] auto-archive failed: ${err}`),
-      },
-    );
-  }, [activity, open, updateActivity.isPending, updateActivity.mutate]);
 
   const sessionKey = activity
     ? (activity.session_key ?? `activity-${activity.id}`)
@@ -181,9 +176,7 @@ export function RoutineSetupChat({ agent, agentDef, showBanner }: Props) {
           <Button variant="ghost" onClick={discard}>
             {t("setupChat.discard")}
           </Button>
-          <Button onClick={() => void start()}>
-            {t("setupChat.continue")}
-          </Button>
+          <Button onClick={onContinue}>{t("setupChat.continue")}</Button>
         </div>
       )}
       {/* The list never shows; only the portaled detail panel is visible. */}

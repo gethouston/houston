@@ -135,8 +135,6 @@ export interface RoutineEditorLabels {
   deleteRoutine: string;
   nameLabel: string;
   namePlaceholder: string;
-  descriptionLabel: string;
-  descriptionPlaceholder: string;
   promptLabel: string;
   promptPlaceholder: string;
   sectionWhen: string;

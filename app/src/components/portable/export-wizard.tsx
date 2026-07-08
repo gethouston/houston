@@ -412,7 +412,7 @@ function PickStep({
               checked={selection.routineIds.has(r.id)}
               onChange={() => toggleRoutine(r.id)}
               title={r.name}
-              subtitle={r.description || r.promptExcerpt}
+              subtitle={r.promptExcerpt}
             />
           ))}
         </Section>

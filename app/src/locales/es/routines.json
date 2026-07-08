@@ -11,16 +11,8 @@
     "timezoneSearchPlaceholder": "Buscar zonas horarias…",
     "timezoneNoResults": "No se encontraron zonas horarias"
   },
-  "createChoice": {
-    "title": "Nueva rutina",
-    "description": "¿Cómo quieres configurarla?",
-    "chatTitle": "Crearla en el chat",
-    "chatDescription": "Cuéntale a tu agente lo que necesitas. Te hará algunas preguntas y programará la rutina por ti.",
-    "formTitle": "Completar los detalles por mi cuenta",
-    "formDescription": "Define el nombre, el horario y las instrucciones con el formulario.",
-    "missionTitle": "Configurar una nueva rutina"
-  },
   "setupChat": {
+    "missionTitle": "Configurar una nueva rutina",
     "bannerTitle": "Estás creando una rutina en el chat",
     "bannerDescription": "Retoma donde quedaste o descarta el chat en curso.",
     "continue": "Continuar",
@@ -41,8 +33,6 @@
     "deleteRoutine": "Eliminar rutina",
     "nameLabel": "Nombre",
     "namePlaceholder": "p. ej. Reunión matutina",
-    "descriptionLabel": "Descripción",
-    "descriptionPlaceholder": "Opcional, para qué sirve esta rutina",
     "promptLabel": "Instrucción",
     "promptPlaceholder": "¿Qué debe hacer el agente cuando se ejecute?",
     "sectionWhen": "Cuándo se ejecuta",

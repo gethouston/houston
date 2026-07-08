@@ -1,12 +1,19 @@
 /**
- * "Create a routine in chat" — the guided alternative to the routine form.
+ * The routine setup chat — the persistent conversation shown next to the
+ * routine form (HOU-725). Every routine gets exactly one: creating a routine
+ * starts it, and reopening the routine resumes the very same chat, so the
+ * user can keep modifying the routine by talking to the agent.
  *
- * The kickoff rides the auto-continue marker (`lib/auto-continue-message.ts`):
+ * The kickoffs ride the auto-continue marker (`lib/auto-continue-message.ts`):
  * the user never typed anything, so the transcript hides the bubble on both
  * the optimistic and reload paths, and the conversation opens with the
- * AGENT's greeting + first question. The product prompt's Routines guidance
- * (schema-checked save, approval gate) does the heavy lifting; this prompt
- * kicks it off and slows the interview down to one question per turn.
+ * AGENT's greeting. The product prompt's Routines guidance (schema-checked
+ * save, approval gate) does the heavy lifting; these prompts kick it off.
+ *
+ * The chat↔routine link is the routine's `setup_activity_id`: the create
+ * kickoff tells the agent the exact activity id to write when it saves the
+ * routine, and the client stamps the same field itself for form-created
+ * routines and for modify chats started on routines that predate this flow.
  */
 
 import { encodeAutoContinueMessage } from "./auto-continue-message.ts";
@@ -26,15 +33,17 @@ export function isRoutineSetupMode(agent: string | null | undefined): boolean {
 }
 
 /**
- * The Claude-facing kickoff. English on purpose (all prompts are); the
- * agent mirrors the user's language when it answers.
+ * The Claude-facing create kickoff. English on purpose (all prompts are);
+ * the agent mirrors the user's language when it answers. Takes the setup
+ * chat's own activity id so the agent can link the routine back to it.
  */
-export const ROUTINE_SETUP_PROMPT = `Houston sent this message automatically: the user clicked "New routine" and chose to set it up here in chat. The user has not said anything yet and is waiting for you to start.
+export function routineSetupPrompt(activityId: string): string {
+  return `Houston sent this message automatically: the user clicked "New routine". The routine form just opened next to this chat, empty, and this chat is where you help them set it up. The user has not said anything yet and is waiting for you to start.
 
-Your job in this conversation: guide the user through creating ONE new Routine, then create it.
+Your job in this conversation: guide the user through creating ONE new Routine, then create it. This chat stays attached to the routine forever — the user can come back to it any time to change the routine.
 
 Start RIGHT NOW, in this same turn:
-1. Write exactly one short, friendly opening line (match the user's language; no headings, no lists, no explanations).
+1. Write exactly one short, friendly opening line (match the user's language; no headings, no lists, no explanations). In that line, say you will help them create this routine and that they can come back to this same chat whenever they want to change it later.
 2. Then, still in this turn, call the ask_user tool with your first question: what the routine should do for them. Offer 3 or 4 concrete example options based on what you help this user with (for example "Watch my inbox for anything urgent", "Send me a morning summary of my day", "Remind me before deadlines"), and they can always describe their own idea instead.
 Do not stop after the greeting. In this conversation, a turn that ends without an ask_user call is a mistake, until the routine is created.
 
@@ -42,6 +51,7 @@ Interview rules:
 - Ask exactly ONE question per ask_user call. Never batch several questions into one call here, even though your general guidance allows up to 3. One question, wait for the answer, then the next.
 - Offer answer options whenever the question allows it (schedule choices, yes/no, app choices).
 - Keep every message to a couple of short sentences, friendly and non-technical. Never mention files, JSON, schemas, tools, or field names.
+- The form next to this chat is live: if the user says they already filled something in there, trust it and skip that question.
 - If an earlier answer already covers a later question, skip that question.
 
 What you need to learn, one step at a time:
@@ -51,14 +61,41 @@ What you need to learn, one step at a time:
 4. Whether every run should add to one ongoing chat, or each run should start a fresh chat.
 5. Whether they want to hear about every run, or only when something needs their attention.
 
-Do not ask about models, providers, or other technical settings. The routine uses this agent's settings. Propose a short name and a one-line description yourself.
+Do not ask about models, providers, or other technical settings. The routine uses this agent's settings. Propose a short name yourself.
 
-When you have everything, summarize the routine in a few plain lines and ask for approval with ask_user (Yes / No). Only create it after a Yes. Then confirm it is scheduled and mention they can see it, change it, or pause it anytime in this agent's Routines tab.`;
+When you have everything, summarize the routine in a few plain lines and ask for approval with ask_user (Yes / No). Only create it after a Yes. When you save the routine, set its "setup_activity_id" field to exactly "${activityId}" — that keeps this chat attached to it; never mention this field or any other technical detail to the user. Then confirm it is scheduled and remind them they can change it right here, in this same chat, or in the form next to it, any time.
+
+If the user creates the routine themselves with the form while you are still asking, stop the interview and offer to fine-tune it instead.`;
+}
 
 /**
- * The full first-message body: marker (hides the bubble) + kickoff prompt
- * (what the model acts on).
+ * The Claude-facing kickoff for a routine that has no chat yet (created with
+ * the form, or from before chats were persisted). One calm greeting, no
+ * interview — the routine already exists.
  */
-export function encodeRoutineSetupMessage(): string {
-  return encodeAutoContinueMessage(ROUTINE_SETUP_PROMPT);
+export function routineModifyPrompt(routine: {
+  id: string;
+  name: string;
+}): string {
+  return `Houston sent this message automatically: the user opened their existing routine "${routine.name}", and this chat just appeared next to the routine's form. This chat stays attached to this routine from now on. The user has not said anything yet.
+
+Right now, write exactly one short, friendly line (match the user's language) saying you can change this routine for them any time — what it does, when it runs, anything — they just have to tell you. Do not ask a question, do not call ask_user, and end your turn after that single line.
+
+Later in this conversation, when the user asks for changes: update THIS routine — the one whose id is "${routine.id}" — in place. Never create a second routine for a change request. Ask for approval with ask_user (Yes / No) before saving a change, keep every message short and non-technical, and never mention files, JSON, schemas, ids, or field names to the user.`;
+}
+
+/**
+ * The full first-message body for a new-routine chat: marker (hides the
+ * bubble) + create kickoff (what the model acts on).
+ */
+export function encodeRoutineSetupMessage(activityId: string): string {
+  return encodeAutoContinueMessage(routineSetupPrompt(activityId));
+}
+
+/** The full first-message body for an existing routine's first-ever chat. */
+export function encodeRoutineModifyMessage(routine: {
+  id: string;
+  name: string;
+}): string {
+  return encodeAutoContinueMessage(routineModifyPrompt(routine));
 }

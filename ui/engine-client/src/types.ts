@@ -433,7 +433,6 @@ export type RoutineChatMode = "shared" | "per_run";
 export interface Routine {
   id: string;
   name: string;
-  description: string;
   prompt: string;
   schedule: string;
   enabled: boolean;
@@ -449,6 +448,11 @@ export interface Routine {
   /** Reasoning-effort override (e.g. "high", "max"); absent means inherit the agent's effort. */
   effort?: string | null;
   /**
+   * Id of the setup-chat activity attached to this routine — the persistent
+   * conversation shown next to the routine form.
+   */
+  setup_activity_id?: string;
+  /**
    * Multiplayer only: the org-member user id that created this routine. Absent
    * in single-player mode. Surfaced so the UI can attribute automations.
    */
@@ -459,7 +463,6 @@ export interface Routine {
 
 export interface NewRoutine {
   name: string;
-  description?: string;
   prompt: string;
   schedule: string;
   enabled?: boolean;
@@ -474,11 +477,12 @@ export interface NewRoutine {
   model?: string | null;
   /** Reasoning effort to pin (e.g. "high"); omit to inherit the agent's effort. */
   effort?: string | null;
+  /** Setup-chat activity to attach; omit for routines created without a chat. */
+  setup_activity_id?: string;
 }
 
 export interface RoutineUpdate {
   name?: string;
-  description?: string;
   prompt?: string;
   schedule?: string;
   enabled?: boolean;
@@ -491,6 +495,8 @@ export interface RoutineUpdate {
   model?: string | null;
   /** Reasoning effort to pin (e.g. "high"); omit or null to leave unchanged. */
   effort?: string | null;
+  /** Attach a setup-chat activity to this routine; omit to leave unchanged. */
+  setup_activity_id?: string;
 }
 
 export type RoutineRunStatus =
@@ -1055,7 +1061,6 @@ export interface PortableSkillPreview {
 export interface PortableRoutinePreview {
   id: string;
   name: string;
-  description: string;
   promptExcerpt: string;
   schedule: string;
   enabled: boolean;
@@ -1084,7 +1089,6 @@ export interface PortableExportSelection {
 
 export interface PortableRoutineFieldOverride {
   name?: string | null;
-  description?: string | null;
   prompt?: string | null;
 }
 

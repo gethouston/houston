@@ -38,11 +38,11 @@ export function normalizeRoutines(
       typeof entry.schedule === "string"
     ) {
       // HOU-470 removed the per-routine `timezone` override (one account-wide
-      // zone now). A routine written by an older build still carries a stray
-      // `timezone` key on disk; drop it on read so it does not round-trip back
-      // out, an idempotent no-migration cleanup (it disappears on next write).
+      // zone now) and HOU-725 removed `description` (display-only, nothing
+      // consumed it). Routines written by older builds still carry the stray
+      // keys on disk; drop them on read so they do not round-trip back out,
+      // an idempotent no-migration cleanup (they disappear on next write).
       const item = {
-        description: "",
         enabled: true,
         suppress_when_silent: false,
         chat_mode: entry.chat_mode === "per_run" ? "per_run" : "shared",
@@ -52,8 +52,9 @@ export function normalizeRoutines(
         created_at: "",
         updated_at: "",
         ...entry,
-      } as Routine & { timezone?: unknown };
+      } as Routine & { timezone?: unknown; description?: unknown };
       delete item.timezone;
+      delete item.description;
       items.push(item);
     } else {
       diagnostics.push({
@@ -96,7 +97,6 @@ export function createRoutine(
   return {
     id,
     name: input.name,
-    description: input.description ?? "",
     prompt: input.prompt,
     schedule: input.schedule,
     enabled: input.enabled ?? true,
@@ -110,7 +110,10 @@ export function createRoutine(
     integrations: input.integrations ?? [],
     created_at: nowIso,
     updated_at: nowIso,
-    // Only write the key when known, so legacy routines stay absent (not "": …).
+    // Only write the keys when known, so legacy routines stay absent (not "": …).
+    ...(input.setup_activity_id
+      ? { setup_activity_id: input.setup_activity_id }
+      : {}),
     ...(createdBy ? { created_by: createdBy } : {}),
   };
 }

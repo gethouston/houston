@@ -76,7 +76,6 @@ export function packagePreview(pkg: PortablePackage): {
       routines: pkg.routines.map((r) => ({
         id: r.id,
         name: r.name,
-        description: r.description,
         promptExcerpt: excerpt(r.prompt),
         schedule: r.schedule,
         enabled: r.enabled,

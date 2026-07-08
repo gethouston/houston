@@ -111,8 +111,6 @@ export const DEFAULT_EDITOR_LABELS: RoutineEditorLabels = {
   deleteRoutine: "Delete routine",
   nameLabel: "Name",
   namePlaceholder: "e.g. Morning standup",
-  descriptionLabel: "Description",
-  descriptionPlaceholder: "Optional, what this routine is for",
   promptLabel: "Prompt",
   promptPlaceholder: "What should the agent do when this runs?",
   sectionWhen: "When it runs",

@@ -317,7 +317,7 @@ export function ImportAgentWizard() {
                 getId={(r) => r.id}
                 renderRow={(r) => ({
                   title: r.name,
-                  subtitle: r.description || r.promptExcerpt,
+                  subtitle: r.promptExcerpt,
                   flagged: findingsForId("routine", r.id).length > 0,
                 })}
               />

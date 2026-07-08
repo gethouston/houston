@@ -177,7 +177,7 @@ export function routineActivity(
   const base = existing ?? {
     id: newId,
     title: routine.name,
-    description: routine.description,
+    description: "",
     status: "needs_you",
     session_key: run.session_key,
   };

@@ -38,6 +38,7 @@ export interface CpAgent {
 }
 
 export const ACTIVITY_PATH = ".houston/activity/activity.json";
+export const ROUTINES_PATH = ".houston/routines/routines.json";
 export const SEED_USAGE: TokenUsage = {
   context_tokens: 1200,
   output_tokens: 80,
@@ -73,6 +74,8 @@ export interface HostState {
   histories: Map<string, ChatMessage[]>;
   agentSeq: number;
   activitySeq: number;
+  /** Monotonic counter for minted routine ids. */
+  routineSeq: number;
   // ── user-scoped gateway state (integrations, grants, preferences) ──
   /** Composio readiness, toggled by the `/__test__/integrations-mode` control. */
   integrationsMode: IntegrationsMode;
@@ -136,6 +139,7 @@ function freshState(): HostState {
     histories: new Map(),
     agentSeq: 1,
     activitySeq: 2,
+    routineSeq: 0,
     integrationsMode: "ready",
     connections,
     // No seeded grants record: the seed agent starts "grants unsupported" (404 →

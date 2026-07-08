@@ -61,7 +61,6 @@ export interface AnonymizedItem extends AnonymizedText {
 
 export interface RoutineFieldOverride {
   name?: string | null;
-  description?: string | null;
   prompt?: string | null;
 }
 

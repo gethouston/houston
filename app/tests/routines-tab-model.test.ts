@@ -13,7 +13,6 @@ function routine(overrides: Partial<Routine> = {}): Routine {
   return {
     id: "r1",
     name: "Morning digest",
-    description: "Summarize overnight email",
     prompt: "Summarize my inbox.",
     schedule: "0 9 * * 1-5",
     enabled: true,
@@ -51,7 +50,6 @@ describe("routines tab model — routineToFormData", () => {
   it("projects every editable field off the stored routine", () => {
     deepStrictEqual(routineToFormData(routine()), {
       name: "Morning digest",
-      description: "Summarize overnight email",
       prompt: "Summarize my inbox.",
       schedule: "0 9 * * 1-5",
       suppress_when_silent: false,
