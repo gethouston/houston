@@ -1,8 +1,14 @@
 import type { Server } from "node:http";
-import type { Capabilities, Workspace } from "@houston/protocol";
+import type {
+  Capabilities,
+  HoustonEvent,
+  SidebarLayout,
+  Workspace,
+} from "@houston/protocol";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { ProxyChannel } from "../channel/proxy";
 import { MemoryCredentialStore } from "../credentials/store";
+import type { EventHub } from "../events/hub";
 import type { RuntimeEndpoint, RuntimeLauncher, TokenVerifier } from "../ports";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
@@ -153,6 +159,129 @@ test("preference routes 503 without a vfs", async () => {
   try {
     const r = await fetch(`${b}/v1/preferences/locale`, {
       headers: auth("alice"),
+    });
+    expect(r.status).toBe(503);
+    await r.text();
+  } finally {
+    await new Promise<void>((r) => noVfs.close(() => r()));
+  }
+});
+
+/** The caller's (auto-provisioned) personal workspace id. */
+async function wsIdOf(who: string): Promise<string> {
+  const list = (await (
+    await fetch(`${base}/v1/workspaces`, { headers: auth(who) })
+  ).json()) as Workspace[];
+  const id = list[0]?.id;
+  if (!id) throw new Error(`expected ${who} to have a workspace`);
+  return id;
+}
+
+const LAYOUT: SidebarLayout = {
+  groups: [
+    { id: "g1", name: "Work", collapsed: false, agentIds: ["a1", "a2"] },
+  ],
+  ungroupedOrder: ["a3"],
+};
+
+test("GET sidebar-layout returns the default when unset", async () => {
+  const id = await wsIdOf("dave");
+  const r = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    headers: auth("dave"),
+  });
+  expect(r.status).toBe(200);
+  expect(await r.json()).toEqual({
+    groups: [],
+    ungroupedOrder: [],
+  });
+});
+
+test("PUT sidebar-layout persists and GET round-trips it", async () => {
+  const id = await wsIdOf("erin");
+  const put = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    method: "PUT",
+    headers: auth("erin"),
+    body: JSON.stringify(LAYOUT),
+  });
+  expect(put.status).toBe(200);
+  expect(await put.json()).toEqual(LAYOUT);
+
+  const get = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    headers: auth("erin"),
+  });
+  expect(await get.json()).toEqual(LAYOUT);
+});
+
+test("PUT sidebar-layout with an invalid body is a 400", async () => {
+  const id = await wsIdOf("frank");
+  const bad = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    method: "PUT",
+    headers: auth("frank"),
+    body: JSON.stringify({
+      groups: "not-an-array",
+      ungroupedOrder: [],
+    }),
+  });
+  expect(bad.status).toBe(400);
+  expect(((await bad.json()) as { error: string }).error).toBe(
+    "invalid sidebar layout",
+  );
+});
+
+test("PUT sidebar-layout emits SidebarLayoutChanged to the owner", async () => {
+  const emitted: { userId: string; event: HoustonEvent }[] = [];
+  const events: EventHub = {
+    emit: (userId, event) => emitted.push({ userId, event }),
+    subscribe: () => () => {},
+  };
+  const srv = createControlPlaneServer(deps({ events }));
+  await new Promise<void>((r) => srv.listen(0, "127.0.0.1", () => r()));
+  const addr = srv.address();
+  const b = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
+  try {
+    const list = (await (
+      await fetch(`${b}/v1/workspaces`, { headers: auth("grace") })
+    ).json()) as Workspace[];
+    const id = list[0]?.id;
+    if (!id) throw new Error("expected grace to have a workspace");
+    const put = await fetch(`${b}/v1/workspaces/${id}/sidebar-layout`, {
+      method: "PUT",
+      headers: auth("grace"),
+      body: JSON.stringify(LAYOUT),
+    });
+    expect(put.status).toBe(200);
+    await put.json();
+    expect(emitted).toEqual([
+      {
+        userId: "grace",
+        event: { type: "SidebarLayoutChanged", workspaceId: id },
+      },
+    ]);
+  } finally {
+    await new Promise<void>((r) => srv.close(() => r()));
+  }
+});
+
+test("sidebar-layout is walled off from a non-owner (403)", async () => {
+  const id = await wsIdOf("heidi");
+  const byBob = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    method: "PUT",
+    headers: auth("bob"),
+    body: JSON.stringify(LAYOUT),
+  });
+  expect(byBob.status).toBe(403);
+  await byBob.text();
+});
+
+test("sidebar-layout routes 503 without a vfs", async () => {
+  const id = await wsIdOf("ivan");
+  const noVfs = createControlPlaneServer(deps({ vfs: undefined }));
+  await new Promise<void>((r) => noVfs.listen(0, "127.0.0.1", () => r()));
+  const addr = noVfs.address();
+  const b = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
+  try {
+    const r = await fetch(`${b}/v1/workspaces/${id}/sidebar-layout`, {
+      headers: auth("ivan"),
     });
     expect(r.status).toBe(503);
     await r.text();

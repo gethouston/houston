@@ -224,12 +224,60 @@ Engine route: `POST /v1/store/workspaces/install-from-github`. Rust impl: `houst
 | > Connections               |  workspace-wide integrations
 | > Organization              |  Teams v2 dashboard (owner/admin + multiplayer only)
 |-----------------------------|
-| Your AI Agents              |
-|   > Research Agent    [2]   |  sorted by lastOpenedAt
-|   > Project Manager         |
+| Your AI Agents          [+] |  section label + folder-plus "New group" button
+|   ▾ Work                 [2]|  a named, collapsible group (drag its title to move it)
+|     > Research Agent    [2] |
+|     > Project Manager       |
+|   > Trip Planner            |  ungrouped agents (default section)
 |   + New Agent               |  row-style action, opens Store picker
 +-----------------------------+
 ```
+
+**Reorder + grouping (per-workspace).** Ordering is **always manual** — there
+is NO sort mode. Agents are always drag-and-droppable to reorder or to drop into
+a group; a folder-plus button to the right of the "Your agents" label creates a
+group (which appears already in inline-rename, focused). Arrangement persists per
+workspace as the `sidebar_layout` **preference** (same `ws/<id>/preferences.json`
+doc as `locale`; reuses `getPreference`/`setPreference`), shape `SidebarLayout {
+groups: SidebarGroup[]; ungroupedOrder: string[] }`
+(`packages/protocol/src/domain/workspace.ts`; a brand-new agent appears at the
+end of the default section). Absent/corrupt reads as `{ [], [] }`.
+
+- **Host:** `GET`/`PUT /v1/workspaces/:id/sidebar-layout` in
+  `routes/account.ts` (validator/reader extracted to `routes/sidebar-layout.ts`);
+  PUT emits `HoustonEvent SidebarLayoutChanged { workspaceId }`.
+- **Client (TWO places — this is the trap):** the app never uses
+  `ui/engine-client` at runtime. `app/vite.config.ts` AND
+  `packages/web/vite.config.ts` both alias `@houston-ai/engine-client` →
+  **`packages/web/src/engine-adapter/`** (the v3 host adapter), and its
+  `HoustonClient` wraps unknown methods in a **Proxy stub that returns `[]`**.
+  So a new client method MUST be added to the adapter (`engine-adapter/client.ts`
+  + `control-plane.ts` cpFetch helper) or the app silently gets `[]` (which then
+  broke `layout.groups.map` until the client normalized it). `getSidebarLayout`/
+  `setSidebarLayout` live in BOTH `ui/engine-client` (types + client, tests) and
+  the adapter (host-backed via cpFetch when `this.cp` set, else localStorage).
+- **Generic UI:** `AppSidebar` (`ui/layout`) gained optional `sectionAction`
+  (rendered by the section label — the app passes the folder button), `groups:
+  SidebarGroupView[]`, group callbacks, `renamingGroupId` (opens a just-created
+  group into inline-rename), and **@dnd-kit** drag (always on when `groups` is
+  passed). Real sortable: a `DragOverlay` lifted row follows the cursor, siblings
+  animate, agents move within/across groups + the default section, group headers
+  reorder whole groups; pointer/touch/keyboard sensors, `MeasuringStrategy.Always`
+  for smooth reflow. Orchestrator `sidebar-grouped-list.tsx` keeps a working copy
+  that `onDragOver` live-reorders (both same- and cross-container via
+  `placeItem`'s direction-aware `arrayMove`) and `onDragEnd` simply commits — do
+  NOT recompute from `over` at drop, it can be the dragged item itself. Pure
+  helpers `sidebar-dnd.ts`. Absent `groups` → the old flat list; the collapsed
+  rail always renders flat. Verified end-to-end by
+  `packages/web/e2e/sidebar-dnd.spec.ts` (Chromium + WebKit; drags re-read the
+  reflowing target's live position — fixed pre-drag coords miss).
+- **App wiring:** `hooks/use-sidebar-layout.ts` (TanStack Query + optimistic
+  mutation + non-React `getCurrentSidebarLayout` accessor; `createGroup` returns
+  the new id so the sidebar can focus its rename), pure reducers in
+  `lib/sidebar-layout-ops.ts` (+ `normalizeSidebarLayout` guarding every read),
+  ordering in `lib/agent-order.ts` (`resolveSidebarSections` / `flatSidebarOrder`
+  — the SAME order feeds ⌘[ / ⌘] cycling + the command palette). Group labels
+  live under `shell:sidebar.groups.*` (en/es/pt).
 
 Agent rows show a count chip for `needs_you` activity items. If any
 activity item is `running`, the row avatar uses the same comet glow as

@@ -10,6 +10,16 @@
     "collapse": "Recolher barra lateral",
     "expand": "Expandir barra lateral",
     "createOrganization": "Criar organização",
+    "groups": {
+      "new": "Novo grupo",
+      "newDefault": "Novo grupo",
+      "rename": "Renomear grupo",
+      "delete": "Excluir grupo",
+      "menu": "Opções do grupo",
+      "namePlaceholder": "Nome do grupo",
+      "emptyHint": "Arraste agentes aqui",
+      "ungrouped": "Sem grupo"
+    },
     "color": "Cor",
     "changeColor": "Alterar cor",
     "colorLabels": {

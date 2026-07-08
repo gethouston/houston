@@ -24,6 +24,7 @@ export type HoustonEvent =
   | { type: "ConversationsChanged"; agentPath: string }
   | { type: "WorkspacesChanged" }
   | { type: "AgentsChanged"; workspaceId: string }
+  | { type: "SidebarLayoutChanged"; workspaceId: string }
   | { type: "Toast"; level: "info" | "error"; message: string }
   | { type: "CompletionToast"; agentPath: string; title: string; body: string }
   | { type: "AuthRequired"; provider: string };

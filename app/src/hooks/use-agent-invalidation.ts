@@ -140,6 +140,18 @@ export function useAgentInvalidation() {
           }
           break;
         }
+        case "SidebarLayoutChanged": {
+          // Best-effort cross-surface/multi-tab sync. The acting user's own
+          // change already applied via the optimistic mutation; this refetches
+          // for everyone else viewing the same workspace.
+          const workspaceId = useWorkspaceStore.getState().current?.id;
+          if (workspaceId && p.data.workspace_id === workspaceId) {
+            qc.invalidateQueries({
+              queryKey: queryKeys.sidebarLayout(workspaceId),
+            });
+          }
+          break;
+        }
         // SessionStatus triggers activity invalidation (agent finished → status changed)
         case "SessionStatus":
           if (p.data.status === "completed" || p.data.status === "error") {

@@ -440,6 +440,18 @@ export function WorkspaceShell({
                 placement: "viewport-right",
                 onEnter: () => setCreateAgentDialogOpen(true),
               },
+              // The "replay the tour" step is a wrap-up pointer at the replay
+              // button, so it comes last, right before the outro. It closes the
+              // create-agent dialog opened by the agentStore step above.
+              {
+                title: t("shell:uiTour.steps.appTour.title"),
+                body: t("shell:uiTour.steps.appTour.body"),
+                targetSelector: "[data-tour-target='appTour']",
+                onEnter: () => {
+                  setCreateAgentDialogOpen(false);
+                  setViewMode(DEFAULT_TAB_ID);
+                },
+              },
               {
                 title: t("shell:uiTour.steps.appTour.title"),
                 body: t("shell:uiTour.steps.appTour.body"),

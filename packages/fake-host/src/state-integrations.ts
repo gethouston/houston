@@ -10,12 +10,14 @@
  * the typecheck here instead of silently drifting the mock.
  */
 
+import { DEFAULT_SIDEBAR_LAYOUT } from "@houston/host/src/routes/sidebar-layout";
+import type { SidebarLayout } from "@houston/protocol";
 import type {
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
 } from "@houston/runtime-client";
-import { type IntegrationsMode, state } from "./state-store";
+import { emitDomain, type IntegrationsMode, state } from "./state-store";
 
 /** A small, stable A-Z toolkit catalog — enough for catalog + connect flows. */
 export const SEED_TOOLKITS: IntegrationToolkit[] = [
@@ -116,4 +118,18 @@ export function getPreference(key: string): string | null {
 export function setPreference(key: string, value: string | null): void {
   if (value === null) state.preferences.delete(key);
   else state.preferences.set(key, value);
+}
+
+/** A workspace's stored sidebar layout, or the default when unset (GET). */
+export function getSidebarLayout(workspaceId: string): SidebarLayout {
+  return state.sidebarLayouts.get(workspaceId) ?? DEFAULT_SIDEBAR_LAYOUT;
+}
+
+/** Persist a validated layout and fan out `SidebarLayoutChanged` (PUT). */
+export function setSidebarLayout(
+  workspaceId: string,
+  layout: SidebarLayout,
+): void {
+  state.sidebarLayouts.set(workspaceId, layout);
+  emitDomain("SidebarLayoutChanged");
 }

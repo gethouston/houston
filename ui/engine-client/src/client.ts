@@ -84,6 +84,7 @@ import type {
   SessionCancelResponse,
   SessionStartRequest,
   SessionStartResponse,
+  SidebarLayout,
   SkillDetail,
   SkillSummary,
   StoreListing,
@@ -451,6 +452,25 @@ export class HoustonClient {
     body: WorkspaceContext,
   ): Promise<WorkspaceContext> {
     return this.request("PUT", `/workspaces/${this.seg(id)}/context`, body);
+  }
+
+  // ---------- sidebar layout ----------
+
+  getSidebarLayout(workspaceId: string): Promise<SidebarLayout> {
+    return this.request(
+      "GET",
+      `/workspaces/${this.seg(workspaceId)}/sidebar-layout`,
+    );
+  }
+  setSidebarLayout(
+    workspaceId: string,
+    layout: SidebarLayout,
+  ): Promise<SidebarLayout> {
+    return this.request(
+      "PUT",
+      `/workspaces/${this.seg(workspaceId)}/sidebar-layout`,
+      layout,
+    );
   }
 
   // ---------- workspace-scoped agents ----------

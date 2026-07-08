@@ -6,6 +6,7 @@
     "card": { "$value": "{color.glass.neutral-50}" },
     "card-hover": { "$value": "{color.glass.neutral-58}" },
     "card-fg": { "$value": "{color.neutral.150}" },
+    "dialog": { "$value": "{color.glass.neutral-50}" },
     "popover": { "$value": "{color.glass.neutral-85}" },
     "popover-fg": { "$value": "{color.neutral.150}" },
     "primary": { "$value": "{color.neutral.150}" },

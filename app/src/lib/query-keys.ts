@@ -49,6 +49,14 @@ export const queryKeys = {
   capabilities: () => ["capabilities"] as const,
 
   /**
+   * Per-workspace sidebar arrangement (sort mode + named groups + drag order).
+   * Optimistically updated by the layout mutation; also invalidated on the
+   * `SidebarLayoutChanged` event for best-effort cross-surface/tab sync.
+   */
+  sidebarLayout: (workspaceId: string) =>
+    ["sidebar-layout", workspaceId] as const,
+
+  /**
    * The one-time post-migration "reconnect your AI" gate. `migrationReconnect`
    * holds the host's `chatHistoryMigrated` flag (does this install come from the
    * legacy desktop build); `migrationReconnectDismissed` holds the persisted

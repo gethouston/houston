@@ -279,6 +279,30 @@ export interface WorkspaceContext {
   user: string;
 }
 
+/** A user-created, collapsible sidebar section that agents are dragged into. */
+export interface SidebarGroup {
+  /** Stable client-minted id (never an agent id). */
+  id: string;
+  name: string;
+  collapsed: boolean;
+  /** Member agent ids, in drag order. */
+  agentIds: string[];
+}
+
+/**
+ * Per-workspace sidebar arrangement: the user's named groups plus the manual
+ * (drag) order of everything. Ordering is ALWAYS manual — there is no sort
+ * mode. Agents in no group render in the default section in `ungroupedOrder`;
+ * a brand-new agent is appended. Persisted as the `sidebar_layout` workspace
+ * preference (JSON). Absent/corrupt reads as `{ groups: [], ungroupedOrder: [] }`.
+ */
+export interface SidebarLayout {
+  /** Named groups, in display order. */
+  groups: SidebarGroup[];
+  /** Drag order of agents not in any group. */
+  ungroupedOrder: string[];
+}
+
 // ---------- Workspace-scoped agent CRUD ----------
 
 export interface Agent {

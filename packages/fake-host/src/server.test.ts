@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { SEED_AGENT_ID } from "./config";
+import { SEED_AGENT_ID, SEED_WORKSPACE_ID } from "./config";
 import { type FakeHost, startFakeHost } from "./server";
 
 /**
@@ -67,6 +67,51 @@ describe("startFakeHost", () => {
     const res = await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
+  });
+
+  it("serves + round-trips the per-workspace sidebar layout", async () => {
+    const base = `${host.url}/v1/workspaces/${SEED_WORKSPACE_ID}/sidebar-layout`;
+
+    // Unset → the empty default (mirrors the real host's DEFAULT_SIDEBAR_LAYOUT).
+    const initial = await fetch(base);
+    expect(initial.status).toBe(200);
+    expect(await initial.json()).toEqual({
+      groups: [],
+      ungroupedOrder: [],
+    });
+
+    // A valid PUT persists and echoes the stored layout.
+    const layout = {
+      groups: [
+        { id: "g1", name: "Work", collapsed: false, agentIds: ["a", "b"] },
+      ],
+      ungroupedOrder: ["c"],
+    };
+    const put = await fetch(base, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(layout),
+    });
+    expect(put.status).toBe(200);
+    expect(await put.json()).toEqual(layout);
+    expect(await (await fetch(base)).json()).toEqual(layout);
+  });
+
+  it("rejects a malformed sidebar layout with 400", async () => {
+    const res = await fetch(
+      `${host.url}/v1/workspaces/${SEED_WORKSPACE_ID}/sidebar-layout`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ groups: "nope" }),
+      },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("404s a sidebar layout for an unknown workspace", async () => {
+    const res = await fetch(`${host.url}/v1/workspaces/ghost/sidebar-layout`);
+    expect(res.status).toBe(404);
   });
 
   it("stops cleanly so the port stops accepting connections", async () => {

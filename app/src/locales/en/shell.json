@@ -25,7 +25,17 @@
     "runningCount_other": "{{count}} issues running",
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",
-    "createOrganization": "Create organization"
+    "createOrganization": "Create organization",
+    "groups": {
+      "new": "New group",
+      "newDefault": "New group",
+      "rename": "Rename group",
+      "delete": "Delete group",
+      "menu": "Group options",
+      "namePlaceholder": "Group name",
+      "emptyHint": "Drag agents here",
+      "ungrouped": "Ungrouped"
+    }
   },
   "tabActions": {
     "newMission": "New mission",

@@ -8,6 +8,7 @@
  * route matched, or `undefined` to let the router fall through.
  */
 
+import { parseSidebarLayout } from "@houston/host/src/routes/sidebar-layout";
 import { SEED_WORKSPACE_ID } from "./config";
 import { json } from "./http";
 import * as state from "./state";
@@ -157,6 +158,23 @@ export function handleUserRoutes(
         );
       }
       return json(workspaceWire());
+    }
+    // GET/PUT /v1/workspaces/:id/sidebar-layout — the sidebar's order + grouping.
+    if (
+      segs.length === 4 &&
+      segs[3] === "sidebar-layout" &&
+      (method === "GET" || method === "PUT")
+    ) {
+      if (segs[2] !== SEED_WORKSPACE_ID) {
+        return json({ error: "workspace not found" }, 404);
+      }
+      if (method === "GET") return json(state.getSidebarLayout(segs[2]));
+      // PUT: validate strictly with the real host's guard before persisting —
+      // a bad body is a clean 400, never a swallowed accept that writes garbage.
+      const layout = parseSidebarLayout(body);
+      if (!layout) return json({ error: "invalid sidebar layout" }, 400);
+      state.setSidebarLayout(segs[2], layout);
+      return json(layout);
     }
   }
   return undefined;

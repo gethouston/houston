@@ -12,7 +12,7 @@
  * typecheck here instead of silently drifting the mock.
  */
 
-import type { Activity } from "@houston/protocol";
+import type { Activity, SidebarLayout } from "@houston/protocol";
 import type {
   ChatMessage,
   IntegrationConnection,
@@ -89,6 +89,11 @@ export interface HostState {
   grants: Map<string, string[]>;
   /** Per-user preference key -> value (locale, timezone, …). */
   preferences: Map<string, string>;
+  /**
+   * workspaceId -> the sidebar's order + grouping (real host persists it as the
+   * `sidebar_layout` workspace preference). A missing key reads as the default.
+   */
+  sidebarLayouts: Map<string, SidebarLayout>;
   /** Monotonic counter for minted connection ids. */
   connSeq: number;
 }
@@ -146,6 +151,7 @@ function freshState(): HostState {
     // null), so a suite can assert the null→[] distinction by writing one.
     grants: new Map(),
     preferences: new Map(),
+    sidebarLayouts: new Map(),
     connSeq: 1,
   };
 }

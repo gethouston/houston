@@ -1034,6 +1034,24 @@ export const tauriPreferences = {
     call<void>("set_preference", () => getEngine().setPreference(key, value)),
 };
 
+// ─── Sidebar layout ───────────────────────────────────────────────────
+
+export const tauriSidebar = {
+  getLayout: (workspaceId: string) =>
+    call<import("@houston-ai/engine-client").SidebarLayout>(
+      "get_sidebar_layout",
+      () => getEngine().getSidebarLayout(workspaceId),
+    ),
+  setLayout: (
+    workspaceId: string,
+    layout: import("@houston-ai/engine-client").SidebarLayout,
+  ) =>
+    call<import("@houston-ai/engine-client").SidebarLayout>(
+      "set_sidebar_layout",
+      () => getEngine().setSidebarLayout(workspaceId, layout),
+    ),
+};
+
 // ─── Providers ────────────────────────────────────────────────────────
 
 export interface ProviderStatus {
