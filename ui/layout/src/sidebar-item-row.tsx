@@ -80,6 +80,11 @@ export function SidebarItemRow({
           onChange={(e) => onEditChange(e.target.value)}
           onBlur={() => onCommitRename(item.id)}
           onKeyDown={(e) => {
+            // Keep every keystroke inside the field: the sortable wrapper
+            // spreads @dnd-kit's keyboard-sensor listeners, whose Space/Enter
+            // activator would otherwise start a drag mid-type and swallow the
+            // character (e.g. spaces vanish from the new name).
+            e.stopPropagation();
             if (e.key === "Enter") onCommitRename(item.id);
             if (e.key === "Escape") onCancelEdit();
           }}
