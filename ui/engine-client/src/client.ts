@@ -180,6 +180,14 @@ export class HoustonClient {
   // retries re-read these on each attempt, so they recover transparently.
   private baseUrl: string;
   private token: string;
+  // Active hosted "space" (C8 §Active space). When non-null it is an org SLUG
+  // (`[a-f0-9]{16}`, server-defined grammar) and EVERY HTTP request carries
+  // `x-houston-org: <slug>` so the gateway resolves that team space. `null`
+  // selects the caller's personal org — the gateway's header-absent default —
+  // and sends NO header. Mutable like `{baseUrl, token}`: it's re-read per
+  // request attempt (see `send`/`orgHeaders`), so a mid-flight switch is
+  // honored on the next retry without rebuilding the client.
+  private activeOrgSlug: string | null = null;
   private readonly retryConfig: RetryConfig;
   private readonly fetchImpl: typeof fetch;
 
@@ -200,6 +208,33 @@ export class HoustonClient {
   setEndpoint(opts: { baseUrl: string; token: string }): void {
     this.baseUrl = opts.baseUrl.replace(/\/$/, "");
     this.token = opts.token;
+  }
+
+  /**
+   * Pin (or clear) the active hosted space (C8 §Workspaces bridge). Pass an org
+   * slug to act inside that team space — every request then carries
+   * `x-houston-org: <slug>` — or `null` to fall back to the caller's personal
+   * org (no header). Mirrors `setEndpoint`'s in-place mutation: in-flight
+   * retries re-read it, so a switch takes effect on the next attempt without
+   * rebuilding the client.
+   *
+   * The gateway is the sole authority — a slug the caller doesn't belong to
+   * yields `403 not_member`. Because `role` is per-space, the caller MUST
+   * re-fetch `capabilities()` after switching (C8 §capabilities); this method
+   * only redirects the transport.
+   */
+  setActiveOrg(slug: string | null): void {
+    this.activeOrgSlug = slug;
+  }
+
+  /**
+   * The active-space header for one request, or `{}` when personal (`null`).
+   * Called INSIDE each `build()` closure so it is evaluated per attempt — a
+   * `setActiveOrg` mid-flight lands on the next retry, same discipline as the
+   * live `token`/`baseUrl` re-read.
+   */
+  private orgHeaders(): Record<string, string> {
+    return this.activeOrgSlug ? { "x-houston-org": this.activeOrgSlug } : {};
   }
 
   // ---------- transport ----------
@@ -229,6 +264,7 @@ export class HoustonClient {
             method,
             headers: {
               Authorization: `Bearer ${this.token}`,
+              ...this.orgHeaders(),
               ...(body !== undefined
                 ? { "Content-Type": "application/json" }
                 : {}),
@@ -261,6 +297,7 @@ export class HoustonClient {
       () => {
         const headers: Record<string, string> = {
           Authorization: `Bearer ${this.token}`,
+          ...this.orgHeaders(),
         };
         if (contentType) headers["Content-Type"] = contentType;
         return {
@@ -583,7 +620,10 @@ export class HoustonClient {
         url: `${this.baseUrl}/v1/agents/files/download?${q}`,
         init: {
           method: "GET",
-          headers: { Authorization: `Bearer ${this.token}` },
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            ...this.orgHeaders(),
+          },
         },
       }),
       true,
@@ -1682,6 +1722,7 @@ export class HoustonClient {
           method: "POST",
           headers: {
             Authorization: `Bearer ${this.token}`,
+            ...this.orgHeaders(),
             "Content-Type": "application/json",
           },
           body: JSON.stringify(req),

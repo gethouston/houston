@@ -37,6 +37,15 @@ import { DEFAULT_AGENT_COLOR, DEFAULT_AGENT_CONFIG_ID } from "./synthetic";
 export interface ControlPlaneConfig {
   baseUrl: string;
   token: string;
+  /**
+   * Active hosted space (C8 §Active space). When set it is an org SLUG
+   * (`[a-f0-9]{16}`) and every gateway call carries `x-houston-org: <slug>`
+   * (and the SSE stream a `?org=<slug>` query); null/absent selects the
+   * caller's personal org — the gateway's header-absent default. Mutated in
+   * place by `HoustonClient.setActiveOrg`, and read live per request/attempt,
+   * so a space switch takes effect without rebuilding the config.
+   */
+  activeOrgSlug?: string | null;
 }
 
 /** What the control plane returns for an agent (id + name + workspace + ts). */
@@ -168,11 +177,19 @@ export function liveToken(fallback: string): string {
  * must surface, not spin. With no refresher installed (static tokens, tests)
  * the refresh resolves null and this degrades to a plain live-token fetch.
  */
-export function gatewayAuthFetch(fallbackToken: string): typeof fetch {
+export function gatewayAuthFetch(
+  fallbackToken: string,
+  getOrg?: () => string | null | undefined,
+): typeof fetch {
   return async (input, init) => {
     const send = (bearer: string) => {
       const headers = new Headers(init?.headers);
       if (bearer) headers.set("Authorization", `Bearer ${bearer}`);
+      // Active-space header (C8), re-read per attempt so a mid-flight space
+      // switch is honored on the next retry/refresh — same live discipline as
+      // the bearer. Absent → the gateway resolves the personal org.
+      const org = getOrg?.();
+      if (org) headers.set("x-houston-org", org);
       return fetch(input, { ...init, headers });
     };
     const res = await send(liveToken(fallbackToken));
@@ -229,7 +246,9 @@ async function cpFetch(
   path: string,
   init?: RequestInit,
 ): Promise<Response> {
-  const doFetch = transientRetryFetch(gatewayAuthFetch(cfg.token));
+  const doFetch = transientRetryFetch(
+    gatewayAuthFetch(cfg.token, () => cfg.activeOrgSlug),
+  );
   const res = await doFetch(`${cfg.baseUrl}${path}`, {
     ...init,
     headers: {
@@ -455,7 +474,9 @@ export function runtimeClientFor(
   // mid-roll threw once and the chat rendered empty until reselected (HOU-731).
   return new HoustonEngineClient({
     baseUrl: `${cfg.baseUrl}/agents/${encodeURIComponent(agentId)}`,
-    fetch: transientRetryFetch(gatewayAuthFetch(cfg.token)),
+    fetch: transientRetryFetch(
+      gatewayAuthFetch(cfg.token, () => cfg.activeOrgSlug),
+    ),
   });
 }
 
@@ -472,7 +493,7 @@ export function setupRuntimeClientFor(
 ): HoustonEngineClient {
   return new HoustonEngineClient({
     baseUrl: `${cfg.baseUrl}/setup-runtime`,
-    fetch: gatewayAuthFetch(cfg.token),
+    fetch: gatewayAuthFetch(cfg.token, () => cfg.activeOrgSlug),
   });
 }
 
@@ -948,7 +969,11 @@ export async function setPreference(
  *
  * This adapter keeps only its own two seams: the token rides in the query (the
  * host's bearer reads `?token=`, re-embedded per (re)connect so a refreshed
- * token is always current), and host events `{ type, agentPath, workspaceId }`
+ * token is always current) — and, in a hosted team space, the active-space
+ * slug rides beside it as `?org=<slug>` (C8 §Active space: browsers can't set
+ * headers on a stream, so the gateway's two SSE routes accept the selector as a
+ * query param). Both are re-read per (re)connect. Host events
+ * `{ type, agentPath, workspaceId }`
  * are translated to the shape the UI's invalidation map reads
  * (`{ type, data: { agent_path, workspace_id } }`). Malformed frames are
  * dropped and the loop reconnects with a short backoff on any drop. A `401`
@@ -962,8 +987,13 @@ export function subscribeEvents(
 ): () => void {
   const ac = new AbortController();
   void streamGlobalEvents({
-    url: () =>
-      `${cfg.baseUrl}/v1/events?token=${encodeURIComponent(liveToken(cfg.token))}`,
+    url: () => {
+      const org = cfg.activeOrgSlug;
+      const orgParam = org ? `&org=${encodeURIComponent(org)}` : "";
+      return `${cfg.baseUrl}/v1/events?token=${encodeURIComponent(
+        liveToken(cfg.token),
+      )}${orgParam}`;
+    },
     // Wrapped, never the bare reference: streamGlobalEvents calls
     // `opts.fetch(...)`, and a browser's window.fetch invoked with a foreign
     // receiver throws "Illegal invocation" BEFORE any request goes out — the

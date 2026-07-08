@@ -266,7 +266,10 @@ export class HoustonClient {
     // captured static token, so local/static hosts are unchanged.
     this.engine = new HoustonEngineClient({
       baseUrl: opts.baseUrl,
-      fetch: controlPlane.gatewayAuthFetch(opts.token),
+      fetch: controlPlane.gatewayAuthFetch(
+        opts.token,
+        () => this.cp?.activeOrgSlug,
+      ),
     });
     // Mark the new TS engine as the active backend so the frontend can surface
     // new-engine-only capabilities (e.g. API-key providers like OpenCode). The
@@ -302,6 +305,25 @@ export class HoustonClient {
   subscribeServerEvents(): () => void {
     if (!this.cp) return () => {};
     return controlPlane.subscribeEvents(this.cp, (e) => bus.emit(e));
+  }
+
+  /**
+   * Pin (or clear) the active hosted space (C8 §Workspaces bridge). Pass an org
+   * slug (the `org:`-stripped id of a `kind: "org"` workspace) to act inside
+   * that team space — every gateway call then carries `x-houston-org`, and the
+   * events stream a `?org=` query — or `null` to fall back to the personal org.
+   *
+   * Mutates the live `ControlPlaneConfig` in place: the config object is shared
+   * by every per-request `cpFetch` and by the long-lived per-agent runtime
+   * clients (whose auth-fetch re-reads it per attempt), so a switch takes
+   * effect immediately without rebuilding anything. No-op outside cloud mode
+   * (`this.cp === null`) — local/self-host hosts have no space concept.
+   *
+   * `role` is per-space, so the caller MUST re-fetch `capabilities()` after
+   * switching (C8 §capabilities); this only redirects the transport.
+   */
+  setActiveOrg(slug: string | null): void {
+    if (this.cp) this.cp.activeOrgSlug = slug;
   }
 
   private async activeOld(): Promise<{ provider: string; model: string }> {
@@ -396,9 +418,10 @@ export class HoustonClient {
     // the old call 404'd against every host, silently breaking the
     // migration-reconnect probe (HOU-688). Live-bearer fetch for the same
     // reason as capabilities() (HOU-687).
-    const res = await controlPlane.gatewayAuthFetch(this.token)(
-      `${this.baseUrl}/v1/version`,
-    );
+    const res = await controlPlane.gatewayAuthFetch(
+      this.token,
+      () => this.cp?.activeOrgSlug,
+    )(`${this.baseUrl}/v1/version`);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new HoustonEngineError(res.status, body);
@@ -409,9 +432,10 @@ export class HoustonClient {
     // gatewayAuthFetch (not `this.engine.capabilities()`) on purpose: hosted
     // mode rotates the Supabase bearer mid-session, so the live token is read
     // per attempt and a 401 refreshes + replays (HOU-687).
-    const res = await controlPlane.gatewayAuthFetch(this.token)(
-      `${this.baseUrl}/v1/capabilities`,
-    );
+    const res = await controlPlane.gatewayAuthFetch(
+      this.token,
+      () => this.cp?.activeOrgSlug,
+    )(`${this.baseUrl}/v1/capabilities`);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new HoustonEngineError(res.status, body);
@@ -866,16 +890,16 @@ export class HoustonClient {
     if (!this.cp)
       throw new Error("cpFilesFetch called without a control-plane config");
     const cp = this.cp;
-    const res = await controlPlane.gatewayAuthFetch(cp.token)(
-      `${cp.baseUrl}/agents/${encodeURIComponent(agentId)}/${path}`,
-      {
-        ...init,
-        headers: {
-          "Content-Type": "application/json",
-          ...init?.headers,
-        },
+    const res = await controlPlane.gatewayAuthFetch(
+      cp.token,
+      () => cp.activeOrgSlug,
+    )(`${cp.baseUrl}/agents/${encodeURIComponent(agentId)}/${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...init?.headers,
       },
-    );
+    });
     if (!res.ok)
       throw new HoustonEngineError(
         res.status,

@@ -45,13 +45,18 @@ async function hostFetch(
   init?: RequestInit,
 ): Promise<Response> {
   // gatewayAuthFetch: live bearer per attempt + 401 refresh/replay (HOU-687).
-  const res = await gatewayAuthFetch(cfg.token)(`${cfg.baseUrl}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
+  // Carry the active-space selector (C8) so a team-space agent's portable
+  // routes resolve in the team namespace, not the caller's personal org.
+  const res = await gatewayAuthFetch(cfg.token, () => cfg.activeOrgSlug)(
+    `${cfg.baseUrl}${path}`,
+    {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...init?.headers,
+      },
     },
-  });
+  );
   if (!res.ok) {
     throw new HoustonEngineError(
       res.status,

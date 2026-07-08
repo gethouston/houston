@@ -245,11 +245,34 @@ export interface UsageRow {
 
 // ---------- Workspaces ----------
 
+/**
+ * Which kind of space a workspace bridges (C8 §Workspaces bridge). Mirrors the
+ * host domain `WorkspaceKind` (`packages/host/src/domain/types.ts`). `personal`
+ * ⟺ OrgSummary `personal`, `org` ⟺ OrgSummary `team`.
+ */
+export type WorkspaceKind = "personal" | "org";
+
 export interface Workspace {
+  /**
+   * Stable id. A hosted **personal** space keeps its existing auto-provisioned
+   * id — opaque, NEVER `org:`-prefixed. A hosted **team** space (`kind: "org"`)
+   * has the server-defined id grammar `"org:" + slug`, where `slug` is
+   * `[a-f0-9]{16}`. The `org:` prefix is a wire convention: strip it to recover
+   * the slug for `setActiveOrg` / `?org=`, but never synthesize or parse the
+   * slug beyond that (C8).
+   */
   id: string;
   name: string;
   isDefault: boolean;
   createdAt: string;
+  /**
+   * Which kind of space this row bridges (C8 §Workspaces bridge). Present on
+   * hosts that serve spaces; ABSENT on single-player/self-host hosts (treat as
+   * `"personal"`), so every pre-C8 profile stays valid. Selecting a `personal`
+   * workspace sends NO active-space header; selecting an `org` workspace pins
+   * `x-houston-org` (and `?org=` on the SSE routes) to its slug.
+   */
+  kind?: WorkspaceKind;
   /**
    * Optional per-workspace UI-locale override (BCP-47 base tag: `en`/`es`/`pt`).
    * Absent/null means the workspace inherits the global `locale` preference.
