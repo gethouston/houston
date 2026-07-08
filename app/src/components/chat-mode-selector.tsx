@@ -6,7 +6,7 @@ import {
 } from "@houston-ai/core";
 import type { Agent } from "@houston-ai/engine-client";
 import type { LucideIcon } from "lucide-react";
-import { Check, ChevronDown, Handshake, Rocket, Target } from "lucide-react";
+import { Check, ChevronDown, Handshake, ListTodo, Rocket } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { modelSelectorDecision } from "../lib/model-selector-lock";
@@ -32,7 +32,7 @@ interface ChatModeSelectorProps {
  *  tools). Wire values stay `execute`/`plan`/`auto`; only the labels change. */
 const MODE_ICONS: Record<TurnMode, LucideIcon> = {
   execute: Handshake,
-  plan: Target,
+  plan: ListTodo,
   auto: Rocket,
 };
 
@@ -111,9 +111,9 @@ export function ChatModeSelector({
                 onSelect={() => onSelect(m)}
                 className="items-center gap-3 rounded-xl px-2.5 py-2.5"
               >
-                <Icon className="size-4 shrink-0 text-foreground" />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="text-sm font-medium text-foreground">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Icon className="size-4 shrink-0" />
                     {labels[m]}
                   </span>
                   <span className="line-clamp-2 text-xs text-muted-foreground">
