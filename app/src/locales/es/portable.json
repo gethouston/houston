@@ -27,6 +27,8 @@
       "anonymizeBody": "Quita nombres, correos, empresas, claves de API y otros datos personales.",
       "reviewLabel": "Revisa qué cambió",
       "working": "Houston está revisando tu contenido.",
+      "aiToggleTitle": "Dejar que mi IA ayude",
+      "aiToggleHint": "Si está activado, tu IA también busca datos personales fáciles de pasar por alto, como nombres o empresas. Si está apagado, Houston solo quita lo evidente, como correos, enlaces y claves. En ambos casos, revisas cada cambio antes de compartir.",
       "aiFallback": "Houston no pudo usar IA en esta pasada ({{reason}}). Solo se quitaron patrones obvios, como correos y rutas, así que revisa los resultados con cuidado.",
       "diffInstructions": "Instrucciones",
       "before": "Antes",

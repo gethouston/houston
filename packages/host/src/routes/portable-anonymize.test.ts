@@ -107,7 +107,7 @@ afterAll(async () => {
   await new Promise<void>((r) => server.close(() => r()));
 });
 
-const anonymize = async () =>
+const anonymize = async (extra: Record<string, unknown> = {}) =>
   (await (
     await fetch(`${base}/agents/${agentId}/portable/anonymize`, {
       method: "POST",
@@ -117,6 +117,7 @@ const anonymize = async () =>
         skillSlugs: [],
         routineIds: [],
         learningIds: [],
+        ...extra,
       }),
     })
   ).json()) as {
@@ -173,4 +174,16 @@ test("a channel without the one-shot falls back to patterns", async () => {
   const out = await anonymize();
   expect(out.mode).toBe("patterns");
   expect(out.aiError).toContain("not available");
+});
+
+test("useAi: false is a deliberate patterns-only run: no AI call, no error", async () => {
+  channelImpl = fakeChannel(async () => {
+    throw new Error("the AI pass must not run when the toggle is off");
+  });
+  const out = await anonymize({ useAi: false });
+  expect(out.mode).toBe("patterns");
+  expect(out.aiError).toBeUndefined();
+  // The pattern + secret scrub still runs.
+  expect(out.claudeMd?.after).toContain("<email>");
+  expect(out.claudeMd?.after).toContain("<secret>");
 });

@@ -1121,6 +1121,12 @@ export interface PortableAnonymizeRequest {
   skillSlugs: string[];
   routineIds: string[];
   learningIds: string[];
+  /**
+   * Run the AI pass on top of the pattern + secret scrub (the wizard's
+   * "Let my AI help" toggle). Absent means true; false is a deliberate
+   * user choice, so the response carries no `aiError`.
+   */
+  useAi?: boolean;
 }
 
 export interface PortableAnonymizedString {

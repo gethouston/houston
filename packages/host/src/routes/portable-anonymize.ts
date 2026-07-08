@@ -55,9 +55,14 @@ export async function handlePortableAnonymize(
 
   // Credentials are scrubbed by secretlint in BOTH modes — inside the items
   // sent to the model AND in the patterns fallback.
-  const items = await collectAnonymizeItems(content, redactSecrets);
+  // `useAi: false` is the wizard toggle: a deliberate patterns-only run, so
+  // no `aiError` rides the response (nothing failed).
+  const wantAi = body.useAi !== false;
+  const items = wantAi
+    ? await collectAnonymizeItems(content, redactSecrets)
+    : [];
   let response: PortableAnonymizeResponse;
-  if (items.length === 0) {
+  if (!wantAi || items.length === 0) {
     response = await anonymizeContent(content, redactSecrets);
   } else if (!deps.channel?.anonymizeTexts) {
     response = {

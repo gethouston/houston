@@ -12,12 +12,22 @@
  * corner). Switches match the routine editor.
  */
 
-import { Button, cn, Dialog, DialogContent, Switch } from "@houston-ai/core";
+import {
+  Button,
+  cn,
+  Dialog,
+  DialogContent,
+  Switch,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@houston-ai/core";
 import type {
   PortableAnonymizeResponse,
   PortableInventoryPreview,
 } from "@houston-ai/engine-client";
 import { invoke } from "@tauri-apps/api/core";
+import { Info } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
@@ -65,6 +75,7 @@ export function ExportAgentWizard() {
     learningIds: new Set(),
   });
   const [wantAnonymize, setWantAnonymize] = useState<boolean | null>(null);
+  const [useAi, setUseAi] = useState(true);
   const [anonymizing, setAnonymizing] = useState(false);
   const [anonymized, setAnonymized] =
     useState<PortableAnonymizeResponse | null>(null);
@@ -119,7 +130,7 @@ export function ExportAgentWizard() {
 
   const handleClose = useCallback(() => setAgentId(null), [setAgentId]);
 
-  const runAnonymize = async () => {
+  const runAnonymize = async (withAi: boolean = useAi) => {
     if (!agent || !preview) return;
     setAnonymizing(true);
     try {
@@ -128,6 +139,7 @@ export function ExportAgentWizard() {
         skillSlugs: Array.from(selection.skillSlugs),
         routineIds: Array.from(selection.routineIds),
         learningIds: Array.from(selection.learningIds),
+        useAi: withAi,
       });
       setAnonymized(result);
       setAccept({
@@ -287,6 +299,14 @@ export function ExportAgentWizard() {
                 setWantAnonymize(v);
                 if (v && !anonymized) void runAnonymize();
               }}
+              useAi={useAi}
+              onToggleAi={(v) => {
+                setUseAi(v);
+                if (wantAnonymize) {
+                  setAnonymized(null);
+                  void runAnonymize(v);
+                }
+              }}
               anonymizing={anonymizing}
               anonymized={anonymized}
               accept={accept}
@@ -437,6 +457,8 @@ function PickStep({
 function AnonymizeStep({
   wantAnonymize,
   onChoose,
+  useAi,
+  onToggleAi,
   anonymizing,
   anonymized,
   accept,
@@ -444,6 +466,8 @@ function AnonymizeStep({
 }: {
   wantAnonymize: boolean | null;
   onChoose: (v: boolean) => void;
+  useAi: boolean;
+  onToggleAi: (v: boolean) => void;
   anonymizing: boolean;
   anonymized: PortableAnonymizeResponse | null;
   accept: AnonymizeAccept;
@@ -478,6 +502,32 @@ function AnonymizeStep({
 
       {wantAnonymize && (
         <section className="space-y-3">
+          <div className="flex items-center gap-2 px-1 py-1">
+            <p className="text-sm text-foreground">
+              {t("export.step2.aiToggleTitle")}
+            </p>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={t("export.step2.aiToggleHint")}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Info className="size-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[280px]">
+                {t("export.step2.aiToggleHint")}
+              </TooltipContent>
+            </Tooltip>
+            <Switch
+              checked={useAi}
+              onCheckedChange={onToggleAi}
+              disabled={anonymizing}
+              className="ml-auto shrink-0"
+            />
+          </div>
+
           <h2 className="text-sm font-medium">
             {t("export.step2.reviewLabel")}
           </h2>

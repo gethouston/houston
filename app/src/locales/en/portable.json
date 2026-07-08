@@ -27,6 +27,8 @@
       "anonymizeBody": "Remove names, emails, companies, API keys and other personal details.",
       "reviewLabel": "Review what changed",
       "working": "Houston is reviewing your content.",
+      "aiToggleTitle": "Let my AI help",
+      "aiToggleHint": "When this is on, your AI also looks for personal details that are easy to miss, like names or company names. When it's off, Houston only removes obvious things like emails, links, and keys. Either way, you review every change before sharing.",
       "aiFallback": "Houston couldn't use AI for this pass ({{reason}}). Only obvious patterns like emails and paths were removed, so review the results carefully.",
       "diffInstructions": "Instructions",
       "before": "Before",
