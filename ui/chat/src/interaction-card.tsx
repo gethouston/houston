@@ -10,6 +10,7 @@ import {
 import { PromptInputSubmit } from "./ai-elements/prompt-input";
 import {
   advanceConnect,
+  advanceSignin,
   answerWithOption,
   answerWithText,
   type ChatInteractionAnswer,
@@ -36,9 +37,11 @@ export type {
 } from "./interaction-card-logic";
 
 type ConnectStep = Extract<ChatInteractionStep, { kind: "connect" }>;
+type SigninStep = Extract<ChatInteractionStep, { kind: "signin" }>;
 
 export interface ChatInteractionCardProps {
-  /** The ordered interaction steps: question steps then connect steps (>=1). */
+  /** The ordered interaction steps: question steps, then at most one signin
+   *  step, then connect steps (>=1 total). */
   steps: ChatInteractionStep[];
   /** Receives every question answer, in step order, once the last step is done. */
   onComplete: (answers: ChatInteractionAnswer[]) => void;
@@ -47,6 +50,12 @@ export interface ChatInteractionCardProps {
   renderConnect: (
     step: ConnectStep,
     api: { onConnected: () => void },
+  ) => ReactNode;
+  /** Renders a signin step's body; call `api.onSignedIn` to advance. ui/chat
+   *  stays auth-unaware, so the app supplies the sign-in card. */
+  renderSignin: (
+    step: SigninStep,
+    api: { onSignedIn: () => void },
   ) => ReactNode;
   disabled?: boolean;
   labels?: {
@@ -70,6 +79,7 @@ export function ChatInteractionCard({
   steps,
   onComplete,
   renderConnect,
+  renderSignin,
   disabled = false,
   labels,
 }: ChatInteractionCardProps) {
@@ -110,6 +120,10 @@ export function ChatInteractionCard({
 
   const onConnected = useCallback(() => {
     apply(advanceConnect(state, steps));
+  }, [apply, state, steps]);
+
+  const onSignedIn = useCallback(() => {
+    apply(advanceSignin(state, steps));
   }, [apply, state, steps]);
 
   const onKeyDown = useCallback(
@@ -173,6 +187,8 @@ export function ChatInteractionCard({
                 </div>
               )}
             </>
+          ) : step.kind === "signin" ? (
+            renderSignin(step, { onSignedIn })
           ) : (
             renderConnect(step, { onConnected })
           )}

@@ -12,9 +12,11 @@ import { expect, test } from "./support/fixtures";
  * answers each step -> normal composer returns.
  *
  * A turn's steps are the question steps (from one ask_user call, 1 to 3) FOLLOWED
- * BY the connect steps (one per request_connection). Question answers compose one
- * user message on completion; a connect-only sequence keeps the hidden
- * auto-continue.
+ * BY at most one signin step (the user must sign in to Houston first) FOLLOWED BY
+ * the connect steps (one per request_connection). Question answers compose one
+ * user message on completion; a signin/connect-only sequence keeps the hidden
+ * auto-continue. Real Google SSO cannot run in the harness, so the signin specs
+ * assert the card RENDERS (button + reason + progress), not the landing.
  */
 
 /** Kick off a fresh mission whose next turn ends on the armed interaction. */
@@ -309,6 +311,111 @@ test("advances from a question to a connect step in one sequence", async ({
     page.getByText("Who should I send the itinerary to?"),
   ).toHaveCount(0);
   // The composer is still replaced: the sequence isn't complete until connect.
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+});
+
+/**
+ * A three-step sequence (question THEN signin THEN connect): answering the
+ * question advances the SAME card to the signin step (2 of 3), which renders the
+ * reason, the "Sign in to Houston" card, and a Sign in button. Real Google SSO
+ * can't run in the harness, so this asserts the signin step RENDERS in the middle
+ * of the sequence, not that it lands — the connect step (3 of 3) stays queued
+ * behind it and the composer stays replaced.
+ */
+test("advances from a question to a signin step in a three-step sequence", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "question",
+            id: "q1",
+            question: "Who should I send the itinerary to?",
+          },
+          {
+            kind: "signin",
+            id: "s1",
+            reason: "Sign in to Houston so I can send email on your behalf.",
+          },
+          {
+            kind: "connect",
+            id: "c1",
+            toolkit: "gmail",
+            reason: "I need access to your Gmail to send the trip itinerary.",
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "email me the itinerary");
+
+  // Step 1 of 3: the question, free-text only. No signin/connect surface yet.
+  await expect(
+    page.getByText("Who should I send the itinerary to?"),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("1 of 3")).toBeVisible();
+  await expect(
+    page.getByText("Sign in to Houston so I can send email on your behalf."),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Sign in" })).toHaveCount(0);
+
+  // Answer the question -> advance to the SIGNIN step (2 of 3). Its reason, the
+  // "Sign in to Houston" card and the Sign in button now own the card; the
+  // question text is gone and the connect step (3 of 3) is still queued behind it.
+  const freeText = page.getByPlaceholder("Type your answer...");
+  await freeText.fill("john@example.com");
+  await page.getByRole("button", { name: "Send" }).click();
+
+  await expect(page.getByText("2 of 3")).toBeVisible();
+  await expect(
+    page.getByText("Sign in to Houston so I can send email on your behalf."),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+  await expect(
+    page.getByText("Who should I send the itinerary to?"),
+  ).toHaveCount(0);
+  // The connect step hasn't been reached, and the composer is still replaced.
+  await expect(page.getByRole("button", { name: "Connect" })).toHaveCount(0);
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+});
+
+/**
+ * A signin-only sequence (a tool 409'd with the user signed out, no questions and
+ * no connections): the card shows the reason plus the "Sign in to Houston" card
+ * and a Sign in button as the ONLY step, with no progress chrome. SSO can't run
+ * in the harness, so this asserts the lone signin card renders.
+ */
+test("shows a lone signin step for a signin-only sequence", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "signin",
+            id: "s1",
+            reason: "Sign in to Houston to use your connected apps.",
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "check my email");
+
+  // The signin card owns the composer slot: the reason plus the Sign in button,
+  // a single step (no progress chrome), composer gone.
+  await expect(
+    page.getByText("Sign in to Houston to use your connected apps."),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByText(/ of /)).toHaveCount(0);
   await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
 });
 

@@ -14,6 +14,7 @@ export type ChatInteractionStep =
       question: string;
       options?: ChatInteractionOption[];
     }
+  | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string };
 
 /** One completed question answer handed to `onComplete`, in step order. */

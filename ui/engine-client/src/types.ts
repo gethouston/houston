@@ -353,8 +353,8 @@ export interface InteractionOption {
 }
 
 /** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for
- *  question steps, `c1`..`cN` for connect steps) so each step's outcome is
- *  addressable. */
+ *  question steps, `s1` for the single signin step, `c1`..`cN` for connect
+ *  steps) so each step's outcome is addressable. */
 export type InteractionStep =
   | {
       kind: "question";
@@ -362,6 +362,7 @@ export type InteractionStep =
       question: string;
       options?: InteractionOption[];
     }
+  | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string };
 
 /**
@@ -370,7 +371,7 @@ export type InteractionStep =
  * (request_connection). Present drives the `needs_you` board card and the
  * composer-replacing card, which walks the user through the steps one at a time;
  * absent means the mission needs nothing. Question steps come first (at most 3),
- * then connect steps.
+ * then at most one signin step, then connect steps.
  */
 export interface PendingInteraction {
   steps: InteractionStep[];

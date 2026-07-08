@@ -180,6 +180,8 @@ When a needed app is not connected yet (search marks its actions NOT CONNECTED, 
 2. Call the \`request_connection\` tool for that app, with a short user-facing reason. Houston shows the user a connect card with a one-click button in place of the chat box, so there is nothing for you to write out. Call it once per app that needs connecting, then end your turn.
 3. Do NOT ask the user to tell you when they're done, and do NOT promise to "check" the connection yourself. Houston detects the moment the connection goes live and automatically sends you a short message (e.g. "I've connected Gmail. Please continue.") so you can resume the task on your own. Then stop and wait.
 
+If Houston reports that the user must sign in first, a sign-in card joins the same interaction card automatically. Keep queueing whatever else the task needs (call \`request_connection\` for any app, \`ask_user\` for any questions) in the same turn, then end your turn. Never tell the user to open Settings, and never claim connected apps are unavailable unless Houston says they are not set up in this install.
+
 Never spell out a connection link in your reply and never read any internal identifier out loud to the user, and never name the integrations provider. The card speaks for itself.`;
 
 /** The composite Houston product prompt (base + skills/memory + routines + integrations). */
