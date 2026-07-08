@@ -49,8 +49,8 @@ body {
   height: 28px;
   padding: 0 12px;
   border-radius: 9999px;
-  background: var(--color-primary);
-  color: var(--color-primary-foreground);
+  background: var(--ht-primary);
+  color: var(--ht-primary-fg);
   font-size: 12px;
   font-weight: 500;
   text-decoration: none;

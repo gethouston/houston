@@ -163,7 +163,7 @@ export function KanbanCard({
           (selected || highlighted) && isRunning
             ? ({
                 "--glow-bg":
-                  "color-mix(in srgb, var(--color-background) 93%, currentColor 7%)",
+                  "color-mix(in srgb, var(--ht-background) 93%, currentColor 7%)",
               } as React.CSSProperties)
             : undefined
         }
