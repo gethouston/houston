@@ -6,13 +6,19 @@ const HEADER = `/**
  * Source: tokens/*.json  ·  Rebuild: pnpm --filter @houston/design-tokens build
  *
  * These are the same --ht-* variable names the app and @houston-ai/* packages
- * already consume; @theme (in @houston-ai/core) re-exports them to Tailwind's
- * --color-* utilities. Light lives on :root, dark on [data-theme="dark"] —
- * mirroring how app/src/lib/theme.ts toggles the theme. The light values are
- * ALSO emitted under [data-theme="light"] so any subtree can pin the light look
- * regardless of the app theme (e.g. the sign-in card): custom properties
- * inherit, so a scoped re-declaration re-resolves every var(--ht-*) — and thus
- * every Tailwind --color-* utility — inside that subtree.
+ * already consume; the "@theme inline" bridge (in @houston-ai/core) re-exports
+ * them to Tailwind's --color-* utilities. Light lives on :root, dark on
+ * [data-theme="dark"] — mirroring how app/src/lib/theme.ts toggles the theme.
+ * The light values are ALSO emitted under [data-theme="light"] so any subtree
+ * can pin the light look regardless of the app theme (e.g. the sign-in card
+ * pins [data-theme="dark"] the same way).
+ *
+ * The pin works ONLY because the bridge is inline: that makes each utility read
+ * var(--ht-*) directly (resolved at the consuming element), so a scoped
+ * re-declaration of --ht-* re-resolves every Tailwind --color-* utility inside
+ * that subtree. With a plain "@theme" the utilities would read a --color-* that
+ * resolved once at :root and merely inherited down, and the pin would be inert
+ * — see the note in ui/core/src/globals.css.
  */`;
 
 function block(selector, entries) {
