@@ -1,4 +1,7 @@
 {
+  "welcome": {
+    "greeting": "¡Hola! Soy {{name}}, tu nuevo agente. Cuéntame en qué te gustaría que te ayude: puedes describir una tarea con tus propias palabras, compartir algunos detalles sobre cómo te gusta que se hagan las cosas o adjuntar archivos que me den contexto. Cuanto más me cuentes, mejor se ajustará mi trabajo a lo que necesitas. ¿Con qué te gustaría empezar?"
+  },
   "composer": {
     "placeholder": "Pregunta lo que quieras...",
     "fileAlreadyInChat": "El archivo ya está en el chat",

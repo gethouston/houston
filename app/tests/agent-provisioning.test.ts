@@ -68,6 +68,23 @@ describe("parsePersistedProvisioning", () => {
     );
     deepStrictEqual(parsed[0].pendingSends, [send]);
   });
+
+  it("round-trips the optimistic-row fields on a pending send (HOU-713)", () => {
+    const send = {
+      id: "s1",
+      sessionKey: "welcome-a",
+      text: "",
+      queuedAt: now - 1_000,
+      titleText: "hi",
+      rowOnly: true,
+      row: { id: "a", title: "Hi", description: "hi", status: "needs_you" },
+    };
+    const parsed = parsePersistedProvisioning(
+      JSON.stringify([{ ...fresh, pendingSends: [send] }]),
+      now,
+    );
+    deepStrictEqual(parsed[0].pendingSends, [send]);
+  });
 });
 
 describe("runProvisioningProbe", () => {

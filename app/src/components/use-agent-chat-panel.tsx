@@ -53,7 +53,9 @@ import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import { useSession } from "../hooks/use-session";
 import { useStoreSkillLocaleMigration } from "../hooks/use-store-skill-locale-migration";
+import { useWelcomeGreetingRevealed } from "../hooks/use-welcome-greeting";
 import { deriveActiveInteraction } from "../lib/active-interaction";
+import { isWelcomeSessionKey } from "../lib/agent-welcome";
 import { analytics } from "../lib/analytics";
 import { attachmentReferences } from "../lib/attachment-message";
 import {
@@ -122,7 +124,6 @@ import { integrationsSupported } from "./integrations/model";
 import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
 import { ProviderSwitchDialog } from "./provider-switch-dialog";
 import { SelectedSkillChip } from "./selected-skill-chip";
-import { AgentProvisioningCard } from "./shell/agent-provisioning-card";
 import { ProviderErrorCard } from "./shell/provider-error-card";
 import {
   continuesTaskAfterReconnect,
@@ -1147,22 +1148,34 @@ export function useAgentChatPanel({
       t,
     ],
   );
+  // The welcome chat's greeting (HOU-713): a hardcoded, localized agent
+  // message derived from the `welcome-` session key — prepended at render
+  // time (it survives reloads for free), held back for a short beat on the
+  // run that created the mission.
+  const welcomeGreetingRevealed =
+    useWelcomeGreetingRevealed(selectedSessionKey);
+  const agentName = agent?.name;
   const mapFeedItems = useCallback(
-    ({ items }: { sessionKey: string; items: FeedItem[] }) =>
-      filterAutoContinueFeedItems(filterProviderAuthFeedItems(items)),
-    [],
+    ({ sessionKey, items }: { sessionKey: string; items: FeedItem[] }) => {
+      const mapped = filterAutoContinueFeedItems(
+        filterProviderAuthFeedItems(items),
+      );
+      if (isWelcomeSessionKey(sessionKey) && welcomeGreetingRevealed) {
+        const greeting: FeedItem = {
+          feed_type: "assistant_text",
+          data: t("chat:welcome.greeting", { name: agentName }),
+        };
+        return [greeting, ...mapped];
+      }
+      return mapped;
+    },
+    [welcomeGreetingRevealed, agentName, t],
   );
-  const agentId = agent?.id;
   const afterMessages = useCallback(
     ({ feedItems }: { sessionKey: string; feedItems: FeedItem[] }) => {
-      // While a just-created agent's engine is still warming up (HOU-693),
-      // the user's sent message sits with no reply for minutes — say so right
-      // under it. Only once something was sent: an empty chat stays clean.
-      // The card unmounts itself when the readiness probe clears the store.
-      const provisioningCard =
-        agentId && feedItems.length > 0 ? (
-          <AgentProvisioningCard agentId={agentId} />
-        ) : null;
+      // A message sent while the agent's engine still warms up (HOU-693) is
+      // narrated by the standard in-flight indicator — deriveStatus treats
+      // the parked trailing user bubble as "submitted" (HOU-713).
       // The persisted inline `UnauthenticatedCard` (a provider_error feed item)
       // is the stable reconnect surface. When it's already present for THIS
       // chat's provider, don't also render the store-driven card — it flickers
@@ -1172,23 +1185,20 @@ export function useAgentChatPanel({
       const hasInlineAuthCard = feedItems.some((it) =>
         isInlineAuthCardForChat(it, effectiveProvider),
       );
-      if (hasInlineAuthCard) return provisioningCard;
+      if (hasInlineAuthCard) return null;
       const signalKey = providerAuthSignalKey(feedItems);
       // Always hand the card THIS chat's provider so it can match the global
       // `authRequired` flag against the provider this chat actually uses — a
       // Claude logout must never surface a reconnect button in an OpenAI chat
       // (HOU-410). The card stays hidden unless that provider truly needs auth.
       return (
-        <>
-          {provisioningCard}
-          <ProviderReconnectCard
-            providerId={effectiveProvider}
-            signalKey={signalKey ?? undefined}
-          />
-        </>
+        <ProviderReconnectCard
+          providerId={effectiveProvider}
+          signalKey={signalKey ?? undefined}
+        />
       );
     },
-    [effectiveProvider, agentId],
+    [effectiveProvider],
   );
 
   // Shared-agent clarity (contract §6): when the agent is shared with more than
@@ -1222,6 +1232,9 @@ export function useAgentChatPanel({
 
   const chatEmptyState = useMemo<AIBoardProps["chatEmptyState"]>(() => {
     if (!agent) return undefined;
+    // The welcome chat is only "empty" for the pre-greeting beat — skill
+    // cards flashing there and vanishing under the greeting reads as a bug.
+    if (isWelcomeSessionKey(selectedSessionKey)) return undefined;
     if (activeSkill) return null;
     if (emptySkillShowcase.length === 0) return undefined;
     return (
@@ -1257,7 +1270,15 @@ export function useAgentChatPanel({
         </div>
       </div>
     );
-  }, [agent, activeSkill, emptySkillShowcase, moreSkillsCount, t, applySkill]);
+  }, [
+    agent,
+    activeSkill,
+    emptySkillShowcase,
+    moreSkillsCount,
+    t,
+    applySkill,
+    selectedSessionKey,
+  ]);
 
   const footer = useMemo<AIBoardProps["footer"]>(() => {
     if (!agent) return undefined;

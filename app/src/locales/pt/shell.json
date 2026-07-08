@@ -134,10 +134,13 @@
   },
   "agentProvisioning": {
     "title": "Estamos criando seu agente",
-    "body": "Isso pode levar um momento.",
-    "chatBody": "Ele vai responder à sua mensagem assim que estiver pronto.",
     "failed": "Não conseguimos terminar de criar seu agente. Tente novamente em instantes.",
     "blockedBody": "Está quase pronto. Essa ação estará disponível em instantes, assim que seu agente terminar de se configurar."
+  },
+  "agentWelcome": {
+    "missionTitle": "Conheça {{name}}",
+    "missionDescription": "Seu novo agente se apresenta",
+    "failed": "Não conseguimos iniciar o primeiro chat do seu novo agente. Você ainda pode enviar uma mensagem para ele."
   },
   "toolRuntimeError": {
     "title": "Algo travou",

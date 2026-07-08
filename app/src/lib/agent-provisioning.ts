@@ -58,13 +58,34 @@ export interface PendingWarmingSend {
     agent?: string;
     provider?: string;
     model?: string;
+    /**
+     * Status the row should land with (default `running`). The create route
+     * can't carry it, so the flush patches it right after the create. The
+     * welcome mission settles its queued row to `needs_you` when the
+     * greeting reveals (HOU-713).
+     */
+    status?: string;
   };
+  /**
+   * A row-only entry (HOU-713): the board row IS the payload — no bubble, no
+   * wire send at flush. Carried by the welcome mission, whose greeting is
+   * client-rendered.
+   */
+  rowOnly?: boolean;
   promptFile?: string;
   provider?: string;
   model?: string;
   effort?: string;
   /** Per-turn mode pin (composer "Mode" selector), forwarded at flush time. */
   mode?: "execute" | "plan" | "auto";
+  /** Epoch ms the message was queued — orders the optimistic board rows. */
+  queuedAt?: number;
+  /**
+   * Source text for the async AI title pass, carried only when the caller
+   * wanted one (no explicit title). The pass can't run at queue time — the
+   * engine can't answer — so the flush fires it after the row lands (HOU-713).
+   */
+  titleText?: string;
 }
 
 export interface ProvisioningEntry {
