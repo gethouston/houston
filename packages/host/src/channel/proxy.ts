@@ -150,6 +150,39 @@ export class ProxyChannel implements RuntimeChannel {
     }
   }
 
+  /**
+   * The export wizard's AI anonymize pass: wake the standing runtime and run
+   * the texts through its `POST /portable/anonymize` one-shot (the runtime is
+   * where the provider credential lives). A non-2xx throws with the runtime's
+   * own reason — the host route falls back to the regex redactor and tells
+   * the user why.
+   */
+  async anonymizeTexts(
+    ctx: ChannelCtx,
+    items: { id: string; text: string }[],
+  ): Promise<{ id: string; text: string; summary: string }[]> {
+    const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
+    const res = await fetch(`${endpoint.baseUrl}/portable/anonymize`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        Authorization: `Bearer ${endpoint.token}`,
+      },
+      body: JSON.stringify({ items }),
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      items?: { id: string; text: string; summary: string }[];
+      error?: string;
+    };
+    if (!res.ok) {
+      throw new Error(body.error ?? `runtime ${res.status}`);
+    }
+    if (!Array.isArray(body.items)) {
+      throw new Error("runtime anonymize: malformed response body");
+    }
+    return body.items;
+  }
+
   async cancelTurn(ctx: ChannelCtx, conversationId: string): Promise<boolean> {
     // An asleep/absent runtime cannot be running a turn (turns live inside the
     // runtime process; sleep kills it) — answer false without paying a cold

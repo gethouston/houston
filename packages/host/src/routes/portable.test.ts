@@ -326,11 +326,17 @@ test("anonymize returns redaction diffs for the selected content", async () => {
       becameEmpty: boolean;
     } | null;
     skills: unknown[];
+    mode: string;
+    aiError?: string;
   };
   expect(out.claudeMd?.after).toBe("Contact <email> for escalations.");
   expect(out.claudeMd?.summary).toContain("1 email");
   expect(out.claudeMd?.becameEmpty).toBe(false);
   expect(out.skills).toEqual([]);
+  // This harness's runtime endpoint is unreachable — the AI pass fails and
+  // the regex fallback ships WITH the reason.
+  expect(out.mode).toBe("patterns");
+  expect(out.aiError).toBeTruthy();
 });
 
 test("export applies accepted overrides and stamps the manifest anonymized", async () => {

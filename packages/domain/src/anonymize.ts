@@ -12,11 +12,11 @@ import type { PortableContent } from "./portable";
  * Heuristic anonymizer for portable agent payloads — the TS port of the
  * Rust engine's `portable/anonymize.rs`, behavior-preserving.
  *
- * V1 uses regex patterns: emails, phone numbers, absolute paths that leak
- * `/Users/<name>` / `/home/<name>`, handles, URLs. An LLM-driven version
- * (better, slower, costs tokens) is the intended v2 upgrade — when it
- * lands, swap the implementation behind this same API and the wizard does
- * not change.
+ * The regex pass covers emails, phone numbers, absolute paths that leak
+ * `/Users/<name>` / `/home/<name>`, handles, URLs. It is BOTH the pre-pass
+ * for the LLM redactor (`anonymize-ai.ts` — the host sends pre-redacted
+ * texts to the agent's runtime) AND the visible fallback when the AI pass
+ * can't run (no provider connected, runtime unreachable).
  *
  * Pure: the caller (host route) gathers the selected content off the vfs.
  */
@@ -61,7 +61,8 @@ function countMatches(re: RegExp, s: string): number {
   return (s.match(re) ?? []).length;
 }
 
-function summarize(before: string, after: string): string {
+/** "1 email, 2 url" — what the patterns matched in a text; "" when nothing. */
+export function redactionCounts(before: string): string {
   const kinds: [string, number][] = [
     ["email", countMatches(EMAIL, before)],
     [
@@ -75,21 +76,39 @@ function summarize(before: string, after: string): string {
     ["handle", countMatches(HANDLE, before)],
     ["url", countMatches(URL_RE, before)],
   ];
-  const parts = kinds.filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`);
-  if (parts.length === 0) return "no obvious personal info detected";
-  if (before === after) return `matched but unchanged (${parts.join(", ")})`;
-  return `redacted ${parts.join(", ")}`;
+  return kinds
+    .filter(([, n]) => n > 0)
+    .map(([k, n]) => `${n} ${k}`)
+    .join(", ");
+}
+
+export const NO_PERSONAL_INFO = "no obvious personal info detected";
+
+function summarize(before: string, after: string): string {
+  const counts = redactionCounts(before);
+  if (!counts) return NO_PERSONAL_INFO;
+  if (before === after) return `matched but unchanged (${counts})`;
+  return `redacted ${counts}`;
+}
+
+/**
+ * Nothing meaningful left once the placeholder tokens are stripped. The UI
+ * uses this to nudge "exclude this item instead?" — a placeholder-only
+ * learning is worse than no learning.
+ */
+export function becameEmptyAfter(after: string): boolean {
+  return !/[\p{L}\p{N}]/u.test(after.replace(PLACEHOLDER, ""));
 }
 
 /** Redact one text and describe the change for the side-by-side diff. */
 export function redactString(body: string): AnonymizedText {
   const after = redactText(body);
-  // "Became empty" = nothing meaningful left once the placeholder tokens
-  // are stripped. The UI uses this to nudge "exclude this item instead?" —
-  // a placeholder-only learning is worse than no learning.
-  const stripped = after.replace(PLACEHOLDER, "");
-  const becameEmpty = !/[\p{L}\p{N}]/u.test(stripped);
-  return { before: body, after, summary: summarize(body, after), becameEmpty };
+  return {
+    before: body,
+    after,
+    summary: summarize(body, after),
+    becameEmpty: becameEmptyAfter(after),
+  };
 }
 
 /**
@@ -132,5 +151,6 @@ export function anonymizeContent(
       id: l.id,
       ...redactString(l.text),
     })),
+    mode: "patterns",
   };
 }

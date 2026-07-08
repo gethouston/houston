@@ -482,6 +482,13 @@ function AnonymizeStep({
             {t("export.step2.reviewLabel")}
           </h2>
           {anonymizing && <Subtle>{t("export.step2.working")}</Subtle>}
+          {!anonymizing &&
+            anonymized?.mode === "patterns" &&
+            anonymized.aiError && (
+              <p className="text-xs text-muted-foreground rounded-lg bg-secondary p-3">
+                {t("export.step2.aiFallback", { reason: anonymized.aiError })}
+              </p>
+            )}
           {!anonymizing && anonymized && (
             <div className="space-y-3">
               {anonymized.claudeMd && (

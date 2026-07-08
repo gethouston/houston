@@ -1,5 +1,6 @@
 export * from "./activities";
 export * from "./anonymize";
+export * from "./anonymize-ai";
 export * from "./config";
 export * from "./layout";
 export * from "./portable";

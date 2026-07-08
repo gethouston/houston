@@ -81,6 +81,10 @@ export interface PortableAnonymizeResponse {
   skills: AnonymizedItem[];
   routines: AnonymizedRoutine[];
   learnings: AnonymizedItem[];
+  /** Which redactor produced the diffs: the AI pass, or the regex patterns fallback. */
+  mode: "ai" | "patterns";
+  /** Why the AI pass didn't run (set only when `mode` is "patterns"). */
+  aiError?: string;
 }
 
 /** Accepted anonymize diffs, applied at export-pack time. */

@@ -604,7 +604,13 @@ export async function handleAgents(
       return true;
     if (
       await handlePortableAnonymize(
-        { vfs: deps.vfs, paths },
+        // The channel carries the AI pass into the agent's runtime; absent
+        // (or unsupported) the route falls back to the regex redactor.
+        {
+          vfs: deps.vfs,
+          paths,
+          channel: channelFor(deps, authz.workspace) ?? undefined,
+        },
         ctx,
         method,
         rest,

@@ -1,23 +1,35 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { anonymizeContent } from "@houston/domain";
-import type { PortableAnonymizeRequest } from "@houston/protocol";
+import {
+  type AnonymizeAiResult,
+  anonymizeContent,
+  collectAnonymizeItems,
+  mergeAnonymizeResults,
+} from "@houston/domain";
+import type {
+  PortableAnonymizeRequest,
+  PortableAnonymizeResponse,
+} from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import { CloudPaths } from "../paths";
+import type { RuntimeChannel } from "../ports";
 import type { Vfs } from "../vfs";
 import { json, readJson } from "./http";
 import { gatherPortableContent } from "./portable-content";
 
 /**
  * POST .../portable/anonymize — the export wizard's "Help me anonymize"
- * pass. Gathers the selected content off the vfs, runs the heuristic
- * redactor (`@houston/domain`), and returns the side-by-side diffs the
- * wizard renders. Read-only: nothing on the agent changes; the accepted
- * diffs come back as `overrides` on the export call. Returns true when
- * handled.
+ * pass. Gathers the selected content off the vfs, regex-pre-redacts it, and
+ * runs the AI redactor in the agent's runtime (where the provider credential
+ * lives). When the AI pass can't run — no channel support, no provider
+ * connected, unparseable model reply — the regex-only result ships instead
+ * WITH the reason (`mode: "patterns"`, `aiError`), so the wizard can say so
+ * (beta no-silent-failure). Read-only: nothing on the agent changes; the
+ * accepted diffs come back as `overrides` on the export call. Returns true
+ * when handled.
  */
 export async function handlePortableAnonymize(
-  deps: { vfs?: Vfs; paths?: WorkspacePaths },
+  deps: { vfs?: Vfs; paths?: WorkspacePaths; channel?: RuntimeChannel },
   ctx: { workspace: Workspace; agent: Agent },
   method: string,
   rest: string,
@@ -39,6 +51,32 @@ export async function handlePortableAnonymize(
     routineIds: Array.isArray(body.routineIds) ? body.routineIds : [],
     learningIds: Array.isArray(body.learningIds) ? body.learningIds : [],
   });
-  json(res, 200, anonymizeContent(content));
+
+  const items = collectAnonymizeItems(content);
+  let response: PortableAnonymizeResponse;
+  if (items.length === 0) {
+    response = anonymizeContent(content);
+  } else if (!deps.channel?.anonymizeTexts) {
+    response = {
+      ...anonymizeContent(content),
+      aiError: "AI anonymization is not available on this deployment",
+    };
+  } else {
+    try {
+      const results = await deps.channel.anonymizeTexts(ctx, items);
+      response = mergeAnonymizeResults(
+        content,
+        new Map<string, AnonymizeAiResult>(
+          results.map((r) => [r.id, { text: r.text, summary: r.summary }]),
+        ),
+      );
+    } catch (e) {
+      response = {
+        ...anonymizeContent(content),
+        aiError: e instanceof Error ? e.message : String(e),
+      };
+    }
+  }
+  json(res, 200, response);
   return true;
 }

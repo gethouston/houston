@@ -1155,6 +1155,10 @@ export interface PortableAnonymizeResponse {
   skills: PortableAnonymizedItem[];
   routines: PortableAnonymizedRoutine[];
   learnings: PortableAnonymizedItem[];
+  /** Which redactor produced the diffs: the AI pass, or the regex patterns fallback. */
+  mode: "ai" | "patterns";
+  /** Why the AI pass didn't run (set only when `mode` is "patterns"). */
+  aiError?: string;
 }
 
 export interface PortableManifestSummary {
