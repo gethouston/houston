@@ -118,9 +118,9 @@ export class ProxyChannel implements RuntimeChannel {
     // Wake the standing runtime and POST the routine's prompt as a normal
     // message — the runtime starts the turn (202) and persists the reply into
     // the conversation, exactly as a user message would. The routine's
-    // provider/model/effort pins ride alongside (omitted when absent → the
-    // session's current). A non-2xx throws so the scheduler records an
-    // errored run.
+    // provider/model/effort/mode pins ride alongside (omitted when absent →
+    // the session's current/default). A non-2xx throws so the scheduler records
+    // an errored run.
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     const res = await fetch(
       `${endpoint.baseUrl}/conversations/${encodeURIComponent(conversationId)}/messages`,
@@ -139,6 +139,7 @@ export class ProxyChannel implements RuntimeChannel {
           ...(pin?.provider ? { provider: pin.provider } : {}),
           ...(pin?.model ? { model: pin.model } : {}),
           ...(pin?.effort ? { effort: pin.effort } : {}),
+          ...(pin?.mode ? { mode: pin.mode } : {}),
         }),
       },
     );

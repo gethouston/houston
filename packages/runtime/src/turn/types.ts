@@ -24,8 +24,8 @@ export interface TurnRequest {
   effort?: string;
   /**
    * Per-turn execution mode ("plan" = read-only + planning overlay; "auto" =
-   * Autopilot, acts without the blocking tools). Absent = execute. Routines never
-   * set a mode; a non-execute turn here is a user-initiated one.
+   * Autopilot, acts without the blocking tools). Absent = execute. Routine fire
+   * paths set "auto" so scheduled work never waits for user intervention.
    */
   mode?: TurnMode;
 }

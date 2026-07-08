@@ -186,10 +186,11 @@ transcripts. Client-side settle detail: `knowledge-base/client-architecture.md`.
 
 Each turn optionally pins a `TurnMode`: `"execute" | "plan" | "auto"`
 (`packages/protocol/src/conversation.ts`). `execute` is full read/write/act,
-today's only behavior for an UNPINNED turn — routines and per-turn cloud
-workspaces never inherit a mode, so they always execute. Deliberately NOT part
-of `Settings` (which persists `effort`): mode rides the per-turn pin only, so
-an unpinned turn can never accidentally end up read-only.
+today's only behavior for an UNPINNED turn. Routine fire paths explicitly pin
+`auto`, so scheduled work never waits on the user; per-turn cloud user sends do
+not inherit a mode. Deliberately NOT part of `Settings` (which persists
+`effort`): mode rides the per-turn pin only, so an unpinned turn can never
+accidentally end up read-only.
 
 `plan` clamps the turn to a read-only tool subset — `PLAN_MODE_TOOL_NAMES`
 (`read, ls, grep, find, ask_user`, `packages/runtime/src/session/tool-selection.ts`)
@@ -220,9 +221,9 @@ engine `Settings`). Every user-typed send forwards the pin explicitly as
 
 **Gotcha.** Mode must ride EVERY send path explicitly, unlike effort (which
 syncs through `Settings` and so is implicitly present on every send) — a send
-path that forgets `modeOverride` silently degrades to `execute`. Per-turn
-cloud workspaces drop chat-body pins entirely; that's pre-existing and not
-specific to plan mode.
+path that forgets `modeOverride` silently degrades to `execute`. The routine
+firer pins `auto` itself. Per-turn cloud workspaces drop chat-body pins entirely;
+that's pre-existing and not specific to plan mode.
 
 ## Current gap to vision
 
