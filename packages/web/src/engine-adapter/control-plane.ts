@@ -952,11 +952,20 @@ export function subscribeEvents(
   void streamGlobalEvents({
     url: () =>
       `${cfg.baseUrl}/v1/events?token=${encodeURIComponent(liveToken(cfg.token))}`,
-    fetch,
+    // Wrapped, never the bare reference: streamGlobalEvents calls
+    // `opts.fetch(...)`, and a browser's window.fetch invoked with a foreign
+    // receiver throws "Illegal invocation" BEFORE any request goes out — the
+    // stream then silently retry-looped forever and no server event ever
+    // reached the app (agent-written routines/skills/files never refreshed).
+    // Node's fetch is receiver-agnostic, so unit tests never caught it.
+    fetch: (input, init) => fetch(input, init),
     signal: ac.signal,
     onUnauthorized: () => {
       void refreshLiveToken();
     },
+    // Log-only (no toast): a background stream that auto-reconnects — but it
+    // must never fail silently again.
+    onError: (err) => console.warn("[events] global stream error:", err),
     onEvent: (data) =>
       onEvent(
         toInvalidationEvent(

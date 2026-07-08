@@ -4,7 +4,7 @@ import { Button, cn } from "@houston-ai/core";
 import type { UIMessage } from "ai";
 import { ArrowDownIcon, DownloadIcon } from "lucide-react";
 import type { ComponentProps } from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 
 export type ConversationProps = ComponentProps<typeof StickToBottom>;
@@ -80,6 +80,42 @@ export const ConversationEmptyState = ({
     )}
   </div>
 );
+
+/**
+ * Top scroll fade: a background-colored gradient pinned under the panel
+ * header, visible ONLY while content is scrolled — a streaming line then
+ * dissolves as it leaves the viewport instead of hard-clipping mid-glyph
+ * against the header's border. At rest (nothing scrolled out) it is fully
+ * transparent, so the first message never renders washed out. Mount inside
+ * a <Conversation>.
+ */
+export const ConversationTopFade = () => {
+  const { scrollRef } = useStickToBottomContext();
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Programmatic scrolls (the stick-to-bottom spring) fire scroll events
+    // too, so one listener covers user and auto scrolling alike.
+    const onScroll = () => setScrolled(el.scrollTop > 0);
+    onScroll();
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [scrollRef]);
+
+  return (
+    <div
+      aria-hidden
+      className={cn(
+        "pointer-events-none absolute inset-x-0 top-0 z-10 h-8",
+        "bg-gradient-to-b from-background to-transparent",
+        "transition-opacity duration-150",
+        scrolled ? "opacity-100" : "opacity-0",
+      )}
+    />
+  );
+};
 
 export type ConversationScrollButtonProps = ComponentProps<typeof Button>;
 

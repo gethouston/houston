@@ -14,6 +14,7 @@ import { createMission } from "../lib/create-mission";
 import { missionCardTags } from "../lib/mission-card";
 import { queryKeys } from "../lib/query-keys";
 import { formatVisibleMessageText } from "../lib/queued-chat";
+import { isRoutineSetupMode } from "../lib/routine-chat-setup";
 import {
   type HistoryLoadOptions,
   tauriActivity,
@@ -71,9 +72,14 @@ export function useMissionControl(agents: Agent[]) {
     > = {};
     const result = convos
       // Archived missions live in the per-agent Archived tab — keep them off
-      // the cross-agent active board.
+      // the cross-agent active board. Routine-setup chats live in the
+      // Routines tab, never as a card.
       .filter(
-        (c) => c.type === "activity" && c.status && c.status !== "archived",
+        (c) =>
+          c.type === "activity" &&
+          c.status &&
+          c.status !== "archived" &&
+          !isRoutineSetupMode(c.agent),
       )
       .map((c) => {
         const agent = agentMap[c.agent_path];

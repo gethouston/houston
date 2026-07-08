@@ -11,6 +11,21 @@
     "timezoneSearchPlaceholder": "Buscar fusos horários…",
     "timezoneNoResults": "Nenhum fuso horário encontrado"
   },
+  "createChoice": {
+    "title": "Nova rotina",
+    "description": "Como você quer configurá-la?",
+    "chatTitle": "Criar no chat",
+    "chatDescription": "Conte ao seu agente o que você precisa. Ele faz algumas perguntas e agenda a rotina para você.",
+    "formTitle": "Preencher os detalhes por conta própria",
+    "formDescription": "Defina o nome, o horário e as instruções no formulário.",
+    "missionTitle": "Configurar uma nova rotina"
+  },
+  "setupChat": {
+    "bannerTitle": "Você está criando uma rotina no chat",
+    "bannerDescription": "Continue de onde parou ou descarte o chat em andamento.",
+    "continue": "Continuar",
+    "discard": "Descartar"
+  },
   "editor": {
     "back": "Voltar para rotinas",
     "newRoutine": "Nova rotina",
@@ -150,6 +165,7 @@
   },
   "toasts": {
     "timezoneSet": "Fuso horário definido como {{zone}}",
-    "timezoneError": "Não foi possível atualizar o fuso horário"
+    "timezoneError": "Não foi possível atualizar o fuso horário",
+    "chatSetupError": "Não foi possível iniciar o chat para configurar a rotina"
   }
 }

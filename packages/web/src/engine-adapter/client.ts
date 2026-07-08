@@ -608,17 +608,33 @@ export class HoustonClient {
       emitLocalEcho("ActivityChanged", { agentPath });
       return;
     }
-    const list = await controlPlane.listActivities(this.cp, agentPath);
-    const match = list.find(
-      (a) => a.session_key === sessionKey || `activity-${a.id}` === sessionKey,
-    );
-    if (!match) return; // transient session with no board card — nothing to update
-    // `pending_interaction: null` clears it explicitly (the host route +
-    // domain applyActivityUpdate honor null); a value records the interaction.
-    await controlPlane.updateActivity(this.cp, agentPath, match.id, {
-      status,
-      pending_interaction: pendingInteraction,
-    });
+    // This write MUST land: the turn flipped its card to "running", and a
+    // turn guarantees a terminal status on exit — a lost settle write leaves
+    // the mission visibly stuck on "running" forever. The PATCH is idempotent
+    // (fixed status + interaction), so retrying a network blip or proxy
+    // hiccup is safe. cpFetch deliberately never blind-retries writes; this
+    // caller knows its write is replay-safe.
+    const retryDelaysMs = [500, 1500, 3000];
+    for (let i = 0; ; i++) {
+      try {
+        const list = await controlPlane.listActivities(this.cp, agentPath);
+        const match = list.find(
+          (a) =>
+            a.session_key === sessionKey || `activity-${a.id}` === sessionKey,
+        );
+        if (!match) return; // transient session with no board card — nothing to update
+        // `pending_interaction: null` clears it explicitly (the host route +
+        // domain applyActivityUpdate honor null); a value records the interaction.
+        await controlPlane.updateActivity(this.cp, agentPath, match.id, {
+          status,
+          pending_interaction: pendingInteraction,
+        });
+        break;
+      } catch (err) {
+        if (i >= retryDelaysMs.length) throw err;
+        await new Promise((r) => setTimeout(r, retryDelaysMs[i]));
+      }
+    }
     emitLocalEcho("ActivityChanged", { agentPath });
   }
 
