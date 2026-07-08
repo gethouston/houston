@@ -12,12 +12,18 @@ export function buildSkillPickerTabs({
   hasOther,
   featuredLabel,
   otherLabel,
+  categoryLabel,
 }: {
   categoryNames: string[];
   hasFeatured: boolean;
   hasOther: boolean;
   featuredLabel: string;
   otherLabel: string;
+  /**
+   * Localizes a category tab's visible label. The tab id stays the raw
+   * category string: it keys the skills-by-category map.
+   */
+  categoryLabel: (category: string) => string;
 }): PickerTab[] {
   return [
     ...(hasFeatured
@@ -25,7 +31,7 @@ export function buildSkillPickerTabs({
       : []),
     ...categoryNames.map((category) => ({
       id: category,
-      label: category,
+      label: categoryLabel(category),
     })),
     ...(hasOther ? [{ id: OTHER_SKILLS_TAB_ID, label: otherLabel }] : []),
   ];

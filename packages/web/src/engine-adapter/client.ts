@@ -913,7 +913,7 @@ export class HoustonClient {
     if (this.cp) return controlPlane.loadSkill(this.cp, agentPath, name);
     // Standalone web has no skill backend (nothing is listed), so this is
     // unreachable; return an empty detail rather than crash if it ever isn't.
-    return { name, description: "", version: 1, content: "" };
+    return { name, title: null, description: "", version: 1, content: "" };
   }
 
   // Routine + skill mutations route to the host (cloud); standalone web has no

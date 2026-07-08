@@ -10,7 +10,7 @@ import { AddSkillDialog } from "@houston-ai/skills";
 import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { humanizeSkillName } from "../../lib/humanize-skill-name";
+import { skillDisplayTitle } from "../../lib/humanize-skill-name";
 import type { SkillSummary } from "../../lib/types";
 import { SkillCard } from "../skill-card";
 import { useSkillDialogLabels } from "./use-skill-surface-labels";
@@ -136,7 +136,7 @@ export function SkillsContent({
           <SkillCard
             key={skill.name}
             image={skill.image}
-            title={humanizeSkillName(skill.name)}
+            title={skillDisplayTitle(skill)}
             description={skill.description}
             onClick={() => onSkillClick(skill.name)}
             busy={loadingSkillName === skill.name}

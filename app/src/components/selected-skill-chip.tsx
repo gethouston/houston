@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { humanizeSkillName } from "../lib/humanize-skill-name";
+import { skillDisplayTitle } from "../lib/humanize-skill-name";
 import type { SkillSummary } from "../lib/types";
 import { SkillIcon } from "./skill-icon";
 
@@ -22,7 +22,7 @@ export function SelectedSkillChip({ skill, onCancel }: Props) {
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold text-foreground">
-              {humanizeSkillName(skill.name)}
+              {skillDisplayTitle(skill)}
             </div>
             {skill.description && (
               <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">

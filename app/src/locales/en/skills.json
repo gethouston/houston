@@ -90,5 +90,23 @@
     "deleteTitle": "Delete \"{{name}}\"?",
     "deleteDescription": "This removes the skill from your agent. You can reinstall it later.",
     "instructionsPlaceholder": "Instructions for this skill..."
+  },
+  "categories": {
+    "Advisory": "Advisory",
+    "Bookkeeping": "Bookkeeping",
+    "Compliance": "Compliance",
+    "Contracts": "Contracts",
+    "Drafting": "Drafting",
+    "Entity": "Entity",
+    "Inbox": "Inbox",
+    "IP": "IP",
+    "Marketing": "Marketing",
+    "Operations": "Operations",
+    "Outbound": "Outbound",
+    "People": "People",
+    "Sales": "Sales",
+    "Setup": "Setup",
+    "Support": "Support",
+    "Tracking": "Tracking"
   }
 }

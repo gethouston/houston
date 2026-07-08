@@ -106,6 +106,11 @@ export interface TabProps {
 /** Skill summary returned by list_skills */
 export interface SkillSummary {
   name: string;
+  /**
+   * Display title from frontmatter `title:` — accents/casing the directory
+   * slug can't carry (translated store skills). Null → humanize the slug.
+   */
+  title: string | null;
   description: string;
   version: number;
   tags: string[];
@@ -139,6 +144,8 @@ export interface SkillInputDef {
 /** Skill detail returned by load_skill */
 export interface SkillDetail {
   name: string;
+  /** Display title from frontmatter `title:`; null → humanize the slug. */
+  title: string | null;
   description: string;
   version: number;
   content: string;

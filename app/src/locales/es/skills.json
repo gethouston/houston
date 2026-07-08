@@ -90,5 +90,23 @@
     "deleteTitle": "¿Eliminar \"{{name}}\"?",
     "deleteDescription": "Esto elimina el skill de tu agente. Puedes reinstalarlo después.",
     "instructionsPlaceholder": "Instrucciones para este skill..."
+  },
+  "categories": {
+    "Advisory": "Asesoría",
+    "Bookkeeping": "Contabilidad",
+    "Compliance": "Cumplimiento",
+    "Contracts": "Contratos",
+    "Drafting": "Redacción",
+    "Entity": "Entidad",
+    "IP": "Propiedad intelectual",
+    "Inbox": "Bandeja de entrada",
+    "Marketing": "Marketing",
+    "Operations": "Operaciones",
+    "Outbound": "Prospección",
+    "People": "Personal",
+    "Sales": "Ventas",
+    "Setup": "Configuración",
+    "Support": "Soporte",
+    "Tracking": "Seguimiento"
   }
 }

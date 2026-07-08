@@ -1,6 +1,8 @@
 export interface Skill {
   id: string;
   name: string;
+  /** Display title (accents/casing the slug can't carry); null → humanize name. */
+  title?: string | null;
   description: string;
   instructions: string;
   file_path: string;

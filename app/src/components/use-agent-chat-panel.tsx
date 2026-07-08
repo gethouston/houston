@@ -52,6 +52,7 @@ import {
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import { useSession } from "../hooks/use-session";
+import { useStoreSkillLocaleMigration } from "../hooks/use-store-skill-locale-migration";
 import { deriveActiveInteraction } from "../lib/active-interaction";
 import { analytics } from "../lib/analytics";
 import { attachmentReferences } from "../lib/attachment-message";
@@ -67,7 +68,7 @@ import { createMission } from "../lib/create-mission";
 import { resolveDictationLangHint } from "../lib/dictation/types";
 import { useDictation } from "../lib/dictation/use-dictation";
 import { genericErrorDescription } from "../lib/error-toast";
-import { humanizeSkillName } from "../lib/humanize-skill-name";
+import { skillDisplayTitle } from "../lib/humanize-skill-name";
 import { composeInteractionReply } from "../lib/interaction-reply";
 import {
   modelSelectorDecision,
@@ -690,6 +691,9 @@ export function useAgentChatPanel({
 
   // ── Skills + selected-skill state ─────────────────────────────────────
   const { data: allSkills } = useSkills(path ?? undefined);
+  // Swap unedited English store skills for the workspace language's versions
+  // (agents created before translated templates shipped, or in English).
+  useStoreSkillLocaleMigration(agent);
   const emptySkillShowcase = useMemo(() => {
     const skills = allSkills ?? [];
     const featured = skills.filter((s) => s.featured);
@@ -736,7 +740,7 @@ export function useAgentChatPanel({
 
       const claudePrompt = buildSkillClaudePrompt(skill, text);
       const encoded = encodeSkillMessage(skill, text, claudePrompt);
-      const friendlyTitle = humanizeSkillName(skill.name);
+      const friendlyTitle = skillDisplayTitle(skill);
 
       if (sessionKey) {
         // Mid-conversation: optimistic feed push + send, mirrors the
@@ -1235,7 +1239,7 @@ export function useAgentChatPanel({
             <SkillCard
               key={s.name}
               image={s.image}
-              title={humanizeSkillName(s.name)}
+              title={skillDisplayTitle(s)}
               description={s.description}
               onClick={() => applySkill(s)}
             />
