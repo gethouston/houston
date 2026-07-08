@@ -33,7 +33,6 @@ export function ChatPanel({
   emptyState,
   status: statusProp,
   thinkingIndicator,
-  loadingIndicator,
   transformContent,
   toolLabels,
   isSpecialTool,
@@ -149,7 +148,6 @@ export function ChatPanel({
           messages={messages}
           status={status}
           thinkingIndicator={thinkingIndicator ?? <DefaultThinkingIndicator />}
-          loadingIndicator={loadingIndicator}
           transformContent={transformContent}
           toolLabels={toolLabels}
           isSpecialTool={isSpecialTool}

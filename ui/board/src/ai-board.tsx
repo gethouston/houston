@@ -71,8 +71,6 @@ export interface AIBoardProps {
   chatEmptyState?: ReactNode;
   /** Custom thinking indicator for the chat panel. */
   thinkingIndicator?: ReactNode;
-  /** Loader shown for the whole in-flight turn (see ChatPanel). */
-  loadingIndicator?: ReactNode;
   /** Avatar element shown on every kanban card (e.g. small agent icon). */
   cardAvatar?: ReactNode;
   /** Avatar element shown in the detail panel header. */
@@ -263,7 +261,6 @@ export function AIBoard({
   onPanelCloserReady,
   chatEmptyState,
   thinkingIndicator,
-  loadingIndicator,
   cardAvatar,
   panelAvatar,
   panelAgentName,
@@ -702,7 +699,6 @@ export function AIBoard({
           }
           emptyState={activeFeed.length === 0 ? chatEmptyState : undefined}
           thinkingIndicator={thinkingIndicator}
-          loadingIndicator={loadingIndicator}
           value={drafts ? (drafts[activeDraftKey] ?? "") : undefined}
           onValueChange={
             onDraftChange
