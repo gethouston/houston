@@ -51,7 +51,12 @@ export class ActivityStatusOutput implements FeedOutput {
     pendingInteraction?: PendingInteraction | null,
   ): Promise<void> {
     try {
-      await this.persist(agentPath, sessionKey, status, pendingInteraction ?? null);
+      await this.persist(
+        agentPath,
+        sessionKey,
+        status,
+        pendingInteraction ?? null,
+      );
     } catch (err) {
       this.logger.warn("activities: board status persist failed", {
         agentId: agentPath,

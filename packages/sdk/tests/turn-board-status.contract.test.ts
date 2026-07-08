@@ -61,10 +61,12 @@ async function hostStatus(id: string): Promise<string | undefined> {
 }
 
 describe("SDK turn settle → activity board status", () => {
-  it("PATCHes the activity to needs_you when the turn settles", async () => {
-    // Seed act-2 starts life "done"; a fresh turn on its chat must move it.
-    const cid = "activity-act-2";
-    expect(await hostStatus("act-2")).toBe("done");
+  it("PATCHes the activity to its terminal status when the turn settles", async () => {
+    // Seed act-1 starts life "needs_you"; a fresh turn on its chat must move it.
+    // The canned reply carries no pending interaction, so the clean settle splits
+    // to `done` (a turn that ended asking the user would settle `needs_you`).
+    const cid = "activity-act-1";
+    expect(await hostStatus("act-1")).toBe("needs_you");
 
     await h.sdk.turns.send({
       agentId: SEED_AGENT_ID,
@@ -73,17 +75,17 @@ describe("SDK turn settle → activity board status", () => {
     });
     await until(() => convVm(h.sdk, cid)?.running === false, "turn settled");
 
-    // The persisted record PATCHed to needs_you (the write the SDK path dropped).
+    // The persisted record PATCHed to done (the write the SDK path dropped).
     await untilAsync(
-      async () => (await hostStatus("act-2")) === "needs_you",
-      "activity persisted to needs_you",
+      async () => (await hostStatus("act-1")) === "done",
+      "activity persisted to done",
     );
   });
 
-  it("flips the activity to running in flight, then needs_you on settle", async () => {
+  it("flips the activity to running in flight, then done on settle", async () => {
     await control(host.url, "chat-config", { replyDelayMs: 60 });
-    const cid = "activity-act-2";
-    expect(await hostStatus("act-2")).toBe("done");
+    const cid = "activity-act-1";
+    expect(await hostStatus("act-1")).toBe("needs_you");
 
     await h.sdk.turns.send({
       agentId: SEED_AGENT_ID,
@@ -93,17 +95,17 @@ describe("SDK turn settle → activity board status", () => {
 
     // Start-of-turn persist flips a done/needs_you card back to running.
     await untilAsync(
-      async () => (await hostStatus("act-2")) === "running",
+      async () => (await hostStatus("act-1")) === "running",
       "activity running in flight",
     );
     await untilAsync(
-      async () => (await hostStatus("act-2")) === "needs_you",
-      "activity settled to needs_you",
+      async () => (await hostStatus("act-1")) === "done",
+      "activity settled to done",
     );
   });
 
   it("reflects the settled status in the activities/<agentId> VM", async () => {
-    const cid = "activity-act-2";
+    const cid = "activity-act-1";
     await h.sdk.activities.refresh(SEED_AGENT_ID);
     await until(
       () =>
@@ -126,8 +128,8 @@ describe("SDK turn settle → activity board status", () => {
       const snap = h.sdk.getSnapshot(activitiesScope(SEED_AGENT_ID)) as
         | { items: { id: string; status: string }[] }
         | undefined;
-      return snap?.items.find((a) => a.id === "act-2")?.status === "needs_you";
-    }, "activities VM reflects needs_you");
+      return snap?.items.find((a) => a.id === "act-1")?.status === "done";
+    }, "activities VM reflects done");
   });
 
   it("logs a warning and does not crash when no activity matches the chat", async () => {

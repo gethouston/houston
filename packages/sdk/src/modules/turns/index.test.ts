@@ -197,12 +197,11 @@ test("the default board-status persister fires running at start and terminal on 
   const { mod, vm, calls } = harness();
   await mod.send({ conversationId: "c1", text: "hi" });
   await waitFor(() => vm()?.sessionStatus === "completed");
-  // A running turn PATCHes the card to running, then to its terminal status
-  // (needs_you) — the write the SDK path used to drop, keyed by the chat's id.
-  expect(calls.boardPersists.map((p) => p.status)).toEqual([
-    "running",
-    "needs_you",
-  ]);
+  // A running turn PATCHes the card to running, then to its terminal status —
+  // the write the SDK path used to drop, keyed by the chat's id. The canned
+  // reply carries no pending interaction, so the clean settle splits to `done`
+  // (a turn that ended asking the user would settle `needs_you` instead).
+  expect(calls.boardPersists.map((p) => p.status)).toEqual(["running", "done"]);
   expect(calls.boardPersists.every((p) => p.sessionKey === "c1")).toBe(true);
 });
 

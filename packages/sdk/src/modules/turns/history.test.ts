@@ -129,16 +129,19 @@ describe("historyToFeed", () => {
     expect(feed[thinkingIdx]).toEqual({
       feed_type: "thinking",
       data: "first list the files, then decide",
+      ts: 2, // additive: every frame carries its source message's epoch-ms ts
     });
     expect(thinkingIdx).toBeLessThan(toolIdx);
     expect(feed[toolIdx]).toEqual({
       feed_type: "tool_call",
       data: { name: "bash", input: { cmd: "ls" } },
+      ts: 2,
     });
     // The persisted output preview replays as the tool's result.
     expect(feed[toolIdx + 1]).toEqual({
       feed_type: "tool_result",
       data: { content: "file-a\nfile-b", is_error: false },
+      ts: 2,
     });
   });
 
