@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { seedSchemas } from "@houston/domain";
+import { loadRoutineRuns, seedSchemas } from "@houston/domain";
 import {
   type CustomEndpoint,
   type HoustonEvent,
@@ -36,6 +36,42 @@ export type { AgentRouteDeps } from "./agent-authz";
 /** Attach the agent's real directory (`dir`) when this deployment has one. */
 function withAgentDir(deps: AgentRouteDeps, ws: Workspace, agent: Agent) {
   return deps.agentDir ? { ...agent, dir: deps.agentDir(ws, agent) } : agent;
+}
+
+async function activityStatus(
+  deps: AgentRouteDeps,
+  ctx: { workspace: Workspace; agent: Agent },
+) {
+  const channel = channelFor(deps, ctx.workspace);
+  if (!channel) return null;
+  if (!deps.vfs) return { error: "agent data not configured" as const };
+
+  const paths = deps.paths ?? DEFAULT_PATHS;
+  const runs = await loadRoutineRuns(
+    deps.vfs,
+    paths.agentRoot(ctx.workspace, ctx.agent),
+  );
+  const runningRoutineRuns = runs.items.filter(
+    (run) => run.status === "running",
+  ).length;
+  const turnBusy = await channel.busy(ctx);
+  const runtime = channel.runtimeStatus
+    ? await channel.runtimeStatus(ctx)
+    : "unknown";
+  // Other /agents/* requests held open right now — minus this probe itself.
+  // Catches what the turn check cannot: an open conversation-events SSE
+  // subscription (an agent open in a UI tab) between turns. Two probes
+  // overlapping see each other and both answer busy — conservative, and gone
+  // by the next sweep.
+  const activeRequests = deps.agentRequestCount
+    ? Math.max(0, deps.agentRequestCount() - 1)
+    : 0;
+  return {
+    busy: turnBusy || runningRoutineRuns > 0 || activeRequests > 0,
+    runtime,
+    runningRoutineRuns,
+    activeRequests,
+  };
 }
 
 /**
@@ -422,6 +458,34 @@ export async function handleAgents(
   // Routine-run routes (run-now / cancel) — matched before the generic
   // dispatch below; the runtime has no routine routes. See routine-runs.ts.
   if (await handleRoutineRuns(deps, userId, method, path, res)) return true;
+
+  const activity = path.match(/^\/agents\/([^/]+)\/activity$/);
+  if (activity && method === "GET") {
+    const agentId = activity[1] ? decodeURIComponent(activity[1]) : undefined;
+    if (!agentId) {
+      json(res, 404, { error: "not found" });
+      return true;
+    }
+    const authz = await authorizeAgent(deps, userId, agentId);
+    if (!authz.ok) {
+      json(res, authz.status, { error: authz.reason });
+      return true;
+    }
+    const status = await activityStatus(deps, {
+      workspace: authz.workspace,
+      agent: authz.agent,
+    });
+    if (!status) {
+      noChannel(res, authz.workspace.runtime);
+      return true;
+    }
+    if ("error" in status) {
+      json(res, 503, { error: status.error });
+      return true;
+    }
+    json(res, 200, status);
+    return true;
+  }
 
   // The per-agent runtime surface: /agents/:agentId/<anything> → the agent's
   // runtime, via the workspace's channel. The frontend points its runtime

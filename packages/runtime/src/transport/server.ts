@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { primeAnthropicCredential } from "../backends/claude/credential-status";
 import { config } from "../config";
+import { anyTurnRunning } from "../session/bus";
 import { handleConversationRoute } from "./conversation-routes";
 import { applyCors } from "./cors";
 import { handleGenerateRoute } from "./generate-route";
@@ -22,6 +23,10 @@ async function handle(ctx: RouteContext) {
 
   if (ctx.method === "GET" && ctx.path === "/health") {
     json(ctx.res, 200, { status: "ok", version: config.version });
+    return;
+  }
+  if (ctx.method === "GET" && ctx.path === "/busy") {
+    json(ctx.res, 200, { busy: anyTurnRunning() });
     return;
   }
   if (ctx.method === "GET" && ctx.path === "/version") {

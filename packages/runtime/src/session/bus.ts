@@ -72,6 +72,14 @@ export function snapshot(id: string): ConversationSnapshot {
   return channels.get(id)?.snapshot ?? EMPTY;
 }
 
+/** Whether any conversation in this runtime currently has an in-flight turn. */
+export function anyTurnRunning(): boolean {
+  for (const ch of channels.values()) {
+    if (ch.snapshot.running) return true;
+  }
+  return false;
+}
+
 /**
  * The frames a resuming subscriber that saw everything up to `after` still
  * needs, in publish order. Null = the cursor cannot be served (older than the

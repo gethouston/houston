@@ -182,6 +182,28 @@ export class ProxyChannel implements RuntimeChannel {
     return body.cancelled === true;
   }
 
+  async busy(ctx: ChannelCtx): Promise<boolean> {
+    // An asleep/absent runtime cannot be running a turn (turns live inside the
+    // runtime process; sleep kills it) — answer false without waking it.
+    if ((await this.opts.launcher.status(ctx.agent.id)) !== "running")
+      return false;
+    try {
+      const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
+      const res = await fetch(`${endpoint.baseUrl}/busy`, {
+        headers: { Authorization: `Bearer ${endpoint.token}` },
+      });
+      if (!res.ok) return true;
+      const body = (await res.json()) as { busy?: unknown };
+      return typeof body.busy === "boolean" ? body.busy : true;
+    } catch {
+      return true;
+    }
+  }
+
+  async runtimeStatus(ctx: ChannelCtx) {
+    return this.opts.launcher.status(ctx.agent.id);
+  }
+
   async teardown(ctx: ChannelCtx): Promise<void> {
     await this.opts.launcher.destroy(ctx.agent.id, { dropVolume: true });
   }
