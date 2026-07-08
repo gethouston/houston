@@ -22,6 +22,8 @@ import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
 import {
   type ChatInteractionAnswer,
   ChatInteractionCard,
+  ChatPlanReadyCard,
+  type ChatPlanReadyLabels,
   decodeAttachmentMessage,
   UserAttachmentMessage,
   type UserAttachmentMessageLabels,
@@ -78,6 +80,7 @@ import {
 } from "../lib/model-selector-lock";
 import { canManageAgentGrants, isMultiplayer } from "../lib/org-roles";
 import { osIsTauri } from "../lib/os-bridge";
+import { resolvePlanReadyOverride } from "../lib/plan-ready";
 import {
   decideHandoffMode,
   estimateConversationTokens,
@@ -952,6 +955,66 @@ export function useAgentChatPanel({
     [t],
   );
 
+  // ── Plan-ready override (plan_ready) ──────────────────────────────────
+  // When the model finishes planning it calls `plan_ready`, arriving as a lone
+  // `{kind:"plan_ready", summary}` step (like ask_user). The card offers three
+  // ways forward; "Keep planning" dismisses it LOCALLY (composer returns, mode
+  // stays plan) by remembering THIS plan's summary — a later, different plan
+  // re-shows the card. The dismissal is per-conversation, so it resets when the
+  // open session changes.
+  const [dismissedPlanReady, setDismissedPlanReady] = useState<string | null>(
+    null,
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedSessionKey is the intentional change-trigger that clears the dismissal when the open conversation switches, so a dismissed plan never suppresses a new chat's card.
+  useEffect(() => {
+    setDismissedPlanReady(null);
+  }, [selectedSessionKey]);
+
+  // Start a turn from the plan-ready card: flip the composer's Mode pill (and
+  // persist it) to the chosen mode, then send the confirming message with an
+  // EXPLICIT `modeOverride` — never the async `turnMode` state, which the pill
+  // flip has not yet committed. The user's message bubble is visible (no
+  // suppress flags): the plan approval is a real user turn.
+  const startPlan = useCallback(
+    (mode: TurnMode, text: string) => {
+      if (!path || !selectedSessionKey) return;
+      void handleModeSelect(mode);
+      tauriChat
+        .send(path, text, selectedSessionKey, {
+          providerOverride: effectiveProvider,
+          modelOverride: effectiveModel,
+          effortOverride: effectiveEffort,
+          modeOverride: mode,
+        })
+        .catch((err) => {
+          addToast({
+            title: t("chat:errors.sessionStart", { error: String(err) }),
+            variant: "error",
+          });
+        });
+    },
+    [
+      path,
+      selectedSessionKey,
+      handleModeSelect,
+      effectiveProvider,
+      effectiveModel,
+      effectiveEffort,
+      addToast,
+      t,
+    ],
+  );
+
+  const planReadyLabels = useMemo<ChatPlanReadyLabels>(
+    () => ({
+      title: t("chat:planReady.title"),
+      startWorking: t("chat:planReady.startWorking"),
+      runAutopilot: t("chat:planReady.runAutopilot"),
+      keepPlanning: t("chat:planReady.keepPlanning"),
+    }),
+    [t],
+  );
+
   // The mission is waiting on a sequence of steps (questions then connections).
   // ONE ChatInteractionCard walks them one at a time; `onComplete` fires after
   // the LAST step, never before, so the card lives until every connection has
@@ -974,7 +1037,30 @@ export function useAgentChatPanel({
   // array.
   const composerOverride = useMemo<AIBoardProps["composerOverride"]>(() => {
     if (!agent || !activeInteraction) return undefined;
-    const steps = activeInteraction.steps;
+    // A lone plan_ready step becomes the plan-ready card (unless dismissed);
+    // everything else feeds the stepper over its plan_ready-free steps.
+    const override = resolvePlanReadyOverride(
+      activeInteraction.steps,
+      dismissedPlanReady,
+    );
+    if (override.kind === "none") return undefined;
+    if (override.kind === "card") {
+      const summary = override.summary;
+      return (
+        <ChatPlanReadyCard
+          summary={summary}
+          labels={planReadyLabels}
+          onStartWorking={() =>
+            startPlan("execute", t("chat:planReady.startWorkingMessage"))
+          }
+          onRunAutopilot={() =>
+            startPlan("auto", t("chat:planReady.runAutopilotMessage"))
+          }
+          onKeepPlanning={() => setDismissedPlanReady(summary)}
+        />
+      );
+    }
+    const steps = override.steps;
     const hasQuestionSteps = steps.some((step) => step.kind === "question");
     // A completed sequence has walked EVERY step, so a signin step present here
     // means the user signed in (the step advances only via `onSignedIn`) — no
@@ -1029,6 +1115,9 @@ export function useAgentChatPanel({
   }, [
     agent,
     activeInteraction,
+    dismissedPlanReady,
+    planReadyLabels,
+    startPlan,
     interactionLabels,
     sendInteractionMessage,
     capabilities,

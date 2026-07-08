@@ -3,6 +3,23 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v9 - 2026-07-08
+
+Add `plan-ready-card`, the composer-replacing surface shown when the agent
+finishes planning (plan mode) and calls `plan_ready`. A pending interaction
+carrying a single `plan_ready` step (its plan `summary`) reaches the frontend
+exactly like `ask_user`; the card presents the drafted plan above three
+always-visible actions: "Start working" (starts a normal execute turn
+confirming the plan), "Run on Autopilot" (starts an autopilot turn), and "Keep
+planning" (dismisses the card locally so the composer returns with the Mode pill
+still on plan; a later, different plan re-shows it). The first two flip the
+composer Mode pill to match and send a visible user message; the third sends
+nothing. `disabled` gates all three actions. New `@houston-ai/chat`
+`ChatPlanReadyCard` (props-only, i18n-agnostic with a `DEFAULT_PLAN_READY_LABELS`
+fallback), so Web ships `implemented`; native surfaces defer it (plan-mode flow
+is not in mobile v1). No change to `interaction-card`: the app defensively
+filters any `plan_ready` step out of the stepper.
+
 ## v8 - 2026-07-08
 
 Rebuild `ai-model-row` from the multi-column Mercury ledger into a compact card,

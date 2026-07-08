@@ -186,6 +186,22 @@ export type {
   PrepareAttachments,
   PreparedAttachments,
 } from "./chat-panel-types";
+// === Plan-ready card ===
+// The composer-replacing surface shown when the agent finishes planning
+// (plan_ready): the drafted plan + Start working / Run on Autopilot / Keep
+// planning. Props-only; the app supplies localized labels and wires the sends.
+export type { ChatPlanReadyCardProps } from "./chat-plan-ready-card";
+export { ChatPlanReadyCard } from "./chat-plan-ready-card";
+export type {
+  ChatPlanReadyLabels,
+  PlanReadyAction,
+  PlanReadyActionKey,
+  PlanReadyActionVariant,
+} from "./chat-plan-ready-card-model";
+export {
+  DEFAULT_PLAN_READY_LABELS,
+  resolvePlanReadyActions,
+} from "./chat-plan-ready-card-model";
 export type { ChatProcessLabels } from "./chat-process-block";
 export type { ChatSidebarProps } from "./chat-sidebar";
 export { ChatSidebar } from "./chat-sidebar";

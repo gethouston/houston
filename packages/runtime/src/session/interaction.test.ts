@@ -1,7 +1,9 @@
+import { isInteractionStep } from "@houston/protocol";
 import { expect, test } from "vitest";
 import {
   newInteractionHolder,
   recordConnection,
+  recordPlanReady,
   recordQuestions,
   recordSignin,
   runWithInteractionCapture,
@@ -159,6 +161,50 @@ test("recording outside a turn is a no-op (undefined store)", () => {
   expect(() => recordQuestions([q("q1", "orphan?")])).not.toThrow();
   expect(() => recordConnection({ toolkit: "gmail" })).not.toThrow();
   expect(() => recordSignin({ reason: "orphan" })).not.toThrow();
+  expect(() => recordPlanReady({ summary: "orphan plan" })).not.toThrow();
+});
+
+test("recordPlanReady records the single plan-ready step (id p1, trimmed)", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () =>
+    recordPlanReady({ summary: "  Book it, then confirm.  " }),
+  );
+  expect(holder.pending).toEqual({
+    steps: [
+      { kind: "plan_ready", id: "p1", summary: "Book it, then confirm." },
+    ],
+  });
+});
+
+test("a plan-ready step OWNS the interaction exclusively (wins over queued steps)", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    // Even if the model somehow queued questions/signin/connects this turn, a
+    // plan_ready call collapses the interaction to the single plan card.
+    recordQuestions([q("q1", "Which one?")]);
+    recordSignin({ reason: "Sign in first." });
+    recordConnection({ toolkit: "gmail", reason: "to send it" });
+    recordPlanReady({ summary: "Here is the plan." });
+  });
+  expect(holder.pending).toEqual({
+    steps: [{ kind: "plan_ready", id: "p1", summary: "Here is the plan." }],
+  });
+});
+
+test("the protocol guard accepts a valid plan_ready step and rejects a bad summary", () => {
+  // Guard coverage lands here because @houston/protocol has no test runner of
+  // its own; the runtime suite imports the same guard the wire/persist seams use.
+  expect(
+    isInteractionStep({ kind: "plan_ready", id: "p1", summary: "The plan." }),
+  ).toBe(true);
+  // A missing summary is invalid.
+  expect(isInteractionStep({ kind: "plan_ready", id: "p1" })).toBe(false);
+  // A non-string summary is invalid.
+  expect(isInteractionStep({ kind: "plan_ready", id: "p1", summary: 7 })).toBe(
+    false,
+  );
+  // No id is invalid (shared step rule).
+  expect(isInteractionStep({ kind: "plan_ready", summary: "x" })).toBe(false);
 });
 
 test("the holder survives async work inside the capture (ALS propagation)", async () => {

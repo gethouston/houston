@@ -26,6 +26,7 @@ import { buildToolSelection } from "../session/tool-selection";
 import { makeAskUserTool } from "../session/tools/ask-user";
 import { makeClampedFileTools } from "../session/tools/clamped-fs";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
+import { makePlanReadyTool } from "../session/tools/plan-ready";
 import { makeRunCodeTool } from "../session/tools/run-code";
 import {
   appendAssistantMessageAt,
@@ -167,6 +168,10 @@ export async function runPiTurn(
         // already in toolSelection.toolNames. request_connection is NOT — it is
         // gated with the integration tools, which are off in cloud turn mode.
         makeAskUserTool(),
+        // plan_ready is registered always but name-gated to Plan mode by
+        // toolNamesForMode (harmless in execute/auto — pi exposes it only when
+        // its name is in the mode's allowlist).
+        makePlanReadyTool(),
         ...(sandbox ? [sandbox] : []),
       ],
     });

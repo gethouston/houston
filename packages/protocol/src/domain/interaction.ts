@@ -30,7 +30,8 @@ export type InteractionStep =
       options?: InteractionOption[];
     }
   | { kind: "signin"; id: string; reason?: string }
-  | { kind: "connect"; id: string; toolkit: string; reason?: string };
+  | { kind: "connect"; id: string; toolkit: string; reason?: string }
+  | { kind: "plan_ready"; id: string; summary: string };
 
 /** The ordered steps the mission is waiting on: question steps first (at most 3),
  *  then at most one signin step, then connect steps. Always at least one step. */
@@ -48,6 +49,7 @@ export const isInteractionStep = (v: unknown): v is InteractionStep => {
   if (v.kind === "signin")
     return v.reason === undefined || typeof v.reason === "string";
   if (v.kind === "connect") return typeof v.toolkit === "string";
+  if (v.kind === "plan_ready") return typeof v.summary === "string";
   return false;
 };
 

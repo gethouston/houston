@@ -56,6 +56,14 @@
     "signinDescription": "Tus cuentas siguen siendo tuyas; el agente actúa en tu nombre.",
     "signin": "Iniciar sesión"
   },
+  "planReady": {
+    "title": "Plan listo",
+    "startWorking": "Empezar a trabajar",
+    "runAutopilot": "Usar Piloto automático",
+    "keepPlanning": "Seguir planificando",
+    "startWorkingMessage": "Adelante con el plan.",
+    "runAutopilotMessage": "Adelante, termínalo por tu cuenta."
+  },
   "errors": {
     "sessionStart": "No se pudo iniciar la sesión: {{error}}",
     "stopSession": "No se pudo detener la misión: {{error}}",

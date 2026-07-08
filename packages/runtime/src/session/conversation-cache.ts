@@ -18,6 +18,7 @@ import { makeAskUserTool } from "./tools/ask-user";
 import { makeClampedFileTools } from "./tools/clamped-fs";
 import { makeIdTokenProvider } from "./tools/gcp-id-token";
 import { makeIntegrationTools } from "./tools/integrations";
+import { makePlanReadyTool } from "./tools/plan-ready";
 import { makeRunCodeTool } from "./tools/run-code";
 import type { ProvidedContext } from "./workspace-context";
 
@@ -40,6 +41,12 @@ const fileTools = makeClampedFileTools(config.workspaceDir);
 // makes no network call). Records the turn's pending question so it rides the
 // terminal `done` frame and Houston renders it as a card in place of the input.
 const askUserTool = makeAskUserTool();
+
+// The plan-presentation tool: registered always, name-gated to Plan mode by
+// `toolNamesForMode` (harmless in execute/auto — pi only exposes it when its
+// name is in the mode's allowlist). Records the turn's plan-ready step so it
+// rides the terminal `done` frame as a plan-approval card.
+const planReadyTool = makePlanReadyTool();
 
 // Integration tools (Composio, platform mode): available whenever this runtime
 // can reach its host with a sandbox token (server mode — local desktop +
@@ -84,6 +91,7 @@ const piBackend = createPiBackend({
   customTools: [
     ...fileTools,
     askUserTool,
+    planReadyTool,
     ...(runCodeTool ? [runCodeTool] : []),
     ...integrationTools,
   ],

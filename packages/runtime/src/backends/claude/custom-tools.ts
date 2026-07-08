@@ -16,10 +16,11 @@ import {
   type IntegrationToolOptions,
   makeIntegrationTools,
 } from "../../session/tools/integrations";
+import { makePlanReadyTool } from "../../session/tools/plan-ready";
 
 /**
- * Bridge Houston's pi-shaped custom tools (`ask_user`, `request_connection`,
- * `integration_search`, `integration_execute`) onto the Claude Agent SDK's
+ * Bridge Houston's pi-shaped custom tools (`ask_user`, `plan_ready`,
+ * `request_connection`, `integration_search`, `integration_execute`) onto the Claude Agent SDK's
  * in-process MCP transport (`createSdkMcpServer`), so the `anthropic` backend —
  * a `claude` subprocess that only sees SDK built-ins — can call the SAME tools
  * the pi backend exposes.
@@ -71,17 +72,18 @@ export interface HoustonMcpInput {
   integrations?: IntegrationToolOptions;
   /**
    * The turn's execution mode, applied as the SAME tool filter the pi path uses
-   * (`toolNamesForMode`): "plan" keeps only `ask_user` (the acting integration
-   * tools are withheld), "auto" drops the blocking tools (`ask_user`,
-   * `request_connection`) while KEEPING `integration_search` /
-   * `integration_execute`, and "execute" (or absent) exposes the full built set.
+   * (`toolNamesForMode`): "plan" keeps `ask_user` + `plan_ready` (the acting
+   * integration tools are withheld), "auto" drops the blocking tools (`ask_user`,
+   * `request_connection`) and `plan_ready` while KEEPING `integration_search` /
+   * `integration_execute`, and "execute" (or absent) exposes the full built set
+   * minus `plan_ready` (plan-only). `plan_ready` never survives outside plan.
    */
   mode?: TurnMode;
 }
 
 /**
  * The minimal slice of a pi tool this bridge reads. `execute`'s trailing
- * `onUpdate`/`ctx` params are inert for all four Houston custom tools (verified:
+ * `onUpdate`/`ctx` params are inert for every Houston custom tool (verified:
  * none read them), so the adapter passes inert placeholders — see {@link NOOP_CTX}.
  * A pi `ToolDefinition<S>` narrows `params` to `Static<S>`; here it is widened to
  * `unknown` so heterogeneous tools share one adapter, and the SDK-validated args
@@ -101,7 +103,7 @@ interface BridgedPiTool {
 }
 
 /**
- * Inert `ExtensionContext` placeholder. The four bridged tools never touch `ctx`
+ * Inert `ExtensionContext` placeholder. The bridged tools never touch `ctx`
  * (they use the turn-scoped AsyncLocalStorage stores instead), so an empty object
  * is safe. Cast once here rather than threading a real context the SDK path has
  * no way to supply.
@@ -114,8 +116,8 @@ const NOOP_CTX = {} as ExtensionContext;
  */
 export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
   // Reuse the EXISTING tool implementations verbatim; build the full set this
-  // runtime could expose (ask_user always, the integration tools when the gate
-  // is open), then apply the turn's mode filter — the SAME `toolNamesForMode`
+  // runtime could expose (ask_user + plan_ready always, the integration tools
+  // when the gate is open), then apply the turn's mode filter — the SAME `toolNamesForMode`
   // the pi path clamps its name allowlist with, so the two backends never drift
   // on what a mode allows. On the pi path filtering the NAME list is enough (pi
   // gates custom tools by name); here the MCP server exposes exactly the tools it
@@ -124,6 +126,9 @@ export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
   // shape is bridged by one documented assertion at this single boundary.
   const built = [
     makeAskUserTool(),
+    // plan_ready is in the built set but name-gated by `toolNamesForMode`: it
+    // survives only on a plan turn (filtered out of execute/auto below).
+    makePlanReadyTool(),
     ...(input.integrations ? makeIntegrationTools(input.integrations) : []),
   ] as unknown as BridgedPiTool[];
   const allowed = new Set(
@@ -184,8 +189,8 @@ interface McpTextContent {
 }
 
 /**
- * Map a pi tool result onto the MCP `CallToolResult` content shape. All four
- * bridged tools return text; a non-text block (never produced today) is coerced
+ * Map a pi tool result onto the MCP `CallToolResult` content shape. Every
+ * bridged tool returns text; a non-text block (never produced today) is coerced
  * to a JSON string rather than dropped.
  */
 function toCallToolResult(result: AgentToolResult<unknown>): {
