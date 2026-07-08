@@ -75,7 +75,7 @@ export function EmailSignIn() {
       size="icon"
       disabled={disabled}
       aria-label={step === "code" ? "Verify code" : "Send code"}
-      className="size-10 shrink-0 rounded-full"
+      className="size-10 shrink-0 rounded-full border-none!"
     >
       {pending ? (
         <Loader2 className="size-4 animate-spin" />
