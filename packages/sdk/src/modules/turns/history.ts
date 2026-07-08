@@ -85,11 +85,21 @@ export function historyToFeed(
         },
       });
     }
+    // Replay the turn's reasoning BEFORE its tool calls — the live VM keeps a
+    // single thinking entry positioned where the first thinking block streamed
+    // (ahead of the tools), so a reload renders the mission log in the same
+    // order a live watcher saw (HOU-717).
+    if (m.thinking) {
+      out.push({ feed_type: "thinking", data: m.thinking });
+    }
     for (const t of m.tools ?? []) {
-      out.push({ feed_type: "tool_call", data: { name: t.name, input: {} } });
+      out.push({
+        feed_type: "tool_call",
+        data: { name: t.name, input: t.input ?? {} },
+      });
       out.push({
         feed_type: "tool_result",
-        data: { content: "", is_error: !!t.isError },
+        data: { content: t.result ?? "", is_error: !!t.isError },
       });
     }
     if (m.content) out.push({ feed_type: "assistant_text", data: m.content });

@@ -1,6 +1,10 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
-import type { TokenUsage, WireEvent } from "@houston/runtime-client";
+import {
+  clipToolResult,
+  type TokenUsage,
+  type WireEvent,
+} from "@houston/runtime-client";
 import { classifyProviderError } from "../../ai/provider-error";
 
 /**
@@ -79,11 +83,21 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
     }
     case "tool_execution_start":
       return { type: "tool_start", data: { name: e.toolName, args: e.args } };
-    case "tool_execution_end":
+    case "tool_execution_end": {
+      // Carry the tool's output text (what the model saw), clipped here at
+      // the source so every downstream carrier — feed, snapshot, history —
+      // holds a bounded preview (HOU-717). Image blocks have no text and
+      // are skipped; a text-less result omits the field.
+      const content = toolResultText(e.result);
       return {
         type: "tool_end",
-        data: { name: e.toolName, isError: !!e.isError },
+        data: {
+          name: e.toolName,
+          isError: !!e.isError,
+          ...(content ? { content: clipToolResult(content) } : {}),
+        },
       };
+    }
     case "turn_end": {
       // Fired once per turn with the final assistant message.
       //
@@ -135,6 +149,26 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
     default:
       return null;
   }
+}
+
+/**
+ * The text a pi tool result returned to the model — its `content` text blocks
+ * joined. Best-effort against `result: any`: anything not shaped like pi's
+ * `AgentToolResult` reads as "no text" rather than throwing mid-stream.
+ */
+function toolResultText(result: unknown): string {
+  const content = (result as { content?: unknown } | null | undefined)?.content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .filter(
+      (b): b is { type: "text"; text: string } =>
+        b !== null &&
+        typeof b === "object" &&
+        (b as { type?: unknown }).type === "text" &&
+        typeof (b as { text?: unknown }).text === "string",
+    )
+    .map((b) => b.text)
+    .join("\n");
 }
 
 /**

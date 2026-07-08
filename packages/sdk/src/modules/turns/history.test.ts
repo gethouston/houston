@@ -102,6 +102,42 @@ describe("historyToFeed", () => {
     });
   });
 
+  it("replays persisted reasoning before the tool calls, with their inputs (HOU-717)", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "run it", ts: 1 },
+      {
+        role: "assistant",
+        content: "done",
+        ts: 2,
+        thinking: "first list the files, then decide",
+        tools: [
+          {
+            name: "bash",
+            input: { cmd: "ls" },
+            result: "file-a\nfile-b",
+            isError: false,
+          },
+        ],
+      },
+    ]);
+    const thinkingIdx = feed.findIndex((f) => f.feed_type === "thinking");
+    const toolIdx = feed.findIndex((f) => f.feed_type === "tool_call");
+    expect(feed[thinkingIdx]).toEqual({
+      feed_type: "thinking",
+      data: "first list the files, then decide",
+    });
+    expect(thinkingIdx).toBeLessThan(toolIdx);
+    expect(feed[toolIdx]).toEqual({
+      feed_type: "tool_call",
+      data: { name: "bash", input: { cmd: "ls" } },
+    });
+    // The persisted output preview replays as the tool's result.
+    expect(feed[toolIdx + 1]).toEqual({
+      feed_type: "tool_result",
+      data: { content: "file-a\nfile-b", is_error: false },
+    });
+  });
+
   it("replays a persisted file-change summary after the assistant text", () => {
     const feed = historyToFeed([
       { role: "user", content: "make a report", ts: 1 },

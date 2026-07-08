@@ -150,6 +150,19 @@ export type ChatRole = "user" | "assistant";
 
 export interface ToolCallRecord {
   name: string;
+  /**
+   * The tool call's arguments, exactly as the live `tool_start` frame carried
+   * them. Persisted so a reloaded conversation's mission log shows WHAT each
+   * tool did (the command run, the file written), not just the tool's name
+   * (HOU-717). Absent on records written before this field existed.
+   */
+  input?: unknown;
+  /**
+   * The tool's output preview, as the live `tool_end` frame carried it
+   * (already clipped to `TOOL_RESULT_PREVIEW_MAX` at the backend). Same
+   * reload story and absence semantics as `input`.
+   */
+  result?: string;
   isError?: boolean;
 }
 
@@ -189,6 +202,14 @@ export interface ChatMessage {
    */
   author?: { userId: string; name?: string };
   tools?: ToolCallRecord[];
+  /**
+   * The turn's full reasoning text (the model's thinking blocks, concatenated
+   * in stream order). Persisted so a reloaded conversation's mission log
+   * replays the reasoning alongside the tool calls (HOU-717) instead of
+   * dropping it. Absent on messages written before this field existed and on
+   * turns that produced no reasoning.
+   */
+  thinking?: string;
   /** Normalized usage for the turn this assistant message completed, when the
    *  provider reported it. Persisted so the context indicator survives a reload. */
   usage?: TokenUsage | null;

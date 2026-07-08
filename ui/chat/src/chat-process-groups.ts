@@ -49,10 +49,15 @@ function segmentFrom(
   };
 }
 
+/**
+ * HOU-717: keyed by the FIRST segment only. A streaming turn keeps appending
+ * segments, so a key that also names the last segment changes on every new
+ * thinking/tool block — React remounts the block and the user's open mission
+ * log snaps shut mid-run. The first segment is fixed for the life of the
+ * block (blocks flush on user/content boundaries, so no two share a first).
+ */
 function processKey(segments: ChatProcessSegment[]): string {
-  const first = segments[0]?.key ?? "empty";
-  const last = segments[segments.length - 1]?.key ?? first;
-  return `process-${first}-${last}`;
+  return `process-${segments[0]?.key ?? "empty"}`;
 }
 
 export function getChatDisplayItems(

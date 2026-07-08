@@ -84,4 +84,19 @@ export interface UserContentBlock {
   type?: string;
   tool_use_id?: string;
   is_error?: boolean;
+  /** Result payload: a plain string or text/image blocks. */
+  content?: string | { type?: string; text?: string }[];
+}
+
+/**
+ * The text a `tool_result` block returned to the model — a plain string, or
+ * its `text` blocks joined. Image blocks have no text and are skipped.
+ */
+export function toolResultText(content: UserContentBlock["content"]): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .filter((b) => b?.type === "text" && typeof b.text === "string")
+    .map((b) => b.text as string)
+    .join("\n");
 }

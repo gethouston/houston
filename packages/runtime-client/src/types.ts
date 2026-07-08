@@ -36,7 +36,13 @@ export type {
 } from "@houston/protocol";
 // The Claude-subscription credential VALIDATOR (a value, not just a type) — the
 // runtime's host→pod materialization route validates the pushed envelope with it.
-export { parseClaudeOAuthEnvelope } from "@houston/protocol";
+// The tool-output preview clip (values) — applied by every backend that emits
+// `tool_end.content`, so downstream carriers never re-clip.
+export {
+  clipToolResult,
+  parseClaudeOAuthEnvelope,
+  TOOL_RESULT_PREVIEW_MAX,
+} from "@houston/protocol";
 
 /** The runtime's own conversation-core surface version (`GET /version`). */
 export const PROTOCOL_VERSION = 2;

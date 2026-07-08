@@ -130,6 +130,9 @@ export async function execTurn(
   const { author, priorAuthors } = recorded;
 
   let assistantText = "";
+  // The turn's reasoning, accumulated for persistence so a history reload can
+  // replay it in the mission log (HOU-717) — same lifecycle as assistantText.
+  let thinkingText = "";
   let usage: TokenUsage | null = null;
   const tools: ToolCallRecord[] = [];
   // A typed provider failure for this turn. pi resolves the turn rather than
@@ -163,11 +166,17 @@ export async function execTurn(
   const subscribeSession = () => {
     unsub = conv.session.subscribe((wire: WireEvent) => {
       if (wire.type === "text") assistantText += wire.data;
+      else if (wire.type === "thinking") thinkingText += wire.data;
       else if (wire.type === "usage") usage = wire.data;
-      else if (wire.type === "tool_start") tools.push({ name: wire.data.name });
+      else if (wire.type === "tool_start")
+        tools.push({ name: wire.data.name, input: wire.data.args });
       else if (wire.type === "tool_end") {
         const t = tools[tools.length - 1];
-        if (t) t.isError = wire.data.isError;
+        if (t) {
+          t.isError = wire.data.isError;
+          // Already clipped at the backend — persist for reload replay.
+          if (wire.data.content) t.result = wire.data.content;
+        }
       } else if (wire.type === "provider_error") providerError = wire.data;
       // Every event proves the provider is alive → reset the stall clock (the
       // watchdog suspends itself while a tool runs and re-arms when it ends).
@@ -393,6 +402,7 @@ export async function execTurn(
     // (pi resolves the turn, it does not throw) with empty text, not in the catch.
     appendAssistantMessage(id, assistantText, {
       tools,
+      thinking: thinkingText || undefined,
       usage,
       providerSwitch,
       compaction,
@@ -459,6 +469,7 @@ export async function execTurn(
     const typed = thrown.kind !== "unknown" ? thrown : undefined;
     appendAssistantMessage(id, assistantText, {
       tools,
+      thinking: thinkingText || undefined,
       usage,
       providerSwitch,
       compaction,
