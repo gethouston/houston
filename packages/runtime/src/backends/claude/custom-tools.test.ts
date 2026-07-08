@@ -96,16 +96,39 @@ test("exposes ask_user + integration tools when the integrations gate is open", 
   );
 });
 
-test("plan mode keeps only ask_user even with the integrations gate open", () => {
+test("plan mode keeps ask_user + plan_ready even with the integrations gate open", () => {
+  // Plan withholds every acting tool but keeps the blocking-question tool and
+  // adds the plan-only plan_ready presentation tool.
   const { tools, mcp } = build(INTEGRATIONS, "plan");
-  expect(tools.map((t) => t.name)).toEqual(["ask_user"]);
-  expect(mcp.allowedTools).toEqual(["mcp__houston__ask_user"]);
+  expect(new Set(tools.map((t) => t.name))).toEqual(
+    new Set(["ask_user", "plan_ready"]),
+  );
+  expect(new Set(mcp.allowedTools)).toEqual(
+    new Set(["mcp__houston__ask_user", "mcp__houston__plan_ready"]),
+  );
+});
+
+test("plan_ready is exposed ONLY in plan mode", () => {
+  // Present in plan…
+  expect(build(INTEGRATIONS, "plan").tools.map((t) => t.name)).toContain(
+    "plan_ready",
+  );
+  // …and stripped from execute and auto, even though it is in the built set.
+  expect(build(INTEGRATIONS).tools.map((t) => t.name)).not.toContain(
+    "plan_ready",
+  );
+  expect(build(INTEGRATIONS, "execute").tools.map((t) => t.name)).not.toContain(
+    "plan_ready",
+  );
+  expect(build(INTEGRATIONS, "auto").tools.map((t) => t.name)).not.toContain(
+    "plan_ready",
+  );
 });
 
 test("auto mode keeps the integration tools but drops the blocking tools", () => {
   const { tools, mcp } = build(INTEGRATIONS, "auto");
-  // Autopilot never waits on the user: ask_user + request_connection are gone,
-  // the acting integration tools stay.
+  // Autopilot never waits on the user: ask_user + request_connection are gone
+  // (and plan_ready is plan-only), the acting integration tools stay.
   expect(new Set(tools.map((t) => t.name))).toEqual(
     new Set(["integration_search", "integration_execute"]),
   );
@@ -118,8 +141,8 @@ test("auto mode keeps the integration tools but drops the blocking tools", () =>
 });
 
 test("auto mode with no integrations gate exposes NO custom tools", () => {
-  // The only always-on custom tool is ask_user, which auto drops — so with the
-  // integration gate closed the server exposes nothing.
+  // The always-on custom tools are ask_user (auto drops it) and plan_ready
+  // (plan-only) — so with the integration gate closed the server exposes nothing.
   const { tools, mcp } = build(undefined, "auto");
   expect(tools).toEqual([]);
   expect(mcp.allowedTools).toEqual([]);

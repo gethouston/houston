@@ -56,6 +56,14 @@
     "signinDescription": "Your accounts stay yours; the agent acts on your behalf.",
     "signin": "Sign in"
   },
+  "planReady": {
+    "title": "Plan ready",
+    "startWorking": "Start working",
+    "runAutopilot": "Run on Autopilot",
+    "keepPlanning": "Keep planning",
+    "startWorkingMessage": "Go ahead with the plan.",
+    "runAutopilotMessage": "Go ahead and finish it on your own."
+  },
   "errors": {
     "sessionStart": "Failed to start session: {{error}}",
     "stopSession": "Couldn't stop the mission: {{error}}",

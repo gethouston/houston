@@ -17,6 +17,22 @@ test("isPendingInteraction accepts the step-sequence shape and rejects legacy sh
     true,
   );
 
+  // A plan_ready step needs kind + id + a string summary.
+  expect(
+    isPendingInteraction({
+      steps: [{ kind: "plan_ready", id: "p1", summary: "The plan." }],
+    }),
+  ).toBe(true);
+  // A plan_ready step with a missing / non-string summary is invalid.
+  expect(
+    isPendingInteraction({ steps: [{ kind: "plan_ready", id: "p1" }] }),
+  ).toBe(false);
+  expect(
+    isPendingInteraction({
+      steps: [{ kind: "plan_ready", id: "p1", summary: 7 }],
+    }),
+  ).toBe(false);
+
   // A signin step with a non-string reason is invalid.
   expect(
     isPendingInteraction({ steps: [{ kind: "signin", id: "s1", reason: 7 }] }),

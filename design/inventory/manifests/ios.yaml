@@ -133,3 +133,6 @@ components:
   interaction-card:
     status: not-started
     notes: In-chat gather-what-I-need stepper (questions, sign-in, then connections); mid-turn pending-interaction flow not in mobile v1.
+  plan-ready-card:
+    status: not-started
+    notes: Plan-ready confirmation card (plan_ready) with Start working / Run on Autopilot / Keep planning; plan-mode flow not in mobile v1.

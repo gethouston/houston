@@ -65,3 +65,5 @@ components:
     status: not-started
   interaction-card:
     status: not-started
+  plan-ready-card:
+    status: not-started

@@ -91,6 +91,10 @@ components:
     status: implemented
     ref: "@houston-ai/chat ChatInteractionCard (interaction-card + interaction-card-logic)"
 
+  plan-ready-card:
+    status: implemented
+    ref: "@houston-ai/chat ChatPlanReadyCard (chat-plan-ready-card + chat-plan-ready-card-model)"
+
   deliverable-card:
     status: implemented
     ref: "@houston-ai/review DeliverableCard / UserFeedback"

@@ -363,7 +363,10 @@ export type InteractionStep =
       options?: InteractionOption[];
     }
   | { kind: "signin"; id: string; reason?: string }
-  | { kind: "connect"; id: string; toolkit: string; reason?: string };
+  | { kind: "connect"; id: string; toolkit: string; reason?: string }
+  /** The model finished planning: a short plan summary the user approves by
+   *  choosing a mode (start working / Autopilot) or dismisses to keep planning. */
+  | { kind: "plan_ready"; id: string; summary: string };
 
 /**
  * The ordered steps a mission is waiting on the user for — recorded when the

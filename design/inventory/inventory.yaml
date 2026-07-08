@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 8
+version: 9
 
 components:
   - id: agent-avatar
@@ -252,6 +252,24 @@ components:
       is active.
     a11y: one step announced at a time; option rows are role=radio in a radiogroup, keyboard-toggleable and visible at rest (no hover gate); free-text input always present on question steps; back chevron is a labeled button; progress uses tabular-nums to avoid width jitter.
     since: 4
+
+  - id: plan-ready-card
+    title: Plan-ready card
+    purpose: In-chat surface shown when the agent finishes planning (plan mode) and calls plan_ready; presents the drafted plan and three ways forward, replacing the composer until the user chooses.
+    anatomy: [title, plan-summary, start-working-action, run-autopilot-action, keep-planning-action]
+    states: [default, disabled]
+    variants: [default]
+    behavior: >-
+      Rendered from a pending interaction carrying a single plan_ready step
+      (summary), exactly like ask_user reaches the frontend. Shows the plan
+      summary above three always-visible actions. "Start working" starts a
+      normal (execute) turn confirming the plan; "Run on Autopilot" starts an
+      autopilot (auto) turn; both flip the composer Mode pill to match and send a
+      visible user message. "Keep planning" dismisses the card LOCALLY (the
+      composer returns, mode stays plan) without sending; a later, different plan
+      re-shows the card. Disabled gates all three actions.
+    a11y: title then plan summary read in order; three labeled buttons visible at rest (no hover gate), keyboard-reachable; disabled state marks the surface aria-disabled and gates every action.
+    since: 9
 
   - id: deliverable-card
     title: Deliverable card

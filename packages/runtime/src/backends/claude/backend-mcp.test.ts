@@ -97,16 +97,21 @@ test("AskUserQuestion stays disabled — Houston ships its own ask_user", async 
   expect(options.disallowedTools).toContain("AskUserQuestion");
 });
 
-test("plan mode builds the MCP server WITHOUT integrations — only ask_user", async () => {
+test("plan mode builds the MCP server WITHOUT integrations — ask_user + plan_ready", async () => {
   // Even with the integrations gate present, plan mode withholds the integration
-  // tools (they act on the user's connected apps), leaving just ask_user.
+  // tools (they act on the user's connected apps), leaving ask_user plus the
+  // plan-only plan_ready presentation tool.
   const options = await runTurn(
     { baseUrl: "http://host.local", sandboxToken: "tok" },
     "plan",
   );
   expect(options.mcpServers?.houston).toBeDefined();
-  expect(options.allowedTools).toEqual(["mcp__houston__ask_user"]);
-  expect(h.capturedMcp?.tools.map((t) => t.name)).toEqual(["ask_user"]);
+  expect(new Set(options.allowedTools)).toEqual(
+    new Set(["mcp__houston__ask_user", "mcp__houston__plan_ready"]),
+  );
+  expect(new Set(h.capturedMcp?.tools.map((t) => t.name))).toEqual(
+    new Set(["ask_user", "plan_ready"]),
+  );
   // And the built-ins are the read-only plan subset.
   expect(options.tools).toEqual(["Read", "Glob", "Grep"]);
 });

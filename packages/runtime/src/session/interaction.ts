@@ -37,6 +37,7 @@ import type {
 type QuestionStep = Extract<InteractionStep, { kind: "question" }>;
 type SigninStep = Extract<InteractionStep, { kind: "signin" }>;
 type ConnectStep = Extract<InteractionStep, { kind: "connect" }>;
+type PlanReadyStep = Extract<InteractionStep, { kind: "plan_ready" }>;
 
 export interface InteractionHolder {
   /** Question steps from the last `ask_user` call this turn (replace semantics). */
@@ -45,6 +46,9 @@ export interface InteractionHolder {
   readonly signin: SigninStep | undefined;
   /** Connect steps appended by `request_connection`, deduped by toolkit. */
   readonly connects: ConnectStep[];
+  /** The single plan-ready step, once the model called `plan_ready` (plan mode
+   *  only). When set it OWNS the interaction exclusively — see {@link pending}. */
+  readonly planReady: PlanReadyStep | undefined;
   /** The recorded sequence — question steps, then the signin step, then connect
    *  steps — or undefined when the model asked for nothing this turn. Derived:
    *  read after prompt(). */
@@ -55,8 +59,14 @@ class Holder implements InteractionHolder {
   readonly questions: QuestionStep[] = [];
   signin: SigninStep | undefined;
   readonly connects: ConnectStep[] = [];
+  planReady: PlanReadyStep | undefined;
 
   get pending(): PendingInteraction | undefined {
+    // A plan-ready step is exclusive: the plan-mode overlay tells the model to
+    // call `plan_ready` ALONE (and the tool subset withholds the ways to act),
+    // so if it somehow also queued questions/signin/connects this turn, the plan
+    // card still wins. Defensive normalization — one card, one meaning.
+    if (this.planReady) return { steps: [this.planReady] };
     const steps = [
       ...this.questions,
       ...(this.signin ? [this.signin] : []),
@@ -131,4 +141,20 @@ export function recordConnection(input: {
     toolkit: input.toolkit,
     ...(input.reason ? { reason: input.reason } : {}),
   });
+}
+
+/**
+ * Record the single plan-ready step for this turn (the model called `plan_ready`
+ * in Plan mode to present its finished plan). There is at most one such step
+ * (id `p1`); it OWNS the interaction exclusively (see {@link InteractionHolder.pending}).
+ * The summary is trimmed. A no-op outside a turn.
+ */
+export function recordPlanReady(input: { summary: string }): void {
+  const holder = store.getStore();
+  if (!holder) return;
+  (holder as Holder).planReady = {
+    kind: "plan_ready",
+    id: "p1",
+    summary: input.summary.trim(),
+  };
 }
