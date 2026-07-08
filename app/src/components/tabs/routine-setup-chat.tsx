@@ -200,6 +200,10 @@ export function RoutineSetupChat({
           // in the editor there is no X either — the routine and its chat
           // are one surface.
           disableOutsideClose
+          // The form's own fields autofocus; the chat grabbing focus when its
+          // selection hydrates (often seconds later) would steal keystrokes
+          // mid-typing from the Name/Prompt inputs.
+          disableComposerAutoFocus
           hidePanelClose={!dismissable}
           feedItems={feedItems}
           isLoading={send.effectiveLoading}

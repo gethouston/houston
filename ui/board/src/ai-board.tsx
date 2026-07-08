@@ -175,6 +175,15 @@ export interface AIBoardProps {
    */
   disableOutsideClose?: boolean;
   /**
+   * Skip the automatic composer focus when a selection hydrates. The board
+   * bumps the composer focus token so keyboard users can type immediately —
+   * but when the panel is a side companion of a form (the routine editor's
+   * chat), that late bump steals focus MID-TYPING from the form's inputs
+   * (the user's keystrokes suddenly land in the chat composer). Explicit
+   * focus requests (openNewPanel with focusComposer) still work.
+   */
+  disableComposerAutoFocus?: boolean;
+  /**
    * Hide the detail panel's close button. For a panel that is a permanent
    * part of its host view (the routine editor's chat), there is nothing for
    * an X to mean — combine with `disableOutsideClose`.
@@ -289,6 +298,7 @@ export function AIBoard({
   panelActions,
   panelContainer,
   disableOutsideClose,
+  disableComposerAutoFocus,
   hidePanelClose,
   drafts,
   onDraftChange,
@@ -410,8 +420,10 @@ export function AIBoard({
     } else {
       setNewPanelOpen(false);
     }
-    setComposerFocusToken((prev) => (prev ?? 0) + 1);
-  }, [selectedId, hydrateSession]);
+    if (!disableComposerAutoFocus) {
+      setComposerFocusToken((prev) => (prev ?? 0) + 1);
+    }
+  }, [selectedId, hydrateSession, disableComposerAutoFocus]);
 
   const selectedItem = items.find((i) => i.id === selectedId) ?? null;
 

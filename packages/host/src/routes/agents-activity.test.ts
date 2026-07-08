@@ -154,7 +154,6 @@ async function seedRun(run: RoutineRun): Promise<void> {
 const routine: Routine = {
   id: "routine-1",
   name: "Daily report",
-  description: "",
   prompt: "write the report",
   schedule: "0 9 * * *",
   enabled: true,
