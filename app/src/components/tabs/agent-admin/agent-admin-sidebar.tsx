@@ -12,9 +12,11 @@ import { useTranslation } from "react-i18next";
 import { useLearnings, useSkills } from "../../../hooks/queries";
 import { useAgentSettings } from "../../../hooks/queries/use-agent-settings";
 import { useCapabilities } from "../../../hooks/use-capabilities";
+import { useHubCatalog } from "../../../lib/ai-hub/use-hub-catalog";
 import type { Agent } from "../../../lib/types";
 import { type AgentAdminScreen, agentAdminCards } from "./agent-admin-nav.ts";
 import { ceilingValue } from "./agent-admin-row-values.ts";
+import { allowedModelCount } from "./model-allowlist.ts";
 
 const ICONS: Record<AgentAdminScreen, LucideIcon> = {
   instructions: FileText,
@@ -65,6 +67,7 @@ export function AgentAdminSidebar({
   const { data: skills } = useSkills(path);
   const { data: learnings } = useLearnings(path);
   const { data: settings } = useAgentSettings(agent.id, teams);
+  const { catalog } = useHubCatalog();
   // Flatten the gated card model into one flat, in-order row list — the cards
   // still gate which rows show (single-player drops the access rows); the rail
   // renders them as a single sequence with no group separation.
@@ -87,9 +90,13 @@ export function AgentAdminSidebar({
     if (s === "model") {
       const v = ceilingValue(settings?.allowedModels);
       if (!v) return undefined;
-      return v.kind === "all"
-        ? t("agentAdmin.values.allModels")
-        : t("agentAdmin.values.modelCount", { count: v.count });
+      if (v.kind === "all") return t("agentAdmin.values.allModels");
+      // Count MODELS, not raw ids: one model spans several provider offer ids.
+      // While the catalog is still loading, fall back to the raw id count.
+      const count = catalog
+        ? allowedModelCount(settings?.allowedModels ?? [], catalog.models)
+        : v.count;
+      return t("agentAdmin.values.modelCount", { count });
     }
     if (s === "integrations") {
       const v = ceilingValue(settings?.allowedToolkits);

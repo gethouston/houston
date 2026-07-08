@@ -31,9 +31,14 @@
       "pickedDesc": "People with access can only use the models you allow below.",
       "allowModel": "Allow {{name}}",
       "searchModels": "Search models",
+      "labFilter": "Filter by lab",
+      "allLabs": "All labs",
+      "searchLabs": "Search labs",
+      "noLabs": "No labs found",
       "noModels": "No models found",
       "allowedHeading": "Allowed models",
       "allowedEmpty": "No models picked yet. Add models below.",
+      "allowedEmptyLab": "No models picked from this lab yet.",
       "addHeading": "Add models"
     },
     "integrations": {
@@ -50,6 +55,7 @@
       "allowApp": "Allow {{name}}",
       "allowedHeading": "Allowed apps",
       "allowedEmpty": "No apps picked yet. Add apps below.",
+      "allowedEmptyCategory": "No allowed apps in this category yet.",
       "addHeading": "Add apps"
     },
     "notAllowed": {

@@ -34,7 +34,10 @@ export function AgentAdminIntegrations({ agent }: AgentAdminScreenProps) {
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-6">
       {settings ? (
+        // Keyed by agent so the editor's view-only category filter never leaks
+        // across agents — Agent Settings stays mounted on agent switch.
         <AgentAllowlistSection
+          key={agent.id}
           allowedToolkits={settings.allowedToolkits}
           orgAllowedToolkits={settings.orgAllowedToolkits}
           catalog={catalog.data ?? []}

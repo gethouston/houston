@@ -153,18 +153,28 @@ The model surface mirrors the integration allowlist: the manager sets a **ceilin
 (which models the agent may run on), and each member picks their own model **within**
 it. (The E5 org-templates feature that used to live here was removed in E8.)
 
-- **Ceiling** — `agent_settings.allowedModels: string[] | null` (`null` = all models
-  allowed; a set = restricted; treat `[]` defensively). Edited manager-only in Agent
-  Settings > **Access** > **Allowed models** (`agent-admin-model.tsx` → `AgentModelsSection`
-  over a deduped `modelCatalog()`), written via `setAgentSettings({allowedModels})`
-  (`useSetAgentAllowedModels`). The editing surface (`AgentModelsSection`) is an
-  always-visible two-option choice (`AccessChoice`: "Any model" saves `null`, "Only
-  models you pick" saves an explicit set) over a searchable card list with a per-model
-  allow toggle, mirroring the allowed-integrations app grid. Copy under
-  `teams:agentAdmin.models.*`. The **AI-model row lives in the Access group**, which is
-  multiplayer-only, so single-player never shows it: the sole user has no ceiling and
-  picks a model in the composer (the old single-player Agent-Settings model pin +
-  `useSaveAgentModel` were removed).
+- **Ceiling** — `agent_settings.allowedModels: string[] | null` of provider-native
+  model ids (`null` = all models allowed; a set = restricted; treat `[]` defensively).
+  Edited manager-only in Agent Settings > **Access** > **Allowed models**
+  (`agent-admin-model.tsx` → `AgentModelsSection`), written via
+  `setAgentSettings({allowedModels})` (`useSetAgentAllowedModels`). The editor reuses the
+  **AI-hub model catalog** (`useHubCatalog()`, so it and the AI Models hub never drift)
+  and its visual language: one row per `CatalogModel` (`BrandMark` + friendly name +
+  muted lab name + allow `Switch`), an always-visible two-option choice (`AccessChoice`:
+  "Any model" saves `null`, "Only models you pick" saves an explicit set), an
+  Allowed / Add split, and a search box backed by `searchModels()`. A `CatalogModel` is
+  deduped across providers, so one visible row maps to SEVERAL offer ids: the pure,
+  unit-tested `model-allowlist.ts` (`modelChecked` / `toggleModel` / `allowedModelCount`)
+  keeps the id set in sync — a model is checked when ANY of its offer ids is present, and
+  toggling adds/removes **all** of that model's provider offer ids at once (unknown/stale
+  ids and other models' ids are left untouched; writes stay de-duplicated and sorted).
+  The wire format is unchanged. Copy under `teams:agentAdmin.models.*`. The **AI-model row
+  lives in the Access group**, which is multiplayer-only, so single-player never shows it:
+  the sole user has no ceiling and picks a model in the composer (the old single-player
+  Agent-Settings model pin + `useSaveAgentModel` were removed). The sidebar ceiling text
+  and the `{{count}} models only` copy count **models** (`allowedModelCount` over the hub
+  catalog, plus any unknown ids), not raw ids — falling back to the raw id count only
+  while the catalog is still loading.
 - **Per-user choice** — each acting user's own `{provider, model, effort?}` for one
   shared agent (`gateway.agent_model_choices`), read/written by the composer pickers in
   multiplayer (see "Manager-only configure surfaces" above), never the shared config.
