@@ -220,14 +220,16 @@ adapter, see `knowledge-base/architecture.md`).
 | Provider id | CLI | Default model | Premium model | Login flow |
 |---|---|---|---|---|
 | `anthropic` (alias `claude`) | `claude` (runtime download) | `claude-sonnet-4-6` | `claude-opus-4-8` | OAuth via `claude auth login --claudeai` |
-| `openai` (alias `codex`) | `codex` (bundled) | `gpt-5.5` | `gpt-5.5` (frontier; no separate tier) | OAuth via `codex login` |
+| `openai` (alias `codex`) | `codex` (bundled) | `gpt-5.5` | `gpt-5.6-sol` (flagship) | OAuth via `codex login` |
 | `gemini` (alias `google`) | `gemini` (bundled, macOS only) | `gemini-2.5-flash` | `gemini-2.5-pro` | API key, no CLI login (see `knowledge-base/auth.md`) |
 
 Notes:
-- OpenAI ships four models in the picker: `gpt-5.5` (default, frontier),
-  `gpt-5.4` (everyday coding), `gpt-5.4-mini` (small/fast/cheap), and
-  `gpt-5.3-codex-spark` (ultra-fast). gpt-5.5 is both default and frontier, so
-  the "Premium model" column repeats it. The full catalog (labels, per-model
+- OpenAI ships seven models in the picker: the GPT-5.6 family
+  `gpt-5.6-sol` (flagship), `gpt-5.6-terra` (balanced), `gpt-5.6-luna`
+  (fast/cheap), plus `gpt-5.5` (default), `gpt-5.4` (everyday coding),
+  `gpt-5.4-mini` (small/fast/cheap), and `gpt-5.3-codex-spark` (ultra-fast).
+  The default stays `gpt-5.5` until 5.6 availability is verified post-GA
+  (2026-07-09). The full catalog (labels, per-model
   context windows, effort levels) lives in `app/src/lib/providers.ts`; codex
   itself enumerates them in `~/.codex/models_cache.json`. The model string is
   passed verbatim to `codex --model`, so the engine never validates against a
@@ -298,6 +300,9 @@ shows only the levels the active model accepts.
 | `anthropic` | `claude-opus-4-7` (Opus 4.7) | low, medium, high, xhigh, max | `--effort <v>` |
 | `anthropic` | `claude-sonnet-5` (Sonnet 5) | low, medium, high, xhigh, max | `--effort <v>` |
 | `anthropic` | `claude-sonnet-4-6` (Sonnet 4.6) | low, medium, high, max (no `xhigh`) | `--effort <v>` |
+| `openai` | `gpt-5.6-sol` (Sol) | low, medium, high, xhigh, max | `-c model_reasoning_effort="<v>"` |
+| `openai` | `gpt-5.6-terra` (Terra) | low, medium, high, xhigh (`max` unconfirmed off-Sol) | `-c model_reasoning_effort="<v>"` |
+| `openai` | `gpt-5.6-luna` (Luna) | low, medium, high, xhigh (`max` unconfirmed off-Sol) | `-c model_reasoning_effort="<v>"` |
 | `openai` | `gpt-5.5` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
 | `openai` | `gpt-5.4` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
 | `openai` | `gpt-5.4-mini` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
@@ -305,8 +310,12 @@ shows only the levels the active model accepts.
 | `gemini` | any | none | (no flag) |
 
 Claude self-clamps an unsupported `--effort` down to its highest supported
-level; codex has no such fallback, so `max` (an unknown variant to codex) is
-never offered for OpenAI. Default for every effort-capable provider is `medium`.
+level; codex has no CLI-side fallback and the SERVER 400-rejects an effort a
+model doesn't support (verified: `max` on gpt-5.5). `max` entered codex's
+config enum in 0.143 alongside GPT-5.6, so it is offered only on `gpt-5.6-sol`
+(the one model OpenAI confirms it for). GPT-5.6 "ultra" is a subagent mode,
+not an effort level, and is never offered. Default for every effort-capable
+provider is `medium`.
 
 ## Workspace
 - Storage: `~/.houston/workspaces/workspaces.json` (index) + one dir per workspace `~/.houston/workspaces/{Name}/`. `HOUSTON_DOCS` env var overrides the root.
