@@ -2,8 +2,10 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { FeedItem, ProviderError } from "@houston-ai/chat";
 import {
+  continuesTaskAfterReconnect,
   isInlineAuthCardForChat,
   providerErrorRetryText,
+  reconnectContinueText,
   resendsOriginalPrompt,
   resolveProviderErrorForChat,
 } from "../src/components/shell/provider-error-cards/not-connected.ts";
@@ -63,6 +65,70 @@ describe("resendsOriginalPrompt", () => {
         message: "slow down",
       }),
       false,
+    );
+  });
+});
+
+describe("continuesTaskAfterReconnect", () => {
+  it("marks the mid-turn auth failure: reconnect resumes the task (HOU-718)", () => {
+    strictEqual(
+      continuesTaskAfterReconnect({
+        kind: "unauthenticated",
+        provider: "anthropic",
+        cause: "token_expired",
+        message: "session expired",
+      }),
+      true,
+    );
+  });
+
+  it("never marks the refused send (it resends its prompt) or other kinds", () => {
+    strictEqual(continuesTaskAfterReconnect(notConnectedCard), false);
+    strictEqual(
+      continuesTaskAfterReconnect({
+        kind: "rate_limited",
+        provider: "anthropic",
+        model: null,
+        retry_after_seconds: null,
+        message: "slow down",
+      }),
+      false,
+    );
+  });
+});
+
+describe("reconnectContinueText", () => {
+  it("re-delivers the undelivered prompt when the model never received it", () => {
+    // pi's prompt-time credential guard raised before recording the message
+    // in its session store — a bare "continue" would meet a model that never
+    // saw the message ("I don't see a previous task").
+    strictEqual(
+      reconnectContinueText(
+        {
+          kind: "unauthenticated",
+          provider: "openai",
+          cause: "no_credentials",
+          message: "No API key found for openai-codex.",
+          undelivered_prompt: "is this working",
+        },
+        "Please continue.",
+      ),
+      "is this working",
+    );
+  });
+
+  it("keeps the generic nudge for a streamed mid-turn failure (context intact)", () => {
+    strictEqual(
+      reconnectContinueText(
+        {
+          kind: "unauthenticated",
+          provider: "anthropic",
+          cause: "token_expired",
+          message: "session expired",
+        },
+        "Please continue.",
+      ),
+      "Please continue.",
     );
   });
 });

@@ -28,6 +28,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { useStuckOnScroll } from "../../hooks/use-stuck-on-scroll.ts";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
 import { filterModels, searchModels } from "../../lib/ai-hub/search.ts";
 import {
@@ -42,7 +43,6 @@ import {
   type ProviderValue,
 } from "./model-directory-filters.tsx";
 import { LedgerHeader, ModelsLedger } from "./models-ledger.tsx";
-import { useStuckOnScroll } from "./use-stuck-on-scroll.ts";
 
 export function ModelsBrowser({
   models,

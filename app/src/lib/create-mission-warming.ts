@@ -94,7 +94,9 @@ export function createMissionWhileWarming(
       } catch {
         showErrorToast(
           "create_mission_warming",
-          i18n.t("chat:errors.missionRowFailed"),
+          "mission row create/update failed",
+          undefined,
+          { userMessage: i18n.t("chat:errors.missionRowFailed") },
         );
       }
       const prompt = opts.buildPrompt

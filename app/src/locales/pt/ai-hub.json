@@ -15,6 +15,7 @@
   },
   "card": {
     "connect": "Conectar",
+    "connectName": "Conectar {{name}}",
     "connecting": "Conectando",
     "details": "Ver detalhes de {{name}}",
     "connected": "Conectado",

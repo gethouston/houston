@@ -352,19 +352,16 @@ function showOpenaiCompatible(opts: ProviderVisibilityOpts): boolean {
  * Providers to show in connect UIs. `/v1/catalog` is the SINGLE visibility
  * source: `PROVIDERS` is hydrated from it, so it already IS this deployment's
  * runnable set (the full pi-ai catalog, ~35, on every deployment) — no
- * `capabilities.providers` re-gate is applied here (that
- * narrower list under-showed the picker). Only two exclusions remain: the local
- * OpenAI-compatible (BYO model) provider is gated by the host's `openaiCompatible`
- * capability (see `showOpenaiCompatible`), and any provider still on the
- * `COMING_SOON` list is held back. Pass `newEngineActive()` and `osIsTauri()`
- * from the caller (they steer the local-provider gate).
+ * `capabilities.providers` re-gate is applied here (that narrower list
+ * under-showed the picker). The one exclusion: the local OpenAI-compatible (BYO
+ * model) provider is gated by the host's `openaiCompatible` capability (see
+ * `showOpenaiCompatible`). Pass `newEngineActive()` and `osIsTauri()` from the
+ * caller (they steer the local-provider gate).
  */
 export function getVisibleProviders(
   opts: ProviderVisibilityOpts,
 ): readonly ProviderInfo[] {
-  const comingSoon = new Set(COMING_SOON_PROVIDERS.map((p) => p.id));
   return PROVIDERS.filter((p) => {
-    if (comingSoon.has(p.id)) return false;
     if (p.auth === "openaiCompatible") return showOpenaiCompatible(opts);
     return true;
   });
@@ -480,10 +477,9 @@ export function getContextWindowConfig(
  * Return `providerId` only when it names a currently-active provider in
  * `PROVIDERS`. Used by the chat model selector and the per-chat
  * effective-provider fallback chain to skip stored values that point at
- * providers Houston has moved to `COMING_SOON_PROVIDERS` or dropped
- * entirely (e.g. an activity record from a previous Houston version that
- * selected a provider that is no longer available). Callers chain it
- * with `??` to fall through to the next tier of preference.
+ * providers Houston has dropped (e.g. an activity record from a previous
+ * Houston version that selected a provider that is no longer available).
+ * Callers chain it with `??` to fall through to the next tier of preference.
  */
 export function validProviderOrNull(
   providerId: string | null | undefined,
@@ -613,14 +609,3 @@ export function validEffortOrDefault(
     return normalized as EffortLevel;
   return levels.includes(DEFAULT_EFFORT) ? DEFAULT_EFFORT : levels[0];
 }
-
-export interface ComingSoonProviderInfo {
-  readonly id: string;
-  readonly name: string;
-  readonly subtitle: string;
-  readonly mark: string;
-}
-
-export const COMING_SOON_PROVIDERS: readonly ComingSoonProviderInfo[] = [
-  { id: "subq", name: "SubQ", subtitle: "SubQ Code", mark: "SQ" },
-] as const;

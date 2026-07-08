@@ -56,6 +56,9 @@
   "toolRuntimeError": {
     "retryPrompt": "Try again."
   },
+  "providerError": {
+    "reconnectedContinue": "I'm signed in again. Please continue where you left off. If my last message hasn't been answered yet, answer it now."
+  },
   "attachmentIssues": {
     "title": "Some files were not attached",
     "description": "Houston kept your prompt and the files it can use.",
@@ -89,9 +92,11 @@
     "mode": "Mode",
     "modeValue": "Mode: {{mode}}",
     "doer": "Doer",
-    "doerDescription": "Gets things done: reads, acts, and makes changes.",
+    "doerDescription": "Gets things done and asks you when unsure.",
     "planner": "Planner",
-    "plannerDescription": "Writes a plan for you to approve first. Makes no changes."
+    "plannerDescription": "Writes a plan for you to approve first. Makes no changes.",
+    "autopilot": "Autopilot",
+    "autopilotDescription": "Finishes the task on its own with what it has. No questions asked."
   },
   "modelSelector": {
     "selectModel": "Select model",

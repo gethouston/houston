@@ -10,6 +10,7 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSaveDownload } from "../../hooks/use-save-download";
+import { genericErrorDescription } from "../../lib/error-toast";
 import { tauriFiles } from "../../lib/tauri";
 
 /**
@@ -76,7 +77,7 @@ export function FilePreviewDialog({
         if (!cancelled)
           setLoaded({
             state: "error",
-            message: err instanceof Error ? err.message : String(err),
+            message: genericErrorDescription("preview_file", err),
           });
       });
     return () => {

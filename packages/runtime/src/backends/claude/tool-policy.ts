@@ -64,8 +64,12 @@ export interface ToolPolicyInput {
   localBash: boolean;
   /**
    * The turn's execution mode. "plan" clamps the SDK built-ins to the read-only
-   * subset (Read/Glob/Grep) and denies Edit/Write/Bash; absent or "execute" is
-   * the full policy gated only by `localBash`.
+   * subset (Read/Glob/Grep) and denies Edit/Write/Bash. "auto" (Autopilot) keeps
+   * the SAME built-in policy as execute (file tools + Bash per `localBash`) — the
+   * Claude-native built-ins have no blocking `ask_user`, so auto's "never wait on
+   * the user" rule is enforced only on the MCP side (custom-tools drops ask_user
+   * and request_connection); nothing to clamp here. Absent or "execute" is the
+   * full policy gated only by `localBash`.
    */
   mode?: TurnMode;
 }

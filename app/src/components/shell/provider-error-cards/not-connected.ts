@@ -40,6 +40,38 @@ export function resendsOriginalPrompt(err: ProviderError): boolean {
 }
 
 /**
+ * Whether this card's retry resumes an INTERRUPTED turn (HOU-718) — a
+ * mid-turn auth failure, where the user's message is already persisted in
+ * the transcript. Such a retry fires automatically once sign-in completes
+ * and sends a hidden auto-continue message (see
+ * `lib/auto-continue-message.ts`) so the agent picks the task back up
+ * without the user retyping — and without a second visible bubble. The
+ * refused-send card resends its original prompt instead
+ * (`resendsOriginalPrompt`).
+ */
+export function continuesTaskAfterReconnect(err: ProviderError): boolean {
+  return err.kind === "unauthenticated" && !err.failed_prompt;
+}
+
+/**
+ * What the hidden auto-continue retry re-delivers: the turn's undelivered
+ * user text when the model never received it (pi's prompt-time credential
+ * guard raises BEFORE recording the message in its session store, so no
+ * session context or rebuild ever sees it — a bare "continue" would earn an
+ * honest "I don't see a previous task"), else the caller's generic continue
+ * nudge (a streamed mid-turn failure: the model saw the message, its context
+ * is intact).
+ */
+export function reconnectContinueText(
+  err: ProviderError,
+  genericContinuePrompt: string,
+): string {
+  return err.kind === "unauthenticated" && err.undelivered_prompt
+    ? err.undelivered_prompt
+    : genericContinuePrompt;
+}
+
+/**
  * What the card's retry should send: the refused original prompt when the
  * message never reached the engine, else the caller's generic retry prompt
  * (the turn's context is already server-side for live-turn failures).

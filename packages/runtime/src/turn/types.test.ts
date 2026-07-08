@@ -17,9 +17,14 @@ test("parseTurnRequest accepts an explicit plan mode", () => {
   expect(parseTurnRequest({ ...BASE, mode: "plan" }).mode).toBe("plan");
 });
 
-test("parseTurnRequest never trusts the wire — anything but 'plan' is execute", () => {
+test("parseTurnRequest accepts an explicit auto mode", () => {
+  expect(parseTurnRequest({ ...BASE, mode: "auto" }).mode).toBe("auto");
+});
+
+test("parseTurnRequest never trusts the wire — an unknown mode is execute", () => {
   expect(parseTurnRequest({ ...BASE, mode: "execute" }).mode).toBe("execute");
   expect(parseTurnRequest({ ...BASE, mode: "PLAN" }).mode).toBe("execute");
+  expect(parseTurnRequest({ ...BASE, mode: "AUTO" }).mode).toBe("execute");
   expect(parseTurnRequest({ ...BASE, mode: "" }).mode).toBe("execute");
   expect(parseTurnRequest({ ...BASE, mode: 1 }).mode).toBe("execute");
 });

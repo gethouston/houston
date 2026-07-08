@@ -26,7 +26,10 @@ const INTEGRATIONS = { baseUrl: "http://host.local", sandboxToken: "tok" };
  * tool defs, so tests can inspect names/descriptions/schemas/handlers without the
  * real SDK (and without spawning any subprocess).
  */
-function build(integrations?: { baseUrl: string; sandboxToken: string }): {
+function build(
+  integrations?: { baseUrl: string; sandboxToken: string },
+  mode?: "execute" | "plan" | "auto",
+): {
   mcp: HoustonMcp;
   tools: SdkMcpToolDefinition[];
   serverName: string;
@@ -45,6 +48,7 @@ function build(integrations?: { baseUrl: string; sandboxToken: string }): {
   const mcp = buildHoustonMcpServer({
     createSdkMcpServer: fakeCreate,
     integrations,
+    mode,
   });
   return { mcp, tools: capturedTools, serverName: capturedName };
 }
@@ -90,6 +94,35 @@ test("exposes ask_user + integration tools when the integrations gate is open", 
       "mcp__houston__request_connection",
     ]),
   );
+});
+
+test("plan mode keeps only ask_user even with the integrations gate open", () => {
+  const { tools, mcp } = build(INTEGRATIONS, "plan");
+  expect(tools.map((t) => t.name)).toEqual(["ask_user"]);
+  expect(mcp.allowedTools).toEqual(["mcp__houston__ask_user"]);
+});
+
+test("auto mode keeps the integration tools but drops the blocking tools", () => {
+  const { tools, mcp } = build(INTEGRATIONS, "auto");
+  // Autopilot never waits on the user: ask_user + request_connection are gone,
+  // the acting integration tools stay.
+  expect(new Set(tools.map((t) => t.name))).toEqual(
+    new Set(["integration_search", "integration_execute"]),
+  );
+  expect(new Set(mcp.allowedTools)).toEqual(
+    new Set([
+      "mcp__houston__integration_search",
+      "mcp__houston__integration_execute",
+    ]),
+  );
+});
+
+test("auto mode with no integrations gate exposes NO custom tools", () => {
+  // The only always-on custom tool is ask_user, which auto drops — so with the
+  // integration gate closed the server exposes nothing.
+  const { tools, mcp } = build(undefined, "auto");
+  expect(tools).toEqual([]);
+  expect(mcp.allowedTools).toEqual([]);
 });
 
 test("the allowlist always matches the exposed tool set", () => {

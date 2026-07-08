@@ -7,8 +7,9 @@ import {
 
 // The card once labeled two opposite actions "Try again". These assert the
 // state -> title/body/button mapping so each phase names its real action:
-// idle/failed -> Reconnect, waiting -> Cancel, done -> Send my message (or a
-// disabled "Signed in" badge when the refused send auto-resent).
+// idle/failed -> Reconnect, waiting -> Cancel, done -> a disabled "Signed in"
+// badge (the resume auto-fired: the refused send's prompt, or the hidden
+// auto-continue nudge for a mid-turn failure — HOU-718).
 
 const CAUSE = "providerError.unauthenticated.bodyTokenExpired";
 
@@ -125,7 +126,7 @@ describe("resolveAuthCardPresentation", () => {
     );
   });
 
-  it("done + mid-turn failure: an explicit send-my-message button", () => {
+  it("done + mid-turn failure: Signed-in badge, resuming body (HOU-718)", () => {
     deepStrictEqual(
       resolveAuthCardPresentation({
         phase: "done",
@@ -136,11 +137,10 @@ describe("resolveAuthCardPresentation", () => {
       {
         variant: "done",
         titleKey: "providerError.unauthenticated.reconnectedTitle",
-        bodyKey: "providerError.unauthenticated.reconnectedBody",
+        bodyKey: "providerError.unauthenticated.reconnectedResuming",
         button: {
-          kind: "action",
-          labelKey: "providerError.unauthenticated.sendAgain",
-          action: "sendAgain",
+          kind: "badge",
+          labelKey: "providerError.unauthenticated.signedIn",
         },
       },
     );

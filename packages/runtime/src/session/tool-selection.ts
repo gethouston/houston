@@ -1,6 +1,10 @@
+import type { TurnMode } from "@houston/protocol";
 import { ASK_USER_TOOL_NAME } from "./tools/ask-user";
 import { CLAMPED_FILE_TOOL_NAMES } from "./tools/clamped-fs";
-import { INTEGRATION_TOOL_NAMES } from "./tools/integrations";
+import {
+  INTEGRATION_TOOL_NAMES,
+  REQUEST_CONNECTION_TOOL_NAME,
+} from "./tools/integrations";
 
 export type CodeExecutionMode = "local" | "remote" | "disabled";
 
@@ -44,6 +48,49 @@ export const PLAN_MODE_TOOL_NAMES: readonly string[] = [
  */
 export function planToolNames(all: readonly string[]): string[] {
   return all.filter((name) => PLAN_MODE_TOOL_NAMES.includes(name));
+}
+
+/**
+ * The two blocking/interactive tools Autopilot ("auto") mode drops: `ask_user`
+ * (holds the turn open on a question) and `request_connection` (holds it open on
+ * a connect card). Auto never waits on the user, so both are removed. EVERYTHING
+ * else an execute turn had — the clamped-fs read AND write tools, `bash` /
+ * `run_code`, and the acting integration tools (`integration_search`,
+ * `integration_execute`) — stays: auto acts, it just never blocks.
+ */
+export const AUTO_MODE_EXCLUDED_TOOL_NAMES: readonly string[] = [
+  ASK_USER_TOOL_NAME,
+  REQUEST_CONNECTION_TOOL_NAME,
+];
+
+/**
+ * Clamp an execute-mode tool allowlist to the Autopilot subset: drop exactly the
+ * blocking tools in {@link AUTO_MODE_EXCLUDED_TOOL_NAMES}, keep everything else
+ * in its original order. The inverse of plan (which keeps only read-only tools) —
+ * auto keeps every acting tool and only removes the ways to wait on the user.
+ */
+export function autoToolNames(all: readonly string[]): string[] {
+  return all.filter((name) => !AUTO_MODE_EXCLUDED_TOOL_NAMES.includes(name));
+}
+
+/**
+ * The one place a turn's mode picks its tool allowlist: "plan" clamps to the
+ * read-only subset, "auto" drops the blocking tools, and "execute" (or an absent
+ * mode) passes the full allowlist through unchanged. Both backends dispatch
+ * through here so the pi and Claude paths never drift on what a mode allows.
+ */
+export function toolNamesForMode(
+  mode: TurnMode | undefined,
+  all: readonly string[],
+): string[] {
+  switch (mode) {
+    case "plan":
+      return planToolNames(all);
+    case "auto":
+      return autoToolNames(all);
+    default:
+      return [...all];
+  }
 }
 
 export function buildToolSelection(input: ToolSelectionInput): ToolSelection {

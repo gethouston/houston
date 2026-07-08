@@ -121,14 +121,30 @@ export interface Settings {
 
 /**
  * Per-turn agent execution mode. "execute" = full read/write/act (the default
- * and today's only behavior for unpinned turns — routines and cloud turns never
- * inherit plan); "plan" = read-only tools plus a planning overlay, producing a
- * plan for the user to approve. Deliberately NOT part of `Settings`: mode rides
- * the per-turn pin only, so an unpinned turn is always "execute".
+ * for unpinned turns — routines and cloud turns never inherit a pinned mode);
+ * "plan" = read-only tools plus a planning overlay, producing a plan for the
+ * user to approve; "auto" (Autopilot) = acts with everything EXCEPT the two
+ * blocking/interactive tools (`ask_user`, `request_connection`) — it never waits
+ * on the user, makes its own sensible choices, and reports back at the end.
+ * Deliberately NOT part of `Settings`: mode rides the per-turn pin only, so an
+ * unpinned turn is always "execute".
  */
-export type TurnMode = "execute" | "plan";
-export const TURN_MODES: readonly TurnMode[] = ["execute", "plan"];
+export type TurnMode = "execute" | "plan" | "auto";
+export const TURN_MODES: readonly TurnMode[] = ["execute", "plan", "auto"];
 export const DEFAULT_TURN_MODE: TurnMode = "execute";
+
+/**
+ * Normalize an untrusted wire value into a `TurnMode`. Only the exact known
+ * literals ("execute", "plan", "auto") pass; anything else — absent, garbage,
+ * wrong case — falls back to the default ("execute"). The single place both the
+ * long-lived route and the cloud turn parser trust the wire, so the "never a
+ * surprise mode" rule lives in one spot.
+ */
+export function normalizeTurnMode(value: unknown): TurnMode {
+  return TURN_MODES.includes(value as TurnMode)
+    ? (value as TurnMode)
+    : DEFAULT_TURN_MODE;
+}
 
 export type ChatRole = "user" | "assistant";
 

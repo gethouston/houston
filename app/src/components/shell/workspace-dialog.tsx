@@ -5,6 +5,7 @@ import {
   DialogTitle,
 } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
+import { genericErrorDescription } from "../../lib/error-toast";
 import { tauriProvider } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
@@ -74,7 +75,7 @@ export function CreateWorkspaceDialog({
               // keep the dialog open so the user can pick another name.
               addToast({
                 title: t("shell:workspaceDialog.createFailed"),
-                description: String(err),
+                description: genericErrorDescription("create_workspace", err),
                 variant: "error",
               });
             }

@@ -67,6 +67,7 @@ import {
 import { createMission } from "../lib/create-mission";
 import { resolveDictationLangHint } from "../lib/dictation/types";
 import { useDictation } from "../lib/dictation/use-dictation";
+import { genericErrorDescription } from "../lib/error-toast";
 import { skillDisplayTitle } from "../lib/humanize-skill-name";
 import { composeInteractionReply } from "../lib/interaction-reply";
 import {
@@ -124,8 +125,10 @@ import { SelectedSkillChip } from "./selected-skill-chip";
 import { AgentProvisioningCard } from "./shell/agent-provisioning-card";
 import { ProviderErrorCard } from "./shell/provider-error-card";
 import {
+  continuesTaskAfterReconnect,
   isInlineAuthCardForChat,
   providerErrorRetryText,
+  reconnectContinueText,
   resendsOriginalPrompt,
   resolveProviderErrorForChat,
 } from "./shell/provider-error-cards/not-connected";
@@ -542,7 +545,7 @@ export function useAgentChatPanel({
       } catch (err) {
         addToast({
           title: t("chat:errors.modelPersistFailed"),
-          description: String(err),
+          description: genericErrorDescription("model_persist_failed", err),
           variant: "error",
         });
       }
@@ -607,7 +610,7 @@ export function useAgentChatPanel({
       } catch (err) {
         addToast({
           title: t("chat:errors.modelPersistFailed"),
-          description: String(err),
+          description: genericErrorDescription("model_persist_failed", err),
           variant: "error",
         });
       }
@@ -628,7 +631,7 @@ export function useAgentChatPanel({
       } catch (err) {
         addToast({
           title: t("chat:errors.modelPersistFailed"),
-          description: String(err),
+          description: genericErrorDescription("model_persist_failed", err),
           variant: "error",
         });
       }
@@ -863,7 +866,7 @@ export function useAgentChatPanel({
         .catch((err) => {
           addToast({
             title: t("chat:composio.followupFailed", { name: appName }),
-            description: String(err),
+            description: genericErrorDescription("integration_followup", err),
             variant: "error",
           });
         });
@@ -1096,13 +1099,23 @@ export function useAgentChatPanel({
             onRetry={async () => {
               if (!path || !selectedSessionKey) return;
               // A refused not-connected send never reached the engine —
-              // the card resends the original message verbatim (and fires
-              // itself on reconnect). Live-turn failures keep the generic
-              // retry prompt (their context is already server-side).
-              const text = providerErrorRetryText(
-                providerError,
-                t("chat:toolRuntimeError.retryPrompt"),
-              );
+              // the card resends the original message verbatim. A mid-turn
+              // auth failure's context is already server-side, so reconnect
+              // resumes the interrupted task with a hidden auto-continue
+              // nudge (the transcript filters its bubble, see
+              // `mapFeedItems`). Both fire automatically on reconnect;
+              // other failures keep the generic visible retry prompt.
+              const text = continuesTaskAfterReconnect(providerError)
+                ? encodeAutoContinueMessage(
+                    reconnectContinueText(
+                      providerError,
+                      t("chat:providerError.reconnectedContinue"),
+                    ),
+                  )
+                : providerErrorRetryText(
+                    providerError,
+                    t("chat:toolRuntimeError.retryPrompt"),
+                  );
               await tauriChat.send(path, text, selectedSessionKey, {
                 providerOverride: effectiveProvider,
                 modelOverride: effectiveModel,

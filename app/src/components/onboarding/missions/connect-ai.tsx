@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { ProviderPicker } from "../../shell/provider-picker";
+import { ProviderBrowser } from "../../provider-browser/provider-browser";
+import { useProviderBrowserData } from "../../provider-browser/use-provider-browser-data";
 import { SetupCard } from "../setup-card";
 
 interface ConnectAiMissionProps {
@@ -11,13 +12,16 @@ interface ConnectAiMissionProps {
 
 /**
  * The single "Connect your AI" setup step. Replaces the old pick-then-login pair
- * with the SAME `<ProviderPicker>` the settings account list and the migration
- * screen use, so onboarding shows the real runnable providers (the full pi-ai
- * set, ~35, on every deployment) and connects via EVERY auth type: OAuth
+ * with the SAME `<ProviderBrowser>` the AI Hub, the migration screen, and
+ * workspace setup use, so onboarding shows the real runnable providers (the full
+ * pi-ai set, ~35, on every deployment) and connects via EVERY auth type: OAuth
  * subscriptions, pasted API keys, an OpenAI-compatible endpoint, and Copilot's
- * enterprise-domain flow. The picker owns the connect interactions, the status
+ * enterprise-domain flow. The browser owns the connect interactions, the status
  * polling, and the failure toasts (no silent failures) and fires `onSelect` the
  * instant a provider connects; we advance to the success screen from there.
+ * `selectOnMount` matches the legacy picker: an already-connected provider (the
+ * user restarted onboarding) counts as a transition on the first status snapshot
+ * so the step still advances instead of stranding.
  */
 export function ConnectAiMission({
   eyebrow,
@@ -25,6 +29,7 @@ export function ConnectAiMission({
   onConnected,
 }: ConnectAiMissionProps) {
   const { t } = useTranslation("setup");
+  const { providers, connections, catalog } = useProviderBrowserData();
 
   return (
     <SetupCard
@@ -35,7 +40,13 @@ export function ConnectAiMission({
       backLabel={t("tutorial.nav.back")}
     >
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <ProviderPicker onSelect={onConnected} />
+        <ProviderBrowser
+          providers={providers}
+          connections={connections}
+          catalog={catalog}
+          onSelect={onConnected}
+          selectOnMount
+        />
       </div>
     </SetupCard>
   );

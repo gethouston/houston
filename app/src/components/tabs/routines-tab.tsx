@@ -14,6 +14,7 @@ import {
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
 import { useTimezonePreference } from "../../hooks/use-timezone-preference";
 import { analytics } from "../../lib/analytics";
+import { genericErrorDescription } from "../../lib/error-toast";
 import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { RoutineModelControls } from "./routine-model-controls";
@@ -159,7 +160,7 @@ export default function RoutinesTab({ agent }: TabProps) {
       } catch (err) {
         addToast({
           title: t("toasts.timezoneError"),
-          description: err instanceof Error ? err.message : String(err),
+          description: genericErrorDescription("set_timezone", err),
           variant: "error",
         });
       }

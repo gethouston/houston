@@ -195,6 +195,7 @@ export {
 export {
   isNotConnectedError,
   isStoppedByUser,
+  TURN_FAILED_MESSAGE,
   turnErrorMessage,
 } from "./turn-errors";
 export type {

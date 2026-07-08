@@ -10,6 +10,7 @@ import type {
   WireFrame,
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
+import { classifyProviderError } from "../ai/provider-error";
 import { createPiBackend } from "../backends/pi/backend";
 import { config } from "../config";
 import {
@@ -173,9 +174,12 @@ export async function runPiTurn(
       conversationId,
       model,
       ...(thinkingLevel ? { thinkingLevel } : {}),
-      // Plan mode clamps this pi session read-only + overlays the planning
-      // prompt, exactly as the long-lived server path does (createPiBackend
-      // applies `planToolNames` + the loader overlay from `opts.mode`).
+      // The turn's mode clamps this pi session's tools + overlays its prompt,
+      // exactly as the long-lived server path does (createPiBackend applies
+      // `toolNamesForMode` + the loader overlay from `opts.mode`): plan →
+      // read-only, auto → no blocking tools. In cloud turn mode ask_user is the
+      // only blocking tool present (integrations are off), so an auto turn here
+      // simply drops it.
       ...(mode ? { mode } : {}),
     });
 
@@ -256,6 +260,41 @@ export async function runPiTurn(
     // provider error (mirrors exec-turn: only the clean `done` carries it).
     return providerError ? {} : { pendingInteraction: interaction.pending };
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // Classify the throw before reporting a generic outcome error: pi RAISES
+    // a missing/expired credential at prompt time ("No API key found for
+    // <provider>. Use /login …"), before any stream exists, so this catch is
+    // the only place it can become the typed reconnect card (HOU-718 —
+    // mirrors exec-turn). The typed error is emitted as a provider_error
+    // frame (the terminal the client settles on) and persisted so the card
+    // survives a reload; returning `{}` keeps the per-turn server from
+    // stacking a second, generic error frame on top of it.
+    if (!providerError) {
+      const thrown = classifyProviderError({
+        provider,
+        model: pin?.model ?? null,
+        message,
+      });
+      // Prompt-time credential guard: pi raised BEFORE recording the user
+      // message in its session store, so the reconnect retry must re-deliver
+      // the text (mirrors exec-turn).
+      if (
+        thrown.kind === "unauthenticated" &&
+        !assistantText &&
+        tools.length === 0
+      )
+        thrown.undelivered_prompt = text;
+      if (thrown.kind !== "unknown") {
+        appendAssistantMessageAt(
+          conversationsDir,
+          conversationId,
+          assistantText,
+          { tools, usage, providerError: thrown, turnId },
+        );
+        emit({ type: "provider_error", data: thrown });
+        return {};
+      }
+    }
     if (assistantText || providerError)
       appendAssistantMessageAt(
         conversationsDir,
@@ -263,6 +302,6 @@ export async function runPiTurn(
         assistantText,
         { tools, usage, providerError, turnId },
       );
-    return { error: err instanceof Error ? err.message : String(err) };
+    return { error: message };
   }
 }

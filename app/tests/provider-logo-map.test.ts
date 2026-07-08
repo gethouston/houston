@@ -1,4 +1,5 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
   BRAND_KEYS,
@@ -6,6 +7,9 @@ import {
   monogramText,
   providerBrandKey,
 } from "../src/components/shell/provider-logo-map.ts";
+
+const read = (rel: string) =>
+  readFileSync(new URL(rel, import.meta.url), "utf8");
 
 /**
  * Every provider id pi-ai exposes today (from `@earendil-works/pi-ai`'s catalog),
@@ -146,6 +150,21 @@ describe("providerBrandKey", () => {
     // instead. An unknown id still resolves to null (the monogram).
     strictEqual(providerBrandKey("ant-ling"), "ant-ling");
     strictEqual(providerBrandKey("some-future-provider"), null);
+  });
+});
+
+describe("OpenCode provider art", () => {
+  it("uses OpenCode's official O mark, not the old Zen Z mark", () => {
+    const src = read("../src/components/shell/provider-marks-extra.tsx");
+    ok(src.includes("export const OpenCodeLogo"), "OpenCodeLogo exists");
+    ok(
+      src.includes("M240 300H0V0H240V300ZM180 60H60V240H180V60Z"),
+      "OpenCodeLogo draws the official O ring from opencode.ai/brand",
+    );
+    ok(
+      !src.includes("M8.40005 17.4H19.2001V21H4.80005V13.8H8.40005V17.4"),
+      "OpenCodeLogo no longer draws the Z-shaped Zen mark",
+    );
   });
 });
 

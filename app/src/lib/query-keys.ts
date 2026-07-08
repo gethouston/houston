@@ -13,6 +13,8 @@ export const queryKeys = {
     ["skill-detail", agentPath, name] as const,
   files: (agentPath: string) => ["files", agentPath] as const,
   instructions: (agentPath: string) => ["instructions", agentPath] as const,
+  workspaceContext: (agentPath: string) =>
+    ["workspace-context", agentPath] as const,
   config: (agentPath: string) => ["config", agentPath] as const,
   routines: (agentPath: string) => ["routines", agentPath] as const,
   learnings: (agentPath: string) => ["learnings", agentPath] as const,

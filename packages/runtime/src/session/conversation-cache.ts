@@ -19,6 +19,7 @@ import { makeClampedFileTools } from "./tools/clamped-fs";
 import { makeIdTokenProvider } from "./tools/gcp-id-token";
 import { makeIntegrationTools } from "./tools/integrations";
 import { makeRunCodeTool } from "./tools/run-code";
+import type { ProvidedContext } from "./workspace-context";
 
 /**
  * The long-lived server's per-conversation session cache: the tool wiring shared
@@ -152,6 +153,13 @@ export type Conversation = {
    */
   mode: TurnMode;
   /**
+   * The workspace + user context the session was FIRST built with (HOU-711,
+   * cloud). Reused verbatim when a mode/backend switch rebuilds the session, so a
+   * conversation keeps its startup context across a plan ⇄ execute flip — matching
+   * how it keeps its history; a context edit only lands in a NEW conversation.
+   */
+  context?: ProvidedContext;
+  /**
    * The wire id of the turn EXECUTING right now (undefined between turns).
    * cancelTurn stamps it on the "Stopped by user" terminal frame so the stop
    * settles the turn it actually interrupts, not whatever a client guesses.
@@ -165,6 +173,7 @@ export const conversations = new Map<string, Conversation>();
 export async function getConversation(
   id: string,
   pin?: TurnPin,
+  context?: ProvidedContext,
 ): Promise<Conversation> {
   const existing = conversations.get(id);
   if (existing) return existing;
@@ -185,6 +194,10 @@ export async function getConversation(
     conversationId: id,
     model: builtModel,
     mode,
+    // Only used when the session is FIRST built (new conversation) — a later
+    // message in the same conversation reuses this session, so context edits
+    // take effect on the next chat, matching the local file behavior (HOU-711).
+    ...(context ? { context } : {}),
   });
 
   const conv: Conversation = {
@@ -194,6 +207,7 @@ export async function getConversation(
     model: builtModel.id,
     backendId: backend.id,
     mode,
+    ...(context ? { context } : {}),
   };
   conversations.set(id, conv);
   return conv;
@@ -238,6 +252,8 @@ export async function switchBackendIfNeeded(
     conversationId,
     model,
     mode,
+    // Preserve the conversation's startup context across the rebuild (HOU-711).
+    ...(conv.context ? { context: conv.context } : {}),
   });
   conv.backendId = backend.id;
   conv.provider = model.provider;
@@ -274,6 +290,8 @@ export async function switchModeIfNeeded(
     conversationId,
     model,
     mode,
+    // Preserve the conversation's startup context across the rebuild (HOU-711).
+    ...(conv.context ? { context: conv.context } : {}),
   });
   conv.mode = mode;
   return { rebuilt: true };

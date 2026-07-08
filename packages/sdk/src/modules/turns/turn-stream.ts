@@ -34,9 +34,10 @@ export interface TurnWirePin {
   provider?: string;
   model?: string;
   effort?: string;
-  /** Per-turn execution mode ("plan" = read-only + planning overlay). Omitted
-   *  runs the turn as "execute", the runtime's default for an unpinned turn. */
-  mode?: "execute" | "plan";
+  /** Per-turn execution mode ("plan" = read-only + planning overlay; "auto" =
+   *  Autopilot, acts without the blocking tools). Omitted runs the turn as
+   *  "execute", the runtime's default for an unpinned turn. */
+  mode?: "execute" | "plan" | "auto";
 }
 
 /** Optional knobs for {@link streamTurn}. */

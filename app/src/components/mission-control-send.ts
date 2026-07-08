@@ -34,7 +34,7 @@ export interface SendOverrides {
   providerOverride?: string;
   modelOverride?: string;
   /** Turn mode pin for user-typed sends; absent = execute. */
-  modeOverride?: "execute" | "plan";
+  modeOverride?: "execute" | "plan" | "auto";
 }
 
 /**

@@ -30,6 +30,7 @@ export function useQueryErrorToast(
       errorIdentity,
     );
     reported.current = next;
-    if (shouldToast) showErrorToast(tag, message, errorIdentity);
+    if (shouldToast)
+      showErrorToast(tag, message, errorIdentity, { userMessage: message });
   }, [isFailure, errorIdentity, tag, message]);
 }

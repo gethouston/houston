@@ -13,7 +13,7 @@
     },
     "mode": {
       "type": "string",
-      "enum": ["execute", "plan"]
+      "enum": ["execute", "plan", "auto"]
     }
   },
   "additionalProperties": true

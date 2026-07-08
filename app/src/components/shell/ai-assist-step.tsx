@@ -2,6 +2,7 @@ import { DialogTitle } from "@houston-ai/core";
 import type { SuggestedRoutine } from "@houston-ai/engine-client";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { genericErrorDescription } from "../../lib/error-toast";
 import { tauriAgents } from "../../lib/tauri";
 import { AgentBriefForm } from "./agent-brief-form";
 import { AiStepFooter } from "./ai-step-footer";
@@ -67,7 +68,7 @@ export function AiAssistStep({
       onContinue(instructions, name, result.suggestedRoutine ?? null);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : String(err));
+      setError(genericErrorDescription("generate_ai_assist_instructions", err));
     } finally {
       abortRef.current = null;
       setGenerating(false);

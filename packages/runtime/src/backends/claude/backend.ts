@@ -80,11 +80,14 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         // `createSdkMcpServer` is only touched once the SDK is confirmed present.
         houstonMcp = buildHoustonMcpServer({
           createSdkMcpServer: sdk.createSdkMcpServer,
-          // Plan mode is read-only + takes no real-world action, so the MCP
-          // server exposes only `ask_user` — the integration tools (which act on
-          // the user's connected apps) are withheld exactly as in an unconnected
-          // runtime, mirroring the pi path's `planToolNames` drop.
-          integrations: opts.mode === "plan" ? undefined : deps.integrations,
+          integrations: deps.integrations,
+          // The mode does the tool filtering (via `toolNamesForMode`), mirroring
+          // the pi path: plan withholds the acting integration tools and keeps
+          // only `ask_user`; auto is the inverse — it drops the blocking tools
+          // (`ask_user`, `request_connection`) but KEEPS `integration_search` /
+          // `integration_execute` so Autopilot can act on the user's apps
+          // without ever waiting on them.
+          mode: opts.mode,
         });
       } catch (err) {
         throw new ClaudeBackendUnavailableError(err);
@@ -114,6 +117,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
           deps.workspaceDir,
           deps.systemPrompt,
           opts.mode,
+          opts.context,
         ),
         includePartialMessages: true,
         permissionMode: "default",

@@ -8,18 +8,30 @@ import { EngineError, FatalResumeError } from "@houston/runtime-client";
  */
 
 /**
+ * Product-voice fallback for a turn failure that carries no engine-authored
+ * copy. Deliberately generic: the raw cause (a WebKit "Load failed", a thrown
+ * bug, …) is developer speak that must never reach the chat (HOU-705,
+ * HOU-721) — it goes to the console/log instead.
+ */
+export const TURN_FAILED_MESSAGE = "Something went wrong. Please try again.";
+
+/**
  * A turn that fails on the SEND (e.g. no provider connected → the runtime answers
  * 409) rejects with an EngineError wrapping the runtime's JSON body. Unwrap it to
  * the plain message the engine sent, so the chat shows "No provider connected. Log
  * in with Claude or Codex first." rather than a raw `engine request failed (409):
  * {…}` string (the product voice never shows status codes or JSON to the user).
  * A fatal stream refusal (FatalResumeError) unwraps to the EngineError it carries.
+ * Anything WITHOUT engine-authored copy — a transport failure, a thrown bug —
+ * resolves to {@link TURN_FAILED_MESSAGE}; the raw error is logged so the
+ * detail still lands in the frontend log for diagnosis.
  */
 export function turnErrorMessage(e: unknown): string {
   const verdict = engineVerdictMessage(e);
   if (verdict !== undefined) return verdict;
   if (e instanceof FatalResumeError) e = e.cause;
-  return e instanceof Error ? e.message : String(e);
+  console.error("[turn] failed without engine verdict:", e);
+  return TURN_FAILED_MESSAGE;
 }
 
 /**

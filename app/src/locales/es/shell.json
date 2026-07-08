@@ -37,6 +37,7 @@
   },
   "errorToast": {
     "problemTitle": "Houston, tenemos un problema.",
+    "genericDescription": "Algo inesperado salió mal. Inténtalo de nuevo.",
     "reportSentTitle": "Houston, reporte enviado",
     "reportSentDescription": "Referencia #{{id}}.",
     "copyId": "Copiar código"
@@ -292,8 +293,8 @@
       "reconnectedTitle": "Reconectado a {{provider}}",
       "reconnectedBody": "Ya iniciaste sesión de nuevo. Continúa donde quedaste.",
       "reconnectedResending": "Ya iniciaste sesión de nuevo. Houston está respondiendo tu mensaje ahora.",
+      "reconnectedResuming": "Ya iniciaste sesión de nuevo. Houston está continuando donde quedaste.",
       "signedIn": "Sesión iniciada",
-      "sendAgain": "Enviar mi mensaje",
       "failedBody": "El inicio de sesión de {{provider}} no se completó. Inicia sesión de nuevo. {{detail}}"
     },
     "networkUnreachable": {

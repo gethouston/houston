@@ -12,7 +12,7 @@
  *  emailChat (send to myself) → emailSent ✓
  *  finished (tour or connect more)
  *
- * The `connect` step embeds the shared `<ProviderPicker>` (all catalog
+ * The `connect` step embeds the shared `<ProviderBrowser>` (all catalog
  * providers, every auth type) and auto-advances to `aiConnected` the instant a
  * provider connects. The email steps run only where the host serves integrations
  * (`stepAfterAgentCreated`); the legacy Rust engine goes agentCreated →

@@ -1,6 +1,6 @@
 /**
  * HoustonAvatar — the colored Houston helmet glyph, optionally wrapped in
- * the "card-running-glow" comet halo when an agent is actively working.
+ * the "avatar-running-ring" comet halo when an agent is actively working.
  *
  * This is the single source of truth for rendering an agent's avatar
  * across every Houston surface (desktop, mobile, any third-party
@@ -8,12 +8,11 @@
  * `mobile/` duplicated the SVG path data + the running-glow wrapper;
  * every tweak had to be done twice. Not anymore.
  *
- * Pair `running` with the `.card-running-glow` rule shipped from
+ * Pair `running` with the `.avatar-running-ring` rule shipped from
  * `globals.css` so the halo animation stays in lockstep with the
  * kanban card / detail panel variants. If your app doesn't import the
  * core globals, the avatar still renders — the halo is just inert.
  */
-import type { CSSProperties } from "react";
 import { cn } from "../utils";
 
 const HOUSTON_GRAY = "#9b9b9b";
@@ -65,7 +64,7 @@ interface HoustonAvatarProps {
   /** Outer circle diameter in pixels. Helmet sizes itself to ~65% of
    *  this to match the existing desktop look. */
   diameter?: number;
-  /** When true, wraps the badge in a `.card-running-glow` halo — the
+  /** When true, wraps the badge in a `.avatar-running-ring` halo — the
    *  same comet-trail effect the desktop uses on kanban cards and the
    *  chat panel header when a session is mid-flight. */
   running?: boolean;
@@ -101,14 +100,8 @@ export function HoustonAvatar({
   if (!running) return inner;
   return (
     <span
-      className="shrink-0 rounded-full flex items-center justify-center card-running-glow"
-      style={
-        {
-          width: diameter,
-          height: diameter,
-          "--glow-bg": "var(--color-background, #ffffff)",
-        } as CSSProperties
-      }
+      className="shrink-0 rounded-full flex items-center justify-center avatar-running-ring"
+      style={{ width: diameter, height: diameter }}
     >
       {inner}
     </span>

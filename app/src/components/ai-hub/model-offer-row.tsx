@@ -13,7 +13,7 @@ import type { ProviderConnections } from "../../hooks/use-provider-connections.t
 import type { CatalogOffer } from "../../lib/ai-hub/catalog-types.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
 import { RowCardButton } from "../cards/row-card-button.tsx";
-import { BrandMark } from "./brand-mark.tsx";
+import { BrandMark } from "../provider-browser/brand-mark.tsx";
 import { formatPrice } from "./format.ts";
 import { LiveStatus, PriceText } from "./hub-badges.tsx";
 

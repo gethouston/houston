@@ -154,6 +154,18 @@ test("resolveModel honors a pinned provider regardless of the active one (never 
   expect(m.id).toBe("claude-opus-4-8");
 });
 
+test("resolveModel canonicalizes a wire `openai` pin to the openai-codex product", () => {
+  // Houston's UI renames pi's openai-codex → `openai` and never offers pi's raw
+  // platform-key `openai` provider. So a wire pin/override of `openai` (the
+  // hosted Teams model-choice path, a routine pin, a hand-crafted body) must
+  // resolve to the Codex product — else the turn lands on pi's raw `openai`
+  // provider and misses the openai-codex credential ("No credential found for
+  // openai"). The backstop enforces the same mapping the frontend's wireTurnPin
+  // applies, so no caller can reproduce that class of bug.
+  const m = resolveModel(undefined, "openai") as { provider?: string };
+  expect(m.provider).toBe("openai-codex");
+});
+
 test("resolveModel throws a readable error for an unknown pinned provider", () => {
   // A junk pin must fail the turn with the reason — never silently fall back
   // to whatever provider happens to be active.

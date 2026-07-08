@@ -37,6 +37,7 @@
   },
   "errorToast": {
     "problemTitle": "Houston, we have a problem!",
+    "genericDescription": "Something unexpected went wrong. Please try again.",
     "reportSentTitle": "Houston, report sent",
     "reportSentDescription": "Reference #{{id}}.",
     "copyId": "Copy code"
@@ -292,8 +293,8 @@
       "reconnectedTitle": "Reconnected to {{provider}}",
       "reconnectedBody": "You are signed in again. Pick up where you left off.",
       "reconnectedResending": "You are signed in again. Houston is answering your message now.",
+      "reconnectedResuming": "You are signed in again. Houston is continuing where you left off.",
       "signedIn": "Signed in",
-      "sendAgain": "Send my message",
       "failedBody": "The {{provider}} sign-in did not finish. Sign in again. {{detail}}"
     },
     "networkUnreachable": {

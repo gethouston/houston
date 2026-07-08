@@ -80,6 +80,14 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Stabilize apt sources for Playwright deps
+        run: |
+          # Playwright's --with-deps path runs apt-get update. GitHub's Ubuntu
+          # image includes Microsoft feeds we do not use, and when those feeds
+          # return malformed InRelease files the web job dies before tests run.
+          sudo rm -f /etc/apt/sources.list.d/azure-cli.*
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.*
+
       - name: Install Playwright Chromium
         run: pnpm --filter houston-web exec playwright install --with-deps chromium
 

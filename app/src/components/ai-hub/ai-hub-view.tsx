@@ -12,12 +12,12 @@ import {
   getConnectProviders,
   type ProviderInfo,
 } from "../../lib/providers";
+import { ProviderBrowser } from "../provider-browser/provider-browser";
+import { ProviderConnectionDialogs } from "../provider-browser/provider-connection-dialogs";
 import { AiHubTabs, type HubTab } from "./ai-hub-tabs";
 import { HubHero } from "./hub-hero";
 import { ModelDirectory } from "./model-directory";
 import { ModelModal } from "./model-modal";
-import { ProviderConnectionDialogs } from "./provider-connection-dialogs";
-import { ProviderList } from "./provider-list";
 import { ProviderModal } from "./provider-modal";
 
 const TRANSITION = {
@@ -118,11 +118,12 @@ export function AiHubView() {
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div key={tab} {...TRANSITION}>
                   {tab === "providers" ? (
-                    <ProviderList
+                    <ProviderBrowser
                       providers={connectProviders}
                       connections={connections}
                       catalog={catalog}
                       onOpen={setOpenProvider}
+                      renderDialogs={false}
                     />
                   ) : (
                     <ModelDirectory

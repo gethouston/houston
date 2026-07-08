@@ -48,7 +48,7 @@ export interface QueueWarmingSendArgs {
   provider?: string;
   model?: string;
   effort?: string;
-  mode?: "execute" | "plan";
+  mode?: "execute" | "plan" | "auto";
 }
 
 /**
@@ -137,7 +137,9 @@ export async function flushWarmingSends(
       } catch {
         showErrorToast(
           "warming_sends_row",
-          i18n.t("chat:errors.missionRowFailed"),
+          "mission row create/update failed",
+          undefined,
+          { userMessage: i18n.t("chat:errors.missionRowFailed") },
         );
       }
     }

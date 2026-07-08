@@ -48,6 +48,34 @@ test("Codex session-kill → unauthenticated / token_revoked (terminal, not tran
   if (err.kind === "unauthenticated") expect(err.cause).toBe("token_revoked");
 });
 
+test("pi prompt-time 'No API key found' → unauthenticated / no_credentials (HOU-718)", () => {
+  // pi RAISES this (formatNoApiKeyFoundMessage) when the user logged out of a
+  // provider that stayed selected — it never arrives as an errored
+  // AssistantMessage, so exec-turn/turn-session classify the throw. Without
+  // this the chat showed the raw text (node_modules doc paths included)
+  // instead of the reconnect card.
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: null,
+    message:
+      "No API key found for openai-codex.\n\nUse /login to log into a provider via OAuth or API key. See:\n  /app/node_modules/@earendil-works/pi-coding-agent/docs/providers.md\n  /app/node_modules/@earendil-works/pi-coding-agent/docs/models.md",
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("no_credentials");
+});
+
+test("pi prompt-time OAuth guard ('Authentication failed … Run /login') → unauthenticated / token_expired", () => {
+  // pi's OAuth flavor of the same prompt-time guard.
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: null,
+    message:
+      "Authentication failed for \"openai-codex\". Credentials may have expired or network is unavailable. Run '/login openai-codex' to re-authenticate.",
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("token_expired");
+});
+
 test("Anthropic 403 permission_error (authZ) is NOT a reconnect prompt → unknown", () => {
   // A 403 permission_error is authorization, not authentication — re-logging-in
   // won't fix it, so it must NOT render the reconnect card. Only 401 (or a 403
