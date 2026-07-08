@@ -162,10 +162,27 @@ results ALPHABETICALLY by app name (case-insensitive) after filtering.
 **Always-visible catalog** — `ConnectMoreAppsSection` (wrapping the internal
 `CatalogBrowser`) is a permanent "Connect more apps" section on BOTH surfaces, not
 a dialog: a brand-new user with zero connections immediately sees the full ~1000-app
-catalog. Apps list A-Z; category is a dropdown (categories A-Z); a search box
-filters; "Load more" pages. It excludes already-connected toolkits (surfaced by the
-caller's own grids) and renders the `ConnectWaitingPanel` inline for an in-progress
-OAuth. There is NO add-apps dialog anymore (`AppCatalogPicker` was deleted).
+catalog. Apps list A-Z; a search box filters; "Load more" pages. It excludes
+already-connected toolkits (surfaced by the caller's own grids) and renders the
+`ConnectWaitingPanel` inline for an in-progress OAuth. There is NO add-apps dialog
+anymore (`AppCatalogPicker` was deleted).
+
+**Category filter (all surfaces)** — `AppCatalogGrid`'s control row is `search
+flex-1` + a category combobox (the shared `FilterCombobox`, moved to
+`components/shell/filter-combobox.tsx` now three domains use it: ai-hub,
+agent-admin models, integrations; category options carry no `mark`). Category is
+CONTROLLED by the surface (threaded `AppCatalogGrid` → `CatalogBrowser` →
+`ConnectMoreAppsSection`), so ONE selection filters every list on the surface, not
+just the browse grid: the global page's Connected grid, the agent tab's usable /
+account / disallowed grids, and the allowlist editor's Allowed list all narrow to
+the picked category (pure VIEW filter composing with the catalog's text search;
+"All categories" resets). Pure helpers in `integrations/model.ts` (node-tested):
+`categoriesOf` (options), `categoryLabel` (slug → "Developer tools"),
+`toolkitsInCategory(catalog, category)` (slug set, `null` for "all"), and
+`categoryListView` (mirrors the models editor's `allowedListView` — picks a
+category-aware empty string, e.g. `integrations:home.connectedNoneInCategory` /
+`agentTab.empty.category*` / `teams:integrations.allowlist.allowedEmptyCategory`,
+so an empty filtered list never falsely claims the surface has no apps).
 
 **Global page** — `app/src/components/integrations-view/`, top-level view
 `INTEGRATIONS_VIEW_ID = "integrations-home"` (NOT `"integrations"`, which is the

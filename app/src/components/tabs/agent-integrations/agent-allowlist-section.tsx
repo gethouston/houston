@@ -1,7 +1,8 @@
 import { Switch } from "@houston-ai/core";
 import type { IntegrationToolkit } from "@houston-ai/engine-client";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { categoryListView, toolkitsInCategory } from "../../integrations";
 import { AppCatalogGrid } from "../../integrations/app-catalog-grid";
 import { appDisplay } from "../../integrations/app-display";
 import { AppRow } from "../../integrations/app-row";
@@ -46,6 +47,9 @@ export function AgentAllowlistSection({
   onSave,
 }: AgentAllowlistSectionProps) {
   const { t } = useTranslation("teams");
+  // View-only category filter, one control for both the allowed list and the
+  // "Add apps" catalog below (never touches saved data).
+  const [category, setCategory] = useState("all");
 
   // The selectable universe: the org ceiling if one is set, else the whole
   // catalog. A manager can only allow apps the org itself allows.
@@ -69,6 +73,19 @@ export function AgentAllowlistSection({
     () => universe.filter((tk) => allowedSet.has(tk.slug)),
     [universe, allowedSet],
   );
+  // The allowed list narrowed to the picked category, matching the catalog below.
+  const inCat = useMemo(
+    () => toolkitsInCategory(universe, category),
+    [universe, category],
+  );
+  const allowedVisible = inCat
+    ? allowedApps.filter((tk) => inCat.has(tk.slug))
+    : allowedApps;
+  const allowedView = categoryListView({
+    visibleCount: allowedVisible.length,
+    hasAny: allowedApps.length > 0,
+    categoryFiltered: category !== "all",
+  });
 
   const onChoice = (mode: AccessMode) =>
     mode === "any"
@@ -116,13 +133,17 @@ export function AgentAllowlistSection({
             <h3 className="mb-2 text-sm font-medium text-foreground">
               {t("integrations.allowlist.allowedHeading")}
             </h3>
-            {allowedApps.length === 0 ? (
+            {allowedView !== "list" ? (
               <p className="text-sm text-muted-foreground">
-                {t("integrations.allowlist.allowedEmpty")}
+                {t(
+                  allowedView === "empty-category"
+                    ? "integrations.allowlist.allowedEmptyCategory"
+                    : "integrations.allowlist.allowedEmpty",
+                )}
               </p>
             ) : (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {allowedApps.map((tk) => {
+                {allowedVisible.map((tk) => {
                   const display = appDisplay(tk.slug, tk);
                   return (
                     <AppRow
@@ -152,6 +173,8 @@ export function AgentAllowlistSection({
             </h3>
             <AppCatalogGrid
               catalog={universe}
+              category={category}
+              onCategoryChange={setCategory}
               excludeToolkits={allowedSet}
               renderRow={(display, tk) => ({
                 trailing: (

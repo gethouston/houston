@@ -81,7 +81,8 @@
     "description": "Connect your apps once, then choose which agents can use each one.",
     "connectedTitle": "Connected apps",
     "usedByNone": "No agents yet",
-    "usedByAll": "All agents"
+    "usedByAll": "All agents",
+    "connectedNoneInCategory": "No connected apps in this category."
   },
   "detail": {
     "activeOn": "Agents that can use this",
@@ -97,7 +98,9 @@
     "activate": "Activate for this agent",
     "empty": {
       "title": "No apps yet",
-      "body": "Add an app so this agent can act on it."
+      "body": "Add an app so this agent can act on it.",
+      "categoryTitle": "No apps in this category",
+      "categoryBody": "No apps here match this category. Try another one or clear the filter."
     },
     "allApps": {
       "title": "Your other connected apps",

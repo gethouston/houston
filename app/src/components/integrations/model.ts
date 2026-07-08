@@ -107,6 +107,47 @@ export function categoryLabel(cat: string): string {
 }
 
 /**
+ * The set of toolkit slugs belonging to `category`, or `null` for the "all"
+ * sentinel (no category filter). Lets every surface filter its own app lists
+ * (connected / allowed / available) by category exactly the way `browseCatalog`
+ * filters the browse grid — one rule, no drift. Pure so it's unit-testable.
+ */
+export function toolkitsInCategory(
+  catalog: IntegrationToolkit[],
+  category: string,
+): Set<string> | null {
+  if (category === "all") return null;
+  const set = new Set<string>();
+  for (const t of catalog) {
+    if ((t.categories ?? []).includes(category)) set.add(t.slug);
+  }
+  return set;
+}
+
+/**
+ * Which variant of a category-filtered app list to render. Mirrors the
+ * allowed-models editor's `allowedListView`: an empty *visible* list means
+ * either the list is genuinely empty (`"empty"`) or an active category filter
+ * hides every row (`"empty-category"`). Distinct copy keeps the empty state from
+ * falsely claiming the list is empty when the user simply picked a category with
+ * no apps present. `"empty-category"` only applies while a category is selected
+ * AND the list has some app overall. Pure so it's unit-testable.
+ */
+export type CategoryListView = "list" | "empty" | "empty-category";
+
+export function categoryListView(args: {
+  /** How many rows remain visible after the category filter. */
+  visibleCount: number;
+  /** Whether the list has any app at all (before the category filter). */
+  hasAny: boolean;
+  /** Whether a specific category (not "all") is currently selected. */
+  categoryFiltered: boolean;
+}): CategoryListView {
+  if (args.visibleCount > 0) return "list";
+  return args.categoryFiltered && args.hasAny ? "empty-category" : "empty";
+}
+
+/**
  * Outcome of the post-connect poll loop. `timeout` and `error` are first-class
  * results, NOT silent fall-throughs: the caller MUST surface them so an
  * abandoned or failed browser OAuth never leaves the user staring at a stopped

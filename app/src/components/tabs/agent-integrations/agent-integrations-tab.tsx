@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
 import {
   useAgentGrantMutation,
   useAgentGrants,
@@ -16,7 +15,6 @@ import { canEditAgentGrants } from "../../../lib/org-roles";
 import type { TabProps } from "../../../lib/types";
 import { useUIStore } from "../../../stores/ui";
 import {
-  ConnectMoreAppsSection,
   INTEGRATION_PROVIDER,
   LoadingState,
   ReconnectBanner,
@@ -26,7 +24,7 @@ import {
   useIntegrationsGate,
 } from "../../integrations";
 import { INTEGRATIONS_VIEW_ID } from "../../integrations-view/id";
-import { AgentAppsBody } from "./agent-apps-body";
+import { AgentIntegrationsBody } from "./agent-integrations-body";
 import { agentIntegrationsView } from "./model";
 
 /**
@@ -43,7 +41,6 @@ import { agentIntegrationsView } from "./model";
  * detect off and render exactly as before.
  */
 export default function IntegrationsTab({ agent }: TabProps) {
-  const { t } = useTranslation("integrations");
   const gate = useIntegrationsGate();
   const ready = gate.kind === "ready";
   const { capabilities } = useCapabilities();
@@ -84,15 +81,6 @@ export default function IntegrationsTab({ agent }: TabProps) {
     [connections.data, catalog.data, grants, allowlist],
   );
 
-  // The browse catalog is narrowed to the effective allowlist so a member can
-  // only connect apps the agent is allowed to use (null = unrestricted).
-  const browseCatalog = useMemo(() => {
-    const all = catalog.data ?? [];
-    if (allowlist === null) return all;
-    const set = new Set(allowlist);
-    return all.filter((tk) => set.has(tk.slug));
-  }, [catalog.data, allowlist]);
-
   const bodyLoading =
     ready &&
     (grantsQuery.isLoading ||
@@ -127,33 +115,22 @@ export default function IntegrationsTab({ agent }: TabProps) {
               <ReconnectBanner onDismiss={gate.dismissReconnect} />
             )}
 
-            <AgentAppsBody
+            {/* Keyed by agent so the body's view-only category filter never
+                leaks across agents — the tab stays mounted on agent switch. */}
+            <AgentIntegrationsBody
+              key={agent.id}
               view={view}
               canEdit={canEdit}
+              catalog={catalog.data ?? []}
+              allowlist={allowlist}
+              connections={connections.data ?? []}
               connectFlow={connectFlow}
+              catalogLoading={catalog.isLoading}
               onRemoveGrant={removeGrant}
               onActivate={activate}
               onDisconnect={(toolkit) => disconnect.mutate(toolkit)}
+              onManageAll={() => setViewMode(INTEGRATIONS_VIEW_ID)}
             />
-
-            <div className="mt-8">
-              <ConnectMoreAppsSection
-                catalog={browseCatalog}
-                connections={connections.data ?? []}
-                connectFlow={connectFlow}
-                loading={catalog.isLoading}
-              />
-            </div>
-
-            <div className="mt-8 flex justify-center">
-              <button
-                type="button"
-                onClick={() => setViewMode(INTEGRATIONS_VIEW_ID)}
-                className="text-xs text-muted-foreground underline underline-offset-4 decoration-dotted transition-colors hover:text-foreground"
-              >
-                {t("agentTab.manageAll")}
-              </button>
-            </div>
           </>
         )}
       </div>

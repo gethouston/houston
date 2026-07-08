@@ -8,7 +8,9 @@ import {
   browseCatalog,
   categoriesOf,
   categoryLabel,
+  categoryListView,
   splitByGrant,
+  toolkitsInCategory,
 } from "../src/components/integrations/model.ts";
 
 const tk = (
@@ -134,6 +136,74 @@ describe("categoriesOf / categoryLabel (new module)", () => {
 
   it("labels kebab-case categories for humans", () => {
     strictEqual(categoryLabel("developer-tools"), "Developer tools");
+  });
+});
+
+describe("toolkitsInCategory (new module)", () => {
+  it("returns null for the 'all' sentinel (no filter)", () => {
+    strictEqual(toolkitsInCategory(CATALOG, "all"), null);
+  });
+
+  it("collects every slug tagged with the category", () => {
+    const set = toolkitsInCategory(CATALOG, "collaboration");
+    deepStrictEqual([...(set ?? [])].sort(), ["notion", "slack"]);
+  });
+
+  it("matches apps carrying the category among several", () => {
+    // notion is both collaboration + developer-tools.
+    const set = toolkitsInCategory(CATALOG, "developer-tools");
+    deepStrictEqual([...(set ?? [])].sort(), ["notion", "serpapi"]);
+  });
+
+  it("unknown category → empty set (not null)", () => {
+    const set = toolkitsInCategory(CATALOG, "nope");
+    strictEqual(set?.size, 0);
+  });
+});
+
+describe("categoryListView (new module)", () => {
+  it("visible rows → the list", () => {
+    strictEqual(
+      categoryListView({
+        visibleCount: 3,
+        hasAny: true,
+        categoryFiltered: true,
+      }),
+      "list",
+    );
+  });
+
+  it("no rows at all → the plain empty state", () => {
+    strictEqual(
+      categoryListView({
+        visibleCount: 0,
+        hasAny: false,
+        categoryFiltered: false,
+      }),
+      "empty",
+    );
+  });
+
+  it("some rows but hidden by the category → category-aware empty", () => {
+    strictEqual(
+      categoryListView({
+        visibleCount: 0,
+        hasAny: true,
+        categoryFiltered: true,
+      }),
+      "empty-category",
+    );
+  });
+
+  it("empty with a filter but nothing picked → plain empty (never lies)", () => {
+    strictEqual(
+      categoryListView({
+        visibleCount: 0,
+        hasAny: false,
+        categoryFiltered: true,
+      }),
+      "empty",
+    );
   });
 });
 

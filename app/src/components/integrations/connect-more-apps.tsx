@@ -13,6 +13,13 @@ interface ConnectMoreAppsSectionProps {
   catalog: IntegrationToolkit[];
   connections: IntegrationConnection[];
   connectFlow: ConnectFlow;
+  /**
+   * The surface-owned category selection (`"all"` = no filter). The category
+   * picker sits in this block's control row, but the surface owns the value so
+   * the same choice also filters the connected / allowed lists above it.
+   */
+  category: string;
+  onCategoryChange: (next: string) => void;
   /** The catalog is still fetching (show a loader, not a "no apps" message). */
   loading?: boolean;
 }
@@ -30,6 +37,8 @@ export function ConnectMoreAppsSection({
   catalog,
   connections,
   connectFlow,
+  category,
+  onCategoryChange,
   loading,
 }: ConnectMoreAppsSectionProps) {
   const { t } = useTranslation("integrations");
@@ -81,6 +90,8 @@ export function ConnectMoreAppsSection({
 
       <CatalogBrowser
         catalog={catalog}
+        category={category}
+        onCategoryChange={onCategoryChange}
         connectedToolkits={connectedToolkits}
         connectingToolkit={connecting?.toolkit ?? null}
         excludeToolkits={connectedToolkits}

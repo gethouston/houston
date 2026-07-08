@@ -18,14 +18,17 @@ export { IntegrationDisconnectDialog } from "./integration-disconnect-dialog";
 export {
   BROWSE_PAGE_SIZE,
   browseCatalog,
+  type CategoryListView,
   categoriesOf,
   categoryLabel,
+  categoryListView,
   INTEGRATION_PROVIDER,
   POLL_INTERVAL_MS,
   POLL_MAX_ATTEMPTS,
   type PollOutcome,
   pollConnectionUntilActive,
   splitByGrant,
+  toolkitsInCategory,
 } from "./model";
 export { PendingConnectionCallout } from "./pending-connection-callout";
 export {

@@ -81,7 +81,8 @@
     "description": "Conecte seus apps uma vez e escolha quais agentes podem usar cada um.",
     "connectedTitle": "Apps conectados",
     "usedByNone": "Ainda não há agentes",
-    "usedByAll": "Todos os agentes"
+    "usedByAll": "Todos os agentes",
+    "connectedNoneInCategory": "Nenhum app conectado nesta categoria."
   },
   "detail": {
     "activeOn": "Agentes que podem usar",
@@ -97,7 +98,9 @@
     "activate": "Ativar para este agente",
     "empty": {
       "title": "Ainda não há apps",
-      "body": "Adicione um app para que este agente possa usá-lo."
+      "body": "Adicione um app para que este agente possa usá-lo.",
+      "categoryTitle": "Nenhum app nesta categoria",
+      "categoryBody": "Nenhum app aqui corresponde a esta categoria. Tente outra ou limpe o filtro."
     },
     "allApps": {
       "title": "Seus outros apps conectados",
