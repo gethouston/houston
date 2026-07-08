@@ -1,18 +1,21 @@
 import type { Routine } from "@houston-ai/engine-client";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivity } from "../../hooks/queries";
 import { analytics } from "../../lib/analytics";
 import { createMission } from "../../lib/create-mission";
+import { logger } from "../../lib/logger";
 import { queryKeys } from "../../lib/query-keys";
 import {
   encodeRoutineModifyMessage,
   encodeRoutineSetupMessage,
-  isRoutineSetupMode,
+  findDraftSetupActivity,
+  findRoutineChatActivity,
+  findRoutineChatHeal,
   ROUTINE_SETUP_AGENT_MODE,
 } from "../../lib/routine-chat-setup";
-import { tauriConfig, tauriRoutines } from "../../lib/tauri";
+import { tauriActivity, tauriConfig, tauriRoutines } from "../../lib/tauri";
 import { readAgentTurnMode } from "../../lib/turn-mode";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
@@ -22,10 +25,10 @@ import { useUIStore } from "../../stores/ui";
  * mission tagged with the routine-setup sentinel so it never shows as a
  * board card — its only home is the Routines tab's own panel
  * (`RoutineSetupChat`). A chat starts life as the agent's single "draft"
- * (no routine yet); once a routine carries its id in `setup_activity_id`
- * the chat belongs to that routine for good, and opening the routine
- * resumes it. Routines without a chat (form-created before the link
- * existed) get one on first open via `startForRoutine`.
+ * (no routine yet); once a routine claims it (link resolution lives in
+ * `lib/routine-chat-setup.ts`, stored in both directions) the chat belongs
+ * to that routine for good, and opening the routine resumes it. Routines
+ * without a chat get one on first open via `startForRoutine`.
  */
 export function useRoutineChatSetup(
   agent: Agent,
@@ -41,37 +44,54 @@ export function useRoutineChatSetup(
   const { data: rawItems } = useActivity(path);
   const [pending, setPending] = useState(false);
 
-  // Activity ids already claimed by a routine: those chats are no longer
-  // drafts, they ARE that routine's chat.
-  const linkedIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const r of routines ?? []) {
-      if (r.setup_activity_id) ids.add(r.setup_activity_id);
-    }
-    return ids;
-  }, [routines]);
-
   /** The one unlinked, live create-chat for this agent, if any. */
-  const draftActivity = useMemo(
-    () =>
-      (rawItems ?? []).find(
-        (a) =>
-          isRoutineSetupMode(a.agent) &&
-          a.status !== "archived" &&
-          !linkedIds.has(a.id),
-      ),
-    [rawItems, linkedIds],
-  );
+  const draftActivity = findDraftSetupActivity(rawItems, routines);
 
   /** The persisted chat attached to a routine, or null if it has none yet. */
   const activityFor = useCallback(
-    (routine: Routine) =>
-      routine.setup_activity_id
-        ? ((rawItems ?? []).find((a) => a.id === routine.setup_activity_id) ??
-          null)
-        : null,
+    (routine: Routine) => findRoutineChatActivity(rawItems, routine),
     [rawItems],
   );
+
+  // Link reconciliation: keep the chat↔routine link intact in BOTH stores.
+  // The agent rewriting routines.json can drop `setup_activity_id` (this made
+  // the open chat vanish the moment an agent-made edit landed); the durable
+  // `routine_id` stamp on the activity lets us restore it. One repair per
+  // pass; the invalidation refetch re-runs the effect until consistent.
+  // Failures only log: this is background reconciliation (no user action to
+  // toast on), and the next routines/activity refetch retries it anyway.
+  const healingRef = useRef(false);
+  useEffect(() => {
+    if (healingRef.current) return;
+    const heal = findRoutineChatHeal(rawItems, routines);
+    if (!heal) return;
+    healingRef.current = true;
+    const apply =
+      heal.kind === "stamp_activity"
+        ? tauriActivity
+            .update(path, heal.activityId, { routine_id: heal.routineId })
+            .then(() =>
+              queryClient.invalidateQueries({
+                queryKey: queryKeys.activity(path),
+              }),
+            )
+        : tauriRoutines
+            .update(path, heal.routineId, {
+              setup_activity_id: heal.activityId,
+            })
+            .then(() =>
+              queryClient.invalidateQueries({
+                queryKey: queryKeys.routines(path),
+              }),
+            );
+    apply
+      .catch((err) =>
+        logger.error(`[routine-chat] link heal (${heal.kind}) failed: ${err}`),
+      )
+      .finally(() => {
+        healingRef.current = false;
+      });
+  }, [rawItems, routines, path, queryClient]);
 
   const openPanel = useCallback(() => {
     // Every AIBoard portals its detail panel into the SAME shared container;
@@ -135,7 +155,7 @@ export function useRoutineChatSetup(
 
   /**
    * Start the persistent chat for a routine that doesn't have one yet, and
-   * stamp the link onto the routine so every future open resumes it.
+   * stamp the link in both directions so every future open resumes it.
    */
   const startForRoutine = useCallback(
     async (routine: Routine) => {
@@ -151,9 +171,15 @@ export function useRoutineChatSetup(
             modeOverride: await readAgentTurnMode(path, tauriConfig.read),
           },
         );
-        await tauriRoutines.update(path, routine.id, {
-          setup_activity_id: conversationId,
-        });
+        await Promise.all([
+          // The durable direction: agents never rewrite activity.json.
+          tauriActivity.update(path, conversationId, {
+            routine_id: routine.id,
+          }),
+          tauriRoutines.update(path, routine.id, {
+            setup_activity_id: conversationId,
+          }),
+        ]);
         queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
         queryClient.invalidateQueries({ queryKey: queryKeys.routines(path) });
         openPanel();

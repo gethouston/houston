@@ -9,6 +9,9 @@ import { selectActive, selectArchived } from "../src/lib/mission-selection.ts";
 import {
   encodeRoutineModifyMessage,
   encodeRoutineSetupMessage,
+  findDraftSetupActivity,
+  findRoutineChatActivity,
+  findRoutineChatHeal,
   isRoutineSetupMode,
   ROUTINE_SETUP_AGENT_MODE,
   routineModifyPrompt,
@@ -119,6 +122,107 @@ describe("routine chat setup message", () => {
     ]) {
       ok(prompt.includes(needle), `prompt must mention: ${needle}`);
     }
+  });
+
+  it("resolves a routine's chat by the durable reverse link first", () => {
+    // The forward link (routine.setup_activity_id) lives in routines.json,
+    // which the agent rewrites — an edit that drops it must NOT lose the
+    // chat, because the activity's routine_id stamp survives.
+    const chat = {
+      id: "a1",
+      agent: ROUTINE_SETUP_AGENT_MODE,
+      routine_id: "r1",
+    };
+    const other = { id: "a2", agent: "researcher" };
+    // Forward link dropped → reverse link still finds it.
+    deepStrictEqual(findRoutineChatActivity([other, chat], { id: "r1" }), chat);
+    // Forward link only (agent-created routine, before the heal stamps back).
+    const unstamped = { id: "a3", agent: ROUTINE_SETUP_AGENT_MODE };
+    deepStrictEqual(
+      findRoutineChatActivity([unstamped], {
+        id: "r2",
+        setup_activity_id: "a3",
+      }),
+      unstamped,
+    );
+    // No link at all → null (a modify chat gets started on open).
+    deepStrictEqual(findRoutineChatActivity([other], { id: "r3" }), null);
+  });
+
+  it("a draft is a setup chat no routine claims in either direction", () => {
+    const draft = {
+      id: "d1",
+      agent: ROUTINE_SETUP_AGENT_MODE,
+      status: "running",
+    };
+    const claimedForward = {
+      id: "d2",
+      agent: ROUTINE_SETUP_AGENT_MODE,
+      status: "done",
+    };
+    const claimedReverse = {
+      id: "d3",
+      agent: ROUTINE_SETUP_AGENT_MODE,
+      status: "done",
+      routine_id: "r9",
+    };
+    const archived = {
+      id: "d4",
+      agent: ROUTINE_SETUP_AGENT_MODE,
+      status: "archived",
+    };
+    const routines = [{ id: "r1", setup_activity_id: "d2" }];
+    deepStrictEqual(
+      findDraftSetupActivity(
+        [claimedForward, claimedReverse, archived, draft],
+        routines,
+      ),
+      draft,
+    );
+    deepStrictEqual(
+      findDraftSetupActivity([claimedForward], routines),
+      undefined,
+    );
+  });
+
+  it("link heal: stamps the activity, then restores an agent-dropped forward link", () => {
+    // Fresh claim: forward link exists, reverse stamp missing → stamp activity.
+    deepStrictEqual(
+      findRoutineChatHeal(
+        [{ id: "a1", agent: ROUTINE_SETUP_AGENT_MODE }],
+        [{ id: "r1", setup_activity_id: "a1" }],
+      ),
+      { kind: "stamp_activity", activityId: "a1", routineId: "r1" },
+    );
+    // The reported bug (HOU-725 follow-up): the agent rewrote the routine and
+    // dropped setup_activity_id → restore it from the activity's stamp.
+    deepStrictEqual(
+      findRoutineChatHeal(
+        [{ id: "a1", agent: ROUTINE_SETUP_AGENT_MODE, routine_id: "r1" }],
+        [{ id: "r1" }],
+      ),
+      { kind: "stamp_routine", activityId: "a1", routineId: "r1" },
+    );
+    // Consistent both ways → nothing to do (the effect loop terminates).
+    deepStrictEqual(
+      findRoutineChatHeal(
+        [{ id: "a1", agent: ROUTINE_SETUP_AGENT_MODE, routine_id: "r1" }],
+        [{ id: "r1", setup_activity_id: "a1" }],
+      ),
+      null,
+    );
+    // A valid forward link to a DIFFERENT chat is never overwritten by a
+    // stale reverse stamp — no flip-flop between two claimants.
+    deepStrictEqual(
+      findRoutineChatHeal(
+        [
+          { id: "a1", agent: ROUTINE_SETUP_AGENT_MODE, routine_id: "r1" },
+          { id: "a2", agent: ROUTINE_SETUP_AGENT_MODE, routine_id: "r1" },
+        ],
+        [{ id: "r1", setup_activity_id: "a2" }],
+      ),
+      null,
+    );
   });
 
   it("modify kickoff greets once and pins the routine it may edit", () => {

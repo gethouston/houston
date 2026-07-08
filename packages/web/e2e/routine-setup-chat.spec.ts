@@ -217,3 +217,98 @@ test("a routine without a chat gets one on first open, linked from then on", asy
     })
     .toBeTruthy();
 });
+
+test("clicking app chrome never dismisses the routine chat", async ({
+  page,
+}) => {
+  const agentId = await seedAgentId();
+  await fetch(`${FAKE_HOST_URL}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      name: "Sticky chat",
+      prompt: "p",
+      schedule: "0 9 * * *",
+    }),
+  });
+
+  await page.goto("/");
+  await openRoutinesTab(page);
+  await page.getByText("Sticky chat").first().click();
+  await expect(page.getByText("Mission: Sticky chat")).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // The chat is a companion of the routine view, not a dismissible overlay:
+  // pointerdowns on app chrome (sidebar, titlebar — e.g. the double-click
+  // that maximizes the window) must leave it open. The tab button is exactly
+  // such chrome: outside the board and the panel, no data-keep-panel-open.
+  await page.locator('[data-tour-target="tab-routines"]').click();
+  await page.locator("body").click({ position: { x: 5, y: 5 } });
+  await expect(page.getByText("Mission: Sticky chat")).toBeVisible();
+});
+
+test("an agent edit that drops the routine's chat link self-heals", async ({
+  page,
+}) => {
+  // Build a linked routine+chat through the modify flow.
+  const agentId = await seedAgentId();
+  await fetch(`${FAKE_HOST_URL}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      name: "Healed digest",
+      prompt: "p",
+      schedule: "0 9 * * *",
+    }),
+  });
+  await page.goto("/");
+  await openRoutinesTab(page);
+  await page.getByText("Healed digest").first().click();
+  await expect(page.getByText("Mission: Healed digest")).toBeVisible({
+    timeout: 15_000,
+  });
+
+  const routineByName = async () => {
+    const { items } = (await (
+      await fetch(`${FAKE_HOST_URL}/agents/${agentId}/routines`)
+    ).json()) as {
+      items: { id: string; name: string; setup_activity_id?: string | null }[];
+    };
+    const r = items.find((x) => x.name === "Healed digest");
+    if (!r) throw new Error("routine gone");
+    return r;
+  };
+  const linked = await expect
+    .poll(async () => (await routineByName()).setup_activity_id)
+    .toBeTruthy()
+    .then(routineByName);
+
+  // Simulate the reported bug: the agent rewrites the routine (e.g. an
+  // effort change) and drops setup_activity_id from routines.json.
+  await fetch(`${FAKE_HOST_URL}/agents/${agentId}/routines/${linked.id}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ setup_activity_id: null }),
+  });
+
+  // The open chat survives the drop (the activity's routine_id stamp is the
+  // durable direction)…
+  await expect(page.getByText("Mission: Healed digest")).toBeVisible();
+  // …and the client restores the forward link on disk.
+  await expect
+    .poll(async () => (await routineByName()).setup_activity_id)
+    .toBe(linked.setup_activity_id);
+
+  // A fresh visit resumes the SAME chat — no duplicate mission spawned.
+  await page.reload();
+  await openRoutinesTab(page);
+  await page.getByText("Healed digest").first().click();
+  await expect(page.getByText("Mission: Healed digest")).toBeVisible({
+    timeout: 15_000,
+  });
+  const { items: activities } = (await (
+    await fetch(`${FAKE_HOST_URL}/agents/${agentId}/activities`)
+  ).json()) as { items: { title: string }[] };
+  expect(activities.filter((a) => a.title === "Healed digest")).toHaveLength(1);
+});

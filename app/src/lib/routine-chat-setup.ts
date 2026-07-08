@@ -10,10 +10,11 @@
  * AGENT's greeting. The product prompt's Routines guidance (schema-checked
  * save, approval gate) does the heavy lifting; these prompts kick it off.
  *
- * The chat↔routine link is the routine's `setup_activity_id`: the create
- * kickoff tells the agent the exact activity id to write when it saves the
- * routine, and the client stamps the same field itself for form-created
- * routines and for modify chats started on routines that predate this flow.
+ * The chat↔routine link is stored in both directions — the routine's
+ * `setup_activity_id` (written by the agent on chat-created routines, by the
+ * client otherwise) and the activity's `routine_id` (client-stamped, durable
+ * because agents never rewrite activity.json). See the resolution helpers
+ * below for why one direction is not enough.
  */
 
 import { encodeAutoContinueMessage } from "./auto-continue-message.ts";
@@ -30,6 +31,104 @@ export const ROUTINE_SETUP_AGENT_MODE = "houston:routine-setup";
 /** True when an activity's `agent` (mode) marks it as a routine-setup chat. */
 export function isRoutineSetupMode(agent: string | null | undefined): boolean {
   return agent === ROUTINE_SETUP_AGENT_MODE;
+}
+
+// ── Chat ↔ routine link resolution (pure, unit-tested) ────────────────────
+//
+// The link is stored in BOTH directions because neither alone is durable:
+// `routine.setup_activity_id` lives in routines.json, which the AGENT
+// rewrites when it modifies a routine — one careless save drops the field
+// and the chat would vanish mid-conversation. `activity.routine_id` lives in
+// activity.json, which agents never touch, so the reverse link survives; the
+// heal below then restores the forward link on disk.
+
+interface SetupActivityLike {
+  id: string;
+  agent?: string | null;
+  status?: string;
+  routine_id?: string;
+}
+interface RoutineLinkLike {
+  id: string;
+  setup_activity_id?: string | null;
+}
+
+/** The chat attached to a routine: reverse link first (durable), then forward. */
+export function findRoutineChatActivity<A extends SetupActivityLike>(
+  activities: A[] | undefined,
+  routine: RoutineLinkLike,
+): A | null {
+  const items = activities ?? [];
+  return (
+    items.find(
+      (a) => isRoutineSetupMode(a.agent) && a.routine_id === routine.id,
+    ) ??
+    (routine.setup_activity_id
+      ? (items.find((a) => a.id === routine.setup_activity_id) ?? null)
+      : null)
+  );
+}
+
+/**
+ * The agent's one live create-chat: a setup chat no routine has claimed yet
+ * (neither by forward link nor by its own `routine_id` stamp).
+ */
+export function findDraftSetupActivity<A extends SetupActivityLike>(
+  activities: A[] | undefined,
+  routines: RoutineLinkLike[] | undefined,
+): A | undefined {
+  const claimed = new Set<string>();
+  for (const r of routines ?? []) {
+    if (r.setup_activity_id) claimed.add(r.setup_activity_id);
+  }
+  return (activities ?? []).find(
+    (a) =>
+      isRoutineSetupMode(a.agent) &&
+      a.status !== "archived" &&
+      !a.routine_id &&
+      !claimed.has(a.id),
+  );
+}
+
+export type RoutineChatHeal =
+  | { kind: "stamp_activity"; activityId: string; routineId: string }
+  | { kind: "stamp_routine"; activityId: string; routineId: string };
+
+/**
+ * The next link repair to apply, or null when everything is consistent.
+ * One fix at a time — the caller applies it, queries refetch, and this runs
+ * again until it returns null (each rule strictly reduces inconsistency, so
+ * the loop terminates).
+ */
+export function findRoutineChatHeal(
+  activities: SetupActivityLike[] | undefined,
+  routines: RoutineLinkLike[] | undefined,
+): RoutineChatHeal | null {
+  const acts = activities ?? [];
+  for (const r of routines ?? []) {
+    // Forward link present but the activity is missing its reverse stamp
+    // (agent-created routines, form-created claims): make the link durable.
+    // Only stamp an unstamped activity — never reassign one.
+    if (r.setup_activity_id) {
+      const a = acts.find((x) => x.id === r.setup_activity_id);
+      if (a && isRoutineSetupMode(a.agent) && !a.routine_id) {
+        return { kind: "stamp_activity", activityId: a.id, routineId: r.id };
+      }
+    }
+    // Reverse link present but the forward one is gone or dangling (the
+    // agent rewrote the routine and dropped it): restore it on the routine.
+    const back = acts.find(
+      (x) => isRoutineSetupMode(x.agent) && x.routine_id === r.id,
+    );
+    if (
+      back &&
+      r.setup_activity_id !== back.id &&
+      !acts.some((x) => x.id === r.setup_activity_id)
+    ) {
+      return { kind: "stamp_routine", activityId: back.id, routineId: r.id };
+    }
+  }
+  return null;
 }
 
 /**
@@ -81,7 +180,7 @@ export function routineModifyPrompt(routine: {
 
 Right now, write exactly one short, friendly line (match the user's language) saying you can change this routine for them any time — what it does, when it runs, anything — they just have to tell you. Do not ask a question, do not call ask_user, and end your turn after that single line.
 
-Later in this conversation, when the user asks for changes: update THIS routine — the one whose id is "${routine.id}" — in place. Never create a second routine for a change request. Ask for approval with ask_user (Yes / No) before saving a change, keep every message short and non-technical, and never mention files, JSON, schemas, ids, or field names to the user.`;
+Later in this conversation, when the user asks for changes: update THIS routine — the one whose id is "${routine.id}" — in place. Never create a second routine for a change request. Change only the fields the user asked about and keep every other field of the routine's entry exactly as it already is on disk. Ask for approval with ask_user (Yes / No) before saving a change, keep every message short and non-technical, and never mention files, JSON, schemas, ids, or field names to the user.`;
 }
 
 /**

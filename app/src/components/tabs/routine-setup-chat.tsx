@@ -187,6 +187,10 @@ export function RoutineSetupChat({
           selectedId={selectedId}
           onSelect={handleSelect}
           panelContainer={panelContainer}
+          // The chat is a persistent companion of the routine view (HOU-725):
+          // clicking app chrome (sidebar, titlebar — including the
+          // double-click that maximizes the window) must not dismiss it.
+          disableOutsideClose
           feedItems={feedItems}
           isLoading={send.effectiveLoading}
           sessionKeyFor={() => sessionKey ?? ""}
