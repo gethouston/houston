@@ -215,7 +215,6 @@ export function RoutineSetupChat({ agent, agentDef, showBanner }: Props) {
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           thinkingIndicator={panel.thinkingIndicator}
-          loadingIndicator={panel.loadingIndicator}
           panelAgentName={agent.name}
           panelAvatar={
             <AgentPanelAvatar color={agent.color} running={running} />
