@@ -113,7 +113,7 @@ export function ChatModeSelector({
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <Icon className="size-4 shrink-0" />
+                    <Icon className="size-4 shrink-0 text-foreground" />
                     {labels[m]}
                   </span>
                   <span className="line-clamp-2 text-xs text-muted-foreground">
