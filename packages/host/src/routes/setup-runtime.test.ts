@@ -62,6 +62,12 @@ class FakeChannel implements RuntimeChannel {
   async cancelTurn(): Promise<boolean> {
     return false;
   }
+  async busy(): Promise<boolean> {
+    return false;
+  }
+  async runtimeStatus() {
+    return "running" as const;
+  }
   async teardown(): Promise<void> {}
   async captureCredential(
     ctx: ChannelCtx,

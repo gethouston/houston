@@ -77,6 +77,12 @@ function recordingChannel(): RuntimeChannel & {
     async cancelTurn() {
       return false;
     },
+    async busy() {
+      return false;
+    },
+    async runtimeStatus() {
+      return "running" as const;
+    },
     async teardown() {},
     async captureCredential() {
       return { ok: true, provider: "openai-codex" };

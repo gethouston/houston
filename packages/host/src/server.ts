@@ -141,6 +141,12 @@ export interface ControlPlaneDeps {
    * untrusted client input and is ignored.
    */
   gatewayFronted?: boolean;
+  /**
+   * Live /agents/* request count (createControlPlaneServer wires it; see the
+   * AgentRouteDeps.agentRequestCount doc for why it exists and why it is
+   * scoped to the per-agent surface only).
+   */
+  agentRequestCount?: () => number;
   corsOrigin?: string;
 }
 
@@ -268,8 +274,25 @@ async function handle(
 
 /** Build the frontend-facing host API server. */
 export function createControlPlaneServer(deps: ControlPlaneDeps): Server {
+  // Live count of /agents/* requests, long-lived SSE streams included — the
+  // /activity busy probe reads it so the gateway's idle sweep never sleeps a
+  // pod with an open per-agent stream. `close` fires on both completion and a
+  // severed connection (and always after `finish` on modern Node), so every
+  // increment has exactly one decrement.
+  let agentRequests = 0;
+  const counted: ControlPlaneDeps = {
+    ...deps,
+    agentRequestCount: () => agentRequests,
+  };
   return createServer((req, res) => {
-    handle(deps, req, res).catch((err) => {
+    const path = (req.url || "/").split("?")[0] ?? "";
+    if (path === "/agents" || path.startsWith("/agents/")) {
+      agentRequests++;
+      res.once("close", () => {
+        agentRequests--;
+      });
+    }
+    handle(counted, req, res).catch((err) => {
       const message = err instanceof Error ? err.message : String(err);
       if (!res.headersSent) json(res, 500, { error: message });
       else if (!res.writableEnded) res.end();

@@ -177,6 +177,14 @@ export interface RuntimeChannel {
    * but never resurrects the run.
    */
   cancelTurn(ctx: ChannelCtx, conversationId: string): Promise<boolean>;
+  /**
+   * Whether this agent has any in-flight turn in the runtime/channel layer.
+   * Unknown transport state must be treated as busy by implementations that
+   * can otherwise sleep live work.
+   */
+  busy(ctx: ChannelCtx): Promise<boolean>;
+  /** Cheap runtime/channel state for diagnostics and idle-sleep callers. */
+  runtimeStatus?(ctx: ChannelCtx): Promise<RuntimeState | "unknown">;
   /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
   teardown(ctx: ChannelCtx): Promise<void>;
   /**
