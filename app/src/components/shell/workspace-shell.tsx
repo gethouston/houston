@@ -453,15 +453,6 @@ export function WorkspaceShell({
                 },
               },
               {
-                title: t("shell:uiTour.steps.appTour.title"),
-                body: t("shell:uiTour.steps.appTour.body"),
-                targetSelector: "[data-tour-target='appTour']",
-                onEnter: () => {
-                  setCreateAgentDialogOpen(false);
-                  setViewMode(DEFAULT_TAB_ID);
-                },
-              },
-              {
                 title: t("shell:uiTour.steps.outro.title"),
                 body: t("shell:uiTour.steps.outro.body"),
                 confirmLabel: t("shell:uiTour.steps.outro.confirm"),
