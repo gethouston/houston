@@ -81,17 +81,6 @@ export function OrbitLoader() {
                 </animateMotion>
               </ellipse>
             ))}
-            {/* Bright comet head glow, riding under the ship at the head's spot. */}
-            <circle r="12" fill="url(#orbit-comet-glow)">
-              <animateMotion
-                dur={ORBIT_PERIOD}
-                begin="0s"
-                repeatCount="indefinite"
-                rotate="auto"
-              >
-                <mpath href="#orbit-path" xlinkHref="#orbit-path" />
-              </animateMotion>
-            </circle>
             {/* Crisp rocket ship at the head, painted on top of its streak. */}
             <path d={SHIP_PATH} fill="var(--ht-space-foreground)">
               <animateMotion
