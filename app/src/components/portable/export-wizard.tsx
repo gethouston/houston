@@ -481,7 +481,12 @@ function AnonymizeStep({
           <h2 className="text-sm font-medium">
             {t("export.step2.reviewLabel")}
           </h2>
-          {anonymizing && <Subtle>{t("export.step2.working")}</Subtle>}
+          {anonymizing && (
+            <div className="space-y-3">
+              <div className="running-glow-line bg-foreground/5" aria-hidden />
+              <Subtle>{t("export.step2.working")}</Subtle>
+            </div>
+          )}
           {!anonymizing &&
             anonymized?.mode === "patterns" &&
             anonymized.aiError && (
