@@ -6,13 +6,7 @@ import {
 } from "@houston-ai/core";
 import type { Agent } from "@houston-ai/engine-client";
 import type { LucideIcon } from "lucide-react";
-import {
-  Check,
-  ChevronDown,
-  Handshake,
-  NotebookPen,
-  Rocket,
-} from "lucide-react";
+import { Check, ChevronDown, Handshake, Rocket, Target } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { modelSelectorDecision } from "../lib/model-selector-lock";
@@ -38,7 +32,7 @@ interface ChatModeSelectorProps {
  *  tools). Wire values stay `execute`/`plan`/`auto`; only the labels change. */
 const MODE_ICONS: Record<TurnMode, LucideIcon> = {
   execute: Handshake,
-  plan: NotebookPen,
+  plan: Target,
   auto: Rocket,
 };
 
@@ -115,11 +109,9 @@ export function ChatModeSelector({
               <DropdownMenuItem
                 key={m}
                 onSelect={() => onSelect(m)}
-                className="items-start gap-3 rounded-xl px-2.5 py-2.5"
+                className="items-center gap-3 rounded-xl px-2.5 py-2.5"
               >
-                <span className="mt-px flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-foreground">
-                  <Icon className="size-4 text-foreground" />
-                </span>
+                <Icon className="size-4 shrink-0 text-foreground" />
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="text-sm font-medium text-foreground">
                     {labels[m]}
@@ -129,7 +121,7 @@ export function ChatModeSelector({
                   </span>
                 </div>
                 {active && (
-                  <Check className="mt-1 size-4 shrink-0 text-foreground" />
+                  <Check className="size-4 shrink-0 text-foreground" />
                 )}
               </DropdownMenuItem>
             );
