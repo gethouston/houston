@@ -557,8 +557,19 @@ marketplace, not a settings pane. Entry: `app/src/components/ai-hub/ai-hub-view.
   passes `onOpen` + `renderDialogs={false}`). Coming-soon tiles are gone.
 - **Provider detail** (`provider-modal.tsx`): connect / sign-out plus that
   provider's model list.
-- **Model directory** (`model-directory.tsx` / `model-row.tsx`): the
-  cross-provider catalog (~378 unique models), searchable (`ai-hub/search.ts`).
+- **Model directory** (`model-directory.tsx` → `models-browser.tsx` /
+  `model-card-row.tsx`): the cross-provider catalog (~378 unique models) as a
+  `sm:grid-cols-2` card grid (BrandMark + name + lab + a visible "See more" cue),
+  above a control row of a pill search box + four facet comboboxes — AI provider
+  (self-hides at one lab), Good at, Cost, Memory. The comboboxes are the shared
+  `ai-hub/filter-combobox.tsx` (Popover + cmdk, optional in-dropdown search),
+  which the teams allowed-models editor's `agent-admin/lab-filter.tsx` also
+  reuses. Cost/Memory buckets are the pure `costBucket` / `memoryBucket` in
+  `ai-hub/format.ts` (cost reuses the `costTier` thresholds, plus a `$0` "Free"
+  bucket; memory splits at 200K / 1M). Searchable via `ai-hub/search.ts`. The
+  old Mercury ledger (`models-ledger.tsx` / `model-row.tsx` / the sticky
+  `LedgerHeader` + `DirectoryFilters`) was removed. `ModelsBrowser` also backs
+  the provider modal, so both surfaces read identically.
 - **Model detail** (`model-modal.tsx` + `model-offer-row.tsx`): one model's
   per-provider offers ("Get it through" + pricing / subscription).
 

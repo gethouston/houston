@@ -1,4 +1,4 @@
-import { cn } from "@houston-ai/core";
+import { Badge, cn } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 
 export type HubTab = "providers" | "models";
@@ -11,7 +11,8 @@ export type HubTab = "providers" | "models";
  * tab-strip markup verbatim — identical `gap-5`, `pb-2.5 text-sm`, active
  * `font-medium` + `h-[2px] bg-primary` underline, muted hover — minus that
  * chrome. Keep the two visually in sync. Both tabs carry their live count
- * inline via `tabs.providersCount` / `tabs.modelsCount`.
+ * beside the label as a secondary count {@link Badge} (the same treatment the
+ * agent-admin sidebar uses), not baked into the label string.
  */
 export function AiHubTabs({
   active,
@@ -25,12 +26,9 @@ export function AiHubTabs({
   onSelect: (tab: HubTab) => void;
 }) {
   const { t } = useTranslation("aiHub");
-  const tabs: { id: HubTab; label: string }[] = [
-    {
-      id: "providers",
-      label: t("tabs.providersCount", { count: providerCount }),
-    },
-    { id: "models", label: t("tabs.modelsCount", { count: modelCount }) },
+  const tabs: { id: HubTab; label: string; count: number }[] = [
+    { id: "providers", label: t("tabs.providers"), count: providerCount },
+    { id: "models", label: t("tabs.models"), count: modelCount },
   ];
   return (
     <div
@@ -56,6 +54,12 @@ export function AiHubTabs({
             )}
           >
             {tab.label}
+            <Badge
+              variant="secondary"
+              className="min-w-5 px-1.5 font-normal tabular-nums text-muted-foreground"
+            >
+              {tab.count}
+            </Badge>
             {isActive && (
               <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-primary" />
             )}

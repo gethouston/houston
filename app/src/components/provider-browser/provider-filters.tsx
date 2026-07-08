@@ -1,8 +1,8 @@
 /**
  * The Providers-tab filter bar: a search box + a plain-language quick-filter
- * dropdown. The search markup mirrors `ModelsBrowser` (pill Input with a leading
- * magnifier) and the Select mirrors `DirectoryFilters` (token-styled pill
- * trigger) so the two tabs read identically. Each option pairs a lucide glyph
+ * dropdown. The search markup mirrors `ModelsBrowser` (pill input with a leading
+ * magnifier) and the Select mirrors the hub's `FilterCombobox` (token-styled
+ * pill trigger) so the two tabs read identically. Each option pairs a lucide glyph
  * with a non-technical label so a first-time user can tell the facets apart at a
  * glance. Filter state lives in the parent (`ProviderList`); this owns nothing
  * but its own layout.

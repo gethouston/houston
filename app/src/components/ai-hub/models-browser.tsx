@@ -1,154 +1,200 @@
 /**
- * The reusable model browser: the FULL controls + table the Models tab shows.
- * A search Input plus the "AI provider" / "Good at" dropdowns (DirectoryFilters)
- * AND the ledger's column header share ONE sticky unit so neither disappears on
- * scroll — the rows below pass cleanly BEHIND it. The bar is transparent at rest
- * and fades in a frosted-glass `bg-popover` (the blur masks the rows; an opaque
- * fill would slab over the theme) only once it pins on scroll. On the full
- * directory the body (`ModelsLedger`) scrolls horizontally when narrow; an
- * `onScroll` handler mirrors that `scrollLeft` onto the sticky header track so
- * the pinned header stays column-aligned with the rows. The `compact` variant
- * (the provider modal) uses the trackless four-column ledger instead — no
- * horizontal scroll, so no mirroring. Owns the search + lab + good-at
- * filtering. Reused by the Models tab (`ModelDirectory`) and the provider
- * modal so both read identically.
+ * The reusable model browser: one control row (a pill search box + the "AI
+ * provider" / "Good at" / "Cost" / "Memory" facet comboboxes, wrapping on narrow
+ * widths) above a `sm:grid-cols-2` grid of {@link ModelCardRow} cards, the same
+ * card idiom as the allowed-models editor. Each card opens the model modal via
+ * `onOpenModel`; the grid caps at one page with a quiet "Show more" pill and
+ * shows the shared Empty treatment when every filter + the search rule out
+ * everything. Owns all filter state + filtering. Reused by the Models tab
+ * (`ModelDirectory`) and the provider modal so both read identically.
  *
- * The "AI provider" dropdown lists only the labs present in the passed `models`
- * and hides itself when they are all one lab (a single useless option); "Good
- * at" always shows. Callers pass an already-scoped `models` set + `onOpenModel`.
+ * The "AI provider" combobox lists only the labs present in the passed `models`
+ * and hides itself when they are all one lab (a single useless option); the
+ * other three facets always show. Callers pass an already-scoped `models` set +
+ * `onOpenModel`.
  */
 
-import { cn, Input } from "@houston-ai/core";
-import { Search } from "lucide-react";
 import {
-  useCallback,
-  useDeferredValue,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+  cn,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@houston-ai/core";
+import { Search } from "lucide-react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useStuckOnScroll } from "../../hooks/use-stuck-on-scroll.ts";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
 import { filterModels, searchModels } from "../../lib/ai-hub/search.ts";
 import {
-  cheapestInput,
-  costTier,
-  fewModels,
-  roundedModelCount,
-} from "./format.ts";
+  FilterCombobox,
+  type FilterOption,
+} from "../shell/filter-combobox.tsx";
 import {
-  DirectoryFilters,
+  type CostBucket,
+  cheapestInput,
+  costBucket,
+  costTier,
   type GoodAt,
+  labsInCatalog,
+  type MemoryBucket,
+  memoryBucket,
   type ProviderValue,
-} from "./model-directory-filters.tsx";
-import { LedgerHeader, ModelsLedger } from "./models-ledger.tsx";
+} from "./facets.ts";
+import { fewModels, labName, roundedModelCount } from "./format.ts";
+import { ModelCardRow } from "./model-card-row.tsx";
+
+const PAGE = 60;
 
 export function ModelsBrowser({
   models,
   onOpenModel,
   className,
-  compact = false,
 }: {
   models: CatalogModel[];
   onOpenModel: (key: string) => void;
   className?: string;
-  /** Modal variant: compact four-column ledger, no horizontal scroll track. */
-  compact?: boolean;
 }) {
   const { t } = useTranslation("aiHub");
   const [query, setQuery] = useState("");
   const [provider, setProvider] = useState<ProviderValue>("all");
   const [goodAt, setGoodAt] = useState<GoodAt>("all");
+  const [cost, setCost] = useState<CostBucket>("all");
+  const [memory, setMemory] = useState<MemoryBucket>("all");
   const deferredQuery = useDeferredValue(query);
 
-  // Frozen-header sync: the pinned header can't share the body's scroll
-  // container without losing its vertical stick, so mirror the body's
-  // horizontal scroll onto the header track by hand.
-  const headerTrackRef = useRef<HTMLDivElement>(null);
-  const onBodyScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    const track = headerTrackRef.current;
-    if (track) track.scrollLeft = event.currentTarget.scrollLeft;
-  }, []);
-
-  // Scroll-aware chrome: the sticky bar is transparent while it sits at rest and
-  // only fades in its frosted `bg-popover` (+ divider) once rows scroll BEHIND
-  // it — see `useStuckOnScroll` (shared with the Providers tab).
-  const { sentinelRef, stuck } = useStuckOnScroll();
+  const labs = useMemo(() => labsInCatalog(models), [models]);
+  const labOptions = useMemo<FilterOption[]>(
+    () => labs.map((lab) => ({ value: lab, label: labName(lab), mark: lab })),
+    [labs],
+  );
 
   const results = useMemo(() => {
     const byFilter = filterModels(models, {
       lab: provider === "all" ? undefined : provider,
       reasoning: goodAt === "reasoning",
       vision: goodAt === "images",
-    }).filter(
-      (model) =>
-        goodAt !== "budget" || costTier(cheapestInput(model.offers)) === 1,
-    );
+    })
+      .filter(
+        (model) =>
+          goodAt !== "budget" || costTier(cheapestInput(model.offers)) === 1,
+      )
+      .filter((model) => cost === "all" || costBucket(model) === cost)
+      .filter(
+        (model) => memory === "all" || memoryBucket(model.context) === memory,
+      );
     return searchModels(byFilter, deferredQuery);
-  }, [models, provider, goodAt, deferredQuery]);
+  }, [models, provider, goodAt, cost, memory, deferredQuery]);
+
+  // A fresh (filtered) list collapses the cap back to the first page. Adjusting
+  // state during render (React's documented pattern) keeps the reset in sync
+  // with the new list identity and avoids a wasted paint.
+  const [visible, setVisible] = useState(PAGE);
+  const [shownFor, setShownFor] = useState(results);
+  if (shownFor !== results) {
+    setShownFor(results);
+    setVisible(PAGE);
+  }
 
   const searchPlaceholder = fewModels(models.length)
     ? t("directory.searchFew")
     : t("directory.search", { count: roundedModelCount(models.length) });
 
   return (
-    <div className={cn("flex flex-col", className)}>
-      {/* Sentinel marking the bar's natural top (see the stuck effect above). */}
-      <div ref={sentinelRef} aria-hidden className="h-0" />
-      {/* Controls + column header as ONE sticky unit: neither disappears on
-          scroll, and the rows below pass cleanly BEHIND it (no bleed). At rest
-          the bar is fully transparent; once pinned it fades in the frosted-glass
-          `bg-popover` surface (blur masks the scrolling rows) — just the fill, no
-          framing lines: no bottom divider, and `shadow-none!` kills the inset top
-          sheen `bg-popover` carries in the futuristic theme. An opaque
-          `bg-background` slab here broke the aurora glass screen in dark mode,
-          and a permanent fill looked heavy at rest. `rounded-b-2xl` rounds only
-          the bottom edge — the pinned bar sits flush under the masthead, so a
-          rounded top read as a detached floating slab; the bg + its backdrop
-          blur follow the radius. */}
-      <div
-        className={cn(
-          "sticky top-0 z-20 transition-colors",
-          stuck ? "rounded-b-2xl bg-popover shadow-none!" : "",
-        )}
-      >
-        <div className="flex flex-wrap items-center gap-3 pt-1 pb-3">
-          <div className="relative min-w-[200px] flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={searchPlaceholder}
-              className="rounded-full border-border bg-secondary pl-9 focus:bg-background"
-            />
-          </div>
-
-          <DirectoryFilters
-            models={models}
-            provider={provider}
-            setProvider={setProvider}
-            goodAt={goodAt}
-            setGoodAt={setGoodAt}
+    <div className={cn("flex flex-col gap-4", className)}>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={searchPlaceholder}
+            className="h-9 w-full rounded-full border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
           />
         </div>
 
-        {results.length > 0 &&
-          (compact ? (
-            <LedgerHeader compact />
-          ) : (
-            <div ref={headerTrackRef} className="overflow-x-hidden">
-              <LedgerHeader />
-            </div>
-          ))}
+        {labs.length > 1 && (
+          <FilterCombobox
+            ariaLabel={t("directory.filters.provider")}
+            allLabel={t("directory.filters.allProviders")}
+            searchPlaceholder={t("directory.filters.searchProviders")}
+            emptyText={t("directory.filters.noProviders")}
+            searchable
+            options={labOptions}
+            value={provider}
+            onChange={(next) => setProvider(next as ProviderValue)}
+          />
+        )}
+        <FilterCombobox
+          ariaLabel={t("directory.filters.goodAt")}
+          allLabel={t("directory.filters.allSpecialties")}
+          options={[
+            { value: "reasoning", label: t("directory.filters.reasoning") },
+            { value: "images", label: t("directory.filters.images") },
+            { value: "budget", label: t("directory.filters.budget") },
+          ]}
+          value={goodAt}
+          onChange={(next) => setGoodAt(next as GoodAt)}
+        />
+        <FilterCombobox
+          ariaLabel={t("directory.filters.cost")}
+          allLabel={t("directory.filters.costAll")}
+          options={[
+            { value: "free", label: t("directory.filters.costFree") },
+            { value: "low", label: t("directory.filters.costLow") },
+            { value: "mid", label: t("directory.filters.costMid") },
+            { value: "high", label: t("directory.filters.costHigh") },
+          ]}
+          value={cost}
+          onChange={(next) => setCost(next as CostBucket)}
+        />
+        <FilterCombobox
+          ariaLabel={t("directory.filters.memory")}
+          allLabel={t("directory.filters.memoryAll")}
+          options={[
+            { value: "small", label: t("directory.filters.memorySmall") },
+            { value: "mid", label: t("directory.filters.memoryMid") },
+            { value: "long", label: t("directory.filters.memoryLong") },
+          ]}
+          value={memory}
+          onChange={(next) => setMemory(next as MemoryBucket)}
+        />
       </div>
 
-      <ModelsLedger
-        models={results}
-        compact={compact}
-        onOpenModel={onOpenModel}
-        onScroll={onBodyScroll}
-      />
+      {results.length === 0 ? (
+        <Empty className="border-0">
+          <EmptyHeader>
+            <EmptyTitle>{t("directory.empty.title")}</EmptyTitle>
+            <EmptyDescription>
+              {t("directory.empty.description")}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {results.slice(0, visible).map((model) => (
+            <ModelCardRow
+              key={model.key}
+              model={model}
+              seeMoreLabel={t("directory.seeMore")}
+              onOpen={() => onOpenModel(model.key)}
+            />
+          ))}
+        </div>
+      )}
+
+      {visible < results.length && (
+        <div className="flex justify-center pt-1">
+          <button
+            type="button"
+            onClick={() => setVisible((v) => v + PAGE)}
+            className="rounded-full bg-secondary px-4 py-1.5 font-medium text-muted-foreground text-xs transition-colors hover:bg-accent hover:text-foreground"
+          >
+            {t("directory.showMore")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

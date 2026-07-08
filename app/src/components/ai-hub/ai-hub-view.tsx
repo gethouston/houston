@@ -14,6 +14,7 @@ import {
 } from "../../lib/providers";
 import { ProviderBrowser } from "../provider-browser/provider-browser";
 import { ProviderConnectionDialogs } from "../provider-browser/provider-connection-dialogs";
+import { PageContainer } from "../shell/page-shell";
 import { AiHubTabs, type HubTab } from "./ai-hub-tabs";
 import { HubHero } from "./hub-hero";
 import { ModelDirectory } from "./model-directory";
@@ -29,7 +30,7 @@ const TRANSITION = {
 
 /**
  * The AI models hub: a top-level marketplace surface. Composes the masthead, the
- * Providers / Models tabs, and the two surfaces (provider list + model ledger),
+ * Providers / Models tabs, and the two surfaces (provider list + model grid),
  * driven by `useHubCatalog` (the model directory) and `useProviderConnections`
  * (connect / sign-out). A provider row or model row opens a centered MODAL
  * (`ProviderModal` / `ModelModal`) that fades in over a single dim scrim — the
@@ -76,9 +77,9 @@ export function AiHubView() {
   return (
     <div className="flex h-full flex-col">
       {!catalog ? (
-        <div className="mx-auto flex max-w-5xl flex-col gap-8 px-8 py-10">
+        <PageContainer className="flex flex-col gap-8 py-10">
           <HubSkeleton loading={isLoading} />
-        </div>
+        </PageContainer>
       ) : (
         <>
           {/* Fixed masthead: the hero title + tabs never scroll away. No
@@ -88,7 +89,7 @@ export function AiHubView() {
               solid slab that broke the frosted-glass screen in dark mode (the
               aurora bleeds through everywhere else). */}
           <div className="shrink-0">
-            <div className="mx-auto flex max-w-5xl flex-col gap-6 px-8 pt-10 pb-4">
+            <PageContainer className="flex flex-col gap-6 pt-10 pb-4">
               <HubHero modelCount={catalog.modelCount} />
               <AiHubTabs
                 active={tab}
@@ -96,7 +97,7 @@ export function AiHubView() {
                 modelCount={catalog.modelCount}
                 onSelect={setTab}
               />
-            </div>
+            </PageContainer>
           </div>
 
           {/* Only this region scrolls. While a modal is open it flips to
@@ -105,16 +106,15 @@ export function AiHubView() {
               draggable vertical scroll). Hidden boxes are still scroll
               containers, so `scrollbar-gutter: stable` keeps the gutter
               reserved and the scroll offset holds — the list stays put on
-              modal open/close. The ModelsBrowser controls/column-header
-              (sticky top-0) pin to the TOP of this region, i.e. right beneath
-              the fixed tabs above. */}
+              modal open/close. The ModelsBrowser control row + card grid
+              scroll within this region, beneath the fixed tabs above. */}
           <div
             className={cn(
               "flex-1 [scrollbar-gutter:stable]",
               modalOpen ? "overflow-y-hidden" : "overflow-y-auto",
             )}
           >
-            <div className="mx-auto flex max-w-5xl flex-col px-8 pb-10">
+            <PageContainer className="flex flex-col pb-10">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div key={tab} {...TRANSITION}>
                   {tab === "providers" ? (
@@ -136,7 +136,7 @@ export function AiHubView() {
                   )}
                 </motion.div>
               </AnimatePresence>
-            </div>
+            </PageContainer>
           </div>
         </>
       )}
