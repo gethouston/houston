@@ -6,8 +6,7 @@
   },
   "tabs": {
     "providers": "Providers",
-    "providersCount": "Providers · {{count}}",
-    "modelsCount": "Models · {{count}}"
+    "models": "Models"
   },
   "sections": {
     "connected": "Connected",
@@ -31,38 +30,29 @@
   "directory": {
     "search": "Search {{count}}+ models",
     "searchFew": "Search models",
+    "seeMore": "See more",
     "filters": {
-      "all": "All",
+      "allSpecialties": "All specialties",
       "reasoning": "Reasoning",
       "images": "Images",
       "budget": "Budget",
+      "goodAt": "Good at",
       "provider": "AI provider",
       "allProviders": "All providers",
-      "goodAt": "Good at"
-    },
-    "columns": {
-      "model": "Model",
-      "goodAt": "Good at",
-      "memory": "Memory",
+      "searchProviders": "Search providers",
+      "noProviders": "No providers found",
       "cost": "Cost",
-      "offeredBy": "Offered by"
+      "costAll": "Any cost",
+      "costFree": "Free tier",
+      "costLow": "Low",
+      "costMid": "Mid",
+      "costHigh": "High",
+      "memory": "Memory",
+      "memoryAll": "Any memory",
+      "memorySmall": "Small",
+      "memoryMid": "Mid",
+      "memoryLong": "Long"
     },
-    "memory": {
-      "standard": "Standard",
-      "long": "Long",
-      "huge": "Huge"
-    },
-    "cost": {
-      "from": "from {{price}}",
-      "free": "Free",
-      "tiers": {
-        "1": "Budget",
-        "2": "Standard",
-        "3": "Premium"
-      }
-    },
-    "providers_one": "{{count}} provider",
-    "providers_other": "{{count}} providers",
     "showMore": "Show more",
     "empty": {
       "title": "No models found",

@@ -60,45 +60,6 @@ export function CapabilityChip({ label }: { label: string }) {
   return <SpecChip>{label}</SpecChip>;
 }
 
-/** Budget -> premium as three dots. Filled = spend; neutral, never accent. */
-export function CostMeter({
-  tier,
-  title,
-}: {
-  tier: 1 | 2 | 3;
-  title?: string;
-}) {
-  return (
-    <span
-      className="inline-flex items-center gap-1"
-      role="img"
-      aria-label={title}
-    >
-      {[1, 2, 3].map((dot) => (
-        <span
-          key={dot}
-          className={cn(
-            "size-1.5 rounded-full",
-            dot <= tier ? "bg-foreground/70" : "bg-border",
-          )}
-        />
-      ))}
-    </span>
-  );
-}
-
-/** A plain-language memory readout, e.g. "Long" + a muted mono value. */
-export function MemoryLabel({ word, value }: { word: string; value: string }) {
-  return (
-    <span className="inline-flex items-baseline">
-      <span className="text-[13px] font-medium text-foreground">{word}</span>
-      <span className="ml-1.5 font-mono text-xs text-muted-foreground tabular-nums">
-        {value}
-      </span>
-    </span>
-  );
-}
-
 /** Pre-formatted price text, e.g. "from $3" or "$5.00 / $25.00". */
 export function PriceText({ text }: { text: string }) {
   return (

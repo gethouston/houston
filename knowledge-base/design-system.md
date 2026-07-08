@@ -348,9 +348,23 @@ blur, `--ht-card-rest`, the canvas tokens). Dark mode is the loved baseline —
 when adjusting, scope changes to light (`:root`) and pin dark
 (`[data-theme="dark"]`) so it stays put.
 
+**Top-level surface shell (`app/src/components/shell/page-shell.tsx`)** — the four
+sidebar destinations (AI hub, Integrations, Organization, Settings) share two
+app-local primitives so their width and header spacing are identical.
+`PageContainer` is the canonical horizontal column (`mx-auto w-full max-w-5xl
+px-8`, the single source of the shared page width; callers add vertical rhythm —
+surfaces open at `pt-10`, close at `pb-10` — and it spreads div props so it can
+also be a tab's `role="tabpanel"`). `PageHeader` is the canonical title block: a
+28px normal-weight `h1` + optional muted subtitle + optional trailing slot. These
+are deliberately NOT in `ui/` (page chrome, not a reusable widget → no
+inventory/parity churn). The fixed-masthead surfaces (hub, org) split the
+container across a `shrink-0` masthead + a scrolling `PageContainer` below; the
+single-scroll surfaces (integrations, settings landing) use one. Settings landing
+now shares `max-w-5xl` (cards render wider than before, by design).
+
 **Settings (`app/src/components/settings/`)** — no sidebar. The landing is the
-**overview** (`settings-index.tsx`); its title uses the integrations page font
-(`text-[28px] font-normal`). Two row primitives (`settings-row.tsx`), both with a
+**overview** (`settings-index.tsx`); it uses the shared `PageContainer` +
+`PageHeader` (title `text-[28px] font-normal`). Two row primitives (`settings-row.tsx`), both with a
 **bare icon** (no tile/background): `SettingsControlRow` resolves a setting in
 place (bare icon · title · right-side control) and `SettingsRow` navigates (adds
 a value + chevron). Simple settings are inline control rows rendered straight

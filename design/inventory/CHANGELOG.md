@@ -3,6 +3,23 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v8 - 2026-07-08
+
+Rebuild `ai-model-row` from the multi-column Mercury ledger into a compact card,
+matching the allowed-models editor's idiom. The Models tab is now a `sm:grid-cols-2`
+grid of cards (lab glyph + model name + lab name + an always-visible "See more"
+cue), above a control row of a pill search box and four facet comboboxes: AI
+provider (self-hides at one lab), Good at, Cost, Memory. The whole card is one
+button that opens the model detail modal (no nested buttons, nothing hover-gated).
+The comboboxes are a shared `ai-hub/filter-combobox.tsx` (Popover + cmdk) that the
+teams allowed-models `lab-filter.tsx` also reuses; Cost/Memory are pure
+`costBucket` / `memoryBucket` helpers (cost reuses the meter's `costTier`
+thresholds plus a `$0` "Free" bucket, memory splits at 200K / 1M). The old ledger
+(`models-ledger.tsx`, `model-row.tsx`, the sticky `LedgerHeader`, and
+`model-directory-filters.tsx`) plus the dead `CostMeter` / `MemoryLabel` badges
+are deleted. `ModelsBrowser` backs both the directory and the provider modal, so
+they still read identically. Stays web `partial` (app/-locked).
+
 ## v7 - 2026-07-08
 
 Add a `signin` step to `interaction-card`. The pending-interaction sequence now

@@ -3,6 +3,7 @@ import type { OrgInfo, OrgRole } from "@houston-ai/engine-client";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
+import { PageContainer, PageHeader } from "../shell/page-shell";
 import ActivityTab from "./activity-tab";
 import AgentsTab from "./agents-tab";
 import MembersTab from "./members-tab";
@@ -57,15 +58,8 @@ export function OrganizationView() {
   return (
     <div className="flex h-full flex-col">
       <div className="shrink-0">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-8 pt-10 pb-2">
-          <div>
-            <h1 className="text-[28px] font-normal text-foreground">
-              {t("org.title")}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("org.subtitle")}
-            </p>
-          </div>
+        <PageContainer className="flex flex-col gap-4 pt-10 pb-2">
+          <PageHeader title={t("org.title")} subtitle={t("org.subtitle")} />
           <div
             role="tablist"
             aria-label={t("org.tablistLabel")}
@@ -98,15 +92,15 @@ export function OrganizationView() {
               );
             })}
           </div>
-        </div>
+        </PageContainer>
       </div>
 
       <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-        <div
+        <PageContainer
           role="tabpanel"
           id="org-tabpanel"
           aria-labelledby={`org-tab-${tab}`}
-          className="mx-auto w-full max-w-5xl px-8 pb-10"
+          className="pb-10"
         >
           {ctx ? (
             <ActiveTab ctx={ctx} />
@@ -115,7 +109,7 @@ export function OrganizationView() {
               {isLoading ? t("org.loading") : t("org.unavailable")}
             </p>
           )}
-        </div>
+        </PageContainer>
       </div>
     </div>
   );

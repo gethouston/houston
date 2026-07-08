@@ -5,6 +5,7 @@ import {
   UnavailableState,
   useIntegrationsGate,
 } from "../integrations";
+import { PageContainer, PageHeader } from "../shell/page-shell";
 import { IntegrationsReady } from "./integrations-ready";
 
 /**
@@ -19,7 +20,7 @@ export function IntegrationsView() {
 
   return (
     <div className="h-full overflow-auto">
-      <div className="mx-auto w-full max-w-3xl px-6 py-6">
+      <PageContainer className="py-10">
         {gate.kind === "ready" ? (
           <IntegrationsReady
             reconnectNotice={gate.reconnectNotice}
@@ -27,14 +28,11 @@ export function IntegrationsView() {
           />
         ) : (
           <>
-            <div className="mb-6">
-              <h1 className="text-[28px] font-normal text-foreground">
-                {t("home.title")}
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t("home.description")}
-              </p>
-            </div>
+            <PageHeader
+              title={t("home.title")}
+              subtitle={t("home.description")}
+              className="mb-6"
+            />
             {gate.kind === "loading" ? (
               <LoadingState />
             ) : gate.kind === "signin" ? (
@@ -44,7 +42,7 @@ export function IntegrationsView() {
             )}
           </>
         )}
-      </div>
+      </PageContainer>
     </div>
   );
 }

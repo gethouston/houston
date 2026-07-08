@@ -1,8 +1,9 @@
 /**
  * One provider's way to run a model, in a model modal's "Get it through" list.
  * A hub-local row (NOT the shared `RowCard`, which draws its own media box) that
- * pairs the provider's colorful `BrandMark` tile with its name, matching the
- * ledger. Shows either a per-1M price line or a subscription label. Not
+ * pairs the provider's colorful `BrandMark` tile with its name, echoing the
+ * models card grid's BrandMark tiles. Shows either a per-1M price line or a
+ * subscription label. Not
  * connected -> a Connect pill; connected -> a live status and a row that opens
  * the provider modal.
  */

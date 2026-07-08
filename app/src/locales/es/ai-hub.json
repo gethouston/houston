@@ -6,8 +6,7 @@
   },
   "tabs": {
     "providers": "Proveedores",
-    "providersCount": "Proveedores · {{count}}",
-    "modelsCount": "Modelos · {{count}}"
+    "models": "Modelos"
   },
   "sections": {
     "connected": "Conectados",
@@ -31,38 +30,29 @@
   "directory": {
     "search": "Busca {{count}}+ modelos",
     "searchFew": "Buscar modelos",
+    "seeMore": "Ver más",
     "filters": {
-      "all": "Todos",
+      "allSpecialties": "Todas las especialidades",
       "reasoning": "Razonamiento",
       "images": "Imágenes",
       "budget": "Económico",
+      "goodAt": "Ideal para",
       "provider": "Proveedor de IA",
       "allProviders": "Todos los proveedores",
-      "goodAt": "Ideal para"
-    },
-    "columns": {
-      "model": "Modelo",
-      "goodAt": "Ideal para",
-      "memory": "Memoria",
+      "searchProviders": "Buscar proveedores",
+      "noProviders": "No se encontraron proveedores",
       "cost": "Costo",
-      "offeredBy": "Disponible en"
+      "costAll": "Cualquier costo",
+      "costFree": "Nivel gratuito",
+      "costLow": "Bajo",
+      "costMid": "Medio",
+      "costHigh": "Alto",
+      "memory": "Memoria",
+      "memoryAll": "Cualquier memoria",
+      "memorySmall": "Pequeña",
+      "memoryMid": "Media",
+      "memoryLong": "Amplia"
     },
-    "memory": {
-      "standard": "Estándar",
-      "long": "Amplia",
-      "huge": "Enorme"
-    },
-    "cost": {
-      "from": "desde {{price}}",
-      "free": "Gratis",
-      "tiers": {
-        "1": "Económico",
-        "2": "Estándar",
-        "3": "Premium"
-      }
-    },
-    "providers_one": "{{count}} proveedor",
-    "providers_other": "{{count}} proveedores",
     "showMore": "Ver más",
     "empty": {
       "title": "No se encontraron modelos",

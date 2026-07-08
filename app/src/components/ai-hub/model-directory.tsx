@@ -1,8 +1,9 @@
 /**
  * The Models tab: a thin wrapper that hands the full catalog to the shared
- * `ModelsBrowser` (search box + "AI provider" / "Good at" dropdowns + the
- * Mercury ledger). All filter state and filtering live in `ModelsBrowser`, which
- * the provider modal reuses so both surfaces read identically.
+ * `ModelsBrowser` (a pill search box + the "AI provider" / "Good at" / "Cost" /
+ * "Memory" facet comboboxes above a card grid). All filter state and filtering
+ * live in `ModelsBrowser`, which the provider modal reuses so both surfaces read
+ * identically.
  */
 
 import type { HubCatalog } from "../../lib/ai-hub/catalog-types.ts";

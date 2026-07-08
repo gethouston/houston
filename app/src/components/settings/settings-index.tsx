@@ -5,6 +5,7 @@ import { useWorkspaceContext } from "../../hooks/queries/use-workspace-context";
 import { genericErrorDescription } from "../../lib/error-toast";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
+import { PageContainer, PageHeader } from "../shell/page-shell";
 import { AccountSection } from "./sections/account";
 import { AppearanceSection } from "./sections/appearance";
 import { DangerSection } from "./sections/danger";
@@ -60,15 +61,12 @@ export function SettingsIndex({
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-8 py-10">
-      <header className="mb-8 px-1">
-        <h1 className="text-[28px] font-normal text-foreground">
-          {t("settings:title")}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t("settings:index.subtitle")}
-        </p>
-      </header>
+    <PageContainer className="py-10">
+      <PageHeader
+        title={t("settings:title")}
+        subtitle={t("settings:index.subtitle")}
+        className="mb-8 px-1"
+      />
 
       <div className="space-y-8">
         <SettingsCard>
@@ -136,6 +134,6 @@ export function SettingsIndex({
           {t("settings:version", { version: __APP_VERSION__ })}
         </button>
       </footer>
-    </div>
+    </PageContainer>
   );
 }

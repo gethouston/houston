@@ -360,15 +360,18 @@ components:
     since: 2
 
   - id: ai-model-row
-    title: AI model row
-    purpose: One model in the AI hub directory or a provider's model list.
-    anatomy: [lab-glyph, name, description, provider-count, context-chip, reasoning-badge]
+    title: AI model card
+    purpose: One model card in the AI hub directory grid or a provider's model list.
+    anatomy: [lab-glyph, name, lab-name, see-more]
     states: [default]
-    variants: [directory-row, provider-model-row]
+    variants: [directory-card, provider-model-card]
     behavior: >-
-      A unique cross-provider catalog model; the provider-count reflects how many
-      providers offer it. Opening the row navigates to the model detail.
-    a11y: button/listitem role; name as accessible label; badges conveyed as text.
+      A unique cross-provider catalog model, shown as a compact card in a
+      two-column grid. The whole card is one button that opens the model detail
+      modal; a trailing "See more" cue (label + chevron) is always visible, never
+      hover-gated. The directory grid sits under a control row of a search box +
+      the AI provider / Good at / Cost / Memory facet comboboxes.
+    a11y: single button role; model name + "See more" as the accessible label; no nested buttons.
     since: 2
 
   - id: ai-model-offer-row
