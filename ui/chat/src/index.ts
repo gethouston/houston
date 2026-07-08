@@ -196,7 +196,6 @@ export type {
   ChatPlanReadyLabels,
   PlanReadyAction,
   PlanReadyActionKey,
-  PlanReadyActionVariant,
 } from "./chat-plan-ready-card-model";
 export {
   DEFAULT_PLAN_READY_LABELS,

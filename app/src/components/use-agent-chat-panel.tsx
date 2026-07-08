@@ -1008,9 +1008,12 @@ export function useAgentChatPanel({
   const planReadyLabels = useMemo<ChatPlanReadyLabels>(
     () => ({
       title: t("chat:planReady.title"),
-      startWorking: t("chat:planReady.startWorking"),
-      runAutopilot: t("chat:planReady.runAutopilot"),
-      keepPlanning: t("chat:planReady.keepPlanning"),
+      coworkerTitle: t("chat:planReady.coworkerTitle"),
+      coworkerDescription: t("chat:planReady.coworkerDescription"),
+      autopilotTitle: t("chat:planReady.autopilotTitle"),
+      autopilotDescription: t("chat:planReady.autopilotDescription"),
+      keepPlanningTitle: t("chat:planReady.keepPlanningTitle"),
+      keepPlanningDescription: t("chat:planReady.keepPlanningDescription"),
     }),
     [t],
   );

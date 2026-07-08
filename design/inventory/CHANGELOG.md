@@ -3,6 +3,26 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v10 - 2026-07-08
+
+Revamp `plan-ready-card`'s three options into the composer mode-menu idiom.
+The stacked pill buttons (filled "Start working", outline "Run on Autopilot",
+ghost "Keep planning") become full-width mode-menu rows: each row shows its
+icon inline with the title (Handshake / Rocket / ListTodo, matching the
+`ChatModeSelector` icons, in the title's foreground color) and a one-line
+description on its own line below, with a rounded-xl hover background and
+nothing hover-gated. Copy is now "Continue in Coworker mode", "Continue in
+Autopilot mode", and "Keep planning". Primary emphasis comes from row order +
+title weight, so there is no filled primary button anymore. The card surface
+(rounded-[28px] bg-secondary), the "PLAN READY" title, and the plan summary are
+unchanged; callbacks (`onStartWorking` / `onRunAutopilot` / `onKeepPlanning`)
+and the `disabled`-gates-all-three behavior are unchanged. This is a labels
+CONTRACT change: `ChatPlanReadyCardProps.labels` drops the flat button strings
+and instead carries `{ title, coworkerTitle, coworkerDescription,
+autopilotTitle, autopilotDescription, keepPlanningTitle, keepPlanningDescription
+}` (`DEFAULT_PLAN_READY_LABELS` + the pure model updated to match); icons are
+internal to the component. Web-only; native surfaces still defer plan mode.
+
 ## v9 - 2026-07-08
 
 Add `plan-ready-card`, the composer-replacing surface shown when the agent
