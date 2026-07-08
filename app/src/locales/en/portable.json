@@ -24,7 +24,7 @@
       "asIsTitle": "Share as is",
       "asIsBody": "Keep everything exactly the way it is.",
       "anonymizeTitle": "Help me anonymize",
-      "anonymizeBody": "Remove names, emails, companies and other personal details.",
+      "anonymizeBody": "Remove names, emails, companies, API keys and other personal details.",
       "reviewLabel": "Review what changed",
       "working": "Houston is reviewing your content.",
       "aiFallback": "Houston couldn't use AI for this pass ({{reason}}). Only obvious patterns like emails and paths were removed, so review the results carefully.",

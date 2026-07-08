@@ -24,6 +24,8 @@
     "@houston/domain": "workspace:*",
     "@houston/protocol": "workspace:*",
     "@houston/runtime-client": "workspace:*",
+    "@secretlint/core": "13.0.2",
+    "@secretlint/secretlint-rule-preset-recommend": "13.0.2",
     "fflate": "0.8.3",
     "tsx": "4.23.0"
   },

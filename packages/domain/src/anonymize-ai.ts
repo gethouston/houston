@@ -9,8 +9,8 @@ import type {
 import {
   becameEmptyAfter,
   NO_PERSONAL_INFO,
-  redactionCounts,
-  redactText,
+  redactWithSecrets,
+  type SecretRedactor,
 } from "./anonymize";
 import type { PortableContent } from "./portable";
 
@@ -42,46 +42,53 @@ const routineFieldId = (id: string, field: "name" | "prompt") =>
   `routine:${id}:${field}`;
 const learningId = (id: string) => `learning:${id}`;
 
-/** Flatten the selected content into AI-pass items, regex-pre-redacted. */
-export function collectAnonymizeItems(
+/**
+ * Flatten the selected content into AI-pass items, pre-redacted (regex
+ * patterns + the secret redactor) — the model never sees raw emails, paths,
+ * or credentials.
+ */
+export async function collectAnonymizeItems(
   content: PortableContent,
-): AnonymizeAiItem[] {
-  const items: AnonymizeAiItem[] = [];
+  redactSecrets?: SecretRedactor,
+): Promise<AnonymizeAiItem[]> {
+  const sources: AnonymizeAiItem[] = [];
   if (content.claudeMd !== undefined) {
-    items.push({ id: claudeMdId, text: redactText(content.claudeMd) });
+    sources.push({ id: claudeMdId, text: content.claudeMd });
   }
   for (const s of content.skills) {
-    items.push({ id: skillId(s.slug), text: redactText(s.body) });
+    sources.push({ id: skillId(s.slug), text: s.body });
   }
   for (const r of content.routines) {
-    items.push({ id: routineFieldId(r.id, "name"), text: redactText(r.name) });
-    items.push({
-      id: routineFieldId(r.id, "prompt"),
-      text: redactText(r.prompt),
-    });
+    sources.push({ id: routineFieldId(r.id, "name"), text: r.name });
+    sources.push({ id: routineFieldId(r.id, "prompt"), text: r.prompt });
   }
   for (const l of content.learnings) {
-    items.push({ id: learningId(l.id), text: redactText(l.text) });
+    sources.push({ id: learningId(l.id), text: l.text });
   }
-  return items;
+  return Promise.all(
+    sources.map(async ({ id, text }) => ({
+      id,
+      text: (await redactWithSecrets(text, redactSecrets)).after,
+    })),
+  );
 }
 
-/** One diffed text: regex pre-pass + the model's redaction on top of it. */
-function aiText(
+/** One diffed text: the pre-pass + the model's redaction on top of it. */
+async function aiText(
   before: string,
   id: string,
   results: Map<string, AnonymizeAiResult>,
-): AnonymizedText {
-  const regexAfter = redactText(before);
+  redactSecrets?: SecretRedactor,
+): Promise<AnonymizedText> {
+  const pre = await redactWithSecrets(before, redactSecrets);
   const ai = results.get(id);
   // Defensive: a missing id (the runtime validates completeness) degrades to
-  // the regex result for that one item instead of dropping it.
-  const after = ai?.text ?? regexAfter;
+  // the pre-pass result for that one item instead of dropping it.
+  const after = ai?.text ?? pre.after;
 
   const parts: string[] = [];
-  const counts = redactionCounts(before);
-  if (counts && regexAfter !== before) parts.push(`redacted ${counts}`);
-  if (ai && ai.text !== regexAfter) {
+  if (pre.counts && pre.after !== before) parts.push(`redacted ${pre.counts}`);
+  if (ai && ai.text !== pre.after) {
     parts.push(
       ai.summary && ai.summary !== AI_NONE
         ? ai.summary
@@ -100,47 +107,55 @@ function aiText(
  * Merge the runtime's AI redactions into the wizard response. Mirrors
  * `anonymizeContent` exactly, with the model's output as the `after` texts.
  */
-export function mergeAnonymizeResults(
+export async function mergeAnonymizeResults(
   content: PortableContent,
   results: Map<string, AnonymizeAiResult>,
-): PortableAnonymizeResponse {
-  const skills: AnonymizedItem[] = content.skills.map((s) => ({
-    id: s.slug,
-    ...aiText(s.body, skillId(s.slug), results),
-  }));
+  redactSecrets?: SecretRedactor,
+): Promise<PortableAnonymizeResponse> {
+  const skills: AnonymizedItem[] = await Promise.all(
+    content.skills.map(async (s) => ({
+      id: s.slug,
+      ...(await aiText(s.body, skillId(s.slug), results, redactSecrets)),
+    })),
+  );
 
-  const routines: AnonymizedRoutine[] = content.routines.map((routine) => {
-    const fieldDiffs: RoutineFieldDiff[] = [];
-    const overridePayload: RoutineFieldOverride = {};
-    const fields = [
-      ["name", routine.name],
-      ["prompt", routine.prompt],
-    ] as const;
-    for (const [field, original] of fields) {
-      const { after } = aiText(
-        original,
-        routineFieldId(routine.id, field),
-        results,
-      );
-      if (after !== original) {
-        fieldDiffs.push({ field, before: original, after });
-        overridePayload[field] = after;
+  const routines: AnonymizedRoutine[] = await Promise.all(
+    content.routines.map(async (routine) => {
+      const fieldDiffs: RoutineFieldDiff[] = [];
+      const overridePayload: RoutineFieldOverride = {};
+      const fields = [
+        ["name", routine.name],
+        ["prompt", routine.prompt],
+      ] as const;
+      for (const [field, original] of fields) {
+        const { after } = await aiText(
+          original,
+          routineFieldId(routine.id, field),
+          results,
+          redactSecrets,
+        );
+        if (after !== original) {
+          fieldDiffs.push({ field, before: original, after });
+          overridePayload[field] = after;
+        }
       }
-    }
-    return { id: routine.id, fieldDiffs, overridePayload };
-  });
+      return { id: routine.id, fieldDiffs, overridePayload };
+    }),
+  );
 
   return {
     claudeMd:
       content.claudeMd !== undefined
-        ? aiText(content.claudeMd, claudeMdId, results)
+        ? await aiText(content.claudeMd, claudeMdId, results, redactSecrets)
         : null,
     skills,
     routines,
-    learnings: content.learnings.map((l) => ({
-      id: l.id,
-      ...aiText(l.text, learningId(l.id), results),
-    })),
+    learnings: await Promise.all(
+      content.learnings.map(async (l) => ({
+        id: l.id,
+        ...(await aiText(l.text, learningId(l.id), results, redactSecrets)),
+      })),
+    ),
     mode: "ai",
   };
 }

@@ -24,7 +24,7 @@
       "asIsTitle": "Compartir tal cual",
       "asIsBody": "Mantener todo como está.",
       "anonymizeTitle": "Ayúdame a anonimizar",
-      "anonymizeBody": "Quita nombres, correos, empresas y otros datos personales.",
+      "anonymizeBody": "Quita nombres, correos, empresas, claves de API y otros datos personales.",
       "reviewLabel": "Revisa qué cambió",
       "working": "Houston está revisando tu contenido.",
       "aiFallback": "Houston no pudo usar IA en esta pasada ({{reason}}). Solo se quitaron patrones obvios, como correos y rutas, así que revisa los resultados con cuidado.",

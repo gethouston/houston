@@ -99,7 +99,7 @@ beforeAll(async () => {
   if (!agent) throw new Error("Expected alice's agent to exist");
   await vfs.writeText(
     `${workspaceRoot(ws, agent)}/CLAUDE.md`,
-    "You assist Julian (julian@acme.com) at Acme Corp.",
+    `You assist Julian (julian@acme.com) at Acme Corp. Token ${["ghp", "_0123456789", "abcdefghijklmnopqrstuvwxyz"].join("")}.`,
   );
 });
 
@@ -140,13 +140,17 @@ test("AI pass merges the runtime's redactions (mode: ai)", async () => {
   const out = await anonymize();
   expect(out.mode).toBe("ai");
   expect(out.aiError).toBeUndefined();
-  expect(out.claudeMd?.after).toBe("You assist <name> (<email>) at <company>.");
-  expect(out.claudeMd?.summary).toBe(
-    "redacted 1 email; redacted a name and a company",
+  expect(out.claudeMd?.after).toBe(
+    "You assist <name> (<email>) at <company>. Token <secret>.",
   );
-  // The runtime only ever saw the regex-pre-redacted text — never the email.
+  expect(out.claudeMd?.summary).toBe(
+    "redacted 1 email, 1 secret; redacted a name and a company",
+  );
+  // The runtime only ever saw the pre-redacted text — never the email or key.
   expect(seen[0]?.[0]?.text).toContain("<email>");
   expect(seen[0]?.[0]?.text).not.toContain("julian@acme.com");
+  expect(seen[0]?.[0]?.text).toContain("<secret>");
+  expect(seen[0]?.[0]?.text).not.toContain("ghp");
 });
 
 test("a failing AI pass falls back to patterns WITH the reason", async () => {
@@ -157,8 +161,11 @@ test("a failing AI pass falls back to patterns WITH the reason", async () => {
   const out = await anonymize();
   expect(out.mode).toBe("patterns");
   expect(out.aiError).toBe("No provider connected");
-  // The regex redaction still shipped.
-  expect(out.claudeMd?.after).toBe("You assist Julian (<email>) at Acme Corp.");
+  // The pattern + secret redaction still shipped: keys never survive the
+  // fallback either.
+  expect(out.claudeMd?.after).toBe(
+    "You assist Julian (<email>) at Acme Corp. Token <secret>.",
+  );
 });
 
 test("a channel without the one-shot falls back to patterns", async () => {

@@ -304,6 +304,12 @@ importers:
       '@houston/runtime-client':
         specifier: workspace:*
         version: link:../runtime-client
+      '@secretlint/core':
+        specifier: 13.0.2
+        version: 13.0.2
+      '@secretlint/secretlint-rule-preset-recommend':
+        specifier: 13.0.2
+        version: 13.0.2
       fflate:
         specifier: 0.8.3
         version: 0.8.3
@@ -2630,6 +2636,21 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@secretlint/core@13.0.2':
+    resolution: {integrity: sha512-15vg+zCmjQuDFVoOPNt0TyEu0Z95eir2MO19++wG82yM/vbPtFu/m9qd6oh54ZOBXgMcchdGDTxMwJNDnCLxcA==}
+    engines: {node: '>=22.0.0'}
+
+  '@secretlint/profiler@13.0.2':
+    resolution: {integrity: sha512-vGaLZCoi9KewOF+sM0iIEBviWaH9mls1HmQFBgEPq4fnvmVO4PfKIkVr4CcAFm3Msg4NjzFE2RBAGwRR+5HEmQ==}
+
+  '@secretlint/secretlint-rule-preset-recommend@13.0.2':
+    resolution: {integrity: sha512-D03Kw51qOgffj9zNlJFZUarVmP8zGcCZNi7A14+vZtHskbbBPEsS/f09idb48rrlMSaRMBN29IkqfbmPyL9xtw==}
+    engines: {node: '>=22.0.0'}
+
+  '@secretlint/types@13.0.2':
+    resolution: {integrity: sha512-cAZjr6ZTKgSuJMLyTGDrUEtK3XEZa+JStIkD+DmdkT32VGAN+dQJiYr1So3XJopsKSrqhP5kjZKT8WWtftZIpQ==}
+    engines: {node: '>=22.0.0'}
+
   '@sentry/browser-utils@10.63.0':
     resolution: {integrity: sha512-DhUGNN+CH8fzAs6qAsueKPU70qShyTX3NxLhIP+l5DbGXDSXpYXBT6s8ubZus0/LhxpLvI0iSyNIDvZRD/gZaA==}
     engines: {node: '>=18'}
@@ -3435,6 +3456,9 @@ packages:
   body-parser@2.3.0:
     resolution: {integrity: sha512-2cGmJupaNgg+QUwVLAucDuWuoMZ6EX9iHDRswZ5lsNYEmwPaRknMPCLZz07yTzVq/83p4o/wzbDZbBrTvGGTIw==}
     engines: {node: '>=18'}
+
+  boundary@2.0.0:
+    resolution: {integrity: sha512-rJKn5ooC9u8q13IMCrW0RSp31pxBCHE3y9V/tp3TdWSLf8Em3p6Di4NBpfzbJge9YjjFEsD0RtFEjtvHL5VyEA==}
 
   bowser@2.14.1:
     resolution: {integrity: sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg==}
@@ -5528,6 +5552,9 @@ packages:
 
   strnum@2.4.1:
     resolution: {integrity: sha512-M9eUSMT2dCB2cTNPG7UYj6KuK7RJR2SN2+yCV/fTW3xzTCS6EaGZ5pSMgDIjB7r8zSfTGk+dvvn9rTjpVS9Mwg==}
+
+  structured-source@4.0.0:
+    resolution: {integrity: sha512-qGzRFNJDjFieQkl/sVOI2dUjHKRyL9dAJi2gCPGJLbJHBIkyOHxjuocpIEfbLioX+qSJpvbYdT49/YCdMznKxA==}
 
   stubs@3.0.0:
     resolution: {integrity: sha512-PdHt7hHUJKxvTCgbKX9C1V/ftOcjJQgz8BZwNfV5c4B6dcGqlpelTbJ999jBGZ2jYiPAwcX5dP6oBwVlBlUbxw==}
@@ -7823,6 +7850,21 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.62.2':
     optional: true
 
+  '@secretlint/core@13.0.2':
+    dependencies:
+      '@secretlint/profiler': 13.0.2
+      '@secretlint/types': 13.0.2
+      debug: 4.4.3
+      structured-source: 4.0.0
+    transitivePeerDependencies:
+      - supports-color
+
+  '@secretlint/profiler@13.0.2': {}
+
+  '@secretlint/secretlint-rule-preset-recommend@13.0.2': {}
+
+  '@secretlint/types@13.0.2': {}
+
   '@sentry/browser-utils@10.63.0':
     dependencies:
       '@sentry/core': 10.63.0
@@ -8677,6 +8719,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
     optional: true
+
+  boundary@2.0.0: {}
 
   bowser@2.14.1: {}
 
@@ -11348,6 +11392,10 @@ snapshots:
   strnum@2.4.1:
     dependencies:
       anynum: 1.0.1
+
+  structured-source@4.0.0:
+    dependencies:
+      boundary: 2.0.0
 
   stubs@3.0.0: {}
 

@@ -16,6 +16,7 @@ import type { RuntimeChannel } from "../ports";
 import type { Vfs } from "../vfs";
 import { json, readJson } from "./http";
 import { gatherPortableContent } from "./portable-content";
+import { redactSecrets } from "./portable-secrets";
 
 /**
  * POST .../portable/anonymize — the export wizard's "Help me anonymize"
@@ -52,27 +53,30 @@ export async function handlePortableAnonymize(
     learningIds: Array.isArray(body.learningIds) ? body.learningIds : [],
   });
 
-  const items = collectAnonymizeItems(content);
+  // Credentials are scrubbed by secretlint in BOTH modes — inside the items
+  // sent to the model AND in the patterns fallback.
+  const items = await collectAnonymizeItems(content, redactSecrets);
   let response: PortableAnonymizeResponse;
   if (items.length === 0) {
-    response = anonymizeContent(content);
+    response = await anonymizeContent(content, redactSecrets);
   } else if (!deps.channel?.anonymizeTexts) {
     response = {
-      ...anonymizeContent(content),
+      ...(await anonymizeContent(content, redactSecrets)),
       aiError: "AI anonymization is not available on this deployment",
     };
   } else {
     try {
       const results = await deps.channel.anonymizeTexts(ctx, items);
-      response = mergeAnonymizeResults(
+      response = await mergeAnonymizeResults(
         content,
         new Map<string, AnonymizeAiResult>(
           results.map((r) => [r.id, { text: r.text, summary: r.summary }]),
         ),
+        redactSecrets,
       );
     } catch (e) {
       response = {
-        ...anonymizeContent(content),
+        ...(await anonymizeContent(content, redactSecrets)),
         aiError: e instanceof Error ? e.message : String(e),
       };
     }
