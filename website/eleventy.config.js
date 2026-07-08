@@ -19,6 +19,9 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/og-image.jpg");
   eleventyConfig.addPassthroughCopy("src/icons");
   eleventyConfig.addPassthroughCopy("src/learn/style.css");
+  // Workshop guides: screenshots + downloadable PDFs and agent file
+  eleventyConfig.addPassthroughCopy("src/guides/assets");
+  eleventyConfig.addPassthroughCopy("src/guides/downloads");
   eleventyConfig.addPassthroughCopy("src/slack");
   eleventyConfig.addPassthroughCopy("src/auth");
   eleventyConfig.addPassthroughCopy("src/_headers");
