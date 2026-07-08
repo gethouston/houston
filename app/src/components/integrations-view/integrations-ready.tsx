@@ -1,15 +1,18 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDisconnectIntegration } from "../../hooks/queries";
 import {
   AppDetailSheet,
   appDisplay,
   ConnectMoreAppsSection,
+  categoryListView,
   INTEGRATION_PROVIDER,
   IntegrationDisconnectDialog,
   ReconnectBanner,
+  toolkitsInCategory,
   useConnectFlow,
 } from "../integrations";
+import { PageHeader } from "../shell/page-shell";
 import {
   ConnectedAppsList,
   ConnectedAppsListSkeleton,
@@ -47,6 +50,9 @@ export function IntegrationsReady({
   const [disconnectToolkit, setDisconnectToolkit] = useState<string | null>(
     null,
   );
+  // View-only category filter (composes with the catalog's own search). One
+  // selection filters BOTH the connected grid and the "Connect more" catalog.
+  const [category, setCategory] = useState("all");
 
   // The detail sheet reflects the LIVE connection, re-resolved by the exact
   // connection id the user opened (a toolkit can have more than one account,
@@ -66,16 +72,31 @@ export function IntegrationsReady({
 
   const hasConnections = apps.connData.length > 0;
 
+  // Narrow the connected rows to the picked category the same way the catalog
+  // narrows below, so one control filters the whole page.
+  const inCat = useMemo(
+    () => toolkitsInCategory(apps.catalogData, category),
+    [apps.catalogData, category],
+  );
+  const activeInCat = inCat
+    ? apps.activeRows.filter((r) => inCat.has(r.connection.toolkit))
+    : apps.activeRows;
+  const recoveringInCat = inCat
+    ? apps.recoveringRows.filter((r) => inCat.has(r.connection.toolkit))
+    : apps.recoveringRows;
+  const connectedView = categoryListView({
+    visibleCount: activeInCat.length + recoveringInCat.length,
+    hasAny: hasConnections,
+    categoryFiltered: category !== "all",
+  });
+
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-[28px] font-normal text-foreground">
-          {t("home.title")}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t("home.description")}
-        </p>
-      </div>
+      <PageHeader
+        title={t("home.title")}
+        subtitle={t("home.description")}
+        className="mb-6"
+      />
 
       {reconnectNotice && (
         <div className="mb-4">
@@ -91,10 +112,14 @@ export function IntegrationsReady({
             </h3>
             {apps.isLoading ? (
               <ConnectedAppsListSkeleton />
+            ) : connectedView === "empty-category" ? (
+              <p className="rounded-xl bg-secondary px-6 py-10 text-center text-sm text-muted-foreground">
+                {t("home.connectedNoneInCategory")}
+              </p>
             ) : (
               <ConnectedAppsList
-                active={apps.activeRows}
-                recovering={apps.recoveringRows}
+                active={activeInCat}
+                recovering={recoveringInCat}
                 grantsSupported={apps.grantsSupported}
                 connectFlow={connectFlow}
                 onManage={(c) => setSelectedConnId(connKey(c))}
@@ -108,6 +133,8 @@ export function IntegrationsReady({
           catalog={apps.catalogData}
           connections={apps.connData}
           connectFlow={connectFlow}
+          category={category}
+          onCategoryChange={setCategory}
           loading={apps.catalogLoading}
         />
       </div>

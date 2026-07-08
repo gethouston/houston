@@ -1,18 +1,9 @@
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Spinner,
-} from "@houston-ai/core";
+import { Spinner } from "@houston-ai/core";
 import type { IntegrationToolkit } from "@houston-ai/engine-client";
-import { Check, ChevronDown, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { FilterCombobox } from "../shell/filter-combobox.tsx";
 import { type AppDisplay, appDisplay } from "./app-display";
 import { AppRow } from "./app-row";
 import {
@@ -30,6 +21,13 @@ export interface AppCatalogRow {
 
 interface AppCatalogGridProps {
   catalog: IntegrationToolkit[];
+  /**
+   * The selected category slug, or `"all"`. Controlled by the surface so ONE
+   * category picker filters every list on it (this grid + the connected /
+   * allowed lists beside it), not just the browse grid.
+   */
+  category: string;
+  onCategoryChange: (next: string) => void;
   /** Apps to hide entirely (e.g. already-connected in the connect flow). */
   excludeToolkits?: ReadonlySet<string>;
   /** The catalog is still fetching (show a loader, not a "no apps" message). */
@@ -39,25 +37,34 @@ interface AppCatalogGridProps {
 }
 
 /**
- * The shared app-catalog shell: a search box + a category dropdown + a paginated
- * two-column {@link AppRow} grid + load-more over the ~1000-app catalog. The
- * per-row action (connect button, allow toggle, ...) is delegated via
- * `renderRow`, so both the Integrations tab's connect browser and the manager's
- * allowlist editor render the same layout without duplicating the shell markup.
+ * The shared app-catalog shell: a control row (search box `flex-1` + the shared
+ * {@link FilterCombobox} category picker trailing) above a paginated two-column
+ * {@link AppRow} grid + load-more over the ~1000-app catalog. The per-row action
+ * (connect button, allow toggle, ...) is delegated via `renderRow`, so both the
+ * Integrations tab's connect browser and the manager's allowlist editor render
+ * the same layout without duplicating the shell markup. Category is controlled
+ * by the surface so the same selection also filters the connected / allowed
+ * lists that sit beside this grid.
  */
 export function AppCatalogGrid({
   catalog,
+  category,
+  onCategoryChange,
   excludeToolkits,
   loading,
   renderRow,
 }: AppCatalogGridProps) {
   const { t } = useTranslation("integrations");
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("all");
-  const [categoryOpen, setCategoryOpen] = useState(false);
-  const [visible, setVisible] = useState(BROWSE_PAGE_SIZE);
 
-  const categories = useMemo(() => categoriesOf(catalog), [catalog]);
+  const categoryOptions = useMemo(
+    () =>
+      categoriesOf(catalog).map((cat) => ({
+        value: cat,
+        label: categoryLabel(cat),
+      })),
+    [catalog],
+  );
   const results = useMemo(
     () =>
       browseCatalog({
@@ -68,6 +75,17 @@ export function AppCatalogGrid({
       }),
     [catalog, search, category, excludeToolkits],
   );
+
+  // A fresh result list (new search or category) collapses the page cap back to
+  // the first page. Adjusting state during render (React's documented pattern)
+  // keeps the reset in sync with the new list identity without a wasted paint.
+  const [visible, setVisible] = useState(BROWSE_PAGE_SIZE);
+  const [shownFor, setShownFor] = useState(results);
+  if (shownFor !== results) {
+    setShownFor(results);
+    setVisible(BROWSE_PAGE_SIZE);
+  }
+
   const visibleApps = results.slice(0, visible);
   const hasMore = visible < results.length;
 
@@ -79,67 +97,22 @@ export function AppCatalogGrid({
           <input
             type="text"
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setVisible(BROWSE_PAGE_SIZE);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder={t("picker.searchPlaceholder")}
             className="h-9 w-full rounded-full border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
           />
         </div>
-        {categories.length > 0 && (
-          <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                aria-label={t("browse.allCategories")}
-                className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-full border border-border bg-background pl-3 pr-2.5 text-sm text-foreground hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring/20"
-              >
-                <span className="max-w-[160px] truncate">
-                  {category === "all"
-                    ? t("browse.allCategories")
-                    : categoryLabel(category)}
-                </span>
-                <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-60 p-0">
-              <Command>
-                <CommandInput placeholder={t("browse.searchCategories")} />
-                <CommandList>
-                  <CommandEmpty>{t("browse.noCategoryResults")}</CommandEmpty>
-                  <CommandItem
-                    value={t("browse.allCategories")}
-                    onSelect={() => {
-                      setCategory("all");
-                      setVisible(BROWSE_PAGE_SIZE);
-                      setCategoryOpen(false);
-                    }}
-                  >
-                    <span className="flex-1">{t("browse.allCategories")}</span>
-                    {category === "all" && <Check className="size-4" />}
-                  </CommandItem>
-                  {categories.map((cat) => {
-                    const label = categoryLabel(cat);
-                    return (
-                      <CommandItem
-                        key={cat}
-                        value={label}
-                        onSelect={() => {
-                          setCategory(cat);
-                          setVisible(BROWSE_PAGE_SIZE);
-                          setCategoryOpen(false);
-                        }}
-                      >
-                        <span className="flex-1">{label}</span>
-                        {category === cat && <Check className="size-4" />}
-                      </CommandItem>
-                    );
-                  })}
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+        {categoryOptions.length > 0 && (
+          <FilterCombobox
+            ariaLabel={t("browse.allCategories")}
+            allLabel={t("browse.allCategories")}
+            searchPlaceholder={t("browse.searchCategories")}
+            emptyText={t("browse.noCategoryResults")}
+            searchable
+            options={categoryOptions}
+            value={category}
+            onChange={onCategoryChange}
+          />
         )}
       </div>
 

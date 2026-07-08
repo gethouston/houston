@@ -6,6 +6,9 @@ import { AppCatalogGrid } from "./app-catalog-grid";
 
 interface CatalogBrowserProps {
   catalog: IntegrationToolkit[];
+  /** The surface-owned category selection (`"all"` = no filter). */
+  category: string;
+  onCategoryChange: (next: string) => void;
   connectedToolkits: ReadonlySet<string>;
   /** Toolkit mid-OAuth (spinner on its row); disables every other Connect. */
   connectingToolkit: string | null;
@@ -26,6 +29,8 @@ interface CatalogBrowserProps {
  */
 export function CatalogBrowser({
   catalog,
+  category,
+  onCategoryChange,
   connectedToolkits,
   connectingToolkit,
   excludeToolkits,
@@ -38,6 +43,8 @@ export function CatalogBrowser({
   return (
     <AppCatalogGrid
       catalog={catalog}
+      category={category}
+      onCategoryChange={onCategoryChange}
       excludeToolkits={excludeToolkits}
       loading={loading}
       renderRow={(_display, tk) => {

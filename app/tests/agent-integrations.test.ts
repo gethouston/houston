@@ -181,9 +181,28 @@ describe("E7 integrations tab source", () => {
   });
 
   it("keeps the effective-allowlist filtering of the browse catalog", () => {
+    // The tab still computes the ceiling and hands it to the body, which owns
+    // the browse-catalog narrowing after the per-agent extraction below.
     ok(src.includes("effectiveAllowlist"), "still computes the ceiling");
     ok(src.includes("useAgentSettings"), "still reads agent settings");
-    ok(src.includes("browseCatalog"), "still narrows the browse catalog");
-    ok(src.includes("ConnectMoreAppsSection"), "browse section stays");
+    ok(src.includes("allowlist={allowlist}"), "hands the ceiling to the body");
+    const body = read(
+      "../src/components/tabs/agent-integrations/agent-integrations-body.tsx",
+    );
+    ok(body.includes("browseCatalog"), "body narrows the browse catalog");
+    ok(body.includes("ConnectMoreAppsSection"), "browse section stays");
+  });
+
+  it("remounts its stateful body per agent so view filters never leak", () => {
+    // The tab components stay mounted across agent switches (experience-
+    // renderer keys by tab, not agent), so the category filter lives in a body
+    // remounted via key={agent.id} — otherwise one agent's filter would hide
+    // the next agent's apps behind category-aware empty copy.
+    ok(src.includes("<AgentIntegrationsBody"), "renders the extracted body");
+    ok(src.includes("key={agent.id}"), "keys the body per agent");
+    const body = read(
+      "../src/components/tabs/agent-integrations/agent-integrations-body.tsx",
+    );
+    ok(body.includes("useState"), "the category filter lives in the body");
   });
 });
