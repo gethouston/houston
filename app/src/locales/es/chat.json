@@ -1,6 +1,6 @@
 {
   "welcome": {
-    "greeting": "¡Hola! Soy {{name}}, tu nuevo agente. En este momento me estoy instalando y leyendo el trabajo para el que me creaste, así que mi primera respuesta puede tardar un poco más de lo normal. Mientras termino, cuéntame en qué te gustaría que te ayude: puedes describir una tarea con tus propias palabras, compartir algunos detalles sobre cómo te gusta que se hagan las cosas o adjuntar archivos que me den contexto. ¿Con qué te gustaría empezar?"
+    "greeting": "¡Hola! Soy {{name}}, tu nuevo agente. Cuéntame en qué te gustaría que te ayude: puedes describir una tarea con tus propias palabras, compartir algunos detalles sobre cómo te gusta que se hagan las cosas o adjuntar archivos que me den contexto. Cuanto más me cuentes, mejor se ajustará mi trabajo a lo que necesitas. ¿Con qué te gustaría empezar?"
   },
   "composer": {
     "placeholder": "Pregunta lo que quieras...",
