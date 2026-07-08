@@ -19,6 +19,15 @@ export function useAllConversations(agentPaths: string[]) {
     queryFn: () => tauriConversations.listAll(agentPaths),
     enabled: agentPaths.length > 0,
     placeholderData: keepPreviousData,
+    // Fetched ONCE per key (mount / roster change / engine restart), then kept
+    // fresh by single-agent cache patches from the push events stream
+    // (use-agent-invalidation.ts patchAllConversations). Never refetched on
+    // focus or staleness: in hosted mode this queryFn fans out one request to
+    // EVERY agent's pod, and each of those requests resets the pod's
+    // idle-sleep clock — a background full sweep would keep the whole fleet
+    // awake for as long as the app is open.
+    staleTime: Number.POSITIVE_INFINITY,
+    refetchOnWindowFocus: false,
   });
 }
 
