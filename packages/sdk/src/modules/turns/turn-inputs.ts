@@ -22,6 +22,13 @@ export interface TurnSendInput {
   model?: string;
   /** Reasoning effort to apply alongside `model`. */
   effort?: string;
+  /**
+   * Per-turn execution mode ("plan" = read-only + planning overlay; "auto" =
+   * Autopilot, acts without the blocking tools). A pure per-turn pin like
+   * `effort` — never writes agent settings (HOU-695). Omitted, the runtime runs
+   * the turn as "execute".
+   */
+  mode?: "execute" | "plan" | "auto";
 }
 
 /** The `turns/cancel` command payload. */
@@ -51,6 +58,12 @@ export interface TurnHistoryInput {
 const str = (v: unknown): string | undefined =>
   typeof v === "string" ? v : undefined;
 
+/** Untrusted-envelope guard for the per-turn mode pin: only the known literals
+ *  ("execute", "plan", "auto") pass; anything else drops to undefined (turn
+ *  stays "execute"). */
+const mode = (v: unknown): "execute" | "plan" | "auto" | undefined =>
+  v === "execute" || v === "plan" || v === "auto" ? v : undefined;
+
 export function asSendInput(payload: unknown): TurnSendInput {
   const p = (payload ?? {}) as Record<string, unknown>;
   if (typeof p.conversationId !== "string" || typeof p.text !== "string")
@@ -62,6 +75,7 @@ export function asSendInput(payload: unknown): TurnSendInput {
     nonce: str(p.nonce),
     model: str(p.model),
     effort: str(p.effort),
+    mode: mode(p.mode),
   };
 }
 

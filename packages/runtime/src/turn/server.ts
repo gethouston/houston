@@ -111,6 +111,7 @@ async function executeTurn(
         signal: abort.signal,
         nonce: turn.nonce,
         pin: { model: turn.model, effort: turn.effort },
+        mode: turn.mode,
         turnId,
       });
     }

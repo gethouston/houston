@@ -1,11 +1,15 @@
 /**
  * The reusable Mercury models table BODY: hairline-divided rows (one `ModelRow`
- * each) inside a horizontal-scroll track, a 60-row cap with a quiet "Show more"
- * pill, and an Empty state. The sentence-case column header lives in the sticky
- * `LedgerHeader` (rendered by `ModelsBrowser` above the scroll), so it stays
- * pinned; `onScroll` mirrors this body's horizontal scroll onto that header so
- * the two tracks stay column-aligned. Presentational and stateless about
- * filtering — callers pass an already-filtered `CatalogModel[]`.
+ * each), a 60-row cap with a quiet "Show more" pill, and an Empty state. The
+ * sentence-case column header lives in the sticky `LedgerHeader` (rendered by
+ * `ModelsBrowser` above the scroll), so it stays pinned. The full directory is
+ * wider than most viewports, so its rows sit inside a horizontal-scroll track
+ * (`LEDGER_TRACK`); `onScroll` mirrors this body's horizontal scroll onto that
+ * header so the two tracks stay column-aligned. The `compact` variant (the
+ * provider modal) drops the offers column and the scroll track entirely — the
+ * compact grid fits the modal, so the modal body stays the ONE scroll area.
+ * Presentational and stateless about filtering — callers pass an
+ * already-filtered `CatalogModel[]`.
  */
 
 import {
@@ -19,21 +23,20 @@ import type { UIEventHandler } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
-import { LEDGER_GRID, ModelRow } from "./model-row.tsx";
+import { LEDGER_GRID, LEDGER_GRID_COMPACT, ModelRow } from "./model-row.tsx";
 
 const PAGE = 60;
 
 /** Shared `min-w` so the header track and the row track scroll in lockstep. */
 export const LEDGER_TRACK = "min-w-[720px]";
 
-/** The sentence-case column header row, on the shared `LEDGER_GRID` + track. */
-export function LedgerHeader() {
+/** The sentence-case column header row, on the shared grid (+ track). */
+export function LedgerHeader({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation("aiHub");
   return (
     <div
       className={cn(
-        LEDGER_TRACK,
-        LEDGER_GRID,
+        compact ? LEDGER_GRID_COMPACT : cn(LEDGER_TRACK, LEDGER_GRID),
         "py-3 text-[12px] font-medium text-muted-foreground",
       )}
     >
@@ -41,7 +44,9 @@ export function LedgerHeader() {
       <span>{t("directory.columns.goodAt")}</span>
       <span>{t("directory.columns.memory")}</span>
       <span className="text-right">{t("directory.columns.cost")}</span>
-      <span className="text-right">{t("directory.columns.offeredBy")}</span>
+      {!compact && (
+        <span className="text-right">{t("directory.columns.offeredBy")}</span>
+      )}
     </div>
   );
 }
@@ -50,11 +55,14 @@ export function ModelsLedger({
   models,
   onOpenModel,
   onScroll,
+  compact = false,
 }: {
   models: CatalogModel[];
   onOpenModel: (key: string) => void;
   /** Fires on horizontal scroll so `LedgerHeader` can mirror `scrollLeft`. */
   onScroll?: UIEventHandler<HTMLDivElement>;
+  /** Modal variant: compact grid, no offers column, no horizontal track. */
+  compact?: boolean;
 }) {
   const { t } = useTranslation("aiHub");
   const [visible, setVisible] = useState(PAGE);
@@ -82,20 +90,26 @@ export function ModelsLedger({
   }
 
   const shown = models.slice(0, visible);
+  const rows = shown.map((model) => (
+    <ModelRow
+      key={model.key}
+      model={model}
+      compact={compact}
+      onOpen={() => onOpenModel(model.key)}
+    />
+  ));
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="overflow-x-auto" onScroll={onScroll}>
-        <div className={cn(LEDGER_TRACK, "divide-y divide-border")}>
-          {shown.map((model) => (
-            <ModelRow
-              key={model.key}
-              model={model}
-              onOpen={() => onOpenModel(model.key)}
-            />
-          ))}
+      {compact ? (
+        <div className="divide-y divide-border">{rows}</div>
+      ) : (
+        <div className="overflow-x-auto" onScroll={onScroll}>
+          <div className={cn(LEDGER_TRACK, "divide-y divide-border")}>
+            {rows}
+          </div>
         </div>
-      </div>
+      )}
 
       {visible < models.length && (
         <div className="flex justify-center pt-1">

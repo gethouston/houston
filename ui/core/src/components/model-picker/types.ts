@@ -1,23 +1,16 @@
 import type * as React from "react";
 
-/** Capability flags a model may advertise. Order here is the render order. */
-export type ModelCapabilityKey = "vision" | "reasoning" | "tools" | "imageGen";
-
-/** Coarse price bucket used for the row glyph and the price filter chips. */
-export type ModelPriceTier = "free" | "low" | "mid" | "high";
-
 /** Freshness of the model catalog the picker is showing. */
-export type ModelPickerCatalogState = "ready" | "loading" | "offline";
+export type ModelPickerCatalogState = "ready" | "loading";
 
 /** Whether the app is authenticated with a given provider. */
 export type ModelPickerConnection = "connected" | "checking" | "disconnected";
 
-/** How the flat (search/filter/provider) list is ordered. */
-export type ModelPickerSort = "relevance" | "price" | "context" | "newest";
-
 /**
- * Generic view-model of one selectable model. The app (Wave 3) maps its own
- * provider/model records into this shape; the picker never sees app types.
+ * Generic view-model of one selectable model. The app maps its own provider/model
+ * records into this shape; the picker never sees app types. Minimal by design —
+ * the picker renders only the name, an optional one-line description, and a check
+ * on the selected row.
  */
 export interface ModelPickerModel {
   /** Opaque stable id passed back to `onSelect`. */
@@ -25,15 +18,16 @@ export interface ModelPickerModel {
   name: string;
   /** Groups rows + resolves the brand icon via `renderProviderIcon`. */
   providerId: string;
+  /** A subtle one-line description, shown under the name when present. */
   description?: string;
-  capabilities: Record<ModelCapabilityKey, boolean>;
-  /** `undefined` = unknown / subscription (no glyph, excluded from price filter). */
-  priceTier?: ModelPriceTier;
-  priceInPerMtok?: number;
-  priceOutPerMtok?: number;
-  /** Context window in tokens. */
-  contextWindow?: number;
-  isNew?: boolean;
+  /**
+   * Consumer-curated (flagship) row. Search ranking uses it as a tiebreaker on
+   * match quality: within the same match tier a curated model outranks an
+   * uncurated one, so legacy catalog entries never bury the flagships. Level
+   * ordering is the caller's: rows render in input order, so pass them
+   * pre-ranked.
+   */
+  curated?: boolean;
 }
 
 /** A provider that owns one or more models in the catalog. */
@@ -49,110 +43,48 @@ export interface ModelPickerProvider {
  */
 export interface ModelPickerLabels {
   searchPlaceholder: string;
-  recent: string;
-  favorites: string;
-  results: string;
-  all: string;
-  notConnected: string;
-  connect: string;
-  sort: string;
-  sortRelevance: string;
-  sortPrice: string;
-  sortContext: string;
-  sortNewest: string;
-  filters: string;
-  capabilities: string;
-  price: string;
-  clearFilters: string;
-  favoritesOnly: string;
-  free: string;
-  priceFree: string;
-  priceLow: string;
-  priceMid: string;
-  priceHigh: string;
+  /** Footer affordance that opens the provider-connection surface. */
+  connectMore: string;
+  /** Back affordance out of a provider's model list. */
+  back: string;
+  /** Accessible name for the connected-provider list (level 1). */
+  providersLabel: string;
+  /** Accessible name for a provider's model list (level 2). */
+  modelsLabel: string;
+  /** Accessible name for the flat search-results list. */
+  resultsLabel: string;
+  /** Neutral loading state while provider statuses / catalog resolve. */
+  loading: string;
+  /** Empty state when a search matches nothing. */
   empty: string;
   emptyHint: string;
-  loading: string;
-  offline: string;
-  capVision: string;
-  capReasoning: string;
-  capTools: string;
-  capImageGen: string;
-  detailContext: string;
-  detailCapabilities: string;
-  /** Context-window buckets shown beside the info-panel bar indicator. */
-  contextLow: string;
-  contextMedium: string;
-  contextHigh: string;
-  /** e.g. singular/plural noun for the result count. */
-  model: string;
-  models: string;
-  selected: string;
-  keyboardHint: string;
+  /** Empty state when no provider is connected yet. */
+  noProviders: string;
 }
 
 export const DEFAULT_MODEL_PICKER_LABELS: ModelPickerLabels = {
-  searchPlaceholder: "Search models, providers, capabilities…",
-  recent: "Recent",
-  favorites: "Favorites",
-  results: "Results",
-  all: "All models",
-  notConnected: "Not connected",
-  connect: "Connect",
-  sort: "Sort",
-  sortRelevance: "Relevance",
-  sortPrice: "Price · low → high",
-  sortContext: "Context · high → low",
-  sortNewest: "Newest first",
-  filters: "Filters",
-  capabilities: "Capabilities",
-  price: "Price",
-  clearFilters: "Clear filters",
-  favoritesOnly: "Favorites only",
-  free: "Free",
-  priceFree: "Free",
-  priceLow: "$ Cheap",
-  priceMid: "$$ Mid",
-  priceHigh: "$$$ Premium",
-  empty: "No models match.",
-  emptyHint: "Clear a filter or try another term.",
-  loading: "Fetching latest catalog…",
-  offline: "Showing cached catalog. Prices and new models may be stale.",
-  capVision: "Vision",
-  capReasoning: "Reasoning",
-  capTools: "Tools",
-  capImageGen: "Image gen",
-  detailContext: "Context",
-  detailCapabilities: "Capabilities",
-  contextLow: "Low",
-  contextMedium: "Medium",
-  contextHigh: "High",
-  model: "model",
-  models: "models",
-  selected: "Selected",
-  keyboardHint: "↑↓ navigate · ↵ select · esc close",
+  searchPlaceholder: "Search models…",
+  connectMore: "Connect more providers…",
+  back: "Back",
+  providersLabel: "Providers",
+  modelsLabel: "Models",
+  resultsLabel: "Results",
+  loading: "Loading providers…",
+  empty: "No models found.",
+  emptyHint: "Try another search term.",
+  noProviders: "No providers connected yet.",
 };
 
 export interface ModelPickerProps {
   models: ModelPickerModel[];
   providers: ModelPickerProvider[];
-  /** Favorite model ids. */
-  favorites: string[];
-  /** Recently used model ids, most-recent first. */
-  recents: string[];
+  /** The currently selected model's id, for the check marker. */
   selectedId?: string;
-  /**
-   * Provider the picker opens focused on. Resolved to: this id when it names a
-   * provider in `providers`, else the first `connected` provider, else `"all"`.
-   * Recents/Favorites/All stay opt-in via the rail.
-   */
-  defaultProviderId?: string;
-  /** Catalog freshness; default `"ready"`. */
+  /** Catalog freshness; default `"ready"`. Drives the neutral loading state. */
   catalogState?: ModelPickerCatalogState;
   onSelect: (id: string) => void;
-  onToggleFavorite: (id: string) => void;
-  /** Called when a disconnected provider's Connect affordance is used. */
-  onConnect?: (providerId: string) => void;
+  /** Opens the app's provider-connection surface (the footer affordance). */
+  onConnectMore?: () => void;
   /** App-supplied branded logo for a provider (falls back to an initial). */
   renderProviderIcon?: (
     providerId: string,

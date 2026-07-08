@@ -11,10 +11,7 @@ import { queryKeys } from "../../lib/query-keys";
 import { formatVisibleMessageText } from "../../lib/queued-chat";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
 import type { Agent, AgentDefinition } from "../../lib/types";
-import {
-  isAgentProvisioning,
-  useAgentProvisioningStore,
-} from "../../stores/agent-provisioning";
+import { useAgentProvisioningStore } from "../../stores/agent-provisioning";
 import { useUIStore } from "../../stores/ui";
 import type { SendOverrides } from "./board-source";
 
@@ -87,6 +84,7 @@ export function useAgentBoardSend({
       files,
       providerOverride,
       modelOverride,
+      modeOverride,
     }: { text: string; files: File[] } & SendOverrides) => {
       const agentMode = pendingAgentMode ?? agentModes?.[0]?.id;
       const mode = agentModes?.find((m) => m.id === agentMode);
@@ -106,6 +104,7 @@ export function useAgentBoardSend({
           promptFile: mode?.promptFile,
           providerOverride,
           modelOverride,
+          modeOverride,
           titleText: visible,
           buildPrompt: async (activityId) => {
             const saved = await tauriAttachments.save(
@@ -117,12 +116,9 @@ export function useAgentBoardSend({
         },
       );
       // The turn stream pushes the user bubble into the conversation VM
-      // itself — no app-side optimistic push. Warming agents skip the
-      // loading flag: their message is parked, and the provisioning card
-      // (not the running shimmer) narrates the wait (HOU-693).
-      if (!isAgentProvisioning(agent.id)) {
-        setLoading((prev) => ({ ...prev, [sessionKey]: true }));
-      }
+      // itself — no app-side optimistic push. Warming agents included: the
+      // parked message shows the standard in-flight indicator (HOU-713).
+      setLoading((prev) => ({ ...prev, [sessionKey]: true }));
       setPendingAgentMode(null);
       // createMission bypassed useCreateActivity so invalidate manually.
       queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
@@ -180,11 +176,19 @@ export function useAgentBoardSend({
           promptFile: warmingMode?.promptFile,
           provider: overrides.providerOverride,
           model: overrides.modelOverride,
+          mode: overrides.modeOverride,
         });
       if (queuedWarm) {
-        // No loading flag: while the message is parked the provisioning card
-        // is the ONLY indicator — the running shimmer would promise a reply
-        // that can't stream yet. The flushed turn sets the VM running itself.
+        // The parked message narrates itself: the trailing user bubble keeps
+        // the standard in-flight indicator on until the flushed turn takes
+        // over (HOU-713). If the conversation's row is still queued (the
+        // welcome mission settled to needs_you), flip it back to running —
+        // the mission IS in progress again.
+        if (activity) {
+          useAgentProvisioningStore
+            .getState()
+            .setQueuedRowStatus(agent.id, activity.id, "running");
+        }
         analytics.track("chat_message_sent");
         for (const f of files)
           analytics.track("file_attached", { file_kind: classifyFileKind(f) });
@@ -198,6 +202,7 @@ export function useAgentBoardSend({
           mode: mode?.promptFile,
           providerOverride: overrides.providerOverride,
           modelOverride: overrides.modelOverride,
+          modeOverride: overrides.modeOverride,
           // If the conversation is mid-turn the adapter holds this send; the
           // queued bubble shows the user's words, not the built prompt.
           queuedPreview: {

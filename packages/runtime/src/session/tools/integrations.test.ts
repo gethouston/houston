@@ -347,9 +347,14 @@ test("request_connection records a connect interaction with a normalized slug", 
   );
   // The slug is trimmed + lowercased so it matches the catalog/connection lists.
   expect(holder.pending).toEqual({
-    kind: "connect",
-    toolkit: "gmail",
-    reason: "to send your email",
+    steps: [
+      {
+        kind: "connect",
+        id: "c1",
+        toolkit: "gmail",
+        reason: "to send your email",
+      },
+    ],
   });
   // The tool tells the model to end its turn without spelling out a slug/link.
   const text = (out.content[0] as { text: string }).text;
@@ -362,7 +367,9 @@ test("request_connection omits an empty reason and rejects an empty slug", async
   await runWithInteractionCapture(holder, () =>
     run(requestConnection, { toolkit: "slack" }),
   );
-  expect(holder.pending).toEqual({ kind: "connect", toolkit: "slack" });
+  expect(holder.pending).toEqual({
+    steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
+  });
 
   await runWithInteractionCapture(newInteractionHolder(), () =>
     expect(run(requestConnection, { toolkit: "   " })).rejects.toThrow(
@@ -386,14 +393,19 @@ test("propose_custom_integration records a header-auth proposal, no key handling
   );
   // Trimmed fields; header auth maps to { type: "header", header, prefix }.
   expect(holder.pending).toEqual({
-    kind: "custom_integration",
-    proposal: {
-      name: "Acme CRM",
-      baseUrl: "https://api.acme.com/v2",
-      auth: { type: "header", header: "Authorization", prefix: "Bearer " },
-      description: "Acme CRM records",
-    },
-    reason: "to read your contacts",
+    steps: [
+      {
+        kind: "custom_integration",
+        id: "x1",
+        proposal: {
+          name: "Acme CRM",
+          baseUrl: "https://api.acme.com/v2",
+          auth: { type: "header", header: "Authorization", prefix: "Bearer " },
+          description: "Acme CRM records",
+        },
+        reason: "to read your contacts",
+      },
+    ],
   });
   // The tool never solicits a key in chat and tells the model to end its turn.
   const text = (out.content[0] as { text: string }).text;
@@ -414,13 +426,18 @@ test("propose_custom_integration maps query auth and omits an empty prefix/reaso
   );
   // Query auth maps to { type: "query", param }; no prefix, no reason keys.
   expect(holder.pending).toEqual({
-    kind: "custom_integration",
-    proposal: {
-      name: "Widgets",
-      baseUrl: "https://api.widgets.io",
-      auth: { type: "query", param: "api_key" },
-      description: "Widget catalog",
-    },
+    steps: [
+      {
+        kind: "custom_integration",
+        id: "x1",
+        proposal: {
+          name: "Widgets",
+          baseUrl: "https://api.widgets.io",
+          auth: { type: "query", param: "api_key" },
+          description: "Widget catalog",
+        },
+      },
+    ],
   });
 });
 
@@ -462,14 +479,19 @@ test("propose_mcp_server records a bearer-auth proposal, no secret handling", as
   );
   // Trimmed fields; bearer auth maps to { type: "bearer" } with no secret.
   expect(holder.pending).toEqual({
-    kind: "mcp_server",
-    proposal: {
-      name: "Acme Tracker",
-      url: "https://mcp.acme.com/sse",
-      auth: { type: "bearer" },
-      description: "Acme issue tracker",
-    },
-    reason: "to read your open issues",
+    steps: [
+      {
+        kind: "mcp_server",
+        id: "m1",
+        proposal: {
+          name: "Acme Tracker",
+          url: "https://mcp.acme.com/sse",
+          auth: { type: "bearer" },
+          description: "Acme issue tracker",
+        },
+        reason: "to read your open issues",
+      },
+    ],
   });
   const text = (out.content[0] as { text: string }).text;
   expect(text).toMatch(/end your turn/i);
@@ -488,12 +510,17 @@ test("propose_mcp_server maps header auth and omits empty description/reason", a
   );
   // Header auth maps to { type: "header", header }; no description, no reason.
   expect(holder.pending).toEqual({
-    kind: "mcp_server",
-    proposal: {
-      name: "Widgets",
-      url: "https://mcp.widgets.io",
-      auth: { type: "header", header: "X-Api-Key" },
-    },
+    steps: [
+      {
+        kind: "mcp_server",
+        id: "m1",
+        proposal: {
+          name: "Widgets",
+          url: "https://mcp.widgets.io",
+          auth: { type: "header", header: "X-Api-Key" },
+        },
+      },
+    ],
   });
 });
 
@@ -507,12 +534,17 @@ test("propose_mcp_server maps none auth for a public server", async () => {
     }),
   );
   expect(holder.pending).toEqual({
-    kind: "mcp_server",
-    proposal: {
-      name: "Public MCP",
-      url: "https://mcp.public.io",
-      auth: { type: "none" },
-    },
+    steps: [
+      {
+        kind: "mcp_server",
+        id: "m1",
+        proposal: {
+          name: "Public MCP",
+          url: "https://mcp.public.io",
+          auth: { type: "none" },
+        },
+      },
+    ],
   });
 });
 
@@ -540,21 +572,97 @@ test("propose_mcp_server rejects blank name/url and a header without a name", as
 });
 
 test("request_connection records nothing outside a turn (no ambient holder)", async () => {
-  // No runWithInteractionCapture wrapper → recordPendingInteraction is a no-op,
+  // No runWithInteractionCapture wrapper → recordConnection is a no-op,
   // so a direct call still succeeds and simply records nowhere.
   await expect(
     run(requestConnection, { toolkit: "gmail" }),
   ).resolves.toBeDefined();
 });
 
-test("a 409 (not connected) becomes an actionable message, not a crash dump", async () => {
+test("a 409 (signed out) queues a signin step and tells the model to end its turn", async () => {
   mockFetch(() => ({
     status: 409,
-    body: { error: "integration not connected" },
+    body: { error: "signin_required", code: "signin_required" },
   }));
-  await expect(run(execute, { action: "X" })).rejects.toThrow(
-    /connect their apps/i,
+  const holder = newInteractionHolder();
+  const failure = runWithInteractionCapture(holder, () =>
+    run(execute, { action: "X" }),
   );
+  await expect(failure).rejects.toThrow(/signed out of Houston/i);
+  await expect(failure).rejects.toThrow(/end your turn/i);
+  // The guidance tells the model NOT to send the user to Settings.
+  await expect(failure).rejects.toThrow(
+    /Do NOT tell the user to open Settings/,
+  );
+  // The signin step is queued in this turn's interaction flow, id "s1".
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "signin",
+        id: "s1",
+        reason: "Sign in to Houston to use your connected apps.",
+      },
+    ],
+  });
+});
+
+test("a 503 (not set up) is an honest, closed message and queues nothing", async () => {
+  mockFetch(() => ({
+    status: 503,
+    body: {
+      error: "integrations not configured",
+      code: "integrations_not_configured",
+    },
+  }));
+  const holder = newInteractionHolder();
+  const failure = runWithInteractionCapture(holder, () =>
+    run(execute, { action: "X" }),
+  );
+  await expect(failure).rejects.toThrow(/not set up in this Houston install/i);
+  await expect(failure).rejects.toThrow(/COMPOSIO_API_KEY/);
+  // A closed state: no sign-in card, no connect offer, and never "workspace".
+  await expect(failure).rejects.not.toThrow(/workspace/i);
+  expect(holder.pending).toBeUndefined();
+});
+
+test("a RELAYED upstream 503 (transient outage) is NOT the not-set-up message", async () => {
+  // The host's sandbox proxy relays ANY non-ok upstream status verbatim. In
+  // gateway mode a transient Composio/gateway outage returns 503 with the
+  // upstream's body (NO integrations_not_configured code) — the key IS set, so
+  // the model must NOT tell the user "connected apps aren't set up here / set
+  // COMPOSIO_API_KEY". It is a generic transient failure.
+  mockFetch(() => ({
+    status: 503,
+    body: { error: "upstream temporarily unavailable" },
+  }));
+  const holder = newInteractionHolder();
+  const failure = runWithInteractionCapture(holder, () =>
+    run(execute, { action: "X" }),
+  );
+  await expect(failure).rejects.toThrow(/integrations execute failed \(503\)/);
+  await expect(failure).rejects.not.toThrow(
+    /not set up in this Houston install/i,
+  );
+  await expect(failure).rejects.not.toThrow(/COMPOSIO_API_KEY/);
+  expect(holder.pending).toBeUndefined();
+});
+
+test("a RELAYED upstream 409 (transient conflict) queues NO signin card", async () => {
+  // Symmetric to the 503 case: an upstream 409 the host relays verbatim lacks
+  // the signin_required code, so it must NOT record a sign-in step nor tell the
+  // model to end its turn.
+  mockFetch(() => ({
+    status: 409,
+    body: { error: "conflict: resource busy" },
+  }));
+  const holder = newInteractionHolder();
+  const failure = runWithInteractionCapture(holder, () =>
+    run(execute, { action: "X" }),
+  );
+  await expect(failure).rejects.toThrow(/integrations execute failed \(409\)/);
+  await expect(failure).rejects.not.toThrow(/signed out of Houston/i);
+  await expect(failure).rejects.not.toThrow(/end your turn/i);
+  expect(holder.pending).toBeUndefined();
 });
 
 test("C2: attaches the turn's acting-as header inside a turn, and nothing outside one", async () => {

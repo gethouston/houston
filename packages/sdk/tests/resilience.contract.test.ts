@@ -173,7 +173,8 @@ describe("observer attach on a running turn", () => {
     expect(out.statuses).toContain("completed");
     const finalText = out.feed.find((f) => f.feed_type === "assistant_text");
     expect(finalText?.data).toBe(cannedReply("Ping"));
-    expect(out.board).toContain("needs_you");
+    // A clean turn with no pending interaction settles the board to done.
+    expect(out.board).toContain("done");
   });
 
   it("sdk.turns.observe surfaces a turn started elsewhere into the VM", async () => {
@@ -205,7 +206,8 @@ describe("observer attach on a running turn", () => {
     );
 
     const vm = convVm(h.sdk, cid);
-    expect(vm?.boardStatus).toBe("needs_you");
+    // No pending interaction on the observed turn: it settles done.
+    expect(vm?.boardStatus).toBe("done");
     expect(vm?.feed.some((f) => f.data === cannedReply("Ping"))).toBe(true);
   });
 

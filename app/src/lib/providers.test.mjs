@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  COMING_SOON_PROVIDERS,
   EFFORT_ORDER,
   getConnectProviders,
   getContextWindowConfig,
@@ -115,45 +114,25 @@ const SAMPLE_CATALOG = [
 
 test.before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
 
-test("effort levels are per model", () => {
-  // Codex: has xhigh, no max. Every catalogued GPT model shares this set
-  // (verified against Codex's models_cache.json supported_reasoning_levels).
+test("effort levels are derived per model from pi's thinking ladder", () => {
+  // Every reasoning model derives the four-tier low→xhigh spectrum from pi
+  // (the fixture gives each the full ladder); the retired `max` never appears.
+  const FULL = ["low", "medium", "high", "xhigh"];
   for (const id of [
     "gpt-5.5",
     "gpt-5.4",
     "gpt-5.4-mini",
     "gpt-5.3-codex-spark",
   ]) {
-    assert.deepEqual(
-      getEffortLevels("openai", id),
-      ["low", "medium", "high", "xhigh"],
-      id,
-    );
+    assert.deepEqual(getEffortLevels("openai", id), FULL, id);
   }
-  // Sonnet 4.6: has max, no xhigh.
-  assert.deepEqual(getEffortLevels("anthropic", "claude-sonnet-4-6"), [
-    "low",
-    "medium",
-    "high",
-    "max",
-  ]);
-  // Opus 4.7: full range.
-  assert.deepEqual(getEffortLevels("anthropic", "claude-opus-4-7"), [
-    "low",
-    "medium",
-    "high",
-    "xhigh",
-    "max",
-  ]);
-  // Opus 4.8: full range, identical to 4.7. `ultracode` is a Claude Code
-  // harness mode, not an effort level — it must never appear here.
-  assert.deepEqual(getEffortLevels("anthropic", "claude-opus-4-8"), [
-    "low",
-    "medium",
-    "high",
-    "xhigh",
-    "max",
-  ]);
+  for (const id of [
+    "claude-sonnet-4-6",
+    "claude-opus-4-7",
+    "claude-opus-4-8",
+  ]) {
+    assert.deepEqual(getEffortLevels("anthropic", id), FULL, id);
+  }
 });
 
 test("effort levels empty for unknown / effort-less models", () => {
@@ -168,10 +147,6 @@ test("effort levels empty for unknown / effort-less models", () => {
 });
 
 test("validEffortOrDefault keeps a value the model accepts", () => {
-  assert.equal(
-    validEffortOrDefault("anthropic", "claude-sonnet-4-6", "max"),
-    "max",
-  );
   assert.equal(validEffortOrDefault("openai", "gpt-5.5", "xhigh"), "xhigh");
   assert.equal(
     validEffortOrDefault("anthropic", "claude-opus-4-7", "high"),
@@ -183,13 +158,23 @@ test("validEffortOrDefault keeps a value the model accepts", () => {
   );
 });
 
-test("validEffortOrDefault clamps a value the model rejects to the default", () => {
-  // Sonnet has no xhigh; codex has no max — both fall back to medium.
+test("validEffortOrDefault normalizes a legacy `max` to the top tier", () => {
+  // A persisted `max` (the retired tier) resolves to `xhigh` — the deepest
+  // reasoning the model offers — never a silent downgrade to the default.
   assert.equal(
-    validEffortOrDefault("anthropic", "claude-sonnet-4-6", "xhigh"),
+    validEffortOrDefault("anthropic", "claude-sonnet-4-6", "max"),
+    "xhigh",
+  );
+  assert.equal(validEffortOrDefault("openai", "gpt-5.5", "max"), "xhigh");
+});
+
+test("validEffortOrDefault clamps a value the model rejects to the default", () => {
+  // Garbage the model doesn't accept falls back to the shared default.
+  assert.equal(
+    validEffortOrDefault("anthropic", "claude-sonnet-4-6", "bogus"),
     "medium",
   );
-  assert.equal(validEffortOrDefault("openai", "gpt-5.5", "max"), "medium");
+  assert.equal(validEffortOrDefault("openai", "gpt-5.5", ""), "medium");
 });
 
 test("validEffortOrDefault falls back to default when unset or garbage", () => {
@@ -268,7 +253,7 @@ test("OpenCode Zen + Go are api-key providers with a dashboard URL", () => {
     // Every model needs a contextWindow so the composer's usage indicator shows
     // a % (not a raw token count / empty ring). The OpenCode gateway serves a
     // fixed window per model.
-    const VALID_EFFORT = new Set(["low", "medium", "high", "xhigh", "max"]);
+    const VALID_EFFORT = new Set(["low", "medium", "high", "xhigh"]);
     for (const m of p.models) {
       assert.ok(
         typeof m.contextWindow === "number" && m.contextWindow > 0,
@@ -301,35 +286,28 @@ test("OpenCode Zen + Go are api-key providers with a dashboard URL", () => {
   assert.notEqual(getProvider("openai").auth, "apiKey");
 });
 
-test("OpenCode effort levels match models.dev reasoning_options", () => {
+test("OpenCode effort levels are derived from pi (reasoning → ladder, else omitted)", () => {
   const effortOf = (prov, id) =>
     getProvider(prov).models.find((m) => m.id === id)?.effortLevels;
-  // Models with discrete effort (models.dev reasoning_options.effort.values).
-  assert.deepEqual(effortOf("opencode", "claude-opus-4-8"), [
-    "low",
-    "medium",
-    "high",
-    "xhigh",
-  ]);
-  assert.deepEqual(effortOf("opencode", "gpt-5.5"), [
-    "low",
-    "medium",
-    "high",
-    "xhigh",
-  ]);
-  assert.deepEqual(effortOf("opencode", "deepseek-v4-flash-free"), [
-    "high",
-    "max",
-  ]);
-  assert.deepEqual(effortOf("opencode-go", "deepseek-v4-pro"), ["high", "max"]);
-  // Open models expose only a reasoning toggle (no discrete effort) → omitted.
+  const FULL = ["low", "medium", "high", "xhigh"];
+  // Reasoning models get the derived spectrum — no hand-curated per-gateway list
+  // (which used to drift, e.g. minimax-m3 pinned `[]` here but derived elsewhere).
   for (const [prov, id] of [
+    ["opencode", "claude-opus-4-8"],
+    ["opencode", "gpt-5.5"],
     ["opencode", "gemini-3.5-flash"],
+    ["opencode", "deepseek-v4-flash-free"],
+    ["opencode-go", "minimax-m3"],
+    ["opencode-go", "deepseek-v4-pro"],
+  ]) {
+    assert.deepEqual(effortOf(prov, id), FULL, `${prov}/${id}`);
+  }
+  // Non-reasoning models expose no effort → the row is omitted (undefined).
+  for (const [prov, id] of [
     ["opencode", "mimo-v2.5-free"],
     ["opencode", "nemotron-3-ultra-free"],
     ["opencode-go", "glm-5.1"],
     ["opencode-go", "kimi-k2.6"],
-    ["opencode-go", "minimax-m3"],
     ["opencode-go", "qwen3.7-max"],
   ]) {
     assert.equal(
@@ -356,19 +334,15 @@ test("MiniMax is an active api-key provider backed by pi-ai's global provider", 
       typeof m.contextWindow === "number" && m.contextWindow > 0,
       `${m.id} has a contextWindow`,
     );
-    assert.deepEqual(m.effortLevels, ["low", "medium", "high"]);
+    assert.deepEqual(m.effortLevels, ["low", "medium", "high", "xhigh"]);
   }
-  assert.ok(
-    !COMING_SOON_PROVIDERS.some((provider) => provider.id === "minimax"),
-    "MiniMax is no longer coming soon",
-  );
 });
 
 test("EFFORT_ORDER is the full ascending spectrum and a superset of every model's levels", () => {
   // The composer renders the gauge against EFFORT_ORDER (not the model's own
   // levels) so every model shows the SAME number of bars. That only reads right
   // if EFFORT_ORDER is the canonical low->high spectrum...
-  assert.deepEqual(EFFORT_ORDER, ["low", "medium", "high", "xhigh", "max"]);
+  assert.deepEqual(EFFORT_ORDER, ["low", "medium", "high", "xhigh"]);
   // ...and a superset of every model's effortLevels, so any active level a model
   // can hold has a position on the shared gauge (else a bar would never fill).
   const order = new Set(EFFORT_ORDER);
@@ -396,7 +370,7 @@ test("EFFORT_ORDER is the full ascending spectrum and a superset of every model'
   }
 });
 
-test("getVisibleProviders shows the whole runnable /v1/catalog set, gating only local + coming-soon", () => {
+test("getVisibleProviders shows the whole runnable /v1/catalog set, gating only local", () => {
   const onNewEngineDesktop = getVisibleProviders({
     newEngine: true,
     desktop: true,
@@ -422,9 +396,9 @@ test("getVisibleProviders shows the whole runnable /v1/catalog set, gating only 
     PROVIDERS.filter((p) => p.auth !== "openaiCompatible").length,
   );
 
-  // No provider in the runnable set is on the coming-soon list.
-  const comingSoon = new Set(COMING_SOON_PROVIDERS.map((p) => p.id));
-  assert.ok(!onNewEngineDesktop.some((p) => comingSoon.has(p.id)));
+  // SubQ was never a pi-ai provider, so it never appears in the runnable set —
+  // no coming-soon list is needed to hold it back.
+  assert.ok(!onNewEngineDesktop.some((p) => p.id === "subq"));
 });
 
 test("getVisibleProviders no longer gates by capabilities.providers (catalog is the source)", () => {
@@ -582,11 +556,30 @@ test("model contextWindow: an override default wins over pi's raw window", () =>
     default: 121_600,
     max: 121_600,
   });
-  // A model with no contextWindow override falls back to pi's raw window
-  // (Opus 4.8 = 1M in the sample), so the fallback path stays exercised.
-  assert.deepEqual(getContextWindowConfig("anthropic", "claude-opus-4-8"), {
+  // A model with no window override falls back to pi's raw window (Fable 5 = 1M
+  // in the sample, un-gated), so the fallback path stays exercised.
+  assert.deepEqual(getContextWindowConfig("anthropic", "claude-fable-5"), {
     default: 1_000_000,
     max: 1_000_000,
+  });
+});
+
+test("model contextWindow: the Anthropic flagships credit-gate 1M behind a 200k default", () => {
+  // pi reports a flat 1M for Opus 4.7/4.8 (SAMPLE_CATALOG), but standard plans
+  // get 200k; the shared @houston/protocol table starts the estimate at 200k and
+  // snaps to 1M once observed usage proves the credit-gated window — the same
+  // numbers the runtime autocompact divides by. Drift here fails CI.
+  for (const id of ["claude-opus-4-8", "claude-opus-4-7"]) {
+    assert.deepEqual(getContextWindowConfig("anthropic", id), {
+      default: 200_000,
+      max: 1_000_000,
+    });
+  }
+  // Gemini via the native google provider is already correct in pi (1,048,576),
+  // so it gets NO override — the bar and the engine both divide by the full 1M.
+  assert.deepEqual(getContextWindowConfig("google", "gemini-3-flash-preview"), {
+    default: 1_048_576,
+    max: 1_048_576,
   });
 });
 

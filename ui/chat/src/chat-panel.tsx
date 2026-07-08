@@ -29,12 +29,10 @@ export function ChatPanel({
   onStop,
   onBack,
   isLoading,
-  suppressPendingIndicator,
   placeholder = "Type a message...",
   emptyState,
   status: statusProp,
   thinkingIndicator,
-  loadingIndicator,
   transformContent,
   toolLabels,
   isSpecialTool,
@@ -66,12 +64,12 @@ export function ChatPanel({
   canSendEmpty,
   composerOverride,
   composerLabels,
+  dictation,
   currentUserId,
   authorLabels,
 }: ChatPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const status =
-    statusProp ?? deriveStatus(feedItems, isLoading, suppressPendingIndicator);
+  const status = statusProp ?? deriveStatus(feedItems, isLoading);
   const messages = useMemo(() => feedItemsToMessages(feedItems), [feedItems]);
   const hasMessages = messages.length > 0;
 
@@ -150,7 +148,6 @@ export function ChatPanel({
           messages={messages}
           status={status}
           thinkingIndicator={thinkingIndicator ?? <DefaultThinkingIndicator />}
-          loadingIndicator={loadingIndicator}
           transformContent={transformContent}
           toolLabels={toolLabels}
           isSpecialTool={isSpecialTool}
@@ -199,6 +196,7 @@ export function ChatPanel({
           queuedLabels={queuedLabels}
           canSendEmpty={canSendEmpty}
           labels={composerLabels}
+          dictation={dictation}
         />
       )}
     </div>

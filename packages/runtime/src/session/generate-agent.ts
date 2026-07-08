@@ -16,20 +16,22 @@ import { oneShotText } from "./one-shot";
 
 /**
  * Create-with-AI agent generation (ported from the Rust engine's
- * `generate_instructions.rs`): one throwaway one-shot turn that writes a
- * CLAUDE.md job description, an agent name, suggested Composio toolkits, and
- * an optional routine from a plain-language description. Failures THROW so the
- * route surfaces the real reason — user-initiated work, no silent fallback
- * (unlike title summarization, which is cosmetic).
+ * `generate_instructions.rs`): one throwaway one-shot turn that acts as an AI
+ * automation consultant — it reads the user's free-text brief (their role,
+ * their work, and the tasks that eat their time) and writes a CLAUDE.md job
+ * description, an agent name, suggested Composio toolkits, and an optional
+ * routine. Failures THROW so the route surfaces the real reason —
+ * user-initiated work, no silent fallback (unlike title summarization, which
+ * is cosmetic).
  */
 
-const GENERATE_PROMPT = `You are an expert at writing AI agent job descriptions (CLAUDE.md files).
+const GENERATE_PROMPT = `You are an expert AI automation consultant.
 
-Generate a CLAUDE.md job description for an AI agent based on the description the user sends.
+The user sends a brief describing their role, their work, and the tasks that eat their time. Analyze the brief, identify the highest-leverage work an AI agent could take over for this client, and write that agent's job description (a CLAUDE.md file).
 
 The job description should:
 - Start with a clear role definition (what the agent is and does)
-- Include specific responsibilities and capabilities
+- Include specific responsibilities and capabilities, prioritized by impact for this client
 - Include behavioral guidelines and constraints
 - Be written in second person ("You are...", "You will...", "Your role...")
 - Be practical, specific, and actionable
@@ -40,7 +42,7 @@ Also suggest:
 - A short agent name (2-4 words, title case, no generic words like "Agent" or "Assistant" unless truly fitting, e.g. "Email Inbox Manager", "Quant Analyst", "Sales Pipeline Bot")
 - 0-4 relevant Composio integrations (toolkit names) that this agent would genuinely benefit from. Use an empty array if no external service integration is needed.
 Common toolkits: GMAIL, GOOGLECALENDAR, GOOGLESHEETS, GOOGLEDOCS, SLACK, NOTION, GITHUB, JIRA, TRELLO, ASANA, HUBSPOT, SALESFORCE, SHOPIFY, STRIPE, TWITTER, LINKEDIN, DISCORD, AIRTABLE, EXCEL, GOOGLEDRIVE
-- Optionally, exactly ONE routine, but ONLY if the agent's job clearly involves a recurring scheduled task (e.g. a daily inbox digest, a weekly report). If the agent is reactive / on-demand / one-off, set suggestedRoutine to null. Do not invent a schedule just to fill the field.
+- Optionally, exactly ONE routine, but ONLY if a recurring task from the brief clearly warrants automation on a schedule (e.g. a daily inbox digest, a weekly report). If the work is reactive / on-demand / one-off, set suggestedRoutine to null. Do not invent a schedule just to fill the field.
   Allowed scheduleType values ONLY: "daily", "weekdays", "weekly". Give timeOfDay as 24h "HH:MM". For "weekly" also give dayOfWeek (0=Sunday .. 6=Saturday). Keep the routine prompt to one sentence describing what it should do each run.
 
 Return ONLY valid JSON (no markdown fences):

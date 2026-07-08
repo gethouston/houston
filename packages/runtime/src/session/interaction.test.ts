@@ -1,41 +1,150 @@
 import { expect, test } from "vitest";
 import {
   newInteractionHolder,
-  recordPendingInteraction,
+  recordConnection,
+  recordQuestions,
+  recordSignin,
   runWithInteractionCapture,
 } from "./interaction";
 
 /**
- * The per-turn pending-interaction holder: an AsyncLocalStorage store the
- * ask_user / request_connection tools write into while a turn's prompt runs.
- * These pin: last-call-wins within a turn, a fresh holder per turn IS the reset,
- * and recording outside a turn is a silent no-op.
+ * The per-turn interaction holder: an AsyncLocalStorage store the ask_user /
+ * request_connection tools write into while a turn's prompt runs. These pin the
+ * merge semantics: ask_user REPLACES the question steps, request_connection
+ * APPENDS a deduped connect step, the recorded sequence is questions-then-
+ * connects, a fresh holder per turn IS the reset, and recording outside a turn
+ * is a silent no-op.
  */
 
-test("records the interaction on the ambient holder", () => {
+const q = (id: string, question: string) =>
+  ({ kind: "question", id, question }) as const;
+
+test("ask_user question steps become the pending sequence", () => {
   const holder = newInteractionHolder();
   runWithInteractionCapture(holder, () => {
-    recordPendingInteraction({ kind: "question", question: "Which one?" });
+    recordQuestions([q("q1", "Which one?")]);
   });
-  expect(holder.pending).toEqual({ kind: "question", question: "Which one?" });
+  expect(holder.pending).toEqual({ steps: [q("q1", "Which one?")] });
 });
 
-test("last call wins within a single turn", () => {
+test("request_connection appends a connect step after the questions", () => {
   const holder = newInteractionHolder();
   runWithInteractionCapture(holder, () => {
-    recordPendingInteraction({ kind: "question", question: "first?" });
-    recordPendingInteraction({ kind: "connect", toolkit: "gmail" });
-    recordPendingInteraction({ kind: "question", question: "final?" });
+    recordQuestions([q("q1", "Which address?"), q("q2", "What content?")]);
+    recordConnection({ toolkit: "gmail", reason: "to send it" });
   });
-  expect(holder.pending).toEqual({ kind: "question", question: "final?" });
+  // Question steps first (in ask_user order), then the connect step.
+  expect(holder.pending).toEqual({
+    steps: [
+      q("q1", "Which address?"),
+      q("q2", "What content?"),
+      { kind: "connect", id: "c1", toolkit: "gmail", reason: "to send it" },
+    ],
+  });
+});
+
+test("a second ask_user call REPLACES the question steps", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordQuestions([q("q1", "first?"), q("q2", "also?")]);
+    recordQuestions([q("q1", "final?")]);
+  });
+  expect(holder.pending).toEqual({ steps: [q("q1", "final?")] });
+});
+
+test("connect steps dedupe by toolkit, keep call order, and take c1..cN ids", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordConnection({ toolkit: "gmail" });
+    recordConnection({ toolkit: "slack", reason: "to post" });
+    // A repeat of gmail keeps its id + position and updates its reason.
+    recordConnection({ toolkit: "gmail", reason: "to send the email" });
+  });
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "connect",
+        id: "c1",
+        toolkit: "gmail",
+        reason: "to send the email",
+      },
+      { kind: "connect", id: "c2", toolkit: "slack", reason: "to post" },
+    ],
+  });
+});
+
+test("recordSignin orders the signin step between questions and connects", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordConnection({ toolkit: "gmail", reason: "to send it" });
+    recordSignin({ reason: "Sign in first." });
+    recordQuestions([q("q1", "Which address?")]);
+  });
+  // Regardless of call order: questions, then the signin step, then connects.
+  expect(holder.pending).toEqual({
+    steps: [
+      q("q1", "Which address?"),
+      { kind: "signin", id: "s1", reason: "Sign in first." },
+      { kind: "connect", id: "c1", toolkit: "gmail", reason: "to send it" },
+    ],
+  });
+});
+
+test("recordSignin is idempotent — one step, last reason wins", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordSignin({ reason: "first reason" });
+    recordSignin({ reason: "  second reason  " });
+  });
+  expect(holder.pending).toEqual({
+    steps: [{ kind: "signin", id: "s1", reason: "second reason" }],
+  });
+});
+
+test("recordSignin omits an empty/whitespace reason", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordSignin({ reason: "   " });
+  });
+  expect(holder.pending).toEqual({ steps: [{ kind: "signin", id: "s1" }] });
+
+  const noReason = newInteractionHolder();
+  runWithInteractionCapture(noReason, () => recordSignin({}));
+  expect(noReason.pending).toEqual({ steps: [{ kind: "signin", id: "s1" }] });
+});
+
+test("a signin step alone yields a valid sequence", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => recordSignin({ reason: "Sign in." }));
+  expect(holder.pending).toEqual({
+    steps: [{ kind: "signin", id: "s1", reason: "Sign in." }],
+  });
+});
+
+test("either tool alone still yields a valid sequence", () => {
+  const questionsOnly = newInteractionHolder();
+  runWithInteractionCapture(questionsOnly, () =>
+    recordQuestions([q("q1", "Which one?")]),
+  );
+  expect(questionsOnly.pending).toEqual({ steps: [q("q1", "Which one?")] });
+
+  const connectOnly = newInteractionHolder();
+  runWithInteractionCapture(connectOnly, () =>
+    recordConnection({ toolkit: "notion" }),
+  );
+  expect(connectOnly.pending).toEqual({
+    steps: [{ kind: "connect", id: "c1", toolkit: "notion" }],
+  });
 });
 
 test("a fresh holder each turn is the reset — nothing leaks across turns", () => {
   const first = newInteractionHolder();
-  runWithInteractionCapture(first, () => {
-    recordPendingInteraction({ kind: "connect", toolkit: "slack" });
+  runWithInteractionCapture(first, () =>
+    recordConnection({ toolkit: "slack" }),
+  );
+  expect(first.pending).toEqual({
+    steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
   });
-  expect(first.pending).toEqual({ kind: "connect", toolkit: "slack" });
 
   // A second turn starts with its own empty holder and never sees the first.
   const second = newInteractionHolder();
@@ -47,20 +156,22 @@ test("a fresh holder each turn is the reset — nothing leaks across turns", () 
 });
 
 test("recording outside a turn is a no-op (undefined store)", () => {
-  // No runWithInteractionCapture → getStore() is undefined → nothing recorded.
-  expect(() =>
-    recordPendingInteraction({ kind: "question", question: "orphan?" }),
-  ).not.toThrow();
+  expect(() => recordQuestions([q("q1", "orphan?")])).not.toThrow();
+  expect(() => recordConnection({ toolkit: "gmail" })).not.toThrow();
+  expect(() => recordSignin({ reason: "orphan" })).not.toThrow();
 });
 
 test("the holder survives async work inside the capture (ALS propagation)", async () => {
   const holder = newInteractionHolder();
   await runWithInteractionCapture(holder, async () => {
     await Promise.resolve();
-    recordPendingInteraction({ kind: "question", question: "after await?" });
+    recordQuestions([q("q1", "after await?")]);
+    recordConnection({ toolkit: "gmail" });
   });
   expect(holder.pending).toEqual({
-    kind: "question",
-    question: "after await?",
+    steps: [
+      q("q1", "after await?"),
+      { kind: "connect", id: "c1", toolkit: "gmail" },
+    ],
   });
 });

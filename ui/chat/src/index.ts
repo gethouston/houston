@@ -191,6 +191,20 @@ export type { ChatSidebarProps } from "./chat-sidebar";
 export { ChatSidebar } from "./chat-sidebar";
 export type { ChatStatusLineProps } from "./chat-status-line";
 export { ChatStatusLine } from "./chat-status-line";
+// === Dictation ===
+export type {
+  DictationControl,
+  DictationLabels,
+  DictationState,
+  DictationView,
+} from "./dictation-types";
+export {
+  DEFAULT_DICTATION_LABELS,
+  formatElapsed,
+  isDictationBusy,
+  isDictationCapturing,
+  resolveDictationView,
+} from "./dictation-types";
 export type { MergeFeedOptions, PendingUserEcho } from "./feed-merge";
 export {
   mergeFeedHistory,
@@ -204,6 +218,17 @@ export type {
   ToolEntry,
 } from "./feed-to-messages";
 export { distinctAuthorCount } from "./feed-to-messages";
+// === Interaction Card ===
+// The in-chat surface shown when the agent pauses to gather what it needs before
+// continuing; a stepper (one question or connect step at a time) that replaces
+// the composer while a pending interaction is awaiting the user.
+export type {
+  ChatInteractionAnswer,
+  ChatInteractionCardProps,
+  ChatInteractionOption,
+  ChatInteractionStep,
+} from "./interaction-card";
+export { ChatInteractionCard } from "./interaction-card";
 // Clean, human-readable preview of a persisted user-message body: decodes the
 // Skill / attachment markers so cards and lists never show the raw marker.
 export { messagePreviewText } from "./message-preview";

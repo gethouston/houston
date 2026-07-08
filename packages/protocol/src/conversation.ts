@@ -6,6 +6,7 @@
  * provider-error.ts.
  */
 
+import type { PendingInteraction } from "./domain/interaction";
 import type { ProviderError } from "./provider-error";
 
 /**
@@ -118,10 +119,50 @@ export interface Settings {
   effort?: string;
 }
 
+/**
+ * Per-turn agent execution mode. "execute" = full read/write/act (the default
+ * for unpinned turns; routine fire paths explicitly pin "auto"); "plan" =
+ * read-only tools plus a planning overlay, producing a plan for the user to
+ * approve; "auto" (Autopilot) = acts with everything EXCEPT the two
+ * blocking/interactive tools (`ask_user`, `request_connection`) — it never waits
+ * on the user, makes its own sensible choices, and reports back at the end.
+ * Deliberately NOT part of `Settings`: mode rides the per-turn pin only, so an
+ * unpinned turn is always "execute".
+ */
+export type TurnMode = "execute" | "plan" | "auto";
+export const TURN_MODES: readonly TurnMode[] = ["execute", "plan", "auto"];
+export const DEFAULT_TURN_MODE: TurnMode = "execute";
+
+/**
+ * Normalize an untrusted wire value into a `TurnMode`. Only the exact known
+ * literals ("execute", "plan", "auto") pass; anything else — absent, garbage,
+ * wrong case — falls back to the default ("execute"). The single place both the
+ * long-lived route and the cloud turn parser trust the wire, so the "never a
+ * surprise mode" rule lives in one spot.
+ */
+export function normalizeTurnMode(value: unknown): TurnMode {
+  return TURN_MODES.includes(value as TurnMode)
+    ? (value as TurnMode)
+    : DEFAULT_TURN_MODE;
+}
+
 export type ChatRole = "user" | "assistant";
 
 export interface ToolCallRecord {
   name: string;
+  /**
+   * The tool call's arguments, exactly as the live `tool_start` frame carried
+   * them. Persisted so a reloaded conversation's mission log shows WHAT each
+   * tool did (the command run, the file written), not just the tool's name
+   * (HOU-717). Absent on records written before this field existed.
+   */
+  input?: unknown;
+  /**
+   * The tool's output preview, as the live `tool_end` frame carried it
+   * (already clipped to `TOOL_RESULT_PREVIEW_MAX` at the backend). Same
+   * reload story and absence semantics as `input`.
+   */
+  result?: string;
   isError?: boolean;
 }
 
@@ -161,6 +202,14 @@ export interface ChatMessage {
    */
   author?: { userId: string; name?: string };
   tools?: ToolCallRecord[];
+  /**
+   * The turn's full reasoning text (the model's thinking blocks, concatenated
+   * in stream order). Persisted so a reloaded conversation's mission log
+   * replays the reasoning alongside the tool calls (HOU-717) instead of
+   * dropping it. Absent on messages written before this field existed and on
+   * turns that produced no reasoning.
+   */
+  thinking?: string;
   /** Normalized usage for the turn this assistant message completed, when the
    *  provider reported it. Persisted so the context indicator survives a reload. */
   usage?: TokenUsage | null;
@@ -199,6 +248,16 @@ export interface ChatMessage {
    * carried `provider` is the pi provider id; the frontend maps it.
    */
   providerError?: ProviderError;
+  /**
+   * What this turn ended waiting on the user for (ask_user / request_connection),
+   * persisted ONLY when the turn ended clean (no provider error, not thrown) —
+   * the exact condition that attaches it to the terminal `done` wire frame. A
+   * client that MISSES the live `done` (connection blip / observer reload) and
+   * settles from this history reads the interaction here and lands the board
+   * card on `needs_you`, instead of dropping the question/connect card to a
+   * false `done`. Absent when the turn ended with nothing outstanding.
+   */
+  pendingInteraction?: PendingInteraction;
 }
 
 export interface ConversationSummary {

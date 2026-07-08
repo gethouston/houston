@@ -63,6 +63,10 @@ mod tests {
         assert!(prompt.contains("integration_execute"));
         assert!(prompt.contains("request_connection"));
         assert!(prompt.contains("I've connected Gmail. Please continue."));
+        // …the sign-in card joins the same flow, and app powers are never
+        // claimed unavailable unless Houston says they are not set up…
+        assert!(prompt.contains("a sign-in card joins"));
+        assert!(prompt.contains("not set up in this install"));
         // …the markdown-link connect hack is gone…
         assert!(!prompt.contains("houston_toolkit"));
         assert!(!prompt.contains("markdown link"));
@@ -79,6 +83,28 @@ mod tests {
         assert!(prompt.contains("ask_user"));
         assert!(prompt.contains("never leave a question sitting in plain text"));
         assert!(prompt.contains("Always request that approval through the `ask_user` tool"));
+    }
+
+    #[test]
+    fn prompt_tells_the_agent_to_batch_questions_into_one_call() {
+        let prompt = system_prompt_pi();
+
+        assert!(prompt.contains("up to 3 questions"));
+        assert!(prompt.contains("never one question per turn"));
+        assert!(prompt.contains("Three is a cap, not a target"));
+        // The old one-question-per-turn drip is gone.
+        assert!(!prompt.contains("one thing at a time"));
+        assert!(!prompt.contains("one question at a time"));
+    }
+
+    #[test]
+    fn prompt_combines_questions_and_a_connection_in_one_turn() {
+        let prompt = system_prompt_pi();
+
+        assert!(prompt.contains("call `ask_user` and `request_connection` in the SAME turn"));
+        assert!(prompt.contains("one card the user completes step by step"));
+        // The email example the step sequence was designed around.
+        assert!(prompt.contains("to send an email you were asked to send"));
     }
 
     #[test]

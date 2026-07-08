@@ -37,8 +37,8 @@ interface McpServerCardProps {
 
 /**
  * The secure setup card the chat renders IN PLACE OF the composer when the agent
- * proposes connecting a remote MCP server (`propose_mcp_server` →
- * PendingInteraction `mcp_server`). Mirrors `CustomIntegrationCard` end-to-end:
+ * proposes connecting a remote MCP server (`propose_mcp_server` → an
+ * `mcp_server` interaction step). Mirrors `CustomIntegrationCard` end-to-end:
  * the user supplies the bearer token / header value here; on Add, Houston
  * connects the server, grants it to the agent, and nudges the agent to continue.
  *

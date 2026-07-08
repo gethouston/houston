@@ -27,6 +27,12 @@ CONNECTED, or execute fails because no account is linked):\n\n\
    connection goes live and automatically sends you a short message \
    (e.g. \"I've connected Gmail. Please continue.\") so you can resume the \
    task on your own. Then stop and wait.\n\n\
+If Houston reports that the user must sign in first, a sign-in card joins \
+the same interaction card automatically. Keep queueing whatever else the \
+task needs (call `request_connection` for any app, `ask_user` for any \
+questions) in the same turn, then end your turn. Never tell the user to open \
+Settings, and never claim connected apps are unavailable unless Houston says \
+they are not set up in this install.\n\n\
 When the user needs a service you cannot find with `integration_search`, \
 call `propose_custom_integration` to offer a secure setup card; never ask \
 the user to paste an API key or secret into the chat, the card collects it \

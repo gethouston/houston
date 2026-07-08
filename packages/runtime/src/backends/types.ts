@@ -1,5 +1,7 @@
+import type { TurnMode } from "@houston/protocol";
 import type { WireEvent } from "@houston/runtime-client";
 import type { PiThinkingLevel } from "../ai/effort";
+import type { ProvidedContext } from "../session/workspace-context";
 
 /**
  * The HarnessBackend seam: turn execution abstracted behind a provider-agnostic
@@ -60,6 +62,20 @@ export interface CreateSessionOptions {
   conversationId: string;
   model: ResolvedModel;
   thinkingLevel?: ThinkingLevel;
+  /**
+   * The turn's execution mode. "plan" opens the session with the read-only tool
+   * subset + the planning prompt overlay; absent or "execute" is the full
+   * read/write/act session. A mode change on a live conversation rebuilds the
+   * session (see `switchModeIfNeeded`), so this is fixed for the session's life.
+   */
+  mode?: TurnMode;
+  /**
+   * Gateway-provided workspace + user context for the prompt (HOU-711, cloud).
+   * Present when the hosting gateway sourced it from Supabase and put it on the
+   * turn body; absent on local/self-host, where the runtime reads the two
+   * WORKSPACE.md / USER.md files instead.
+   */
+  context?: ProvidedContext;
 }
 
 /** A pluggable turn-execution backend for a provider. */

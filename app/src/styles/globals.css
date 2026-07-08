@@ -25,11 +25,19 @@ body {
     Arial, sans-serif;
 }
 
-[data-theme="dark"] .houston-update-logo-light {
+/* The :not() guards keep the dark logo swap out of light-pinned
+   (data-theme="light") subtrees — same rule as futuristic.css. */
+[data-theme="dark"]
+  .houston-update-logo-light:not(
+    :where([data-theme="light"], [data-theme="light"] *)
+  ) {
   display: none;
 }
 
-[data-theme="dark"] .houston-update-logo-dark {
+[data-theme="dark"]
+  .houston-update-logo-dark:not(
+    :where([data-theme="light"], [data-theme="light"] *)
+  ) {
   display: block;
 }
 

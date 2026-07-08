@@ -17,6 +17,7 @@ import {
 } from "./conversation-cache";
 import { execTurn, recordUserTurn, type TurnPin } from "./exec-turn";
 import { withWorkdirLock } from "./workdir-lock";
+import type { ProvidedContext } from "./workspace-context";
 
 /**
  * The runtime's public turn API: start (queued per conversation), cancel,
@@ -72,6 +73,7 @@ export async function runTurn(
   nonce?: string,
   pin?: TurnPin,
   acting?: ActingContext,
+  context?: ProvidedContext,
 ): Promise<void> {
   // Mint the turn's wire identity up front so even a turn that fails before
   // executing (the guards below) terminates under one id.
@@ -94,7 +96,7 @@ export async function runTurn(
 
   let conv: Conversation;
   try {
-    conv = await getConversation(id, pin);
+    conv = await getConversation(id, pin, context);
   } catch (err) {
     // e.g. no provider connected, or a pin naming an unknown provider —
     // surface it on the conversation's stream AND persist it (user prompt +

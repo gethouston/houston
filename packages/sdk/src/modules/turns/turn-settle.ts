@@ -1,4 +1,8 @@
-import type { ProviderError, TokenUsage } from "@houston/runtime-client";
+import type {
+  PendingInteraction,
+  ProviderError,
+  TokenUsage,
+} from "@houston/runtime-client";
 import type { FeedOutput, TerminalBoardStatus } from "./feed-output";
 import { isNotConnectedError, isStoppedByUser } from "./turn-errors";
 
@@ -26,9 +30,26 @@ export interface TurnState {
   prompt: string | null;
   text: string;
   thinking: string;
+  /**
+   * How many of this turn's `tool_call` feed items were already pushed (live
+   * frames + sync replay) — the dedup cursor a running `sync`'s tool replay
+   * starts from, so a resync never doubles a tool row (HOU-717).
+   */
+  toolsSeen: number;
+  /** Same cursor for `tool_result` pushes. */
+  toolResultsSeen: number;
   usage: TokenUsage | null;
   settled: boolean;
   terminal: TerminalBoardStatus | null;
+  /**
+   * The interaction the turn ended on (ask_user / request_connection), captured
+   * from the clean `done` frame; `null` when the turn settled without one. It
+   * splits a clean settle to `needs_you` (present) vs `done` (absent) in
+   * {@link finishOk} and rides the terminal board persist so the card can
+   * render its composer-replacing question/connect card. Handled non-success
+   * settles (user Stop, provider error) never set it.
+   */
+  pendingInteraction: PendingInteraction | null;
 }
 
 export function newTurnState(
@@ -45,9 +66,12 @@ export function newTurnState(
     prompt: send?.prompt ?? null,
     text: "",
     thinking: "",
+    toolsSeen: 0,
+    toolResultsSeen: 0,
     usage: null,
     settled: false,
     terminal: null,
+    pendingInteraction: null,
   };
 }
 
@@ -61,7 +85,12 @@ const invisibleFinal = (s: TurnState) =>
     data: { result: "", cost_usd: null, duration_ms: null, usage: null },
   });
 
-/** Settle a successful turn: flush accumulations, final_result, completed. */
+/**
+ * Settle a successful turn: flush accumulations, final_result, completed. The
+ * board split is on the captured interaction (the `done` frame stashes it into
+ * `s.pendingInteraction` before calling here): the turn ended asking the user
+ * for something → `needs_you`; it ended with nothing outstanding → `done`.
+ */
 export function finishOk(s: TurnState): void {
   if (s.settled) return;
   s.settled = true;
@@ -72,7 +101,7 @@ export function finishOk(s: TurnState): void {
     data: { result: s.text, cost_usd: null, duration_ms: null, usage: s.usage },
   });
   s.output.sessionStatus(s.agentPath, s.sessionKey, "completed");
-  s.terminal = "needs_you";
+  s.terminal = s.pendingInteraction ? "needs_you" : "done";
 }
 
 /**

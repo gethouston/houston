@@ -5,7 +5,12 @@ import type {
 } from "@houston/runtime-client";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
-import { recordPendingInteraction } from "../interaction";
+import {
+  recordConnection,
+  recordCustomIntegration,
+  recordMcpServer,
+  recordSignin,
+} from "../interaction";
 
 /**
  * The agent's window into the user's connected third-party apps (Gmail, Google
@@ -142,6 +147,26 @@ type ProposeMcpParams = Static<typeof ProposeMcpParams>;
  */
 function normalizeToolkitSlug(slug: string): string {
   return slug.trim().toLowerCase();
+}
+
+/**
+ * The `code` the host stamps on its OWN actionable error signals (409
+ * "signin_required", 503 "integrations_not_configured"). Returns it, or
+ * undefined for a body that carries none — including any upstream error the
+ * host relays verbatim during a transient outage, which must NOT be read as one
+ * of those states. A non-JSON or malformed body is simply uncoded.
+ */
+function signalCode(detail: string): string | undefined {
+  try {
+    const body: unknown = JSON.parse(detail);
+    if (body && typeof body === "object") {
+      const { code } = body as { code?: unknown };
+      if (typeof code === "string") return code;
+    }
+  } catch {
+    // Non-JSON body (e.g. an HTML proxy error page) → uncoded, generic error.
+  }
+  return undefined;
 }
 
 export interface IntegrationToolOptions {
@@ -291,12 +316,34 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      // 409 = integrations can't act for this user yet (on desktop: they're
-      // signed out of Houston, so the gateway has no session to forward) — a
-      // normal, actionable state the agent should relay, not a crash.
-      if (res.status === 409) {
+      // The host tags its OWN actionable signals with a stable `code` on the
+      // JSON error body. A relayed upstream error (a transient gateway/provider
+      // outage the host passes through VERBATIM) carries the upstream's status
+      // + body and NO such code — so we classify on the code, never the bare
+      // status, and let any uncoded failure fall through to the generic error
+      // below rather than a false "sign in" / "not set up" claim.
+      const code = signalCode(detail);
+      // signin_required (409): integrations can't act for this user yet (on
+      // desktop: they're signed out of Houston, so the gateway has no session to
+      // forward) — a normal, actionable state. Queue a signin step in THIS
+      // turn's interaction flow so Houston renders a sign-in card in place of
+      // the chat input, then tell the model to keep queuing what it needs and
+      // end its turn.
+      if (code === "signin_required") {
+        recordSignin({
+          reason: "Sign in to Houston to use your connected apps.",
+        });
         throw new Error(
-          "Connected apps aren't available yet: the user needs to sign in to Houston (Settings), then connect their apps in Integrations. Ask them to do that, then try again.",
+          "The user is signed out of Houston, so connected apps can't act for them yet. A sign-in card has been queued in the interaction flow. Queue any request_connection you still need (it will follow the sign-in step), then end your turn. Do NOT tell the user to open Settings — Houston sends you a message automatically once they're signed in.",
+        );
+      }
+      // integrations_not_configured (503): connected apps are not set up in this
+      // Houston install (dev with no key, self-host that never set
+      // COMPOSIO_API_KEY). A closed, honest state: there is nothing to sign into
+      // or connect here.
+      if (code === "integrations_not_configured") {
+        throw new Error(
+          "Connected apps are not set up in this Houston install. Tell the user plainly that connected apps aren't available here (a self-hoster enables them by setting COMPOSIO_API_KEY), and do not offer to connect any apps.",
         );
       }
       // The app has several granted accounts and none was pinned → the model
@@ -431,16 +478,17 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     },
   });
 
-  // The in-chat connect hand-off. Records the pending connection for this turn
-  // (carried on the terminal `done` frame → a one-click connect card rendered in
-  // place of the chat input). Gated with the integration tools because it only
-  // makes sense where the user can actually connect apps. Holds no credential
-  // and makes no network call — it just records the request.
+  // The in-chat connect hand-off. Appends a connect step to this turn's
+  // interaction sequence (carried on the terminal `done` frame → a card rendered
+  // in place of the chat input that walks the user through every queued step).
+  // Gated with the integration tools because it only makes sense where the user
+  // can actually connect apps. Holds no credential and makes no network call —
+  // it just records the request.
   const requestConnection = defineTool({
-    name: "request_connection",
+    name: REQUEST_CONNECTION_TOOL_NAME,
     label: "Ask the user to connect an app",
     description:
-      "Ask the user to connect one of their apps (Gmail, Slack, Notion, and many more) when an action needs it. Houston shows a one-click connect card in place of the chat input; end your turn right after calling this. Never spell out the app's slug or a link in your reply — Houston sends you a message automatically once the connection is live.",
+      "Ask the user to connect one of their apps (Gmail, Slack, Notion, and many more) when an action needs it. This adds a connect step to the one interaction card Houston shows in place of the chat input; queue any questions you also need (via ask_user) in the SAME turn, then end your turn. Never spell out the app's slug or a link in your reply — Houston sends you a message automatically once the connection is live.",
     promptSnippet: "Ask the user to connect an app so an action can run",
     parameters: ConnectParams,
     executionMode: "sequential",
@@ -449,16 +497,12 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       if (!toolkit)
         throw new Error("request_connection needs a non-empty toolkit slug.");
       const reason = params.reason?.trim();
-      recordPendingInteraction({
-        kind: "connect",
-        toolkit,
-        ...(reason ? { reason } : {}),
-      });
+      recordConnection({ toolkit, ...(reason ? { reason } : {}) });
       return {
         content: [
           {
             type: "text" as const,
-            text: "Houston is now showing the user a one-click card to connect this app in place of the chat input. End your turn now. Do not spell out the app's slug or any link in your reply, and do not ask the user to confirm — Houston sends you a message automatically once the connection is live.",
+            text: "This app was added as a connect step to the one interaction card Houston shows the user in place of the chat input. Queue everything else this task needs now (call ask_user for any questions in this same turn), then end your turn. Do not spell out the app's slug or any link in your reply, and do not ask the user to confirm — Houston sends you a message automatically once the connection is live.",
           },
         ],
         details: { toolkit },
@@ -505,8 +549,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           ? { type: "header", header: authField, ...(prefix ? { prefix } : {}) }
           : { type: "query", param: authField };
       const reason = params.reason?.trim();
-      recordPendingInteraction({
-        kind: "custom_integration",
+      recordCustomIntegration({
         proposal: { name, baseUrl, auth, description },
         ...(reason ? { reason } : {}),
       });
@@ -556,8 +599,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       }
       const description = params.description?.trim();
       const reason = params.reason?.trim();
-      recordPendingInteraction({
-        kind: "mcp_server",
+      recordMcpServer({
         proposal: {
           name,
           url,
@@ -587,11 +629,29 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
   ];
 }
 
+/**
+ * The in-chat connect hand-off tool. A blocking/interactive tool (it waits for
+ * the user to connect an app), so — like `ask_user` — it is EXCLUDED from
+ * Autopilot ("auto") mode, which never waits on the user. Named here so the
+ * mode tool filter can reference it without a string literal.
+ */
+export const REQUEST_CONNECTION_TOOL_NAME = "request_connection";
+
+/**
+ * The two proposal hand-off tools. Like `request_connection` they are
+ * blocking/interactive — each ends the turn on a secure setup card the user
+ * fills in — so both are EXCLUDED from Autopilot ("auto") mode. Named here so the
+ * mode tool filter can reference them without string literals.
+ */
+export const PROPOSE_CUSTOM_INTEGRATION_TOOL_NAME =
+  "propose_custom_integration";
+export const PROPOSE_MCP_SERVER_TOOL_NAME = "propose_mcp_server";
+
 /** The tool names — pi's allowlist needs the names alongside the objects. */
 export const INTEGRATION_TOOL_NAMES = [
   "integration_search",
   "integration_execute",
-  "request_connection",
-  "propose_custom_integration",
-  "propose_mcp_server",
+  REQUEST_CONNECTION_TOOL_NAME,
+  PROPOSE_CUSTOM_INTEGRATION_TOOL_NAME,
+  PROPOSE_MCP_SERVER_TOOL_NAME,
 ];

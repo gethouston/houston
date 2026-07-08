@@ -24,6 +24,7 @@ import { installGlobalErrorHandlers } from "@houston/app/lib/global-error-handle
 import i18n from "@houston/app/lib/i18n";
 import { initFrontendLogging, logger } from "@houston/app/lib/logger";
 import { queryClient } from "@houston/app/lib/query-client";
+import { setupQueryPersistence } from "@houston/app/lib/query-persist";
 import { initSentry } from "@houston/app/lib/sentry";
 import { TooltipProvider } from "@houston-ai/core";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -44,6 +45,12 @@ initFrontendLogging();
 // noise (Supabase Web Locks steal, HOU-435). Must run AFTER initFrontendLogging()
 // so the console.error → log file patch is already in place.
 installGlobalErrorHandlers();
+
+// List-query persistence (HOU-712 follow-up) — shared with the desktop entry
+// (app/src/main.tsx): restore persisted conversation lists/activities so the
+// sidebar/board paint instantly through an engine-pod cold start. No cloud
+// identity → no-op.
+void setupQueryPersistence(queryClient);
 
 class ErrorBoundary extends Component<
   { children: ReactNode },

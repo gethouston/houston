@@ -14,9 +14,12 @@ import {
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
 import { useTimezonePreference } from "../../hooks/use-timezone-preference";
 import { analytics } from "../../lib/analytics";
+import { genericErrorDescription } from "../../lib/error-toast";
 import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
+import { RoutineCreateChoiceDialog } from "./routine-create-choice-dialog";
 import { RoutineModelControls } from "./routine-model-controls";
+import { RoutineSetupChat } from "./routine-setup-chat";
 import {
   EMPTY_FORM,
   formMatchesRoutine,
@@ -25,8 +28,9 @@ import {
   routineToFormData,
   type View,
 } from "./routines-tab-model";
+import { useRoutineChatSetup } from "./use-routine-chat-setup";
 
-export default function RoutinesTab({ agent }: TabProps) {
+export default function RoutinesTab({ agent, agentDef }: TabProps) {
   const { t } = useTranslation("routines");
   const labels = useRoutineLabels();
   const path = agent.folderPath;
@@ -42,6 +46,8 @@ export default function RoutinesTab({ agent }: TabProps) {
   const cancelRun = useCancelRoutineRun(path);
 
   const [view, setView] = useState<View>(() => freshRoutinesState().view);
+  const [choiceOpen, setChoiceOpen] = useState(false);
+  const chatSetup = useRoutineChatSetup(agent);
   const [form, setForm] = useState<RoutineFormData>(
     () => freshRoutinesState().form,
   );
@@ -64,16 +70,27 @@ export default function RoutinesTab({ agent }: TabProps) {
     setView(fresh.view);
     setForm(fresh.form);
     setBaseline(fresh.baseline);
+    setChoiceOpen(false);
   }
 
   // Most recent run per routine, for the grid's "last run" badges.
   const lastRuns = useMemo(() => latestRunByRoutine(allRuns), [allRuns]);
 
-  const handleCreate = useCallback(() => {
+  // "New routine" opens a chooser: guided setup in chat, or the form.
+  const handleCreate = useCallback(() => setChoiceOpen(true), []);
+
+  const handleCreateWithForm = useCallback(() => {
+    setChoiceOpen(false);
     setForm(EMPTY_FORM);
     setBaseline(EMPTY_FORM);
     setView({ type: "editor" });
   }, []);
+
+  const handleCreateInChat = useCallback(async () => {
+    // On success the view switches to the new conversation, so only close
+    // the dialog then — a failed start keeps the chooser up for a retry.
+    if (await chatSetup.start()) setChoiceOpen(false);
+  }, [chatSetup]);
 
   const openEditor = useCallback(
     (routineId: string) => {
@@ -159,7 +176,7 @@ export default function RoutinesTab({ agent }: TabProps) {
       } catch (err) {
         addToast({
           title: t("toasts.timezoneError"),
-          description: err instanceof Error ? err.message : String(err),
+          description: genericErrorDescription("set_timezone", err),
           variant: "error",
         });
       }
@@ -189,59 +206,78 @@ export default function RoutinesTab({ agent }: TabProps) {
       ? (allRuns ?? []).filter((r) => r.routine_id === view.editId)
       : [];
 
+    // data-keep-panel-open: interacting with routines content must not
+    // dismiss the setup-chat panel via AIBoard's outside-click close.
     return (
-      <RoutineEditor
-        value={form}
-        onChange={handleFormChange}
-        onBack={() => setView({ type: "grid" })}
-        onSubmit={handleSubmit}
-        routine={editing}
-        runs={editingRuns}
-        onRunNow={editing ? () => handleRunNow(editing.id) : undefined}
-        runNowPending={runNow.isPending}
-        onCancelRun={
-          editing
-            ? (runId: string) => handleCancelRun(editing.id, runId)
-            : undefined
-        }
-        onToggle={
-          editing ? (enabled) => handleToggle(editing.id, enabled) : undefined
-        }
-        onDelete={editing ? () => handleDelete(editing.id) : undefined}
-        accountTimezone={tz.timezone}
-        hasChanges={!formMatchesRoutine(form, baseline)}
-        modelPicker={
-          <RoutineModelControls
-            agent={agent}
-            agentPath={path}
-            form={form}
-            onChange={handleFormChange}
-          />
-        }
-        labels={labels.editor}
-        scheduleLabels={labels.schedule}
-        nextFireLabels={labels.nextFire}
-        runHistoryLabels={labels.runHistory}
-        locale={labels.locale}
-      />
+      <div className="contents" data-keep-panel-open>
+        <RoutineSetupChat
+          agent={agent}
+          agentDef={agentDef}
+          showBanner={false}
+        />
+        <RoutineEditor
+          value={form}
+          onChange={handleFormChange}
+          onBack={() => setView({ type: "grid" })}
+          onSubmit={handleSubmit}
+          routine={editing}
+          runs={editingRuns}
+          onRunNow={editing ? () => handleRunNow(editing.id) : undefined}
+          runNowPending={runNow.isPending}
+          onCancelRun={
+            editing
+              ? (runId: string) => handleCancelRun(editing.id, runId)
+              : undefined
+          }
+          onToggle={
+            editing ? (enabled) => handleToggle(editing.id, enabled) : undefined
+          }
+          onDelete={editing ? () => handleDelete(editing.id) : undefined}
+          accountTimezone={tz.timezone}
+          hasChanges={!formMatchesRoutine(form, baseline)}
+          modelPicker={
+            <RoutineModelControls
+              agent={agent}
+              agentPath={path}
+              form={form}
+              onChange={handleFormChange}
+            />
+          }
+          labels={labels.editor}
+          scheduleLabels={labels.schedule}
+          nextFireLabels={labels.nextFire}
+          runHistoryLabels={labels.runHistory}
+          locale={labels.locale}
+        />
+      </div>
     );
   }
 
   return (
-    <RoutinesGrid
-      routines={routines ?? []}
-      lastRuns={lastRuns}
-      accountTimezone={tz.timezone}
-      onTimezoneChange={handleTimezoneChange}
-      loading={isLoading}
-      onSelect={openEditor}
-      onCreate={handleCreate}
-      onToggle={handleToggle}
-      labels={labels.grid}
-      rowLabels={labels.rowLabels}
-      scheduleSummaryLabels={labels.schedule.summary}
-      nextFireLabels={labels.nextFire}
-      locale={labels.locale}
-    />
+    <div className="contents" data-keep-panel-open>
+      <RoutineCreateChoiceDialog
+        open={choiceOpen}
+        onOpenChange={setChoiceOpen}
+        onChat={handleCreateInChat}
+        onForm={handleCreateWithForm}
+        busy={chatSetup.pending}
+      />
+      <RoutineSetupChat agent={agent} agentDef={agentDef} showBanner />
+      <RoutinesGrid
+        routines={routines ?? []}
+        lastRuns={lastRuns}
+        accountTimezone={tz.timezone}
+        onTimezoneChange={handleTimezoneChange}
+        loading={isLoading}
+        onSelect={openEditor}
+        onCreate={handleCreate}
+        onToggle={handleToggle}
+        labels={labels.grid}
+        rowLabels={labels.rowLabels}
+        scheduleSummaryLabels={labels.schedule.summary}
+        nextFireLabels={labels.nextFire}
+        locale={labels.locale}
+      />
+    </div>
   );
 }

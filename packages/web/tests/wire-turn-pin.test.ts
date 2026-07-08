@@ -56,6 +56,29 @@ test("a model without a provider cannot be ownership-checked and is dropped", ()
   expect(wireTurnPin({ model: "gpt-5.5" })).toBeUndefined();
 });
 
+test("mode passes through verbatim alongside the pin", () => {
+  expect(
+    wireTurnPin({
+      provider: "anthropic",
+      model: "claude-opus-4-8",
+      mode: "plan",
+    }),
+  ).toEqual({
+    provider: "anthropic",
+    model: "claude-opus-4-8",
+    mode: "plan",
+  });
+});
+
+test("a mode-only send still pins the mode (plan mode with no provider override)", () => {
+  expect(wireTurnPin({ mode: "plan" })).toEqual({ mode: "plan" });
+});
+
+test("no mode key when the send carries no mode", () => {
+  const pin = wireTurnPin({ provider: "anthropic", model: "claude-opus-4-8" });
+  expect(pin).not.toHaveProperty("mode");
+});
+
 test("no overrides → no pin (the runtime's own resolution is untouched)", () => {
   expect(wireTurnPin({})).toBeUndefined();
 });

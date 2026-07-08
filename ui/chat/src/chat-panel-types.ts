@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { ToolsAndCardsProps } from "./chat-helpers";
 import type { ChatMessagesProps } from "./chat-messages";
+import type { DictationControl } from "./dictation-types";
 import type { ChatMessage } from "./feed-to-messages";
 import type {
   QueuedChatMessage,
@@ -43,10 +44,6 @@ export interface ChatPanelProps {
   onStop?: () => void;
   onBack?: () => void;
   isLoading: boolean;
-  /** The consumer narrates the pending send itself (inline card): a trailing
-   *  user message with no running turn must not light the in-flight
-   *  indicator. See `deriveStatus`. */
-  suppressPendingIndicator?: boolean;
   placeholder?: string;
   emptyState?: ReactNode;
   value?: string;
@@ -70,12 +67,11 @@ export interface ChatPanelProps {
   queuedLabels?: QueuedMessageLabels;
   canSendEmpty?: boolean;
   status?: ChatStatus;
+  /** Indicator for the gap before the agent's first output (the message is
+   *  in flight but nothing is running yet — e.g. the pulsing Houston helmet).
+   *  Suppressed the moment an active mission-log header takes over with
+   *  "Mission in progress: <action>" (HOU-724). */
   thinkingIndicator?: ReactNode;
-  /** Loader (e.g. the pulsing Houston helmet) shown for the WHOLE in-flight
-   *  turn — it stays up while the active mission-log header reads "Mission in
-   *  progress: <action>" and the standalone `thinkingIndicator` is suppressed
-   *  (HOU-655). Hidden the moment the reply text streams or the turn settles. */
-  loadingIndicator?: ReactNode;
   transformContent?: (content: string) => {
     content: string;
     extra?: ReactNode;
@@ -97,6 +93,9 @@ export interface ChatPanelProps {
   renderLink?: ChatMessagesProps["renderLink"];
   composerOverride?: ReactNode;
   composerLabels?: ChatComposerLabels;
+  /** Prop-driven dictation control for the composer. Omit to hide the mic
+   *  affordance entirely (e.g. the web build with no speech capture). */
+  dictation?: DictationControl;
   /**
    * Multiplayer only (C5): the signed-in viewer's user id, so the panel can tell
    * the viewer's own bubbles from teammates'. Absent in single-player mode.

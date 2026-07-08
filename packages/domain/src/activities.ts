@@ -1,8 +1,8 @@
-import type {
-  Activity,
-  ActivityUpdate,
-  NewActivity,
-  PendingInteraction,
+import {
+  type Activity,
+  type ActivityUpdate,
+  isPendingInteraction,
+  type NewActivity,
 } from "@houston/protocol";
 import { docKey } from "./layout";
 import {
@@ -24,36 +24,12 @@ export const ACTIVITY_STATUSES = [
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** Validate the pending_interaction discriminated union (mirrors the schema):
- *  a `question` needs a `question` string, a `connect` needs a `toolkit`, a
- *  `custom_integration` needs a proposal with name/baseUrl/description strings
- *  and an auth object, and an `mcp_server` needs a proposal with name/url strings
- *  and an auth object. */
-const isValidPendingInteraction = (v: unknown): v is PendingInteraction => {
-  if (!isRecord(v)) return false;
-  if (v.kind === "question") return typeof v.question === "string";
-  if (v.kind === "connect") return typeof v.toolkit === "string";
-  if (v.kind === "custom_integration") {
-    const p = v.proposal;
-    return (
-      isRecord(p) &&
-      typeof p.name === "string" &&
-      typeof p.baseUrl === "string" &&
-      typeof p.description === "string" &&
-      isRecord(p.auth)
-    );
-  }
-  if (v.kind === "mcp_server") {
-    const p = v.proposal;
-    return (
-      isRecord(p) &&
-      typeof p.name === "string" &&
-      typeof p.url === "string" &&
-      isRecord(p.auth)
-    );
-  }
-  return false;
-};
+/** Validate the pending_interaction shape (mirrors the schema). The canonical
+ *  structural guard lives beside the type in @houston/protocol: an old
+ *  top-level `{kind, questions}` / `{kind, toolkit}` shape has no `steps`, so a
+ *  value persisted before the step-sequence change is dropped. The guard also
+ *  validates the newer `custom_integration` / `mcp_server` proposal steps. */
+const isValidPendingInteraction = isPendingInteraction;
 
 /**
  * Normalize a raw activity array (agents write this file with file tools, so
@@ -154,7 +130,12 @@ export function applyActivityUpdate(
   if (pending_interaction === null) {
     delete next.pending_interaction;
   } else if (pending_interaction !== undefined) {
-    next.pending_interaction = pending_interaction;
+    // PATCH bodies are untrusted at runtime (an old client or stale message can
+    // carry a pre-step shape the compile-time type can't catch): only a
+    // structurally valid sequence is persisted; anything else leaves the
+    // current value alone.
+    if (isValidPendingInteraction(pending_interaction))
+      next.pending_interaction = pending_interaction;
   }
   return next;
 }

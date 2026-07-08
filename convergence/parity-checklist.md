@@ -72,7 +72,7 @@ pinned here. Read this top-to-bottom to know what CI already guarantees.
 | Skills lifecycle over the host (create→list→read→edit→delete, dup→409, ownership wall) | `src/routes/agent-data.test.ts` |
 | **A skill created via the API lands at the EXACT on-disk path pi loads** (`.agents/skills/<slug>/SKILL.md`, real FsVfs) — "the agent uses it next session" made concrete | `src/local/reactivity.test.ts` |
 | Routine fires on schedule: scheduler scans, fires due-in-window once, records a running run, dedups across replicas, marks errored never stuck, account-timezone re-times | `src/schedule/scheduler.test.ts` |
-| Routine firer routes the prompt through the same channel a user message uses (incl. model/effort pins); ProxyChannel.fireTurn POSTs to the runtime conversation endpoint | `src/schedule/firer.test.ts` |
+| Routine firer routes the prompt through the same channel a user message uses (incl. model/effort/autopilot mode pins); ProxyChannel.fireTurn POSTs to the runtime conversation endpoint | `src/schedule/firer.test.ts` |
 | Run a routine on demand over HTTP (records a run, calls fireTurn with the prompt, suppression instruction rides the prompt, fire-failure→502+errored, unknown→404, cross-user→403) | `src/routes/run-routine.test.ts` |
 | Routine run reconciles: silent (ROUTINE_OK+suppress, no card) vs surfaced (→ `needs_you` board Activity), pre-start replies ignored, 15-min timeout→errored, activity reused across runs | `src/schedule/reconcile.test.ts` |
 | Board live-reactivity (host mutation): a mutation emits its HoustonEvent on the owner's `/v1/events` stream and NEVER another tenant's; 503 with no hub; auth required | `src/routes/events-stream.test.ts` |

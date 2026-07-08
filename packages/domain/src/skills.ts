@@ -58,6 +58,9 @@ export function parseSkillMd(
     // trusting the frontmatter there made the list hand the UI a phrase that
     // `load_skill` then 404'd on. Trust the directory. (HOU-515 / HOU-441)
     name: slug,
+    // Display-only phrase; may carry accents/casing the slug can't. Loading
+    // still resolves by the slug above, so a drifting title can never 404.
+    title: str(fm.title),
     description: str(fm.description) ?? "",
     version: typeof fm.version === "number" ? fm.version : 1,
     tags: Array.isArray(fm.tags) ? fm.tags.map(String) : [],
@@ -111,10 +114,11 @@ export async function loadSkillDetail(
   if (content === null) return null;
   const parsed = parseSkillMd(slug, content);
   if ("error" in parsed) {
-    return { name: slug, description: "", version: 1, content };
+    return { name: slug, title: null, description: "", version: 1, content };
   }
   return {
     name: parsed.summary.name,
+    title: parsed.summary.title,
     description: parsed.summary.description,
     version: parsed.summary.version,
     content,

@@ -85,7 +85,30 @@ test("normalizeUsage: missing/garbage usage degrades to null (no misleading zero
   expect(normalizeUsage(undefined)).toBeNull();
   expect(normalizeUsage(null)).toBeNull();
   expect(normalizeUsage({})).toBeNull();
-  expect(normalizeUsage({ output: 5 })).toBeNull(); // no totalTokens
+  // Output alone carries no context signal, and there is no totalTokens to derive
+  // one from → null rather than a misleading empty context.
+  expect(normalizeUsage({ output: 5 })).toBeNull();
+  expect(normalizeUsage({ output: 5, totalTokens: "x" })).toBeNull();
+});
+
+test("normalizeUsage: no totalTokens → synthesizes context from the components", () => {
+  // The Gemini-through-pi case: components present, but pi never summed them.
+  // context_tokens = input + cacheRead + cacheWrite (everything but output).
+  expect(
+    normalizeUsage({ input: 100, output: 20, cacheRead: 300, cacheWrite: 50 }),
+  ).toEqual({ context_tokens: 450, output_tokens: 20, cached_tokens: 300 });
+  // Input only (no cache, no total): context is the input.
+  expect(normalizeUsage({ input: 5000, output: 100 })).toEqual({
+    context_tokens: 5000,
+    output_tokens: 100,
+    cached_tokens: 0,
+  });
+  // A lone cacheRead is a valid context signal on its own.
+  expect(normalizeUsage({ cacheRead: 200 })).toEqual({
+    context_tokens: 200,
+    output_tokens: 0,
+    cached_tokens: 200,
+  });
 });
 
 test("normalizeUsage: clamps a degenerate output > total to zero, never negative", () => {
@@ -208,4 +231,55 @@ test("toWire ignores a stopReason 'error' with no errorMessage (falls back to us
     type: "usage",
     data: { context_tokens: 20, output_tokens: 5, cached_tokens: 0 },
   });
+});
+
+test("toWire carries a tool_execution_end's result text, clipped (HOU-717)", () => {
+  const ev = {
+    type: "tool_execution_end",
+    toolCallId: "t1",
+    toolName: "bash",
+    result: {
+      content: [
+        { type: "text", text: "file-a.ts" },
+        { type: "image", data: "…" },
+        { type: "text", text: "file-b.ts" },
+      ],
+      details: {},
+    },
+    isError: false,
+  } as unknown as AgentSessionEvent;
+  expect(toWire(ev)).toEqual({
+    type: "tool_end",
+    data: { name: "bash", isError: false, content: "file-a.ts\nfile-b.ts" },
+  });
+});
+
+test("toWire omits tool_end content for a text-less or malformed result", () => {
+  const bare = {
+    type: "tool_execution_end",
+    toolCallId: "t1",
+    toolName: "bash",
+    result: null,
+    isError: true,
+  } as unknown as AgentSessionEvent;
+  expect(toWire(bare)).toEqual({
+    type: "tool_end",
+    data: { name: "bash", isError: true },
+  });
+});
+
+test("toWire clips an oversized tool result to the preview cap", () => {
+  const ev = {
+    type: "tool_execution_end",
+    toolCallId: "t1",
+    toolName: "read",
+    result: { content: [{ type: "text", text: "x".repeat(10_000) }] },
+    isError: false,
+  } as unknown as AgentSessionEvent;
+  const wire = toWire(ev) as Extract<
+    NonNullable<ReturnType<typeof toWire>>,
+    { type: "tool_end" }
+  >;
+  expect(wire.data.content?.length).toBeLessThan(4_100);
+  expect(wire.data.content?.endsWith("… (truncated)")).toBe(true);
 });

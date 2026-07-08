@@ -2,17 +2,16 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { stepSection } from "./setup-steps.ts";
 
-test("Setup is one logical step; Connect-your-AI spans pick + login", () => {
-  assert.deepEqual(stepSection("brain"), {
+test("Setup is one logical step: Connect your AI (the shared picker)", () => {
+  assert.deepEqual(stepSection("connect"), {
     section: "setup",
     current: 1,
     total: 1,
   });
-  assert.deepEqual(stepSection("providerLogin"), {
-    section: "setup",
-    current: 1,
-    total: 1,
-  });
+  // The old pick + login screens collapsed onto the single `connect` step, so
+  // their ids are no longer numbered steps.
+  assert.equal(stepSection("brain"), null);
+  assert.equal(stepSection("providerLogin"), null);
   // The apps/tools step was dropped (platform-mode Composio has no per-user
   // account to sign into); it is no longer a numbered step.
   assert.equal(stepSection("tools"), null);

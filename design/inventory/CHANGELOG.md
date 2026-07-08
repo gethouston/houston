@@ -3,6 +3,66 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v7 - 2026-07-08
+
+Add a `signin` step to `interaction-card`. The pending-interaction sequence now
+orders question steps, THEN at most one signin step, THEN connect steps. A signin
+step appears when Houston reports the user must sign in before a tool call can run
+(the runtime queues it alongside any connect steps in the same flow). Like a
+connect step it carries no answer text and advances only when the app reports the
+user signed in; ui/chat stays auth-unaware via a required `renderSignin` prop
+(mirrors `renderConnect`), and the app supplies the sign-in card driving the
+existing sign-in machinery. It counts in "N of X" and supports back/forward like
+any other step (a revisited signin step relies on the stepper's forward chevron
+since its card never re-fires once signed in). Completion contributes a
+"Signed in to Houston." line before any connected lines. No design/surface change
+to the card chrome. Web keeps `@houston-ai/chat` `ChatInteractionCard`, so it
+stays `implemented`.
+
+## v6 - 2026-07-07
+
+Rename `question-card` to `interaction-card` and rebuild it as a one-step-at-a-time
+stepper. The card now walks the user through a `steps[]` sequence (1-3 question
+steps THEN connect steps) one step at a time, with a quiet "N of X" progress
+indicator (shown only when total > 1) and a back chevron from step 2 on.
+Question steps keep the vertical single-select option rows and an always-visible
+free-text escape hatch; clicking an option or submitting typed text answers the
+current step and advances. Connect steps render an app-supplied connect card
+(ui/chat stays Composio-unaware via a `renderConnect` prop) and advance only on
+`onConnected`. Revisiting a step pre-selects its prior answer; re-answering
+replaces it. A single question-with-options step keeps the one-tap feel. The card
+collects `ChatInteractionAnswer[]` and hands them to `onComplete`; the app formats
+the resume message. Surface flips `bg-card` to `bg-secondary` (the product's grey
+card token) so the white option rows and free-text input read as raised, distinct
+chips in light and inset wells in dark. Batching (all questions at once) is gone.
+Web ships `@houston-ai/chat` `ChatInteractionCard`, so it stays `implemented`;
+`ChatQuestionCard` and its logic/parts/tests are deleted with no compat re-export.
+
+## v5 - 2026-07-06
+
+Redesign `question-card` to the composer family and batch questions. `ask_user`
+now asks 1-3 questions in one call (protocol `question` variant carries
+`questions[]`). The card stacks questions vertically, each with vertical
+single-select option rows (role=radio, toggle on re-click), and a free-text
+field that is ALWAYS visible at the bottom (the "own-answer-toggle" is removed,
+satisfying no-hover-only-affordances directly). The surface adopts the
+composer's exact vocabulary — `rounded-[28px]` `bg-card`, soft shadow with a
+focus-within lift, a borderless inline textarea, and the round `PromptInputSubmit`
+send — so card and composer read as one family. Fast path: a single question
+with options and empty input sends on option click. Send otherwise composes one
+`"<question>: <label>"` line per answered question plus appended free text.
+Still shared web (`@houston-ai/chat` `ChatQuestionCard`), so it stays
+`implemented`.
+
+## v4 - 2026-07-06
+
+Add `question-card`: the in-chat surface shown when the agent pauses mid-turn to
+ask the user a question (protocol `PendingInteraction` kind=question). Replaces
+the composer until answered; prominent prompt, always-visible option buttons, a
+quiet toggle to an inline free-text answer (shown directly when there are no
+options). Web ships it as a shared `ui/` piece (`@houston-ai/chat`
+`ChatQuestionCard`), so it lands `implemented`.
+
 ## v3 - 2026-07-05
 
 Add `agent-provisioning-card` (HOU-693): the in-chat notice (and its

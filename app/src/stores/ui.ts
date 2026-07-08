@@ -37,6 +37,8 @@ interface UIState {
   agentArchivedSearchLoading: Record<string, boolean>;
   /** Whether the mission chat panel is open (hides tab bar for full-height panel) */
   missionPanelOpen: boolean;
+  /** Agent id whose routine-setup chat panel (Routines tab) is open, or null. */
+  routineSetupChatAgentId: string | null;
   /** Whether the global command palette (⌘K) is open. */
   paletteOpen: boolean;
   /** Whether the keyboard shortcut cheatsheet (?) is open. */
@@ -87,6 +89,7 @@ interface UIState {
   setAgentArchivedSearchQuery: (agentPath: string, query: string) => void;
   setAgentArchivedSearchLoading: (agentPath: string, loading: boolean) => void;
   setMissionPanelOpen: (open: boolean) => void;
+  setRoutineSetupChatAgentId: (agentId: string | null) => void;
   setPaletteOpen: (open: boolean) => void;
   setCheatsheetOpen: (open: boolean) => void;
   setOnBoardNavigate: (
@@ -124,6 +127,7 @@ export const useUIStore = create<UIState>()(
       agentArchivedSearchQueries: {},
       agentArchivedSearchLoading: {},
       missionPanelOpen: false,
+      routineSetupChatAgentId: null,
       paletteOpen: false,
       cheatsheetOpen: false,
       onBoardNavigate: null,
@@ -211,6 +215,8 @@ export const useUIStore = create<UIState>()(
           return { agentArchivedSearchLoading: next };
         }),
       setMissionPanelOpen: (missionPanelOpen) => set({ missionPanelOpen }),
+      setRoutineSetupChatAgentId: (routineSetupChatAgentId) =>
+        set({ routineSetupChatAgentId }),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
       setCheatsheetOpen: (cheatsheetOpen) => set({ cheatsheetOpen }),
       setOnBoardNavigate: (onBoardNavigate) => set({ onBoardNavigate }),

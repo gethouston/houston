@@ -1,5 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { ClaudeOAuthCredential, CustomEndpoint } from "@houston/protocol";
+import type {
+  ClaudeOAuthCredential,
+  CustomEndpoint,
+  TurnMode,
+} from "@houston/protocol";
 import type {
   Agent,
   AgentId,
@@ -115,15 +119,16 @@ export interface ChannelCtx {
 }
 
 /**
- * A routine's pinned provider/model/effort, carried into the turn it fires.
- * Absent fields mean "inherit the agent default", resolved by the runtime.
- * The pin is per-turn only — it never touches the agent's saved settings, so
- * a pinned routine and the chats around it can't clobber each other.
+ * A routine's pinned provider/model/effort/mode, carried into the turn it fires.
+ * Absent provider/model/effort fields mean "inherit the agent default", resolved
+ * by the runtime. The pin is per-turn only — it never touches the agent's saved
+ * settings, so a pinned routine and the chats around it can't clobber each other.
  */
 export interface TurnPin {
   provider?: string | null;
   model?: string | null;
   effort?: string | null;
+  mode?: TurnMode | null;
 }
 
 export type CaptureResult =
@@ -152,7 +157,7 @@ export interface RuntimeChannel {
    * turn is ACCEPTED; throws when it can't be started (busy / quota / transport)
    * so the caller records an errored run instead of a silent miss.
    *
-   * `pin` carries the routine's model/effort overrides (absent = inherit).
+   * `pin` carries the routine's provider/model/effort/mode overrides.
    * `actingUser` (C2) is the routine creator's Supabase `sub` — forwarded to the
    * runtime as `x-houston-acting-user` so its integration calls act as that user.
    * Absent for legacy routines (no creator recorded) → the runtime acts as owner.

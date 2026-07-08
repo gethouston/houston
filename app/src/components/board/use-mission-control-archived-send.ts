@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { classifyFileKind } from "../../lib/file-kind";
-import { tauriAttachments, tauriChat } from "../../lib/tauri";
+import { tauriAttachments, tauriChat, tauriConfig } from "../../lib/tauri";
+import { readAgentTurnMode } from "../../lib/turn-mode";
 import type { Agent, AgentDefinition } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
@@ -56,6 +57,7 @@ export function useMissionControlArchivedSend({
           mode: mode?.promptFile,
           providerOverride,
           modelOverride,
+          modeOverride: await readAgentTurnMode(agentPath, tauriConfig.read),
         });
         analytics.track("chat_message_sent");
         for (const f of files)

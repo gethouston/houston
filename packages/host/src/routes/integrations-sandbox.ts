@@ -56,7 +56,15 @@ export async function handleSandboxIntegrations(
     return true;
   }
   if (!deps.integrations) {
-    json(res, 503, { error: "integrations not configured" });
+    // A stable `code` marks THIS as the host's own not-configured signal (no
+    // key in this install) — distinct from a transient upstream 503 the proxy
+    // relays verbatim during an outage. The runtime tool classifies on the
+    // code, never the bare status, so it never misdirects the user to set
+    // COMPOSIO_API_KEY during a temporary gateway/provider failure.
+    json(res, 503, {
+      error: "integrations not configured",
+      code: "integrations_not_configured",
+    });
     return true;
   }
   const { registry } = deps.integrations;

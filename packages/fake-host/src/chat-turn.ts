@@ -15,6 +15,7 @@
  * mid-turn. Test controls that drive these primitives live in chat-controls.ts.
  */
 
+import type { PendingInteraction } from "@houston/protocol";
 import { type ChatChannel, channel, chatKey, publish } from "./chat-channel";
 import * as state from "./state";
 
@@ -31,9 +32,21 @@ export function setReplyDelay(ms: number): void {
   replyDelayMs = ms;
 }
 
-/** Reset the per-delta delay (test reset). Controls live in chat-controls.ts. */
+/**
+ * Arm the NEXT scripted turn to end on a pending interaction — its `done` frame
+ * carries it, so the client settles the card to `needs_you` and drives the
+ * composer-replacing question/connect card (element 4's e2e). One-shot:
+ * consumed when that turn finishes. `null` disarms.
+ */
+let nextInteraction: PendingInteraction | null = null;
+export function setNextInteraction(pi: PendingInteraction | null): void {
+  nextInteraction = pi;
+}
+
+/** Reset the per-delta delay + armed interaction (test reset). */
 export function resetReplyDelay(): void {
   replyDelayMs = DEFAULT_REPLY_DELAY_MS;
+  nextInteraction = null;
 }
 
 function cannedReply(userText: string): string {
@@ -76,19 +89,29 @@ async function streamReply(
     await delay(replyDelayMs);
   }
   if (ch.epoch !== epoch || ch.pending?.turnId !== turnId) return;
-  finishTurn(agentId, cid, ch, turnId, reply);
+  // Consume any armed interaction: this turn's `done` carries it (one-shot).
+  const interaction = nextInteraction;
+  nextInteraction = null;
+  finishTurn(agentId, cid, ch, turnId, reply, interaction);
 }
 
-/** Publish the turn's usage + done and persist the assistant reply. */
+/** Publish the turn's usage + done and persist the assistant reply. The `done`
+ *  frame carries `pendingInteraction` when the turn ended asking the user. */
 export function finishTurn(
   agentId: string,
   cid: string,
   ch: ChatChannel,
   turnId: string,
   reply: string,
+  pendingInteraction: PendingInteraction | null = null,
 ): void {
   publish(ch, { type: "usage", data: state.seedUsage, turnId });
-  publish(ch, { type: "done", data: null, turnId });
+  publish(ch, {
+    type: "done",
+    data: null,
+    turnId,
+    ...(pendingInteraction ? { pendingInteraction } : {}),
+  });
   state.appendAssistantMessage(agentId, cid, reply, turnId);
   ch.pending = null;
 }

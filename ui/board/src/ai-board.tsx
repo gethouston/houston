@@ -44,10 +44,6 @@ export interface AIBoardProps {
   feedItems?: Record<string, FeedItem[]>;
   /** Whether a message is currently being processed, keyed by session key. */
   isLoading?: Record<string, boolean>;
-  /** The consumer narrates pending sends itself (inline card): a trailing
-   *  user message with no running turn must not light the in-flight
-   *  indicator. Forwarded to the open chat panel. */
-  suppressPendingIndicator?: boolean;
   /** Custom empty state when the board has no items. */
   emptyState?: ReactNode;
   /** Maps an activity ID to its session key. Defaults to `activity-${id}`. */
@@ -75,8 +71,6 @@ export interface AIBoardProps {
   chatEmptyState?: ReactNode;
   /** Custom thinking indicator for the chat panel. */
   thinkingIndicator?: ReactNode;
-  /** Loader shown for the whole in-flight turn (see ChatPanel). */
-  loadingIndicator?: ReactNode;
   /** Avatar element shown on every kanban card (e.g. small agent icon). */
   cardAvatar?: ReactNode;
   /** Avatar element shown in the detail panel header. */
@@ -194,6 +188,9 @@ export interface AIBoardProps {
   currentUserId?: ChatPanelProps["currentUserId"];
   /** Localized author-attribution labels. Forwarded to ChatPanel. */
   authorLabels?: ChatPanelProps["authorLabels"];
+  /** Prop-driven dictation control for the composer mic. Forwarded to
+   *  ChatPanel; omit (or ChatPanel's own default) hides the mic entirely. */
+  dictation?: ChatPanelProps["dictation"];
   /** Left-pane layout. "board" = kanban columns (default); "list" = a single
    *  column-less vertical list (used by the Archived missions tab). */
   layout?: "board" | "list";
@@ -253,7 +250,6 @@ export function AIBoard({
   onSendMessage,
   feedItems = {},
   isLoading = {},
-  suppressPendingIndicator,
   emptyState,
   sessionKeyFor = defaultSessionKey,
   runningStatuses = ["running"],
@@ -265,7 +261,6 @@ export function AIBoard({
   onPanelCloserReady,
   chatEmptyState,
   thinkingIndicator,
-  loadingIndicator,
   cardAvatar,
   panelAvatar,
   panelAgentName,
@@ -306,6 +301,7 @@ export function AIBoard({
   composerLabels,
   currentUserId,
   authorLabels,
+  dictation,
   layout = "board",
   listAlign,
   searchSnippets,
@@ -683,7 +679,6 @@ export function AIBoard({
           sessionKey={activeSessionKey ?? "new-conversation"}
           feedItems={activeFeed}
           isLoading={activeLoading}
-          suppressPendingIndicator={suppressPendingIndicator}
           onSend={handleSend}
           onStop={
             activeSessionKey && onStopSession
@@ -704,7 +699,6 @@ export function AIBoard({
           }
           emptyState={activeFeed.length === 0 ? chatEmptyState : undefined}
           thinkingIndicator={thinkingIndicator}
-          loadingIndicator={loadingIndicator}
           value={drafts ? (drafts[activeDraftKey] ?? "") : undefined}
           onValueChange={
             onDraftChange
@@ -724,6 +718,7 @@ export function AIBoard({
           renderUserMessage={renderUserMessage}
           currentUserId={currentUserId}
           authorLabels={authorLabels}
+          dictation={dictation}
           afterMessages={renderedAfterMessages}
           onNotice={onNotice}
           prepareAttachments={prepareAttachments}

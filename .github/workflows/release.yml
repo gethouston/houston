@@ -534,6 +534,31 @@ jobs:
           chmod +x app/src-tauri/binaries/frpc-universal-apple-darwin
           lipo -info app/src-tauri/binaries/frpc-universal-apple-darwin
 
+      # Build the whisper.cpp dictation sidecar (whisper-cli, MIT) for both arches
+      # and lipo a universal fat binary, mirroring frpc + the host sidecar above.
+      # build.rs::stage_whisper_sidecar also stages per-arch copies during tauri's
+      # per-arch cargo runs, but the `--target universal-apple-darwin` bundle ships
+      # this fat binary at binaries/whisper-cli-universal-apple-darwin. The `test -x`
+      # gate FAILS the release if a whisper build breaks, so we never ship the
+      # loud-fail placeholder instead of a working local-dictation binary.
+      - name: Build + lipo universal whisper-cli dictation sidecar (aarch64 + x86_64)
+        run: |
+          set -euo pipefail
+          for TRIPLE in aarch64-apple-darwin x86_64-apple-darwin; do
+            echo "=== building whisper-cli for $TRIPLE ==="
+            scripts/build-whisper.sh "$TRIPLE"
+            test -x "target/whisper/whisper-cli-$TRIPLE" \
+              || { echo "::error::whisper-cli missing for $TRIPLE"; exit 1; }
+          done
+          mkdir -p app/src-tauri/binaries
+          echo "=== Lipo universal whisper-cli ==="
+          lipo -create \
+            target/whisper/whisper-cli-aarch64-apple-darwin \
+            target/whisper/whisper-cli-x86_64-apple-darwin \
+            -output app/src-tauri/binaries/whisper-cli-universal-apple-darwin
+          chmod +x app/src-tauri/binaries/whisper-cli-universal-apple-darwin
+          lipo -info app/src-tauri/binaries/whisper-cli-universal-apple-darwin
+
       # Build only — no release creation (no tagName).
       # tauri-action handles certificate import, code signing, .app notarization + stapling.
       #
@@ -1143,6 +1168,21 @@ jobs:
             || { echo "::error::frpc missing for ${{ matrix.target }}"; exit 1; }
           ls -lah target/frpc/frpc-${{ matrix.target }}.exe
 
+      # Build the whisper.cpp dictation sidecar (whisper-cli, MIT) for the matrix
+      # target BEFORE tauri build. build.rs::stage_whisper_sidecar copies
+      # target/whisper/whisper-cli-<target>.exe to the externalBin name
+      # binaries/whisper-cli-<target>.exe (same pattern as frpc). CPU-only portable
+      # (GGML_NATIVE=OFF), self-contained (static). The `test -x` gate FAILS the
+      # release rather than shipping the loud-fail placeholder.
+      - name: Build whisper-cli dictation sidecar (${{ matrix.target }})
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/build-whisper.sh ${{ matrix.target }}
+          test -x "target/whisper/whisper-cli-${{ matrix.target }}.exe" \
+            || { echo "::error::whisper-cli missing for ${{ matrix.target }}"; exit 1; }
+          ls -lah target/whisper/whisper-cli-${{ matrix.target }}.exe
+
       # CLOUD channel only: repoint the updater at `latest-cloud.json` before the
       # build bakes tauri.conf.json in (see build-macos for the why). The script
       # is Node-based so it also runs on windows-11-arm, where jq is absent.
@@ -1399,6 +1439,18 @@ jobs:
           scripts/fetch-frpc.sh x86_64-unknown-linux-gnu
           test -f target/frpc/frpc-x86_64-unknown-linux-gnu \
             || { echo "::error::frpc missing for x86_64-unknown-linux-gnu"; exit 1; }
+
+      # Build the whisper.cpp dictation sidecar (whisper-cli, MIT). Like frpc, the
+      # exit-1 placeholder build.rs stages when whisper-cli is absent is not an ELF
+      # and would abort linuxdeploy's ldd pass, so build the real CPU-only
+      # (GGML_NATIVE=OFF), self-contained binary before bundling. The `test -x`
+      # gate FAILS the release rather than shipping the placeholder.
+      - name: Build whisper-cli dictation sidecar (x86_64-unknown-linux-gnu)
+        run: |
+          set -euo pipefail
+          scripts/build-whisper.sh x86_64-unknown-linux-gnu
+          test -x target/whisper/whisper-cli-x86_64-unknown-linux-gnu \
+            || { echo "::error::whisper-cli missing for x86_64-unknown-linux-gnu"; exit 1; }
 
       - name: Build Tauri app (Linux AppImage)
         uses: tauri-apps/tauri-action@v0

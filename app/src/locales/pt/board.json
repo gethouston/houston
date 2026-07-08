@@ -57,7 +57,7 @@
     "selected_one": "{{count}} selecionada",
     "selected_other": "{{count}} selecionadas",
     "moveTo": "Mover para",
-    "archive": "Arquivar",
+    "archive": "Concluir",
     "delete": "Excluir",
     "clear": "Limpar seleção",
     "cancel": "Cancelar",
@@ -69,10 +69,10 @@
       "action": "Mover"
     },
     "confirmArchive": {
-      "title": "Arquivar missões?",
-      "description_one": "Arquivar {{count}} missão? Você pode reabrir pela aba Arquivadas.",
-      "description_other": "Arquivar {{count}} missões? Você pode reabrir pela aba Arquivadas.",
-      "action": "Arquivar"
+      "title": "Concluir missões?",
+      "description_one": "Concluir {{count}} missão? Você pode reabrir pela aba Concluídas.",
+      "description_other": "Concluir {{count}} missões? Você pode reabrir pela aba Concluídas.",
+      "action": "Concluir"
     },
     "confirmDelete": {
       "title": "Excluir missões?",
@@ -86,9 +86,9 @@
     "selectAll": "Selecionar toda a coluna"
   },
   "archived": {
-    "emptyTitle": "Nenhuma missão arquivada",
-    "emptyDescription": "As missões arquivadas aparecem aqui. Responda a uma para reativá-la.",
-    "searchPlaceholder": "Buscar missões arquivadas"
+    "emptyTitle": "Nenhuma missão concluída",
+    "emptyDescription": "As missões concluídas aparecem aqui. Responda a uma para reativá-la.",
+    "searchPlaceholder": "Buscar missões concluídas"
   },
   "dnd": {
     "moveError": "Não foi possível mover a missão: {{error}}"

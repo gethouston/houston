@@ -31,15 +31,17 @@ export function applyTurnFrame(
       push(s, { feed_type: "thinking_streaming", data: s.thinking });
       break;
     case "tool_start":
+      s.toolsSeen++;
       push(s, {
         feed_type: "tool_call",
         data: { name: ev.data.name, input: ev.data.args },
       });
       break;
     case "tool_end":
+      s.toolResultsSeen++;
       push(s, {
         feed_type: "tool_result",
-        data: { content: "", is_error: ev.data.isError },
+        data: { content: ev.data.content ?? "", is_error: ev.data.isError },
       });
       break;
     case "usage":
@@ -77,6 +79,11 @@ export function applyTurnFrame(
       stop();
       break;
     case "done":
+      // A clean terminal frame carries the interaction the turn ended on
+      // (ask_user / request_connection) only when the model finished by asking
+      // the user for something. Capture it so finishOk settles the card to
+      // needs_you (present) vs done (absent) and it rides the board persist.
+      if (ev.pendingInteraction) s.pendingInteraction = ev.pendingInteraction;
       finishOk(s);
       stop();
       break;

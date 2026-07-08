@@ -6,10 +6,7 @@ import { HoustonLogo } from "./shell/experience-card";
 
 export function useChatDisplayLabels(): Pick<
   ChatPanelProps,
-  | "processLabels"
-  | "getThinkingMessage"
-  | "thinkingIndicator"
-  | "loadingIndicator"
+  "processLabels" | "getThinkingMessage" | "thinkingIndicator"
 > {
   const { t } = useTranslation("chat");
   const processLabels = useMemo(
@@ -34,23 +31,14 @@ export function useChatDisplayLabels(): Pick<
     [t],
   );
 
-  // HOU-655: while a turn is in flight, the loading state is a single blinking
-  // Houston helmet under the "Mission in progress" line. The two pieces are
-  // separate props because they live on different clocks: the shimmering label
-  // (`thinkingIndicator`) yields to the mission-log header the moment a tool
-  // action takes over the status line, while the helmet (`loadingIndicator`)
-  // stays up for the WHOLE turn — under either line — and vanishes the instant
-  // the reply streams. One helmet, no duplicate label; ChatMessages owns the
-  // spacing between them.
+  // HOU-724: two distinct in-flight signals. Before the agent produces any
+  // output (the message is still being sent / queued), the indicator is the
+  // big blinking Houston helmet alone — no text. The moment the agent is
+  // actually working (thinking or running tools) an active mission-log header
+  // is on screen reading "Mission in progress: <action>" with the small helmet
+  // on its left, and that line is the ONLY indicator — ChatMessages suppresses
+  // this standalone one.
   const thinkingIndicator = useMemo(
-    () => (
-      <Shimmer as="span" duration={1} className="text-xs">
-        {t("process.active")}
-      </Shimmer>
-    ),
-    [t],
-  );
-  const loadingIndicator = useMemo(
     () => (
       <HoustonLogo size={20} className="animate-pulse text-muted-foreground" />
     ),
@@ -61,6 +49,5 @@ export function useChatDisplayLabels(): Pick<
     processLabels,
     getThinkingMessage,
     thinkingIndicator,
-    loadingIndicator,
   };
 }

@@ -65,12 +65,21 @@ export interface UserMessageMeta {
 /** Optional fields of a persisted assistant message. */
 export interface AssistantMessageMeta {
   tools?: ToolCallRecord[];
+  /** The turn's reasoning text, replayed into the mission log on reload (HOU-717). */
+  thinking?: string;
   usage?: TokenUsage | null;
   providerSwitch?: ChatMessage["providerSwitch"];
   compaction?: ChatMessage["compaction"];
   providerError?: ChatMessage["providerError"];
   /** Files the turn created/modified (relative paths); omitted when empty. */
   fileChanges?: ChatMessage["fileChanges"];
+  /**
+   * What the turn ended waiting on the user for — set ONLY on a clean turn (the
+   * caller mirrors the `done`-frame condition). Persisted so a client that
+   * missed the live `done` and settles from history lands on `needs_you`
+   * instead of a false `done`.
+   */
+  pendingInteraction?: ChatMessage["pendingInteraction"];
   /** The turn's wire id (`WireFrame.turnId`) — same as the user message's. */
   turnId?: string;
 }
@@ -117,11 +126,13 @@ export function appendAssistantMessageAt(
     content,
     ts: Date.now(),
     tools: meta.tools?.length ? meta.tools : undefined,
+    thinking: meta.thinking || undefined,
     usage: meta.usage ?? undefined,
     providerSwitch: meta.providerSwitch,
     compaction: meta.compaction,
     providerError: meta.providerError,
     fileChanges: meta.fileChanges,
+    pendingInteraction: meta.pendingInteraction,
     turnId: meta.turnId,
   });
   conv.updatedAt = Date.now();

@@ -2,7 +2,6 @@ import { AIBoard } from "@houston-ai/board";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { openAgentHref } from "../../lib/open-href";
-import { useAgentProvisioningStore } from "../../stores/agent-provisioning";
 import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { buildMissionBoardColumns } from "../mission-board-columns";
@@ -69,8 +68,9 @@ export function MissionBoard({ source }: { source: BoardSource }) {
     () => ({
       providerOverride: panel.effectiveProvider,
       modelOverride: panel.effectiveModel,
+      modeOverride: panel.turnMode,
     }),
-    [panel.effectiveProvider, panel.effectiveModel],
+    [panel.effectiveProvider, panel.effectiveModel, panel.turnMode],
   );
 
   const sendQueue = useBoardSendQueue({
@@ -116,13 +116,6 @@ export function MissionBoard({ source }: { source: BoardSource }) {
 
   const attachmentValidation = useAttachmentRejectionDialog();
 
-  // While the open chat's agent is still warming up, its parked message is
-  // narrated by the provisioning card — the in-flight indicator would promise
-  // a reply from a second place (HOU-693).
-  const suppressPendingIndicator = useAgentProvisioningStore((s) =>
-    source.activeAgent ? Boolean(s.provisioning[source.activeAgent.id]) : false,
-  );
-
   return (
     <>
       {source.toolbar}
@@ -135,7 +128,6 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           onSelect={source.setSelectedId}
           feedItems={source.feedItems}
           isLoading={source.loading}
-          suppressPendingIndicator={suppressPendingIndicator}
           onDelete={source.onDelete}
           onApprove={source.onApprove}
           onRename={source.onRename}
@@ -158,12 +150,12 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           composerLabels={composerLabels}
           currentUserId={panel.currentUserId}
           authorLabels={panel.authorLabels}
+          dictation={panel.dictation}
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           onOpenLink={handleOpenLink}
           cardAvatar={source.cardAvatar}
           thinkingIndicator={panel.thinkingIndicator}
-          loadingIndicator={panel.loadingIndicator}
           panelAgentName={source.panelAgentName}
           panelAvatar={
             <AgentPanelAvatar
@@ -177,13 +169,13 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           {...(selectionProps ?? {})}
           chatEmptyState={panel.chatEmptyState}
           composerHeader={panel.composerHeader}
+          composerOverride={panel.composerOverride}
           canSendEmpty={panel.canSendEmpty}
           onComposerSubmit={panel.onComposerSubmit}
           footer={panel.footer}
           attachMenu={panel.attachMenu}
           renderUserMessage={panel.renderUserMessage}
           renderLink={panel.renderLink}
-          composerOverride={panel.composerOverride}
           renderSystemMessage={panel.renderSystemMessage}
           mapFeedItems={panel.mapFeedItems}
           afterMessages={panel.afterMessages}

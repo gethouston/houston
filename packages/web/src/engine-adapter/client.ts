@@ -26,6 +26,7 @@ import type {
   InstallFromRepoRequest,
   NewActivity,
   NewRoutine,
+  PendingInteraction,
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
   PortableExportRequest,
@@ -48,6 +49,7 @@ import type {
   TunnelCredentials,
   UpdateAgent,
   Workspace,
+  WorkspaceContext,
 } from "../../../../ui/engine-client/src/types";
 import * as activities from "./activities";
 import {
@@ -58,6 +60,13 @@ import * as agents from "./agents";
 import { bus, emitEvent, emitLocalEcho } from "./bus";
 import type { ControlPlaneConfig } from "./control-plane";
 import * as controlPlane from "./control-plane";
+import {
+  conversationCacheScope,
+  deleteCachedConversation,
+  readCachedConversation,
+  setConversationCacheIdentity,
+  writeCachedConversation,
+} from "./conversation-cache";
 import * as portable from "./portable";
 import {
   flushQueuedSends,
@@ -77,6 +86,7 @@ import {
 } from "./synthetic";
 import { historyToFeed, isConversationNotFound } from "./translate";
 import {
+  clearConversationVm,
   observeConversation,
   seedConversationVm,
   streamTurn,
@@ -127,6 +137,11 @@ export function isHoustonEngineError(e: unknown): e is HoustonEngineError {
  */
 const SETUP_LOGIN_KEY = "__setup__";
 
+/** The two workspace-root context files backing Settings on local/self-host
+ *  (HOU-711). In cloud the same two blobs live in Supabase, not on the volume. */
+const WORKSPACE_MD = "WORKSPACE.md";
+const USER_MD = "USER.md";
+
 /**
  * localStorage key persisting the selected agent (`setPreference("last_agent_id")`).
  * `providerEngine()` routes provider connects by it, so it must never name an
@@ -173,6 +188,16 @@ export class HoustonClient {
     this.cp = useCp
       ? { baseUrl: opts.baseUrl.replace(/\/+$/, ""), token: opts.token }
       : null;
+    // Local conversation cache (HOU-712) — cloud only, scoped per gateway +
+    // signed-in user. Reads the LIVE bearer so a token refresh keeps the same
+    // scope while a different account lands in different keys; local engines
+    // resolve null and never cache (their reads are local disk, never held).
+    const cp = this.cp;
+    setConversationCacheIdentity(() =>
+      cp
+        ? conversationCacheScope(cp.baseUrl, controlPlane.liveToken(cp.token))
+        : null,
+    );
     // Live-token auth fetch (not a pinned `token`): hosted mode rotates the
     // Supabase bearer mid-session, and a 401 must refresh + replay instead of
     // surfacing (HOU-687). Outside hosted mode liveToken falls back to the
@@ -369,12 +394,6 @@ export class HoustonClient {
   async setWorkspaceProvider(): Promise<Workspace> {
     const { provider, model } = await this.activeOld();
     return syntheticWorkspace(provider, model);
-  }
-  async getWorkspaceContext() {
-    return { workspaceMd: "", userMd: "" };
-  }
-  async setWorkspaceContext(_id: string, body: unknown) {
-    return body;
   }
   async createAgent(
     workspaceId: string,
@@ -574,21 +593,48 @@ export class HoustonClient {
     agentPath: string,
     sessionKey: string,
     status: BoardStatus,
+    pendingInteraction: PendingInteraction | null,
   ): Promise<void> {
     if (!this.cp) {
-      activities.setStatusBySessionKey(agentPath, sessionKey, status);
+      activities.setStatusBySessionKey(
+        agentPath,
+        sessionKey,
+        status,
+        pendingInteraction,
+      );
       // Write-through echo: this is the settle path (a turn finishing PATCHes
       // its board status). Without it the card sticks on "running" until a
       // server event that, in hosted mode, historically never comes.
       emitLocalEcho("ActivityChanged", { agentPath });
       return;
     }
-    const list = await controlPlane.listActivities(this.cp, agentPath);
-    const match = list.find(
-      (a) => a.session_key === sessionKey || `activity-${a.id}` === sessionKey,
-    );
-    if (!match) return; // transient session with no board card — nothing to update
-    await controlPlane.updateActivity(this.cp, agentPath, match.id, { status });
+    // This write MUST land: the turn flipped its card to "running", and a
+    // turn guarantees a terminal status on exit — a lost settle write leaves
+    // the mission visibly stuck on "running" forever. The PATCH is idempotent
+    // (fixed status + interaction), so retrying a network blip or proxy
+    // hiccup is safe. cpFetch deliberately never blind-retries writes; this
+    // caller knows its write is replay-safe.
+    const retryDelaysMs = [500, 1500, 3000];
+    for (let i = 0; ; i++) {
+      try {
+        const list = await controlPlane.listActivities(this.cp, agentPath);
+        const match = list.find(
+          (a) =>
+            a.session_key === sessionKey || `activity-${a.id}` === sessionKey,
+        );
+        if (!match) return; // transient session with no board card — nothing to update
+        // `pending_interaction: null` clears it explicitly (the host route +
+        // domain applyActivityUpdate honor null); a value records the interaction.
+        await controlPlane.updateActivity(this.cp, agentPath, match.id, {
+          status,
+          pending_interaction: pendingInteraction,
+        });
+        break;
+      } catch (err) {
+        if (i >= retryDelaysMs.length) throw err;
+        await new Promise((r) => setTimeout(r, retryDelaysMs[i]));
+      }
+    }
     emitLocalEcho("ActivityChanged", { agentPath });
   }
 
@@ -648,6 +694,42 @@ export class HoustonClient {
         err,
       );
     }
+  }
+  /**
+   * Workspace + user context (HOU-711). Cloud: the two Supabase-backed blobs the
+   * gateway splices into every turn — org-wide `workspace` + the caller's `user`,
+   * never on the agent volume. Local/self-host: the two files on the agent, read
+   * through the same agent-file path the CLAUDE.md instructions use.
+   */
+  async getWorkspaceContext(agentPath: string): Promise<WorkspaceContext> {
+    if (this.cp) {
+      const [workspace, user] = await Promise.all([
+        controlPlane.getContext(this.cp, "workspace"),
+        controlPlane.getContext(this.cp, "user"),
+      ]);
+      return { workspace, user };
+    }
+    const [workspace, user] = await Promise.all([
+      this.readAgentFile(agentPath, WORKSPACE_MD),
+      this.readAgentFile(agentPath, USER_MD),
+    ]);
+    return { workspace, user };
+  }
+  /** Write ONE context slot: cloud → its gateway resource, local → its file. */
+  async setWorkspaceContextSlot(
+    agentPath: string,
+    slot: "workspace" | "user",
+    content: string,
+  ): Promise<void> {
+    if (this.cp) {
+      await controlPlane.setContext(this.cp, slot, content);
+      return;
+    }
+    await this.writeAgentFile(
+      agentPath,
+      slot === "workspace" ? WORKSPACE_MD : USER_MD,
+      content,
+    );
   }
   async seedAgentSchemas(): Promise<void> {}
   async migrateAgentFiles(): Promise<void> {}
@@ -847,7 +929,7 @@ export class HoustonClient {
     if (this.cp) return controlPlane.loadSkill(this.cp, agentPath, name);
     // Standalone web has no skill backend (nothing is listed), so this is
     // unreachable; return an empty detail rather than crash if it ever isn't.
-    return { name, description: "", version: 1, content: "" };
+    return { name, title: null, description: "", version: 1, content: "" };
   }
 
   // Routine + skill mutations route to the host (cloud); standalone web has no
@@ -1044,12 +1126,12 @@ export class HoustonClient {
     const res = await controlPlane.gatewayAuthFetch(this.token)(
       `${this.baseUrl}/v1/catalog`,
     );
-    // 404 = this host has no catalog route (an older host, or the
-    // standalone-web / e2e fake host that doesn't serve it): the frontend keeps
-    // a static seed catalog as its fallback, so an empty catalog must degrade
-    // instead of throwing. Every other status still throws so a real failure
-    // surfaces rather than silently emptying the picker.
-    if (res.status === 404) return [];
+    // No 404 tolerance: `/v1/catalog` is served by every current host AND by the
+    // e2e/standalone-web fake host (packages/fake-host serves it via the real
+    // `buildProviderCatalog`). A 404 therefore means a genuinely stale host, and
+    // silently degrading to `[]` is what shipped the packaged app with providers
+    // but zero models. Throw like every other route so the failure surfaces (the
+    // caller keeps the seed so the UI still renders — but loudly).
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new HoustonEngineError(res.status, body);
@@ -1465,7 +1547,13 @@ export class HoustonClient {
       path,
       req.sessionKey,
       req.prompt,
-      (status) => this.setActivityStatus(path, req.sessionKey, status),
+      (status, pendingInteraction) =>
+        this.setActivityStatus(
+          path,
+          req.sessionKey,
+          status,
+          pendingInteraction,
+        ),
       req.provider,
       undefined,
       req.suppressUserBubble,
@@ -1497,7 +1585,8 @@ export class HoustonClient {
     // status alone — writing it here too would race that terminal write.
     const { cancelled } = await engine.cancel(sessionKey);
     if (cancelled !== true) {
-      await this.setActivityStatus(agentPath, sessionKey, "needs_you");
+      // Orphan rescue: a user Stop on a dead turn — never a pending interaction.
+      await this.setActivityStatus(agentPath, sessionKey, "needs_you", null);
     }
     return { cancelled: cancelled === true };
   }
@@ -1512,11 +1601,31 @@ export class HoustonClient {
     sessionKey: string,
     opts: { observe?: boolean } = {},
   ): Promise<ChatHistoryEntry[]> {
+    // Cache-first paint (HOU-712): a cloud read is HELD by the gateway for
+    // the whole engine-pod cold start, so seed the VM from the last locally
+    // persisted transcript NOW — the chat shows its messages instantly — and
+    // let the network read below revalidate whenever it lands. The seed
+    // guards in seedConversationVm keep a live or richer VM untouched, so a
+    // stale cache can never clobber fresh state.
+    let cacheSeeded = false;
+    if (this.cp && opts.observe !== false) {
+      const cached = await readCachedConversation(agentPath, sessionKey);
+      if (cached && cached.length > 0) {
+        seedConversationVm(agentPath, sessionKey, cached);
+        cacheSeeded = true;
+      }
+    }
     try {
       const engine = this.cp
         ? controlPlane.runtimeClientFor(this.cp, agentPath)
         : this.engine;
       const history = await engine.getHistory(sessionKey);
+      const sdkFeed = sdkHistoryToFeed(history.messages);
+      // Refresh the local copy on EVERY successful read (bulk scans too), so
+      // the next cold open paints the freshest transcript we ever saw.
+      if (this.cp) {
+        void writeCachedConversation(agentPath, sessionKey, sdkFeed);
+      }
       // Observer mode: a loaded chat may have a turn in flight that THIS client
       // isn't streaming (page reloaded mid-turn, or another client sent it).
       // Attach a passive resumable stream: if the server's `sync` reports a
@@ -1533,16 +1642,18 @@ export class HoustonClient {
         // seedConversationVm) — its feed IS the VM. The VM seed is the SDK's
         // UNMAPPED fold: the VM carries engine provider ids uniformly (seeded
         // and live alike); the app's binding hook owns the old-id remap.
-        seedConversationVm(
-          agentPath,
-          sessionKey,
-          sdkHistoryToFeed(history.messages),
-        );
+        seedConversationVm(agentPath, sessionKey, sdkFeed);
         observeConversation(
           engine,
           agentPath,
           sessionKey,
-          (status) => this.setActivityStatus(agentPath, sessionKey, status),
+          (status, pendingInteraction) =>
+            this.setActivityStatus(
+              agentPath,
+              sessionKey,
+              status,
+              pendingInteraction,
+            ),
           history.messages.length,
         );
       }
@@ -1553,7 +1664,14 @@ export class HoustonClient {
       // a failure. Anything else (network drop, auth, 5xx) propagates so the
       // app's `call()` wrapper toasts it with the Report-bug affordance —
       // returning [] would render a fake empty chat and swallow the error.
-      if (isConversationNotFound(err)) return [];
+      if (isConversationNotFound(err)) {
+        // The server says the conversation is gone: drop the local copy and
+        // clear a cache-seeded VM so no ghost transcript lingers (guarded —
+        // a live turn racing this read keeps its feed).
+        if (this.cp) void deleteCachedConversation(agentPath, sessionKey);
+        if (cacheSeeded) clearConversationVm(agentPath, sessionKey);
+        return [];
+      }
       throw err;
     }
   }

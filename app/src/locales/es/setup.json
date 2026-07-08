@@ -32,7 +32,8 @@
     "missionLabel": "Configuración: {{title}}",
     "upNext": "Sigue",
     "errors": {
-      "setupFailed": "No pudimos terminar de configurar tu espacio de trabajo. Inténtalo de nuevo."
+      "setupFailed": "No pudimos terminar de configurar tu espacio de trabajo. Inténtalo de nuevo.",
+      "noProviderModel": "Conecta un proveedor de IA antes de crear tu asistente."
     },
     "welcome": {
       "title": "Bienvenido a Houston",
@@ -77,23 +78,9 @@
           "send": "Envía tu primer correo"
         }
       },
-      "brain": {
-        "title": "Inicia sesión en tu suscripción de IA",
-        "body": "Elige la IA que ya pagas. Tú traes tu propia suscripción, así que Houston nunca ve tu contraseña ni tu factura.",
-        "continue": "Crear mi asistente",
-        "creating": "Creando",
-        "continueHint": "Houston creará tu asistente y abrirá la siguiente misión."
-      },
-      "providerLogin": {
-        "title": "Inicia sesión en {{provider}}",
-        "body": "Inicia sesión una vez para que tu agente pueda usar {{provider}} por ti.",
-        "loginButton": "Iniciar sesión en {{provider}}",
-        "waiting": "Esperando a {{provider}}...",
-        "cancel": "Cancelar",
-        "connected": {
-          "title": "Todo listo",
-          "body": "Encontramos {{provider}} en este computador. Ya tienes la sesión iniciada con tu propia suscripción, así que no hay nada que configurar aquí."
-        }
+      "connect": {
+        "title": "Conecta tu IA",
+        "body": "Elige la IA que ya pagas e inicia sesión. Tú traes tu propia suscripción, así que Houston nunca ve tu contraseña ni tu factura."
       },
       "meet": {
         "title": "Crea tu primer agente",

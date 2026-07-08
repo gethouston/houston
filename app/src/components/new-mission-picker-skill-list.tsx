@@ -1,5 +1,5 @@
 import { Spinner } from "@houston-ai/core";
-import { humanizeSkillName } from "../lib/humanize-skill-name";
+import { skillDisplayTitle } from "../lib/humanize-skill-name";
 import type { SkillSummary } from "../lib/types";
 import { SkillCard } from "./skill-card";
 
@@ -43,7 +43,7 @@ export function SkillList({
         <SkillCard
           key={s.name}
           image={s.image}
-          title={humanizeSkillName(s.name)}
+          title={skillDisplayTitle(s)}
           description={s.description}
           onClick={() => onSkill(s.name)}
         />

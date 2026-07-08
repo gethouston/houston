@@ -10,6 +10,10 @@
     "effort": {
       "type": "string",
       "enum": ["low", "medium", "high", "xhigh", "max"]
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["execute", "plan", "auto"]
     }
   },
   "additionalProperties": true

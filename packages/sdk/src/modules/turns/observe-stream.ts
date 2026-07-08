@@ -90,10 +90,12 @@ export function observeConversation(
         sink.fail(turnErrorMessage(e));
       } else if (!(e instanceof FatalResumeError)) {
         // A throwing frame handler is a bug: surface it on the conversation's
-        // feed (the standard error path — never log-only).
+        // feed (the standard error path — never log-only). turnErrorMessage
+        // resolves to product voice and logs the raw cause; no dev-speak
+        // "observer failed" prefix on top (HOU-721).
         output.pushFeedItem(agentPath, sessionKey, {
           feed_type: "system_message",
-          data: `Conversation observer failed: ${turnErrorMessage(e)}`,
+          data: turnErrorMessage(e),
         });
       }
       // A fatal refusal with nothing rendered: dispose silently — a passive
@@ -102,6 +104,11 @@ export function observeConversation(
       registry.release(key, entry);
     }
     if (sink.terminal)
-      await output.persistBoardStatus(agentPath, sessionKey, sink.terminal);
+      await output.persistBoardStatus(
+        agentPath,
+        sessionKey,
+        sink.terminal,
+        sink.terminalInteraction,
+      );
   })();
 }

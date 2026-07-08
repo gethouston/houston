@@ -1,19 +1,4 @@
 {
-  "card": {
-    "connected": "Connected",
-    "notConnected": "Not connected",
-    "comingSoon": "Coming soon",
-    "connecting": "Connecting...",
-    "connectTitle": "Connect {{name}}",
-    "signOutTitle": "Sign out of {{name}}",
-    "cancel": "Cancel",
-    "cancelTitle": "Cancel sign-in to {{name}}"
-  },
-  "row": {
-    "connect": "Connect",
-    "signOut": "Sign out",
-    "cancel": "Cancel"
-  },
   "setup": {
     "installHint": "Install the {{cli}} CLI on your machine. Houston will pick it up automatically.",
     "installGuide": "Install guide",
@@ -32,7 +17,8 @@
     "signInFailed": "Couldn't open {{provider}} sign-in",
     "signOutFailed": "Couldn't sign out of {{provider}}",
     "signInSucceeded": "Signed in to {{provider}}",
-    "cancelFailed": "Couldn't cancel {{provider}} sign-in"
+    "cancelFailed": "Couldn't cancel {{provider}} sign-in",
+    "catalogLoadFailed": "Couldn't load your available AI models. The list may be incomplete until this succeeds."
   },
   "providerLogin": {
     "title": "Finish signing in to {{name}}",

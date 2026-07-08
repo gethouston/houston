@@ -1,12 +1,10 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  type CustomProposal,
   canSubmitKey,
   customFaviconUrl,
   deriveCustomCardView,
   hostnameFromBaseUrl,
-  proposalDismissKey,
 } from "../src/components/custom-integration-card-state.ts";
 
 describe("hostnameFromBaseUrl", () => {
@@ -54,38 +52,5 @@ describe("deriveCustomCardView", () => {
     strictEqual(deriveCustomCardView(false, true), "done");
     strictEqual(deriveCustomCardView(true, false), "submitting");
     strictEqual(deriveCustomCardView(false, false), "idle");
-  });
-});
-
-describe("proposalDismissKey", () => {
-  const base: CustomProposal = {
-    name: "Acme CRM",
-    baseUrl: "https://api.acme.com",
-    auth: { type: "header", header: "Authorization", prefix: "Bearer " },
-    description: "The Acme CRM API.",
-  };
-
-  it("is stable for the same activity + name + base URL", () => {
-    strictEqual(
-      proposalDismissKey("act_1", base),
-      proposalDismissKey("act_1", { ...base, description: "changed" }),
-    );
-  });
-
-  it("differs by activity, name, or base URL", () => {
-    const a = proposalDismissKey("act_1", base);
-    strictEqual(a === proposalDismissKey("act_2", base), false);
-    strictEqual(
-      a === proposalDismissKey("act_1", { ...base, name: "Other" }),
-      false,
-    );
-    strictEqual(
-      a ===
-        proposalDismissKey("act_1", {
-          ...base,
-          baseUrl: "https://api.other.com",
-        }),
-      false,
-    );
   });
 });

@@ -49,6 +49,15 @@ const INVALID_KEY_PATTERNS = [
 ];
 
 /**
+ * The credential is simply ABSENT — the user logged out (or never connected)
+ * while the provider stayed selected. pi RAISES this at prompt time (its
+ * `formatNoApiKeyFoundMessage`: "No API key found for <provider>.\n\nUse /login
+ * …"), it never arrives as an errored AssistantMessage, so the exec-turn /
+ * turn-session catch is where this classification happens (HOU-718).
+ */
+const NO_CREDENTIALS_PATTERNS = ["no api key found"];
+
+/**
  * The gateway rejected the REQUESTED MODEL itself (not the credential): GitHub
  * Copilot answers a premium model its plan doesn't include with
  * `code: "model_not_supported"`; OpenAI uses `model_not_found` ("does not exist
@@ -199,11 +208,14 @@ function isAuth(lower: string, status: number | null): boolean {
     // "oauth token" (not bare "oauth"): a token error, not any mention of OAuth.
     lower.includes("oauth token") ||
     INVALID_KEY_PATTERNS.some((p) => lower.includes(p)) ||
+    NO_CREDENTIALS_PATTERNS.some((p) => lower.includes(p)) ||
     TERMINAL_SESSION_PATTERNS.some((p) => lower.includes(p))
   );
 }
 
 function authCause(lower: string): AuthFailureCause {
+  if (NO_CREDENTIALS_PATTERNS.some((p) => lower.includes(p)))
+    return "no_credentials";
   if (INVALID_KEY_PATTERNS.some((p) => lower.includes(p)))
     return "invalid_api_key";
   // The provider ended this session server-side — the user must reconnect, a

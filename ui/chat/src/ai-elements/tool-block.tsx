@@ -46,28 +46,34 @@ export const ToolBlock = memo(
   ({ tool, isActive, toolLabels }: ToolBlockProps) => {
     // Bash output is shell stdout — opt out of the auto-open-while-active
     // behavior so the chat stays clean. The user can still click to expand.
-    const autoOpenWhileActive = toolShortName(tool.name) !== "Bash";
+    // (Two dialects: Claude's "Bash", pi's "bash".)
+    const autoOpenWhileActive =
+      toolShortName(tool.name).toLowerCase() !== "bash";
 
-    const [isOpen, setIsOpen] = useState(autoOpenWhileActive && isActive);
+    const initialAutoOpen = autoOpenWhileActive && isActive;
+    const [isOpen, setIsOpen] = useState(initialAutoOpen);
     const wasActiveRef = useRef(isActive);
-    const hasAutoClosedRef = useRef(false);
+    // Auto-close is armed ONLY while the pane is open from an AUTO open. A
+    // manual open must stay open until the user closes it — closing a row the
+    // user just expanded is the HOU-717 "dropdown keeps closing" bug.
+    const autoOpenedRef = useRef(initialAutoOpen);
 
     // Auto-open when becoming active (unless this tool opted out).
     useEffect(() => {
       if (!autoOpenWhileActive) return;
       if (isActive && !wasActiveRef.current) {
         setIsOpen(true);
-        hasAutoClosedRef.current = false;
+        autoOpenedRef.current = true;
       }
       wasActiveRef.current = isActive;
     }, [isActive, autoOpenWhileActive]);
 
-    // Auto-close after result arrives
+    // Auto-close after the result arrives — only an auto-opened pane.
     useEffect(() => {
-      if (tool.result && !isActive && isOpen && !hasAutoClosedRef.current) {
+      if (tool.result && !isActive && isOpen && autoOpenedRef.current) {
         const timer = setTimeout(() => {
           setIsOpen(false);
-          hasAutoClosedRef.current = true;
+          autoOpenedRef.current = false;
         }, AUTO_CLOSE_DELAY);
         return () => clearTimeout(timer);
       }
@@ -75,7 +81,8 @@ export const ToolBlock = memo(
 
     const handleOpenChange = useCallback((open: boolean) => {
       setIsOpen(open);
-      if (!open) hasAutoClosedRef.current = true;
+      // Any user toggle takes ownership: never auto-close a manual open.
+      autoOpenedRef.current = false;
     }, []);
 
     const Icon = getToolIcon(tool.name);

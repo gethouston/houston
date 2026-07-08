@@ -1,3 +1,4 @@
+import { isPendingInteraction } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
 import {
   finishErr,
@@ -72,7 +73,19 @@ function adoptReply(s: TurnState, reply: ChatMessage): void {
     return;
   }
   s.text = reply.content;
+  // Adopt the persisted reasoning only when nothing streamed live — a settle
+  // from history must not clobber (or double) what the watcher already saw
+  // (finishOk flushes `s.thinking` into the feed).
+  if (reply.thinking && !s.thinking) s.thinking = reply.thinking;
   if (reply.usage) s.usage = reply.usage;
+  // A turn that ended asking the user for something persisted its interaction
+  // (runtime, clean path only). Adopt it BEFORE finishOk so a settle from
+  // history splits to `needs_you` with the interaction — matching the live
+  // `done` frame we missed — instead of collapsing to a false `done`.
+  // Guarded: persisted messages outlive code, and a reply written by an older
+  // build carries a pre-step interaction shape that must not reach the VM.
+  if (isPendingInteraction(reply.pendingInteraction))
+    s.pendingInteraction = reply.pendingInteraction;
   finishOk(s);
 }
 

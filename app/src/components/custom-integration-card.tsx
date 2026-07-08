@@ -35,7 +35,7 @@ interface CustomIntegrationCardProps {
 /**
  * The secure setup card the chat renders IN PLACE OF the composer when the agent
  * proposes a service the app catalog can't offer (`propose_custom_integration`
- * → PendingInteraction `custom_integration`). The user pastes their API key
+ * → a `custom_integration` interaction step). The user pastes their API key
  * here; on Add, Houston creates the integration, grants it to the agent, and
  * nudges the agent to continue.
  *

@@ -12,6 +12,7 @@ import { STORE_TEMPLATE_IDS } from "../../agents/builtin/store-catalog";
 import { loadStoreTemplate } from "../../agents/builtin/store-template-loader";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { finishAgentSetup } from "../../lib/agent-setup";
+import { startAgentWelcomeMission } from "../../lib/agent-welcome";
 import { getDefaultModel } from "../../lib/providers";
 import { tauriProvider } from "../../lib/tauri";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
@@ -27,7 +28,7 @@ import { NamingStep } from "./naming-step";
 type Step = 1 | "ai-assist" | "ai-routine" | "ai-review" | 2;
 
 export function CreateAgentDialog() {
-  const { t } = useTranslation("shell");
+  const { t, i18n } = useTranslation("shell");
   const open = useUIStore((s) => s.createAgentDialogOpen);
   const setOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
   const uiTourActive = useUIStore((s) => s.uiTourActive);
@@ -40,6 +41,7 @@ export function CreateAgentDialog() {
   const [generatedClaudeMd, setGeneratedClaudeMd] = useState<
     string | undefined
   >(undefined);
+  const [brief, setBrief] = useState("");
   const [routineForm, setRoutineForm] = useState<RoutineFormData | null>(null);
   const [routineAccepted, setRoutineAccepted] = useState(false);
   // The AI suggestion the current routineForm was seeded from. Used to
@@ -55,15 +57,17 @@ export function CreateAgentDialog() {
   const [provider, setProvider] = useState<string>("anthropic");
   const [model, setModel] = useState<string>(getDefaultModel("anthropic"));
 
-  // Reset form on close. On open, sync the picker to the sticky last-used
-  // pair. Reading on open (not mount) prevents the old "stale workspace
-  // default baked into the new agent's config" bug: the picker always
-  // reflects whatever the user actually picked last.
+  // Reset form on close. On open, load the sticky last-used provider/model —
+  // there is no picker in this flow anymore; the pair silently becomes the new
+  // agent's brain (and the generation brain on the AI path). Reading on open
+  // (not mount) prevents the old "stale workspace default baked into the new
+  // agent's config" bug.
   useEffect(() => {
     if (!open) {
       setStep(1);
       setSelectedConfigId(null);
       setGeneratedClaudeMd(undefined);
+      setBrief("");
       setRoutineForm(null);
       setRoutineAccepted(false);
       seededRoutineRef.current = null;
@@ -101,13 +105,16 @@ export function CreateAgentDialog() {
     // AI-generated instructions take priority over the template's claudeMd.
     let claudeMd = generatedClaudeMd ?? selectedDef?.config.claudeMd;
     let seeds = selectedDef?.config.agentSeeds;
+    let created: { id: string; name: string; color?: string };
     let agentPath: string;
     try {
       // First-party "store" templates (bookkeeping, legal, …) keep their
-      // CLAUDE.md + skills/data seeds in a lazily-loaded payload kept out of the
-      // initial bundle; pull it now so the host seeds the new agent with them.
+      // CLAUDE.md + skills/data seeds in a lazily-loaded payload kept out of
+      // the initial bundle; pull it now so the host seeds the new agent with
+      // them. The active UI language picks the translated variant, so a
+      // Spanish workspace seeds Spanish skills.
       if (!generatedClaudeMd && STORE_TEMPLATE_IDS.has(selectedConfigId)) {
-        const tpl = await loadStoreTemplate(selectedConfigId);
+        const tpl = await loadStoreTemplate(selectedConfigId, i18n.language);
         claudeMd = tpl.claudeMd;
         seeds = tpl.seeds;
       }
@@ -121,15 +128,13 @@ export function CreateAgentDialog() {
         seeds,
         existingPath ?? undefined,
       );
+      created = agent;
       agentPath = agent.folderPath;
     } catch (err) {
       setError(String(err));
       setCreating(false);
       return;
     }
-    // Keep the sticky last-used in sync so the next new agent inherits the
-    // user's most recent choice (local, so it's cheap to await).
-    await tauriProvider.setLastUsed(provider, model);
     // Reveal the agent NOW. The provider/model write and routine setup dispatch
     // to the agent's engine, which on the hosted profile is a pod still
     // cold-starting — awaiting them here would re-block the dialog for the whole
@@ -144,6 +149,15 @@ export function CreateAgentDialog() {
       model,
       routine: routineAccepted ? routineForm : null,
     });
+    // The agent's own first mission (HOU-713): a "Meet {name}" card appears
+    // right away, its chat opens, and after a short beat the agent greets the
+    // user with a hardcoded message — no model turn, so it works instantly
+    // even while the engine cold-starts. Fire-and-forget: a failure surfaces
+    // its own toast and the agent itself is already created and revealed.
+    void startAgentWelcomeMission(
+      { id: created.id, name: created.name, folderPath: agentPath },
+      { provider, model },
+    );
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -207,10 +221,8 @@ export function CreateAgentDialog() {
           <AiAssistStep
             provider={provider}
             model={model}
-            onProviderChange={(p, m) => {
-              setProvider(p);
-              setModel(m);
-            }}
+            brief={brief}
+            onBriefChange={setBrief}
             onBack={() => setStep(1)}
             onContinue={(instructions, suggestedName, routine) => {
               setGeneratedClaudeMd(instructions);
@@ -267,8 +279,6 @@ export function CreateAgentDialog() {
             color={color}
             error={error}
             existingPath={existingPath}
-            provider={provider}
-            model={model}
             creating={creating}
             showLinkProject={selectedDef?.config.features?.includes(
               "link-project",
@@ -276,10 +286,6 @@ export function CreateAgentDialog() {
             onNameChange={setName}
             onColorChange={setColor}
             onExistingPathChange={setExistingPath}
-            onProviderChange={(p, m) => {
-              setProvider(p);
-              setModel(m);
-            }}
             onBack={() => setStep(1)}
             onSubmit={handleSubmit}
           />

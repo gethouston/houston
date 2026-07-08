@@ -19,7 +19,12 @@ export interface HostProvider {
   id: ProviderId;
   name: string;
   auth: ProviderAuthMethod;
-  /** Offered on the cloud per-turn runtime. Anthropic stays off in cloud (ToS). */
+  /**
+   * Offered on the LEGACY cloudrun per-turn path only (`turn/dispatch-providers.ts`,
+   * `turn/cloud-provider.ts`). This flag does NOT gate the managed pod's catalog —
+   * that serves the full pi-ai set (`providers/pi-catalog.ts`). Anthropic stays
+   * off on the legacy path (ToS).
+   */
   cloud: boolean;
   /**
    * Curated model ids the cloud per-turn `/providers` listing advertises. Codex
@@ -40,11 +45,11 @@ export const PROVIDERS: readonly HostProvider[] = [
     auth: "oauth",
     cloud: true,
   },
-  // GitHub Copilot subscription (OAuth, GitHub device-code flow). LOCAL/desktop
-  // only: the cloud per-turn sandbox is egress-locked and
-  // api.individual.githubcopilot.com isn't on its allowlist. The runtime serves
-  // Copilot's full model list via the standing-runtime /providers relay, so no
-  // curated `models` here (same as the other OAuth providers).
+  // GitHub Copilot subscription (OAuth, GitHub device-code flow). `cloud: false`
+  // = not wired into the legacy cloudrun per-turn path; it is served everywhere
+  // else (desktop AND the managed pod, via the full pi-ai catalog). The runtime
+  // serves Copilot's full model list via the standing-runtime /providers relay,
+  // so no curated `models` here (same as the other OAuth providers).
   { id: "github-copilot", name: "GitHub Copilot", auth: "oauth", cloud: false },
   {
     id: "opencode",
@@ -81,8 +86,8 @@ export const PROVIDERS: readonly HostProvider[] = [
     id: "openrouter",
     name: "OpenRouter",
     auth: "apiKey",
-    // LOCAL/desktop only for now: the cloud per-turn sandbox is egress-locked
-    // and openrouter.ai isn't on its allowlist (unlike OpenCode's gateway).
+    // `cloud: false` = off the legacy cloudrun per-turn listing only; served
+    // everywhere else (desktop AND the managed pod, via the full pi-ai catalog).
     cloud: false,
     models: [
       "anthropic/claude-sonnet-4.6",
@@ -96,8 +101,8 @@ export const PROVIDERS: readonly HostProvider[] = [
     id: "deepseek",
     name: "DeepSeek",
     auth: "apiKey",
-    // LOCAL/desktop only for now: the cloud per-turn sandbox is egress-locked
-    // and api.deepseek.com isn't on its allowlist.
+    // `cloud: false` = off the legacy cloudrun per-turn listing only; served
+    // everywhere else (desktop AND the managed pod, via the full pi-ai catalog).
     cloud: false,
     models: ["deepseek-v4-flash", "deepseek-v4-pro"],
     defaultModel: "deepseek-v4-flash",
@@ -106,7 +111,8 @@ export const PROVIDERS: readonly HostProvider[] = [
     id: "google",
     name: "Google Gemini",
     auth: "apiKey",
-    // LOCAL/desktop only: cloud egress doesn't allowlist generativelanguage.
+    // `cloud: false` = off the legacy cloudrun per-turn listing only; served
+    // everywhere else (desktop AND the managed pod, via the full pi-ai catalog).
     cloud: false,
     models: [
       "gemini-3-flash-preview",
@@ -120,8 +126,8 @@ export const PROVIDERS: readonly HostProvider[] = [
     id: "amazon-bedrock",
     name: "Amazon Bedrock",
     auth: "apiKey",
-    // LOCAL/desktop only for now: the cloud per-turn sandbox egress is not
-    // allowlisted for Bedrock runtime endpoints.
+    // `cloud: false` = off the legacy cloudrun per-turn listing only; served
+    // everywhere else (desktop AND the managed pod, via the full pi-ai catalog).
     cloud: false,
     models: [
       "anthropic.claude-sonnet-4-6",
@@ -135,8 +141,8 @@ export const PROVIDERS: readonly HostProvider[] = [
     id: "minimax",
     name: "MiniMax",
     auth: "apiKey",
-    // LOCAL/desktop only for now: the cloud per-turn sandbox egress is not
-    // allowlisted for api.minimax.io.
+    // `cloud: false` = off the legacy cloudrun per-turn listing only; served
+    // everywhere else (desktop AND the managed pod, via the full pi-ai catalog).
     cloud: false,
     models: ["MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M3"],
     defaultModel: "MiniMax-M3",
@@ -158,12 +164,22 @@ const byId = new Map(PROVIDERS.map((p) => [p.id as string, p]));
 /** The OpenAI-compatible (BYO endpoint) provider id. */
 export const OPENAI_COMPATIBLE = "openai-compatible";
 
-/** A provider the cloud per-turn runtime serves. */
+/**
+ * A provider the LEGACY cloudrun per-turn path serves.
+ *
+ * `CLOUD_PROVIDERS` / `isCloudProvider` feed ONLY that legacy path
+ * (`turn/dispatch-providers.ts`, `turn/cloud-provider.ts`) — NOT the managed
+ * pod's provider catalog. The managed pod runs the local-profile host/runtime
+ * and serves the FULL pi-ai provider set via `GET /v1/catalog`
+ * (`providers/pi-catalog.ts`), regardless of the `cloud` flags here. So flipping
+ * a `cloud` flag changes only the legacy per-turn eligibility, not what a hosted
+ * user sees in the picker.
+ */
 export const CLOUD_PROVIDERS: readonly HostProvider[] = PROVIDERS.filter(
   (p) => p.cloud,
 );
 
-/** True when `id` is a provider the cloud per-turn runtime offers. */
+/** True when `id` is a provider the legacy cloudrun per-turn path offers. */
 export function isCloudProvider(id: string): boolean {
   return byId.get(id)?.cloud === true;
 }

@@ -1,3 +1,5 @@
+import { DEFAULT_TURN_MODE, type TurnMode } from "@houston/protocol";
+import { effectiveModelWindow } from "@houston/protocol/model-windows";
 import type {
   ChatMessage,
   ProviderError,
@@ -6,6 +8,7 @@ import type {
   WireEvent,
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
+import { classifyProviderError } from "../ai/provider-error";
 import { activeEffort, resolveModel } from "../ai/providers";
 import { config } from "../config";
 import {
@@ -21,7 +24,11 @@ import {
 } from "./attribution";
 import { needsAutocompact } from "./autocompact";
 import { publish } from "./bus";
-import { type Conversation, switchBackendIfNeeded } from "./conversation-cache";
+import {
+  type Conversation,
+  switchBackendIfNeeded,
+  switchModeIfNeeded,
+} from "./conversation-cache";
 import {
   diffSnapshots,
   type FileSnapshot,
@@ -31,11 +38,17 @@ import { newInteractionHolder, runWithInteractionCapture } from "./interaction";
 import { switchNeedsCompaction } from "./provider-switch";
 import { createStallWatchdog } from "./stall-watchdog";
 
-/** A routine's pinned provider/model/effort for this turn. Absent = keep the session's current. */
+/** A turn's pinned provider/model/effort/mode. Absent = keep current/default. */
 export interface TurnPin {
   provider?: string | null;
   model?: string | null;
   effort?: string | null;
+  /**
+   * The turn's execution mode ("plan" = read-only + planning overlay, "auto" =
+   * Autopilot). Rides the per-turn pin ONLY — never `Settings` — so an unpinned
+   * turn is always "execute". A flip from the live session's mode rebuilds it.
+   */
+  mode?: TurnMode | null;
 }
 
 /**
@@ -117,6 +130,9 @@ export async function execTurn(
   const { author, priorAuthors } = recorded;
 
   let assistantText = "";
+  // The turn's reasoning, accumulated for persistence so a history reload can
+  // replay it in the mission log (HOU-717) — same lifecycle as assistantText.
+  let thinkingText = "";
   let usage: TokenUsage | null = null;
   const tools: ToolCallRecord[] = [];
   // A typed provider failure for this turn. pi resolves the turn rather than
@@ -150,11 +166,17 @@ export async function execTurn(
   const subscribeSession = () => {
     unsub = conv.session.subscribe((wire: WireEvent) => {
       if (wire.type === "text") assistantText += wire.data;
+      else if (wire.type === "thinking") thinkingText += wire.data;
       else if (wire.type === "usage") usage = wire.data;
-      else if (wire.type === "tool_start") tools.push({ name: wire.data.name });
+      else if (wire.type === "tool_start")
+        tools.push({ name: wire.data.name, input: wire.data.args });
       else if (wire.type === "tool_end") {
         const t = tools[tools.length - 1];
-        if (t) t.isError = wire.data.isError;
+        if (t) {
+          t.isError = wire.data.isError;
+          // Already clipped at the backend — persist for reload replay.
+          if (wire.data.content) t.result = wire.data.content;
+        }
       } else if (wire.type === "provider_error") providerError = wire.data;
       // Every event proves the provider is alive → reset the stall clock (the
       // watchdog suspends itself while a tool runs and re-arms when it ends).
@@ -178,6 +200,9 @@ export async function execTurn(
     // firing on ITS provider no matter what other chats picked in between.
     // A bad model id throws here → surfaces as the turn's error event.
     const model = resolveModel(pin?.model, pin?.provider);
+    // The turn's execution mode: the pin's, else execute. Never inherited from
+    // Settings. Routine fire paths pin auto; an actually unpinned turn is execute.
+    const mode = pin?.mode ?? DEFAULT_TURN_MODE;
     const providerChanged = model.provider !== conv.provider;
     const modelChanged = model.id !== conv.model;
     // COMPLIANCE GATE: when this turn's model crosses a BACKEND boundary
@@ -185,10 +210,17 @@ export async function execTurn(
     // the correct backend rather than `setModel` a foreign model into the live
     // one — the harness-spoofing route the whole backend seam exists to prevent.
     // A same-backend change falls through to the cheap `setModel` fast path below.
+    // The rebuild lands directly on `mode`, so a switch that also flips mode is a
+    // single rebuild and `switchModeIfNeeded` below then no-ops.
     const { rebuilt, preTokens: rebuiltPreTokens } =
-      await switchBackendIfNeeded(conv, id, model);
+      await switchBackendIfNeeded(conv, id, model, mode);
+    // MODE FLIP: a plan⇄execute change on the SAME backend rebuilds the session
+    // read-only (or back). History rehydrates from disk; no provider_switched
+    // frame (same provider/model). No-op when the mode is unchanged — including
+    // right after a cross-backend rebuild that already landed on `mode`.
+    await switchModeIfNeeded(conv, id, model, mode);
     // Attach the turn's listeners to the SETTLED session (the rebuilt one when we
-    // crossed a backend, else the session we entered with).
+    // crossed a backend or flipped mode, else the session we entered with).
     subscribeSession();
     if (rebuilt) {
       // Cross-backend rebuild: the new session starts fresh (no in-memory history
@@ -219,8 +251,18 @@ export async function execTurn(
         // Mid-session PROVIDER switch. Carry the conversation verbatim when it
         // comfortably fits the new model's window (replay); otherwise compact it
         // first so it fits — pi summarizes with the now-active target model.
+        // Size the target window with Houston's effective rule (same as the bar),
+        // not pi's raw registry number; observed usage on the fresh target is 0,
+        // so it starts at the default — matching the frontend's peak reset on a
+        // provider switch.
+        const targetWindow = effectiveModelWindow(
+          model.provider,
+          model.id,
+          model.contextWindow,
+          0,
+        );
         let summarized = false;
-        if (switchNeedsCompaction(preTokens, model.contextWindow)) {
+        if (switchNeedsCompaction(preTokens, targetWindow)) {
           await conv.session.compact();
           summarized = true;
         }
@@ -249,7 +291,18 @@ export async function execTurn(
     // never re-compacts.
     if (!providerSwitch?.summarized) {
       const fill = conv.session.getContextUsage()?.tokens ?? null;
-      if (needsAutocompact(fill, model.contextWindow)) {
+      // Divide by Houston's EFFECTIVE window (default, snapping up to the ceiling
+      // once observed fill proves the larger plan/credit-gated window is active),
+      // the SAME denominator the frontend context bar uses — so the runtime
+      // compacts a 200k-real Claude chat pi reports as 1M, and does NOT
+      // needlessly compact a Gemini chat pi under-reports as 128k.
+      const window = effectiveModelWindow(
+        model.provider,
+        model.id,
+        model.contextWindow,
+        fill ?? 0,
+      );
+      if (needsAutocompact(fill, window)) {
         await conv.session.compact();
         compaction = { trigger: "proactive", pre_tokens: fill };
         // Stream the boundary so the chat draws the divider + resets its
@@ -349,11 +402,18 @@ export async function execTurn(
     // (pi resolves the turn, it does not throw) with empty text, not in the catch.
     appendAssistantMessage(id, assistantText, {
       tools,
+      thinking: thinkingText || undefined,
       usage,
       providerSwitch,
       compaction,
       providerError,
       fileChanges,
+      // Persist what the turn is waiting on the user for under the SAME
+      // condition that puts it on the clean `done` frame below (no provider
+      // error) — so a client that misses the live `done` settles from history
+      // to `needs_you`, never dropping the question/connect card to a false
+      // `done`. A failed/stalled turn (providerError set) never carries it.
+      pendingInteraction: providerError ? undefined : interaction.pending,
       turnId,
     });
     if (fileChanges)
@@ -379,19 +439,55 @@ export async function execTurn(
     // provider_error frame does — an unattended reader (a routine's reconcile)
     // reads the real reason off this message instead of timing the run out
     // with a vague error 15 minutes later.
+    //
+    // Classify the throw before falling back to `unknown`: pi RAISES a
+    // missing/expired credential at prompt time ("No API key found for
+    // <provider>. Use /login …"), before any stream exists, so this catch is
+    // the only place it can become the typed reconnect card (HOU-718). A
+    // recognized kind is published as a provider_error frame — the turn's
+    // terminal surface, same as the streamed path — so the live chat renders
+    // the card (and auto-continues after reconnect) instead of raw error
+    // text. An unrecognized throw keeps the generic error frame.
+    const thrown =
+      providerError ??
+      classifyProviderError({
+        provider: pin?.provider ?? conv.provider,
+        model: pin?.model ?? null,
+        message: errMessage(err),
+      });
+    // An auth throw with NOTHING streamed = pi's prompt-time credential guard,
+    // which raises BEFORE recording the user message in pi's session store —
+    // neither the live context nor a rebuild will ever see it. Carry the text
+    // on the card so the reconnect retry re-delivers it to the model.
+    if (
+      thrown.kind === "unauthenticated" &&
+      !providerError &&
+      !assistantText &&
+      tools.length === 0
+    )
+      thrown.undelivered_prompt = text;
+    const typed = thrown.kind !== "unknown" ? thrown : undefined;
     appendAssistantMessage(id, assistantText, {
       tools,
+      thinking: thinkingText || undefined,
       usage,
       providerSwitch,
       compaction,
-      providerError: providerError ?? {
+      providerError: typed ?? {
         kind: "unknown",
         provider: pin?.provider ?? conv.provider,
         raw_excerpt: errMessage(err),
       },
       turnId,
     });
-    publish(id, { type: "error", data: { message: errMessage(err) }, turnId });
+    if (typed && !providerError)
+      publish(id, { type: "provider_error", data: typed, turnId });
+    else if (!typed)
+      publish(id, {
+        type: "error",
+        data: { message: errMessage(err) },
+        turnId,
+      });
   } finally {
     conv.turnId = undefined;
     // Never leak the stall timer past the turn (no-op if it threw before arming).

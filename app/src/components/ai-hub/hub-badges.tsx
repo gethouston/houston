@@ -2,9 +2,10 @@
  * The shared chip + label kit for the AI Hub redesign. `SpecChip` is the base
  * neutral pill (subtle surface + hairline); every other chip composes it. All
  * primitives are presentational and props-only: labels arrive already
- * translated (parents own i18n), colour comes only from token classes, and the
- * accent stays reserved for the connected/live state (`LiveStatus`). No hard
- * coded hex, no `useTranslation` here.
+ * translated (parents own i18n). The chips themselves stay token-only, with the
+ * accent reserved for the connected/live state (`LiveStatus`); brand colour is
+ * NOT a chip concern — it arrives via the `BrandMark` tile (`brand-mark.tsx`).
+ * No hard coded hex, no `useTranslation` here.
  */
 
 import { cn } from "@houston-ai/core";
@@ -116,57 +117,6 @@ export function LiveStatus({ label }: { label: string }) {
         aria-hidden="true"
       />
       <span className="text-[12.5px] font-medium text-success">{label}</span>
-    </span>
-  );
-}
-
-/** A section title row with a label and an optional mono count. */
-export function SectionHeader({
-  label,
-  count,
-}: {
-  label: string;
-  count?: number;
-}) {
-  return (
-    <div className="inline-flex items-center gap-2">
-      <span className="text-[13px] font-medium text-foreground">{label}</span>
-      {count != null ? (
-        <span className="font-mono text-xs text-muted-foreground tabular-nums">
-          {count}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-const MARK_SIZE = {
-  sm: "size-5",
-  md: "size-6",
-  lg: "size-8",
-} as const;
-
-/**
- * A boxless brand mark: a lab/model glyph (a `ProviderGlyph` or lucide icon)
- * rendered inline as a logo, with NO container box, background, or hairline.
- * `size` drives the glyph itself — the wrapper forces the child svg to fill it
- * (`[&_svg]:size-full`) since `ProviderGlyph` draws at a fixed intrinsic size.
- */
-export function ModelMark({
-  mark,
-  size = "md",
-}: {
-  mark: ReactNode;
-  size?: "sm" | "md" | "lg";
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-grid shrink-0 place-items-center [&_svg]:size-full",
-        MARK_SIZE[size],
-      )}
-    >
-      {mark}
     </span>
   );
 }

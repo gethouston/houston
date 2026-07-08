@@ -74,6 +74,7 @@ export type AnalyticsEventName =
   | "skill_used"
   | "routine_scheduled"
   | "routine_executed"
+  | "routine_chat_setup_started"
   | "tab_opened"
   | "file_attached"
   | "mobile_paired"

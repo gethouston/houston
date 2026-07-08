@@ -7,6 +7,7 @@ import {
   isToolkitConnected,
   normalizeToolkitSlug,
   parseToolkitFromHref,
+  shouldAutoContinueConnected,
 } from "../src/components/integration-connect-card-state.ts";
 
 describe("parseToolkitFromHref", () => {
@@ -87,5 +88,49 @@ describe("deriveConnectCardView", () => {
     strictEqual(deriveConnectCardView(true, false), "connected");
     strictEqual(deriveConnectCardView(false, true), "connecting");
     strictEqual(deriveConnectCardView(false, false), "idle");
+  });
+});
+
+describe("shouldAutoContinueConnected", () => {
+  const base = {
+    autoContinue: true,
+    isConnected: true,
+    catalogSettled: true,
+    alreadyFired: false,
+  };
+
+  it("advances a stepper connect step whose toolkit is already connected", () => {
+    // The soft-lock repro: a mixed question+connect sequence reaches an
+    // already-connected Gmail step. There is no Connect button to click, so the
+    // card MUST self-report or the queued answers never send.
+    strictEqual(shouldAutoContinueConnected(base), true);
+  });
+
+  it("stays passive for the inline markdown-link card (autoContinue off)", () => {
+    strictEqual(
+      shouldAutoContinueConnected({ ...base, autoContinue: false }),
+      false,
+    );
+  });
+
+  it("waits for a live connection before firing", () => {
+    strictEqual(
+      shouldAutoContinueConnected({ ...base, isConnected: false }),
+      false,
+    );
+  });
+
+  it("holds until the catalog settles so the app name is real, not the slug", () => {
+    strictEqual(
+      shouldAutoContinueConnected({ ...base, catalogSettled: false }),
+      false,
+    );
+  });
+
+  it("fires at most once per card (a user-driven connect already spoke)", () => {
+    strictEqual(
+      shouldAutoContinueConnected({ ...base, alreadyFired: true }),
+      false,
+    );
   });
 });

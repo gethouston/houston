@@ -21,7 +21,7 @@ import {
   type SkillInvocation,
   type SkillInvocationField,
 } from "@houston-ai/chat";
-import { humanizeSkillName } from "./humanize-skill-name";
+import { skillDisplayTitle } from "./humanize-skill-name";
 import type { SkillSummary } from "./types";
 
 export type { SkillInvocation, SkillInvocationField };
@@ -45,7 +45,7 @@ export function encodeSkillMessage(
   const trimmedText = userText.trim();
   const payload: SkillInvocation = {
     skill: skill.name,
-    displayName: humanizeSkillName(skill.name),
+    displayName: skillDisplayTitle(skill),
     image: skill.image,
     description: skill.description,
     integrations: skill.integrations,

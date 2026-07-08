@@ -105,9 +105,15 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
         status: "needs_you",
         description: "",
         pending_interaction: {
-          kind: "question",
-          question: "Which deck?",
-          options: [{ id: "q2", label: "Q2" }],
+          steps: [
+            {
+              kind: "question",
+              id: "q1",
+              question: "Which deck?",
+              options: [{ id: "q2", label: "Q2" }],
+            },
+            { kind: "connect", id: "c1", toolkit: "gmail" },
+          ],
         },
       },
       {
@@ -115,7 +121,9 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
         title: "Connect",
         status: "needs_you",
         description: "",
-        pending_interaction: { kind: "connect", toolkit: "gmail" },
+        pending_interaction: {
+          steps: [{ kind: "connect", id: "c1", toolkit: "gmail" }],
+        },
       },
       {
         id: "ci",
@@ -123,18 +131,23 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
         status: "needs_you",
         description: "",
         pending_interaction: {
-          kind: "custom_integration",
-          proposal: {
-            name: "Acme CRM",
-            baseUrl: "https://api.acme.example",
-            auth: {
-              type: "header",
-              header: "Authorization",
-              prefix: "Bearer ",
+          steps: [
+            {
+              kind: "custom_integration",
+              id: "x1",
+              proposal: {
+                name: "Acme CRM",
+                baseUrl: "https://api.acme.example",
+                auth: {
+                  type: "header",
+                  header: "Authorization",
+                  prefix: "Bearer ",
+                },
+                description: "Acme CRM records",
+              },
+              reason: "to read your CRM contacts",
             },
-            description: "Acme CRM records",
-          },
-          reason: "to read your CRM contacts",
+          ],
         },
       },
       {
@@ -143,14 +156,19 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
         status: "needs_you",
         description: "",
         pending_interaction: {
-          kind: "mcp_server",
-          proposal: {
-            name: "Acme Tracker",
-            url: "https://mcp.acme.example",
-            auth: { type: "bearer" },
-            description: "Acme issue tracker",
-          },
-          reason: "to read your open issues",
+          steps: [
+            {
+              kind: "mcp_server",
+              id: "m1",
+              proposal: {
+                name: "Acme Tracker",
+                url: "https://mcp.acme.example",
+                auth: { type: "bearer" },
+                description: "Acme issue tracker",
+              },
+              reason: "to read your open issues",
+            },
+          ],
         },
       },
       {
@@ -158,8 +176,8 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
         title: "Broken",
         status: "needs_you",
         description: "",
-        // missing the required `question` for kind=question
-        pending_interaction: { kind: "question" },
+        // the old top-level `{kind, questions}` shape has no `steps` → dropped
+        pending_interaction: { kind: "question", question: "Which deck?" },
       },
     ],
     "k",
@@ -167,33 +185,48 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
 
   expect(items.map((a) => a.id)).toEqual(["q", "c", "ci", "mcp", "bad"]); // activity kept, only the field dropped
   expect(items[0]?.pending_interaction).toEqual({
-    kind: "question",
-    question: "Which deck?",
-    options: [{ id: "q2", label: "Q2" }],
+    steps: [
+      {
+        kind: "question",
+        id: "q1",
+        question: "Which deck?",
+        options: [{ id: "q2", label: "Q2" }],
+      },
+      { kind: "connect", id: "c1", toolkit: "gmail" },
+    ],
   });
   expect(items[1]?.pending_interaction).toEqual({
-    kind: "connect",
-    toolkit: "gmail",
+    steps: [{ kind: "connect", id: "c1", toolkit: "gmail" }],
   });
   expect(items[2]?.pending_interaction).toEqual({
-    kind: "custom_integration",
-    proposal: {
-      name: "Acme CRM",
-      baseUrl: "https://api.acme.example",
-      auth: { type: "header", header: "Authorization", prefix: "Bearer " },
-      description: "Acme CRM records",
-    },
-    reason: "to read your CRM contacts",
+    steps: [
+      {
+        kind: "custom_integration",
+        id: "x1",
+        proposal: {
+          name: "Acme CRM",
+          baseUrl: "https://api.acme.example",
+          auth: { type: "header", header: "Authorization", prefix: "Bearer " },
+          description: "Acme CRM records",
+        },
+        reason: "to read your CRM contacts",
+      },
+    ],
   });
   expect(items[3]?.pending_interaction).toEqual({
-    kind: "mcp_server",
-    proposal: {
-      name: "Acme Tracker",
-      url: "https://mcp.acme.example",
-      auth: { type: "bearer" },
-      description: "Acme issue tracker",
-    },
-    reason: "to read your open issues",
+    steps: [
+      {
+        kind: "mcp_server",
+        id: "m1",
+        proposal: {
+          name: "Acme Tracker",
+          url: "https://mcp.acme.example",
+          auth: { type: "bearer" },
+          description: "Acme issue tracker",
+        },
+        reason: "to read your open issues",
+      },
+    ],
   });
   expect(items[4]?.pending_interaction).toBeUndefined();
   expect(diagnostics).toHaveLength(1);
@@ -203,12 +236,15 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
 test("activity update: pending_interaction set / clear / untouched", () => {
   const withInteraction = applyActivityUpdate(
     createActivity({ title: "T" }, "a1", NOW),
-    { pending_interaction: { kind: "connect", toolkit: "slack" } },
+    {
+      pending_interaction: {
+        steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
+      },
+    },
     NOW,
   );
   expect(withInteraction.pending_interaction).toEqual({
-    kind: "connect",
-    toolkit: "slack",
+    steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
   });
 
   // undefined leaves the current interaction alone
@@ -218,8 +254,7 @@ test("activity update: pending_interaction set / clear / untouched", () => {
     NOW,
   );
   expect(untouched.pending_interaction).toEqual({
-    kind: "connect",
-    toolkit: "slack",
+    steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
   });
 
   // explicit null clears the field entirely (not stored as null)
@@ -229,6 +264,33 @@ test("activity update: pending_interaction set / clear / untouched", () => {
     NOW,
   );
   expect("pending_interaction" in cleared).toBe(false);
+});
+
+test("activity update: an invalid (pre-step legacy) pending_interaction is not persisted", () => {
+  const current = applyActivityUpdate(
+    createActivity({ title: "T" }, "a1", NOW),
+    {
+      pending_interaction: {
+        steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
+      },
+    },
+    NOW,
+  );
+  // A PATCH carrying the old top-level shape (no `steps`) must leave the
+  // current value alone instead of storing a shape the UI cannot render.
+  const legacy = applyActivityUpdate(
+    current,
+    {
+      pending_interaction: {
+        kind: "question",
+        question: "Which deck?",
+      } as unknown as import("@houston/protocol").PendingInteraction,
+    },
+    NOW,
+  );
+  expect(legacy.pending_interaction).toEqual({
+    steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
+  });
 });
 
 test("upsert/remove by id", () => {

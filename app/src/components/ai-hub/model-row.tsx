@@ -1,15 +1,17 @@
 /**
  * One ledger row in the models directory, laid out on the shared column grid
- * (`LEDGER_GRID`) so it aligns with the header: Model (glyph + name + maker),
+ * (`LEDGER_GRID`) so it aligns with the header: Model (brand mark + name + maker),
  * Good at (friendly capability chips), Memory (word + muted mono value), Cost
  * (a budget->premium meter + "from $X"), and how many providers offer it. The
+ * `compact` variant (the provider modal) drops the offers column and tightens
+ * the grid (`LEDGER_GRID_COMPACT`) so no horizontal scroll is needed. The
  * whole row is a keyboard-focusable button; nothing is hover-only.
  */
 
 import { cn } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
-import { ProviderGlyph } from "../shell/provider-logos.tsx";
+import { BrandMark } from "../provider-browser/brand-mark.tsx";
 import {
   capabilityKeys,
   cheapestInput,
@@ -18,18 +20,26 @@ import {
   formatTokens,
   labName,
   memoryKey,
+  modelMarkId,
 } from "./format.ts";
 import {
   CapabilityChip,
   CostMeter,
   MemoryLabel,
-  ModelMark,
   PriceText,
 } from "./hub-badges.tsx";
 
 /** Shared grid template for the header and every row, so columns line up. */
 export const LEDGER_GRID =
   "grid grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_120px_160px_120px] items-center gap-x-4 px-5";
+
+/**
+ * The modal variant: no "Offered by" column (inside a provider's modal every
+ * model is offered by THAT provider) and tighter Memory/Cost tracks + gap, so
+ * the four columns fit the 620px modal with no horizontal scroll track.
+ */
+export const LEDGER_GRID_COMPACT =
+  "grid grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_88px_116px] items-center gap-x-3 px-5";
 
 /** Literal i18n keys (kept literal so the typed `t()` accepts them). */
 const CAP_KEY = {
@@ -50,9 +60,12 @@ const TIER_KEY = {
 export function ModelRow({
   model,
   onOpen,
+  compact = false,
 }: {
   model: CatalogModel;
   onOpen: () => void;
+  /** Modal variant: compact grid, no "Offered by" column. */
+  compact?: boolean;
 }) {
   const { t } = useTranslation("aiHub");
   const caps = capabilityKeys(model);
@@ -64,12 +77,12 @@ export function ModelRow({
       type="button"
       onClick={onOpen}
       className={cn(
-        LEDGER_GRID,
+        compact ? LEDGER_GRID_COMPACT : LEDGER_GRID,
         "w-full cursor-pointer py-4 text-left transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
       )}
     >
       <span className="flex min-w-0 items-center gap-3">
-        <ModelMark size="md" mark={<ProviderGlyph providerId={model.lab} />} />
+        <BrandMark providerId={modelMarkId(model)} size="sm" />
         <span className="flex min-w-0 flex-col">
           <span className="truncate font-medium text-foreground text-sm">
             {model.name}
@@ -106,9 +119,11 @@ export function ModelRow({
         />
       </span>
 
-      <span className="text-right text-muted-foreground text-sm tabular-nums">
-        {t("directory.providers", { count: model.offers.length })}
-      </span>
+      {!compact && (
+        <span className="text-right text-muted-foreground text-sm tabular-nums">
+          {t("directory.providers", { count: model.offers.length })}
+        </span>
+      )}
     </button>
   );
 }

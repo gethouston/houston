@@ -25,35 +25,52 @@
       "model": { "type": "string" },
       "pending_interaction": {
         "type": "object",
-        "description": "The one thing this mission is waiting on the user for.",
-        "required": ["kind"],
+        "description": "The ordered steps this mission is waiting on the user for, walked one at a time: question steps first (at most 3), then at most one signin step, then connect steps.",
+        "required": ["steps"],
         "properties": {
-          "kind": { "type": "string", "enum": ["question", "connect"] },
-          "question": { "type": "string" },
-          "options": {
+          "steps": {
             "type": "array",
+            "minItems": 1,
             "items": {
               "type": "object",
-              "required": ["id", "label"],
+              "required": ["kind", "id"],
               "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": ["question", "signin", "connect"]
+                },
                 "id": { "type": "string" },
-                "label": { "type": "string" }
-              }
+                "question": { "type": "string" },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "label"],
+                    "properties": {
+                      "id": { "type": "string" },
+                      "label": { "type": "string" }
+                    }
+                  }
+                },
+                "toolkit": { "type": "string" },
+                "reason": { "type": "string" }
+              },
+              "oneOf": [
+                {
+                  "properties": { "kind": { "const": "question" } },
+                  "required": ["question"]
+                },
+                {
+                  "properties": { "kind": { "const": "signin" } }
+                },
+                {
+                  "properties": { "kind": { "const": "connect" } },
+                  "required": ["toolkit"]
+                }
+              ]
             }
-          },
-          "toolkit": { "type": "string" },
-          "reason": { "type": "string" }
-        },
-        "oneOf": [
-          {
-            "properties": { "kind": { "const": "question" } },
-            "required": ["question"]
-          },
-          {
-            "properties": { "kind": { "const": "connect" } },
-            "required": ["toolkit"]
           }
-        ]
+        }
       }
     },
     "additionalProperties": false

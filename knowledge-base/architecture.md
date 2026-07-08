@@ -11,7 +11,7 @@ ONE deployment-agnostic server — the **host** (`packages/host`, `@houston/host
 - **Open/closed seam** = everything in this repo is OPEN and may never import a cloud library or closed adapter; closed policy lives out-of-repo (the private gateway) and binds behind ports. Documented in `BOUNDARY.md` (repo root), machine-enforced by `scripts/check-boundaries.mjs` (`pnpm check:boundaries`, wired into the PR CI gate).
 - **Self-host** = the local host in Docker behind Caddy TLS (`selfhost/`).
 - **Managed hosted cloud** (the committed hosted architecture) = the same open self-host/local-profile container as a K8s engine pod, one pod/PVC per agent inside a per-org namespace, fronted by a private gateway. The public repo provides `VITE_HOSTED_ENGINE_URL`, the `selfhost/Dockerfile` `engine-pod` target, `HOUSTON_MANAGED_CLOUD=1` capabilities, and `HOUSTON_CODE_EXECUTION=local` (in-container bash, HOU-669); the private repo owns gateway auth, K8s resources, and network policy.
-- **Providers** are in-process in pi: Anthropic + OpenAI/Codex + GitHub Copilot OAuth, plus API-key providers OpenCode Zen/Go, OpenRouter, DeepSeek, Google Gemini, Amazon Bedrock, and MiniMax global (`minimax`, not `minimax-cn`). **No provider CLIs** — the bundled codex/claude/gemini CLIs went away with the Rust engine. Bedrock uses pi-ai's native `amazon-bedrock` provider; Houston maps the stored key to Bedrock's `bearerToken` request option in `packages/runtime/src/ai/bedrock.ts`.
+- **Providers** are in-process in pi: Anthropic + OpenAI/Codex + GitHub Copilot OAuth, plus API-key providers OpenCode Zen/Go, OpenRouter, DeepSeek, Google Gemini, Amazon Bedrock, and MiniMax global (`minimax`, not `minimax-cn`). **No provider CLIs** — the bundled codex/claude/gemini CLIs went away with the Rust engine. Bedrock uses pi-ai's native `amazon-bedrock` provider; Houston maps the stored key to Bedrock's `bearerToken` request option in `packages/runtime/src/ai/bedrock.ts`. The runnable provider/model catalog is served by `GET /v1/catalog` (pi's baked registry) and hydrated frontend-side by the single-owner `use-provider-catalog.ts` hook, which throws (never silently degrades a 404 to `[]`) and toasts on any load or empty-payload failure while a static seed keeps the UI rendering — full flow in `knowledge-base/agent-manifest.md`.
 - **Composio** (and future integrations) = an in-process REST tool behind the `IntegrationProvider` port (`packages/host/src/integrations/`), platform mode: Houston's one project key server-side (`COMPOSIO_API_KEY` on the cloud host / self-host; the desktop forwards through the cloud gateway with the user's Supabase session, `HOUSTON_INTEGRATIONS_URL`), users only OAuth the apps themselves — no per-user Composio account, no CLI.
 - **Multiplayer / Teams (paid cloud only) — SHIPPED** = orgs with owner/admin/user roles (UI Owner/Manager/Member), a per-agent access level `manager|user` on `gateway.agent_assignments`, per-(user, agent) integration grants bounded by an org∩agent allowlist ceiling, a per-agent allowed-models ceiling with per-user model choice, invites/audit/usage, and acting-as identity (the driving user's credentials per turn; routines act as their creator). The **gateway is the sole enforcer** — it classifies every request use vs configure (dispatch-scope) and 403s configure-scope writes from non-managers; the admin "see/manage all agents" rule is GONE (an admin only sees assigned agents). The open repo carries a FULL capability-gated client surface (role matrix v2, org dashboard, Share dialog, allowlists) whose gates are cosmetic. Live server contracts: `cloud/docs/contracts/C3` (v2 matrix), `C4` (grants + effective allowlist), `C7-teams.md` (the older `convergence/contracts/C1..C5` are historical). Client surface: `knowledge-base/teams.md` (feature-detect on `capabilities.multiplayer` + `teams`).
 - **Drift prevention** = port contract suites + the dual-profile parity test (`packages/host/src/dual-profile.test.ts`) + `/v1/capabilities` (no "am I web/desktop" branches). Gate spec: `convergence/parity-checklist.md`. PR CI gate: `.github/workflows/ci.yml`.
@@ -128,6 +128,110 @@ third-party devs to install — the TypeScript front door to the host's protocol
 (HTTP + SSE). `@houston-ai/agent-schemas` ships the JSON schemas for the typed
 `.houston/<type>/<type>.json` layout; `packages/domain` seeds them into each
 agent on create.
+
+## User interaction lifecycle (ask_user / request_connection)
+
+When an agent must block on the user — a question, a choice, an approval, or a
+missing integration — it never leaves the ask sitting in plain text. Two runtime
+tools drive ONE lifecycle across runtime → protocol → SDK → UI:
+
+- **Tool → holder.** `ask_user` (all modes) and `request_connection`
+  (integration-gated) record into a per-turn holder — an `AsyncLocalStorage`
+  established for the duration of `session.prompt()`
+  (`packages/runtime/src/session/interaction.ts`, mirrors acting-context). The
+  holder MERGES the two tools into ONE step sequence: `ask_user` supplies the
+  question steps (1–3 per call, a second call replaces them), each
+  `request_connection` appends a connect step (deduped by toolkit), and a 409
+  `signin_required` from the integrations proxy queues AT MOST ONE `signin`
+  step (`recordSignin`, id `s1`); order is questions → signin → connects. The
+  runtime classifies integration failures by the host error body code, not
+  bare HTTP status: signed-out queues the signin step, not-configured gets
+  honest "not set up in this install" guidance, and transient upstream errors
+  stay transient. The prompt tells the model to batch everything
+  blocking into one turn — e.g. "send an email to john" becomes two question
+  steps (recipient, content) plus a connect step (email app). A fresh holder per
+  turn IS the reset; recording outside a turn is a no-op. The Claude-SDK
+  subprocess backend (a `claude` subprocess that only sees SDK built-ins) reaches
+  the SAME tools through an in-process MCP server ("houston", tools surface as
+  `mcp__houston__*`) in `packages/runtime/src/backends/claude/custom-tools.ts` —
+  so an `anthropic`-backed agent is not told to use tools it lacks.
+- **Holder → done frame.** After `prompt()` resolves, exec-turn (and the cloud
+  per-turn path) reads the holder and attaches its value to the clean terminal
+  `done` frame's optional `pendingInteraction` (`PendingInteraction` =
+  `{ steps: InteractionStep[] }`, each step
+  `{kind:"question", id, question, options?}` | `{kind:"connect", id, toolkit,
+  reason?}`, `packages/protocol`, wire v3). Only the clean path carries it; an
+  error frame never does.
+- **Done frame → settle split.** The SDK folds the frame
+  (`packages/sdk/src/modules/turns/turn-settle.ts`): a clean turn WITH an
+  interaction settles `boardStatus: needs_you` and carries the interaction; a
+  clean turn WITHOUT one settles the NEW terminal `boardStatus: done`. A user Stop
+  / logged-out provider is a handled `needs_you` (never carrying an interaction);
+  a real failure is `error`. `persistBoardStatus` writes `{ status,
+  pending_interaction }` (the web adapter PATCHes it); Activity persists
+  `pending_interaction` (null-cleared at turn start) and the assistant
+  `ChatMessage` persists `pendingInteraction`, so a `needs_you` card survives
+  reload.
+- **Settle → composer card → answer-as-new-turn.** A pending interaction REPLACES
+  the composer with `ChatInteractionCard` (`@houston-ai/chat`, inventory v7): a
+  one-step-at-a-time stepper ("1 of X" progress, back chevron, gray surface with
+  white option rows and an always-visible free-text escape hatch on question
+  steps). Connect steps render through the `renderConnect` prop (the app injects
+  `IntegrationConnectCard`; already-connected toolkits auto-advance); signin
+  steps through `renderSignin` (the app injects a card on the
+  `use-integrations-gate` Google-SSO machinery; already-signed-in auto-advances).
+  Answers are held until the sequence completes, then sent as ONE composed user
+  message (`question: answer` lines, plus `Signed in to Houston.` and
+  `Connected <app>.` lines); connect-ONLY and signin-ONLY sequences keep the
+  hidden auto-continue, fired once on sequence completion — nothing special on
+  the wire.
+
+The old `#houston_toolkit=` markdown-link connect hack is GONE from the prompt and
+tool guidance; the app's legacy link-card renderer survives only to render old
+transcripts. Client-side settle detail: `knowledge-base/client-architecture.md`.
+
+## Turn modes (execute / plan / auto)
+
+Each turn optionally pins a `TurnMode`: `"execute" | "plan" | "auto"`
+(`packages/protocol/src/conversation.ts`). `execute` is full read/write/act,
+today's only behavior for an UNPINNED turn. Routine fire paths explicitly pin
+`auto`, so scheduled work never waits on the user; per-turn cloud user sends do
+not inherit a mode. Deliberately NOT part of `Settings` (which persists
+`effort`): mode rides the per-turn pin only, so an unpinned turn can never
+accidentally end up read-only.
+
+`plan` clamps the turn to a read-only tool subset — `PLAN_MODE_TOOL_NAMES`
+(`read, ls, grep, find, ask_user`, `packages/runtime/src/session/tool-selection.ts`)
+with `edit, write, bash, run_code`, and every integration tool dropped — plus a
+system-prompt overlay (`PLAN_MODE_OVERLAY`,
+`packages/runtime/src/session/plan-overlay.ts`) that tells the model to
+investigate and propose a plan rather than act.
+
+`auto` (Autopilot) is fire-and-forget: it keeps full read/write/act power but
+**removes the two blocking tools** — `ask_user` and `request_connection` — so
+the agent can never end a turn waiting on the user; it finishes the task with
+what it has and reports back. Like plan it rides a system-prompt overlay telling
+the model to decide and proceed rather than ask. `switchModeIfNeeded`
+(`packages/runtime/src/session/conversation-cache.ts`) rebuilds the session
+when the pinned mode differs from the live one, keyed by conversation id — the
+same rebuild rails carry all three modes. Both backends honor it: the pi backend
+swaps its tool allowlist; the Claude-SDK backend keeps its SDK `permissionMode`
+default and simply gets the clamped tool set, so plan/auto still hold.
+
+App side: a Mode pill in the composer footer
+(`app/src/components/chat-mode-selector.tsx`) — persona labels **Planner**
+(`plan`), **Coworker** (`execute`), and **Autopilot** (`auto`), ordered top→bottom
+as an autonomy dial; the wire values are unchanged — remembered
+per-agent as `mode`
+in `.houston/config/config.json` (composer memory only — never synced to
+engine `Settings`). Every user-typed send forwards the pin explicitly as
+`modeOverride`.
+
+**Gotcha.** Mode must ride EVERY send path explicitly, unlike effort (which
+syncs through `Settings` and so is implicitly present on every send) — a send
+path that forgets `modeOverride` silently degrades to `execute`. The routine
+firer pins `auto` itself. Per-turn cloud workspaces drop chat-body pins entirely;
+that's pre-existing and not specific to plan mode.
 
 ## Current gap to vision
 

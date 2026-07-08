@@ -10,6 +10,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { reportBug } from "../../lib/bug-report";
 import { getCurrentUserEmail } from "../../lib/current-user";
+import { genericErrorDescription } from "../../lib/error-toast";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 
@@ -72,12 +73,12 @@ export function ToolRuntimeErrorCard({
         variant: "success",
       });
     } catch (e) {
-      // Surface the actual failure reason. The bare `catch {}` here used
-      // to mask "Bug reporting not configured (missing LINEAR_API_KEY ...)"
-      // for months on Windows builds, making the button look broken.
+      // The bare `catch {}` here used to mask "Bug reporting not configured
+      // (missing LINEAR_API_KEY ...)" for months on Windows builds, making the
+      // button look broken. genericErrorDescription still logs the real reason.
       addToast({
         title: t("shell:toolRuntimeError.reportErrorTitle"),
-        description: e instanceof Error ? e.message : String(e),
+        description: genericErrorDescription("report_tool_runtime_error", e),
         variant: "error",
       });
     } finally {
@@ -93,12 +94,7 @@ export function ToolRuntimeErrorCard({
     } catch (e) {
       addToast({
         title: t("shell:toolRuntimeError.modelUnsupported.switchErrorTitle"),
-        description:
-          e instanceof Error
-            ? e.message
-            : t(
-                "shell:toolRuntimeError.modelUnsupported.switchErrorDescription",
-              ),
+        description: genericErrorDescription("switch_model", e),
         variant: "error",
       });
     } finally {

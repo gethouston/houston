@@ -93,7 +93,13 @@ test("reduceSnapshot keeps the turn running through tool/thinking frames", () =>
   );
   s = reduceSnapshot(s, { type: "text", data: "work" });
   s = reduceSnapshot(s, { type: "tool_start", data: { name: "ls", args: {} } });
-  expect(s).toEqual({ running: true, partial: "work", seq: 0 }); // tool frame doesn't touch text
+  // tool frame doesn't touch text — it lands in the tools list (HOU-717)
+  expect(s).toEqual({
+    running: true,
+    partial: "work",
+    seq: 0,
+    tools: [{ name: "ls", input: {} }],
+  });
   s = reduceSnapshot(s, {
     type: "tool_end",
     data: { name: "ls", isError: false },

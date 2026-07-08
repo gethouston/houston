@@ -14,12 +14,15 @@ import { createMission } from "../lib/create-mission";
 import { missionCardTags } from "../lib/mission-card";
 import { queryKeys } from "../lib/query-keys";
 import { formatVisibleMessageText } from "../lib/queued-chat";
+import { isRoutineSetupMode } from "../lib/routine-chat-setup";
 import {
   type HistoryLoadOptions,
   tauriActivity,
   tauriAttachments,
   tauriChat,
+  tauriConfig,
 } from "../lib/tauri";
+import { readAgentTurnMode } from "../lib/turn-mode";
 import type { Agent } from "../lib/types";
 import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useUIStore } from "../stores/ui";
@@ -69,9 +72,14 @@ export function useMissionControl(agents: Agent[]) {
     > = {};
     const result = convos
       // Archived missions live in the per-agent Archived tab — keep them off
-      // the cross-agent active board.
+      // the cross-agent active board. Routine-setup chats live in the
+      // Routines tab, never as a card.
       .filter(
-        (c) => c.type === "activity" && c.status && c.status !== "archived",
+        (c) =>
+          c.type === "activity" &&
+          c.status &&
+          c.status !== "archived" &&
+          !isRoutineSetupMode(c.agent),
       )
       .map((c) => {
         const agent = agentMap[c.agent_path];
@@ -195,6 +203,12 @@ export function useMissionControl(agents: Agent[]) {
         // in agreement.
         const list = await tauriActivity.list(agentPath);
         const overrides = resolveActivityOverride(sessionKey, list);
+        // Mode is per-agent composer memory (config.mode), not per-activity:
+        // Mission Control has no live pill state, so read it at send time.
+        overrides.modeOverride = await readAgentTurnMode(
+          agentPath,
+          tauriConfig.read,
+        );
         // The turn stream pushes the user bubble into the conversation VM
         // itself — no app-side optimistic push. If the conversation is
         // mid-turn the adapter holds this send; the queued bubble shows the
@@ -260,6 +274,8 @@ export function useMissionControl(agents: Agent[]) {
             promptFile: opts?.promptFile,
             providerOverride: opts?.providerOverride,
             modelOverride: opts?.modelOverride,
+            // Per-agent composer memory; Mission Control has no pill state.
+            modeOverride: await readAgentTurnMode(agentPath, tauriConfig.read),
             titleText: visible,
             buildPrompt: async (activityId) => {
               const saved = await tauriAttachments.save(

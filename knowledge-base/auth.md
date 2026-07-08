@@ -16,6 +16,14 @@ One-click Google sign-in on first launch. CI release tokens live in macOS Keycha
 8. Rust handler in `app/src-tauri/src/auth.rs::emit_deep_link` forwards the URL on a Tauri event (`auth://deep-link`).
 9. Frontend listener in `app/src/lib/auth.ts::installDeepLinkListener` extracts `code`, calls `supabase.auth.exchangeCodeForSession(code)` — Supabase reads the verifier from configured auth storage, exchanges, writes the session back.
 10. `supabase.auth.onAuthStateChange` fires → `useSession()` re-queries → `App.tsx` dismisses `SignInScreen` → sidebar footer `UserMenu` + Settings → Account section appear.
+
+`SignInScreen` (`app/src/components/auth/sign-in-screen.tsx`) renders a two-panel
+sign-in card over a `SpaceBackground` deep-space backdrop layer
+(`space-background.tsx`) — a theme-invariant starfield-canvas + framer-motion
+nebula field on the `--ht-space-*` tokens, reduced-motion-aware (see
+`knowledge-base/design-system.md` → Sign-in space backdrop). The card wordmark
+and footer links draw from the `--ht-space-foreground*` tokens so they read on the
+dark canvas in both themes.
 11. PostHog: `analytics.alias(userId, { email, name })` merges the anonymous `install_id` history into the identified user.
 
 ## Web / Cloud (same components, browser flow)
@@ -319,6 +327,18 @@ How the SDK subprocess runs (`backend.ts`):
   auto-approves in-workspace targets and denies escapes. There is deliberately NO
   `allowedTools` — an allow rule short-circuits `canUseTool` and would bypass the
   clamp.
+- **Houston's custom tools reach the subprocess via an in-process MCP server.** The
+  SDK backend does NOT only see file built-ins: `custom-tools.ts` registers an
+  in-process MCP server (`"houston"`, tools surface as `mcp__houston__*`) that
+  bridges Houston's pi-shaped `ask_user` / `request_connection` /
+  `integration_search` / `integration_execute` onto the SDK's `createSdkMcpServer`,
+  reusing the SAME implementations verbatim. WHY: the shared system prompt MANDATES
+  `ask_user` for every blocking question and `request_connection` for connect
+  hand-offs; without this bridge an `anthropic`-backed agent would be told to use
+  tools it lacks. Handlers run in THIS runtime process, so `recordPendingInteraction`
+  and the sandbox integration proxy work exactly as on the pi path (the per-turn
+  AsyncLocalStorage stores propagate in). See `knowledge-base/architecture.md`
+  (interaction lifecycle).
 - **SDK is an OPTIONAL dep**, lazily imported inside `createSession`/`titleWithClaude`;
   its absence throws typed `ClaudeBackendUnavailableError`, never crashes the runtime.
 - **Binary resolution** (`binary-path.ts`): on Node (self-host / engine-pod /
@@ -412,8 +432,10 @@ is load-bearing: without it a setup-token event (paste flow, docs url, no
 `shouldOpenLoginUrlDirectly` / `providerLoginFallbackAction` take an `authCode`
 flag and always resolve to the **dialog** for `auth_code` (never auto-open), and
 every `ProviderLoginUrl` consumer (`use-provider-login-events.ts` in
-`hooks/provider-connections` + `onboarding/missions`, `provider-picker.tsx`,
-`provider-login-fallback.tsx`) passes it through. `provider-login-dialog.tsx`
+`hooks/provider-connections`, `provider-login-fallback.tsx`) passes it through.
+(The onboarding, migration-reconnect, and workspace-setup flows all connect
+through the shared `<ProviderBrowser>` / `useProviderConnections` now, so their
+bespoke `onboarding/missions/use-provider-login-events.ts` was deleted.) `provider-login-dialog.tsx`
 renders the `instructions` prominently above the paste field and demotes the docs
 `url` to a small optional "Reference" link. The codex loopback relay
 (`shouldUseCodexLoopback`, openai-only) and codex device-code paths are
@@ -491,10 +513,10 @@ until the CLI reports authenticated.
 
 **`ProviderLoginDialog` is a remote-only affordance.** On desktop the engine
 is the co-located sidecar: the provider CLI opens the user's own browser and
-finishes through its `localhost` OAuth callback, so the connect surfaces
-(`ProviderPicker`, and the AI Hub's provider cards via the
-`useProviderConnections` hook — `app/src/hooks/use-provider-connections.ts` +
-`components/ai-hub`) **drop `ProviderLoginUrl` when
+finishes through its `localhost` OAuth callback, so the connect surfaces (the
+shared `<ProviderBrowser>` — AI Hub, onboarding, migration, workspace-setup — all
+via the `useProviderConnections` hook, `app/src/hooks/use-provider-connections.ts`
++ `components/provider-browser`) **drop `ProviderLoginUrl` when
 `osIsTauri()`** and show no dialog — they just wait for `ProviderLoginComplete`
 to flip the card (issue #453). Without that guard claude (which prints its
 `https://claude.com/…` URL unconditionally) flashed a paste-back dialog that
@@ -542,10 +564,10 @@ isn't rejected) and signals the relay task — which holds an `Arc<Notify>` clon
 completion with no `error` as "not an error" and silently clears its pending
 spinner (no toast). A monotonic per-session token guards the relay's
 end-of-life map cleanup so it can't evict a freshly-spawned retry session that
-reused the same provider id. All three connect surfaces wire to it: the
-onboarding brain mission's "Cancel and try again", the workspace-setup
-`ProviderPicker`, and the AI Hub's provider cards (`components/ai-hub`, via the
-`useProviderConnections` hook).
+reused the same provider id. Every connect surface wires to it through the one
+shared `<ProviderBrowser>` (`components/provider-browser`, via the
+`useProviderConnections` hook): the AI Hub, onboarding, migration-reconnect, and
+workspace-setup.
 
 Codex has one extra wrinkle: it can emit retry-shaped 401 messages while it
 refreshes or reconnects, then continue successfully. Treat the synthetic

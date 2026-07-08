@@ -24,7 +24,9 @@ export function createActivity(
   input: Partial<Activity>,
 ): Activity {
   const activity: Activity = {
-    id: `act-${++state.activitySeq}`,
+    // The real host honors a client-generated id (HOU-693) — mirror it so
+    // optimistic flows (warming missions, the welcome mission) round-trip.
+    id: input.id ?? `act-${++state.activitySeq}`,
     title: input.title ?? "Untitled",
     description: input.description ?? "",
     status: input.status ?? "running",

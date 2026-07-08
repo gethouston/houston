@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { genericErrorDescription } from "../lib/error-toast";
 import { logger } from "../lib/logger";
 import { osRevealPath } from "../lib/os-bridge";
 import { saveBlob } from "../lib/save-blob";
@@ -33,7 +34,7 @@ export function useSaveDownload(): (name: string, blob: Blob) => Promise<void> {
                 addToast({
                   variant: "error",
                   title: t("files.toasts.revealFailed"),
-                  description: String(err),
+                  description: genericErrorDescription("reveal_download", err),
                 }),
               );
             },
@@ -44,7 +45,7 @@ export function useSaveDownload(): (name: string, blob: Blob) => Promise<void> {
         addToast({
           variant: "error",
           title: t("files.toasts.saveFailedTitle"),
-          description: err instanceof Error ? err.message : String(err),
+          description: genericErrorDescription("save_download", err),
         });
       }
     },

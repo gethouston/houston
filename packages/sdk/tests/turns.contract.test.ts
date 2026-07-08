@@ -69,8 +69,11 @@ describe("turn send → stream → settle", () => {
       running: false,
       sessionStatus: "completed",
       // The persisted board status now rides the VM (the handled-vs-error
-      // signal a native shell reads); a clean turn lands on needs_you.
-      boardStatus: "needs_you",
+      // signal a native shell reads); a clean turn with nothing outstanding
+      // lands on `done` (needs_you is for a turn that ended asking the user).
+      boardStatus: "done",
+      // No pending interaction — the canned turn ended asking nothing.
+      pendingInteraction: null,
       feed: [
         // The optimistic push — the ONE user bubble (its echo never renders).
         { id: "f0", feed_type: "user_message", data: "Ping" },

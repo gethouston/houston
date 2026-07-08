@@ -79,7 +79,14 @@ body::before {
    surface reads as a pane of glass, not just a faded rectangle.
    Curated allowlist of surface utility classes on purpose. (The
    sidebar is intentionally NOT here — it's transparent now, melted
-   into the window background for the Arc canvas, section 6.) */
+   into the window background for the Arc canvas, section 6.)
+
+   Every [data-theme="dark"] descendant rule in this file carries a
+   `:not(:where([data-theme="light"], [data-theme="light"] *))` guard:
+   a subtree pinned to the light theme via data-theme="light" (e.g. the
+   sign-in card) must get the LIGHT chrome, and without the guard the
+   dark overrides would still match through the <html data-theme="dark">
+   ancestor. :where() keeps the guard at zero specificity. */
 .bg-card {
   backdrop-filter: blur(14px) saturate(1.3);
   -webkit-backdrop-filter: blur(14px) saturate(1.3);
@@ -92,11 +99,13 @@ body::before {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
-[data-theme="dark"] .bg-card {
+[data-theme="dark"]
+  .bg-card:not(:where([data-theme="light"], [data-theme="light"] *)) {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-[data-theme="dark"] .bg-popover {
+[data-theme="dark"]
+  .bg-popover:not(:where([data-theme="light"], [data-theme="light"] *)) {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
@@ -143,7 +152,10 @@ body::before {
   background: #2a2a2d;
 }
 
-[data-theme="dark"] [data-variant="default"]:is(button, a) {
+[data-theme="dark"]
+  [data-variant="default"]:is(button, a):not(
+    :where([data-theme="light"], [data-theme="light"] *)
+  ) {
   /* DARK: flat translucent pill + a plain 1px hairline rim (the
      reference's edge — a flat line, NOT a bevel/shadow). Light frost. */
   background: rgba(255, 255, 255, 0.08);
@@ -152,7 +164,10 @@ body::before {
   -webkit-backdrop-filter: blur(8px);
 }
 
-[data-theme="dark"] [data-variant="default"]:is(button, a):hover {
+[data-theme="dark"]
+  [data-variant="default"]:is(button, a):not(
+    :where([data-theme="light"], [data-theme="light"] *)
+  ):hover {
   background: rgba(255, 255, 255, 0.13);
   border-color: rgba(255, 255, 255, 0.3);
 }
@@ -180,7 +195,9 @@ body::before {
 }
 
 [data-theme="dark"] [data-slot="tabs-list"][data-variant="default"]
-  [data-slot="tabs-trigger"][data-state="active"] {
+  [data-slot="tabs-trigger"][data-state="active"]:not(
+    :where([data-theme="light"], [data-theme="light"] *)
+  ) {
   background: rgba(255, 255, 255, 0.1);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
@@ -213,7 +230,8 @@ body {
   background-color: var(--ht-canvas-screen);
 }
 
-[data-theme="dark"] .canvas-screen {
+[data-theme="dark"]
+  .canvas-screen:not(:where([data-theme="light"], [data-theme="light"] *)) {
   /* Dark keeps its frosted glass; the bg colour comes from the token. */
   backdrop-filter: blur(20px) saturate(1.4);
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
@@ -268,7 +286,8 @@ body {
     0 16px 48px rgba(13, 13, 13, 0.16);
 }
 
-[data-theme="dark"] .ht-shadow-modal {
+[data-theme="dark"]
+  .ht-shadow-modal:not(:where([data-theme="light"], [data-theme="light"] *)) {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     inset 0 0 0 1px var(--ht-border),

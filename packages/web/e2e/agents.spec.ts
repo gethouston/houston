@@ -14,11 +14,21 @@ test("creates an agent and shows it in the sidebar", async ({ page }) => {
   await page.getByRole("button", { name: "New agent" }).click();
   await page.getByText("From scratch").click();
 
-  await page.getByPlaceholder("e.g. Project Alpha").fill("Marketing Bot");
+  await page
+    .getByPlaceholder("e.g. Product manager, Sales, Jerry")
+    .fill("Marketing Bot");
   await page.getByRole("button", { name: "Create Agent" }).click();
 
   // The new agent shows up (sidebar list + selected header both carry the name).
   await expect(page.getByText("Marketing Bot").first()).toBeVisible();
+
+  // The agent's own first mission (HOU-713): a welcome card is created right
+  // away, its conversation opens, and after a short beat the agent greets the
+  // user with the hardcoded intro.
+  await expect(page.getByText("Meet Marketing Bot").first()).toBeVisible();
+  await expect(
+    page.getByText("Hi! I'm Marketing Bot, your new agent", { exact: false }),
+  ).toBeVisible({ timeout: 10_000 });
 });
 
 /**
@@ -34,7 +44,9 @@ test("switches between two agents", async ({ page }) => {
   // Create a second agent; it becomes selected, with an empty board of its own.
   await page.getByRole("button", { name: "New agent" }).click();
   await page.getByText("From scratch").click();
-  await page.getByPlaceholder("e.g. Project Alpha").fill("Research Bot");
+  await page
+    .getByPlaceholder("e.g. Product manager, Sales, Jerry")
+    .fill("Research Bot");
   await page.getByRole("button", { name: "Create Agent" }).click();
 
   await expect(page.getByText("Research Bot").first()).toBeVisible();

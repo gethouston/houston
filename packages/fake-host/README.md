@@ -52,6 +52,7 @@ They drive the failure/reactivity scenarios the specs assert against:
 | `/__test__/reset` | — | Restore the seed + clear all chat channels (called before each test). |
 | `/__test__/emit` | `{ type, agentPath? }` | Push a domain event onto the `/v1/events` reactivity feed. |
 | `/__test__/chat-config` | `{ replyDelayMs }` | Slow the canned reply so a drop/kill lands mid-turn deterministically. |
+| `/__test__/chat-interaction` | `{ interaction }` | Arm the NEXT scripted turn to end on a `PendingInteraction` (its `done` frame carries it) so the settle lands the card on `needs_you` + composer card. `null` disarms. |
 | `/__test__/drop-chat-streams` | — | Sever every open chat stream WITHOUT ending the turns (network blip). Returns `{ dropped }`. |
 | `/__test__/kill-turn` | — | Synthesize the host reaper's terminal `error` frame on every running turn (dead-turn settle). Returns `{ killed }`. |
 | `/__test__/turn-boundary` | `{ nextText }` | End the running turn while nobody watches, then start the next one, so a reconnect resyncs onto a DIFFERENT turnId. Returns `{ advanced }`. |

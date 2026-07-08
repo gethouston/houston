@@ -16,7 +16,18 @@ Visual language: ChatGPT-like. Near-black primary, monochrome, clean typography,
 Colour, typography scale, spacing, radii, motion and elevation are defined ONCE
 in **`packages/design-tokens`** (`@houston/design-tokens`), authored as W3C DTCG
 JSON (primitive layer + semantic `--ht-*` alias layer, light + dark) and compiled
-by Style Dictionary to every surface: `dist/css/tokens.css` (web/desktop),
+by Style Dictionary to every surface. The CSS emits the light values on **both
+`:root` and `[data-theme="light"]`** (and dark on `[data-theme="dark"]`), so any
+subtree can **pin the light look regardless of the app theme** by setting
+`data-theme="light"` on a wrapper — custom properties inherit, so the scoped
+re-declaration re-resolves every `var(--ht-*)`, and thus every Tailwind
+`--color-*` utility, inside it (used by the sign-in card). The `dark` Tailwind
+variant (`ui/core/src/globals.css`) and every `[data-theme="dark"]` descendant
+rule (`futuristic.css`, app `globals.css`) carry a
+`:not(:where([data-theme="light"], [data-theme="light"] *))` guard so dark
+chrome never leaks into a pinned subtree through the `<html>` ancestor — keep
+the guard on any new dark-scoped descendant rule. Outputs:
+`dist/css/tokens.css` (web/desktop),
 `dist/ts/tokens.ts` (JS values), `dist/swift/*.swift` + `dist/kotlin/*.kt`
 (native, no consumers yet). `@houston-ai/core`'s `globals.css` imports the CSS;
 `@theme` there re-exports `--ht-*` to Tailwind `--color-*` as before.
@@ -65,6 +76,22 @@ live values. Historic light-mode reference: `--background #fff` · `--foreground
 #0d0d0d` · `--secondary #f9f9f9` · `--muted-foreground #5d5d5d` · `--border
 #e5e5e5` · `--ring #0d0d0d` · `--accent #f5f5f5` (the futuristic layer now shifts
 several of these — the JSON is authoritative).
+
+### `--ht-space-*` (sign-in backdrop)
+A deliberately **theme-invariant** group — both `color.light.json` and
+`color.dark.json` alias the same `color.space.*` primitives, so the deep-space
+backdrop reads identically in light and dark. Feeds the shared
+`SpaceScreen` backdrop (see Animation → Space screen backdrop): `--ht-space-canvas`
+`#07080f` (near-black indigo base) · `-canvas-glow` `#101430` (gradient top) ·
+`-nebula-1` `#38346b` (violet mid) / `-nebula-2` `#14384c` (teal accent) — the
+nebula-shader palette + the fallback radial glows · `-nebula-core` `#b8b2e8`
+(near-white violet highlight in the shader) / `-nebula-dust` `#04050c` (dark
+dust-lane tint) · `-star` `#dce2f7` (cool-white starfield) · `-star-warm` `#f6e7cd` (the warm ~10%
+of stars) · `-haze` `#8f9bc9` (the faint painted Milky-Way band) · `-foreground`
+`#ffffff` (pure-white wordmark + logo, currentColor) · `-foreground-muted`
+`#8e96b8` (footer links). The `OrbitLoader` rocket + comet trail reuse
+`-foreground` (pure white, head) and `-star` (cool white, tail) — no dedicated
+comet tokens.
 
 ### Borders (opacity)
 5%/15%/15%/25% = light/medium/heavy/xheavy. Use `rgba(13,13,13,X)`.
@@ -133,7 +160,9 @@ Grid: leading (attach) | primary (text) | trailing (send).
 White bg, `border-black/5`, `rounded-xl`, hover shadow. Running state = `card-running-glow` animation border.
 
 ### RowCard (inline notice + integration cards)
-One shared component (`app/src/components/cards/row-card.tsx`) for the compact horizontal cards in chat and integration surfaces: monochrome logo/icon left (`size-8 rounded-lg` media box), `text-[13px]` title + `text-[11px]` muted description, single right-side action slot. Always grey `bg-secondary`, `rounded-xl`, `px-3 py-2.5`. The `inline` prop renders a `<span>` row so it can sit inside assistant markdown prose; `size="md"` gives a roomier modal-heading variant. Pair with `RowCardButton` (`h-7 rounded-full` pill) — its `icon` is **optional**, so action buttons are text-only by default (only the Composio cards pass a trailing link icon), and it is built on `AsyncButton` (HOU-465 rage-click guard). The media slot takes either a `ProviderGlyph` (`shell/provider-logos.tsx`) — monochrome, never full-color brand marks, keyed by provider id with an initial fallback — or a lucide icon. Used by: reconnect / sign-in (`UnauthenticatedCard`, `ProviderReconnectCard`), rate-limit (`RateLimitedCard`, clock icon), the provider-switch dialog, and the Composio sign-in / link cards. Multi-button error cards stay on `ErrorCard` (icon-bubble) in `provider-error-cards/shared.tsx`.
+One shared component (`app/src/components/cards/row-card.tsx`) for the compact horizontal cards in chat and integration surfaces: monochrome logo/icon left (`size-8 rounded-lg` media box), `text-[13px]` title + `text-[11px]` muted description, single right-side action slot. Always grey `bg-secondary`, `rounded-xl`, `px-3 py-2.5`. The `inline` prop renders a `<span>` row so it can sit inside assistant markdown prose; `size="md"` gives a roomier modal-heading variant. Pair with `RowCardButton` (`h-7 rounded-full` pill) — its `icon` is **optional**, so action buttons are text-only by default (only the Composio cards pass a trailing link icon), and it is built on `AsyncButton` (HOU-465 rage-click guard). The media slot takes either a `ProviderGlyph` (`shell/provider-logos.tsx`) — monochrome, never full-color brand marks, keyed by provider id with an initial fallback — or a lucide icon. Used by: reconnect / sign-in (`UnauthenticatedCard`, `ProviderReconnectCard`), rate-limit (`RateLimitedCard`, clock icon), the provider-switch dialog, and the Composio sign-in / link cards.
+
+> **AI Models hub is the one deliberate exception.** The hub (Providers/Models tabs) reaches for a full-color brand mark — `BrandMark` (`app/src/components/ai-hub/brand-mark.tsx`) renders the same `ProviderGlyph` boxless (no tile or wash), full-bleed at sm/md/lg (`size-6/8/10`), colored via the sanctioned hex map in `shell/provider-brand-colors.ts` (the ONLY place raw brand hex may live; every other surface stays on tokens). This is a "candy store" recognition device scoped to the hub — chat surfaces (RowCard, provider-switch, error/reconnect cards) stay monochrome. Multi-button error cards stay on `ErrorCard` (icon-bubble) in `provider-error-cards/shared.tsx`.
 
 ## Empty states
 `Empty` from `@houston-ai/core`. Big `text-2xl font-semibold` title + description + optional action. No icon-in-box. Container must be `flex flex-col` for `flex-1 justify-center`.
@@ -172,6 +201,85 @@ Composer shadow = main depth cue. Else flat or 1px edge: `0 1px 0 rgba(0,0,0,0.0
 Duration: fast 0.2s / common 0.667s / bounce 0.833s / elegant 0.582s. Under 0.3s for interactions.
 
 Rules: `layout` prop on reordering items. `AnimatePresence mode="popLayout"` for lists. Spring > CSS easing.
+
+### Space screen backdrop
+`SpaceScreen` (`app/src/components/space/space-screen.tsx`) is the **shared
+full-screen space layout**: the `--ht-space-canvas` base, the `SpaceBackground`
+deep-space backdrop, and a `z-10` content slot on top. Both the **sign-in
+screen** (`components/auth/sign-in-screen.tsx`) and the **workspace-loading
+splash** (`components/shell/workspace-loading.tsx`) render inside it, so the whole
+boot experience reads as one continuous space. The **sign-in screen** floats a
+card pinned to the **light palette** (`data-theme="light"`) so it stays a bright,
+calm card regardless of app theme (Mercury pattern: dark backdrop, light card).
+The **workspace-loading splash has NO card** — the `OrbitLoader` + status line sit
+directly on the dark backdrop, using the space-foreground token family
+(`--ht-space-foreground` / `-foreground-muted`, same as the sign-in wordmark/footer).
+The whole space rendering cluster lives in **`app/src/components/space/`**.
+
+**`OrbitLoader`** (`space/orbit-loader.tsx` + geometry/trail constants in
+`space/orbit-path.ts`) is the loading centrepiece that replaced the old scaled-up
+`HoustonAvatar running` card: a 240px inline-SVG scene — a soft pulsing core
+(the workspace being assembled), a barely-there tilted elliptical orbit ring
+(`--ht-space-star` @ 0.16), and a rocket ship (a single closed compound `<path>`:
+ogive nose cone, cylindrical body, swept tail fins, tapered engine base) travelling
+the ellipse via SMIL `<animateMotion rotate="auto">` (6s lap, unhurried; the path
+points nose-first along +x). The comet streak is 12 soft blurred capsule ellipses
+riding the SAME `<mpath>` path with negative `begin` offsets + decreasing
+opacity/scale, so they overlap into one continuous glowing streak rather than
+reading as discrete blobs. All white: it fades mainly via opacity, with a subtle
+tone shift from `--ht-space-foreground` (pure white, head) to `--ht-space-star`
+(cool white, tail) for depth — no amber/blue, no colour literals. No JS loop, no
+per-frame allocation. SMIL ignores `prefers-reduced-motion`, so it
+branches on framer-motion `useReducedMotion()` → a single static ship parked on
+the ring beside the static core, zero `<animate*>` elements.
+
+`SpaceBackground` (`app/src/components/space/space-background.tsx`) is the
+deep-space layer itself — an `aria-hidden`, `pointer-events-none` absolute layer,
+all colour from the theme-invariant `--ht-space-*` tokens. Three stacked sublayers:
+
+**(1) Base gradient** — a near-black indigo `linear-gradient` (canvas-glow → canvas),
+always present; it is also the base the WebGL fallback draws over.
+
+**(2) Nebula — WebGL fragment shader** (`nebula-gl.tsx` + `nebula-shader.ts` +
+`nebula-noise.ts` + `nebula-program.ts`). A fullscreen GLSL ES 1.00 shader (runs on
+`webgl2`, falls back to `webgl`), no textures, no libs. Technique: **5-octave FBM**
+(lacunarity 2, gain 0.5) with a **double domain warp**
+(`palette(fbm(p + K·fbm(p + K·fbm(p))))`, **K = 2.5**) so it reads as filamentary
+nebula, not cloud; the **inner** warp coordinate drifts with time
+(**0.004 units/s**) so the nebula *morphs in place* — nothing translates. **Ridged
+abs-noise** carves dark dust lanes; a knee-at-0.16 highlight-only tone curve plus a
+per-pixel **hash dither** kill banding (this replaced the old canvas grain — no
+double noise). Brightness is **biased along the Milky-Way diagonal** using the exact
+`starfield-model.ts` geometry (direction `(w, -h)`, screen centre, half-width
+`0.175·diag`) so nebula + star band read as one structure. **Peak luminance is
+clamped to ≤ 0.22** (Rec.709 luma) so the card is always the brightest thing on
+screen. Noise is Stefan Gustavson / Ian McEwan's **public-domain** simplex (NOT a
+Shadertoy port). Palette = six `vec3` uniforms read once from `--ht-space-canvas`,
+`-canvas-glow`, `-nebula-1` (violet mid), `-nebula-2` (teal accent), `-nebula-core`
+(near-white violet highlight), `-nebula-dust` (dark lane tint) — no colour literal
+in code. Perf: internal resolution = css · `min(DPR, 1.5)` · 0.6 (GPU-upscaled);
+**30 fps** cap (skipped rAF ticks); paused on `visibilitychange`; **adaptive
+degrade** — if the draw dispatch stays > 8 ms it drops 5 → 3 octaves, then freezes
+to a static frame. `prefers-reduced-motion` → exactly one frame. If WebGL is
+unavailable or the context is lost (`webglcontextlost`), `NebulaGL` calls back and
+`SpaceBackground` swaps in the **fallback**: two heavily-blurred (130px) barely-there
+`--ht-space-nebula-1/2` radial glows drifting on 78–88s mirrored framer-motion loops
+(the previous implementation, kept as the fallback branch).
+
+**(3) Starfield** (`starfield.tsx` + `starfield-model.ts` + `starfield-sprites.ts`),
+the middle layer over the nebula. Magnitude-skewed brightness (`pow(rand, 2.5)` — most
+faint, few bright, radius correlated), colour temperature (~65% cool-white
+`--ht-space-star` / ~25% neutral / ~10% warm `--ht-space-star-warm`), a diagonal
+**Milky-Way band** (~57% of near stars biased into a ~35%-of-diagonal strip at ~2.5×
+density, plus a faint painted `--ht-space-haze` band). A **far depth layer** adds
+~60% more stars (0.2–0.4px, alpha ≤ 0.15, half drift speed) for parallax depth.
+**Bloom** on the brightest ~8% uses one of **three temperature-tinted** sprites
+(white-hot core, tinted outer glare) keyed by the star's temperature bucket. Only
+faint stars twinkle (±15%, 5–12s); drift is near-still (≤0.8px/s). The static layer
+keeps the haze band + corner **vignette** but no longer paints grain (the shader
+dither supersedes it). The draw loop is allocation-free (precomputed `fillStyle` per
+star, twinkle via `globalAlpha`, offscreen sprites `drawImage`d). `prefers-reduced-motion`
+→ a single static frame. Restraint over spectacle — it is a backdrop, never the show.
 
 ## Icons
 Lucide React only. 20px standard (`h-5 w-5`), 16px small, 24px large. Stroke 2px (or 1.5px lighter). `currentColor`.

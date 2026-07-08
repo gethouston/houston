@@ -829,6 +829,31 @@ export async function writeAgentFile(
 }
 
 /**
+ * Workspace + user context (HOU-711) — gateway-TERMINATED, Supabase-backed, NOT
+ * proxied to a pod: the two markdown blobs the Settings screen edits. `kind`
+ * picks the resource — `workspace` is org-wide (manager-write), `user` is the
+ * caller's own. The gateway splices both into each chat turn's prompt, so the
+ * cloud path never writes them to the agent volume (unlike the local file path).
+ */
+export async function getContext(
+  cfg: ControlPlaneConfig,
+  kind: "workspace" | "user",
+): Promise<string> {
+  const res = await cpFetch(cfg, `/v1/${kind}-context`);
+  return ((await res.json()) as { content: string }).content;
+}
+export async function setContext(
+  cfg: ControlPlaneConfig,
+  kind: "workspace" | "user",
+  content: string,
+): Promise<void> {
+  await cpFetch(cfg, `/v1/${kind}-context`, {
+    method: "PUT",
+    body: JSON.stringify({ content }),
+  });
+}
+
+/**
  * Composer attachments. Upload the dropped files INTO the agent's workspace —
  * its durable, Files-tab-visible `uploads/` folder — so the runtime's clamped
  * file tools can Read them during this turn and any later conversation
@@ -927,11 +952,20 @@ export function subscribeEvents(
   void streamGlobalEvents({
     url: () =>
       `${cfg.baseUrl}/v1/events?token=${encodeURIComponent(liveToken(cfg.token))}`,
-    fetch,
+    // Wrapped, never the bare reference: streamGlobalEvents calls
+    // `opts.fetch(...)`, and a browser's window.fetch invoked with a foreign
+    // receiver throws "Illegal invocation" BEFORE any request goes out — the
+    // stream then silently retry-looped forever and no server event ever
+    // reached the app (agent-written routines/skills/files never refreshed).
+    // Node's fetch is receiver-agnostic, so unit tests never caught it.
+    fetch: (input, init) => fetch(input, init),
     signal: ac.signal,
     onUnauthorized: () => {
       void refreshLiveToken();
     },
+    // Log-only (no toast): a background stream that auto-reconnects — but it
+    // must never fail silently again.
+    onError: (err) => console.warn("[events] global stream error:", err),
     onEvent: (data) =>
       onEvent(
         toInvalidationEvent(

@@ -5,8 +5,9 @@
  * warms up for a couple of minutes with no readiness signal from the platform
  * (see `lib/agent-provisioning.ts`). `useAgentStore.create` marks the fresh
  * agent here; a readiness long-poll clears it the moment the agent's engine
- * answers anything. The banner (`AgentProvisioningBanner`) and the in-chat
- * card (`AgentProvisioningCard`) subscribe to the presence map.
+ * answers anything. The board's optimistic mission rows
+ * (`hooks/use-warming-board-rows.ts`) and the warming-write guard subscribe
+ * to the presence map.
  *
  * The Zustand `provisioning` record is the single source of truth; the
  * localStorage mirror (so a relaunch mid-warm-up doesn't drop the state,
@@ -25,6 +26,8 @@ import {
 import { getEngine, isCoLocatedEngine, whenEngineReady } from "../lib/engine";
 import { reportError, showErrorToast } from "../lib/error-toast";
 import i18n from "../lib/i18n";
+import { queryClient } from "../lib/query-client";
+import { queryKeys } from "../lib/query-keys";
 import {
   buildWarmingSend,
   flushWarmingSends,
@@ -38,6 +41,12 @@ const STORAGE_KEY = "houston.agent-provisioning";
 interface AgentProvisioningState {
   /** agentId → its provisioning entry, present while the engine warms up. */
   provisioning: Record<string, ProvisioningEntry>;
+  /**
+   * Bumped on every queued send. Entries mutate in place (their identity is a
+   * live probe's exit switch), which alone never notifies subscribers — this
+   * counter is the change signal the optimistic board rows re-render on.
+   */
+  sendsVersion: number;
   /** Start tracking a just-created agent (no-op on a co-located engine). */
   markProvisioning: (agent: { id: string; folderPath: string }) => void;
   /** A rename mid-warm-up moves the agent's id/path; re-key the entry. */
@@ -52,6 +61,17 @@ interface AgentProvisioningState {
    * started): the caller sends normally.
    */
   queueWarmingSend: (agentId: string, args: QueueWarmingSendArgs) => boolean;
+  /**
+   * Flip the status a queued row will land with (the welcome mission
+   * settling to needs_you once its greeting reveals, HOU-713). False when
+   * the agent isn't marked, the flush already started, or no queued send
+   * carries that row — the caller patches the real row instead.
+   */
+  setQueuedRowStatus: (
+    agentId: string,
+    activityId: string,
+    status: string,
+  ) => boolean;
   /**
    * Stop tracking. With `onlyIf`, clears only while that exact entry is still
    * current — a probe's own settle must not clear a newer re-mark of the id.
@@ -89,6 +109,7 @@ export function isAgentProvisioning(agentId: string): boolean {
 export const useAgentProvisioningStore = create<AgentProvisioningState>(
   (set, get) => ({
     provisioning: {},
+    sendsVersion: 0,
 
     markProvisioning: (agent) => {
       if (isCoLocatedEngine()) return;
@@ -117,12 +138,29 @@ export const useAgentProvisioningStore = create<AgentProvisioningState>(
       const entry = get().provisioning[agentId];
       if (!entry || isFlushingWarmingSends(entry)) return false;
       // Mutate in place: replacing the entry object would retire its live
-      // probe (the probe's exit switch is entry identity). Presence didn't
-      // change, so no set() — only the mirror needs the new send.
+      // probe (the probe's exit switch is entry identity). The version bump
+      // is what notifies subscribers (the board's optimistic rows).
       entry.pendingSends = [
         ...(entry.pendingSends ?? []),
         buildWarmingSend(args),
       ];
+      set((s) => ({ sendsVersion: s.sendsVersion + 1 }));
+      storageWrite(get().provisioning);
+      return true;
+    },
+
+    setQueuedRowStatus: (agentId, activityId, status) => {
+      const entry = get().provisioning[agentId];
+      if (!entry || isFlushingWarmingSends(entry)) return false;
+      if (!entry.pendingSends?.some((s) => s.row?.id === activityId)) {
+        return false;
+      }
+      // Same in-place posture as queueWarmingSend: keep the entry object (a
+      // live probe's exit switch) but swap the array so selectors see it.
+      entry.pendingSends = entry.pendingSends.map((s) =>
+        s.row?.id === activityId ? { ...s, row: { ...s.row, status } } : s,
+      );
+      set((s) => ({ sendsVersion: s.sendsVersion + 1 }));
       storageWrite(get().provisioning);
       return true;
     },
@@ -158,17 +196,25 @@ function startProbe(entry: ProvisioningEntry): void {
       useAgentProvisioningStore.getState().provisioning[id] === entry,
     onReady: (id) => {
       // Deliver the queued messages FIRST (their turns register before any
-      // new composer send can), then drop the card/placeholder.
-      void flushWarmingSends(entry).finally(() =>
-        store.clearProvisioning(id, entry),
-      );
+      // new composer send can). Then refetch the board BEFORE dropping the
+      // entry, so the optimistic rows hand off to the real rows the flush
+      // wrote without a one-frame gap (HOU-713) — new sends already steer to
+      // the normal wire path once the flush has started.
+      void flushWarmingSends(entry)
+        .then(() =>
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.activity(entry.agentPath),
+          }),
+        )
+        .finally(() => store.clearProvisioning(id, entry));
     },
     onTimeout: (id, lastError) => {
       store.clearProvisioning(id, entry);
       showErrorToast(
         "agent_provisioning",
-        i18n.t("shell:agentProvisioning.failed"),
+        lastError instanceof Error ? lastError.message : String(lastError),
         lastError,
+        { userMessage: i18n.t("shell:agentProvisioning.failed") },
       );
     },
     sleep,

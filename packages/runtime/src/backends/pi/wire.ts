@@ -1,6 +1,10 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
-import type { TokenUsage, WireEvent } from "@houston/runtime-client";
+import {
+  clipToolResult,
+  type TokenUsage,
+  type WireEvent,
+} from "@houston/runtime-client";
 import { classifyProviderError } from "../../ai/provider-error";
 
 /**
@@ -11,18 +15,53 @@ import { classifyProviderError } from "../../ai/provider-error";
  * the same shape), so the prompt that occupies the context window is everything
  * but `output`: `context_tokens = totalTokens - output`. `cached_tokens` is the
  * cache-read portion. This mirrors the Rust engine's `ClaudeUsageRaw::normalize`.
+ *
+ * Some providers (notably Gemini through pi's OpenAI-completions path) deliver
+ * the component fields WITHOUT a summed `totalTokens`. Rather than drop that turn
+ * to null (an empty context bar that never triggers autocompact), synthesize the
+ * window fill from the components: `context_tokens = input + cacheRead + cacheWrite`.
+ * `output` alone says nothing about context size, so a usage with no
+ * context-contributing field left stays null (no misleading zero).
  */
 export function normalizeUsage(u: unknown): TokenUsage | null {
   const usage = u as
-    | { totalTokens?: number; output?: number; cacheRead?: number }
+    | {
+        totalTokens?: number;
+        input?: number;
+        output?: number;
+        cacheRead?: number;
+        cacheWrite?: number;
+      }
     | null
     | undefined;
-  if (!usage || typeof usage.totalTokens !== "number") return null;
-  const output = usage.output ?? 0;
+  if (!usage) return null;
+  const num = (v: unknown): number | undefined =>
+    typeof v === "number" && Number.isFinite(v) ? v : undefined;
+  const output = num(usage.output) ?? 0;
+  const cacheRead = num(usage.cacheRead) ?? 0;
+  const total = num(usage.totalTokens);
+  if (total !== undefined) {
+    return {
+      context_tokens: Math.max(0, total - output),
+      output_tokens: output,
+      cached_tokens: cacheRead,
+    };
+  }
+  // No totalTokens: fall back to the components. Require at least one
+  // context-contributing field (input / cacheRead / cacheWrite); output-only or
+  // an empty object carries no window signal and degrades to null.
+  const input = num(usage.input);
+  const cacheWrite = num(usage.cacheWrite);
+  if (
+    input === undefined &&
+    cacheWrite === undefined &&
+    num(usage.cacheRead) === undefined
+  )
+    return null;
   return {
-    context_tokens: Math.max(0, usage.totalTokens - output),
+    context_tokens: Math.max(0, (input ?? 0) + cacheRead + (cacheWrite ?? 0)),
     output_tokens: output,
-    cached_tokens: usage.cacheRead ?? 0,
+    cached_tokens: cacheRead,
   };
 }
 
@@ -44,11 +83,21 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
     }
     case "tool_execution_start":
       return { type: "tool_start", data: { name: e.toolName, args: e.args } };
-    case "tool_execution_end":
+    case "tool_execution_end": {
+      // Carry the tool's output text (what the model saw), clipped here at
+      // the source so every downstream carrier — feed, snapshot, history —
+      // holds a bounded preview (HOU-717). Image blocks have no text and
+      // are skipped; a text-less result omits the field.
+      const content = toolResultText(e.result);
       return {
         type: "tool_end",
-        data: { name: e.toolName, isError: !!e.isError },
+        data: {
+          name: e.toolName,
+          isError: !!e.isError,
+          ...(content ? { content: clipToolResult(content) } : {}),
+        },
       };
+    }
     case "turn_end": {
       // Fired once per turn with the final assistant message.
       //
@@ -100,6 +149,26 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
     default:
       return null;
   }
+}
+
+/**
+ * The text a pi tool result returned to the model — its `content` text blocks
+ * joined. Best-effort against `result: any`: anything not shaped like pi's
+ * `AgentToolResult` reads as "no text" rather than throwing mid-stream.
+ */
+function toolResultText(result: unknown): string {
+  const content = (result as { content?: unknown } | null | undefined)?.content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .filter(
+      (b): b is { type: "text"; text: string } =>
+        b !== null &&
+        typeof b === "object" &&
+        (b as { type?: unknown }).type === "text" &&
+        typeof (b as { text?: unknown }).text === "string",
+    )
+    .map((b) => b.text)
+    .join("\n");
 }
 
 /**

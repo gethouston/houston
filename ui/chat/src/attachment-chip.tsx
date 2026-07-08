@@ -13,6 +13,12 @@ import {
   XIcon,
 } from "lucide-react";
 import { PromptInputSubmit } from "./ai-elements/prompt-input";
+import {
+  DictationRecording,
+  DictationTranscribing,
+} from "./dictation-controls";
+import type { DictationControl } from "./dictation-types";
+import { isDictationBusy, resolveDictationView } from "./dictation-types";
 
 export function getExt(name: string): string {
   const dot = name.lastIndexOf(".");
@@ -132,35 +138,50 @@ export interface ComposerTrailingProps {
   status: "ready" | "streaming" | "submitted";
   hasContent: boolean;
   onStop?: () => void;
+  /** When absent (e.g. the web build) no mic affordance renders at all. */
+  dictation?: DictationControl;
 }
 
 /**
- * Trailing button row: dictate (idle, optional) + always-visible submit.
+ * Trailing button row: dictation affordance (prop-driven, optional) +
+ * always-visible submit.
  *
- * The submit button is rendered as `disabled` when there's no content to
- * send, which keeps the affordance stable in the same spot. The previous
- * "voice mode" wave icon was removed because it wasn't wired to anything.
+ * With no `dictation` control nothing but submit renders. When present the
+ * control's state picks the affordance: a mic button (idle), the recording
+ * controls (requesting/recording), or a transcribing spinner. Submit is
+ * disabled while a capture is in flight so it can't race the transcript.
  */
 export function ComposerTrailing({
   status,
   hasContent,
   onStop,
+  dictation,
 }: ComposerTrailingProps) {
+  const view = resolveDictationView(dictation);
+  const submitDisabled =
+    (status === "ready" && !hasContent) || isDictationBusy(dictation);
   return (
     <div className="flex items-center gap-1.5 [grid-area:trailing]">
-      {status === "ready" && (
+      {view.kind === "idle" && status === "ready" && dictation && (
         <button
           type="button"
+          onClick={dictation.onStart}
           className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-accent transition-colors"
-          aria-label="Dictate"
+          aria-label={dictation.labels.start}
         >
           <MicIcon className="size-5" />
         </button>
       )}
+      {view.kind === "recording" && dictation && (
+        <DictationRecording control={dictation} startedAt={view.startedAt} />
+      )}
+      {view.kind === "transcribing" && dictation && (
+        <DictationTranscribing label={dictation.labels.transcribing} />
+      )}
       <PromptInputSubmit
         status={status}
         onStop={onStop}
-        disabled={status === "ready" && !hasContent}
+        disabled={submitDisabled}
       />
     </div>
   );

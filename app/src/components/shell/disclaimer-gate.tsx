@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useLegalAcceptance } from "../../hooks/use-legal-acceptance";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
 import { analytics } from "../../lib/analytics";
+import { genericErrorDescription } from "../../lib/error-toast";
 import { SetupCard } from "../onboarding/setup-card";
 
 interface Section {
@@ -60,7 +61,7 @@ function AgreementScreen({
       // Funnel step 6: consent accepted (only after the write resolves).
       analytics.track("onboarding_agreement_accepted");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(genericErrorDescription("accept_disclaimer", err));
       setBusy(false);
     }
   }, [busy, onAccept]);

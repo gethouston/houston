@@ -2,9 +2,7 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   canSubmitMcp,
-  type McpProposal,
   mcpNeedsSecret,
-  mcpProposalDismissKey,
 } from "../src/components/mcp-server-card-state.ts";
 
 describe("mcpNeedsSecret", () => {
@@ -28,38 +26,5 @@ describe("canSubmitMcp", () => {
     const header = { type: "header", header: "X-API-Key" } as const;
     strictEqual(canSubmitMcp(header, "a".repeat(4096)), true);
     strictEqual(canSubmitMcp(header, "a".repeat(4097)), false);
-  });
-});
-
-describe("mcpProposalDismissKey", () => {
-  const base: McpProposal = {
-    name: "Acme Tracker",
-    url: "https://mcp.acme.com",
-    auth: { type: "bearer" },
-    description: "Acme's issue tracker.",
-  };
-
-  it("is stable for the same activity + name + URL", () => {
-    strictEqual(
-      mcpProposalDismissKey("act_1", base),
-      mcpProposalDismissKey("act_1", { ...base, description: "changed" }),
-    );
-  });
-
-  it("differs by activity, name, or URL", () => {
-    const a = mcpProposalDismissKey("act_1", base);
-    strictEqual(a === mcpProposalDismissKey("act_2", base), false);
-    strictEqual(
-      a === mcpProposalDismissKey("act_1", { ...base, name: "Other" }),
-      false,
-    );
-    strictEqual(
-      a ===
-        mcpProposalDismissKey("act_1", {
-          ...base,
-          url: "https://mcp.other.com",
-        }),
-      false,
-    );
   });
 });

@@ -37,6 +37,7 @@
   },
   "errorToast": {
     "problemTitle": "Houston, we have a problem!",
+    "genericDescription": "Something unexpected went wrong. Please try again.",
     "reportSentTitle": "Houston, report sent",
     "reportSentDescription": "Reference #{{id}}.",
     "copyId": "Copy code"
@@ -127,17 +128,19 @@
   "providerReconnect": {
     "title": "Session expired",
     "body": "Your {{provider}} connection ended, this happens from time to time. Sign back in and you're good to go.",
-    "reconnect": "Reconnect to {{provider}}",
     "waiting": "Waiting for browser sign-in...",
-    "tryAgain": "Try again",
+    "signInAgain": "Sign in again",
     "launchError": "Could not open sign-in. Try again."
   },
   "agentProvisioning": {
     "title": "We are creating your agent",
-    "body": "This may take a moment.",
-    "chatBody": "It will reply to your message as soon as it is ready.",
     "failed": "We could not finish creating your agent. Please try again in a moment.",
     "blockedBody": "It is almost ready. This action will be available in a moment, as soon as your agent finishes setting up."
+  },
+  "agentWelcome": {
+    "missionTitle": "Meet {{name}}",
+    "missionDescription": "Your new agent introduces itself",
+    "failed": "We could not start your new agent's first chat. You can still send it a message yourself."
   },
   "toolRuntimeError": {
     "title": "Something got stuck",
@@ -183,7 +186,7 @@
     "dialogTitle": "Name your Agent",
     "newAgentFallback": "New Agent",
     "tagline": "Pick a color and name your agent",
-    "namePlaceholder": "e.g. Project Alpha",
+    "namePlaceholder": "e.g. Product manager, Sales, Jerry",
     "linkExistingProject": "Link existing project",
     "createAgent": "Create Agent"
   },
@@ -195,62 +198,28 @@
     "fromScratchDescription": "A blank agent with no instructions or actions. Build it your way."
   },
   "aiAssist": {
-    "brainLabel": "Set up with",
     "cardTitle": "Create with AI",
-    "cardDescription": "Answer a few quick questions and we'll write your agent's instructions",
-    "stepTitle": "Set up your agent",
-    "generateButton": "Generate instructions",
-    "generatingMessage": "Writing your agent's instructions...",
+    "cardDescription": "Describe your work and an AI consultant designs the agent for you",
+    "stepTitle": "Brief your AI consultant",
+    "stepDescription": "Tell us about your role, the tasks that eat your time, and the tools you use. Your consultant designs the agent's job around it.",
+    "briefLabel": "What should this agent take off your plate?",
+    "briefPlaceholder": "e.g. I run sales at a small agency. I spend hours chasing follow-ups, updating the pipeline sheet, and writing recap emails after calls...",
+    "examplesLabel": "Or start from an example",
+    "examples": {
+      "sales": "I lead sales and lose hours to follow-up emails and keeping the CRM current",
+      "inbox": "My inbox is overflowing. I want a morning digest and drafts for routine replies",
+      "reports": "Every Friday I compile a team status report from scattered updates and sheets",
+      "research": "I need market and competitor research summarized into briefs I can share"
+    },
+    "generateButton": "Design my agent",
+    "generatingMessage": "Your consultant is designing the agent...",
     "cancelButton": "Cancel",
     "generatedTitle": "Here are your agent's instructions",
     "generatedHelper": "Review and edit the instructions below, then continue when ready",
     "nameLabel": "Agent name",
     "namePlaceholder": "e.g. Email Inbox Manager",
     "errorTitle": "Generation failed",
-    "errorDescription": "Could not generate instructions. Make sure your AI provider is connected and try again.",
-    "form": {
-      "focusLabel": "What should this agent help with?",
-      "focusRequired": "Pick a focus area to continue",
-      "traitsLabel": "Pick up to 3 traits",
-      "traitsHint": "{{selected}}/{{max}} selected",
-      "verbosityLabel": "How detailed should responses be?",
-      "verbosityMin": "Brief",
-      "verbosityMax": "Exhaustive",
-      "askFirstLabel": "Should it ask questions before answering?",
-      "askFirstHint": "The agent will clarify your request before diving in",
-      "extraLabel": "Additional instructions",
-      "extraOptional": "optional",
-      "extraPlaceholder": "Any other preferences, rules, or context for this agent..."
-    },
-    "focus": {
-      "personalProductivity": "Personal productivity",
-      "workBusiness": "Work and business",
-      "researchLearning": "Research and learning",
-      "writingEditing": "Writing and editing",
-      "codingDev": "Coding and development",
-      "customerSupport": "Customer support",
-      "dataAnalysis": "Data and analysis",
-      "creativeDesign": "Creative and design"
-    },
-    "traits": {
-      "concise": "Concise",
-      "thorough": "Thorough",
-      "friendly": "Friendly",
-      "professional": "Professional",
-      "creative": "Creative",
-      "analytical": "Analytical",
-      "proactive": "Proactive",
-      "cautious": "Cautious",
-      "structured": "Structured",
-      "casual": "Casual"
-    },
-    "verbosity": {
-      "1": "Very brief",
-      "2": "Brief",
-      "3": "Balanced",
-      "4": "Detailed",
-      "5": "Very detailed"
-    }
+    "errorDescription": "Could not generate instructions. Make sure your AI provider is connected and try again."
   },
   "aiReview": {
     "stepTitle": "Review your agent",
@@ -282,7 +251,7 @@
     "continueButton": "Continue"
   },
   "engineGate": {
-    "starting": "Loading your workspace…",
+    "starting": "Loading your agents…",
     "reconnected": "Houston reconnected",
     "loadFailed": "Couldn't load your available AI models. Check your connection and try again.",
     "authRequiredTitle": "Sign-in required",
@@ -327,9 +296,9 @@
       "reconnectedTitle": "Reconnected to {{provider}}",
       "reconnectedBody": "You are signed in again. Pick up where you left off.",
       "reconnectedResending": "You are signed in again. Houston is answering your message now.",
+      "reconnectedResuming": "You are signed in again. Houston is continuing where you left off.",
       "signedIn": "Signed in",
-      "sendAgain": "Try again",
-      "failedBody": "The {{provider}} sign-in did not finish. Try again. {{detail}}"
+      "failedBody": "The {{provider}} sign-in did not finish. Sign in again. {{detail}}"
     },
     "networkUnreachable": {
       "title": "Cannot reach {{provider}}",

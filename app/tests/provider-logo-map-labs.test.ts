@@ -15,21 +15,22 @@ import type { BrandKey } from "../src/components/shell/provider-logo-map.ts";
 import { providerBrandKey } from "../src/components/shell/provider-logo-map.ts";
 import type { LabId } from "../src/lib/ai-hub/catalog-types.ts";
 
-// `null` = no shipped mark, resolves to the monogram (same as the provider list).
+// `null` = no shipped mark; the hub then borrows an offering provider's logo
+// (`modelMarkId`), and only an id with no offers at all draws the monogram.
 const EXPECTED: Record<LabId, BrandKey | null> = {
   anthropic: "anthropic",
   openai: "openai",
   google: "google",
-  meta: null,
+  meta: "meta",
   mistral: "mistral",
-  qwen: null,
+  qwen: "qwen",
   deepseek: "deepseek",
   xai: "xai",
   amazon: "amazon-bedrock",
   minimax: "minimax",
   zai: "zai",
   moonshot: "moonshotai",
-  cohere: null,
+  cohere: "cohere",
   nvidia: "nvidia",
   other: null,
 };

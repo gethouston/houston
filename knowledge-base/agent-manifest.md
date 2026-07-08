@@ -128,8 +128,16 @@ First-run onboarding is a seven-mission guided setup driven by
 
 1. Welcome screen offers start vs. skip.
 2. **Meet** — name + color the assistant.
-3. **Brain** — pick provider (OpenAI / Anthropic) and create the workspace +
-   assistant.
+3. **Connect** — connect your AI in a single `connect` step
+   (`missions/connect-ai.tsx`) that embeds the shared `<ProviderBrowser>` (the
+   same ai-hub marketplace surface, via `useProviderBrowserData`), so onboarding
+   lists this deployment's full runnable catalog with search + quick-filter and
+   connects through every auth type (OAuth, API key, OpenAI-compatible endpoint,
+   Copilot enterprise). Replaces the old bespoke `brain` (OpenAI/Anthropic pick) +
+   `providerLogin` pair; it fires the `ai_provider_connected` funnel event
+   (ref-guarded, once per install) and auto-advances to the `aiConnected` success
+   screen the instant a provider connects. The workspace + assistant are
+   provisioned by the create-agent step, not here.
 4. **Tools** — sign into Composio so the agent has hands.
 5. **Try** — one real mission (`Plan my next working day`). The agent reads
    inbox + calendar in parallel, cross-references them, posts a structured
@@ -332,24 +340,53 @@ Notes:
   One card + one slot means no per-card status disambiguation. Full design:
   `convergence/README.md`.
 
-### The chat model picker (search-first redesign)
+### The chat model picker (minimal two-level menu)
 
-The composer's model picker is a **search-first command menu**
-(`@houston-ai/core` `ModelPicker`, built on cmdk) that replaced the old
-provider-grouped radix dropdown. It scales from a provider's two models to
-OpenRouter's 300+ on one surface: search + sort (relevance / price / context /
-newest) + capability & price filters, a provider rail with connection state,
-pinned **Recents** and **Favorites**, and rich rows (brand icon, price tier,
-"New" badge, favorite star, capability icons, a `ⓘ` detail with exact $/Mtok).
-The library component is props-only and i18n-agnostic (`labels?`); all app
-wiring lives in `app/src/components/chat-model-selector.tsx`.
+The composer's model picker is a **minimal two-level command menu**
+(`@houston-ai/core` `ModelPicker`, built on cmdk). **Level 1** lists ONLY the
+connected providers (brand glyph + name, a check on the currently-selected
+model's provider) plus a quiet **"Connect more providers…"** footer. Clicking a
+provider drills into **level 2**: a back affordance + that provider's model rows
+(name, a subtle one-line description, a check on the selected model). An
+always-visible **search field** at the top bypasses the levels with a flat
+ranked list across all connected providers; clearing it returns to the current
+level. Keyboard: cmdk roving (↑↓/Enter), Escape clears an active query then steps
+back from level 2, Backspace-on-empty-query steps back. Sizes to content
+(`max-h-[360px]` scroll). The library component is props-only and i18n-agnostic
+(`labels?`); all app wiring lives in `app/src/components/chat-model-selector.tsx`.
 
-- **Reused in the create-agent modal too.** `ChatModelSelector` is the ONE model
-  selector: the chat composer AND the create/import-agent flows
-  (`naming-step.tsx`, `ai-assist-step.tsx`, `portable/import-wizard.tsx`) render
-  it with `agent={null}` (never locks — there is no agent yet). The old
+- **Disconnected providers never appear.** The picker filters to
+  `connection === "connected"` for both the level-1 list and search; the ONLY
+  path to a disconnected provider is the "Connect more providers…" footer, which
+  navigates to the AI Hub (`setViewMode("ai-hub")`). The old per-row Connect
+  buttons, provider rail, favorites/recents groups, FilterPopover, SortMenu,
+  result-count row, and model detail panel were all **deleted** in the minimal
+  redesign. Pure selectors + the nav reducer live in
+  `ui/core/src/components/model-picker/{catalog,nav}.ts` (unit-tested in
+  `ui/core/tests/`).
+- **#342 flicker guard.** While provider statuses (or the catalog) are still
+  resolving and nothing is connected yet, level 1 shows a neutral loading state,
+  never "no providers" — `providerListLoading()` in `catalog.ts`,
+  `providerPickerState(...)` still yields `checking` app-side
+  (`app/src/lib/model-picker.ts`).
+- **Curated-first ranking.** The pi catalog's raw order is often oldest-first,
+  so `chat-model-picker-map.ts` re-ranks each provider's rows via
+  `rankCuratedFirst`: models with a `PROVIDER_OVERRIDES[provider].models` entry
+  lead, in override key (curation) order, then the rest in catalog order; curated
+  rows carry `curated: true`. Search (`searchModels` in ui/core `catalog.ts`)
+  ranks by match tier (name match beats other-field), then the `curated` flag,
+  then match position, then input order — so "opus" surfaces Opus 4.8/4.7 above
+  Claude Opus 3.
+
+- **Reused in the import-agent wizard too.** `ChatModelSelector` is the ONE model
+  selector: the chat composer AND the import flow (`portable/import-wizard.tsx`)
+  render it with `agent={null}` (never locks — there is no agent yet). The old
   hand-rolled `InlineModelSelector` (curated-only, hid disconnected providers) is
-  gone; the create flow now gets the same full runnable catalog + Connect affordance.
+  gone. The **create-agent dialog has NO model picker**: `naming-step.tsx` and
+  `ai-assist-step.tsx` silently use the sticky last-used provider/model
+  (loaded on dialog open in `create-workspace-dialog.tsx`, baked into the new
+  agent via `finishAgentSetup`); users change the model later from the chat
+  composer.
 - **Only ever offers runnable `(provider, model)` pairs.** The mapping
   (`app/src/lib/chat-model-picker-map.ts`, pure + unit-tested) encodes each row
   id as `` `${provider}::${model}` `` (split on the FIRST `::`), decoded on
@@ -371,38 +408,46 @@ wiring lives in `app/src/components/chat-model-selector.tsx`.
 - **pi-ai's `/v1/catalog` is the source of truth.** `GET /v1/catalog`
   (`packages/host/src/routes/catalog.ts` + `providers/pi-catalog.ts`) returns the
   wire `ProviderCatalog` (`@houston/protocol` `provider-catalog.ts`): every
-  runnable provider (~35 on desktop / 979 models; ~3 in an egress-locked cloud
-  pod) with each model's pricing/context/maxTokens/reasoning/vision and
+  runnable provider (~35 / 979 models — the SAME full set on every deployment,
+  desktop and managed pod; no profile gating) with each model's
+  pricing/context/maxTokens/reasoning/vision and
   `thinkingLevels`. Built from pi-ai's **baked in-process registry** (no egress,
   no key) — so the set is **runnable-by-construction** (a model is offered iff pi
   can run it) and identical on desktop and inside a pod. Effort levels derive from
-  pi `thinkingLevels`. Adapter: `getCatalog` (direct host transport, mirrors
-  `capabilities()`, 404→`[]`) → `tauriProvider.getCatalog`; the app hydrates the
-  `PROVIDERS` cache from it (`use-provider-catalog.ts`, `providers.ts`).
+  pi `thinkingLevels`. `use-provider-catalog.ts` is the SOLE owner of the
+  `["provider-catalog"]` query: it calls `getEngine().getCatalog()` directly (NOT
+  the toasting `call()` wrapper, so it renders its own friendly toast instead of a
+  raw "engine error 404") and hydrates the `PROVIDERS` cache from the result
+  (`providers.ts`). A failure is NEVER swallowed: the adapter's `getCatalog` no
+  longer degrades a 404 to `[]` (every current host and the e2e fake host serve
+  the route, so a 404 means a stale host), it throws, and the hook surfaces both
+  an error AND a 200-but-empty payload as a `providers:toast.catalogLoadFailed`
+  toast while the seed keeps the UI rendering. (Silently emptying the picker is the
+  bug that shipped v0.5.2 with providers but zero models.) `useHubCatalog()` derives
+  its view from this same query rather than registering a second observer; the old
+  `tauriProvider.getCatalog` is deleted.
   **The live-OpenRouter fetch is RETIRED** — the old
   `GET /v1/providers/openrouter/models` route + `openrouter-catalog` mapper + the
   `LiveCatalog` wire type + `listProviderModels`/`listModels` adapter are deleted.
-- **One view-model, models.dev is optional enrichment.** Every provider's rows now
-  come from the hydrated `PROVIDERS` catalog (seeded by `/v1/catalog`). The
-  checked-in models.dev snapshot (`app/src/lib/ai-hub/model-catalog.json`) is only
-  supplemental metadata folded in by an exact `${providerId}::${modelId}` lookup —
-  not the runnable set. `useHubCatalog()`
-  exposes `{ catalog, isLoading, status: "loading"|"ready"|"offline", offline }`;
-  the picker maps `status` → its `catalogState`. Loading is **progressive**:
-  curated content shows instantly, a "loading more" footer signals the live
-  catalog streaming in, and skeletons only take over on a genuinely empty cold
-  load. Capability/price projection: `app/src/lib/ai-hub/capabilities.ts`
-  (`capabilitiesOf`, `priceTier`).
-- **Favorites & recents** persist per-user via `tauriPreferences` (JSON string
-  arrays under `favorite_models` / `recent_models`), exposed by
-  `app/src/hooks/use-model-favorites.ts` (`useModelFavorites()`). Ids are the
-  same encoded `${provider}::${model}` strings the picker uses.
-- **Connecting from the picker.** A disconnected provider still appears (dimmed,
-  with a "Connect →" affordance) instead of being hidden — `onConnect` reuses the
-  AI Hub's `useProviderConnections()` flow (the removed `shouldShowProviderInPicker`
-  gate is obsolete). Zen and Go remain separate sections as before.
-- **Design tokens** (`packages/design-tokens`): price tiers `--ht-price-{free,
-  low,mid,high}`, capability chip `--ht-cap-fg`/`--ht-cap-bg`, favorite `--ht-star`.
+- **One view-model, curated rows only.** Every provider's rows come from the
+  hydrated `PROVIDERS` catalog (seeded by `/v1/catalog`). Each picker row carries
+  only `{ id, providerId, name, description }` — the models.dev capability/price
+  enrichment the old detail panel needed was **dropped from the chat picker**
+  (`chat-model-picker-enrich.ts` deleted; `chat-model-picker-map.ts` no longer
+  takes a `catalog`). The models.dev snapshot + `capabilitiesOf`/`priceTier`
+  (`app/src/lib/ai-hub/capabilities.ts`) still power the **AI Hub**. The picker's
+  `catalogState` ("loading"|"ready") comes from the pi-ai catalog readiness
+  (`useProviderCatalog`), driving the neutral level-1 loading state.
+- **Favorites & recents storage is retained but no longer surfaced.** The
+  per-user prefs (`favorite_models` / `recent_models`) and
+  `app/src/hooks/use-model-favorites.ts` (`useModelFavorites()`) still exist, but
+  the picker renders neither favorites nor recents anymore, and
+  `use-chat-model-picker.tsx` no longer reads/writes them.
+- **Connecting from the picker.** The "Connect more providers…" footer navigates
+  to the AI Hub (`onConnectMore` → `setViewMode("ai-hub")`, closing the popover),
+  the one surface that lists every provider and owns the full connect flow. The
+  old inline per-provider connect stack (`ProviderConnectionDialogs` +
+  `useProviderConnections` inside the picker) is gone.
 
 ### Switching provider mid-conversation
 
@@ -420,9 +465,23 @@ on the new provider seeded with prior context, reusing the compaction machinery:
 spend tokens, scaling with the current conversation size), with mode-specific
 copy. The switch is staged only on confirm.
 
-The size decision is frontend-only — the context-window catalog lives in
-`app/src/lib/providers.ts` (`app/src/lib/provider-switch.ts::decideHandoffMode`).
-The choice is staged in `app/src/stores/provider-switch.ts`, forwarded on the
+The size decision (`app/src/lib/provider-switch.ts::decideHandoffMode`) reads
+the SAME per-model context-window numbers the runtime's autocompact uses:
+`resolveModelWindow` / `effectiveModelWindow`
+(`@houston/protocol/model-windows`, a dependency-free subpath export) is the
+ONE `{default, max}` table, imported by both the frontend catalog
+(`app/src/lib/providers.ts`) and the runtime
+(`packages/runtime/src/session/exec-turn.ts`, autocompact + provider-switch
+sizing) — the context bar and the engine's compaction trigger always divide by
+the same denominator now. `default` is the starting estimate; the estimate
+snaps UP to `max` once observed usage exceeds `default`, proving the larger
+(plan/credit-gated) window is actually active. Anthropic's flagships
+(`claude-sonnet-4-6`, `claude-opus-4-7`, `claude-opus-4-8`) default to 200k and
+snap to 1M. `normalizeUsage` (`packages/runtime/src/backends/pi/wire.ts`)
+synthesizes `context_tokens` from the component fields when a provider's usage
+event omits a summed `totalTokens`, so a provider that under-reports usage
+still feeds the window estimate instead of going null. The choice is staged in
+`app/src/stores/provider-switch.ts`, forwarded on the
 next send as `POST .../sessions { providerSwitch: { mode, fromProvider } }`, and
 the engine reseeds in `houston_engine_core::sessions::run_start`: it clears the
 resolved provider's current resume id (so a switch-**back** never resumes a
@@ -437,37 +496,49 @@ event, so a failed switch is retried on the next send.
 
 ### Reasoning effort
 
+Four tiers, ascending: `low`, `medium`, `high`, `xhigh` (`EffortLevel` in
+`app/src/lib/providers.ts`). A fifth `max` tier used to sit above `xhigh`; it
+produced the byte-identical request as `xhigh` on every provider (a label with
+no effect), so it was removed. A persisted `"max"` (an older agent config; the
+JSON schema `ui/agent-schemas/src/config.schema.json` and
+`app/src/data/config.ts` still list it in the type for that reason) normalizes
+to `"xhigh"` on read (`normalizeEffort`); the runtime's own wire mapping
+(`toThinkingLevel`, `packages/runtime/src/ai/effort.ts`) also still accepts
+`"max"` and maps it to `xhigh`, so an unmigrated agent's turns run correctly
+even before the value is re-picked in the UI.
+
 Effort is **per-agent and model-gated**. Stored as `effort` in the agent's
-`.houston/config/config.json` (schema `ui/agent-schemas/src/config.schema.json`),
-set from the model picker (`app/src/components/chat-model-selector.tsx`), which
-shows only the levels the active model accepts.
+`.houston/config/config.json`, set from the model picker
+(`app/src/components/chat-model-selector.tsx`), which shows only the levels
+the active model accepts (`getEffortLevels`). `validEffortOrDefault` resolves
+the level actually used: the requested value if the model accepts it, else
+`DEFAULT_EFFORT` (`medium`) if the model offers it, else the model's lowest
+level; a model with no effort control gets `undefined` and the flag is omitted
+entirely.
 
-- The engine resolves it in `houston_engine_core::sessions::resolve_effort`
-  (`engine/houston-engine-core/src/sessions/provider.rs`): the configured value
-  when the **final** provider accepts it, else the provider's `default_effort`
-  (`medium`), else `None` for providers with no effort control. An explicit
-  `effort` on `POST .../sessions` (the onboarding tutorial) still wins over
-  config. Applies to chat, board missions, routines, and onboarding alike.
-- Valid levels live on the `ProviderAdapter` (`effort_levels` / `default_effort`)
-  as a provider-level **superset** used for validation; per-model availability
-  is a picker concern (`ModelOption.effortLevels` in `providers.ts`).
+**Per-model levels derive from pi by default, not a hand-maintained table.**
+`deriveEffortLevels` (`app/src/lib/providers.ts`) maps each model's pi-ai
+`thinkingLevels` (pi's `getSupportedThinkingLevels`, vendored
+`@earendil-works/pi-ai`, surfaced via `/v1/catalog`) straight onto Houston's
+four-tier scale, dropping pi's `off`/`minimal` (Houston's scale starts at
+`low`). This keeps the effort set honest as pi adds/changes models, with no
+curated list to fall out of date. `PROVIDER_OVERRIDES[].models[id].effortLevels`
+(`app/src/lib/provider-overrides.ts`) is an escape hatch ONLY for a genuine
+gateway-imposed cap that differs from what pi reports — no override sets it
+today. If one is added naming a model id the shipped pi-ai catalog doesn't
+carry, `app/tests/provider-overrides-drift.test.ts` fails the build (it reads
+the real vendored pi-ai registry, not a test fixture).
 
-| Provider | Model | Effort levels offered | CLI flag |
-|---|---|---|---|
-| `anthropic` | `claude-fable-5` (Fable 5) | low, medium, high, xhigh, max | `--effort <v>` |
-| `anthropic` | `claude-opus-4-8` (Opus 4.8) | low, medium, high, xhigh, max | `--effort <v>` |
-| `anthropic` | `claude-opus-4-7` (Opus 4.7) | low, medium, high, xhigh, max | `--effort <v>` |
-| `anthropic` | `claude-sonnet-5` (Sonnet 5) | low, medium, high, xhigh, max | `--effort <v>` |
-| `anthropic` | `claude-sonnet-4-6` (Sonnet 4.6) | low, medium, high, max (no `xhigh`) | `--effort <v>` |
-| `openai` | `gpt-5.5` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
-| `openai` | `gpt-5.4` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
-| `openai` | `gpt-5.4-mini` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
-| `openai` | `gpt-5.3-codex-spark` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
-| `gemini` | any | none | (no flag) |
+### Turn mode
 
-Claude self-clamps an unsupported `--effort` down to its highest supported
-level; codex has no such fallback, so `max` (an unknown variant to codex) is
-never offered for OpenAI. Default for every effort-capable provider is `medium`.
+A separate per-turn "Mode" pill sits next to the model + effort controls in
+the composer footer, with three labels — **Planner** (`plan`, read-only
+investigation), **Coworker** (`execute`), and **Autopilot** (`auto`,
+fire-and-forget: no blocking tools). Unlike
+effort it is NOT synced through `Settings` — full mechanics, the runtime
+enforcement (tool clamp + overlay), and the "forgotten `modeOverride`
+silently degrades to execute" gotcha are in `knowledge-base/architecture.md`
+("Turn modes").
 
 ## AI models hub
 
@@ -477,13 +548,19 @@ marketplace, not a settings pane. Entry: `app/src/components/ai-hub/ai-hub-view.
 (`AiHubView`), rendered by `workspace-shell.tsx` like any other top-level view.
 
 **Four surfaces, one view:**
-- **Provider grid** (`provider-grid.tsx` / `provider-card.tsx`, grouped by
-  `provider-grouping.ts`): cards in Connected / Available / Coming soon groups.
-- **Provider detail** (`provider-detail.tsx` + `provider-model-list.tsx`):
-  connect / sign-out plus that provider's model list.
+- **Provider grid** — the shared `ProviderBrowser`
+  (`components/provider-browser/provider-browser.tsx`, rows in
+  `provider-browser/provider-row.tsx`, grouped by
+  `provider-browser/provider-grouping.ts`): brand-colored cards in Connected /
+  Available sections, featured pinned first, with the search + quick-filter bar.
+  The SAME component renders onboarding's connect step, the migration reconnect
+  screen, and workspace setup (they pass `onSelect`/`selectOnMount`; the hub
+  passes `onOpen` + `renderDialogs={false}`). Coming-soon tiles are gone.
+- **Provider detail** (`provider-modal.tsx`): connect / sign-out plus that
+  provider's model list.
 - **Model directory** (`model-directory.tsx` / `model-row.tsx`): the
   cross-provider catalog (~378 unique models), searchable (`ai-hub/search.ts`).
-- **Model detail** (`model-detail.tsx` + `model-offer-row.tsx`): one model's
+- **Model detail** (`model-modal.tsx` + `model-offer-row.tsx`): one model's
   per-provider offers ("Get it through" + pricing / subscription).
 
 Navigation is local `useState<HubLocation>` inside `AiHubView` (roots
@@ -615,6 +692,6 @@ The per-agent board tab AND cross-agent Mission Control render **one** component
 
 Adding a board capability = add it to `<MissionBoard>` (both board views get it) or to one `BoardSource` (just that view). `archived-tab.tsx` (per-agent) still renders `AIBoard` directly (list layout) and shares the same primitives.
 
-Status transitions: session completes → `useSessionEvents` (listens to the WS `*` firehose) → activity status flipped to `needs_you` via the engine update route. The emitted `ActivityChanged` event auto-invalidates TanStack Query → board refreshes.
+Status transitions: when a turn settles, the SDK persists the board status through the `persistBoardStatus` seam (the web adapter PATCHes `{ status, pending_interaction }`) — a clean turn with nothing outstanding → `done`; a turn that ended on `ask_user`/`request_connection` → `needs_you` carrying the pending interaction; a handled Stop / logged-out provider → `needs_you`; a real failure → `error`. The resulting `ActivityChanged` event auto-invalidates TanStack Query → board refreshes. (The `done`-vs-`needs_you` split and the `sessionStatus`/`boardStatus` pair: `knowledge-base/client-architecture.md`; full interaction lifecycle: `knowledge-base/architecture.md`.)
 
 Columns can have `onAdd` callback → renders "+" button for creating activities from board.

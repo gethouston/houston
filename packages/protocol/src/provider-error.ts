@@ -59,6 +59,17 @@ export type ProviderError =
       provider: string;
       cause: AuthFailureCause;
       message: string;
+      /**
+       * The turn's user text when it never reached the MODEL: pi raises a
+       * missing/expired credential at prompt time, BEFORE recording the
+       * message in its session store, so neither the live context nor a
+       * session rebuild ever sees it (HOU-718). The reconnect retry must
+       * re-deliver this text (the surface hides the re-send under its
+       * auto-continue marker — the transcript already shows the original,
+       * persisted bubble). Distinct from the frontend-only `failed_prompt`,
+       * which marks a send the ENGINE refused before persisting anything.
+       */
+      undelivered_prompt?: string;
     }
   | {
       kind: "rate_limited";

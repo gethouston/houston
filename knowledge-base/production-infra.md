@@ -207,6 +207,7 @@ CI also needs as Secrets:
 - **Workflow:** `.github/workflows/release.yml`
 - **Trigger:** Push tag matching `v*`
 - **Engine:** builds the desktop app around the **bun-compiled Houston host sidecar** (the TS engine). The Rust `engine/` was removed, so this is the only path — a plain `pnpm tauri build` builds the host too (no cargo feature to opt in). No provider CLIs are bundled (pi runs providers in-process).
+- **Sidecar staleness guard (release-only):** `scripts/build-host-sidecar.sh` stamps each compiled sidecar with the git HEAD it built at (`<binary>.stamp`) and its `--verify` step asserts `/v1/catalog` returns a non-empty array. On a RELEASE build `build.rs` panics if any of the sidecar's input paths changed since that stamp commit (committed, staged, unstaged, or untracked), so a stale binary left from a previous commit can never ship. This is the guard against the v0.5.2 incident (a host predating the `/v1/catalog` route bundled silently, leaving the app with providers but zero models). Debug builds skip the check. Detail: houston `CLAUDE.md` "Host sidecar staleness".
 - **Output:** Draft GitHub Release w/ signed+notarized universal DMG + signed Windows MSI (x64 + arm64) + Linux AppImage + `latest.json`
 - **Duration:** ~25-30 min wall-clock (mac + win + linux run in parallel; mac is the long pole at ~25 min including Apple notarization).
 - **Draft = QA gate.** Users don't see until published on GitHub.

@@ -1,3 +1,4 @@
+import { normalizeTurnMode, type TurnMode } from "@houston/protocol";
 import type { ServedCredential } from "../auth/auth-file";
 
 /**
@@ -21,6 +22,12 @@ export interface TurnRequest {
   model?: string;
   /** Per-turn reasoning-effort override (a routine's pinned effort). Absent = inherit. */
   effort?: string;
+  /**
+   * Per-turn execution mode ("plan" = read-only + planning overlay; "auto" =
+   * Autopilot, acts without the blocking tools). Absent = execute. Routine fire
+   * paths set "auto" so scheduled work never waits for user intervention.
+   */
+  mode?: TurnMode;
 }
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -74,5 +81,8 @@ export function parseTurnRequest(body: unknown): TurnRequest {
     credential,
     model: typeof b.model === "string" ? b.model : undefined,
     effort: typeof b.effort === "string" ? b.effort : undefined,
+    // Never trust the wire: only the known mode literals ("plan", "auto") pass;
+    // anything else normalizes to "execute".
+    mode: normalizeTurnMode(b.mode),
   };
 }

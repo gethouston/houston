@@ -53,16 +53,22 @@ export function createTurnsModule(ctx: ModuleContext) {
     // typed reconnect card when the runtime refuses the send as not-connected
     // (the refusal itself can't name a provider — nothing is connected).
     let pin: TurnWirePin | undefined;
-    if (input.model !== undefined || input.effort !== undefined) {
+    if (
+      input.model !== undefined ||
+      input.effort !== undefined ||
+      input.mode !== undefined
+    ) {
       const resolved = await resolveModelSettings(
         client,
         input.model,
         input.effort,
+        input.mode,
       );
       pin = {
         provider: resolved.activeProvider,
         model: resolved.model,
         effort: resolved.effort,
+        mode: resolved.mode,
       };
     }
     const output = new MultiplexFeedOutput([vm, ...external]);
@@ -171,6 +177,7 @@ export {
   type BoardStatus,
   type FeedOutput,
   MultiplexFeedOutput,
+  type PendingInteraction,
   type SessionStatusValue,
   type TerminalBoardStatus,
 } from "./feed-output";
@@ -188,6 +195,7 @@ export {
 export {
   isNotConnectedError,
   isStoppedByUser,
+  TURN_FAILED_MESSAGE,
   turnErrorMessage,
 } from "./turn-errors";
 export type {

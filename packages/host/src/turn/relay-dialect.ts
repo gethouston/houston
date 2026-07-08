@@ -55,6 +55,20 @@ export function parseSnapshot(raw: string | null): ConversationSnapshot {
       partial: s.partial,
       seq: s.seq,
       ...(s.turnId ? { turnId: s.turnId } : {}),
+      // The running turn's activity (HOU-717) — ADDITIVE fields, so no
+      // dialect bump: an old replica's parse simply drops them (the sync
+      // degrades to text-only), and an old snapshot reads as "no activity".
+      ...(typeof s.thinking === "string" ? { thinking: s.thinking } : {}),
+      ...(Array.isArray(s.tools)
+        ? {
+            tools: s.tools.filter(
+              (t): t is NonNullable<ConversationSnapshot["tools"]>[number] =>
+                t !== null &&
+                typeof t === "object" &&
+                typeof (t as { name?: unknown }).name === "string",
+            ),
+          }
+        : {}),
     };
   }
   return EMPTY_SNAPSHOT;

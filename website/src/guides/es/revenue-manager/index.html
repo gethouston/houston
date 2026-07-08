@@ -1,0 +1,1017 @@
+---
+lang: es
+---
+{% extends "base.njk" %}
+{% block title %}Guía paso a paso · Crea tu Agente de Revenue Management con Houston{% endblock %}
+{% block meta %}
+<meta name="description" content="Guía oficial de Houston: instala la app, conecta Apify, Anakin.io y Google Sheets, e instala el agente que hace tu investigación de mercado hotelero por ti.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://gethouston.ai/guides/es/revenue-manager/">
+<meta property="og:title" content="Crea tu Agente de Revenue Management con Houston">
+<meta property="og:description" content="Sigue la guía del workshop a tu ritmo: 6 pasos para tener un agente que vigila el mercado por ti.">
+<meta property="og:site_name" content="Houston">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" hreflang="en" href="https://gethouston.ai/guides/revenue-manager/">
+<link rel="alternate" hreflang="es" href="https://gethouston.ai/guides/es/revenue-manager/">
+<link rel="alternate" hreflang="x-default" href="https://gethouston.ai/guides/revenue-manager/">
+{% endblock %}
+{% block stylesheets %}
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
+{% endblock %}
+{% block inlineStyles %}
+<style>
+  :root{
+    --ink:#0d0d0d; --muted:#5d5d5d; --gray6:#676767; --gray7:#424242;
+    --bg:#ffffff; --border:#e5e5e5; --soft:#f6f7f9;
+    --blue:#3b82f6; --indigo:#818cf8; --orange:#f97316; --gold:#eab308; --green:#00a240;
+    --grad:linear-gradient(100deg,#3b82f6 0%,#818cf8 42%,#f97316 100%);
+    --font:'General Sans', ui-sans-serif, -apple-system, system-ui, sans-serif;
+    --maxw:820px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; font-family:var(--font); color:var(--ink); background:var(--bg);
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wash{
+    position:fixed; inset:0; z-index:-1; background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,130,246,0.10), transparent),
+      radial-gradient(ellipse 60% 40% at 85% 25%, rgba(249,115,22,0.06), transparent),
+      radial-gradient(ellipse 60% 40% at 15% 70%, rgba(129,140,248,0.06), transparent);
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px}
+
+  /* top bar */
+  .topbar{
+    position:sticky; top:0; z-index:20; backdrop-filter:saturate(180%) blur(10px);
+    background:rgba(255,255,255,0.82); border-bottom:1px solid var(--border);
+  }
+  .topbar .wrap{display:flex; align-items:center; justify-content:space-between; height:58px}
+  .lockup{display:flex; align-items:center; gap:9px; text-decoration:none; color:var(--ink)}
+  .mark{width:22px; height:24px}
+  .wordmark{font-weight:600; letter-spacing:-0.02em; font-size:19px}
+  .topbar .tag{font-size:12.5px; color:var(--muted); font-weight:500}
+
+  /* hero */
+  .hero{padding:64px 0 34px}
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600;
+    letter-spacing:.02em; color:var(--gray7); background:#fff; border:1px solid var(--border);
+    border-radius:999px; padding:7px 14px; text-transform:uppercase;
+  }
+  .eyebrow .dot{width:7px; height:7px; border-radius:50%; background:var(--grad)}
+  h1{
+    font-weight:700; letter-spacing:-0.035em; line-height:1.05; font-size:52px;
+    margin:20px 0 0;
+  }
+  h1 .accent{
+    background:var(--grad); -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent; color:transparent;
+  }
+  .lede{font-size:19px; color:var(--muted); font-weight:400; margin:18px 0 0; max-width:660px}
+  .meta{display:flex; flex-wrap:wrap; gap:10px; margin-top:26px}
+  .chip{
+    display:inline-flex; align-items:center; gap:9px; background:#fff; border:1px solid var(--border);
+    border-radius:12px; padding:11px 15px; font-size:14px;
+  }
+  .chip svg{width:17px; height:17px; flex:none}
+  .chip b{font-weight:600}
+  .chip span{color:var(--muted)}
+
+  /* section */
+  section{padding:30px 0; border-top:1px solid var(--border)}
+  .kicker{font-size:12.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--blue)}
+  h2{font-weight:600; letter-spacing:-0.025em; font-size:30px; margin:8px 0 6px}
+  h2 .accent{background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent}
+  .sub{color:var(--muted); margin:0 0 8px; font-size:16.5px}
+  p{margin:12px 0}
+
+  /* roadmap */
+  .road{display:grid; gap:10px; margin-top:14px}
+  .road a{
+    display:flex; gap:14px; align-items:center; text-decoration:none; color:var(--ink);
+    background:#fff; border:1px solid var(--border); border-radius:14px; padding:14px 16px;
+    transition:.15s border-color, .15s transform;
+  }
+  .road a:hover{border-color:#cfd4dc; transform:translateY(-1px)}
+  .road .n{
+    flex:none; width:30px; height:30px; border-radius:9px; font-weight:600; font-size:14px;
+    display:grid; place-items:center; color:#fff; background:var(--ink);
+  }
+  .road .t{font-weight:600}
+  .road .d{color:var(--muted); font-size:14px}
+  .road .time{margin-left:auto; color:var(--gray6); font-size:13px; font-weight:500; white-space:nowrap}
+
+  /* step block */
+  .step{scroll-margin-top:72px}
+  .step-head{display:flex; align-items:flex-start; gap:16px; margin-bottom:6px}
+  .badge{
+    flex:none; width:46px; height:46px; border-radius:13px; display:grid; place-items:center;
+    background:var(--ink); color:#fff; font-weight:700; font-size:19px; letter-spacing:-0.02em;
+  }
+  .step-head .est{color:var(--gray6); font-size:13px; font-weight:500; margin-top:3px}
+
+  ol.steps{counter-reset:s; list-style:none; padding:0; margin:18px 0 0}
+  ol.steps>li{
+    counter-increment:s; position:relative; padding:2px 0 20px 44px; margin:0;
+  }
+  ol.steps>li::before{
+    content:counter(s); position:absolute; left:0; top:0;
+    width:28px; height:28px; border-radius:50%; background:var(--soft); border:1px solid var(--border);
+    color:var(--gray7); font-weight:600; font-size:14px; display:grid; place-items:center;
+  }
+  ol.steps>li:not(:last-child)::after{
+    content:""; position:absolute; left:13.5px; top:30px; bottom:2px; width:1px; background:var(--border);
+  }
+  ol.steps>li b{font-weight:600}
+  code.ui{
+    background:#f0f2f5; border:1px solid var(--border); border-radius:6px; padding:1px 7px;
+    font-family:var(--font); font-weight:600; font-size:.92em; white-space:nowrap;
+  }
+
+  /* checkpoint */
+  .check{
+    display:flex; gap:11px; align-items:flex-start; margin:14px 0 4px; padding:12px 15px;
+    background:rgba(0,162,64,0.06); border:1px solid rgba(0,162,64,0.25); border-radius:12px;
+  }
+  .check svg{width:20px; height:20px; flex:none; margin-top:1px}
+  .check .lbl{font-weight:700; color:var(--green); font-size:12.5px; letter-spacing:.04em; text-transform:uppercase; display:block; margin-bottom:1px}
+  .check p{margin:0; font-size:15px}
+
+  /* callouts */
+  .call{display:flex; gap:12px; align-items:flex-start; border-radius:12px; padding:13px 16px; margin:14px 0; font-size:15px}
+  .call svg{width:19px; height:19px; flex:none; margin-top:2px}
+  .call .lbl{font-weight:700; font-size:12px; letter-spacing:.05em; text-transform:uppercase; display:block; margin-bottom:2px}
+  .call p{margin:0}
+  .tip{background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.25)}
+  .tip .lbl{color:var(--blue)}
+  .warn{background:rgba(249,115,22,0.07); border:1px solid rgba(249,115,22,0.3)}
+  .warn .lbl{color:#c2560c}
+  .note{background:var(--soft); border:1px solid var(--border)}
+  .note .lbl{color:var(--gray7)}
+
+  /* prompt block */
+  .prompt{
+    position:relative; background:#0f1115; color:#e8eaed; border-radius:12px; padding:15px 16px;
+    font-size:14.5px; line-height:1.5; margin:12px 0; border:1px solid #1c1f26;
+  }
+  .prompt .pl{display:block; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#8b93a1; font-weight:600; margin-bottom:7px}
+  .prompt .txt{font-family:var(--font)}
+  .prompt .txt::before{content:"“"} .prompt .txt::after{content:"”"}
+
+  /* screenshot placeholder */
+  .shot{
+    display:flex; gap:14px; align-items:center; margin:16px 0; padding:14px 16px;
+    background:#fff; border:1.5px dashed #c3c9d4; border-radius:14px;
+  }
+  .shot .cam{
+    flex:none; width:40px; height:40px; border-radius:10px; display:grid; place-items:center;
+    background:var(--soft); color:var(--gray6); border:1px solid var(--border);
+  }
+  .shot .cam svg{width:20px; height:20px}
+  .shot .num{font-weight:700; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--blue)}
+  figure.shot-real{margin:16px 0}
+  .shot-real img{width:100%; display:block; border:1px solid var(--border); border-radius:14px; box-shadow:0 6px 24px rgba(13,13,13,0.07)}
+  .shot-real figcaption{font-size:13px; color:var(--gray6); margin-top:8px}
+  .shot-real figcaption .num{font-weight:700; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--blue); margin-right:8px}
+  .shot-real.narrow img{max-width:360px; margin:0 auto}
+  .shot-real.narrow figcaption{text-align:center}
+  .shot .desc{font-size:14.5px; margin:1px 0 2px}
+  .shot .ref{font-size:12.5px; color:var(--gray6); font-weight:500}
+
+  /* generic list */
+  ul.plain{padding-left:20px; margin:12px 0}
+  ul.plain li{margin:7px 0}
+
+  /* troubleshooting */
+  details.ts{border:1px solid var(--border); border-radius:12px; padding:0 16px; margin:10px 0; background:#fff}
+  details.ts+details.ts{margin-top:8px}
+  details.ts summary{
+    cursor:pointer; list-style:none; padding:15px 0; font-weight:600; font-size:16px;
+    display:flex; gap:11px; align-items:flex-start;
+  }
+  details.ts summary::-webkit-details-marker{display:none}
+  details.ts summary .q{flex:none; width:22px; height:22px; border-radius:6px; background:rgba(249,115,22,0.12); color:#c2560c; font-weight:700; font-size:13px; display:grid; place-items:center; margin-top:1px}
+  details.ts[open] summary{border-bottom:1px solid var(--border)}
+  details.ts .ans{padding:4px 0 16px 33px; color:var(--gray7); font-size:15px}
+  details.ts .ans code.ui{white-space:normal}
+
+  /* success checklist */
+  .final{background:#fff; border:1px solid var(--border); border-radius:16px; padding:8px 22px 18px}
+  .final ul{list-style:none; padding:0; margin:0}
+  .final li{display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border); font-size:15.5px}
+  .final li:last-child{border-bottom:none}
+  .final .box{flex:none; width:22px; height:22px; border-radius:6px; border:2px solid #cfd4dc}
+
+  /* shot index */
+  .idx{background:var(--soft); border:1px solid var(--border); border-radius:14px; padding:6px 20px}
+  .idx table{width:100%; border-collapse:collapse; font-size:14px}
+  .idx td{padding:9px 6px; border-bottom:1px solid var(--border); vertical-align:top}
+  .idx tr:last-child td{border-bottom:none}
+  .idx td.c1{font-weight:700; color:var(--blue); white-space:nowrap; width:78px}
+  .idx td.c3{color:var(--gray6); white-space:nowrap; width:70px; text-align:right}
+
+  /* footer */
+  footer{border-top:1px solid var(--border); padding:40px 0 60px; margin-top:20px}
+  .foot-card{background:var(--ink); color:#fff; border-radius:18px; padding:30px 32px}
+  .foot-card h3{margin:0 0 6px; font-size:22px; font-weight:600; letter-spacing:-0.02em}
+  .foot-card p{margin:0; color:#c7c9cf; font-size:15px}
+  .foot-card .fl{display:flex; align-items:center; gap:9px; margin-top:18px; color:#fff}
+  .foot-card .mark use{fill:#fff}
+  .foot-meta{display:flex; justify-content:space-between; align-items:center; margin-top:22px; color:var(--gray6); font-size:13px}
+
+  a.inline{color:var(--blue); text-decoration:none; font-weight:500; word-break:break-all}
+  a.inline:hover{text-decoration:underline}
+  .ph{background:rgba(234,179,8,0.16); border:1px solid rgba(234,179,8,0.5); border-radius:6px; padding:1px 7px; font-weight:600; font-size:.92em; color:#7a5c00; white-space:nowrap}
+
+  /* review additions */
+  .stepno{font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--blue); margin:2px 0 2px}
+  .subh{font-weight:600; font-size:18px; margin:22px 0 0}
+  .btnlink{display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:#fff; border-radius:999px; padding:11px 22px; font-weight:500; font-size:14.5px; text-decoration:none; letter-spacing:-0.01em; margin:8px 0 0}
+  .btnlink:hover{opacity:.88}
+  .urlnote{display:block; font-size:12.5px; color:var(--gray6); margin-top:7px; word-break:break-all}
+  .prompt .copybtn{position:absolute; top:10px; right:10px; background:#fff; color:var(--ink); border:none; border-radius:999px; padding:6px 15px; font-family:var(--font); font-weight:600; font-size:12.5px; cursor:pointer}
+  .prompt .copybtn.ok{background:var(--green); color:#fff}
+  .prompt .pl{padding-right:78px}
+  details.ts summary{position:relative; padding-right:32px}
+  details.ts summary::after{content:""; position:absolute; right:6px; top:21px; width:8px; height:8px; border-right:2px solid var(--gray6); border-bottom:2px solid var(--gray6); transform:rotate(45deg); transition:.18s transform}
+  details.ts[open] summary::after{transform:rotate(-135deg); top:25px}
+  .final label{display:flex; gap:12px; align-items:center; cursor:pointer; width:100%}
+  .final input[type=checkbox]{appearance:none; -webkit-appearance:none; flex:none; width:22px; height:22px; border-radius:6px; border:2px solid #cfd4dc; cursor:pointer; margin:0; display:grid; place-items:center; background:#fff; transition:.12s}
+  .final input[type=checkbox]:checked{background:var(--green); border-color:var(--green)}
+  .final input[type=checkbox]:checked::after{content:""; width:10px; height:5px; border-left:2.5px solid #fff; border-bottom:2.5px solid #fff; transform:rotate(-45deg) translate(0,-1px)}
+  .final input[type=checkbox]:checked~span{color:var(--gray6)}
+  .foot-card .mark{filter:brightness(0) invert(1)}
+
+  @media (max-width:640px){
+    h1{font-size:36px} h2{font-size:24px} .hero{padding:44px 0 24px}
+    .road .time{display:none}
+  }
+  @page{margin:12mm 11mm 14mm}
+  @media print{
+    h1{font-size:42px}
+    h1 .accent, h2 .accent{
+      background:none !important;
+      -webkit-background-clip:initial !important; background-clip:initial !important;
+      -webkit-text-fill-color:#3b82f6 !important; color:#3b82f6 !important;
+    }
+    .wash,.copybtn,figure.shot{display:none} body{background:#fff}
+    .topbar{position:static; background:#fff; backdrop-filter:none}
+    .hero{padding-top:34px}
+    *{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+    .step{break-inside:auto} .step-head{break-after:avoid}
+    ol.steps>li,.shot-real,.call,.check,.prompt,.final,details.ts,.road a{break-inside:avoid}
+    h2,h3{break-after:avoid}
+    a.inline{color:var(--ink); text-decoration:underline}
+    .foot-card{background:var(--ink) !important; color:#fff}
+    .foot-card a{border:1px solid var(--border) !important}
+    details.ts summary::after{display:none}
+  }
+
+  /* site navigation (mirrors homepage nav) */
+  body{padding-top:64px}
+  nav.site{position:fixed; top:0; left:0; right:0; z-index:100; height:64px; padding:0 40px;
+    display:flex; align-items:center; justify-content:space-between;
+    background:rgba(255,255,255,0.85); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    border-bottom:1px solid rgba(13,13,13,0.08)}
+  nav.site .nav-logo{display:flex; align-items:center; gap:9px; text-decoration:none; color:#0d0d0d;
+    font-weight:600; letter-spacing:-0.02em; font-size:19px}
+  nav.site .nav-logo svg{width:22px; height:24px}
+  nav.site .nav-center{position:absolute; left:50%; transform:translateX(-50%); display:flex; gap:28px; align-items:center}
+  nav.site .nav-center a{font-size:14px; color:#424242; text-decoration:none}
+  nav.site .nav-center a:hover{color:#0d0d0d}
+  nav.site .nav-center a.active{color:#0d0d0d; font-weight:600}
+  nav.site .nav-right{display:flex; align-items:center; gap:12px}
+  nav.site .pdfbtn2{display:inline-flex; align-items:center; gap:7px; background:#0d0d0d; color:#fff;
+    border-radius:999px; padding:8px 16px; font-weight:600; font-size:13px; text-decoration:none}
+  nav.site .pdfbtn2:hover{opacity:.88}
+  nav.site .pdfbtn2 svg{width:14px; height:14px}
+  /* language picker (shows current language) */
+  nav.site .langdd{position:relative}
+  nav.site .langdd summary{list-style:none; cursor:pointer; display:inline-flex; align-items:center; gap:7px;
+    font-size:12.5px; font-weight:700; color:#424242; border:1px solid #e5e5e5; border-radius:999px;
+    padding:6px 12px; letter-spacing:.02em}
+  nav.site .langdd summary::-webkit-details-marker{display:none}
+  nav.site .langdd summary:hover{border-color:#cfd4dc; color:#0d0d0d}
+  nav.site .langdd summary svg{width:18px; height:13px; display:block}
+  nav.site .langdd summary .chev{width:7px; height:7px; border-right:1.5px solid #676767; border-bottom:1.5px solid #676767; transform:rotate(45deg); margin-top:-3px}
+  nav.site .langdd[open] summary .chev{transform:rotate(-135deg); margin-top:3px}
+  nav.site .langdd .menu{position:absolute; right:0; top:calc(100% + 8px); background:#fff; border:1px solid #e5e5e5;
+    border-radius:12px; box-shadow:0 8px 24px rgba(13,13,13,0.08); padding:6px; min-width:160px; z-index:200}
+  nav.site .langdd .menu a{display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px;
+    font-size:13.5px; color:#424242; text-decoration:none; font-weight:500}
+  nav.site .langdd .menu a svg{width:18px; height:13px; display:block}
+  nav.site .langdd .menu a:hover{background:#f6f7f9; color:#0d0d0d}
+  nav.site .langdd .menu a.on{color:#0d0d0d; font-weight:600}
+  nav.site .langdd .menu a.on::after{content:"✓"; margin-left:auto; font-size:12px; color:#00a240}
+  @media (max-width:940px){ nav.site .nav-center{display:none} }
+  @media (max-width:640px){ nav.site{padding:0 20px} }
+  @media print{
+    nav.site{position:static; background:#fff; backdrop-filter:none; border-bottom:1px solid #e5e5e5}
+    nav.site .nav-center, nav.site .langdd, nav.site .pdfbtn2{display:none !important}
+    body{padding-top:0}
+  }
+
+  /* ---------- step mode (focus view) ---------- */
+  .glayout{max-width:1150px; margin:0 auto; padding:0 24px; display:grid; grid-template-columns:255px minmax(0,1fr); gap:44px; align-items:start}
+  .gmain{max-width:var(--maxw); min-width:0}
+  .gside{position:sticky; top:84px; padding:18px 0 24px}
+  .gside .gs-head{font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--gray6); margin:0 0 10px 2px}
+  .gside ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px}
+  .gside li.gs-div{border-top:1px solid var(--border); margin:8px 2px}
+  .gside button.gs-item{display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:none; border:none; border-radius:10px; padding:8px 10px; cursor:pointer; font-family:var(--font); color:var(--gray7)}
+  .gside button.gs-item:hover{background:var(--soft)}
+  .gside .gs-num{flex:none; width:24px; height:24px; border-radius:50%; border:1px solid var(--border); background:#fff; color:var(--gray7); font-weight:600; font-size:12px; display:grid; place-items:center; transition:.15s}
+  .gside .gs-t{font-size:13.5px; font-weight:500; line-height:1.25}
+  .gside .gs-m{display:block; font-size:11.5px; color:var(--gray6); font-weight:400}
+  .gside .gs-item.on{background:#fff; box-shadow:inset 0 0 0 1px var(--border)}
+  .gside .gs-item.on .gs-t{font-weight:600; color:var(--ink)}
+  .gside .gs-item.on .gs-num{border-color:transparent; background:var(--grad); color:#fff}
+  .gside .gs-item.done .gs-num{border-color:rgba(0,162,64,0.4); background:rgba(0,162,64,0.08); color:var(--green)}
+  .gside .gs-item.done .gs-num::before{content:"✓"; font-size:12px}
+  .gside .gs-item.done .gs-num span{display:none}
+  .gside .gs-foot{margin-top:14px; padding:0 2px}
+  .gside .gs-toggle{background:none; border:none; padding:0; font-family:var(--font); font-size:12.5px; font-weight:600; color:var(--gray6); cursor:pointer; text-decoration:underline; text-underline-offset:3px}
+  .gside .gs-toggle:hover{color:var(--ink)}
+  .gprog{position:fixed; top:64px; left:0; height:2.5px; background:var(--grad); z-index:99; transition:width .25s; width:0}
+  /* hide all panes except active in step mode */
+  body.stepper [data-pane]{display:none}
+  body.stepper [data-pane].on{display:block}
+  body.stepper [data-pane].on + section[data-pane].on{border-top:none; padding-top:0}
+  body.stepper #ruta{display:none}
+  body.stepper section[data-pane]{border-top:none}
+  /* step nav buttons */
+  .gnav{display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 0 70px}
+  .gnav .gprev{background:none; border:1px solid var(--border); color:var(--gray7); border-radius:999px; padding:11px 20px; font-family:var(--font); font-weight:500; font-size:14px; cursor:pointer}
+  .gnav .gprev:hover{border-color:#cfd4dc; color:var(--ink)}
+  .gnav .gnext{margin-left:auto; display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:#fff; border:none; border-radius:999px; padding:13px 26px; font-family:var(--font); font-weight:600; font-size:14.5px; cursor:pointer; letter-spacing:-0.01em}
+  .gnav .gnext:hover{opacity:.88}
+  .gnav .gdone-msg{margin-left:auto; font-weight:600; color:var(--green); font-size:15px}
+  /* full view: everything visible, no step chrome */
+  body.fullview [data-pane]{display:block !important}
+  body.fullview #ruta{display:block !important}
+  body.fullview .gnav{display:none}
+  body.fullview .gprog{display:none}
+  body.fullview section[data-pane]{border-top:1px solid var(--border)}
+  @media (max-width:920px){
+    .glayout{display:block}
+    .gside{position:sticky; top:64px; z-index:40; background:rgba(255,255,255,0.92); backdrop-filter:blur(10px); margin:0 -24px; padding:10px 24px; border-bottom:1px solid var(--border)}
+    .gside .gs-head, .gside .gs-m, .gside .gs-foot{display:none}
+    .gside ul{flex-direction:row; overflow-x:auto; gap:6px; scrollbar-width:none}
+    .gside ul::-webkit-scrollbar{display:none}
+    .gside li.gs-div{display:none}
+    .gside button.gs-item{width:auto; padding:4px; border-radius:999px}
+    .gside .gs-item .gs-t{display:none}
+    .gside .gs-item.on .gs-t{display:block; white-space:nowrap; padding-right:6px}
+    .gside .gs-item.on{box-shadow:none; background:var(--soft)}
+  }
+  @media print{
+    .gside, .gnav, .gprog{display:none !important}
+    [data-pane]{display:block !important}
+    #ruta{display:block !important}
+    section[data-pane]{border-top:1px solid var(--border)}
+  }
+
+  /* workshop video embed */
+  .gvideo{margin:22px 0 4px}
+  .gvideo .vlabel{display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--gray7); margin-bottom:10px}
+  .gvideo .vlabel svg{width:16px; height:16px}
+  .gvideo .vframe{position:relative; width:100%; aspect-ratio:16/9; border-radius:16px; overflow:hidden; border:1px solid var(--border); box-shadow:0 6px 24px rgba(13,13,13,0.07); background:#0f1115}
+  .gvideo .vframe iframe{position:absolute; inset:0; width:100%; height:100%; border:0}
+</style>
+{% endblock %}
+{% block body %}
+
+<div class="wash"></div>
+
+<!-- inline logo symbol -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="hlogo" viewBox="0 0 412.248 448.898">
+<path d="M54.438,370.05a372.979,372.979,0,0,0,36.546,16.539c42.934,16.457,81.036,26.955,127.045,32.718,38.952,4.879,98.013,6.119,133.934-9.694l.22-28.709,10.9-4.2.1,7.633c.131,9.532,10.175,10.024,10.111,16.564l-.19,19.454a10.892,10.892,0,0,1-5.271,8.79A125.921,125.921,0,0,1,333.1,442.267c-27.35,5.945-54.827,7.61-83.009,6.115A501.786,501.786,0,0,1,135.308,429.09C98.277,418.317,63.295,404.2,30.364,384.378c-1.82-1.1-4.62-4.1-4.586-5.833l.486-25.225,11.07-8.41c1.485-34.5-.533-22.947-14.764-49.9-27.447-52-29.2-106.518-8.847-163.015,9.56,20.2,21.153,38.25,37.42,52.877C37.675,162.726,27.2,139.979,22.078,114.644,58.63,40.233,137.3-5.66,220.15.562c51,3.831,94.258,25.571,130.394,61.982-11.956-3.184-22.192-5.554-33.74-6.752C275.709,24.666,227.275,10.9,176.055,19.538c-20.923,3.528-34,6.957-50.682,16.877L139.5,33.929l15.86-2.793c8.528-1.5,24.632-1.04,33.836-.192,22.661,2.088,53.554,13.706,71.674,28.987-12.6,3.789-24.839,7.031-37.177,12.526C168.9,96.859,123.836,137.377,92.651,188.4c-7.872-2.92-15.5-4.417-23.465-2.461,29.782,6.032,38.956,41.129,31.8,67.976-2.394,8.985-7.428,16.16-14.663,22.377a346.506,346.506,0,0,0,147.25,97.184l12.006,21.237c1.847,3.267.35,10.053.346,14.518C191.213,405.71,137.381,395,88.063,371.576L54.751,355.753a55.521,55.521,0,0,0-.313,14.3m15.8-103.638c8.757-2.088,12.715-9.164,15.688-16.5,3.95-12.971,2.434-27.431-5.321-38.706-5.394-7.843-14.789-12.194-23.84-9.339A20.8,20.8,0,0,0,43.4,214.587c8.355-7.946,19.246-8.317,27.089-.185,12.642,13.106,13.272,37.962-.251,52.01M56.2,335.674c19.3,9.688,37.093,17.6,57.609,25.556l.46-40.938c.063-5.627-7.1-8.159-10.894-7.39-13.274,2.69-5.888,17.088-7.963,29.218L55.617,322.693c-1,4.557-1.287,9.423.582,12.981m139.579,48.288c1.144-4.393,1.22-8.69-.783-11.451a512.739,512.739,0,0,1-66.018-17.972,16.313,16.313,0,0,0-.129,12.157c8.276,2.7,16.239,5.339,24.7,7.329Z" fill="#161615"/>
+<path d="M325.964,373.522c-78.683,7.33-171.286-41.71-224.763-98.653,20.982-21.383,19.582-56.385,1.375-79.483,14.126-22.058,29.682-42,48.543-59.74C194.08,95.233,252.771,65.207,312.936,67.539c31.512,1.812,71.082,11.318,70.475,49.792a215.176,215.176,0,0,1,7.448,201.107c3.547,38.249-33.525,51.774-64.9,55.084m-156.623-69.56c44.588,29.3,106.347,54.129,159.883,46.515,8.458-1.2,16.5-3.934,24.588-6.324,5-1.476,7.137-5.17,9.631-9.01,48.185-74.159,42.9-170.662-13.764-238.39C301.111,78.61,245.166,94.247,202.936,121.54c-16.981,10.974-32.909,23.164-46.245,38.481-14.795,16.993-20.759,39.234-21.865,61.356-1.175,23.493,5.307,45.09,17.461,64.8a53.6,53.6,0,0,0,17.054,17.788" fill="#161615"/>
+<path d="M298.533,409.094c-4.467.414-7.883-1.707-9.4-5.237a12.287,12.287,0,0,1,1.075-10.992c1.473-2.484,5.351-4.9,8.887-5.18l31.941-2.488a8.616,8.616,0,0,1,9.262,6.052c.913,3.365.494,9.3-3.5,10.617-12.359,4.06-24.719,5.973-38.264,7.228" fill="#161615"/>
+<rect width="15.334" height="16.211" transform="translate(258.6 409.939) rotate(-89.717)" fill="#161615"/>
+<path d="M370.408,283.292c-6.086,17.577-13.539,33.4-26.392,47.208,26.021-57.679,30.288-124.219,4.132-182.266-6.661-14.783-15.007-27.347-24.809-41.076,5.144.8,12.975.86,16.972,4.164,7.836,6.477,12.518,15.527,17.384,24.5,24.5,45.2,29.763,98.227,12.713,147.465" fill="#161615"/>
+</symbol></svg>
+
+<nav class="site">
+  <a class="nav-logo" href="/"><svg class="mark"><use href="#hlogo"/></svg><span>houston</span></a>
+  <div class="nav-center">
+    <a href="/#agents">Agents</a>
+    <a href="/#features">Features</a>
+    <a class="active" href="/guides/es/">Guides</a>
+    <a href="/changelog/">Changelog</a>
+    <a href="/startups/">For Startups</a>
+  </div>
+  <div class="nav-right">
+    <details class="langdd"><summary><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>ES<span class="chev"></span></summary><div class="menu"><a href="/guides/revenue-manager/"><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr2"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr2)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>English</a><a class="on" href="/guides/es/revenue-manager/"><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>Español</a></div></details>
+    <a class="pdfbtn2" href="/guides/downloads/houston-revenue-manager-guide-es.pdf" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>Descargar PDF</a>
+  </div>
+</nav>
+
+<div class="gprog" id="gprog"></div>
+<div class="glayout" id="top">
+<aside class="gside" aria-label="Pasos de la guía">
+  <p class="gs-head">Pasos de la guía</p>
+  <ul>
+    <li><button type="button" class="gs-item" data-hash="intro"><span class="gs-num"><span>•</span></span><span class="gs-t">Bienvenida<span class="gs-m">Lo que vas a construir</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="requisitos"><span class="gs-num"><span>0</span></span><span class="gs-t">Antes de empezar<span class="gs-m">~5 min</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="paso1"><span class="gs-num"><span>1</span></span><span class="gs-t">Instala Houston<span class="gs-m">~10 min</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="paso2"><span class="gs-num"><span>2</span></span><span class="gs-t">Configura Houston<span class="gs-m">~10 min</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="paso3"><span class="gs-num"><span>3</span></span><span class="gs-t">Crea las cuentas de tus herramientas<span class="gs-m">~10 min</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="paso4"><span class="gs-num"><span>4</span></span><span class="gs-t">Conecta las integraciones<span class="gs-m">~10 min</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="paso5"><span class="gs-num"><span>5</span></span><span class="gs-t">Instala el agente<span class="gs-m">~5 min</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="paso6"><span class="gs-num"><span>6</span></span><span class="gs-t">Corre tu primer Pulso de Mercado<span class="gs-m">20–60 min</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="hazlo-tuyo"><span class="gs-num"><span>+</span></span><span class="gs-t">Hazlo tuyo<span class="gs-m">Extra</span></span></button></li>
+    <li class="gs-div" role="separator"></li>
+    <li><button type="button" class="gs-item" data-hash="problemas"><span class="gs-num"><span>?</span></span><span class="gs-t">Solución de problemas<span class="gs-m">Cuando algo falle</span></span></button></li>
+    <li><button type="button" class="gs-item" data-hash="checklist"><span class="gs-num"><span>✓</span></span><span class="gs-t">Checklist de éxito<span class="gs-m">Cierre</span></span></button></li>
+  </ul>
+  <div class="gs-foot"><button type="button" class="gs-toggle" id="gs-toggle">Ver la guía completa</button></div>
+</aside>
+<div class="gmain">
+
+  <!-- HERO -->
+  <header class="hero" id="intro" data-pane="0">
+    <span class="eyebrow"><span class="dot"></span>Guía paso a paso · Workshop en vivo</span>
+    <h1>Crea tu Agente de<br><span class="accent">Revenue Management</span> con IA</h1>
+    <p class="lede">Sigue esta guía y repite, a tu ritmo, lo que hicimos en el workshop: crea tu cuenta de Houston, conecta tus herramientas e instala el agente que te compartimos. Al final tendrás un asistente que vigila el mercado por ti.</p>
+    <div class="meta">
+      <span class="chip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>
+        <span><b>45–60 min</b> de configuración</span>
+      </span>
+      <span class="chip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z" stroke-linejoin="round"/></svg>
+        <span>Para <b>revenue managers y hoteleros</b></span>
+      </span>
+      <span class="chip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4" stroke-linecap="round"/></svg>
+        <span>Necesitas un <b>computador</b> Mac o Windows</span>
+      </span>
+      <span class="chip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Sin conocimientos técnicos</span>
+      </span>
+    </div>
+  </header>
+    <div class="gvideo">
+      <div class="vlabel"><svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M4 5h16v14H4z" stroke-linejoin="round"/><path d="M10 9l5 3-5 3z" fill="#c2560c" stroke="none"/></svg>Mira el workshop completo (video)</div>
+      <div class="vframe">
+        <iframe id="gyt" src="https://www.youtube-nocookie.com/embed/5oPoU71rlok?rel=0&enablejsapi=1" title="Workshop: Crea tu Agente de Revenue Management con IA" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+    </div>
+
+
+  <!-- WHAT YOU WILL BUILD -->
+  <section id="que-vas-a-construir" data-pane="0">
+    <span class="kicker">Lo que vas a construir</span>
+    <h2>Un agente que hace tu <span class="accent">investigación de mercado</span> solo</h2>
+    <p class="sub">Un "Revenue Manager" dentro de Houston que corre la habilidad <b>Pulso de Mercado</b>.</p>
+    <p>Le das una <b>ciudad</b> y unas <b>fechas</b>, y él revisa Airbnb, Booking, Expedia, Vrbo y Hostel World para traerte precios, disponibilidad, demanda real y lo que dicen los huéspedes. Reemplaza horas de abrir listado por listado y copiar datos a mano.</p>
+    <p><b>El resultado:</b> un Google Sheets con <b>7 pestañas</b> listas para decidir:</p>
+    <ul class="plain">
+      <li><b>Competencia:</b> todos los listados consolidados y llevados a tarifa por noche en dólares.</li>
+      <li><b>Calendario de demanda:</b> ocupación día por día de tus competidores.</li>
+      <li><b>Voz del huésped:</b> lo que aman (en verde) y de lo que se quejan (en rojo), con el enlace a cada reseña.</li>
+      <li><b>Paridad de tarifas:</b> la misma propiedad en varios canales y dónde hay brechas de precio.</li>
+      <li><b>Acciones de Revenue:</b> subir, bajar o mantener tarifa por ventana de fechas.</li>
+      <li><b>Motores de la demanda:</b> eventos que mueven el mercado (ferias, puentes, conciertos) con su fuente.</li>
+      <li><b>Resumen:</b> escribe tu tarifa por noche y te dice tu posición frente al mercado.</li>
+    </ul>
+    <figure class="shot-real">
+      <img src="/guides/assets/revenue-manager/es/01-sheet-7-pestanas.png" alt="Google Sheets del Pulso de Mercado de Medellín: tablero de revenue con la celda editable de tu tarifa por noche y las 7 pestañas abajo" loading="lazy">
+      <figcaption><span class="num">Capturas 1 y 2</span>El Google Sheets del Pulso de Mercado: el tablero de revenue con la celda editable "Tu tarifa por noche" y, abajo, las 7 pestañas.</figcaption>
+    </figure>
+    <figure class="shot-real">
+      <img src="/guides/assets/revenue-manager/es/03-voz-del-huesped.png" alt="Pestaña Voz del Huésped del Google Sheets: lo que aman los huéspedes y de qué se quejan, con citas textuales y enlaces a las reseñas" loading="lazy">
+      <figcaption><span class="num">Captura 3</span>La pestaña "Voz del Huésped": lo que aman los huéspedes y de qué se quejan (tus oportunidades), con la cita textual y el enlace a cada reseña.</figcaption>
+    </figure>
+  </section>
+
+  <!-- PREREQUISITES -->
+  <section id="requisitos" data-pane="1">
+    <span class="kicker">Antes de empezar</span>
+    <h2>Lo que necesitas a la mano</h2>
+    <ul class="plain">
+      <li><b>Un computador Mac o Windows.</b> Houston corre en tu computador, no en celular, tablet ni iPad.</li>
+      <li><b>Una cuenta de proveedor de IA:</b> OpenAI (la de ChatGPT) es la recomendada por su plan gratis, o Anthropic. Si no la tienes, la creas gratis en un minuto.</li>
+      <li><b>El archivo del agente Revenue Manager.</b> Es el mismo que compartimos en el workshop; descárgalo aquí:
+        <div><a class="btnlink" href="/guides/downloads/Revenue-Manager.houstonagent" download>Descargar el archivo del agente</a><span class="urlnote">Revenue-Manager.houstonagent · 26 KB</span></div>
+      </li>
+      <li><b>Estos enlaces y códigos:</b>
+        <ul class="plain">
+          <li>Código de invitación de Houston: <code class="ui">getsh*tdone</code></li>
+          <li>Registro de Apify (trae 75 USD en créditos): <a class="inline" href="https://console.apify.com/sign-up?couponId=HOUSTON_ROCKET" target="_blank" rel="noopener noreferrer">abrir el enlace de registro</a></li>
+          <li>Registro de Anakin.io: <a class="inline" href="https://www.anakin.io" target="_blank" rel="noopener noreferrer">www.anakin.io</a></li>
+        </ul>
+      </li>
+    </ul>
+    <div class="call note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#424242" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">¿Estás listo?</span><p>Puedes abrir tu correo, tienes tu computador a mano y tienes a la vista los enlaces de esta guía. Reserva un rato tranquilo: la configuración toma 45–60 min y tu primer Pulso de Mercado, otros 20–60 min la primera vez.</p></div>
+    </div>
+  </section>
+
+  <!-- ROADMAP -->
+  <section id="ruta">
+    <span class="kicker">La ruta completa</span>
+    <h2>6 pasos, en orden</h2>
+    <p class="sub">Hazlos de arriba hacia abajo. Cada paso construye sobre el anterior.</p>
+    <div class="road">
+      <a href="#paso1"><span class="n">1</span><span><span class="t">Instala Houston y crea tu cuenta</span><br><span class="d">Descarga, código de invitación e instalación</span></span><span class="time">~10 min</span></a>
+      <a href="#paso2"><span class="n">2</span><span><span class="t">Configura Houston</span><br><span class="d">Idioma, proveedor de IA (OpenAI) y Composio</span></span><span class="time">~10 min</span></a>
+      <a href="#paso3"><span class="n">3</span><span><span class="t">Crea las cuentas de tus herramientas</span><br><span class="d">Apify y Anakin.io</span></span><span class="time">~10 min</span></a>
+      <a href="#paso4"><span class="n">4</span><span><span class="t">Conecta las integraciones en Houston</span><br><span class="d">Apify MCP, Google Sheets y Anakin</span></span><span class="time">~10 min</span></a>
+      <a href="#paso5"><span class="n">5</span><span><span class="t">Instala el agente que te compartimos</span><br><span class="d">"De un amigo" → traer agente</span></span><span class="time">~5 min</span></a>
+      <a href="#paso6"><span class="n">6</span><span><span class="t">Corre tu primer Pulso de Mercado</span><br><span class="d">Genera tu Google Sheets de 7 pestañas</span></span><span class="time">20–60 min</span></a>
+    </div>
+  </section>
+
+  <!-- STEP 1 -->
+  <section id="paso1" data-pane="2" class="step">
+    <div class="step-head">
+      <div class="badge">1</div>
+      <div><div class="stepno">Paso 1 de 6</div><h2 style="margin-top:2px">Instala Houston y crea tu cuenta</h2><div class="est">~10 minutos</div></div>
+    </div>
+    <ol class="steps">
+      <li>Entra a <a class="inline" href="https://www.gethouston.ai" target="_blank" rel="noopener noreferrer">www.gethouston.ai</a>.</li>
+      <li>Ingresa el <b>código de invitación</b>: <code class="ui">getsh*tdone</code> (todo en minúscula, con asterisco). La ventana aparece al hacer clic en el botón de descarga; pega el código y se activa la descarga.
+        <figure class="shot-real">
+          <img src="/guides/assets/revenue-manager/shared/invite-code-modal.png" alt="Ventana del código de invitación en gethouston.ai: campo para pegar el código y botón Download for Mac" loading="lazy">
+          <figcaption><span class="num">Captura 4</span>La ventana del código de invitación en gethouston.ai. Pega el código y haz clic en descargar.</figcaption>
+        </figure>
+      </li>
+      <li>Descarga la versión <b>correcta para tu sistema</b>: una para <b>Mac</b> y otra para <b>Windows</b>.</li>
+      <li>Abre el instalador y sigue <code class="ui">Siguiente</code> → <code class="ui">Siguiente</code> → <code class="ui">Instalar</code>.</li>
+      <li>Abre Houston.</li>
+    </ol>
+    <div class="call warn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <div><span class="lbl">Si usas Windows</span><p>Windows puede mostrar <b>"Windows protegió su PC"</b>. Es normal: Houston está en beta para Windows. Haz clic en <code class="ui">Más información</code> y luego en <code class="ui">Ejecutar de todas formas</code>.</p></div>
+    </div>
+    <figure class="shot-real narrow">
+      <img src="/guides/assets/revenue-manager/es/05-windows-protegio.png" alt="Aviso de Windows: Windows protegió su PC, con el botón Ejecutar de todas formas" loading="lazy">
+      <figcaption><span class="num">Captura 5</span>El aviso de Windows. Haz clic en "Más información" y aparece "Ejecutar de todas formas". (Solo Windows.)</figcaption>
+    </figure>
+    <div class="check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Deberías ver</span><p>Houston instalado y abierto en tu computador. Si parece que "desapareció", está minimizado en la barra de tareas: vuelve a abrirlo.</p></div>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section id="paso2" data-pane="3" class="step">
+    <div class="step-head">
+      <div class="badge">2</div>
+      <div><div class="stepno">Paso 2 de 6</div><h2 style="margin-top:2px">Configura Houston</h2><div class="est">~10 minutos · conectas tu proveedor de IA y de integraciones</div></div>
+    </div>
+    <ol class="steps">
+      <li><b>Elige el idioma</b> de Houston. Selecciona <b>Español</b>.</li>
+      <li>En la pantalla <b>"Algunas cosas que debes saber"</b> (te explica que los agentes actúan por ti y que tus archivos son tuyos), léela y haz clic en <code class="ui">Entiendo y quiero continuar</code>.
+        <figure class="shot-real">
+          <img src="/guides/assets/revenue-manager/es/06-consentimiento.png" alt="Pantalla de Houston: Algunas cosas que debes saber, con el botón Entiendo y quiero continuar" loading="lazy">
+          <figcaption><span class="num">Captura 6</span>La pantalla "Algunas cosas que debes saber". Al final, haz clic en "Entiendo y quiero continuar".</figcaption>
+        </figure>
+      </li>
+      <li><b>Conecta tu proveedor de IA.</b> Elige <b>OpenAI</b> (recomendado) o <b>Anthropic</b>. Haz clic para iniciar sesión; si usas ChatGPT, entra con tu cuenta de OpenAI. Puede pasar por una pantalla de <b>Codex</b>: acéptala. Cuando el navegador diga <i>"puedes cerrar esta página"</i>, vuelve a Houston.</li>
+      <li><b>Conecta tu proveedor de integraciones (Composio).</b> Haz clic en <code class="ui">Iniciar Sesión</code> → se abre el sitio de Composio → <code class="ui">Iniciar sesión con Google o Microsoft</code> → <code class="ui">Autorizar</code>. Cierra la pestaña y vuelve a Houston.
+        <figure class="shot-real">
+          <img src="/guides/assets/revenue-manager/es/08-apps-conectadas.png" alt="Pantalla de Houston: ¡Apps conectadas!, con Conecta tu IA y Conecta tus apps marcadas y el botón Crear mi agente" loading="lazy">
+          <figcaption><span class="num">Captura 8</span>La confirmación "¡Apps conectadas!": tu IA y tus apps quedaron listas. Sigue con "Crear mi agente".</figcaption>
+        </figure>
+      </li>
+      <li><b>Crea tu primer agente</b> (Houston te obliga a hacer un mini tutorial). Ponle un nombre según su rol, por ejemplo <i>Asistente Personal</i>.</li>
+      <li>Cuando te lo pida, <b>conecta tu correo (Gmail)</b> y deja que envíe el <b>primer correo de prueba</b>.</li>
+      <li>Completa <code class="ui">Hagamos el recorrido por Houston</code>.</li>
+    </ol>
+    <figure class="shot-real">
+      <img src="/guides/assets/revenue-manager/es/09-pantalla-principal.png" alt="Pantalla principal de Houston desbloqueada: agentes en la columna izquierda y el tablero del Revenue Manager con misiones de Pulso de Mercado" loading="lazy">
+      <figcaption><span class="num">Captura 9</span>La pantalla principal de Houston: tus agentes en la columna izquierda y el tablero de misiones. Así se ve un Revenue Manager en acción, con pulsos de mercado corriendo para varias ciudades.</figcaption>
+    </figure>
+    <div class="call tip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.6.6-1 1.4-1 2.5H9c0-1.1-.4-1.9-1-2.5A6 6 0 0 1 12 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Si algo se queda pegado</span><p>Si el navegador dice "puedes cerrar esta página" y Houston no avanza, o si Composio dice <b>"algo salió mal al conectar"</b>: haz clic en <code class="ui">Inténtalo de nuevo</code>. Si sigue, <b>cierra Houston y ábrelo otra vez</b>.</p></div>
+    </div>
+    <div class="check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Deberías ver</span><p>Se desbloquea la pantalla principal de Houston, con tus agentes en la columna de la izquierda. Ya tienes el proveedor de IA y el de integraciones conectados.</p></div>
+    </div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section id="paso3" data-pane="4" class="step">
+    <div class="step-head">
+      <div class="badge">3</div>
+      <div><div class="stepno">Paso 3 de 6</div><h2 style="margin-top:2px">Crea las cuentas de tus herramientas</h2><div class="est">~10 minutos · aún no conectamos nada, solo creamos las cuentas</div></div>
+    </div>
+    <p>Estas dos herramientas le dan "manos" a tu agente para buscar precios y datos en la web. Por ahora <b>solo crea las cuentas</b>; las conectamos en el Paso 4.</p>
+    <figure class="shot-real">
+      <img src="/guides/assets/revenue-manager/es/cuatro-herramientas.png" alt="Las cuatro herramientas del workshop: Houston, Apify, Anakin.io y Google" loading="lazy">
+      <figcaption>Las cuatro cuentas del workshop: Houston y Google ya las tienes de los pasos anteriores; ahora van Apify y Anakin.io.</figcaption>
+    </figure>
+
+    <h3 class="subh">A · Apify: el buscador de precios y datos</h3>
+    <ol class="steps">
+      <li>Entra al enlace de registro de Apify. Te carga <b>75 USD en créditos</b> automáticamente.
+        <div><a class="btnlink" href="https://console.apify.com/sign-up?couponId=HOUSTON_ROCKET" target="_blank" rel="noopener noreferrer">Crear mi cuenta de Apify</a><span class="urlnote">console.apify.com/sign-up?couponId=HOUSTON_ROCKET</span></div>
+      </li>
+      <li>Regístrate.</li>
+    </ol>
+    <div class="call tip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.6.6-1 1.4-1 2.5H9c0-1.1-.4-1.9-1-2.5A6 6 0 0 1 12 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Consejo</span><p>Si el registro con correo te falla, usa <b>"Iniciar sesión con Google"</b>.</p></div>
+    </div>
+
+    <h3 class="subh">B · Anakin.io: para los sitios que no tienen conexión directa</h3>
+    <ol class="steps">
+      <li>Entra a <a class="inline" href="https://www.anakin.io" target="_blank" rel="noopener noreferrer">www.anakin.io</a> y regístrate.</li>
+      <li>Verifica tu correo. Verás que te dan créditos gratis (por ejemplo, "500 puntos").</li>
+      <li><b>Genera tu API Key:</b> en Anakin, ve a la barra izquierda, abajo, a <code class="ui">API Keys</code> → <code class="ui">Generate New Key</code> → ponle un nombre (por ejemplo, "Houston").
+        <figure class="shot-real">
+          <img src="/guides/assets/revenue-manager/shared/anakin-api-keys.png" alt="Anakin.io, Account settings, pestaña API Keys con el botón Generate new key" loading="lazy">
+          <figcaption><span class="num">Captura 11</span>En Anakin: Account settings → pestaña "API Keys" → botón "Generate new key" (arriba a la derecha).</figcaption>
+        </figure>
+      </li>
+      <li><b>Copia la llave y guárdala de inmediato</b> en un lugar seguro.</li>
+    </ol>
+    <div class="call warn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <div><span class="lbl">Importante</span><p>Anakin <b>no te vuelve a mostrar</b> la llave después de cerrar la ventana. Cópiala apenas la generes. Y por seguridad, <b>no compartas tu pantalla</b> mientras la creas.</p></div>
+    </div>
+    <div class="check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Deberías tener</span><p>Una cuenta de Apify y una cuenta de Anakin.io, con tu API Key de Anakin copiada y guardada.</p></div>
+    </div>
+  </section>
+
+  <!-- STEP 4 -->
+  <section id="paso4" data-pane="5" class="step">
+    <div class="step-head">
+      <div class="badge">4</div>
+      <div><div class="stepno">Paso 4 de 6</div><h2 style="margin-top:2px">Conecta las integraciones en Houston</h2><div class="est">~10 minutos</div></div>
+    </div>
+
+    <h3 class="subh" style="margin-top:8px">A · Apify (con "Apify MCP")</h3>
+    <ol class="steps">
+      <li>En Houston, ve a <code class="ui">Integraciones</code>.</li>
+      <li>Busca <b>Appify</b>. Aparecen dos resultados: <code class="ui">Apify</code> y <code class="ui">Apify MCP</code>.
+        <figure class="shot-real">
+          <img src="/guides/assets/revenue-manager/shared/apify-mcp.png" alt="La sección Integraciones de Houston mostrando Apify y Apify MCP lado a lado, con Apify MCP como la opción correcta" loading="lazy">
+          <figcaption><span class="num">Captura 10</span>Los dos resultados en Integraciones: "Apify" y "Apify MCP" (el recuadro rojo). Conecta el de la derecha: <b>Apify MCP</b>.</figcaption>
+        </figure>
+      </li>
+      <li>Conecta <b>Apify MCP</b> (solo haces clic e inicias sesión, sin token). Confirma <i>"¿este eres tú?"</i> → <code class="ui">Autorizar</code>.</li>
+    </ol>
+    <div class="call warn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <div><span class="lbl">No te equivoques de Apify</span><p>Conecta <b>Apify MCP</b>, no la "Apify" a secas. La otra te pide un <i>token</i> y es la que más confunde a la gente.</p></div>
+    </div>
+    <h3 class="subh">B · Google Sheets</h3>
+    <ol class="steps">
+      <li>En <code class="ui">Integraciones</code>, conecta <b>Google Sheets</b>. (Si quieres conectar todo Google de una vez, Calendar, Docs y correo incluidos, puedes usar <code class="ui">Google Super</code> en su lugar.)</li>
+    </ol>
+
+    <h3 class="subh">C · Anakin.io (desde el chat)</h3>
+    <p>Anakin se conecta desde una conversación con tu agente, no desde la lista de Integraciones.</p>
+    <ol class="steps">
+      <li>Abre un chat nuevo con tu agente y escribe:
+        <div class="prompt"><span class="pl">Copia y pega en el chat</span><span class="txt">Quiero conectar anakin.io, por favor, ayúdame paso por paso.</span></div>
+      </li>
+      <li>Cuando te pida la llave, pégala así:
+        <div class="prompt"><span class="pl">Copia y pega, reemplazando con tu llave</span><span class="txt">Esta es mi llave, por favor almacénala de manera segura y conéctame.</span></div>
+      </li>
+      <li>Verifica que quedó conectado escribiendo:
+        <div class="prompt"><span class="pl">Copia y pega en el chat</span><span class="txt">¿ya estás conectado a anakin.io?</span></div>
+      </li>
+    </ol>
+    <div class="call warn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <div><span class="lbl">Ojo con el nombre</span><p>Es <b>anakin.io</b> (con <b>.io</b>), no anakin.ai. Si ves que se intenta conectar a la otra, detén la ejecución con el <b>ícono de stop</b> (abajo a la derecha) y dile: <i>"la aplicación es anakin.io"</i>.</p></div>
+    </div>
+    <div class="check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Deberías tener</span><p>Las tres integraciones listas: Apify MCP, Google Sheets y Anakin.io (confirmado en el chat).</p></div>
+    </div>
+  </section>
+
+  <!-- STEP 5 -->
+  <section id="paso5" data-pane="6" class="step">
+    <div class="step-head">
+      <div class="badge">5</div>
+      <div><div class="stepno">Paso 5 de 6</div><h2 style="margin-top:2px">Instala el agente que te compartimos</h2><div class="est">~5 minutos</div></div>
+    </div>
+    <ol class="steps">
+      <li><b>Descarga primero el archivo del agente</b> si aún no lo tienes:
+        <div><a class="btnlink" href="/guides/downloads/Revenue-Manager.houstonagent" download>Descargar el archivo del agente</a><span class="urlnote">Revenue-Manager.houstonagent · 26 KB</span></div>
+      </li>
+      <li>En Houston, en la barra izquierda, haz clic en <code class="ui">Nuevo agente</code>.</li>
+      <li>Elige <code class="ui">De un amigo</code> → <code class="ui">Elegir archivo</code> y selecciona el archivo del agente.
+        <figure class="shot-real">
+          <img src="/guides/assets/revenue-manager/es/12-de-un-amigo.png" alt="Ventana Nuevo agente de Houston con la opción De un amigo destacada arriba" loading="lazy">
+          <figcaption><span class="num">Captura 12</span>La ventana "Nuevo agente": la opción "De un amigo" aparece arriba. Ahí subes el archivo que te compartimos.</figcaption>
+        </figure>
+      </li>
+      <li>Houston pregunta <i>"¿quieres que Houston eche un vistazo?"</i> Elige <code class="ui">Sí, que lo revise</code> (revisión de seguridad recomendada al instalar algo de un tercero) y espera a que confirme que está limpio.</li>
+      <li><b>Ponle nombre</b> (por ejemplo, <i>Revenue Manager</i>) y elige un <b>color</b>.</li>
+      <li>Haz clic en <code class="ui">Continuar</code> y deja marcadas las habilidades: <b>Pulso de Mercado (español)</b>, <b>Market Pulse (inglés)</b> y <b>Orquestación en Paralelo</b>.</li>
+      <li>Deja los <b>aprendizajes</b> que trae. Houston revisa las apps: puede marcar <b>Anakin</b> como "no conectado" porque lo conectamos por chat; no importa, sigue.</li>
+      <li>Haz clic en <code class="ui">Traer agente</code>.</li>
+    </ol>
+    <div class="call warn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#c2560c" stroke-width="2"><path d="M12 3l9 16H3z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg>
+      <div><span class="lbl">No descomprimas el archivo</span><p>Sube el archivo <b>tal cual</b>, como un solo archivo. Si tu computador lo descomprime en varias partes, la instalación falla. Guárdalo todo junto.</p></div>
+    </div>
+    <div class="call note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#424242" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Plan B, si la importación falla</span><p>Si al elegir el archivo se abre una ventana rara (PowerShell) o no carga, usa el método alterno: <b>arrastra los archivos <code class="ui">.txt</code> de las habilidades al chat</b> y escribe <i>"estos son todos los skills, instálalos por favor"</i>.</p></div>
+    </div>
+    <div class="call tip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.6.6-1 1.4-1 2.5H9c0-1.1-.4-1.9-1-2.5A6 6 0 0 1 12 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Si dice que Apify no está conectado</span><p>Después de instalar, escríbele en el chat: <i>"ya lo tengo conectado a través de Apify MCP, por favor revisa y utiliza ese y actualiza mi skill."</i></p></div>
+    </div>
+    <div class="check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Deberías ver</span><p>Tu nuevo agente <b>Revenue Manager</b> en la columna izquierda, con sus instrucciones, habilidades y aprendizajes ya cargados.</p></div>
+    </div>
+  </section>
+
+  <!-- STEP 6 -->
+  <section id="paso6" data-pane="7" class="step">
+    <div class="step-head">
+      <div class="badge">6</div>
+      <div><div class="stepno">Paso 6 de 6</div><h2 style="margin-top:2px">Corre tu primer Pulso de Mercado</h2><div class="est">20–60 minutos la primera vez</div></div>
+    </div>
+    <ol class="steps">
+      <li>Abre el agente <b>Revenue Manager</b> y crea una <code class="ui">nueva misión</code> (el botón <b>+</b>).</li>
+      <li>Selecciona la habilidad <b>Market Pulse Español</b> (o <b>Pulso de Mercado</b>).</li>
+      <li>Escribe tu pedido:
+        <div class="prompt"><span class="pl">Copia y pega, cambiando la ciudad</span><span class="txt">Haz un pulso de mercado para Cartagena.</span></div>
+      </li>
+      <li>El agente <b>te hace preguntas antes de empezar</b>. Respóndele: fechas de entrada y salida, cuántos adultos y niños, en qué moneda y en qué zona. Por ejemplo: <i>"para la última semana de septiembre, dos adultos, en dólares, en el centro histórico."</i></li>
+      <li>Déjalo trabajar <b>por etapas</b>. Primero crea el Google Sheets vacío y luego llena cada pestaña, pausando para pedirte feedback.
+        <figure class="shot-real">
+          <img src="/guides/assets/revenue-manager/es/13-agente-por-etapas.png" alt="Houston mostrando al Revenue Manager trabajando por etapas: paridad de tarifas, acciones de revenue, motores de demanda y resumen, con el enlace al Google Sheets al final" loading="lazy">
+          <figcaption><span class="num">Captura 13</span>El agente trabajando por etapas: va avisando al terminar cada pestaña y al final te deja el enlace al Google Sheets completo.</figcaption>
+        </figure>
+      </li>
+    </ol>
+    <div class="check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00a240" stroke-width="2.4"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Lo lograste cuando</span><p>Tienes un Google Sheets con las <b>7 pestañas</b> llenas. En la pestaña <b>Resumen</b>, escribe tu tarifa por noche (por ejemplo, $100) y el sheet te dice tu posición frente al mercado.</p></div>
+    </div>
+    <div class="call tip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10.5c-.6.6-1 1.4-1 2.5H9c0-1.1-.4-1.9-1-2.5A6 6 0 0 1 12 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><span class="lbl">Paciencia la primera vez</span><p>La primera corrida bien hecha toma 20–60 min, porque vas revisando y dando feedback. Puedes detenerlo cuando quieras con el <b>ícono de stop</b> (abajo a la derecha) para corregirlo. Después, conviértelo en una <b>Rutina</b>: <i>"vuélvelo una rutina, todos los días a tal hora actualízalo."</i></p></div>
+    </div>
+  </section>
+
+  <!-- MAKE IT YOURS -->
+  <section id="hazlo-tuyo" data-pane="8">
+    <span class="kicker">Extra</span>
+    <h2>Hazlo tuyo</h2>
+    <p class="sub">Todo se edita hablándole en español, sin código. Trátalo como a un nuevo pasante al que le enseñas.</p>
+    <ul class="plain">
+      <li><b>Compara contra tu propiedad:</b> <i>"Haz un pulso de mercado en Medellín, pero antes te doy mi Airbnb para que lo compares: [pega el enlace de tu listado]."</i></li>
+      <li><b>Ajusta el alcance:</b> <i>"Quítale Expedia"</i>, <i>"no lo conectes con Booking"</i>, <i>"traduce tus instrucciones a español y actualízalas."</i></li>
+      <li><b>Enséñale de una conversación:</b> <i>"Revisa esta conversación y actualiza tus habilidades y guarda lo nuevo en tu memoria."</i></li>
+      <li><b>Conecta otra herramienta (tu PMS):</b> en el chat, <i>"ayúdame a conectarme a [tu PMS] paso por paso, explícame como si tuviera 10 años."</i></li>
+    </ul>
+  </section>
+
+  <!-- TROUBLESHOOTING -->
+  <section id="problemas" data-pane="9">
+    <span class="kicker">Si algo sale mal</span>
+    <h2>Solución de problemas</h2>
+    <p class="sub">Los tropiezos más comunes del workshop y cómo resolverlos.</p>
+
+    <details class="ts"><summary><span class="q">?</span>Windows dice "Windows protegió su PC" y no me deja instalar</summary>
+      <div class="ans">Haz clic en <code class="ui">Más información</code> y luego en <code class="ui">Ejecutar de todas formas</code>. Es porque Houston está en beta para Windows; es seguro. Si tu computador es corporativo y bloquea toda descarga, es una política de seguridad de tu empresa; escríbenos para ayudarte.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>Descargué Houston pero no abre</summary>
+      <div class="ans">Verifica que descargaste la versión correcta para tu sistema: la de Mac no abre en Windows y viceversa. Si "desapareció", suele estar minimizado en la barra de tareas.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>El navegador dice "puedes cerrar esta página" y Houston se queda pegado</summary>
+      <div class="ans">Cierra Houston por completo y vuelve a abrirlo. Lo mismo si Composio dice <b>"algo salió mal al conectar"</b>: haz clic en <code class="ui">Inténtalo de nuevo</code> o reinicia la app.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>Uso ChatGPT, ¿qué proveedor de IA elijo?</summary>
+      <div class="ans">Elige <b>OpenAI</b> (es el dueño de ChatGPT). La conexión puede pasar por una pantalla de Codex: acéptala.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>Apify me pide un "token"</summary>
+      <div class="ans">Conectaste la "Apify" equivocada. Usa <b>Apify MCP</b>, que solo pide iniciar sesión, sin token.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>Después de instalar el agente, dice que Apify "no está conectado"</summary>
+      <div class="ans">Escríbele en el chat: <i>"ya lo tengo conectado a través de Apify MCP, por favor revisa y utiliza ese y actualiza mi skill."</i></div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>Anakin se intenta conectar a la app equivocada</summary>
+      <div class="ans">Es <b>anakin.io</b> (con .io), no anakin.ai. Detén la ejecución con el ícono de stop y dile: <i>"la aplicación es anakin.io."</i></div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>La llave de Anakin no funciona después de importar el agente</summary>
+      <div class="ans">Al exportar, la llave se borra por seguridad. Genera una <b>nueva API Key</b> en Anakin y vuelve a conectarla desde el chat.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>Al elegir "De un amigo → Elegir archivo" se abre una ventana rara</summary>
+      <div class="ans">Es un error conocido. Espera un momento por si carga, intenta desde un chat nuevo o usa el plan B: arrastra los archivos <code class="ui">.txt</code> de las habilidades al chat y di <i>"instálalos por favor."</i></div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>El agente dice que perdió el permiso de Google Sheets a mitad de camino</summary>
+      <div class="ans">Aunque en Integraciones aparezca conectado, dile: <i>"acabo de revisar, sigue conectado, por favor revisa mi conexión de Google Sheets y continúa."</i> A veces solo necesita re-sincronizar.</div>
+    </details>
+    <details class="ts"><summary><span class="q">?</span>Tengo muchas propiedades, ¿esto sirve para mi portafolio?</summary>
+      <div class="ans">El agente que te compartimos hace un pulso general del mercado. Para tu portafolio, co-crea una habilidad tuya en el chat: <i>"estas son mis propiedades, extrae los precios y compáralas contra el mercado."</i></div>
+    </details>
+  </section>
+
+  <!-- FINAL CHECKLIST -->
+  <section id="checklist" data-pane="10">
+    <span class="kicker">Antes de cerrar</span>
+    <h2>Tu checklist de éxito</h2>
+    <p class="sub">Si puedes marcar todo esto, terminaste.</p>
+    <div class="final">
+      <ul>
+        <li><label><input type="checkbox"><span>Houston instalado y abierto</span></label></li>
+        <li><label><input type="checkbox"><span>Proveedor de IA conectado (OpenAI o Anthropic)</span></label></li>
+        <li><label><input type="checkbox"><span>Composio conectado</span></label></li>
+        <li><label><input type="checkbox"><span>Apify MCP conectado</span></label></li>
+        <li><label><input type="checkbox"><span>Google Sheets conectado</span></label></li>
+        <li><label><input type="checkbox"><span>Anakin.io conectado (verificado en el chat)</span></label></li>
+        <li><label><input type="checkbox"><span>Agente "Revenue Manager" importado</span></label></li>
+        <li><label><input type="checkbox"><span>Primer Pulso de Mercado generado (Google Sheets de 7 pestañas)</span></label></li>
+      </ul>
+    </div>
+  </section>
+<div class="gnav" id="gnav"></div>
+</div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-card">
+      <h3>¿Te atascaste en algún paso?</h3>
+      <p>Escríbenos en la comunidad de WhatsApp de Houston LATAM y lo resolvemos contigo. Nadie se queda sin su Revenue Manager andando.</p>
+      <div style="margin-top:16px">
+        <a href="https://chat.whatsapp.com/LDytsBEAL3OBTpoGn2X061?s=cl&amp;p=i&amp;mlu=4" style="display:inline-flex; align-items:center; gap:8px; background:#fff; color:#0d0d0d; border-radius:999px; padding:11px 22px; font-weight:600; font-size:14.5px; text-decoration:none" target="_blank" rel="noopener noreferrer">Unirme a la comunidad Houston LATAM</a>
+      </div>
+      <div class="fl"><svg class="mark"><use href="#hlogo"/></svg><span class="wordmark">houston</span></div>
+    </div>
+    <div class="foot-meta">
+      <span>Guía del workshop · Crea tu Agente de Revenue Management</span>
+      <span>gethouston.ai</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // Open all troubleshooting accordions for print/PDF
+  function openAll(){ document.querySelectorAll('details.ts').forEach(function(d){ d.open = true; }); }
+  window.addEventListener('beforeprint', openAll);
+  if (new URLSearchParams(location.search).has('print')) openAll();
+  document.querySelectorAll('.prompt').forEach(function(p){
+    var t = p.querySelector('.txt');
+    if(!t) return;
+    var b = document.createElement('button');
+    b.className = 'copybtn'; b.type = 'button'; b.textContent = 'Copiar';
+    b.addEventListener('click', function(){
+      var text = t.textContent.trim();
+      function done(){ b.textContent = 'Copiado'; b.classList.add('ok');
+        setTimeout(function(){ b.textContent = 'Copiar'; b.classList.remove('ok'); }, 1600); }
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){ fallback(); });
+      } else { fallback(); }
+      function fallback(){
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try{ document.execCommand('copy'); done(); }catch(e){}
+        document.body.removeChild(ta);
+      }
+    });
+    p.appendChild(b);
+  });
+})();
+</script>
+
+
+<script>
+(function(){
+  var body = document.body;
+  var KEY = 'houston-guide-revenue-manager-es';
+  var L = {"next": "Siguiente paso", "prev": "Anterior", "finish": "Terminé el workshop", "finished": "¡Listo! Guía completada.", "full": "Ver la guía completa", "step": "Ver paso a paso"};
+  var GUIDE = 'Revenue Manager Agent';
+  var lang = document.documentElement.lang || 'en';
+  var items = Array.prototype.slice.call(document.querySelectorAll('.gside .gs-item'));
+  var N = items.length;
+  var gnav = document.getElementById('gnav');
+  var prog = document.getElementById('gprog');
+  var toggle = document.getElementById('gs-toggle');
+  var hashMap = {"intro": 0, "que-vas-a-construir": 0, "requisitos": 1, "paso1": 2, "paso2": 3, "paso3": 4, "paso4": 5, "paso5": 6, "paso6": 7, "hazlo-tuyo": 8, "problemas": 9, "checklist": 10};
+  var cur = 0, finished = false;
+
+  function track(name, props) {
+    var payload = props || {};
+    if (window.posthog && window.posthog.capture) { try { window.posthog.capture(name, payload); } catch (e) {} }
+    if (typeof window.gtag === 'function') { try { window.gtag('event', name, payload); } catch (e) {} }
+  }
+  function panes(i){ return document.querySelectorAll('[data-pane="' + i + '"]'); }
+  function renderNav(i){
+    gnav.innerHTML = '';
+    if (i > 0) {
+      var p = document.createElement('button'); p.className = 'gprev'; p.type = 'button';
+      p.textContent = '← ' + L.prev;
+      p.addEventListener('click', function(){ show(cur - 1, true); });
+      gnav.appendChild(p);
+    }
+    if (i < N - 1) {
+      var n = document.createElement('button'); n.className = 'gnext'; n.type = 'button';
+      n.innerHTML = L.next + ' <span aria-hidden="true">→</span>';
+      n.addEventListener('click', function(){ show(cur + 1, true); });
+      gnav.appendChild(n);
+    } else if (!finished) {
+      var f = document.createElement('button'); f.className = 'gnext'; f.type = 'button';
+      f.textContent = L.finish;
+      f.addEventListener('click', function(){
+        finished = true;
+        track('guide_completed', { guide: GUIDE, lang: lang });
+        var m = document.createElement('span'); m.className = 'gdone-msg'; m.textContent = L.finished;
+        f.replaceWith(m);
+      });
+      gnav.appendChild(f);
+    }
+  }
+  function show(i, user){
+    i = Math.max(0, Math.min(N - 1, i));
+    cur = i;
+    document.querySelectorAll('[data-pane]').forEach(function(e){ e.classList.remove('on'); });
+    panes(i).forEach(function(e){ e.classList.add('on'); });
+    items.forEach(function(it, j){
+      it.classList.toggle('on', j === i);
+      it.classList.toggle('done', j < i);
+    });
+    renderNav(i);
+    if (prog) prog.style.width = ((i) / (N - 1) * 100) + '%';
+    var id = items[i].getAttribute('data-hash');
+    if (user) {
+      try { history.replaceState(null, '', '#' + id); } catch (e) {}
+      try { localStorage.setItem(KEY, String(i)); } catch (e) {}
+      window.scrollTo({ top: 0 });
+      track('guide_step_viewed', { guide: GUIDE, step: id, step_index: i, lang: lang });
+    }
+  }
+  items.forEach(function(it, j){ it.addEventListener('click', function(){ show(j, true); }); });
+  function applyFull(on){
+    body.classList.toggle('fullview', on);
+    body.classList.toggle('stepper', !on);
+    if (toggle) toggle.textContent = on ? L.step : L.full;
+  }
+  if (toggle) toggle.addEventListener('click', function(){ applyFull(!body.classList.contains('fullview')); });
+  window.addEventListener('hashchange', function(){
+    var id = location.hash.replace('#', '');
+    if (hashMap.hasOwnProperty(id)) show(hashMap[id], true);
+  });
+  // print / ?print → full view
+  if (new URLSearchParams(location.search).has('print')) { applyFull(true); }
+  else {
+    body.classList.add('stepper');
+    var start = 0;
+    var id = location.hash.replace('#', '');
+    if (hashMap.hasOwnProperty(id)) start = hashMap[id];
+    else { try { start = parseInt(localStorage.getItem(KEY) || '0', 10) || 0; } catch (e) {} }
+    show(start, false);
+  }
+  window.addEventListener('beforeprint', function(){ applyFull(true); });
+})();
+</script>
+
+
+<script>
+(function(){
+  function track(name, props){
+    var payload = props || {};
+    if (window.posthog && window.posthog.capture){ try { window.posthog.capture(name, payload); } catch(e){} }
+    if (typeof window.gtag === 'function'){ try { window.gtag('event', name, payload); } catch(e){} }
+  }
+  var el = document.getElementById('gyt');
+  if (!el) return;
+  var fired = false;
+  function onReady(){
+    try {
+      var player = new YT.Player('gyt', {
+        events: {
+          onStateChange: function(e){
+            if (e.data === YT.PlayerState.PLAYING && !fired){
+              fired = true;
+              track('guide_video_play', { guide: 'Revenue Manager Agent', lang: 'es' });
+            }
+          }
+        }
+      });
+    } catch(e){}
+  }
+  var tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+  if (window.YT && window.YT.Player){ onReady(); }
+  else { window.onYouTubeIframeAPIReady = onReady; }
+})();
+</script>
+
+{% endblock %}

@@ -1,3 +1,4 @@
+import type { PendingInteraction } from "@houston/runtime-client";
 import type { ScopeStore } from "../../store";
 import type {
   BoardStatus,
@@ -48,9 +49,18 @@ export interface ConversationVM {
   /**
    * The persisted board-card status (the `persistBoardStatus` seam), or `null`
    * before any turn ran. Handled-vs-error lives HERE: `needs_you` = handled /
-   * attention (a user Stop settles here), `error` = a real failure.
+   * attention (a user Stop, or a clean turn that ended asking the user for
+   * something, settles here), `done` = a clean turn with nothing outstanding,
+   * `error` = a real failure.
    */
   boardStatus: BoardStatus | null;
+  /**
+   * The interaction a clean turn settled on (ask_user / request_connection),
+   * mirrored from the terminal board persist so a surface can render the
+   * composer-replacing card; `null` when the turn is not waiting on the user
+   * (cleared on turn start and on every settle that carries no interaction).
+   */
+  pendingInteraction: PendingInteraction | null;
   /**
    * Messages queued while a turn runs (additive; absent when none). The sender
    * flushes them as ONE combined send when the turn settles.
@@ -62,6 +72,7 @@ interface ConvState {
   feed: FeedItemVM[];
   sessionStatus: SessionStatusValue | "idle";
   boardStatus: BoardStatus | null;
+  pendingInteraction: PendingInteraction | null;
   seq: number;
   /** Open streaming run: its streaming feed_type -> the feed entry id it updates. */
   streaming: Map<string, string>;
@@ -99,6 +110,7 @@ export class ConversationVmOutput implements FeedOutput {
         feed: [],
         sessionStatus: "idle",
         boardStatus: null,
+        pendingInteraction: null,
         seq: 0,
         streaming: new Map(),
         queued: [],
@@ -195,9 +207,14 @@ export class ConversationVmOutput implements FeedOutput {
     agentPath: string,
     sessionKey: string,
     status: BoardStatus,
+    pendingInteraction?: PendingInteraction | null,
   ): Promise<void> {
     const s = this.state(agentPath, sessionKey);
     s.boardStatus = status;
+    // Turn start persists `running` + null (clears); a settle persists the
+    // terminal status + the interaction it ended on (or null). An omitted arg
+    // clears — no interaction means the card is not waiting on the user.
+    s.pendingInteraction = pendingInteraction ?? null;
     this.publish(agentPath, sessionKey, s);
   }
 
@@ -218,6 +235,7 @@ export class ConversationVmOutput implements FeedOutput {
       running: s.sessionStatus === "running",
       sessionStatus: s.sessionStatus,
       boardStatus: s.boardStatus,
+      pendingInteraction: s.pendingInteraction,
       ...(s.queued.length ? { queued: s.queued.map((q) => ({ ...q })) } : {}),
     };
     this.store.publish(conversationScope(agentPath, sessionKey), snapshot);

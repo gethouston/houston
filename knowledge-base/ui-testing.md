@@ -51,9 +51,11 @@ Playwright auto-starts two servers: vite `:1430` (`VITE_NEW_ENGINE=1` → adapte
   `POST /__test__/drop-chat-streams` (sever streams mid-turn, reconnect spec),
   `POST /__test__/chat-config` (`{ replyDelayMs }`),
   `POST /__test__/kill-turn` (synthesize the dead-pump reaper's terminal
-  error — the dead-turn spec), and `POST /__test__/turn-boundary`
+  error — the dead-turn spec), `POST /__test__/turn-boundary`
   (`{ nextText }`; end the running turn unseen + start the next one — the
-  settle-from-history-by-turnId spec).
+  settle-from-history-by-turnId spec), and `POST /__test__/chat-interaction`
+  (`{ interaction }`; end the next turn's `done` frame on that
+  `pendingInteraction` — the composer question/connect card spec).
 - **Board = files-first.** Reads/writes `.houston/activity/activity.json` via
   `/agents/:id/agentfile/*` (NOT just `/activities`). Fake host backs it with a
   real store, unified with `/activities` (same data, as in the real host),

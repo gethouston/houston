@@ -9,13 +9,23 @@
 
 /* The app toggles dark mode via data-theme="dark" on <html> (see
    app/src/lib/theme.ts) — NOT a .dark class. The variant must key on the
-   attribute or every `dark:` utility silently never applies. */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+   attribute or every `dark:` utility silently never applies.
+
+   A subtree can pin itself to the light theme with data-theme="light" (the
+   tokens ship a matching [data-theme="light"] scope) — the :not() keeps
+   `dark:` utilities from leaking into such a subtree via the <html> ancestor.
+   Exact today because theme.ts only ever puts "dark" on <html> and "light"
+   only ever appears on pinned subtrees. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *):not(:where([data-theme="light"], [data-theme="light"] *)));
 
 /* Dark mode needs the native form controls / scrollbars to follow suit; the
-   colour values themselves come from the imported tokens above. */
+   colour values themselves come from the imported tokens above. A light-pinned
+   subtree flips them back. */
 [data-theme="dark"] {
   color-scheme: dark;
+}
+[data-theme="light"] {
+  color-scheme: light;
 }
 
 /* @theme references the intermediate vars — Tailwind generates utilities from these */
@@ -138,6 +148,44 @@ body {
     ) border-box;
   border: 1.5px solid transparent;
   animation: glow-spin 2.5s linear infinite;
+}
+
+/* Same comet trace as .card-running-glow, but masked to the ring only.
+ * .card-running-glow hides the conic's interior behind an opaque
+ * --glow-bg fill, so on a transparent/translucent surface (the glass
+ * sidebar) the sweep leaks into the middle and reads as a radar dish.
+ * This variant needs no backdrop: the mask keeps just the 1.5px line. */
+.avatar-running-ring {
+  --glow-angle: 0deg;
+  position: relative;
+}
+
+.avatar-running-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--glow-angle),
+    transparent 60%,
+    rgba(59, 130, 246, 0.15) 68%,
+    #3b82f6 74%,
+    #818cf8 78%,
+    #f97316 82%,
+    #fbbf24 84%,
+    transparent 88%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: glow-spin 2.5s linear infinite;
+  pointer-events: none;
 }
 
 
