@@ -30,28 +30,28 @@ test("redacts handles, keeping the surrounding text intact", () => {
   expect(r).toContain("Ping <handle> when ready.");
 });
 
-test("a text that is all personal info is flagged becameEmpty", () => {
-  const r = redactString("alice@example.com");
+test("a text that is all personal info is flagged becameEmpty", async () => {
+  const r = await redactString("alice@example.com");
   expect(r.after).toBe("<email>");
   expect(r.becameEmpty).toBe(true);
 });
 
-test("clean text is unchanged with a no-op summary", () => {
-  const r = redactString("Draft the quarterly report.");
+test("clean text is unchanged with a no-op summary", async () => {
+  const r = await redactString("Draft the quarterly report.");
   expect(r.after).toBe(r.before);
   expect(r.becameEmpty).toBe(false);
   expect(r.summary).toBe("no obvious personal info detected");
 });
 
-test("summary counts what was redacted", () => {
-  const r = redactString(
+test("summary counts what was redacted", async () => {
+  const r = await redactString(
     "Email bob@x.co and carol@y.io about https://internal.example.com",
   );
   expect(r.summary).toContain("2 email");
   expect(r.summary).toContain("1 url");
 });
 
-test("anonymizeContent diffs every part and builds routine overrides", () => {
+test("anonymizeContent diffs every part and builds routine overrides", async () => {
   const routine = createRoutine(
     {
       name: "Mail digest",
@@ -61,7 +61,7 @@ test("anonymizeContent diffs every part and builds routine overrides", () => {
     "r1",
     "2026-07-04T00:00:00.000Z",
   );
-  const out = anonymizeContent({
+  const out = await anonymizeContent({
     claudeMd: "You help dan@x.co with sales.",
     skills: [{ slug: "outreach", body: "Email prospects at their @handles" }],
     routines: [routine],

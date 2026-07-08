@@ -1145,6 +1145,12 @@ export interface PortableAnonymizeRequest {
   skillSlugs: string[];
   routineIds: string[];
   learningIds: string[];
+  /**
+   * Run the AI pass on top of the pattern + secret scrub (the wizard's
+   * "Let my AI help" toggle). Absent means true; false is a deliberate
+   * user choice, so the response carries no `aiError`.
+   */
+  useAi?: boolean;
 }
 
 export interface PortableAnonymizedString {
@@ -1179,6 +1185,10 @@ export interface PortableAnonymizeResponse {
   skills: PortableAnonymizedItem[];
   routines: PortableAnonymizedRoutine[];
   learnings: PortableAnonymizedItem[];
+  /** Which redactor produced the diffs: the AI pass, or the regex patterns fallback. */
+  mode: "ai" | "patterns";
+  /** Why the AI pass didn't run (set only when `mode` is "patterns"). */
+  aiError?: string;
 }
 
 export interface PortableManifestSummary {

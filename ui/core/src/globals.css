@@ -190,6 +190,47 @@ body {
 }
 
 
+/* Indeterminate progress line — the same comet palette as
+ * .card-running-glow, flattened into a thin bar for sections that wait on
+ * one finite operation (e.g. the export wizard's anonymize pass). Give the
+ * element a track color yourself (e.g. `bg-foreground/5`); the comet sweeps
+ * left to right on the glow's 2.5s clock. */
+@keyframes glow-line-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    /* -100% start + 250% (track/self width) travel + 100% exit */
+    transform: translateX(350%);
+  }
+}
+
+.running-glow-line {
+  position: relative;
+  height: 2px;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.running-glow-line::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(59, 130, 246, 0.15),
+    #3b82f6,
+    #818cf8,
+    #f97316,
+    #fbbf24,
+    transparent
+  );
+  animation: glow-line-sweep 2.5s linear infinite;
+}
+
 /* Typing dots — WhatsApp-style "•••" bouncing while an agent is
  * working. Apply `.typing-dot` to three sibling elements; the
  * `nth-child` rules stagger them so the bounce travels across. */

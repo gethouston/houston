@@ -12,13 +12,24 @@
  * corner). Switches match the routine editor.
  */
 
-import { Button, cn, Dialog, DialogContent, Switch } from "@houston-ai/core";
+import {
+  Button,
+  cn,
+  Dialog,
+  DialogContent,
+  Switch,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@houston-ai/core";
 import type {
+  PortableAnonymizeRequest,
   PortableAnonymizeResponse,
   PortableInventoryPreview,
 } from "@houston-ai/engine-client";
 import { invoke } from "@tauri-apps/api/core";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Info } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { getEngine } from "../../lib/engine";
@@ -45,6 +56,22 @@ interface AnonymizeAccept {
   learnings: Record<string, boolean>;
 }
 
+/** Show the "use what's ready" escape hatch once the AI pass runs this long. */
+const SLOW_AFTER_MS = 15_000;
+
+function acceptFor(result: PortableAnonymizeResponse): AnonymizeAccept {
+  return {
+    claudeMd: !(result.claudeMd?.becameEmpty ?? false),
+    skills: Object.fromEntries(
+      result.skills.map((s) => [s.id, !s.becameEmpty]),
+    ),
+    routines: Object.fromEntries(result.routines.map((r) => [r.id, true])),
+    learnings: Object.fromEntries(
+      result.learnings.map((l) => [l.id, !l.becameEmpty]),
+    ),
+  };
+}
+
 export function ExportAgentWizard() {
   const { t } = useTranslation("portable");
   const agentId = useUIStore((s) => s.shareAgentId);
@@ -65,7 +92,16 @@ export function ExportAgentWizard() {
     learningIds: new Set(),
   });
   const [wantAnonymize, setWantAnonymize] = useState<boolean | null>(null);
+  const [useAi, setUseAi] = useState(true);
   const [anonymizing, setAnonymizing] = useState(false);
+  const [progress, setProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
+  const [slow, setSlow] = useState(false);
+  const [stopped, setStopped] = useState(false);
+  // The loop reads this between items; state alone would be a stale closure.
+  const stopRef = useRef(false);
   const [anonymized, setAnonymized] =
     useState<PortableAnonymizeResponse | null>(null);
   const [accept, setAccept] = useState<AnonymizeAccept>({
@@ -119,35 +155,77 @@ export function ExportAgentWizard() {
 
   const handleClose = useCallback(() => setAgentId(null), [setAgentId]);
 
-  const runAnonymize = async () => {
+  /**
+   * Anonymize ITEM BY ITEM (the route takes any selection) so the pass is
+   * resumable: each finished piece lands in the review list right away, and
+   * "use what's ready" flips the remaining items to the instant non-AI
+   * scrub — whatever the AI already did is kept.
+   */
+  const runAnonymize = async (withAi: boolean = useAi) => {
     if (!agent || !preview) return;
     setAnonymizing(true);
+    setAnonymized(null);
+    setStopped(false);
+    stopRef.current = false;
+    const slowTimer = setTimeout(() => setSlow(true), SLOW_AFTER_MS);
+
+    const none = {
+      claudeMd: false,
+      skillSlugs: [],
+      routineIds: [],
+      learningIds: [],
+    };
+    const units: PortableAnonymizeRequest[] = [
+      ...(selection.claudeMd ? [{ ...none, claudeMd: true }] : []),
+      ...Array.from(selection.skillSlugs, (s) => ({
+        ...none,
+        skillSlugs: [s],
+      })),
+      ...Array.from(selection.routineIds, (r) => ({
+        ...none,
+        routineIds: [r],
+      })),
+      ...Array.from(selection.learningIds, (l) => ({
+        ...none,
+        learningIds: [l],
+      })),
+    ];
+    const acc: PortableAnonymizeResponse = {
+      claudeMd: null,
+      skills: [],
+      routines: [],
+      learnings: [],
+      mode: withAi ? "ai" : "patterns",
+    };
+
     try {
-      const result = await getEngine().portableAnonymize(agent.folderPath, {
-        claudeMd: selection.claudeMd,
-        skillSlugs: Array.from(selection.skillSlugs),
-        routineIds: Array.from(selection.routineIds),
-        learningIds: Array.from(selection.learningIds),
-      });
-      setAnonymized(result);
-      setAccept({
-        claudeMd: !(result.claudeMd?.becameEmpty ?? false),
-        skills: Object.fromEntries(
-          result.skills.map((s: { id: string; becameEmpty: boolean }) => [
-            s.id,
-            !s.becameEmpty,
-          ]),
-        ),
-        routines: Object.fromEntries(
-          result.routines.map((r: { id: string }) => [r.id, true]),
-        ),
-        learnings: Object.fromEntries(
-          result.learnings.map((l: { id: string; becameEmpty: boolean }) => [
-            l.id,
-            !l.becameEmpty,
-          ]),
-        ),
-      });
+      setProgress({ done: 0, total: units.length });
+      let aiFailed = false;
+      for (const [i, unit] of units.entries()) {
+        const part = await getEngine().portableAnonymize(agent.folderPath, {
+          ...unit,
+          useAi: withAi && !aiFailed && !stopRef.current,
+        });
+        acc.claudeMd = part.claudeMd ?? acc.claudeMd;
+        acc.skills.push(...part.skills);
+        acc.routines.push(...part.routines);
+        acc.learnings.push(...part.learnings);
+        if (part.aiError && !acc.aiError) {
+          // Once the AI pass fails (no provider, bad reply) the rest of the
+          // run stays on the instant scrub — one visible reason, not N slow
+          // repeats of the same failure.
+          acc.aiError = part.aiError;
+          aiFailed = true;
+        }
+        setProgress({ done: i + 1, total: units.length });
+        setAnonymized({
+          ...acc,
+          skills: [...acc.skills],
+          routines: [...acc.routines],
+          learnings: [...acc.learnings],
+        });
+        setAccept(acceptFor(acc));
+      }
     } catch (err) {
       addToast({
         variant: "error",
@@ -155,8 +233,16 @@ export function ExportAgentWizard() {
         description: genericErrorDescription("export_anonymize", err),
       });
     } finally {
+      clearTimeout(slowTimer);
+      setSlow(false);
+      setProgress(null);
       setAnonymizing(false);
     }
+  };
+
+  const stopWaiting = () => {
+    stopRef.current = true;
+    setStopped(true);
   };
 
   const buildOverrides = () => {
@@ -249,11 +335,16 @@ export function ExportAgentWizard() {
 
   if (!open) return null;
 
+  // On the anonymize step, choosing "help me" is not enough — a run must
+  // have completed, else the export would stamp anonymized: true with zero
+  // redactions actually applied.
   const canAdvance =
     currentStep === "pick"
       ? !loading && !!preview
       : currentStep === "anonymize"
-        ? wantAnonymize !== null && !anonymizing
+        ? wantAnonymize !== null &&
+          !anonymizing &&
+          (!wantAnonymize || anonymized !== null)
         : true;
 
   return (
@@ -283,11 +374,15 @@ export function ExportAgentWizard() {
           ) : currentStep === "anonymize" ? (
             <AnonymizeStep
               wantAnonymize={wantAnonymize}
-              onChoose={(v) => {
-                setWantAnonymize(v);
-                if (v && !anonymized) void runAnonymize();
-              }}
+              onChoose={setWantAnonymize}
+              useAi={useAi}
+              onToggleAi={setUseAi}
+              onStart={() => void runAnonymize()}
               anonymizing={anonymizing}
+              progress={progress}
+              slow={slow}
+              stopped={stopped}
+              onStop={stopWaiting}
               anonymized={anonymized}
               accept={accept}
               setAccept={setAccept}
@@ -437,14 +532,28 @@ function PickStep({
 function AnonymizeStep({
   wantAnonymize,
   onChoose,
+  useAi,
+  onToggleAi,
+  onStart,
   anonymizing,
+  progress,
+  slow,
+  stopped,
+  onStop,
   anonymized,
   accept,
   setAccept,
 }: {
   wantAnonymize: boolean | null;
   onChoose: (v: boolean) => void;
+  useAi: boolean;
+  onToggleAi: (v: boolean) => void;
+  onStart: () => void;
   anonymizing: boolean;
+  progress: { done: number; total: number } | null;
+  slow: boolean;
+  stopped: boolean;
+  onStop: () => void;
   anonymized: PortableAnonymizeResponse | null;
   accept: AnonymizeAccept;
   setAccept: (a: AnonymizeAccept) => void;
@@ -478,11 +587,85 @@ function AnonymizeStep({
 
       {wantAnonymize && (
         <section className="space-y-3">
-          <h2 className="text-sm font-medium">
-            {t("export.step2.reviewLabel")}
-          </h2>
-          {anonymizing && <Subtle>{t("export.step2.working")}</Subtle>}
-          {!anonymizing && anonymized && (
+          <div className="flex items-center gap-2 px-1 py-1">
+            <p className="text-sm text-foreground">
+              {t("export.step2.aiToggleTitle")}
+            </p>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={t("export.step2.aiToggleHint")}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Info className="size-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[280px]">
+                {t("export.step2.aiToggleHint")}
+              </TooltipContent>
+            </Tooltip>
+            <Switch
+              checked={useAi}
+              onCheckedChange={onToggleAi}
+              disabled={anonymizing}
+              className="ml-auto shrink-0"
+            />
+          </div>
+
+          {!anonymizing && (
+            <Button
+              size="sm"
+              variant={anonymized ? "outline" : "default"}
+              className="rounded-full"
+              onClick={onStart}
+            >
+              {anonymized
+                ? t("export.step2.checkAgain")
+                : t("export.step2.startReview")}
+            </Button>
+          )}
+
+          {(anonymizing || anonymized) && (
+            <h2 className="text-sm font-medium">
+              {t("export.step2.reviewLabel")}
+            </h2>
+          )}
+          {anonymizing && (
+            <div className="space-y-3">
+              <div className="running-glow-line bg-foreground/5" aria-hidden />
+              <Subtle>
+                {progress && progress.total > 1
+                  ? t("export.step2.workingProgress", {
+                      done: progress.done,
+                      total: progress.total,
+                    })
+                  : t("export.step2.working")}
+              </Subtle>
+              {slow && !stopped && (
+                <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary p-3">
+                  <p className="text-xs text-muted-foreground">
+                    {t("export.step2.slowNotice")}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 rounded-full"
+                    onClick={onStop}
+                  >
+                    {t("export.step2.stopWait")}
+                  </Button>
+                </div>
+              )}
+              {stopped && <Subtle>{t("export.step2.stopping")}</Subtle>}
+            </div>
+          )}
+          {!anonymizing && anonymized?.aiError && (
+            <p className="text-xs text-muted-foreground rounded-lg bg-secondary p-3">
+              {t("export.step2.aiFallback", { reason: anonymized.aiError })}
+            </p>
+          )}
+          {anonymized && (
             <div className="space-y-3">
               {anonymized.claudeMd && (
                 <DiffCard
