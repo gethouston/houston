@@ -143,10 +143,8 @@
       "back": "Back",
       "providersLabel": "Providers",
       "modelsLabel": "Models",
-      "resultsLabel": "Results",
       "loading": "Loading providers…",
       "empty": "No models found.",
-      "emptyHint": "Try another search term.",
       "noProviders": "No providers connected yet."
     },
     "modelDescriptions": {

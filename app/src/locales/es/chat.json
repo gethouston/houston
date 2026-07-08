@@ -143,10 +143,8 @@
       "back": "Atrás",
       "providersLabel": "Proveedores",
       "modelsLabel": "Modelos",
-      "resultsLabel": "Resultados",
       "loading": "Cargando proveedores…",
       "empty": "No se encontraron modelos.",
-      "emptyHint": "Prueba otro término de búsqueda.",
       "noProviders": "Aún no hay proveedores conectados."
     },
     "modelDescriptions": {
