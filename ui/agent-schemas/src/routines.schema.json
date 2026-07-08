@@ -8,7 +8,6 @@
     "required": [
       "id",
       "name",
-      "description",
       "prompt",
       "schedule",
       "enabled",
@@ -19,7 +18,6 @@
     "properties": {
       "id": { "type": "string" },
       "name": { "type": "string" },
-      "description": { "type": "string" },
       "prompt": {
         "type": "string",
         "description": "Prompt sent to Claude when the routine fires."
@@ -56,6 +54,10 @@
       "effort": {
         "type": ["string", "null"],
         "description": "Reasoning-effort override (e.g. 'high', 'max'); validated per-provider at dispatch; null/absent means inherit the agent's effort."
+      },
+      "setup_activity_id": {
+        "type": "string",
+        "description": "Id of the setup chat attached to this routine. When Houston asks you to create or change a routine from a chat, it tells you the exact id to write here; otherwise preserve any existing value unchanged."
       },
       "created_at": { "type": "string", "format": "date-time" },
       "updated_at": { "type": "string", "format": "date-time" }

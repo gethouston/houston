@@ -166,6 +166,21 @@ export interface AIBoardProps {
    */
   panelContainer?: HTMLElement | null;
   /**
+   * Keep the detail panel open on clicks outside the board/panel. For a
+   * board whose panel is a transient overlay, outside clicks dismiss it
+   * (the default); a panel that is a persistent companion of its host view
+   * (e.g. the routine setup chat living beside the routine form) sets this
+   * so only an explicit close (the X, tab switch, unmount) dismisses it —
+   * otherwise any click on app chrome (sidebar, titlebar) silently drops it.
+   */
+  disableOutsideClose?: boolean;
+  /**
+   * Hide the detail panel's close button. For a panel that is a permanent
+   * part of its host view (the routine editor's chat), there is nothing for
+   * an X to mean — combine with `disableOutsideClose`.
+   */
+  hidePanelClose?: boolean;
+  /**
    * Draft text keyed by session key. Used to persist composer text across
    * navigation so users don't lose what they've typed. The key
    * "new-conversation" is used for the new-mission panel.
@@ -273,6 +288,8 @@ export function AIBoard({
   actions,
   panelActions,
   panelContainer,
+  disableOutsideClose,
+  hidePanelClose,
   drafts,
   onDraftChange,
   isSpecialTool,
@@ -565,7 +582,7 @@ export function AIBoard({
   //     after the popper opens). At that moment the popper is still
   //     open with `data-state="open"`, so we can detect it reliably.
   useEffect(() => {
-    if (!showPanel) return;
+    if (!showPanel || disableOutsideClose) return;
     const handler = (e: PointerEvent) => {
       const target = e.target as Node | null;
       if (!target) return;
@@ -608,7 +625,7 @@ export function AIBoard({
     };
     document.addEventListener("pointerdown", handler, true);
     return () => document.removeEventListener("pointerdown", handler, true);
-  }, [showPanel, closePanel]);
+  }, [showPanel, disableOutsideClose, closePanel]);
 
   const showBulkBar = selectable && bulkActions && (selectedIds?.size ?? 0) > 0;
 
@@ -669,7 +686,7 @@ export function AIBoard({
     <KanbanDetailPanel
       ref={panelRef}
       title={panelTitle}
-      onClose={closePanel}
+      onClose={hidePanelClose ? undefined : closePanel}
       avatar={panelAvatar}
       agentName={panelAgentName ?? selectedItem?.group}
       actions={selectedItem ? panelActions?.(selectedItem) : undefined}

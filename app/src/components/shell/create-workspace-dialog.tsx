@@ -235,7 +235,6 @@ export function CreateAgentDialog() {
                   routine
                     ? {
                         name: routine.name,
-                        description: "",
                         prompt: routine.prompt,
                         schedule: routine.schedule,
                         suppress_when_silent: true,

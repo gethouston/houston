@@ -111,7 +111,6 @@ export function anonymizeContent(
     const overridePayload: RoutineFieldOverride = {};
     const fields = [
       ["name", routine.name],
-      ["description", routine.description],
       ["prompt", routine.prompt],
     ] as const;
     for (const [field, original] of fields) {

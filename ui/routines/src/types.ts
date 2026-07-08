@@ -10,7 +10,6 @@ export type RoutineChatMode = "shared" | "per_run";
 export interface Routine {
   id: string;
   name: string;
-  description: string;
   /** The prompt sent to Claude when this routine fires. */
   prompt: string;
   /** Cron expression (e.g. "0 9 * * 1-5"). */
@@ -28,6 +27,8 @@ export interface Routine {
   model?: string | null;
   /** Reasoning-effort override; absent means inherit the agent's effort. */
   effort?: string | null;
+  /** Id of the setup-chat activity attached to this routine, if any. */
+  setup_activity_id?: string;
   created_at: string;
   updated_at: string;
 }

@@ -68,7 +68,6 @@ export function latestRunByRoutine(
 /** Blank form for "create new routine" and the reset target on agent switch. */
 export const EMPTY_FORM: RoutineFormData = {
   name: "",
-  description: "",
   prompt: "",
   schedule: "0 9 * * *",
   suppress_when_silent: true,
@@ -93,7 +92,6 @@ export function formMatchesRoutine(
 ): boolean {
   return (
     form.name === source.name &&
-    form.description === source.description &&
     form.prompt === source.prompt &&
     form.schedule === source.schedule &&
     form.suppress_when_silent === source.suppress_when_silent &&
@@ -109,7 +107,6 @@ export function formMatchesRoutine(
 export function routineToFormData(routine: Routine): RoutineFormData {
   return {
     name: routine.name,
-    description: routine.description,
     prompt: routine.prompt,
     schedule: routine.schedule,
     suppress_when_silent: routine.suppress_when_silent,

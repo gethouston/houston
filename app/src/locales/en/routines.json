@@ -11,16 +11,8 @@
     "timezoneSearchPlaceholder": "Search timezones…",
     "timezoneNoResults": "No timezones found"
   },
-  "createChoice": {
-    "title": "New routine",
-    "description": "How would you like to set it up?",
-    "chatTitle": "Create it in chat",
-    "chatDescription": "Tell your agent what you need. It asks a few questions and schedules the routine for you.",
-    "formTitle": "Fill in the details myself",
-    "formDescription": "Set the name, schedule, and instructions with the form.",
-    "missionTitle": "Set up a new routine"
-  },
   "setupChat": {
+    "missionTitle": "Set up a new routine",
     "bannerTitle": "You are creating a routine in chat",
     "bannerDescription": "Pick up where you left off, or discard the draft chat.",
     "continue": "Continue",
@@ -41,8 +33,6 @@
     "deleteRoutine": "Delete routine",
     "nameLabel": "Name",
     "namePlaceholder": "e.g. Morning standup",
-    "descriptionLabel": "Description",
-    "descriptionPlaceholder": "Optional, what this routine is for",
     "promptLabel": "Prompt",
     "promptPlaceholder": "What should the agent do when this runs?",
     "sectionWhen": "When it runs",

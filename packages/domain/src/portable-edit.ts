@@ -90,7 +90,6 @@ export function applyOverrides(
       return {
         ...r,
         name: f.name ?? r.name,
-        description: f.description ?? r.description,
         prompt: f.prompt ?? r.prompt,
       };
     }),

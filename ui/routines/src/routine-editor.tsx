@@ -46,7 +46,6 @@ import { useNow } from "./use-now";
 
 export interface RoutineFormData {
   name: string;
-  description: string;
   prompt: string;
   schedule: string;
   suppress_when_silent: boolean;
@@ -301,22 +300,6 @@ export function RoutineEditor({
                 )}
                 // biome-ignore lint/a11y/noAutofocus: focuses the name field on new-routine creation — intentional UX, no navigation disruption since the editor is a dedicated screen
                 autoFocus={!isEdit}
-              />
-            </div>
-            <div>
-              <FieldLabel>{labels.descriptionLabel}</FieldLabel>
-              <input
-                type="text"
-                value={value.description}
-                onChange={(e) => onChange({ description: e.target.value })}
-                placeholder={labels.descriptionPlaceholder}
-                className={cn(
-                  "w-full px-3 py-2 text-sm text-foreground",
-                  "placeholder:text-muted-foreground/60",
-                  "bg-background border border-foreground/[0.04] rounded-lg",
-                  "outline-none transition-shadow duration-200",
-                  "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
-                )}
               />
             </div>
             <div>

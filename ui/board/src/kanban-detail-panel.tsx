@@ -16,7 +16,8 @@ export interface KanbanDetailPanelProps {
   title: string;
   subtitle?: string;
   status?: string;
-  onClose: () => void;
+  /** Omit to render a panel with no close button (a non-dismissable companion panel). */
+  onClose?: () => void;
   children: React.ReactNode;
   actions?: React.ReactNode;
   /** Large avatar shown in the header */
@@ -79,13 +80,15 @@ export const KanbanDetailPanel = forwardRef<
             <Loader2 className="size-4 animate-spin text-blue-500 shrink-0" />
           )}
           {actions}
-          <button
-            type="button"
-            onClick={onClose}
-            className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors shrink-0"
-          >
-            <XIcon className="size-4" strokeWidth={1.75} />
-          </button>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors shrink-0"
+            >
+              <XIcon className="size-4" strokeWidth={1.75} />
+            </button>
+          )}
         </div>
       </div>
 

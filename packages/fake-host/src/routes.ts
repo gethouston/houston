@@ -118,7 +118,25 @@ export function handleAgents(
       return noContent(); // create/update/delete/run — accepted no-ops
     }
 
-    case "routines":
+    case "routines": {
+      if (rest.length === 2) {
+        if (method === "GET") return json({ items: state.listRoutines(id) });
+        if (method === "POST")
+          return json(state.createRoutine(id, body ?? {}), 201);
+        return noContent(405);
+      }
+      const rid = rest[2];
+      if (rest.length === 3 && method === "PATCH") {
+        const updated = state.updateRoutine(id, rid, body ?? {});
+        return updated ? json(updated) : json({ error: {} }, 404);
+      }
+      if (rest.length === 3 && method === "DELETE") {
+        state.deleteRoutine(id, rid);
+        return noContent();
+      }
+      return noContent(); // run-now / scheduler-sync — accepted no-ops
+    }
+
     case "routine_runs":
       if (method === "GET") return json({ items: [] });
       return noContent(); // create/update/delete/run — accepted no-ops

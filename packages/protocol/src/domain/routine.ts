@@ -6,7 +6,6 @@ export type RoutineChatMode = "shared" | "per_run";
 export interface Routine {
   id: string;
   name: string;
-  description: string;
   prompt: string;
   schedule: string;
   enabled: boolean;
@@ -21,6 +20,13 @@ export interface Routine {
   /** Integration slugs this routine uses (data carried for store agents). */
   integrations: string[];
   /**
+   * Id of the setup-chat activity attached to this routine — the persistent
+   * conversation shown next to the routine form. Written by the agent when it
+   * creates a routine from chat (the kickoff prompt carries the id), or
+   * stamped by the client for form-created routines and modify chats.
+   */
+  setup_activity_id?: string;
+  /**
    * Multiplayer only: the org-member user id that created this routine. Absent
    * in single-player mode. Surfaced so the UI can attribute automations.
    */
@@ -31,7 +37,6 @@ export interface Routine {
 
 export interface NewRoutine {
   name: string;
-  description?: string;
   prompt: string;
   schedule: string;
   enabled?: boolean;
@@ -44,11 +49,12 @@ export interface NewRoutine {
   /** Reasoning effort to pin (e.g. "high"); omit to inherit the agent's effort. */
   effort?: string | null;
   integrations?: string[];
+  /** Setup-chat activity to attach; omit for routines created without a chat. */
+  setup_activity_id?: string;
 }
 
 export interface RoutineUpdate {
   name?: string;
-  description?: string;
   prompt?: string;
   schedule?: string;
   enabled?: boolean;
@@ -61,6 +67,8 @@ export interface RoutineUpdate {
   /** Reasoning effort to pin; `null` clears (back to inherit), omit to leave unchanged. */
   effort?: string | null;
   integrations?: string[];
+  /** Attach a setup-chat activity to this routine; omit to leave unchanged. */
+  setup_activity_id?: string;
 }
 
 export type RoutineRunStatus =

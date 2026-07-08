@@ -1,6 +1,6 @@
 import type { RoutineFormData } from "@houston-ai/routines";
 import { RoutineEditor, RoutinesGrid } from "@houston-ai/routines";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useCancelRoutineRun,
@@ -17,7 +17,6 @@ import { analytics } from "../../lib/analytics";
 import { genericErrorDescription } from "../../lib/error-toast";
 import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
-import { RoutineCreateChoiceDialog } from "./routine-create-choice-dialog";
 import { RoutineModelControls } from "./routine-model-controls";
 import { RoutineSetupChat } from "./routine-setup-chat";
 import {
@@ -29,6 +28,7 @@ import {
   type View,
 } from "./routines-tab-model";
 import { useRoutineChatSetup } from "./use-routine-chat-setup";
+import { useRoutineEditorSync } from "./use-routine-editor-sync";
 
 export default function RoutinesTab({ agent, agentDef }: TabProps) {
   const { t } = useTranslation("routines");
@@ -36,6 +36,7 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
   const path = agent.folderPath;
   const tz = useTimezonePreference();
   const addToast = useUIStore((s) => s.addToast);
+  const viewMode = useUIStore((s) => s.viewMode);
 
   const { data: routines, isLoading } = useRoutines(path);
   const { data: allRuns } = useRoutineRuns(path);
@@ -46,8 +47,7 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
   const cancelRun = useCancelRoutineRun(path);
 
   const [view, setView] = useState<View>(() => freshRoutinesState().view);
-  const [choiceOpen, setChoiceOpen] = useState(false);
-  const chatSetup = useRoutineChatSetup(agent);
+  const chatSetup = useRoutineChatSetup(agent, routines);
   const [form, setForm] = useState<RoutineFormData>(
     () => freshRoutinesState().form,
   );
@@ -70,27 +70,21 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
     setView(fresh.view);
     setForm(fresh.form);
     setBaseline(fresh.baseline);
-    setChoiceOpen(false);
   }
 
   // Most recent run per routine, for the grid's "last run" badges.
   const lastRuns = useMemo(() => latestRunByRoutine(allRuns), [allRuns]);
 
-  // "New routine" opens a chooser: guided setup in chat, or the form.
-  const handleCreate = useCallback(() => setChoiceOpen(true), []);
+  const editing =
+    view.type === "editor" && view.editId
+      ? routines?.find((r) => r.id === view.editId)
+      : undefined;
 
-  const handleCreateWithForm = useCallback(() => {
-    setChoiceOpen(false);
-    setForm(EMPTY_FORM);
-    setBaseline(EMPTY_FORM);
-    setView({ type: "editor" });
-  }, []);
-
-  const handleCreateInChat = useCallback(async () => {
-    // On success the view switches to the new conversation, so only close
-    // the dialog then — a failed start keeps the chooser up for a retry.
-    if (await chatSetup.start()) setChoiceOpen(false);
-  }, [chatSetup]);
+  // The chat beside the current view: the opened routine's persisted chat,
+  // or the draft create-chat (new-routine editor AND the grid banner).
+  const setupActivity = editing
+    ? chatSetup.activityFor(editing)
+    : (chatSetup.draftActivity ?? null);
 
   const openEditor = useCallback(
     (routineId: string) => {
@@ -100,9 +94,45 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
       setForm(next);
       setBaseline(next);
       setView({ type: "editor", editId: routineId });
+      // The chat always rides along (HOU-725): resume the routine's own
+      // persisted chat, or start (and link) one on its first open.
+      if (chatSetup.activityFor(r)) chatSetup.openPanel();
+      else void chatSetup.startForRoutine(r);
     },
-    [routines],
+    [routines, chatSetup],
   );
+
+  // "New routine": empty form on the left, guided chat on the right — both
+  // at once, no chooser (HOU-725). The banner's Continue does the same.
+  const handleCreate = useCallback(() => {
+    setForm(EMPTY_FORM);
+    setBaseline(EMPTY_FORM);
+    setView({ type: "editor" });
+    void chatSetup.startDraft();
+  }, [chatSetup]);
+
+  const draftIdRef = useRoutineEditorSync({
+    agentId: agent.id,
+    view,
+    routines,
+    form,
+    baseline,
+    draftActivityId: chatSetup.draftActivity?.id,
+    openEditor,
+    setForm,
+    setBaseline,
+  });
+
+  // While a routine is open on the active Routines tab, its chat stays open
+  // — the panel is part of the view (HOU-725), so any stray close (a tab
+  // round-trip drops the shared panel container, another surface steals it)
+  // reopens it and the previous conversation is right there to continue.
+  const panelOpenAgentId = useUIStore((s) => s.routineSetupChatAgentId);
+  useEffect(() => {
+    if (viewMode !== "routines" || view.type !== "editor") return;
+    if (!setupActivity || panelOpenAgentId === agent.id) return;
+    chatSetup.openPanel();
+  }, [viewMode, view, setupActivity, panelOpenAgentId, agent.id, chatSetup]);
 
   const handleSubmit = useCallback(async () => {
     if (view.type !== "editor") return;
@@ -114,11 +144,20 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
       // Reset baseline so the Save button disables until the next edit.
       setBaseline(routineToFormData(updated));
     } else {
-      const created = await createRoutine.mutateAsync(form);
+      // Claim the draft chat: this form and that chat were creating the same
+      // routine, so the conversation stays attached to it (HOU-725).
+      const draftId = draftIdRef.current;
+      const created = await createRoutine.mutateAsync({
+        ...form,
+        ...(draftId ? { setup_activity_id: draftId } : {}),
+      });
       analytics.track("routine_scheduled", { routine_id: created.id });
-      setView({ type: "grid" });
+      const next = routineToFormData(created);
+      setForm(next);
+      setBaseline(next);
+      setView({ type: "editor", editId: created.id });
     }
-  }, [view, form, createRoutine, updateRoutine]);
+  }, [view, form, createRoutine, updateRoutine, draftIdRef]);
 
   const handleToggle = useCallback(
     async (routineId: string, enabled: boolean) => {
@@ -199,9 +238,6 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
   }
 
   if (view.type === "editor") {
-    const editing = view.editId
-      ? routines?.find((r) => r.id === view.editId)
-      : undefined;
     const editingRuns = view.editId
       ? (allRuns ?? []).filter((r) => r.routine_id === view.editId)
       : [];
@@ -213,7 +249,10 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
         <RoutineSetupChat
           agent={agent}
           agentDef={agentDef}
+          activity={setupActivity}
           showBanner={false}
+          dismissable={false}
+          onContinue={chatSetup.openPanel}
         />
         <RoutineEditor
           value={form}
@@ -255,14 +294,14 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
 
   return (
     <div className="contents" data-keep-panel-open>
-      <RoutineCreateChoiceDialog
-        open={choiceOpen}
-        onOpenChange={setChoiceOpen}
-        onChat={handleCreateInChat}
-        onForm={handleCreateWithForm}
-        busy={chatSetup.pending}
+      <RoutineSetupChat
+        agent={agent}
+        agentDef={agentDef}
+        activity={chatSetup.draftActivity ?? null}
+        showBanner
+        dismissable
+        onContinue={handleCreate}
       />
-      <RoutineSetupChat agent={agent} agentDef={agentDef} showBanner />
       <RoutinesGrid
         routines={routines ?? []}
         lastRuns={lastRuns}
