@@ -16,7 +16,7 @@
  *     survives a relaunch via the entry's persisted mirror.
  *
  * The caller gets the id/sessionKey back right away, so the panel opens on
- * the new conversation with the message (and the provisioning card) visible.
+ * the new conversation with the message (and the in-flight indicator) visible.
  */
 
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";

@@ -5,9 +5,9 @@
  * warms up for a couple of minutes with no readiness signal from the platform
  * (see `lib/agent-provisioning.ts`). `useAgentStore.create` marks the fresh
  * agent here; a readiness long-poll clears it the moment the agent's engine
- * answers anything. The in-chat card (`AgentProvisioningCard`) and the
- * board's optimistic mission rows (`hooks/use-warming-board-rows.ts`)
- * subscribe to the presence map.
+ * answers anything. The board's optimistic mission rows
+ * (`hooks/use-warming-board-rows.ts`) and the warming-write guard subscribe
+ * to the presence map.
  *
  * The Zustand `provisioning` record is the single source of truth; the
  * localStorage mirror (so a relaunch mid-warm-up doesn't drop the state,

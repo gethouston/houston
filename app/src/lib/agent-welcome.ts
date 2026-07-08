@@ -17,6 +17,7 @@
  * reveals — the mission now waits on the user.
  */
 
+import { getConversationStatus } from "../hooks/use-conversation-vm";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
 import { useUIStore } from "../stores/ui";
 import { getEngine } from "./engine";
@@ -99,22 +100,39 @@ export async function startAgentWelcomeMission(
   // Open the conversation; the greeting reveals after the beat.
   useUIStore.getState().setActivityPanelId(openId, { forceOpen: true });
   setTimeout(() => {
-    void settleWelcome(agent, openId);
+    void settleWelcome(agent, openId, sessionKey);
   }, WELCOME_GREETING_DELAY_MS);
 }
 
 /** The greeting just revealed: the mission stops being "in progress" and
  *  waits on the user. While the engine still warms up the flip lands on the
  *  queued row (the flush carries it to the server); otherwise patch the row
- *  directly. */
+ *  directly. Skipped when the user already replied within the beat — the
+ *  mission is genuinely in progress again and the reply's turn owns the
+ *  status from here. */
 async function settleWelcome(
   agent: { id: string; folderPath: string },
   activityId: string,
+  sessionKey: string,
 ): Promise<void> {
-  const flipped = useAgentProvisioningStore
-    .getState()
-    .setQueuedRowStatus(agent.id, activityId, "needs_you");
-  if (flipped) return;
+  const entry = useAgentProvisioningStore.getState().provisioning[agent.id];
+  if (entry) {
+    const replied = entry.pendingSends?.some(
+      (s) => s.sessionKey === sessionKey && !s.rowOnly,
+    );
+    if (replied) return;
+    if (
+      useAgentProvisioningStore
+        .getState()
+        .setQueuedRowStatus(agent.id, activityId, "needs_you")
+    ) {
+      return;
+    }
+  }
+  // Engine reachable: a live turn (an early reply) owns the status.
+  if (getConversationStatus(agent.folderPath, sessionKey) === "running") {
+    return;
+  }
   try {
     await getEngine().updateActivity(agent.folderPath, activityId, {
       status: "needs_you",

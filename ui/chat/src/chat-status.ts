@@ -27,14 +27,6 @@ import type { FeedItem } from "./types";
 export function deriveStatus(
   items: FeedItem[],
   isLoading: boolean,
-  /**
-   * The consumer narrates the pending send itself (e.g. an inline "your
-   * agent is still being created" card), so a trailing user message with no
-   * running turn must NOT light the in-flight indicator — the two would
-   * promise a reply from two places at once. A genuinely running turn
-   * (`isLoading`) still shows it.
-   */
-  suppressPendingIndicator = false,
 ): ChatStatus {
   const last = items[items.length - 1];
   if (last?.feed_type === "assistant_text_streaming") {
@@ -49,10 +41,11 @@ export function deriveStatus(
   //     mission log, still waiting on the response
   //   - any silent gap between tokens for batchy providers (Gemini)
   if (isLoading) return "submitted";
-  // Idle but the user just typed and sent — the optimistic
-  // user_message is on the feed and we're waiting for `isLoading`
-  // to flip true on the next tick. Treat as in-flight.
-  if (last?.feed_type === "user_message" && !suppressPendingIndicator) {
+  // Idle but the user's message is the last thing on the feed — either the
+  // send just fired and `isLoading` flips true on the next tick, or the
+  // message is parked while the agent's engine warms up (HOU-693/713).
+  // Both are "a reply is coming": treat as in-flight.
+  if (last?.feed_type === "user_message") {
     return "submitted";
   }
   return "ready";

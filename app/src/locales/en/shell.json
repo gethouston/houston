@@ -134,8 +134,6 @@
   },
   "agentProvisioning": {
     "title": "We are creating your agent",
-    "body": "This may take a moment.",
-    "chatBody": "It will reply to your message as soon as it is ready.",
     "failed": "We could not finish creating your agent. Please try again in a moment.",
     "blockedBody": "It is almost ready. This action will be available in a moment, as soon as your agent finishes setting up."
   },

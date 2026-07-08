@@ -1,6 +1,6 @@
 {
   "welcome": {
-    "greeting": "Hi! I'm {{name}}, your new agent. I'm all set up and ready to help with the job you created me for. What would you like to start with?"
+    "greeting": "Hi! I'm {{name}}, your new agent. Right now I'm getting settled in and reading through the job you created me for, so my first reply might take a little longer than usual. While I finish, tell me about what you'd like help with: you can describe a task in your own words, share a few details about how you like things done, or attach files that give me context. What would you like to start with?"
   },
   "composer": {
     "placeholder": "Ask anything...",
