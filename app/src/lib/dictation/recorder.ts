@@ -12,6 +12,7 @@
  * stop — it still has to call `.stop()` to get the encoded bytes.
  */
 
+import { LevelAccumulator } from "./levels";
 import { DICTATION_WORKLET_SOURCE } from "./recorder-worklet";
 import {
   DICTATION_SAMPLE_RATE,
@@ -28,6 +29,12 @@ export interface DictationRecording {
   stop(): Promise<Uint8Array>;
   /** Discard capture and tear down all audio resources. */
   cancel(): void;
+  /**
+   * Live amplitude history, one normalized 0..1 level per 100ms of captured
+   * audio. Cheap and allocation-free — the composer polls it with rAF to draw
+   * the recording waveform. Returns the accumulator's own array (do not mutate).
+   */
+  getLevels(): readonly number[];
 }
 
 /** True when this webview can capture microphone audio at all. Mirrors the
@@ -85,8 +92,10 @@ export async function startDictationRecording(
   }
 
   const frames: Float32Array[] = [];
+  const levels = new LevelAccumulator(audioContext.sampleRate);
   node.port.onmessage = (event: MessageEvent<Float32Array>) => {
     frames.push(event.data);
+    levels.push(event.data);
   };
   const source = audioContext.createMediaStreamSource(stream);
   source.connect(node);
@@ -123,6 +132,9 @@ export async function startDictationRecording(
     },
     cancel() {
       teardown();
+    },
+    getLevels() {
+      return levels.getLevels();
     },
   };
 }

@@ -31,6 +31,14 @@ export interface DictationControl {
   onStop: () => void;
   /** Discard the capture (Escape / cancel affordance). */
   onCancel: () => void;
+  /**
+   * Live amplitude history for the recording waveform: one value per 100ms
+   * bucket, each normalized 0..1 (0 = silence, 1 = loud). Polled with rAF while
+   * recording, so it MUST be cheap and side-effect free (no re-render, no
+   * allocation-per-call beyond the array). Absent (or `[]`) renders a bare,
+   * bar-less track — the composer degrades gracefully.
+   */
+  getLevels?: () => readonly number[];
   labels: DictationLabels;
 }
 
@@ -43,18 +51,26 @@ export const DEFAULT_DICTATION_LABELS: DictationLabels = {
   transcribing: "Transcribing",
 };
 
-/** Which control the composer trailing row should render. */
+/**
+ * Which affordance the composer should render for the current control.
+ * `requesting` is distinct from `recording`: the mic is being granted, so the
+ * track shows an empty (all-dots) pulse with no live bars yet.
+ */
 export type DictationView =
   | { kind: "hidden" }
   | { kind: "idle" }
+  | { kind: "requesting" }
   | { kind: "recording"; startedAt?: number }
   | { kind: "transcribing" };
 
+/** True while the composer's input row is taken over by the waveform. */
+export function isDictationActive(control?: DictationControl): boolean {
+  return isDictationBusy(control);
+}
+
 /**
- * Maps a (possibly absent) control to the single control to render.
+ * Maps a (possibly absent) control to the single affordance to render.
  * `undefined` -> hidden (the web build passes no control at all).
- * `requesting`/`recording` collapse to one recording view; `requesting`
- * has no start time yet, so the timer shows 0:00.
  */
 export function resolveDictationView(
   control?: DictationControl,
@@ -64,6 +80,7 @@ export function resolveDictationView(
     case "idle":
       return { kind: "idle" };
     case "requesting":
+      return { kind: "requesting" };
     case "recording":
       return { kind: "recording", startedAt: control.recordingStartedAt };
     case "transcribing":

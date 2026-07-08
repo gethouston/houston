@@ -1,52 +1,27 @@
 /**
- * Active-dictation controls rendered in the composer trailing row while a
- * capture is in flight. All affordances are always visible (no hover gating):
- *  - DictationRecording: pulsing dot + live mm:ss + stop + cancel
- *  - DictationTranscribing: spinner + label
+ * Trailing actions for the active-dictation composer takeover. The waveform
+ * itself owns the input row (`dictation-waveform.tsx`); this renders the two
+ * icon buttons that sit at the right end of the track:
+ *  - recording / requesting: ✕ cancel (discard) + ✓ accept (stop + transcribe)
+ *  - transcribing: a spinner replacing ✓ (nothing left to cancel)
+ * All affordances are always visible (no hover gating) and keyboard-focusable.
  */
 
-import { Loader2Icon, SquareIcon, XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { CheckIcon, Loader2Icon, XIcon } from "lucide-react";
 import type { DictationControl } from "./dictation-types";
-import { formatElapsed } from "./dictation-types";
 
-/** Ticks once a second while recording so the elapsed clock stays live. */
-function useElapsedLabel(startedAt?: number): string {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (startedAt === undefined) return;
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(id);
-  }, [startedAt]);
-  return formatElapsed(startedAt, now);
-}
+const ICON_BUTTON =
+  "flex size-9 items-center justify-center rounded-full transition-colors";
 
-const CONTROL_BUTTON =
-  "flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-accent transition-colors";
-
-export function DictationRecording({
-  control,
-  startedAt,
-}: {
-  control: DictationControl;
-  startedAt?: number;
-}) {
-  const elapsed = useElapsedLabel(startedAt);
+/** ✕ cancel + ✓ accept, shown while requesting or recording. */
+export function DictationActions({ control }: { control: DictationControl }) {
   const { labels } = control;
   return (
-    <div className="flex items-center gap-1.5">
-      <div className="flex items-center gap-1.5 pl-1 pr-0.5" role="status">
-        <span className="size-2 rounded-full bg-red-500 animate-pulse" />
-        <span className="sr-only">{labels.recording}</span>
-        <span className="text-xs tabular-nums text-muted-foreground">
-          {elapsed}
-        </span>
-      </div>
+    <div className="flex items-center gap-1">
       <button
         type="button"
         onClick={control.onCancel}
-        className={CONTROL_BUTTON}
+        className={`${ICON_BUTTON} text-muted-foreground hover:bg-accent`}
         aria-label={labels.cancel}
       >
         <XIcon className="size-5" />
@@ -54,20 +29,20 @@ export function DictationRecording({
       <button
         type="button"
         onClick={control.onStop}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        className={`${ICON_BUTTON} bg-primary text-primary-foreground hover:bg-primary/90`}
         aria-label={labels.stop}
       >
-        <SquareIcon className="size-3.5 fill-current" />
+        <CheckIcon className="size-5" />
       </button>
     </div>
   );
 }
 
+/** Spinner shown in the accept slot while the clip is being transcribed. */
 export function DictationTranscribing({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-1.5 px-1" role="status">
-      <Loader2Icon className="size-4 animate-spin text-muted-foreground" />
-      <span className="text-xs text-muted-foreground">{label}</span>
+    <div className={ICON_BUTTON} aria-label={label} role="status">
+      <Loader2Icon className="size-5 animate-spin text-muted-foreground" />
     </div>
   );
 }
