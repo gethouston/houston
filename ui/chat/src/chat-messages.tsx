@@ -11,6 +11,7 @@ import {
   ConversationAutoScroll,
   ConversationContent,
   ConversationScrollButton,
+  ConversationTopFade,
 } from "./ai-elements/conversation";
 import type { RenderLinkProps } from "./ai-elements/message";
 import {
@@ -133,6 +134,7 @@ export function ChatMessages({
   return (
     <Conversation className="flex-1 min-h-0">
       <ConversationAutoScroll status={status} />
+      <ConversationTopFade />
       <ConversationContent className="max-w-3xl mx-auto">
         {displayItems.map((item) => {
           if (item.kind === "process") {
