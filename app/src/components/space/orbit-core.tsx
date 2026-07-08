@@ -2,9 +2,9 @@ import { ORBIT_CENTER } from "./orbit-path";
 
 /**
  * Shared SVG <defs> for {@link OrbitLoader}: the invisible motion path, the
- * core-bloom radial gradient, and the trail-blur filter that blends the streak
- * capsules into one continuous glow. Split out so the loader component stays
- * under the 200-line limit.
+ * core-bloom + engine-glow radial gradients, and the trail-blur filter that
+ * blends the streak capsules into one continuous glow. Split out so the loader
+ * component stays under the 200-line limit.
  */
 export function OrbitDefs({ path }: { path: string }) {
   return (
@@ -26,6 +26,14 @@ export function OrbitDefs({ path }: { path: string }) {
           offset="60%"
           stopColor="var(--ht-space-star)"
           stopOpacity="0.14"
+        />
+        <stop offset="100%" stopColor="var(--ht-space-star)" stopOpacity="0" />
+      </radialGradient>
+      <radialGradient id="orbit-engine-glow">
+        <stop
+          offset="0%"
+          stopColor="var(--ht-space-foreground)"
+          stopOpacity="0.8"
         />
         <stop offset="100%" stopColor="var(--ht-space-star)" stopOpacity="0" />
       </radialGradient>

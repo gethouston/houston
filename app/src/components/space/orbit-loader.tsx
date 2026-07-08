@@ -54,11 +54,15 @@ export function OrbitLoader() {
           strokeWidth="1.2"
         />
         {reduce ? (
-          <path
-            d={SHIP_PATH}
-            fill="var(--ht-space-foreground)"
-            transform={`translate(${STATIC_SHIP.x} ${STATIC_SHIP.y})`}
-          />
+          <g transform={`translate(${STATIC_SHIP.x} ${STATIC_SHIP.y})`}>
+            <circle
+              cx="-7"
+              r="5"
+              fill="url(#orbit-engine-glow)"
+              opacity="0.6"
+            />
+            <path d={SHIP_PATH} fill="var(--ht-space-foreground)" />
+          </g>
         ) : (
           <>
             {/* Comet streak, tail-first so the bright head paints on top. */}
@@ -81,8 +85,18 @@ export function OrbitLoader() {
                 </animateMotion>
               </ellipse>
             ))}
-            {/* Crisp rocket ship at the head, painted on top of its streak. */}
-            <path d={SHIP_PATH} fill="var(--ht-space-foreground)">
+            {/* Crisp rocket ship at the head, painted on top of its streak, with
+                a small engine glow riding fixed at its tail (behind it, not a
+                light out in front of the nose). Grouped under one animateMotion
+                so the glow stays locked to the ship's local frame as it banks. */}
+            <g>
+              <circle
+                cx="-7"
+                r="5"
+                fill="url(#orbit-engine-glow)"
+                opacity="0.6"
+              />
+              <path d={SHIP_PATH} fill="var(--ht-space-foreground)" />
               <animateMotion
                 dur={ORBIT_PERIOD}
                 begin="0s"
@@ -91,7 +105,7 @@ export function OrbitLoader() {
               >
                 <mpath href="#orbit-path" xlinkHref="#orbit-path" />
               </animateMotion>
-            </path>
+            </g>
           </>
         )}
       </g>
