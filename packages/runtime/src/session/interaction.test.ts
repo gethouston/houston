@@ -3,6 +3,7 @@ import {
   newInteractionHolder,
   recordConnection,
   recordQuestions,
+  recordSignin,
   runWithInteractionCapture,
 } from "./interaction";
 
@@ -72,6 +73,54 @@ test("connect steps dedupe by toolkit, keep call order, and take c1..cN ids", ()
   });
 });
 
+test("recordSignin orders the signin step between questions and connects", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordConnection({ toolkit: "gmail", reason: "to send it" });
+    recordSignin({ reason: "Sign in first." });
+    recordQuestions([q("q1", "Which address?")]);
+  });
+  // Regardless of call order: questions, then the signin step, then connects.
+  expect(holder.pending).toEqual({
+    steps: [
+      q("q1", "Which address?"),
+      { kind: "signin", id: "s1", reason: "Sign in first." },
+      { kind: "connect", id: "c1", toolkit: "gmail", reason: "to send it" },
+    ],
+  });
+});
+
+test("recordSignin is idempotent — one step, last reason wins", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordSignin({ reason: "first reason" });
+    recordSignin({ reason: "  second reason  " });
+  });
+  expect(holder.pending).toEqual({
+    steps: [{ kind: "signin", id: "s1", reason: "second reason" }],
+  });
+});
+
+test("recordSignin omits an empty/whitespace reason", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordSignin({ reason: "   " });
+  });
+  expect(holder.pending).toEqual({ steps: [{ kind: "signin", id: "s1" }] });
+
+  const noReason = newInteractionHolder();
+  runWithInteractionCapture(noReason, () => recordSignin({}));
+  expect(noReason.pending).toEqual({ steps: [{ kind: "signin", id: "s1" }] });
+});
+
+test("a signin step alone yields a valid sequence", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => recordSignin({ reason: "Sign in." }));
+  expect(holder.pending).toEqual({
+    steps: [{ kind: "signin", id: "s1", reason: "Sign in." }],
+  });
+});
+
 test("either tool alone still yields a valid sequence", () => {
   const questionsOnly = newInteractionHolder();
   runWithInteractionCapture(questionsOnly, () =>
@@ -109,6 +158,7 @@ test("a fresh holder each turn is the reset — nothing leaks across turns", () 
 test("recording outside a turn is a no-op (undefined store)", () => {
   expect(() => recordQuestions([q("q1", "orphan?")])).not.toThrow();
   expect(() => recordConnection({ toolkit: "gmail" })).not.toThrow();
+  expect(() => recordSignin({ reason: "orphan" })).not.toThrow();
 });
 
 test("the holder survives async work inside the capture (ALS propagation)", async () => {

@@ -204,3 +204,11 @@ export function advanceConnect(
 ): Transition {
   return advance(state, steps);
 }
+
+/** Advance past a signin step once the app reports the user signed in. */
+export function advanceSignin(
+  state: StepperState,
+  steps: ChatInteractionStep[],
+): Transition {
+  return advance(state, steps);
+}

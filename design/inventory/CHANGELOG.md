@@ -3,6 +3,22 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v7 - 2026-07-08
+
+Add a `signin` step to `interaction-card`. The pending-interaction sequence now
+orders question steps, THEN at most one signin step, THEN connect steps. A signin
+step appears when Houston reports the user must sign in before a tool call can run
+(the runtime queues it alongside any connect steps in the same flow). Like a
+connect step it carries no answer text and advances only when the app reports the
+user signed in; ui/chat stays auth-unaware via a required `renderSignin` prop
+(mirrors `renderConnect`), and the app supplies the sign-in card driving the
+existing sign-in machinery. It counts in "N of X" and supports back/forward like
+any other step (a revisited signin step relies on the stepper's forward chevron
+since its card never re-fires once signed in). Completion contributes a
+"Signed in to Houston." line before any connected lines. No design/surface change
+to the card chrome. Web keeps `@houston-ai/chat` `ChatInteractionCard`, so it
+stays `implemented`.
+
 ## v6 - 2026-07-07
 
 Rename `question-card` to `interaction-card` and rebuild it as a one-step-at-a-time

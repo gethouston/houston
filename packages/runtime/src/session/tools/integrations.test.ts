@@ -213,14 +213,90 @@ test("request_connection records nothing outside a turn (no ambient holder)", as
   ).resolves.toBeDefined();
 });
 
-test("a 409 (not connected) becomes an actionable message, not a crash dump", async () => {
+test("a 409 (signed out) queues a signin step and tells the model to end its turn", async () => {
   mockFetch(() => ({
     status: 409,
-    body: { error: "integration not connected" },
+    body: { error: "signin_required", code: "signin_required" },
   }));
-  await expect(run(execute, { action: "X" })).rejects.toThrow(
-    /connect their apps/i,
+  const holder = newInteractionHolder();
+  const failure = runWithInteractionCapture(holder, () =>
+    run(execute, { action: "X" }),
   );
+  await expect(failure).rejects.toThrow(/signed out of Houston/i);
+  await expect(failure).rejects.toThrow(/end your turn/i);
+  // The guidance tells the model NOT to send the user to Settings.
+  await expect(failure).rejects.toThrow(
+    /Do NOT tell the user to open Settings/,
+  );
+  // The signin step is queued in this turn's interaction flow, id "s1".
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "signin",
+        id: "s1",
+        reason: "Sign in to Houston to use your connected apps.",
+      },
+    ],
+  });
+});
+
+test("a 503 (not set up) is an honest, closed message and queues nothing", async () => {
+  mockFetch(() => ({
+    status: 503,
+    body: {
+      error: "integrations not configured",
+      code: "integrations_not_configured",
+    },
+  }));
+  const holder = newInteractionHolder();
+  const failure = runWithInteractionCapture(holder, () =>
+    run(execute, { action: "X" }),
+  );
+  await expect(failure).rejects.toThrow(/not set up in this Houston install/i);
+  await expect(failure).rejects.toThrow(/COMPOSIO_API_KEY/);
+  // A closed state: no sign-in card, no connect offer, and never "workspace".
+  await expect(failure).rejects.not.toThrow(/workspace/i);
+  expect(holder.pending).toBeUndefined();
+});
+
+test("a RELAYED upstream 503 (transient outage) is NOT the not-set-up message", async () => {
+  // The host's sandbox proxy relays ANY non-ok upstream status verbatim. In
+  // gateway mode a transient Composio/gateway outage returns 503 with the
+  // upstream's body (NO integrations_not_configured code) — the key IS set, so
+  // the model must NOT tell the user "connected apps aren't set up here / set
+  // COMPOSIO_API_KEY". It is a generic transient failure.
+  mockFetch(() => ({
+    status: 503,
+    body: { error: "upstream temporarily unavailable" },
+  }));
+  const holder = newInteractionHolder();
+  const failure = runWithInteractionCapture(holder, () =>
+    run(execute, { action: "X" }),
+  );
+  await expect(failure).rejects.toThrow(/integrations execute failed \(503\)/);
+  await expect(failure).rejects.not.toThrow(
+    /not set up in this Houston install/i,
+  );
+  await expect(failure).rejects.not.toThrow(/COMPOSIO_API_KEY/);
+  expect(holder.pending).toBeUndefined();
+});
+
+test("a RELAYED upstream 409 (transient conflict) queues NO signin card", async () => {
+  // Symmetric to the 503 case: an upstream 409 the host relays verbatim lacks
+  // the signin_required code, so it must NOT record a sign-in step nor tell the
+  // model to end its turn.
+  mockFetch(() => ({
+    status: 409,
+    body: { error: "conflict: resource busy" },
+  }));
+  const holder = newInteractionHolder();
+  const failure = runWithInteractionCapture(holder, () =>
+    run(execute, { action: "X" }),
+  );
+  await expect(failure).rejects.toThrow(/integrations execute failed \(409\)/);
+  await expect(failure).rejects.not.toThrow(/signed out of Houston/i);
+  await expect(failure).rejects.not.toThrow(/end your turn/i);
+  expect(holder.pending).toBeUndefined();
 });
 
 test("C2: attaches the turn's acting-as header inside a turn, and nothing outside one", async () => {

@@ -10,15 +10,19 @@ import type {
  * `prompt()` resolves, and attached to the terminal clean `done` frame so the
  * board card can settle to `needs_you`.
  *
- * Merge semantics within one turn (the tools may call both):
+ * Merge semantics within one turn (the tools may call any combination):
  * - `ask_user` SETS the question steps — a second `ask_user` call REPLACES them
  *   (ids `q1`..`qN`).
+ * - A `signin_required` (409) from the integrations host RECORDS the single
+ *   signin step (id `s1`) — idempotent: a repeat call keeps the one step and
+ *   the LAST call's reason wins.
  * - `request_connection` APPENDS a connect step, deduped by normalized toolkit —
  *   a repeat call for the same toolkit updates its reason (ids `c1`..`cN` in
  *   first-seen order).
  * - The recorded {@link PendingInteraction} is the question steps THEN the
- *   connect steps, so the UI walks the user through everything the model queued
- *   in one flow. Either tool alone still yields a valid sequence.
+ *   signin step THEN the connect steps, so the UI walks the user through
+ *   everything the model queued in one flow. Any single kind alone still yields
+ *   a valid sequence.
  *
  * Turn-scoping mechanism (mirrors acting-context.ts): an `AsyncLocalStorage`
  * whose store — a fresh mutable holder — is established for the DURATION of
@@ -31,24 +35,33 @@ import type {
  */
 
 type QuestionStep = Extract<InteractionStep, { kind: "question" }>;
+type SigninStep = Extract<InteractionStep, { kind: "signin" }>;
 type ConnectStep = Extract<InteractionStep, { kind: "connect" }>;
 
 export interface InteractionHolder {
   /** Question steps from the last `ask_user` call this turn (replace semantics). */
   readonly questions: QuestionStep[];
+  /** The single signin step, once the host reported the user must sign in. */
+  readonly signin: SigninStep | undefined;
   /** Connect steps appended by `request_connection`, deduped by toolkit. */
   readonly connects: ConnectStep[];
-  /** The recorded sequence — question steps then connect steps — or undefined
-   *  when the model asked for nothing this turn. Derived: read after prompt(). */
+  /** The recorded sequence — question steps, then the signin step, then connect
+   *  steps — or undefined when the model asked for nothing this turn. Derived:
+   *  read after prompt(). */
   readonly pending: PendingInteraction | undefined;
 }
 
 class Holder implements InteractionHolder {
   readonly questions: QuestionStep[] = [];
+  signin: SigninStep | undefined;
   readonly connects: ConnectStep[] = [];
 
   get pending(): PendingInteraction | undefined {
-    const steps = [...this.questions, ...this.connects];
+    const steps = [
+      ...this.questions,
+      ...(this.signin ? [this.signin] : []),
+      ...this.connects,
+    ];
     return steps.length > 0 ? { steps } : undefined;
   }
 }
@@ -77,6 +90,23 @@ export function recordQuestions(questions: QuestionStep[]): void {
   if (!holder) return;
   holder.questions.length = 0;
   holder.questions.push(...questions);
+}
+
+/**
+ * Record the single signin step for this turn (the host reported the user must
+ * sign in to Houston before integrations can act). Idempotent: there is at most
+ * one signin step (id `s1`), so a repeat call keeps that one step and the LAST
+ * call's reason wins. A no-op outside a turn.
+ */
+export function recordSignin(input: { reason?: string }): void {
+  const holder = store.getStore();
+  if (!holder) return;
+  const reason = input.reason?.trim();
+  (holder as Holder).signin = {
+    kind: "signin",
+    id: "s1",
+    ...(reason ? { reason } : {}),
+  };
 }
 
 /**

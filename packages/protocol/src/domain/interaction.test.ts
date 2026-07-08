@@ -6,10 +6,23 @@ test("isPendingInteraction accepts the step-sequence shape and rejects legacy sh
     isPendingInteraction({
       steps: [
         { kind: "question", id: "q1", question: "Which deck?" },
+        { kind: "signin", id: "s1", reason: "Sign in to use your apps." },
         { kind: "connect", id: "c1", toolkit: "gmail", reason: "to send it" },
       ],
     }),
   ).toBe(true);
+
+  // A signin step needs only kind + id; reason is optional.
+  expect(isPendingInteraction({ steps: [{ kind: "signin", id: "s1" }] })).toBe(
+    true,
+  );
+
+  // A signin step with a non-string reason is invalid.
+  expect(
+    isPendingInteraction({ steps: [{ kind: "signin", id: "s1", reason: 7 }] }),
+  ).toBe(false);
+  // A signin step without an id is invalid.
+  expect(isPendingInteraction({ steps: [{ kind: "signin" }] })).toBe(false);
 
   // Pre-step shapes persisted by older builds: no `steps`.
   expect(
@@ -45,6 +58,7 @@ test("the protocol index re-exports PendingInteraction", () => {
         question: "Send it now?",
         options: [{ id: "yes", label: "Send" }],
       },
+      { kind: "signin", id: "s1", reason: "Sign in first." },
       { kind: "connect", id: "c1", toolkit: "gmail", reason: "to send it" },
     ],
   };

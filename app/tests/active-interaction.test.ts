@@ -28,6 +28,21 @@ const mixed: PendingInteraction = {
     { kind: "connect", id: "c1", toolkit: "gmail" },
   ],
 };
+const signin: PendingInteraction = {
+  steps: [{ kind: "signin", id: "s1", reason: "Sign in to keep going." }],
+};
+const signinConnect: PendingInteraction = {
+  steps: [
+    { kind: "signin", id: "s1" },
+    { kind: "connect", id: "c1", toolkit: "gmail" },
+  ],
+};
+const questionSignin: PendingInteraction = {
+  steps: [
+    { kind: "question", id: "q1", question: "Which account?" },
+    { kind: "signin", id: "s1" },
+  ],
+};
 
 describe("deriveActiveInteraction", () => {
   it("hides the override while a turn is running", () => {
@@ -142,6 +157,31 @@ describe("interactionNotificationBodyKey", () => {
     );
   });
 
+  it("maps a signin-only sequence to the signin body", () => {
+    strictEqual(
+      interactionNotificationBodyKey(signin),
+      "sessionComplete.signin",
+    );
+  });
+
+  // Steps are ordered questions -> sign-in -> connections, so a signin+connect
+  // sequence's FIRST unmet need is the sign-in.
+  it("maps a signin+connect sequence to the signin body (sign-in first)", () => {
+    strictEqual(
+      interactionNotificationBodyKey(signinConnect),
+      "sessionComplete.signin",
+    );
+  });
+
+  // Questions still win: a sequence that also has questions reads as the
+  // question body even when a sign-in is queued after them.
+  it("maps a question+signin sequence to the question body", () => {
+    strictEqual(
+      interactionNotificationBodyKey(questionSignin),
+      "sessionComplete.question",
+    );
+  });
+
   it("maps a mixed sequence (has questions) to the question body", () => {
     strictEqual(
       interactionNotificationBodyKey(mixed),
@@ -159,10 +199,12 @@ describe("interactionNotificationBodyKey", () => {
 });
 
 describe("interactionQuestionCount", () => {
-  it("counts the question steps, ignoring connect steps", () => {
+  it("counts the question steps, ignoring connect + signin steps", () => {
     strictEqual(interactionQuestionCount(question), 1);
     strictEqual(interactionQuestionCount(mixed), 2);
     strictEqual(interactionQuestionCount(connect), 0);
+    strictEqual(interactionQuestionCount(signin), 0);
+    strictEqual(interactionQuestionCount(questionSignin), 1);
   });
 
   it("is 0 with no pending interaction", () => {

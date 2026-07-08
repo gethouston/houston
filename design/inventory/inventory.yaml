@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 6
+version: 7
 
 components:
   - id: agent-avatar
@@ -229,23 +229,27 @@ components:
 
   - id: interaction-card
     title: Interaction card
-    purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions then connections), replacing the composer until done.
-    anatomy: [stepper-header, progress-indicator, back-chevron, question-step, option-row, free-text-input, send-action, connect-step]
-    states: [single-step, multi-step, with-options, free-text-only, connect-step, revisited, disabled]
-    variants: [choice, open-ended, connect, mixed-sequence]
+    purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections), replacing the composer until done.
+    anatomy: [stepper-header, progress-indicator, back-chevron, question-step, option-row, free-text-input, send-action, signin-step, connect-step]
+    states: [single-step, multi-step, with-options, free-text-only, signin-step, connect-step, revisited, disabled]
+    variants: [choice, open-ended, signin, connect, mixed-sequence]
     behavior: >-
-      Rendered from the turn's pending interaction (steps[]: 1-3 question steps
-      then connect steps). Shows ONE step at a time with a quiet "N of X"
-      progress indicator (only when total > 1) and a back chevron from step 2 on.
-      Question step: one prominent question, vertical single-select option rows
-      (role=radio), and a free-text input ALWAYS visible below as the escape
-      hatch; clicking an option OR submitting typed text answers the current step
-      and advances. Connect step: renders the app-supplied connect card and
-      advances only when it reports connected. Revisiting a step pre-selects its
-      prior answer; re-answering replaces it. A single question-with-options step
-      keeps the one-tap feel (click = answer = complete). After the last step,
-      emits each question answer in step order to the consumer, which formats the
-      resume message. Disabled while another turn is active.
+      Rendered from the turn's pending interaction (steps[]: 1-3 question steps,
+      then at most one signin step, then connect steps). Shows ONE step at a time
+      with a quiet "N of X" progress indicator (only when total > 1) and a back
+      chevron from step 2 on. Question step: one prominent question, vertical
+      single-select option rows (role=radio), and a free-text input ALWAYS
+      visible below as the escape hatch; clicking an option OR submitting typed
+      text answers the current step and advances. Signin step: renders the
+      app-supplied sign-in card and advances only when it reports signed in
+      (ui/chat stays auth-unaware via a renderSignin prop). Connect step: renders
+      the app-supplied connect card and advances only when it reports connected.
+      Signin and connect steps carry no answer text. Revisiting a step
+      pre-selects its prior answer; re-answering replaces it. A single
+      question-with-options step keeps the one-tap feel (click = answer =
+      complete). After the last step, emits each question answer in step order to
+      the consumer, which formats the resume message. Disabled while another turn
+      is active.
     a11y: one step announced at a time; option rows are role=radio in a radiogroup, keyboard-toggleable and visible at rest (no hover gate); free-text input always present on question steps; back chevron is a labeled button; progress uses tabular-nums to avoid width jitter.
     since: 4
 

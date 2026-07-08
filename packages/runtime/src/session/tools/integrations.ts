@@ -1,7 +1,7 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
-import { recordConnection } from "../interaction";
+import { recordConnection, recordSignin } from "../interaction";
 
 /**
  * The agent's window into the user's connected third-party apps (Gmail, Google
@@ -59,6 +59,26 @@ type ConnectParams = Static<typeof ConnectParams>;
  */
 function normalizeToolkitSlug(slug: string): string {
   return slug.trim().toLowerCase();
+}
+
+/**
+ * The `code` the host stamps on its OWN actionable error signals (409
+ * "signin_required", 503 "integrations_not_configured"). Returns it, or
+ * undefined for a body that carries none — including any upstream error the
+ * host relays verbatim during a transient outage, which must NOT be read as one
+ * of those states. A non-JSON or malformed body is simply uncoded.
+ */
+function signalCode(detail: string): string | undefined {
+  try {
+    const body: unknown = JSON.parse(detail);
+    if (body && typeof body === "object") {
+      const { code } = body as { code?: unknown };
+      if (typeof code === "string") return code;
+    }
+  } catch {
+    // Non-JSON body (e.g. an HTML proxy error page) → uncoded, generic error.
+  }
+  return undefined;
 }
 
 export interface IntegrationToolOptions {
@@ -120,12 +140,34 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      // 409 = integrations can't act for this user yet (on desktop: they're
-      // signed out of Houston, so the gateway has no session to forward) — a
-      // normal, actionable state the agent should relay, not a crash.
-      if (res.status === 409) {
+      // The host tags its OWN actionable signals with a stable `code` on the
+      // JSON error body. A relayed upstream error (a transient gateway/provider
+      // outage the host passes through VERBATIM) carries the upstream's status
+      // + body and NO such code — so we classify on the code, never the bare
+      // status, and let any uncoded failure fall through to the generic error
+      // below rather than a false "sign in" / "not set up" claim.
+      const code = signalCode(detail);
+      // signin_required (409): integrations can't act for this user yet (on
+      // desktop: they're signed out of Houston, so the gateway has no session to
+      // forward) — a normal, actionable state. Queue a signin step in THIS
+      // turn's interaction flow so Houston renders a sign-in card in place of
+      // the chat input, then tell the model to keep queuing what it needs and
+      // end its turn.
+      if (code === "signin_required") {
+        recordSignin({
+          reason: "Sign in to Houston to use your connected apps.",
+        });
         throw new Error(
-          "Connected apps aren't available yet: the user needs to sign in to Houston (Settings), then connect their apps in Integrations. Ask them to do that, then try again.",
+          "The user is signed out of Houston, so connected apps can't act for them yet. A sign-in card has been queued in the interaction flow. Queue any request_connection you still need (it will follow the sign-in step), then end your turn. Do NOT tell the user to open Settings — Houston sends you a message automatically once they're signed in.",
+        );
+      }
+      // integrations_not_configured (503): connected apps are not set up in this
+      // Houston install (dev with no key, self-host that never set
+      // COMPOSIO_API_KEY). A closed, honest state: there is nothing to sign into
+      // or connect here.
+      if (code === "integrations_not_configured") {
+        throw new Error(
+          "Connected apps are not set up in this Houston install. Tell the user plainly that connected apps aren't available here (a self-hoster enables them by setting COMPOSIO_API_KEY), and do not offer to connect any apps.",
         );
       }
       throw new Error(

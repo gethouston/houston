@@ -48,7 +48,13 @@
     "progress": "{{current}} de {{total}}"
   },
   "interaction": {
-    "connectedLine": "Conectaste {{name}}."
+    "connectedLine": "Conectaste {{name}}.",
+    "signedInLine": "Sesión iniciada en Houston.",
+    "signedInFollowup": "Ya inicié sesión. Continúa, por favor.",
+    "signinReason": "Inicia sesión en Houston para continuar.",
+    "signinTitle": "Inicia sesión en Houston",
+    "signinDescription": "Tus cuentas siguen siendo tuyas; el agente actúa en tu nombre.",
+    "signin": "Iniciar sesión"
   },
   "errors": {
     "sessionStart": "No se pudo iniciar la sesión: {{error}}",

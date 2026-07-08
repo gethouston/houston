@@ -115,6 +115,7 @@ import { resolveEffectiveProvider } from "./chat-effective-provider";
 import { ChatEffortSelector } from "./chat-effort-selector";
 import { ChatModeSelector } from "./chat-mode-selector";
 import { ChatModelSelector } from "./chat-model-selector";
+import { ChatSigninInteractionCard } from "./chat-signin-interaction-card";
 import { ContextCompactedDivider } from "./context-compacted-divider";
 import { ContextIndicator } from "./context-indicator";
 import { DictationSetupDialog } from "./dictation-setup-dialog";
@@ -980,6 +981,10 @@ export function useAgentChatPanel({
     if (!agent || !activeInteraction) return undefined;
     const steps = activeInteraction.steps;
     const hasQuestionSteps = steps.some((step) => step.kind === "question");
+    // A completed sequence has walked EVERY step, so a signin step present here
+    // means the user signed in (the step advances only via `onSignedIn`) — no
+    // separate accumulator needed, unlike connections which carry a display name.
+    const hasSigninStep = steps.some((step) => step.kind === "signin");
     const connectedNames: string[] = [];
     return (
       <ChatInteractionCard
@@ -987,18 +992,27 @@ export function useAgentChatPanel({
         labels={interactionLabels}
         onComplete={(answers: ChatInteractionAnswer[]) => {
           // ONE send after the LAST step: a sequence with questions replies with
-          // the user's visible answers; a connect-only sequence resumes the
-          // agent with a hidden auto-continue message (no fake user bubble).
+          // the user's visible answers; a signin/connect-only sequence resumes
+          // the agent with a hidden auto-continue message (no fake user bubble).
           sendInteractionMessage(
             composeInteractionReply({
               answers,
               connectedNames,
               hasQuestionSteps,
+              signedIn: hasSigninStep,
               connectedLine: (name) =>
                 t("chat:interaction.connectedLine", { name }),
+              signedInLine: t("chat:interaction.signedInLine"),
+              signedInFollowup: t("chat:interaction.signedInFollowup"),
             }),
           );
         }}
+        renderSignin={(step, api) => (
+          <ChatSigninInteractionCard
+            reason={step.reason}
+            onSignedIn={api.onSignedIn}
+          />
+        )}
         renderConnect={(step, api) => (
           <ChatConnectInteractionCard
             toolkit={step.toolkit}
