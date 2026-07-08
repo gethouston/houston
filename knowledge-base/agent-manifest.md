@@ -533,7 +533,7 @@ the real vendored pi-ai registry, not a test fixture).
 
 A separate per-turn "Mode" pill sits next to the model + effort controls in
 the composer footer, with three labels — **Planner** (`plan`, read-only
-investigation), **Doer** (`execute`), and **Autopilot** (`auto`,
+investigation), **Coworker** (`execute`), and **Autopilot** (`auto`,
 fire-and-forget: no blocking tools). Unlike
 effort it is NOT synced through `Settings` — full mechanics, the runtime
 enforcement (tool clamp + overlay), and the "forgotten `modeOverride`

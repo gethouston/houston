@@ -212,7 +212,7 @@ default and simply gets the clamped tool set, so plan/auto still hold.
 
 App side: a Mode pill in the composer footer
 (`app/src/components/chat-mode-selector.tsx`) — persona labels **Planner**
-(`plan`), **Doer** (`execute`), and **Autopilot** (`auto`), ordered top→bottom
+(`plan`), **Coworker** (`execute`), and **Autopilot** (`auto`), ordered top→bottom
 as an autonomy dial; the wire values are unchanged — remembered
 per-agent as `mode`
 in `.houston/config/config.json` (composer memory only — never synced to

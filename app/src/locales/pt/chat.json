@@ -100,8 +100,8 @@
   "modeSelector": {
     "mode": "Modo",
     "modeValue": "Modo: {{mode}}",
-    "doer": "Executor",
-    "doerDescription": "Faz as coisas e pergunta a você quando tem dúvidas.",
+    "coworker": "Colega",
+    "coworkerDescription": "Trabalha com você: faz as coisas e pergunta quando tem dúvidas.",
     "planner": "Planejador",
     "plannerDescription": "Primeiro escreve um plano para você aprovar. Não faz alterações.",
     "autopilot": "Piloto automático",
