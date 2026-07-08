@@ -70,7 +70,7 @@ enum Strings {
         }
     }
 
-    /// Count badge cap for outline chips (NeedsYouChip caps at "99+", PARITY §4).
+    /// Count badge cap for the needs-you chip (NeedsYouChip caps at "99+", PARITY §4).
     static func cappedCount(_ count: Int) -> String {
         count > 99 ? "99+" : "\(count)"
     }

@@ -48,8 +48,22 @@ final class AgentsOverviewBuilderTests: XCTestCase {
     func testEmptyAgentHasNoLastActivity() {
         let out = AgentsOverviewBuilder.build([entry("a", [])])
         XCTAssertNil(out[0].lastActivity)
+        XCTAssertNil(out[0].lastActivityAt)
         XCTAssertEqual(out[0].needsYouCount, 0)
         XCTAssertFalse(out[0].isRunning)
+    }
+
+    func testLastActivityAtReflectsMostRecentMissionTimestamp() {
+        // The Date behind the WA row time label parses the picked mission's ISO
+        // `updatedAt` (the most-recent non-archived one — the "New" mission here).
+        let items = [
+            MissionFixture.activity(id: "old", title: "Old", status: "done",
+                                    updatedAt: "2026-07-01T10:00:00Z"),
+            MissionFixture.activity(id: "new", title: "New", status: "needs_you",
+                                    updatedAt: "2026-07-02T10:00:00Z"),
+        ]
+        let out = AgentsOverviewBuilder.build([entry("a", items)])
+        XCTAssertEqual(out[0].lastActivityAt, ActivityTimestamp.date(from: "2026-07-02T10:00:00Z"))
     }
 
     func testAttentionSortNeedsYouThenRunningThenRecency() {

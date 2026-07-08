@@ -43,8 +43,10 @@ struct StatusChip: View {
     }
 }
 
-/// Outline attention badge: the per-agent needs-you count, capped at "99+"
-/// (PARITY §4). Rendered when `needsYouCount > 0` on an agent avatar/row.
+/// Attention badge: the per-agent needs-you count, capped at "99+" (PARITY §4).
+/// Rendered when `needsYouCount > 0` on an agent avatar/row — the WhatsApp-style
+/// filled capsule (warning fill, on-warning text), the unread-count look on the
+/// Agents home.
 struct NeedsYouChip: View {
     @Environment(\.theme) private var theme
     let count: Int
@@ -52,12 +54,10 @@ struct NeedsYouChip: View {
     var body: some View {
         Text(Strings.cappedCount(count))
             .font(Typography.captionStrong)
-            .foregroundStyle(theme.warning)
+            .foregroundStyle(theme.warningFg)
             .padding(.horizontal, Spacing.space6)
             .padding(.vertical, Spacing.space2)
-            .background(
-                Capsule().strokeBorder(theme.warning, lineWidth: 1)
-            )
+            .background(Capsule().fill(theme.warning))
             .accessibilityLabel(Strings.Shell.needsYouCount(count))
     }
 }

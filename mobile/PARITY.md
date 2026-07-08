@@ -110,6 +110,30 @@ Left-to-right order and status→column mapping (single source of truth):
 - Busy rule: a session is busy if activity `status==="running"` OR live sessionStatus active OR
   optimistically started — externally-started sessions (routines, other surfaces) count as busy.
 
+### iOS home rows — WhatsApp chat-list anatomy (waves 2+3, founder directive 2026-07-06)
+The mobile Agents home restyles each agent as a WhatsApp chat-list cell. Native-only; the
+aggregation (`needsYouCount`/`runningCount`) and avatar rules above are unchanged — this is layout.
+- **Two-line cell** (`AgentRow.swift`) — line 1: agent name + right-aligned relative time
+  (`Typography.caption`, `mutedFg`); line 2: preview text + a trailing **filled** `NeedsYouChip`.
+- **Relative time** (`AgentRowTime.label`, from `AgentOverview.lastActivityAt` = most-recent
+  mission `updatedAt`, parsed by `ActivityTimestamp`): today → short locale time (reuses
+  `ChatBubbleTime`); yesterday → `Strings.Chat.Timeline.yesterday`; ≤6 days → weekday; older → short
+  date. `nil` when no dated mission. Injectable `now`/`calendar`/`locale`; formatters pinned to the
+  calendar's timezone.
+- **Preview line** (`AgentRowPreview.derive`): running → "Working…" (`Strings.Chat.TitleBar.working`,
+  accent-tinted); else needs-you/idle activity text; else none.
+- **Filled needs-you badge** — `NeedsYouChip` now defaults to `.filled` (`warning` fill + `warningFg`
+  text) instead of the outline capsule; the "99+" cap is unchanged (`StatusChip.swift`). `AgentRow`
+  is its only caller; Mission Control uses the native `BadgeModel`, not this chip.
+- **Pull-down search** (`AgentsView.swift`, `.searchable(placement: .navigationBarDrawer)`): a pure
+  case/diacritic-insensitive name filter (`AgentSearch.filter`; blank query → all rows in order),
+  a "No results" empty state (`EmptyStateView`), and an animated tier/recency reorder
+  (`.smooth(Motion.common)` keyed on the visible-row ids, disabled under Reduce Motion). Copy:
+  `Strings.AgentsSearch`. No pull-to-refresh.
+
+Row derivations are pure and unit-tested (`HoustonTests/Agents/AgentRowTimeTests`,
+`AgentSearchTests`, `AgentsOverviewBuilderTests`).
+
 ## 5. Mission chat feed catalog
 `FeedItem` union: `ui/chat/src/types.ts`. Fold: `ui/chat/src/feed-to-messages.ts`.
 | feed_type | Renders as | Copy / notes |

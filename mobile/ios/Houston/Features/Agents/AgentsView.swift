@@ -15,6 +15,7 @@ import SwiftUI
 /// invariant 1).
 struct AgentsView: View {
     @Environment(\.theme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(BadgeModel.self) private var badge
     @Environment(\.agentsOverview) private var overview
 
@@ -24,15 +25,25 @@ struct AgentsView: View {
     /// (opened as a draft chat on the sheet's dismissal so the push never races).
     @State private var presentingPicker = false
     @State private var pickedAgent: AgentListItem?
+    /// Pull-down search query (WA/Telegram convention); empty shows all rows.
+    @State private var query = ""
 
     private var overviews: [AgentOverview] { AgentsOverviewBuilder.build(overview.agents) }
     private var totalNeedsYou: Int { overviews.reduce(0) { $0 + $1.needsYouCount } }
+    /// The rows the list renders: all when the query is blank, otherwise the
+    /// name-matched subset (pure, tested in ``AgentSearch``).
+    private var visibleRows: [AgentOverview] { AgentSearch.filter(rows: overviews, query: query) }
 
     var body: some View {
         NavigationStack(path: $path) {
             content
                 .navigationTitle(Strings.Agents.title)
                 .background(theme.background)
+                .searchable(
+                    text: $query,
+                    placement: .navigationBarDrawer(displayMode: .automatic),
+                    prompt: Text(Strings.AgentsSearch.placeholder)
+                )
                 .toolbar { NewMissionToolbarButton { presentingPicker = true } }
                 .navigationDestination(for: AgentsNavRoute.self, destination: destination)
         }
@@ -65,21 +76,34 @@ struct AgentsView: View {
             } else {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+        } else if visibleRows.isEmpty {
+            // Only reachable during search: a blank query returns every row, so an
+            // empty result means the non-empty query matched no agent.
+            EmptyStateView(title: Strings.AgentsSearch.noResultsTitle, systemImage: "magnifyingglass")
         } else {
-            ScrollView {
-                LazyVStack(spacing: Spacing.space2) {
-                    ForEach(overviews) { item in
-                        if let agent = agent(for: item.id) {
-                            NavigationLink(value: AgentsNavRoute.missions(agent)) {
-                                AgentRow(overview: item)
-                            }
-                            .buttonStyle(.plain)
+            agentList
+        }
+    }
+
+    /// The attention-sorted contact list. While searching it shows the flat
+    /// filtered rows (no tier regrouping). Reorders animate so a row that jumps
+    /// tiers or gets a recency bump slides instead of teleporting (WA slide-to-top);
+    /// keyed on the visible ids and skipped under Reduce Motion.
+    private var agentList: some View {
+        ScrollView {
+            LazyVStack(spacing: Spacing.space2) {
+                ForEach(visibleRows) { item in
+                    if let agent = agent(for: item.id) {
+                        NavigationLink(value: AgentsNavRoute.missions(agent)) {
+                            AgentRow(overview: item)
                         }
+                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, Spacing.space12)
-                .padding(.vertical, Spacing.space8)
             }
+            .padding(.horizontal, Spacing.space12)
+            .padding(.vertical, Spacing.space8)
+            .animation(reduceMotion ? nil : .smooth(duration: Motion.common), value: visibleRows.map(\.id))
         }
     }
 
