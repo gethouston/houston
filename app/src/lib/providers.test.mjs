@@ -9,31 +9,23 @@ import {
 
 test("effort levels are per model", () => {
   // Codex pre-5.6 models: xhigh top, no max (the server 400-rejects `max`
-  // on them; verified live against gpt-5.5). GPT-5.6 Terra/Luna stay on the
-  // same range until OpenAI confirms `max` beyond Sol.
-  for (const id of [
-    "gpt-5.5",
-    "gpt-5.4",
-    "gpt-5.4-mini",
-    "gpt-5.3-codex-spark",
-    "gpt-5.6-terra",
-    "gpt-5.6-luna",
-  ]) {
+  // on them; verified live against gpt-5.5).
+  for (const id of ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex-spark"]) {
     assert.deepEqual(
       getEffortLevels("openai", id),
       ["low", "medium", "high", "xhigh"],
       id,
     );
   }
-  // GPT-5.6 Sol: the one Codex model with `max` (announced with 5.6).
-  // "ultra" is a subagent mode, not an effort level — never listed.
-  assert.deepEqual(getEffortLevels("openai", "gpt-5.6-sol"), [
-    "low",
-    "medium",
-    "high",
-    "xhigh",
-    "max",
-  ]);
+  // The whole GPT-5.6 family carries `max` (confirmed in codex's picker
+  // post-GA). "ultra" is a subagent mode, not an effort level — never listed.
+  for (const id of ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]) {
+    assert.deepEqual(
+      getEffortLevels("openai", id),
+      ["low", "medium", "high", "xhigh", "max"],
+      id,
+    );
+  }
   // Sonnet 4.6: has max, no xhigh.
   assert.deepEqual(getEffortLevels("anthropic", "claude-sonnet-4-6"), [
     "low",

@@ -79,9 +79,9 @@
       "max": "Deepest thinking, no token limit."
     },
     "modelDescriptions": {
-      "gpt-5_6-sol": "OpenAI's new flagship for the hardest problems.",
-      "gpt-5_6-terra": "Balanced power and cost for everyday work.",
-      "gpt-5_6-luna": "Fastest and most affordable GPT-5.6.",
+      "gpt-5_6-sol": "Latest frontier agentic coding model.",
+      "gpt-5_6-terra": "Balanced agentic coding model for everyday work.",
+      "gpt-5_6-luna": "Fast and affordable agentic coding model.",
       "gpt-5_5": "OpenAI's frontier model.",
       "gpt-5_4": "Strong model for everyday coding.",
       "gpt-5_4-mini": "Small, fast, and cost-efficient for simpler tasks.",

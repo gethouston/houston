@@ -301,8 +301,8 @@ shows only the levels the active model accepts.
 | `anthropic` | `claude-sonnet-5` (Sonnet 5) | low, medium, high, xhigh, max | `--effort <v>` |
 | `anthropic` | `claude-sonnet-4-6` (Sonnet 4.6) | low, medium, high, max (no `xhigh`) | `--effort <v>` |
 | `openai` | `gpt-5.6-sol` (Sol) | low, medium, high, xhigh, max | `-c model_reasoning_effort="<v>"` |
-| `openai` | `gpt-5.6-terra` (Terra) | low, medium, high, xhigh (`max` unconfirmed off-Sol) | `-c model_reasoning_effort="<v>"` |
-| `openai` | `gpt-5.6-luna` (Luna) | low, medium, high, xhigh (`max` unconfirmed off-Sol) | `-c model_reasoning_effort="<v>"` |
+| `openai` | `gpt-5.6-terra` (Terra) | low, medium, high, xhigh, max | `-c model_reasoning_effort="<v>"` |
+| `openai` | `gpt-5.6-luna` (Luna) | low, medium, high, xhigh, max | `-c model_reasoning_effort="<v>"` |
 | `openai` | `gpt-5.5` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
 | `openai` | `gpt-5.4` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
 | `openai` | `gpt-5.4-mini` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
@@ -312,8 +312,8 @@ shows only the levels the active model accepts.
 Claude self-clamps an unsupported `--effort` down to its highest supported
 level; codex has no CLI-side fallback and the SERVER 400-rejects an effort a
 model doesn't support (verified: `max` on gpt-5.5). `max` entered codex's
-config enum in 0.143 alongside GPT-5.6, so it is offered only on `gpt-5.6-sol`
-(the one model OpenAI confirms it for). GPT-5.6 "ultra" is a subagent mode,
+config enum in 0.143 alongside GPT-5.6 and is offered on the whole 5.6 family
+(Sol, Terra, Luna — confirmed in codex's own picker post-GA). GPT-5.6 "ultra" is a subagent mode,
 not an effort level, and is never offered. Default for every effort-capable
 provider is `medium`.
 

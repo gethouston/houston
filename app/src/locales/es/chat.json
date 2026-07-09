@@ -79,9 +79,9 @@
       "max": "Análisis máximo, sin límite de tokens."
     },
     "modelDescriptions": {
-      "gpt-5_6-sol": "El nuevo modelo insignia de OpenAI para los problemas más difíciles.",
-      "gpt-5_6-terra": "Equilibrio entre potencia y costo para el trabajo diario.",
-      "gpt-5_6-luna": "El GPT-5.6 más rápido y económico.",
+      "gpt-5_6-sol": "El modelo de frontera más reciente para programación agéntica.",
+      "gpt-5_6-terra": "Modelo de programación agéntica equilibrado para el trabajo diario.",
+      "gpt-5_6-luna": "Modelo de programación agéntica rápido y económico.",
       "gpt-5_5": "El modelo más avanzado de OpenAI.",
       "gpt-5_4": "Modelo potente para programar a diario.",
       "gpt-5_4-mini": "Pequeño, rápido y económico para tareas más simples.",

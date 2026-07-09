@@ -3,7 +3,8 @@
  * is model-specific (see `ModelOption.effortLevels`):
  * - Codex `model_reasoning_effort`: low/medium/high/xhigh; the bundled
  *   codex (>= 0.143) also parses `max`, which the SERVER accepts only on
- *   models that support it (GPT-5.6 Sol; gpt-5.5 and older 400-reject it).
+ *   models that support it (the GPT-5.6 family; gpt-5.5 and older
+ *   400-reject it).
  * - Claude `--effort`: Opus 4.7/4.8 and Sonnet 5 = all five; Sonnet 4.6 =
  *   low/medium/high/max (no `xhigh`). Claude self-clamps an unsupported
  *   value; Codex does not.
@@ -98,13 +99,14 @@ export const PROVIDERS: readonly ProviderInfo[] = [
       {
         id: "gpt-5.6-sol",
         label: "GPT-5.6 Sol",
-        description: "OpenAI's new flagship for the hardest problems.",
-        // GPT-5.6 adds `max` at the top of the effort dial; Sol is the one
-        // model OpenAI's announcement confirms it for. Requires the bundled
-        // codex >= 0.143 (older CLIs hard-reject `max` at config parse; the
-        // server 400s it on models that don't support it, e.g. gpt-5.5).
-        // GPT-5.6 "ultra" is a subagent MODE, not an effort level — never
-        // add it here (same rule as Claude's `ultracode`).
+        description: "Latest frontier agentic coding model.",
+        // GPT-5.6 adds `max` at the top of the effort dial; all three 5.6
+        // models carry it (confirmed in codex's own picker post-GA).
+        // Requires the bundled codex >= 0.143 (older CLIs hard-reject `max`
+        // at config parse; the server 400s it on models that don't support
+        // it, e.g. gpt-5.5). GPT-5.6 "ultra" is a subagent MODE, not an
+        // effort level — never add it here (same rule as Claude's
+        // `ultracode`).
         effortLevels: ["low", "medium", "high", "xhigh", "max"],
         // OpenAI has published NO context-window spec for the 5.6 family as
         // of 2026-07-08 (GA 2026-07-09); the "1.5M" figure circulating is
@@ -121,12 +123,10 @@ export const PROVIDERS: readonly ProviderInfo[] = [
       {
         id: "gpt-5.6-terra",
         label: "GPT-5.6 Terra",
-        description: "Balanced power and cost for everyday work.",
-        // OpenAI confirms `max` only for Sol; whether Terra/Luna accept it
-        // is unstated and the server hard-400s unsupported efforts, so stay
-        // on the proven Codex range. Extend to `max` only once verified
-        // against the live API / codex models_cache.json.
-        effortLevels: ["low", "medium", "high", "xhigh"],
+        description: "Balanced agentic coding model for everyday work.",
+        // Same effort dial as Sol — the whole 5.6 family carries `max`
+        // (confirmed in codex's own picker post-GA).
+        effortLevels: ["low", "medium", "high", "xhigh", "max"],
         // Same pre-GA estimate rationale as Sol above, but no 1.5M report
         // exists for Terra, so the ceiling stays at the 5.5-line precedent
         // (1M x 95% = 950_000).
@@ -136,9 +136,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
       {
         id: "gpt-5.6-luna",
         label: "GPT-5.6 Luna",
-        description: "Fastest and most affordable GPT-5.6.",
-        // See Terra: `max` unconfirmed off-Sol, keep the proven range.
-        effortLevels: ["low", "medium", "high", "xhigh"],
+        description: "Fast and affordable agentic coding model.",
+        // Same effort dial as Sol — the whole 5.6 family carries `max`.
+        effortLevels: ["low", "medium", "high", "xhigh", "max"],
         // See Terra: pre-GA estimate, 5.5-line snap-up ceiling.
         contextWindow: 258_400,
         contextWindowMax: 950_000,
