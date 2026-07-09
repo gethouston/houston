@@ -3,6 +3,10 @@ import {
   ActivityStatusOutput,
   type BoardStatusPersister,
 } from "./activity-status-output";
+import {
+  asAttachmentsSaveInput,
+  createAttachmentsOperation,
+} from "./attachments";
 import type { FeedOutput } from "./feed-output";
 import { createTurnOperations } from "./operations";
 import { StreamRegistry } from "./stream-registry";
@@ -54,8 +58,12 @@ export function createTurnsModule(
     external,
     registry,
   });
+  const attachments = createAttachmentsOperation(ctx);
 
   ctx.registerCommand("turns/send", (payload) => send(asSendInput(payload)));
+  ctx.registerCommand("turns/attachments/save", (payload) =>
+    attachments.save(asAttachmentsSaveInput(payload)),
+  );
   ctx.registerCommand("turns/cancel", (payload) => {
     const { conversationId, agentId } = asCancelInput(payload);
     return cancel(conversationId, agentId);
@@ -75,6 +83,13 @@ export function createTurnsModule(
     observe,
     history,
     /**
+     * Upload composer attachments into the agent's workspace, returning the
+     * relative paths the agent's Read tool opens. Backs the
+     * `turns/attachments/save` command; weave the paths into the turn text with
+     * {@link buildAttachmentText}.
+     */
+    saveAttachments: attachments.save,
+    /**
      * Attach an extra {@link FeedOutput} that every subsequent turn also drives
      * (e.g. a host UI bus). Returns a detach function.
      */
@@ -91,6 +106,21 @@ export function createTurnsModule(
   };
 }
 
+export {
+  type AttachmentRef,
+  buildAttachmentText,
+  type DecodedAttachmentText,
+  decodeAttachmentText,
+} from "./attachment-text";
+export {
+  type AttachmentsOperation,
+  AttachmentTooLargeError,
+  type AttachmentUpload,
+  asAttachmentsSaveInput,
+  createAttachmentsOperation,
+  type TurnAttachmentsSaveInput,
+  type TurnAttachmentsSaveResult,
+} from "./attachments";
 export {
   type BoardStatus,
   type FeedOutput,

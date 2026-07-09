@@ -231,9 +231,25 @@ export function handleAgents(
       // The Files tab's workspace surface (list/upload/move/…): routes-files.ts.
       return handleWorkspaceFiles(method, id, rest, req, body);
 
-    case "attachments":
-      if (method === "POST") return json({ paths: [] });
-      return noContent();
+    case "attachments": {
+      // Composer attachments — faithful to the real host's `turn/attachments.ts`:
+      // a 100MB request cap (413), `scopeId` accepted+ignored, and files stored
+      // in the agent's visible, durable `uploads/` folder (HOU-706) with
+      // colliding names disambiguated. Returns the RELATIVE `uploads/<name>`
+      // paths the agent's Read tool opens.
+      if (method !== "POST") return noContent(405);
+      const files = (Array.isArray(body?.files) ? body.files : []) as {
+        name: string;
+        contentBase64: string;
+      }[];
+      // base64 is ~4/3 the byte size; estimate to reject oversized uploads.
+      let total = 0;
+      for (const f of files)
+        total += Math.floor((f.contentBase64.length * 3) / 4);
+      if (total > 100 * 1024 * 1024)
+        return json({ error: "attachments exceed the upload size limit" }, 413);
+      return json({ paths: state.importWorkspaceFiles(id, "uploads", files) });
+    }
 
     case "portable":
       // Share-with-a-friend export inventory. An empty (but well-shaped)

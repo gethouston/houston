@@ -436,6 +436,51 @@ subscriptions stay registered and resume pushing once auth is restored.
 Contrast with a *provider* token expiring (§5): that arrives as a
 `providerError` inside a conversation snapshot, not a `fatal`.
 
+### 6.7 Attach files to a message (composer attachments)
+
+Two steps, entirely on the command path — **no new envelope kinds**.
+
+**Step 1 — upload.** `turns/attachments/save` uploads the user's dropped files
+INTO the agent's workspace and returns the RELATIVE paths the agent's Read tool
+opens. Files land in the agent's visible, durable `uploads/` folder; colliding
+names are disambiguated (`report.csv` → `report (1).csv`). `scopeId` is a legacy
+per-conversation key the current host ignores — still send it for compatibility
+with not-yet-updated cloud pods. `agentId` targets the agent's sandbox (omit for
+the single local runtime).
+
+```json
+→ { "kind": "command", "envelope": { "id": "c8", "type": "turns/attachments/save",
+      "payload": { "agentId": "ag_1", "scopeId": "cv_42",
+        "files": [ { "name": "brief.pdf", "contentBase64": "JVBERi0x…" } ] } } }
+← { "kind": "result", "result": { "id": "c8", "ok": true,
+      "value": { "paths": [ "uploads/brief.pdf" ] } } }
+```
+
+The request is capped (100 MB); an oversized upload fails with a **typed**
+`AttachmentTooLargeError` surfaced as `{ ok: false, error: { message, status: 413 } }`
+— never a silent drop. Missing/empty `files`, a blank file `name`, or a
+non-string `contentBase64` fail validation the same way (no `status`).
+
+**Step 2 — send.** Weave the returned paths into the message text with the
+SDK-exported pure helper `buildAttachmentText(text, paths, names?)`, then pass
+the result as the `turns/send` `payload.text` (§6.4). The helper emits, byte-for-
+byte, the desktop composer's format: a hidden `<!--houston:attachments {json}-->`
+marker (display metadata) followed by the user's text and a visible model-facing
+path block. For feed rendering, `decodeAttachmentText(text)` returns
+`{ displayText, attachments: [{ name }] } | null` — the single decode counterpart
+so a native shell renders a clean attachment summary instead of the raw path
+block. Both helpers are pure JS (no bridge round-trip); import them from
+`@houston/sdk`.
+
+```
+<!--houston:attachments {"message":"Summarize this","files":[{"path":"uploads/brief.pdf","name":"brief.pdf"}]}-->
+
+Summarize this
+
+[User attached these files. Read them with the Read tool if needed:
+- uploads/brief.pdf]
+```
+
 ---
 
 ## 7. Feed semantics — turnId / seq / resume (cross-ref `packages/protocol/src/wire.ts`)
