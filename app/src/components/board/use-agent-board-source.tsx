@@ -155,6 +155,7 @@ export function useAgentBoardSource(
     setHighlightedId,
     activeAgent: agent,
     activeAgentDef: agentDef,
+    draftScope: agent.id,
     selectedSessionKey,
     selectedAgentPath: path,
     onSelectSession: setSelectedId,
