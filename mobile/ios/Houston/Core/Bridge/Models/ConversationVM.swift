@@ -22,6 +22,15 @@ struct ConversationVM: Decodable, Equatable, Sendable {
   /// itself is behavior owned by the SDK/engine adapter, never the surface; this
   /// surface only mirrors the published list (client-architecture.md invariant 1).
   var queued: [QueuedMessageVM]?
+  /// The ordered steps this settled turn is waiting on the user for, or `nil`
+  /// when nothing is pending (SDK `ConversationVM.pendingInteraction`,
+  /// `vm-output.ts`): set when a turn settles on an `ask_user` /
+  /// `request_connection` / `plan_ready` (board status lands `needs_you`), and
+  /// cleared (back to `nil` + `running`) the instant the next turn starts. The
+  /// ``InteractionCard`` renders it; the read seam (``ChatScreenModel`` derived)
+  /// gates it on `!running`, mirroring desktop's `deriveActiveInteraction`.
+  /// Additive and optional exactly like ``queued``: ABSENT on older data.
+  var pendingInteraction: PendingInteraction?
 }
 
 /// A message queued while a turn runs (SDK `QueuedMessageVM`, `vm-output.ts`):
@@ -135,7 +144,14 @@ enum SessionStatus: Decodable, Equatable, Sendable {
 }
 
 /// The board-card status a streamed turn writes (SDK `BoardStatus`): `running`
-/// in flight, then a terminal `needsYou` / `error`. Unknown values preserved.
+/// in flight, then a terminal status. `needs_you` (something is outstanding) and
+/// `error` (a genuine failure) are the cases the surfaces branch on; a clean turn
+/// with nothing outstanding now settles `done` (`vm-output.ts`). `done` and any
+/// FUTURE terminal string fall through to `.unknown`, which every consumer
+/// already treats as "no special status": ``ChatTitleStatus`` shows no second
+/// line (it matches only `.needsYou`) and ``MissionState`` renders it neutrally.
+/// Tolerating `done` this way keeps decoding forward-compatible without forcing a
+/// case onto the exhaustive `MissionState` switch. Unknown values preserved.
 enum BoardStatus: Decodable, Equatable, Sendable {
   case running
   case needsYou

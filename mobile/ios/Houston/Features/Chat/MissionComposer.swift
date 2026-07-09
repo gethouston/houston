@@ -20,11 +20,19 @@ struct MissionComposer: View {
   /// focus is deferred past the push transition so it never fights it; existing
   /// missions pass `false` and never steal focus.
   var autoFocus: Bool = false
+  /// Staged attachments present: the send button activates even with no typed
+  /// text (attachments-only send, WhatsApp-style).
+  var hasAttachments: Bool = false
+  /// A send (upload → turn) is in flight before the turn starts running: the
+  /// send button shows a spinner and is disabled so the upload can't be
+  /// double-fired.
+  var isSending: Bool = false
   let onSend: () -> Void
   let onStop: () -> Void
-  /// The leading "+" affordance (WhatsApp layout). Attachments aren't wired to
-  /// the engine send path yet, so this is nil by default — the button still
-  /// shows (the layout the founder asked for) and no-ops until a host provides it.
+  /// The leading "+" affordance (WhatsApp layout). Optional so the composer stays
+  /// container-agnostic: ``ChatView`` wires it to open the "+" menu (attach file /
+  /// photo, choose model / effort); a caller that passes nil simply shows an inert
+  /// "+" and the button no-ops.
   var onPlus: (() -> Void)?
 
   @FocusState private var focused: Bool
@@ -33,7 +41,11 @@ struct MissionComposer: View {
   @State private var didAutoFocus = false
 
   private var hasContent: Bool { ComposerLogic.hasContent(text) }
-  private var active: Bool { ComposerLogic.isActive(text: text, isRunning: isRunning) }
+  /// There is something to send: typed text OR staged attachments.
+  private var canSubmit: Bool { hasContent || hasAttachments }
+  /// The send button is drawn at full size + interactive: a running turn (Stop),
+  /// or something to submit. An in-flight upload keeps it prominent but disabled.
+  private var active: Bool { isRunning || canSubmit }
 
   var body: some View {
     HStack(alignment: .bottom, spacing: Spacing.space8) {
@@ -114,10 +126,7 @@ struct MissionComposer: View {
     } label: {
       ZStack {
         Circle().fill(active ? theme.primary : theme.muted)
-        Image(systemName: isRunning ? "stop.fill" : "paperplane.fill")
-          .font(.system(size: ChatMetrics.sendGlyphSize, weight: .semibold))
-          .foregroundStyle(active ? theme.primaryFg : theme.mutedFg)
-          .contentTransition(.symbolEffect(.replace))
+        glyph
       }
       .frame(width: ChatMetrics.sendButtonSize, height: ChatMetrics.sendButtonSize)
     }
@@ -126,7 +135,24 @@ struct MissionComposer: View {
     .opacity(active ? 1 : ChatMetrics.sendIdleOpacity)
     .animation(.snappy(duration: Motion.fast), value: active)
     .animation(.smooth(duration: Motion.fast), value: isRunning)
-    .disabled(!isRunning && !hasContent)
+    // Disabled while uploading (pre-turn) so the send can't double-fire, and
+    // when idle with nothing to submit.
+    .disabled((isSending && !isRunning) || (!isRunning && !canSubmit))
     .accessibilityLabel(isRunning ? Strings.Chat.stop : Strings.Chat.send)
+  }
+
+  /// The button's inner glyph: a spinner while the upload is in flight
+  /// (pre-turn), Stop while the turn runs, else the paper-plane send arrow.
+  @ViewBuilder private var glyph: some View {
+    if isSending && !isRunning {
+      ProgressView()
+        .controlSize(.small)
+        .tint(theme.primaryFg)
+    } else {
+      Image(systemName: isRunning ? "stop.fill" : "paperplane.fill")
+        .font(.system(size: ChatMetrics.sendGlyphSize, weight: .semibold))
+        .foregroundStyle(active ? theme.primaryFg : theme.mutedFg)
+        .contentTransition(.symbolEffect(.replace))
+    }
   }
 }

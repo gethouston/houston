@@ -8,24 +8,40 @@ import XCTest
 final class SpyChatCommands: ChatCommanding {
   private(set) var observed: [(agentId: String, conversationId: String)] = []
   private(set) var sent:
-    [(agentId: String, conversationId: String, text: String, model: String?)] = []
+    [(
+      agentId: String, conversationId: String, text: String, model: String?,
+      effort: EffortLevel?
+    )] = []
+  private(set) var uploaded: [(agentId: String, scopeId: String, files: [AttachmentUpload])] = []
   private(set) var cancelled: [(agentId: String, conversationId: String)] = []
   private(set) var statuses: [(agentId: String, activityId: String, status: String)] = []
   private(set) var created: [(agentId: String, title: String, description: String)] = []
   private(set) var deleted: [(agentId: String, activityId: String)] = []
-  /// Command names to throw `StubError` on (draft failure paths): "create",
-  /// "send", "delete".
+  /// Command names to throw `StubError` on (draft/attachment failure paths):
+  /// "create", "send", "delete", "upload".
   var failOn: Set<String> = []
   /// The activity `activities/create` returns on the happy path.
   var createResult = CreatedActivity(id: "m1", sessionKey: "activity-m1")
+  /// Maps the just-uploaded files to their saved paths (default: `/saved/<name>`),
+  /// so a test can assert the woven message deterministically.
+  var saveResult: ([AttachmentUpload]) -> [String] = { $0.map { "/saved/\($0.name)" } }
   var onCall: (() -> Void)?
 
   func observe(agentId: String, conversationId: String) async throws {
     observed.append((agentId, conversationId)); onCall?()
   }
-  func send(agentId: String, conversationId: String, text: String, model: String?) async throws {
-    sent.append((agentId, conversationId, text, model)); onCall?()
+  func send(
+    agentId: String, conversationId: String, text: String, model: String?, effort: EffortLevel?
+  ) async throws {
+    sent.append((agentId, conversationId, text, model, effort)); onCall?()
     if failOn.contains("send") { throw StubError() }
+  }
+  func saveAttachments(
+    agentId: String, scopeId: String, files: [AttachmentUpload]
+  ) async throws -> [String] {
+    uploaded.append((agentId, scopeId, files)); onCall?()
+    if failOn.contains("upload") { throw StubError() }
+    return saveResult(files)
   }
   func cancel(agentId: String, conversationId: String) async throws {
     cancelled.append((agentId, conversationId)); onCall?()
@@ -103,6 +119,173 @@ final class ChatScreenModelTests: XCTestCase {
     XCTAssertTrue(spy.sent.isEmpty)
     XCTAssertEqual(model.sendTick, 0)
     XCTAssertEqual(model.draft, "   \n ")
+  }
+
+  // MARK: selectedEffort (per-conversation pin threaded through SendArgs)
+
+  func testSendThreadsSelectedEffortIntoExistingConversation() async {
+    let (model, spy, _, _) = makeModel()
+    model.selectedEffort = .high
+    model.draft = "hi"
+    await awaitCall(spy) { model.send() }
+    XCTAssertEqual(spy.sent.last?.effort, .high, "the effort pin rides every turns/send")
+  }
+
+  func testSendWithNoEffortPinOmitsEffort() async {
+    let (model, spy, _, _) = makeModel()
+    model.draft = "hi"
+    await awaitCall(spy) { model.send() }
+    XCTAssertNil(spy.sent.last?.effort, "no pin: effort omitted so the agent default runs")
+  }
+
+  func testAnswerThreadsSelectedEffort() async {
+    let (model, spy, _, _) = makeModel()
+    model.selectedEffort = .low
+    await awaitCall(spy) { model.answer("yes") }
+    XCTAssertEqual(spy.sent.last?.text, "yes")
+    XCTAssertEqual(spy.sent.last?.effort, .low, "an interaction answer is a normal send: it carries the pin")
+  }
+
+  func testDraftFirstSendThreadsSelectedEffort() async {
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    model.selectedEffort = .xhigh
+    model.draft = "hello"
+    model.send()
+    await awaitSettled(model)
+    XCTAssertEqual(spy.sent.last?.effort, .xhigh, "the draft's first send also carries the effort pin")
+  }
+
+  // MARK: selectModel (per-conversation pin clears a stale effort)
+
+  func testSelectModelClearsStaleEffortPin() {
+    let (model, _, _, _) = makeModel()
+    model.selectedModel = "reasoner-1"
+    model.selectedEffort = .high
+    model.selectModel("plain-2")
+    XCTAssertEqual(model.selectedModel, "plain-2")
+    XCTAssertNil(
+      model.selectedEffort,
+      "switching to a different model clears the effort pin so a stale level never rides the wire")
+  }
+
+  func testSelectSameModelKeepsEffortPin() {
+    let (model, _, _, _) = makeModel()
+    model.selectedModel = "reasoner-1"
+    model.selectedEffort = .high
+    model.selectModel("reasoner-1")
+    XCTAssertEqual(
+      model.selectedEffort, .high, "re-picking the SAME model leaves the effort pin untouched")
+  }
+
+  // MARK: staged attachments (upload → weave → send)
+
+  func testSendUploadsStagedFilesUnderConversationScopeAndWeaves() async {
+    let (model, spy, _, _) = makeModel()
+    model.stageAttachments([("brief.pdf", Data("hello".utf8))])
+    model.draft = "Summarize this"
+    model.send()
+    await awaitSettled(model)
+
+    XCTAssertEqual(spy.uploaded.count, 1, "one save request for the staged batch")
+    XCTAssertEqual(spy.uploaded.last?.scopeId, "activity-42", "uploads under the conversation scope")
+    XCTAssertEqual(spy.uploaded.last?.files.first?.name, "brief.pdf")
+    XCTAssertEqual(
+      spy.uploaded.last?.files.first?.contentBase64, Data("hello".utf8).base64EncodedString(),
+      "the raw bytes are base64-encoded for the bridge")
+
+    let expected = AttachmentMessage.encode(
+      text: "Summarize this", paths: ["/saved/brief.pdf"], names: ["brief.pdf"])
+    XCTAssertEqual(spy.sent.last?.text, expected, "the saved path is woven into the sent message")
+    XCTAssertTrue(model.stagedAttachments.isEmpty, "staged files clear on a successful send")
+  }
+
+  func testAttachmentsOnlySendWithNoText() async {
+    let (model, spy, _, _) = makeModel()
+    model.stageAttachments([("photo.jpg", Data([0x1, 0x2]))])
+    model.send()
+    await awaitSettled(model)
+    XCTAssertEqual(spy.uploaded.count, 1)
+    let expected = AttachmentMessage.encode(
+      text: "", paths: ["/saved/photo.jpg"], names: ["photo.jpg"])
+    XCTAssertEqual(spy.sent.last?.text, expected, "attachments alone (no typed text) still send")
+  }
+
+  func testUploadFailureKeepsFilesStagedAndSurfaces() async {
+    let (model, spy, _, _) = makeModel()
+    spy.failOn = ["upload"]
+    model.stageAttachments([("brief.pdf", Data("x".utf8))])
+    model.draft = "read it"
+    model.send()
+    await awaitSettled(model)
+
+    XCTAssertTrue(spy.sent.isEmpty, "no turn is sent when the upload fails")
+    XCTAssertEqual(model.stagedAttachments.count, 1, "attachments stay staged — no silent loss")
+    XCTAssertEqual(model.draft, "read it", "draft restored so the user can retry")
+    XCTAssertNotNil(model.actionError, "the upload failure is surfaced")
+  }
+
+  func testDraftFirstSendUploadsUnderNewSessionScope() async {
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    model.stageAttachments([("draft.txt", Data("hi".utf8))])
+    model.draft = "look at this"
+    model.send()
+    await awaitSettled(model)
+    XCTAssertEqual(
+      spy.uploaded.last?.scopeId, "activity-m1",
+      "a draft uploads under the freshly-created session, matching desktop's sessionKey scope")
+  }
+
+  func testFilesStagedDuringInFlightSendSurvive() async {
+    // Stage A and send. While A's upload/send is in flight, the composer's "+"
+    // stays live, so the user stages B. On completion ONLY A must clear — B was
+    // never part of this send and must not be silently wiped.
+    let (model, spy, _, _) = makeModel()
+    model.stageAttachments([("a.pdf", Data("a".utf8))])
+    var stagedDuring = false
+    spy.onCall = {
+      guard !stagedDuring else { return }
+      stagedDuring = true
+      model.stageAttachments([("b.pdf", Data("b".utf8))])
+    }
+    model.send()
+    await awaitSettled(model)
+    XCTAssertEqual(spy.sent.count, 1, "the original send completed")
+    XCTAssertEqual(
+      model.stagedAttachments.map(\.name), ["b.pdf"],
+      "only the just-sent a.pdf clears; b.pdf staged mid-flight survives (no silent loss)")
+  }
+
+  func testFilesStagedDuringDraftFirstSendSurvive() async {
+    // Same race on a draft's create+send path (createAndSend clears by id too).
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    model.stageAttachments([("a.pdf", Data("a".utf8))])
+    var stagedDuring = false
+    spy.onCall = {
+      guard !stagedDuring else { return }
+      stagedDuring = true
+      model.stageAttachments([("b.pdf", Data("b".utf8))])
+    }
+    model.send()
+    await awaitSettled(model)
+    XCTAssertEqual(
+      model.stagedAttachments.map(\.name), ["b.pdf"],
+      "a draft's first send clears only its own files; a mid-flight stage survives")
+  }
+
+  func testRemoveStagedAttachmentDropsOne() {
+    let (model, _, _, _) = makeModel()
+    model.stageAttachments([("a.txt", Data("a".utf8)), ("b.txt", Data("b".utf8))])
+    let firstId = model.stagedAttachments[0].id
+    model.removeStagedAttachment(id: firstId)
+    XCTAssertEqual(model.stagedAttachments.map(\.name), ["b.txt"], "only the removed chip drops")
+  }
+
+  func testOversizeStagingSurfacesAttachmentError() {
+    let (model, _, _, _) = makeModel()
+    let big = Data(count: AttachmentStaging.maxFileBytes + 1)
+    model.stageAttachments([("huge.bin", big)])
+    XCTAssertTrue(model.stagedAttachments.isEmpty, "an oversize file is never staged")
+    XCTAssertNotNil(model.attachmentError, "the rejection surfaces on the dedicated attachment alert")
   }
 
   // MARK: stop

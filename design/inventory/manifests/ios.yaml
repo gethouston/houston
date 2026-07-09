@@ -84,8 +84,11 @@ components:
     status: implemented
     ref: mobile/ios/Houston/Features/Chat/ChatBubbles.swift
     notes: >-
-      Bubble with author label (shown only with >=2 distinct authors). Attachments
-      not a mobile v1 feature. Wave-1: an in-bubble bottom-right timestamp (WhatsApp
+      Bubble with author label (shown only with >=2 distinct authors). A message
+      the user sent WITH attachments decodes (AttachmentMessage.decode) to the
+      clean typed text + file-name chips (BubbleAttachmentChips in
+      AttachmentChips.swift); the raw path block never leaks into the bubble
+      (with-attachments state). Wave-1: an in-bubble bottom-right timestamp (WhatsApp
       convention) laid out by TimedBubbleLayout.swift (inline, or dropped to its own
       line when the block is full) and formatted by ChatBubbleTime.swift; a
       long-press Copy context menu. Timestamp is optional (absent -> renders as before).
@@ -121,7 +124,19 @@ components:
   composer:
     status: implemented
     ref: mobile/ios/Houston/Features/Chat/MissionComposer.swift
-    notes: Growing textarea (1-6 lines), trailing send/stop that lights on non-empty trimmed text.
+    notes: >-
+      Growing textarea (1-6 lines), trailing send/stop that lights on non-empty
+      trimmed text or staged attachments; the send button shows a spinner and
+      disables while an attachment upload is in flight. The leading "+" opens a
+      menu (AttachmentComposerControls.swift) with Attach file / Attach photo
+      (document + PhotosPicker via AttachmentIngest.swift, staged as removable
+      chips above the input — StagedAttachmentChips in AttachmentChips.swift, 20MB
+      cap, oversize surfaces a File-too-large alert) and an Effort sheet
+      (EffortSheet.swift, per-conversation reasoning-effort pin threaded as
+      TurnSendInput.effort — a founder call vs desktop's per-agent pin is pending).
+      On send, staged files upload via turns/attachments/save then their saved
+      paths are woven into the message by AttachmentMessage.encode (has-attachments
+      state; AttachmentSend.swift). Drag-over is desktop-only.
   turn-status:
     status: implemented
     ref: mobile/ios/Houston/Features/Chat/ChatTitleView.swift
@@ -212,8 +227,28 @@ components:
     status: not-started
     notes: Hosted-engine warm-up notice (HOU-693); mobile v1 has no create-agent flow yet.
   interaction-card:
-    status: not-started
-    notes: In-chat gather-what-I-need stepper (questions, sign-in, then connections); mid-turn pending-interaction flow not in mobile v1.
+    status: partial
+    ref: mobile/ios/Houston/Features/Chat/InteractionCard.swift
+    notes: >-
+      In-chat gather-what-I-need stepper for a settled turn on needs_you
+      (InteractionCard.swift + InteractionStepper.swift cursor, question /
+      sign-in / connect step views in InteractionQuestionView.swift +
+      InteractionActionSteps.swift). Decoded from ConversationVM.pendingInteraction
+      (InteractionModel.swift) and gated on !running (ChatScreenModel+Derived).
+      Renderable steps walk one at a time with an "x of n" caption; a question
+      pick sends "<question>: <label>" as a normal turn (InteractionReply),
+      sign-in routes to AI Models, connect routes to Integrations. Mobile
+      divergences from desktop: the card mounts ABOVE the live composer (does not
+      replace it), free-text answers are a raw composer send (no in-card
+      textarea), and a question answer is terminal (protocol orders questions
+      first). Answer-text ported from desktop composeInteractionReply.
   plan-ready-card:
-    status: not-started
-    notes: Plan-ready confirmation card (plan_ready) with Start working / Run on Autopilot / Keep planning; plan-mode flow not in mobile v1.
+    status: partial
+    ref: mobile/ios/Houston/Features/Chat/InteractionActionSteps.swift
+    notes: >-
+      plan_ready surfaces inside the interaction-card stepper
+      (InteractionPlanReadyView in InteractionActionSteps.swift): the plan
+      summary plus a single primary approve that sends "Go ahead with the plan."
+      (desktop planReady.startWorkingMessage). Run-on-Autopilot / Keep-planning
+      have no mobile seam yet, so only the primary path is wired (no dead
+      affordances).

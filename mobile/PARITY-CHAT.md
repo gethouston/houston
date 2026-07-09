@@ -41,6 +41,9 @@ The helmet is also the process-block header glyph at size 13 (see §5).
   size-3.5 fill, aria "Stop", calls onStop. No confirm. (Escape also stops on desktop.)
 - OMIT for v1: the leading + attach button, the Dictate mic, and the whole footer row
   (Skills pill / model selector / effort selector / context gauge). Deferred.
+  **iOS PARTIALLY SUPERSEDED (§10):** the leading "+" now opens a menu carrying Attach file /
+  Attach photo (staged chips) and an Effort sheet; the model picker also lives there (§10). The
+  Dictate mic, Skills pill, and context gauge stay deferred.
 
 ## 3. Messages — desktop: ui/chat/src/ai-elements/message.tsx
 - User bubble: right, `ml-auto max-w-[70%]`, `rounded-[22px] bg-muted px-4 py-2.5
@@ -187,3 +190,65 @@ plus tick/`pendingIds` cases in `ChatBubbleTimeTests` / `ChatTimelineTests`).
 Timeline logic is pure and unit-tested (`HoustonTests/Chat/ChatTimelineTests`,
 `ChatBubbleTimeTests`, `ChatTitleStatusTests`). All layout values come from DesignSystem
 tokens (Spacing / Typography / Radius / Theme roles); no raw hex or spacing literals.
+
+## 9. Interaction card (in-chat gather-what-I-need) — desktop: ui/chat/interaction-card.tsx
+
+Rides the additive SDK field `ConversationVM.pendingInteraction` (PARITY §1, BRIDGE.md §7): the
+ordered steps a settled turn on `needs_you` is waiting on the user for. Set when a turn settles on
+an `ask_user` / `request_connection` / `plan_ready`; cleared (→ `nil` + `running`) the instant the
+next turn starts. Steps: up to 3 questions first, then ≤1 sign-in, then connects, then plan_ready
+(`packages/protocol/src/domain/interaction.ts`).
+
+- **Read seam:** `ChatScreenModel.pendingInteraction` (derived) returns the interaction only when
+  `!running` AND it has renderable steps — mirrors desktop `deriveActiveInteraction`; a running turn
+  always reads `nil`, so a new turn tears the card down through that same reactivity (no separate
+  teardown). Files: `ConversationVM.swift`, `ChatScreenModel+Derived.swift`, `InteractionModel.swift`.
+- **Mount:** `InteractionCard(interaction:isSending:onAnswer:onOpenAIModels:onOpenIntegrations:)`
+  sits ABOVE the live composer (mobile divergence — desktop REPLACES the composer). Appears/removes
+  through `FeedMotion.rowTransition`, animated by the parent. Files: `ChatView.swift`,
+  `InteractionCard.swift`.
+- **Stepper:** walks renderable steps one at a time with a quiet "x of n" caption for multi-step
+  sequences (`InteractionStepper` cursor held in card `@State`, re-seeded per interaction because the
+  VM clears on turn start). Files: `InteractionStepper.swift`.
+- **Answer = a normal turn** (there is NO dedicated answer command — interaction contract):
+  - A question pick sends `"<question>: <label>"` (`InteractionReply.line`, ported from desktop
+    `composeInteractionReply` single-question form). A question answer is TERMINAL (protocol orders
+    questions first, so a question-bearing sequence settles on that one send).
+  - Free-text is a RAW composer send (mobile divergence — no in-card textarea; the live composer below
+    IS the free-text answer).
+  - Sign-in step → `onOpenAIModels` (AI Models sheet); connect step → `onOpenIntegrations`
+    (Integrations sheet); both then "Continue" (`stepper.advance()`) for pure signin→connect walks.
+  - `plan_ready` surfaces the summary + a single primary approve sending `"Go ahead with the plan."`
+    (desktop `planReady.startWorkingMessage`). Autopilot / Keep-planning have no mobile seam yet.
+  Files: `InteractionQuestionView.swift`, `InteractionActionSteps.swift`, `Strings+Interaction.swift`.
+- Pure logic unit-tested (`HoustonTests/Chat/InteractionModelTests`, `InteractionStepperTests`).
+
+## 10. The "+" menu — attach, photo, effort, model (founder directive)
+
+The leading "+" (`MissionComposer.onPlus`) opens a menu the container owns
+(`AttachmentComposerControls.swift`, presented from `ChatView`); the composer only exposes `onPlus`.
+
+- **Attach file / Attach photo** — a document picker and a `PhotosPicker`; picked items are read to
+  bytes off the view (`AttachmentIngest.swift`, security-scoped file read + async photo transfer,
+  failures RETURNED not swallowed) and staged as removable chips above the input
+  (`StagedAttachmentChips`, `AttachmentChips.swift`). **20 MB per-file cap**
+  (`AttachmentStaging.adding/removing`, pure reducer); an oversize add surfaces a distinct
+  "File too large" alert (`ChatScreenModel.attachmentError`), never the generic action alert.
+- **Send with attachments** (`AttachmentSend.swift`): on send, staged files upload via the
+  `turns/attachments/save` bridge command (`scopeId` = the conversation's session key, base64 bytes,
+  BRIDGE.md §6.7) → the saved paths are woven into the message by `AttachmentMessage.encode`
+  (byte-identical to the SDK's `buildAttachmentText` / the desktop encoder). Attachments-only (no
+  text) sends. An upload failure keeps the files staged (nothing silently lost) and surfaces the
+  reason. The send button shows a spinner and disables while the upload is in flight.
+- **Attachment chips in the user bubble** — a sent message WITH attachments decodes
+  (`AttachmentMessage.decode`) to the clean typed text + file-name chips (`BubbleAttachmentChips`);
+  the raw model-facing path block never leaks into history. Files: `ChatBubbles.swift`.
+- **Effort sheet** (`EffortSheet.swift`) — a per-conversation reasoning-effort pin
+  (`ChatScreenModel.selectedEffort`) threaded on every `turns/send` as `TurnSendInput.effort`
+  (`turn-inputs.ts`). Resolution/levels are pure (`EffortResolution.swift`, `ModelCatalog` effort
+  table). **FLAG:** iOS pins effort per-CONVERSATION, mirroring the HOU-695 model pin; desktop
+  persists effort per-AGENT via `providers/setModel`. Deliberate; a founder ruling is pending.
+- **Model picker** — the HOU-695 per-conversation model pin (`ChatScreenModel.selectedModel`),
+  passed as `TurnSendInput.model`; never the agent-wide default.
+- Pure logic unit-tested (`HoustonTests/Chat/AttachmentMessageTests`, `AttachmentStagingTests`,
+  `EffortResolutionTests`, plus effort/attachment threading in `ChatScreenModelTests`).

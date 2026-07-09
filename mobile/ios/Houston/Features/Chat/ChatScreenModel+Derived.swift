@@ -49,6 +49,19 @@ extension ChatScreenModel {
   /// composer (PARITY §7). Empty until the SDK bridge publishes a `queued` list.
   var queued: [QueuedMessageVM] { vm?.queued ?? [] }
 
+  /// The interaction the settled turn is waiting on the user for, or `nil` — the
+  /// ``InteractionCard`` (mounted above the composer) binds it. A read-only
+  /// projection mirroring desktop `deriveActiveInteraction` (`active-interaction
+  /// .ts`): a running turn ALWAYS returns `nil` (a fresh turn clears the VM
+  /// interaction the instant it starts, so the card disappears through that same
+  /// reactivity — no separate teardown), and an all-unknown / empty interaction
+  /// reads as absent (`hasRenderableSteps`) so no empty card ever mounts.
+  var pendingInteraction: PendingInteraction? {
+    guard !running, let interaction = vm?.pendingInteraction, interaction.hasRenderableSteps
+    else { return nil }
+    return interaction
+  }
+
   /// The in-flight display status (mirrors desktop `deriveStatus`, `chat-status.ts`).
   var chatStatus: ChatStatus { ChatStatus.derive(feed: vm?.feed ?? [], running: running) }
 

@@ -31,15 +31,32 @@ final class ChatScreenModel {
   /// it never becomes the agent-wide default. `nil` falls back to the agent's
   /// active provider/model.
   var selectedModel: String?
-  /// True while a `turns/send` (or a draft's create+send) is in flight.
+  /// A per-conversation reasoning-effort pin (HOU-695, mirroring ``selectedModel``):
+  /// the "+" menu's effort sheet sets this, and it is passed on every
+  /// `turns/send` for THIS conversation only. `nil` runs at the agent default.
+  /// (Desktop persists effort per-AGENT via `providers/setModel`; iOS pins it
+  /// per-conversation on purpose — a founder call still pending.)
+  var selectedEffort: EffortLevel?
+  /// Files staged in the composer before send (WhatsApp-style), shown as
+  /// removable chips above the input. Uploaded on send, then cleared; kept
+  /// staged on a send failure so nothing is silently lost. Mutated only by this
+  /// model + its `AttachmentSend` extension (never by the view).
+  var stagedAttachments: [StagedAttachment] = []
+  /// True while a `turns/send` (or a draft's create+send, including its
+  /// attachment upload) is in flight.
   private(set) var isSending = false
   /// Monotonic ticks a view watches with `.sensoryFeedback` for haptics.
   private(set) var sendTick = 0
   /// The last action failure, surfaced as an alert (no silent failures).
   var actionError: String?
+  /// An oversize / staging rejection, surfaced as its own "File too large"
+  /// alert (distinct copy from the generic ``actionError``).
+  var attachmentError: String?
 
   private let client: SdkClient
-  private let commands: ChatCommanding
+  /// The command seam. Internal (not `private`) so the `AttachmentSend`
+  /// extension in its own file can drive create/send/upload.
+  let commands: ChatCommanding
   private var conversationRetention: ScopeRetention?
 
   init(
@@ -80,54 +97,64 @@ final class ChatScreenModel {
 
   // MARK: Actions
 
-  /// Send the trimmed draft. Clears the field optimistically and fires a send
-  /// haptic. A draft's first send creates the activity first (see `createAndSend`).
+  /// Send the trimmed draft (with any staged attachments). Clears the field
+  /// optimistically and fires a send haptic. Staged files upload first, then the
+  /// saved paths are woven into the message; attachments alone (no text) send.
+  /// A draft's first send creates the activity first (see `createAndSend`).
   /// Sending in an archived mission just sends — reactivation is server-side.
   func send() {
     let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !text.isEmpty, !isSending else { return }
+    let files = stagedAttachments
+    guard !text.isEmpty || !files.isEmpty, !isSending else { return }
     draft = ""
     sendTick += 1
     isSending = true
     Task {
       defer { isSending = false }
       if let conversationId {
-        await run {
-          try await self.commands.send(
-            agentId: self.agentId, conversationId: conversationId, text: text,
-            model: self.selectedModel)
-        }
+        await sendExisting(conversationId: conversationId, text: text, files: files)
       } else {
-        await createAndSend(text: text)
+        await createAndSend(text: text, files: files)
       }
     }
   }
 
-  /// A draft's first send: create the activity, then send the first turn, then
-  /// bind + observe the real conversation. Subscribe BEFORE sending so no live
-  /// frame is missed. On failure, roll the activity back and restore the draft
-  /// text so the user can retry (PARITY §6 / `create-mission.ts`).
-  private func createAndSend(text: String) async {
-    let title = MissionTitle.fallback(from: text)
-    do {
-      let created = try await commands.create(agentId: agentId, title: title, description: text)
-      do {
-        bindConversation(sessionKey: created.sessionKey)
-        try await commands.send(
-          agentId: agentId, conversationId: created.sessionKey, text: text, model: selectedModel)
-      } catch {
-        unbindConversation()
-        await rollback(activityId: created.id)
-        throw error
+  /// Answer a pending interaction. There is NO dedicated answer command — the
+  /// answer is an ordinary next `turns/send` (interaction contract), so this is
+  /// a plain send of `text` into the existing conversation (an interaction can
+  /// only settle on a real conversation, so `conversationId` is always present).
+  func answer(_ text: String) {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty, !isSending, let conversationId else { return }
+    sendTick += 1
+    isSending = true
+    Task {
+      defer { isSending = false }
+      await run {
+        try await self.commands.send(
+          agentId: self.agentId, conversationId: conversationId, text: trimmed,
+          model: self.selectedModel, effort: self.selectedEffort)
       }
-      await observe()
-      // deferred: no title-summarize command is exposed over the SDK bridge
-      // (only activities/{create,setStatus,rename,delete}); the fallback title
-      // stands, and the engine may still refresh it server-side.
-    } catch {
-      draft = text
-      actionError = (error as? CommandError)?.message ?? error.localizedDescription
     }
+  }
+
+  /// Pin a per-conversation model (the "+" menu's model picker). Switching to a
+  /// DIFFERENT model clears the effort pin: the prior model's reasoning level may
+  /// be invalid — or entirely absent — for the new model, so a stale `high` must
+  /// not keep riding every `turns/send`. The pin falls back to the agent default
+  /// until the user re-pins effort for the new model (desktop resolves per-model
+  /// at send via `validEffortOrDefault`; iOS resets the per-conversation pin).
+  /// Re-selecting the SAME model leaves any effort pin untouched.
+  func selectModel(_ model: String?) {
+    guard model != selectedModel else { return }
+    selectedModel = model
+    selectedEffort = nil
+  }
+
+  /// Remove one staged file (its chip's remove button) before send. Staging
+  /// files + the attachment-aware send pipeline live in `AttachmentSend.swift`.
+  func removeStagedAttachment(id: UUID) {
+    stagedAttachments = AttachmentStaging.removing(stagedAttachments, id: id)
   }
 
   /// Stop the running turn (`turns/cancel`). There is NO "stopped" copy — a Stop
@@ -141,7 +168,9 @@ final class ChatScreenModel {
     }
   }
 
-  private func observe() async {
+  /// Attach to the live stream. Internal so the `AttachmentSend` extension can
+  /// re-observe after a draft's first send binds the real conversation.
+  func observe() async {
     guard let conversationId else { return }
     await run {
       try await self.commands.observe(agentId: self.agentId, conversationId: conversationId)
@@ -149,8 +178,9 @@ final class ChatScreenModel {
   }
 
   /// Transition the draft into its real conversation: address the scope, retain
-  /// it (opening the subscription), and remember the session id.
-  private func bindConversation(sessionKey: String) {
+  /// it (opening the subscription), and remember the session id. Internal for
+  /// the same reason as ``observe()``.
+  func bindConversation(sessionKey: String) {
     let store = Self.scope(client, agentId, sessionKey)
     conversation = store
     conversationRetention = store.retain()
@@ -158,7 +188,7 @@ final class ChatScreenModel {
   }
 
   /// Undo `bindConversation` after a failed first send, so a retry starts clean.
-  private func unbindConversation() {
+  func unbindConversation() {
     conversationRetention?.cancel()
     conversationRetention = nil
     conversation = nil
@@ -167,7 +197,7 @@ final class ChatScreenModel {
 
   /// Delete the orphaned activity after a failed first send (rollback). A cleanup
   /// failure is swallowed here — the caller surfaces the real send error instead.
-  private func rollback(activityId: String) async {
+  func rollback(activityId: String) async {
     try? await commands.delete(agentId: agentId, activityId: activityId)
   }
 

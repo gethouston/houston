@@ -17,15 +17,16 @@ Unknown statuses are preserved and rendered neutrally. New activities are create
 | Type | Values | Meaning |
 |---|---|---|
 | `SessionStatusValue` | `starting` \| `running` \| `completed` \| `error` | Drives spinner (`running`), settle (`completed`), failure (`error`). `starting` is legacy — TS machinery never emits it. |
-| `BoardStatus` | `running` \| `needs_you` \| `error` | Persisted board-card status once a turn settles. |
+| `BoardStatus` | `running` \| `needs_you` \| `error` \| `done` | Persisted board-card status once a turn settles. `done` = a clean turn with nothing outstanding (`TerminalBoardStatus`). iOS `BoardStatus` decodes only `running`/`needs_you`/`error` explicitly and folds `done` (+ any future terminal string) to `.unknown`, which every consumer treats as "no special status" — this keeps decoding forward-compatible without forcing a case onto the exhaustive `MissionState` switch. |
 
 ### THE critical needs_you-vs-error rule
 `packages/sdk/src/modules/turns/vm-output.ts:36-47`: a user **Stop** (and a logged-out provider)
 settles `sessionStatus === "error"` **but** `boardStatus === "needs_you"`. **Read the pair, never
 `sessionStatus` alone** — keying off sessionStatus renders a normal Stop as red.
 `boardStatus:"needs_you"` = handled / your attention; `boardStatus:"error"` = genuine failure.
-`ConversationVM` exposes `{ feed, running, sessionStatus, boardStatus, queued? }` (`queued`
-additive — see §5).
+`ConversationVM` exposes `{ feed, running, sessionStatus, boardStatus, queued?, pendingInteraction? }`
+(`queued` additive — see §5; `pendingInteraction` additive — the steps a settled turn on `needs_you`
+is waiting on the user for, rendered by the in-chat interaction card, see PARITY-CHAT §9).
 
 ### BRIDGE addressing — the conversation VM scope (agent-qualified)
 `packages/sdk/src/modules/turns/vm-output.ts:83-87` (`conversationScope`): the conversation VM is

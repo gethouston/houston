@@ -54,7 +54,11 @@ struct UserBubble: View {
         in: RoundedRectangle(cornerRadius: ChatMetrics.bubbleRadius, style: .continuous))
       .contextMenu {
         Button {
-          UIPasteboard.general.string = text
+          // Copy the CLEAN typed text the bubble shows, never the raw body — an
+          // attachment message hides a marker + a model-facing path block that
+          // must not leak onto the pasteboard. Plain messages decode to nil and
+          // copy verbatim.
+          UIPasteboard.general.string = AttachmentMessage.decode(text)?.displayText ?? text
         } label: {
           Label(Strings.Chat.copy, systemImage: "doc.on.doc")
         }
@@ -62,15 +66,37 @@ struct UserBubble: View {
   }
 
   @ViewBuilder private var content: some View {
-    if let timestamp {
+    // A message the user sent WITH attachments decodes to the clean typed text
+    // (marker `message`) + the file names, rendered as chips under the text —
+    // the raw path block never leaks into the bubble. Plain messages are
+    // unaffected (decode returns nil).
+    if let decoded = AttachmentMessage.decode(text) {
+      attachmentContent(displayText: decoded.displayText, names: decoded.names)
+    } else if let timestamp {
       // Exactly two subviews for `TimedBubbleLayout`: the text, then the time
       // cluster (time + delivery tick as ONE trailing unit).
       TimedBubbleLayout {
-        messageText
+        messageText(text)
         timeCluster(timestamp)
       }
     } else {
-      messageText
+      messageText(text)
+    }
+  }
+
+  /// An attachment bubble: the typed text (if any), a compact file-chips row
+  /// under it, then the time cluster. Not the inline `TimedBubbleLayout` — the
+  /// chips take their own line, so the time sits below-trailing.
+  @ViewBuilder private func attachmentContent(displayText: String, names: [String]) -> some View {
+    VStack(alignment: .leading, spacing: Spacing.space6) {
+      if !displayText.isEmpty {
+        messageText(displayText)
+      }
+      BubbleAttachmentChips(names: names)
+      if let timestamp {
+        timeCluster(timestamp)
+          .frame(maxWidth: .infinity, alignment: .trailing)
+      }
     }
   }
 
@@ -107,8 +133,8 @@ struct UserBubble: View {
     }
   }
 
-  private var messageText: some View {
-    Text(text)
+  private func messageText(_ value: String) -> some View {
+    Text(value)
       .font(Typography.body)
       .foregroundStyle(theme.primaryFg)
   }

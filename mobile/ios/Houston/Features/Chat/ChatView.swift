@@ -19,12 +19,11 @@ struct ChatView: View {
   /// an existing mission never does.
   private let isDraft: Bool
   @State private var model: ChatScreenModel
-  /// The "+" affordance's menu (Choose model / Attach file) and, from it, the
-  /// model picker sheet. Both are ChatView-owned per the composer's contract:
-  /// `MissionComposer` only exposes `onPlus`, the container decides what "+"
-  /// does (today: this menu; PARITY has no desktop equivalent for the shell).
-  @State private var showPlusMenu = false
-  @State private var showModelPicker = false
+  /// Presentation state for the "+" menu and the surfaces it opens (model /
+  /// effort pickers, and the AI-models / integrations sheets an interaction card
+  /// routes to). Owned here per the composer's contract: `MissionComposer` only
+  /// exposes `onPlus`; the container decides what "+" does.
+  @State private var controls = ComposerControls()
 
   /// Open a mission chat. `conversationId` is `nil` for a draft — an empty
   /// conversation whose activity is created on the first send (``ChatRoute``).
@@ -67,26 +66,17 @@ struct ChatView: View {
         wasRunning && !isRunning ? .success : nil
       }
       .alert(
-        Strings.Chat.errorTitle,
-        isPresented: errorPresented,
-        presenting: model.actionError
+        Strings.Chat.errorTitle, isPresented: errorPresented, presenting: model.actionError
       ) { _ in
         Button(Strings.Chat.dismiss, role: .cancel) { model.actionError = nil }
       } message: { Text($0) }
-      .confirmationDialog(
-        Strings.Chat.PlusMenu.title, isPresented: $showPlusMenu, titleVisibility: .visible
-      ) {
-        Button(Strings.Chat.PlusMenu.chooseModel) { showModelPicker = true }
-        // Attachments aren't wired to the engine send path yet (no silent
-        // no-op though: the label itself says so, and disabled greys the row).
-        Button(Strings.Chat.PlusMenu.attachFile) {}
-          .disabled(true)
-      }
-      .sheet(isPresented: $showModelPicker) {
-        ModelPickerSheet(agentId: model.agentId, selectedModel: model.selectedModel) {
-          model.selectedModel = $0
-        }
-      }
+      .alert(
+        Strings.Chat.Attachments.tooLargeTitle,
+        isPresented: attachmentErrorPresented, presenting: model.attachmentError
+      ) { _ in
+        Button(Strings.Chat.dismiss, role: .cancel) { model.attachmentError = nil }
+      } message: { Text($0) }
+      .composerAccessories(model: model, controls: controls)
   }
 
   @ViewBuilder private var feed: some View {
@@ -113,22 +103,46 @@ struct ChatView: View {
       if !model.queued.isEmpty {
         QueuedMessagesView(messages: model.queued)
       }
+      // A settled turn that lands on `needs_you` surfaces its interaction as a
+      // card directly above the composer; answering it is a normal send.
+      if let interaction = model.pendingInteraction {
+        InteractionCard(
+          interaction: interaction,
+          isSending: model.isSending,
+          onAnswer: { model.answer($0) },
+          onOpenAIModels: { controls.showAIModels = true },
+          onOpenIntegrations: { controls.showIntegrations = true })
+      }
+      if !model.stagedAttachments.isEmpty {
+        StagedAttachmentChips(
+          attachments: model.stagedAttachments,
+          onRemove: { model.removeStagedAttachment(id: $0) })
+      }
       MissionComposer(
         text: $model.draft,
         isRunning: model.running,
         placeholder: model.composerPlaceholder,
         autoFocus: isDraft,
+        hasAttachments: !model.stagedAttachments.isEmpty,
+        isSending: model.isSending,
         onSend: { model.send() },
         onStop: { model.stop() },
-        onPlus: { showPlusMenu = true })
+        onPlus: { controls.showMenu = true })
     }
     .animation(.smooth(duration: Motion.fast), value: model.running)
     .animation(.smooth(duration: Motion.fast), value: model.queued)
+    .animation(.smooth(duration: Motion.fast), value: model.stagedAttachments)
   }
 
   private var errorPresented: Binding<Bool> {
     Binding(
       get: { model.actionError != nil },
       set: { if !$0 { model.actionError = nil } })
+  }
+
+  private var attachmentErrorPresented: Binding<Bool> {
+    Binding(
+      get: { model.attachmentError != nil },
+      set: { if !$0 { model.attachmentError = nil } })
   }
 }
