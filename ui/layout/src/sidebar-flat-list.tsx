@@ -42,6 +42,7 @@ export function SidebarFlatList({
             editValue={ctx.editValue}
             hasMenu={ctx.hasDefaultMenu || !!item.menuContent}
             onSelect={ctx.onSelect}
+            onHover={ctx.onItemHover}
             onKeyDown={ctx.onItemKeyDown}
             onEditChange={ctx.onEditChange}
             onCommitRename={ctx.onCommitRename}
@@ -84,6 +85,7 @@ export function SidebarFlatList({
           editValue={ctx.editValue}
           hasMenu={ctx.hasDefaultMenu || !!item.menuContent}
           onSelect={ctx.onSelect}
+          onHover={ctx.onItemHover}
           onKeyDown={ctx.onItemKeyDown}
           onEditChange={ctx.onEditChange}
           onCommitRename={ctx.onCommitRename}

@@ -12,6 +12,7 @@ import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
+import { prewakeAgent } from "../../lib/agent-prewake";
 import { resolveAutoCollapse } from "../../lib/sidebar-auto-collapse";
 import { isTopLevelView } from "../../lib/top-level-views";
 import { useAgentStore } from "../../stores/agents";
@@ -192,6 +193,12 @@ export function Sidebar({ children }: { children: ReactNode }) {
           onMoveGroup={sidebar.moveGroup}
           selectedId={!isTopLevel ? (currentAgent?.id ?? null) : null}
           onSelect={handleSelectAgent}
+          onItemHover={(agentId) => {
+            // Wake-on-intent: hovering a sleeping cloud agent starts its pod
+            // wake so the click-and-type that usually follows lands warm.
+            const agent = agents.find((a) => a.id === agentId);
+            if (agent) prewakeAgent(agent);
+          }}
           onAdd={canCreateAgents ? () => setDialogOpen(true) : undefined}
           addItemDataAttrs={{ "data-tour-target": "newAgent" }}
           onRename={handleRename}

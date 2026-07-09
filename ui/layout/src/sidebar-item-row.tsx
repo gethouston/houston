@@ -29,6 +29,8 @@ export interface SidebarItemRowProps {
   editValue: string;
   hasMenu: boolean;
   onSelect: (id: string) => void;
+  /** Pointer entered the row (see SidebarRowContext.onItemHover). */
+  onHover?: (id: string) => void;
   onKeyDown: (e: KeyboardEvent, id: string) => void;
   onEditChange: (value: string) => void;
   onCommitRename: (id: string) => void;
@@ -45,6 +47,7 @@ export function SidebarItemRow({
   editValue,
   hasMenu,
   onSelect,
+  onHover,
   onKeyDown,
   onEditChange,
   onCommitRename,
@@ -68,6 +71,7 @@ export function SidebarItemRow({
 
   return (
     <div
+      onPointerEnter={onHover ? () => onHover(item.id) : undefined}
       className={cn(
         sidebarItemRowClasses.root,
         isActive ? "bg-accent" : "hover:bg-accent/50",

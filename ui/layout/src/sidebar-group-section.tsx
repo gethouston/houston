@@ -20,6 +20,9 @@ export interface SidebarRowContext {
   editValue: string;
   hasDefaultMenu: boolean;
   onSelect: (id: string) => void;
+  /** Pointer entered an item row — an intent signal (e.g. pre-wake the agent
+   *  behind it) that must never affect selection or focus. */
+  onItemHover?: (id: string) => void;
   onItemKeyDown: (e: KeyboardEvent, id: string) => void;
   onEditChange: (value: string) => void;
   onCommitRename: (id: string) => void;

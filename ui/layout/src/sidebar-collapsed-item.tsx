@@ -17,6 +17,8 @@ export interface SidebarCollapsedItemProps {
   editValue: string;
   hasMenu: boolean;
   onSelect: (id: string) => void;
+  /** Pointer entered the row (see SidebarRowContext.onItemHover). */
+  onHover?: (id: string) => void;
   onKeyDown: (e: KeyboardEvent, id: string) => void;
   onEditChange: (value: string) => void;
   onCommitRename: (id: string) => void;
@@ -39,6 +41,7 @@ export function SidebarCollapsedItem({
   editValue,
   hasMenu,
   onSelect,
+  onHover,
   onKeyDown,
   onEditChange,
   onCommitRename,
@@ -81,6 +84,7 @@ export function SidebarCollapsedItem({
           editValue={editValue}
           hasMenu={hasMenu}
           onSelect={onSelect}
+          onHover={onHover}
           onKeyDown={onKeyDown}
           onEditChange={onEditChange}
           onCommitRename={onCommitRename}

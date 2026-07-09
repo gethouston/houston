@@ -53,6 +53,8 @@ export interface SidebarProps {
   items: SidebarItem[];
   selectedId?: string | null;
   onSelect: (id: string) => void;
+  /** Pointer entered an item row — intent signal, never selection. */
+  onItemHover?: (id: string) => void;
   onAdd?: () => void;
   /** Extra DOM attributes (e.g. `data-tour-target`) on the add-item button. */
   addItemDataAttrs?: Record<string, string>;
@@ -130,6 +132,7 @@ export function AppSidebar({
   items,
   selectedId,
   onSelect,
+  onItemHover,
   onAdd,
   addItemDataAttrs,
   onDelete,
@@ -183,6 +186,7 @@ export function AppSidebar({
     editValue,
     hasDefaultMenu,
     onSelect,
+    onItemHover,
     onItemKeyDown: handleKeyDown,
     onEditChange: setEditValue,
     onCommitRename: commitRename,
