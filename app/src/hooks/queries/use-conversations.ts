@@ -31,6 +31,17 @@ export function useAllConversations(agentPaths: string[]) {
   });
 }
 
+/**
+ * Live resync for an OPEN conversation (HOU-731). The transcript renders from
+ * the SDK conversation VM, not from this query's data — but `loadHistory`
+ * seeds that VM (and refreshes the local transcript cache) as a side effect,
+ * so subscribing the open chat to `queryKeys.chatHistory` is what makes the
+ * `ConversationsChanged` → `chatHistoryForAgent` invalidation in
+ * use-agent-invalidation.ts actually repaint it: a turn written by a teammate,
+ * another device, or a routine reaches the open chat without a reselect.
+ * Never refetched on focus/staleness — in hosted mode a background read wakes
+ * the agent's pod; only a real change event (or mount) triggers the read.
+ */
 export function useChatHistory(
   agentPath: string | undefined,
   sessionKey: string | undefined,
@@ -43,5 +54,7 @@ export function useChatHistory(
       return tauriChat.loadHistory(agentPath, sessionKey);
     },
     enabled: !!agentPath && !!sessionKey,
+    staleTime: Number.POSITIVE_INFINITY,
+    refetchOnWindowFocus: false,
   });
 }

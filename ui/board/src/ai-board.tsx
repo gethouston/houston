@@ -369,7 +369,16 @@ export function AIBoard({
       hydratedKeys.current.add(sk);
       onLoadHistory(sk)
         .then((h) => {
-          if (h.length > 0) onHistoryLoaded?.(sk, h);
+          if (h.length > 0) {
+            onHistoryLoaded?.(sk, h);
+          } else {
+            // An empty load is not proof the chat is empty: the loader
+            // resolves [] while the agent's engine is still warming, or when
+            // the server hasn't restored the conversation yet. Un-mark so the
+            // next selection retries instead of pinning the chat empty until
+            // remount; a genuinely empty chat just re-runs a cheap read.
+            hydratedKeys.current.delete(sk);
+          }
         })
         .catch((err) => {
           // Un-mark the session so re-selecting the conversation retries the
