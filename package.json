@@ -28,6 +28,7 @@
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
+    "esbuild": "0.25.12",
     "husky": "9.1.7",
     "lint-staged": "17.0.8",
     "mprocs": "0.9.6",
