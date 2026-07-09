@@ -153,6 +153,7 @@ export function useMissionControlSource(
     setHighlightedId,
     activeAgent,
     activeAgentDef,
+    draftScope: "mission-control",
     selectedSessionKey,
     selectedAgentPath,
     onSelectSession: mc.setSelectedId,

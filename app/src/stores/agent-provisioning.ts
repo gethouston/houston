@@ -19,6 +19,7 @@
 
 import { create } from "zustand";
 import {
+  detectEngineAsleep,
   type ProvisioningEntry,
   parsePersistedProvisioning,
   runProvisioningProbe,
@@ -49,6 +50,13 @@ interface AgentProvisioningState {
   sendsVersion: number;
   /** Start tracking a just-created agent (no-op on a co-located engine). */
   markProvisioning: (agent: { id: string; folderPath: string }) => void;
+  /**
+   * Asleep-check an EXISTING agent on open (HOU-730, hosted only): a pod
+   * scaled to zero answers nothing until the gateway wakes it, so mark it
+   * exactly like a just-created agent — sends park with a local bubble and
+   * an optimistic mission row, and flush when the readiness probe clears.
+   */
+  detectSleepingEngine: (agent: { id: string; folderPath: string }) => void;
   /** A rename mid-warm-up moves the agent's id/path; re-key the entry. */
   carryRename: (
     oldId: string,
@@ -101,6 +109,9 @@ function storageWrite(state: Record<string, ProvisioningEntry>): void {
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+/** Agent ids with an asleep-check in flight — one at a time per agent. */
+const asleepChecks = new Set<string>();
+
 /** Non-reactive read for imperative flows (mission creation). */
 export function isAgentProvisioning(agentId: string): boolean {
   return Boolean(useAgentProvisioningStore.getState().provisioning[agentId]);
@@ -118,6 +129,27 @@ export const useAgentProvisioningStore = create<AgentProvisioningState>(
         agentPath: agent.folderPath,
         since: Date.now(),
       });
+    },
+
+    detectSleepingEngine: (agent) => {
+      if (isCoLocatedEngine()) return;
+      if (get().provisioning[agent.id] || asleepChecks.has(agent.id)) return;
+      asleepChecks.add(agent.id);
+      void detectEngineAsleep(agent.folderPath, {
+        readFile: (agentPath, relPath) =>
+          getEngine().readAgentFile(agentPath, relPath),
+        sleep,
+      })
+        .then((asleep) => {
+          // Re-check: a create/rename may have marked the id while we probed.
+          if (!asleep || get().provisioning[agent.id]) return;
+          startEntry({
+            agentId: agent.id,
+            agentPath: agent.folderPath,
+            since: Date.now(),
+          });
+        })
+        .finally(() => asleepChecks.delete(agent.id));
     },
 
     carryRename: (oldId, agent) => {

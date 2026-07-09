@@ -111,7 +111,8 @@ import {
 } from "../lib/tauri";
 import { normalizeTurnMode, type TurnMode } from "../lib/turn-mode";
 import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
-import { useDraftStore } from "../stores/drafts";
+import { useAgentProvisioningStore } from "../stores/agent-provisioning";
+import { newConversationDraftKey, useDraftStore } from "../stores/drafts";
 import { useUIStore } from "../stores/ui";
 import { ChatConnectInteractionCard } from "./chat-connect-interaction-card";
 import { resolveEffectiveProvider } from "./chat-effective-provider";
@@ -159,6 +160,9 @@ interface UseAgentChatPanelArgs {
   selectedSessionKey: string | null;
   /** Called with the new conversation id after a Skill's "Start". */
   onSelectSession?: (id: string) => void;
+  /** New-conversation draft scope — must match the board's `useBoardDrafts`
+   *  scope so dictation lands in the composer the user sees (HOU-730). */
+  draftScope?: string;
 }
 
 interface AgentChatPanelProps {
@@ -215,6 +219,7 @@ export function useAgentChatPanel({
   agentDef,
   selectedSessionKey,
   onSelectSession,
+  draftScope,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
   const { t, i18n } = useTranslation(["board", "chat", "teams"]);
   const { processLabels, getThinkingMessage, thinkingIndicator } =
@@ -231,10 +236,11 @@ export function useAgentChatPanel({
   // ── Dictation (desktop-only voice typing) ──────────────────────────────
   // Transcript text is appended to the SAME draft store AIBoard's
   // `drafts`/`onDraftChange` read from (`useBoardDrafts` in mission-board.tsx)
-  // — the key mirrors AIBoard's own `activeSessionKey ?? "new-conversation"`
-  // derivation, so dictating into a fresh composer lands in the same draft
-  // the user would see if they typed instead.
-  const draftKey = selectedSessionKey ?? "new-conversation";
+  // — the key mirrors the board's own derivation (AIBoard's plain
+  // "new-conversation" translated through `useBoardDrafts`'s scope), so
+  // dictating into a fresh composer lands in the same draft the user would
+  // see if they typed instead.
+  const draftKey = selectedSessionKey ?? newConversationDraftKey(draftScope);
   const handleDictationTranscript = useCallback(
     (text: string) => {
       const current = useDraftStore.getState().drafts[draftKey]?.text ?? "";
@@ -274,6 +280,19 @@ export function useAgentChatPanel({
 
   const path = agent?.folderPath ?? null;
   const agentModes = agentDef?.config.agents;
+
+  // Opening an agent whose hosted pod is scaled to zero (HOU-730): the open
+  // itself starts the wake, but every request is held for the whole cold
+  // start — a first message sent then would hang with no bubble. Detect the
+  // asleep engine now so sends park with the same warming machinery a
+  // just-created agent uses, and flush the moment the pod answers.
+  const agentId = agent?.id ?? null;
+  useEffect(() => {
+    if (!agentId || !path) return;
+    useAgentProvisioningStore
+      .getState()
+      .detectSleepingEngine({ id: agentId, folderPath: path });
+  }, [agentId, path]);
 
   // ── Activity / agent tier model resolution ─────────────────────────────
   // Activity is the per-mission override; agent config is the per-agent
