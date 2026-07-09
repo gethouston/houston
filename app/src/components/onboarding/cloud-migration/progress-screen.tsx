@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { MigrationTask } from "../../../lib/cloud-migration";
 import type { AgentMigrationProgress } from "../../../lib/cloud-migration-progress";
 import { useCloudMigrationStore } from "../../../stores/cloud-migration";
+import { MigrationLoader, MigrationStatusCycle } from "./migration-loader";
 import { WizardFrame } from "./wizard-frame";
 
 function stepLabel(
@@ -88,7 +89,12 @@ function AgentRow({
   );
 }
 
-/** Live per-agent progress while the migration runs. */
+/**
+ * Live migration wait screen (HOU-719 redesign): a calm rainbow-ring loader
+ * with a status line that cycles through the real phases, so the wait feels
+ * alive without exposing per-agent plumbing. Falls back to the per-agent
+ * list only when something needs the user's attention (a failed agent).
+ */
 export function ProgressScreen() {
   const { t } = useTranslation("migration");
   const { preparing, startError, tasks, progress, start, retryTask } =
@@ -101,10 +107,17 @@ export function ProgressScreen() {
   );
   const anyError = tasks.some((x) => progress[x.sourceId]?.step === "error");
 
+  const phrases = [
+    t("progress.phaseAssistants"),
+    t("progress.phaseConversations"),
+    t("progress.phaseFiles"),
+    t("progress.phaseCloud"),
+  ];
+
   return (
     <WizardFrame
+      hideLogo
       title={t("progress.title")}
-      body={t("progress.body")}
       footer={
         !preparing &&
         !startError &&
@@ -120,36 +133,54 @@ export function ProgressScreen() {
         )
       }
     >
-      {startError ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl bg-secondary p-6 text-center">
-          <p className="text-sm text-foreground">{t("progress.startFailed")}</p>
-          <p className="text-xs text-muted-foreground">{startError}</p>
-          <AsyncButton className="rounded-full" onClick={() => start()}>
-            {t("progress.retry")}
-          </AsyncButton>
-        </div>
-      ) : preparing ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl bg-secondary p-6 text-center">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            {t("progress.preparing")}
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          <p className="text-center text-xs text-muted-foreground">
-            {t("progress.overall", { done: done.length, total: tasks.length })}
-          </p>
-          {tasks.map((task) => (
-            <AgentRow
-              key={task.sourceId}
-              task={task}
-              progress={progress[task.sourceId]}
-              onRetry={() => retryTask(task.sourceId)}
-            />
-          ))}
-        </div>
-      )}
+      <div className="flex flex-col items-center gap-3 text-center">
+        {startError ? (
+          <div className="flex flex-col items-center gap-3 rounded-xl bg-secondary p-6">
+            <p className="text-sm text-foreground">
+              {t("progress.startFailed")}
+            </p>
+            <p className="text-xs text-muted-foreground">{startError}</p>
+            <AsyncButton className="rounded-full" onClick={() => start()}>
+              {t("progress.retry")}
+            </AsyncButton>
+          </div>
+        ) : preparing ? (
+          <>
+            <MigrationLoader />
+            <p className="text-sm text-muted-foreground">
+              {t("progress.preparing")}
+            </p>
+          </>
+        ) : anyError ? (
+          <div className="flex w-full flex-col gap-2">
+            <p className="text-center text-xs text-muted-foreground">
+              {t("progress.overall", {
+                done: done.length,
+                total: tasks.length,
+              })}
+            </p>
+            {tasks.map((task) => (
+              <AgentRow
+                key={task.sourceId}
+                task={task}
+                progress={progress[task.sourceId]}
+                onRetry={() => retryTask(task.sourceId)}
+              />
+            ))}
+          </div>
+        ) : (
+          <>
+            <MigrationLoader />
+            <p className="text-base text-muted-foreground">
+              {t("progress.body")}
+            </p>
+            <MigrationStatusCycle phrases={phrases} />
+            <p className="text-xs text-muted-foreground/80">
+              {t("progress.keepOpen")}
+            </p>
+          </>
+        )}
+      </div>
     </WizardFrame>
   );
 }

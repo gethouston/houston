@@ -383,3 +383,42 @@ body {
     opacity: 0;
   }
 }
+
+/* ── 9. Migration loader (HOU-719) ──────────────────────────────
+   The cloud-migration wizard's wait-screen loader: the running-glow
+   rainbow ring (same blue -> indigo -> orange -> yellow hues as the aurora
+   + card-running-glow) spinning around the Houston helmet, a soft
+   breathing glow behind it, and a gentle helmet scale-pulse. Reduced-motion
+   freezes all three (mirrors the aurora-drift guard in section 1). */
+.migration-ring {
+  animation: migration-spin 1.6s linear infinite;
+}
+
+.migration-glow,
+.migration-helmet {
+  animation: migration-breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes migration-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes migration-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .migration-ring,
+  .migration-glow,
+  .migration-helmet {
+    animation: none;
+  }
+}

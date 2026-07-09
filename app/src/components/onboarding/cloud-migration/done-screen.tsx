@@ -1,16 +1,56 @@
 import { Button } from "@houston-ai/core";
-import { useEffect } from "react";
+import confetti from "canvas-confetti";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCloudMigrationStore } from "../../../stores/cloud-migration";
-import { DoneFollowups } from "./done-followups";
+import { DoneStepAi, DoneStepApps } from "./done-followups";
 import { WizardFrame } from "./wizard-frame";
 
+type Step = "ai" | "apps";
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
+/** The onboarding's confetti payoff, mirrored exactly (setup-progress.tsx),
+ *  so the wizard's celebration reads as the same voice as everywhere else. */
+function fireConfetti() {
+  if (prefersReducedMotion()) return;
+  const base = { startVelocity: 45, ticks: 220, zIndex: 9999, scalar: 0.9 };
+  confetti({
+    ...base,
+    particleCount: 140,
+    spread: 80,
+    origin: { x: 0.5, y: 0.55 },
+  });
+  confetti({
+    ...base,
+    particleCount: 70,
+    spread: 60,
+    angle: 60,
+    origin: { x: 0, y: 0.7 },
+  });
+  confetti({
+    ...base,
+    particleCount: 70,
+    spread: 60,
+    angle: 120,
+    origin: { x: 1, y: 0.7 },
+  });
+}
+
 /**
- * The wizard's summary: what made it, what stayed behind (skipped-too-large
- * files from the manifests, import-rejected items, any agents the user chose
- * to continue without), then the reconnect follow-ups. Stamps the persisted
- * outcome on mount (`applyNow: false`, so a relaunch skips the wizard without
- * ripping this screen away); the final button applies it in-session.
+ * The wizard's post-migration setup (HOU-719 redesign): two steps in one
+ * dialog, "Connect your AI" then "Reconnect your apps", with a confetti
+ * payoff on "Start building". Also surfaces anything that didn't make the
+ * move (failed agents, excluded files, rejected items) so nothing is
+ * silently dropped. Stamps the persisted outcome on mount (`applyNow:
+ * false`, so a relaunch skips the wizard without ripping this screen away);
+ * the final button applies it in-session.
  */
 export function DoneScreen({
   persistOutcome,
@@ -21,6 +61,7 @@ export function DoneScreen({
   ) => void;
 }) {
   const { t } = useTranslation("migration");
+  const [step, setStep] = useState<Step>("ai");
   const tasks = useCloudMigrationStore((s) => s.tasks);
   const progress = useCloudMigrationStore((s) => s.progress);
   const integrations = useCloudMigrationStore((s) => s.integrations);
@@ -40,20 +81,63 @@ export function DoneScreen({
     (x) => progress[x.sourceId]?.rejected ?? [],
   );
 
+  if (step === "ai") {
+    return (
+      <WizardFrame
+        eyebrow={t("done.stepAi")}
+        title={t("done.reconnectAiTitle")}
+        body={t("done.reconnectAiBody")}
+        footer={
+          <>
+            <Button
+              className="rounded-full px-6"
+              onClick={() => setStep("apps")}
+            >
+              {t("done.continue")}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setStep("apps")}
+              className="rounded-full px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {t("offer.startFresh")}
+            </button>
+          </>
+        }
+      >
+        <DoneStepAi />
+      </WizardFrame>
+    );
+  }
+
   return (
     <WizardFrame
-      title={t("done.title")}
-      body={t("done.summary", { count: doneTasks.length })}
+      eyebrow={t("done.stepApps")}
+      title={t("done.reconnectAppsTitle")}
+      body={t("done.reconnectAppsBody")}
       footer={
-        <Button
-          className="rounded-full px-6"
-          onClick={() => persistOutcome("done")}
-        >
-          {t("done.finish")}
-        </Button>
+        <>
+          <Button
+            className="rounded-full px-6"
+            onClick={() => {
+              fireConfetti();
+              persistOutcome("done");
+            }}
+          >
+            {t("done.finish")}
+          </Button>
+          <button
+            type="button"
+            onClick={() => setStep("ai")}
+            className="rounded-full px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {t("done.back")}
+          </button>
+        </>
       }
     >
       <div className="flex flex-col gap-6">
+        <DoneStepApps integrations={integrations} />
         {failedTasks.length > 0 && (
           <LeftoverList
             title={t("done.leftBehindTitle")}
@@ -70,7 +154,6 @@ export function DoneScreen({
             items={rejected.map((r) => r.path)}
           />
         )}
-        <DoneFollowups integrations={integrations} />
       </div>
     </WizardFrame>
   );

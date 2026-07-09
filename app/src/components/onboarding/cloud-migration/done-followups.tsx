@@ -1,24 +1,49 @@
+import { Button } from "@houston-ai/core";
 import { useQuery } from "@tanstack/react-query";
-import { Check } from "lucide-react";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { queryKeys } from "../../../lib/query-keys";
 import { tauriIntegrations } from "../../../lib/tauri";
 import { appDisplay } from "../../integrations/app-display";
+import { AppRow } from "../../integrations/app-row";
 import { ProviderBrowser } from "../../provider-browser/provider-browser";
 import { useProviderBrowserData } from "../../provider-browser/use-provider-browser-data";
 
 /**
- * The two follow-ups on the wizard's done screen: reconnect the AI (the SAME
- * `<ProviderBrowser>` the migration-reconnect moment and onboarding use — it
- * owns the OAuth launch, dialogs, polling, and failure toasts) and a checklist
- * of the apps the legacy agents had connected (connecting happens later in the
- * integrations surface; here we just show what to expect).
+ * Step 1 of the done-screen's two-step setup (HOU-719 redesign): reconnect
+ * the AI. Reuses the SAME `<ProviderBrowser>` the migration-reconnect moment
+ * and onboarding use — it owns the OAuth launch, dialogs, polling, and
+ * failure toasts. The browser is ALWAYS mounted (each provider shows its own
+ * Connect / connected state inline) — we deliberately do NOT collapse it to a
+ * one-line "connected" confirmation on mount, because that hid the provider
+ * cards whenever a provider happened to be pre-connected (e.g. a dev machine
+ * with shared credentials); the step is titled "Connect your AI", so the
+ * cards must always be visible.
  */
-export function DoneFollowups({ integrations }: { integrations: string[] }) {
-  const { t } = useTranslation("migration");
+export function DoneStepAi() {
   const { providers, connections, catalog } = useProviderBrowserData();
-  const [aiConnected, setAiConnected] = useState(false);
+  return (
+    <ProviderBrowser
+      providers={providers}
+      connections={connections}
+      catalog={catalog}
+      showFilters={false}
+    />
+  );
+}
+
+/** TODO(HOU-719): wire real per-app OAuth; today this is a visual placeholder
+ *  and the row itself links out to the Apps section for the real flow. */
+function noopConnect() {}
+
+/**
+ * Step 2: the apps the legacy agents had connected before, one row per
+ * toolkit via the shared `<AppRow>` (real logo, real name, from the
+ * Composio toolkit catalog). Connecting for real happens later in the
+ * integrations surface; the Connect pill here is a placeholder so the row
+ * doesn't read as dead.
+ */
+export function DoneStepApps({ integrations }: { integrations: string[] }) {
+  const { t } = useTranslation("migration");
 
   // Toolkit catalog for real app names/logos; on a fetch failure (already
   // toasted + reported by the tauriIntegrations wrapper) the raw slugs render.
@@ -32,61 +57,27 @@ export function DoneFollowups({ integrations }: { integrations: string[] }) {
     (toolkitCatalog.data ?? []).map((tk) => [tk.slug, tk]),
   );
 
-  return (
-    <div className="flex flex-col gap-6">
-      <section>
-        <h2 className="text-sm font-semibold">{t("done.reconnectAiTitle")}</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {t("done.reconnectAiBody")}
-        </p>
-        <div className="mt-3">
-          {aiConnected ? (
-            <p className="flex items-center gap-2 rounded-xl bg-secondary px-4 py-3 text-sm">
-              <Check className="size-4" />
-              {t("done.aiConnected")}
-            </p>
-          ) : (
-            <ProviderBrowser
-              providers={providers}
-              connections={connections}
-              catalog={catalog}
-              onSelect={() => setAiConnected(true)}
-              selectOnMount
-              showFilters={false}
-            />
-          )}
-        </div>
-      </section>
+  if (integrations.length === 0) return null;
 
-      {integrations.length > 0 && (
-        <section>
-          <h2 className="text-sm font-semibold">
-            {t("done.reconnectAppsTitle")}
-          </h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {t("done.reconnectAppsBody")}
-          </p>
-          <ul className="mt-3 flex flex-col gap-1">
-            {integrations.map((slug) => {
-              const app = appDisplay(slug, bySlug.get(slug));
-              return (
-                <li
-                  key={slug}
-                  className="flex items-center gap-3 rounded-xl bg-secondary px-4 py-2.5"
-                >
-                  <img
-                    src={app.logoUrl}
-                    alt=""
-                    aria-hidden
-                    className="size-5 rounded"
-                  />
-                  <span className="text-sm">{app.name}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-    </div>
+  return (
+    <ul className="flex flex-col gap-2">
+      {integrations.map((slug) => (
+        <li key={slug}>
+          <AppRow
+            display={appDisplay(slug, bySlug.get(slug))}
+            trailing={
+              <Button
+                variant="secondary"
+                size="sm"
+                className="rounded-full"
+                onClick={noopConnect}
+              >
+                {t("done.connect")}
+              </Button>
+            }
+          />
+        </li>
+      ))}
+    </ul>
   );
 }
