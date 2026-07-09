@@ -292,6 +292,20 @@ export function osDetectLegacyHouston(): Promise<LegacyDetection> {
   return invoke<LegacyDetection>("detect_legacy_houston");
 }
 
+export interface HoustonBackup {
+  backupPath: string;
+  fileCount: number;
+  byteCount: number;
+}
+
+/** Make a full local backup of the user's Houston data before the cloud
+ *  migration uploads it — a sibling copy named `<dir>-<timestamp>-backup`.
+ *  Can block on a large tree (the copy runs on the blocking pool). Rejects
+ *  with "nothing to back up" when there's no legacy data to copy. */
+export function osBackupHoustonData(): Promise<HoustonBackup> {
+  return invoke<HoustonBackup>("backup_houston_data");
+}
+
 /** Spawn (or return the already-running) passive migration-source host against
  *  the legacy tree. Can block for MINUTES — its boot converts a big chat db
  *  before the banner prints — so callers show a "preparing" state. Idempotent. */

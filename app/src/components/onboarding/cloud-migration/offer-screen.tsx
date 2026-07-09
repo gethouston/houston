@@ -1,5 +1,5 @@
 import { AsyncButton } from "@houston-ai/core";
-import { Clock, RefreshCw, UploadCloud } from "lucide-react";
+import { Clock, RefreshCw, Sparkles, UploadCloud } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { LegacyDetection } from "../../../lib/cloud-migration";
@@ -60,6 +60,12 @@ export function OfferScreen({
   return (
     <WizardFrame
       wide
+      badge={
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-foreground">
+          <Sparkles className="size-3.5" aria-hidden />
+          {t("offer.betaBadge")}
+        </span>
+      }
       title={t("offer.title")}
       body={t("offer.body")}
       footer={

@@ -144,6 +144,86 @@ pub async fn start_migration_source_host(
     .map_err(|e| format!("migration source spawn task failed: {e}"))?
 }
 
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct BackupResult {
+    pub backup_path: String,
+    pub file_count: usize,
+    pub byte_count: u64,
+}
+
+/// Recursively copy `src` into `dst`, preserving the directory structure.
+/// Creates `dst` (and any nested dirs) and `std::fs::copy`s every file.
+/// Returns the running (file_count, byte_count) of everything copied.
+fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<(usize, u64)> {
+    std::fs::create_dir_all(dst)?;
+    let mut files = 0usize;
+    let mut bytes = 0u64;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            let (f, b) = copy_dir_all(&src_path, &dst_path)?;
+            files += f;
+            bytes += b;
+        } else {
+            bytes += std::fs::copy(&src_path, &dst_path)?;
+            files += 1;
+        }
+    }
+    Ok((files, bytes))
+}
+
+/// Make a full local backup of the user's Houston data before the cloud
+/// migration uploads it. The backup is a sibling copy of `houston_dir()`
+/// named `<dirname>-<YYYYMMDD-HHMMSS>-backup` (a numeric suffix is appended
+/// on a same-second collision). The recursive copy runs on the blocking pool
+/// so a large tree never freezes the UI thread.
+#[tauri::command]
+pub async fn backup_houston_data() -> Result<BackupResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let source = houston_dir();
+        if !source.is_dir() || !source.join("workspaces").is_dir() {
+            return Err("nothing to back up".to_string());
+        }
+
+        let parent = source
+            .parent()
+            .ok_or_else(|| "houston dir has no parent".to_string())?;
+        let dirname = source
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .ok_or_else(|| "houston dir has no name".to_string())?;
+        let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
+
+        // Avoid clobbering an existing sibling (same-second re-run).
+        let base = parent.join(format!("{dirname}-{stamp}-backup"));
+        let mut dest = base.clone();
+        let mut n = 1u32;
+        while dest.exists() {
+            dest = parent.join(format!("{dirname}-{stamp}-backup-{n}"));
+            n += 1;
+        }
+
+        tracing::info!(
+            "[migration] backing up {} -> {}",
+            source.display(),
+            dest.display()
+        );
+        let (file_count, byte_count) =
+            copy_dir_all(&source, &dest).map_err(|e| format!("backup copy failed: {e}"))?;
+
+        Ok(BackupResult {
+            backup_path: dest.display().to_string(),
+            file_count,
+            byte_count,
+        })
+    })
+    .await
+    .map_err(|e| format!("backup task failed: {e}"))?
+}
+
 /// Kill the migration-source host (idempotent — absent is success).
 #[tauri::command]
 pub fn stop_migration_source_host(
@@ -212,5 +292,33 @@ mod tests {
         let d = detect_in(&root);
         assert!(!d.has_workspaces);
         assert_eq!(d.workspace_dirs, Vec::<String>::new());
+    }
+
+    #[test]
+    fn copy_dir_all_reproduces_tree_and_counts() {
+        let src = scratch();
+        std::fs::create_dir_all(src.join("workspaces/Work/Sales")).unwrap();
+        std::fs::write(src.join("workspaces/Work/Sales/CLAUDE.md"), b"hello").unwrap();
+        std::fs::write(src.join("workspaces/Work/Sales/notes.txt"), b"a longer note").unwrap();
+        std::fs::write(src.join("top.json"), b"{}").unwrap();
+
+        let dst = scratch().join("backup");
+        let (files, bytes) = copy_dir_all(&src, &dst).unwrap();
+
+        // 3 files: CLAUDE.md (5) + notes.txt (13) + top.json (2) = 20 bytes.
+        assert_eq!(files, 3);
+        assert_eq!(bytes, 20);
+
+        // Faithful reproduction: same relative paths + contents.
+        assert_eq!(
+            std::fs::read(dst.join("workspaces/Work/Sales/CLAUDE.md")).unwrap(),
+            b"hello"
+        );
+        assert_eq!(
+            std::fs::read(dst.join("workspaces/Work/Sales/notes.txt")).unwrap(),
+            b"a longer note"
+        );
+        assert_eq!(std::fs::read(dst.join("top.json")).unwrap(), b"{}");
+        assert!(dst.join("workspaces/Work/Sales").is_dir());
     }
 }

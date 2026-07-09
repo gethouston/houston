@@ -1,56 +1,20 @@
 import { Button } from "@houston-ai/core";
-import confetti from "canvas-confetti";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCloudMigrationStore } from "../../../stores/cloud-migration";
-import { DoneStepAi, DoneStepApps } from "./done-followups";
+import { DoneCongrats, DoneStepAi, DoneStepApps } from "./done-followups";
 import { WizardFrame } from "./wizard-frame";
 
-type Step = "ai" | "apps";
-
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
-}
-
-/** The onboarding's confetti payoff, mirrored exactly (setup-progress.tsx),
- *  so the wizard's celebration reads as the same voice as everywhere else. */
-function fireConfetti() {
-  if (prefersReducedMotion()) return;
-  const base = { startVelocity: 45, ticks: 220, zIndex: 9999, scalar: 0.9 };
-  confetti({
-    ...base,
-    particleCount: 140,
-    spread: 80,
-    origin: { x: 0.5, y: 0.55 },
-  });
-  confetti({
-    ...base,
-    particleCount: 70,
-    spread: 60,
-    angle: 60,
-    origin: { x: 0, y: 0.7 },
-  });
-  confetti({
-    ...base,
-    particleCount: 70,
-    spread: 60,
-    angle: 120,
-    origin: { x: 1, y: 0.7 },
-  });
-}
+type Step = "ai" | "apps" | "congrats";
 
 /**
- * The wizard's post-migration setup (HOU-719 redesign): two steps in one
- * dialog, "Connect your AI" then "Reconnect your apps", with a confetti
- * payoff on "Start building". Also surfaces anything that didn't make the
- * move (failed agents, excluded files, rejected items) so nothing is
- * silently dropped. Stamps the persisted outcome on mount (`applyNow:
+ * The wizard's post-migration setup (HOU-719 redesign): two setup steps in one
+ * dialog, "Connect your AI" then "Reconnect your apps", then a brief congrats
+ * beat (confetti payoff) before closing into the app. Also surfaces anything
+ * that didn't make the move (failed agents, excluded files, rejected items) so
+ * nothing is silently dropped. Stamps the persisted outcome on mount (`applyNow:
  * false`, so a relaunch skips the wizard without ripping this screen away);
- * the final button applies it in-session.
+ * the congrats step's button applies it in-session.
  */
 export function DoneScreen({
   persistOutcome,
@@ -80,6 +44,10 @@ export function DoneScreen({
   const rejected = doneTasks.flatMap(
     (x) => progress[x.sourceId]?.rejected ?? [],
   );
+
+  if (step === "congrats") {
+    return <DoneCongrats onFinish={() => persistOutcome("done")} />;
+  }
 
   if (step === "ai") {
     return (
@@ -119,10 +87,7 @@ export function DoneScreen({
         <>
           <Button
             className="rounded-full px-6"
-            onClick={() => {
-              fireConfetti();
-              persistOutcome("done");
-            }}
+            onClick={() => setStep("congrats")}
           >
             {t("done.finish")}
           </Button>

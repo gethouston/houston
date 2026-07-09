@@ -8,6 +8,7 @@ import { HoustonLogo } from "../../shell/experience-card";
  * Content scrolls inside the frame; the page itself never scrolls.
  */
 export function WizardFrame({
+  badge,
   eyebrow,
   title,
   body,
@@ -16,6 +17,8 @@ export function WizardFrame({
   hideLogo,
   wide,
 }: {
+  /** A pill/badge above the title (e.g. the beta early-access badge). */
+  badge?: ReactNode;
   /** Small sentence-case line above the title (e.g. "Step 1 of 2"). */
   eyebrow?: string;
   title: string;
@@ -36,6 +39,7 @@ export function WizardFrame({
         className={`flex min-h-0 w-full flex-col items-center gap-6 text-center ${wide ? "max-w-[820px]" : "max-w-xl"}`}
       >
         {!hideLogo && <HoustonLogo size={56} />}
+        {badge}
         <div>
           {eyebrow && (
             <p className="mb-1 text-xs font-medium text-muted-foreground">

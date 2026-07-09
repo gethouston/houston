@@ -361,6 +361,7 @@ pub fn run() {
             // One-click desktop→cloud migration (HOU-719): detect legacy data
             // and run the bundled host briefly as a passive read-only source.
             commands::migration::detect_legacy_houston,
+            commands::migration::backup_houston_data,
             commands::migration::start_migration_source_host,
             commands::migration::stop_migration_source_host,
             // Native "Save as…" for Files-tab downloads — the webview ignores

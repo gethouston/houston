@@ -229,6 +229,10 @@ export async function invoke<T = unknown>(
     // detect shim above guarantees the wizard never asks for it on web.
     case "start_migration_source_host":
     case "stop_migration_source_host":
+    // Backing up the local `~/.houston` tree needs native filesystem access; a
+    // browser tab has no such folder (detect_legacy_houston returns empty, so
+    // the wizard never reaches the backup step on web).
+    case "backup_houston_data":
     case "pick_directory":
     case "reveal_file":
     case "reveal_agent":

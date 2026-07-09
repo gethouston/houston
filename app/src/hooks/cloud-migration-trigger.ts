@@ -29,6 +29,12 @@ export interface CloudMigrationInputs {
   hasLegacyWorkspaces: boolean;
   /** This user already finished or declined the wizard on this machine. */
   outcome: CloudMigrationOutcome | null;
+  /**
+   * The AUTHORITATIVE, cross-machine flag from the user's Supabase metadata:
+   * `true` once `migration_status === "completed"`. Wins over everything else —
+   * a user who migrated on any machine is never offered the wizard again.
+   */
+  migrationCompleted: boolean;
   /** The detection probe is still in flight. */
   loading: boolean;
 }
@@ -47,6 +53,9 @@ export function cloudMigrationGateState(
   if (!i.remoteGateway) return "pass";
   if (!i.isTauri) return "pass";
   if (!i.signedIn) return "pass";
+  // Cross-machine authority first: a completed account never sees the wizard,
+  // even on a new machine that still has a leftover `.houston` folder.
+  if (i.migrationCompleted) return "pass";
   if (i.outcome) return "pass";
   if (i.loading) return "loading";
   return i.hasLegacyWorkspaces ? "show" : "pass";

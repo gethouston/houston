@@ -1,4 +1,11 @@
-import { Bug, FileText, Keyboard, User, Users } from "lucide-react";
+import {
+  Bug,
+  CloudUpload,
+  FileText,
+  Keyboard,
+  User,
+  Users,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
 import { useWorkspaceContext } from "../../hooks/queries/use-workspace-context";
@@ -17,11 +24,13 @@ export type SettingsSectionId =
   | "workspaceContext"
   | "userContext"
   | "shortcuts"
-  | "reportBug";
+  | "reportBug"
+  | "migration";
 
 interface SettingsIndexProps {
   accountAvailable: boolean;
   showMembers: boolean;
+  migrationAvailable: boolean;
   onSelect: (id: SettingsSectionId) => void;
 }
 
@@ -34,6 +43,7 @@ interface SettingsIndexProps {
 export function SettingsIndex({
   accountAvailable,
   showMembers,
+  migrationAvailable,
   onSelect,
 }: SettingsIndexProps) {
   const { t } = useTranslation(["settings", "org"]);
@@ -120,6 +130,14 @@ export function SettingsIndex({
             description={t("settings:index.rows.reportBug")}
             onClick={() => onSelect("reportBug")}
           />
+          {migrationAvailable && (
+            <SettingsRow
+              icon={CloudUpload}
+              title={t("settings:migration.title")}
+              description={t("settings:index.rows.migration")}
+              onClick={() => onSelect("migration")}
+            />
+          )}
         </SettingsCard>
 
         <SettingsCard>

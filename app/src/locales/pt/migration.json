@@ -1,7 +1,8 @@
 {
   "offer": {
+    "betaBadge": "Você é um dos primeiros",
     "title": "O Houston está indo para a nuvem",
-    "body": "O Houston agora funciona na nuvem, então seus assistentes continuam trabalhando o tempo todo, mesmo quando seu computador está desligado. Vamos levar tudo o que você criou junto com você.",
+    "body": "Você é um dos primeiros a experimentar o novo Houston na nuvem. Seus assistentes agora funcionam na nuvem, trabalhando o tempo todo mesmo quando seu computador está desligado. Vamos levar tudo o que você criou junto com você.",
     "reassure": "Mantenha o Houston aberto até terminar. Seus dados neste computador ficam seguros.",
     "foundAgents_one": "{{count}} assistente",
     "foundAgents_other": "{{count}} assistentes",
@@ -35,8 +36,9 @@
     "phaseFiles": "Organizando seus arquivos e habilidades",
     "phaseCloud": "Preparando sua nuvem",
     "keepOpen": "Mantenha o Houston aberto até terminar.",
+    "backingUp": "Fazendo um backup dos seus dados neste computador.",
     "preparing": "Preparando seus dados. Isso pode demorar alguns minutos.",
-    "startFailed": "Não conseguimos ler seus dados antigos.",
+    "startFailed": "Não conseguimos iniciar a mudança, então nada foi alterado. Você pode tentar de novo.",
     "retry": "Tentar de novo",
     "overall": "{{done}} de {{total}} assistentes prontos",
     "continueAnyway": "Continuar sem o resto",
@@ -68,6 +70,8 @@
     "continue": "Continuar",
     "back": "Voltar",
     "connect": "Conectar",
-    "finish": "Começar a criar"
+    "finish": "Começar a criar",
+    "congratsTitle": "Tudo pronto",
+    "congratsBody": "Seus assistentes estão na nuvem e prontos. Vamos criar algo."
   }
 }

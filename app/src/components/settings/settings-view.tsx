@@ -7,6 +7,7 @@ import { canSeeMembers } from "../../lib/org-roles";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useAccountAvailable } from "./sections/account";
 import { MembersSection } from "./sections/members";
+import { MigrationSection, useMigrationAvailable } from "./sections/migration";
 import { ReportBugSection } from "./sections/report-bug";
 import { ShortcutsSection } from "./sections/shortcuts";
 import {
@@ -19,6 +20,7 @@ export function SettingsView() {
   const { t } = useTranslation(["settings", "common", "org"]);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const accountAvailable = useAccountAvailable();
+  const migrationAvailable = useMigrationAvailable();
   const { capabilities } = useCapabilities();
   const showMembers = canSeeMembers(capabilities);
   const [active, setActive] = useState<SettingsSectionId | null>(null);
@@ -37,6 +39,7 @@ export function SettingsView() {
         <SettingsIndex
           accountAvailable={accountAvailable}
           showMembers={showMembers}
+          migrationAvailable={migrationAvailable}
           onSelect={setActive}
         />
       </div>
@@ -65,6 +68,7 @@ export function SettingsView() {
             {active === "members" && <MembersSection />}
             {active === "shortcuts" && <ShortcutsSection />}
             {active === "reportBug" && <ReportBugSection />}
+            {active === "migration" && <MigrationSection />}
           </div>
         )}
       </div>

@@ -97,8 +97,15 @@ function AgentRow({
  */
 export function ProgressScreen() {
   const { t } = useTranslation("migration");
-  const { preparing, startError, tasks, progress, start, retryTask } =
-    useCloudMigrationStore();
+  const {
+    preparing,
+    backingUp,
+    startError,
+    tasks,
+    progress,
+    start,
+    retryTask,
+  } = useCloudMigrationStore();
   const continueAnyway = useCloudMigrationStore((s) => s.continueAnyway);
 
   const done = tasks.filter((x) => progress[x.sourceId]?.step === "done");
@@ -144,6 +151,13 @@ export function ProgressScreen() {
               {t("progress.retry")}
             </AsyncButton>
           </div>
+        ) : backingUp ? (
+          <>
+            <MigrationLoader />
+            <p className="text-sm text-muted-foreground">
+              {t("progress.backingUp")}
+            </p>
+          </>
         ) : preparing ? (
           <>
             <MigrationLoader />

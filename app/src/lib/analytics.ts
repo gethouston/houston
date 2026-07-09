@@ -39,6 +39,7 @@ export type AnalyticsEventName =
   // First-run cloud-migration wizard (HOU-719): the cloud desktop build offers
   // to move the machine's OLD local data into the user's cloud agents.
   | "cloud_migration_offered"
+  | "cloud_migration_backup_done"
   | "cloud_migration_started"
   | "cloud_migration_agent_done"
   | "cloud_migration_agent_failed"

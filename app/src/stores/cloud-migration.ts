@@ -15,6 +15,7 @@
 import { create } from "zustand";
 import { analytics } from "../lib/analytics";
 import type { MigrationTask } from "../lib/cloud-migration";
+import { isMigrationDemo, runDemoMigration } from "../lib/cloud-migration-demo";
 import { prepareMigration } from "../lib/cloud-migration-prepare";
 import {
   type AgentMigrationProgress,
@@ -26,7 +27,11 @@ import {
 } from "../lib/cloud-migration-runner";
 import type { SourceHostHandshake } from "../lib/cloud-migration-transport";
 import { reportError } from "../lib/error-toast";
-import { osStartMigrationSourceHost } from "../lib/os-bridge";
+import { writeMigrationStatus } from "../lib/migration-status";
+import {
+  osBackupHoustonData,
+  osStartMigrationSourceHost,
+} from "../lib/os-bridge";
 import { useAgentStore } from "./agents";
 import { finishRun } from "./cloud-migration-finish";
 import { useWorkspaceStore } from "./workspaces";
@@ -37,6 +42,10 @@ interface CloudMigrationState {
   screen: CloudMigrationScreen;
   /** Spawning the source host / scanning — can take minutes (chat db boot). */
   preparing: boolean;
+  /** Copying `~/.houston` to a local backup before anything is touched. A
+   *  subset of `preparing` (it stays true through the backup), branched on
+   *  first so the wait screen shows the backup step, not the prepare text. */
+  backingUp: boolean;
   /** Prepare failed (source host spawn / scan / resume probe). Retryable. */
   startError: string | null;
   tasks: MigrationTask[];
@@ -118,13 +127,45 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
     return {
       screen: "offer",
       preparing: false,
+      backingUp: false,
       startError: null,
       tasks: [],
       progress: {},
       integrations: [],
 
       start: async () => {
-        set(() => ({ screen: "progress", preparing: true, startError: null }));
+        // Dev-only: simulate the run frontend-only (no source host / gateway).
+        if (isMigrationDemo()) {
+          await runDemoMigration(set);
+          return;
+        }
+        set(() => ({
+          screen: "progress",
+          preparing: true,
+          backingUp: true,
+          startError: null,
+        }));
+        // Never migrate without a local backup: copy `~/.houston` aside FIRST,
+        // so a crash mid-upload can't lose the only copy of the user's data.
+        try {
+          const backup = await osBackupHoustonData();
+          set(() => ({ backingUp: false }));
+          analytics.track("cloud_migration_backup_done", {
+            bytes: backup.byteCount,
+          });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          set(() => ({
+            preparing: false,
+            backingUp: false,
+            startError: message,
+          }));
+          reportError("cloud_migration_backup", message, err);
+          return;
+        }
+        // Backup is safe on disk; mark the account "in progress" (best-effort)
+        // so a crash before the run finishes is recoverable from Settings.
+        await writeMigrationStatus("in_progress");
         let tasks: MigrationTask[];
         try {
           const prepared = await prepareMigration(

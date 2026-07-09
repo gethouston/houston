@@ -1,7 +1,8 @@
 {
   "offer": {
+    "betaBadge": "You're one of the first",
     "title": "Houston is moving to the cloud",
-    "body": "Houston now runs in the cloud, so your assistants keep working around the clock, even when your computer is off. Let's bring everything you've built with you.",
+    "body": "You're among the first to try the new cloud Houston. Your assistants now run in the cloud, working around the clock even when your computer is off. Let's bring everything you've built with you.",
     "reassure": "Keep Houston open while it finishes. Your data on this computer stays safe.",
     "foundAgents_one": "{{count}} assistant",
     "foundAgents_other": "{{count}} assistants",
@@ -35,8 +36,9 @@
     "phaseFiles": "Packing up your files and skills",
     "phaseCloud": "Setting up your cloud",
     "keepOpen": "Please keep Houston open until it finishes.",
+    "backingUp": "Backing up your data on this computer.",
     "preparing": "Getting your data ready. This can take a few minutes.",
-    "startFailed": "We couldn't read your old data.",
+    "startFailed": "We couldn't start the move, so nothing was changed. You can try again.",
     "retry": "Try again",
     "overall": "{{done}} of {{total}} assistants moved",
     "continueAnyway": "Continue without the rest",
@@ -68,6 +70,8 @@
     "continue": "Continue",
     "back": "Back",
     "connect": "Connect",
-    "finish": "Start building"
+    "finish": "Start building",
+    "congratsTitle": "You're all set",
+    "congratsBody": "Your assistants are in the cloud and ready. Let's build something."
   }
 }

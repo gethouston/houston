@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import type { LegacyDetection } from "../lib/cloud-migration";
+import { DEMO_DETECTION, isMigrationDemo } from "../lib/cloud-migration-demo";
 import { isHostedGatewayEngine } from "../lib/engine";
 import { reportError } from "../lib/error-toast";
+import { readMigrationStatus } from "../lib/migration-status";
 import { osDetectLegacyHouston, osIsTauri } from "../lib/os-bridge";
 import { queryKeys } from "../lib/query-keys";
 import {
@@ -56,6 +58,7 @@ export interface CloudMigrationTrigger {
 export function useCloudMigration(): CloudMigrationTrigger {
   const { data: session } = useSession();
   const userId = session?.user?.id ?? null;
+  const migrationCompleted = readMigrationStatus(session) === "completed";
   const remoteGateway = isHostedGatewayEngine();
   const isTauri = osIsTauri();
 
@@ -63,7 +66,12 @@ export function useCloudMigration(): CloudMigrationTrigger {
     userId ? readOutcome(userId) : null,
   );
 
-  const gatesOpen = remoteGateway && isTauri && Boolean(userId) && !outcome;
+  const gatesOpen =
+    remoteGateway &&
+    isTauri &&
+    Boolean(userId) &&
+    !outcome &&
+    !migrationCompleted;
   const detectQuery = useQuery({
     queryKey: queryKeys.cloudMigrationDetect(),
     // Read-only filesystem scan; stable for the app's lifetime. An automatic
@@ -105,12 +113,24 @@ export function useCloudMigration(): CloudMigrationTrigger {
     [userId],
   );
 
+  // Dev-only: force the wizard open with stub data so it can be tested in
+  // `pnpm dev` (no gateway, no source host). Dead-stripped from prod builds.
+  // Placed after every hook so hook order stays stable.
+  if (isMigrationDemo()) {
+    return {
+      status: outcome ? "pass" : "show",
+      detection: DEMO_DETECTION,
+      persistOutcome,
+    };
+  }
+
   const status = cloudMigrationGateState({
     remoteGateway,
     isTauri,
     signedIn: Boolean(userId),
     hasLegacyWorkspaces: detectQuery.data?.hasWorkspaces ?? false,
     outcome,
+    migrationCompleted,
     loading: gatesOpen && detectQuery.isLoading,
   });
 

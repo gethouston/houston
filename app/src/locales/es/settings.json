@@ -90,6 +90,11 @@
       "errorTitle": "No se pudo enviar el reporte"
     }
   },
+  "migration": {
+    "title": "Migración a la nube",
+    "description": "Si tu mudanza a la nube no terminó, puedes volver a intentarla.",
+    "button": "Continuar migración"
+  },
   "version": "Versión {{version}}",
   "toasts": {
     "workspaceRenamed": "Espacio de trabajo renombrado",
@@ -108,7 +113,8 @@
       "workspaceContext": "Lo que cada agente sabe sobre este espacio",
       "userContext": "Lo que cada agente sabe sobre ti",
       "shortcuts": "Usa Houston sin el mouse",
-      "reportBug": "¿Algo falló? Cuéntanos"
+      "reportBug": "¿Algo falló? Cuéntanos",
+      "migration": "Retoma tu mudanza a la nube"
     },
     "values": {
       "set": "Definido",
