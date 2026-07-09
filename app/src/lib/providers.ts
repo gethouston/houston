@@ -1,7 +1,10 @@
 /**
  * Reasoning-effort levels, ordered low→high. The set a given model accepts
  * is model-specific (see `ModelOption.effortLevels`):
- * - Codex `model_reasoning_effort`: low/medium/high/xhigh (no `max`).
+ * - Codex `model_reasoning_effort`: low/medium/high/xhigh; the bundled
+ *   codex (>= 0.143) also parses `max`, which the SERVER accepts only on
+ *   models that support it (the GPT-5.6 family; gpt-5.5 and older
+ *   400-reject it).
  * - Claude `--effort`: Opus 4.7/4.8 and Sonnet 5 = all five; Sonnet 4.6 =
  *   low/medium/high/max (no `xhigh`). Claude self-clamps an unsupported
  *   value; Codex does not.
@@ -93,6 +96,53 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     loginCommand: "codex login",
     cost: "Your ChatGPT subscription",
     models: [
+      {
+        id: "gpt-5.6-sol",
+        label: "GPT-5.6 Sol",
+        description: "Latest frontier agentic coding model.",
+        // GPT-5.6 adds `max` at the top of the effort dial; all three 5.6
+        // models carry it (confirmed in codex's own picker post-GA).
+        // Requires the bundled codex >= 0.143 (older CLIs hard-reject `max`
+        // at config parse; the server 400s it on models that don't support
+        // it, e.g. gpt-5.5). GPT-5.6 "ultra" is a subagent MODE, not an
+        // effort level — never add it here (same rule as Claude's
+        // `ultracode`).
+        effortLevels: ["low", "medium", "high", "xhigh", "max"],
+        // OpenAI has published NO context-window spec for the 5.6 family as
+        // of 2026-07-08 (GA 2026-07-09); the "1.5M" figure circulating is
+        // preview-partner observation, not documentation. Codex has capped
+        // every recent model's effective window at 272k raw x 95% = 258_400
+        // (gpt-5.4, gpt-5.5) regardless of larger raw API offers, so start
+        // there. The snap-up ceiling covers the reported 1.5M x 95% =
+        // 1_425_000 so a genuinely larger window can't overflow the
+        // indicator; it only engages once observed usage proves > 258_400.
+        // Revisit against codex's models_cache.json once it lists gpt-5.6.
+        contextWindow: 258_400,
+        contextWindowMax: 1_425_000,
+      },
+      {
+        id: "gpt-5.6-terra",
+        label: "GPT-5.6 Terra",
+        description: "Balanced agentic coding model for everyday work.",
+        // Same effort dial as Sol — the whole 5.6 family carries `max`
+        // (confirmed in codex's own picker post-GA).
+        effortLevels: ["low", "medium", "high", "xhigh", "max"],
+        // Same pre-GA estimate rationale as Sol above, but no 1.5M report
+        // exists for Terra, so the ceiling stays at the 5.5-line precedent
+        // (1M x 95% = 950_000).
+        contextWindow: 258_400,
+        contextWindowMax: 950_000,
+      },
+      {
+        id: "gpt-5.6-luna",
+        label: "GPT-5.6 Luna",
+        description: "Fast and affordable agentic coding model.",
+        // Same effort dial as Sol — the whole 5.6 family carries `max`.
+        effortLevels: ["low", "medium", "high", "xhigh", "max"],
+        // See Terra: pre-GA estimate, 5.5-line snap-up ceiling.
+        contextWindow: 258_400,
+        contextWindowMax: 950_000,
+      },
       {
         id: "gpt-5.5",
         label: "GPT-5.5",

@@ -509,11 +509,11 @@ mod tests {
             anthropic.effort_levels().to_vec(),
             vec!["low", "medium", "high", "xhigh", "max"]
         );
-        // Codex `model_reasoning_effort` has no `max` variant — including it
-        // would be an "unknown variant" error with no CLI-side fallback.
+        // Codex >= 0.143 parses `max` (added with GPT-5.6); the server
+        // gates which models honor it, the frontend gates which offer it.
         assert_eq!(
             openai.effort_levels().to_vec(),
-            vec!["low", "medium", "high", "xhigh"]
+            vec!["low", "medium", "high", "xhigh", "max"]
         );
         // Gemini CLI takes no effort flag.
         assert!(gemini.effort_levels().is_empty());

@@ -193,7 +193,7 @@ fn read_agent_config(agent_dir: &Path) -> Option<AgentConfig> {
 /// Order:
 /// 1. The agent's `effort` in `config.json`, but only if the provider's CLI
 ///    actually accepts it ([`Provider::effort_levels`]). A value valid for
-///    one provider but not another (e.g. `max` on Codex, or a hand-edited
+///    one provider but not another (e.g. `ultra`, or a hand-edited
 ///    typo) is dropped rather than passed to a CLI that would reject it.
 /// 2. The provider's [`Provider::default_effort`] — the floor every session
 ///    gets when nothing valid is configured.
@@ -419,12 +419,12 @@ mod tests {
     }
 
     #[test]
-    fn effort_accepts_max_on_claude_but_clamps_on_codex() {
-        // `max` is valid for Claude; for Codex it is an unknown variant, so
-        // the configured value is dropped in favor of the provider default.
+    fn effort_accepts_max_on_both_claude_and_codex() {
+        // `max` is in both providers' unions since GPT-5.6 (codex >= 0.143
+        // parses it; the server/model gates whether it is honored).
         let (_d, agent) = agent_with(r#"{"effort":"max"}"#);
         assert_eq!(resolve_effort(&agent, anthropic()).as_deref(), Some("max"));
-        assert_eq!(resolve_effort(&agent, openai()).as_deref(), Some("medium"));
+        assert_eq!(resolve_effort(&agent, openai()).as_deref(), Some("max"));
     }
 
     #[test]
@@ -461,11 +461,11 @@ mod tests {
 
     #[test]
     fn effort_override_dropped_when_provider_rejects_it() {
-        // "max" is invalid for Codex → the override is dropped and the agent's
-        // configured/default effort is used instead.
+        // "ultra" is a GPT-5.6 harness MODE, not an effort level → the
+        // override is dropped and the agent's configured effort is used.
         let (_d, agent) = agent_with(r#"{"provider":"openai","effort":"high"}"#);
         assert_eq!(
-            resolve_effort_with_override(&agent, openai(), Some("max")).as_deref(),
+            resolve_effort_with_override(&agent, openai(), Some("ultra")).as_deref(),
             Some("high"),
         );
     }

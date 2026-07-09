@@ -73,7 +73,8 @@ impl ProviderAdapter for OpenAiAdapter {
         //
         // Codex loads `~/.codex/config.toml` before running any subcommand,
         // including `logout`. A `model_reasoning_effort` value the bundled
-        // CLI's enum doesn't recognize (e.g. `max`, which is Claude-only)
+        // CLI's enum doesn't recognize (a leftover from a newer or older
+        // CLI's enum — e.g. `max` before codex 0.143)
         // makes logout exit 1 with a config error, leaving the user stuck
         // signed in. Force a known-good value, same trick
         // `provider_auth::probe_codex_auth_status` uses for `login status`.
@@ -81,12 +82,16 @@ impl ProviderAdapter for OpenAiAdapter {
     }
 
     fn effort_levels(&self) -> &'static [&'static str] {
-        // Codex `ReasoningEffort` enum (bundled CLI):
-        // none/minimal/low/medium/high/xhigh. We surface the meaningful
-        // tuning range. `max` is Claude-only and would be an "unknown
-        // variant" to codex — and codex has no clamp-to-highest fallback —
-        // so it is deliberately excluded.
-        &["low", "medium", "high", "xhigh"]
+        // Codex `ReasoningEffort` (bundled CLI, >= 0.143 per cli-deps.json):
+        // none/minimal/low/medium/high/xhigh/max. We surface the meaningful
+        // tuning range. `max` arrived with GPT-5.6 — the pre-0.143 CLI
+        // hard-rejected it at config parse ("unknown variant", no
+        // clamp-to-highest fallback), so never ship `max` here with an older
+        // pinned codex. The SERVER still 400-rejects `max` on models that
+        // don't support it (verified live on gpt-5.5), so the engine carries
+        // the full union and the frontend catalog gates which models offer
+        // it (GPT-5.6 Sol only), mirroring the Anthropic adapter's split.
+        &["low", "medium", "high", "xhigh", "max"]
     }
 
     fn default_effort(&self) -> Option<&'static str> {
