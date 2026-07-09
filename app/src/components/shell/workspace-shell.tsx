@@ -50,6 +50,7 @@ import { ExportAgentWizard } from "../portable/export-wizard";
 import { ImportAgentWizard } from "../portable/import-wizard";
 import { SettingsView } from "../settings/settings-view";
 import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
+import { AgentShareButton } from "../tabs/agent-share-button";
 import { AgentWarmingDialog } from "./agent-warming-dialog";
 import { CreateAgentDialog } from "./create-workspace-dialog";
 import { DetailPanelProvider } from "./detail-panel-context";
@@ -249,6 +250,10 @@ export function WorkspaceShell({
                                 />
                               )}
                               <div className="flex shrink-0 items-center gap-2">
+                                <AgentShareButton
+                                  agent={currentAgent}
+                                  collapsed={missionPanelOpen}
+                                />
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button

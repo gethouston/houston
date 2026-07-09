@@ -8,22 +8,24 @@ import { useSession } from "../../hooks/use-session";
 import { isTeamWorkspace } from "../../lib/space-id";
 import type { Agent } from "../../lib/types";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { agentShareMode, buildSharePeople } from "./agent-access-model";
-import { AgentShareDialog } from "./agent-share-dialog";
-import { ShareViaTeamFlow } from "./share-via-team-flow";
+import { agentShareSurface, buildSharePeople } from "./agent-access-model";
+import { AgentShareSurfaces } from "./agent-share-surfaces";
 
 const MAX_AVATARS = 4;
 
 /**
  * The "Share this agent" block on an agent's General settings. Its shape depends
- * on the active space (C8 §Share-triggers-team, `agentShareMode`):
+ * on the active space (C8 §Share-triggers-team, `agentShareSurface`) and opens
+ * the SAME flows as the prominent header Share button via {@link
+ * AgentShareSurfaces}:
  *
- * - TEAM space, agent-manager → the Drive-style {@link AgentShareDialog}: add
+ * - `manage` (TEAM space, agent-manager) → the Drive-style share dialog: add
  *   teammates and pick who can manage (unchanged from Teams v2).
- * - PERSONAL space on a spaces-capable host → an "invite your team" entry that
- *   opens {@link ShareViaTeamFlow}; a personal space is non-invitable, so the
- *   only way to share is to move the agent into a team first.
- * - Otherwise (desktop / self-host, or a member who can't share) → nothing.
+ * - `inviteTeam` (PERSONAL space on a spaces-capable host) → an "invite your
+ *   team" entry; a personal space is non-invitable, so the only way to share is
+ *   to move the agent into a team first.
+ * - Otherwise (`view` never reaches this manager-only tab, or `none` on
+ *   desktop / self-host) → nothing.
  *
  * The gateway enforces the same authority; these gates only shape affordances.
  */
@@ -33,13 +35,13 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
   const { data: session } = useSession();
   const current = useWorkspaceStore((s) => s.current);
   const inPersonalSpace = !isTeamWorkspace(current?.id ?? "");
-  const mode = agentShareMode(capabilities, agent, inPersonalSpace);
-  const org = useOrg(mode === "team");
+  const surface = agentShareSurface(capabilities, agent, inPersonalSpace);
+  const org = useOrg(surface === "manage");
   const [open, setOpen] = useState(false);
 
-  if (mode === "none") return null;
+  if (surface === "none" || surface === "view") return null;
 
-  if (mode === "inviteTeam") {
+  if (surface === "inviteTeam") {
     return (
       <section>
         <h2 className="mb-1 text-lg font-semibold">
@@ -58,7 +60,12 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
           {t("shareViaTeam.button")}
         </Button>
 
-        <ShareViaTeamFlow agent={agent} open={open} onOpenChange={setOpen} />
+        <AgentShareSurfaces
+          agent={agent}
+          surface="inviteTeam"
+          open={open}
+          onOpenChange={setOpen}
+        />
       </section>
     );
   }
@@ -115,7 +122,12 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
         )}
       </div>
 
-      <AgentShareDialog agent={agent} open={open} onOpenChange={setOpen} />
+      <AgentShareSurfaces
+        agent={agent}
+        surface="manage"
+        open={open}
+        onOpenChange={setOpen}
+      />
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import type { KanbanPerson } from "@houston-ai/board";
+import type { KanbanItem, KanbanPerson } from "@houston-ai/board";
 import type { UserProfile } from "../hooks/queries/use-user-profiles";
 
 /**
@@ -69,6 +69,43 @@ export function missionMatchesPerson(
   userId: string,
 ): boolean {
   return (people ?? []).some((p) => p.id === userId);
+}
+
+/**
+ * Build the per-mission face stacks for a single agent's board, keyed by the
+ * mission id (the conversation / activity id — the board item's `id`). The
+ * cross-agent board maps attribution inline while it builds its cards; the
+ * per-agent board maps its cards from the activity list (which carries no
+ * attribution) and joins these stacks on afterward, so this keeps that join
+ * pure and unit-testable. Missions with no contributors get no entry.
+ */
+export function buildBoardPeopleById(
+  convs: (MissionAttribution & { id: string })[],
+  profiles: ReadonlyMap<string, UserProfile>,
+): Map<string, KanbanPerson[]> {
+  const byId = new Map<string, KanbanPerson[]>();
+  for (const conv of convs) {
+    const people = buildMissionPeople(conv, profiles);
+    if (people.length > 0) byId.set(conv.id, people);
+  }
+  return byId;
+}
+
+/**
+ * Attach the server-stamped face stacks (from {@link buildBoardPeopleById}) to
+ * board items by id. Identity pass-through when the map is empty — single
+ * player / desktop never resolves attribution, so the items array (and its
+ * reference) stays byte-identical and memoized children never re-render.
+ */
+export function attachBoardPeople(
+  items: KanbanItem[],
+  peopleById: ReadonlyMap<string, KanbanPerson[]>,
+): KanbanItem[] {
+  if (peopleById.size === 0) return items;
+  return items.map((item) => {
+    const people = peopleById.get(item.id);
+    return people ? { ...item, people } : item;
+  });
 }
 
 /**

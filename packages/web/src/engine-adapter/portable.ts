@@ -1,5 +1,5 @@
 /**
- * Portable agents ("Share with a friend" / "From a friend") on the new engine.
+ * Portable agents ("Export a copy" / "From a friend") on the new engine.
  *
  * Export preview + packaging go through the host's v3 portable routes. An
  * uploaded `.houstonagent` is unpacked IN THE BROWSER with the same domain
@@ -66,7 +66,7 @@ async function hostFetch(
   return res;
 }
 
-/** The agent's exportable content, for the "Share with a friend" pick screen. */
+/** The agent's exportable content, for the "Export a copy" pick screen. */
 export async function exportPreview(
   cfg: ControlPlaneConfig,
   agentId: string,

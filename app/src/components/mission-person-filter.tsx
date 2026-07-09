@@ -6,19 +6,14 @@ import {
   DropdownMenuTrigger,
 } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import { useCapabilities } from "../hooks/use-capabilities";
-import { useSession } from "../hooks/use-session";
 import { distinctBoardPeople } from "../lib/mission-people";
-import { personFilterMode } from "../lib/mission-person-filter-model";
-import { hasSpaces, isMultiplayer } from "../lib/org-roles";
-import { isTeamWorkspace } from "../lib/space-id";
-import { useWorkspaceStore } from "../stores/workspaces";
 import {
   type FilterFace,
   FilterTrigger,
   PersonFace,
 } from "./mission-person-face";
 import { MissionPersonTeaser } from "./mission-person-teaser";
+import { usePersonFilterMode } from "./use-person-filter-mode";
 
 interface MissionPersonFilterProps {
   /** The board items the person roster is drawn from (post agent-filter). */
@@ -48,17 +43,7 @@ export function MissionPersonFilter({
   collapsed,
 }: MissionPersonFilterProps) {
   const { t } = useTranslation("dashboard");
-  const { capabilities } = useCapabilities();
-  const { data: session } = useSession();
-  const currentWorkspace = useWorkspaceStore((s) => s.current);
-  const user = session?.user;
-
-  const mode = personFilterMode({
-    hasSession: !!user,
-    spaces: hasSpaces(capabilities),
-    multiplayer: isMultiplayer(capabilities),
-    teamSpace: isTeamWorkspace(currentWorkspace?.id ?? ""),
-  });
+  const { mode, user } = usePersonFilterMode();
   if (mode === "hidden" || !user) return null;
 
   const meta = (user.user_metadata ?? {}) as {

@@ -1,16 +1,16 @@
 {
-  "shareMenu": "Compartir con un amigo",
+  "exportMenu": "Exportar una copia",
   "newAgent": {
     "fromFriendCard": "De un amigo",
     "fromFriendDescription": "Sube un archivo que alguien te compartió y trae su agente a tu espacio de trabajo."
   },
   "flagged": "Houston marcó este para revisarlo con cuidado.",
   "export": {
-    "eyebrow": "Compartiendo {{name}}",
+    "eyebrow": "Exportando {{name}}",
     "loading": "Cargando tu agente.",
     "step1": {
-      "title": "¿Qué compartimos?",
-      "body": "Elige qué se llevará tu amigo. Las instrucciones del agente siempre se incluyen.",
+      "title": "¿Qué exportamos?",
+      "body": "Elige qué va en la copia. Las instrucciones del agente siempre se incluyen.",
       "instructionsLabel": "Instrucciones",
       "instructionsRow": "Descripción de trabajo y reglas",
       "noInstructions": "Este agente aún no tiene instrucciones.",
@@ -21,7 +21,7 @@
     "step2": {
       "title": "¿Anonimizar primero?",
       "body": "Houston puede quitar información personal, como nombres, correos y rutas. Verás qué cambió antes de guardar.",
-      "asIsTitle": "Compartir tal cual",
+      "asIsTitle": "Exportar tal cual",
       "asIsBody": "Mantener todo como está.",
       "anonymizeTitle": "Ayúdame a anonimizar",
       "anonymizeBody": "Quita nombres, correos, empresas, claves de API y otros datos personales.",
@@ -46,8 +46,8 @@
       "learningTitle": "Aprendizaje"
     },
     "step3": {
-      "title": "Listo para compartir",
-      "body": "Houston empaquetará {{name}} en un solo archivo que puedes enviar por cualquier app.",
+      "title": "Listo para exportar",
+      "body": "Houston empaqueta {{name}} en un solo archivo que puedes enviar por cualquier app. Quien lo reciba importa su propia copia. La colaboración en vivo está en Compartir.",
       "skillsLabel": "Habilidades",
       "routinesLabel": "Rutinas",
       "learningsLabel": "Aprendizajes",

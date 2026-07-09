@@ -1,16 +1,16 @@
 {
-  "shareMenu": "Share with a friend",
+  "exportMenu": "Export a copy",
   "newAgent": {
     "fromFriendCard": "From a friend",
     "fromFriendDescription": "Drop a file someone shared with you and bring their agent into your workspace."
   },
   "flagged": "Houston flagged this one for a closer look.",
   "export": {
-    "eyebrow": "Sharing {{name}}",
+    "eyebrow": "Exporting {{name}}",
     "loading": "Loading your agent.",
     "step1": {
-      "title": "What should we share?",
-      "body": "Pick what your friend gets. The agent's instructions always come along.",
+      "title": "What should we export?",
+      "body": "Pick what goes into the copy. The agent's instructions always come along.",
       "instructionsLabel": "Instructions",
       "instructionsRow": "Job description and rules",
       "noInstructions": "This agent has no instructions yet.",
@@ -21,7 +21,7 @@
     "step2": {
       "title": "Want to anonymize first?",
       "body": "Houston can remove personal info like names, emails and paths. You'll see exactly what changed before saving.",
-      "asIsTitle": "Share as is",
+      "asIsTitle": "Export as is",
       "asIsBody": "Keep everything exactly the way it is.",
       "anonymizeTitle": "Help me anonymize",
       "anonymizeBody": "Remove names, emails, companies, API keys and other personal details.",
@@ -46,8 +46,8 @@
       "learningTitle": "Learning"
     },
     "step3": {
-      "title": "Ready to share",
-      "body": "Houston will package {{name}} into a single file you can send through any app.",
+      "title": "Ready to export",
+      "body": "Houston packages {{name}} into a single file you can send through any app. Whoever gets it imports their own copy. Live collaboration lives in Share.",
       "skillsLabel": "Skills",
       "routinesLabel": "Routines",
       "learningsLabel": "Learnings",

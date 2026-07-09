@@ -8,6 +8,7 @@ import { AgentCardAvatar } from "../shell/agent-card-avatar";
 import { useMissionSearch } from "../use-mission-search";
 import type { BoardSource } from "./board-source";
 import { useAgentBoardData } from "./use-agent-board-data";
+import { useAgentBoardPersonFilter } from "./use-agent-board-person-filter";
 import { useAgentBoardSelection } from "./use-agent-board-selection";
 import { useAgentBoardSend } from "./use-agent-board-send";
 import { useAgentNewMission } from "./use-agent-new-mission";
@@ -94,6 +95,15 @@ export function useAgentBoardSource(
   });
   const selection = useAgentBoardSelection(path, agent.id);
 
+  // Attribution + filter-by-person (hosted Teams only; off-multiplayer identity
+  // pass-through), on the active cards BEFORE text search, as the cross board.
+  const personFilter = useAgentBoardPersonFilter({
+    path,
+    items: data.items,
+    collapsed: missionPanelOpen,
+  });
+  const personFilteredItems = personFilter.items;
+
   const selectedSessionKey = useMemo(() => {
     if (!selectedId) return null;
     const item = (data.rawItems ?? []).find((a) => a.id === selectedId);
@@ -108,7 +118,7 @@ export function useAgentBoardSource(
     });
   }, [addToast, t]);
   const missionSearch = useMissionSearch({
-    items: data.items,
+    items: personFilteredItems,
     query: missionSearchQuery,
     loadHistory: data.loadHistory,
     onHistoryLoadError: handleMissionSearchError,
@@ -145,7 +155,9 @@ export function useAgentBoardSource(
   return {
     variant: "agent",
     items: missionSearch.items,
-    allItems: data.items,
+    // Bulk section actions (archive-all / select-all) act within the current
+    // person filter, matching the cross-agent board.
+    allItems: personFilteredItems,
     feedItems: data.feedItems,
     loading: send.effectiveLoading,
     isLoaded: data.rawItems !== undefined,
@@ -184,5 +196,6 @@ export function useAgentBoardSource(
       (a) => a.id === selectedId && a.status === "running",
     ),
     cardAvatar,
+    toolbar: personFilter.toolbar,
   };
 }
