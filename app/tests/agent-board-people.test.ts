@@ -6,7 +6,6 @@ import {
   attachBoardPeople,
   buildBoardPeopleById,
   type MissionAttribution,
-  missionMatchesPerson,
 } from "../src/lib/mission-people.ts";
 
 const profiles = (rows: UserProfile[]): Map<string, UserProfile> =>
@@ -19,9 +18,8 @@ const item = (id: string): KanbanItem => ({
 });
 
 // The per-agent board maps its cards from the activity list (no attribution)
-// and joins server-stamped face stacks on by id. These cover that join plus
-// the filter semantics the per-agent surface mounts, mirroring the cross-agent
-// board's Everyone / Mine / teammate rules.
+// and joins server-stamped face stacks on by id. These cover that join; the
+// person-scope narrowing applied on top of it lives in agent-person-scope.test.
 
 describe("buildBoardPeopleById", () => {
   it("keys each mission's face stack by its id, creator first", () => {
@@ -67,56 +65,5 @@ describe("attachBoardPeople", () => {
     const out = attachBoardPeople(items, new Map([["m-1", people]]));
     deepStrictEqual(out[0].people, people);
     strictEqual(out[1].people, undefined);
-  });
-});
-
-describe("per-agent person filter — mount semantics", () => {
-  // The pipeline the per-agent source mounts: activity cards -> join people ->
-  // filter by the selected person (Everyone is a no-op).
-  const items = [item("m-1"), item("m-2"), item("m-3")];
-  const peopleById = buildBoardPeopleById(
-    [
-      { id: "m-1", created_by: "me", contributors: [{ user_id: "mate" }] },
-      { id: "m-2", created_by: "mate" },
-      // m-3 has no attribution — Everyone only.
-    ],
-    profiles([]),
-  );
-  const peopled = attachBoardPeople(items, peopleById);
-  const applyFilter = (userId: string | null) =>
-    userId
-      ? peopled.filter((i) => missionMatchesPerson(i.people, userId))
-      : peopled;
-
-  it("Everyone shows every mission, attributed or not", () => {
-    deepStrictEqual(
-      applyFilter(null).map((i) => i.id),
-      ["m-1", "m-2", "m-3"],
-    );
-  });
-
-  it("My missions narrows to the missions I am on", () => {
-    deepStrictEqual(
-      applyFilter("me").map((i) => i.id),
-      ["m-1"],
-    );
-  });
-
-  it("a teammate narrows to that teammate's missions", () => {
-    deepStrictEqual(
-      applyFilter("mate").map((i) => i.id),
-      ["m-1", "m-2"],
-    );
-  });
-
-  it("missions without attribution never match a person filter", () => {
-    strictEqual(
-      applyFilter("me").some((i) => i.id === "m-3"),
-      false,
-    );
-    strictEqual(
-      applyFilter("mate").some((i) => i.id === "m-3"),
-      false,
-    );
   });
 });

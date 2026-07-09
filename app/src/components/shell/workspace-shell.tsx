@@ -36,6 +36,8 @@ import { isTopLevelView } from "../../lib/top-level-views";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
+import { AgentPersonScopeProvider } from "../agent-person-scope-context";
+import { AgentPersonScopeMenu } from "../agent-person-scope-menu";
 import { AiHubView } from "../ai-hub/ai-hub-view";
 import { CommandPalette } from "../command-palette";
 import { Dashboard } from "../dashboard";
@@ -200,7 +202,7 @@ export function WorkspaceShell({
                   ) : viewMode === ORGANIZATION_VIEW_ID && showOrganization ? (
                     <OrganizationView />
                   ) : currentAgent && agentDef && isAgentView ? (
-                    <>
+                    <AgentPersonScopeProvider path={currentAgent.folderPath}>
                       <div data-tour-target="tabs">
                         <TabBar
                           title={currentAgent.name}
@@ -250,6 +252,10 @@ export function WorkspaceShell({
                                 />
                               )}
                               <div className="flex shrink-0 items-center gap-2">
+                                <AgentPersonScopeMenu
+                                  agent={currentAgent}
+                                  collapsed={missionPanelOpen}
+                                />
                                 <AgentShareButton
                                   agent={currentAgent}
                                   collapsed={missionPanelOpen}
@@ -338,7 +344,7 @@ export function WorkspaceShell({
                           activeTabId={viewMode}
                         />
                       </main>
-                    </>
+                    </AgentPersonScopeProvider>
                   ) : agents.length === 0 ? (
                     <div className="flex flex-1 flex-col items-center justify-center">
                       <Empty className="border-0">

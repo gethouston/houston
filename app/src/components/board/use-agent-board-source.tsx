@@ -8,7 +8,7 @@ import { AgentCardAvatar } from "../shell/agent-card-avatar";
 import { useMissionSearch } from "../use-mission-search";
 import type { BoardSource } from "./board-source";
 import { useAgentBoardData } from "./use-agent-board-data";
-import { useAgentBoardPersonFilter } from "./use-agent-board-person-filter";
+import { useAgentBoardScope } from "./use-agent-board-scope";
 import { useAgentBoardSelection } from "./use-agent-board-selection";
 import { useAgentBoardSend } from "./use-agent-board-send";
 import { useAgentNewMission } from "./use-agent-new-mission";
@@ -95,14 +95,11 @@ export function useAgentBoardSource(
   });
   const selection = useAgentBoardSelection(path, agent.id);
 
-  // Attribution + filter-by-person (hosted Teams only; off-multiplayer identity
-  // pass-through), on the active cards BEFORE text search, as the cross board.
-  const personFilter = useAgentBoardPersonFilter({
-    path,
-    items: data.items,
-    collapsed: missionPanelOpen,
-  });
-  const personFilteredItems = personFilter.items;
+  // Attribution + person-scope narrowing (hosted Teams only; off-multiplayer
+  // identity pass-through), on the active cards BEFORE text search, as the cross
+  // board. The scope is chosen in the agent header (AgentPersonScopeMenu) and
+  // read here through the shared per-agent scope context.
+  const personFilteredItems = useAgentBoardScope({ path, items: data.items });
 
   const selectedSessionKey = useMemo(() => {
     if (!selectedId) return null;
@@ -196,6 +193,5 @@ export function useAgentBoardSource(
       (a) => a.id === selectedId && a.status === "running",
     ),
     cardAvatar,
-    toolbar: personFilter.toolbar,
   };
 }
