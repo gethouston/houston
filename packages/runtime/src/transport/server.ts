@@ -13,6 +13,7 @@ import {
   routeContext,
 } from "./http-helpers";
 import { handleProviderRoute } from "./provider-routes";
+import { handleTranslateRoute } from "./translate-route";
 
 async function handle(ctx: RouteContext) {
   applyCors(ctx.req, ctx.res);
@@ -43,6 +44,7 @@ async function handle(ctx: RouteContext) {
   if (await handleConversationRoute(ctx)) return;
   if (await handleGenerateRoute(ctx)) return;
   if (await handleAnonymizeRoute(ctx)) return;
+  if (await handleTranslateRoute(ctx)) return;
 
   json(ctx.res, 404, { error: "not found" });
 }

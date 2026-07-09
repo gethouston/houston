@@ -50,6 +50,7 @@ import type {
   RepoSkill,
   SkillDetail,
   SkillSummary,
+  SkillTranslateMode,
   Workspace,
 } from "./types";
 
@@ -573,6 +574,35 @@ export const tauriSkills = {
       undefined,
       { toast: false },
     ),
+  translate: (
+    agentPath: string,
+    name: string,
+    target: string,
+    mode: SkillTranslateMode,
+  ) => {
+    blockWriteWhileWarming(agentPath);
+    return call<SkillDetail>(
+      "translate_skill",
+      async () => {
+        const d = await getEngine().translateSkill(name, {
+          workspacePath: agentPath,
+          target,
+          mode,
+        });
+        return {
+          name: d.name,
+          title: d.title ?? null,
+          description: d.description,
+          version: d.version,
+          content: d.content,
+        };
+      },
+      undefined,
+      // The translate dialog surfaces failures inline with plain-English
+      // copy (provider not connected, service busy) — no red bug toast.
+      { toast: false },
+    );
+  },
   installCommunity: (
     agentPath: string,
     source: string,

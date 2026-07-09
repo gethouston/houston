@@ -13,5 +13,6 @@ export * from "./routines";
 export * from "./scan";
 export * from "./schedule";
 export * from "./skill-install";
+export * from "./skill-translate";
 export * from "./skills";
 export * from "./store";

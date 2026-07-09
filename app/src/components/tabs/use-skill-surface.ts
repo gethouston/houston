@@ -11,16 +11,19 @@ import {
   useSaveSkill,
   useSkillDetail,
   useSkills,
+  useTranslateSkill,
 } from "../../hooks/queries";
+import { normalizeLocale } from "../../lib/locale";
 import { isMissingSkillError } from "../../lib/missing-skill";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriSkills } from "../../lib/tauri";
+import type { SkillTranslateMode } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { resolveLoadingSkillName } from "./skill-loading-model";
 import { useSkillSurfaceLabels } from "./use-skill-surface-labels";
 
 export function useSkillSurface(agentPath: string) {
-  const { t } = useTranslation("skills");
+  const { t, i18n } = useTranslation("skills");
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
   const { skillDetailLabels } = useSkillSurfaceLabels();
@@ -31,9 +34,15 @@ export function useSkillSurface(agentPath: string) {
   // Render-time reset on agent switch — a useEffect would race the
   // auto-toast in `call()` because the stale-name fetch starts first.
   const [prevAgentPath, setPrevAgentPath] = useState(agentPath);
+  // The post-install translate offer (HOU-733): slugs the last install added,
+  // pending the user's choice. Only set when the app runs in a non-English
+  // locale — an English app installing an English skill has nothing to offer.
+  const [translateOffer, setTranslateOffer] = useState<string[]>([]);
+  const [translating, setTranslating] = useState(false);
   if (agentPath !== prevAgentPath) {
     setPrevAgentPath(agentPath);
     setSelectedSkillName(null);
+    setTranslateOffer([]);
   }
   const {
     data: skillDetail,
@@ -131,14 +140,95 @@ export function useSkillSurface(agentPath: string) {
     [agentPath],
   );
 
+  // The app locale a just-installed skill would translate INTO. English apps
+  // never see the offer: marketplace skills are overwhelmingly English, and
+  // detecting a foreign-language install reliably isn't worth a wrong prompt.
+  const translateTarget = normalizeLocale(i18n.language);
+  const translateLanguageName = useMemo(
+    () =>
+      translateTarget
+        ? (new Intl.DisplayNames([translateTarget], { type: "language" }).of(
+            translateTarget,
+          ) ?? translateTarget)
+        : "",
+    [translateTarget],
+  );
+  const offerTranslation = useCallback(
+    (slugs: string[]) => {
+      const clean = slugs.filter((s) => s.trim());
+      if (!translateTarget || translateTarget === "en" || !clean.length) return;
+      setTranslateOffer(clean);
+    },
+    [translateTarget],
+  );
+
+  const translateSkill = useTranslateSkill(agentPath);
+  const handleTranslateChoose = useCallback(
+    async (mode: SkillTranslateMode) => {
+      if (!translateTarget || translating) return;
+      setTranslating(true);
+      try {
+        const results = await Promise.allSettled(
+          translateOffer.map((slug) =>
+            translateSkill.mutateAsync({
+              name: slug,
+              target: translateTarget,
+              mode,
+            }),
+          ),
+        );
+        const failed = translateOffer.filter(
+          (_, i) => results[i]?.status === "rejected",
+        );
+        if (failed.length === 0) {
+          addToast({
+            title: t("translate.doneToast.title", {
+              count: translateOffer.length,
+            }),
+            description: t("translate.doneToast.description", {
+              count: translateOffer.length,
+            }),
+            variant: "info",
+          });
+          setTranslateOffer([]);
+          return;
+        }
+        // The host answers with a readable reason (provider not connected,
+        // translation service busy, …) — surface it, don't genericize. Keep
+        // only the FAILED slugs pending, so retrying never re-translates a
+        // skill that already succeeded.
+        const first = results.find(
+          (r): r is PromiseRejectedResult => r.status === "rejected",
+        );
+        addToast({
+          title: t("translate.errorToast.title"),
+          description:
+            first?.reason instanceof Error
+              ? first.reason.message
+              : String(first?.reason),
+          variant: "error",
+        });
+        setTranslateOffer(failed);
+      } finally {
+        setTranslating(false);
+      }
+    },
+    [translateOffer, translateTarget, translating, translateSkill, addToast, t],
+  );
+
+  const dismissTranslate = useCallback(() => setTranslateOffer([]), []);
+
   const handleInstallCommunity = useCallback(
-    async (skill: CommunitySkill, signal?: AbortSignal) =>
-      installCommunity.mutateAsync({
+    async (skill: CommunitySkill, signal?: AbortSignal) => {
+      const slug = await installCommunity.mutateAsync({
         source: skill.source,
         skillId: skill.skillId,
         signal,
-      }),
-    [installCommunity],
+      });
+      offerTranslation([slug]);
+      return slug;
+    },
+    [installCommunity, offerTranslation],
   );
 
   const handleListFromRepo = useCallback(
@@ -147,9 +237,12 @@ export function useSkillSurface(agentPath: string) {
   );
 
   const handleInstallFromRepo = useCallback(
-    async (source: string, skills: RepoSkill[]) =>
-      installFromRepo.mutateAsync({ source, skills }),
-    [installFromRepo],
+    async (source: string, skills: RepoSkill[]) => {
+      const slugs = await installFromRepo.mutateAsync({ source, skills });
+      offerTranslation(slugs);
+      return slugs;
+    },
+    [installFromRepo, offerTranslation],
   );
 
   const handleCreateFromScratch = useCallback(
@@ -177,5 +270,11 @@ export function useSkillSurface(agentPath: string) {
     handleInstallFromRepo,
     handleCreateFromScratch,
     installedSkillNames,
+    // Post-install translate offer (HOU-733).
+    translateOffer,
+    translating,
+    translateLanguageName,
+    handleTranslateChoose,
+    dismissTranslate,
   };
 }

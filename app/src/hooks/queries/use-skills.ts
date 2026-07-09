@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriSkills } from "../../lib/tauri";
-import type { RepoSkill } from "../../lib/types";
+import type { RepoSkill, SkillTranslateMode } from "../../lib/types";
 
 export function useSkills(agentPath: string | undefined) {
   return useQuery({
@@ -117,6 +117,32 @@ export function useInstallCommunitySkill(agentPath: string | undefined) {
     onSuccess: () => {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.skills(agentPath) });
+    },
+  });
+}
+
+export function useTranslateSkill(agentPath: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      name,
+      target,
+      mode,
+    }: {
+      name: string;
+      target: string;
+      mode: SkillTranslateMode;
+    }) => {
+      if (!agentPath) throw new Error("agentPath is required");
+      return tauriSkills.translate(agentPath, name, target, mode);
+    },
+    onSuccess: (_data, { name }) => {
+      if (agentPath) {
+        qc.invalidateQueries({ queryKey: queryKeys.skills(agentPath) });
+        qc.invalidateQueries({
+          queryKey: queryKeys.skillDetail(agentPath, name),
+        });
+      }
     },
   });
 }

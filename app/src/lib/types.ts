@@ -151,6 +151,9 @@ export interface SkillDetail {
   content: string;
 }
 
+/** How a post-install skill translation runs (HOU-733). */
+export type SkillTranslateMode = "machine" | "ai";
+
 /** Community skill search result */
 export interface CommunitySkillResult {
   id: string;

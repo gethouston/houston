@@ -71,4 +71,5 @@ export {
   useSaveSkill,
   useSkillDetail,
   useSkills,
+  useTranslateSkill,
 } from "./use-skills";

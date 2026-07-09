@@ -47,6 +47,7 @@ import type {
   SessionStartResponse,
   SidebarLayout,
   SkillDetail,
+  TranslateSkillRequest,
   TunnelCredentials,
   UpdateAgent,
   Workspace,
@@ -1107,6 +1108,22 @@ export class HoustonClient {
     );
     emitLocalEcho("SkillsChanged", { agentPath: req.workspacePath });
     return installed;
+  }
+  /** Translate an installed skill to the app locale (HOU-733). */
+  async translateSkill(
+    name: string,
+    req: TranslateSkillRequest,
+  ): Promise<SkillDetail> {
+    if (!this.cp)
+      throw new Error("Translating skills needs a cloud workspace.");
+    const detail = await controlPlane.translateSkill(
+      this.cp,
+      req.workspacePath,
+      name,
+      { target: req.target, mode: req.mode },
+    );
+    emitLocalEcho("SkillsChanged", { agentPath: req.workspacePath });
+    return detail;
   }
 
   // ---- providers (auth) ----

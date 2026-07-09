@@ -90,6 +90,7 @@ import type {
   StoreListing,
   SummarizeOptions,
   SummarizeResult,
+  TranslateSkillRequest,
   TunnelCredentials,
   TunnelStatus,
   UpdateAgent,
@@ -904,6 +905,13 @@ export class HoustonClient {
     signal?: AbortSignal,
   ): Promise<string[]> {
     return this.request("POST", "/skills/repo/install", req, undefined, signal);
+  }
+  /** Translate an installed skill to the app locale (HOU-733). */
+  translateSkill(
+    name: string,
+    req: TranslateSkillRequest,
+  ): Promise<SkillDetail> {
+    return this.request("POST", `/skills/${this.seg(name)}/translate`, req);
   }
 
   // ---------- preferences ----------

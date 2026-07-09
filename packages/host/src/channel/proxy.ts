@@ -183,6 +183,40 @@ export class ProxyChannel implements RuntimeChannel {
     return body.items;
   }
 
+  /**
+   * The post-install skill translation's AI mode: wake the standing runtime
+   * and run the SKILL.md surfaces through its `POST /skills/translate`
+   * one-shot (the runtime is where the provider credential lives). A non-2xx
+   * throws with the runtime's own reason so the host route can surface it —
+   * user-initiated work, beta no-silent-failure (HOU-733).
+   */
+  async translateTexts(
+    ctx: ChannelCtx,
+    items: { id: string; text: string }[],
+    targetLanguage: string,
+  ): Promise<{ id: string; text: string }[]> {
+    const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
+    const res = await fetch(`${endpoint.baseUrl}/skills/translate`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        Authorization: `Bearer ${endpoint.token}`,
+      },
+      body: JSON.stringify({ items, targetLanguage }),
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      items?: { id: string; text: string }[];
+      error?: string;
+    };
+    if (!res.ok) {
+      throw new Error(body.error ?? `runtime ${res.status}`);
+    }
+    if (!Array.isArray(body.items)) {
+      throw new Error("runtime translate: malformed response body");
+    }
+    return body.items;
+  }
+
   async cancelTurn(ctx: ChannelCtx, conversationId: string): Promise<boolean> {
     // An asleep/absent runtime cannot be running a turn (turns live inside the
     // runtime process; sleep kills it) — answer false without paying a cold

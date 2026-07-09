@@ -15,6 +15,7 @@ import type {
   RoutineRun,
   SkillDetail,
   SkillSummary,
+  SkillTranslateMode,
   TunnelCredentials,
   Workspace,
 } from "../../../../ui/engine-client/src/types";
@@ -753,6 +754,25 @@ export async function installCommunitySkill(
   );
   return (await res.json()) as string;
 }
+/**
+ * Translate an installed skill to the app locale (HOU-733). `mode: "machine"`
+ * is the quick host-side pass; `mode: "ai"` runs in the agent's runtime with
+ * the user's provider. Answers the refreshed SkillDetail.
+ */
+export async function translateSkill(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  slug: string,
+  body: { target: string; mode: SkillTranslateMode },
+): Promise<SkillDetail> {
+  const res = await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/skills/${encodeURIComponent(slug)}/translate`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+  return (await res.json()) as SkillDetail;
+}
+
 export async function installSkillsFromRepo(
   cfg: ControlPlaneConfig,
   agentId: string,

@@ -196,6 +196,19 @@ export interface RuntimeChannel {
     ctx: ChannelCtx,
     items: { id: string; text: string }[],
   ): Promise<{ id: string; text: string; summary: string }[]>;
+  /**
+   * AI-translate the given texts in the agent's runtime — the post-install
+   * skill translation's "better quality" mode runs the LLM where the provider
+   * credentials live (HOU-733). Optional: channels with no standing runtime
+   * omit it and the route answers 503 with the reason (the quick machine mode
+   * stays available). Throws with the runtime's real reason (no provider
+   * connected, unparseable model reply).
+   */
+  translateTexts?(
+    ctx: ChannelCtx,
+    items: { id: string; text: string }[],
+    targetLanguage: string,
+  ): Promise<{ id: string; text: string }[]>;
   /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
   teardown(ctx: ChannelCtx): Promise<void>;
   /**

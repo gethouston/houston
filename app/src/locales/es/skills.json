@@ -108,5 +108,29 @@
     "Setup": "Configuración",
     "Support": "Soporte",
     "Tracking": "Seguimiento"
+  },
+  "translate": {
+    "title": "¿Traducir al {{language}}?",
+    "description_one": "La habilidad que instalaste puede estar escrita en otro idioma. Houston puede traducirla al {{language}} por ti.",
+    "description_other": "Las habilidades que instalaste pueden estar escritas en otro idioma. Houston puede traducirlas al {{language}} por ti.",
+    "quick": {
+      "title": "Traducción rápida",
+      "description": "Gratis y rápida. La redacción puede quedar un poco tosca."
+    },
+    "ai": {
+      "title": "Traducción con IA",
+      "description": "Usa tu proveedor de IA para un resultado natural. Tarda un poco más."
+    },
+    "keep": "Mantener original",
+    "inProgress": "Traduciendo…",
+    "doneToast": {
+      "title_one": "Habilidad traducida",
+      "title_other": "Habilidades traducidas",
+      "description_one": "La habilidad ya está en tu idioma.",
+      "description_other": "{{count}} habilidades ya están en tu idioma."
+    },
+    "errorToast": {
+      "title": "No se pudo traducir la habilidad"
+    }
   }
 }

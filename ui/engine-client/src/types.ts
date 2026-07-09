@@ -678,6 +678,16 @@ export interface InstallCommunityRequest {
   skillId: string;
 }
 
+/** How a post-install skill translation runs (HOU-733). */
+export type SkillTranslateMode = "machine" | "ai";
+
+export interface TranslateSkillRequest {
+  workspacePath: string;
+  /** BCP-47 base tag of the app locale (en/es/pt). */
+  target: string;
+  mode: SkillTranslateMode;
+}
+
 export interface CommunitySkill {
   id: string;
   skillId: string;

@@ -1,4 +1,5 @@
 import { SkillDetailPage } from "@houston-ai/skills";
+import { SkillTranslateDialog } from "../skill-translate-dialog";
 import { SkillsContent } from "../skills-content";
 import { useSkillSurface } from "../use-skill-surface";
 import type { AgentAdminScreenProps } from "./agent-admin-nav.ts";
@@ -37,6 +38,14 @@ export function AgentAdminSkills({ agent }: AgentAdminScreenProps) {
         onInstallFromRepo={surface.handleInstallFromRepo}
         onCreateFromScratch={surface.handleCreateFromScratch}
         installedSkillNames={surface.installedSkillNames}
+      />
+      <SkillTranslateDialog
+        open={surface.translateOffer.length > 0}
+        count={surface.translateOffer.length}
+        languageName={surface.translateLanguageName}
+        busy={surface.translating}
+        onChoose={surface.handleTranslateChoose}
+        onDismiss={surface.dismissTranslate}
       />
     </div>
   );

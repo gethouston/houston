@@ -50,11 +50,19 @@ export function composeInstalledSkillMd(input: {
   if (source.summary?.image) fm.image = source.summary.image;
   if (source.summary?.tags.length) fm.tags = source.summary.tags;
 
-  return `---\n${stringifyYaml(fm).trimEnd()}\n---\n\n${source.body}\n`;
+  return renderSkillMd(fm, source.body);
+}
+
+/** The one SKILL.md serialization both install and translate emit. */
+export function renderSkillMd(
+  fm: Record<string, unknown>,
+  body: string,
+): string {
+  return `---\n${stringifyYaml(fm).trimEnd()}\n---\n\n${body}\n`;
 }
 
 /** Truncate to `max` characters without splitting a surrogate pair. */
-function clampLen(s: string, max: number): string {
+export function clampLen(s: string, max: number): string {
   if (s.length <= max) return s;
   const chars = [...s];
   let out = "";

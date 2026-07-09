@@ -28,6 +28,7 @@ import { handlePortablePreview } from "./portable-preview";
 import { handleRoutineRuns } from "./routine-runs";
 import { handleSkills } from "./skills";
 import { handleSkillsRemote } from "./skills-remote";
+import { handleSkillTranslate } from "./skills-translate";
 
 // The deps bag + authz helpers moved to agent-authz.ts (shared with
 // routine-runs.ts); re-exported so existing importers keep working.
@@ -542,6 +543,24 @@ export async function handleAgents(
       return true;
     if (
       await handleAgentFile(deps.vfs, paths, ctx, method, rest, req, res, emit)
+    )
+      return true;
+    // The channel carries the AI mode into the agent's runtime; absent, the
+    // route answers 503 and the quick machine mode still works.
+    if (
+      await handleSkillTranslate(
+        {
+          vfs: deps.vfs,
+          paths,
+          channel: channelFor(deps, authz.workspace) ?? undefined,
+        },
+        ctx,
+        method,
+        rest,
+        req,
+        res,
+        emit,
+      )
     )
       return true;
     if (await handleSkills(deps.vfs, paths, ctx, method, rest, req, res, emit))

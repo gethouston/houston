@@ -108,5 +108,29 @@
     "Setup": "Setup",
     "Support": "Support",
     "Tracking": "Tracking"
+  },
+  "translate": {
+    "title": "Translate to {{language}}?",
+    "description_one": "The skill you installed may be written in another language. Houston can translate it to {{language}} for you.",
+    "description_other": "The skills you installed may be written in another language. Houston can translate them to {{language}} for you.",
+    "quick": {
+      "title": "Quick translation",
+      "description": "Free and fast. The wording may come out a little rough."
+    },
+    "ai": {
+      "title": "AI translation",
+      "description": "Uses your AI provider for a natural result. Takes a bit longer."
+    },
+    "keep": "Keep original",
+    "inProgress": "Translating…",
+    "doneToast": {
+      "title_one": "Skill translated",
+      "title_other": "Skills translated",
+      "description_one": "The skill is now in your language.",
+      "description_other": "{{count}} skills are now in your language."
+    },
+    "errorToast": {
+      "title": "Couldn't translate the skill"
+    }
   }
 }
