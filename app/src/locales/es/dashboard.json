@@ -11,7 +11,8 @@
   "peopleFilter": {
     "label": "Filtrar por persona",
     "everyone": "Todos",
-    "mine": "Mis misiones"
+    "mine": "Mis misiones",
+    "inviteTeaser": "Invita a tu equipo para ver quién trabaja en qué"
   },
   "search": {
     "placeholder": "Buscar misiones",

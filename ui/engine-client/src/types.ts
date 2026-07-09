@@ -197,6 +197,16 @@ export interface BillingSummary {
 }
 
 /**
+ * A Stripe-hosted URL to redirect the owner to (C8 §Billing wire surface).
+ * Returned by `POST /v1/org/billing/checkout` (contextual card capture) and
+ * `POST /v1/org/billing/portal` (card, invoices, interval switch, cancel). The
+ * client opens it via the OS external-open path — never inline.
+ */
+export interface BillingCheckout {
+  url: string;
+}
+
+/**
  * One space (org) the caller belongs to (C8 §Wire surface — spaces), from
  * `GET /v1/orgs` and `POST /v1/orgs`. `kind` is derived server-side from
  * `personal_of` — `personal` is the free-forever personal space, `team` is a

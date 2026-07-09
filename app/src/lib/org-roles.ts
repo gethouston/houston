@@ -65,6 +65,38 @@ export function canManageMembers(
 }
 
 /**
+ * Can this caller SEE the team's billing detail (C8 §Billing wire surface)?
+ * Owner/admin only — the gateway 403s a plain member's `GET /v1/org/billing`.
+ * Members NEVER see billing data; they render the `OrgSummary.degraded` banner
+ * and "ask your owner" copy instead. The admin/owner asymmetry lives elsewhere:
+ * an admin sees the summary (this gate) but cannot checkout (owner-only write) —
+ * the client shows admins the same "ask the owner to upgrade" copy, just better
+ * informed. Single-player has no billing, so `null` role is denied here (unlike
+ * `canCreateAgents`, which grants the sole user everything). A cosmetic gate:
+ * the gateway is the sole enforcer.
+ */
+export function canSeeBilling(caps: Capabilities | null | undefined): boolean {
+  const role = orgRole(caps);
+  return role === "owner" || role === "admin";
+}
+
+/**
+ * Whether the C8 Billing surface (the org dashboard tab AND the `useBilling`
+ * query) belongs at all: only on a Spaces-capable host (`caps.spaces`), only
+ * when the ACTIVE space is a team (personal spaces are free forever and never
+ * bill), and only for owner/admin (`canSeeBilling`; members never see billing
+ * data — C8 §Client UX). One source of truth for both the tab-visibility gate
+ * and the query-fire gate so they can never drift. The gateway is the sole
+ * enforcer; this only hides an unusable affordance.
+ */
+export function canSeeBillingTab(
+  caps: Capabilities | null | undefined,
+  activeSpaceIsTeam: boolean,
+): boolean {
+  return hasSpaces(caps) && activeSpaceIsTeam && canSeeBilling(caps);
+}
+
+/**
  * Is this caller an "agent-manager" for a specific agent — the per-agent editor
  * role (Google Drive: managers are editors of the shared folder)? This is the
  * single per-agent authority gate behind renaming/deleting, sharing, and

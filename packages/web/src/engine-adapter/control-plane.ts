@@ -1056,6 +1056,7 @@ export type {
   AgentMoveStatus,
   AgentSettings,
   AuditEntry,
+  BillingCheckout,
   BillingSummary,
   IntegrationConnection,
   IntegrationProviderStatus,
@@ -1081,6 +1082,8 @@ import type {
   AgentMoveStatus,
   AgentSettings,
   AuditEntry,
+  BillingCheckout,
+  BillingSummary,
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
@@ -1298,6 +1301,62 @@ export async function getMoveStatus(
     `/v1/agents/${encodeURIComponent(agentSlugOrId)}/move/${encodeURIComponent(moveId)}`,
   );
   return (await res.json()) as AgentMoveStatus;
+}
+
+// ── billing (C8) ─────────────────────────────────────────────────────────────
+// Seat billing for the active team space. `getBilling` is a re-on-entry read
+// (no push on expiry — status is derived); checkout/portal are owner-only writes
+// returning a Stripe-hosted URL. Gated on `caps.spaces`; the gateway enforces.
+
+/**
+ * The active team's billing summary. Degrades to `null` for the NOT-ENTITLED
+ * cases — a gateway that predates billing (404) and a caller it refuses billing
+ * detail (403 `personal_space` or plain member) — so the billing UI renders
+ * nothing and the degrade surfaces take over. Every other error throws (mirrors
+ * `getAgentModelChoice`'s 404 swallow).
+ */
+export async function getBilling(
+  cfg: ControlPlaneConfig,
+): Promise<BillingSummary | null> {
+  try {
+    const res = await cpFetch(cfg, "/v1/org/billing");
+    return (await res.json()) as BillingSummary;
+  } catch (err) {
+    if (
+      err instanceof HoustonEngineError &&
+      (err.status === 404 || err.status === 403)
+    ) {
+      return null;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Start a Stripe Checkout session for the active team (owner only; admin gets
+ * 403 `not_owner`). Returns the hosted `{url}`. Never degrades — a failure throws
+ * so the UI surfaces the real reason.
+ */
+export async function createCheckout(
+  cfg: ControlPlaneConfig,
+  interval: "monthly" | "annual",
+): Promise<BillingCheckout> {
+  const res = await cpFetch(cfg, "/v1/org/billing/checkout", {
+    method: "POST",
+    body: JSON.stringify({ interval }),
+  });
+  return (await res.json()) as BillingCheckout;
+}
+
+/**
+ * Open the Stripe customer portal for the active team (owner only) — card,
+ * invoices, interval switch, cancel. Returns the hosted `{url}`. Never degrades.
+ */
+export async function createPortal(
+  cfg: ControlPlaneConfig,
+): Promise<BillingCheckout> {
+  const res = await cpFetch(cfg, "/v1/org/billing/portal", { method: "POST" });
+  return (await res.json()) as BillingCheckout;
 }
 
 export async function setAgentAssignments(

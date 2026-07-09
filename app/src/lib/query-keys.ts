@@ -79,6 +79,10 @@ export const queryKeys = {
   /** C8 spaces: the caller's spaces + pending invites (`GET /v1/orgs`).
    *  App-scoped — the switcher/team-picker needs the full list in one call. */
   orgs: () => ["orgs"] as const,
+  /** C8 billing: the active team's billing summary (`GET /v1/org/billing`).
+   *  App-scoped — reads the active space; dropped whole on a space switch by
+   *  `resetCacheForSpaceChange`, so it never carries the prior team's billing. */
+  billing: () => ["billing"] as const,
   /** C8 spaces: one agent-move's progress, keyed by agent + moveId so two
    *  moves (or a retry with a fresh id) never share a poll. */
   agentMove: (agentId: string, moveId: string) =>

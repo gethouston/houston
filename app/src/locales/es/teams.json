@@ -73,7 +73,8 @@
       "people": "Personas",
       "agents": "Agentes",
       "activity": "Actividad",
-      "usage": "Uso"
+      "usage": "Uso",
+      "billing": "Facturación"
     },
     "loading": "Cargando tu organización...",
     "unavailable": "No pudimos cargar tu organización."
@@ -289,5 +290,37 @@
     "done": {
       "heading": "Compartido con {{team}}"
     }
+  },
+  "billing": {
+    "unavailable": "No pudimos cargar la facturación de este equipo.",
+    "status": {
+      "free": "Gratis",
+      "trialing": "Prueba gratis",
+      "trialingDays_one": "Prueba gratis, queda {{count}} día",
+      "trialingDays_other": "Prueba gratis, quedan {{count}} días",
+      "active": "Activa",
+      "past_due": "Pago pendiente",
+      "expired": "Prueba terminada"
+    },
+    "seats_one": "{{count}} asiento",
+    "seats_other": "{{count}} asientos",
+    "interval": {
+      "monthly": "Facturación mensual",
+      "annual": "Facturación anual"
+    },
+    "pickPlan": "Elige un plan para sumar a todo tu equipo.",
+    "checkoutMonthly": "Mejorar, mensual",
+    "checkoutAnnual": "Mejorar, anual",
+    "manage": "Gestionar facturación",
+    "askOwner": "Solo el propietario puede cambiar la facturación. Pídele que mejore tu equipo.",
+    "trialPill_one": "Queda {{count}} día de prueba",
+    "trialPill_other": "Quedan {{count}} días de prueba"
+  },
+  "degrade": {
+    "owner": "La prueba de tu equipo terminó. Mejora el plan para que todos sigan trabajando.",
+    "member": "La prueba de tu equipo terminó. Pídele al propietario que mejore el plan.",
+    "upgrade": "Mejorar",
+    "writeBlockedTitle": "Necesitas mejorar el plan",
+    "writeBlockedBody": "La prueba de tu equipo terminó. Pídele al propietario que mejore el plan para hacer cambios."
   }
 }

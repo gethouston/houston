@@ -1,24 +1,24 @@
+import type { KanbanItem } from "@houston-ai/board";
 import {
-  initialsFor,
-  type KanbanItem,
-  type KanbanPerson,
-} from "@houston-ai/board";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@houston-ai/core";
-import { ChevronDown, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useSession } from "../hooks/use-session";
 import { distinctBoardPeople } from "../lib/mission-people";
-import { isMultiplayer } from "../lib/org-roles";
+import { personFilterMode } from "../lib/mission-person-filter-model";
+import { hasSpaces, isMultiplayer } from "../lib/org-roles";
+import { isTeamWorkspace } from "../lib/space-id";
+import { useWorkspaceStore } from "../stores/workspaces";
+import {
+  type FilterFace,
+  FilterTrigger,
+  PersonFace,
+} from "./mission-person-face";
+import { MissionPersonTeaser } from "./mission-person-teaser";
 
 interface MissionPersonFilterProps {
   /** The board items the person roster is drawn from (post agent-filter). */
@@ -30,33 +30,16 @@ interface MissionPersonFilterProps {
   collapsed: boolean;
 }
 
-/** A compact avatar face used in the trigger and menu rows. */
-function PersonFace({
-  person,
-}: {
-  person: Pick<KanbanPerson, "label" | "imageUrl">;
-}) {
-  return (
-    <Avatar className="size-5">
-      {person.imageUrl && (
-        <AvatarImage
-          src={person.imageUrl}
-          alt=""
-          referrerPolicy="no-referrer"
-        />
-      )}
-      <AvatarFallback className="text-[9px] font-medium">
-        {initialsFor(person.label)}
-      </AvatarFallback>
-    </Avatar>
-  );
-}
-
 /**
- * Filter-by-person dropdown for Mission Control (hosted Teams only). Renders
- * nothing outside multiplayer or when signed out. Offers Everyone, the signed-in
- * user's own missions, then every other human on the visible board, each with
- * an avatar face. The gateway stamps attribution; this only narrows the view.
+ * Filter-by-person control for Mission Control. Three states, decided purely in
+ * {@link personFilterMode}:
+ * - a real filter (Everyone / My missions / every other human on the board) in
+ *   a hosted team space, or on a legacy multiplayer host;
+ * - a growth TEASER in a personal space on a spaces host (see
+ *   {@link MissionPersonTeaser});
+ * - nothing at all off-spaces / single-player / signed out.
+ *
+ * The gateway stamps attribution; this only narrows the view.
  */
 export function MissionPersonFilter({
   items,
@@ -67,9 +50,16 @@ export function MissionPersonFilter({
   const { t } = useTranslation("dashboard");
   const { capabilities } = useCapabilities();
   const { data: session } = useSession();
+  const currentWorkspace = useWorkspaceStore((s) => s.current);
   const user = session?.user;
 
-  if (!isMultiplayer(capabilities) || !user) return null;
+  const mode = personFilterMode({
+    hasSession: !!user,
+    spaces: hasSpaces(capabilities),
+    multiplayer: isMultiplayer(capabilities),
+    teamSpace: isTeamWorkspace(currentWorkspace?.id ?? ""),
+  });
+  if (mode === "hidden" || !user) return null;
 
   const meta = (user.user_metadata ?? {}) as {
     name?: string;
@@ -78,13 +68,20 @@ export function MissionPersonFilter({
   };
   const selfName =
     meta.full_name ?? meta.name ?? user.email ?? user.id.slice(0, 8);
-  const selfFace: Pick<KanbanPerson, "label" | "imageUrl"> = {
-    label: selfName,
-    imageUrl: meta.avatar_url,
-  };
-  const roster = distinctBoardPeople(items).filter((p) => p.id !== user.id);
+  const selfFace: FilterFace = { label: selfName, imageUrl: meta.avatar_url };
 
-  let activeFace: Pick<KanbanPerson, "label" | "imageUrl"> | null = null;
+  if (mode === "teaser") {
+    return (
+      <MissionPersonTeaser
+        selfFace={selfFace}
+        collapsed={collapsed}
+        onEveryone={() => onFilterUserIdChange(null)}
+      />
+    );
+  }
+
+  const roster = distinctBoardPeople(items).filter((p) => p.id !== user.id);
+  let activeFace: FilterFace | null = null;
   let activeText = t("peopleFilter.everyone");
   if (filterUserId === user.id) {
     activeFace = selfFace;
@@ -98,34 +95,12 @@ export function MissionPersonFilter({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {collapsed ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full"
-            aria-label={t("peopleFilter.label")}
-          >
-            {activeFace ? (
-              <PersonFace person={activeFace} />
-            ) : (
-              <Users className="size-4" />
-            )}
-          </Button>
-        ) : (
-          <Button
-            variant="ghost"
-            className="rounded-full gap-1.5"
-            aria-label={t("peopleFilter.label")}
-          >
-            {activeFace ? (
-              <PersonFace person={activeFace} />
-            ) : (
-              <Users className="size-4" />
-            )}
-            {activeText}
-            <ChevronDown className="size-3.5 text-muted-foreground" />
-          </Button>
-        )}
+        <FilterTrigger
+          face={activeFace}
+          text={activeText}
+          label={t("peopleFilter.label")}
+          collapsed={collapsed}
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => onFilterUserIdChange(null)}>

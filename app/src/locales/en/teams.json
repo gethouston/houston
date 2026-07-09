@@ -73,7 +73,8 @@
       "people": "People",
       "agents": "Agents",
       "activity": "Activity",
-      "usage": "Usage"
+      "usage": "Usage",
+      "billing": "Billing"
     },
     "loading": "Loading your organization...",
     "unavailable": "We couldn't load your organization."
@@ -289,5 +290,37 @@
     "done": {
       "heading": "Shared with {{team}}"
     }
+  },
+  "billing": {
+    "unavailable": "We couldn't load billing for this team.",
+    "status": {
+      "free": "Free",
+      "trialing": "Free trial",
+      "trialingDays_one": "Free trial, {{count}} day left",
+      "trialingDays_other": "Free trial, {{count}} days left",
+      "active": "Active",
+      "past_due": "Payment past due",
+      "expired": "Trial ended"
+    },
+    "seats_one": "{{count}} seat",
+    "seats_other": "{{count}} seats",
+    "interval": {
+      "monthly": "Billed monthly",
+      "annual": "Billed yearly"
+    },
+    "pickPlan": "Choose a plan to add your whole team.",
+    "checkoutMonthly": "Upgrade, monthly",
+    "checkoutAnnual": "Upgrade, yearly",
+    "manage": "Manage billing",
+    "askOwner": "Only the owner can change billing. Ask them to upgrade your team.",
+    "trialPill_one": "{{count}} day left in trial",
+    "trialPill_other": "{{count}} days left in trial"
+  },
+  "degrade": {
+    "owner": "Your team's trial ended. Upgrade to keep everyone working.",
+    "member": "Your team's trial ended. Ask your team's owner to upgrade.",
+    "upgrade": "Upgrade",
+    "writeBlockedTitle": "Upgrade needed",
+    "writeBlockedBody": "Your team's trial ended. Ask your team's owner to upgrade to make changes."
   }
 }

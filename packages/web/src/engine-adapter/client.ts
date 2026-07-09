@@ -1978,6 +1978,25 @@ export class HoustonClient {
     return controlPlane.getMoveStatus(this.cp, agentSlugOrId, moveId);
   }
 
+  // ---- billing (C8) — hosted gateway only ----
+  // Off-cloud (`this.cp === null`) there is no team/billing concept: the read
+  // degrades to null (the billing UI renders nothing), while checkout/portal
+  // throw — a write must reach the gateway.
+  async getBilling(): Promise<controlPlane.BillingSummary | null> {
+    if (!this.cp) return null;
+    return controlPlane.getBilling(this.cp);
+  }
+  async createCheckout(
+    interval: "monthly" | "annual",
+  ): Promise<controlPlane.BillingCheckout> {
+    if (!this.cp) throw new Error("Billing needs the hosted gateway.");
+    return controlPlane.createCheckout(this.cp, interval);
+  }
+  async createPortal(): Promise<controlPlane.BillingCheckout> {
+    if (!this.cp) throw new Error("Billing needs the hosted gateway.");
+    return controlPlane.createPortal(this.cp);
+  }
+
   // ---- per-agent assignments + integration grants (multiplayer) ----
   async setAgentAssignments(
     agentSlugOrId: string,

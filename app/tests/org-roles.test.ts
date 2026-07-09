@@ -8,6 +8,8 @@ import {
   canManageAgentGrants,
   canManageAssignments,
   canManageMembers,
+  canSeeBilling,
+  canSeeBillingTab,
   canSeeMembers,
   GRANTABLE_ROLES,
   isAgentManager,
@@ -88,6 +90,45 @@ describe("canSeeMembers / canManageMembers", () => {
     strictEqual(canManageMembers(multiplayer("admin")), false);
     strictEqual(canManageMembers(multiplayer("user")), false);
     strictEqual(canManageMembers(caps()), false);
+  });
+});
+
+describe("canSeeBilling (C8)", () => {
+  it("owner and admin see billing; member and single-player do not", () => {
+    // Admin sees the summary (read) though the owner-only checkout write 403s —
+    // the admin/owner asymmetry is intended (C8 §Error codes).
+    strictEqual(canSeeBilling(multiplayer("owner")), true);
+    strictEqual(canSeeBilling(multiplayer("admin")), true);
+    // Members NEVER see billing data (C8 §Client UX) — they read the degrade
+    // banner from OrgSummary.degraded instead.
+    strictEqual(canSeeBilling(multiplayer("user")), false);
+    // Single-player has no billing surface at all.
+    strictEqual(canSeeBilling(caps()), false);
+    strictEqual(canSeeBilling(null), false);
+  });
+});
+
+describe("canSeeBillingTab (C8)", () => {
+  const withSpaces = (role: OrgRole): Capabilities =>
+    caps({ multiplayer: true, role, spaces: true });
+
+  it("shows Billing to owner/admin on a team space of a Spaces host", () => {
+    strictEqual(canSeeBillingTab(withSpaces("owner"), true), true);
+    strictEqual(canSeeBillingTab(withSpaces("admin"), true), true);
+  });
+
+  it("hides it in a personal (non-team) space", () => {
+    strictEqual(canSeeBillingTab(withSpaces("owner"), false), false);
+  });
+
+  it("hides it from plain members", () => {
+    strictEqual(canSeeBillingTab(withSpaces("user"), true), false);
+  });
+
+  it("hides it off a Spaces host and in single-player", () => {
+    strictEqual(canSeeBillingTab(multiplayer("owner"), true), false); // no spaces flag
+    strictEqual(canSeeBillingTab(caps(), true), false);
+    strictEqual(canSeeBillingTab(null, true), false);
   });
 });
 

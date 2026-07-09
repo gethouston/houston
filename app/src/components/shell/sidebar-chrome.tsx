@@ -110,7 +110,7 @@ export function SidebarWorkspaceHeader(props: {
   const spacesEnabled = hasSpaces(capabilities);
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
   return (
-    <>
+    <div data-tour-target="spaceSwitcher">
       <WorkspaceSwitcher
         workspaces={props.workspaces}
         currentId={props.currentId}
@@ -134,6 +134,6 @@ export function SidebarWorkspaceHeader(props: {
           onOpenChange={setCreateTeamOpen}
         />
       ) : null}
-    </>
+    </div>
   );
 }

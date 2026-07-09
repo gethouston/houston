@@ -67,6 +67,10 @@
     "skip": "Skip tour",
     "done": "Got it",
     "steps": {
+      "spaces": {
+        "title": "Spaces",
+        "body": "Your personal agents, and teams you share with others. Switch spaces anytime from here."
+      },
       "assistant": {
         "title": "Your agents",
         "body": "Every agent in this workspace lives here. Switch between them with one click."

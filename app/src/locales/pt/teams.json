@@ -73,7 +73,8 @@
       "people": "Pessoas",
       "agents": "Agentes",
       "activity": "Atividade",
-      "usage": "Uso"
+      "usage": "Uso",
+      "billing": "Cobrança"
     },
     "loading": "Carregando sua organização...",
     "unavailable": "Não foi possível carregar sua organização."
@@ -289,5 +290,37 @@
     "done": {
       "heading": "Compartilhado com {{team}}"
     }
+  },
+  "billing": {
+    "unavailable": "Não foi possível carregar a cobrança desta equipe.",
+    "status": {
+      "free": "Gratuito",
+      "trialing": "Teste grátis",
+      "trialingDays_one": "Teste grátis, resta {{count}} dia",
+      "trialingDays_other": "Teste grátis, restam {{count}} dias",
+      "active": "Ativa",
+      "past_due": "Pagamento pendente",
+      "expired": "Teste encerrado"
+    },
+    "seats_one": "{{count}} assento",
+    "seats_other": "{{count}} assentos",
+    "interval": {
+      "monthly": "Cobrança mensal",
+      "annual": "Cobrança anual"
+    },
+    "pickPlan": "Escolha um plano para incluir toda a sua equipe.",
+    "checkoutMonthly": "Fazer upgrade, mensal",
+    "checkoutAnnual": "Fazer upgrade, anual",
+    "manage": "Gerenciar cobrança",
+    "askOwner": "Somente o proprietário pode alterar a cobrança. Peça a ele para fazer o upgrade da equipe.",
+    "trialPill_one": "Resta {{count}} dia de teste",
+    "trialPill_other": "Restam {{count}} dias de teste"
+  },
+  "degrade": {
+    "owner": "O teste da sua equipe terminou. Faça o upgrade para todos continuarem trabalhando.",
+    "member": "O teste da sua equipe terminou. Peça ao proprietário para fazer o upgrade.",
+    "upgrade": "Fazer upgrade",
+    "writeBlockedTitle": "Upgrade necessário",
+    "writeBlockedBody": "O teste da sua equipe terminou. Peça ao proprietário para fazer o upgrade para fazer alterações."
   }
 }

@@ -39,10 +39,12 @@ import {
   isLoopbackHostUrl,
   providerLoginUsesDeviceAuthByDefault,
 } from "./engine-mode";
+import i18n from "./i18n";
 import { logger } from "./logger";
 import { isMissingSkillError } from "./missing-skill";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { normalizeLegacyModel } from "./providers";
+import { isNeedsUpgradeError } from "./team-status-model";
 import type {
   Agent,
   CommunitySkillResult,
@@ -125,6 +127,21 @@ async function surfaceError(
       : undefined;
   if (typeof kind === "string" && options?.silenceKinds?.includes(kind)) return;
   if (options?.silence?.(err)) return;
+
+  // Expected business state, not a bug: a write into a team whose trial expired
+  // (C8 `needs_upgrade`). Surface the real reason as a plain info toast — never
+  // the red "report a bug" pair — so a member/admin learns to ask their owner
+  // instead of filing a bug. Logged above; no Sentry. The share flow silences
+  // its own `needs_upgrade` inline before reaching here, so this covers every
+  // OTHER write (member-add, agent config, etc.).
+  if (isNeedsUpgradeError(err)) {
+    const { showExpectedStateToast } = await import("./error-toast");
+    showExpectedStateToast(
+      i18n.t("teams:degrade.writeBlockedTitle"),
+      i18n.t("teams:degrade.writeBlockedBody"),
+    );
+    return;
+  }
 
   // Aborted requests are expected; `toast: false` callers render their own
   // failure UI but the error is still captured. See `engineCallSurface`.
@@ -1573,4 +1590,13 @@ export const tauriOrg = {
     call("agent_move_status", () =>
       getEngine().getMoveStatus(agentSlugOrId, moveId),
     ),
+  /** C8 billing: the active team's billing summary (owner/admin, team space).
+   *  Degrades to null off-entitlement so the billing UI renders nothing. */
+  getBilling: () => call("get_billing", () => getEngine().getBilling()),
+  /** C8 billing: start a Stripe Checkout session (owner only); returns `{url}`
+   *  to open externally. A failure surfaces via `call` (red bug toast + report). */
+  createCheckout: (interval: "monthly" | "annual") =>
+    call("create_checkout", () => getEngine().createCheckout(interval)),
+  /** C8 billing: open the Stripe customer portal (owner only); returns `{url}`. */
+  createPortal: () => call("create_portal", () => getEngine().createPortal()),
 };

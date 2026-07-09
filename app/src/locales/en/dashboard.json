@@ -11,7 +11,8 @@
   "peopleFilter": {
     "label": "Filter by person",
     "everyone": "Everyone",
-    "mine": "My missions"
+    "mine": "My missions",
+    "inviteTeaser": "Invite your team to see who's working on what"
   },
   "search": {
     "placeholder": "Search missions",

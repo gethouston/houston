@@ -67,6 +67,10 @@
     "skip": "Pular tour",
     "done": "Entendi",
     "steps": {
+      "spaces": {
+        "title": "Espaços",
+        "body": "Seus agentes pessoais, e os times que você compartilha com outros. Troque de espaço quando quiser por aqui."
+      },
       "assistant": {
         "title": "Seus agentes",
         "body": "Todos os agentes deste espaço ficam aqui. Troque entre eles com um clique."

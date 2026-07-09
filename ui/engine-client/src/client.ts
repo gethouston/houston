@@ -25,6 +25,8 @@ import type {
   AttachmentManifest,
   AttachmentUploadResult,
   AuditEntry,
+  BillingCheckout,
+  BillingSummary,
   Capabilities,
   ChatHistoryEntry,
   ClaudeStatus,
@@ -1247,6 +1249,59 @@ export class HoustonClient {
       "GET",
       `/agents/${this.seg(agentSlugOrId)}/move/${this.seg(moveId)}`,
     );
+  }
+
+  // ---------- billing (C8) — hosted gateway only ----------
+  //
+  // Seat billing for the active team space. `getBilling` is a read the client
+  // re-runs on every team-space entry (there is no push on expiry — status is a
+  // DERIVED read); checkout/portal are owner-only writes that hand back a
+  // Stripe-hosted URL.
+
+  /**
+   * The active team's billing summary (C8 §Billing wire surface). Owner/admin on
+   * a team space only. Degrades to `null` for the NOT-ENTITLED cases — a gateway
+   * that predates billing (404) and a caller the gateway refuses billing detail
+   * (403 `personal_space` on a personal space, or a plain member) — so the
+   * billing UI renders nothing and the member/degrade surfaces take over. Mirrors
+   * how `getAgentModelChoice` swallows a 404; every other error throws.
+   *
+   * `status` is the DERIVED effective status (never a stored column): `free`
+   * (personal, enterprise-unbilled, or a solo team), `trialing` (2+ members, no
+   * subscription, still inside the 14-day clock), `active` (subscribed or
+   * enterprise), `past_due` (payment failed, still inside the 7-day grace),
+   * `expired` (trial or grace elapsed — writes by non-owners then 403
+   * `needs_upgrade`, surfaced to members as `OrgSummary.degraded`).
+   */
+  async getBilling(): Promise<BillingSummary | null> {
+    try {
+      return await this.request<BillingSummary>("GET", "/org/billing");
+    } catch (err) {
+      if (
+        isHoustonEngineError(err) &&
+        (err.status === 404 || err.status === 403)
+      ) {
+        return null;
+      }
+      throw err;
+    }
+  }
+  /**
+   * Start a Stripe Checkout session for the active team (owner only; the gateway
+   * 403s `not_owner` for an admin). Returns the hosted `{url}` to open. Never
+   * degrades — a failure must reach the UI, so it throws the real
+   * `HoustonEngineError`.
+   */
+  createCheckout(interval: "monthly" | "annual"): Promise<BillingCheckout> {
+    return this.request("POST", "/org/billing/checkout", { interval });
+  }
+  /**
+   * Open the Stripe customer portal for the active team (owner only) — card,
+   * invoices, interval switch, cancel. Returns the hosted `{url}`. Never degrades;
+   * a failure throws so the UI surfaces the real reason.
+   */
+  createPortal(): Promise<BillingCheckout> {
+    return this.request("POST", "/org/billing/portal", {});
   }
 
   // ---------- per-agent assignments + integration grants (multiplayer) ----------
