@@ -174,6 +174,13 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
     [deleteRoutine],
   );
 
+  const handleRename = useCallback(
+    async (routineId: string, name: string) => {
+      await updateRoutine.mutateAsync({ routineId, updates: { name } });
+    },
+    [updateRoutine],
+  );
+
   const handleRunNow = useCallback(
     (routineId: string) => {
       // Tracks user-initiated runs only ("Run now" button). Scheduled cron
@@ -311,6 +318,8 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
         onSelect={openEditor}
         onCreate={handleCreate}
         onToggle={handleToggle}
+        onRename={handleRename}
+        onDelete={handleDelete}
         labels={labels.grid}
         rowLabels={labels.rowLabels}
         scheduleSummaryLabels={labels.schedule.summary}

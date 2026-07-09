@@ -1,21 +1,25 @@
 /**
  * RoutineRow — a single full-width row in the routines list.
  *
- * Visual: hairline-divided rows, generous height, status as a left-edge dot
- * + colored accent. Switch on the right. The whole row is clickable; the
- * switch stops propagation so toggling doesn't open the editor.
+ * Visual: hairline-divided rows, generous height, state as a leading icon
+ * (clock waiting, pulsing bolt running — see RoutineRowStatus). Switch + a
+ * three-dot quick-actions menu (rename / delete) on the right. The whole row is
+ * clickable; the trailing controls stop propagation so using them doesn't open
+ * the editor.
  */
 import { cn, Switch } from "@houston-ai/core";
+import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_NEXT_FIRE_LABELS,
   DEFAULT_ROW_LABELS,
   DEFAULT_SCHEDULE_SUMMARY_LABELS,
-  interp,
   type NextFireLabels,
   type RoutineRowLabels,
   type ScheduleSummaryLabels,
 } from "./labels";
-import { describeNextFire, nextFire } from "./next-fire";
+import { RoutineRowMenu } from "./routine-row-menu";
+import { RoutineRowMeta } from "./routine-row-meta";
+import { RoutineRowStatus } from "./routine-row-status";
 import { cronSummary } from "./schedule-summary";
 import type { Routine, RoutineRun } from "./types";
 import { useNow } from "./use-now";
@@ -27,6 +31,10 @@ export interface RoutineRowProps {
   accountTimezone: string;
   onClick?: () => void;
   onToggle?: (enabled: boolean) => void;
+  /** Rename the routine (three-dot menu → inline title edit). */
+  onRename?: (name: string) => void;
+  /** Delete the routine — the row confirms first. */
+  onDelete?: () => void;
   /** Localized row labels. English defaults so standalone callers still work. */
   labels?: RoutineRowLabels;
   /** Schedule-summary + next-run labels, threaded to the cron/time formatters. */
@@ -36,50 +44,32 @@ export interface RoutineRowProps {
   locale?: string;
 }
 
-const STATUS_DOT: Record<string, string> = {
-  silent: "bg-gray-400",
-  surfaced: "bg-foreground",
-  running: "bg-blue-500",
-  error: "bg-red-500",
-  cancelled: "bg-gray-400",
-};
-
-function lastRunLabel(
-  lastRun: RoutineRun | undefined,
-  now: Date,
-  labels: RoutineRowLabels,
-): string | null {
-  if (!lastRun) return null;
-  const date = new Date(lastRun.started_at);
-  const diff = now.getTime() - date.getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return labels.justRan;
-  if (mins < 60) return interp(labels.ranMinutes, { n: mins });
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return interp(labels.ranHours, { n: hours });
-  const days = Math.floor(hours / 24);
-  return interp(labels.ranDays, { n: days });
-}
-
 export function RoutineRow({
   routine,
   lastRun,
   accountTimezone,
   onClick,
   onToggle,
+  onRename,
+  onDelete,
   labels = DEFAULT_ROW_LABELS,
   scheduleSummaryLabels = DEFAULT_SCHEDULE_SUMMARY_LABELS,
   nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
   locale = "en-US",
 }: RoutineRowProps) {
   const now = useNow(60_000);
-  const next = routine.enabled
-    ? nextFire(routine.schedule, accountTimezone, now)
-    : null;
-  const nextDescr = next
-    ? describeNextFire(next, accountTimezone, now, nextFireLabels, locale)
-    : null;
-  const lastLabel = lastRunLabel(lastRun, now, labels);
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(routine.name);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  const commitRename = () => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== routine.name) onRename?.(trimmed);
+    setEditing(false);
+  };
   const isPaused = lastRun?.status === "running" && !!lastRun.paused_until;
 
   // The row hosts a nested interactive control (the Switch, which Radix renders
@@ -106,77 +96,86 @@ export function RoutineRow({
         !routine.enabled && "opacity-55",
       )}
     >
-      {/* Status dot — small but always present. Amber when the in-flight run
-          is sleeping on a usage-limit window so the row reads as "waiting"
-          rather than "thrashing". */}
-      <div
-        className={cn(
-          "size-2 rounded-full shrink-0",
-          !routine.enabled
-            ? "bg-gray-300"
-            : isPaused
-              ? "bg-amber-500"
-              : (STATUS_DOT[lastRun?.status ?? "silent"] ?? "bg-gray-300"),
-          lastRun?.status === "running" && !isPaused && "animate-pulse",
-        )}
-        aria-hidden
+      {/* Leading state icon — clock while waiting, pulsing bolt mid-run,
+          amber pause while a run sleeps on a usage-limit window. */}
+      <RoutineRowStatus
+        routine={routine}
+        lastRun={lastRun}
+        isPaused={isPaused}
       />
 
       {/* Title + meta column */}
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-foreground truncate leading-tight">
-          {routine.name || labels.untitled}
-        </p>
+        {editing ? (
+          <input
+            ref={inputRef}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "Enter") commitRename();
+              if (e.key === "Escape") setEditing(false);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={labels.rename}
+            className="text-sm font-medium text-foreground bg-transparent border-b border-foreground/20 outline-none w-full leading-tight"
+          />
+        ) : (
+          <p className="text-sm font-medium text-foreground truncate leading-tight">
+            {routine.name || labels.untitled}
+          </p>
+        )}
         <p className="text-xs text-muted-foreground truncate mt-0.5">
           {cronSummary(routine.schedule, scheduleSummaryLabels, locale)}
         </p>
       </div>
 
       {/* Right meta column: next run + last run */}
-      <div className="hidden sm:flex flex-col items-end shrink-0 min-w-[140px]">
-        {nextDescr ? (
-          <>
-            <p className="text-xs text-foreground tabular-nums">
-              {interp(labels.next, { relative: nextDescr.relative })}
-            </p>
-            <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
-              {nextDescr.absolute}
-            </p>
-          </>
-        ) : routine.enabled ? (
-          <p className="text-xs text-muted-foreground">{labels.noNextRun}</p>
-        ) : (
-          <p className="text-xs text-muted-foreground">{labels.paused}</p>
-        )}
-        {isPaused ? (
-          <p className="text-[11px] text-amber-700 mt-0.5 tabular-nums">
-            {interp(labels.waiting, { time: lastRun?.paused_until ?? "" })}
-          </p>
-        ) : (
-          lastLabel && (
-            <p className="text-[11px] text-muted-foreground/70 mt-0.5 tabular-nums">
-              {lastLabel}
-            </p>
-          )
-        )}
-      </div>
+      <RoutineRowMeta
+        routine={routine}
+        lastRun={lastRun}
+        accountTimezone={accountTimezone}
+        now={now}
+        isPaused={isPaused}
+        labels={labels}
+        nextFireLabels={nextFireLabels}
+        locale={locale}
+      />
 
-      {/* Switch — stop click and keys from bubbling to the outer row so
-          toggling (mouse or keyboard) never opens the editor. */}
-      {onToggle && (
+      {/* Trailing controls — stop clicks and keys from bubbling to the outer
+          row so toggling or opening the menu never opens the editor. */}
+      {(onToggle || onRename || onDelete) && (
         <div
           role="none"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
-          className="shrink-0"
+          className="shrink-0 flex items-center gap-1"
         >
-          <Switch
-            checked={routine.enabled}
-            onCheckedChange={(checked) => onToggle(checked)}
-            aria-label={
-              routine.enabled ? labels.pauseRoutine : labels.resumeRoutine
-            }
-          />
+          {onToggle && (
+            <Switch
+              checked={routine.enabled}
+              onCheckedChange={(checked) => onToggle(checked)}
+              aria-label={
+                routine.enabled ? labels.pauseRoutine : labels.resumeRoutine
+              }
+            />
+          )}
+          {(onRename || onDelete) && (
+            <RoutineRowMenu
+              name={routine.name || labels.untitled}
+              onRename={
+                onRename
+                  ? () => {
+                      setEditValue(routine.name);
+                      setEditing(true);
+                    }
+                  : undefined
+              }
+              onDelete={onDelete}
+              labels={labels}
+            />
+          )}
         </div>
       )}
     </div>
