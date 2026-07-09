@@ -192,42 +192,51 @@ const TRANSIENT_RETRY_DELAYS_MS = [500, 1500];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Wrap a fetch so GET/HEAD attempts ride through a rolling deploy / pod
+ * handoff: transient gateway statuses and network-level drops (connection
+ * refused/reset mid-roll) get two brief blind retries. Writes never
+ * blind-retry — a thrown network error on a POST may have reached the
+ * gateway; the caller decides.
+ */
+export function transientRetryFetch(inner: typeof fetch): typeof fetch {
+  return async (input, init) => {
+    const method = (init?.method ?? "GET").toUpperCase();
+    const retriable = method === "GET" || method === "HEAD";
+    let res: Response | undefined;
+    let failure: unknown;
+    for (let i = 0; ; i++) {
+      failure = undefined;
+      res = undefined;
+      try {
+        res = await inner(input, init);
+      } catch (err) {
+        failure = err;
+      }
+      const transient = res === undefined || TRANSIENT_STATUSES.has(res.status);
+      if (!transient || !retriable || i >= TRANSIENT_RETRY_DELAYS_MS.length) {
+        break;
+      }
+      await sleep(TRANSIENT_RETRY_DELAYS_MS[i]);
+    }
+    if (res === undefined) throw failure;
+    return res;
+  };
+}
+
 async function cpFetch(
   cfg: ControlPlaneConfig,
   path: string,
   init?: RequestInit,
 ): Promise<Response> {
-  const doFetch = gatewayAuthFetch(cfg.token);
-  const attempt = () =>
-    doFetch(`${cfg.baseUrl}${path}`, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...init?.headers,
-      },
-    });
-
-  // Reads retry through the deploy window; writes never blind-retry (a thrown
-  // network error on a POST may have reached the gateway — the caller decides).
-  const method = (init?.method ?? "GET").toUpperCase();
-  const retriable = method === "GET" || method === "HEAD";
-  let res: Response | undefined;
-  let failure: unknown;
-  for (let i = 0; ; i++) {
-    failure = undefined;
-    try {
-      res = await attempt();
-    } catch (err) {
-      failure = err; // network-level: connection refused/reset mid-roll
-    }
-    const transient = res === undefined || TRANSIENT_STATUSES.has(res.status);
-    if (!transient || !retriable || i >= TRANSIENT_RETRY_DELAYS_MS.length) {
-      break;
-    }
-    await sleep(TRANSIENT_RETRY_DELAYS_MS[i]);
-    res = undefined;
-  }
-  if (failure !== undefined || res === undefined) throw failure;
+  const doFetch = transientRetryFetch(gatewayAuthFetch(cfg.token));
+  const res = await doFetch(`${cfg.baseUrl}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
+  });
   if (!res.ok) {
     // Surface the real failure (auth, not-found, server) — never swallow.
     const body = await res.json().catch(() => ({}));
@@ -441,9 +450,12 @@ export function runtimeClientFor(
   // Auth rides gatewayAuthFetch, never a pinned token: these clients back
   // long-lived turn streams, whose reconnects must present the CURRENT bearer
   // (and refresh it on 401) or a gateway roll kills the turn (HOU-687).
+  // Reads additionally bridge transient gateway 5xx (rolling deploy, pod
+  // handoff) like every cpFetch read does — without it a history load hit
+  // mid-roll threw once and the chat rendered empty until reselected (HOU-731).
   return new HoustonEngineClient({
     baseUrl: `${cfg.baseUrl}/agents/${encodeURIComponent(agentId)}`,
-    fetch: gatewayAuthFetch(cfg.token),
+    fetch: transientRetryFetch(gatewayAuthFetch(cfg.token)),
   });
 }
 

@@ -108,21 +108,6 @@ export function seedConversationVm(
 }
 
 /**
- * Empty a conversation's VM — the cache-seeded-then-404 cleanup (HOU-712): the
- * server says the conversation is gone, so a transcript painted from the local
- * cache must not linger. Guarded like a seed: a live turn or observer owns its
- * VM (its feed IS the conversation — e.g. a first send racing the history read
- * that 404s because no turn has persisted yet), so never wipe under it.
- */
-export function clearConversationVm(
-  agentPath: string,
-  sessionKey: string,
-): void {
-  if (registry.get(streamKey(agentPath, sessionKey))) return;
-  conversationVm.seedHistory(agentPath, sessionKey, []);
-}
-
-/**
  * Show a user's message in the conversation VM BEFORE any turn exists — the
  * warming-engine send queue (HOU-693): the message is held client-side until
  * the just-created agent's engine answers, but the user must see it as sent

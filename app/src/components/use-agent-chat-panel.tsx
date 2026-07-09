@@ -43,6 +43,7 @@ import { useTranslation } from "react-i18next";
 import {
   useActivity,
   useAgentModelChoice,
+  useChatHistory,
   useSetAgentModelChoice,
   useSkills,
 } from "../hooks/queries";
@@ -394,6 +395,13 @@ export function useAgentChatPanel({
   // This conversation's reactive feed — the SDK conversation VM, the app's one
   // turn-state source (history seeded by the adapter on load; live turns
   // folded by the SDK machinery).
+  // Live resync (HOU-731): the chat-history subscription makes a
+  // ConversationsChanged event re-read the open conversation and reseed the
+  // VM, so turns from a teammate / another device / a routine repaint live.
+  useChatHistory(
+    selectedSessionKey && path ? path : undefined,
+    selectedSessionKey ?? undefined,
+  );
   const sessionFeedItems = useConversationFeed(path, selectedSessionKey);
 
   // The live turn state for this conversation, for the pending-interaction

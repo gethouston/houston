@@ -62,6 +62,7 @@ import { bus, emitEvent, emitLocalEcho } from "./bus";
 import type { ControlPlaneConfig } from "./control-plane";
 import * as controlPlane from "./control-plane";
 import {
+  type CachedFrame,
   conversationCacheScope,
   deleteCachedConversation,
   readCachedConversation,
@@ -87,7 +88,6 @@ import {
 } from "./synthetic";
 import { historyToFeed, isConversationNotFound } from "./translate";
 import {
-  clearConversationVm,
   observeConversation,
   seedConversationVm,
   streamTurn,
@@ -621,6 +621,10 @@ export class HoustonClient {
   async deleteActivity(agentPath: string, id: string): Promise<void> {
     if (this.cp) await controlPlane.deleteActivity(this.cp, agentPath, id);
     else activities.deleteActivity(agentPath, id);
+    // The user deleted the chat — THIS is when its locally cached transcript
+    // goes too (a server 404 alone no longer drops it, HOU-731). Missions
+    // key their conversation `activity-<id>` (see setActivityStatus).
+    if (this.cp) void deleteCachedConversation(agentPath, `activity-${id}`);
     emitLocalEcho("ActivityChanged", { agentPath });
   }
 
@@ -1650,12 +1654,11 @@ export class HoustonClient {
     // let the network read below revalidate whenever it lands. The seed
     // guards in seedConversationVm keep a live or richer VM untouched, so a
     // stale cache can never clobber fresh state.
-    let cacheSeeded = false;
-    if (this.cp && opts.observe !== false) {
-      const cached = await readCachedConversation(agentPath, sessionKey);
-      if (cached && cached.length > 0) {
-        seedConversationVm(agentPath, sessionKey, cached);
-        cacheSeeded = true;
+    let cachedFrames: CachedFrame[] | null = null;
+    if (this.cp) {
+      cachedFrames = await readCachedConversation(agentPath, sessionKey);
+      if (cachedFrames && cachedFrames.length > 0 && opts.observe !== false) {
+        seedConversationVm(agentPath, sessionKey, cachedFrames);
       }
     }
     try {
@@ -1708,11 +1711,16 @@ export class HoustonClient {
       // app's `call()` wrapper toasts it with the Report-bug affordance —
       // returning [] would render a fake empty chat and swallow the error.
       if (isConversationNotFound(err)) {
-        // The server says the conversation is gone: drop the local copy and
-        // clear a cache-seeded VM so no ghost transcript lingers (guarded —
-        // a live turn racing this read keeps its feed).
-        if (this.cp) void deleteCachedConversation(agentPath, sessionKey);
-        if (cacheSeeded) clearConversationVm(agentPath, sessionKey);
+        // A 404 with a locally cached transcript is NOT proof the chat never
+        // existed: an engine pod can answer 404 while its data is lost or not
+        // yet restored (volume recreation, seed self-heal window). The local
+        // copy is the user's only surviving transcript then — serve it and
+        // KEEP it (HOU-731). A truly deleted conversation drops out of the
+        // conversation list, so nothing reopens its cached ghost; the size
+        // cap prunes the orphaned entry eventually.
+        if (cachedFrames && cachedFrames.length > 0) {
+          return cachedFrames as ChatHistoryEntry[];
+        }
         return [];
       }
       throw err;
