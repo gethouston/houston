@@ -90,9 +90,12 @@ It stands up a [kind](https://kind.sigs.k8s.io/) cluster with the private gatewa
 
 ```bash
 pnpm dev:cloud --check     # preflight only — checks tooling/env, prints the plan
+pnpm dev:cloud:app         # same stack, but launch the DESKTOP app (tauri dev) instead of the web tab
 pnpm dev:cloud:retain      # flip agent PVs to Retain (run before an agent move)
 pnpm dev:cloud:down        # tear the cluster down and stop the web server
 ```
+
+`dev:cloud:app` points the Tauri shell at the local gateway (`VITE_HOSTED_ENGINE_URL`), which flips it to hosted Google-login mode — the true desktop experience. The web frontend is the same `app/src` codebase in a browser tab, so for multiplayer testing run the desktop app as user A and an incognito web tab (`pnpm dev:cloud`) as user B.
 
 Billing is off unless `GW_STRIPE_*` test keys are set (teams run as free multiplayer orgs); see `cloud/docs/deploy-C8.md` §Stage 2. The gateway loop itself lives in `cloud/k8s/kind/README.md`.
 

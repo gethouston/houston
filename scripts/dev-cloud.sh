@@ -29,12 +29,14 @@ step() { printf '\n\033[1m▸ %s\033[0m\n' "$1"; }
 die()  { printf '\n\033[31m✗ %s\033[0m\n' "$1" >&2; exit 1; }
 
 MODE="up"
+FRONTEND="web"
 case "${1:-}" in
   --check)  MODE="check" ;;
   --down)   MODE="down" ;;
   --retain) MODE="retain" ;;
+  --app)    FRONTEND="app" ;;
   "")       MODE="up" ;;
-  *) die "unknown flag '$1' (use --check | --down | --retain)" ;;
+  *) die "unknown flag '$1' (use --check | --down | --retain | --app)" ;;
 esac
 
 # Config resolution: shell env wins, else the repo-convention .env.local.
@@ -186,6 +188,22 @@ step "Enabling agent moves (PV Retain patch)"
 retain_pvs
 wait_for_gateway
 walkthrough
+
+if [ "$FRONTEND" = "app" ]; then
+  step "Starting the DESKTOP app against the local gateway (Supabase sign-in) — Ctrl-C to stop"
+  # Hosted-oauth desktop mode: the presence of VITE_HOSTED_ENGINE_URL flips the
+  # Tauri shell to Supabase Google login against the gateway (engine-mode.ts —
+  # hosted URL implies oauth); VITE_NEW_ENGINE_URL/TOKEN are cleared so the
+  # static-token dev path can't shadow it. One desktop instance = one signed-in
+  # user; run user B in an incognito tab of the web frontend (same UI codebase).
+  exec env \
+    VITE_HOSTED_ENGINE_URL="$GW_URL" \
+    VITE_NEW_ENGINE_URL= \
+    VITE_NEW_ENGINE_TOKEN= \
+    SUPABASE_URL="$SUPABASE_URL" \
+    SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+    pnpm --dir "$HOUSTON_ROOT/app" tauri dev
+fi
 
 step "Starting the web app (Supabase sign-in) — Ctrl-C to stop"
 # Supabase-JWT hosted web mode: VITE_CONTROL_PLANE_URL mounts CloudApp (real
