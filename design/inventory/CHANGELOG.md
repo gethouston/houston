@@ -3,6 +3,26 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v11 - 2026-07-09
+
+`routine-row` grows a state icon and quick actions. The 8px status dot becomes
+a leading `status-icon` that names the state by shape, not color alone: a clock
+while the routine waits for its schedule (and while disabled, dimmed with the
+row), a pulsing filled bolt while a run is in flight, an amber pause badge
+while the in-flight run sleeps on a usage-limit window, a red alert when the
+last run errored. On the trailing edge, next to the enabled toggle, a new
+always-visible `quick-actions-menu` (three-dot trigger, same overflow idiom as
+the routine editor header) offers Rename and Delete: Rename swaps the title
+into an inline input (Enter/blur commits, Escape cancels — the board card's
+rename pattern), Delete confirms in a dialog before calling back (the board
+card's delete pattern). New states `paused` and `renaming`; anatomy `run-status`
+is renamed `status-icon` and `quick-actions-menu` added. This is a labels
+CONTRACT change: `RoutineRowLabels` gains `moreActions`, `rename`, `delete`,
+`deleteTitle` (`{name}` token), `deleteDescription`, `deleteConfirm`,
+`deleteCancel`; `RoutinesGrid` gains optional `onRename(routineId, name)` /
+`onDelete(routineId)` and `RoutineRow` optional `onRename(name)` / `onDelete`
+— all optional, so existing callers render unchanged minus the dot.
+
 ## v10 - 2026-07-08
 
 Revamp `plan-ready-card`'s three options into the composer mode-menu idiom.

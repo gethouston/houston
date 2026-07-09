@@ -181,6 +181,16 @@ export interface RoutineRowLabels {
   ranDays: string;
   pauseRoutine: string;
   resumeRoutine: string;
+  /** aria-label for the row's three-dot quick-actions menu trigger. */
+  moreActions: string;
+  /** "Rename" menu item; also names the inline title input. */
+  rename: string;
+  delete: string;
+  /** Delete confirm title; `{name}` is the routine's display name. */
+  deleteTitle: string;
+  deleteDescription: string;
+  deleteConfirm: string;
+  deleteCancel: string;
 }
 
 // English default values, co-located in a sibling file to keep this one small.

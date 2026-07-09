@@ -1,6 +1,10 @@
 import type { Routine } from "@houston-ai/engine-client";
-import type { RoutineFormData } from "@houston-ai/routines";
+import type {
+  RoutineEditorSection,
+  RoutineFormData,
+} from "@houston-ai/routines";
 import { useEffect, useRef } from "react";
+import { changedEditorSections } from "./routine-flash-sections";
 import {
   formMatchesRoutine,
   routineToFormData,
@@ -19,6 +23,11 @@ interface Args {
   openEditor: (routineId: string) => void;
   setForm: (form: RoutineFormData) => void;
   setBaseline: (form: RoutineFormData) => void;
+  /**
+   * Fired when an EXTERNAL edit (the setup chat's agent) refreshed the open
+   * form, with the editor sections it touched — drives the section flash.
+   */
+  onExternalChange?: (sections: RoutineEditorSection[]) => void;
 }
 
 /**
@@ -46,6 +55,7 @@ export function useRoutineEditorSync({
   openEditor,
   setForm,
   setBaseline,
+  onExternalChange,
 }: Args) {
   const draftIdRef = useRef<string | null>(null);
   const trackedAgentRef = useRef(agentId);
@@ -72,7 +82,10 @@ export function useRoutineEditorSync({
     if (!formMatchesRoutine(form, baseline)) return; // user has local edits
     setForm(next);
     setBaseline(next);
-  }, [routines, view, form, baseline, setForm, setBaseline]);
+    // Attribute the refresh: light up the sections the agent's edit touched.
+    const sections = changedEditorSections(baseline, next);
+    if (sections.length > 0) onExternalChange?.(sections);
+  }, [routines, view, form, baseline, setForm, setBaseline, onExternalChange]);
 
   return draftIdRef;
 }

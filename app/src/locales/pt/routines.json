@@ -59,7 +59,14 @@
     "ranHours": "há {n}h",
     "ranDays": "há {n}d",
     "pauseRoutine": "Pausar rotina",
-    "resumeRoutine": "Retomar rotina"
+    "resumeRoutine": "Retomar rotina",
+    "moreActions": "Opções da rotina",
+    "rename": "Renomear",
+    "delete": "Excluir",
+    "deleteTitle": "Excluir \"{name}\"?",
+    "deleteDescription": "A rotina deixará de ser executada e seu histórico será removido para sempre.",
+    "deleteConfirm": "Excluir",
+    "deleteCancel": "Cancelar"
   },
   "schedule": {
     "presets": {

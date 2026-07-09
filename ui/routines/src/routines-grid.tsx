@@ -45,6 +45,10 @@ export interface RoutinesGridProps {
   onSelect: (routineId: string) => void;
   onCreate?: () => void;
   onToggle?: (routineId: string, enabled: boolean) => void;
+  /** Rename a routine from its row's quick-actions menu (inline edit). */
+  onRename?: (routineId: string, name: string) => void;
+  /** Delete a routine from its row's quick-actions menu (row confirms first). */
+  onDelete?: (routineId: string) => void;
   /**
    * Localized labels. English defaults so existing callers still work.
    * Consumers pass `t()` results for localization — `ui/` stays i18n-agnostic
@@ -68,6 +72,8 @@ export function RoutinesGrid({
   onSelect,
   onCreate,
   onToggle,
+  onRename,
+  onDelete,
   labels = DEFAULT_GRID_LABELS,
   rowLabels = DEFAULT_ROW_LABELS,
   scheduleSummaryLabels = DEFAULT_SCHEDULE_SUMMARY_LABELS,
@@ -158,6 +164,10 @@ export function RoutinesGrid({
                   ? (enabled) => onToggle(routine.id, enabled)
                   : undefined
               }
+              onRename={
+                onRename ? (name) => onRename(routine.id, name) : undefined
+              }
+              onDelete={onDelete ? () => onDelete(routine.id) : undefined}
               labels={rowLabels}
               scheduleSummaryLabels={scheduleSummaryLabels}
               nextFireLabels={nextFireLabels}

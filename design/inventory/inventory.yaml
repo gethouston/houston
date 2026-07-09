@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 10
+version: 11
 
 components:
   - id: agent-avatar
@@ -325,13 +325,27 @@ components:
   - id: routine-row
     title: Routine row
     purpose: A scheduled routine in the routines list -- schedule summary + next run.
-    anatomy: [name, schedule-summary, next-fire, enabled-toggle, run-status]
-    states: [enabled, disabled, running, last-run-failed]
+    anatomy:
+      [
+        status-icon,
+        name,
+        schedule-summary,
+        next-fire,
+        enabled-toggle,
+        quick-actions-menu,
+      ]
+    states: [enabled, disabled, running, paused, last-run-failed, renaming]
     variants: [list-row, grid-card]
     behavior: >-
       Shows a humanized schedule summary and the next fire time; the toggle
-      enables/disables the routine. Authoring the schedule is a separate surface.
-    a11y: listitem role; toggle labeled with the routine name; next-run as text.
+      enables/disables the routine. The leading status icon reflects the live
+      run state (waiting / running / usage-limit paused / last-run-failed).
+      The quick-actions menu renames inline and deletes behind a confirm
+      dialog. Authoring the schedule is a separate surface.
+    a11y: >-
+      listitem role; toggle labeled with the routine name; next-run as text;
+      status never color-alone (icon shape + row text carry it); menu trigger
+      always visible with an accessible label.
     since: 1
 
   - id: skill-row

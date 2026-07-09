@@ -157,4 +157,12 @@ export const DEFAULT_ROW_LABELS: RoutineRowLabels = {
   ranDays: "ran {n}d ago",
   pauseRoutine: "Pause routine",
   resumeRoutine: "Resume routine",
+  moreActions: "Routine options",
+  rename: "Rename",
+  delete: "Delete",
+  deleteTitle: 'Delete "{name}"?',
+  deleteDescription:
+    "The routine stops running and its run history is permanently removed.",
+  deleteConfirm: "Delete",
+  deleteCancel: "Cancel",
 };
