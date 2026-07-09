@@ -43,6 +43,7 @@ import { RunHistory } from "./run-history";
 import { ScheduleBuilder } from "./schedule-builder";
 import type { Routine, RoutineChatMode, RoutineRun } from "./types";
 import { useNow } from "./use-now";
+import { type SectionFlash, useSectionFlash } from "./use-section-flash";
 
 export interface RoutineFormData {
   name: string;
@@ -111,6 +112,12 @@ export interface RoutineEditorProps {
   runHistoryLabels?: RunHistoryLabels;
   /** BCP-47 locale for day names + time formatting in schedules. */
   locale?: string;
+  /**
+   * Flash the sections an EXTERNAL edit just changed (the setup chat's agent
+   * modifying the open routine) and scroll the first one into view when it's
+   * off-screen. Pass a fresh `nonce` per change; see useSectionFlash.
+   */
+  flash?: SectionFlash | null;
 }
 
 // ----- Building blocks -----
@@ -123,12 +130,24 @@ export interface RoutineEditorProps {
 function SectionCard({
   title,
   children,
+  flashing,
+  innerRef,
 }: {
   title: string;
   children: React.ReactNode;
+  /** Play the agent-edit flash animation (see useSectionFlash). */
+  flashing?: boolean;
+  /** Registers the card element so the flash can scroll it into view. */
+  innerRef?: (el: HTMLElement | null) => void;
 }) {
   return (
-    <section className="rounded-xl bg-secondary px-5 py-5">
+    <section
+      ref={innerRef}
+      className={cn(
+        "rounded-xl bg-secondary px-5 py-5",
+        flashing && "routine-section-flash",
+      )}
+    >
       <h3 className="text-sm font-medium text-foreground mb-4">{title}</h3>
       <div className="space-y-4">{children}</div>
     </section>
@@ -166,7 +185,9 @@ export function RoutineEditor({
   nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
   runHistoryLabels = DEFAULT_RUN_HISTORY_LABELS,
   locale = "en-US",
+  flash,
 }: RoutineEditorProps) {
+  const { refFor, isFlashing } = useSectionFlash(flash);
   const runningRun = runs.find((r) => r.status === "running");
   const isEdit = !!routine;
   const canSubmit =
@@ -283,7 +304,13 @@ export function RoutineEditor({
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-6 pt-3 pb-12 space-y-3">
           {/* Hero composer — gray card holding three labeled white-well fields */}
-          <section className="rounded-xl bg-secondary p-5 space-y-4">
+          <section
+            ref={refFor("details")}
+            className={cn(
+              "rounded-xl bg-secondary p-5 space-y-4",
+              isFlashing("details") && "routine-section-flash",
+            )}
+          >
             <div>
               <FieldLabel>{labels.nameLabel}</FieldLabel>
               <input
@@ -320,7 +347,11 @@ export function RoutineEditor({
             </div>
           </section>
 
-          <SectionCard title={labels.sectionWhen}>
+          <SectionCard
+            title={labels.sectionWhen}
+            innerRef={refFor("schedule")}
+            flashing={isFlashing("schedule")}
+          >
             <ScheduleBuilder
               value={value.schedule}
               onChange={(schedule) => onChange({ schedule })}
@@ -362,7 +393,11 @@ export function RoutineEditor({
             </div>
           </SectionCard>
 
-          <SectionCard title={labels.sectionBehavior}>
+          <SectionCard
+            title={labels.sectionBehavior}
+            innerRef={refFor("behavior")}
+            flashing={isFlashing("behavior")}
+          >
             {modelPicker && (
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">

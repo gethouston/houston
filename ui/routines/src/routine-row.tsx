@@ -62,7 +62,12 @@ export function RoutineRow({
   const [editValue, setEditValue] = useState(routine.name);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (editing) inputRef.current?.focus();
+    // Focus AND select: the boxed, highlighted current name reads as "type
+    // to replace" the instant the rename opens.
+    if (editing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
   }, [editing]);
 
   const commitRename = () => {
@@ -119,7 +124,14 @@ export function RoutineRow({
             }}
             onClick={(e) => e.stopPropagation()}
             aria-label={labels.rename}
-            className="text-sm font-medium text-foreground bg-transparent border-b border-foreground/20 outline-none w-full leading-tight"
+            className={cn(
+              // A full input box (white well + ring), not a bare underline —
+              // the rename must read as editable the moment it opens. Negative
+              // margins absorb the padding so the row's height doesn't jump.
+              "w-full max-w-sm px-2 py-1 -mx-2 -my-1 text-sm font-medium leading-tight",
+              "text-foreground bg-background rounded-md",
+              "border border-ring/50 ring-2 ring-ring/20 outline-none",
+            )}
           />
         ) : (
           <p className="text-sm font-medium text-foreground truncate leading-tight">

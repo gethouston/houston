@@ -1,6 +1,10 @@
-import type { RoutineFormData } from "@houston-ai/routines";
+import type {
+  RoutineEditorSection,
+  RoutineFormData,
+  SectionFlash,
+} from "@houston-ai/routines";
 import { RoutineEditor, RoutinesGrid } from "@houston-ai/routines";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useCancelRoutineRun,
@@ -54,6 +58,18 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
   const [baseline, setBaseline] = useState<RoutineFormData>(
     () => freshRoutinesState().baseline,
   );
+  // "The agent just changed this" flash on the editor. Nonce'd so back-to-back
+  // edits of the same section re-flash; cleared on any view/agent switch so a
+  // stale flash never replays when another routine opens.
+  const [flash, setFlash] = useState<SectionFlash | null>(null);
+  const flashNonceRef = useRef(0);
+  const handleExternalChange = useCallback(
+    (sections: RoutineEditorSection[]) => {
+      flashNonceRef.current += 1;
+      setFlash({ sections, nonce: flashNonceRef.current });
+    },
+    [],
+  );
 
   // `view`/`form`/`baseline` describe a routine belonging to ONE agent, but
   // this RoutinesTab instance is reused across agents — it's keyed by tab, not
@@ -70,6 +86,7 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
     setView(fresh.view);
     setForm(fresh.form);
     setBaseline(fresh.baseline);
+    setFlash(null);
   }
 
   // Most recent run per routine, for the grid's "last run" badges.
@@ -93,6 +110,7 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
       const next = routineToFormData(r);
       setForm(next);
       setBaseline(next);
+      setFlash(null);
       setView({ type: "editor", editId: routineId });
       // The chat always rides along (HOU-725): resume the routine's own
       // persisted chat, or start (and link) one on its first open.
@@ -107,6 +125,7 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
   const handleCreate = useCallback(() => {
     setForm(EMPTY_FORM);
     setBaseline(EMPTY_FORM);
+    setFlash(null);
     setView({ type: "editor" });
     void chatSetup.startDraft();
   }, [chatSetup]);
@@ -121,6 +140,7 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
     openEditor,
     setForm,
     setBaseline,
+    onExternalChange: handleExternalChange,
   });
 
   // While a routine is open on the active Routines tab, its chat stays open
@@ -281,6 +301,7 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
           onDelete={editing ? () => handleDelete(editing.id) : undefined}
           accountTimezone={tz.timezone}
           hasChanges={!formMatchesRoutine(form, baseline)}
+          flash={flash}
           modelPicker={
             <RoutineModelControls
               agent={agent}

@@ -44,3 +44,7 @@ export type {
   SchedulePreset,
 } from "./types";
 export { SCHEDULE_PRESET_LABELS } from "./types";
+export type {
+  RoutineEditorSection,
+  SectionFlash,
+} from "./use-section-flash";
