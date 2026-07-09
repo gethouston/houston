@@ -22,6 +22,27 @@
 #   docker build -t houston/self-host -f selfhost/Dockerfile .
 #   # or just `docker compose up -d --build` from selfhost/ (wires the proxy + volumes).
 
+FROM node:22-bookworm-slim AS bundle-builder
+ENV PNPM_HOME=/pnpm \
+    PATH=/pnpm:$PATH
+RUN corepack enable
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY selfhost/bundle.mjs /app/selfhost/bundle.mjs
+COPY ui/agent-schemas/ /app/ui/agent-schemas/
+COPY packages/protocol/ /app/packages/protocol/
+COPY packages/runtime-client/ /app/packages/runtime-client/
+COPY packages/domain/ /app/packages/domain/
+COPY packages/runtime/ /app/packages/runtime/
+COPY packages/host/ /app/packages/host/
+RUN pnpm install --frozen-lockfile \
+      --filter houston-ai \
+      --filter @houston/runtime... \
+      --filter @houston/host...
+RUN node selfhost/bundle.mjs
+
 # The bookworm-slim variant ships bash + coreutils, which the agent's bash/file
 # tools rely on. Swap node:22 for a digest for a fully reproducible build.
 FROM node:22-bookworm-slim AS host-base
@@ -50,13 +71,20 @@ COPY packages/host/ /app/packages/host/
 # provider, and self-host / managed-pod users connect their OWN Anthropic
 # subscription. That pulls the SDK's per-platform native `claude` binary
 # (@anthropic-ai/claude-agent-sdk-linux-<arch>, ~250 MB, glibc — bookworm is
-# glibc, so the glibc variant is the right one). It resolves via require.resolve
-# under `node --import tsx` (NOT Bun), so no pathToClaudeCodeExecutable override
-# is needed here. The CLOUD-only per-turn image (packages/runtime/Dockerfile)
-# strips this binary because Anthropic stays off there (ToS).
+# glibc, so the glibc variant is the right one). The esbuild bundle keeps the
+# SDK external, so its require.resolve of the native binary still reaches
+# /app/node_modules; no pathToClaudeCodeExecutable override is needed here. The
+# CLOUD-only per-turn image (packages/runtime/Dockerfile) strips this binary
+# because Anthropic stays off there (ToS).
 RUN pnpm install --frozen-lockfile --prod \
       --filter @houston/runtime... \
       --filter @houston/host...
+COPY --from=bundle-builder /app/dist /app/dist
+# The bundles live outside their package dirs, while pnpm keeps external
+# packages in its virtual store. Give Node's ESM resolver a normal upward path
+# from /app/dist/{host,runtime}/main.mjs to those external deps.
+RUN ln -s /app/node_modules/.pnpm/node_modules /app/dist/host/node_modules \
+ && ln -s /app/node_modules/.pnpm/node_modules /app/dist/runtime/node_modules
 
 # The whole ~/.houston equivalent (workspaces + credentials + db) lives here so a
 # single named volume persists everything. Owned by the non-root node user so a
@@ -67,12 +95,12 @@ ENV NODE_ENV=production \
     HOUSTON_HOME=/data \
     HOUSTON_HOST_BIND=0.0.0.0 \
     HOUSTON_HOST_PORT=4318 \
-    HOUSTON_RUNTIME_COMMAND="node --import tsx /app/packages/runtime/src/main.ts"
+    HOUSTON_RUNTIME_COMMAND="node /app/dist/runtime/main.mjs"
 # HOUSTON_HOST_TOKEN is deliberately NOT defaulted: an unset token would leave the
 # host open to anyone who can reach the port. docker-compose.yml requires it.
 
 USER node
-WORKDIR /app/packages/host
+WORKDIR /app
 EXPOSE 4318
 
 # /health is public (no token). Uses Node fetch so the image needs no curl.
@@ -81,7 +109,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 
 # Exec form → node is PID 1 and gets SIGTERM from `docker stop`; local/main.ts
 # handles it (stops the scheduler/watcher and kills spawned runtimes).
-CMD ["node", "--import", "tsx", "src/local/main.ts"]
+CMD ["node", "dist/host/main.mjs"]
 
 FROM host-base AS engine-pod
 
