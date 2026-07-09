@@ -1,6 +1,7 @@
 import {
   Avatar,
   AvatarFallback,
+  AvatarImage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,11 +30,14 @@ function initial(person: SharePerson): string {
  */
 export function AgentSharePersonRow({
   person,
+  avatarUrl,
   disabled,
   readOnly,
   onAction,
 }: {
   person: SharePerson;
+  /** Resolved avatar photo (uploaded/provider), or null for initials-only. */
+  avatarUrl?: string | null;
   /** Locks the control while a write is in flight. */
   disabled?: boolean;
   /** Render the access level as static text with no controls. */
@@ -50,6 +54,9 @@ export function AgentSharePersonRow({
   return (
     <li className="flex items-center gap-3 rounded-xl border border-foreground/5 bg-card px-3 py-2.5">
       <Avatar size="sm">
+        {avatarUrl && (
+          <AvatarImage src={avatarUrl} alt="" referrerPolicy="no-referrer" />
+        )}
         <AvatarFallback>{initial(person)}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">

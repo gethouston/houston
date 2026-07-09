@@ -14,7 +14,8 @@
     "routine": "Rutina"
   },
   "people": {
-    "label": "Personas en esta misión"
+    "label": "Personas en esta misión",
+    "expand": "Todas las personas"
   },
   "empty": {
     "title": "Aún no hay conversaciones",

@@ -6,6 +6,7 @@ import {
   buildMissionPeople,
   collectContributorIds,
   distinctBoardPeople,
+  iconPersonFor,
   type MissionAttribution,
   missionMatchesPerson,
 } from "../src/lib/mission-people.ts";
@@ -148,6 +149,61 @@ describe("missionMatchesPerson", () => {
     strictEqual(missionMatchesPerson(people, "u-9"), false);
     strictEqual(missionMatchesPerson(undefined, "u-1"), false);
     strictEqual(missionMatchesPerson([], "u-1"), false);
+  });
+});
+
+describe("iconPersonFor — per-agent card icon fallback chain", () => {
+  it("no attribution → undefined (caller shows the agent icon)", () => {
+    strictEqual(iconPersonFor(buildMissionPeople({}, profiles([]))), undefined);
+    strictEqual(iconPersonFor(undefined), undefined);
+    strictEqual(iconPersonFor([]), undefined);
+  });
+
+  it("creator only → the creator's face", () => {
+    const people = buildMissionPeople(
+      { created_by: "u-creator" },
+      profiles([]),
+    );
+    strictEqual(iconPersonFor(people)?.id, "u-creator");
+  });
+
+  it("creator + contributors → the most-recently-active (last-appended) contributor", () => {
+    // contributors are stored in append order; the last is the latest to join.
+    const conv: MissionAttribution = {
+      created_by: "u-creator",
+      contributors: [{ user_id: "u-early" }, { user_id: "u-latest" }],
+    };
+    const people = buildMissionPeople(conv, profiles([]));
+    strictEqual(iconPersonFor(people)?.id, "u-latest");
+  });
+
+  it("carries the resolved label + avatar of the chosen person", () => {
+    const conv: MissionAttribution = {
+      created_by: "u-1",
+      contributors: [{ user_id: "u-2" }],
+    };
+    const person = iconPersonFor(
+      buildMissionPeople(
+        conv,
+        profiles([profile("u-2", "Latest One", "https://img/2.png")]),
+      ),
+    );
+    strictEqual(person?.label, "Latest One");
+    strictEqual(person?.imageUrl, "https://img/2.png");
+  });
+
+  // Board-vs-agent-page divergence: the per-agent surface swaps the card icon
+  // for this person face; Mission Control never calls iconPersonFor and keeps
+  // the shared agent helmet. The contract that makes the swap safe is that a
+  // mission WITH people always yields an icon person, and one WITHOUT never
+  // does (so the agent avatar remains the fallback on both surfaces).
+  it("attributed mission always resolves an icon; unattributed never does", () => {
+    const attributed = buildMissionPeople(
+      { created_by: "u-1", contributors: [{ user_id: "u-2" }] },
+      profiles([]),
+    );
+    strictEqual(iconPersonFor(attributed) !== undefined, true);
+    strictEqual(iconPersonFor(buildMissionPeople({}, profiles([]))), undefined);
   });
 });
 

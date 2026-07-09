@@ -5,10 +5,14 @@ import {
   AvatarGroupCount,
   AvatarImage,
   cn,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from "@houston-ai/core";
 import {
   initialsFor,
   overflowCount,
+  STRIP_MAX,
   visiblePeople,
 } from "./kanban-people-logic";
 import type { KanbanPerson } from "./types";
@@ -16,7 +20,7 @@ import type { KanbanPerson } from "./types";
 // Re-export the pure, JSX-free helpers so consumers can import them from the
 // component module too; they live in `kanban-people-logic.ts` so tests can run
 // them under `node --experimental-strip-types` (which can't transform JSX).
-export { initialsFor, overflowCount, visiblePeople };
+export { initialsFor, overflowCount, STRIP_MAX, visiblePeople };
 
 export interface KanbanPeopleProps {
   people?: KanbanPerson[];
@@ -26,6 +30,13 @@ export interface KanbanPeopleProps {
   size?: "sm" | "md";
   /** Accessible group label (English default "People"). */
   label?: string;
+  /** When set, the "+N" overflow chip becomes a button that opens a popover
+   *  listing EVERY person (face + label) so no contributor is unreachable. Off
+   *  by default (a static, non-interactive chip). */
+  expandable?: boolean;
+  /** Accessible label for the expandable "+N" trigger / popover (e.g. "All
+   *  people"). Only used when `expandable`. */
+  expandLabel?: string;
   className?: string;
 }
 
@@ -39,13 +50,43 @@ const TEXT_SIZE: Record<NonNullable<KanbanPeopleProps["size"]>, string> = {
   md: "text-[10px]",
 };
 
+/** A single avatar face: image when known, initials fallback otherwise. Shared
+ *  by the overlapping stack and the expansion popover so both read identically. */
+function Face({
+  person,
+  faceSize,
+  textSize,
+}: {
+  person: KanbanPerson;
+  faceSize: string;
+  textSize: string;
+}) {
+  return (
+    <Avatar title={person.label} className={faceSize}>
+      {person.imageUrl && (
+        <AvatarImage
+          src={person.imageUrl}
+          alt={person.label}
+          referrerPolicy="no-referrer"
+        />
+      )}
+      <AvatarFallback className={cn(textSize, "font-medium")}>
+        {initialsFor(person.label)}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
+
 /** An overlapping face stack: up to `max` avatars + a "+N" overflow chip.
- *  Props-only, i18n-agnostic (labels passed in). Renders nothing when empty. */
+ *  Props-only, i18n-agnostic (labels passed in). Renders nothing when empty.
+ *  With `expandable`, the "+N" chip opens a popover of every person. */
 export function KanbanPeople({
   people,
   max = 3,
   size = "sm",
   label = "People",
+  expandable = false,
+  expandLabel,
   className,
 }: KanbanPeopleProps) {
   if (!people || people.length === 0) return null;
@@ -54,6 +95,7 @@ export function KanbanPeople({
   const extra = overflowCount(people, max);
   const faceSize = FACE_SIZE[size];
   const textSize = TEXT_SIZE[size];
+  const chipClass = cn(faceSize, textSize, "font-medium");
 
   return (
     <AvatarGroup
@@ -62,27 +104,61 @@ export function KanbanPeople({
       className={cn("-space-x-1.5", className)}
     >
       {faces.map((person) => (
-        <Avatar key={person.id} title={person.label} className={faceSize}>
-          {person.imageUrl && (
-            <AvatarImage
-              src={person.imageUrl}
-              alt={person.label}
-              referrerPolicy="no-referrer"
-            />
-          )}
-          <AvatarFallback className={cn(textSize, "font-medium")}>
-            {initialsFor(person.label)}
-          </AvatarFallback>
-        </Avatar>
+        <Face
+          key={person.id}
+          person={person}
+          faceSize={faceSize}
+          textSize={textSize}
+        />
       ))}
-      {extra > 0 && (
-        <AvatarGroupCount
-          className={cn(faceSize, textSize, "font-medium")}
-          title={`+${extra}`}
-        >
-          +{extra}
-        </AvatarGroupCount>
-      )}
+      {extra > 0 &&
+        (expandable ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                // The card behind this chip is itself clickable — don't let the
+                // popover toggle bubble up and select the mission.
+                onClick={(e) => e.stopPropagation()}
+                aria-label={expandLabel ?? label}
+                title={`+${extra}`}
+                className={cn(
+                  chipClass,
+                  "relative flex shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground ring-2 ring-background transition-colors hover:bg-muted-foreground/20 cursor-pointer",
+                )}
+              >
+                +{extra}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              onClick={(e) => e.stopPropagation()}
+              className="w-56 p-1"
+            >
+              <div className="max-h-64 overflow-y-auto">
+                {people.map((person) => (
+                  <div
+                    key={person.id}
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5"
+                  >
+                    <Face
+                      person={person}
+                      faceSize="size-6"
+                      textSize="text-[10px]"
+                    />
+                    <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                      {person.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        ) : (
+          <AvatarGroupCount className={chipClass} title={`+${extra}`}>
+            +{extra}
+          </AvatarGroupCount>
+        ))}
     </AvatarGroup>
   );
 }

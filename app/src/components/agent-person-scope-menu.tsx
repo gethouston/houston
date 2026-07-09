@@ -9,6 +9,7 @@ import { UserPlus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
+import { useMyProfile } from "../hooks/use-my-profile";
 import { buildScopeOptions } from "../lib/agent-person-scope";
 import { distinctBoardPeople } from "../lib/mission-people";
 import { isTeamWorkspace } from "../lib/space-id";
@@ -53,19 +54,17 @@ export function AgentPersonScopeMenu({
   const { capabilities } = useCapabilities();
   const current = useWorkspaceStore((s) => s.current);
   const peopleById = useAgentBoardPeople(agent.folderPath);
+  const myProfile = useMyProfile();
   const [shareOpen, setShareOpen] = useState(false);
 
   if (mode === "hidden" || !user) return null;
 
-  const meta = (user.user_metadata ?? {}) as {
-    name?: string;
-    full_name?: string;
-    avatar_url?: string;
-  };
-  const selfName =
-    meta.full_name ?? meta.name ?? user.email ?? user.id.slice(0, 8);
+  const selfName = myProfile?.name ?? user.email ?? user.id.slice(0, 8);
   const selfShort = selfName.split(/\s+/)[0] || selfName;
-  const selfFace: FilterFace = { label: selfName, imageUrl: meta.avatar_url };
+  const selfFace: FilterFace = {
+    label: selfName,
+    imageUrl: myProfile?.avatarUrl ?? undefined,
+  };
 
   const roster = distinctBoardPeople(
     Array.from(peopleById.values()).map((people) => ({ people })),

@@ -11,7 +11,19 @@
   "account": {
     "title": "Conta",
     "signOut": "Sair",
-    "fallbackName": "Sessão iniciada"
+    "avatar": {
+      "changeButton": "Alterar foto",
+      "changing": "Enviando…",
+      "toasts": {
+        "successTitle": "Foto de perfil atualizada",
+        "errorTitle": "Não foi possível atualizar sua foto"
+      },
+      "errors": {
+        "notImage": "Escolha um arquivo de imagem (JPG, PNG ou WebP).",
+        "tooLarge": "Essa imagem tem mais de 5 MB. Escolha uma menor.",
+        "uploadFailed": "Não foi possível salvar sua foto. {{reason}}"
+      }
+    }
   },
   "workspace": {
     "title": "Nome do espaço"

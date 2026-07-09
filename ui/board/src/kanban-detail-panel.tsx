@@ -30,6 +30,8 @@ export interface KanbanDetailPanelProps {
   people?: KanbanPerson[];
   /** Accessible group label for the people face stack (English default "People"). */
   peopleLabel?: string;
+  /** Accessible label for the people stack's expandable "+N" chip. */
+  peopleExpandLabel?: string;
   runningStatuses?: string[];
   statusLabels?: Record<string, string>;
 }
@@ -49,6 +51,7 @@ export const KanbanDetailPanel = forwardRef<
     agentName,
     people,
     peopleLabel = "People",
+    peopleExpandLabel,
     runningStatuses = ["running"],
     statusLabels,
   },
@@ -92,6 +95,8 @@ export const KanbanDetailPanel = forwardRef<
               people={people}
               size="md"
               label={peopleLabel}
+              expandable
+              expandLabel={peopleExpandLabel}
               className="shrink-0"
             />
           )}

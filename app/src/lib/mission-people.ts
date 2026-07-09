@@ -51,6 +51,31 @@ export function buildMissionPeople(
 }
 
 /**
+ * The single face that represents a mission's WORKING PERSON on the per-agent
+ * board (its card icon), picked from the built face stack:
+ *
+ * - the most-recently-active contributor, i.e. the LAST person on the stack.
+ *   `contributors` is stored in APPEND order (see {@link buildMissionPeople}),
+ *   so the last entry is the latest teammate to join. This is an acceptable v1
+ *   recency signal — Activity carries no per-turn "last touched" timestamp yet,
+ *   so append order is the only recency information available;
+ * - falls back to the creator when the mission has no separate contributors
+ *   (the stack is then just `[creator]`, whose last element IS the creator);
+ * - returns `undefined` when there is no attribution at all (single-player /
+ *   legacy), so the caller shows the agent icon instead.
+ *
+ * Mission Control (cross-agent) deliberately does NOT use this — it keeps the
+ * agent helmet so the board stays legible across many agents. Only the
+ * per-agent surface swaps the icon for a person face.
+ */
+export function iconPersonFor(
+  people: KanbanPerson[] | undefined,
+): KanbanPerson | undefined {
+  if (!people || people.length === 0) return undefined;
+  return people[people.length - 1];
+}
+
+/**
  * Distinct contributor ids (creator + collaborators) across a set of
  * conversations — the argument for the batched `useUserProfiles` lookup.
  */

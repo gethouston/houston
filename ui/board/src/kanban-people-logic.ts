@@ -1,5 +1,10 @@
 import type { KanbanPerson } from "./types";
 
+/** Faces shown on the card's dedicated people strip before collapsing into an
+ *  expandable "+N" chip. The strip is wider than the inline detail-panel stack,
+ *  so it shows more faces (~5) before overflowing. */
+export const STRIP_MAX = 5;
+
 /** Up-to-two-initials derived from a display label. Splits on whitespace and
  *  takes the first letter of the first and last word (single word → first two
  *  letters); empty/letterless input falls back to "?". Pure, JSX-free so it can

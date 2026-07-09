@@ -7,7 +7,7 @@ import {
 } from "@houston-ai/core";
 import { Check, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { KanbanPeople } from "./kanban-people";
+import { KanbanPeopleStrip } from "./kanban-people-strip";
 import type { KanbanItem } from "./types";
 
 export interface KanbanCardLabels {
@@ -24,6 +24,8 @@ export interface KanbanCardLabels {
   selectTooltip?: string;
   /** Accessible group label for the card's people face stack. */
   people?: string;
+  /** Accessible label for the people strip's expandable "+N" chip. */
+  peopleExpand?: string;
 }
 
 const DEFAULT_LABELS: Required<KanbanCardLabels> = {
@@ -35,6 +37,7 @@ const DEFAULT_LABELS: Required<KanbanCardLabels> = {
   deleteDescription: "This item and its history will be permanently removed.",
   selectTooltip: "Select",
   people: "People",
+  peopleExpand: "All people",
 };
 
 export interface KanbanCardProps {
@@ -251,12 +254,17 @@ export function KanbanCard({
                 </span>
               </div>
             )}
-            {avatar ??
-              (item.icon && (
-                <span className="size-3.5 shrink-0 flex items-center justify-center">
-                  {item.icon}
-                </span>
-              ))}
+            {/* A per-item `icon` wins over the board-wide `avatar`: the
+                per-agent board sets `icon` to the working person's face while
+                Mission Control leaves `avatar` as the shared agent helmet.
+                Wrapped when it's the item icon; the board avatar renders raw. */}
+            {item.icon ? (
+              <span className="size-3.5 shrink-0 flex items-center justify-center">
+                {item.icon}
+              </span>
+            ) : (
+              avatar
+            )}
             {item.group && (
               <span className="text-[11px] text-muted-foreground truncate">
                 {item.group}
@@ -344,8 +352,9 @@ export function KanbanCard({
 
         {/* Footer: tags + custom actions. The Approve action moved to the
            top-right icon row (see above) so it's visually consistent with
-           Rename / Delete and the tooltip explains exactly what it does. */}
-        {(item.tags?.length || item.people?.length || actions) && (
+           Rename / Delete and the tooltip explains exactly what it does.
+           People moved OUT of here into the dedicated bottom strip below. */}
+        {(item.tags?.length || actions) && (
           <div className="flex items-center justify-between mt-2.5">
             <div className="flex items-center gap-1 flex-wrap min-w-0">
               {item.tags?.map((tag) => (
@@ -357,12 +366,18 @@ export function KanbanCard({
                 </span>
               ))}
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <KanbanPeople people={item.people} size="sm" label={l.people} />
-              {actions}
-            </div>
+            <div className="flex items-center gap-1.5 shrink-0">{actions}</div>
           </div>
         )}
+
+        {/* Dedicated people strip: a full-width row along the card's bottom
+           edge showing EVERY contributor (face stack + expandable "+N"). Only
+           rendered when the mission has people. */}
+        <KanbanPeopleStrip
+          people={item.people}
+          label={l.people}
+          expandLabel={l.peopleExpand}
+        />
       </div>
 
       <ConfirmDialog

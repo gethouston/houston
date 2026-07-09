@@ -12,6 +12,8 @@ import { Users } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
+import { useUserProfiles } from "../../hooks/queries/use-user-profiles";
+import { avatarUrlFromProfiles } from "../../hooks/queries/user-profiles-map";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSession } from "../../hooks/use-session";
 import { isMultiplayer } from "../../lib/org-roles";
@@ -60,6 +62,7 @@ export function AgentShareDialog({
   const members = org.data?.members ?? [];
   const people = buildSharePeople({ agent, members, selfId });
   const candidates = addableMembers(members, people);
+  const { profiles } = useUserProfiles(people.map((p) => p.userId));
 
   const write = (assignments: AgentAssignment[]) =>
     share.mutate({ agentId: agent.id, assignments });
@@ -109,6 +112,7 @@ export function AgentShareDialog({
                 <AgentSharePersonRow
                   key={person.userId}
                   person={person}
+                  avatarUrl={avatarUrlFromProfiles(profiles, person.userId)}
                   disabled={share.isPending}
                   onAction={(action) => handleAction(person, action)}
                 />

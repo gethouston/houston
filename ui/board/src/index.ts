@@ -30,8 +30,11 @@ export {
   initialsFor,
   KanbanPeople,
   overflowCount,
+  STRIP_MAX,
   visiblePeople,
 } from "./kanban-people";
+export type { KanbanPeopleStripProps } from "./kanban-people-strip";
+export { KanbanPeopleStrip } from "./kanban-people-strip";
 export type {
   BoardSearchSnippet,
   ConversationEntry,

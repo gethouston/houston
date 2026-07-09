@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   initialsFor,
   overflowCount,
+  STRIP_MAX,
   visiblePeople,
 } from "../src/kanban-people-logic.ts";
 import type { KanbanPerson } from "../src/types.ts";
@@ -68,5 +69,41 @@ describe("overflowCount", () => {
 
   it("never goes negative", () => {
     assert.equal(overflowCount(people(0), 3), 0);
+  });
+});
+
+// The dedicated card people strip renders faces up to STRIP_MAX then an
+// expandable "+N" chip. These assert the strip's partition (what renders as a
+// face vs. behind the chip) and — the founder's explicit ask — that the
+// expansion still reaches EVERY contributor (faces + overflow === all).
+describe("people strip partition (STRIP_MAX)", () => {
+  it("uses a wider default than the inline stack (~5)", () => {
+    assert.equal(STRIP_MAX, 5);
+  });
+
+  it("0 people: nothing to show", () => {
+    assert.equal(visiblePeople(people(0), STRIP_MAX).length, 0);
+    assert.equal(overflowCount(people(0), STRIP_MAX), 0);
+  });
+
+  it("3 people: all shown as faces, no overflow chip", () => {
+    assert.equal(visiblePeople(people(3), STRIP_MAX).length, 3);
+    assert.equal(overflowCount(people(3), STRIP_MAX), 0);
+  });
+
+  it("8 people: STRIP_MAX faces + the rest behind the chip", () => {
+    const list = people(8);
+    assert.equal(visiblePeople(list, STRIP_MAX).length, STRIP_MAX);
+    assert.equal(overflowCount(list, STRIP_MAX), 8 - STRIP_MAX);
+  });
+
+  it("expansion reaches everyone: faces + overflow === total", () => {
+    for (const n of [0, 3, 5, 8, 20]) {
+      const list = people(n);
+      assert.equal(
+        visiblePeople(list, STRIP_MAX).length + overflowCount(list, STRIP_MAX),
+        n,
+      );
+    }
   });
 });

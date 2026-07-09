@@ -14,7 +14,8 @@
     "routine": "Routine"
   },
   "people": {
-    "label": "People on this mission"
+    "label": "People on this mission",
+    "expand": "All people"
   },
   "empty": {
     "title": "No conversations yet",

@@ -8,6 +8,8 @@ import {
 } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
+import { useUserProfiles } from "../../hooks/queries/use-user-profiles";
+import { avatarUrlFromProfiles } from "../../hooks/queries/user-profiles-map";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSession } from "../../hooks/use-session";
 import { isMultiplayer } from "../../lib/org-roles";
@@ -44,6 +46,7 @@ export function AgentSharePeopleDialog({
     userId: selfId,
     email: session?.user?.email,
   });
+  const { profiles } = useUserProfiles(people.map((p) => p.userId));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -66,6 +69,7 @@ export function AgentSharePeopleDialog({
                 <AgentSharePersonRow
                   key={person.userId}
                   person={person}
+                  avatarUrl={avatarUrlFromProfiles(profiles, person.userId)}
                   readOnly
                 />
               ))}

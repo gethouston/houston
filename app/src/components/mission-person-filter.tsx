@@ -6,6 +6,7 @@ import {
   DropdownMenuTrigger,
 } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
+import { useMyProfile } from "../hooks/use-my-profile";
 import { distinctBoardPeople } from "../lib/mission-people";
 import {
   type FilterFace,
@@ -44,16 +45,14 @@ export function MissionPersonFilter({
 }: MissionPersonFilterProps) {
   const { t } = useTranslation("dashboard");
   const { mode, user } = usePersonFilterMode();
+  const myProfile = useMyProfile();
   if (mode === "hidden" || !user) return null;
 
-  const meta = (user.user_metadata ?? {}) as {
-    name?: string;
-    full_name?: string;
-    avatar_url?: string;
+  const selfName = myProfile?.name ?? user.email ?? user.id.slice(0, 8);
+  const selfFace: FilterFace = {
+    label: selfName,
+    imageUrl: myProfile?.avatarUrl ?? undefined,
   };
-  const selfName =
-    meta.full_name ?? meta.name ?? user.email ?? user.id.slice(0, 8);
-  const selfFace: FilterFace = { label: selfName, imageUrl: meta.avatar_url };
 
   if (mode === "teaser") {
     return (

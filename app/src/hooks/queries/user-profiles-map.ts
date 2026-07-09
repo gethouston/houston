@@ -34,6 +34,30 @@ export function normalizeUserIds(ids: string[]): string[] {
 }
 
 /**
+ * Should the `user-profiles` query fire? Pure so the gating rule is unit-tested
+ * without a live host.
+ *
+ * - `alwaysEnabled` is the caller's OWN-profile lookup ({@link useMyProfile}):
+ *   the signed-in user reads their own `profiles` row (name + uploaded avatar)
+ *   independent of multiplayer, because the avatar-upload feature is offered to
+ *   every signed-in user (desktop / personal space included), not just orgs.
+ *   Without this the uploaded photo is write-only off multiplayer.
+ * - Otherwise (teammate face stacks / person filter) it stays multiplayer-gated:
+ *   single-player has no roster to resolve.
+ *
+ * Both paths still require at least one id and a configured Supabase client.
+ */
+export function profilesQueryEnabled(input: {
+  idCount: number;
+  authConfigured: boolean;
+  multiplayer: boolean;
+  alwaysEnabled: boolean;
+}): boolean {
+  const { idCount, authConfigured, multiplayer, alwaysEnabled } = input;
+  return idCount > 0 && authConfigured && (alwaysEnabled || multiplayer);
+}
+
+/**
  * Pure rows -> Map mapping, keyed by `user_id`. A row whose `name`/`avatar_url`
  * is absent (never signed up under a display name, no uploaded avatar) maps to
  * explicit `null`, so a consumer can fall back to initials or a short id rather
@@ -49,4 +73,67 @@ export function mapProfileRows(rows: ProfileRow[]): Map<string, UserProfile> {
     });
   }
   return map;
+}
+
+/**
+ * The subset of a Supabase session's `user_metadata` the app reads for a
+ * self-face: the OAuth display name and the provider (Google) photo. Kept as a
+ * bare interface so this pure module never imports `@supabase/supabase-js`.
+ */
+export interface SessionUserMeta {
+  name?: string;
+  full_name?: string;
+  avatar_url?: string;
+}
+
+/** The signed-in caller's resolved identity — one source for every self-face. */
+export interface MyProfile {
+  userId: string;
+  /** Never blank: profile name > OAuth name > email > short id. */
+  name: string;
+  /** Uploaded avatar > provider photo > `null` (render initials). */
+  avatarUrl: string | null;
+}
+
+/**
+ * Merge the caller's `profiles` row over their session `user_metadata` into the
+ * single {@link MyProfile} every self-face consumer reads. An UPLOADED avatar
+ * (`profile.avatarUrl`) WINS over the provider (Google) photo so a user who
+ * replaces their picture sees it everywhere; the metadata photo is only the
+ * fallback for someone who never uploaded. Name resolves profile > OAuth full
+ * name/name > email > a short id slice, so it is never blank. On a
+ * single-player / non-multiplayer host `profile` is absent and this collapses to
+ * pure metadata — byte-identical to the old inline derivation (no behavior
+ * change).
+ */
+export function resolveMyProfile(input: {
+  userId: string;
+  email?: string | null;
+  metadata: SessionUserMeta;
+  profile?: UserProfile | null;
+}): MyProfile {
+  const { userId, email, metadata, profile } = input;
+  return {
+    userId,
+    name:
+      profile?.name ??
+      metadata.full_name ??
+      metadata.name ??
+      email ??
+      userId.slice(0, 8),
+    avatarUrl: profile?.avatarUrl ?? metadata.avatar_url ?? null,
+  };
+}
+
+/**
+ * The avatar image for a teammate face: their uploaded/provider photo when the
+ * batched {@link useUserProfiles} lookup resolved one, else `null` so the row
+ * falls back to initials. Shared by the People roster and the Share dialog rows
+ * so both resolve a face the same way.
+ */
+export function avatarUrlFromProfiles(
+  profiles: ReadonlyMap<string, UserProfile>,
+  userId: string,
+): string | null {
+  return profiles.get(userId)?.avatarUrl ?? null;
 }

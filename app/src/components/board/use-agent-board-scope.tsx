@@ -2,8 +2,9 @@ import type { KanbanItem } from "@houston-ai/board";
 import { useMemo } from "react";
 import { useSession } from "../../hooks/use-session";
 import { missionMatchesScope } from "../../lib/agent-person-scope";
-import { attachBoardPeople } from "../../lib/mission-people";
+import { attachBoardPeople, iconPersonFor } from "../../lib/mission-people";
 import { useAgentPersonScope } from "../agent-person-scope-context";
+import { AgentCardPersonIcon } from "./agent-card-person-icon";
 import { useAgentBoardPeople } from "./use-agent-board-people";
 
 /**
@@ -33,10 +34,27 @@ export function useAgentBoardScope({
   const selfId = session?.user?.id ?? "";
 
   const peopleById = useAgentBoardPeople(path);
-  const peopledItems = useMemo(
-    () => attachBoardPeople(items, peopleById),
-    [items, peopleById],
-  );
+  const peopledItems = useMemo(() => {
+    const withPeople = attachBoardPeople(items, peopleById);
+    // Single-player / desktop resolves no attribution, so leave `icon` unset and
+    // let the board-wide agent avatar show (identity pass-through, no churn).
+    if (peopleById.size === 0) return withPeople;
+    // Multiplayer: swap the card icon for the mission's working person's face,
+    // falling back to the agent avatar when a mission has no attribution.
+    return withPeople.map((item) => {
+      const person = iconPersonFor(item.people);
+      if (!person) return item;
+      return {
+        ...item,
+        icon: (
+          <AgentCardPersonIcon
+            person={person}
+            running={item.status === "running"}
+          />
+        ),
+      };
+    });
+  }, [items, peopleById]);
   return useMemo(
     () =>
       peopledItems.filter((i) => missionMatchesScope(i.people, scope, selfId)),

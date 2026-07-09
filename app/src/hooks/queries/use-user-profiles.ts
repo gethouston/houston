@@ -6,10 +6,19 @@ import {
   mapProfileRows,
   normalizeUserIds,
   type ProfileRow,
+  profilesQueryEnabled,
   type UserProfile,
 } from "./user-profiles-map";
 
 export type { UserProfile } from "./user-profiles-map";
+
+/**
+ * Shared query-key prefix for every per-contributor `user-profiles` cache entry
+ * (each is `[USER_PROFILES_KEY, ...ids]`). Exported so a profile mutation — the
+ * avatar upload in `profile-avatar.ts`'s caller — can invalidate ALL of them
+ * with one prefix match, repainting face stacks with the new picture.
+ */
+export const USER_PROFILES_KEY = "user-profiles";
 
 async function fetchProfiles(ids: string[]): Promise<Map<string, UserProfile>> {
   const { data, error } = await supabase
@@ -30,22 +39,33 @@ async function fetchProfiles(ids: string[]): Promise<Map<string, UserProfile>> {
 const EMPTY_PROFILES: ReadonlyMap<string, UserProfile> = new Map();
 
 /**
- * Resolve display profiles for a set of contributor user ids. Enabled only on a
- * configured, multiplayer (hosted Teams) host with at least one id to look up —
- * single-player/desktop has no `profiles` surface and never runs this.
+ * Resolve display profiles for a set of contributor user ids. Teammate face
+ * stacks / the person filter are multiplayer-gated (hosted Teams) — single-player
+ * has no roster to resolve. Pass `alwaysEnabled` for the caller's OWN-profile
+ * lookup ({@link useMyProfile}): every signed-in user can upload an avatar, so
+ * they must be able to READ their own `profiles` row regardless of multiplayer,
+ * else the uploaded photo is write-only. Either way, at least one id and a
+ * configured Supabase client are required. See {@link profilesQueryEnabled}.
  */
-export function useUserProfiles(userIds: string[]): {
+export function useUserProfiles(
+  userIds: string[],
+  opts?: { alwaysEnabled?: boolean },
+): {
   profiles: ReadonlyMap<string, UserProfile>;
   isLoading: boolean;
   isError: boolean;
 } {
   const { capabilities } = useCapabilities();
   const ids = normalizeUserIds(userIds);
-  const enabled =
-    ids.length > 0 && isAuthConfigured() && isMultiplayer(capabilities);
+  const enabled = profilesQueryEnabled({
+    idCount: ids.length,
+    authConfigured: isAuthConfigured(),
+    multiplayer: isMultiplayer(capabilities),
+    alwaysEnabled: opts?.alwaysEnabled === true,
+  });
 
   const query = useQuery({
-    queryKey: ["user-profiles", ...ids],
+    queryKey: [USER_PROFILES_KEY, ...ids],
     queryFn: () => fetchProfiles(ids),
     enabled,
     staleTime: 5 * 60_000,
