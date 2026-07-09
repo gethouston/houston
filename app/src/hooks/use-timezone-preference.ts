@@ -44,9 +44,12 @@ async function fetchOnce(): Promise<string | null> {
         try {
           await tauriPreferences.set(TIMEZONE_KEY, detected);
           value = detected;
-        } catch {
-          // If persisting fails, fall back to the detected value in memory
-          // so the UI still has something to render a cron schedule against.
+        } catch (err) {
+          // Persist failed (the engine-call wrapper already toasted it). Keep
+          // the detected value in memory so the UI can still render a cron
+          // schedule — but the engine never learned the zone, so routines fire
+          // in the HOST's zone until a save succeeds (retried next launch).
+          console.error("[timezone] failed to persist detected zone:", err);
           value = detected;
         }
       }

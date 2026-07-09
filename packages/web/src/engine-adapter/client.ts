@@ -162,6 +162,40 @@ function benignCancelMiss(e: unknown): void {
   throw e;
 }
 
+/**
+ * Preference keys that are ACCOUNT state, not device state. The engine acts on
+ * them — the host scheduler fires routines in `timezone` (hosted mode stamps it
+ * onto each agent's environment), `locale` backs the workspace wire shape, and
+ * the legal/migration flags must survive a reinstall — so they live behind the
+ * host's `/v1/preferences/:key`, never in this browser's localStorage. A
+ * device-local copy is invisible to the scheduler: routines then fire in the
+ * host's zone while the UI renders the browser's, an hours-off "next run"
+ * (HOU-732). Everything else (theme, last_agent_id, recent models, …) is
+ * per-device UI state and stays local.
+ */
+const ACCOUNT_PREF_KEYS = new Set([
+  "timezone",
+  "locale",
+  "legal_acceptance",
+  "migration_reconnect_dismissed",
+]);
+
+function readLocalPref(key: string): string | null {
+  try {
+    return localStorage.getItem(`houston.pref.${key}`);
+  } catch {
+    return null; /* storage disabled */
+  }
+}
+
+function removeLocalPref(key: string): void {
+  try {
+    localStorage.removeItem(`houston.pref.${key}`);
+  } catch {
+    /* storage disabled */
+  }
+}
+
 const SIDEBAR_LAYOUT_PREF = "houston.sidebar-layout";
 const EMPTY_SIDEBAR_LAYOUT: SidebarLayout = {
   groups: [],
@@ -520,13 +554,30 @@ export class HoustonClient {
       suggestedRoutine: r.suggestedRoutine ?? null,
     };
   }
+  /** The one config both deployments share: the gateway in cloud mode, the
+   *  local/self-host host otherwise — each serves `/v1/preferences/:key`. */
+  private prefConfig(): ControlPlaneConfig {
+    return this.cp ?? { baseUrl: this.baseUrl, token: this.token };
+  }
   async getPreference(key: string): Promise<string | null> {
-    try {
-      const stored = localStorage.getItem(`houston.pref.${key}`);
-      if (stored !== null) return stored;
-    } catch {
-      /* storage disabled */
+    if (ACCOUNT_PREF_KEYS.has(key)) {
+      const cfg = this.prefConfig();
+      const value = await controlPlane.getPreference(cfg, key);
+      if (value !== null) return value;
+      // One-time lift of a pre-fix device-local copy: earlier builds kept
+      // account keys in localStorage only, so the host never learned them.
+      // Migrate the stored value up (and drop the local copy) rather than
+      // re-deriving it — a deliberately chosen timezone must survive.
+      const legacy = readLocalPref(key);
+      if (legacy !== null) {
+        await controlPlane.setPreference(cfg, key, legacy);
+        removeLocalPref(key);
+        return legacy;
+      }
+      return null;
     }
+    const stored = readLocalPref(key);
+    if (stored !== null) return stored;
     // Default to the synthetic ids so the shell auto-selects the workspace +
     // agent on first load (otherwise no agent is current and the board is empty).
     if (key === "last_workspace_id") return DEFAULT_WORKSPACE_ID;
@@ -534,6 +585,11 @@ export class HoustonClient {
     return null;
   }
   async setPreference(key: string, value: string): Promise<void> {
+    if (ACCOUNT_PREF_KEYS.has(key)) {
+      await controlPlane.setPreference(this.prefConfig(), key, value);
+      removeLocalPref(key);
+      return;
+    }
     try {
       localStorage.setItem(`houston.pref.${key}`, value);
     } catch {
