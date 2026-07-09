@@ -90,6 +90,9 @@ const host = buildLocalHost({
   redactBannerToken:
     !!hostTokenEnv || process.env.HOUSTON_MANAGED_CLOUD === "1",
   runtimeCommand: runtimeCommand(),
+  // Managed pods pre-spawn their agent's runtime at boot so the ~10s runtime
+  // start overlaps the pod wake instead of the user's first message.
+  eagerRuntime: process.env.HOUSTON_EAGER_RUNTIME === "1",
   // The real Tauri app hands over its own product prompt; this is the built-in
   // default so the agent knows how to create Skills/Routines/learnings.
   systemPrompt: process.env.HOUSTON_APP_SYSTEM_PROMPT || houstonSystemPrompt(),

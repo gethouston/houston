@@ -117,6 +117,7 @@ FROM host-base AS engine-pod
 # and network-policied by the private repo, so the container IS the sandbox —
 # same posture as self-host. "local" = pi's built-in bash + clamped file tools.
 ENV HOUSTON_MANAGED_CLOUD=1 \
-    HOUSTON_CODE_EXECUTION=local
+    HOUSTON_CODE_EXECUTION=local \
+    HOUSTON_EAGER_RUNTIME=1
 
 FROM host-base AS selfhost
