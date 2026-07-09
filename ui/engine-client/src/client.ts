@@ -19,6 +19,8 @@ import type {
   AgentAssignment,
   AgentModelChoice,
   AgentModelChoiceInfo,
+  AgentMoveStart,
+  AgentMoveStatus,
   AgentSettings,
   AttachmentManifest,
   AttachmentUploadResult,
@@ -58,6 +60,8 @@ import type {
   OrgInfo,
   OrgRole,
   OrgSettings,
+  OrgSummary,
+  OrgsList,
   PairingCode,
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
@@ -1187,6 +1191,64 @@ export class HoustonClient {
     await this.request("PATCH", `/org/members/${this.seg(userId)}`, { role });
   }
 
+  // ---------- spaces / teams (C8) — hosted gateway only ----------
+  //
+  // The caller's spaces list, self-serve team creation, and agent moves between
+  // spaces. Gated on `caps.spaces`; the gateway is the sole enforcer. Kept here
+  // for shim parity like the org methods above.
+
+  /**
+   * The caller's spaces + pending invites (C8 §Wire surface). Degrades to an
+   * empty result on a host that predates spaces (404) — the switcher then shows
+   * only the personal workspace, byte-identical to a pre-C8 deployment. Mirrors
+   * how `getAgentModelChoice`/`agentIntegrationGrants` swallow a 404; every other
+   * error throws.
+   */
+  async listOrgs(): Promise<OrgsList> {
+    try {
+      return await this.request<OrgsList>("GET", "/orgs");
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) {
+        return { orgs: [], invites: [] };
+      }
+      throw err;
+    }
+  }
+  /**
+   * Create a team space (C8 §Wire surface). NOT idempotent — the gateway has no
+   * dedup, so on a LOST response DON'T blind-retry: reconcile via `listOrgs` and
+   * reuse the persisted slug. Never degrades — a failure must reach the UI, so it
+   * throws the real `HoustonEngineError`. A POST, so `send` never auto-replays it.
+   */
+  createOrg(name: string): Promise<OrgSummary> {
+    return this.request("POST", "/orgs", { name });
+  }
+  /**
+   * Move an agent into a team space (C8 §Agent move). Returns the `moveId` to
+   * poll with `getMoveStatus` to terminal `done` before inviting. Never degrades:
+   * a `403 unsupported_move` / `409 unmovable_volume` / `403 needs_upgrade` must
+   * surface, so it throws. A POST, so `send` never auto-replays it.
+   */
+  moveAgent(agentSlugOrId: string, toSlug: string): Promise<AgentMoveStart> {
+    return this.request("POST", `/agents/${this.seg(agentSlugOrId)}/move`, {
+      to: toSlug,
+    });
+  }
+  /**
+   * Poll one agent-move's progress (C8). The move-completion signal is THIS route
+   * only — the event fan-in relays pod-scoped events and must not be relied on for
+   * completion. A GET, so it replays safely on a transient transport blip.
+   */
+  getMoveStatus(
+    agentSlugOrId: string,
+    moveId: string,
+  ): Promise<AgentMoveStatus> {
+    return this.request(
+      "GET",
+      `/agents/${this.seg(agentSlugOrId)}/move/${this.seg(moveId)}`,
+    );
+  }
+
   // ---------- per-agent assignments + integration grants (multiplayer) ----------
 
   /**
@@ -1771,14 +1833,14 @@ export class HoustonEngineError extends Error {
   body: ErrorBody | null;
 
   constructor(status: number, body: ErrorBody | null) {
-    super(body?.error.message ?? `Engine error ${status}`);
+    super(body?.error?.message ?? `Engine error ${status}`);
     this.status = status;
     this.body = body;
     this.name = "HoustonEngineError";
   }
 
   get code(): string | undefined {
-    return this.body?.error.code;
+    return this.body?.error?.code;
   }
 
   /**
@@ -1789,7 +1851,7 @@ export class HoustonEngineError extends Error {
    * for the canonical kind list.
    */
   get kind(): string | undefined {
-    const details = this.body?.error.details;
+    const details = this.body?.error?.details;
     if (details && typeof details === "object" && "kind" in details) {
       const k = (details as { kind?: unknown }).kind;
       return typeof k === "string" ? k : undefined;

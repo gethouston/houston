@@ -1,9 +1,10 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { OrgMember } from "@houston-ai/engine-client";
+import type { Capabilities, OrgMember } from "@houston-ai/engine-client";
 import {
   addableMembers,
   addPerson,
+  agentShareMode,
   applyShareAction,
   buildSharePeople,
   currentAssignments,
@@ -17,6 +18,65 @@ const ADMIN: OrgMember = { userId: "adm", email: "admin@x.co", role: "admin" };
 const MEMBER: OrgMember = { userId: "mem", email: "member@x.co", role: "user" };
 const OTHER: OrgMember = { userId: "oth", email: "other@x.co", role: "user" };
 const ROSTER = [OWNER, ADMIN, MEMBER, OTHER];
+
+describe("agentShareMode", () => {
+  const caps = (over: Partial<Capabilities>): Capabilities =>
+    ({ ...over }) as Capabilities;
+
+  it("is 'team' for a manager in a team space", () => {
+    // Owner manages any org agent; a team space is not a personal space.
+    strictEqual(
+      agentShareMode(caps({ multiplayer: true, role: "owner" }), {}, false),
+      "team",
+    );
+    strictEqual(
+      agentShareMode(
+        caps({ multiplayer: true, role: "admin" }),
+        { access: "manager" },
+        false,
+      ),
+      "team",
+    );
+  });
+
+  it("is 'none' for a plain member of a team space (can't share)", () => {
+    strictEqual(
+      agentShareMode(
+        caps({ multiplayer: true, role: "user" }),
+        { access: "user" },
+        false,
+      ),
+      "none",
+    );
+  });
+
+  it("is 'inviteTeam' in a personal space on a spaces-capable host", () => {
+    strictEqual(agentShareMode(caps({ spaces: true }), {}, true), "inviteTeam");
+  });
+
+  it("prefers 'inviteTeam' over 'team' in a personal space (never the team dialog)", () => {
+    // Even if the host still reports multiplayer/owner, a personal space is
+    // non-invitable: the team dialog's addOrgMember would 403 personal_space.
+    strictEqual(
+      agentShareMode(
+        caps({ spaces: true, multiplayer: true, role: "owner" }),
+        {},
+        true,
+      ),
+      "inviteTeam",
+    );
+  });
+
+  it("is 'none' on desktop/self-host (no spaces, no multiplayer)", () => {
+    strictEqual(agentShareMode(caps({}), {}, true), "none");
+    strictEqual(agentShareMode(null, {}, true), "none");
+  });
+
+  it("is 'none' in a personal space when the host lacks the spaces surface", () => {
+    // A non-spaces host never offers invite-your-team, even in a personal space.
+    strictEqual(agentShareMode(caps({ multiplayer: false }), {}, true), "none");
+  });
+});
 
 describe("currentAssignments", () => {
   it("prefers the rich v2 assignments", () => {

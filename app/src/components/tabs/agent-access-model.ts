@@ -5,7 +5,11 @@ import type {
   OrgMember,
   OrgRole,
 } from "@houston-ai/engine-client";
-import { canManageAssignments, isMultiplayer } from "../../lib/org-roles.ts";
+import {
+  canManageAssignments,
+  hasSpaces,
+  isMultiplayer,
+} from "../../lib/org-roles.ts";
 
 /**
  * Pure, DOM-free logic behind the Drive-style Share dialog for an agent. Kept
@@ -26,6 +30,35 @@ export function canShowAgentShareBlock(
   agent: Pick<Agent, "access">,
 ): boolean {
   return isMultiplayer(caps) && canManageAssignments(caps, agent);
+}
+
+/**
+ * How an agent's Share affordance should render, per C8 Spaces
+ * (`cloud/docs/contracts/C8-spaces-billing.md` §Share-triggers-team):
+ *
+ * - `"team"` — the Drive-style {@link canShowAgentShareBlock} block + share
+ *   dialog: a multiplayer TEAM space where the caller manages this agent.
+ * - `"inviteTeam"` — a PERSONAL space on a spaces-capable host: personal spaces
+ *   are non-invitable (sharing always goes through a team), so instead of
+ *   hiding, the Share affordance offers to move the agent into a team. Opens
+ *   the ShareViaTeamFlow.
+ * - `"none"` — desktop / self-host (no spaces) or a member who can't share:
+ *   render nothing, byte-identical to pre-C8.
+ *
+ * Personal-space precedence is deliberate: a personal space must NEVER show the
+ * team share dialog (its `addOrgMember` 403s `personal_space`), so `inviteTeam`
+ * wins over `team` whenever the caller is in a personal space on a spaces host.
+ */
+export type AgentShareMode = "team" | "inviteTeam" | "none";
+
+export function agentShareMode(
+  caps: Capabilities | null | undefined,
+  agent: Pick<Agent, "access">,
+  inPersonalSpace: boolean,
+): AgentShareMode {
+  if (inPersonalSpace && hasSpaces(caps)) return "inviteTeam";
+  if (canShowAgentShareBlock(caps, agent)) return "team";
+  return "none";
 }
 
 /** A per-agent access level. `manager` may reconfigure; `user` may only use. */

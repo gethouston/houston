@@ -1951,6 +1951,33 @@ export class HoustonClient {
     return controlPlane.setOrgMemberRole(this.cp, userId, role);
   }
 
+  // ---- spaces / teams (C8) — hosted gateway only ----
+  // Off-cloud (`this.cp === null`) there is no space concept: `listOrgs` reports
+  // an empty result (the switcher shows only the personal workspace), while the
+  // mutating calls throw — a create/move must reach the gateway.
+  async listOrgs(): Promise<controlPlane.OrgsList> {
+    if (!this.cp) return { orgs: [], invites: [] };
+    return controlPlane.listOrgs(this.cp);
+  }
+  async createOrg(name: string): Promise<controlPlane.OrgSummary> {
+    if (!this.cp) throw new Error("Creating a team needs the hosted gateway.");
+    return controlPlane.createOrg(this.cp, name);
+  }
+  async moveAgent(
+    agentSlugOrId: string,
+    toSlug: string,
+  ): Promise<controlPlane.AgentMoveStart> {
+    if (!this.cp) throw new Error("Moving an agent needs the hosted gateway.");
+    return controlPlane.moveAgent(this.cp, agentSlugOrId, toSlug);
+  }
+  async getMoveStatus(
+    agentSlugOrId: string,
+    moveId: string,
+  ): Promise<controlPlane.AgentMoveStatus> {
+    if (!this.cp) throw new Error("Moving an agent needs the hosted gateway.");
+    return controlPlane.getMoveStatus(this.cp, agentSlugOrId, moveId);
+  }
+
   // ---- per-agent assignments + integration grants (multiplayer) ----
   async setAgentAssignments(
     agentSlugOrId: string,

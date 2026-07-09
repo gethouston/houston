@@ -25,7 +25,7 @@
     "runningCount_other": "{{count}} issues running",
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",
-    "createOrganization": "Create organization",
+    "createWorkspace": "Create workspace",
     "groups": {
       "new": "New group",
       "newDefault": "New group",

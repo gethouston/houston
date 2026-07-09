@@ -216,5 +216,78 @@
     },
     "lastOpened": "Aberto {{time}}",
     "open": "Abrir {{name}}"
+  },
+  "createTeam": {
+    "trigger": "Criar equipe",
+    "title": "Criar uma equipe",
+    "description": "As equipes permitem compartilhar agentes e trabalhar em conjunto. Você pode convidar pessoas depois que ela existir.",
+    "nameLabel": "Nome da equipe",
+    "namePlaceholder": "ex.: Marketing",
+    "submit": "Criar equipe",
+    "creating": "Criando…",
+    "tooLong": "Use um nome com menos de {{max}} caracteres.",
+    "successTitle": "Equipe \"{{name}}\" criada"
+  },
+  "shareViaTeam": {
+    "sectionHelper": "Este agente está no seu espaço pessoal. Mova-o para uma equipe para compartilhá-lo com seus colegas.",
+    "button": "Convide sua equipe",
+    "title": "Compartilhar {{name}} com uma equipe",
+    "pick": {
+      "subtitle": "Escolha uma equipe para mover este agente, ou crie uma nova.",
+      "empty": "Você ainda não tem uma equipe. Crie uma para compartilhar este agente.",
+      "createTrigger": "Criar uma nova equipe",
+      "namePlaceholder": "ex.: Marketing",
+      "nameLabel": "Nome da equipe",
+      "create": "Criar",
+      "creating": "Criando…",
+      "failed": "Não conseguimos criar a equipe. Tente novamente."
+    },
+    "confirm": {
+      "body": "{{agent}} será movido para {{team}}. Você e seus colegas vão encontrá-lo lá.",
+      "downtime": "O agente reinicia durante a mudança, então pode ficar indisponível por um momento.",
+      "cancel": "Cancelar",
+      "move": "Mover agente"
+    },
+    "moving": {
+      "heading": "Movendo {{agent}} para {{team}}",
+      "body": "Isso pode levar um momento. Mantenha esta janela aberta."
+    },
+    "switching": {
+      "heading": "Preparando {{team}}"
+    },
+    "switchFailed": {
+      "body": "Seu agente foi movido para {{team}}, mas não conseguimos trocar para essa equipe. Tente de novo para continuar convidando.",
+      "retry": "Tentar de novo",
+      "close": "Fechar"
+    },
+    "moveFailed": {
+      "unsupported_move": "Este agente não pode ser movido para essa equipe.",
+      "unmovable_volume": "O armazenamento deste agente ainda não pode ser movido automaticamente. Fale com o suporte.",
+      "needs_upgrade": "Esta equipe precisa de um upgrade antes de você mover agentes para ela.",
+      "unknown": "Algo deu errado durante a mudança.",
+      "timeout": "A mudança está demorando mais que o esperado. Ela ainda pode terminar em segundo plano. Você pode tentar de novo ou fechar.",
+      "retry": "Tentar de novo",
+      "close": "Fechar"
+    },
+    "invite": {
+      "subtitle": "{{agent}} agora está em {{team}}. Convide pessoas para usá-lo com você.",
+      "emailPlaceholder": "nome@empresa.com",
+      "add": "Adicionar",
+      "send": "Enviar convites",
+      "sending": "Enviando…",
+      "done": "Concluir",
+      "status": {
+        "pending": "Pendente",
+        "sending": "Enviando…",
+        "sent": "Convidado"
+      },
+      "error": {
+        "already_member": "Já está na equipe",
+        "generic": "Não foi possível convidar. Tente novamente."
+      }
+    },
+    "done": {
+      "heading": "Compartilhado com {{team}}"
+    }
   }
 }

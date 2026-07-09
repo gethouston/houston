@@ -55,7 +55,7 @@ import type {
 
 export { withAttachmentPaths } from "./attachment-message";
 
-interface EngineCallOptions {
+export interface EngineCallOptions {
   /** Show a red error toast on failure. Default true. Set false when the
    *  caller renders the failure with its own inline UI. */
   toast?: boolean;
@@ -1519,7 +1519,14 @@ export const tauriOrg = {
   addMember: (
     email: string,
     role: import("@houston-ai/engine-client").OrgRole,
-  ) => call("add_org_member", () => getEngine().addOrgMember(email, role)),
+    options?: EngineCallOptions,
+  ) =>
+    call(
+      "add_org_member",
+      () => getEngine().addOrgMember(email, role),
+      undefined,
+      options,
+    ),
   /** Revoke a pending invite by id (owner only). */
   deleteInvite: (inviteId: string) =>
     call<void>("delete_org_invite", () =>
@@ -1541,4 +1548,29 @@ export const tauriOrg = {
   /** Per-agent/user usage counters over the last `days` (owner org-wide; admin
    *  their managed agents; plain members 403). */
   usage: (days: number) => call("org_usage", () => getEngine().orgUsage(days)),
+  /** C8 spaces: the caller's spaces + pending invites. Degrades to an empty
+   *  result off-spaces (the switcher then shows only the personal workspace). */
+  listOrgs: () => call("list_orgs", () => getEngine().listOrgs()),
+  /** C8 spaces: create a team space. NOT idempotent — on a lost response the
+   *  caller reconciles via `listOrgs` and reuses the slug, never blind-retries. */
+  createOrg: (name: string) =>
+    call("create_org", () => getEngine().createOrg(name)),
+  /** C8 spaces: start an agent move into a team; poll `moveStatus` to terminal
+   *  `done` before inviting (share pipeline order is a contract rule). */
+  moveAgent: (
+    agentSlugOrId: string,
+    toSlug: string,
+    options?: EngineCallOptions,
+  ) =>
+    call(
+      "move_agent",
+      () => getEngine().moveAgent(agentSlugOrId, toSlug),
+      undefined,
+      options,
+    ),
+  /** C8 spaces: poll one agent-move's progress. */
+  moveStatus: (agentSlugOrId: string, moveId: string) =>
+    call("agent_move_status", () =>
+      getEngine().getMoveStatus(agentSlugOrId, moveId),
+    ),
 };

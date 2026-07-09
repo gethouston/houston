@@ -1052,16 +1052,22 @@ export type {
   AgentAssignment,
   AgentModelChoice,
   AgentModelChoiceInfo,
+  AgentMoveStart,
+  AgentMoveStatus,
   AgentSettings,
   AuditEntry,
+  BillingSummary,
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
   OrgInfo,
   OrgInvite,
+  OrgInviteSummary,
   OrgMember,
   OrgRole,
   OrgSettings,
+  OrgSummary,
+  OrgsList,
   UsageRow,
 } from "../../../../ui/engine-client/src/types";
 
@@ -1071,6 +1077,8 @@ import type {
   AgentAssignment,
   AgentModelChoice,
   AgentModelChoiceInfo,
+  AgentMoveStart,
+  AgentMoveStatus,
   AgentSettings,
   AuditEntry,
   IntegrationConnection,
@@ -1079,6 +1087,8 @@ import type {
   OrgInfo,
   OrgRole,
   OrgSettings,
+  OrgSummary,
+  OrgsList,
   UsageRow,
 } from "../../../../ui/engine-client/src/types";
 
@@ -1217,6 +1227,77 @@ export async function setOrgMemberRole(
     method: "PATCH",
     body: JSON.stringify({ role }),
   });
+}
+
+// ── spaces / teams (C8) ──────────────────────────────────────────────────────
+// The caller's spaces list, self-serve team creation, and agent moves. Gated on
+// `caps.spaces`; the gateway is the sole enforcer.
+
+/**
+ * The caller's spaces + pending invites. Degrades to an empty result on a
+ * gateway that predates spaces (404) — the switcher then shows only the personal
+ * workspace, byte-identical to a pre-C8 deployment. Every other error throws.
+ */
+export async function listOrgs(cfg: ControlPlaneConfig): Promise<OrgsList> {
+  try {
+    const res = await cpFetch(cfg, "/v1/orgs");
+    return (await res.json()) as OrgsList;
+  } catch (err) {
+    if (err instanceof HoustonEngineError && err.status === 404) {
+      return { orgs: [], invites: [] };
+    }
+    throw err;
+  }
+}
+
+/**
+ * Create a team space. NOT idempotent — on a lost response DON'T blind-retry;
+ * reconcile via `listOrgs` and reuse the persisted slug (C8). Never degrades: a
+ * failure throws so the UI surfaces the real reason.
+ */
+export async function createOrg(
+  cfg: ControlPlaneConfig,
+  name: string,
+): Promise<OrgSummary> {
+  const res = await cpFetch(cfg, "/v1/orgs", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+  return (await res.json()) as OrgSummary;
+}
+
+/**
+ * Move an agent into a team space; returns the `moveId` to poll with
+ * `getMoveStatus`. Never degrades — 403 `unsupported_move` / 409
+ * `unmovable_volume` / 403 `needs_upgrade` throw so the caller surfaces them.
+ */
+export async function moveAgent(
+  cfg: ControlPlaneConfig,
+  agentSlugOrId: string,
+  toSlug: string,
+): Promise<AgentMoveStart> {
+  const res = await cpFetch(
+    cfg,
+    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/move`,
+    { method: "POST", body: JSON.stringify({ to: toSlug }) },
+  );
+  return (await res.json()) as AgentMoveStart;
+}
+
+/**
+ * Poll one agent-move's progress (C8). The move-completion signal is THIS route
+ * only — never the agent event stream (which relays pod-scoped events).
+ */
+export async function getMoveStatus(
+  cfg: ControlPlaneConfig,
+  agentSlugOrId: string,
+  moveId: string,
+): Promise<AgentMoveStatus> {
+  const res = await cpFetch(
+    cfg,
+    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/move/${encodeURIComponent(moveId)}`,
+  );
+  return (await res.json()) as AgentMoveStatus;
 }
 
 export async function setAgentAssignments(

@@ -9,7 +9,7 @@
     "agentMenu": "Menu do agente",
     "collapse": "Recolher barra lateral",
     "expand": "Expandir barra lateral",
-    "createOrganization": "Criar organização",
+    "createWorkspace": "Criar espaço de trabalho",
     "groups": {
       "new": "Novo grupo",
       "newDefault": "Novo grupo",

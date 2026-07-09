@@ -216,5 +216,78 @@
     },
     "lastOpened": "Opened {{time}}",
     "open": "Open {{name}}"
+  },
+  "createTeam": {
+    "trigger": "Create team",
+    "title": "Create a team",
+    "description": "Teams let you share agents and work together. You can invite people once it exists.",
+    "nameLabel": "Team name",
+    "namePlaceholder": "e.g. Marketing",
+    "submit": "Create team",
+    "creating": "Creating…",
+    "tooLong": "Keep the name under {{max}} characters.",
+    "successTitle": "Team \"{{name}}\" created"
+  },
+  "shareViaTeam": {
+    "sectionHelper": "This agent lives in your personal space. Move it into a team to share it with teammates.",
+    "button": "Invite your team",
+    "title": "Share {{name}} with a team",
+    "pick": {
+      "subtitle": "Pick a team to move this agent into, or create a new one.",
+      "empty": "You don't have a team yet. Create one to share this agent.",
+      "createTrigger": "Create a new team",
+      "namePlaceholder": "e.g. Marketing",
+      "nameLabel": "Team name",
+      "create": "Create",
+      "creating": "Creating…",
+      "failed": "We couldn't create the team. Please try again."
+    },
+    "confirm": {
+      "body": "{{agent}} will move to {{team}}. You and your teammates will find it there.",
+      "downtime": "The agent restarts during the move, so it may be unavailable for a moment.",
+      "cancel": "Cancel",
+      "move": "Move agent"
+    },
+    "moving": {
+      "heading": "Moving {{agent}} to {{team}}",
+      "body": "This can take a moment. Please keep this window open."
+    },
+    "switching": {
+      "heading": "Getting {{team}} ready"
+    },
+    "switchFailed": {
+      "body": "Your agent moved to {{team}}, but we couldn't switch to that team. Try again to continue inviting.",
+      "retry": "Try again",
+      "close": "Close"
+    },
+    "moveFailed": {
+      "unsupported_move": "This agent can't be moved to that team.",
+      "unmovable_volume": "This agent's storage can't be moved automatically yet. Contact support.",
+      "needs_upgrade": "This team needs an upgrade before you can move agents into it.",
+      "unknown": "Something went wrong during the move.",
+      "timeout": "The move is taking longer than expected. It may still finish in the background. You can try again or close this.",
+      "retry": "Try again",
+      "close": "Close"
+    },
+    "invite": {
+      "subtitle": "{{agent}} is now in {{team}}. Invite people to use it with you.",
+      "emailPlaceholder": "name@company.com",
+      "add": "Add",
+      "send": "Send invites",
+      "sending": "Sending…",
+      "done": "Done",
+      "status": {
+        "pending": "Pending",
+        "sending": "Sending…",
+        "sent": "Invited"
+      },
+      "error": {
+        "already_member": "Already on the team",
+        "generic": "Couldn't invite. Try again."
+      }
+    },
+    "done": {
+      "heading": "Shared with {{team}}"
+    }
   }
 }

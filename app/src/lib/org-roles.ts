@@ -15,6 +15,17 @@ export function isMultiplayer(caps: Capabilities | null | undefined): boolean {
 }
 
 /**
+ * Does this deployment serve C8 Spaces (self-serve team creation, agent moves,
+ * the multi-membership space switcher)? A cosmetic feature-detect — the gateway
+ * is the sole enforcer. Absent/false on desktop/self-host, so the switcher's
+ * create action stays "create a local workspace" there and becomes "create a
+ * team" only on a hosted deployment that advertises the surface.
+ */
+export function hasSpaces(caps: Capabilities | null | undefined): boolean {
+  return caps?.spaces === true;
+}
+
+/**
  * The caller's org role, or null in single-player mode. A multiplayer host
  * always advertises a role; treat a missing one as the least-privileged `user`
  * so a stale/absent field never widens power.

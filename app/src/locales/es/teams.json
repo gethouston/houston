@@ -216,5 +216,78 @@
     },
     "lastOpened": "Abierto {{time}}",
     "open": "Abrir {{name}}"
+  },
+  "createTeam": {
+    "trigger": "Crear equipo",
+    "title": "Crear un equipo",
+    "description": "Los equipos te permiten compartir agentes y trabajar en conjunto. Puedes invitar a personas una vez que exista.",
+    "nameLabel": "Nombre del equipo",
+    "namePlaceholder": "p. ej. Marketing",
+    "submit": "Crear equipo",
+    "creating": "Creando…",
+    "tooLong": "Usa un nombre de menos de {{max}} caracteres.",
+    "successTitle": "Equipo \"{{name}}\" creado"
+  },
+  "shareViaTeam": {
+    "sectionHelper": "Este agente está en tu espacio personal. Muévelo a un equipo para compartirlo con tus compañeros.",
+    "button": "Invita a tu equipo",
+    "title": "Compartir {{name}} con un equipo",
+    "pick": {
+      "subtitle": "Elige un equipo al que mover este agente, o crea uno nuevo.",
+      "empty": "Aún no tienes un equipo. Crea uno para compartir este agente.",
+      "createTrigger": "Crear un equipo nuevo",
+      "namePlaceholder": "p. ej. Marketing",
+      "nameLabel": "Nombre del equipo",
+      "create": "Crear",
+      "creating": "Creando…",
+      "failed": "No pudimos crear el equipo. Inténtalo de nuevo."
+    },
+    "confirm": {
+      "body": "{{agent}} se moverá a {{team}}. Tú y tus compañeros lo encontrarán ahí.",
+      "downtime": "El agente se reinicia durante el traslado, así que puede no estar disponible por un momento.",
+      "cancel": "Cancelar",
+      "move": "Mover agente"
+    },
+    "moving": {
+      "heading": "Moviendo {{agent}} a {{team}}",
+      "body": "Esto puede tardar un momento. Mantén esta ventana abierta."
+    },
+    "switching": {
+      "heading": "Preparando {{team}}"
+    },
+    "switchFailed": {
+      "body": "Tu agente se movió a {{team}}, pero no pudimos cambiar a ese equipo. Reintenta para continuar con las invitaciones.",
+      "retry": "Reintentar",
+      "close": "Cerrar"
+    },
+    "moveFailed": {
+      "unsupported_move": "Este agente no se puede mover a ese equipo.",
+      "unmovable_volume": "El almacenamiento de este agente todavía no se puede mover automáticamente. Contacta con soporte.",
+      "needs_upgrade": "Este equipo necesita una mejora de plan antes de poder mover agentes a él.",
+      "unknown": "Algo salió mal durante el traslado.",
+      "timeout": "El traslado está tardando más de lo esperado. Puede que termine en segundo plano. Puedes reintentar o cerrar.",
+      "retry": "Reintentar",
+      "close": "Cerrar"
+    },
+    "invite": {
+      "subtitle": "{{agent}} ya está en {{team}}. Invita a personas para usarlo contigo.",
+      "emailPlaceholder": "nombre@empresa.com",
+      "add": "Agregar",
+      "send": "Enviar invitaciones",
+      "sending": "Enviando…",
+      "done": "Listo",
+      "status": {
+        "pending": "Pendiente",
+        "sending": "Enviando…",
+        "sent": "Invitado"
+      },
+      "error": {
+        "already_member": "Ya está en el equipo",
+        "generic": "No se pudo invitar. Inténtalo de nuevo."
+      }
+    },
+    "done": {
+      "heading": "Compartido con {{team}}"
+    }
   }
 }
