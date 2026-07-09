@@ -1261,10 +1261,12 @@ export class HoustonClient {
   /**
    * The active team's billing summary (C8 §Billing wire surface). Owner/admin on
    * a team space only. Degrades to `null` for the NOT-ENTITLED cases — a gateway
-   * that predates billing (404) and a caller the gateway refuses billing detail
-   * (403 `personal_space` on a personal space, or a plain member) — so the
-   * billing UI renders nothing and the member/degrade surfaces take over. Mirrors
-   * how `getAgentModelChoice` swallows a 404; every other error throws.
+   * that predates billing (404), a caller the gateway refuses billing detail
+   * (403 `personal_space` on a personal space, or a plain member), and a
+   * billing-off deployment (503, C8's feature-off-when-unset: no `GW_STRIPE_*`
+   * configured — rollout Stage 1 and the kind loop run this way) — so the
+   * billing UI renders nothing and the member/degrade surfaces take over.
+   * Mirrors how `getAgentModelChoice` swallows a 404; every other error throws.
    *
    * `status` is the DERIVED effective status (never a stored column): `free`
    * (personal, enterprise-unbilled, or a solo team), `trialing` (2+ members, no
@@ -1279,7 +1281,7 @@ export class HoustonClient {
     } catch (err) {
       if (
         isHoustonEngineError(err) &&
-        (err.status === 404 || err.status === 403)
+        (err.status === 404 || err.status === 403 || err.status === 503)
       ) {
         return null;
       }

@@ -67,7 +67,12 @@ describe("HoustonClient C8 billing — getBilling", () => {
     strictEqual(await client.getBilling(), null);
   });
 
-  it("does NOT degrade a non-404/403 error (throws)", async () => {
+  it("degrades a 503 to null (billing-off deployment — no GW_STRIPE_* config)", async () => {
+    const { client } = makeClient({ error: "billing not configured" }, 503);
+    strictEqual(await client.getBilling(), null);
+  });
+
+  it("does NOT degrade a non-404/403/503 error (throws)", async () => {
     const { client } = makeClient({}, 500);
     await rejects(() => client.getBilling(), HoustonEngineError);
   });
