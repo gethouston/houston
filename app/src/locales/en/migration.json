@@ -26,7 +26,8 @@
     "step2Title": "Reconnect and go",
     "step2Body": "Sign in to your AI again and reconnect your apps.",
     "freeNote": "This move is completely free. Every Houston user moves to the cloud on a free plan, so you can keep using your assistants at no cost.",
-    "keepOpen": "Keep Houston open while it finishes. Your data on this computer stays safe."
+    "keepOpen": "Keep Houston open while it finishes. Your data on this computer stays safe.",
+    "migrateLater": "Migrate later"
   },
   "progress": {
     "title": "Moving to the cloud",
@@ -50,7 +51,8 @@
       "finalizing": "Finishing up",
       "done": "Done",
       "error": "Something went wrong"
-    }
+    },
+    "migrateLater": "Migrate later"
   },
   "done": {
     "title": "Your assistants made it",

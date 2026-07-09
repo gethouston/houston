@@ -58,6 +58,7 @@ function CloudMigrationWizard({
 }) {
   const screen = useCloudMigrationStore((s) => s.screen);
   const start = useCloudMigrationStore((s) => s.start);
+  const deferMigration = useCloudMigrationStore((s) => s.deferMigration);
 
   if (screen === "offer") {
     return (
@@ -73,6 +74,18 @@ function CloudMigrationWizard({
       />
     );
   }
-  if (screen === "progress") return <ProgressScreen />;
+  if (screen === "progress") {
+    return (
+      <ProgressScreen
+        onDefer={() => {
+          deferMigration();
+          analytics.track("cloud_migration_deferred", {
+            agent_count: detection.agentDirCount,
+          });
+          persistOutcome("skipped");
+        }}
+      />
+    );
+  }
   return <DoneScreen persistOutcome={persistOutcome} />;
 }

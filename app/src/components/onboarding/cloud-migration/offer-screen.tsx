@@ -81,7 +81,7 @@ export function OfferScreen({
             onClick={onSkip}
             className="rounded-full px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
-            {t("offer.startFresh")}
+            {t("offer.migrateLater")}
           </button>
         </div>
       }

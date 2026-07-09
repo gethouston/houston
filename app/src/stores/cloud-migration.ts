@@ -31,6 +31,7 @@ import { writeMigrationStatus } from "../lib/migration-status";
 import {
   osBackupHoustonData,
   osStartMigrationSourceHost,
+  osStopMigrationSourceHost,
 } from "../lib/os-bridge";
 import { useAgentStore } from "./agents";
 import { finishRun } from "./cloud-migration-finish";
@@ -58,6 +59,13 @@ interface CloudMigrationState {
   retryTask: (sourceId: string) => Promise<void>;
   /** Leave remaining failures behind and move on to the done screen. */
   continueAnyway: () => void;
+  /** True once the user bailed out of a running migration ("Migrate later").
+   *  The run loop breaks after the current task; the source host is stopped. */
+  deferred: boolean;
+  /** Bail out of an in-progress migration (it was taking too long). Stops the
+   *  source host and breaks the run loop; the migration stays resumable from
+   *  Settings (already-migrated agents are skipped on the next run). */
+  deferMigration: () => void;
 }
 
 let sourceHost: SourceHostHandshake | null = null;
@@ -132,6 +140,7 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
       tasks: [],
       progress: {},
       integrations: [],
+      deferred: false,
 
       start: async () => {
         // Dev-only: simulate the run frontend-only (no source host / gateway).
@@ -144,6 +153,7 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
           preparing: true,
           backingUp: true,
           startError: null,
+          deferred: false,
         }));
         // Never migrate without a local backup: copy `~/.houston` aside FIRST,
         // so a crash mid-upload can't lose the only copy of the user's data.
@@ -192,10 +202,11 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
           bytes: tasks.reduce((n, t) => n + t.manifest.totalBytes, 0),
         });
         for (const task of tasks) {
+          if (get().deferred) break; // user chose "Migrate later"
           if (get().progress[task.sourceId]?.step === "done") continue;
           await runTask(task, false);
         }
-        await settleIfAllDone();
+        if (!get().deferred) await settleIfAllDone();
       },
 
       retryTask: async (sourceId) => {
@@ -220,6 +231,19 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
 
       continueAnyway: () => {
         void finish();
+      },
+
+      deferMigration: () => {
+        set(() => ({ deferred: true }));
+        // Stop the passive source host now; the run loop breaks after the
+        // task in flight. Best-effort — never blocks the user leaving.
+        void osStopMigrationSourceHost().catch((err: unknown) =>
+          reportError(
+            "cloud_migration_defer_stop",
+            err instanceof Error ? err.message : String(err),
+            err,
+          ),
+        );
       },
     };
   },

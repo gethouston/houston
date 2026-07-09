@@ -26,7 +26,8 @@
     "step2Title": "Reconecte e pronto",
     "step2Body": "Entre de novo na sua IA e reconecte seus apps.",
     "freeNote": "Essa mudança é totalmente gratuita. Todos os usuários do Houston vão para a nuvem em um plano gratuito, então você pode continuar usando seus assistentes sem custo.",
-    "keepOpen": "Mantenha o Houston aberto até terminar. Seus dados neste computador ficam seguros."
+    "keepOpen": "Mantenha o Houston aberto até terminar. Seus dados neste computador ficam seguros.",
+    "migrateLater": "Migrar depois"
   },
   "progress": {
     "title": "Indo para a nuvem",
@@ -50,7 +51,8 @@
       "finalizing": "Finalizando",
       "done": "Pronto",
       "error": "Algo deu errado"
-    }
+    },
+    "migrateLater": "Migrar depois"
   },
   "done": {
     "title": "Seus assistentes chegaram",

@@ -45,6 +45,7 @@ export type AnalyticsEventName =
   | "cloud_migration_agent_failed"
   | "cloud_migration_completed"
   | "cloud_migration_skipped"
+  | "cloud_migration_deferred"
   // Onboarding funnel (acquisition→activation) — one event per step the user
   // actually clears, so a single PostHog funnel can show where first-run drops
   // off (broken down by `app_os` for Mac vs Windows). Action-first: where a

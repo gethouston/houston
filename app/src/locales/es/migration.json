@@ -26,7 +26,8 @@
     "step2Title": "Reconecta y listo",
     "step2Body": "Vuelve a iniciar sesión en tu IA y reconecta tus apps.",
     "freeNote": "Esta mudanza es completamente gratis. Todos los usuarios de Houston pasan a la nube en un plan gratuito, así puedes seguir usando tus asistentes sin costo.",
-    "keepOpen": "Mantén Houston abierto mientras termina. Tus datos en este computador quedan a salvo."
+    "keepOpen": "Mantén Houston abierto mientras termina. Tus datos en este computador quedan a salvo.",
+    "migrateLater": "Migrar después"
   },
   "progress": {
     "title": "Moviéndonos a la nube",
@@ -50,7 +51,8 @@
       "finalizing": "Terminando",
       "done": "Listo",
       "error": "Algo salió mal"
-    }
+    },
+    "migrateLater": "Migrar después"
   },
   "done": {
     "title": "Tus asistentes ya llegaron",

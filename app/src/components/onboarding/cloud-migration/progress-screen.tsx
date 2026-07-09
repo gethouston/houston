@@ -95,7 +95,7 @@ function AgentRow({
  * alive without exposing per-agent plumbing. Falls back to the per-agent
  * list only when something needs the user's attention (a failed agent).
  */
-export function ProgressScreen() {
+export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
   const { t } = useTranslation("migration");
   const {
     preparing,
@@ -126,10 +126,7 @@ export function ProgressScreen() {
       hideLogo
       title={t("progress.title")}
       footer={
-        !preparing &&
-        !startError &&
-        anyError &&
-        !anyRunning && (
+        startError ? undefined : anyError && !anyRunning ? (
           <Button
             variant="outline"
             className="rounded-full"
@@ -137,7 +134,17 @@ export function ProgressScreen() {
           >
             {t("progress.continueAnyway")}
           </Button>
-        )
+        ) : onDefer ? (
+          // The migration is still running (backup / prepare / uploading): let
+          // the user leave and finish later from Settings if it's slow.
+          <button
+            type="button"
+            onClick={onDefer}
+            className="rounded-full px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {t("progress.migrateLater")}
+          </button>
+        ) : undefined
       }
     >
       <div className="flex flex-col items-center gap-3 text-center">
