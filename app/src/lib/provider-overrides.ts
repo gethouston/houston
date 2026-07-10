@@ -58,15 +58,6 @@ export interface ProviderOverride {
    */
   description?: string;
   cost?: string;
-  /**
-   * Has a usable free tier the user can start on without paying (the friendly
-   * "free" quick-filter facet reads this). Curated and conservative — set only
-   * where the provider verifiably lets a new user run models at no cost today
-   * (Google's free AI Studio key, Groq/Cerebras free tiers, Hugging Face's
-   * monthly credits, OpenRouter's free-routed models). Local models cost
-   * nothing too, but that facet is derived from the auth chip, not this flag.
-   */
-  freeTier?: boolean;
   installUrl?: string;
   /** For api-key providers: the dashboard URL where the user creates/copies the key. */
   apiKeyUrl?: string;
@@ -76,6 +67,15 @@ export interface ProviderOverride {
    * providers, or `"openaiCompatible"` for the local provider.
    */
   auth?: "oauth" | "apiKey" | "openaiCompatible";
+  /**
+   * How this provider is BILLED, when it differs from what `auth` implies
+   * (oauth → `"subscription"`, apiKey → `"payg"`). The Providers-tab filter
+   * reads this (`providerBilling`), not `auth` directly — auth is how you
+   * connect, this is how you pay, and they only coincide by default. The one
+   * override that needs this today: OpenCode Go is a flat $10/month
+   * subscription paid for with a pasted API key (`opencode-go` below).
+   */
+  billing?: "subscription" | "payg";
   /** GitHub Copilot's Personal-vs-Enterprise connect dialog. */
   copilotConnect?: boolean;
   /** The engine gateway ids one connect card stands in for (merged OpenCode). */
@@ -194,17 +194,17 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
         label: "GPT-5.5",
         description: "OpenAI's frontier model.",
       },
-      "gpt-5.4": {
-        label: "GPT-5.4",
-        description: "Strong model for everyday coding.",
+      "gpt-5.6-sol": {
+        label: "Sol",
+        description: "OpenAI's newest frontier model.",
       },
-      "gpt-5.4-mini": {
-        label: "GPT-5.4-Mini",
-        description: "Small, fast, and cost-efficient for simpler tasks.",
+      "gpt-5.6-terra": {
+        label: "Terra",
+        description: "Balanced mid-tier model.",
       },
-      "gpt-5.3-codex-spark": {
-        label: "GPT-5.3-Codex-Spark",
-        description: "Ultra-fast coding model.",
+      "gpt-5.6-luna": {
+        label: "Luna",
+        description: "Fast and cost-efficient for simpler tasks.",
       },
     },
   },
@@ -215,25 +215,20 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Your Claude subscription",
     installUrl: "https://docs.anthropic.com/en/docs/claude-code/overview",
     auth: "oauth",
-    defaultModel: "claude-sonnet-4-6",
+    defaultModel: "claude-sonnet-5",
     models: {
-      "claude-sonnet-4-6": {
-        label: "Sonnet 4.6",
+      "claude-sonnet-5": {
+        label: "Sonnet 5",
         description: "Best balance of speed and quality.",
       },
       "claude-opus-4-8": {
         label: "Opus 4.8",
         description:
-          "Latest Opus. Better alignment and agentic coding than 4.7.",
+          "Anthropic's flagship. Strong agentic coding and alignment.",
       },
       "claude-fable-5": {
         label: "Fable 5",
         description: "Most capable model. Costs 2x more credits than Opus 4.8.",
-      },
-      "claude-opus-4-7": {
-        label: "Opus 4.7",
-        description:
-          "Previous flagship. Strong coding autonomy and complex reasoning.",
       },
     },
   },
@@ -326,6 +321,7 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     subtitle: "Open coding models",
     description: "Open coding models on a flat monthly plan.",
     cost: "$10 / month",
+    billing: "subscription",
     installUrl: "https://opencode.ai/auth",
     apiKeyUrl: "https://opencode.ai/auth",
     defaultModel: "glm-5.1",
@@ -357,7 +353,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     subtitle: "Any model, one key",
     description: "Any model from one key.",
     cost: "Free models, then pay as you go",
-    freeTier: true,
     installUrl: "https://openrouter.ai",
     apiKeyUrl: "https://openrouter.ai/settings/keys",
     defaultModel: "anthropic/claude-sonnet-4.6",
@@ -408,7 +403,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     subtitle: "Free key from AI Studio",
     description: "Gemini models, free key from AI Studio.",
     cost: "Free tier on your Google account",
-    freeTier: true,
     installUrl: "https://ai.google.dev",
     apiKeyUrl: "https://aistudio.google.com/apikey",
     defaultModel: "gemini-3-flash-preview",
@@ -481,15 +475,14 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       },
     },
   },
-  // Free-tier curation: these entries exist so the "Free to try" quick filter
-  // and the card's cost line can tell users they can start at no cost. Row
-  // descriptions still come from `DESCRIPTION_BY_ID` (no `description` here);
-  // names are set because every override entry seeds a pre-hydration card.
+  // Free-tier curation: these entries exist so the card's cost line can tell
+  // users they can start at no cost. Row descriptions still come from
+  // `DESCRIPTION_BY_ID` (no `description` here); names are set because every
+  // override entry seeds a pre-hydration card.
   groq: {
     name: "Groq",
     subtitle: "Fast inference",
     cost: "Free tier, then pay as you go",
-    freeTier: true,
     installUrl: "https://groq.com",
     apiKeyUrl: "https://console.groq.com/keys",
   },
@@ -497,7 +490,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     name: "Cerebras",
     subtitle: "Very fast inference",
     cost: "Free tier, then pay as you go",
-    freeTier: true,
     installUrl: "https://www.cerebras.ai",
     apiKeyUrl: "https://cloud.cerebras.ai",
   },
@@ -505,7 +497,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     name: "Hugging Face",
     subtitle: "Open models hub",
     cost: "Free monthly credits, then pay as you go",
-    freeTier: true,
     installUrl: "https://huggingface.co",
     apiKeyUrl: "https://huggingface.co/settings/tokens",
   },

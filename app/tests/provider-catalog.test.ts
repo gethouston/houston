@@ -53,8 +53,8 @@ describe("hydrateProviderCatalog: local provider + auth", () => {
 
 describe("hydrateProviderCatalog: model metadata", () => {
   it("layers override label + description over pi's raw model name", () => {
-    const sonnet = getModel("anthropic", "claude-sonnet-4-6");
-    strictEqual(sonnet?.label, "Sonnet 4.6");
+    const sonnet = getModel("anthropic", "claude-sonnet-5");
+    strictEqual(sonnet?.label, "Sonnet 5");
     ok(sonnet && sonnet.description.length > 0);
   });
 
@@ -138,7 +138,7 @@ describe("normalizeEffort (legacy `max` tolerance)", () => {
 
 describe("helpers read the hydrated cache", () => {
   it("getDefaultModel: override pick for curated, first model for new providers", () => {
-    strictEqual(getDefaultModel("anthropic"), "claude-sonnet-4-6");
+    strictEqual(getDefaultModel("anthropic"), "claude-sonnet-5");
     strictEqual(getDefaultModel("groq"), "llama-4-scout");
   });
 

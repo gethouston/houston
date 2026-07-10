@@ -74,9 +74,14 @@ export const SAMPLE_CATALOG: ProviderCatalog = [
     "oauth",
     [
       reasoningModel("gpt-5.5", { contextWindow: 272_000 }),
+      reasoningModel("gpt-5.6-sol", { contextWindow: 372_000, vision: true }),
+      reasoningModel("gpt-5.6-terra", { contextWindow: 372_000, vision: true }),
+      // Non-vision fixture entry (`leaves a non-vision model without the image
+      // modality` reads this one).
+      reasoningModel("gpt-5.6-luna", { contextWindow: 372_000 }),
+      // Uncurated: pi still runs the retired 5.4 line, but the curated set
+      // moved on to the 5.6 family — must be filtered out of the hub.
       reasoningModel("gpt-5.4", { contextWindow: 272_000 }),
-      reasoningModel("gpt-5.4-mini", { contextWindow: 272_000 }),
-      reasoningModel("gpt-5.3-codex-spark", { contextWindow: 128_000 }),
     ],
     "ChatGPT subscription",
   ),
@@ -85,9 +90,11 @@ export const SAMPLE_CATALOG: ProviderCatalog = [
       contextWindow: 1_000_000,
       vision: true,
     }),
-    reasoningModel("claude-sonnet-4-6", { contextWindow: 200_000 }),
     reasoningModel("claude-opus-4-8", { contextWindow: 1_000_000 }),
     reasoningModel("claude-fable-5", { contextWindow: 1_000_000 }),
+    // Uncurated: pi still runs these prior-generation ids, but the curated
+    // set moved on to Sonnet 5 — must be filtered out of the hub.
+    reasoningModel("claude-sonnet-4-6", { contextWindow: 200_000 }),
     reasoningModel("claude-opus-4-7", { contextWindow: 1_000_000 }),
   ]),
   provider("github-copilot", "oauth", [

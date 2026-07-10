@@ -45,8 +45,8 @@ interface WindowOverride {
  * - `anthropic` — pi reports 1,000,000 for the flagships, but standard (Pro,
  *   non-credit) plans get 200k; the 1M window is credit/plan-gated, so the
  *   estimate starts at 200k and snaps to 1M once observed usage proves it.
- *   `claude-fable-5` is intentionally omitted (no evidence it is plan-gated —
- *   pi's 1M stands). `claude-sonnet-5` is not yet in pi's registry.
+ *   `claude-fable-5` and `claude-sonnet-5` are intentionally omitted (no
+ *   evidence either is plan-gated — pi's flat 1M stands for both).
  * - `openai-codex` — Codex's `/status` reports a 95%-EFFECTIVE window (the number
  *   the user sees), and gpt-5.5/5.4 expose an opt-in 1M variant (× 95%).
  */
