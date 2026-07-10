@@ -486,16 +486,23 @@ test("Escape returns from a routine chat to the grid", async ({ page }) => {
     timeout: 15_000,
   });
 
-  // A focused composer eats the FIRST Escape (blur, app convention)…
+  // A focused composer eats the FIRST Escape (blur, app convention); the
+  // SECOND backs out to the grid. Press them back-to-back and assert only
+  // the user-visible outcome — asserting the intermediate blur is racy on
+  // CI because chat activity (a settling reply, the focus token) can
+  // legitimately re-focus the composer an instant later.
   const composer = page.getByPlaceholder("Send a follow-up...");
   await composer.click();
   await expect(composer).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(composer).not.toBeFocused();
-
-  // …the SECOND backs out to the grid.
   await page.keyboard.press("Escape");
   await expect(
     page.getByRole("button", { name: "New routine" }).first(),
   ).toBeVisible();
+
+  // The chat still opens fine afterwards (Escape never wedged the view).
+  await editRoutineWithAi(page, "Escapable");
+  await expect(page.getByText("Routine: Escapable")).toBeVisible({
+    timeout: 15_000,
+  });
 });
