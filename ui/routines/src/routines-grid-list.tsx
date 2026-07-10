@@ -12,6 +12,7 @@ import {
   DEFAULT_ROW_LABELS,
   DEFAULT_SCHEDULE_LABELS,
   DEFAULT_SCHEDULE_SUMMARY_LABELS,
+  DEFAULT_TRIGGER_LABELS,
 } from "./labels";
 import { NewRoutineMenu } from "./new-routine-menu";
 import { RoutineDraftRow } from "./routine-draft-row";
@@ -44,6 +45,12 @@ export function RoutinesGridList({
   scheduleSummaryLabels = DEFAULT_SCHEDULE_SUMMARY_LABELS,
   nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
   scheduleLabels = DEFAULT_SCHEDULE_LABELS,
+  triggerLabels = DEFAULT_TRIGGER_LABELS,
+  triggersEnabled = false,
+  renderTriggerEditor,
+  triggerStatuses = {},
+  triggerSummaries = {},
+  onReconnectTrigger,
   locale = "en-US",
 }: RoutinesGridProps & { sorted: Routine[] }) {
   const l = labels;
@@ -98,8 +105,11 @@ export function RoutinesGridList({
                 autoFocusName
                 onSave={newDraft.onSave}
                 onCancel={newDraft.onCancel}
+                triggersEnabled={triggersEnabled}
+                renderTriggerEditor={renderTriggerEditor}
                 labels={rowLabels}
                 scheduleLabels={scheduleLabels}
+                triggerLabels={triggerLabels}
                 locale={locale}
               />
             </div>
@@ -145,10 +155,20 @@ export function RoutinesGridList({
                     ? () => onStopRun(routine.id, lastRun.id)
                     : undefined
                 }
+                triggersEnabled={triggersEnabled}
+                renderTriggerEditor={renderTriggerEditor}
+                triggerStatus={triggerStatuses[routine.id]}
+                triggerSummary={triggerSummaries[routine.id]}
+                onReconnectTrigger={
+                  onReconnectTrigger
+                    ? () => onReconnectTrigger(routine.id)
+                    : undefined
+                }
                 labels={rowLabels}
                 scheduleSummaryLabels={scheduleSummaryLabels}
                 nextFireLabels={nextFireLabels}
                 scheduleLabels={scheduleLabels}
+                triggerLabels={triggerLabels}
                 locale={locale}
               />
             );

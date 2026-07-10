@@ -3,6 +3,20 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v18 - 2026-07-11
+
+Routines can now wake on an external event, not only a cron schedule (C9).
+
+`routine-row` gains an event-driven variant: alongside the schedule-driven row
+(schedule summary + next fire), an event routine shows a humanized event summary
+("Wakes on an event in Gmail") and a live trigger-status badge -- active,
+setting up, reconnect-needed (with a one-click reconnect to the integrations
+surface), access-turned-off, or needs-attention. New render states
+`trigger-active` / `trigger-pending` / `trigger-paused` / `trigger-error`. The
+authoring surface (the wake-mechanism choice, app + event picker, and the
+schema-generated config form) stays desktop-only chrome, excluded like the
+schedule/cron editor.
+
 ## v17 - 2026-07-11
 
 `interaction-card`: the whole family adopts the reference "Coworker card" look

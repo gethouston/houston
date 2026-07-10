@@ -77,6 +77,13 @@ export interface Capabilities {
    */
   integrations: string[];
   /**
+   * Whether routines may be woken by an external event (a Composio trigger)
+   * instead of a cron schedule. Requires an integration key AND a public webhook
+   * URL, so it is on for managed cloud / self-host and off on desktop. The UI
+   * hides the event-wake option when false. Absent = off (legacy hosts stay valid).
+   */
+  triggers?: boolean;
+  /**
    * Whether this deployment runs in multiplayer (paid org) mode: members,
    * roles, per-agent assignment. Absent/false = single personal workspace.
    * Optional so every existing single-player host/profile stays valid.

@@ -16,17 +16,26 @@ import {
   DEFAULT_ROW_LABELS,
   DEFAULT_SCHEDULE_LABELS,
   DEFAULT_SCHEDULE_SUMMARY_LABELS,
+  DEFAULT_TRIGGER_LABELS,
   type NextFireLabels,
   type RoutineRowLabels,
   type ScheduleLabels,
   type ScheduleSummaryLabels,
+  type TriggerLabels,
 } from "./labels";
 import { RoutineRowEdit } from "./routine-row-edit";
 import { RoutineRowMenu } from "./routine-row-menu";
 import { RoutineRowMeta } from "./routine-row-meta";
 import { RoutineRowStatus } from "./routine-row-status";
 import { cronSummary } from "./schedule-summary";
-import type { Routine, RoutineRun } from "./types";
+import { TriggerStatusBadge } from "./trigger-status-badge";
+import type {
+  RenderTriggerEditor,
+  Routine,
+  RoutineEditPatch,
+  RoutineRun,
+  TriggerStatusItem,
+} from "./types";
 import { useNow } from "./use-now";
 
 export interface RoutineRowProps {
@@ -35,13 +44,9 @@ export interface RoutineRowProps {
   /** The account-wide IANA timezone every routine fires in. */
   accountTimezone: string;
   onToggle?: (enabled: boolean) => void;
-  /** Save the inline edit panel's name/schedule/instruction. Resolves true on
-   *  success (the panel closes) or false (it stays open for another try). */
-  onSave?: (patch: {
-    name: string;
-    schedule: string;
-    prompt: string;
-  }) => Promise<boolean>;
+  /** Save the inline edit panel (name/instruction + wake mechanism). Resolves
+   *  true on success (the panel closes) or false (it stays open for a retry). */
+  onSave?: (patch: RoutineEditPatch) => Promise<boolean>;
   /** Open the routine's chat to change it by asking instead. */
   onEditWithAi?: () => void;
   /** Delete the routine — the row confirms first. */
@@ -59,6 +64,18 @@ export interface RoutineRowProps {
   nextFireLabels?: NextFireLabels;
   /** Full schedule-builder labels, for the inline edit panel's picker. */
   scheduleLabels?: ScheduleLabels;
+  /** Trigger (event-driven) copy for the wake choice, picker, and status badge. */
+  triggerLabels?: TriggerLabels;
+  /** Whether the deployment supports event triggers (enables the wake choice). */
+  triggersEnabled?: boolean;
+  /** App-wired trigger editor injected into the inline edit panel's event side. */
+  renderTriggerEditor?: RenderTriggerEditor;
+  /** Live provisioning status for an event-driven routine (badge + reconnect). */
+  triggerStatus?: TriggerStatusItem;
+  /** Human summary of a trigger routine's event, shown instead of the cron line. */
+  triggerSummary?: string;
+  /** Reconnect the disconnected account behind a `paused_disconnected` routine. */
+  onReconnectTrigger?: () => void;
   /** BCP-47 locale for day names + time formatting. */
   locale?: string;
 }
@@ -78,6 +95,12 @@ export function RoutineRow({
   scheduleSummaryLabels = DEFAULT_SCHEDULE_SUMMARY_LABELS,
   nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
   scheduleLabels = DEFAULT_SCHEDULE_LABELS,
+  triggerLabels = DEFAULT_TRIGGER_LABELS,
+  triggersEnabled = false,
+  renderTriggerEditor,
+  triggerStatus,
+  triggerSummary,
+  onReconnectTrigger,
   locale = "en-US",
 }: RoutineRowProps) {
   const now = useNow(60_000);
@@ -111,8 +134,22 @@ export function RoutineRow({
             {routine.name || labels.untitled}
           </p>
           <p className="text-xs text-muted-foreground truncate mt-0.5">
-            {cronSummary(routine.schedule, scheduleSummaryLabels, locale)}
+            {routine.trigger
+              ? (triggerSummary ?? triggerLabels.wakeEvent)
+              : cronSummary(
+                  routine.schedule ?? "",
+                  scheduleSummaryLabels,
+                  locale,
+                )}
           </p>
+          {routine.trigger && triggerStatus && (
+            <TriggerStatusBadge
+              status={triggerStatus}
+              onReconnect={onReconnectTrigger}
+              labels={triggerLabels}
+              className="mt-1"
+            />
+          )}
         </div>
 
         {/* Right meta column: next run + last run */}
@@ -163,6 +200,7 @@ export function RoutineRow({
             name: routine.name,
             prompt: routine.prompt,
             schedule: routine.schedule,
+            trigger: routine.trigger ?? null,
           }}
           onSave={async (patch) => {
             const ok = (await onSave?.(patch)) ?? false;
@@ -170,8 +208,13 @@ export function RoutineRow({
             return ok;
           }}
           onCancel={() => setExpanded(false)}
+          triggersEnabled={triggersEnabled}
+          renderTriggerEditor={renderTriggerEditor}
+          triggerStatus={triggerStatus}
+          onReconnectTrigger={onReconnectTrigger}
           labels={labels}
           scheduleLabels={scheduleLabels}
+          triggerLabels={triggerLabels}
           locale={locale}
         />
       )}

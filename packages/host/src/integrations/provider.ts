@@ -5,6 +5,9 @@ import type {
   ProviderReadiness,
   Toolkit,
   ToolMatch,
+  TriggerInstanceRef,
+  TriggerType,
+  TriggerUpsertBinding,
 } from "./types";
 
 /**
@@ -83,4 +86,37 @@ export interface IntegrationProvider {
     params: Record<string, unknown>,
     acting?: ActingContext,
   ): Promise<ActionResult>;
+
+  // ── Triggers (C9 event-driven routines; reconciler verbs) ─────────────────
+  /**
+   * The trigger catalog for one toolkit — the events a routine can wake on
+   * (each with its config + payload JSON schema), for the UI picker.
+   */
+  listTriggerTypes(toolkit: string): Promise<TriggerType[]>;
+  /**
+   * Create-or-update the Composio trigger instance for a binding and return its
+   * id. Idempotent per (account, trigger, config) — the reconciler calls it to
+   * converge desired → actual. The direct adapter resolves the connected
+   * account (pinned id, else the user's single active one); the gateway adapter
+   * refuses (the desktop never reconciles — see TriggersUnsupportedError).
+   */
+  upsertTriggerInstance(
+    userId: string,
+    binding: TriggerUpsertBinding,
+  ): Promise<TriggerInstanceRef>;
+  /** Enable or disable a provisioned instance (the reconciler's disable path). */
+  setTriggerInstanceStatus(
+    triggerInstanceId: string,
+    status: "enable" | "disable",
+  ): Promise<void>;
+  /** Delete a provisioned instance (routine gone / revoked / disconnected). */
+  deleteTriggerInstance(triggerInstanceId: string): Promise<void>;
+  /**
+   * Point the provider's ONE project-level webhook at `webhookUrl` — the
+   * bootstrap the self-host does once at startup so delivered events reach its
+   * ingress route. Idempotent (re-registering the same URL is a no-op upstream).
+   * Direct adapter → Composio's webhook-subscription API; the gateway adapter
+   * refuses (the desktop never owns the webhook — TriggersUnsupportedError).
+   */
+  ensureWebhookSubscription(webhookUrl: string): Promise<void>;
 }

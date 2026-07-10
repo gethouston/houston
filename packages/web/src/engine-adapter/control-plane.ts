@@ -39,6 +39,8 @@ export type {
   OrgSettings,
   OrgSummary,
   OrgsList,
+  TriggerStatusItem,
+  TriggerType,
   UsageRow,
 } from "../../../../ui/engine-client/src/types";
 

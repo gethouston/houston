@@ -80,6 +80,12 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
       await this.ctx.sdk.integrations.dismissReconnectNotice();
     }
 
+    // ---- triggers (C9 event-driven routines) — hosted gateway only ----
+    async triggerTypes(toolkit: string): Promise<controlPlane.TriggerType[]> {
+      if (!this.ctx.cp) return [];
+      return controlPlane.triggerTypes(this.ctx.cp, toolkit);
+    }
+
     // ---- custom integrations (HOU-550) — host only ----
     // A host without the custom-integrations surface answers 404 on the read,
     // which `customIntegrations` maps to null so the section stays hidden. The

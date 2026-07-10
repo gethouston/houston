@@ -15,7 +15,32 @@ import {
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** Normalize raw routines: defaults per the schema; entries without identity dropped + reported. */
+/**
+ * A trigger binding is well-formed when it carries the two identifying strings
+ * and an object config. `connected_account_id` is optional (pinned only when the
+ * user has more than one account for the toolkit). Exported so the write path
+ * (routes) rejects a malformed binding up front rather than persisting one that
+ * `normalizeRoutines` would silently drop on the next read.
+ */
+export const isValidTriggerBinding = (v: unknown): boolean =>
+  isRecord(v) &&
+  typeof v.toolkit === "string" &&
+  typeof v.trigger_slug === "string" &&
+  isRecord(v.trigger_config);
+
+/**
+ * Normalize raw routines: defaults per the schema; entries without identity or
+ * without exactly one valid wake mechanism dropped + reported.
+ *
+ * FORWARD-COMPAT CONTRACT: this read is tolerant of trigger routines (a
+ * `trigger` binding and no `schedule`) so that an engine build predating
+ * event-driven routines does NOT erase them on the next write. Every save writes
+ * back only the survivors, so a reader that dropped schedule-less entries would
+ * silently delete a user's trigger automations. Rules: keep a routine with a
+ * valid `trigger` and no schedule, keep the legacy schedule-only shape, and drop
+ * (with a diagnostic) any entry that has BOTH or NEITHER, or whose `trigger` is
+ * malformed. Beta policy: no silent loss — every drop surfaces a diagnostic.
+ */
 export function normalizeRoutines(
   raw: unknown,
   key: string,
@@ -29,39 +54,55 @@ export function normalizeRoutines(
   }
   const items: Routine[] = [];
   const diagnostics: DocDiagnostic[] = [];
+  const drop = (message: string, entry: unknown) =>
+    diagnostics.push({
+      key,
+      message: `${message}: ${JSON.stringify(entry)?.slice(0, 120)}`,
+    });
   for (const entry of raw) {
     if (
-      isRecord(entry) &&
-      typeof entry.id === "string" &&
-      typeof entry.name === "string" &&
-      typeof entry.prompt === "string" &&
-      typeof entry.schedule === "string"
+      !(
+        isRecord(entry) &&
+        typeof entry.id === "string" &&
+        typeof entry.name === "string" &&
+        typeof entry.prompt === "string"
+      )
     ) {
-      // HOU-470 removed the per-routine `timezone` override (one account-wide
-      // zone now) and HOU-725 removed `description` (display-only, nothing
-      // consumed it). Routines written by older builds still carry the stray
-      // keys on disk; drop them on read so they do not round-trip back out,
-      // an idempotent no-migration cleanup (they disappear on next write).
-      const item = {
-        enabled: true,
-        suppress_when_silent: false,
-        chat_mode: entry.chat_mode === "per_run" ? "per_run" : "shared",
-        integrations: Array.isArray(entry.integrations)
-          ? entry.integrations
-          : [],
-        created_at: "",
-        updated_at: "",
-        ...entry,
-      } as Routine & { timezone?: unknown; description?: unknown };
-      delete item.timezone;
-      delete item.description;
-      items.push(item);
-    } else {
-      diagnostics.push({
-        key,
-        message: `dropped malformed routine entry: ${JSON.stringify(entry)?.slice(0, 120)}`,
-      });
+      drop("dropped malformed routine entry", entry);
+      continue;
     }
+    const hasSchedule = typeof entry.schedule === "string";
+    const triggerPresent = entry.trigger != null;
+    if (triggerPresent && !isValidTriggerBinding(entry.trigger)) {
+      drop("dropped routine with malformed trigger", entry);
+      continue;
+    }
+    // Exactly one wake mechanism. `hasSchedule === triggerPresent` is true when
+    // both are set (ambiguous) or neither is (never fires) — both are invalid.
+    if (hasSchedule === triggerPresent) {
+      drop("dropped routine without exactly one of schedule/trigger", entry);
+      continue;
+    }
+    // HOU-470 removed the per-routine `timezone` override (one account-wide
+    // zone now) and HOU-725 removed `description` (display-only, nothing
+    // consumed it). Routines written by older builds still carry the stray
+    // keys on disk; drop them on read so they do not round-trip back out,
+    // an idempotent no-migration cleanup (they disappear on next write).
+    const item = {
+      enabled: true,
+      suppress_when_silent: false,
+      chat_mode: entry.chat_mode === "per_run" ? "per_run" : "shared",
+      integrations: Array.isArray(entry.integrations) ? entry.integrations : [],
+      created_at: "",
+      updated_at: "",
+      ...entry,
+    } as Routine & { timezone?: unknown; description?: unknown };
+    delete item.timezone;
+    delete item.description;
+    // A trigger routine carries no schedule; a stray non-string schedule (e.g.
+    // an explicit null) must not round-trip as an invalid wake field.
+    if (!hasSchedule) delete item.schedule;
+    items.push(item);
   }
   return { items, diagnostics };
 }
@@ -98,7 +139,6 @@ export function createRoutine(
     id,
     name: input.name,
     prompt: input.prompt,
-    schedule: input.schedule,
     enabled: input.enabled ?? true,
     suppress_when_silent: input.suppress_when_silent ?? false,
     chat_mode: input.chat_mode ?? "shared",
@@ -110,6 +150,11 @@ export function createRoutine(
     integrations: input.integrations ?? [],
     created_at: nowIso,
     updated_at: nowIso,
+    // Exactly one wake mechanism, written only when present — a cron routine
+    // carries no `trigger` and a trigger routine no `schedule` (normalizeRoutines
+    // drops entries that end up with both or neither). The caller supplies one.
+    ...(input.schedule ? { schedule: input.schedule } : {}),
+    ...(input.trigger ? { trigger: input.trigger } : {}),
     // Only write the keys when known, so legacy routines stay absent (not "": …).
     ...(input.setup_activity_id
       ? { setup_activity_id: input.setup_activity_id }
@@ -141,12 +186,18 @@ export function applyRoutineUpdate(
   );
   // `...current` preserves `created_by` when no verified actor is known — a
   // client can never reassign a routine's acting identity through the body.
-  return {
+  const next = {
     ...current,
     ...defined,
     ...(actorSub ? { created_by: actorSub } : {}),
     updated_at: nowIso,
   } as Routine;
+  // A routine has exactly one wake mechanism, so setting one clears the other:
+  // switching a cron routine to an event wake (or back) must not leave both set,
+  // which normalizeRoutines would drop on the next read.
+  if (defined.schedule !== undefined) delete next.trigger;
+  if (defined.trigger !== undefined) delete next.schedule;
+  return next;
 }
 
 /** Normalize raw routine runs (written by the scheduler; read by the UI). */

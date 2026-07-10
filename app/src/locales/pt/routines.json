@@ -145,6 +145,36 @@
     "soon": "em breve",
     "at": "{day} às {time}"
   },
+  "trigger": {
+    "wakeSchedule": "Em um horário",
+    "wakeScheduleHint": "Executa nos horários que você escolher",
+    "wakeEvent": "Quando algo acontece",
+    "wakeEventHint": "Executa assim que um app faz algo",
+    "chooseApp": "Qual app deve acionar?",
+    "chooseEvent": "O que deve acionar?",
+    "changeApp": "Trocar app",
+    "noApps": "Conecte um app primeiro para uma rotina ser acionada por eventos.",
+    "loadingEvents": "Carregando eventos…",
+    "noEvents": "Este app ainda não tem eventos para acionar.",
+    "pollHint": "Verifica a cada poucos minutos",
+    "accountLabel": "Conta",
+    "detailsTitle": "Detalhes",
+    "rawJsonLabel": "Configurações avançadas",
+    "rawJsonHint": "Digite as configurações deste evento como JSON.",
+    "rawJsonInvalid": "Isto precisa ser um JSON válido.",
+    "status": {
+      "active": "Ativa",
+      "pending": "Configurando…",
+      "paused_disconnected": "Precisa reconectar",
+      "paused_revoked": "Acesso desativado",
+      "error": "Precisa de atenção"
+    },
+    "reconnect": "Reconectar",
+    "statusDisconnectedHint": "A conta conectada foi desconectada.",
+    "statusRevokedHint": "Este app foi desativado para este agente.",
+    "rowSummary": "Aciona por um evento em {{app}}",
+    "loadFailed": "Não foi possível carregar os acionadores de eventos"
+  },
   "toasts": {
     "timezoneSet": "Fuso horário definido como {{zone}}",
     "timezoneError": "Não foi possível atualizar o fuso horário",

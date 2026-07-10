@@ -1,4 +1,11 @@
-import type { ActionResult, Connection, Toolkit, ToolMatch } from "./types";
+import type {
+  ActionResult,
+  Connection,
+  Toolkit,
+  ToolMatch,
+  TriggerInstanceRef,
+  TriggerType,
+} from "./types";
 
 /**
  * Composio wire shapes + their mapping onto the port types — the ONLY place
@@ -101,4 +108,38 @@ export function mapExecute(r: RawExecute | null): ActionResult {
   if (!r) return { successful: false, error: "empty response" };
   const successful = r.successful ?? r.success ?? !r.error;
   return { successful, data: r.data, error: r.error ?? undefined };
+}
+
+export interface RawTriggerType {
+  slug?: string;
+  name?: string;
+  description?: string;
+  type?: string;
+  config?: Record<string, unknown>;
+  payload?: Record<string, unknown>;
+}
+export interface RawTriggerInstance {
+  id?: string;
+  trigger_id?: string;
+}
+
+export function mapTriggerType(t: RawTriggerType): TriggerType {
+  return {
+    slug: t.slug ?? "",
+    name: t.name ?? t.slug ?? "",
+    description: t.description,
+    // Only `webhook` and `poll` exist; anything unrecognized is treated as the
+    // conservative (higher-latency) `poll` so the catalog never invents a class.
+    type: t.type?.toLowerCase() === "webhook" ? "webhook" : "poll",
+    config: t.config ?? {},
+    payload: t.payload,
+  };
+}
+
+/** The instance id off an upsert reply. Composio returns it as `id`; some
+ *  endpoints echo it as `trigger_id` — accept either, empty when neither. */
+export function mapTriggerInstanceRef(
+  r: RawTriggerInstance | null,
+): TriggerInstanceRef {
+  return { triggerInstanceId: r?.id ?? r?.trigger_id ?? "" };
 }

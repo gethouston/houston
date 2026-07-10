@@ -47,11 +47,16 @@ import {
   type IntegrationDeps,
 } from "./routes/integrations";
 import { handleSandboxIntegrations } from "./routes/integrations-sandbox";
+import { handleComposioWebhook } from "./routes/integrations-webhook";
 import { handleMigrationSource } from "./routes/migration-source";
 import { handlePortableAccount } from "./routes/portable";
 import { BodyTooLargeError } from "./routes/read-body";
 import { handleSetupRuntime } from "./routes/setup-runtime";
 import { handleSkillsDirectory } from "./routes/skills-directory";
+import { handleTriggerEvents } from "./routes/trigger-events";
+import { handleTriggerStatus } from "./routes/trigger-status";
+import type { TriggerEventLock } from "./triggers/fire";
+import type { TriggerStateStore } from "./triggers/state-store";
 import type { Vfs } from "./vfs";
 
 export type { RuntimeProxy } from "./channel/proxy";
@@ -160,6 +165,25 @@ export interface ControlPlaneDeps {
    * scoped to the per-agent surface only).
    */
   agentRequestCount?: () => number;
+  /**
+   * Cross-replica dedup lock for the pod trigger-events route (C9): a trusted
+   * caller (control plane / self-host) delivers external events; the lock stops a
+   * redelivery double-firing. Absent → that route 503s. Present on every host
+   * with a turn bus (the managed pod AND self-host).
+   */
+  triggerLock?: TriggerEventLock;
+  /**
+   * Self-host trigger provisioning state (the reconciler's store). Backs
+   * GET /agents/:id/trigger-status and the webhook's instance→routine lookup.
+   * Absent on a managed pod (the gateway owns cloud reconciliation).
+   */
+  triggerState?: TriggerStateStore;
+  /**
+   * COMPOSIO_WEBHOOK_SECRET — enables the unauthenticated self-host ingress route
+   * (`POST /v1/integrations/composio/webhook`). Absent → that route is not
+   * mounted (a managed pod never ingests webhooks; the gateway does).
+   */
+  composioWebhookSecret?: string;
   corsOrigin?: string;
 }
 
@@ -230,6 +254,10 @@ async function handle(
   // Runtime-facing custom-integration setup (detect/add; HMAC sandbox token).
   if (await handleSandboxCustomIntegrations(deps, method, path, url, req, res))
     return;
+  // Composio webhook ingress (C9, self-host): NO user auth — the raw-body HMAC
+  // signature is the trust boundary, verified inside the handler. Must precede
+  // the authenticated block (it never carries a user JWT).
+  if (await handleComposioWebhook(deps, method, path, req, res)) return;
 
   // Everything past here is authenticated.
   const userId = await principal(deps, req, url);
@@ -292,6 +320,12 @@ async function handle(
   // runs the OAuth so the user can connect their AI before any agent exists.
   if (await handleSetupRuntime(deps, userId, method, path, url, req, res))
     return;
+
+  // Trigger routes (C9) — matched before the generic per-agent dispatch (the
+  // runtime has no trigger routes). trigger-events is the internal delivery
+  // route; trigger-status is the editor's badge feed (self-host).
+  if (await handleTriggerEvents(deps, userId, method, path, req, res)) return;
+  if (await handleTriggerStatus(deps, userId, method, path, res)) return;
 
   if (await handleAgents(deps, userId, method, path, url, req, res)) return;
 

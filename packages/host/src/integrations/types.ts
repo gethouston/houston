@@ -118,6 +118,43 @@ export interface ActionResult {
 }
 
 /**
+ * One entry in a toolkit's trigger catalog (C9): an event a routine can wake
+ * on. `type` splits latency classes — `webhook` is near-realtime, `poll` carries
+ * minutes of inherent delay (surfaced in UI copy). `config` is the JSON schema
+ * for the instance filters the user fills in (e.g. GitHub's owner/repo);
+ * `payload` (when present) is the JSON schema of the event body Composio
+ * delivers. Both are opaque schemas — the port never interprets them.
+ */
+export interface TriggerType {
+  slug: string;
+  name: string;
+  description?: string;
+  type: "poll" | "webhook";
+  config: Record<string, unknown>;
+  payload?: Record<string, unknown>;
+}
+
+/** A provisioned Composio trigger instance's id — the reconciler's handle for
+ *  status/delete. Keyed off the routine in the gateway's tables, never the doc. */
+export interface TriggerInstanceRef {
+  triggerInstanceId: string;
+}
+
+/**
+ * A trigger binding as the PORT speaks it (camelCase). The protocol's
+ * `RoutineTriggerBinding` is the snake_case wire form stored in the routines
+ * doc; the reconciler maps that onto this before calling `upsertTriggerInstance`.
+ * `connectedAccountId` is pinned only when the user has more than one account
+ * for the toolkit; absent, the adapter resolves the single active one.
+ */
+export interface TriggerUpsertBinding {
+  toolkit: string;
+  triggerSlug: string;
+  triggerConfig: Record<string, unknown>;
+  connectedAccountId?: string;
+}
+
+/**
  * Whether the provider can serve this deployment's user right now. A direct
  * (platform-key) adapter is always ready; the desktop gateway adapter is ready
  * only once the user is signed in to Houston (it forwards with their session).
@@ -153,6 +190,32 @@ export class IntegrationUpstreamError extends Error {
   ) {
     super(message ?? `integrations upstream returned ${status}`);
     this.name = "IntegrationUpstreamError";
+  }
+}
+
+/**
+ * Thrown when a trigger binding names a toolkit the user has no ACTIVE
+ * connection for: there is no account to bind a Composio trigger instance to.
+ * Surfaces (never swallowed) so the routine's trigger-status reflects the
+ * missing connection instead of silently never firing.
+ */
+export class NoConnectedAccountError extends Error {
+  constructor(readonly toolkit: string) {
+    super(`no active ${toolkit} connection to bind a trigger to`);
+    this.name = "NoConnectedAccountError";
+  }
+}
+
+/**
+ * Thrown by the gateway adapter for every trigger verb. On the desktop the
+ * cloud gateway owns trigger reconciliation end-to-end (it holds the Composio
+ * key and the public webhook URL); a client never provisions instances, so the
+ * remote adapter refuses loudly rather than pretending to.
+ */
+export class TriggersUnsupportedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TriggersUnsupportedError";
   }
 }
 

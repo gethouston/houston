@@ -92,6 +92,15 @@ export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
       if (!this.ctx.cp) return null;
       return controlPlane.agentIntegrationGrants(this.ctx.cp, agentSlugOrId);
     }
+    // Trigger status degrades to `null` (triggers unsupported here) the same way
+    // grants do: no gateway (desktop) or a host that 404s the route → the UI hides
+    // the badge rather than erroring. A gateway that serves triggers answers 200.
+    async agentTriggerStatus(
+      agentId: string,
+    ): Promise<controlPlane.TriggerStatusItem[] | null> {
+      if (!this.ctx.cp) return null;
+      return controlPlane.agentTriggerStatus(this.ctx.cp, agentId);
+    }
     async setAgentIntegrationGrants(
       agentSlugOrId: string,
       toolkits: string[],

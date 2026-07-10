@@ -98,6 +98,15 @@ export interface Capabilities {
    * stays "create a local workspace"). The gateway is the sole enforcer.
    */
   spaces?: boolean;
+  /**
+   * Whether this deployment can wake routines on external Composio events (C9
+   * event-driven routines). Requires a Composio project key AND a public webhook
+   * URL, so it is on for managed cloud + self-host and OFF on desktop (no public
+   * URL to deliver to). The UI reads it to show/hide the routine's "wake on an
+   * event" option; absent/false on hosts that predate triggers. Feature-detect
+   * flag only — the gateway/host is the sole enforcer.
+   */
+  triggers?: boolean;
 }
 
 // ---------- Org / roles (multiplayer) ----------
@@ -628,11 +637,38 @@ export interface NewActivity {
  */
 export type RoutineChatMode = "shared" | "per_run";
 
+/**
+ * An event binding that wakes a routine on an external Composio trigger instead
+ * of a cron `schedule` (C9 event-driven routines). `toolkit` + `trigger_slug`
+ * name the trigger type (e.g. `gmail` / `GMAIL_NEW_GMAIL_MESSAGE`);
+ * `trigger_config` is the instance filter object, validated server-side against
+ * the trigger type's config JSON-schema. `connected_account_id` is pinned only
+ * when the user has more than one connected account for the toolkit; absent, the
+ * reconciler resolves the single active one. Exactly one of `schedule` /
+ * `trigger` is set on a routine (enforced server-side).
+ */
+export interface RoutineTriggerBinding {
+  toolkit: string;
+  trigger_slug: string;
+  trigger_config: Record<string, unknown>;
+  connected_account_id?: string;
+}
+
 export interface Routine {
   id: string;
   name: string;
   prompt: string;
-  schedule: string;
+  /**
+   * Cron expression the scheduler wakes this routine on. Absent when the routine
+   * is event-driven (`trigger` set instead) — exactly one of `schedule`/`trigger`
+   * is present.
+   */
+  schedule?: string;
+  /**
+   * Event binding that wakes this routine on an external Composio event (C9),
+   * instead of `schedule`. Exactly one of the two is set.
+   */
+  trigger?: RoutineTriggerBinding;
   enabled: boolean;
   suppress_when_silent: boolean;
   /** Whether each run reuses one chat or starts a fresh one. */
@@ -662,7 +698,12 @@ export interface Routine {
 export interface NewRoutine {
   name: string;
   prompt: string;
-  schedule: string;
+  /** Cron expression to wake on; omit when creating an event-driven routine
+   *  (pass `trigger` instead). Exactly one of `schedule`/`trigger` is set. */
+  schedule?: string;
+  /** Event binding to wake on instead of a cron schedule (C9). Exactly one of
+   *  `schedule`/`trigger` is set. */
+  trigger?: RoutineTriggerBinding;
   enabled?: boolean;
   suppress_when_silent?: boolean;
   /** Defaults to `"shared"` (one chat per routine) when omitted. */
@@ -682,7 +723,12 @@ export interface NewRoutine {
 export interface RoutineUpdate {
   name?: string;
   prompt?: string;
+  /** Switch to (or keep) a cron wake; pair with `trigger: null` to move a
+   *  routine off an event binding. Exactly one of `schedule`/`trigger` ends set. */
   schedule?: string;
+  /** Switch to (or keep) an event wake; pass `null` to move the routine back to a
+   *  cron `schedule`. Omit to leave the current wake mechanism unchanged. */
+  trigger?: RoutineTriggerBinding | null;
   enabled?: boolean;
   suppress_when_silent?: boolean;
   chat_mode?: RoutineChatMode;
@@ -1284,7 +1330,8 @@ export interface PortableRoutinePreview {
   id: string;
   name: string;
   promptExcerpt: string;
-  schedule: string;
+  /** Cron expression; absent for an event-driven (trigger) routine (C9). */
+  schedule?: string;
   enabled: boolean;
   integrations: string[];
 }
@@ -1529,6 +1576,51 @@ export interface CustomIntegrationView {
    *  for the just-saved key (true = confirmed, false = probe rejected but the
    *  key SAVED, absent = the service declares no probe). */
   verified?: boolean;
+}
+
+// ── Triggers (C9 event-driven routines) ──────────────────────────────────────
+// The event-wake surface: the catalog the routine editor's trigger picker reads,
+// and the per-routine provisioning status the editor renders as a badge. Mirrors
+// the host `IntegrationProvider` port types (`packages/host/src/integrations/`).
+
+/**
+ * One entry in a toolkit's trigger catalog (C9), from
+ * `GET /v1/integrations/composio/trigger-types?toolkit=<slug>`: an event a
+ * routine can wake on. `type` splits latency classes — `webhook` is
+ * near-realtime, `poll` carries minutes of inherent delay (surfaced in UI copy).
+ * `config` is the JSON schema for the instance filters the user fills in (e.g.
+ * GitHub's owner/repo); `payload` (when present) is the JSON schema of the event
+ * body Composio delivers. Both are opaque schemas the client never interprets.
+ */
+export interface TriggerType {
+  slug: string;
+  name: string;
+  description?: string;
+  type: "poll" | "webhook";
+  config: Record<string, unknown>;
+  payload?: Record<string, unknown>;
+}
+
+/**
+ * A trigger routine's live provisioning status (C9). `active` = the Composio
+ * instance is provisioned and delivering; `pending` = reconcile in flight;
+ * `paused_disconnected` = the connected account was disconnected;
+ * `paused_revoked` = the toolkit fell outside the agent's grant/allowlist;
+ * `error` = Composio rejected creation or delivery is failing. A `paused_*` or
+ * `error` badge carries a human-readable `detail`.
+ */
+export type TriggerStatusState =
+  | "active"
+  | "pending"
+  | "paused_disconnected"
+  | "paused_revoked"
+  | "error";
+
+/** One routine's trigger status, from `GET /v1/agents/:slug/trigger-status`. */
+export interface TriggerStatusItem {
+  routine_id: string;
+  status: TriggerStatusState;
+  detail?: string;
 }
 
 // ── OpenAI-compatible (local) provider ───────────────────────────────────────

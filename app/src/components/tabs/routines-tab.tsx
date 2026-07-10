@@ -1,4 +1,4 @@
-import { RoutinesGrid } from "@houston-ai/routines";
+import { type RoutineEditPatch, RoutinesGrid } from "@houston-ai/routines";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -21,10 +21,11 @@ import { HoustonLogo } from "../shell/agent-avatar";
 import { RoutineSetupChat } from "./routine-setup-chat";
 import {
   latestRunByRoutine,
-  type NewRoutinePatch,
   newRoutineInput,
+  routineUpdateFromPatch,
 } from "./routines-tab-model";
 import { useRoutineChatSetup } from "./use-routine-chat-setup";
+import { useRoutineTriggers } from "./use-routine-triggers";
 import { useRoutinesTabView } from "./use-routines-tab-view";
 
 export default function RoutinesTab({ agent, agentDef }: TabProps) {
@@ -45,12 +46,13 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
 
   const chatSetup = useRoutineChatSetup(agent, routines);
   const nav = useRoutinesTabView(agent, routines, chatSetup);
+  const triggers = useRoutineTriggers(agent, routines, labels.trigger);
 
   const lastRuns = latestRunByRoutine(allRuns);
 
   // Save the LOCAL "Manually" editor. Nothing is written until this resolves.
   const handleNewDraftSave = useCallback(
-    async (patch: NewRoutinePatch) => {
+    async (patch: RoutineEditPatch) => {
       try {
         await createRoutine.mutateAsync(newRoutineInput(patch));
         nav.closeNewDraft();
@@ -84,9 +86,12 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
 
   // update toasts via call(); the catch returns false to keep the editor open.
   const handleSaveRoutine = useCallback(
-    async (routineId: string, patch: NewRoutinePatch) => {
+    async (routineId: string, patch: RoutineEditPatch) => {
       try {
-        await updateRoutine.mutateAsync({ routineId, updates: patch });
+        await updateRoutine.mutateAsync({
+          routineId,
+          updates: routineUpdateFromPatch(patch),
+        });
         return true;
       } catch {
         return false;
@@ -182,10 +187,16 @@ export default function RoutinesTab({ agent, agentDef }: TabProps) {
       onResumeDraft={nav.handleResumeDraft}
       onDiscardDraft={handleDiscardDraft}
       aiIcon={<HoustonLogo size={14} />}
+      triggersEnabled={triggers.triggersEnabled}
+      renderTriggerEditor={triggers.renderTriggerEditor}
+      triggerStatuses={triggers.triggerStatuses}
+      triggerSummaries={triggers.triggerSummaries}
+      onReconnectTrigger={triggers.onReconnectTrigger}
       labels={labels.grid}
       rowLabels={labels.rowLabels}
       scheduleSummaryLabels={labels.schedule.summary}
       scheduleLabels={labels.schedule}
+      triggerLabels={labels.trigger}
       nextFireLabels={labels.nextFire}
       locale={labels.locale}
     />

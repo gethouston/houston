@@ -145,6 +145,36 @@
     "soon": "pronto",
     "at": "{day} a las {time}"
   },
+  "trigger": {
+    "wakeSchedule": "Con un horario",
+    "wakeScheduleHint": "Se ejecuta en los momentos que elijas",
+    "wakeEvent": "Cuando pasa algo",
+    "wakeEventHint": "Se ejecuta en cuanto una app hace algo",
+    "chooseApp": "¿Qué app debe activarla?",
+    "chooseEvent": "¿Qué debe activarla?",
+    "changeApp": "Cambiar app",
+    "noApps": "Conecta una app primero para que una rutina se active con eventos.",
+    "loadingEvents": "Cargando eventos…",
+    "noEvents": "Esta app todavía no tiene eventos con los que activarse.",
+    "pollHint": "Revisa cada pocos minutos",
+    "accountLabel": "Cuenta",
+    "detailsTitle": "Detalles",
+    "rawJsonLabel": "Configuración avanzada",
+    "rawJsonHint": "Escribe la configuración de este evento como JSON.",
+    "rawJsonInvalid": "Esto debe ser un JSON válido.",
+    "status": {
+      "active": "Activa",
+      "pending": "Configurando…",
+      "paused_disconnected": "Necesita reconectarse",
+      "paused_revoked": "Acceso desactivado",
+      "error": "Requiere atención"
+    },
+    "reconnect": "Reconectar",
+    "statusDisconnectedHint": "La cuenta conectada se desconectó.",
+    "statusRevokedHint": "Esta app se desactivó para este agente.",
+    "rowSummary": "Se activa con un evento en {{app}}",
+    "loadFailed": "No se pudieron cargar los activadores de eventos"
+  },
   "toasts": {
     "timezoneSet": "Zona horaria establecida en {{zone}}",
     "timezoneError": "No se pudo actualizar la zona horaria",

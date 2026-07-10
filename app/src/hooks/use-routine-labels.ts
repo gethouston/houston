@@ -3,6 +3,7 @@ import type {
   RoutineRowLabels,
   RoutinesGridLabels,
   ScheduleLabels,
+  TriggerLabels,
 } from "@houston-ai/routines";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -23,6 +24,7 @@ export interface RoutineLabels {
   rowLabels: RoutineRowLabels;
   schedule: ScheduleLabels;
   nextFire: NextFireLabels;
+  trigger: TriggerLabels;
 }
 
 /** Map the app's base locale tag to a region the formatters should use. */
@@ -42,6 +44,7 @@ export function useRoutineLabels(): RoutineLabels {
       rowLabels: t("row", { returnObjects: true }) as RoutineRowLabels,
       schedule: t("schedule", { returnObjects: true }) as ScheduleLabels,
       nextFire: t("nextFire", { returnObjects: true }) as NextFireLabels,
+      trigger: t("trigger", { returnObjects: true }) as TriggerLabels,
     }),
     [t, i18n.language],
   );

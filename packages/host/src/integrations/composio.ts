@@ -6,19 +6,27 @@ import {
   mapExecute,
   mapTool,
   mapToolkit,
+  mapTriggerInstanceRef,
+  mapTriggerType,
   type RawConnection,
   type RawExecute,
   type RawTool,
   type RawToolkit,
+  type RawTriggerInstance,
+  type RawTriggerType,
 } from "./composio-wire";
 import type { ActingContext, IntegrationProvider } from "./provider";
-import type {
-  ActionResult,
-  Connection,
-  ConnectStart,
-  ProviderReadiness,
-  Toolkit,
-  ToolMatch,
+import {
+  type ActionResult,
+  type Connection,
+  type ConnectStart,
+  NoConnectedAccountError,
+  type ProviderReadiness,
+  type Toolkit,
+  type ToolMatch,
+  type TriggerInstanceRef,
+  type TriggerType,
+  type TriggerUpsertBinding,
 } from "./types";
 
 /**
@@ -230,5 +238,88 @@ export class ComposioProvider implements IntegrationProvider {
       { method: "POST", body: { user_id: userId, arguments: params } },
     );
     return mapExecute(body);
+  }
+
+  async listTriggerTypes(toolkit: string): Promise<TriggerType[]> {
+    const body = await this.http.call<{ items?: RawTriggerType[] }>(
+      "/api/v3/triggers_types",
+      { query: { toolkit_slugs: toolkit, limit: "100" } },
+    );
+    return (body?.items ?? []).map(mapTriggerType);
+  }
+
+  /**
+   * Create-or-update the trigger instance for a binding. The connected account
+   * is either pinned on the binding or resolved to the user's single ACTIVE
+   * connection for the toolkit — zero active connections throw (never a silent
+   * no-op; the routine's status must reflect it).
+   */
+  async upsertTriggerInstance(
+    userId: string,
+    binding: TriggerUpsertBinding,
+  ): Promise<TriggerInstanceRef> {
+    const connectedAccountId =
+      binding.connectedAccountId ??
+      (await this.resolveConnectedAccount(userId, binding.toolkit));
+    const body = await this.http.call<RawTriggerInstance>(
+      `/api/v3/trigger_instances/${encodeURIComponent(binding.triggerSlug)}/upsert`,
+      {
+        method: "POST",
+        body: {
+          connected_account_id: connectedAccountId,
+          user_id: userId,
+          trigger_config: binding.triggerConfig,
+        },
+      },
+    );
+    const ref = mapTriggerInstanceRef(body);
+    if (!ref.triggerInstanceId) {
+      throw new Error(
+        `composio: trigger upsert for '${binding.triggerSlug}' returned no instance id`,
+      );
+    }
+    return ref;
+  }
+
+  /** The user's single ACTIVE connection for a toolkit, or throw the typed
+   *  error the reconciler surfaces as a paused-disconnected routine status. */
+  private async resolveConnectedAccount(
+    userId: string,
+    toolkit: string,
+  ): Promise<string> {
+    const active = (await this.listConnections(userId)).find(
+      (c) => c.toolkit === toolkit && c.status === "active",
+    );
+    if (!active) throw new NoConnectedAccountError(toolkit);
+    return active.connectionId;
+  }
+
+  async setTriggerInstanceStatus(
+    triggerInstanceId: string,
+    status: "enable" | "disable",
+  ): Promise<void> {
+    await this.http.call(
+      `/api/v3/trigger_instances/manage/${encodeURIComponent(triggerInstanceId)}`,
+      { method: "PATCH", body: { status } },
+    );
+  }
+
+  async deleteTriggerInstance(triggerInstanceId: string): Promise<void> {
+    await this.http.call(
+      `/api/v3/trigger_instances/manage/${encodeURIComponent(triggerInstanceId)}`,
+      { method: "DELETE" },
+    );
+  }
+
+  /**
+   * Register the project's single webhook URL so every trigger instance delivers
+   * to Houston's ingress. `enabled_events: []` means "all trigger events" — the
+   * per-instance filtering already happens at the trigger config, not here.
+   */
+  async ensureWebhookSubscription(webhookUrl: string): Promise<void> {
+    await this.http.call("/api/v3/webhook_subscriptions", {
+      method: "POST",
+      body: { webhook_url: webhookUrl, enabled_events: [] },
+    });
   }
 }

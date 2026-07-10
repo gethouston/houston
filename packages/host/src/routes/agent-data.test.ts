@@ -227,6 +227,100 @@ test("routines: created with schema defaults; a stray per-routine timezone is ig
   expect(((await runs.json()) as { items: unknown[] }).items).toEqual([]);
 });
 
+test("routines: a trigger routine is created without a schedule; both/neither wake mechanisms are rejected (C9)", async () => {
+  const trigger = {
+    toolkit: "gmail",
+    trigger_slug: "GMAIL_NEW_GMAIL_MESSAGE",
+    trigger_config: { labelIds: ["INBOX"] },
+  };
+  const created = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      name: "On new email",
+      prompt: "Triage it",
+      trigger,
+    }),
+  });
+  expect(created.status).toBe(201);
+  const routine = (await created.json()) as Routine;
+  expect(routine.trigger).toEqual(trigger);
+  expect("schedule" in routine).toBe(false);
+
+  // Both wake mechanisms → 400 (normalizeRoutines would drop the ambiguous entry).
+  const both = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      name: "Ambiguous",
+      prompt: "x",
+      schedule: "0 9 * * *",
+      trigger,
+    }),
+  });
+  expect(both.status).toBe(400);
+
+  // Neither → 400 (a routine that could never wake).
+  const neither = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({ name: "Inert", prompt: "x" }),
+  });
+  expect(neither.status).toBe(400);
+
+  // A malformed trigger binding → 400 (rejected before it can be silently dropped).
+  const malformed = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      name: "Bad binding",
+      prompt: "x",
+      trigger: { toolkit: "gmail" },
+    }),
+  });
+  expect(malformed.status).toBe(400);
+});
+
+test("routines: PATCH switches a cron routine to a trigger wake, clearing the schedule (C9)", async () => {
+  const created = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      name: "Was cron",
+      prompt: "x",
+      schedule: "0 9 * * *",
+    }),
+  });
+  expect(created.status).toBe(201);
+  const routine = (await created.json()) as Routine;
+
+  const trigger = {
+    toolkit: "github",
+    trigger_slug: "GITHUB_STAR_ADDED_EVENT",
+    trigger_config: { owner: "gethouston", repo: "houston" },
+  };
+  const patched = await fetch(
+    `${base}/agents/${agentId}/routines/${routine.id}`,
+    {
+      method: "PATCH",
+      headers: auth("alice"),
+      body: JSON.stringify({ trigger }),
+    },
+  );
+  expect(patched.status).toBe(200);
+  const next = (await patched.json()) as Routine;
+  expect(next.trigger).toEqual(trigger);
+  expect("schedule" in next).toBe(false);
+
+  // A PATCH carrying a malformed trigger is rejected, not persisted.
+  const bad = await fetch(`${base}/agents/${agentId}/routines/${routine.id}`, {
+    method: "PATCH",
+    headers: auth("alice"),
+    body: JSON.stringify({ trigger: { trigger_slug: "X" } }),
+  });
+  expect(bad.status).toBe(400);
+});
+
 test("routines: created_by is server-owned and cannot be spoofed", async () => {
   const created = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",

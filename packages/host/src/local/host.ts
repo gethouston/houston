@@ -1,6 +1,7 @@
 import { existsSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { basename, dirname, join } from "node:path";
+import type { Capabilities } from "@houston/protocol";
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
@@ -30,6 +31,8 @@ import { Scheduler } from "../schedule/scheduler";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { LocalWorkspaceStore } from "../store/local";
 import { StoreSyncDaemon } from "../store-sync";
+import { TriggerReconciler } from "../triggers/reconciler";
+import { FileTriggerStateStore } from "../triggers/state-store";
 import { MemoryTurnBus } from "../turn/bus";
 import { FsVfs } from "../vfs";
 import { FsWatcher } from "../watch/watcher";
@@ -141,6 +144,22 @@ export interface LocalHostOptions {
    * credential-less runtimes) or churn watch events while the cloud app copies.
    */
   passive?: boolean;
+  /**
+   * Composio webhook signing secret (`COMPOSIO_WEBHOOK_SECRET`). Together with a
+   * DIRECT provider key and `publicUrl`, this turns on C9 event-driven routines
+   * for a self-host deployment: the ingress route verifies deliveries with it and
+   * the reconciler provisions Composio trigger instances. Absent → triggers off
+   * (capability false, ingress route unmounted). Never set on a managed pod — the
+   * gateway owns cloud reconciliation.
+   */
+  composioWebhookSecret?: string;
+  /**
+   * This deployment's public base URL (`HOUSTON_PUBLIC_URL`), e.g.
+   * `https://houston.example.com`. Used ONCE at startup to register the Composio
+   * webhook at `<publicUrl>/v1/integrations/composio/webhook`. Required (with the
+   * secret + a direct key) for the `triggers` capability.
+   */
+  publicUrl?: string;
   /**
    * True only when a trusted gateway fronts EVERY request to this host (the
    * managed cloud pod: the gateway enforces the pod token and mints/strips
@@ -269,6 +288,13 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     dirname(opts.credentialsPath),
     "integrations.json",
   );
+  // The DIRECT Composio adapter (self-host / dev with an own key) — captured so
+  // the trigger reconciler + webhook bootstrap can drive it. Only when NOT in
+  // gateway mode (gatewayUrl wins), because the gateway adapter never reconciles.
+  const directProvider =
+    opts.integrations?.composioApiKey && !opts.integrations?.gatewayUrl
+      ? new ComposioProvider({ apiKey: opts.integrations.composioApiKey })
+      : undefined;
   const composioProvider = opts.integrations?.gatewayUrl
     ? new RemoteIntegrationProvider({
         id: "composio",
@@ -278,9 +304,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         // the creator; the desktop leaves this undefined.
         podToken: opts.integrations.podToken,
       })
-    : opts.integrations?.composioApiKey
-      ? new ComposioProvider({ apiKey: opts.integrations.composioApiKey })
-      : null;
+    : (directProvider ?? null);
 
   // Custom integrations (HOU-550): user-added API/MCP sources compiled to
   // agent tools by the embedded executor engine. Key-free and session-free —
@@ -355,6 +379,39 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       })
     : undefined;
 
+  // C9 event-driven routines: on ONLY for a self-host deployment that owns a
+  // direct Composio key, a webhook signing secret, and a public URL to register.
+  // A managed pod (gatewayFronted) never runs its own reconciler/ingress — the Go
+  // control plane does — so it is excluded even if it somehow carried the env.
+  const publicUrl = opts.publicUrl?.replace(/\/+$/, "");
+  const triggersEnabled = !!(
+    directProvider &&
+    opts.composioWebhookSecret &&
+    publicUrl &&
+    !opts.gatewayFronted
+  );
+  // The reconciler + status route read this per-agent state; the webhook resolves
+  // an instance id → its routine through it. Self-host only.
+  const triggerState = triggersEnabled
+    ? new FileTriggerStateStore(opts.workspacesRoot)
+    : undefined;
+  const reconciler =
+    triggersEnabled && directProvider && triggerState
+      ? new TriggerReconciler({
+          store,
+          vfs,
+          paths,
+          provider: directProvider,
+          state: triggerState,
+          // Reuse the same per-agent grant policy that gates search/execute — a
+          // trigger on an ungranted toolkit is not provisioned (paused_revoked).
+          grants: integrationGrants,
+          // Self-host is single-user: connections (and thus trigger instances)
+          // bind to the one local owner.
+          userId: LOCAL_USER,
+        })
+      : undefined;
+
   // The installed agent-config library. FsVfs keys must be non-empty, so root
   // the vfs at the library's PARENT and address it by its basename — this vfs
   // instance is only ever handed to the agent-configs route, which stays under
@@ -366,6 +423,18 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       }
     : undefined;
 
+  // Held in a mutable variable so a failed webhook bootstrap in start() can flip
+  // `triggers` back to false — never a half-on capability (advertised true while
+  // no webhook is registered). The served object is this same reference.
+  const capabilities: Capabilities = {
+    ...(opts.capabilities ?? LOCAL_CAPABILITIES),
+    // Served capabilities advertise the integrations actually wired, not the
+    // profile's nominal list — an unconfigured deployment says [] honestly.
+    integrations: registry.ids(),
+    // `triggers` is added ONLY when on, so a host without event-driven routines
+    // stays byte-identical to the nominal profile (absent = off, protocol #core).
+    ...(triggersEnabled ? { triggers: true } : {}),
+  };
   const deps: ControlPlaneDeps = {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
@@ -375,16 +444,19 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     paths,
     events,
     channels: { local: channel },
-    // Served capabilities advertise the integrations actually wired, not the
-    // profile's nominal list — an unconfigured deployment says [] honestly.
-    capabilities: {
-      ...(opts.capabilities ?? LOCAL_CAPABILITIES),
-      integrations: registry.ids(),
-    },
+    capabilities,
     chatHistoryMigrated,
     integrations,
     integrationGrants,
     customIntegrations,
+    // Every local host has a turn bus, so the internal pod trigger-events route is
+    // always available (the managed pod's gateway calls it; self-host fires
+    // in-process). The state store + webhook secret are self-host only.
+    triggerLock: bus,
+    triggerState,
+    composioWebhookSecret: triggersEnabled
+      ? opts.composioWebhookSecret
+      : undefined,
     agentConfigs,
     // Managed pods record the gateway-minted acting identity as a routine's
     // `created_by` (C2 — the sub the gateway re-authorizes at fire time);
@@ -460,6 +532,29 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           );
         }
       }
+      // C9 bootstrap (self-host): register the ONE project webhook before serving
+      // so the `triggers` capability is honest by the first read. A failure here
+      // means events would never arrive — leave the capability false, log loudly,
+      // and do NOT start the reconciler (no silent half-on state). Runs before
+      // listen; a managed pod never reaches here (triggersEnabled requires a
+      // non-gateway-fronted deployment), so pod wake latency is untouched.
+      if (triggersEnabled && directProvider && reconciler && publicUrl) {
+        try {
+          await directProvider.ensureWebhookSubscription(
+            `${publicUrl}/v1/integrations/composio/webhook`,
+          );
+          reconciler.start();
+          console.log(
+            "[local-host] triggers: enabled (event-driven routines active)",
+          );
+        } catch (err) {
+          capabilities.triggers = false;
+          console.error(
+            "[local-host] trigger webhook bootstrap failed — event-driven routines DISABLED:",
+            err instanceof Error ? err.message : err,
+          );
+        }
+      }
       const bind = opts.bind ?? "127.0.0.1";
       await new Promise<void>((resolve) =>
         server.listen(opts.port, bind, () => resolve()),
@@ -507,6 +602,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       if (stopPromise) return stopPromise;
       stopPromise = (async () => {
         scheduler.stop();
+        reconciler?.stop();
         watcher.stop();
         // Await actual child exit (bounded): the final sync below must not
         // walk /data while a runtime is still flushing its last writes.

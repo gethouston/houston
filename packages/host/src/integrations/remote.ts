@@ -10,6 +10,10 @@ import {
   statusFromConnected,
   type Toolkit,
   type ToolMatch,
+  type TriggerInstanceRef,
+  TriggersUnsupportedError,
+  type TriggerType,
+  type TriggerUpsertBinding,
 } from "./types";
 
 /**
@@ -219,5 +223,35 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
       acting,
     });
     return this.must(body, "POST /execute");
+  }
+
+  // ── Triggers (C9) ─────────────────────────────────────────────────────────
+  // The gateway owns trigger reconciliation end-to-end (Composio key + public
+  // webhook URL); the desktop never provisions instances. Every verb refuses
+  // loudly rather than forwarding — the reconciler lives server-side.
+  async listTriggerTypes(_toolkit: string): Promise<TriggerType[]> {
+    throw new TriggersUnsupportedError("triggers are managed by the gateway");
+  }
+
+  async upsertTriggerInstance(
+    _userId: string,
+    _binding: TriggerUpsertBinding,
+  ): Promise<TriggerInstanceRef> {
+    throw new TriggersUnsupportedError("triggers are managed by the gateway");
+  }
+
+  async setTriggerInstanceStatus(
+    _triggerInstanceId: string,
+    _status: "enable" | "disable",
+  ): Promise<void> {
+    throw new TriggersUnsupportedError("triggers are managed by the gateway");
+  }
+
+  async deleteTriggerInstance(_triggerInstanceId: string): Promise<void> {
+    throw new TriggersUnsupportedError("triggers are managed by the gateway");
+  }
+
+  async ensureWebhookSubscription(_webhookUrl: string): Promise<void> {
+    throw new TriggersUnsupportedError("triggers are managed by the gateway");
   }
 }
