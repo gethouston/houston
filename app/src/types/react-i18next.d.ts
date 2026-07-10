@@ -7,6 +7,7 @@
  */
 
 import "react-i18next";
+import type agentOnboarding from "../locales/en/agent-onboarding.json";
 import type agents from "../locales/en/agents.json";
 import type aiHub from "../locales/en/ai-hub.json";
 import type board from "../locales/en/board.json";
@@ -52,6 +53,7 @@ declare module "react-i18next" {
       context: typeof context;
       org: typeof org;
       teams: typeof teams;
+      agentOnboarding: typeof agentOnboarding;
     };
   }
 }

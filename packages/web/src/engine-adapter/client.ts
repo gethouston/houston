@@ -1694,6 +1694,7 @@ export class HoustonClient {
       undefined,
       req.suppressUserBubble,
       wireTurnPin(req),
+      req.displayText,
     ).finally(() => {
       // The turn settled (or failed): release anything queued behind it.
       flushQueuedSends(path, req.sessionKey, (r) => {

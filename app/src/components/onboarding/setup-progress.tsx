@@ -1,9 +1,9 @@
 import { cn } from "@houston-ai/core";
-import confetti from "canvas-confetti";
 import type { LucideIcon } from "lucide-react";
 import { Check, Mail, Send, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { fireSetupConfetti } from "../../lib/confetti";
 import { HoustonLogo } from "../shell/experience-card";
 import { SetupCard } from "./setup-card";
 
@@ -23,37 +23,6 @@ const ICON: Record<Milestone, LucideIcon> = {
   email: Mail,
   send: Send,
 };
-
-const prefersReducedMotion = () =>
-  typeof window !== "undefined" &&
-  typeof window.matchMedia === "function" &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-/** A few overlapping bursts for the "confetti like crazy" payoff. */
-function fireConfetti() {
-  if (prefersReducedMotion()) return;
-  const base = { startVelocity: 45, ticks: 220, zIndex: 9999, scalar: 0.9 };
-  confetti({
-    ...base,
-    particleCount: 140,
-    spread: 80,
-    origin: { x: 0.5, y: 0.55 },
-  });
-  confetti({
-    ...base,
-    particleCount: 70,
-    spread: 60,
-    angle: 60,
-    origin: { x: 0, y: 0.7 },
-  });
-  confetti({
-    ...base,
-    particleCount: 70,
-    spread: 60,
-    angle: 120,
-    origin: { x: 1, y: 0.7 },
-  });
-}
 
 interface SetupProgressProps {
   title: string;
@@ -91,7 +60,7 @@ export function SetupProgress({
   const { t } = useTranslation("setup");
 
   useEffect(() => {
-    if (justCompleted) fireConfetti();
+    if (justCompleted) fireSetupConfetti();
   }, [justCompleted]);
 
   const doneSet = new Set(done);

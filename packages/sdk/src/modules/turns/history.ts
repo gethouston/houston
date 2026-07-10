@@ -57,7 +57,10 @@ export function historyToFeed(
     if (m.role === "user") {
       out.push({
         feed_type: "user_message",
-        data: m.content,
+        // Render displayText when the stored prompt carried text the user should
+        // never see (a hidden directive / appended attachment paths); the model
+        // ran on `content`, but the bubble shows what the user actually meant.
+        data: m.displayText ?? m.content,
         author: m.author,
         ts,
       });

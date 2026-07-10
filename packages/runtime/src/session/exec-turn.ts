@@ -84,6 +84,7 @@ export function recordUserTurn(
   text: string,
   nonce?: string,
   acting?: ActingContext,
+  displayText?: string,
 ): RecordedUserTurn {
   // Stamp the executing turn's id up front so a cancel/stop settles this turn.
   conv.turnId = turnId;
@@ -102,7 +103,9 @@ export function recordUserTurn(
         .map((m) => m.author)
     : [];
 
-  appendUserMessage(id, text, { author, turnId });
+  // `text` is what the model receives; `displayText` (when given) is only what
+  // the bubble renders on a history reload — the two are stored side by side.
+  appendUserMessage(id, text, { author, turnId, displayText });
   publish(id, {
     type: "user",
     data: { content: text, ts: Date.now(), nonce, author },
