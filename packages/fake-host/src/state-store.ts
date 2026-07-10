@@ -56,6 +56,7 @@ export interface TeamsSettings {
   allowedToolkits: string[] | null;
   orgAllowedToolkits: string[] | null;
   allowedModels: string[] | null;
+  orgAllowedModels: string[] | null;
   access: AgentAccess;
 }
 
@@ -76,6 +77,7 @@ export const DEFAULT_TEAMS_SETTINGS: TeamsSettings = {
   allowedToolkits: null,
   orgAllowedToolkits: null,
   allowedModels: null,
+  orgAllowedModels: null,
   access: "manager",
 };
 

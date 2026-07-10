@@ -73,10 +73,29 @@ export function canSeeIntegrationsPage(
 }
 
 /**
- * Can this caller EDIT the org-wide integration policy (the app-allowlist
- * ceiling)? Owner only per C7 — admins see the policy page read-only. A cosmetic
- * gate: the gateway 403s a non-owner write, so this only avoids offering a
- * control that would fail.
+ * Should the global AI Models hub be visible to this caller? In a Teams
+ * workspace the hub is owner/admin territory: AI provider connections are
+ * org-level (one credential per org — whoever connects, every member's agents
+ * work; C6), so a plain member has no account to connect there, and the new
+ * workspace model-policy is admin-only. Members pick their own model per agent in
+ * the composer instead, so they lose the hub nav exactly as they lose the
+ * Integrations nav. Everyone else — single-player and non-Teams multiplayer —
+ * keeps the hub unchanged. A cosmetic gate: the gateway is the real enforcer
+ * (a member's provider-connect POST already 403s); this only hides an
+ * affordance that would be dead for a plain member.
+ */
+export function canSeeAiModelsPage(
+  caps: Capabilities | null | undefined,
+): boolean {
+  if (isMultiplayer(caps) && caps?.teams === true) return canSeeMembers(caps);
+  return true;
+}
+
+/**
+ * Can this caller EDIT the org-wide policy ceilings (the app-allowlist ceiling
+ * AND the AI-model ceiling)? Owner only per C7 — admins see the policy surfaces
+ * read-only. A cosmetic gate: the gateway 403s a non-owner write, so this only
+ * avoids offering a control that would fail.
  */
 export function canEditOrgSettings(
   caps: Capabilities | null | undefined,

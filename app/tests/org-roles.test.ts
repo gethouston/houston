@@ -5,6 +5,7 @@ import {
   canCreateAgents,
   canEditOrgSettings,
   canManageMembers,
+  canSeeAiModelsPage,
   canSeeBilling,
   canSeeBillingTab,
   canSeeIntegrationsPage,
@@ -95,6 +96,26 @@ describe("canSeeIntegrationsPage", () => {
     strictEqual(canSeeIntegrationsPage(teams("owner")), true);
     strictEqual(canSeeIntegrationsPage(teams("admin")), true);
     strictEqual(canSeeIntegrationsPage(teams("user")), false);
+  });
+});
+
+describe("canSeeAiModelsPage", () => {
+  const teams = (role: OrgRole): Capabilities =>
+    caps({ multiplayer: true, role, teams: true });
+
+  it("single-player keeps the AI Models hub", () => {
+    strictEqual(canSeeAiModelsPage(caps()), true);
+    strictEqual(canSeeAiModelsPage(null), true);
+  });
+
+  it("non-Teams multiplayer keeps it for every role", () => {
+    strictEqual(canSeeAiModelsPage(multiplayer("user")), true);
+  });
+
+  it("in a Teams workspace only owner/admin see it (providers are org-level)", () => {
+    strictEqual(canSeeAiModelsPage(teams("owner")), true);
+    strictEqual(canSeeAiModelsPage(teams("admin")), true);
+    strictEqual(canSeeAiModelsPage(teams("user")), false);
   });
 });
 

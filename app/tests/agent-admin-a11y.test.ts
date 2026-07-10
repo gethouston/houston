@@ -29,11 +29,17 @@ describe("Agent Settings a11y", () => {
     );
     ok(!sidebar.includes("<h1"), "sidebar rail renders no page-level h1");
 
+    // The models editor body (question heading included) lives in the shared
+    // ModelsAllowlistEditor; the agent section is a thin wrapper around it.
     const models = read(
       "../src/components/tabs/agent-admin/agent-models-section.tsx",
     );
-    ok(!models.includes("<h1"), "models section title is not an h1");
-    ok(models.includes("<h2"), "models section title is an h2");
+    ok(!models.includes("<h1"), "models section renders no page-level h1");
+    const modelsEditor = read(
+      "../src/components/ai-hub/models-allowlist-editor.tsx",
+    );
+    ok(!modelsEditor.includes("<h1"), "models editor title is not an h1");
+    ok(modelsEditor.includes("<h2"), "models editor title is an h2");
 
     // The editor body (question heading included) lives in the shared
     // AllowlistEditor; the agent section is a thin wrapper around it.

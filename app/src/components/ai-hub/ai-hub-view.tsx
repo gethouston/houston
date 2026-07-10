@@ -6,6 +6,7 @@ import { useProviderConnections } from "../../hooks/use-provider-connections";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types";
 import { useHubCatalog } from "../../lib/ai-hub/use-hub-catalog";
 import { newEngineActive } from "../../lib/engine";
+import { isMultiplayer } from "../../lib/org-roles";
 import { osIsTauri } from "../../lib/os-bridge";
 import {
   EMPTY_PROVIDER_CAPABILITIES,
@@ -15,6 +16,7 @@ import {
 import { ProviderBrowser } from "../provider-browser/provider-browser";
 import { ProviderConnectionDialogs } from "../provider-browser/provider-connection-dialogs";
 import { PageContainer } from "../shell/page-shell";
+import { AiHubPolicy } from "./ai-hub-policy";
 import { AiHubTabs, type HubTab } from "./ai-hub-tabs";
 import { HubHero } from "./hub-hero";
 import { ModelDirectory } from "./model-directory";
@@ -46,6 +48,10 @@ export function AiHubView() {
 
   const { capabilities } = useCapabilities();
   const newEngine = newEngineActive();
+  // Teams owner/admin only reach the hub (plain members lose its nav), so the
+  // workspace model-policy tab shows whenever this is a Teams deployment.
+  const showPolicy =
+    isMultiplayer(capabilities) && capabilities?.teams === true;
   const providerCapabilities =
     capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
   // The connect cards this deployment can show (merged OpenCode account, engine
@@ -95,6 +101,7 @@ export function AiHubView() {
                 active={tab}
                 providerCount={connectProviders.length}
                 modelCount={catalog.modelCount}
+                showPolicy={showPolicy}
                 onSelect={setTab}
               />
             </PageContainer>
@@ -125,6 +132,8 @@ export function AiHubView() {
                       onOpen={setOpenProvider}
                       renderDialogs={false}
                     />
+                  ) : tab === "policy" && showPolicy ? (
+                    <AiHubPolicy />
                   ) : (
                     <ModelDirectory
                       catalog={catalog}

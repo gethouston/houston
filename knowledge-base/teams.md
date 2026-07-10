@@ -96,8 +96,18 @@ that also take `Pick<Agent, "access" | "assigned">` live in `agent-access.ts`
   render branch, tour step): a Teams **plain member** → false, else true
   (owner/admin delegate to `canSeeMembers`; non-Teams and single-player → true). A
   member's account home is instead Settings > Connected accounts.
-- `canEditOrgSettings(caps)` — **owner only**; gates the org allowlist editor on the
-  Integrations page (admins see it read-only). See the allowlist ceiling below.
+- `canSeeAiModelsPage(caps)` — the SAME gate for the global **AI Models hub**
+  (sidebar nav, render branch, tour step): a Teams **plain member** → false, else
+  true. Unlike Composio, AI provider connections are **org-level** (one credential
+  per org — whoever connects, every member's agents work; `cloud/docs/contracts/C6`),
+  so a member has no per-provider account to house anywhere — they pick their model
+  per agent in the composer. The hub is therefore owner/admin-only in Teams and gains
+  the org model-policy tab; a member loses its nav entirely (mirrors the Integrations
+  gate). This also removes a dead affordance — a member's provider-connect POST
+  already 403s at the gateway.
+- `canEditOrgSettings(caps)` — **owner only**; gates BOTH org policy editors — the
+  app allowlist on the Integrations page AND the model ceiling on the AI Models hub
+  (admins see them read-only). See the allowlist + models ceilings below.
 - `GRANTABLE_ROLES = ["admin", "user"]` — owner is never handed out from the UI
   (ownership transfer is out of scope for v1).
 
@@ -324,6 +334,29 @@ The model surface mirrors the integration allowlist: the manager sets a **ceilin
 (which models the agent may run on), and each member picks their own model **within**
 it. (The E5 org-templates feature that used to live here was removed in E8.)
 
+**Both model ceilings have a frontend home** (mirroring the app-allowlist pair) —
+the shared presentational `ModelsAllowlistEditor`
+(`app/src/components/ai-hub/models-allowlist-editor.tsx`, the model-side twin of
+`AllowlistEditor`, extracted from the old inline `AgentModelsSection`): an
+always-visible `AccessChoice` over the AI-hub catalog's `ModelAllowRow`s, `readOnly`
+hides the "Add models" list, all copy passed in.
+
+- **Org ceiling** — the **AI Models hub's "Workspace policy" tab**
+  (`ai-hub/ai-hub-policy.tsx`, a third `AiHubTab` shown when `multiplayer && teams`;
+  the hub itself is owner/admin-only in Teams, see `canSeeAiModelsPage`). Owner-editable,
+  admin READ-ONLY (`canEditOrgSettings` = owner only). Wire: `OrgSettings.allowedModels`;
+  client `getOrgSettings` / `setOrgSettings` (now a **partial patch** — `{allowedToolkits?,
+  allowedModels?}`, matching the gateway). Hook `useSetOrgAllowedModels`
+  (`hooks/queries/use-org-settings.ts`) — optimistic on `["org-settings"]`, invalidates
+  `["agent-settings"]` (an org models change narrows every agent's selectable universe).
+  Copy under `teams:models.orgAllowlist.*` + `aiHub:tabs.policy`.
+- **Per-agent ceiling** — Agent Settings > **Access** > **AI models**
+  (`agent-admin-model.tsx` → `AgentModelsSection`, now a thin wrapper over the shared
+  editor). It **narrows the selectable universe to the org ceiling** via
+  `AgentSettings.orgAllowedModels` (a model is offerable only when an offer is org-allowed,
+  the exact `orgAllowedToolkits` treatment the app allowlist uses), so an org-disallowed
+  model is never offered for an agent. Copy under `teams:agentAdmin.models.*`.
+
 - **Ceiling** — `agent_settings.allowedModels: string[] | null` of provider-native
   model ids (`null` = all models allowed; a set = restricted; treat `[]` defensively).
   Edited manager-only in Agent Settings > **Access** > **Allowed models**
@@ -352,7 +385,10 @@ it. (The E5 org-templates feature that used to live here was removed in E8.)
 - **Enforcement** — the gateway is the sole enforcer: it clamps every turn to the acting
   user's choice ∩ ceiling and strips any client-supplied model/provider. The client picker
   is convenience only.
-- Types: `AgentSettings.allowedModels`, `AgentModelChoice` (`{provider, model, effort?}`),
+- Types: `AgentSettings.allowedModels` + `AgentSettings.orgAllowedModels?` (the org
+  ceiling the agent set is intersected with), `OrgSettings.allowedModels?` (the org
+  ceiling itself; both optional so pre-ceiling hosts read as `undefined` = null),
+  `AgentModelChoice` (`{provider, model, effort?}`),
   `AgentModelChoiceInfo` (`{choice, allowedModels}`).
 - Client: `getAgentModelChoice` (404-degrades to `null` off-Teams) / `setAgentModelChoice`
   (`GET`/`PUT /agents/:slug/model-choice`); `setAgentSettings` widened to
@@ -479,7 +515,8 @@ back to initials. i18n: `dashboard:peopleFilter.*`, `board:people.label` (en/es/
 
 Wire types in `ui/engine-client/src/types.ts`: `OrgRole`, `OrgMember`,
 `OrgInfo`, `OrgInvite`, `AddOrgMemberResult`, `AgentAccess`, `AgentAssignment`,
-`AgentSettings` (with `allowedModels`), `OrgSettings`, `AuditEntry`, `UsageRow`,
+`AgentSettings` (with `allowedModels` + `orgAllowedModels`), `OrgSettings` (with
+`allowedModels`; `setOrgSettings` is a partial patch), `AuditEntry`, `UsageRow`,
 `AgentModelChoice` / `AgentModelChoiceInfo`. `Agent` gains multiplayer-only
 `assigned` / `assignedUserIds` / `access` / `assignments`. All hand-maintained
 against the gateway (the server is source of truth). Methods in `client.ts`:
@@ -496,8 +533,10 @@ against the gateway (the server is source of truth). Methods in `client.ts`:
 All Teams copy lives in the `teams` namespace
 (`app/src/locales/{en,es,pt}/teams.json`, registered in `app/src/lib/i18n.ts`).
 Top-level groups: `agentAdmin` (`groups` incl. the inline `general` card, `rows`,
-`models` ceiling, inline `values`),
-`managedAgent`, `integrations`, `org`, `share`, `people`, `activityTab`,
-`usageTab`, `agentsTab`.
+per-agent `models` ceiling, inline `values`),
+`managedAgent`, `integrations`, `models` (the root `models.orgAllowlist.*` org model
+ceiling, sibling of `integrations.orgAllowlist`), `org`, `share`, `people`,
+`activityTab`, `usageTab`, `agentsTab`. (The AI Models hub's own strings, incl.
+`tabs.policy`, live in the separate `aiHub` namespace.)
 (There is also a separate `org` namespace for pre-v2 org strings.) See
 `i18n.md`.

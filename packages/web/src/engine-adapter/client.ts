@@ -2052,7 +2052,8 @@ export class HoustonClient {
     return controlPlane.getOrgSettings(this.cp);
   }
   async setOrgSettings(settings: {
-    allowedToolkits: string[] | null;
+    allowedToolkits?: string[] | null;
+    allowedModels?: string[] | null;
   }): Promise<void> {
     if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
     return controlPlane.setOrgSettings(this.cp, settings);
