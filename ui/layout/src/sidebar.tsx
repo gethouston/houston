@@ -5,7 +5,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@houston-ai/core";
-import { PanelLeftClose } from "lucide-react";
+import { PanelLeftClose, Plus } from "lucide-react";
 import {
   type KeyboardEvent,
   type MouseEvent,
@@ -303,6 +303,22 @@ export function AppSidebar({
                 {sectionLabel}
               </div>
               {sectionAction}
+              {onAdd && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={l.addItem}
+                      onClick={onAdd}
+                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      {...(addItemDataAttrs ?? {})}
+                    >
+                      <Plus className="size-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{l.addItem}</TooltipContent>
+                </Tooltip>
+              )}
             </div>
           )}
 
@@ -322,8 +338,6 @@ export function AppSidebar({
                 onRenamingGroupIdHandled={onRenamingGroupIdHandled}
                 onMoveItem={onMoveItem}
                 onMoveGroup={onMoveGroup}
-                onAdd={onAdd}
-                addItemDataAttrs={addItemDataAttrs}
                 rowCtx={baseRowCtx}
               />
             ) : (

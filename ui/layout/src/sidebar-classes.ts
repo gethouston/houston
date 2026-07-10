@@ -1,11 +1,5 @@
 export const sidebarClasses = {
   itemsList: "w-0 min-w-full space-y-0.5 pb-2",
-  addButton:
-    "group flex w-full min-w-0 items-center rounded-lg text-accent-foreground transition-colors duration-100 hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-  addButtonInner:
-    "flex min-w-0 flex-1 items-center gap-2 px-3 py-1.5 text-left text-[13px]",
-  addButtonIcon: "size-4 shrink-0 text-muted-foreground",
-  addButtonLabel: "min-w-0 flex-1 truncate",
 } as const;
 
 export const sidebarItemRowClasses = {
