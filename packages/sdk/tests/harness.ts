@@ -25,6 +25,7 @@ import {
   createAuthFetch,
   type FeedOutput,
   HoustonSdk,
+  type SdkLogger,
   type SdkPorts,
   type SessionStatusValue,
 } from "@houston/sdk";
@@ -44,8 +45,12 @@ export interface Harness {
   storage: Map<string, string>;
 }
 
-/** Build an SDK pointed at `baseUrl`, wired like a real host. */
-export function makeSdk(baseUrl: string): Harness {
+/**
+ * Build an SDK pointed at `baseUrl`, wired like a real host. Pass `logger` to
+ * capture the SDK's diagnostics (e.g. asserting a persist warning) — it
+ * defaults to a silent no-op logger.
+ */
+export function makeSdk(baseUrl: string, logger?: SdkLogger): Harness {
   const storage = new Map<string, string>();
   const kv = {
     get: async (k: string) => storage.get(k) ?? null,
@@ -62,7 +67,7 @@ export function makeSdk(baseUrl: string): Harness {
       clearTimeout: (id) =>
         clearTimeout(id as unknown as ReturnType<typeof setTimeout>),
     },
-    logger: {
+    logger: logger ?? {
       debug: () => {},
       info: () => {},
       warn: () => {},
@@ -115,6 +120,25 @@ export async function until(
 ): Promise<void> {
   const start = Date.now();
   while (!predicate()) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error(`timed out waiting for: ${label}`);
+    }
+    await sleep(10);
+  }
+}
+
+/**
+ * Async {@link until}: poll an async `predicate` on real timers until it
+ * resolves truthy, or throw after `timeoutMs`. For assertions that read the
+ * host over the wire (e.g. a persisted activity's status).
+ */
+export async function untilAsync(
+  predicate: () => Promise<boolean>,
+  label: string,
+  timeoutMs = 15000,
+): Promise<void> {
+  const start = Date.now();
+  while (!(await predicate())) {
     if (Date.now() - start > timeoutMs) {
       throw new Error(`timed out waiting for: ${label}`);
     }

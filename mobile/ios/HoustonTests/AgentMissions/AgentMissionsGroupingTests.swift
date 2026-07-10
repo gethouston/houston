@@ -58,11 +58,6 @@ final class AgentMissionsGroupingTests: XCTestCase {
         XCTAssertEqual(onlyArchived.archivedCount, 1)
     }
 
-    func testHasRunningReflectsRunningPresence() {
-        XCTAssertTrue(group([MissionFixture.activity(id: "r", status: "running")]).hasRunning)
-        XCTAssertFalse(group([MissionFixture.activity(id: "n", status: "needs_you")]).hasRunning)
-    }
-
     func testWithinSectionSortedMostRecentFirst() {
         let g = group([
             MissionFixture.activity(id: "older", status: "running", updatedAt: "2026-07-01T00:00:00Z"),

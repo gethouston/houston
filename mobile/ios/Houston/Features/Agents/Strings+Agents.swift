@@ -14,14 +14,18 @@ extension Strings {
         static let title = "Agents"
 
         /// The most-recent-mission line under an agent's name, in product voice.
-        /// Built from the mission title + its resolved state.
+        /// Built from the mission title + its resolved state. ONE signal per state
+        /// (PARITY §4): `.needsYou` renders the bare title because the filled
+        /// `NeedsYouChip` badge is the sole needs-you signal — the line must not
+        /// duplicate it. `.error` keeps "Hit a snag on …" (a genuine failure is
+        /// information and carries NO badge — the fold does not count `error` into
+        /// `needsYouCount`, so nothing else surfaces it).
         static func lastActivity(state: MissionState, title: String) -> String {
             switch state {
             case .running: return "Working on \(title)"
-            case .needsYou: return "Needs you on \(title)"
             case .error: return "Hit a snag on \(title)"
             case .done: return "Finished \(title)"
-            case .archived, .unknown: return title
+            case .needsYou, .archived, .unknown: return title
             }
         }
 

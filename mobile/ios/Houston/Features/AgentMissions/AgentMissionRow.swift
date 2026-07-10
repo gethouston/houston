@@ -1,41 +1,30 @@
 import SwiftUI
 
-/// One mission on the per-agent missions screen: a tappable `List` row that opens
-/// the chat, with explicit actions via context menu and trailing swipe (PARITY §1
-/// — no drag). The visual is the shared ``MissionCardView`` (title, description
-/// preview, status chip, updatedAt); only the affordance set differs from Mission
-/// Control's row — this screen adds **Delete** to Approve / Rename / Archive.
-/// Approve is offered only for `needs_you` ("Move to done").
+/// One mission on the per-agent missions screen: a slim, sober `List` row (the
+/// WhatsApp-style conversation line — ``MissionRowContent``, no avatar/card) that
+/// opens the chat on tap, with explicit actions via context menu and trailing
+/// swipe (PARITY §1 — no drag). This screen adds **Delete** to Rename / Archive.
+/// Rows are plain List rows: default background and the List's inset hairline
+/// separators, inset from the text start.
 struct AgentMissionRow: View {
-    @Environment(\.theme) private var theme
     let card: MissionCardData
     let onOpen: (ChatRoute) -> Void
-    let onApprove: (MissionCardData) -> Void
     let onRename: (MissionCardData) -> Void
     let onArchive: (MissionCardData) -> Void
     let onDelete: (MissionCardData) -> Void
 
-    private var canApprove: Bool { card.state == .needsYou }
-
     var body: some View {
         Button { onOpen(card.chatRoute) } label: {
-            MissionCardView(card: card)
+            MissionRowContent(line: MissionRowLine.derive(card))
         }
         .buttonStyle(.plain)
-        .listRowInsets(EdgeInsets(top: Spacing.space6, leading: Spacing.space16,
-                                  bottom: Spacing.space6, trailing: Spacing.space16))
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: Spacing.space10, leading: Spacing.space16,
+                                  bottom: Spacing.space10, trailing: Spacing.space16))
         .contextMenu { menu }
         .swipeActions(edge: .trailing) { swipe }
     }
 
     @ViewBuilder private var menu: some View {
-        if canApprove {
-            Button { onApprove(card) } label: {
-                Label(Strings.Board.approve, systemImage: "checkmark.circle")
-            }
-        }
         Button { onRename(card) } label: {
             Label(Strings.Board.rename, systemImage: "pencil")
         }
@@ -50,12 +39,6 @@ struct AgentMissionRow: View {
     @ViewBuilder private var swipe: some View {
         Button(role: .destructive) { onArchive(card) } label: {
             Label(Strings.MissionControl.archiveAction, systemImage: "archivebox")
-        }
-        if canApprove {
-            Button { onApprove(card) } label: {
-                Label(Strings.Board.approve, systemImage: "checkmark.circle")
-            }
-            .tint(theme.success)
         }
     }
 }

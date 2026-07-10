@@ -59,8 +59,17 @@ describe("turns/history — fold persisted transcript", () => {
 
     const feed: FeedFrame[] = await h.sdk.turns.history(cid, SEED_AGENT_ID);
     expect(feed).toEqual([
-      { feed_type: "user_message", data: "Ping", author: undefined },
-      { feed_type: "assistant_text", data: cannedReply("Ping") },
+      {
+        feed_type: "user_message",
+        data: "Ping",
+        author: undefined,
+        ts: expect.any(Number),
+      },
+      {
+        feed_type: "assistant_text",
+        data: cannedReply("Ping"),
+        ts: expect.any(Number),
+      },
       {
         feed_type: "final_result",
         data: {
@@ -69,8 +78,11 @@ describe("turns/history — fold persisted transcript", () => {
           duration_ms: null,
           usage: seedUsage,
         },
+        ts: expect.any(Number),
       },
     ]);
+    // Each folded frame carries its source ChatMessage.ts (epoch ms).
+    for (const f of feed) expect(f.ts).toBeGreaterThan(0);
   });
 });
 

@@ -113,8 +113,21 @@ export class HoustonSdk {
     this.session = createSessionModule(ctx);
     this.agents = createAgentsModule(ctx);
     this.conversations = createConversationsModule(ctx);
-    this.turns = createTurnsModule(ctx);
+    // Activities BEFORE turns: the turns module's default board-status output
+    // persists a card by session key through the activities module, so that
+    // capability must exist first. Injected as a bound function (not the whole
+    // module) so turns depends on one activities method, never the reverse.
     this.activities = createActivitiesModule(ctx);
+    this.turns = createTurnsModule(
+      ctx,
+      (agentId, sessionKey, status, pendingInteraction) =>
+        this.activities.setStatusBySessionKey(
+          agentId,
+          sessionKey,
+          status,
+          pendingInteraction,
+        ),
+    );
     this.missions = createMissionsSearchModule(ctx);
     this.providers = createProvidersModule(ctx);
     this.integrations = createIntegrationsModule(ctx);

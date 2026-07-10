@@ -163,7 +163,13 @@ describe("send -> stream -> settle (bridge-fetch streaming path)", () => {
       .map((s) => s.snapshot as ConversationVM)
       .filter((vm) => vm.running === false)
       .pop();
-    expect(settled).toEqual({
+    // Every feed entry now carries a stamped epoch-ms `ts`; assert it is present
+    // and numeric, then compare the rest of the VM structurally (ts stripped).
+    for (const f of settled?.feed ?? []) expect(typeof f.ts).toBe("number");
+    expect({
+      ...settled,
+      feed: (settled?.feed ?? []).map(({ ts, ...rest }) => rest),
+    }).toEqual({
       running: false,
       sessionStatus: "completed",
       // A clean turn with nothing outstanding settles to `done`.

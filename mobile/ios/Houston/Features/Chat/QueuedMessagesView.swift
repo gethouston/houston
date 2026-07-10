@@ -39,10 +39,10 @@ private struct QueuedBubble: View {
       VStack(alignment: .trailing, spacing: Spacing.space2) {
         Text(message.text)
           .font(Typography.body)
-          .foregroundStyle(theme.primaryFg)
-          .padding(.horizontal, Spacing.space12)
-          .padding(.vertical, Spacing.space8)
-          .background(theme.primary, in: BubbleShape(tail: .trailing))
+          .foregroundStyle(theme.foreground)
+          .padding(.horizontal, Spacing.space16)
+          .padding(.vertical, Spacing.space10)
+          .background(theme.muted, in: RoundedRectangle(cornerRadius: ChatMetrics.bubbleRadius))
         if let names = message.attachmentNames, !names.isEmpty {
           Text(names.joined(separator: ", "))
             .font(Typography.caption)

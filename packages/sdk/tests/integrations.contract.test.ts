@@ -64,11 +64,14 @@ describe("integrations VM", () => {
     expect(result).toEqual({
       loaded: true,
       ready: true,
-      toolkits: [
+      // The gateway's discovery catalog grows freely (blocked/unconnected apps
+      // are surfaced too), so pin the VM SHAPE and the canonical seeds' presence
+      // rather than the exact fixture length.
+      toolkits: expect.arrayContaining([
         expect.objectContaining({ slug: "github", name: "GitHub" }),
         expect.objectContaining({ slug: "gmail", name: "Gmail" }),
         expect.objectContaining({ slug: "slack", name: "Slack" }),
-      ],
+      ]),
       connections: [
         { toolkit: "gmail", connectionId: "conn-gmail-0", status: "active" },
       ],

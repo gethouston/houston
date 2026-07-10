@@ -27,7 +27,7 @@ struct ArchivedMissionsView: View {
           ForEach(cards) { card in
             MissionCardRow(
               card: card, showsActions: false, onOpen: onOpen,
-              onApprove: { _ in }, onRename: { _ in }, onArchive: { _ in }
+              onRename: { _ in }, onArchive: { _ in }
             )
           }
         }

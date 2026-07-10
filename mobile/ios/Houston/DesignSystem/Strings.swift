@@ -20,8 +20,8 @@ enum Strings {
         static let archived = "Archived"
         static let allAgents = "All agents"
 
-        // Card actions (board.json:cardActions).
-        static let approve = "Move to done"
+        // Card actions (board.json:cardActions). Move-to-done was removed from
+        // the lists; a mission-moving affordance is a later design.
         static let rename = "Change title"
         static let delete = "Delete"
 
@@ -70,7 +70,7 @@ enum Strings {
         }
     }
 
-    /// Count badge cap for outline chips (NeedsYouChip caps at "99+", PARITY §4).
+    /// Count badge cap for the needs-you chip (NeedsYouChip caps at "99+", PARITY §4).
     static func cappedCount(_ count: Int) -> String {
         count > 99 ? "99+" : "\(count)"
     }
