@@ -214,18 +214,22 @@ export function KanbanCard({
       >
         {/* Top row: agent info + action buttons */}
         <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-1.5 min-w-0">
-            {/* Multi-select checkbox. Collapsed to zero width until the card
-                is hovered/focused or a selection is active, so it reveals on
-                hover (pushing the agent name right) yet stays keyboard-
-                reachable — never a hover-only affordance. */}
+          <div className="flex items-center min-w-0">
+            {/* Multi-select checkbox. Collapsed to zero width AND zero margin
+                until the card is hovered/focused or a selection is active, so
+                it reveals on hover (pushing the agent name right) yet stays
+                keyboard-reachable — never a hover-only affordance. The margin
+                collapses with the width so at rest the leading icon sits flush
+                with the card's content padding (same left edge as the title,
+                description, and people strip); the gap lives on the checkbox,
+                never as a container `gap` that a zero-width child would keep. */}
             {selectable && onToggleSelect && (
               <div
                 className={cn(
                   "shrink-0 overflow-hidden transition-all duration-150",
                   selectedForBulk || anySelected
-                    ? "w-4 opacity-100"
-                    : "w-0 opacity-0 group-hover/card:w-4 group-hover/card:opacity-100 group-focus-within/card:w-4 group-focus-within/card:opacity-100",
+                    ? "w-4 mr-1.5 opacity-100"
+                    : "w-0 mr-0 opacity-0 group-hover/card:w-4 group-hover/card:mr-1.5 group-hover/card:opacity-100 group-focus-within/card:w-4 group-focus-within/card:mr-1.5 group-focus-within/card:opacity-100",
                 )}
               >
                 <span
@@ -254,19 +258,19 @@ export function KanbanCard({
                 </span>
               </div>
             )}
-            {/* A per-item `icon` wins over the board-wide `avatar`: the
-                per-agent board sets `icon` to the working person's face while
-                Mission Control leaves `avatar` as the shared agent helmet.
-                Wrapped when it's the item icon; the board avatar renders raw. */}
-            {item.icon ? (
-              <span className="size-3.5 shrink-0 flex items-center justify-center">
-                {item.icon}
-              </span>
-            ) : (
-              avatar
-            )}
+            {/* The board-wide `avatar` (the agent helmet) is the leading icon on
+                EVERY board — Mission Control and the per-agent board alike.
+                Contributors show only in the bottom people strip, never as the
+                card icon. `item.icon` remains a generic per-item fallback for
+                boards that pass no `avatar` (e.g. cross-agent lists). */}
+            {avatar ??
+              (item.icon && (
+                <span className="size-3.5 shrink-0 flex items-center justify-center">
+                  {item.icon}
+                </span>
+              ))}
             {item.group && (
-              <span className="text-[11px] text-muted-foreground truncate">
+              <span className="ml-1.5 text-[11px] text-muted-foreground truncate">
                 {item.group}
               </span>
             )}

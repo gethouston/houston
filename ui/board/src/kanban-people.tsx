@@ -8,6 +8,9 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@houston-ai/core";
 import {
   initialsFor,
@@ -51,18 +54,24 @@ const TEXT_SIZE: Record<NonNullable<KanbanPeopleProps["size"]>, string> = {
 };
 
 /** A single avatar face: image when known, initials fallback otherwise. Shared
- *  by the overlapping stack and the expansion popover so both read identically. */
+ *  by the overlapping stack and the expansion popover so both read identically.
+ *  With `tooltip`, hovering the face shows the person's display name via the
+ *  app's Tooltip primitive (the stack has no visible label of its own); the
+ *  popover passes it off since it already lists the name in text beside each
+ *  face. Off `tooltip`, the native `title` still carries the name. */
 function Face({
   person,
   faceSize,
   textSize,
+  tooltip = false,
 }: {
   person: KanbanPerson;
   faceSize: string;
   textSize: string;
+  tooltip?: boolean;
 }) {
-  return (
-    <Avatar title={person.label} className={faceSize}>
+  const avatar = (
+    <Avatar title={tooltip ? undefined : person.label} className={faceSize}>
       {person.imageUrl && (
         <AvatarImage
           src={person.imageUrl}
@@ -74,6 +83,13 @@ function Face({
         {initialsFor(person.label)}
       </AvatarFallback>
     </Avatar>
+  );
+  if (!tooltip) return avatar;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{avatar}</TooltipTrigger>
+      <TooltipContent side="top">{person.label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -109,6 +125,7 @@ export function KanbanPeople({
           person={person}
           faceSize={faceSize}
           textSize={textSize}
+          tooltip
         />
       ))}
       {extra > 0 &&
