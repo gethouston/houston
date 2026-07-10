@@ -47,7 +47,7 @@
     "forward": "Avançar",
     "skip": "Pular",
     "dismiss": "Descartar",
-    "progress": "{{current}} de {{total}}"
+    "progress": "Etapa {{current}} de {{total}}"
   },
   "interaction": {
     "connectedLine": "Conectou {{name}}.",

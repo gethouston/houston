@@ -4,21 +4,27 @@ import { Button, cn } from "@houston-ai/core";
 import { XIcon } from "lucide-react";
 import type { ChatInteractionOption } from "./interaction-card-logic";
 
-/** One selectable answer, a full-width single-select row (click = answer). The
- *  bold label sits on the left; its 1-based `position` shows as quiet muted text
- *  on the right (always visible, replacing the old check-on-selected indicator —
- *  the number is the stable affordance, selection is carried by the border). */
+/** One selectable answer, a full-width single-select row (click = answer),
+ *  styled as a Mercury row: a raised white surface with a hairline border and
+ *  roomy padding. The label sits left (in a column so a subtitle can slot in
+ *  later); when `keycap` is set, its 1-based `position` shows on the right as a
+ *  subtle bordered keycap — a keyboard-shortcut hint, deliberately NOT a
+ *  left-side list marker. Selection is carried by the accent border + tint.
+ *  A single-option step passes `keycap={false}` so a lone row never shows an
+ *  arbitrary "1". */
 export function OptionRow({
   option,
   selected,
   disabled,
   position,
+  keycap,
   onSelect,
 }: {
   option: ChatInteractionOption;
   selected: boolean;
   disabled: boolean;
   position: number;
+  keycap: boolean;
   onSelect: () => void;
 }) {
   return (
@@ -26,7 +32,7 @@ export function OptionRow({
     <button
       aria-checked={selected}
       className={cn(
-        "flex w-full items-center gap-3 rounded-2xl border border-border/50 bg-background px-3.5 py-2.5 text-left text-sm text-foreground outline-none transition-colors",
+        "flex w-full items-center gap-3 rounded-xl border border-border/60 bg-background px-3.5 py-3 text-left text-sm text-foreground outline-none transition-colors",
         "hover:border-border hover:bg-accent",
         "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
         "disabled:pointer-events-none disabled:opacity-50",
@@ -37,21 +43,25 @@ export function OptionRow({
       role="radio"
       type="button"
     >
-      <span className="flex-1 font-medium">{option.label}</span>
-      <span className="shrink-0 text-muted-foreground text-xs tabular-nums">
-        {position}
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="font-medium">{option.label}</span>
       </span>
+      {keycap && (
+        <kbd className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md border border-border bg-muted px-1 font-medium font-sans text-[11px] text-muted-foreground tabular-nums">
+          {position}
+        </kbd>
+      )}
     </button>
   );
 }
 
 export interface StepperHeaderProps {
-  /** 1-based index of the current step and the total step count (drives the pill). */
-  current: number;
+  /** Total step count; the progress eyebrow shows only for a multi-step sequence. */
   total: number;
-  /** Full accessible progress copy, e.g. "1 of 4" (aria-label on the pill). */
+  /** The quiet progress micro-label, e.g. "Step 1 of 3" (shown when total > 1). */
   progressLabel: string;
-  /** The current step's question text; omitted for signin/connect steps. */
+  /** The current step's question text, rendered as the card's title; omitted for
+   *  signin/connect steps (those supply their own heading in the body). */
   questionText?: string;
   /** Dismisses the WHOLE interaction sequence. The X button renders only when
    *  supplied, so a caller with no dismiss affordance simply omits it. */
@@ -60,12 +70,12 @@ export interface StepperHeaderProps {
   disabled: boolean;
 }
 
-/** Card header: a "current/total" pill and the step's question text on the
- *  left, an optional dismiss X on the right. Purely informational + the one
- *  escape hatch — all step-to-step navigation (back/skip/next) lives together
- *  in the footer, see `ChatInteractionCard`. */
+/** Card header, in the Mercury title idiom: a quiet progress micro-label
+ *  eyebrow (only for a multi-step sequence) above the step's question rendered
+ *  as a real title in the body, with an unobtrusive dismiss X pinned top-right.
+ *  Purely informational + the one escape hatch — all step-to-step navigation
+ *  (back/skip/next) lives together in the footer, see `ChatInteractionCard`. */
 export function StepperHeader({
-  current,
   total,
   progressLabel,
   questionText,
@@ -74,26 +84,31 @@ export function StepperHeader({
   disabled,
 }: StepperHeaderProps) {
   return (
-    <div className="mb-1 flex min-h-8 items-center gap-1.5 px-1">
-      <div className="flex min-w-0 flex-1 items-center gap-2">
+    // No horizontal padding: the eyebrow, title, option rows and footer all
+    // hang from the same left line (the content column's edge), Mercury-style.
+    <div className="flex items-start gap-2">
+      <div className="min-w-0 flex-1">
         {total > 1 && (
-          <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 font-medium text-muted-foreground text-xs tabular-nums">
-            <span aria-hidden="true">
-              {current}/{total}
-            </span>
-            <span className="sr-only">{progressLabel}</span>
-          </span>
+          <p className="font-medium text-muted-foreground text-xs">
+            {progressLabel}
+          </p>
         )}
         {questionText && (
-          <span className="min-w-0 truncate font-medium text-foreground text-sm">
+          <p
+            className={cn(
+              "text-balance text-base text-foreground leading-snug",
+              total > 1 && "mt-1.5",
+            )}
+          >
             {questionText}
-          </span>
+          </p>
         )}
       </div>
 
       {onDismiss && (
         <Button
           aria-label={dismissLabel}
+          className="-mr-1 -mt-1 shrink-0"
           disabled={disabled}
           onClick={onDismiss}
           size="icon-sm"

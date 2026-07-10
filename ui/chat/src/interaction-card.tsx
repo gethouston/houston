@@ -1,7 +1,6 @@
 "use client";
 
 import { Button, cn } from "@houston-ai/core";
-import { CornerDownLeftIcon } from "lucide-react";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
@@ -77,11 +76,14 @@ export interface ChatInteractionCardProps {
 /**
  * The in-chat surface shown when the agent pauses to gather what it needs before
  * continuing: a stepper that walks the user through ONE step at a time (question
- * or connect). The header carries a "current/total" pill, the question text, and
- * an optional dismiss X. ALL step-to-step navigation (back / skip / next) lives
- * together in one footer row, Back leftmost, so there's a single place to look
- * for "how do I move." A question step's option rows are also keyboard-selectable
- * by their visible position number (1, 2, 3...) whenever focus isn't in a text
+ * or connect). The header follows the Mercury title idiom: a quiet "Step N of M"
+ * micro-label (only for a multi-step sequence) above the question rendered as a
+ * real title, with an unobtrusive dismiss X top-right. ALL step-to-step
+ * navigation (back / skip / next) lives together in one footer row as quiet
+ * ghost buttons plus a single filled Next pill, Back leftmost, so there's a
+ * single place to look for "how do I move." A question step's option rows are
+ * also keyboard-selectable by their position number (shown as a right-aligned
+ * keycap hint when there's more than one option) whenever focus isn't in a text
  * field. It renders ABOVE the real composer (which the caller keeps mounted
  * alongside it, see `chat-panel.tsx`), so it borrows the composer's vocabulary
  * (rounded-[28px] surface, borderless inline textarea) without replacing it —
@@ -199,7 +201,6 @@ export function ChatInteractionCard({
     >
       <div className="flex flex-col px-2.5 pt-2 pb-2">
         <StepperHeader
-          current={current + 1}
           disabled={disabled}
           dismissLabel={labels?.dismiss ?? "Dismiss"}
           onDismiss={onDismiss}
@@ -214,12 +215,16 @@ export function ChatInteractionCard({
           key={step.id}
         >
           {isQuestion ? (
-            <>
+            // Options and the free-text row live in one evenly-spaced group, so
+            // "Type something else..." reads as the last row of the same list —
+            // the escape hatch, not a separate control.
+            <div className="mt-4 flex flex-col gap-2">
               {hasSelectableOptions(step.options) && (
-                <div className="mt-3 flex flex-col gap-2" role="radiogroup">
+                <div className="flex flex-col gap-2" role="radiogroup">
                   {step.options?.map((option, index) => (
                     <OptionRow
                       disabled={disabled}
+                      keycap={(step.options?.length ?? 0) > 1}
                       key={option.id}
                       onSelect={() => onOption(option.id)}
                       option={option}
@@ -230,9 +235,9 @@ export function ChatInteractionCard({
                 </div>
               )}
 
-              <div className="mt-4 flex items-end gap-2 rounded-2xl border border-border/50 bg-background px-3 py-2 transition-colors focus-within:border-border">
+              <div className="flex items-end gap-2 rounded-xl border border-border/60 bg-background px-3.5 py-2.5 transition-colors focus-within:border-border">
                 <textarea
-                  className="max-h-40 flex-1 resize-none border-none bg-transparent py-1 text-base text-foreground leading-[1.2] outline-none placeholder:text-muted-foreground/50"
+                  className="max-h-40 flex-1 resize-none border-none bg-transparent py-0.5 text-base text-foreground leading-[1.3] outline-none placeholder:text-muted-foreground/50"
                   disabled={disabled}
                   onChange={(e) =>
                     setState((s) => setDraft(s, stepId, e.target.value))
@@ -243,7 +248,7 @@ export function ChatInteractionCard({
                   value={draft}
                 />
               </div>
-            </>
+            </div>
           ) : step.kind === "signin" ? (
             renderSignin(step, { onSignedIn })
           ) : (
@@ -261,14 +266,14 @@ export function ChatInteractionCard({
         {(current > 0 ||
           isQuestion ||
           (!isQuestion && canGoForward(state))) && (
-          <div className="mt-3 flex justify-end gap-2">
+          <div className="mt-4 flex items-center justify-end gap-1.5">
             {current > 0 && (
               <Button
                 disabled={disabled}
                 onClick={() => setState(goBack)}
                 size="sm"
                 type="button"
-                variant="outline"
+                variant="ghost"
               >
                 {backLabel}
               </Button>
@@ -280,7 +285,7 @@ export function ChatInteractionCard({
                   onClick={onSkip}
                   size="sm"
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                 >
                   {skipLabel}
                 </Button>
@@ -291,7 +296,6 @@ export function ChatInteractionCard({
                   type="button"
                 >
                   {nextLabel}
-                  <CornerDownLeftIcon className="size-4" />
                 </Button>
               </>
             ) : (

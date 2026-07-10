@@ -91,8 +91,8 @@ describe("isLastStep", () => {
 });
 
 describe("defaultProgress", () => {
-  it("formats '<current> of <total>'", () => {
-    assert.equal(defaultProgress(1, 3), "1 of 3");
+  it("formats 'Step <current> of <total>'", () => {
+    assert.equal(defaultProgress(1, 3), "Step 1 of 3");
   });
 });
 
@@ -251,7 +251,7 @@ describe("stepper flow: question, signin, connect", () => {
 
   it("advances the progress counter across the signin step", () => {
     // "N of X" is derived from current+1 / total; signin counts like any step.
-    assert.equal(defaultProgress(2, steps.length), "2 of 3");
+    assert.equal(defaultProgress(2, steps.length), "Step 2 of 3");
   });
 });
 
