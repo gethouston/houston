@@ -2278,7 +2278,8 @@ visionPath: "vision/index.html"
     <details class="dl-skip" id="dl-windows-skip">
       <summary>Not sure which one to pick?</summary>
       <div class="dl-skip-body">
-        <p>Most laptops and desktops are x64 (Intel or AMD CPUs). Pick ARM64 only if you're on a Surface Pro X, Surface Pro 9 5G, a Snapdragon X laptop, or another ARM-based Windows machine. On first install you'll see one SmartScreen "Run anyway" prompt; we're working on full code-signing.</p>
+        <p>Most laptops and desktops are x64 (Intel or AMD CPUs). Only a Surface Pro X, Surface Pro 9 5G, a Snapdragon X laptop, or another ARM-based Windows machine needs ARM64. On first install you'll see one SmartScreen "Run anyway" prompt; we're working on full code-signing.</p>
+        <a href="#" id="dl-windows-switch-arch">Wrong one? Switch to the other version →</a>
       </div>
     </details>
   </div>
@@ -2578,38 +2579,97 @@ visionPath: "vision/index.html"
     }
   }
 
-  // OS-aware Download button: visitors on Windows kept clicking "Download for
-  // Mac" because Mac was always the primary. Detect the platform once and
-  // promote the matching button; demote the other to a small underlined escape
-  // link (kept in the DOM so its existing modal handler still fires, and so
-  // people downloading for another machine still have a path). When the OS
-  // can't be told (Linux / unknown) we leave both buttons as authored.
+  // Shared OS detection: drives the hero/pricing button swap below, the nav's
+  // single generic "Download" button (which has no Windows sibling to swap),
+  // and which modal that nav button opens.
+  function detectOs() {
+    var uaData = navigator.userAgentData;
+    var hay = ((uaData && uaData.platform ? uaData.platform : '') + ' ' +
+      (navigator.userAgent || '')).toLowerCase();
+    if (hay.indexOf('win') !== -1) return 'windows';
+    if (hay.indexOf('mac') !== -1) return 'mac';
+    return 'other';
+  }
+
+  // OS-aware Download button: show exactly ONE button per spot (hero,
+  // pricing), never a Mac/Windows pair. Detect the platform once, keep the
+  // matching button, and remove the other from layout entirely (not just
+  // restyled - `display: none`, so it takes no space and isn't a second
+  // visible control). Default to Mac when the OS can't be told (Linux /
+  // unknown / no JS), matching the rest of the page's Mac-first copy.
   (function () {
-    function detectOs() {
-      var uaData = navigator.userAgentData;
-      var hay = ((uaData && uaData.platform ? uaData.platform : '') + ' ' +
-        (navigator.userAgent || '')).toLowerCase();
-      if (hay.indexOf('win') !== -1) return 'windows';
-      if (hay.indexOf('mac') !== -1) return 'mac';
-      return 'other';
-    }
     var os = detectOs();
-    if (os === 'other') return;
-    function asPrimary(btn) {
+    function keep(btn) {
       btn.className = 'btn btn-primary btn-lg';
-      btn.style.order = '0';
     }
-    function asAlt(btn) {
-      btn.className = 'dl-alt';
-      btn.style.order = '1';
+    function remove(btn) {
+      btn.style.display = 'none';
     }
+
+    // The nav's "Download" button is generic and standalone (no Windows
+    // sibling), so it always wore the Mac icon. Swap it to the Windows icon
+    // for Windows visitors instead of leaving a mismatched Apple glyph.
+    var navIcon = document.getElementById('nav-dl-icon');
+    if (navIcon && os === 'windows') {
+      navIcon.innerHTML = '<svg viewBox="0 0 448 512" fill="currentColor" width="14" height="14"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg>';
+    }
+
     document.querySelectorAll('[data-dl-trigger]').forEach(function (mac) {
       var group = mac.parentElement;
       var win = group ? group.querySelector('[data-dl-windows-trigger]') : null;
       if (!win) return;
-      if (os === 'windows') { asPrimary(win); asAlt(mac); }
-      else { asPrimary(mac); asAlt(win); }
+      if (os === 'windows') { keep(win); remove(mac); }
+      else { keep(mac); remove(win); }
     });
+  })();
+
+  // Windows x64 vs ARM64 is a second, sharper point of confusion: almost no
+  // one knows which their PC is, so show exactly ONE arch button (hide the
+  // other with display: none, not just a demoted link). Default to x64 (it
+  // covers the overwhelming majority) and only show ARM64 on a positive
+  // signal from the visitor's own OS. The "Wrong one?" link in the help
+  // accordion below is the deliberate, one-click-away escape hatch for the
+  // rare misdetection - not a second button sitting on the page by default.
+  (function () {
+    var x64 = document.getElementById('dl-windows-x64-btn');
+    var arm64 = document.getElementById('dl-windows-arm64-btn');
+    if (!x64 || !arm64) return;
+
+    // Only touch primary/secondary + display here - `btn-disabled` is
+    // independently managed by setWinButton() based on the invite code, for
+    // BOTH buttons, regardless of which is currently shown. So switching
+    // which one is visible never disturbs the unlock state.
+    function show(shown, hidden) {
+      shown.classList.remove('btn-secondary');
+      shown.classList.add('btn-primary');
+      shown.style.display = '';
+      hidden.classList.remove('btn-primary');
+      hidden.classList.add('btn-secondary');
+      hidden.style.display = 'none';
+    }
+
+    arm64.style.display = 'none';
+    var ua = (navigator.userAgent || '').toLowerCase();
+    if (ua.indexOf('arm64') !== -1 || ua.indexOf('aarch64') !== -1) {
+      show(arm64, x64);
+    } else {
+      var uaData = navigator.userAgentData;
+      if (uaData && uaData.getHighEntropyValues) {
+        uaData.getHighEntropyValues(['architecture']).then(function (info) {
+          if (info && info.architecture === 'arm') show(arm64, x64);
+        }).catch(function () {});
+      }
+    }
+
+    var switchLink = document.getElementById('dl-windows-switch-arch');
+    if (switchLink) {
+      switchLink.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (arm64.style.display === 'none') show(arm64, x64);
+        else show(x64, arm64);
+        track('windows_arch_switched', {});
+      });
+    }
   })();
 
   // Download gate modal
@@ -2627,6 +2687,19 @@ visionPath: "vision/index.html"
     var unlockedFired = false;
     var winUnlockedFired = false;
     var lastSource = 'unknown';
+    var winOverlay = document.getElementById('dl-overlay-windows');
+    var winInput = document.getElementById('dl-windows-code');
+    var winLastSource = 'unknown';
+
+    function openWindowsModal(source) {
+      if (!winOverlay) return;
+      winLastSource = source || 'unknown';
+      // Unified funnel step 2 (alongside the granular Windows event below).
+      track('app_download_clicked', { os: 'windows' });
+      track('windows_modal_opened', { source: winLastSource });
+      winOverlay.classList.add('open');
+      setTimeout(function() { if (winInput) winInput.focus(); }, 200);
+    }
 
     // Fetch latest release artifact URLs (Mac DMG + Windows MSIs)
     fetch('https://api.github.com/repos/gethouston/houston/releases/latest')
@@ -2645,6 +2718,15 @@ visionPath: "vision/index.html"
     document.querySelectorAll('[data-dl-trigger]').forEach(function(el) {
       el.addEventListener('click', function(e) {
         e.preventDefault();
+        // Generic buttons (the nav's single "Download") have no Windows
+        // sibling to swap primary/alt with earlier - route them to the
+        // Windows modal directly for Windows visitors instead of defaulting
+        // to Mac.
+        var hasWinSibling = el.parentElement && el.parentElement.querySelector('[data-dl-windows-trigger]');
+        if (!hasWinSibling && detectOs() === 'windows') {
+          openWindowsModal(el.getAttribute('data-dl-source') || 'nav');
+          return;
+        }
         lastSource = el.getAttribute('data-dl-source') || 'unknown';
         // Unified funnel step 2 (alongside the granular Mac event below) so a
         // single acquisition funnel can break "clicked download" down by os.
@@ -2699,13 +2781,10 @@ visionPath: "vision/index.html"
     }
 
     // Windows download modal (mirrors Mac: invite code gate + per-arch button)
-    var winOverlay = document.getElementById('dl-overlay-windows');
-    var winInput = document.getElementById('dl-windows-code');
     var winX64Btn = document.getElementById('dl-windows-x64-btn');
     var winArm64Btn = document.getElementById('dl-windows-arm64-btn');
     var winWaitlist = document.getElementById('dl-windows-waitlist');
     var winSkipDetails = document.getElementById('dl-windows-skip');
-    var winLastSource = 'unknown';
 
     function setWinButton(btn, url, match) {
       if (!btn) return;
@@ -2722,12 +2801,7 @@ visionPath: "vision/index.html"
       document.querySelectorAll('[data-dl-windows-trigger]').forEach(function(el) {
         el.addEventListener('click', function(e) {
           e.preventDefault();
-          winLastSource = el.getAttribute('data-dl-source') || 'unknown';
-          // Unified funnel step 2 (alongside the granular Windows event below).
-          track('app_download_clicked', { os: 'windows' });
-          track('windows_modal_opened', { source: winLastSource });
-          winOverlay.classList.add('open');
-          setTimeout(function() { if (winInput) winInput.focus(); }, 200);
+          openWindowsModal(el.getAttribute('data-dl-source') || 'unknown');
         });
       });
 
