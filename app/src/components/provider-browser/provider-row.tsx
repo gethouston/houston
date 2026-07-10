@@ -16,6 +16,7 @@ import { AsyncButton, Button } from "@houston-ai/core";
 import { Info, Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ProviderInfo } from "../../lib/providers";
+import { LiveStatus } from "../ai-hub/hub-badges";
 import { BrandMark } from "./brand-mark";
 
 interface ProviderRowProps {
@@ -56,8 +57,9 @@ export function ProviderRow({
     <div className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 text-left">
       <BrandMark providerId={provider.id} size="md" />
       <div className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-[13px] font-medium text-foreground">
-          {provider.name}
+        <span className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium text-foreground">
+          <span className="min-w-0 truncate">{provider.name}</span>
+          {connected && <LiveStatus label={t("card.connected")} />}
         </span>
         <span className="truncate text-[11px] text-muted-foreground">
           {modelCount > 0 && (
