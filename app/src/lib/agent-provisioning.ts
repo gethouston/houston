@@ -133,6 +133,15 @@ export interface ProvisioningEntry {
   since: number;
   /** Messages queued while warming, flushed on ready (in order). */
   pendingSends?: PendingWarmingSend[];
+  /**
+   * The TTL elapsed with no answer yet (HOU-693 regression: the entry used to
+   * be cleared here, silently dropping the user's still-visible first chat).
+   * Sticky once set — the store re-arms a fresh probe window on it rather
+   * than giving up, and the UI switches to a "still starting" state instead
+   * of the initial "we're creating your agent" copy. Never cleared back to
+   * false; a fresh entry (new create/rename) replaces it instead.
+   */
+  timedOut?: boolean;
 }
 
 /**
@@ -166,12 +175,17 @@ export function parsePersistedProvisioning(
   return parsed
     .filter((e): e is ProvisioningEntry => {
       if (!e || typeof e !== "object") return false;
-      const { agentId, agentPath, since } = e as Partial<ProvisioningEntry>;
+      const { agentId, agentPath, since, timedOut } =
+        e as Partial<ProvisioningEntry>;
       return (
         typeof agentId === "string" &&
         typeof agentPath === "string" &&
         typeof since === "number" &&
-        now - since < PROVISIONING_TTL_MS
+        // A timed-out entry is kept regardless of age: it's still visibly
+        // parked (its board row / chat bubble persists) and re-arms its own
+        // probe on rehydrate rather than expiring off the TTL clock a second
+        // time, which would silently drop it right back.
+        (timedOut === true || now - since < PROVISIONING_TTL_MS)
       );
     })
     .map((e) =>
