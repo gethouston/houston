@@ -181,11 +181,6 @@
     "stalledTitle": "Still working on it",
     "stalledBody": "This is taking longer than a normal start. We have not given up, your chat and messages are safe and will pick up the moment your agent answers."
   },
-  "agentWelcome": {
-    "missionTitle": "Meet {{name}}",
-    "missionDescription": "Your new agent introduces itself",
-    "failed": "We could not start your new agent's first chat. You can still send it a message yourself."
-  },
   "toolRuntimeError": {
     "title": "Something got stuck",
     "body": "A local tool did not start correctly. Try again, and report it if this keeps happening.",

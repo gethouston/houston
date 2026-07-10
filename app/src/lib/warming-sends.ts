@@ -183,6 +183,11 @@ export async function flushWarmingSends(
         effortOverride: send.effort,
         modeOverride: send.mode,
         suppressUserBubble: suppress,
+        // A prompt builder rewrote the wire prompt (a hidden setup directive /
+        // attachment paths) — persist the clean `send.text` as the bubble so a
+        // history reload shows what the user saw, not the real prompt. When no
+        // builder ran, prompt === send.text and there is nothing to hide.
+        displayText: build ? send.text : undefined,
       });
       // The AI title pass this mission skipped at queue time (HOU-713): the
       // row just landed and the engine answers now. Fire-and-forget — a

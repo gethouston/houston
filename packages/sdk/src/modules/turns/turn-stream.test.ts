@@ -47,6 +47,8 @@ function fakeEngine(
   const nonces: Array<string | undefined> = [];
   /** The full options each sendMessage carried (the wire pin assertions). */
   const sendOpts: Array<Record<string, unknown> | undefined> = [];
+  /** The `text` (real model prompt) each sendMessage carried. */
+  const texts: string[] = [];
   const engine = {
     async streamEvents(_id: string, streamOpts: EventStreamOptions) {
       const h = handlers[Math.min(afters.length, handlers.length - 1)];
@@ -55,9 +57,10 @@ function fakeEngine(
     },
     async sendMessage(
       _id: string,
-      _text: string,
+      text: string,
       messageOpts?: { nonce?: string },
     ) {
+      texts.push(text);
       nonces.push(messageOpts?.nonce);
       sendOpts.push(messageOpts as Record<string, unknown> | undefined);
       if (opts.sendError !== undefined) throw opts.sendError;
@@ -66,7 +69,7 @@ function fakeEngine(
       return { id: "c", title: "", messages: history };
     },
   } as unknown as HoustonEngineClient;
-  return { engine, afters, nonces, sendOpts };
+  return { engine, afters, nonces, sendOpts, texts };
 }
 
 // Each test drives its own instance registry (no package global); a test that
@@ -418,6 +421,35 @@ test("suppressUserBubble pushes no optimistic bubble at all (a resend, no clock)
   );
 
   expect(items.some((i) => i.feed_type === "user_message")).toBe(false);
+});
+
+test("displayText renders as the bubble while the engine still receives the real prompt", async () => {
+  const { engine, sendOpts, texts } = fakeEngine([
+    (o) => {
+      o.onEvent(sync(false, "", 0));
+      o.onEvent({ type: "text", data: "hello", seq: 1 });
+      o.onEvent({ type: "done", data: null, seq: 2 });
+    },
+  ]);
+  const { items, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-setup",
+    "HIDDEN setup directive the user never sees",
+    output,
+    registry,
+    { tuning: fast, displayText: "Let's set you up" },
+  );
+
+  // The optimistic bubble shows the clean line, not the hidden directive.
+  const bubbles = items.filter((i) => i.feed_type === "user_message");
+  expect(bubbles).toHaveLength(1);
+  expect(bubbles[0]?.data).toBe("Let's set you up");
+  // The engine still runs on the real prompt, and displayText rides for persistence.
+  expect(texts).toEqual(["HIDDEN setup directive the user never sees"]);
+  expect(sendOpts[0]?.displayText).toBe("Let's set you up");
 });
 
 test("observer mode surfaces a running turn (spinner + partial) and settles on done", async () => {

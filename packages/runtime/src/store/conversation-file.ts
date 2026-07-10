@@ -60,6 +60,12 @@ export interface UserMessageMeta {
   author?: ChatMessage["author"];
   /** The turn's wire id (`WireFrame.turnId`) — same on the assistant reply. */
   turnId?: string;
+  /**
+   * The bubble text to render when it must differ from `content` (the real
+   * prompt the model ran on). Presentation-only; persisted so a history reload
+   * renders `displayText ?? content`. Omitted when the two are the same string.
+   */
+  displayText?: string;
 }
 
 /** Optional fields of a persisted assistant message. */
@@ -108,6 +114,8 @@ export function appendUserMessageAt(
     ts: now,
     author: meta.author,
     turnId: meta.turnId,
+    // Presentation-only: kept out of `content` so the model input is unchanged.
+    displayText: meta.displayText,
   });
   conv.updatedAt = now;
   save(dir, conv);

@@ -181,11 +181,6 @@
     "stalledTitle": "Seguimos en eso",
     "stalledBody": "Esto está tardando más de lo normal. No nos hemos rendido, tu chat y tus mensajes están a salvo y continuarán en cuanto tu agente responda."
   },
-  "agentWelcome": {
-    "missionTitle": "Conoce a {{name}}",
-    "missionDescription": "Tu nuevo agente se presenta",
-    "failed": "No pudimos iniciar el primer chat de tu nuevo agente. Igual puedes enviarle un mensaje tú mismo."
-  },
   "toolRuntimeError": {
     "title": "Algo se atascó",
     "body": "Una herramienta local no se inició correctamente. Intenta de nuevo y repórtalo si sigue pasando.",

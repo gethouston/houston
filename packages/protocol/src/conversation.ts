@@ -185,6 +185,16 @@ export interface TokenUsage {
 export interface ChatMessage {
   role: ChatRole;
   content: string;
+  /**
+   * What renders as the user's chat bubble, when it must differ from `content`
+   * (the text the model received). Presentation-only metadata: set on
+   * `role: "user"` turns whose real prompt carries text the user should never
+   * see — a hidden setup-mission directive, or absolute attachment paths
+   * appended to the prompt. A client replaying history renders
+   * `displayText ?? content`; the model always ran on `content`. Absent on every
+   * turn where the bubble and the prompt are the same string.
+   */
+  displayText?: string;
   /** epoch ms */
   ts: number;
   /**

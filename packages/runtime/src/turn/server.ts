@@ -116,6 +116,7 @@ async function executeTurn(
         pin: { model: turn.model, effort: turn.effort },
         mode: turn.mode,
         turnId,
+        displayText: turn.displayText,
       });
     }
 

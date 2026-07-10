@@ -74,6 +74,7 @@ export async function runTurn(
   pin?: TurnPin,
   acting?: ActingContext,
   context?: ProvidedContext,
+  displayText?: string,
 ): Promise<void> {
   // Mint the turn's wire identity up front so even a turn that fails before
   // executing (the guards below) terminates under one id.
@@ -103,7 +104,7 @@ export async function runTurn(
     // an empty assistant message carrying the typed reason), so an unattended
     // reader (a routine's reconcile) errors its run with the real message
     // instead of finding no reply and timing out vague.
-    appendUserMessage(id, text, { turnId });
+    appendUserMessage(id, text, { turnId, displayText });
     appendAssistantMessage(id, "", {
       providerError: {
         kind: "unknown",
@@ -129,7 +130,15 @@ export async function runTurn(
     // the lock in a stalled provider call. The transcript write is a
     // per-conversation file already ordered by conv.queue; only the turn's
     // file-mutating body needs the workspace-wide lock.
-    const recorded = recordUserTurn(conv, id, turnId, text, nonce, acting);
+    const recorded = recordUserTurn(
+      conv,
+      id,
+      turnId,
+      text,
+      nonce,
+      acting,
+      displayText,
+    );
     return withWorkdirLock(config.workspaceDir, () =>
       execTurn(conv, id, turnId, text, recorded, pin, acting),
     );

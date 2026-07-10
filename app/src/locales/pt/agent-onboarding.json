@@ -1,0 +1,16 @@
+{
+  "setupMission": {
+    "title": "Configurando",
+    "kickoff": "Me ajude a configurar você",
+    "startFailed": "Não conseguimos iniciar a configuração. Tente novamente."
+  },
+  "connect": {
+    "title": "Conecte os apps com que {{name}} trabalha",
+    "body": "Dê a {{name}} acesso ao que ele precisa. Você sempre pode conectar mais depois.",
+    "connect": "Conectar",
+    "connected": "Conectado",
+    "waiting": "Conclua no seu navegador e volte aqui.",
+    "cancel": "Cancelar",
+    "done": "Concluir"
+  }
+}

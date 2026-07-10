@@ -201,6 +201,30 @@ test("messages without a turnId stay turnId-free in the JSON (pre-turn-id record
   expect(raw).not.toContain("turnId");
 });
 
+test("a user message persists displayText beside content; the model input (content) is untouched", () => {
+  const dir = freshDir();
+  // `content` is the real prompt the model runs on (a hidden setup directive);
+  // `displayText` is only what the bubble renders on a history reload.
+  appendUserMessageAt(dir, "c1", "HIDDEN setup directive the user never sees", {
+    displayText: "Let's set you up",
+  });
+
+  const msg = getHistoryAt(dir, "c1")?.messages.find((m) => m.role === "user");
+  expect(msg?.content).toBe("HIDDEN setup directive the user never sees");
+  expect(msg?.displayText).toBe("Let's set you up");
+});
+
+test("a user message with no displayText stays displayText-free in the JSON (unchanged records)", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "just a normal message");
+
+  const msg = getHistoryAt(dir, "c1")?.messages.find((m) => m.role === "user");
+  expect(msg?.displayText).toBeUndefined();
+  // Absent, not present-and-undefined — a plain message's record is unchanged.
+  const raw = readFileSync(join(dir, "c1.json"), "utf8");
+  expect(raw).not.toContain("displayText");
+});
+
 test("a user message with no acting-as token stays author-free (byte-identical to today)", () => {
   const dir = freshDir();
   // No token → decode yields undefined → no author stamped.

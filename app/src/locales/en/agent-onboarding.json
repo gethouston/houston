@@ -1,0 +1,16 @@
+{
+  "setupMission": {
+    "title": "Getting set up",
+    "kickoff": "Help me get set up",
+    "startFailed": "We could not start setup. Please try again."
+  },
+  "connect": {
+    "title": "Connect the apps {{name}} works with",
+    "body": "Give {{name}} access to what it needs. You can always connect more later.",
+    "connect": "Connect",
+    "connected": "Connected",
+    "waiting": "Finish in your browser, then come back here.",
+    "cancel": "Cancel",
+    "done": "Done"
+  }
+}

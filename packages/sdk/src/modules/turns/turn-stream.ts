@@ -60,6 +60,15 @@ export interface StreamTurnOptions {
    * already in the feed (a refused not-connected send being retried).
    */
   suppressUserBubble?: boolean;
+  /**
+   * What the user's bubble renders, when it must differ from `prompt` (the real
+   * text the engine runs on). The optimistic bubble shows `displayText ?? prompt`
+   * and the runtime persists it so a history reload renders the same — while the
+   * model always receives `prompt`. Set it when the prompt carries text the user
+   * should never see: a hidden setup-mission directive, or appended attachment
+   * paths. Omitted when the bubble and the prompt are the same string.
+   */
+  displayText?: string;
 }
 
 /**
@@ -122,7 +131,10 @@ export async function streamTurn(
   if (!opts.suppressUserBubble) {
     output.pushFeedItem(agentPath, sessionKey, {
       feed_type: "user_message",
-      data: prompt,
+      // The bubble renders displayText when the real prompt carries text the
+      // user should never see (a hidden directive / appended attachment paths);
+      // the engine still receives `prompt` below.
+      data: opts.displayText ?? prompt,
       pending: true,
     });
   }
@@ -165,7 +177,11 @@ export async function streamTurn(
     }
     after = prior.lastSeq;
     try {
-      await engine.sendMessage(sessionKey, prompt, { nonce, ...opts.pin });
+      await engine.sendMessage(sessionKey, prompt, {
+        nonce,
+        ...opts.pin,
+        displayText: opts.displayText,
+      });
     } catch (e) {
       registry.endSend(key);
       // The resend was rejected before it reached the engine — fail its
@@ -233,7 +249,11 @@ export async function streamTurn(
     streaming.catch(() => {});
     if (!sent) {
       try {
-        await engine.sendMessage(sessionKey, prompt, { nonce, ...opts.pin });
+        await engine.sendMessage(sessionKey, prompt, {
+          nonce,
+          ...opts.pin,
+          displayText: opts.displayText,
+        });
         sink.sendAccepted();
       } catch (e) {
         // A definitive failure (engine verdict / our abort) settles below.

@@ -63,6 +63,13 @@ export interface SendOptions {
    * like `effort`).
    */
   mode?: "execute" | "plan" | "auto";
+  /**
+   * What renders as the user's chat bubble, when it must differ from `text`
+   * (the real prompt the model runs on). Presentation-only: persisted alongside
+   * the user message so a history reload renders `displayText ?? content`, while
+   * the model always received `text`. Omitted when the bubble and prompt match.
+   */
+  displayText?: string;
   signal?: AbortSignal;
 }
 
@@ -310,6 +317,7 @@ export class HoustonEngineClient {
         model: opts.model,
         effort: opts.effort,
         mode: opts.mode,
+        displayText: opts.displayText,
       }),
       signal: opts.signal,
     });
