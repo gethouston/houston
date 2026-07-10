@@ -38,7 +38,8 @@ export function normalizeSidebarLayout(raw: unknown): SidebarLayout {
           typeof gr.id !== "string" ||
           typeof gr.name !== "string" ||
           typeof gr.collapsed !== "boolean" ||
-          !isStringArray(gr.agentIds)
+          !isStringArray(gr.agentIds) ||
+          (gr.context !== undefined && typeof gr.context !== "string")
         )
           return [];
         return [
@@ -47,6 +48,7 @@ export function normalizeSidebarLayout(raw: unknown): SidebarLayout {
             name: gr.name,
             collapsed: gr.collapsed,
             agentIds: gr.agentIds,
+            ...(gr.context !== undefined ? { context: gr.context } : {}),
           },
         ];
       })
@@ -91,6 +93,19 @@ export function renameGroupOp(
   return {
     ...layout,
     groups: layout.groups.map((g) => (g.id === id ? { ...g, name } : g)),
+  };
+}
+
+/** Set a group's shared context, injected into every member agent's system
+ *  prompt as `GROUP.md` (no-op if the id is unknown). */
+export function setGroupContextOp(
+  layout: SidebarLayout,
+  id: string,
+  context: string,
+): SidebarLayout {
+  return {
+    ...layout,
+    groups: layout.groups.map((g) => (g.id === id ? { ...g, context } : g)),
   };
 }
 

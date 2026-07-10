@@ -6,6 +6,7 @@ import type {
 } from "@houston-ai/engine-client";
 import {
   browseCatalog,
+  browseCatalogView,
   categoriesOf,
   categoryLabel,
   categoryListView,
@@ -121,6 +122,111 @@ describe("browseCatalog (new module)", () => {
         connected: new Set(),
       }),
       [],
+    );
+  });
+});
+
+describe("browseCatalogView (allowlist partition)", () => {
+  it("single-player (allowlist null) → everything connectable, nothing locked", () => {
+    const view = browseCatalogView({
+      catalog: CATALOG,
+      query: "",
+      category: "all",
+      connected: new Set(),
+      allowlist: null,
+    });
+    deepStrictEqual(
+      view.connectable.map((t) => t.slug),
+      ["gmail", "googlecalendar", "notion", "serpapi", "slack"],
+    );
+    deepStrictEqual(view.locked, []);
+  });
+
+  it("splits blocked apps into `locked`, both lists A-Z", () => {
+    const view = browseCatalogView({
+      catalog: CATALOG,
+      query: "",
+      category: "all",
+      connected: new Set(),
+      allowlist: ["slack", "gmail"],
+    });
+    deepStrictEqual(
+      view.connectable.map((t) => t.slug),
+      ["gmail", "slack"],
+    );
+    // googlecalendar, notion, serpapi are outside the ceiling → locked, A-Z.
+    deepStrictEqual(
+      view.locked.map((t) => t.slug),
+      ["googlecalendar", "notion", "serpapi"],
+    );
+  });
+
+  it("an empty allowlist locks every app (nothing connectable)", () => {
+    const view = browseCatalogView({
+      catalog: CATALOG,
+      query: "",
+      category: "all",
+      connected: new Set(),
+      allowlist: [],
+    });
+    deepStrictEqual(view.connectable, []);
+    deepStrictEqual(
+      view.locked.map((t) => t.slug),
+      ["gmail", "googlecalendar", "notion", "serpapi", "slack"],
+    );
+  });
+
+  it("search still finds a blocked app as a locked row (not emptiness)", () => {
+    // A member searching for an app the admin hasn't enabled must SEE it locked.
+    const view = browseCatalogView({
+      catalog: CATALOG,
+      query: "serp",
+      category: "all",
+      connected: new Set(),
+      allowlist: ["gmail"],
+    });
+    deepStrictEqual(view.connectable, []);
+    deepStrictEqual(
+      view.locked.map((t) => t.slug),
+      ["serpapi"],
+    );
+  });
+
+  it("excludes connected apps from both buckets before partitioning", () => {
+    const view = browseCatalogView({
+      catalog: CATALOG,
+      query: "",
+      category: "all",
+      connected: new Set(["gmail", "notion"]),
+      allowlist: ["gmail", "slack"],
+    });
+    // gmail + notion connected → gone from browse; slack allowed; the rest locked.
+    deepStrictEqual(
+      view.connectable.map((t) => t.slug),
+      ["slack"],
+    );
+    deepStrictEqual(
+      view.locked.map((t) => t.slug),
+      ["googlecalendar", "serpapi"],
+    );
+  });
+
+  it("category filter narrows before the allowlist partition", () => {
+    const view = browseCatalogView({
+      catalog: CATALOG,
+      query: "",
+      category: "collaboration",
+      connected: new Set(),
+      allowlist: ["notion"],
+    });
+    // collaboration = notion + slack; notion allowed, slack locked.
+    deepStrictEqual(
+      view.connectable.map((t) => t.slug),
+      ["notion"],
+    );
+    deepStrictEqual(
+      view.locked.map((t) => t.slug),
+      ["slack"],
     );
   });
 });

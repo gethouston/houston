@@ -22,6 +22,15 @@ struct ConversationVM: Decodable, Equatable, Sendable {
   /// itself is behavior owned by the SDK/engine adapter, never the surface; this
   /// surface only mirrors the published list (client-architecture.md invariant 1).
   var queued: [QueuedMessageVM]?
+  /// The ordered steps this settled turn is waiting on the user for, or `nil`
+  /// when nothing is pending (SDK `ConversationVM.pendingInteraction`,
+  /// `vm-output.ts`): set when a turn settles on an `ask_user` /
+  /// `request_connection` / `plan_ready` (board status lands `needs_you`), and
+  /// cleared (back to `nil` + `running`) the instant the next turn starts. The
+  /// ``InteractionCard`` renders it; the read seam (``ChatScreenModel`` derived)
+  /// gates it on `!running`, mirroring desktop's `deriveActiveInteraction`.
+  /// Additive and optional exactly like ``queued``: ABSENT on older data.
+  var pendingInteraction: PendingInteraction?
 }
 
 /// A message queued while a turn runs (SDK `QueuedMessageVM`, `vm-output.ts`):
@@ -41,11 +50,65 @@ struct FeedItemVM: Decodable, Equatable, Identifiable, Sendable {
   let id: String
   let feedType: String
   let data: JSONValue
+  /// Wall-clock time this frame is attributed to, projected from the SDK's
+  /// optional `ts` (epoch milliseconds → `Date`). The SDK sets it only for frames
+  /// it can attribute to a source message (`history.ts` / `vm-output.ts`), so it
+  /// is ABSENT on older data and on unattributable frames — every consumer treats
+  /// it as optional. Decoded by hand because the wire value is a millisecond
+  /// number, not a `Date` the default strategy would understand.
+  let ts: Date?
+  /// Optimistic-delivery flag, projected from the SDK's optional `pending`
+  /// (`vm-output.ts`): `true` marks a locally-pushed user message the engine has
+  /// NOT yet confirmed (render a clock, WhatsApp-style); absent/false means
+  /// confirmed (render a single check). The SDK sets it only on the ONE optimistic
+  /// `user_message` push and strips it — same id, a normal reactive snapshot
+  /// update — on the turn's first server evidence; history frames NEVER carry it.
+  /// Additive exactly like `ts`: ABSENT on older data, so every consumer treats it
+  /// as optional and a surface that ignores it is unaffected.
+  let pending: Bool?
+  /// Failed-send flag, projected from the SDK's optional `failed` (`vm-output.ts`):
+  /// `true` marks an optimistic `user_message` that provably never reached the
+  /// engine (a lost / rejected / refused send) — render a failed/error tick,
+  /// NEVER the "Sent" check a cleared ``pending`` implies. Mutually exclusive with
+  /// ``pending`` (a failure strips it). Additive and optional exactly like
+  /// ``pending``: ABSENT on delivered or older data.
+  let failed: Bool?
 
   private enum CodingKeys: String, CodingKey {
     case id
     case feedType = "feed_type"
     case data
+    case ts
+    case pending
+    case failed
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(String.self, forKey: .id)
+    feedType = try container.decode(String.self, forKey: .feedType)
+    data = try container.decode(JSONValue.self, forKey: .data)
+    if let millis = try container.decodeIfPresent(Double.self, forKey: .ts) {
+      ts = Date(timeIntervalSince1970: millis / 1000)
+    } else {
+      ts = nil
+    }
+    pending = try container.decodeIfPresent(Bool.self, forKey: .pending)
+    failed = try container.decodeIfPresent(Bool.self, forKey: .failed)
+  }
+
+  /// Direct construction for tests and in-memory feeds; `ts`/`pending`/`failed`
+  /// default absent.
+  init(
+    id: String, feedType: String, data: JSONValue, ts: Date? = nil,
+    pending: Bool? = nil, failed: Bool? = nil
+  ) {
+    self.id = id
+    self.feedType = feedType
+    self.data = data
+    self.ts = ts
+    self.pending = pending
+    self.failed = failed
   }
 }
 
@@ -81,7 +144,14 @@ enum SessionStatus: Decodable, Equatable, Sendable {
 }
 
 /// The board-card status a streamed turn writes (SDK `BoardStatus`): `running`
-/// in flight, then a terminal `needsYou` / `error`. Unknown values preserved.
+/// in flight, then a terminal status. `needs_you` (something is outstanding) and
+/// `error` (a genuine failure) are the cases the surfaces branch on; a clean turn
+/// with nothing outstanding now settles `done` (`vm-output.ts`). `done` and any
+/// FUTURE terminal string fall through to `.unknown`, which every consumer
+/// already treats as "no special status": ``ChatTitleStatus`` shows no second
+/// line (it matches only `.needsYou`) and ``MissionState`` renders it neutrally.
+/// Tolerating `done` this way keeps decoding forward-compatible without forcing a
+/// case onto the exhaustive `MissionState` switch. Unknown values preserved.
 enum BoardStatus: Decodable, Equatable, Sendable {
   case running
   case needsYou

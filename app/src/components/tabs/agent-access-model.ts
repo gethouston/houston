@@ -5,7 +5,8 @@ import type {
   OrgMember,
   OrgRole,
 } from "@houston-ai/engine-client";
-import { canManageAssignments, isMultiplayer } from "../../lib/org-roles.ts";
+import { canManageAssignments } from "../../lib/agent-access.ts";
+import { hasSpaces, isMultiplayer } from "../../lib/org-roles.ts";
 
 /**
  * Pure, DOM-free logic behind the Drive-style Share dialog for an agent. Kept
@@ -26,6 +27,42 @@ export function canShowAgentShareBlock(
   agent: Pick<Agent, "access">,
 ): boolean {
   return isMultiplayer(caps) && canManageAssignments(caps, agent);
+}
+
+/**
+ * How an agent's Share affordance should render, per C8 Spaces
+ * (`cloud/docs/contracts/C8-spaces-billing.md` §Share-triggers-team). Powers
+ * both the prominent header Share button and the buried Agent-settings block, so
+ * the two entry points never drift on which surface a context opens:
+ *
+ * - `"manage"` — the Drive-style {@link canShowAgentShareBlock} block + share
+ *   dialog: a multiplayer TEAM space where the caller manages this agent.
+ * - `"inviteTeam"` — a PERSONAL space on a spaces-capable host: personal spaces
+ *   are non-invitable (sharing always goes through a team), so instead of
+ *   hiding, the Share affordance offers to move the agent into a team. Opens
+ *   the ShareViaTeamFlow.
+ * - `"view"` — a multiplayer caller who can SEE the agent but can't manage it (a
+ *   plain member / an admin who only uses it). Google-Docs parity: they still
+ *   open a read-only people list rather than a dead button. The gateway withholds
+ *   the full assignee roster from non-managers, so the list shows the truthful
+ *   subset it can resolve (always at least the viewer) — never a management UI.
+ * - `"none"` — desktop / self-host (no multiplayer): render nothing.
+ *
+ * Personal-space precedence is deliberate: a personal space must NEVER show the
+ * team share dialog (its `addOrgMember` 403s `personal_space`), so `inviteTeam`
+ * wins over `manage` whenever the caller is in a personal space on a spaces host.
+ */
+export type AgentShareSurface = "manage" | "inviteTeam" | "view" | "none";
+
+export function agentShareSurface(
+  caps: Capabilities | null | undefined,
+  agent: Pick<Agent, "access">,
+  inPersonalSpace: boolean,
+): AgentShareSurface {
+  if (inPersonalSpace && hasSpaces(caps)) return "inviteTeam";
+  if (canShowAgentShareBlock(caps, agent)) return "manage";
+  if (isMultiplayer(caps)) return "view";
+  return "none";
 }
 
 /** A per-agent access level. `manager` may reconfigure; `user` may only use. */
@@ -146,6 +183,38 @@ function sortSharePeople(people: SharePerson[]): SharePerson[] {
     if (r !== 0) return r;
     return (a.email ?? a.userId).localeCompare(b.email ?? b.userId);
   });
+}
+
+/**
+ * Ensure the signed-in viewer appears in a people list, for the read-only
+ * `"view"` surface a plain member sees. The gateway withholds the full assignee
+ * roster from non-managers, so {@link buildSharePeople} may resolve only the org
+ * owner (or nobody) for a member — yet a member is looking at an agent that was
+ * shared TO them, so they always have access. Append a self row when absent so
+ * the list is never empty and never omits the one person it can state for
+ * certain. A no-op once the viewer already resolved (manager/owner callers), or
+ * when there is no signed-in user id.
+ */
+export function withViewer(
+  people: readonly SharePerson[],
+  viewer: { userId: string | null; email?: string },
+): SharePerson[] {
+  if (!viewer.userId) return [...people];
+  if (people.some((p) => p.isSelf || p.userId === viewer.userId)) {
+    return [...people];
+  }
+  return [
+    ...people,
+    {
+      userId: viewer.userId,
+      email: viewer.email,
+      orgRole: "user",
+      access: "user",
+      isSelf: true,
+      isOwner: false,
+      canBeManager: false,
+    },
+  ];
 }
 
 /** Org members who do NOT yet have access — the add-people picker universe. */

@@ -1,11 +1,13 @@
-import type { CommunitySkill, RepoSkill, Skill } from "@houston-ai/skills";
+import {
+  deriveInstalledSkillEditorState,
+  type RepoSkill,
+} from "@houston-ai/skills";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useCreateSkill,
   useDeleteSkill,
-  useInstallCommunitySkill,
   useInstallSkillFromRepo,
   useListSkillsFromRepo,
   useSaveSkill,
@@ -14,82 +16,62 @@ import {
 } from "../../hooks/queries";
 import { isMissingSkillError } from "../../lib/missing-skill";
 import { queryKeys } from "../../lib/query-keys";
-import { tauriSkills } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
-import { resolveLoadingSkillName } from "./skill-loading-model";
-import { useSkillSurfaceLabels } from "./use-skill-surface-labels";
+import { useCommunitySkillHandlers } from "./use-community-skill-handlers";
 
 export function useSkillSurface(agentPath: string) {
   const { t } = useTranslation("skills");
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
-  const { skillDetailLabels } = useSkillSurfaceLabels();
   const { data: summaries, isLoading: skillsLoading } = useSkills(agentPath);
-  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
-    null,
-  );
+
+  // The one installed skill whose edit modal is open, if any. Only one at a
+  // time — opening another swaps it.
+  const [editingSkillName, setEditingSkillName] = useState<string | null>(null);
   // Render-time reset on agent switch — a useEffect would race the
   // auto-toast in `call()` because the stale-name fetch starts first.
   const [prevAgentPath, setPrevAgentPath] = useState(agentPath);
   if (agentPath !== prevAgentPath) {
     setPrevAgentPath(agentPath);
-    setSelectedSkillName(null);
+    setEditingSkillName(null);
   }
-  const {
-    data: skillDetail,
-    error: skillDetailError,
-    isFetching: skillDetailFetching,
-  } = useSkillDetail(agentPath, selectedSkillName ?? undefined);
 
-  // The skill whose `load_skill` fetch is in flight, so the grid can disable
-  // and spin just that card instead of letting a slow/failed load get
-  // rage-clicked into duplicate fetches (HOU-464).
-  const loadingSkillName = resolveLoadingSkillName(
-    selectedSkillName,
-    skillDetailFetching,
-    !!skillDetail,
+  const { data: skillDetail, error: skillDetailError } = useSkillDetail(
+    agentPath,
+    editingSkillName ?? undefined,
   );
 
-  // A selected skill that no longer resolves (renamed, deleted, or never
-  // installed) makes the host answer 404. `tauriSkills.load` keeps that off the
-  // red bug-toast / Sentry path, so surface it plainly here: a friendly note,
-  // drop the stale selection, and refetch the list so the dead card vanishes.
-  // (HOU-515 / HOU-441)
+  // A missing-skill 404 (renamed, deleted, never installed) is expected, not a
+  // bug: `tauriSkills.load` keeps it off the red toast / Sentry path, so surface
+  // it plainly here — a friendly note, close the modal, refetch the list so the
+  // dead row vanishes. Any OTHER load error stays in the modal's error state
+  // below. (HOU-515 / HOU-441)
+  const missingSkill =
+    !!editingSkillName && isMissingSkillError(skillDetailError);
   useEffect(() => {
-    if (!selectedSkillName || !isMissingSkillError(skillDetailError)) return;
+    if (!missingSkill) return;
     addToast({
       title: t("detail.unavailableToast.title"),
       description: t("detail.unavailableToast.description"),
       variant: "info",
     });
-    setSelectedSkillName(null);
+    setEditingSkillName(null);
     queryClient.invalidateQueries({ queryKey: queryKeys.skills(agentPath) });
-  }, [
-    skillDetailError,
-    selectedSkillName,
-    agentPath,
-    addToast,
-    queryClient,
-    t,
-  ]);
+  }, [missingSkill, agentPath, addToast, queryClient, t]);
+
+  const editorState = deriveInstalledSkillEditorState({
+    expanded: editingSkillName != null,
+    content: skillDetail?.content,
+    hasError: !!skillDetailError && !isMissingSkillError(skillDetailError),
+  });
+
   const saveSkill = useSaveSkill(agentPath);
   const deleteSkill = useDeleteSkill(agentPath);
   const createSkill = useCreateSkill(agentPath);
-  const installCommunity = useInstallCommunitySkill(agentPath);
   const listFromRepo = useListSkillsFromRepo(agentPath);
   const installFromRepo = useInstallSkillFromRepo(agentPath);
-
-  const selectedSkill: Skill | undefined =
-    selectedSkillName && skillDetail
-      ? {
-          id: selectedSkillName,
-          name: skillDetail.name,
-          title: skillDetail.title,
-          description: skillDetail.description,
-          instructions: skillDetail.content,
-          file_path: selectedSkillName,
-        }
-      : undefined;
+  const { handleSearch, handlePreview, handleInstallCommunity } =
+    useCommunitySkillHandlers(agentPath);
 
   /**
    * Lowercase set of locally-installed skill slugs. The create dialog uses
@@ -101,44 +83,29 @@ export function useSkillSurface(agentPath: string) {
     [summaries],
   );
 
-  const clearSelectedSkill = useCallback(() => {
-    setSelectedSkillName(null);
+  const openEditSkill = useCallback((name: string) => {
+    setEditingSkillName(name);
   }, []);
 
-  const handleSkillSave = useCallback(
-    async (name: string, content: string) => {
-      await saveSkill.mutateAsync({ name, content });
+  const closeEditSkill = useCallback(() => {
+    setEditingSkillName(null);
+  }, []);
+
+  const handleSaveEditing = useCallback(
+    async (content: string) => {
+      if (!editingSkillName) return;
+      await saveSkill.mutateAsync({ name: editingSkillName, content });
+      setEditingSkillName(null);
     },
-    [saveSkill],
+    [editingSkillName, saveSkill],
   );
 
   const handleSkillDelete = useCallback(
     async (name: string) => {
       await deleteSkill.mutateAsync(name);
-      setSelectedSkillName(null);
+      setEditingSkillName((prev) => (prev === name ? null : prev));
     },
     [deleteSkill],
-  );
-
-  const handleSearch = useCallback(
-    (query: string, signal?: AbortSignal) =>
-      tauriSkills.searchCommunity(agentPath, query, signal),
-    [agentPath],
-  );
-
-  const handlePopular = useCallback(
-    (signal?: AbortSignal) => tauriSkills.popularCommunity(agentPath, signal),
-    [agentPath],
-  );
-
-  const handleInstallCommunity = useCallback(
-    async (skill: CommunitySkill, signal?: AbortSignal) =>
-      installCommunity.mutateAsync({
-        source: skill.source,
-        skillId: skill.skillId,
-        signal,
-      }),
-    [installCommunity],
   );
 
   const handleListFromRepo = useCallback(
@@ -161,18 +128,17 @@ export function useSkillSurface(agentPath: string) {
   );
 
   return {
-    skillDetailLabels,
     skills: summaries ?? [],
     skillsLoading,
-    selectedSkill,
-    loadingSkillName,
-    selectSkill: setSelectedSkillName,
-    clearSelectedSkill,
-    handleSkillSave,
+    editingSkillName,
+    editorState,
+    openEditSkill,
+    closeEditSkill,
+    handleSaveEditing,
     handleSkillDelete,
     handleSearch,
-    handlePopular,
     handleInstallCommunity,
+    handlePreview,
     handleListFromRepo,
     handleInstallFromRepo,
     handleCreateFromScratch,

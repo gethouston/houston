@@ -5,13 +5,18 @@ import {
   type HoustonEvent,
   parseClaudeOAuthEnvelope,
 } from "@houston/protocol";
-import { ACTING_AS_HEADER, actingSubFromHeader } from "../auth/acting";
+import {
+  ACTING_AS_HEADER,
+  actingAuthorFromHeader,
+  actingSubFromHeader,
+} from "../auth/acting";
 import { checkPublicHttpsEndpoint } from "../custom-endpoint-validation";
 import type { Agent, UserId, Workspace } from "../domain/types";
 import { AgentNameConflictError } from "../ports";
 import { isApiKeyProvider } from "../providers";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
+import { stampTurnContributor } from "./activity-attribution";
 import {
   type AgentRouteDeps,
   authorizeAgent,
@@ -536,6 +541,13 @@ export async function handleAgents(
     const routineActor = deps.gatewayFronted
       ? actingSubFromHeader(req.headers[ACTING_AS_HEADER])
       : userId;
+    // The acting human as a full contributor, stamped onto missions (activity
+    // create/PATCH + turns). CRITICAL: null off the gateway (desktop/self-host),
+    // so single-player activity.json gains no attribution keys and stays
+    // byte-identical. Does NOT change routineActor.
+    const actingAuthor = deps.gatewayFronted
+      ? actingAuthorFromHeader(req.headers[ACTING_AS_HEADER])
+      : null;
     if (
       await handleAgentData(
         deps.vfs,
@@ -547,6 +559,7 @@ export async function handleAgents(
         res,
         emit,
         routineActor,
+        actingAuthor ?? undefined,
       )
     )
       return true;
@@ -645,6 +658,26 @@ export async function handleAgents(
     if (!channel) {
       noChannel(res, authz.workspace.runtime);
       return true;
+    }
+    // Teams attribution: a user turn (POST …/conversations/:cid/messages) marks
+    // the acting human as a contributor on the mission it drives. Best-effort
+    // metadata that never blocks the turn (see activity-attribution.ts); runs
+    // only when a gateway vouched for the actor (actingAuthor non-null).
+    if (actingAuthor && deps.vfs) {
+      const turnMatch =
+        method === "POST"
+          ? rest.match(/^conversations\/([^/]+)\/messages$/)
+          : null;
+      if (turnMatch?.[1]) {
+        await stampTurnContributor(
+          deps.vfs,
+          paths.agentRoot(ctx.workspace, ctx.agent),
+          ctx.agent.id,
+          decodeURIComponent(turnMatch[1]),
+          actingAuthor,
+          emit,
+        );
+      }
     }
     await channel.dispatch(ctx, method, rest, url, req, res);
     return true;

@@ -95,6 +95,15 @@ components:
     status: implemented
     ref: "@houston-ai/chat ChatPlanReadyCard (chat-plan-ready-card + chat-plan-ready-card-model)"
 
+  suggest-reusable-card:
+    status: implemented
+    ref: "@houston-ai/chat ChatSuggestReusableCard (chat-suggest-reusable-card + chat-suggest-reusable-card-model)"
+
+  interaction-answers-message:
+    status: partial
+    ref: "@houston-ai/chat interaction-answers-message (decode) + UserInteractionAnswersMessage; encode in app/"
+    notes: Decode + render are shared; the marker encoder is composed in app/ (interaction-reply), mirroring skill-invocation-message.
+
   deliverable-card:
     status: implemented
     ref: "@houston-ai/review DeliverableCard / UserFeedback"

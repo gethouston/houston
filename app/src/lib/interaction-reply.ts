@@ -1,5 +1,12 @@
-import type { ChatInteractionAnswer } from "@houston-ai/chat";
-import { encodeAutoContinueMessage } from "./auto-continue-message.ts";
+import type {
+  ChatInteractionAnswer,
+  InteractionAnswerLine,
+  InteractionAnswersPayload,
+} from "@houston-ai/chat";
+import {
+  encodeAutoContinueMessage,
+  isAutoContinueMessage,
+} from "./auto-continue-message.ts";
 
 /**
  * The single message an interaction sequence sends when its LAST step
@@ -49,4 +56,40 @@ export function composeInteractionReply(args: {
   for (const name of args.connectedNames) lines.push(args.connectedLine(name));
   const body = lines.join("\n");
   return args.hasQuestionSteps ? body : encodeAutoContinueMessage(body);
+}
+
+const MARKER_PREFIX = "<!--houston:interaction-answers ";
+const MARKER_SUFFIX = "-->";
+
+/**
+ * The interaction reply, wrapped so the transcript can render the answers as a
+ * structured Q&A card instead of an undifferentiated text bubble.
+ *
+ * Takes the SAME inputs as {@link composeInteractionReply} and delegates to it
+ * for the flat body the model reads — behavior for the agent is unchanged. On
+ * top it carries the SAME information in a structured `InteractionAnswersPayload`
+ * (decoded + rendered by `@houston-ai/chat`) behind an HTML-comment marker,
+ * exactly like the Skill marker.
+ *
+ * A hidden auto-continue sequence (connect-only / signin-only, no questions)
+ * never renders a user bubble, so there is nothing to structure-render: the
+ * flat reply is returned unchanged, no marker added.
+ */
+export function encodeInteractionAnswersMessage(
+  args: Parameters<typeof composeInteractionReply>[0],
+): string {
+  const body = composeInteractionReply(args);
+  // Hidden (no visible bubble) → leave the flat reply untouched.
+  if (isAutoContinueMessage(body)) return body;
+
+  const lines: InteractionAnswerLine[] = args.answers.map((a) => ({
+    question: a.question,
+    answer: a.answer,
+  }));
+  if (args.signedIn) lines.push({ answer: args.signedInLine });
+  for (const name of args.connectedNames)
+    lines.push({ answer: args.connectedLine(name) });
+
+  const payload: InteractionAnswersPayload = { lines };
+  return `${MARKER_PREFIX}${JSON.stringify(payload)}${MARKER_SUFFIX}\n\n${body}`;
 }

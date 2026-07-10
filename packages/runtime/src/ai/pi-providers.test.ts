@@ -86,7 +86,7 @@ test("a connected pi extra never displaces a connected curated provider (precede
 
 test("curated providers keep their configured defaults (no regression)", () => {
   // The catalog source-of-truth widen must not perturb curated resolution.
-  expect(providers.providerDefaultModel("anthropic")).toBe("claude-sonnet-4-6");
+  expect(providers.providerDefaultModel("anthropic")).toBe("claude-sonnet-5");
   expect(providers.providerAuthMethod("anthropic")).toBe("oauth");
   expect(providers.providerAuthMethod("openai-codex")).toBe("oauth");
   // opencode is an open-catalog gateway (getModels → []) that keeps its curated

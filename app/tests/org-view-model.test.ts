@@ -6,6 +6,7 @@ import {
   canSeeOrganization,
   nextAuditCursor,
   ORG_TAB_IDS,
+  orgTabIds,
 } from "../src/components/organization/org-view-model.ts";
 
 const SINGLE_PLAYER: Capabilities = {};
@@ -36,8 +37,18 @@ describe("canSeeOrganization", () => {
 });
 
 describe("ORG_TAB_IDS", () => {
-  it("is the sections in display order", () => {
+  it("is the always-present sections in display order", () => {
     strictEqual(ORG_TAB_IDS.join(","), "people,agents,activity,usage");
+  });
+});
+
+describe("orgTabIds", () => {
+  it("appends billing only when shown", () => {
+    strictEqual(
+      orgTabIds(true).join(","),
+      "people,agents,activity,usage,billing",
+    );
+    strictEqual(orgTabIds(false).join(","), "people,agents,activity,usage");
   });
 });
 

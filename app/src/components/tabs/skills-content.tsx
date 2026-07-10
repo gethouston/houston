@@ -1,29 +1,51 @@
+import { Button, ConfirmDialog, Spinner } from "@houston-ai/core";
+import type {
+  CommunitySkill,
+  CommunitySkillPreview,
+  InstalledSkillEditorState,
+  InstalledSkillRowLabels,
+  RepoSkill,
+  SkillEditModalLabels,
+} from "@houston-ai/skills";
 import {
-  Button,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-  Spinner,
-} from "@houston-ai/core";
-import type { CommunitySkill, RepoSkill } from "@houston-ai/skills";
-import { AddSkillDialog } from "@houston-ai/skills";
+  AddSkillDialog,
+  InstalledSkillRow,
+  SkillEditModal,
+  SkillMarketplaceSection,
+} from "@houston-ai/skills";
 import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { skillDisplayTitle } from "../../lib/humanize-skill-name";
+import { resolveSkillImageUrl } from "../../lib/skill-image";
 import type { SkillSummary } from "../../lib/types";
-import { SkillCard } from "../skill-card";
-import { useSkillDialogLabels } from "./use-skill-surface-labels";
+import {
+  useSkillDialogLabels,
+  useSkillMarketplaceSectionLabels,
+} from "./use-skill-surface-labels";
+
+interface DeleteConfirmLabels {
+  title: (name: string) => string;
+  description: string;
+  confirmLabel: string;
+}
 
 export function SkillsContent({
   skills,
   loading,
-  loadingSkillName,
   readOnly = false,
-  onSkillClick,
+  editingSkillName,
+  editorState,
+  onEditSkill,
+  onCloseEdit,
+  onSaveEditing,
+  onDeleteSkill,
+  installedRowLabels,
+  editModalLabels,
+  deleteConfirm,
   onSearch,
-  onPopular,
   onInstallCommunity,
+  onPreviewCommunity,
   onListFromRepo,
   onInstallFromRepo,
   onCreateFromScratch,
@@ -31,21 +53,31 @@ export function SkillsContent({
 }: {
   skills: SkillSummary[];
   loading: boolean;
-  /** Name of the skill whose detail is loading; its card spins + disables. */
-  loadingSkillName?: string | null;
   /**
-   * Managed-agent read-only mode (matrix v2): a non-manager may view and open
-   * skills but not add/create/install any. Hides the add affordance entirely;
-   * skill detail opens read-only. The gateway 403s writes regardless.
+   * Managed-agent read-only mode (matrix v2): a non-manager may view skills but
+   * not add/create/install any. Hides the add affordance and the marketplace.
+   * The gateway 403s writes regardless.
    */
   readOnly?: boolean;
-  onSkillClick: (name: string) => void;
+  /** Name of the installed skill whose edit modal is open, if any. */
+  editingSkillName: string | null;
+  editorState: InstalledSkillEditorState;
+  onEditSkill: (name: string) => void;
+  onCloseEdit: () => void;
+  onSaveEditing: (content: string) => Promise<void>;
+  onDeleteSkill: (name: string) => Promise<void>;
+  installedRowLabels: InstalledSkillRowLabels;
+  editModalLabels: SkillEditModalLabels;
+  deleteConfirm: DeleteConfirmLabels;
   onSearch?: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>;
-  onPopular?: (signal?: AbortSignal) => Promise<CommunitySkill[]>;
   onInstallCommunity?: (
     skill: CommunitySkill,
     signal?: AbortSignal,
   ) => Promise<string>;
+  onPreviewCommunity?: (
+    skill: CommunitySkill,
+    signal?: AbortSignal,
+  ) => Promise<CommunitySkillPreview>;
   onListFromRepo?: (source: string) => Promise<RepoSkill[]>;
   onInstallFromRepo?: (
     source: string,
@@ -59,18 +91,18 @@ export function SkillsContent({
   installedSkillNames?: Set<string>;
 }) {
   const { t } = useTranslation("skills");
-  const addDialogLabels = useSkillDialogLabels();
+  const dialogLabels = useSkillDialogLabels();
+  const marketplaceLabels = useSkillMarketplaceSectionLabels();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<SkillSummary | null>(null);
   const sorted = useMemo(
     () => [...skills].sort((a, b) => a.name.localeCompare(b.name)),
     [skills],
   );
+  const editingSkill = sorted.find((s) => s.name === editingSkillName) ?? null;
   const addDialogProps =
     !readOnly && onCreateFromScratch
       ? {
-          onSearch,
-          onPopular,
-          onInstallCommunity,
           onListFromRepo,
           onInstallFromRepo,
           onCreateFromScratch,
@@ -87,71 +119,110 @@ export function SkillsContent({
     );
   }
 
-  if (sorted.length === 0) {
-    return (
-      <>
-        <div className="mx-auto max-w-md flex flex-col items-center gap-6 text-center pt-24 px-6">
-          <EmptyHeader>
-            <EmptyTitle>{t("grid.emptyTitle")}</EmptyTitle>
-            <EmptyDescription>{t("grid.emptyDescription")}</EmptyDescription>
-          </EmptyHeader>
-          {addDialogProps && (
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="size-4" />
-              {t("grid.addSkill")}
-            </Button>
-          )}
-        </div>
-        {addDialogProps && (
-          <AddSkillDialog
-            open={dialogOpen}
-            onOpenChange={setDialogOpen}
-            {...addDialogProps}
-            labels={addDialogLabels}
-          />
-        )}
-      </>
-    );
-  }
+  const addButton = addDialogProps && (
+    <Button size="sm" onClick={() => setDialogOpen(true)} className="shrink-0">
+      <Plus className="size-3.5" />
+      {t("grid.addSkill")}
+    </Button>
+  );
+
+  const marketplace =
+    !readOnly && onSearch && onInstallCommunity ? (
+      <SkillMarketplaceSection
+        onSearch={onSearch}
+        onInstall={onInstallCommunity}
+        onPreview={onPreviewCommunity}
+        installedSkillNames={installedSkillNames}
+        labels={marketplaceLabels}
+      />
+    ) : null;
+
+  // The delete mutation surfaces its own error toast via the `call` wrapper, so
+  // the row action stays quiet on failure; catch here only to keep the
+  // fire-and-forget confirm from becoming an unhandled rejection.
+  const confirmDelete = () => {
+    const skill = pendingDelete;
+    setPendingDelete(null);
+    if (skill)
+      void onDeleteSkill(skill.name).catch(() => {
+        // Error already surfaced to the user by the delete mutation's `call`
+        // toast; swallow here only to avoid an unhandled promise rejection.
+      });
+  };
 
   return (
-    <div>
-      <div className="flex items-center justify-between gap-4 mb-4">
-        <p className="text-xs text-muted-foreground max-w-md">
-          {t("grid.descriptionShort")}
-        </p>
-        {addDialogProps && (
-          <Button
-            size="sm"
-            onClick={() => setDialogOpen(true)}
-            className="shrink-0"
-          >
-            <Plus className="size-3.5" />
-            {t("grid.addSkill")}
-          </Button>
+    <div className="flex flex-col gap-8">
+      <section>
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <p className="text-sm font-medium text-foreground">
+            {t("grid.yourSkillsHeading")}
+          </p>
+          {addButton}
+        </div>
+        {sorted.length === 0 ? (
+          <div className="rounded-xl bg-secondary px-6 py-8 text-center">
+            <p className="text-sm font-medium text-foreground">
+              {t("grid.emptyTitle")}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("grid.emptyDescription")}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {sorted.map((skill) => (
+              <InstalledSkillRow
+                key={skill.name}
+                skill={{
+                  name: skill.name,
+                  title: skill.title,
+                  description: skill.description,
+                  image: skill.image,
+                }}
+                displayName={skillDisplayTitle(skill)}
+                imageUrl={resolveSkillImageUrl(skill.image)}
+                onEdit={() => onEditSkill(skill.name)}
+                onDelete={() => setPendingDelete(skill)}
+                labels={installedRowLabels}
+              />
+            ))}
+          </div>
         )}
-      </div>
-      <div className="flex flex-col gap-2">
-        {sorted.map((skill) => (
-          <SkillCard
-            key={skill.name}
-            image={skill.image}
-            title={skillDisplayTitle(skill)}
-            description={skill.description}
-            onClick={() => onSkillClick(skill.name)}
-            busy={loadingSkillName === skill.name}
-            disabled={loadingSkillName === skill.name}
-          />
-        ))}
-      </div>
+      </section>
+      {marketplace}
       {addDialogProps && (
         <AddSkillDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           {...addDialogProps}
-          labels={addDialogLabels}
+          labels={dialogLabels}
         />
       )}
+      <SkillEditModal
+        open={editingSkill !== null}
+        onOpenChange={(o) => {
+          if (!o) onCloseEdit();
+        }}
+        displayName={editingSkill ? skillDisplayTitle(editingSkill) : ""}
+        description={editingSkill?.description ?? ""}
+        editor={editorState}
+        onSave={onSaveEditing}
+        labels={editModalLabels}
+      />
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingDelete(null);
+        }}
+        title={
+          pendingDelete
+            ? deleteConfirm.title(skillDisplayTitle(pendingDelete))
+            : ""
+        }
+        description={deleteConfirm.description}
+        confirmLabel={deleteConfirm.confirmLabel}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

@@ -1,9 +1,10 @@
 /**
- * RoutineRowMenu — the row's three-dot quick-actions menu: Rename (hands off to
- * the row's inline title editor) and Delete (confirmed in a dialog, like the
- * board's mission cards). Same trigger + menu idiom as the routine editor's
- * header overflow. Always visible (never hover-gated); the caller wraps it in a
- * propagation stop so opening the menu doesn't open the editor.
+ * RoutineRowMenu — the row's three-dot quick-actions menu: Run now / Stop run
+ * (the row offers whichever fits the current run state), Edit manually (opens
+ * the row's inline name/schedule/instruction panel), Edit with AI (opens the
+ * routine's chat), and Delete (confirmed in a dialog, like the board's mission
+ * cards). Always visible (never hover-gated); rows aren't clickable themselves,
+ * so this menu is the only way in.
  */
 import {
   Button,
@@ -14,27 +15,50 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@houston-ai/core";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import { useState } from "react";
+import {
+  MoreHorizontal,
+  Pencil,
+  Play,
+  Square,
+  Trash2,
+  Wand2,
+} from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { DEFAULT_ROW_LABELS, interp, type RoutineRowLabels } from "./labels";
 
 export interface RoutineRowMenuProps {
   /** The routine's display name, for the delete confirm title. */
   name: string;
-  /** Start the row's inline rename. */
-  onRename?: () => void;
+  /** Fire the routine immediately. Mutually exclusive with `onStopRun` in
+   *  practice — the row passes whichever fits the current run state. */
+  onRunNow?: () => void;
+  /** Stop the in-flight run. */
+  onStopRun?: () => void;
+  /** Open the row's inline edit panel. */
+  onEditManually?: () => void;
+  /** Open the routine's chat to change it by asking instead. */
+  onEditWithAi?: () => void;
   /** Delete the routine — called only after the dialog confirms. */
   onDelete?: () => void;
   labels?: RoutineRowLabels;
+  /** Icon for the "Edit with AI" entry. App supplies the real brand mark
+   *  (`ui/` stays brand-agnostic per the library boundary); a generic
+   *  wand is the standalone-caller default. */
+  aiIcon?: ReactNode;
 }
 
 export function RoutineRowMenu({
   name,
-  onRename,
+  onRunNow,
+  onStopRun,
+  onEditManually,
+  onEditWithAi,
   onDelete,
   labels = DEFAULT_ROW_LABELS,
+  aiIcon = <Wand2 className="size-3.5" />,
 }: RoutineRowMenuProps) {
   const [confirming, setConfirming] = useState(false);
+  const hasPrior = onRunNow || onStopRun || onEditManually || onEditWithAi;
 
   return (
     <>
@@ -49,16 +73,34 @@ export function RoutineRowMenu({
             <MoreHorizontal className="size-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-44">
-          {onRename && (
-            <DropdownMenuItem onClick={onRename}>
+        <DropdownMenuContent align="end" className="w-48">
+          {onRunNow && (
+            <DropdownMenuItem onClick={onRunNow}>
+              <Play className="size-3.5" />
+              {labels.runNow}
+            </DropdownMenuItem>
+          )}
+          {onStopRun && (
+            <DropdownMenuItem onClick={onStopRun}>
+              <Square className="size-3.5" />
+              {labels.stopRun}
+            </DropdownMenuItem>
+          )}
+          {onEditManually && (
+            <DropdownMenuItem onClick={onEditManually}>
               <Pencil className="size-3.5" />
-              {labels.rename}
+              {labels.editManually}
+            </DropdownMenuItem>
+          )}
+          {onEditWithAi && (
+            <DropdownMenuItem onClick={onEditWithAi}>
+              {aiIcon}
+              {labels.editWithAi}
             </DropdownMenuItem>
           )}
           {onDelete && (
             <>
-              {onRename && <DropdownMenuSeparator />}
+              {hasPrior && <DropdownMenuSeparator />}
               <DropdownMenuItem
                 variant="destructive"
                 onClick={() => setConfirming(true)}

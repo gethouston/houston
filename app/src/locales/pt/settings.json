@@ -1,6 +1,7 @@
 {
   "title": "Configurações",
   "nav": {
+    "connectedAccounts": "Contas conectadas",
     "workspaceContext": "Contexto do espaço",
     "userContext": "Seu contexto",
     "language": "Idioma",
@@ -11,7 +12,19 @@
   "account": {
     "title": "Conta",
     "signOut": "Sair",
-    "fallbackName": "Sessão iniciada"
+    "avatar": {
+      "changeButton": "Alterar foto",
+      "changing": "Enviando…",
+      "toasts": {
+        "successTitle": "Foto de perfil atualizada",
+        "errorTitle": "Não foi possível atualizar sua foto"
+      },
+      "errors": {
+        "notImage": "Escolha um arquivo de imagem (JPG, PNG ou WebP).",
+        "tooLarge": "Essa imagem tem mais de 5 MB. Escolha uma menor.",
+        "uploadFailed": "Não foi possível salvar sua foto. {{reason}}"
+      }
+    }
   },
   "workspace": {
     "title": "Nome do espaço"
@@ -105,6 +118,7 @@
     },
     "rows": {
       "members": "Pessoas que podem usar seus agentes",
+      "connectedAccounts": "Aplicativos que você conectou ao Houston",
       "workspaceContext": "O que todo agente sabe sobre este espaço",
       "userContext": "O que todo agente sabe sobre você",
       "shortcuts": "Use o Houston sem o mouse",
@@ -113,7 +127,17 @@
     "values": {
       "set": "Definido",
       "membersCount_one": "{{count}} membro",
-      "membersCount_other": "{{count}} membros"
+      "membersCount_other": "{{count}} membros",
+      "appsCount_one": "{{count}} aplicativo",
+      "appsCount_other": "{{count}} aplicativos"
     }
+  },
+  "connectedAccounts": {
+    "title": "Contas conectadas",
+    "subtitle": "Aplicativos que você conectou. Escolha quais agentes podem usar cada um.",
+    "heading": "Seus aplicativos",
+    "empty": "Você ainda não conectou nenhum aplicativo.",
+    "connectMore": "Conectar mais aplicativos",
+    "connectHint": "Conecte novos aplicativos pela aba Integrações de qualquer agente."
   }
 }

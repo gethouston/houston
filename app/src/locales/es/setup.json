@@ -112,7 +112,11 @@
         "connect": "Conectar",
         "connecting": "Conectando...",
         "skipHint": "¿No puedes conectar ahora? Puedes hacerlo cuando quieras desde Integraciones.",
-        "skip": "Omitir por ahora"
+        "skip": "Omitir por ahora",
+        "skipConfirmTitle": "¿Omitir la conexión de tu correo?",
+        "skipConfirmBody": "Puedes conectarlo cuando quieras desde Integraciones. Tu agente no podrá enviar ni leer correo hasta que lo hagas.",
+        "skipConfirmAction": "Omitir por ahora",
+        "skipConfirmCancel": "Seguir conectando"
       },
       "agentCreated": {
         "title": "¡Agente creado!",
@@ -135,7 +139,9 @@
         "tour": "Hacer un recorrido por Houston",
         "tourBody": "Un repaso rápido de lo básico.",
         "connectMore": "Conectar más apps",
-        "connectMoreBody": "Dale a tu agente acceso a más de tus herramientas."
+        "connectMoreBody": "Dale a tu agente acceso a más de tus herramientas.",
+        "inviteTeam": "Invita a tu equipo",
+        "inviteTeamBody": "Mira quién trabaja en cada misión. Crea un equipo y comparte tus agentes."
       },
       "onboardingIntro": {
         "title": "Ahora pongámoslo a trabajar",

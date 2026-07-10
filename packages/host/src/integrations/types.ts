@@ -37,9 +37,58 @@ export interface ConnectStart {
   connectionId: string;
 }
 
-/** One action the agent could run, discovered via search(). */
+/**
+ * The app-level status of one search result, the load-bearing contract that
+ * tells the agent which of four speech acts to perform (rendered by the runtime
+ * tool, driven by the prompt):
+ *
+ *  - `connected`:   the acting user has an active connection — use it.
+ *  - `connectable`: a real toolkit with no connection yet — OFFER to connect it
+ *                   (request_connection).
+ *  - `blocked`:     a real toolkit excluded by org/agent admin policy — tell the
+ *                   user to ask their admin; never imply Houston lacks it, never
+ *                   request_connection. Nothing in THIS repo produces `blocked`
+ *                   today (the allowlist ceiling lives solely in the closed cloud
+ *                   gateway); the enum + rendering + prompt exist now so a later
+ *                   gateway change that annotates its search-proxy items with a
+ *                   `status` lights it up here with zero further work.
+ *  - `unknown`:     not a recognized toolkit.
+ */
+export const INTEGRATION_APP_STATUSES = [
+  "connected",
+  "connectable",
+  "blocked",
+  "unknown",
+] as const;
+export type IntegrationAppStatus = (typeof INTEGRATION_APP_STATUSES)[number];
+
+/** Type guard for a value claimed to be an IntegrationAppStatus (wire input). */
+export function isIntegrationAppStatus(v: unknown): v is IntegrationAppStatus {
+  return (
+    typeof v === "string" &&
+    (INTEGRATION_APP_STATUSES as readonly string[]).includes(v)
+  );
+}
+
+/**
+ * Map the legacy `connected` boolean onto the status enum, the fallback when a
+ * result carries no explicit `status`. A returned match that the user has not
+ * connected is a real, connectable app (a genuine miss surfaces as an EMPTY
+ * result, never a match) — so absent/false → connectable, true → connected.
+ */
+export function statusFromConnected(connected?: boolean): IntegrationAppStatus {
+  return connected === true ? "connected" : "connectable";
+}
+
+/**
+ * One result from search(): either an ACTION the agent could run, or a
+ * toolkit-level entry (the app itself, no specific action — `action` is the
+ * empty string) surfaced by catalog resolution so the model always learns the
+ * slug to pass request_connection even when no action scored.
+ */
 export interface ToolMatch {
-  /** The slug passed to execute(), e.g. "GMAIL_SEND_EMAIL". */
+  /** The slug passed to execute(), e.g. "GMAIL_SEND_EMAIL". Empty ("") marks a
+   *  toolkit-level entry (the app itself, no runnable action). */
   action: string;
   toolkit: string;
   description: string;
@@ -48,9 +97,17 @@ export interface ToolMatch {
   /**
    * Whether the user has an active connection to this action's toolkit.
    * `false` means execute() would fail — the agent should offer the in-chat
-   * connect card instead (HOU-670). Absent = unknown (older adapters).
+   * connect card instead (HOU-670). Absent = unknown (older adapters). Retained
+   * alongside `status` for backward compatibility (grants filter reads it).
    */
   connected?: boolean;
+  /**
+   * The app-level status driving the agent's speech act (see
+   * IntegrationAppStatus). Every match the current adapters return carries it;
+   * absent only from an older adapter, where the runtime derives it from
+   * `connected`.
+   */
+  status?: IntegrationAppStatus;
 }
 
 /** The outcome of running an action. */

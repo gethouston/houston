@@ -253,12 +253,20 @@ client surface. Client model: `knowledge-base/teams.md`. Server contracts:
 `cloud/docs/contracts/C3` (roles/assignments), `C7-teams.md`.
 
 **Invite → first-login path.** Adding an unknown email creates a pending invite
-(`POST /org/members` → 202 `{invited:true}`). The invite is consumed
-**atomically on that user's first sign-in**, keyed by email, so the identity
-foundation above is where a new user lands in their org. **One org per user** is
-enforced by a unique index (gateway migration 006); a second pending invite for
-an already-orged user can't double-add them. Ownership transfer is out of scope
+(`POST /org/members` → 202 `{invited:true}`). Ownership transfer is out of scope
 for v1 (`GRANTABLE_ROLES` never includes `owner`).
+
+> **C8 Spaces supersedes one-org-per-user.** The "one org per user, invite
+> consumed atomically at first sign-in" model above is C8-amended (contract
+> `cloud/docs/contracts/C8-spaces-billing.md`; open-repo client model:
+> `knowledge-base/teams.md` > Spaces). A user now belongs to MANY spaces. On
+> first sign-in the personal space is ALWAYS minted first (the C7 "invitee lands
+> directly in the inviting org, no personal org" behaviour is reversed), then
+> pending invites auto-accept oldest-first. An EXISTING user does NOT auto-join:
+> pending invites surface on `GET /v1/orgs` and are accepted explicitly
+> (`POST /v1/org-invites/:id/accept`) or declined. Migration 006's
+> one-org-per-user unique index is dropped; uniqueness is now the personal
+> space (one `personal_of` per user) plus one pending invite per team.
 
 ## Provider connect + turn execution (TS engine) — CURRENT
 

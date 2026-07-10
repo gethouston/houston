@@ -436,6 +436,51 @@ subscriptions stay registered and resume pushing once auth is restored.
 Contrast with a *provider* token expiring (§5): that arrives as a
 `providerError` inside a conversation snapshot, not a `fatal`.
 
+### 6.7 Attach files to a message (composer attachments)
+
+Two steps, entirely on the command path — **no new envelope kinds**.
+
+**Step 1 — upload.** `turns/attachments/save` uploads the user's dropped files
+INTO the agent's workspace and returns the RELATIVE paths the agent's Read tool
+opens. Files land in the agent's visible, durable `uploads/` folder; colliding
+names are disambiguated (`report.csv` → `report (1).csv`). `scopeId` is a legacy
+per-conversation key the current host ignores — still send it for compatibility
+with not-yet-updated cloud pods. `agentId` targets the agent's sandbox (omit for
+the single local runtime).
+
+```json
+→ { "kind": "command", "envelope": { "id": "c8", "type": "turns/attachments/save",
+      "payload": { "agentId": "ag_1", "scopeId": "cv_42",
+        "files": [ { "name": "brief.pdf", "contentBase64": "JVBERi0x…" } ] } } }
+← { "kind": "result", "result": { "id": "c8", "ok": true,
+      "value": { "paths": [ "uploads/brief.pdf" ] } } }
+```
+
+The request is capped (100 MB); an oversized upload fails with a **typed**
+`AttachmentTooLargeError` surfaced as `{ ok: false, error: { message, status: 413 } }`
+— never a silent drop. Missing/empty `files`, a blank file `name`, or a
+non-string `contentBase64` fail validation the same way (no `status`).
+
+**Step 2 — send.** Weave the returned paths into the message text with the
+SDK-exported pure helper `buildAttachmentText(text, paths, names?)`, then pass
+the result as the `turns/send` `payload.text` (§6.4). The helper emits, byte-for-
+byte, the desktop composer's format: a hidden `<!--houston:attachments {json}-->`
+marker (display metadata) followed by the user's text and a visible model-facing
+path block. For feed rendering, `decodeAttachmentText(text)` returns
+`{ displayText, attachments: [{ name }] } | null` — the single decode counterpart
+so a native shell renders a clean attachment summary instead of the raw path
+block. Both helpers are pure JS (no bridge round-trip); import them from
+`@houston/sdk`.
+
+```
+<!--houston:attachments {"message":"Summarize this","files":[{"path":"uploads/brief.pdf","name":"brief.pdf"}]}-->
+
+Summarize this
+
+[User attached these files. Read them with the Read tool if needed:
+- uploads/brief.pdf]
+```
+
 ---
 
 ## 7. Feed semantics — turnId / seq / resume (cross-ref `packages/protocol/src/wire.ts`)
@@ -453,6 +498,41 @@ The conversation feed snapshot's `live` block projects the runtime-client
   (`wire.ts` per-conversation, strictly monotonic, process-lifetime). The host
   treats it as **opaque** — it may ignore it entirely. It does **not** manage
   resume cursors.
+- **`ts` (optional epoch-ms) — a message/feed-entry timestamp.** Each `messages[]`
+  entry carries `ts` (the persisted `ChatMessage.ts`), and the SDK's built-in
+  conversation VM stamps the same field on every feed entry it publishes: a
+  seeded history frame carries its source message's `ts`; a live push that lacks
+  one is stamped with the wall clock when it first appears; a streaming/finalizing
+  update keeps the entry's ORIGINAL `ts` (a reply is timed by when its bubble
+  opened, not per delta). It is **optional** per §4 — **absent** for a transcript
+  written before timestamps existed and for a frame not tied to a message — so a
+  host renders relative time only when `ts` is present and never assumes it. It is
+  a plain JSON number of milliseconds; do not confuse it with the opaque `seq`
+  watermark (which orders frames but is not a clock).
+- **`pending` (optional boolean) — an unconfirmed optimistic send.** The SDK's
+  built-in conversation VM stamps `pending: true` on the ONE optimistic
+  `user_message` it pushes the instant a turn is sent — before the engine has
+  acknowledged anything — and **clears** it (strips the field, same feed-entry
+  id, a normal snapshot replacement) on the FIRST server evidence for that turn:
+  any subsequent pushed feed item, or a `live.running` transition to settled
+  (`sessionStatus` `completed`/`error`), whichever comes first. Multiple queued
+  optimistic bubbles (send-while-running, resend) each hold their flag until that
+  first evidence, which confirms them all at once. Semantics for a host:
+  `pending === true` -> not yet confirmed by the engine (render a clock,
+  WhatsApp-style); **absent/false** -> confirmed (render a single check). A
+  seeded history frame NEVER carries it. It is **optional** per §4 exactly like
+  `ts` — a surface that does not render send-state simply ignores it — and it is
+  a purely client-side VM projection: nothing about `pending` crosses the wire.
+- **`failed` (optional boolean) — a send that provably never landed.** The same
+  VM sets `failed: true` (and strips `pending`) on the ONE optimistic
+  `user_message` when the turn settles as a send failure with NO server evidence
+  the send reached the engine — a lost send (`SEND_LOST`), a rejected/refused
+  send (a 409, the not-connected card), or a concurrent double-send loser. It is
+  **mutually exclusive** with `pending` and only ever set instead of the
+  clock->check confirmation, so a host renders three delivery states, not two:
+  `pending` -> clock, `failed` -> an error/undelivered tick (NEVER "Sent"),
+  neither -> a check. A delivered-then-errored turn never sets it — real frames
+  confirm the bubble first. Optional and client-side exactly like `pending`.
 - **Resume is invisible to the host.** A dropped SSE connection is healed
   beneath the bridge by `streamEventsResumable`. Frames inside the replay window
   are re-sent with no gap or duplicate; a cursor too old to serve produces a

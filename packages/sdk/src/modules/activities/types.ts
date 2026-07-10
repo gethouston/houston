@@ -11,7 +11,7 @@
  * `Activity` provides; nothing is invented.
  */
 
-import type { Activity } from "@houston/protocol";
+import type { Activity, PendingInteraction } from "@houston/protocol";
 
 /**
  * The canonical activity statuses (`packages/domain/src/activities.ts`,
@@ -78,6 +78,24 @@ export interface ActivitiesModule {
   ): Promise<CreatedActivity>;
   /** Transition a mission's status (approve→done, archive, reactivate), then refetch. */
   setStatus(agentId: string, id: string, status: string): Promise<void>;
+  /**
+   * PATCH the board-card status for the activity addressed by `sessionKey` (the
+   * turn machinery's board persist on the SDK path — it knows a chat's session
+   * key, not the activity id). Resolves the id via
+   * {@link matchesActivitySessionKey}, then reuses {@link setStatus}'s write +
+   * silent refetch. `pendingInteraction` rides the same PATCH — the interaction
+   * the turn ended on (drives `needs_you`), or `null` to clear it (turn start,
+   * and every settle carrying none) — so a `needs_you` card survives reload. A
+   * `sessionKey` with no matching card (a transient chat with no board mission)
+   * is logged via the injected logger and skipped — a live turn must never crash
+   * on a missing card, so this never throws for that case.
+   */
+  setStatusBySessionKey(
+    agentId: string,
+    sessionKey: string,
+    status: string,
+    pendingInteraction: PendingInteraction | null,
+  ): Promise<void>;
   /** Rename a mission, then refetch. */
   rename(agentId: string, id: string, title: string): Promise<void>;
   /** Delete a mission, then refetch. */
@@ -111,6 +129,20 @@ export const ACTIVITY_CHANGED_EVENT = "ActivityChanged";
  */
 export function sessionKeyOf(a: Activity): string {
   return a.session_key ?? `activity-${a.id}`;
+}
+
+/**
+ * True when `sessionKey` addresses activity `a`: its explicit `session_key` OR
+ * the `activity-<id>` board convention. Matches EITHER form (not just
+ * {@link sessionKeyOf}'s preferred one), identical to the web adapter's resolver
+ * (`engine-adapter/client.ts` `setActivityStatus`), so a turn's board-status
+ * write lands on the same card on both surfaces.
+ */
+export function matchesActivitySessionKey(
+  a: Activity,
+  sessionKey: string,
+): boolean {
+  return a.session_key === sessionKey || `activity-${a.id}` === sessionKey;
 }
 
 /** Project a wire `Activity` onto the scope view-model item. Lossless for the

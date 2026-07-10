@@ -25,6 +25,7 @@
     },
     "models": {
       "question": "¿Qué modelos de IA puede usar este agente?",
+      "policyHelper": "Tú decides con qué modelos puede ejecutarse este agente. Las personas con acceso eligen su propio modelo entre los que permitas.",
       "anyLabel": "Cualquier modelo",
       "anyDesc": "Las personas con acceso pueden ejecutar este agente con cualquier modelo disponible.",
       "pickedLabel": "Solo los modelos que elijas",
@@ -48,6 +49,7 @@
   "integrations": {
     "allowlist": {
       "question": "¿Qué apps puede usar este agente?",
+      "policyHelper": "Tú decides qué apps tiene permitido usar este agente. Las personas con acceso siguen conectando sus propias cuentas para cada app que permitas.",
       "anyLabel": "Cualquier app",
       "anyDesc": "Las personas con acceso pueden conectar este agente a más de 1000 apps.",
       "pickedLabel": "Solo las apps que elijas",
@@ -58,10 +60,43 @@
       "allowedEmptyCategory": "Aún no hay apps permitidas en esta categoría.",
       "addHeading": "Agregar aplicaciones"
     },
+    "orgAllowlist": {
+      "question": "¿Qué aplicaciones pueden usar los agentes de este espacio de trabajo?",
+      "policyHelper": "Tú decides qué aplicaciones pueden usar los agentes aquí. Cada persona conecta sus propias cuentas para cada aplicación que permitas.",
+      "anyLabel": "Cualquier aplicación",
+      "anyDesc": "Los agentes de este espacio de trabajo pueden usar cualquiera de más de 1000 aplicaciones.",
+      "pickedLabel": "Solo las aplicaciones que elijas",
+      "pickedDesc": "Los agentes solo pueden usar las aplicaciones que permitas abajo.",
+      "allowApp": "Permitir {{name}}",
+      "allowedHeading": "Aplicaciones permitidas",
+      "allowedEmpty": "Aún no elegiste ninguna aplicación. Agrega aplicaciones abajo.",
+      "allowedEmptyCategory": "No hay aplicaciones permitidas en esta categoría todavía.",
+      "addHeading": "Agregar aplicaciones",
+      "ownerOnly": "Solo el propietario del espacio de trabajo puede cambiar esto."
+    },
     "notAllowed": {
       "title": "No permitida para este agente",
-      "body": "Estas aplicaciones están conectadas a tu cuenta, pero tu organización no permite que este agente las use.",
+      "body": "Estas aplicaciones están conectadas a tu cuenta, pero este agente no tiene permitido usarlas. Pídele a tu administrador que las habilite para este agente.",
       "badge": "No permitida"
+    }
+  },
+  "models": {
+    "orgAllowlist": {
+      "question": "¿Qué modelos pueden usar los agentes de este espacio de trabajo?",
+      "policyHelper": "Tú decides con qué modelos de IA pueden ejecutarse los agentes aquí. Las personas con acceso eligen su propio modelo entre los que permitas.",
+      "anyLabel": "Cualquier modelo",
+      "anyDesc": "Los agentes de este espacio de trabajo pueden usar cualquier modelo disponible.",
+      "pickedLabel": "Solo los modelos que elijas",
+      "pickedDesc": "Los agentes solo pueden usar los modelos que permitas abajo.",
+      "allowModel": "Permitir {{name}}",
+      "searchModels": "Buscar modelos",
+      "noModels": "No se encontraron modelos",
+      "allowedHeading": "Modelos permitidos",
+      "allowedEmpty": "Aún no eliges modelos. Agrega modelos abajo.",
+      "allowedEmptyLab": "Aún no eliges modelos de este laboratorio.",
+      "addHeading": "Agregar modelos",
+      "ownerOnly": "Solo el propietario del espacio de trabajo puede cambiar esto.",
+      "perAgentNote": "Los managers pueden restringir esto aún más para cada agente en su configuración."
     }
   },
   "org": {
@@ -73,7 +108,8 @@
       "people": "Personas",
       "agents": "Agentes",
       "activity": "Actividad",
-      "usage": "Uso"
+      "usage": "Uso",
+      "billing": "Facturación"
     },
     "loading": "Cargando tu organización...",
     "unavailable": "No pudimos cargar tu organización."
@@ -82,6 +118,9 @@
     "title": "Compartir {{name}}",
     "subtitle": "Elige quién puede usar este agente.",
     "button": "Compartir",
+    "viewButton": "Quién tiene acceso",
+    "viewTitle": "Quién tiene acceso a {{name}}",
+    "viewSubtitle": "Estas personas pueden usar este agente compartido.",
     "sectionTitle": "Compartir este agente",
     "sectionHelper": "Agrega compañeros que puedan usar este agente y elige quién puede gestionarlo.",
     "peopleCount_one": "{{count}} persona con acceso",
@@ -216,5 +255,110 @@
     },
     "lastOpened": "Abierto {{time}}",
     "open": "Abrir {{name}}"
+  },
+  "createTeam": {
+    "trigger": "Crear equipo",
+    "title": "Crear un equipo",
+    "description": "Los equipos te permiten compartir agentes y trabajar en conjunto. Puedes invitar a personas una vez que exista.",
+    "nameLabel": "Nombre del equipo",
+    "namePlaceholder": "p. ej. Marketing",
+    "submit": "Crear equipo",
+    "creating": "Creando…",
+    "tooLong": "Usa un nombre de menos de {{max}} caracteres.",
+    "successTitle": "Equipo \"{{name}}\" creado"
+  },
+  "shareViaTeam": {
+    "sectionHelper": "Este agente está en tu espacio personal. Muévelo a un equipo para compartirlo con tus compañeros.",
+    "button": "Invita a tu equipo",
+    "title": "Compartir {{name}} con un equipo",
+    "pick": {
+      "subtitle": "Elige un equipo al que mover este agente, o crea uno nuevo.",
+      "empty": "Aún no tienes un equipo. Crea uno para compartir este agente.",
+      "createTrigger": "Crear un equipo nuevo",
+      "namePlaceholder": "p. ej. Marketing",
+      "nameLabel": "Nombre del equipo",
+      "create": "Crear",
+      "creating": "Creando…",
+      "failed": "No pudimos crear el equipo. Inténtalo de nuevo."
+    },
+    "confirm": {
+      "body": "{{agent}} se moverá a {{team}}. Tú y tus compañeros lo encontrarán ahí.",
+      "downtime": "El agente se reinicia durante el traslado, así que puede no estar disponible por un momento.",
+      "cancel": "Cancelar",
+      "move": "Mover agente"
+    },
+    "moving": {
+      "heading": "Moviendo {{agent}} a {{team}}",
+      "body": "Esto puede tardar un momento. Mantén esta ventana abierta."
+    },
+    "switching": {
+      "heading": "Preparando {{team}}"
+    },
+    "switchFailed": {
+      "body": "Tu agente se movió a {{team}}, pero no pudimos cambiar a ese equipo. Reintenta para continuar con las invitaciones.",
+      "retry": "Reintentar",
+      "close": "Cerrar"
+    },
+    "moveFailed": {
+      "unsupported_move": "Este agente no se puede mover a ese equipo.",
+      "unmovable_volume": "El almacenamiento de este agente todavía no se puede mover automáticamente. Contacta con soporte.",
+      "needs_upgrade": "Este equipo necesita una mejora de plan antes de poder mover agentes a él.",
+      "unknown": "Algo salió mal durante el traslado.",
+      "timeout": "El traslado está tardando más de lo esperado. Puede que termine en segundo plano. Puedes reintentar o cerrar.",
+      "retry": "Reintentar",
+      "close": "Cerrar"
+    },
+    "invite": {
+      "subtitle": "{{agent}} ya está en {{team}}. Invita a personas para usarlo contigo.",
+      "emailPlaceholder": "nombre@empresa.com",
+      "add": "Agregar",
+      "send": "Enviar invitaciones",
+      "sending": "Enviando…",
+      "done": "Listo",
+      "status": {
+        "pending": "Pendiente",
+        "sending": "Enviando…",
+        "sent": "Invitado"
+      },
+      "error": {
+        "already_member": "Ya está en el equipo",
+        "generic": "No se pudo invitar. Inténtalo de nuevo."
+      }
+    },
+    "done": {
+      "heading": "Compartido con {{team}}"
+    }
+  },
+  "billing": {
+    "unavailable": "No pudimos cargar la facturación de este equipo.",
+    "status": {
+      "free": "Gratis",
+      "trialing": "Prueba gratis",
+      "trialingDays_one": "Prueba gratis, queda {{count}} día",
+      "trialingDays_other": "Prueba gratis, quedan {{count}} días",
+      "active": "Activa",
+      "past_due": "Pago pendiente",
+      "expired": "Prueba terminada"
+    },
+    "seats_one": "{{count}} asiento",
+    "seats_other": "{{count}} asientos",
+    "interval": {
+      "monthly": "Facturación mensual",
+      "annual": "Facturación anual"
+    },
+    "pickPlan": "Elige un plan para sumar a todo tu equipo.",
+    "checkoutMonthly": "Mejorar, mensual",
+    "checkoutAnnual": "Mejorar, anual",
+    "manage": "Gestionar facturación",
+    "askOwner": "Solo el propietario puede cambiar la facturación. Pídele que mejore tu equipo.",
+    "trialPill_one": "Queda {{count}} día de prueba",
+    "trialPill_other": "Quedan {{count}} días de prueba"
+  },
+  "degrade": {
+    "owner": "La prueba de tu equipo terminó. Mejora el plan para que todos sigan trabajando.",
+    "member": "La prueba de tu equipo terminó. Pídele al propietario que mejore el plan.",
+    "upgrade": "Mejorar",
+    "writeBlockedTitle": "Necesitas mejorar el plan",
+    "writeBlockedBody": "La prueba de tu equipo terminó. Pídele al propietario que mejore el plan para hacer cambios."
   }
 }

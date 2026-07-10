@@ -9,7 +9,7 @@ import { selectActive, selectArchived } from "../src/lib/mission-selection.ts";
 import {
   encodeRoutineModifyMessage,
   encodeRoutineSetupMessage,
-  findDraftSetupActivity,
+  findDraftSetupActivities,
   findRoutineChatActivity,
   findRoutineChatHeal,
   isRoutineSetupMode,
@@ -99,22 +99,23 @@ describe("routine chat setup message", () => {
   });
 
   it("kickoff prompt covers the guided interview the issue asks for", () => {
-    // Load-bearing beats: the agent opens the conversation, asks exactly one
-    // question per ask_user call, covers the chat-mode and quiet-run choices,
-    // gates creation on approval, and never quizzes non-technical users
-    // about models or providers. HOU-725 adds the persistence beats: the
-    // greeting says the chat stays available for later changes, and the
-    // routine is linked back to this chat via setup_activity_id.
+    // Load-bearing beats: the agent opens the conversation in a single
+    // ask_user call (no wasted greeting turn), asks exactly one question per
+    // ask_user call, covers the chat-mode and quiet-run choices, gates
+    // creation on approval, and never quizzes non-technical users about
+    // models or providers. HOU-725 adds the persistence beats: the framing
+    // says the chat stays available for later changes, and the routine is
+    // linked back to this chat via setup_activity_id.
     const prompt = routineSetupPrompt("act-42", [
       { id: "anthropic", name: "Claude" },
     ]);
     for (const needle of [
       "The user has not said anything yet",
       "Start RIGHT NOW, in this same turn",
-      "one short, friendly opening line",
+      "SINGLE ask_user call",
+      "friendly framing INTO the question",
       "come back to this same chat",
-      "Do not stop after the greeting",
-      "a turn that ends without an ask_user call is a mistake",
+      "A turn that ends without an ask_user call is a mistake",
       "exactly ONE question per ask_user call",
       "Never batch",
       "one ongoing chat",
@@ -153,39 +154,81 @@ describe("routine chat setup message", () => {
     deepStrictEqual(findRoutineChatActivity([other], { id: "r3" }), null);
   });
 
-  it("a draft is a setup chat no routine claims in either direction", () => {
-    const draft = {
+  it("returns ALL live setup chats no routine claims, in input order", () => {
+    // A person can have several routines-in-construction going at once; each
+    // is its own resumable/discardable item, so every unclaimed live setup
+    // chat comes back, in the order it appeared in the input.
+    const draftA = {
       id: "d1",
       agent: ROUTINE_SETUP_AGENT_MODE,
       status: "running",
     };
+    const draftB = {
+      id: "d5",
+      agent: ROUTINE_SETUP_AGENT_MODE,
+      status: "needs_you",
+    };
+    // Claimed by a routine's forward link (setup_activity_id).
     const claimedForward = {
       id: "d2",
       agent: ROUTINE_SETUP_AGENT_MODE,
       status: "done",
     };
+    // Claimed by its own routine_id stamp (the durable reverse link).
     const claimedReverse = {
       id: "d3",
       agent: ROUTINE_SETUP_AGENT_MODE,
       status: "done",
       routine_id: "r9",
     };
+    // Closed setup chat — never a live draft.
     const archived = {
       id: "d4",
       agent: ROUTINE_SETUP_AGENT_MODE,
       status: "archived",
     };
+    // Not a setup chat at all.
+    const normal = { id: "n1", agent: "researcher", status: "running" };
     const routines = [{ id: "r1", setup_activity_id: "d2" }];
     deepStrictEqual(
-      findDraftSetupActivity(
-        [claimedForward, claimedReverse, archived, draft],
+      findDraftSetupActivities(
+        [draftA, claimedForward, claimedReverse, archived, normal, draftB],
         routines,
       ),
-      draft,
+      [draftA, draftB],
     );
+  });
+
+  it("excludes archived, stamped, forward-claimed, and non-setup chats", () => {
+    const routines = [{ id: "r1", setup_activity_id: "fwd" }];
     deepStrictEqual(
-      findDraftSetupActivity([claimedForward], routines),
-      undefined,
+      findDraftSetupActivities(
+        [
+          { id: "a", agent: ROUTINE_SETUP_AGENT_MODE, status: "archived" },
+          {
+            id: "b",
+            agent: ROUTINE_SETUP_AGENT_MODE,
+            status: "running",
+            routine_id: "r7",
+          },
+          { id: "fwd", agent: ROUTINE_SETUP_AGENT_MODE, status: "running" },
+          { id: "c", agent: "researcher", status: "running" },
+        ],
+        routines,
+      ),
+      [],
+    );
+  });
+
+  it("returns [] for empty or undefined inputs", () => {
+    deepStrictEqual(findDraftSetupActivities([], []), []);
+    deepStrictEqual(findDraftSetupActivities(undefined, undefined), []);
+    deepStrictEqual(
+      findDraftSetupActivities(
+        [{ id: "d1", agent: ROUTINE_SETUP_AGENT_MODE, status: "running" }],
+        undefined,
+      ),
+      [{ id: "d1", agent: ROUTINE_SETUP_AGENT_MODE, status: "running" }],
     );
   });
 

@@ -86,6 +86,27 @@ Connected apps (Gmail, Slack, and about 1000 more) run in platform mode through 
 
 > The shared `.env.local` holds the host token plus each frontend's host URL and token, so the commands above need no flags. See [`convergence/README.md`](convergence/README.md) for the full local dev loop, including hot reload and watch mode.
 
+### Test like the cloud
+
+The loop above runs the **local** engine. To test the managed hosted product — Teams / C8 Spaces, per-agent engine pods, invites, agent moves — exactly as it runs in production, use one command:
+
+```bash
+pnpm dev:cloud
+```
+
+It stands up a [kind](https://kind.sigs.k8s.io/) cluster with the private gateway (built from the sibling `cloud/` checkout) and one engine pod per agent (built from **this** checkout), then runs the web app at `http://localhost:1430` signed in via real Supabase — the same JWT the gateway verifies. Requires Docker Desktop, `kind`, `kubectl`, `jq`, and `SUPABASE_URL`/`SUPABASE_ANON_KEY` in `.env.local` (same project the gateway checks). On success it prints the full C8 test walkthrough (sign in as two users, share an agent into a team, invite + accept, chat, mission board, org dashboard).
+
+```bash
+pnpm dev:cloud --check     # preflight only — checks tooling/env, prints the plan
+pnpm dev:cloud:app         # same stack, but launch the DESKTOP app (tauri dev) instead of the web tab
+pnpm dev:cloud:retain      # flip agent PVs to Retain (run before an agent move)
+pnpm dev:cloud:down        # tear the cluster down and stop the web server
+```
+
+`dev:cloud:app` points the Tauri shell at the local gateway (`VITE_HOSTED_ENGINE_URL`), which flips it to hosted Google-login mode — the true desktop experience. The web frontend is the same `app/src` codebase in a browser tab, so for multiplayer testing run the desktop app as user A and an incognito web tab (`pnpm dev:cloud`) as user B.
+
+Billing is off unless `GW_STRIPE_*` test keys are set (teams run as free multiplayer orgs); see `cloud/docs/deploy-C8.md` §Stage 2. The gateway loop itself lives in `cloud/k8s/kind/README.md`.
+
 ### Build your first agent
 
 Create two files:

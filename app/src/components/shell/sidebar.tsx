@@ -5,13 +5,17 @@ import {
   TooltipTrigger,
 } from "@houston-ai/core";
 import { AppSidebar } from "@houston-ai/layout";
-import { FolderPlus } from "lucide-react";
+import { Users } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
+import {
+  canSeeAiModelsPage,
+  canSeeIntegrationsPage,
+} from "../../lib/org-roles";
 import { resolveAutoCollapse } from "../../lib/sidebar-auto-collapse";
 import { isTopLevelView } from "../../lib/top-level-views";
 import { useAgentStore } from "../../stores/agents";
@@ -19,6 +23,7 @@ import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { canSeeOrganization } from "../organization";
 import { buildAgentSidebarLists } from "./agent-sidebar-items";
+import { GroupContextDialog } from "./group-context-dialog";
 import {
   buildSidebarLabels,
   buildSidebarNavItems,
@@ -46,6 +51,10 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const [createWsOpen, setCreateWsOpen] = useState(false);
   // A just-created group: the sidebar opens it straight into inline-rename.
   const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
+  // The group whose shared context is open in the editor dialog (null = closed).
+  const [editingContextGroupId, setEditingContextGroupId] = useState<
+    string | null
+  >(null);
 
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
@@ -56,6 +65,14 @@ export function Sidebar({ children }: { children: ReactNode }) {
   // only. Hidden entirely for plain members and single-player (canSeeOrganization
   // is the same gate as the members roster).
   const showOrganization = canSeeOrganization(capabilities);
+  // Teams v2: in a Teams workspace the Integrations page becomes org policy, so
+  // plain members lose both the page and its nav entry (they manage apps from
+  // the agent tab + Settings). Everyone else keeps it.
+  const showIntegrations = canSeeIntegrationsPage(capabilities);
+  // Teams v2: in a Teams workspace the AI Models hub is owner/admin territory
+  // (org-level provider credentials + admin model policy), so plain members lose
+  // its nav entry too — they pick their model per agent in the composer.
+  const showAiModels = canSeeAiModelsPage(capabilities);
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useUIStore((s) => s.toggleSidebarCollapsed);
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed);
@@ -87,7 +104,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
     needsYouLabel: (count) => t("shell:sidebar.needsYouCount", { count }),
     onChangeColor: (agentId, color) => void handleChangeColor(agentId, color),
     onShareAgent: (agentId) => useUIStore.getState().setShareAgentId(agentId),
-    shareLabel: t("portable:shareMenu"),
+    shareLabel: t("portable:exportMenu"),
   });
   const isTopLevel = isTopLevelView(viewMode);
 
@@ -122,6 +139,10 @@ export function Sidebar({ children }: { children: ReactNode }) {
     setPendingDeleteId(null);
   };
 
+  const editingContextGroup = editingContextGroupId
+    ? sidebar.layout.groups.find((g) => g.id === editingContextGroupId)
+    : undefined;
+
   return (
     <>
       <ConfirmDialog
@@ -137,6 +158,18 @@ export function Sidebar({ children }: { children: ReactNode }) {
       <CreateWorkspaceDialog
         open={createWsOpen}
         onOpenChange={setCreateWsOpen}
+      />
+      <GroupContextDialog
+        open={editingContextGroup !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setEditingContextGroupId(null);
+        }}
+        groupName={editingContextGroup?.name ?? ""}
+        content={editingContextGroup?.context ?? ""}
+        onSave={(next) => {
+          if (editingContextGroupId)
+            sidebar.setGroupContext(editingContextGroupId, next);
+        }}
       />
       <div className="flex h-full flex-1 min-w-0">
         <AppSidebar
@@ -154,7 +187,13 @@ export function Sidebar({ children }: { children: ReactNode }) {
               onExpand={() => setSidebarCollapsed(false)}
             />
           }
-          navItems={buildSidebarNavItems({ t, showOrganization, setViewMode })}
+          navItems={buildSidebarNavItems({
+            t,
+            showIntegrations,
+            showAiModels,
+            showOrganization,
+            setViewMode,
+          })}
           activeNavId={isTopLevel ? viewMode : undefined}
           sectionLabel={t("shell:sidebar.yourAgents")}
           sectionAction={
@@ -172,7 +211,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
                     }}
                     className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >
-                    <FolderPlus className="size-4" />
+                    <Users className="size-4" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
@@ -186,6 +225,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
           renamingGroupId={renamingGroupId}
           onRenamingGroupIdHandled={() => setRenamingGroupId(null)}
           onToggleGroupCollapsed={sidebar.toggleGroupCollapsed}
+          onEditGroupContext={(id) => setEditingContextGroupId(id)}
           onRenameGroup={sidebar.renameGroup}
           onDeleteGroup={sidebar.deleteGroup}
           onMoveItem={sidebar.moveItem}

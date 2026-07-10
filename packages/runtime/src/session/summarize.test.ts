@@ -1,10 +1,13 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+// `registerFauxProvider` is pi-ai's legacy global-registry test provider,
+// preserved on `/compat`; `fauxAssistantMessage` must come from the same
+// entrypoint so both read/write the one registry instance.
 import {
   fauxAssistantMessage,
   registerFauxProvider,
-} from "@earendil-works/pi-ai";
+} from "@earendil-works/pi-ai/compat";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { expect, test, vi } from "vitest";
 import {

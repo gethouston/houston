@@ -15,7 +15,11 @@ import {
   upsertById,
   validateSchedule,
 } from "@houston/domain";
-import type { HoustonEvent, NewRoutine } from "@houston/protocol";
+import type {
+  ActivityContributor,
+  HoustonEvent,
+  NewRoutine,
+} from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import { hostProvider } from "../providers";
@@ -79,6 +83,11 @@ export async function handleAgentData(
   // the desktop passes its local owner. Absent in callers that don't carry
   // identity; the field then stays as-is (absent on create).
   createdBy?: string,
+  // The verified acting human as a full contributor (C2) — activities stamp
+  // `created_by` + a contributor entry from it (routines take the sub-only
+  // `createdBy` above). Null/absent off the gateway, keeping single-player
+  // activity.json byte-identical.
+  author?: ActivityContributor,
 ): Promise<boolean> {
   const m = rest.match(
     /^(activities|routines|routine_runs|config|learnings)(?:\/([^/]+))?$/,
@@ -111,6 +120,7 @@ export async function handleAgentData(
       req,
       res,
       emit,
+      author,
     );
     return true;
   }

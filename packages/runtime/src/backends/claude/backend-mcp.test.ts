@@ -86,10 +86,12 @@ test("backend options carry the houston MCP server and its allowlist", async () 
   expect(options.allowedTools).toContain("mcp__houston__integration_execute");
 });
 
-test("without the integrations gate only ask_user is allow-listed", async () => {
+test("without the integrations gate only ask_user + suggest_reusable are allow-listed", async () => {
   const options = await runTurn(undefined);
   expect(options.mcpServers?.houston).toBeDefined();
-  expect(options.allowedTools).toEqual(["mcp__houston__ask_user"]);
+  expect(new Set(options.allowedTools)).toEqual(
+    new Set(["mcp__houston__ask_user", "mcp__houston__suggest_reusable"]),
+  );
 });
 
 test("AskUserQuestion stays disabled — Houston ships its own ask_user", async () => {
@@ -117,9 +119,9 @@ test("plan mode builds the MCP server WITHOUT integrations — ask_user + plan_r
 });
 
 test("auto mode builds the MCP with integrations ON and ask_user OFF", async () => {
-  // Autopilot is the inverse of plan: it KEEPS the acting integration tools but
-  // drops the two blocking tools (ask_user, request_connection) so the agent
-  // never waits on the user.
+  // Autopilot is the inverse of plan: it KEEPS the acting integration tools (and
+  // the non-blocking suggest_reusable) but drops the two blocking tools
+  // (ask_user, request_connection) so the agent never waits on the user.
   const options = await runTurn(
     { baseUrl: "http://host.local", sandboxToken: "tok" },
     "auto",
@@ -127,12 +129,13 @@ test("auto mode builds the MCP with integrations ON and ask_user OFF", async () 
   expect(options.mcpServers?.houston).toBeDefined();
   const exposed = h.capturedMcp?.tools.map((t) => t.name) ?? [];
   expect(new Set(exposed)).toEqual(
-    new Set(["integration_search", "integration_execute"]),
+    new Set(["suggest_reusable", "integration_search", "integration_execute"]),
   );
   expect(exposed).not.toContain("ask_user");
   expect(exposed).not.toContain("request_connection");
   expect(new Set(options.allowedTools)).toEqual(
     new Set([
+      "mcp__houston__suggest_reusable",
       "mcp__houston__integration_search",
       "mcp__houston__integration_execute",
     ]),

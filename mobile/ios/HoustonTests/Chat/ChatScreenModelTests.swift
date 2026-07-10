@@ -7,16 +7,41 @@ import XCTest
 @MainActor
 final class SpyChatCommands: ChatCommanding {
   private(set) var observed: [(agentId: String, conversationId: String)] = []
-  private(set) var sent: [(agentId: String, conversationId: String, text: String)] = []
+  private(set) var sent:
+    [(
+      agentId: String, conversationId: String, text: String, model: String?,
+      effort: EffortLevel?
+    )] = []
+  private(set) var uploaded: [(agentId: String, scopeId: String, files: [AttachmentUpload])] = []
   private(set) var cancelled: [(agentId: String, conversationId: String)] = []
   private(set) var statuses: [(agentId: String, activityId: String, status: String)] = []
+  private(set) var created: [(agentId: String, title: String, description: String)] = []
+  private(set) var deleted: [(agentId: String, activityId: String)] = []
+  /// Command names to throw `StubError` on (draft/attachment failure paths):
+  /// "create", "send", "delete", "upload".
+  var failOn: Set<String> = []
+  /// The activity `activities/create` returns on the happy path.
+  var createResult = CreatedActivity(id: "m1", sessionKey: "activity-m1")
+  /// Maps the just-uploaded files to their saved paths (default: `/saved/<name>`),
+  /// so a test can assert the woven message deterministically.
+  var saveResult: ([AttachmentUpload]) -> [String] = { $0.map { "/saved/\($0.name)" } }
   var onCall: (() -> Void)?
 
   func observe(agentId: String, conversationId: String) async throws {
     observed.append((agentId, conversationId)); onCall?()
   }
-  func send(agentId: String, conversationId: String, text: String) async throws {
-    sent.append((agentId, conversationId, text)); onCall?()
+  func send(
+    agentId: String, conversationId: String, text: String, model: String?, effort: EffortLevel?
+  ) async throws {
+    sent.append((agentId, conversationId, text, model, effort)); onCall?()
+    if failOn.contains("send") { throw StubError() }
+  }
+  func saveAttachments(
+    agentId: String, scopeId: String, files: [AttachmentUpload]
+  ) async throws -> [String] {
+    uploaded.append((agentId, scopeId, files)); onCall?()
+    if failOn.contains("upload") { throw StubError() }
+    return saveResult(files)
   }
   func cancel(agentId: String, conversationId: String) async throws {
     cancelled.append((agentId, conversationId)); onCall?()
@@ -24,12 +49,21 @@ final class SpyChatCommands: ChatCommanding {
   func setStatus(agentId: String, activityId: String, status: String) async throws {
     statuses.append((agentId, activityId, status)); onCall?()
   }
+  func create(agentId: String, title: String, description: String) async throws -> CreatedActivity {
+    created.append((agentId, title, description)); onCall?()
+    if failOn.contains("create") { throw StubError() }
+    return createResult
+  }
+  func delete(agentId: String, activityId: String) async throws {
+    deleted.append((agentId, activityId)); onCall?()
+    if failOn.contains("delete") { throw StubError() }
+  }
 }
 
 @MainActor
 final class ChatScreenModelTests: XCTestCase {
   private func makeModel(
-    conversationId: String = "activity-42"
+    conversationId: String? = "activity-42"
   ) -> (ChatScreenModel, SpyChatCommands, SdkClient, MockTransport) {
     let transport = MockTransport()
     let client = SdkClient(transport: transport)
@@ -54,8 +88,28 @@ final class ChatScreenModelTests: XCTestCase {
     await awaitCall(spy) { model.send() }
     XCTAssertEqual(spy.sent.last?.text, "hi there")
     XCTAssertEqual(spy.sent.last?.conversationId, "activity-42")
+    XCTAssertNil(spy.sent.last?.model, "no pin set: falls back to the agent's active model")
     XCTAssertEqual(model.draft, "")
     XCTAssertEqual(model.sendTick, 1, "send fires exactly one haptic tick")
+  }
+
+  // MARK: selectedModel (HOU-695 per-conversation pin)
+
+  func testSendThreadsSelectedModelIntoExistingConversation() async {
+    let (model, spy, _, _) = makeModel()
+    model.selectedModel = "claude-opus-4"
+    model.draft = "hi"
+    await awaitCall(spy) { model.send() }
+    XCTAssertEqual(spy.sent.last?.model, "claude-opus-4")
+  }
+
+  func testDraftFirstSendThreadsSelectedModel() async {
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    model.selectedModel = "gpt-5"
+    model.draft = "hello"
+    model.send()
+    await awaitSettled(model)
+    XCTAssertEqual(spy.sent.last?.model, "gpt-5", "the draft's first send also carries the pin")
   }
 
   func testSendIgnoresBlankDraft() {
@@ -67,7 +121,174 @@ final class ChatScreenModelTests: XCTestCase {
     XCTAssertEqual(model.draft, "   \n ")
   }
 
-  // MARK: stop + approve
+  // MARK: selectedEffort (per-conversation pin threaded through SendArgs)
+
+  func testSendThreadsSelectedEffortIntoExistingConversation() async {
+    let (model, spy, _, _) = makeModel()
+    model.selectedEffort = .high
+    model.draft = "hi"
+    await awaitCall(spy) { model.send() }
+    XCTAssertEqual(spy.sent.last?.effort, .high, "the effort pin rides every turns/send")
+  }
+
+  func testSendWithNoEffortPinOmitsEffort() async {
+    let (model, spy, _, _) = makeModel()
+    model.draft = "hi"
+    await awaitCall(spy) { model.send() }
+    XCTAssertNil(spy.sent.last?.effort, "no pin: effort omitted so the agent default runs")
+  }
+
+  func testAnswerThreadsSelectedEffort() async {
+    let (model, spy, _, _) = makeModel()
+    model.selectedEffort = .low
+    await awaitCall(spy) { model.answer("yes") }
+    XCTAssertEqual(spy.sent.last?.text, "yes")
+    XCTAssertEqual(spy.sent.last?.effort, .low, "an interaction answer is a normal send: it carries the pin")
+  }
+
+  func testDraftFirstSendThreadsSelectedEffort() async {
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    model.selectedEffort = .xhigh
+    model.draft = "hello"
+    model.send()
+    await awaitSettled(model)
+    XCTAssertEqual(spy.sent.last?.effort, .xhigh, "the draft's first send also carries the effort pin")
+  }
+
+  // MARK: selectModel (per-conversation pin clears a stale effort)
+
+  func testSelectModelClearsStaleEffortPin() {
+    let (model, _, _, _) = makeModel()
+    model.selectedModel = "reasoner-1"
+    model.selectedEffort = .high
+    model.selectModel("plain-2")
+    XCTAssertEqual(model.selectedModel, "plain-2")
+    XCTAssertNil(
+      model.selectedEffort,
+      "switching to a different model clears the effort pin so a stale level never rides the wire")
+  }
+
+  func testSelectSameModelKeepsEffortPin() {
+    let (model, _, _, _) = makeModel()
+    model.selectedModel = "reasoner-1"
+    model.selectedEffort = .high
+    model.selectModel("reasoner-1")
+    XCTAssertEqual(
+      model.selectedEffort, .high, "re-picking the SAME model leaves the effort pin untouched")
+  }
+
+  // MARK: staged attachments (upload → weave → send)
+
+  func testSendUploadsStagedFilesUnderConversationScopeAndWeaves() async {
+    let (model, spy, _, _) = makeModel()
+    model.stageAttachments([("brief.pdf", Data("hello".utf8))])
+    model.draft = "Summarize this"
+    model.send()
+    await awaitSettled(model)
+
+    XCTAssertEqual(spy.uploaded.count, 1, "one save request for the staged batch")
+    XCTAssertEqual(spy.uploaded.last?.scopeId, "activity-42", "uploads under the conversation scope")
+    XCTAssertEqual(spy.uploaded.last?.files.first?.name, "brief.pdf")
+    XCTAssertEqual(
+      spy.uploaded.last?.files.first?.contentBase64, Data("hello".utf8).base64EncodedString(),
+      "the raw bytes are base64-encoded for the bridge")
+
+    let expected = AttachmentMessage.encode(
+      text: "Summarize this", paths: ["/saved/brief.pdf"], names: ["brief.pdf"])
+    XCTAssertEqual(spy.sent.last?.text, expected, "the saved path is woven into the sent message")
+    XCTAssertTrue(model.stagedAttachments.isEmpty, "staged files clear on a successful send")
+  }
+
+  func testAttachmentsOnlySendWithNoText() async {
+    let (model, spy, _, _) = makeModel()
+    model.stageAttachments([("photo.jpg", Data([0x1, 0x2]))])
+    model.send()
+    await awaitSettled(model)
+    XCTAssertEqual(spy.uploaded.count, 1)
+    let expected = AttachmentMessage.encode(
+      text: "", paths: ["/saved/photo.jpg"], names: ["photo.jpg"])
+    XCTAssertEqual(spy.sent.last?.text, expected, "attachments alone (no typed text) still send")
+  }
+
+  func testUploadFailureKeepsFilesStagedAndSurfaces() async {
+    let (model, spy, _, _) = makeModel()
+    spy.failOn = ["upload"]
+    model.stageAttachments([("brief.pdf", Data("x".utf8))])
+    model.draft = "read it"
+    model.send()
+    await awaitSettled(model)
+
+    XCTAssertTrue(spy.sent.isEmpty, "no turn is sent when the upload fails")
+    XCTAssertEqual(model.stagedAttachments.count, 1, "attachments stay staged — no silent loss")
+    XCTAssertEqual(model.draft, "read it", "draft restored so the user can retry")
+    XCTAssertNotNil(model.actionError, "the upload failure is surfaced")
+  }
+
+  func testDraftFirstSendUploadsUnderNewSessionScope() async {
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    model.stageAttachments([("draft.txt", Data("hi".utf8))])
+    model.draft = "look at this"
+    model.send()
+    await awaitSettled(model)
+    XCTAssertEqual(
+      spy.uploaded.last?.scopeId, "activity-m1",
+      "a draft uploads under the freshly-created session, matching desktop's sessionKey scope")
+  }
+
+  func testFilesStagedDuringInFlightSendSurvive() async {
+    // Stage A and send. While A's upload/send is in flight, the composer's "+"
+    // stays live, so the user stages B. On completion ONLY A must clear — B was
+    // never part of this send and must not be silently wiped.
+    let (model, spy, _, _) = makeModel()
+    model.stageAttachments([("a.pdf", Data("a".utf8))])
+    var stagedDuring = false
+    spy.onCall = {
+      guard !stagedDuring else { return }
+      stagedDuring = true
+      model.stageAttachments([("b.pdf", Data("b".utf8))])
+    }
+    model.send()
+    await awaitSettled(model)
+    XCTAssertEqual(spy.sent.count, 1, "the original send completed")
+    XCTAssertEqual(
+      model.stagedAttachments.map(\.name), ["b.pdf"],
+      "only the just-sent a.pdf clears; b.pdf staged mid-flight survives (no silent loss)")
+  }
+
+  func testFilesStagedDuringDraftFirstSendSurvive() async {
+    // Same race on a draft's create+send path (createAndSend clears by id too).
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    model.stageAttachments([("a.pdf", Data("a".utf8))])
+    var stagedDuring = false
+    spy.onCall = {
+      guard !stagedDuring else { return }
+      stagedDuring = true
+      model.stageAttachments([("b.pdf", Data("b".utf8))])
+    }
+    model.send()
+    await awaitSettled(model)
+    XCTAssertEqual(
+      model.stagedAttachments.map(\.name), ["b.pdf"],
+      "a draft's first send clears only its own files; a mid-flight stage survives")
+  }
+
+  func testRemoveStagedAttachmentDropsOne() {
+    let (model, _, _, _) = makeModel()
+    model.stageAttachments([("a.txt", Data("a".utf8)), ("b.txt", Data("b".utf8))])
+    let firstId = model.stagedAttachments[0].id
+    model.removeStagedAttachment(id: firstId)
+    XCTAssertEqual(model.stagedAttachments.map(\.name), ["b.txt"], "only the removed chip drops")
+  }
+
+  func testOversizeStagingSurfacesAttachmentError() {
+    let (model, _, _, _) = makeModel()
+    let big = Data(count: AttachmentStaging.maxFileBytes + 1)
+    model.stageAttachments([("huge.bin", big)])
+    XCTAssertTrue(model.stagedAttachments.isEmpty, "an oversize file is never staged")
+    XCTAssertNotNil(model.attachmentError, "the rejection surfaces on the dedicated attachment alert")
+  }
+
+  // MARK: stop
 
   func testStopDispatchesCancel() async {
     let (model, spy, _, _) = makeModel()
@@ -76,62 +297,156 @@ final class ChatScreenModelTests: XCTestCase {
     XCTAssertEqual(spy.cancelled.last?.conversationId, "activity-42")
   }
 
-  func testApproveDispatchesSetStatusDoneWithResolvedActivityId() async {
-    let (model, spy, _, _) = makeModel(conversationId: "activity-42")
-    await awaitCall(spy) { model.approve() }
-    XCTAssertEqual(spy.statuses.last?.status, "done")
-    XCTAssertEqual(spy.statuses.last?.activityId, "42", "activity-<id> session key → id")
-  }
+  // MARK: pending helmet slot + placeholder (PARITY §1/§2)
 
-  // MARK: activity id resolution
-
-  func testResolvedActivityIdStripsSessionKeyPrefix() {
-    let (model, _, _, _) = makeModel(conversationId: "activity-abc")
-    XCTAssertEqual(model.resolvedActivityId, "abc")
-  }
-
-  func testResolvedActivityIdFallsBackToRawWhenNoPrefix() {
-    let (model, _, _, _) = makeModel(conversationId: "conv-9")
-    XCTAssertEqual(model.resolvedActivityId, "conv-9")
-  }
-
-  // MARK: end-to-end scope binding — Approve bar reads the pair (PARITY §1)
-
-  func testApproveBarShowsOnNeedsYouSettle() throws {
-    let (model, _, client, transport) = makeModel()
-    model.appear()  // retains scopes → subscribe frames delivered
-    let sub = try XCTUnwrap(conversationSub(in: transport), "no conversation subscription opened")
-
-    let snapshot = JSONValue.object([
-      "feed": .array([
-        .object(["id": .string("f0"), "feed_type": .string("user_message"), "data": .string("hi")])
-      ]),
-      "running": .bool(false),
-      "sessionStatus": .string("completed"),
-      "boardStatus": .string("needs_you"),
-    ])
-    client.receiveOutbound(
-      BridgeTestJSON.encode(.snapshot(sub: sub, scope: model.conversation.scope, snapshot: snapshot)))
-
-    XCTAssertFalse(model.running)
-    XCTAssertTrue(model.showApproveBar, "needs_you + not running → Approve bar")
-    XCTAssertEqual(model.rows.count, 1)
-    model.disappear()
-  }
-
-  func testApproveBarHiddenWhileRunning() throws {
-    let (model, _, client, transport) = makeModel()
+  private func snapshot(
+    _ model: ChatScreenModel, _ client: SdkClient, _ transport: MockTransport, _ snapshot: JSONValue
+  ) throws {
     model.appear()
-    let sub = try XCTUnwrap(conversationSub(in: transport))
-    let snapshot = JSONValue.object([
-      "feed": .array([]), "running": .bool(true),
-      "sessionStatus": .string("running"), "boardStatus": .string("needs_you"),
-    ])
+    let sub = try XCTUnwrap(conversationSub(in: transport), "no conversation subscription opened")
+    let scope = try XCTUnwrap(model.conversation?.scope, "no conversation scope bound")
     client.receiveOutbound(
-      BridgeTestJSON.encode(.snapshot(sub: sub, scope: model.conversation.scope, snapshot: snapshot)))
-    XCTAssertTrue(model.running)
-    XCTAssertFalse(model.showApproveBar, "a running turn suppresses the Approve bar")
+      BridgeTestJSON.encode(.snapshot(sub: sub, scope: scope, snapshot: snapshot)))
+  }
+
+  func testPendingSlotShowsWhileSubmittedWithLabel() throws {
+    let (model, _, client, transport) = makeModel()
+    try snapshot(
+      model, client, transport,
+      .object([
+        "feed": .array([
+          .object(["id": .string("f0"), "feed_type": .string("user_message"), "data": .string("hi")])
+        ]),
+        "running": .bool(true), "sessionStatus": .string("running"),
+      ]))
+    XCTAssertTrue(model.showPending, "running + no streaming text → helmet slot")
+    XCTAssertTrue(model.showPendingLabel, "no active process yet → label shows above helmet")
     model.disappear()
+  }
+
+  func testPendingSlotHiddenWhileAssistantStreams() throws {
+    let (model, _, client, transport) = makeModel()
+    try snapshot(
+      model, client, transport,
+      .object([
+        "feed": .array([
+          .object([
+            "id": .string("f0"), "feed_type": .string("assistant_text_streaming"),
+            "data": .string("Draft"),
+          ])
+        ]),
+        "running": .bool(true), "sessionStatus": .string("running"),
+      ]))
+    XCTAssertFalse(model.showPending, "streaming reply is the progress signal — helmet vanishes")
+    model.disappear()
+  }
+
+  func testPendingLabelSuppressedWhenProcessBlockActive() throws {
+    let (model, _, client, transport) = makeModel()
+    try snapshot(
+      model, client, transport,
+      .object([
+        "feed": .array([
+          .object([
+            "id": .string("t0"), "feed_type": .string("tool_call"),
+            "data": .object(["name": .string("Read"), "input": .object(["file_path": .string("a.txt")])]),
+          ])
+        ]),
+        "running": .bool(true), "sessionStatus": .string("running"),
+      ]))
+    XCTAssertTrue(model.showPending, "helmet stays through tool phases")
+    XCTAssertFalse(model.showPendingLabel, "active process header already surfaces the label")
+    model.disappear()
+  }
+
+  func testComposerPlaceholderNewVsFollowUp() throws {
+    let (model, _, client, transport) = makeModel()
+    XCTAssertEqual(model.composerPlaceholder, Strings.Chat.newMissionPlaceholder)
+    try snapshot(
+      model, client, transport,
+      .object([
+        "feed": .array([
+          .object(["id": .string("u0"), "feed_type": .string("user_message"), "data": .string("hi")])
+        ]),
+        "running": .bool(false), "sessionStatus": .string("completed"),
+      ]))
+    XCTAssertEqual(
+      model.composerPlaceholder, Strings.Chat.followUpPlaceholder,
+      "once the user has spoken it is a follow-up")
+    model.disappear()
+  }
+
+  // MARK: draft first-send state machine (PARITY §6 / create-mission.ts)
+
+  /// Await the model's fire-and-forget send `Task` by polling until it settles.
+  private func awaitSettled(_ model: ChatScreenModel) async {
+    let exp = expectation(description: "send task settled")
+    Task { @MainActor in
+      while model.isSending { try? await Task.sleep(for: .milliseconds(5)) }
+      exp.fulfill()
+    }
+    await fulfillment(of: [exp], timeout: 2)
+  }
+
+  func testDraftFirstSendCreatesThenSendsThenBindsAndObserves() async {
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    XCTAssertNil(model.conversationId, "starts as an unsent draft")
+    model.draft = "  Draft the launch email \n"
+    model.send()
+    await awaitSettled(model)
+
+    XCTAssertEqual(spy.created.count, 1)
+    XCTAssertEqual(spy.created.last?.title, "Draft the launch email", "fallback title from the text")
+    XCTAssertEqual(spy.created.last?.description, "Draft the launch email")
+    XCTAssertEqual(spy.sent.last?.conversationId, "activity-m1", "sends into the new session")
+    XCTAssertEqual(spy.sent.last?.text, "Draft the launch email")
+    XCTAssertEqual(spy.observed.last?.conversationId, "activity-m1", "observes the now-real chat")
+    XCTAssertEqual(model.conversationId, "activity-m1", "draft transitioned into the real conversation")
+    XCTAssertNotNil(model.conversation, "conversation scope bound")
+    XCTAssertEqual(model.draft, "", "draft cleared on success")
+    XCTAssertNil(model.actionError)
+    XCTAssertTrue(spy.deleted.isEmpty, "no rollback on the happy path")
+    model.disappear()
+  }
+
+  func testDraftSendFailureRollsBackDeletesAndRestoresDraft() async {
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    spy.failOn = ["send"]
+    model.draft = "do the thing"
+    model.send()
+    await awaitSettled(model)
+
+    XCTAssertEqual(spy.created.count, 1)
+    XCTAssertEqual(spy.sent.count, 1, "send was attempted")
+    XCTAssertEqual(spy.deleted.last?.activityId, "m1", "the just-created activity is rolled back")
+    XCTAssertNil(model.conversationId, "draft unbound after rollback")
+    XCTAssertNil(model.conversation)
+    XCTAssertEqual(model.draft, "do the thing", "draft restored so the user can retry")
+    XCTAssertNotNil(model.actionError, "the failure is surfaced, never silent")
+  }
+
+  func testDraftCreateFailureNeverSendsAndRestoresDraft() async {
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    spy.failOn = ["create"]
+    model.draft = "hello"
+    model.send()
+    await awaitSettled(model)
+
+    XCTAssertEqual(spy.created.count, 1)
+    XCTAssertTrue(spy.sent.isEmpty, "no turn is sent when create fails")
+    XCTAssertTrue(spy.deleted.isEmpty, "nothing to roll back — create never succeeded")
+    XCTAssertNil(model.conversationId)
+    XCTAssertEqual(model.draft, "hello", "draft restored")
+    XCTAssertNotNil(model.actionError)
+  }
+
+  func testDraftBlankSendDoesNothing() {
+    let (model, spy, _, _) = makeModel(conversationId: nil)
+    model.draft = "   \n "
+    model.send()
+    XCTAssertTrue(spy.created.isEmpty)
+    XCTAssertNil(model.conversationId)
+    XCTAssertEqual(model.sendTick, 0)
   }
 
   /// Find the `sub` id of the subscribe frame targeting the `conversation/` scope.

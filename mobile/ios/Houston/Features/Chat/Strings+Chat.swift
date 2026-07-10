@@ -10,20 +10,35 @@ import Foundation
 // surface agents never collide on the shared file.
 extension Strings {
   enum Chat {
-    // Composer (chat.json:composer).
-    static let composerPlaceholder = "Ask anything..."
+    // Composer. A fresh mission invites the first message (ai-board.tsx:700-703);
+    // an ongoing conversation reads like a messenger. Mobile uses "Message" (not
+    // desktop's "Send a follow-up...") on purpose — WhatsApp / Telegram familiarity.
+    static let newMissionPlaceholder = "What should the agent work on?"
+    static let followUpPlaceholder = "Message"
     static let send = "Send"
     static let stop = "Stop"
+    static let addAttachment = "Add attachment"
     static let scrollToLatest = "Scroll to latest"
+
+    // The model picker sheet (mobile adaptation of `use-chat-model-picker.tsx` —
+    // NOT the 600px popover with favorites/recents/connect; a plain per-agent
+    // list of each configured provider's models).
+    enum ModelPicker {
+      static let title = "Model"
+      static let cancel = "Cancel"
+      static let emptyTitle = "No models yet"
+      static let emptyDescription = "Connect a provider from the desktop app to choose a model."
+    }
 
     // Live status line (chat.json:process).
     static let missionInProgress = "Mission in progress..."
     static func missionInProgress(action: String) -> String {
       "Mission in progress: \(action)"
     }
-    /// The settled turn-summary heading (chat.json:process.complete).
+    /// The settled process-block header label (chat.json:process.complete).
+    /// This is ONLY the collapsed header — never a block that repeats the reply.
     static let missionLog = "Mission log"
-    /// Accessibility label for the pending queued-message bubbles (PARITY §5).
+    /// Accessibility label for the pending queued-message bubbles (PARITY §7).
     static let queued = "Queued messages"
 
     // Reasoning block (chat.json:reasoning).
@@ -50,9 +65,6 @@ extension Strings {
     // Tool runtime error (feed-to-messages.ts + chat.json:toolRuntimeError).
     static let toolRuntimeError = "A local tool failed to start."
     static let tryAgain = "Try again."
-
-    // Approve bar (board.json:cardActions.approve, PARITY §5).
-    static let moveToDone = "Move to done"
 
     // Empty chat (chat.json:empty).
     static let emptyTitle = "Start a conversation"

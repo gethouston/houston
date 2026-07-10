@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { HttpObjectStore } from "@houston/runtime-client/object-sync";
 import {
   LOCAL_CAPABILITIES,
   MANAGED_CLOUD_CAPABILITIES,
@@ -36,6 +37,7 @@ import { runtimeCommand } from "./runtime-command";
  *                             falls back to `node --import tsx <repo>/packages/runtime/src/main.ts`.
  *   HOUSTON_APP_SYSTEM_PROMPT the product voice prompt (from the app)
  *   HOUSTON_MANAGED_CLOUD=1  serve managed-cloud capabilities (K8s pod)
+ *   HOUSTON_STORE_URL         managed pod only: object-store gateway base URL
  */
 
 function remoteCredentialConfig(hostTokenEnv: string | undefined) {
@@ -45,7 +47,7 @@ function remoteCredentialConfig(hostTokenEnv: string | undefined) {
   if (url && orgSlug && agentSlug && hostTokenEnv) {
     return { url, orgSlug, agentSlug, podToken: hostTokenEnv };
   }
-  if (url || orgSlug || agentSlug) {
+  if (url || (!process.env.HOUSTON_STORE_URL && (orgSlug || agentSlug))) {
     // A partial env is always a deploy bug — no profile sets only some of these.
     // Falling back to the (empty) file store would make every credential serve
     // read as an org-wide logout, and a legacy pod would even start rotating
@@ -57,6 +59,38 @@ function remoteCredentialConfig(hostTokenEnv: string | undefined) {
     process.exit(1);
   }
   return undefined;
+}
+
+function optionalPositiveNumber(name: string): number | undefined {
+  const raw = process.env[name];
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${name} must be a positive number`);
+  }
+  return value;
+}
+
+function storeSyncConfig(hostTokenEnv: string | undefined) {
+  const url = process.env.HOUSTON_STORE_URL;
+  if (!url) return undefined;
+  const orgSlug = process.env.HOUSTON_ORG_SLUG;
+  const agentSlug = process.env.HOUSTON_AGENT_SLUG;
+  if (!orgSlug || !agentSlug || !hostTokenEnv) {
+    console.error(
+      "[local-host] incomplete managed object-store env: set HOUSTON_STORE_URL, HOUSTON_ORG_SLUG, HOUSTON_AGENT_SLUG, and HOUSTON_HOST_TOKEN together.",
+    );
+    process.exit(1);
+  }
+  const baseUrl = `${url.replace(/\/+$/, "")}/v1/pod/store/${encodeURIComponent(orgSlug)}/${encodeURIComponent(agentSlug)}`;
+  const hydrateMaxMb = optionalPositiveNumber("HOUSTON_HYDRATE_MAX_MB");
+  return {
+    store: new HttpObjectStore({ baseUrl, token: hostTokenEnv }),
+    quietMs: optionalPositiveNumber("HOUSTON_STORE_SYNC_QUIET_MS"),
+    intervalMs: optionalPositiveNumber("HOUSTON_STORE_SYNC_INTERVAL_MS"),
+    maxHydrateBytes:
+      hydrateMaxMb === undefined ? undefined : hydrateMaxMb * 1024 * 1024,
+  };
 }
 
 const houstonHome = process.env.HOUSTON_HOME || join(homedir(), ".houston");
@@ -105,6 +139,7 @@ const host = buildLocalHost({
   // calls act as the driving user. Desktop/self-host stay direct → false.
   gatewayFronted: process.env.HOUSTON_MANAGED_CLOUD === "1",
   credentials: remoteCredentialConfig(hostTokenEnv),
+  storeSync: storeSyncConfig(hostTokenEnv),
   // Platform-mode integrations: desktops get HOUSTON_INTEGRATIONS_URL (the
   // cloud gateway holding Houston's Composio key); self-host + the managed pod
   // set their own COMPOSIO_API_KEY and go direct. Neither → integrations off.
@@ -130,12 +165,24 @@ process.on("unhandledRejection", (reason) => {
   console.error("[local-host] unhandledRejection (staying up):", reason);
 });
 
-await host.start();
+try {
+  await host.start();
+} catch (err) {
+  // Hydration is a boot invariant in store-backed mode. Exit non-zero so the
+  // orchestrator retries with a fresh emptyDir; never linger unready or sync it.
+  console.error("[local-host] startup failed:", err);
+  process.exit(1);
+}
 
+let shuttingDown = false;
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, () => {
-    host.stop(); // kills every child runtime before we exit
-    process.exit(0);
+    if (shuttingDown) return process.exit(0);
+    shuttingDown = true;
+    void host
+      .stop()
+      .catch((err) => console.error("[local-host] shutdown failed:", err))
+      .finally(() => process.exit(0));
   });
 }
 
@@ -146,4 +193,4 @@ for (const sig of ["SIGINT", "SIGTERM"] as const) {
 // (its default signal); self-host Docker, plain `tsx`, and tests leave it
 // unset and stay inert. Windows force-quit is covered by the supervisor's
 // kill-on-close Job Object.
-installParentWatchdog({ onParentExit: () => host.stop() });
+installParentWatchdog({ onParentExit: async () => await host.stop() });

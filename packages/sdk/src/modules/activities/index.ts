@@ -15,22 +15,17 @@
  * shared {@link ModuleContext.authExpiry} notifier.
  */
 
+import type { PendingInteraction } from "@houston/protocol";
 import type { ModuleContext } from "../../module-context";
+import { registerActivitiesCommands } from "./commands";
 import { startActivitiesEventStream } from "./events-stream";
 import { createActivitiesHttp } from "./http";
 import {
-  parseCreate,
-  parseDelete,
-  parseRefresh,
-  parseRename,
-  parseSetStatus,
-} from "./payloads";
-import {
-  ActivitiesCommand,
   type ActivitiesModule,
   type ActivitiesViewModel,
   activitiesScope,
   type CreatedActivity,
+  matchesActivitySessionKey,
   sessionKeyOf,
   toActivityItem,
 } from "./types";
@@ -107,6 +102,35 @@ export function createActivitiesModule(ctx: ModuleContext): ActivitiesModule {
     await http.update(agentId, id, { status });
     await refresh(agentId);
   }
+  // Board persist for the turn machinery (SDK path), keyed by chat session, not
+  // id (contract on {@link ActivitiesModule}). The interaction the turn ended on
+  // rides the same PATCH (`null` clears it — turn start, or a settle carrying
+  // none), so a `needs_you` card survives reload on the SDK path exactly as the
+  // web adapter persists it. Refetch is SILENT — a mid-turn write must not flash
+  // the board to "loading".
+  async function setStatusBySessionKey(
+    agentId: string,
+    sessionKey: string,
+    status: string,
+    pendingInteraction: PendingInteraction | null,
+  ): Promise<void> {
+    const match = (await http.list(agentId)).find((a) =>
+      matchesActivitySessionKey(a, sessionKey),
+    );
+    if (!match) {
+      ports.logger.warn("activities: no activity for session key", {
+        agentId,
+        sessionKey,
+        status,
+      });
+      return;
+    }
+    await http.update(agentId, match.id, {
+      status,
+      pending_interaction: pendingInteraction,
+    });
+    await refresh(agentId, true);
+  }
   async function rename(
     agentId: string,
     id: string,
@@ -120,25 +144,7 @@ export function createActivitiesModule(ctx: ModuleContext): ActivitiesModule {
     await refresh(agentId);
   }
 
-  ctx.registerCommand(ActivitiesCommand.Refresh, (p) =>
-    refresh(parseRefresh(p).agentId),
-  );
-  ctx.registerCommand(ActivitiesCommand.Create, (p) => {
-    const { agentId, title, description } = parseCreate(p);
-    return create(agentId, title, description);
-  });
-  ctx.registerCommand(ActivitiesCommand.SetStatus, (p) => {
-    const { agentId, id, status } = parseSetStatus(p);
-    return setStatus(agentId, id, status);
-  });
-  ctx.registerCommand(ActivitiesCommand.Rename, (p) => {
-    const { agentId, id, title } = parseRename(p);
-    return rename(agentId, id, title);
-  });
-  ctx.registerCommand(ActivitiesCommand.Delete, (p) => {
-    const { agentId, id } = parseDelete(p);
-    return del(agentId, id);
-  });
+  registerActivitiesCommands(ctx, { refresh, create, setStatus, rename, del });
 
   // A stream-driven refetch is not a user action: a transient failure just
   // leaves the snapshot stale until the next event. A 401 still surfaces (http
@@ -178,6 +184,7 @@ export function createActivitiesModule(ctx: ModuleContext): ActivitiesModule {
     refresh,
     create,
     setStatus,
+    setStatusBySessionKey,
     rename,
     delete: del,
     dispose,

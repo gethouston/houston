@@ -1,5 +1,5 @@
 /**
- * Portable agents ("Share with a friend" / "From a friend") on the new engine.
+ * Portable agents ("Export a copy" / "From a friend") on the new engine.
  *
  * Export preview + packaging go through the host's v3 portable routes. An
  * uploaded `.houstonagent` is unpacked IN THE BROWSER with the same domain
@@ -45,13 +45,18 @@ async function hostFetch(
   init?: RequestInit,
 ): Promise<Response> {
   // gatewayAuthFetch: live bearer per attempt + 401 refresh/replay (HOU-687).
-  const res = await gatewayAuthFetch(cfg.token)(`${cfg.baseUrl}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
+  // Carry the active-space selector (C8) so a team-space agent's portable
+  // routes resolve in the team namespace, not the caller's personal org.
+  const res = await gatewayAuthFetch(cfg.token, () => cfg.activeOrgSlug)(
+    `${cfg.baseUrl}${path}`,
+    {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...init?.headers,
+      },
     },
-  });
+  );
   if (!res.ok) {
     throw new HoustonEngineError(
       res.status,
@@ -61,7 +66,7 @@ async function hostFetch(
   return res;
 }
 
-/** The agent's exportable content, for the "Share with a friend" pick screen. */
+/** The agent's exportable content, for the "Export a copy" pick screen. */
 export async function exportPreview(
   cfg: ControlPlaneConfig,
   agentId: string,

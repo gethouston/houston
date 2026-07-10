@@ -9,7 +9,7 @@
     "agentMenu": "Menu do agente",
     "collapse": "Recolher barra lateral",
     "expand": "Expandir barra lateral",
-    "createOrganization": "Criar organização",
+    "createWorkspace": "Criar espaço de trabalho",
     "groups": {
       "new": "Novo grupo",
       "newDefault": "Novo grupo",
@@ -18,7 +18,15 @@
       "menu": "Opções do grupo",
       "namePlaceholder": "Nome do grupo",
       "emptyHint": "Arraste agentes aqui",
-      "ungrouped": "Sem grupo"
+      "ungrouped": "Sem grupo",
+      "editContext": "Editar contexto compartilhado",
+      "contextDialog": {
+        "title": "Contexto compartilhado de {{name}}",
+        "description": "Esta nota é adicionada a todos os agentes deste grupo, então todos compartilham o mesmo contexto.",
+        "placeholder": "ex. Somos um estúdio de design. Mantenha as respostas curtas e nunca compartilhe nomes de clientes.",
+        "save": "Salvar",
+        "cancel": "Cancelar"
+      }
     },
     "color": "Cor",
     "changeColor": "Alterar cor",
@@ -67,6 +75,10 @@
     "skip": "Pular tour",
     "done": "Entendi",
     "steps": {
+      "spaces": {
+        "title": "Espaços",
+        "body": "Seus agentes pessoais, e os times que você compartilha com outros. Troque de espaço quando quiser por aqui."
+      },
       "assistant": {
         "title": "Seus agentes",
         "body": "Todos os agentes deste espaço ficam aqui. Troque entre eles com um clique."

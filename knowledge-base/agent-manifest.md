@@ -224,7 +224,7 @@ Engine route: `POST /v1/store/workspaces/install-from-github`. Rust impl: `houst
 | > Connections               |  workspace-wide integrations
 | > Organization              |  Teams v2 dashboard (owner/admin + multiplayer only)
 |-----------------------------|
-| Your AI Agents          [+] |  section label + folder-plus "New group" button
+| Your AI Agents          [+] |  section label + a people (Users) icon "New group" button
 |   ▾ Work                 [2]|  a named, collapsible group (drag its title to move it)
 |     > Research Agent    [2] |
 |     > Project Manager       |
@@ -278,6 +278,23 @@ end of the default section). Absent/corrupt reads as `{ [], [] }`.
   ordering in `lib/agent-order.ts` (`resolveSidebarSections` / `flatSidebarOrder`
   — the SAME order feeds ⌘[ / ⌘] cycling + the command palette). Group labels
   live under `shell:sidebar.groups.*` (en/es/pt).
+- **Group shared context.** `SidebarGroup.context?: string` — one note shared
+  by every agent in that group (a group-scoped `WORKSPACE.md`). Edited from the
+  group header's "..." menu → "Edit shared context"
+  (`app/src/components/shell/group-context-dialog.tsx`), saved via
+  `sidebar.setGroupContext` → `setGroupContextOp` → the same `PUT
+  sidebar-layout` write. On every PUT, `routes/account.ts` diffs the previous
+  vs. new per-agent resolved context (`routes/group-context-sync.ts`:
+  `resolveGroupContextByAgent` / `diffGroupContext`) and mirrors it to a
+  `GROUP.md` file at each affected member agent's root (same location as
+  `WORKSPACE.md`; written/deleted via `paths.agentRoot(ws, agent)`, best-effort
+  — never fails the primary layout write), firing `ContextChanged` per agent.
+  Runtime read side: `buildGroupContextSection` in
+  `packages/runtime/src/session/workspace-context.ts`, injected after the
+  workspace/user context section and before the mode overlay — present only
+  for grouped agents (no empty-marker stub, unlike WORKSPACE.md/USER.md, since
+  group membership is optional). Local/self-host only; no cloud "provided"
+  variant yet (would need gateway wiring in the closed `cloud` repo).
 
 Agent rows show a count chip for `needs_you` activity items. If any
 activity item is `running`, the row avatar uses the same comet glow as
@@ -605,15 +622,28 @@ marketplace, not a settings pane. Entry: `app/src/components/ai-hub/ai-hub-view.
   (`components/provider-browser/provider-browser.tsx`, rows in
   `provider-browser/provider-row.tsx`, grouped by
   `provider-browser/provider-grouping.ts`): brand-colored cards in Connected /
-  Available sections, featured pinned first, with the search + quick-filter bar.
-  The SAME component renders onboarding's connect step, the migration reconnect
-  screen, and workspace setup (they pass `onSelect`/`selectOnMount`; the hub
-  passes `onOpen` + `renderDialogs={false}`). Coming-soon tiles are gone.
+  Available sections, featured pinned first, with a search box + two
+  Subscription/Pay-as-you-go toggle buttons (`provider-filters.tsx`,
+  single-select — click the active one to clear back to "all"). The filter is
+  driven by BILLING (`providerBilling()` in `provider-grouping.ts`), not by
+  how the provider authenticates: it defaults from `auth` (oauth ->
+  subscription, apiKey -> payg) but `PROVIDER_OVERRIDES[id].billing` overrides
+  it where the two diverge — OpenCode Go is a flat $10/month subscription
+  unlocked with a pasted key. The merged OpenCode connect card (Zen + Go share
+  one key) spans both billing kinds and matches whichever filter is active
+  rather than being forced into one. No per-card auth badge/icon — how a
+  provider is paid for lives in the filter and the existing cost prose (e.g.
+  "Your Claude subscription"), not a separate visual element on every card
+  (an inline badge/icon was tried and dropped as too heavy / not worth the
+  clutter). The SAME `ProviderBrowser` component renders onboarding's connect
+  step, the migration reconnect screen, and workspace setup (they pass
+  `onSelect`/`selectOnMount`; the hub passes `onOpen` + `renderDialogs={false}`).
+  Coming-soon tiles are gone.
 - **Provider detail** (`provider-modal.tsx`): connect / sign-out plus that
   provider's model list.
 - **Model directory** (`model-directory.tsx` → `models-browser.tsx` /
   `model-card-row.tsx`): the cross-provider catalog (~378 unique models) as a
-  `sm:grid-cols-2` card grid (BrandMark + name + lab + a visible "See more" cue),
+  single-column list (BrandMark + name + lab + a visible "See more" cue),
   above a control row of a pill search box + four facet comboboxes — AI provider
   (self-hides at one lab), Good at, Cost, Memory. The comboboxes are the shared
   `ai-hub/filter-combobox.tsx` (Popover + cmdk, optional in-dropdown search),
@@ -635,27 +665,36 @@ three reusable content components are in `design/inventory` (see below).
 ### The catalog
 
 Data lives in `app/src/lib/ai-hub/**`. The directory is built at runtime by
-`loadHubCatalog(visibleProviderIds)` (`catalog.ts`) from **two** sources:
+`loadHubCatalog(catalog, opts)` (`catalog.ts`) from **two** sources:
 
-1. **A checked-in models.dev snapshot** — `app/src/lib/ai-hub/model-catalog.json`,
+1. **pi-ai's live `/v1/catalog`** (the `ProviderCatalog` wire shape, the SAME
+   runnable set the chat model picker hydrates from) — mapped to merge
+   candidates by `piCatalogToCandidates` (`catalog-pi.ts`). This is the
+   AUTHORITATIVE base: every hub model exists because pi-ai can run it, with
+   pi's own pricing/context/reasoning/vision.
+2. **A checked-in models.dev snapshot** — `app/src/lib/ai-hub/model-catalog.json`,
    generated by `node scripts/generate-model-catalog.mjs` (re-run to refresh; set
-   `MODELS_DEV_JSON` to a local `api.json` for an offline/pinned run). It keeps
-   only the providers Houston routes to and only the fields the hub renders. Every
+   `MODELS_DEV_JSON` to a local `api.json` for an offline/pinned run) — folded in
+   SECOND as optional enrichment (`foldEnrichment`): it fills metadata pi lacks
+   (description / toolCall / imageGen / knowledge / releaseDate) on a model that
+   also exists in pi-ai; a snapshot-only model is dropped, never added. Every
    model gets a normalized cross-provider `key` (via `normalizeKey`) so the same
    model across Anthropic / Bedrock / Copilot / OpenCode / OpenRouter folds into
-   one directory entry. The timestamp is a content hash, not wall-clock, so a
-   re-run on unchanged source is byte-identical (clean diffs). `opencode-go`'s
-   models are folded into the `opencode` bucket at generation time.
-2. **The curated `PROVIDERS` catalog** (`app/src/lib/providers.ts`), merged in at
-   runtime with the snapshot specs.
+   one directory entry.
 
-**The OAuth-curated vs gateway-full-list rule** (`catalog.ts`):
+**The OAuth-curated vs gateway-full-list rule** (`piCatalogToCandidates` in
+`catalog-pi.ts`):
 - **API-key gateways** (`opencode`, `openrouter`, `deepseek`, `google`,
-  `amazon-bedrock`, `minimax`) contribute their **full** snapshot model lists —
-  any model the gateway serves is an offer.
+  `amazon-bedrock`, `minimax`, and any provider with no Houston override) offer
+  their **full** pi-ai model list — any model the gateway serves is an offer.
 - **Subscription / OAuth providers** (`openai`, `anthropic`, `github-copilot`)
-  contribute **only their curated `PROVIDERS.models`** (enriched with snapshot
-  specs), because the plan can only run that curated set — never the full list.
+  are filtered down to **only their curated `PROVIDER_OVERRIDES[id].models`**
+  ids, because the plan can only run that curated set, never pi's full
+  historical list (pi ships every model id it can still talk to — ~24 for
+  Anthropic alone, including old ids like `claude-3-opus`). Without this filter
+  the AI Hub / provider modal showed the full uncurated catalog instead of the
+  ~4-model curated set (HOU curation-gate fix); `hub-catalog.test.ts` +
+  `catalog-pi.test.ts` assert the gate.
 
 Which providers are visible is gated by `getVisibleProviders` /
 `getConnectProviders` (`providers.ts`): new-engine + desktop + host `capabilities`
@@ -734,12 +773,13 @@ Built in `engine/houston-engine-core/src/agents/prompt.rs::build_agent_context`:
 2. Mode file `.houston/prompts/modes/<mode>.md` (optional, user-editable).
 3. Learnings snapshot — `.houston/learnings/learnings.json`, text fields only, rendered as bounded background context. IDs/timestamps stay storage/UI-only.
 4. **Workspace context block** — assembled from `<workspace>/WORKSPACE.md` + `<workspace>/USER.md` (the agent's parent dir) by `workspace_context::build_prompt_section`. Always included for any agent whose parent dir has a `.houston/`. Files are NOT seeded — they only exist once the user or an agent writes them; until then the section renders an "(empty so far, ask the user when relevant)" marker so the agent knows the slot exists. Section explicitly authorizes the agent to read/write these two files (carve-out from the working-directory rule) and tells it that edits take effect on the **next** chat.
+4a. **Group context block** (current TS host only, no Rust-era equivalent) — `<agent-root>/GROUP.md`, present only when the agent belongs to a sidebar group with shared context set; see "Group shared context" under the sidebar section above. Unlike the workspace block there is no empty-marker stub: an ungrouped agent gets nothing appended.
 5. Skills index — `.agents/skills/` via `houston_skills::build_skills_index`.
 6. Integrations block — based on `.houston/integrations.json` if present.
 
 `CLAUDE.md` is read by the CLI (claude/codex) itself at startup, not injected by the engine.
 
-Users cannot edit the product prompt — it's compiled into the app binary. Per-agent surfaces that ARE user-editable: `CLAUDE.md` (job description), `.agents/skills/` (skills), `.houston/learnings/learnings.json` (learnings), `.houston/prompts/modes/*.md` (mode overrides). Per-workspace surfaces (shared by every agent in the workspace): `WORKSPACE.md` (about the company/project), `USER.md` (about the human running it). Both edited from Settings → Workspace → Shared context, or directly by agents when the user shares new info.
+Users cannot edit the product prompt — it's compiled into the app binary. Per-agent surfaces that ARE user-editable: `CLAUDE.md` (job description), `.agents/skills/` (skills), `.houston/learnings/learnings.json` (learnings), `.houston/prompts/modes/*.md` (mode overrides). Per-workspace surfaces (shared by every agent in the workspace): `WORKSPACE.md` (about the company/project), `USER.md` (about the human running it). Both edited from Settings → Workspace → Shared context, or directly by agents when the user shares new info. Per-group surfaces (shared by every agent in one sidebar group only): `GROUP.md`, edited from the group's "..." menu → Edit shared context, mirrored to member agents by the host on every sidebar-layout write.
 
 ## Board / Activity tab
 `@houston-ai/board::AIBoard` = `KanbanBoard` + `KanbanDetailPanel` + `ChatPanel`. Generic, props-only. Each card = activity from `.houston/activity/activity.json`. Click → opens chat w/ conversation history.

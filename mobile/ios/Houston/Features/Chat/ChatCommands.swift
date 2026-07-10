@@ -10,12 +10,37 @@ protocol ChatCommanding {
   /// Attach to the conversation: hydrates persisted history, then streams live
   /// (`turns/observe` — the gaps agent made it history-first, PARITY §5).
   func observe(agentId: String, conversationId: String) async throws
-  /// Start a turn with the user's message (`turns/send`).
-  func send(agentId: String, conversationId: String, text: String) async throws
+  /// Start a turn with the user's message (`turns/send`). `model`, when set, is
+  /// a per-conversation pin (HOU-695 — the "+" menu's model picker sets it on
+  /// ``ChatScreenModel``); it never touches the agent-wide default and the
+  /// runtime resolves the owning provider from it. `nil` falls back to the
+  /// agent's active provider/model, exactly like an omitted wire field. `effort`
+  /// is the same kind of per-conversation pin (the "+" menu's effort sheet),
+  /// threaded as `TurnSendInput.effort` (`turn-inputs.ts`); `nil` runs at the
+  /// agent default.
+  func send(
+    agentId: String, conversationId: String, text: String, model: String?,
+    effort: EffortLevel?) async throws
+  /// Upload staged attachments for a conversation before its message is sent
+  /// (`turns/attachments/save`), returning the saved workspace-RELATIVE paths
+  /// (`uploads/<name>`) woven into the message by ``AttachmentMessage``. The Read
+  /// tool resolves them against the agent's workspace root
+  /// (`packages/host/src/turn/attachments.ts`). `scopeId` is the conversation's
+  /// session key — the SAME scope desktop saves under (`use-agent-chat-panel.tsx`
+  /// mid-conversation path: `scopeId = sessionKey`). An oversize request
+  /// surfaces the host's typed too-large error as a ``CommandError``.
+  func saveAttachments(
+    agentId: String, scopeId: String, files: [AttachmentUpload]) async throws -> [String]
   /// Cancel the in-flight turn (`turns/cancel` — the silent needs_you Stop).
   func cancel(agentId: String, conversationId: String) async throws
   /// Transition a mission's status, e.g. approve → `done` (`activities/setStatus`).
   func setStatus(agentId: String, activityId: String, status: String) async throws
+  /// Create a mission's activity — the first half of a draft's first send
+  /// (`activities/create`). Returns the new activity id + its chat session key.
+  func create(agentId: String, title: String, description: String) async throws -> CreatedActivity
+  /// Delete an activity — the rollback when a draft's first send fails after the
+  /// activity was created (`activities/delete`), so the board keeps no fake card.
+  func delete(agentId: String, activityId: String) async throws
 }
 
 /// The production ``ChatCommanding``: forwards to ``SdkClient``.
@@ -27,9 +52,23 @@ struct SdkChatCommands: ChatCommanding {
       "turns/observe", ConversationRef(conversationId: conversationId, agentId: agentId))
   }
 
-  func send(agentId: String, conversationId: String, text: String) async throws {
+  func send(
+    agentId: String, conversationId: String, text: String, model: String?, effort: EffortLevel?
+  ) async throws {
     let _: SdkVoid = try await client.command(
-      "turns/send", SendArgs(conversationId: conversationId, text: text, agentId: agentId))
+      "turns/send",
+      SendArgs(
+        conversationId: conversationId, text: text, agentId: agentId, model: model,
+        effort: effort?.rawValue))
+  }
+
+  func saveAttachments(
+    agentId: String, scopeId: String, files: [AttachmentUpload]
+  ) async throws -> [String] {
+    let result: SaveAttachmentsResult = try await client.command(
+      "turns/attachments/save",
+      SaveAttachmentsArgs(agentId: agentId, scopeId: scopeId, files: files))
+    return result.paths
   }
 
   func cancel(agentId: String, conversationId: String) async throws {
@@ -40,6 +79,16 @@ struct SdkChatCommands: ChatCommanding {
   func setStatus(agentId: String, activityId: String, status: String) async throws {
     let _: SdkVoid = try await client.command(
       "activities/setStatus", SetStatusArgs(agentId: agentId, id: activityId, status: status))
+  }
+
+  func create(agentId: String, title: String, description: String) async throws -> CreatedActivity {
+    try await client.command(
+      "activities/create", CreateArgs(agentId: agentId, title: title, description: description))
+  }
+
+  func delete(agentId: String, activityId: String) async throws {
+    let _: SdkVoid = try await client.command(
+      "activities/delete", DeleteArgs(agentId: agentId, id: activityId))
   }
 
   // Payload shapes mirror the SDK command validators verbatim
@@ -53,10 +102,52 @@ struct SdkChatCommands: ChatCommanding {
     let conversationId: String
     let text: String
     let agentId: String
+    /// Per-turn model pin (`TurnSendInput.model`, `turn-inputs.ts`). Absent
+    /// optionals are omitted, matching the TS `undefined`.
+    let model: String?
+    /// Per-turn reasoning-effort pin (`TurnSendInput.effort`). Omitted when nil.
+    let effort: String?
+  }
+  private struct SaveAttachmentsArgs: Encodable {
+    let agentId: String
+    let scopeId: String
+    let files: [AttachmentUpload]
   }
   private struct SetStatusArgs: Encodable {
     let agentId: String
     let id: String
     let status: String
   }
+  private struct CreateArgs: Encodable {
+    let agentId: String
+    let title: String
+    let description: String
+  }
+  private struct DeleteArgs: Encodable {
+    let agentId: String
+    let id: String
+  }
+}
+
+/// One staged file in a `turns/attachments/save` request: its display name and
+/// base64-encoded bytes. Mirrors the SDK bridge command's `files[]` element
+/// (`{ name, contentBase64 }`).
+struct AttachmentUpload: Encodable, Equatable, Sendable {
+  let name: String
+  let contentBase64: String
+}
+
+/// The `turns/attachments/save` result: the saved workspace-relative paths
+/// (`uploads/<name>`), in request order, to weave into the message via
+/// ``AttachmentMessage/encode(text:paths:names:)``.
+private struct SaveAttachmentsResult: Decodable {
+  let paths: [String]
+}
+
+/// The result of `activities/create`: the new activity id + the chat session to
+/// open (mirrors the SDK's `CreatedActivity`). Consumed by a draft chat's first
+/// send to transition the draft into the real conversation.
+struct CreatedActivity: Decodable, Equatable, Sendable {
+  let id: String
+  let sessionKey: String
 }

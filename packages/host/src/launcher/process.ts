@@ -230,4 +230,31 @@ export class ProcessLauncher implements RuntimeLauncher {
     for (const r of this.running.values()) r.handle.kill();
     this.running.clear();
   }
+
+  /**
+   * shutdownAll, but resolved only once every child has ACTUALLY exited (or
+   * timeoutMs passes). The store-sync stop path needs this: a final /data sync
+   * taken while a child is still flushing its last conversation write would
+   * persist a torn file as the agent's durable state. Handles without onExit
+   * (test stubs) count as already exited.
+   */
+  async shutdownAllAndWait(timeoutMs = 5_000): Promise<void> {
+    const waits: Promise<void>[] = [];
+    for (const r of this.running.values()) {
+      const { onExit } = r.handle;
+      if (onExit) {
+        waits.push(new Promise<void>((resolve) => onExit(() => resolve())));
+      }
+      r.handle.kill();
+    }
+    this.running.clear();
+    if (waits.length === 0) return;
+    await Promise.race([
+      Promise.all(waits).then(() => undefined),
+      new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, timeoutMs);
+        timer.unref?.();
+      }),
+    ]);
+  }
 }

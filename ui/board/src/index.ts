@@ -25,9 +25,18 @@ export { KanbanListItem } from "./kanban-list-item";
 export { KANBAN_LIST_RAIL_CLASS_NAME } from "./kanban-list-layout";
 export type { KanbanListRailProps } from "./kanban-list-rail";
 export { KanbanListRail } from "./kanban-list-rail";
+export type { KanbanPeopleProps } from "./kanban-people";
+export {
+  CARD_PEOPLE_MAX,
+  initialsFor,
+  KanbanPeople,
+  overflowCount,
+  visiblePeople,
+} from "./kanban-people";
 export type {
   BoardSearchSnippet,
   ConversationEntry,
   KanbanColumn as KanbanColumnConfig,
   KanbanItem,
+  KanbanPerson,
 } from "./types";

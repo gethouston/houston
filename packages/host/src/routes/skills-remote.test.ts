@@ -47,7 +47,7 @@ const outbound: typeof fetch = async (input) => {
         truncated: false,
       }),
     );
-  if (url.includes("raw.githubusercontent.com/owner/repo/main/"))
+  if (url.includes("raw.githubusercontent.com/owner/repo/HEAD/"))
     return url.includes("research/SKILL.md")
       ? new Response(RESEARCH_MD)
       : new Response("", { status: 404 });
@@ -131,6 +131,16 @@ test("community install resolves the skill and returns its slug", async () => {
   });
   expect(res.status).toBe(200);
   expect(await res.json()).toBe("research");
+});
+
+test("community preview serves read-only detail agent-scoped", async () => {
+  const res = await post("/skills/community/preview", {
+    source: "owner/repo",
+    skillId: "research",
+  });
+  expect(res.status).toBe(200);
+  const preview = (await res.json()) as { description: string };
+  expect(preview.description).toBe("Deep research");
 });
 
 test("garbage repo input answers a typed invalid_repo_source", async () => {

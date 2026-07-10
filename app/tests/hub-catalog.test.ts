@@ -103,32 +103,43 @@ describe("pricing and subscription flags come from pi", () => {
     strictEqual(opencode?.costOutput, 2);
   });
 
-  it("exposes exactly the pi catalog's models for an OAuth provider (no curation gate)", () => {
+  it("curates an OAuth provider down to PROVIDER_OVERRIDES.<id>.models", () => {
+    // The fixture's `anthropic` provider also runs the prior-generation
+    // `claude-sonnet-4-6` / `claude-opus-4-7` ids, which have no
+    // PROVIDER_OVERRIDES.anthropic.models entry — the plan can't actually pick
+    // them, so the hub must not offer them (HOU curation gate).
     const ids = new Set<string>();
     for (const model of all.models)
       for (const offer of model.offers)
         if (offer.providerId === "anthropic") ids.add(offer.modelId);
     deepStrictEqual([...ids].sort(), [
       "claude-fable-5",
-      "claude-opus-4-7",
       "claude-opus-4-8",
-      "claude-sonnet-4-6",
       "claude-sonnet-5",
     ]);
+    ok(!ids.has("claude-sonnet-4-6"), "uncurated OAuth model must be filtered");
+    ok(!ids.has("claude-opus-4-7"), "uncurated OAuth model must be filtered");
+  });
+
+  it("never curation-gates an API-key gateway", () => {
+    // groq has no PROVIDER_OVERRIDES entry at all, and opencode is api-key —
+    // both must expose every pi model they run.
+    ok(all.byKey.get("llama 4 scout"));
+    ok(all.byKey.get("llama 3.3 70b"));
   });
 });
 
 describe("capabilities map through the pi → hub pipeline", () => {
   it("turns pi vision into an image input modality and keeps reasoning", () => {
-    const sonnet5 = all.byKey.get("claude sonnet 5");
-    ok(sonnet5, "expected 'claude sonnet 5'");
-    ok(sonnet5?.inputModalities.includes("image"), "vision → image modality");
-    strictEqual(sonnet5?.reasoning, true);
+    const scout = all.byKey.get("llama 4 scout");
+    ok(scout, "expected 'llama 4 scout'");
+    ok(scout?.inputModalities.includes("image"), "vision → image modality");
+    strictEqual(scout?.reasoning, true);
   });
 
   it("leaves a non-vision model without the image modality", () => {
-    const spark = all.byKey.get("gpt 5.3 codex spark");
-    ok(spark, "expected 'gpt 5.3 codex spark'");
+    const spark = all.byKey.get("gpt 5.6 luna");
+    ok(spark, "expected 'gpt 5.6 luna'");
     ok(!spark?.inputModalities.includes("image"));
   });
 });

@@ -6,10 +6,10 @@ import {
   searchProviders,
 } from "../src/components/provider-browser/provider-filtering.ts";
 import {
-  authChipKey,
   connectCardByGatewayId,
   groupProviders,
   offerForProvider,
+  providerBilling,
   providerDescriptionKey,
   providerModels,
 } from "../src/components/provider-browser/provider-grouping.ts";
@@ -18,10 +18,7 @@ import type {
   CatalogOffer,
   HubCatalog,
 } from "../src/lib/ai-hub/catalog-types.ts";
-import {
-  PROVIDER_OVERRIDES,
-  providerCostLine,
-} from "../src/lib/provider-overrides.ts";
+import { providerCostLine } from "../src/lib/provider-overrides.ts";
 import type { ProviderInfo } from "../src/lib/providers.ts";
 
 function provider(id: string, extra: Partial<ProviderInfo> = {}): ProviderInfo {
@@ -107,34 +104,60 @@ describe("offerForProvider", () => {
   });
 });
 
-describe("authChipKey", () => {
-  it("maps auth kind to the right chip", () => {
-    strictEqual(authChipKey(provider("anthropic")), "subscription");
-    strictEqual(
-      authChipKey(provider("github-copilot", { copilotConnect: true })),
+describe("providerBilling", () => {
+  it("OAuth sign-in providers default to subscription", () => {
+    deepStrictEqual(
+      [...providerBilling(provider("anthropic", { auth: "oauth" }))],
+      ["subscription"],
+    );
+    deepStrictEqual(
+      [
+        ...providerBilling(
+          provider("github-copilot", { auth: "oauth", copilotConnect: true }),
+        ),
+      ],
+      ["subscription"],
+    );
+  });
+
+  it("a pasted-key provider defaults to payg", () => {
+    deepStrictEqual(
+      [...providerBilling(provider("deepseek", { auth: "apiKey" }))],
+      ["payg"],
+    );
+    deepStrictEqual(
+      [...providerBilling(provider("openrouter", { auth: "apiKey" }))],
+      ["payg"],
+    );
+  });
+
+  it("the local (openaiCompatible) provider has no billing relationship", () => {
+    deepStrictEqual(
+      [
+        ...providerBilling(
+          provider("openai-compatible", { auth: "openaiCompatible" }),
+        ),
+      ],
+      [],
+    );
+  });
+
+  it("opencode-go overrides the apiKey default: it's a flat subscription", () => {
+    deepStrictEqual(
+      [...providerBilling(provider("opencode-go", { auth: "apiKey" }))],
+      ["subscription"],
+    );
+  });
+
+  it("the merged OpenCode card spans both billing kinds (Zen payg + Go subscription)", () => {
+    const opencode = provider("opencode", {
+      auth: "apiKey",
+      gatewayIds: ["opencode", "opencode-go"],
+    });
+    deepStrictEqual([...providerBilling(opencode)].sort(), [
+      "payg",
       "subscription",
-    );
-    strictEqual(
-      authChipKey(provider("openai-compatible", { auth: "openaiCompatible" })),
-      "local",
-    );
-    strictEqual(
-      authChipKey(provider("openrouter", { auth: "apiKey" })),
-      "gateway",
-    );
-    strictEqual(
-      authChipKey(
-        provider("opencode", {
-          auth: "apiKey",
-          gatewayIds: ["opencode", "opencode-go"],
-        }),
-      ),
-      "gateway",
-    );
-    strictEqual(
-      authChipKey(provider("deepseek", { auth: "apiKey" })),
-      "apiKey",
-    );
+    ]);
   });
 });
 
@@ -222,70 +245,49 @@ describe("searchProviders", () => {
 });
 
 describe("filterByQuickFilter", () => {
-  // anthropic → subscription + popular; google → apiKey (payg) + popular + free
-  // (curated freeTier); openrouter → gateway (payg) + free (curated freeTier);
-  // deepseek → apiKey (payg); openai-compatible → local + popular + free (local
-  // costs nothing).
+  // anthropic → subscription; google/openrouter/deepseek → apiKey (payg);
+  // openai-compatible → local (no billing, matches neither button); opencode
+  // → the merged card, matches BOTH (Zen payg + Go subscription).
   const list = [
-    provider("anthropic"),
+    provider("anthropic", { auth: "oauth" }),
     provider("google", { auth: "apiKey" }),
     provider("openrouter", { auth: "apiKey" }),
     provider("deepseek", { auth: "apiKey" }),
     provider("openai-compatible", { auth: "openaiCompatible" }),
+    provider("opencode", {
+      auth: "apiKey",
+      gatewayIds: ["opencode", "opencode-go"],
+    }),
   ];
 
   it("passes everything through for `all`", () => {
-    strictEqual(filterByQuickFilter(list, "all").length, 5);
+    strictEqual(filterByQuickFilter(list, "all").length, 6);
   });
 
-  it("`popular` keeps the featured-pinned providers", () => {
-    deepStrictEqual(
-      filterByQuickFilter(list, "popular").map((p) => p.id),
-      ["anthropic", "google", "openai-compatible"],
-    );
-  });
-
-  it("`subscription` keeps only OAuth / plan providers", () => {
+  it("`subscription` keeps OAuth providers and the merged OpenCode card", () => {
     deepStrictEqual(
       filterByQuickFilter(list, "subscription").map((p) => p.id),
-      ["anthropic"],
+      ["anthropic", "opencode"],
     );
   });
 
-  it("`free` keeps curated free tiers and local models", () => {
-    deepStrictEqual(
-      filterByQuickFilter(list, "free").map((p) => p.id),
-      ["google", "openrouter", "openai-compatible"],
-    );
-  });
-
-  it("`payg` keeps pasted-key and gateway providers", () => {
+  it("`payg` keeps pasted-key providers and the merged OpenCode card", () => {
     deepStrictEqual(
       filterByQuickFilter(list, "payg").map((p) => p.id),
-      ["google", "openrouter", "deepseek"],
+      ["google", "openrouter", "deepseek", "opencode"],
     );
   });
 
-  it("`local` keeps only providers that run on the user's computer", () => {
-    deepStrictEqual(
-      filterByQuickFilter(list, "local").map((p) => p.id),
-      ["openai-compatible"],
-    );
-  });
-
-  it("facets overlap: one provider can match several (google → popular, free, payg)", () => {
+  it("the local provider matches neither filter", () => {
     const only = (id: string) => (p: ProviderInfo) => p.id === id;
-    const google = list.find(only("google"));
-    if (!google) throw new Error("google fixture missing");
-    strictEqual(filterByQuickFilter([google], "popular").length, 1);
-    strictEqual(filterByQuickFilter([google], "free").length, 1);
-    strictEqual(filterByQuickFilter([google], "payg").length, 1);
-    strictEqual(filterByQuickFilter([google], "subscription").length, 0);
-    strictEqual(filterByQuickFilter([google], "local").length, 0);
+    const local = list.find(only("openai-compatible"));
+    if (!local) throw new Error("local fixture missing");
+    strictEqual(filterByQuickFilter([local], "subscription").length, 0);
+    strictEqual(filterByQuickFilter([local], "payg").length, 0);
   });
 });
 
-describe("providerCostLine / freeTier", () => {
+describe("providerCostLine", () => {
   it("returns the curated cost prose for a provider that has one", () => {
     strictEqual(providerCostLine("anthropic"), "Your Claude subscription");
     strictEqual(providerCostLine("opencode"), "Pay as you go");
@@ -295,20 +297,6 @@ describe("providerCostLine / freeTier", () => {
   it("returns undefined for an uncurated id or the local provider", () => {
     strictEqual(providerCostLine("brand-new-lab"), undefined);
     strictEqual(providerCostLine("openai-compatible"), undefined);
-  });
-
-  it("marks freeTier only on the curated free-tier entries", () => {
-    for (const id of [
-      "google",
-      "openrouter",
-      "groq",
-      "cerebras",
-      "huggingface",
-    ]) {
-      strictEqual(PROVIDER_OVERRIDES[id].freeTier, true, id);
-    }
-    strictEqual(PROVIDER_OVERRIDES.anthropic.freeTier, undefined);
-    strictEqual(PROVIDER_OVERRIDES.openai.freeTier, undefined);
   });
 });
 

@@ -130,6 +130,66 @@ test("search marks not-connected matches and teaches request_connection", async 
   expect(text).not.toContain("](https://");
 });
 
+test("a connectable toolkit-level entry names the slug and teaches request_connection", async () => {
+  // Catalog resolution surfaces the app itself (empty action) so the model
+  // learns the slug even when no action scored — the Google Sheets bug.
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "",
+          toolkit: "googlesheets",
+          description: "Google Sheets: Spreadsheets",
+          connected: false,
+          status: "connectable",
+        },
+      ],
+    },
+  }));
+  const out = await run(search, { query: "connect to google sheets" });
+  const text = (out.content[0] as { text: string }).text;
+  // The app row (not an action row) names the slug.
+  expect(text).toContain("- googlesheets (app, NOT CONNECTED): Google Sheets");
+  // And the connect hand-off is taught, naming the connectable slug.
+  expect(text).toContain("not connected yet (googlesheets)");
+  expect(text).toContain("request_connection tool");
+});
+
+test("a blocked app sends the user to their admin and never offers request_connection", async () => {
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "",
+          toolkit: "salesforce",
+          description: "Salesforce",
+          connected: false,
+          status: "blocked",
+        },
+      ],
+    },
+  }));
+  const out = await run(search, { query: "salesforce" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain("- salesforce (app, BLOCKED by admin): Salesforce");
+  expect(text).toContain("admin has not enabled these apps");
+  expect(text).toContain("ask their admin");
+  // The guidance explicitly forbids the connect card for a blocked app.
+  expect(text).toContain("Do NOT call request_connection");
+  // And it never offers to connect it (no "not connected yet" connect prompt).
+  expect(text).not.toContain("not connected yet");
+});
+
+test("an empty result is a genuine not-found, not a policy block", async () => {
+  mockFetch(() => ({ body: { items: [] } }));
+  const out = await run(search, { query: "flibbertigibbet" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain("No matching app or action found");
+  expect(text).toContain("genuine not-found");
+  expect(text).toContain("does NOT mean an app is blocked");
+  expect(text).not.toContain("request_connection");
+});
+
 test("execute runs an action and returns its data; a failed action surfaces", async () => {
   mockFetch(() => ({ body: { successful: true, data: { id: "msg1" } } }));
   const out = await run(execute, {

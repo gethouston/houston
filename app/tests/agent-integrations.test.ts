@@ -65,47 +65,39 @@ describe("agentIntegrationsView", () => {
       view.activeRows.map((r) => r.connection.toolkit),
       ["gmail", "slack"],
     );
-    strictEqual(view.grantedToolkits.has("notion"), false);
-    strictEqual(view.grantedToolkits.has("slack"), true);
   });
 
-  it("grants mode exposes connected-but-not-granted active apps as accountRows", () => {
+  it("an ungranted active connection appears in no grants-view row", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail"), conn("slack"), conn("notion")],
       catalog: CATALOG,
       grants: ["gmail"],
     });
     if (view.mode !== "grants") throw new Error("unreachable");
-    // Section 1 has the granted app; Section 2 has the rest, name-sorted.
+    // Section 1 has only the granted app. Connected-but-ungranted apps are a
+    // Settings > Connected accounts concern now — absent from active AND
+    // disallowed (there is no allowlist here, so nothing is disallowed).
     deepStrictEqual(
       view.activeRows.map((r) => r.connection.toolkit),
       ["gmail"],
     );
-    deepStrictEqual(
-      view.accountRows.map((r) => r.connection.toolkit),
-      ["notion", "slack"],
+    deepStrictEqual(view.disallowedRows, []);
+    const shown = [...view.activeRows, ...view.disallowedRows].map(
+      (r) => r.connection.toolkit,
     );
+    ok(!shown.includes("slack"), "ungranted active slack is not shown");
+    ok(!shown.includes("notion"), "ungranted active notion is not shown");
   });
 
-  it("accountRows excludes pending/errored non-granted connections", () => {
+  it("ungranted pending/errored connections appear in no grants-view row", () => {
     const view = agentIntegrationsView({
       connections: [conn("slack", "pending"), conn("notion", "error")],
       catalog: CATALOG,
       grants: [],
     });
     if (view.mode !== "grants") throw new Error("unreachable");
-    // Only ACTIVE connections are activatable for this agent.
-    deepStrictEqual(view.accountRows, []);
-  });
-
-  it("a granted app is never also an accountRow", () => {
-    const view = agentIntegrationsView({
-      connections: [conn("gmail"), conn("slack")],
-      catalog: CATALOG,
-      grants: ["gmail", "slack"],
-    });
-    if (view.mode !== "grants") throw new Error("unreachable");
-    deepStrictEqual(view.accountRows, []);
+    deepStrictEqual(view.activeRows, []);
+    deepStrictEqual(view.disallowedRows, []);
   });
 
   it("grants mode with an empty grant set yields no active rows", () => {
@@ -180,17 +172,26 @@ describe("E7 integrations tab source", () => {
     ok(!src.includes("isAgentManager"), "manager gate no longer needed");
   });
 
-  it("keeps the effective-allowlist filtering of the browse catalog", () => {
-    // The tab still computes the ceiling and hands it to the body, which owns
-    // the browse-catalog narrowing after the per-agent extraction below.
+  it("hands the effective allowlist down so blocked apps render as locked rows", () => {
+    // The tab still computes the ceiling and hands it to the body, which now
+    // passes it to the browse section — blocked apps render as LOCKED rows there
+    // (via browseCatalogView + CatalogLockedSection) instead of being filtered
+    // out and vanishing silently.
     ok(src.includes("effectiveAllowlist"), "still computes the ceiling");
     ok(src.includes("useAgentSettings"), "still reads agent settings");
     ok(src.includes("allowlist={allowlist}"), "hands the ceiling to the body");
     const body = read(
       "../src/components/tabs/agent-integrations/agent-integrations-body.tsx",
     );
-    ok(body.includes("browseCatalog"), "body narrows the browse catalog");
     ok(body.includes("ConnectMoreAppsSection"), "browse section stays");
+    ok(
+      body.includes("allowlist={allowlist}"),
+      "body hands the ceiling to the browse section (locks, not pre-filter)",
+    );
+    ok(
+      !body.includes("catalog.filter"),
+      "body no longer pre-filters blocked apps out of the catalog",
+    );
   });
 
   it("remounts its stateful body per agent so view filters never leak", () => {

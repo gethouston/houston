@@ -48,6 +48,7 @@ export interface SidebarGroupSectionProps {
   renaming?: boolean;
   onRenameHandled?: () => void;
   onToggleCollapsed?: (groupId: string) => void;
+  onEditGroupContext?: (groupId: string) => void;
   onRenameGroup?: (groupId: string, newName: string) => void;
   onDeleteGroup?: (groupId: string) => void;
 }
@@ -69,6 +70,7 @@ export function SidebarGroupSection({
   renaming,
   onRenameHandled,
   onToggleCollapsed,
+  onEditGroupContext,
   onRenameGroup,
   onDeleteGroup,
 }: SidebarGroupSectionProps) {
@@ -125,6 +127,7 @@ export function SidebarGroupSection({
             startRenaming={renaming}
             onRenameStarted={onRenameHandled}
             onToggleCollapsed={onToggleCollapsed}
+            onEditContext={onEditGroupContext}
             onRenameGroup={onRenameGroup}
             onDeleteGroup={onDeleteGroup}
           />

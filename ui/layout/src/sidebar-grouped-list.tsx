@@ -17,7 +17,6 @@ import {
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { cn } from "@houston-ai/core";
-import { Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { SidebarItem } from "./sidebar";
 import { sidebarClasses } from "./sidebar-classes";
@@ -50,6 +49,7 @@ export interface SidebarGroupedListProps {
   groups: SidebarGroupView[];
   rowCtx: SidebarBaseRowContext;
   onToggleGroupCollapsed?: (groupId: string) => void;
+  onEditGroupContext?: (groupId: string) => void;
   onRenameGroup?: (groupId: string, newName: string) => void;
   onDeleteGroup?: (groupId: string) => void;
   renamingGroupId?: string | null;
@@ -59,8 +59,6 @@ export interface SidebarGroupedListProps {
     dest: { groupId: string | null; beforeItemId: string | null },
   ) => void;
   onMoveGroup?: (groupId: string, beforeGroupId: string | null) => void;
-  onAdd?: () => void;
-  addItemDataAttrs?: Record<string, string>;
 }
 
 /** Resolve any over-target id to the container (group id, or null default) it
@@ -109,14 +107,13 @@ export function SidebarGroupedList({
   groups,
   rowCtx,
   onToggleGroupCollapsed,
+  onEditGroupContext,
   onRenameGroup,
   onDeleteGroup,
   renamingGroupId,
   onRenamingGroupIdHandled,
   onMoveItem,
   onMoveGroup,
-  onAdd,
-  addItemDataAttrs,
 }: SidebarGroupedListProps) {
   const [working, setWorking] = useState<WorkingSection[] | null>(null);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
@@ -294,26 +291,11 @@ export function SidebarGroupedList({
             renaming={!!section.groupId && section.groupId === renamingGroupId}
             onRenameHandled={onRenamingGroupIdHandled}
             onToggleCollapsed={onToggleGroupCollapsed}
+            onEditGroupContext={onEditGroupContext}
             onRenameGroup={onRenameGroup}
             onDeleteGroup={onDeleteGroup}
           />
         ))}
-        {onAdd && (
-          <button
-            type="button"
-            aria-label={rowCtx.labels.addItem}
-            onClick={onAdd}
-            className={sidebarClasses.addButton}
-            {...(addItemDataAttrs ?? {})}
-          >
-            <span className={sidebarClasses.addButtonInner}>
-              <Plus className={sidebarClasses.addButtonIcon} />
-              <span className={sidebarClasses.addButtonLabel}>
-                {rowCtx.labels.addItem}
-              </span>
-            </span>
-          </button>
-        )}
       </div>
 
       <DragOverlay dropAnimation={{ duration: 180, easing: "ease" }}>

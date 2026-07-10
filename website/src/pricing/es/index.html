@@ -1,0 +1,166 @@
+---
+lang: es
+---
+{% extends "base.njk" %}
+{% block title %}Precios de Houston{% endblock %}
+{% block meta %}
+<meta name="description" content="Precios de Houston para Spaces. Personal es gratis para siempre con agentes ilimitados. Team cuesta {{ pricing.currency }}{{ pricing.teamMonthly }} por asiento al mes con una prueba gratis de {{ pricing.trialDays }} días. Enterprise agrega SSO, SLA y despliegue privado.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gethouston.ai/pricing/es/">
+<meta property="og:title" content="Precios de Houston">
+<meta property="og:description" content="Personal es gratis para siempre. Team cuesta {{ pricing.currency }}{{ pricing.teamMonthly }} por asiento al mes con una prueba gratis de {{ pricing.trialDays }} días. Enterprise agrega SSO, SLA y despliegue privado.">
+<meta property="og:site_name" content="Houston">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" hreflang="en" href="https://gethouston.ai/pricing/">
+<link rel="alternate" hreflang="es" href="https://gethouston.ai/pricing/es/">
+<link rel="alternate" hreflang="x-default" href="https://gethouston.ai/pricing/">
+{% endblock %}
+{% block stylesheets %}
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
+{% endblock %}
+{% block inlineStyles %}
+{% include "pricing/styles.njk" %}
+{% endblock %}
+{% block body %}
+<div class="wash"></div>
+
+{% include "pricing/logo.njk" %}
+
+<nav class="site">
+  <a class="nav-logo" href="/"><svg class="mark"><use href="#hlogo"/></svg><span>houston</span></a>
+  <div class="nav-center">
+    <a href="/#agents">Agentes</a>
+    <a href="/#features">Funciones</a>
+    <a href="/guides/es/">Guías</a>
+    <a href="/changelog/">Cambios</a>
+    <a class="active" href="/pricing/es/">Precios</a>
+    <a href="/startups/">Para Startups</a>
+  </div>
+  <div class="nav-right">
+    <details class="langdd"><summary><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>ES<span class="chev"></span></summary><div class="menu"><a href="/pricing/"><svg viewBox="0 0 19 13" aria-hidden="true"><defs><clipPath id="usr2"><rect width="19" height="13" rx="2"/></clipPath></defs><g clip-path="url(#usr2)"><rect width="19" height="13" fill="#fff"/><g fill="#b22234"><rect width="19" height="1"/><rect y="2" width="19" height="1"/><rect y="4" width="19" height="1"/><rect y="6" width="19" height="1"/><rect y="8" width="19" height="1"/><rect y="10" width="19" height="1"/><rect y="12" width="19" height="1"/></g><rect width="8" height="7" fill="#3c3b6e"/></g></svg>English</a><a class="on" href="/pricing/es/"><svg viewBox="0 0 19 13" aria-hidden="true"><rect width="19" height="13" rx="2" fill="#c60b1e"/><rect y="3.25" width="19" height="6.5" fill="#ffc400"/></svg>Español</a></div></details>
+  </div>
+</nav>
+
+<div class="wrap">
+  <header class="hero">
+    <span class="eyebrow"><span class="dot"></span>Houston Spaces</span>
+    <h1>Precios que crecen con <span class="accent">tu equipo</span></h1>
+    <p class="lede">Empieza gratis, para siempre. Suma a tu equipo cuando estés listo y paga solo por las personas que de verdad se unen.</p>
+  </header>
+
+  <div class="plans">
+    <!-- Personal -->
+    <div class="plan">
+      <div class="plan-head">
+        <span class="plan-name">Personal</span>
+        <div class="price"><span class="amount">Gratis</span></div>
+        <p class="price-sub">Tus propios agentes de IA, sin límites.</p>
+      </div>
+      <a class="btn btn-outline" href="/" data-cta="personal">Descarga Houston gratis</a>
+      <ul class="feats">
+        <li>Agentes ilimitados</li>
+        <li>Todas las funciones incluidas</li>
+        <li>Espacio de un solo jugador, solo tú</li>
+        <li>Sin tarjeta, gratis para siempre</li>
+      </ul>
+    </div>
+
+    <!-- Team -->
+    <div class="plan featured">
+      <span class="badge">Más popular</span>
+      <div class="plan-head">
+        <span class="plan-name">Team</span>
+        <div class="price"><span class="currency">{{ pricing.currency }}</span><span class="amount">{{ pricing.teamMonthly }}</span><span class="per">/ asiento / mes</span></div>
+        <p class="price-sub">{{ pricing.currency }}{{ pricing.teamAnnual }} por asiento con pago anual. Reúne a tu gente en un solo Space.</p>
+      </div>
+      <a class="btn btn-primary" href="/" data-cta="team">Comienza la prueba gratis</a>
+      <ul class="feats">
+        <li>Todo lo de Personal</li>
+        <li>Agentes compartidos con tu equipo</li>
+        <li>Mira quién trabaja en cada misión</li>
+        <li>Roles y control de acceso</li>
+        <li>Prueba gratis de {{ pricing.trialDays }} días cuando tu segundo miembro acepta</li>
+        <li>Sin tarjeta para empezar</li>
+      </ul>
+    </div>
+
+    <!-- Enterprise -->
+    <div class="plan">
+      <div class="plan-head">
+        <span class="plan-name">Enterprise</span>
+        <div class="price"><span class="amount amount-sm">Habla con ventas</span></div>
+        <p class="price-sub">Seguridad y escala para equipos más grandes.</p>
+      </div>
+      <a class="btn btn-outline" href="mailto:{{ pricing.salesEmail }}?subject=Houston%20Enterprise" data-cta="enterprise">Habla con ventas</a>
+      <ul class="feats">
+        <li>Todo lo de Team</li>
+        <li>Inicio de sesión único (SSO)</li>
+        <li>SLA de disponibilidad</li>
+        <li>Soporte prioritario en inglés y español</li>
+        <li>Despliegue privado</li>
+        <li>Onboarding incluido</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Franja explicativa de la prueba -->
+  <section class="strip">
+    <div class="strip-item">
+      <h3>La prueba empieza cuando se une un miembro</h3>
+      <p>Tu prueba de {{ pricing.trialDays }} días empieza en el momento en que tu segundo miembro acepta la invitación. Sin formularios ni llamadas de ventas.</p>
+    </div>
+    <div class="strip-item">
+      <h3>Nada se borra al terminar</h3>
+      <p>Si la prueba termina, tu Space vuelve con calma a Personal. Cada agente y cada misión quedan justo donde estaban.</p>
+    </div>
+    <div class="strip-item">
+      <h3>Pagas solo por quien se une</h3>
+      <p>Solo se cobran los miembros que aceptan una invitación. Las invitaciones pendientes siempre son gratis.</p>
+    </div>
+    <div class="strip-item">
+      <h3>Los asientos se prorratean</h3>
+      <p>Suma o quita miembros cuando quieras. Prorrateamos los asientos, así pagas solo por los días que cada persona está activa.</p>
+    </div>
+  </section>
+
+  <!-- Preguntas frecuentes -->
+  <section class="faq">
+    <h2>Preguntas</h2>
+    <div class="faq-list">
+      <details class="q" data-faq="who-pays">
+        <summary>¿Quién paga por un equipo?<span class="mk"></span></summary>
+        <div class="a"><p>El dueño del equipo. Todas las personas que invitas van dentro del plan del dueño, así que los miembros nunca ingresan una tarjeta propia.</p></div>
+      </details>
+      <details class="q" data-faq="trial-end">
+        <summary>¿Qué pasa cuando termina mi prueba?<span class="mk"></span></summary>
+        <div class="a"><p>Nada se borra. Tu Space vuelve al plan Personal gratis y cada agente y cada misión quedan en su lugar. Agrega una tarjeta cuando estés listo para seguir en equipo.</p></div>
+      </details>
+      <details class="q" data-faq="what-is-a-seat">
+        <summary>¿Qué cuenta como un asiento?<span class="mk"></span></summary>
+        <div class="a"><p>Un asiento es un miembro que acepta tu invitación. Las invitaciones pendientes son gratis, y los asientos se prorratean cuando alguien entra o sale.</p></div>
+      </details>
+      <details class="q" data-faq="personal-free">
+        <summary>¿Puedo seguir usando Personal gratis?<span class="mk"></span></summary>
+        <div class="a"><p>Sí, para siempre. Personal te da agentes ilimitados y todas las funciones para un solo jugador, sin tarjeta y sin límite de tiempo.</p></div>
+      </details>
+      <details class="q" data-faq="move-agent">
+        <summary>¿Cómo muevo un agente a un equipo?<span class="mk"></span></summary>
+        <div class="a"><p>Abre el agente y compártelo con tu Space. Conserva su historial y sus habilidades, y tus compañeros pueden retomar cualquier misión desde donde va.</p></div>
+      </details>
+      <details class="q" data-faq="members-pay">
+        <summary>¿Los miembros tienen que pagar o descargar algo?<span class="mk"></span></summary>
+        <div class="a"><p>Los miembros solo aceptan la invitación y descargan la app gratis. El cobro se queda con el dueño.</p></div>
+      </details>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap foot-meta">
+    <span>Precios de Houston</span>
+    <span><a href="https://gethouston.ai">gethouston.ai</a></span>
+  </div>
+</footer>
+
+{% include "pricing/analytics.njk" %}
+{% endblock %}

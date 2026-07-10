@@ -1,39 +1,52 @@
 /**
- * RoutinesGrid — list view of routines, with an empty state and primary CTA.
+ * RoutinesGrid — the Routines list surface. This file owns the props contract
+ * and the top-level gating (loading spinner, empty state) and delegates the
+ * populated view to RoutinesGridList, keeping each file under the size cap.
  *
- * The parent tab already labels this surface "Routines", so this view skips
- * a redundant page header and goes straight to a meta row + the list.
+ * The parent tab already labels this surface "Routines", so it skips a
+ * redundant page header. Timezone is an account-wide setting (one zone for
+ * every routine), so its picker lives on the list, not inside each editor.
  *
- * Timezone is an account-wide setting (one zone for every routine), so its
- * picker lives HERE on the list — not inside each routine's editor. It sits
- * directly under the "New routine" row, capping the list it governs.
+ * "New routine → Manually" opens a LOCAL, uncommitted draft editor as the first
+ * card in the list (`newDraft`) — nothing is written until Save succeeds.
  */
-import {
-  Button,
-  cn,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "@houston-ai/core";
-import { Plus } from "lucide-react";
-import {
-  DEFAULT_GRID_LABELS,
-  DEFAULT_NEXT_FIRE_LABELS,
-  DEFAULT_ROW_LABELS,
-  DEFAULT_SCHEDULE_SUMMARY_LABELS,
-  type NextFireLabels,
-  type RoutineRowLabels,
-  type RoutinesGridLabels,
-  type ScheduleSummaryLabels,
+import type { ReactNode } from "react";
+import type {
+  NextFireLabels,
+  RoutineRowLabels,
+  ScheduleLabels,
+  ScheduleSummaryLabels,
 } from "./labels";
-import { RoutineRow } from "./routine-row";
-import { TimezonePicker } from "./timezone-picker";
+import { DEFAULT_GRID_LABELS, type RoutinesGridLabels } from "./labels";
+import { RoutinesGridEmpty } from "./routines-grid-empty";
+import { RoutinesGridList } from "./routines-grid-list";
 import type { Routine, RoutineRun } from "./types";
+
+/** Minimal shape for a "routine in construction" chat — ui/ stays app-agnostic. */
+export interface RoutineDraft {
+  id: string;
+}
+
+/** A local, uncommitted new-routine editor rendered as the list's first card.
+ *  Nothing is written to disk until `onSave` resolves true. */
+export interface RoutinesGridNewDraft {
+  onSave: (patch: {
+    name: string;
+    schedule: string;
+    prompt: string;
+  }) => Promise<boolean>;
+  onCancel: () => void;
+}
 
 export interface RoutinesGridProps {
   routines: Routine[];
   /** Most recent run per routine, keyed by routine ID. */
   lastRuns?: Record<string, RoutineRun>;
+  /** Chats still building a routine that hasn't been created yet — a person
+   *  can have several going at once. Each shows as its own resumable row. */
+  draftActivities?: RoutineDraft[];
+  /** When set, a local new-routine editor renders as the list's first card. */
+  newDraft?: RoutinesGridNewDraft | null;
   /** The account-wide IANA timezone every routine fires in. */
   accountTimezone: string;
   /**
@@ -42,13 +55,27 @@ export interface RoutinesGridProps {
    */
   onTimezoneChange?: (tz: string) => void;
   loading?: boolean;
-  onSelect: (routineId: string) => void;
-  onCreate?: () => void;
+  onCreateWithAi?: () => void;
+  onCreateManually?: () => void;
   onToggle?: (routineId: string, enabled: boolean) => void;
-  /** Rename a routine from its row's quick-actions menu (inline edit). */
-  onRename?: (routineId: string, name: string) => void;
-  /** Delete a routine from its row's quick-actions menu (row confirms first). */
-  onDelete?: (routineId: string) => void;
+  /** Save a row's inline-edited name/schedule/instruction. Resolves true on
+   *  success (the panel closes) or false (it stays open). */
+  onSaveRoutine?: (
+    routineId: string,
+    patch: { name: string; schedule: string; prompt: string },
+  ) => Promise<boolean>;
+  /** Open a routine's chat to change it by asking instead. */
+  onEditWithAi?: (routineId: string) => void;
+  onDeleteRoutine?: (routineId: string) => void;
+  /** Fire a routine immediately. */
+  onRunNow?: (routineId: string) => void;
+  /** Stop a routine's in-flight run (its most recent run's id). */
+  onStopRun?: (routineId: string, runId: string) => void;
+  onResumeDraft?: (activityId: string) => void;
+  onDiscardDraft?: (activityId: string) => void;
+  /** Icon for "With AI" / "Edit with AI" menu entries — app supplies the
+   *  brand mark (`ui/` stays brand-agnostic per the library boundary). */
+  aiIcon?: ReactNode;
   /**
    * Localized labels. English defaults so existing callers still work.
    * Consumers pass `t()` results for localization — `ui/` stays i18n-agnostic
@@ -59,123 +86,52 @@ export interface RoutinesGridProps {
   rowLabels?: RoutineRowLabels;
   scheduleSummaryLabels?: ScheduleSummaryLabels;
   nextFireLabels?: NextFireLabels;
+  /** Full schedule-builder labels, for each row's inline edit panel. */
+  scheduleLabels?: ScheduleLabels;
   /** BCP-47 locale for day names + time formatting in row summaries. */
   locale?: string;
 }
 
-export function RoutinesGrid({
-  routines,
-  lastRuns = {},
-  accountTimezone,
-  onTimezoneChange,
-  loading,
-  onSelect,
-  onCreate,
-  onToggle,
-  onRename,
-  onDelete,
-  labels = DEFAULT_GRID_LABELS,
-  rowLabels = DEFAULT_ROW_LABELS,
-  scheduleSummaryLabels = DEFAULT_SCHEDULE_SUMMARY_LABELS,
-  nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
-  locale = "en-US",
-}: RoutinesGridProps) {
-  const l = labels;
-  // Sort: enabled first, then alphabetical
+export function RoutinesGrid(props: RoutinesGridProps) {
+  const {
+    routines,
+    draftActivities = [],
+    newDraft,
+    loading,
+    labels = DEFAULT_GRID_LABELS,
+    aiIcon,
+    onCreateWithAi,
+    onCreateManually,
+  } = props;
+
+  // Sort: enabled first, then alphabetical.
   const sorted = [...routines].sort((a, b) => {
     if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
     return a.name.localeCompare(b.name);
   });
 
-  if (loading && routines.length === 0) {
+  if (loading && routines.length === 0 && draftActivities.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center bg-transparent">
         <p className="text-sm text-muted-foreground animate-pulse">
-          {l.loading}
+          {labels.loading}
         </p>
       </div>
     );
   }
 
-  if (sorted.length === 0) {
+  // Empty state only when there's genuinely nothing to show. An open new-routine
+  // editor (newDraft) keeps the populated view so the editor card can render.
+  if (sorted.length === 0 && draftActivities.length === 0 && !newDraft) {
     return (
-      <div className="flex-1 min-h-0 overflow-y-auto bg-transparent">
-        <div className="mx-auto max-w-md flex flex-col items-center gap-6 text-center pt-24 px-6">
-          <EmptyHeader>
-            <EmptyTitle>{l.emptyTitle}</EmptyTitle>
-            <EmptyDescription>{l.emptyDescription}</EmptyDescription>
-          </EmptyHeader>
-          {onCreate && (
-            <Button onClick={onCreate}>
-              <Plus className="size-4" />
-              {l.newRoutine}
-            </Button>
-          )}
-        </div>
-      </div>
+      <RoutinesGridEmpty
+        labels={labels}
+        aiIcon={aiIcon}
+        onCreateWithAi={onCreateWithAi}
+        onCreateManually={onCreateManually}
+      />
     );
   }
 
-  return (
-    <div className="flex-1 min-h-0 overflow-y-auto bg-transparent">
-      <div className="max-w-3xl mx-auto px-6 py-7">
-        {/* Description + CTA. No page title — tab handles it. */}
-        <div className="flex items-center justify-between gap-4 mb-4">
-          <p className="text-xs text-muted-foreground max-w-md">
-            {l.descriptionShort}
-          </p>
-          {onCreate && (
-            <Button size="sm" onClick={onCreate} className="shrink-0">
-              <Plus className="size-3.5" />
-              {l.newRoutine}
-            </Button>
-          )}
-        </div>
-
-        {/* Account-wide timezone — governs every routine in the list below. */}
-        {onTimezoneChange && (
-          <TimezonePicker
-            accountTimezone={accountTimezone}
-            onTimezoneChange={onTimezoneChange}
-            label={l.timezoneLabel}
-            hint={l.timezoneHint}
-            searchPlaceholder={l.timezoneSearchPlaceholder}
-            noResults={l.timezoneNoResults}
-            className="mb-3"
-          />
-        )}
-
-        {/* List card — gray, divides hold rows */}
-        <div
-          className={cn(
-            "rounded-xl bg-secondary overflow-hidden",
-            "divide-y divide-border/60",
-          )}
-        >
-          {sorted.map((routine) => (
-            <RoutineRow
-              key={routine.id}
-              routine={routine}
-              lastRun={lastRuns[routine.id]}
-              accountTimezone={accountTimezone}
-              onClick={() => onSelect(routine.id)}
-              onToggle={
-                onToggle
-                  ? (enabled) => onToggle(routine.id, enabled)
-                  : undefined
-              }
-              onRename={
-                onRename ? (name) => onRename(routine.id, name) : undefined
-              }
-              onDelete={onDelete ? () => onDelete(routine.id) : undefined}
-              labels={rowLabels}
-              scheduleSummaryLabels={scheduleSummaryLabels}
-              nextFireLabels={nextFireLabels}
-              locale={locale}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  return <RoutinesGridList {...props} sorted={sorted} />;
 }

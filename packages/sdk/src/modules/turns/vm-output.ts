@@ -31,6 +31,37 @@ export interface FeedItemVM {
   id: string;
   feed_type: string;
   data: unknown;
+  /**
+   * Epoch-ms timestamp of this entry. A seeded history frame carries its source
+   * `ChatMessage.ts`; a LIVE push that lacks one is stamped `Date.now()` at push
+   * time, and a streaming/finalizing update keeps the entry's ORIGINAL `ts` (the
+   * bubble is timed by when it opened, not each delta). Optional/additive: absent
+   * for a pre-`ts` seeded frame; every consumer treats it as optional.
+   */
+  ts?: number;
+  /**
+   * Optimistic-send flag: `true` while this entry is a locally-pushed prompt the
+   * engine has NOT yet confirmed (`pending === true` -> render a clock,
+   * WhatsApp-style; absent/false -> confirmed, render a single check). It is set
+   * ONLY on the one optimistic `user_message` push and cleared — stripped, same
+   * id, a normal reactive snapshot update — on the FIRST subsequent server
+   * evidence for the turn: any later pushed feed item, or a `sessionStatus`
+   * transition to `completed`/`error`, whichever comes first. A seeded history
+   * frame NEVER carries it. Optional/additive, exactly like `ts`: every consumer
+   * treats it as optional and a surface that does not render it simply ignores it.
+   */
+  pending?: boolean;
+  /**
+   * Failed-send flag: `true` when this optimistic `user_message` provably never
+   * reached the engine — the turn settled as a send failure (lost / rejected /
+   * refused / a double-send loser) with NO server evidence. Mutually exclusive
+   * with {@link pending} (a failure strips `pending`): render a failed/error
+   * tick, NEVER the "Sent" check a cleared `pending` implies. Any real server
+   * frame confirms the bubble first, so a delivered-then-errored turn never sets
+   * this. Optional/additive like `pending`: absent means delivered (or older
+   * data); a surface that does not render it simply ignores it.
+   */
+  failed?: boolean;
 }
 
 /** A message queued while a turn runs — rendered in the composer, removable. */
@@ -134,13 +165,17 @@ export class ConversationVmOutput implements FeedOutput {
   seedHistory(
     agentPath: string,
     sessionKey: string,
-    frames: readonly { feed_type: string; data: unknown }[],
+    frames: readonly { feed_type: string; data: unknown; ts?: number }[],
   ): void {
     const s = this.state(agentPath, sessionKey);
+    // History frames carry their source `ChatMessage.ts` (absent for a pre-`ts`
+    // transcript); pass it through verbatim — a seeded frame is historical, so
+    // it is never stamped with the wall clock the way a live push is.
     s.feed = frames.map((f) => ({
       id: `f${s.seq++}`,
       feed_type: f.feed_type,
       data: f.data,
+      ...(f.ts !== undefined ? { ts: f.ts } : {}),
     }));
     s.streaming.clear();
     this.publish(agentPath, sessionKey, s);
@@ -148,39 +183,94 @@ export class ConversationVmOutput implements FeedOutput {
 
   pushFeedItem(agentPath: string, sessionKey: string, item: unknown): void {
     const s = this.state(agentPath, sessionKey);
-    const { feed_type, data } = item as { feed_type: string; data: unknown };
+    const { feed_type, data, ts, pending, fails_pending } = item as {
+      feed_type: string;
+      data: unknown;
+      ts?: number;
+      pending?: boolean;
+      fails_pending?: boolean;
+    };
+    // An optimistic (pending) push is NOT server evidence, so it never confirms a
+    // sibling optimistic bubble — two queued prompts both keep their clock. ANY
+    // other push resolves EVERY currently pending entry at once: a
+    // client-generated send-failure notice (`fails_pending`) FAILS them (clock ->
+    // error tick), any real server frame CONFIRMS them (clock -> check).
+    if (pending !== true) {
+      if (fails_pending === true) this.failPending(s);
+      else this.clearPending(s);
+    }
     const finalOf = FINAL_OF[feed_type];
     if (feed_type.endsWith("_streaming")) {
-      this.upsertStreaming(s, feed_type, data);
+      this.upsertStreaming(s, feed_type, data, ts);
     } else if (finalOf !== undefined && s.streaming.has(finalOf)) {
       const id = s.streaming.get(finalOf);
       const entry = s.feed.find((f) => f.id === id);
       if (entry) {
+        // Finalizing an open stream mutates the SAME entry: keep its original
+        // `ts` (the bubble is timed by when it opened), only swap type + data.
         entry.feed_type = feed_type;
         entry.data = data;
       }
       s.streaming.delete(finalOf);
     } else {
-      s.feed.push({ id: `f${s.seq++}`, feed_type, data });
+      // A fresh entry: carry a supplied `ts`, else stamp the wall clock now; an
+      // optimistic push carries `pending: true` until server evidence clears it.
+      s.feed.push({
+        id: `f${s.seq++}`,
+        feed_type,
+        data,
+        ts: ts ?? Date.now(),
+        ...(pending === true ? { pending: true } : {}),
+      });
     }
     this.publish(agentPath, sessionKey, s);
+  }
+
+  /**
+   * Strip the optimistic `pending` flag off every entry that still carries it —
+   * the "confirmed by the engine" signal. Same ids, so a cleared entry is a
+   * normal reactive snapshot update (clock -> check), not a re-render. The caller
+   * republishes.
+   */
+  private clearPending(s: ConvState): void {
+    for (const entry of s.feed) if (entry.pending) delete entry.pending;
+  }
+
+  /**
+   * Fail every entry that still carries the optimistic `pending` flag — the
+   * "the send provably never landed" signal. Strips `pending` and sets `failed`
+   * (same id, a normal reactive update: clock -> error tick), so an undelivered
+   * message is never mistaken for a confirmed one. A no-op once server evidence
+   * has already cleared `pending` (a delivered turn that later errors), so it
+   * only ever bites a send with no evidence. The caller republishes.
+   */
+  private failPending(s: ConvState): void {
+    for (const entry of s.feed)
+      if (entry.pending) {
+        delete entry.pending;
+        entry.failed = true;
+      }
   }
 
   private upsertStreaming(
     s: ConvState,
     feed_type: string,
     data: unknown,
+    ts?: number,
   ): void {
     const existingId = s.streaming.get(feed_type);
     if (existingId !== undefined) {
       const entry = s.feed.find((f) => f.id === existingId);
       if (entry) {
+        // A streaming delta updates data only — the entry keeps the `ts` it was
+        // stamped with when the stream opened.
         entry.data = data;
         return;
       }
     }
+    // Opening the stream's entry: carry a supplied `ts`, else stamp now.
     const id = `f${s.seq++}`;
-    s.feed.push({ id, feed_type, data });
+    s.feed.push({ id, feed_type, data, ts: ts ?? Date.now() });
     s.streaming.set(feed_type, id);
   }
 
@@ -192,8 +282,13 @@ export class ConversationVmOutput implements FeedOutput {
     const s = this.state(agentPath, sessionKey);
     s.sessionStatus = status;
     // A terminal status closes every open streaming run so the next turn's
-    // streaming text starts a fresh bubble instead of extending this one.
-    if (status === "completed" || status === "error") s.streaming.clear();
+    // streaming text starts a fresh bubble instead of extending this one, and it
+    // confirms any outstanding optimistic bubble — the turn is over, nothing is
+    // still pending.
+    if (status === "completed" || status === "error") {
+      s.streaming.clear();
+      this.clearPending(s);
+    }
     this.publish(agentPath, sessionKey, s);
   }
 

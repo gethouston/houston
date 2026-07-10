@@ -25,7 +25,7 @@
     "runningCount_other": "{{count}} issues running",
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",
-    "createOrganization": "Create organization",
+    "createWorkspace": "Create workspace",
     "groups": {
       "new": "New group",
       "newDefault": "New group",
@@ -34,7 +34,15 @@
       "menu": "Group options",
       "namePlaceholder": "Group name",
       "emptyHint": "Drag agents here",
-      "ungrouped": "Ungrouped"
+      "ungrouped": "Ungrouped",
+      "editContext": "Edit shared context",
+      "contextDialog": {
+        "title": "Shared context for {{name}}",
+        "description": "This note is added to every agent in this group, so they all share the same background.",
+        "placeholder": "e.g. We are a design studio. Keep replies short and never share client names.",
+        "save": "Save",
+        "cancel": "Cancel"
+      }
     }
   },
   "tabActions": {
@@ -67,6 +75,10 @@
     "skip": "Skip tour",
     "done": "Got it",
     "steps": {
+      "spaces": {
+        "title": "Spaces",
+        "body": "Your personal agents, and teams you share with others. Switch spaces anytime from here."
+      },
       "assistant": {
         "title": "Your agents",
         "body": "Every agent in this workspace lives here. Switch between them with one click."

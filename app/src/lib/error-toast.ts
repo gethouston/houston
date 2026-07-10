@@ -100,6 +100,21 @@ export function genericErrorDescription(command: string, err: unknown): string {
   return i18n.t("shell:errorToast.genericDescription");
 }
 
+/**
+ * Surface an EXPECTED, explainable business state as a plain informational
+ * toast — NOT the red "we have a problem" + auto-report pair. Used for gateway
+ * states a user can understand and act on (C8 `needs_upgrade`: a write blocked
+ * because the team's trial expired), where the report-a-bug framing would be
+ * wrong: nothing is broken. No Sentry capture, no green report toast. The raw
+ * diagnostic still reaches the frontend log via the caller's `logger.error`.
+ */
+export function showExpectedStateToast(
+  title: string,
+  description: string,
+): void {
+  useUIStore.getState().addToast({ title, description, variant: "info" });
+}
+
 export function showErrorToast(
   command: string,
   message: string,

@@ -11,7 +11,6 @@ struct AgentMissionsSectionList: View {
     let grouping: AgentMissionsGrouping
     let onOpen: (ChatRoute) -> Void
     let onOpenArchived: () -> Void
-    let onApprove: (MissionCardData) -> Void
     let onRename: (MissionCardData) -> Void
     let onArchive: (MissionCardData) -> Void
     let onDelete: (MissionCardData) -> Void
@@ -22,7 +21,7 @@ struct AgentMissionsSectionList: View {
                 Section {
                     ForEach(section.cards) { card in
                         AgentMissionRow(
-                            card: card, onOpen: onOpen, onApprove: onApprove,
+                            card: card, onOpen: onOpen,
                             onRename: onRename, onArchive: onArchive, onDelete: onDelete
                         )
                     }
@@ -61,7 +60,5 @@ struct AgentMissionsSectionList: View {
         .buttonStyle(.plain)
         .listRowInsets(EdgeInsets(top: Spacing.space12, leading: Spacing.space16,
                                   bottom: Spacing.space12, trailing: Spacing.space16))
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
     }
 }

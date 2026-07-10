@@ -10,7 +10,27 @@
 # New Mission / Chat / Settings / AI Models / Integrations surfaces). Per-component
 # statuses below reflect what is actually built. The app now COMPILES with Xcode
 # and its unit suite passes on a simulator (iPhone 17 Pro) — the Swift is no
-# longer compiler-unverified. inventoryVersion STAYS 0 and enforced STAYS false
+# longer compiler-unverified.
+#
+# WAVE 1 — "the thread feels like WhatsApp" (2026-07-06): the chat adopted
+# WhatsApp/Telegram thread anatomy on top of the desktop-parity feed — in-bubble
+# user timestamps + long-press Copy, day-separator pills, a floating date pill,
+# 60s user-message grouping, a jump-to-bottom unread badge, a principal title bar
+# (avatar + agent name + working/needs-you status line), and draft-only composer
+# auto-focus. This crossed a new optional epoch-ms `ts` on the SDK feed VM
+# (additive, client-only; see packages/sdk/BRIDGE.md §7) and is folded into the
+# rows below (conversation-feed, user-message, turn-status). See mobile/PARITY-CHAT.md §8.
+#
+# WAVES 2+3 — "messenger naturalness" (2026-07-06): the home rows adopted the
+# WhatsApp chat-list anatomy (two-line cell, right-aligned relative time, filled
+# needs-you badge, "Working…" preview, pull-down search) and the chat gained
+# delivery ticks (clock -> check), send/receive insertion motion, and a faint
+# tiled Houston-helmet wallpaper. Ticks ride a SECOND additive client-only SDK
+# field, optional `pending` (BRIDGE.md §7, beside `ts`; never crosses the wire).
+# Folded into agent-list-item, conversation-feed, and user-message below.
+# See mobile/PARITY.md §4 and mobile/PARITY-CHAT.md §8.
+#
+# inventoryVersion STAYS 0 and enforced STAYS false
 # because the app has not yet SHIPPED; raise inventoryVersion only once it ships,
 # at that version. Note: the Settings, Appearance, Language, Account, and
 # Integrations surfaces are not represented by inventory.yaml component ids, so
@@ -28,11 +48,34 @@ components:
   agent-list-item:
     status: implemented
     ref: mobile/ios/Houston/Features/Agents/AgentRow.swift
-    notes: Contact row — avatar, name, last-activity line, outline needs-you count chip.
+    notes: >-
+      WhatsApp chat-list cell — line 1: avatar + name + right-aligned relative time
+      (AgentRowTime.swift, from AgentOverview.lastActivityAt parsed by
+      ActivityTimestamp.swift); line 2: preview text + trailing FILLED needs-you
+      count chip. Preview (AgentRowPreview.swift) follows the ONE-signal rule:
+      accent-tinted "Working…" whenever runningCount>0 (regardless of needs-you —
+      the filled chip is the sole needs-you signal, so the preview never repeats
+      it); else the last-activity line, which renders a BARE title for needs_you
+      (badge says the rest) and keeps "Hit a snag on …" for error (a genuine
+      failure carries no badge); else the no-missions line. The list adds pull-down .searchable name filter
+      (AgentSearch.swift, pure/diacritic-insensitive) with a "No results" state and
+      an animated tier/recency reorder (AgentsView.swift, Strings+AgentSearch.swift).
   conversation-feed:
     status: implemented
     ref: mobile/ios/Houston/Features/Chat/MissionFeed.swift
-    notes: Scroll viewport, item list, stick-to-bottom anchor, scroll-to-latest button.
+    notes: >-
+      Scroll viewport, item list, stick-to-bottom anchor, scroll-to-latest button.
+      Wave-1 WhatsApp anatomy: day-separator pills, a floating date pill while
+      scrolling history, 60s consecutive-user grouping, and an unread-count badge
+      on the jump button. The pure timeline fold + state machines live in
+      ChatTimeline.swift / ChatTimelineLabel.swift / ChatTimelineScroll.swift, with
+      views in ChatTimelineViews.swift; separators/grouping key off the optional
+      per-entry `ts` (absent -> flat, separator-less feed). Waves 2+3: newly
+      appended rows slide up + fade in (FeedMotion.swift, gated to after first load
+      + at-bottom; Reduce Motion -> opacity-only), and a faint tiled Houston-helmet
+      wallpaper (ChatWallpaperLayout.swift / ChatWallpaperView.swift, static Canvas,
+      theme.foreground @ 0.035, OFF under Reduce Transparency) sits behind the feed
+      via ChatView.swift.
   assistant-message:
     status: partial
     ref: mobile/ios/Houston/Features/Chat/ChatBubbles.swift
@@ -40,15 +83,33 @@ components:
   user-message:
     status: implemented
     ref: mobile/ios/Houston/Features/Chat/ChatBubbles.swift
-    notes: Bubble with author label (shown only with >=2 distinct authors). Attachments not a mobile v1 feature.
+    notes: >-
+      Bubble with author label (shown only with >=2 distinct authors). A message
+      the user sent WITH attachments decodes (AttachmentMessage.decode) to the
+      clean typed text + file-name chips (BubbleAttachmentChips in
+      AttachmentChips.swift); the raw path block never leaks into the bubble
+      (with-attachments state). Wave-1: an in-bubble bottom-right timestamp (WhatsApp
+      convention) laid out by TimedBubbleLayout.swift (inline, or dropped to its own
+      line when the block is full) and formatted by ChatBubbleTime.swift; a
+      long-press Copy context menu. Timestamp is optional (absent -> renders as before).
+      Waves 2+3: a WhatsApp delivery tick beside the in-bubble time — clock while the
+      optimistic send is unconfirmed (FeedItemVM.pending), check once cleared
+      (ChatBubbleTick in ChatBubbleTime.swift, symbolEffect .replace); wired
+      pending -> ChatScreenModel.pendingIds -> MissionFeed -> ChatTimeline -> UserBubble.
   thinking-indicator:
     status: implemented
-    ref: mobile/ios/Houston/Features/Chat/ThinkingBlock.swift
-    notes: Helmet glyph + shimmer label ("Thinking…" -> "Thought for a few seconds").
+    ref: mobile/ios/Houston/Features/Chat/HelmetIndicator.swift
+    notes: >-
+      Pulsing helmet glyph (HelmetIndicator.swift) + shimmer label, with the
+      in-flight phase derived by ChatStatus.swift ("Thinking…" -> "Thought for a
+      few seconds"). Replaced the removed ThinkingBlock.swift.
   tool-call-chip:
     status: implemented
-    ref: mobile/ios/Houston/Features/Chat/ToolChipView.swift
-    notes: Tool icon, action label, paired tool_result, error-tinted result status.
+    ref: mobile/ios/Houston/Features/Chat/ProcessBlockView.swift
+    notes: >-
+      Tool rows (icon, action label, paired tool_result, error-tinted status) live
+      inside the collapsible process block (ProcessBlockView.swift, folded by
+      MissionFeedFold/ProcessBlock.swift). Replaced the removed ToolChipView.swift.
   provider-error-card:
     status: partial
     ref: mobile/ios/Houston/Features/Chat/ProviderErrorCardView.swift
@@ -63,26 +124,61 @@ components:
   composer:
     status: implemented
     ref: mobile/ios/Houston/Features/Chat/MissionComposer.swift
-    notes: Growing textarea (1-6 lines), trailing send/stop that lights on non-empty trimmed text.
+    notes: >-
+      Growing textarea (1-6 lines), trailing send/stop that lights on non-empty
+      trimmed text or staged attachments; the send button shows a spinner and
+      disables while an attachment upload is in flight. The leading "+" opens a
+      menu (AttachmentComposerControls.swift) with Attach file / Attach photo
+      (document + PhotosPicker via AttachmentIngest.swift, staged as removable
+      chips above the input — StagedAttachmentChips in AttachmentChips.swift, 20MB
+      cap, oversize surfaces a File-too-large alert) and an Effort sheet
+      (EffortSheet.swift, per-conversation reasoning-effort pin threaded as
+      TurnSendInput.effort — a founder call vs desktop's per-agent pin is pending).
+      On send, staged files upload via turns/attachments/save then their saved
+      paths are woven into the message by AttachmentMessage.encode (has-attachments
+      state; AttachmentSend.swift). Drag-over is desktop-only.
   turn-status:
     status: implemented
-    ref: mobile/ios/Houston/Features/Chat/MissionStatusLine.swift
-    notes: Helmet glyph + shimmering status label + Stop while running.
+    ref: mobile/ios/Houston/Features/Chat/ChatTitleView.swift
+    notes: >-
+      In-stream pending state is the pulsing helmet (HelmetIndicator.swift) derived
+      by ChatStatus.swift; Stop lives in the composer. Wave-1 added a WhatsApp-style
+      principal title bar (ChatTitleView.swift) with the agent avatar, name, and a
+      second status line — "Working…" (shimmer) while running / "Needs your
+      attention" when settled needs-you — derived by ChatTitleStatus.swift from the
+      running flag + boardStatus. Replaced the removed MissionStatusLine.swift.
   progress-panel:
     status: not-started
     notes: Desktop progress panel not ported to mobile v1.
   approval-surface:
-    status: implemented
-    ref: mobile/ios/Houston/Features/Chat/ApproveBar.swift
-    notes: Move-to-done bar shown only when boardStatus==needs_you and not running (reads the pair, never sessionStatus alone).
+    status: not-started
+    notes: >-
+      Intentionally removed (PARITY-CHAT §6): the move-to-done bar (ApproveBar.swift)
+      and its approve affordances were deleted to match desktop, which has no
+      move-to-done. The setStatus mutation is kept for other paths; no in-chat
+      approval surface remains.
   deliverable-card:
-    status: partial
-    ref: mobile/ios/Houston/Features/Chat/MissionLogBlock.swift
-    notes: final_result rendered as a Mission-log block (result + duration/cost); no distinct deliverable artifact card yet.
+    status: not-started
+    notes: >-
+      Intentionally removed (PARITY-CHAT §4): final_result renders NOTHING (the
+      reply is the assistant_text bubble only), matching desktop's flush-only
+      feed-to-messages. MissionLogBlock.swift and its fold case were deleted because
+      they duplicated the reply; no deliverable artifact card yet.
   mission-card:
     status: implemented
     ref: mobile/ios/Houston/Features/MissionControl/MissionCardView.swift
-    notes: Avatar, title, description, tags, running-glow / destructive-error border; actions via context menu + swipe (mobile's model for the desktop drag-handle/select-checkbox).
+    notes: >-
+      Avatar, title, description, tags, running-glow / destructive-error border;
+      actions via context menu + swipe (mobile's model for the desktop
+      drag-handle/select-checkbox). Used ONLY on the Mission Control board now.
+      The per-agent missions screen (AgentMissions/) deliberately does NOT use
+      this card: it renders a sober WhatsApp-style conversation list of slim
+      two-line rows (MissionRowContent.swift, derived by the pure
+      MissionRowLine.swift) — no avatar/name/tags/card chrome, List inset hairline
+      separators, line 1 = title + relative time, line 2 = accent "Working…" /
+      destructive snag / muted description, collapsing away when empty. That row
+      is native-only styling of the same MissionCardData, not a separate inventory
+      component (the archived list reuses it).
   mission-board:
     status: implemented
     ref: mobile/ios/Houston/Features/MissionControl/MissionControlPager.swift
@@ -131,8 +227,34 @@ components:
     status: not-started
     notes: Hosted-engine warm-up notice (HOU-693); mobile v1 has no create-agent flow yet.
   interaction-card:
-    status: not-started
-    notes: In-chat gather-what-I-need stepper (questions, sign-in, then connections); mid-turn pending-interaction flow not in mobile v1.
+    status: partial
+    ref: mobile/ios/Houston/Features/Chat/InteractionCard.swift
+    notes: >-
+      In-chat gather-what-I-need stepper for a settled turn on needs_you
+      (InteractionCard.swift + InteractionStepper.swift cursor, question /
+      sign-in / connect step views in InteractionQuestionView.swift +
+      InteractionActionSteps.swift). Decoded from ConversationVM.pendingInteraction
+      (InteractionModel.swift) and gated on !running (ChatScreenModel+Derived).
+      Renderable steps walk one at a time with an "x of n" caption; a question
+      pick sends "<question>: <label>" as a normal turn (InteractionReply),
+      sign-in routes to AI Models, connect routes to Integrations. Mobile
+      divergences from desktop: the card mounts ABOVE the live composer (does not
+      replace it), free-text answers are a raw composer send (no in-card
+      textarea), and a question answer is terminal (protocol orders questions
+      first). Answer-text ported from desktop composeInteractionReply.
   plan-ready-card:
+    status: partial
+    ref: mobile/ios/Houston/Features/Chat/InteractionActionSteps.swift
+    notes: >-
+      plan_ready surfaces inside the interaction-card stepper
+      (InteractionPlanReadyView in InteractionActionSteps.swift): the plan
+      summary plus a single primary approve that sends "Go ahead with the plan."
+      (desktop planReady.startWorkingMessage). Run-on-Autopilot / Keep-planning
+      have no mobile seam yet, so only the primary path is wired (no dead
+      affordances).
+  suggest-reusable-card:
     status: not-started
-    notes: Plan-ready confirmation card (plan_ready) with Start working / Run on Autopilot / Keep planning; plan-mode flow not in mobile v1.
+    notes: Save-as-Skill/Routine offer on a clean mission finish (suggest_reusable); not in mobile v1.
+  interaction-answers-message:
+    status: not-started
+    notes: Structured question/answer user bubble from a completed interaction sequence; not in mobile v1.

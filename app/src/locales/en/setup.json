@@ -112,7 +112,11 @@
         "connect": "Connect",
         "connecting": "Connecting...",
         "skipHint": "Can't connect right now? You can do this anytime from Integrations.",
-        "skip": "Skip for now"
+        "skip": "Skip for now",
+        "skipConfirmTitle": "Skip connecting your email?",
+        "skipConfirmBody": "You can connect it anytime from Integrations. Your agent won't be able to send or read email until you do.",
+        "skipConfirmAction": "Skip for now",
+        "skipConfirmCancel": "Keep connecting"
       },
       "agentCreated": {
         "title": "Agent created!",
@@ -135,7 +139,9 @@
         "tour": "Take a tour of Houston",
         "tourBody": "A quick walkthrough of the basics.",
         "connectMore": "Connect more apps",
-        "connectMoreBody": "Give your agent access to more of your tools."
+        "connectMoreBody": "Give your agent access to more of your tools.",
+        "inviteTeam": "Invite your team",
+        "inviteTeamBody": "See who's working on every mission. Create a team and share your agents."
       },
       "onboardingIntro": {
         "title": "Now let's put it to work",

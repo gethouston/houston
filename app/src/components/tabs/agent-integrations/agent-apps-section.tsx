@@ -15,23 +15,21 @@ interface AgentAppsSectionProps {
   rows: AgentAppRowVM[];
   canEdit: boolean;
   connectFlow: ConnectFlow;
-  /** Grants mode only: drop this agent's grant for an active app. */
-  onDeactivate?: (toolkit: string) => void;
   onRemove: (toolkit: string) => void;
 }
 
 /**
  * The list of this agent's apps in a two-column grid, shared by both modes. An
  * empty list becomes a quiet empty state pointing at the always-visible catalog
- * below (no add button here — connecting lives in "Connect more apps"). Read-only
- * viewers see the rows and their live status but no mutating affordances.
+ * below (no add button here — connecting lives in "Connect more apps"). An
+ * active row shows status only; the sole affordance is the pending/errored
+ * recovery callout, whose "Remove" disconnects the connection from the account.
  */
 export function AgentAppsSection({
   copy,
   rows,
   canEdit,
   connectFlow,
-  onDeactivate,
   onRemove,
 }: AgentAppsSectionProps) {
   return (
@@ -62,7 +60,6 @@ export function AgentAppsSection({
               row={row}
               connectFlow={connectFlow}
               canEdit={canEdit}
-              onDeactivate={onDeactivate}
               onRemove={onRemove}
             />
           ))}

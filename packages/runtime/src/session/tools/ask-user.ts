@@ -40,7 +40,7 @@ const AskUserParams = Type.Object({
           }),
           {
             description:
-              "Optional 2-6 short, mutually-exclusive choices for this question, offered as single-select rows. Use for a choice or an approval; omit for an open question.",
+              "Optional 2-6 short, mutually-exclusive choices for this question, offered as single-select rows. Use for a choice or an approval; omit for an open question. The user can always type a custom answer instead of picking one, so never add a catch-all choice like 'Other' or 'Something else' to this list.",
           },
         ),
       ),

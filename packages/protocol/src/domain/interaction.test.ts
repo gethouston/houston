@@ -33,6 +33,41 @@ test("isPendingInteraction accepts the step-sequence shape and rejects legacy sh
     }),
   ).toBe(false);
 
+  // A suggest_reusable step needs kind + id + reusableKind + title + rationale.
+  expect(
+    isPendingInteraction({
+      steps: [
+        {
+          kind: "suggest_reusable",
+          id: "r1",
+          reusableKind: "skill",
+          title: "Weekly report digest",
+          rationale: "This multi-step task looks reusable.",
+        },
+      ],
+    }),
+  ).toBe(true);
+  // An invalid reusableKind is invalid.
+  expect(
+    isPendingInteraction({
+      steps: [
+        {
+          kind: "suggest_reusable",
+          id: "r1",
+          reusableKind: "workflow",
+          title: "x",
+          rationale: "x",
+        },
+      ],
+    }),
+  ).toBe(false);
+  // A missing title/rationale is invalid.
+  expect(
+    isPendingInteraction({
+      steps: [{ kind: "suggest_reusable", id: "r1", reusableKind: "routine" }],
+    }),
+  ).toBe(false);
+
   // A signin step with a non-string reason is invalid.
   expect(
     isPendingInteraction({ steps: [{ kind: "signin", id: "s1", reason: 7 }] }),

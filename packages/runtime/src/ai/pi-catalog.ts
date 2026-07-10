@@ -1,10 +1,8 @@
-import {
-  type Api,
-  getModels,
-  getProviders,
-  type KnownProvider,
-  type Model,
-} from "@earendil-works/pi-ai";
+import type { Api, KnownProvider, Model } from "@earendil-works/pi-ai";
+// `getModels`/`getProviders` are pi-ai's legacy static-catalog reads, preserved
+// on `/compat` (the new `Models`/`Provider` collection API needs an
+// instantiated registry we don't otherwise carry here).
+import { getModels, getProviders } from "@earendil-works/pi-ai/compat";
 import { getOAuthProviders } from "@earendil-works/pi-ai/oauth";
 
 /**

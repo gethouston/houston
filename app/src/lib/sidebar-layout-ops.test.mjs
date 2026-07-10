@@ -8,6 +8,7 @@ import {
   moveItemOp,
   normalizeSidebarLayout,
   renameGroupOp,
+  setGroupContextOp,
   toggleGroupCollapsedOp,
 } from "./sidebar-layout-ops.ts";
 
@@ -37,6 +38,49 @@ test("renameGroupOp renames only the target", () => {
   const next = renameGroupOp(l, "g2", "Renamed");
   assert.equal(next.groups[1].name, "Renamed");
   assert.equal(next.groups[0].name, "g1");
+});
+
+test("setGroupContextOp sets context only on the target", () => {
+  const l = base({ groups: [group("g1", ["a"]), group("g2", [])] });
+  const next = setGroupContextOp(l, "g1", "We are a design studio.");
+  assert.equal(next.groups[0].context, "We are a design studio.");
+  assert.equal(next.groups[1].context, undefined);
+  // The target's other fields are preserved.
+  assert.deepEqual(next.groups[0].agentIds, ["a"]);
+});
+
+test("setGroupContextOp overwrites an existing context", () => {
+  const l = base({ groups: [group("g1", [], { context: "old" })] });
+  const next = setGroupContextOp(l, "g1", "new");
+  assert.equal(next.groups[0].context, "new");
+});
+
+test("setGroupContextOp can clear the context to empty", () => {
+  const l = base({ groups: [group("g1", [], { context: "old" })] });
+  const next = setGroupContextOp(l, "g1", "");
+  assert.equal(next.groups[0].context, "");
+});
+
+test("setGroupContextOp is a no-op for an unknown id", () => {
+  const l = base({ groups: [group("g1", [])] });
+  const next = setGroupContextOp(l, "nope", "x");
+  assert.equal(next.groups[0].context, undefined);
+});
+
+test("normalizeSidebarLayout round-trips a context string", () => {
+  const out = normalizeSidebarLayout({
+    groups: [group("g1", ["a"], { context: "shared note" })],
+    ungroupedOrder: [],
+  });
+  assert.equal(out.groups[0].context, "shared note");
+});
+
+test("normalizeSidebarLayout drops a group with a non-string context", () => {
+  const out = normalizeSidebarLayout({
+    groups: [group("g1", ["a"], { context: 42 })],
+    ungroupedOrder: [],
+  });
+  assert.deepEqual(out.groups, []);
 });
 
 test("deleteGroupOp frees members to ungrouped (appended)", () => {

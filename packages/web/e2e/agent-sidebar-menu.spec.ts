@@ -41,9 +41,9 @@ test("opens the share wizard from the sidebar menu", async ({ page }) => {
     .last();
   await agent.hover();
   await page.getByRole("button", { name: "Agent menu" }).click();
-  await page.getByRole("menuitem", { name: "Share with a friend" }).click();
+  await page.getByRole("menuitem", { name: "Export a copy" }).click();
 
-  await expect(page.getByText("What should we share?")).toBeVisible();
+  await expect(page.getByText("What should we export?")).toBeVisible();
 });
 
 /** Deleting an agent from the sidebar menu removes it from the list. */

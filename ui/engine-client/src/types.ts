@@ -90,6 +90,14 @@ export interface Capabilities {
    * every existing single-player/self-host profile stays valid.
    */
   teams?: boolean;
+  /**
+   * Whether this deployment serves C8 Spaces: self-serve team creation, agent
+   * moves between spaces, and the multi-membership space switcher. A feature-
+   * detect flag the frontend reads to route the switcher's create action to the
+   * Create-team dialog; absent/false on desktop/self-host (the create action
+   * stays "create a local workspace"). The gateway is the sole enforcer.
+   */
+  spaces?: boolean;
 }
 
 // ---------- Org / roles (multiplayer) ----------
@@ -169,6 +177,102 @@ export interface AddOrgMemberResult {
   email?: string;
 }
 
+// ---------- Spaces / teams (C8) ----------
+
+/**
+ * Billing status of a team space (C8 §Billing wire surface). Attached to an
+ * `OrgSummary` only for teams and only for owner/admin callers; the DERIVED
+ * effective `status` (never a stored column) drives every UI billing state.
+ * `seats` is the live `count(org_members)` at read time. Kept in sync by hand
+ * with the gateway — the server is the source of truth.
+ */
+export interface BillingSummary {
+  plan: "team" | "enterprise";
+  status: "free" | "trialing" | "active" | "past_due" | "expired";
+  /** ISO-8601; present once the trial clock exists. */
+  trialEndsAt?: string;
+  seats: number;
+  /** Present once subscribed. */
+  interval?: "monthly" | "annual";
+}
+
+/**
+ * A Stripe-hosted URL to redirect the owner to (C8 §Billing wire surface).
+ * Returned by `POST /v1/org/billing/checkout` (contextual card capture) and
+ * `POST /v1/org/billing/portal` (card, invoices, interval switch, cancel). The
+ * client opens it via the OS external-open path — never inline.
+ */
+export interface BillingCheckout {
+  url: string;
+}
+
+/**
+ * One space (org) the caller belongs to (C8 §Wire surface — spaces), from
+ * `GET /v1/orgs` and `POST /v1/orgs`. `kind` is derived server-side from
+ * `personal_of` — `personal` is the free-forever personal space, `team` is a
+ * paid-per-seat team. `role` is the caller's role IN THIS space. `degraded` is
+ * `true` when writes would `403 needs_upgrade` (visible to every member, carries
+ * no billing detail). `billing` is present for teams, owner/admin only.
+ *
+ * The space's `slug` is what pins the active space: a team's switcher workspace
+ * id is `"org:" + slug` (C8 §Workspaces bridge), and that slug rides
+ * `x-houston-org` / `?org=` (see `HoustonClient.setActiveOrg`).
+ */
+export interface OrgSummary {
+  id: string;
+  slug: string;
+  name: string;
+  kind: "personal" | "team";
+  role: OrgRole;
+  memberCount: number;
+  degraded: boolean;
+  billing?: BillingSummary;
+}
+
+/**
+ * A pending invite addressed to the caller's email (C8 §Wire surface), from
+ * `GET /v1/orgs` (`invites`). Accepted via `POST /v1/org-invites/:id/accept` or
+ * declined via `DELETE /v1/org-invites/:id`.
+ */
+export interface OrgInviteSummary {
+  id: string;
+  orgName: string;
+  role: OrgRole;
+  invitedBy?: string;
+}
+
+/**
+ * Response of `GET /v1/orgs` (C8): every membership plus every pending invite
+ * addressed to the caller. Degrades to an empty result on a host that predates
+ * spaces (404) so the switcher shows only the personal workspace.
+ */
+export interface OrgsList {
+  orgs: OrgSummary[];
+  invites: OrgInviteSummary[];
+}
+
+/**
+ * Response of `POST /v1/agents/:slug/move` (C8 §Agent move): the id to poll for
+ * move progress. The move route is async — `202 {moveId}` — because a move stops
+ * and restarts the agent's pod; completion is read from `getMoveStatus`, NEVER
+ * inferred from the agent event stream (which only relays pod-scoped events).
+ */
+export interface AgentMoveStart {
+  moveId: string;
+}
+
+/**
+ * Progress of one agent move (C8), polled from
+ * `GET /v1/agents/:slug/move/:moveId`. `done`/`failed` are terminal; `error` is
+ * a human-readable reason present on `failed`. The share pipeline MUST poll this
+ * to terminal `done` before inviting (C8 §Share-triggers-team) — inviting before
+ * the move completes is forbidden by the client contract.
+ */
+export interface AgentMoveStatus {
+  status: "moving" | "done" | "failed";
+  error?: string;
+}
+
 /**
  * Per-agent settings (Teams v2), from `GET /agents/:slug/settings`.
  * `allowedToolkits` is the agent-level integration ceiling (`null` =
@@ -177,13 +281,18 @@ export interface AddOrgMemberResult {
  * `allowedModels` is the manager-set AI-model ceiling: which models a member may
  * pick for this agent (`null` = every model allowed, `[]` = none). Each member's
  * own per-agent pick lives in the separate model-choice surface below; the
- * gateway clamps that pick to this ceiling on every turn.
+ * gateway clamps that pick to this ceiling on every turn. `orgAllowedModels` is
+ * the org-wide AI-model ceiling the agent ceiling is intersected with (the same
+ * relationship `orgAllowedToolkits` has to `allowedToolkits`); optional so a host
+ * predating the org models ceiling is read as `undefined` (treat as `null` =
+ * unrestricted).
  */
 export interface AgentSettings {
   allowedToolkits: string[] | null;
   orgAllowedToolkits: string[] | null;
   access: AgentAccess;
   allowedModels: string[] | null;
+  orgAllowedModels?: string[] | null;
 }
 
 // ---------- Per-user model choice (multiplayer) ----------
@@ -211,10 +320,20 @@ export interface AgentModelChoiceInfo {
   allowedModels: string[] | null;
 }
 
-/** Org-wide settings (Teams v2), from `GET /org/settings`. */
+/**
+ * Org-wide settings (Teams v2), from `GET /org/settings`. `PUT /org/settings` is
+ * a partial patch (owner only), so either ceiling can be changed without
+ * touching the other.
+ */
 export interface OrgSettings {
   /** Org-wide integration ceiling; `null` = unrestricted, `[]` = none. */
   allowedToolkits: string[] | null;
+  /**
+   * Org-wide AI-model ceiling: which models any agent in the workspace may run
+   * on (`null` = every model allowed, `[]` = none). Optional so a host predating
+   * the models ceiling is read as `undefined` (treat as `null` = unrestricted).
+   */
+  allowedModels?: string[] | null;
 }
 
 /**
@@ -245,11 +364,34 @@ export interface UsageRow {
 
 // ---------- Workspaces ----------
 
+/**
+ * Which kind of space a workspace bridges (C8 §Workspaces bridge). Mirrors the
+ * host domain `WorkspaceKind` (`packages/host/src/domain/types.ts`). `personal`
+ * ⟺ OrgSummary `personal`, `org` ⟺ OrgSummary `team`.
+ */
+export type WorkspaceKind = "personal" | "org";
+
 export interface Workspace {
+  /**
+   * Stable id. A hosted **personal** space keeps its existing auto-provisioned
+   * id — opaque, NEVER `org:`-prefixed. A hosted **team** space (`kind: "org"`)
+   * has the server-defined id grammar `"org:" + slug`, where `slug` is
+   * `[a-f0-9]{16}`. The `org:` prefix is a wire convention: strip it to recover
+   * the slug for `setActiveOrg` / `?org=`, but never synthesize or parse the
+   * slug beyond that (C8).
+   */
   id: string;
   name: string;
   isDefault: boolean;
   createdAt: string;
+  /**
+   * Which kind of space this row bridges (C8 §Workspaces bridge). Present on
+   * hosts that serve spaces; ABSENT on single-player/self-host hosts (treat as
+   * `"personal"`), so every pre-C8 profile stays valid. Selecting a `personal`
+   * workspace sends NO active-space header; selecting an `org` workspace pins
+   * `x-houston-org` (and `?org=` on the SSE routes) to its slug.
+   */
+  kind?: WorkspaceKind;
   /**
    * Optional per-workspace UI-locale override (BCP-47 base tag: `en`/`es`/`pt`).
    * Absent/null means the workspace inherits the global `locale` preference.
@@ -287,6 +429,10 @@ export interface SidebarGroup {
   collapsed: boolean;
   /** Member agent ids, in drag order. */
   agentIds: string[];
+  /** Shared context injected into every member agent's system prompt (a
+   *  group-scoped `WORKSPACE.md`), mirrored to each member's `GROUP.md`.
+   *  Absent/empty = no group context. */
+  context?: string;
 }
 
 /**
@@ -390,7 +536,19 @@ export type InteractionStep =
   | { kind: "connect"; id: string; toolkit: string; reason?: string }
   /** The model finished planning: a short plan summary the user approves by
    *  choosing a mode (start working / Autopilot) or dismisses to keep planning. */
-  | { kind: "plan_ready"; id: string; summary: string };
+  | { kind: "plan_ready"; id: string; summary: string }
+  /** The model finished cleanly and offers to save the just-completed work as a
+   *  reusable Skill or a scheduled Routine. Optional and dismissible: unlike the
+   *  other kinds, a lone `suggest_reusable` step does NOT flip the board to
+   *  `needs_you` (the mission genuinely finished). Mirrors
+   *  `packages/protocol/src/domain/interaction.ts`. */
+  | {
+      kind: "suggest_reusable";
+      id: string;
+      reusableKind: "skill" | "routine";
+      title: string;
+      rationale: string;
+    };
 
 /**
  * The ordered steps a mission is waiting on the user for — recorded when the
@@ -418,6 +576,12 @@ export interface Activity {
   provider?: string;
   model?: string;
   pending_interaction?: PendingInteraction;
+  /** The human who created this mission (Teams attribution). Server-stamped
+   *  from the gateway acting-as identity; absent on desktop/single-player. */
+  created_by?: string;
+  /** Humans who started or collaborated on this mission (Teams attribution).
+   *  Server-stamped in multiplayer only; absent on desktop/single-player. */
+  contributors?: { user_id: string; name?: string }[];
 }
 
 export interface ActivityUpdate {
@@ -597,6 +761,12 @@ export interface ConversationEntry {
   agent_name: string;
   agent?: string;
   routine_id?: string;
+  /** The human who created this mission (Teams attribution). Server-stamped
+   *  from the gateway acting-as identity; absent on desktop/single-player. */
+  created_by?: string;
+  /** Humans who started or collaborated on this mission (Teams attribution).
+   *  Server-stamped in multiplayer only; absent on desktop/single-player. */
+  contributors?: { user_id: string; name?: string }[];
 }
 
 // ---------- Skills ----------
@@ -684,6 +854,15 @@ export interface CommunitySkill {
   name: string;
   installs: number;
   source: string;
+}
+
+/** Full detail fetched on-demand for a community skill, read from its real SKILL.md. */
+export interface CommunitySkillPreview {
+  title: string | null;
+  description: string;
+  image: string | null;
+  category: string | null;
+  tags: string[];
 }
 
 // ---------- Providers / preferences ----------

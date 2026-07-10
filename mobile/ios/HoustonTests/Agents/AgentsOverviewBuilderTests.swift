@@ -48,8 +48,22 @@ final class AgentsOverviewBuilderTests: XCTestCase {
     func testEmptyAgentHasNoLastActivity() {
         let out = AgentsOverviewBuilder.build([entry("a", [])])
         XCTAssertNil(out[0].lastActivity)
+        XCTAssertNil(out[0].lastActivityAt)
         XCTAssertEqual(out[0].needsYouCount, 0)
         XCTAssertFalse(out[0].isRunning)
+    }
+
+    func testLastActivityAtReflectsMostRecentMissionTimestamp() {
+        // The Date behind the WA row time label parses the picked mission's ISO
+        // `updatedAt` (the most-recent non-archived one — the "New" mission here).
+        let items = [
+            MissionFixture.activity(id: "old", title: "Old", status: "done",
+                                    updatedAt: "2026-07-01T10:00:00Z"),
+            MissionFixture.activity(id: "new", title: "New", status: "needs_you",
+                                    updatedAt: "2026-07-02T10:00:00Z"),
+        ]
+        let out = AgentsOverviewBuilder.build([entry("a", items)])
+        XCTAssertEqual(out[0].lastActivityAt, ActivityTimestamp.date(from: "2026-07-02T10:00:00Z"))
     }
 
     func testAttentionSortNeedsYouThenRunningThenRecency() {
@@ -70,6 +84,43 @@ final class AgentsOverviewBuilderTests: XCTestCase {
 
         // needs-you first, then running, then the two idle agents by recency.
         XCTAssertEqual(out.map(\.id), ["needs", "running", "recent", "old"])
+    }
+
+    // MARK: Preview over the real fold (ONE signal per state, PARITY §4)
+
+    func testRunningAndNeedsYouFoldPreviewsWorkingWithBadge() {
+        // A running mission + a needs-you mission: the fold counts both, the
+        // preview shows "working…" (the badge is the sole needs-you signal).
+        let out = AgentsOverviewBuilder.build([entry("a", [
+            MissionFixture.activity(id: "r", title: "Deploy", status: "running",
+                                    updatedAt: "2026-07-02T10:00:00Z"),
+            MissionFixture.activity(id: "n", title: "Taxes", status: "needs_you",
+                                    updatedAt: "2026-07-01T10:00:00Z"),
+        ])])
+        XCTAssertEqual(AgentRowPreview.derive(out[0]), .working)
+        XCTAssertEqual(out[0].needsYouCount, 1) // badge still visible
+    }
+
+    func testNeedsYouOnlyFoldPreviewsBareTitleWithBadge() {
+        let out = AgentsOverviewBuilder.build([entry("a", [
+            MissionFixture.activity(id: "n", title: "Taxes", status: "needs_you",
+                                    updatedAt: "2026-07-01T10:00:00Z"),
+        ])])
+        XCTAssertEqual(AgentRowPreview.derive(out[0]), .activity(.needsYou, "Taxes"))
+        XCTAssertEqual(AgentRowPreview.derive(out[0]).text, "Taxes") // bare title
+        XCTAssertEqual(out[0].needsYouCount, 1)
+    }
+
+    func testErrorOnlyFoldPreviewsSnagLineWithNoBadge() {
+        // error is NOT counted into needsYouCount, so no badge carries it — the
+        // preview keeps "Hit a snag on …" as genuine information.
+        let out = AgentsOverviewBuilder.build([entry("a", [
+            MissionFixture.activity(id: "e", title: "Report", status: "error",
+                                    updatedAt: "2026-07-01T10:00:00Z"),
+        ])])
+        XCTAssertEqual(AgentRowPreview.derive(out[0]), .activity(.error, "Report"))
+        XCTAssertEqual(AgentRowPreview.derive(out[0]).text, "Hit a snag on Report")
+        XCTAssertEqual(out[0].needsYouCount, 0)
     }
 
     func testNeedsYouAgentSortsAheadEvenWithOlderActivity() {

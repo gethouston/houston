@@ -18,7 +18,7 @@ const outbound: typeof fetch = async (input) => {
         truncated: false,
       }),
     );
-  if (url.includes("raw.githubusercontent.com/owner/repo/main/research/"))
+  if (url.includes("raw.githubusercontent.com/owner/repo/HEAD/research/"))
     return new Response(
       "---\nname: research\ndescription: Deep research\n---\n\n# Research\n\nSteps.",
     );
@@ -57,6 +57,27 @@ test("top-level repo list serves discovery without an agent in scope", async () 
   expect(res.status).toBe(200);
   const skills = (await res.json()) as Array<{ id: string }>;
   expect(skills[0]?.id).toBe("research");
+});
+
+test("community preview reads the real SKILL.md detail", async () => {
+  const res = await fetch(`${base}/v1/skills/community/preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source: "owner/repo", skillId: "research" }),
+  });
+  expect(res.status).toBe(200);
+  const preview = (await res.json()) as { description: string; tags: string[] };
+  expect(preview.description).toBe("Deep research");
+  expect(preview.tags).toEqual([]);
+});
+
+test("community preview 400s when skillId is missing", async () => {
+  const res = await fetch(`${base}/v1/skills/community/preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source: "owner/repo" }),
+  });
+  expect(res.status).toBe(400);
 });
 
 test("typed errors expose kind at both shapes the two clients read", async () => {

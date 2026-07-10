@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { fluentEmojiUrl, resolveSkillImageUrl } from "../lib/skill-image";
 
 interface Props {
   /** Image URL or Microsoft Fluent 3D Emoji slug. Bare slugs auto-resolve to the jsDelivr CDN. */
@@ -28,7 +29,9 @@ export function SkillIcon({
   // biome-ignore lint/correctness/useExhaustiveDependencies: image is a prop and is a valid dependency; the effect must reset `broken` whenever the image source changes
   useEffect(() => setBroken(false), [image]);
 
-  const url = broken ? fluentEmojiUrl(FALLBACK_SLUG) : resolveImageValue(image);
+  const fallback = fluentEmojiUrl(FALLBACK_SLUG);
+  const url =
+    broken || !image ? fallback : (resolveSkillImageUrl(image) ?? fallback);
 
   return (
     <span className={bubbleClassName}>
@@ -41,24 +44,4 @@ export function SkillIcon({
       />
     </span>
   );
-}
-
-function resolveImageValue(value: string | null | undefined): string {
-  const trimmed = value?.trim();
-  if (!trimmed) return fluentEmojiUrl(FALLBACK_SLUG);
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  return fluentEmojiUrl(trimmed);
-}
-
-function fluentEmojiUrl(slug: string): string {
-  const parts = slug
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map((p) => p.toLowerCase());
-  const folder =
-    parts[0].charAt(0).toUpperCase() +
-    parts[0].slice(1) +
-    (parts.length > 1 ? ` ${parts.slice(1).join(" ")}` : "");
-  const file = `${parts.join("_")}_3d.png`;
-  return `https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/${encodeURIComponent(folder)}/3D/${file}`;
 }

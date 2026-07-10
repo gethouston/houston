@@ -1,7 +1,12 @@
 import { create } from "zustand";
 import { analytics } from "../lib/analytics";
+import { setActiveOrg } from "../lib/engine";
+import { queryClient } from "../lib/query-client";
+import { resetCacheForSpaceChange } from "../lib/space-cache";
+import { orgSlugFromWorkspaceId } from "../lib/space-id";
 import { tauriPreferences, tauriWorkspaces } from "../lib/tauri";
 import type { Workspace } from "../lib/types";
+import { resolveActiveWorkspace } from "../lib/workspace-switch";
 
 interface WorkspaceState {
   workspaces: Workspace[];
@@ -29,9 +34,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   loadWorkspaces: async () => {
     set({ loading: true });
     try {
-      const workspaces = await tauriWorkspaces.list();
-      const current =
-        workspaces.find((w) => w.isDefault) ?? workspaces[0] ?? null;
+      // Restore the last-selected space alongside the list. On a personal-only
+      // host the persisted id resolves to the sole default workspace, so this
+      // stays byte-identical to the old isDefault-then-first resolution.
+      const [workspaces, lastId] = await Promise.all([
+        tauriWorkspaces.list(),
+        tauriPreferences.get("last_workspace_id"),
+      ]);
+      const current = resolveActiveWorkspace(workspaces, lastId);
+      // Pin the active space (C8) BEFORE the first space-scoped fetches fire so
+      // they carry the right x-houston-org from the start (no header for
+      // personal). No cache reset here — nothing has been fetched yet.
+      setActiveOrg(current ? orgSlugFromWorkspaceId(current.id) : null);
       set({ workspaces, current, loading: false });
     } catch (e) {
       console.error("[workspaces] Failed to load:", e);
@@ -42,6 +56,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   setCurrent: (ws) => {
     set({ current: ws });
     tauriPreferences.set("last_workspace_id", ws.id);
+    // C8 active space: re-point the gateway to the selected space BEFORE any
+    // refetch. On a real space change (personal⇄team or team⇄team) the caller's
+    // per-space role and every server answer differ, so drop the whole query
+    // cache and let it refetch under the new space — capabilities (role is
+    // per-space) refetches with it. setActiveOrg also re-establishes the event
+    // stream so its new ?org= applies. A same-space reselect, and every switch
+    // on a personal-only host (every id maps to null), changes nothing → no-op.
+    const orgChanged = setActiveOrg(orgSlugFromWorkspaceId(ws.id));
+    resetCacheForSpaceChange(queryClient, orgChanged);
   },
 
   create: async (name) => {

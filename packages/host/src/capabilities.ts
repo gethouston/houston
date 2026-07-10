@@ -1,4 +1,7 @@
-import { getProviders } from "@earendil-works/pi-ai";
+// `getProviders` is pi-ai's legacy static-catalog read, preserved verbatim on
+// the `/compat` entrypoint (the new `Models`/`Provider` collection API needs an
+// instantiated registry we don't otherwise carry here).
+import { getProviders } from "@earendil-works/pi-ai/compat";
 import type { Capabilities } from "@houston/protocol";
 
 /**

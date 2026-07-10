@@ -6,7 +6,8 @@
   },
   "tabs": {
     "providers": "Proveedores",
-    "models": "Modelos"
+    "models": "Modelos",
+    "policy": "Política del espacio de trabajo"
   },
   "sections": {
     "connected": "Conectados",
@@ -21,11 +22,7 @@
     "signOut": "Cerrar sesión",
     "cancel": "Cancelar",
     "models_one": "{{count}} modelo",
-    "models_other": "{{count}} modelos",
-    "subscription": "Suscripción",
-    "apiKey": "Tu clave de API",
-    "local": "Se ejecuta en tu computador",
-    "gateway": "Puerta de acceso multimodelo"
+    "models_other": "{{count}} modelos"
   },
   "directory": {
     "search": "Busca {{count}}+ modelos",
@@ -97,12 +94,8 @@
     },
     "filter": {
       "label": "Filtrar proveedores",
-      "all": "Todos los proveedores",
-      "popular": "Populares",
-      "subscription": "Incluido con tu suscripción",
-      "free": "Gratis para probar",
-      "payg": "Paga por uso",
-      "local": "Funciona en tu computador"
+      "subscription": "Suscripción",
+      "payg": "Pago por uso"
     },
     "openai": {
       "description": "Inicia sesión con ChatGPT y pon a trabajar los modelos GPT y Codex."
