@@ -1,13 +1,14 @@
 "use client";
 
-import { cn } from "@houston-ai/core";
+import { Button, cn } from "@houston-ai/core";
+import { CornerDownLeftIcon } from "lucide-react";
 import {
-  type KeyboardEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   useCallback,
+  useEffect,
   useState,
 } from "react";
-import { PromptInputSubmit } from "./ai-elements/prompt-input";
 import {
   advanceConnect,
   advanceSignin,
@@ -23,9 +24,9 @@ import {
   goForward,
   hasSelectableOptions,
   initialStepperState,
-  QUESTION_TEXT_CLASS,
   selectedOptionId,
   setDraft,
+  skipQuestion,
   type Transition,
 } from "./interaction-card-logic";
 import { OptionRow, StepperHeader } from "./interaction-card-parts";
@@ -57,12 +58,18 @@ export interface ChatInteractionCardProps {
     step: SigninStep,
     api: { onSignedIn: () => void },
   ) => ReactNode;
+  /** Dismisses the WHOLE interaction sequence. When omitted, the header shows no
+   *  dismiss (X) button. */
+  onDismiss?: () => void;
   disabled?: boolean;
   labels?: {
     placeholder?: string;
+    /** Visible label + aria-label of the commit-and-advance button ("Next"). */
     send?: string;
     back?: string;
     forward?: string;
+    skip?: string;
+    dismiss?: string;
     progress?: (current: number, total: number) => string;
   };
 }
@@ -70,16 +77,24 @@ export interface ChatInteractionCardProps {
 /**
  * The in-chat surface shown when the agent pauses to gather what it needs before
  * continuing: a stepper that walks the user through ONE step at a time (question
- * or connect), with a quiet "1 of X" progress and a back chevron. It REPLACES
- * the composer, so it borrows the composer's vocabulary (rounded-[28px] surface,
- * borderless inline textarea, round submit). The surface is grey (`bg-secondary`)
- * so the white option rows and free-text input read as raised, distinct chips.
+ * or connect). The header carries a "current/total" pill, the question text, and
+ * an optional dismiss X. ALL step-to-step navigation (back / skip / next) lives
+ * together in one footer row, Back leftmost, so there's a single place to look
+ * for "how do I move." A question step's option rows are also keyboard-selectable
+ * by their visible position number (1, 2, 3...) whenever focus isn't in a text
+ * field. It renders ABOVE the real composer (which the caller keeps mounted
+ * alongside it, see `chat-panel.tsx`), so it borrows the composer's vocabulary
+ * (rounded-[28px] surface, borderless inline textarea) without replacing it —
+ * typing directly into the real composer instead is the caller's job to treat
+ * as an implicit abandon of this card. The surface is grey (`bg-secondary`) so
+ * the white option rows and free-text input read as raised, distinct chips.
  */
 export function ChatInteractionCard({
   steps,
   onComplete,
   renderConnect,
   renderSignin,
+  onDismiss,
   disabled = false,
   labels,
 }: ChatInteractionCardProps) {
@@ -88,8 +103,11 @@ export function ChatInteractionCard({
   const total = steps.length;
   const current = Math.min(state.current, total - 1);
   const step = steps[current];
-  const placeholder = labels?.placeholder ?? "Type your answer...";
-  const sendLabel = labels?.send ?? "Send";
+  const placeholder = labels?.placeholder ?? "Type something else...";
+  const nextLabel = labels?.send ?? "Next";
+  const backLabel = labels?.back ?? "Back";
+  const forwardLabel = labels?.forward ?? "Next";
+  const skipLabel = labels?.skip ?? "Skip";
   const progress = labels?.progress ?? defaultProgress;
 
   const apply = useCallback(
@@ -113,9 +131,37 @@ export function ChatInteractionCard({
     [apply, disabled, state, steps],
   );
 
+  // Number-key shortcuts (1, 2, 3...) select the matching option row, mirroring
+  // the visible position numbers. Ignored while focus is in a text field, so
+  // typing digits into the free-text answer or the real composer is unaffected.
+  useEffect(() => {
+    if (disabled || !step || step.kind !== "question") return;
+    const options = step.options ?? [];
+    if (options.length === 0) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isEditable =
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "INPUT" ||
+        target?.isContentEditable;
+      if (isEditable) return;
+      const option = options[Number(e.key) - 1];
+      if (!option) return;
+      e.preventDefault();
+      onOption(option.id);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [disabled, step, onOption]);
+
   const onSend = useCallback(() => {
     if (disabled) return;
     apply(answerWithText(state, steps));
+  }, [apply, disabled, state, steps]);
+
+  const onSkip = useCallback(() => {
+    if (disabled) return;
+    apply(skipQuestion(state, steps));
   }, [apply, disabled, state, steps]);
 
   const onConnected = useCallback(() => {
@@ -127,7 +173,7 @@ export function ChatInteractionCard({
   }, [apply, state, steps]);
 
   const onKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         onSend();
@@ -152,18 +198,15 @@ export function ChatInteractionCard({
       )}
     >
       <div className="flex flex-col px-2.5 pt-2 pb-2">
-        {total > 1 && (
-          <StepperHeader
-            backLabel={labels?.back ?? "Back"}
-            canGoBack={current > 0}
-            canGoForward={canGoForward(state)}
-            disabled={disabled}
-            forwardLabel={labels?.forward ?? "Next"}
-            onBack={() => setState(goBack)}
-            onForward={() => setState(goForward)}
-            progressText={progress(current + 1, total)}
-          />
-        )}
+        <StepperHeader
+          current={current + 1}
+          disabled={disabled}
+          dismissLabel={labels?.dismiss ?? "Dismiss"}
+          onDismiss={onDismiss}
+          progressLabel={progress(current + 1, total)}
+          questionText={isQuestion ? step.question : undefined}
+          total={total}
+        />
 
         {/* Content changes, chrome doesn't: a single quiet fade on step swap. */}
         <div
@@ -172,20 +215,34 @@ export function ChatInteractionCard({
         >
           {isQuestion ? (
             <>
-              <p className={QUESTION_TEXT_CLASS}>{step.question}</p>
               {hasSelectableOptions(step.options) && (
                 <div className="mt-3 flex flex-col gap-2" role="radiogroup">
-                  {step.options?.map((option) => (
+                  {step.options?.map((option, index) => (
                     <OptionRow
                       disabled={disabled}
                       key={option.id}
                       onSelect={() => onOption(option.id)}
                       option={option}
+                      position={index + 1}
                       selected={selectedId === option.id}
                     />
                   ))}
                 </div>
               )}
+
+              <div className="mt-4 flex items-end gap-2 rounded-2xl border border-border/50 bg-background px-3 py-2 transition-colors focus-within:border-border">
+                <textarea
+                  className="max-h-40 flex-1 resize-none border-none bg-transparent py-1 text-base text-foreground leading-[1.2] outline-none placeholder:text-muted-foreground/50"
+                  disabled={disabled}
+                  onChange={(e) =>
+                    setState((s) => setDraft(s, stepId, e.target.value))
+                  }
+                  onKeyDown={onKeyDown}
+                  placeholder={placeholder}
+                  rows={1}
+                  value={draft}
+                />
+              </div>
             </>
           ) : step.kind === "signin" ? (
             renderSignin(step, { onSignedIn })
@@ -194,25 +251,61 @@ export function ChatInteractionCard({
           )}
         </div>
 
-        {isQuestion && (
-          <div className="mt-4 flex items-end gap-2 rounded-2xl border border-border/50 bg-background px-3 py-2 transition-colors focus-within:border-border">
-            <textarea
-              className="max-h-40 flex-1 resize-none border-none bg-transparent py-1 text-base text-foreground leading-[1.2] outline-none placeholder:text-muted-foreground/50"
-              disabled={disabled}
-              onChange={(e) =>
-                setState((s) => setDraft(s, stepId, e.target.value))
-              }
-              onKeyDown={onKeyDown}
-              placeholder={placeholder}
-              rows={1}
-              value={draft}
-            />
-            <PromptInputSubmit
-              aria-label={sendLabel}
-              className="shrink-0"
-              disabled={disabled || !canSend}
-              onClick={onSend}
-            />
+        {/* ALL step-to-step navigation lives here, one row, Back leftmost: a
+            single place to look for "how do I move." Back walks to the previous
+            already-reached step (any kind); Skip/Next are question-only (Next
+            commits, or on a revisited step re-commits the pre-filled answer,
+            which doubles as its own "forward"); a bare Forward only shows for a
+            revisited non-question step, since a connect/signin step's own card
+            can't re-fire its completion callback once already done. */}
+        {(current > 0 ||
+          isQuestion ||
+          (!isQuestion && canGoForward(state))) && (
+          <div className="mt-3 flex justify-end gap-2">
+            {current > 0 && (
+              <Button
+                disabled={disabled}
+                onClick={() => setState(goBack)}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                {backLabel}
+              </Button>
+            )}
+            {isQuestion ? (
+              <>
+                <Button
+                  disabled={disabled}
+                  onClick={onSkip}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  {skipLabel}
+                </Button>
+                <Button
+                  disabled={disabled || !canSend}
+                  onClick={onSend}
+                  size="sm"
+                  type="button"
+                >
+                  {nextLabel}
+                  <CornerDownLeftIcon className="size-4" />
+                </Button>
+              </>
+            ) : (
+              canGoForward(state) && (
+                <Button
+                  disabled={disabled}
+                  onClick={() => setState(goForward)}
+                  size="sm"
+                  type="button"
+                >
+                  {forwardLabel}
+                </Button>
+              )
+            )}
           </div>
         )}
       </div>

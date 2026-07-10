@@ -136,3 +136,9 @@ components:
   plan-ready-card:
     status: not-started
     notes: Plan-ready confirmation card (plan_ready) with Start working / Run on Autopilot / Keep planning; plan-mode flow not in mobile v1.
+  suggest-reusable-card:
+    status: not-started
+    notes: Save-as-Skill/Routine offer on a clean mission finish (suggest_reusable); not in mobile v1.
+  interaction-answers-message:
+    status: not-started
+    notes: Structured question/answer user bubble from a completed interaction sequence; not in mobile v1.

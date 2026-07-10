@@ -41,10 +41,12 @@
     "description": "Escribe un mensaje para hablar con tu asistente."
   },
   "questionCard": {
-    "placeholder": "Escribe tu respuesta...",
-    "send": "Enviar",
+    "placeholder": "Escribe otra cosa...",
+    "send": "Siguiente",
     "back": "Atrás",
     "forward": "Siguiente",
+    "skip": "Omitir",
+    "dismiss": "Descartar",
     "progress": "{{current}} de {{total}}"
   },
   "interaction": {
@@ -66,6 +68,14 @@
     "keepPlanningDescription": "Sigue aquí y ajusta el plan.",
     "startWorkingMessage": "Adelante con el plan.",
     "runAutopilotMessage": "Adelante, termínalo por tu cuenta."
+  },
+  "suggestReusable": {
+    "title": "Guarda esto para la próxima vez",
+    "skillTitle": "Guardar como Habilidad",
+    "routineTitle": "Guardar como Rutina",
+    "notNow": "Ahora no",
+    "saveSkillMessage": "Guarda lo que acabo de hacer como una Habilidad llamada \"{{title}}\".",
+    "saveRoutineMessage": "Configura esto como una Rutina recurrente llamada \"{{title}}\"."
   },
   "errors": {
     "sessionStart": "No se pudo iniciar la sesión: {{error}}",

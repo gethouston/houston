@@ -133,9 +133,12 @@ Behavior is **never** written in surface code. Change it in the SDK, then bind.
 > signal: `needs_you` = handled / your attention, `error` = genuine failure. A
 > *clean* turn splits on whether it ended on an interaction: nothing outstanding →
 > the terminal `done`; ended on `ask_user`/`request_connection` → `needs_you`
-> carrying the `pendingInteraction` VM field (the composer-replacing question /
-> connect card). (`packages/sdk/src/modules/turns/turn-settle.ts` /
-> `vm-output.ts`; full lifecycle in `knowledge-base/architecture.md`.)
+> carrying the `pendingInteraction` VM field (the question / connect card shown
+> above the always-mounted composer). ONE exception: a lone `suggest_reusable`
+> step (the save-as-Skill/Routine offer) settles `done`, not `needs_you` — the
+> offer is optional, nothing is waiting on the user.
+> (`packages/sdk/src/modules/turns/turn-settle.ts` / `vm-output.ts`; full
+> lifecycle in `knowledge-base/architecture.md`.)
 
 ### b. Visual change → tokens procedure
 
