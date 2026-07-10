@@ -34,7 +34,11 @@
   var winBtn = document.getElementById('winBtn');
 
   // Resolve the real installer URLs from the latest GitHub release (same source
-  // as the home page). On failure we fall back to the site, and log it.
+  // as the home page). On failure we fall back to the build-time baked links
+  // (src/_data/release.js), so the download still works when the unauthenticated
+  // GitHub API is rate-limited (shared office/VPN/mobile IPs) or blocked.
+  var BAKED_DMG = '{{ release.dmgUrl }}';
+  var BAKED_WIN = '{{ release.winX64Url }}';
   var dmgUrl = null, winUrl = null;
   fetch('https://api.github.com/repos/gethouston/houston/releases/latest')
     .then(function (r) { return r.json(); })
@@ -88,6 +92,6 @@
     rpc('mark_download', { p_token: token, p_os: os });
     if (url) window.location.href = url;
   }
-  macBtn.addEventListener('click', function (e) { e.preventDefault(); go(dmgUrl || 'https://gethouston.ai/', 'mac'); });
-  winBtn.addEventListener('click', function (e) { e.preventDefault(); go(winUrl || 'https://gethouston.ai/', 'windows'); });
+  macBtn.addEventListener('click', function (e) { e.preventDefault(); go(dmgUrl || BAKED_DMG || 'https://gethouston.ai/', 'mac'); });
+  winBtn.addEventListener('click', function (e) { e.preventDefault(); go(winUrl || BAKED_WIN || 'https://gethouston.ai/', 'windows'); });
 </script>
