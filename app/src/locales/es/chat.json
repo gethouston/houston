@@ -56,7 +56,8 @@
     "signinReason": "Inicia sesión en Houston para continuar.",
     "signinTitle": "Inicia sesión en Houston",
     "signinDescription": "Tus cuentas siguen siendo tuyas; el agente actúa en tu nombre.",
-    "signin": "Iniciar sesión"
+    "signin": "Iniciar sesión",
+    "connectTitle": "Conectar {{app}}"
   },
   "planReady": {
     "title": "Plan listo",

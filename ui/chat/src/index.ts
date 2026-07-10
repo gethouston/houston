@@ -256,15 +256,20 @@ export type {
 export { decodeInteractionAnswersMessage } from "./interaction-answers-message";
 // === Interaction Card ===
 // The in-chat surface shown when the agent pauses to gather what it needs before
-// continuing; a stepper (one question or connect step at a time) that replaces
-// the composer while a pending interaction is awaiting the user.
+// continuing; a stepper (one question or connect step at a time) shown above the
+// always-mounted composer while a pending interaction is awaiting the user.
 export type {
   ChatInteractionAnswer,
   ChatInteractionCardProps,
   ChatInteractionOption,
   ChatInteractionStep,
+  StepFooterApi,
 } from "./interaction-card";
 export { ChatInteractionCard } from "./interaction-card";
+export { prettifyToolkit } from "./interaction-card-model";
+// The shared footer row a signin/connect step body composes so its filled CTA
+// sits in the exact same chrome as a question step's Next.
+export { InteractionFooter } from "./interaction-card-parts";
 // Clean, human-readable preview of a persisted user-message body: decodes the
 // Skill / attachment markers so cards and lists never show the raw marker.
 export { messagePreviewText } from "./message-preview";

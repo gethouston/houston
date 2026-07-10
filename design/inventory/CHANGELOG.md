@@ -3,6 +3,34 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v14 - 2026-07-10
+
+`interaction-card` brings the signin & connect steps into the Mercury system —
+they were the last hold-outs still drawing a card-inside-a-card. Before, the
+app-supplied body floated a nested `bg-background` rounded surface (logo, name,
+truncated description, AND a filled Connect pill) INSIDE the grey interaction
+card, with the reason as loose text above it. Now the step body draws NO surface
+of its own: the reason routes through the SAME header slot as a question's title
+(anatomy `question-title` -> `step-title`, now shared by every kind; a labelled
+"Connect {app}" / sign-in fallback covers a reason-less step), the app renders a
+hairline Mercury row (app logo + name + one-line clamped description, the
+option-row grammar; new anatomy `step-app-row`), and the single filled CTA
+("Connect" / "Sign in") moves into the shared footer beside the Back node,
+exactly like a question step's Next (new anatomy `step-cta`). A connecting
+hand-off shows a spinner CTA plus a quiet muted line above the footer (new
+anatomy `waiting-note`, new state `connecting`); an already-connected app shows
+a calm check in the row (new state `connected`).
+
+CONTRACT change (additive): `renderConnect`/`renderSignin` now receive the
+shared `StepFooterApi` (`back`/`forward` nav nodes) alongside their completion
+callback, so the app composes the footer without re-implementing navigation;
+ui/chat exports `InteractionFooter` (the footer row's chrome) so the app's CTA
+sits in the exact same spacing. `StepperHeaderProps.questionText` ->
+`title`. ui/chat stays auth/Composio-unaware; the reactive connect/OAuth logic
+is shared by the inline `#houston_toolkit` card and the stepper step via one
+app-side hook, so only their presentation forks. New locale key
+`chat:interaction.connectTitle` (en/es/pt).
+
 ## v13 - 2026-07-10
 
 The interaction-card family adopts the Mercury settings-modal discipline:

@@ -1000,6 +1000,11 @@ export function useAgentChatPanel({
       dismiss: t("chat:questionCard.dismiss"),
       progress: (current: number, total: number) =>
         t("chat:questionCard.progress", { current, total }),
+      // Header-title fallbacks for a signin/connect step the agent left without
+      // a reason (the card routes the reason through the same title slot).
+      signinTitle: t("chat:interaction.signinReason"),
+      connectTitle: (app: string) =>
+        t("chat:interaction.connectTitle", { app }),
     }),
     [t],
   );
@@ -1240,18 +1245,19 @@ export function useAgentChatPanel({
             }),
           );
         }}
-        renderSignin={(step, api) => (
+        renderSignin={(_step, api) => (
           <ChatSigninInteractionCard
-            reason={step.reason}
+            back={api.back}
+            forward={api.forward}
             onSignedIn={api.onSignedIn}
           />
         )}
         renderConnect={(step, api) => (
           <ChatConnectInteractionCard
-            toolkit={step.toolkit}
             agentId={agent.id}
             autoGrant={canManageAgentGrants(capabilities, agent)}
-            reason={step.reason}
+            back={api.back}
+            forward={api.forward}
             onConnected={(_toolkit, appName) => {
               // Record the app and advance ONLY. The composed `onComplete`
               // reply resumes the agent once EVERY step is done; starting a
@@ -1260,6 +1266,7 @@ export function useAgentChatPanel({
               connectedNames.push(appName);
               api.onConnected();
             }}
+            toolkit={step.toolkit}
           />
         )}
       />

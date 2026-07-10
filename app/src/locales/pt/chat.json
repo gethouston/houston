@@ -56,7 +56,8 @@
     "signinReason": "Entre no Houston para continuar.",
     "signinTitle": "Entre no Houston",
     "signinDescription": "Suas contas continuam sendo suas; o agente age em seu nome.",
-    "signin": "Entrar"
+    "signin": "Entrar",
+    "connectTitle": "Conectar {{app}}"
   },
   "planReady": {
     "title": "Plano pronto",

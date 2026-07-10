@@ -56,7 +56,8 @@
     "signinReason": "Sign in to Houston to continue.",
     "signinTitle": "Sign in to Houston",
     "signinDescription": "Your accounts stay yours; the agent acts on your behalf.",
-    "signin": "Sign in"
+    "signin": "Sign in",
+    "connectTitle": "Connect {{app}}"
   },
   "planReady": {
     "title": "Plan ready",
