@@ -112,7 +112,11 @@
         "connect": "Connect",
         "connecting": "Connecting...",
         "skipHint": "Can't connect right now? You can do this anytime from Integrations.",
-        "skip": "Skip for now"
+        "skip": "Skip for now",
+        "skipConfirmTitle": "Skip connecting your email?",
+        "skipConfirmBody": "You can connect it anytime from Integrations. Your agent won't be able to send or read email until you do.",
+        "skipConfirmAction": "Skip for now",
+        "skipConfirmCancel": "Keep connecting"
       },
       "agentCreated": {
         "title": "Agent created!",

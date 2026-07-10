@@ -112,7 +112,11 @@
         "connect": "Conectar",
         "connecting": "Conectando...",
         "skipHint": "Não consegue conectar agora? Você pode fazer isso quando quiser em Integrações.",
-        "skip": "Pular por enquanto"
+        "skip": "Pular por enquanto",
+        "skipConfirmTitle": "Pular a conexão do seu e-mail?",
+        "skipConfirmBody": "Você pode conectar quando quiser em Integrações. Seu agente não vai poder enviar nem ler e-mails até você fazer isso.",
+        "skipConfirmAction": "Pular por enquanto",
+        "skipConfirmCancel": "Continuar conectando"
       },
       "agentCreated": {
         "title": "Agente criado!",
