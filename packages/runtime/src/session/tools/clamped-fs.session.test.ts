@@ -1,7 +1,8 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getModel } from "@earendil-works/pi-ai";
+// `getModel` is pi-ai's legacy static-catalog read, preserved on `/compat`.
+import { getModel } from "@earendil-works/pi-ai/compat";
 import {
   AuthStorage,
   createAgentSession,

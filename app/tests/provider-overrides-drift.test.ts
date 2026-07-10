@@ -17,10 +17,14 @@ import {
  * pi-ai isn't an app dependency, so we resolve it through the host package (which
  * depends on it) via its stable node_modules symlink — no lockfile change, and
  * the app's `node --experimental-strip-types --test` runner imports it directly.
+ * `dist/compat.js` (not `dist/index.js`) because pi-ai 0.80 moved the static
+ * `getModel`/`getProviders` catalog reads used here onto its legacy `/compat`
+ * entrypoint (the new default API is an instantiated `Models`/`Provider`
+ * collection this drift check has no need to build).
  */
 const pi = (await import(
   new URL(
-    "../../packages/host/node_modules/@earendil-works/pi-ai/dist/index.js",
+    "../../packages/host/node_modules/@earendil-works/pi-ai/dist/compat.js",
     import.meta.url,
   ).href
 )) as {
