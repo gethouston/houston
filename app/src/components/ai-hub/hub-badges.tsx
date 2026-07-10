@@ -11,6 +11,7 @@
 import { cn } from "@houston-ai/core";
 import { CreditCard, KeyRound, Monitor } from "lucide-react";
 import type { ReactNode } from "react";
+import { StatusDot } from "../integrations/connection-status-badge";
 
 /** Base neutral pill every hub chip is built from. */
 export function SpecChip({
@@ -69,15 +70,17 @@ export function PriceText({ text }: { text: string }) {
   );
 }
 
-/** The only always-green element: a live dot + label for connected state. */
+/**
+ * The only always-green element: a live dot + label for connected state.
+ * Same primitive + proportions as the Integrations tab's `ConnectionStatusBadge`
+ * (`StatusDot` + `text-xs`) so "connected" reads identically everywhere in the
+ * app, not just here.
+ */
 export function LiveStatus({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span
-        className="size-1.5 rounded-full bg-success ring-2 ring-success/25"
-        aria-hidden="true"
-      />
-      <span className="text-[12.5px] font-medium text-success">{label}</span>
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">
+      <StatusDot status="active" />
+      {label}
     </span>
   );
 }

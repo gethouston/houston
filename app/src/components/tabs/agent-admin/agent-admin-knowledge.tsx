@@ -7,7 +7,7 @@ import {
 import { LearningsContent } from "../learnings-content";
 import type { AgentAdminScreenProps } from "./agent-admin-nav.ts";
 
-/** Knowledge (learnings) section. Always editable (managers/owners only). */
+/** Memory (learnings) section. Always editable (managers/owners only). */
 export function AgentAdminKnowledge({ agent }: AgentAdminScreenProps) {
   const path = agent.folderPath;
   const { data } = useLearnings(path);

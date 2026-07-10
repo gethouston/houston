@@ -109,6 +109,19 @@ describe("parsePersistedProvisioning", () => {
     );
   });
 
+  it("keeps a timed-out entry regardless of age (HOU-693 regression)", () => {
+    const stalled = {
+      agentId: "a3",
+      agentPath: "/w/a3",
+      since: now - PROVISIONING_TTL_MS * 10,
+      timedOut: true,
+    };
+    deepStrictEqual(
+      parsePersistedProvisioning(JSON.stringify([stalled, fresh]), now),
+      [stalled, fresh],
+    );
+  });
+
   it("survives malformed storage", () => {
     deepStrictEqual(parsePersistedProvisioning(null, now), []);
     deepStrictEqual(parsePersistedProvisioning("not json", now), []);

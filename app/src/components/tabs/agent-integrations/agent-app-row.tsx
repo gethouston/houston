@@ -2,7 +2,6 @@ import { useTranslation } from "react-i18next";
 import {
   AppRow,
   type ConnectFlow,
-  ConnectionStatusBadge,
   PendingConnectionCallout,
 } from "../../integrations";
 import type { AgentAppRow as AgentAppRowVM } from "./model";
@@ -57,14 +56,7 @@ export function AgentAppRow({
   }
 
   return (
-    <AppRow
-      display={app}
-      description={app.description}
-      status={status}
-      trailing={
-        !canEdit ? <ConnectionStatusBadge status={status} /> : undefined
-      }
-    >
+    <AppRow display={app} description={app.description} status={status}>
       {canEdit && (
         <PendingConnectionCallout
           status={status}

@@ -3,7 +3,7 @@
     "title": "Agent settings",
     "rows": {
       "knowledge": {
-        "title": "Knowledge"
+        "title": "Memory"
       },
       "model": {
         "title": "AI models"

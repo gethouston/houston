@@ -64,7 +64,7 @@ export function agentAdminCards(
 
 /**
  * Deep-link from a turn-summary file target (a semantic file update the agent
- * wrote) into the matching section. Learnings surface as "Knowledge".
+ * wrote) into the matching section. Learnings surface as "Memory".
  */
 export function targetToScreen(
   target: "instructions" | "skills" | "learnings",
