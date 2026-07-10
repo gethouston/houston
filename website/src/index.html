@@ -549,20 +549,84 @@ visionPath: "vision/index.html"
   }
 
   /* ═══════════════════════════════════════════
-     APP MOCKUP
+     MACBOOK FRAME — CSS-drawn display around the hero mockup
      ═══════════════════════════════════════════ */
 
+  /* ── Pure-CSS MacBook display, same craft level as the iPhone frame below:
+     a thin dark-aluminum bezel with rounded display corners, a hairline rim
+     between metal and glass, a hint of the camera and the lower deck. The
+     glass/light chrome (top catch-light, ambient shadow, faint reflection)
+     lives on the FRAME, not the screen — the screen itself (.app-mockup)
+     is flat and matches the real app's window background exactly, with no
+     translucency or space-photo bleed-through. No image assets. */
+  .macbook-frame {
+    position: relative;
+    border-radius: 22px;
+    padding: 14px 14px 28px;
+    background: linear-gradient(155deg, #4b4c50 0%, #2c2d30 22%, #17181a 58%, #0b0c0d 100%);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.22) inset,
+      0 0 0 1px rgba(0,0,0,0.55),
+      0 70px 130px -40px rgba(0,0,0,0.75),
+      0 24px 55px -24px rgba(0,0,0,0.6);
+  }
+
+  /* Hairline rim between the aluminum bezel and the screen glass (mirrors
+     the iPhone's ::before dark rim). */
+  .macbook-frame::before {
+    content: "";
+    position: absolute;
+    inset: 11px 11px 25px;
+    border-radius: 13px;
+    background: #000;
+    z-index: 0;
+  }
+
+  /* A single minimal groove near the bottom edge of the bezel — the only
+     nod to the laptop's lower deck / hinge line. No keyboard, no trackpad. */
+  .macbook-frame .macbook-hinge {
+    position: absolute;
+    left: 30%;
+    right: 30%;
+    bottom: 11px;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(0,0,0,0.5);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.07);
+    z-index: 1;
+  }
+
+  /* Camera hint, centered at the screen's top edge — tiny and quiet. */
+  .macbook-frame::after {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #4c4f58 0%, #050506 75%);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.05);
+    z-index: 2;
+  }
+
   /* ── Dark-mode hero app mockup — faithful to the real Houston web app ──────
-     A translucent frosted-glass desktop window (the same glass language as the
-     rest of the page) whose interior reproduces the real Mission Control's
-     FLOATING-PANEL layout: sidebar, board and chat are each their own rounded
-     panel sitting on a darker gutter, with visible gutter gaps between them
-     (not contiguous panes divided by border lines). Interior colours mirror
-     the design-token dark theme (packages/design-tokens):
+     The screen itself: reproduces the real Mission Control's FLOATING-PANEL
+     layout (sidebar, board and chat are each their own rounded panel sitting
+     on a darker gutter, with visible gutter gaps between them — not
+     contiguous panes divided by border lines). The gutter/window background
+     is #141416, sampled directly off the real app (packages/design-tokens
+     color.dark.json → canvas-gutter / color.cool.gutter-dark = #141416).
+     Interior colours mirror the design-token dark theme:
        gutter (canvas-gutter) #141416   panel (background/card) #1e1e1e
        nested column white-a05 over panel   ink #e5e5e5   muted #9a9a9a
        borders white-a09   primary #e5e5e5.
-     Board / card / chat styling lives in assets/hero-demo.css. */
+     Board / card / chat styling lives in assets/hero-demo.css.
+     No separate titlebar band: the traffic lights float directly over the
+     top-left of the screen (over the sidebar/gutter), on the same flat
+     background, exactly like the real app — no dividing line, no centered
+     window title. */
   .app-mockup {
     --m-ink: #e5e5e5;
     --m-ink-soft: #cfcfcf;
@@ -576,45 +640,30 @@ visionPath: "vision/index.html"
     --m-agent: #a78bfa;
 
     position: relative;
-    border-radius: 16px;
-    border: 1px solid var(--glass-border-strong);
+    z-index: 1;
+    border-radius: 12px;
     overflow: hidden;
     color: var(--m-ink);
-    /* Frosted-glass window: the space photo glows faintly through the chrome. */
-    background: rgba(17,18,23,0.9);
-    -webkit-backdrop-filter: saturate(1.2) blur(22px);
-    backdrop-filter: saturate(1.2) blur(22px);
-    box-shadow:
-      0 40px 90px -20px rgba(0,0,0,0.7),
-      0 0 0 1px rgba(255,255,255,0.04),
-      0 1px 0 rgba(255,255,255,0.06) inset;
+    /* Flat, opaque — matches the real app's window background exactly, no
+       photo bleed-through. The glass chrome lives on .macbook-frame. */
+    background: var(--m-canvas);
   }
 
-  .mockup-titlebar {
-    position: relative;
-    height: 44px;
+  /* Traffic lights fused directly onto the screen: no separate titlebar
+     strip, no divider, same background as the sidebar/gutter beneath them
+     (top-left corner, the real app's convention). */
+  .traffic-lights {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 5;
     display: flex;
-    align-items: center;
-    padding: 0 16px;
     gap: 8px;
-    border-bottom: 1px solid var(--m-border);
-    background: rgba(255,255,255,0.03);
   }
-
-  .traffic-lights { display: flex; gap: 8px; }
   .traffic-lights span { width: 12px; height: 12px; border-radius: 50%; }
   .tl-red { background: #ff5f57; }
   .tl-yellow { background: #febc2e; }
   .tl-green { background: #28c840; }
-
-  .mockup-titlebar .title {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--m-muted);
-  }
 
   /* The gutter: a darker canvas strip with a fixed gap that separates the
      floating panels (sidebar / board / chat), exactly like the real app. */
@@ -627,12 +676,14 @@ visionPath: "vision/index.html"
   }
 
   /* ── Sidebar — no panel of its own, sits directly on the gutter (the real
-     AppSidebar background token is transparent) ── */
+     AppSidebar background token is transparent). Extra top padding clears
+     the fused traffic lights sitting above it on the same background. ── */
   .mockup-sidebar {
     width: 220px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
+    padding-top: 30px;
     padding-bottom: 8px;
   }
 
@@ -1603,15 +1654,21 @@ visionPath: "vision/index.html"
   .pricing-grid .final-cta-card { margin-bottom: 0; }
   .pricing-grid .final-cta-card p { margin-bottom: 20px; }
 
-  /* The "Most popular" plan gets a full gradient ring instead of the plain
-     divider, same gradient as the rest of the site's accent moments. */
+  /* The "Most popular" plan reads as featured through the same quiet,
+     monochrome language as the rest of the glass system: a brighter
+     white-alpha ring (fading top to bottom, same "ring" construction as
+     before, just recoloured) and a slightly more opaque panel — contrast
+     and weight, not a saturated gradient. */
   .final-cta-card.featured {
     border: 1px solid transparent;
     background:
-      linear-gradient(var(--glass-strong), var(--glass-strong)) padding-box,
-      linear-gradient(180deg, #3b82f6, #818cf8 55%, #f97316) border-box;
+      linear-gradient(rgba(255,255,255,0.07), rgba(255,255,255,0.07)) padding-box,
+      linear-gradient(180deg, rgba(255,255,255,0.4), rgba(255,255,255,0.12)) border-box;
   }
 
+  /* White pill / dark text — the same "active" idiom already used by
+     .hiw-tab.active, so the badge reads as emphasis without introducing a
+     new colour. */
   .pricing-badge {
     position: relative;
     align-self: center;
@@ -1620,8 +1677,8 @@ visionPath: "vision/index.html"
     font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: #0d0d0d;
-    background: linear-gradient(100deg, #3b82f6 0%, #818cf8 42%, #f97316 100%);
+    color: #111318;
+    background: #fff;
     border-radius: 9999px;
     padding: 5px 14px;
     white-space: nowrap;
@@ -1754,7 +1811,8 @@ visionPath: "vision/index.html"
     .pricing-grid { grid-template-columns: 1fr; }
     .pricing-grid .final-cta-card + .final-cta-card:not(.featured) { border-left: none !important; border-top: 1px solid var(--border-light); }
     .mockup-body { min-height: auto; }
-    .app-mockup { max-width: 100% !important; }
+    .macbook-frame { max-width: 100% !important; padding: 10px 10px 22px; }
+    .macbook-frame::before { inset: 8px 8px 19px; }
   }
 
   @media (max-width: 600px) {
@@ -1774,8 +1832,9 @@ visionPath: "vision/index.html"
     footer { padding: 32px 24px; }
     footer > div:first-child { grid-template-columns: 1fr !important; gap: 32px !important; }
     .nav-right .btn { font-size: 12px; padding: 0 12px; height: 32px; }
-    .mockup-titlebar .title { font-size: 12px; }
-    .app-mockup { max-width: 100% !important; margin-top: 40px !important; }
+    .macbook-frame { max-width: 100% !important; margin-top: 40px !important; padding: 8px 8px 18px; }
+    .macbook-frame::before { inset: 6px 6px 15px; }
+    .macbook-frame .macbook-hinge { bottom: 7px; }
     .app-mockup .mockup-sidebar { display: none !important; }
     .app-mockup .mockup-body { min-height: auto !important; }
     .iphone { width: 290px; }
@@ -1998,16 +2057,15 @@ visionPath: "vision/index.html"
     <button class="btn btn-secondary btn-lg" data-dl-windows-trigger data-dl-source="hero-windows"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Download for Windows</button>
   </div>
 
-  <div class="app-mockup" data-hero-demo style="max-width: 1152px; width: 100%; margin-top: 64px; animation: float-up 0.6s ease 0.25s both;">
-    <div class="mockup-titlebar">
+  <div class="macbook-frame" style="max-width: 1152px; width: 100%; margin-top: 64px; animation: float-up 0.6s ease 0.25s both;">
+    <span class="macbook-hinge"></span>
+    <div class="app-mockup" data-hero-demo>
       <div class="traffic-lights">
         <span class="tl-red"></span>
         <span class="tl-yellow"></span>
         <span class="tl-green"></span>
       </div>
-      <span class="title">Houston</span>
-    </div>
-    <div class="mockup-body">
+      <div class="mockup-body">
       <!-- Sidebar — matches the real AppSidebar (220px, workspace switcher,
            nav, Your Agents). -->
       <div class="mockup-sidebar">
@@ -2161,6 +2219,7 @@ visionPath: "vision/index.html"
           </div>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </div>
@@ -2477,7 +2536,7 @@ visionPath: "vision/index.html"
            + multiplayer Spaces (knowledge-base/teams.md). -->
       <div class="final-cta-card featured" style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
         <span class="pricing-badge">Most popular</span>
-        <div style="position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 20% 100%, rgba(59,130,246,0.08), transparent), radial-gradient(ellipse 60% 50% at 80% 0%, rgba(249,115,22,0.06), transparent); pointer-events: none;"></div>
+        <div style="position: absolute; inset: 0; background: radial-gradient(ellipse 70% 55% at 50% 0%, rgba(255,255,255,0.07), transparent); pointer-events: none;"></div>
         <div style="font-size: 12px; font-weight: 500; color: var(--gray-400); margin-bottom: 8px; position: relative;">Team</div>
         <h3 style="position: relative;">Always on</h3>
         <div class="pricing-price" style="position: relative;"><span class="currency">{{ pricing.currency }}</span><span class="amount">{{ pricing.teamMonthly }}</span><span class="per">/ seat / mo</span></div>
