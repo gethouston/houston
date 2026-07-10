@@ -15,6 +15,7 @@ import type { Agent } from "../domain/types";
 import type { RuntimeSpawner } from "../launcher/process";
 import {
   buildLocalHost,
+  formatIntegrationsModeLog,
   LOCAL_CAPABILITIES,
   type LocalHostOptions,
 } from "./host";
@@ -87,6 +88,28 @@ const auth = {
   Authorization: "Bearer boot-secret",
   "Content-Type": "application/json",
 };
+
+test("integration mode log identifies gateway mode and its upstream", () => {
+  expect(
+    formatIntegrationsModeLog({
+      gatewayUrl: "https://cloud.test",
+      composioApiKey: "must-not-appear",
+    }),
+  ).toBe("[local-host] integrations: gateway https://cloud.test");
+});
+
+test("integration mode log identifies direct mode without exposing the key", () => {
+  const key = "must-not-appear";
+  const line = formatIntegrationsModeLog({ composioApiKey: key });
+  expect(line).toBe("[local-host] integrations: direct (own Composio key)");
+  expect(line).not.toContain(key);
+});
+
+test("integration mode log explains how to enable integrations when off", () => {
+  expect(formatIntegrationsModeLog(undefined)).toBe(
+    "[local-host] integrations off: set HOUSTON_INTEGRATIONS_URL or COMPOSIO_API_KEY to enable",
+  );
+});
 
 function deferred<T>() {
   let resolve!: (value: T) => void;

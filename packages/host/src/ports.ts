@@ -20,6 +20,17 @@ import type {
  * never imports a concrete adapter — only these.
  */
 
+/**
+ * Renaming (or creating) an agent onto a name the workspace already has. Stores
+ * throw it instead of leaking the backend's raw failure (ENOTEMPTY from a
+ * directory rename) so routes can answer a clean 409.
+ */
+export class AgentNameConflictError extends Error {
+  constructor(readonly agentName: string) {
+    super(`an agent named "${agentName}" already exists in this workspace`);
+  }
+}
+
 /** Persistence for workspaces + agents. Impls: MemoryWorkspaceStore, PgWorkspaceStore. */
 export interface WorkspaceStore {
   /** The user's personal workspace, creating it on first access (lazy provisioning). */

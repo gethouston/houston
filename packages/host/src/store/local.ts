@@ -15,7 +15,7 @@ import type {
   WorkspaceId,
   WorkspaceRuntime,
 } from "../domain/types";
-import type { WorkspaceStore } from "../ports";
+import { AgentNameConflictError, type WorkspaceStore } from "../ports";
 
 /**
  * The local profile's WorkspaceStore — the desktop tree on disk is the source
@@ -137,6 +137,11 @@ export class LocalWorkspaceStore implements WorkspaceStore {
     if (!agent) throw new Error(`renameAgent: unknown agent ${id}`);
     if (name.includes("/") || name.includes(".."))
       throw new Error(`invalid agent name: ${name}`);
+    if (name === agent.name) return agent;
+    // Check BEFORE renameSync: moving onto an existing directory throws a raw
+    // ENOTEMPTY that would surface as a 500 (#172).
+    if (existsSync(join(this.root, agent.workspaceId, name)))
+      throw new AgentNameConflictError(name);
     renameSync(
       join(this.root, agent.workspaceId, agent.name),
       join(this.root, agent.workspaceId, name),

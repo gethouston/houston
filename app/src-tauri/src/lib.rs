@@ -449,6 +449,27 @@ pub fn run() {
         });
 }
 
+fn integrations_host_env(
+    runtime_url: Option<String>,
+    runtime_key: Option<String>,
+    baked_url: Option<&str>,
+) -> Vec<(String, String)> {
+    let runtime_url = runtime_url.filter(|value| !value.is_empty());
+    let runtime_key = runtime_key.filter(|value| !value.is_empty());
+    let mut env = Vec::new();
+    if let Some(url) = runtime_url {
+        env.push(("HOUSTON_INTEGRATIONS_URL".into(), url));
+    } else if runtime_key.is_none() {
+        if let Some(url) = baked_url.filter(|value| !value.is_empty()) {
+            env.push(("HOUSTON_INTEGRATIONS_URL".into(), url.into()));
+        }
+    }
+    if let Some(key) = runtime_key {
+        env.push(("COMPOSIO_API_KEY".into(), key));
+    }
+    env
+}
+
 /// Spawn the Bun-compiled Houston host as the sidecar and drive the frontend
 /// into control-plane mode against it.
 ///
@@ -512,27 +533,15 @@ fn spawn_host_sidecar(
             houston_prompt::system_prompt_pi(),
         ),
     ];
-    // Integrations gateway (platform-mode Composio): Houston's cloud host owns
-    // the platform key; this desktop host only forwards with the user's
-    // Supabase session. Runtime env wins (dev override), else the compile-time
-    // URL CI bakes in. No URL → the host runs with integrations off. The URL
-    // is configuration, not a secret; the KEY never appears here at all.
-    if let Some(url) = std::env::var("HOUSTON_INTEGRATIONS_URL")
-        .ok()
-        .filter(|v| !v.is_empty())
-        .or_else(|| option_env!("HOUSTON_INTEGRATIONS_URL").map(str::to_string))
-        .filter(|v| !v.is_empty())
-    {
-        host_env.push(("HOUSTON_INTEGRATIONS_URL".into(), url));
-    }
-    // Dev/self-host escape hatch: a locally-exported platform key makes the
-    // host call Composio directly (packages/host/src/local/main.ts). Never
-    // baked at compile time — a shared key must not ship in a client binary.
-    if let Ok(key) = std::env::var("COMPOSIO_API_KEY") {
-        if !key.is_empty() {
-            host_env.push(("COMPOSIO_API_KEY".into(), key));
-        }
-    }
+    // A runtime URL explicitly selects Houston's gateway (and the host still
+    // gives it precedence if a key is also set). A runtime key without that
+    // URL opts into direct mode, suppressing the baked packaged-build default.
+    // With neither runtime value, the baked gateway remains the default.
+    host_env.extend(integrations_host_env(
+        std::env::var("HOUSTON_INTEGRATIONS_URL").ok(),
+        std::env::var("COMPOSIO_API_KEY").ok(),
+        option_env!("HOUSTON_INTEGRATIONS_URL"),
+    ));
     // Same Sentry-forwarding contract as the engine path, gated on the same
     // `sentry_active` decision (and forwarding the SENTRY_SEND_IN_DEV opt-in),
     // so host-side crashes land in the shared project under the same release
@@ -672,7 +681,91 @@ fn migrate_legacy_docs_dir(houston: &std::path::Path) {
 
 #[cfg(test)]
 mod tests {
-    use super::{engine_sentry_env, sentry_send_in_dev_enabled, sentry_should_activate};
+    use super::{
+        engine_sentry_env, integrations_host_env, sentry_send_in_dev_enabled,
+        sentry_should_activate,
+    };
+
+    const BAKED_INTEGRATIONS_URL: &str = "https://integrations.houston.test";
+
+    #[test]
+    fn integrations_env_runtime_url_and_key_forwards_both() {
+        assert_eq!(
+            integrations_host_env(
+                Some("https://runtime.test".into()),
+                Some("own-key".into()),
+                Some(BAKED_INTEGRATIONS_URL),
+            ),
+            vec![
+                (
+                    "HOUSTON_INTEGRATIONS_URL".into(),
+                    "https://runtime.test".into(),
+                ),
+                ("COMPOSIO_API_KEY".into(), "own-key".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn integrations_env_runtime_url_without_key_forwards_url() {
+        assert_eq!(
+            integrations_host_env(
+                Some("https://runtime.test".into()),
+                None,
+                Some(BAKED_INTEGRATIONS_URL),
+            ),
+            vec![(
+                "HOUSTON_INTEGRATIONS_URL".into(),
+                "https://runtime.test".into(),
+            )]
+        );
+    }
+
+    #[test]
+    fn integrations_env_runtime_key_without_url_opts_into_direct_mode() {
+        assert_eq!(
+            integrations_host_env(None, Some("own-key".into()), Some(BAKED_INTEGRATIONS_URL)),
+            vec![("COMPOSIO_API_KEY".into(), "own-key".into())]
+        );
+    }
+
+    #[test]
+    fn integrations_env_without_runtime_values_uses_baked_url() {
+        assert_eq!(
+            integrations_host_env(None, None, Some(BAKED_INTEGRATIONS_URL)),
+            vec![(
+                "HOUSTON_INTEGRATIONS_URL".into(),
+                BAKED_INTEGRATIONS_URL.into(),
+            )]
+        );
+    }
+
+    #[test]
+    fn integrations_env_treats_empty_values_as_unset() {
+        assert_eq!(
+            integrations_host_env(
+                Some(String::new()),
+                Some(String::new()),
+                Some(BAKED_INTEGRATIONS_URL),
+            ),
+            vec![(
+                "HOUSTON_INTEGRATIONS_URL".into(),
+                BAKED_INTEGRATIONS_URL.into(),
+            )]
+        );
+        assert_eq!(
+            integrations_host_env(
+                Some(String::new()),
+                Some("own-key".into()),
+                Some(BAKED_INTEGRATIONS_URL),
+            ),
+            vec![("COMPOSIO_API_KEY".into(), "own-key".into())]
+        );
+        assert_eq!(
+            integrations_host_env(None, None, Some("")),
+            Vec::<(String, String)>::new()
+        );
+    }
 
     #[test]
     fn send_in_dev_flag_off_by_default() {
