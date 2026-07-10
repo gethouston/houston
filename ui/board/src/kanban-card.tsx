@@ -7,7 +7,8 @@ import {
 } from "@houston-ai/core";
 import { Check, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { KanbanPeopleStrip } from "./kanban-people-strip";
+import { KanbanPeople } from "./kanban-people";
+import { CARD_PEOPLE_MAX } from "./kanban-people-logic";
 import type { KanbanItem } from "./types";
 
 export interface KanbanCardLabels {
@@ -24,7 +25,7 @@ export interface KanbanCardLabels {
   selectTooltip?: string;
   /** Accessible group label for the card's people face stack. */
   people?: string;
-  /** Accessible label for the people strip's expandable "+N" chip. */
+  /** Accessible label for the people overlay's expandable "+N" chip. */
   peopleExpand?: string;
 }
 
@@ -220,8 +221,8 @@ export function KanbanCard({
                 it reveals on hover (pushing the agent name right) yet stays
                 keyboard-reachable — never a hover-only affordance. The margin
                 collapses with the width so at rest the leading icon sits flush
-                with the card's content padding (same left edge as the title,
-                description, and people strip); the gap lives on the checkbox,
+                with the card's content padding (same left edge as the title
+                and description); the gap lives on the checkbox,
                 never as a container `gap` that a zero-width child would keep. */}
             {selectable && onToggleSelect && (
               <div
@@ -260,8 +261,8 @@ export function KanbanCard({
             )}
             {/* The board-wide `avatar` (the agent helmet) is the leading icon on
                 EVERY board — Mission Control and the per-agent board alike.
-                Contributors show only in the bottom people strip, never as the
-                card icon. `item.icon` remains a generic per-item fallback for
+                Contributors show only in the bottom-right people overlay, never
+                as the card icon. `item.icon` remains a generic per-item fallback for
                 boards that pass no `avatar` (e.g. cross-agent lists). */}
             {avatar ??
               (item.icon && (
@@ -327,37 +328,63 @@ export function KanbanCard({
           </div>
         </div>
 
-        {/* Title */}
-        {editing ? (
-          <input
-            ref={inputRef}
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={commitRename}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commitRename();
-              if (e.key === "Escape") setEditing(false);
-            }}
-            onClick={(e) => e.stopPropagation()}
-            className="text-[13px] font-medium text-foreground bg-transparent border-b border-foreground/20 outline-none w-full"
-          />
-        ) : (
-          <p className="text-[13px] font-medium text-foreground line-clamp-2 cursor-pointer">
-            {item.title}
-          </p>
-        )}
+        {/* Card body (title + description). Relative so the people stack can
+           overlay the body's bottom-right corner (see below) without a
+           dedicated strip row. With no people the wrapper has no absolute
+           child, so `relative` is inert — zero layout change. */}
+        <div className="relative">
+          {/* Title */}
+          {editing ? (
+            <input
+              ref={inputRef}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitRename();
+                if (e.key === "Escape") setEditing(false);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="text-[13px] font-medium text-foreground bg-transparent border-b border-foreground/20 outline-none w-full"
+            />
+          ) : (
+            <p className="text-[13px] font-medium text-foreground line-clamp-2 cursor-pointer">
+              {item.title}
+            </p>
+          )}
 
-        {/* Description */}
-        {item.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-            {item.description}
-          </p>
-        )}
+          {/* Description */}
+          {item.description && (
+            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+              {item.description}
+            </p>
+          )}
+
+          {/* People stack, overlaying the body's bottom-right corner (over the
+             description's final line, or the title when the description is
+             empty/short). Absolutely positioned so it floats over existing
+             content and never grows the card height; the strip row is gone.
+             `ring-2 ring-background` on every face (from AvatarGroup) is the
+             only separation from the text underneath — no border/divider. The
+             expandable "+N" popover is portalled, so nothing clips it. Renders
+             nothing when the mission has no people, leaving the card
+             untouched. */}
+          <KanbanPeople
+            people={item.people}
+            max={CARD_PEOPLE_MAX}
+            size="sm"
+            label={l.people}
+            expandable
+            expandLabel={l.peopleExpand}
+            className="absolute right-0 bottom-0"
+          />
+        </div>
 
         {/* Footer: tags + custom actions. The Approve action moved to the
            top-right icon row (see above) so it's visually consistent with
            Rename / Delete and the tooltip explains exactly what it does.
-           People moved OUT of here into the dedicated bottom strip below. */}
+           People are NOT here — they overlay the card body's bottom-right
+           corner (see the body wrapper above). */}
         {(item.tags?.length || actions) && (
           <div className="flex items-center justify-between mt-2.5">
             <div className="flex items-center gap-1 flex-wrap min-w-0">
@@ -373,15 +400,6 @@ export function KanbanCard({
             <div className="flex items-center gap-1.5 shrink-0">{actions}</div>
           </div>
         )}
-
-        {/* Dedicated people strip: a full-width row along the card's bottom
-           edge showing EVERY contributor (face stack + expandable "+N"). Only
-           rendered when the mission has people. */}
-        <KanbanPeopleStrip
-          people={item.people}
-          label={l.people}
-          expandLabel={l.peopleExpand}
-        />
       </div>
 
       <ConfirmDialog

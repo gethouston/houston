@@ -13,9 +13,9 @@ import {
   TooltipTrigger,
 } from "@houston-ai/core";
 import {
+  CARD_PEOPLE_MAX,
   initialsFor,
   overflowCount,
-  STRIP_MAX,
   visiblePeople,
 } from "./kanban-people-logic";
 import type { KanbanPerson } from "./types";
@@ -23,7 +23,7 @@ import type { KanbanPerson } from "./types";
 // Re-export the pure, JSX-free helpers so consumers can import them from the
 // component module too; they live in `kanban-people-logic.ts` so tests can run
 // them under `node --experimental-strip-types` (which can't transform JSX).
-export { initialsFor, overflowCount, STRIP_MAX, visiblePeople };
+export { CARD_PEOPLE_MAX, initialsFor, overflowCount, visiblePeople };
 
 export interface KanbanPeopleProps {
   people?: KanbanPerson[];

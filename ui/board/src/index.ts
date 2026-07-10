@@ -27,14 +27,12 @@ export type { KanbanListRailProps } from "./kanban-list-rail";
 export { KanbanListRail } from "./kanban-list-rail";
 export type { KanbanPeopleProps } from "./kanban-people";
 export {
+  CARD_PEOPLE_MAX,
   initialsFor,
   KanbanPeople,
   overflowCount,
-  STRIP_MAX,
   visiblePeople,
 } from "./kanban-people";
-export type { KanbanPeopleStripProps } from "./kanban-people-strip";
-export { KanbanPeopleStrip } from "./kanban-people-strip";
 export type {
   BoardSearchSnippet,
   ConversationEntry,
