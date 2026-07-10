@@ -17,8 +17,8 @@ import { SkillsGrid } from "@houston-ai/skills"
   skills={installedSkills}
   loading={false}
   onSkillClick={(skill) => navigate(`/skills/${skill.id}`)}
-  onSearch={(q) => searchCommunitySkills(q)}
-  onInstallCommunity={(skill) => installSkill(skill)}
+  onListFromRepo={(source) => listRepoSkills(source)}
+  onInstallFromRepo={(source, skills) => installRepoSkills(source, skills)}
 />
 ```
 
@@ -27,8 +27,11 @@ import { SkillsGrid } from "@houston-ai/skills"
 - `SkillsGrid` -- main view with installed skill list + optional community section
 - `SkillRow` -- single skill row with name, description, icon
 - `SkillDetailPage` -- full detail view for a selected skill
-- `CommunitySkillsSection` -- search and browse community skills
-- `CommunitySkillRow` -- single community skill with install button
+- `AddSkillDialog` -- the Add Skill dialog (GitHub / From scratch tabs)
+- `SkillMarketplaceSection` -- inline marketplace section (search + category shelves) for a page
+- `SkillMarketplaceGrid` -- the Skills.sh marketplace card grid (search + popular)
+- `SkillMarketplaceRow` -- compact marketplace row (AppRow idiom) with info + install actions
+- `SkillPreviewModal` -- overlay detail modal for a marketplace skill
 - `LearningRow` -- skill learning/memory display
 - Types: `Skill`, `CommunitySkill`, `LearningCategory`, `SkillLearning`
 

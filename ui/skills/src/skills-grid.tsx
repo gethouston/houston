@@ -23,7 +23,7 @@ import {
   DEFAULT_SKILLS_GRID_LABELS,
   type SkillsGridLabels,
 } from "./skills-grid-labels";
-import type { CommunitySkill, RepoSkill, Skill } from "./types";
+import type { RepoSkill, Skill } from "./types";
 
 /**
  * Optional translated labels. Defaults are English so existing callers
@@ -37,15 +37,6 @@ export interface SkillsGridProps {
   onSkillClick: (skill: Skill) => void;
   /** Delete a skill by name. Enables per-row trash buttons when provided. */
   onDelete?: (name: string) => Promise<void>;
-  /** Search Skills.sh. Required to enable the marketplace modal. */
-  onSearch?: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>;
-  /** Optional dedicated "popular skills" fetcher used for the marketplace empty state. */
-  onPopular?: (signal?: AbortSignal) => Promise<CommunitySkill[]>;
-  /** Install a single community skill. Returns installed skill name. */
-  onInstallCommunity?: (
-    skill: CommunitySkill,
-    signal?: AbortSignal,
-  ) => Promise<string>;
   /** Discover all SKILL.md files in a GitHub repo. */
   onListFromRepo?: (source: string) => Promise<RepoSkill[]>;
   /** Install selected skills from a repo. Returns installed names. */
@@ -53,8 +44,14 @@ export interface SkillsGridProps {
     source: string,
     skills: RepoSkill[],
   ) => Promise<string[]>;
+  /** Create a brand new skill from a user-authored title/description/body. */
+  onCreateFromScratch?: (input: {
+    name: string;
+    description: string;
+    content: string;
+  }) => Promise<string>;
   /** Lowercase set of slugs already installed locally. Drives "Already
-   *  installed" badges in the marketplace dialog. */
+   *  installed" badges in the add dialog. */
   installedSkillNames?: Set<string>;
   /** Override any/all user-visible strings. Unspecified fields fall back to English. */
   labels?: SkillsGridLabels;
@@ -65,11 +62,9 @@ export function SkillsGrid({
   loading,
   onSkillClick,
   onDelete,
-  onSearch,
-  onPopular,
-  onInstallCommunity,
   onListFromRepo,
   onInstallFromRepo,
+  onCreateFromScratch,
   installedSkillNames,
   labels,
 }: SkillsGridProps) {
@@ -89,7 +84,8 @@ export function SkillsGrid({
     [skills],
   );
 
-  const canAdd = !!onSearch && !!onInstallCommunity;
+  const canAdd =
+    (!!onListFromRepo && !!onInstallFromRepo) || !!onCreateFromScratch;
 
   if (loading && skills.length === 0) {
     return (
@@ -122,11 +118,9 @@ export function SkillsGrid({
           <AddSkillDialog
             open={dialogOpen}
             onOpenChange={setDialogOpen}
-            onSearch={onSearch}
-            onPopular={onPopular}
-            onInstallCommunity={onInstallCommunity}
             onListFromRepo={onListFromRepo}
             onInstallFromRepo={onInstallFromRepo}
+            onCreateFromScratch={onCreateFromScratch}
             installedSkillNames={installedSkillNames}
             labels={l.addDialog}
           />
@@ -186,11 +180,9 @@ export function SkillsGrid({
         <AddSkillDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
-          onSearch={onSearch}
-          onPopular={onPopular}
-          onInstallCommunity={onInstallCommunity}
           onListFromRepo={onListFromRepo}
           onInstallFromRepo={onInstallFromRepo}
+          onCreateFromScratch={onCreateFromScratch}
           installedSkillNames={installedSkillNames}
           labels={l.addDialog}
         />

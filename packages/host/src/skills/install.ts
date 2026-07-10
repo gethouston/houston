@@ -6,12 +6,12 @@ import {
 import type { RepoSkill } from "@houston/protocol";
 import type { Vfs } from "../vfs";
 import { fetchSkillMdAtPath } from "./github";
+import { locateSkillMd } from "./github-lookup";
 import {
   extractFrontmatterName,
   isValidSkillSlug,
   normalizeSource,
   parseRemoteSkillMd,
-  skillIdFromPath,
   slugifyInstallId,
 } from "./github-parse";
 import { SkillRemoteError } from "./remote-error";
@@ -69,34 +69,7 @@ export async function installCommunitySkill(
   if (!source)
     throw new SkillRemoteError("invalid_repo_source", rawSource.trim());
 
-  // Try common path patterns first (cheap — no API call), then fall back to
-  // scanning the repo tree and matching by directory name or frontmatter name.
-  const candidates = [
-    `skills/${skillId}/SKILL.md`,
-    `${skillId}/SKILL.md`,
-    "SKILL.md",
-  ];
-  let rawMd: string | null = null;
-  for (const candidate of candidates) {
-    rawMd = await fetchSkillMdAtPath(fetchImpl, source, candidate).catch(
-      () => null,
-    );
-    if (rawMd !== null) break;
-  }
-  if (rawMd === null) {
-    const path = await findSkillPathInRepo(fetchImpl, source, skillId).catch(
-      () => null,
-    );
-    if (path)
-      rawMd = await fetchSkillMdAtPath(fetchImpl, source, path).catch(
-        () => null,
-      );
-  }
-  if (rawMd === null)
-    throw new SkillRemoteError(
-      "skill_not_in_repo",
-      `Could not find '${skillId}' in ${source}`,
-    );
+  const rawMd = await locateSkillMd(fetchImpl, source, skillId);
 
   // Prefer the SKILL.md's own `name:` (the authoritative slug); fall back to
   // a slugified id so a community id that isn't a clean slug still installs.
@@ -147,41 +120,4 @@ export async function installSkillsFromRepo(
     installed.push(skill.id);
   }
   return installed;
-}
-
-/**
- * Locate a SKILL.md matching `skillId` via the Git Trees API. Two passes:
- * exact directory-name match first, then peek at frontmatter `name:` for
- * paths containing the id (capped at 10 fetches).
- */
-async function findSkillPathInRepo(
-  fetchImpl: typeof fetch,
-  source: string,
-  skillId: string,
-): Promise<string | null> {
-  const res = await fetchImpl(
-    `https://api.github.com/repos/${source}/git/trees/HEAD?recursive=1`,
-    { headers: { "User-Agent": "houston-skills/1.0" } },
-  );
-  if (!res.ok) return null;
-  const tree = (await res.json().catch(() => null)) as {
-    tree?: Array<{ path: string; type: string }>;
-  } | null;
-  if (!tree || !Array.isArray(tree.tree)) return null;
-
-  const repoName = source.split("/").at(-1) ?? source;
-  const fuzzy: string[] = [];
-  for (const entry of tree.tree) {
-    if (entry.type !== "blob" || !entry.path.endsWith("SKILL.md")) continue;
-    if (skillIdFromPath(entry.path, repoName) === skillId) return entry.path;
-    if (entry.path.includes(skillId)) fuzzy.push(entry.path);
-  }
-  for (const path of fuzzy.slice(0, 10)) {
-    const content = await fetchSkillMdAtPath(fetchImpl, source, path).catch(
-      () => null,
-    );
-    if (content !== null && extractFrontmatterName(content) === skillId)
-      return path;
-  }
-  return null;
 }

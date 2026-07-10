@@ -7,6 +7,7 @@ import type {
   ActivityUpdate,
   Agent,
   CommunitySkill,
+  CommunitySkillPreview,
   CustomEndpoint,
   InstalledConfig,
   NewActivity,
@@ -736,17 +737,19 @@ export async function searchCommunitySkills(
   );
   return (await res.json()) as CommunitySkill[];
 }
-export async function popularCommunitySkills(
+export async function previewCommunitySkill(
   cfg: ControlPlaneConfig,
   agentId: string,
+  source: string,
+  skillId: string,
   signal?: AbortSignal,
-): Promise<CommunitySkill[]> {
+): Promise<CommunitySkillPreview> {
   const res = await cpFetch(
     cfg,
-    `${agentPath(agentId)}/skills/community/popular`,
-    { method: "POST", signal },
+    `${agentPath(agentId)}/skills/community/preview`,
+    { method: "POST", body: JSON.stringify({ source, skillId }), signal },
   );
-  return (await res.json()) as CommunitySkill[];
+  return (await res.json()) as CommunitySkillPreview;
 }
 export async function listSkillsFromRepo(
   cfg: ControlPlaneConfig,

@@ -401,12 +401,14 @@ components:
     title: Skill row
     purpose: A skill in the skills list -- icon, name, description, install/run action.
     anatomy: [icon, name, description, trailing-action]
-    states: [available, installed, installing, error]
-    variants: [list-row, grid-card, community-row]
+    states: [available, installed, installing, error, editing]
+    variants: [installed-row, community-row]
     behavior: >-
-      Reflects install state; the trailing action installs or runs the skill.
-      Full skill detail/authoring lives on a separate surface.
-    a11y: listitem role; action button labeled; install state conveyed as text.
+      Community rows reflect install state (an "Add" pill plus an info button).
+      Installed rows carry a Delete pill and a pen that expands an inline editor
+      in place (large auto-growing textarea, Save/Cancel); there is no separate
+      skill-detail surface.
+    a11y: listitem role; action buttons labeled; install state conveyed as text.
     since: 1
 
   - id: empty-state

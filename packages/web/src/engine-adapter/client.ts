@@ -15,6 +15,7 @@ import type {
   Capabilities,
   ChatHistoryEntry,
   CommunitySkill,
+  CommunitySkillPreview,
   ConversationEntry,
   CreateAgent,
   CreateAgentResult,
@@ -1145,12 +1146,20 @@ export class HoustonClient {
       signal,
     );
   }
-  async popularCommunitySkills(
+  async previewCommunitySkill(
     agentPath: string,
+    source: string,
+    skillId: string,
     signal?: AbortSignal,
-  ): Promise<CommunitySkill[]> {
-    if (!this.cp) return [];
-    return controlPlane.popularCommunitySkills(this.cp, agentPath, signal);
+  ): Promise<CommunitySkillPreview> {
+    if (!this.cp) throw new Error("Previewing skills needs a cloud workspace.");
+    return controlPlane.previewCommunitySkill(
+      this.cp,
+      agentPath,
+      source,
+      skillId,
+      signal,
+    );
   }
   async listSkillsFromRepo(
     agentPath: string,

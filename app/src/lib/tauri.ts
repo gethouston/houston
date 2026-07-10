@@ -13,6 +13,7 @@
 
 import type {
   AgentAssignment,
+  CommunitySkillPreview,
   CustomEndpoint,
   ComposioAppEntry as EngineComposioAppEntry,
   ComposioStatus as EngineComposioStatus,
@@ -574,19 +575,16 @@ export const tauriSkills = {
       undefined,
       { toast: false },
     ),
-  popularCommunity: (agentPath: string, signal?: AbortSignal) =>
-    call<CommunitySkillResult[]>(
-      "popular_community_skills",
-      async () =>
-        (await getEngine().popularCommunitySkills(agentPath, signal)).map(
-          (s) => ({
-            id: s.id,
-            skillId: s.skillId,
-            name: s.name,
-            installs: s.installs,
-            source: s.source,
-          }),
-        ),
+  previewCommunity: (
+    agentPath: string,
+    source: string,
+    skillId: string,
+    signal?: AbortSignal,
+  ) =>
+    call<CommunitySkillPreview>(
+      "preview_community_skill",
+      () =>
+        getEngine().previewCommunitySkill(agentPath, source, skillId, signal),
       undefined,
       { toast: false },
     ),
