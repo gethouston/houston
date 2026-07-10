@@ -406,10 +406,22 @@ export function WorkspaceShell({
                 onEnter: () => setViewMode(tabOr("routines")),
               },
               {
+                title: t("shell:uiTour.steps.tabIntegrations.title"),
+                body: t("shell:uiTour.steps.tabIntegrations.body"),
+                targetSelector: "[data-tour-target='tab-integrations']",
+                onEnter: () => setViewMode(tabOr("integrations")),
+              },
+              {
                 title: t("shell:uiTour.steps.tabFiles.title"),
                 body: t("shell:uiTour.steps.tabFiles.body"),
                 targetSelector: "[data-tour-target='tab-files']",
                 onEnter: () => setViewMode(tabOr("files")),
+              },
+              {
+                title: t("shell:uiTour.steps.tabArchived.title"),
+                body: t("shell:uiTour.steps.tabArchived.body"),
+                targetSelector: "[data-tour-target='tab-archived']",
+                onEnter: () => setViewMode(tabOr("archived")),
               },
               {
                 title: t("shell:uiTour.steps.tabJobDescription.title"),
@@ -422,6 +434,30 @@ export function WorkspaceShell({
                 body: t("shell:uiTour.steps.missionControl.body"),
                 targetSelector: "[data-tour-target='nav-dashboard']",
                 onEnter: () => setViewMode("dashboard"),
+              },
+              {
+                title: t("shell:uiTour.steps.navIntegrations.title"),
+                body: t("shell:uiTour.steps.navIntegrations.body"),
+                targetSelector: "[data-tour-target='nav-integrations']",
+                onEnter: () => setViewMode(INTEGRATIONS_VIEW_ID),
+              },
+              {
+                title: t("shell:uiTour.steps.aiHub.title"),
+                body: t("shell:uiTour.steps.aiHub.body"),
+                targetSelector: "[data-tour-target='nav-ai-hub']",
+                onEnter: () => setViewMode("ai-hub"),
+              },
+              {
+                title: t("shell:uiTour.steps.organization.title"),
+                body: t("shell:uiTour.steps.organization.body"),
+                targetSelector: "[data-tour-target='nav-organization']",
+                onEnter: () => setViewMode(ORGANIZATION_VIEW_ID),
+              },
+              {
+                title: t("shell:uiTour.steps.settings.title"),
+                body: t("shell:uiTour.steps.settings.body"),
+                targetSelector: "[data-tour-target='nav-settings']",
+                onEnter: () => setViewMode("settings"),
               },
               {
                 title: t("shell:uiTour.steps.newAgent.title"),
@@ -459,20 +495,28 @@ export function WorkspaceShell({
                 onEnter: () => setCreateAgentDialogOpen(false),
               },
             ] satisfies UiTourStep[]
-          ).filter(
+          ).filter((step) => {
             // The Agent Settings (job-description) step targets a tab plain
-            // members never see. Drop it for them so the tour never highlights a
-            // missing anchor or leaves them on a blank agent pane.
-            (step) =>
-              step.targetSelector !==
-                "[data-tour-target='tab-job-description']" ||
-              (!!currentAgent &&
-                isVisibleAgentTab(
-                  capabilities,
-                  currentAgent,
-                  "job-description",
-                )),
-          )}
+            // members never see. Drop it for them so the tour never
+            // highlights a missing anchor or leaves them on a blank pane.
+            if (
+              step.targetSelector === "[data-tour-target='tab-job-description']"
+            ) {
+              return (
+                !!currentAgent &&
+                isVisibleAgentTab(capabilities, currentAgent, "job-description")
+              );
+            }
+            // The Organization nav item only renders for multiplayer
+            // workspaces — same reasoning, drop the step where the anchor
+            // never exists.
+            if (
+              step.targetSelector === "[data-tour-target='nav-organization']"
+            ) {
+              return showOrganization;
+            }
+            return true;
+          })}
           onDismiss={() => {
             setUiTourActive(false);
             setCreateAgentDialogOpen(false);

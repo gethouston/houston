@@ -41,6 +41,7 @@ export function buildSidebarNavItems(args: {
       label: t("shell:sidebar.aiModels"),
       icon: <Boxes className="h-4 w-4" />,
       onClick: () => setViewMode("ai-hub"),
+      dataAttrs: { "data-tour-target": "nav-ai-hub" },
     },
     ...(showOrganization
       ? [
@@ -49,6 +50,7 @@ export function buildSidebarNavItems(args: {
             label: t("teams:org.nav"),
             icon: <Building2 className="h-4 w-4" />,
             onClick: () => setViewMode(ORGANIZATION_VIEW_ID),
+            dataAttrs: { "data-tour-target": "nav-organization" },
           },
         ]
       : []),
@@ -57,6 +59,7 @@ export function buildSidebarNavItems(args: {
       label: t("shell:sidebar.settings"),
       icon: <Settings className="h-4 w-4" />,
       onClick: () => setViewMode("settings"),
+      dataAttrs: { "data-tour-target": "nav-settings" },
     },
   ];
 }

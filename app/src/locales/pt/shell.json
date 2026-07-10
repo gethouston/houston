@@ -87,9 +87,17 @@
         "title": "Rotinas",
         "body": "Agende trabalho para rodar em segundo plano. Útil para resumos diários e tarefas recorrentes."
       },
+      "tabIntegrations": {
+        "title": "Integrações",
+        "body": "Ferramentas que seus agentes podem usar, como Gmail e Calendar. As conexões ficam aqui, compartilhadas entre todos os seus agentes."
+      },
       "tabFiles": {
         "title": "Arquivos",
         "body": "Documentos que seu assistente pode ler ou compartilhar com você. Solte qualquer coisa aqui para dar contexto."
+      },
+      "tabArchived": {
+        "title": "Concluídas",
+        "body": "Missões que este agente já concluiu. Envie uma mensagem para reabrir uma e ela volta direto para o painel ativo."
       },
       "tabJobDescription": {
         "title": "Configurações do agente",
@@ -98,6 +106,22 @@
       "missionControl": {
         "title": "Central de Missão",
         "body": "Quando adicionar mais agentes, isso vira o painel único de todos. Um lugar só para ver tudo."
+      },
+      "navIntegrations": {
+        "title": "Conecte seus apps",
+        "body": "Vincule Gmail, Calendar e centenas de outros aqui. Todo agente pode usar o que você conectar."
+      },
+      "aiHub": {
+        "title": "Modelos de IA",
+        "body": "Adicione provedores como Claude e OpenAI. Gerencie suas assinaturas e chaves de API aqui."
+      },
+      "organization": {
+        "title": "Organização",
+        "body": "Convide sua equipe, atribua funções e gerencie o acesso aqui."
+      },
+      "settings": {
+        "title": "Configurações",
+        "body": "Sua conta, espaço de trabalho e preferências do app ficam aqui."
       },
       "appTour": {
         "title": "Repita o tour",
@@ -115,10 +139,6 @@
         "title": "Agora vai construir algo incrível",
         "body": "Esse é o tour inteiro. O resto é com você, divirta-se.",
         "confirm": "Vou fazer algo incrível"
-      },
-      "integrations": {
-        "title": "Integrações",
-        "body": "Ferramentas que seus agentes podem usar, como Gmail e Calendar. As conexões ficam aqui, compartilhadas entre todos os seus agentes."
       }
     }
   },
@@ -144,8 +164,10 @@
   },
   "agentProvisioning": {
     "title": "Estamos criando seu agente",
-    "failed": "Não conseguimos terminar de criar seu agente. Tente novamente em instantes.",
-    "blockedBody": "Está quase pronto. Essa ação estará disponível em instantes, assim que seu agente terminar de se configurar."
+    "stillStarting": "Seu agente está demorando mais que o normal para iniciar. Ainda estamos tentando, aguarde um momento.",
+    "blockedBody": "Está quase pronto. Essa ação estará disponível em instantes, assim que seu agente terminar de se configurar.",
+    "stalledTitle": "Ainda estamos nessa",
+    "stalledBody": "Isso está demorando mais que o normal. Não desistimos, seu chat e suas mensagens estão seguros e vão continuar assim que seu agente responder."
   },
   "agentWelcome": {
     "missionTitle": "Conheça {{name}}",
