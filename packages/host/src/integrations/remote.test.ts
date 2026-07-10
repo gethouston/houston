@@ -168,6 +168,73 @@ test("acting mode b: a routine actingUser + pod token → pod bearer + acting-us
   expect(calls[0]?.headers["x-houston-acting-user"]).toBe("sub-123");
 });
 
+// ── Search status: tolerant reading of the gateway's per-item status field ────
+
+test("search passes a valid upstream status through verbatim (incl. the future blocked)", async () => {
+  // A later gateway annotates items with a status (e.g. an admin-blocked app).
+  // The desktop must relay it untouched so the runtime can render the blocked
+  // speech act — no code change here when the gateway starts sending it.
+  const { provider } = harness(
+    () => ({
+      body: {
+        items: [
+          {
+            action: "GMAIL_SEND_EMAIL",
+            toolkit: "gmail",
+            description: "Send",
+            connected: true,
+            status: "connected",
+          },
+          {
+            action: "",
+            toolkit: "salesforce",
+            description: "Salesforce",
+            connected: false,
+            status: "blocked",
+          },
+        ],
+      },
+    }),
+    "jwt-1",
+  );
+  expect(
+    (await provider.search("u", "email")).map((m) => [m.toolkit, m.status]),
+  ).toEqual([
+    ["gmail", "connected"],
+    ["salesforce", "blocked"],
+  ]);
+});
+
+test("search derives status from `connected` when absent, and repairs an invalid one", async () => {
+  const { provider } = harness(
+    () => ({
+      body: {
+        items: [
+          // Today's gateway: no status field → derive from connected.
+          { action: "A", toolkit: "gmail", description: "", connected: true },
+          { action: "B", toolkit: "slack", description: "", connected: false },
+          // A garbage status must not leak through — derive instead.
+          {
+            action: "C",
+            toolkit: "notion",
+            description: "",
+            connected: false,
+            status: "banana",
+          },
+        ],
+      },
+    }),
+    "jwt-1",
+  );
+  expect(
+    (await provider.search("u", "x")).map((m) => [m.toolkit, m.status]),
+  ).toEqual([
+    ["gmail", "connected"],
+    ["slack", "connectable"],
+    ["notion", "connectable"],
+  ]);
+});
+
 test("acting mode c: no acting context falls back to the session token (else signin error)", async () => {
   const signedIn = harness(() => ({ body: { items: [] } }), "session-jwt");
   await signedIn.provider.search("owner", "email");

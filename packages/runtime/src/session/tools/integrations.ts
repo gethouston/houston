@@ -88,13 +88,52 @@ export interface IntegrationToolOptions {
   sandboxToken: string;
 }
 
+/**
+ * The app-level status the host reports per search result (mirrors the host's
+ * IntegrationAppStatus). It, not the raw `connected` boolean, drives which of
+ * four speech acts the model performs — so a real-but-unconnected app is offered
+ * for connection, an admin-blocked app sends the user to their admin, and only a
+ * genuinely empty result means "no such app".
+ */
+type AppStatus = "connected" | "connectable" | "blocked" | "unknown";
+
 interface ToolMatch {
+  /** Empty ("") marks a toolkit-level entry: the app itself, no runnable action. */
   action: string;
   toolkit: string;
   description: string;
   inputParams?: unknown;
   /** Host-reported: does the user have this action's app connected? */
   connected?: boolean;
+  /** Host-reported app status; absent only from an older host (derive it). */
+  status?: AppStatus;
+}
+
+/** Prefer the explicit status; fall back to the legacy connected boolean. */
+function statusOf(m: ToolMatch): AppStatus {
+  if (m.status) return m.status;
+  return m.connected === false ? "connectable" : "connected";
+}
+
+/** The per-status tag shown after an app/action name in the rendered list. */
+const STATUS_TAG: Record<AppStatus, string> = {
+  connected: "",
+  connectable: ", NOT CONNECTED",
+  blocked: ", BLOCKED by admin",
+  unknown: ", not a known app",
+};
+
+/** One rendered line: an action row, or a toolkit-level row (empty action). */
+function renderMatch(m: ToolMatch, status: AppStatus): string {
+  const tag = STATUS_TAG[status];
+  if (m.action === "") {
+    // A toolkit-level entry: the app itself, so the model learns the slug.
+    return `- ${m.toolkit} (app${tag}): ${m.description}`;
+  }
+  const schema = m.inputParams
+    ? `\n  params: ${JSON.stringify(m.inputParams)}`
+    : "";
+  return `- ${m.action} (${m.toolkit}${tag}): ${m.description}${schema}`;
 }
 
 /**
@@ -104,7 +143,7 @@ interface ToolMatch {
  * renders a one-click connect card in place of the chat input.
  */
 const REQUEST_CONNECTION_GUIDANCE =
-  "To let the user connect an app, call the request_connection tool with that app's toolkit (the slug shown in the results). Houston shows the user a one-click connect card in place of the chat input, then automatically sends you a message once the connection is live so you can continue — do not ask the user to confirm.";
+  "To let the user connect an app, call the request_connection tool with that app's toolkit (the slug shown in the results). Houston shows the user a one-click connect card in place of the chat input, then automatically sends you a message once the connection is live so you can continue - do not ask the user to confirm.";
 interface ActionResult {
   successful: boolean;
   data?: unknown;
@@ -196,33 +235,45 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         signal,
       );
       if (items.length === 0) {
+        // Genuinely empty: not a policy block, not "unavailable" - no such app
+        // or action was found. The prompt tells the model to say so plainly.
         return {
           content: [
             {
               type: "text" as const,
-              text: `No actions found for "${params.query}".`,
+              text: `No matching app or action found for "${params.query}". This is a genuine not-found: no such app or action exists here. It does NOT mean an app is blocked or withheld by policy.`,
             },
           ],
           details: { matches: 0, actions: [] as string[] },
         };
       }
-      const list = items
-        .map((m) => {
-          const status = m.connected === false ? ", NOT CONNECTED" : "";
-          const schema = m.inputParams
-            ? `\n  params: ${JSON.stringify(m.inputParams)}`
-            : "";
-          return `- ${m.action} (${m.toolkit}${status}): ${m.description}${schema}`;
-        })
-        .join("\n");
-      // Some matches need a connection first → teach the hand-off inline, at
-      // the moment the model actually faces a not-connected app.
-      const text = items.some((m) => m.connected === false)
-        ? `${list}\n\nActions marked NOT CONNECTED will fail until the user connects that app. ${REQUEST_CONNECTION_GUIDANCE}`
-        : list;
+      const list = items.map((m) => renderMatch(m, statusOf(m))).join("\n");
+
+      // Teach each speech act inline, only for the statuses actually present.
+      const slugsWith = (s: AppStatus) => [
+        ...new Set(
+          items.filter((m) => statusOf(m) === s).map((m) => m.toolkit),
+        ),
+      ];
+      const parts = [list];
+      const connectable = slugsWith("connectable");
+      if (connectable.length > 0) {
+        parts.push(
+          `These apps exist but are not connected yet (${connectable.join(", ")}). ${REQUEST_CONNECTION_GUIDANCE}`,
+        );
+      }
+      const blocked = slugsWith("blocked");
+      if (blocked.length > 0) {
+        parts.push(
+          `Your workspace admin has not enabled these apps for this agent (${blocked.join(", ")}). Tell the user to ask their admin to enable them. Do NOT call request_connection for these, and do NOT imply Houston lacks them.`,
+        );
+      }
       return {
-        content: [{ type: "text" as const, text }],
-        details: { matches: items.length, actions: items.map((m) => m.action) },
+        content: [{ type: "text" as const, text: parts.join("\n\n") }],
+        details: {
+          matches: items.length,
+          actions: items.filter((m) => m.action).map((m) => m.action),
+        },
       };
     },
   });

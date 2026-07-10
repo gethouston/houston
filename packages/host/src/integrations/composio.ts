@@ -1,5 +1,6 @@
 import { resolveAuthConfig } from "./composio-auth-config";
 import { ComposioHttp } from "./composio-http";
+import { searchComposio } from "./composio-search";
 import {
   mapConnection,
   mapExecute,
@@ -40,6 +41,10 @@ import type {
 
 const DEFAULT_BASE_URL = "https://backend.composio.dev";
 
+/** The toolkits catalog is large-ish and changes rarely — cache it per process
+ *  for search's name resolution so a hot session does not refetch ~1000 apps. */
+const CATALOG_TTL_MS = 60 * 60 * 1000;
+
 export interface ComposioOptions {
   /** Houston's Composio PROJECT API key (dashboard → Project Settings). */
   apiKey: string;
@@ -57,6 +62,9 @@ export class ComposioProvider implements IntegrationProvider {
   private readonly callbackUrl?: string;
   /** toolkit slug → auth-config id (`ac_…`), resolved once per process. */
   private readonly authConfigs = new Map<string, string>();
+  /** In-process toolkits-catalog cache for search's name resolution. */
+  private catalogCache?: { at: number; toolkits: Toolkit[] };
+  private catalogInflight?: Promise<Toolkit[]>;
 
   constructor(opts: ComposioOptions) {
     if (!opts.apiKey) throw new Error("composio: missing platform api key");
@@ -73,7 +81,7 @@ export class ComposioProvider implements IntegrationProvider {
     return { ready: true };
   }
 
-  async listToolkits(): Promise<Toolkit[]> {
+  private async fetchToolkits(): Promise<Toolkit[]> {
     const body = await this.http.call<{ items?: RawToolkit[] }>(
       "/api/v3/toolkits",
       {
@@ -81,6 +89,29 @@ export class ComposioProvider implements IntegrationProvider {
       },
     );
     return (body?.items ?? []).map(mapToolkit);
+  }
+
+  async listToolkits(): Promise<Toolkit[]> {
+    // The UI wants the freshest catalog; search uses the cached copy instead.
+    return this.fetchToolkits();
+  }
+
+  /** The catalog for search's name resolution: cached per process (TTL), with a
+   *  shared in-flight promise so a burst of searches fetches it at most once. */
+  private async cachedCatalog(): Promise<Toolkit[]> {
+    const fresh =
+      this.catalogCache && Date.now() - this.catalogCache.at < CATALOG_TTL_MS;
+    if (this.catalogCache && fresh) return this.catalogCache.toolkits;
+    if (this.catalogInflight) return this.catalogInflight;
+    this.catalogInflight = this.fetchToolkits()
+      .then((toolkits) => {
+        this.catalogCache = { at: Date.now(), toolkits };
+        return toolkits;
+      })
+      .finally(() => {
+        this.catalogInflight = undefined;
+      });
+    return this.catalogInflight;
   }
 
   async listConnections(userId: string): Promise<Connection[]> {
@@ -166,54 +197,25 @@ export class ComposioProvider implements IntegrationProvider {
   ): Promise<ToolMatch[]> {
     // The direct adapter owns the platform key and derives identity from the
     // verified `userId`; there is no upstream to re-authenticate as, so the
-    // acting context is intentionally ignored (self-host / dev only).
-    // GET /api/v3/tools?query=… (the older `search` param is deprecated).
-    // Composio's full-text search is weak unqualified ("send an email" ranks
-    // unrelated marketing tools above GMAIL_SEND_EMAIL — verified live), so
-    // scope to the user's CONNECTED toolkits when they have any: those are the
-    // only actions execute() can run for them anyway. Every match carries
-    // `connected` so the agent can tell "run it" from "offer to connect it".
-    const connected = await this.listConnections(userId);
-    const slugs = [
-      ...new Set(
-        connected.filter((c) => c.status === "active").map((c) => c.toolkit),
-      ),
-    ];
-    const isConnected = (toolkit: string) =>
-      slugs.some((s) => s.toLowerCase() === toolkit.toLowerCase());
-    const tools = async (query: Record<string, string>) => {
-      const body = await this.http.call<{ items?: RawTool[] }>(
-        "/api/v3/tools",
-        { query },
-      );
-      return (body?.items ?? []).map((t) => {
-        const match = mapTool(t);
-        return { ...match, connected: isConnected(match.toolkit) };
-      });
-    };
-    // No connections yet → global search, so the agent can still discover
-    // what to suggest connecting (every match reports connected:false).
-    if (slugs.length === 0) return tools({ query, limit: "10" });
-    const matched = await tools({
+    // acting context is intentionally ignored (self-host / dev only). The merge
+    // policy (scoped + global + catalog resolution) lives in composio-search.ts;
+    // this wires it to the Composio transport. Every returned entry carries its
+    // IntegrationAppStatus (connected/connectable derived from the user's set).
+    return searchComposio(
+      {
+        listConnections: () => this.listConnections(userId),
+        // GET /api/v3/tools?query=… (the older `search` param is deprecated).
+        queryTools: async (q) => {
+          const body = await this.http.call<{ items?: RawTool[] }>(
+            "/api/v3/tools",
+            { query: q },
+          );
+          return (body?.items ?? []).map(mapTool);
+        },
+        catalog: () => this.cachedCatalog(),
+      },
       query,
-      limit: "10",
-      toolkit_slug: slugs.join(","),
-    });
-    if (matched.length > 0) return matched;
-    // The scoped query missed. Two distinct reasons, both worth answering:
-    //  - Composio's full-text match is naive AND-ish: an everyday phrasing
-    //    like "read my latest 5 emails" scores ZERO against GMAIL_FETCH_EMAILS
-    //    (verified live). Scoped to connected toolkits the catalog is small,
-    //    so degrade to listing their actions — the agent picks the slug.
-    //  - The user wants an app they never connected ("send it via gmail" with
-    //    only Slack linked). A global search surfaces those actions marked
-    //    connected:false, so the agent can offer the in-chat connect card
-    //    (HOU-670) instead of dead-ending.
-    const [listing, global] = await Promise.all([
-      tools({ limit: "50", toolkit_slug: slugs.join(",") }),
-      tools({ query, limit: "10" }),
-    ]);
-    return [...listing, ...global.filter((t) => !t.connected)];
+    );
   }
 
   async execute(
