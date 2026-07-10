@@ -15,6 +15,8 @@ interface CatalogBrowserProps {
   /** Toolkits to hide entirely (agent context surfaces them elsewhere, e.g. in
    *  the "Ready to activate" group), so no app is listed twice. */
   excludeToolkits?: ReadonlySet<string>;
+  /** The Teams effective allowlist; apps outside it render locked (`null` = none). */
+  allowlist?: string[] | null;
   /** The catalog is still fetching (show a loader, not a "no apps" message). */
   loading?: boolean;
   onConnect: (toolkit: string) => void;
@@ -34,6 +36,7 @@ export function CatalogBrowser({
   connectedToolkits,
   connectingToolkit,
   excludeToolkits,
+  allowlist,
   loading,
   onConnect,
 }: CatalogBrowserProps) {
@@ -46,6 +49,7 @@ export function CatalogBrowser({
       category={category}
       onCategoryChange={onCategoryChange}
       excludeToolkits={excludeToolkits}
+      allowlist={allowlist}
       loading={loading}
       renderRow={(_display, tk) => {
         if (connectedToolkits.has(tk.slug)) {

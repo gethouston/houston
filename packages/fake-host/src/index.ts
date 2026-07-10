@@ -9,9 +9,9 @@
  *  - The host + seed constants (ports, token, seeded agent) from `./config`.
  *
  * The server's `POST /__test__/*` control endpoints (reset, emit, chat-config,
- * chat-interaction, drop-chat-streams, kill-turn, turn-boundary) are HTTP routes
- * documented in this package's README; the harness drives them over HTTP, not
- * via exports.
+ * chat-interaction, drop-chat-streams, kill-turn, turn-boundary, capabilities,
+ * agent-settings) are HTTP routes documented in this package's README; the
+ * harness drives them over HTTP, not via exports.
  */
 
 export {
@@ -24,3 +24,6 @@ export {
 } from "./config";
 export type { FakeHost } from "./server";
 export { startFakeHost } from "./server";
+/** The seeded integration catalog's toolkit slugs (A-Z) — for specs arming
+ *  Teams allowlists over the catalog. */
+export { SEED_TOOLKIT_SLUGS } from "./state-integrations";

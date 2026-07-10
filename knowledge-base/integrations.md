@@ -56,6 +56,66 @@ acting without extra plumbing. `search`/`execute` receive the `ActingContext`
 (C2): `actingAs` (per-turn token) or `actingUser` (routine creator's `sub`); the
 direct adapter ignores both (identity is the verified `userId`).
 
+### Search flow + app-status taxonomy (HOU-681)
+
+**The status contract.** Every search result carries an `IntegrationAppStatus`
+(`packages/host/src/integrations/types.ts`) — the load-bearing enum that tells
+the agent which of four speech acts to perform:
+
+- `connected` — the acting user has an active connection: use it.
+- `connectable` — a real toolkit, not connected yet: OFFER to connect
+  (`request_connection`).
+- `blocked` — a real toolkit excluded by org/agent admin policy: tell the user to
+  ask their admin; never imply Houston lacks it, never `request_connection`.
+  **Nothing in THIS repo produces `blocked`** — the allowlist ceiling lives solely
+  in the closed cloud gateway (Teams v2, C7). The enum + rendering + prompt exist
+  now so a later gateway change that annotates its `/search` items with `status`
+  lights it up here with zero further work.
+- `unknown` — not a recognized toolkit (reserved; today an unrecognized query is
+  simply the EMPTY result).
+
+`connected` is kept alongside the legacy `connected` boolean (the grants filter
+`filterMatchesToGranted` still reads the boolean, and HOU-670 keeps
+`connected === false` matches discoverable); `status` is the additive superset.
+
+**Direct-adapter search** (`composio.ts` → `composio-search.ts`): the old
+connected-scoped short-circuit is GONE (its bug: a connected-Gmail user could not
+discover Google Sheets, because a scoped hit `return`ed before global ran). Search
+now runs THREE lookups and merges them (scoped first, deduped by action, then
+catalog entries):
+1. **scoped** query over the user's CONNECTED toolkits (precision; degrades to
+   LISTING their actions on a zero-hit everyday phrasing), then
+2. **global** query — ALWAYS runs, never short-circuited, so new apps are
+   discoverable, then
+3. **catalog resolution** — Composio's action full-text scores ~zero for a plain
+   app NAME, so the query is resolved against the toolkits catalog
+   (`GET /api/v3/toolkits`, cached in-process, 1h TTL, shared in-flight promise)
+   to a real slug and surfaced as a **toolkit-level entry** (`action: ""`) even
+   when no action scored — so the model always learns the slug to pass
+   `request_connection`. Status is derived from the acting user's active
+   connections (`connected`/`connectable`; the direct adapter cannot emit
+   `blocked`/`unknown`).
+
+**Gateway adapter** (`remote.ts`) reads each `/search` item TOLERANTLY: a valid
+`status` passes through verbatim (a future gateway sending `blocked`); an absent
+or unrecognized `status` (today's gateway) derives from the `connected` boolean
+(`statusFromConnected`). The new field is never required.
+
+**Runtime tool text** (`packages/runtime/src/session/tools/integrations.ts`) is
+status-aware: connected actions as before; `connectable` entries name the exact
+slug and teach `request_connection`; `blocked` tells the user to ask their admin
+and forbids `request_connection`; a genuinely EMPTY result says no such
+app/action exists (a real not-found, NOT a policy block).
+
+**Prompt contract — the four speech acts.** `packages/host/src/houston-prompt.ts`
+INTEGRATIONS section and its verbatim Rust mirror
+`app/src-tauri/src/houston_prompt/integrations.rs` (`PI_INTEGRATIONS_GUIDANCE`,
+kept in sync) instruct: connected → use it; connectable → briefly offer +
+`request_connection`; blocked → tell the user their admin must enable it (never
+imply Houston lacks it, never `request_connection`); unknown/empty → say plainly
+no such app is available. An empty result never means an app is unsupported —
+trust the reported status.
+
 ---
 
 ## 2. Grants model — which agents may use which app
@@ -86,9 +146,14 @@ ceiling (`allowedToolkits`, plus the read-only `orgAllowedToolkits` it's
 intersected with and the caller's effective `access`; manager-only write).
 `getOrgSettings` / `setOrgSettings` read/replace the org ceiling (owner-only
 write). Copy lives under `teams:integrations.allowlist` (row titled "Apps"; the
-choice keys `question` / `anyLabel` / `anyDesc` / `pickedLabel` / `pickedDesc`);
-an agent tab also lists apps blocked by the ceiling under
-`teams:integrations.notAllowed`. The manager editor lives in Agent
+choice keys `question` / `policyHelper` / `anyLabel` / `anyDesc` / `pickedLabel` /
+`pickedDesc` — `policyHelper` is the admin-policy helper line under the question,
+noting members still connect their own accounts). The agent tab surfaces
+ceiling-blocked apps in TWO places so policy is never silently invisible:
+connected-but-blocked apps under `teams:integrations.notAllowed` (the disallowed
+section, "Not allowed" badge + an ask-your-admin line), and NOT-connected blocked
+apps as **locked rows** in the browse catalog (see §3, `integrations:locked.*`).
+The manager editor lives in Agent
 Settings > **Access** > **Apps** (`AgentAllowlistSection`); its editing surface
 is an always-visible two-option choice (`AccessChoice`: "Any app" saves `null`,
 "Only apps you pick" saves an explicit set) over the Integrations-tab app catalog
@@ -203,6 +268,23 @@ read-only); `degraded` mode (grants `null`) shows all connected apps usable with
 toggles and no account section. Both modes end with the always-visible **Connect
 more apps** catalog (auto-granting a fresh connection to this agent in grants mode).
 "Manage all integrations" navigates to `INTEGRATIONS_VIEW_ID`.
+
+**Locked browse rows (Teams only).** On a Teams host with a real effective
+allowlist, the browse catalog no longer FILTERS blocked apps out (which read as
+"Houston doesn't support X"); instead the agent tab passes the effective
+`allowlist` down through `ConnectMoreAppsSection` → `CatalogBrowser` →
+`AppCatalogGrid`, which calls the pure `browseCatalogView` (`integrations/model.ts`)
+to split the filtered+A-Z catalog into `connectable` (inside the ceiling,
+paginated as before) and `locked` (outside it). Locked apps render via
+`CatalogLockedSection`: read-only `AppRow`s with a `Lock` trailing icon and the
+`integrations:locked.askAdmin` subtitle ("Ask your admin to enable {app}", visible
+at rest — no hover gating), under a muted `locked.heading`, capped at
+`LOCKED_PREVIEW_CAP` (8) with a `locked.more` "+N more" count line so a tiny
+allowlist over the ~1000-app catalog can't bury the connectable apps. A member
+SEARCHING for a blocked app finds its locked row (search filters before the
+partition), never emptiness. `allowlist === null` (single-player, or Teams with no
+ceiling) → `locked` always empty → no locks ever; the global integrations page and
+the manager's allowlist editor pass no `allowlist`, so they are unchanged.
 
 **Connect flow + pending recovery** — `useConnectFlow` (in the shared module) lives
 on the SURFACE, never inside the picker, so closing the dialog never kills polling.

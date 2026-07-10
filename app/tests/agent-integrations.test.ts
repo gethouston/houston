@@ -180,17 +180,26 @@ describe("E7 integrations tab source", () => {
     ok(!src.includes("isAgentManager"), "manager gate no longer needed");
   });
 
-  it("keeps the effective-allowlist filtering of the browse catalog", () => {
-    // The tab still computes the ceiling and hands it to the body, which owns
-    // the browse-catalog narrowing after the per-agent extraction below.
+  it("hands the effective allowlist down so blocked apps render as locked rows", () => {
+    // The tab still computes the ceiling and hands it to the body, which now
+    // passes it to the browse section — blocked apps render as LOCKED rows there
+    // (via browseCatalogView + CatalogLockedSection) instead of being filtered
+    // out and vanishing silently.
     ok(src.includes("effectiveAllowlist"), "still computes the ceiling");
     ok(src.includes("useAgentSettings"), "still reads agent settings");
     ok(src.includes("allowlist={allowlist}"), "hands the ceiling to the body");
     const body = read(
       "../src/components/tabs/agent-integrations/agent-integrations-body.tsx",
     );
-    ok(body.includes("browseCatalog"), "body narrows the browse catalog");
     ok(body.includes("ConnectMoreAppsSection"), "browse section stays");
+    ok(
+      body.includes("allowlist={allowlist}"),
+      "body hands the ceiling to the browse section (locks, not pre-filter)",
+    );
+    ok(
+      !body.includes("catalog.filter"),
+      "body no longer pre-filters blocked apps out of the catalog",
+    );
   });
 
   it("remounts its stateful body per agent so view filters never leak", () => {

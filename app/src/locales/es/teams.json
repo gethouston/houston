@@ -48,6 +48,7 @@
   "integrations": {
     "allowlist": {
       "question": "¿Qué apps puede usar este agente?",
+      "policyHelper": "Tú decides qué apps tiene permitido usar este agente. Las personas con acceso siguen conectando sus propias cuentas para cada app que permitas.",
       "anyLabel": "Cualquier app",
       "anyDesc": "Las personas con acceso pueden conectar este agente a más de 1000 apps.",
       "pickedLabel": "Solo las apps que elijas",
@@ -60,7 +61,7 @@
     },
     "notAllowed": {
       "title": "No permitida para este agente",
-      "body": "Estas aplicaciones están conectadas a tu cuenta, pero tu organización no permite que este agente las use.",
+      "body": "Estas aplicaciones están conectadas a tu cuenta, pero este agente no tiene permitido usarlas. Pídele a tu administrador que las habilite para este agente.",
       "badge": "No permitida"
     }
   },

@@ -6,9 +6,10 @@ import { useTranslation } from "react-i18next";
 import { FilterCombobox } from "../shell/filter-combobox.tsx";
 import { type AppDisplay, appDisplay } from "./app-display";
 import { AppRow } from "./app-row";
+import { CatalogLockedSection } from "./catalog-locked-section";
 import {
   BROWSE_PAGE_SIZE,
-  browseCatalog,
+  browseCatalogView,
   categoriesOf,
   categoryLabel,
 } from "./model";
@@ -30,6 +31,12 @@ interface AppCatalogGridProps {
   onCategoryChange: (next: string) => void;
   /** Apps to hide entirely (e.g. already-connected in the connect flow). */
   excludeToolkits?: ReadonlySet<string>;
+  /**
+   * The Teams effective allowlist. When set, apps outside it render as LOCKED
+   * rows below the connectable grid instead of vanishing; `null`/absent (single-
+   * player, or a Teams host with no ceiling) = no locks ever.
+   */
+  allowlist?: string[] | null;
   /** The catalog is still fetching (show a loader, not a "no apps" message). */
   loading?: boolean;
   /** Per-app trailing control (+ optional row click). Owns the row's action. */
@@ -51,6 +58,7 @@ export function AppCatalogGrid({
   category,
   onCategoryChange,
   excludeToolkits,
+  allowlist,
   loading,
   renderRow,
 }: AppCatalogGridProps) {
@@ -65,29 +73,31 @@ export function AppCatalogGrid({
       })),
     [catalog],
   );
-  const results = useMemo(
+  const { connectable, locked } = useMemo(
     () =>
-      browseCatalog({
+      browseCatalogView({
         catalog,
         query: search,
         category,
         connected: excludeToolkits ?? new Set(),
+        allowlist: allowlist ?? null,
       }),
-    [catalog, search, category, excludeToolkits],
+    [catalog, search, category, excludeToolkits, allowlist],
   );
 
   // A fresh result list (new search or category) collapses the page cap back to
   // the first page. Adjusting state during render (React's documented pattern)
   // keeps the reset in sync with the new list identity without a wasted paint.
+  // Only the connectable list paginates; the locked group is separately capped.
   const [visible, setVisible] = useState(BROWSE_PAGE_SIZE);
-  const [shownFor, setShownFor] = useState(results);
-  if (shownFor !== results) {
-    setShownFor(results);
+  const [shownFor, setShownFor] = useState(connectable);
+  if (shownFor !== connectable) {
+    setShownFor(connectable);
     setVisible(BROWSE_PAGE_SIZE);
   }
 
-  const visibleApps = results.slice(0, visible);
-  const hasMore = visible < results.length;
+  const visibleApps = connectable.slice(0, visible);
+  const hasMore = visible < connectable.length;
 
   return (
     <div>
@@ -116,7 +126,7 @@ export function AppCatalogGrid({
         )}
       </div>
 
-      {results.length === 0 ? (
+      {connectable.length === 0 && locked.length === 0 ? (
         loading ? (
           <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
             <Spinner className="size-4" />
@@ -129,34 +139,39 @@ export function AppCatalogGrid({
         )
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {visibleApps.map((tk) => {
-              const display = appDisplay(tk.slug, tk);
-              const row = renderRow(display, tk);
-              return (
-                <AppRow
-                  key={tk.slug}
-                  display={display}
-                  description={display.description}
-                  onClick={row.onClick}
-                  trailing={row.trailing}
-                />
-              );
-            })}
-          </div>
-          {hasMore && (
-            <div className="mt-4 flex justify-center">
-              <button
-                type="button"
-                onClick={() => setVisible((v) => v + BROWSE_PAGE_SIZE)}
-                className="inline-flex h-8 items-center gap-1 rounded-full border border-border bg-background px-4 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
-              >
-                {t("browse.loadMoreWithRemaining", {
-                  count: results.length - visible,
+          {connectable.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {visibleApps.map((tk) => {
+                  const display = appDisplay(tk.slug, tk);
+                  const row = renderRow(display, tk);
+                  return (
+                    <AppRow
+                      key={tk.slug}
+                      display={display}
+                      description={display.description}
+                      onClick={row.onClick}
+                      trailing={row.trailing}
+                    />
+                  );
                 })}
-              </button>
-            </div>
+              </div>
+              {hasMore && (
+                <div className="mt-4 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setVisible((v) => v + BROWSE_PAGE_SIZE)}
+                    className="inline-flex h-8 items-center gap-1 rounded-full border border-border bg-background px-4 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+                  >
+                    {t("browse.loadMoreWithRemaining", {
+                      count: connectable.length - visible,
+                    })}
+                  </button>
+                </div>
+              )}
+            </>
           )}
+          {locked.length > 0 && <CatalogLockedSection locked={locked} />}
         </>
       )}
     </div>

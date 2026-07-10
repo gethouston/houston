@@ -69,6 +69,12 @@
   "connectMore": {
     "title": "Connect more apps"
   },
+  "locked": {
+    "heading": "Not enabled by your admin",
+    "askAdmin": "Ask your admin to enable {{name}}",
+    "more_one": "{{count}} more app your admin hasn't enabled",
+    "more_other": "{{count}} more apps your admin hasn't enabled"
+  },
   "chips": {
     "more": "+{{count}}"
   },

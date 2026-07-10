@@ -308,21 +308,29 @@ test("disconnect deletes every connected account for the toolkit", async () => {
   ]);
 });
 
-test("search scopes to the user's connected toolkits and maps tools", async () => {
-  const { provider, calls } = harness((url) => {
-    if (url.pathname === "/api/v3/connected_accounts") {
+test("search runs BOTH the scoped and global query, merges (scoped first, deduped), and stamps status", async () => {
+  const { provider } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts")
+      return {
+        body: {
+          items: [{ toolkit: { slug: "gmail" }, id: "ca_1", status: "ACTIVE" }],
+        },
+      };
+    if (url.pathname === "/api/v3/toolkits") return { body: { items: [] } };
+    // Scoped (toolkit_slug=gmail) → the connected app's action; global (no
+    // toolkit_slug) → a NEW app plus a DUPLICATE of the connected one.
+    if (url.searchParams.has("toolkit_slug"))
       return {
         body: {
           items: [
-            { toolkit: { slug: "gmail" }, id: "ca_1", status: "ACTIVE" },
-            { toolkit: { slug: "slack" }, id: "ca_2", status: "ACTIVE" },
-            // A second gmail account (dedup) and a failed one (excluded).
-            { toolkit: { slug: "gmail" }, id: "ca_3", status: "ACTIVE" },
-            { toolkit: { slug: "notion" }, id: "ca_4", status: "FAILED" },
+            {
+              slug: "GMAIL_SEND_EMAIL",
+              toolkit: { slug: "gmail" },
+              description: "Send an email",
+            },
           ],
         },
       };
-    }
     return {
       body: {
         items: [
@@ -330,40 +338,169 @@ test("search scopes to the user's connected toolkits and maps tools", async () =
             slug: "GMAIL_SEND_EMAIL",
             toolkit: { slug: "gmail" },
             description: "Send an email",
-            input_parameters: { type: "object" },
+          },
+          {
+            slug: "GOOGLESHEETS_CREATE",
+            toolkit: { slug: "googlesheets" },
+            description: "Create a sheet",
           },
         ],
       },
     };
   });
-  expect(await provider.search(USER, "send an email")).toEqual([
+  const found = await provider.search(USER, "send an email");
+  // Scoped connected match first, then the global new app; the duplicate is
+  // dropped, and every entry carries its status.
+  expect(
+    found.map((t) => [t.action, t.toolkit, t.connected, t.status]),
+  ).toEqual([
+    ["GMAIL_SEND_EMAIL", "gmail", true, "connected"],
+    ["GOOGLESHEETS_CREATE", "googlesheets", false, "connectable"],
+  ]);
+});
+
+test("a connected toolkit no longer short-circuits global discovery (the bug)", async () => {
+  // A connected-Gmail user asks for Google Sheets. The scoped query returns a
+  // (loose) Gmail match — the OLD code returned there and never ran global
+  // discovery, so Sheets was undiscoverable. It must surface now.
+  const { provider } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts")
+      return {
+        body: {
+          items: [{ toolkit: { slug: "gmail" }, id: "ca_1", status: "ACTIVE" }],
+        },
+      };
+    if (url.pathname === "/api/v3/toolkits") return { body: { items: [] } };
+    if (url.searchParams.has("toolkit_slug"))
+      return {
+        body: {
+          items: [
+            {
+              slug: "GMAIL_SEARCH_PEOPLE",
+              toolkit: { slug: "gmail" },
+              description: "unrelated but nonzero",
+            },
+          ],
+        },
+      };
+    return {
+      body: {
+        items: [
+          {
+            slug: "GOOGLESHEETS_CREATE_SPREADSHEET",
+            toolkit: { slug: "googlesheets" },
+            description: "Create a spreadsheet",
+          },
+        ],
+      },
+    };
+  });
+  const found = await provider.search(USER, "google sheets");
+  expect(found.find((t) => t.toolkit === "googlesheets")).toMatchObject({
+    action: "GOOGLESHEETS_CREATE_SPREADSHEET",
+    connected: false,
+    status: "connectable",
+  });
+});
+
+test("catalog resolution surfaces a connectable toolkit entry when no action scored", async () => {
+  // Composio's action full-text search scores ~zero for a plain app name, so
+  // the toolkits catalog resolves the name to a real slug the model can pass to
+  // request_connection — as a toolkit-level entry (empty action).
+  const { provider } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts")
+      return { body: { items: [] } };
+    if (url.pathname === "/api/v3/toolkits")
+      return {
+        body: {
+          items: [
+            {
+              slug: "googlesheets",
+              name: "Google Sheets",
+              meta: { description: "Spreadsheets" },
+            },
+            { slug: "gmail", name: "Gmail" },
+          ],
+        },
+      };
+    return { body: { items: [] } }; // no action scored
+  });
+  const found = await provider.search(USER, "connect to google sheets");
+  expect(found).toEqual([
     {
-      action: "GMAIL_SEND_EMAIL",
-      toolkit: "gmail",
-      description: "Send an email",
-      inputParams: { type: "object" },
-      connected: true,
+      action: "",
+      toolkit: "googlesheets",
+      description: "Google Sheets: Spreadsheets",
+      connected: false,
+      status: "connectable",
     },
   ]);
-  // Scoped to the ACTIVE connected toolkits (deduped) — Composio's global
-  // full-text search ranks unrelated tools above the obvious match.
-  expect(calls[1]?.path).toBe(
-    "/api/v3/tools?query=send+an+email&limit=10&toolkit_slug=gmail%2Cslack",
-  );
+});
+
+test("a resolved app the user already connected is a connected toolkit entry", async () => {
+  const { provider } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts")
+      return {
+        body: {
+          items: [
+            { toolkit: { slug: "googlesheets" }, id: "ca_1", status: "ACTIVE" },
+          ],
+        },
+      };
+    if (url.pathname === "/api/v3/toolkits")
+      return {
+        body: { items: [{ slug: "googlesheets", name: "Google Sheets" }] },
+      };
+    return { body: { items: [] } }; // no action scored, only the catalog entry
+  });
+  const found = await provider.search(USER, "google sheets");
+  expect(found).toEqual([
+    {
+      action: "",
+      toolkit: "googlesheets",
+      description: "Google Sheets",
+      connected: true,
+      status: "connected",
+    },
+  ]);
+});
+
+test("the toolkits catalog is fetched once and cached across searches", async () => {
+  const { provider, calls } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts")
+      return { body: { items: [] } };
+    if (url.pathname === "/api/v3/toolkits")
+      return { body: { items: [{ slug: "notion", name: "Notion" }] } };
+    return { body: { items: [] } };
+  });
+  await provider.search(USER, "notion");
+  await provider.search(USER, "notion");
+  expect(
+    calls.filter((c) => c.path.startsWith("/api/v3/toolkits")).length,
+  ).toBe(1);
+});
+
+test("a query naming no app and matching no action returns empty (genuinely unknown)", async () => {
+  const { provider } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts")
+      return { body: { items: [] } };
+    if (url.pathname === "/api/v3/toolkits")
+      return { body: { items: [{ slug: "gmail", name: "Gmail" }] } };
+    return { body: { items: [] } };
+  });
+  expect(await provider.search(USER, "zzznope")).toEqual([]);
 });
 
 test("a zero-hit scoped query degrades to listing the connected toolkits' actions", async () => {
-  // Composio's full-text match is naive: "read my latest 5 emails" scores zero
-  // against GMAIL_FETCH_EMAILS. The scoped retry (no query) must surface the
-  // toolkit's real actions instead of a dead "no results".
-  const { provider, calls } = harness((url) => {
-    if (url.pathname === "/api/v3/connected_accounts") {
+  // "read my latest 5 emails" scores zero against GMAIL_FETCH_EMAILS, so the
+  // scoped retry (no query) surfaces the toolkit's real actions.
+  const { provider } = harness((url) => {
+    if (url.pathname === "/api/v3/connected_accounts")
       return {
         body: { items: [{ toolkit: { slug: "gmail" }, status: "ACTIVE" }] },
       };
-    }
-    // First tools call carries the query → no hits; the fallback (no query)
-    // returns the toolkit listing.
+    if (url.pathname === "/api/v3/toolkits") return { body: { items: [] } };
+    // Every query-bearing call misses; only the no-query listing returns actions.
     if (url.searchParams.has("query")) return { body: { items: [] } };
     return {
       body: {
@@ -379,69 +516,14 @@ test("a zero-hit scoped query degrades to listing the connected toolkits' action
   });
   const found = await provider.search(USER, "read my latest 5 emails");
   expect(found.map((t) => t.action)).toEqual(["GMAIL_FETCH_EMAILS"]);
-  expect(found[0]?.connected).toBe(true);
-  expect(calls[2]?.path).toBe("/api/v3/tools?limit=50&toolkit_slug=gmail");
+  expect(found[0]).toMatchObject({ connected: true, status: "connected" });
 });
 
-test("a scoped miss also surfaces global matches marked NOT connected (HOU-670)", async () => {
-  // "send it via gmail" with only Slack linked: the scoped query misses, so
-  // the fallback must ALSO search globally and mark the gmail actions
-  // connected:false — that is what lets the agent offer the connect card.
-  const { provider, calls } = harness((url) => {
-    if (url.pathname === "/api/v3/connected_accounts") {
-      return {
-        body: { items: [{ toolkit: { slug: "slack" }, status: "ACTIVE" }] },
-      };
-    }
-    // The scoped query (query + toolkit_slug) misses…
-    if (url.searchParams.has("query") && url.searchParams.has("toolkit_slug"))
-      return { body: { items: [] } };
-    // …the connected-toolkit listing returns Slack's actions…
-    if (url.searchParams.has("toolkit_slug")) {
-      return {
-        body: {
-          items: [
-            {
-              slug: "SLACK_SEND_MESSAGE",
-              toolkit: { slug: "slack" },
-              description: "Send a message",
-            },
-          ],
-        },
-      };
-    }
-    // …and the global query finds the not-connected app (plus a duplicate of
-    // an already-connected one, which must be dropped from the global half).
-    return {
-      body: {
-        items: [
-          {
-            slug: "GMAIL_SEND_EMAIL",
-            toolkit: { slug: "gmail" },
-            description: "Send an email",
-          },
-          {
-            slug: "SLACK_SEND_MESSAGE",
-            toolkit: { slug: "slack" },
-            description: "Send a message",
-          },
-        ],
-      },
-    };
-  });
-  const found = await provider.search(USER, "send an email via gmail");
-  expect(found.map((t) => [t.action, t.connected])).toEqual([
-    ["SLACK_SEND_MESSAGE", true],
-    ["GMAIL_SEND_EMAIL", false],
-  ]);
-  // connections + scoped query + (connected listing ∥ global query).
-  expect(calls).toHaveLength(4);
-});
-
-test("search falls back to the global catalog when nothing is connected", async () => {
+test("with nothing connected, global discovery marks matches connectable (HOU-670)", async () => {
   const { provider, calls } = harness((url) => {
     if (url.pathname === "/api/v3/connected_accounts")
       return { body: { items: [] } };
+    if (url.pathname === "/api/v3/toolkits") return { body: { items: [] } };
     return {
       body: {
         items: [
@@ -455,11 +537,12 @@ test("search falls back to the global catalog when nothing is connected", async 
     };
   });
   const found = await provider.search(USER, "send an email");
-  // Discoverable but marked not-connected → the agent offers the card.
-  expect(found.map((t) => [t.action, t.connected])).toEqual([
-    ["GMAIL_SEND_EMAIL", false],
+  // Discoverable but connectable → the agent offers the card.
+  expect(found.map((t) => [t.action, t.connected, t.status])).toEqual([
+    ["GMAIL_SEND_EMAIL", false, "connectable"],
   ]);
-  expect(calls[1]?.path).toBe("/api/v3/tools?query=send+an+email&limit=10");
+  // No scoped query when nothing is connected — just the global one.
+  expect(calls.some((c) => c.path.includes("toolkit_slug"))).toBe(false);
 });
 
 test("execute posts user_id + arguments and maps success and failure", async () => {
