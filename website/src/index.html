@@ -46,7 +46,7 @@ visionPath: "vision/index.html"
      same scale inside its own scope, so it is unaffected.) Values reuse the
      real product dark tokens: screen #1e1e1e, card #2c2c2b, ink #e5e5e5. */
   :root {
-    --background: rgba(24,26,38,0.55);
+    --background: rgba(24,26,38,0.75);
     --foreground: #eceefb;
     --secondary: rgba(255,255,255,0.045);
     --muted-foreground: #bcc4d8;
@@ -69,8 +69,8 @@ visionPath: "vision/index.html"
     --border-medium: rgba(255,255,255,0.18);
     --composer-shadow: 0 4px 30px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06);
     /* Dark glass panels — translucent dark surfaces over the photo. */
-    --glass: rgba(22,24,36,0.55);
-    --glass-strong: rgba(16,18,28,0.72);
+    --glass: rgba(22,24,36,0.75);
+    --glass-strong: rgba(16,18,28,0.85);
     --glass-raise: rgba(255,255,255,0.05);
     --glass-border: rgba(255,255,255,0.10);
     --glass-border-strong: rgba(255,255,255,0.16);
@@ -211,7 +211,7 @@ visionPath: "vision/index.html"
   /* Scrolled: frosted DARK glass over the space page below (the page is dark
      top to bottom now, so the nav stays dark-on-dark, never light). */
   nav.scrolled {
-    background: rgba(11,12,19,0.72);
+    background: rgba(11,12,19,0.85);
     backdrop-filter: saturate(1.2) blur(20px);
     border-bottom: 1px solid rgba(255,255,255,0.08);
   }
@@ -552,371 +552,319 @@ visionPath: "vision/index.html"
      APP MOCKUP
      ═══════════════════════════════════════════ */
 
-  /* ── Dark-mode hero app mockup ──────────────────────────────────────
-     The hero demo shows Houston exactly as it looks in DARK MODE. Rather than
-     re-colour every element by hand, we remap the mockup's grey scale + surface
-     variables to the real design-token dark theme (packages/design-tokens:
-     semantic color.dark + primitive color). Because the markup already colours
-     with var(--gray-*)/var(--border*), the whole subtree — inline styles and
-     hero-demo.css alike — flips to the correct dark values in one place.
-
-       window / gutter  neutral.900   #141416
-       screen bg        neutral.800   #1e1e1e
-       card surface     neutral.750   #2c2c2b
-       ink / primary    neutral.150   #e5e5e5
-       muted text       neutral.450   #9a9a9a
-       borders          white-a10 / white-a08
-       primary button   neutral.150 on neutral.900 ink (#e5e5e5 / #141414) */
+  /* ── Dark-mode hero app mockup — faithful to the real Houston web app ──────
+     A translucent frosted-glass desktop window (the same glass language as the
+     rest of the page) whose interior reproduces the real Mission Control: the
+     sidebar, the board (Running / Needs you / Done) and a chat detail panel.
+     Interior colours mirror the design-token dark theme (packages/design-tokens):
+       canvas / gutter #141416   columns white-a05   cards #1e1e1e
+       ink #e5e5e5   muted #9a9a9a   borders white-a09   primary #e5e5e5.
+     Board / card / chat styling lives in assets/hero-demo.css. */
   .app-mockup {
-    --gray-950: #e5e5e5;
-    --gray-700: #cfcfcf;
-    --gray-600: #b4b4b4;
-    --gray-500: #9a9a9a;
-    --gray-400: #7d7d7d;
-    --gray-300: #4a4a4a;
-    --gray-200: rgba(255,255,255,0.1);
-    --gray-100: rgba(255,255,255,0.08);
-    --gray-50: #232323;
-    --secondary: #141416;
-    --background: #1e1e1e;
-    --foreground: #e5e5e5;
-    --muted-foreground: #9a9a9a;
-    --border: rgba(255,255,255,0.08);
-    --border-light: rgba(255,255,255,0.08);
-    --border-medium: rgba(255,255,255,0.18);
+    --m-ink: #e5e5e5;
+    --m-ink-soft: #cfcfcf;
+    --m-muted: #9a9a9a;
+    --m-faint: #6f6f74;
+    --m-canvas: #141416;
+    --m-col: rgba(255,255,255,0.05);
+    --m-card: #1e1e1e;
+    --m-border: rgba(255,255,255,0.09);
+    --m-accent: rgba(255,255,255,0.08);
+    --m-agent: #a78bfa;
 
-    border-radius: 14px;
-    border: 1px solid rgba(255,255,255,0.12);
+    position: relative;
+    border-radius: 16px;
+    border: 1px solid var(--glass-border-strong);
     overflow: hidden;
-    background: #141416;
-    box-shadow: 0 40px 90px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.03);
+    color: var(--m-ink);
+    /* Frosted-glass window: the space photo glows faintly through the chrome. */
+    background: rgba(17,18,23,0.9);
+    -webkit-backdrop-filter: saturate(1.2) blur(22px);
+    backdrop-filter: saturate(1.2) blur(22px);
+    box-shadow:
+      0 40px 90px -20px rgba(0,0,0,0.7),
+      0 0 0 1px rgba(255,255,255,0.04),
+      0 1px 0 rgba(255,255,255,0.06) inset;
   }
-
-  .app-mockup .mockup-titlebar { background: #141416; }
-  .app-mockup .mockup-body { background: #1e1e1e; }
-  .app-mockup .mockup-sidebar { border-right: 1px solid rgba(255,255,255,0.08); }
-
-  /* Chat column + segmented agent switcher on dark surfaces. */
-  .app-mockup .hd-chat { background: #1b1b1d; }
-  .app-mockup .hd-tab.active { background: #e5e5e5; color: #141414; }
-
-  /* Board cards — the real dark card surface; the running comet frames it. */
-  .app-mockup .kanban-card-mock { background: #2c2c2b; }
-  .app-mockup .kanban-card-mock.running::after { background: #2c2c2b; }
-
-  /* Chat bubbles + composer. */
-  .app-mockup .chat-msg.user { background: #2c2c2b; }
-  .app-mockup .chat-composer-mock {
-    background: #232325;
-    border: 1px solid rgba(255,255,255,0.08);
-    box-shadow: none;
-  }
-  .app-mockup .chat-composer-mock .placeholder { color: rgba(255,255,255,0.4); }
-  .app-mockup .send-btn { background: #e5e5e5; }
-  .app-mockup .send-btn svg { color: #141414; }
-
-  /* Chat-head avatar is the black logo; invert it to read on dark. */
-  .app-mockup .hd-avatar { filter: brightness(0) invert(1); opacity: 0.85; }
-
-  /* Status pills use the brighter dark-theme status colours for contrast. */
-  .app-mockup .status-running { background: rgba(96,165,250,0.15); color: #60a5fa; }
-  .app-mockup .status-running .dot { background: #60a5fa; }
-  .app-mockup .status-done { background: rgba(34,197,94,0.15); color: #22c55e; }
 
   .mockup-titlebar {
-    height: 52px;
+    position: relative;
+    height: 44px;
     display: flex;
     align-items: center;
     padding: 0 16px;
     gap: 8px;
-    border-bottom: 1px solid var(--border-light);
-    background: var(--gray-50);
+    border-bottom: 1px solid var(--m-border);
+    background: rgba(255,255,255,0.03);
   }
 
-  .traffic-lights {
-    display: flex;
-    gap: 8px;
-    margin-right: 12px;
-  }
-
-  .traffic-lights span {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-  }
-
+  .traffic-lights { display: flex; gap: 8px; }
+  .traffic-lights span { width: 12px; height: 12px; border-radius: 50%; }
   .tl-red { background: #ff5f57; }
   .tl-yellow { background: #febc2e; }
   .tl-green { background: #28c840; }
 
   .mockup-titlebar .title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
     font-size: 13px;
     font-weight: 500;
-    color: var(--gray-600);
+    color: var(--m-muted);
   }
 
-  .mockup-body {
-    display: flex;
-    min-height: 504px;
-  }
+  .mockup-body { display: flex; min-height: 528px; }
 
+  /* ── Sidebar — near-black gutter, matches the real AppSidebar ── */
   .mockup-sidebar {
     width: 220px;
-    background: var(--secondary);
-    border-right: 1px solid var(--border);
-    padding: 16px 12px;
     flex-shrink: 0;
-  }
-
-  .sidebar-section-label {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--gray-400);
-    padding: 8px 10px 4px;
-    letter-spacing: 0;
-  }
-
-  .sidebar-item {
-    font-size: 13px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    color: var(--gray-600);
-    margin-bottom: 2px;
-    cursor: default;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .sidebar-item.active {
-    background: var(--gray-200);
-    color: var(--gray-950);
-    font-weight: 500;
-  }
-
-  .sidebar-item svg { width: 14px; height: 14px; opacity: 0.6; flex-shrink: 0; }
-  .sidebar-item.active svg { opacity: 1; }
-
-  .mockup-main {
-    flex: 1;
-    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-  }
-
-  .mockup-tab-bar {
-    display: flex;
-    gap: 24px;
-    border-bottom: 1px solid var(--border-light);
+    background: var(--m-canvas);
+    border-right: 1px solid var(--m-border);
     padding-bottom: 8px;
-    margin-bottom: 8px;
   }
 
-  .mockup-tab {
-    font-size: 13px;
-    color: var(--gray-500);
-    padding-bottom: 8px;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -9px;
-    cursor: default;
-  }
-
-  .mockup-tab.active {
-    color: var(--gray-950);
-    font-weight: 500;
-    border-bottom-color: var(--gray-950);
-  }
-
-  /* Board columns — reused by the scripted hero demo (assets/hero-demo.js);
-     the demo's 2-column grid lives in assets/hero-demo.css (.hd-board). */
-  .kanban-col {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .kanban-col-header {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--gray-500);
-    padding: 4px 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .kanban-col-header .count {
-    font-size: 11px;
-    background: var(--gray-100);
-    padding: 1px 6px;
-    border-radius: 9999px;
-    color: var(--gray-500);
-  }
-
-  .kanban-card-mock {
-    padding: 12px;
-    border-radius: 12px;
-    border: 1px solid var(--border-light);
-    background: white;
-    font-size: 13px;
-    color: var(--gray-700);
-    line-height: 1.4;
-  }
-
-  .kanban-card-mock.running {
-    position: relative;
-    overflow: hidden;
-    border-color: transparent;
-  }
-
-  .kanban-card-mock.running::before {
-    content: "";
-    position: absolute;
-    inset: -2px;
-    border-radius: 14px;
-    background: conic-gradient(
-      from var(--angle),
-      transparent 60%,
-      #3b82f6 72%,
-      #818cf8 80%,
-      #f97316 88%,
-      #eab308 92%,
-      transparent 100%
-    );
-    animation: comet-border 2.5s linear infinite;
-    z-index: 0;
-  }
-
-  .kanban-card-mock.running::after {
-    content: "";
-    position: absolute;
-    inset: 2px;
-    border-radius: 10px;
-    background: white;
-    z-index: 0;
-  }
-
-  .kanban-card-mock.running > * {
-    position: relative;
-    z-index: 1;
-  }
-
-  .status-running .dot {
-    animation: pulse-dot 1s ease infinite;
-  }
-
-  .kanban-card-title {
-    font-weight: 500;
-    color: var(--gray-950);
-    margin-bottom: 4px;
-    font-size: 13px;
-    text-align: left;
-  }
-
-  .kanban-card-desc {
-    font-size: 12px;
-    color: var(--gray-500);
-    text-align: left;
-  }
-
-  .kanban-card-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    margin-top: 8px;
-    padding: 2px 8px;
-    border-radius: 9999px;
-  }
-
-  .status-running {
-    background: rgba(59,130,246,0.1);
-    color: #3b82f6;
-  }
-
-  .status-running .dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #3b82f6;
-  }
-
-  .status-done {
-    background: rgba(0,162,64,0.1);
-    color: var(--success);
-  }
-
-  .status-needsyou {
-    background: rgba(224,172,0,0.1);
-    color: var(--warning);
-  }
-
-  /* ═══════════════════════════════════════════
-     PHONE MOCKUP (mobile hero)
-     ═══════════════════════════════════════════ */
-
-  .phone-mockup {
-    display: none;
-    width: 280px;
-    aspect-ratio: 9 / 19.5;
-    margin: 40px auto 0;
-    border-radius: 36px;
-    border: 4px solid var(--gray-950);
-    background: white;
-    overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.08);
-    animation: float-up 0.6s ease 0.25s both;
-  }
-
-  .phone-notch {
-    width: 120px;
-    height: 28px;
-    background: var(--gray-950);
-    border-radius: 0 0 16px 16px;
-    margin: 0 auto;
-  }
-
-  .phone-content {
-    padding: 8px 16px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .phone-header {
+  .m-ws {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 0;
+    padding: 12px 12px 10px;
+  }
+  .m-ws-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--m-ink);
+  }
+  .m-ws-name svg { width: 14px; height: 14px; opacity: 0.8; }
+
+  .m-icon-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--m-faint);
+    flex-shrink: 0;
+  }
+  .m-icon-btn svg { width: 15px; height: 15px; }
+  .m-icon-btn.sm { width: 24px; height: 24px; }
+  .m-icon-btn.sm svg { width: 14px; height: 14px; }
+
+  .m-nav {
+    padding: 2px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .m-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--m-muted);
+    padding: 7px 10px;
+    border-radius: 8px;
+  }
+  .m-nav-item svg { width: 16px; height: 16px; opacity: 0.9; flex-shrink: 0; }
+  .m-nav-item.active { background: var(--m-accent); color: var(--m-ink); font-weight: 500; }
+
+  .m-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 12px 4px;
+  }
+  .m-section-label { font-size: 12px; font-weight: 500; color: var(--m-muted); }
+  .m-section-actions { display: flex; gap: 2px; }
+
+  .m-agents { padding: 2px 8px; }
+  .m-agent {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.1);
+  }
+  .m-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(167,139,250,0.22);
+  }
+  .m-avatar img { width: 13px; height: 13px; filter: brightness(0) invert(1); opacity: 0.92; }
+  .m-agent-name { flex: 1; font-size: 13px; color: var(--m-ink); }
+  .m-count {
+    min-width: 20px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 9999px;
+    border: 1px solid var(--m-border);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--m-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .phone-header .title {
-    font-size: 16px;
+  /* ═══════════════════════════════════════════
+     iPHONE FRAME (how-it-works conversation)
+     Pure CSS current-gen iPhone: titanium side band, ~55px corners,
+     Dynamic Island, thin uniform bezels, side buttons. No image assets.
+     The screen shows the live agent conversation as a mobile chat.
+     ═══════════════════════════════════════════ */
+
+  .iphone {
+    position: relative;
+    width: 322px;
+    max-width: 100%;
+    margin: 0 auto;
+    aspect-ratio: 322 / 656;
+    border-radius: 56px;
+    padding: 11px;
+    /* Brushed-titanium side band (light-catching diagonal). */
+    background:
+      linear-gradient(
+        145deg,
+        #dfe3e9 0%, #aab0bb 16%, #71787f 33%,
+        #c3c8d0 50%, #5a6068 67%, #9ba1ab 84%, #d6dae1 100%
+      );
+    box-shadow:
+      0 2px 2px rgba(255,255,255,0.4) inset,
+      0 0 0 1.5px rgba(0,0,0,0.5),
+      0 42px 80px -26px rgba(0,0,0,0.78),
+      0 10px 26px -14px rgba(0,0,0,0.6);
+  }
+
+  /* Thin dark rim between the titanium band and the glass. */
+  .iphone::before {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border-radius: 50px;
+    background: #04050a;
+    z-index: 0;
+  }
+
+  .iphone-screen {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    border-radius: 46px;
+    overflow: hidden;
+    background: #0b0d14;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.05) inset;
+  }
+
+  /* Dynamic Island — floats over the status bar. */
+  .iphone-island {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 98px;
+    height: 28px;
+    background: #000;
+    border-radius: 999px;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 11px;
+  }
+
+  .iphone-island::after {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #2c3856 0%, #05060b 72%);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
+  }
+
+  /* Physical side buttons on the band (percent-positioned so they track the
+     frame at any scale). */
+  .iphone-btn {
+    position: absolute;
+    z-index: 0;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #c4c9d2 0%, #7d838d 100%);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.35);
+  }
+  .iphone-btn.action { left: -2px; top: 17.5%; width: 3px; height: 4.2%; }
+  .iphone-btn.vol-up { left: -2px; top: 24.5%; width: 3px; height: 6.7%; }
+  .iphone-btn.vol-dn { left: -2px; top: 32.5%; width: 3px; height: 6.7%; }
+  .iphone-btn.power  { right: -2px; top: 25.5%; width: 3px; height: 10%; }
+
+  /* Status bar: time left, signal / wifi / battery right. */
+  .iphone-statusbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 30px 7px;
+    flex-shrink: 0;
+  }
+
+  .iphone-statusbar .ip-time {
+    font-size: 13px;
+    font-weight: 600;
+    color: #f3f5fc;
+    letter-spacing: 0.02em;
+  }
+
+  .iphone-statusbar .ip-icons {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #f3f5fc;
+  }
+
+  .iphone-statusbar .ip-icons svg { display: block; }
+
+  /* App top bar (the chat's agent header). */
+  .iphone-appbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 18px 12px;
+    border-bottom: 1px solid var(--border-light);
+    flex-shrink: 0;
+  }
+
+  .iphone-appbar .ip-appbar-name {
+    font-size: 14px;
     font-weight: 600;
     color: var(--gray-950);
-    letter-spacing: -0.02em;
+    line-height: 1.2;
   }
 
-  .phone-tabs {
-    display: flex;
-    gap: 16px;
-    border-bottom: 1px solid var(--border-light);
-    padding-bottom: 8px;
-    margin-bottom: 4px;
-  }
-
-  .phone-tabs span {
-    font-size: 12px;
+  .iphone-appbar .ip-appbar-mission {
+    font-size: 11px;
     color: var(--gray-500);
-    padding-bottom: 8px;
+    line-height: 1.3;
   }
 
-  .phone-tabs span.active {
-    color: var(--gray-950);
-    font-weight: 500;
-    border-bottom: 2px solid var(--gray-950);
-    margin-bottom: -9px;
+  /* The conversation fills the rest of the screen; newest content pinned low. */
+  .ip-chat {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: 14px 16px 16px !important;
+    max-width: 100% !important;
+    margin: 0 !important;
   }
 
   /* ═══════════════════════════════════════════
@@ -982,7 +930,7 @@ visionPath: "vision/index.html"
   }
 
   .agent-card:hover::after {
-    background: rgba(34,37,54,0.62);
+    background: rgba(34,37,54,0.79);
   }
 
   .agent-card > * {
@@ -1489,7 +1437,7 @@ visionPath: "vision/index.html"
   footer {
     padding: 40px;
     border-top: 1px solid var(--border-light);
-    background: rgba(8,9,15,0.55);
+    background: rgba(8,9,15,0.75);
     -webkit-backdrop-filter: saturate(1.1) blur(12px);
     backdrop-filter: saturate(1.1) blur(12px);
     text-align: center;
@@ -1713,14 +1661,10 @@ visionPath: "vision/index.html"
     footer > div:first-child { grid-template-columns: 1fr !important; gap: 32px !important; }
     .nav-right .btn { font-size: 12px; padding: 0 12px; height: 32px; }
     .mockup-titlebar .title { font-size: 12px; }
-    .kanban-col-header { font-size: 11px; }
-    .kanban-card-title { font-size: 12px; }
-    .kanban-card-desc { font-size: 11px; }
-    .mockup-sidebar { display: none; }
     .app-mockup { max-width: 100% !important; margin-top: 40px !important; }
     .app-mockup .mockup-sidebar { display: none !important; }
     .app-mockup .mockup-body { min-height: auto !important; }
-    .phone-mockup { display: none !important; }
+    .iphone { width: 290px; }
   }
 
   /* ═══════════════════════════════════════════
@@ -1950,99 +1894,155 @@ visionPath: "vision/index.html"
       <span class="title">Houston</span>
     </div>
     <div class="mockup-body">
-      <!-- Sidebar — matches real AppSidebar: 220px, bg-secondary, border-r -->
-      <div class="mockup-sidebar" style="width: 220px; padding: 0; display: flex; flex-direction: column;">
-        <!-- WorkspaceSwitcher -->
-        <div style="padding: 12px 12px 8px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light);">
-          <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--gray-950);">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M4 6l4 4 4-4"/></svg>
-            My Workspace
-          </div>
-          <div style="width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: default;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2" width="14" height="14"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-          </div>
+      <!-- Sidebar — matches the real AppSidebar (220px, workspace switcher,
+           nav, Your Agents). -->
+      <div class="mockup-sidebar">
+        <div class="m-ws">
+          <span class="m-ws-name">
+            Personal
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </span>
+          <span class="m-icon-btn">
+            <!-- PanelLeftClose -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg>
+          </span>
         </div>
-        <!-- Nav items -->
-        <div style="padding: 8px 8px 0;">
-          <div class="sidebar-item active" style="gap: 8px;">
-            <!-- LayoutDashboard icon -->
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        <div class="m-nav">
+          <div class="m-nav-item active">
+            <!-- LayoutDashboard -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
             Mission Control
           </div>
-          <div class="sidebar-item" style="gap: 8px;">
-            <!-- Blend icon -->
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="9" cy="9" r="7"/><circle cx="15" cy="15" r="7"/></svg>
+          <div class="m-nav-item">
+            <!-- Blocks -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="14" y="3" rx="1"/><path d="M10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H8"/></svg>
             Integrations
           </div>
+          <div class="m-nav-item">
+            <!-- Boxes -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19V13.5l-5-3-4.03 2.42Z"/><path d="m7 16.5-4.74-2.85"/><path d="m7 16.5 5-3"/><path d="M7 16.5v5.17"/><path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/><path d="m17 16.5-5-3"/><path d="m17 16.5 4.74-2.85"/><path d="M17 16.5v5.17"/><path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0Z"/><path d="M12 8 7.26 5.15"/><path d="m12 8 4.74-2.85"/><path d="M12 13.5V8"/></svg>
+            AI Models
+          </div>
+          <div class="m-nav-item">
+            <!-- Settings -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            Settings
+          </div>
         </div>
-        <!-- Section label -->
-        <div style="padding: 16px 12px 4px; display: flex; align-items: center; justify-content: space-between;">
-          <span style="font-size: 12px; font-weight: 500; color: var(--gray-500);">Your Agents</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2" width="12" height="12"><path d="M12 5v14M5 12h14"/></svg>
+        <div class="m-section">
+          <span class="m-section-label">Your Agents</span>
+          <span class="m-section-actions">
+            <span class="m-icon-btn sm">
+              <!-- Users -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </span>
+            <span class="m-icon-btn sm">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            </span>
+          </span>
         </div>
-        <!-- Agent list -->
-        <div style="padding: 0 8px; flex: 1;">
-          <div class="sidebar-item" style="font-size: 13px;">Email and Outreach</div>
-          <div class="sidebar-item" style="font-size: 13px;">Bookkeeping</div>
-          <div class="sidebar-item" style="font-size: 13px;">Scheduling</div>
-          <div class="sidebar-item" style="font-size: 13px;">Research</div>
-          <div class="sidebar-item" style="font-size: 13px;">Reporting</div>
+        <div class="m-agents">
+          <div class="m-agent">
+            <span class="m-avatar"><img src="houston-black.svg" width="13" height="13" alt=""></span>
+            <span class="m-agent-name">Houston</span>
+            <span class="m-count">1</span>
+          </div>
         </div>
       </div>
-      <!-- Main content — scripted "mini-Houston" demo (assets/hero-demo.js).
-           The markup below is a COMPLETED state, so with JS disabled or with
-           prefers-reduced-motion it reads as finished; the script resets and
-           plays the loop as progressive enhancement. -->
-      <div class="mockup-main" style="padding: 0; display: flex; flex-direction: column;">
-        <div class="hd">
-          <div class="hd-topbar">
-            <div class="hd-title">Mission Control</div>
-            <div class="hd-tabs" role="tablist" aria-label="Choose an agent to watch">
-              <button class="hd-tab active" type="button" role="tab" aria-selected="true">Assistant</button>
-              <button class="hd-tab" type="button" role="tab" aria-selected="false">Sales Rep</button>
-              <button class="hd-tab" type="button" role="tab" aria-selected="false">Bookkeeper</button>
+
+      <!-- Work area: board (left) + chat detail panel (right), like the real
+           app with a mission open. The scripted demo (assets/hero-demo.js)
+           types into the chat, spawns a Running card, then flips it to Done. -->
+      <div class="mockup-workarea">
+        <div class="mc-board">
+          <div class="mc-toolbar">
+            <span class="mc-title">Houston</span>
+            <div class="mc-toolbar-right">
+              <span class="mc-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                Search missions
+              </span>
+              <span class="mc-ghost">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+                Guide me
+              </span>
+              <span class="mc-newmission">
+                <img src="houston-black.svg" width="15" height="15" alt="">
+                <span>New mission</span>
+              </span>
             </div>
           </div>
-          <div class="hd-split" aria-hidden="true">
-            <!-- Chat column -->
-            <div class="hd-chat">
-              <div class="hd-chat-head">
-                <img class="hd-avatar" src="houston-black.svg" width="24" height="24" alt="">
-                <div>
-                  <div class="hd-agent-name" id="hd-agent-name">Assistant</div>
-                  <div class="hd-agent-task" id="hd-agent-task">Clear the inbox</div>
+          <div class="mc-tabs">
+            <span class="mc-tab active">Activity <span class="badge" id="hd-activity-count">1</span></span>
+            <span class="mc-tab">Routines</span>
+            <span class="mc-tab">Integrations</span>
+            <span class="mc-tab">Files</span>
+            <span class="mc-tab">Completed</span>
+            <span class="mc-tab">Agent Settings</span>
+          </div>
+          <div class="mc-cols" aria-hidden="true">
+            <div class="mc-col">
+              <div class="mc-col-head">
+                <span class="mc-col-title">Running</span><span class="mc-col-count" id="hd-run-count">0</span>
+                <span class="mc-col-more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/><circle cx="5" cy="12" r="1.6"/></svg></span>
+              </div>
+              <div class="mc-addcard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+              <div class="mc-col-body" id="hd-running"></div>
+            </div>
+            <div class="mc-col">
+              <div class="mc-col-head">
+                <span class="mc-col-title">Needs you</span><span class="mc-col-count">1</span>
+                <span class="mc-col-more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/><circle cx="5" cy="12" r="1.6"/></svg></span>
+              </div>
+              <div class="mc-col-body">
+                <div class="mc-card">
+                  <div class="mc-card-head"><span class="m-avatar"><img src="houston-black.svg" width="11" height="11" alt=""></span><span class="mc-card-agent">Houston</span></div>
+                  <div class="mc-card-title">Plan a trip to Tokyo</div>
+                  <div class="mc-card-desc">Research flights and hotels for the spring</div>
                 </div>
-              </div>
-              <div class="hd-thread" id="hd-thread">
-                <div class="chat-msg user">Clear my inbox. Reply to anything urgent, archive the rest.</div>
-                <div class="chat-msg assistant">On it. 23 unread. Drafting 4 replies and archiving the newsletters.</div>
-                <div class="chat-msg assistant">Done. 4 replies are waiting for your OK. Inbox at zero.</div>
-              </div>
-              <div class="hd-composer chat-composer-mock">
-                <span class="placeholder" id="hd-composer-text">Tell your agent what to do...</span>
-                <span class="send-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 14V2M8 2l-4 4M8 2l4 4"/></svg></span>
               </div>
             </div>
-            <!-- Live board column -->
-            <div class="hd-board">
-              <div class="kanban-col">
-                <div class="kanban-col-header">Running <span class="count" id="hd-run-count">0</span></div>
-                <div class="kanban-col-body" id="hd-running"></div>
+            <div class="mc-col">
+              <div class="mc-col-head">
+                <span class="mc-col-title">Done</span><span class="mc-col-count" id="hd-done-count">1</span>
+                <span class="mc-col-more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/><circle cx="5" cy="12" r="1.6"/></svg></span>
               </div>
-              <div class="kanban-col">
-                <div class="kanban-col-header">Done <span class="count" id="hd-done-count">1</span></div>
-                <div class="kanban-col-body" id="hd-done">
-                  <div class="kanban-card-mock">
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                      <img src="houston-gray.svg" width="14" height="14" alt="" style="flex-shrink: 0;">
-                      <span style="font-size: 11px; color: var(--gray-500);">Assistant</span>
-                    </div>
-                    <div class="kanban-card-title">Follow up on urgent email</div>
-                    <div class="kanban-card-desc">4 replies ready, 17 archived</div>
-                    <div class="kanban-card-status status-done"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M2 6l3 3 5-5"/></svg> Done</div>
-                  </div>
+              <div class="mc-col-body" id="hd-done">
+                <div class="mc-card">
+                  <div class="mc-card-head"><span class="m-avatar"><img src="houston-black.svg" width="11" height="11" alt=""></span><span class="mc-card-agent">Houston</span></div>
+                  <div class="mc-card-title">Follow up on urgent email</div>
+                  <div class="mc-card-desc">4 replies ready, 17 archived</div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat detail panel -->
+        <div class="mc-chat">
+          <div class="mc-chat-head">
+            <span class="m-avatar"><img src="houston-black.svg" width="21" height="21" alt=""></span>
+            <div>
+              <div class="mc-chat-agent">Houston</div>
+              <div class="mc-chat-mission">Mission: <span id="hd-mission">Clear the inbox</span></div>
+            </div>
+            <span class="mc-chat-close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+          </div>
+          <div class="mc-thread" id="hd-thread">
+            <div class="chat-msg user">Clear my inbox. Reply to anything urgent, archive the rest.</div>
+            <div class="chat-msg assistant">Done. 4 replies are waiting for your OK. Inbox at zero.</div>
+          </div>
+          <div class="mc-composer-wrap">
+            <div class="mc-composer">
+              <span class="mc-attach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+              <span class="mc-composer-text" id="hd-composer-text">Send a follow-up...</span>
+              <span class="mc-send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span>
+            </div>
+            <div class="mc-tools">
+              <span class="mc-tool"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg> Skills</span>
+              <span class="mc-tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 12H3M16 6H3M16 18H3M18 9l3 3-3 3"/></svg> Planner <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span>
+              <span class="mc-tool"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6z"/></svg> Sonnet 5 <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span>
+              <span class="mc-tool"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="13" width="4" height="7" rx="1"/><rect x="10" y="8" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="17" rx="1"/></svg> Medium</span>
             </div>
           </div>
         </div>
@@ -2227,16 +2227,34 @@ visionPath: "vision/index.html"
       </div>
     </div>
 
-    <!-- Chat (right) -->
-    <div class="glass-panel" style="border-radius: 16px; overflow: hidden; max-width: 480px; width: 100%;">
-      <div style="display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--border-light); background: rgba(255,255,255,0.04);">
-        <img src="houston-black.svg" class="hiw-head-logo" width="22" height="22" alt="Houston" loading="lazy" style="opacity: 0.85;">
-        <div>
-          <div id="hiw-agent-name" style="font-size: 13px; font-weight: 600; color: var(--gray-950);"></div>
-          <div id="hiw-agent-mission" style="font-size: 11px; color: var(--gray-500);"></div>
+    <!-- Chat (right) — the live conversation, framed in a real CSS iPhone. -->
+    <div class="iphone" role="img" aria-label="Houston running on iPhone: a chat with your agent">
+      <span class="iphone-btn action"></span>
+      <span class="iphone-btn vol-up"></span>
+      <span class="iphone-btn vol-dn"></span>
+      <span class="iphone-btn power"></span>
+      <div class="iphone-screen">
+        <div class="iphone-island"></div>
+        <div class="iphone-statusbar">
+          <span class="ip-time">9:41</span>
+          <span class="ip-icons">
+            <!-- cellular -->
+            <svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="0.6"/><rect x="5" y="5.5" width="3" height="6.5" rx="0.6"/><rect x="10" y="3" width="3" height="9" rx="0.6"/><rect x="15" y="0.5" width="3" height="11.5" rx="0.6"/></svg>
+            <!-- wifi -->
+            <svg viewBox="0 0 16 12" width="16" height="11" fill="currentColor"><path d="M8 2.2c2.6 0 4.98 1 6.75 2.63.28.26.29.7.03.98l-.62.66a.68.68 0 0 1-.95.03A7.63 7.63 0 0 0 8 4.5a7.63 7.63 0 0 0-5.21 2.03.68.68 0 0 1-.95-.03l-.62-.66a.7.7 0 0 1 .03-.98A9.94 9.94 0 0 1 8 2.2Zm0 3.6c1.5 0 2.87.56 3.9 1.48.3.26.31.71.04 1l-.66.68a.67.67 0 0 1-.92.04A4.02 4.02 0 0 0 8 8.9c-.9 0-1.72.28-2.36.76a.67.67 0 0 1-.92-.04l-.66-.69a.68.68 0 0 1 .04-.99A5.86 5.86 0 0 1 8 5.8Zm0 3.5c.62 0 1.18.22 1.6.58.3.26.32.72.04 1l-1.15 1.17a.68.68 0 0 1-.98 0L6.36 10.9a.68.68 0 0 1 .04-1c.42-.37.98-.59 1.6-.59Z"/></svg>
+            <!-- battery -->
+            <svg viewBox="0 0 27 12" width="26" height="11" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" stroke-opacity="0.5"/><rect x="2" y="2" width="17.5" height="8" rx="1.8" fill="currentColor"/><path d="M24.5 4v4a1.9 1.9 0 0 0 0-4Z" fill="currentColor" fill-opacity="0.5"/></svg>
+          </span>
         </div>
+        <div class="iphone-appbar">
+          <img src="houston-black.svg" class="hiw-head-logo" width="26" height="26" alt="Houston" loading="lazy" style="opacity: 0.9; flex-shrink: 0;">
+          <div>
+            <div class="ip-appbar-name" id="hiw-agent-name"></div>
+            <div class="ip-appbar-mission" id="hiw-agent-mission"></div>
+          </div>
+        </div>
+        <div id="hiw-chat" class="chat-mockup ip-chat" style="gap: 12px;"></div>
       </div>
-      <div id="hiw-chat" class="chat-mockup" style="padding: 16px 20px; min-height: 260px; max-width: 100%; gap: 12px;"></div>
     </div>
   </div>
 </section>

@@ -1,21 +1,33 @@
 /*
- * Scroll-driven parallax — JS fallback for the fixed space background.
+ * Space background motion controller.
  *
- * The primary path is pure CSS (animation-timeline: scroll(), see space.css).
- * This file only runs where that is unsupported (older/most WebKit), driving
- * the exact same transforms from a rAF-throttled scroll listener so the photo +
- * star layers still pan as you travel the page. transform-only, so it stays on
- * the compositor with no layout or paint.
+ * Two jobs:
+ *   1. Pause the ambient CSS motion (photo drift + star twinkle, see space.css)
+ *      while the tab is hidden, by toggling `.space-idle` on <html>. Runs on
+ *      EVERY engine — the ambient animations are plain time-based CSS.
+ *   2. Drive the scroll-driven pan as a rAF fallback where CSS scroll-driven
+ *      animations (animation-timeline: scroll(), the primary path in space.css)
+ *      are unsupported (older/most WebKit), setting the exact same transforms
+ *      the CSS @keyframes would. transform-only, so it stays on the compositor
+ *      with no layout or paint.
  *
- * No-ops entirely when:
- *   - prefers-reduced-motion is set (static background, per the design), or
- *   - the browser supports scroll-driven CSS animations (CSS already handles it).
+ * No-ops entirely under prefers-reduced-motion (static background, per the
+ * design — nothing to pause, nothing to pan).
  */
 (() => {
   var reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)");
   if (reduce?.matches) return;
 
-  // Native scroll timeline available → CSS drives it, nothing to do here.
+  // (1) Pause ambient drift/twinkle when the tab is backgrounded — no wasted
+  // compositor work, and motion resumes cleanly on return. Always attached.
+  var root = document.documentElement;
+  function syncVisibility() {
+    root.classList.toggle("space-idle", document.hidden);
+  }
+  document.addEventListener("visibilitychange", syncVisibility);
+  syncVisibility();
+
+  // Native scroll timeline available → CSS drives the pan, so we're done.
   var hasScrollTimeline =
     window.CSS &&
     typeof CSS.supports === "function" &&
@@ -28,11 +40,11 @@
 
   // Keep these in lockstep with the @keyframes in space.css.
   var BASE_SCALE = 1.16;
-  var SCALE_RANGE = 0.06; // 1.16 → 1.22
-  var IMG_SHIFT = 4.5; // percent, upward
-  var STARS_SHIFT = 14; // percent, upward (faster → depth)
+  var SCALE_RANGE = 0.12; // 1.16 → 1.28
+  var IMG_SHIFT = 8; // percent, upward
+  var STARS_SHIFT = 22; // percent, upward (faster → depth)
 
-  document.documentElement.classList.add("space-js-parallax");
+  root.classList.add("space-js-parallax");
 
   var ticking = false;
 

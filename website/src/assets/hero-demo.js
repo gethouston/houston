@@ -1,16 +1,16 @@
 /*
- * Interactive scripted hero demo — "mini-Houston".
+ * Interactive scripted hero demo — a faithful mini Houston.
  *
- * Auto-plays a short, believable loop for each agent: a prompt types itself into
- * the composer, it "sends", the agent thinks, a task card materializes in the
- * board's Running column, then moves to Done as the agent reports back. Clicking
- * an agent tab jumps to that agent and restarts its loop. Auto-play advances to
- * the next agent on a timer; hovering (or focusing) the demo pauses everything.
+ * Auto-plays a short, believable loop inside the mockup's Mission Control: a
+ * prompt types itself into the chat composer, it "sends", the agent thinks, a
+ * mission card materializes in the board's Running column, then FLIPs to Done as
+ * the agent reports back. The loop cycles through a few real-world missions (all
+ * run by the single "Houston" agent, exactly as the real app models it).
+ * Hovering (or focusing) the demo pauses everything.
  *
- * Standalone: no dependency on Motion (uses WAAPI/CSS). Progressive: the static
+ * Standalone: no Motion dependency (WAAPI/CSS only). Progressive: the static
  * HTML already shows a finished state, and prefers-reduced-motion leaves it
- * untouched. Scheduling is driven by requestAnimationFrame, so it pauses for
- * free when the tab is hidden.
+ * untouched. Scheduling is rAF-driven, so it pauses for free when hidden.
  */
 (() => {
   var root = document.querySelector("[data-hero-demo]");
@@ -19,17 +19,14 @@
   var reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)");
   if (reduce?.matches) return; // static completed state stands
 
-  var HOUSTON_LOGO = "houston-gray.svg";
+  var LOGO = "houston-black.svg";
 
-  // ── Scripts ──────────────────────────────────────────────────────────────
-  // Kept plain-English and non-technical, consistent with the rest of the page.
+  // ── Missions (plain-English, non-technical, single Houston agent) ─────────
   var SCRIPTS = [
     {
-      name: "Assistant",
-      task: "Clear the inbox",
+      mission: "Clear the inbox",
       prompt: "Clear my inbox. Reply to anything urgent, archive the rest.",
       card: {
-        label: "Assistant",
         title: "Follow up on urgent email",
         running: "Reading 23 unread, drafting replies",
         done: "4 replies ready, 17 archived",
@@ -39,11 +36,9 @@
       confirm: "Done. 4 replies are waiting for your OK. Inbox at zero.",
     },
     {
-      name: "Sales Rep",
-      task: "Follow up with leads",
+      mission: "Follow up with leads",
       prompt: "Follow up with every lead that went quiet this week.",
       card: {
-        label: "Sales Rep",
         title: "Send 12 follow-ups",
         running: "Personalizing from HubSpot + LinkedIn",
         done: "12 emails sent from Gmail",
@@ -52,11 +47,9 @@
       confirm: "Sent all 12. Each one references their last conversation.",
     },
     {
-      name: "Bookkeeper",
-      task: "File March expenses",
+      mission: "File March expenses",
       prompt: "Categorize my March expenses in QuickBooks.",
       card: {
-        label: "Bookkeeper",
         title: "Categorize 47 transactions",
         running: "Matching your past patterns",
         done: "44 filed, 3 flagged for review",
@@ -67,18 +60,16 @@
   ];
 
   // ── Elements ─────────────────────────────────────────────────────────────
-  var tabs = Array.prototype.slice.call(root.querySelectorAll(".hd-tab"));
   var thread = root.querySelector("#hd-thread");
   var composer = root.querySelector("#hd-composer-text");
   var runningBody = root.querySelector("#hd-running");
   var doneBody = root.querySelector("#hd-done");
   var runCountEl = root.querySelector("#hd-run-count");
   var doneCountEl = root.querySelector("#hd-done-count");
-  var nameEl = root.querySelector("#hd-agent-name");
-  var taskEl = root.querySelector("#hd-agent-task");
+  var missionEl = root.querySelector("#hd-mission");
   if (!thread || !composer || !runningBody || !doneBody) return;
 
-  var PLACEHOLDER = "Tell your agent what to do...";
+  var PLACEHOLDER = "Send a follow-up...";
 
   // ── Cancellable, pausable clock ──────────────────────────────────────────
   var token = 0;
@@ -131,22 +122,19 @@
 
   function makeCard(script) {
     var c = document.createElement("div");
-    c.className = "kanban-card-mock running hd-enter";
+    c.className = "mc-card running hd-enter";
     c.innerHTML =
-      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">' +
-      '<img src="' +
-      HOUSTON_LOGO +
-      '" width="14" height="14" alt="" style="flex-shrink:0;">' +
-      '<span style="font-size:11px;color:var(--gray-500);">' +
-      script.card.label +
-      "</span></div>" +
-      '<div class="kanban-card-title">' +
+      '<div class="mc-card-head">' +
+      '<span class="m-avatar"><img src="' +
+      LOGO +
+      '" width="11" height="11" alt=""></span>' +
+      '<span class="mc-card-agent">Houston</span></div>' +
+      '<div class="mc-card-title">' +
       script.card.title +
       "</div>" +
-      '<div class="kanban-card-desc">' +
+      '<div class="mc-card-desc">' +
       script.card.running +
-      "</div>" +
-      '<div class="kanban-card-status status-running"><span class="dot"></span> Working</div>';
+      "</div>";
     return c;
   }
 
@@ -156,11 +144,7 @@
     card.classList.remove("running");
     doneBody.appendChild(card);
     var last = card.getBoundingClientRect();
-    card.querySelector(".kanban-card-desc").textContent = doneText;
-    var status = card.querySelector(".kanban-card-status");
-    status.className = "kanban-card-status status-done";
-    status.innerHTML =
-      '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M2 6l3 3 5-5"/></svg> Done';
+    card.querySelector(".mc-card-desc").textContent = doneText;
     var dx = first.left - last.left;
     var dy = first.top - last.top;
     if ((dx || dy) && card.animate) {
@@ -171,14 +155,6 @@
     }
   }
 
-  function setActive(idx) {
-    tabs.forEach((t, i) => {
-      var on = i === idx;
-      t.classList.toggle("active", on);
-      t.setAttribute("aria-selected", on ? "true" : "false");
-    });
-  }
-
   function reset(idx) {
     var s = SCRIPTS[idx];
     clear(thread);
@@ -187,22 +163,20 @@
     runCountEl.textContent = "0";
     doneCountEl.textContent = "0";
     composer.textContent = PLACEHOLDER;
-    composer.classList.remove("typed", "hd-caret");
-    if (nameEl) nameEl.textContent = s.name;
-    if (taskEl) taskEl.textContent = s.task;
-    setActive(idx);
+    composer.classList.remove("typed", "mc-caret");
+    if (missionEl) missionEl.textContent = s.mission;
   }
 
   async function typePrompt(text) {
     composer.textContent = "";
-    composer.classList.add("typed", "hd-caret");
+    composer.classList.add("typed", "mc-caret");
     for (const ch of text) {
       composer.textContent += ch;
       await gate(ch === " " ? 34 : 26 + Math.random() * 30);
     }
   }
 
-  // ── The scripted loop for one agent ──────────────────────────────────────
+  // ── The scripted loop for one mission ────────────────────────────────────
   async function play(idx) {
     var s = SCRIPTS[idx];
 
@@ -210,7 +184,7 @@
     await typePrompt(s.prompt); // prompt types itself
     await gate(360);
 
-    composer.classList.remove("hd-caret");
+    composer.classList.remove("mc-caret");
     composer.textContent = PLACEHOLDER; // send: composer clears
     composer.classList.remove("typed");
     bubble("user", s.prompt);
@@ -237,7 +211,7 @@
     if (dots2.parentNode) dots2.parentNode.removeChild(dots2);
     bubble("assistant", s.confirm);
 
-    await gate(2800); // hold, then advance
+    await gate(2800); // hold, then advance to the next mission
   }
 
   function run(idx) {
@@ -256,26 +230,13 @@
   // ── Pause on hover / focus ───────────────────────────────────────────────
   function setPaused(p) {
     paused = p;
-    root.querySelector(".hd").classList.toggle("hd-paused", p);
+    root.classList.toggle("hd-paused", p);
   }
-  root.addEventListener("pointerenter", () => {
-    setPaused(true);
-  });
-  root.addEventListener("pointerleave", () => {
-    setPaused(false);
-  });
-  root.addEventListener("focusin", () => {
-    setPaused(true);
-  });
+  root.addEventListener("pointerenter", () => setPaused(true));
+  root.addEventListener("pointerleave", () => setPaused(false));
+  root.addEventListener("focusin", () => setPaused(true));
   root.addEventListener("focusout", () => {
     if (!root.contains(document.activeElement)) setPaused(false);
-  });
-
-  // ── Tabs ─────────────────────────────────────────────────────────────────
-  tabs.forEach((tab, i) => {
-    tab.addEventListener("click", () => {
-      run(i);
-    });
   });
 
   // ── Go ───────────────────────────────────────────────────────────────────
