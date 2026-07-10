@@ -1,0 +1,149 @@
+/*
+ * Full-page space background + scroll-driven parallax (landing page only).
+ *
+ * The ESO Milky Way panorama (eso0932a, ESO/S. Brunier, CC BY 4.0) is the
+ * background of the ENTIRE landing page, not just the hero. Three stacked
+ * position:fixed layers sit behind the page content (negative z-index, so the
+ * normal-flow sections paint on top):
+ *
+ *   .space-bg     the photo itself (object-fit: cover), very slowly panned +
+ *                 zoomed as you scroll — the galactic band drifts as you travel
+ *                 the page. NOT background-attachment: fixed (broken on iOS);
+ *                 a real fixed element transformed on the compositor instead.
+ *   .space-scrim  a readability veil (darker at top/bottom, lighter through the
+ *                 middle so the bright band stays visible) — keeps every dark
+ *                 glass panel + light body text well above contrast minimums.
+ *   .space-stars  one sparse foreground star layer at a FASTER parallax rate,
+ *                 for depth/dimensionality.
+ *
+ * Motion is transform/opacity only (zero layout, zero paint, no scroll jank),
+ * driven by CSS scroll-driven animations (animation-timeline: scroll()) where
+ * supported, with a rAF transform fallback (assets/space-scroll.js) where not
+ * (WebKit lags here). prefers-reduced-motion freezes everything — static photo,
+ * no parallax.
+ */
+
+/* Dark base so nothing ever flashes white while the photo decodes. */
+html {
+  background-color: #05060d;
+}
+
+.space-bg,
+.space-scrim,
+.space-stars {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  will-change: transform;
+  contain: strict;
+}
+
+.space-bg {
+  z-index: -3;
+  overflow: hidden;
+  background-color: #05060d;
+}
+
+.space-bg picture,
+.space-bg img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 42%;
+  /* Base scale leaves headroom so the scroll pan never exposes an edge. */
+  transform: scale(1.16) translate3d(0, 0, 0);
+  transform-origin: center 38%;
+}
+
+/* Readability veil. Slightly stronger top (behind the transparent nav + hero
+   headline) and bottom (footer), lighter through the middle third so the bright
+   galactic core still reads as a photograph rather than a flat wash. A faint
+   radial vignette pulls focus to center. The SVG fractal-noise film kills
+   gradient banding on the large dark ramps (near-invisible, 0.025 alpha). */
+.space-scrim {
+  z-index: -2;
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 38%, rgba(5, 6, 13, 0) 40%, rgba(5, 6, 13, 0.55) 100%),
+    linear-gradient(
+      180deg,
+      rgba(5, 6, 13, 0.68) 0%,
+      rgba(5, 6, 13, 0.42) 16%,
+      rgba(5, 6, 13, 0.40) 48%,
+      rgba(5, 6, 13, 0.52) 78%,
+      rgba(5, 6, 13, 0.72) 100%
+    );
+}
+
+.space-scrim::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Sparse foreground stars, tiled. Faster parallax than the photo for depth. */
+.space-stars {
+  z-index: -1;
+  opacity: 0.7;
+  background-repeat: repeat;
+  background-size: 520px 520px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='520'%3E%3Cg fill='%23ffffff'%3E%3Ccircle cx='40' cy='70' r='0.9' opacity='0.9'/%3E%3Ccircle cx='120' cy='30' r='0.6' opacity='0.5'/%3E%3Ccircle cx='210' cy='110' r='1' opacity='0.85'/%3E%3Ccircle cx='300' cy='60' r='0.5' opacity='0.45'/%3E%3Ccircle cx='380' cy='140' r='0.8' opacity='0.75'/%3E%3Ccircle cx='470' cy='40' r='0.6' opacity='0.55'/%3E%3Ccircle cx='70' cy='200' r='0.7' opacity='0.7'/%3E%3Ccircle cx='170' cy='250' r='0.5' opacity='0.4'/%3E%3Ccircle cx='260' cy='210' r='0.9' opacity='0.8'/%3E%3Ccircle cx='350' cy='280' r='0.6' opacity='0.5'/%3E%3Ccircle cx='440' cy='230' r='1' opacity='0.9'/%3E%3Ccircle cx='30' cy='330' r='0.6' opacity='0.55'/%3E%3Ccircle cx='130' cy='390' r='0.8' opacity='0.7'/%3E%3Ccircle cx='230' cy='350' r='0.5' opacity='0.4'/%3E%3Ccircle cx='320' cy='420' r='0.7' opacity='0.65'/%3E%3Ccircle cx='410' cy='380' r='0.6' opacity='0.5'/%3E%3Ccircle cx='490' cy='450' r='0.9' opacity='0.8'/%3E%3Ccircle cx='90' cy='470' r='0.6' opacity='0.5'/%3E%3Ccircle cx='200' cy='490' r='0.7' opacity='0.6'/%3E%3Ccircle cx='360' cy='500' r='0.5' opacity='0.4'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ── Scroll-driven parallax (CSS timeline path) ──────────────────────────────
+   Progress 0 (page top) → 1 (page bottom). The photo drifts up + zooms in a
+   touch; the stars drift up ~3x faster. Guarded by @supports so only browsers
+   with a working scroll timeline take this path; everyone else gets the JS
+   fallback (which sets the same transforms inline). */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .space-bg img {
+      animation: space-pan linear both;
+      animation-timeline: scroll(root block);
+    }
+    .space-stars {
+      animation: space-stars-pan linear both;
+      animation-timeline: scroll(root block);
+    }
+  }
+}
+
+@keyframes space-pan {
+  from {
+    transform: scale(1.16) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.22) translate3d(0, -4.5%, 0);
+  }
+}
+
+@keyframes space-stars-pan {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, -14%, 0);
+  }
+}
+
+/* The JS fallback adds this class to opt the same layers out of any CSS
+   animation while it drives transforms itself (belt-and-braces; the @supports
+   guard already excludes non-timeline engines). */
+.space-js-parallax .space-bg img,
+.space-js-parallax .space-stars {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .space-bg img,
+  .space-stars {
+    animation: none !important;
+    transform: scale(1.16) translate3d(0, 0, 0);
+  }
+  .space-stars {
+    transform: none;
+  }
+}
