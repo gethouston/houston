@@ -11,6 +11,7 @@ import {
   moveItemOp,
   normalizeSidebarLayout,
   renameGroupOp,
+  setGroupContextOp,
   toggleGroupCollapsedOp,
 } from "../lib/sidebar-layout-ops";
 import { tauriSidebar } from "../lib/tauri";
@@ -34,6 +35,7 @@ export interface UseSidebarLayout {
   /** Create a group and return its new id (so the caller can focus its name). */
   createGroup: (name: string) => string | null;
   renameGroup: (id: string, name: string) => void;
+  setGroupContext: (id: string, context: string) => void;
   deleteGroup: (id: string) => void;
   toggleGroupCollapsed: (id: string) => void;
   moveItem: (agentId: string, dest: ItemDest) => void;
@@ -100,6 +102,8 @@ export function useSidebarLayout(
       return id;
     },
     renameGroup: (id, name) => apply((c) => renameGroupOp(c, id, name)),
+    setGroupContext: (id, context) =>
+      apply((c) => setGroupContextOp(c, id, context)),
     deleteGroup: (id) => apply((c) => deleteGroupOp(c, id)),
     toggleGroupCollapsed: (id) => apply((c) => toggleGroupCollapsedOp(c, id)),
     moveItem: (agentId, dest) => apply((c) => moveItemOp(c, agentId, dest)),

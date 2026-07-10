@@ -414,6 +414,10 @@ export interface SidebarGroup {
   collapsed: boolean;
   /** Member agent ids, in drag order. */
   agentIds: string[];
+  /** Shared context injected into every member agent's system prompt (a
+   *  group-scoped `WORKSPACE.md`), mirrored to each member's `GROUP.md`.
+   *  Absent/empty = no group context. */
+  context?: string;
 }
 
 /**

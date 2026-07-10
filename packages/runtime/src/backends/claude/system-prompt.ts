@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { TurnMode } from "@houston/protocol";
 import { withModeOverlay } from "../../session/mode-overlays";
 import {
+  buildGroupContextSection,
   buildWorkspaceContextSection,
   type ProvidedContext,
 } from "../../session/workspace-context";
@@ -37,10 +38,15 @@ export function buildSystemPrompt(
   // `provided` is the gateway's Supabase copy (cloud), else the cwd files (local).
   const section = buildWorkspaceContextSection(cwd, provided);
   const withContext = section ? `${base}\n\n${section}` : base;
-  // Mode overlay LAST — after Houston's prompt, the context file, AND the context
-  // section — so the plan (read-only) or auto (Autopilot) mandate is the final
-  // word the model reads. Execute passes through unchanged.
-  return withModeOverlay(withContext, mode);
+  // Group context section AFTER workspace/user (HOU-711), local-only: `GROUP.md`
+  // the host mirrors into each grouped agent's cwd from its sidebar group's
+  // shared context. Null for ungrouped agents.
+  const group = buildGroupContextSection(cwd);
+  const withGroup = group ? `${withContext}\n\n${group}` : withContext;
+  // Mode overlay LAST — after Houston's prompt, the context file, AND both
+  // context sections — so the plan (read-only) or auto (Autopilot) mandate is the
+  // final word the model reads. Execute passes through unchanged.
+  return withModeOverlay(withGroup, mode);
 }
 
 /** The first workspace-root context file's contents, or null when none exists. */

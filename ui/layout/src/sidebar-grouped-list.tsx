@@ -50,6 +50,7 @@ export interface SidebarGroupedListProps {
   groups: SidebarGroupView[];
   rowCtx: SidebarBaseRowContext;
   onToggleGroupCollapsed?: (groupId: string) => void;
+  onEditGroupContext?: (groupId: string) => void;
   onRenameGroup?: (groupId: string, newName: string) => void;
   onDeleteGroup?: (groupId: string) => void;
   renamingGroupId?: string | null;
@@ -109,6 +110,7 @@ export function SidebarGroupedList({
   groups,
   rowCtx,
   onToggleGroupCollapsed,
+  onEditGroupContext,
   onRenameGroup,
   onDeleteGroup,
   renamingGroupId,
@@ -294,6 +296,7 @@ export function SidebarGroupedList({
             renaming={!!section.groupId && section.groupId === renamingGroupId}
             onRenameHandled={onRenamingGroupIdHandled}
             onToggleCollapsed={onToggleGroupCollapsed}
+            onEditGroupContext={onEditGroupContext}
             onRenameGroup={onRenameGroup}
             onDeleteGroup={onDeleteGroup}
           />
