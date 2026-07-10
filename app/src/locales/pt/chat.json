@@ -53,6 +53,8 @@
     "connectedLine": "Conectou {{name}}.",
     "signedInLine": "Sessão iniciada no Houston.",
     "signedInFollowup": "Já entrei. Pode continuar.",
+    "skippedConnectLine": "Pulou a conexão com {{name}}.",
+    "skippedSigninLine": "Pulou o login.",
     "signinReason": "Entre no Houston para continuar.",
     "signinTitle": "Entre no Houston",
     "signinDescription": "Suas contas continuam sendo suas; o agente age em seu nome.",

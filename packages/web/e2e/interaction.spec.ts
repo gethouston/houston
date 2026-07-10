@@ -516,6 +516,189 @@ test("shows a lone connect step for a connect-only sequence", async ({
 });
 
 /**
+ * The connect step renders the app's REAL brand logo once the toolkits catalog
+ * resolves (integrations armed): the fake host seeds slack with an inline
+ * data-URI PNG, mirroring the Composio `meta.logo` production serves. This pins
+ * the production regression where the card's pre-catalog favicon guess errored
+ * and a sticky latch permanently shadowed the real logo (the icon never showed).
+ * (slack, not gmail: the seed already holds an ACTIVE gmail connection, whose
+ * connect step would self-report and retire the card before any assertion.)
+ */
+test("renders the app's real logo on the connect step once the catalog resolves", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
+    data: { integrations: ["composio"] },
+  });
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "connect",
+            id: "c1",
+            toolkit: "slack",
+            reason: "I need Slack access to post the trip summary.",
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "post the trip summary");
+
+  await expect(
+    page.getByText("I need Slack access to post the trip summary."),
+  ).toBeVisible({ timeout: 15_000 });
+  // Scope to the interaction card: with integrations armed, other surfaces on
+  // the page (the agent's integrations tab rows) list the same app.
+  const card = page
+    .locator("div.overflow-clip")
+    .filter({ hasText: "I need Slack access to post the trip summary." });
+  // The catalog identity joins the row: real name, one-line description, and
+  // the brand image itself (the seeded data URI), never the letter fallback.
+  await expect(card.getByText("Team messaging")).toBeVisible();
+  const logo = card.getByRole("img", { name: "Slack" });
+  await expect(logo).toBeVisible();
+  expect(await logo.getAttribute("src")).toMatch(/^data:image\/png/);
+});
+
+/**
+ * Skipping a lone connect step: the ghost Skip beside the Connect pill advances
+ * past the step without connecting, the card retires, and the sequence still
+ * resumes the agent — the hidden auto-continue reply carries the skip fact
+ * ("Skipped connecting Gmail.") so the agent hears the decline and does not
+ * re-request the same app.
+ */
+test("skips a lone connect step and tells the agent the user declined", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "connect",
+            id: "c1",
+            toolkit: "gmail",
+            reason: "I need access to your Gmail to send the trip itinerary.",
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "email me the itinerary");
+
+  await expect(
+    page.getByText("I need access to your Gmail to send the trip itinerary."),
+  ).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Skip" }).click();
+
+  // The card retires (no soft-lock) and the hidden resume tells the agent the
+  // user declined — the fake host echoes the message it received.
+  await expect(page.getByText(/Skipped connecting Gmail\./)).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(
+    page.getByText("I need access to your Gmail to send the trip itinerary."),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Connect" })).toHaveCount(0);
+  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+});
+
+/**
+ * Skipping the connect step of a mixed (question then connect) sequence: the
+ * answered question still composes the ONE visible structured reply, and the
+ * skip line rides it so the transcript (and the agent) carry the decline.
+ */
+test("skipping the connect step of a mixed sequence keeps the answers and records the decline", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "question",
+            id: "q1",
+            question: "Who should I send the itinerary to?",
+          },
+          {
+            kind: "connect",
+            id: "c1",
+            toolkit: "gmail",
+            reason: "I need access to your Gmail to send the trip itinerary.",
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "email me the itinerary");
+
+  await expect(
+    page.getByText("Who should I send the itinerary to?"),
+  ).toBeVisible({ timeout: 15_000 });
+  const freeText = page.getByPlaceholder("Type something else...");
+  await freeText.fill("john@example.com");
+  await page.getByRole("button", { name: "Next" }).click();
+
+  await expect(page.getByText("Step 2 of 2")).toBeVisible();
+  await page.getByRole("button", { name: "Skip" }).click();
+
+  // ONE composed visible message: the typed answer plus the skip status line.
+  const composed = page
+    .locator(".is-user")
+    .filter({ hasText: "john@example.com" });
+  await expect(composed).toHaveCount(1, { timeout: 15_000 });
+  await expect(composed).toContainText("Skipped connecting Gmail.");
+  await expect(page.getByRole("button", { name: "Connect" })).toHaveCount(0);
+});
+
+/**
+ * Skipping a lone signin step: the ghost Skip advances past the sign-in without
+ * SSO (which can't run in the harness anyway), the card retires, and the hidden
+ * resume tells the agent the user declined to sign in.
+ */
+test("skips a lone signin step and tells the agent the user declined", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "signin",
+            id: "s1",
+            reason: "Sign in to Houston to use your connected apps.",
+          },
+        ],
+      },
+    },
+  });
+
+  await startMission(page, "check my email");
+
+  await expect(
+    page.getByText("Sign in to Houston to use your connected apps."),
+  ).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Skip" }).click();
+
+  await expect(page.getByText(/Skipped signing in\./)).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(
+    page.getByText("Sign in to Houston to use your connected apps."),
+  ).toHaveCount(0);
+  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+});
+
+/**
  * The escape hatch: instead of engaging with the card at all, the user can type
  * straight into the always-visible real composer. Sending that message abandons
  * the WHOLE pending interaction (mirrors clicking the card's own dismiss X) and

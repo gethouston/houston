@@ -364,16 +364,25 @@ calls the integration-gated `request_connection` tool (never writes a link). Tha
 records a `{kind:"connect", toolkit, reason?}` pending interaction which rides the
 turn's clean `done` frame and settles the board card to `needs_you`; the pending
 interaction floats a `ChatInteractionCard` stepper ABOVE the composer, whose
-connect step is `ChatConnectInteractionCard` — a Mercury row (app logo + name +
-one-line description) with the reason as the card title and a single filled
-"Connect" pill in the shared footer (NO card-inside-a-card). It shares the connect
-flow above with the inline link card through one hook
-(`app/src/components/use-integration-connect.tsx`); only the presentation forks —
-the inline `#houston_toolkit` renderer stays a `RowCard` badge, the stepper draws
-a surface-less row + footer CTA. Both auto-continue the conversation once OAuth
-lands (or the app is already connected). The old `#houston_toolkit=` markdown-link
-connect hack is GONE from the prompt and tool guidance — the app's legacy link-card
-renderer survives only to render old transcripts. Full lifecycle →
+connect step is `ChatConnectInteractionCard` — the app's brand logo BARE on the
+card surface (size-10, no bordered chip; the sign-in step seats the Houston
+helmet in the same slot) leading the identity stack (name + one-line
+description), the reason as the card title, and the shared footer carrying Back,
+a ghost Skip, and the single filled "Connect" pill (NO card-inside-a-card).
+Every step kind is SKIPPABLE: a skipped signin/connect is a recorded fact the
+completed reply states ("Skipped connecting {app}." / "Skipped signing in.",
+`chat:interaction.skipped*` keys) so the agent hears the decline instead of
+re-requesting. It shares the connect flow above with the inline link card
+through one hook (`app/src/components/use-integration-connect.tsx`); only the
+presentation forks — the inline `#houston_toolkit` renderer stays a `RowCard`
+badge, the stepper draws a surface-less row + footer CTA. Both render the logo
+through the shared `AppLogo` (the hook holds the favicon-guess fallback until
+the toolkits catalog settles, and `AppLogo`'s failure latch is keyed to the
+failing URL — a pre-catalog 404 once permanently shadowed the real Composio
+logo in production). Both auto-continue the conversation once OAuth lands (or
+the app is already connected). The old `#houston_toolkit=` markdown-link
+connect hack is GONE from the prompt and tool guidance — the app's legacy
+link-card renderer survives only to render old transcripts. Full lifecycle →
 `knowledge-base/architecture.md`.
 
 **No silent failures.** All engine mutations route through `call()`

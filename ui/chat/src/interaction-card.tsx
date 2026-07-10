@@ -25,7 +25,7 @@ import {
   initialStepperState,
   selectedOptionId,
   setDraft,
-  skipQuestion,
+  skipStep,
   type Transition,
 } from "./interaction-card-logic";
 import { prettifyToolkit } from "./interaction-card-model.ts";
@@ -53,9 +53,10 @@ export interface ChatInteractionCardProps {
   /** Renders a connect step's body AND footer; call `api.onConnected` to advance.
    *  ui/chat stays Composio-unaware, so the app supplies the reactive connect
    *  content. It owns the row + primary CTA (a filled pill in {@link
-   *  InteractionFooter}); the card supplies the shared step-nav nodes via `api`
-   *  (`back`/`forward`) so the app never re-implements navigation, and routes the
-   *  step's title through the shared header. See {@link StepFooterApi}. */
+   *  InteractionFooter}); the card supplies the shared step-nav via `api`
+   *  (`back`/`forward` nodes, plus `onSkip` for the app's ghost Skip button) so
+   *  the app never re-implements navigation, and routes the step's title
+   *  through the shared header. See {@link StepFooterApi}. */
   renderConnect: (
     step: ConnectStep,
     api: StepFooterApi & { onConnected: () => void },
@@ -90,13 +91,18 @@ export interface ChatInteractionCardProps {
 }
 
 /** The shared step-navigation the card hands a signin/connect body so it can
- *  compose the ONE footer row without owning navigation state. Each is a
- *  ready-styled node (or null): place `back` leftmost, then render `forward`
- *  INSTEAD of the primary CTA when present (a revisited, already-completed step
- *  can't re-fire its own completion, so Forward is its only way onward). */
+ *  compose the ONE footer row without owning navigation state. `back` and
+ *  `forward` are ready-styled nodes (or null): place `back` leftmost, then
+ *  render `forward` INSTEAD of the primary CTA when present (a revisited,
+ *  already-completed step can't re-fire its own completion, so Forward is its
+ *  only way onward). `onSkip` advances past the step WITHOUT completing it —
+ *  the body renders its own ghost Skip button (only on the live frontier, i.e.
+ *  when `forward` is null) and records the skip so the composed reply can tell
+ *  the agent the user declined. */
 export interface StepFooterApi {
   back: ReactNode | null;
   forward: ReactNode | null;
+  onSkip: () => void;
 }
 
 /**
@@ -189,7 +195,7 @@ export function ChatInteractionCard({
 
   const onSkip = useCallback(() => {
     if (disabled) return;
-    apply(skipQuestion(state, steps));
+    apply(skipStep(state, steps));
   }, [apply, disabled, state, steps]);
 
   const onConnected = useCallback(() => {
@@ -252,7 +258,11 @@ export function ChatInteractionCard({
       {forwardLabel}
     </Button>
   ) : null;
-  const footerApi: StepFooterApi = { back: backNode, forward: forwardNode };
+  const footerApi: StepFooterApi = {
+    back: backNode,
+    forward: forwardNode,
+    onSkip,
+  };
 
   return (
     <div
@@ -327,8 +337,9 @@ export function ChatInteractionCard({
             Next is the single filled pill that commits. A signin/connect step
             renders its OWN footer inside its body (the app owns that reactive
             content), placing the same `InteractionFooter` with the card-supplied
-            `back`/`forward` nodes beside its filled CTA — so the chrome matches
-            without the card knowing anything about Composio/auth. */}
+            `back`/`forward` nodes and its own ghost Skip (wired to the api's
+            `onSkip`) beside its filled CTA — so the chrome matches without the
+            card knowing anything about Composio/auth. */}
         {isQuestion && (
           <InteractionFooter>
             {backNode}

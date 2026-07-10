@@ -3,6 +3,30 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v15 - 2026-07-10
+
+`interaction-card` signin & connect steps: the icon integrates into the card and
+every step becomes skippable. The step's app row dropped its hairline border and
+its boxed thumbnail — the brand logo now sits BARE on the card surface (size-10,
+rounded; its own art carries the brand), leading the identity stack (name +
+one-line description), so the step reads as a purpose-built connect card rather
+than a chip inside a card; the sign-in step gives the bare Houston helmet the
+same size-10 slot. The calm connected check keeps its trailing position beside
+the identity stack. Skip generalizes from questions to ALL step kinds: a
+signin/connect step renders a ghost Skip between Back and its filled CTA (live
+frontier only — a revisited completed step still shows Forward), and a skipped
+signin/connect is a recorded FACT in the completed reply ("Skipped connecting
+{app}." / "Skipped signing in.", visible in the structured answers bubble when
+the sequence had questions, hidden auto-continue otherwise) so the agent hears
+the decline instead of re-requesting forever. New state `skipped`; ui/chat's
+`StepFooterApi` gains `onSkip` (the generalized `skipStep` transition replaces
+`skipQuestion`).
+
+Also fixes the production connect-step logo regression: the shared `AppLogo`
+now keys its failure latch to the failing URL (the pre-catalog favicon guess
+404'd and permanently shadowed the real Composio logo) and the in-chat connect
+surfaces hold the favicon-guess fallback until the toolkits catalog settles.
+
 ## v14 - 2026-07-10
 
 `interaction-card` brings the signin & connect steps into the Mercury system —

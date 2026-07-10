@@ -3,10 +3,8 @@ import { useTranslation } from "react-i18next";
 import { RowCard } from "./cards/row-card";
 import { RowCardButton } from "./cards/row-card-button";
 import type { ConnectCardView } from "./integration-connect-card-state";
-import {
-  ConnectAppLogo,
-  useIntegrationConnect,
-} from "./use-integration-connect";
+import { AppLogo } from "./integrations";
+import { useIntegrationConnect } from "./use-integration-connect";
 
 interface IntegrationConnectCardProps {
   /** The raw `#houston_toolkit=<slug>` fragment from the agent's link. */
@@ -40,15 +38,19 @@ export function IntegrationConnectCard({
   onConnected,
 }: IntegrationConnectCardProps) {
   const { t } = useTranslation("chat");
-  const { app, displayName, isConnected, view, startConnect } =
-    useIntegrationConnect({ toolkit, agentId, autoGrant, onConnected });
+  const { app, isConnected, view, startConnect } = useIntegrationConnect({
+    toolkit,
+    agentId,
+    autoGrant,
+    onConnected,
+  });
 
   return (
     <RowCard
       inline
       truncate
-      media={<ConnectAppLogo name={displayName} logoUrl={app.logoUrl} />}
-      title={displayName}
+      media={<AppLogo display={app} />}
+      title={app.name}
       description={
         isConnected
           ? t("composio.alreadyConnected")

@@ -1216,11 +1216,16 @@ export function useAgentChatPanel({
     }
     const steps = override.steps;
     const hasQuestionSteps = steps.some((step) => step.kind === "question");
-    // A completed sequence has walked EVERY step, so a signin step present here
-    // means the user signed in (the step advances only via `onSignedIn`) — no
-    // separate accumulator needed, unlike connections which carry a display name.
     const hasSigninStep = steps.some((step) => step.kind === "signin");
+    // A completed sequence has walked EVERY step, but a signin/connect step may
+    // have been walked past by SKIP — a fact the agent must hear (or it re-asks
+    // forever). The accumulators live in the memo body (not refs) because
+    // `deriveActiveInteraction` returns a STABLE reference for a given pending
+    // interaction, so the memo doesn't recompute — and the accumulators don't
+    // reset — while the user walks the steps; a fresh interaction starts clean.
     const connectedNames: string[] = [];
+    const skippedConnectNames: string[] = [];
+    const signinSkip = { skipped: false };
     return (
       <ChatInteractionCard
         steps={steps}
@@ -1236,11 +1241,16 @@ export function useAgentChatPanel({
             encodeInteractionAnswersMessage({
               answers,
               connectedNames,
+              skippedConnectNames,
               hasQuestionSteps,
-              signedIn: hasSigninStep,
+              signedIn: hasSigninStep && !signinSkip.skipped,
+              signinSkipped: signinSkip.skipped,
               connectedLine: (name) =>
                 t("chat:interaction.connectedLine", { name }),
+              skippedConnectLine: (name) =>
+                t("chat:interaction.skippedConnectLine", { name }),
               signedInLine: t("chat:interaction.signedInLine"),
+              skippedSigninLine: t("chat:interaction.skippedSigninLine"),
               signedInFollowup: t("chat:interaction.signedInFollowup"),
             }),
           );
@@ -1250,6 +1260,12 @@ export function useAgentChatPanel({
             back={api.back}
             forward={api.forward}
             onSignedIn={api.onSignedIn}
+            onSkip={() => {
+              // Record the decline and advance ONLY (same one-send rule as
+              // connects: the composed reply fires at completion).
+              signinSkip.skipped = true;
+              api.onSkip();
+            }}
           />
         )}
         renderConnect={(step, api) => (
@@ -1265,6 +1281,11 @@ export function useAgentChatPanel({
               // could complete.
               connectedNames.push(appName);
               api.onConnected();
+            }}
+            onSkip={(_toolkit, appName) => {
+              // Record the decline and advance ONLY (one send at completion).
+              skippedConnectNames.push(appName);
+              api.onSkip();
             }}
             toolkit={step.toolkit}
           />

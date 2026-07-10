@@ -19,7 +19,7 @@ import {
   optionLabel,
   selectedOptionId,
   setDraft,
-  skipQuestion,
+  skipStep,
   toCompletedAnswers,
 } from "../src/interaction-card-logic.ts";
 
@@ -192,11 +192,11 @@ describe("stepper flow: question, question, connect", () => {
   });
 });
 
-describe("skipQuestion", () => {
+describe("skipStep", () => {
   const steps = [Q1, Q2, CONNECT];
 
   it("skips a middle question and omits it from the completed answers", () => {
-    let s = skipQuestion(initialStepperState(), steps).state; // skip Q1 -> Q2
+    let s = skipStep(initialStepperState(), steps).state; // skip Q1 -> Q2
     assert.equal(s.current, 1);
     assert.equal(s.answers.q1, undefined);
     s = setDraft(s, "q2", "Running late");
@@ -210,22 +210,41 @@ describe("skipQuestion", () => {
   it("skipping the LAST question still completes with the prior answers", () => {
     const s = answerWithOption(initialStepperState(), [Q1, Q2], "o1").state;
     assert.equal(s.current, 1); // on Q2, the last step
-    const done = skipQuestion(s, [Q1, Q2]);
+    const done = skipStep(s, [Q1, Q2]);
     assert.deepEqual(done.completed, [
       { stepId: "q1", question: "Who is it for?", answer: "John" },
     ]);
   });
 
-  it("is a no-op on a non-question step", () => {
+  it("skips a connect step, advancing the frontier without an answer", () => {
+    const s = answerWithOption(
+      initialStepperState(),
+      [Q1, CONNECT, SIGNIN],
+      "o1",
+    ).state;
+    assert.equal(s.current, 1); // on the connect step
+    const t = skipStep(s, [Q1, CONNECT, SIGNIN]);
+    assert.equal(t.completed, undefined);
+    assert.equal(t.state.current, 2); // -> signin step
+    assert.equal(t.state.reached, 2); // frontier advanced (Back/Forward work)
+  });
+
+  it("skipping the LAST connect step completes with the prior answers", () => {
     const s = answerWithOption(
       initialStepperState(),
       [Q1, CONNECT],
       "o1",
     ).state;
-    assert.equal(s.current, 1); // on the connect step
-    const t = skipQuestion(s, [Q1, CONNECT]);
-    assert.equal(t.state, s);
-    assert.equal(t.completed, undefined);
+    assert.equal(s.current, 1); // on the connect step, the last step
+    const done = skipStep(s, [Q1, CONNECT]);
+    assert.deepEqual(done.completed, [
+      { stepId: "q1", question: "Who is it for?", answer: "John" },
+    ]);
+  });
+
+  it("skipping a lone signin step completes with no answers", () => {
+    const done = skipStep(initialStepperState(), [SIGNIN]);
+    assert.deepEqual(done.completed, []);
   });
 });
 
