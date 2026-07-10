@@ -5,6 +5,7 @@ import {
   parseResumeCursor,
   REPLAY_BUFFER_CAP,
   ReplayLog,
+  type SequencedFrame,
 } from "./replay";
 import type { WireEvent } from "./types";
 
@@ -116,6 +117,58 @@ test("clear empties the buffer but keeps the watermark (counter never resets)", 
   expect(log.replayAfter(2)).toEqual([]); // caught up → nothing to send
   expect(log.replayAfter(1)).toBeNull(); // inside the cleared turn → resync
   expect(log.append(text("next turn")).seq).toBe(3);
+});
+
+// ---------------------------------------------------------------------------
+// Behavior lock — the ring buffer must preserve these EXACTLY (append past CAP
+// keeps the last CAP frames in ascending order; replayAfter is a suffix scan
+// with the same boundary semantics as the shift-buffer it replaced).
+// ---------------------------------------------------------------------------
+
+test("append past CAP keeps exactly the last CAP frames, ascending + consecutive", () => {
+  const log = new ReplayLog();
+  const total = REPLAY_BUFFER_CAP * 3 + 7; // well past several overwrites
+  for (let i = 1; i <= total; i++) log.append(text(`${i}`));
+  expect(log.watermark).toBe(total);
+
+  // The whole window is servable from just below its oldest frame.
+  const window = log.replayAfter(total - REPLAY_BUFFER_CAP);
+  expect(window).not.toBeNull();
+  const frames = window as SequencedFrame[];
+  expect(frames).toHaveLength(REPLAY_BUFFER_CAP);
+  // Oldest is watermark-CAP+1, newest is watermark, strictly +1 throughout.
+  expect(frames[0].seq).toBe(total - REPLAY_BUFFER_CAP + 1);
+  expect(frames.at(-1)?.seq).toBe(total);
+  for (let i = 0; i < frames.length; i++) {
+    expect(frames[i].seq).toBe(total - REPLAY_BUFFER_CAP + 1 + i);
+    expect(frames[i].data).toBe(`${total - REPLAY_BUFFER_CAP + 1 + i}`);
+  }
+  // One below the window's oldest is unserviceable.
+  expect(log.replayAfter(total - REPLAY_BUFFER_CAP - 1)).toBeNull();
+});
+
+test("replayAfter boundary sweep across a full window: below / at each / above", () => {
+  const log = new ReplayLog();
+  const total = REPLAY_BUFFER_CAP + 250; // window is seqs [251 .. total]
+  for (let i = 1; i <= total; i++) log.append(text(`${i}`));
+  const min = total - REPLAY_BUFFER_CAP + 1; // oldest buffered seq (251)
+
+  // Below the window → resync (null).
+  expect(log.replayAfter(min - 2)).toBeNull();
+  // Exactly one below the oldest → the entire window.
+  expect(log.replayAfter(min - 1)).toHaveLength(REPLAY_BUFFER_CAP);
+  // At each interior frame → the strict suffix after that seq.
+  for (const cut of [min, min + 1, total - 2, total - 1]) {
+    const suffix = log.replayAfter(cut);
+    expect(suffix).not.toBeNull();
+    const s = suffix as SequencedFrame[];
+    expect(s).toHaveLength(total - cut);
+    expect(s[0]?.seq).toBe(cut + 1);
+    expect(s.at(-1)?.seq).toBe(total);
+  }
+  // At the watermark → empty; above it → resync (null).
+  expect(log.replayAfter(total)).toEqual([]);
+  expect(log.replayAfter(total + 1)).toBeNull();
 });
 
 // ---------------------------------------------------------------------------
