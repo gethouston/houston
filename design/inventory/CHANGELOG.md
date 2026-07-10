@@ -3,6 +3,36 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v13 - 2026-07-10
+
+The interaction-card family adopts the Mercury settings-modal discipline:
+one title, one quiet micro-label, one filled CTA, hairline rows.
+
+`interaction-card` restructure: the header's "current/total" pill + inline
+question row becomes a quiet "Step N of M" progress micro-label (anatomy
+`progress-pill` -> `progress-label`) above the question rendered as the card's
+real title (`question-text` -> `question-title`); a single-step sequence shows
+the bare title, so screenshot states (b)/(c) look designed, not stripped. The
+option row's right-aligned bare position number becomes a keycap-style hint (a
+small bordered rounded square, anatomy `position-number` -> `keycap-hint`) so
+it reads as the keyboard shortcut it is, never a list marker; a lone option
+hides the keycap entirely (new state `single-option`). Rows tighten to the
+hairline treatment (border-border/60, rounded-xl, roomier py-3), the free-text
+escape hatch joins the same row group and rhythm, and the footer re-weights:
+Back/Skip become ghost text buttons and Next the single filled pill (its
+corner-down-left glyph is gone). Default progress copy is now "Step {n} of
+{m}" (locales updated en/es/pt).
+
+`interaction-answers-message` becomes a receipt: pairs separated by hairline
+dividers (new anatomy `pair-divider`, new state `single-pair`), answers drop
+from bold to medium so the bubble sits quieter than the interaction card; a
+lone pair reads as a deliberate compact receipt.
+
+`plan-ready-card` + `suggest-reusable-card` inherit the same row treatment
+(hairline border, py-3, no shadow, shared focus ring) so the in-chat card
+family reads as one system. No contract changes anywhere; labels props are
+unchanged in shape.
+
 ## v12 - 2026-07-10
 
 Interaction cards stop replacing the composer, and two new chat surfaces land.

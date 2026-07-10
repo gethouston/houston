@@ -7,7 +7,7 @@ import { expect, test } from "./support/fixtures";
  * `PendingInteraction { steps }`; the SDK settles the board to `needs_you` and
  * the app shows ONE `ChatInteractionCard` ABOVE the composer (which stays
  * mounted and usable throughout) that walks the user through the steps ONE AT
- * A TIME with a "current/total" pill. Typing a fresh message directly into the
+ * A TIME with a quiet "Step N of M" progress label. Typing a fresh message directly into the
  * composer while the card shows abandons the whole sequence and sends the
  * typed text as a normal message instead of an answer. These specs arm the
  * fake host's `/__test__/chat-interaction` control with the `{ steps }`
@@ -41,7 +41,7 @@ async function startMission(
 
 /**
  * The three-question stepper: only ONE step shows at a time with a
- * "current/total" pill. Answer step 1 by option, step 2 by free text, step 3
+ * quiet "Step N of M" progress label. Answer step 1 by option, step 2 by free text, step 3
  * by option; the completion composes ONE structured user message carrying all
  * three answers, and the normal follow-up composer (which was visible the
  * whole time) is all that's left.
@@ -88,7 +88,7 @@ test("walks three questions one at a time and composes a single structured reply
   await expect(page.getByText("Which city are you flying to?")).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByText("1/3")).toBeVisible();
+  await expect(page.getByText("Step 1 of 3")).toBeVisible();
   // The other questions are NOT on screen yet (one step at a time).
   await expect(
     page.getByText("Anything special I should know about the trip?"),
@@ -110,7 +110,7 @@ test("walks three questions one at a time and composes a single structured reply
   await expect(
     page.getByText("Anything special I should know about the trip?"),
   ).toBeVisible();
-  await expect(page.getByText("2/3")).toBeVisible();
+  await expect(page.getByText("Step 2 of 3")).toBeVisible();
   await expect(page.getByText("Which city are you flying to?")).toHaveCount(0);
   await expect(page.getByRole("radio")).toHaveCount(0);
   await expect(composer).toBeVisible();
@@ -120,7 +120,7 @@ test("walks three questions one at a time and composes a single structured reply
   await freeText.fill("Window seat please");
   await page.getByRole("button", { name: "Next" }).click();
   await expect(page.getByText("Morning or evening flight?")).toBeVisible();
-  await expect(page.getByText("3/3")).toBeVisible();
+  await expect(page.getByText("Step 3 of 3")).toBeVisible();
 
   // Answer the LAST step by option -> completes and sends ONE composed message.
   await page.getByRole("radio", { name: "Evening flight" }).click();
@@ -143,7 +143,7 @@ test("walks three questions one at a time and composes a single structured reply
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByText("1/3")).toHaveCount(0);
+  await expect(page.getByText("Step 1 of 3")).toHaveCount(0);
 });
 
 /**
@@ -187,15 +187,15 @@ test("back chevron returns to the previous answered step, pre-selected", async (
   await expect(page.getByText("Which city are you flying to?")).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByText("1/2")).toBeVisible();
+  await expect(page.getByText("Step 1 of 2")).toBeVisible();
   await page.getByRole("radio", { name: "Paris" }).click();
   await expect(page.getByText("Morning or evening flight?")).toBeVisible();
-  await expect(page.getByText("2/2")).toBeVisible();
+  await expect(page.getByText("Step 2 of 2")).toBeVisible();
 
   // Back -> step 1 again, with Paris pre-selected (the committed answer).
   await page.getByRole("button", { name: "Back" }).click();
   await expect(page.getByText("Which city are you flying to?")).toBeVisible();
-  await expect(page.getByText("1/2")).toBeVisible();
+  await expect(page.getByText("Step 1 of 2")).toBeVisible();
   await expect(page.getByRole("radio", { name: "Paris" })).toHaveAttribute(
     "aria-checked",
     "true",
@@ -207,7 +207,7 @@ test("back chevron returns to the previous answered step, pre-selected", async (
   // this step was already reached.)
   await page.getByRole("radio", { name: "Tokyo" }).click();
   await expect(page.getByText("Morning or evening flight?")).toBeVisible();
-  await expect(page.getByText("2/2")).toBeVisible();
+  await expect(page.getByText("Step 2 of 2")).toBeVisible();
 
   // Finish; the composed message carries the REPLACED answer (Tokyo, not Paris).
   await page.getByRole("radio", { name: "Evening flight" }).click();
@@ -314,7 +314,7 @@ test("pressing a number key selects the matching option", async ({
 
 /**
  * A mixed sequence (question THEN connect): answering the question advances the
- * SAME card to the connect step as the final step, with "2/2" progress and
+ * SAME card to the connect step as the final step, with "Step 2 of 2" progress and
  * the rich integration connect card. (The connect can't complete real OAuth in
  * the harness, so this asserts the render, not the landing.) The composer stays
  * visible throughout, even mid-sequence.
@@ -349,7 +349,7 @@ test("advances from a question to a connect step in one sequence", async ({
   await expect(
     page.getByText("Who should I send the itinerary to?"),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("1/2")).toBeVisible();
+  await expect(page.getByText("Step 1 of 2")).toBeVisible();
   await expect(
     page.getByText("I need access to your Gmail to send the trip itinerary."),
   ).toHaveCount(0);
@@ -362,7 +362,7 @@ test("advances from a question to a connect step in one sequence", async ({
   await freeText.fill("john@example.com");
   await page.getByRole("button", { name: "Next" }).click();
 
-  await expect(page.getByText("2/2")).toBeVisible();
+  await expect(page.getByText("Step 2 of 2")).toBeVisible();
   await expect(
     page.getByText("I need access to your Gmail to send the trip itinerary."),
   ).toBeVisible();
@@ -417,7 +417,7 @@ test("advances from a question to a signin step in a three-step sequence", async
   await expect(
     page.getByText("Who should I send the itinerary to?"),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("1/3")).toBeVisible();
+  await expect(page.getByText("Step 1 of 3")).toBeVisible();
   await expect(
     page.getByText("Sign in to Houston so I can send email on your behalf."),
   ).toHaveCount(0);
@@ -430,7 +430,7 @@ test("advances from a question to a signin step in a three-step sequence", async
   await freeText.fill("john@example.com");
   await page.getByRole("button", { name: "Next" }).click();
 
-  await expect(page.getByText("2/3")).toBeVisible();
+  await expect(page.getByText("Step 2 of 3")).toBeVisible();
   await expect(
     page.getByText("Sign in to Houston so I can send email on your behalf."),
   ).toBeVisible();

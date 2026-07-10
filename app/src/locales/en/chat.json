@@ -47,7 +47,7 @@
     "forward": "Next",
     "skip": "Skip",
     "dismiss": "Dismiss",
-    "progress": "{{current}} of {{total}}"
+    "progress": "Step {{current}} of {{total}}"
   },
   "interaction": {
     "connectedLine": "Connected {{name}}.",

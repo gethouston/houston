@@ -61,9 +61,9 @@ export function isLastStep(index: number, total: number): boolean {
   return index >= total - 1;
 }
 
-/** Default progress copy, e.g. "1 of 3". */
+/** Default progress copy, e.g. "Step 1 of 3". */
 export function defaultProgress(current: number, total: number): string {
-  return `${current} of ${total}`;
+  return `Step ${current} of ${total}`;
 }
 
 /** The committed option id for the current step (pre-selects a row on revisit). */
