@@ -198,6 +198,20 @@ visionPath: "vision/index.html"
     backdrop-filter: blur(20px);
   }
 
+  /* Over the dark hero (nav transparent, not yet scrolled) the nav switches to
+     light text. Once scrolled it gets its frosted-light state over the white
+     page below and reverts to the default dark treatment above. */
+  nav:not(.scrolled) .nav-logo,
+  nav:not(.scrolled) .nav-logo svg { color: #fff; }
+  nav:not(.scrolled) .nav-center a,
+  nav:not(.scrolled) .nav-right a:not(.btn) { color: rgba(255,255,255,0.72); }
+  nav:not(.scrolled) .nav-center a:hover,
+  nav:not(.scrolled) .nav-right a:not(.btn):hover { color: #fff; }
+  nav:not(.scrolled) .nav-burger { color: #fff; }
+  nav:not(.scrolled) .nav-burger:hover { background: rgba(255,255,255,0.12); }
+  nav:not(.scrolled) .btn-primary { background: #fff; color: #0d0d0d; }
+  nav:not(.scrolled) .btn-primary:hover { background: #e5e5e5; }
+
   .nav-logo {
     font-family: 'General Sans', sans-serif;
     font-size: 22px;
@@ -409,43 +423,72 @@ visionPath: "vision/index.html"
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 140px 40px 100px;
+    padding: 150px 40px 120px;
     position: relative;
     overflow: hidden;
-    background: var(--background);
-    /* Establish a stacking context so the z-index:-1 background layers
-       (.hero-bg, .hero-mesh) paint above the hero's own white background but
-       below the hero content. */
+    /* Dark "Mission Control" space canvas (design-token space.canvas). This is
+       the base the hero paints on before/without WebGL, so nothing ever flashes
+       white. Light text + dark-themed app mockup sit on top. */
+    background: #07080f;
+    color: #fff;
+    /* Establish a stacking context so the negative-z background layers
+       (.hero-bg glow, .hero-stars, .hero-galaxy canvas, the bottom fade) all
+       paint below the hero content in a controlled order. */
     isolation: isolate;
   }
 
-  .hero-bg {
+  /* Bottom fade: melts the dark space into the white page below, so the hero
+     transitions intentionally rather than cutting off. Sits above the galaxy
+     (z -2) but below the hero content (z 0). */
+  .hero::after {
+    content: "";
     position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,130,246,0.10), transparent),
-      radial-gradient(ellipse 60% 40% at 80% 60%, rgba(249,115,22,0.07), transparent),
-      radial-gradient(ellipse 60% 40% at 20% 80%, rgba(129,140,248,0.06), transparent);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 200px;
+    background: linear-gradient(to bottom, rgba(255,255,255,0), #ffffff);
     pointer-events: none;
     z-index: -1;
   }
 
-  /* Animated mesh-gradient layer: sits over the static .hero-bg, below hero
-     content (negative z-index keeps it behind the headline and the app mockup).
-     Composited with alpha so the static radial gradients still show through.
-     Lazily initialized by assets/mesh-gradient.js; if WebGL is absent or
-     reduced-motion is on, this stays transparent and .hero-bg is the look. */
-  .hero-mesh {
+  /* Static dark base — a deep-space glow built from the space.* nebula tokens.
+     Always present; the animated canvas paints opaquely over it when WebGL is
+     available, and it is the fallback when it is not. */
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 95% 60% at 50% 14%, rgba(16,20,48,0.95), transparent 70%),
+      radial-gradient(ellipse 62% 52% at 78% 26%, rgba(56,52,107,0.38), transparent 68%),
+      radial-gradient(ellipse 58% 48% at 18% 72%, rgba(20,56,76,0.32), transparent 66%),
+      #07080f;
+    pointer-events: none;
+    z-index: -4;
+  }
+
+  /* Animated galaxy/starfield layer (assets/galaxy-bg.js). Opaque once it
+     paints, so it fully covers the static fallback. Starts hidden and the
+     script fades it in; if WebGL is absent or reduced-motion is on it stays at
+     opacity 0 and the static .hero-bg + .hero-stars are the look. */
+  .hero-galaxy {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     pointer-events: none;
-    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.7s ease;
+    z-index: -2;
   }
 
+  /* Static CSS starfield — the reduced-motion / no-WebGL fallback, layered over
+     the dark .hero-bg glow. */
   .hero-stars {
-    display: none;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: -3;
     background-image:
       radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.7), transparent),
       radial-gradient(1px 1px at 25% 8%, rgba(255,255,255,0.5), transparent),
@@ -484,7 +527,7 @@ visionPath: "vision/index.html"
     font-weight: 400;
     letter-spacing: -0.03em;
     line-height: 1.15;
-    color: var(--gray-950);
+    color: #fff;
     margin-bottom: 28px;
     animation: float-up 0.6s ease 0.1s both;
     max-width: 1000px;
@@ -538,12 +581,30 @@ visionPath: "vision/index.html"
 
   .hero p {
     font-size: 20px;
-    color: var(--muted-foreground);
+    color: #a7b0d0;
     max-width: 720px;
     line-height: 1.5;
     margin-bottom: 48px;
     animation: float-up 0.6s ease 0.15s both;
   }
+
+  /* Download buttons in the dark hero. Primary stays the highest-contrast
+     element (solid white on space); secondary becomes a glass button that
+     reads on dark without competing with the primary. */
+  .hero .btn-primary {
+    background: #fff;
+    color: #0d0d0d;
+  }
+
+  .hero .btn-primary:hover { background: #e5e5e5; }
+
+  .hero .btn-secondary {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.22);
+  }
+
+  .hero .btn-secondary:hover { background: rgba(255,255,255,0.15); }
 
   .hero-actions {
     display: flex;
@@ -555,12 +616,76 @@ visionPath: "vision/index.html"
      APP MOCKUP
      ═══════════════════════════════════════════ */
 
+  /* ── Dark-mode hero app mockup ──────────────────────────────────────
+     The hero demo shows Houston exactly as it looks in DARK MODE. Rather than
+     re-colour every element by hand, we remap the mockup's grey scale + surface
+     variables to the real design-token dark theme (packages/design-tokens:
+     semantic color.dark + primitive color). Because the markup already colours
+     with var(--gray-*)/var(--border*), the whole subtree — inline styles and
+     hero-demo.css alike — flips to the correct dark values in one place.
+
+       window / gutter  neutral.900   #141416
+       screen bg        neutral.800   #1e1e1e
+       card surface     neutral.750   #2c2c2b
+       ink / primary    neutral.150   #e5e5e5
+       muted text       neutral.450   #9a9a9a
+       borders          white-a10 / white-a08
+       primary button   neutral.150 on neutral.900 ink (#e5e5e5 / #141414) */
   .app-mockup {
-    border-radius: 12px;
-    border: 3px solid var(--gray-950);
+    --gray-950: #e5e5e5;
+    --gray-700: #cfcfcf;
+    --gray-600: #b4b4b4;
+    --gray-500: #9a9a9a;
+    --gray-400: #7d7d7d;
+    --gray-300: #4a4a4a;
+    --gray-200: rgba(255,255,255,0.1);
+    --gray-100: rgba(255,255,255,0.08);
+    --gray-50: #232323;
+    --secondary: #141416;
+    --background: #1e1e1e;
+    --foreground: #e5e5e5;
+    --muted-foreground: #9a9a9a;
+    --border: rgba(255,255,255,0.08);
+    --border-light: rgba(255,255,255,0.08);
+    --border-medium: rgba(255,255,255,0.18);
+
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.12);
     overflow: hidden;
-    background: white;
+    background: #141416;
+    box-shadow: 0 40px 90px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.03);
   }
+
+  .app-mockup .mockup-titlebar { background: #141416; }
+  .app-mockup .mockup-body { background: #1e1e1e; }
+  .app-mockup .mockup-sidebar { border-right: 1px solid rgba(255,255,255,0.08); }
+
+  /* Chat column + segmented agent switcher on dark surfaces. */
+  .app-mockup .hd-chat { background: #1b1b1d; }
+  .app-mockup .hd-tab.active { background: #e5e5e5; color: #141414; }
+
+  /* Board cards — the real dark card surface; the running comet frames it. */
+  .app-mockup .kanban-card-mock { background: #2c2c2b; }
+  .app-mockup .kanban-card-mock.running::after { background: #2c2c2b; }
+
+  /* Chat bubbles + composer. */
+  .app-mockup .chat-msg.user { background: #2c2c2b; }
+  .app-mockup .chat-composer-mock {
+    background: #232325;
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: none;
+  }
+  .app-mockup .chat-composer-mock .placeholder { color: rgba(255,255,255,0.4); }
+  .app-mockup .send-btn { background: #e5e5e5; }
+  .app-mockup .send-btn svg { color: #141414; }
+
+  /* Chat-head avatar is the black logo; invert it to read on dark. */
+  .app-mockup .hd-avatar { filter: brightness(0) invert(1); opacity: 0.85; }
+
+  /* Status pills use the brighter dark-theme status colours for contrast. */
+  .app-mockup .status-running { background: rgba(96,165,250,0.15); color: #60a5fa; }
+  .app-mockup .status-running .dot { background: #60a5fa; }
+  .app-mockup .status-done { background: rgba(34,197,94,0.15); color: #22c55e; }
 
   .mockup-titlebar {
     height: 52px;
@@ -1796,7 +1921,8 @@ visionPath: "vision/index.html"
 
 <div class="hero">
   <div class="hero-bg"></div>
-  <canvas class="hero-mesh" aria-hidden="true"></canvas>
+  <div class="hero-stars" aria-hidden="true"></div>
+  <canvas class="hero-galaxy" aria-hidden="true"></canvas>
 
   <h1>AI agents that do<br><span class="hero-cycling-word" id="hero-cycling"></span></h1>
 
@@ -2891,7 +3017,7 @@ visionPath: "vision/index.html"
      global). The hero demo and mesh gradient are standalone. -->
 <script defer src="/assets/vendor/motion.min.js"></script>
 <script defer src="/assets/hero-demo.js"></script>
-<script defer src="/assets/mesh-gradient.js"></script>
+<script defer src="/assets/galaxy-bg.js"></script>
 <script defer src="/assets/micro-interactions.js"></script>
 
 {% endblock %}
