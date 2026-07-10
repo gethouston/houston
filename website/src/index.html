@@ -314,7 +314,11 @@ visionPath: "vision/index.html"
     text-decoration: none;
     border: none;
     cursor: pointer;
-    transition: all 0.2s;
+    /* No `transform` here: hover/press scale is driven by Motion One springs
+       (assets/micro-interactions.js). Listing transform would let a CSS
+       transition re-drive every inline value Motion writes — the two settle
+       against each other and the button reads as glitchy. */
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
     gap: 8px;
   }
 
@@ -1157,7 +1161,7 @@ visionPath: "vision/index.html"
     border-radius: 16px;
     border: 1px solid var(--border-light);
     text-align: center;
-    transition: all 0.3s;
+    transition: border-color 0.3s, box-shadow 0.3s;
   }
 
   .step-card:hover {
@@ -1201,7 +1205,7 @@ visionPath: "vision/index.html"
     border-radius: 16px;
     border: 1px solid var(--border-light);
     background: var(--background);
-    transition: all 0.3s ease;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
   }
 
   .capability-card:hover {
@@ -1324,7 +1328,7 @@ visionPath: "vision/index.html"
     text-decoration: none;
     border: none;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background-color 0.2s;
   }
 
   .btn-blue:hover { background: #2563eb; }
@@ -1448,7 +1452,7 @@ visionPath: "vision/index.html"
     border-radius: 16px;
     border: 1px solid var(--border-light);
     background: white;
-    transition: all 0.3s ease;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
   }
 
   .pillar-card:hover {
@@ -2054,13 +2058,13 @@ visionPath: "vision/index.html"
 
   <!-- Agent selector tabs -->
   <div class="reveal" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 32px 0 48px;">
-    <button class="hiw-tab active" data-agent="0" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: var(--gray-950); color: white; cursor: pointer; font-weight: 500; transition: all 0.2s;">Personal Assistant</button>
-    <button class="hiw-tab" data-agent="1" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: all 0.2s;">Bookkeeper</button>
-    <button class="hiw-tab" data-agent="2" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: all 0.2s;">HR Manager</button>
-    <button class="hiw-tab" data-agent="3" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: all 0.2s;">Support Rep</button>
-    <button class="hiw-tab" data-agent="4" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: all 0.2s;">Sales Rep</button>
-    <button class="hiw-tab" data-agent="5" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: all 0.2s;">Office Manager</button>
-    <button class="hiw-tab" data-agent="6" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: all 0.2s;">Financial Analyst</button>
+    <button class="hiw-tab active" data-agent="0" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: var(--gray-950); color: white; cursor: pointer; font-weight: 500; transition: background-color 0.2s, color 0.2s, border-color 0.2s;">Personal Assistant</button>
+    <button class="hiw-tab" data-agent="1" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: background-color 0.2s, color 0.2s, border-color 0.2s;">Bookkeeper</button>
+    <button class="hiw-tab" data-agent="2" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: background-color 0.2s, color 0.2s, border-color 0.2s;">HR Manager</button>
+    <button class="hiw-tab" data-agent="3" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: background-color 0.2s, color 0.2s, border-color 0.2s;">Support Rep</button>
+    <button class="hiw-tab" data-agent="4" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: background-color 0.2s, color 0.2s, border-color 0.2s;">Sales Rep</button>
+    <button class="hiw-tab" data-agent="5" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: background-color 0.2s, color 0.2s, border-color 0.2s;">Office Manager</button>
+    <button class="hiw-tab" data-agent="6" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: background-color 0.2s, color 0.2s, border-color 0.2s;">Financial Analyst</button>
   </div>
 
   <!-- Steps left + Chat right -->
