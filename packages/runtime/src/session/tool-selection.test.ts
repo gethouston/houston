@@ -9,6 +9,7 @@ import {
 } from "./tool-selection";
 import { CLAMPED_FILE_TOOL_NAMES } from "./tools/clamped-fs";
 import { PLAN_READY_TOOL_NAME } from "./tools/plan-ready";
+import { SUGGEST_REUSABLE_TOOL_NAME } from "./tools/suggest-reusable";
 
 describe("buildToolSelection", () => {
   test("local mode keeps clamped file tools plus ask_user and bash", () => {
@@ -19,6 +20,7 @@ describe("buildToolSelection", () => {
     expect(selection.toolNames).toEqual([
       ...CLAMPED_FILE_TOOL_NAMES,
       "ask_user",
+      "suggest_reusable",
       "bash",
     ]);
     expect(selection.includeRunCode).toBe(false);
@@ -32,6 +34,7 @@ describe("buildToolSelection", () => {
     expect(selection.toolNames).toEqual([
       ...CLAMPED_FILE_TOOL_NAMES,
       "ask_user",
+      "suggest_reusable",
       "run_code",
     ]);
     expect(selection.includeRunCode).toBe(true);
@@ -45,6 +48,7 @@ describe("buildToolSelection", () => {
     expect(selection.toolNames).toEqual([
       ...CLAMPED_FILE_TOOL_NAMES,
       "ask_user",
+      "suggest_reusable",
     ]);
     expect(selection.toolNames).not.toContain("bash");
     expect(selection.toolNames).not.toContain("run_code");
@@ -68,6 +72,7 @@ describe("buildToolSelection", () => {
     expect(selection.toolNames).toEqual([
       ...CLAMPED_FILE_TOOL_NAMES,
       "ask_user",
+      "suggest_reusable",
       "integration_search",
       "integration_execute",
       "request_connection",
@@ -129,6 +134,7 @@ describe("autoToolNames", () => {
     // blocking tools. Order is preserved (filter, not reorder).
     expect(autoToolNames(local.toolNames)).toEqual([
       ...CLAMPED_FILE_TOOL_NAMES,
+      "suggest_reusable",
       "bash",
       "integration_search",
       "integration_execute",
@@ -159,6 +165,7 @@ describe("autoToolNames", () => {
     });
     expect(autoToolNames(disabled.toolNames)).toEqual([
       ...CLAMPED_FILE_TOOL_NAMES,
+      "suggest_reusable",
     ]);
   });
 
@@ -240,6 +247,30 @@ describe("toolNamesForMode dispatcher", () => {
       const withPlanReady = [...local.toolNames, PLAN_READY_TOOL_NAME];
       expect(toolNamesForMode("execute", withPlanReady)).toEqual(
         local.toolNames,
+      );
+    });
+  });
+
+  // suggest_reusable is the inverse of plan_ready: it must reach execute AND
+  // auto (it never blocks the turn) but NEVER plan (plan is read-only planning,
+  // not a finished task). It stays out of plan automatically — it is not in
+  // PLAN_MODE_TOOL_NAMES — and stays in auto because it is not in
+  // AUTO_MODE_EXCLUDED_TOOL_NAMES.
+  describe("suggest_reusable gating", () => {
+    const withSuggest = [...local.toolNames, SUGGEST_REUSABLE_TOOL_NAME];
+
+    test("present in execute / absent (undefined) and auto, but never plan", () => {
+      expect(toolNamesForMode("execute", withSuggest)).toContain(
+        SUGGEST_REUSABLE_TOOL_NAME,
+      );
+      expect(toolNamesForMode(undefined, withSuggest)).toContain(
+        SUGGEST_REUSABLE_TOOL_NAME,
+      );
+      expect(toolNamesForMode("auto", withSuggest)).toContain(
+        SUGGEST_REUSABLE_TOOL_NAME,
+      );
+      expect(toolNamesForMode("plan", withSuggest)).not.toContain(
+        SUGGEST_REUSABLE_TOOL_NAME,
       );
     });
   });

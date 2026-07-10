@@ -10,6 +10,13 @@
 // Houston first) FOLLOWED BY the connect steps (one per request_connection
 // call, deduped by toolkit). Any single kind alone still yields a valid
 // sequence.
+//
+// `suggest_reusable` is the ONE exception to "present → needs_you": the model
+// calls it on a clean finish to suggest saving the just-completed work as a
+// Skill or Routine, so the mission genuinely IS done. `turn-settle.ts` treats
+// a lone `suggest_reusable` step as `done`, not `needs_you` — see that file's
+// `finishOk`. It arrives on the same `done` frame and renders a card the same
+// way; only the board-status mapping differs.
 
 export interface InteractionOption {
   id: string;
@@ -31,7 +38,14 @@ export type InteractionStep =
     }
   | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string }
-  | { kind: "plan_ready"; id: string; summary: string };
+  | { kind: "plan_ready"; id: string; summary: string }
+  | {
+      kind: "suggest_reusable";
+      id: string;
+      reusableKind: "skill" | "routine";
+      title: string;
+      rationale: string;
+    };
 
 /** The ordered steps the mission is waiting on: question steps first (at most 3),
  *  then at most one signin step, then connect steps. Always at least one step. */
@@ -50,6 +64,12 @@ export const isInteractionStep = (v: unknown): v is InteractionStep => {
     return v.reason === undefined || typeof v.reason === "string";
   if (v.kind === "connect") return typeof v.toolkit === "string";
   if (v.kind === "plan_ready") return typeof v.summary === "string";
+  if (v.kind === "suggest_reusable")
+    return (
+      (v.reusableKind === "skill" || v.reusableKind === "routine") &&
+      typeof v.title === "string" &&
+      typeof v.rationale === "string"
+    );
   return false;
 };
 

@@ -54,7 +54,13 @@
               "properties": {
                 "kind": {
                   "type": "string",
-                  "enum": ["question", "signin", "connect"]
+                  "enum": [
+                    "question",
+                    "signin",
+                    "connect",
+                    "plan_ready",
+                    "suggest_reusable"
+                  ]
                 },
                 "id": { "type": "string" },
                 "question": { "type": "string" },
@@ -70,7 +76,14 @@
                   }
                 },
                 "toolkit": { "type": "string" },
-                "reason": { "type": "string" }
+                "reason": { "type": "string" },
+                "summary": { "type": "string" },
+                "reusableKind": {
+                  "type": "string",
+                  "enum": ["skill", "routine"]
+                },
+                "title": { "type": "string" },
+                "rationale": { "type": "string" }
               },
               "oneOf": [
                 {
@@ -83,6 +96,14 @@
                 {
                   "properties": { "kind": { "const": "connect" } },
                   "required": ["toolkit"]
+                },
+                {
+                  "properties": { "kind": { "const": "plan_ready" } },
+                  "required": ["summary"]
+                },
+                {
+                  "properties": { "kind": { "const": "suggest_reusable" } },
+                  "required": ["reusableKind", "title", "rationale"]
                 }
               ]
             }
