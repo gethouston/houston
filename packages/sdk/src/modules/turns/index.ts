@@ -37,7 +37,9 @@ export function createTurnsModule(
   ctx: ModuleContext,
   persistBoardStatus: BoardStatusPersister,
 ) {
-  const vm = new ConversationVmOutput(ctx.store);
+  const vm = new ConversationVmOutput(ctx.store, {
+    cacheMax: ctx.config.conversationCacheMax,
+  });
   // The always-on outputs every turn drives: the conversation VM, plus a board-
   // card persister (the SDK-path counterpart to the web adapter's bus output) so
   // a native shell that never calls `addOutput` still leaves a settled mission
@@ -89,6 +91,16 @@ export function createTurnsModule(
      * {@link buildAttachmentText}.
      */
     saveAttachments: attachments.save,
+    /**
+     * Drop a conversation's folded transcript from the in-memory VM cache (and
+     * its retained snapshot) — call when a surface closes or deletes a
+     * conversation so its memory is released at once. Re-hydrates from history on
+     * the next {@link observe}. Idle conversations are also evicted automatically
+     * by the LRU bound; this is the explicit seam for a known-done conversation.
+     */
+    forget(conversationId: string, agentId?: string): void {
+      vm.forget(agentId ?? "", conversationId);
+    },
     /**
      * Attach an extra {@link FeedOutput} that every subsequent turn also drives
      * (e.g. a host UI bus). Returns a detach function.
@@ -161,6 +173,7 @@ export {
   type ConversationVM,
   ConversationVmOutput,
   conversationScope,
+  DEFAULT_CONVERSATION_CACHE_MAX,
   type FeedItemVM,
   type QueuedMessageVM,
 } from "./vm-output";

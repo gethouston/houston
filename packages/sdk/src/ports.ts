@@ -78,4 +78,12 @@ export interface SdkConfig {
   baseUrl: string;
   /** Injected capabilities. */
   ports: SdkPorts;
+  /**
+   * Max conversations whose folded transcripts are retained in memory at once
+   * (the reactive `conversation/<id>` VM cache). Settled, un-viewed
+   * conversations past this bound are evicted and re-hydrated from history on
+   * re-open. Defaults to `DEFAULT_CONVERSATION_CACHE_MAX`; raise it for a client
+   * that keeps many chats hot, lower it under tight memory.
+   */
+  conversationCacheMax?: number;
 }
