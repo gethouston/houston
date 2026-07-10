@@ -126,8 +126,21 @@ struct ChatView: View {
         hasAttachments: !model.stagedAttachments.isEmpty,
         isSending: model.isSending,
         onSend: { model.send() },
-        onStop: { model.stop() },
-        onPlus: { controls.showMenu = true })
+        onStop: { model.stop() }
+      ) {
+        Button { controls.importingFile = true } label: {
+          Label(Strings.Chat.Compose.attachFile, systemImage: "doc")
+        }
+        Button { controls.pickingPhoto = true } label: {
+          Label(Strings.Chat.Compose.attachPhoto, systemImage: "photo")
+        }
+        Button { controls.showModelPicker = true } label: {
+          Label(Strings.Chat.Compose.chooseModel, systemImage: "cpu")
+        }
+        Button { controls.showEffort = true } label: {
+          Label(Strings.Chat.Compose.effort, systemImage: "gauge")
+        }
+      }
     }
     .animation(.smooth(duration: Motion.fast), value: model.running)
     .animation(.smooth(duration: Motion.fast), value: model.queued)

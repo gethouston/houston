@@ -20,16 +20,6 @@ extension Strings {
     static let addAttachment = "Add attachment"
     static let scrollToLatest = "Scroll to latest"
 
-    // The "+" menu (mobile-only; a native adaptation of desktop's
-    // `ChatModelSelector` popover, HOU-695). No desktop equivalent for the menu
-    // shell itself — desktop's model selector is always a visible composer
-    // button, not gated behind a "+".
-    enum PlusMenu {
-      static let title = "Add to this message"
-      static let chooseModel = "Choose model"
-      static let attachFile = "Attach file (Coming soon)"
-    }
-
     // The model picker sheet (mobile adaptation of `use-chat-model-picker.tsx` —
     // NOT the 600px popover with favorites/recents/connect; a plain per-agent
     // list of each configured provider's models).

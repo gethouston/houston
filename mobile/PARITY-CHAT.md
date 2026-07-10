@@ -225,8 +225,11 @@ next turn starts. Steps: up to 3 questions first, then ≤1 sign-in, then connec
 
 ## 10. The "+" menu — attach, photo, effort, model (founder directive)
 
-The leading "+" (`MissionComposer.onPlus`) opens a menu the container owns
-(`AttachmentComposerControls.swift`, presented from `ChatView`); the composer only exposes `onPlus`.
+The leading "+" is a native anchored `Menu` (founder directive 2026-07-09: the same visual family
+as the long-press message menu, popping up AT the button — never a detached
+dialog). `MissionComposer` owns the anchor and takes the items as a `plusMenu` ViewBuilder;
+`ChatView` supplies the four `Label` items, and the importers/sheets they open live in
+`AttachmentComposerControls.swift`.
 
 - **Attach file / Attach photo** — a document picker and a `PhotosPicker`; picked items are read to
   bytes off the view (`AttachmentIngest.swift`, security-scoped file read + async photo transfer,

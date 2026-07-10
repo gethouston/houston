@@ -1,14 +1,14 @@
 import PhotosUI
 import SwiftUI
 
-/// Presentation state for the composer's "+" menu and the surfaces it opens. A
-/// small `@Observable` coordinator so ``ChatView`` holds ONE `@State` and the
-/// heavy menu/importer/sheet wiring lives in ``ComposerAccessories`` — keeping
-/// `ChatView` under the file cap.
+/// Presentation state for the surfaces the composer's "+" menu opens (the menu
+/// itself is an anchored `Menu` inside ``MissionComposer``). A small
+/// `@Observable` coordinator so ``ChatView`` holds ONE `@State` and the heavy
+/// importer/sheet wiring lives in ``ComposerAccessories`` — keeping `ChatView`
+/// under the file cap.
 @MainActor
 @Observable
 final class ComposerControls {
-  var showMenu = false
   var showModelPicker = false
   var showEffort = false
   /// Opened from an interaction card's "sign in" / "connect" steps.
@@ -20,8 +20,8 @@ final class ComposerControls {
 }
 
 extension View {
-  /// Attach the composer's "+" menu, file/photo importers, and the model /
-  /// effort / AI-models / integrations sheets, all driven by `controls`.
+  /// Attach the file/photo importers and the model / effort / AI-models /
+  /// integrations sheets the "+" menu's items open, all driven by `controls`.
   func composerAccessories(model: ChatScreenModel, controls: ComposerControls) -> some View {
     modifier(ComposerAccessories(model: model, controls: controls))
   }
@@ -34,14 +34,6 @@ private struct ComposerAccessories: ViewModifier {
   func body(content: Content) -> some View {
     @Bindable var controls = controls
     content
-      .confirmationDialog(
-        Strings.Chat.PlusMenu.title, isPresented: $controls.showMenu, titleVisibility: .visible
-      ) {
-        Button(Strings.Chat.Compose.attachFile) { controls.importingFile = true }
-        Button(Strings.Chat.Compose.attachPhoto) { controls.pickingPhoto = true }
-        Button(Strings.Chat.Compose.chooseModel) { controls.showModelPicker = true }
-        Button(Strings.Chat.Compose.effort) { controls.showEffort = true }
-      }
       .fileImporter(
         isPresented: $controls.importingFile, allowedContentTypes: [.item],
         allowsMultipleSelection: true, onCompletion: handleFileImport)

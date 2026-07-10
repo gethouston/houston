@@ -6,7 +6,8 @@ import Foundation
 //
 // The free-text hint has no desktop twin: desktop REPLACES its composer with the
 // card, mobile keeps the composer live below it, so the hint is a mobile-native
-// line (like the composer's `PlusMenu`). It is the only invented string here.
+// line (like the composer's `Compose` menu items). It is the only invented
+// string here.
 extension Strings {
   enum Interaction {
     // Question step. Progress caption (questionCard.progress: "{{current}} of

@@ -9,7 +9,7 @@ import SwiftUI
 ///
 /// Pure send-state (send vs. stop vs. disabled) lives in ``ComposerLogic`` so it
 /// is unit-tested without a running UI; this view only draws it.
-struct MissionComposer: View {
+struct MissionComposer<PlusMenu: View>: View {
   @Environment(\.theme) private var theme
   @Binding var text: String
   /// True while a turn is in flight — the send button becomes Stop.
@@ -29,11 +29,12 @@ struct MissionComposer: View {
   var isSending: Bool = false
   let onSend: () -> Void
   let onStop: () -> Void
-  /// The leading "+" affordance (WhatsApp layout). Optional so the composer stays
-  /// container-agnostic: ``ChatView`` wires it to open the "+" menu (attach file /
-  /// photo, choose model / effort); a caller that passes nil simply shows an inert
-  /// "+" and the button no-ops.
-  var onPlus: (() -> Void)?
+  /// The leading "+" affordance (WhatsApp layout): its items render in a native
+  /// anchored `Menu` that pops up AT the button — the same visual family as the
+  /// long-press message menu, never a detached dialog. The composer stays
+  /// container-agnostic: ``ChatView`` supplies the items (attach file / photo,
+  /// choose model / effort).
+  @ViewBuilder let plusMenu: () -> PlusMenu
 
   @FocusState private var focused: Bool
   /// Guards the auto-focus to a single shot (the field must never re-grab focus
@@ -88,10 +89,11 @@ struct MissionComposer: View {
 
   /// The leading "+" glyph (no filled circle, WhatsApp/Telegram style), muted so
   /// it sits quietly beside the field. Aligned to the bottom so it stays centered
-  /// on the first line as the field grows.
+  /// on the first line as the field grows. A `Menu` so the items appear anchored
+  /// at the button (rising above it here at the screen's bottom edge).
   private var plusButton: some View {
-    Button {
-      onPlus?()
+    Menu {
+      plusMenu()
     } label: {
       Image(systemName: "plus")
         .font(.system(size: ChatMetrics.plusGlyphSize, weight: .regular))
