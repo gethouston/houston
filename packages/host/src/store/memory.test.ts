@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { AgentNameConflictError } from "../ports";
 import { MemoryWorkspaceStore } from "./memory";
 
 test("getOrCreatePersonalWorkspace is idempotent (same user => same workspace id)", async () => {
@@ -101,4 +102,17 @@ test("a second workspace's agents never appear in the first's list", async () =>
     "B1",
     "B2",
   ]);
+});
+
+test("renameAgent onto an existing sibling name is a typed conflict (#172)", async () => {
+  const s = new MemoryWorkspaceStore();
+  const ws = await s.getOrCreatePersonalWorkspace("u1");
+  const hr = await s.createAgent({ workspaceId: ws.id, name: "HRAgent" });
+  await s.createAgent({ workspaceId: ws.id, name: "SalesAgent" });
+
+  await expect(s.renameAgent(hr.id, "SalesAgent")).rejects.toBeInstanceOf(
+    AgentNameConflictError,
+  );
+  // Renaming to the CURRENT name stays a no-op success.
+  expect((await s.renameAgent(hr.id, "HRAgent")).name).toBe("HRAgent");
 });

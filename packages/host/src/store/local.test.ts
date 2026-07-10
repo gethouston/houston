@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
+import { AgentNameConflictError } from "../ports";
 import { LocalWorkspaceStore } from "./local";
 
 /**
@@ -105,4 +106,20 @@ test("dotfiles + stray files are ignored (only real dirs are workspaces/agents)"
   expect((await store.listAgents("Work")).map((a) => a.id)).toEqual([
     "Work/Sales",
   ]);
+});
+
+test("renameAgent onto an existing sibling is a typed 409-able conflict, not ENOTEMPTY (#172)", async () => {
+  const root = tree({ Work: ["Sales", "HR"] });
+  const store = new LocalWorkspaceStore(root);
+
+  await expect(store.renameAgent("Work/Sales", "HR")).rejects.toBeInstanceOf(
+    AgentNameConflictError,
+  );
+  // The failed rename must leave both directories untouched.
+  expect(existsSync(join(root, "Work", "Sales"))).toBe(true);
+  expect(existsSync(join(root, "Work", "HR"))).toBe(true);
+
+  // Renaming to the CURRENT name is a no-op success, never a self-conflict.
+  const same = await store.renameAgent("Work/Sales", "Sales");
+  expect(same.id).toBe("Work/Sales");
 });

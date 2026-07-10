@@ -8,6 +8,7 @@ import {
 import { ACTING_AS_HEADER, actingSubFromHeader } from "../auth/acting";
 import { checkPublicHttpsEndpoint } from "../custom-endpoint-validation";
 import type { Agent, UserId, Workspace } from "../domain/types";
+import { AgentNameConflictError } from "../ports";
 import { isApiKeyProvider } from "../providers";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
@@ -161,7 +162,16 @@ export async function handleAgents(
         json(res, 400, { error: "missing 'name'" });
         return true;
       }
-      const renamed = await deps.store.renameAgent(agentId, name);
+      let renamed: Agent;
+      try {
+        renamed = await deps.store.renameAgent(agentId, name);
+      } catch (err) {
+        if (err instanceof AgentNameConflictError) {
+          json(res, 409, { error: err.message });
+          return true;
+        }
+        throw err;
+      }
       deps.events?.emit(authz.workspace.ownerUserId, {
         type: "AgentsChanged",
         workspaceId: authz.workspace.id,

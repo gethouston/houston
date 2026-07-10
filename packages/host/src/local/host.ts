@@ -143,6 +143,18 @@ export interface LocalHost {
   stop(): void;
 }
 
+export function formatIntegrationsModeLog(
+  integrations: LocalHostOptions["integrations"],
+): string {
+  if (integrations?.gatewayUrl) {
+    return `[local-host] integrations: gateway ${integrations.gatewayUrl}`;
+  }
+  if (integrations?.composioApiKey) {
+    return "[local-host] integrations: direct (own Composio key)";
+  }
+  return "[local-host] integrations off: set HOUSTON_INTEGRATIONS_URL or COMPOSIO_API_KEY to enable";
+}
+
 /**
  * The local supervisor: the SAME host server (createControlPlaneServer) wired
  * with the local adapter profile — the desktop's "control plane shrunk to one
@@ -396,6 +408,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       );
       watcher.start();
       scheduler.start();
+      console.log(formatIntegrationsModeLog(opts.integrations));
       // The banner the Tauri supervisor parses (mirrors the runtime's contract).
       // The full token rides ONLY for the desktop sidecar; a pod/self-host token
       // is env-supplied and redacted so it never lands in plaintext logs.

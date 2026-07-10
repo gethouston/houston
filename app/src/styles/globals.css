@@ -18,6 +18,11 @@
 @source "../../node_modules/@houston-ai/routines/src";
 @source "../../node_modules/@houston-ai/skills/src";
 @source "../../node_modules/@houston-ai/agent/src";
+/* Streamdown (chat markdown renderer) emits Tailwind utilities of its own
+   (list-inside, list-disc, …). It lives under ui/chat's node_modules, so scan
+   it through the workspace symlink or its classes never get generated and
+   markdown lists render without bullets/numbers (#451). */
+@source "../../node_modules/@houston-ai/chat/node_modules/streamdown/dist";
 
 body {
   margin: 0;
