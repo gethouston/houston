@@ -1,6 +1,7 @@
 import { existsSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { basename, dirname, join } from "node:path";
+import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
 import { ProxyChannel } from "../channel/proxy";
@@ -23,6 +24,7 @@ import { ChannelRoutineFirer } from "../schedule/firer";
 import { Scheduler } from "../schedule/scheduler";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { LocalWorkspaceStore } from "../store/local";
+import { StoreSyncDaemon } from "../store-sync";
 import { MemoryTurnBus } from "../turn/bus";
 import { FsVfs } from "../vfs";
 import { FsWatcher } from "../watch/watcher";
@@ -135,12 +137,19 @@ export interface LocalHostOptions {
    * untrusted client input — leave this false (the default) and it is dropped.
    */
   gatewayFronted?: boolean;
+  /** Managed-pod cache persistence. Omit to preserve the local/PVC lifecycle. */
+  storeSync?: {
+    store: ObjectStore;
+    quietMs?: number;
+    intervalMs?: number;
+    maxHydrateBytes?: number;
+  };
 }
 
 export interface LocalHost {
   server: Server;
   start(): Promise<void>;
-  stop(): void;
+  stop(): Promise<void>;
 }
 
 /**
@@ -351,10 +360,22 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     firer: new ChannelRoutineFirer({ local: channel }),
     events,
   });
+  const syncDaemon = opts.storeSync
+    ? new StoreSyncDaemon({
+        ...opts.storeSync,
+        rootDir: dirname(opts.workspacesRoot),
+        log: (message, err) => console.error(message, err ?? ""),
+      })
+    : undefined;
+  let stopPromise: Promise<void> | undefined;
 
   return {
     server,
     async start() {
+      // The object store is authoritative in managed server mode. Hydration is
+      // readiness-critical and must finish before migrations or HTTP listening;
+      // failure propagates so the pod restarts without ever syncing an empty tree.
+      await syncDaemon?.hydrate();
       // One-time, idempotent migration of the pre-v0.4 FLAT `.houston/` layout
       // into the per-type folders the domain reads (ported from the Rust
       // engine's migrate_agent_data). Runs BEFORE the watcher so migrated files
@@ -395,6 +416,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         server.listen(opts.port, bind, () => resolve()),
       );
       watcher.start();
+      syncDaemon?.start();
       scheduler.start();
       // The banner the Tauri supervisor parses (mirrors the runtime's contract).
       // The full token rides ONLY for the desktop sidecar; a pod/self-host token
@@ -428,10 +450,20 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       }
     },
     stop() {
-      scheduler.stop();
-      watcher.stop();
-      launcher.shutdownAll(); // kill spawned runtimes — never orphan them
-      server.close();
+      if (stopPromise) return stopPromise;
+      stopPromise = (async () => {
+        scheduler.stop();
+        watcher.stop();
+        // Await actual child exit (bounded): the final sync below must not
+        // walk /data while a runtime is still flushing its last writes.
+        await launcher.shutdownAllAndWait();
+        await syncDaemon?.stop();
+        await new Promise<void>((resolve, reject) => {
+          if (!server.listening) return resolve();
+          server.close((err) => (err ? reject(err) : resolve()));
+        });
+      })();
+      return stopPromise;
     },
   };
 }

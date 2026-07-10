@@ -9,14 +9,12 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { hydrate, syncBack } from "./hydrate";
+import { excluded, hydrate, syncBack } from "./hydrate";
 import { LocalDirStore } from "./object-store";
 
 /**
- * The hydrate→run→syncBack loop is what makes "agent = a GCS prefix" real.
- * These tests pin: faithful materialization, true diffing (only changed files
- * move), remote deletion of locally-deleted files, the auth.json exclusion
- * (tokens never persist), and the size cap.
+ * The hydrate-to-sync loop pins faithful materialization, content diffing,
+ * manifest ownership, secret exclusions, symlink safety, and hydration limits.
  */
 
 function setup() {
@@ -40,7 +38,7 @@ function seed(
 
 const PREFIX = "ws/w1/agent-1";
 
-test("hydrate materializes the prefix and syncBack uploads only the delta", async () => {
+test("hydrate materializes the prefix and syncBack returns the new manifest", async () => {
   const { storeRoot, store, work } = setup();
   seed(storeRoot, PREFIX, {
     "workspace/notes.txt": "v1",
@@ -55,7 +53,6 @@ test("hydrate materializes the prefix and syncBack uploads only the delta", asyn
   );
   expect(manifest.size).toBe(3);
 
-  // Change one file, add one, delete one — only those move.
   writeFileSync(join(work, "workspace", "notes.txt"), "v2");
   writeFileSync(join(work, "workspace", "deck.pptx"), "DECK");
   rmSync(join(work, "workspace", "sub", "deep.txt"));
@@ -66,18 +63,21 @@ test("hydrate materializes the prefix and syncBack uploads only the delta", asyn
     "workspace/notes.txt",
   ]);
   expect(result.deleted).toEqual(["workspace/sub/deep.txt"]);
-
-  // The store now reflects the new truth.
-  const rehydrated = await hydrate(
-    store,
-    PREFIX,
-    mkdtempSync(join(tmpdir(), "houston-re-")),
-  );
-  expect([...rehydrated.keys()].sort()).toEqual([
+  expect([...result.manifest.keys()].sort()).toEqual([
     "data/conversations/c1.json",
     "workspace/deck.pptx",
     "workspace/notes.txt",
   ]);
+});
+
+test("empty prefix hydrates agent-relative keys", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, "", { "workspace/notes.txt": "hello" });
+  const manifest = await hydrate(store, "", work);
+  expect(readFileSync(join(work, "workspace", "notes.txt"), "utf8")).toBe(
+    "hello",
+  );
+  expect([...manifest.keys()]).toEqual(["workspace/notes.txt"]);
 });
 
 test("auth.json never hydrates in and never syncs out", async () => {
@@ -86,32 +86,40 @@ test("auth.json never hydrates in and never syncs out", async () => {
     "data/auth.json": JSON.stringify({ leaked: "stale-token" }),
     "workspace/file.txt": "x",
   });
-
   const manifest = await hydrate(store, PREFIX, work);
   expect(manifest.has("data/auth.json")).toBe(false);
-  // The per-turn credential is written locally AFTER hydration…
   mkdirSync(join(work, "data"), { recursive: true });
-  writeFileSync(
-    join(work, "data", "auth.json"),
-    JSON.stringify({ access: "AT-turn" }),
-  );
-  const result = await syncBack(store, PREFIX, work, manifest);
-  // …and must not be uploaded.
-  expect(result.uploaded).toEqual([]);
-  const keys = await store.list(PREFIX);
-  const remoteAuth = keys.find((k) => k.endsWith("data/auth.json"));
-  // The stale remote copy is untouched (excluded from the manifest, so not
-  // "deleted locally" either) — and the fresh token never reached the store.
-  expect(remoteAuth).toBeDefined();
+  writeFileSync(join(work, "data", "auth.json"), '{"access":"AT-turn"}');
+  expect((await syncBack(store, PREFIX, work, manifest)).uploaded).toEqual([]);
+  expect(
+    (await store.list(PREFIX)).some((key) => key.endsWith("data/auth.json")),
+  ).toBe(true);
 });
 
-test("an unchanged workspace uploads nothing", async () => {
+test("exclusions support basenames, subtrees, temp files, and runtime auth", () => {
+  const excludes = [
+    "credentials.json",
+    "claude-login/.credentials.json",
+    "db/",
+  ];
+  expect(excluded("credentials.json", excludes)).toBe(true);
+  expect(excluded("nested/credentials.json", excludes)).toBe(true);
+  expect(excluded("db/houston.db", excludes)).toBe(true);
+  expect(excluded("workspace/write.tmp", excludes)).toBe(true);
+  expect(excluded("workspaces/W/A/.houston/runtime/auth.json", excludes)).toBe(
+    true,
+  );
+  expect(excluded("claude-login/projects/cache.json", excludes)).toBe(false);
+});
+
+test("an unchanged workspace uploads nothing and remains in the manifest", async () => {
   const { storeRoot, store, work } = setup();
   seed(storeRoot, PREFIX, { "workspace/a.txt": "a", "workspace/b.txt": "b" });
   const manifest = await hydrate(store, PREFIX, work);
   const result = await syncBack(store, PREFIX, work, manifest);
   expect(result.uploaded).toEqual([]);
   expect(result.deleted).toEqual([]);
+  expect(result.manifest).toEqual(manifest);
 });
 
 test("symlinks created locally are never persisted", async () => {
@@ -119,8 +127,7 @@ test("symlinks created locally are never persisted", async () => {
   seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
   const manifest = await hydrate(store, PREFIX, work);
   symlinkSync("/etc/passwd", join(work, "workspace", "link"));
-  const result = await syncBack(store, PREFIX, work, manifest);
-  expect(result.uploaded).toEqual([]);
+  expect((await syncBack(store, PREFIX, work, manifest)).uploaded).toEqual([]);
 });
 
 test("hydration size cap throws, never truncates silently", async () => {
@@ -131,8 +138,7 @@ test("hydration size cap throws, never truncates silently", async () => {
   ).rejects.toThrow(/hydration limit/);
 });
 
-test("empty prefix hydrates to an empty manifest (brand-new agent)", async () => {
+test("missing prefix hydrates to an empty manifest", async () => {
   const { store, work } = setup();
-  const manifest = await hydrate(store, "ws/none/agent-x", work);
-  expect(manifest.size).toBe(0);
+  expect((await hydrate(store, "ws/none/agent-x", work)).size).toBe(0);
 });
