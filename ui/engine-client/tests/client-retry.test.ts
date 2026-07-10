@@ -1,4 +1,4 @@
-import { ok, rejects, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { HoustonClient, isHoustonEngineError } from "../src/client.ts";
 
@@ -148,6 +148,20 @@ describe("HoustonClient transport retry (HOU-432)", () => {
     });
     await client.setPreference("k", "v"); // PUT /preferences/k
     strictEqual(calls, 2);
+  });
+
+  it("sends null when clearing a preference", async () => {
+    let body: unknown;
+    const client = new HoustonClient({
+      baseUrl: "http://127.0.0.1:1111",
+      token: "t",
+      fetchImpl: async (_input, init) => {
+        body = JSON.parse(String(init?.body ?? "null")) as unknown;
+        return jsonResponse({});
+      },
+    });
+    await client.setPreference("houston_onboarding_segment", null);
+    deepStrictEqual(body, { value: null });
   });
 
   it("does NOT retry a 503 on a mutating POST", async () => {

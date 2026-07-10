@@ -10,6 +10,15 @@
     "reportBug": "Report bug",
     "danger": "Delete workspace"
   },
+  "onboardingSegmentReset": {
+    "title": "Onboarding segment",
+    "description": "Clear the saved first-run segment so Houston can ask again during onboarding.",
+    "button": "Reset segment",
+    "confirmTitle": "Reset onboarding segment?",
+    "confirmDescription": "This clears the saved first-run segment. Houston will ask you again when the first-run onboarding appears.",
+    "confirmLabel": "Reset",
+    "toast": "Onboarding segment reset"
+  },
   "account": {
     "title": "Account",
     "signOut": "Sign out",

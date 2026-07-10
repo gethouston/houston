@@ -1069,7 +1069,7 @@ export const tauriConfig = {
 export const tauriPreferences = {
   get: (key: string) =>
     call<string | null>("get_preference", () => getEngine().getPreference(key)),
-  set: (key: string, value: string) =>
+  set: (key: string, value: string | null) =>
     call<void>("set_preference", () => getEngine().setPreference(key, value)),
 };
 

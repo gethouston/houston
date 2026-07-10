@@ -36,10 +36,21 @@ export function useOnboardingSegment(enabled: boolean) {
     },
   });
 
+  const clearMutation = useMutation({
+    mutationFn: async () => {
+      await tauriPreferences.set(ONBOARDING_SEGMENT_PREF_KEY, null);
+    },
+    onSuccess: () => {
+      qc.setQueryData<OnboardingSegmentPreference | null>(queryKey, null);
+    },
+  });
+
   return {
     preference: query.data ?? null,
     isLoading: query.isLoading,
     saveSegment: mutation.mutateAsync,
     isSaving: mutation.isPending,
+    clearSegment: clearMutation.mutateAsync,
+    isClearing: clearMutation.isPending,
   };
 }

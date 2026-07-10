@@ -24,6 +24,7 @@ import { AccountSection } from "./sections/account";
 import { AppearanceSection } from "./sections/appearance";
 import { DangerSection } from "./sections/danger";
 import { LanguageSection } from "./sections/language";
+import { OnboardingSegmentResetSection } from "./sections/onboarding-segment-reset";
 import { SettingsCard, SettingsRow } from "./settings-row";
 
 interface SettingsIndexProps {
@@ -92,6 +93,7 @@ export function SettingsIndex({
               workspace name is fixed for now (HOU-704). */}
           <AppearanceSection />
           <LanguageSection />
+          <OnboardingSegmentResetSection />
           {accountAvailable && <AccountSection />}
           {integrationsAvailable && (
             <SettingsRow
