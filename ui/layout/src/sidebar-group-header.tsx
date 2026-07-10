@@ -24,6 +24,7 @@ export interface SidebarGroupHeaderProps {
   startRenaming?: boolean;
   onRenameStarted?: () => void;
   onToggleCollapsed?: (groupId: string) => void;
+  onEditContext?: (groupId: string) => void;
   onRenameGroup?: (groupId: string, newName: string) => void;
   onDeleteGroup?: (groupId: string) => void;
 }
@@ -44,6 +45,7 @@ export function SidebarGroupHeader({
   startRenaming,
   onRenameStarted,
   onToggleCollapsed,
+  onEditContext,
   onRenameGroup,
   onDeleteGroup,
 }: SidebarGroupHeaderProps) {
@@ -122,7 +124,7 @@ export function SidebarGroupHeader({
         </button>
       )}
       {!renaming && <span className={sidebarGroupClasses.count}>{count}</span>}
-      {!renaming && (onRenameGroup || onDeleteGroup) && (
+      {!renaming && (onEditContext || onRenameGroup || onDeleteGroup) && (
         <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
             <button
@@ -134,6 +136,11 @@ export function SidebarGroupHeader({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="bottom">
+            {onEditContext && (
+              <DropdownMenuItem onSelect={() => onEditContext(group.id)}>
+                {labels.editGroupContext}
+              </DropdownMenuItem>
+            )}
             {onRenameGroup && (
               <DropdownMenuItem
                 onSelect={() => {

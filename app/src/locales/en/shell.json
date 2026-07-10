@@ -34,7 +34,15 @@
       "menu": "Group options",
       "namePlaceholder": "Group name",
       "emptyHint": "Drag agents here",
-      "ungrouped": "Ungrouped"
+      "ungrouped": "Ungrouped",
+      "editContext": "Edit shared context",
+      "contextDialog": {
+        "title": "Shared context for {{name}}",
+        "description": "This note is added to every agent in this group, so they all share the same background.",
+        "placeholder": "e.g. We are a design studio. Keep replies short and never share client names.",
+        "save": "Save",
+        "cancel": "Cancel"
+      }
     }
   },
   "tabActions": {

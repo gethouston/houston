@@ -34,7 +34,15 @@
       "menu": "Opciones de grupo",
       "namePlaceholder": "Nombre del grupo",
       "emptyHint": "Arrastra agentes aquí",
-      "ungrouped": "Sin grupo"
+      "ungrouped": "Sin grupo",
+      "editContext": "Editar contexto compartido",
+      "contextDialog": {
+        "title": "Contexto compartido de {{name}}",
+        "description": "Esta nota se agrega a cada agente de este grupo, así todos comparten el mismo trasfondo.",
+        "placeholder": "ej. Somos un estudio de diseño. Mantén las respuestas cortas y nunca compartas nombres de clientes.",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      }
     }
   },
   "tabActions": {

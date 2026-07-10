@@ -72,6 +72,7 @@ export function buildSidebarLabels(t: ShellT): SidebarLabels {
     createGroup: t("shell:sidebar.groups.new"),
     renameGroup: t("shell:sidebar.groups.rename"),
     deleteGroup: t("shell:sidebar.groups.delete"),
+    editGroupContext: t("shell:sidebar.groups.editContext"),
     groupMenu: t("shell:sidebar.groups.menu"),
     newGroupPlaceholder: t("shell:sidebar.groups.namePlaceholder"),
     emptyGroupHint: t("shell:sidebar.groups.emptyHint"),

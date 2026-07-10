@@ -38,3 +38,18 @@ test("a non-workspace cwd gets only the base prompt (no context section)", () =>
   const prompt = buildSystemPrompt(dir, "You are Houston.");
   expect(prompt).toBe("You are Houston.");
 });
+
+test("group context is appended after the workspace/user section", () => {
+  const dir = freshWorkspace();
+  writeFileSync(join(dir, "WORKSPACE.md"), "Acme Corp.");
+  writeFileSync(join(dir, "GROUP.md"), "Q3 launch squad.");
+
+  const prompt = buildSystemPrompt(dir, "You are Houston.");
+  expect(prompt).toContain("# Workspace Context");
+  expect(prompt).toContain("# Group Context");
+  expect(prompt).toContain("Q3 launch squad.");
+  // Ordering: base prompt → workspace/user context → group context.
+  expect(prompt.indexOf("# Group Context")).toBeGreaterThan(
+    prompt.indexOf("# Workspace Context"),
+  );
+});

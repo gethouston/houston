@@ -224,7 +224,7 @@ Engine route: `POST /v1/store/workspaces/install-from-github`. Rust impl: `houst
 | > Connections               |  workspace-wide integrations
 | > Organization              |  Teams v2 dashboard (owner/admin + multiplayer only)
 |-----------------------------|
-| Your AI Agents          [+] |  section label + folder-plus "New group" button
+| Your AI Agents          [+] |  section label + a people (Users) icon "New group" button
 |   ▾ Work                 [2]|  a named, collapsible group (drag its title to move it)
 |     > Research Agent    [2] |
 |     > Project Manager       |
@@ -278,6 +278,23 @@ end of the default section). Absent/corrupt reads as `{ [], [] }`.
   ordering in `lib/agent-order.ts` (`resolveSidebarSections` / `flatSidebarOrder`
   — the SAME order feeds ⌘[ / ⌘] cycling + the command palette). Group labels
   live under `shell:sidebar.groups.*` (en/es/pt).
+- **Group shared context.** `SidebarGroup.context?: string` — one note shared
+  by every agent in that group (a group-scoped `WORKSPACE.md`). Edited from the
+  group header's "..." menu → "Edit shared context"
+  (`app/src/components/shell/group-context-dialog.tsx`), saved via
+  `sidebar.setGroupContext` → `setGroupContextOp` → the same `PUT
+  sidebar-layout` write. On every PUT, `routes/account.ts` diffs the previous
+  vs. new per-agent resolved context (`routes/group-context-sync.ts`:
+  `resolveGroupContextByAgent` / `diffGroupContext`) and mirrors it to a
+  `GROUP.md` file at each affected member agent's root (same location as
+  `WORKSPACE.md`; written/deleted via `paths.agentRoot(ws, agent)`, best-effort
+  — never fails the primary layout write), firing `ContextChanged` per agent.
+  Runtime read side: `buildGroupContextSection` in
+  `packages/runtime/src/session/workspace-context.ts`, injected after the
+  workspace/user context section and before the mode overlay — present only
+  for grouped agents (no empty-marker stub, unlike WORKSPACE.md/USER.md, since
+  group membership is optional). Local/self-host only; no cloud "provided"
+  variant yet (would need gateway wiring in the closed `cloud` repo).
 
 Agent rows show a count chip for `needs_you` activity items. If any
 activity item is `running`, the row avatar uses the same comet glow as
@@ -734,12 +751,13 @@ Built in `engine/houston-engine-core/src/agents/prompt.rs::build_agent_context`:
 2. Mode file `.houston/prompts/modes/<mode>.md` (optional, user-editable).
 3. Learnings snapshot — `.houston/learnings/learnings.json`, text fields only, rendered as bounded background context. IDs/timestamps stay storage/UI-only.
 4. **Workspace context block** — assembled from `<workspace>/WORKSPACE.md` + `<workspace>/USER.md` (the agent's parent dir) by `workspace_context::build_prompt_section`. Always included for any agent whose parent dir has a `.houston/`. Files are NOT seeded — they only exist once the user or an agent writes them; until then the section renders an "(empty so far, ask the user when relevant)" marker so the agent knows the slot exists. Section explicitly authorizes the agent to read/write these two files (carve-out from the working-directory rule) and tells it that edits take effect on the **next** chat.
+4a. **Group context block** (current TS host only, no Rust-era equivalent) — `<agent-root>/GROUP.md`, present only when the agent belongs to a sidebar group with shared context set; see "Group shared context" under the sidebar section above. Unlike the workspace block there is no empty-marker stub: an ungrouped agent gets nothing appended.
 5. Skills index — `.agents/skills/` via `houston_skills::build_skills_index`.
 6. Integrations block — based on `.houston/integrations.json` if present.
 
 `CLAUDE.md` is read by the CLI (claude/codex) itself at startup, not injected by the engine.
 
-Users cannot edit the product prompt — it's compiled into the app binary. Per-agent surfaces that ARE user-editable: `CLAUDE.md` (job description), `.agents/skills/` (skills), `.houston/learnings/learnings.json` (learnings), `.houston/prompts/modes/*.md` (mode overrides). Per-workspace surfaces (shared by every agent in the workspace): `WORKSPACE.md` (about the company/project), `USER.md` (about the human running it). Both edited from Settings → Workspace → Shared context, or directly by agents when the user shares new info.
+Users cannot edit the product prompt — it's compiled into the app binary. Per-agent surfaces that ARE user-editable: `CLAUDE.md` (job description), `.agents/skills/` (skills), `.houston/learnings/learnings.json` (learnings), `.houston/prompts/modes/*.md` (mode overrides). Per-workspace surfaces (shared by every agent in the workspace): `WORKSPACE.md` (about the company/project), `USER.md` (about the human running it). Both edited from Settings → Workspace → Shared context, or directly by agents when the user shares new info. Per-group surfaces (shared by every agent in one sidebar group only): `GROUP.md`, edited from the group's "..." menu → Edit shared context, mirrored to member agents by the host on every sidebar-layout write.
 
 ## Board / Activity tab
 `@houston-ai/board::AIBoard` = `KanbanBoard` + `KanbanDetailPanel` + `ChatPanel`. Generic, props-only. Each card = activity from `.houston/activity/activity.json`. Click → opens chat w/ conversation history.

@@ -70,6 +70,7 @@ export interface SidebarProps {
    */
   groups?: SidebarGroupView[];
   onToggleGroupCollapsed?: (groupId: string) => void;
+  onEditGroupContext?: (groupId: string) => void;
   onRenameGroup?: (groupId: string, newName: string) => void;
   onDeleteGroup?: (groupId: string) => void;
   /** A group id to open directly in inline-rename (e.g. a just-created group). */
@@ -98,6 +99,8 @@ export interface SidebarLabels extends SidebarItemRowLabels {
   createGroup?: string;
   renameGroup?: string;
   deleteGroup?: string;
+  /** Menu item that opens the group's shared-context editor. */
+  editGroupContext?: string;
   /** aria label for the group "..." menu trigger. */
   groupMenu?: string;
   newGroupPlaceholder?: string;
@@ -116,6 +119,7 @@ const DEFAULT_LABELS: Required<SidebarLabels> = {
   createGroup: "New group",
   renameGroup: "Rename group",
   deleteGroup: "Delete group",
+  editGroupContext: "Edit shared context",
   groupMenu: "Group options",
   newGroupPlaceholder: "Group name",
   emptyGroupHint: "Drag agents here",
@@ -138,6 +142,7 @@ export function AppSidebar({
   sectionAction,
   groups,
   onToggleGroupCollapsed,
+  onEditGroupContext,
   onRenameGroup,
   onDeleteGroup,
   renamingGroupId,
@@ -310,6 +315,7 @@ export function AppSidebar({
                 items={items}
                 groups={groups}
                 onToggleGroupCollapsed={onToggleGroupCollapsed}
+                onEditGroupContext={onEditGroupContext}
                 onRenameGroup={onRenameGroup}
                 onDeleteGroup={onDeleteGroup}
                 renamingGroupId={renamingGroupId}

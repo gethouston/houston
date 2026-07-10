@@ -18,7 +18,15 @@
       "menu": "Opções do grupo",
       "namePlaceholder": "Nome do grupo",
       "emptyHint": "Arraste agentes aqui",
-      "ungrouped": "Sem grupo"
+      "ungrouped": "Sem grupo",
+      "editContext": "Editar contexto compartilhado",
+      "contextDialog": {
+        "title": "Contexto compartilhado de {{name}}",
+        "description": "Esta nota é adicionada a todos os agentes deste grupo, então todos compartilham o mesmo contexto.",
+        "placeholder": "ex. Somos um estúdio de design. Mantenha as respostas curtas e nunca compartilhe nomes de clientes.",
+        "save": "Salvar",
+        "cancel": "Cancelar"
+      }
     },
     "color": "Cor",
     "changeColor": "Alterar cor",

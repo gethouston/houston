@@ -27,7 +27,8 @@ export function parseSidebarLayout(body: unknown): SidebarLayout | null {
       typeof gr.id !== "string" ||
       typeof gr.name !== "string" ||
       typeof gr.collapsed !== "boolean" ||
-      !isStringArray(gr.agentIds)
+      !isStringArray(gr.agentIds) ||
+      (gr.context !== undefined && typeof gr.context !== "string")
     )
       return null;
     groups.push({
@@ -35,6 +36,7 @@ export function parseSidebarLayout(body: unknown): SidebarLayout | null {
       name: gr.name,
       collapsed: gr.collapsed,
       agentIds: gr.agentIds,
+      ...(gr.context !== undefined ? { context: gr.context } : {}),
     });
   }
   if (!isStringArray(b.ungroupedOrder)) return null;
