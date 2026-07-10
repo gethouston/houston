@@ -1,8 +1,14 @@
-import { strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { ChatInteractionAnswer } from "@houston-ai/chat";
+// Imported from source (not the barrel) so node's --experimental-strip-types
+// runner needn't resolve the package's extensionless .tsx re-exports.
+import { decodeInteractionAnswersMessage } from "../../ui/chat/src/interaction-answers-message.ts";
 import { isAutoContinueMessage } from "../src/lib/auto-continue-message.ts";
-import { composeInteractionReply } from "../src/lib/interaction-reply.ts";
+import {
+  composeInteractionReply,
+  encodeInteractionAnswersMessage,
+} from "../src/lib/interaction-reply.ts";
 
 const connectedLine = (name: string) => `Connected ${name}.`;
 const signedInLine = "Signed in to Houston.";
@@ -137,5 +143,74 @@ describe("composeInteractionReply", () => {
     strictEqual(isAutoContinueMessage(reply), true);
     strictEqual(reply.endsWith("I've signed in. Please continue."), true);
     strictEqual(reply.includes("Signed in to Houston."), false);
+  });
+});
+
+describe("encodeInteractionAnswersMessage", () => {
+  it("keeps the flat model body identical to composeInteractionReply", () => {
+    const shared = {
+      answers,
+      connectedNames: ["Gmail"],
+      hasQuestionSteps: true,
+      signedIn: true,
+      connectedLine,
+      signedInLine,
+      signedInFollowup,
+    } as const;
+    const encoded = encodeInteractionAnswersMessage(shared);
+    const flat = composeInteractionReply(shared);
+    // The marker rides in front; the body after the blank line is the untouched
+    // flat reply the model reads.
+    strictEqual(encoded.endsWith(`\n\n${flat}`), true);
+    strictEqual(encoded.startsWith("<!--houston:interaction-answers "), true);
+  });
+
+  it("carries a structured payload that decodes back to the same Q&A", () => {
+    const encoded = encodeInteractionAnswersMessage({
+      answers,
+      connectedNames: ["Gmail"],
+      hasQuestionSteps: true,
+      signedIn: true,
+      connectedLine,
+      signedInLine,
+      signedInFollowup,
+    });
+    const payload = decodeInteractionAnswersMessage(encoded);
+    deepStrictEqual(payload, {
+      lines: [
+        { question: "To whom?", answer: "john@example.com" },
+        { question: "Saying what?", answer: "Running late" },
+        { answer: "Signed in to Houston." },
+        { answer: "Connected Gmail." },
+      ],
+    });
+  });
+
+  it("does NOT mark a hidden connect-only sequence (no visible bubble)", () => {
+    const encoded = encodeInteractionAnswersMessage({
+      answers: [],
+      connectedNames: ["Gmail"],
+      hasQuestionSteps: false,
+      signedIn: false,
+      connectedLine,
+      signedInLine,
+      signedInFollowup,
+    });
+    strictEqual(isAutoContinueMessage(encoded), true);
+    strictEqual(decodeInteractionAnswersMessage(encoded), null);
+  });
+
+  it("does NOT mark a hidden signin-only sequence", () => {
+    const encoded = encodeInteractionAnswersMessage({
+      answers: [],
+      connectedNames: [],
+      hasQuestionSteps: false,
+      signedIn: true,
+      connectedLine,
+      signedInLine,
+      signedInFollowup,
+    });
+    strictEqual(isAutoContinueMessage(encoded), true);
+    strictEqual(decodeInteractionAnswersMessage(encoded), null);
   });
 });

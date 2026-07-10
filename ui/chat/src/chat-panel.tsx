@@ -171,34 +171,38 @@ export function ChatPanel({
         </div>
       )}
 
-      {composerOverride ? (
-        <div className="shrink-0 px-4 pb-6 pt-2">
+      {/* The composer stays mounted at all times. A pending interaction renders
+          its card ABOVE the input (both visible) rather than replacing it, so the
+          user can always type a fresh message — doing so abandons the card. The
+          override block drops the input's own top padding for its gap, avoiding
+          doubled spacing between the two. */}
+      {composerOverride && (
+        <div className="shrink-0 px-4 pt-2">
           <div className="max-w-3xl mx-auto">{composerOverride}</div>
         </div>
-      ) : (
-        <ChatInput
-          onSend={handleSend}
-          onStop={onStop}
-          status={status}
-          placeholder={placeholder}
-          value={value}
-          onValueChange={onValueChange}
-          attachments={files}
-          onAttachmentsChange={setFiles}
-          onNotice={onNotice}
-          prepareAttachments={prepareAttachments}
-          onAttachmentRejections={onAttachmentRejections}
-          footer={footer}
-          header={composerHeader}
-          attachMenu={attachMenu}
-          queuedMessages={queuedMessages}
-          onRemoveQueuedMessage={onRemoveQueuedMessage}
-          queuedLabels={queuedLabels}
-          canSendEmpty={canSendEmpty}
-          labels={composerLabels}
-          dictation={dictation}
-        />
       )}
+      <ChatInput
+        onSend={handleSend}
+        onStop={onStop}
+        status={status}
+        placeholder={placeholder}
+        value={value}
+        onValueChange={onValueChange}
+        attachments={files}
+        onAttachmentsChange={setFiles}
+        onNotice={onNotice}
+        prepareAttachments={prepareAttachments}
+        onAttachmentRejections={onAttachmentRejections}
+        footer={footer}
+        header={composerHeader}
+        attachMenu={attachMenu}
+        queuedMessages={queuedMessages}
+        onRemoveQueuedMessage={onRemoveQueuedMessage}
+        queuedLabels={queuedLabels}
+        canSendEmpty={canSendEmpty}
+        labels={composerLabels}
+        dictation={dictation}
+      />
     </div>
   );
 }

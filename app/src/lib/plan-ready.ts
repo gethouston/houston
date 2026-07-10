@@ -5,10 +5,14 @@ import type { InteractionStep } from "@houston/protocol";
  *  ask_user. Extracted from the protocol union so the app narrows to it. */
 export type PlanReadyStep = Extract<InteractionStep, { kind: "plan_ready" }>;
 
-/** Every interaction step that is NOT a plan_ready step (question / signin /
- *  connect). These are the ones the existing ChatInteractionCard stepper walks;
- *  a plan_ready step never belongs in that stepper. */
-export type NonPlanReadyStep = Exclude<InteractionStep, { kind: "plan_ready" }>;
+/** Every interaction step the ChatInteractionCard stepper can walk: question /
+ *  signin / connect. Excludes the two composer-replacing card kinds (plan_ready
+ *  and suggest_reusable), which each render their own dedicated card and never
+ *  belong in the stepper. */
+export type NonPlanReadyStep = Exclude<
+  InteractionStep,
+  { kind: "plan_ready" } | { kind: "suggest_reusable" }
+>;
 
 /**
  * Which composer-replacing surface a pending interaction's steps resolve to:
@@ -42,7 +46,8 @@ export function resolvePlanReadyOverride(
       : { kind: "card", summary: lone.summary };
   }
   const rest = steps.filter(
-    (step): step is NonPlanReadyStep => step.kind !== "plan_ready",
+    (step): step is NonPlanReadyStep =>
+      step.kind !== "plan_ready" && step.kind !== "suggest_reusable",
   );
   return rest.length > 0 ? { kind: "stepper", steps: rest } : { kind: "none" };
 }

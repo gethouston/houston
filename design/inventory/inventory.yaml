@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 11
+version: 12
 
 components:
   - id: agent-avatar
@@ -229,33 +229,39 @@ components:
 
   - id: interaction-card
     title: Interaction card
-    purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections), replacing the composer until done.
-    anatomy: [stepper-header, progress-indicator, back-chevron, question-step, option-row, free-text-input, send-action, signin-step, connect-step]
-    states: [single-step, multi-step, with-options, free-text-only, signin-step, connect-step, revisited, disabled]
+    purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections), floating ABOVE the always-mounted composer.
+    anatomy: [stepper-header, progress-pill, question-text, dismiss-action, option-row, position-number, free-text-input, footer-nav, back-action, skip-action, next-action, signin-step, connect-step]
+    states: [single-step, multi-step, with-options, free-text-only, signin-step, connect-step, revisited, abandoned, disabled]
     variants: [choice, open-ended, signin, connect, mixed-sequence]
     behavior: >-
       Rendered from the turn's pending interaction (steps[]: 1-3 question steps,
-      then at most one signin step, then connect steps). Shows ONE step at a time
-      with a quiet "N of X" progress indicator (only when total > 1) and a back
-      chevron from step 2 on. Question step: one prominent question, vertical
-      single-select option rows (role=radio), and a free-text input ALWAYS
-      visible below as the escape hatch; clicking an option OR submitting typed
-      text answers the current step and advances. Signin step: renders the
-      app-supplied sign-in card and advances only when it reports signed in
-      (ui/chat stays auth-unaware via a renderSignin prop). Connect step: renders
-      the app-supplied connect card and advances only when it reports connected.
-      Signin and connect steps carry no answer text. Revisiting a step
-      pre-selects its prior answer; re-answering replaces it. A single
-      question-with-options step keeps the one-tap feel (click = answer =
-      complete). After the last step, emits each question answer in step order to
-      the consumer, which formats the resume message. Disabled while another turn
-      is active.
-    a11y: one step announced at a time; option rows are role=radio in a radiogroup, keyboard-toggleable and visible at rest (no hover gate); free-text input always present on question steps; back chevron is a labeled button; progress uses tabular-nums to avoid width jitter.
+      then at most one signin step, then connect steps). Shows ONE step at a
+      time. Header: a "current/total" pill (only when total > 1), the question
+      text, and a dismiss X that abandons the WHOLE sequence. The card never
+      replaces the composer: the real composer stays mounted below it, and
+      sending a fresh message there abandons the sequence exactly like the X.
+      Question step: single-select option rows (role=radio) each showing its
+      1-based position number right-aligned; pressing that number key selects
+      the row whenever focus is not in a text field; a free-text input below is
+      the "something else" escape hatch (so option lists never need an "Other"
+      row). ALL step navigation lives in one footer row, Back leftmost: Back
+      revisits the previous already-reached step, Skip advances past the current
+      question without answering (omitted from the composed reply), Next commits
+      the answer; a revisited signin/connect step shows a bare Forward instead
+      (its own card cannot re-fire completion). Signin/connect steps render
+      app-supplied cards (ui/chat stays auth/Composio-unaware) and advance on
+      their completion callbacks. Revisiting a question pre-selects its prior
+      answer; re-answering replaces it. A single question-with-options step
+      keeps the one-tap feel (click = answer = complete). After the last step,
+      emits each answered question in step order; the consumer encodes the
+      structured interaction-answers message. Disabled while another turn is
+      active.
+    a11y: one step announced at a time; option rows are role=radio in a radiogroup, keyboard-selectable by position number and visible at rest (no hover gate); free-text input always present on question steps; Back/Skip/Next are labeled buttons in one predictable footer; dismiss X labeled; progress pill carries an sr-only "N of X" and uses tabular-nums.
     since: 4
 
   - id: plan-ready-card
     title: Plan-ready card
-    purpose: In-chat surface shown when the agent finishes planning (plan mode) and calls plan_ready; presents the drafted plan and three ways forward as composer mode-menu rows, replacing the composer until the user chooses.
+    purpose: In-chat surface shown when the agent finishes planning (plan mode) and calls plan_ready; presents the drafted plan and three ways forward as composer mode-menu rows, floating above the always-mounted composer (typing there instead abandons it).
     anatomy: [title, plan-summary, coworker-row, autopilot-row, keep-planning-row]
     states: [default, disabled]
     variants: [default]
@@ -275,6 +281,49 @@ components:
       not a filled button. Disabled gates all three rows.
     a11y: title then plan summary read in order; three labeled row buttons visible at rest (no hover gate), keyboard-reachable, each with a foreground-color icon inline with its title; disabled state marks the surface aria-disabled and gates every row.
     since: 9
+
+  - id: suggest-reusable-card
+    title: Suggest-reusable card
+    purpose: In-chat offer shown when the agent finishes a mission cleanly and calls suggest_reusable; proposes saving the just-completed work as a reusable Skill or a scheduled Routine, floating above the always-mounted composer.
+    anatomy: [eyebrow, proposed-title, rationale, save-row, not-now-row]
+    states: [default, disabled]
+    variants: [skill, routine]
+    behavior: >-
+      Rendered from a pending interaction carrying a single suggest_reusable
+      step (reusableKind, title, rationale) on the terminal done frame. Unlike
+      every other interaction step, a lone suggest_reusable step keeps the
+      mission's board status at done (the offer is optional, nothing is
+      waiting). Shows the eyebrow, the model-proposed name prominently, and the
+      model's one-line rationale, then two full-width rows in the plan-ready
+      card's idiom: Save (Sparkles icon for a Skill, CalendarClock for a
+      Routine; label names the kind) sends a follow-up message asking the agent
+      to actually write the Skill/Routine, always as an execute turn regardless
+      of the composer's pinned mode, dismissing the offer locally first; "Not
+      now" dismisses locally. Typing in the composer instead abandons it like
+      any interaction card. Dismissal is per-offer (step id) and per
+      conversation.
+    a11y: eyebrow then title then rationale read in order; two labeled row buttons visible at rest (no hover gate), keyboard-reachable; disabled marks the surface aria-disabled and gates both rows.
+    since: 12
+
+  - id: interaction-answers-message
+    title: Interaction answers message
+    purpose: The structured user-message bubble a completed question sequence sends; shows each question with its answer instead of a flat "question - answer" text blob.
+    anatomy: [bubble-frame, question-line, answer-line]
+    states: [default]
+    variants: [questions-only, mixed-with-confirmations]
+    behavior: >-
+      A completed interaction card encodes its answers as a marker-prefixed
+      user message (houston:interaction-answers) whose plain-text body is what
+      the model reads, byte-identical to the pre-existing flat reply. The
+      renderer decodes the marker and shows an ordered list of line groups
+      inside one user-side bubble: each answered question as a small muted line
+      with the user's answer bold directly below; confirmation lines with no
+      question (a connected app, a sign-in) render as a lone bold line. Skipped
+      questions emit no line. Malformed or empty payloads fall through to the
+      plain-text bubble; connect/signin-only sequences stay hidden
+      auto-continue messages and never render this bubble.
+    a11y: reads in document order as question-then-answer pairs; pass-through content only, no interactive elements, no hover-gated information.
+    since: 12
 
   - id: deliverable-card
     title: Deliverable card

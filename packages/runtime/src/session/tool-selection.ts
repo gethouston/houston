@@ -6,6 +6,7 @@ import {
   REQUEST_CONNECTION_TOOL_NAME,
 } from "./tools/integrations";
 import { PLAN_READY_TOOL_NAME } from "./tools/plan-ready";
+import { SUGGEST_REUSABLE_TOOL_NAME } from "./tools/suggest-reusable";
 
 export type CodeExecutionMode = "local" | "remote" | "disabled";
 
@@ -115,6 +116,13 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
       // ask_user is available in EVERY mode/backend — any blocking question,
       // choice, or approval goes through it instead of plain-text.
       ASK_USER_TOOL_NAME,
+      // suggest_reusable is available in execute AND auto — it holds no
+      // credential, takes no real-world action, and never blocks the turn (a
+      // clean finish offering to save the work as a Skill/Routine). It must
+      // NEVER reach plan mode, and it won't automatically: PLAN_MODE_TOOL_NAMES
+      // (the plan allowlist) doesn't list it, so `planToolNames` filters it out;
+      // and it isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES, so auto keeps it.
+      SUGGEST_REUSABLE_TOOL_NAME,
       ...executable,
       ...(input.integrations ? INTEGRATION_TOOL_NAMES : []),
     ],

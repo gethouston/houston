@@ -24,11 +24,6 @@ export interface ChatInteractionAnswer {
   answer: string;
 }
 
-/** Every step now shows exactly one question, so the head always reads as the
- *  single next action: sized up and weighted (matches the composer replace). */
-export const QUESTION_TEXT_CLASS =
-  "text-lg font-medium leading-snug text-foreground";
-
 /** True when the agent offered concrete choices (option rows render). */
 export function hasSelectableOptions(
   options?: ChatInteractionOption[],

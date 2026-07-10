@@ -104,41 +104,12 @@ describe("stepAfterAgentCreated", () => {
 });
 
 describe("shouldOfferConnectSkip (dead-end escape hatch)", () => {
-  const base = {
-    statusKnown: true,
-    ready: true,
-    attempted: false,
-    connecting: false,
-  };
-
-  it("hidden on the happy path (gateway ready, nothing attempted)", () => {
-    strictEqual(shouldOfferConnectSkip(base), false);
-  });
-
-  it("hidden while the provider status is still loading", () => {
-    strictEqual(
-      shouldOfferConnectSkip({ ...base, statusKnown: false, ready: false }),
-      false,
-    );
-  });
-
-  it("offered when the gateway resolved as not ready (no session)", () => {
-    strictEqual(shouldOfferConnectSkip({ ...base, ready: false }), true);
-  });
-
-  it("offered after a connect attempt ended without the toolkit landing", () => {
-    strictEqual(shouldOfferConnectSkip({ ...base, attempted: true }), true);
+  it("offered on the happy path (gateway ready, nothing attempted) — the confirm dialog is the friction", () => {
+    strictEqual(shouldOfferConnectSkip({ connecting: false }), true);
   });
 
   it("never offered while a connect flow is in flight", () => {
-    strictEqual(
-      shouldOfferConnectSkip({ ...base, attempted: true, connecting: true }),
-      false,
-    );
-    strictEqual(
-      shouldOfferConnectSkip({ ...base, ready: false, connecting: true }),
-      false,
-    );
+    strictEqual(shouldOfferConnectSkip({ connecting: true }), false);
   });
 });
 

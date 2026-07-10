@@ -12,27 +12,27 @@
  *
  * The user's last pick is remembered per-agent in `.houston/config` (composer
  * memory only — never synced to engine Settings), so unknown/legacy values on
- * read normalize back to `execute`.
+ * read normalize back to {@link DEFAULT_TURN_MODE}.
  */
 export type TurnMode = "execute" | "plan" | "auto";
 
-export const DEFAULT_TURN_MODE: TurnMode = "execute";
+export const DEFAULT_TURN_MODE: TurnMode = "plan";
 
-/** Tolerant read: only the exact `"plan"` and `"auto"` strings pin a
- *  non-default mode; anything else (a stale value, `undefined`, a typo) falls
- *  back to `execute`. */
+/** Tolerant read: the three known values pass through as-is; anything else
+ *  (a stale value, `undefined`, a typo) falls back to {@link DEFAULT_TURN_MODE}. */
 export function normalizeTurnMode(value: unknown): TurnMode {
   if (value === "plan") return "plan";
   if (value === "auto") return "auto";
-  return "execute";
+  if (value === "execute") return "execute";
+  return DEFAULT_TURN_MODE;
 }
 
 /**
  * The agent's remembered turn mode, for send paths that assemble their own
  * overrides (Mission Control, archived resumes) instead of holding the chat
- * panel's live pill state. A failed config read falls back to `execute` — the
- * safe default for a preference lookup; the send itself still surfaces its own
- * errors.
+ * panel's live pill state. A failed config read falls back to
+ * {@link DEFAULT_TURN_MODE} — the safe default for a preference lookup; the
+ * send itself still surfaces its own errors.
  */
 export async function readAgentTurnMode(
   agentPath: string,

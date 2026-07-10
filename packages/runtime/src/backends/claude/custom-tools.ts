@@ -17,10 +17,11 @@ import {
   makeIntegrationTools,
 } from "../../session/tools/integrations";
 import { makePlanReadyTool } from "../../session/tools/plan-ready";
+import { makeSuggestReusableTool } from "../../session/tools/suggest-reusable";
 
 /**
  * Bridge Houston's pi-shaped custom tools (`ask_user`, `plan_ready`,
- * `request_connection`, `integration_search`, `integration_execute`) onto the Claude Agent SDK's
+ * `suggest_reusable`, `request_connection`, `integration_search`, `integration_execute`) onto the Claude Agent SDK's
  * in-process MCP transport (`createSdkMcpServer`), so the `anthropic` backend —
  * a `claude` subprocess that only sees SDK built-ins — can call the SAME tools
  * the pi backend exposes.
@@ -77,6 +78,8 @@ export interface HoustonMcpInput {
    * `request_connection`) and `plan_ready` while KEEPING `integration_search` /
    * `integration_execute`, and "execute" (or absent) exposes the full built set
    * minus `plan_ready` (plan-only). `plan_ready` never survives outside plan.
+   * `suggest_reusable` mirrors the acting tools' reach — it survives execute AND
+   * auto (it never blocks the turn) but never plan (plan is not a finished task).
    */
   mode?: TurnMode;
 }
@@ -129,6 +132,9 @@ export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
     // plan_ready is in the built set but name-gated by `toolNamesForMode`: it
     // survives only on a plan turn (filtered out of execute/auto below).
     makePlanReadyTool(),
+    // suggest_reusable is the inverse gating: name-kept in execute/auto, filtered
+    // out of plan by `toolNamesForMode`.
+    makeSuggestReusableTool(),
     ...(input.integrations ? makeIntegrationTools(input.integrations) : []),
   ] as unknown as BridgedPiTool[];
   const allowed = new Set(
