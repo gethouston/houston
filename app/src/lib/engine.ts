@@ -26,6 +26,12 @@ declare global {
      *  the gateway resolves the caller's personal org). The local host's
      *  header-free `/v1/ws` transport ignores it. */
     __HOUSTON_ACTIVE_ORG__?: string | null;
+    /** Runtime deploy environment injected by the web entry (packages/web
+     *  main.tsx) from the hostname, so ONE promoted bundle reports `preview` on
+     *  the preview site and `production` on app.gethouston.ai. Read by
+     *  `sentry.ts` + `analytics.ts` to tag their `environment`. Undefined on the
+     *  desktop (which derives environment from `import.meta.env.DEV` instead). */
+    __HOUSTON_DEPLOY_ENV__?: "production" | "preview" | "development";
   }
 }
 

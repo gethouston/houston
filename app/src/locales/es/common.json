@@ -36,6 +36,9 @@
     "label": "Idioma de la interfaz",
     "toastChanged": "Idioma cambiado"
   },
+  "env": {
+    "preview": "Vista previa"
+  },
   "notifications": {
     "sessionComplete": {
       "title": "{{workspace}} · {{agent}}",
