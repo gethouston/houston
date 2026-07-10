@@ -554,11 +554,14 @@ visionPath: "vision/index.html"
 
   /* ── Dark-mode hero app mockup — faithful to the real Houston web app ──────
      A translucent frosted-glass desktop window (the same glass language as the
-     rest of the page) whose interior reproduces the real Mission Control: the
-     sidebar, the board (Running / Needs you / Done) and a chat detail panel.
-     Interior colours mirror the design-token dark theme (packages/design-tokens):
-       canvas / gutter #141416   columns white-a05   cards #1e1e1e
-       ink #e5e5e5   muted #9a9a9a   borders white-a09   primary #e5e5e5.
+     rest of the page) whose interior reproduces the real Mission Control's
+     FLOATING-PANEL layout: sidebar, board and chat are each their own rounded
+     panel sitting on a darker gutter, with visible gutter gaps between them
+     (not contiguous panes divided by border lines). Interior colours mirror
+     the design-token dark theme (packages/design-tokens):
+       gutter (canvas-gutter) #141416   panel (background/card) #1e1e1e
+       nested column white-a05 over panel   ink #e5e5e5   muted #9a9a9a
+       borders white-a09   primary #e5e5e5.
      Board / card / chat styling lives in assets/hero-demo.css. */
   .app-mockup {
     --m-ink: #e5e5e5;
@@ -613,16 +616,23 @@ visionPath: "vision/index.html"
     color: var(--m-muted);
   }
 
-  .mockup-body { display: flex; min-height: 528px; }
+  /* The gutter: a darker canvas strip with a fixed gap that separates the
+     floating panels (sidebar / board / chat), exactly like the real app. */
+  .mockup-body {
+    display: flex;
+    gap: 8px;
+    min-height: 528px;
+    background: var(--m-canvas);
+    padding: 8px;
+  }
 
-  /* ── Sidebar — near-black gutter, matches the real AppSidebar ── */
+  /* ── Sidebar — no panel of its own, sits directly on the gutter (the real
+     AppSidebar background token is transparent) ── */
   .mockup-sidebar {
     width: 220px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    background: var(--m-canvas);
-    border-right: 1px solid var(--m-border);
     padding-bottom: 8px;
   }
 

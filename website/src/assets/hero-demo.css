@@ -2,31 +2,39 @@
  * Interactive scripted hero demo — a faithful mini Houston.
  *
  * Reproduces the real web app's Mission Control at a landing-page zoom: the
- * board (Running / Needs you / Done) beside a chat detail panel, inside the
- * frosted-glass `.app-mockup` window (chrome + sidebar styled in index.html).
- * The scripted loop (assets/hero-demo.js) types a prompt into the chat, the
- * agent thinks, a mission card materializes in Running with the signature
- * rotating-gradient "running" border, then FLIPs to Done as the agent reports
- * back. The static HTML renders a finished state, so with JS disabled or under
- * prefers-reduced-motion it still reads as a real, complete screen.
+ * board (Running / Needs you / Done) and a chat detail panel are each their
+ * own floating rounded panel on the darker gutter, exactly like the real app
+ * (sidebar / board / chat as separate panels with a visible gutter gap
+ * between them, never contiguous panes divided by a border line) — inside
+ * the frosted-glass `.app-mockup` window (chrome + sidebar + gutter styled
+ * in index.html). The scripted loop (assets/hero-demo.js) types a prompt
+ * into the chat, the agent thinks, a mission card materializes in Running
+ * with the signature rotating-gradient "running" border, then FLIPs to Done
+ * as the agent reports back. The static HTML renders a finished state, so
+ * with JS disabled or under prefers-reduced-motion it still reads as a real,
+ * complete screen.
  *
  * Interior palette comes from the `--m-*` custom properties on `.app-mockup`.
  */
 
-/* Board + chat live side by side in the work area. */
+/* Board + chat float side by side in the work area, separated by the same
+   gutter gap used between the sidebar and the board. */
 .mockup-workarea {
   flex: 1;
   min-width: 0;
   display: flex;
+  gap: 8px;
 }
 
-/* ── Board ─────────────────────────────────────────────────────────────── */
+/* ── Board — its own floating rounded panel ──────────────────────────────── */
 .mc-board {
   flex: 1.62;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 16px 16px 0;
+  padding: 16px 16px 16px;
+  background: var(--m-card);
+  border-radius: 16px;
 }
 
 .mc-toolbar {
@@ -218,13 +226,16 @@
 /* While the user hovers the demo, freeze the ambient ring spin too. */
 .hd-paused .mc-card.running::before { animation-play-state: paused; }
 
-/* ── Chat detail panel ─────────────────────────────────────────────────── */
+/* ── Chat detail panel — its own floating rounded panel, not a pane divided
+   by a border line off the board ─────────────────────────────────────────── */
 .mc-chat {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--m-border);
+  background: var(--m-card);
+  border-radius: 16px;
+  overflow: hidden;
 }
 .mc-chat-head {
   display: flex;
@@ -353,12 +364,11 @@
 
 @media (max-width: 900px) {
   .mockup-workarea { flex-direction: column; }
-  .mc-chat { border-left: none; border-top: 1px solid var(--m-border); }
   .mc-search { display: none; }
 }
 
 @media (max-width: 600px) {
-  .mc-board { padding: 12px 12px 0; }
+  .mc-board { padding: 12px; }
   .mc-cols { gap: 8px; }
   .mc-newmission span { display: none; }
   .mc-newmission { padding: 0 11px; }
