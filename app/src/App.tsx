@@ -6,6 +6,7 @@ import { CloudMigrationGate } from "./components/onboarding/cloud-migration/clou
 import { MigrationReconnectScreen } from "./components/onboarding/migration-reconnect-screen";
 import { isFirstRun } from "./components/onboarding/missions/onboarding-flow";
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
+import { OnboardingSegmentScreen } from "./components/onboarding/segment-screen";
 import { ClaudeBrowserLogin } from "./components/shell/claude-browser-login";
 import { ProviderLoginFallback } from "./components/shell/provider-login-fallback";
 import { WorkspaceLoading } from "./components/shell/workspace-loading";
@@ -18,6 +19,7 @@ import { useIntegrationSessionSync } from "./hooks/use-integration-session-sync"
 import { useLocalBridgeAutoReconnect } from "./hooks/use-local-bridge-autoreconnect";
 import { useMigrationReconnect } from "./hooks/use-migration-reconnect";
 import { useOnboardingPending } from "./hooks/use-onboarding-pending";
+import { useOnboardingSegment } from "./hooks/use-onboarding-segment";
 import { useProviderCatalog } from "./hooks/use-provider-catalog";
 import { useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
@@ -36,6 +38,7 @@ import { useUIStore } from "./stores/ui";
 import { useWorkspaceStore } from "./stores/workspaces";
 
 export default function App() {
+  const authConfigured = isAuthConfigured();
   useHoustonInit();
   useSessionEvents();
   useAgentInvalidation();
@@ -167,6 +170,22 @@ export default function App() {
   // not. Shows only when (migrated AND no provider connected AND not yet
   // dismissed) — never on a fresh install, never once a provider is connected.
   const migrationReconnect = useMigrationReconnect();
+  const firstRunCandidate = isFirstRun({
+    controlPlane: newEngineActive(),
+    workspaceCount: workspaces.length,
+    agentCount: agents.length,
+  });
+  const segmentGateEnabled =
+    (!authConfigured || (!sessionLoading && Boolean(session))) &&
+    !tutorialActive &&
+    !agentLoading &&
+    !wsLoading &&
+    !capabilitiesLoading &&
+    !(newEngineActive() && !agentsLoaded) &&
+    firstRunCandidate &&
+    canCreateAgents &&
+    !capabilitiesError;
+  const onboardingSegment = useOnboardingSegment(segmentGateEnabled);
 
   // Interrupted-onboarding resume: a durable flag set while first-run is
   // mid-flight and cleared on finish/skip. Because the assistant is created
@@ -262,11 +281,35 @@ export default function App() {
   // (the login mission), so they don't need it. The migration-reconnect branch
   // is the CO-LOCATED upgrade moment (workspaces migrated in place, no
   // provider connected) — see useMigrationReconnect for its trigger.
+
+  // The segmentation question (HOU onboarding-segment) gates entry into the
+  // create-your-assistant flow on a genuine first run, same population as the
+  // tutorial below, but NOT the interrupted-onboarding resume (already
+  // segmented on their first pass through). Answered once and persisted in
+  // engine prefs; an existing, already-segmented user falls straight through.
+  const segmentPending =
+    firstRun &&
+    !onboardingPending &&
+    canCreateAgents &&
+    !capabilitiesError &&
+    (onboardingSegment.isLoading || !onboardingSegment.preference);
+
   return (
     <CloudMigrationGate>
-      {(firstRun || onboardingPending) &&
-      canCreateAgents &&
-      !capabilitiesError ? (
+      {segmentPending ? (
+        onboardingSegment.isLoading ? (
+          <WorkspaceLoading />
+        ) : (
+          <OnboardingSegmentScreen
+            saving={onboardingSegment.isSaving}
+            onContinue={async (segment) => {
+              await onboardingSegment.saveSegment(segment);
+            }}
+          />
+        )
+      ) : (firstRun || onboardingPending) &&
+        canCreateAgents &&
+        !capabilitiesError ? (
         <PersonalAssistantOnboarding
           toasts={mappedToasts}
           onDismissToast={dismissToast}

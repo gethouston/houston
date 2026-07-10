@@ -34,6 +34,9 @@ export type AnalyticsEventName =
   // Onboarding
   | "onboarding_started"
   | "onboarding_completed"
+  | "onboarding_segment_screen_viewed"
+  | "onboarding_segment_selected"
+  | "onboarding_segment_continued"
   // One-time "reconnect your AI" moment after upgrading from the legacy build.
   | "migration_reconnect_completed"
   // First-run cloud-migration wizard (HOU-719): the cloud desktop build offers
@@ -125,7 +128,9 @@ type AnalyticsProperty =
   | "locale"
   | "step"
   // Cloud migration (payload sizes, where already known)
-  | "bytes";
+  | "bytes"
+  | "selected_segment"
+  | "source_screen";
 
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
 type UserIdentity = {
@@ -161,6 +166,8 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "locale",
   "step",
   "bytes",
+  "selected_segment",
+  "source_screen",
 ]);
 
 // Bootstrap PostHog at module load so a configured build can capture errors

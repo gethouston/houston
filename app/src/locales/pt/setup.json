@@ -16,6 +16,50 @@
     "skip": "Faço isso depois",
     "dismissError": "Não conseguimos salvar. Tente novamente."
   },
+  "onboardingSegment": {
+    "eyebrow": "Personalize o Houston",
+    "title": "Qual descreve melhor o seu trabalho?",
+    "subtitle": "Escolha uma opção para o Houston adaptar agentes, modelos e recomendações para você.",
+    "helper": "Você pode mudar isso depois conforme o Houston aprende o que ajuda você.",
+    "options": {
+      "business_owner": {
+        "label": "Dono de negócio",
+        "description": "Você administra uma empresa ou gerencia o negócio todo."
+      },
+      "growth": {
+        "label": "Crescimento",
+        "description": "Você trabalha com marketing, vendas ou aquisição de clientes."
+      },
+      "hobbyist": {
+        "label": "Entusiasta",
+        "description": "Você está explorando agentes para projetos pessoais."
+      },
+      "consulting": {
+        "label": "Consultoria",
+        "description": "Você atende clientes e gerencia entregas."
+      },
+      "ecommerce": {
+        "label": "Comércio eletrônico",
+        "description": "Você vende produtos online ou gerencia uma loja."
+      },
+      "operations": {
+        "label": "Operações",
+        "description": "Você coordena sistemas, processos e o trabalho diário."
+      },
+      "legal": {
+        "label": "Jurídico",
+        "description": "Você cuida de contratos, conformidade ou operações jurídicas."
+      },
+      "finance_accounting": {
+        "label": "Finanças e contabilidade",
+        "description": "Você gerencia livros, relatórios ou fluxos financeiros."
+      },
+      "other": {
+        "label": "Outro",
+        "description": "Nenhuma opção descreve bem o seu trabalho."
+      }
+    }
+  },
   "tutorial": {
     "brand": "Houston",
     "nav": {

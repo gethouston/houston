@@ -16,6 +16,50 @@
     "skip": "I'll do this later",
     "dismissError": "We couldn't save that. Please try again."
   },
+  "onboardingSegment": {
+    "eyebrow": "Personalize Houston",
+    "title": "What best describes your work?",
+    "subtitle": "Pick one so Houston can tailor agents, templates, and recommendations for you.",
+    "helper": "You can change this later as Houston learns what helps you.",
+    "options": {
+      "business_owner": {
+        "label": "Business Owner",
+        "description": "You run a company or manage the whole business."
+      },
+      "growth": {
+        "label": "Growth",
+        "description": "You work on marketing, sales, or customer acquisition."
+      },
+      "hobbyist": {
+        "label": "Hobbyist",
+        "description": "You are exploring agents for personal projects."
+      },
+      "consulting": {
+        "label": "Consulting",
+        "description": "You serve clients and manage deliverables."
+      },
+      "ecommerce": {
+        "label": "E-commerce",
+        "description": "You sell products online or manage a store."
+      },
+      "operations": {
+        "label": "Operations",
+        "description": "You coordinate systems, processes, and day-to-day work."
+      },
+      "legal": {
+        "label": "Legal",
+        "description": "You handle contracts, compliance, or legal operations."
+      },
+      "finance_accounting": {
+        "label": "Finance and Accounting",
+        "description": "You manage books, reporting, or financial workflows."
+      },
+      "other": {
+        "label": "Other",
+        "description": "None of these describe your work well enough."
+      }
+    }
+  },
   "tutorial": {
     "brand": "Houston",
     "nav": {
