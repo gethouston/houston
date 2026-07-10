@@ -21,11 +21,7 @@
     "signOut": "Sair",
     "cancel": "Cancelar",
     "models_one": "{{count}} modelo",
-    "models_other": "{{count}} modelos",
-    "subscription": "Assinatura",
-    "apiKey": "Sua chave de API",
-    "local": "Roda no seu computador",
-    "gateway": "Gateway multimodelo"
+    "models_other": "{{count}} modelos"
   },
   "directory": {
     "search": "Busque {{count}}+ modelos",
@@ -97,12 +93,8 @@
     },
     "filter": {
       "label": "Filtrar provedores",
-      "all": "Todos os provedores",
-      "popular": "Populares",
-      "subscription": "Incluído na sua assinatura",
-      "free": "Grátis para testar",
-      "payg": "Pague pelo uso",
-      "local": "Roda no seu computador"
+      "subscription": "Assinatura",
+      "payg": "Pagamento por uso"
     },
     "openai": {
       "description": "Entre com o ChatGPT e coloque os modelos GPT e Codex para trabalhar."
