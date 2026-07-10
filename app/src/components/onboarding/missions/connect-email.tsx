@@ -7,7 +7,7 @@ import {
   useIntegrationStatus,
 } from "../../../hooks/queries";
 import { useCapabilities } from "../../../hooks/use-capabilities";
-import { canManageAgentGrants } from "../../../lib/org-roles";
+import { canManageAgentGrants } from "../../../lib/agent-access";
 import type { Agent } from "../../../lib/types";
 import { INTEGRATION_PROVIDER, useConnectFlow } from "../../integrations";
 import { OptionCard, SetupCard } from "../setup-card";

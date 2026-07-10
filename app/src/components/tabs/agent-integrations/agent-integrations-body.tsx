@@ -25,10 +25,13 @@ interface AgentIntegrationsBodyProps {
   connectFlow: ConnectFlow;
   /** The catalog is still fetching (browse shows a loader, not "no apps"). */
   catalogLoading: boolean;
-  onRemoveGrant: (toolkit: string) => void;
-  onActivate: (toolkit: string) => void;
   onDisconnect: (toolkit: string) => void;
-  /** Jump to the global integrations page. */
+  /** The bottom link's destination. When the caller can see the global
+   *  Integrations page it jumps there ("Manage all integrations"); a Teams plain
+   *  member (page gone) is sent to Settings > Connected accounts instead. The
+   *  boolean only picks the copy — `onManageAll` already performs the routing. */
+  canSeePolicyPage: boolean;
+  /** Perform the bottom-link navigation chosen by {@link canSeePolicyPage}. */
   onManageAll: () => void;
 }
 
@@ -49,9 +52,8 @@ export function AgentIntegrationsBody({
   connections,
   connectFlow,
   catalogLoading,
-  onRemoveGrant,
-  onActivate,
   onDisconnect,
+  canSeePolicyPage,
   onManageAll,
 }: AgentIntegrationsBodyProps) {
   const { t } = useTranslation("integrations");
@@ -72,8 +74,6 @@ export function AgentIntegrationsBody({
         inCat={inCat}
         categoryActive={category !== "all"}
         connectFlow={connectFlow}
-        onRemoveGrant={onRemoveGrant}
-        onActivate={onActivate}
         onDisconnect={onDisconnect}
       />
 
@@ -95,7 +95,9 @@ export function AgentIntegrationsBody({
           onClick={onManageAll}
           className="text-xs text-muted-foreground underline underline-offset-4 decoration-dotted transition-colors hover:text-foreground"
         >
-          {t("agentTab.manageAll")}
+          {canSeePolicyPage
+            ? t("agentTab.manageAll")
+            : t("policyPage.manageAccounts")}
         </button>
       </div>
     </>

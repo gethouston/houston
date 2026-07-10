@@ -83,7 +83,7 @@ export interface Agent {
   /**
    * Teams v2: the CURRENT caller's effective access to this agent (`manager`
    * may reconfigure it, `user` may only use it). Absent in single-player mode.
-   * Drives the client-side read-only gating (org-roles `isAgentManager`);
+   * Drives the client-side read-only gating (agent-access `isAgentManager`);
    * the gateway is the sole enforcer. Kept in sync (by hand) with the
    * engine-client `Agent` shape.
    */

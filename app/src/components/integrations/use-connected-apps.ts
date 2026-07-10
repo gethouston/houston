@@ -7,22 +7,31 @@ import {
   useIntegrationConnections,
   useIntegrationToolkits,
 } from "../../hooks/queries";
+import { useAllAgentGrants } from "../../hooks/queries/use-all-agent-grants";
 import { useCapabilities } from "../../hooks/use-capabilities";
-import { canEditAgentGrants } from "../../lib/org-roles";
+import { canEditAgentGrants } from "../../lib/agent-access";
 import { useAgentStore } from "../../stores/agents";
-import {
-  type AgentChip,
-  appDisplay,
-  INTEGRATION_PROVIDER,
-  toAgentChip,
-  useAllAgentGrants,
-} from "../integrations";
-import type { ActiveAppRow, RecoveringAppRow } from "./connected-apps-list";
+import { type AgentChip, toAgentChip } from "./agent-chip";
+import { type AppDisplay, appDisplay } from "./app-display";
 import {
   agentChipsFor,
   partitionConnections,
   toolkitAgentIds,
-} from "./integrations-view-model";
+} from "./connected-apps-model";
+import { INTEGRATION_PROVIDER } from "./model";
+
+/** An active (usable) connection with its display + the agents that use it. */
+export interface ActiveAppRow {
+  connection: IntegrationConnection;
+  app: AppDisplay;
+  chips: AgentChip[];
+}
+
+/** A pending / errored connection with its display, shown for recovery. */
+export interface RecoveringAppRow {
+  connection: IntegrationConnection;
+  app: AppDisplay;
+}
 
 export interface ConnectedApps {
   agentChips: AgentChip[];
@@ -34,7 +43,8 @@ export interface ConnectedApps {
   activeRows: ActiveAppRow[];
   recoveringRows: RecoveringAppRow[];
   grantsSupported: boolean;
-  canEdit: boolean;
+  /** Ids of the agents whose grants this caller may edit (per role/assignment). */
+  editableAgentIds: ReadonlySet<string>;
   /** The catalog query alone is still fetching (the picker shows a loader). */
   catalogLoading: boolean;
   isLoading: boolean;
@@ -94,10 +104,18 @@ export function useConnectedApps(): ConnectedApps {
     };
   }, [connData, bySlug, grantMap, chipById]);
 
-  // A single boolean gates every toggle in the detail sheet, so editing is
-  // allowed only when the caller can manage grants for every agent shown
-  // (single-player has no roles and is always editable; the gateway enforces).
-  const canEdit = agents.every((a) => canEditAgentGrants(capabilities, a));
+  // The agents whose grants this caller may edit (single-player: all; multiplayer:
+  // the assigned ones). Settings > Connected accounts uses this to gate each
+  // per-agent toggle; the gateway is the real enforcer.
+  const editableAgentIds = useMemo(
+    () =>
+      new Set(
+        agents
+          .filter((a) => canEditAgentGrants(capabilities, a))
+          .map((a) => a.id),
+      ),
+    [agents, capabilities],
+  );
 
   return {
     agentChips,
@@ -109,7 +127,7 @@ export function useConnectedApps(): ConnectedApps {
     activeRows,
     recoveringRows,
     grantsSupported: grants.supported,
-    canEdit,
+    editableAgentIds,
     catalogLoading: catalog.isLoading,
     // Gate the list (and its per-agent toggles) on the grant queries too, not
     // just connections + catalog: rendering a toggle before an agent's grant set

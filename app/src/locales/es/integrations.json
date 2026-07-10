@@ -1,5 +1,10 @@
 {
   "title": "Integraciones",
+  "policyPage": {
+    "subtitle": "Elige qué aplicaciones pueden usar los agentes de este espacio de trabajo.",
+    "manageAccounts": "Gestiona tus aplicaciones conectadas",
+    "perAgentNote": "¿Quieres límites más estrictos para un agente? Configúralos en los ajustes de ese agente."
+  },
   "loading": {
     "title": "Cargando tus integraciones",
     "body": "Verificando tu proveedor de integraciones…"
@@ -99,9 +104,6 @@
   },
   "agentTab": {
     "activeTitle": "Apps que este agente puede usar",
-    "accountTitle": "Otras apps conectadas a tu cuenta",
-    "deactivate": "Quitar de este agente",
-    "activate": "Activar para este agente",
     "empty": {
       "title": "Aún no hay apps",
       "body": "Agrega una app para que este agente pueda usarla.",

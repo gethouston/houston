@@ -59,6 +59,20 @@
       "allowedEmptyCategory": "No allowed apps in this category yet.",
       "addHeading": "Add apps"
     },
+    "orgAllowlist": {
+      "question": "Which apps can agents in this workspace use?",
+      "policyHelper": "You decide which apps agents here are allowed to use. People still connect their own accounts for each app you allow.",
+      "anyLabel": "Any app",
+      "anyDesc": "Agents in this workspace can use any of 1000+ apps.",
+      "pickedLabel": "Only apps you pick",
+      "pickedDesc": "Agents can only use the apps you allow below.",
+      "allowApp": "Allow {{name}}",
+      "allowedHeading": "Allowed apps",
+      "allowedEmpty": "No apps picked yet. Add apps below.",
+      "allowedEmptyCategory": "No allowed apps in this category yet.",
+      "addHeading": "Add apps",
+      "ownerOnly": "Only the workspace owner can change this."
+    },
     "notAllowed": {
       "title": "Not allowed for this agent",
       "body": "These apps are connected to your account, but this agent isn't allowed to use them. Ask your admin to enable them for this agent.",

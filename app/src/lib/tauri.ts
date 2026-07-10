@@ -1599,4 +1599,10 @@ export const tauriOrg = {
     call("create_checkout", () => getEngine().createCheckout(interval)),
   /** C8 billing: open the Stripe customer portal (owner only); returns `{url}`. */
   createPortal: () => call("create_portal", () => getEngine().createPortal()),
+  /** Read the org-wide allowed-toolkit ceiling (any member). */
+  getSettings: () =>
+    call("get_org_settings", () => getEngine().getOrgSettings()),
+  /** Replace the org-wide allowed-toolkit ceiling (owner only). */
+  setSettings: (settings: { allowedToolkits: string[] | null }) =>
+    call<void>("set_org_settings", () => getEngine().setOrgSettings(settings)),
 };

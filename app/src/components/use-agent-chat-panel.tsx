@@ -62,6 +62,7 @@ import { useSession } from "../hooks/use-session";
 import { useStoreSkillLocaleMigration } from "../hooks/use-store-skill-locale-migration";
 import { useWelcomeGreetingRevealed } from "../hooks/use-welcome-greeting";
 import { deriveActiveInteraction } from "../lib/active-interaction";
+import { canManageAgentGrants } from "../lib/agent-access";
 import { isWelcomeSessionKey } from "../lib/agent-welcome";
 import { analytics } from "../lib/analytics";
 import { attachmentReferences } from "../lib/attachment-message";
@@ -83,7 +84,7 @@ import {
   modelSelectorDecision,
   resolvePersonalModelPin,
 } from "../lib/model-selector-lock";
-import { canManageAgentGrants, isMultiplayer } from "../lib/org-roles";
+import { isMultiplayer } from "../lib/org-roles";
 import { osIsTauri } from "../lib/os-bridge";
 import { resolvePlanReadyOverride } from "../lib/plan-ready";
 import {

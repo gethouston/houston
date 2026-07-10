@@ -1,49 +1,44 @@
 import type { IntegrationConnection } from "@houston-ai/engine-client";
 import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  type AgentChip,
-  AgentChips,
-  type AppDisplay,
-  AppRow,
-  type ConnectFlow,
-  PendingConnectionCallout,
-} from "../integrations";
-
-export interface ActiveAppRow {
-  connection: IntegrationConnection;
-  app: AppDisplay;
-  chips: AgentChip[];
-}
-
-export interface RecoveringAppRow {
-  connection: IntegrationConnection;
-  app: AppDisplay;
-}
+import { AgentChips } from "./agent-chips";
+import { AppRow } from "./app-row";
+import { connKey } from "./connected-apps-model";
+import { PendingConnectionCallout } from "./pending-connection-callout";
+import type { ConnectFlow } from "./use-connect-flow";
+import type { ActiveAppRow, RecoveringAppRow } from "./use-connected-apps";
 
 interface ConnectedAppsListProps {
   active: ActiveAppRow[];
   recovering: RecoveringAppRow[];
   grantsSupported: boolean;
   connectFlow: ConnectFlow;
-  onManage: (connection: IntegrationConnection, app: AppDisplay) => void;
+  /** 1 = the narrow Settings drill-in (single column); 2 = the wide global
+   * Integrations page (a two-column grid on >= sm). */
+  columns: 1 | 2;
+  onOpen: (connection: IntegrationConnection) => void;
   onRemove: (toolkit: string) => void;
 }
 
 /**
- * The connected-apps section body: pending / errored connections first as
- * full-width recovery callouts (they need attention and would not fit a card),
- * then the active apps as a TWO-COLUMN grid of clickable cards. Each card shows
- * the logo, name, live status dot, the agents using it BELOW the name, and a
- * visible chevron so it reads as openable without hovering. Purely
- * presentational; the parent owns the connect flow and the derived rows.
+ * The connected-apps list shared by the global Integrations page and Settings >
+ * Connected accounts: pending / errored connections first as full-width recovery
+ * callouts (they need attention and would not fit a card), then the active apps
+ * as clickable rows. `columns` picks the density — the wide Integrations page
+ * lays the active apps out as a two-column grid, while the narrow Settings
+ * drill-in keeps a single column. Each active row opens the detail sheet and
+ * shows the agents using it BELOW the name via chips (or an "all/none agents"
+ * label when the host has no per-agent grants), with a visible chevron so it
+ * reads as openable without hovering. Purely presentational; the parent owns the
+ * connect flow, the derived rows, and selection.
  */
 export function ConnectedAppsList({
   active,
   recovering,
   grantsSupported,
   connectFlow,
-  onManage,
+  columns,
+  onOpen,
   onRemove,
 }: ConnectedAppsListProps) {
   const { t } = useTranslation("integrations");
@@ -53,7 +48,7 @@ export function ConnectedAppsList({
         <div className="space-y-2">
           {recovering.map(({ connection, app }) => (
             <AppRow
-              key={connection.connectionId || connection.toolkit}
+              key={connKey(connection)}
               display={app}
               status={connection.status}
             >
@@ -70,13 +65,19 @@ export function ConnectedAppsList({
       )}
 
       {active.length > 0 && (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div
+          className={
+            columns === 2
+              ? "grid grid-cols-1 gap-2 sm:grid-cols-2"
+              : "space-y-2"
+          }
+        >
           {active.map(({ connection, app, chips }) => (
             <AppRow
-              key={connection.connectionId || connection.toolkit}
+              key={connKey(connection)}
               display={app}
               status="active"
-              onClick={() => onManage(connection, app)}
+              onClick={() => onOpen(connection)}
               trailing={
                 <ChevronRight
                   aria-hidden

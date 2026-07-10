@@ -145,22 +145,30 @@ successful OAuth (see `connectIntegration(provider, toolkit, agent?)`).
 ceiling (`allowedToolkits`, plus the read-only `orgAllowedToolkits` it's
 intersected with and the caller's effective `access`; manager-only write).
 `getOrgSettings` / `setOrgSettings` read/replace the org ceiling (owner-only
-write). Copy lives under `teams:integrations.allowlist` (row titled "Apps"; the
-choice keys `question` / `policyHelper` / `anyLabel` / `anyDesc` / `pickedLabel` /
-`pickedDesc` — `policyHelper` is the admin-policy helper line under the question,
-noting members still connect their own accounts). The agent tab surfaces
-ceiling-blocked apps in TWO places so policy is never silently invisible:
-connected-but-blocked apps under `teams:integrations.notAllowed` (the disallowed
-section, "Not allowed" badge + an ask-your-admin line), and NOT-connected blocked
-apps as **locked rows** in the browse catalog (see §3, `integrations:locked.*`).
-The manager editor lives in Agent
-Settings > **Access** > **Apps** (`AgentAllowlistSection`); its editing surface
-is an always-visible two-option choice (`AccessChoice`: "Any app" saves `null`,
-"Only apps you pick" saves an explicit set) over the Integrations-tab app catalog
-(`AppCatalogGrid`, search + paginated app cards via the shared
-`AppRow`/`appDisplay`) with a per-app allow toggle, not a dense checklist. Full
-client surface:
-`knowledge-base/teams.md`.
+write), now consumed by `useOrgSettings` / `useSetOrgSettings`
+(`app/src/hooks/queries/use-org-settings.ts`, query key `["org-settings"]` via
+`queryKeys.orgSettings()`, wired through `tauriOrg.getSettings`/`setSettings`).
+BOTH ceilings render through the SHARED `AllowlistEditor`
+(`components/integrations/allowlist-editor.tsx`, i18n-agnostic `copy` prop):
+- the **org** editor is the global Integrations page's policy mode (Teams
+  owner/admin), copy `teams:integrations.orgAllowlist.*` (see §3);
+- the **per-agent** editor stays in Agent Settings > **Access** > **Apps**
+  (`AgentAllowlistSection`, `tabs/agent-integrations/agent-allowlist-section.tsx`
+  — now a thin wrapper feeding `AllowlistEditor` the `teams:integrations.allowlist.*`
+  copy, the org-ceiling-narrowed universe, and a connected-apps seed).
+
+The editor's surface is an always-visible two-option choice (`anyLabel` saves
+`null`, `pickedLabel` saves an explicit set; choice keys `question` /
+`policyHelper` / `anyLabel` / `anyDesc` / `pickedLabel` / `pickedDesc` —
+`policyHelper` is the admin-policy helper line noting members still connect their
+own accounts) with a per-app allow toggle, not a dense checklist; `readOnly` mode
+hides "Add apps" and shows a note. The agent tab surfaces ceiling-blocked apps in
+TWO places so policy is never silently invisible: connected-but-blocked apps under
+`teams:integrations.notAllowed` (the disallowed section, "Not allowed" badge + an
+ask-your-admin line), and NOT-connected blocked apps as **locked rows** in the
+browse catalog (see §3, `integrations:locked.*`). Per-agent GRANT toggles are a
+SEPARATE concept and live in ONE place only — Settings > Connected accounts (§3),
+never this ceiling editor. Full client surface: `knowledge-base/teams.md`.
 
 ### Local / self-host grants (NEW — desktop + self-host parity)
 `packages/host/src/integrations/grants.ts` (`LocalIntegrationGrants`) +
@@ -223,6 +231,18 @@ consume it verbatim — no forked copies. Notable exports: `ConnectMoreAppsSecti
 gate/flow hooks below, and pure helpers
 `browseCatalog`/`splitByGrant`/`pollConnectionUntilActive`. `browseCatalog` sorts
 results ALPHABETICALLY by app name (case-insensitive) after filtering.
+`integrationsSupported(caps)` (`model.ts`, `caps.integrations.length > 0`) is the
+capability gate the Settings section and the page share.
+
+**Shared connected-apps read-model** — `useConnectedApps`
+(`integrations/use-connected-apps.ts`) yields `ActiveAppRow` / `RecoveringAppRow`
+plus `editableAgentIds: ReadonlySet<string>` (the per-agent-editability set that
+REPLACED the old `canEdit` boolean, computed from `canEditAgentGrants`) over the
+pure, node-tested helpers `toolkitAgentIds` / `agentChipsFor` /
+`partitionConnections` (`integrations/connected-apps-model.ts`). Both grants
+surfaces (Settings and the personal page's detail sheet) read it verbatim. The
+shared `AllowlistEditor` (`integrations/allowlist-editor.tsx`) is the one
+presentational allowlist editor behind BOTH ceilings (§2).
 
 **Always-visible catalog** — `ConnectMoreAppsSection` (wrapping the internal
 `CatalogBrowser`) is a permanent "Connect more apps" section on BOTH surfaces, not
@@ -238,8 +258,8 @@ flex-1` + a category combobox (the shared `FilterCombobox`, moved to
 agent-admin models, integrations; category options carry no `mark`). Category is
 CONTROLLED by the surface (threaded `AppCatalogGrid` → `CatalogBrowser` →
 `ConnectMoreAppsSection`), so ONE selection filters every list on the surface, not
-just the browse grid: the global page's Connected grid, the agent tab's usable /
-account / disallowed grids, and the allowlist editor's Allowed list all narrow to
+just the browse grid: the personal page's Connected grid, the agent tab's usable /
+disallowed grids, and the allowlist editor's Allowed list all narrow to
 the picked category (pure VIEW filter composing with the catalog's text search;
 "All categories" resets). Pure helpers in `integrations/model.ts` (node-tested):
 `categoriesOf` (options), `categoryLabel` (slug → "Developer tools"),
@@ -249,25 +269,62 @@ category-aware empty string, e.g. `integrations:home.connectedNoneInCategory` /
 `agentTab.empty.category*` / `teams:integrations.allowlist.allowedEmptyCategory`,
 so an empty filtered list never falsely claims the surface has no apps).
 
-**Global page** — `app/src/components/integrations-view/`, top-level view
-`INTEGRATIONS_VIEW_ID = "integrations-home"` (NOT `"integrations"`, which is the
-per-agent tab id — a shared slug would shadow the tab; like `dashboard`/`settings`
-a top-level view lives OUTSIDE `STANDARD_TAB_IDS`). Sidebar nav + the render branch
-live in `shell/workspace-shell.tsx` / `shell/sidebar.tsx`. TWO stacked sections:
-**Connected apps** (a two-column grid of cards, each opening `AppDetailSheet` for
-per-agent access; pending/errored connections shown full-width above the grid for
-recovery; omitted entirely at zero connections) then the always-visible **Connect
-more apps** catalog. Disconnect is scope `everywhere` and names affected agents.
+**Global page (role-aware)** — `app/src/components/integrations-view/`, top-level
+view `INTEGRATIONS_VIEW_ID = "integrations-home"` (NOT `"integrations"`, which is
+the per-agent tab id — a shared slug would shadow the tab; like `dashboard`/`settings`
+a top-level view lives OUTSIDE `STANDARD_TAB_IDS`). `integrations-view.tsx` splits
+its ready state on `integrationsPageMode(capabilities)` (`integrations-view-model.ts`:
+`"policy"` iff `multiplayer && teams`, else `"personal"`).
 
-**Agent tab** — `app/src/components/tabs/agent-integrations/`
-(`integrations-tab.tsx` re-exports the orchestrator). THREE stacked sections, gated
-by a discriminated union: `grants` mode shows **Apps this agent can use** (two-col,
-deactivate toggles) + **Apps connected to your account** (connected-but-not-granted
-active apps, one-click Activate = grant-add, no OAuth; hidden when empty or
-read-only); `degraded` mode (grants `null`) shows all connected apps usable with no
-toggles and no account section. Both modes end with the always-visible **Connect
-more apps** catalog (auto-granting a fresh connection to this agent in grants mode).
-"Manage all integrations" navigates to `INTEGRATIONS_VIEW_ID`.
+- **Nav gating.** The sidebar nav item (`shell/sidebar.tsx` → `sidebar-chrome.tsx`),
+  the `workspace-shell.tsx` render branch, and the tour step all gate on
+  `canSeeIntegrationsPage(caps)` (`org-roles.ts`): a Teams **plain member** → false
+  (the page disappears for them); owner/admin, non-Teams, and single-player → true.
+- **Policy mode** (Teams owner/admin) — `integrations-policy.tsx`, the org-wide app
+  allowlist editor over `useOrgSettings` / `useSetOrgSettings` (§2), rendered with the
+  shared `AllowlistEditor`. Owner edits (`canEditOrgSettings` in `org-roles.ts` =
+  owner only); an admin sees it READ-ONLY with the `teams:integrations.orgAllowlist.ownerOnly`
+  note ("Only the workspace owner can change this."). Copy: `teams:integrations.orgAllowlist.*`
+  + `integrations:policyPage.*`. A footer deep-links to Settings > Connected accounts
+  (the deep-link contract below). NO connected grid and NO catalog in policy mode.
+- **Personal mode** (single-player / non-Teams) — the page as before: **Connected
+  apps** (a two-column grid of cards, each opening `AppDetailSheet`; pending/errored
+  connections shown full-width above the grid for recovery; omitted entirely at zero
+  connections) then the always-visible **Connect more apps** catalog. Disconnect is
+  scope `everywhere` and names affected agents. EXCEPTION: the `AppDetailSheet` renders
+  its per-agent grant toggles only when an `onToggleAgent` prop is passed, and this page
+  passes NONE — grant editing moved out (to Settings > Connected accounts, below).
+
+**Settings > Connected accounts (all modes)** — the account home for every user,
+`app/src/components/settings/sections/connected-accounts*.tsx`, section id
+`"connectedAccounts"` (`app/src/lib/settings-sections.ts`, parsed by
+`parseSettingsSection`; the store's `settingsSection` deep-link pin is typed
+`SettingsSectionId | null` against it). Gated on `integrationsSupported(capabilities)`; a row in the
+first settings card carries an app count. Contents: recovery callouts, the user's
+connected apps (one-column, agent chips), the disconnect dialog (scope `everywhere`,
+affected agents), and THE one grants surface — `AppDetailSheet` with per-agent
+`Switch`es via `useAgentGrantToggle` (`app/src/hooks/queries/use-agent-grant-toggle.ts`,
+relocated out of `integrations-view/`), each row editable per `editableAgentIds` (from
+`canEditAgentGrants`). The connect-more affordance is chosen by the pure `connectAffordance`
+(`settings/connected-accounts-model.ts`): a link to the Integrations page while it still
+hosts a catalog (non-Teams), else a hint pointing at the agent tabs. **Deep-link contract:**
+a producer calls `useUIStore.setSettingsSection("connectedAccounts")` + `setViewMode("settings")`;
+`settings-view.tsx` consumes it ONE-SHOT (reads the pending section, then clears it).
+
+**Agent tab (pure connect surface)** — `app/src/components/tabs/agent-integrations/`
+(`integrations-tab.tsx` re-exports the orchestrator). Activate/deactivate GRANT
+affordances are GONE from this tab (grant editing lives only in Settings > Connected
+accounts): `AgentAccountAppsSection` was deleted, and the `grants`-mode view is now
+`{activeRows, disallowedRows}` (no `accountRows` / `grantedToolkits`). The view is
+still a discriminated union: `grants` mode shows **Apps this agent can use** +, when
+non-empty, the disallowed section; `degraded` mode (grants `null`) shows all connected
+apps usable with no toggles. Recovery **Remove** now DISCONNECTS in both modes. Both
+end with the always-visible **Connect more apps** catalog; connect still auto-grants
+to this agent (`useConnectFlow` `autoGrant`), and the disallowed section + locked
+catalog rows are unchanged (§2, "Locked browse rows"). The bottom link routes on
+`canSeeIntegrationsPage`: `integrations:agentTab.manageAll` ("Manage all integrations")
+→ the Integrations page when the caller can see it, else `integrations:policyPage.manageAccounts`
+("Manage your connected apps") → Settings > Connected accounts (via the deep-link contract).
 
 **Locked browse rows (Teams only).** On a Teams host with a real effective
 allowlist, the browse catalog no longer FILTERS blocked apps out (which read as

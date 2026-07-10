@@ -27,12 +27,12 @@ import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
 import { analytics } from "../../lib/analytics";
-import { hasSpaces } from "../../lib/org-roles";
+import { canSeeIntegrationsPage, hasSpaces } from "../../lib/org-roles";
 import { osIsTauri } from "../../lib/os-bridge";
 import { isMac } from "../../lib/platform";
 import { isRoutineSetupMode } from "../../lib/routine-chat-setup";
 import { shortcutLabel } from "../../lib/shortcuts";
-import { isTopLevelView } from "../../lib/top-level-views";
+import { blockedTopLevelView, isTopLevelView } from "../../lib/top-level-views";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
@@ -107,6 +107,9 @@ export function WorkspaceShell({
   // Teams v2: guard the Organization render so a stale `viewMode` can never show
   // it to a plain member / single-player (the sidebar already hides the entry).
   const showOrganization = canSeeOrganization(capabilities);
+  // Teams v2: guard the Integrations render + tour anchor so a stale `viewMode`
+  // can never show the page to a plain member (the sidebar already hides it).
+  const showIntegrations = canSeeIntegrationsPage(capabilities);
   const agentDef = currentAgent ? getById(currentAgent.configId) : undefined;
   const { data: activities } = useActivity(currentAgent?.folderPath);
   const needsYouCount = (activities ?? []).filter(
@@ -127,12 +130,31 @@ export function WorkspaceShell({
         : DEFAULT_TAB_ID;
 
   useEffect(() => {
-    if (!isAgentView) return;
+    if (!isAgentView) {
+      // A gated top-level view (Integrations for a plain Teams member,
+      // Organization for a member / single-player) with a stale `viewMode`
+      // would fall through every render branch and strand the user on the
+      // engine pane with its nav entry hidden; reset to the dashboard.
+      if (
+        blockedTopLevelView(viewMode, { showIntegrations, showOrganization })
+      ) {
+        setViewMode("dashboard");
+      }
+      return;
+    }
     const valid = currentAgent
       ? isVisibleAgentTab(capabilities, currentAgent, viewMode)
       : STANDARD_TAB_IDS.has(viewMode);
     if (!valid) setViewMode(DEFAULT_TAB_ID);
-  }, [capabilities, currentAgent, isAgentView, setViewMode, viewMode]);
+  }, [
+    capabilities,
+    currentAgent,
+    isAgentView,
+    setViewMode,
+    showIntegrations,
+    showOrganization,
+    viewMode,
+  ]);
 
   useEffect(() => {
     if (!currentAgent && agents.length > 0) {
@@ -197,7 +219,7 @@ export function WorkspaceShell({
                     <AiHubView />
                   ) : viewMode === "settings" ? (
                     <SettingsView />
-                  ) : viewMode === INTEGRATIONS_VIEW_ID ? (
+                  ) : viewMode === INTEGRATIONS_VIEW_ID && showIntegrations ? (
                     <IntegrationsView />
                   ) : viewMode === ORGANIZATION_VIEW_ID && showOrganization ? (
                     <OrganizationView />
@@ -549,6 +571,13 @@ export function WorkspaceShell({
               step.targetSelector === "[data-tour-target='nav-organization']"
             ) {
               return showOrganization;
+            }
+            // The Integrations nav item is hidden from plain Teams members, so
+            // drop its tour step where the anchor never renders.
+            if (
+              step.targetSelector === "[data-tour-target='nav-integrations']"
+            ) {
+              return showIntegrations;
             }
             return true;
           })}

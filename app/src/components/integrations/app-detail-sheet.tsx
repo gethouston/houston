@@ -20,21 +20,28 @@ interface AppDetailSheetProps {
   onOpenChange: (open: boolean) => void;
   display: AppDisplay;
   connection: IntegrationConnection;
-  agents: AgentChip[];
-  activeAgentIds: ReadonlySet<string>;
-  grantsSupported: boolean;
-  canEdit: boolean;
-  onToggleAgent: (agentId: string, active: boolean) => void;
+  agents?: AgentChip[];
+  activeAgentIds?: ReadonlySet<string>;
+  grantsSupported?: boolean;
+  /** The agents whose grant the caller may edit (`canEditAgentGrants` holds).
+   * Per-agent because that right varies per agent in multiplayer; an agent not
+   * in the set renders a disabled Switch. */
+  editableAgentIds?: ReadonlySet<string>;
+  onToggleAgent?: (agentId: string, active: boolean) => void;
   onReconnect: () => void;
   onDisconnect: () => void;
   description?: string;
 }
 
 /**
- * The global page's per-app detail: status, which agents may use the app (a
- * per-agent Switch when grants are supported and the caller can edit), and the
- * Reconnect / Disconnect actions. When grants are unsupported the host has no
- * per-agent notion, so every agent can use the app (a single note, no toggles).
+ * The per-app detail sheet: status, an optional "which agents may use the app"
+ * block, and the Reconnect / Disconnect actions. The per-agent block renders
+ * ONLY when `onToggleAgent` is passed (a per-agent Switch when grants are
+ * supported, each row disabled unless that agent is in `editableAgentIds`; when
+ * grants are unsupported the host has no per-agent notion, so a single "every
+ * agent can use it" note). Settings passes the toggles; the global page omits
+ * `onToggleAgent`, so the sheet shows only the header + description + the
+ * reconnect/disconnect footer.
  */
 export function AppDetailSheet({
   open,
@@ -44,7 +51,7 @@ export function AppDetailSheet({
   agents,
   activeAgentIds,
   grantsSupported,
-  canEdit,
+  editableAgentIds,
   onToggleAgent,
   onReconnect,
   onDisconnect,
@@ -71,45 +78,47 @@ export function AppDetailSheet({
           )}
         </SheetHeader>
 
-        <div className="flex-1 overflow-auto px-4 py-4">
-          <h3 className="mb-2 text-sm font-medium text-foreground">
-            {t("detail.activeOn")}
-          </h3>
-          {!grantsSupported ? (
-            <p className="rounded-xl bg-secondary px-3 py-3 text-xs text-muted-foreground">
-              {t("detail.allAgentsNote")}
-            </p>
-          ) : agents.length === 0 ? (
-            <p className="rounded-xl bg-secondary px-3 py-3 text-xs text-muted-foreground">
-              {t("detail.noAgents")}
-            </p>
-          ) : (
-            <div className="space-y-1">
-              {agents.map((agent) => (
-                <div
-                  key={agent.id}
-                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5"
-                >
-                  <HoustonAvatar
-                    color={resolveAgentColor(agent.color)}
-                    diameter={24}
-                  />
-                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                    {agent.name}
-                  </span>
-                  <Switch
-                    checked={activeAgentIds.has(agent.id)}
-                    disabled={!canEdit}
-                    aria-label={agent.name}
-                    onCheckedChange={(active) =>
-                      onToggleAgent(agent.id, active)
-                    }
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {onToggleAgent && (
+          <div className="flex-1 overflow-auto px-4 py-4">
+            <h3 className="mb-2 text-sm font-medium text-foreground">
+              {t("detail.activeOn")}
+            </h3>
+            {!grantsSupported ? (
+              <p className="rounded-xl bg-secondary px-3 py-3 text-xs text-muted-foreground">
+                {t("detail.allAgentsNote")}
+              </p>
+            ) : (agents ?? []).length === 0 ? (
+              <p className="rounded-xl bg-secondary px-3 py-3 text-xs text-muted-foreground">
+                {t("detail.noAgents")}
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {(agents ?? []).map((agent) => (
+                  <div
+                    key={agent.id}
+                    className="flex items-center gap-2.5 rounded-lg px-2 py-1.5"
+                  >
+                    <HoustonAvatar
+                      color={resolveAgentColor(agent.color)}
+                      diameter={24}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                      {agent.name}
+                    </span>
+                    <Switch
+                      checked={(activeAgentIds ?? new Set()).has(agent.id)}
+                      disabled={!editableAgentIds?.has(agent.id)}
+                      aria-label={agent.name}
+                      onCheckedChange={(active) =>
+                        onToggleAgent(agent.id, active)
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex gap-2 border-t border-border px-4 py-3">
           <button

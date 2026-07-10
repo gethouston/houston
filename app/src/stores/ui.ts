@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { SettingsSectionId } from "../lib/settings-sections";
 
 export interface ToastItem {
   id: string;
@@ -13,6 +14,10 @@ export type JobDescriptionTarget = "instructions" | "skills" | "learnings";
 
 interface UIState {
   viewMode: string;
+  /** A one-shot deep-link consumed by SettingsView on mount: other surfaces set
+   * it right before `setViewMode("settings")` to open a specific section, and
+   * SettingsView clears it once read so a later plain Settings open lands home. */
+  settingsSection: SettingsSectionId | null;
   assistantPanelOpen: boolean;
   activityPanelId: string | null;
   activityPanelForceOpen: boolean;
@@ -74,6 +79,7 @@ interface UIState {
   /** Whether the left rail is collapsed to an icon-only strip. Persisted. */
   sidebarCollapsed: boolean;
   setViewMode: (mode: string) => void;
+  setSettingsSection: (section: SettingsSectionId | null) => void;
   setAssistantPanelOpen: (open: boolean) => void;
   setActivityPanelId: (
     id: string | null,
@@ -117,6 +123,7 @@ export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
       viewMode: "chat",
+      settingsSection: null,
       assistantPanelOpen: false,
       activityPanelId: null,
       activityPanelForceOpen: false,
@@ -146,6 +153,7 @@ export const useUIStore = create<UIState>()(
       sidebarCollapsed: false,
 
       setViewMode: (viewMode) => set({ viewMode }),
+      setSettingsSection: (settingsSection) => set({ settingsSection }),
       setAssistantPanelOpen: (assistantPanelOpen) =>
         set({ assistantPanelOpen }),
       setActivityPanelId: (activityPanelId, options) =>
