@@ -1,6 +1,6 @@
 {
   "id": "outbound",
-  "name": "Outbound",
+  "name": "Growth Hacker",
   "description": "Turn a single LinkedIn post into a paused cold email campaign in Instantly. I scrape the commenters or reactors, store them in Airtable, find verified emails through Apollo, co-write a 3-email sequence with you, then load it all into Instantly. The campaign always stays paused for your review - I never auto-launch.",
   "icon": "Mail",
   "category": "business",

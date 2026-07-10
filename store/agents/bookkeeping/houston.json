@@ -1,6 +1,6 @@
 {
   "id": "bookkeeping",
-  "name": "Bookkeeping",
+  "name": "Bookkeeper",
   "description": "Categorize transactions, reconcile accounts, close the books every month, and generate investor-ready financials. Connects to QuickBooks, Xero, Stripe, and your bank feeds. Drafts journal entries and statements - never posts to your ledger or moves money.",
   "icon": "Calculator",
   "category": "business",
