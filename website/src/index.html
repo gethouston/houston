@@ -432,14 +432,14 @@ visionPath: "vision/index.html"
     background: #07080f;
     color: #fff;
     /* Establish a stacking context so the negative-z background layers
-       (.hero-bg glow, .hero-stars, .hero-galaxy canvas, the bottom fade) all
-       paint below the hero content in a controlled order. */
+       (.hero-photo image + overlay, the bottom fade) all paint below the hero
+       content in a controlled order. */
     isolation: isolate;
   }
 
   /* Bottom fade: melts the dark space into the white page below, so the hero
-     transitions intentionally rather than cutting off. Sits above the galaxy
-     (z -2) but below the hero content (z 0). */
+     transitions intentionally rather than cutting off. Sits above the photo
+     layers but below the hero content (z 0). */
   .hero::after {
     content: "";
     position: absolute;
@@ -452,74 +452,91 @@ visionPath: "vision/index.html"
     z-index: -1;
   }
 
-  /* Static dark base — a deep-space glow built from the space.* nebula tokens.
-     Always present; the animated canvas paints opaquely over it when WebGL is
-     available, and it is the fallback when it is not. */
+  /* ── Photographic space background ─────────────────────────────────
+     Real astrophotography as an absolutely-positioned <img> (better LCP
+     treatment than a CSS background: the preload scanner sees it, and
+     srcset/sizes picks the right file). Because the layer is position:absolute
+     inside the hero it reserves no layout space of its own — the hero's size
+     comes from its content, so the image can never cause CLS. The <picture>
+     serves AVIF -> WebP -> JPEG. Variants switchable via ?bg=1|2|3|4
+     (assets/hero-photo.js), art-directed per image with object-position so
+     mobile's tall crop keeps the interesting region. */
+  .hero-photo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    /* Two layout modes. Composition-sensitive photos (the Milky Way band, the
+       horsehead) own the first viewport-and-a-bit and dissolve into the hero's
+       dark base (::before) before the tall mockup zone, so their subject stays
+       in the text band instead of sliding down behind the mockup. All-over
+       textures (cliffs, deep field) run full-bleed behind the whole hero. */
+    height: max(120vh, 56.25vw);
+    overflow: hidden;
+    pointer-events: none;
+    z-index: -3;
+  }
+
+  .hero-photo.hero-photo-full {
+    height: 100%;
+  }
+
+  /* Banded mode only: dissolve the photo's bottom edge into the base color. */
+  .hero-photo::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(7,8,15,0) 66%, rgba(7,8,15,0.92) 92%, #07080f 100%);
+    z-index: 1;
+  }
+
+  .hero-photo.hero-photo-full::before {
+    content: none;
+  }
+
+  .hero-photo img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Very slow Ken Burns drift. Transform-only (GPU-composited, no layout,
+       no paint); hero-photo.js pauses it while the hero is off screen. */
+    animation: hero-kenburns 50s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+
+  @keyframes hero-kenburns {
+    from { transform: scale(1); }
+    to { transform: scale(1.06); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-photo img { animation: none; }
+  }
+
+  /* Contrast guarantee for the light headline: a dark scrim, strongest across
+     the top text band, plus a radial pool behind the headline itself. Tuned so
+     the headline area stays >= 7:1 against white on all four photos. */
+  .hero-photo::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 78% 60% at 50% 26%, rgba(4,5,12,0.52), rgba(4,5,12,0.2) 58%, rgba(4,5,12,0) 78%),
+      linear-gradient(to bottom, rgba(4,5,12,0.56) 0%, rgba(4,5,12,0.36) 34%, rgba(4,5,12,0.18) 58%, rgba(4,5,12,0.26) 100%);
+    z-index: 1;
+  }
+
+  /* Dark base under the photo, so nothing ever flashes white while it loads. */
   .hero-bg {
     position: absolute;
     inset: 0;
     background:
       radial-gradient(ellipse 95% 60% at 50% 14%, rgba(16,20,48,0.95), transparent 70%),
-      radial-gradient(ellipse 62% 52% at 78% 26%, rgba(56,52,107,0.38), transparent 68%),
-      radial-gradient(ellipse 58% 48% at 18% 72%, rgba(20,56,76,0.32), transparent 66%),
       #07080f;
     pointer-events: none;
     z-index: -4;
-  }
-
-  /* Animated galaxy/starfield layer (assets/galaxy-bg.js). Opaque once it
-     paints, so it fully covers the static fallback. Starts hidden and the
-     script fades it in; if WebGL is absent or reduced-motion is on it stays at
-     opacity 0 and the static .hero-bg + .hero-stars are the look. */
-  .hero-galaxy {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.7s ease;
-    z-index: -2;
-  }
-
-  /* Static CSS starfield — the reduced-motion / no-WebGL fallback, layered over
-     the dark .hero-bg glow. */
-  .hero-stars {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: -3;
-    background-image:
-      radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.7), transparent),
-      radial-gradient(1px 1px at 25% 8%, rgba(255,255,255,0.5), transparent),
-      radial-gradient(1.5px 1.5px at 40% 22%, rgba(255,255,255,0.8), transparent),
-      radial-gradient(1px 1px at 55% 5%, rgba(255,255,255,0.4), transparent),
-      radial-gradient(1px 1px at 70% 18%, rgba(255,255,255,0.6), transparent),
-      radial-gradient(1.5px 1.5px at 85% 12%, rgba(255,255,255,0.5), transparent),
-      radial-gradient(1px 1px at 92% 25%, rgba(255,255,255,0.7), transparent),
-      radial-gradient(1px 1px at 5% 30%, rgba(255,255,255,0.3), transparent),
-      radial-gradient(1px 1px at 18% 35%, rgba(255,255,255,0.5), transparent),
-      radial-gradient(1.5px 1.5px at 33% 10%, rgba(255,255,255,0.6), transparent),
-      radial-gradient(1px 1px at 48% 28%, rgba(255,255,255,0.4), transparent),
-      radial-gradient(1px 1px at 62% 32%, rgba(255,255,255,0.5), transparent),
-      radial-gradient(1px 1px at 78% 7%, rgba(255,255,255,0.7), transparent),
-      radial-gradient(1px 1px at 88% 30%, rgba(255,255,255,0.3), transparent),
-      radial-gradient(1.5px 1.5px at 15% 20%, rgba(255,255,255,0.4), transparent),
-      radial-gradient(1px 1px at 35% 38%, rgba(255,255,255,0.3), transparent),
-      radial-gradient(1px 1px at 50% 15%, rgba(255,255,255,0.6), transparent),
-      radial-gradient(1px 1px at 65% 40%, rgba(255,255,255,0.2), transparent),
-      radial-gradient(1.5px 1.5px at 80% 35%, rgba(255,255,255,0.5), transparent),
-      radial-gradient(1px 1px at 95% 10%, rgba(255,255,255,0.4), transparent),
-      radial-gradient(1px 1px at 8% 42%, rgba(255,255,255,0.3), transparent),
-      radial-gradient(1px 1px at 22% 45%, rgba(255,255,255,0.2), transparent),
-      radial-gradient(1px 1px at 42% 42%, rgba(255,255,255,0.4), transparent),
-      radial-gradient(1px 1px at 58% 45%, rgba(255,255,255,0.3), transparent),
-      radial-gradient(1px 1px at 73% 43%, rgba(255,255,255,0.2), transparent),
-      radial-gradient(1.5px 1.5px at 3% 8%, rgba(255,255,255,0.6), transparent),
-      radial-gradient(1px 1px at 97% 20%, rgba(255,255,255,0.5), transparent),
-      radial-gradient(1px 1px at 30% 3%, rgba(255,255,255,0.4), transparent),
-      radial-gradient(1px 1px at 45% 48%, rgba(255,255,255,0.2), transparent),
-      radial-gradient(1px 1px at 82% 45%, rgba(255,255,255,0.3), transparent);
   }
 
   .hero h1 {
@@ -1921,8 +1938,27 @@ visionPath: "vision/index.html"
 
 <div class="hero">
   <div class="hero-bg"></div>
-  <div class="hero-stars" aria-hidden="true"></div>
-  <canvas class="hero-galaxy" aria-hidden="true"></canvas>
+  <!-- Hero background candidates (assets/hero-photo.js switches via ?bg=1|2|3|4).
+       Sources + licenses:
+       1 (default) "Cosmic Cliffs" in the Carina Nebula (Webb NIRCam) - NASA, ESA, CSA, STScI,
+         https://esawebb.org/images/weic2205a/ (downloaded .../archives/images/large/weic2205a.jpg), CC BY 4.0.
+       2 Milky Way panorama - ESO/S. Brunier, https://www.eso.org/public/images/eso0932a/
+         (downloaded https://www.eso.org/public/archives/images/large/eso0932a.jpg), CC BY 4.0 - attribution: "ESO/S. Brunier".
+       3 Horsehead Nebula in infrared (Hubble) - NASA/ESA/Hubble Heritage Team,
+         https://images.nasa.gov/details/GSFC_20171208_Archive_e001518 (NASA-originated: public domain).
+       4 Webb's First Deep Field, SMACS 0723 (Webb NIRCam) - NASA, ESA, CSA, STScI,
+         https://esawebb.org/images/weic2209a/ (downloaded .../archives/images/large/weic2209a.jpg), CC BY 4.0. -->
+  <div class="hero-photo hero-photo-full" id="hero-photo" aria-hidden="true">
+    <picture>
+      <source id="hero-photo-avif" type="image/avif" sizes="100vw"
+              srcset="/assets/space/cliffs-1280.avif 1280w, /assets/space/cliffs-1920.avif 1920w, /assets/space/cliffs-2560.avif 2560w">
+      <source id="hero-photo-webp" type="image/webp" sizes="100vw"
+              srcset="/assets/space/cliffs-1280.webp 1280w, /assets/space/cliffs-1920.webp 1920w, /assets/space/cliffs-2560.webp 2560w">
+      <img id="hero-photo-img" src="/assets/space/cliffs-1920.jpg" sizes="100vw"
+           srcset="/assets/space/cliffs-1280.jpg 1280w, /assets/space/cliffs-1920.jpg 1920w, /assets/space/cliffs-2560.jpg 2560w"
+           width="2560" height="1440" alt="" decoding="async" style="object-position: 50% 0%;">
+    </picture>
+  </div>
 
   <h1>AI agents that do<br><span class="hero-cycling-word" id="hero-cycling"></span></h1>
 
@@ -3017,7 +3053,7 @@ visionPath: "vision/index.html"
      global). The hero demo and mesh gradient are standalone. -->
 <script defer src="/assets/vendor/motion.min.js"></script>
 <script defer src="/assets/hero-demo.js"></script>
-<script defer src="/assets/galaxy-bg.js"></script>
+<script defer src="/assets/hero-photo.js"></script>
 <script defer src="/assets/micro-interactions.js"></script>
 
 {% endblock %}
