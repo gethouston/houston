@@ -4,7 +4,7 @@ import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
 import { json, readJson } from "./deps";
-import { MAX_UPLOAD_BYTES } from "./files-import";
+import { MAX_UPLOAD_BODY_BYTES, MAX_UPLOAD_BYTES } from "./files-import";
 
 /**
  * Composer attachments — files the user drops on a chat message, uploaded INTO
@@ -36,9 +36,11 @@ import { MAX_UPLOAD_BYTES } from "./files-import";
 /** The on-disk dir name — a visible, durable folder in the agent's workspace. */
 const UPLOADS_DIR = "uploads";
 
-// A single request is capped at MAX_UPLOAD_BYTES (shared with files/import so
-// the composer's client-side per-file limit and the host cap can't drift; the
-// client uploads one request per file, so per-file = per-request).
+// A single request's decoded payload is capped at MAX_UPLOAD_BYTES (shared with
+// files/import so the composer's client-side per-file limit and the host cap
+// can't drift; the client uploads one request per file, so per-file =
+// per-request). The RAW body is bounded during draining by MAX_UPLOAD_BODY_BYTES
+// so an oversized upload can never buffer into the process.
 
 export class AttachmentError extends Error {
   constructor(
@@ -140,7 +142,10 @@ function parseUploadBody(body: Record<string, unknown>): UploadFile[] {
         `file[${i}] needs string 'name' and 'contentBase64'`,
       );
     }
-    // base64 is ~4/3 the byte size; estimate to fail oversized uploads loudly.
+    // Semantic decoded-size limit (base64 is ~3/4 the byte size). The raw body
+    // is already capped DURING draining by readJson(MAX_UPLOAD_BODY_BYTES) — the
+    // OOM guard — so this estimate is now purely the user-facing size limit, not
+    // the memory backstop it used to (wrongly) stand in for.
     total += Math.floor((f.contentBase64.length * 3) / 4);
     if (total > MAX_UPLOAD_BYTES) {
       throw new AttachmentError(
@@ -186,7 +191,7 @@ export async function handleAttachments(
   const root = paths.agentRoot(ctx.workspace, ctx.agent);
   try {
     if (method === "POST") {
-      const files = parseUploadBody(await readJson(req));
+      const files = parseUploadBody(await readJson(req, MAX_UPLOAD_BODY_BYTES));
       const saved = await saveAttachments(vfs, root, files);
       if (saved.length > 0)
         emit?.({ type: "FilesChanged", agentPath: ctx.agent.id });

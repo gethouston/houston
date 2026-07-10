@@ -43,6 +43,7 @@ import {
 } from "./routes/integrations";
 import { handleSandboxIntegrations } from "./routes/integrations-sandbox";
 import { handlePortableAccount } from "./routes/portable";
+import { BodyTooLargeError } from "./routes/read-body";
 import { handleSetupRuntime } from "./routes/setup-runtime";
 import { handleSkillsDirectory } from "./routes/skills-directory";
 import type { Vfs } from "./vfs";
@@ -244,6 +245,9 @@ async function handle(
     try {
       payload = parseFeedbackPayload(await readJson(req));
     } catch (err) {
+      // An oversized body is a 413 (mapped by the top-level handler), not a
+      // malformed-payload 400 — let it propagate rather than mislabel it.
+      if (err instanceof BodyTooLargeError) throw err;
       return json(res, 400, {
         error: err instanceof Error ? err.message : String(err),
       });
@@ -293,9 +297,24 @@ export function createControlPlaneServer(deps: ControlPlaneDeps): Server {
       });
     }
     handle(counted, req, res).catch((err) => {
+      // An over-cap body maps to 413 (Payload Too Large) with its own clean
+      // message; everything else is a 500. Close the connection on 413: capping
+      // the body leaves unread bytes on the socket that would poison keep-alive.
+      const tooLarge = err instanceof BodyTooLargeError;
       const message = err instanceof Error ? err.message : String(err);
-      if (!res.headersSent) json(res, 500, { error: message });
-      else if (!res.writableEnded) res.end();
+      try {
+        if (!res.headersSent) {
+          json(
+            res,
+            tooLarge ? 413 : 500,
+            { error: message },
+            tooLarge ? { Connection: "close" } : {},
+          );
+        } else if (!res.writableEnded) res.end();
+      } catch {
+        // The socket was already torn down while aborting the oversized body —
+        // there is nothing left to respond on.
+      }
     });
   });
 }

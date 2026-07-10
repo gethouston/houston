@@ -10,6 +10,7 @@ import type {
   RuntimeLauncher,
   TurnPin,
 } from "../ports";
+import { MAX_JSON_BYTES, readBody } from "../routes/read-body";
 
 /**
  * Forwards one authorized request to a standing runtime and streams the reply
@@ -64,11 +65,15 @@ export class ProxyChannel implements RuntimeChannel {
     // Collect the raw body for non-GET so arbitrary payloads ({text}, {code},
     // {activeProvider}) pass through untouched. Strip the caller's `token` auth
     // param so the user's JWT is never leaked downstream to the runtime.
+    //
+    // Bounded by MAX_JSON_BYTES: file uploads and attachments are intercepted
+    // host-side (handleFiles / handleAttachments) BEFORE this forward, so the
+    // only bodies that reach a standing pod are control-plane JSON (messages,
+    // settings, provider login) — a few MB is generous, and the cap stops an
+    // oversized body from OOM-ing the (memory-capped) engine pod.
     let body: Buffer | undefined;
     if (method !== "GET" && method !== "HEAD") {
-      const chunks: Buffer[] = [];
-      for await (const c of req) chunks.push(c as Buffer);
-      body = Buffer.concat(chunks);
+      body = await readBody(req, MAX_JSON_BYTES);
     }
     const params = new URLSearchParams(url.search);
     params.delete("token");

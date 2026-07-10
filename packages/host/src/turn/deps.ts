@@ -1,4 +1,4 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
+import type { ServerResponse } from "node:http";
 import type { Agent, Workspace } from "../domain/types";
 import type { CredentialStore, WorkspaceCredential } from "../ports";
 import type { Vfs } from "../vfs";
@@ -40,16 +40,9 @@ export function json(res: ServerResponse, status: number, body: unknown) {
   res.end(JSON.stringify(body));
 }
 
-export async function readJson(
-  req: IncomingMessage,
-): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const c of req) chunks.push(c as Buffer);
-  return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") as Record<
-    string,
-    unknown
-  >;
-}
+// The byte-capped body reader lives once in routes/read-body.ts; re-exported so
+// the turn dispatch path shares the exact same cap as every other route.
+export { readJson } from "../routes/read-body";
 
 export const prefixFor = (ws: Workspace, agent: Agent) =>
   `ws/${ws.id}/${agent.id}`;
