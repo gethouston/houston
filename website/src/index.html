@@ -26,6 +26,9 @@ visionPath: "vision/index.html"
 { "@context":"https://schema.org","@type":"SoftwareApplication","name":"Houston","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Free desktop app that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,000 integrations." }
 </script>
 {% endblock %}
+{% block stylesheets %}
+<link rel="stylesheet" href="/assets/hero-demo.css">
+{% endblock %}
 {% block inlineStyles %}
 <style>
   /* ═══════════════════════════════════════════
@@ -406,6 +409,10 @@ visionPath: "vision/index.html"
     position: relative;
     overflow: hidden;
     background: var(--background);
+    /* Establish a stacking context so the z-index:-1 background layers
+       (.hero-bg, .hero-mesh) paint above the hero's own white background but
+       below the hero content. */
+    isolation: isolate;
   }
 
   .hero-bg {
@@ -416,6 +423,21 @@ visionPath: "vision/index.html"
       radial-gradient(ellipse 60% 40% at 80% 60%, rgba(249,115,22,0.07), transparent),
       radial-gradient(ellipse 60% 40% at 20% 80%, rgba(129,140,248,0.06), transparent);
     pointer-events: none;
+    z-index: -1;
+  }
+
+  /* Animated mesh-gradient layer: sits over the static .hero-bg, below hero
+     content (negative z-index keeps it behind the headline and the app mockup).
+     Composited with alpha so the static radial gradients still show through.
+     Lazily initialized by assets/mesh-gradient.js; if WebGL is absent or
+     reduced-motion is on, this stays transparent and .hero-bg is the look. */
+  .hero-mesh {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: -1;
   }
 
   .hero-stars {
@@ -641,14 +663,8 @@ visionPath: "vision/index.html"
     border-bottom-color: var(--gray-950);
   }
 
-  /* Kanban mockup */
-  .kanban-mockup {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
-    flex: 1;
-  }
-
+  /* Board columns — reused by the scripted hero demo (assets/hero-demo.js);
+     the demo's 2-column grid lives in assets/hero-demo.css (.hd-board). */
   .kanban-col {
     display: flex;
     flex-direction: column;
@@ -1560,7 +1576,6 @@ visionPath: "vision/index.html"
     .final-cta-card { padding: 36px 28px; }
     .cta-section [style*="grid-template-columns: 1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
     .cta-section [style*="grid-template-columns: 1fr 1fr 1fr"] .final-cta-card { border-left: none !important; border-top: 1px solid var(--border-light); }
-    .kanban-mockup { grid-template-columns: 1fr; }
     .mockup-body { min-height: auto; }
     .app-mockup { max-width: 100% !important; }
   }
@@ -1582,7 +1597,6 @@ visionPath: "vision/index.html"
     footer { padding: 32px 24px; }
     footer > div:first-child { grid-template-columns: 1fr !important; gap: 32px !important; }
     .nav-right .btn { font-size: 12px; padding: 0 12px; height: 32px; }
-    .kanban-col:nth-child(3) { display: none; }
     .mockup-titlebar .title { font-size: 12px; }
     .kanban-col-header { font-size: 11px; }
     .kanban-card-title { font-size: 12px; }
@@ -1591,9 +1605,6 @@ visionPath: "vision/index.html"
     .app-mockup { max-width: 100% !important; margin-top: 40px !important; }
     .app-mockup .mockup-sidebar { display: none !important; }
     .app-mockup .mockup-body { min-height: auto !important; }
-    .app-mockup .kanban-mockup { grid-template-columns: 1fr !important; }
-    .app-mockup .kanban-col:nth-child(2),
-    .app-mockup .kanban-col:nth-child(3) { display: none; }
     .phone-mockup { display: none !important; }
   }
 
@@ -1781,6 +1792,7 @@ visionPath: "vision/index.html"
 
 <div class="hero">
   <div class="hero-bg"></div>
+  <canvas class="hero-mesh" aria-hidden="true"></canvas>
 
   <h1>AI agents that do<br><span class="hero-cycling-word" id="hero-cycling"></span></h1>
 
@@ -1791,7 +1803,7 @@ visionPath: "vision/index.html"
     <button class="btn btn-secondary btn-lg" data-dl-windows-trigger data-dl-source="hero-windows"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Download for Windows</button>
   </div>
 
-  <div class="app-mockup" style="max-width: 1152px; width: 100%; margin-top: 64px; animation: float-up 0.6s ease 0.25s both;">
+  <div class="app-mockup" data-hero-demo style="max-width: 1152px; width: 100%; margin-top: 64px; animation: float-up 0.6s ease 0.25s both;">
     <div class="mockup-titlebar">
       <div class="traffic-lights">
         <span class="tl-red"></span>
@@ -1840,74 +1852,59 @@ visionPath: "vision/index.html"
           <div class="sidebar-item" style="font-size: 13px;">Reporting</div>
         </div>
       </div>
-      <!-- Main content — Mission Control view -->
+      <!-- Main content — scripted "mini-Houston" demo (assets/hero-demo.js).
+           The markup below is a COMPLETED state, so with JS disabled or with
+           prefers-reduced-motion it reads as finished; the script resets and
+           plays the loop as progressive enhancement. -->
       <div class="mockup-main" style="padding: 0; display: flex; flex-direction: column;">
-        <!-- Header -->
-        <div style="padding: 16px 20px 0;">
-          <div style="font-size: 18px; font-weight: 600; color: var(--gray-950); margin-bottom: 12px; letter-spacing: -0.02em;">Mission Control</div>
-          <div style="display: flex; gap: 8px; padding-bottom: 12px;">
-            <div style="font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--border-medium); color: var(--gray-700); display: inline-flex; align-items: center; gap: 4px;">All Agents <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M4 6l4 4 4-4"/></svg></div>
-            <div style="font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--border-medium); color: var(--gray-700); display: inline-flex; align-items: center; gap: 4px;">All Statuses <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M4 6l4 4 4-4"/></svg></div>
+        <div class="hd">
+          <div class="hd-topbar">
+            <div class="hd-title">Mission Control</div>
+            <div class="hd-tabs" role="tablist" aria-label="Choose an agent to watch">
+              <button class="hd-tab active" type="button" role="tab" aria-selected="true">Assistant</button>
+              <button class="hd-tab" type="button" role="tab" aria-selected="false">Sales Rep</button>
+              <button class="hd-tab" type="button" role="tab" aria-selected="false">Bookkeeper</button>
+            </div>
           </div>
-        </div>
-        <!-- Kanban board -->
-        <div style="padding: 16px 20px; flex: 1;">
-          <div class="kanban-mockup">
-            <div class="kanban-col">
-              <div class="kanban-col-header">Running <span class="count">3</span></div>
-              <div class="kanban-card-mock running">
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                  <img src="houston-gray.svg" width="14" height="14" alt="" style="flex-shrink: 0;">
-                  <span style="font-size: 11px; color: var(--gray-500);">Email and Outreach</span>
+          <div class="hd-split" aria-hidden="true">
+            <!-- Chat column -->
+            <div class="hd-chat">
+              <div class="hd-chat-head">
+                <img class="hd-avatar" src="houston-black.svg" width="24" height="24" alt="">
+                <div>
+                  <div class="hd-agent-name" id="hd-agent-name">Assistant</div>
+                  <div class="hd-agent-task" id="hd-agent-task">Clear the inbox</div>
                 </div>
-                <div class="kanban-card-title">Follow up with event contacts</div>
-                <div class="kanban-card-desc">Sending 31 personalized emails from your Gmail account</div>
               </div>
-              <div class="kanban-card-mock running">
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                  <img src="houston-gray.svg" width="14" height="14" alt="" style="flex-shrink: 0;">
-                  <span style="font-size: 11px; color: var(--gray-500);">Bookkeeping</span>
-                </div>
-                <div class="kanban-card-title">Categorize March expenses</div>
-                <div class="kanban-card-desc">Processing 47 transactions in QuickBooks</div>
+              <div class="hd-thread" id="hd-thread">
+                <div class="chat-msg user">Clear my inbox. Reply to anything urgent, archive the rest.</div>
+                <div class="chat-msg assistant">On it. 23 unread. Drafting 4 replies and archiving the newsletters.</div>
+                <div class="chat-msg assistant">Done. 4 replies are waiting for your OK. Inbox at zero.</div>
               </div>
-              <div class="kanban-card-mock running">
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                  <img src="houston-gray.svg" width="14" height="14" alt="" style="flex-shrink: 0;">
-                  <span style="font-size: 11px; color: var(--gray-500);">Scheduling</span>
-                </div>
-                <div class="kanban-card-title">Reschedule Thursday meetings</div>
-                <div class="kanban-card-desc">Moving 3 meetings and sending updated calendar invites</div>
+              <div class="hd-composer chat-composer-mock">
+                <span class="placeholder" id="hd-composer-text">Tell your agent what to do...</span>
+                <span class="send-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 14V2M8 2l-4 4M8 2l4 4"/></svg></span>
               </div>
             </div>
-            <div class="kanban-col">
-              <div class="kanban-col-header">Needs you <span class="count">1</span></div>
-              <div class="kanban-card-mock">
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                  <img src="houston-gray.svg" width="14" height="14" alt="" style="flex-shrink: 0;">
-                  <span style="font-size: 11px; color: var(--gray-500);">Research</span>
-                </div>
-                <div class="kanban-card-title">Compare CRM options</div>
-                <div class="kanban-card-desc">Reviewed 5 platforms, waiting for your pick</div>
+            <!-- Live board column -->
+            <div class="hd-board">
+              <div class="kanban-col">
+                <div class="kanban-col-header">Running <span class="count" id="hd-run-count">0</span></div>
+                <div class="kanban-col-body" id="hd-running"></div>
               </div>
-            </div>
-            <div class="kanban-col">
-              <div class="kanban-col-header">Done <span class="count">2</span></div>
-              <div class="kanban-card-mock">
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                  <img src="houston-gray.svg" width="14" height="14" alt="" style="flex-shrink: 0;">
-                  <span style="font-size: 11px; color: var(--gray-500);">Reporting</span>
+              <div class="kanban-col">
+                <div class="kanban-col-header">Done <span class="count" id="hd-done-count">1</span></div>
+                <div class="kanban-col-body" id="hd-done">
+                  <div class="kanban-card-mock">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                      <img src="houston-gray.svg" width="14" height="14" alt="" style="flex-shrink: 0;">
+                      <span style="font-size: 11px; color: var(--gray-500);">Assistant</span>
+                    </div>
+                    <div class="kanban-card-title">Follow up on urgent email</div>
+                    <div class="kanban-card-desc">4 replies ready, 17 archived</div>
+                    <div class="kanban-card-status status-done"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M2 6l3 3 5-5"/></svg> Done</div>
+                  </div>
                 </div>
-                <div class="kanban-card-title">Weekly sales summary</div>
-                <div class="kanban-card-desc">Built spreadsheet with this week's numbers from Stripe</div>
-              </div>
-              <div class="kanban-card-mock">
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                  <img src="houston-gray.svg" width="14" height="14" alt="" style="flex-shrink: 0;">
-                  <span style="font-size: 11px; color: var(--gray-500);">Email and Outreach</span>
-                </div>
-                <div class="kanban-card-title">Reply to pending invoices</div>
-                <div class="kanban-card-desc">Sent payment reminders to 4 overdue accounts</div>
               </div>
             </div>
           </div>
@@ -2884,5 +2881,13 @@ visionPath: "vision/index.html"
     }
   })();
 </script>
+
+<!-- Landing-page enhancements. All deferred so nothing is render-blocking and
+     none competes with LCP. Motion loads first (micro-interactions reads the
+     global). The hero demo and mesh gradient are standalone. -->
+<script defer src="/assets/vendor/motion.min.js"></script>
+<script defer src="/assets/hero-demo.js"></script>
+<script defer src="/assets/mesh-gradient.js"></script>
+<script defer src="/assets/micro-interactions.js"></script>
 
 {% endblock %}
