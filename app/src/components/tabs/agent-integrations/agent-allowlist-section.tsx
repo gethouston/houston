@@ -104,9 +104,12 @@ export function AgentAllowlistSection({
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-medium text-foreground">
+      <h2 className="mb-1 text-lg font-medium text-foreground">
         {t("integrations.allowlist.question")}
       </h2>
+      <p className="mb-4 text-sm text-muted-foreground">
+        {t("integrations.allowlist.policyHelper")}
+      </p>
 
       <AccessChoice
         question={t("integrations.allowlist.question")}

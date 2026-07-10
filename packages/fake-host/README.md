@@ -56,12 +56,20 @@ They drive the failure/reactivity scenarios the specs assert against:
 | `/__test__/drop-chat-streams` | — | Sever every open chat stream WITHOUT ending the turns (network blip). Returns `{ dropped }`. |
 | `/__test__/kill-turn` | — | Synthesize the host reaper's terminal `error` frame on every running turn (dead-turn settle). Returns `{ killed }`. |
 | `/__test__/turn-boundary` | `{ nextText }` | End the running turn while nobody watches, then start the next one, so a reconnect resyncs onto a DIFFERENT turnId. Returns `{ advanced }`. |
+| `/__test__/integrations-mode` | `{ mode }` | Composio readiness: `ready` \| `unavailable` (503) \| `signin`. Returns `{ mode }`. |
+| `/__test__/integrations-activate` | `{ connectionId }` | Flip a pending connection to `active` (models the OAuth completing). Returns `{ activated }`. |
+| `/__test__/capabilities` | `Partial<Capabilities>` | Merge a partial into the advertised `/v1/capabilities`. Arm the Teams-shaped state single-player can't reach — e.g. `{ integrations:["composio"], multiplayer:true, teams:true, role:"owner" }` to light up the agent Integrations tab's locked browse rows, or just `{ integrations:["composio"] }` for a single-player-with-apps run. Returns the merged capabilities. |
+| `/__test__/agent-settings` | `{ allowedToolkits?, orgAllowedToolkits?, allowedModels?, access? }` | Set the Teams v2 ceilings served at `/v1/agents/:slug/settings` + `/v1/org/settings` (`allowedToolkits`/`orgAllowedToolkits`: `null` = unrestricted, `[]` = none). The `effectiveAllowlist` = agent ∩ org drives the tab's connectable-vs-locked partition. Returns the merged settings. |
 
 ## Modeled surface
 
 - `/health`, `/version`, `/auth/status`, `/providers` — top-level probes.
-- `/v1/capabilities` (single-player `local` profile), `/v1/workspaces`,
-  `/v1/integrations`, `/v1/preferences`, `/v1/events` (reactivity feed).
+- `/v1/capabilities` (single-player `local` profile by default; armable to a
+  Teams-shaped set), `/v1/workspaces`, `/v1/integrations`, `/v1/preferences`,
+  `/v1/events` (reactivity feed).
+- `/v1/agents/:slug/settings` + `/v1/org/settings` (Teams v2, the gateway-only
+  allowlist/model ceilings `getAgentSettings` / `getOrgSettings` read; GET + the
+  manager/owner PUT). Seeded unrestricted; armed by `/__test__/agent-settings`.
 - `/agents/*` — the per-agent control plane + runtime proxy: agents CRUD,
   activities (backed by the SAME `.houston/activity/activity.json` the board
   reads via `/agents/:id/agentfile/*`), routines/skills (empty), providers/auth/

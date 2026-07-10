@@ -69,6 +69,12 @@
   "connectMore": {
     "title": "Conecte mais apps"
   },
+  "locked": {
+    "heading": "Não habilitados pelo seu administrador",
+    "askAdmin": "Peça ao seu administrador para habilitar {{name}}",
+    "more_one": "{{count}} app a mais que seu administrador não habilitou",
+    "more_other": "{{count}} apps a mais que seu administrador não habilitou"
+  },
   "chips": {
     "more": "+{{count}}"
   },

@@ -387,6 +387,18 @@ auto-grants on success. Client: `getAgentSettings` / `setAgentSettings`
 (agent ceiling, manager-only), `getOrgSettings` / `setOrgSettings` (org ceiling,
 owner-only). UI under `teams:integrations.allowlist`.
 
+**Blocked apps stay VISIBLE (never silently absent).** The agent Integrations
+tab shows a ceiling-blocked app in one of two places rather than hiding it: a
+CONNECTED blocked app appears in the disallowed section (`teams:integrations.notAllowed`,
+"Not allowed" badge + an ask-your-admin line), and a NOT-connected blocked app
+appears as a **locked row** in the browse catalog (lock icon + `integrations:locked.askAdmin`
+"Ask your admin to enable {app}", capped preview; see `integrations.md` §3
+"Locked browse rows"). The ceiling editor (`AgentAllowlistSection`) reads as admin
+POLICY via `teams:integrations.allowlist.policyHelper`. Member connect surfaces
+stay account-connection language ("connected to your account"), never "allowed".
+The pure split is `browseCatalogView` (`integrations/model.ts`); off Teams
+(`allowlist === null`) nothing is ever locked.
+
 ---
 
 ## Mission attribution + the board surface

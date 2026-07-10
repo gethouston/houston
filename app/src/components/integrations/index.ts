@@ -17,12 +17,15 @@ export {
 export { IntegrationDisconnectDialog } from "./integration-disconnect-dialog";
 export {
   BROWSE_PAGE_SIZE,
+  type BrowseCatalogView,
   browseCatalog,
+  browseCatalogView,
   type CategoryListView,
   categoriesOf,
   categoryLabel,
   categoryListView,
   INTEGRATION_PROVIDER,
+  LOCKED_PREVIEW_CAP,
   POLL_INTERVAL_MS,
   POLL_MAX_ATTEMPTS,
   type PollOutcome,
