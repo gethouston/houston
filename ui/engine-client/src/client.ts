@@ -31,6 +31,7 @@ import type {
   ChatHistoryEntry,
   ClaudeStatus,
   CommunitySkill,
+  CommunitySkillPreview,
   ComposioAppEntry,
   ComposioReconnectResponse,
   ComposioStartLinkResponse,
@@ -904,15 +905,20 @@ export class HoustonClient {
       true,
     );
   }
-  popularCommunitySkills(
+  // Read-only detail for one community skill: fetches + parses its real
+  // SKILL.md so the marketplace can show a true description before install.
+  // Carries the browsing agent's path like the other reads (see above).
+  previewCommunitySkill(
     _agentPath: string,
+    source: string,
+    skillId: string,
     signal?: AbortSignal,
-  ): Promise<CommunitySkill[]> {
-    // Read-only POST → replay-safe.
+  ): Promise<CommunitySkillPreview> {
+    // Read-only preview POST → replay-safe.
     return this.request(
       "POST",
-      "/skills/community/popular",
-      undefined,
+      "/skills/community/preview",
+      { source, skillId },
       undefined,
       signal,
       true,
