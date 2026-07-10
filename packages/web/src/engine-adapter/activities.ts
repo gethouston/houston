@@ -58,6 +58,10 @@ export function activityToConversation(
     agent_name: agentName,
     agent: a.agent,
     routine_id: a.routine_id,
+    // Teams attribution (server-stamped in multiplayer only). Spread
+    // conditionally so single-player entries don't carry undefined keys.
+    ...(a.created_by !== undefined && { created_by: a.created_by }),
+    ...(a.contributors !== undefined && { contributors: a.contributors }),
   };
 }
 

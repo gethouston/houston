@@ -1,9 +1,8 @@
 /**
  * Pure logic for the provider marketplace: grouping providers into
  * Connected / Available sections, resolving a card's model count and model
- * list across its gateway ids (the merged OpenCode account spans two), the
- * i18n key each card's auth chip and description map to, and the money /
- * context token formatters the cards and model rows share.
+ * list across its gateway ids (the merged OpenCode account spans two), how a
+ * card is billed, and the i18n key each card's description maps to.
  *
  * Kept separate from the React components so it can be unit-tested with
  * `node --test` (see `app/tests/provider-grouping.test.ts`).
@@ -14,6 +13,7 @@ import type {
   CatalogOffer,
   HubCatalog,
 } from "../../lib/ai-hub/catalog-types.ts";
+import { PROVIDER_OVERRIDES } from "../../lib/provider-overrides.ts";
 import {
   getConnectProviders,
   type ProviderInfo,
@@ -85,20 +85,33 @@ export function offerForProvider(
   return model.offers.find((offer) => gateways.has(offer.providerId));
 }
 
-/** The `card.*` i18n key describing how a provider connects. */
-export type AuthChipKey = "subscription" | "apiKey" | "gateway" | "local";
+/** How a provider is billed: a flat plan with usage included, or metered per token. */
+export type ProviderBilling = "subscription" | "payg";
 
 /**
- * Which auth chip a provider shows. OAuth / Copilot plans read as
- * "Subscription"; the local server as "Runs on your computer"; multi-lab
- * key gateways (OpenRouter, the merged OpenCode account) as "Multi-model
- * gateway"; every other pasted key as "Your API key".
+ * How a provider is BILLED — as opposed to `provider.auth`, how you CONNECT.
+ * They usually coincide (the three OAuth sign-in providers are flat
+ * subscriptions; every pasted-key provider is pay-as-you-go) but not always:
+ * OpenCode Go is a flat $10/month subscription unlocked with a pasted key
+ * (`PROVIDER_OVERRIDES["opencode-go"].billing` overrides the apiKey default).
+ * A card spanning gateway ids with DIFFERENT billing (the merged OpenCode
+ * account: Zen is payg, Go is a subscription, one shared key) returns BOTH —
+ * it genuinely belongs under either filter, not just one. The local
+ * (`openaiCompatible`) provider has no billing relationship at all and
+ * returns an empty set.
  */
-export function authChipKey(provider: ProviderInfo): AuthChipKey {
-  if (provider.auth === "openaiCompatible") return "local";
-  if (provider.auth !== "apiKey") return "subscription";
-  if (provider.gatewayIds || provider.id === "openrouter") return "gateway";
-  return "apiKey";
+export function providerBilling(
+  provider: ProviderInfo,
+): ReadonlySet<ProviderBilling> {
+  const kinds = new Set<ProviderBilling>();
+  if (provider.auth === "openaiCompatible") return kinds;
+  for (const id of providerGatewayIds(provider)) {
+    kinds.add(
+      PROVIDER_OVERRIDES[id]?.billing ??
+        (provider.auth === "oauth" ? "subscription" : "payg"),
+    );
+  }
+  return kinds;
 }
 
 /** The `aiHub:providers.*` description key for a card. */

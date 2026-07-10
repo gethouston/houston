@@ -1,16 +1,16 @@
 {
-  "shareMenu": "Compartilhar com um amigo",
+  "exportMenu": "Exportar uma cópia",
   "newAgent": {
     "fromFriendCard": "De um amigo",
     "fromFriendDescription": "Envie um arquivo que alguém te compartilhou e traga o agente para seu espaço."
   },
   "flagged": "Houston marcou este para você dar uma olhada.",
   "export": {
-    "eyebrow": "Compartilhando {{name}}",
+    "eyebrow": "Exportando {{name}}",
     "loading": "Carregando seu agente.",
     "step1": {
-      "title": "O que vamos compartilhar?",
-      "body": "Escolha o que seu amigo leva. As instruções do agente sempre vão junto.",
+      "title": "O que vamos exportar?",
+      "body": "Escolha o que vai na cópia. As instruções do agente sempre vão junto.",
       "instructionsLabel": "Instruções",
       "instructionsRow": "Descrição do trabalho e regras",
       "noInstructions": "Este agente ainda não tem instruções.",
@@ -20,13 +20,22 @@
     },
     "step2": {
       "title": "Quer anonimizar antes?",
-      "body": "Houston pode remover informações pessoais óbvias como e-mails e caminhos. Você vê o que mudou antes de salvar.",
-      "asIsTitle": "Compartilhar como está",
+      "body": "Houston pode remover informações pessoais como nomes, e-mails e caminhos. Você vê o que mudou antes de salvar.",
+      "asIsTitle": "Exportar como está",
       "asIsBody": "Manter tudo como está.",
       "anonymizeTitle": "Me ajude a anonimizar",
-      "anonymizeBody": "Remove e-mails, caminhos e outros dados pessoais óbvios.",
+      "anonymizeBody": "Remove nomes, e-mails, empresas, chaves de API e outros dados pessoais.",
       "reviewLabel": "Veja o que mudou",
       "working": "Houston está revisando seu conteúdo.",
+      "startReview": "Começar a revisão",
+      "checkAgain": "Revisar de novo",
+      "workingProgress": "Houston está revisando seu conteúdo ({{done}} de {{total}} prontos).",
+      "slowNotice": "Isso está demorando mais que o normal. Você pode ficar com o que já está pronto e terminar o resto do jeito rápido.",
+      "stopWait": "Usar o que está pronto",
+      "stopping": "Terminando com o que já está pronto.",
+      "aiToggleTitle": "Deixar minha IA ajudar",
+      "aiToggleHint": "Quando está ligado, sua IA também procura dados pessoais fáceis de passar despercebidos, como nomes ou empresas. Quando está desligado, Houston só remove o óbvio, como e-mails, links e chaves. Nos dois casos, você revisa cada mudança antes de compartilhar.",
+      "aiFallback": "Houston não conseguiu usar IA nesta etapa ({{reason}}). Apenas padrões óbvios como e-mails e caminhos foram removidos, então revise os resultados com cuidado.",
       "diffInstructions": "Instruções",
       "before": "Antes",
       "after": "Depois",
@@ -37,8 +46,8 @@
       "learningTitle": "Aprendizado"
     },
     "step3": {
-      "title": "Pronto para compartilhar",
-      "body": "Houston empacota {{name}} em um arquivo único que você pode enviar por qualquer app.",
+      "title": "Pronto para exportar",
+      "body": "Houston empacota {{name}} em um arquivo único que você pode enviar por qualquer app. Quem recebe importa a própria cópia. A colaboração ao vivo fica em Compartilhar.",
       "skillsLabel": "Habilidades",
       "routinesLabel": "Rotinas",
       "learningsLabel": "Aprendizados",

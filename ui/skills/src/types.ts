@@ -16,6 +16,15 @@ export interface CommunitySkill {
   source: string;
 }
 
+/** Full detail fetched on-demand for a community skill, read from its real SKILL.md. */
+export interface CommunitySkillPreview {
+  title: string | null;
+  description: string;
+  image: string | null;
+  category: string | null;
+  tags: string[];
+}
+
 /** A skill discovered in a GitHub repo */
 export interface RepoSkill {
   id: string;

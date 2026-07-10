@@ -117,6 +117,47 @@ describe("piCatalogToCandidates maps the pi-ai catalog to merge candidates", () 
   });
 });
 
+describe("piCatalogToCandidates curates subscription providers", () => {
+  const catalog: ProviderCatalog = [
+    provider("anthropic", "oauth", [
+      // Curated: a PROVIDER_OVERRIDES.anthropic.models entry.
+      entry("claude-sonnet-5"),
+      // Uncurated: pi runs it (an old id like claude-3-opus), but the plan's
+      // curated set doesn't list it — must be filtered out of the hub.
+      entry("claude-3-opus"),
+    ]),
+    provider("groq", "apiKey", [
+      // API-key gateways are NEVER curation-filtered: their full list stands.
+      entry("llama-4-scout"),
+    ]),
+  ];
+  const candidates = piCatalogToCandidates(catalog);
+
+  it("keeps a curated OAuth model", () => {
+    ok(
+      candidates.some(
+        (c) => c.providerId === "anthropic" && c.raw.id === "claude-sonnet-5",
+      ),
+    );
+  });
+
+  it("drops an OAuth model absent from the curated set", () => {
+    ok(
+      !candidates.some(
+        (c) => c.providerId === "anthropic" && c.raw.id === "claude-3-opus",
+      ),
+    );
+  });
+
+  it("never curation-filters an API-key gateway", () => {
+    ok(
+      candidates.some(
+        (c) => c.providerId === "groq" && c.raw.id === "llama-4-scout",
+      ),
+    );
+  });
+});
+
 describe("snapshot enrichment is gated to pi-existing models", () => {
   function raw(key: string, extra: Partial<RawModel> = {}): RawModel {
     return { key, id: key, name: key, ...extra };

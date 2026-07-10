@@ -206,6 +206,18 @@ export type { ChatSidebarProps } from "./chat-sidebar";
 export { ChatSidebar } from "./chat-sidebar";
 export type { ChatStatusLineProps } from "./chat-status-line";
 export { ChatStatusLine } from "./chat-status-line";
+// === Suggest-reusable card ===
+// The composer-replacing surface shown when the agent finishes cleanly and calls
+// `suggest_reusable`: an optional, dismissible offer to save the just-completed
+// work as a Skill or a scheduled Routine (Save / Not now). Props-only; the app
+// supplies localized labels and wires the send.
+export type { ChatSuggestReusableCardProps } from "./chat-suggest-reusable-card";
+export { ChatSuggestReusableCard } from "./chat-suggest-reusable-card";
+export type { ChatSuggestReusableLabels } from "./chat-suggest-reusable-card-model";
+export {
+  DEFAULT_SUGGEST_REUSABLE_LABELS,
+  resolveSuggestReusableSaveLabel,
+} from "./chat-suggest-reusable-card-model";
 // === Dictation ===
 export type {
   DictationControl,
@@ -233,6 +245,15 @@ export type {
   ToolEntry,
 } from "./feed-to-messages";
 export { distinctAuthorCount } from "./feed-to-messages";
+export type {
+  InteractionAnswerLine,
+  InteractionAnswersPayload,
+} from "./interaction-answers-message";
+// === Interaction-answers Messages ===
+// Encoded user-message marker that signals "this message is the answers the
+// user gave to an ask_user interaction sequence". Decoded into a structured
+// payload so consumers (desktop, mobile) can render the same Q&A card.
+export { decodeInteractionAnswersMessage } from "./interaction-answers-message";
 // === Interaction Card ===
 // The in-chat surface shown when the agent pauses to gather what it needs before
 // continuing; a stepper (one question or connect step at a time) that replaces
@@ -283,3 +304,4 @@ export {
   UserAttachmentBadge,
   UserAttachmentMessage,
 } from "./user-attachment-message";
+export { UserInteractionAnswersMessage } from "./user-interaction-answers-message";

@@ -35,8 +35,10 @@ describe("Agent Settings a11y", () => {
     ok(!models.includes("<h1"), "models section title is not an h1");
     ok(models.includes("<h2"), "models section title is an h2");
 
+    // The editor body (question heading included) lives in the shared
+    // AllowlistEditor; the agent section is a thin wrapper around it.
     const allowlist = read(
-      "../src/components/tabs/agent-integrations/agent-allowlist-section.tsx",
+      "../src/components/integrations/allowlist-editor.tsx",
     );
     ok(!allowlist.includes("<h1"), "allowlist section title is not an h1");
     ok(allowlist.includes("<h2"), "allowlist section title is an h2");

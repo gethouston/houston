@@ -20,6 +20,7 @@ import { makeIdTokenProvider } from "./tools/gcp-id-token";
 import { makeIntegrationTools } from "./tools/integrations";
 import { makePlanReadyTool } from "./tools/plan-ready";
 import { makeRunCodeTool } from "./tools/run-code";
+import { makeSuggestReusableTool } from "./tools/suggest-reusable";
 import type { ProvidedContext } from "./workspace-context";
 
 /**
@@ -47,6 +48,13 @@ const askUserTool = makeAskUserTool();
 // name is in the mode's allowlist). Records the turn's plan-ready step so it
 // rides the terminal `done` frame as a plan-approval card.
 const planReadyTool = makePlanReadyTool();
+
+// The reusable-suggestion tool: registered always, reaches execute/auto via the
+// tool-selection allowlist and is filtered out of plan by name (`toolNamesForMode`).
+// Records the turn's suggest-reusable step so a clean finish can ride the terminal
+// `done` frame as a dismissible save-as-Skill/Routine card, without flipping the
+// board to `needs_you`.
+const suggestReusableTool = makeSuggestReusableTool();
 
 // Integration tools (Composio, platform mode): available whenever this runtime
 // can reach its host with a sandbox token (server mode — local desktop +
@@ -92,6 +100,7 @@ const piBackend = createPiBackend({
     ...fileTools,
     askUserTool,
     planReadyTool,
+    suggestReusableTool,
     ...(runCodeTool ? [runCodeTool] : []),
     ...integrationTools,
   ],

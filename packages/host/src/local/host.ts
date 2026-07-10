@@ -77,6 +77,15 @@ export interface LocalHostOptions {
   /** Test seam: a fake spawner so the wiring is exercisable without real processes. */
   spawner?: RuntimeSpawner;
   /**
+   * Spawn every stored agent's runtime right after listen instead of on its
+   * first dispatch (managed pods set HOUSTON_EAGER_RUNTIME=1). A woken pod's
+   * runtime boot (~10s — mostly loading the provider SDKs) then overlaps the
+   * wake's volume-attach/readiness window instead of taxing the user's first
+   * message. Leave off for the desktop: spawning every agent's runtime at app
+   * start would burn laptop RAM/CPU on agents that may never be opened.
+   */
+  eagerRuntime?: boolean;
+  /**
    * Path to the Rust-era chat-history db (`~/.houston/db/houston.db`). When set
    * AND the file exists, the host runs the one-time chat-history migration on
    * boot (idempotent, additive — see migrate/chat-history.ts). Omit (or point at
@@ -397,6 +406,26 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           redactToken: opts.redactBannerToken ?? false,
         }),
       );
+      if (opts.eagerRuntime) {
+        // Fire-and-forget AFTER the banner: /health (and the supervisor)
+        // must never wait on a runtime boot — the point is overlap, and a
+        // runtime that fails here heals exactly like it always has (the
+        // next dispatch retries the spawn). Sequential on purpose: a pod
+        // hosts one agent, and a multi-agent tree shouldn't stampede the
+        // CPU it shares with the boot it is overlapping.
+        void (async () => {
+          for (const ws of await store.listWorkspaces()) {
+            for (const agent of await store.listAgents(ws.id)) {
+              await launcher.ensureAwake(agent).catch((err) => {
+                console.error(
+                  `[local-host] eager runtime spawn failed for ${agent.id} (continuing):`,
+                  err,
+                );
+              });
+            }
+          }
+        })();
+      }
     },
     stop() {
       scheduler.stop();

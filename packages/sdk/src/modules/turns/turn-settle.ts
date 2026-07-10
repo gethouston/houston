@@ -101,6 +101,12 @@ const invisibleFinal = (s: TurnState) =>
  * board split is on the captured interaction (the `done` frame stashes it into
  * `s.pendingInteraction` before calling here): the turn ended asking the user
  * for something → `needs_you`; it ended with nothing outstanding → `done`.
+ *
+ * The ONE exception is a LONE `suggest_reusable` step: the mission genuinely IS
+ * done, and the card is just an optional offer to save the work as a Skill or
+ * Routine, not something blocking completion — so it settles `done`, not
+ * `needs_you`. Any other step kind, or `suggest_reusable` co-occurring with
+ * anything else, still means `needs_you`.
  */
 export function finishOk(s: TurnState): void {
   if (s.settled) return;
@@ -112,7 +118,10 @@ export function finishOk(s: TurnState): void {
     data: { result: s.text, cost_usd: null, duration_ms: null, usage: s.usage },
   });
   s.output.sessionStatus(s.agentPath, s.sessionKey, "completed");
-  s.terminal = s.pendingInteraction ? "needs_you" : "done";
+  const onlySuggestion =
+    s.pendingInteraction?.steps.length === 1 &&
+    s.pendingInteraction.steps[0].kind === "suggest_reusable";
+  s.terminal = s.pendingInteraction && !onlySuggestion ? "needs_you" : "done";
 }
 
 /**

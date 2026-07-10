@@ -13,6 +13,10 @@
   "tags": {
     "routine": "Routine"
   },
+  "people": {
+    "label": "People on this mission",
+    "expand": "All people"
+  },
   "empty": {
     "title": "No conversations yet",
     "description": "Start a new conversation to delegate work to an agent.",

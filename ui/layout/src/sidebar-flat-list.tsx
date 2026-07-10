@@ -93,19 +93,6 @@ export function SidebarFlatList({
           labels={l}
         />
       ))}
-      {onAdd && (
-        <button
-          aria-label={l.addItem}
-          onClick={onAdd}
-          className={sidebarClasses.addButton}
-          {...(addItemDataAttrs ?? {})}
-        >
-          <span className={sidebarClasses.addButtonInner}>
-            <Plus className={sidebarClasses.addButtonIcon} />
-            <span className={sidebarClasses.addButtonLabel}>{l.addItem}</span>
-          </span>
-        </button>
-      )}
     </div>
   );
 }

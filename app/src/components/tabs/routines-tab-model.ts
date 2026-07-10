@@ -1,53 +1,105 @@
-import type {
-  Routine,
-  RoutineFormData,
-  RoutineRun,
-} from "@houston-ai/routines";
-import {
-  getDefaultModel,
-  normalizeLegacyModel,
-  validEffortOrDefault,
-  validModelOrNull,
-  validProviderOrNull,
-} from "../../lib/providers.ts";
-
-/** Editor view state for the Routines tab. */
-export type View = { type: "grid" } | { type: "editor"; editId?: string };
+import type { NewRoutine, Routine } from "@houston-ai/engine-client";
+import type { RoutineRun } from "@houston-ai/routines";
 
 /**
- * Provider + model the editor's model picker should display: the routine's own
- * pin if set, else the agent's configured default, else the platform default.
- * Pure so the resolution stays out of the tab component (it always returns
- * concrete ids the picker can render).
+ * Routines-tab view state: the list, an existing routine's full-page chat,
+ * or a draft chat for a not-yet-created routine (keyed by its own activity
+ * id — a person can have several drafts going, each independently resumable).
  */
-export function routineModelPickerDefaults(
-  form: RoutineFormData,
-  agentConfig:
-    | {
-        provider?: string | null;
-        model?: string | null;
-        effort?: string | null;
-      }
-    | undefined,
-): { provider: string; model: string; effort: string | undefined } {
-  const agentModel = normalizeLegacyModel(agentConfig?.model ?? null);
-  const provider =
-    validProviderOrNull(form.provider ?? null) ??
-    validProviderOrNull(agentConfig?.provider ?? null) ??
-    "anthropic";
-  const model =
-    validModelOrNull(provider, form.model ?? null) ??
-    validModelOrNull(provider, agentModel) ??
-    getDefaultModel(provider);
-  // Effort is validated against the resolved model: the routine's pin if the
-  // model accepts it, else the agent's effort, else the model's default —
-  // `undefined` for models with no effort control, so the picker hides.
-  const effort = validEffortOrDefault(
-    provider,
-    model,
-    form.effort ?? agentConfig?.effort ?? null,
-  );
-  return { provider, model, effort };
+export type View =
+  | { type: "grid" }
+  | { type: "chat"; routineId: string }
+  /** activityId null = the draft chat is still being created (show loading). */
+  | { type: "chat-draft"; activityId: string | null };
+
+/** The three fields the inline editor collects, before defaults are applied. */
+export interface NewRoutinePatch {
+  name: string;
+  schedule: string;
+  prompt: string;
+}
+
+/**
+ * Fill an inline-editor patch out to a full `NewRoutine`: a manually-created
+ * routine is silent-by-default (only pings on attention), shares one ongoing
+ * chat, and starts with no integrations.
+ */
+export function newRoutineInput(patch: NewRoutinePatch): NewRoutine {
+  return {
+    ...patch,
+    suppress_when_silent: true,
+    chat_mode: "shared",
+    integrations: [],
+  };
+}
+
+/**
+ * Adopt the freshly-created draft id, but only if the user is still waiting on
+ * the pending null-draft (a functional setView guard): a failed start (no id)
+ * falls back to the grid, and a user who already navigated away is left alone.
+ */
+export function adoptDraft(current: View, activityId: string | null): View {
+  if (current.type !== "chat-draft" || current.activityId !== null) {
+    return current;
+  }
+  return activityId ? { type: "chat-draft", activityId } : { type: "grid" };
+}
+
+/**
+ * Guard a routine chat back to the grid, but only if the user is still on that
+ * same routine's chat — a slow failed `startForRoutine` must never yank a user
+ * who has since navigated elsewhere.
+ */
+export function backToGridIfOn(current: View, routineId: string): View {
+  return current.type === "chat" && current.routineId === routineId
+    ? { type: "grid" }
+    : current;
+}
+
+/** Enough of the chat-setup hook for the pure resolvers below. */
+export interface ChatSetupView {
+  activityFor: (routine: Routine) => { id: string } | null;
+  draftActivities: { id: string }[];
+  activitiesLoaded: boolean;
+}
+
+/** The routine whose chat is `activityId`, if any (claimed draft → routine). */
+export function claimedRoutineId(
+  activityId: string,
+  routines: Routine[] | undefined,
+  chatSetup: ChatSetupView,
+): string | undefined {
+  return routines?.find((r) => chatSetup.activityFor(r)?.id === activityId)?.id;
+}
+
+/** What the notification deep-link effect should do with a pending activity id. */
+export type PendingResolution =
+  | { action: "open"; view: View }
+  | { action: "clear" }
+  | { action: "wait" };
+
+/**
+ * Resolve a one-shot notification activity id to a navigation. A claimed
+ * routine wins; else an unclaimed draft; else, once BOTH data sources have
+ * loaded and nothing matched, clear the stale/foreign id (never navigate);
+ * otherwise keep waiting for the data to arrive.
+ */
+export function resolvePendingActivity(
+  pendingId: string,
+  routines: Routine[] | undefined,
+  chatSetup: ChatSetupView,
+): PendingResolution {
+  const claimed = claimedRoutineId(pendingId, routines, chatSetup);
+  if (claimed)
+    return { action: "open", view: { type: "chat", routineId: claimed } };
+  if (chatSetup.draftActivities.some((a) => a.id === pendingId)) {
+    return {
+      action: "open",
+      view: { type: "chat-draft", activityId: pendingId },
+    };
+  }
+  const loaded = routines !== undefined && chatSetup.activitiesLoaded;
+  return loaded ? { action: "clear" } : { action: "wait" };
 }
 
 /** Most recent run per routine id, keyed by `routine_id`. */
@@ -63,75 +115,4 @@ export function latestRunByRoutine(
     }
   }
   return map;
-}
-
-/** Blank form for "create new routine" and the reset target on agent switch. */
-export const EMPTY_FORM: RoutineFormData = {
-  name: "",
-  prompt: "",
-  schedule: "0 9 * * *",
-  suppress_when_silent: true,
-  chat_mode: "shared",
-  integrations: [],
-  // null = inherit the agent's provider/model/effort until the user picks.
-  provider: null,
-  model: null,
-  effort: null,
-};
-
-function sameStringList(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
-  return true;
-}
-
-/** True when `form` has no edits relative to `source`. Gates the Save button. */
-export function formMatchesRoutine(
-  form: RoutineFormData,
-  source: RoutineFormData,
-): boolean {
-  return (
-    form.name === source.name &&
-    form.prompt === source.prompt &&
-    form.schedule === source.schedule &&
-    form.suppress_when_silent === source.suppress_when_silent &&
-    form.chat_mode === source.chat_mode &&
-    (form.provider ?? null) === (source.provider ?? null) &&
-    (form.model ?? null) === (source.model ?? null) &&
-    (form.effort ?? null) === (source.effort ?? null) &&
-    sameStringList(form.integrations, source.integrations)
-  );
-}
-
-/** Project a stored routine onto the editor's form shape. */
-export function routineToFormData(routine: Routine): RoutineFormData {
-  return {
-    name: routine.name,
-    prompt: routine.prompt,
-    schedule: routine.schedule,
-    suppress_when_silent: routine.suppress_when_silent,
-    chat_mode: routine.chat_mode ?? "shared",
-    integrations: routine.integrations ?? [],
-    provider: routine.provider ?? null,
-    model: routine.model ?? null,
-    effort: routine.effort ?? null,
-  };
-}
-
-/**
- * Fresh Routines-tab state: grid view, blank form + baseline.
- *
- * Used both for the initial mount and when the active agent changes. The tab
- * instance is reused across agents — it's keyed by tab, not agent (see
- * experience-renderer.tsx + workspace-shell.tsx; board-tab.tsx resets its own
- * per-agent selection the same way). So a routine being edited under one agent
- * must NOT bleed into the next agent's Routines tab: switching agents drops any
- * in-progress edit and returns to that agent's grid.
- */
-export function freshRoutinesState(): {
-  view: View;
-  form: RoutineFormData;
-  baseline: RoutineFormData;
-} {
-  return { view: { type: "grid" }, form: EMPTY_FORM, baseline: EMPTY_FORM };
 }

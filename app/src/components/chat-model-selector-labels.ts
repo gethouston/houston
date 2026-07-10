@@ -19,10 +19,8 @@ export function buildLabels(
     back: k("back"),
     providersLabel: k("providersLabel"),
     modelsLabel: k("modelsLabel"),
-    resultsLabel: k("resultsLabel"),
     loading: k("loading"),
     empty: k("empty"),
-    emptyHint: k("emptyHint"),
     noProviders: k("noProviders"),
   };
 }

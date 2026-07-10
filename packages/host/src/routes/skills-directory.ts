@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { CommunityDirectory } from "../skills/community";
 import { listSkillsFromRepo } from "../skills/github";
+import { PreviewDirectory } from "../skills/preview";
 import { SkillRemoteError } from "../skills/remote-error";
 import { json, readJson } from "./http";
 
@@ -15,6 +16,9 @@ import { json, readJson } from "./http";
  */
 
 const directory = new CommunityDirectory();
+// One instance per process so the 24h preview cache (successes) + 10-min
+// negative cache (failures) are global — same singleton style as `directory`.
+const previews = new PreviewDirectory();
 
 /** Typed errors answer `{error: {code, message, kind, details: {kind}}}` so
  *  both `HoustonEngineError` shapes — the engine-client's (`details.kind`) and
@@ -87,6 +91,28 @@ export async function repoListAction(
   }
 }
 
+export async function communityPreviewAction(
+  req: IncomingMessage,
+  res: ServerResponse,
+  fetchImpl: typeof fetch,
+): Promise<void> {
+  const body = await readJson(req);
+  if (typeof body.source !== "string" || typeof body.skillId !== "string") {
+    json(res, 400, { error: "missing 'source' or 'skillId'" });
+    return;
+  }
+  try {
+    const preview = await previews.preview(
+      fetchImpl,
+      body.source,
+      body.skillId,
+    );
+    json(res, 200, preview);
+  } catch (err) {
+    failSkill(res, err);
+  }
+}
+
 /** Top-level (user-scoped, post-auth) marketplace reads. Returns true when handled. */
 export async function handleSkillsDirectory(
   method: string,
@@ -96,7 +122,7 @@ export async function handleSkillsDirectory(
   deps: { fetchImpl?: typeof fetch } = {},
 ): Promise<boolean> {
   const m = path.match(
-    /^\/v1\/skills\/(community\/(?:search|popular)|repo\/list)$/,
+    /^\/v1\/skills\/(community\/(?:search|popular|preview)|repo\/list)$/,
   );
   if (!m) return false;
   if (method !== "POST") {
@@ -106,6 +132,8 @@ export async function handleSkillsDirectory(
   const route = m[1];
   if (route === "community/search") await communitySearchAction(req, res);
   else if (route === "community/popular") await communityPopularAction(res);
+  else if (route === "community/preview")
+    await communityPreviewAction(req, res, deps.fetchImpl ?? fetch);
   else await repoListAction(req, res, deps.fetchImpl ?? fetch);
   return true;
 }

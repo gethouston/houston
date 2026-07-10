@@ -41,10 +41,12 @@
     "description": "Type a message to talk to your assistant."
   },
   "questionCard": {
-    "placeholder": "Type your answer...",
-    "send": "Send",
+    "placeholder": "Type something else...",
+    "send": "Next",
     "back": "Back",
     "forward": "Next",
+    "skip": "Skip",
+    "dismiss": "Dismiss",
     "progress": "{{current}} of {{total}}"
   },
   "interaction": {
@@ -66,6 +68,14 @@
     "keepPlanningDescription": "Stay here and adjust the plan.",
     "startWorkingMessage": "Go ahead with the plan.",
     "runAutopilotMessage": "Go ahead and finish it on your own."
+  },
+  "suggestReusable": {
+    "title": "Save this for next time",
+    "skillTitle": "Save as a Skill",
+    "routineTitle": "Save as a Routine",
+    "notNow": "Not now",
+    "saveSkillMessage": "Save what I just did as a Skill called \"{{title}}\".",
+    "saveRoutineMessage": "Set this up as a recurring Routine called \"{{title}}\"."
   },
   "errors": {
     "sessionStart": "Failed to start session: {{error}}",
@@ -143,10 +153,8 @@
       "back": "Back",
       "providersLabel": "Providers",
       "modelsLabel": "Models",
-      "resultsLabel": "Results",
       "loading": "Loading providers…",
       "empty": "No models found.",
-      "emptyHint": "Try another search term.",
       "noProviders": "No providers connected yet."
     },
     "modelDescriptions": {

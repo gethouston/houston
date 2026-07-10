@@ -15,6 +15,7 @@ import type {
   Capabilities,
   ChatHistoryEntry,
   CommunitySkill,
+  CommunitySkillPreview,
   ConversationEntry,
   CreateAgent,
   CreateAgentResult,
@@ -62,6 +63,7 @@ import { bus, emitEvent, emitLocalEcho } from "./bus";
 import type { ControlPlaneConfig } from "./control-plane";
 import * as controlPlane from "./control-plane";
 import {
+  type CachedFrame,
   conversationCacheScope,
   deleteCachedConversation,
   readCachedConversation,
@@ -87,7 +89,6 @@ import {
 } from "./synthetic";
 import { historyToFeed, isConversationNotFound } from "./translate";
 import {
-  clearConversationVm,
   observeConversation,
   seedConversationVm,
   streamTurn,
@@ -162,6 +163,40 @@ function benignCancelMiss(e: unknown): void {
   throw e;
 }
 
+/**
+ * Preference keys that are ACCOUNT state, not device state. The engine acts on
+ * them — the host scheduler fires routines in `timezone` (hosted mode stamps it
+ * onto each agent's environment), `locale` backs the workspace wire shape, and
+ * the legal/migration flags must survive a reinstall — so they live behind the
+ * host's `/v1/preferences/:key`, never in this browser's localStorage. A
+ * device-local copy is invisible to the scheduler: routines then fire in the
+ * host's zone while the UI renders the browser's, an hours-off "next run"
+ * (HOU-732). Everything else (theme, last_agent_id, recent models, …) is
+ * per-device UI state and stays local.
+ */
+const ACCOUNT_PREF_KEYS = new Set([
+  "timezone",
+  "locale",
+  "legal_acceptance",
+  "migration_reconnect_dismissed",
+]);
+
+function readLocalPref(key: string): string | null {
+  try {
+    return localStorage.getItem(`houston.pref.${key}`);
+  } catch {
+    return null; /* storage disabled */
+  }
+}
+
+function removeLocalPref(key: string): void {
+  try {
+    localStorage.removeItem(`houston.pref.${key}`);
+  } catch {
+    /* storage disabled */
+  }
+}
+
 const SIDEBAR_LAYOUT_PREF = "houston.sidebar-layout";
 const EMPTY_SIDEBAR_LAYOUT: SidebarLayout = {
   groups: [],
@@ -232,7 +267,10 @@ export class HoustonClient {
     // captured static token, so local/static hosts are unchanged.
     this.engine = new HoustonEngineClient({
       baseUrl: opts.baseUrl,
-      fetch: controlPlane.gatewayAuthFetch(opts.token),
+      fetch: controlPlane.gatewayAuthFetch(
+        opts.token,
+        () => this.cp?.activeOrgSlug,
+      ),
     });
     // Mark the new TS engine as the active backend so the frontend can surface
     // new-engine-only capabilities (e.g. API-key providers like OpenCode). The
@@ -268,6 +306,25 @@ export class HoustonClient {
   subscribeServerEvents(): () => void {
     if (!this.cp) return () => {};
     return controlPlane.subscribeEvents(this.cp, (e) => bus.emit(e));
+  }
+
+  /**
+   * Pin (or clear) the active hosted space (C8 §Workspaces bridge). Pass an org
+   * slug (the `org:`-stripped id of a `kind: "org"` workspace) to act inside
+   * that team space — every gateway call then carries `x-houston-org`, and the
+   * events stream a `?org=` query — or `null` to fall back to the personal org.
+   *
+   * Mutates the live `ControlPlaneConfig` in place: the config object is shared
+   * by every per-request `cpFetch` and by the long-lived per-agent runtime
+   * clients (whose auth-fetch re-reads it per attempt), so a switch takes
+   * effect immediately without rebuilding anything. No-op outside cloud mode
+   * (`this.cp === null`) — local/self-host hosts have no space concept.
+   *
+   * `role` is per-space, so the caller MUST re-fetch `capabilities()` after
+   * switching (C8 §capabilities); this only redirects the transport.
+   */
+  setActiveOrg(slug: string | null): void {
+    if (this.cp) this.cp.activeOrgSlug = slug;
   }
 
   private async activeOld(): Promise<{ provider: string; model: string }> {
@@ -362,9 +419,10 @@ export class HoustonClient {
     // the old call 404'd against every host, silently breaking the
     // migration-reconnect probe (HOU-688). Live-bearer fetch for the same
     // reason as capabilities() (HOU-687).
-    const res = await controlPlane.gatewayAuthFetch(this.token)(
-      `${this.baseUrl}/v1/version`,
-    );
+    const res = await controlPlane.gatewayAuthFetch(
+      this.token,
+      () => this.cp?.activeOrgSlug,
+    )(`${this.baseUrl}/v1/version`);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new HoustonEngineError(res.status, body);
@@ -375,9 +433,10 @@ export class HoustonClient {
     // gatewayAuthFetch (not `this.engine.capabilities()`) on purpose: hosted
     // mode rotates the Supabase bearer mid-session, so the live token is read
     // per attempt and a 401 refreshes + replays (HOU-687).
-    const res = await controlPlane.gatewayAuthFetch(this.token)(
-      `${this.baseUrl}/v1/capabilities`,
-    );
+    const res = await controlPlane.gatewayAuthFetch(
+      this.token,
+      () => this.cp?.activeOrgSlug,
+    )(`${this.baseUrl}/v1/capabilities`);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new HoustonEngineError(res.status, body);
@@ -520,13 +579,30 @@ export class HoustonClient {
       suggestedRoutine: r.suggestedRoutine ?? null,
     };
   }
+  /** The one config both deployments share: the gateway in cloud mode, the
+   *  local/self-host host otherwise — each serves `/v1/preferences/:key`. */
+  private prefConfig(): ControlPlaneConfig {
+    return this.cp ?? { baseUrl: this.baseUrl, token: this.token };
+  }
   async getPreference(key: string): Promise<string | null> {
-    try {
-      const stored = localStorage.getItem(`houston.pref.${key}`);
-      if (stored !== null) return stored;
-    } catch {
-      /* storage disabled */
+    if (ACCOUNT_PREF_KEYS.has(key)) {
+      const cfg = this.prefConfig();
+      const value = await controlPlane.getPreference(cfg, key);
+      if (value !== null) return value;
+      // One-time lift of a pre-fix device-local copy: earlier builds kept
+      // account keys in localStorage only, so the host never learned them.
+      // Migrate the stored value up (and drop the local copy) rather than
+      // re-deriving it — a deliberately chosen timezone must survive.
+      const legacy = readLocalPref(key);
+      if (legacy !== null) {
+        await controlPlane.setPreference(cfg, key, legacy);
+        removeLocalPref(key);
+        return legacy;
+      }
+      return null;
     }
+    const stored = readLocalPref(key);
+    if (stored !== null) return stored;
     // Default to the synthetic ids so the shell auto-selects the workspace +
     // agent on first load (otherwise no agent is current and the board is empty).
     if (key === "last_workspace_id") return DEFAULT_WORKSPACE_ID;
@@ -534,6 +610,11 @@ export class HoustonClient {
     return null;
   }
   async setPreference(key: string, value: string): Promise<void> {
+    if (ACCOUNT_PREF_KEYS.has(key)) {
+      await controlPlane.setPreference(this.prefConfig(), key, value);
+      removeLocalPref(key);
+      return;
+    }
     try {
       localStorage.setItem(`houston.pref.${key}`, value);
     } catch {
@@ -621,6 +702,10 @@ export class HoustonClient {
   async deleteActivity(agentPath: string, id: string): Promise<void> {
     if (this.cp) await controlPlane.deleteActivity(this.cp, agentPath, id);
     else activities.deleteActivity(agentPath, id);
+    // The user deleted the chat — THIS is when its locally cached transcript
+    // goes too (a server 404 alone no longer drops it, HOU-731). Missions
+    // key their conversation `activity-<id>` (see setActivityStatus).
+    if (this.cp) void deleteCachedConversation(agentPath, `activity-${id}`);
     emitLocalEcho("ActivityChanged", { agentPath });
   }
 
@@ -806,16 +891,16 @@ export class HoustonClient {
     if (!this.cp)
       throw new Error("cpFilesFetch called without a control-plane config");
     const cp = this.cp;
-    const res = await controlPlane.gatewayAuthFetch(cp.token)(
-      `${cp.baseUrl}/agents/${encodeURIComponent(agentId)}/${path}`,
-      {
-        ...init,
-        headers: {
-          "Content-Type": "application/json",
-          ...init?.headers,
-        },
+    const res = await controlPlane.gatewayAuthFetch(
+      cp.token,
+      () => cp.activeOrgSlug,
+    )(`${cp.baseUrl}/agents/${encodeURIComponent(agentId)}/${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...init?.headers,
       },
-    );
+    });
     if (!res.ok)
       throw new HoustonEngineError(
         res.status,
@@ -1061,12 +1146,20 @@ export class HoustonClient {
       signal,
     );
   }
-  async popularCommunitySkills(
+  async previewCommunitySkill(
     agentPath: string,
+    source: string,
+    skillId: string,
     signal?: AbortSignal,
-  ): Promise<CommunitySkill[]> {
-    if (!this.cp) return [];
-    return controlPlane.popularCommunitySkills(this.cp, agentPath, signal);
+  ): Promise<CommunitySkillPreview> {
+    if (!this.cp) throw new Error("Previewing skills needs a cloud workspace.");
+    return controlPlane.previewCommunitySkill(
+      this.cp,
+      agentPath,
+      source,
+      skillId,
+      signal,
+    );
   }
   async listSkillsFromRepo(
     agentPath: string,
@@ -1650,12 +1743,11 @@ export class HoustonClient {
     // let the network read below revalidate whenever it lands. The seed
     // guards in seedConversationVm keep a live or richer VM untouched, so a
     // stale cache can never clobber fresh state.
-    let cacheSeeded = false;
-    if (this.cp && opts.observe !== false) {
-      const cached = await readCachedConversation(agentPath, sessionKey);
-      if (cached && cached.length > 0) {
-        seedConversationVm(agentPath, sessionKey, cached);
-        cacheSeeded = true;
+    let cachedFrames: CachedFrame[] | null = null;
+    if (this.cp) {
+      cachedFrames = await readCachedConversation(agentPath, sessionKey);
+      if (cachedFrames && cachedFrames.length > 0 && opts.observe !== false) {
+        seedConversationVm(agentPath, sessionKey, cachedFrames);
       }
     }
     try {
@@ -1708,11 +1800,16 @@ export class HoustonClient {
       // app's `call()` wrapper toasts it with the Report-bug affordance —
       // returning [] would render a fake empty chat and swallow the error.
       if (isConversationNotFound(err)) {
-        // The server says the conversation is gone: drop the local copy and
-        // clear a cache-seeded VM so no ghost transcript lingers (guarded —
-        // a live turn racing this read keeps its feed).
-        if (this.cp) void deleteCachedConversation(agentPath, sessionKey);
-        if (cacheSeeded) clearConversationVm(agentPath, sessionKey);
+        // A 404 with a locally cached transcript is NOT proof the chat never
+        // existed: an engine pod can answer 404 while its data is lost or not
+        // yet restored (volume recreation, seed self-heal window). The local
+        // copy is the user's only surviving transcript then — serve it and
+        // KEEP it (HOU-731). A truly deleted conversation drops out of the
+        // conversation list, so nothing reopens its cached ghost; the size
+        // cap prunes the orphaned entry eventually.
+        if (cachedFrames && cachedFrames.length > 0) {
+          return cachedFrames as ChatHistoryEntry[];
+        }
         return [];
       }
       throw err;
@@ -1861,6 +1958,52 @@ export class HoustonClient {
   ): Promise<void> {
     if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
     return controlPlane.setOrgMemberRole(this.cp, userId, role);
+  }
+
+  // ---- spaces / teams (C8) — hosted gateway only ----
+  // Off-cloud (`this.cp === null`) there is no space concept: `listOrgs` reports
+  // an empty result (the switcher shows only the personal workspace), while the
+  // mutating calls throw — a create/move must reach the gateway.
+  async listOrgs(): Promise<controlPlane.OrgsList> {
+    if (!this.cp) return { orgs: [], invites: [] };
+    return controlPlane.listOrgs(this.cp);
+  }
+  async createOrg(name: string): Promise<controlPlane.OrgSummary> {
+    if (!this.cp) throw new Error("Creating a team needs the hosted gateway.");
+    return controlPlane.createOrg(this.cp, name);
+  }
+  async moveAgent(
+    agentSlugOrId: string,
+    toSlug: string,
+  ): Promise<controlPlane.AgentMoveStart> {
+    if (!this.cp) throw new Error("Moving an agent needs the hosted gateway.");
+    return controlPlane.moveAgent(this.cp, agentSlugOrId, toSlug);
+  }
+  async getMoveStatus(
+    agentSlugOrId: string,
+    moveId: string,
+  ): Promise<controlPlane.AgentMoveStatus> {
+    if (!this.cp) throw new Error("Moving an agent needs the hosted gateway.");
+    return controlPlane.getMoveStatus(this.cp, agentSlugOrId, moveId);
+  }
+
+  // ---- billing (C8) — hosted gateway only ----
+  // Off-cloud (`this.cp === null`) there is no team/billing concept: the read
+  // degrades to null (the billing UI renders nothing), while checkout/portal
+  // throw — a write must reach the gateway.
+  async getBilling(): Promise<controlPlane.BillingSummary | null> {
+    if (!this.cp) return null;
+    return controlPlane.getBilling(this.cp);
+  }
+  async createCheckout(
+    interval: "monthly" | "annual",
+  ): Promise<controlPlane.BillingCheckout> {
+    if (!this.cp) throw new Error("Billing needs the hosted gateway.");
+    return controlPlane.createCheckout(this.cp, interval);
+  }
+  async createPortal(): Promise<controlPlane.BillingCheckout> {
+    if (!this.cp) throw new Error("Billing needs the hosted gateway.");
+    return controlPlane.createPortal(this.cp);
   }
 
   // ---- per-agent assignments + integration grants (multiplayer) ----

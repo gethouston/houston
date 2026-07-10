@@ -3,6 +3,55 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v12 - 2026-07-10
+
+Interaction cards stop replacing the composer, and two new chat surfaces land.
+
+`interaction-card` redesign: the card now floats ABOVE the always-mounted
+composer; typing a fresh message there (or the new header dismiss X) abandons
+the whole pending sequence. The header becomes a "current/total" pill plus the
+question text; option rows show a right-aligned position number (1, 2, 3...)
+selectable by that number key when focus is outside a text field, replacing the
+check-on-selected indicator; the free-text field reads as the "something else"
+escape hatch so option lists never need an "Other" row. ALL navigation moves to
+one footer row, Back leftmost: Back / Skip (advance past a question unanswered,
+omitted from the reply) / Next (commit), with a bare Forward for revisited
+signin/connect steps. The old header back/forward chevrons and the collapse
+toggle are gone. `plan-ready-card` inherits the composer-visible behavior
+unchanged otherwise.
+
+New `suggest-reusable-card`: on a clean mission finish the agent may call
+`suggest_reusable`; a dismissible offer proposes saving the work as a Skill
+(Sparkles) or Routine (CalendarClock). Uniquely, its lone step keeps the board
+status at `done` — nothing is waiting on the user. Save sends an execute-mode
+follow-up asking the agent to write the Skill/Routine; "Not now" dismisses
+locally.
+
+New `interaction-answers-message`: a completed question sequence now sends a
+marker-encoded user message rendered as structured question/answer pairs (muted
+question, bold answer) instead of a flat text blob; the plain-text body the
+model reads is unchanged.
+
+## v11 - 2026-07-09
+
+`routine-row` grows a state icon and quick actions. The 8px status dot becomes
+a leading `status-icon` that names the state by shape, not color alone: a clock
+while the routine waits for its schedule (and while disabled, dimmed with the
+row), a pulsing filled bolt while a run is in flight, an amber pause badge
+while the in-flight run sleeps on a usage-limit window, a red alert when the
+last run errored. On the trailing edge, next to the enabled toggle, a new
+always-visible `quick-actions-menu` (three-dot trigger, same overflow idiom as
+the routine editor header) offers Rename and Delete: Rename swaps the title
+into an inline input (Enter/blur commits, Escape cancels — the board card's
+rename pattern), Delete confirms in a dialog before calling back (the board
+card's delete pattern). New states `paused` and `renaming`; anatomy `run-status`
+is renamed `status-icon` and `quick-actions-menu` added. This is a labels
+CONTRACT change: `RoutineRowLabels` gains `moreActions`, `rename`, `delete`,
+`deleteTitle` (`{name}` token), `deleteDescription`, `deleteConfirm`,
+`deleteCancel`; `RoutinesGrid` gains optional `onRename(routineId, name)` /
+`onDelete(routineId)` and `RoutineRow` optional `onRename(name)` / `onDelete`
+— all optional, so existing callers render unchanged minus the dot.
+
 ## v10 - 2026-07-08
 
 Revamp `plan-ready-card`'s three options into the composer mode-menu idiom.

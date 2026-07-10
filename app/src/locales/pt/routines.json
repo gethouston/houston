@@ -3,8 +3,29 @@
   "grid": {
     "loading": "Carregando…",
     "emptyTitle": "Programe e esqueça",
-    "emptyDescription": "As rotinas disparam no horário programado e só te chamam quando algo realmente precisa de atenção.",
+    "emptyDescription": "Uma rotina é seu agente trabalhando em um horário, sem que você precise pedir toda vez. Descreva uma tarefa uma vez, e ela roda sozinha, todo dia, toda semana, ou com a frequência que você quiser.",
+    "emptyStepsTitle": "Como funciona",
+    "emptySteps": [
+      {
+        "title": "Diga o que fazer",
+        "description": "Descreva a tarefa em linguagem simples, como você diria para uma pessoa."
+      },
+      {
+        "title": "Escolha quando roda",
+        "description": "Escolha um horário: toda manhã, toda hora, uma vez por semana, o que fizer sentido."
+      },
+      {
+        "title": "Revise perguntando",
+        "description": "Não precisa conferir o trabalho na mão, só pergunte o que aconteceu."
+      }
+    ],
     "newRoutine": "Nova rotina",
+    "newRoutineWithAi": "Com IA",
+    "newRoutineManually": "Manualmente",
+    "createRoutine": "Criar rotina",
+    "draftTitle": "Rotina sendo criada no chat",
+    "draftResume": "Continuar",
+    "draftDiscard": "Descartar",
     "descriptionShort": "Tarefas recorrentes que rodam no horário e só te avisam quando algo precisa da sua atenção.",
     "timezoneLabel": "Fuso horário",
     "timezoneHint": "Todas as suas rotinas rodam neste fuso horário.",
@@ -12,41 +33,13 @@
     "timezoneNoResults": "Nenhum fuso horário encontrado"
   },
   "setupChat": {
-    "missionTitle": "Configurar uma nova rotina",
-    "bannerTitle": "Você está criando uma rotina no chat",
-    "bannerDescription": "Continue de onde parou ou descarte o chat em andamento.",
-    "continue": "Continuar",
-    "discard": "Descartar"
+    "missionTitle": "Configurar uma nova rotina"
   },
-  "editor": {
+  "chat": {
+    "newRoutineTitle": "Nova rotina",
+    "routineLabel": "Rotina: {{name}}",
     "back": "Voltar para rotinas",
-    "newRoutine": "Nova rotina",
-    "untitled": "Rotina sem título",
-    "stop": "Parar",
-    "starting": "Iniciando…",
-    "runNow": "Executar agora",
-    "saveChanges": "Salvar alterações",
-    "createRoutine": "Criar rotina",
-    "moreActions": "Mais ações",
-    "pauseRoutine": "Pausar rotina",
-    "resumeRoutine": "Retomar rotina",
-    "deleteRoutine": "Excluir rotina",
-    "nameLabel": "Nome",
-    "namePlaceholder": "ex.: Reunião matinal",
-    "promptLabel": "Instrução",
-    "promptPlaceholder": "O que o agente deve fazer quando isso rodar?",
-    "sectionWhen": "Quando roda",
-    "sectionBehavior": "Comportamento",
-    "sectionRecent": "Execuções recentes",
-    "nextRun": "Próxima execução {relative}",
-    "schedulePreview": "Prévia do agendamento",
-    "schedulePreviewHint": "Escolha um agendamento válido para ver quando esta rotina vai rodar.",
-    "notifyTitle": "Avisar só quando for relevante",
-    "notifyDescription": "Se o agente não tiver nada a relatar, a execução não vai aparecer no quadro.",
-    "chatTitle": "Manter os resultados em um só chat",
-    "chatDescription": "Cada execução é adicionada ao mesmo chat. Desative para abrir um novo chat cada vez que esta rotina rodar.",
-    "modelTitle": "Modelo",
-    "modelDescription": "Escolha o modelo e o nível de esforço de raciocínio que executa esta rotina. Usa as configurações do agente por padrão."
+    "opening": "Abrindo o chat…"
   },
   "row": {
     "untitled": "Sem título",
@@ -59,7 +52,23 @@
     "ranHours": "há {n}h",
     "ranDays": "há {n}d",
     "pauseRoutine": "Pausar rotina",
-    "resumeRoutine": "Retomar rotina"
+    "resumeRoutine": "Retomar rotina",
+    "runNow": "Executar agora",
+    "stopRun": "Parar execução",
+    "moreActions": "Mais ações",
+    "editManually": "Editar manualmente",
+    "editWithAi": "Editar com IA",
+    "delete": "Excluir",
+    "deleteTitle": "Excluir {name}?",
+    "deleteDescription": "Isso não pode ser desfeito. O histórico do chat não é afetado.",
+    "deleteConfirm": "Excluir",
+    "deleteCancel": "Cancelar",
+    "nameLabel": "Nome",
+    "namePlaceholder": "ex.: Reunião matinal",
+    "instructionLabel": "Instrução",
+    "instructionPlaceholder": "O que o agente deve fazer quando isso rodar?",
+    "save": "Salvar",
+    "cancel": "Cancelar"
   },
   "schedule": {
     "presets": {
@@ -136,26 +145,9 @@
     "soon": "em breve",
     "at": "{day} às {time}"
   },
-  "runHistory": {
-    "empty": "Nenhuma execução ainda, esta rotina não rodou.",
-    "view": "Ver",
-    "stopRun": "Parar execução",
-    "waiting": "Aguardando o limite de uso, retoma às {time}",
-    "status": {
-      "silent": "Silenciosa",
-      "surfaced": "Exibida",
-      "running": "Em execução",
-      "error": "Erro",
-      "cancelled": "Cancelada",
-      "paused": "Pausada"
-    },
-    "today": "Hoje, {time}",
-    "yesterday": "Ontem, {time}",
-    "onDate": "{date}, {time}"
-  },
   "toasts": {
     "timezoneSet": "Fuso horário definido como {{zone}}",
     "timezoneError": "Não foi possível atualizar o fuso horário",
-    "chatSetupError": "Não foi possível iniciar o chat para configurar a rotina"
+    "discardError": "Não foi possível descartar o rascunho"
   }
 }

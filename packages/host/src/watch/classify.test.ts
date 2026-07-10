@@ -50,6 +50,7 @@ const cases: [string, string | null, string | null][] = [
   ["Work/Sales/AGENTS.md", "ContextChanged", "Work/Sales"],
   ["Work/Sales/WORKSPACE.md", "ContextChanged", "Work/Sales"],
   ["Work/Sales/USER.md", "ContextChanged", "Work/Sales"],
+  ["Work/Sales/GROUP.md", "ContextChanged", "Work/Sales"],
   ["Work/Sales/report.xlsx", "FilesChanged", "Work/Sales"],
   ["Work/Sales/subdir/notes.md", "FilesChanged", "Work/Sales"],
   // Not classifiable:

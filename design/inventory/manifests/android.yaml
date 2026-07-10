@@ -67,3 +67,7 @@ components:
     status: not-started
   plan-ready-card:
     status: not-started
+  suggest-reusable-card:
+    status: not-started
+  interaction-answers-message:
+    status: not-started

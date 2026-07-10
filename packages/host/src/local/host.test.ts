@@ -45,6 +45,7 @@ async function setup(opts?: {
   gatewayFronted?: boolean;
   credentials?: LocalHostOptions["credentials"];
   spawner?: RuntimeSpawner;
+  eagerRuntime?: boolean;
 }) {
   const workspacesRoot = mkdtempSync(join(tmpdir(), "houston-localhost-"));
   mkdirSync(join(workspacesRoot, "Work", "Sales"), { recursive: true });
@@ -64,6 +65,7 @@ async function setup(opts?: {
     integrations: opts?.integrations,
     gatewayFronted: opts?.gatewayFronted,
     credentials: opts?.credentials,
+    eagerRuntime: opts?.eagerRuntime,
   });
   await host.start();
   return { host, base: `http://127.0.0.1:${port}`, workspacesRoot };
@@ -368,5 +370,51 @@ test("preferences persist via the vfs under the workspace", async () => {
     expect(((await got.json()) as { value: string }).value).toBe("es");
   } finally {
     host.stop();
+  }
+});
+
+test("eagerRuntime spawns the stored agents' runtimes at start, lazily otherwise", async () => {
+  // A real /health endpoint the launcher's poll can succeed against — the
+  // fake spawner hands out its port so ensureAwake completes.
+  const health = createHttpServer((_req, res) => {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end('{"status":"ok"}');
+  });
+  await new Promise<void>((r) => {
+    health.listen(0, "127.0.0.1", () => r());
+  });
+  const healthAddr = health.address();
+  const healthPort =
+    typeof healthAddr === "object" && healthAddr ? healthAddr.port : 0;
+  const spawned: string[] = [];
+  const recordingSpawner: RuntimeSpawner = {
+    spawn: (spec) => {
+      spawned.push(spec.workspaceDir);
+      return { port: healthPort, kill: () => {} };
+    },
+  };
+
+  const eager = await setup({ spawner: recordingSpawner, eagerRuntime: true });
+  try {
+    // Fire-and-forget after listen: poll until the spawn landed.
+    const deadline = Date.now() + 5_000;
+    while (spawned.length === 0 && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 25));
+    }
+    expect(spawned).toHaveLength(1);
+    expect(spawned[0]).toContain(join("Work", "Sales"));
+  } finally {
+    eager.host.stop();
+  }
+
+  // Control: without the flag nothing spawns until a dispatch asks.
+  spawned.length = 0;
+  const lazy = await setup({ spawner: recordingSpawner });
+  try {
+    await new Promise((r) => setTimeout(r, 200));
+    expect(spawned).toHaveLength(0);
+  } finally {
+    lazy.host.stop();
+    await new Promise<void>((r) => health.close(() => r()));
   }
 });

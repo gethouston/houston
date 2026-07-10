@@ -306,6 +306,51 @@ test("finishOk with a captured interaction settles needs_you and keeps the inter
   expect(statuses).toEqual([["completed", undefined]]);
 });
 
+test("finishOk with a LONE suggest_reusable step settles the card to done, not needs_you", () => {
+  const { statuses, output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity-suggest", output);
+  s.text = "Done. Sales summary is ready.";
+  // The mission genuinely IS done — the suggestion card is an optional offer, so
+  // it must NOT flip the board to needs_you (the core property of the feature).
+  s.pendingInteraction = {
+    steps: [
+      {
+        kind: "suggest_reusable",
+        id: "r1",
+        reusableKind: "skill",
+        title: "Weekly sales summary",
+        rationale: "Saves you rebuilding it every Monday.",
+      },
+    ],
+  };
+  finishOk(s);
+  expect(s.terminal).toBe("done");
+  expect(statuses).toEqual([["completed", undefined]]);
+});
+
+test("finishOk with suggest_reusable co-occurring with a question still settles needs_you", () => {
+  const { output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity-suggest-mixed", output);
+  s.text = "which one?";
+  // Defensive: the holder never produces this combination (suggest_reusable is
+  // fallback-only), but if anything else is outstanding the mission is NOT done,
+  // so the `only-suggestion` guard must not fire.
+  s.pendingInteraction = {
+    steps: [
+      { kind: "question", id: "q1", question: "Which week?" },
+      {
+        kind: "suggest_reusable",
+        id: "r1",
+        reusableKind: "skill",
+        title: "Weekly sales summary",
+        rationale: "Saves you rebuilding it every Monday.",
+      },
+    ],
+  };
+  finishOk(s);
+  expect(s.terminal).toBe("needs_you");
+});
+
 /**
  * finishErr — the not-connected refusal (HOU-676). A logged-out send is
  * refused BEFORE the message reaches the engine, so it must settle as the

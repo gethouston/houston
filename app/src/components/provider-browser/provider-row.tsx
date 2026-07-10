@@ -1,21 +1,26 @@
 /**
  * One provider CARD in the marketplace grid (Providers tab). A colorful,
  * recognition-first card mirroring the Integrations tab's `AppRow`: a boxless
- * full-color brand mark + name + a secondary line leading with the live model
- * count in bold (`{N} models`), a middot, then the muted friendly cost story
- * (e.g. "Your Claude subscription") + a tight trailing pair: the action button
- * first — a Connect pill when disconnected (which, while a connect is in flight,
- * flips to Cancel on hover so a stuck sign-in can be aborted) or a ghost Sign
- * out when connected (opening the shared confirm) — then an always-visible info
- * button pinned to the FAR right that opens the provider modal (the ONE open
- * affordance — the body itself is deliberately not clickable, an invisible
- * click target was not discoverable). Nothing hover-only.
+ * full-color brand mark + name (with an inline `LiveStatus` "Connected" dot
+ * when connected) on the first line, then a secondary line leading with the
+ * live model count in bold (`{N} models`), a middot, then
+ * the muted friendly cost story (e.g. "Your Claude subscription" — how the
+ * card is billed lives in this prose and in the Subscription/Pay-as-you-go
+ * quick filter, `provider-filtering.ts`, not on the card itself) + a tight
+ * trailing pair: the action button first — a Connect pill when disconnected
+ * (which, while a connect is in flight, flips to Cancel on hover so a stuck
+ * sign-in can be aborted) or a ghost Sign out when connected (opening the
+ * shared confirm) — then an always-visible info button pinned to the FAR
+ * right that opens the provider modal (the ONE open affordance — the body
+ * itself is deliberately not clickable, an invisible click target was not
+ * discoverable). Nothing hover-only.
  */
 
 import { AsyncButton, Button } from "@houston-ai/core";
 import { Info, Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ProviderInfo } from "../../lib/providers";
+import { LiveStatus } from "../ai-hub/hub-badges";
 import { BrandMark } from "./brand-mark";
 
 interface ProviderRowProps {
@@ -55,9 +60,10 @@ export function ProviderRow({
   return (
     <div className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5 text-left">
       <BrandMark providerId={provider.id} size="md" />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-[13px] font-medium text-foreground">
-          {provider.name}
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium text-foreground">
+          <span className="min-w-0 truncate">{provider.name}</span>
+          {connected && <LiveStatus label={t("card.connected")} />}
         </span>
         <span className="truncate text-[11px] text-muted-foreground">
           {modelCount > 0 && (

@@ -13,7 +13,7 @@ import {
   type ConnectedProviderRef,
   encodeRoutineModifyMessage,
   encodeRoutineSetupMessage,
-  findDraftSetupActivity,
+  findDraftSetupActivities,
   findRoutineChatActivity,
   findRoutineChatHeal,
   ROUTINE_SETUP_AGENT_MODE,
@@ -21,16 +21,15 @@ import {
 import { tauriActivity, tauriConfig, tauriRoutines } from "../../lib/tauri";
 import { readAgentTurnMode } from "../../lib/turn-mode";
 import type { Agent } from "../../lib/types";
-import { useUIStore } from "../../stores/ui";
 
 /**
- * Owns every routine's setup chat (HOU-725). A setup chat is a normal
- * mission tagged with the routine-setup sentinel so it never shows as a
- * board card — its only home is the Routines tab's own panel
- * (`RoutineSetupChat`). A chat starts life as the agent's single "draft"
- * (no routine yet); once a routine claims it (link resolution lives in
- * `lib/routine-chat-setup.ts`, stored in both directions) the chat belongs
- * to that routine for good, and opening the routine resumes it. Routines
+ * Owns every routine's chat (HOU-725). It's a normal mission tagged with the
+ * routine-setup sentinel so it never shows as a board card — its only home is
+ * the Routines tab's full-page chat view. A chat starts life as a "draft" (no
+ * routine yet) — a person can have several in construction at once, each its
+ * own item in the list; once a routine claims one (link resolution lives in
+ * `lib/routine-chat-setup.ts`, stored in both directions) that chat belongs
+ * to the routine for good, and opening the routine resumes it. Routines
  * without a chat get one on first open via `startForRoutine`.
  */
 export function useRoutineChatSetup(
@@ -40,10 +39,6 @@ export function useRoutineChatSetup(
   const { t } = useTranslation("routines");
   const path = agent.folderPath;
   const queryClient = useQueryClient();
-  const addToast = useUIStore((s) => s.addToast);
-  const setRoutineSetupChatAgentId = useUIStore(
-    (s) => s.setRoutineSetupChatAgentId,
-  );
   const { data: rawItems } = useActivity(path);
   const [pending, setPending] = useState(false);
 
@@ -59,8 +54,9 @@ export function useRoutineChatSetup(
         .filter((s) => s.authenticated)
         .map((s) => ({ id: s.provider, name: providerName(s.provider) }));
 
-  /** The one unlinked, live create-chat for this agent, if any. */
-  const draftActivity = findDraftSetupActivity(rawItems, routines);
+  /** Every unlinked, live create-chat for this agent — a person can be
+   *  building several routines at once. */
+  const draftActivities = findDraftSetupActivities(rawItems, routines);
 
   /** The persisted chat attached to a routine, or null if it has none yet. */
   const activityFor = useCallback(
@@ -108,66 +104,39 @@ export function useRoutineChatSetup(
       });
   }, [rawItems, routines, path, queryClient]);
 
-  const openPanel = useCallback(() => {
-    // Every AIBoard portals its detail panel into the SAME shared container;
-    // close whatever chat another surface left open so panels never stack.
-    useUIStore.getState().onPanelClose?.();
-    setRoutineSetupChatAgentId(agent.id);
-  }, [setRoutineSetupChatAgentId, agent.id]);
-
-  const toastStartError = useCallback(
-    (err: unknown) => {
-      // The mission never started (createMission rolled the activity back),
-      // so a toast is the only surface for the failure.
-      addToast({
-        title: t("toasts.chatSetupError"),
-        description: err instanceof Error ? err.message : String(err),
-        variant: "error",
-      });
-    },
-    [addToast, t],
-  );
-
-  /** Start (or resume) the create-chat for a brand-new routine. */
+  /**
+   * Start a brand-new create-chat. Always creates a fresh one — "New
+   * routine" means new, even while other drafts are still unfinished; those
+   * stay put as their own resumable items (`startDraft` never reuses one).
+   * Returns the new activity id (or null on failure) so the caller can
+   * navigate straight to it.
+   */
   const startDraft = useCallback(async () => {
-    if (draftActivity) {
-      openPanel();
-      return true;
-    }
-    if (pending) return false; // a start is already in flight — never double-create
+    if (pending) return null; // a start is already in flight — never double-create
     setPending(true);
     try {
       // The kickoff needs the activity's own id (the agent writes it into the
       // routine's `setup_activity_id`), so the prompt is built after create.
-      await createMission(agent, "", {
+      const { conversationId } = await createMission(agent, "", {
         title: t("setupChat.missionTitle"),
         agentMode: ROUTINE_SETUP_AGENT_MODE,
         modeOverride: await readAgentTurnMode(path, tauriConfig.read),
         buildPrompt: (activityId) =>
           encodeRoutineSetupMessage(activityId, connectedProvidersRef.current),
       });
-      // createMission bypasses useCreateActivity — refetch so the panel's
+      // createMission bypasses useCreateActivity — refetch so the chat view's
       // backing activity exists before it tries to render.
       queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
       analytics.track("routine_chat_setup_started");
-      openPanel();
-      return true;
-    } catch (err) {
-      toastStartError(err);
-      return false;
+      return conversationId;
+    } catch {
+      // Every failure path here surfaces via call() (activity create's
+      // read/write, the session send) — a toast here would double up.
+      return null;
     } finally {
       setPending(false);
     }
-  }, [
-    agent,
-    path,
-    draftActivity,
-    pending,
-    openPanel,
-    queryClient,
-    t,
-    toastStartError,
-  ]);
+  }, [agent, path, pending, queryClient, t]);
 
   /**
    * Start the persistent chat for a routine that doesn't have one yet, and
@@ -198,24 +167,26 @@ export function useRoutineChatSetup(
         ]);
         queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
         queryClient.invalidateQueries({ queryKey: queryKeys.routines(path) });
-        openPanel();
         return true;
-      } catch (err) {
-        toastStartError(err);
+      } catch {
+        // Every failure path here surfaces via call() (createMission's
+        // read/write/send, the link writes) — a toast here would double up.
         return false;
       } finally {
         setPending(false);
       }
     },
-    [agent, path, pending, openPanel, queryClient, toastStartError],
+    [agent, path, pending, queryClient],
   );
 
   return {
-    draftActivity,
+    draftActivities,
     activityFor,
+    /** Whether the activity query has resolved (vs. still loading) — lets the
+     *  tab distinguish "no match yet" from "loaded, genuinely no match". */
+    activitiesLoaded: rawItems !== undefined,
     startDraft,
     startForRoutine,
-    openPanel,
     pending,
   };
 }

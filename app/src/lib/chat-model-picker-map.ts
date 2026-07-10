@@ -21,8 +21,7 @@
  * oldest-first) would bury the flagships, so each provider's rows are re-ranked
  * CURATED-FIRST — the models with a `PROVIDER_OVERRIDES` entry lead, in their
  * override (curation) order, then the remaining catalog models in catalog order.
- * Curated rows are flagged (`curated: true`) so the picker's search can apply
- * the same bias as a tiebreaker on match quality.
+ * The picker renders rows in this input order, so pass them pre-ranked.
  */
 
 import type { ModelPickerModel, ModelPickerProvider } from "@houston-ai/core";
@@ -77,22 +76,18 @@ function providerModelRows(
     | ((providerId: string, modelId: string, fallback: string) => string)
     | undefined,
 ): ModelPickerModel[] {
-  const curatedIds = curatedModelIds(p.id);
-  const curated = new Set(curatedIds);
   const rows = pickerModelRows(
     p.models,
     statuses[p.id]?.active_model,
     p.subtitle,
   );
-  return rankCuratedFirst(rows, curatedIds).map((row) => ({
+  return rankCuratedFirst(rows, curatedModelIds(p.id)).map((row) => ({
     id: encodeModelPickerId(p.id, row.id),
     providerId: p.id,
     name: row.label,
     description: describe
       ? describe(p.id, row.id, row.description)
       : row.description,
-    // Omitted (not `undefined`) on uncurated rows, keeping the row shape exact.
-    ...(curated.has(row.id) ? { curated: true } : {}),
   }));
 }
 

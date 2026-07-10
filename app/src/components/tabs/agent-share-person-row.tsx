@@ -1,6 +1,7 @@
 import {
   Avatar,
   AvatarFallback,
+  AvatarImage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -22,16 +23,26 @@ function initial(person: SharePerson): string {
  * "Owner, always has access" (non-editable). Everyone else gets a dropdown with
  * Manager / Can use / Remove; the Manager option is disabled with an inline
  * reason for teammates who don't hold a Manager seat (`canBeManager` false).
+ *
+ * `readOnly` renders every row as static text (access level, no controls) — the
+ * shape a plain member sees in the read-only "who has access" view, where no
+ * management is permitted. `onAction` is never called in that mode.
  */
 export function AgentSharePersonRow({
   person,
+  avatarUrl,
   disabled,
+  readOnly,
   onAction,
 }: {
   person: SharePerson;
+  /** Resolved avatar photo (uploaded/provider), or null for initials-only. */
+  avatarUrl?: string | null;
   /** Locks the control while a write is in flight. */
   disabled?: boolean;
-  onAction: (action: ShareAction) => void;
+  /** Render the access level as static text with no controls. */
+  readOnly?: boolean;
+  onAction?: (action: ShareAction) => void;
 }) {
   const { t } = useTranslation("teams");
   const name = person.email ?? person.userId;
@@ -43,6 +54,9 @@ export function AgentSharePersonRow({
   return (
     <li className="flex items-center gap-3 rounded-xl border border-foreground/5 bg-card px-3 py-2.5">
       <Avatar size="sm">
+        {avatarUrl && (
+          <AvatarImage src={avatarUrl} alt="" referrerPolicy="no-referrer" />
+        )}
         <AvatarFallback>{initial(person)}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
@@ -60,6 +74,10 @@ export function AgentSharePersonRow({
         <span className="shrink-0 text-xs text-muted-foreground">
           {t("share.ownerAccess")}
         </span>
+      ) : readOnly ? (
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {levelLabel}
+        </span>
       ) : (
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -73,7 +91,7 @@ export function AgentSharePersonRow({
           <DropdownMenuContent align="end" className="w-60">
             <DropdownMenuItem
               disabled={!person.canBeManager}
-              onSelect={() => onAction("manager")}
+              onSelect={() => onAction?.("manager")}
             >
               <div className="flex-1">
                 <div className="flex items-center gap-2">
@@ -89,7 +107,7 @@ export function AgentSharePersonRow({
                 </p>
               </div>
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => onAction("user")}>
+            <DropdownMenuItem onSelect={() => onAction?.("user")}>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span>{t("share.levels.user")}</span>
@@ -103,7 +121,7 @@ export function AgentSharePersonRow({
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"
-              onSelect={() => onAction("remove")}
+              onSelect={() => onAction?.("remove")}
             >
               {t("share.remove")}
             </DropdownMenuItem>

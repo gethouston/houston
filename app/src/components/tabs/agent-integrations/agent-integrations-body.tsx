@@ -17,17 +17,21 @@ interface AgentIntegrationsBodyProps {
   canEdit: boolean;
   /** The full toolkit catalog (drives the category filter + browse list). */
   catalog: IntegrationToolkit[];
-  /** The effective Teams allowlist (`null` = unrestricted) narrowing browse. */
+  /** The effective Teams allowlist (`null` = unrestricted). Apps outside it show
+   *  as locked rows in the browse catalog rather than being hidden. */
   allowlist: string[] | null;
   /** The account's connections, so browse can hide already-connected apps. */
   connections: IntegrationConnection[];
   connectFlow: ConnectFlow;
   /** The catalog is still fetching (browse shows a loader, not "no apps"). */
   catalogLoading: boolean;
-  onRemoveGrant: (toolkit: string) => void;
-  onActivate: (toolkit: string) => void;
   onDisconnect: (toolkit: string) => void;
-  /** Jump to the global integrations page. */
+  /** The bottom link's destination. When the caller can see the global
+   *  Integrations page it jumps there ("Manage all integrations"); a Teams plain
+   *  member (page gone) is sent to Settings > Connected accounts instead. The
+   *  boolean only picks the copy — `onManageAll` already performs the routing. */
+  canSeePolicyPage: boolean;
+  /** Perform the bottom-link navigation chosen by {@link canSeePolicyPage}. */
   onManageAll: () => void;
 }
 
@@ -48,9 +52,8 @@ export function AgentIntegrationsBody({
   connections,
   connectFlow,
   catalogLoading,
-  onRemoveGrant,
-  onActivate,
   onDisconnect,
+  canSeePolicyPage,
   onManageAll,
 }: AgentIntegrationsBodyProps) {
   const { t } = useTranslation("integrations");
@@ -63,14 +66,6 @@ export function AgentIntegrationsBody({
     [catalog, category],
   );
 
-  // The browse catalog is narrowed to the effective allowlist so a member can
-  // only connect apps the agent is allowed to use (null = unrestricted).
-  const browseCatalog = useMemo(() => {
-    if (allowlist === null) return catalog;
-    const set = new Set(allowlist);
-    return catalog.filter((tk) => set.has(tk.slug));
-  }, [catalog, allowlist]);
-
   return (
     <>
       <AgentAppsBody
@@ -79,18 +74,17 @@ export function AgentIntegrationsBody({
         inCat={inCat}
         categoryActive={category !== "all"}
         connectFlow={connectFlow}
-        onRemoveGrant={onRemoveGrant}
-        onActivate={onActivate}
         onDisconnect={onDisconnect}
       />
 
       <div className="mt-8">
         <ConnectMoreAppsSection
-          catalog={browseCatalog}
+          catalog={catalog}
           connections={connections}
           connectFlow={connectFlow}
           category={category}
           onCategoryChange={setCategory}
+          allowlist={allowlist}
           loading={catalogLoading}
         />
       </div>
@@ -101,7 +95,9 @@ export function AgentIntegrationsBody({
           onClick={onManageAll}
           className="text-xs text-muted-foreground underline underline-offset-4 decoration-dotted transition-colors hover:text-foreground"
         >
-          {t("agentTab.manageAll")}
+          {canSeePolicyPage
+            ? t("agentTab.manageAll")
+            : t("policyPage.manageAccounts")}
         </button>
       </div>
     </>

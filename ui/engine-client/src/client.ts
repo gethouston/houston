@@ -19,14 +19,19 @@ import type {
   AgentAssignment,
   AgentModelChoice,
   AgentModelChoiceInfo,
+  AgentMoveStart,
+  AgentMoveStatus,
   AgentSettings,
   AttachmentManifest,
   AttachmentUploadResult,
   AuditEntry,
+  BillingCheckout,
+  BillingSummary,
   Capabilities,
   ChatHistoryEntry,
   ClaudeStatus,
   CommunitySkill,
+  CommunitySkillPreview,
   ComposioAppEntry,
   ComposioReconnectResponse,
   ComposioStartLinkResponse,
@@ -58,6 +63,8 @@ import type {
   OrgInfo,
   OrgRole,
   OrgSettings,
+  OrgSummary,
+  OrgsList,
   PairingCode,
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
@@ -180,6 +187,14 @@ export class HoustonClient {
   // retries re-read these on each attempt, so they recover transparently.
   private baseUrl: string;
   private token: string;
+  // Active hosted "space" (C8 §Active space). When non-null it is an org SLUG
+  // (`[a-f0-9]{16}`, server-defined grammar) and EVERY HTTP request carries
+  // `x-houston-org: <slug>` so the gateway resolves that team space. `null`
+  // selects the caller's personal org — the gateway's header-absent default —
+  // and sends NO header. Mutable like `{baseUrl, token}`: it's re-read per
+  // request attempt (see `send`/`orgHeaders`), so a mid-flight switch is
+  // honored on the next retry without rebuilding the client.
+  private activeOrgSlug: string | null = null;
   private readonly retryConfig: RetryConfig;
   private readonly fetchImpl: typeof fetch;
 
@@ -200,6 +215,33 @@ export class HoustonClient {
   setEndpoint(opts: { baseUrl: string; token: string }): void {
     this.baseUrl = opts.baseUrl.replace(/\/$/, "");
     this.token = opts.token;
+  }
+
+  /**
+   * Pin (or clear) the active hosted space (C8 §Workspaces bridge). Pass an org
+   * slug to act inside that team space — every request then carries
+   * `x-houston-org: <slug>` — or `null` to fall back to the caller's personal
+   * org (no header). Mirrors `setEndpoint`'s in-place mutation: in-flight
+   * retries re-read it, so a switch takes effect on the next attempt without
+   * rebuilding the client.
+   *
+   * The gateway is the sole authority — a slug the caller doesn't belong to
+   * yields `403 not_member`. Because `role` is per-space, the caller MUST
+   * re-fetch `capabilities()` after switching (C8 §capabilities); this method
+   * only redirects the transport.
+   */
+  setActiveOrg(slug: string | null): void {
+    this.activeOrgSlug = slug;
+  }
+
+  /**
+   * The active-space header for one request, or `{}` when personal (`null`).
+   * Called INSIDE each `build()` closure so it is evaluated per attempt — a
+   * `setActiveOrg` mid-flight lands on the next retry, same discipline as the
+   * live `token`/`baseUrl` re-read.
+   */
+  private orgHeaders(): Record<string, string> {
+    return this.activeOrgSlug ? { "x-houston-org": this.activeOrgSlug } : {};
   }
 
   // ---------- transport ----------
@@ -229,6 +271,7 @@ export class HoustonClient {
             method,
             headers: {
               Authorization: `Bearer ${this.token}`,
+              ...this.orgHeaders(),
               ...(body !== undefined
                 ? { "Content-Type": "application/json" }
                 : {}),
@@ -261,6 +304,7 @@ export class HoustonClient {
       () => {
         const headers: Record<string, string> = {
           Authorization: `Bearer ${this.token}`,
+          ...this.orgHeaders(),
         };
         if (contentType) headers["Content-Type"] = contentType;
         return {
@@ -583,7 +627,10 @@ export class HoustonClient {
         url: `${this.baseUrl}/v1/agents/files/download?${q}`,
         init: {
           method: "GET",
-          headers: { Authorization: `Bearer ${this.token}` },
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            ...this.orgHeaders(),
+          },
         },
       }),
       true,
@@ -858,15 +905,20 @@ export class HoustonClient {
       true,
     );
   }
-  popularCommunitySkills(
+  // Read-only detail for one community skill: fetches + parses its real
+  // SKILL.md so the marketplace can show a true description before install.
+  // Carries the browsing agent's path like the other reads (see above).
+  previewCommunitySkill(
     _agentPath: string,
+    source: string,
+    skillId: string,
     signal?: AbortSignal,
-  ): Promise<CommunitySkill[]> {
-    // Read-only POST → replay-safe.
+  ): Promise<CommunitySkillPreview> {
+    // Read-only preview POST → replay-safe.
     return this.request(
       "POST",
-      "/skills/community/popular",
-      undefined,
+      "/skills/community/preview",
+      { source, skillId },
       undefined,
       signal,
       true,
@@ -1145,6 +1197,119 @@ export class HoustonClient {
   /** Change a member's role. */
   async setOrgMemberRole(userId: string, role: OrgRole): Promise<void> {
     await this.request("PATCH", `/org/members/${this.seg(userId)}`, { role });
+  }
+
+  // ---------- spaces / teams (C8) — hosted gateway only ----------
+  //
+  // The caller's spaces list, self-serve team creation, and agent moves between
+  // spaces. Gated on `caps.spaces`; the gateway is the sole enforcer. Kept here
+  // for shim parity like the org methods above.
+
+  /**
+   * The caller's spaces + pending invites (C8 §Wire surface). Degrades to an
+   * empty result on a host that predates spaces (404) — the switcher then shows
+   * only the personal workspace, byte-identical to a pre-C8 deployment. Mirrors
+   * how `getAgentModelChoice`/`agentIntegrationGrants` swallow a 404; every other
+   * error throws.
+   */
+  async listOrgs(): Promise<OrgsList> {
+    try {
+      return await this.request<OrgsList>("GET", "/orgs");
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) {
+        return { orgs: [], invites: [] };
+      }
+      throw err;
+    }
+  }
+  /**
+   * Create a team space (C8 §Wire surface). NOT idempotent — the gateway has no
+   * dedup, so on a LOST response DON'T blind-retry: reconcile via `listOrgs` and
+   * reuse the persisted slug. Never degrades — a failure must reach the UI, so it
+   * throws the real `HoustonEngineError`. A POST, so `send` never auto-replays it.
+   */
+  createOrg(name: string): Promise<OrgSummary> {
+    return this.request("POST", "/orgs", { name });
+  }
+  /**
+   * Move an agent into a team space (C8 §Agent move). Returns the `moveId` to
+   * poll with `getMoveStatus` to terminal `done` before inviting. Never degrades:
+   * a `403 unsupported_move` / `409 unmovable_volume` / `403 needs_upgrade` must
+   * surface, so it throws. A POST, so `send` never auto-replays it.
+   */
+  moveAgent(agentSlugOrId: string, toSlug: string): Promise<AgentMoveStart> {
+    return this.request("POST", `/agents/${this.seg(agentSlugOrId)}/move`, {
+      to: toSlug,
+    });
+  }
+  /**
+   * Poll one agent-move's progress (C8). The move-completion signal is THIS route
+   * only — the event fan-in relays pod-scoped events and must not be relied on for
+   * completion. A GET, so it replays safely on a transient transport blip.
+   */
+  getMoveStatus(
+    agentSlugOrId: string,
+    moveId: string,
+  ): Promise<AgentMoveStatus> {
+    return this.request(
+      "GET",
+      `/agents/${this.seg(agentSlugOrId)}/move/${this.seg(moveId)}`,
+    );
+  }
+
+  // ---------- billing (C8) — hosted gateway only ----------
+  //
+  // Seat billing for the active team space. `getBilling` is a read the client
+  // re-runs on every team-space entry (there is no push on expiry — status is a
+  // DERIVED read); checkout/portal are owner-only writes that hand back a
+  // Stripe-hosted URL.
+
+  /**
+   * The active team's billing summary (C8 §Billing wire surface). Owner/admin on
+   * a team space only. Degrades to `null` for the NOT-ENTITLED cases — a gateway
+   * that predates billing (404), a caller the gateway refuses billing detail
+   * (403 `personal_space` on a personal space, or a plain member), and a
+   * billing-off deployment (503, C8's feature-off-when-unset: no `GW_STRIPE_*`
+   * configured — rollout Stage 1 and the kind loop run this way) — so the
+   * billing UI renders nothing and the member/degrade surfaces take over.
+   * Mirrors how `getAgentModelChoice` swallows a 404; every other error throws.
+   *
+   * `status` is the DERIVED effective status (never a stored column): `free`
+   * (personal, enterprise-unbilled, or a solo team), `trialing` (2+ members, no
+   * subscription, still inside the 14-day clock), `active` (subscribed or
+   * enterprise), `past_due` (payment failed, still inside the 7-day grace),
+   * `expired` (trial or grace elapsed — writes by non-owners then 403
+   * `needs_upgrade`, surfaced to members as `OrgSummary.degraded`).
+   */
+  async getBilling(): Promise<BillingSummary | null> {
+    try {
+      return await this.request<BillingSummary>("GET", "/org/billing");
+    } catch (err) {
+      if (
+        isHoustonEngineError(err) &&
+        (err.status === 404 || err.status === 403 || err.status === 503)
+      ) {
+        return null;
+      }
+      throw err;
+    }
+  }
+  /**
+   * Start a Stripe Checkout session for the active team (owner only; the gateway
+   * 403s `not_owner` for an admin). Returns the hosted `{url}` to open. Never
+   * degrades — a failure must reach the UI, so it throws the real
+   * `HoustonEngineError`.
+   */
+  createCheckout(interval: "monthly" | "annual"): Promise<BillingCheckout> {
+    return this.request("POST", "/org/billing/checkout", { interval });
+  }
+  /**
+   * Open the Stripe customer portal for the active team (owner only) — card,
+   * invoices, interval switch, cancel. Returns the hosted `{url}`. Never degrades;
+   * a failure throws so the UI surfaces the real reason.
+   */
+  createPortal(): Promise<BillingCheckout> {
+    return this.request("POST", "/org/billing/portal", {});
   }
 
   // ---------- per-agent assignments + integration grants (multiplayer) ----------
@@ -1682,6 +1847,7 @@ export class HoustonClient {
           method: "POST",
           headers: {
             Authorization: `Bearer ${this.token}`,
+            ...this.orgHeaders(),
             "Content-Type": "application/json",
           },
           body: JSON.stringify(req),
@@ -1730,14 +1896,14 @@ export class HoustonEngineError extends Error {
   body: ErrorBody | null;
 
   constructor(status: number, body: ErrorBody | null) {
-    super(body?.error.message ?? `Engine error ${status}`);
+    super(body?.error?.message ?? `Engine error ${status}`);
     this.status = status;
     this.body = body;
     this.name = "HoustonEngineError";
   }
 
   get code(): string | undefined {
-    return this.body?.error.code;
+    return this.body?.error?.code;
   }
 
   /**
@@ -1748,7 +1914,7 @@ export class HoustonEngineError extends Error {
    * for the canonical kind list.
    */
   get kind(): string | undefined {
-    const details = this.body?.error.details;
+    const details = this.body?.error?.details;
     if (details && typeof details === "object" && "kind" in details) {
       const k = (details as { kind?: unknown }).kind;
       return typeof k === "string" ? k : undefined;

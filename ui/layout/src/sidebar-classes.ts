@@ -1,11 +1,5 @@
 export const sidebarClasses = {
   itemsList: "w-0 min-w-full space-y-0.5 pb-2",
-  addButton:
-    "group flex w-full min-w-0 items-center rounded-lg text-accent-foreground transition-colors duration-100 hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-  addButtonInner:
-    "flex min-w-0 flex-1 items-center gap-2 px-3 py-1.5 text-left text-[13px]",
-  addButtonIcon: "size-4 shrink-0 text-muted-foreground",
-  addButtonLabel: "min-w-0 flex-1 truncate",
 } as const;
 
 export const sidebarItemRowClasses = {
@@ -34,7 +28,7 @@ export const sidebarGroupClasses = {
     "group/gh relative flex w-full min-w-0 items-center gap-1 rounded-md px-1.5 py-1 transition-colors duration-100 hover:bg-accent/40",
   caret:
     "flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground/50 transition-colors duration-100 hover:text-muted-foreground focus-visible:outline-none motion-reduce:transition-none cursor-grab active:cursor-grabbing",
-  name: "min-w-0 flex-1 truncate text-left text-[12px] font-medium text-muted-foreground cursor-grab active:cursor-grabbing",
+  name: "min-w-0 flex-1 truncate text-left text-[13px] font-medium text-muted-foreground cursor-grab active:cursor-grabbing",
   count:
     "shrink-0 text-[10px] font-medium tabular-nums text-muted-foreground/40 transition-opacity duration-100 group-hover/gh:opacity-0",
   menuButton:

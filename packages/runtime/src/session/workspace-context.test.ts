@@ -3,7 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import {
+  buildGroupContextSection,
   buildWorkspaceContextSection,
+  GROUP_MD,
   USER_MD,
   WORKSPACE_MD,
 } from "./workspace-context";
@@ -105,4 +107,38 @@ test("provided (cloud) needs no .houston dir and renders a one-sided section", (
   expect(out).not.toBeNull();
   expect(out).toContain("Acme only");
   expect(out).toContain("(none provided.)"); // the empty user slot's marker
+});
+
+// ── group context: GROUP.md the host mirrors into each grouped agent's cwd ────
+
+test("filled GROUP.md renders the group section with heading, content, and path", () => {
+  const dir = freshWorkspace();
+  writeFileSync(join(dir, GROUP_MD), "Q3 launch squad. Ship the new pricing.");
+
+  const out = buildGroupContextSection(dir);
+  expect(out).not.toBeNull();
+  expect(out).toContain("# Group Context");
+  expect(out).toContain("Q3 launch squad. Ship the new pricing.");
+  // The absolute path tells the agent where the shared context lives.
+  expect(out).toContain(join(dir, GROUP_MD));
+});
+
+test("missing GROUP.md injects nothing (no empty-marker stub)", () => {
+  const dir = freshWorkspace();
+  expect(buildGroupContextSection(dir)).toBeNull();
+});
+
+test("whitespace-only GROUP.md injects nothing", () => {
+  const dir = freshWorkspace();
+  writeFileSync(join(dir, GROUP_MD), "   \n  ");
+  expect(buildGroupContextSection(dir)).toBeNull();
+});
+
+test("group context needs no .houston dir — the file's presence is enough", () => {
+  const dir = freshWorkspace(false);
+  writeFileSync(join(dir, GROUP_MD), "Shared plan for the group.");
+
+  const out = buildGroupContextSection(dir);
+  expect(out).not.toBeNull();
+  expect(out).toContain("Shared plan for the group.");
 });

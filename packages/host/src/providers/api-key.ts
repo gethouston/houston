@@ -1,4 +1,5 @@
-import { getProviders } from "@earendil-works/pi-ai";
+// `getProviders` is pi-ai's legacy static-catalog read, preserved on `/compat`.
+import { getProviders } from "@earendil-works/pi-ai/compat";
 import { getOAuthProviders } from "@earendil-works/pi-ai/oauth";
 
 /**

@@ -1,8 +1,9 @@
 /**
- * The routine setup chat — the persistent conversation shown next to the
- * routine form (HOU-725). Every routine gets exactly one: creating a routine
- * starts it, and reopening the routine resumes the very same chat, so the
- * user can keep modifying the routine by talking to the agent.
+ * The routine's chat — its persistent conversation, the whole Routines tab
+ * screen while open (HOU-725, first-principles rebuild). Every routine gets
+ * exactly one: creating a routine starts it, and reopening the routine
+ * resumes the very same chat, so the user can keep modifying the routine by
+ * talking to the agent.
  *
  * The kickoffs ride the auto-continue marker (`lib/auto-continue-message.ts`):
  * the user never typed anything, so the transcript hides the bubble on both
@@ -70,18 +71,21 @@ export function findRoutineChatActivity<A extends SetupActivityLike>(
 }
 
 /**
- * The agent's one live create-chat: a setup chat no routine has claimed yet
- * (neither by forward link nor by its own `routine_id` stamp).
+ * Every live "routine in construction" chat: a setup chat no routine has
+ * claimed yet (neither by forward link nor by its own `routine_id` stamp).
+ * A person can have several going at once (HOU rebuild) — each shows as its
+ * own resumable/discardable item in the Routines list, so this returns ALL
+ * of them, not just one.
  */
-export function findDraftSetupActivity<A extends SetupActivityLike>(
+export function findDraftSetupActivities<A extends SetupActivityLike>(
   activities: A[] | undefined,
   routines: RoutineLinkLike[] | undefined,
-): A | undefined {
+): A[] {
   const claimed = new Set<string>();
   for (const r of routines ?? []) {
     if (r.setup_activity_id) claimed.add(r.setup_activity_id);
   }
-  return (activities ?? []).find(
+  return (activities ?? []).filter(
     (a) =>
       isRoutineSetupMode(a.agent) &&
       a.status !== "archived" &&
@@ -164,20 +168,16 @@ export function routineSetupPrompt(
   activityId: string,
   connectedProviders: ConnectedProviderRef[] | null,
 ): string {
-  return `Houston sent this message automatically: the user clicked "New routine". The routine form just opened next to this chat, empty, and this chat is where you help them set it up. The user has not said anything yet and is waiting for you to start.
+  return `Houston sent this message automatically: the user clicked "New routine" and picked "With AI". This chat is where you set it up, and it stays attached to the routine forever — the user can come back to it any time to change the routine. The user has not said anything yet and is waiting for you to start.
 
-Your job in this conversation: guide the user through creating ONE new Routine, then create it. This chat stays attached to the routine forever — the user can come back to it any time to change the routine.
+Your job in this conversation: guide the user through creating ONE new Routine, then create it.
 
-Start RIGHT NOW, in this same turn:
-1. Write exactly one short, friendly opening line (match the user's language; no headings, no lists, no explanations). In that line, say you will help them create this routine and that they can come back to this same chat whenever they want to change it later.
-2. Then, still in this turn, call the ask_user tool with your first question: what the routine should do for them. Offer 3 or 4 concrete example options based on what you help this user with (for example "Watch my inbox for anything urgent", "Send me a morning summary of my day", "Remind me before deadlines"), and they can always describe their own idea instead.
-Do not stop after the greeting. In this conversation, a turn that ends without an ask_user call is a mistake, until the routine is created.
+Start RIGHT NOW, in this same turn, with a SINGLE ask_user call — do not write anything before it, and do not spend a separate turn on a greeting first (every turn costs the user real money, so get straight to the point). Fold a brief, friendly framing INTO the question itself (match the user's language): mention you'll help them set this up and they can always come back to this same chat to change it later, then ask what the routine should do for them. Offer 3 or 4 concrete example options based on what you help this user with (for example "Watch my inbox for anything urgent", "Send me a morning summary of my day", "Remind me before deadlines"), and they can always describe their own idea instead. A turn that ends without an ask_user call is a mistake, until the routine is created.
 
 Interview rules:
 - Ask exactly ONE question per ask_user call. Never batch several questions into one call here, even though your general guidance allows up to 3. One question, wait for the answer, then the next.
 - Offer answer options whenever the question allows it (schedule choices, yes/no, app choices).
 - Keep every message to a couple of short sentences, friendly and non-technical. Never mention files, JSON, schemas, tools, or field names.
-- The form next to this chat is live: if the user says they already filled something in there, trust it and skip that question.
 - If an earlier answer already covers a later question, skip that question.
 
 What you need to learn, one step at a time:
@@ -191,21 +191,19 @@ Do not ask about models, providers, or other technical settings — the routine 
 
 ${providerAwareness(connectedProviders)}
 
-When you have everything, summarize the routine in a few plain lines and ask for approval with ask_user (Yes / No). Only create it after a Yes. When you save the routine, set its "setup_activity_id" field to exactly "${activityId}" — that keeps this chat attached to it; never mention this field or any other technical detail to the user. Then confirm it is scheduled and remind them they can change it right here, in this same chat, or in the form next to it, any time.
-
-If the user creates the routine themselves with the form while you are still asking, stop the interview and offer to fine-tune it instead.`;
+When you have everything, summarize the routine in a few plain lines and ask for approval with ask_user (Yes / No). Only create it after a Yes. When you save the routine, set its "setup_activity_id" field to exactly "${activityId}" — that keeps this chat attached to it; never mention this field or any other technical detail to the user. Then confirm it is scheduled and remind them they can change it right here, in this same chat, any time.`;
 }
 
 /**
- * The Claude-facing kickoff for a routine that has no chat yet (created with
- * the form, or from before chats were persisted). One calm greeting, no
+ * The Claude-facing kickoff for a routine that has no chat yet (created
+ * manually, or from before chats were persisted). One calm greeting, no
  * interview — the routine already exists.
  */
 export function routineModifyPrompt(
   routine: { id: string; name: string },
   connectedProviders: ConnectedProviderRef[] | null,
 ): string {
-  return `Houston sent this message automatically: the user opened their existing routine "${routine.name}", and this chat just appeared next to the routine's form. This chat stays attached to this routine from now on. The user has not said anything yet.
+  return `Houston sent this message automatically: the user opened their existing routine "${routine.name}" and picked "Edit with AI". This chat stays attached to this routine from now on. The user has not said anything yet.
 
 Right now, write exactly one short, friendly line (match the user's language) saying you can change this routine for them any time — what it does, when it runs, anything — they just have to tell you. Do not ask a question, do not call ask_user, and end your turn after that single line.
 

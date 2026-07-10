@@ -24,9 +24,13 @@ import {
   ChatInteractionCard,
   ChatPlanReadyCard,
   type ChatPlanReadyLabels,
+  ChatSuggestReusableCard,
+  type ChatSuggestReusableLabels,
   decodeAttachmentMessage,
+  decodeInteractionAnswersMessage,
   UserAttachmentMessage,
   type UserAttachmentMessageLabels,
+  UserInteractionAnswersMessage,
 } from "@houston-ai/chat";
 import { Button } from "@houston-ai/core";
 import { useQueryClient } from "@tanstack/react-query";
@@ -43,6 +47,7 @@ import { useTranslation } from "react-i18next";
 import {
   useActivity,
   useAgentModelChoice,
+  useChatHistory,
   useSetAgentModelChoice,
   useSkills,
 } from "../hooks/queries";
@@ -57,6 +62,7 @@ import { useSession } from "../hooks/use-session";
 import { useStoreSkillLocaleMigration } from "../hooks/use-store-skill-locale-migration";
 import { useWelcomeGreetingRevealed } from "../hooks/use-welcome-greeting";
 import { deriveActiveInteraction } from "../lib/active-interaction";
+import { canManageAgentGrants } from "../lib/agent-access";
 import { isWelcomeSessionKey } from "../lib/agent-welcome";
 import { analytics } from "../lib/analytics";
 import { attachmentReferences } from "../lib/attachment-message";
@@ -73,12 +79,12 @@ import { resolveDictationLangHint } from "../lib/dictation/types";
 import { useDictation } from "../lib/dictation/use-dictation";
 import { genericErrorDescription } from "../lib/error-toast";
 import { skillDisplayTitle } from "../lib/humanize-skill-name";
-import { composeInteractionReply } from "../lib/interaction-reply";
+import { encodeInteractionAnswersMessage } from "../lib/interaction-reply";
 import {
   modelSelectorDecision,
   resolvePersonalModelPin,
 } from "../lib/model-selector-lock";
-import { canManageAgentGrants, isMultiplayer } from "../lib/org-roles";
+import { isMultiplayer } from "../lib/org-roles";
 import { osIsTauri } from "../lib/os-bridge";
 import { resolvePlanReadyOverride } from "../lib/plan-ready";
 import {
@@ -102,6 +108,10 @@ import {
   encodeSkillMessage,
 } from "../lib/skill-message";
 import {
+  resolveSuggestReusableOverride,
+  type SuggestReusableStep,
+} from "../lib/suggest-reusable";
+import {
   tauriActivity,
   tauriAttachments,
   tauriChat,
@@ -109,9 +119,14 @@ import {
   tauriProvider,
   withAttachmentPaths,
 } from "../lib/tauri";
-import { normalizeTurnMode, type TurnMode } from "../lib/turn-mode";
+import {
+  DEFAULT_TURN_MODE,
+  normalizeTurnMode,
+  type TurnMode,
+} from "../lib/turn-mode";
 import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
-import { useDraftStore } from "../stores/drafts";
+import { useAgentProvisioningStore } from "../stores/agent-provisioning";
+import { newConversationDraftKey, useDraftStore } from "../stores/drafts";
 import { useUIStore } from "../stores/ui";
 import { ChatConnectInteractionCard } from "./chat-connect-interaction-card";
 import { resolveEffectiveProvider } from "./chat-effective-provider";
@@ -159,6 +174,9 @@ interface UseAgentChatPanelArgs {
   selectedSessionKey: string | null;
   /** Called with the new conversation id after a Skill's "Start". */
   onSelectSession?: (id: string) => void;
+  /** New-conversation draft scope — must match the board's `useBoardDrafts`
+   *  scope so dictation lands in the composer the user sees (HOU-730). */
+  draftScope?: string;
 }
 
 interface AgentChatPanelProps {
@@ -215,6 +233,7 @@ export function useAgentChatPanel({
   agentDef,
   selectedSessionKey,
   onSelectSession,
+  draftScope,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
   const { t, i18n } = useTranslation(["board", "chat", "teams"]);
   const { processLabels, getThinkingMessage, thinkingIndicator } =
@@ -231,10 +250,11 @@ export function useAgentChatPanel({
   // ── Dictation (desktop-only voice typing) ──────────────────────────────
   // Transcript text is appended to the SAME draft store AIBoard's
   // `drafts`/`onDraftChange` read from (`useBoardDrafts` in mission-board.tsx)
-  // — the key mirrors AIBoard's own `activeSessionKey ?? "new-conversation"`
-  // derivation, so dictating into a fresh composer lands in the same draft
-  // the user would see if they typed instead.
-  const draftKey = selectedSessionKey ?? "new-conversation";
+  // — the key mirrors the board's own derivation (AIBoard's plain
+  // "new-conversation" translated through `useBoardDrafts`'s scope), so
+  // dictating into a fresh composer lands in the same draft the user would
+  // see if they typed instead.
+  const draftKey = selectedSessionKey ?? newConversationDraftKey(draftScope);
   const handleDictationTranscript = useCallback(
     (text: string) => {
       const current = useDraftStore.getState().drafts[draftKey]?.text ?? "";
@@ -275,6 +295,19 @@ export function useAgentChatPanel({
   const path = agent?.folderPath ?? null;
   const agentModes = agentDef?.config.agents;
 
+  // Opening an agent whose hosted pod is scaled to zero (HOU-730): the open
+  // itself starts the wake, but every request is held for the whole cold
+  // start — a first message sent then would hang with no bubble. Detect the
+  // asleep engine now so sends park with the same warming machinery a
+  // just-created agent uses, and flush the moment the pod answers.
+  const agentId = agent?.id ?? null;
+  useEffect(() => {
+    if (!agentId || !path) return;
+    useAgentProvisioningStore
+      .getState()
+      .detectSleepingEngine({ id: agentId, folderPath: path });
+  }, [agentId, path]);
+
   // ── Activity / agent tier model resolution ─────────────────────────────
   // Activity is the per-mission override; agent config is the per-agent
   // default. Workspace-level defaults were retired and pushed into agent
@@ -288,13 +321,13 @@ export function useAgentChatPanel({
   const [agentEffort, setAgentEffort] = useState<string | null>(null);
   // Composer "Mode" pin (execute/plan). Loaded from config as memory only; the
   // send path forwards it as `modeOverride`. Unknown/legacy values → execute.
-  const [turnMode, setTurnMode] = useState<TurnMode>("execute");
+  const [turnMode, setTurnMode] = useState<TurnMode>(DEFAULT_TURN_MODE);
   useEffect(() => {
     if (!path) {
       setAgentProvider(null);
       setAgentModel(null);
       setAgentEffort(null);
-      setTurnMode("execute");
+      setTurnMode(DEFAULT_TURN_MODE);
       return;
     }
     tauriConfig
@@ -375,6 +408,13 @@ export function useAgentChatPanel({
   // This conversation's reactive feed — the SDK conversation VM, the app's one
   // turn-state source (history seeded by the adapter on load; live turns
   // folded by the SDK machinery).
+  // Live resync (HOU-731): the chat-history subscription makes a
+  // ConversationsChanged event re-read the open conversation and reseed the
+  // VM, so turns from a teammate / another device / a routine repaint live.
+  useChatHistory(
+    selectedSessionKey && path ? path : undefined,
+    selectedSessionKey ?? undefined,
+  );
   const sessionFeedItems = useConversationFeed(path, selectedSessionKey);
 
   // The live turn state for this conversation, for the pending-interaction
@@ -910,6 +950,13 @@ export function useAgentChatPanel({
     persisted: selectedActivity?.pending_interaction,
   });
 
+  // A stable key for the CURRENT pending interaction. There is no single id on a
+  // PendingInteraction (only on its individual steps), so the step ids joined in
+  // order identify one sequence — enough to remember "the user abandoned THIS
+  // interaction" across renders without re-showing it.
+  const interactionKey =
+    activeInteraction?.steps.map((s) => s.id).join(",") ?? null;
+
   // Sends the composed interaction reply as a normal user message through the
   // existing follow-up send path; the turn start clears the interaction, so the
   // card retires through the same reactivity. A failure surfaces (no silent
@@ -949,6 +996,8 @@ export function useAgentChatPanel({
       send: t("chat:questionCard.send"),
       back: t("chat:questionCard.back"),
       forward: t("chat:questionCard.forward"),
+      skip: t("chat:questionCard.skip"),
+      dismiss: t("chat:questionCard.dismiss"),
       progress: (current: number, total: number) =>
         t("chat:questionCard.progress", { current, total }),
     }),
@@ -965,9 +1014,24 @@ export function useAgentChatPanel({
   const [dismissedPlanReady, setDismissedPlanReady] = useState<string | null>(
     null,
   );
-  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedSessionKey is the intentional change-trigger that clears the dismissal when the open conversation switches, so a dismissed plan never suppresses a new chat's card.
+  // The optional "save as reusable" offer (suggest_reusable) is dismissed
+  // LOCALLY by id when the user picks "Not now" (or acts on Save), so the card
+  // doesn't reappear for that same offer. Per-conversation, like plan-ready.
+  const [dismissedSuggestReusable, setDismissedSuggestReusable] = useState<
+    string | null
+  >(null);
+  // The user can abandon ANY pending interaction (question stepper, plan_ready,
+  // suggest_reusable) either by the card's dismiss X or by typing a fresh message
+  // in the composer while it shows. Remembering the abandoned interaction's key
+  // suppresses its card uniformly. Per-conversation, like the dismissals above.
+  const [abandonedInteractionKey, setAbandonedInteractionKey] = useState<
+    string | null
+  >(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedSessionKey is the intentional change-trigger that clears the dismissals and the abandoned-interaction key when the open conversation switches, so a dismissed plan/offer or abandoned interaction never suppresses a new chat's card.
   useEffect(() => {
     setDismissedPlanReady(null);
+    setDismissedSuggestReusable(null);
+    setAbandonedInteractionKey(null);
   }, [selectedSessionKey]);
 
   // Start a turn from the plan-ready card: flip the composer's Mode pill (and
@@ -1018,6 +1082,58 @@ export function useAgentChatPanel({
     [t],
   );
 
+  // ── Suggest-reusable offer (suggest_reusable) ─────────────────────────
+  // On a clean finish the model may call `suggest_reusable`, arriving as a lone
+  // `{kind:"suggest_reusable", ...}` step. The card offers to save the work as a
+  // Skill or Routine. "Save" sends a follow-up message asking the agent to
+  // actually WRITE the Skill/Routine file, so it always runs in `execute` mode
+  // regardless of the composer's pinned mode (planning it is not enough), and it
+  // does NOT flip the composer's Mode pill (this is a one-off follow-up, not a
+  // change to the ongoing mode). It dismisses the offer locally first so the
+  // card can't fire twice.
+  const suggestReusableLabels = useMemo<ChatSuggestReusableLabels>(
+    () => ({
+      eyebrow: t("chat:suggestReusable.title"),
+      skillTitle: t("chat:suggestReusable.skillTitle"),
+      routineTitle: t("chat:suggestReusable.routineTitle"),
+      notNow: t("chat:suggestReusable.notNow"),
+    }),
+    [t],
+  );
+
+  const saveReusable = useCallback(
+    (step: SuggestReusableStep) => {
+      if (!path || !selectedSessionKey) return;
+      setDismissedSuggestReusable(step.id);
+      const text =
+        step.reusableKind === "skill"
+          ? t("chat:suggestReusable.saveSkillMessage", { title: step.title })
+          : t("chat:suggestReusable.saveRoutineMessage", { title: step.title });
+      tauriChat
+        .send(path, text, selectedSessionKey, {
+          providerOverride: effectiveProvider,
+          modelOverride: effectiveModel,
+          effortOverride: effectiveEffort,
+          modeOverride: "execute",
+        })
+        .catch((err) => {
+          addToast({
+            title: t("chat:errors.sessionStart", { error: String(err) }),
+            variant: "error",
+          });
+        });
+    },
+    [
+      path,
+      selectedSessionKey,
+      effectiveProvider,
+      effectiveModel,
+      effectiveEffort,
+      addToast,
+      t,
+    ],
+  );
+
   // The mission is waiting on a sequence of steps (questions then connections).
   // ONE ChatInteractionCard walks them one at a time; `onComplete` fires after
   // the LAST step, never before, so the card lives until every connection has
@@ -1040,6 +1156,36 @@ export function useAgentChatPanel({
   // array.
   const composerOverride = useMemo<AIBoardProps["composerOverride"]>(() => {
     if (!agent || !activeInteraction) return undefined;
+    // Abandoned (dismiss X, or a fresh composer send while it showed): suppress
+    // the card uniformly, whatever kind it is (suggest_reusable / plan_ready /
+    // stepper), and let the always-mounted composer stand alone.
+    if (interactionKey === abandonedInteractionKey) return undefined;
+    // A lone suggest_reusable step is the optional save offer. Resolve it FIRST
+    // and short-circuit: it is not a plan_ready step, so resolvePlanReadyOverride
+    // would wrongly route it into the interaction stepper. It never coexists with
+    // other step kinds by construction (runtime side), so a lone suggest_reusable
+    // step is fully handled here (card when live, composer when dismissed).
+    if (
+      activeInteraction.steps.length === 1 &&
+      activeInteraction.steps[0].kind === "suggest_reusable"
+    ) {
+      const reusable = resolveSuggestReusableOverride(
+        activeInteraction.steps,
+        dismissedSuggestReusable,
+      );
+      if (reusable.kind === "none") return undefined;
+      const step = reusable.step;
+      return (
+        <ChatSuggestReusableCard
+          reusableKind={step.reusableKind}
+          title={step.title}
+          rationale={step.rationale}
+          labels={suggestReusableLabels}
+          onSave={() => saveReusable(step)}
+          onDismiss={() => setDismissedSuggestReusable(step.id)}
+        />
+      );
+    }
     // A lone plan_ready step becomes the plan-ready card (unless dismissed);
     // everything else feeds the stepper over its plan_ready-free steps.
     const override = resolvePlanReadyOverride(
@@ -1074,12 +1220,15 @@ export function useAgentChatPanel({
       <ChatInteractionCard
         steps={steps}
         labels={interactionLabels}
+        onDismiss={() => setAbandonedInteractionKey(interactionKey)}
         onComplete={(answers: ChatInteractionAnswer[]) => {
           // ONE send after the LAST step: a sequence with questions replies with
           // the user's visible answers; a signin/connect-only sequence resumes
           // the agent with a hidden auto-continue message (no fake user bubble).
+          // The visible reply also carries a structured marker so the transcript
+          // renders the answers as a Q&A card, not an undifferentiated bubble.
           sendInteractionMessage(
-            composeInteractionReply({
+            encodeInteractionAnswersMessage({
               answers,
               connectedNames,
               hasQuestionSteps,
@@ -1118,14 +1267,42 @@ export function useAgentChatPanel({
   }, [
     agent,
     activeInteraction,
+    interactionKey,
+    abandonedInteractionKey,
     dismissedPlanReady,
+    dismissedSuggestReusable,
     planReadyLabels,
+    suggestReusableLabels,
     startPlan,
+    saveReusable,
     interactionLabels,
     sendInteractionMessage,
     capabilities,
     t,
   ]);
+
+  // A fresh message typed into the always-mounted composer WHILE an interaction
+  // card shows is an implicit "abandon this interaction": mark it abandoned so
+  // the card retires (the composerOverride memo suppresses it), then run the
+  // normal composer-submit path unchanged. Only genuine composer submits reach
+  // here — the cards' own composed replies go through sendInteractionMessage /
+  // saveReusable / startPlan, which call tauriChat.send directly and never touch
+  // this handler, so completing/acting on an interaction never self-abandons it.
+  const onComposerSubmit = useCallback<
+    NonNullable<AIBoardProps["onComposerSubmit"]>
+  >(
+    (ctx) => {
+      if (activeInteraction && interactionKey !== abandonedInteractionKey)
+        setAbandonedInteractionKey(interactionKey);
+      return handleSkillComposerSubmit(ctx);
+    },
+    [
+      handleSkillComposerSubmit,
+      activeInteraction,
+      interactionKey,
+      abandonedInteractionKey,
+    ],
+  );
 
   // ── Built JSX bundles ─────────────────────────────────────────────────
   const renderUserMessage = useCallback(
@@ -1140,13 +1317,19 @@ export function useAgentChatPanel({
         );
       }
       const attachmentInvocation = decodeAttachmentMessage(msg.content);
-      if (!attachmentInvocation) return undefined;
-      return (
-        <UserAttachmentMessage
-          invocation={attachmentInvocation}
-          labels={attachmentLabels}
-        />
-      );
+      if (attachmentInvocation) {
+        return (
+          <UserAttachmentMessage
+            invocation={attachmentInvocation}
+            labels={attachmentLabels}
+          />
+        );
+      }
+      const interactionAnswers = decodeInteractionAnswersMessage(msg.content);
+      if (interactionAnswers) {
+        return <UserInteractionAnswersMessage payload={interactionAnswers} />;
+      }
+      return undefined;
     },
     [attachmentLabels],
   );
@@ -1489,7 +1672,7 @@ export function useAgentChatPanel({
     composerHeader,
     composerOverride,
     canSendEmpty: activeSkill != null,
-    onComposerSubmit: handleSkillComposerSubmit,
+    onComposerSubmit,
     footer,
     attachMenu,
     renderUserMessage,

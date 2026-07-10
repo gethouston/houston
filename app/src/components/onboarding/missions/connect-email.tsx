@@ -1,4 +1,4 @@
-import { AsyncButton, Button, Input } from "@houston-ai/core";
+import { AsyncButton, Button, ConfirmDialog, Input } from "@houston-ai/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -7,7 +7,7 @@ import {
   useIntegrationStatus,
 } from "../../../hooks/queries";
 import { useCapabilities } from "../../../hooks/use-capabilities";
-import { canManageAgentGrants } from "../../../lib/org-roles";
+import { canManageAgentGrants } from "../../../lib/agent-access";
 import type { Agent } from "../../../lib/types";
 import { INTEGRATION_PROVIDER, useConnectFlow } from "../../integrations";
 import { OptionCard, SetupCard } from "../setup-card";
@@ -49,6 +49,7 @@ export function ConnectEmailMission({
   // its OAuth poll resolves, and we must refetch to see the new connection
   // even if the status cache still lags on `ready`.
   const [attempted, setAttempted] = useState(false);
+  const [skipConfirmOpen, setSkipConfirmOpen] = useState(false);
 
   // The gateway is "ready" only once it has the Houston session (App's session
   // sync pushes it). Gate the connection poll on it so we never fire a failing
@@ -100,16 +101,12 @@ export function ConnectEmailMission({
     return connect(chosen.toolkit);
   }, [chosen, connect]);
 
-  // Dead-end escape: the route can exist (capabilities) while the gateway is
-  // unready or the OAuth hop failed; without a skip the first-run has no
-  // Continue and the user is stranded (they can always connect later from the
-  // Integrations tab).
-  const showSkip = shouldOfferConnectSkip({
-    statusKnown: !status.isPending,
-    ready,
-    attempted,
-    connecting,
-  });
+  // Always offered (bar an in-flight connect): the route can exist
+  // (capabilities) while the gateway is unready or the OAuth hop failed, and a
+  // first-run with no Continue strands the user. A confirm dialog is the
+  // actual friction — see `skipConfirmOpen` below — so hiding the affordance
+  // itself would just relocate the dead end.
+  const showSkip = shouldOfferConnectSkip({ connecting });
 
   return (
     <SetupCard
@@ -166,13 +163,23 @@ export function ConnectEmailMission({
               variant="ghost"
               size="sm"
               className="shrink-0"
-              onClick={onSkip}
+              onClick={() => setSkipConfirmOpen(true)}
             >
               {t("tutorial.missions.connectEmail.skip")}
             </Button>
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={skipConfirmOpen}
+        onOpenChange={setSkipConfirmOpen}
+        title={t("tutorial.missions.connectEmail.skipConfirmTitle")}
+        description={t("tutorial.missions.connectEmail.skipConfirmBody")}
+        confirmLabel={t("tutorial.missions.connectEmail.skipConfirmAction")}
+        cancelLabel={t("tutorial.missions.connectEmail.skipConfirmCancel")}
+        variant="default"
+        onConfirm={onSkip}
+      />
     </SetupCard>
   );
 }

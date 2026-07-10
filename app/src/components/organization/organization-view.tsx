@@ -1,13 +1,19 @@
 import { cn } from "@houston-ai/core";
 import type { OrgInfo, OrgRole } from "@houston-ai/engine-client";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
+import { useCapabilities } from "../../hooks/use-capabilities";
+import { canSeeBillingTab } from "../../lib/org-roles";
+import { isTeamWorkspace } from "../../lib/space-id";
+import { useWorkspaceStore } from "../../stores/workspaces";
 import { PageContainer, PageHeader } from "../shell/page-shell";
 import ActivityTab from "./activity-tab";
 import AgentsTab from "./agents-tab";
+import BillingTab from "./billing-tab";
 import MembersTab from "./members-tab";
-import { ORG_TAB_IDS, type OrgTabId } from "./org-view-model";
+import { useOrgNav } from "./org-nav-store";
+import { type OrgTabId, orgTabIds } from "./org-view-model";
 import UsageTab from "./usage-tab";
 
 /**
@@ -33,6 +39,7 @@ const TAB_COMPONENTS: Record<OrgTabId, (props: OrgTabProps) => ReactNode> = {
   agents: AgentsTab,
   activity: ActivityTab,
   usage: UsageTab,
+  billing: BillingTab,
 };
 
 /**
@@ -48,7 +55,34 @@ const TAB_COMPONENTS: Record<OrgTabId, (props: OrgTabProps) => ReactNode> = {
 export function OrganizationView() {
   const { t } = useTranslation("teams");
   const { data: org, isLoading } = useOrg(true);
+  const { capabilities } = useCapabilities();
+  const current = useWorkspaceStore((s) => s.current);
+  const requestedTab = useOrgNav((s) => s.requestedTab);
+  const clearRequestedTab = useOrgNav((s) => s.clearRequestedTab);
+
+  // The Billing tab exists only for owner/admin on a team space (C8). Compute
+  // the visible tab set so a personal space / non-billing host never shows it.
+  const showBilling = canSeeBillingTab(
+    capabilities,
+    current ? isTeamWorkspace(current.id) : false,
+  );
+  const tabIds = orgTabIds(showBilling);
+
   const [tab, setTab] = useState<OrgTabId>("people");
+
+  // Honor a deep link into a tab (the C8 team-status banner/pill routes here),
+  // then clear it so a later plain nav to the dashboard opens the default tab.
+  useEffect(() => {
+    if (requestedTab === null) return;
+    if (tabIds.includes(requestedTab)) setTab(requestedTab);
+    clearRequestedTab();
+  }, [requestedTab, tabIds, clearRequestedTab]);
+
+  // If the visible set drops the active tab (e.g. switching out of a team space
+  // hides Billing), fall back to the first tab rather than a blank panel.
+  useEffect(() => {
+    if (!tabIds.includes(tab)) setTab(tabIds[0]);
+  }, [tabIds, tab]);
 
   const ActiveTab = TAB_COMPONENTS[tab];
   const ctx: OrgViewContext | null = org
@@ -65,7 +99,7 @@ export function OrganizationView() {
             aria-label={t("org.tablistLabel")}
             className="flex items-center gap-5"
           >
-            {ORG_TAB_IDS.map((id) => {
+            {tabIds.map((id) => {
               const isActive = tab === id;
               return (
                 <button

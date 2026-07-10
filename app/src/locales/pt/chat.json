@@ -41,10 +41,12 @@
     "description": "Digite uma mensagem para falar com seu assistente."
   },
   "questionCard": {
-    "placeholder": "Digite sua resposta...",
-    "send": "Enviar",
+    "placeholder": "Digite outra coisa...",
+    "send": "Avançar",
     "back": "Voltar",
     "forward": "Avançar",
+    "skip": "Pular",
+    "dismiss": "Descartar",
     "progress": "{{current}} de {{total}}"
   },
   "interaction": {
@@ -66,6 +68,14 @@
     "keepPlanningDescription": "Fique aqui e ajuste o plano.",
     "startWorkingMessage": "Pode seguir com o plano.",
     "runAutopilotMessage": "Pode terminar por conta própria."
+  },
+  "suggestReusable": {
+    "title": "Salve isto para a próxima vez",
+    "skillTitle": "Salvar como Habilidade",
+    "routineTitle": "Salvar como Rotina",
+    "notNow": "Agora não",
+    "saveSkillMessage": "Salve o que acabei de fazer como uma Habilidade chamada \"{{title}}\".",
+    "saveRoutineMessage": "Configure isto como uma Rotina recorrente chamada \"{{title}}\"."
   },
   "errors": {
     "sessionStart": "Não foi possível iniciar a sessão: {{error}}",
@@ -143,10 +153,8 @@
       "back": "Voltar",
       "providersLabel": "Provedores",
       "modelsLabel": "Modelos",
-      "resultsLabel": "Resultados",
       "loading": "Carregando provedores…",
       "empty": "Nenhum modelo encontrado.",
-      "emptyHint": "Tente outro termo de busca.",
       "noProviders": "Nenhum provedor conectado ainda."
     },
     "modelDescriptions": {

@@ -3,8 +3,29 @@
   "grid": {
     "loading": "Loading…",
     "emptyTitle": "Set it and forget it",
-    "emptyDescription": "Routines fire on a schedule and only ping you when something actually needs attention.",
+    "emptyDescription": "A routine is your agent working on a schedule, without you asking each time. Describe a task once, and it runs on its own, daily, weekly, or however often you like.",
+    "emptyStepsTitle": "How it works",
+    "emptySteps": [
+      {
+        "title": "Tell it what to do",
+        "description": "Describe the task in plain language, like you would to a person."
+      },
+      {
+        "title": "Choose when it runs",
+        "description": "Pick a schedule: every morning, every hour, once a week, whatever fits."
+      },
+      {
+        "title": "Review by asking",
+        "description": "No need to check its work by hand, just ask what happened."
+      }
+    ],
     "newRoutine": "New routine",
+    "newRoutineWithAi": "With AI",
+    "newRoutineManually": "Manually",
+    "createRoutine": "Create routine",
+    "draftTitle": "Routine being created in chat",
+    "draftResume": "Resume",
+    "draftDiscard": "Discard",
     "descriptionShort": "Recurring tasks that fire on schedule and only ping you when something needs attention.",
     "timezoneLabel": "Timezone",
     "timezoneHint": "All your routines run in this timezone.",
@@ -12,41 +33,13 @@
     "timezoneNoResults": "No timezones found"
   },
   "setupChat": {
-    "missionTitle": "Set up a new routine",
-    "bannerTitle": "You are creating a routine in chat",
-    "bannerDescription": "Pick up where you left off, or discard the draft chat.",
-    "continue": "Continue",
-    "discard": "Discard"
+    "missionTitle": "Set up a new routine"
   },
-  "editor": {
+  "chat": {
+    "newRoutineTitle": "New routine",
+    "routineLabel": "Routine: {{name}}",
     "back": "Back to routines",
-    "newRoutine": "New routine",
-    "untitled": "Untitled routine",
-    "stop": "Stop",
-    "starting": "Starting…",
-    "runNow": "Run now",
-    "saveChanges": "Save changes",
-    "createRoutine": "Create routine",
-    "moreActions": "More actions",
-    "pauseRoutine": "Pause routine",
-    "resumeRoutine": "Resume routine",
-    "deleteRoutine": "Delete routine",
-    "nameLabel": "Name",
-    "namePlaceholder": "e.g. Morning standup",
-    "promptLabel": "Prompt",
-    "promptPlaceholder": "What should the agent do when this runs?",
-    "sectionWhen": "When it runs",
-    "sectionBehavior": "Behavior",
-    "sectionRecent": "Recent runs",
-    "nextRun": "Next run {relative}",
-    "schedulePreview": "Schedule preview",
-    "schedulePreviewHint": "Pick a valid schedule to see when this routine will fire.",
-    "notifyTitle": "Only notify when relevant",
-    "notifyDescription": "If the agent has nothing to report, the run won't surface on the board.",
-    "chatTitle": "Keep results in one chat",
-    "chatDescription": "Every run adds to the same chat. Turn this off to start a new chat each time this routine runs.",
-    "modelTitle": "Model",
-    "modelDescription": "Pick the model and reasoning effort this routine runs on. Defaults to the agent's settings."
+    "opening": "Opening chat…"
   },
   "row": {
     "untitled": "Untitled",
@@ -59,7 +52,23 @@
     "ranHours": "ran {n}h ago",
     "ranDays": "ran {n}d ago",
     "pauseRoutine": "Pause routine",
-    "resumeRoutine": "Resume routine"
+    "resumeRoutine": "Resume routine",
+    "runNow": "Run now",
+    "stopRun": "Stop run",
+    "moreActions": "More actions",
+    "editManually": "Edit manually",
+    "editWithAi": "Edit with AI",
+    "delete": "Delete",
+    "deleteTitle": "Delete {name}?",
+    "deleteDescription": "This can't be undone. Its chat history stays untouched.",
+    "deleteConfirm": "Delete",
+    "deleteCancel": "Cancel",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Morning standup",
+    "instructionLabel": "Instruction",
+    "instructionPlaceholder": "What should the agent do when this runs?",
+    "save": "Save",
+    "cancel": "Cancel"
   },
   "schedule": {
     "presets": {
@@ -136,26 +145,9 @@
     "soon": "soon",
     "at": "{day} at {time}"
   },
-  "runHistory": {
-    "empty": "No runs yet, this routine hasn't fired.",
-    "view": "View",
-    "stopRun": "Stop run",
-    "waiting": "Waiting for usage limit, resumes at {time}",
-    "status": {
-      "silent": "Silent",
-      "surfaced": "Surfaced",
-      "running": "Running",
-      "error": "Error",
-      "cancelled": "Cancelled",
-      "paused": "Paused"
-    },
-    "today": "Today, {time}",
-    "yesterday": "Yesterday, {time}",
-    "onDate": "{date}, {time}"
-  },
   "toasts": {
     "timezoneSet": "Timezone set to {{zone}}",
     "timezoneError": "Couldn't update the timezone",
-    "chatSetupError": "Couldn't start the routine setup chat"
+    "discardError": "Couldn't discard the draft"
   }
 }

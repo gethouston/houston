@@ -252,3 +252,9 @@ components:
       (desktop planReady.startWorkingMessage). Run-on-Autopilot / Keep-planning
       have no mobile seam yet, so only the primary path is wired (no dead
       affordances).
+  suggest-reusable-card:
+    status: not-started
+    notes: Save-as-Skill/Routine offer on a clean mission finish (suggest_reusable); not in mobile v1.
+  interaction-answers-message:
+    status: not-started
+    notes: Structured question/answer user bubble from a completed interaction sequence; not in mobile v1.

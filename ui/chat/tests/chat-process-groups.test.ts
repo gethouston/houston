@@ -66,3 +66,53 @@ describe("process item key stability", () => {
     strictEqual(new Set(keys).size, 2);
   });
 });
+
+// The setup-chat bug: an assistant message with empty text content and no
+// tools/reasoning rendered as a bare avatar + empty bubble floating under the
+// real message. Such messages are dropped unless they are the actively
+// streaming tail (which legitimately starts empty).
+describe("empty assistant message suppression", () => {
+  const messageItems = (
+    messages: ChatMessage[],
+    status: "ready" | "streaming",
+  ) =>
+    getChatDisplayItems(messages, status).filter((i) => i.kind === "message");
+
+  it("drops an empty, non-streaming assistant message", () => {
+    const empty = assistant("assistant-1", { content: "" });
+    const items = messageItems([user, empty], "ready");
+    // Only the user message survives.
+    strictEqual(items.length, 1);
+    strictEqual(items[0].kind === "message" && items[0].message.from, "user");
+  });
+
+  it("drops a whitespace-only, non-streaming assistant message", () => {
+    const blank = assistant("assistant-1", { content: "  \n\t " });
+    const items = messageItems([user, blank], "ready");
+    strictEqual(items.length, 1);
+    strictEqual(items[0].kind === "message" && items[0].message.from, "user");
+  });
+
+  it("keeps an empty assistant message while it is the streaming tail", () => {
+    const streaming = assistant("assistant-1", {
+      content: "",
+      isStreaming: true,
+    });
+    const items = messageItems([user, streaming], "streaming");
+    strictEqual(items.length, 2);
+    strictEqual(
+      items[1].kind === "message" && items[1].message.from,
+      "assistant",
+    );
+  });
+
+  it("keeps an empty-but-reasoning assistant message (as a process block)", () => {
+    const thinking = assistant("assistant-1", {
+      content: "",
+      reasoning: { content: "hmm", isStreaming: false },
+    });
+    const items = getChatDisplayItems([user, thinking], "ready");
+    const process = items.find((i) => i.kind === "process");
+    strictEqual(Boolean(process), true);
+  });
+});

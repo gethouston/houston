@@ -31,7 +31,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
   const addToast = useUIStore((s) => s.addToast);
   const queuedLabels = useQueuedMessageLabels();
   const { cardLabels, composerLabels } = useBoardLabels();
-  const { drafts, onDraftChange } = useBoardDrafts();
+  const { drafts, onDraftChange } = useBoardDrafts(source.draftScope);
 
   // Columns: base layout (single source of truth for status→section) plus the
   // Done "archive all" / Needs-you "select all" header actions when the source
@@ -63,6 +63,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
     agentDef: source.activeAgentDef,
     selectedSessionKey: source.selectedSessionKey,
     onSelectSession: source.onSelectSession,
+    draftScope: source.draftScope,
   });
   const overrides = useMemo(
     () => ({

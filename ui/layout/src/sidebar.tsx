@@ -5,7 +5,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@houston-ai/core";
-import { PanelLeftClose } from "lucide-react";
+import { PanelLeftClose, Plus } from "lucide-react";
 import {
   type KeyboardEvent,
   type MouseEvent,
@@ -70,6 +70,7 @@ export interface SidebarProps {
    */
   groups?: SidebarGroupView[];
   onToggleGroupCollapsed?: (groupId: string) => void;
+  onEditGroupContext?: (groupId: string) => void;
   onRenameGroup?: (groupId: string, newName: string) => void;
   onDeleteGroup?: (groupId: string) => void;
   /** A group id to open directly in inline-rename (e.g. a just-created group). */
@@ -98,6 +99,8 @@ export interface SidebarLabels extends SidebarItemRowLabels {
   createGroup?: string;
   renameGroup?: string;
   deleteGroup?: string;
+  /** Menu item that opens the group's shared-context editor. */
+  editGroupContext?: string;
   /** aria label for the group "..." menu trigger. */
   groupMenu?: string;
   newGroupPlaceholder?: string;
@@ -116,6 +119,7 @@ const DEFAULT_LABELS: Required<SidebarLabels> = {
   createGroup: "New group",
   renameGroup: "Rename group",
   deleteGroup: "Delete group",
+  editGroupContext: "Edit shared context",
   groupMenu: "Group options",
   newGroupPlaceholder: "Group name",
   emptyGroupHint: "Drag agents here",
@@ -138,6 +142,7 @@ export function AppSidebar({
   sectionAction,
   groups,
   onToggleGroupCollapsed,
+  onEditGroupContext,
   onRenameGroup,
   onDeleteGroup,
   renamingGroupId,
@@ -298,6 +303,22 @@ export function AppSidebar({
                 {sectionLabel}
               </div>
               {sectionAction}
+              {onAdd && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={l.addItem}
+                      onClick={onAdd}
+                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      {...(addItemDataAttrs ?? {})}
+                    >
+                      <Plus className="size-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{l.addItem}</TooltipContent>
+                </Tooltip>
+              )}
             </div>
           )}
 
@@ -310,14 +331,13 @@ export function AppSidebar({
                 items={items}
                 groups={groups}
                 onToggleGroupCollapsed={onToggleGroupCollapsed}
+                onEditGroupContext={onEditGroupContext}
                 onRenameGroup={onRenameGroup}
                 onDeleteGroup={onDeleteGroup}
                 renamingGroupId={renamingGroupId}
                 onRenamingGroupIdHandled={onRenamingGroupIdHandled}
                 onMoveItem={onMoveItem}
                 onMoveGroup={onMoveGroup}
-                onAdd={onAdd}
-                addItemDataAttrs={addItemDataAttrs}
                 rowCtx={baseRowCtx}
               />
             ) : (

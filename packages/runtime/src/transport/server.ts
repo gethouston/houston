@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { primeAnthropicCredential } from "../backends/claude/credential-status";
 import { config } from "../config";
 import { anyTurnRunning } from "../session/bus";
+import { handleAnonymizeRoute } from "./anonymize-route";
 import { handleConversationRoute } from "./conversation-routes";
 import { applyCors } from "./cors";
 import { handleGenerateRoute } from "./generate-route";
@@ -41,6 +42,7 @@ async function handle(ctx: RouteContext) {
   if (await handleProviderRoute(ctx)) return;
   if (await handleConversationRoute(ctx)) return;
   if (await handleGenerateRoute(ctx)) return;
+  if (await handleAnonymizeRoute(ctx)) return;
 
   json(ctx.res, 404, { error: "not found" });
 }

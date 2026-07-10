@@ -69,25 +69,6 @@ export interface NextFireLabels {
   at: string;
 }
 
-/** Run-history row strings. `{time}` for the timestamp/usage-limit phrasings. */
-export interface RunHistoryLabels {
-  empty: string;
-  view: string;
-  stopRun: string;
-  waiting: string;
-  status: {
-    silent: string;
-    surfaced: string;
-    running: string;
-    error: string;
-    cancelled: string;
-    paused: string;
-  };
-  today: string;
-  yesterday: string;
-  onDate: string;
-}
-
 /** Schedule builder + picker-field labels. */
 export interface ScheduleLabels {
   presets: Record<SchedulePreset, string>;
@@ -119,36 +100,10 @@ export interface ScheduleLabels {
   summary: ScheduleSummaryLabels;
 }
 
-/** RoutineEditor chrome. `{tz}`/`{relative}` tokens on a couple of entries. */
-export interface RoutineEditorLabels {
-  back: string;
-  newRoutine: string;
-  untitled: string;
-  stop: string;
-  starting: string;
-  runNow: string;
-  saveChanges: string;
-  createRoutine: string;
-  moreActions: string;
-  pauseRoutine: string;
-  resumeRoutine: string;
-  deleteRoutine: string;
-  nameLabel: string;
-  namePlaceholder: string;
-  promptLabel: string;
-  promptPlaceholder: string;
-  sectionWhen: string;
-  sectionBehavior: string;
-  sectionRecent: string;
-  nextRun: string;
-  schedulePreview: string;
-  schedulePreviewHint: string;
-  notifyTitle: string;
-  notifyDescription: string;
-  chatTitle: string;
-  chatDescription: string;
-  modelTitle: string;
-  modelDescription: string;
+/** A single step in the empty state's "how it works" walkthrough. */
+export interface RoutineHowItWorksStep {
+  title: string;
+  description: string;
 }
 
 /** RoutinesGrid empty state + meta row. */
@@ -156,8 +111,21 @@ export interface RoutinesGridLabels {
   loading: string;
   emptyTitle: string;
   emptyDescription: string;
+  /** Heading above the 3-step walkthrough in the empty state. */
+  emptyStepsTitle: string;
+  /** The walkthrough itself: describe the task, set a schedule, review in chat. */
+  emptySteps: RoutineHowItWorksStep[];
   descriptionShort: string;
+  /** "New routine" split-button trigger + its two menu entries. */
   newRoutine: string;
+  newRoutineWithAi: string;
+  newRoutineManually: string;
+  /** A routine still being set up in chat, not created yet. */
+  draftTitle: string;
+  draftResume: string;
+  draftDiscard: string;
+  /** Save button on the local new-routine editor. */
+  createRoutine: string;
   /** Accessible name for the account-wide timezone picker. */
   timezoneLabel: string;
   /** One-line hint that the timezone applies to every routine. */
@@ -168,7 +136,11 @@ export interface RoutinesGridLabels {
   timezoneNoResults: string;
 }
 
-/** RoutineRow meta. `{relative}`/`{time}`/`{n}` tokens on the dynamic entries. */
+/**
+ * RoutineRow meta + its inline edit panel (name/schedule/instruction) and
+ * three-dot menu (run/stop, edit, delete). `{relative}`/`{time}`/`{n}` tokens
+ * on the dynamic entries; `{name}` on `deleteTitle`.
+ */
 export interface RoutineRowLabels {
   untitled: string;
   next: string;
@@ -181,15 +153,38 @@ export interface RoutineRowLabels {
   ranDays: string;
   pauseRoutine: string;
   resumeRoutine: string;
+  /** Three-dot menu trigger. */
+  moreActions: string;
+  /** Fire the routine immediately (menu, when no run is in flight). */
+  runNow: string;
+  /** Stop the in-flight run (menu, while a run is running). */
+  stopRun: string;
+  /** Opens the inline edit panel (name/schedule/instruction). */
+  editManually: string;
+  /** Opens the routine's chat to change it by asking instead. */
+  editWithAi: string;
+  delete: string;
+  /** Delete confirm dialog. `{name}` on the title. */
+  deleteTitle: string;
+  deleteDescription: string;
+  deleteConfirm: string;
+  deleteCancel: string;
+  /** Inline edit panel fields. */
+  nameLabel: string;
+  namePlaceholder: string;
+  /** The prompt sent to the agent when the routine fires — framed to the
+   *  user as an instruction, not a technical "prompt". */
+  instructionLabel: string;
+  instructionPlaceholder: string;
+  save: string;
+  cancel: string;
 }
 
 // English default values, co-located in a sibling file to keep this one small.
 export {
-  DEFAULT_EDITOR_LABELS,
   DEFAULT_GRID_LABELS,
   DEFAULT_NEXT_FIRE_LABELS,
   DEFAULT_ROW_LABELS,
-  DEFAULT_RUN_HISTORY_LABELS,
   DEFAULT_SCHEDULE_LABELS,
   DEFAULT_SCHEDULE_SUMMARY_LABELS,
 } from "./labels-default.ts";

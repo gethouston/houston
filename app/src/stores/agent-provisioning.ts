@@ -19,6 +19,7 @@
 
 import { create } from "zustand";
 import {
+  detectEngineAsleep,
   type ProvisioningEntry,
   parsePersistedProvisioning,
   runProvisioningProbe,
@@ -49,6 +50,13 @@ interface AgentProvisioningState {
   sendsVersion: number;
   /** Start tracking a just-created agent (no-op on a co-located engine). */
   markProvisioning: (agent: { id: string; folderPath: string }) => void;
+  /**
+   * Asleep-check an EXISTING agent on open (HOU-730, hosted only): a pod
+   * scaled to zero answers nothing until the gateway wakes it, so mark it
+   * exactly like a just-created agent — sends park with a local bubble and
+   * an optimistic mission row, and flush when the readiness probe clears.
+   */
+  detectSleepingEngine: (agent: { id: string; folderPath: string }) => void;
   /** A rename mid-warm-up moves the agent's id/path; re-key the entry. */
   carryRename: (
     oldId: string,
@@ -101,6 +109,9 @@ function storageWrite(state: Record<string, ProvisioningEntry>): void {
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+/** Agent ids with an asleep-check in flight — one at a time per agent. */
+const asleepChecks = new Set<string>();
+
 /** Non-reactive read for imperative flows (mission creation). */
 export function isAgentProvisioning(agentId: string): boolean {
   return Boolean(useAgentProvisioningStore.getState().provisioning[agentId]);
@@ -120,17 +131,41 @@ export const useAgentProvisioningStore = create<AgentProvisioningState>(
       });
     },
 
+    detectSleepingEngine: (agent) => {
+      if (isCoLocatedEngine()) return;
+      if (get().provisioning[agent.id] || asleepChecks.has(agent.id)) return;
+      asleepChecks.add(agent.id);
+      void detectEngineAsleep(agent.folderPath, {
+        readFile: (agentPath, relPath) =>
+          getEngine().readAgentFile(agentPath, relPath),
+        sleep,
+      })
+        .then((asleep) => {
+          // Re-check: a create/rename may have marked the id while we probed.
+          if (!asleep || get().provisioning[agent.id]) return;
+          startEntry({
+            agentId: agent.id,
+            agentPath: agent.folderPath,
+            since: Date.now(),
+          });
+        })
+        .finally(() => asleepChecks.delete(agent.id));
+    },
+
     carryRename: (oldId, agent) => {
       const previous = get().provisioning[oldId];
       if (!previous) return;
       get().clearProvisioning(oldId);
-      // Keep the original TTL anchor: the rename didn't restart the warm-up.
+      // Keep the original TTL anchor and timed-out flag: the rename didn't
+      // restart the warm-up, and carrying `timedOut` avoids re-showing the
+      // "still starting" toast for a stall the user already saw.
       // Queued sends move with the agent (their session keys are stable).
       startEntry({
         agentId: agent.id,
         agentPath: agent.folderPath,
         since: previous.since,
         pendingSends: previous.pendingSends,
+        timedOut: previous.timedOut,
       });
     },
 
@@ -209,13 +244,31 @@ function startProbe(entry: ProvisioningEntry): void {
         .finally(() => store.clearProvisioning(id, entry));
     },
     onTimeout: (id, lastError) => {
-      store.clearProvisioning(id, entry);
-      showErrorToast(
-        "agent_provisioning",
-        lastError instanceof Error ? lastError.message : String(lastError),
-        lastError,
-        { userMessage: i18n.t("shell:agentProvisioning.failed") },
-      );
+      // A newer mark (rename, or a fresh create reusing the id) already
+      // retired this exact entry — nothing to do.
+      if (useAgentProvisioningStore.getState().provisioning[id] !== entry) {
+        return;
+      }
+      // HOU-693 regression: this used to clearProvisioning here, silently
+      // dropping the user's still-visible first chat the moment a cold start
+      // ran past the TTL. Never make a visible mission disappear on its own —
+      // flag it once (toast + sticky UI state) and keep waiting instead of
+      // giving up. A pod that's merely slow to schedule still comes up.
+      if (!entry.timedOut) {
+        entry.timedOut = true;
+        showErrorToast(
+          "agent_provisioning",
+          lastError instanceof Error ? lastError.message : String(lastError),
+          lastError,
+          { userMessage: i18n.t("shell:agentProvisioning.stillStarting") },
+        );
+      }
+      entry.since = Date.now();
+      useAgentProvisioningStore.setState((s) => {
+        storageWrite(s.provisioning);
+        return { sendsVersion: s.sendsVersion + 1 };
+      });
+      startProbe(entry);
     },
     sleep,
     now: () => Date.now(),
@@ -235,6 +288,10 @@ void whenEngineReady().then(() => {
     return;
   }
   for (const entry of fresh) {
+    // A timed-out entry's `since` may be hours stale (kept regardless of age
+    // by the parse filter above) — re-anchor it so the resumed probe gets a
+    // fresh TTL window instead of immediately re-timing-out.
+    if (entry.timedOut) entry.since = Date.now();
     startEntry(entry);
     // The relaunch emptied the in-memory VM: re-render the queued bubbles so
     // the sent-but-not-yet-delivered messages stay visible.

@@ -1,12 +1,17 @@
-import { deepStrictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { IntegrationConnection } from "@houston-ai/engine-client";
+import type {
+  Capabilities,
+  IntegrationConnection,
+  OrgRole,
+} from "@houston-ai/engine-client";
 import type { AgentChip } from "../src/components/integrations/agent-chip.ts";
 import {
   agentChipsFor,
   partitionConnections,
   toolkitAgentIds,
-} from "../src/components/integrations-view/integrations-view-model.ts";
+} from "../src/components/integrations/connected-apps-model.ts";
+import { integrationsPageMode } from "../src/components/integrations-view/integrations-view-model.ts";
 
 const conn = (
   toolkit: string,
@@ -100,5 +105,47 @@ describe("partitionConnections", () => {
 
   it("handles an empty list", () => {
     deepStrictEqual(partitionConnections([]), { active: [], recovering: [] });
+  });
+});
+
+const caps = (over: Partial<Capabilities> = {}): Capabilities => ({
+  profile: "cloud",
+  revealInOs: false,
+  terminal: false,
+  tunnel: false,
+  codeExecution: "remote-sandbox",
+  providers: [],
+  openaiCompatible: false,
+  integrations: [],
+  ...over,
+});
+
+const teams = (role: OrgRole): Capabilities =>
+  caps({ multiplayer: true, role, teams: true });
+
+describe("integrationsPageMode", () => {
+  it("single-player is the personal page", () => {
+    strictEqual(integrationsPageMode(caps()), "personal");
+    strictEqual(integrationsPageMode(null), "personal");
+    strictEqual(integrationsPageMode(undefined), "personal");
+  });
+
+  it("non-Teams multiplayer is still the personal page", () => {
+    strictEqual(integrationsPageMode(caps({ multiplayer: true })), "personal");
+    strictEqual(
+      integrationsPageMode(caps({ multiplayer: true, role: "owner" })),
+      "personal",
+    );
+  });
+
+  it("a Teams workspace is the org policy surface for owner and admin", () => {
+    strictEqual(integrationsPageMode(teams("owner")), "policy");
+    strictEqual(integrationsPageMode(teams("admin")), "policy");
+  });
+
+  it("Teams requires multiplayer (a bare teams flag stays personal)", () => {
+    // `teams` without `multiplayer` is not a real Teams workspace; the nav gate
+    // and mode both key off multiplayer first.
+    strictEqual(integrationsPageMode(caps({ teams: true })), "personal");
   });
 });

@@ -21,11 +21,7 @@
     "signOut": "Sign out",
     "cancel": "Cancel",
     "models_one": "{{count}} model",
-    "models_other": "{{count}} models",
-    "subscription": "Subscription",
-    "apiKey": "Your API key",
-    "local": "Runs on your computer",
-    "gateway": "Multi-model gateway"
+    "models_other": "{{count}} models"
   },
   "directory": {
     "search": "Search {{count}}+ models",
@@ -97,12 +93,8 @@
     },
     "filter": {
       "label": "Filter providers",
-      "all": "All providers",
-      "popular": "Popular",
-      "subscription": "Included with a subscription",
-      "free": "Free to try",
-      "payg": "Pay per use",
-      "local": "Runs on your computer"
+      "subscription": "Subscription",
+      "payg": "Pay as you go"
     },
     "openai": {
       "description": "Sign in with ChatGPT and put the GPT and Codex models to work."

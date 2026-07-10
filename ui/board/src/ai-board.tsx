@@ -75,8 +75,12 @@ export interface AIBoardProps {
   cardAvatar?: ReactNode;
   /** Avatar element shown in the detail panel header. */
   panelAvatar?: ReactNode;
+  /** Rendered before the avatar (e.g. a Back button for a full-page panel). */
+  panelLeading?: ReactNode;
   /** Name shown next to the avatar in the panel header (e.g. "Houston"). */
   panelAgentName?: string;
+  /** Replaces the panel header's auto "Mission: {title}" line verbatim. */
+  panelMissionLabel?: string;
   /** Called when the detail panel opens or closes. */
   onPanelOpenChange?: (open: boolean) => void;
   /** Called when the user clicks Stop in the chat panel. Receives the active session key. */
@@ -287,7 +291,9 @@ export function AIBoard({
   thinkingIndicator,
   cardAvatar,
   panelAvatar,
+  panelLeading,
   panelAgentName,
+  panelMissionLabel,
   onPanelOpenChange,
   onStopSession,
   queuedMessages,
@@ -369,7 +375,16 @@ export function AIBoard({
       hydratedKeys.current.add(sk);
       onLoadHistory(sk)
         .then((h) => {
-          if (h.length > 0) onHistoryLoaded?.(sk, h);
+          if (h.length > 0) {
+            onHistoryLoaded?.(sk, h);
+          } else {
+            // An empty load is not proof the chat is empty: the loader
+            // resolves [] while the agent's engine is still warming, or when
+            // the server hasn't restored the conversation yet. Un-mark so the
+            // next selection retries instead of pinning the chat empty until
+            // remount; a genuinely empty chat just re-runs a cheap read.
+            hydratedKeys.current.delete(sk);
+          }
         })
         .catch((err) => {
           // Un-mark the session so re-selecting the conversation retries the
@@ -699,8 +714,13 @@ export function AIBoard({
       ref={panelRef}
       title={panelTitle}
       onClose={hidePanelClose ? undefined : closePanel}
+      leading={panelLeading}
       avatar={panelAvatar}
       agentName={panelAgentName ?? selectedItem?.group}
+      missionLabelOverride={panelMissionLabel}
+      people={selectedItem?.people}
+      peopleLabel={cardLabels?.people}
+      peopleExpandLabel={cardLabels?.peopleExpand}
       actions={selectedItem ? panelActions?.(selectedItem) : undefined}
     >
       <div className="flex-1 min-h-0 flex flex-col">

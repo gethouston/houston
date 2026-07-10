@@ -121,7 +121,7 @@ describe("agentIntegrationsView (allowlist overlay)", () => {
     );
   });
 
-  it("a disallowed, ungranted app is not offered as an accountRow", () => {
+  it("a disallowed, ungranted app surfaces only as a disallowed row", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail"), conn("notion")],
       catalog: CATALOG,
@@ -129,8 +129,12 @@ describe("agentIntegrationsView (allowlist overlay)", () => {
       allowlist: ["gmail"],
     });
     if (view.mode !== "grants") throw new Error("unreachable");
-    // notion is connected + active + ungranted, but disallowed → not activatable.
-    deepStrictEqual(view.accountRows, []);
+    // notion is connected + active + ungranted and disallowed → it appears only
+    // in disallowedRows for transparency, never as a usable active row.
+    deepStrictEqual(
+      view.activeRows.map((r) => r.connection.toolkit),
+      ["gmail"],
+    );
     deepStrictEqual(
       view.disallowedRows.map((r) => r.connection.toolkit),
       ["notion"],
@@ -146,7 +150,6 @@ describe("agentIntegrationsView (allowlist overlay)", () => {
     });
     if (view.mode !== "grants") throw new Error("unreachable");
     deepStrictEqual(view.activeRows, []);
-    deepStrictEqual(view.accountRows, []);
     deepStrictEqual(
       view.disallowedRows.map((r) => r.connection.toolkit),
       ["gmail", "slack"],

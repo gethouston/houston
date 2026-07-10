@@ -7,6 +7,7 @@ import type {
   ActivityUpdate,
   Agent,
   CommunitySkill,
+  CommunitySkillPreview,
   CustomEndpoint,
   InstalledConfig,
   NewActivity,
@@ -37,6 +38,15 @@ import { DEFAULT_AGENT_COLOR, DEFAULT_AGENT_CONFIG_ID } from "./synthetic";
 export interface ControlPlaneConfig {
   baseUrl: string;
   token: string;
+  /**
+   * Active hosted space (C8 §Active space). When set it is an org SLUG
+   * (`[a-f0-9]{16}`) and every gateway call carries `x-houston-org: <slug>`
+   * (and the SSE stream a `?org=<slug>` query); null/absent selects the
+   * caller's personal org — the gateway's header-absent default. Mutated in
+   * place by `HoustonClient.setActiveOrg`, and read live per request/attempt,
+   * so a space switch takes effect without rebuilding the config.
+   */
+  activeOrgSlug?: string | null;
 }
 
 /** What the control plane returns for an agent (id + name + workspace + ts). */
@@ -168,11 +178,19 @@ export function liveToken(fallback: string): string {
  * must surface, not spin. With no refresher installed (static tokens, tests)
  * the refresh resolves null and this degrades to a plain live-token fetch.
  */
-export function gatewayAuthFetch(fallbackToken: string): typeof fetch {
+export function gatewayAuthFetch(
+  fallbackToken: string,
+  getOrg?: () => string | null | undefined,
+): typeof fetch {
   return async (input, init) => {
     const send = (bearer: string) => {
       const headers = new Headers(init?.headers);
       if (bearer) headers.set("Authorization", `Bearer ${bearer}`);
+      // Active-space header (C8), re-read per attempt so a mid-flight space
+      // switch is honored on the next retry/refresh — same live discipline as
+      // the bearer. Absent → the gateway resolves the personal org.
+      const org = getOrg?.();
+      if (org) headers.set("x-houston-org", org);
       return fetch(input, { ...init, headers });
     };
     const res = await send(liveToken(fallbackToken));
@@ -192,42 +210,53 @@ const TRANSIENT_RETRY_DELAYS_MS = [500, 1500];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Wrap a fetch so GET/HEAD attempts ride through a rolling deploy / pod
+ * handoff: transient gateway statuses and network-level drops (connection
+ * refused/reset mid-roll) get two brief blind retries. Writes never
+ * blind-retry — a thrown network error on a POST may have reached the
+ * gateway; the caller decides.
+ */
+export function transientRetryFetch(inner: typeof fetch): typeof fetch {
+  return async (input, init) => {
+    const method = (init?.method ?? "GET").toUpperCase();
+    const retriable = method === "GET" || method === "HEAD";
+    let res: Response | undefined;
+    let failure: unknown;
+    for (let i = 0; ; i++) {
+      failure = undefined;
+      res = undefined;
+      try {
+        res = await inner(input, init);
+      } catch (err) {
+        failure = err;
+      }
+      const transient = res === undefined || TRANSIENT_STATUSES.has(res.status);
+      if (!transient || !retriable || i >= TRANSIENT_RETRY_DELAYS_MS.length) {
+        break;
+      }
+      await sleep(TRANSIENT_RETRY_DELAYS_MS[i]);
+    }
+    if (res === undefined) throw failure;
+    return res;
+  };
+}
+
 async function cpFetch(
   cfg: ControlPlaneConfig,
   path: string,
   init?: RequestInit,
 ): Promise<Response> {
-  const doFetch = gatewayAuthFetch(cfg.token);
-  const attempt = () =>
-    doFetch(`${cfg.baseUrl}${path}`, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...init?.headers,
-      },
-    });
-
-  // Reads retry through the deploy window; writes never blind-retry (a thrown
-  // network error on a POST may have reached the gateway — the caller decides).
-  const method = (init?.method ?? "GET").toUpperCase();
-  const retriable = method === "GET" || method === "HEAD";
-  let res: Response | undefined;
-  let failure: unknown;
-  for (let i = 0; ; i++) {
-    failure = undefined;
-    try {
-      res = await attempt();
-    } catch (err) {
-      failure = err; // network-level: connection refused/reset mid-roll
-    }
-    const transient = res === undefined || TRANSIENT_STATUSES.has(res.status);
-    if (!transient || !retriable || i >= TRANSIENT_RETRY_DELAYS_MS.length) {
-      break;
-    }
-    await sleep(TRANSIENT_RETRY_DELAYS_MS[i]);
-    res = undefined;
-  }
-  if (failure !== undefined || res === undefined) throw failure;
+  const doFetch = transientRetryFetch(
+    gatewayAuthFetch(cfg.token, () => cfg.activeOrgSlug),
+  );
+  const res = await doFetch(`${cfg.baseUrl}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
+  });
   if (!res.ok) {
     // Surface the real failure (auth, not-found, server) — never swallow.
     const body = await res.json().catch(() => ({}));
@@ -441,9 +470,14 @@ export function runtimeClientFor(
   // Auth rides gatewayAuthFetch, never a pinned token: these clients back
   // long-lived turn streams, whose reconnects must present the CURRENT bearer
   // (and refresh it on 401) or a gateway roll kills the turn (HOU-687).
+  // Reads additionally bridge transient gateway 5xx (rolling deploy, pod
+  // handoff) like every cpFetch read does — without it a history load hit
+  // mid-roll threw once and the chat rendered empty until reselected (HOU-731).
   return new HoustonEngineClient({
     baseUrl: `${cfg.baseUrl}/agents/${encodeURIComponent(agentId)}`,
-    fetch: gatewayAuthFetch(cfg.token),
+    fetch: transientRetryFetch(
+      gatewayAuthFetch(cfg.token, () => cfg.activeOrgSlug),
+    ),
   });
 }
 
@@ -460,7 +494,7 @@ export function setupRuntimeClientFor(
 ): HoustonEngineClient {
   return new HoustonEngineClient({
     baseUrl: `${cfg.baseUrl}/setup-runtime`,
-    fetch: gatewayAuthFetch(cfg.token),
+    fetch: gatewayAuthFetch(cfg.token, () => cfg.activeOrgSlug),
   });
 }
 
@@ -703,17 +737,19 @@ export async function searchCommunitySkills(
   );
   return (await res.json()) as CommunitySkill[];
 }
-export async function popularCommunitySkills(
+export async function previewCommunitySkill(
   cfg: ControlPlaneConfig,
   agentId: string,
+  source: string,
+  skillId: string,
   signal?: AbortSignal,
-): Promise<CommunitySkill[]> {
+): Promise<CommunitySkillPreview> {
   const res = await cpFetch(
     cfg,
-    `${agentPath(agentId)}/skills/community/popular`,
-    { method: "POST", signal },
+    `${agentPath(agentId)}/skills/community/preview`,
+    { method: "POST", body: JSON.stringify({ source, skillId }), signal },
   );
-  return (await res.json()) as CommunitySkill[];
+  return (await res.json()) as CommunitySkillPreview;
 }
 export async function listSkillsFromRepo(
   cfg: ControlPlaneConfig,
@@ -936,7 +972,11 @@ export async function setPreference(
  *
  * This adapter keeps only its own two seams: the token rides in the query (the
  * host's bearer reads `?token=`, re-embedded per (re)connect so a refreshed
- * token is always current), and host events `{ type, agentPath, workspaceId }`
+ * token is always current) — and, in a hosted team space, the active-space
+ * slug rides beside it as `?org=<slug>` (C8 §Active space: browsers can't set
+ * headers on a stream, so the gateway's two SSE routes accept the selector as a
+ * query param). Both are re-read per (re)connect. Host events
+ * `{ type, agentPath, workspaceId }`
  * are translated to the shape the UI's invalidation map reads
  * (`{ type, data: { agent_path, workspace_id } }`). Malformed frames are
  * dropped and the loop reconnects with a short backoff on any drop. A `401`
@@ -950,8 +990,13 @@ export function subscribeEvents(
 ): () => void {
   const ac = new AbortController();
   void streamGlobalEvents({
-    url: () =>
-      `${cfg.baseUrl}/v1/events?token=${encodeURIComponent(liveToken(cfg.token))}`,
+    url: () => {
+      const org = cfg.activeOrgSlug;
+      const orgParam = org ? `&org=${encodeURIComponent(org)}` : "";
+      return `${cfg.baseUrl}/v1/events?token=${encodeURIComponent(
+        liveToken(cfg.token),
+      )}${orgParam}`;
+    },
     // Wrapped, never the bare reference: streamGlobalEvents calls
     // `opts.fetch(...)`, and a browser's window.fetch invoked with a foreign
     // receiver throws "Illegal invocation" BEFORE any request goes out — the
@@ -1010,16 +1055,23 @@ export type {
   AgentAssignment,
   AgentModelChoice,
   AgentModelChoiceInfo,
+  AgentMoveStart,
+  AgentMoveStatus,
   AgentSettings,
   AuditEntry,
+  BillingCheckout,
+  BillingSummary,
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
   OrgInfo,
   OrgInvite,
+  OrgInviteSummary,
   OrgMember,
   OrgRole,
   OrgSettings,
+  OrgSummary,
+  OrgsList,
   UsageRow,
 } from "../../../../ui/engine-client/src/types";
 
@@ -1029,14 +1081,20 @@ import type {
   AgentAssignment,
   AgentModelChoice,
   AgentModelChoiceInfo,
+  AgentMoveStart,
+  AgentMoveStatus,
   AgentSettings,
   AuditEntry,
+  BillingCheckout,
+  BillingSummary,
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
   OrgInfo,
   OrgRole,
   OrgSettings,
+  OrgSummary,
+  OrgsList,
   UsageRow,
 } from "../../../../ui/engine-client/src/types";
 
@@ -1175,6 +1233,133 @@ export async function setOrgMemberRole(
     method: "PATCH",
     body: JSON.stringify({ role }),
   });
+}
+
+// ── spaces / teams (C8) ──────────────────────────────────────────────────────
+// The caller's spaces list, self-serve team creation, and agent moves. Gated on
+// `caps.spaces`; the gateway is the sole enforcer.
+
+/**
+ * The caller's spaces + pending invites. Degrades to an empty result on a
+ * gateway that predates spaces (404) — the switcher then shows only the personal
+ * workspace, byte-identical to a pre-C8 deployment. Every other error throws.
+ */
+export async function listOrgs(cfg: ControlPlaneConfig): Promise<OrgsList> {
+  try {
+    const res = await cpFetch(cfg, "/v1/orgs");
+    return (await res.json()) as OrgsList;
+  } catch (err) {
+    if (err instanceof HoustonEngineError && err.status === 404) {
+      return { orgs: [], invites: [] };
+    }
+    throw err;
+  }
+}
+
+/**
+ * Create a team space. NOT idempotent — on a lost response DON'T blind-retry;
+ * reconcile via `listOrgs` and reuse the persisted slug (C8). Never degrades: a
+ * failure throws so the UI surfaces the real reason.
+ */
+export async function createOrg(
+  cfg: ControlPlaneConfig,
+  name: string,
+): Promise<OrgSummary> {
+  const res = await cpFetch(cfg, "/v1/orgs", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+  return (await res.json()) as OrgSummary;
+}
+
+/**
+ * Move an agent into a team space; returns the `moveId` to poll with
+ * `getMoveStatus`. Never degrades — 403 `unsupported_move` / 409
+ * `unmovable_volume` / 403 `needs_upgrade` throw so the caller surfaces them.
+ */
+export async function moveAgent(
+  cfg: ControlPlaneConfig,
+  agentSlugOrId: string,
+  toSlug: string,
+): Promise<AgentMoveStart> {
+  const res = await cpFetch(
+    cfg,
+    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/move`,
+    { method: "POST", body: JSON.stringify({ to: toSlug }) },
+  );
+  return (await res.json()) as AgentMoveStart;
+}
+
+/**
+ * Poll one agent-move's progress (C8). The move-completion signal is THIS route
+ * only — never the agent event stream (which relays pod-scoped events).
+ */
+export async function getMoveStatus(
+  cfg: ControlPlaneConfig,
+  agentSlugOrId: string,
+  moveId: string,
+): Promise<AgentMoveStatus> {
+  const res = await cpFetch(
+    cfg,
+    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/move/${encodeURIComponent(moveId)}`,
+  );
+  return (await res.json()) as AgentMoveStatus;
+}
+
+// ── billing (C8) ─────────────────────────────────────────────────────────────
+// Seat billing for the active team space. `getBilling` is a re-on-entry read
+// (no push on expiry — status is derived); checkout/portal are owner-only writes
+// returning a Stripe-hosted URL. Gated on `caps.spaces`; the gateway enforces.
+
+/**
+ * The active team's billing summary. Degrades to `null` for the NOT-ENTITLED
+ * cases — a gateway that predates billing (404) and a caller it refuses billing
+ * detail (403 `personal_space` or plain member) — so the billing UI renders
+ * nothing and the degrade surfaces take over. Every other error throws (mirrors
+ * `getAgentModelChoice`'s 404 swallow).
+ */
+export async function getBilling(
+  cfg: ControlPlaneConfig,
+): Promise<BillingSummary | null> {
+  try {
+    const res = await cpFetch(cfg, "/v1/org/billing");
+    return (await res.json()) as BillingSummary;
+  } catch (err) {
+    if (
+      err instanceof HoustonEngineError &&
+      (err.status === 404 || err.status === 403)
+    ) {
+      return null;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Start a Stripe Checkout session for the active team (owner only; admin gets
+ * 403 `not_owner`). Returns the hosted `{url}`. Never degrades — a failure throws
+ * so the UI surfaces the real reason.
+ */
+export async function createCheckout(
+  cfg: ControlPlaneConfig,
+  interval: "monthly" | "annual",
+): Promise<BillingCheckout> {
+  const res = await cpFetch(cfg, "/v1/org/billing/checkout", {
+    method: "POST",
+    body: JSON.stringify({ interval }),
+  });
+  return (await res.json()) as BillingCheckout;
+}
+
+/**
+ * Open the Stripe customer portal for the active team (owner only) — card,
+ * invoices, interval switch, cancel. Returns the hosted `{url}`. Never degrades.
+ */
+export async function createPortal(
+  cfg: ControlPlaneConfig,
+): Promise<BillingCheckout> {
+  const res = await cpFetch(cfg, "/v1/org/billing/portal", { method: "POST" });
+  return (await res.json()) as BillingCheckout;
 }
 
 export async function setAgentAssignments(

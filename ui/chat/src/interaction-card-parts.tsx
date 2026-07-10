@@ -1,19 +1,24 @@
 "use client";
 
 import { Button, cn } from "@houston-ai/core";
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { XIcon } from "lucide-react";
 import type { ChatInteractionOption } from "./interaction-card-logic";
 
-/** One selectable answer, a full-width single-select row (click = answer). */
+/** One selectable answer, a full-width single-select row (click = answer). The
+ *  bold label sits on the left; its 1-based `position` shows as quiet muted text
+ *  on the right (always visible, replacing the old check-on-selected indicator —
+ *  the number is the stable affordance, selection is carried by the border). */
 export function OptionRow({
   option,
   selected,
   disabled,
+  position,
   onSelect,
 }: {
   option: ChatInteractionOption;
   selected: boolean;
   disabled: boolean;
+  position: number;
   onSelect: () => void;
 }) {
   return (
@@ -32,72 +37,71 @@ export function OptionRow({
       role="radio"
       type="button"
     >
-      <span className="flex-1">{option.label}</span>
-      <span className="flex size-4 shrink-0 items-center justify-center">
-        {selected && <CheckIcon className="size-4 text-primary" />}
+      <span className="flex-1 font-medium">{option.label}</span>
+      <span className="shrink-0 text-muted-foreground text-xs tabular-nums">
+        {position}
       </span>
     </button>
   );
 }
 
-/** Quiet header: a back chevron (from step 2 on) and a right-aligned "1 of X".
- *  Once the user walks back onto an already-completed step, a forward chevron
- *  joins the progress on the right so they can return to the live frontier. That
- *  matters most for a revisited connect step, whose card can't re-fire
- *  onConnected once connected, leaving the forward chevron the only way onward.
- *  Renders only when there is more than one step, so a lone step shows no chrome
- *  and keeps the one-tap feel. `min-h-8` reserves the chevron's height so the
- *  progress text never shifts between step 1 and later steps. */
-export function StepperHeader({
-  progressText,
-  canGoBack,
-  onBack,
-  backLabel,
-  canGoForward,
-  onForward,
-  forwardLabel,
-  disabled,
-}: {
-  progressText: string;
-  canGoBack: boolean;
-  onBack: () => void;
-  backLabel: string;
-  canGoForward: boolean;
-  onForward: () => void;
-  forwardLabel: string;
+export interface StepperHeaderProps {
+  /** 1-based index of the current step and the total step count (drives the pill). */
+  current: number;
+  total: number;
+  /** Full accessible progress copy, e.g. "1 of 4" (aria-label on the pill). */
+  progressLabel: string;
+  /** The current step's question text; omitted for signin/connect steps. */
+  questionText?: string;
+  /** Dismisses the WHOLE interaction sequence. The X button renders only when
+   *  supplied, so a caller with no dismiss affordance simply omits it. */
+  onDismiss?: () => void;
+  dismissLabel: string;
   disabled: boolean;
-}) {
+}
+
+/** Card header: a "current/total" pill and the step's question text on the
+ *  left, an optional dismiss X on the right. Purely informational + the one
+ *  escape hatch — all step-to-step navigation (back/skip/next) lives together
+ *  in the footer, see `ChatInteractionCard`. */
+export function StepperHeader({
+  current,
+  total,
+  progressLabel,
+  questionText,
+  onDismiss,
+  dismissLabel,
+  disabled,
+}: StepperHeaderProps) {
   return (
-    <div className="mb-1 flex min-h-8 items-center justify-between px-1">
-      {canGoBack ? (
+    <div className="mb-1 flex min-h-8 items-center gap-1.5 px-1">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        {total > 1 && (
+          <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 font-medium text-muted-foreground text-xs tabular-nums">
+            <span aria-hidden="true">
+              {current}/{total}
+            </span>
+            <span className="sr-only">{progressLabel}</span>
+          </span>
+        )}
+        {questionText && (
+          <span className="min-w-0 truncate font-medium text-foreground text-sm">
+            {questionText}
+          </span>
+        )}
+      </div>
+
+      {onDismiss && (
         <Button
-          aria-label={backLabel}
+          aria-label={dismissLabel}
           disabled={disabled}
-          onClick={onBack}
+          onClick={onDismiss}
           size="icon-sm"
           variant="ghost"
         >
-          <ChevronLeftIcon className="size-4" />
+          <XIcon className="size-4" />
         </Button>
-      ) : (
-        <span className="size-8" />
       )}
-      <div className="flex items-center gap-1">
-        <span className="font-medium text-muted-foreground text-xs tabular-nums">
-          {progressText}
-        </span>
-        {canGoForward && (
-          <Button
-            aria-label={forwardLabel}
-            disabled={disabled}
-            onClick={onForward}
-            size="icon-sm"
-            variant="ghost"
-          >
-            <ChevronRightIcon className="size-4" />
-          </Button>
-        )}
-      </div>
     </div>
   );
 }

@@ -1,0 +1,30 @@
+<script>
+(function(){
+  // Mirrors the homepage/guides track() helper: PostHog + GA4, both optional.
+  function track(name, props) {
+    if (typeof window === 'undefined') return;
+    var payload = props || {};
+    if (window.posthog && window.posthog.capture) {
+      try { window.posthog.capture(name, payload); } catch (e) {}
+    }
+    if (typeof window.gtag === 'function') {
+      try { window.gtag('event', name, payload); } catch (e) {}
+    }
+  }
+  var lang = document.documentElement.lang || 'en';
+
+  // Plan CTA clicks (Personal / Team / Enterprise).
+  document.querySelectorAll('[data-cta]').forEach(function(el){
+    el.addEventListener('click', function(){
+      track('pricing_cta_clicked', { plan: el.getAttribute('data-cta'), lang: lang });
+    });
+  });
+
+  // FAQ opens (fire only on expand, not collapse).
+  document.querySelectorAll('.faq [data-faq]').forEach(function(el){
+    el.addEventListener('toggle', function(){
+      if (el.open) track('pricing_faq_opened', { question: el.getAttribute('data-faq'), lang: lang });
+    });
+  });
+})();
+</script>

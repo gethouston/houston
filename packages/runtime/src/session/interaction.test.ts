@@ -6,6 +6,7 @@ import {
   recordPlanReady,
   recordQuestions,
   recordSignin,
+  recordSuggestReusable,
   runWithInteractionCapture,
 } from "./interaction";
 
@@ -162,6 +163,13 @@ test("recording outside a turn is a no-op (undefined store)", () => {
   expect(() => recordConnection({ toolkit: "gmail" })).not.toThrow();
   expect(() => recordSignin({ reason: "orphan" })).not.toThrow();
   expect(() => recordPlanReady({ summary: "orphan plan" })).not.toThrow();
+  expect(() =>
+    recordSuggestReusable({
+      reusableKind: "skill",
+      title: "orphan",
+      rationale: "no turn",
+    }),
+  ).not.toThrow();
 });
 
 test("recordPlanReady records the single plan-ready step (id p1, trimmed)", () => {
@@ -205,6 +213,80 @@ test("the protocol guard accepts a valid plan_ready step and rejects a bad summa
   );
   // No id is invalid (shared step rule).
   expect(isInteractionStep({ kind: "plan_ready", summary: "x" })).toBe(false);
+});
+
+test("recordSuggestReusable records the single suggest-reusable step (id r1, trimmed)", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () =>
+    recordSuggestReusable({
+      reusableKind: "routine",
+      title: "  Morning digest  ",
+      rationale: "  Runs on its own each day.  ",
+    }),
+  );
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "suggest_reusable",
+        id: "r1",
+        reusableKind: "routine",
+        title: "Morning digest",
+        rationale: "Runs on its own each day.",
+      },
+    ],
+  });
+});
+
+test("a suggest-reusable step ALONE surfaces as the pending sequence", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () =>
+    recordSuggestReusable({
+      reusableKind: "skill",
+      title: "Weekly report",
+      rationale: "Reuse it next week.",
+    }),
+  );
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "suggest_reusable",
+        id: "r1",
+        reusableKind: "skill",
+        title: "Weekly report",
+        rationale: "Reuse it next week.",
+      },
+    ],
+  });
+});
+
+test("suggest-reusable is FALLBACK-ONLY: a question this same turn wins and drops it", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordSuggestReusable({
+      reusableKind: "skill",
+      title: "Weekly report",
+      rationale: "Reuse it next week.",
+    });
+    recordQuestions([q("q1", "Which week?")]);
+  });
+  // The question means the mission is NOT done, so it takes priority and the
+  // suggestion is dropped from `pending` entirely — never surfaced alongside.
+  expect(holder.pending).toEqual({ steps: [q("q1", "Which week?")] });
+});
+
+test("plan-ready wins over a suggest-reusable step set the same turn", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordSuggestReusable({
+      reusableKind: "skill",
+      title: "Weekly report",
+      rationale: "Reuse it next week.",
+    });
+    recordPlanReady({ summary: "Here is the plan." });
+  });
+  expect(holder.pending).toEqual({
+    steps: [{ kind: "plan_ready", id: "p1", summary: "Here is the plan." }],
+  });
 });
 
 test("the holder survives async work inside the capture (ALS propagation)", async () => {

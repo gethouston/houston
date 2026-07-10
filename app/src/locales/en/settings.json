@@ -1,6 +1,7 @@
 {
   "title": "Settings",
   "nav": {
+    "connectedAccounts": "Connected accounts",
     "workspaceContext": "Workspace context",
     "userContext": "Your context",
     "language": "Language",
@@ -11,7 +12,19 @@
   "account": {
     "title": "Account",
     "signOut": "Sign out",
-    "fallbackName": "Signed in"
+    "avatar": {
+      "changeButton": "Change picture",
+      "changing": "Uploading…",
+      "toasts": {
+        "successTitle": "Profile picture updated",
+        "errorTitle": "Couldn't update your picture"
+      },
+      "errors": {
+        "notImage": "Pick an image file (JPG, PNG, or WebP).",
+        "tooLarge": "That image is over 5 MB. Pick a smaller one.",
+        "uploadFailed": "Couldn't save your picture. {{reason}}"
+      }
+    }
   },
   "workspace": {
     "title": "Workspace name"
@@ -105,6 +118,7 @@
     },
     "rows": {
       "members": "People who can use your agents",
+      "connectedAccounts": "Apps you've connected to Houston",
       "workspaceContext": "What every agent knows about this workspace",
       "userContext": "What every agent knows about you",
       "shortcuts": "Run Houston without the mouse",
@@ -113,7 +127,17 @@
     "values": {
       "set": "Set",
       "membersCount_one": "{{count}} member",
-      "membersCount_other": "{{count}} members"
+      "membersCount_other": "{{count}} members",
+      "appsCount_one": "{{count}} app",
+      "appsCount_other": "{{count}} apps"
     }
+  },
+  "connectedAccounts": {
+    "title": "Connected accounts",
+    "subtitle": "Apps you've connected. Choose which agents can use each one.",
+    "heading": "Your apps",
+    "empty": "You haven't connected any apps yet.",
+    "connectMore": "Connect more apps",
+    "connectHint": "Connect new apps from any agent's Integrations tab."
   }
 }

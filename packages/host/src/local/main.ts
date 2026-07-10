@@ -1,7 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import {
   LOCAL_CAPABILITIES,
   MANAGED_CLOUD_CAPABILITIES,
@@ -9,6 +8,7 @@ import {
 import { houstonSystemPrompt } from "../houston-prompt";
 import { installParentWatchdog } from "../parent-watchdog";
 import { buildLocalHost } from "./host";
+import { runtimeCommand } from "./runtime-command";
 
 /**
  * The local host entry point — the desktop sidecar the Tauri shell spawns. Same
@@ -31,35 +31,12 @@ import { buildLocalHost } from "./host";
  *   HOUSTON_RUNTIME_COMMAND   argv to launch a pi-runtime (space-separated);
  *                             explicit override (highest priority). Otherwise:
  *                             the compiled sidecar spawns ITSELF (in runtime
- *                             role via HOUSTON_SIDECAR_ROLE — see host.ts); the
- *                             dev fallback is `node --import tsx <repo>/packages/runtime/src/main.ts`.
+ *                             role via HOUSTON_SIDECAR_ROLE — see host.ts);
+ *                             bundled Docker spawns dist/runtime/main.mjs; dev
+ *                             falls back to `node --import tsx <repo>/packages/runtime/src/main.ts`.
  *   HOUSTON_APP_SYSTEM_PROMPT the product voice prompt (from the app)
  *   HOUSTON_MANAGED_CLOUD=1  serve managed-cloud capabilities (K8s pod)
  */
-function runtimeCommand(): string[] {
-  // 1. Explicit override always wins.
-  const explicit = process.env.HOUSTON_RUNTIME_COMMAND;
-  if (explicit) return explicit.split(" ").filter(Boolean);
-  // 2. Packaged: we ARE the compiled sidecar (sidecar-entry.ts set
-  // HOUSTON_SIDECAR_BINARY to our own execPath). Spawn that same binary; the
-  // host adds HOUSTON_SIDECAR_ROLE=runtime so it dispatches into runtime mode.
-  // The packaged .app has no `bun` and no repo source, so this is the ONLY path
-  // that can launch a runtime there.
-  const selfBinary = process.env.HOUSTON_SIDECAR_BINARY;
-  if (selfBinary) return [selfBinary];
-  // 3. Dev fallback: run the runtime from source, resolved relative to this file
-  // (src/local/main.ts → ../../../runtime/src/main.ts).
-  const runtimeMain = join(
-    dirname(fileURLToPath(import.meta.url)),
-    "..",
-    "..",
-    "..",
-    "runtime",
-    "src",
-    "main.ts",
-  );
-  return [process.execPath, "--import", "tsx", runtimeMain];
-}
 
 function remoteCredentialConfig(hostTokenEnv: string | undefined) {
   const url = process.env.HOUSTON_CREDENTIALS_URL;
@@ -113,6 +90,9 @@ const host = buildLocalHost({
   redactBannerToken:
     !!hostTokenEnv || process.env.HOUSTON_MANAGED_CLOUD === "1",
   runtimeCommand: runtimeCommand(),
+  // Managed pods pre-spawn their agent's runtime at boot so the ~10s runtime
+  // start overlaps the pod wake instead of the user's first message.
+  eagerRuntime: process.env.HOUSTON_EAGER_RUNTIME === "1",
   // The real Tauri app hands over its own product prompt; this is the built-in
   // default so the agent knows how to create Skills/Routines/learnings.
   systemPrompt: process.env.HOUSTON_APP_SYSTEM_PROMPT || houstonSystemPrompt(),

@@ -1,11 +1,14 @@
-import {
-  type Context,
-  type Model,
-  registerApiProvider,
-  type SimpleStreamOptions,
-  type StreamOptions,
+import type {
+  Context,
+  Model,
+  SimpleStreamOptions,
+  StreamOptions,
 } from "@earendil-works/pi-ai";
 import { bedrockProviderModule } from "@earendil-works/pi-ai/bedrock-provider";
+// `registerApiProvider` is pi-ai's legacy global api-registry hook, preserved
+// on `/compat` (the new `Models`/`Provider` collection API needs an
+// instantiated registry we don't otherwise carry here).
+import { registerApiProvider } from "@earendil-works/pi-ai/compat";
 
 type BedrockBearerOptions<T extends StreamOptions> = T & {
   bearerToken?: string;
@@ -36,7 +39,7 @@ export function registerHoustonBedrockProvider(): void {
         context: Context,
         options?: StreamOptions,
       ) =>
-        bedrockProviderModule.streamBedrock(
+        bedrockProviderModule.stream(
           model,
           context,
           bedrockOptionsWithBearerToken(options),
@@ -46,7 +49,7 @@ export function registerHoustonBedrockProvider(): void {
         context: Context,
         options?: SimpleStreamOptions,
       ) =>
-        bedrockProviderModule.streamSimpleBedrock(
+        bedrockProviderModule.streamSimple(
           model,
           context,
           bedrockOptionsWithBearerToken(options),

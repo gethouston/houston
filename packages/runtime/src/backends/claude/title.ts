@@ -1,14 +1,6 @@
-import type { Options } from "@anthropic-ai/claude-agent-sdk";
-import {
-  buildClaudeEnv,
-  ClaudeBackendUnavailableError,
-  type ClaudeToken,
-} from "./backend";
-import { resolveClaudeExecutable } from "./binary-path";
-import { toSdkModel } from "./model";
-import { claudeLoginConfigDir } from "./paths";
+import type { ClaudeToken } from "./backend";
+import { oneShotWithClaude } from "./one-shot";
 import type { ClaudeQuery } from "./session";
-import { createStreamTranslator } from "./translate";
 
 /**
  * One-shot conversation title through the Claude Agent SDK. The COMPLIANCE reason
@@ -39,37 +31,13 @@ export interface ClaudeTitleParams {
 }
 
 export async function titleWithClaude(p: ClaudeTitleParams): Promise<string> {
-  let query = p.query;
-  if (!query) {
-    try {
-      const sdk = await import("@anthropic-ai/claude-agent-sdk");
-      query = sdk.query as ClaudeQuery;
-    } catch (err) {
-      throw new ClaudeBackendUnavailableError(err);
-    }
-  }
-
-  // undefined on the Node path; set only inside the Bun-compiled desktop sidecar
-  // (same as a turn — see backend.ts / binary-path.ts).
-  const pathToClaudeCodeExecutable = resolveClaudeExecutable();
-  const options: Options = {
-    cwd: p.workspaceDir,
-    env: buildClaudeEnv(claudeLoginConfigDir(), p.readToken()),
-    ...(pathToClaudeCodeExecutable ? { pathToClaudeCodeExecutable } : {}),
-    settingSources: [],
-    allowedTools: [],
+  const text = await oneShotWithClaude({
+    prompt: p.excerpt,
     systemPrompt: p.titlePrompt,
-    includePartialMessages: true,
-    permissionMode: "default",
-    ...(p.modelId ? { model: toSdkModel(p.modelId) } : {}),
-  };
-
-  let text = "";
-  const translator = createStreamTranslator({ onContextTokens: () => {} });
-  for await (const msg of query({ prompt: p.excerpt, options })) {
-    for (const wire of translator.translate(msg)) {
-      if (wire.type === "text") text += wire.data;
-    }
-  }
+    workspaceDir: p.workspaceDir,
+    readToken: p.readToken,
+    modelId: p.modelId,
+    query: p.query,
+  });
   return text.trim().split("\n")[0]?.trim().slice(0, 80) ?? "";
 }

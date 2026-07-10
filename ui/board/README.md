@@ -41,7 +41,10 @@ const columns = [
 - `KanbanColumn` -- single column with header and card list
 - `KanbanCard` -- individual card with glow, delete, approve actions
 - `KanbanDetailPanel` -- slide-in detail view for selected items
-- Types: `KanbanItem`, `KanbanColumn` (config)
+- `KanbanPeople` -- overlapping avatar face stack (up to `max` faces + a "+N" chip, initials fallback); rendered on cards and the detail panel from `KanbanItem.people`
+- Types: `KanbanItem`, `KanbanColumn` (config), `KanbanPerson` (`{ id, label, imageUrl? }`)
+
+`KanbanItem.people?: KanbanPerson[]` supplies the face stack. `KanbanPerson` is store-agnostic -- the consumer maps its own user / attribution model into it (in Houston, per-mission Teams attribution). Labels are English defaults; pass `label` in for i18n. Pure helpers `visiblePeople` / `overflowCount` / `initialsFor` are exported too.
 
 Columns with `onAdd` render a visible plus button under the last card.
 
