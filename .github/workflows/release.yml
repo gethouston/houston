@@ -1732,7 +1732,9 @@ jobs:
       - name: Deploy to preview site
         working-directory: packages/web
         run: |
-          npx --yes firebase-tools@latest deploy \
+          # Pinned major: an unpinned @latest would let a breaking firebase-tools
+          # release silently break the deploy. Keep in sync with web-promote.yml.
+          npx --yes firebase-tools@15 deploy \
             --only hosting:preview \
             --project gethouston \
             --non-interactive

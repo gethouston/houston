@@ -102,7 +102,9 @@ jobs:
         if: ${{ steps.check.outputs.present == 'true' }}
         working-directory: packages/web
         run: |
-          npx --yes firebase-tools@latest deploy \
+          # Pinned major: an unpinned @latest would let a breaking firebase-tools
+          # release silently break promotion. Keep in sync with release.yml build-web.
+          npx --yes firebase-tools@15 deploy \
             --only hosting:production \
             --project gethouston \
             --non-interactive
