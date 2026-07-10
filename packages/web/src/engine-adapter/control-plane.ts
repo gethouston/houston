@@ -1445,7 +1445,10 @@ export async function getOrgSettings(
 
 export async function setOrgSettings(
   cfg: ControlPlaneConfig,
-  settings: { allowedToolkits: string[] | null },
+  settings: {
+    allowedToolkits?: string[] | null;
+    allowedModels?: string[] | null;
+  },
 ): Promise<void> {
   await cpFetch(cfg, "/v1/org/settings", {
     method: "PUT",

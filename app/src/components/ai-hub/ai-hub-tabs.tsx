@@ -1,7 +1,7 @@
 import { Badge, cn } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 
-export type HubTab = "providers" | "models";
+export type HubTab = "providers" | "models" | "policy";
 
 /**
  * The Providers / Models switch, rendered as the SAME underline tab strip the
@@ -18,17 +18,21 @@ export function AiHubTabs({
   active,
   providerCount,
   modelCount,
+  showPolicy,
   onSelect,
 }: {
   active: HubTab;
   providerCount: number;
   modelCount: number;
+  /** Teams owner/admin only: the workspace model-policy tab (no count badge). */
+  showPolicy: boolean;
   onSelect: (tab: HubTab) => void;
 }) {
   const { t } = useTranslation("aiHub");
-  const tabs: { id: HubTab; label: string; count: number }[] = [
+  const tabs: { id: HubTab; label: string; count?: number }[] = [
     { id: "providers", label: t("tabs.providers"), count: providerCount },
     { id: "models", label: t("tabs.models"), count: modelCount },
+    ...(showPolicy ? [{ id: "policy" as const, label: t("tabs.policy") }] : []),
   ];
   return (
     <div
@@ -54,12 +58,14 @@ export function AiHubTabs({
             )}
           >
             {tab.label}
-            <Badge
-              variant="secondary"
-              className="min-w-5 px-1.5 font-normal tabular-nums text-muted-foreground"
-            >
-              {tab.count}
-            </Badge>
+            {tab.count !== undefined && (
+              <Badge
+                variant="secondary"
+                className="min-w-5 px-1.5 font-normal tabular-nums text-muted-foreground"
+              >
+                {tab.count}
+              </Badge>
+            )}
             {isActive && (
               <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-primary" />
             )}

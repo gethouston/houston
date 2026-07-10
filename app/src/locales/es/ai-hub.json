@@ -6,7 +6,8 @@
   },
   "tabs": {
     "providers": "Proveedores",
-    "models": "Modelos"
+    "models": "Modelos",
+    "policy": "Política del espacio de trabajo"
   },
   "sections": {
     "connected": "Conectados",

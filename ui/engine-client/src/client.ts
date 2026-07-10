@@ -1397,13 +1397,19 @@ export class HoustonClient {
       choice,
     );
   }
-  /** Read the org-wide allowed-toolkit ceiling (any member). */
+  /** Read the org-wide ceilings — apps + AI models (any member). */
   getOrgSettings(): Promise<OrgSettings> {
     return this.request("GET", "/org/settings");
   }
-  /** Replace the org-wide allowed-toolkit ceiling (owner only). */
+  /**
+   * Replace the org-wide ceilings (owner only). A partial patch: pass
+   * `allowedToolkits` (the app ceiling) and/or `allowedModels` (the AI-model
+   * ceiling) — `null` = unrestricted, `[]` = none. Both optional, so a caller can
+   * update one ceiling without touching the other.
+   */
   async setOrgSettings(settings: {
-    allowedToolkits: string[] | null;
+    allowedToolkits?: string[] | null;
+    allowedModels?: string[] | null;
   }): Promise<void> {
     await this.request("PUT", "/org/settings", settings);
   }

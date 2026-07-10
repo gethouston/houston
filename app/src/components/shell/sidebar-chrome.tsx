@@ -22,10 +22,12 @@ type ShellT = TFunction<["shell", "common", "portable", "teams"]>;
 export function buildSidebarNavItems(args: {
   t: ShellT;
   showIntegrations: boolean;
+  showAiModels: boolean;
   showOrganization: boolean;
   setViewMode: (view: string) => void;
 }): SidebarNavItemEntry[] {
-  const { t, showIntegrations, showOrganization, setViewMode } = args;
+  const { t, showIntegrations, showAiModels, showOrganization, setViewMode } =
+    args;
   return [
     {
       id: "dashboard",
@@ -45,13 +47,17 @@ export function buildSidebarNavItems(args: {
           },
         ]
       : []),
-    {
-      id: "ai-hub",
-      label: t("shell:sidebar.aiModels"),
-      icon: <Boxes className="h-4 w-4" />,
-      onClick: () => setViewMode("ai-hub"),
-      dataAttrs: { "data-tour-target": "nav-ai-hub" },
-    },
+    ...(showAiModels
+      ? [
+          {
+            id: "ai-hub",
+            label: t("shell:sidebar.aiModels"),
+            icon: <Boxes className="h-4 w-4" />,
+            onClick: () => setViewMode("ai-hub"),
+            dataAttrs: { "data-tour-target": "nav-ai-hub" },
+          },
+        ]
+      : []),
     ...(showOrganization
       ? [
           {

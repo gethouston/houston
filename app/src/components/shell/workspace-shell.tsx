@@ -27,7 +27,11 @@ import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
 import { analytics } from "../../lib/analytics";
-import { canSeeIntegrationsPage, hasSpaces } from "../../lib/org-roles";
+import {
+  canSeeAiModelsPage,
+  canSeeIntegrationsPage,
+  hasSpaces,
+} from "../../lib/org-roles";
 import { osIsTauri } from "../../lib/os-bridge";
 import { isMac } from "../../lib/platform";
 import { isRoutineSetupMode } from "../../lib/routine-chat-setup";
@@ -110,6 +114,9 @@ export function WorkspaceShell({
   // Teams v2: guard the Integrations render + tour anchor so a stale `viewMode`
   // can never show the page to a plain member (the sidebar already hides it).
   const showIntegrations = canSeeIntegrationsPage(capabilities);
+  // Teams v2: same guard for the AI Models hub — owner/admin only in a Teams
+  // workspace (org-level providers + admin model policy).
+  const showAiModels = canSeeAiModelsPage(capabilities);
   const agentDef = currentAgent ? getById(currentAgent.configId) : undefined;
   const { data: activities } = useActivity(currentAgent?.folderPath);
   const needsYouCount = (activities ?? []).filter(
@@ -136,7 +143,11 @@ export function WorkspaceShell({
       // would fall through every render branch and strand the user on the
       // engine pane with its nav entry hidden; reset to the dashboard.
       if (
-        blockedTopLevelView(viewMode, { showIntegrations, showOrganization })
+        blockedTopLevelView(viewMode, {
+          showIntegrations,
+          showAiModels,
+          showOrganization,
+        })
       ) {
         setViewMode("dashboard");
       }
@@ -152,6 +163,7 @@ export function WorkspaceShell({
     isAgentView,
     setViewMode,
     showIntegrations,
+    showAiModels,
     showOrganization,
     viewMode,
   ]);
@@ -215,7 +227,7 @@ export function WorkspaceShell({
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                   {viewMode === "dashboard" ? (
                     <Dashboard />
-                  ) : viewMode === "ai-hub" ? (
+                  ) : viewMode === "ai-hub" && showAiModels ? (
                     <AiHubView />
                   ) : viewMode === "settings" ? (
                     <SettingsView />
@@ -578,6 +590,11 @@ export function WorkspaceShell({
               step.targetSelector === "[data-tour-target='nav-integrations']"
             ) {
               return showIntegrations;
+            }
+            // The AI Models hub is hidden from plain Teams members too — drop its
+            // tour step where the anchor never renders.
+            if (step.targetSelector === "[data-tour-target='nav-ai-hub']") {
+              return showAiModels;
             }
             return true;
           })}

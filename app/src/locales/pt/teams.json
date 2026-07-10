@@ -25,6 +25,7 @@
     },
     "models": {
       "question": "Quais modelos de IA este agente pode usar?",
+      "policyHelper": "Você decide com quais modelos este agente pode ser executado. Pessoas com acesso escolhem o próprio modelo entre os que você permitir.",
       "anyLabel": "Qualquer modelo",
       "anyDesc": "Pessoas com acesso podem executar este agente com qualquer modelo disponível.",
       "pickedLabel": "Apenas os modelos que você escolher",
@@ -77,6 +78,25 @@
       "title": "Não permitido para este agente",
       "body": "Estes aplicativos estão conectados à sua conta, mas este agente não tem permissão para usá-los. Peça ao seu administrador para habilitá-los para este agente.",
       "badge": "Não permitido"
+    }
+  },
+  "models": {
+    "orgAllowlist": {
+      "question": "Quais modelos os agentes deste espaço de trabalho podem usar?",
+      "policyHelper": "Você decide com quais modelos de IA os agentes aqui podem ser executados. Pessoas com acesso escolhem o próprio modelo entre os que você permitir.",
+      "anyLabel": "Qualquer modelo",
+      "anyDesc": "Os agentes deste espaço de trabalho podem usar qualquer modelo disponível.",
+      "pickedLabel": "Apenas os modelos que você escolher",
+      "pickedDesc": "Os agentes só podem usar os modelos que você permitir abaixo.",
+      "allowModel": "Permitir {{name}}",
+      "searchModels": "Buscar modelos",
+      "noModels": "Nenhum modelo encontrado",
+      "allowedHeading": "Modelos permitidos",
+      "allowedEmpty": "Você ainda não escolheu modelos. Adicione modelos abaixo.",
+      "allowedEmptyLab": "Você ainda não escolheu modelos deste laboratório.",
+      "addHeading": "Adicionar modelos",
+      "ownerOnly": "Apenas o proprietário do espaço de trabalho pode alterar isso.",
+      "perAgentNote": "Os managers podem restringir isso ainda mais para cada agente nas configurações dele."
     }
   },
   "org": {

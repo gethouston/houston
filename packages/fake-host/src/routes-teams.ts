@@ -43,6 +43,7 @@ export function handleTeamsRoutes(
         orgAllowedToolkits: s.orgAllowedToolkits,
         access: s.access,
         allowedModels: s.allowedModels,
+        orgAllowedModels: s.orgAllowedModels,
       });
     }
     if (method === "PUT") {
@@ -62,22 +63,32 @@ export function handleTeamsRoutes(
     return json({ error: "not found" }, 404);
   }
 
-  // /v1/org/settings — the org-wide integration ceiling.
+  // /v1/org/settings — the org-wide app + AI-model ceilings.
   if (
     segs[0] === "v1" &&
     segs[1] === "org" &&
     segs[2] === "settings" &&
     segs.length === 3
   ) {
+    const s = state.getTeamsSettings();
     if (method === "GET") {
       return json({
-        allowedToolkits: state.getTeamsSettings().orgAllowedToolkits,
+        allowedToolkits: s.orgAllowedToolkits,
+        allowedModels: s.orgAllowedModels,
       });
     }
     if (method === "PUT") {
-      state.setTeamsSettings({
-        orgAllowedToolkits: toolkitList(body?.allowedToolkits),
-      });
+      // Partial patch — change one org ceiling without touching the other.
+      if (body && "allowedToolkits" in body) {
+        state.setTeamsSettings({
+          orgAllowedToolkits: toolkitList(body.allowedToolkits),
+        });
+      }
+      if (body && "allowedModels" in body) {
+        state.setTeamsSettings({
+          orgAllowedModels: toolkitList(body.allowedModels),
+        });
+      }
       return json({ ok: true });
     }
     return json({ error: "not found" }, 404);
