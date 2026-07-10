@@ -3,8 +3,29 @@
   "grid": {
     "loading": "Cargando…",
     "emptyTitle": "Programa y olvídate",
-    "emptyDescription": "Las rutinas se disparan en el horario que elijas y solo te avisan cuando algo de verdad necesita atención.",
+    "emptyDescription": "Una rutina es tu agente trabajando según un horario, sin que tengas que pedírselo cada vez. Describe una tarea una sola vez y se repite sola, todos los días, cada semana o con la frecuencia que quieras.",
+    "emptyStepsTitle": "Cómo funciona",
+    "emptySteps": [
+      {
+        "title": "Dile qué hacer",
+        "description": "Describe la tarea en lenguaje simple, como se lo dirías a una persona."
+      },
+      {
+        "title": "Elige cuándo se ejecuta",
+        "description": "Elige un horario: cada mañana, cada hora, una vez por semana, lo que te convenga."
+      },
+      {
+        "title": "Revisa preguntando",
+        "description": "No hace falta revisar su trabajo a mano, solo pregunta qué pasó."
+      }
+    ],
     "newRoutine": "Nueva rutina",
+    "newRoutineWithAi": "Con IA",
+    "newRoutineManually": "Manualmente",
+    "createRoutine": "Crear rutina",
+    "draftTitle": "Rutina en creación en el chat",
+    "draftResume": "Continuar",
+    "draftDiscard": "Descartar",
     "descriptionShort": "Tareas recurrentes que corren en un horario y solo te avisan cuando algo necesita tu atención.",
     "timezoneLabel": "Zona horaria",
     "timezoneHint": "Todas tus rutinas se ejecutan en esta zona horaria.",
@@ -12,41 +33,13 @@
     "timezoneNoResults": "No se encontraron zonas horarias"
   },
   "setupChat": {
-    "missionTitle": "Configurar una nueva rutina",
-    "bannerTitle": "Estás creando una rutina en el chat",
-    "bannerDescription": "Retoma donde quedaste o descarta el chat en curso.",
-    "continue": "Continuar",
-    "discard": "Descartar"
+    "missionTitle": "Configurar una nueva rutina"
   },
-  "editor": {
+  "chat": {
+    "newRoutineTitle": "Nueva rutina",
+    "routineLabel": "Rutina: {{name}}",
     "back": "Volver a rutinas",
-    "newRoutine": "Nueva rutina",
-    "untitled": "Rutina sin título",
-    "stop": "Detener",
-    "starting": "Iniciando…",
-    "runNow": "Ejecutar ahora",
-    "saveChanges": "Guardar cambios",
-    "createRoutine": "Crear rutina",
-    "moreActions": "Más acciones",
-    "pauseRoutine": "Pausar rutina",
-    "resumeRoutine": "Reanudar rutina",
-    "deleteRoutine": "Eliminar rutina",
-    "nameLabel": "Nombre",
-    "namePlaceholder": "p. ej. Reunión matutina",
-    "promptLabel": "Instrucción",
-    "promptPlaceholder": "¿Qué debe hacer el agente cuando se ejecute?",
-    "sectionWhen": "Cuándo se ejecuta",
-    "sectionBehavior": "Comportamiento",
-    "sectionRecent": "Ejecuciones recientes",
-    "nextRun": "Próxima ejecución {relative}",
-    "schedulePreview": "Vista previa del horario",
-    "schedulePreviewHint": "Elige un horario válido para ver cuándo se ejecutará esta rutina.",
-    "notifyTitle": "Avisar solo cuando sea relevante",
-    "notifyDescription": "Si el agente no tiene nada que reportar, la ejecución no aparecerá en el tablero.",
-    "chatTitle": "Mantener los resultados en un solo chat",
-    "chatDescription": "Cada ejecución se suma al mismo chat. Desactívalo para abrir un chat nuevo cada vez que se ejecute esta rutina.",
-    "modelTitle": "Modelo",
-    "modelDescription": "Elige el modelo y el nivel de esfuerzo de razonamiento con que se ejecuta esta rutina. Usa la configuración del agente de forma predeterminada."
+    "opening": "Abriendo el chat…"
   },
   "row": {
     "untitled": "Sin título",
@@ -60,13 +53,22 @@
     "ranDays": "hace {n}d",
     "pauseRoutine": "Pausar rutina",
     "resumeRoutine": "Reanudar rutina",
-    "moreActions": "Opciones de la rutina",
-    "rename": "Renombrar",
+    "runNow": "Ejecutar ahora",
+    "stopRun": "Detener ejecución",
+    "moreActions": "Más acciones",
+    "editManually": "Editar manualmente",
+    "editWithAi": "Editar con IA",
     "delete": "Eliminar",
-    "deleteTitle": "¿Eliminar \"{name}\"?",
-    "deleteDescription": "La rutina dejará de ejecutarse y su historial se eliminará para siempre.",
+    "deleteTitle": "¿Eliminar {name}?",
+    "deleteDescription": "Esto no se puede deshacer. Su historial de chat no se ve afectado.",
     "deleteConfirm": "Eliminar",
-    "deleteCancel": "Cancelar"
+    "deleteCancel": "Cancelar",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "p. ej. Reunión matutina",
+    "instructionLabel": "Instrucción",
+    "instructionPlaceholder": "¿Qué debe hacer el agente cuando se ejecute?",
+    "save": "Guardar",
+    "cancel": "Cancelar"
   },
   "schedule": {
     "presets": {
@@ -143,26 +145,9 @@
     "soon": "pronto",
     "at": "{day} a las {time}"
   },
-  "runHistory": {
-    "empty": "Aún no hay ejecuciones, esta rutina no se ha ejecutado.",
-    "view": "Ver",
-    "stopRun": "Detener ejecución",
-    "waiting": "Esperando el límite de uso, se reanuda a las {time}",
-    "status": {
-      "silent": "Silenciosa",
-      "surfaced": "Mostrada",
-      "running": "En curso",
-      "error": "Error",
-      "cancelled": "Cancelada",
-      "paused": "En pausa"
-    },
-    "today": "Hoy, {time}",
-    "yesterday": "Ayer, {time}",
-    "onDate": "{date}, {time}"
-  },
   "toasts": {
     "timezoneSet": "Zona horaria establecida en {{zone}}",
     "timezoneError": "No se pudo actualizar la zona horaria",
-    "chatSetupError": "No se pudo iniciar el chat para configurar la rutina"
+    "discardError": "No se pudo descartar el borrador"
   }
 }

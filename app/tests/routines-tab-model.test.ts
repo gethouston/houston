@@ -1,106 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { Routine, RoutineRun } from "@houston-ai/routines";
-import {
-  EMPTY_FORM,
-  formMatchesRoutine,
-  freshRoutinesState,
-  latestRunByRoutine,
-  routineToFormData,
-} from "../src/components/tabs/routines-tab-model.ts";
-
-function routine(overrides: Partial<Routine> = {}): Routine {
-  return {
-    id: "r1",
-    name: "Morning digest",
-    prompt: "Summarize my inbox.",
-    schedule: "0 9 * * 1-5",
-    enabled: true,
-    suppress_when_silent: false,
-    chat_mode: "shared",
-    integrations: ["gmail", "slack"],
-    created_at: "2026-01-01T00:00:00Z",
-    updated_at: "2026-01-02T00:00:00Z",
-    ...overrides,
-  };
-}
-
-describe("routines tab model — fresh state", () => {
-  // This is the regression guard for issue #400: editing a routine under one
-  // agent, switching agents, then opening the Routines tab must NOT show the
-  // previous agent's edit. The tab resets to `freshRoutinesState()` on agent
-  // change, so that state must be the closed grid with a blank, clean form.
-  it("resets to the grid view", () => {
-    deepStrictEqual(freshRoutinesState().view, { type: "grid" });
-  });
-
-  it("resets the form and baseline to blank", () => {
-    const fresh = freshRoutinesState();
-    deepStrictEqual(fresh.form, EMPTY_FORM);
-    deepStrictEqual(fresh.baseline, EMPTY_FORM);
-  });
-
-  it("reports no unsaved changes (Save disabled) right after a reset", () => {
-    const fresh = freshRoutinesState();
-    strictEqual(formMatchesRoutine(fresh.form, fresh.baseline), true);
-  });
-});
-
-describe("routines tab model — routineToFormData", () => {
-  it("projects every editable field off the stored routine", () => {
-    deepStrictEqual(routineToFormData(routine()), {
-      name: "Morning digest",
-      prompt: "Summarize my inbox.",
-      schedule: "0 9 * * 1-5",
-      suppress_when_silent: false,
-      chat_mode: "shared",
-      integrations: ["gmail", "slack"],
-      // Per-routine provider/model/effort pins (HOU-506); unset on the fixture,
-      // so they project to null (inherit the agent's model).
-      provider: null,
-      model: null,
-      effort: null,
-    });
-  });
-});
-
-describe("routines tab model — formMatchesRoutine", () => {
-  it("treats an unedited form as matching", () => {
-    const form = routineToFormData(routine());
-    strictEqual(formMatchesRoutine(form, routineToFormData(routine())), true);
-  });
-
-  it("detects edits to a scalar field", () => {
-    const baseline = routineToFormData(routine());
-    strictEqual(
-      formMatchesRoutine({ ...baseline, name: "Evening digest" }, baseline),
-      false,
-    );
-  });
-
-  it("detects a chat_mode toggle", () => {
-    const baseline = routineToFormData(routine());
-    strictEqual(
-      formMatchesRoutine({ ...baseline, chat_mode: "per_run" }, baseline),
-      false,
-    );
-  });
-
-  it("detects a reordered or resized integrations list", () => {
-    const baseline = routineToFormData(routine());
-    strictEqual(
-      formMatchesRoutine(
-        { ...baseline, integrations: ["slack", "gmail"] },
-        baseline,
-      ),
-      false,
-    );
-    strictEqual(
-      formMatchesRoutine({ ...baseline, integrations: ["gmail"] }, baseline),
-      false,
-    );
-  });
-});
+import type { RoutineRun } from "@houston-ai/routines";
+import { latestRunByRoutine } from "../src/components/tabs/routines-tab-model.ts";
 
 describe("routines tab model — latestRunByRoutine", () => {
   function run(overrides: Partial<RoutineRun>): RoutineRun {
@@ -118,7 +19,11 @@ describe("routines tab model — latestRunByRoutine", () => {
     deepStrictEqual(latestRunByRoutine(undefined), {});
   });
 
-  it("keeps the newest run per routine", () => {
+  it("returns an empty map for an empty run list", () => {
+    deepStrictEqual(latestRunByRoutine([]), {});
+  });
+
+  it("keeps the newest run per routine, across multiple routines", () => {
     const older = run({
       id: "a",
       routine_id: "r1",
@@ -141,7 +46,7 @@ describe("routines tab model — latestRunByRoutine", () => {
     strictEqual(map.r2.id, "c");
   });
 
-  it("ignores ordering of the input", () => {
+  it("picks the latest by started_at regardless of input order", () => {
     const older = run({ id: "a", started_at: "2026-01-01T00:00:00Z" });
     const newer = run({ id: "b", started_at: "2026-01-03T00:00:00Z" });
 
