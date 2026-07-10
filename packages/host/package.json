@@ -19,8 +19,8 @@
     "typecheck": "tsgo -p tsconfig.json"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.79.10",
-    "@earendil-works/pi-coding-agent": "0.79.10",
+    "@earendil-works/pi-ai": "0.80.6",
+    "@earendil-works/pi-coding-agent": "0.80.6",
     "@houston/domain": "workspace:*",
     "@houston/protocol": "workspace:*",
     "@houston/runtime-client": "workspace:*",

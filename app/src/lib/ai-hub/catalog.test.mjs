@@ -17,7 +17,7 @@ const CATALOG = [
     id: "anthropic",
     name: "anthropic",
     auth: "oauth",
-    models: [model("claude-sonnet-4-6", "Claude Sonnet 4.6")],
+    models: [model("claude-sonnet-5", "Claude Sonnet 5")],
   },
   {
     id: "openrouter",

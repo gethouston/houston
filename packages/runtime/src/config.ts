@@ -38,7 +38,7 @@ export const config = {
   host,
   port: Number(env.HOUSTON_PORT || 4317),
   /** Default Anthropic model (Claude Pro/Max subscription). */
-  model: env.HOUSTON_MODEL || "claude-sonnet-4-6",
+  model: env.HOUSTON_MODEL || "claude-sonnet-5",
   /** Default Codex model (ChatGPT subscription — the cloud's only provider). */
   codexModel: env.HOUSTON_CODEX_MODEL || "gpt-5.5",
   /**
