@@ -27,6 +27,7 @@ visionPath: "vision/index.html"
 </script>
 {% endblock %}
 {% block stylesheets %}
+<link rel="stylesheet" href="/assets/space.css">
 <link rel="stylesheet" href="/assets/hero-demo.css">
 {% endblock %}
 {% block inlineStyles %}
@@ -35,28 +36,46 @@ visionPath: "vision/index.html"
      DESIGN SYSTEM
      ═══════════════════════════════════════════ */
 
+  /* ── DARK LANDING THEME ──────────────────────────────────────────────────
+     The whole landing sits over a fixed ESO Milky Way photo (assets/space.css),
+     so every surface here is dark: light ink, translucent "dark glass" panels,
+     white-alpha borders. The grey scale keeps its NAMES but inverts MEANING —
+     gray-950 is now the lightest (primary ink), gray-50 the subtlest raised
+     fill — so the many `var(--gray-*)`-driven inline styles in the markup flip
+     to correct dark values in one place. (The hero app-mockup re-defines this
+     same scale inside its own scope, so it is unaffected.) Values reuse the
+     real product dark tokens: screen #1e1e1e, card #2c2c2b, ink #e5e5e5. */
   :root {
-    --background: #ffffff;
-    --foreground: #0d0d0d;
-    --secondary: #f9f9f9;
-    --muted-foreground: #5d5d5d;
-    --border: #e5e5e5;
-    --gray-50: #f9f9f9;
-    --gray-100: #ececec;
-    --gray-200: #e3e3e3;
-    --gray-300: #cdcdcd;
-    --gray-400: #b4b4b4;
-    --gray-500: #9b9b9b;
-    --gray-600: #676767;
-    --gray-700: #424242;
-    --gray-950: #0d0d0d;
-    --success: #00a240;
-    --info: #2964aa;
-    --warning: #e0ac00;
-    --danger: #e02e2a;
-    --border-light: rgba(13,13,13,0.05);
-    --border-medium: rgba(0,0,0,0.15);
-    --composer-shadow: 0 4px 4px rgba(0,0,0,0.04), 0 4px 80px 8px rgba(0,0,0,0.04), 0 0 1px rgba(0,0,0,0.62);
+    --background: rgba(24,26,38,0.55);
+    --foreground: #eceefb;
+    --secondary: rgba(255,255,255,0.045);
+    --muted-foreground: #bcc4d8;
+    --border: rgba(255,255,255,0.12);
+    --gray-50: rgba(255,255,255,0.05);
+    --gray-100: rgba(255,255,255,0.08);
+    --gray-200: rgba(255,255,255,0.14);
+    --gray-300: rgba(255,255,255,0.24);
+    --gray-400: #838ba1;
+    --gray-500: #9aa2ba;
+    --gray-600: #b7bed2;
+    --gray-700: #d2d7e4;
+    --gray-900: #eceefb;
+    --gray-950: #f3f5fc;
+    --success: #34d17f;
+    --info: #6ea8fe;
+    --warning: #f2c14e;
+    --danger: #ff6b67;
+    --border-light: rgba(255,255,255,0.08);
+    --border-medium: rgba(255,255,255,0.18);
+    --composer-shadow: 0 4px 30px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06);
+    /* Dark glass panels — translucent dark surfaces over the photo. */
+    --glass: rgba(22,24,36,0.55);
+    --glass-strong: rgba(16,18,28,0.72);
+    --glass-raise: rgba(255,255,255,0.05);
+    --glass-border: rgba(255,255,255,0.10);
+    --glass-border-strong: rgba(255,255,255,0.16);
+    --glass-blur: saturate(1.15) blur(14px);
+    --panel-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 20px 50px -24px rgba(0,0,0,0.7);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -64,7 +83,9 @@ visionPath: "vision/index.html"
   body {
     font-family: ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
     color: var(--foreground);
-    background: var(--background);
+    /* Transparent so the fixed .space-bg photo shows through; html carries the
+       dark fallback color so nothing flashes white on load. */
+    background: transparent;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
@@ -187,30 +208,23 @@ visionPath: "vision/index.html"
     transition: background 0.3s ease, backdrop-filter 0.3s ease;
   }
 
+  /* Scrolled: frosted DARK glass over the space page below (the page is dark
+     top to bottom now, so the nav stays dark-on-dark, never light). */
   nav.scrolled {
-    background:
-      linear-gradient(to right,
-        rgba(59,130,246,0.06),
-        rgba(255,255,255,0.88) 40%,
-        rgba(255,255,255,0.88) 60%,
-        rgba(249,115,22,0.05)
-      );
-    backdrop-filter: blur(20px);
+    background: rgba(11,12,19,0.72);
+    backdrop-filter: saturate(1.2) blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
   }
 
-  /* Over the dark hero (nav transparent, not yet scrolled) the nav switches to
-     light text. Once scrolled it gets its frosted-light state over the white
-     page below and reverts to the default dark treatment above. */
-  nav:not(.scrolled) .nav-logo,
-  nav:not(.scrolled) .nav-logo svg { color: #fff; }
+  /* The nav is light-on-dark in BOTH states now (transparent over the hero,
+     frosted-dark once scrolled). The default token colours are already light
+     (gray-950/gray-600 invert to near-white on this theme); at the very top we
+     lift link text a touch more so it reads over the brightest hero sky. */
   nav:not(.scrolled) .nav-center a,
-  nav:not(.scrolled) .nav-right a:not(.btn) { color: rgba(255,255,255,0.72); }
+  nav:not(.scrolled) .nav-right a:not(.btn) { color: rgba(255,255,255,0.74); }
   nav:not(.scrolled) .nav-center a:hover,
   nav:not(.scrolled) .nav-right a:not(.btn):hover { color: #fff; }
-  nav:not(.scrolled) .nav-burger { color: #fff; }
   nav:not(.scrolled) .nav-burger:hover { background: rgba(255,255,255,0.12); }
-  nav:not(.scrolled) .btn-primary { background: #fff; color: #0d0d0d; }
-  nav:not(.scrolled) .btn-primary:hover { background: #e5e5e5; }
 
   .nav-logo {
     font-family: 'General Sans', sans-serif;
@@ -285,13 +299,13 @@ visionPath: "vision/index.html"
     left: 0;
     right: 0;
     z-index: 99;
-    background: rgba(255,255,255,0.97);
-    backdrop-filter: blur(20px);
+    background: rgba(11,12,19,0.92);
+    backdrop-filter: saturate(1.2) blur(20px);
     padding: 8px 20px 16px;
     flex-direction: column;
     gap: 0;
     border-bottom: 1px solid var(--border-light);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
   }
 
   .nav-dropdown.open { display: flex; }
@@ -336,22 +350,25 @@ visionPath: "vision/index.html"
     gap: 8px;
   }
 
+  /* Primary is the highest-contrast element on the dark page: solid white on
+     space, dark ink. Secondary is a glass button that reads on dark without
+     competing with the primary. */
   .btn-primary {
-    background: var(--gray-950);
-    color: white;
+    background: #fff;
+    color: #0d0d0d;
   }
 
-  .btn-primary:hover { background: var(--gray-700); }
+  .btn-primary:hover { background: #e4e7f0; }
 
   .btn-short-text { display: none; }
 
   .btn-secondary {
-    background: white;
-    color: var(--gray-950);
-    border: 1px solid var(--border-medium);
+    background: rgba(255,255,255,0.08);
+    color: #f3f5fc;
+    border: 1px solid rgba(255,255,255,0.2);
   }
 
-  .btn-secondary:hover { background: var(--gray-50); }
+  .btn-secondary:hover { background: rgba(255,255,255,0.14); }
 
   .btn-lg {
     height: 44px;
@@ -390,12 +407,16 @@ visionPath: "vision/index.html"
     margin: 0 auto;
   }
 
+  /* Section intros sit directly over the photo (no glass panel behind), so the
+     display text carries a soft dark text-shadow — invisible-looking, but it
+     lifts contrast well past minimums even where the bright band drifts past. */
   .section-label {
     font-size: 12px;
     font-weight: 500;
     color: var(--gray-500);
     letter-spacing: 0;
     margin-bottom: 16px;
+    text-shadow: 0 1px 12px rgba(0,0,0,0.55);
   }
 
   .section-title {
@@ -405,6 +426,7 @@ visionPath: "vision/index.html"
     line-height: 1.1;
     color: var(--gray-950);
     margin-bottom: 20px;
+    text-shadow: 0 1px 28px rgba(0,0,0,0.5);
   }
 
   .section-subtitle {
@@ -412,6 +434,7 @@ visionPath: "vision/index.html"
     color: var(--muted-foreground);
     line-height: 1.5;
     max-width: 640px;
+    text-shadow: 0 1px 18px rgba(0,0,0,0.5);
   }
 
   /* ═══════════════════════════════════════════
@@ -425,118 +448,28 @@ visionPath: "vision/index.html"
     text-align: center;
     padding: 150px 40px 120px;
     position: relative;
-    overflow: hidden;
-    /* Dark "Mission Control" space canvas (design-token space.canvas). This is
-       the base the hero paints on before/without WebGL, so nothing ever flashes
-       white. Light text + dark-themed app mockup sit on top. */
-    background: #07080f;
+    /* Transparent: the fixed full-page Milky Way (.space-bg) shows through.
+       isolate keeps the headline scrim (::before, z -1) below the hero content
+       but above the page background. */
     color: #fff;
-    /* Establish a stacking context so the negative-z background layers
-       (.hero-photo image + overlay, the bottom fade) all paint below the hero
-       content in a controlled order. */
     isolation: isolate;
   }
 
-  /* Bottom fade: melts the dark space into the white page below, so the hero
-     transitions intentionally rather than cutting off. Sits above the photo
-     layers but below the hero content (z 0). */
-  .hero::after {
+  /* Headline contrast pool: a soft dark radial behind the h1 + subhead, on top
+     of the global scrim, so the light headline clears 7:1 even when the bright
+     galactic band drifts through the text band. Feathered to nothing before the
+     edges so it reads as atmosphere, not a box. */
+  .hero::before {
     content: "";
     position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 200px;
-    background: linear-gradient(to bottom, rgba(255,255,255,0), #ffffff);
+    left: 50%;
+    top: 90px;
+    transform: translateX(-50%);
+    width: min(1100px, 96%);
+    height: 460px;
+    background: radial-gradient(ellipse 60% 55% at 50% 42%, rgba(4,5,12,0.62), rgba(4,5,12,0.32) 55%, rgba(4,5,12,0) 78%);
     pointer-events: none;
     z-index: -1;
-  }
-
-  /* ── Photographic space background ─────────────────────────────────
-     Real astrophotography as an absolutely-positioned <img> (better LCP
-     treatment than a CSS background: the preload scanner sees it, and
-     srcset/sizes picks the right file). Because the layer is position:absolute
-     inside the hero it reserves no layout space of its own — the hero's size
-     comes from its content, so the image can never cause CLS. The <picture>
-     serves AVIF -> WebP -> JPEG. Variants switchable via ?bg=1|2|3|4
-     (assets/hero-photo.js), art-directed per image with object-position so
-     mobile's tall crop keeps the interesting region. */
-  .hero-photo {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    /* Two layout modes. Composition-sensitive photos (the Milky Way band, the
-       horsehead) own the first viewport-and-a-bit and dissolve into the hero's
-       dark base (::before) before the tall mockup zone, so their subject stays
-       in the text band instead of sliding down behind the mockup. All-over
-       textures (cliffs, deep field) run full-bleed behind the whole hero. */
-    height: max(120vh, 56.25vw);
-    overflow: hidden;
-    pointer-events: none;
-    z-index: -3;
-  }
-
-  .hero-photo.hero-photo-full {
-    height: 100%;
-  }
-
-  /* Banded mode only: dissolve the photo's bottom edge into the base color. */
-  .hero-photo::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to bottom, rgba(7,8,15,0) 66%, rgba(7,8,15,0.92) 92%, #07080f 100%);
-    z-index: 1;
-  }
-
-  .hero-photo.hero-photo-full::before {
-    content: none;
-  }
-
-  .hero-photo img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    /* Very slow Ken Burns drift. Transform-only (GPU-composited, no layout,
-       no paint); hero-photo.js pauses it while the hero is off screen. */
-    animation: hero-kenburns 50s ease-in-out infinite alternate;
-    will-change: transform;
-  }
-
-  @keyframes hero-kenburns {
-    from { transform: scale(1); }
-    to { transform: scale(1.06); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .hero-photo img { animation: none; }
-  }
-
-  /* Contrast guarantee for the light headline: a dark scrim, strongest across
-     the top text band, plus a radial pool behind the headline itself. Tuned so
-     the headline area stays >= 7:1 against white on all four photos. */
-  .hero-photo::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 78% 60% at 50% 26%, rgba(4,5,12,0.52), rgba(4,5,12,0.2) 58%, rgba(4,5,12,0) 78%),
-      linear-gradient(to bottom, rgba(4,5,12,0.56) 0%, rgba(4,5,12,0.36) 34%, rgba(4,5,12,0.18) 58%, rgba(4,5,12,0.26) 100%);
-    z-index: 1;
-  }
-
-  /* Dark base under the photo, so nothing ever flashes white while it loads. */
-  .hero-bg {
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 95% 60% at 50% 14%, rgba(16,20,48,0.95), transparent 70%),
-      #07080f;
-    pointer-events: none;
-    z-index: -4;
   }
 
   .hero h1 {
@@ -548,6 +481,7 @@ visionPath: "vision/index.html"
     margin-bottom: 28px;
     animation: float-up 0.6s ease 0.1s both;
     max-width: 1000px;
+    text-shadow: 0 1px 30px rgba(0,0,0,0.5);
   }
 
   .hero-cycling-word {
@@ -598,30 +532,15 @@ visionPath: "vision/index.html"
 
   .hero p {
     font-size: 20px;
-    color: #a7b0d0;
+    color: #c3cae0;
     max-width: 720px;
     line-height: 1.5;
     margin-bottom: 48px;
     animation: float-up 0.6s ease 0.15s both;
   }
 
-  /* Download buttons in the dark hero. Primary stays the highest-contrast
-     element (solid white on space); secondary becomes a glass button that
-     reads on dark without competing with the primary. */
-  .hero .btn-primary {
-    background: #fff;
-    color: #0d0d0d;
-  }
-
-  .hero .btn-primary:hover { background: #e5e5e5; }
-
-  .hero .btn-secondary {
-    background: rgba(255,255,255,0.08);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.22);
-  }
-
-  .hero .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+  /* Hero download buttons use the global dark-page .btn-primary (solid white)
+     and .btn-secondary (glass) — no hero-specific override needed. */
 
   .hero-actions {
     display: flex;
@@ -1054,13 +973,16 @@ visionPath: "vision/index.html"
     position: absolute;
     inset: 2px;
     border-radius: 14px;
-    background: #f5f5f5;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
     z-index: 0;
     transition: background 0.2s;
   }
 
   .agent-card:hover::after {
-    background: #ebebeb;
+    background: rgba(34,37,54,0.62);
   }
 
   .agent-card > * {
@@ -1209,10 +1131,10 @@ visionPath: "vision/index.html"
 
   .chat-msg.user {
     align-self: flex-end;
-    background: #f4f4f4;
+    background: rgba(255,255,255,0.09);
     padding: 10px 18px;
     border-radius: 24px;
-    color: var(--gray-950);
+    color: #f3f5fc;
   }
 
   .chat-msg.assistant {
@@ -1257,7 +1179,8 @@ visionPath: "vision/index.html"
   .chat-composer-mock {
     border-radius: 24px;
     padding: 12px 16px;
-    box-shadow: var(--composer-shadow);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--glass-border);
     display: flex;
     align-items: center;
     gap: 12px;
@@ -1267,14 +1190,14 @@ visionPath: "vision/index.html"
   .chat-composer-mock .placeholder {
     flex: 1;
     font-size: 14px;
-    color: rgba(0,0,0,0.35);
+    color: rgba(255,255,255,0.42);
   }
 
   .chat-composer-mock .send-btn {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: var(--gray-950);
+    background: #e6e8f0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1284,7 +1207,7 @@ visionPath: "vision/index.html"
   .chat-composer-mock .send-btn svg {
     width: 16px;
     height: 16px;
-    color: white;
+    color: #141414;
   }
 
   /* ═══════════════════════════════════════════
@@ -1539,6 +1462,7 @@ visionPath: "vision/index.html"
     letter-spacing: -0.03em;
     margin-bottom: 20px;
     position: relative;
+    text-shadow: 0 1px 28px rgba(0,0,0,0.5);
   }
 
   .cta-section p {
@@ -1548,6 +1472,7 @@ visionPath: "vision/index.html"
     margin: 0 auto 40px;
     line-height: 1.6;
     position: relative;
+    text-shadow: 0 1px 18px rgba(0,0,0,0.5);
   }
 
   .cta-actions {
@@ -1564,6 +1489,9 @@ visionPath: "vision/index.html"
   footer {
     padding: 40px;
     border-top: 1px solid var(--border-light);
+    background: rgba(8,9,15,0.55);
+    -webkit-backdrop-filter: saturate(1.1) blur(12px);
+    backdrop-filter: saturate(1.1) blur(12px);
     text-align: center;
     font-size: 13px;
     color: var(--gray-500);
@@ -1697,6 +1625,47 @@ visionPath: "vision/index.html"
   }
 
   /* ═══════════════════════════════════════════
+     DARK GLASS PANELS + HOW-IT-WORKS TABS
+     ═══════════════════════════════════════════ */
+
+  /* The Houston logo ships black; over dark surfaces it is invisible, so invert
+     it to white wherever it sits on the dark page (agent-card avatars + the
+     how-it-works chat head). The hero app-mockup already inverts its own copy. */
+  .agent-avatar img { filter: brightness(0) invert(1); opacity: 0.9; }
+  .hiw-head-logo { filter: brightness(0) invert(1); }
+
+  /* Reusable translucent dark surface over the space photo. Applied to the
+     section cards (how-it-works steps + chat, Houston-vs-ChatGPT, pricing). */
+  .glass-panel {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+  }
+
+  /* Agent selector pills (how-it-works). Class-driven so the active state is a
+     single classList toggle in JS (no per-tab inline colour juggling). */
+  .hiw-tab {
+    font-size: 13px;
+    padding: 6px 16px;
+    border-radius: 9999px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255,255,255,0.06);
+    color: #e6e9f8;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+  }
+
+  .hiw-tab:hover { background: rgba(255,255,255,0.12); }
+
+  .hiw-tab.active {
+    background: #fff;
+    color: #111318;
+    border-color: #fff;
+  }
+
+  /* ═══════════════════════════════════════════
      RESPONSIVE
      ═══════════════════════════════════════════ */
 
@@ -1778,7 +1747,8 @@ visionPath: "vision/index.html"
   }
 
   .dl-card {
-    background: white;
+    background: #14161f;
+    border: 1px solid rgba(255,255,255,0.1);
     border-radius: 20px;
     padding: 40px;
     max-width: 420px;
@@ -1786,7 +1756,7 @@ visionPath: "vision/index.html"
     text-align: center;
     transform: translateY(12px) scale(0.97);
     transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
   }
 
   .dl-overlay.open .dl-card {
@@ -1811,6 +1781,8 @@ visionPath: "vision/index.html"
     width: 100%;
     height: 44px;
     border: 1px solid var(--border-medium);
+    background: rgba(255,255,255,0.04);
+    color: #f3f5fc;
     border-radius: 12px;
     padding: 0 16px;
     font-size: 15px;
@@ -1821,8 +1793,10 @@ visionPath: "vision/index.html"
     transition: border-color 0.15s;
   }
 
+  .dl-input::placeholder { color: rgba(255,255,255,0.4); }
+
   .dl-input:focus {
-    border-color: var(--gray-950);
+    border-color: rgba(255,255,255,0.6);
   }
 
   .dl-input.valid {
@@ -1930,6 +1904,26 @@ visionPath: "vision/index.html"
 {% endblock %}
 {% block body %}
 
+<!-- ═══════════════════════════════════════════
+     FULL-PAGE SPACE BACKGROUND (fixed, behind everything)
+     ESO Milky Way panorama — eso0932a, ESO/S. Brunier, CC BY 4.0
+     https://www.eso.org/public/images/eso0932a/ (credit in the footer).
+     Three fixed layers pan on scroll (assets/space.css + space-scroll.js).
+     ═══════════════════════════════════════════ -->
+<div class="space-bg" aria-hidden="true">
+  <picture>
+    <source type="image/avif" sizes="100vw"
+            srcset="/assets/space/milkyway-1280.avif 1280w, /assets/space/milkyway-1920.avif 1920w, /assets/space/milkyway-2560.avif 2560w">
+    <source type="image/webp" sizes="100vw"
+            srcset="/assets/space/milkyway-1280.webp 1280w, /assets/space/milkyway-1920.webp 1920w, /assets/space/milkyway-2560.webp 2560w">
+    <img src="/assets/space/milkyway-1920.jpg" sizes="100vw"
+         srcset="/assets/space/milkyway-1280.jpg 1280w, /assets/space/milkyway-1920.jpg 1920w, /assets/space/milkyway-2560.jpg 2560w"
+         width="2560" height="1440" alt="" decoding="async" fetchpriority="high">
+  </picture>
+</div>
+<div class="space-scrim" aria-hidden="true"></div>
+<div class="space-stars" aria-hidden="true"></div>
+
 {% include "nav-landing.njk" %}
 
 <!-- ═══════════════════════════════════════════
@@ -1937,29 +1931,6 @@ visionPath: "vision/index.html"
      ═══════════════════════════════════════════ -->
 
 <div class="hero">
-  <div class="hero-bg"></div>
-  <!-- Hero background candidates (assets/hero-photo.js switches via ?bg=1|2|3|4).
-       Sources + licenses:
-       1 (default) "Cosmic Cliffs" in the Carina Nebula (Webb NIRCam) - NASA, ESA, CSA, STScI,
-         https://esawebb.org/images/weic2205a/ (downloaded .../archives/images/large/weic2205a.jpg), CC BY 4.0.
-       2 Milky Way panorama - ESO/S. Brunier, https://www.eso.org/public/images/eso0932a/
-         (downloaded https://www.eso.org/public/archives/images/large/eso0932a.jpg), CC BY 4.0 - attribution: "ESO/S. Brunier".
-       3 Horsehead Nebula in infrared (Hubble) - NASA/ESA/Hubble Heritage Team,
-         https://images.nasa.gov/details/GSFC_20171208_Archive_e001518 (NASA-originated: public domain).
-       4 Webb's First Deep Field, SMACS 0723 (Webb NIRCam) - NASA, ESA, CSA, STScI,
-         https://esawebb.org/images/weic2209a/ (downloaded .../archives/images/large/weic2209a.jpg), CC BY 4.0. -->
-  <div class="hero-photo hero-photo-full" id="hero-photo" aria-hidden="true">
-    <picture>
-      <source id="hero-photo-avif" type="image/avif" sizes="100vw"
-              srcset="/assets/space/cliffs-1280.avif 1280w, /assets/space/cliffs-1920.avif 1920w, /assets/space/cliffs-2560.avif 2560w">
-      <source id="hero-photo-webp" type="image/webp" sizes="100vw"
-              srcset="/assets/space/cliffs-1280.webp 1280w, /assets/space/cliffs-1920.webp 1920w, /assets/space/cliffs-2560.webp 2560w">
-      <img id="hero-photo-img" src="/assets/space/cliffs-1920.jpg" sizes="100vw"
-           srcset="/assets/space/cliffs-1280.jpg 1280w, /assets/space/cliffs-1920.jpg 1920w, /assets/space/cliffs-2560.jpg 2560w"
-           width="2560" height="1440" alt="" decoding="async" style="object-position: 50% 0%;">
-    </picture>
-  </div>
-
   <h1>AI agents that do<br><span class="hero-cycling-word" id="hero-cycling"></span></h1>
 
   <p>One free desktop app that runs on your GPT subscription.<br>A workspace of pre-built AI agents that actually do the work.</p>
@@ -2220,34 +2191,34 @@ visionPath: "vision/index.html"
 
   <!-- Agent selector tabs -->
   <div class="reveal" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 32px 0 48px;">
-    <button class="hiw-tab active" data-agent="0" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: var(--gray-950); color: white; cursor: pointer; font-weight: 500; transition: background-color 0.2s, color 0.2s, border-color 0.2s;">Personal Assistant</button>
-    <button class="hiw-tab" data-agent="1" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: background-color 0.2s, color 0.2s, border-color 0.2s;">Bookkeeper</button>
-    <button class="hiw-tab" data-agent="2" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: background-color 0.2s, color 0.2s, border-color 0.2s;">HR Manager</button>
-    <button class="hiw-tab" data-agent="3" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: background-color 0.2s, color 0.2s, border-color 0.2s;">Support Rep</button>
-    <button class="hiw-tab" data-agent="4" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: background-color 0.2s, color 0.2s, border-color 0.2s;">Sales Rep</button>
-    <button class="hiw-tab" data-agent="5" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: background-color 0.2s, color 0.2s, border-color 0.2s;">Office Manager</button>
-    <button class="hiw-tab" data-agent="6" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: background-color 0.2s, color 0.2s, border-color 0.2s;">Financial Analyst</button>
+    <button class="hiw-tab active" data-agent="0">Personal Assistant</button>
+    <button class="hiw-tab" data-agent="1">Bookkeeper</button>
+    <button class="hiw-tab" data-agent="2">HR Manager</button>
+    <button class="hiw-tab" data-agent="3">Support Rep</button>
+    <button class="hiw-tab" data-agent="4">Sales Rep</button>
+    <button class="hiw-tab" data-agent="5">Office Manager</button>
+    <button class="hiw-tab" data-agent="6">Financial Analyst</button>
   </div>
 
   <!-- Steps left + Chat right -->
   <div class="feature-row reveal">
     <!-- Steps (left) -->
     <div style="display: flex; flex-direction: column; gap: 12px; flex: 1;">
-      <div style="flex: 1; padding: 24px; border-radius: 16px; border: 1px solid var(--border-light); background: white; display: flex; gap: 16px; align-items: flex-start;">
+      <div class="glass-panel" style="flex: 1; padding: 24px; border-radius: 16px; display: flex; gap: 16px; align-items: flex-start;">
         <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--gray-50); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--gray-400);">1</div>
         <div>
           <div style="font-size: 15px; font-weight: 600; color: var(--gray-950); margin-bottom: 4px;">You ask in plain English</div>
           <p id="hiw-ask" style="font-size: 14px; color: var(--muted-foreground); line-height: 1.5; margin: 0;"></p>
         </div>
       </div>
-      <div style="flex: 1; padding: 24px; border-radius: 16px; border: 1px solid var(--border-light); background: white; display: flex; gap: 16px; align-items: flex-start;">
+      <div class="glass-panel" style="flex: 1; padding: 24px; border-radius: 16px; display: flex; gap: 16px; align-items: flex-start;">
         <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--gray-50); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--gray-400);">2</div>
         <div>
           <div style="font-size: 15px; font-weight: 600; color: var(--gray-950); margin-bottom: 4px;">Your agent gets to work</div>
           <p id="hiw-work" style="font-size: 14px; color: var(--muted-foreground); line-height: 1.5; margin: 0;"></p>
         </div>
       </div>
-      <div style="flex: 1; padding: 24px; border-radius: 16px; border: 1px solid var(--border-light); background: white; display: flex; gap: 16px; align-items: flex-start;">
+      <div class="glass-panel" style="flex: 1; padding: 24px; border-radius: 16px; display: flex; gap: 16px; align-items: flex-start;">
         <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--gray-50); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--gray-400);">3</div>
         <div>
           <div style="font-size: 15px; font-weight: 600; color: var(--gray-950); margin-bottom: 4px;">You review the results</div>
@@ -2257,9 +2228,9 @@ visionPath: "vision/index.html"
     </div>
 
     <!-- Chat (right) -->
-    <div style="border-radius: 16px; border: 1px solid var(--border-light); background: white; overflow: hidden; max-width: 480px; width: 100%;">
-      <div style="display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--border-light); background: var(--gray-50);">
-        <img src="houston-black.svg" width="22" height="22" alt="Houston" loading="lazy" style="opacity: 0.7;">
+    <div class="glass-panel" style="border-radius: 16px; overflow: hidden; max-width: 480px; width: 100%;">
+      <div style="display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--border-light); background: rgba(255,255,255,0.04);">
+        <img src="houston-black.svg" class="hiw-head-logo" width="22" height="22" alt="Houston" loading="lazy" style="opacity: 0.85;">
         <div>
           <div id="hiw-agent-name" style="font-size: 13px; font-weight: 600; color: var(--gray-950);"></div>
           <div id="hiw-agent-mission" style="font-size: 11px; color: var(--gray-500);"></div>
@@ -2285,8 +2256,8 @@ visionPath: "vision/index.html"
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 900px; margin: 48px auto 0;" class="reveal">
 
     <!-- ChatGPT flow -->
-    <div style="border-radius: 20px; border: 1px solid var(--border-light); padding: 32px; background: white; position: relative;">
-      <div style="position: absolute; top: -12px; left: 24px; background: var(--gray-400); color: white; font-size: 12px; font-weight: 600; padding: 4px 14px; border-radius: 9999px;">ChatGPT</div>
+    <div class="glass-panel" style="border-radius: 20px; padding: 32px; position: relative;">
+      <div style="position: absolute; top: -12px; left: 24px; background: var(--gray-400); color: #0d0d0d; font-size: 12px; font-weight: 600; padding: 4px 14px; border-radius: 9999px;">ChatGPT</div>
       <div style="font-size: 16px; font-weight: 600; color: var(--gray-700); margin-bottom: 20px; margin-top: 8px;">Follow up with stale leads</div>
       <div style="display: flex; flex-direction: column; gap: 0;">
         <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 0;">
@@ -2317,22 +2288,22 @@ visionPath: "vision/index.html"
     </div>
 
     <!-- Houston flow -->
-    <div style="border-radius: 20px; border: 3px solid var(--gray-950); padding: 32px; background: white; position: relative;">
-      <div style="position: absolute; top: -12px; left: 24px; background: var(--gray-950); color: white; font-size: 12px; font-weight: 600; padding: 4px 14px; border-radius: 9999px;">Houston</div>
+    <div class="glass-panel" style="border-radius: 20px; border: 2px solid rgba(255,255,255,0.85); padding: 32px; position: relative;">
+      <div style="position: absolute; top: -12px; left: 24px; background: #fff; color: #0d0d0d; font-size: 12px; font-weight: 600; padding: 4px 14px; border-radius: 9999px;">Houston</div>
       <div style="font-size: 16px; font-weight: 600; color: var(--gray-950); margin-bottom: 20px; margin-top: 8px;">Follow up with stale leads</div>
       <div style="display: flex; flex-direction: column; gap: 0;">
         <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 0;">
-          <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--gray-950); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 600; color: white;">1</div>
+          <div style="width: 24px; height: 24px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 600; color: #0d0d0d;">1</div>
           <div style="font-size: 13px; color: var(--gray-700); line-height: 1.5;">Tell your agent: "Follow up with stale leads"</div>
         </div>
         <div style="width: 1px; height: 8px; background: var(--gray-950); margin-left: 12px;"></div>
         <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 0;">
-          <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--gray-950); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 600; color: white;">2</div>
+          <div style="width: 24px; height: 24px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 600; color: #0d0d0d;">2</div>
           <div style="font-size: 13px; color: var(--gray-700); line-height: 1.5;">Reads HubSpot. Writes 12 personalized emails. Sends from Gmail. Logs everything.</div>
         </div>
         <div style="width: 1px; height: 8px; background: var(--gray-950); margin-left: 12px;"></div>
         <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 0;">
-          <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--gray-950); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 600; color: white;">3</div>
+          <div style="width: 24px; height: 24px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 600; color: #0d0d0d;">3</div>
           <div style="font-size: 13px; color: var(--gray-700); line-height: 1.5;">Done. You review the results.</div>
         </div>
       </div>
@@ -2350,7 +2321,7 @@ visionPath: "vision/index.html"
   <div class="reveal">
     <h2>Ready to stop doing the work yourself?</h2>
     <p>The app is free. Forever. We make money when you need your agents running 24/7.</p>
-    <div style="max-width: 960px; margin: 48px auto 0; display: grid; grid-template-columns: 1fr 1fr 1fr; border-radius: 20px; border: 1px solid var(--border-light); overflow: hidden; background: white; text-align: left;">
+    <div style="max-width: 960px; margin: 48px auto 0; display: grid; grid-template-columns: 1fr 1fr 1fr; border-radius: 20px; border: 1px solid var(--glass-border); overflow: hidden; background: var(--glass-strong); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); text-align: left;">
       <div class="final-cta-card" style="display: flex; flex-direction: column;">
         <div style="font-size: 12px; font-weight: 500; color: var(--gray-400); margin-bottom: 8px;">Personal</div>
         <h3>Free forever</h3>
@@ -2379,17 +2350,17 @@ visionPath: "vision/index.html"
         </ul>
         <a href="mailto:hello@gethouston.ai" class="btn btn-secondary btn-lg" style="position: relative;">Get in touch</a>
       </div>
-      <div class="final-cta-card" style="border-left: 1px solid var(--border-light); background: var(--gray-950); color: white; display: flex; flex-direction: column;">
+      <div class="final-cta-card" style="border-left: 1px solid var(--border-light); background: rgba(255,255,255,0.05); color: var(--foreground); display: flex; flex-direction: column;">
         <div style="font-size: 12px; font-weight: 500; color: var(--gray-500); margin-bottom: 8px;">Teams</div>
-        <h3 style="color: white;">Enterprise</h3>
+        <h3 style="color: #fff;">Enterprise</h3>
         <p style="color: rgba(255,255,255,0.65);">Your whole team on Houston. Custom agents for your business.</p>
-        <ul style="list-style: none; padding: 0; margin: 0 0 auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: var(--gray-300);">
+        <ul style="list-style: none; padding: 0; margin: 0 0 auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: var(--gray-700);">
           <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Everything in Pro</li>
           <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Unlimited team members</li>
           <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Dedicated support</li>
           <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Custom agent development</li>
         </ul>
-        <a href="mailto:hello@gethouston.ai" class="btn btn-lg" style="background: white; color: var(--gray-950);">Talk to us</a>
+        <a href="mailto:hello@gethouston.ai" class="btn btn-lg" style="background: #fff; color: #0d0d0d;">Talk to us</a>
       </div>
     </div>
   </div>
@@ -2697,11 +2668,9 @@ visionPath: "vision/index.html"
       html += '<div class="typing-dots"><span></span><span></span><span></span></div>';
       html += '<div class="chat-composer-mock"><span class="placeholder">Tell your agent what to do...</span><span class="send-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 14V2M8 2l-4 4M8 2l4 4"/></svg></span></div>';
       chatEl.innerHTML = html;
-      // Update tabs
+      // Update tabs (active state is a single class toggle; colours live in CSS)
       tabs.forEach(function(t) {
-        var isActive = parseInt(t.getAttribute('data-agent')) === idx;
-        t.style.background = isActive ? 'var(--gray-950)' : 'white';
-        t.style.color = isActive ? 'white' : 'var(--gray-950)';
+        t.classList.toggle('active', parseInt(t.getAttribute('data-agent')) === idx);
       });
     }
 
@@ -3050,10 +3019,11 @@ visionPath: "vision/index.html"
 
 <!-- Landing-page enhancements. All deferred so nothing is render-blocking and
      none competes with LCP. Motion loads first (micro-interactions reads the
-     global). The hero demo and mesh gradient are standalone. -->
+     global). The hero demo, space parallax and micro-interactions are standalone.
+     space-scroll.js only does work where CSS scroll timelines are unsupported. -->
 <script defer src="/assets/vendor/motion.min.js"></script>
 <script defer src="/assets/hero-demo.js"></script>
-<script defer src="/assets/hero-photo.js"></script>
+<script defer src="/assets/space-scroll.js"></script>
 <script defer src="/assets/micro-interactions.js"></script>
 
 {% endblock %}
