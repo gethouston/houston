@@ -58,6 +58,29 @@ export interface RoutineRun {
   paused_until?: string;
 }
 
+/**
+ * Form shape used by the "new agent" onboarding wizard's AI-suggested starter
+ * routine (`AiRoutineStep`). The Routines tab itself no longer uses this
+ * shape — editing an existing routine there patches `name`/`schedule`/`prompt`
+ * directly (see `RoutineRow`'s inline edit panel).
+ */
+export interface RoutineFormData {
+  name: string;
+  prompt: string;
+  schedule: string;
+  suppress_when_silent: boolean;
+  /** Whether each run reuses one chat (`"shared"`) or starts a fresh one. */
+  chat_mode: RoutineChatMode;
+  /** Composio toolkit slugs this routine uses. */
+  integrations: string[];
+  /** Provider id override. `null`/absent means inherit the agent's provider. */
+  provider?: string | null;
+  /** Model override. `null`/absent means inherit the agent's model. */
+  model?: string | null;
+  /** Reasoning-effort override. `null`/absent means inherit the agent's effort. */
+  effort?: string | null;
+}
+
 export type SchedulePreset =
   | "every_30min"
   | "hourly"

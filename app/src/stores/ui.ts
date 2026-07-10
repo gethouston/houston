@@ -37,8 +37,13 @@ interface UIState {
   agentArchivedSearchLoading: Record<string, boolean>;
   /** Whether the mission chat panel is open (hides tab bar for full-height panel) */
   missionPanelOpen: boolean;
-  /** Agent id whose routine-setup chat panel (Routines tab) is open, or null. */
-  routineSetupChatAgentId: string | null;
+  /**
+   * One-shot nav target for a routine chat with no board card (session-
+   * finished notification click, #401): the activity id to open in the
+   * Routines tab. The tab consumes it (resolves which routine it belongs to,
+   * navigates, clears it) the moment it sees a match.
+   */
+  pendingRoutineActivityId: string | null;
   /** Whether the global command palette (⌘K) is open. */
   paletteOpen: boolean;
   /** Whether the keyboard shortcut cheatsheet (?) is open. */
@@ -89,7 +94,7 @@ interface UIState {
   setAgentArchivedSearchQuery: (agentPath: string, query: string) => void;
   setAgentArchivedSearchLoading: (agentPath: string, loading: boolean) => void;
   setMissionPanelOpen: (open: boolean) => void;
-  setRoutineSetupChatAgentId: (agentId: string | null) => void;
+  setPendingRoutineActivityId: (activityId: string | null) => void;
   setPaletteOpen: (open: boolean) => void;
   setCheatsheetOpen: (open: boolean) => void;
   setOnBoardNavigate: (
@@ -127,7 +132,7 @@ export const useUIStore = create<UIState>()(
       agentArchivedSearchQueries: {},
       agentArchivedSearchLoading: {},
       missionPanelOpen: false,
-      routineSetupChatAgentId: null,
+      pendingRoutineActivityId: null,
       paletteOpen: false,
       cheatsheetOpen: false,
       onBoardNavigate: null,
@@ -215,8 +220,8 @@ export const useUIStore = create<UIState>()(
           return { agentArchivedSearchLoading: next };
         }),
       setMissionPanelOpen: (missionPanelOpen) => set({ missionPanelOpen }),
-      setRoutineSetupChatAgentId: (routineSetupChatAgentId) =>
-        set({ routineSetupChatAgentId }),
+      setPendingRoutineActivityId: (pendingRoutineActivityId) =>
+        set({ pendingRoutineActivityId }),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
       setCheatsheetOpen: (cheatsheetOpen) => set({ cheatsheetOpen }),
       setOnBoardNavigate: (onBoardNavigate) => set({ onBoardNavigate }),

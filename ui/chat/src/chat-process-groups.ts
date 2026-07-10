@@ -90,7 +90,7 @@ export function getChatDisplayItems(
     }
 
     const messageHasProcess = hasProcess(message);
-    const messageHasContent = message.content.length > 0;
+    const messageHasContent = message.content.trim().length > 0;
 
     if (messageHasProcess) {
       pending.push(segmentFrom(message, sourceIndex));
@@ -104,7 +104,17 @@ export function getChatDisplayItems(
         sourceIndex,
       });
     } else if (!messageHasProcess) {
-      items.push({ kind: "message", message, sourceIndex });
+      // Empty/whitespace-only assistant message with no reasoning and no
+      // tools would render as a bare avatar + empty bubble (chat-messages.tsx
+      // draws the Message wrapper, but its `{msg.content && ...}` body
+      // collapses to nothing). Suppress it — UNLESS it is the actively
+      // streaming final message, which legitimately starts empty
+      // (assistant_text_streaming) and carries the typing/thinking affordance.
+      const isStreamingTail =
+        message.isStreaming && sourceIndex === messages.length - 1;
+      if (isStreamingTail) {
+        items.push({ kind: "message", message, sourceIndex });
+      }
     }
   }
 

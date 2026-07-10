@@ -1,9 +1,7 @@
 import type {
   NextFireLabels,
-  RoutineEditorLabels,
   RoutineRowLabels,
   RoutinesGridLabels,
-  RunHistoryLabels,
   ScheduleLabels,
 } from "@houston-ai/routines";
 import { useMemo } from "react";
@@ -25,8 +23,6 @@ export interface RoutineLabels {
   rowLabels: RoutineRowLabels;
   schedule: ScheduleLabels;
   nextFire: NextFireLabels;
-  runHistory: RunHistoryLabels;
-  editor: RoutineEditorLabels;
 }
 
 /** Map the app's base locale tag to a region the formatters should use. */
@@ -46,8 +42,6 @@ export function useRoutineLabels(): RoutineLabels {
       rowLabels: t("row", { returnObjects: true }) as RoutineRowLabels,
       schedule: t("schedule", { returnObjects: true }) as ScheduleLabels,
       nextFire: t("nextFire", { returnObjects: true }) as NextFireLabels,
-      runHistory: t("runHistory", { returnObjects: true }) as RunHistoryLabels,
-      editor: t("editor", { returnObjects: true }) as RoutineEditorLabels,
     }),
     [t, i18n.language],
   );

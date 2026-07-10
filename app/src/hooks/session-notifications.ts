@@ -87,10 +87,10 @@ export async function consumePendingNav() {
   );
   useAgentStore.getState().setCurrent(agent);
   if (target.routineSetup) {
-    // A routine-setup chat has no board card: its home is the Routines tab,
-    // where the panel reopens on the spot.
+    // A routine chat has no board card: its home is the Routines tab, which
+    // resolves the activity id to its routine and opens that chat.
     useUIStore.getState().setViewMode("routines");
-    useUIStore.getState().setRoutineSetupChatAgentId(agent.id);
+    useUIStore.getState().setPendingRoutineActivityId(target.activityId);
     return;
   }
   useUIStore.getState().setViewMode("activity");
