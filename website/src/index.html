@@ -1660,10 +1660,24 @@ visionPath: "vision/index.html"
      before, just recoloured) and a slightly more opaque panel — contrast
      and weight, not a saturated gradient. */
   .final-cta-card.featured {
-    border: 1px solid transparent;
-    background:
-      linear-gradient(rgba(255,255,255,0.07), rgba(255,255,255,0.07)) padding-box,
-      linear-gradient(180deg, rgba(255,255,255,0.4), rgba(255,255,255,0.12)) border-box;
+    background: rgba(255,255,255,0.07);
+  }
+
+  /* Fading white-alpha ring, drawn ONLY in the 1px border via mask-composite.
+     The naive padding-box/border-box two-layer trick bleeds the ring gradient
+     through a translucent panel (it only works over opaque fills), which
+     washed out the whole card over the photo background. */
+  .final-cta-card.featured::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.4), rgba(255,255,255,0.12));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
   }
 
   /* White pill / dark text — the same "active" idiom already used by
@@ -2536,7 +2550,6 @@ visionPath: "vision/index.html"
            + multiplayer Spaces (knowledge-base/teams.md). -->
       <div class="final-cta-card featured" style="display: flex; flex-direction: column; position: relative; overflow: hidden;">
         <span class="pricing-badge">Most popular</span>
-        <div style="position: absolute; inset: 0; background: radial-gradient(ellipse 70% 55% at 50% 0%, rgba(255,255,255,0.07), transparent); pointer-events: none;"></div>
         <div style="font-size: 12px; font-weight: 500; color: var(--gray-400); margin-bottom: 8px; position: relative;">Team</div>
         <h3 style="position: relative;">Always on</h3>
         <div class="pricing-price" style="position: relative;"><span class="currency">{{ pricing.currency }}</span><span class="amount">{{ pricing.teamMonthly }}</span><span class="per">/ seat / mo</span></div>
