@@ -47,6 +47,9 @@
     "space-haze": { "$value": "{color.space.haze}" },
     "space-foreground": { "$value": "{color.space.foreground}" },
     "space-foreground-muted": { "$value": "{color.space.foreground-muted}" },
+    "space-card-secondary": { "$value": "{color.alpha.white-a16}" },
+    "space-card-secondary-fg": { "$value": "{color.neutral.150}" },
+    "space-card-accent": { "$value": "{color.alpha.white-a24}" },
     "agent": {
       "charcoal": { "$value": "{color.agent.charcoal-bright}" },
       "forest": { "$value": "{color.agent.forest-bright}" },

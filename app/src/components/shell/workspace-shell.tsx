@@ -601,6 +601,12 @@ export function WorkspaceShell({
           onDismiss={() => {
             setUiTourActive(false);
             setCreateAgentDialogOpen(false);
+            // End the tour on the assistant's Routines tab so the freshly-seeded
+            // Morning briefing routine is the last thing they land on — the
+            // onboarding payoff. Applies whether the tour completed or was
+            // skipped. `finishOnboarding` deliberately does NOT set viewMode
+            // (the tour's first step would overwrite it); the landing lives here.
+            setViewMode(tabOr("routines"));
           }}
         />
       )}

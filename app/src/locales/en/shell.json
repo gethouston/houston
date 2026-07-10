@@ -97,7 +97,7 @@
       },
       "tabRoutines": {
         "title": "Routines",
-        "body": "Schedule work to run in the background. Useful for daily briefs and recurring tasks."
+        "body": "Your assistant already comes with ready-made routines, like the Morning briefing. Schedule anything else to run in the background here."
       },
       "tabIntegrations": {
         "title": "Integrations",

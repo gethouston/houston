@@ -340,6 +340,15 @@ jobs:
       IS_CLOUD: ${{ startsWith(github.ref_name, 'cloud-') }}
       VITE_HOSTED_ENGINE_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
       VITE_HOSTED_ENGINE_AUTH: ${{ startsWith(github.ref_name, 'cloud-') && 'oauth' || '' }}
+      # Integrations for the LOCAL engine: compile-time bake read by
+      # app/src-tauri (option_env! in lib.rs) and handed to the spawned host
+      # sidecar, so a signed-in desktop user gets connected apps (and the
+      # onboarding email step) on the local engine too — not only on cloud
+      # pods. Same base URL as the hosted gateway (it serves /v1/integrations/*
+      # publicly), hence the same secret. Cloud-channel gated: a non-cloud
+      # build has no gateway to authenticate against, so it stays '' and
+      # lib.rs's empty-filter keeps integrations off there.
+      HOUSTON_INTEGRATIONS_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -1076,6 +1085,8 @@ jobs:
       IS_CLOUD: ${{ startsWith(github.ref_name, 'cloud-') }}
       VITE_HOSTED_ENGINE_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
       VITE_HOSTED_ENGINE_AUTH: ${{ startsWith(github.ref_name, 'cloud-') && 'oauth' || '' }}
+      # See build-macos: bake the integrations gateway URL for the local engine.
+      HOUSTON_INTEGRATIONS_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
     strategy:
       # Both arches build in parallel. fail-fast=false so a transient
       # ARM-runner outage doesn't kill the x64 release that 90%+ of
@@ -1351,6 +1362,8 @@ jobs:
       IS_CLOUD: ${{ startsWith(github.ref_name, 'cloud-') }}
       VITE_HOSTED_ENGINE_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
       VITE_HOSTED_ENGINE_AUTH: ${{ startsWith(github.ref_name, 'cloud-') && 'oauth' || '' }}
+      # See build-macos: bake the integrations gateway URL for the local engine.
+      HOUSTON_INTEGRATIONS_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
       # AppImage packaging on headless CI: don't strip (keeps the bundled
       # sidecar intact) and extract-and-run the AppImage tooling (no FUSE on
       # GitHub runners).

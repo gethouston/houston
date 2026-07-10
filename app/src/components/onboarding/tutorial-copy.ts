@@ -1,33 +1,31 @@
 /**
- * Every screen the onboarding orchestrator can render, in flow order. The
- * numbered steps (their section + position) live in `lib/setup-steps.ts`; the
- * rest are unnumbered framing/celebration screens.
+ * Every screen the onboarding orchestrator can render, in flow order. Houston
+ * ships ONE great default Personal Assistant, so first-run is a single continuous
+ * flow (no naming/customization step): connect the AI, connect the email, watch
+ * the assistant send one real email, then keep exploring. The numbered steps
+ * (their 1-based position) live in `lib/setup-steps.ts`; the rest are unnumbered
+ * framing/celebration screens.
  *
- *  intro (overview of all steps)
- *  ── Setup ──────────────────────────────────────────
- *  connect → aiConnected ✓
- *  ── Onboarding ─────────────────────────────────────
- *  meet (name) → agentCreated ✓
- *  connectEmail (Gmail/Outlook) → emailConnected ✓
- *  emailChat (send to myself) → emailSent ✓
- *  finished (tour or connect more)
+ *  intro (overview of the steps)
+ *  connect → aiConnected ✓        — Step 1: connect your AI (agent is created
+ *                                    silently the instant the AI connects)
+ *  connectEmail → emailConnected ✓ — Step 2: give it access to your email
+ *  emailChat → finished 🎉         — Step 3: it sends a real email, then the
+ *                                    single payoff screen (explore what it can do)
  *
- * The `connect` step embeds the shared `<ProviderBrowser>` (all catalog
- * providers, every auth type) and auto-advances to `aiConnected` the instant a
- * provider connects. The email steps run only where the host serves integrations
- * (`stepAfterAgentCreated`); the legacy Rust engine goes agentCreated →
- * finished. `numbered` steps that drive the "Setup · N of M" eyebrow: connect,
- * meet, connectEmail, emailChat.
+ * The `connect` step embeds the shared `<ProviderBrowser>` (a curated set:
+ * featured providers first, with a "see all" reveal for the rest; every auth
+ * type) and auto-advances to `aiConnected` the instant a provider connects. The
+ * email steps run only where the host serves integrations
+ * (`stepAfterAgentCreated`); the legacy Rust engine skips straight to `finished`.
+ * `numbered` steps that drive the "Step N of 3" eyebrow: connect, connectEmail,
+ * emailChat.
  */
 export type OnboardingStep =
   | "intro"
   | "connect"
   | "aiConnected"
-  | "onboardingIntro"
-  | "meet"
-  | "agentCreated"
   | "connectEmail"
   | "emailConnected"
   | "emailChat"
-  | "emailSent"
   | "finished";

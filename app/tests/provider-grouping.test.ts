@@ -1,12 +1,15 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  curatedDisplay,
   filterByQuickFilter,
+  filterToFeatured,
   orderFeaturedFirst,
   searchProviders,
 } from "../src/components/provider-browser/provider-filtering.ts";
 import {
   connectCardByGatewayId,
+  groupByAuthType,
   groupProviders,
   offerForProvider,
   providerBilling,
@@ -62,6 +65,43 @@ describe("groupProviders", () => {
     deepStrictEqual(
       groups.available.map((p) => p.id),
       ["a", "c"],
+    );
+  });
+});
+
+describe("groupByAuthType", () => {
+  it("splits subscription vs. api key, folding gateway + local into api key", () => {
+    const list = [
+      provider("anthropic"),
+      provider("deepseek", { auth: "apiKey" }),
+      provider("openrouter", { auth: "apiKey" }),
+      provider("openai-compatible", { auth: "openaiCompatible" }),
+      provider("github-copilot", { copilotConnect: true }),
+    ];
+    const { subscription, apiKey } = groupByAuthType(list);
+    deepStrictEqual(
+      subscription.map((p) => p.id),
+      ["anthropic", "github-copilot"],
+    );
+    deepStrictEqual(
+      apiKey.map((p) => p.id),
+      ["deepseek", "openrouter", "openai-compatible"],
+    );
+  });
+
+  it("preserves incoming order within each bucket", () => {
+    const { subscription, apiKey } = groupByAuthType([
+      provider("deepseek", { auth: "apiKey" }),
+      provider("anthropic"),
+      provider("google", { auth: "apiKey" }),
+    ]);
+    deepStrictEqual(
+      subscription.map((p) => p.id),
+      ["anthropic"],
+    );
+    deepStrictEqual(
+      apiKey.map((p) => p.id),
+      ["deepseek", "google"],
     );
   });
 });
@@ -206,6 +246,89 @@ describe("orderFeaturedFirst", () => {
       ordered.map((p) => p.id),
       ["deepseek", "openrouter"],
     );
+  });
+});
+
+describe("filterToFeatured", () => {
+  it("keeps only featured providers, in FEATURED order", () => {
+    const featured = filterToFeatured([
+      provider("deepseek"),
+      provider("google"),
+      provider("anthropic"),
+      provider("openrouter"),
+      provider("openai"),
+    ]);
+    deepStrictEqual(
+      featured.map((p) => p.id),
+      ["anthropic", "openai", "google"],
+    );
+  });
+
+  it("drops everything when no provider is featured", () => {
+    strictEqual(
+      filterToFeatured([provider("deepseek"), provider("openrouter")]).length,
+      0,
+    );
+  });
+});
+
+describe("curatedDisplay", () => {
+  // anthropic is featured; deepseek is not (see FEATURED_PROVIDER_IDS).
+  const filtered = [provider("anthropic"), provider("deepseek")];
+
+  it("uncurated: shows the full set and never a chip", () => {
+    const { displayed, hasMore } = curatedDisplay(
+      filtered,
+      false,
+      false,
+      false,
+    );
+    deepStrictEqual(
+      displayed.map((p) => p.id),
+      ["anthropic", "deepseek"],
+    );
+    strictEqual(hasMore, false);
+  });
+
+  it("curated + collapsed: narrows to the featured subset, chip when more remain", () => {
+    const { displayed, hasMore } = curatedDisplay(filtered, true, false, false);
+    deepStrictEqual(
+      displayed.map((p) => p.id),
+      ["anthropic"],
+    );
+    strictEqual(hasMore, true);
+  });
+
+  it("curated + collapsed + all featured: no hidden providers, no chip", () => {
+    const { displayed, hasMore } = curatedDisplay(
+      [provider("anthropic")],
+      true,
+      false,
+      false,
+    );
+    deepStrictEqual(
+      displayed.map((p) => p.id),
+      ["anthropic"],
+    );
+    strictEqual(hasMore, false);
+  });
+
+  it("curated + searching: shows the full filtered set (non-featured surfaces), no chip", () => {
+    const { displayed, hasMore } = curatedDisplay(filtered, true, false, true);
+    deepStrictEqual(
+      displayed.map((p) => p.id),
+      ["anthropic", "deepseek"],
+    );
+    strictEqual(hasMore, false);
+  });
+
+  it("curated + expanded: shows the full set, no chip", () => {
+    const { displayed, hasMore } = curatedDisplay(filtered, true, true, false);
+    deepStrictEqual(
+      displayed.map((p) => p.id),
+      ["anthropic", "deepseek"],
+    );
+    strictEqual(hasMore, false);
   });
 });
 

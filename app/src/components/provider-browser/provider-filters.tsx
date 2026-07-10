@@ -31,11 +31,17 @@ export function ProviderFilters({
   setQuery,
   filter,
   setFilter,
+  showQuickFilters = true,
 }: {
   query: string;
   setQuery: Dispatch<SetStateAction<string>>;
   filter: ProviderQuickFilter;
   setFilter: Dispatch<SetStateAction<ProviderQuickFilter>>;
+  /** Show the Subscription/Pay-as-you-go billing toggles alongside the search.
+   *  Off in curated onboarding, where the sections already split by connect
+   *  type and a billing facet would both duplicate the "Subscription" label and
+   *  overload a focused first-run screen. Search stays either way. */
+  showQuickFilters?: boolean;
 }) {
   const { t } = useTranslation("aiHub");
   return (
@@ -51,32 +57,34 @@ export function ProviderFilters({
         />
       </div>
 
-      <fieldset
-        aria-label={t("providers.filter.label")}
-        className="m-0 flex items-center gap-1.5 border-0 p-0"
-      >
-        {PROVIDER_QUICK_FILTERS.map((key) => {
-          const Icon = FILTER_ICON[key];
-          const active = filter === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              aria-pressed={active}
-              onClick={() => setFilter(active ? "all" : key)}
-              className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
-                active
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-secondary text-foreground hover:bg-card-hover",
-              )}
-            >
-              <Icon className="size-3.5" aria-hidden="true" />
-              {t(`providers.filter.${key}`)}
-            </button>
-          );
-        })}
-      </fieldset>
+      {showQuickFilters && (
+        <fieldset
+          aria-label={t("providers.filter.label")}
+          className="m-0 flex items-center gap-1.5 border-0 p-0"
+        >
+          {PROVIDER_QUICK_FILTERS.map((key) => {
+            const Icon = FILTER_ICON[key];
+            const active = filter === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setFilter(active ? "all" : key)}
+                className={cn(
+                  "inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
+                  active
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-secondary text-foreground hover:bg-card-hover",
+                )}
+              >
+                <Icon className="size-3.5" aria-hidden="true" />
+                {t(`providers.filter.${key}`)}
+              </button>
+            );
+          })}
+        </fieldset>
+      )}
     </div>
   );
 }

@@ -32,9 +32,12 @@ Theme-independent **scales** (`tokens/scale/*.json`) — spacing, radius,
 typography, motion, elevation — sit alongside and flow to the typed/native
 outputs.
 
-## Outputs (committed `dist/`)
+## Outputs (`dist/`, a build artifact)
 
-Built by Style Dictionary v4 (`build/`), committed so consumers need no build step:
+Built by Style Dictionary v4 (`build/`). **`dist/` is gitignored and never
+committed** — the build regenerates it locally and in CI, and this package's own
+build runs ahead of the packages that consume it, so a fresh checkout produces it
+before anything imports it:
 
 | File | Surface | Shape |
 | --- | --- | --- |
@@ -88,13 +91,19 @@ a real colour change fails.
 1. Edit the JSON under `tokens/` — a primitive value, or a semantic reference.
    **Never edit `dist/`.**
 2. `pnpm --filter @houston/design-tokens build`
-3. Commit **source + regenerated `dist/`** together.
+3. Commit the **token source** only — `dist/` is gitignored, so there is nothing
+   generated to commit; the build regenerates it, and a fresh checkout builds it
+   before use.
 4. If the change is intentionally *visual* (a real colour move), update
-   `test/legacy-resolved.json` to the new baseline in the same commit — otherwise
-   the zero-diff test will (correctly) fail.
+   `test/legacy-resolved.json` (a committed fixture, not part of `dist/`) to the
+   new baseline in the same commit — otherwise the zero-diff test will (correctly)
+   fail.
 
-`test/sync.test.ts` rebuilds to a temp dir on every `pnpm test` and fails if the
-committed `dist/` is stale — so you can never forget step 2/3.
+`test/sync.test.ts` rebuilds to a temp dir on every `pnpm test` and diffs it
+against the `dist/` already on disk, failing if your built `dist/` is stale
+relative to the token source — so a token edit without a rebuild is caught. It
+validates the freshly built output, not a committed copy (`dist/` is gitignored);
+the fix it prints is step 2, rebuild.
 
 ## Consuming
 

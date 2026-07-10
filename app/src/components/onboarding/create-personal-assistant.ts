@@ -10,6 +10,9 @@ interface CreatePersonalAssistantOptions {
   color?: string;
   provider?: string;
   model?: string;
+  /** Seed files (routines + skills) written into the new agent's tree at
+   *  creation, so first-run users get real capability instead of an empty shell. */
+  seeds?: Record<string, string>;
 }
 
 export async function createPersonalAssistantForWorkspace(
@@ -24,6 +27,8 @@ export async function createPersonalAssistantForWorkspace(
       PERSONAL_ASSISTANT_CONFIG_ID,
       options.color ?? "navy",
       options.instructions,
+      undefined,
+      options.seeds,
     );
 
   // The provider/model write dispatches to the agent's engine, which on the

@@ -42,10 +42,8 @@ export type AnalyticsEventName =
   // real action exists (provider/apps connected, message/email sent) we fire on
   // the action, not the Continue click. Each fires exactly ONCE per install
   // (ref/flag-guarded at the call site).
-  | "onboarding_welcome_continued"
   | "onboarding_language_selected"
   | "onboarding_agreement_accepted"
-  | "onboarding_assistant_named"
   | "ai_provider_connected"
   | "tools_provider_connected"
   | "first_message_sent"

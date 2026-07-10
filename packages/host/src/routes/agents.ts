@@ -136,8 +136,30 @@ export async function handleAgents(
     // wired (legacy gke-only deploys); the typed-data routes 503 there anyway.
     if (deps.vfs) {
       const root = (deps.paths ?? DEFAULT_PATHS).agentRoot(ws, agent);
-      await seedSchemas(deps.vfs, root);
-      await writeAgentSeeds(deps.vfs, root, { claudeMd, seeds });
+      try {
+        await seedSchemas(deps.vfs, root);
+        await writeAgentSeeds(deps.vfs, root, { claudeMd, seeds });
+      } catch (err) {
+        // Atomic-enough create: a seed-write failure must not leave a
+        // permanently seedless agent. First-run reuses an existing record on
+        // retry (ensureWorkspaceWithAssistant lists then reuses), so a
+        // half-provisioned agent would never get re-seeded. Roll the just-created
+        // record + its folder back so a retry recreates cleanly, then rethrow so
+        // the failure still reaches the client (beta policy: no silent,
+        // half-provisioned agents).
+        try {
+          await deps.vfs.deletePrefix(root);
+          await deps.store.deleteAgent(agent.id);
+        } catch (rollbackErr) {
+          // Rollback itself failed — surface the ORIGINAL cause below, but leave
+          // a breadcrumb for the orphaned record/folder.
+          console.error(
+            `[agents] seed rollback failed for ${agent.id}:`,
+            rollbackErr instanceof Error ? rollbackErr.message : rollbackErr,
+          );
+        }
+        throw err;
+      }
     }
     deps.events?.emit(ws.ownerUserId, {
       type: "AgentsChanged",

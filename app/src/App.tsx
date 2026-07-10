@@ -16,6 +16,7 @@ import { useHoustonInit } from "./hooks/use-houston-init";
 import { useIntegrationSessionSync } from "./hooks/use-integration-session-sync";
 import { useLocalBridgeAutoReconnect } from "./hooks/use-local-bridge-autoreconnect";
 import { useMigrationReconnect } from "./hooks/use-migration-reconnect";
+import { useOnboardingPending } from "./hooks/use-onboarding-pending";
 import { useProviderCatalog } from "./hooks/use-provider-catalog";
 import { useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
@@ -170,6 +171,15 @@ export default function App() {
   // dismissed) — never on a fresh install, never once a provider is connected.
   const migrationReconnect = useMigrationReconnect();
 
+  // Interrupted-onboarding resume: a durable flag set while first-run is
+  // mid-flight and cleared on finish/skip. Because the assistant is created
+  // silently at AI-connect, `isFirstRun` (agent count) stops firing after that
+  // point, so this flag is what re-enters onboarding for a user who quit
+  // mid-flow. Read it before the first-run gate; join its load to the splash so
+  // a returning, fully-onboarded user never flashes into onboarding.
+  const { isPending: onboardingPending, isLoading: onboardingPendingLoading } =
+    useOnboardingPending();
+
   const mappedToasts: Toast[] = toasts.map((t) => ({
     id: t.id,
     message: t.description ? `${t.title} ${t.description}` : t.title,
@@ -219,6 +229,7 @@ export default function App() {
     agentLoading ||
     wsLoading ||
     capabilitiesLoading ||
+    onboardingPendingLoading ||
     (newEngineActive() && !agentsLoaded)
   ) {
     return <WorkspaceLoading />;
@@ -234,7 +245,14 @@ export default function App() {
     workspaceCount: workspaces.length,
     agentCount: agents.length,
   });
-  if (firstRun && canCreateAgents && !capabilitiesError) {
+  // `onboardingPending` re-enters an interrupted flow even once the silent
+  // early agent create makes `firstRun` false. Absent flag = existing users,
+  // unchanged.
+  if (
+    (firstRun || onboardingPending) &&
+    canCreateAgents &&
+    !capabilitiesError
+  ) {
     return (
       <PersonalAssistantOnboarding
         toasts={mappedToasts}

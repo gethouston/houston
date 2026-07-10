@@ -97,7 +97,7 @@
       },
       "tabRoutines": {
         "title": "Rutinas",
-        "body": "Programa trabajo para que corra en segundo plano. Útil para resúmenes diarios y tareas recurrentes."
+        "body": "Tu asistente ya viene con rutinas listas, como el Resumen matutino. Programa aquí cualquier otra cosa para que corra en segundo plano."
       },
       "tabIntegrations": {
         "title": "Integraciones",

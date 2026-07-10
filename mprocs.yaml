@@ -1,9 +1,10 @@
 procs:
   host:
-    # Source repo-root .env.local (gitignored) first so local dev secrets —
-    # e.g. COMPOSIO_API_KEY / HOUSTON_INTEGRATIONS_URL — reach the host
-    # without living in a committed file or your shell profile.
-    shell: "set -a; [ -f .env.local ] && . ./.env.local; set +a; pnpm dev:host"
+    # dev:host itself sources repo-root .env.local (gitignored) so local dev
+    # secrets — e.g. COMPOSIO_API_KEY / HOUSTON_INTEGRATIONS_URL — reach the
+    # host on EVERY dev loop (mprocs or a bare `pnpm dev:host`), without living
+    # in a committed file or your shell profile.
+    shell: pnpm dev:host
   app:
     shell: pnpm dev:app
   # The `gateway:` pane (a local stand-in for the cloud integrations path,
