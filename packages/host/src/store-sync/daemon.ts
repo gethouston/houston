@@ -9,7 +9,17 @@ import {
 
 const DEFAULT_QUIET_MS = 3_000;
 const DEFAULT_INTERVAL_MS = 300_000;
-const DEFAULT_MAX_HYDRATE_BYTES = 512 * 1024 * 1024;
+// Just under the pod's 10Gi emptyDir cap (GW_PVC_SIZE), NOT the per-turn
+// mode's 512 MiB: syncBack has no ceiling, so anything the agent writes must
+// also hydrate back on the next wake — a hydrate cap smaller than what sync
+// allows out is a delayed crash-loop (writes succeed today, the wake after
+// the next sleep fails forever). The gap below 10Gi leaves room for the
+// excluded scratch (tmp files, auth.json) that lives on the emptyDir but
+// never syncs.
+const DEFAULT_MAX_HYDRATE_BYTES = 9 * 1024 * 1024 * 1024;
+// Warn while the agent is WRITING (actionable), not when a later wake fails:
+// crossing this fraction of the hydrate cap logs loudly on every sync.
+const SIZE_WARN_FRACTION = 0.8;
 
 export const STORE_SYNC_EXCLUDES = [
   "credentials.json",
@@ -171,5 +181,13 @@ export class StoreSyncDaemon {
     );
     this.manifest = result.manifest;
     if (version === this.dirtyVersion) this.dirty = false;
+    const cap = this.opts.maxHydrateBytes ?? DEFAULT_MAX_HYDRATE_BYTES;
+    if (result.totalBytes > cap * SIZE_WARN_FRACTION) {
+      const mb = (n: number) => Math.round(n / 1024 / 1024);
+      this.opts.log(
+        `[store-sync] agent data is ${mb(result.totalBytes)} MiB of the ` +
+          `${mb(cap)} MiB hydration cap — past the cap the agent cannot wake`,
+      );
+    }
   }
 }
