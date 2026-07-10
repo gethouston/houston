@@ -224,10 +224,34 @@ CI also needs as Secrets:
 prep (ubuntu, ~30s)               creates empty draft + release-notes.md artifact
   ├── build-macos (mac, ~25m)     bun-compiles host sidecar (both arches) → signs, notarizes, uploads DMG/tar/sig/latest.json
   ├── build-windows (win, ~15m)   bun-compiles host sidecar per arch → uploads MSI + .sig (x64 + arm64)
-  └── build-linux (ubuntu, ~15m)  bun-compiles host sidecar → uploads AppImage (download-only, not in latest.json)
-        └── finalize (ubuntu, ~30s) [needs mac + win] extends latest.json with windows entries, posts Slack
+  ├── build-linux (ubuntu, ~15m)  bun-compiles host sidecar → uploads AppImage (download-only, not in latest.json)
+  ├── build-web (ubuntu, ~5m)     builds packages/web → uploads web-dist.tar.gz + Sentry maps, deploys PREVIEW site
+  └── finalize (ubuntu, ~30s) [needs mac + win] extends latest.json with windows entries, posts Slack
 ```
-Mac, Windows, and Linux run in parallel because they only need the empty draft `prep` creates, not each other's output. `finalize` stitches `latest.json` together (the macOS-only base from build-macos plus the Windows entries assembled from the MSI .sig in the draft) and posts the team Slack notification — it needs only mac + win, so a flaky new Linux leg never blocks the updater manifest or the mac/win artifacts already on the draft. Linux is UNSIGNED + download-only (no auto-update entry). Slack lives in `finalize` (not Windows) because it needs `release-notes.md` and the file is published as a workflow artifact by `prep`.
+Mac, Windows, Linux, and web run in parallel because they only need the empty draft `prep` creates, not each other's output. `finalize` stitches `latest.json` together (the macOS-only base from build-macos plus the Windows entries assembled from the MSI .sig in the draft) and posts the team Slack notification — it needs only mac + win, so a flaky new Linux/web leg never blocks the updater manifest or the mac/win artifacts already on the draft. Linux is UNSIGNED + download-only (no auto-update entry). Slack lives in `finalize` (not Windows) because it needs `release-notes.md` and the file is published as a workflow artifact by `prep`.
+
+## Web client hosting (Firebase Hosting)
+
+The browser web client (`packages/web`) is served from **Firebase Hosting** in GCP project `gethouston`, on two sites:
+
+| Site ID | Domain | Role |
+| --- | --- | --- |
+| `houston-web` | app.gethouston.ai | production |
+| `houston-web-preview` | preview.gethouston.ai (+ `*.web.app`) | preview / QA gate |
+
+**One build, promoted byte-for-byte.** There are **NO environment-specific VITE flags**. `build-web` (in `release.yml`, gated to `v*` tags on `gethouston/houston`) builds `packages/web` ONCE, and the environment is derived at **runtime** from `window.location.hostname` (`packages/web/src/deploy-environment.ts`): app.gethouston.ai → `production`, preview.gethouston.ai / `*.web.app` → `preview`, localhost → `development`. `main.tsx` publishes the result on `window.__HOUSTON_DEPLOY_ENV__` before the app graph loads; the shared `sentry.ts` + `analytics.ts` read it to tag their `environment`, and the web-only `PreviewBadge` (`packages/web/src/preview-badge.tsx`) renders a small "Preview" pill only on preview.
+
+**Flow:**
+1. `build-web` builds with the gateway URL (`VITE_CONTROL_PLANE_URL` ← the `HOSTED_ENGINE_URL` secret, i.e. `https://gateway.gethouston.ai` — host/cloud-login mode: the app's own GCP Identity Platform (Firebase Auth) gates sign-in, all domain calls hit the gateway), the `FIREBASE_API_KEY`/`FIREBASE_AUTH_DOMAIN`/`FIREBASE_PROJECT_ID` trio that configures that GCIP sign-in (the web bundle authenticates with firebase-js-sdk's popup, so `FIREBASE_API_KEY` is load-bearing and has no build-time default; the desktop-only `GOOGLE_DESKTOP_*`/`MICROSOFT_DESKTOP_CLIENT_ID` loopback vars are deliberately NOT baked — that flow never runs in a browser tab), and `POSTHOG_*`/`SENTRY_DSN`. It injects Sentry Debug IDs, uploads sourcemaps under the web release **`houston-app@<version>-web`** (the `-web` suffix keeps web crashes on their own Sentry release; the runner stamps the real version onto `packages/web/package.json`, which ships a `0.0.0` placeholder), strips the `.map` files, tars `dist` **deterministically** into `web-dist.tar.gz`, attaches it to the draft release, and deploys those bytes to the **preview** site.
+2. `web-promote.yml` (trigger: `release: published`, guarded to `v*` + not-prerelease + canonical repo) downloads the SAME `web-dist.tar.gz` from the published release, checks out `firebase.json`/`.firebaserc` at the release tag, unpacks, and deploys the identical bytes to the **production** site. No rebuild. A published release with **no** web asset (tag predates this pipeline) is **skipped with a notice**, never red-X'd; a present-but-empty asset fails loudly. `concurrency: web-promote` serializes overlapping publishes.
+
+**Auth:** keyless **Workload Identity Federation**, same provider as `engine-pod-image.yml` (`…/workloadIdentityPools/github/providers/houston`), service account `github-deploy-web@gethouston.iam.gserviceaccount.com`. `firebase-tools` reads the ADC `google-github-actions/auth` writes — no `FIREBASE_TOKEN`.
+
+**Config** lives in `packages/web/firebase.json` + `.firebaserc` (targets `production`→`houston-web`, `preview`→`houston-web-preview`). SPA rewrite all→`/index.html`; hashed `/assets/**` get `immutable` 1-year cache, everything else `no-cache`; security headers (`X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY` + CSP `frame-ancestors 'none'`) on both; the **preview** target additionally serves `X-Robots-Tag: noindex`. Header differences live in per-target config, so the promoted artifact stays byte-identical.
+
+**Rollback:** re-publish an older release (re-runs `web-promote` and re-deploys that release's `web-dist.tar.gz`), or roll back in the Firebase Hosting console (`firebase hosting:clone` / version pinning).
+
+**Required GitHub secrets** are all pre-existing (reused from the desktop jobs): `HOSTED_ENGINE_URL` (must equal the managed gateway URL), `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `POSTHOG_KEY`, `POSTHOG_HOST`, `SENTRY_DSN`, `SENTRY_AUTH_TOKEN`. No NEW secrets. The one prerequisite is the GCP-side WIF binding for `github-deploy-web@` (Firebase Hosting Admin) — infra, not a repo secret.
 
 ## macOS Universal (arm64 + Intel)
 
