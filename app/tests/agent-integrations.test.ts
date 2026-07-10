@@ -65,47 +65,39 @@ describe("agentIntegrationsView", () => {
       view.activeRows.map((r) => r.connection.toolkit),
       ["gmail", "slack"],
     );
-    strictEqual(view.grantedToolkits.has("notion"), false);
-    strictEqual(view.grantedToolkits.has("slack"), true);
   });
 
-  it("grants mode exposes connected-but-not-granted active apps as accountRows", () => {
+  it("an ungranted active connection appears in no grants-view row", () => {
     const view = agentIntegrationsView({
       connections: [conn("gmail"), conn("slack"), conn("notion")],
       catalog: CATALOG,
       grants: ["gmail"],
     });
     if (view.mode !== "grants") throw new Error("unreachable");
-    // Section 1 has the granted app; Section 2 has the rest, name-sorted.
+    // Section 1 has only the granted app. Connected-but-ungranted apps are a
+    // Settings > Connected accounts concern now — absent from active AND
+    // disallowed (there is no allowlist here, so nothing is disallowed).
     deepStrictEqual(
       view.activeRows.map((r) => r.connection.toolkit),
       ["gmail"],
     );
-    deepStrictEqual(
-      view.accountRows.map((r) => r.connection.toolkit),
-      ["notion", "slack"],
+    deepStrictEqual(view.disallowedRows, []);
+    const shown = [...view.activeRows, ...view.disallowedRows].map(
+      (r) => r.connection.toolkit,
     );
+    ok(!shown.includes("slack"), "ungranted active slack is not shown");
+    ok(!shown.includes("notion"), "ungranted active notion is not shown");
   });
 
-  it("accountRows excludes pending/errored non-granted connections", () => {
+  it("ungranted pending/errored connections appear in no grants-view row", () => {
     const view = agentIntegrationsView({
       connections: [conn("slack", "pending"), conn("notion", "error")],
       catalog: CATALOG,
       grants: [],
     });
     if (view.mode !== "grants") throw new Error("unreachable");
-    // Only ACTIVE connections are activatable for this agent.
-    deepStrictEqual(view.accountRows, []);
-  });
-
-  it("a granted app is never also an accountRow", () => {
-    const view = agentIntegrationsView({
-      connections: [conn("gmail"), conn("slack")],
-      catalog: CATALOG,
-      grants: ["gmail", "slack"],
-    });
-    if (view.mode !== "grants") throw new Error("unreachable");
-    deepStrictEqual(view.accountRows, []);
+    deepStrictEqual(view.activeRows, []);
+    deepStrictEqual(view.disallowedRows, []);
   });
 
   it("grants mode with an empty grant set yields no active rows", () => {

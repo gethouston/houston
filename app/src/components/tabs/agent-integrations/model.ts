@@ -19,14 +19,14 @@ export interface AgentAppRow {
  * discriminated union so the tab can never mix them:
  *
  *  - `grants`   — the host supports per-agent grants (C4). `activeRows` are the
- *                 apps this agent may act on; `accountRows` are apps connected
- *                 to the user's account but not yet granted here, each activated
- *                 with a one-click grant-add (the promoted "Ready to activate"
- *                 group). Only ACTIVE connections are activatable — a pending or
- *                 errored connection is not a usable app to hand this agent.
- *                 `disallowedRows` are connected apps the agent's Teams allowlist
- *                 ceiling forbids (visible, non-connectable, for transparency);
- *                 empty unless a Teams host serves a restrictive allowlist.
+ *                 apps this agent can use; `disallowedRows` are connected apps
+ *                 the agent's Teams allowlist ceiling forbids (visible,
+ *                 non-connectable, for transparency), empty unless a Teams host
+ *                 serves a restrictive allowlist. Connected-but-ungranted
+ *                 account apps do NOT appear on this tab: activating an existing
+ *                 connection for an agent now lives in Settings > Connected
+ *                 accounts. This tab is a pure connect surface (connect with
+ *                 auto-grant, recover a pending connection, disconnect).
  *  - `degraded` — grants resolved to `null` (host has no grant routes, e.g.
  *                 single-player). There is no per-agent permission, so every
  *                 connected app is usable by this agent; the list shows them all
@@ -36,9 +36,7 @@ export type AgentIntegrationsView =
   | {
       mode: "grants";
       activeRows: AgentAppRow[];
-      accountRows: AgentAppRow[];
       disallowedRows: AgentAppRow[];
-      grantedToolkits: Set<string>;
     }
   | { mode: "degraded"; rows: AgentAppRow[] };
 
@@ -47,10 +45,12 @@ export type AgentIntegrationsView =
  * set (`null` = unsupported host → degraded), and the Teams effective allowlist
  * (`allowlist`: `null`/absent = unrestricted, so no app is disallowed). A
  * connected toolkit outside the allowlist is split into `disallowedRows` and
- * never appears as active/activatable — the manager restricted it (the gateway
- * also prunes such grants server-side, so this is defence in depth, not the
- * enforcer). Pure so the mode split and row derivation are unit-testable
- * without React.
+ * never appears as active — the manager restricted it (the gateway also prunes
+ * such grants server-side, so this is defence in depth, not the enforcer).
+ * Connected-but-ungranted apps are intentionally absent from the grants view:
+ * activating an existing connection for an agent lives in Settings > Connected
+ * accounts. Pure so the mode split and row derivation are unit-testable without
+ * React.
  */
 export function agentIntegrationsView(opts: {
   connections: IntegrationConnection[];
@@ -74,19 +74,14 @@ export function agentIntegrationsView(opts: {
       : disallowedConns
     ).push(c);
   }
-  const { granted, available } = splitByGrant({
+  const { granted } = splitByGrant({
     connections: allowedConns,
     grants: grantedToolkits,
   });
   return {
     mode: "grants",
     activeRows: connectionRows(granted, opts.catalog),
-    accountRows: connectionRows(
-      available.filter((c) => c.status === "active"),
-      opts.catalog,
-    ),
     disallowedRows: connectionRows(disallowedConns, opts.catalog),
-    grantedToolkits,
   };
 }
 

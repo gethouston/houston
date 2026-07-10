@@ -12,6 +12,7 @@ import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
+import { canSeeIntegrationsPage } from "../../lib/org-roles";
 import { resolveAutoCollapse } from "../../lib/sidebar-auto-collapse";
 import { isTopLevelView } from "../../lib/top-level-views";
 import { useAgentStore } from "../../stores/agents";
@@ -61,6 +62,10 @@ export function Sidebar({ children }: { children: ReactNode }) {
   // only. Hidden entirely for plain members and single-player (canSeeOrganization
   // is the same gate as the members roster).
   const showOrganization = canSeeOrganization(capabilities);
+  // Teams v2: in a Teams workspace the Integrations page becomes org policy, so
+  // plain members lose both the page and its nav entry (they manage apps from
+  // the agent tab + Settings). Everyone else keeps it.
+  const showIntegrations = canSeeIntegrationsPage(capabilities);
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useUIStore((s) => s.toggleSidebarCollapsed);
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed);
@@ -175,7 +180,12 @@ export function Sidebar({ children }: { children: ReactNode }) {
               onExpand={() => setSidebarCollapsed(false)}
             />
           }
-          navItems={buildSidebarNavItems({ t, showOrganization, setViewMode })}
+          navItems={buildSidebarNavItems({
+            t,
+            showIntegrations,
+            showOrganization,
+            setViewMode,
+          })}
           activeNavId={isTopLevel ? viewMode : undefined}
           sectionLabel={t("shell:sidebar.yourAgents")}
           sectionAction={

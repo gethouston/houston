@@ -100,6 +100,7 @@ export const queryKeys = {
    * this and the agent's grant set (the gateway prunes disallowed grants).
    */
   agentSettings: (agentId: string) => ["agent-settings", agentId] as const,
+  orgSettings: () => ["org-settings"] as const,
   /**
    * Teams v2: the ACTING user's per-agent model choice plus the agent's
    * effective `allowedModels` ceiling (`GET /agents/:slug/model-choice`). Keyed

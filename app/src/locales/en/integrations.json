@@ -1,5 +1,10 @@
 {
   "title": "Integrations",
+  "policyPage": {
+    "subtitle": "Choose which apps agents in this workspace can use.",
+    "manageAccounts": "Manage your connected apps",
+    "perAgentNote": "Want tighter limits for one agent? Set them in that agent's settings."
+  },
   "loading": {
     "title": "Loading your integrations",
     "body": "Checking your integrations provider…"
@@ -99,9 +104,6 @@
   },
   "agentTab": {
     "activeTitle": "Apps this agent can use",
-    "accountTitle": "Other apps connected to your account",
-    "deactivate": "Remove from this agent",
-    "activate": "Activate for this agent",
     "empty": {
       "title": "No apps yet",
       "body": "Add an app so this agent can act on it.",

@@ -59,6 +59,20 @@
       "allowedEmptyCategory": "Ainda não há apps permitidos nesta categoria.",
       "addHeading": "Adicionar apps"
     },
+    "orgAllowlist": {
+      "question": "Quais aplicativos os agentes deste espaço de trabalho podem usar?",
+      "policyHelper": "Você decide quais aplicativos os agentes aqui podem usar. Cada pessoa conecta as próprias contas para cada aplicativo que você permitir.",
+      "anyLabel": "Qualquer aplicativo",
+      "anyDesc": "Os agentes deste espaço de trabalho podem usar qualquer um dos mais de 1000 aplicativos.",
+      "pickedLabel": "Apenas os aplicativos que você escolher",
+      "pickedDesc": "Os agentes só podem usar os aplicativos que você permitir abaixo.",
+      "allowApp": "Permitir {{name}}",
+      "allowedHeading": "Aplicativos permitidos",
+      "allowedEmpty": "Nenhum aplicativo escolhido ainda. Adicione aplicativos abaixo.",
+      "allowedEmptyCategory": "Nenhum aplicativo permitido nesta categoria ainda.",
+      "addHeading": "Adicionar aplicativos",
+      "ownerOnly": "Apenas o proprietário do espaço de trabalho pode alterar isso."
+    },
     "notAllowed": {
       "title": "Não permitido para este agente",
       "body": "Estes aplicativos estão conectados à sua conta, mas este agente não tem permissão para usá-los. Peça ao seu administrador para habilitá-los para este agente.",

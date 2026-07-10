@@ -66,10 +66,12 @@ assignment.
 
 ---
 
-## Role matrix v2 — `app/src/lib/org-roles.ts`
+## Role matrix v2 — `app/src/lib/org-roles.ts` + `app/src/lib/agent-access.ts`
 
-Pure, DOM-free, unit-tested (`app/tests/org-roles.test.ts`). All take
-`Capabilities | null`; agent gates also take `Pick<Agent, "access">`.
+Pure, DOM-free, unit-tested. Split by shape: the **caps-only** org gates live in
+`org-roles.ts` (`app/tests/org-roles.test.ts`); the **per-agent authority** gates
+that also take `Pick<Agent, "access" | "assigned">` live in `agent-access.ts`
+(`app/tests/agent-access.test.ts`). All take `Capabilities | null`.
 
 - `isMultiplayer(caps)` — `caps.multiplayer === true`.
 - `orgRole(caps)` — the role, or `null` off-multiplayer. A missing role on a
@@ -79,7 +81,8 @@ Pure, DOM-free, unit-tested (`app/tests/org-roles.test.ts`). All take
 - `canSeeMembers(caps)` — owner/admin. Also the exact gate for the org
   dashboard (`canSeeOrganization` delegates to it).
 - `canManageMembers(caps)` — **owner only**; admins see the roster read-only.
-- `isAgentManager(caps, agent)` — the single per-agent authority gate:
+- `isAgentManager(caps, agent)` — (`agent-access.ts`, with the four gates below)
+  the single per-agent authority gate:
   single-player true; org owner true; else `agent.access === "manager"`. It
   trusts `access` verbatim because the gateway already clamps a stale `manager`
   row for a `user` member before it reaches the wire.
@@ -89,6 +92,12 @@ Pure, DOM-free, unit-tested (`app/tests/org-roles.test.ts`). All take
 - `canManageAgentGrants` / `canEditAgentGrants` — per-agent integration grants,
   gated on the caller's own assignment (independent of manager authority; see
   `integrations.md`).
+- `canSeeIntegrationsPage(caps)` — the global Integrations page gate (sidebar nav,
+  render branch, tour step): a Teams **plain member** → false, else true
+  (owner/admin delegate to `canSeeMembers`; non-Teams and single-player → true). A
+  member's account home is instead Settings > Connected accounts.
+- `canEditOrgSettings(caps)` — **owner only**; gates the org allowlist editor on the
+  Integrations page (admins see it read-only). See the allowlist ceiling below.
 - `GRANTABLE_ROLES = ["admin", "user"]` — owner is never handed out from the UI
   (ownership transfer is out of scope for v1).
 
@@ -383,9 +392,30 @@ Members can only connect apps the org + agent allow. See `integrations.md` §2
 for the full model. In short: `effective = orgCeiling ∩ agentCeiling`
 (`null` = all, `[]` = none), grants are pruned when a ceiling shrinks, and a
 per-agent connect carries the agent slug so the gateway checks the allowlist and
-auto-grants on success. Client: `getAgentSettings` / `setAgentSettings`
-(agent ceiling, manager-only), `getOrgSettings` / `setOrgSettings` (org ceiling,
-owner-only). UI under `teams:integrations.allowlist`.
+auto-grants on success.
+
+**Both ceilings now have a frontend home** — the shared presentational
+`AllowlistEditor` (`app/src/components/integrations/allowlist-editor.tsx`), fed
+different copy per ceiling:
+
+- **Org ceiling** — the global **Integrations page** in Teams mode
+  (`integrations-view/integrations-policy.tsx`, reached when
+  `integrationsPageMode(caps) === "policy"`, i.e. `multiplayer && teams`).
+  Owner-editable, admin READ-ONLY (`canEditOrgSettings` = owner only; the
+  `teams:integrations.orgAllowlist.ownerOnly` note explains why). Client:
+  `getOrgSettings` / `setOrgSettings`, consumed by `useOrgSettings` /
+  `useSetOrgSettings` (`app/src/hooks/queries/use-org-settings.ts`, query key
+  `["org-settings"]`). Copy under `teams:integrations.orgAllowlist.*` (+
+  `integrations:policyPage.*`).
+- **Per-agent ceiling** — Agent Settings > **Access** > **Apps**
+  (`AgentAllowlistSection`, manager-only). Client: `getAgentSettings` /
+  `setAgentSettings`. Copy under `teams:integrations.allowlist.*`.
+
+`teams:integrations.orgAllowlist.*` and `teams:integrations.allowlist.*` carry the
+same choice keys (`question` / `anyLabel` / `pickedLabel` / …); `orgAllowlist` adds
+`ownerOnly`. Per-agent GRANT toggles are a separate concept and live only in
+Settings > Connected accounts (the members' account home), never in either ceiling
+editor.
 
 **Blocked apps stay VISIBLE (never silently absent).** The agent Integrations
 tab shows a ceiling-blocked app in one of two places rather than hiding it: a

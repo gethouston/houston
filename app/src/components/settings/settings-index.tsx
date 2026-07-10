@@ -1,24 +1,22 @@
-import { Bug, FileText, Keyboard, User, Users } from "lucide-react";
+import { Blocks, Bug, FileText, Keyboard, User, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useOrg } from "../../hooks/queries";
+import { useIntegrationConnections, useOrg } from "../../hooks/queries";
 import { useWorkspaceContext } from "../../hooks/queries/use-workspace-context";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import { genericErrorDescription } from "../../lib/error-toast";
+import type { SettingsSectionId } from "../../lib/settings-sections";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
+import {
+  INTEGRATION_PROVIDER,
+  integrationsSupported,
+} from "../integrations/model";
 import { PageContainer, PageHeader } from "../shell/page-shell";
 import { AccountSection } from "./sections/account";
 import { AppearanceSection } from "./sections/appearance";
 import { DangerSection } from "./sections/danger";
 import { LanguageSection } from "./sections/language";
 import { SettingsCard, SettingsRow } from "./settings-row";
-
-/** A settings section that opens on its own screen (a back bar returns here). */
-export type SettingsSectionId =
-  | "members"
-  | "workspaceContext"
-  | "userContext"
-  | "shortcuts"
-  | "reportBug";
 
 interface SettingsIndexProps {
   accountAvailable: boolean;
@@ -42,6 +40,18 @@ export function SettingsIndex({
   const org = useOrg(showMembers);
   const { data: context } = useWorkspaceContext(agentPath);
   const addToast = useUIStore((s) => s.addToast);
+  const { capabilities } = useCapabilities();
+  const integrationsAvailable = integrationsSupported(capabilities);
+  const connections = useIntegrationConnections(
+    INTEGRATION_PROVIDER,
+    integrationsAvailable,
+  );
+  // Only the active connections count as "connected apps"; a pending/errored
+  // OAuth is still recovering. Undefined while the query loads so the row shows
+  // no value rather than a premature "0 apps".
+  const appCount = connections.data?.filter(
+    (c) => c.status === "active",
+  ).length;
 
   const memberCount = org.data?.members?.length ?? 0;
   const contextValue = (slot: "workspace" | "user") =>
@@ -75,6 +85,19 @@ export function SettingsIndex({
           <AppearanceSection />
           <LanguageSection />
           {accountAvailable && <AccountSection />}
+          {integrationsAvailable && (
+            <SettingsRow
+              icon={Blocks}
+              title={t("settings:nav.connectedAccounts")}
+              description={t("settings:index.rows.connectedAccounts")}
+              value={
+                appCount === undefined
+                  ? undefined
+                  : t("settings:index.values.appsCount", { count: appCount })
+              }
+              onClick={() => onSelect("connectedAccounts")}
+            />
+          )}
           {showMembers && (
             <SettingsRow
               icon={Users}

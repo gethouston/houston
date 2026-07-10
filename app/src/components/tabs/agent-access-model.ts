@@ -5,11 +5,8 @@ import type {
   OrgMember,
   OrgRole,
 } from "@houston-ai/engine-client";
-import {
-  canManageAssignments,
-  hasSpaces,
-  isMultiplayer,
-} from "../../lib/org-roles.ts";
+import { canManageAssignments } from "../../lib/agent-access.ts";
+import { hasSpaces, isMultiplayer } from "../../lib/org-roles.ts";
 
 /**
  * Pure, DOM-free logic behind the Drive-style Share dialog for an agent. Kept

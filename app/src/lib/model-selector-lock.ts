@@ -21,7 +21,8 @@ import type {
   AgentModelChoice,
   Capabilities,
 } from "@houston-ai/engine-client";
-import { canEditAgentConfig, isMultiplayer } from "./org-roles.ts";
+import { canEditAgentConfig } from "./agent-access.ts";
+import { isMultiplayer } from "./org-roles.ts";
 
 export interface ModelSelectorDecision {
   /** Whether the model/effort picker renders at all. */

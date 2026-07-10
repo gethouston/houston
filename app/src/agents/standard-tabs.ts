@@ -8,7 +8,8 @@
  */
 
 import type { Agent, Capabilities } from "@houston-ai/engine-client";
-import { isAgentManager, isMultiplayer } from "../lib/org-roles.ts";
+import { isAgentManager } from "../lib/agent-access.ts";
+import { isMultiplayer } from "../lib/org-roles.ts";
 
 export interface AgentTab {
   /** Tab identifier (also matches the built-in component key in tab-resolver). */
