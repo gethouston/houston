@@ -1,5 +1,5 @@
 import { Storage } from "@google-cloud/storage";
-import type { ObjectStore } from "./object-store";
+import type { ObjectStore } from "@houston/runtime-client/object-sync";
 
 /**
  * GCS-backed ObjectStore. Auth is Application Default Credentials (the Cloud

@@ -1,14 +1,12 @@
 import { createReadStream, createWriteStream, existsSync } from "node:fs";
 import { mkdir, readdir, rm, stat } from "node:fs/promises";
-import { dirname, join, posix, relative, sep } from "node:path";
+import { dirname, join, posix, relative, resolve, sep } from "node:path";
 import { pipeline } from "node:stream/promises";
 
 /**
- * The object-storage port behind workspace persistence. Keys are
- * forward-slash paths ("ws/<id>/<agent>/workspace/deck.pptx"). GcsStore is the
- * production implementation; LocalDirStore backs tests (and local dev) with a
- * plain directory so hydration logic is tested against a real filesystem
- * without GCS credentials.
+ * The object-storage port behind durable engine state. Keys are forward-slash
+ * relative paths. Production adapters can live with their owning deployment;
+ * LocalDirStore keeps the synchronization contract testable against real files.
  */
 export interface ObjectStore {
   /** All keys under a prefix (prefix itself excluded; no delimiter semantics). */
@@ -19,12 +17,17 @@ export interface ObjectStore {
 }
 
 export class LocalDirStore implements ObjectStore {
-  constructor(private readonly root: string) {}
+  private readonly resolvedRoot: string;
+
+  constructor(root: string) {
+    this.resolvedRoot = resolve(root);
+  }
 
   private fileFor(key: string): string {
-    const abs = join(this.root, ...key.split("/"));
-    if (!abs.startsWith(this.root + sep))
+    const abs = resolve(this.resolvedRoot, ...key.split("/"));
+    if (abs !== this.resolvedRoot && !abs.startsWith(this.resolvedRoot + sep)) {
       throw new Error(`key escapes the store root: ${key}`);
+    }
     return abs;
   }
 
@@ -36,10 +39,10 @@ export class LocalDirStore implements ObjectStore {
       for (const entry of await readdir(dir, { withFileTypes: true })) {
         const abs = join(dir, entry.name);
         if (entry.isDirectory()) await walk(abs);
-        else
-          out.push(
-            posix.join(prefix, relative(base, abs).split(sep).join("/")),
-          );
+        else {
+          const rel = relative(base, abs).split(sep).join("/");
+          out.push(prefix ? posix.join(prefix, rel) : rel);
+        }
       }
     };
     await walk(base);
@@ -61,8 +64,8 @@ export class LocalDirStore implements ObjectStore {
   }
 
   async delete(key: string): Promise<void> {
-    const f = this.fileFor(key);
-    const s = await stat(f).catch(() => null);
-    if (s) await rm(f);
+    const file = this.fileFor(key);
+    const existing = await stat(file).catch(() => null);
+    if (existing) await rm(file);
   }
 }

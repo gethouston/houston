@@ -9,10 +9,13 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { WireFrame } from "@houston/runtime-client";
+import {
+  hydrate,
+  type ObjectStore,
+  syncBack,
+} from "@houston/runtime-client/object-sync";
 import { applyServedCredential } from "../auth/auth-file";
 import { openSSE } from "../transport/sse";
-import { hydrate, syncBack } from "./hydrate";
-import type { ObjectStore } from "./object-store";
 import { runPiTurn, type TurnOutcome } from "./turn-session";
 import { parseTurnRequest, type TurnRequest } from "./types";
 

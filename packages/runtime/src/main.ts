@@ -15,7 +15,9 @@ async function start(): Promise<Server> {
   if (config.mode === "turn") {
     const { createTurnServer } = await import("./turn/server");
     const { GcsStore } = await import("./turn/gcs-store");
-    const { LocalDirStore } = await import("./turn/object-store");
+    const { LocalDirStore } = await import(
+      "@houston/runtime-client/object-sync"
+    );
     if (!config.gcsBucket && !config.localStoreDir) {
       throw new Error(
         "turn mode needs HOUSTON_GCS_BUCKET (prod) or HOUSTON_LOCAL_STORE_DIR (dev)",
