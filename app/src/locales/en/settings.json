@@ -11,7 +11,19 @@
   "account": {
     "title": "Account",
     "signOut": "Sign out",
-    "fallbackName": "Signed in"
+    "avatar": {
+      "changeButton": "Change picture",
+      "changing": "Uploading…",
+      "toasts": {
+        "successTitle": "Profile picture updated",
+        "errorTitle": "Couldn't update your picture"
+      },
+      "errors": {
+        "notImage": "Pick an image file (JPG, PNG, or WebP).",
+        "tooLarge": "That image is over 5 MB. Pick a smaller one.",
+        "uploadFailed": "Couldn't save your picture. {{reason}}"
+      }
+    }
   },
   "workspace": {
     "title": "Workspace name"

@@ -1,7 +1,7 @@
 import { LogOut, MessageSquare, User } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSession } from "../../hooks/use-session";
+import { useMyProfile } from "../../hooks/use-my-profile";
 import { signOut } from "../../lib/auth";
 import { useUIStore } from "../../stores/ui";
 import { FeedbackDialog } from "./feedback-dialog";
@@ -18,21 +18,15 @@ import { FeedbackDialog } from "./feedback-dialog";
  */
 export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
   const { t } = useTranslation("shell");
-  const { data: session } = useSession();
+  const profile = useMyProfile();
   const [open, setOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const setViewMode = useUIStore((s) => s.setViewMode);
 
-  if (!session?.user) return null;
+  if (!profile) return null;
 
-  const user = session.user;
-  const meta = (user.user_metadata ?? {}) as {
-    name?: string;
-    full_name?: string;
-    avatar_url?: string;
-  };
-  const displayName = meta.full_name ?? meta.name ?? user.email ?? "Signed in";
-  const avatar = meta.avatar_url ?? null;
+  const displayName = profile.name;
+  const avatar = profile.avatarUrl;
 
   const handleSignOut = async () => {
     setOpen(false);

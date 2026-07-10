@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { missionMatchesPerson } from "../../lib/mission-people";
 import type { Agent } from "../../lib/types";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useUIStore } from "../../stores/ui";
@@ -31,6 +32,7 @@ export function useMissionControlSource(
   const mc = useMissionControl(agents);
 
   const [filterPath, setFilterPath] = useState("");
+  const [filterUserId, setFilterUserId] = useState<string | null>(null);
   const [missionSearchQuery, setMissionSearchQuery] = useState("");
   const [highlightedId, setHighlightedId] = useState<string | null>(
     mc.selectedId,
@@ -43,6 +45,19 @@ export function useMissionControlSource(
         ? mc.items.filter((i) => i.metadata?.agentPath === filterPath)
         : mc.items,
     [mc.items, filterPath],
+  );
+  // Person filter runs AFTER the agent filter, BEFORE text search: narrow to the
+  // missions the chosen person is on. `null` (Everyone) is a no-op. The filter
+  // menu's roster stays keyed off `agentFilteredItems` so every person is always
+  // reselectable regardless of the active person filter.
+  const personFilteredItems = useMemo(
+    () =>
+      filterUserId
+        ? agentFilteredItems.filter((i) =>
+            missionMatchesPerson(i.people, filterUserId),
+          )
+        : agentFilteredItems,
+    [agentFilteredItems, filterUserId],
   );
   const visibleAgents = useMemo(
     () =>
@@ -58,7 +73,7 @@ export function useMissionControlSource(
     });
   }, [addToast, t]);
   const missionSearch = useMissionSearch({
-    items: agentFilteredItems,
+    items: personFilteredItems,
     query: missionSearchQuery,
     loadHistory: mc.loadHistory,
     onHistoryLoadError: handleMissionSearchError,
@@ -128,10 +143,13 @@ export function useMissionControlSource(
   const toolbar = (
     <MissionControlToolbar
       agents={agents}
+      items={agentFilteredItems}
       filterPath={filterPath}
+      filterUserId={filterUserId}
       search={missionSearchQuery}
       isSearchingText={missionSearch.isSearchingText}
       onFilterPathChange={setFilterPath}
+      onFilterUserIdChange={setFilterUserId}
       onSearchChange={setMissionSearchQuery}
       archivedActive={false}
       onToggleArchived={onShowArchived}
@@ -143,7 +161,7 @@ export function useMissionControlSource(
   return {
     variant: "mission-control",
     items: missionSearch.items,
-    allItems: agentFilteredItems,
+    allItems: personFilteredItems,
     feedItems: mc.feedItems,
     loading: mc.loading,
     isLoaded: mc.isLoaded,
@@ -172,8 +190,8 @@ export function useMissionControlSource(
     openerReady: newMission.openerReady,
     openNewMission: newMission.openNewMission,
     onAutoOpenEmpty: newMission.onAutoOpenEmpty,
-    autoOpenKey: filterPath || "all",
-    autoOpenItemCount: agentFilteredItems.length,
+    autoOpenKey: `${filterPath || "all"}:${filterUserId ?? "everyone"}`,
+    autoOpenItemCount: personFilteredItems.length,
     autoOpenBlocked: newMission.agentPickerOpen,
     hasSearchQuery: missionSearch.hasQuery,
     emptyState,

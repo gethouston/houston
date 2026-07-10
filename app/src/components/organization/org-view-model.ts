@@ -2,21 +2,35 @@ import type { AuditEntry, Capabilities } from "@houston-ai/engine-client";
 import { canSeeMembers } from "../../lib/org-roles.ts";
 
 /**
- * Pure, DOM-free logic for the Organization dashboard (Teams v2). Extracted from
- * the view so the visibility gate + tab set are unit-tested in isolation
- * (node:test), never importing React.
+ * Pure, DOM-free logic for the Organization dashboard (Teams v2 + C8 billing).
+ * Extracted from the view so the visibility gate + tab set are unit-tested in
+ * isolation (node:test), never importing React.
  */
 
 /** The sections of the Organization dashboard, in tab order. */
-export type OrgTabId = "people" | "agents" | "activity" | "usage";
+export type OrgTabId = "people" | "agents" | "activity" | "usage" | "billing";
 
-/** Tab ids in display order. Labels are supplied by the app via `t()`. */
+/**
+ * The always-present sections, in display order. `billing` (C8) is appended
+ * conditionally by {@link orgTabIds} — it exists only on a Spaces host, only in
+ * a team space, and only for owner/admin, so it is never a fixed member.
+ */
 export const ORG_TAB_IDS: readonly OrgTabId[] = [
   "people",
   "agents",
   "activity",
   "usage",
 ] as const;
+
+/**
+ * The dashboard's tab ids in display order, with `billing` appended when
+ * `canSeeBillingTab` (in `lib/org-roles`) holds. Pure so the tab set is
+ * unit-tested without React; the view maps each id to its component + `t()`
+ * label.
+ */
+export function orgTabIds(showBilling: boolean): readonly OrgTabId[] {
+  return showBilling ? [...ORG_TAB_IDS, "billing"] : ORG_TAB_IDS;
+}
 
 /**
  * Whether the Organization view — and its sidebar nav entry — should render at

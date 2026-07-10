@@ -23,6 +23,23 @@
       "updated_at": { "type": "string", "format": "date-time" },
       "provider": { "type": "string" },
       "model": { "type": "string" },
+      "created_by": {
+        "type": "string",
+        "description": "The human who created this mission. Set by Houston, not by the agent."
+      },
+      "contributors": {
+        "type": "array",
+        "description": "Humans who started or collaborated on this mission. Set by Houston, not by the agent.",
+        "items": {
+          "type": "object",
+          "required": ["user_id"],
+          "additionalProperties": false,
+          "properties": {
+            "user_id": { "type": "string" },
+            "name": { "type": "string" }
+          }
+        }
+      },
       "pending_interaction": {
         "type": "object",
         "description": "The ordered steps this mission is waiting on the user for, walked one at a time: question steps first (at most 3), then at most one signin step, then connect steps.",

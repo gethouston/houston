@@ -62,7 +62,7 @@ interface UIState {
    * Set when the user completes M3 Try and clicks "Tutorial complete";
    * cleared when the user dismisses the final tour step. */
   uiTourActive: boolean;
-  /** Agent id queued for the "Share with a friend" wizard, or null. */
+  /** Agent id queued for the "Export a copy" wizard, or null. */
   shareAgentId: string | null;
   /** Whether the "From a friend" import wizard is open. */
   importFromFriendOpen: boolean;

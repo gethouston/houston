@@ -87,6 +87,18 @@ export function shouldOfferConnectSkip(opts: {
 }
 
 /**
+ * Whether the finish screen offers the "Invite your team" growth card. Only on
+ * a deployment that serves C8 Spaces (self-serve team creation) — desktop /
+ * self-host / legacy hosts have no team to create, so the card would dead-end.
+ * A cosmetic feature-detect; the gateway is the sole enforcer.
+ */
+export function shouldOfferTeamInvite(
+  capabilities: Capabilities | null | undefined,
+): boolean {
+  return capabilities?.spaces === true;
+}
+
+/**
  * True once the chosen email toolkit shows up as an ACTIVE connection. A
  * pending or errored connection does NOT count — the user must finish the app's
  * OAuth before the flow advances. Pure so the match rule is unit-tested apart

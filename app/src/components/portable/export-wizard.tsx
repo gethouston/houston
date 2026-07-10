@@ -1,7 +1,8 @@
 /**
- * Share an agent with a friend — 3 calm screens.
+ * Export a portable copy of an agent — 3 calm screens. This packages a
+ * file the recipient imports; it is not live collaboration (that is Share).
  *
- *   1. Pick what to share. CLAUDE.md is implicit; skills, routines,
+ *   1. Pick what to export. CLAUDE.md is implicit; skills, routines,
  *      learnings get per-item switches.
  *   2. Optionally let Houston anonymize. Side-by-side diffs.
  *   3. Save the file.

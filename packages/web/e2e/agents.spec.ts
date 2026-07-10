@@ -62,7 +62,7 @@ test("switches between two agents", async ({ page }) => {
 
 /**
  * Renaming via the (hover-gated) agent kebab → Rename. The menu items are
- * Rename / Change color / Share with a friend / Delete; Rename focuses an inline
+ * Rename / Change color / Export a copy / Delete; Rename focuses an inline
  * field, which we replace and submit.
  */
 test("renames an agent", async ({ page }) => {

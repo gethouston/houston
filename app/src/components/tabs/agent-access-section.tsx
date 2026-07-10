@@ -5,30 +5,70 @@ import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSession } from "../../hooks/use-session";
-import { isMultiplayer } from "../../lib/org-roles";
+import { isTeamWorkspace } from "../../lib/space-id";
 import type { Agent } from "../../lib/types";
-import { buildSharePeople, canShowAgentShareBlock } from "./agent-access-model";
-import { AgentShareDialog } from "./agent-share-dialog";
+import { useWorkspaceStore } from "../../stores/workspaces";
+import { agentShareSurface, buildSharePeople } from "./agent-access-model";
+import { AgentShareSurfaces } from "./agent-share-surfaces";
 
 const MAX_AVATARS = 4;
 
 /**
- * The "Share this agent" block on an agent's General settings — the entry point
- * to the Drive-style {@link AgentShareDialog}. Shows a stack of avatars and a
- * count of the people who can use the agent, plus a Share button that opens the
- * dialog. Rendered only in multiplayer mode AND only for an agent-manager of
- * this agent (matrix v2): owner for any org agent; an admin only when their
- * effective `access` is `"manager"`. Single-player / self-host degrades to
- * nothing. The gateway enforces the same authority.
+ * The "Share this agent" block on an agent's General settings. Its shape depends
+ * on the active space (C8 §Share-triggers-team, `agentShareSurface`) and opens
+ * the SAME flows as the prominent header Share button via {@link
+ * AgentShareSurfaces}:
+ *
+ * - `manage` (TEAM space, agent-manager) → the Drive-style share dialog: add
+ *   teammates and pick who can manage (unchanged from Teams v2).
+ * - `inviteTeam` (PERSONAL space on a spaces-capable host) → an "invite your
+ *   team" entry; a personal space is non-invitable, so the only way to share is
+ *   to move the agent into a team first.
+ * - Otherwise (`view` never reaches this manager-only tab, or `none` on
+ *   desktop / self-host) → nothing.
+ *
+ * The gateway enforces the same authority; these gates only shape affordances.
  */
 export function AgentAccessSection({ agent }: { agent: Agent }) {
   const { t } = useTranslation("teams");
   const { capabilities } = useCapabilities();
   const { data: session } = useSession();
-  const org = useOrg(isMultiplayer(capabilities));
+  const current = useWorkspaceStore((s) => s.current);
+  const inPersonalSpace = !isTeamWorkspace(current?.id ?? "");
+  const surface = agentShareSurface(capabilities, agent, inPersonalSpace);
+  const org = useOrg(surface === "manage");
   const [open, setOpen] = useState(false);
 
-  if (!canShowAgentShareBlock(capabilities, agent)) return null;
+  if (surface === "none" || surface === "view") return null;
+
+  if (surface === "inviteTeam") {
+    return (
+      <section>
+        <h2 className="mb-1 text-lg font-semibold">
+          {t("share.sectionTitle")}
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {t("shareViaTeam.sectionHelper")}
+        </p>
+
+        <Button
+          variant="secondary"
+          className="rounded-full"
+          onClick={() => setOpen(true)}
+        >
+          <UserPlus className="size-4" />
+          {t("shareViaTeam.button")}
+        </Button>
+
+        <AgentShareSurfaces
+          agent={agent}
+          surface="inviteTeam"
+          open={open}
+          onOpenChange={setOpen}
+        />
+      </section>
+    );
+  }
 
   const selfId = session?.user?.id ?? null;
   const members = org.data?.members ?? [];
@@ -82,7 +122,12 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
         )}
       </div>
 
-      <AgentShareDialog agent={agent} open={open} onOpenChange={setOpen} />
+      <AgentShareSurfaces
+        agent={agent}
+        surface="manage"
+        open={open}
+        onOpenChange={setOpen}
+      />
     </section>
   );
 }

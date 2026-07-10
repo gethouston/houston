@@ -8,8 +8,12 @@ import {
   LayoutDashboard,
   Settings,
 } from "lucide-react";
+import { useState } from "react";
+import { useCapabilities } from "../../hooks/use-capabilities";
+import { hasSpaces } from "../../lib/org-roles";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
 import { ORGANIZATION_VIEW_ID } from "../organization";
+import { CreateTeamDialog } from "./create-team-dialog";
 
 type ShellT = TFunction<["shell", "common", "portable", "teams"]>;
 
@@ -82,7 +86,15 @@ export function buildSidebarLabels(t: ShellT): SidebarLabels {
   };
 }
 
-/** The workspace switcher header, with its labels wired through `t()`. */
+/**
+ * The workspace switcher header, with its labels wired through `t()`.
+ *
+ * The create action routes on `capabilities.spaces` (C8): on a hosted
+ * deployment that serves Spaces it opens the Create-team dialog and reads
+ * "Create team"; otherwise it falls back to the caller's `onCreate` (the local
+ * workspace-create dialog) and reads the truthful "Create workspace" label —
+ * the old "createOrganization" copy was a known mislabel.
+ */
 export function SidebarWorkspaceHeader(props: {
   t: ShellT;
   workspaces: { id: string; name: string }[];
@@ -94,17 +106,34 @@ export function SidebarWorkspaceHeader(props: {
   onExpand: () => void;
 }) {
   const { t } = props;
+  const { capabilities } = useCapabilities();
+  const spacesEnabled = hasSpaces(capabilities);
+  const [createTeamOpen, setCreateTeamOpen] = useState(false);
   return (
-    <WorkspaceSwitcher
-      workspaces={props.workspaces}
-      currentId={props.currentId}
-      currentName={props.currentName ?? t("shell:sidebar.selectWorkspace")}
-      onSwitch={props.onSwitch}
-      onCreate={props.onCreate}
-      collapsed={props.collapsed}
-      createLabel={t("shell:sidebar.createOrganization")}
-      onExpand={props.onExpand}
-      expandLabel={t("shell:sidebar.expand")}
-    />
+    <div data-tour-target="spaceSwitcher">
+      <WorkspaceSwitcher
+        workspaces={props.workspaces}
+        currentId={props.currentId}
+        currentName={props.currentName ?? t("shell:sidebar.selectWorkspace")}
+        onSwitch={props.onSwitch}
+        onCreate={
+          spacesEnabled ? () => setCreateTeamOpen(true) : props.onCreate
+        }
+        collapsed={props.collapsed}
+        createLabel={
+          spacesEnabled
+            ? t("teams:createTeam.trigger")
+            : t("shell:sidebar.createWorkspace")
+        }
+        onExpand={props.onExpand}
+        expandLabel={t("shell:sidebar.expand")}
+      />
+      {spacesEnabled ? (
+        <CreateTeamDialog
+          open={createTeamOpen}
+          onOpenChange={setCreateTeamOpen}
+        />
+      ) : null}
+    </div>
   );
 }

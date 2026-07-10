@@ -11,7 +11,19 @@
   "account": {
     "title": "Cuenta",
     "signOut": "Cerrar sesión",
-    "fallbackName": "Sesión iniciada"
+    "avatar": {
+      "changeButton": "Cambiar foto",
+      "changing": "Subiendo…",
+      "toasts": {
+        "successTitle": "Foto de perfil actualizada",
+        "errorTitle": "No se pudo actualizar tu foto"
+      },
+      "errors": {
+        "notImage": "Elige un archivo de imagen (JPG, PNG o WebP).",
+        "tooLarge": "Esa imagen supera los 5 MB. Elige una más pequeña.",
+        "uploadFailed": "No se pudo guardar tu foto. {{reason}}"
+      }
+    }
   },
   "workspace": {
     "title": "Nombre del espacio"

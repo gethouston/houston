@@ -87,7 +87,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
     needsYouLabel: (count) => t("shell:sidebar.needsYouCount", { count }),
     onChangeColor: (agentId, color) => void handleChangeColor(agentId, color),
     onShareAgent: (agentId) => useUIStore.getState().setShareAgentId(agentId),
-    shareLabel: t("portable:shareMenu"),
+    shareLabel: t("portable:exportMenu"),
   });
   const isTopLevel = isTopLevelView(viewMode);
 

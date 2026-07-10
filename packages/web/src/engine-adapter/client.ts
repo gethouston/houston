@@ -266,7 +266,10 @@ export class HoustonClient {
     // captured static token, so local/static hosts are unchanged.
     this.engine = new HoustonEngineClient({
       baseUrl: opts.baseUrl,
-      fetch: controlPlane.gatewayAuthFetch(opts.token),
+      fetch: controlPlane.gatewayAuthFetch(
+        opts.token,
+        () => this.cp?.activeOrgSlug,
+      ),
     });
     // Mark the new TS engine as the active backend so the frontend can surface
     // new-engine-only capabilities (e.g. API-key providers like OpenCode). The
@@ -302,6 +305,25 @@ export class HoustonClient {
   subscribeServerEvents(): () => void {
     if (!this.cp) return () => {};
     return controlPlane.subscribeEvents(this.cp, (e) => bus.emit(e));
+  }
+
+  /**
+   * Pin (or clear) the active hosted space (C8 §Workspaces bridge). Pass an org
+   * slug (the `org:`-stripped id of a `kind: "org"` workspace) to act inside
+   * that team space — every gateway call then carries `x-houston-org`, and the
+   * events stream a `?org=` query — or `null` to fall back to the personal org.
+   *
+   * Mutates the live `ControlPlaneConfig` in place: the config object is shared
+   * by every per-request `cpFetch` and by the long-lived per-agent runtime
+   * clients (whose auth-fetch re-reads it per attempt), so a switch takes
+   * effect immediately without rebuilding anything. No-op outside cloud mode
+   * (`this.cp === null`) — local/self-host hosts have no space concept.
+   *
+   * `role` is per-space, so the caller MUST re-fetch `capabilities()` after
+   * switching (C8 §capabilities); this only redirects the transport.
+   */
+  setActiveOrg(slug: string | null): void {
+    if (this.cp) this.cp.activeOrgSlug = slug;
   }
 
   private async activeOld(): Promise<{ provider: string; model: string }> {
@@ -396,9 +418,10 @@ export class HoustonClient {
     // the old call 404'd against every host, silently breaking the
     // migration-reconnect probe (HOU-688). Live-bearer fetch for the same
     // reason as capabilities() (HOU-687).
-    const res = await controlPlane.gatewayAuthFetch(this.token)(
-      `${this.baseUrl}/v1/version`,
-    );
+    const res = await controlPlane.gatewayAuthFetch(
+      this.token,
+      () => this.cp?.activeOrgSlug,
+    )(`${this.baseUrl}/v1/version`);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new HoustonEngineError(res.status, body);
@@ -409,9 +432,10 @@ export class HoustonClient {
     // gatewayAuthFetch (not `this.engine.capabilities()`) on purpose: hosted
     // mode rotates the Supabase bearer mid-session, so the live token is read
     // per attempt and a 401 refreshes + replays (HOU-687).
-    const res = await controlPlane.gatewayAuthFetch(this.token)(
-      `${this.baseUrl}/v1/capabilities`,
-    );
+    const res = await controlPlane.gatewayAuthFetch(
+      this.token,
+      () => this.cp?.activeOrgSlug,
+    )(`${this.baseUrl}/v1/capabilities`);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new HoustonEngineError(res.status, body);
@@ -866,16 +890,16 @@ export class HoustonClient {
     if (!this.cp)
       throw new Error("cpFilesFetch called without a control-plane config");
     const cp = this.cp;
-    const res = await controlPlane.gatewayAuthFetch(cp.token)(
-      `${cp.baseUrl}/agents/${encodeURIComponent(agentId)}/${path}`,
-      {
-        ...init,
-        headers: {
-          "Content-Type": "application/json",
-          ...init?.headers,
-        },
+    const res = await controlPlane.gatewayAuthFetch(
+      cp.token,
+      () => cp.activeOrgSlug,
+    )(`${cp.baseUrl}/agents/${encodeURIComponent(agentId)}/${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...init?.headers,
       },
-    );
+    });
     if (!res.ok)
       throw new HoustonEngineError(
         res.status,
@@ -1925,6 +1949,52 @@ export class HoustonClient {
   ): Promise<void> {
     if (!this.cp) throw new Error("multiplayer requires the hosted gateway");
     return controlPlane.setOrgMemberRole(this.cp, userId, role);
+  }
+
+  // ---- spaces / teams (C8) — hosted gateway only ----
+  // Off-cloud (`this.cp === null`) there is no space concept: `listOrgs` reports
+  // an empty result (the switcher shows only the personal workspace), while the
+  // mutating calls throw — a create/move must reach the gateway.
+  async listOrgs(): Promise<controlPlane.OrgsList> {
+    if (!this.cp) return { orgs: [], invites: [] };
+    return controlPlane.listOrgs(this.cp);
+  }
+  async createOrg(name: string): Promise<controlPlane.OrgSummary> {
+    if (!this.cp) throw new Error("Creating a team needs the hosted gateway.");
+    return controlPlane.createOrg(this.cp, name);
+  }
+  async moveAgent(
+    agentSlugOrId: string,
+    toSlug: string,
+  ): Promise<controlPlane.AgentMoveStart> {
+    if (!this.cp) throw new Error("Moving an agent needs the hosted gateway.");
+    return controlPlane.moveAgent(this.cp, agentSlugOrId, toSlug);
+  }
+  async getMoveStatus(
+    agentSlugOrId: string,
+    moveId: string,
+  ): Promise<controlPlane.AgentMoveStatus> {
+    if (!this.cp) throw new Error("Moving an agent needs the hosted gateway.");
+    return controlPlane.getMoveStatus(this.cp, agentSlugOrId, moveId);
+  }
+
+  // ---- billing (C8) — hosted gateway only ----
+  // Off-cloud (`this.cp === null`) there is no team/billing concept: the read
+  // degrades to null (the billing UI renders nothing), while checkout/portal
+  // throw — a write must reach the gateway.
+  async getBilling(): Promise<controlPlane.BillingSummary | null> {
+    if (!this.cp) return null;
+    return controlPlane.getBilling(this.cp);
+  }
+  async createCheckout(
+    interval: "monthly" | "annual",
+  ): Promise<controlPlane.BillingCheckout> {
+    if (!this.cp) throw new Error("Billing needs the hosted gateway.");
+    return controlPlane.createCheckout(this.cp, interval);
+  }
+  async createPortal(): Promise<controlPlane.BillingCheckout> {
+    if (!this.cp) throw new Error("Billing needs the hosted gateway.");
+    return controlPlane.createPortal(this.cp);
   }
 
   // ---- per-agent assignments + integration grants (multiplayer) ----

@@ -135,7 +135,9 @@
         "tour": "Fazer um tour pelo Houston",
         "tourBody": "Uma passada rápida pelo básico.",
         "connectMore": "Conectar mais apps",
-        "connectMoreBody": "Dê ao seu agente acesso a mais ferramentas."
+        "connectMoreBody": "Dê ao seu agente acesso a mais ferramentas.",
+        "inviteTeam": "Convide seu time",
+        "inviteTeamBody": "Veja quem está trabalhando em cada missão. Crie um time e compartilhe seus agentes."
       },
       "onboardingIntro": {
         "title": "Agora vamos colocá-lo para trabalhar",

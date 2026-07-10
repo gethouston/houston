@@ -710,6 +710,9 @@ export function AIBoard({
       onClose={hidePanelClose ? undefined : closePanel}
       avatar={panelAvatar}
       agentName={panelAgentName ?? selectedItem?.group}
+      people={selectedItem?.people}
+      peopleLabel={cardLabels?.people}
+      peopleExpandLabel={cardLabels?.peopleExpand}
       actions={selectedItem ? panelActions?.(selectedItem) : undefined}
     >
       <div className="flex-1 min-h-0 flex flex-col">

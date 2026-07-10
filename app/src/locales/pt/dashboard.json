@@ -8,6 +8,13 @@
   "filter": {
     "allAgents": "Todos os agentes"
   },
+  "peopleFilter": {
+    "label": "Filtrar por pessoa",
+    "everyone": "Todos",
+    "mine": "Minhas missões",
+    "invite": "Convidar colegas",
+    "inviteTeaser": "Convide seu time para ver quem está trabalhando em quê"
+  },
   "search": {
     "placeholder": "Buscar missões",
     "placeholderShort": "Buscar...",

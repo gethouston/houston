@@ -5,6 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createElement, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../hooks/queries";
+import { useUserProfiles } from "../hooks/queries/use-user-profiles";
+import { useCapabilities } from "../hooks/use-capabilities";
 import {
   getConversationStatus,
   useConversationVm,
@@ -12,6 +14,11 @@ import {
 import { buildAttachmentPrompt } from "../lib/attachment-message";
 import { createMission } from "../lib/create-mission";
 import { missionCardTags } from "../lib/mission-card";
+import {
+  buildMissionPeople,
+  collectContributorIds,
+} from "../lib/mission-people";
+import { isMultiplayer } from "../lib/org-roles";
 import { queryKeys } from "../lib/query-keys";
 import { formatVisibleMessageText } from "../lib/queued-chat";
 import { isRoutineSetupMode } from "../lib/routine-chat-setup";
@@ -52,6 +59,18 @@ export function useMissionControl(agents: Agent[]) {
 
   const { data: convos, isFetched } = useAllConversations(paths);
 
+  // Per-mission attribution (hosted Teams only): resolve the contributor ids on
+  // every visible conversation to display profiles. Single-player never runs
+  // the query (useUserProfiles is multiplayer-gated) and gets no `people` key,
+  // so the board stays byte-identical to desktop.
+  const { capabilities } = useCapabilities();
+  const multiplayer = isMultiplayer(capabilities);
+  const contributorIds = useMemo(
+    () => (multiplayer && convos ? collectContributorIds(convos) : []),
+    [multiplayer, convos],
+  );
+  const { profiles } = useUserProfiles(contributorIds);
+
   const agentColorMap = useMemo(() => {
     const m: Record<string, string | undefined> = {};
     for (const a of agents) m[a.folderPath] = a.color;
@@ -91,6 +110,7 @@ export function useMissionControl(agents: Agent[]) {
           agentPath: c.agent_path,
           activityId: c.id,
         };
+        const people = multiplayer ? buildMissionPeople(c, profiles) : [];
         return {
           id: c.id,
           title: c.title,
@@ -115,12 +135,13 @@ export function useMissionControl(agents: Agent[]) {
             ...(c.agent ? { agent: c.agent } : {}),
             ...(c.routine_id ? { routineId: c.routine_id } : {}),
           },
+          ...(people.length > 0 ? { people } : {}),
         };
       });
     pathMapRef.current = map;
     sessionMapRef.current = sessionMap;
     return result;
-  }, [convos, agentColorMap, agentMap, getAgentDef, t]);
+  }, [convos, agentColorMap, agentMap, getAgentDef, multiplayer, profiles, t]);
 
   // The open conversation's reactive feed, straight from the SDK conversation
   // VM. AIBoard only ever reads `feedItems[activeSessionKey]`, so a

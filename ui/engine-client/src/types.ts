@@ -90,6 +90,14 @@ export interface Capabilities {
    * every existing single-player/self-host profile stays valid.
    */
   teams?: boolean;
+  /**
+   * Whether this deployment serves C8 Spaces: self-serve team creation, agent
+   * moves between spaces, and the multi-membership space switcher. A feature-
+   * detect flag the frontend reads to route the switcher's create action to the
+   * Create-team dialog; absent/false on desktop/self-host (the create action
+   * stays "create a local workspace"). The gateway is the sole enforcer.
+   */
+  spaces?: boolean;
 }
 
 // ---------- Org / roles (multiplayer) ----------
@@ -169,6 +177,102 @@ export interface AddOrgMemberResult {
   email?: string;
 }
 
+// ---------- Spaces / teams (C8) ----------
+
+/**
+ * Billing status of a team space (C8 §Billing wire surface). Attached to an
+ * `OrgSummary` only for teams and only for owner/admin callers; the DERIVED
+ * effective `status` (never a stored column) drives every UI billing state.
+ * `seats` is the live `count(org_members)` at read time. Kept in sync by hand
+ * with the gateway — the server is the source of truth.
+ */
+export interface BillingSummary {
+  plan: "team" | "enterprise";
+  status: "free" | "trialing" | "active" | "past_due" | "expired";
+  /** ISO-8601; present once the trial clock exists. */
+  trialEndsAt?: string;
+  seats: number;
+  /** Present once subscribed. */
+  interval?: "monthly" | "annual";
+}
+
+/**
+ * A Stripe-hosted URL to redirect the owner to (C8 §Billing wire surface).
+ * Returned by `POST /v1/org/billing/checkout` (contextual card capture) and
+ * `POST /v1/org/billing/portal` (card, invoices, interval switch, cancel). The
+ * client opens it via the OS external-open path — never inline.
+ */
+export interface BillingCheckout {
+  url: string;
+}
+
+/**
+ * One space (org) the caller belongs to (C8 §Wire surface — spaces), from
+ * `GET /v1/orgs` and `POST /v1/orgs`. `kind` is derived server-side from
+ * `personal_of` — `personal` is the free-forever personal space, `team` is a
+ * paid-per-seat team. `role` is the caller's role IN THIS space. `degraded` is
+ * `true` when writes would `403 needs_upgrade` (visible to every member, carries
+ * no billing detail). `billing` is present for teams, owner/admin only.
+ *
+ * The space's `slug` is what pins the active space: a team's switcher workspace
+ * id is `"org:" + slug` (C8 §Workspaces bridge), and that slug rides
+ * `x-houston-org` / `?org=` (see `HoustonClient.setActiveOrg`).
+ */
+export interface OrgSummary {
+  id: string;
+  slug: string;
+  name: string;
+  kind: "personal" | "team";
+  role: OrgRole;
+  memberCount: number;
+  degraded: boolean;
+  billing?: BillingSummary;
+}
+
+/**
+ * A pending invite addressed to the caller's email (C8 §Wire surface), from
+ * `GET /v1/orgs` (`invites`). Accepted via `POST /v1/org-invites/:id/accept` or
+ * declined via `DELETE /v1/org-invites/:id`.
+ */
+export interface OrgInviteSummary {
+  id: string;
+  orgName: string;
+  role: OrgRole;
+  invitedBy?: string;
+}
+
+/**
+ * Response of `GET /v1/orgs` (C8): every membership plus every pending invite
+ * addressed to the caller. Degrades to an empty result on a host that predates
+ * spaces (404) so the switcher shows only the personal workspace.
+ */
+export interface OrgsList {
+  orgs: OrgSummary[];
+  invites: OrgInviteSummary[];
+}
+
+/**
+ * Response of `POST /v1/agents/:slug/move` (C8 §Agent move): the id to poll for
+ * move progress. The move route is async — `202 {moveId}` — because a move stops
+ * and restarts the agent's pod; completion is read from `getMoveStatus`, NEVER
+ * inferred from the agent event stream (which only relays pod-scoped events).
+ */
+export interface AgentMoveStart {
+  moveId: string;
+}
+
+/**
+ * Progress of one agent move (C8), polled from
+ * `GET /v1/agents/:slug/move/:moveId`. `done`/`failed` are terminal; `error` is
+ * a human-readable reason present on `failed`. The share pipeline MUST poll this
+ * to terminal `done` before inviting (C8 §Share-triggers-team) — inviting before
+ * the move completes is forbidden by the client contract.
+ */
+export interface AgentMoveStatus {
+  status: "moving" | "done" | "failed";
+  error?: string;
+}
+
 /**
  * Per-agent settings (Teams v2), from `GET /agents/:slug/settings`.
  * `allowedToolkits` is the agent-level integration ceiling (`null` =
@@ -245,11 +349,34 @@ export interface UsageRow {
 
 // ---------- Workspaces ----------
 
+/**
+ * Which kind of space a workspace bridges (C8 §Workspaces bridge). Mirrors the
+ * host domain `WorkspaceKind` (`packages/host/src/domain/types.ts`). `personal`
+ * ⟺ OrgSummary `personal`, `org` ⟺ OrgSummary `team`.
+ */
+export type WorkspaceKind = "personal" | "org";
+
 export interface Workspace {
+  /**
+   * Stable id. A hosted **personal** space keeps its existing auto-provisioned
+   * id — opaque, NEVER `org:`-prefixed. A hosted **team** space (`kind: "org"`)
+   * has the server-defined id grammar `"org:" + slug`, where `slug` is
+   * `[a-f0-9]{16}`. The `org:` prefix is a wire convention: strip it to recover
+   * the slug for `setActiveOrg` / `?org=`, but never synthesize or parse the
+   * slug beyond that (C8).
+   */
   id: string;
   name: string;
   isDefault: boolean;
   createdAt: string;
+  /**
+   * Which kind of space this row bridges (C8 §Workspaces bridge). Present on
+   * hosts that serve spaces; ABSENT on single-player/self-host hosts (treat as
+   * `"personal"`), so every pre-C8 profile stays valid. Selecting a `personal`
+   * workspace sends NO active-space header; selecting an `org` workspace pins
+   * `x-houston-org` (and `?org=` on the SSE routes) to its slug.
+   */
+  kind?: WorkspaceKind;
   /**
    * Optional per-workspace UI-locale override (BCP-47 base tag: `en`/`es`/`pt`).
    * Absent/null means the workspace inherits the global `locale` preference.
@@ -418,6 +545,12 @@ export interface Activity {
   provider?: string;
   model?: string;
   pending_interaction?: PendingInteraction;
+  /** The human who created this mission (Teams attribution). Server-stamped
+   *  from the gateway acting-as identity; absent on desktop/single-player. */
+  created_by?: string;
+  /** Humans who started or collaborated on this mission (Teams attribution).
+   *  Server-stamped in multiplayer only; absent on desktop/single-player. */
+  contributors?: { user_id: string; name?: string }[];
 }
 
 export interface ActivityUpdate {
@@ -597,6 +730,12 @@ export interface ConversationEntry {
   agent_name: string;
   agent?: string;
   routine_id?: string;
+  /** The human who created this mission (Teams attribution). Server-stamped
+   *  from the gateway acting-as identity; absent on desktop/single-player. */
+  created_by?: string;
+  /** Humans who started or collaborated on this mission (Teams attribution).
+   *  Server-stamped in multiplayer only; absent on desktop/single-player. */
+  contributors?: { user_id: string; name?: string }[];
 }
 
 // ---------- Skills ----------

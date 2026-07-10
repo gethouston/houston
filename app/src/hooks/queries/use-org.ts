@@ -1,7 +1,7 @@
 import type { OrgRole } from "@houston-ai/engine-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
-import { tauriOrg } from "../../lib/tauri";
+import { type EngineCallOptions, tauriOrg } from "../../lib/tauri";
 
 /**
  * The current user's org (identity + role, plus the roster for owner/admin).
@@ -30,8 +30,19 @@ export function useOrg(enabled: boolean) {
 export function useAddMember() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ email, role }: { email: string; role: OrgRole }) =>
-      tauriOrg.addMember(email, role),
+    // `options` lets a specific caller override `call()`'s surfacing (e.g. the
+    // share-via-team flow silences the expected `already_member` state, which it
+    // renders inline). Omitting it keeps the default red toast + Sentry report,
+    // which is the ONLY failure surface for the org-dashboard invite forms.
+    mutationFn: ({
+      email,
+      role,
+      options,
+    }: {
+      email: string;
+      role: OrgRole;
+      options?: EngineCallOptions;
+    }) => tauriOrg.addMember(email, role, options),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.org() }),
   });
 }
