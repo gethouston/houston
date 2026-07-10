@@ -37,6 +37,19 @@ export function normalizeAnswer(text: string): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+/** A readable app name from a toolkit slug, for the connect step's fallback
+ *  title when the agent gave no reason ("google-sheets" -> "Google Sheets").
+ *  A best-effort human label from the slug alone — the app's catalog name (when
+ *  it resolves) still drives the row below; this only fills the header slot. */
+export function prettifyToolkit(toolkit: string): string {
+  return toolkit
+    .trim()
+    .split(/[\s_-]+/)
+    .filter((w) => w.length > 0)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 /** The option label for a question step, or null when the id is unknown. */
 export function optionLabel(
   step: ChatInteractionStep,

@@ -28,7 +28,12 @@ import {
   skipQuestion,
   type Transition,
 } from "./interaction-card-logic";
-import { OptionRow, StepperHeader } from "./interaction-card-parts";
+import { prettifyToolkit } from "./interaction-card-model.ts";
+import {
+  InteractionFooter,
+  OptionRow,
+  StepperHeader,
+} from "./interaction-card-parts";
 
 export type {
   ChatInteractionAnswer,
@@ -45,17 +50,23 @@ export interface ChatInteractionCardProps {
   steps: ChatInteractionStep[];
   /** Receives every question answer, in step order, once the last step is done. */
   onComplete: (answers: ChatInteractionAnswer[]) => void;
-  /** Renders a connect step's body; call `api.onConnected` to advance. ui/chat
-   *  stays Composio-unaware, so the app supplies the connect card. */
+  /** Renders a connect step's body AND footer; call `api.onConnected` to advance.
+   *  ui/chat stays Composio-unaware, so the app supplies the reactive connect
+   *  content. It owns the row + primary CTA (a filled pill in {@link
+   *  InteractionFooter}); the card supplies the shared step-nav nodes via `api`
+   *  (`back`/`forward`) so the app never re-implements navigation, and routes the
+   *  step's title through the shared header. See {@link StepFooterApi}. */
   renderConnect: (
     step: ConnectStep,
-    api: { onConnected: () => void },
+    api: StepFooterApi & { onConnected: () => void },
   ) => ReactNode;
-  /** Renders a signin step's body; call `api.onSignedIn` to advance. ui/chat
-   *  stays auth-unaware, so the app supplies the sign-in card. */
+  /** Renders a signin step's body AND footer; call `api.onSignedIn` to advance.
+   *  ui/chat stays auth-unaware, so the app supplies the reactive sign-in
+   *  content (row + filled CTA), placing the card's `api.back`/`api.forward`
+   *  nodes in the shared footer. See {@link StepFooterApi}. */
   renderSignin: (
     step: SigninStep,
-    api: { onSignedIn: () => void },
+    api: StepFooterApi & { onSignedIn: () => void },
   ) => ReactNode;
   /** Dismisses the WHOLE interaction sequence. When omitted, the header shows no
    *  dismiss (X) button. */
@@ -70,7 +81,22 @@ export interface ChatInteractionCardProps {
     skip?: string;
     dismiss?: string;
     progress?: (current: number, total: number) => string;
+    /** Header title for a signin step with no agent-supplied reason. */
+    signinTitle?: string;
+    /** Header title for a connect step with no agent-supplied reason, given a
+     *  readable app name derived from the toolkit slug. */
+    connectTitle?: (app: string) => string;
   };
+}
+
+/** The shared step-navigation the card hands a signin/connect body so it can
+ *  compose the ONE footer row without owning navigation state. Each is a
+ *  ready-styled node (or null): place `back` leftmost, then render `forward`
+ *  INSTEAD of the primary CTA when present (a revisited, already-completed step
+ *  can't re-fire its own completion, so Forward is its only way onward). */
+export interface StepFooterApi {
+  back: ReactNode | null;
+  forward: ReactNode | null;
 }
 
 /**
@@ -189,6 +215,45 @@ export function ChatInteractionCard({
   const isQuestion = step.kind === "question";
   const canSend = canAdvanceQuestion(selectedId !== null, draft);
 
+  // Every step kind routes its title through the ONE header slot, so a connect
+  // step's reason reads with the same weight/position as a question. Falls back
+  // to a labelled title when the agent gave no reason.
+  const title =
+    step.kind === "question"
+      ? step.question
+      : step.kind === "signin"
+        ? (step.reason ?? labels?.signinTitle)
+        : (step.reason ??
+          labels?.connectTitle?.(prettifyToolkit(step.toolkit)));
+
+  // The shared step-nav nodes handed to a signin/connect body so it composes the
+  // footer without owning navigation state (styled exactly like the question
+  // footer's Back / Forward). Back walks to the previous reached step; Forward
+  // only appears for a revisited already-completed step.
+  const backNode =
+    current > 0 ? (
+      <Button
+        disabled={disabled}
+        onClick={() => setState(goBack)}
+        size="sm"
+        type="button"
+        variant="ghost"
+      >
+        {backLabel}
+      </Button>
+    ) : null;
+  const forwardNode = canGoForward(state) ? (
+    <Button
+      disabled={disabled}
+      onClick={() => setState(goForward)}
+      size="sm"
+      type="button"
+    >
+      {forwardLabel}
+    </Button>
+  ) : null;
+  const footerApi: StepFooterApi = { back: backNode, forward: forwardNode };
+
   return (
     <div
       aria-disabled={disabled || undefined}
@@ -205,7 +270,7 @@ export function ChatInteractionCard({
           dismissLabel={labels?.dismiss ?? "Dismiss"}
           onDismiss={onDismiss}
           progressLabel={progress(current + 1, total)}
-          questionText={isQuestion ? step.question : undefined}
+          title={title}
           total={total}
         />
 
@@ -250,67 +315,41 @@ export function ChatInteractionCard({
               </div>
             </div>
           ) : step.kind === "signin" ? (
-            renderSignin(step, { onSignedIn })
+            renderSignin(step, { ...footerApi, onSignedIn })
           ) : (
-            renderConnect(step, { onConnected })
+            renderConnect(step, { ...footerApi, onConnected })
           )}
         </div>
 
-        {/* ALL step-to-step navigation lives here, one row, Back leftmost: a
+        {/* Question steps' navigation lives here, one row, Back leftmost: a
             single place to look for "how do I move." Back walks to the previous
-            already-reached step (any kind); Skip/Next are question-only (Next
-            commits, or on a revisited step re-commits the pre-filled answer,
-            which doubles as its own "forward"); a bare Forward only shows for a
-            revisited non-question step, since a connect/signin step's own card
-            can't re-fire its completion callback once already done. */}
-        {(current > 0 ||
-          isQuestion ||
-          (!isQuestion && canGoForward(state))) && (
-          <div className="mt-4 flex items-center justify-end gap-1.5">
-            {current > 0 && (
-              <Button
-                disabled={disabled}
-                onClick={() => setState(goBack)}
-                size="sm"
-                type="button"
-                variant="ghost"
-              >
-                {backLabel}
-              </Button>
-            )}
-            {isQuestion ? (
-              <>
-                <Button
-                  disabled={disabled}
-                  onClick={onSkip}
-                  size="sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  {skipLabel}
-                </Button>
-                <Button
-                  disabled={disabled || !canSend}
-                  onClick={onSend}
-                  size="sm"
-                  type="button"
-                >
-                  {nextLabel}
-                </Button>
-              </>
-            ) : (
-              canGoForward(state) && (
-                <Button
-                  disabled={disabled}
-                  onClick={() => setState(goForward)}
-                  size="sm"
-                  type="button"
-                >
-                  {forwardLabel}
-                </Button>
-              )
-            )}
-          </div>
+            already-reached step; Skip advances past the question unanswered;
+            Next is the single filled pill that commits. A signin/connect step
+            renders its OWN footer inside its body (the app owns that reactive
+            content), placing the same `InteractionFooter` with the card-supplied
+            `back`/`forward` nodes beside its filled CTA — so the chrome matches
+            without the card knowing anything about Composio/auth. */}
+        {isQuestion && (
+          <InteractionFooter>
+            {backNode}
+            <Button
+              disabled={disabled}
+              onClick={onSkip}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              {skipLabel}
+            </Button>
+            <Button
+              disabled={disabled || !canSend}
+              onClick={onSend}
+              size="sm"
+              type="button"
+            >
+              {nextLabel}
+            </Button>
+          </InteractionFooter>
         )}
       </div>
     </div>

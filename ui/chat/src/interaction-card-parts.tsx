@@ -2,6 +2,7 @@
 
 import { Button, cn } from "@houston-ai/core";
 import { XIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import type { ChatInteractionOption } from "./interaction-card-logic";
 
 /** One selectable answer, a full-width single-select row (click = answer),
@@ -60,9 +61,11 @@ export interface StepperHeaderProps {
   total: number;
   /** The quiet progress micro-label, e.g. "Step 1 of 3" (shown when total > 1). */
   progressLabel: string;
-  /** The current step's question text, rendered as the card's title; omitted for
-   *  signin/connect steps (those supply their own heading in the body). */
-  questionText?: string;
+  /** The current step's title, rendered as the card's real title in the SAME
+   *  slot for every kind: a question step passes its question, a signin/connect
+   *  step passes its reason (with a labelled fallback). Omitted only when a step
+   *  has neither. */
+  title?: string;
   /** Dismisses the WHOLE interaction sequence. The X button renders only when
    *  supplied, so a caller with no dismiss affordance simply omits it. */
   onDismiss?: () => void;
@@ -71,14 +74,17 @@ export interface StepperHeaderProps {
 }
 
 /** Card header, in the Mercury title idiom: a quiet progress micro-label
- *  eyebrow (only for a multi-step sequence) above the step's question rendered
- *  as a real title in the body, with an unobtrusive dismiss X pinned top-right.
- *  Purely informational + the one escape hatch — all step-to-step navigation
- *  (back/skip/next) lives together in the footer, see `ChatInteractionCard`. */
+ *  eyebrow (only for a multi-step sequence) above the step's title rendered as a
+ *  real title in the body, with an unobtrusive dismiss X pinned top-right. Every
+ *  step kind (question, signin, connect) routes its title through this one slot,
+ *  so a connect step's reason reads with the exact same weight/position as a
+ *  question. Purely informational + the one escape hatch — all step-to-step
+ *  navigation (back/skip/next) lives together in the footer, see
+ *  `ChatInteractionCard`. */
 export function StepperHeader({
   total,
   progressLabel,
-  questionText,
+  title,
   onDismiss,
   dismissLabel,
   disabled,
@@ -93,14 +99,14 @@ export function StepperHeader({
             {progressLabel}
           </p>
         )}
-        {questionText && (
+        {title && (
           <p
             className={cn(
               "text-balance text-base text-foreground leading-snug",
               total > 1 && "mt-1.5",
             )}
           >
-            {questionText}
+            {title}
           </p>
         )}
       </div>
@@ -118,5 +124,16 @@ export function StepperHeader({
         </Button>
       )}
     </div>
+  );
+}
+
+/** The one footer row for a step: quiet nav on the left, a single filled pill on
+ *  the right. Question steps fill it with Back / Skip / Next; signin & connect
+ *  steps (whose reactive body the app owns) fill it with the ui-supplied Back /
+ *  Forward nodes plus their own filled CTA. Exported so the app composes the
+ *  EXACT same footer chrome — one place owns the row's spacing and alignment. */
+export function InteractionFooter({ children }: { children: ReactNode }) {
+  return (
+    <div className="mt-4 flex items-center justify-end gap-1.5">{children}</div>
   );
 }

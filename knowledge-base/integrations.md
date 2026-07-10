@@ -363,11 +363,18 @@ design.
 calls the integration-gated `request_connection` tool (never writes a link). That
 records a `{kind:"connect", toolkit, reason?}` pending interaction which rides the
 turn's clean `done` frame and settles the board card to `needs_you`; the pending
-interaction then REPLACES the composer with an `IntegrationConnectCard` that reuses
-the connect flow above and auto-continues the conversation once OAuth lands. The
-old `#houston_toolkit=` markdown-link connect hack is GONE from the prompt and tool
-guidance — the app's legacy link-card renderer survives only to render old
-transcripts. Full lifecycle → `knowledge-base/architecture.md`.
+interaction floats a `ChatInteractionCard` stepper ABOVE the composer, whose
+connect step is `ChatConnectInteractionCard` — a Mercury row (app logo + name +
+one-line description) with the reason as the card title and a single filled
+"Connect" pill in the shared footer (NO card-inside-a-card). It shares the connect
+flow above with the inline link card through one hook
+(`app/src/components/use-integration-connect.tsx`); only the presentation forks —
+the inline `#houston_toolkit` renderer stays a `RowCard` badge, the stepper draws
+a surface-less row + footer CTA. Both auto-continue the conversation once OAuth
+lands (or the app is already connected). The old `#houston_toolkit=` markdown-link
+connect hack is GONE from the prompt and tool guidance — the app's legacy link-card
+renderer survives only to render old transcripts. Full lifecycle →
+`knowledge-base/architecture.md`.
 
 **No silent failures.** All engine mutations route through `call()`
 (`app/src/lib/tauri.ts`), which toasts + reports once, so the integration hooks

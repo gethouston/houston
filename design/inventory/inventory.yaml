@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 13
+version: 14
 
 components:
   - id: agent-avatar
@@ -230,8 +230,8 @@ components:
   - id: interaction-card
     title: Interaction card
     purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections), floating ABOVE the always-mounted composer.
-    anatomy: [stepper-header, progress-label, question-title, dismiss-action, option-row, keycap-hint, free-text-input, footer-nav, back-action, skip-action, next-action, signin-step, connect-step]
-    states: [single-step, multi-step, with-options, single-option, free-text-only, signin-step, connect-step, revisited, abandoned, disabled]
+    anatomy: [stepper-header, progress-label, step-title, dismiss-action, option-row, keycap-hint, free-text-input, footer-nav, back-action, skip-action, next-action, signin-step, connect-step, step-app-row, step-cta, waiting-note]
+    states: [single-step, multi-step, with-options, single-option, free-text-only, signin-step, connect-step, connecting, connected, revisited, abandoned, disabled]
     variants: [choice, open-ended, signin, connect, mixed-sequence]
     behavior: >-
       Rendered from the turn's pending interaction (steps[]: 1-3 question steps,
@@ -253,9 +253,19 @@ components:
       current question without answering, omitted from the composed reply) and
       Next is the single filled pill that commits the answer; a revisited
       signin/connect step shows a bare filled Forward instead (its own card
-      cannot re-fire completion). Signin/connect steps render app-supplied
-      cards (ui/chat stays auth/Composio-unaware) and advance on their
-      completion callbacks. Revisiting a question pre-selects its prior answer
+      cannot re-fire completion). Signin/connect steps draw NO surface of their
+      own (no card-inside-a-card): their reason is routed through the SAME
+      header slot as a question's title (a labelled "Connect {app}" / sign-in
+      fallback when the agent gave no reason), and the app supplies a hairline
+      Mercury row (app logo + name + one-line clamped description, the option-row
+      grammar) plus a single filled CTA ("Connect" / "Sign in") in the SAME
+      footer beside the shared Back node — the app owns the reactive body + CTA
+      while ui/chat (auth/Composio-unaware) owns the header, the surface, and the
+      Back/Forward nav nodes, composed via the exported InteractionFooter. While
+      an OAuth hand-off is in flight the CTA shows a connecting spinner and a
+      quiet muted line above the footer reminds the user their browser is
+      waiting; an already-connected app shows a calm check in the row and
+      self-reports to advance. Revisiting a question pre-selects its prior answer
       (accent border + subtle tint); re-answering replaces it. A single
       question-with-options step keeps the one-tap feel (click = answer =
       complete). After the last step, emits each answered question in step
