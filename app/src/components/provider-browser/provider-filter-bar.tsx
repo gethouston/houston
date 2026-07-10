@@ -17,11 +17,15 @@ export function ProviderFilterBar({
   setQuery,
   filter,
   setFilter,
+  showQuickFilters = true,
 }: {
   query: string;
   setQuery: Dispatch<SetStateAction<string>>;
   filter: ProviderQuickFilter;
   setFilter: Dispatch<SetStateAction<ProviderQuickFilter>>;
+  /** Forwarded to {@link ProviderFilters}: hide the billing toggles (search
+   *  only) in curated onboarding. */
+  showQuickFilters?: boolean;
 }) {
   const { sentinelRef, stuck } = useStuckOnScroll();
   return (
@@ -43,6 +47,7 @@ export function ProviderFilterBar({
             setQuery={setQuery}
             filter={filter}
             setFilter={setFilter}
+            showQuickFilters={showQuickFilters}
           />
         </div>
       </div>

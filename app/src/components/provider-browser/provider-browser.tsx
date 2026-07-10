@@ -1,34 +1,26 @@
 /**
- * The reusable provider marketplace surface. A colorful, recognition-first
- * CARD GRID over a pre-gated provider list: an optional sticky search +
- * quick-filter bar, then Connected cards first (featured pinned to the front)
- * and Available cards, each opening a provider detail (via `onOpen`) and driving
- * connect / cancel / sign-out through the shared `ProviderConnections`.
+ * The reusable provider marketplace surface: a recognition-first CARD GRID over a
+ * pre-gated provider list, an optional sticky search + quick-filter bar, and
+ * connect / cancel / sign-out via the shared `ProviderConnections`. Extracted
+ * from the AI Hub's Providers tab so onboarding / migration / workspace-setup
+ * reuse it; it never imports from `components/ai-hub/` (the hub composes this).
  *
- * Extracted from the AI Hub's Providers tab so onboarding / migration /
- * workspace-setup can reuse the exact same surface. It never imports from
- * `components/ai-hub/` — the dependency points the other way (the hub composes
- * this). `lib/ai-hub/` is the shared catalog data layer, which both consume.
- *
- * The pipeline mirrors the hub: quick filter -> free-text search ->
- * featured-first pin -> Connected/Available grouping. Cards render statically
- * (no `layout` animation) so the grid never reflows when a modal's scroll-lock
- * changes the content width; a connect that flips a card between groups just
- * re-renders.
+ * Pipeline mirrors the hub: quick filter -> search -> featured-first pin ->
+ * Connected/Available grouping. Cards render statically (no `layout` animation)
+ * so the grid never reflows on a modal's scroll-lock. The opt-in `curated` mode
+ * instead shows a short featured set split by Subscription / API key with a
+ * "see all" expansion (see `CuratedProviderSections`) — used only by onboarding.
  */
 
 import { cn } from "@houston-ai/core";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections";
 import type { HubCatalog } from "../../lib/ai-hub/catalog-types";
-import {
-  providerCostLine,
-  providerDescription,
-} from "../../lib/provider-overrides";
 import type { ProviderInfo } from "../../lib/providers";
-import { resolveAutoSelect, type StatusSnapshot } from "./auto-select";
 import {
+  CuratedProviderSections,
+  makeProviderRow,
   ProviderBrowserSkeleton,
   ProviderEmpty,
   Section,
@@ -36,13 +28,14 @@ import {
 import { ProviderConnectionDialogs } from "./provider-connection-dialogs";
 import { ProviderFilterBar } from "./provider-filter-bar";
 import {
+  curatedDisplay,
   filterByQuickFilter,
   orderFeaturedFirst,
   type ProviderQuickFilter,
   searchProviders,
 } from "./provider-filtering";
-import { groupProviders, providerModels } from "./provider-grouping";
-import { ProviderRow } from "./provider-row";
+import { groupProviders } from "./provider-grouping";
+import { useProviderAutoSelect } from "./use-provider-auto-select";
 
 export interface ProviderBrowserProps {
   /** Pre-gated provider list (a `getConnectProviders` result). */
@@ -71,6 +64,13 @@ export interface ProviderBrowserProps {
    * owns the modal. See the wave-1 report.
    */
   onOpen?: (provider: ProviderInfo) => void;
+  /**
+   * Curated onboarding mode (OPT-IN, default off). Shows only the "most popular"
+   * providers, split into Subscription / API-key Sections, with a "see all" chip
+   * that expands to the full list. Every other consumer (AI Hub, migration,
+   * workspace setup) leaves this off and keeps the Connected / Available list.
+   */
+  curated?: boolean;
   className?: string;
 }
 
@@ -83,36 +83,17 @@ export function ProviderBrowser({
   showFilters = true,
   renderDialogs = true,
   onOpen,
+  curated = false,
   className,
 }: ProviderBrowserProps) {
   const { t } = useTranslation("aiHub");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ProviderQuickFilter>("all");
+  // Curated-mode "see all" toggle: collapsed to the featured set until expanded.
+  const [expanded, setExpanded] = useState(false);
 
-  // Watch the connect-status snapshots for a not-connected -> connected
-  // transition and hand the newly-connected provider + model to `onSelect`. The
-  // status hook already fires `provider_configured` analytics, so this does not.
-  // Gated on `probed`, not `ready`: `ready` flips true off the cached last-scan
-  // snapshot, and a stale cached "connected" must never auto-advance onboarding
-  // or dismiss the migration gate before a live probe confirms it.
-  const prevStatuses = useRef<StatusSnapshot | null>(null);
-  useEffect(() => {
-    if (!onSelect || !connections.probed) return;
-    const selection = resolveAutoSelect(
-      prevStatuses.current,
-      connections.statuses,
-      providers,
-      { selectOnMount },
-    );
-    prevStatuses.current = connections.statuses;
-    if (selection) onSelect(selection.providerId, selection.model);
-  }, [
-    onSelect,
-    connections.probed,
-    connections.statuses,
-    providers,
-    selectOnMount,
-  ]);
+  // Auto-advance onboarding / dismiss the migration gate on a live connect.
+  useProviderAutoSelect(connections, providers, onSelect, selectOnMount);
 
   // Apply the quick filter, then the free-text query, then pin featured providers
   // to the front. Grouping preserves this order within each section.
@@ -131,32 +112,23 @@ export function ProviderBrowser({
     return <ProviderBrowserSkeleton count={providers.length || 8} />;
   }
 
-  const { connected, available } = groupProviders(
+  // A live search or a non-`all` quick filter is explicit "find this provider"
+  // intent, so it bypasses curated mode's featured narrowing and shows the full
+  // filtered set (still grouped by the curated Sections); the "see all" chip is
+  // meaningless then and hides. `curatedDisplay` folds those rules into the set
+  // we render + whether more remain hidden.
+  const searching = query.trim() !== "" || filter !== "all";
+  const { displayed, hasMore } = curatedDisplay(
     filtered,
+    curated,
+    expanded,
+    searching,
+  );
+  const { connected, available } = groupProviders(
+    displayed,
     connections.isConnected,
   );
-
-  // Secondary line: the live model count (bold, in the card), then the friendly
-  // cost prose (the money story a non-technical user cares about), falling back
-  // to the one-line provider description for the uncurated providers that carry
-  // no cost line.
-  const row = (provider: ProviderInfo) => (
-    <ProviderRow
-      key={provider.id}
-      provider={provider}
-      modelCount={catalog ? providerModels(catalog, provider).length : 0}
-      description={
-        providerCostLine(provider.id) ?? providerDescription(provider.id)
-      }
-      connected={connections.isConnected(provider)}
-      connecting={connections.busy[provider.id] === "connecting"}
-      signingOut={connections.busy[provider.id] === "signingOut"}
-      onOpen={onOpen}
-      onConnect={connections.connect}
-      onCancel={connections.cancel}
-      onSignOut={connections.signOut}
-    />
-  );
+  const row = makeProviderRow({ connections, catalog, onOpen });
 
   return (
     <div className={cn("flex flex-col", className)}>
@@ -166,12 +138,26 @@ export function ProviderBrowser({
           setQuery={setQuery}
           filter={filter}
           setFilter={setFilter}
+          showQuickFilters={!curated}
         />
       )}
-      {filtered.length === 0 ? (
+      {displayed.length === 0 ? (
         <ProviderEmpty
           title={t("providers.empty.title")}
           description={t("providers.empty.description")}
+        />
+      ) : curated ? (
+        <CuratedProviderSections
+          providers={displayed}
+          row={row}
+          expanded={expanded}
+          hasMore={hasMore}
+          onExpand={() => setExpanded(true)}
+          labels={{
+            subscription: t("sections.subscription"),
+            apiKey: t("sections.apiKey"),
+            seeAll: t("providers.seeAll"),
+          }}
         />
       ) : (
         <div className="flex flex-col gap-8">
@@ -187,10 +173,9 @@ export function ProviderBrowser({
         <ProviderConnectionDialogs
           {...connections.dialogProps}
           // The local (OpenAI-compatible) provider's model is user-typed in the
-          // dialog and never in the catalog, so the connect hands it to
-          // `onSelect` directly (the legacy picker did the same). No double
-          // fire: the subsequent status transition resolves
-          // `defaultModel ("") || active_model (absent until the reconcile)`
+          // dialog and never in the catalog, so the connect hands it to `onSelect`
+          // directly (the legacy picker did the same). No double fire: the later
+          // status transition resolves `defaultModel ("") || active_model (absent)`
           // to nothing and skips, and the reconcile itself is no transition.
           onLocalConnected={
             onSelect

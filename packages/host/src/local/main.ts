@@ -155,6 +155,9 @@ const host = buildLocalHost({
   onRuntimeLog: (line) => process.stderr.write(line),
 });
 
+// (Integrations on/off/direct is announced by the host's own boot log —
+// formatIntegrationsModeLog in local/host.ts — so no extra warning here.)
+
 // A desktop supervisor must not die on a stray error from a child runtime, a
 // dropped SSE socket, or a transient fetch. Log loudly and stay up — the user
 // would otherwise see "NetworkError" on the next request.

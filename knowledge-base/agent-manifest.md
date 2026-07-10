@@ -117,72 +117,96 @@ Seeds agent CLAUDE.md from manifest `claudeMd` field or manifest's `CLAUDE.md` f
 other; the manager configures instructions/skills/model/allowlist afterward. See
 `knowledge-base/teams.md`.)
 
-## Default Personal assistant + tutorial
+## Default Personal assistant + first-run onboarding
 
 Every newly-created workspace gets a `Personal assistant` instance from the
 built-in `personal-assistant` config. Users do not create it manually.
-First-run onboarding is a seven-mission guided setup driven by
-`app/src/components/onboarding/personal-assistant-onboarding.tsx` and the
-`TUTORIAL_STEPS` machine in `tutorial-copy.ts`:
 
-1. Welcome screen offers start vs. skip.
-2. **Meet** — name + color the assistant.
-3. **Connect** — connect your AI in a single `connect` step
-   (`missions/connect-ai.tsx`) that embeds the shared `<ProviderBrowser>` (the
-   same ai-hub marketplace surface, via `useProviderBrowserData`), so onboarding
-   lists this deployment's full runnable catalog with search + quick-filter and
-   connects through every auth type (OAuth, API key, OpenAI-compatible endpoint,
-   Copilot enterprise). Replaces the old bespoke `brain` (OpenAI/Anthropic pick) +
-   `providerLogin` pair; it fires the `ai_provider_connected` funnel event
-   (ref-guarded, once per install) and auto-advances to the `aiConnected` success
-   screen the instant a provider connects. The workspace + assistant are
-   provisioned by the create-agent step, not here.
-4. **Tools** — sign into Composio so the agent has hands.
-5. **Try** — one real mission (`Plan my next working day`). The agent reads
-   inbox + calendar in parallel, cross-references them, posts a structured
-   plan with bold sections, and saves three draft replies. Ends with the
-   literal `[TUTORIAL_COMPLETE]` token. CLAUDE.md is augmented with the
-   tutorial directive while this step is mounted, stripped on unmount.
-6. **Skill** — same chat, one chip. The user clicks "Save this as a Skill"
-   and the agent writes `.agents/skills/plan-my-working-day/SKILL.md`
-   (frontmatter + procedure body) in a single shot. Ends with
-   `[SKILL_COMPLETE]`. Detection prefers the on-disk `useSkills()` lookup
-   (skill `name === ONBOARDING_SKILL_SLUG`) over the token. The done
-   screen is a full-page `MissionDoneScreen` showing the resulting
-   `SkillCard` — same component the user sees in the chat empty state.
-7. **Routine** — same chat, one chip. The user clicks "Make it a routine"
-   and the agent asks for one thing (the time), confirms, then appends a
-   new entry to `.houston/routines/routines.json` whose `prompt` simply
-   says `Run the \`plan-my-working-day\` skill.` (the procedure lives in
-   the Skill from M5, the routine just schedules it). Ends with
-   `[ROUTINE_COMPLETE]`. Done screen is a full-page `MissionDoneScreen`
-   showing the routine name, "Every weekday at HH:MM", and which Skill
-   it runs.
-8. **Summary** — final celebratory screen with the assistant's avatar /
-   name and the two cards (Skill + Routine) read live from
-   `useSkills` + `useRoutines`. The "Enter Houston" CTA fires
-   `finishOnboarding`, which arms the UI tour and clears
-   `tutorialActive` so the workspace shell takes over.
+First-run onboarding is a short, connect-first flow driven by
+`app/src/components/onboarding/personal-assistant-onboarding.tsx`. There is **no
+naming/color step and no Try/Skill/Routine missions** — the old seven-mission
+tutorial (Welcome screen, Meet step, Tools/Try/Skill/Routine missions,
+`[TUTORIAL_COMPLETE]`/`[SKILL_COMPLETE]`/`[ROUTINE_COMPLETE]` tokens, summary
+cards) is gone. Houston ships ONE great default assistant (fixed name/color from
+`tutorial.defaults`), and the payoff is the seeded routine + skill it comes with
+(below), demoed by the UI tour rather than hand-built during setup.
 
-**Always-on Skip.** Missions 4-7 each render a small "Skip tutorial" link
-wired to `finishOnboarding` directly (not through the per-step
-`onContinue`). If the model wedges or the user changes their mind, one
-click stops any in-flight session and lands them in the workspace shell
-with the default Personal assistant still created in M3. The Skip is
-deliberately separate from `onContinue` because the latter advances
-mission-by-mission.
+The screen state machine (`OnboardingStep` in `tutorial-copy.ts`):
 
-**CLAUDE.md augmentation pattern.** Try, Skill, and Routine each append a
-uniquely-marked section to the agent's `CLAUDE.md` on mount and strip it
-on unmount via `tutorial-system-prompt.ts`, `skill-system-prompt.ts`,
-`routine-system-prompt.ts`. Each mount-time write also strips any prior
-sibling sections, and each unmount-time strip is a no-op when nothing
-matches, so concurrent unmount-of-prev / mount-of-next writes converge
-cleanly no matter which write lands last.
+1. **intro** — a `SetupProgress` plan of the visible milestones, start CTA.
+2. **connect** — connect your AI (`missions/connect-ai.tsx`) via the shared
+   `<ProviderBrowser>` (same ai-hub surface, `useProviderBrowserData`), with
+   `curated` set so onboarding shows only `FEATURED_PROVIDER_IDS` split into
+   Subscription / API-key sections, plus a "see all providers" chip that expands
+   to the deployment's full runnable pi-ai catalog; a search query bypasses
+   curation. Connects through every auth type (OAuth, API key, OpenAI-compatible
+   endpoint, Copilot enterprise). On connect it fires `ai_provider_connected`
+   (ref-guarded, once per install), kicks off **silent** workspace + assistant
+   provisioning in the background (`useCreateAssistant`, no user-triggered
+   button), and advances to `aiConnected`.
+3. **aiConnected** — a `SetupProgress` success beat; continue advances to
+   `connectEmail` when integrations are available, else straight to `finished`
+   (`stepAfterAgentCreated`).
+4. **connectEmail** — connect an email toolkit (`missions/connect-email.tsx`) so
+   the assistant can send on the user's behalf. Three one-click brand action rows
+   (Gmail → Google logo, Outlook → Microsoft logo, "Another provider" → a `Mail`
+   icon that expands an inline input); tapping a brand row kicks off its OAuth
+   immediately (no select-then-Connect two-step), the row's chevron becomes a
+   spinner while in flight (the other rows disable) and the in-flight row itself
+   turns into a CANCEL control — flipping to an X + "Cancel" on hover, mirroring
+   the AI step's Connect pill (`useConnectFlow().cancel`) — and it auto-advances
+   the moment the tapped toolkit lands active. If the background create hasn't
+   landed yet this step shows a light "preparing" spinner and auto-advances when
+   the agent record arrives; if the create **failed or hung** (a 20s timeout) it
+   renders a recoverable error card (Try again re-fires the stored provider/model
+   create; Back returns to the AI picker) instead of an infinite spinner. A soft
+   "skip email" lands on `finished`.
+5. **emailConnected** — success beat, fires `integration_connected`.
+6. **emailChat** (`missions/email.tsx`) — the assistant sends one real email to
+   the user so they watch it act. Completing marks `emailSent`.
+7. **finished** (`missions/finished.tsx`) — the single celebratory payoff screen
+   with a `SuccessCheck` and exactly ONE **"Start building"** CTA (no secondary
+   escape). Copy is honest via `variant`: `"sent"` only on the path that actually
+   sent an email, `"ready"` when the email steps were skipped or the deployment
+   has no integrations. The CTA arms the UI tour and clears `tutorialActive`; the
+   tour's completion/skip callback lands the user on the assistant's **Routines**
+   tab so the freshly-seeded Morning briefing is immediately visible (tour wiring
+   in `workspace-shell.tsx`).
 
-Skipping onboarding at the welcome screen still creates the default Personal
-assistant, but skips every tutorial artifact: no Try mission, no Skill,
-no Routine, no Summary, no UI tour.
+**Capability-aware step math.** On a no-integrations deployment the email steps
+never render, so they vanish from both the "Step N of M" counter and the
+intro/celebration plan. `integrationsAvailable(capabilities)` drives the visible
+milestones and `stepPosition(screen, { emailSteps })` (`app/src/lib/setup-steps.ts`)
+computes the counter so the sole connect step never lies "Step 1 of 3".
+
+**Durable resume.** Because the assistant is created silently the instant the AI
+connects, the agent-count first-run signal (`App.tsx`) flips `false` forever
+after that point, so a mid-flow quit would permanently skip the rest of setup.
+The `onboarding_pending` engine preference (`app/src/hooks/use-onboarding-pending.ts`)
+is the resume contract: set on mount, cleared in every terminal path
+(`finishOnboarding` and the stuck-escape `skipOnboarding`); `App.tsx` re-enters
+onboarding while it is set.
+
+**The default assistant ships seeded.** Creation writes real capability into the
+new agent's tree via `personal-assistant-seeds.ts` (`buildPersonalAssistantSeeds`
+→ `create(..., seeds)`), so first-run users get working content, not an empty
+shell:
+
+- A **Morning-briefing routine** (`.houston/routines/routines.json`, schedule
+  `0 7 * * 1-5`, `suppress_when_silent: true`) — reads whatever calendar/inbox is
+  connected and stays silent (`ROUTINE_OK`) when nothing is, so a
+  nothing-connected morning is never spam.
+- A **meeting-prep skill** (`.agents/skills/meeting-prep/SKILL.md`).
+
+Both are **locale-aware**: the short user-facing bits (routine name, skill
+title/description) flow through `t()` and mirror across en/es/pt, while the
+long-form model instructions stay English but carry an explicit "write your
+OUTPUT in <language>" line built from the active locale. The agent's `CLAUDE.md`
+(`buildAssistantInstructions`) tells it these two ship ready-made. A seed-write
+failure **rolls back the whole agent creation** in the host
+(`packages/host/src/routes/agents.ts`), so an agent never lands half-seeded. The
+timezone preference is seeded during creation too, via the shared helper in
+`app/src/hooks/use-timezone-preference.ts`, so the cron fires in the user's zone.
 
 ## Workspace templates
 
@@ -638,6 +662,11 @@ marketplace, not a settings pane. Entry: `app/src/components/ai-hub/ai-hub-view.
   clutter). The SAME `ProviderBrowser` component renders onboarding's connect
   step, the migration reconnect screen, and workspace setup (they pass
   `onSelect`/`selectOnMount`; the hub passes `onOpen` + `renderDialogs={false}`).
+  Onboarding alone also passes `curated`, which swaps the Connected/Available
+  grouping (and the billing filter bar) for a featured-only Subscription/API-key
+  split (`provider-browser-sections.tsx`'s `CuratedProviderSections`, grouping via
+  `groupByAuthType`/`filterToFeatured`) behind a "see all providers" expansion —
+  every other `curated`-omitting consumer keeps the full billing-filtered grid.
   Coming-soon tiles are gone.
 - **Provider detail** (`provider-modal.tsx`): connect / sign-out plus that
   provider's model list.

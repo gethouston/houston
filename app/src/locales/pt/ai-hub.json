@@ -11,7 +11,9 @@
   },
   "sections": {
     "connected": "Conectados",
-    "available": "Disponíveis"
+    "available": "Disponíveis",
+    "subscription": "Assinatura",
+    "apiKey": "Chave de API"
   },
   "card": {
     "connect": "Conectar",
@@ -88,6 +90,7 @@
   },
   "providers": {
     "search": "Buscar provedores",
+    "seeAll": "Ver todos os provedores",
     "empty": {
       "title": "Nenhum provedor encontrado",
       "description": "Tente outra busca ou outro filtro."

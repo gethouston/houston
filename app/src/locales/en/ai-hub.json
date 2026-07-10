@@ -11,7 +11,9 @@
   },
   "sections": {
     "connected": "Connected",
-    "available": "Available"
+    "available": "Available",
+    "subscription": "Subscription",
+    "apiKey": "API key"
   },
   "card": {
     "connect": "Connect",
@@ -88,6 +90,7 @@
   },
   "providers": {
     "search": "Search providers",
+    "seeAll": "See all providers",
     "empty": {
       "title": "No providers found",
       "description": "Try a different search or filter."

@@ -1,12 +1,59 @@
 /**
  * Presentational scaffolding for the {@link ProviderBrowser} grid: the titled
- * section wrapper, the empty-state placeholder, the loading skeleton, and the
- * section-header row. Kept in their own file so `provider-browser.tsx` stays
- * focused on the composition + connect wiring (and both stay under the
- * 200-line limit). All props-only; labels arrive already translated.
+ * section wrapper, the empty-state placeholder, the loading skeleton, the
+ * section-header row, and the shared per-provider card renderer. Kept in their
+ * own file so `provider-browser.tsx` stays focused on the composition + display
+ * decisions (and both stay under the 200-line limit). The sub-components are
+ * props-only; labels arrive already translated.
  */
 
+import { Button } from "@houston-ai/core";
 import type { ReactNode } from "react";
+import type { ProviderConnections } from "../../hooks/use-provider-connections";
+import type { HubCatalog } from "../../lib/ai-hub/catalog-types";
+import {
+  providerCostLine,
+  providerDescription,
+} from "../../lib/provider-overrides";
+import type { ProviderInfo } from "../../lib/providers";
+import { groupByAuthType, providerModels } from "./provider-grouping";
+import { ProviderRow } from "./provider-row";
+
+/**
+ * Build the `(provider) => <ProviderRow>` closure both the curated Sections and
+ * the Connected / Available lists render every card through, capturing the live
+ * connect machinery + catalog once. Card secondary line: bold live model count,
+ * then the friendly cost prose, falling back to the provider description for
+ * uncurated providers with no cost. Extracted here so the browser stays under the
+ * 200-line limit.
+ */
+export function makeProviderRow({
+  connections,
+  catalog,
+  onOpen,
+}: {
+  connections: ProviderConnections;
+  catalog: HubCatalog | undefined;
+  onOpen?: (provider: ProviderInfo) => void;
+}): (provider: ProviderInfo) => ReactNode {
+  return (provider) => (
+    <ProviderRow
+      key={provider.id}
+      provider={provider}
+      modelCount={catalog ? providerModels(catalog, provider).length : 0}
+      description={
+        providerCostLine(provider.id) ?? providerDescription(provider.id)
+      }
+      connected={connections.isConnected(provider)}
+      connecting={connections.busy[provider.id] === "connecting"}
+      signingOut={connections.busy[provider.id] === "signingOut"}
+      onOpen={onOpen}
+      onConnect={connections.connect}
+      onCancel={connections.cancel}
+      onSignOut={connections.signOut}
+    />
+  );
+}
 
 /** A section title row with a label and an optional mono count. */
 export function SectionHeader({
@@ -44,6 +91,47 @@ export function Section({
       <SectionHeader label={label} count={count} />
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{children}</div>
     </section>
+  );
+}
+
+/**
+ * The curated-mode body: two connect-type Sections (Subscription first, then
+ * API key) built from {@link groupByAuthType}, plus a soft "see all" chip while
+ * the list is collapsed and more providers remain hidden. Each provider still
+ * renders through the browser's shared `row` closure, so its connected /
+ * connecting / signing-out state shows on the card regardless of section — no
+ * separate Connected group is needed here. Labels arrive already translated.
+ */
+export function CuratedProviderSections({
+  providers,
+  row,
+  expanded,
+  hasMore,
+  onExpand,
+  labels,
+}: {
+  providers: readonly ProviderInfo[];
+  row: (provider: ProviderInfo) => ReactNode;
+  expanded: boolean;
+  hasMore: boolean;
+  onExpand: () => void;
+  labels: { subscription: string; apiKey: string; seeAll: string };
+}) {
+  const { subscription, apiKey } = groupByAuthType(providers);
+  return (
+    <div className="flex flex-col gap-8">
+      <Section label={labels.subscription} count={subscription.length}>
+        {subscription.map(row)}
+      </Section>
+      <Section label={labels.apiKey} count={apiKey.length}>
+        {apiKey.map(row)}
+      </Section>
+      {!expanded && hasMore ? (
+        <Button variant="secondary" className="self-start" onClick={onExpand}>
+          {labels.seeAll}
+        </Button>
+      ) : null}
+    </div>
   );
 }
 

@@ -8,7 +8,9 @@
       "white-a045": { "$value": "rgba(255, 255, 255, 0.045)" },
       "white-a05": { "$value": "rgba(255, 255, 255, 0.05)" },
       "white-a08": { "$value": "rgba(255, 255, 255, 0.08)" },
-      "white-a10": { "$value": "rgba(255, 255, 255, 0.1)" }
+      "white-a10": { "$value": "rgba(255, 255, 255, 0.1)" },
+      "white-a16": { "$value": "rgba(255, 255, 255, 0.16)" },
+      "white-a24": { "$value": "rgba(255, 255, 255, 0.24)" }
     },
     "glass": {
       "$type": "color",

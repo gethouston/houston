@@ -1,6 +1,10 @@
-import { ChatPanel } from "@houston-ai/chat";
+import {
+  ChatInteractionCard,
+  type ChatInteractionStep,
+  ChatPanel,
+} from "@houston-ai/chat";
 import { Button, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useFileToolRenderer } from "../../../hooks/use-file-tool-renderer";
 import { tauriSystem } from "../../../lib/tauri";
@@ -8,7 +12,6 @@ import type { Agent } from "../../../lib/types";
 import { useChatDisplayLabels } from "../../use-chat-display-labels";
 import { useQueuedMessageLabels } from "../../use-queued-message-labels";
 import { SetupCard } from "../setup-card";
-import { OfferCard } from "./email-cards";
 import { useEmailMissionSession } from "./use-email-mission-session";
 
 /** Strip the completion marker (with optional surrounding bold) from a reply. */
@@ -98,13 +101,53 @@ export function EmailMission({
     [],
   );
 
+  // The offer renders through the SAME component chat uses for ask-user
+  // interactions (ChatInteractionCard), so this onboarding step reads exactly
+  // like a real in-chat question. Labels mirror the real consumer
+  // (use-agent-chat-panel.tsx) key-for-key so the two surfaces stay word-
+  // identical.
+  const interactionLabels = useMemo(
+    () => ({
+      placeholder: t("chat:questionCard.placeholder"),
+      send: t("chat:questionCard.send"),
+      back: t("chat:questionCard.back"),
+      forward: t("chat:questionCard.forward"),
+      skip: t("chat:questionCard.skip"),
+      dismiss: t("chat:questionCard.dismiss"),
+      progress: (current: number, total: number) =>
+        t("chat:questionCard.progress", { current, total }),
+    }),
+    [t],
+  );
+
+  // ONE question step: the mission body is the prompt, the single preselected
+  // action ("Send an email to myself") is its only option. Completing it hands
+  // off to `session.handleSend`, which sends the real email; the answer content
+  // is ignored (the mission already knows what to send).
+  const offerSteps = useMemo<ChatInteractionStep[]>(
+    () => [
+      {
+        kind: "question",
+        id: "email-offer",
+        question: t("setup:tutorial.missions.email.body"),
+        options: [
+          {
+            id: "send",
+            label: t("setup:tutorial.missions.email.offer.option"),
+          },
+        ],
+      },
+    ],
+    [t],
+  );
+
   return (
     <SetupCard
+      onSpace
       eyebrow={eyebrow}
       title={t("setup:tutorial.missions.email.title")}
-      subtitle={
-        session.started ? undefined : t("setup:tutorial.missions.email.body")
-      }
+      // The mission body now lives IN the offer card as its question prompt (see
+      // `offerSteps`), so no subtitle here — that would just duplicate it.
       // Back disappears once the mission is running: leaving mid-turn drops the
       // completion-marker listener while the agent still sends, and returning
       // would kick off a SECOND session (and a second real email). The HOU-555
@@ -153,7 +196,25 @@ export function EmailMission({
             queuedLabels={queuedLabels}
             composerOverride={
               session.started ? undefined : (
-                <OfferCard onSend={session.handleSend} />
+                <ChatInteractionCard
+                  steps={offerSteps}
+                  labels={interactionLabels}
+                  // Send the real email once the single step is completed. The
+                  // answers are ignored: the mission already knows what to send.
+                  onComplete={() => {
+                    void session.handleSend();
+                  }}
+                  // No onDismiss: the tutorial's own skip affordance (below) is
+                  // the exit; the card must not offer an ambiguous X that
+                  // abandons onboarding.
+                  //
+                  // renderConnect/renderSignin are never reached — this is a
+                  // question-only sequence (one option step), so the stepper
+                  // never advances to a connect or signin step. They exist only
+                  // to satisfy the card's required props.
+                  renderConnect={() => null}
+                  renderSignin={() => null}
+                />
               )
             }
           />
