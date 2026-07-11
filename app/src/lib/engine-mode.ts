@@ -74,7 +74,7 @@ export function codexUsesLoopbackRelay(
 
 /** How the desktop authenticates to the hosted engine (`VITE_HOSTED_ENGINE_URL`). */
 export type HostedAuthMode =
-  /** Supabase Google login: prompt sign-in, send the session token as bearer. */
+  /** Houston account login (Firebase): prompt sign-in, session token as bearer. */
   | "oauth"
   /** Static bearer (`VITE_HOSTED_ENGINE_TOKEN` / `VITE_NEW_ENGINE_TOKEN`): no login. */
   | "static";
@@ -87,9 +87,10 @@ export type HostedAuthMode =
  * (managed cloud is authenticated by default — the documented contract), and a
  * plain self-host / dev build with no hosted URL stays static.
  *
- * Accepted values (case-insensitive): `oauth` | `supabase` | `google` | `1` |
- * `true` | `on` ⇒ OAuth; `static` | `token` | `none` | `0` | `false` | `off` ⇒
- * static. Anything else falls back to the default.
+ * Accepted values (case-insensitive): `oauth` | `supabase` (legacy alias from
+ * pre-Firebase builds) | `google` | `1` | `true` | `on` ⇒ OAuth; `static` |
+ * `token` | `none` | `0` | `false` | `off` ⇒ static. Anything else falls back
+ * to the default.
  */
 export function hostedAuthMode(env: EngineModeEnv): HostedAuthMode {
   const raw = (env.VITE_HOSTED_ENGINE_AUTH ?? "").trim().toLowerCase();
@@ -103,9 +104,9 @@ export function hostedAuthMode(env: EngineModeEnv): HostedAuthMode {
 }
 
 /**
- * True when the desktop should run the Supabase Google-login gate for the hosted
- * engine: a hosted gateway URL is set AND its auth mode is OAuth. Static-token
- * hosted mode (and every non-hosted build) returns false and skips the login UI.
+ * True when the desktop should run the hosted-engine sign-in gate: a hosted
+ * gateway URL is set AND its auth mode is OAuth. Static-token hosted mode (and
+ * every non-hosted build) returns false and skips the login UI.
  */
 export function hostedOauthLoginActive(env: EngineModeEnv): boolean {
   return Boolean(env.VITE_HOSTED_ENGINE_URL) && hostedAuthMode(env) === "oauth";
@@ -113,7 +114,7 @@ export function hostedOauthLoginActive(env: EngineModeEnv): boolean {
 
 /** The screen the hosted Google-login gate should render for a given auth state. */
 export type HostedGateState =
-  /** Hosted OAuth is on but no Supabase project is configured — can't sign in. */
+  /** Hosted OAuth is on but no Firebase project is configured — can't sign in. */
   | "misconfigured"
   /** Resolving the persisted session, or applying a fresh token to the engine. */
   | "loading"

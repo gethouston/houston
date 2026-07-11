@@ -22,8 +22,8 @@ Four prod systems. All **dormant by default** — activate only when env vars se
 - **Pure JS:** runs in webview, no Rust plugin. Avoids Tokio runtime conflicts. Works in future Capacitor mobile too.
 - **Init:** `app/src/lib/analytics.ts` — reads `POSTHOG_KEY` + `POSTHOG_HOST` via Vite `define` (baked at build time). Empty key → silent no-op. PostHog `init()` runs at module load for JS exception capture; product events fire after `analytics.init()` identifies the persistent install_id.
 - **PostHog config:** autocapture, pageview/pageleave, session replay, heatmaps, dead clicks, rage clicks, and feature-flag `/flags` calls are disabled in code. Enable any of these only with a specific question.
-- **Install identity:** `app/src/lib/install-id.ts` — mints a UUID on first launch, persists via `tauriPreferences` (`install_id` key). Used as the PostHog `distinct_id` for the whole app lifetime — it STAYS the `distinct_id` after sign-in (the `/welcome` UTM bridge and the sequential onboarding funnel depend on it); sign-in aliases the Supabase id onto it (merging the same human across devices) and attaches the identity as person properties, without re-pointing the distinct_id.
-- **User identity:** on sign-in `analytics.identifyUser` does two things: (1) `alias(supabase_user_id)` stitches a human's per-device / per-reinstall persons into ONE PostHog person (each keeps its own `install_id` distinct_id; the shared alias merges them), so retention/WAU dedupe natively; (2) stamps `supabase_user_id` (the Supabase `auth.users.id`) as a PERSON PROPERTY — the queryable join key to Supabase. `email` and `signup_date` (set-once, from `auth.users.created_at`) are person properties too, used for lookup and company-domain filtering. `distinct_id` stays the device `install_id`.
+- **Install identity:** `app/src/lib/install-id.ts` — mints a UUID on first launch, persists via `tauriPreferences` (`install_id` key). Used as the PostHog `distinct_id` for the whole app lifetime — it STAYS the `distinct_id` after sign-in (the `/welcome` UTM bridge and the sequential onboarding funnel depend on it); sign-in aliases the Firebase uid onto it (merging the same human across devices) and attaches the identity as person properties, without re-pointing the distinct_id.
+- **User identity:** on sign-in `analytics.identifyUser` does two things: (1) `alias(firebase_uid)` stitches a human's per-device / per-reinstall persons into ONE PostHog person (each keeps its own `install_id` distinct_id; the shared alias merges them), so retention/WAU dedupe natively; (2) stamps `firebase_uid` (the GCP Identity Platform / Firebase `uid`) as a PERSON PROPERTY — the queryable join key to the auth system. `email` and `signup_date` (set-once) are person properties too, used for lookup and company-domain filtering. `distinct_id` stays the device `install_id`. **Identity discontinuity:** analytics now aliases the Firebase uid, not the old Supabase id, so historical joins keyed on the retired `supabase_user_id` no longer stitch to post-migration persons — an intentional break at the GCIP cutover (see `knowledge-base/auth-migration.md`).
 - **Debug/Release:** `import.meta.env.DEV` → `is_debug` super property. Filter it out in dashboards to exclude dev activity.
 - **Super properties:** `app_version`, `app_os` (normalized: `macos` / `windows` / `linux` / `unknown`), `os` (raw legacy `navigator.platform`), `install_id`, `is_debug`.
 - **Privacy:** no workspace names, agent names, raw prompts, raw message text, file paths, session keys, or raw error text in PostHog event props. Email is allowed only as a person property after auth, never as an event property.
@@ -102,12 +102,14 @@ Per-event short URLs (e.g. `gethouston.ai/yc-demo-day-2026`) live in `website/sr
 ### BigQuery export (optional)
 PostHog → BigQuery plugin → target GCP project (burns credits). SQL-queryable event history forever, immune to PostHog retention limits. Useful for investor-update analytics.
 
-## Auth (`@supabase/supabase-js` + Google SSO)
+## Auth (GCP Identity Platform / Firebase Auth)
+
+Client auth is GCP Identity Platform (Firebase Auth), project `gethouston`. Three sign-in methods (Google, Microsoft, email OTP) plus admin email/password; the gateway bearer is a Firebase ID token (JWT) — issuer `https://securetoken.google.com/gethouston`, aud `gethouston`, `sub` = Firebase uid. How we got here: `knowledge-base/auth-migration.md`.
 
 - **Session storage:** CI releases use macOS Keychain / Windows Credential Manager via the `keyring` crate (`app/src-tauri/src/auth.rs`). Local builds use browser storage scoped per worktree to avoid macOS Keychain prompts from changing local signatures. Override with `HOUSTON_AUTH_STORAGE=keychain` or `HOUSTON_AUTH_STORAGE=browser`.
-- **Flow:** One-click Google sign-in → system browser → OAuth redirect to `houston://auth-callback` → `tauri-plugin-deep-link` forwards to frontend → Supabase PKCE exchange → session persisted in configured auth storage. Full diagram + code pointers: `knowledge-base/auth.md`.
-- **Gating:** `isAuthConfigured()` checks whether `SUPABASE_URL` + `SUPABASE_ANON_KEY` are baked in. Unconfigured builds skip the sign-in screen entirely.
-- **PostHog identity:** On sign-in, `analytics.identifyUser(userId, { email, signupDate })` keeps `install_id` as the `distinct_id`, `alias()`es the Supabase id onto the person (merging the human across devices/reinstalls), stamps `supabase_user_id` + `email` (`$set`) and `signup_date` (`$set_once`) as person properties, then flips the `auth_status` super property to `authenticated`; on sign-out, `analytics.reset()` returns to anonymous (a fresh distinct_id, which also prevents a shared device from merging two people).
+- **Flow:** Desktop uses a system-browser loopback callback (`127.0.0.1:8975-8978/auth/callback`) + PKCE → Google/Microsoft `id_token` → GCIP REST `signInWithIdp`; session persisted to Keychain with a proactive refresh timer (the old `houston://auth-callback` deep-link path is retired). Web/admin use the firebase-js-sdk popup. Email OTP: the gateway mails a 6-digit code, returns a GCIP custom token, and the client calls `signInWithCustomToken`. Full diagram + code pointers: `knowledge-base/auth.md`. Client auth lives in `app/src/lib/identity/` + `app/src/lib/auth.ts` (the old `supabase.ts` was deleted).
+- **Gating:** `isIdentityConfigured()` checks whether `FIREBASE_API_KEY` + `FIREBASE_PROJECT_ID` are baked in. Unconfigured builds skip the sign-in screen entirely.
+- **PostHog identity:** On sign-in, `analytics.identifyUser(userId, { email, signupDate })` keeps `install_id` as the `distinct_id`, `alias()`es the Firebase uid onto the person (merging the human across devices/reinstalls), stamps `firebase_uid` + `email` (`$set`) and `signup_date` (`$set_once`) as person properties, then flips the `auth_status` super property to `authenticated`; on sign-out, `analytics.reset()` returns to anonymous (a fresh distinct_id, which also prevents a shared device from merging two people).
 
 ## Crash reporting (`sentry` + `tauri-plugin-sentry`)
 
@@ -188,8 +190,12 @@ Shell (local builds) AND GitHub Secrets (CI):
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Password for above | Set during gen |
 | `POSTHOG_KEY` | PostHog project API key (client-side, public-safe) | PostHog → Project settings → Project API key |
 | `POSTHOG_HOST` | PostHog ingest host | `https://us.i.posthog.com` (or EU equivalent) |
-| `SUPABASE_URL` | Supabase project URL | Supabase → Project settings → API → Project URL |
-| `SUPABASE_ANON_KEY` | Supabase anon key (public-safe, RLS-gated) | Supabase → Project settings → API → Project API keys → `anon` `public` |
+| `FIREBASE_API_KEY` | GCIP / Firebase Web API key (public, baked at build) | GCP console → Identity Platform / Firebase → project `gethouston` → Web app config |
+| `FIREBASE_AUTH_DOMAIN` | Firebase auth domain (public, baked at build) | Same Web app config (`gethouston.firebaseapp.com`) |
+| `FIREBASE_PROJECT_ID` | Firebase project id — `gethouston` (public, baked at build) | Same Web app config |
+| `GOOGLE_DESKTOP_CLIENT_ID` | Desktop loopback Google OAuth client id | GCP console → APIs & Services → Credentials → OAuth client (Desktop) |
+| `GOOGLE_DESKTOP_CLIENT_SECRET` | Desktop loopback Google OAuth client secret | Same OAuth client (desktop clients are not confidential; safe to bake) |
+| `MICROSOFT_DESKTOP_CLIENT_ID` | Desktop loopback Microsoft OAuth client id | Azure portal → App registrations → the desktop app |
 | `LINEAR_API_KEY` | Create in-app bug-report issues | Linear → Settings → Account → Security & Access → Personal API keys |
 | `LINEAR_TEAM_ID` | Target team for in-app bug-report issues | Linear command menu → Copy model UUID on the target team |
 | `SENTRY_DSN` | Crash reporting DSN baked into the app at build time | Sentry → houston-cd → houston-app → Settings → Client Keys (DSN) |

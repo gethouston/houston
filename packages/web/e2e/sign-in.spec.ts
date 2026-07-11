@@ -1,0 +1,106 @@
+/**
+ * GCIP (Firebase Auth) sign-in screen.
+ *
+ * Runs under the `auth` Playwright project, whose vite server bakes a (fake)
+ * Firebase API key so `isIdentityConfigured()` is true and `App.tsx` renders
+ * `SignInScreen` (the default server bakes no key, so the rest of the suite boots
+ * straight to the shell). See playwright.config.ts + e2e/config.ts.
+ *
+ * The desktop-only OAuth loopback dance (Google/Microsoft system-browser + PKCE)
+ * has node:test coverage in app/tests/identity-*.test.ts and cannot be driven in
+ * a browser, so here the OAuth buttons are only asserted-rendered, never clicked.
+ * The passwordless email-OTP path IS fully in-app, so it's driven end to end
+ * against a MOCKED gateway (identity/otp.ts contract):
+ *   POST /v1/auth/email-otp/start  → 204
+ *   POST /v1/auth/email-otp/verify → 200 {customToken} | 401 (invalid) | 429 (rate)
+ */
+import { expect, test } from "./support/fixtures";
+
+/** Mock the gateway OTP `start` endpoint (always succeeds → advances to code). */
+async function mockOtpStart(
+  page: import("@playwright/test").Page,
+): Promise<void> {
+  await page.route("**/v1/auth/email-otp/start", (route) =>
+    route.fulfill({ status: 204 }),
+  );
+}
+
+/** Mock the gateway OTP `verify` endpoint with a fixed HTTP status. */
+async function mockOtpVerify(
+  page: import("@playwright/test").Page,
+  status: number,
+  body?: unknown,
+): Promise<void> {
+  await page.route("**/v1/auth/email-otp/verify", (route) =>
+    route.fulfill({
+      status,
+      contentType: "application/json",
+      body: JSON.stringify(body ?? {}),
+    }),
+  );
+}
+
+async function submitEmail(
+  page: import("@playwright/test").Page,
+  email: string,
+): Promise<void> {
+  await page.getByPlaceholder("you@example.com").fill(email);
+  await page.getByRole("button", { name: "Send code" }).click();
+}
+
+test.describe("sign-in screen (GCIP)", () => {
+  test.beforeEach(async ({ page }) => {
+    await mockOtpStart(page);
+    await page.goto("/");
+    // SignInScreen has mounted once the primary OAuth button is visible.
+    await expect(
+      page.getByRole("button", { name: "Continue with Google" }),
+    ).toBeVisible();
+  });
+
+  test("renders all three sign-in methods", async ({ page }) => {
+    await expect(
+      page.getByRole("button", { name: "Continue with Google" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Continue with Microsoft" }),
+    ).toBeVisible();
+    // The passwordless email method: an address field + its send button.
+    await expect(page.getByPlaceholder("you@example.com")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Send code" })).toBeVisible();
+  });
+
+  test("email entry advances to the 6-digit code screen", async ({ page }) => {
+    await submitEmail(page, "pilot@example.com");
+    // The code step: the numeric input + the confirmation copy naming the email.
+    await expect(page.getByPlaceholder("123456")).toBeVisible();
+    await expect(
+      page.getByText("We sent a 6-digit code to pilot@example.com"),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Verify code" }),
+    ).toBeVisible();
+  });
+
+  test("surfaces a wrong/expired code (otp_invalid_code)", async ({ page }) => {
+    await mockOtpVerify(page, 401);
+    await submitEmail(page, "pilot@example.com");
+    await page.getByPlaceholder("123456").fill("000000");
+    await page.getByRole("button", { name: "Verify code" }).click();
+    await expect(
+      page.getByText(
+        "That code is wrong or expired. Request a new one and try again.",
+      ),
+    ).toBeVisible();
+  });
+
+  test("surfaces rate limiting (otp_rate_limited)", async ({ page }) => {
+    await mockOtpVerify(page, 429);
+    await submitEmail(page, "pilot@example.com");
+    await page.getByPlaceholder("123456").fill("000000");
+    await page.getByRole("button", { name: "Verify code" }).click();
+    await expect(
+      page.getByText("Too many attempts. Wait a minute, then try again."),
+    ).toBeVisible();
+  });
+});

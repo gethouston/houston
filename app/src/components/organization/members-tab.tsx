@@ -16,7 +16,7 @@ import { PeopleRoster } from "./people-roster";
 export default function MembersTab({ ctx }: OrgTabProps) {
   const { t } = useTranslation("teams");
   const { data: session } = useSession();
-  const selfId = session?.user?.id ?? null;
+  const selfId = session?.uid ?? null;
   const canManage = ctx.isOwner;
   const members = ctx.org.members ?? [];
   const invites = ctx.org.invites ?? [];

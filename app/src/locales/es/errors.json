@@ -1,4 +1,16 @@
 {
   "generic": "Algo salió mal.",
-  "unknown": "Error desconocido"
+  "unknown": "Error desconocido",
+  "auth": {
+    "invalidCredentials": "Ese inicio de sesión no funcionó. Revisa tus datos e inténtalo de nuevo.",
+    "credentialMismatch": "Este correo ya está vinculado a otro método de inicio de sesión. Usa la opción con la que te registraste.",
+    "providerDisabled": "Esta opción de inicio de sesión aún no está disponible. Prueba con otra.",
+    "otpInvalid": "Ese código es incorrecto o expiró. Solicita uno nuevo e inténtalo de nuevo.",
+    "otpRateLimited": "Demasiados intentos. Espera un minuto y vuelve a intentarlo.",
+    "network": "No podemos conectarnos al servicio de inicio de sesión. Revisa tu conexión e inténtalo de nuevo.",
+    "tooManyAttempts": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo.",
+    "userDisabled": "Esta cuenta ha sido deshabilitada. Contacta a soporte.",
+    "configError": "El inicio de sesión no está configurado correctamente. Contacta a soporte.",
+    "generic": "El inicio de sesión falló. Inténtalo de nuevo."
+  }
 }

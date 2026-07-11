@@ -6,8 +6,8 @@ import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSession } from "../../hooks/use-session";
 import { signInWithGoogle } from "../../lib/auth";
 import { showErrorToast } from "../../lib/error-toast";
+import { isIdentityConfigured } from "../../lib/identity";
 import { queryKeys } from "../../lib/query-keys";
-import { isAuthConfigured } from "../../lib/supabase";
 import { tauriIntegrations } from "../../lib/tauri";
 import { INTEGRATION_PROVIDER } from "./model";
 
@@ -48,7 +48,7 @@ export function useIntegrationsGate(): IntegrationsGate {
   const ready = !!composio?.ready;
 
   const [signingIn, setSigningIn] = useState(false);
-  const token = session?.access_token ?? null;
+  const token = session?.idToken ?? null;
   const [resynced, setResynced] = useState(false);
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export function useIntegrationsGate(): IntegrationsGate {
     return { kind: "loading" };
   if (!composio) return { kind: "unavailable" };
   if (!composio.ready) {
-    if (isAuthConfigured()) {
+    if (isIdentityConfigured()) {
       return { kind: "signin", signIn: () => void signIn(), signingIn };
     }
     return { kind: "unavailable" };

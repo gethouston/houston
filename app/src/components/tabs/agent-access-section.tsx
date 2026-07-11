@@ -70,7 +70,7 @@ export function AgentAccessSection({ agent }: { agent: Agent }) {
     );
   }
 
-  const selfId = session?.user?.id ?? null;
+  const selfId = session?.uid ?? null;
   const members = org.data?.members ?? [];
   const people = buildSharePeople({ agent, members, selfId });
   const shown = people.slice(0, MAX_AVATARS);

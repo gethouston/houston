@@ -1,7 +1,7 @@
 //! Shared HTTP plumbing for the one-shot localhost loopback listeners used by
 //! the browser-based OAuth flows.
 //!
-//! Both the Supabase/Google sign-in loopback (`oauth_loopback.rs`) and the
+//! Both the GCIP/Google sign-in loopback (`oauth_loopback.rs`) and the
 //! OpenAI Codex loopback (`codex_oauth_loopback.rs`) accept a single browser
 //! redirect on `127.0.0.1`, read only the HTTP request line, and reply with a
 //! tiny self-contained page. The request-line parsing and response writing are

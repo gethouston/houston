@@ -1,362 +1,198 @@
-import type { Session } from "@supabase/supabase-js";
-import { listen } from "@tauri-apps/api/event";
+// GCP Identity Platform (Firebase Auth) sign-in, project `gethouston`. The public
+// auth surface the sign-in UI drives, branching on `osIsTauri()`: desktop uses
+// identity REST + loopback/PKCE and gateway email-OTP (session → Keychain, kept
+// fresh by the proactive-refresh timer); web uses firebase-js-sdk popup, reached
+// lazily via the `@houston/web-identity` alias so desktop never ships it. Every
+// failure is a typed `IdentityError`: user calls emit its `.code` to `onAuthError`
+// AND rethrow for the caller's `catch`.
+
 import { analytics } from "./analytics";
+import { emitAuthError, onAuthError } from "./auth-error-bus";
+import { gatewayUrl } from "./auth-gateway";
+import {
+  clearSession,
+  IdentityError,
+  identityConfig,
+  isIdentityConfigured,
+  isIdentityError,
+  SESSION_QUERY_KEY,
+  type Session,
+  saveSession,
+  setSessionSink,
+  startEmailOtp,
+  startProactiveRefresh,
+  stopProactiveRefresh,
+  verifyEmailOtp as verifyEmailOtpGateway,
+} from "./identity";
+import { cancelPendingAuthorize } from "./identity/desktop-oauth";
+import {
+  customTokenDesktopSession,
+  googleDesktopSession,
+  microsoftDesktopSession,
+} from "./identity/desktop-signin";
 import { logger } from "./logger";
-import { osIsTauri, osStartOauthLoopback } from "./os-bridge";
+import { osIsTauri } from "./os-bridge";
 import { queryClient } from "./query-client";
 import { clearPersistedLocalData } from "./query-persist";
-import { isAuthConfigured, supabase } from "./supabase";
-import { tauriSystem } from "./tauri";
 
-// Must match `SESSION_KEY` in `hooks/use-session.ts`. Hardcoded here
-// to avoid a hook-importing-from-hook dependency cycle. If you change
-// one, change the other.
-const SESSION_QUERY_KEY = ["session"] as const;
+setSessionSink((session) => cacheSession(session)); // refresh.ts → app cache
 
-function applySessionToCache(session: Session | null): void {
+function cacheSession(session: Session | null): void {
   queryClient.setQueryData<Session | null>(SESSION_QUERY_KEY, session);
 }
 
-// Where Supabase sends the browser after Google consent. Resolved per
-// client at sign-in time by `resolveRedirectUri`:
-//
-//   • Desktop (Tauri): a one-shot `http://127.0.0.1:<port>/auth/callback`
-//     loopback the app itself serves. A plain HTTP navigation — no website
-//     relay and no custom-scheme "open Houston?" dialog — so the user snaps
-//     straight back into the app instead of getting stranded on a web page.
-//   • Web / mobile PWA: the https relay bridge at gethouston.ai/auth/callback,
-//     which forwards the PKCE code into the `houston://` deep link. These
-//     clients aren't co-located with a local listener, so the bridge stays.
-//     See website/src/auth/callback/index.html.
-//
-// `houston://auth-callback` is the desktop fallback if the loopback can't
-// bind (every candidate port busy). All three shapes are registered in the
-// Supabase project's redirect allow-list.
-const WEB_REDIRECT_URI = "https://gethouston.ai/auth/callback/";
-const DESKTOP_FALLBACK_REDIRECT_URI = "houston://auth-callback";
+// Public re-exports: the post-hand-off error bus (auth-error-bus.ts) and the
+// loopback-cancel seam (desktop-oauth.ts) the sign-in screen calls on unmount —
+// benign on web and when nothing is pending.
+export { cancelPendingAuthorize, onAuthError };
 
-/**
- * Pick — and, on desktop, provision — the OAuth redirect target. Desktop
- * starts a loopback listener and returns its URL; if that can't bind we fall
- * back to the custom-scheme deep link rather than stranding the user.
- */
-async function resolveRedirectUri(): Promise<string> {
-  if (!osIsTauri()) return WEB_REDIRECT_URI;
-  try {
-    return await osStartOauthLoopback();
-  } catch (e) {
-    logger.warn(
-      `[auth] loopback listener unavailable, falling back to deep link: ${e}`,
-    );
-    return DESKTOP_FALLBACK_REDIRECT_URI;
-  }
+/** Options threaded from the sign-in UI into a provider sign-in. */
+export interface SignInOptions {
+  /** Fires the moment the system browser opens (frees the sign-in buttons). */
+  onBrowserOpened?: () => void;
 }
 
-// Track which provider initiated the current OAuth flow so the deep-link
-// callback can tag the user_signed_in event with the correct provider.
-// Set before the browser opens; read and cleared on successful session.
-let pendingProvider: "google" | "azure" | null = null;
-
-/**
- * Kick off an OAuth flow for the given provider. Supabase generates a
- * fresh PKCE verifier (stored in Keychain via our storage adapter),
- * returns an auth URL, and we open it in the user's system browser.
- * After consent the browser redirects to `houston://auth-callback?code=...`,
- * which the deep-link handler in Rust forwards to `installDeepLinkListener`.
- *
- * Idempotent — re-calling kicks off a brand-new PKCE flow, which is
- * exactly what the user wants when they hit the wrong browser profile,
- * abort consent, or generally need to retry.
- */
-async function signInWithProvider(provider: "google" | "azure"): Promise<void> {
-  if (!isAuthConfigured()) {
-    throw new Error("Auth not configured");
-  }
-
-  pendingProvider = provider;
-
-  // Microsoft (Entra) needs the standard OIDC trio plus `offline_access` to
-  // issue a refresh token; without it Supabase gets the ID token but no way to
-  // refresh, and the session goes stale on the first reload. The account picker
-  // (`prompt: select_account`) lets multi-account users (work + personal) choose
-  // instead of Microsoft silently reusing the last account — the #1 source of
-  // "wrong account" confusion. We deliberately skip `profile` / `User.Read`:
-  // Houston only needs the email + sub claims. Applied to BOTH flows below —
-  // the web branch used to omit these, so a web Azure session had no refresh
-  // token and died on the first reload.
-  const providerOptions =
-    provider === "azure"
-      ? {
-          scopes: "openid email offline_access",
-          queryParams: { prompt: "select_account" },
-        }
-      : {};
-
-  // Web build (no Tauri webview / deep link): a normal in-browser redirect to
-  // `/auth/callback`, where Supabase's URL sniffer (detectSessionInUrl) trades
-  // the `?code=` for a session. The desktop flow below opens the system browser
-  // and waits for the `houston://` deep link (or the loopback redirect) instead.
-  if (!osIsTauri()) {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        ...providerOptions,
-      },
-    });
-    if (error) throw error;
-    return; // Supabase navigates the page to the consent screen.
-  }
-
-  // Desktop: provision the loopback listener (or fall back to the deep link)
-  // and hand Supabase the resolved redirect target.
-  const redirectTo = await resolveRedirectUri();
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider,
-    options: {
-      redirectTo,
-      // Don't let Supabase touch window.location — we're in a webview and
-      // need the consent page to open in the user's real browser.
-      skipBrowserRedirect: true,
-      ...providerOptions,
-    },
-  });
-
-  if (error) throw error;
-  if (!data.url) throw new Error("Supabase returned no auth URL");
-
-  await tauriSystem.openUrl(data.url);
-}
-
-/**
- * Subscribers notified whenever the deep-link / PKCE exchange path
- * surfaces an OAuth error (provider-side error, code exchange failure,
- * malformed callback URL). Wired up so [`SignInScreen`] can display the
- * real provider message instead of a generic "Something went wrong".
- */
-type AuthErrorListener = (message: string) => void;
-const authErrorListeners = new Set<AuthErrorListener>();
-
-export function onAuthError(cb: AuthErrorListener): () => void {
-  authErrorListeners.add(cb);
-  return () => authErrorListeners.delete(cb);
-}
-
-function emitAuthError(message: string): void {
-  for (const cb of authErrorListeners) {
-    try {
-      cb(message);
-    } catch (e) {
-      logger.warn(`[auth] error listener threw: ${e}`);
-    }
-  }
-}
-
-export const signInWithGoogle = (): Promise<void> =>
-  signInWithProvider("google");
-export const signInWithMicrosoft = (): Promise<void> =>
-  signInWithProvider("azure");
-
-/**
- * Passwordless email sign-in, step 1: mail the user a 6-digit code.
- *
- * We use the OTP *code* (not a magic link) on purpose: a code keeps the
- * whole flow inside the app — no browser, no redirect, no deep link — and
- * works even when the user reads the email on a different device. Magic
- * links would need a redirect back to the desktop app, the exact friction
- * we removed from the OAuth flow.
- *
- * Requires the Supabase email template to render `{{ .Token }}`; otherwise
- * the user receives a magic link with no visible code.
- */
-export async function sendEmailOtp(email: string): Promise<void> {
-  if (!isAuthConfigured()) {
-    throw new Error("Auth not configured");
-  }
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser: true },
-  });
-  if (error) throw error;
-}
-
-/**
- * Passwordless email sign-in, step 2: verify the 6-digit code. On success
- * Supabase persists the session via our storage adapter; we mirror it into
- * the TanStack Query cache so the auth gate flips immediately (same
- * belt-and-suspenders write the deep-link path uses).
- */
-export async function verifyEmailOtp(
-  email: string,
-  token: string,
+// Run a user-initiated auth call: normalize failures to a typed code + rethrow.
+// `emit` broadcasts the code to `onAuthError` subscribers (SignInScreen's shared
+// error line) — ON for the OAuth flows, OFF for email-OTP (EmailSignIn renders
+// inline, so emitting too would double-render the same red text).
+async function guardAuthCall(
+  fn: () => Promise<void>,
+  opts: { emit?: boolean } = {},
 ): Promise<void> {
-  if (!isAuthConfigured()) {
-    throw new Error("Auth not configured");
+  try {
+    await fn();
+  } catch (e) {
+    const err = isIdentityError(e)
+      ? e
+      : new IdentityError("unknown", { cause: e });
+    if (opts.emit ?? true) emitAuthError(err.code);
+    throw err;
   }
-  const { data, error } = await supabase.auth.verifyOtp({
-    email,
-    token,
-    type: "email",
+}
+
+async function establishDesktopSession(
+  session: Session,
+  analyticsProvider: string,
+): Promise<void> {
+  await saveSession(session);
+  cacheSession(session);
+  startProactiveRefresh();
+  analytics.track("user_signed_in", { provider: analyticsProvider });
+  logger.info(`[auth] signed in (${session.provider}) as ${session.email}`);
+}
+
+// Cache a web session (or a benign null popup-cancel) and track it.
+function establishWebSession(
+  session: Session | null,
+  analyticsProvider: string,
+): void {
+  if (!session) return; // popup cancelled — no error, no cache write
+  cacheSession(session);
+  analytics.track("user_signed_in", { provider: analyticsProvider });
+}
+
+// Lazy-load the web SDK surface (a no-op stub on desktop; never reached there).
+const loadWebIdentity = () => import("@houston/web-identity");
+
+export function signInWithGoogle(opts?: SignInOptions): Promise<void> {
+  return guardAuthCall(async () => {
+    requireConfigured();
+    if (osIsTauri()) {
+      // A `null` session = benign cancel (superseded / unmount / abandoned tab):
+      // no session write, no emit, no throw — mirroring the web popup-cancel path.
+      const session = await googleDesktopSession(opts);
+      if (session) await establishDesktopSession(session, "google");
+      return;
+    }
+    // Web popup returns focus naturally, so `onBrowserOpened` is not needed here.
+    const web = await loadWebIdentity();
+    web.initWebAuth(identityConfig);
+    establishWebSession(await web.webSignInWithGoogle(), "google");
   });
-  if (error) throw error;
-  // verifyOtp can resolve with `error == null` but `session == null` (e.g. a
-  // misconfigured email template, or a code accepted as a confirmation rather
-  // than a sign-in). Caching null here would silently leave the auth gate up
-  // — the user typed a valid code, it "succeeded", and nothing happens. Throw
-  // so EmailSignIn's catch surfaces it (no-silent-failures rule).
-  if (!data.session) {
-    throw new Error("Sign-in succeeded but returned no session.");
-  }
-  applySessionToCache(data.session);
-  analytics.track("user_signed_in", { provider: "email" });
-  logger.info(`[auth] session established (email otp) for ${data.user?.email}`);
+}
+
+export function signInWithMicrosoft(opts?: SignInOptions): Promise<void> {
+  return guardAuthCall(async () => {
+    requireConfigured();
+    if (osIsTauri()) {
+      // "azure" keeps the historical analytics provider value for continuity.
+      // A `null` session is a benign cancel (see signInWithGoogle).
+      const session = await microsoftDesktopSession(opts);
+      if (session) await establishDesktopSession(session, "azure");
+      return;
+    }
+    const web = await loadWebIdentity();
+    web.initWebAuth(identityConfig);
+    establishWebSession(await web.webSignInWithMicrosoft(), "azure");
+  });
 }
 
 /**
- * Sign out: clear the Supabase session (our Keychain storage adapter
- * removes the tokens), fire the sign-out event, and reset PostHog's
- * distinct_id so subsequent anonymous events don't accrue to the prior user.
+ * Passwordless email sign-in, step 1: ask the gateway to mail a 6-digit code.
+ * `emit: false` — `EmailSignIn` renders this error inline, so emitting to
+ * `onAuthError` too would double-render the same message.
  */
+export function sendEmailOtp(email: string): Promise<void> {
+  return guardAuthCall(
+    async () => {
+      requireConfigured();
+      await startEmailOtp(gatewayUrl(), email);
+    },
+    { emit: false },
+  );
+}
+
+/** Step 2: verify the code → gateway custom token → Firebase session. */
+export function verifyEmailOtp(email: string, code: string): Promise<void> {
+  return guardAuthCall(
+    async () => {
+      requireConfigured();
+      const { customToken } = await verifyEmailOtpGateway(
+        gatewayUrl(),
+        email,
+        code,
+      );
+      if (osIsTauri()) {
+        const session = await customTokenDesktopSession(customToken);
+        await establishDesktopSession(session, "email");
+        return;
+      }
+      const web = await loadWebIdentity();
+      web.initWebAuth(identityConfig);
+      establishWebSession(
+        await web.webSignInWithCustomToken(customToken),
+        "email",
+      );
+    },
+    { emit: false }, // EmailSignIn renders this error inline (no duplicate).
+  );
+}
+
+// Sign out: stop refresh + clear the persisted (desktop) / SDK (web) session, then
+// wipe local per-user data and reset analytics. A failed remote/keychain clear is
+// logged (never silent) but never blocks local cleanup.
 export async function signOut(): Promise<void> {
   try {
-    await supabase.auth.signOut();
+    if (osIsTauri()) {
+      stopProactiveRefresh();
+      await clearSession();
+    } else {
+      const web = await loadWebIdentity();
+      await web.webSignOut();
+    }
   } catch (e) {
-    logger.warn(`[auth] signOut failed: ${e}`);
+    logger.warn(`[auth] sign-out clear failed; local cleanup continues: ${e}`);
   }
-  // Locally persisted server copies (conversation transcripts + list queries)
-  // are per-user data on this machine — wipe them so nothing from the account
-  // lingers after sign-out (HOU-712). Never throws.
+  cacheSession(null);
+  // Wipe locally persisted per-user data so nothing lingers after sign-out (HOU-712).
   await clearPersistedLocalData();
   analytics.track("user_signed_out");
   analytics.reset();
 }
 
-let deepLinkInstalled = false;
-
-/**
- * Listen for `auth://deep-link` events emitted by the Rust deep-link
- * handler (see `app/src-tauri/src/auth.rs`). Extracts the `code` param
- * from the callback URL and completes the PKCE exchange to populate the
- * Supabase session in Keychain.
- *
- * Idempotent — safe to call more than once per app lifetime.
- */
-export function installDeepLinkListener(): () => void {
-  if (deepLinkInstalled) return () => {};
-  deepLinkInstalled = true;
-
-  const unlistenPromise = listen<string>("auth://deep-link", (event) => {
-    logger.info(`[auth] deep-link received: ${event.payload}`);
-    void completeAuthCallback(event.payload);
-  });
-
-  return () => {
-    unlistenPromise.then((fn) => fn()).catch(() => {});
-    deepLinkInstalled = false;
-  };
-}
-
-/**
- * Complete an OAuth callback: pull the `code` (PKCE) or `access_token`
- * (implicit) out of a callback URL and install the Supabase session. Driven by
- * the desktop deep-link listener. Errors surface through `emitAuthError`, not by
- * throwing, so the sign-in UI reacts without an exception.
- */
-async function completeAuthCallback(rawUrl: string): Promise<void> {
-  try {
-    const url = new URL(rawUrl);
-    // OAuth errors can land in the query string (PKCE code flow) OR the
-    // fragment (implicit flow / some Microsoft Entra paths). Check both.
-    const fragmentParams = new URLSearchParams(
-      url.hash.startsWith("#") ? url.hash.slice(1) : url.hash,
-    );
-    const code = url.searchParams.get("code");
-    const errorParam =
-      url.searchParams.get("error_description") ||
-      url.searchParams.get("error") ||
-      fragmentParams.get("error_description") ||
-      fragmentParams.get("error");
-
-    if (errorParam) {
-      logger.error(`[auth] OAuth error: ${errorParam}`);
-      emitAuthError(errorParam);
-      return;
-    }
-
-    // Two callback shapes can land here:
-    //   PKCE   →  ?code=...                  (the `flowType: "pkce"`
-    //                                         path; client owns the
-    //                                         verifier in storage).
-    //   Implicit → #access_token=...&refresh_token=...
-    //
-    // Our client config asks for PKCE, but on Windows the desktop build
-    // has been observed to receive implicit-flow URLs (Supabase project
-    // config + an async Keychain adapter that silently swallows storage
-    // failures combine to make the JS lib generate an OAuth URL without
-    // `code_challenge`). The user got all the way through Google consent;
-    // the only thing left is installing the session — there is no reason
-    // to leave them stranded just because the URL shape doesn't match
-    // what we expected. Handle both, prefer PKCE when both are present
-    // (which never happens in practice — Supabase emits one or the other).
-    if (code) {
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error) {
-        logger.error(`[auth] exchangeCodeForSession failed: ${error.message}`);
-        emitAuthError(error.message);
-        return;
-      }
-      applySessionToCache(data.session ?? null);
-      analytics.track("user_signed_in", {
-        provider: pendingProvider ?? "unknown",
-      });
-      pendingProvider = null;
-      logger.info(`[auth] session established (pkce) for ${data.user?.email}`);
-      return;
-    }
-
-    const accessToken = fragmentParams.get("access_token");
-    const refreshToken = fragmentParams.get("refresh_token");
-    if (accessToken && refreshToken) {
-      const { data, error } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-      if (error) {
-        logger.error(`[auth] setSession failed: ${error.message}`);
-        emitAuthError(error.message);
-        return;
-      }
-      if (!data.session) {
-        logger.error("[auth] setSession returned no session");
-        emitAuthError("Sign-in succeeded but returned no session.");
-        return;
-      }
-      // Push the session directly into the TanStack Query cache that
-      // `useSession` reads. Belt-and-suspenders over Supabase's
-      // `onAuthStateChange` listener, which a real Windows v0.4.14
-      // install was observed to skip for `setSession` calls 12 times
-      // in a row — every implicit-flow sign-in succeeded server-side
-      // but the auth gate in App.tsx never re-rendered. Writing the
-      // cache key directly here makes the UI transition deterministic
-      // regardless of whether the listener fires.
-      applySessionToCache(data.session);
-      analytics.track("user_signed_in", {
-        provider: pendingProvider ?? "unknown",
-      });
-      pendingProvider = null;
-      logger.info(
-        `[auth] session established (implicit) for ${data.user?.email}`,
-      );
-      return;
-    }
-
-    logger.warn(
-      "[auth] callback had neither `code` nor `access_token` — ignoring",
-    );
-    emitAuthError("Sign-in callback was missing the authorization code.");
-  } catch (e) {
-    logger.error(`[auth] failed to handle callback: ${e}`);
-    emitAuthError(String(e));
+function requireConfigured(): void {
+  if (!isIdentityConfigured()) {
+    throw new IdentityError("api_key_invalid");
   }
 }

@@ -10,7 +10,6 @@ const SHOW = {
   signedIn: true,
   hasLegacyWorkspaces: true,
   outcome: null,
-  migrationCompleted: false,
   loading: false,
 } as const;
 
@@ -18,11 +17,8 @@ test("shows for a signed-in gateway desktop with legacy data", () => {
   assert.equal(cloudMigrationGateState(SHOW), "show");
 });
 
-test("never shows once the account has migrated (cross-machine), even with leftover legacy data", () => {
-  assert.equal(
-    cloudMigrationGateState({ ...SHOW, migrationCompleted: true }),
-    "pass",
-  );
+test("never shows again once this machine finished the wizard, even with leftover legacy data", () => {
+  assert.equal(cloudMigrationGateState({ ...SHOW, outcome: "done" }), "pass");
 });
 
 test("never shows outside remote gateway mode (local sidecar / dev host)", () => {

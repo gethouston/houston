@@ -294,7 +294,7 @@
     "reconnected": "Houston reconnected",
     "loadFailed": "Couldn't load your available AI models. Check your connection and try again.",
     "authRequiredTitle": "Sign-in required",
-    "authRequiredBody": "This build connects to Houston's hosted engine, but no sign-in is configured. Set SUPABASE_URL and SUPABASE_ANON_KEY for this build to enable Google sign-in."
+    "authRequiredBody": "This build connects to Houston's hosted engine, but no sign-in is configured. Set FIREBASE_API_KEY and FIREBASE_PROJECT_ID for this build to enable sign-in."
   },
   "providerError": {
     "rateLimited": {

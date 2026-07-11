@@ -1,7 +1,9 @@
 import { Button } from "@houston-ai/core";
 import { ArrowUpRight, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
+  cancelPendingAuthorize,
   onAuthError,
   signInWithGoogle,
   signInWithMicrosoft,
@@ -10,7 +12,7 @@ import { logger } from "../../lib/logger";
 import { tauriSystem } from "../../lib/tauri";
 import { HoustonLogo } from "../shell/experience-card";
 import { SpaceScreen } from "../space/space-screen";
-import { prettifyAuthError } from "./auth-errors";
+import { authErrorKey } from "./auth-errors";
 import { EmailSignIn } from "./email-sign-in";
 import { GoogleIcon, MicrosoftIcon } from "./provider-brand-icons";
 
@@ -21,7 +23,7 @@ const openExternal = (url: string) => () => {
 };
 
 /**
- * Full-screen sign-in overlay. Rendered by App.tsx when Supabase is
+ * Full-screen sign-in overlay. Rendered by App.tsx when identity (Firebase) is
  * configured but no session is present (the local account login), and by the
  * cloud engine gate (HostedEngineGate) for the remote-connection login. Keeps
  * copy product-benefit-focused — the audience is non-technical, so no mention
@@ -34,37 +36,50 @@ const openExternal = (url: string) => () => {
  * "Log in" surface, dark value panel, light primary buttons. Wordmark sits
  * top-left of the screen and the legal links anchor the footer.
  *
- * Re-click semantics: the provider spinner is only on while the system browser
- * is being opened (a few ms). After that the user is free to click again — the
- * PKCE flow is regenerated each click.
+ * Re-click semantics: the provider spinner is on only until the system browser
+ * opens (`onBrowserOpened` clears it). After that the buttons are free — a
+ * re-click starts a fresh PKCE attempt that SUPERSEDES the previous one (the
+ * abandoned attempt resolves benignly, no error). Unmounting the screen (e.g.
+ * the user finishes email sign-in while a Google tab is still open) cancels any
+ * in-flight loopback authorize so a late callback can't overwrite the session.
  */
 export function SignInScreen() {
+  const { t } = useTranslation("errors");
   const [pending, setPending] = useState<Provider | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Cancel any in-flight loopback authorize when this screen unmounts, so a late
+  // browser completion can't overwrite a session the user established another way.
+  useEffect(() => cancelPendingAuthorize, []);
 
   // Surface OAuth errors that happen AFTER the browser hands off (provider
   // rejection, code-exchange failure, identity already linked to another
   // user). Without this the user only saw the "kick off" failure path and
-  // every post-callback failure was invisible.
+  // every post-callback failure was invisible. Post-hand-off failures arrive
+  // as stable identity codes, resolved to localized copy here.
   useEffect(() => {
-    return onAuthError((message) => {
+    return onAuthError((code) => {
       setPending(null);
-      setError(prettifyAuthError(message));
+      setError(t(authErrorKey(code)));
     });
-  }, []);
+  }, [t]);
 
   const handleSignIn = (provider: Provider) => async () => {
     setPending(provider);
     setError(null);
+    // `onBrowserOpened` re-enables the buttons the instant the system browser
+    // opens, so the whole (up-to-300s) round-trip never freezes them.
+    const opts = { onBrowserOpened: () => setPending(null) };
     try {
-      await (provider === "azure" ? signInWithMicrosoft() : signInWithGoogle());
+      await (provider === "azure"
+        ? signInWithMicrosoft(opts)
+        : signInWithGoogle(opts));
     } catch (e) {
       logger.error(`[auth] ${provider} sign-in failed: ${e}`);
-      setError(prettifyAuthError(String(e)));
+      setError(t(authErrorKey(e)));
     } finally {
-      // Re-enable the buttons immediately once the browser is open. The
-      // SignInScreen itself unmounts when the deep-link callback flips the
-      // session, so we don't need a "waiting for callback" loading state.
+      // Belt-and-suspenders for a PRE-browser failure (config / loopback bind),
+      // where `onBrowserOpened` never fired. Post-browser, this is a no-op.
       setPending(null);
     }
   };

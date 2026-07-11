@@ -38,8 +38,12 @@
 #   APPLE_API_KEY_CONTENT              — Base64-encoded .p8 key file
 #   POSTHOG_KEY                        — PostHog project API key (client-side, public-safe)
 #   POSTHOG_HOST                       — PostHog ingest host (e.g. https://us.i.posthog.com)
-#   SUPABASE_URL                       — Supabase project URL
-#   SUPABASE_ANON_KEY                  — Supabase anon key (client-side, RLS-gated)
+#   FIREBASE_API_KEY                   — Firebase web API key (client-side, public by design)
+#   FIREBASE_AUTH_DOMAIN               — Firebase auth domain (e.g. gethouston.firebaseapp.com)
+#   FIREBASE_PROJECT_ID                — Firebase / GCP Identity Platform project id
+#   GOOGLE_DESKTOP_CLIENT_ID           — Google "Desktop app" OAuth client id (loopback + PKCE)
+#   GOOGLE_DESKTOP_CLIENT_SECRET       — Google installed-app secret (non-confidential; baked in)
+#   MICROSOFT_DESKTOP_CLIENT_ID        — Microsoft/Entra public client id (PKCE, no secret)
 #   HOSTED_ENGINE_URL                  — (CLOUD channel only, tag `cloud-v*`) Base URL of the
 #                                        managed Houston Cloud gateway the desktop app connects to.
 #                                        Baked in as VITE_HOSTED_ENGINE_URL so cloud users just sign
@@ -604,8 +608,12 @@ jobs:
           APPLE_API_KEY_PATH: ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPLE_API_KEY }}.p8
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
           POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
+          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
+          MICROSOFT_DESKTOP_CLIENT_ID: ${{ secrets.MICROSOFT_DESKTOP_CLIENT_ID }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
@@ -1217,8 +1225,12 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
           POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
+          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
+          MICROSOFT_DESKTOP_CLIENT_ID: ${{ secrets.MICROSOFT_DESKTOP_CLIENT_ID }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
@@ -1474,8 +1486,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
           POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
+          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
+          MICROSOFT_DESKTOP_CLIENT_ID: ${{ secrets.MICROSOFT_DESKTOP_CLIENT_ID }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}

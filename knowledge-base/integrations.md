@@ -34,8 +34,8 @@ code everywhere, no drift.
   `POST /api/v3.1/connected_accounts/link`.
 - `RemoteIntegrationProvider` (`remote.ts`) — the **gateway** adapter, the
   desktop's provider. The desktop holds NO key: every port call is forwarded to
-  Houston's cloud host `/v1/integrations/*` with the user's Supabase session
-  token. The upstream verifies the JWT and re-derives the Composio `user_id` from
+  Houston's cloud host `/v1/integrations/*` with the user's Firebase (GCIP) session
+  (ID token). The upstream verifies the JWT and re-derives the Composio `user_id` from
   its `sub`, so a client can never act as another user and connections follow the
   user across desktop and cloud. The port's `userId` args are ignored here.
 
@@ -43,7 +43,8 @@ code everywhere, no drift.
 registry is valid (integrations off → capability false, routes 404/503). Duplicate
 id is a wiring bug (throws), unknown id throws (never silently undefined).
 
-**Session sync (desktop).** The frontend owns the Supabase session; the gateway
+**Session sync (desktop).** The frontend owns the Firebase (GCIP) session (refresh
+via `app/src/lib/identity/refresh.ts`); the gateway
 adapter needs it fresh. `setIntegrationSession(token | null)` pushes the current
 token (null on sign-out). With no session the adapter reports not-ready and throws
 `IntegrationSigninRequiredError`, surfaced as an actionable 409/sign-in state.

@@ -7,11 +7,11 @@ import { useSession } from "./use-session";
 
 /**
  * Keeps the local host's integrations gateway supplied with the user's current
- * Supabase access token (platform-mode Composio: the desktop holds no provider
+ * Firebase ID token (platform-mode Composio: the desktop holds no provider
  * key — Houston's cloud host does — so every integration call is forwarded
  * with this session and the cloud derives the user from the verified JWT).
  *
- * Pushes on sign-in, on Supabase's own token refresh, null on sign-out, and
+ * Pushes on sign-in, on identity token refresh, null on sign-out, and
  * re-pushes the current token whenever the engine supervisor respawns the
  * sidecar — the host holds the session in-process, so a restart silently
  * drops it and every integration call would 401 until the next token change.
@@ -22,7 +22,7 @@ import { useSession } from "./use-session";
 export function useIntegrationSessionSync(): void {
   const qc = useQueryClient();
   const { data: session } = useSession();
-  const token = session?.access_token ?? null;
+  const token = session?.idToken ?? null;
   // Don't push the initial null (fresh boot, nothing to clear) — only a real
   // token, or null AFTER a token (sign-out).
   const pushedToken = useRef(false);

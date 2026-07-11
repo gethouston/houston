@@ -1,5 +1,5 @@
-import { createClient, type Session } from "@supabase/supabase-js";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { initFrontendLogging } from "@houston/app/lib/logger";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type BillingReport,
   fetchBilling,
@@ -7,53 +7,39 @@ import {
   type Overview,
 } from "./api";
 import { OrphansPanel, SpendPanel, StatCards, UsersTable } from "./components";
+import { AdminSignIn } from "./sign-in";
 import { btn, C, ghostBtn, page } from "./styles";
+import { useAdminAuth } from "./use-admin-auth";
+
+// The /admin entry (packages/web/src/main.tsx) renders this dashboard directly,
+// NOT through app-tree.tsx, so it must install the identity log sink + window
+// error logging itself — otherwise the admin sign-in's identity-module discards
+// (e.g. a malformed ID token) would only reach console. Idempotent + safe on web
+// (the underlying write is a no-op shim there).
+initFrontendLogging();
 
 /**
  * Houston Cloud operator dashboard (served at /admin). Self-contained, like the
- * cloud-login gate: owns its own Supabase client, signs the operator in, then
- * reads the control plane's cross-tenant pod + spend views with their token. The
- * control plane's CP_ADMIN_USER_IDS allowlist is the real gate; the UI just shows
- * the 403/404 reason if this account isn't an operator.
+ * cloud-login gate: signs the operator in with GCIP (Firebase Auth) — email +
+ * password or Google — then reads the control plane's cross-tenant pod + spend
+ * views with the operator's Firebase ID token. The control plane's
+ * CP_ADMIN_USER_IDS allowlist is the real gate; the UI just shows the 403/404
+ * reason if this account isn't an operator.
  */
-const env =
-  (import.meta as { env?: Record<string, string | undefined> }).env ?? {};
-const SUPABASE_URL = env.VITE_CP_SUPABASE_URL || "";
-const SUPABASE_ANON = env.VITE_CP_SUPABASE_ANON_KEY || "";
 const REFRESH_MS = 15_000;
-
-/** The exact client type createClient returns, so it threads through props cleanly. */
-type SupaClient = ReturnType<typeof createClient>;
 
 export function AdminDashboard({
   controlPlaneUrl,
 }: {
   controlPlaneUrl: string;
 }) {
-  const supabase = useMemo<SupaClient>(
-    () => createClient(SUPABASE_URL, SUPABASE_ANON),
-    [],
-  );
-  const [session, setSession] = useState<Session | null>(null);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setReady(true);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) =>
-      setSession(s),
-    );
-    return () => sub.subscription.unsubscribe();
-  }, [supabase]);
-
-  if (!session) return <SignIn supabase={supabase} ready={ready} />;
+  const auth = useAdminAuth();
+  if (!auth.token) return <AdminSignIn auth={auth} />;
   return (
     <Dashboard
       controlPlaneUrl={controlPlaneUrl}
-      token={session.access_token}
-      signOut={() => supabase.auth.signOut()}
+      token={auth.token}
+      signOut={auth.signOut}
     />
   );
 }
@@ -65,7 +51,7 @@ function Dashboard({
 }: {
   controlPlaneUrl: string;
   token: string;
-  signOut: () => Promise<{ error: { message: string } | null }>;
+  signOut: () => Promise<void>;
 }) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [billing, setBilling] = useState<BillingReport | null>(null);
@@ -100,17 +86,6 @@ function Dashboard({
     return () => clearInterval(id);
   }, [load]);
 
-  // Sign-out surfaces failures: supabase returns { error }, and a transport
-  // problem can reject — both reach the dashboard's error banner.
-  const onSignOut = useCallback(async () => {
-    try {
-      const { error: e } = await signOut();
-      if (e) setError(e.message);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, [signOut]);
-
   return (
     <div style={page}>
       <div
@@ -142,7 +117,7 @@ function Dashboard({
           >
             Refresh
           </button>
-          <button type="button" style={ghostBtn} onClick={onSignOut}>
+          <button type="button" style={ghostBtn} onClick={() => void signOut()}>
             Sign out
           </button>
         </div>
@@ -181,110 +156,6 @@ function Dashboard({
             </div>
           )
         )}
-      </div>
-    </div>
-  );
-}
-
-function SignIn({ supabase, ready }: { supabase: SupaClient; ready: boolean }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fail = (msg: string) => {
-    setError(msg);
-    setBusy(false);
-  };
-
-  const google = async () => {
-    setBusy(true);
-    setError(null);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/admin` },
-    });
-    if (error) fail(error.message);
-  };
-
-  const withPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) fail(error.message);
-  };
-
-  const input: React.CSSProperties = {
-    padding: "10px 12px",
-    borderRadius: 10,
-    border: `1px solid #34343f`,
-    background: C.panel2,
-    color: C.text,
-  };
-  return (
-    <div
-      style={{
-        ...page,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <div
-        style={{
-          width: 340,
-          padding: 28,
-          borderRadius: 16,
-          background: C.panel,
-          border: `1px solid ${C.border}`,
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-        }}
-      >
-        <div style={{ fontSize: 20, fontWeight: 700 }}>Houston Cloud · Ops</div>
-        <div style={{ opacity: 0.6, fontSize: 13, marginBottom: 4 }}>
-          {ready ? "Operator sign in." : "Loading…"}
-        </div>
-        <button type="button" style={btn} onClick={google} disabled={busy}>
-          Continue with Google
-        </button>
-        <div style={{ textAlign: "center", opacity: 0.4, fontSize: 12 }}>
-          or
-        </div>
-        <form
-          onSubmit={withPassword}
-          style={{ display: "flex", flexDirection: "column", gap: 8 }}
-        >
-          <input
-            style={input}
-            type="email"
-            placeholder="you@gethouston.ai"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-          />
-          <input
-            style={input}
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-          />
-          <button
-            style={{ ...btn, background: "#26262f" }}
-            type="submit"
-            disabled={busy || !email || !password}
-          >
-            Sign in with email
-          </button>
-        </form>
-        {error && <div style={{ color: C.red, fontSize: 12 }}>{error}</div>}
       </div>
     </div>
   );

@@ -58,7 +58,7 @@ export function AgentShareDialog({
     action: ShareAction;
   } | null>(null);
 
-  const selfId = session?.user?.id ?? null;
+  const selfId = session?.uid ?? null;
   const members = org.data?.members ?? [];
   const people = buildSharePeople({ agent, members, selfId });
   const candidates = addableMembers(members, people);

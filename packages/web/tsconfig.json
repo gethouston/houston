@@ -26,7 +26,8 @@
         "./src/shims/tauri-plugin-notification.ts"
       ],
       "@houston/app/*": ["../../app/src/*"],
-      "@houston/app": ["../../app/src"]
+      "@houston/app": ["../../app/src"],
+      "@houston/web-identity": ["./src/identity/firebase-popup.ts"]
     }
   },
   "include": ["src"],

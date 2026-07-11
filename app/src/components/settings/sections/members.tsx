@@ -20,7 +20,7 @@ export function MembersSection() {
   const org = useOrg(isMultiplayer(capabilities));
 
   const canManage = canManageMembers(capabilities);
-  const selfId = session?.user?.id ?? null;
+  const selfId = session?.uid ?? null;
   const members = org.data?.members ?? [];
 
   return (
