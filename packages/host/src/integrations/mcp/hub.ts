@@ -1,6 +1,6 @@
 import type { ActionResult, Connection, Toolkit, ToolMatch } from "../types";
 import type { McpClientSession } from "./client";
-import { HUB_APP_CATALOG } from "./hub-catalog";
+import { HUB_APP_CATALOG, HUB_PROBE_SLUGS } from "./hub-catalog";
 import {
   appConnectionId,
   executeOutcome,
@@ -25,10 +25,19 @@ const CONNECTIONS_TTL_MS = 30_000;
  * serve the hub, per app. Detection is once per session (tools/list is cached
  * by the client); a non-hub MCP server never reaches this class.
  */
+export interface HubAppRecord {
+  /** App toolkits this install has connected (persisted; probe coverage). */
+  read(): Promise<string[]>;
+  record(toolkit: string): Promise<void>;
+}
+
 export class ComposioHubAdapter {
   private connCache?: { at: number; states: ReturnType<typeof manageResults> };
 
-  constructor(private readonly client: McpClientSession) {}
+  constructor(
+    private readonly client: McpClientSession,
+    private readonly apps: HubAppRecord,
+  ) {}
 
   async detect(): Promise<boolean> {
     const tools = await this.client.listTools();
@@ -52,17 +61,21 @@ export class ComposioHubAdapter {
     return manageResults(hubPayload(result));
   }
 
-  /** ACTIVE app connections, from ONE batched list over the catalog (cached). */
+  /**
+   * ACTIVE app connections, from ONE batched list (cached). The probe set is
+   * bounded: popular apps plus every toolkit this install ever connected —
+   * never the full ~1000-app catalog, which would make a huge hub request.
+   */
   async connections(): Promise<Connection[]> {
     const now = Date.now();
     if (!this.connCache || now - this.connCache.at >= CONNECTIONS_TTL_MS) {
+      const probe = [
+        ...new Set([...HUB_PROBE_SLUGS, ...(await this.apps.read())]),
+      ];
       this.connCache = {
         at: now,
         states: await this.manage(
-          HUB_APP_CATALOG.map((t) => ({
-            name: t.slug,
-            action: "list" as const,
-          })),
+          probe.map((name) => ({ name, action: "list" as const })),
         ),
       };
     }
@@ -93,7 +106,12 @@ export class ComposioHubAdapter {
     const states = await this.manage([{ name: toolkit, action: "list" }]);
     const state = states.find((s) => s.toolkit === toolkit);
     if (!state) return null;
-    if (state.status === "active") this.connCache = undefined;
+    if (state.status === "active") {
+      this.connCache = undefined;
+      // Remember the toolkit so the bounded connection probe covers it from
+      // now on, even when it is not in the popular set.
+      await this.apps.record(toolkit);
+    }
     return {
       toolkit,
       connectionId,

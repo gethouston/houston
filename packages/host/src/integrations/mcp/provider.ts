@@ -56,7 +56,19 @@ export class McpIntegrationProvider implements IntegrationProvider {
       },
     );
     this.client = new McpClientSession(options.url, this.oauth);
-    this.hubAdapter = new ComposioHubAdapter(this.client);
+    this.hubAdapter = new ComposioHubAdapter(this.client, {
+      read: async () => (await options.store.read(this.id)).appToolkits ?? [],
+      record: async (toolkit) => {
+        const state = await options.store.read(this.id);
+        const next = new Set(state.appToolkits ?? []);
+        if (next.has(toolkit)) return;
+        next.add(toolkit);
+        await options.store.write(this.id, {
+          ...state,
+          appToolkits: [...next].sort(),
+        });
+      },
+    });
     this.exchangeAuthorization =
       options.exchangeAuthorization ?? defaultMcpAuthorizationExchange;
     this.pendingClaimer = new PendingAuthorizationClaimer(

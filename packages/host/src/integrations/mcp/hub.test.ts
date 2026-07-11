@@ -208,3 +208,32 @@ test("hub: execute routes through the multi-executor; unconnected apps say so", 
   expect(failed.successful).toBe(false);
   expect(failed.error).toMatch(/not connected/i);
 });
+
+test("hub: an exotic connected app joins the probe set and future listings", async () => {
+  const state: HubState = { connected: new Set(), manageCalls: [] };
+  const provider = signedInProvider(await fakeHubServer(state));
+
+  // "square" is outside the popular probe set: invisible at first...
+  state.connected.add("square");
+  expect(
+    (await provider.listConnections("u")).map((c) => c.toolkit),
+  ).not.toContain("square");
+
+  // ...but once a connect flow OBSERVES it active, it is recorded and every
+  // later listing probes it.
+  await provider.connect("u", "square");
+  expect((await provider.connection("u", "app:square"))?.status).toBe("active");
+  expect((await provider.listConnections("u")).map((c) => c.toolkit)).toContain(
+    "square",
+  );
+});
+
+test("hub: the browsable catalog is the full snapshot (~1000 apps)", async () => {
+  const provider = signedInProvider(
+    await fakeHubServer({ connected: new Set(), manageCalls: [] }),
+  );
+  const toolkits = await provider.listToolkits();
+  expect(toolkits.length).toBeGreaterThan(1000);
+  const slack = toolkits.find((t) => t.slug === "slack");
+  expect(slack?.logoUrl).toContain("logos.composio.dev");
+});

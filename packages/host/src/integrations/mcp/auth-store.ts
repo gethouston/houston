@@ -11,6 +11,9 @@ export interface McpOAuthState {
   tokens?: OAuthTokens;
   codeVerifier?: string;
   pending?: { state: string; startedAtMs: number };
+  /** Hub servers: every app toolkit this install ever connected, so the
+   *  bounded connection probe always covers them (see hub-catalog.ts). */
+  appToolkits?: string[];
 }
 
 export interface McpAuthStore {
