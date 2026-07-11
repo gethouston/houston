@@ -1503,15 +1503,3 @@ export async function agentIntegrationGrants(
     throw err;
   }
 }
-
-export async function setAgentIntegrationGrants(
-  cfg: ControlPlaneConfig,
-  agentSlugOrId: string,
-  toolkits: string[],
-): Promise<void> {
-  await cpFetch(
-    cfg,
-    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/integration-grants`,
-    { method: "PUT", body: JSON.stringify({ toolkits }) },
-  );
-}

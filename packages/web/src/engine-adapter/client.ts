@@ -643,7 +643,17 @@ export class HoustonClient {
   }
   async setPreference(key: string, value: string): Promise<void> {
     if (ACCOUNT_PREF_KEYS.has(key)) {
-      await controlPlane.setPreference(this.prefConfig(), key, value);
+      // Delegate the account-key WRITE to the SDK (migration wave 2a): its
+      // PreferencesClient issues the identical `PUT /v1/preferences/:key` with
+      // body `{value}` over the SAME shared gateway fetch (bearer +
+      // `x-houston-org`), and — unlike the agents/activities facades — does NOT
+      // refetch. The SDK echoes the stored value; this caller discards it, so
+      // the observable request and the `void` result are byte-identical to the
+      // old `controlPlane.setPreference`. PUTs never transient-retry in either
+      // path, so nothing is lost. The READ stays on `controlPlane.getPreference`
+      // (below): cpFetch wraps GETs in `transientRetryFetch`, which the SDK path
+      // lacks — delegating it would drop that boot-path retry resilience.
+      await this.engineSdk.preferences.set(key, value);
       removeLocalPref(key);
       return;
     }
@@ -2116,12 +2126,17 @@ export class HoustonClient {
     agentSlugOrId: string,
     toolkits: string[],
   ): Promise<void> {
+    // Grants are cloud-only: off-cloud there is no per-agent grants model, so
+    // this stays a no-op (never a network call) — the guard is preserved.
     if (!this.cp) return;
-    return controlPlane.setAgentIntegrationGrants(
-      this.cp,
-      agentSlugOrId,
-      toolkits,
-    );
+    // Delegate the WRITE to the SDK (migration wave 2a): its IntegrationsClient
+    // issues the identical `PUT /v1/agents/:id/integration-grants` with body
+    // `{toolkits}` over the SAME shared gateway fetch (bearer + `x-houston-org`)
+    // and does NOT read the response or refetch — byte-identical to the old
+    // `controlPlane.setAgentIntegrationGrants`. The READ (`agentIntegrationGrants`
+    // above) stays on cpFetch: its GET carries `transientRetryFetch`, which the
+    // SDK path lacks, so delegating it would drop that retry resilience.
+    await this.engineSdk.integrations.setGrants(agentSlugOrId, toolkits);
   }
 
   // ---- lifecycle no-ops the shell calls ----
