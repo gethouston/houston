@@ -28,7 +28,7 @@ import type {
   PortableScanResponse,
   PortableUploadPreviewResponse,
 } from "../../../../ui/engine-client/src/types";
-import { HoustonEngineError } from "./client";
+import { HoustonEngineError } from "./client/errors";
 import {
   type ControlPlaneConfig,
   createAgent,
