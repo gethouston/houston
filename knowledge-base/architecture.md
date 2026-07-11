@@ -177,10 +177,14 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   `ChatMessage` persists `pendingInteraction`, so a `needs_you` card survives
   reload.
 - **Settle → composer card → answer-as-new-turn.** A pending interaction REPLACES
-  the composer with `ChatInteractionCard` (`@houston-ai/chat`, inventory v7): a
-  one-step-at-a-time stepper ("1 of X" progress, back chevron, gray surface with
-  white option rows and an always-visible free-text escape hatch on question
-  steps). Connect steps render through the `renderConnect` prop (the app injects
+  the composer with `ChatInteractionCard` (`@houston-ai/chat`, inventory v17):
+  a one-step-at-a-time stepper in the reference "Coworker card" look — a white
+  card, bold left title, top-right "N of M" pager whose chevrons are Back/Forward
+  (hidden for a lone step) + dismiss X. Question steps show option rows with a
+  LEFT number badge (the digit is the keyboard shortcut), an optional
+  "Recommended" chip and a muted inline description, plus a free-text ESCAPE row
+  (pencil badge + inline Skip pill); Enter submits, there is no separate footer.
+  Connect steps render through the `renderConnect` prop (the app injects
   `IntegrationConnectCard`; already-connected toolkits auto-advance); signin
   steps through `renderSignin` (the app injects a card on the
   `use-integrations-gate` Google-SSO machinery; already-signed-in auto-advances).

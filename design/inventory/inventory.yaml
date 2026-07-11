@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 14
+version: 17
 
 components:
   - id: agent-avatar
@@ -230,48 +230,68 @@ components:
   - id: interaction-card
     title: Interaction card
     purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections), floating ABOVE the always-mounted composer.
-    anatomy: [stepper-header, progress-label, step-title, dismiss-action, option-row, keycap-hint, free-text-input, footer-nav, back-action, skip-action, next-action, signin-step, connect-step, step-app-row, step-cta, waiting-note]
-    states: [single-step, multi-step, with-options, single-option, free-text-only, signin-step, connect-step, connecting, connected, revisited, abandoned, disabled]
+    anatomy: [card-surface, stepper-header, step-title, pager, dismiss-action, option-row, number-badge, recommended-chip, option-description, selected-arrow, free-text-escape-row, pencil-badge, skip-pill, signin-step, connect-step, step-identity-lockup, app-logo, benefit-line, connected-check, step-cta, not-now-esc-hint, return-key-glyph, waiting-note]
+    states: [single-step, multi-step, with-options, single-option, with-description, recommended-option, free-text-only, signin-step, connect-step, connecting, connected, skipped, revisited, reconsider, abandoned, disabled]
     variants: [choice, open-ended, signin, connect, mixed-sequence]
     behavior: >-
       Rendered from the turn's pending interaction (steps[]: 1-3 question steps,
       then at most one signin step, then connect steps). Shows ONE step at a
-      time. Header: a quiet "Step N of M" progress micro-label (only when total
-      > 1) above the question rendered as the card's title, plus a dismiss X
-      top-right that abandons the WHOLE sequence; a single-step sequence shows
-      the bare title with no progress chrome. The card never replaces the
-      composer: the real composer stays mounted below it, and sending a fresh
-      message there abandons the sequence exactly like the X. Question step:
-      single-select option rows (role=radio), each a raised hairline-bordered
-      row whose 1-based position shows as a right-aligned keycap-style keyboard
-      hint (hidden when the step has only one option); pressing that number key
-      selects the row whenever focus is not in a text field; a free-text input
-      styled as the list's last row is the "something else" escape hatch (so
-      option lists never need an "Other" row). ALL step navigation lives in one
-      footer row, Back leftmost: Back and Skip are quiet ghost buttons (Back
-      revisits the previous already-reached step; Skip advances past the
-      current question without answering, omitted from the composed reply) and
-      Next is the single filled pill that commits the answer; a revisited
-      signin/connect step shows a bare filled Forward instead (its own card
-      cannot re-fire completion). Signin/connect steps draw NO surface of their
-      own (no card-inside-a-card): their reason is routed through the SAME
-      header slot as a question's title (a labelled "Connect {app}" / sign-in
-      fallback when the agent gave no reason), and the app supplies a hairline
-      Mercury row (app logo + name + one-line clamped description, the option-row
-      grammar) plus a single filled CTA ("Connect" / "Sign in") in the SAME
-      footer beside the shared Back node — the app owns the reactive body + CTA
-      while ui/chat (auth/Composio-unaware) owns the header, the surface, and the
-      Back/Forward nav nodes, composed via the exported InteractionFooter. While
-      an OAuth hand-off is in flight the CTA shows a connecting spinner and a
-      quiet muted line above the footer reminds the user their browser is
-      waiting; an already-connected app shows a calm check in the row and
-      self-reports to advance. Revisiting a question pre-selects its prior answer
-      (accent border + subtle tint); re-answering replaces it. A single
+      time on a white card with a hairline border and roomy padding (the
+      reference "Coworker card" look; a card-surface same colour as the page,
+      set apart by border + soft shadow — theme-aware tokens keep dark mode
+      sane). Header: a BOLD left title with, top-RIGHT on the same row, a compact
+      "N of M" pager whose chevrons ARE the Back/Forward navigation (hidden for a
+      single-step sequence) plus a dismiss X that abandons the WHOLE sequence.
+      The card never replaces the composer: the real composer stays mounted
+      below it, and sending a fresh message there abandons the sequence exactly
+      like the X. Question step: the title is the question; single-select option
+      rows (role=radio) each carry a LEFT circular number badge (the digit is
+      the keyboard shortcut — pressing it selects the row whenever focus is not
+      in a text field), a bold label, an optional soft "Recommended" chip (at
+      most one option), and the option's description muted INLINE after the label
+      (single line, truncated). The row surface is transparent until
+      hover/selected, when it fills a soft grey and reveals a trailing arrow;
+      clicking answers and advances. The list's last row is the free-text ESCAPE
+      row — a pencil badge in the same left slot, a muted placeholder ("None of
+      these..." when options are present, else a neutral answer prompt), and an
+      inline Skip pill; typing expands it and Enter submits, the pill skips the
+      question. There is NO separate footer: question actions live in the rows
+      and the pager. Skip/decline advances past ANY step kind without completing
+      it — a skipped question is omitted from the composed reply, while a skipped
+      signin/connect is a recorded fact the reply states ("Skipped connecting
+      {app}." / "Skipped signing in.") so the agent hears the decline instead of
+      re-requesting. Signin/connect steps draw NO surface of their own (no
+      card-inside-a-card): the app-supplied body is a COMPACT left-aligned
+      identity lockup — the real brand logo (size-6) inline with a bold title
+      (the agent's reason, else "Connect {app}?" / "Sign in to Houston"), one
+      muted benefit line beneath — and a right-aligned footer of a quiet "Not
+      now" + Esc hint beside the single filled CTA pill ("Connect" / "Sign in")
+      that carries a return-key glyph. Enter fires the CTA and Esc declines
+      (a capture-phase handler that pre-empts the global Escape-closes-the-panel
+      shortcut when it acts, and yields to the composer while a field has focus).
+      Navigation is the header pager for every kind, so the body carries no nav
+      button: ui/chat (auth/Composio-unaware) owns the surface, the pager and the
+      onSkip callback (StepFooterApi { revisited, onSkip }); the app owns the
+      reactive body + CTA, composed via the exported InteractionFooter. While an
+      OAuth hand-off is in flight the CTA shows a connecting spinner and a quiet
+      muted line reminds the user their browser is waiting; an already-connected
+      app swaps its benefit line for a calm check + "Connected" and self-reports
+      to advance (live frontier only). Revisiting an already-reached
+      signin/connect step (walked back via the pager) splits by its FINAL state:
+      a COMPLETED step shows the calm connected/signed-in state with NO footer
+      (the pager's forward chevron is the only way onward, since its card cannot
+      re-fire completion); a SKIPPED step is still actionable, so its CTA returns
+      — letting the user RECONSIDER and connect / sign in after all (the pager
+      forward "keeps it skipped"). Revisiting a question pre-selects its prior
+      answer (soft-grey fill); re-answering replaces it. A single
       question-with-options step keeps the one-tap feel (click = answer =
-      complete). After the last step, emits each answered question in step
-      order; the consumer encodes the structured interaction-answers message.
-      Disabled while another turn is active.
-    a11y: one step announced at a time, its question read as the card title; option rows are role=radio in a radiogroup, keyboard-selectable by the keycap-hinted position number and visible at rest (no hover gate); free-text input always present on question steps; Back/Skip/Next are labeled buttons in one predictable footer with Next the lone filled action; dismiss X labeled; the progress micro-label carries the full localized "Step N of M" copy as visible text.
+      complete). After the last step, emits each answered question in step order;
+      the consumer encodes the structured interaction-answers message, appending
+      the signed-in/connected status lines and the skipped-step facts derived
+      from each step's FINAL outcome — a step skipped then reconsidered reports
+      "Connected {app}." (never a stale "Skipped connecting {app}."), and no step
+      is named twice. Disabled while another turn is active.
+    a11y: one step announced at a time, its question read as the card title; option rows are role=radio in a radiogroup, keyboard-selectable by the left number badge's position digit and visible at rest (no hover gate); the free-text escape row (with an inline Skip pill) is always present on question steps; the pager's Back/Forward chevrons and the dismiss X are labeled icon buttons; signin/connect CTAs are labeled buttons with a quiet "Not now" + Esc hint, Enter/Esc mirroring the CTA/decline; the "N of M" pager copy is visible text.
     since: 4
 
   - id: plan-ready-card

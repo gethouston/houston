@@ -19,7 +19,7 @@ import {
   optionLabel,
   selectedOptionId,
   setDraft,
-  skipQuestion,
+  skipStep,
   toCompletedAnswers,
 } from "../src/interaction-card-logic.ts";
 
@@ -91,8 +91,8 @@ describe("isLastStep", () => {
 });
 
 describe("defaultProgress", () => {
-  it("formats 'Step <current> of <total>'", () => {
-    assert.equal(defaultProgress(1, 3), "Step 1 of 3");
+  it("formats '<current> of <total>'", () => {
+    assert.equal(defaultProgress(1, 3), "1 of 3");
   });
 });
 
@@ -192,11 +192,11 @@ describe("stepper flow: question, question, connect", () => {
   });
 });
 
-describe("skipQuestion", () => {
+describe("skipStep", () => {
   const steps = [Q1, Q2, CONNECT];
 
   it("skips a middle question and omits it from the completed answers", () => {
-    let s = skipQuestion(initialStepperState(), steps).state; // skip Q1 -> Q2
+    let s = skipStep(initialStepperState(), steps).state; // skip Q1 -> Q2
     assert.equal(s.current, 1);
     assert.equal(s.answers.q1, undefined);
     s = setDraft(s, "q2", "Running late");
@@ -210,22 +210,41 @@ describe("skipQuestion", () => {
   it("skipping the LAST question still completes with the prior answers", () => {
     const s = answerWithOption(initialStepperState(), [Q1, Q2], "o1").state;
     assert.equal(s.current, 1); // on Q2, the last step
-    const done = skipQuestion(s, [Q1, Q2]);
+    const done = skipStep(s, [Q1, Q2]);
     assert.deepEqual(done.completed, [
       { stepId: "q1", question: "Who is it for?", answer: "John" },
     ]);
   });
 
-  it("is a no-op on a non-question step", () => {
+  it("skips a connect step, advancing the frontier without an answer", () => {
+    const s = answerWithOption(
+      initialStepperState(),
+      [Q1, CONNECT, SIGNIN],
+      "o1",
+    ).state;
+    assert.equal(s.current, 1); // on the connect step
+    const t = skipStep(s, [Q1, CONNECT, SIGNIN]);
+    assert.equal(t.completed, undefined);
+    assert.equal(t.state.current, 2); // -> signin step
+    assert.equal(t.state.reached, 2); // frontier advanced (Back/Forward work)
+  });
+
+  it("skipping the LAST connect step completes with the prior answers", () => {
     const s = answerWithOption(
       initialStepperState(),
       [Q1, CONNECT],
       "o1",
     ).state;
-    assert.equal(s.current, 1); // on the connect step
-    const t = skipQuestion(s, [Q1, CONNECT]);
-    assert.equal(t.state, s);
-    assert.equal(t.completed, undefined);
+    assert.equal(s.current, 1); // on the connect step, the last step
+    const done = skipStep(s, [Q1, CONNECT]);
+    assert.deepEqual(done.completed, [
+      { stepId: "q1", question: "Who is it for?", answer: "John" },
+    ]);
+  });
+
+  it("skipping a lone signin step completes with no answers", () => {
+    const done = skipStep(initialStepperState(), [SIGNIN]);
+    assert.deepEqual(done.completed, []);
   });
 });
 
@@ -251,7 +270,7 @@ describe("stepper flow: question, signin, connect", () => {
 
   it("advances the progress counter across the signin step", () => {
     // "N of X" is derived from current+1 / total; signin counts like any step.
-    assert.equal(defaultProgress(2, steps.length), "Step 2 of 3");
+    assert.equal(defaultProgress(2, steps.length), "2 of 3");
   });
 });
 
@@ -346,6 +365,63 @@ describe("forward navigation past a completed step", () => {
     s = answerWithText(s, steps).state; // on connect A, the furthest reached
     assert.equal(canGoForward(s), false);
     assert.equal(goForward(s).current, s.current);
+  });
+});
+
+describe("reconsider a skipped step", () => {
+  const CONNECT_B: ChatInteractionStep = {
+    kind: "connect",
+    id: "c2",
+    toolkit: "slack",
+  };
+  // [question, connect A, connect B]. Skipping a NON-terminal connect advances
+  // the frontier; walking Back onto it must leave it revisitable AND still
+  // advanceable — the state machine cannot strand a skipped step, so the user
+  // can reconsider and connect after all (the "was skipped" vs "now connected"
+  // distinction is app-level accounting; the machine just moves the cursor).
+  const steps = [Q2, CONNECT, CONNECT_B];
+
+  it("skip a connect then Back leaves it revisitable and re-connectable", () => {
+    let s = setDraft(initialStepperState(), "q2", "Running late");
+    s = answerWithText(s, steps).state; // -> connect A (index 1, frontier)
+    s = skipStep(s, steps).state; // skip A -> connect B (index 2), reached 2
+    assert.equal(s.current, 2);
+    assert.equal(s.reached, 2);
+
+    s = goBack(s); // Back onto the skipped connect A (index 1)
+    assert.equal(s.current, 1);
+    // Still revisitable: Forward ("keep it skipped") is available...
+    assert.equal(canGoForward(s), true);
+    // ...and the step is NOT stranded — a reconsider-connect advances it.
+    s = advanceConnect(s, steps).state; // reconsider: connect A -> connect B
+    assert.equal(s.current, 2);
+
+    const done = advanceConnect(s, steps); // connect B -> complete
+    assert.deepEqual(done.completed, [
+      { stepId: "q2", question: "What should it say?", answer: "Running late" },
+    ]);
+  });
+
+  it("skip a connect, Back, then skip again stays idempotent (still index-stable)", () => {
+    let s = setDraft(initialStepperState(), "q2", "hi");
+    s = answerWithText(s, steps).state; // -> connect A (index 1)
+    s = skipStep(s, steps).state; // -> connect B (index 2)
+    s = goBack(s); // Back onto A (index 1)
+    s = goForward(s); // "keep it skipped": Forward back to B (index 2)
+    assert.equal(s.current, 2);
+    assert.equal(s.reached, 2);
+  });
+
+  it("skip a signin then Back leaves it revisitable and re-signinable", () => {
+    // [signin, connect]: skip the signin, Back onto it, and it can still sign in.
+    const flow = [SIGNIN, CONNECT];
+    let s = skipStep(initialStepperState(), flow).state; // skip signin -> connect
+    assert.equal(s.current, 1);
+    s = goBack(s); // Back onto the skipped signin (index 0)
+    assert.equal(s.current, 0);
+    assert.equal(canGoForward(s), true);
+    s = advanceSignin(s, flow).state; // reconsider: sign in -> connect
+    assert.equal(s.current, 1);
   });
 });
 

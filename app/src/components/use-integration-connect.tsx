@@ -1,5 +1,5 @@
 import { prettifyToolkit } from "@houston-ai/chat";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useIntegrationConnections,
@@ -27,9 +27,18 @@ import {
  * The reactive connect logic behind BOTH in-chat connect surfaces — the inline
  * markdown-link {@link IntegrationConnectCard} (a passive badge in assistant
  * prose) and the stepper's connect step ({@link ChatConnectInteractionCard},
- * a Mercury row with a footer CTA). Extracted so the two render shapes never
+ * an identity row with a footer CTA). Extracted so the two render shapes never
  * duplicate the status subscription, the OAuth hand-off, or the already-
  * connected self-report; only their presentation differs.
+ *
+ * The returned `app` is display-ready: its `name` is always a human label (the
+ * catalog name, or a prettified slug on a catalog miss — never the raw
+ * "googlesheets" string), and its `logoUrl` stays EMPTY until the toolkits
+ * catalog has settled. Both surfaces render it through the shared `AppLogo`
+ * (the Integrations tab's component), whose letter fallback covers the interim.
+ * Racing an `<img>` against the still-loading catalog is exactly what ate the
+ * production logos: the favicon-guess fallback 404'd first and its error state
+ * shadowed the real Composio logo that resolved moments later.
  *
  * The card owns its own connection status (it subscribes to the shared
  * integration queries directly) so it stays reactive inside Streamdown's
@@ -64,7 +73,6 @@ export function useIntegrationConnect({
   autoContinueWhenConnected?: boolean;
 }): {
   app: AppDisplay;
-  displayName: string;
   isConnected: boolean;
   connecting: boolean;
   view: ConnectCardView;
@@ -81,10 +89,17 @@ export function useIntegrationConnect({
 
   const slug = normalizeToolkitSlug(toolkit);
   const isConnected = isToolkitConnected(connections.data, toolkit);
-  const app = appDisplay(slug, findCatalogToolkit(catalog.data, toolkit));
-  // Catalog miss (app.name fell back to the slug): show a best-effort human
-  // label from the slug itself, never the raw "googlesheets" string.
-  const displayName = app.name === slug ? prettifyToolkit(toolkit) : app.name;
+  const resolved = appDisplay(slug, findCatalogToolkit(catalog.data, toolkit));
+  const app: AppDisplay = {
+    ...resolved,
+    // Catalog miss (name fell back to the slug): show a best-effort human
+    // label from the slug itself, never the raw "googlesheets" string.
+    name: resolved.name === slug ? prettifyToolkit(toolkit) : resolved.name,
+    // Hold the logo until the catalog settles: the favicon-guess fallback is
+    // only for a REAL catalog miss, never an interim src while the real
+    // logoUrl is still in flight (AppLogo shows the letter meanwhile).
+    logoUrl: catalog.isFetched ? resolved.logoUrl : "",
+  };
 
   const { state: connectState, connect } = useConnectFlow({
     agentId,
@@ -100,9 +115,9 @@ export function useIntegrationConnect({
     if (outcome !== "active" || followupFired.current) return;
     followupFired.current = true;
     analytics.track("integration_connected", { integration_slug: slug });
-    onConnected?.(slug, displayName);
+    onConnected?.(slug, app.name);
     addToast({
-      title: t("composio.verifiedToast", { name: displayName }),
+      title: t("composio.verifiedToast", { name: app.name }),
       variant: "success",
     });
   };
@@ -113,6 +128,7 @@ export function useIntegrationConnect({
   // still get sent. Shares `followupFired` with `startConnect` so a surface can
   // speak at most once. No analytics/toast here: the user connected earlier,
   // this only unblocks the flow.
+  const appName = app.name;
   useEffect(() => {
     if (
       !shouldAutoContinueConnected({
@@ -124,54 +140,21 @@ export function useIntegrationConnect({
     )
       return;
     followupFired.current = true;
-    onConnected?.(slug, displayName);
+    onConnected?.(slug, appName);
   }, [
     autoContinueWhenConnected,
     isConnected,
     catalog.isFetched,
     slug,
-    displayName,
+    appName,
     onConnected,
   ]);
 
   return {
     app,
-    displayName,
     isConnected,
     connecting: connectState !== null,
     view: deriveConnectCardView(isConnected, connectState !== null),
     startConnect,
   };
-}
-
-/**
- * App logo with an initial-letter fallback, span-based (NOT the block `Logo`
- * from the Integrations tab) so it nests validly both inside the inline RowCard
- * embedded in chat prose AND the stepper's Mercury row.
- */
-export function ConnectAppLogo({
-  name,
-  logoUrl,
-}: {
-  name: string;
-  logoUrl: string;
-}) {
-  const [imgError, setImgError] = useState(false);
-  if (imgError) {
-    return (
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent">
-        <span className="font-semibold text-muted-foreground text-xs">
-          {name.charAt(0).toUpperCase()}
-        </span>
-      </span>
-    );
-  }
-  return (
-    <img
-      alt={name}
-      className="size-8 shrink-0 rounded-lg object-contain"
-      onError={() => setImgError(true)}
-      src={logoUrl}
-    />
-  );
 }

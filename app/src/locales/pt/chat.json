@@ -42,22 +42,26 @@
   },
   "questionCard": {
     "placeholder": "Digite outra coisa...",
-    "send": "Avançar",
+    "escapePlaceholder": "Nenhuma delas. Diga ao agente o que fazer.",
     "back": "Voltar",
     "forward": "Avançar",
     "skip": "Pular",
     "dismiss": "Descartar",
-    "progress": "Etapa {{current}} de {{total}}"
+    "progress": "{{current}} de {{total}}"
   },
   "interaction": {
     "connectedLine": "Conectou {{name}}.",
     "signedInLine": "Sessão iniciada no Houston.",
     "signedInFollowup": "Já entrei. Pode continuar.",
-    "signinReason": "Entre no Houston para continuar.",
+    "skippedConnectLine": "Pulou a conexão com {{name}}.",
+    "skippedSigninLine": "Pulou o login.",
     "signinTitle": "Entre no Houston",
     "signinDescription": "Suas contas continuam sendo suas; o agente age em seu nome.",
     "signin": "Entrar",
-    "connectTitle": "Conectar {{app}}"
+    "connectTitle": "Conectar {{app}}?",
+    "recommended": "Recomendado",
+    "notNow": "Agora não",
+    "esc": "Esc"
   },
   "planReady": {
     "title": "Plano pronto",

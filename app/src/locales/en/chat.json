@@ -42,22 +42,26 @@
   },
   "questionCard": {
     "placeholder": "Type something else...",
-    "send": "Next",
+    "escapePlaceholder": "None of these. Tell the agent what to do instead.",
     "back": "Back",
-    "forward": "Next",
+    "forward": "Forward",
     "skip": "Skip",
     "dismiss": "Dismiss",
-    "progress": "Step {{current}} of {{total}}"
+    "progress": "{{current}} of {{total}}"
   },
   "interaction": {
     "connectedLine": "Connected {{name}}.",
     "signedInLine": "Signed in to Houston.",
     "signedInFollowup": "I've signed in. Please continue.",
-    "signinReason": "Sign in to Houston to continue.",
+    "skippedConnectLine": "Skipped connecting {{name}}.",
+    "skippedSigninLine": "Skipped signing in.",
     "signinTitle": "Sign in to Houston",
     "signinDescription": "Your accounts stay yours; the agent acts on your behalf.",
     "signin": "Sign in",
-    "connectTitle": "Connect {{app}}"
+    "connectTitle": "Connect {{app}}?",
+    "recommended": "Recommended",
+    "notNow": "Not now",
+    "esc": "Esc"
   },
   "planReady": {
     "title": "Plan ready",

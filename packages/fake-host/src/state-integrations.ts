@@ -25,7 +25,22 @@ import { emitDomain, type IntegrationsMode, state } from "./state-store";
  * browse section's preview cap (8), so the "+N more" overflow line is
  * exercisable end to end (integrations-locked.spec.ts). Real app names so the
  * rows read like production, never machine slugs.
+ *
+ * Logo values deliberately cover the whole `AppLogo` resolution chain:
+ * - gmail / slack / github carry tiny inline data-URI PNGs that ALWAYS load —
+ *   the REAL-logo path (production serves Composio's `meta.logo` here), so
+ *   specs and screenshots exercise a rendered brand image, not just fallbacks;
+ * - calendly has NO `logoUrl` (the wire field is optional) — the catalog-miss
+ *   fallback chain (favicon guess, then the initial letter);
+ * - the rest keep unresolvable `logos.test` URLs — the img-error letter path.
  */
+const LOGO_GMAIL =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAG0lEQVR42mN45WxKEmIYhhr+Y4BRDcMzpgkiAFP1m9z5/ek5AAAAAElFTkSuQmCC";
+const LOGO_SLACK =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAHUlEQVR42mPwEvUmCTEMQw1vNumhoVENwzOmCSIA8grSyQSoPi4AAAAASUVORK5CYII=";
+const LOGO_GITHUB =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAG0lEQVR42mNQ0dQnCTEMQw3/McCohuEZ0wQRAPPl1iUMOIVxAAAAAElFTkSuQmCC";
+
 export const SEED_TOOLKITS: IntegrationToolkit[] = [
   {
     slug: "airtable",
@@ -45,7 +60,6 @@ export const SEED_TOOLKITS: IntegrationToolkit[] = [
     slug: "calendly",
     name: "Calendly",
     description: "Scheduling and bookings",
-    logoUrl: "https://logos.test/calendly.png",
     categories: ["productivity"],
   },
   {
@@ -66,14 +80,14 @@ export const SEED_TOOLKITS: IntegrationToolkit[] = [
     slug: "github",
     name: "GitHub",
     description: "Issues, PRs, and repos",
-    logoUrl: "https://logos.test/github.png",
+    logoUrl: LOGO_GITHUB,
     categories: ["developer-tools"],
   },
   {
     slug: "gmail",
     name: "Gmail",
     description: "Send and read email",
-    logoUrl: "https://logos.test/gmail.png",
+    logoUrl: LOGO_GMAIL,
     categories: ["productivity"],
   },
   {
@@ -115,7 +129,7 @@ export const SEED_TOOLKITS: IntegrationToolkit[] = [
     slug: "slack",
     name: "Slack",
     description: "Team messaging",
-    logoUrl: "https://logos.test/slack.png",
+    logoUrl: LOGO_SLACK,
     categories: ["communication"],
   },
   {

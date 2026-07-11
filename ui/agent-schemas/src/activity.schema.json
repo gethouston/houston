@@ -71,7 +71,9 @@
                     "required": ["id", "label"],
                     "properties": {
                       "id": { "type": "string" },
-                      "label": { "type": "string" }
+                      "label": { "type": "string" },
+                      "description": { "type": "string" },
+                      "recommended": { "type": "boolean" }
                     }
                   }
                 },

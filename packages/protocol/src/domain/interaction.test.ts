@@ -99,6 +99,55 @@ test("isPendingInteraction accepts the step-sequence shape and rejects legacy sh
   );
 });
 
+test("question options tolerate the optional description/recommended fields", () => {
+  // Options carrying the new optional fields still pass the guard.
+  expect(
+    isPendingInteraction({
+      steps: [
+        {
+          kind: "question",
+          id: "q1",
+          question: "Which plan?",
+          options: [
+            {
+              id: "pro",
+              label: "Pro",
+              description: "Unlocks everything.",
+              recommended: true,
+            },
+            { id: "free", label: "Free" },
+          ],
+        },
+      ],
+    }),
+  ).toBe(true);
+
+  // Plain {id,label} options (no new fields) still pass unchanged.
+  expect(
+    isPendingInteraction({
+      steps: [
+        {
+          kind: "question",
+          id: "q1",
+          question: "Which plan?",
+          options: [
+            { id: "pro", label: "Pro" },
+            { id: "free", label: "Free" },
+          ],
+        },
+      ],
+    }),
+  ).toBe(true);
+
+  // The guard does not REQUIRE the new fields: a question step with no
+  // options at all remains valid.
+  expect(
+    isPendingInteraction({
+      steps: [{ kind: "question", id: "q1", question: "Open question?" }],
+    }),
+  ).toBe(true);
+});
+
 test("the protocol index re-exports PendingInteraction", () => {
   const pending: PendingInteraction = {
     steps: [

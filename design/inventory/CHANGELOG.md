@@ -3,6 +3,95 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v17 - 2026-07-11
+
+`interaction-card`: the whole family adopts the reference "Coworker card" look
+and feel (compact, left-aligned, white-card-on-page).
+
+Chrome: the grey `bg-secondary` surface (with raised white chips) becomes a
+white `bg-background` card set apart by a hairline border + soft shadow; radius
+tightens to `rounded-2xl`. The header drops the "Step N of M" eyebrow: the title
+goes bold and left, and a compact "N of M" pager sits top-right whose chevrons
+ARE the Back/Forward navigation (replacing the footer nav), beside the dismiss X.
+
+Question step: the right-edge keycaps move to a LEFT circular number badge (the
+digit still the keyboard shortcut); options gain a soft "Recommended" chip and a
+muted INLINE description (new additive protocol fields `InteractionOption.
+description` / `recommended`, tolerant/additive). The free-text row becomes the
+escape row — a pencil badge + muted placeholder + inline Skip pill — and the
+separate footer (Back / Skip / Next) is gone: actions live in the rows and the
+pager, Enter submits the free text.
+
+Signin/connect step: REVERSES the v16 centered identity hero. The body is now a
+COMPACT left-aligned lockup — brand logo (size-6) inline with a bold title (the
+reason, else "Connect {app}?" / "Sign in to Houston"), one muted benefit line —
+with a footer of a quiet "Not now" + Esc hint beside a filled CTA carrying a
+return-key glyph. Enter fires the CTA, Esc declines (capture-phase, pre-empts the
+global Escape-closes-panel shortcut). Navigation is the header pager for every
+kind, so `StepFooterApi` simplifies to `{ revisited, onSkip }` (Back node +
+onForward removed); a revisited completed step shows the connected state with no
+footer (pager forward is onward), a revisited skipped step keeps its CTA
+(reconsider survives). Anatomy swaps `progress-label`/`keycap-hint`/`footer-nav`/
+`step-identity-hero` for `pager`/`number-badge`/`recommended-chip`/
+`option-description`/`free-text-escape-row`/`step-identity-lockup`/
+`not-now-esc-hint`; tokens only.
+
+## v16 - 2026-07-10
+
+`interaction-card` signin & connect steps: the step body becomes a CENTERED
+identity hero, and a skipped step is reconsiderable.
+
+Design: the app-supplied body was a flat left row (bare logo leading name +
+description). It is now a composed vertical lockup — the brand logo sits BARE
+and large ON TOP (size-14, up from the size-10 leading slot; new `xl` AppLogo
+size), the app name centered beneath it, one muted one-line description centered
+under that. The sign-in step gives the Houston helmet the same centered slot.
+The connected state integrates into the lockup: the description swaps for a calm
+check + "Connected" line under the name. The family chrome is unchanged — the
+eyebrow + reason-title header stays left, the Back/Skip/CTA footer stays the
+shared right-aligned row — so the centered hero reads as the step BODY between
+them. New anatomy `step-identity-hero` / `connected-check` (replacing
+`step-app-row`); tokens only.
+
+Bug fix (reconsider a skipped step): a revisited signin/connect step used to
+show only Forward, which is right for a COMPLETED step (its card can't re-fire
+completion) but stranded a SKIPPED one — no way to change your mind and connect.
+Now a revisited step splits by its FINAL state: completed → bare filled Forward
+(the only way on); skipped → the full actionable state returns, a ghost Forward
+("keep it skipped") beside a fresh filled Connect / Sign in, never two filled
+pills. Connecting / signing in there COMMITS (the earlier skip is undone), and
+the completion reply derives from each step's FINAL outcome — a step skipped
+then reconsidered reports "Connected {app}." (never a stale "Skipped connecting
+{app}."), and no step is named twice. New state `reconsider`; ui/chat's
+`StepFooterApi` replaces the pre-styled `forward` node with an `onForward`
+callback (the body owns the forward button so it can pick filled vs ghost from
+the connection/auth state only it knows). Auto-continue stays gated to the live
+frontier, so the revisit-bounce fix does not regress.
+
+## v15 - 2026-07-10
+
+`interaction-card` signin & connect steps: the icon integrates into the card and
+every step becomes skippable. The step's app row dropped its hairline border and
+its boxed thumbnail — the brand logo now sits BARE on the card surface (size-10,
+rounded; its own art carries the brand), leading the identity stack (name +
+one-line description), so the step reads as a purpose-built connect card rather
+than a chip inside a card; the sign-in step gives the bare Houston helmet the
+same size-10 slot. The calm connected check keeps its trailing position beside
+the identity stack. Skip generalizes from questions to ALL step kinds: a
+signin/connect step renders a ghost Skip between Back and its filled CTA (live
+frontier only — a revisited completed step still shows Forward), and a skipped
+signin/connect is a recorded FACT in the completed reply ("Skipped connecting
+{app}." / "Skipped signing in.", visible in the structured answers bubble when
+the sequence had questions, hidden auto-continue otherwise) so the agent hears
+the decline instead of re-requesting forever. New state `skipped`; ui/chat's
+`StepFooterApi` gains `onSkip` (the generalized `skipStep` transition replaces
+`skipQuestion`).
+
+Also fixes the production connect-step logo regression: the shared `AppLogo`
+now keys its failure latch to the failing URL (the pre-catalog favicon guess
+404'd and permanently shadowed the real Composio logo) and the in-chat connect
+surfaces hold the favicon-guess fallback until the toolkits catalog settles.
+
 ## v14 - 2026-07-10
 
 `interaction-card` brings the signin & connect steps into the Mercury system —

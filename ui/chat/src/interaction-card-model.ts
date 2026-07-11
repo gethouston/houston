@@ -5,6 +5,12 @@
 export interface ChatInteractionOption {
   id: string;
   label: string;
+  /** One short line of consequence/benefit, shown muted INLINE after the label
+   *  (single line, truncated). Optional: older steps without it render as before. */
+  description?: string;
+  /** Marks this as the suggested default (at most one per question), shown as a
+   *  soft "Recommended" chip beside the label. Optional and additive. */
+  recommended?: boolean;
 }
 
 export type ChatInteractionStep =
