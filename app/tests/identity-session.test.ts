@@ -14,6 +14,7 @@ const session: Session = {
   email: "user@example.com",
   emailVerified: true,
   displayName: "Ada Lovelace",
+  photoUrl: "https://example.com/avatar.png",
   provider: "google.com",
   expiresAt: 1_800_000_000_000,
 };
@@ -35,6 +36,28 @@ describe("identity/session (de)serialization", () => {
   it("accepts a null displayName", () => {
     const anon: Session = { ...session, displayName: null };
     deepStrictEqual(deserializeSession(serializeSession(anon)), anon);
+  });
+
+  it("round-trips photoUrl (a URL and a null)", () => {
+    deepStrictEqual(deserializeSession(serializeSession(session)), session);
+    const noPhoto: Session = { ...session, photoUrl: null };
+    deepStrictEqual(deserializeSession(serializeSession(noPhoto)), noPhoto);
+  });
+
+  it("survives a valid blob carrying a photoUrl string", () => {
+    const raw = JSON.stringify({
+      ...session,
+      photoUrl: "https://cdn.example.com/pic.jpg",
+    });
+    const back = deserializeSession(raw);
+    strictEqual(back?.photoUrl, "https://cdn.example.com/pic.jpg");
+  });
+
+  it("discards a blob whose photoUrl is the wrong type", () => {
+    strictEqual(
+      deserializeSession(JSON.stringify({ ...session, photoUrl: 123 })),
+      null,
+    );
   });
 
   it("returns null for absent input (never throws)", () => {

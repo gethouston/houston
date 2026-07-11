@@ -20,6 +20,7 @@ describe("identity/id-token decodeIdTokenClaims", () => {
       email: "otp@example.com",
       email_verified: true,
       name: "OTP User",
+      picture: "https://example.com/otp-user.png",
       firebase: { sign_in_provider: "custom" },
       exp: 1_800_000_000,
     });
@@ -27,6 +28,7 @@ describe("identity/id-token decodeIdTokenClaims", () => {
     strictEqual(claims?.sub, "uid-42");
     strictEqual(claims?.email, "otp@example.com");
     strictEqual(claims?.email_verified, true);
+    strictEqual(claims?.picture, "https://example.com/otp-user.png");
     strictEqual(claims?.firebase?.sign_in_provider, "custom");
   });
 

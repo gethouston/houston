@@ -5,40 +5,37 @@
 // (firebase-js-sdk). Wave 2 wires these into auth.ts / cloud-login / admin.
 // See MIGRATION-DESIGN (knowledge-base/auth-migration.md) for the full plan.
 
-export {
-  type IdentityConfig,
-  identityConfig,
-  identityConfigured,
-  isIdentityConfigured,
-  resolveIdentityConfig,
-} from "./config.ts";
+// This barrel exposes only what app-level consumers import THROUGH it. The
+// identity leaf modules (pkce, oauth-callback, firebase-rest, desktop-signin,
+// log, …) are reached by their sibling modules and by tests via direct
+// `.ts`-subpath imports, so they are intentionally NOT re-exported here — a
+// slim barrel keeps the public surface honest.
+
+export { identityConfig, isIdentityConfigured } from "./config.ts";
 export {
   IdentityError,
   type IdentityErrorCode,
   isIdentityError,
-  mapGcipCode,
 } from "./errors.ts";
+// `signInWithPassword` + `PasswordSignInResult` are reserved for the Wave 2c
+// admin dashboard (design §2c); kept exported ahead of that consumer landing.
 export {
-  type IdpProviderId,
-  type IdpSignInResult,
   type PasswordSignInResult,
-  refreshIdToken,
-  signInWithCustomToken,
-  signInWithIdp,
   signInWithPassword,
-  type TokenSignInResult,
 } from "./firebase-rest.ts";
-export { decodeIdTokenClaims, type IdTokenClaims } from "./id-token.ts";
+export { decodeIdTokenClaims } from "./id-token.ts";
+export { startEmailOtp, verifyEmailOtp } from "./otp.ts";
 export {
-  type IdentityLogLevel,
-  type IdentityLogSink,
-  setIdentityLogSink,
-} from "./log.ts";
-export { startEmailOtp, type VerifyOtpResult, verifyEmailOtp } from "./otp.ts";
+  refreshNow,
+  setSessionSink,
+  startProactiveRefresh,
+  stopProactiveRefresh,
+} from "./refresh.ts";
+export type { AuthProvider, Session } from "./session.ts";
 export {
-  type AuthProvider,
-  deserializeSession,
-  type Session,
-  serializeSession,
-  sessionExpiresWithin,
-} from "./session.ts";
+  clearSession,
+  loadSession,
+  SESSION_QUERY_KEY,
+  saveSession,
+  subscribeSession,
+} from "./session-store.ts";

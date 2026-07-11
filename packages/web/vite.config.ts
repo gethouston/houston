@@ -35,6 +35,16 @@ export default defineConfig(({ mode }) => {
           find: "@houston-ai/engine-client",
           replacement: path.resolve(__dirname, "src/engine-adapter/index.ts"),
         },
+        // The web-only Firebase Auth surface — the real firebase-js-sdk module.
+        // app/vite.config.ts maps this specifier to a stub so firebase never
+        // ships to desktop.
+        {
+          find: "@houston/web-identity",
+          replacement: path.resolve(
+            __dirname,
+            "src/identity/firebase-popup.ts",
+          ),
+        },
         { find: "@tauri-apps/api/core", replacement: shim("tauri-core.ts") },
         { find: "@tauri-apps/api/event", replacement: shim("tauri-event.ts") },
         {
@@ -66,13 +76,10 @@ export default defineConfig(({ mode }) => {
       __POSTHOG_HOST__: JSON.stringify(
         env.POSTHOG_HOST ?? "https://us.i.posthog.com",
       ),
-      __SUPABASE_URL__: JSON.stringify(env.SUPABASE_URL ?? ""),
-      __SUPABASE_ANON_KEY__: JSON.stringify(env.SUPABASE_ANON_KEY ?? ""),
       // GCP Identity Platform (Firebase Auth), project `gethouston` — mirror of
-      // app/vite.config.ts. Public values (apiKey is not a secret). Supabase
-      // defines above stay until Wave 2 deletes supabase.ts. The web build uses
-      // firebase-js-sdk (popup); the desktop client id below is a no-op here but
-      // kept for define parity so app/src references it in both bundles.
+      // app/vite.config.ts. Public values (apiKey is not a secret). The web build
+      // uses firebase-js-sdk (popup); the desktop client id below is a no-op here
+      // but kept for define parity so app/src references it in both bundles.
       __FIREBASE_API_KEY__: JSON.stringify(env.FIREBASE_API_KEY ?? ""),
       __FIREBASE_AUTH_DOMAIN__: JSON.stringify(
         env.FIREBASE_AUTH_DOMAIN ?? "gethouston.firebaseapp.com",
@@ -82,6 +89,15 @@ export default defineConfig(({ mode }) => {
       ),
       __GOOGLE_DESKTOP_CLIENT_ID__: JSON.stringify(
         env.GOOGLE_DESKTOP_CLIENT_ID ?? "",
+      ),
+      // Mirror of app/vite.config.ts for define parity — desktop-only sign-in
+      // never runs in the web bundle, but app/src references these globals in
+      // both builds. Web CI does not set these envs, so both bake to "".
+      __GOOGLE_DESKTOP_CLIENT_SECRET__: JSON.stringify(
+        env.GOOGLE_DESKTOP_CLIENT_SECRET ?? "",
+      ),
+      __MICROSOFT_DESKTOP_CLIENT_ID__: JSON.stringify(
+        env.MICROSOFT_DESKTOP_CLIENT_ID ?? "",
       ),
       __HOUSTON_AUTH_STORAGE_MODE__: JSON.stringify("browser"),
       __HOUSTON_AUTH_STORAGE_SCOPE__: JSON.stringify("web"),

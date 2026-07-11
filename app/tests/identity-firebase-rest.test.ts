@@ -54,6 +54,7 @@ const IDP_OK = {
   email: "a@b.com",
   emailVerified: true,
   displayName: "Grace",
+  photoUrl: "https://example.com/grace.png",
   providerId: "google.com",
 };
 
@@ -70,8 +71,20 @@ describe("firebase-rest signInWithIdp", () => {
     strictEqual(r.email, "a@b.com");
     strictEqual(r.emailVerified, true);
     strictEqual(r.displayName, "Grace");
+    strictEqual(r.photoUrl, "https://example.com/grace.png");
     strictEqual(r.expiresAt >= before + 3600 * 1000, true);
     strictEqual(r.expiresAt <= Date.now() + 3600 * 1000, true);
+  });
+
+  it("parses photoUrl as null when the GCIP response omits it", async () => {
+    const { photoUrl: _omit, ...withoutPhoto } = IDP_OK;
+    stubFetch(200, withoutPhoto);
+    const r = await signInWithIdp({
+      apiKey: "k",
+      providerId: "google.com",
+      idToken: "google-id-token",
+    });
+    strictEqual(r.photoUrl, null);
   });
 
   it("builds a postBody with the credential and provider id", async () => {

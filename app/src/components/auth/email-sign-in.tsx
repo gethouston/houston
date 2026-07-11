@@ -1,9 +1,10 @@
 import { Button, Input } from "@houston-ai/core";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { sendEmailOtp, verifyEmailOtp } from "../../lib/auth";
 import { logger } from "../../lib/logger";
-import { prettifyAuthError } from "./auth-errors";
+import { authErrorKey } from "./auth-errors";
 
 type Step = "email" | "code";
 
@@ -17,6 +18,7 @@ type Step = "email" | "code";
  * email path sits neatly under the OAuth buttons in the sign-in panel.
  */
 export function EmailSignIn() {
+  const { t } = useTranslation("errors");
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -33,9 +35,7 @@ export function EmailSignIn() {
       setStep("code");
     } catch (err) {
       logger.error(`[auth] email otp send failed: ${err}`);
-      setError(
-        prettifyAuthError(err instanceof Error ? err.message : String(err)),
-      );
+      setError(t(authErrorKey(err)));
     } finally {
       setPending(false);
     }
@@ -51,9 +51,7 @@ export function EmailSignIn() {
       // Success: the session write flips the auth gate and unmounts us.
     } catch (err) {
       logger.error(`[auth] email otp verify failed: ${err}`);
-      setError(
-        prettifyAuthError(err instanceof Error ? err.message : String(err)),
-      );
+      setError(t(authErrorKey(err)));
     } finally {
       setPending(false);
     }

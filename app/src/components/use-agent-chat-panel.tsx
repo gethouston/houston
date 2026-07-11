@@ -248,7 +248,7 @@ export function useAgentChatPanel({
   // Multiplayer attribution (C5): the signed-in viewer's id lets ChatPanel tell
   // the viewer's own bubbles from teammates'. Undefined signed out / local.
   const { data: session } = useSession();
-  const currentUserId = session?.user.id;
+  const currentUserId = session?.uid;
   const authorLabels = undefined;
 
   // ── Dictation (desktop-only voice typing) ──────────────────────────────

@@ -10,7 +10,7 @@ interface ChatSigninInteractionCardProps {
   /** The reason the agent gave for needing sign-in, routed into the card's bold
    *  title. When absent, the title falls back to "Sign in to Houston". */
   reason?: string;
-  /** Fired once the gate resolves `ready` (the Supabase session landed) so the
+  /** Fired once the gate resolves `ready` (the Houston session landed) so the
    *  interaction sequence advances past this step. */
   onSignedIn: () => void;
   /** Fired when the user declines this sign-in step ("Not now", live frontier

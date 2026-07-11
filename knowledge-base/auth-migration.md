@@ -98,7 +98,7 @@ User clicks "Continue with Google" (SignInScreen, unchanged UI)
 
 **Refresh strategy:** a `identity/refresh.ts` timer refreshes ~5 min before `expiresAt` (replaces `autoRefreshToken`); it also backs `window.__HOUSTON_SESSION_REFRESH__` for the gateway 401 seam — **no engine-adapter change**. Firebase refresh tokens are long-lived and **not rotated** (simpler than Supabase; single-flight still kept, `session-refresh.ts` unchanged).
 
-**Deep-link/loopback specifics:** `oauth_loopback.rs` is reused as-is (it already captures `?code=` and emits `auth://deep-link`); only the JS side changes what it does with the code (Google exchange, not Supabase). `houston://auth-callback` stays the loopback-bind-failure fallback. Loopback ports `8975-8978` must be added as **Authorized redirect URIs on the Desktop OAuth client** (§3), not Supabase.
+**Deep-link/loopback specifics:** `oauth_loopback.rs` is reused as-is (it already captures `?code=` and emits `auth://deep-link`); only the JS side changes what it does with the code (Google exchange, not Supabase). **As-built: the `houston://auth-callback` direct-OAuth fallback is RETIRED** (see As-built note (h)) — a loopback bind failure surfaces a typed error, not a custom-scheme redirect Google/MS would reject. Loopback ports `8975-8978` must be added as **Authorized redirect URIs on the Desktop OAuth client** (§3), not Supabase.
 
 **Errors (no silent failures):** every REST call throws typed on non-2xx; caught in `completeAuthCallback` → `emitAuthError` → `SignInScreen` toast (`auth.ts:146`, `sign-in-screen.tsx:49`). Keychain failures rethrow exactly as today (`supabase.ts:65`). User-facing strings via `t()`.
 
@@ -165,9 +165,9 @@ Replace everywhere `SUPABASE_URL`/`SUPABASE_ANON_KEY` appear:
 | Old | New | Files |
 |---|---|---|
 | `__SUPABASE_URL__`, `__SUPABASE_ANON_KEY__` | `__FIREBASE_API_KEY__`, `__FIREBASE_AUTH_DOMAIN__`, `__FIREBASE_PROJECT_ID__` | `app/vite.config.ts:63`, `packages/web/vite.config.ts:69`, both `vite-env.d.ts` |
-| — (desktop only) | `__GOOGLE_DESKTOP_CLIENT_ID__` (baked), `GOOGLE_DESKTOP_CLIENT_SECRET` (Rust `option_env!`/env, non-confidential installed-app secret) | new |
+| — (desktop only) | `__GOOGLE_DESKTOP_CLIENT_ID__` (baked), `__GOOGLE_DESKTOP_CLIENT_SECRET__` (baked JS define, non-confidential installed-app secret — as-built: the code→id_token exchange runs in TS, not Rust env; see As-built note (a)) | new |
 | `VITE_CP_SUPABASE_URL/ANON_KEY` | `VITE_CP_FIREBASE_*` (or reuse the same project config) | `admin/dashboard.tsx:21`, `packages/web/Dockerfile` |
-| release env `SUPABASE_URL/ANON_KEY` | `FIREBASE_*` + `GOOGLE_DESKTOP_CLIENT_*` | `release.yml:607-608, 1220-1221, 1477-1478`; add alongside |
+| release env `SUPABASE_URL/ANON_KEY` | `FIREBASE_API_KEY/AUTH_DOMAIN/PROJECT_ID` + `GOOGLE_DESKTOP_CLIENT_ID/SECRET` + `MICROSOFT_DESKTOP_CLIENT_ID` | `release.yml` three Tauri build env blocks (macOS/Windows/Linux) + the header secret inventory. **As-built: SUPABASE_* fully REMOVED** (not kept alongside) — all three blocks build only the desktop app, which no longer reads SUPABASE_* after `supabase.ts` was deleted; the website waitlist does not build from `release.yml`, so nothing else there consumes them. |
 | `app/src-tauri/.env.example:12` | firebase vars | |
 
 `VITE_HOSTED_ENGINE_URL` / `VITE_HOSTED_ENGINE_AUTH` (`release.yml:341,1086,1363`) and the whole hosted-mode plumbing (`engine-mode.ts`, `engine.ts`) are **unchanged** — they carry a URL + an auth toggle, not Supabase specifics.
@@ -199,10 +199,96 @@ Replace everywhere `SUPABASE_URL`/`SUPABASE_ANON_KEY` appear:
 > 2. **`.ts`-extension relative imports** inside `identity/` — required for the `node:test` runner to resolve modules (the established repo convention for unit-tested app modules, e.g. `standard-tabs.ts`).
 > 3. **`log.ts` seam** instead of importing the app `logger` directly: the app logger transitively pulls the Tauri `os-bridge` graph, which the `node:test` runner can't resolve, so importing it would make the leaf parsers untestable. Wave 2 MUST call `setIdentityLogSink((l,m,c)=>logger[l](m,c))` once at startup so discards reach `frontend.log`; until then the seam falls back to `console` (never silent).
 
-**Wave 2 — parallel, disjoint:**
-- **2a App identity wiring** — owns `app/src/lib/{auth.ts, current-user.ts, engine.ts(refresher comment only)}`, `app/src/lib/identity/{session-store.ts, refresh.ts, google-authorize.ts}`, delete `supabase.ts`, `hooks/use-session.ts`, `App.tsx` gate, `packages/web/src/cloud-login.tsx`, `packages/web/src/identity/firebase.ts`. Both desktop (loopback→REST) and web (popup) branches live here (same files); all three methods (Google, Microsoft via `microsoft.com`, email OTP via `otp.ts`+custom token) wire through the SAME modules. **Also: register the identity log sink at startup (as-built note 3) and remove the `__SUPABASE_*__` Vite defines together with `supabase.ts`.** *Accept:* desktop Google/Microsoft sign-in reaches a Firebase session in Keychain; email OTP round-trips to a session; web popup mirrors token to `__HOUSTON_ENGINE__`; 401-refresh seam intact; sign-out clears Keychain + resets analytics.
-- **2b Rust loopback** — owns `app/src-tauri/src/oauth_loopback.rs` (accept Google callback, keep `auth://deep-link` bridge), `auth.rs` untouched. *Accept:* `cargo check` + loopback unit tests; success page copy unchanged.
+**Wave 2 — parallel, disjoint:** (2a **LANDED**; 2b/2c pending)
+- **2a App identity wiring — LANDED.** As-built: the identity foundation is fully
+  wired on both surfaces. Desktop uses loopback+PKCE → GCIP REST (`signInWithIdp`),
+  session persisted to Keychain via `identity/session-store.ts`, proactive refresh via
+  `identity/refresh.ts`; web uses firebase-js-sdk popup confined to
+  `packages/web/src/identity/firebase-popup.ts` behind the `@houston/web-identity` alias
+  (desktop aliases a stub — zero firebase in the desktop bundle). All three methods
+  (Google, Microsoft via `microsoft.com`, email OTP via `otp.ts` + custom token) wire
+  through the same modules. `supabase.ts` deleted; `__SUPABASE_*__` Vite defines removed
+  with it; identity log sink registered at startup. See "As-built notes (Wave 2a)" below
+  for the deviations, new defines, and the Rust contract Wave 2b must honor.
+- **2b Rust loopback** — owns `app/src-tauri/src/oauth_loopback.rs` (accept Google callback, keep `auth://deep-link` bridge), `auth.rs` untouched. *Accept:* `cargo check` + loopback unit tests; success page copy unchanged. **Implement against the "Rust assumptions for Wave 2b" in the As-built notes below.**
 - **2c Admin** — owns `packages/web/src/admin/*` only. firebase email/password + Google popup, `getIdToken()` bearer. *Accept:* admin signs in, dashboard loads with Firebase bearer.
+
+> **As-built notes (Wave 2a) — deviations, new seams, and the Rust contract.**
+>
+> **(a) DEVIATION — Google secret + exchange live in TS, not Rust env.** Design §4
+> placed `GOOGLE_DESKTOP_CLIENT_SECRET` in Rust env. Wave 2a instead bakes it as a JS
+> `define` `__GOOGLE_DESKTOP_CLIENT_SECRET__`, and the code→id_token exchange runs in TS
+> (`app/src/lib/identity/google-authorize.ts`) via `POST oauth2.googleapis.com/token`.
+> Rationale: Wave 2b's `oauth_loopback.rs` stays a dumb loopback listener (its accept
+> criteria say nothing about a token exchange); the secret is non-confidential (Google
+> installed-app); keeping the exchange in TS makes it unit-testable.
+>
+> **(b) NEW define `__MICROSOFT_DESKTOP_CLIENT_ID__`.** Microsoft desktop is an Entra
+> **public** client (PKCE, NO secret). Added to both vite configs + both `vite-env.d.ts`
+> as `env.MICROSOFT_DESKTOP_CLIENT_ID ?? ""`. `microsoft-authorize.ts` guards empty →
+> throws `IdentityError("operation_not_allowed")` (typed "provider not configured", no
+> silent no-op). `__GOOGLE_DESKTOP_CLIENT_SECRET__` was added the same way.
+>
+> **(c) Rust assumptions for Wave 2b (implement against these — verbatim from the
+> contract):**
+> 1. `oauth_loopback.rs` `start_oauth_loopback` is reused AS-IS: returns
+>    `http://127.0.0.1:<port>/auth/callback`, captures `?code=&state=`, emits
+>    `auth://deep-link` with `houston://auth-callback?<query>`. Wave 2a's desktop-oauth.ts
+>    depends on exactly this. Wave 2b must keep this event + query-forward contract (it may
+>    broaden the success-page copy / provider-agnostic naming, but must NOT change the
+>    redirect path `/auth/callback`, the `state` passthrough, or the `auth://deep-link`
+>    event name/payload).
+> 2. Rust needs NO client secret and NO token exchange (TS owns both).
+> 3. `auth.rs` (Keychain `auth_get_item/auth_set_item/auth_remove_item`) unchanged —
+>    session-store reuses it.
+> 4. **OPTIONAL Wave 2b improvement — `cancel_oauth_loopback` command.** Today the Rust
+>    loopback listener cannot be torn down from TS: on the JS side a superseded / cancelled
+>    / timed-out attempt tears down its own `auth://deep-link` listener (see note (h)), but
+>    the Rust listener keeps its port bound until its own 300s self-timeout. A late browser
+>    completion then hits a dead JS listener and is harmlessly ignored. Wave 2b MAY add a
+>    `cancel_oauth_loopback` command so TS can free the port immediately on cancel; not
+>    required (the self-timeout already prevents a leak).
+>
+> **(h) DEVIATION — benign-cancel attempt model; `houston://auth-callback` direct-OAuth
+> fallback RETIRED.** The desktop authorize (`identity/desktop-oauth.ts` +
+> `identity/oauth-attempt.ts`) now treats supersession (a re-click), sign-in-screen unmount
+> (`cancelPendingAuthorize()`), and the 300s timeout as BENIGN cancels — they resolve `null`
+> (logged via `identityLog`, never an error toast), so an abandoned browser tab can no longer
+> freeze the sign-in buttons or fire a minutes-later error. Buttons re-enable the instant the
+> system browser opens (`onBrowserOpened`). Only a genuine callback error (provider `error`
+> param, CSRF state mismatch, unreadable payload) still rejects typed. **As-built deviation
+> from design §2a:** §2a said `houston://auth-callback` "stays the loopback-bind-failure
+> fallback". It does NOT — Google/Microsoft reject custom-scheme redirect URIs on direct
+> OAuth (guaranteed `redirect_uri_mismatch`), so a loopback bind failure now surfaces a typed
+> `IdentityError("unknown", { rawCode: "loopback_bind_failed" })` for the generic retry UI
+> instead of proceeding with an unusable redirect. Wave 2b may restore a fallback only by
+> registering a provider-accepted reverse-DNS custom scheme.
+>
+> **(d) Web split.** firebase-js-sdk (`firebase@11.10.0`) is confined to
+> `packages/web/src/identity/firebase-popup.ts` behind the `@houston/web-identity` Vite
+> alias; the desktop config aliases `app/src/lib/identity/firebase-popup-stub.ts` (same
+> symbols, each throwing) so the desktop bundle ships ZERO firebase. REST is used
+> everywhere else (desktop sign-in + refresh, OTP, admin later).
+>
+> **(e) Profiles / avatar degradation.** The Supabase `profiles` table + avatar storage
+> die with Supabase auth (RLS `auth.uid()` cannot match Firebase uids; uploads need a
+> Supabase session that no longer exists). Wave 2a: `use-user-profiles.ts` is stubbed to
+> return an empty map (keeps its signature + `USER_PROFILES_KEY`); the avatar-upload UI is
+> removed from `account.tsx`; face stacks fall back to initials and self-face falls back to
+> the session's `displayName`/`photoUrl`. The profile store moves to the gateway (follow-up).
+>
+> **(f) Session gained `photoUrl`.** `Session` now carries `photoUrl: string | null`
+> (also `IdpSignInResult.photoUrl`, `IdTokenClaims.picture`), so self-face has a photo
+> source without the profiles table.
+>
+> **(g) Email-OTP + refresh + 401-seam wiring points.** `identity/refresh.ts` exposes
+> `setSessionSink(cb)` (Wave B writes the `["session"]` cache from it), `refreshNow()`
+> (single-flight; backs `window.__HOUSTON_SESSION_REFRESH__`), and
+> `startProactiveRefresh()/stopProactiveRefresh()`. `identity/session-store.ts` exposes
+> `subscribeSession(cb)` (broadcasts `Session|null` after every load/save/clear) and
+> `SESSION_QUERY_KEY = ["session"]`. Email OTP stays plain `fetch` on both surfaces
+> (`otp.ts`); only the final Firebase step differs (REST `signInWithCustomToken` on
+> desktop; SDK `signInWithCustomToken` on web).
 
 **Wave 3 — integration + i18n + tests (1 agent).**
 - Wire seams, run full `pnpm --filter houston-web typecheck`, `cd app && pnpm tsgo --noEmit` + `cargo check`, `pnpm check:fix`.

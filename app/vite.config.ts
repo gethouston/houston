@@ -50,6 +50,16 @@ export default defineConfig(({ mode }) => {
             "../packages/web/src/engine-adapter/index.ts",
           ),
         },
+        // The web-only Firebase Auth surface. Desktop resolves the STUB so
+        // firebase-js-sdk never ships to desktop; the web bundle points this
+        // same specifier at the real module (packages/web/vite.config.ts).
+        {
+          find: "@houston/web-identity",
+          replacement: path.resolve(
+            __dirname,
+            "src/lib/identity/firebase-popup-stub.ts",
+          ),
+        },
       ],
     },
     define: {
@@ -60,12 +70,9 @@ export default defineConfig(({ mode }) => {
       __POSTHOG_HOST__: JSON.stringify(
         env.POSTHOG_HOST ?? "https://us.i.posthog.com",
       ),
-      __SUPABASE_URL__: JSON.stringify(env.SUPABASE_URL ?? ""),
-      __SUPABASE_ANON_KEY__: JSON.stringify(env.SUPABASE_ANON_KEY ?? ""),
       // GCP Identity Platform (Firebase Auth), project `gethouston`. All three
-      // are PUBLIC values (the apiKey is not a secret). The Supabase defines
-      // above stay until Wave 2 deletes supabase.ts — removing them now would
-      // leave supabase.ts's `__SUPABASE_*__` reads as bare globals.
+      // are PUBLIC values (the apiKey is not a secret, exactly as the Supabase
+      // anon key was), so baking them into the bundle is safe.
       __FIREBASE_API_KEY__: JSON.stringify(env.FIREBASE_API_KEY ?? ""),
       __FIREBASE_AUTH_DOMAIN__: JSON.stringify(
         env.FIREBASE_AUTH_DOMAIN ?? "gethouston.firebaseapp.com",
@@ -74,9 +81,21 @@ export default defineConfig(({ mode }) => {
         env.FIREBASE_PROJECT_ID ?? "gethouston",
       ),
       // Desktop-only: the "Desktop app" Google OAuth client used by the
-      // loopback + PKCE sign-in (its non-confidential secret lives in Rust env).
+      // loopback + PKCE sign-in. Google installed-app clients require the
+      // client secret in the code→token exchange; it is non-confidential
+      // (Google treats desktop secrets as public) and the TS side owns the
+      // exchange (google-authorize.ts), so the Rust loopback stays a dumb
+      // listener. Baked from build env, never a committed literal.
       __GOOGLE_DESKTOP_CLIENT_ID__: JSON.stringify(
         env.GOOGLE_DESKTOP_CLIENT_ID ?? "",
+      ),
+      __GOOGLE_DESKTOP_CLIENT_SECRET__: JSON.stringify(
+        env.GOOGLE_DESKTOP_CLIENT_SECRET ?? "",
+      ),
+      // Desktop-only: the Microsoft (Entra) native/public OAuth client for the
+      // loopback + PKCE sign-in. Public client — no secret in the exchange.
+      __MICROSOFT_DESKTOP_CLIENT_ID__: JSON.stringify(
+        env.MICROSOFT_DESKTOP_CLIENT_ID ?? "",
       ),
       __HOUSTON_AUTH_STORAGE_MODE__: JSON.stringify(authStorageMode),
       __HOUSTON_AUTH_STORAGE_SCOPE__: JSON.stringify(authStorageScope),

@@ -38,6 +38,8 @@ export interface Session {
   emailVerified: boolean;
   /** Display name, when the provider supplies one. */
   displayName: string | null;
+  /** Provider avatar URL (Google/Microsoft photo), when supplied. */
+  photoUrl: string | null;
   /** Which sign-in method minted this session. */
   provider: AuthProvider;
   /** Absolute expiry of `idToken`, epoch milliseconds. */
@@ -63,6 +65,7 @@ function isSessionShape(v: unknown): v is Session {
     typeof s.email === "string" &&
     typeof s.emailVerified === "boolean" &&
     (s.displayName === null || typeof s.displayName === "string") &&
+    (s.photoUrl === null || typeof s.photoUrl === "string") &&
     isAuthProvider(s.provider) &&
     typeof s.expiresAt === "number" &&
     Number.isFinite(s.expiresAt)
@@ -78,6 +81,7 @@ export function serializeSession(session: Session): string {
     email: session.email,
     emailVerified: session.emailVerified,
     displayName: session.displayName,
+    photoUrl: session.photoUrl,
     provider: session.provider,
     expiresAt: session.expiresAt,
   };

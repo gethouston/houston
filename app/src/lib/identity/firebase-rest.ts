@@ -30,6 +30,7 @@ export interface IdpSignInResult {
   email: string;
   emailVerified: boolean;
   displayName: string | null;
+  photoUrl: string | null;
   providerId: string;
 }
 
@@ -101,6 +102,7 @@ export async function signInWithIdp(params: {
     email: typeof body.email === "string" ? body.email : "",
     emailVerified: body.emailVerified === true,
     displayName: typeof body.displayName === "string" ? body.displayName : null,
+    photoUrl: typeof body.photoUrl === "string" ? body.photoUrl : null,
     providerId:
       typeof body.providerId === "string" ? body.providerId : params.providerId,
   };

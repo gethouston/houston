@@ -22,14 +22,13 @@ import { useProviderCatalog } from "./hooks/use-provider-catalog";
 import { useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
 import { analytics } from "./lib/analytics";
-import { installDeepLinkListener } from "./lib/auth";
 import { shouldAllowNativeContextMenu } from "./lib/context-menu";
 import { newEngineActive } from "./lib/engine";
+import { isIdentityConfigured } from "./lib/identity";
 import {
   clearUser as clearSentryUser,
   setUser as setSentryUser,
 } from "./lib/sentry";
-import { isAuthConfigured } from "./lib/supabase";
 import { tauriSystem } from "./lib/tauri";
 import { useAgentStore } from "./stores/agents";
 import { useUIStore } from "./stores/ui";
@@ -77,13 +76,6 @@ export default function App() {
     };
   }, []);
 
-  // Supabase auth (PR 2): listen for Google OAuth deep-link callbacks.
-  // No-op when auth isn't configured (SUPABASE_URL empty in local dev).
-  useEffect(() => {
-    if (!isAuthConfigured()) return;
-    return installDeepLinkListener();
-  }, []);
-
   const { data: session, isLoading: sessionLoading } = useSession();
 
   // Desktop boot: if this machine owns a local-model tunnel whose cloud endpoint
@@ -93,17 +85,17 @@ export default function App() {
 
   // Tag the user in PostHog AND Sentry on sign-in; reset on sign-out. The
   // install_id stays PostHog's distinct_id (the website UTM bridge + onboarding
-  // funnel depend on it); `identifyUser` aliases the Supabase id onto that person
+  // funnel depend on it); `identifyUser` aliases the Firebase uid onto that person
   // (merging the same human across devices/reinstalls) AND attaches
-  // supabase_user_id / email / signup date as person properties, so every
-  // authenticated person is both one PostHog person and joinable to a Supabase
-  // account. Sentry gets the same identity so crashes are attributable to a user
-  // when triaging.
+  // firebase_uid / email as person properties, so every authenticated person is
+  // both one PostHog person and joinable to a Firebase account. Sentry gets the
+  // same identity so crashes are attributable to a user when triaging. The
+  // identity Session carries no created_at, so signupDate is null.
   const prevUserIdRef = useRef<string | null>(null);
   useEffect(() => {
-    const userId = session?.user?.id ?? null;
-    const userEmail = session?.user?.email ?? null;
-    const signupDate = session?.user?.created_at?.slice(0, 10) ?? null;
+    const userId = session?.uid ?? null;
+    const userEmail = session?.email ?? null;
+    const signupDate = null;
     if (userId && userId !== prevUserIdRef.current) {
       analytics.identifyUser(userId, { email: userEmail, signupDate });
       setSentryUser({ id: userId, email: userEmail });
@@ -188,14 +180,14 @@ export default function App() {
     action: t.action,
   }));
 
-  // Auth gate: Supabase configured + session not yet resolved → splash.
-  // Already resolved to null → sign-in screen. `null` session on a
-  // transient Supabase blip (access token still valid in Keychain)
-  // is unlikely because getSession() reads locally, not remotely.
-  if (isAuthConfigured() && sessionLoading) {
+  // Auth gate: identity configured + session not yet resolved → splash.
+  // Already resolved to null → sign-in screen. `null` session on a transient
+  // blip is unlikely because the desktop session reads locally (Keychain), and
+  // the web SDK holds `isLoading` until it resolves persistence.
+  if (isIdentityConfigured() && sessionLoading) {
     return <WorkspaceLoading />;
   }
-  if (isAuthConfigured() && !session) {
+  if (isIdentityConfigured() && !session) {
     // Local account login. Dev builds sign in with the passwordless email code
     // (the `houston://` OAuth callback opens the installed prod app, so Google
     // sign-in is prod-only there).

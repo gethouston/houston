@@ -89,6 +89,29 @@ export function osStartOauthLoopback(): Promise<string> {
   return invoke<string>("start_oauth_loopback");
 }
 
+// ── Identity session persistence (Keychain / DPAPI, via Rust `auth_*`) ──────
+// The desktop identity session-store round-trips the session JSON blob through
+// these three commands (app/src-tauri/src/auth.rs → macOS Keychain / Windows
+// DPAPI-encrypted file). They are the ONLY new invoke calls session-store may
+// use — it must never call `invoke` directly. `osAuthGetItem` resolves null
+// when no entry exists; set/remove reject on failure so session-store surfaces
+// the fault (no silent swallow).
+
+/** Read the identity session blob for `key`; null when there is no entry. */
+export function osAuthGetItem(key: string): Promise<string | null> {
+  return invoke<string | null>("auth_get_item", { key });
+}
+
+/** Write the identity session blob for `key`. Rejects on a storage failure. */
+export function osAuthSetItem(key: string, value: string): Promise<void> {
+  return invoke<void>("auth_set_item", { key, value });
+}
+
+/** Remove the identity session blob for `key`. Rejects on a storage failure. */
+export function osAuthRemoveItem(key: string): Promise<void> {
+  return invoke<void>("auth_remove_item", { key });
+}
+
 /** Bind a one-shot localhost listener for the Codex/OpenAI OAuth redirect. On
  * success the native side emits `codex-oauth://callback` with the raw
  * `code=...&state=...` query string once OpenAI bounces the browser back;

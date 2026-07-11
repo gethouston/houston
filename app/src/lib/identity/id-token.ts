@@ -15,6 +15,8 @@ export interface IdTokenClaims {
   email?: string;
   email_verified?: boolean;
   name?: string;
+  /** Provider avatar URL, when the token carries one. */
+  picture?: string;
   /** `firebase.sign_in_provider`, e.g. "custom", "google.com". */
   firebase?: { sign_in_provider?: string };
   /** Expiry, epoch SECONDS (JWT convention). */
