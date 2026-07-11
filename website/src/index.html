@@ -96,7 +96,7 @@ visionPath: "vision/index.html"
     overflow-x: hidden;
   }
 
-  code, .mono {
+  code {
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   }
 
@@ -114,17 +114,6 @@ visionPath: "vision/index.html"
     30% { transform: translateY(-4px); opacity: 1; }
   }
 
-  @keyframes pulse-dot {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(1.3); }
-  }
-
-  @keyframes hero-gradient {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-
   @keyframes comet-border {
     0% { --angle: 0deg; }
     100% { --angle: 360deg; }
@@ -134,46 +123,6 @@ visionPath: "vision/index.html"
     syntax: "<angle>";
     initial-value: 0deg;
     inherits: false;
-  }
-
-  /* Signature comet-border running state */
-  .comet-card {
-    position: relative;
-    border-radius: 16px;
-    overflow: hidden;
-    background: white;
-  }
-
-  .comet-card::before {
-    content: "";
-    position: absolute;
-    inset: -2px;
-    border-radius: 18px;
-    background: conic-gradient(
-      from var(--angle),
-      transparent 60%,
-      #3b82f6 72%,
-      #818cf8 80%,
-      #f97316 88%,
-      #eab308 92%,
-      transparent 100%
-    );
-    animation: comet-border 2.5s linear infinite;
-    z-index: 0;
-  }
-
-  .comet-card::after {
-    content: "";
-    position: absolute;
-    inset: 2px;
-    border-radius: 14px;
-    background: white;
-    z-index: 0;
-  }
-
-  .comet-card > * {
-    position: relative;
-    z-index: 1;
   }
 
   /* ═══════════════════════════════════════════
@@ -193,8 +142,6 @@ visionPath: "vision/index.html"
 
   .reveal-delay-1 { transition-delay: 0.1s; }
   .reveal-delay-2 { transition-delay: 0.2s; }
-  .reveal-delay-3 { transition-delay: 0.3s; }
-  .reveal-delay-4 { transition-delay: 0.4s; }
 
   /* ═══════════════════════════════════════════
      NAV
@@ -381,27 +328,6 @@ visionPath: "vision/index.html"
     padding: 0 24px;
     font-size: 16px;
   }
-
-  /* The non-detected platform, demoted beside the OS-aware primary Download
-     button (see the OS-detect script). A quiet escape hatch for people grabbing
-     the app for another machine. */
-  .dl-alt {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: none;
-    border: none;
-    padding: 4px 2px;
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--gray-500);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-
-  .dl-alt svg { width: 13px; height: 13px; }
-
-  .dl-alt:hover { color: var(--gray-900); }
 
   /* ═══════════════════════════════════════════
      SECTIONS
@@ -1104,13 +1030,6 @@ visionPath: "vision/index.html"
     color: var(--gray-500);
   }
 
-  .agent-tool .tool-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
   /* ═══════════════════════════════════════════
      FEATURE ROWS
      ═══════════════════════════════════════════ */
@@ -1124,50 +1043,6 @@ visionPath: "vision/index.html"
 
   .feature-row.reverse { direction: rtl; }
   .feature-row.reverse > * { direction: ltr; }
-
-  .feature-info { max-width: 480px; }
-
-  .feature-info h3 {
-    font-size: 32px;
-    font-weight: 600;
-    letter-spacing: -0.03em;
-    line-height: 1.2;
-    margin-bottom: 16px;
-  }
-
-  .feature-info p {
-    font-size: 16px;
-    color: var(--muted-foreground);
-    line-height: 1.6;
-    margin-bottom: 24px;
-  }
-
-  .feature-list {
-    list-style: none;
-    margin-bottom: 32px;
-  }
-
-  .feature-list li {
-    font-size: 14px;
-    color: var(--gray-700);
-    padding: 6px 0;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .feature-list .check {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    background: rgba(13,13,13,0.06);
-  }
-
-  .feature-list .check svg { width: 12px; height: 12px; }
 
   /* ═══════════════════════════════════════════
      CHAT MOCKUP
@@ -1203,21 +1078,6 @@ visionPath: "vision/index.html"
     align-self: flex-start;
     color: var(--gray-700);
     padding: 4px 0;
-  }
-
-  .chat-msg .channel-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 9999px;
-    margin-bottom: 4px;
-  }
-
-  .badge-slack {
-    background: rgba(74,21,75,0.1);
-    color: #4A154B;
   }
 
   .typing-dots {
@@ -1273,232 +1133,6 @@ visionPath: "vision/index.html"
   }
 
   /* ═══════════════════════════════════════════
-     HOW IT WORKS
-     ═══════════════════════════════════════════ */
-
-  .steps-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-    margin-top: 64px;
-  }
-
-  .step-card {
-    padding: 40px 32px;
-    border-radius: 16px;
-    border: 1px solid var(--border-light);
-    text-align: center;
-    transition: border-color 0.3s, box-shadow 0.3s;
-  }
-
-  .step-card:hover {
-    border-color: var(--border-medium);
-    box-shadow: 0 8px 40px rgba(0,0,0,0.04);
-  }
-
-  .step-number {
-    font-size: 40px;
-    font-weight: 700;
-    color: var(--gray-200);
-    margin-bottom: 16px;
-  }
-
-  .step-card h3 {
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    margin-bottom: 8px;
-  }
-
-  .step-card p {
-    font-size: 14px;
-    color: var(--muted-foreground);
-    line-height: 1.6;
-  }
-
-  /* ═══════════════════════════════════════════
-     CAPABILITIES GRID
-     ═══════════════════════════════════════════ */
-
-  .capabilities-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-    margin-top: 64px;
-  }
-
-  .capability-card {
-    padding: 32px;
-    border-radius: 16px;
-    border: 1px solid var(--border-light);
-    background: var(--background);
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
-  }
-
-  .capability-card:hover {
-    border-color: var(--border-medium);
-    box-shadow: 0 8px 40px rgba(0,0,0,0.04);
-  }
-
-  .capability-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 20px;
-    background: var(--gray-50);
-  }
-
-  .capability-icon svg { width: 24px; height: 24px; color: var(--gray-700); }
-
-  .capability-card h3 {
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    margin-bottom: 8px;
-  }
-
-  .capability-card p {
-    font-size: 14px;
-    color: var(--muted-foreground);
-    line-height: 1.6;
-  }
-
-  /* ═══════════════════════════════════════════
-     HOSTING CTA
-     ═══════════════════════════════════════════ */
-
-  .hosting-section {
-    margin-top: 0;
-    padding: 80px 48px;
-    border-radius: 20px;
-    background: var(--gray-50);
-    border: 1px solid var(--border-light);
-    color: var(--gray-950);
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 60px;
-    align-items: center;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .hosting-section::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 60% 50% at 10% 100%, rgba(59,130,246,0.08), transparent),
-      radial-gradient(ellipse 50% 40% at 90% 0%, rgba(249,115,22,0.05), transparent);
-    pointer-events: none;
-  }
-
-  .hosting-section > * { position: relative; z-index: 1; }
-
-  .hosting-section h3 {
-    font-size: 36px;
-    font-weight: 600;
-    letter-spacing: -0.03em;
-    line-height: 1.2;
-    margin-bottom: 16px;
-    color: var(--gray-950);
-  }
-
-  .hosting-section p {
-    font-size: 16px;
-    color: var(--muted-foreground);
-    line-height: 1.6;
-    margin-bottom: 32px;
-  }
-
-  .hosting-features {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .hosting-features li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 14px;
-    color: var(--gray-700);
-  }
-
-  .hosting-features .check {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: rgba(13,13,13,0.06);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .hosting-features .check svg { width: 12px; height: 12px; color: var(--gray-950); }
-
-  .btn-blue {
-    background: #3b82f6;
-    color: white;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 44px;
-    padding: 0 24px;
-    border-radius: 9999px;
-    font-size: 15px;
-    font-weight: 500;
-    text-decoration: none;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.2s;
-  }
-
-  .btn-blue:hover { background: #2563eb; }
-
-  .hosting-visual {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .hosting-card {
-    padding: 20px 24px;
-    border-radius: 14px;
-    background: white;
-    border: 1px solid var(--border-light);
-  }
-
-  .hosting-card-label {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--gray-500);
-    letter-spacing: 0;
-    margin-bottom: 8px;
-  }
-
-  .hosting-card-value {
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--gray-950);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .hosting-card-value .live-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--success);
-    animation: pulse-dot 2s ease infinite;
-  }
-
-  /* ═══════════════════════════════════════════
      CTA SECTION
      ═══════════════════════════════════════════ */
 
@@ -1537,13 +1171,6 @@ visionPath: "vision/index.html"
     text-shadow: 0 1px 18px rgba(0,0,0,0.5);
   }
 
-  .cta-actions {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    position: relative;
-  }
-
   /* ═══════════════════════════════════════════
      FOOTER
      ═══════════════════════════════════════════ */
@@ -1566,79 +1193,6 @@ visionPath: "vision/index.html"
   }
 
   footer a:hover { color: var(--gray-950); }
-
-
-  /* ═══════════════════════════════════════════
-     PILLARS (real tools / integrations / training)
-     ═══════════════════════════════════════════ */
-
-  .pillars {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-    margin-top: 56px;
-  }
-
-  .pillar-card {
-    padding: 32px;
-    border-radius: 16px;
-    border: 1px solid var(--border-light);
-    background: white;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
-  }
-
-  .pillar-card:hover {
-    border-color: var(--border-medium);
-    box-shadow: 0 8px 40px rgba(0,0,0,0.04);
-  }
-
-  .pillar-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    background: var(--gray-50);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 20px;
-  }
-
-  .pillar-icon svg { width: 24px; height: 24px; color: var(--gray-700); }
-
-  .pillar-card h3 {
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    margin-bottom: 8px;
-    color: var(--gray-950);
-  }
-
-  .pillar-card .pillar-num {
-    font-size: 32px;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    color: var(--gray-950);
-    margin-bottom: 4px;
-    display: block;
-  }
-
-  .pillar-card p {
-    font-size: 14px;
-    color: var(--muted-foreground);
-    line-height: 1.55;
-  }
-
-  .board-card {
-    padding: 20px 24px;
-    border-radius: 16px;
-    border: 1px solid var(--border-light);
-    background: white;
-  }
-
-  .board-card.active {
-    border-color: var(--border-medium);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  }
 
 
   /* ═══════════════════════════════════════════
@@ -1813,12 +1367,8 @@ visionPath: "vision/index.html"
 
   @media (max-width: 900px) {
     .agent-grid { grid-template-columns: 1fr; }
-    .pillars { grid-template-columns: 1fr; }
     .feature-row { grid-template-columns: 1fr; gap: 40px; }
     .feature-row.reverse { direction: ltr; }
-    .steps-grid { grid-template-columns: 1fr; }
-    .capabilities-grid { grid-template-columns: 1fr; }
-    .hosting-section { grid-template-columns: 1fr; }
     .mockup-sidebar { display: none; }
     section { padding: 80px 24px; }
     .section-title { font-size: 36px; }
@@ -1845,11 +1395,7 @@ visionPath: "vision/index.html"
     .cta-section h2 { font-size: 28px; }
     .cta-section { padding: 80px 24px 120px; }
     .section-title { font-size: 28px; }
-    .hosting-section { padding: 40px 24px; }
-    .hosting-section h3 { font-size: 24px; }
     .hero-actions { flex-direction: column; align-items: center; }
-    .capabilities-grid { gap: 12px; }
-    .feature-info h3 { font-size: 24px; }
     footer { padding: 32px 24px; }
     footer > div:first-child { grid-template-columns: 1fr !important; gap: 32px !important; }
     .nav-right .btn { font-size: 12px; padding: 0 12px; height: 32px; }
