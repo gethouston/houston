@@ -1581,6 +1581,50 @@ visionPath: "vision/index.html"
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: translateY(0); }
   }
+
+  /* ═══════════════════════════════════════════
+     FOCUS VISIBILITY (keyboard)
+     One high-contrast ring for keyboard users on the dark page. The ring
+     sits 2px outside the element, over the dark background, so it stays
+     visible even around the solid-white .btn-primary. Mouse clicks don't
+     trigger :focus-visible, so it never shows on pointer interaction.
+     More specific rules (e.g. .faq-item summary) still win.
+     ═══════════════════════════════════════════ */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  summary:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* ═══════════════════════════════════════════
+     REDUCED MOTION
+     The landing's asset files (space.css/js, hero-demo.js/css,
+     micro-interactions.js) each guard prefers-reduced-motion on their
+     own; this covers the animations authored inline here — word-cycling
+     letters, typing dots, reveal-on-scroll, entrance float-up and the
+     agent-card comet hover. The word-cycling interval is ALSO stopped in
+     JS (a static first phrase is shown), so there is no perpetual DOM
+     churn, not merely a frozen paint.
+     ═══════════════════════════════════════════ */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+    .reveal { opacity: 1 !important; transform: none !important; }
+    .hero-cycling-word .cycling-letter {
+      opacity: 1 !important;
+      filter: none !important;
+      transform: none !important;
+    }
+    .typing-dots span { animation: none !important; }
+  }
 </style>
 {% endblock %}
 {% block body %}
@@ -1621,7 +1665,7 @@ visionPath: "vision/index.html"
     <button class="btn btn-primary btn-lg" data-dl-windows-trigger data-dl-source="hero-windows"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Download for Windows</button>
   </div>
 
-  <div class="mac-frame-wrap" style="max-width: 1152px; width: 100%; margin-top: 64px; animation: float-up 0.6s ease 0.25s both;">
+  <div class="mac-frame-wrap" aria-hidden="true" style="max-width: 1152px; width: 100%; margin-top: 64px; animation: float-up 0.6s ease 0.25s both;">
    <div class="device device-macbook-pro-2018 device-spacegray">
     <div class="device-frame">
      <div class="device-screen">
@@ -2199,9 +2243,9 @@ visionPath: "vision/index.html"
      DOWNLOAD GATE MODAL
      ═══════════════════════════════════════════ -->
 
-<div class="dl-overlay" id="dl-overlay">
+<div class="dl-overlay" id="dl-overlay" role="dialog" aria-modal="true" aria-labelledby="dl-title">
   <div class="dl-card">
-    <h3>We're on a closed beta</h3>
+    <h3 id="dl-title">We're on a closed beta</h3>
     <p>If you were invited, paste your code and download the app.</p>
     <input type="text" class="dl-input" id="dl-code" placeholder="Paste your invite code" autocomplete="off" spellcheck="false">
     <div class="dl-actions">
@@ -2224,9 +2268,9 @@ visionPath: "vision/index.html"
      WINDOWS BETA MODAL
      ═══════════════════════════════════════════ -->
 
-<div class="dl-overlay" id="dl-overlay-windows">
+<div class="dl-overlay" id="dl-overlay-windows" role="dialog" aria-modal="true" aria-labelledby="dl-title-windows">
   <div class="dl-card">
-    <h3>We're on a closed beta</h3>
+    <h3 id="dl-title-windows">We're on a closed beta</h3>
     <p>If you were invited, paste your code and pick your Windows version.</p>
     <input type="text" class="dl-input" id="dl-windows-code" placeholder="Paste your invite code" autocomplete="off" spellcheck="false">
     <div class="dl-actions">
@@ -2274,6 +2318,7 @@ visionPath: "vision/index.html"
     if (!burger || !dropdown) return;
     burger.addEventListener('click', function() {
       var open = dropdown.classList.toggle('open');
+      burger.setAttribute('aria-expanded', open ? 'true' : 'false');
       icon.innerHTML = open
         ? '<path d="M18 6L6 18M6 6l12 12"/>'
         : '<path d="M4 6h16M4 12h16M4 18h16"/>';
@@ -2282,6 +2327,7 @@ visionPath: "vision/index.html"
     dropdown.querySelectorAll('a').forEach(function(a) {
       a.addEventListener('click', function() {
         dropdown.classList.remove('open');
+        burger.setAttribute('aria-expanded', 'false');
         icon.innerHTML = '<path d="M4 6h16M4 12h16M4 18h16"/>';
       });
     });
@@ -2387,6 +2433,14 @@ visionPath: "vision/index.html"
     var firstWord = createWordEl(words[0]);
     container.appendChild(firstWord);
     container.style.width = firstWord.offsetWidth + 'px';
+
+    // Reduced motion: show the first phrase statically and never start the
+    // cycling loop (no blur stagger, no perpetual 3s DOM churn).
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) {
+      firstWord.querySelectorAll('.cycling-letter').forEach(function(el) { el.classList.add('is-visible'); });
+      return;
+    }
 
     requestAnimationFrame(function() {
       revealLetters(firstWord);
