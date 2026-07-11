@@ -212,6 +212,7 @@
     "saving": "Saving...",
     "savedToast": "{{name}} is ready to use",
     "savedLine": "Added the {{name}} key.",
-    "savedFollowup": "I've added the {{name}} key. Please continue."
+    "savedFollowup": "I've added the {{name}} key. Please continue.",
+    "savedUnverifiedToast": "Key saved for {{name}}. The service hasn't confirmed it yet, so I'll flag it if calls fail."
   }
 }

@@ -143,7 +143,8 @@
       "description": "Tu clave se guarda de forma segura y nunca se muestra en el chat.",
       "save": "Guardar clave",
       "saving": "Guardando...",
-      "savedToast": "{{name}} está listo para usarse"
+      "savedToast": "{{name}} está listo para usarse",
+      "savedUnverifiedToast": "Clave guardada para {{name}}. El servicio aún no la ha confirmado."
     },
     "delete": {
       "title": "¿Quitar {{name}}?",

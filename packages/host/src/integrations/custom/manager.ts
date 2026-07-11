@@ -101,11 +101,13 @@ export class CustomIntegrationManager {
         "the credential value is empty",
       );
     }
-    // Key-first validation: run the integration's health check (when it has
-    // one) against the pasted value BEFORE saving. Only a POSITIVE failure
-    // verdict rejects — `unknown` (no health check declared) must pass, and a
-    // validate that itself errored must not block saving (fail open here; a
-    // wrong key still surfaces on first use).
+    // Key-first validation is ADVISORY, never a gate: the declared placement
+    // is a per-service guess (an MCP server may want a different header than
+    // the standard Bearer), so a failed probe with a REAL key would otherwise
+    // hard-block saving with no path forward. The verdict rides the returned
+    // view as `verified` so the UI picks confirmation vs warning copy; a
+    // genuinely bad key still surfaces on first use, where the execute
+    // failure carries the request_credential recovery hint.
     const verdict = await executor.connections
       .validate({
         owner: "org",
@@ -114,15 +116,12 @@ export class CustomIntegrationManager {
         values: { [TOKEN_VARIABLE]: token },
       })
       .catch(() => null);
-    if (
-      verdict &&
-      (verdict.status === "expired" || verdict.status === "degraded")
-    ) {
-      throw new CustomIntegrationError(
-        "credential_invalid",
-        "the service rejected this key - check that it was copied completely and is still active",
-      );
-    }
+    const verified =
+      verdict?.status === "healthy"
+        ? true
+        : verdict?.status === "expired" || verdict?.status === "degraded"
+          ? false
+          : undefined;
 
     const secretId = secretIdFor(slug, TOKEN_VARIABLE);
     await this.secrets.set(secretId, token);
@@ -143,7 +142,10 @@ export class CustomIntegrationManager {
     };
     states.set(slug, state);
     this.onChanged();
-    return viewOf(updated, state, methods);
+    return {
+      ...viewOf(updated, state, methods),
+      ...(verified !== undefined ? { verified } : {}),
+    };
   }
 
   async remove(slug: string): Promise<void> {

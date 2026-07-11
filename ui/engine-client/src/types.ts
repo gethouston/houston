@@ -1525,6 +1525,10 @@ export interface CustomIntegrationView {
   state: CustomIntegrationState;
   /** Present when a credential can be (re)provided — the fields to collect. */
   authMethods?: CustomAuthMethod[];
+  /** Only on the credential POST's response: the advisory health-check verdict
+   *  for the just-saved key (true = confirmed, false = probe rejected but the
+   *  key SAVED, absent = the service declares no probe). */
+  verified?: boolean;
 }
 
 // ── OpenAI-compatible (local) provider ───────────────────────────────────────

@@ -98,6 +98,14 @@ export interface CustomIntegrationView {
   state: CustomIntegrationState;
   /** Present when a credential can be (re)provided — the fields to collect. */
   authMethods?: CustomAuthMethod[];
+  /**
+   * Only on the credential POST's response: the advisory health-check verdict
+   * for the just-saved key. `true` = the service confirmed it; `false` = the
+   * probe was rejected (the key still SAVED — the placement guess may simply
+   * not fit this service, so the UI warns instead of blocking); absent = the
+   * service declares no probe, no claim either way.
+   */
+  verified?: boolean;
 }
 
 /** Typed failure for management ops; routes map `code` onto stable JSON error

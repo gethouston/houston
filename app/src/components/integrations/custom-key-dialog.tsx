@@ -42,11 +42,21 @@ export function CustomKeyDialog({
     submit.mutate(
       { slug: integration.slug, values },
       {
-        onSuccess: () => {
-          addToast({
-            title: t("custom.keyDialog.savedToast", { name }),
-            variant: "success",
-          });
+        onSuccess: (saved) => {
+          // Saved-but-unconfirmed keys warn instead of celebrating (see the
+          // chat credential card for the rationale) — the row stays active and
+          // a genuinely wrong key surfaces on first use.
+          if (saved.verified === false) {
+            addToast({
+              title: t("custom.keyDialog.savedUnverifiedToast", { name }),
+              variant: "info",
+            });
+          } else {
+            addToast({
+              title: t("custom.keyDialog.savedToast", { name }),
+              variant: "success",
+            });
+          }
           onClose();
         },
       },

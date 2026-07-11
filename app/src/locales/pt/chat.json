@@ -212,6 +212,7 @@
     "saving": "Salvando...",
     "savedToast": "{{name}} está pronto para usar",
     "savedLine": "Adicionei a chave de {{name}}.",
-    "savedFollowup": "Adicionei a chave de {{name}}. Continue, por favor."
+    "savedFollowup": "Adicionei a chave de {{name}}. Continue, por favor.",
+    "savedUnverifiedToast": "Chave salva para {{name}}. O serviço ainda não a confirmou, vou avisar se as chamadas falharem."
   }
 }

@@ -143,7 +143,8 @@
       "description": "Your key is stored securely and never shown in chat.",
       "save": "Save key",
       "saving": "Saving...",
-      "savedToast": "{{name}} is ready to use"
+      "savedToast": "{{name}} is ready to use",
+      "savedUnverifiedToast": "Key saved for {{name}}. The service hasn't confirmed it yet."
     },
     "delete": {
       "title": "Remove {{name}}?",

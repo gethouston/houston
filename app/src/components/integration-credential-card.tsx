@@ -55,11 +55,22 @@ export function IntegrationCredentialCard({
     submit.mutate(
       { slug: toolkit, values },
       {
-        onSuccess: () => {
-          addToast({
-            title: t("credential.savedToast", { name }),
-            variant: "success",
-          });
+        onSuccess: (saved) => {
+          // `verified === false` means the key SAVED but the service's probe
+          // rejected it (the header guess may not fit this service): warn
+          // instead of celebrating, and still resume the agent — it can test
+          // the integration and re-request the key if calls really fail.
+          if (saved.verified === false) {
+            addToast({
+              title: t("credential.savedUnverifiedToast", { name }),
+              variant: "info",
+            });
+          } else {
+            addToast({
+              title: t("credential.savedToast", { name }),
+              variant: "success",
+            });
+          }
           onSaved(name);
         },
       },

@@ -212,6 +212,7 @@
     "saving": "Guardando...",
     "savedToast": "{{name}} está listo para usarse",
     "savedLine": "Agregué la clave de {{name}}.",
-    "savedFollowup": "Agregué la clave de {{name}}. Por favor continúa."
+    "savedFollowup": "Agregué la clave de {{name}}. Por favor continúa.",
+    "savedUnverifiedToast": "Clave guardada para {{name}}. El servicio aún no la ha confirmado, te avisaré si las llamadas fallan."
   }
 }
