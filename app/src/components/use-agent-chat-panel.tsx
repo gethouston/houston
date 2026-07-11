@@ -997,17 +997,14 @@ export function useAgentChatPanel({
   const interactionLabels = useMemo(
     () => ({
       placeholder: t("chat:questionCard.placeholder"),
-      send: t("chat:questionCard.send"),
-      back: t("chat:questionCard.back"),
+      escapePlaceholder: t("chat:questionCard.escapePlaceholder"),
       skip: t("chat:questionCard.skip"),
+      back: t("chat:questionCard.back"),
+      forward: t("chat:questionCard.forward"),
       dismiss: t("chat:questionCard.dismiss"),
+      recommended: t("chat:interaction.recommended"),
       progress: (current: number, total: number) =>
         t("chat:questionCard.progress", { current, total }),
-      // Header-title fallbacks for a signin/connect step the agent left without
-      // a reason (the card routes the reason through the same title slot).
-      signinTitle: t("chat:interaction.signinReason"),
-      connectTitle: (app: string) =>
-        t("chat:interaction.connectTitle", { app }),
     }),
     [t],
   );
@@ -1268,10 +1265,10 @@ export function useAgentChatPanel({
             }),
           );
         }}
-        renderSignin={(_step, api) => (
+        renderSignin={(step, api) => (
           <ChatSigninInteractionCard
-            back={api.back}
-            onForward={api.onForward}
+            reason={step.reason}
+            revisited={api.revisited}
             onSignedIn={() => {
               // Record the FINAL state (signed in wins over any earlier skip)
               // and advance ONLY — the composed reply fires at completion.
@@ -1290,8 +1287,8 @@ export function useAgentChatPanel({
           <ChatConnectInteractionCard
             agentId={agent.id}
             autoGrant={canManageAgentGrants(capabilities, agent)}
-            back={api.back}
-            onForward={api.onForward}
+            reason={step.reason}
+            revisited={api.revisited}
             onConnected={(_toolkit, appName) => {
               // Record the app's FINAL outcome (connected wins over any earlier
               // skip for this step) and advance ONLY. The composed `onComplete`

@@ -42,12 +42,12 @@
   },
   "questionCard": {
     "placeholder": "Escribe otra cosa...",
-    "send": "Siguiente",
+    "escapePlaceholder": "Ninguna de estas. Dile al agente qué hacer.",
     "back": "Atrás",
-    "forward": "Siguiente",
+    "forward": "Adelante",
     "skip": "Omitir",
     "dismiss": "Descartar",
-    "progress": "Paso {{current}} de {{total}}"
+    "progress": "{{current}} de {{total}}"
   },
   "interaction": {
     "connectedLine": "Conectaste {{name}}.",
@@ -55,11 +55,13 @@
     "signedInFollowup": "Ya inicié sesión. Continúa, por favor.",
     "skippedConnectLine": "Omitiste conectar {{name}}.",
     "skippedSigninLine": "Omitiste iniciar sesión.",
-    "signinReason": "Inicia sesión en Houston para continuar.",
     "signinTitle": "Inicia sesión en Houston",
     "signinDescription": "Tus cuentas siguen siendo tuyas; el agente actúa en tu nombre.",
     "signin": "Iniciar sesión",
-    "connectTitle": "Conectar {{app}}"
+    "connectTitle": "¿Conectar {{app}}?",
+    "recommended": "Recomendado",
+    "notNow": "Ahora no",
+    "esc": "Esc"
   },
   "planReady": {
     "title": "Plan listo",

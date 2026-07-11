@@ -1,27 +1,26 @@
 import { InteractionFooter } from "@houston-ai/chat";
-import { Button } from "@houston-ai/core";
-import { ExternalLink, Loader2 } from "lucide-react";
-import { type ReactNode, useEffect, useRef } from "react";
+import { Button, Kbd } from "@houston-ai/core";
+import { CornerDownLeft, Loader2 } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useIntegrationsGate } from "./integrations/use-integrations-gate";
 import { HoustonLogo } from "./shell/agent-avatar";
 
 interface ChatSigninInteractionCardProps {
+  /** The reason the agent gave for needing sign-in, routed into the card's bold
+   *  title. When absent, the title falls back to "Sign in to Houston". */
+  reason?: string;
   /** Fired once the gate resolves `ready` (the Supabase session landed) so the
    *  interaction sequence advances past this step. */
   onSignedIn: () => void;
-  /** Fired when the user skips this sign-in step (ghost Skip in the footer, live
-   *  frontier only). The panel records the skip so the composed reply tells the
-   *  agent the user declined, then advances the sequence via the api. */
+  /** Fired when the user declines this sign-in step ("Not now", live frontier
+   *  only). The panel records the skip so the composed reply tells the agent the
+   *  user declined, then advances the sequence. */
   onSkip: () => void;
-  /** The card's shared Back node (previous reached step), or null on step one. */
-  back: ReactNode;
-  /** Advance toward the frontier past this already-reached step, or null on the
-   *  live frontier. Non-null means the step is REVISITED: if the user is already
-   *  signed in this is the only way onward (a filled Forward — its card can't
-   *  re-fire onSignedIn); if it was SKIPPED it renders as a ghost "keep it
-   *  skipped" beside a fresh filled Sign in, so the user can reconsider. */
-  onForward: (() => void) | null;
+  /** True when the user walked BACK onto this already-reached step via the pager.
+   *  Already signed in -> the footer drops (the pager's forward chevron is the
+   *  way onward); skipped -> the Sign in CTA returns so the user can reconsider. */
+  revisited: boolean;
 }
 
 /**
@@ -32,18 +31,16 @@ interface ChatSigninInteractionCardProps {
  * SAME Google SSO the Integrations tab uses (via {@link useIntegrationsGate}),
  * and the sequence advances the instant the gate reports `ready`.
  *
- * Like the connect step, the interaction card owns the surface + the TITLE (the
- * reason, in the shared header, left-aligned). This body is the step's centered
- * identity HERO: the Houston helmet sits BARE and large on top (never boxed into
- * a chip), the title centered beneath it, one muted line centered under that.
- * The ONE footer stays the shared right-aligned nav row: shared Back, a ghost
- * Skip on the live frontier (the user may decline; the composed reply tells the
- * agent), and the single filled "Sign in" pill.
+ * Following the reference "Coworker card" language, this is a COMPACT
+ * left-aligned lockup: the Houston helmet inline with a bold title (the reason,
+ * or "Sign in to Houston"), one muted line beneath, and a right-aligned footer
+ * of a quiet "Not now" + Esc hint beside the single filled "Sign in" pill (with
+ * a return-key glyph). This REVERSES the earlier centered identity hero. Enter
+ * signs in, Esc declines, both ignored while focus sits in a text field.
  *
- * A REVISITED step (`onForward` non-null): if the user is already signed in, the
- * footer shows only a filled Forward (the way onward); if the step was SKIPPED,
- * the full actionable state returns — a ghost Forward ("keep it skipped") beside
- * a fresh filled Sign in — so the user can reconsider and sign in after all.
+ * The header pager owns Back/Forward, so a REVISITED step needs no navigation
+ * button of its own: already signed in -> no footer; skipped -> the Sign in CTA
+ * returns so the user can reconsider.
  *
  * Auto-advance also covers the STALE step: the user may have signed in elsewhere
  * (the Integrations tab) between the turn ending and this card rendering, so the
@@ -51,23 +48,22 @@ interface ChatSigninInteractionCardProps {
  * `onSignedIn` once so the queued connects/answers still send.
  */
 export function ChatSigninInteractionCard({
+  reason,
   onSignedIn,
   onSkip,
-  back,
-  onForward,
+  revisited,
 }: ChatSigninInteractionCardProps) {
   const { t } = useTranslation("chat");
   const gate = useIntegrationsGate();
 
-  const revisited = onForward !== null;
   // Advance at most once, the moment the session is live. A ref, not state:
   // firing must not re-arm on re-render.
   const fired = useRef(false);
   // Track whether the user actively signed in FROM this card. On the frontier
   // the effect fires on `ready` regardless (covering the stale already-signed-in
-  // step). On a REVISIT it must NOT auto-fire for a step that was already
-  // signed in when it mounted — that would bounce the user off the step they
-  // walked Back to; the Forward pill is the way on there. But a revisited
+  // step). On a REVISIT it must NOT auto-fire for a step that was already signed
+  // in when it mounted — that would bounce the user off the step they walked
+  // Back to; the pager's forward chevron is the way on there. But a revisited
   // SKIPPED step the user now signs in from SHOULD advance, so gate the
   // revisit-suppression on "did the user click Sign in here."
   const signInInitiated = useRef(false);
@@ -85,83 +81,94 @@ export function ChatSigninInteractionCard({
   // hold the pending look so the button never invites a second click.
   const pending = signingIn || gate.kind === "loading" || gate.kind === "ready";
 
+  const title = reason ?? t("interaction.signinTitle");
+
+  // The CTA shows whenever the user isn't signed in (frontier OR a reconsidered
+  // skip); "Not now" only on the live frontier.
+  const showSignin = !signedIn;
+  const showNotNow = !revisited && !signedIn;
+
+  const doSignIn = () => {
+    if (gate.kind === "signin") {
+      signInInitiated.current = true;
+      gate.signIn();
+    }
+  };
+
+  // Enter signs in, Esc declines. Ignored while typing in a field. Runs in the
+  // CAPTURE phase and stops the event dead when it acts, so Esc decides "not
+  // now" here instead of falling through to the global Escape-closes-the-panel
+  // shortcut (use-keyboard-shortcuts.ts).
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isEditable =
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "INPUT" ||
+        target?.isContentEditable;
+      if (isEditable || pending) return;
+      if (e.key === "Enter" && showSignin && gate.kind === "signin") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        doSignIn();
+      } else if (e.key === "Escape" && showNotNow) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onSkip();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  });
+
   const signInButton = (
     <Button
-      className="gap-1"
+      className="gap-1.5"
       disabled={pending || gate.kind !== "signin"}
-      onClick={() => {
-        if (gate.kind === "signin") {
-          signInInitiated.current = true;
-          gate.signIn();
-        }
-      }}
+      onClick={doSignIn}
       size="sm"
       type="button"
     >
-      {pending ? <Loader2 className="size-3 animate-spin" /> : null}
+      {pending ? <Loader2 className="size-3.5 animate-spin" /> : null}
       {t("interaction.signin")}
-      {pending ? null : <ExternalLink className="size-3" />}
+      {pending ? null : <CornerDownLeft className="size-3.5 opacity-70" />}
     </Button>
   );
 
   return (
-    <div className="mt-5 flex flex-col">
-      {/* Centered identity hero: the Houston helmet on top, title + one muted
-          line centered beneath, generous vertical rhythm. */}
-      <div className="flex flex-col items-center gap-3 px-2 py-2 text-center">
-        <span className="flex size-14 shrink-0 items-center justify-center text-foreground">
-          <HoustonLogo size={40} />
+    <div className="mt-4 flex flex-col">
+      {/* Compact left-aligned lockup: the Houston helmet inline with the bold
+          title, one muted line beneath. */}
+      <div className="flex items-center gap-3">
+        <span className="flex size-6 shrink-0 items-center justify-center text-foreground">
+          <HoustonLogo size={22} />
         </span>
-        <div className="flex min-w-0 flex-col items-center gap-1">
-          <span className="max-w-full truncate font-medium text-base text-foreground">
-            {t("interaction.signinTitle")}
-          </span>
-          <span className="max-w-full text-muted-foreground text-xs">
-            {t("interaction.signinDescription")}
-          </span>
-        </div>
+        <span className="min-w-0 flex-1 text-balance font-semibold text-base text-foreground leading-snug">
+          {title}
+        </span>
       </div>
+      <p className="mt-1.5 text-muted-foreground text-sm">
+        {t("interaction.signinDescription")}
+      </p>
 
-      <InteractionFooter>
-        {back}
-        {onForward === null ? (
-          // Live frontier: ghost Skip (declines) beside filled Sign in.
-          <>
-            {!signedIn && (
-              <Button
-                disabled={pending}
-                onClick={onSkip}
-                size="sm"
-                type="button"
-                variant="ghost"
-              >
-                {t("questionCard.skip")}
-              </Button>
-            )}
-            {signInButton}
-          </>
-        ) : signedIn ? (
-          // Revisited + signed in: Forward is the only way onward (filled).
-          <Button onClick={onForward} size="sm" type="button">
-            {t("questionCard.forward")}
-          </Button>
-        ) : (
-          // Revisited + skipped: reconsider — ghost "keep it skipped" Forward
-          // beside a fresh filled Sign in.
-          <>
+      {showSignin && (
+        <InteractionFooter>
+          {showNotNow && (
             <Button
+              className="gap-1.5 text-muted-foreground"
               disabled={pending}
-              onClick={onForward}
+              onClick={onSkip}
               size="sm"
               type="button"
               variant="ghost"
             >
-              {t("questionCard.forward")}
+              {t("interaction.notNow")}
+              <Kbd>{t("interaction.esc")}</Kbd>
             </Button>
-            {signInButton}
-          </>
-        )}
-      </InteractionFooter>
+          )}
+          {signInButton}
+        </InteractionFooter>
+      )}
     </div>
   );
 }

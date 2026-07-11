@@ -109,11 +109,12 @@ export function EmailMission({
   const interactionLabels = useMemo(
     () => ({
       placeholder: t("chat:questionCard.placeholder"),
-      send: t("chat:questionCard.send"),
+      escapePlaceholder: t("chat:questionCard.escapePlaceholder"),
       back: t("chat:questionCard.back"),
       forward: t("chat:questionCard.forward"),
       skip: t("chat:questionCard.skip"),
       dismiss: t("chat:questionCard.dismiss"),
+      recommended: t("chat:interaction.recommended"),
       progress: (current: number, total: number) =>
         t("chat:questionCard.progress", { current, total }),
     }),

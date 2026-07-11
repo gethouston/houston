@@ -3,6 +3,39 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v17 - 2026-07-11
+
+`interaction-card`: the whole family adopts the reference "Coworker card" look
+and feel (compact, left-aligned, white-card-on-page).
+
+Chrome: the grey `bg-secondary` surface (with raised white chips) becomes a
+white `bg-background` card set apart by a hairline border + soft shadow; radius
+tightens to `rounded-2xl`. The header drops the "Step N of M" eyebrow: the title
+goes bold and left, and a compact "N of M" pager sits top-right whose chevrons
+ARE the Back/Forward navigation (replacing the footer nav), beside the dismiss X.
+
+Question step: the right-edge keycaps move to a LEFT circular number badge (the
+digit still the keyboard shortcut); options gain a soft "Recommended" chip and a
+muted INLINE description (new additive protocol fields `InteractionOption.
+description` / `recommended`, tolerant/additive). The free-text row becomes the
+escape row — a pencil badge + muted placeholder + inline Skip pill — and the
+separate footer (Back / Skip / Next) is gone: actions live in the rows and the
+pager, Enter submits the free text.
+
+Signin/connect step: REVERSES the v16 centered identity hero. The body is now a
+COMPACT left-aligned lockup — brand logo (size-6) inline with a bold title (the
+reason, else "Connect {app}?" / "Sign in to Houston"), one muted benefit line —
+with a footer of a quiet "Not now" + Esc hint beside a filled CTA carrying a
+return-key glyph. Enter fires the CTA, Esc declines (capture-phase, pre-empts the
+global Escape-closes-panel shortcut). Navigation is the header pager for every
+kind, so `StepFooterApi` simplifies to `{ revisited, onSkip }` (Back node +
+onForward removed); a revisited completed step shows the connected state with no
+footer (pager forward is onward), a revisited skipped step keeps its CTA
+(reconsider survives). Anatomy swaps `progress-label`/`keycap-hint`/`footer-nav`/
+`step-identity-hero` for `pager`/`number-badge`/`recommended-chip`/
+`option-description`/`free-text-escape-row`/`step-identity-lockup`/
+`not-now-esc-hint`; tokens only.
+
 ## v16 - 2026-07-10
 
 `interaction-card` signin & connect steps: the step body becomes a CENTERED

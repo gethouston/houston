@@ -364,28 +364,31 @@ calls the integration-gated `request_connection` tool (never writes a link). Tha
 records a `{kind:"connect", toolkit, reason?}` pending interaction which rides the
 turn's clean `done` frame and settles the board card to `needs_you`; the pending
 interaction floats a `ChatInteractionCard` stepper ABOVE the composer, whose
-connect step is `ChatConnectInteractionCard` — a CENTERED identity hero: the
-app's brand logo BARE and large ON TOP (size-14 / AppLogo `xl`, no bordered
-chip; the sign-in step seats the Houston helmet in the same slot), the app name
-centered beneath, one muted one-line description centered under that (the
-connected state swaps the description for a calm check + "Connected" line). The
-reason stays the left-aligned card title, and the shared right-aligned footer
-carries Back, a ghost Skip, and the single filled "Connect" pill (NO
-card-inside-a-card). Every step kind is SKIPPABLE, and a SKIPPED signin/connect
-step is RECONSIDERABLE: walking Back onto it reoffers its filled CTA beside a
-ghost Forward ("keep it skipped"), so the user can connect / sign in after all
-(a COMPLETED step, which can't re-fire completion, shows only Forward). A skip
-is a recorded fact the completed reply states ("Skipped connecting {app}." /
+connect step is `ChatConnectInteractionCard` — a COMPACT left-aligned identity
+lockup (reference "Coworker card" look, reversing the earlier centered hero): the
+app's brand logo (AppLogo `sm`, size-6) inline with a bold title (the agent's
+reason, else "Connect {app}?"; the sign-in step seats the Houston helmet in the
+same slot and titles with the reason or "Sign in to Houston"), one muted benefit
+line beneath (the connected state swaps it for a calm check + "Connected"). The
+footer is a quiet "Not now" + Esc hint beside the single filled "Connect" pill
+(with a return-key glyph); Enter fires Connect, Esc declines (a capture-phase
+handler pre-empting the global Escape-closes-panel shortcut). Navigation is the
+header pager for every kind (NO card-inside-a-card, NO body nav button). Every
+step kind is SKIPPABLE, and a SKIPPED signin/connect step is RECONSIDERABLE:
+walking Back onto it (the pager) reoffers its filled CTA, so the user can connect
+/ sign in after all (a COMPLETED step, which can't re-fire completion, shows the
+calm connected state with no footer — the pager's forward chevron is onward). A
+skip is a recorded fact the completed reply states ("Skipped connecting {app}." /
 "Skipped signing in.", `chat:interaction.skipped*` keys) so the agent hears the
 decline instead of re-requesting — UNLESS the step was reconsidered, in which
 case the reply derives each step's FINAL outcome and reports "Connected {app}."
 instead (the panel keys a per-step outcome map read at completion via
-`finalConnectNames`; ui/chat's `StepFooterApi` exposes `onForward`/`onSkip`
-callbacks, not pre-styled nodes, so the body picks each button's treatment). It
-shares the connect flow above with the inline link card
+`finalConnectNames`; ui/chat's `StepFooterApi` is `{ revisited, onSkip }` — the
+body reads `revisited` to suppress its frontier-only "Not now" and, once
+completed, its CTA). It shares the connect flow above with the inline link card
 through one hook (`app/src/components/use-integration-connect.tsx`); only the
 presentation forks — the inline `#houston_toolkit` renderer stays a `RowCard`
-badge, the stepper draws a surface-less row + footer CTA. Both render the logo
+badge, the stepper draws a surface-less compact lockup + footer CTA. Both render the logo
 through the shared `AppLogo` (the hook holds the favicon-guess fallback until
 the toolkits catalog settles, and `AppLogo`'s failure latch is keyed to the
 failing URL — a pre-catalog 404 once permanently shadowed the real Composio

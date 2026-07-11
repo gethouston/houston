@@ -1,31 +1,36 @@
 "use client";
 
 import { Button, cn } from "@houston-ai/core";
-import { XIcon } from "lucide-react";
+import {
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  XIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import type { ChatInteractionOption } from "./interaction-card-logic";
 
-/** One selectable answer, a full-width single-select row (click = answer),
- *  styled as a Mercury row: a raised white surface with a hairline border and
- *  roomy padding. The label sits left (in a column so a subtitle can slot in
- *  later); when `keycap` is set, its 1-based `position` shows on the right as a
- *  subtle bordered keycap — a keyboard-shortcut hint, deliberately NOT a
- *  left-side list marker. Selection is carried by the accent border + tint.
- *  A single-option step passes `keycap={false}` so a lone row never shows an
- *  arbitrary "1". */
+/** One selectable answer, a full-width single-select row (click = answer). In
+ *  the reference language: a LEFT circular number badge (the digit doubles as
+ *  the keyboard shortcut), a bold label, an optional soft "Recommended" chip,
+ *  and the option's description muted INLINE after the label (single line,
+ *  truncated). The row surface is transparent until hover/selected, when it
+ *  fills a soft grey and reveals a trailing arrow — the affordance that a click
+ *  answers and advances. Selection is carried by that same fill, not a border. */
 export function OptionRow({
   option,
   selected,
   disabled,
   position,
-  keycap,
+  recommendedLabel,
   onSelect,
 }: {
   option: ChatInteractionOption;
   selected: boolean;
   disabled: boolean;
   position: number;
-  keycap: boolean;
+  recommendedLabel: string;
   onSelect: () => void;
 }) {
   return (
@@ -33,108 +38,238 @@ export function OptionRow({
     <button
       aria-checked={selected}
       className={cn(
-        "flex w-full items-center gap-3 rounded-xl border border-border/60 bg-background px-3.5 py-3 text-left text-sm text-foreground outline-none transition-colors",
-        "hover:border-border hover:bg-accent",
-        "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left outline-none transition-colors",
+        "hover:bg-accent focus-visible:bg-accent",
+        "focus-visible:ring-[2px] focus-visible:ring-ring/50",
         "disabled:pointer-events-none disabled:opacity-50",
-        selected && "border-primary bg-primary/5 hover:border-primary",
+        selected && "bg-accent",
       )}
       disabled={disabled}
       onClick={onSelect}
       role="radio"
       type="button"
     >
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="font-medium">{option.label}</span>
+      <span
+        className={cn(
+          "flex size-7 shrink-0 items-center justify-center rounded-full bg-muted font-medium text-[13px] text-muted-foreground tabular-nums transition-colors",
+          "group-hover:bg-muted-foreground/15",
+          selected && "bg-muted-foreground/15",
+        )}
+      >
+        {position}
       </span>
-      {keycap && (
-        <kbd className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md border border-border bg-muted px-1 font-medium font-sans text-[11px] text-muted-foreground tabular-nums">
-          {position}
-        </kbd>
-      )}
+      <span className="flex min-w-0 flex-1 items-center gap-2">
+        <span className="shrink-0 font-semibold text-foreground text-sm">
+          {option.label}
+        </span>
+        {option.recommended && (
+          <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-medium text-[11px] text-muted-foreground">
+            {recommendedLabel}
+          </span>
+        )}
+        {option.description && (
+          <span className="min-w-0 truncate text-muted-foreground text-sm">
+            {option.description}
+          </span>
+        )}
+      </span>
+      <ArrowRight
+        className={cn(
+          "size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity",
+          "group-hover:opacity-100",
+          selected && "opacity-100",
+        )}
+      />
     </button>
   );
 }
 
+/** The free-text escape row: styled as the LAST row of the option list. A pencil
+ *  icon fills the same circular left-badge slot, the input carries a muted
+ *  placeholder ("None of these..."), and a `Skip` outline pill sits INLINE at
+ *  the row's right. Typing expands the input; Enter submits the answer, the pill
+ *  skips the question. On a free-text-only question (no options) it is the
+ *  primary answer field, so it takes a neutral placeholder. */
+export function FreeTextRow({
+  value,
+  placeholder,
+  skipLabel,
+  disabled,
+  onChange,
+  onSubmit,
+  onSkip,
+}: {
+  value: string;
+  placeholder: string;
+  skipLabel: string;
+  disabled: boolean;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  onSkip: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors focus-within:bg-accent/60">
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <Pencil className="size-3.5" />
+      </span>
+      <textarea
+        className="max-h-40 min-w-0 flex-1 resize-none border-none bg-transparent py-0.5 text-foreground text-sm leading-snug outline-none placeholder:text-muted-foreground"
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            onSubmit();
+          }
+        }}
+        placeholder={placeholder}
+        rows={1}
+        value={value}
+      />
+      <Button
+        className="shrink-0 rounded-full"
+        disabled={disabled}
+        onClick={onSkip}
+        size="sm"
+        type="button"
+        variant="outline"
+      >
+        {skipLabel}
+      </Button>
+    </div>
+  );
+}
+
+/** The compact pager pinned top-right: `‹ N of M ›`. The chevrons ARE the
+ *  step navigation (Back / Forward), replacing a footer nav row; each is
+ *  disabled at its end of the sequence. Rendered only for a multi-step sequence
+ *  (a lone step shows no pager). */
+function Pager({
+  label,
+  backLabel,
+  forwardLabel,
+  onBack,
+  onForward,
+  disabled,
+}: {
+  label: string;
+  backLabel: string;
+  forwardLabel: string;
+  onBack: (() => void) | null;
+  onForward: (() => void) | null;
+  disabled: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-0.5 text-muted-foreground">
+      <Button
+        aria-label={backLabel}
+        className="size-6"
+        disabled={disabled || !onBack}
+        onClick={onBack ?? undefined}
+        size="icon-sm"
+        type="button"
+        variant="ghost"
+      >
+        <ChevronLeft className="size-4" />
+      </Button>
+      <span className="px-0.5 text-xs tabular-nums">{label}</span>
+      <Button
+        aria-label={forwardLabel}
+        className="size-6"
+        disabled={disabled || !onForward}
+        onClick={onForward ?? undefined}
+        size="icon-sm"
+        type="button"
+        variant="ghost"
+      >
+        <ChevronRight className="size-4" />
+      </Button>
+    </div>
+  );
+}
+
 export interface StepperHeaderProps {
-  /** Total step count; the progress eyebrow shows only for a multi-step sequence. */
+  /** Total step count; the pager shows only for a multi-step sequence. */
   total: number;
-  /** The quiet progress micro-label, e.g. "Step 1 of 3" (shown when total > 1). */
+  /** The pager's compact progress copy, e.g. "1 of 3". */
   progressLabel: string;
-  /** The current step's title, rendered as the card's real title in the SAME
-   *  slot for every kind: a question step passes its question, a signin/connect
-   *  step passes its reason (with a labelled fallback). Omitted only when a step
-   *  has neither. */
+  /** The current step's title, rendered bold and left. Question steps pass their
+   *  question here; signin/connect steps render their OWN icon+title lockup in
+   *  the body and leave this undefined, so the header keeps only the right-hand
+   *  pager + dismiss cluster. */
   title?: string;
-  /** Dismisses the WHOLE interaction sequence. The X button renders only when
-   *  supplied, so a caller with no dismiss affordance simply omits it. */
+  /** Step navigation, wired straight to the stepper: the pager's back chevron
+   *  (null on the first step) and forward chevron (null at the frontier). */
+  onBack: (() => void) | null;
+  onForward: (() => void) | null;
+  backLabel: string;
+  forwardLabel: string;
+  /** Dismisses the WHOLE interaction sequence. The X renders only when supplied. */
   onDismiss?: () => void;
   dismissLabel: string;
   disabled: boolean;
 }
 
-/** Card header, in the Mercury title idiom: a quiet progress micro-label
- *  eyebrow (only for a multi-step sequence) above the step's title rendered as a
- *  real title in the body, with an unobtrusive dismiss X pinned top-right. Every
- *  step kind (question, signin, connect) routes its title through this one slot,
- *  so a connect step's reason reads with the exact same weight/position as a
- *  question. Purely informational + the one escape hatch — all step-to-step
- *  navigation (back/skip/next) lives together in the footer, see
- *  `ChatInteractionCard`. */
+/** Card header in the reference language: a bold left title with, top-RIGHT on
+ *  the same row, the compact `‹ N of M ›` pager (Back/Forward chevrons) and the
+ *  dismiss X. No eyebrow. A signin/connect step leaves `title` undefined (its
+ *  icon+title lockup lives in the body) so only the pager + X remain. */
 export function StepperHeader({
   total,
   progressLabel,
   title,
+  onBack,
+  onForward,
+  backLabel,
+  forwardLabel,
   onDismiss,
   dismissLabel,
   disabled,
 }: StepperHeaderProps) {
   return (
-    // No horizontal padding: the eyebrow, title, option rows and footer all
-    // hang from the same left line (the content column's edge), Mercury-style.
-    <div className="flex items-start gap-2">
+    <div className="flex items-start gap-3">
       <div className="min-w-0 flex-1">
-        {total > 1 && (
-          <p className="font-medium text-muted-foreground text-xs">
-            {progressLabel}
-          </p>
-        )}
         {title && (
-          <p
-            className={cn(
-              "text-balance text-base text-foreground leading-snug",
-              total > 1 && "mt-1.5",
-            )}
-          >
+          <p className="text-balance font-semibold text-base text-foreground leading-snug">
             {title}
           </p>
         )}
       </div>
 
-      {onDismiss && (
-        <Button
-          aria-label={dismissLabel}
-          className="-mr-1 -mt-1 shrink-0"
-          disabled={disabled}
-          onClick={onDismiss}
-          size="icon-sm"
-          variant="ghost"
-        >
-          <XIcon className="size-4" />
-        </Button>
-      )}
+      <div className="flex shrink-0 items-center gap-1">
+        {total > 1 && (
+          <Pager
+            backLabel={backLabel}
+            disabled={disabled}
+            forwardLabel={forwardLabel}
+            label={progressLabel}
+            onBack={onBack}
+            onForward={onForward}
+          />
+        )}
+        {onDismiss && (
+          <Button
+            aria-label={dismissLabel}
+            className="-mr-1 shrink-0 text-muted-foreground"
+            disabled={disabled}
+            onClick={onDismiss}
+            size="icon-sm"
+            variant="ghost"
+          >
+            <XIcon className="size-4" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
 
-/** The one footer row for a step: quiet nav on the left, a single filled pill on
- *  the right. Question steps fill it with Back / Skip / Next; signin & connect
- *  steps (whose reactive body the app owns) fill it with the ui-supplied Back
- *  node plus their own Forward / Skip / CTA buttons (wired to the api's
- *  `onForward` / `onSkip`). Exported so the app composes the EXACT same footer
- *  chrome — one place owns the row's spacing and alignment. */
+/** The one right-aligned footer row a signin/connect body composes: quiet
+ *  "Not now" + Esc hint on the way to the single filled CTA pill. Exported so
+ *  the app composes the EXACT same footer chrome — one place owns spacing and
+ *  alignment. Question steps have NO footer (their actions live in the rows). */
 export function InteractionFooter({ children }: { children: ReactNode }) {
   return (
-    <div className="mt-4 flex items-center justify-end gap-1.5">{children}</div>
+    <div className="mt-5 flex items-center justify-end gap-3">{children}</div>
   );
 }

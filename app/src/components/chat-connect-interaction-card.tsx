@@ -1,7 +1,7 @@
 import { InteractionFooter } from "@houston-ai/chat";
-import { Button } from "@houston-ai/core";
-import { Check, ExternalLink, Loader2 } from "lucide-react";
-import type { ReactNode } from "react";
+import { Button, Kbd } from "@houston-ai/core";
+import { Check, CornerDownLeft, Loader2 } from "lucide-react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { AppLogo } from "./integrations";
 import { useIntegrationConnect } from "./use-integration-connect";
@@ -13,64 +13,58 @@ interface ChatConnectInteractionCardProps {
   agentId: string;
   /** Multiplayer: auto-grant the fresh connection to this agent (C4). */
   autoGrant: boolean;
+  /** The reason the agent gave for needing this app, routed into the card's bold
+   *  title. When absent, the title falls back to "Connect {app}?". */
+  reason?: string;
   /** Fired once when the connection the user drove from here lands — the panel
    *  nudges the agent to resume (reuses the auto-continue path). */
   onConnected: (toolkit: string, appName: string) => void;
-  /** Fired when the user skips this connect step (ghost Skip in the footer, live
-   *  frontier only). The panel records the skipped app so the composed reply
-   *  tells the agent the user declined, then advances the sequence via the api. */
+  /** Fired when the user declines this connect step ("Not now", live frontier
+   *  only). The panel records the skip so the composed reply tells the agent the
+   *  user declined, then advances the sequence. */
   onSkip: (toolkit: string, appName: string) => void;
-  /** The card's shared Back node (previous reached step), or null on step one. */
-  back: ReactNode;
-  /** Advance toward the frontier past this already-reached step, or null on the
-   *  live frontier. Non-null means the step is REVISITED: if it is already
-   *  connected this is the only way onward (a filled Forward — its card can't
-   *  re-fire onConnected); if it was SKIPPED it renders as a ghost "keep it
-   *  skipped" beside a fresh filled Connect, so the user can reconsider. */
-  onForward: (() => void) | null;
+  /** True when the user walked BACK onto this already-reached step via the pager.
+   *  A revisited step that is already connected shows the calm connected state
+   *  with no footer (the pager's forward chevron is the way onward); a revisited
+   *  step that was SKIPPED keeps its Connect CTA so the user can reconsider. */
+  revisited: boolean;
 }
 
 /**
  * The connect-step content for a `request_connection` interaction, rendered
  * INSIDE the shared `ChatInteractionCard` sequence (via its `renderConnect`
- * prop). The interaction card owns the surface, the progress eyebrow, and the
- * TITLE (the step's reason, routed through the shared header, left-aligned like
- * a question). This body is the step's centered identity HERO: the app's brand
- * logo sits BARE and large on top (never boxed into a bordered chip, which reads
- * as a card-inside-a-card), the app name centered beneath it, and one muted line
- * of description centered under that — a composed lockup, not a flat left row.
- * The ONE footer stays the shared right-aligned nav row: shared Back, a ghost
- * Skip on the live frontier (the user may decline; the composed reply tells the
- * agent), and the single filled "Connect" pill.
+ * prop). Following the reference "Coworker card" language, this is a COMPACT
+ * left-aligned lockup: the app's real brand logo sits inline with a bold title
+ * (the agent's reason, or "Connect {app}?"), one muted line of benefit
+ * underneath, and a right-aligned footer of a quiet "Not now" + Esc hint beside
+ * the single filled "Connect" pill (with a return-key glyph). This REVERSES the
+ * earlier centered identity hero — the references are compact and left-aligned.
  *
- * A REVISITED step (`onForward` non-null) the user reached earlier: if it is
- * already connected, the footer shows only a filled Forward (its card can't
- * re-fire onConnected, so that is the way onward) and the hero swaps its
- * description for a calm "Connected" check; if it was SKIPPED, the full
- * actionable state returns — a ghost Forward ("keep it skipped") beside a fresh
- * filled Connect — so the user can reconsider and connect after all.
+ * Enter connects, Esc declines (matching the footer hints), both ignored while
+ * focus sits in a text field so the real composer is unaffected. The header
+ * pager owns Back/Forward, so a REVISITED step needs no navigation button of its
+ * own: already connected -> the calm "Connected" state and no footer; skipped ->
+ * the Connect CTA returns so the user can reconsider and connect after all.
  *
  * While the OAuth hand-off is in flight the pill shows the connecting state and
- * a quiet muted line reminds the user the browser is waiting. On the live
- * frontier an already-connected toolkit self-reports through `onConnected` (see
- * {@link useIntegrationConnect}) so the sequence never soft-locks.
+ * a quiet line reminds the user the browser is waiting. On the live frontier an
+ * already-connected toolkit self-reports through `onConnected` (see {@link
+ * useIntegrationConnect}) so the sequence never soft-locks.
  */
 export function ChatConnectInteractionCard({
   toolkit,
   agentId,
   autoGrant,
+  reason,
   onConnected,
   onSkip,
-  back,
-  onForward,
+  revisited,
 }: ChatConnectInteractionCardProps) {
   const { t } = useTranslation("chat");
-  // Auto-continue only on the LIVE frontier (`onForward` null): a revisited
-  // completed step (`onForward` non-null) mounts a fresh card whose already-
-  // connected self-report would otherwise re-fire — bouncing the user straight
-  // off the step they walked Back to and duplicating the reply's "Connected
-  // {app}." line. On a revisit the footer's Forward pill is the way onward.
-  const revisited = onForward !== null;
+  // Auto-continue only on the LIVE frontier: a revisited completed step mounts a
+  // fresh card whose already-connected self-report would otherwise re-fire,
+  // bouncing the user off the step they walked Back to. On a revisit the pager's
+  // forward chevron is the way onward.
   const { app, isConnected, connecting, startConnect } = useIntegrationConnect({
     toolkit,
     agentId,
@@ -79,12 +73,52 @@ export function ChatConnectInteractionCard({
     autoContinueWhenConnected: !revisited,
   });
 
-  // The filled primary CTA, shown on the frontier and when reconsidering a
-  // skipped step. Never rendered beside the filled Forward of a completed
-  // revisit (that would be two filled pills).
+  const title = reason ?? t("interaction.connectTitle", { app: app.name });
+
+  // The CTA shows whenever the app isn't connected (frontier OR a reconsidered
+  // skip); "Not now" only on the live frontier (a revisited skip keeps itself
+  // skipped via the pager's forward chevron, so it needs no decline button).
+  const showConnect = !isConnected;
+  const showNotNow = !revisited && !isConnected;
+
+  // Enter connects, Esc declines — mirroring the footer's return glyph + Esc
+  // hint. Ignored while typing in a field so the real composer keeps its keys.
+  // Runs in the CAPTURE phase and stops the event dead when it acts, so Esc
+  // decides "not now" here instead of falling through to the global
+  // Escape-closes-the-panel shortcut (use-keyboard-shortcuts.ts).
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isEditable =
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "INPUT" ||
+        target?.isContentEditable;
+      if (isEditable || connecting) return;
+      if (e.key === "Enter" && showConnect) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        void startConnect();
+      } else if (e.key === "Escape" && showNotNow) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onSkip(toolkit, app.name);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [
+    connecting,
+    showConnect,
+    showNotNow,
+    startConnect,
+    onSkip,
+    toolkit,
+    app.name,
+  ]);
+
   const connectButton = (
     <Button
-      className="gap-1"
+      className="gap-1.5"
       disabled={connecting}
       onClick={() => void startConnect()}
       size="sm"
@@ -92,86 +126,62 @@ export function ChatConnectInteractionCard({
     >
       {connecting ? (
         <>
-          <Loader2 className="size-3 animate-spin" />
+          <Loader2 className="size-3.5 animate-spin" />
           {t("composio.connecting")}
         </>
       ) : (
         <>
           {t("composio.connect")}
-          <ExternalLink className="size-3" />
+          <CornerDownLeft className="size-3.5 opacity-70" />
         </>
       )}
     </Button>
   );
 
   return (
-    <div className="mt-5 flex flex-col">
-      {/* Centered identity hero: logo on top, name + description centered
-          beneath, generous vertical rhythm so the card reads as composed. */}
-      <div className="flex flex-col items-center gap-3 px-2 py-2 text-center">
-        <AppLogo display={app} size="xl" />
-        <div className="flex min-w-0 flex-col items-center gap-1">
-          <span className="max-w-full truncate font-medium text-base text-foreground">
-            {app.name}
-          </span>
-          {isConnected ? (
-            <span className="inline-flex items-center gap-1 font-medium text-emerald-600 text-xs dark:text-emerald-400">
-              <Check className="size-3.5" />
-              {t("composio.connected")}
-            </span>
-          ) : (
-            <span className="max-w-full text-muted-foreground text-xs">
-              {app.description || t("composio.integration")}
-            </span>
-          )}
-        </div>
-        {connecting && (
-          <p className="text-muted-foreground text-xs">
-            {t("composio.waitingToConnect")}
-          </p>
-        )}
+    <div className="mt-4 flex flex-col">
+      {/* Compact left-aligned identity lockup: logo inline with the bold title,
+          one muted benefit line beneath. */}
+      <div className="flex items-center gap-3">
+        <AppLogo className="shrink-0" display={app} size="sm" />
+        <span className="min-w-0 flex-1 text-balance font-semibold text-base text-foreground leading-snug">
+          {title}
+        </span>
       </div>
+      {isConnected ? (
+        <span className="mt-1.5 inline-flex items-center gap-1 font-medium text-emerald-600 text-sm dark:text-emerald-400">
+          <Check className="size-3.5" />
+          {t("composio.connected")}
+        </span>
+      ) : (
+        <p className="mt-1.5 truncate text-muted-foreground text-sm">
+          {app.description || t("composio.integration")}
+        </p>
+      )}
+      {connecting && (
+        <p className="mt-1 text-muted-foreground text-xs">
+          {t("composio.waitingToConnect")}
+        </p>
+      )}
 
-      <InteractionFooter>
-        {back}
-        {onForward === null ? (
-          // Live frontier: ghost Skip (declines this step) beside filled Connect.
-          <>
-            {!isConnected && (
-              <Button
-                disabled={connecting}
-                onClick={() => onSkip(toolkit, app.name)}
-                size="sm"
-                type="button"
-                variant="ghost"
-              >
-                {t("questionCard.skip")}
-              </Button>
-            )}
-            {connectButton}
-          </>
-        ) : isConnected ? (
-          // Revisited + connected: Forward is the only way onward (filled).
-          <Button onClick={onForward} size="sm" type="button">
-            {t("questionCard.forward")}
-          </Button>
-        ) : (
-          // Revisited + skipped: reconsider — ghost "keep it skipped" Forward
-          // beside a fresh filled Connect.
-          <>
+      {showConnect && (
+        <InteractionFooter>
+          {showNotNow && (
             <Button
+              className="gap-1.5 text-muted-foreground"
               disabled={connecting}
-              onClick={onForward}
+              onClick={() => onSkip(toolkit, app.name)}
               size="sm"
               type="button"
               variant="ghost"
             >
-              {t("questionCard.forward")}
+              {t("interaction.notNow")}
+              <Kbd>{t("interaction.esc")}</Kbd>
             </Button>
-            {connectButton}
-          </>
-        )}
-      </InteractionFooter>
+          )}
+          {connectButton}
+        </InteractionFooter>
+      )}
     </div>
   );
 }
