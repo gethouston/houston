@@ -10,13 +10,7 @@ export function UpdateChecker() {
   const { t, i18n } = useTranslation("shell");
   const { status, installAndRelaunch, relaunchInstalledApp, dismiss } = useUpdateChecker();
 
-  if (
-    status.state === "idle" ||
-    status.state === "checking" ||
-    status.state === "check-failed"
-  ) {
-    return null;
-  }
+  if (status.state === "idle") return null;
 
   const info = status.info;
   // The release ships en/es/pt notes in one updater string; pick the one for

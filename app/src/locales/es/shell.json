@@ -396,22 +396,5 @@
     "successWithId": "El centro de control está en eso. Referencia: {{id}}",
     "successNoId": "El centro de control está en eso.",
     "errorTitle": "No se pudo enviar el reporte"
-  },
-  "migration": {
-    "title": "Houston se muda a la nube",
-    "body": "Una nueva versión de Houston está lista. Tus agentes, archivos e historial se van contigo. Por seguridad, tu inicio de sesión de IA no se puede transferir, así que conectarás tu IA una vez después de actualizar.",
-    "checking": "Buscando la nueva versión...",
-    "updateNow": "Actualizar ahora",
-    "notNow": "Ahora no",
-    "downloading": "Descargando la nueva versión...",
-    "downloadingProgress": "Descargando la nueva versión... {{progress}}%",
-    "ready": "Actualización instalada. Reinicia Houston para terminar.",
-    "relaunch": "Reiniciar Houston",
-    "errorInstall": "Houston no pudo instalar la actualización. Inténtalo de nuevo en un momento.",
-    "errorRelaunch": "La actualización se instaló, pero Houston no pudo reiniciarse solo. Reinícialo manualmente o inténtalo de nuevo.",
-    "checkFailedTitle": "No se pudo buscar la nueva versión",
-    "checkFailedBody": "Houston no pudo conectarse al servicio de actualización. Revisa tu conexión a internet e inténtalo de nuevo, o sigue usando la versión actual por ahora.",
-    "tryAgain": "Intentar de nuevo",
-    "continueCurrent": "Continuar con la versión actual"
   }
 }

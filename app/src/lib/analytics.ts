@@ -79,11 +79,6 @@ export type AnalyticsEventName =
   | "update_offered"
   | "update_accepted"
   | "update_dismissed"
-  // Cloud-migration prompt (the final legacy release's blocking update gate)
-  | "migration_prompt_shown"
-  | "migration_prompt_accepted"
-  | "migration_prompt_postponed"
-  | "migration_prompt_check_failed"
   // Reliability
   | "session_completed"
   | "session_failed"

@@ -396,22 +396,5 @@
     "successWithId": "O centro de controle está cuidando disso. Referência: {{id}}",
     "successNoId": "O centro de controle está cuidando disso.",
     "errorTitle": "Não foi possível enviar o relatório"
-  },
-  "migration": {
-    "title": "O Houston está se mudando para a nuvem",
-    "body": "Uma nova versão do Houston está pronta. Seus agentes, arquivos e histórico vão com você. Por segurança, seu login de IA não pode ser transferido, então você vai conectar sua IA uma vez depois de atualizar.",
-    "checking": "Verificando a nova versão...",
-    "updateNow": "Atualizar agora",
-    "notNow": "Agora não",
-    "downloading": "Baixando a nova versão...",
-    "downloadingProgress": "Baixando a nova versão... {{progress}}%",
-    "ready": "Atualização instalada. Reinicie o Houston para concluir.",
-    "relaunch": "Reiniciar o Houston",
-    "errorInstall": "O Houston não conseguiu instalar a atualização. Tente de novo em instantes.",
-    "errorRelaunch": "A atualização foi instalada, mas o Houston não conseguiu reiniciar sozinho. Reinicie manualmente ou tente de novo.",
-    "checkFailedTitle": "Não foi possível verificar a nova versão",
-    "checkFailedBody": "O Houston não conseguiu acessar o serviço de atualização. Verifique sua conexão com a internet e tente de novo, ou continue usando a versão atual por enquanto.",
-    "tryAgain": "Tentar de novo",
-    "continueCurrent": "Continuar com a versão atual"
   }
 }

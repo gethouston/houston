@@ -15,12 +15,7 @@ export interface UpdateInfo {
 type UpdateErrorPhase = "install" | "relaunch";
 
 type UpdateStatus =
-  /** The very first check hasn't resolved yet. */
-  | { state: "checking" }
-  /** Checked successfully; no update available. */
   | { state: "idle" }
-  /** The check itself failed (offline, endpoint unreachable). */
-  | { state: "check-failed" }
   | { state: "available"; info: UpdateInfo }
   | { state: "downloading"; info: UpdateInfo; progress: number | null }
   | { state: "ready"; info: UpdateInfo }
@@ -30,7 +25,7 @@ const CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 type AvailableUpdate = NonNullable<Awaited<ReturnType<typeof check>>>;
 
 export function useUpdateChecker() {
-  const [status, setStatus] = useState<UpdateStatus>({ state: "checking" });
+  const [status, setStatus] = useState<UpdateStatus>({ state: "idle" });
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const updateRef = useRef<AvailableUpdate | null>(null);
   const infoRef = useRef<UpdateInfo | null>(null);
@@ -73,16 +68,6 @@ export function useUpdateChecker() {
       setStatus({ state: "available", info });
     } catch (error) {
       console.warn("[updater] check failed", error);
-      // Surface the failure, but only when we have nothing better to show:
-      // a transient 30-min re-check failure must not clobber an offer that is
-      // already on screen, and must not flip a settled "idle" (checked, no
-      // update) back into a failure surface mid-session.
-      if (
-        statusRef.current.state === "checking" ||
-        statusRef.current.state === "check-failed"
-      ) {
-        setStatus({ state: "check-failed" });
-      }
     }
   }, []);
 
@@ -176,5 +161,5 @@ export function useUpdateChecker() {
     };
   }, [runCheck]);
 
-  return { status, checkNow: runCheck, installAndRelaunch, relaunchInstalledApp, dismiss };
+  return { status, installAndRelaunch, relaunchInstalledApp, dismiss };
 }

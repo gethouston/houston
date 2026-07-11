@@ -1,6 +1,6 @@
 [package]
 name = "houston-engine-server"
-version = "0.4.30"
+version = "0.4.31"
 edition = "2021"
 description = "Houston Engine HTTP+WS server — axum binary speaking the Houston wire protocol"
 license = "MIT"
@@ -34,8 +34,8 @@ sha2 = "0.10"
 base64 = "0.22"
 rand = "0.8"
 futures-util = "0.3"
-houston-engine-protocol = { version = "0.4.30", path = "../houston-engine-protocol" }
-houston-engine-core = { version = "0.4.30", path = "../houston-engine-core" }
+houston-engine-protocol = { version = "0.4.31", path = "../houston-engine-protocol" }
+houston-engine-core = { version = "0.4.31", path = "../houston-engine-core" }
 houston-composio = { workspace = true }
 houston-claude-installer = { workspace = true }
 houston-cli-bundle = { workspace = true }

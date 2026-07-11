@@ -16,7 +16,6 @@ import { whenEngineReady, isEngineReady } from "./lib/engine";
 import i18n from "./lib/i18n";
 import { DisclaimerGate } from "./components/shell/disclaimer-gate";
 import { LanguageGate } from "./components/shell/language-gate";
-import { MigrationGate } from "./components/shell/migration-gate";
 import { showErrorToast } from "./lib/error-toast";
 import { isBenignLockRejection } from "./lib/benign-rejections";
 import { analytics, classifyAnalyticsError } from "./lib/analytics";
@@ -214,9 +213,7 @@ createRoot(document.getElementById("root")!).render(
             <I18nextProvider i18n={i18n}>
               <LanguageGate>
                 <DisclaimerGate>
-                  <MigrationGate>
-                    <App />
-                  </MigrationGate>
+                  <App />
                 </DisclaimerGate>
               </LanguageGate>
             </I18nextProvider>
