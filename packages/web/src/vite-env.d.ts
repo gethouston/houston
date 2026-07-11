@@ -8,6 +8,10 @@ declare const __POSTHOG_KEY__: string;
 declare const __POSTHOG_HOST__: string;
 declare const __SUPABASE_URL__: string;
 declare const __SUPABASE_ANON_KEY__: string;
+declare const __FIREBASE_API_KEY__: string;
+declare const __FIREBASE_AUTH_DOMAIN__: string;
+declare const __FIREBASE_PROJECT_ID__: string;
+declare const __GOOGLE_DESKTOP_CLIENT_ID__: string;
 declare const __HOUSTON_AUTH_STORAGE_MODE__: string;
 declare const __HOUSTON_AUTH_STORAGE_SCOPE__: string;
 declare const __SENTRY_DSN__: string;
@@ -17,6 +21,10 @@ declare const __SENTRY_SEND_IN_DEV__: string;
 // app/src/lib/autocompact.ts.
 interface ImportMetaEnv {
   readonly VITE_AUTOCOMPACT_THRESHOLD?: string;
+  /** Dev-only Firebase config overrides (identity/config.ts), no rebuild. */
+  readonly VITE_FIREBASE_API_KEY?: string;
+  readonly VITE_FIREBASE_AUTH_DOMAIN?: string;
+  readonly VITE_FIREBASE_PROJECT_ID?: string;
 }
 
 // The web boot sets this from the Connect screen / localStorage before the app

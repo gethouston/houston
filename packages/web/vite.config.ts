@@ -68,6 +68,21 @@ export default defineConfig(({ mode }) => {
       ),
       __SUPABASE_URL__: JSON.stringify(env.SUPABASE_URL ?? ""),
       __SUPABASE_ANON_KEY__: JSON.stringify(env.SUPABASE_ANON_KEY ?? ""),
+      // GCP Identity Platform (Firebase Auth), project `gethouston` — mirror of
+      // app/vite.config.ts. Public values (apiKey is not a secret). Supabase
+      // defines above stay until Wave 2 deletes supabase.ts. The web build uses
+      // firebase-js-sdk (popup); the desktop client id below is a no-op here but
+      // kept for define parity so app/src references it in both bundles.
+      __FIREBASE_API_KEY__: JSON.stringify(env.FIREBASE_API_KEY ?? ""),
+      __FIREBASE_AUTH_DOMAIN__: JSON.stringify(
+        env.FIREBASE_AUTH_DOMAIN ?? "gethouston.firebaseapp.com",
+      ),
+      __FIREBASE_PROJECT_ID__: JSON.stringify(
+        env.FIREBASE_PROJECT_ID ?? "gethouston",
+      ),
+      __GOOGLE_DESKTOP_CLIENT_ID__: JSON.stringify(
+        env.GOOGLE_DESKTOP_CLIENT_ID ?? "",
+      ),
       __HOUSTON_AUTH_STORAGE_MODE__: JSON.stringify("browser"),
       __HOUSTON_AUTH_STORAGE_SCOPE__: JSON.stringify("web"),
       __SENTRY_DSN__: JSON.stringify(env.SENTRY_DSN ?? ""),

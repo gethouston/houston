@@ -62,6 +62,22 @@ export default defineConfig(({ mode }) => {
       ),
       __SUPABASE_URL__: JSON.stringify(env.SUPABASE_URL ?? ""),
       __SUPABASE_ANON_KEY__: JSON.stringify(env.SUPABASE_ANON_KEY ?? ""),
+      // GCP Identity Platform (Firebase Auth), project `gethouston`. All three
+      // are PUBLIC values (the apiKey is not a secret). The Supabase defines
+      // above stay until Wave 2 deletes supabase.ts — removing them now would
+      // leave supabase.ts's `__SUPABASE_*__` reads as bare globals.
+      __FIREBASE_API_KEY__: JSON.stringify(env.FIREBASE_API_KEY ?? ""),
+      __FIREBASE_AUTH_DOMAIN__: JSON.stringify(
+        env.FIREBASE_AUTH_DOMAIN ?? "gethouston.firebaseapp.com",
+      ),
+      __FIREBASE_PROJECT_ID__: JSON.stringify(
+        env.FIREBASE_PROJECT_ID ?? "gethouston",
+      ),
+      // Desktop-only: the "Desktop app" Google OAuth client used by the
+      // loopback + PKCE sign-in (its non-confidential secret lives in Rust env).
+      __GOOGLE_DESKTOP_CLIENT_ID__: JSON.stringify(
+        env.GOOGLE_DESKTOP_CLIENT_ID ?? "",
+      ),
       __HOUSTON_AUTH_STORAGE_MODE__: JSON.stringify(authStorageMode),
       __HOUSTON_AUTH_STORAGE_SCOPE__: JSON.stringify(authStorageScope),
       __SENTRY_DSN__: JSON.stringify(env.SENTRY_DSN ?? ""),
