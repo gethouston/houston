@@ -156,6 +156,48 @@ registered, so the new `writes`/session/notice surface is unreachable from iOS),
 and keep every published scope snapshot shape unchanged. A web-needed op that
 can't be added without altering iOS behavior is STOPPED and reported, not forced.
 
+**The wave-3 shape (god-files → cohesive <200-line modules).** `client.ts` and
+`control-plane.ts` were two god-files (2157 / 1505 lines) violating the repo's
+200-line rule. They are now thin roots over cohesive modules; the public surface
+is byte-identical (callers + the `vi.mock("…/control-plane")` test suite are
+untouched), so this is a pure structural refactor.
+
+- **`control-plane.ts` is now a barrel** that re-exports the `cp/*` modules
+  (`fetch.ts` = the shared transport: `ControlPlaneConfig`, `cpFetch`,
+  `gatewayAuthFetch`, `transientRetryFetch`, `liveToken`, `agentPath`;
+  `runtime-clients.ts`, `agent-color.ts`, `agents.ts`, `credentials.ts`,
+  `board.ts` activities+routines, `skills.ts`, `marketplace.ts`,
+  `files-context.ts`, `events.ts`, `orgs.ts`, `spaces-billing.ts`,
+  `agent-teams.ts`, `integrations.ts`) plus the shared type re-export block. It
+  stays the ONE import site every caller and every test mock uses — the split is
+  invisible. `cp/*` modules import `HoustonEngineError` from `client/errors.ts`
+  (a leaf) to avoid an import cycle.
+- **`HoustonClient` is composed from cluster mixins** (`client/*-mixin.ts`:
+  boot, workspaces, agents, config-prefs, activities, agent-files, project-files,
+  routines-skills, marketplace, chat-send, chat-history, provider-status,
+  provider-login, provider-credentials, integrations, orgs, teams, portable,
+  legacy-unsupported) over ONE **`AdapterContext`** (`client/context.ts`), held
+  by `client/base.ts` as `protected this.ctx`. **The context is the single source
+  of truth** for `engine`/`sdk`/`authFetch`/`activeLogins`/`loginWatchers` and
+  the shared engine-routing helpers (`currentAgentId`, `requireAgentId`,
+  `providerEngine`, `dropLastAgentPref`, `activeOld`, `prefConfig`). `cp` is a
+  getter over a privately-held `ControlPlaneConfig`; `setActiveOrg` mutates THAT
+  object in place, so `authFetch`, the per-agent runtime clients, and the SDK all
+  reroute with no rebuild — no per-mixin copy of `cp`/active-org can drift
+  (guarded by `tests/gateway-org-header.test.ts` + `active-org.test.ts`). Mixins
+  call control-plane through the `import * as controlPlane from "../control-plane"`
+  barrel (the mock seam) and reach state only via `this.ctx`. Cross-cluster
+  helper bodies live as free functions taking the context
+  (`client/activity-status.ts`, `client/provider-login-poll.ts`).
+- **No silent-failure Proxy.** The old constructor ended with a catch-all
+  `Proxy` whose `get` returned `async () => []` for any undefined method — it
+  masked typos AND legacy methods as "empty result". It is gone. Legacy
+  desktop/Rust-engine methods that don't exist on the host engine (worktrees,
+  shell, phone tunnel/pairing, the Claude/Composio/Gemini CLIs) now throw an
+  explicit error (`client/legacy-unsupported-mixin.ts`); any genuinely undefined
+  method is `undefined` (a real TypeError on call), never a silent `[]`
+  (`tests/legacy-unsupported.test.ts`).
+
 ---
 
 ## THE PROCEDURES

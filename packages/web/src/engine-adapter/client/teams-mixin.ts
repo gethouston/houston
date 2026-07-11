@@ -1,0 +1,113 @@
+import * as controlPlane from "../control-plane";
+import type { BaseCtor } from "./mixin";
+
+export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
+  class Teams extends Base {
+    // ---- per-agent assignments + integration grants (multiplayer) ----
+    async setAgentAssignments(
+      agentSlugOrId: string,
+      assignments: controlPlane.AgentAssignment[] | string[],
+    ): Promise<void> {
+      if (!this.ctx.cp)
+        throw new Error("multiplayer requires the hosted gateway");
+      return controlPlane.setAgentAssignments(
+        this.ctx.cp,
+        agentSlugOrId,
+        assignments,
+      );
+    }
+    async getAgentSettings(
+      agentSlugOrId: string,
+    ): Promise<controlPlane.AgentSettings> {
+      if (!this.ctx.cp)
+        throw new Error("multiplayer requires the hosted gateway");
+      return controlPlane.getAgentSettings(this.ctx.cp, agentSlugOrId);
+    }
+    async setAgentSettings(
+      agentSlugOrId: string,
+      settings: {
+        allowedToolkits?: string[] | null;
+        allowedModels?: string[] | null;
+      },
+    ): Promise<void> {
+      if (!this.ctx.cp)
+        throw new Error("multiplayer requires the hosted gateway");
+      return controlPlane.setAgentSettings(
+        this.ctx.cp,
+        agentSlugOrId,
+        settings,
+      );
+    }
+    async getAgentModelChoice(
+      agentSlugOrId: string,
+    ): Promise<controlPlane.AgentModelChoiceInfo | null> {
+      if (!this.ctx.cp) return null;
+      return controlPlane.getAgentModelChoice(this.ctx.cp, agentSlugOrId);
+    }
+    async setAgentModelChoice(
+      agentSlugOrId: string,
+      choice: controlPlane.AgentModelChoice,
+    ): Promise<void> {
+      if (!this.ctx.cp)
+        throw new Error("multiplayer requires the hosted gateway");
+      return controlPlane.setAgentModelChoice(
+        this.ctx.cp,
+        agentSlugOrId,
+        choice,
+      );
+    }
+    async getOrgSettings(): Promise<controlPlane.OrgSettings> {
+      if (!this.ctx.cp)
+        throw new Error("multiplayer requires the hosted gateway");
+      return controlPlane.getOrgSettings(this.ctx.cp);
+    }
+    async setOrgSettings(settings: {
+      allowedToolkits?: string[] | null;
+      allowedModels?: string[] | null;
+    }): Promise<void> {
+      if (!this.ctx.cp)
+        throw new Error("multiplayer requires the hosted gateway");
+      return controlPlane.setOrgSettings(this.ctx.cp, settings);
+    }
+    async orgAudit(
+      opts: { before?: number; limit?: number } = {},
+    ): Promise<controlPlane.AuditEntry[]> {
+      if (!this.ctx.cp)
+        throw new Error("multiplayer requires the hosted gateway");
+      return controlPlane.orgAudit(this.ctx.cp, opts);
+    }
+    async orgUsage(days: number): Promise<controlPlane.UsageRow[]> {
+      if (!this.ctx.cp)
+        throw new Error("multiplayer requires the hosted gateway");
+      return controlPlane.orgUsage(this.ctx.cp, days);
+    }
+
+    // Grants degrade gracefully: `null` means "this deployment has no grants
+    // model" (the legacy engine path, or a host that 404s the route), which the UI
+    // treats as unsupported rather than a hard failure. A host that serves grants
+    // (the local/self-host TS host, or the cloud gateway) answers with the set.
+    async agentIntegrationGrants(
+      agentSlugOrId: string,
+    ): Promise<string[] | null> {
+      if (!this.ctx.cp) return null;
+      return controlPlane.agentIntegrationGrants(this.ctx.cp, agentSlugOrId);
+    }
+    async setAgentIntegrationGrants(
+      agentSlugOrId: string,
+      toolkits: string[],
+    ): Promise<void> {
+      // Grants are cloud-only: off-cloud there is no per-agent grants model, so
+      // this stays a no-op (never a network call) — the guard is preserved.
+      if (!this.ctx.cp) return;
+      // Delegate the WRITE to the SDK (migration wave 2a): its IntegrationsClient
+      // issues the identical `PUT /v1/agents/:id/integration-grants` with body
+      // `{toolkits}` over the SAME shared gateway fetch (bearer + `x-houston-org`)
+      // and does NOT read the response or refetch — byte-identical to the old
+      // `controlPlane.setAgentIntegrationGrants`. The READ (`agentIntegrationGrants`
+      // above) stays on cpFetch: its GET carries `transientRetryFetch`, which the
+      // SDK path lacks, so delegating it would drop that retry resilience.
+      await this.ctx.sdk.integrations.setGrants(agentSlugOrId, toolkits);
+    }
+  }
+  return Teams;
+}
