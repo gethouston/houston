@@ -9,7 +9,7 @@ import { showErrorToast } from "../../lib/error-toast";
 import { queryKeys } from "../../lib/query-keys";
 import { isAuthConfigured } from "../../lib/supabase";
 import { tauriIntegrations } from "../../lib/tauri";
-import { INTEGRATION_PROVIDER } from "./model";
+import { activeIntegration, INTEGRATION_PROVIDER } from "./model";
 
 /** The boot/auth gate both integrations surfaces render behind. */
 export type IntegrationsGate =
@@ -42,17 +42,21 @@ export function useIntegrationsGate(): IntegrationsGate {
   const { isLoading: capabilitiesLoading } = useCapabilities();
   const status = useIntegrationStatus();
   const { data: session } = useSession();
-  const composio = status.data?.find(
-    (p) => p.provider === INTEGRATION_PROVIDER,
-  );
-  const ready = !!composio?.ready;
+  // The provider this gate manages: the platform provider when wired, else an
+  // MCP app hub (which is always ready — its sign-in is a toolkit connect, so
+  // the gate goes straight to "ready" and the page renders identically).
+  const active = activeIntegration(status.data);
+  const isPlatform = active?.provider === INTEGRATION_PROVIDER;
+  const ready = !!active?.ready;
 
   const [signingIn, setSigningIn] = useState(false);
   const token = session?.access_token ?? null;
   const [resynced, setResynced] = useState(false);
 
   useEffect(() => {
-    if (!token || ready || resynced || status.isLoading || !composio) return;
+    // The session re-push is a PLATFORM concern (the gateway forwards the
+    // Houston session); a hub authorizes per user through its own OAuth.
+    if (!token || ready || resynced || status.isLoading || !isPlatform) return;
     let stale = false;
     tauriIntegrations
       .setSession(token)
@@ -68,8 +72,8 @@ export function useIntegrationsGate(): IntegrationsGate {
     return () => {
       stale = true;
     };
-  }, [token, ready, resynced, status.isLoading, composio, qc]);
-  const sessionSyncPending = !!token && !!composio && !ready && !resynced;
+  }, [token, ready, resynced, status.isLoading, isPlatform, qc]);
+  const sessionSyncPending = !!token && isPlatform && !ready && !resynced;
 
   const signIn = useCallback(async () => {
     setSigningIn(true);
@@ -99,8 +103,8 @@ export function useIntegrationsGate(): IntegrationsGate {
 
   if (status.isLoading || capabilitiesLoading || sessionSyncPending)
     return { kind: "loading" };
-  if (!composio) return { kind: "unavailable" };
-  if (!composio.ready) {
+  if (!active) return { kind: "unavailable" };
+  if (!active.ready) {
     if (isAuthConfigured()) {
       return { kind: "signin", signIn: () => void signIn(), signingIn };
     }
@@ -108,7 +112,7 @@ export function useIntegrationsGate(): IntegrationsGate {
   }
   return {
     kind: "ready",
-    reconnectNotice: !!composio.reconnect,
+    reconnectNotice: !!active.reconnect,
     dismissReconnect,
   };
 }

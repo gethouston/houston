@@ -129,7 +129,7 @@ export function IntegrationsReady({
           loading={apps.catalogLoading}
         />
 
-        <McpHubsSection />
+        <McpHubsSection exclude={provider} />
       </div>
 
       {selectedConn && selectedApp && (

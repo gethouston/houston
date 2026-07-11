@@ -5,8 +5,8 @@ import {
   McpHubsSection,
   SigninState,
   UnavailableState,
+  useActiveIntegration,
   useIntegrationsGate,
-  useMcpHubProviders,
 } from "../integrations";
 import { PageContainer, PageHeader } from "../shell/page-shell";
 import { IntegrationsPolicy } from "./integrations-policy";
@@ -24,24 +24,12 @@ export function IntegrationsView() {
   const { t } = useTranslation("integrations");
   const { capabilities } = useCapabilities();
   const gate = useIntegrationsGate();
-  // App hubs (MCP providers) sign in per hub, not through the platform
-  // gate — a hub-only engine must render its hubs, never "unavailable".
-  const hubs = useMcpHubProviders();
-  const hubOnly = hubs[0];
+  const active = useActiveIntegration();
 
   return (
     <div className="h-full overflow-auto">
       <PageContainer className="py-10">
-        {gate.kind !== "ready" && gate.kind !== "loading" && hubOnly ? (
-          // No platform provider, but an app hub is wired: the hub IS the
-          // integrations page — same catalog cards, connect flow, and
-          // disconnect surface, scoped to the hub provider.
-          <IntegrationsReady
-            reconnectNotice={false}
-            dismissReconnect={async () => {}}
-            provider={hubOnly}
-          />
-        ) : gate.kind === "ready" ? (
+        {gate.kind === "ready" ? (
           integrationsPageMode(capabilities) === "policy" ? (
             <IntegrationsPolicy
               reconnectNotice={gate.reconnectNotice}
@@ -51,6 +39,7 @@ export function IntegrationsView() {
             <IntegrationsReady
               reconnectNotice={gate.reconnectNotice}
               dismissReconnect={gate.dismissReconnect}
+              provider={active.providerId}
             />
           )
         ) : (

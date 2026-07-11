@@ -20,6 +20,19 @@ export const INTEGRATION_PROVIDER = "composio";
  * loading, or the legacy Rust engine, which has no integration routes) also
  * means don't fetch. Pure so it's unit-testable.
  */
+/**
+ * The provider a single-provider surface should manage: the platform provider
+ * ("composio") when the engine wires it, else the FIRST provider it does wire
+ * (an MCP app hub) — so cloud and hub-only local render the SAME UI. Undefined
+ * only when integrations are off entirely.
+ */
+export function activeIntegration<T extends { provider: string }>(
+  items: T[] | undefined,
+): T | undefined {
+  if (!items || items.length === 0) return undefined;
+  return items.find((i) => i.provider === INTEGRATION_PROVIDER) ?? items[0];
+}
+
 export function integrationsSupported(
   capabilities: Pick<Capabilities, "integrations"> | null,
 ): boolean {

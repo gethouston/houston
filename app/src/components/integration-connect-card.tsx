@@ -19,7 +19,7 @@ import {
 } from "./integration-connect-card-state";
 import {
   appDisplay,
-  INTEGRATION_PROVIDER,
+  useActiveIntegration,
   useConnectFlow,
 } from "./integrations";
 
@@ -72,7 +72,7 @@ interface IntegrationConnectCardProps {
  */
 export function IntegrationConnectCard({
   toolkit,
-  provider = INTEGRATION_PROVIDER,
+  provider,
   agentId,
   autoGrant,
   onConnected,
@@ -82,10 +82,12 @@ export function IntegrationConnectCard({
   const { t } = useTranslation("chat");
   const addToast = useUIStore((s) => s.addToast);
 
+  const active = useActiveIntegration();
+  const providerId = provider ?? active.providerId;
   const status = useIntegrationStatus();
-  const ready = !!status.data?.find((p) => p.provider === provider)?.ready;
-  const connections = useIntegrationConnections(provider, ready);
-  const catalog = useIntegrationToolkits(provider, ready);
+  const ready = !!status.data?.find((p) => p.provider === providerId)?.ready;
+  const connections = useIntegrationConnections(providerId, ready);
+  const catalog = useIntegrationToolkits(providerId, ready);
 
   const slug = normalizeToolkitSlug(toolkit);
   const isConnected = isToolkitConnected(connections.data, toolkit);
@@ -95,7 +97,7 @@ export function IntegrationConnectCard({
   const { state: connectState, connect } = useConnectFlow({
     agentId,
     autoGrant,
-    provider,
+    provider: providerId,
   });
   // The nudge fires at most once per card, and only for a connection the
   // user drove from HERE — a connection landing via the Integrations tab or

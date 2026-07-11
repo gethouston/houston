@@ -5,7 +5,6 @@ import type {
 // `.ts` extension so the node test runner (extensionless ESM can't resolve)
 // can import this pure helper directly, matching the repo's tested-module
 // convention. The target only imports erased package types, so it loads clean.
-import { INTEGRATION_PROVIDER } from "../../integrations/model.ts";
 import type { OnboardingStep } from "../tutorial-copy";
 
 /**
@@ -50,7 +49,8 @@ export function isFirstRun(opts: {
 export function integrationsAvailable(
   capabilities: Capabilities | null | undefined,
 ): boolean {
-  return capabilities?.integrations?.includes(INTEGRATION_PROVIDER) ?? false;
+  // ANY wired provider (platform or an MCP app hub) can connect email.
+  return (capabilities?.integrations?.length ?? 0) > 0;
 }
 
 /**

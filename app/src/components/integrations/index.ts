@@ -48,6 +48,7 @@ export {
   SigninState,
   UnavailableState,
 } from "./states";
+export { useActiveIntegration } from "./use-active-integration";
 export {
   type ConnectFlow,
   type ConnectState,

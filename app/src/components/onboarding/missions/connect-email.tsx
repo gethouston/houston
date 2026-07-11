@@ -2,14 +2,11 @@ import { AsyncButton, Button, ConfirmDialog, Input } from "@houston-ai/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import {
-  useIntegrationConnections,
-  useIntegrationStatus,
-} from "../../../hooks/queries";
+import { useIntegrationConnections } from "../../../hooks/queries";
 import { useCapabilities } from "../../../hooks/use-capabilities";
 import { canManageAgentGrants } from "../../../lib/agent-access";
 import type { Agent } from "../../../lib/types";
-import { INTEGRATION_PROVIDER, useConnectFlow } from "../../integrations";
+import { useActiveIntegration, useConnectFlow } from "../../integrations";
 import { OptionCard, SetupCard } from "../setup-card";
 import { isToolkitConnected, shouldOfferConnectSkip } from "./onboarding-flow";
 
@@ -54,13 +51,8 @@ export function ConnectEmailMission({
   // The gateway is "ready" only once it has the Houston session (App's session
   // sync pushes it). Gate the connection poll on it so we never fire a failing
   // call while the provider is still warming up (before any connect attempt).
-  const status = useIntegrationStatus();
-  const ready = !!status.data?.find((p) => p.provider === INTEGRATION_PROVIDER)
-    ?.ready;
-  const connections = useIntegrationConnections(
-    INTEGRATION_PROVIDER,
-    ready || attempted,
-  );
+  const { providerId, ready } = useActiveIntegration();
+  const connections = useIntegrationConnections(providerId, ready || attempted);
 
   // Multiplayer: a connection made from this agent's flow is auto-granted to it
   // (mirrors the integrations tab). Single-player has no grants — this is false.
@@ -68,6 +60,7 @@ export function ConnectEmailMission({
   const { state: connectState, connect } = useConnectFlow({
     agentId: agent.id,
     autoGrant,
+    provider: providerId,
   });
   const connecting = connectState !== null;
 

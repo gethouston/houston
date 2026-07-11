@@ -32,9 +32,9 @@ export function useMcpHubProviders(): string[] {
  * polls until the sign-in lands), and Disconnect drops the stored
  * authorization. Agents see the hub's tools the moment it turns connected.
  */
-export function McpHubsSection() {
+export function McpHubsSection({ exclude }: { exclude?: string } = {}) {
   const { t } = useTranslation("integrations");
-  const providers = useMcpHubProviders();
+  const providers = useMcpHubProviders().filter((p) => p !== exclude);
   if (providers.length === 0) return null;
   return (
     <section className="flex flex-col gap-3">
