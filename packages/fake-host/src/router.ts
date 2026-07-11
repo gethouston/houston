@@ -104,15 +104,30 @@ export async function handle(req: Request): Promise<Response> {
       advanced: turnBoundary(String(body?.nextText ?? "next turn")),
     });
   }
-  // Toggle Composio readiness: "ready" | "unavailable" (503) | "signin".
+  // Toggle Composio readiness: "ready" | "unavailable" (503) | "signin" |
+  // "absent" (not registered at all — only the custom provider, when armed).
   if (path === "/__test__/integrations-mode" && method === "POST") {
     const body = await parseBody(req);
     state.setIntegrationsMode(
-      body?.mode === "unavailable" || body?.mode === "signin"
+      body?.mode === "unavailable" ||
+        body?.mode === "signin" ||
+        body?.mode === "absent"
         ? body.mode
         : "ready",
     );
     return json({ mode: state.integrationsMode() });
+  }
+  // Arm the custom-integrations feature (HOU-550): `{items: [...]}` serves the
+  // definitions + a ready `custom` provider; `{items: null}` disarms (404s —
+  // the pre-feature host shape). Reset restores disarmed.
+  if (path === "/__test__/custom-integrations" && method === "POST") {
+    const body = await parseBody(req);
+    state.setCustomIntegrations(
+      Array.isArray(body?.items)
+        ? (body.items as state.CustomIntegrationSeed[])
+        : null,
+    );
+    return json({ items: state.listCustomIntegrations() });
   }
   // Override advertised capabilities (Teams e2e): merge a partial into the set,
   // e.g. `{ integrations:["composio"], multiplayer:true, teams:true, role:"owner" }`

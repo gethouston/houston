@@ -4,6 +4,7 @@ import { cn } from "@houston-ai/core";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import {
   advanceConnect,
+  advanceCredential,
   advanceSignin,
   answerWithOption,
   answerWithText,
@@ -35,6 +36,7 @@ export type {
 
 type ConnectStep = Extract<ChatInteractionStep, { kind: "connect" }>;
 type SigninStep = Extract<ChatInteractionStep, { kind: "signin" }>;
+type CredentialStep = Extract<ChatInteractionStep, { kind: "credential" }>;
 
 export interface ChatInteractionCardProps {
   /** The ordered interaction steps: question steps, then at most one signin
@@ -58,6 +60,13 @@ export interface ChatInteractionCardProps {
   renderSignin: (
     step: SigninStep,
     api: StepFooterApi & { onSignedIn: () => void },
+  ) => ReactNode;
+  /** Renders a credential step's body; call `api.onSaved` to advance once the
+   *  secret is stored. ui/chat stays integration-unaware, so the app supplies
+   *  the secure key-entry card. */
+  renderCredential: (
+    step: CredentialStep,
+    api: { onSaved: () => void },
   ) => ReactNode;
   /** Dismisses the WHOLE interaction sequence. When omitted, the header shows no
    *  dismiss (X) button. */
@@ -125,6 +134,7 @@ export function ChatInteractionCard({
   onComplete,
   renderConnect,
   renderSignin,
+  renderCredential,
   onDismiss,
   disabled = false,
   labels,
@@ -202,6 +212,10 @@ export function ChatInteractionCard({
 
   const onSignedIn = useCallback(() => {
     apply(advanceSignin(state, steps));
+  }, [apply, state, steps]);
+
+  const onSaved = useCallback(() => {
+    apply(advanceCredential(state, steps));
   }, [apply, state, steps]);
 
   if (!step) return null;
@@ -290,6 +304,8 @@ export function ChatInteractionCard({
           </div>
         ) : step.kind === "signin" ? (
           renderSignin(step, { ...footerApi, onSignedIn })
+        ) : step.kind === "credential" ? (
+          renderCredential(step, { onSaved })
         ) : (
           renderConnect(step, { ...footerApi, onConnected })
         )}

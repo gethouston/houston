@@ -27,6 +27,7 @@ import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
 import { analytics } from "../../lib/analytics";
+import { isSetupChatMode } from "../../lib/integration-chat-setup";
 import {
   canSeeAiModelsPage,
   canSeeIntegrationsPage,
@@ -34,7 +35,6 @@ import {
 } from "../../lib/org-roles";
 import { osIsTauri } from "../../lib/os-bridge";
 import { isMac } from "../../lib/platform";
-import { isRoutineSetupMode } from "../../lib/routine-chat-setup";
 import { shortcutLabel } from "../../lib/shortcuts";
 import { blockedTopLevelView, isTopLevelView } from "../../lib/top-level-views";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
@@ -120,7 +120,7 @@ export function WorkspaceShell({
   const agentDef = currentAgent ? getById(currentAgent.configId) : undefined;
   const { data: activities } = useActivity(currentAgent?.folderPath);
   const needsYouCount = (activities ?? []).filter(
-    (a) => a.status === "needs_you" && !isRoutineSetupMode(a.agent),
+    (a) => a.status === "needs_you" && !isSetupChatMode(a.agent),
   ).length;
   const isAgentView = !isTopLevelView(viewMode);
   // Resolve against the CALLER-visible tab set, not the raw standard ids:

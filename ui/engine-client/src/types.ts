@@ -538,6 +538,9 @@ export type InteractionStep =
     }
   | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string }
+  /** The user must enter a custom integration's API key in a secure field (never
+   *  into the chat). `toolkit` is the custom integration's slug (HOU-550). */
+  | { kind: "credential"; id: string; toolkit: string; reason?: string }
   /** The model finished planning: a short plan summary the user approves by
    *  choosing a mode (start working / Autopilot) or dismisses to keep planning. */
   | { kind: "plan_ready"; id: string; summary: string }
@@ -1484,6 +1487,44 @@ export interface IntegrationConnection {
   toolkit: string;
   connectionId: string;
   status: "active" | "pending" | "error";
+}
+
+// ── Custom integrations (HOU-550) ────────────────────────────────────────────
+// User-added API / MCP servers that Composio does not offer. The host owns
+// persistence and compiles them to agent tools; the frontend only lists them,
+// removes them, and provides a secret for the ones waiting on a credential. The
+// secret crosses ONLY on the credential POST body, never the chat transcript.
+
+/** One credential input to collect, keyed by `variable` in the submit body. */
+export interface CustomAuthField {
+  variable: string;
+  label: string;
+}
+
+/** An auth method the integration declares; one password field per `fields`. */
+export interface CustomAuthMethod {
+  template: string;
+  label: string;
+  fields: CustomAuthField[];
+}
+
+/** Live status of a custom integration inside the running host. */
+export type CustomIntegrationState =
+  | { status: "active"; toolCount: number }
+  | { status: "pending"; authMethods: CustomAuthMethod[] }
+  | { status: "error"; message: string };
+
+/** What the host lists: the definition plus its live compiled state. */
+export interface CustomIntegrationView {
+  slug: string;
+  name: string;
+  kind: "openapi" | "mcp";
+  /** The service URL shown to the user (spec url / MCP endpoint). */
+  displayUrl?: string;
+  addedAtMs: number;
+  state: CustomIntegrationState;
+  /** Present when a credential can be (re)provided — the fields to collect. */
+  authMethods?: CustomAuthMethod[];
 }
 
 // ── OpenAI-compatible (local) provider ───────────────────────────────────────

@@ -32,6 +32,10 @@ import { IntegrationSigninRequiredError } from "./types";
 export function actionInToolkit(action: string, toolkit: string): boolean {
   const a = action.toLowerCase();
   const t = toolkit.toLowerCase();
+  // Custom-provider actions are executor addresses
+  // (`tools.<integration>.<owner>.<connection>.<tool>`): the toolkit is the
+  // integration segment, exactly — never a prefix rule over the whole string.
+  if (a.startsWith("tools.")) return a.split(".")[1] === t;
   return a === t || a.startsWith(`${t}_`);
 }
 

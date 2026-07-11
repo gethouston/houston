@@ -1,3 +1,4 @@
+import type { CustomIntegrationView } from "@houston-ai/engine-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { integrationsSupported } from "../../components/integrations/model";
 import { queryKeys } from "../../lib/query-keys";
@@ -29,12 +30,26 @@ export function useIntegrationStatus() {
   });
 }
 
+/**
+ * Whether `provider` is REGISTERED on this host (present in the readiness
+ * list, ready or not). Provider-scoped queries must AND-gate on this: a host
+ * can serve the key-free `custom` provider with NO Composio at all (dev,
+ * self-host without a key), and a Composio-scoped fetch there 404s ("unknown
+ * integration provider") straight into a red toast — e.g. a transcript's old
+ * connect card mounting its connections query.
+ */
+function useProviderRegistered(provider: string): boolean {
+  const status = useIntegrationStatus();
+  return !!status.data?.some((p) => p.provider === provider);
+}
+
 /** The apps the user has connected through a provider. */
 export function useIntegrationConnections(provider: string, enabled: boolean) {
+  const registered = useProviderRegistered(provider);
   return useQuery({
     queryKey: queryKeys.integrationConnections(provider),
     queryFn: () => tauriIntegrations.connections(provider),
-    enabled,
+    enabled: enabled && registered,
   });
 }
 
@@ -44,10 +59,11 @@ export function useIntegrationConnections(provider: string, enabled: boolean) {
  * app cards instead of machine slugs.
  */
 export function useIntegrationToolkits(provider: string, enabled: boolean) {
+  const registered = useProviderRegistered(provider);
   return useQuery({
     queryKey: queryKeys.integrationToolkits(provider),
     queryFn: () => tauriIntegrations.toolkits(provider),
-    enabled,
+    enabled: enabled && registered,
     staleTime: 60 * 60 * 1000,
   });
 }
@@ -70,6 +86,65 @@ export function useDisconnectIntegration(provider: string) {
       qc.invalidateQueries({
         queryKey: queryKeys.integrationConnections(provider),
       }),
+  });
+}
+
+/**
+ * HOU-550: the user's custom (API / MCP) integrations. User-level (one list,
+ * shared across agents), gated on the `integrations` capability like the status
+ * query above so an integrations-off deployment never fetches.
+ *
+ * Data is `CustomIntegrationView[] | null`: `null` means the host answered 404 =
+ * the feature is unsupported (an old build or a gateway-fronted pod), which the
+ * caller renders as "hide all custom-integration UI" rather than an empty list.
+ */
+export function useCustomIntegrations() {
+  const { capabilities } = useCapabilities();
+  return useQuery<CustomIntegrationView[] | null>({
+    queryKey: queryKeys.customIntegrations(),
+    queryFn: () => tauriIntegrations.customList(),
+    enabled: integrationsSupported(capabilities),
+  });
+}
+
+/**
+ * Remove a custom integration entirely. Carries no `onError` for the same reason
+ * as the mutations above — the `call()` wrapper surfaces + reports once. On
+ * success both the custom list and the merged connections view drop it.
+ */
+export function useRemoveCustomIntegration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (slug: string) => tauriIntegrations.customRemove(slug),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.customIntegrations() });
+      qc.invalidateQueries({
+        queryKey: queryKeys.integrationConnections("custom"),
+      });
+    },
+  });
+}
+
+/**
+ * Provide the secret for a `pending` custom integration. Returns the refreshed
+ * view so a caller can read the new `active` state. No `onError` (see above).
+ */
+export function useSubmitCustomCredential() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      slug,
+      values,
+    }: {
+      slug: string;
+      values: Record<string, string>;
+    }) => tauriIntegrations.customCredential(slug, values),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.customIntegrations() });
+      qc.invalidateQueries({
+        queryKey: queryKeys.integrationConnections("custom"),
+      });
+    },
   });
 }
 

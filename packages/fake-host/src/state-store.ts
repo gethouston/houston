@@ -25,9 +25,42 @@ import { resetProviders } from "./state-providers";
  * Gateway integrations readiness, toggled by `/__test__/integrations-mode`:
  *  - `ready` — a Composio key is configured (the default),
  *  - `unavailable` — no key → every integrations route 503s,
- *  - `signin` — the provider reports `ready:false, reason:"signin"`.
+ *  - `signin` — the provider reports `ready:false, reason:"signin"`,
+ *  - `absent` — Composio is not registered at all (no key, no gateway): the
+ *    readiness list omits it and its subroutes 404 — the shape a real host
+ *    serves when only the key-free custom provider (HOU-550) is wired.
  */
-export type IntegrationsMode = "ready" | "unavailable" | "signin";
+export type IntegrationsMode = "ready" | "unavailable" | "signin" | "absent";
+
+/**
+ * One custom integration (HOU-550) as `GET /v1/integrations/custom/definitions`
+ * serves it. Mirrors the engine-client's `CustomIntegrationView` wire shape
+ * structurally (that type lives in `@houston-ai/engine-client`, which this
+ * package does not depend on).
+ */
+export interface CustomIntegrationSeed {
+  slug: string;
+  name: string;
+  kind: "openapi" | "mcp";
+  displayUrl?: string;
+  addedAtMs: number;
+  state:
+    | { status: "active"; toolCount: number }
+    | {
+        status: "pending";
+        authMethods: {
+          template: string;
+          label: string;
+          fields: { variable: string; label: string }[];
+        }[];
+      }
+    | { status: "error"; message: string };
+  authMethods?: {
+    template: string;
+    label: string;
+    fields: { variable: string; label: string }[];
+  }[];
+}
 
 /**
  * The capabilities the fake host advertises at `GET /v1/capabilities`. It models
@@ -135,6 +168,14 @@ export interface HostState {
   teamsSettings: TeamsSettings;
   /** Composio readiness, toggled by the `/__test__/integrations-mode` control. */
   integrationsMode: IntegrationsMode;
+  /**
+   * Custom integrations (HOU-550), armed by `/__test__/custom-integrations`.
+   * `null` (the default) = the host does not serve the feature at all: no
+   * `custom` entry in the readiness list and the definitions routes 404 (the
+   * client degrades to hiding every custom surface). A present array (even
+   * empty) = the key-free custom provider is wired and ready.
+   */
+  customIntegrations: CustomIntegrationSeed[] | null;
   /** connectionId -> the acting user's connected account. */
   connections: Map<string, IntegrationConnection>;
   /**
@@ -204,6 +245,7 @@ function freshState(): HostState {
     capabilities: { ...DEFAULT_CAPABILITIES },
     teamsSettings: { ...DEFAULT_TEAMS_SETTINGS },
     integrationsMode: "ready",
+    customIntegrations: null,
     connections,
     // No seeded grants record: the seed agent starts "grants unsupported" (404 →
     // null), so a suite can assert the null→[] distinction by writing one.

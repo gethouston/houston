@@ -76,6 +76,8 @@ export const queryKeys = {
     ["integration-connections", provider] as const,
   integrationToolkits: (provider: string) =>
     ["integration-toolkits", provider] as const,
+  /** HOU-550: the user's custom (API / MCP) integrations. User-level, one list. */
+  customIntegrations: () => ["custom-integrations"] as const,
 
   // Multiplayer (org). The current user's org + roster is app-scoped (one org
   // per user); per-agent integration grants are keyed by agent id.

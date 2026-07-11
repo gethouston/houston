@@ -40,6 +40,8 @@ export function composeInteractionReply(args: {
   connectedNames: string[];
   /** Apps whose connect step the user skipped, in skip order. */
   skippedConnectNames: string[];
+  /** Custom integrations whose secret the user saved during THIS sequence. */
+  credentialedNames: string[];
   hasQuestionSteps: boolean;
   /** A sign-in step completed in this sequence (the user is now signed in). */
   signedIn: boolean;
@@ -48,12 +50,16 @@ export function composeInteractionReply(args: {
   connectedLine: (name: string) => string;
   /** The status line a skipped connect step contributes to the reply. */
   skippedConnectLine: (name: string) => string;
+  /** The status line a saved custom-integration key contributes to a reply. */
+  credentialedLine: (name: string) => string;
   /** The status line a completed sign-in contributes to a composed reply. */
   signedInLine: string;
   /** The status line a skipped sign-in step contributes to the reply. */
   skippedSigninLine: string;
   /** The hidden resume message for a signin-ONLY sequence (nothing else to say). */
   signedInFollowup: string;
+  /** The hidden resume message for a credential-ONLY sequence (secret saved). */
+  credentialedFollowup: string;
 }): string {
   // Signin-only, actually signed in: no answers to relay, no connection and no
   // skip to name, so send the friendlier hidden followup rather than a lone
@@ -62,9 +68,22 @@ export function composeInteractionReply(args: {
     !args.hasQuestionSteps &&
     args.signedIn &&
     args.connectedNames.length === 0 &&
-    args.skippedConnectNames.length === 0
+    args.skippedConnectNames.length === 0 &&
+    args.credentialedNames.length === 0
   )
     return encodeAutoContinueMessage(args.signedInFollowup);
+
+  // Credential-only: mirror the signin-only case — resume the agent with the
+  // dedicated hidden followup ("I've added the X key. Please continue.")
+  // instead of a bare "Added the X key." status line.
+  if (
+    !args.hasQuestionSteps &&
+    !args.signedIn &&
+    args.connectedNames.length === 0 &&
+    args.skippedConnectNames.length === 0 &&
+    args.credentialedNames.length > 0
+  )
+    return encodeAutoContinueMessage(args.credentialedFollowup);
 
   const lines = args.answers.map((a) => `${a.question}: ${a.answer}`);
   if (args.signedIn) lines.push(args.signedInLine);
@@ -72,6 +91,8 @@ export function composeInteractionReply(args: {
   for (const name of args.connectedNames) lines.push(args.connectedLine(name));
   for (const name of args.skippedConnectNames)
     lines.push(args.skippedConnectLine(name));
+  for (const name of args.credentialedNames)
+    lines.push(args.credentialedLine(name));
   const body = lines.join("\n");
   return args.hasQuestionSteps ? body : encodeAutoContinueMessage(body);
 }
@@ -142,6 +163,8 @@ export function encodeInteractionAnswersMessage(
     lines.push({ answer: args.connectedLine(name) });
   for (const name of args.skippedConnectNames)
     lines.push({ answer: args.skippedConnectLine(name) });
+  for (const name of args.credentialedNames)
+    lines.push({ answer: args.credentialedLine(name) });
 
   const payload: InteractionAnswersPayload = { lines };
   return `${MARKER_PREFIX}${JSON.stringify(payload)}${MARKER_SUFFIX}\n\n${body}`;

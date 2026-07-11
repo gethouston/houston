@@ -34,8 +34,11 @@ interface Props extends TabProps {
   /** The Back button, rendered to the left of the agent avatar — the ONE
    *  header this chat has (no second header stacked above it). */
   panelLeading: ReactNode;
-  /** Overrides the panel's auto "Mission: {title}" line with "Routine: {name}". */
-  missionLabel: string;
+  /** Overrides the panel's auto "Mission: {title}" line (routines pass
+   *  "Routine: {name}"). Omit to keep the default "Mission: {title}" — the
+   *  custom-integration setup chat reuses this board and IS a mission, so it
+   *  wants that default. */
+  missionLabel?: string;
 }
 
 export function RoutineSetupChatBoard({

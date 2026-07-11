@@ -22,14 +22,17 @@ const base = {
   answers: [] as ChatInteractionAnswer[],
   connectedNames: [] as string[],
   skippedConnectNames: [] as string[],
+  credentialedNames: [] as string[],
   hasQuestionSteps: false,
   signedIn: false,
   signinSkipped: false,
   connectedLine: (name: string) => `Connected ${name}.`,
   skippedConnectLine: (name: string) => `Skipped connecting ${name}.`,
+  credentialedLine: (name: string) => `Added the ${name} key.`,
   signedInLine: "Signed in to Houston.",
   skippedSigninLine: "Skipped signing in.",
   signedInFollowup: "I've signed in. Please continue.",
+  credentialedFollowup: "I've added the Acme key. Please continue.",
 };
 
 describe("composeInteractionReply", () => {
@@ -84,8 +87,6 @@ describe("composeInteractionReply", () => {
   });
 
   // ── Sign-in composition ────────────────────────────────────────────────
-  // The signin line joins a VISIBLE reply BEFORE any Connected line when the
-  // sequence also asked questions (the user typed those answers).
   it("adds the signed-in line before Connected lines in a question+signin+connect sequence", () => {
     const reply = composeInteractionReply({
       ...base,
@@ -101,8 +102,6 @@ describe("composeInteractionReply", () => {
     );
   });
 
-  // A signin+connect sequence with no questions has nothing the user typed, so
-  // it resumes the agent hidden — the signed-in status line before the connects.
   it("hides a signin+connect sequence and orders sign-in before connects", () => {
     const reply = composeInteractionReply({
       ...base,
@@ -118,8 +117,6 @@ describe("composeInteractionReply", () => {
     );
   });
 
-  // A signin-ONLY sequence has nothing factual to relay, so it uses the
-  // dedicated hidden followup, never a lone status line.
   it("resumes a signin-only sequence with the hidden followup", () => {
     const reply = composeInteractionReply({ ...base, signedIn: true });
     strictEqual(isAutoContinueMessage(reply), true);
@@ -177,6 +174,38 @@ describe("composeInteractionReply", () => {
     strictEqual(reply.includes("Signed in to Houston."), true);
     strictEqual(reply.includes("Skipped connecting Gmail."), true);
     strictEqual(reply.includes("I've signed in. Please continue."), false);
+  });
+
+  // ── Credential composition (HOU-550) ───────────────────────────────────
+  // A credential-only sequence mirrors signin-only: no factual line to relay,
+  // so it resumes with the dedicated hidden followup naming the integration.
+  it("resumes a credential-only sequence with the hidden followup", () => {
+    const reply = composeInteractionReply({
+      ...base,
+      credentialedNames: ["Acme"],
+    });
+    strictEqual(isAutoContinueMessage(reply), true);
+    strictEqual(
+      reply.endsWith("I've added the Acme key. Please continue."),
+      true,
+    );
+    strictEqual(reply.includes("Added the Acme key."), false);
+  });
+
+  // A mixed sequence (questions + credential) keeps the visible answers and
+  // appends an "Added the X key." line, exactly like Connected lines.
+  it("appends an Added-key line per credential in a mixed sequence", () => {
+    const reply = composeInteractionReply({
+      ...base,
+      answers,
+      credentialedNames: ["Acme"],
+      hasQuestionSteps: true,
+    });
+    strictEqual(isAutoContinueMessage(reply), false);
+    strictEqual(
+      reply,
+      "To whom?: john@example.com\nSaying what?: Running late\nAdded the Acme key.",
+    );
   });
 });
 
@@ -245,8 +274,6 @@ describe("encodeInteractionAnswersMessage", () => {
     };
     const encoded = encodeInteractionAnswersMessage(shared);
     const flat = composeInteractionReply(shared);
-    // The marker rides in front; the body after the blank line is the untouched
-    // flat reply the model reads.
     strictEqual(encoded.endsWith(`\n\n${flat}`), true);
     strictEqual(encoded.startsWith("<!--houston:interaction-answers "), true);
   });
@@ -257,6 +284,7 @@ describe("encodeInteractionAnswersMessage", () => {
       answers,
       connectedNames: ["Gmail"],
       skippedConnectNames: ["Slack"],
+      credentialedNames: ["Acme"],
       hasQuestionSteps: true,
       signedIn: true,
     });
@@ -268,6 +296,7 @@ describe("encodeInteractionAnswersMessage", () => {
         { answer: "Signed in to Houston." },
         { answer: "Connected Gmail." },
         { answer: "Skipped connecting Slack." },
+        { answer: "Added the Acme key." },
       ],
     });
   });
@@ -285,6 +314,15 @@ describe("encodeInteractionAnswersMessage", () => {
     const encoded = encodeInteractionAnswersMessage({
       ...base,
       signedIn: true,
+    });
+    strictEqual(isAutoContinueMessage(encoded), true);
+    strictEqual(decodeInteractionAnswersMessage(encoded), null);
+  });
+
+  it("does NOT mark a hidden credential-only sequence", () => {
+    const encoded = encodeInteractionAnswersMessage({
+      ...base,
+      credentialedNames: ["Acme"],
     });
     strictEqual(isAutoContinueMessage(encoded), true);
     strictEqual(decodeInteractionAnswersMessage(encoded), null);

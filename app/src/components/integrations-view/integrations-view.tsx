@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import {
+  CustomIntegrationsSection,
   LoadingState,
   SigninState,
   UnavailableState,
@@ -17,6 +18,12 @@ import { integrationsPageMode } from "./integrations-view-model";
  * gated by the nav); everywhere else it is the caller's PERSONAL connected-apps
  * page. Shares the exact gate UX of the per-agent tab (loading / unavailable /
  * signin / ready) via `useIntegrationsGate`; the ready body owns the mode split.
+ *
+ * The gate's non-ready kinds describe the COMPOSIO catalog only: the key-free
+ * custom provider (HOU-550) is served independently, so when the gate reports
+ * `customAvailable` the page still renders the Custom integrations section —
+ * with the catalog's own state (sign-in card / catalog-unavailable note)
+ * scoped to the catalog instead of blanking the whole page.
  */
 export function IntegrationsView() {
   const { t } = useTranslation("integrations");
@@ -47,6 +54,20 @@ export function IntegrationsView() {
             />
             {gate.kind === "loading" ? (
               <LoadingState />
+            ) : gate.customAvailable ? (
+              <div className="space-y-8">
+                <CustomIntegrationsSection />
+                {gate.kind === "signin" ? (
+                  <SigninState
+                    onSignIn={gate.signIn}
+                    signingIn={gate.signingIn}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {t("custom.catalogUnavailable")}
+                  </p>
+                )}
+              </div>
             ) : gate.kind === "signin" ? (
               <SigninState onSignIn={gate.signIn} signingIn={gate.signingIn} />
             ) : (

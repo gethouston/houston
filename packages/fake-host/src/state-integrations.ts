@@ -17,7 +17,12 @@ import type {
   IntegrationProviderStatus,
   IntegrationToolkit,
 } from "@houston/runtime-client";
-import { emitDomain, type IntegrationsMode, state } from "./state-store";
+import {
+  type CustomIntegrationSeed,
+  emitDomain,
+  type IntegrationsMode,
+  state,
+} from "./state-store";
 
 /**
  * A stable, well-known A-Z toolkit catalog. Kept small but large enough (15
@@ -161,10 +166,56 @@ export function setIntegrationsMode(mode: IntegrationsMode): void {
 
 /** The readiness list the gateway serves at `GET /v1/integrations`. */
 export function integrationStatus(): IntegrationProviderStatus[] {
-  const ready = state.integrationsMode === "ready";
-  const status: IntegrationProviderStatus = { provider: "composio", ready };
-  if (state.integrationsMode === "signin") status.reason = "signin";
-  return [status];
+  const items: IntegrationProviderStatus[] = [];
+  // `absent` models a host with no Composio registered at all — the list
+  // simply omits it (its subroutes 404), unlike `unavailable` which 503s.
+  if (state.integrationsMode !== "absent") {
+    const ready = state.integrationsMode === "ready";
+    const status: IntegrationProviderStatus = { provider: "composio", ready };
+    if (state.integrationsMode === "signin") status.reason = "signin";
+    items.push(status);
+  }
+  // The key-free custom provider (HOU-550) is ready whenever it is armed.
+  if (state.customIntegrations !== null) {
+    items.push({ provider: "custom", ready: true });
+  }
+  return items;
+}
+
+// ── Custom integrations (HOU-550) — /v1/integrations/custom/definitions ─────
+
+/** Arm (or disarm with `null`) the custom provider + its definition list. */
+export function setCustomIntegrations(
+  items: CustomIntegrationSeed[] | null,
+): void {
+  state.customIntegrations = items;
+  emitDomain("CustomIntegrationsChanged");
+}
+
+/** The definitions list, or `null` when the feature is not served (404). */
+export function listCustomIntegrations(): CustomIntegrationSeed[] | null {
+  return state.customIntegrations;
+}
+
+export function removeCustomIntegration(slug: string): boolean {
+  if (!state.customIntegrations) return false;
+  const before = state.customIntegrations.length;
+  state.customIntegrations = state.customIntegrations.filter(
+    (i) => i.slug !== slug,
+  );
+  emitDomain("CustomIntegrationsChanged");
+  return state.customIntegrations.length < before;
+}
+
+/** Model a saved credential: the pending definition flips to active. */
+export function setCustomCredential(
+  slug: string,
+): CustomIntegrationSeed | null {
+  const item = state.customIntegrations?.find((i) => i.slug === slug);
+  if (!item) return null;
+  item.state = { status: "active", toolCount: 3 };
+  emitDomain("CustomIntegrationsChanged");
+  return item;
 }
 
 export function listToolkits(): IntegrationToolkit[] {

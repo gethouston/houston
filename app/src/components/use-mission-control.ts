@@ -13,6 +13,7 @@ import {
 } from "../hooks/use-conversation-vm";
 import { buildAttachmentPrompt } from "../lib/attachment-message";
 import { createMission } from "../lib/create-mission";
+import { isSetupChatMode } from "../lib/integration-chat-setup";
 import { missionCardTags } from "../lib/mission-card";
 import {
   buildMissionPeople,
@@ -21,7 +22,6 @@ import {
 import { isMultiplayer } from "../lib/org-roles";
 import { queryKeys } from "../lib/query-keys";
 import { formatVisibleMessageText } from "../lib/queued-chat";
-import { isRoutineSetupMode } from "../lib/routine-chat-setup";
 import {
   type HistoryLoadOptions,
   tauriActivity,
@@ -98,7 +98,7 @@ export function useMissionControl(agents: Agent[]) {
           c.type === "activity" &&
           c.status &&
           c.status !== "archived" &&
-          !isRoutineSetupMode(c.agent),
+          !isSetupChatMode(c.agent),
       )
       .map((c) => {
         const agent = agentMap[c.agent_path];

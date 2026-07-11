@@ -44,6 +44,7 @@ import type {
 type QuestionStep = Extract<InteractionStep, { kind: "question" }>;
 type SigninStep = Extract<InteractionStep, { kind: "signin" }>;
 type ConnectStep = Extract<InteractionStep, { kind: "connect" }>;
+type CredentialStep = Extract<InteractionStep, { kind: "credential" }>;
 type PlanReadyStep = Extract<InteractionStep, { kind: "plan_ready" }>;
 type SuggestReusableStep = Extract<
   InteractionStep,
@@ -57,6 +58,9 @@ export interface InteractionHolder {
   readonly signin: SigninStep | undefined;
   /** Connect steps appended by `request_connection`, deduped by toolkit. */
   readonly connects: ConnectStep[];
+  /** Credential steps appended by `request_credential` (custom integrations),
+   *  deduped by toolkit — the user enters the secret in a secure card. */
+  readonly credentials: CredentialStep[];
   /** The single plan-ready step, once the model called `plan_ready` (plan mode
    *  only). When set it OWNS the interaction exclusively — see {@link pending}. */
   readonly planReady: PlanReadyStep | undefined;
@@ -78,6 +82,7 @@ class Holder implements InteractionHolder {
   readonly questions: QuestionStep[] = [];
   signin: SigninStep | undefined;
   readonly connects: ConnectStep[] = [];
+  readonly credentials: CredentialStep[] = [];
   planReady: PlanReadyStep | undefined;
   suggestReusable: SuggestReusableStep | undefined;
 
@@ -91,6 +96,7 @@ class Holder implements InteractionHolder {
       ...this.questions,
       ...(this.signin ? [this.signin] : []),
       ...this.connects,
+      ...this.credentials,
     ];
     if (steps.length > 0) return { steps };
     // suggest_reusable is FALLBACK-ONLY: it surfaces solely when nothing else
@@ -164,6 +170,31 @@ export function recordConnection(input: {
   holder.connects.push({
     kind: "connect",
     id: `c${holder.connects.length + 1}`,
+    toolkit: input.toolkit,
+    ...(input.reason ? { reason: input.reason } : {}),
+  });
+}
+
+/**
+ * Append a credential step for this turn (the model called `request_credential`
+ * for a custom integration), deduped by toolkit exactly like connects: a first
+ * mention gets the next `k1`..`kN` id; a repeat for the same toolkit updates
+ * its reason in place. A no-op outside a turn.
+ */
+export function recordCredentialRequest(input: {
+  toolkit: string;
+  reason?: string;
+}): void {
+  const holder = store.getStore();
+  if (!holder) return;
+  const existing = holder.credentials.find((c) => c.toolkit === input.toolkit);
+  if (existing) {
+    if (input.reason) existing.reason = input.reason;
+    return;
+  }
+  holder.credentials.push({
+    kind: "credential",
+    id: `k${holder.credentials.length + 1}`,
     toolkit: input.toolkit,
     ...(input.reason ? { reason: input.reason } : {}),
   });

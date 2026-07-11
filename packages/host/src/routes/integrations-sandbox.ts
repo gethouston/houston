@@ -1,9 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { CUSTOM_ACTION_PREFIX } from "../integrations/custom/provider";
 import {
   filterMatchesToGranted,
   isActionGranted,
   type LocalIntegrationGrants,
 } from "../integrations/grants";
+import type { IntegrationRegistry } from "../integrations/registry";
 import { IntegrationSigninRequiredError } from "../integrations/types";
 import type { CredentialVault, WorkspaceStore } from "../ports";
 import { bearer, header, json, readJson } from "./http";
@@ -12,6 +14,24 @@ import {
   relayIntegrationUpstreamError,
   signinRequired,
 } from "./integrations";
+
+/**
+ * Which provider owns an action the runtime tool passed with no explicit
+ * provider: executor addresses (`tools.<integration>....`) belong to the
+ * custom provider when it is registered; everything else goes to the first
+ * non-custom provider (Composio's slug convention), falling back to whatever
+ * is registered.
+ */
+export function providerForAction(
+  registry: IntegrationRegistry,
+  action: string,
+): string {
+  const ids = registry.ids();
+  if (action.startsWith(CUSTOM_ACTION_PREFIX) && ids.includes("custom")) {
+    return "custom";
+  }
+  return ids.find((id) => id !== "custom") ?? ids[0] ?? "custom";
+}
 
 /**
  * The RUNTIME-facing integrations proxy (`/sandbox/integrations/*`, authed by
@@ -65,16 +85,16 @@ export async function handleSandboxIntegrations(
   const { registry } = deps.integrations;
 
   const body = await readJson(req);
-  // Default to the only/first provider when the tool omits it (single-provider).
-  const providerId =
-    typeof body.provider === "string" ? body.provider : registry.ids()[0];
-  if (!providerId || !registry.has(providerId)) {
+  // An explicit provider narrows the call; omitted (the runtime tools always
+  // omit it) means ALL providers: search fans out and merges, execute resolves
+  // the owning provider from the action's shape (see providersFor/executorOf).
+  if (typeof body.provider === "string" && !registry.has(body.provider)) {
     json(res, 404, {
-      error: `unknown integration provider '${providerId ?? ""}'`,
+      error: `unknown integration provider '${body.provider}'`,
     });
     return true;
   }
-  const provider = registry.get(providerId);
+  const explicit = typeof body.provider === "string" ? body.provider : null;
 
   // The sandbox proves its workspace; the provider acts as the workspace owner.
   const ws = await deps.store.getWorkspace(claim.workspaceId);
@@ -99,11 +119,35 @@ export async function handleSandboxIntegrations(
 
   try {
     if (m[1] === "search") {
-      if (typeof body.query !== "string") {
+      const query = body.query;
+      if (typeof query !== "string") {
         json(res, 400, { error: "missing 'query'" });
         return true;
       }
-      const items = await provider.search(ws.ownerUserId, body.query, acting);
+      const providerIds = explicit ? [explicit] : registry.ids();
+      // Fan out and merge. One provider failing must not hide another's
+      // results (desktop signed out: the gateway adapter throws while the
+      // key-free custom provider still answers) — but an ALL-empty merge with
+      // a signin failure underneath must still surface THAT, or the runtime
+      // would render the wrong speech act ("no such app" instead of the
+      // sign-in card).
+      const settled = await Promise.allSettled(
+        providerIds.map((id) =>
+          registry.get(id).search(ws.ownerUserId, query, acting),
+        ),
+      );
+      const items = settled.flatMap((s) =>
+        s.status === "fulfilled" ? s.value : [],
+      );
+      const failures = settled.flatMap((s) =>
+        s.status === "rejected" ? [s.reason] : [],
+      );
+      if (items.length === 0 && failures.length > 0) {
+        throw (
+          failures.find((f) => f instanceof IntegrationSigninRequiredError) ??
+          failures[0]
+        );
+      }
       json(res, 200, {
         items: granted ? filterMatchesToGranted(items, granted) : items,
       });
@@ -111,15 +155,19 @@ export async function handleSandboxIntegrations(
     }
 
     // execute
-    if (typeof body.action !== "string") {
+    const action = body.action;
+    if (typeof action !== "string") {
       json(res, 400, { error: "missing 'action'" });
       return true;
     }
     // Grant check before the upstream call — an ungranted toolkit never runs.
-    if (granted && !isActionGranted(body.action, granted)) {
+    if (granted && !isActionGranted(action, granted)) {
       json(res, 403, { error: "toolkit_not_granted" });
       return true;
     }
+    const provider = registry.get(
+      explicit ?? providerForAction(registry, action),
+    );
     const params =
       body.params && typeof body.params === "object"
         ? (body.params as Record<string, unknown>)
@@ -127,7 +175,7 @@ export async function handleSandboxIntegrations(
     json(
       res,
       200,
-      await provider.execute(ws.ownerUserId, body.action, params, acting),
+      await provider.execute(ws.ownerUserId, action, params, acting),
     );
     return true;
   } catch (err) {

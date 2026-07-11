@@ -204,5 +204,14 @@
     "cancel": "Cancelar",
     "dividerFull": "Continuou com {{provider}}",
     "dividerSummary": "Continuou com {{provider}}, resumido para caber"
+  },
+  "credential": {
+    "title": "Adicione sua chave de {{name}}",
+    "subtitle": "Cole abaixo. Ela é armazenada com segurança e nunca aparece no chat.",
+    "save": "Salvar chave",
+    "saving": "Salvando...",
+    "savedToast": "{{name}} está pronto para usar",
+    "savedLine": "Adicionei a chave de {{name}}.",
+    "savedFollowup": "Adicionei a chave de {{name}}. Continue, por favor."
   }
 }

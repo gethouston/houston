@@ -187,7 +187,20 @@ An empty search result means no matching app or action was found. It does NOT me
 
 If Houston reports that the user must sign in first, a sign-in card joins the same interaction card automatically. Keep queueing whatever else the task needs (call \`request_connection\` for any app, \`ask_user\` for any questions) in the same turn, then end your turn. Never tell the user to open Settings, and never claim connected apps are unavailable unless Houston says they are not set up in this install.
 
-Never spell out a connection link in your reply and never read any internal identifier out loud to the user, and never name the integrations provider. The card speaks for itself.`;
+Never spell out a connection link in your reply and never read any internal identifier out loud to the user, and never name the integrations provider. The card speaks for itself.
+
+### Custom integrations (apps the search does not have)
+
+When the user wants to connect a service that \`integration_search\` genuinely does not have (their company's internal API, a niche tool, an MCP server), you can set it up yourself. Interview the user in plain language, one short question at a time:
+
+1. Ask which service they want to connect and what they want to do with it.
+2. Ask for a link: the service's API documentation URL (an OpenAPI/Swagger link) or an MCP server URL. If they only know the product's website, look for its API docs yourself before asking again. A service with documented endpoints but NO published OpenAPI document is still connectable: write a minimal OpenAPI 3 document yourself from its API docs (servers, the operations the user needs, the auth scheme) and pass it as \`spec\` to \`custom_integration_add\`.
+3. Call \`custom_integration_detect\` with the URL. It tells you what the URL is and whether the service needs an API key.
+4. Call \`custom_integration_add\` with what you learned. Pick a friendly name the user will recognize.
+5. If the service needs an API key or token, call \`request_credential\` — Houston shows a secure entry card in place of the chat box and messages you automatically once the key is saved and verified. NEVER ask the user to paste a key, token, or password into the chat, and never repeat one back if they do.
+6. Once set up, confirm with a small real action via \`integration_search\` + \`integration_execute\` when the user's request implies one.
+
+Talk about the outcome, not the machinery: say "I connected Acme for you", never mention OpenAPI, MCP, specs, slugs, or endpoints unless the user is clearly technical and asks.`;
 
 /** The composite Houston product prompt (base + skills/memory + routines + integrations). */
 export function houstonSystemPrompt(): string {

@@ -133,6 +133,7 @@ import { useAgentProvisioningStore } from "../stores/agent-provisioning";
 import { newConversationDraftKey, useDraftStore } from "../stores/drafts";
 import { useUIStore } from "../stores/ui";
 import { ChatConnectInteractionCard } from "./chat-connect-interaction-card";
+import { ChatCredentialInteractionCard } from "./chat-credential-interaction-card";
 import { resolveEffectiveProvider } from "./chat-effective-provider";
 import { ChatEffortSelector } from "./chat-effort-selector";
 import { ChatModeSelector } from "./chat-mode-selector";
@@ -1228,6 +1229,10 @@ export function useAgentChatPanel({
     // the steps; a fresh interaction starts clean.
     const connectOutcomes = new Map<string, ConnectOutcome>();
     let signinOutcome: "pending" | "signedIn" | "skipped" = "pending";
+    // Custom integrations whose key the user saved during THIS sequence (the
+    // credential mirror of the connect outcomes) — folded into the ONE composed
+    // reply below so a credential step resumes the agent exactly like connect.
+    const credentialedNames: string[] = [];
     return (
       <ChatInteractionCard
         steps={steps}
@@ -1235,10 +1240,10 @@ export function useAgentChatPanel({
         onDismiss={() => setAbandonedInteractionKey(interactionKey)}
         onComplete={(answers: ChatInteractionAnswer[]) => {
           // ONE send after the LAST step: a sequence with questions replies with
-          // the user's visible answers; a signin/connect-only sequence resumes
-          // the agent with a hidden auto-continue message (no fake user bubble).
-          // The visible reply also carries a structured marker so the transcript
-          // renders the answers as a Q&A card, not an undifferentiated bubble.
+          // the user's visible answers; a signin/connect/credential-only
+          // sequence resumes the agent with a hidden auto-continue message (no
+          // fake user bubble). The visible reply also carries a structured
+          // marker so the transcript renders the answers as a Q&A card.
           //
           // Derive the connected/skipped lines from each step's FINAL outcome,
           // in step order — a step skipped then reconsidered reports "Connected"
@@ -1252,6 +1257,7 @@ export function useAgentChatPanel({
               answers,
               connectedNames,
               skippedConnectNames,
+              credentialedNames,
               hasQuestionSteps,
               signedIn: signinOutcome === "signedIn",
               signinSkipped: signinOutcome === "skipped",
@@ -1259,9 +1265,14 @@ export function useAgentChatPanel({
                 t("chat:interaction.connectedLine", { name }),
               skippedConnectLine: (name) =>
                 t("chat:interaction.skippedConnectLine", { name }),
+              credentialedLine: (name) =>
+                t("chat:credential.savedLine", { name }),
               signedInLine: t("chat:interaction.signedInLine"),
               skippedSigninLine: t("chat:interaction.skippedSigninLine"),
               signedInFollowup: t("chat:interaction.signedInFollowup"),
+              credentialedFollowup: t("chat:credential.savedFollowup", {
+                name: credentialedNames.join(", "),
+              }),
             }),
           );
         }}
@@ -1304,6 +1315,19 @@ export function useAgentChatPanel({
               api.onSkip();
             }}
             toolkit={step.toolkit}
+          />
+        )}
+        renderCredential={(step, api) => (
+          <ChatCredentialInteractionCard
+            toolkit={step.toolkit}
+            reason={step.reason}
+            onSaved={(name) => {
+              // Record the integration and advance ONLY — the composed
+              // `onComplete` reply resumes the agent once EVERY step is done,
+              // mirroring the connect step above.
+              credentialedNames.push(name);
+              api.onSaved();
+            }}
           />
         )}
       />

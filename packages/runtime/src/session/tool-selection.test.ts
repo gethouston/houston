@@ -76,6 +76,9 @@ describe("buildToolSelection", () => {
       "integration_search",
       "integration_execute",
       "request_connection",
+      "custom_integration_detect",
+      "custom_integration_add",
+      "request_credential",
     ]);
   });
 });
@@ -125,19 +128,25 @@ describe("planToolNames", () => {
 });
 
 describe("autoToolNames", () => {
-  test("drops exactly ask_user + request_connection from the full local selection", () => {
+  test("drops exactly the blocking tools from the full local selection", () => {
     const local = buildToolSelection({
       codeExecution: "local",
       integrations: true,
     });
-    // Auto keeps every read/write/exec/integration tool; it only removes the two
-    // blocking tools. Order is preserved (filter, not reorder).
+    // Auto keeps every read/write/exec/integration tool; it only removes the
+    // blocking tools. request_credential survives: an API key is the one thing
+    // autonomy cannot produce, and the card auto-continues the run (an auto
+    // add of a keyed custom integration was a dead end without it). Order is
+    // preserved (filter, not reorder).
     expect(autoToolNames(local.toolNames)).toEqual([
       ...CLAMPED_FILE_TOOL_NAMES,
       "suggest_reusable",
       "bash",
       "integration_search",
       "integration_execute",
+      "custom_integration_detect",
+      "custom_integration_add",
+      "request_credential",
     ]);
     for (const dropped of ["ask_user", "request_connection"])
       expect(autoToolNames(local.toolNames)).not.toContain(dropped);

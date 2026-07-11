@@ -33,10 +33,13 @@ export { useInstructions, useSaveInstructions } from "./use-instructions";
 export {
   useAgentGrantMutation,
   useAgentGrants,
+  useCustomIntegrations,
   useDisconnectIntegration,
   useIntegrationConnections,
   useIntegrationStatus,
   useIntegrationToolkits,
+  useRemoveCustomIntegration,
+  useSubmitCustomCredential,
 } from "./use-integrations";
 export {
   useAddLearning,

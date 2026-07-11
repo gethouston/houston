@@ -137,6 +137,15 @@ export function planInvalidation(
       plan.invalidate.push(queryKeys.providerStatuses());
       plan.focusWindow = true;
       break;
+    // HOU-550: a custom integration was added / credentialed / removed (host add,
+    // in-chat credential card, or Integrations page). The event carries no agent
+    // path — refresh the user-level custom list plus the connection + grant
+    // prefixes (a new custom slug joins those views for every agent).
+    case "CustomIntegrationsChanged":
+      plan.invalidate.push(queryKeys.customIntegrations());
+      plan.invalidate.push(["integration-connections"]);
+      plan.invalidate.push(["agent-grants"]);
+      break;
   }
 
   return plan;

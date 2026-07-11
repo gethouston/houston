@@ -1,0 +1,175 @@
+import { type AddCustomIntegrationInput, defFromAddInput } from "./add-input";
+import { type DetectResult, detectSource } from "./detect";
+import type { CustomExecutorHost } from "./executor-host";
+import { TOKEN_VARIABLE } from "./executor-host";
+import type { CustomSecretStore } from "./secrets";
+import { secretIdFor } from "./secrets";
+import { slugify } from "./slug";
+import type { CustomIntegrationStore } from "./store";
+import type { CustomIntegrationDef, CustomIntegrationView } from "./types";
+import { CUSTOM_SLUG, CustomIntegrationError } from "./types";
+import { viewOf } from "./views";
+
+export type { AddCustomIntegrationInput, DetectResult };
+
+/**
+ * Management ops over definitions + the compiled engine. Every mutation
+ * persists FIRST (definitions are the durable truth), then updates the live
+ * executor, then notifies (`onChanged` → HoustonEvent → UI invalidation).
+ */
+export class CustomIntegrationManager {
+  constructor(
+    private readonly store: CustomIntegrationStore,
+    private readonly secrets: CustomSecretStore,
+    private readonly host: CustomExecutorHost,
+    private readonly onChanged: () => void,
+  ) {}
+
+  async list(): Promise<CustomIntegrationView[]> {
+    const [defs, { executor, states }] = await Promise.all([
+      this.store.list(),
+      this.host.ensure(),
+    ]);
+    return Promise.all(
+      defs.map(async (def) =>
+        viewOf(
+          def,
+          states.get(def.slug) ?? { status: "error", message: "not compiled" },
+          await this.host.authMethods(executor, def.slug).catch(() => []),
+        ),
+      ),
+    );
+  }
+
+  async detect(url: string): Promise<DetectResult> {
+    const { executor } = await this.host.ensure();
+    return detectSource(executor, url);
+  }
+
+  async add(input: AddCustomIntegrationInput): Promise<CustomIntegrationView> {
+    const slug = input.slug ?? slugify(input.name);
+    if (!CUSTOM_SLUG.test(slug)) {
+      throw new CustomIntegrationError(
+        "invalid_slug",
+        `invalid slug '${slug}'`,
+      );
+    }
+    const defs = await this.store.list();
+    if (defs.some((d) => d.slug === slug)) {
+      throw new CustomIntegrationError(
+        "duplicate_slug",
+        `a custom integration named '${slug}' already exists`,
+      );
+    }
+    const def = defFromAddInput(input, slug);
+    const { executor, states } = await this.host.ensure();
+    const state = await this.host.compileDef(executor, def);
+    if (state.status === "error") {
+      // Never persist a definition that cannot compile — the add FAILED and
+      // the agent gets the real reason to relay/fix (wrong URL, server down).
+      throw new CustomIntegrationError("compile_failed", state.message);
+    }
+    await this.store.put(def);
+    states.set(slug, state);
+    this.onChanged();
+    return viewOf(
+      def,
+      state,
+      await this.host.authMethods(executor, slug).catch(() => []),
+    );
+  }
+
+  /** Store the user's secret and wire the connection; validates first. */
+  async setCredential(
+    slug: string,
+    values: Record<string, string>,
+  ): Promise<CustomIntegrationView> {
+    const def = await this.defOr404(slug);
+    const { executor, states } = await this.host.ensure();
+    const methods = await this.host.authMethods(executor, slug);
+    const method = methods[0];
+    if (!method) {
+      throw new CustomIntegrationError(
+        "credential_invalid",
+        `'${slug}' declares no credential-based auth method`,
+      );
+    }
+    const token = values[TOKEN_VARIABLE] ?? Object.values(values)[0];
+    if (!token?.trim()) {
+      throw new CustomIntegrationError(
+        "credential_invalid",
+        "the credential value is empty",
+      );
+    }
+    // Key-first validation: run the integration's health check (when it has
+    // one) against the pasted value BEFORE saving. Only a POSITIVE failure
+    // verdict rejects — `unknown` (no health check declared) must pass, and a
+    // validate that itself errored must not block saving (fail open here; a
+    // wrong key still surfaces on first use).
+    const verdict = await executor.connections
+      .validate({
+        owner: "org",
+        integration: slug,
+        template: method.template,
+        values: { [TOKEN_VARIABLE]: token },
+      })
+      .catch(() => null);
+    if (
+      verdict &&
+      (verdict.status === "expired" || verdict.status === "degraded")
+    ) {
+      throw new CustomIntegrationError(
+        "credential_invalid",
+        "the service rejected this key - check that it was copied completely and is still active",
+      );
+    }
+
+    const secretId = secretIdFor(slug, TOKEN_VARIABLE);
+    await this.secrets.set(secretId, token);
+    const credential = {
+      template: method.template,
+      secretIds: { [TOKEN_VARIABLE]: secretId },
+    };
+    const updated: CustomIntegrationDef = {
+      ...def,
+      auth: "credential",
+      credential,
+    };
+    await this.store.put(updated);
+    await this.host.reconnect(executor, slug, credential);
+    const state = {
+      status: "active" as const,
+      toolCount: await this.host.toolCount(executor, slug),
+    };
+    states.set(slug, state);
+    this.onChanged();
+    return viewOf(updated, state, methods);
+  }
+
+  async remove(slug: string): Promise<void> {
+    const def = await this.defOr404(slug);
+    await this.store.remove(slug);
+    for (const id of Object.values(def.credential?.secretIds ?? {})) {
+      await this.secrets.delete(id);
+    }
+    const { executor, states } = await this.host.ensure();
+    states.delete(slug);
+    if (def.kind === "openapi") {
+      await executor.openapi.removeSpec(slug).catch(() => undefined);
+    } else {
+      await executor.mcp.removeServer(slug).catch(() => undefined);
+    }
+    this.onChanged();
+  }
+
+  private async defOr404(slug: string): Promise<CustomIntegrationDef> {
+    const def = (await this.store.list()).find((d) => d.slug === slug);
+    if (!def) {
+      throw new CustomIntegrationError(
+        "not_found",
+        `no custom integration '${slug}'`,
+      );
+    }
+    return def;
+  }
+}

@@ -1,10 +1,10 @@
-# Integrations (Composio, platform mode)
+# Integrations (Composio platform mode + custom integrations)
 
 How Houston connects third-party apps (Gmail, Slack, …) so agents can act on
-them. Composio is the first and only provider today, wired **behind a port** so a
-second provider slots in without touching anything above it. This doc covers the
-host architecture, the grants model (multiplayer + the NEW local grants), and the
-UI map.
+them. TWO providers live behind the port today: **Composio** (the hosted
+catalog) and **`custom`** (user-added OpenAPI/MCP sources, HOU-550 — §4). This
+doc covers the host architecture, the grants model (multiplayer + the NEW local
+grants), the UI map, and the custom-integrations engine.
 
 > Not an AI provider. Integrations are tool connections, NOT LLM providers — they
 > go through `IntegrationProvider`, never the pi provider registry.
@@ -402,3 +402,84 @@ link-card renderer survives only to render old transcripts. Full lifecycle →
 **No silent failures.** All engine mutations route through `call()`
 (`app/src/lib/tauri.ts`), which toasts + reports once, so the integration hooks
 carry NO `onError` (a second toast would double up). See `useAgentGrantMutation`.
+
+---
+
+## 4. Custom integrations (HOU-550) — user-added APIs & MCP servers
+
+Users connect services the Composio catalog does not offer. The engine is the
+embedded **executor SDK** (`@executor-js/sdk` + `plugin-openapi` + `plugin-mcp`,
+MIT, pinned EXACT — pre-1.0), wrapped entirely behind the same
+`IntegrationProvider` port as provider id **`custom`**
+(`packages/host/src/integrations/custom/`). Nothing executor-shaped leaks past
+the adapter, and the packages' broken root type entries mean imports go through
+the `/core` subpaths (see executor-host.ts's comment).
+
+**Key-free and always on.** `buildLocalHost` registers the custom provider
+unconditionally (beside Remote/Composio when configured) — definitions and
+secrets live on THIS host's disk, so an install with no Composio key, or a
+signed-out desktop, still serves it. `capabilities.integrations` therefore
+always contains `"custom"`.
+
+**Houston owns persistence; the executor is a compiled view.**
+`custom-integrations.json` (definitions, next to credentials.json) +
+`custom-integration-secrets.json` (0600, values keyed `ci_<slug>_<var>`) are the
+durable truth. `CustomExecutorHost` lazily builds one in-memory executor and
+rehydrates every definition into it (addSpec/addServer + an org/`default`
+connection per def); a definition that fails to compile degrades to state
+`error` for itself only. Secrets reach requests via a Houston
+`CredentialProvider` (`secrets.ts`) resolved lazily — the executor never copies
+values. `CustomSecretStore` is a port: a cloud adapter can move custody to
+encrypted Pg / a secret manager without touching anything above it.
+
+**Definition shape** (discriminated union, `types.ts`): `openapi` (spec
+url|blob, baseUrl?) or `mcp` (remote endpoint, headers?), plus
+`auth: "none" | "credential"` and an optional stored `credential`
+{template, secretIds}. State per def: `active` (toolCount) / `pending` (needs a
+key; authMethods carry the collectible fields — v1 is ONE `token` variable per
+method) / `error`.
+
+**Actions are executor addresses.** A custom ToolMatch's `action` is
+`tools.<integration>.<owner>.<connection>.<tool>`; `toolkit` is the integration
+slug. Grants: `actionInToolkit` maps a `tools.`-prefixed action to its
+integration segment (exact match), so per-agent grant records hold plain custom
+slugs beside Composio ones and materialization picks up custom connections
+automatically.
+
+**Sandbox proxy fans out.** `/sandbox/integrations/search` with no explicit
+provider queries ALL registered providers and merges (a failing provider never
+hides another's results; an all-empty merge rethrows a SigninRequired if one
+occurred). Execute routes by action shape (`providerForAction`: `tools.` →
+custom). Execute is capped at 120s so a hung upstream can never wedge the turn.
+
+**Setup is agent-driven (chat), never a form.** The runtime ships three gated
+tools (`packages/runtime/src/session/tools/custom-integrations.ts` +
+`request-credential.ts`): `custom_integration_detect` (classify a pasted URL —
+`integrations.detect` + MCP probe), `custom_integration_add` (register + compile;
+management routes: `/sandbox/integrations/custom/{detect,add}`, HMAC-authed),
+and `request_credential` — records a `{kind:"credential", toolkit, reason?}`
+interaction step (protocol `interaction.ts`, ids `k1..kN`, auto-excluded from
+Autopilot) that replaces the composer with a SECURE key-entry card. The secret
+travels UI → `POST /v1/integrations/custom/definitions/:slug/credential` →
+validate (`connections.validate`, fail-open on `unknown`) → secret store →
+connection rewire. It NEVER enters the transcript; the prompt (houston-prompt.ts
++ the Rust mirror) forbids asking for keys in chat.
+
+**User routes** (`routes/custom-integrations.ts`, mounted BEFORE the generic
+`/v1/integrations/:provider/*` catch-all): GET/DELETE
+`/v1/integrations/custom/definitions[/:slug]` + the credential POST. Errors
+carry stable `code`s (`not_found`, `duplicate_slug`, `credential_invalid`,
+`compile_failed`…). Mutations emit `CustomIntegrationsChanged` (protocol
+events.ts) → query invalidation.
+
+**UI**: a "Custom integrations" section on the global Integrations page (between
+Connected apps and the catalog) listing defs with kind badge/status/delete plus
+an "Add custom integration" button that opens a NEW CHAT seeded with the
+interview prompt; the in-chat credential card mirrors the connect card
+(auto-continue on save). Hidden when the host 404s the definitions route
+(engine-client returns `null`, same convention as grants).
+
+**Cloud caveat**: pods store definitions on their own disk; the gateway only
+proxies agent-scoped routes, so the cloud web client cannot reach
+`/v1/integrations/custom/*` until the gateway allowlists it (same story as the
+skills marketplace, PR #706). Desktop/self-host are fully served.

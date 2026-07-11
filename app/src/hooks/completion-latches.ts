@@ -36,7 +36,16 @@ interface Latch {
   timer: ReturnType<typeof setTimeout>;
 }
 
-const defaultTimers: LatchTimers = { set: setTimeout, clear: clearTimeout };
+// Wrapped, never the bare references: `timers.set(...)` invokes the function
+// with `timers` as its receiver, and WebKit's window.setTimeout throws "Can
+// only call Window.setTimeout on instances of Window" for any non-window
+// receiver (Node's is receiver-agnostic, so no unit test catches it). The bare
+// alias made EVERY completion-notification latch throw in the desktop webview
+// — swallowed by the event bus, so notifications just silently never fired.
+const defaultTimers: LatchTimers = {
+  set: (fn, ms) => setTimeout(fn, ms),
+  clear: (handle) => clearTimeout(handle),
+};
 
 export class CompletionLatches {
   private readonly map = new Map<string, Latch>();

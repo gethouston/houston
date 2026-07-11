@@ -204,5 +204,14 @@
     "cancel": "Cancel",
     "dividerFull": "Continued with {{provider}}",
     "dividerSummary": "Continued with {{provider}}, summarized to fit"
+  },
+  "credential": {
+    "title": "Add your {{name}} key",
+    "subtitle": "Paste it below. It is stored securely and never shown in chat.",
+    "save": "Save key",
+    "saving": "Saving...",
+    "savedToast": "{{name}} is ready to use",
+    "savedLine": "Added the {{name}} key.",
+    "savedFollowup": "I've added the {{name}} key. Please continue."
   }
 }

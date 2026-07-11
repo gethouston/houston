@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
   advanceConnect,
+  advanceCredential,
   advanceSignin,
   answerWithOption,
   answerWithText,
@@ -47,6 +48,12 @@ const SIGNIN: ChatInteractionStep = {
   kind: "signin",
   id: "s1",
   reason: "to use connected apps",
+};
+const CREDENTIAL: ChatInteractionStep = {
+  kind: "credential",
+  id: "k1",
+  toolkit: "acme",
+  reason: "to reach the Acme API",
 };
 
 describe("hasSelectableOptions", () => {
@@ -286,6 +293,22 @@ describe("advanceSignin", () => {
 
   it("contributes no answer for a signin-only sequence", () => {
     const done = advanceSignin(initialStepperState(), [SIGNIN]);
+    assert.deepEqual(done.completed, []);
+  });
+});
+
+describe("advanceCredential", () => {
+  it("completes when the credential step is the last step", () => {
+    const s = setDraft(initialStepperState(), "q2", "hi");
+    const afterQ = answerWithText(s, [Q2, CREDENTIAL]).state; // -> credential
+    const done = advanceCredential(afterQ, [Q2, CREDENTIAL]);
+    assert.deepEqual(done.completed, [
+      { stepId: "q2", question: "What should it say?", answer: "hi" },
+    ]);
+  });
+
+  it("contributes no answer for a credential-only sequence", () => {
+    const done = advanceCredential(initialStepperState(), [CREDENTIAL]);
     assert.deepEqual(done.completed, []);
   });
 });

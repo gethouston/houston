@@ -209,12 +209,14 @@ export function EmailMission({
                   // the exit; the card must not offer an ambiguous X that
                   // abandons onboarding.
                   //
-                  // renderConnect/renderSignin are never reached — this is a
-                  // question-only sequence (one option step), so the stepper
-                  // never advances to a connect or signin step. They exist only
-                  // to satisfy the card's required props.
+                  // renderConnect/renderSignin/renderCredential are never
+                  // reached — this is a question-only sequence (one option
+                  // step), so the stepper never advances to a connect, signin,
+                  // or credential step. They exist only to satisfy the card's
+                  // required props.
                   renderConnect={() => null}
                   renderSignin={() => null}
+                  renderCredential={() => null}
                 />
               )
             }

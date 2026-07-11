@@ -46,7 +46,8 @@
       "question_one": "Your agent has a question for you.",
       "question_other": "Your agent has questions for you.",
       "signin": "Your agent needs you to sign in.",
-      "connect": "Your agent needs you to connect an app."
+      "connect": "Your agent needs you to connect an app.",
+      "credential": "Your agent needs an API key to finish."
     }
   }
 }

@@ -6,6 +6,7 @@ import {
   ConnectedAppsList,
   ConnectedAppsListSkeleton,
   ConnectMoreAppsSection,
+  CustomIntegrationsSection,
   categoryListView,
   DisconnectAppDialog,
   INTEGRATION_PROVIDER,
@@ -114,6 +115,8 @@ export function IntegrationsReady({
             )}
           </section>
         )}
+
+        <CustomIntegrationsSection />
 
         <ConnectMoreAppsSection
           catalog={apps.catalogData}
