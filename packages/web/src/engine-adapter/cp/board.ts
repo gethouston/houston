@@ -1,7 +1,6 @@
 import type {
   Activity,
   ActivityUpdate,
-  NewActivity,
   Routine,
   RoutineRun,
 } from "../../../../../ui/engine-client/src/types";
@@ -14,17 +13,11 @@ export async function listActivities(
   const res = await cpFetch(cfg, `${agentPath(agentId)}/activities`);
   return ((await res.json()) as { items: Activity[] }).items;
 }
-export async function createActivity(
-  cfg: ControlPlaneConfig,
-  agentId: string,
-  input: NewActivity,
-): Promise<Activity> {
-  const res = await cpFetch(cfg, `${agentPath(agentId)}/activities`, {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-  return (await res.json()) as Activity;
-}
+// create + delete WRITES delegate to `sdk.activities.writes.*` (byte-identical
+// POST/DELETE, no refetch) — see `client/activities-mixin.ts`. `updateActivity`
+// stays here: it is a GENERIC `ActivityUpdate` PATCH (status, pending_interaction,
+// title, …) that no single SDK write (setStatus `{status}` / rename `{title}`)
+// reproduces byte-for-byte, so it can't delegate without an SDK change.
 export async function updateActivity(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -41,18 +34,6 @@ export async function updateActivity(
   );
   return (await res.json()) as Activity;
 }
-export async function deleteActivity(
-  cfg: ControlPlaneConfig,
-  agentId: string,
-  id: string,
-): Promise<void> {
-  await cpFetch(
-    cfg,
-    `${agentPath(agentId)}/activities/${encodeURIComponent(id)}`,
-    { method: "DELETE" },
-  );
-}
-
 export async function listRoutines(
   cfg: ControlPlaneConfig,
   agentId: string,

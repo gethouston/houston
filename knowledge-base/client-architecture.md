@@ -144,6 +144,52 @@ its bridge command are byte-identical to before), and `IntegrationsClient`
 provider/agent on `connect`/`disconnect`. Web's actual delegation to these seams
 is a SEPARATE later wave (2b).
 
+**The wave-2b delegation: web WRITES now go through the SDK.** The engine-adapter
+mixins delegate their control-plane WRITES to the wave-2a seams (byte-identical
+route/method/body/headers incl. `x-houston-org`, no post-write refetch — web
+still owns its TanStack reads + `/v1/events` bus). Per module:
+
+- **Agents** (`client/agents-mixin.ts`) — `createAgent`/`renameAgent`/`deleteAgent`
+  delegate to `sdk.agents.writes.create/rename/delete`. The **color overlay stays
+  adapter-side**: the SDK returns the wire agent (incl. its id), and `cp/agents.ts`
+  `createdAgentToUi`/`renamedAgentToUi` layer web's overlay-only color on top
+  (`setColor`/`moveColor`) then map to the UI `Agent`; delete calls `clearColor` +
+  `dropLastAgentPref` after. `updateAgent` (color-only) + all reads stay. `cp`
+  keeps `createAgent` for the portable-install flow (a `cfg`-scoped function with
+  no SDK handle); it reuses `createdAgentToUi`.
+- **Activities** (`client/activities-mixin.ts`) — `createActivity`/`deleteActivity`
+  delegate to `sdk.activities.writes.create/delete` (local-echo kept adapter-side).
+  `updateActivity` STAYS: it is a GENERIC `ActivityUpdate` PATCH (status +
+  `pending_interaction`, title, …) that no single SDK write (`setStatus {status}`
+  / `rename {title}`) reproduces byte-for-byte — delegating would drop fields.
+- **Integrations** (`client/integrations-mixin.ts`) — `connectIntegration` →
+  `sdk.integrations.connect(provider,toolkit,agent?)`; `disconnectIntegration` →
+  `writes.disconnect(toolkit,{provider})`; `setIntegrationSession` →
+  `setSession`; `dismissIntegrationsReconnectNotice` → `dismissReconnectNotice`.
+  **The setSession 404-swallow is preserved adapter-side**: the SDK PROPAGATES a
+  404 (a deployment with no gateway session sink — self-host / direct-key), so
+  the mixin catches `EngineError` status 404 and returns (benign), rethrowing
+  anything else. Reads stay.
+- **Providers** — NOT delegated; kept adapter-side. The SDK provider writes route
+  through `clientFor(agentId)` (the per-agent runtime client, a single-runtime
+  credential model matching iOS/desktop-new-engine). Web-cloud instead uses the
+  gateway's connect-once CENTRAL-credential routes (`/agents/:id/credential/*`,
+  `/provider/openai-compatible`) with sibling fan-out (OpenCode Zen+Go),
+  `claimActiveProvider`, a `ProviderLoginComplete` event, and the pre-agent
+  setup-runtime path — none of which the SDK writes reproduce. Delegating would
+  change routes and regress connect-once (e.g. `logout` without `forgetCredential`
+  reconnects itself). Provider status also reads `listProviders` (→ `ProviderStatus`),
+  not the SDK writes' `authStatus` (→ `AuthStatus`). The **login-poller state
+  machine** (`provider-login-*.ts`, `activeLogins`/`loginWatchers`) likewise stays
+  adapter-side.
+
+Transient-retry parity holds for every delegated write: `cpFetch`'s
+`transientRetryFetch` only blind-retries GET/HEAD, and the SDK requester never
+retries — so POST/PATCH/PUT/DELETE surface the first response in both paths.
+Errors still reach `errorMessage(err)` → toast; the SDK may throw `EngineError`
+instead of `HoustonEngineError`, which is acceptable (it still surfaces, wave-2a
+precedent). Guarded by `packages/web/tests/sdk-delegation-wave2b.test.ts`.
+
 **The strict-additive / iOS-safe contract rule (why the above is shaped this
 way).** `@houston/sdk` is consumed by BOTH the web engine-adapter AND the native
 iOS app (via the JavaScriptCore bridge, `bridge/entry.ts` → `new HoustonSdk()`).

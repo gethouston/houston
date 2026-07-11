@@ -14,13 +14,17 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
  * the deleted agent was the remembered one.
  */
 
-const { cpListAgents, cpDeleteAgent, runtimeClientFor, setupRuntimeClientFor } =
-  vi.hoisted(() => ({
+// `deleteAgent`'s WIRE write is delegated to `sdk.agents.writes.delete` (a real
+// gateway DELETE over the shared fetch, stubbed per-test); only the ADAPTER-side
+// `dropLastAgentPref` after it is under test here. `listAgents`'s pref-pruning
+// and the login-runtime routing stay on the control plane, so those are mocked.
+const { cpListAgents, runtimeClientFor, setupRuntimeClientFor } = vi.hoisted(
+  () => ({
     cpListAgents: vi.fn(),
-    cpDeleteAgent: vi.fn(),
     runtimeClientFor: vi.fn(),
     setupRuntimeClientFor: vi.fn(),
-  }));
+  }),
+);
 
 vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
@@ -30,7 +34,6 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
   return {
     ...actual,
     listAgents: cpListAgents,
-    deleteAgent: cpDeleteAgent,
     runtimeClientFor,
     setupRuntimeClientFor,
   };
@@ -40,6 +43,7 @@ import { HoustonClient } from "../src/engine-adapter/client";
 import { DEFAULT_AGENT_ID } from "../src/engine-adapter/synthetic";
 
 const PREF = "houston.pref.last_agent_id";
+const originalFetch = globalThis.fetch;
 
 let store: Map<string, string>;
 
@@ -53,14 +57,19 @@ beforeEach(() => {
     removeItem: (k: string) => void store.delete(k),
   };
   cpListAgents.mockReset();
-  cpDeleteAgent.mockReset();
   runtimeClientFor.mockReset();
   setupRuntimeClientFor.mockReset();
+  // The delegated agent DELETE lands on the shared gateway fetch — stub a 200 so
+  // the write succeeds and control returns to `dropLastAgentPref`.
+  globalThis.fetch = vi.fn(
+    async () => new Response(null, { status: 200 }),
+  ) as unknown as typeof fetch;
 });
 
 afterEach(() => {
   vi.useRealTimers();
   vi.clearAllMocks();
+  globalThis.fetch = originalFetch;
 });
 
 function client() {
@@ -110,7 +119,6 @@ test("listAgents leaves the synthetic default-agent sentinel alone", async () =>
 
 test("deleteAgent clears the pref when the deleted agent was the remembered one", async () => {
   store.set(PREF, "ws/Doomed");
-  cpDeleteAgent.mockResolvedValue(undefined);
 
   await client().deleteAgent("ws", "ws/Doomed");
 
@@ -119,7 +127,6 @@ test("deleteAgent clears the pref when the deleted agent was the remembered one"
 
 test("deleteAgent keeps the pref when another agent was deleted", async () => {
   store.set(PREF, "ws/Kept");
-  cpDeleteAgent.mockResolvedValue(undefined);
 
   await client().deleteAgent("ws", "ws/Doomed");
 

@@ -6,7 +6,7 @@ import type {
 } from "../../../../../ui/engine-client/src/types";
 import { HoustonEngineError } from "../client/errors";
 import { DEFAULT_AGENT_COLOR, DEFAULT_AGENT_CONFIG_ID } from "../synthetic";
-import { clearColor, colorOverlay, moveColor, setColor } from "./agent-color";
+import { colorOverlay, moveColor, setColor } from "./agent-color";
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
 
 /** What the control plane returns for an agent (id + name + workspace + ts). */
@@ -52,6 +52,26 @@ export async function listAgents(cfg: ControlPlaneConfig): Promise<Agent[]> {
   return ((await res.json()) as CpAgent[]).map((a) => toUiAgent(a, colors));
 }
 
+// The agent-picker create/rename/delete WRITES delegate to `sdk.agents.writes.*`
+// (byte-identical POST/PATCH/DELETE, no refetch) — see `client/agents-mixin.ts`.
+// These pure mappers keep the color overlay colocated with `toUiAgent`: the SDK
+// returns the wire agent (incl. its id), and web layers its overlay-only color
+// on top.
+
+/** Map a freshly created wire agent to the UI shape, seeding its color overlay
+ *  from the picker's choice (overlay-only; color never crosses the wire). */
+export function createdAgentToUi(agent: CpAgent, color?: string): Agent {
+  if (color) setColor(agent.id, color);
+  return toUiAgent(agent);
+}
+
+/**
+ * Create an agent directly over the control plane. The agent-picker path
+ * delegates create to the SDK (see the mixin); this stays for the portable
+ * install flow (`portable.ts install`), a `cfg`-scoped module function with no
+ * SDK handle. Same wire the SDK write issues: `POST /agents` with the seed body
+ * (JSON.stringify drops undefined, so a plain create posts just `{ name }`).
+ */
 export async function createAgent(
   cfg: ControlPlaneConfig,
   name: string,
@@ -63,36 +83,21 @@ export async function createAgent(
 ): Promise<Agent> {
   const res = await cpFetch(cfg, "/agents", {
     method: "POST",
-    // The host seeds CLAUDE.md + the seed-file map on create (builtin
-    // agent-manifest instructions/skills, AI-assist instructions).
-    // JSON.stringify drops undefined fields, so a plain create still posts
-    // just `{ name }`.
     body: JSON.stringify({
       name,
       claudeMd: seed?.claudeMd,
       seeds: seed?.seeds,
     }),
   });
-  const agent = (await res.json()) as CpAgent;
-  if (color) setColor(agent.id, color);
-  return toUiAgent(agent);
+  return createdAgentToUi((await res.json()) as CpAgent, color);
 }
 
-export async function renameAgent(
-  cfg: ControlPlaneConfig,
-  agentId: string,
-  name: string,
-): Promise<Agent> {
-  const res = await cpFetch(cfg, `/agents/${encodeURIComponent(agentId)}`, {
-    method: "PATCH",
-    body: JSON.stringify({ name }),
-  });
-  const renamed = (await res.json()) as CpAgent;
-  // The local store derives an agent's id from its on-disk path, so a rename
-  // changes the id. Carry the color overlay across to the new id or the avatar
-  // reverts to the default color.
-  moveColor(agentId, renamed.id);
-  return toUiAgent(renamed);
+/** Map a renamed wire agent to the UI shape. The local store derives an agent's
+ *  id from its on-disk path, so a rename changes the id — carry the color
+ *  overlay across to the new id or the avatar reverts to the default color. */
+export function renamedAgentToUi(previousId: string, agent: CpAgent): Agent {
+  moveColor(previousId, agent.id);
+  return toUiAgent(agent);
 }
 
 /** Color is overlay-only; the server agent is unchanged. Returns the updated view. */
@@ -109,16 +114,6 @@ export async function updateAgentColor(
       error: { message: "agent not found" },
     });
   return toUiAgent(found);
-}
-
-export async function deleteAgent(
-  cfg: ControlPlaneConfig,
-  agentId: string,
-): Promise<void> {
-  await cpFetch(cfg, `/agents/${encodeURIComponent(agentId)}`, {
-    method: "DELETE",
-  });
-  clearColor(agentId);
 }
 
 // Agent-config library: user-scoped like the marketplace reads — a template
