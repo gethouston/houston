@@ -1,8 +1,8 @@
 import { afterEach, expect, test, vi } from "vitest";
 import {
+  createAgent,
   gatewayAuthFetch,
   listAgents,
-  renameAgent,
 } from "../src/engine-adapter/control-plane";
 import { refreshLiveToken } from "../src/engine-adapter/session-refresh";
 
@@ -134,7 +134,9 @@ test("writes never blind-retry a transient status", async () => {
   setEngineWindow({ token: "tok" });
   const calls = stubFetch(json(503));
 
-  await expect(renameAgent(CFG, "a1", "new name")).rejects.toMatchObject({
+  // `createAgent` is a POST — the cpFetch write path. transientRetryFetch only
+  // blind-retries GET/HEAD, so a write surfaces the 503 on the first attempt.
+  await expect(createAgent(CFG, "new agent")).rejects.toMatchObject({
     status: 503,
   });
   expect(calls).toHaveLength(1);

@@ -25,8 +25,11 @@ export function ActivitiesMixin<TBase extends BaseCtor>(Base: TBase) {
       agentPath: string,
       input: NewActivity,
     ): Promise<Activity> {
+      // SDK delegates the wire write (byte-identical POST
+      // /agents/:id/activities, no refetch); web keeps its own write-through
+      // echo. Standalone (no host) stays localStorage-backed.
       const activity = this.ctx.cp
-        ? await controlPlane.createActivity(this.ctx.cp, agentPath, input)
+        ? await this.ctx.sdk.activities.writes.create(agentPath, input)
         : activities.createActivity(agentPath, input);
       emitLocalEcho("ActivityChanged", { agentPath });
       return activity;
@@ -43,8 +46,10 @@ export function ActivitiesMixin<TBase extends BaseCtor>(Base: TBase) {
       return activity;
     }
     async deleteActivity(agentPath: string, id: string): Promise<void> {
+      // SDK delegates the wire write (byte-identical DELETE
+      // /agents/:id/activities/:id, no refetch).
       if (this.ctx.cp)
-        await controlPlane.deleteActivity(this.ctx.cp, agentPath, id);
+        await this.ctx.sdk.activities.writes.delete(agentPath, id);
       else activities.deleteActivity(agentPath, id);
       // The user deleted the chat — THIS is when its locally cached transcript
       // goes too (a server 404 alone no longer drops it, HOU-731). Missions
