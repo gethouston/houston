@@ -16,9 +16,10 @@
 // token endpoint; a `null` here means "benign cancel — no session, no error".
 
 import { listen } from "@tauri-apps/api/event";
-import { osStartOauthLoopback } from "../os-bridge";
+import { osCancelOauthLoopback, osStartOauthLoopback } from "../os-bridge";
 import { tauriSystem } from "../tauri";
 import { IdentityError } from "./errors.ts";
+import { identityLog } from "./log.ts";
 import {
   awaitLoopbackCallback,
   cancelPendingAuthorize,
@@ -105,6 +106,18 @@ export async function runLoopbackAuthorize(
     listen: listenDeepLink,
     openUrl: tauriSystem.openUrl,
     onBrowserOpened: opts?.onBrowserOpened,
+    // Free the native loopback port the moment the attempt is abandoned
+    // (unmount / timeout). Best-effort: a failure just means the port frees at
+    // Rust's 300s self-timeout, so we log rather than surface a toast.
+    abandonLoopback: () => {
+      void osCancelOauthLoopback().catch((e) =>
+        identityLog(
+          "warn",
+          `failed to free loopback port: ${String(e)}`,
+          "identity/desktop-oauth",
+        ),
+      );
+    },
   });
   if (code === null) return null; // benign cancel — no error, no session
   return { code, redirectUri, codeVerifier };

@@ -212,6 +212,70 @@ test("a CSRF state mismatch still rejects with a typed IdentityError", async () 
   );
 });
 
+test("an external cancel (sign-in-screen unmount) frees the loopback port", async () => {
+  const l = makeListen();
+  let freed = 0;
+  const p = awaitLoopbackCallback({
+    expectedState: "s1",
+    authorizeUrl: "https://provider/a",
+    listen: l.listen,
+    openUrl: openOk,
+    abandonLoopback: () => {
+      freed += 1;
+    },
+  });
+  await tick();
+  cancelPendingAuthorize("user left the screen"); // freePort defaults to true
+  assert.equal(await p, null);
+  assert.equal(freed, 1); // the native port was freed immediately
+});
+
+test("supersession does NOT free the previous port (Rust already superseded it)", async () => {
+  const first = makeListen();
+  let firstFreed = 0;
+  const p1 = awaitLoopbackCallback({
+    expectedState: "s1",
+    authorizeUrl: "https://provider/a",
+    listen: first.listen,
+    openUrl: openOk,
+    abandonLoopback: () => {
+      firstFreed += 1;
+    },
+  });
+  // A second attempt supersedes the first. The first must resolve null WITHOUT
+  // its port being freed here — the new attempt's start_oauth_loopback already
+  // superseded the old listener, and a cancel here would race the new one.
+  const second = makeListen();
+  const p2 = awaitLoopbackCallback({
+    expectedState: "s2",
+    authorizeUrl: "https://provider/b",
+    listen: second.listen,
+    openUrl: openOk,
+  });
+  assert.equal(await p1, null);
+  assert.equal(firstFreed, 0);
+  await tick();
+  second.emit("houston://auth-callback?code=c2&state=s2");
+  assert.equal(await p2, "c2");
+});
+
+test("the timeout frees the loopback port", async () => {
+  const l = makeListen();
+  let freed = 0;
+  const p = awaitLoopbackCallback({
+    expectedState: "s1",
+    authorizeUrl: "https://provider/a",
+    listen: l.listen,
+    openUrl: openOk,
+    timeoutMs: 5,
+    abandonLoopback: () => {
+      freed += 1;
+    },
+  });
+  assert.equal(await p, null);
+  assert.equal(freed, 1);
+});
+
 test("onBrowserOpened fires after openUrl resolves", async () => {
   const l = makeListen();
   let opened = 0;

@@ -80,13 +80,21 @@ export function osOpenUrl(url: string): Promise<void> {
   return invoke<void>("open_url", { url });
 }
 
-/** Start a one-shot localhost listener for the Google OAuth redirect and
- * return the `redirectTo` URI Supabase should bounce the browser to. Keeps
+/** Start a one-shot localhost listener for the OAuth sign-in redirect and
+ * return the `redirect_uri` the provider should bounce the browser to. Keeps
  * desktop sign-in entirely on the user's machine — no website relay, no
- * custom-scheme "open app?" dialog. Desktop only; web/PWA clients have no
- * local listener and use the https relay bridge instead. */
+ * custom-scheme "open app?" dialog. Desktop only; web clients have no local
+ * listener and use the firebase-js-sdk popup instead. */
 export function osStartOauthLoopback(): Promise<string> {
   return invoke<string>("start_oauth_loopback");
+}
+
+/** Free the current loopback listener's port immediately — called when a
+ * sign-in attempt is superseded, cancelled (sign-in screen unmount), or times
+ * out, instead of waiting out the native 300s self-timeout. A no-op when no
+ * listener is bound. Desktop only. */
+export function osCancelOauthLoopback(): Promise<void> {
+  return invoke<void>("cancel_oauth_loopback");
 }
 
 // ── Identity session persistence (Keychain / DPAPI, via Rust `auth_*`) ──────
@@ -118,7 +126,7 @@ export function osAuthRemoveItem(key: string): Promise<void> {
  * rejects with a message string if the port can't be bound. Desktop only, and
  * only used against a REMOTE engine (pi's own 1455 is in the pod, so binding a
  * LOCAL 1455 can't collide) — keeps ChatGPT sign-in zero-code even remotely.
- * Mirrors {@link osStartOauthLoopback} (the Supabase Google loopback). */
+ * Mirrors {@link osStartOauthLoopback} (the GCIP/Google sign-in loopback). */
 export function osStartCodexOauthLoopback(): Promise<void> {
   return invoke<void>("start_codex_oauth_loopback");
 }
