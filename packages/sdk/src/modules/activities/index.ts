@@ -19,7 +19,7 @@ import type { PendingInteraction } from "@houston/protocol";
 import type { ModuleContext } from "../../module-context";
 import { registerActivitiesCommands } from "./commands";
 import { startActivitiesEventStream } from "./events-stream";
-import { createActivitiesHttp } from "./http";
+import { createActivitiesHttp, createActivitiesWrites } from "./http";
 import {
   type ActivitiesModule,
   type ActivitiesViewModel,
@@ -31,18 +31,17 @@ import {
 } from "./types";
 
 export { ActivitiesHttpError } from "./http";
-export type {
-  ActivitiesModule,
-  ActivitiesViewModel,
-  ActivityItem,
-  CreatedActivity,
-} from "./types";
 export {
   ACTIVITY_CHANGED_EVENT,
   ACTIVITY_STATUSES,
   ActivitiesCommand,
   type ActivitiesCommandType,
+  type ActivitiesModule,
+  type ActivitiesViewModel,
+  type ActivitiesWrites,
+  type ActivityItem,
   activitiesScope,
+  type CreatedActivity,
 } from "./types";
 
 export function createActivitiesModule(ctx: ModuleContext): ActivitiesModule {
@@ -194,6 +193,7 @@ export function createActivitiesModule(ctx: ModuleContext): ActivitiesModule {
     setStatusBySessionKey,
     rename,
     delete: del,
+    writes: createActivitiesWrites(http),
     dispose,
   };
 }

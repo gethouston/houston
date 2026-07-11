@@ -26,6 +26,17 @@ const JSON_HEADERS = { "Content-Type": "application/json" } as const;
  *  route on this segment (`/v1/integrations/composio/*`). */
 const COMPOSIO = "composio";
 
+/** Options for a provider-scoped {@link IntegrationsClient.connect} /
+ *  {@link IntegrationsClient.disconnect}. `provider` defaults to composio (the
+ *  only provider today, so an omitted value keeps the exact legacy route);
+ *  `agent` scopes an OAuth connect to a single agent slug (the gateway's
+ *  per-agent grant capture). Both optional and additive — a bare
+ *  `connect(toolkit)` is byte-for-byte the pre-existing call. */
+export interface IntegrationConnectOptions {
+  provider?: string;
+  agent?: string;
+}
+
 /** Integrations + per-agent grants (C1/C4). All calls carry the session JWT. */
 export class IntegrationsClient {
   private readonly r: Requester;
@@ -69,23 +80,67 @@ export class IntegrationsClient {
   }
 
   /** Start an OAuth connect. The caller opens `redirectUrl`, then polls
-   *  {@link getConnection} on `connectionId` until it is `active`. */
+   *  {@link getConnection} on `connectionId` until it is `active`. `opts`
+   *  (provider/agent) is additive — omitted, this is the legacy composio call
+   *  with a `{ toolkit }` body. */
   connect(
     toolkit: string,
+    opts?: IntegrationConnectOptions,
   ): Promise<{ redirectUrl: string; connectionId: string }> {
-    return this.r.json(`/v1/integrations/${COMPOSIO}/connect`, {
-      method: "POST",
+    const provider = opts?.provider ?? COMPOSIO;
+    return this.r.json(
+      `/v1/integrations/${encodeURIComponent(provider)}/connect`,
+      {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          toolkit,
+          ...(opts?.agent ? { agent: opts.agent } : {}),
+        }),
+      },
+    );
+  }
+
+  /** Disconnect a toolkit for the user everywhere (removes its connections).
+   *  `opts.provider` is additive; omitted keeps the legacy composio route. */
+  async disconnect(
+    toolkit: string,
+    opts?: Pick<IntegrationConnectOptions, "provider">,
+  ): Promise<void> {
+    const provider = opts?.provider ?? COMPOSIO;
+    await this.r.request(
+      `/v1/integrations/${encodeURIComponent(provider)}/disconnect`,
+      {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ toolkit }),
+      },
+    );
+  }
+
+  /**
+   * Push the caller's Supabase session token to the gateway adapter
+   * (`PUT /v1/integrations/session`); `null` on sign-out. A deployment without a
+   * session sink answers 404 — this method does NOT swallow it (errors
+   * propagate); the CALLER decides whether a 404 is benign for its deployment.
+   */
+  async setSession(token: string | null): Promise<void> {
+    await this.r.request("/v1/integrations/session", {
+      method: "PUT",
       headers: JSON_HEADERS,
-      body: JSON.stringify({ toolkit }),
+      body: JSON.stringify({ token }),
     });
   }
 
-  /** Disconnect a toolkit for the user everywhere (removes its connections). */
-  async disconnect(toolkit: string): Promise<void> {
-    await this.r.request(`/v1/integrations/${COMPOSIO}/disconnect`, {
+  /**
+   * Dismiss the one-time "reconnect your integrations" notice
+   * (`POST /v1/integrations/reconnect-notice/dismiss`) — the host deletes the
+   * retired legacy per-user credentials file. Idempotent host-side.
+   */
+  async dismissReconnectNotice(): Promise<void> {
+    await this.r.request("/v1/integrations/reconnect-notice/dismiss", {
       method: "POST",
       headers: JSON_HEADERS,
-      body: JSON.stringify({ toolkit }),
     });
   }
 

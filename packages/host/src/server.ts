@@ -42,6 +42,7 @@ import {
   type IntegrationDeps,
 } from "./routes/integrations";
 import { handleSandboxIntegrations } from "./routes/integrations-sandbox";
+import { handleMigrationSource } from "./routes/migration-source";
 import { handlePortableAccount } from "./routes/portable";
 import { BodyTooLargeError } from "./routes/read-body";
 import { handleSetupRuntime } from "./routes/setup-runtime";
@@ -262,6 +263,10 @@ async function handle(
   if (await handleSkillsDirectory(method, path, req, res)) return;
   if (await handleAccount(deps, userId, method, path, req, res)) return;
   if (await handlePortableAccount(deps, userId, method, path, req, res)) return;
+  // Desktop→cloud migration source listing (HOU-719): every agent across every
+  // workspace with its migration manifest. Desktop-local by design — the cloud
+  // gateway proxies only agent-scoped routes, so a pod never serves this.
+  if (await handleMigrationSource(deps, userId, method, path, res)) return;
   if (await handleAgentConfigs(deps, userId, method, path, req, res)) return;
   if (await handleIntegrations(deps, userId, method, path, req, res)) return;
   if (await handleIntegrationGrants(deps, userId, method, path, req, res))
