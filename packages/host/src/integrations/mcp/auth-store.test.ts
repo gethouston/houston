@@ -25,16 +25,16 @@ test("round-trips OAuth state with an atomic 0600 file", async () => {
     pending: { state: "nonce-1", startedAtMs: 123 },
   };
 
-  await store.write("rube", state);
+  await store.write("composio-apps", state);
 
-  expect(await store.read("rube")).toEqual(state);
-  const path = join(dir, "mcp-oauth", "rube.json");
+  expect(await store.read("composio-apps")).toEqual(state);
+  const path = join(dir, "mcp-oauth", "composio-apps.json");
   expect(statSync(path).mode & 0o777).toBe(0o600);
-  expect(readdirSync(join(dir, "mcp-oauth"))).toEqual(["rube.json"]);
+  expect(readdirSync(join(dir, "mcp-oauth"))).toEqual(["composio-apps.json"]);
 
   // Replacing an existing file also restores strict permissions.
   chmodSync(path, 0o644);
-  await store.write("rube", { tokens: state.tokens });
+  await store.write("composio-apps", { tokens: state.tokens });
   expect(statSync(path).mode & 0o777).toBe(0o600);
 });
 
@@ -44,6 +44,6 @@ test("missing and corrupt OAuth files read as signed out", async () => {
   expect(await store.read("missing")).toEqual({});
 
   mkdirSync(join(dir, "mcp-oauth"), { recursive: true });
-  writeFileSync(join(dir, "mcp-oauth", "rube.json"), "not json");
-  expect(await store.read("rube")).toEqual({});
+  writeFileSync(join(dir, "mcp-oauth", "composio-apps.json"), "not json");
+  expect(await store.read("composio-apps")).toEqual({});
 });

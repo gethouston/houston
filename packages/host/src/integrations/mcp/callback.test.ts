@@ -39,8 +39,8 @@ async function callback(
 function provider(store: MemoryMcpAuthStore) {
   return new McpIntegrationProvider({
     catalog: new HubCatalogSource({ cachePath: "/dev/null", url: "" }),
-    id: "rube",
-    url: "https://rube.app/mcp",
+    id: "composio-apps",
+    url: "https://connect.composio.dev/mcp",
     redirectUrl: "http://localhost/callback",
     store,
     exchangeAuthorization: async (oauth, _url, code) => {
@@ -63,7 +63,7 @@ test("rejects unknown state", async () => {
 
 test("rejects and consumes expired state", async () => {
   const store = new MemoryMcpAuthStore({
-    rube: { pending: { state: "old", startedAtMs: 1_000 } },
+    "composio-apps": { pending: { state: "old", startedAtMs: 1_000 } },
   });
   const response = await callback(
     provider(store),
@@ -71,12 +71,12 @@ test("rejects and consumes expired state", async () => {
     "code=x&state=old",
   );
   expect(response.status).toBe(400);
-  expect((await store.read("rube")).pending).toBeUndefined();
+  expect((await store.read("composio-apps")).pending).toBeUndefined();
 });
 
 test("exchanges a valid code, persists tokens, and clears pending state", async () => {
   const store = new MemoryMcpAuthStore({
-    rube: { pending: { state: "fresh", startedAtMs: 1_000 } },
+    "composio-apps": { pending: { state: "fresh", startedAtMs: 1_000 } },
   });
   const response = await callback(
     provider(store),
@@ -85,7 +85,7 @@ test("exchanges a valid code, persists tokens, and clears pending state", async 
   );
   expect(response.status).toBe(200);
   expect(response.body).toContain("Connected. You can close this tab");
-  expect(await store.read("rube")).toEqual({
+  expect(await store.read("composio-apps")).toEqual({
     tokens: { access_token: "token-ok", token_type: "bearer" },
   });
 

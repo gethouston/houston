@@ -174,8 +174,8 @@ test("the protocol index re-exports PendingInteraction", () => {
 });
 
 test("a connect step's optional provider must be a string when present", () => {
-  const base = { kind: "connect", id: "c1", toolkit: "rube" };
+  const base = { kind: "connect", id: "c1", toolkit: "composio-apps" };
   expect(isInteractionStep(base)).toBe(true);
-  expect(isInteractionStep({ ...base, provider: "rube" })).toBe(true);
+  expect(isInteractionStep({ ...base, provider: "composio-apps" })).toBe(true);
   expect(isInteractionStep({ ...base, provider: 7 })).toBe(false);
 });

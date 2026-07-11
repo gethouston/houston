@@ -32,12 +32,14 @@ const match = (action: string, toolkit: string): ToolMatch => ({
 test("fan-out merges every provider's results, stamped with its provider id", async () => {
   const registry = new IntegrationRegistry([
     searcher("composio", async () => [match("GMAIL_SEND_EMAIL", "gmail")]),
-    searcher("rube", async () => [match("RUBE_SEARCH_TOOLS", "rube")]),
+    searcher("composio-apps", async () => [
+      match("COMPOSIO_SEARCH_TOOLS", "composio-apps"),
+    ]),
   ]);
   const items = await searchAllProviders(registry, "u1", "email", undefined);
   expect(items.map((i) => [i.action, i.provider])).toEqual([
     ["GMAIL_SEND_EMAIL", "composio"],
-    ["RUBE_SEARCH_TOOLS", "rube"],
+    ["COMPOSIO_SEARCH_TOOLS", "composio-apps"],
   ]);
 });
 
@@ -46,10 +48,12 @@ test("one provider's failure drops its results but keeps the others'", async () 
     searcher("composio", async () => {
       throw new Error("upstream down");
     }),
-    searcher("rube", async () => [match("RUBE_SEARCH_TOOLS", "rube")]),
+    searcher("composio-apps", async () => [
+      match("COMPOSIO_SEARCH_TOOLS", "composio-apps"),
+    ]),
   ]);
   const items = await searchAllProviders(registry, "u1", "q", undefined);
-  expect(items.map((i) => i.provider)).toEqual(["rube"]);
+  expect(items.map((i) => i.provider)).toEqual(["composio-apps"]);
 });
 
 test("empty merged results + a signin failure propagate the signin error", async () => {
@@ -57,7 +61,7 @@ test("empty merged results + a signin failure propagate the signin error", async
     searcher("composio", async () => {
       throw new IntegrationSigninRequiredError();
     }),
-    searcher("rube", async () => []),
+    searcher("composio-apps", async () => []),
   ]);
   await expect(
     searchAllProviders(registry, "u1", "q", undefined),
@@ -69,7 +73,9 @@ test("signin failure is swallowed when another provider has results", async () =
     searcher("composio", async () => {
       throw new IntegrationSigninRequiredError();
     }),
-    searcher("rube", async () => [match("RUBE_SEARCH_TOOLS", "rube")]),
+    searcher("composio-apps", async () => [
+      match("COMPOSIO_SEARCH_TOOLS", "composio-apps"),
+    ]),
   ]);
   const items = await searchAllProviders(registry, "u1", "q", undefined);
   expect(items).toHaveLength(1);
@@ -80,7 +86,7 @@ test("all providers failing propagates the first error", async () => {
     searcher("composio", async () => {
       throw new Error("boom-1");
     }),
-    searcher("rube", async () => {
+    searcher("composio-apps", async () => {
       throw new Error("boom-2");
     }),
   ]);

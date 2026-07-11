@@ -15,7 +15,10 @@ function validUrl(value: string): URL {
 }
 
 function derivedId(url: URL): string {
-  if (url.hostname.toLowerCase().includes("rube")) return "rube";
+  // Composio's hosted endpoint gets the canonical id ("composio-apps" — NOT
+  // "composio", which would collide with the platform provider in the
+  // registry); anything else derives from its hostname's first label.
+  if (url.hostname.toLowerCase().includes("composio")) return "composio-apps";
   const id = url.hostname.split(".")[0]?.toLowerCase();
   if (!id) throw new Error("MCP server URL has no hostname");
   return id;

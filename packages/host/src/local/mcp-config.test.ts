@@ -4,10 +4,12 @@ import { parseMcpIntegrations } from "./mcp-config";
 const redirectUrl = "http://127.0.0.1:4318/v1/integrations/mcp/callback";
 
 test("parses a bare URL and derives its provider id", () => {
-  expect(parseMcpIntegrations("https://rube.app/mcp", redirectUrl)).toEqual([
+  expect(
+    parseMcpIntegrations("https://connect.composio.dev/mcp", redirectUrl),
+  ).toEqual([
     {
-      id: "rube",
-      url: "https://rube.app/mcp",
+      id: "composio-apps",
+      url: "https://connect.composio.dev/mcp",
       redirectUrl,
     },
   ]);
@@ -19,14 +21,14 @@ test("parses a bare URL and derives its provider id", () => {
 test("parses the JSON server list", () => {
   expect(
     parseMcpIntegrations(
-      '[{"id":"rube","url":"https://rube.app/mcp","name":"Rube"}]',
+      '[{"id":"composio-apps","url":"https://connect.composio.dev/mcp","name":"Composio"}]',
       redirectUrl,
     ),
   ).toEqual([
     {
-      id: "rube",
-      url: "https://rube.app/mcp",
-      name: "Rube",
+      id: "composio-apps",
+      url: "https://connect.composio.dev/mcp",
+      name: "Composio",
       redirectUrl,
     },
   ]);

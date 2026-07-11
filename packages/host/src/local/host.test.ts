@@ -104,8 +104,8 @@ test("integration mode log identifies gateway mode and its upstream", () => {
 test("integration mode log appends MCP servers after the primary provider", () => {
   const mcpServers = [
     {
-      id: "rube",
-      url: "https://rube.app/mcp",
+      id: "composio-apps",
+      url: "https://connect.composio.dev/mcp",
       redirectUrl: "http://localhost/callback",
     },
   ];
@@ -115,10 +115,10 @@ test("integration mode log appends MCP servers after the primary provider", () =
       mcpServers,
     }),
   ).toBe(
-    "[local-host] integrations: gateway https://cloud.test + mcp rube (https://rube.app/mcp)",
+    "[local-host] integrations: gateway https://cloud.test + mcp composio-apps (https://connect.composio.dev/mcp)",
   );
   expect(formatIntegrationsModeLog({ mcpServers })).toBe(
-    "[local-host] integrations: mcp rube (https://rube.app/mcp)",
+    "[local-host] integrations: mcp composio-apps (https://connect.composio.dev/mcp)",
   );
 });
 
@@ -128,8 +128,8 @@ test("Composio stays first when MCP providers are also wired", () => {
       gatewayUrl: "https://cloud.test",
       mcpServers: [
         {
-          id: "rube",
-          url: "https://rube.app/mcp",
+          id: "composio-apps",
+          url: "https://connect.composio.dev/mcp",
           redirectUrl: "http://localhost/callback",
         },
       ],
@@ -139,7 +139,7 @@ test("Composio stays first when MCP providers are also wired", () => {
     { current: null },
   );
   expect(wiring?.registry.ids()[0]).toBe("composio");
-  expect(wiring?.registry.ids()).toEqual(["composio", "rube"]);
+  expect(wiring?.registry.ids()).toEqual(["composio", "composio-apps"]);
 });
 
 test("integration mode log identifies direct mode without exposing the key", () => {

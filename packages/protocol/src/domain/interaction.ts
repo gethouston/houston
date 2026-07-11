@@ -46,7 +46,7 @@ export type InteractionStep =
       id: string;
       toolkit: string;
       /** Which integration provider owns the toolkit (an id from the host's
-       *  registry, e.g. "composio" or an MCP server id like "rube"). Absent =
+       *  registry, e.g. "composio" or an MCP server id like "composio-apps"). Absent =
        *  "composio", the only provider before MCP integrations existed, so
        *  interactions persisted by older builds stay valid. */
       provider?: string;

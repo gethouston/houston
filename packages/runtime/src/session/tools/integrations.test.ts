@@ -397,12 +397,12 @@ test("multi-provider: the search stamp routes execute and request_connection", a
         body: {
           items: [
             {
-              action: "RUBE_MULTI_EXECUTE",
-              toolkit: "rube",
+              action: "COMPOSIO_MULTI_EXECUTE_TOOL",
+              toolkit: "composio-apps",
               description: "run a tool",
               connected: true,
               status: "connected",
-              provider: "rube",
+              provider: "composio-apps",
             },
             {
               action: "",
@@ -420,12 +420,12 @@ test("multi-provider: the search stamp routes execute and request_connection", a
   });
 
   await run(s, { query: "run a tool" });
-  await run(e, { action: "RUBE_MULTI_EXECUTE", params: {} });
+  await run(e, { action: "COMPOSIO_MULTI_EXECUTE_TOOL", params: {} });
   // The execute call echoes the provider stamped on the search result.
   const exec = calls.find((c) => c.url.endsWith("/execute"));
   expect(exec?.body).toMatchObject({
-    action: "RUBE_MULTI_EXECUTE",
-    provider: "rube",
+    action: "COMPOSIO_MULTI_EXECUTE_TOOL",
+    provider: "composio-apps",
   });
 
   // The connect step carries the toolkit's provider so the app's card

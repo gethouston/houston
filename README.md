@@ -85,7 +85,7 @@ Connect model providers from the AI Models screen inside the app. Anthropic and 
 Connected apps (Gmail, Slack, and about 1000 more) run in platform mode through [Composio](https://composio.dev). The packaged desktop app forwards these calls through Houston's cloud with your signed-in session, so it holds no provider key. Two ways to run integrations fully locally instead, with no call touching Houston's cloud:
 
 - **Your own Composio key** — create a free Composio project and launch the app (or the host, in the dev loop) with `COMPOSIO_API_KEY` set: the host talks to Composio's REST API directly.
-- **A remote MCP server with OAuth** — set `HOUSTON_MCP_INTEGRATIONS` to a Streamable-HTTP MCP endpoint that authorizes with MCP OAuth 2.1, such as Composio's hosted endpoint (`https://connect.composio.dev/mcp`, also surfaced as [Rube](https://rube.app)). No API key at all: connecting the app opens a browser sign-in, and the server's tools appear to your agents alongside everything else.
+- **A remote MCP server with OAuth** — set `HOUSTON_MCP_INTEGRATIONS` to a Streamable-HTTP MCP endpoint that authorizes with MCP OAuth 2.1, such as Composio's hosted endpoint (`https://connect.composio.dev/mcp`). No API key at all: connecting the app opens a browser sign-in, and the server's tools appear to your agents alongside everything else.
 
 Leave all of it unset to run with integrations off. See `.env.example` for the dev wiring.
 

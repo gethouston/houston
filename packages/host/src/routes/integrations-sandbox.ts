@@ -130,7 +130,7 @@ export async function handleSandboxIntegrations(
     // Grant check before the upstream call — an ungranted toolkit never runs.
     // Slug attribution (`GMAIL_SEND_EMAIL` → gmail) fits Composio's naming; an
     // MCP server's tools carry arbitrary names, so a grant of the provider's
-    // OWN id (its single pseudo-toolkit, e.g. "rube") also authorizes it.
+    // OWN id (its single pseudo-toolkit, e.g. "composio-apps") also authorizes it.
     if (
       granted &&
       !isActionGranted(body.action, granted) &&

@@ -552,7 +552,7 @@ fn spawn_host_sidecar(
         std::env::var("COMPOSIO_API_KEY").ok(),
         option_env!("HOUSTON_INTEGRATIONS_URL"),
     ));
-    // MCP integrations (e.g. Composio's Rube endpoint): pure user opt-in, never
+    // MCP integrations (e.g. Composio's hosted MCP endpoint): pure user opt-in, never
     // baked at compile time. The host parses the value and runs the MCP OAuth
     // flow itself; the shell only relays configuration.
     for key in ["HOUSTON_MCP_INTEGRATIONS", "HOUSTON_MCP_OAUTH_REDIRECT_URL"] {
