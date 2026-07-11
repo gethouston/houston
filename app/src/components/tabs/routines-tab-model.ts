@@ -116,6 +116,21 @@ export function resolvePendingActivity(
   return loaded ? { action: "clear" } : { action: "wait" };
 }
 
+/**
+ * The routines list is ONE file holding both kinds (exactly one of
+ * `schedule`/`trigger` per routine, C9); the Routines and Reactions tabs are
+ * filtered views of it. Schedule-driven routines have no `trigger`; event-driven
+ * reactions have one.
+ */
+export function scheduleRoutines(routines: Routine[] | undefined): Routine[] {
+  return (routines ?? []).filter((r) => !r.trigger);
+}
+
+/** Event-driven reactions: the routines that wake on a `trigger`. */
+export function reactionRoutines(routines: Routine[] | undefined): Routine[] {
+  return (routines ?? []).filter((r) => !!r.trigger);
+}
+
 /** Most recent run per routine id, keyed by `routine_id`. */
 export function latestRunByRoutine(
   runs: RoutineRun[] | undefined,

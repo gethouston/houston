@@ -84,7 +84,4 @@ export type {
   TriggerType,
 } from "./types";
 export { SCHEDULE_PRESET_LABELS } from "./types";
-export type { WakeMechanismChoiceProps } from "./wake-mechanism-choice";
-export { WakeMechanismChoice } from "./wake-mechanism-choice";
-export type { WakeMechanismFieldProps } from "./wake-mechanism-field";
-export { WakeMechanismField } from "./wake-mechanism-field";
+export type { RoutineEditInitial } from "./use-routine-edit-fields";

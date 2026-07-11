@@ -146,10 +146,7 @@
     "at": "{day} às {time}"
   },
   "trigger": {
-    "wakeSchedule": "Em um horário",
-    "wakeScheduleHint": "Executa nos horários que você escolher",
     "wakeEvent": "Quando algo acontece",
-    "wakeEventHint": "Executa assim que um app faz algo",
     "chooseApp": "Qual app deve acionar?",
     "chooseEvent": "O que deve acionar?",
     "changeApp": "Trocar app",
@@ -174,6 +171,47 @@
     "statusRevokedHint": "Este app foi desativado para este agente.",
     "rowSummary": "Aciona por um evento em {{app}}",
     "loadFailed": "Não foi possível carregar os acionadores de eventos"
+  },
+  "reactions": {
+    "grid": {
+      "loading": "Carregando…",
+      "emptyTitle": "Reaja assim que acontece",
+      "emptyDescription": "Seu agente reage assim que algo acontece nos seus apps conectados, como um e-mail novo, uma mensagem ou uma mudança no código.",
+      "emptyStepsTitle": "Como funciona",
+      "emptySteps": [
+        {
+          "title": "Escolha o que aciona",
+          "description": "Escolha um app e o evento para reagir, como um e-mail novo ou uma mensagem nova."
+        },
+        {
+          "title": "Diga o que fazer",
+          "description": "Descreva a tarefa em linguagem simples, como você diria para uma pessoa."
+        },
+        {
+          "title": "Roda sozinha",
+          "description": "Não precisa ficar de olho, seu agente reage assim que acontece."
+        }
+      ],
+      "newRoutine": "Nova reação",
+      "newRoutineWithAi": "Com IA",
+      "newRoutineManually": "Manualmente",
+      "createRoutine": "Criar reação",
+      "draftTitle": "Reação sendo criada no chat",
+      "draftResume": "Continuar",
+      "draftDiscard": "Descartar",
+      "descriptionShort": "Automações que rodam assim que algo acontece em um dos seus apps conectados.",
+      "timezoneLabel": "Fuso horário",
+      "timezoneHint": "Todas as suas rotinas rodam neste fuso horário.",
+      "timezoneSearchPlaceholder": "Buscar fusos horários…",
+      "timezoneNoResults": "Nenhum fuso horário encontrado"
+    },
+    "setupChat": {
+      "missionTitle": "Configurar uma nova reação"
+    },
+    "chat": {
+      "newTitle": "Nova reação",
+      "itemLabel": "Reação: {{name}}"
+    }
   },
   "toasts": {
     "timezoneSet": "Fuso horário definido como {{zone}}",

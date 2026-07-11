@@ -116,10 +116,7 @@ export const DEFAULT_GRID_LABELS: RoutinesGridLabels = {
 };
 
 export const DEFAULT_TRIGGER_LABELS: TriggerLabels = {
-  wakeSchedule: "On a schedule",
-  wakeScheduleHint: "Runs at times you choose",
   wakeEvent: "When something happens",
-  wakeEventHint: "Runs the moment an app does something",
   chooseApp: "Which app should wake it?",
   chooseEvent: "What should wake it?",
   changeApp: "Change app",

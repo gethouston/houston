@@ -7,6 +7,7 @@ import type {
 } from "@houston-ai/routines";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import type { SetupChatKind } from "../lib/routine-chat-setup";
 
 /**
  * Builds the localized label objects the `@houston-ai/routines` components take.
@@ -34,18 +35,28 @@ function intlLocale(language: string): string {
   return "en-US";
 }
 
-export function useRoutineLabels(): RoutineLabels {
+/**
+ * `kind` selects the grid labels: the Routines tab uses the `grid` subtree, the
+ * Reactions tab the `reactions.grid` subtree (its own empty-state copy, "New
+ * reaction" CTA, etc.). Every other label group (rows, schedule, next-run,
+ * trigger) is shared across both tabs.
+ */
+export function useRoutineLabels(
+  kind: SetupChatKind = "routine",
+): RoutineLabels {
   const { t, i18n } = useTranslation("routines");
 
   return useMemo(
     () => ({
       locale: intlLocale(i18n.language),
-      grid: t("grid", { returnObjects: true }) as RoutinesGridLabels,
+      grid: t(kind === "reaction" ? "reactions.grid" : "grid", {
+        returnObjects: true,
+      }) as RoutinesGridLabels,
       rowLabels: t("row", { returnObjects: true }) as RoutineRowLabels,
       schedule: t("schedule", { returnObjects: true }) as ScheduleLabels,
       nextFire: t("nextFire", { returnObjects: true }) as NextFireLabels,
       trigger: t("trigger", { returnObjects: true }) as TriggerLabels,
     }),
-    [t, i18n.language],
+    [t, i18n.language, kind],
   );
 }

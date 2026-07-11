@@ -588,19 +588,33 @@ control is free). Always mounted (every local host has a turn bus).
   tells the UI it is off). Every degradation reaches the user; no silent
   automations.
 
-### UI surfaces
+### UI surfaces — the Reactions tab
 
-The routine editor's "how does this wake?" section is `WakeMechanismField`
-(`ui/routines/src/wake-mechanism-field.tsx`): when the deployment supports
-triggers it shows a two-option choice (schedule vs event) and renders either the
-`ScheduleBuilder` or the app-injected trigger editor slot; without trigger
-support it renders exactly today's schedule builder. `ui/` cannot reach app data,
-so the app injects the editor as `triggerSlot` — `RoutineTriggerEditor`
-(`app/src/components/tabs/routine-trigger-editor.tsx`) owns the pick-an-app →
-pick-an-event → fill-the-details flow over `TriggerPicker` / `TriggerConfigForm`
-(the config form is generated from the trigger type's JSON-schema) and the usable
-apps are scoped to the agent's granted toolkits (`use-usable-toolkits`). The live
-`TriggerStatusBadge` (`ui/routines/src/trigger-status-badge.tsx`) renders above
-it; a `paused_disconnected` routine offers a one-click reconnect. Read queries:
+Event-driven automations are their OWN tab, **Reactions** (tab id `reactions`,
+es "Reacciones", pt "Reações"), beside Routines and shown only when
+`capabilities.triggers` is on (gated in `visibleAgentTabs`,
+`app/src/agents/standard-tabs.ts`). There is NO wake-mechanism toggle — the
+product decision is one concept per tab: Routines = "on a schedule", Reactions
+= "when something happens". The domain model stays ONE `routines.json` list;
+both tabs are filtered views over it, thin wrappers over the shared
+`RoutineListTab` (`app/src/components/tabs/routine-list-tab.tsx`,
+kind-parameterized: filters the list, picks labels, omits the timezone bar for
+Reactions, enables trigger data fetching only there).
+
+`RoutineRowEdit` takes `variant: "schedule" | "event"` fixing the ONE wake
+mechanism it authors (built-in `ScheduleBuilder` vs the app-injected trigger
+editor slot); rows derive the variant from `routine.trigger`. `ui/` cannot
+reach app data, so the app injects the editor as a slot —
+`RoutineTriggerEditor` (`app/src/components/tabs/routine-trigger-editor.tsx`)
+owns the pick-an-app → pick-an-event → fill-the-details flow over
+`TriggerPicker` / `TriggerConfigForm` (the config form is generated from the
+trigger type's JSON-schema); usable apps are scoped to the agent's granted
+toolkits (`use-usable-toolkits`). The live `TriggerStatusBadge` renders above
+it; a `paused_disconnected` reaction offers one-click reconnect. Creation
+mirrors Routines exactly: "With AI" (the same setup-chat flow with a
+reaction-specific kickoff, `reaction-chat-prompts.ts`) or "Manually" (inline
+draft card). Draft chats are kind-discriminated by a second agent-mode
+sentinel (`REACTION_SETUP_AGENT_MODE = "houston:reaction-setup"`) so a
+reaction draft never leaks into Routines and vice versa. Read queries:
 `useTriggerTypes` / trigger-status in `app/src/hooks/queries/use-triggers.ts`,
 gated on the `triggers` capability so a desktop build never fetches.

@@ -18,16 +18,20 @@ import { RoutineTriggerEditor } from "./routine-trigger-editor";
 import { toStatusMap, toTriggerSummaries } from "./routine-trigger-maps";
 
 /**
- * Wires the Routines tab's event-trigger surface (C9): the capability gate, the
+ * Wires the Reactions tab's event-trigger surface (C9): the capability gate, the
  * per-routine status badges, the humanized row summaries, the injected editor
- * body, and the reconnect hand-off to the Integrations surface. Extracted from
- * `routines-tab.tsx` so that file stays under the size cap; returns exactly the
- * trigger-related props `RoutinesGrid` takes.
+ * body, and the reconnect hand-off to the Integrations surface. Returns exactly
+ * the trigger-related props `RoutinesGrid` takes.
+ *
+ * `enabled` lets a schedule-only caller (the Routines tab) turn the whole
+ * surface off so it never fetches trigger status or catalogs; it is ANDed with
+ * the deployment's `capabilities.triggers`.
  */
 export function useRoutineTriggers(
   agent: Agent,
   routines: Routine[] | undefined,
   triggerLabels: TriggerLabels,
+  enabled = true,
 ): {
   triggersEnabled: boolean;
   triggerStatuses: Record<string, TriggerStatusItem>;
@@ -37,7 +41,7 @@ export function useRoutineTriggers(
 } {
   const { t } = useTranslation("routines");
   const { capabilities } = useCapabilities();
-  const triggersEnabled = !!capabilities?.triggers;
+  const triggersEnabled = enabled && !!capabilities?.triggers;
 
   const statusQuery = useAgentTriggerStatus(agent.id, triggersEnabled);
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, triggersEnabled);

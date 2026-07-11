@@ -195,11 +195,9 @@ export interface TriggerStatusLabels {
  * and the status badge. All human, never "webhook"/"schema"/"instance".
  */
 export interface TriggerLabels {
-  /** Segmented wake choice: "On a schedule" vs "When something happens". */
-  wakeSchedule: string;
-  wakeScheduleHint: string;
+  /** Generic "wakes on an event" fallback, shown when a reaction routine has no
+   *  humanized event summary yet. */
   wakeEvent: string;
-  wakeEventHint: string;
   /** App + event picker. */
   chooseApp: string;
   chooseEvent: string;

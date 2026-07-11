@@ -146,10 +146,7 @@
     "at": "{day} at {time}"
   },
   "trigger": {
-    "wakeSchedule": "On a schedule",
-    "wakeScheduleHint": "Runs at times you choose",
     "wakeEvent": "When something happens",
-    "wakeEventHint": "Runs the moment an app does something",
     "chooseApp": "Which app should wake it?",
     "chooseEvent": "What should wake it?",
     "changeApp": "Change app",
@@ -174,6 +171,47 @@
     "statusRevokedHint": "This app was turned off for this agent.",
     "rowSummary": "Wakes on an event in {{app}}",
     "loadFailed": "Couldn't load event triggers"
+  },
+  "reactions": {
+    "grid": {
+      "loading": "Loading…",
+      "emptyTitle": "React the moment it happens",
+      "emptyDescription": "Your agent reacts the moment something happens in your connected apps, like a new email, a message, or a code change.",
+      "emptyStepsTitle": "How it works",
+      "emptySteps": [
+        {
+          "title": "Pick what wakes it",
+          "description": "Choose an app and the event to react to, like a new email or a new message."
+        },
+        {
+          "title": "Say what to do",
+          "description": "Describe the task in plain language, like you would to a person."
+        },
+        {
+          "title": "It runs on its own",
+          "description": "No need to watch for it, your agent reacts the moment it happens."
+        }
+      ],
+      "newRoutine": "New reaction",
+      "newRoutineWithAi": "With AI",
+      "newRoutineManually": "Manually",
+      "createRoutine": "Create reaction",
+      "draftTitle": "Reaction being created in chat",
+      "draftResume": "Resume",
+      "draftDiscard": "Discard",
+      "descriptionShort": "Automations that fire the moment something happens in one of your connected apps.",
+      "timezoneLabel": "Timezone",
+      "timezoneHint": "All your routines run in this timezone.",
+      "timezoneSearchPlaceholder": "Search timezones…",
+      "timezoneNoResults": "No timezones found"
+    },
+    "setupChat": {
+      "missionTitle": "Set up a new reaction"
+    },
+    "chat": {
+      "newTitle": "New reaction",
+      "itemLabel": "Reaction: {{name}}"
+    }
   },
   "toasts": {
     "timezoneSet": "Timezone set to {{zone}}",

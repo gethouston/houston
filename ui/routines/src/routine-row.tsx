@@ -64,10 +64,8 @@ export interface RoutineRowProps {
   nextFireLabels?: NextFireLabels;
   /** Full schedule-builder labels, for the inline edit panel's picker. */
   scheduleLabels?: ScheduleLabels;
-  /** Trigger (event-driven) copy for the wake choice, picker, and status badge. */
+  /** Trigger (event-driven) copy for the picker and status badge. */
   triggerLabels?: TriggerLabels;
-  /** Whether the deployment supports event triggers (enables the wake choice). */
-  triggersEnabled?: boolean;
   /** App-wired trigger editor injected into the inline edit panel's event side. */
   renderTriggerEditor?: RenderTriggerEditor;
   /** Live provisioning status for an event-driven routine (badge + reconnect). */
@@ -96,7 +94,6 @@ export function RoutineRow({
   nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
   scheduleLabels = DEFAULT_SCHEDULE_LABELS,
   triggerLabels = DEFAULT_TRIGGER_LABELS,
-  triggersEnabled = false,
   renderTriggerEditor,
   triggerStatus,
   triggerSummary,
@@ -208,7 +205,7 @@ export function RoutineRow({
             return ok;
           }}
           onCancel={() => setExpanded(false)}
-          triggersEnabled={triggersEnabled}
+          variant={routine.trigger ? "event" : "schedule"}
           renderTriggerEditor={renderTriggerEditor}
           triggerStatus={triggerStatus}
           onReconnectTrigger={onReconnectTrigger}
