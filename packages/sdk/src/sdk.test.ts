@@ -39,6 +39,29 @@ describe("HoustonSdk construction", () => {
   });
 });
 
+describe("HoustonSdk reactivity flag", () => {
+  it("with reactivity:false, construction opens no stream (no fetch fires)", async () => {
+    const fetch = vi.fn(async () => new Response("[]", { status: 200 }));
+    const sdk = makeSdk({ reactivity: false, ports: fakePorts({ fetch }) });
+    // Flush the microtask queue + one macrotask: a deferred stream connect would
+    // have fired by now. Nothing does — the write-only SDK is inert.
+    await Promise.resolve();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fetch).not.toHaveBeenCalled();
+    // The write facades are still fully present for a host to delegate to.
+    expect(sdk.agents.create).toBeTypeOf("function");
+    expect(sdk.activities.create).toBeTypeOf("function");
+    // dispose is a no-op when no stream was started; it must not throw.
+    sdk.dispose();
+  });
+
+  it("by default opens the agents reactivity stream on construction", async () => {
+    const fetch = vi.fn(async () => new Response("[]", { status: 200 }));
+    makeSdk({ ports: fakePorts({ fetch }) });
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled());
+  });
+});
+
 describe("HoustonSdk reactive surface", () => {
   it("delegates getSnapshot/subscribe to the internal store", () => {
     const sdk = makeSdk();

@@ -157,27 +157,34 @@ export function createActivitiesModule(ctx: ModuleContext): ActivitiesModule {
       }),
     );
 
-  const dispose = startActivitiesEventStream({
-    baseUrl,
-    fetch: ports.fetch,
-    clock: ports.clock,
-    logger: ports.logger,
-    handlers: {
-      onConnect: () => {
-        for (const id of known) backgroundRefresh(id, "connect");
-      },
-      onActivityChanged: (agentPath) => {
-        // Targeted: only an agent we're showing. A frame with no agentPath can't
-        // be targeted, so refetch every known agent (catch-up, never a miss).
-        if (agentPath === undefined) {
-          for (const id of known) backgroundRefresh(id, "change");
-        } else if (known.has(agentPath)) {
-          backgroundRefresh(agentPath, "change");
-        }
-      },
-      onUnauthorized: emitTokenExpired,
-    },
-  });
+  // Reactivity off (`config.reactivity === false`): the host owns its own read
+  // model + invalidation (the web adapter), so we DON'T open a duplicate
+  // `/v1/events` stream — the module stays write-only and `dispose` is a no-op.
+  const dispose =
+    ctx.config.reactivity === false
+      ? () => {}
+      : startActivitiesEventStream({
+          baseUrl,
+          fetch: ports.fetch,
+          clock: ports.clock,
+          logger: ports.logger,
+          handlers: {
+            onConnect: () => {
+              for (const id of known) backgroundRefresh(id, "connect");
+            },
+            onActivityChanged: (agentPath) => {
+              // Targeted: only an agent we're showing. A frame with no agentPath
+              // can't be targeted, so refetch every known agent (catch-up,
+              // never a miss).
+              if (agentPath === undefined) {
+                for (const id of known) backgroundRefresh(id, "change");
+              } else if (known.has(agentPath)) {
+                backgroundRefresh(agentPath, "change");
+              }
+            },
+            onUnauthorized: emitTokenExpired,
+          },
+        });
 
   return {
     scope: activitiesScope,
