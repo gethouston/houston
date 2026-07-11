@@ -23,8 +23,11 @@ import {
 
 export function isMigrationDemo(): boolean {
   try {
+    if (!import.meta.env.DEV) return false;
+    // `VITE_MIGRATION_DEMO=1 pnpm tauri dev` forces it on for the whole launch
+    // (no console step needed); otherwise the per-tab localStorage flag.
+    if (import.meta.env.VITE_MIGRATION_DEMO === "1") return true;
     return (
-      import.meta.env.DEV &&
       typeof localStorage !== "undefined" &&
       localStorage.getItem("houston.cloudMigration.demo") === "1"
     );
