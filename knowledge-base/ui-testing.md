@@ -20,8 +20,17 @@ pnpm --filter houston-web test:e2e:ui     # watch / debug
 pnpm --filter houston-web typecheck:e2e   # typecheck harness
 ```
 
-Playwright auto-starts two servers: vite `:1430` (`VITE_NEW_ENGINE=1` → adapter +
-`NewEngineRoot`) and the fake host `:4399` (`pnpm fake-host`).
+Playwright auto-starts three servers: vite `:1430` (identity-off shell → adapter +
+`NewEngineRoot`), a second vite `:1435` (identity-ON, bakes a fake Firebase key so
+`SignInScreen` renders — the `auth` project), and the fake host `:4399`
+(`pnpm fake-host`).
+
+Both vite servers run from the same package, so `vite.config.ts` scopes `cacheDir`
+to the server's port (`node_modules/.vite/dev-<port>`). Without that, the two
+cold-boot dep-optimizers share one `deps/` dir and race on a cold CI cache —
+each rewrites the other's optimized chunks mid-navigation, wedging the sign-in
+server on an endless reload so global-setup times out (passed locally, where the
+cache was warm).
 
 ## Architecture
 

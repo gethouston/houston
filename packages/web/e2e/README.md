@@ -124,6 +124,17 @@ failure. `test:e2e` also runs with `--fail-on-flaky-tests`, so a test that only
 passes on retry now fails the run (non-zero exit) instead of going green. Locally
 `retries: 0`, so a failure is just a failure and the flag is a no-op.
 
+**Two vite servers, two dep-optimizer caches.** The run boots TWO vite servers
+from this same package — the identity-off shell (`:1430`) and the identity-on
+sign-in server (`:1435`, the `auth` project). Vite's default cacheDir is
+`node_modules/.vite`, so both would share ONE dep-optimizer output dir and, on a
+cold CI cache, race: each cold-optimizes and rewrites `deps/` under the other,
+invalidating chunks mid-navigation so the second server's page reloads into a
+broken optimize state and never settles (the sign-in button never appears;
+global-setup times out — passed locally where the cache was already warm).
+`vite.config.ts` scopes `cacheDir` to the server's port (`node_modules/.vite/dev-<port>`)
+so each server gets its own optimizer output — no shared state, no race.
+
 ## Adding a spec
 
 1. `import { test, expect } from "./support/fixtures"` (gives you a seeded page).

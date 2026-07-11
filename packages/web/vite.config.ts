@@ -23,8 +23,19 @@ export default defineConfig(({ mode }) => {
   // envDir, so the Connect screen prompts for a host URL + token.
   const envDir = mode === "host" ? repoRoot : process.cwd();
   const env = { ...loadEnv(mode, envDir, ""), ...process.env };
+  // The e2e run boots TWO dev servers from this same package (the identity-off
+  // shell on WEB_PORT and the identity-on sign-in server five ports up — see
+  // playwright.config.ts). Vite's default cacheDir is `node_modules/.vite`, so
+  // both servers would share ONE dep-optimizer output dir and, on a cold CI
+  // cache, race: each cold-optimizes and rewrites `deps/` under the other,
+  // invalidating chunks mid-navigation so the second server's page reloads into
+  // a broken optimize state and never settles (the sign-in button never
+  // appears; global-setup times out). Scoping the cacheDir to the server's port
+  // gives each its own optimizer output — no shared state, no race.
+  const port = Number(process.env.HOUSTON_E2E_WEB_PORT || 1430);
   return {
     envDir,
+    cacheDir: path.resolve(__dirname, `node_modules/.vite/dev-${port}`),
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: [
