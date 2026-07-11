@@ -152,6 +152,8 @@ export function recordSignin(input: { reason?: string }): void {
  */
 export function recordConnection(input: {
   toolkit: string;
+  /** Registry provider owning the toolkit (absent = "composio", see protocol). */
+  provider?: string;
   reason?: string;
 }): void {
   const holder = store.getStore();
@@ -165,6 +167,7 @@ export function recordConnection(input: {
     kind: "connect",
     id: `c${holder.connects.length + 1}`,
     toolkit: input.toolkit,
+    ...(input.provider ? { provider: input.provider } : {}),
     ...(input.reason ? { reason: input.reason } : {}),
   });
 }

@@ -12,9 +12,11 @@ import { expect, test } from "vitest";
 import { MANAGED_CLOUD_CAPABILITIES } from "../capabilities";
 import { EnvCredentialVault } from "../credentials/vault";
 import type { Agent } from "../domain/types";
+import { MemoryMcpAuthStore } from "../integrations/mcp/auth-store";
 import type { RuntimeSpawner } from "../launcher/process";
 import {
   buildLocalHost,
+  buildLocalIntegrationRegistry,
   formatIntegrationsModeLog,
   LOCAL_CAPABILITIES,
   type LocalHostOptions,
@@ -46,7 +48,7 @@ const fakeSpawner: RuntimeSpawner = {
 async function setup(opts?: {
   chatHistoryDbPath?: string;
   capabilities?: Capabilities;
-  integrations?: { gatewayUrl?: string; composioApiKey?: string };
+  integrations?: LocalHostOptions["integrations"];
   gatewayFronted?: boolean;
   credentials?: LocalHostOptions["credentials"];
   spawner?: RuntimeSpawner;
@@ -98,6 +100,46 @@ test("integration mode log identifies gateway mode and its upstream", () => {
   ).toBe("[local-host] integrations: gateway https://cloud.test");
 });
 
+test("integration mode log appends MCP servers after the primary provider", () => {
+  const mcpServers = [
+    {
+      id: "rube",
+      url: "https://rube.app/mcp",
+      redirectUrl: "http://localhost/callback",
+    },
+  ];
+  expect(
+    formatIntegrationsModeLog({
+      gatewayUrl: "https://cloud.test",
+      mcpServers,
+    }),
+  ).toBe(
+    "[local-host] integrations: gateway https://cloud.test + mcp rube (https://rube.app/mcp)",
+  );
+  expect(formatIntegrationsModeLog({ mcpServers })).toBe(
+    "[local-host] integrations: mcp rube (https://rube.app/mcp)",
+  );
+});
+
+test("Composio stays first when MCP providers are also wired", () => {
+  const wiring = buildLocalIntegrationRegistry(
+    {
+      gatewayUrl: "https://cloud.test",
+      mcpServers: [
+        {
+          id: "rube",
+          url: "https://rube.app/mcp",
+          redirectUrl: "http://localhost/callback",
+        },
+      ],
+    },
+    new MemoryMcpAuthStore(),
+    { current: null },
+  );
+  expect(wiring?.registry.ids()[0]).toBe("composio");
+  expect(wiring?.registry.ids()).toEqual(["composio", "rube"]);
+});
+
 test("integration mode log identifies direct mode without exposing the key", () => {
   const key = "must-not-appear";
   const line = formatIntegrationsModeLog({ composioApiKey: key });
@@ -107,7 +149,7 @@ test("integration mode log identifies direct mode without exposing the key", () 
 
 test("integration mode log explains how to enable integrations when off", () => {
   expect(formatIntegrationsModeLog(undefined)).toBe(
-    "[local-host] integrations off: set HOUSTON_INTEGRATIONS_URL or COMPOSIO_API_KEY to enable",
+    "[local-host] integrations off: set HOUSTON_INTEGRATIONS_URL, COMPOSIO_API_KEY, or HOUSTON_MCP_INTEGRATIONS to enable",
   );
 });
 

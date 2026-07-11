@@ -4,6 +4,7 @@ import {
   isActionGranted,
   type LocalIntegrationGrants,
 } from "../integrations/grants";
+import { searchAllProviders } from "../integrations/search-fanout";
 import { IntegrationSigninRequiredError } from "../integrations/types";
 import type { CredentialVault, WorkspaceStore } from "../ports";
 import { bearer, header, json, readJson } from "./http";
@@ -65,7 +66,10 @@ export async function handleSandboxIntegrations(
   const { registry } = deps.integrations;
 
   const body = await readJson(req);
-  // Default to the only/first provider when the tool omits it (single-provider).
+  // Execute (and an explicit-provider search) target ONE provider: the id the
+  // runtime echoes back from a search result's `provider` stamp, else the
+  // first registered (composio whenever it is wired — registration order is
+  // load-bearing). Search WITHOUT an explicit provider fans out instead.
   const providerId =
     typeof body.provider === "string" ? body.provider : registry.ids()[0];
   if (!providerId || !registry.has(providerId)) {
@@ -103,7 +107,15 @@ export async function handleSandboxIntegrations(
         json(res, 400, { error: "missing 'query'" });
         return true;
       }
-      const items = await provider.search(ws.ownerUserId, body.query, acting);
+      const items =
+        typeof body.provider === "string"
+          ? await provider.search(ws.ownerUserId, body.query, acting)
+          : await searchAllProviders(
+              registry,
+              ws.ownerUserId,
+              body.query,
+              acting,
+            );
       json(res, 200, {
         items: granted ? filterMatchesToGranted(items, granted) : items,
       });
@@ -116,7 +128,14 @@ export async function handleSandboxIntegrations(
       return true;
     }
     // Grant check before the upstream call — an ungranted toolkit never runs.
-    if (granted && !isActionGranted(body.action, granted)) {
+    // Slug attribution (`GMAIL_SEND_EMAIL` → gmail) fits Composio's naming; an
+    // MCP server's tools carry arbitrary names, so a grant of the provider's
+    // OWN id (its single pseudo-toolkit, e.g. "rube") also authorizes it.
+    if (
+      granted &&
+      !isActionGranted(body.action, granted) &&
+      !granted.includes(providerId)
+    ) {
       json(res, 403, { error: "toolkit_not_granted" });
       return true;
     }

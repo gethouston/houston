@@ -12,6 +12,15 @@ import { BusEventHub } from "../events/hub";
 import { ComposioProvider } from "../integrations/composio";
 import { FileIntegrationGrantStore } from "../integrations/grant-store";
 import { LocalIntegrationGrants } from "../integrations/grants";
+import {
+  FileMcpAuthStore,
+  type McpAuthStore,
+} from "../integrations/mcp/auth-store";
+import {
+  McpIntegrationProvider,
+  type McpServerConfig,
+} from "../integrations/mcp/provider";
+import type { IntegrationProvider } from "../integrations/provider";
 import { IntegrationRegistry } from "../integrations/registry";
 import { RemoteIntegrationProvider } from "../integrations/remote";
 import { ProcessLauncher, type RuntimeSpawner } from "../launcher/process";
@@ -127,6 +136,7 @@ export interface LocalHostOptions {
     gatewayUrl?: string;
     composioApiKey?: string;
     podToken?: string;
+    mcpServers?: McpServerConfig[];
   };
   /**
    * True only when a trusted gateway fronts EVERY request to this host (the
@@ -155,13 +165,57 @@ export interface LocalHost {
 export function formatIntegrationsModeLog(
   integrations: LocalHostOptions["integrations"],
 ): string {
+  const mcp = (integrations?.mcpServers ?? []).map(
+    ({ id, url }) => `mcp ${id} (${url})`,
+  );
   if (integrations?.gatewayUrl) {
-    return `[local-host] integrations: gateway ${integrations.gatewayUrl}`;
+    return `[local-host] integrations: ${[
+      `gateway ${integrations.gatewayUrl}`,
+      ...mcp,
+    ].join(" + ")}`;
   }
   if (integrations?.composioApiKey) {
-    return "[local-host] integrations: direct (own Composio key)";
+    return `[local-host] integrations: ${[
+      "direct (own Composio key)",
+      ...mcp,
+    ].join(" + ")}`;
   }
-  return "[local-host] integrations off: set HOUSTON_INTEGRATIONS_URL or COMPOSIO_API_KEY to enable";
+  if (mcp.length > 0) return `[local-host] integrations: ${mcp.join(" + ")}`;
+  return "[local-host] integrations off: set HOUSTON_INTEGRATIONS_URL, COMPOSIO_API_KEY, or HOUSTON_MCP_INTEGRATIONS to enable";
+}
+
+export function buildLocalIntegrationRegistry(
+  integrations: LocalHostOptions["integrations"],
+  store: McpAuthStore,
+  sessionToken: { current: string | null },
+): {
+  registry: IntegrationRegistry;
+  mcpProviders: McpIntegrationProvider[];
+} | null {
+  const providers: IntegrationProvider[] = [];
+  if (integrations?.gatewayUrl) {
+    providers.push(
+      new RemoteIntegrationProvider({
+        id: "composio",
+        upstreamUrl: integrations.gatewayUrl,
+        token: () => sessionToken.current,
+        podToken: integrations.podToken,
+      }),
+    );
+  } else if (integrations?.composioApiKey) {
+    providers.push(
+      new ComposioProvider({ apiKey: integrations.composioApiKey }),
+    );
+  }
+  // Registry order is load-bearing: the sandbox route defaults to ids()[0],
+  // so Composio must stay first whenever it is configured.
+  const mcpProviders = (integrations?.mcpServers ?? []).map(
+    (config) => new McpIntegrationProvider({ ...config, store }),
+  );
+  providers.push(...mcpProviders);
+  return providers.length > 0
+    ? { registry: new IntegrationRegistry(providers), mcpProviders }
+    : null;
 }
 
 /**
@@ -256,22 +310,12 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     dirname(opts.credentialsPath),
     "integrations.json",
   );
-  const registry = opts.integrations?.gatewayUrl
-    ? new IntegrationRegistry([
-        new RemoteIntegrationProvider({
-          id: "composio",
-          upstreamUrl: opts.integrations.gatewayUrl,
-          token: () => sessionToken.current,
-          // Managed pods pass their host token so routine turns authenticate as
-          // the creator; the desktop leaves this undefined.
-          podToken: opts.integrations.podToken,
-        }),
-      ])
-    : opts.integrations?.composioApiKey
-      ? new IntegrationRegistry([
-          new ComposioProvider({ apiKey: opts.integrations.composioApiKey }),
-        ])
-      : null;
+  const integrationWiring = buildLocalIntegrationRegistry(
+    opts.integrations,
+    new FileMcpAuthStore(dirname(opts.credentialsPath)),
+    sessionToken,
+  );
+  const registry = integrationWiring?.registry ?? null;
   const integrations = registry
     ? {
         registry,
@@ -347,6 +391,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     },
     chatHistoryMigrated,
     integrations,
+    mcpOAuth: integrationWiring
+      ? { providers: integrationWiring.mcpProviders }
+      : undefined,
     integrationGrants,
     agentConfigs,
     // Managed pods record the gateway-minted acting identity as a routine's

@@ -52,8 +52,11 @@ export interface ConnectFlow {
 export function useConnectFlow(opts: {
   agentId?: string;
   autoGrant: boolean;
+  /** Registry provider to connect through. Default: the platform provider
+   *  ("composio"); an MCP connect step carries its own provider id. */
+  provider?: string;
 }): ConnectFlow {
-  const { agentId, autoGrant } = opts;
+  const { agentId, autoGrant, provider = INTEGRATION_PROVIDER } = opts;
   const { t } = useTranslation("integrations");
   const qc = useQueryClient();
   const { mutateAsync: mutateGrant } = useAgentGrantMutation(agentId ?? "");
@@ -77,9 +80,9 @@ export function useConnectFlow(opts: {
   const invalidateConnections = useCallback(
     () =>
       qc.invalidateQueries({
-        queryKey: queryKeys.integrationConnections(INTEGRATION_PROVIDER),
+        queryKey: queryKeys.integrationConnections(provider),
       }),
-    [qc],
+    [qc, provider],
   );
 
   const connect = useCallback(
@@ -100,7 +103,7 @@ export function useConnectFlow(opts: {
         // agent's effective allowlist and auto-grants the toolkit on connect
         // (Teams v2). Undefined on the account-level Integrations page.
         const { redirectUrl, connectionId } = await tauriIntegrations.connect(
-          INTEGRATION_PROVIDER,
+          provider,
           toolkit,
           agentId,
         );
@@ -109,8 +112,7 @@ export function useConnectFlow(opts: {
         if (!unmountedRef.current) setState({ toolkit, step: "waiting" });
 
         const outcome = await pollConnectionUntilActive({
-          poll: () =>
-            tauriIntegrations.connection(INTEGRATION_PROVIDER, connectionId),
+          poll: () => tauriIntegrations.connection(provider, connectionId),
           sleep: (ms) => waker.wait(ms),
           isCancelled: () => cancelledRef.current,
           intervalMs: POLL_INTERVAL_MS,
@@ -156,7 +158,7 @@ export function useConnectFlow(opts: {
         if (!unmountedRef.current) setState(null);
       }
     },
-    [agentId, autoGrant, invalidateConnections, mutateGrant, t],
+    [agentId, autoGrant, provider, invalidateConnections, mutateGrant, t],
   );
 
   const reopen = useCallback(async () => {

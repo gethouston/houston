@@ -3,6 +3,9 @@ import { IntegrationConnectCard } from "./integration-connect-card";
 interface ChatConnectInteractionCardProps {
   /** The `#houston_toolkit=<slug>` app the agent asked the user to connect. */
   toolkit: string;
+  /** Registry provider owning the toolkit (from the connect step; absent on
+   *  interactions persisted by older builds = "composio"). */
+  provider?: string;
   /** The agent whose chat hosts the card (multiplayer grant attribution). */
   agentId: string;
   /** Multiplayer: auto-grant the fresh connection to this agent (C4). */
@@ -28,6 +31,7 @@ interface ChatConnectInteractionCardProps {
  */
 export function ChatConnectInteractionCard({
   toolkit,
+  provider,
   agentId,
   autoGrant,
   reason,
@@ -38,6 +42,7 @@ export function ChatConnectInteractionCard({
       {reason && <p className="text-sm text-foreground">{reason}</p>}
       <IntegrationConnectCard
         toolkit={toolkit}
+        provider={provider}
         agentId={agentId}
         autoGrant={autoGrant}
         onConnected={onConnected}

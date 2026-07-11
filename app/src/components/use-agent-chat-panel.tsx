@@ -1249,6 +1249,7 @@ export function useAgentChatPanel({
         renderConnect={(step, api) => (
           <ChatConnectInteractionCard
             toolkit={step.toolkit}
+            provider={step.provider}
             agentId={agent.id}
             autoGrant={canManageAgentGrants(capabilities, agent)}
             reason={step.reason}

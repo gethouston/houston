@@ -9,6 +9,7 @@ import {
 import { houstonSystemPrompt } from "../houston-prompt";
 import { installParentWatchdog } from "../parent-watchdog";
 import { buildLocalHost } from "./host";
+import { parseMcpIntegrations } from "./mcp-config";
 import { runtimeCommand } from "./runtime-command";
 
 /**
@@ -96,6 +97,22 @@ function storeSyncConfig(hostTokenEnv: string | undefined) {
 const houstonHome = process.env.HOUSTON_HOME || join(homedir(), ".houston");
 const hostTokenEnv = process.env.HOUSTON_HOST_TOKEN;
 const hostToken = hostTokenEnv || randomBytes(32).toString("hex");
+const port = Number(process.env.HOUSTON_HOST_PORT || 4318);
+const mcpRedirectUrl =
+  process.env.HOUSTON_MCP_OAUTH_REDIRECT_URL ||
+  `http://127.0.0.1:${port}/v1/integrations/mcp/callback`;
+let mcpServers: ReturnType<typeof parseMcpIntegrations> = [];
+try {
+  mcpServers = parseMcpIntegrations(
+    process.env.HOUSTON_MCP_INTEGRATIONS,
+    mcpRedirectUrl,
+  );
+} catch (error) {
+  const reason = error instanceof Error ? error.message : String(error);
+  console.error(
+    `[local-host] invalid HOUSTON_MCP_INTEGRATIONS (${reason}); MCP integrations disabled.`,
+  );
+}
 const host = buildLocalHost({
   workspacesRoot:
     process.env.HOUSTON_WORKSPACES_ROOT || join(houstonHome, "workspaces"),
@@ -111,7 +128,7 @@ const host = buildLocalHost({
   chatHistoryDbPath:
     process.env.HOUSTON_CHAT_HISTORY_DB ||
     join(houstonHome, "db", "houston.db"),
-  port: Number(process.env.HOUSTON_HOST_PORT || 4318),
+  port,
   // Loopback by default (desktop). Self-host sets HOUSTON_HOST_BIND=0.0.0.0.
   bind: process.env.HOUSTON_HOST_BIND || undefined,
   token: hostToken,
@@ -151,6 +168,7 @@ const host = buildLocalHost({
     // creator (C2). The desktop's token is a random per-boot secret, not a pod
     // token the gateway knows, so leave it unset there.
     podToken: hostTokenEnv || undefined,
+    mcpServers,
   },
   onRuntimeLog: (line) => process.stderr.write(line),
 });

@@ -26,6 +26,9 @@ import {
 interface IntegrationConnectCardProps {
   /** The raw `#houston_toolkit=<slug>` fragment from the agent's link. */
   toolkit: string;
+  /** Registry provider owning the toolkit. Absent (older interactions, the
+   *  legacy markdown-link card) = the platform provider ("composio"). */
+  provider?: string;
   /** The agent whose chat hosts the card (multiplayer grant attribution). */
   agentId: string;
   /** Multiplayer: auto-grant a fresh connection to this agent (C4). */
@@ -69,6 +72,7 @@ interface IntegrationConnectCardProps {
  */
 export function IntegrationConnectCard({
   toolkit,
+  provider = INTEGRATION_PROVIDER,
   agentId,
   autoGrant,
   onConnected,
@@ -79,10 +83,9 @@ export function IntegrationConnectCard({
   const addToast = useUIStore((s) => s.addToast);
 
   const status = useIntegrationStatus();
-  const ready = !!status.data?.find((p) => p.provider === INTEGRATION_PROVIDER)
-    ?.ready;
-  const connections = useIntegrationConnections(INTEGRATION_PROVIDER, ready);
-  const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, ready);
+  const ready = !!status.data?.find((p) => p.provider === provider)?.ready;
+  const connections = useIntegrationConnections(provider, ready);
+  const catalog = useIntegrationToolkits(provider, ready);
 
   const slug = normalizeToolkitSlug(toolkit);
   const isConnected = isToolkitConnected(connections.data, toolkit);
@@ -92,6 +95,7 @@ export function IntegrationConnectCard({
   const { state: connectState, connect } = useConnectFlow({
     agentId,
     autoGrant,
+    provider,
   });
   // The nudge fires at most once per card, and only for a connection the
   // user drove from HERE — a connection landing via the Integrations tab or

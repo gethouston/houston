@@ -382,3 +382,87 @@ test("C2: attaches the turn's acting-as header inside a turn, and nothing outsid
   expect(bare[0]?.headers["x-houston-acting-as"]).toBeUndefined();
   expect(bare[0]?.headers["x-houston-acting-user"]).toBeUndefined();
 });
+
+test("multi-provider: the search stamp routes execute and request_connection", async () => {
+  // Fresh tools: the provider memory is per-makeIntegrationTools instance.
+  const [s, e, rc] = makeIntegrationTools({
+    baseUrl: "https://host.test/",
+    sandboxToken: "sb-tok",
+  });
+  if (!s || !e || !rc) throw new Error("expected three integration tools");
+
+  const calls = mockFetch((path) => {
+    if (path.endsWith("/search")) {
+      return {
+        body: {
+          items: [
+            {
+              action: "RUBE_MULTI_EXECUTE",
+              toolkit: "rube",
+              description: "run a tool",
+              connected: true,
+              status: "connected",
+              provider: "rube",
+            },
+            {
+              action: "",
+              toolkit: "slack",
+              description: "Slack",
+              connected: false,
+              status: "connectable",
+              provider: "composio",
+            },
+          ],
+        },
+      };
+    }
+    return { body: { successful: true, data: { ok: 1 } } };
+  });
+
+  await run(s, { query: "run a tool" });
+  await run(e, { action: "RUBE_MULTI_EXECUTE", params: {} });
+  // The execute call echoes the provider stamped on the search result.
+  const exec = calls.find((c) => c.url.endsWith("/execute"));
+  expect(exec?.body).toMatchObject({
+    action: "RUBE_MULTI_EXECUTE",
+    provider: "rube",
+  });
+
+  // The connect step carries the toolkit's provider so the app's card
+  // connects through the right one.
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, () => run(rc, { toolkit: "Slack" }));
+  expect(holder.pending).toEqual({
+    steps: [
+      { kind: "connect", id: "c1", toolkit: "slack", provider: "composio" },
+    ],
+  });
+});
+
+test("multi-provider: an unstamped action omits provider (host default routing)", async () => {
+  const [s, e] = makeIntegrationTools({
+    baseUrl: "https://host.test/",
+    sandboxToken: "sb-tok",
+  });
+  if (!s || !e) throw new Error("expected tools");
+  const calls = mockFetch((path) =>
+    path.endsWith("/search")
+      ? {
+          body: {
+            items: [
+              {
+                action: "GMAIL_SEND_EMAIL",
+                toolkit: "gmail",
+                description: "send",
+                connected: true,
+              },
+            ],
+          },
+        }
+      : { body: { successful: true } },
+  );
+  await run(s, { query: "email" });
+  await run(e, { action: "GMAIL_SEND_EMAIL", params: {} });
+  const exec = calls.find((c) => c.url.endsWith("/execute"));
+  expect(exec?.body).toEqual({ action: "GMAIL_SEND_EMAIL", params: {} });
+});
