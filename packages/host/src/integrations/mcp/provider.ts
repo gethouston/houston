@@ -17,12 +17,15 @@ import {
 } from "./authorization";
 import { McpAuthRequiredError, McpClientSession } from "./client";
 import { ComposioHubAdapter } from "./hub";
+import type { HubCatalogSource } from "./hub-catalog-source";
 import { StoredMcpOAuthProvider } from "./oauth";
 import { OwnConnection } from "./own-connection";
 import { mapMcpResult, plainSearchMatches } from "./tool-mapping";
 
 export interface McpIntegrationProviderOptions extends McpServerConfig {
   store: McpAuthStore;
+  /** Where the hub's browsable catalog refreshes from (see HubCatalogSource). */
+  catalog: HubCatalogSource;
   exchangeAuthorization?: McpAuthorizationExchanger;
 }
 
@@ -56,7 +59,7 @@ export class McpIntegrationProvider implements IntegrationProvider {
       },
     );
     this.client = new McpClientSession(options.url, this.oauth);
-    this.hubAdapter = new ComposioHubAdapter(this.client, {
+    this.hubAdapter = new ComposioHubAdapter(this.client, options.catalog, {
       read: async () => (await options.store.read(this.id)).appToolkits ?? [],
       record: async (toolkit) => {
         const state = await options.store.read(this.id);
@@ -94,7 +97,7 @@ export class McpIntegrationProvider implements IntegrationProvider {
     const hub = await this.hub().catch(() => null);
     // The server itself is always the first "app": connecting it runs the MCP
     // OAuth, and on a hub that unlocks the per-app catalog behind it.
-    return [this.own.toolkit(), ...(hub ? hub.catalog() : [])];
+    return [this.own.toolkit(), ...(hub ? await hub.catalog() : [])];
   }
 
   async listConnections(_userId: string): Promise<Connection[]> {

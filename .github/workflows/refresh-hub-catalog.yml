@@ -1,0 +1,48 @@
+# Keeps the MCP hub's app-catalog snapshot fresh: regenerates it weekly from
+# Composio's public toolkit metadata and opens a PR when anything changed.
+# Hosts also FETCH this file at runtime (raw.githubusercontent.com, see
+# HubCatalogSource), so merging the PR refreshes every running install within
+# a day — the baked copy only floors offline installs.
+#
+# Requires the COMPOSIO_API_KEY repository secret (any Composio project key —
+# it can only READ public catalog metadata). Without it the run fails early
+# and harmlessly.
+name: Refresh hub catalog
+
+on:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Regenerate the catalog snapshot
+        env:
+          COMPOSIO_API_KEY: ${{ secrets.COMPOSIO_API_KEY }}
+        run: node scripts/generate-hub-catalog.mjs
+      - name: Open a PR when the catalog changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- packages/host/src/integrations/mcp/hub-catalog.json; then
+            echo "catalog unchanged"; exit 0
+          fi
+          branch="bot/refresh-hub-catalog-$(date -u +%Y%m%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add packages/host/src/integrations/mcp/hub-catalog.json
+          git commit -m "chore(integrations): weekly hub-catalog snapshot refresh"
+          git push -u origin "$branch"
+          gh pr create --base main --title "chore(integrations): weekly hub-catalog refresh" \
+            --body "Automated snapshot refresh of the Composio hub app catalog (public toolkit metadata). Running hosts fetch this file from raw.githubusercontent.com within a day of merge."

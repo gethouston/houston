@@ -2,6 +2,7 @@ import type { ServerResponse } from "node:http";
 import { expect, test } from "vitest";
 import { handleMcpOAuthCallback } from "../../routes/integrations-mcp-callback";
 import { MemoryMcpAuthStore } from "./auth-store";
+import { HubCatalogSource } from "./hub-catalog-source";
 import { McpIntegrationProvider } from "./provider";
 
 async function callback(
@@ -37,6 +38,7 @@ async function callback(
 
 function provider(store: MemoryMcpAuthStore) {
   return new McpIntegrationProvider({
+    catalog: new HubCatalogSource({ cachePath: "/dev/null", url: "" }),
     id: "rube",
     url: "https://rube.app/mcp",
     redirectUrl: "http://localhost/callback",

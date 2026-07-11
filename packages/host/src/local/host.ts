@@ -16,6 +16,7 @@ import {
   FileMcpAuthStore,
   type McpAuthStore,
 } from "../integrations/mcp/auth-store";
+import { HubCatalogSource } from "../integrations/mcp/hub-catalog-source";
 import {
   McpIntegrationProvider,
   type McpServerConfig,
@@ -137,6 +138,8 @@ export interface LocalHostOptions {
     composioApiKey?: string;
     podToken?: string;
     mcpServers?: McpServerConfig[];
+    /** Override / disable ("" = offline) the hub-catalog refresh URL. */
+    hubCatalogUrl?: string;
   };
   /**
    * Passive mode (env `HOUSTON_PASSIVE=1`): boot migrations + serve, but keep
@@ -195,6 +198,7 @@ export function formatIntegrationsModeLog(
 export function buildLocalIntegrationRegistry(
   integrations: LocalHostOptions["integrations"],
   store: McpAuthStore,
+  catalog: HubCatalogSource,
   sessionToken: { current: string | null },
 ): {
   registry: IntegrationRegistry;
@@ -218,7 +222,7 @@ export function buildLocalIntegrationRegistry(
   // Registry order is load-bearing: the sandbox route defaults to ids()[0],
   // so Composio must stay first whenever it is configured.
   const mcpProviders = (integrations?.mcpServers ?? []).map(
-    (config) => new McpIntegrationProvider({ ...config, store }),
+    (config) => new McpIntegrationProvider({ ...config, store, catalog }),
   );
   providers.push(...mcpProviders);
   return providers.length > 0
@@ -321,6 +325,10 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   const integrationWiring = buildLocalIntegrationRegistry(
     opts.integrations,
     new FileMcpAuthStore(dirname(opts.credentialsPath)),
+    new HubCatalogSource({
+      cachePath: join(dirname(opts.credentialsPath), "mcp-hub-catalog.json"),
+      url: opts.integrations?.hubCatalogUrl,
+    }),
     sessionToken,
   );
   const registry = integrationWiring?.registry ?? null;

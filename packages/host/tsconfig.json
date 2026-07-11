@@ -3,6 +3,7 @@
     "target": "ESNext",
     "module": "Preserve",
     "moduleResolution": "bundler",
+    "resolveJsonModule": true,
     "types": ["node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,

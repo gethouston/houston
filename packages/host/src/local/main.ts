@@ -173,6 +173,8 @@ const host = buildLocalHost({
     // token the gateway knows, so leave it unset there.
     podToken: hostTokenEnv || undefined,
     mcpServers,
+    // "" disables the refresh (offline); unset uses the published default.
+    hubCatalogUrl: process.env.HOUSTON_HUB_CATALOG_URL,
   },
   onRuntimeLog: (line) => process.stderr.write(line),
 });

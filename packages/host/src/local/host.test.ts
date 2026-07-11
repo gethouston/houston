@@ -13,6 +13,7 @@ import { MANAGED_CLOUD_CAPABILITIES } from "../capabilities";
 import { EnvCredentialVault } from "../credentials/vault";
 import type { Agent } from "../domain/types";
 import { MemoryMcpAuthStore } from "../integrations/mcp/auth-store";
+import { HubCatalogSource } from "../integrations/mcp/hub-catalog-source";
 import type { RuntimeSpawner } from "../launcher/process";
 import {
   buildLocalHost,
@@ -134,6 +135,7 @@ test("Composio stays first when MCP providers are also wired", () => {
       ],
     },
     new MemoryMcpAuthStore(),
+    new HubCatalogSource({ cachePath: "/dev/null", url: "" }),
     { current: null },
   );
   expect(wiring?.registry.ids()[0]).toBe("composio");

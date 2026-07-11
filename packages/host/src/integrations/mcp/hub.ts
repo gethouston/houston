@@ -1,6 +1,7 @@
 import type { ActionResult, Connection, Toolkit, ToolMatch } from "../types";
 import type { McpClientSession } from "./client";
-import { HUB_APP_CATALOG, HUB_PROBE_SLUGS } from "./hub-catalog";
+import { HUB_PROBE_SLUGS } from "./hub-catalog";
+import type { HubCatalogSource } from "./hub-catalog-source";
 import {
   appConnectionId,
   executeOutcome,
@@ -36,6 +37,7 @@ export class ComposioHubAdapter {
 
   constructor(
     private readonly client: McpClientSession,
+    private readonly catalogSource: HubCatalogSource,
     private readonly apps: HubAppRecord,
   ) {}
 
@@ -44,8 +46,27 @@ export class ComposioHubAdapter {
     return isHubToolset(tools.map((t) => t.name));
   }
 
-  catalog(): Toolkit[] {
-    return HUB_APP_CATALOG;
+  /**
+   * The browsable catalog: the freshest fetched/baked snapshot, SELF-HEALED
+   * with any actually-connected app the snapshot lacks (synthesized from the
+   * slug + the public logo service) — a brand-new Composio app someone
+   * connects from chat shows its card before any snapshot refresh ships it.
+   */
+  async catalog(): Promise<Toolkit[]> {
+    const [snapshot, connections] = await Promise.all([
+      this.catalogSource.resolve(),
+      this.connections().catch(() => []),
+    ]);
+    const known = new Set(snapshot.map((t) => t.slug));
+    const synthesized = connections
+      .filter((c) => !known.has(c.toolkit))
+      .map((c) => ({
+        slug: c.toolkit,
+        name: c.toolkit,
+        description: "Connected app",
+        logoUrl: `https://logos.composio.dev/api/${c.toolkit}`,
+      }));
+    return [...snapshot, ...synthesized];
   }
 
   private async manage(
@@ -146,7 +167,8 @@ export class ComposioHubAdapter {
       this.connections(),
     ]);
     const connected = new Set(connections.map((c) => c.toolkit));
-    const known = [...HUB_APP_CATALOG.map((t) => t.slug), ...connected];
+    const catalog = await this.catalogSource.resolve();
+    const known = [...catalog.map((t) => t.slug), ...connected];
     const matches = searchSlugs(hubPayload(result)).map((slug) => {
       const toolkit = toolkitOfSlug(slug, known);
       return {
@@ -170,8 +192,7 @@ export class ComposioHubAdapter {
         action: "",
         toolkit,
         description:
-          HUB_APP_CATALOG.find((t) => t.slug === toolkit)?.description ??
-          toolkit,
+          catalog.find((t) => t.slug === toolkit)?.description ?? toolkit,
         connected: false,
         status: "connectable" as const,
       })),

@@ -1,6 +1,7 @@
 import { createServer, type Server } from "node:http";
 import { afterEach, expect, test } from "vitest";
 import { MemoryMcpAuthStore } from "./auth-store";
+import { HubCatalogSource } from "./hub-catalog-source";
 import { McpIntegrationProvider } from "./provider";
 
 const servers: Server[] = [];
@@ -90,6 +91,7 @@ async function fakeMcpServer(): Promise<string> {
 
 function provider(url: string, store: MemoryMcpAuthStore) {
   return new McpIntegrationProvider({
+    catalog: new HubCatalogSource({ cachePath: "/dev/null", url: "" }),
     id: "fake",
     url,
     redirectUrl: "http://127.0.0.1/callback",

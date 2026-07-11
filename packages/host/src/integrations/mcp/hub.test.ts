@@ -1,6 +1,7 @@
 import { createServer, type Server } from "node:http";
 import { afterEach, expect, test } from "vitest";
 import { MemoryMcpAuthStore } from "./auth-store";
+import { HubCatalogSource } from "./hub-catalog-source";
 import { McpIntegrationProvider } from "./provider";
 
 /**
@@ -121,6 +122,7 @@ async function fakeHubServer(state: HubState): Promise<string> {
 
 function signedInProvider(url: string) {
   return new McpIntegrationProvider({
+    catalog: new HubCatalogSource({ cachePath: "/dev/null", url: "" }),
     id: "composio-apps",
     url,
     name: "Composio",
