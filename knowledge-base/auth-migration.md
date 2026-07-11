@@ -424,6 +424,33 @@ Replace everywhere `SUPABASE_URL`/`SUPABASE_ANON_KEY` appear:
 > **168/0**; e2e sign-in **4/4** + a default-project smoke; `pnpm check` (biome) 0.
 > **`cloud/INTEGRATION.md` is a `cloud/`-repo file (separate PR) — NOT updated here.**
 
+> **As-built note (Wave 3+) — rebase onto the cloud-migration wizard (HOU-719,
+> #767).** After this branch's waves landed, `main` merged the first-run
+> cloud-migration wizard, which read/wrote the Supabase session this branch
+> retired. Reconciled on rebase:
+> - **App.tsx** carries BOTH gates — the identity auth gate (`isIdentityConfigured`
+>   + `session?.uid` splash/sign-in) AND the wizard's `<CloudMigrationGate>`
+>   wrapping the firstRun/reconnect/shell return (auto-merged; disjoint regions).
+> - **Session shape** across the wizard: `session.user.id` → `session.uid`.
+> - **Gateway bearer** (`cloud-migration-transport.ts`): NO behavior change — the
+>   agent-scoped `/agents/:slug/migration/*` calls already read the live bearer
+>   from `window.__HOUSTON_ENGINE__.token` and refresh via
+>   `window.__HOUSTON_SESSION_REFRESH__`; that bearer is now the Firebase ID token
+>   through the same seam every gateway call uses. Only comments named Supabase.
+> - **⚠️ Retired the Supabase `user_metadata.migration_status` cross-machine flag.**
+>   Firebase exposes NO client-writable user metadata and there is no account-level
+>   gateway route, so `lib/migration-status.ts` was removed. The wizard gate now
+>   relies on the per-uid **localStorage outcome** it already persists (`done` /
+>   `skipped`) — the migration reads THIS machine's `~/.houston`, so a per-machine
+>   record is the natural gate. **Lost:** the coarse cross-machine "never offer
+>   again on another machine." **Preserved:** cross-machine RESUME runs off the
+>   gateway's per-agent import markers (`buildMigrationPlan` `alreadyDone`), not
+>   this flag. A gateway-backed account migration flag is a follow-up (same shape
+>   as the profiles-store follow-up in note (e)).
+> - **Connect-card conflict** (`chat-signin-interaction-card.tsx`, from the
+>   `be6e5272` design change): kept the new `reason?` prop AND this branch's
+>   "Supabase session" → "Houston session" doc rename.
+
 ---
 
 ## 6. Risks + open questions (ranked)
