@@ -1,10 +1,8 @@
 import { Button } from "@houston-ai/core";
-import { useQuery } from "@tanstack/react-query";
 import confetti from "canvas-confetti";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { queryKeys } from "../../../lib/query-keys";
-import { tauriIntegrations } from "../../../lib/tauri";
+import { useIntegrationToolkits } from "../../../hooks/queries";
 import { appDisplay } from "../../integrations/app-display";
 import { AppRow } from "../../integrations/app-row";
 import { ProviderBrowser } from "../../provider-browser/provider-browser";
@@ -107,14 +105,14 @@ function noopConnect() {}
 export function DoneStepApps({ integrations }: { integrations: string[] }) {
   const { t } = useTranslation("migration");
 
-  // Toolkit catalog for real app names/logos; on a fetch failure (already
-  // toasted + reported by the tauriIntegrations wrapper) the raw slugs render.
-  const toolkitCatalog = useQuery({
-    queryKey: queryKeys.integrationToolkits("composio"),
-    queryFn: () => tauriIntegrations.toolkits("composio"),
-    enabled: integrations.length > 0,
-    staleTime: 5 * 60_000,
-  });
+  // Toolkit catalog for real app names/logos, through the GATED hook: a raw
+  // fetch here 404-toasted ("unknown integration provider") on hosts with no
+  // Composio registered (dev/self-host with only the custom provider). The
+  // hook stays idle there and the raw slugs render instead.
+  const toolkitCatalog = useIntegrationToolkits(
+    "composio",
+    integrations.length > 0,
+  );
   const bySlug = new Map(
     (toolkitCatalog.data ?? []).map((tk) => [tk.slug, tk]),
   );

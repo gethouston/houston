@@ -21,7 +21,10 @@ export type ChatInteractionStep =
       options?: ChatInteractionOption[];
     }
   | { kind: "signin"; id: string; reason?: string }
-  | { kind: "connect"; id: string; toolkit: string; reason?: string };
+  | { kind: "connect"; id: string; toolkit: string; reason?: string }
+  // HOU-550: enter a custom integration's API key in a secure field (the secret
+  // never lands in the transcript). `toolkit` is the custom integration's slug.
+  | { kind: "credential"; id: string; toolkit: string; reason?: string };
 
 /** One completed question answer handed to `onComplete`, in step order. */
 export interface ChatInteractionAnswer {

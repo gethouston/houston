@@ -10,6 +10,11 @@ import { RemoteCredentialStore } from "../credentials/remote-store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { BusEventHub } from "../events/hub";
 import { ComposioProvider } from "../integrations/composio";
+import { CustomExecutorHost } from "../integrations/custom/executor-host";
+import { CustomIntegrationManager } from "../integrations/custom/manager";
+import { CustomIntegrationProvider } from "../integrations/custom/provider";
+import { FileCustomSecretStore } from "../integrations/custom/secrets";
+import { FileCustomIntegrationStore } from "../integrations/custom/store";
 import { FileIntegrationGrantStore } from "../integrations/grant-store";
 import { LocalIntegrationGrants } from "../integrations/grants";
 import { IntegrationRegistry } from "../integrations/registry";
@@ -264,42 +269,66 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     dirname(opts.credentialsPath),
     "integrations.json",
   );
-  const registry = opts.integrations?.gatewayUrl
-    ? new IntegrationRegistry([
-        new RemoteIntegrationProvider({
-          id: "composio",
-          upstreamUrl: opts.integrations.gatewayUrl,
-          token: () => sessionToken.current,
-          // Managed pods pass their host token so routine turns authenticate as
-          // the creator; the desktop leaves this undefined.
-          podToken: opts.integrations.podToken,
-        }),
-      ])
+  const composioProvider = opts.integrations?.gatewayUrl
+    ? new RemoteIntegrationProvider({
+        id: "composio",
+        upstreamUrl: opts.integrations.gatewayUrl,
+        token: () => sessionToken.current,
+        // Managed pods pass their host token so routine turns authenticate as
+        // the creator; the desktop leaves this undefined.
+        podToken: opts.integrations.podToken,
+      })
     : opts.integrations?.composioApiKey
-      ? new IntegrationRegistry([
-          new ComposioProvider({ apiKey: opts.integrations.composioApiKey }),
-        ])
+      ? new ComposioProvider({ apiKey: opts.integrations.composioApiKey })
       : null;
-  const integrations = registry
-    ? {
-        registry,
-        ...(opts.integrations?.gatewayUrl
-          ? {
-              session: {
-                set: (token: string | null) => {
-                  sessionToken.current = token;
-                },
-              },
-            }
-          : {}),
-        reconnectNotice: {
-          active: () => existsSync(legacyIntegrationsPath),
-          // force: already-gone is success (idempotent dismiss); a real
-          // failure (EACCES…) throws and surfaces as the route's error.
-          dismiss: () => rmSync(legacyIntegrationsPath, { force: true }),
-        },
-      }
-    : undefined;
+
+  // Custom integrations (HOU-550): user-added API/MCP sources compiled to
+  // agent tools by the embedded executor engine. Key-free and session-free —
+  // definitions + secrets live on THIS host's disk — so the provider is wired
+  // unconditionally: an install with no Composio at all can still add its own.
+  const customDir = dirname(opts.credentialsPath);
+  const customStore = new FileCustomIntegrationStore(
+    join(customDir, "custom-integrations.json"),
+  );
+  const customSecrets = new FileCustomSecretStore(
+    join(customDir, "custom-integration-secrets.json"),
+  );
+  const customExecutor = new CustomExecutorHost(customSecrets, () =>
+    customStore.list(),
+  );
+  const customProvider = new CustomIntegrationProvider(
+    customStore,
+    customExecutor,
+  );
+  const customIntegrations = new CustomIntegrationManager(
+    customStore,
+    customSecrets,
+    customExecutor,
+    () => events.emit(LOCAL_USER, { type: "CustomIntegrationsChanged" }),
+  );
+
+  const registry = new IntegrationRegistry([
+    ...(composioProvider ? [composioProvider] : []),
+    customProvider,
+  ]);
+  const integrations = {
+    registry,
+    ...(opts.integrations?.gatewayUrl
+      ? {
+          session: {
+            set: (token: string | null) => {
+              sessionToken.current = token;
+            },
+          },
+        }
+      : {}),
+    reconnectNotice: {
+      active: () => existsSync(legacyIntegrationsPath),
+      // force: already-gone is success (idempotent dismiss); a real
+      // failure (EACCES…) throws and surfaces as the route's error.
+      dismiss: () => rmSync(legacyIntegrationsPath, { force: true }),
+    },
+  };
 
   // Did this install carry over a Rust-desktop chat-history db? Its mere
   // presence means the user is migrating from the legacy desktop build — their
@@ -319,13 +348,12 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   // so the gateway in front stays the single owner of grant policy, and the pod
   // never shadows it (the grant routes 404, the sandbox proxy enforces nothing).
   // The record lives inside each agent's own dir, so agent deletion removes it.
-  const integrationGrants =
-    registry && !opts.gatewayFronted
-      ? new LocalIntegrationGrants({
-          store: new FileIntegrationGrantStore(opts.workspacesRoot),
-          registry,
-        })
-      : undefined;
+  const integrationGrants = !opts.gatewayFronted
+    ? new LocalIntegrationGrants({
+        store: new FileIntegrationGrantStore(opts.workspacesRoot),
+        registry,
+      })
+    : undefined;
 
   // The installed agent-config library. FsVfs keys must be non-empty, so root
   // the vfs at the library's PARENT and address it by its basename — this vfs
@@ -351,11 +379,12 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // profile's nominal list — an unconfigured deployment says [] honestly.
     capabilities: {
       ...(opts.capabilities ?? LOCAL_CAPABILITIES),
-      integrations: registry?.ids() ?? [],
+      integrations: registry.ids(),
     },
     chatHistoryMigrated,
     integrations,
     integrationGrants,
+    customIntegrations,
     agentConfigs,
     // Managed pods record the gateway-minted acting identity as a routine's
     // `created_by` (C2 — the sub the gateway re-authorizes at fire time);

@@ -63,6 +63,38 @@ function handleComposio(
   return json({ error: "not found" }, 404);
 }
 
+/**
+ * Custom integrations (HOU-550): `/v1/integrations/custom/definitions*`. The
+ * list 404s when the feature is not armed — exactly how an older real host
+ * answers, which the client reads as "hide every custom surface" (null).
+ */
+function handleCustom(
+  method: string,
+  tail: string[],
+  _body: Record<string, unknown> | undefined,
+): Response {
+  const items = state.listCustomIntegrations();
+  if (items === null || tail[0] !== "definitions") {
+    return json({ error: "not found" }, 404);
+  }
+  // GET /v1/integrations/custom/definitions
+  if (tail.length === 1 && method === "GET") return json({ items });
+  // DELETE /v1/integrations/custom/definitions/:slug
+  if (tail.length === 2 && method === "DELETE") {
+    return state.removeCustomIntegration(tail[1] ?? "")
+      ? json({ ok: true })
+      : json({ error: "not found", code: "not_found" }, 404);
+  }
+  // POST /v1/integrations/custom/definitions/:slug/credential
+  if (tail.length === 3 && tail[2] === "credential" && method === "POST") {
+    const view = state.setCustomCredential(tail[1] ?? "");
+    return view
+      ? json(view)
+      : json({ error: "not found", code: "not_found" }, 404);
+  }
+  return json({ error: "not found" }, 404);
+}
+
 function handleIntegrations(
   method: string,
   segs: string[],
@@ -75,7 +107,12 @@ function handleIntegrations(
     if (method !== "GET") return json({ error: "not found" }, 404);
     return json({ items: state.integrationStatus() });
   }
-  if (rest[0] !== "composio") return json({ error: "not found" }, 404);
+  if (rest[0] === "custom") return handleCustom(method, rest.slice(1), body);
+  // Mode `absent` = Composio not registered at all → its subroutes 404, the
+  // same answer the real registry gives for an unknown provider id.
+  if (rest[0] !== "composio" || state.integrationsMode() === "absent") {
+    return json({ error: "not found" }, 404);
+  }
   return handleComposio(method, rest.slice(1), body);
 }
 

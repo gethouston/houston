@@ -115,5 +115,55 @@
       "subtitle": "Apps you connected that this agent can't use yet."
     },
     "manageAll": "Manage all integrations"
+  },
+  "custom": {
+    "title": "Custom integrations",
+    "description": "Connect an API or MCP server that isn't in the app catalog.",
+    "addButton": "Add custom integration",
+    "empty": "No custom integrations yet. Add one to connect a tool that isn't in the catalog.",
+    "badge": {
+      "api": "API",
+      "mcp": "MCP server"
+    },
+    "toolCount_one": "{{count}} action",
+    "toolCount_other": "{{count}} actions",
+    "enterKey": "Enter key",
+    "status": {
+      "pendingKey": "Needs an API key",
+      "error": "{{message}}"
+    },
+    "credential": {
+      "apiKeyLabel": "API key",
+      "placeholder": "Paste your key",
+      "show": "Show key",
+      "hide": "Hide key"
+    },
+    "keyDialog": {
+      "title": "Enter the key for {{name}}",
+      "description": "Your key is stored securely and never shown in chat.",
+      "save": "Save key",
+      "saving": "Saving...",
+      "savedToast": "{{name}} is ready to use",
+      "savedUnverifiedToast": "Key saved for {{name}}. The service hasn't confirmed it yet."
+    },
+    "delete": {
+      "title": "Remove {{name}}?",
+      "description": "Your agents will lose access to its actions. This can't be undone.",
+      "confirm": "Remove",
+      "cancel": "Cancel"
+    },
+    "setupChat": {
+      "missionTitle": "Set up a custom integration",
+      "back": "Back to integrations",
+      "opening": "Opening chat...",
+      "bannerTitle": "You are setting up a custom integration in chat",
+      "bannerDescription": "Pick up where you left off, or discard the draft chat.",
+      "continue": "Continue",
+      "discard": "Discard",
+      "startError": "Couldn't start the setup chat",
+      "done": "Done",
+      "doneToast": "Nice! Your custom integration is ready to use."
+    },
+    "catalogUnavailable": "The app catalog isn't available in this setup, but you can still add custom integrations."
   }
 }

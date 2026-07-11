@@ -1529,6 +1529,19 @@ export const tauriIntegrations = {
     call("set_agent_integration_grants", () =>
       getEngine().setAgentIntegrationGrants(agentSlugOrId, toolkits),
     ),
+  // ── custom integrations (HOU-550) ──────────────────────────────────────────
+  // The list is a plain read (a React Query hook owns its error surface and
+  // `null` = unsupported host); the two mutations go through `call()` so a
+  // failure toasts + reports exactly once.
+  customList: () => getEngine().customIntegrations(),
+  customRemove: (slug: string) =>
+    call("custom_integration_remove", () =>
+      getEngine().removeCustomIntegration(slug),
+    ),
+  customCredential: (slug: string, values: Record<string, string>) =>
+    call("custom_integration_credential", () =>
+      getEngine().submitCustomIntegrationCredential(slug, values),
+    ),
 };
 
 /**

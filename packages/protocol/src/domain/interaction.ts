@@ -29,10 +29,13 @@ export interface InteractionOption {
 
 /** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for
  *  question steps, `s1` for the single signin step, `c1`..`cN` for connect
- *  steps) so each step's outcome is addressable. A `question` carries its text +
- *  optional single-select options; a `signin` asks the user to sign in to
- *  Houston with an optional user-facing reason; a `connect` names the toolkit to
- *  connect with an optional user-facing reason. */
+ *  steps, `k1`..`kN` for credential steps) so each step's outcome is
+ *  addressable. A `question` carries its text + optional single-select options;
+ *  a `signin` asks the user to sign in to Houston with an optional user-facing
+ *  reason; a `connect` names the toolkit to connect with an optional
+ *  user-facing reason; a `credential` asks the user to enter a custom
+ *  integration's API key/token in a secure field (never into the chat) —
+ *  `toolkit` is the custom integration's slug. */
 export type InteractionStep =
   | {
       kind: "question";
@@ -42,6 +45,7 @@ export type InteractionStep =
     }
   | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string }
+  | { kind: "credential"; id: string; toolkit: string; reason?: string }
   | { kind: "plan_ready"; id: string; summary: string }
   | {
       kind: "suggest_reusable";
@@ -67,6 +71,7 @@ export const isInteractionStep = (v: unknown): v is InteractionStep => {
   if (v.kind === "signin")
     return v.reason === undefined || typeof v.reason === "string";
   if (v.kind === "connect") return typeof v.toolkit === "string";
+  if (v.kind === "credential") return typeof v.toolkit === "string";
   if (v.kind === "plan_ready") return typeof v.summary === "string";
   if (v.kind === "suggest_reusable")
     return (

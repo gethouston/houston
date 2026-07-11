@@ -27,6 +27,7 @@ export type {
   AuditEntry,
   BillingCheckout,
   BillingSummary,
+  CustomIntegrationView,
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,

@@ -146,6 +146,42 @@ test("concurrent first-reads materialize + persist exactly once", async () => {
   expect(await store.get("W/A")).toEqual({ stored: true, toolkits: ["gmail"] });
 });
 
+test("actionInToolkit: custom-provider executor addresses match by SEGMENT, never by prefix", () => {
+  // tools.<integration>.<owner>.<connection>.<tool> — the toolkit is exactly
+  // the integration segment (index 1), so a shorter toolkit name that happens
+  // to be a PREFIX of the real one must not match (the composio prefix rule
+  // does not apply to executor addresses).
+  expect(
+    actionInToolkit(
+      "tools.petstore.org.default.pet.findPetsByStatus",
+      "petstore",
+    ),
+  ).toBe(true);
+  expect(actionInToolkit("tools.petstore.org.default.x", "pet")).toBe(false);
+  expect(actionInToolkit("tools.petstore.org.default.x", "petstor")).toBe(
+    false,
+  );
+  // Case-insensitive, like the Composio rules.
+  expect(
+    actionInToolkit("TOOLS.PETSTORE.ORG.DEFAULT.PET.FIND", "PetStore"),
+  ).toBe(true);
+});
+
+test("actionInToolkit: old Composio prefix rules are unaffected by the executor-address branch", () => {
+  expect(actionInToolkit("GOOGLE_MAPS_GET_ROUTE", "google_maps")).toBe(true);
+  expect(actionInToolkit("GOOGLE_MAPS_GET_ROUTE", "google")).toBe(true); // documented residual, unchanged
+});
+
+test("isActionGranted over a mixed custom+Composio granted set", () => {
+  const granted = ["gmail", "petstore"];
+  expect(
+    isActionGranted("tools.petstore.org.default.pet.findPetsByStatus", granted),
+  ).toBe(true);
+  expect(isActionGranted("tools.acme.org.default.x", granted)).toBe(false);
+  expect(isActionGranted("GMAIL_SEND_EMAIL", granted)).toBe(true);
+  expect(isActionGranted("SLACK_POST", granted)).toBe(false);
+});
+
 test("grantedOrNull returns null when no record exists (backward-compat)", async () => {
   const store = new MemoryIntegrationGrantStore();
   const grants = new LocalIntegrationGrants({

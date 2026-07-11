@@ -34,6 +34,11 @@ import {
 import { handleAgents } from "./routes/agents";
 import { handleCatalog } from "./routes/catalog";
 import { handleSandboxCredential } from "./routes/credential";
+import {
+  type CustomIntegrationDeps,
+  handleCustomIntegrations,
+  handleSandboxCustomIntegrations,
+} from "./routes/custom-integrations";
 import { handleEventStream } from "./routes/events-stream";
 import { bearer, json, readJson } from "./routes/http";
 import { handleIntegrationGrants } from "./routes/integration-grants";
@@ -117,6 +122,12 @@ export interface ControlPlaneDeps {
   feedback?: FeedbackSender;
   /** Third-party integrations (Composio, platform mode); absent → integration routes 503. */
   integrations?: IntegrationDeps;
+  /**
+   * Custom integrations (HOU-550): user-added API/MCP sources compiled to agent
+   * tools by the embedded executor engine. Absent → the definition routes 404
+   * (client reads that as "unsupported host") and the sandbox setup routes 503.
+   */
+  customIntegrations?: CustomIntegrationDeps["customIntegrations"];
   /**
    * Per-agent integration grants (LOCAL / self-host profile only). Present ONLY
    * when this host is NOT gateway-fronted — a managed cloud pod leaves it unset so
@@ -216,6 +227,9 @@ async function handle(
   // Runtime-facing integration proxy (HMAC sandbox token, not a user JWT).
   if (await handleSandboxIntegrations(deps, method, path, url, req, res))
     return;
+  // Runtime-facing custom-integration setup (detect/add; HMAC sandbox token).
+  if (await handleSandboxCustomIntegrations(deps, method, path, url, req, res))
+    return;
 
   // Everything past here is authenticated.
   const userId = await principal(deps, req, url);
@@ -268,6 +282,9 @@ async function handle(
   // gateway proxies only agent-scoped routes, so a pod never serves this.
   if (await handleMigrationSource(deps, userId, method, path, res)) return;
   if (await handleAgentConfigs(deps, userId, method, path, req, res)) return;
+  // Custom-integration definitions — BEFORE the generic provider routes, whose
+  // `/v1/integrations/:provider/*` catch-all would 404 these subpaths.
+  if (await handleCustomIntegrations(deps, method, path, req, res)) return;
   if (await handleIntegrations(deps, userId, method, path, req, res)) return;
   if (await handleIntegrationGrants(deps, userId, method, path, req, res))
     return;

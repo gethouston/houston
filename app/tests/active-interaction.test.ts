@@ -31,6 +31,9 @@ const mixed: PendingInteraction = {
 const signin: PendingInteraction = {
   steps: [{ kind: "signin", id: "s1", reason: "Sign in to keep going." }],
 };
+const credential: PendingInteraction = {
+  steps: [{ kind: "credential", id: "k1", toolkit: "acme" }],
+};
 const signinConnect: PendingInteraction = {
   steps: [
     { kind: "signin", id: "s1" },
@@ -161,6 +164,13 @@ describe("interactionNotificationBodyKey", () => {
     strictEqual(
       interactionNotificationBodyKey(signin),
       "sessionComplete.signin",
+    );
+  });
+
+  it("maps a credential-only sequence to the credential body", () => {
+    strictEqual(
+      interactionNotificationBodyKey(credential),
+      "sessionComplete.credential",
     );
   });
 

@@ -17,6 +17,7 @@ import { SYSTEM_PROMPT } from "./resource-loader";
 import { buildToolSelection } from "./tool-selection";
 import { makeAskUserTool } from "./tools/ask-user";
 import { makeClampedFileTools } from "./tools/clamped-fs";
+import { makeCustomIntegrationTools } from "./tools/custom-integrations";
 import { makeIdTokenProvider } from "./tools/gcp-id-token";
 import { makeIntegrationTools } from "./tools/integrations";
 import { makePlanReadyTool } from "./tools/plan-ready";
@@ -69,6 +70,16 @@ const integrationTools =
       })
     : [];
 
+// Custom-integration setup tools (HOU-550): same reachability gate and trust
+// posture — they proxy to /sandbox/integrations/custom/* and hold no secret.
+const customIntegrationTools =
+  config.controlPlaneUrl && config.sandboxToken
+    ? makeCustomIntegrationTools({
+        baseUrl: config.controlPlaneUrl,
+        sandboxToken: config.sandboxToken,
+      })
+    : [];
+
 const toolSelection = buildToolSelection({
   codeExecution: config.codeExecution,
   integrations: integrationTools.length > 0,
@@ -104,6 +115,7 @@ const piBackend = createPiBackend({
     suggestReusableTool,
     ...(runCodeTool ? [runCodeTool] : []),
     ...integrationTools,
+    ...customIntegrationTools,
   ],
 });
 setDefaultBackend(piBackend);

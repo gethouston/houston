@@ -82,6 +82,7 @@ export type AnalyticsEventName =
   // Feature adoption
   | "integration_connected"
   | "integration_disconnected"
+  | "custom_integration_started"
   | "skill_used"
   | "routine_scheduled"
   | "routine_executed"

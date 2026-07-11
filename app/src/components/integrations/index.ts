@@ -20,6 +20,7 @@ export {
   type ConnectionStatus,
   ConnectionStatusBadge,
 } from "./connection-status-badge";
+export { CustomIntegrationsSection } from "./custom-integrations-section";
 export { DisconnectAppDialog } from "./disconnect-app-dialog";
 export { IntegrationDisconnectDialog } from "./integration-disconnect-dialog";
 export {

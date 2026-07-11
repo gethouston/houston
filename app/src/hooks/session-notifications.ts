@@ -1,5 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-
+import { INTEGRATIONS_VIEW_ID } from "../components/integrations-view/id";
+import { isIntegrationSetupMode } from "../lib/integration-chat-setup";
 import { logger } from "../lib/logger";
 import {
   activityIdForSessionKey,
@@ -33,7 +34,10 @@ export function describePendingNotificationNav() {
 async function resolveActivityTarget(
   agentPath: string,
   sessionKey: string,
-): Promise<{ activityId: string; routineSetup: boolean } | null> {
+): Promise<{
+  activityId: string;
+  setupKind: "routine" | "integration" | null;
+} | null> {
   try {
     const activities = await queryClient.fetchQuery({
       queryKey: queryKeys.activity(agentPath),
@@ -42,7 +46,12 @@ async function resolveActivityTarget(
     const activityId = activityIdForSessionKey(activities, sessionKey);
     if (!activityId) return null;
     const activity = activities.find((a) => a.id === activityId);
-    return { activityId, routineSetup: isRoutineSetupMode(activity?.agent) };
+    const setupKind = isRoutineSetupMode(activity?.agent)
+      ? "routine"
+      : isIntegrationSetupMode(activity?.agent)
+        ? "integration"
+        : null;
+    return { activityId, setupKind };
   } catch (e) {
     // Log-only (no toast): nav is best-effort and this same path fires on a
     // bare macOS refocus, where a toast would be noise. A standard mission key
@@ -51,7 +60,7 @@ async function resolveActivityTarget(
       `[notification] failed to list activities for nav (${sessionKey}): ${e}`,
     );
     const activityId = activityIdForSessionKey([], sessionKey);
-    return activityId ? { activityId, routineSetup: false } : null;
+    return activityId ? { activityId, setupKind: null } : null;
   }
 }
 
@@ -86,11 +95,18 @@ export async function consumePendingNav() {
     `[notification] navigating to agent=${agent.name} activity=${target.activityId} (sessionKey=${sessionKey})`,
   );
   useAgentStore.getState().setCurrent(agent);
-  if (target.routineSetup) {
-    // A routine chat has no board card: its home is the Routines tab, which
-    // resolves the activity id to its routine and opens that chat.
+  if (target.setupKind === "routine") {
+    // A routine-setup chat has no board card: its home is the Routines tab,
+    // where the panel reopens on the spot.
     useUIStore.getState().setViewMode("routines");
     useUIStore.getState().setPendingRoutineActivityId(target.activityId);
+    return;
+  }
+  if (target.setupKind === "integration") {
+    // A custom-integration setup chat has no board card either: its home is
+    // the global Integrations page, where the panel reopens for this agent.
+    useUIStore.getState().setViewMode(INTEGRATIONS_VIEW_ID);
+    useUIStore.getState().setIntegrationSetupChatAgentId(agent.id);
     return;
   }
   useUIStore.getState().setViewMode("activity");

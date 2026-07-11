@@ -45,6 +45,7 @@ import type {
   CreateWorkspace,
   CreateWorktreeRequest,
   CustomEndpoint,
+  CustomIntegrationView,
   ErrorBody,
   GenerateInstructionsResult,
   HealthResponse,
@@ -1165,6 +1166,51 @@ export class HoustonClient {
    */
   async dismissIntegrationsReconnectNotice(): Promise<void> {
     await this.request("POST", "/integrations/reconnect-notice/dismiss");
+  }
+
+  // ---------- custom integrations (HOU-550) — v3 host only ----------
+  //
+  // User-added API / MCP servers not in the Composio catalog. The host owns
+  // persistence; the frontend lists, removes, and provides a secret. The list
+  // returns `null` when the host predates the feature (404) so all custom UI
+  // hides, mirroring `agentIntegrationGrants`; every other error throws.
+
+  /** All custom integrations, or `null` when the host does not support the
+   *  feature (404 — old build / gateway-fronted pod). */
+  async customIntegrations(): Promise<CustomIntegrationView[] | null> {
+    try {
+      return (
+        await this.request<{ items: CustomIntegrationView[] }>(
+          "GET",
+          "/integrations/custom/definitions",
+        )
+      ).items;
+    } catch (err) {
+      if (isHoustonEngineError(err) && err.status === 404) return null;
+      throw err;
+    }
+  }
+  /** Remove a custom integration entirely (executor + secret + definition). */
+  async removeCustomIntegration(slug: string): Promise<void> {
+    await this.request(
+      "DELETE",
+      `/integrations/custom/definitions/${this.seg(slug)}`,
+    );
+  }
+  /**
+   * Provide the secret for a `pending` custom integration. The host validates,
+   * stores the secret out-of-band, connects, and returns the refreshed view.
+   * The secret VALUE crosses only here (HTTPS body), never the chat transcript.
+   */
+  submitCustomIntegrationCredential(
+    slug: string,
+    values: Record<string, string>,
+  ): Promise<CustomIntegrationView> {
+    return this.request(
+      "POST",
+      `/integrations/custom/definitions/${this.seg(slug)}/credential`,
+      { values },
+    );
   }
 
   // ---------- org / roles (multiplayer) — v3 host only ----------

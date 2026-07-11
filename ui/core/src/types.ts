@@ -199,4 +199,7 @@ export type HoustonEvent =
   | {
       type: "ProviderLoginComplete";
       data: { provider: string; success: boolean; error: string | null };
-    };
+    }
+  // HOU-550: a custom (API / MCP) integration was added, credentialed, or
+  // removed. Carries no payload — the whole user-level list is refetched.
+  | { type: "CustomIntegrationsChanged" };

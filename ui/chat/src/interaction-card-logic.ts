@@ -226,3 +226,11 @@ export function advanceSignin(
 ): Transition {
   return advance(state, steps);
 }
+
+/** Advance past a credential step once the app reports the secret was saved. */
+export function advanceCredential(
+  state: StepperState,
+  steps: ChatInteractionStep[],
+): Transition {
+  return advance(state, steps);
+}

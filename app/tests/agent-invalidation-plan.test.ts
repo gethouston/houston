@@ -114,4 +114,11 @@ describe("planInvalidation — unrelated cases keep their exact effects", () => 
     ok(invalidates(plan, queryKeys.providerStatuses()));
     strictEqual(plan.focusWindow, true);
   });
+
+  it("CustomIntegrationsChanged refreshes the list + connection/grant prefixes", () => {
+    const plan = planInvalidation({ type: "CustomIntegrationsChanged" }, {});
+    ok(invalidates(plan, queryKeys.customIntegrations()));
+    ok(invalidates(plan, ["integration-connections"]));
+    ok(invalidates(plan, ["agent-grants"]));
+  });
 });

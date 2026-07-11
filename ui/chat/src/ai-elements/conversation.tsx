@@ -41,7 +41,13 @@ export const ConversationContent = ({
     // marker class is the stable selector the keyboard-shortcut layer
     // uses to step-scroll the log with arrow keys.
     scrollClassName="conversation-scroll-pane"
-    className={cn("flex flex-col gap-8 p-4", className)}
+    // Top clearance matches the ConversationTopFade height (h-8): a
+    // conversation that overflows by only a few pixels gets pinned to the
+    // bottom by stick-to-bottom, and without this headroom the FIRST row
+    // (usually the collapsed "Mission log" line) sat half-dissolved under
+    // the fade at rest — reading as clipped by the panel header. Small
+    // overflows now scroll padding out of view, never the first message.
+    className={cn("flex flex-col gap-8 px-4 pb-4 pt-8", className)}
     {...props}
   />
 );

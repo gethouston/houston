@@ -19,7 +19,18 @@ class EventBus {
       try {
         h(event);
       } catch (e) {
-        console.error("[engine-adapter] event handler threw", e);
+        // ONE string argument, stack folded in: the desktop log forwarder
+        // records only the first console argument, which made a recurring
+        // handler throw untraceable ("Can only call Window.setTimeout…" with
+        // no frames — extra args carrying the stack were dropped).
+        const stack = e instanceof Error ? (e.stack ?? "") : "";
+        const kind =
+          typeof event === "object" && event !== null
+            ? String((event as { type?: unknown }).type ?? "")
+            : "";
+        console.error(
+          `[engine-adapter] event handler threw on '${kind}': ${String(e)}\n${stack}`,
+        );
       }
     }
   }

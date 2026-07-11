@@ -7,11 +7,14 @@ import { expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { FakeIntegrationProvider } from "../integrations/fake";
+import { MemoryIntegrationGrantStore } from "../integrations/grant-store";
+import { LocalIntegrationGrants } from "../integrations/grants";
 import { IntegrationRegistry } from "../integrations/registry";
 import { IntegrationUpstreamError } from "../integrations/types";
 import type { TokenVerifier } from "../ports";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
+import { providerForAction } from "./integrations-sandbox";
 
 /**
  * The host integration surface end-to-end over real HTTP: the user routes
@@ -493,6 +496,281 @@ test("integration routes 503 when integrations are not configured", async () => 
     expect(
       (await fetch(`${base}/v1/integrations`, { headers: auth })).status,
     ).toBe(503);
+  } finally {
+    stop();
+  }
+});
+
+// ── Multi-provider fan-out (custom + Composio registered together) ─────────
+
+/**
+ * The custom-integrations feature registers a SECOND IntegrationProvider
+ * ("custom") beside Composio. The sandbox proxy's search/execute must treat
+ * "no explicit provider" as "every registered provider", merging search
+ * results and routing execute by the action's own shape (see
+ * `providerForAction` in integrations-sandbox.ts) — not just always Composio.
+ */
+async function setupMulti(providers: FakeIntegrationProvider[]) {
+  const verifier: TokenVerifier = {
+    async verify(b) {
+      return b === "tok" ? { userId: USER } : null;
+    },
+  };
+  const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
+  const vault = new EnvCredentialVault({ secret: "test-secret" });
+  const registry = new IntegrationRegistry(providers);
+  const grantStore = new MemoryIntegrationGrantStore();
+  const deps: ControlPlaneDeps = {
+    verifier,
+    store,
+    credentials: new MemoryCredentialStore(),
+    vault,
+    channels: {},
+    capabilities: CAPS,
+    integrations: { registry },
+    integrationGrants: new LocalIntegrationGrants({
+      store: grantStore,
+      registry,
+    }),
+    corsOrigin: "*",
+  };
+  const server: Server = createControlPlaneServer(deps);
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
+  const addr = server.address();
+  const base = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
+  const ws = await store.getOrCreatePersonalWorkspace(USER);
+  const agent = await store.createAgent({
+    workspaceId: ws.id,
+    name: "Assistant",
+  });
+  return { base, ws, agent, vault, grantStore, stop: () => server.close() };
+}
+
+test("sandbox search with no explicit provider fans out to EVERY registered provider and merges", async () => {
+  const custom = new FakeIntegrationProvider({
+    id: "custom",
+    actions: [
+      {
+        action: "tools.acme.org.default.doThing",
+        toolkit: "acme",
+        description: "do the acme thing",
+      },
+    ],
+  });
+  const composio = new FakeIntegrationProvider({
+    id: "composio",
+    actions: [
+      {
+        action: "GMAIL_SEND_EMAIL",
+        toolkit: "gmail",
+        description: "send an acme-branded email",
+      },
+    ],
+  });
+  const { base, ws, vault, stop } = await setupMulti([custom, composio]);
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const res = await fetch(`${base}/sandbox/integrations/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: "acme" }),
+    });
+    expect(res.status).toBe(200);
+    const items = ((await res.json()).items as { action: string }[]).map(
+      (m) => m.action,
+    );
+    expect(items.sort()).toEqual(
+      ["GMAIL_SEND_EMAIL", "tools.acme.org.default.doThing"].sort(),
+    );
+  } finally {
+    stop();
+  }
+});
+
+test("one provider rejecting must not hide another provider's search results", async () => {
+  const custom = new FakeIntegrationProvider({
+    id: "custom",
+    actions: [
+      {
+        action: "tools.acme.org.default.doThing",
+        toolkit: "acme",
+        description: "do the acme thing",
+      },
+    ],
+  });
+  const composio = new FakeIntegrationProvider({ id: "composio" });
+  composio.throwSearchExecute = new Error("upstream boom");
+  const { base, ws, vault, stop } = await setupMulti([custom, composio]);
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const res = await fetch(`${base}/sandbox/integrations/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: "acme" }),
+    });
+    expect(res.status).toBe(200);
+    const items = (await res.json()).items as { action: string }[];
+    expect(items.map((m) => m.action)).toEqual([
+      "tools.acme.org.default.doThing",
+    ]);
+  } finally {
+    stop();
+  }
+});
+
+test("an ALL-empty merge still surfaces a signin_required underneath it (409), not an empty success", async () => {
+  const custom = new FakeIntegrationProvider({ id: "custom" }); // default gmail action won't match
+  const composio = new FakeIntegrationProvider({ id: "composio" });
+  composio.throwSigninRequired = true;
+  const { base, ws, vault, stop } = await setupMulti([custom, composio]);
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const res = await fetch(`${base}/sandbox/integrations/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: "no-such-app-anywhere" }),
+    });
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe("signin_required");
+  } finally {
+    stop();
+  }
+});
+
+test("execute: an executor action (tools.*) routes to the 'custom' provider when registered", async () => {
+  const custom = new FakeIntegrationProvider({ id: "custom" });
+  const composio = new FakeIntegrationProvider({ id: "composio" });
+  composio.throwSearchExecute = new Error(
+    "composio must not be called for a tools.* action",
+  );
+  const { base, ws, vault, stop } = await setupMulti([custom, composio]);
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const res = await fetch(`${base}/sandbox/integrations/execute`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "tools.acme.org.default.doThing",
+        params: {},
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).successful).toBe(true);
+  } finally {
+    stop();
+  }
+});
+
+test("execute: a Composio-style action routes to the first non-custom provider", async () => {
+  const custom = new FakeIntegrationProvider({ id: "custom" });
+  custom.throwSearchExecute = new Error(
+    "custom must not be called for a Composio-style action",
+  );
+  const composio = new FakeIntegrationProvider({ id: "composio" });
+  const { base, ws, vault, stop } = await setupMulti([custom, composio]);
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const res = await fetch(`${base}/sandbox/integrations/execute`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "GMAIL_SEND_EMAIL", params: {} }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).successful).toBe(true);
+  } finally {
+    stop();
+  }
+});
+
+test("providerForAction: tools.* goes to 'custom' when registered, else the first non-custom, else whatever exists", () => {
+  const withCustom = new IntegrationRegistry([
+    new FakeIntegrationProvider({ id: "custom" }),
+    new FakeIntegrationProvider({ id: "composio" }),
+  ]);
+  expect(providerForAction(withCustom, "tools.acme.org.default.doThing")).toBe(
+    "custom",
+  );
+  expect(providerForAction(withCustom, "GMAIL_SEND_EMAIL")).toBe("composio");
+
+  // No "custom" provider registered at all: a tools.* action still resolves to
+  // whatever non-custom provider IS registered rather than throwing.
+  const noCustom = new IntegrationRegistry([
+    new FakeIntegrationProvider({ id: "composio" }),
+  ]);
+  expect(providerForAction(noCustom, "tools.acme.org.default.doThing")).toBe(
+    "composio",
+  );
+
+  // "custom" is the only provider registered: even a Composio-shaped action
+  // falls back to it (there is nothing else to route to).
+  const onlyCustom = new IntegrationRegistry([
+    new FakeIntegrationProvider({ id: "custom" }),
+  ]);
+  expect(providerForAction(onlyCustom, "GMAIL_SEND_EMAIL")).toBe("custom");
+});
+
+test("grants filtering still applies over the MERGED multi-provider search", async () => {
+  const custom = new FakeIntegrationProvider({
+    id: "custom",
+    actions: [
+      {
+        action: "tools.acme.org.default.doThing",
+        toolkit: "acme",
+        description: "acme email helper",
+      },
+    ],
+  });
+  const composio = new FakeIntegrationProvider({
+    id: "composio",
+    actions: [
+      {
+        action: "GMAIL_SEND_EMAIL",
+        toolkit: "gmail",
+        description: "send an email",
+      },
+    ],
+  });
+  const { base, ws, agent, vault, grantStore, stop } = await setupMulti([
+    custom,
+    composio,
+  ]);
+  try {
+    // Both toolkits are CONNECTED; only gmail is granted to this agent.
+    for (const [provider, toolkit] of [
+      [custom, "acme"],
+      [composio, "gmail"],
+    ] as const) {
+      const { connectionId } = await provider.connect(USER, toolkit);
+      provider.completeConnection(USER, connectionId);
+    }
+    await grantStore.put(agent.id, ["gmail"]);
+
+    const sb = vault.sandboxToken(ws.id, agent.id);
+    const res = await fetch(`${base}/sandbox/integrations/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: "email" }),
+    });
+    const items = (await res.json()).items as { action: string }[];
+    expect(items.map((m) => m.action)).toEqual(["GMAIL_SEND_EMAIL"]);
   } finally {
     stop();
   }
