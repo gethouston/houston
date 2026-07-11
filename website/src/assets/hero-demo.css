@@ -1,0 +1,382 @@
+/*
+ * Interactive scripted hero demo — a faithful mini Houston.
+ *
+ * Reproduces the real web app's Mission Control at a landing-page zoom: the
+ * board (Running / Needs you / Done) and a chat detail panel are each their
+ * own floating rounded panel on the darker gutter, exactly like the real app
+ * (sidebar / board / chat as separate panels with a visible gutter gap
+ * between them, never contiguous panes divided by a border line) — inside
+ * the frosted-glass `.app-mockup` window (chrome + sidebar + gutter styled
+ * in index.html). The scripted loop (assets/hero-demo.js) types a prompt
+ * into the chat, the agent thinks, a mission card materializes in Running
+ * with the signature rotating-gradient "running" border, then FLIPs to Done
+ * as the agent reports back. The static HTML renders a finished state, so
+ * with JS disabled or under prefers-reduced-motion it still reads as a real,
+ * complete screen.
+ *
+ * Interior palette comes from the `--m-*` custom properties on `.app-mockup`.
+ */
+
+/* Board + chat float side by side in the work area, separated by the same
+   gutter gap used between the sidebar and the board. */
+.mockup-workarea {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Board — its own floating rounded panel ──────────────────────────────── */
+.mc-board {
+  flex: 1.62;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 16px 16px;
+  background: var(--m-card);
+  border-radius: 16px;
+}
+
+.mc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.mc-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--m-ink);
+}
+
+.mc-toolbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mc-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  width: 178px;
+  border-radius: 9px;
+  border: 1px solid var(--m-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--m-faint);
+  font-size: 13px;
+}
+.mc-search svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+.mc-ghost {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--m-muted);
+  padding: 0 4px;
+}
+.mc-ghost svg { width: 16px; height: 16px; }
+
+.mc-newmission {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  border: 1px solid var(--m-border);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--m-ink);
+  white-space: nowrap;
+}
+.mc-newmission img { width: 15px; height: 15px; filter: brightness(0) invert(1); }
+
+/* Tabs */
+.mc-tabs {
+  display: flex;
+  gap: 22px;
+  border-bottom: 1px solid var(--m-border);
+}
+.mc-tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  color: var(--m-muted);
+  padding-bottom: 10px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+.mc-tab.active { color: var(--m-ink); border-bottom-color: var(--m-ink); font-weight: 500; }
+.mc-tab .badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: var(--m-accent);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--m-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Columns */
+.mc-cols {
+  display: flex;
+  gap: 10px;
+  padding: 14px 0 16px;
+  flex: 1;
+  min-height: 0;
+}
+.mc-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--m-col);
+}
+.mc-col-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 4px 2px;
+}
+.mc-col-title { font-size: 14px; font-weight: 500; color: var(--m-ink); }
+.mc-col-count { margin-left: 6px; font-size: 12px; color: var(--m-faint); font-variant-numeric: tabular-nums; }
+.mc-col-more { position: absolute; right: 2px; display: flex; color: var(--m-faint); }
+.mc-col-more svg { width: 16px; height: 16px; }
+.mc-col-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 24px;
+}
+.mc-addcard {
+  height: 38px;
+  border-radius: 14px;
+  background: #0d0d0d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--m-muted);
+}
+.mc-addcard svg { width: 16px; height: 16px; }
+
+/* Card */
+.mc-card {
+  border-radius: 12px;
+  background: var(--m-card);
+  border: 1px solid var(--m-border);
+  padding: 11px;
+}
+.mc-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 7px;
+}
+.mc-card-head .m-avatar { width: 18px; height: 18px; }
+.mc-card-head .m-avatar img { width: 11px; height: 11px; }
+.mc-card-agent { font-size: 12px; color: var(--m-muted); }
+.mc-card-title { font-size: 13px; font-weight: 500; color: var(--m-ink); line-height: 1.35; }
+.mc-card-desc { font-size: 12px; color: var(--m-muted); margin-top: 4px; line-height: 1.4; }
+
+/* Running card: rotating gradient border ring + soft blue glow (no status pill,
+   exactly as the real app). The ring is a masked 1px gradient border. */
+.mc-card.running {
+  position: relative;
+  border-color: transparent;
+  box-shadow: 0 2px 16px rgba(59, 130, 246, 0.18);
+}
+.mc-card.running::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--angle),
+    rgba(59, 130, 246, 0) 52%,
+    #3b82f6 70%,
+    #818cf8 80%,
+    #60a5fa 90%,
+    rgba(59, 130, 246, 0) 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: comet-border 2.4s linear infinite;
+  pointer-events: none;
+}
+/* While the user hovers the demo, freeze the ambient ring spin too. */
+.hd-paused .mc-card.running::before { animation-play-state: paused; }
+
+/* ── Chat detail panel — its own floating rounded panel, not a pane divided
+   by a border line off the board ─────────────────────────────────────────── */
+.mc-chat {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--m-card);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.mc-chat-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--m-border);
+}
+.mc-chat-head .m-avatar { width: 34px; height: 34px; }
+.mc-chat-head .m-avatar img { width: 21px; height: 21px; }
+.mc-chat-agent { font-size: 14px; font-weight: 600; color: var(--m-ink); line-height: 1.25; }
+.mc-chat-mission { font-size: 12px; color: var(--m-muted); line-height: 1.3; }
+.mc-chat-close { margin-left: auto; display: flex; color: var(--m-faint); }
+.mc-chat-close svg { width: 16px; height: 16px; }
+
+.mc-thread {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 18px 16px;
+}
+
+/* Chat bubbles inside the mockup: user = right pill, assistant = flat (real). */
+.app-mockup .chat-msg { max-width: 100%; font-size: 14px; line-height: 1.5; }
+.app-mockup .chat-msg.user {
+  align-self: flex-end;
+  max-width: 82%;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--m-ink);
+  padding: 9px 15px;
+  border-radius: 20px;
+}
+.app-mockup .chat-msg.assistant {
+  align-self: stretch;
+  color: var(--m-ink-soft);
+  padding: 0;
+}
+.app-mockup .typing-dots { padding: 2px 0; }
+.app-mockup .typing-dots span { background: var(--m-faint); }
+
+/* Composer — rounded 28px card, + attach, round Arrow-Up send, footer tools. */
+.mc-composer-wrap { padding: 0 14px 12px; }
+.mc-composer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 24px;
+  border: 1px solid var(--m-border);
+  background: rgba(40, 40, 40, 0.5);
+  padding: 9px 10px 9px 14px;
+}
+.mc-attach { display: flex; color: var(--m-muted); flex-shrink: 0; }
+.mc-attach svg { width: 17px; height: 17px; }
+.mc-composer-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--m-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mc-composer-text.typed { color: var(--m-ink); }
+.mc-send {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.mc-send svg { width: 15px; height: 15px; color: rgba(255, 255, 255, 0.82); }
+
+.mc-tools {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 6px 0;
+}
+.mc-tool {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--m-muted);
+  white-space: nowrap;
+}
+.mc-tool svg { width: 13px; height: 13px; }
+.mc-tool .chev { width: 11px; height: 11px; opacity: 0.7; }
+
+/* Typing caret in the composer while a prompt types itself. */
+.mc-caret::after {
+  content: "";
+  display: inline-block;
+  width: 1px;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -2px;
+  background: var(--m-ink);
+  animation: hd-blink 1s step-end infinite;
+}
+@keyframes hd-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Materialize animation for new bubbles and cards. */
+.hd-enter { animation: hd-materialize 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes hd-materialize {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .mc-chat { flex: 0.92; }
+  .mc-search { width: 128px; }
+  .mc-ghost { display: none; }
+}
+
+@media (max-width: 900px) {
+  .mockup-workarea { flex-direction: column; }
+  .mc-search { display: none; }
+}
+
+@media (max-width: 600px) {
+  .mc-board { padding: 12px; }
+  .mc-cols { gap: 8px; }
+  .mc-newmission span { display: none; }
+  .mc-newmission { padding: 0 11px; }
+}
+
+/* Reduced motion: no reveal / caret / ring spin; the static state stands. */
+@media (prefers-reduced-motion: reduce) {
+  .hd-enter { animation: none; }
+  .mc-caret::after { animation: none; display: none; }
+  .mc-card.running::before { animation: none; }
+}

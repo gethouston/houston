@@ -26,34 +26,62 @@ visionPath: "vision/index.html"
 { "@context":"https://schema.org","@type":"SoftwareApplication","name":"Houston","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Free desktop app that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,000 integrations." }
 </script>
 {% endblock %}
+{% block stylesheets %}
+<!-- Vendored devices.css MUST load before hero-demo.css: its `.device *`
+     reset (box-sizing + `display: block`) ties in specificity with the
+     mockup's own `.mc-*`/`.mockup-*` flex rules, and CSS resolves same-
+     specificity ties by source order — hero-demo.css needs to come after
+     so its flex layouts win. -->
+<link rel="stylesheet" href="/assets/vendor/devices-macbook.css">
+<link rel="stylesheet" href="/assets/space.css">
+<link rel="stylesheet" href="/assets/hero-demo.css">
+{% endblock %}
 {% block inlineStyles %}
 <style>
   /* ═══════════════════════════════════════════
      DESIGN SYSTEM
      ═══════════════════════════════════════════ */
 
+  /* ── DARK LANDING THEME ──────────────────────────────────────────────────
+     The whole landing sits over a fixed ESO Milky Way photo (assets/space.css),
+     so every surface here is dark: light ink, translucent "dark glass" panels,
+     white-alpha borders. The grey scale keeps its NAMES but inverts MEANING —
+     gray-950 is now the lightest (primary ink), gray-50 the subtlest raised
+     fill — so the many `var(--gray-*)`-driven inline styles in the markup flip
+     to correct dark values in one place. (The hero app-mockup re-defines this
+     same scale inside its own scope, so it is unaffected.) Values reuse the
+     real product dark tokens: screen #1e1e1e, card #2c2c2b, ink #e5e5e5. */
   :root {
-    --background: #ffffff;
-    --foreground: #0d0d0d;
-    --secondary: #f9f9f9;
-    --muted-foreground: #5d5d5d;
-    --border: #e5e5e5;
-    --gray-50: #f9f9f9;
-    --gray-100: #ececec;
-    --gray-200: #e3e3e3;
-    --gray-300: #cdcdcd;
-    --gray-400: #b4b4b4;
-    --gray-500: #9b9b9b;
-    --gray-600: #676767;
-    --gray-700: #424242;
-    --gray-950: #0d0d0d;
-    --success: #00a240;
-    --info: #2964aa;
-    --warning: #e0ac00;
-    --danger: #e02e2a;
-    --border-light: rgba(13,13,13,0.05);
-    --border-medium: rgba(0,0,0,0.15);
-    --composer-shadow: 0 4px 4px rgba(0,0,0,0.04), 0 4px 80px 8px rgba(0,0,0,0.04), 0 0 1px rgba(0,0,0,0.62);
+    --background: rgba(24,26,38,0.75);
+    --foreground: #eceefb;
+    --secondary: rgba(255,255,255,0.045);
+    --muted-foreground: #bcc4d8;
+    --border: rgba(255,255,255,0.12);
+    --gray-50: rgba(255,255,255,0.05);
+    --gray-100: rgba(255,255,255,0.08);
+    --gray-200: rgba(255,255,255,0.14);
+    --gray-300: rgba(255,255,255,0.24);
+    --gray-400: #838ba1;
+    --gray-500: #9aa2ba;
+    --gray-600: #b7bed2;
+    --gray-700: #d2d7e4;
+    --gray-900: #eceefb;
+    --gray-950: #f3f5fc;
+    --success: #34d17f;
+    --info: #6ea8fe;
+    --warning: #f2c14e;
+    --danger: #ff6b67;
+    --border-light: rgba(255,255,255,0.08);
+    --border-medium: rgba(255,255,255,0.18);
+    --composer-shadow: 0 4px 30px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06);
+    /* Dark glass panels — translucent dark surfaces over the photo. */
+    --glass: rgba(22,24,36,0.75);
+    --glass-strong: rgba(16,18,28,0.85);
+    --glass-raise: rgba(255,255,255,0.05);
+    --glass-border: rgba(255,255,255,0.10);
+    --glass-border-strong: rgba(255,255,255,0.16);
+    --glass-blur: saturate(1.15) blur(14px);
+    --panel-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 20px 50px -24px rgba(0,0,0,0.7);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -61,12 +89,14 @@ visionPath: "vision/index.html"
   body {
     font-family: ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
     color: var(--foreground);
-    background: var(--background);
+    /* Transparent so the fixed .space-bg photo shows through; html carries the
+       dark fallback color so nothing flashes white on load. */
+    background: transparent;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
 
-  code, .mono {
+  code {
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   }
 
@@ -84,17 +114,6 @@ visionPath: "vision/index.html"
     30% { transform: translateY(-4px); opacity: 1; }
   }
 
-  @keyframes pulse-dot {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(1.3); }
-  }
-
-  @keyframes hero-gradient {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-
   @keyframes comet-border {
     0% { --angle: 0deg; }
     100% { --angle: 360deg; }
@@ -104,46 +123,6 @@ visionPath: "vision/index.html"
     syntax: "<angle>";
     initial-value: 0deg;
     inherits: false;
-  }
-
-  /* Signature comet-border running state */
-  .comet-card {
-    position: relative;
-    border-radius: 16px;
-    overflow: hidden;
-    background: white;
-  }
-
-  .comet-card::before {
-    content: "";
-    position: absolute;
-    inset: -2px;
-    border-radius: 18px;
-    background: conic-gradient(
-      from var(--angle),
-      transparent 60%,
-      #3b82f6 72%,
-      #818cf8 80%,
-      #f97316 88%,
-      #eab308 92%,
-      transparent 100%
-    );
-    animation: comet-border 2.5s linear infinite;
-    z-index: 0;
-  }
-
-  .comet-card::after {
-    content: "";
-    position: absolute;
-    inset: 2px;
-    border-radius: 14px;
-    background: white;
-    z-index: 0;
-  }
-
-  .comet-card > * {
-    position: relative;
-    z-index: 1;
   }
 
   /* ═══════════════════════════════════════════
@@ -163,8 +142,6 @@ visionPath: "vision/index.html"
 
   .reveal-delay-1 { transition-delay: 0.1s; }
   .reveal-delay-2 { transition-delay: 0.2s; }
-  .reveal-delay-3 { transition-delay: 0.3s; }
-  .reveal-delay-4 { transition-delay: 0.4s; }
 
   /* ═══════════════════════════════════════════
      NAV
@@ -184,16 +161,23 @@ visionPath: "vision/index.html"
     transition: background 0.3s ease, backdrop-filter 0.3s ease;
   }
 
+  /* Scrolled: frosted DARK glass over the space page below (the page is dark
+     top to bottom now, so the nav stays dark-on-dark, never light). */
   nav.scrolled {
-    background:
-      linear-gradient(to right,
-        rgba(59,130,246,0.06),
-        rgba(255,255,255,0.88) 40%,
-        rgba(255,255,255,0.88) 60%,
-        rgba(249,115,22,0.05)
-      );
-    backdrop-filter: blur(20px);
+    background: rgba(11,12,19,0.85);
+    backdrop-filter: saturate(1.2) blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
   }
+
+  /* The nav is light-on-dark in BOTH states now (transparent over the hero,
+     frosted-dark once scrolled). The default token colours are already light
+     (gray-950/gray-600 invert to near-white on this theme); at the very top we
+     lift link text a touch more so it reads over the brightest hero sky. */
+  nav:not(.scrolled) .nav-center a,
+  nav:not(.scrolled) .nav-right a:not(.btn) { color: rgba(255,255,255,0.74); }
+  nav:not(.scrolled) .nav-center a:hover,
+  nav:not(.scrolled) .nav-right a:not(.btn):hover { color: #fff; }
+  nav:not(.scrolled) .nav-burger:hover { background: rgba(255,255,255,0.12); }
 
   .nav-logo {
     font-family: 'General Sans', sans-serif;
@@ -268,13 +252,13 @@ visionPath: "vision/index.html"
     left: 0;
     right: 0;
     z-index: 99;
-    background: rgba(255,255,255,0.97);
-    backdrop-filter: blur(20px);
+    background: rgba(11,12,19,0.92);
+    backdrop-filter: saturate(1.2) blur(20px);
     padding: 8px 20px 16px;
     flex-direction: column;
     gap: 0;
     border-bottom: 1px solid var(--border-light);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
   }
 
   .nav-dropdown.open { display: flex; }
@@ -311,53 +295,39 @@ visionPath: "vision/index.html"
     text-decoration: none;
     border: none;
     cursor: pointer;
-    transition: all 0.2s;
+    /* No `transform` here: hover/press scale is driven by Motion One springs
+       (assets/micro-interactions.js). Listing transform would let a CSS
+       transition re-drive every inline value Motion writes — the two settle
+       against each other and the button reads as glitchy. */
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
     gap: 8px;
   }
 
+  /* Primary is the highest-contrast element on the dark page: solid white on
+     space, dark ink. Secondary is a glass button that reads on dark without
+     competing with the primary. */
   .btn-primary {
-    background: var(--gray-950);
-    color: white;
+    background: #fff;
+    color: #0d0d0d;
   }
 
-  .btn-primary:hover { background: var(--gray-700); }
+  .btn-primary:hover { background: #e4e7f0; }
 
   .btn-short-text { display: none; }
 
   .btn-secondary {
-    background: white;
-    color: var(--gray-950);
-    border: 1px solid var(--border-medium);
+    background: rgba(255,255,255,0.08);
+    color: #f3f5fc;
+    border: 1px solid rgba(255,255,255,0.2);
   }
 
-  .btn-secondary:hover { background: var(--gray-50); }
+  .btn-secondary:hover { background: rgba(255,255,255,0.14); }
 
   .btn-lg {
     height: 44px;
     padding: 0 24px;
     font-size: 16px;
   }
-
-  /* The non-detected platform, demoted beside the OS-aware primary Download
-     button (see the OS-detect script). A quiet escape hatch for people grabbing
-     the app for another machine. */
-  .dl-alt {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: none;
-    border: none;
-    padding: 4px 2px;
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--gray-500);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-
-  .dl-alt svg { width: 13px; height: 13px; }
-
-  .dl-alt:hover { color: var(--gray-900); }
 
   /* ═══════════════════════════════════════════
      SECTIONS
@@ -369,12 +339,16 @@ visionPath: "vision/index.html"
     margin: 0 auto;
   }
 
+  /* Section intros sit directly over the photo (no glass panel behind), so the
+     display text carries a soft dark text-shadow — invisible-looking, but it
+     lifts contrast well past minimums even where the bright band drifts past. */
   .section-label {
     font-size: 12px;
     font-weight: 500;
     color: var(--gray-500);
     letter-spacing: 0;
     margin-bottom: 16px;
+    text-shadow: 0 1px 12px rgba(0,0,0,0.55);
   }
 
   .section-title {
@@ -384,6 +358,7 @@ visionPath: "vision/index.html"
     line-height: 1.1;
     color: var(--gray-950);
     margin-bottom: 20px;
+    text-shadow: 0 1px 28px rgba(0,0,0,0.5);
   }
 
   .section-subtitle {
@@ -391,6 +366,7 @@ visionPath: "vision/index.html"
     color: var(--muted-foreground);
     line-height: 1.5;
     max-width: 640px;
+    text-shadow: 0 1px 18px rgba(0,0,0,0.5);
   }
 
   /* ═══════════════════════════════════════════
@@ -402,55 +378,30 @@ visionPath: "vision/index.html"
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 140px 40px 100px;
+    padding: 150px 40px 120px;
     position: relative;
-    overflow: hidden;
-    background: var(--background);
+    /* Transparent: the fixed full-page Milky Way (.space-bg) shows through.
+       isolate keeps the headline scrim (::before, z -1) below the hero content
+       but above the page background. */
+    color: #fff;
+    isolation: isolate;
   }
 
-  .hero-bg {
+  /* Headline contrast pool: a soft dark radial behind the h1 + subhead, on top
+     of the global scrim, so the light headline clears 7:1 even when the bright
+     galactic band drifts through the text band. Feathered to nothing before the
+     edges so it reads as atmosphere, not a box. */
+  .hero::before {
+    content: "";
     position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,130,246,0.10), transparent),
-      radial-gradient(ellipse 60% 40% at 80% 60%, rgba(249,115,22,0.07), transparent),
-      radial-gradient(ellipse 60% 40% at 20% 80%, rgba(129,140,248,0.06), transparent);
+    left: 50%;
+    top: 90px;
+    transform: translateX(-50%);
+    width: min(1100px, 96%);
+    height: 460px;
+    background: radial-gradient(ellipse 60% 55% at 50% 42%, rgba(4,5,12,0.62), rgba(4,5,12,0.32) 55%, rgba(4,5,12,0) 78%);
     pointer-events: none;
-  }
-
-  .hero-stars {
-    display: none;
-    background-image:
-      radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.7), transparent),
-      radial-gradient(1px 1px at 25% 8%, rgba(255,255,255,0.5), transparent),
-      radial-gradient(1.5px 1.5px at 40% 22%, rgba(255,255,255,0.8), transparent),
-      radial-gradient(1px 1px at 55% 5%, rgba(255,255,255,0.4), transparent),
-      radial-gradient(1px 1px at 70% 18%, rgba(255,255,255,0.6), transparent),
-      radial-gradient(1.5px 1.5px at 85% 12%, rgba(255,255,255,0.5), transparent),
-      radial-gradient(1px 1px at 92% 25%, rgba(255,255,255,0.7), transparent),
-      radial-gradient(1px 1px at 5% 30%, rgba(255,255,255,0.3), transparent),
-      radial-gradient(1px 1px at 18% 35%, rgba(255,255,255,0.5), transparent),
-      radial-gradient(1.5px 1.5px at 33% 10%, rgba(255,255,255,0.6), transparent),
-      radial-gradient(1px 1px at 48% 28%, rgba(255,255,255,0.4), transparent),
-      radial-gradient(1px 1px at 62% 32%, rgba(255,255,255,0.5), transparent),
-      radial-gradient(1px 1px at 78% 7%, rgba(255,255,255,0.7), transparent),
-      radial-gradient(1px 1px at 88% 30%, rgba(255,255,255,0.3), transparent),
-      radial-gradient(1.5px 1.5px at 15% 20%, rgba(255,255,255,0.4), transparent),
-      radial-gradient(1px 1px at 35% 38%, rgba(255,255,255,0.3), transparent),
-      radial-gradient(1px 1px at 50% 15%, rgba(255,255,255,0.6), transparent),
-      radial-gradient(1px 1px at 65% 40%, rgba(255,255,255,0.2), transparent),
-      radial-gradient(1.5px 1.5px at 80% 35%, rgba(255,255,255,0.5), transparent),
-      radial-gradient(1px 1px at 95% 10%, rgba(255,255,255,0.4), transparent),
-      radial-gradient(1px 1px at 8% 42%, rgba(255,255,255,0.3), transparent),
-      radial-gradient(1px 1px at 22% 45%, rgba(255,255,255,0.2), transparent),
-      radial-gradient(1px 1px at 42% 42%, rgba(255,255,255,0.4), transparent),
-      radial-gradient(1px 1px at 58% 45%, rgba(255,255,255,0.3), transparent),
-      radial-gradient(1px 1px at 73% 43%, rgba(255,255,255,0.2), transparent),
-      radial-gradient(1.5px 1.5px at 3% 8%, rgba(255,255,255,0.6), transparent),
-      radial-gradient(1px 1px at 97% 20%, rgba(255,255,255,0.5), transparent),
-      radial-gradient(1px 1px at 30% 3%, rgba(255,255,255,0.4), transparent),
-      radial-gradient(1px 1px at 45% 48%, rgba(255,255,255,0.2), transparent),
-      radial-gradient(1px 1px at 82% 45%, rgba(255,255,255,0.3), transparent);
+    z-index: -1;
   }
 
   .hero h1 {
@@ -458,10 +409,11 @@ visionPath: "vision/index.html"
     font-weight: 400;
     letter-spacing: -0.03em;
     line-height: 1.15;
-    color: var(--gray-950);
+    color: #fff;
     margin-bottom: 28px;
     animation: float-up 0.6s ease 0.1s both;
     max-width: 1000px;
+    text-shadow: 0 1px 30px rgba(0,0,0,0.5);
   }
 
   .hero-cycling-word {
@@ -512,12 +464,15 @@ visionPath: "vision/index.html"
 
   .hero p {
     font-size: 20px;
-    color: var(--muted-foreground);
+    color: #c3cae0;
     max-width: 720px;
     line-height: 1.5;
     margin-bottom: 48px;
     animation: float-up 0.6s ease 0.15s both;
   }
+
+  /* Hero download buttons use the global dark-page .btn-primary (solid white)
+     and .btn-secondary (glass) — no hero-specific override needed. */
 
   .hero-actions {
     display: flex;
@@ -526,316 +481,430 @@ visionPath: "vision/index.html"
   }
 
   /* ═══════════════════════════════════════════
-     APP MOCKUP
-     ═══════════════════════════════════════════ */
+     MACBOOK FRAME — devices.css (picturepan2/devices.css, MIT), vendored at
+     assets/vendor/devices-macbook.css: the shell (aluminum ring, rounded
+     screen corners, bottom chin) is the library's `.device-macbook-pro-2018`
+     + `.device-spacegray` color mod, trimmed to just that one device. See
+     the vendor file's header comment for the extraction notes and the
+     vendored-vs-original byte counts.
 
-  .app-mockup {
-    border-radius: 12px;
-    border: 3px solid var(--gray-950);
+     devices.css ships fixed-px devices sized against one intrinsic
+     reference box — no fluid units. Rather than hardcode our own
+     900px/600px transform:scale() steps, `.mac-frame-wrap` declares a CSS
+     container and the device scales continuously against it (`cqi`), so it
+     stays exactly as fluid as the rest of this page with zero JS and zero
+     breakpoint math (the 900px/600px rules below still apply, same as the
+     rest of the page, for margin/sidebar-visibility adjustments).
+
+     Geometry (width/height/padding/screen size) is overridden from
+     devices.css's stock 2018 MacBook Pro: the shipped variant has a
+     noticeably chunkier bezel and a baked-in "MacBook Pro" wordmark on the
+     chin, styled for a machine thicker than what Houston actually ships
+     on. The override below thins the bezel and drops the wordmark (the
+     rule for it isn't even in the vendored file) while keeping devices.css's
+     ring/chin/corner treatment as-is. */
+  .mac-frame-wrap {
+    position: relative;
+    container-type: inline-size;
+    aspect-ratio: 1200 / 786;
+    width: 100%;
+  }
+
+  .mac-frame-wrap .device-macbook-pro-2018 {
+    position: absolute;
+    top: 0;
+    left: 0;
+    /* Dividing by 1200px (not bare 1200) matters: cqi resolves to a length,
+       and length ÷ length is what yields the unitless ratio scale()
+       requires — length ÷ number is invalid and silently drops the whole
+       declaration (computed transform stays `none`). */
+    transform: scale(calc(100cqi / 1200px));
+    transform-origin: top left;
+  }
+
+  .device-macbook-pro-2018 {
+    width: 1200px;
+    height: 786px;
+  }
+  .device-macbook-pro-2018 .device-frame {
+    width: 1200px;
+    height: 786px;
+    padding: 16px 16px 40px;
+    border-radius: 24px;
+  }
+  /* Ambient depth as box-shadow, not `filter: drop-shadow()` on the scaled
+     wrapper: a filter forces the whole animated subtree (typing caret,
+     the running card's rotating conic-gradient ring) into one rasterized
+     compositing pass on every frame, which was measured to throttle
+     WebKit's requestAnimationFrame rate ~20x — the scripted demo's typing
+     crawled to a visible crawl. box-shadow on the (already spacegray-ringed)
+     frame gives the same resting-shadow depth for free, cheaply. */
+  .device-macbook-pro-2018.device-spacegray .device-frame {
+    box-shadow:
+      inset 0 0 0 2px #767a7d,
+      0 70px 130px -40px rgba(0,0,0,0.75),
+      0 24px 55px -24px rgba(0,0,0,0.6);
+  }
+  .device-macbook-pro-2018 .device-frame::after {
+    width: 1196px;
+    height: 34px;
+    border-radius: 0 0 24px 24px;
+  }
+  /* The screen slot: our own flat, opaque .app-mockup fills it exactly, so
+     the upstream 2px screen border (meant to frame a photo/video) reads as
+     an unwanted seam here — dropped in favor of letting .app-mockup meet
+     the bezel directly, same as the previous hand-drawn frame did. */
+  .device-macbook-pro-2018 .device-screen {
+    width: 1168px;
+    height: 730px;
+    border-radius: 10px;
     overflow: hidden;
-    background: white;
+    border: none;
   }
 
-  .mockup-titlebar {
-    height: 52px;
-    display: flex;
-    align-items: center;
-    padding: 0 16px;
-    gap: 8px;
-    border-bottom: 1px solid var(--border-light);
-    background: var(--gray-50);
-  }
-
-  .traffic-lights {
-    display: flex;
-    gap: 8px;
-    margin-right: 12px;
-  }
-
-  .traffic-lights span {
-    width: 12px;
-    height: 12px;
+  /* Camera hint at the top-center of the screen — quiet, matching the
+     iPhone frame's camera dot below. (`.device-frame::before` is unused by
+     the vendored MacBook rules once the wordmark declaration was dropped,
+     so it's free to repurpose here.) */
+  .device-macbook-pro-2018 .device-frame::before {
+    content: "";
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #4c4f58 0%, #050506 75%);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.05);
+    z-index: 2;
   }
 
+  /* ── Dark-mode hero app mockup — faithful to the real Houston web app ──────
+     The screen itself: reproduces the real Mission Control's FLOATING-PANEL
+     layout (sidebar, board and chat are each their own rounded panel sitting
+     on a darker gutter, with visible gutter gaps between them — not
+     contiguous panes divided by border lines). The gutter/window background
+     is #141416, sampled directly off the real app (packages/design-tokens
+     color.dark.json → canvas-gutter / color.cool.gutter-dark = #141416).
+     Interior colours mirror the design-token dark theme:
+       gutter (canvas-gutter) #141416   panel (background/card) #1e1e1e
+       nested column white-a05 over panel   ink #e5e5e5   muted #9a9a9a
+       borders white-a09   primary #e5e5e5.
+     Board / card / chat styling lives in assets/hero-demo.css.
+     No separate titlebar band: the traffic lights float directly over the
+     top-left of the screen (over the sidebar/gutter), on the same flat
+     background, exactly like the real app — no dividing line, no centered
+     window title. */
+  .app-mockup {
+    --m-ink: #e5e5e5;
+    --m-ink-soft: #cfcfcf;
+    --m-muted: #9a9a9a;
+    --m-faint: #6f6f74;
+    --m-canvas: #141416;
+    --m-col: rgba(255,255,255,0.05);
+    --m-card: #1e1e1e;
+    --m-border: rgba(255,255,255,0.09);
+    --m-accent: rgba(255,255,255,0.08);
+    --m-agent: #a78bfa;
+
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    /* No radius of its own: it fills the device-screen slot exactly, which
+       already clips to the bezel's rounded corner (10px) — a second radius
+       here would double up and read as a hairline seam just inside the
+       glass. */
+    border-radius: 0;
+    overflow: hidden;
+    color: var(--m-ink);
+    /* Flat, opaque — matches the real app's window background exactly, no
+       photo bleed-through. The glass chrome lives on the MacBook frame. */
+    background: var(--m-canvas);
+  }
+
+  /* Traffic lights fused directly onto the screen: no separate titlebar
+     strip, no divider, same background as the sidebar/gutter beneath them
+     (top-left corner, the real app's convention). */
+  .traffic-lights {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 5;
+    display: flex;
+    gap: 8px;
+  }
+  .traffic-lights span { width: 12px; height: 12px; border-radius: 50%; }
   .tl-red { background: #ff5f57; }
   .tl-yellow { background: #febc2e; }
   .tl-green { background: #28c840; }
 
-  .mockup-titlebar .title {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--gray-600);
-  }
-
+  /* The gutter: a darker canvas strip with a fixed gap that separates the
+     floating panels (sidebar / board / chat), exactly like the real app.
+     Fills the full screen height (set by .device-screen above) rather than
+     a fixed min-height, so the taller MacBook screen shows real column
+     height instead of empty gutter below a short, fixed-height board. */
   .mockup-body {
     display: flex;
-    min-height: 504px;
+    gap: 8px;
+    height: 100%;
+    min-height: 0;
+    background: var(--m-canvas);
+    padding: 8px;
   }
 
+  /* ── Sidebar — no panel of its own, sits directly on the gutter (the real
+     AppSidebar background token is transparent). Extra top padding clears
+     the fused traffic lights sitting above it on the same background. ── */
   .mockup-sidebar {
     width: 220px;
-    background: var(--secondary);
-    border-right: 1px solid var(--border);
-    padding: 16px 12px;
     flex-shrink: 0;
-  }
-
-  .sidebar-section-label {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--gray-400);
-    padding: 8px 10px 4px;
-    letter-spacing: 0;
-  }
-
-  .sidebar-item {
-    font-size: 13px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    color: var(--gray-600);
-    margin-bottom: 2px;
-    cursor: default;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .sidebar-item.active {
-    background: var(--gray-200);
-    color: var(--gray-950);
-    font-weight: 500;
-  }
-
-  .sidebar-item svg { width: 14px; height: 14px; opacity: 0.6; flex-shrink: 0; }
-  .sidebar-item.active svg { opacity: 1; }
-
-  .mockup-main {
-    flex: 1;
-    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-  }
-
-  .mockup-tab-bar {
-    display: flex;
-    gap: 24px;
-    border-bottom: 1px solid var(--border-light);
+    padding-top: 30px;
     padding-bottom: 8px;
-    margin-bottom: 8px;
   }
 
-  .mockup-tab {
-    font-size: 13px;
-    color: var(--gray-500);
-    padding-bottom: 8px;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -9px;
-    cursor: default;
-  }
-
-  .mockup-tab.active {
-    color: var(--gray-950);
-    font-weight: 500;
-    border-bottom-color: var(--gray-950);
-  }
-
-  /* Kanban mockup */
-  .kanban-mockup {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
-    flex: 1;
-  }
-
-  .kanban-col {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .kanban-col-header {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--gray-500);
-    padding: 4px 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .kanban-col-header .count {
-    font-size: 11px;
-    background: var(--gray-100);
-    padding: 1px 6px;
-    border-radius: 9999px;
-    color: var(--gray-500);
-  }
-
-  .kanban-card-mock {
-    padding: 12px;
-    border-radius: 12px;
-    border: 1px solid var(--border-light);
-    background: white;
-    font-size: 13px;
-    color: var(--gray-700);
-    line-height: 1.4;
-  }
-
-  .kanban-card-mock.running {
-    position: relative;
-    overflow: hidden;
-    border-color: transparent;
-  }
-
-  .kanban-card-mock.running::before {
-    content: "";
-    position: absolute;
-    inset: -2px;
-    border-radius: 14px;
-    background: conic-gradient(
-      from var(--angle),
-      transparent 60%,
-      #3b82f6 72%,
-      #818cf8 80%,
-      #f97316 88%,
-      #eab308 92%,
-      transparent 100%
-    );
-    animation: comet-border 2.5s linear infinite;
-    z-index: 0;
-  }
-
-  .kanban-card-mock.running::after {
-    content: "";
-    position: absolute;
-    inset: 2px;
-    border-radius: 10px;
-    background: white;
-    z-index: 0;
-  }
-
-  .kanban-card-mock.running > * {
-    position: relative;
-    z-index: 1;
-  }
-
-  .status-running .dot {
-    animation: pulse-dot 1s ease infinite;
-  }
-
-  .kanban-card-title {
-    font-weight: 500;
-    color: var(--gray-950);
-    margin-bottom: 4px;
-    font-size: 13px;
-    text-align: left;
-  }
-
-  .kanban-card-desc {
-    font-size: 12px;
-    color: var(--gray-500);
-    text-align: left;
-  }
-
-  .kanban-card-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    margin-top: 8px;
-    padding: 2px 8px;
-    border-radius: 9999px;
-  }
-
-  .status-running {
-    background: rgba(59,130,246,0.1);
-    color: #3b82f6;
-  }
-
-  .status-running .dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #3b82f6;
-  }
-
-  .status-done {
-    background: rgba(0,162,64,0.1);
-    color: var(--success);
-  }
-
-  .status-needsyou {
-    background: rgba(224,172,0,0.1);
-    color: var(--warning);
-  }
-
-  /* ═══════════════════════════════════════════
-     PHONE MOCKUP (mobile hero)
-     ═══════════════════════════════════════════ */
-
-  .phone-mockup {
-    display: none;
-    width: 280px;
-    aspect-ratio: 9 / 19.5;
-    margin: 40px auto 0;
-    border-radius: 36px;
-    border: 4px solid var(--gray-950);
-    background: white;
-    overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.08);
-    animation: float-up 0.6s ease 0.25s both;
-  }
-
-  .phone-notch {
-    width: 120px;
-    height: 28px;
-    background: var(--gray-950);
-    border-radius: 0 0 16px 16px;
-    margin: 0 auto;
-  }
-
-  .phone-content {
-    padding: 8px 16px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .phone-header {
+  .m-ws {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 0;
+    padding: 12px 12px 10px;
+  }
+  .m-ws-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--m-ink);
+  }
+  .m-ws-name svg { width: 14px; height: 14px; opacity: 0.8; }
+
+  .m-icon-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--m-faint);
+    flex-shrink: 0;
+  }
+  .m-icon-btn svg { width: 15px; height: 15px; }
+  .m-icon-btn.sm { width: 24px; height: 24px; }
+  .m-icon-btn.sm svg { width: 14px; height: 14px; }
+
+  .m-nav {
+    padding: 2px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .m-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--m-muted);
+    padding: 7px 10px;
+    border-radius: 8px;
+  }
+  .m-nav-item svg { width: 16px; height: 16px; opacity: 0.9; flex-shrink: 0; }
+  .m-nav-item.active { background: var(--m-accent); color: var(--m-ink); font-weight: 500; }
+
+  .m-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 12px 4px;
+  }
+  .m-section-label { font-size: 12px; font-weight: 500; color: var(--m-muted); }
+  .m-section-actions { display: flex; gap: 2px; }
+
+  .m-agents { padding: 2px 8px; }
+  .m-agent {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.1);
+  }
+  .m-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(167,139,250,0.22);
+  }
+  .m-avatar img { width: 13px; height: 13px; filter: brightness(0) invert(1); opacity: 0.92; }
+  .m-agent-name { flex: 1; font-size: 13px; color: var(--m-ink); }
+  .m-count {
+    min-width: 20px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 9999px;
+    border: 1px solid var(--m-border);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--m-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .phone-header .title {
-    font-size: 16px;
+  /* ═══════════════════════════════════════════
+     iPHONE FRAME (how-it-works conversation)
+     Pure CSS current-gen iPhone: titanium side band, ~55px corners,
+     Dynamic Island, thin uniform bezels, side buttons. No image assets.
+     The screen shows the live agent conversation as a mobile chat.
+     ═══════════════════════════════════════════ */
+
+  .iphone {
+    position: relative;
+    width: 322px;
+    max-width: 100%;
+    margin: 0 auto;
+    aspect-ratio: 322 / 656;
+    border-radius: 56px;
+    padding: 11px;
+    /* Brushed-titanium side band (light-catching diagonal). */
+    background:
+      linear-gradient(
+        145deg,
+        #dfe3e9 0%, #aab0bb 16%, #71787f 33%,
+        #c3c8d0 50%, #5a6068 67%, #9ba1ab 84%, #d6dae1 100%
+      );
+    box-shadow:
+      0 2px 2px rgba(255,255,255,0.4) inset,
+      0 0 0 1.5px rgba(0,0,0,0.5),
+      0 42px 80px -26px rgba(0,0,0,0.78),
+      0 10px 26px -14px rgba(0,0,0,0.6);
+  }
+
+  /* Thin dark rim between the titanium band and the glass. */
+  .iphone::before {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border-radius: 50px;
+    background: #04050a;
+    z-index: 0;
+  }
+
+  .iphone-screen {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    border-radius: 46px;
+    overflow: hidden;
+    background: #0b0d14;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.05) inset;
+  }
+
+  /* Dynamic Island — floats over the status bar. */
+  .iphone-island {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 98px;
+    height: 28px;
+    background: #000;
+    border-radius: 999px;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 11px;
+  }
+
+  .iphone-island::after {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #2c3856 0%, #05060b 72%);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
+  }
+
+  /* Physical side buttons on the band (percent-positioned so they track the
+     frame at any scale). */
+  .iphone-btn {
+    position: absolute;
+    z-index: 0;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #c4c9d2 0%, #7d838d 100%);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.35);
+  }
+  .iphone-btn.action { left: -2px; top: 17.5%; width: 3px; height: 4.2%; }
+  .iphone-btn.vol-up { left: -2px; top: 24.5%; width: 3px; height: 6.7%; }
+  .iphone-btn.vol-dn { left: -2px; top: 32.5%; width: 3px; height: 6.7%; }
+  .iphone-btn.power  { right: -2px; top: 25.5%; width: 3px; height: 10%; }
+
+  /* Status bar: time left, signal / wifi / battery right. */
+  .iphone-statusbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 30px 7px;
+    flex-shrink: 0;
+  }
+
+  .iphone-statusbar .ip-time {
+    font-size: 13px;
+    font-weight: 600;
+    color: #f3f5fc;
+    letter-spacing: 0.02em;
+  }
+
+  .iphone-statusbar .ip-icons {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #f3f5fc;
+  }
+
+  .iphone-statusbar .ip-icons svg { display: block; }
+
+  /* App top bar (the chat's agent header). */
+  .iphone-appbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 18px 12px;
+    border-bottom: 1px solid var(--border-light);
+    flex-shrink: 0;
+  }
+
+  .iphone-appbar .ip-appbar-name {
+    font-size: 14px;
     font-weight: 600;
     color: var(--gray-950);
-    letter-spacing: -0.02em;
+    line-height: 1.2;
   }
 
-  .phone-tabs {
-    display: flex;
-    gap: 16px;
-    border-bottom: 1px solid var(--border-light);
-    padding-bottom: 8px;
-    margin-bottom: 4px;
-  }
-
-  .phone-tabs span {
-    font-size: 12px;
+  .iphone-appbar .ip-appbar-mission {
+    font-size: 11px;
     color: var(--gray-500);
-    padding-bottom: 8px;
+    line-height: 1.3;
   }
 
-  .phone-tabs span.active {
-    color: var(--gray-950);
-    font-weight: 500;
-    border-bottom: 2px solid var(--gray-950);
-    margin-bottom: -9px;
+  /* The conversation fills the rest of the screen; newest content pinned low. */
+  .ip-chat {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: 14px 16px 16px !important;
+    max-width: 100% !important;
+    margin: 0 !important;
   }
 
   /* ═══════════════════════════════════════════
@@ -892,13 +961,16 @@ visionPath: "vision/index.html"
     position: absolute;
     inset: 2px;
     border-radius: 14px;
-    background: #f5f5f5;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
     z-index: 0;
     transition: background 0.2s;
   }
 
   .agent-card:hover::after {
-    background: #ebebeb;
+    background: rgba(34,37,54,0.79);
   }
 
   .agent-card > * {
@@ -958,13 +1030,6 @@ visionPath: "vision/index.html"
     color: var(--gray-500);
   }
 
-  .agent-tool .tool-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
   /* ═══════════════════════════════════════════
      FEATURE ROWS
      ═══════════════════════════════════════════ */
@@ -978,50 +1043,6 @@ visionPath: "vision/index.html"
 
   .feature-row.reverse { direction: rtl; }
   .feature-row.reverse > * { direction: ltr; }
-
-  .feature-info { max-width: 480px; }
-
-  .feature-info h3 {
-    font-size: 32px;
-    font-weight: 600;
-    letter-spacing: -0.03em;
-    line-height: 1.2;
-    margin-bottom: 16px;
-  }
-
-  .feature-info p {
-    font-size: 16px;
-    color: var(--muted-foreground);
-    line-height: 1.6;
-    margin-bottom: 24px;
-  }
-
-  .feature-list {
-    list-style: none;
-    margin-bottom: 32px;
-  }
-
-  .feature-list li {
-    font-size: 14px;
-    color: var(--gray-700);
-    padding: 6px 0;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .feature-list .check {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    background: rgba(13,13,13,0.06);
-  }
-
-  .feature-list .check svg { width: 12px; height: 12px; }
 
   /* ═══════════════════════════════════════════
      CHAT MOCKUP
@@ -1047,31 +1068,16 @@ visionPath: "vision/index.html"
 
   .chat-msg.user {
     align-self: flex-end;
-    background: #f4f4f4;
+    background: rgba(255,255,255,0.09);
     padding: 10px 18px;
     border-radius: 24px;
-    color: var(--gray-950);
+    color: #f3f5fc;
   }
 
   .chat-msg.assistant {
     align-self: flex-start;
     color: var(--gray-700);
     padding: 4px 0;
-  }
-
-  .chat-msg .channel-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 9999px;
-    margin-bottom: 4px;
-  }
-
-  .badge-slack {
-    background: rgba(74,21,75,0.1);
-    color: #4A154B;
   }
 
   .typing-dots {
@@ -1095,7 +1101,8 @@ visionPath: "vision/index.html"
   .chat-composer-mock {
     border-radius: 24px;
     padding: 12px 16px;
-    box-shadow: var(--composer-shadow);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--glass-border);
     display: flex;
     align-items: center;
     gap: 12px;
@@ -1105,14 +1112,14 @@ visionPath: "vision/index.html"
   .chat-composer-mock .placeholder {
     flex: 1;
     font-size: 14px;
-    color: rgba(0,0,0,0.35);
+    color: rgba(255,255,255,0.42);
   }
 
   .chat-composer-mock .send-btn {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: var(--gray-950);
+    background: #e6e8f0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1122,233 +1129,7 @@ visionPath: "vision/index.html"
   .chat-composer-mock .send-btn svg {
     width: 16px;
     height: 16px;
-    color: white;
-  }
-
-  /* ═══════════════════════════════════════════
-     HOW IT WORKS
-     ═══════════════════════════════════════════ */
-
-  .steps-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-    margin-top: 64px;
-  }
-
-  .step-card {
-    padding: 40px 32px;
-    border-radius: 16px;
-    border: 1px solid var(--border-light);
-    text-align: center;
-    transition: all 0.3s;
-  }
-
-  .step-card:hover {
-    border-color: var(--border-medium);
-    box-shadow: 0 8px 40px rgba(0,0,0,0.04);
-  }
-
-  .step-number {
-    font-size: 40px;
-    font-weight: 700;
-    color: var(--gray-200);
-    margin-bottom: 16px;
-  }
-
-  .step-card h3 {
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    margin-bottom: 8px;
-  }
-
-  .step-card p {
-    font-size: 14px;
-    color: var(--muted-foreground);
-    line-height: 1.6;
-  }
-
-  /* ═══════════════════════════════════════════
-     CAPABILITIES GRID
-     ═══════════════════════════════════════════ */
-
-  .capabilities-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-    margin-top: 64px;
-  }
-
-  .capability-card {
-    padding: 32px;
-    border-radius: 16px;
-    border: 1px solid var(--border-light);
-    background: var(--background);
-    transition: all 0.3s ease;
-  }
-
-  .capability-card:hover {
-    border-color: var(--border-medium);
-    box-shadow: 0 8px 40px rgba(0,0,0,0.04);
-  }
-
-  .capability-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 20px;
-    background: var(--gray-50);
-  }
-
-  .capability-icon svg { width: 24px; height: 24px; color: var(--gray-700); }
-
-  .capability-card h3 {
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    margin-bottom: 8px;
-  }
-
-  .capability-card p {
-    font-size: 14px;
-    color: var(--muted-foreground);
-    line-height: 1.6;
-  }
-
-  /* ═══════════════════════════════════════════
-     HOSTING CTA
-     ═══════════════════════════════════════════ */
-
-  .hosting-section {
-    margin-top: 0;
-    padding: 80px 48px;
-    border-radius: 20px;
-    background: var(--gray-50);
-    border: 1px solid var(--border-light);
-    color: var(--gray-950);
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 60px;
-    align-items: center;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .hosting-section::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 60% 50% at 10% 100%, rgba(59,130,246,0.08), transparent),
-      radial-gradient(ellipse 50% 40% at 90% 0%, rgba(249,115,22,0.05), transparent);
-    pointer-events: none;
-  }
-
-  .hosting-section > * { position: relative; z-index: 1; }
-
-  .hosting-section h3 {
-    font-size: 36px;
-    font-weight: 600;
-    letter-spacing: -0.03em;
-    line-height: 1.2;
-    margin-bottom: 16px;
-    color: var(--gray-950);
-  }
-
-  .hosting-section p {
-    font-size: 16px;
-    color: var(--muted-foreground);
-    line-height: 1.6;
-    margin-bottom: 32px;
-  }
-
-  .hosting-features {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .hosting-features li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 14px;
-    color: var(--gray-700);
-  }
-
-  .hosting-features .check {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: rgba(13,13,13,0.06);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .hosting-features .check svg { width: 12px; height: 12px; color: var(--gray-950); }
-
-  .btn-blue {
-    background: #3b82f6;
-    color: white;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 44px;
-    padding: 0 24px;
-    border-radius: 9999px;
-    font-size: 15px;
-    font-weight: 500;
-    text-decoration: none;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-blue:hover { background: #2563eb; }
-
-  .hosting-visual {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .hosting-card {
-    padding: 20px 24px;
-    border-radius: 14px;
-    background: white;
-    border: 1px solid var(--border-light);
-  }
-
-  .hosting-card-label {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--gray-500);
-    letter-spacing: 0;
-    margin-bottom: 8px;
-  }
-
-  .hosting-card-value {
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--gray-950);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .hosting-card-value .live-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--success);
-    animation: pulse-dot 2s ease infinite;
+    color: #141414;
   }
 
   /* ═══════════════════════════════════════════
@@ -1377,6 +1158,7 @@ visionPath: "vision/index.html"
     letter-spacing: -0.03em;
     margin-bottom: 20px;
     position: relative;
+    text-shadow: 0 1px 28px rgba(0,0,0,0.5);
   }
 
   .cta-section p {
@@ -1386,13 +1168,7 @@ visionPath: "vision/index.html"
     margin: 0 auto 40px;
     line-height: 1.6;
     position: relative;
-  }
-
-  .cta-actions {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    position: relative;
+    text-shadow: 0 1px 18px rgba(0,0,0,0.5);
   }
 
   /* ═══════════════════════════════════════════
@@ -1402,6 +1178,9 @@ visionPath: "vision/index.html"
   footer {
     padding: 40px;
     border-top: 1px solid var(--border-light);
+    background: rgba(8,9,15,0.75);
+    -webkit-backdrop-filter: saturate(1.1) blur(12px);
+    backdrop-filter: saturate(1.1) blur(12px);
     text-align: center;
     font-size: 13px;
     color: var(--gray-500);
@@ -1417,121 +1196,169 @@ visionPath: "vision/index.html"
 
 
   /* ═══════════════════════════════════════════
-     PILLARS (real tools / integrations / training)
-     ═══════════════════════════════════════════ */
-
-  .pillars {
+     PRICING — Mercury's structure (name → price → two-line description →
+     full-width CTA pill → bold list intro → checkmark list), on Houston's
+     existing dark-glass look: one glass container, three columns divided
+     only by hairline white-alpha rules, uniform quiet glass throughout.
+     No badge, no gradient ring, no per-column background difference — the
+     ONLY featured emphasis is that the Team column's CTA pill is filled
+     instead of quiet. Every row (name/price/description/CTA/list-intro)
+     lines up across all three columns via CSS subgrid: `.pricing-grid`
+     declares 6 row tracks, each `.pricing-col` subgrids into them, so a
+     short column (e.g. Personal's plain price vs. Team's price + billing
+     sub-note) still starts its next row at the same Y as its neighbors. */
+  .pricing-grid {
+    max-width: 960px;
+    margin: 48px auto 0;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-    margin-top: 56px;
-  }
-
-  .pillar-card {
-    padding: 32px;
-    border-radius: 16px;
-    border: 1px solid var(--border-light);
-    background: white;
-    transition: all 0.3s ease;
-  }
-
-  .pillar-card:hover {
-    border-color: var(--border-medium);
-    box-shadow: 0 8px 40px rgba(0,0,0,0.04);
-  }
-
-  .pillar-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    background: var(--gray-50);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 20px;
-  }
-
-  .pillar-icon svg { width: 24px; height: 24px; color: var(--gray-700); }
-
-  .pillar-card h3 {
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    margin-bottom: 8px;
-    color: var(--gray-950);
-  }
-
-  .pillar-card .pillar-num {
-    font-size: 32px;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    color: var(--gray-950);
-    margin-bottom: 4px;
-    display: block;
-  }
-
-  .pillar-card p {
-    font-size: 14px;
-    color: var(--muted-foreground);
-    line-height: 1.55;
-  }
-
-  .board-card {
-    padding: 20px 24px;
-    border-radius: 16px;
-    border: 1px solid var(--border-light);
-    background: white;
-  }
-
-  .board-card.active {
-    border-color: var(--border-medium);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  }
-
-
-  /* ═══════════════════════════════════════════
-     FINAL CTA DUAL
-     ═══════════════════════════════════════════ */
-
-  .final-cta-dual {
-    max-width: 880px;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(6, auto);
     border-radius: 20px;
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--glass-border);
     overflow: hidden;
-    background: white;
+    background: var(--glass-strong);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
     text-align: left;
   }
 
-  .final-cta-card {
-    padding: 48px 40px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 20px;
+  .pricing-col {
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: 1 / span 6;
+    row-gap: 14px;
+    padding: 40px 32px;
+    align-items: start;
   }
 
-  .final-cta-card + .final-cta-card {
-    border-left: 1px solid var(--border-light);
-    background: var(--gray-50);
+  /* Hairline divider only — no background swap between columns, so the
+     glass reads as one uniform quiet surface, per the approved look. */
+  .pricing-col + .pricing-col {
+    border-left: 1px solid var(--glass-border);
   }
 
-  .final-cta-card h3 {
-    font-size: 24px;
+  .pricing-name {
+    font-size: 30px;
     font-weight: 600;
     letter-spacing: -0.02em;
-    margin-bottom: 10px;
+    line-height: 1.1;
     color: var(--gray-950);
   }
 
-  .final-cta-card p {
-    font-size: 15px;
+  .pricing-price-block { display: flex; flex-direction: column; gap: 4px; }
+  .pricing-price { display: flex; align-items: baseline; gap: 3px; }
+  .pricing-price .amount { font-size: 26px; font-weight: 500; letter-spacing: -0.02em; line-height: 1; color: var(--gray-950); }
+  .pricing-price .per { font-size: 15px; font-weight: 400; color: var(--gray-500); margin-left: 1px; }
+  .pricing-price-note { font-size: 13px; color: var(--gray-500); line-height: 1.4; }
+
+  .pricing-desc {
+    font-size: 14px;
     color: var(--muted-foreground);
     line-height: 1.55;
-    margin-bottom: 24px;
     max-width: 100%;
+  }
+
+  /* CTA: full-width pill. Quiet translucent by default (reuses the site's
+     .btn-secondary glass button); the Team column overrides to .btn-primary
+     (solid white) — the single featured signal, no badge, no card tint. */
+  .pricing-cta { display: flex; flex-direction: column; gap: 8px; }
+  .pricing-cta .btn { width: 100%; }
+
+  .pricing-list-intro {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-950);
+  }
+
+  .pricing-feats {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    font-size: 14px;
+    color: var(--gray-700);
+  }
+  .pricing-feats li { display: flex; align-items: flex-start; gap: 10px; line-height: 1.4; }
+  .pricing-feats li svg { flex-shrink: 0; margin-top: 3px; }
+  .pricing-feat-note { font-size: 12px; color: var(--gray-500); font-weight: 400; line-height: 1.4; margin-top: 2px; }
+
+  /* ── FAQ ── */
+  .faq-item {
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .faq-item summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--gray-950);
+  }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary:focus-visible { outline: 2px solid var(--gray-950); outline-offset: -2px; }
+  .faq-item .faq-chevron {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    color: var(--gray-500);
+    transition: transform 0.2s ease;
+  }
+  .faq-item[open] .faq-chevron { transform: rotate(180deg); }
+  .faq-item .faq-answer {
+    padding: 0 24px 22px;
+    color: var(--muted-foreground);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .faq-item .faq-answer p { margin: 0; }
+
+  /* ═══════════════════════════════════════════
+     DARK GLASS PANELS + HOW-IT-WORKS TABS
+     ═══════════════════════════════════════════ */
+
+  /* The Houston logo ships black; over dark surfaces it is invisible, so invert
+     it to white wherever it sits on the dark page (agent-card avatars + the
+     how-it-works chat head). The hero app-mockup already inverts its own copy. */
+  .agent-avatar img { filter: brightness(0) invert(1); opacity: 0.9; }
+  .hiw-head-logo { filter: brightness(0) invert(1); }
+
+  /* Reusable translucent dark surface over the space photo. Applied to the
+     section cards (how-it-works steps + chat, Houston-vs-ChatGPT, pricing). */
+  .glass-panel {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+  }
+
+  /* Agent selector pills (how-it-works). Class-driven so the active state is a
+     single classList toggle in JS (no per-tab inline colour juggling). */
+  .hiw-tab {
+    font-size: 13px;
+    padding: 6px 16px;
+    border-radius: 9999px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255,255,255,0.06);
+    color: #e6e9f8;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+  }
+
+  .hiw-tab:hover { background: rgba(255,255,255,0.12); }
+
+  .hiw-tab.active {
+    background: #fff;
+    color: #111318;
+    border-color: #fff;
   }
 
   /* ═══════════════════════════════════════════
@@ -1540,12 +1367,8 @@ visionPath: "vision/index.html"
 
   @media (max-width: 900px) {
     .agent-grid { grid-template-columns: 1fr; }
-    .pillars { grid-template-columns: 1fr; }
     .feature-row { grid-template-columns: 1fr; gap: 40px; }
     .feature-row.reverse { direction: ltr; }
-    .steps-grid { grid-template-columns: 1fr; }
-    .capabilities-grid { grid-template-columns: 1fr; }
-    .hosting-section { grid-template-columns: 1fr; }
     .mockup-sidebar { display: none; }
     section { padding: 80px 24px; }
     .section-title { font-size: 36px; }
@@ -1555,14 +1378,12 @@ visionPath: "vision/index.html"
     .nav-right a:not(.btn) { display: none !important; }
     .nav-right .btn .btn-full-text { display: none; }
     .nav-right .btn .btn-short-text { display: inline; }
-    .final-cta-dual { grid-template-columns: 1fr; }
-    .final-cta-card + .final-cta-card { border-left: none !important; border-top: 1px solid var(--border-light); }
-    .final-cta-card { padding: 36px 28px; }
-    .cta-section [style*="grid-template-columns: 1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
-    .cta-section [style*="grid-template-columns: 1fr 1fr 1fr"] .final-cta-card { border-left: none !important; border-top: 1px solid var(--border-light); }
-    .kanban-mockup { grid-template-columns: 1fr; }
-    .mockup-body { min-height: auto; }
-    .app-mockup { max-width: 100% !important; }
+    /* Stacked mobile columns: each column reverts to its own natural rows
+       (subgrid row-alignment only makes sense side by side) and the
+       divider flips from a left rule to a top rule between stacked cards. */
+    .pricing-grid { grid-template-columns: 1fr; }
+    .pricing-col { grid-template-rows: auto; grid-row: auto; padding: 32px 28px; }
+    .pricing-col + .pricing-col { border-left: none; border-top: 1px solid var(--glass-border); }
   }
 
   @media (max-width: 600px) {
@@ -1574,27 +1395,13 @@ visionPath: "vision/index.html"
     .cta-section h2 { font-size: 28px; }
     .cta-section { padding: 80px 24px 120px; }
     .section-title { font-size: 28px; }
-    .hosting-section { padding: 40px 24px; }
-    .hosting-section h3 { font-size: 24px; }
     .hero-actions { flex-direction: column; align-items: center; }
-    .capabilities-grid { gap: 12px; }
-    .feature-info h3 { font-size: 24px; }
     footer { padding: 32px 24px; }
     footer > div:first-child { grid-template-columns: 1fr !important; gap: 32px !important; }
     .nav-right .btn { font-size: 12px; padding: 0 12px; height: 32px; }
-    .kanban-col:nth-child(3) { display: none; }
-    .mockup-titlebar .title { font-size: 12px; }
-    .kanban-col-header { font-size: 11px; }
-    .kanban-card-title { font-size: 12px; }
-    .kanban-card-desc { font-size: 11px; }
-    .mockup-sidebar { display: none; }
-    .app-mockup { max-width: 100% !important; margin-top: 40px !important; }
+    .mac-frame-wrap { margin-top: 40px !important; }
     .app-mockup .mockup-sidebar { display: none !important; }
-    .app-mockup .mockup-body { min-height: auto !important; }
-    .app-mockup .kanban-mockup { grid-template-columns: 1fr !important; }
-    .app-mockup .kanban-col:nth-child(2),
-    .app-mockup .kanban-col:nth-child(3) { display: none; }
-    .phone-mockup { display: none !important; }
+    .iphone { width: 290px; }
   }
 
   /* ═══════════════════════════════════════════
@@ -1621,7 +1428,8 @@ visionPath: "vision/index.html"
   }
 
   .dl-card {
-    background: white;
+    background: #14161f;
+    border: 1px solid rgba(255,255,255,0.1);
     border-radius: 20px;
     padding: 40px;
     max-width: 420px;
@@ -1629,7 +1437,7 @@ visionPath: "vision/index.html"
     text-align: center;
     transform: translateY(12px) scale(0.97);
     transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
   }
 
   .dl-overlay.open .dl-card {
@@ -1654,6 +1462,8 @@ visionPath: "vision/index.html"
     width: 100%;
     height: 44px;
     border: 1px solid var(--border-medium);
+    background: rgba(255,255,255,0.04);
+    color: #f3f5fc;
     border-radius: 12px;
     padding: 0 16px;
     font-size: 15px;
@@ -1664,8 +1474,10 @@ visionPath: "vision/index.html"
     transition: border-color 0.15s;
   }
 
+  .dl-input::placeholder { color: rgba(255,255,255,0.4); }
+
   .dl-input:focus {
-    border-color: var(--gray-950);
+    border-color: rgba(255,255,255,0.6);
   }
 
   .dl-input.valid {
@@ -1769,9 +1581,73 @@ visionPath: "vision/index.html"
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: translateY(0); }
   }
+
+  /* ═══════════════════════════════════════════
+     FOCUS VISIBILITY (keyboard)
+     One high-contrast ring for keyboard users on the dark page. The ring
+     sits 2px outside the element, over the dark background, so it stays
+     visible even around the solid-white .btn-primary. Mouse clicks don't
+     trigger :focus-visible, so it never shows on pointer interaction.
+     More specific rules (e.g. .faq-item summary) still win.
+     ═══════════════════════════════════════════ */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  summary:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* ═══════════════════════════════════════════
+     REDUCED MOTION
+     The landing's asset files (space.css/js, hero-demo.js/css,
+     micro-interactions.js) each guard prefers-reduced-motion on their
+     own; this covers the animations authored inline here — word-cycling
+     letters, typing dots, reveal-on-scroll, entrance float-up and the
+     agent-card comet hover. The word-cycling interval is ALSO stopped in
+     JS (a static first phrase is shown), so there is no perpetual DOM
+     churn, not merely a frozen paint.
+     ═══════════════════════════════════════════ */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+    .reveal { opacity: 1 !important; transform: none !important; }
+    .hero-cycling-word .cycling-letter {
+      opacity: 1 !important;
+      filter: none !important;
+      transform: none !important;
+    }
+    .typing-dots span { animation: none !important; }
+  }
 </style>
 {% endblock %}
 {% block body %}
+
+<!-- ═══════════════════════════════════════════
+     FULL-PAGE SPACE BACKGROUND (fixed, behind everything)
+     ESO Milky Way panorama — eso0932a, ESO/S. Brunier, CC BY 4.0
+     https://www.eso.org/public/images/eso0932a/ (credit in the footer).
+     Three fixed layers pan on scroll (assets/space.css + space-scroll.js).
+     ═══════════════════════════════════════════ -->
+<div class="space-bg" aria-hidden="true">
+  <picture>
+    <source type="image/avif" sizes="100vw"
+            srcset="/assets/space/milkyway-1280.avif 1280w, /assets/space/milkyway-1920.avif 1920w, /assets/space/milkyway-2560.avif 2560w">
+    <source type="image/webp" sizes="100vw"
+            srcset="/assets/space/milkyway-1280.webp 1280w, /assets/space/milkyway-1920.webp 1920w, /assets/space/milkyway-2560.webp 2560w">
+    <img src="/assets/space/milkyway-1920.jpg" sizes="100vw"
+         srcset="/assets/space/milkyway-1280.jpg 1280w, /assets/space/milkyway-1920.jpg 1920w, /assets/space/milkyway-2560.jpg 2560w"
+         width="2560" height="1440" alt="" decoding="async" fetchpriority="high">
+  </picture>
+</div>
+<div class="space-scrim" aria-hidden="true"></div>
+<div class="space-stars" aria-hidden="true"></div>
 
 {% include "nav-landing.njk" %}
 
@@ -1780,140 +1656,184 @@ visionPath: "vision/index.html"
      ═══════════════════════════════════════════ -->
 
 <div class="hero">
-  <div class="hero-bg"></div>
-
   <h1>AI agents that do<br><span class="hero-cycling-word" id="hero-cycling"></span></h1>
 
   <p>One free desktop app that runs on your GPT subscription.<br>A workspace of pre-built AI agents that actually do the work.</p>
 
   <div class="hero-actions">
     <button class="btn btn-primary btn-lg" data-dl-trigger data-dl-source="hero"><svg viewBox="0 0 384 512" fill="currentColor" width="16" height="16"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> Download for Mac</button>
-    <button class="btn btn-secondary btn-lg" data-dl-windows-trigger data-dl-source="hero-windows"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Download for Windows</button>
+    <button class="btn btn-primary btn-lg" data-dl-windows-trigger data-dl-source="hero-windows"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Download for Windows</button>
   </div>
 
-  <div class="app-mockup" style="max-width: 1152px; width: 100%; margin-top: 64px; animation: float-up 0.6s ease 0.25s both;">
-    <div class="mockup-titlebar">
+  <div class="mac-frame-wrap" aria-hidden="true" style="max-width: 1152px; width: 100%; margin-top: 64px; animation: float-up 0.6s ease 0.25s both;">
+   <div class="device device-macbook-pro-2018 device-spacegray">
+    <div class="device-frame">
+     <div class="device-screen">
+      <div class="app-mockup" data-hero-demo>
       <div class="traffic-lights">
         <span class="tl-red"></span>
         <span class="tl-yellow"></span>
         <span class="tl-green"></span>
       </div>
-      <span class="title">Houston</span>
-    </div>
-    <div class="mockup-body">
-      <!-- Sidebar — matches real AppSidebar: 220px, bg-secondary, border-r -->
-      <div class="mockup-sidebar" style="width: 220px; padding: 0; display: flex; flex-direction: column;">
-        <!-- WorkspaceSwitcher -->
-        <div style="padding: 12px 12px 8px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light);">
-          <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--gray-950);">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M4 6l4 4 4-4"/></svg>
-            My Workspace
-          </div>
-          <div style="width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: default;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2" width="14" height="14"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-          </div>
+      <div class="mockup-body">
+      <!-- Sidebar — matches the real AppSidebar (220px, workspace switcher,
+           nav, Your Agents). -->
+      <div class="mockup-sidebar">
+        <div class="m-ws">
+          <span class="m-ws-name">
+            Personal
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </span>
+          <span class="m-icon-btn">
+            <!-- PanelLeftClose -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg>
+          </span>
         </div>
-        <!-- Nav items -->
-        <div style="padding: 8px 8px 0;">
-          <div class="sidebar-item active" style="gap: 8px;">
-            <!-- LayoutDashboard icon -->
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        <div class="m-nav">
+          <div class="m-nav-item active">
+            <!-- LayoutDashboard -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
             Mission Control
           </div>
-          <div class="sidebar-item" style="gap: 8px;">
-            <!-- Blend icon -->
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="9" cy="9" r="7"/><circle cx="15" cy="15" r="7"/></svg>
+          <div class="m-nav-item">
+            <!-- Blocks -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="14" y="3" rx="1"/><path d="M10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H8"/></svg>
             Integrations
           </div>
-        </div>
-        <!-- Section label -->
-        <div style="padding: 16px 12px 4px; display: flex; align-items: center; justify-content: space-between;">
-          <span style="font-size: 12px; font-weight: 500; color: var(--gray-500);">Your Agents</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2" width="12" height="12"><path d="M12 5v14M5 12h14"/></svg>
-        </div>
-        <!-- Agent list -->
-        <div style="padding: 0 8px; flex: 1;">
-          <div class="sidebar-item" style="font-size: 13px;">Email and Outreach</div>
-          <div class="sidebar-item" style="font-size: 13px;">Bookkeeping</div>
-          <div class="sidebar-item" style="font-size: 13px;">Scheduling</div>
-          <div class="sidebar-item" style="font-size: 13px;">Research</div>
-          <div class="sidebar-item" style="font-size: 13px;">Reporting</div>
-        </div>
-      </div>
-      <!-- Main content — Mission Control view -->
-      <div class="mockup-main" style="padding: 0; display: flex; flex-direction: column;">
-        <!-- Header -->
-        <div style="padding: 16px 20px 0;">
-          <div style="font-size: 18px; font-weight: 600; color: var(--gray-950); margin-bottom: 12px; letter-spacing: -0.02em;">Mission Control</div>
-          <div style="display: flex; gap: 8px; padding-bottom: 12px;">
-            <div style="font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--border-medium); color: var(--gray-700); display: inline-flex; align-items: center; gap: 4px;">All Agents <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M4 6l4 4 4-4"/></svg></div>
-            <div style="font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--border-medium); color: var(--gray-700); display: inline-flex; align-items: center; gap: 4px;">All Statuses <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M4 6l4 4 4-4"/></svg></div>
+          <div class="m-nav-item">
+            <!-- Boxes -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19V13.5l-5-3-4.03 2.42Z"/><path d="m7 16.5-4.74-2.85"/><path d="m7 16.5 5-3"/><path d="M7 16.5v5.17"/><path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/><path d="m17 16.5-5-3"/><path d="m17 16.5 4.74-2.85"/><path d="M17 16.5v5.17"/><path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0Z"/><path d="M12 8 7.26 5.15"/><path d="m12 8 4.74-2.85"/><path d="M12 13.5V8"/></svg>
+            AI Models
+          </div>
+          <div class="m-nav-item">
+            <!-- Settings -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            Settings
           </div>
         </div>
-        <!-- Kanban board -->
-        <div style="padding: 16px 20px; flex: 1;">
-          <div class="kanban-mockup">
-            <div class="kanban-col">
-              <div class="kanban-col-header">Running <span class="count">3</span></div>
-              <div class="kanban-card-mock running">
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                  <img src="houston-gray.svg" width="14" height="14" alt="" style="flex-shrink: 0;">
-                  <span style="font-size: 11px; color: var(--gray-500);">Email and Outreach</span>
-                </div>
-                <div class="kanban-card-title">Follow up with event contacts</div>
-                <div class="kanban-card-desc">Sending 31 personalized emails from your Gmail account</div>
+        <div class="m-section">
+          <span class="m-section-label">Your Agents</span>
+          <span class="m-section-actions">
+            <span class="m-icon-btn sm">
+              <!-- Users -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </span>
+            <span class="m-icon-btn sm">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            </span>
+          </span>
+        </div>
+        <div class="m-agents">
+          <div class="m-agent">
+            <span class="m-avatar"><img src="houston-black.svg" width="13" height="13" alt=""></span>
+            <span class="m-agent-name">Houston</span>
+            <span class="m-count">1</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Work area: board (left) + chat detail panel (right), like the real
+           app with a mission open. The scripted demo (assets/hero-demo.js)
+           types into the chat, spawns a Running card, then flips it to Done. -->
+      <div class="mockup-workarea">
+        <div class="mc-board">
+          <div class="mc-toolbar">
+            <span class="mc-title">Houston</span>
+            <div class="mc-toolbar-right">
+              <span class="mc-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                Search missions
+              </span>
+              <span class="mc-ghost">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+                Guide me
+              </span>
+              <span class="mc-newmission">
+                <img src="houston-black.svg" width="15" height="15" alt="">
+                <span>New mission</span>
+              </span>
+            </div>
+          </div>
+          <div class="mc-tabs">
+            <span class="mc-tab active">Activity <span class="badge" id="hd-activity-count">1</span></span>
+            <span class="mc-tab">Routines</span>
+            <span class="mc-tab">Integrations</span>
+            <span class="mc-tab">Files</span>
+            <span class="mc-tab">Completed</span>
+            <span class="mc-tab">Agent Settings</span>
+          </div>
+          <div class="mc-cols" aria-hidden="true">
+            <div class="mc-col">
+              <div class="mc-col-head">
+                <span class="mc-col-title">Running</span><span class="mc-col-count" id="hd-run-count">0</span>
+                <span class="mc-col-more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/><circle cx="5" cy="12" r="1.6"/></svg></span>
               </div>
-              <div class="kanban-card-mock running">
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                  <img src="houston-gray.svg" width="14" height="14" alt="" style="flex-shrink: 0;">
-                  <span style="font-size: 11px; color: var(--gray-500);">Bookkeeping</span>
-                </div>
-                <div class="kanban-card-title">Categorize March expenses</div>
-                <div class="kanban-card-desc">Processing 47 transactions in QuickBooks</div>
+              <div class="mc-addcard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+              <div class="mc-col-body" id="hd-running"></div>
+            </div>
+            <div class="mc-col">
+              <div class="mc-col-head">
+                <span class="mc-col-title">Needs you</span><span class="mc-col-count">1</span>
+                <span class="mc-col-more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/><circle cx="5" cy="12" r="1.6"/></svg></span>
               </div>
-              <div class="kanban-card-mock running">
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                  <img src="houston-gray.svg" width="14" height="14" alt="" style="flex-shrink: 0;">
-                  <span style="font-size: 11px; color: var(--gray-500);">Scheduling</span>
+              <div class="mc-col-body">
+                <div class="mc-card">
+                  <div class="mc-card-head"><span class="m-avatar"><img src="houston-black.svg" width="11" height="11" alt=""></span><span class="mc-card-agent">Houston</span></div>
+                  <div class="mc-card-title">Plan a trip to Tokyo</div>
+                  <div class="mc-card-desc">Research flights and hotels for the spring</div>
                 </div>
-                <div class="kanban-card-title">Reschedule Thursday meetings</div>
-                <div class="kanban-card-desc">Moving 3 meetings and sending updated calendar invites</div>
               </div>
             </div>
-            <div class="kanban-col">
-              <div class="kanban-col-header">Needs you <span class="count">1</span></div>
-              <div class="kanban-card-mock">
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                  <img src="houston-gray.svg" width="14" height="14" alt="" style="flex-shrink: 0;">
-                  <span style="font-size: 11px; color: var(--gray-500);">Research</span>
+            <div class="mc-col">
+              <div class="mc-col-head">
+                <span class="mc-col-title">Done</span><span class="mc-col-count" id="hd-done-count">1</span>
+                <span class="mc-col-more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/><circle cx="5" cy="12" r="1.6"/></svg></span>
+              </div>
+              <div class="mc-col-body" id="hd-done">
+                <div class="mc-card">
+                  <div class="mc-card-head"><span class="m-avatar"><img src="houston-black.svg" width="11" height="11" alt=""></span><span class="mc-card-agent">Houston</span></div>
+                  <div class="mc-card-title">Follow up on urgent email</div>
+                  <div class="mc-card-desc">4 replies ready, 17 archived</div>
                 </div>
-                <div class="kanban-card-title">Compare CRM options</div>
-                <div class="kanban-card-desc">Reviewed 5 platforms, waiting for your pick</div>
               </div>
             </div>
-            <div class="kanban-col">
-              <div class="kanban-col-header">Done <span class="count">2</span></div>
-              <div class="kanban-card-mock">
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                  <img src="houston-gray.svg" width="14" height="14" alt="" style="flex-shrink: 0;">
-                  <span style="font-size: 11px; color: var(--gray-500);">Reporting</span>
-                </div>
-                <div class="kanban-card-title">Weekly sales summary</div>
-                <div class="kanban-card-desc">Built spreadsheet with this week's numbers from Stripe</div>
-              </div>
-              <div class="kanban-card-mock">
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                  <img src="houston-gray.svg" width="14" height="14" alt="" style="flex-shrink: 0;">
-                  <span style="font-size: 11px; color: var(--gray-500);">Email and Outreach</span>
-                </div>
-                <div class="kanban-card-title">Reply to pending invoices</div>
-                <div class="kanban-card-desc">Sent payment reminders to 4 overdue accounts</div>
-              </div>
+          </div>
+        </div>
+
+        <!-- Chat detail panel -->
+        <div class="mc-chat">
+          <div class="mc-chat-head">
+            <span class="m-avatar"><img src="houston-black.svg" width="21" height="21" alt=""></span>
+            <div>
+              <div class="mc-chat-agent">Houston</div>
+              <div class="mc-chat-mission">Mission: <span id="hd-mission">Clear the inbox</span></div>
+            </div>
+            <span class="mc-chat-close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+          </div>
+          <div class="mc-thread" id="hd-thread">
+            <div class="chat-msg user">Clear my inbox. Reply to anything urgent, archive the rest.</div>
+            <div class="chat-msg assistant">Done. 4 replies are waiting for your OK. Inbox at zero.</div>
+          </div>
+          <div class="mc-composer-wrap">
+            <div class="mc-composer">
+              <span class="mc-attach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+              <span class="mc-composer-text" id="hd-composer-text">Send a follow-up...</span>
+              <span class="mc-send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span>
+            </div>
+            <div class="mc-tools">
+              <span class="mc-tool"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg> Skills</span>
+              <span class="mc-tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 12H3M16 6H3M16 18H3M18 9l3 3-3 3"/></svg> Planner <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span>
+              <span class="mc-tool"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6z"/></svg> Sonnet 5 <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span>
+              <span class="mc-tool"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="13" width="4" height="7" rx="1"/><rect x="10" y="8" width="4" height="12" rx="1"/><rect x="17" y="3" width="4" height="17" rx="1"/></svg> Medium</span>
             </div>
           </div>
         </div>
       </div>
     </div>
+      </div>
+     </div>
+    </div>
+   </div>
   </div>
 </div>
 
@@ -2057,34 +1977,34 @@ visionPath: "vision/index.html"
 
   <!-- Agent selector tabs -->
   <div class="reveal" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 32px 0 48px;">
-    <button class="hiw-tab active" data-agent="0" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: var(--gray-950); color: white; cursor: pointer; font-weight: 500; transition: all 0.2s;">Personal Assistant</button>
-    <button class="hiw-tab" data-agent="1" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: all 0.2s;">Bookkeeper</button>
-    <button class="hiw-tab" data-agent="2" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: all 0.2s;">HR Manager</button>
-    <button class="hiw-tab" data-agent="3" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: all 0.2s;">Support Rep</button>
-    <button class="hiw-tab" data-agent="4" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: all 0.2s;">Sales Rep</button>
-    <button class="hiw-tab" data-agent="5" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: all 0.2s;">Office Manager</button>
-    <button class="hiw-tab" data-agent="6" style="font-size: 13px; padding: 6px 16px; border-radius: 9999px; border: 1px solid var(--border-medium); background: white; color: var(--gray-950); cursor: pointer; font-weight: 500; transition: all 0.2s;">Financial Analyst</button>
+    <button class="hiw-tab active" data-agent="0">Personal Assistant</button>
+    <button class="hiw-tab" data-agent="1">Bookkeeper</button>
+    <button class="hiw-tab" data-agent="2">HR Manager</button>
+    <button class="hiw-tab" data-agent="3">Support Rep</button>
+    <button class="hiw-tab" data-agent="4">Sales Rep</button>
+    <button class="hiw-tab" data-agent="5">Office Manager</button>
+    <button class="hiw-tab" data-agent="6">Financial Analyst</button>
   </div>
 
   <!-- Steps left + Chat right -->
   <div class="feature-row reveal">
     <!-- Steps (left) -->
     <div style="display: flex; flex-direction: column; gap: 12px; flex: 1;">
-      <div style="flex: 1; padding: 24px; border-radius: 16px; border: 1px solid var(--border-light); background: white; display: flex; gap: 16px; align-items: flex-start;">
+      <div class="glass-panel" style="flex: 1; padding: 24px; border-radius: 16px; display: flex; gap: 16px; align-items: flex-start;">
         <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--gray-50); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--gray-400);">1</div>
         <div>
           <div style="font-size: 15px; font-weight: 600; color: var(--gray-950); margin-bottom: 4px;">You ask in plain English</div>
           <p id="hiw-ask" style="font-size: 14px; color: var(--muted-foreground); line-height: 1.5; margin: 0;"></p>
         </div>
       </div>
-      <div style="flex: 1; padding: 24px; border-radius: 16px; border: 1px solid var(--border-light); background: white; display: flex; gap: 16px; align-items: flex-start;">
+      <div class="glass-panel" style="flex: 1; padding: 24px; border-radius: 16px; display: flex; gap: 16px; align-items: flex-start;">
         <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--gray-50); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--gray-400);">2</div>
         <div>
           <div style="font-size: 15px; font-weight: 600; color: var(--gray-950); margin-bottom: 4px;">Your agent gets to work</div>
           <p id="hiw-work" style="font-size: 14px; color: var(--muted-foreground); line-height: 1.5; margin: 0;"></p>
         </div>
       </div>
-      <div style="flex: 1; padding: 24px; border-radius: 16px; border: 1px solid var(--border-light); background: white; display: flex; gap: 16px; align-items: flex-start;">
+      <div class="glass-panel" style="flex: 1; padding: 24px; border-radius: 16px; display: flex; gap: 16px; align-items: flex-start;">
         <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--gray-50); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--gray-400);">3</div>
         <div>
           <div style="font-size: 15px; font-weight: 600; color: var(--gray-950); margin-bottom: 4px;">You review the results</div>
@@ -2093,16 +2013,34 @@ visionPath: "vision/index.html"
       </div>
     </div>
 
-    <!-- Chat (right) -->
-    <div style="border-radius: 16px; border: 1px solid var(--border-light); background: white; overflow: hidden; max-width: 480px; width: 100%;">
-      <div style="display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--border-light); background: var(--gray-50);">
-        <img src="houston-black.svg" width="22" height="22" alt="Houston" loading="lazy" style="opacity: 0.7;">
-        <div>
-          <div id="hiw-agent-name" style="font-size: 13px; font-weight: 600; color: var(--gray-950);"></div>
-          <div id="hiw-agent-mission" style="font-size: 11px; color: var(--gray-500);"></div>
+    <!-- Chat (right) — the live conversation, framed in a real CSS iPhone. -->
+    <div class="iphone" role="img" aria-label="Houston running on iPhone: a chat with your agent">
+      <span class="iphone-btn action"></span>
+      <span class="iphone-btn vol-up"></span>
+      <span class="iphone-btn vol-dn"></span>
+      <span class="iphone-btn power"></span>
+      <div class="iphone-screen">
+        <div class="iphone-island"></div>
+        <div class="iphone-statusbar">
+          <span class="ip-time">9:41</span>
+          <span class="ip-icons">
+            <!-- cellular -->
+            <svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="0.6"/><rect x="5" y="5.5" width="3" height="6.5" rx="0.6"/><rect x="10" y="3" width="3" height="9" rx="0.6"/><rect x="15" y="0.5" width="3" height="11.5" rx="0.6"/></svg>
+            <!-- wifi -->
+            <svg viewBox="0 0 16 12" width="16" height="11" fill="currentColor"><path d="M8 2.2c2.6 0 4.98 1 6.75 2.63.28.26.29.7.03.98l-.62.66a.68.68 0 0 1-.95.03A7.63 7.63 0 0 0 8 4.5a7.63 7.63 0 0 0-5.21 2.03.68.68 0 0 1-.95-.03l-.62-.66a.7.7 0 0 1 .03-.98A9.94 9.94 0 0 1 8 2.2Zm0 3.6c1.5 0 2.87.56 3.9 1.48.3.26.31.71.04 1l-.66.68a.67.67 0 0 1-.92.04A4.02 4.02 0 0 0 8 8.9c-.9 0-1.72.28-2.36.76a.67.67 0 0 1-.92-.04l-.66-.69a.68.68 0 0 1 .04-.99A5.86 5.86 0 0 1 8 5.8Zm0 3.5c.62 0 1.18.22 1.6.58.3.26.32.72.04 1l-1.15 1.17a.68.68 0 0 1-.98 0L6.36 10.9a.68.68 0 0 1 .04-1c.42-.37.98-.59 1.6-.59Z"/></svg>
+            <!-- battery -->
+            <svg viewBox="0 0 27 12" width="26" height="11" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" stroke-opacity="0.5"/><rect x="2" y="2" width="17.5" height="8" rx="1.8" fill="currentColor"/><path d="M24.5 4v4a1.9 1.9 0 0 0 0-4Z" fill="currentColor" fill-opacity="0.5"/></svg>
+          </span>
         </div>
+        <div class="iphone-appbar">
+          <img src="houston-black.svg" class="hiw-head-logo" width="26" height="26" alt="Houston" loading="lazy" style="opacity: 0.9; flex-shrink: 0;">
+          <div>
+            <div class="ip-appbar-name" id="hiw-agent-name"></div>
+            <div class="ip-appbar-mission" id="hiw-agent-mission"></div>
+          </div>
+        </div>
+        <div id="hiw-chat" class="chat-mockup ip-chat" style="gap: 12px;"></div>
       </div>
-      <div id="hiw-chat" class="chat-mockup" style="padding: 16px 20px; min-height: 260px; max-width: 100%; gap: 12px;"></div>
     </div>
   </div>
 </section>
@@ -2122,8 +2060,8 @@ visionPath: "vision/index.html"
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 900px; margin: 48px auto 0;" class="reveal">
 
     <!-- ChatGPT flow -->
-    <div style="border-radius: 20px; border: 1px solid var(--border-light); padding: 32px; background: white; position: relative;">
-      <div style="position: absolute; top: -12px; left: 24px; background: var(--gray-400); color: white; font-size: 12px; font-weight: 600; padding: 4px 14px; border-radius: 9999px;">ChatGPT</div>
+    <div class="glass-panel" style="border-radius: 20px; padding: 32px; position: relative;">
+      <div style="position: absolute; top: -12px; left: 24px; background: var(--gray-400); color: #0d0d0d; font-size: 12px; font-weight: 600; padding: 4px 14px; border-radius: 9999px;">ChatGPT</div>
       <div style="font-size: 16px; font-weight: 600; color: var(--gray-700); margin-bottom: 20px; margin-top: 8px;">Follow up with stale leads</div>
       <div style="display: flex; flex-direction: column; gap: 0;">
         <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 0;">
@@ -2154,22 +2092,22 @@ visionPath: "vision/index.html"
     </div>
 
     <!-- Houston flow -->
-    <div style="border-radius: 20px; border: 3px solid var(--gray-950); padding: 32px; background: white; position: relative;">
-      <div style="position: absolute; top: -12px; left: 24px; background: var(--gray-950); color: white; font-size: 12px; font-weight: 600; padding: 4px 14px; border-radius: 9999px;">Houston</div>
+    <div class="glass-panel" style="border-radius: 20px; border: 2px solid rgba(255,255,255,0.85); padding: 32px; position: relative;">
+      <div style="position: absolute; top: -12px; left: 24px; background: #fff; color: #0d0d0d; font-size: 12px; font-weight: 600; padding: 4px 14px; border-radius: 9999px;">Houston</div>
       <div style="font-size: 16px; font-weight: 600; color: var(--gray-950); margin-bottom: 20px; margin-top: 8px;">Follow up with stale leads</div>
       <div style="display: flex; flex-direction: column; gap: 0;">
         <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 0;">
-          <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--gray-950); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 600; color: white;">1</div>
+          <div style="width: 24px; height: 24px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 600; color: #0d0d0d;">1</div>
           <div style="font-size: 13px; color: var(--gray-700); line-height: 1.5;">Tell your agent: "Follow up with stale leads"</div>
         </div>
         <div style="width: 1px; height: 8px; background: var(--gray-950); margin-left: 12px;"></div>
         <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 0;">
-          <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--gray-950); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 600; color: white;">2</div>
+          <div style="width: 24px; height: 24px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 600; color: #0d0d0d;">2</div>
           <div style="font-size: 13px; color: var(--gray-700); line-height: 1.5;">Reads HubSpot. Writes 12 personalized emails. Sends from Gmail. Logs everything.</div>
         </div>
         <div style="width: 1px; height: 8px; background: var(--gray-950); margin-left: 12px;"></div>
         <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 0;">
-          <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--gray-950); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 600; color: white;">3</div>
+          <div style="width: 24px; height: 24px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 600; color: #0d0d0d;">3</div>
           <div style="font-size: 13px; color: var(--gray-700); line-height: 1.5;">Done. You review the results.</div>
         </div>
       </div>
@@ -2179,58 +2117,125 @@ visionPath: "vision/index.html"
 </section>
 
 <!-- ═══════════════════════════════════════════
-     CTA
+     PRICING (formerly the standalone /pricing/ page, folded in here so
+     "Ready to stop doing the work yourself?" IS the pricing section)
      ═══════════════════════════════════════════ -->
 
-<div class="cta-section">
+<div class="cta-section" id="pricing">
   <div class="cta-bg"></div>
   <div class="reveal">
     <h2>Ready to stop doing the work yourself?</h2>
-    <p>The app is free. Forever. We make money when you need your agents running 24/7.</p>
-    <div style="max-width: 960px; margin: 48px auto 0; display: grid; grid-template-columns: 1fr 1fr 1fr; border-radius: 20px; border: 1px solid var(--border-light); overflow: hidden; background: white; text-align: left;">
-      <div class="final-cta-card" style="display: flex; flex-direction: column;">
-        <div style="font-size: 12px; font-weight: 500; color: var(--gray-400); margin-bottom: 8px;">Personal</div>
-        <h3>Free forever</h3>
-        <p>Runs on your Mac. Bring your own GPT subscription.</p>
-        <ul style="list-style: none; padding: 0; margin: 0 0 auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: var(--gray-700);">
-          <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Desktop app</li>
-          <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> All agents + agent store</li>
-          <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Phone companion app</li>
-          <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> 1000+ integrations</li>
-        </ul>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          <button class="btn btn-primary btn-lg" data-dl-trigger data-dl-source="pricing"><svg viewBox="0 0 384 512" fill="currentColor" width="16" height="16"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> Download for Mac</button>
+    <p>The app is free. Forever. Add your team when you are ready and only pay for the people who actually join.</p>
+    <div class="pricing-grid">
+      <!-- Personal — free forever, no limits. Row order matches the other
+           two columns exactly: name, price, description, CTA, list intro,
+           feature list — subgrid aligns each across all three columns. -->
+      <div class="pricing-col">
+        <div class="pricing-name">Personal</div>
+        <div class="pricing-price-block">
+          <div class="pricing-price"><span class="amount">Free</span></div>
+        </div>
+        <p class="pricing-desc">Runs on your Mac. Bring your own GPT subscription.</p>
+        <div class="pricing-cta">
+          <button class="btn btn-secondary btn-lg" data-dl-trigger data-dl-source="pricing"><svg viewBox="0 0 384 512" fill="currentColor" width="16" height="16"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> Download for Mac</button>
           <button class="btn btn-secondary btn-lg" data-dl-windows-trigger data-dl-source="pricing-windows"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Download for Windows</button>
         </div>
-      </div>
-      <div class="final-cta-card" style="border-left: 1px solid var(--border-light); display: flex; flex-direction: column; position: relative; overflow: hidden;">
-        <div style="position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 20% 100%, rgba(59,130,246,0.08), transparent), radial-gradient(ellipse 60% 50% at 80% 0%, rgba(249,115,22,0.06), transparent); pointer-events: none;"></div>
-        <div style="font-size: 12px; font-weight: 500; color: var(--gray-400); margin-bottom: 8px; position: relative;">Pro</div>
-        <h3 style="position: relative;">Always on</h3>
-        <p style="position: relative;">Your agents run around the clock, even when your laptop is closed.</p>
-        <ul style="list-style: none; padding: 0; margin: 0 0 auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: var(--gray-700); position: relative;">
-          <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Everything in Free</li>
-          <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Agents run 24/7</li>
-          <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Web app access</li>
-          <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Scheduled tasks run on time</li>
+        <div class="pricing-list-intro">Everything you need:</div>
+        <ul class="pricing-feats">
+          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Unlimited agents, every feature included</li>
+          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Desktop app + phone companion app</li>
+          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> 1000+ integrations</li>
+          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> No credit card, ever</li>
         </ul>
-        <a href="mailto:hello@gethouston.ai" class="btn btn-secondary btn-lg" style="position: relative;">Get in touch</a>
       </div>
-      <div class="final-cta-card" style="border-left: 1px solid var(--border-light); background: var(--gray-950); color: white; display: flex; flex-direction: column;">
-        <div style="font-size: 12px; font-weight: 500; color: var(--gray-500); margin-bottom: 8px;">Teams</div>
-        <h3 style="color: white;">Enterprise</h3>
-        <p style="color: rgba(255,255,255,0.65);">Your whole team on Houston. Custom agents for your business.</p>
-        <ul style="list-style: none; padding: 0; margin: 0 0 auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: var(--gray-300);">
-          <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Everything in Pro</li>
-          <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Unlimited team members</li>
-          <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Dedicated support</li>
-          <li style="display: flex; align-items: center; gap: 8px;"><svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Custom agent development</li>
+
+      <!-- Team — $15/seat/mo, the paid plan that ships always-on hosted agents
+           + multiplayer Spaces (knowledge-base/teams.md). Featured plan: the
+           ONLY emphasis is the filled (btn-primary) CTA pill below — no
+           badge, no card tint, no gradient ring. -->
+      <div class="pricing-col">
+        <div class="pricing-name">Team</div>
+        <div class="pricing-price-block">
+          <div class="pricing-price"><span class="amount">{{ pricing.currency }}{{ pricing.teamMonthly }}</span><span class="per">/seat/mo</span></div>
+          <div class="pricing-price-note">{{ pricing.currency }}{{ pricing.teamAnnual }}/seat/mo billed annually</div>
+        </div>
+        <p class="pricing-desc">Your agents run around the clock, even when your laptop is closed.</p>
+        <div class="pricing-cta">
+          <button class="btn btn-primary btn-lg" data-dl-trigger data-dl-source="pricing-team">Start free trial</button>
+        </div>
+        <div class="pricing-list-intro">Everything in Personal, plus:</div>
+        <ul class="pricing-feats">
+          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> 24/7 agents, scheduled tasks fire on time</li>
+          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Shared agents, web app access</li>
+          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Roles and access control</li>
+          <li>
+            <svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg>
+            <div>
+              {{ pricing.trialDays }}-day free trial, no card to start
+              <div class="pricing-feat-note">Starts when your second member accepts</div>
+            </div>
+          </li>
         </ul>
-        <a href="mailto:hello@gethouston.ai" class="btn btn-lg" style="background: white; color: var(--gray-950);">Talk to us</a>
+      </div>
+
+      <!-- Enterprise — security and scale for bigger teams. Price slot holds
+           "Custom" instead of an amount so the row still aligns. -->
+      <div class="pricing-col">
+        <div class="pricing-name">Enterprise</div>
+        <div class="pricing-price-block">
+          <div class="pricing-price"><span class="amount">Custom</span></div>
+        </div>
+        <p class="pricing-desc">Security and scale for bigger teams, with custom agents for your business.</p>
+        <div class="pricing-cta">
+          <a href="mailto:{{ pricing.salesEmail }}?subject=Houston%20Enterprise" class="btn btn-secondary btn-lg">Talk to us</a>
+        </div>
+        <div class="pricing-list-intro">Everything in Team, plus:</div>
+        <ul class="pricing-feats">
+          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Single sign-on (SSO), uptime SLA</li>
+          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Priority support in English and Spanish</li>
+          <li><svg viewBox="0 0 12 12" fill="none" stroke="var(--gray-950)" stroke-width="2" width="12" height="12"><path d="M2 6l3 3 5-5"/></svg> Private deployment, onboarding included</li>
+        </ul>
       </div>
     </div>
   </div>
 </div>
+
+<!-- ═══════════════════════════════════════════
+     FAQ (ported from the standalone /pricing/ page's Questions section)
+     ═══════════════════════════════════════════ -->
+
+<section id="faq" style="padding-top: 40px; padding-bottom: 100px;">
+  <div class="reveal" style="text-align: center;">
+    <div class="section-label">Questions</div>
+    <h2 class="section-title">Questions, answered</h2>
+  </div>
+  <div class="faq-list reveal" style="max-width: 720px; margin: 48px auto 0; display: flex; flex-direction: column; gap: 12px;">
+    <details class="faq-item glass-panel">
+      <summary>Can I keep using Personal for free?<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="faq-answer"><p>Yes, forever. Personal gives you unlimited agents and every feature for a single player, with no credit card and no time limit.</p></div>
+    </details>
+    <details class="faq-item glass-panel">
+      <summary>Who pays for a team?<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="faq-answer"><p>The team owner. Everyone you invite rides on the owner's plan, so members never enter a card of their own.</p></div>
+    </details>
+    <details class="faq-item glass-panel">
+      <summary>What counts as a seat?<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="faq-answer"><p>One seat is one member who accepts your invite. Pending invites are free, and seats are prorated when people join or leave.</p></div>
+    </details>
+    <details class="faq-item glass-panel">
+      <summary>What happens when my trial ends?<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="faq-answer"><p>Nothing is deleted. Your Space drops back to the free Personal plan and every agent and mission stays put. Add a card whenever you are ready to continue as a team.</p></div>
+    </details>
+    <details class="faq-item glass-panel">
+      <summary>How do I move an agent into a team?<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="faq-answer"><p>Open the agent and share it with your Space. It keeps its history and skills, and your teammates can pick up any mission from where it stands.</p></div>
+    </details>
+    <details class="faq-item glass-panel">
+      <summary>Do members need to pay or download anything?<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="faq-answer"><p>Members just accept the invite and download the free app. Billing stays with the owner.</p></div>
+    </details>
+  </div>
+</section>
 
 {% include "footer-landing.njk" %}
 
@@ -2238,9 +2243,9 @@ visionPath: "vision/index.html"
      DOWNLOAD GATE MODAL
      ═══════════════════════════════════════════ -->
 
-<div class="dl-overlay" id="dl-overlay">
+<div class="dl-overlay" id="dl-overlay" role="dialog" aria-modal="true" aria-labelledby="dl-title">
   <div class="dl-card">
-    <h3>We're on a closed beta</h3>
+    <h3 id="dl-title">We're on a closed beta</h3>
     <p>If you were invited, paste your code and download the app.</p>
     <input type="text" class="dl-input" id="dl-code" placeholder="Paste your invite code" autocomplete="off" spellcheck="false">
     <div class="dl-actions">
@@ -2263,9 +2268,9 @@ visionPath: "vision/index.html"
      WINDOWS BETA MODAL
      ═══════════════════════════════════════════ -->
 
-<div class="dl-overlay" id="dl-overlay-windows">
+<div class="dl-overlay" id="dl-overlay-windows" role="dialog" aria-modal="true" aria-labelledby="dl-title-windows">
   <div class="dl-card">
-    <h3>We're on a closed beta</h3>
+    <h3 id="dl-title-windows">We're on a closed beta</h3>
     <p>If you were invited, paste your code and pick your Windows version.</p>
     <input type="text" class="dl-input" id="dl-windows-code" placeholder="Paste your invite code" autocomplete="off" spellcheck="false">
     <div class="dl-actions">
@@ -2313,6 +2318,7 @@ visionPath: "vision/index.html"
     if (!burger || !dropdown) return;
     burger.addEventListener('click', function() {
       var open = dropdown.classList.toggle('open');
+      burger.setAttribute('aria-expanded', open ? 'true' : 'false');
       icon.innerHTML = open
         ? '<path d="M18 6L6 18M6 6l12 12"/>'
         : '<path d="M4 6h16M4 12h16M4 18h16"/>';
@@ -2321,6 +2327,7 @@ visionPath: "vision/index.html"
     dropdown.querySelectorAll('a').forEach(function(a) {
       a.addEventListener('click', function() {
         dropdown.classList.remove('open');
+        burger.setAttribute('aria-expanded', 'false');
         icon.innerHTML = '<path d="M4 6h16M4 12h16M4 18h16"/>';
       });
     });
@@ -2426,6 +2433,14 @@ visionPath: "vision/index.html"
     var firstWord = createWordEl(words[0]);
     container.appendChild(firstWord);
     container.style.width = firstWord.offsetWidth + 'px';
+
+    // Reduced motion: show the first phrase statically and never start the
+    // cycling loop (no blur stagger, no perpetual 3s DOM churn).
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) {
+      firstWord.querySelectorAll('.cycling-letter').forEach(function(el) { el.classList.add('is-visible'); });
+      return;
+    }
 
     requestAnimationFrame(function() {
       revealLetters(firstWord);
@@ -2534,11 +2549,9 @@ visionPath: "vision/index.html"
       html += '<div class="typing-dots"><span></span><span></span><span></span></div>';
       html += '<div class="chat-composer-mock"><span class="placeholder">Tell your agent what to do...</span><span class="send-btn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 14V2M8 2l-4 4M8 2l4 4"/></svg></span></div>';
       chatEl.innerHTML = html;
-      // Update tabs
+      // Update tabs (active state is a single class toggle; colours live in CSS)
       tabs.forEach(function(t) {
-        var isActive = parseInt(t.getAttribute('data-agent')) === idx;
-        t.style.background = isActive ? 'var(--gray-950)' : 'white';
-        t.style.color = isActive ? 'white' : 'var(--gray-950)';
+        t.classList.toggle('active', parseInt(t.getAttribute('data-agent')) === idx);
       });
     }
 
@@ -2597,10 +2610,18 @@ visionPath: "vision/index.html"
   // restyled - `display: none`, so it takes no space and isn't a second
   // visible control). Default to Mac when the OS can't be told (Linux /
   // unknown / no JS), matching the rest of the page's Mac-first copy.
+  //
+  // `keep()` only un-hides - it never rewrites the winning button's class.
+  // Each spot authors both buttons with whatever visual weight it wants
+  // (the hero's Mac/Windows pair are both `btn-primary`, so whichever OS
+  // wins still reads as the page's one strong CTA there; the pricing
+  // Personal column authors both as the quiet `btn-secondary`, since that
+  // plan is deliberately never the featured/filled one). Forcing every
+  // winner to `btn-primary` here used to blow past that per-spot styling.
   (function () {
     var os = detectOs();
     function keep(btn) {
-      btn.className = 'btn btn-primary btn-lg';
+      btn.style.display = '';
     }
     function remove(btn) {
       btn.style.display = 'none';
@@ -2884,5 +2905,14 @@ visionPath: "vision/index.html"
     }
   })();
 </script>
+
+<!-- Landing-page enhancements. All deferred so nothing is render-blocking and
+     none competes with LCP. Motion loads first (micro-interactions reads the
+     global). The hero demo, space parallax and micro-interactions are standalone.
+     space-scroll.js only does work where CSS scroll timelines are unsupported. -->
+<script defer src="/assets/vendor/motion.min.js"></script>
+<script defer src="/assets/hero-demo.js"></script>
+<script defer src="/assets/space-scroll.js"></script>
+<script defer src="/assets/micro-interactions.js"></script>
 
 {% endblock %}
