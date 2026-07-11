@@ -1,4 +1,7 @@
 {
+  "welcome": {
+    "greeting": "Hi! I'm {{name}}, your new agent. Tell me about what you'd like help with: you can describe a task in your own words, share a few details about how you like things done, or attach files that give me context. The more you tell me, the better my work will fit what you need. What would you like to start with?"
+  },
   "composer": {
     "placeholder": "Ask anything...",
     "fileAlreadyInChat": "File already in chat",
@@ -38,14 +41,42 @@
     "description": "Type a message to talk to your assistant."
   },
   "questionCard": {
-    "placeholder": "Type your answer...",
-    "send": "Send",
+    "placeholder": "Type something else...",
+    "send": "Next",
     "back": "Back",
     "forward": "Next",
-    "progress": "{{current}} of {{total}}"
+    "skip": "Skip",
+    "dismiss": "Dismiss",
+    "progress": "Step {{current}} of {{total}}"
   },
   "interaction": {
-    "connectedLine": "Connected {{name}}."
+    "connectedLine": "Connected {{name}}.",
+    "signedInLine": "Signed in to Houston.",
+    "signedInFollowup": "I've signed in. Please continue.",
+    "signinReason": "Sign in to Houston to continue.",
+    "signinTitle": "Sign in to Houston",
+    "signinDescription": "Your accounts stay yours; the agent acts on your behalf.",
+    "signin": "Sign in",
+    "connectTitle": "Connect {{app}}"
+  },
+  "planReady": {
+    "title": "Plan ready",
+    "coworkerTitle": "Continue in Coworker mode",
+    "coworkerDescription": "Works with you and asks when unsure.",
+    "autopilotTitle": "Continue in Autopilot mode",
+    "autopilotDescription": "Finishes it on its own. No questions asked.",
+    "keepPlanningTitle": "Keep planning",
+    "keepPlanningDescription": "Stay here and adjust the plan.",
+    "startWorkingMessage": "Go ahead with the plan.",
+    "runAutopilotMessage": "Go ahead and finish it on your own."
+  },
+  "suggestReusable": {
+    "title": "Save this for next time",
+    "skillTitle": "Save as a Skill",
+    "routineTitle": "Save as a Routine",
+    "notNow": "Not now",
+    "saveSkillMessage": "Save what I just did as a Skill called \"{{title}}\".",
+    "saveRoutineMessage": "Set this up as a recurring Routine called \"{{title}}\"."
   },
   "errors": {
     "sessionStart": "Failed to start session: {{error}}",
@@ -91,8 +122,8 @@
   "modeSelector": {
     "mode": "Mode",
     "modeValue": "Mode: {{mode}}",
-    "doer": "Doer",
-    "doerDescription": "Gets things done and asks you when unsure.",
+    "coworker": "Coworker",
+    "coworkerDescription": "Works with you: gets things done and asks when unsure.",
     "planner": "Planner",
     "plannerDescription": "Writes a plan for you to approve first. Makes no changes.",
     "autopilot": "Autopilot",
@@ -123,10 +154,8 @@
       "back": "Back",
       "providersLabel": "Providers",
       "modelsLabel": "Models",
-      "resultsLabel": "Results",
       "loading": "Loading providers…",
       "empty": "No models found.",
-      "emptyHint": "Try another search term.",
       "noProviders": "No providers connected yet."
     },
     "modelDescriptions": {

@@ -6,7 +6,7 @@ import type {
   WorkspaceId,
   WorkspaceRuntime,
 } from "../domain/types";
-import type { WorkspaceStore } from "../ports";
+import { AgentNameConflictError, type WorkspaceStore } from "../ports";
 
 /** DNS-safe slug for a workspace (used for the K8s namespace). */
 function slugify(name: string): string {
@@ -100,6 +100,13 @@ export class MemoryWorkspaceStore implements WorkspaceStore {
   async renameAgent(id: AgentId, name: string): Promise<Agent> {
     const agent = this.agents.get(id);
     if (!agent) throw new Error(`renameAgent: unknown agent ${id}`);
+    if (name === agent.name) return agent;
+    // Same contract as the disk store: a sibling already holding the name is a
+    // typed conflict, never a raw backend failure (#172).
+    for (const other of this.agents.values()) {
+      if (other.workspaceId === agent.workspaceId && other.name === name)
+        throw new AgentNameConflictError(name);
+    }
     const next: Agent = { ...agent, name };
     this.agents.set(id, next);
     return next;

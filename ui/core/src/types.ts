@@ -147,6 +147,10 @@ export type HoustonEvent =
       data: { workspace_id: string };
     }
   | {
+      type: "SidebarLayoutChanged";
+      data: { workspace_id: string };
+    }
+  | {
       type: "ComposioCliReady";
       data: Record<string, never>;
     }

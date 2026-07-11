@@ -6,9 +6,12 @@ import type {
 } from "@houston-ai/engine-client";
 import {
   browseCatalog,
+  browseCatalogView,
   categoriesOf,
   categoryLabel,
+  categoryListView,
   splitByGrant,
+  toolkitsInCategory,
 } from "../src/components/integrations/model.ts";
 
 const tk = (
@@ -123,6 +126,111 @@ describe("browseCatalog (new module)", () => {
   });
 });
 
+describe("browseCatalogView (allowlist partition)", () => {
+  it("single-player (allowlist null) → everything connectable, nothing locked", () => {
+    const view = browseCatalogView({
+      catalog: CATALOG,
+      query: "",
+      category: "all",
+      connected: new Set(),
+      allowlist: null,
+    });
+    deepStrictEqual(
+      view.connectable.map((t) => t.slug),
+      ["gmail", "googlecalendar", "notion", "serpapi", "slack"],
+    );
+    deepStrictEqual(view.locked, []);
+  });
+
+  it("splits blocked apps into `locked`, both lists A-Z", () => {
+    const view = browseCatalogView({
+      catalog: CATALOG,
+      query: "",
+      category: "all",
+      connected: new Set(),
+      allowlist: ["slack", "gmail"],
+    });
+    deepStrictEqual(
+      view.connectable.map((t) => t.slug),
+      ["gmail", "slack"],
+    );
+    // googlecalendar, notion, serpapi are outside the ceiling → locked, A-Z.
+    deepStrictEqual(
+      view.locked.map((t) => t.slug),
+      ["googlecalendar", "notion", "serpapi"],
+    );
+  });
+
+  it("an empty allowlist locks every app (nothing connectable)", () => {
+    const view = browseCatalogView({
+      catalog: CATALOG,
+      query: "",
+      category: "all",
+      connected: new Set(),
+      allowlist: [],
+    });
+    deepStrictEqual(view.connectable, []);
+    deepStrictEqual(
+      view.locked.map((t) => t.slug),
+      ["gmail", "googlecalendar", "notion", "serpapi", "slack"],
+    );
+  });
+
+  it("search still finds a blocked app as a locked row (not emptiness)", () => {
+    // A member searching for an app the admin hasn't enabled must SEE it locked.
+    const view = browseCatalogView({
+      catalog: CATALOG,
+      query: "serp",
+      category: "all",
+      connected: new Set(),
+      allowlist: ["gmail"],
+    });
+    deepStrictEqual(view.connectable, []);
+    deepStrictEqual(
+      view.locked.map((t) => t.slug),
+      ["serpapi"],
+    );
+  });
+
+  it("excludes connected apps from both buckets before partitioning", () => {
+    const view = browseCatalogView({
+      catalog: CATALOG,
+      query: "",
+      category: "all",
+      connected: new Set(["gmail", "notion"]),
+      allowlist: ["gmail", "slack"],
+    });
+    // gmail + notion connected → gone from browse; slack allowed; the rest locked.
+    deepStrictEqual(
+      view.connectable.map((t) => t.slug),
+      ["slack"],
+    );
+    deepStrictEqual(
+      view.locked.map((t) => t.slug),
+      ["googlecalendar", "serpapi"],
+    );
+  });
+
+  it("category filter narrows before the allowlist partition", () => {
+    const view = browseCatalogView({
+      catalog: CATALOG,
+      query: "",
+      category: "collaboration",
+      connected: new Set(),
+      allowlist: ["notion"],
+    });
+    // collaboration = notion + slack; notion allowed, slack locked.
+    deepStrictEqual(
+      view.connectable.map((t) => t.slug),
+      ["notion"],
+    );
+    deepStrictEqual(
+      view.locked.map((t) => t.slug),
+      ["slack"],
+    );
+  });
+});
+
 describe("categoriesOf / categoryLabel (new module)", () => {
   it("collects unique categories sorted by display label", () => {
     deepStrictEqual(categoriesOf(CATALOG), [
@@ -134,6 +242,74 @@ describe("categoriesOf / categoryLabel (new module)", () => {
 
   it("labels kebab-case categories for humans", () => {
     strictEqual(categoryLabel("developer-tools"), "Developer tools");
+  });
+});
+
+describe("toolkitsInCategory (new module)", () => {
+  it("returns null for the 'all' sentinel (no filter)", () => {
+    strictEqual(toolkitsInCategory(CATALOG, "all"), null);
+  });
+
+  it("collects every slug tagged with the category", () => {
+    const set = toolkitsInCategory(CATALOG, "collaboration");
+    deepStrictEqual([...(set ?? [])].sort(), ["notion", "slack"]);
+  });
+
+  it("matches apps carrying the category among several", () => {
+    // notion is both collaboration + developer-tools.
+    const set = toolkitsInCategory(CATALOG, "developer-tools");
+    deepStrictEqual([...(set ?? [])].sort(), ["notion", "serpapi"]);
+  });
+
+  it("unknown category → empty set (not null)", () => {
+    const set = toolkitsInCategory(CATALOG, "nope");
+    strictEqual(set?.size, 0);
+  });
+});
+
+describe("categoryListView (new module)", () => {
+  it("visible rows → the list", () => {
+    strictEqual(
+      categoryListView({
+        visibleCount: 3,
+        hasAny: true,
+        categoryFiltered: true,
+      }),
+      "list",
+    );
+  });
+
+  it("no rows at all → the plain empty state", () => {
+    strictEqual(
+      categoryListView({
+        visibleCount: 0,
+        hasAny: false,
+        categoryFiltered: false,
+      }),
+      "empty",
+    );
+  });
+
+  it("some rows but hidden by the category → category-aware empty", () => {
+    strictEqual(
+      categoryListView({
+        visibleCount: 0,
+        hasAny: true,
+        categoryFiltered: true,
+      }),
+      "empty-category",
+    );
+  });
+
+  it("empty with a filter but nothing picked → plain empty (never lies)", () => {
+    strictEqual(
+      categoryListView({
+        visibleCount: 0,
+        hasAny: false,
+        categoryFiltered: true,
+      }),
+      "empty",
+    );
   });
 });
 

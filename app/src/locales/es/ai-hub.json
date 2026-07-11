@@ -6,12 +6,14 @@
   },
   "tabs": {
     "providers": "Proveedores",
-    "providersCount": "Proveedores · {{count}}",
-    "modelsCount": "Modelos · {{count}}"
+    "models": "Modelos",
+    "policy": "Política del espacio de trabajo"
   },
   "sections": {
     "connected": "Conectados",
-    "available": "Disponibles"
+    "available": "Disponibles",
+    "subscription": "Suscripción",
+    "apiKey": "Clave de API"
   },
   "card": {
     "connect": "Conectar",
@@ -22,47 +24,34 @@
     "signOut": "Cerrar sesión",
     "cancel": "Cancelar",
     "models_one": "{{count}} modelo",
-    "models_other": "{{count}} modelos",
-    "subscription": "Suscripción",
-    "apiKey": "Tu clave de API",
-    "local": "Se ejecuta en tu computador",
-    "gateway": "Puerta de acceso multimodelo"
+    "models_other": "{{count}} modelos"
   },
   "directory": {
     "search": "Busca {{count}}+ modelos",
     "searchFew": "Buscar modelos",
+    "seeMore": "Ver más",
     "filters": {
-      "all": "Todos",
+      "allSpecialties": "Todas las especialidades",
       "reasoning": "Razonamiento",
       "images": "Imágenes",
       "budget": "Económico",
+      "goodAt": "Ideal para",
       "provider": "Proveedor de IA",
       "allProviders": "Todos los proveedores",
-      "goodAt": "Ideal para"
-    },
-    "columns": {
-      "model": "Modelo",
-      "goodAt": "Ideal para",
-      "memory": "Memoria",
+      "searchProviders": "Buscar proveedores",
+      "noProviders": "No se encontraron proveedores",
       "cost": "Costo",
-      "offeredBy": "Disponible en"
+      "costAll": "Cualquier costo",
+      "costFree": "Nivel gratuito",
+      "costLow": "Bajo",
+      "costMid": "Medio",
+      "costHigh": "Alto",
+      "memory": "Memoria",
+      "memoryAll": "Cualquier memoria",
+      "memorySmall": "Pequeña",
+      "memoryMid": "Media",
+      "memoryLong": "Amplia"
     },
-    "memory": {
-      "standard": "Estándar",
-      "long": "Amplia",
-      "huge": "Enorme"
-    },
-    "cost": {
-      "from": "desde {{price}}",
-      "free": "Gratis",
-      "tiers": {
-        "1": "Económico",
-        "2": "Estándar",
-        "3": "Premium"
-      }
-    },
-    "providers_one": "{{count}} proveedor",
-    "providers_other": "{{count}} proveedores",
     "showMore": "Ver más",
     "empty": {
       "title": "No se encontraron modelos",
@@ -101,18 +90,15 @@
   },
   "providers": {
     "search": "Buscar proveedores",
+    "seeAll": "Ver todos los proveedores",
     "empty": {
       "title": "No se encontraron proveedores",
       "description": "Prueba con otra búsqueda u otro filtro."
     },
     "filter": {
       "label": "Filtrar proveedores",
-      "all": "Todos los proveedores",
-      "popular": "Populares",
-      "subscription": "Incluido con tu suscripción",
-      "free": "Gratis para probar",
-      "payg": "Paga por uso",
-      "local": "Funciona en tu computador"
+      "subscription": "Suscripción",
+      "payg": "Pago por uso"
     },
     "openai": {
       "description": "Inicia sesión con ChatGPT y pon a trabajar los modelos GPT y Codex."

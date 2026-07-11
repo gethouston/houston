@@ -14,6 +14,7 @@ export type ChatInteractionStep =
       question: string;
       options?: ChatInteractionOption[];
     }
+  | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string };
 
 /** One completed question answer handed to `onComplete`, in step order. */
@@ -22,11 +23,6 @@ export interface ChatInteractionAnswer {
   question: string;
   answer: string;
 }
-
-/** Every step now shows exactly one question, so the head always reads as the
- *  single next action: sized up and weighted (matches the composer replace). */
-export const QUESTION_TEXT_CLASS =
-  "text-lg font-medium leading-snug text-foreground";
 
 /** True when the agent offered concrete choices (option rows render). */
 export function hasSelectableOptions(
@@ -39,6 +35,19 @@ export function hasSelectableOptions(
 export function normalizeAnswer(text: string): string | null {
   const trimmed = text.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+/** A readable app name from a toolkit slug, for the connect step's fallback
+ *  title when the agent gave no reason ("google-sheets" -> "Google Sheets").
+ *  A best-effort human label from the slug alone — the app's catalog name (when
+ *  it resolves) still drives the row below; this only fills the header slot. */
+export function prettifyToolkit(toolkit: string): string {
+  return toolkit
+    .trim()
+    .split(/[\s_-]+/)
+    .filter((w) => w.length > 0)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 /** The option label for a question step, or null when the id is unknown. */

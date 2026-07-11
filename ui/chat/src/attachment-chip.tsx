@@ -13,12 +13,9 @@ import {
   XIcon,
 } from "lucide-react";
 import { PromptInputSubmit } from "./ai-elements/prompt-input";
-import {
-  DictationRecording,
-  DictationTranscribing,
-} from "./dictation-controls";
+import { DictationActions, DictationTranscribing } from "./dictation-controls";
 import type { DictationControl } from "./dictation-types";
-import { isDictationBusy, resolveDictationView } from "./dictation-types";
+import { isDictationActive, resolveDictationView } from "./dictation-types";
 
 export function getExt(name: string): string {
   const dot = name.lastIndexOf(".");
@@ -143,13 +140,10 @@ export interface ComposerTrailingProps {
 }
 
 /**
- * Trailing button row: dictation affordance (prop-driven, optional) +
- * always-visible submit.
- *
- * With no `dictation` control nothing but submit renders. When present the
- * control's state picks the affordance: a mic button (idle), the recording
- * controls (requesting/recording), or a transcribing spinner. Submit is
- * disabled while a capture is in flight so it can't race the transcript.
+ * Trailing button row. Idle/absent: an optional mic button (idle) + the
+ * always-visible submit. While a capture is in flight the composer's input row
+ * is taken over by the waveform, so this slot swaps to the dictation actions
+ * (✕ cancel + ✓ accept, or a transcribing spinner) and hides submit entirely.
  */
 export function ComposerTrailing({
   status,
@@ -158,8 +152,20 @@ export function ComposerTrailing({
   dictation,
 }: ComposerTrailingProps) {
   const view = resolveDictationView(dictation);
-  const submitDisabled =
-    (status === "ready" && !hasContent) || isDictationBusy(dictation);
+
+  if (isDictationActive(dictation) && dictation) {
+    return (
+      <div className="flex items-center gap-1.5 [grid-area:trailing]">
+        {view.kind === "transcribing" ? (
+          <DictationTranscribing label={dictation.labels.transcribing} />
+        ) : (
+          <DictationActions control={dictation} />
+        )}
+      </div>
+    );
+  }
+
+  const submitDisabled = status === "ready" && !hasContent;
   return (
     <div className="flex items-center gap-1.5 [grid-area:trailing]">
       {view.kind === "idle" && status === "ready" && dictation && (
@@ -171,12 +177,6 @@ export function ComposerTrailing({
         >
           <MicIcon className="size-5" />
         </button>
-      )}
-      {view.kind === "recording" && dictation && (
-        <DictationRecording control={dictation} startedAt={view.startedAt} />
-      )}
-      {view.kind === "transcribing" && dictation && (
-        <DictationTranscribing label={dictation.labels.transcribing} />
       )}
       <PromptInputSubmit
         status={status}

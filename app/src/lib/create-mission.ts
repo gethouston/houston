@@ -134,6 +134,10 @@ export async function createMission(
       modelOverride: opts.modelOverride,
       effortOverride: opts.effortOverride,
       modeOverride: opts.modeOverride,
+      // `buildPrompt` swaps in a prompt the user should not see (a hidden setup
+      // directive, or attachment paths appended to their words) — so the bubble
+      // renders the clean `text` instead, live and on every history reload.
+      displayText: opts.buildPrompt ? text : undefined,
     });
 
     analytics.track("mission_created", { agent_mode: opts.agentMode });

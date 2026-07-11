@@ -1,6 +1,8 @@
 // Minimal "what the engine actually uses" entry, to measure bundle/tree-shaking.
 
-import { getModel, registerFauxProvider } from "@earendil-works/pi-ai";
+// `getModel`/`registerFauxProvider` are pi-ai's legacy global-registry API,
+// preserved on `/compat`.
+import { getModel, registerFauxProvider } from "@earendil-works/pi-ai/compat";
 import {
   loginAnthropic,
   loginOpenAICodexDeviceCode,

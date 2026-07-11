@@ -5,11 +5,11 @@ import { expect, test } from "./support/fixtures";
  * capability-visible provider cards (a 2-column brand-mark grid, mirroring the
  * Integrations tab) and the directory holds their models. Each card's explicit
  * info button ("View {name} details") is the open affordance — the card body is
- * NOT clickable — and it opens the provider MODAL, which embeds the same models
- * ledger (search + table) as the Models tab.
+ * NOT clickable — and it opens the provider MODAL, which embeds the same model
+ * card browser (search + facet filters + card grid) as the Models tab.
  * Flow: sidebar nav → provider grid → info button opens the provider modal →
- * Escape closes → Models tab → search → a row opens the model MODAL ("Get it
- * through" offers) → Escape closes. OAuth is never driven (no credentials in
+ * Escape closes → Models tab → facet filters + search → a card opens the model
+ * MODAL ("Get it through" offers) → Escape closes. OAuth is never driven (no credentials in
  * the harness); we assert presence + the modal open/close flow only.
  */
 test("opens the AI hub, browses providers and models via modals", async ({
@@ -34,7 +34,7 @@ test("opens the AI hub, browses providers and models via modals", async ({
   await expect(providerInfo).toBeVisible();
 
   // The info button opens the provider MODAL: a Radix dialog that embeds the
-  // shared models ledger (its own search box), not a full-page drill-in.
+  // shared model card browser (its own search box), not a full-page drill-in.
   await providerInfo.click();
   const providerModal = page.getByRole("dialog");
   await expect(providerModal).toBeVisible();
@@ -44,13 +44,18 @@ test("opens the AI hub, browses providers and models via modals", async ({
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toBeHidden();
 
-  // Switch to the Models directory and search.
+  // Switch to the Models directory: a pill search box + the facet comboboxes
+  // (the "Good at" facet always shows) above the card grid.
   await page.getByRole("tab", { name: /Models/ }).click();
   const search = page.getByPlaceholder(/Search( \d+\+)? models/);
   await expect(search).toBeVisible();
+  await expect(page.getByRole("button", { name: "Good at" })).toBeVisible();
   await search.fill("claude");
 
-  // A model row opens the model MODAL: its specs + the "Get it through" list of
+  // Each card carries an always-visible "See more" cue (not hover-gated).
+  await expect(page.getByText("See more").first()).toBeVisible();
+
+  // A model card opens the model MODAL: its specs + the "Get it through" list of
   // providers that offer it.
   await page
     .getByRole("button", { name: /Claude/i })

@@ -1,11 +1,10 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-  type Api,
-  getModel,
-  type KnownProvider,
-  type Model,
-} from "@earendil-works/pi-ai";
+import type { Api, KnownProvider, Model } from "@earendil-works/pi-ai";
+// `getModel` is pi-ai's legacy static-catalog read, preserved on `/compat`
+// (the new `Models`/`Provider` collection API needs an instantiated registry
+// we don't otherwise carry here).
+import { getModel } from "@earendil-works/pi-ai/compat";
 import { authStorage, providerConnected } from "../auth/storage";
 import { config } from "../config";
 import {

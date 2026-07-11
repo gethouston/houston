@@ -60,6 +60,15 @@ export interface StreamTurnOptions {
    * already in the feed (a refused not-connected send being retried).
    */
   suppressUserBubble?: boolean;
+  /**
+   * What the user's bubble renders, when it must differ from `prompt` (the real
+   * text the engine runs on). The optimistic bubble shows `displayText ?? prompt`
+   * and the runtime persists it so a history reload renders the same — while the
+   * model always receives `prompt`. Set it when the prompt carries text the user
+   * should never see: a hidden setup-mission directive, or appended attachment
+   * paths. Omitted when the bubble and the prompt are the same string.
+   */
+  displayText?: string;
 }
 
 /**
@@ -115,10 +124,18 @@ export async function streamTurn(
   // sink never renders the server's echo of it (nonce-matched) — this push is
   // the ONE place a sent prompt enters the feed. Marker-tagged prompts
   // (auto-continue) are filtered at render, same as their persisted copies.
+  // Pushed `pending: true` — the engine has not confirmed it yet — and the VM
+  // strips that on the first server evidence (any later push, or a terminal
+  // status). Every early return below pushes a system_message afterward, so no
+  // path leaves the bubble stuck pending.
   if (!opts.suppressUserBubble) {
     output.pushFeedItem(agentPath, sessionKey, {
       feed_type: "user_message",
-      data: prompt,
+      // The bubble renders displayText when the real prompt carries text the
+      // user should never see (a hidden directive / appended attachment paths);
+      // the engine still receives `prompt` below.
+      data: opts.displayText ?? prompt,
+      pending: true,
     });
   }
   // Flip the card to "running" for this turn (re-running a needs_you/done
@@ -149,20 +166,30 @@ export async function streamTurn(
     // a second real send + attach a second sink (double render). The loser fails
     // fast; the observer keeps rendering the running turn.
     if (!registry.beginSend(key)) {
+      // The duplicate never sent a second turn — fail its optimistic bubble so
+      // it never reads as delivered (the first turn keeps rendering).
       output.pushFeedItem(agentPath, sessionKey, {
         feed_type: "system_message",
         data: SEND_IN_FLIGHT_MESSAGE,
+        fails_pending: true,
       });
       return;
     }
     after = prior.lastSeq;
     try {
-      await engine.sendMessage(sessionKey, prompt, { nonce, ...opts.pin });
+      await engine.sendMessage(sessionKey, prompt, {
+        nonce,
+        ...opts.pin,
+        displayText: opts.displayText,
+      });
     } catch (e) {
       registry.endSend(key);
+      // The resend was rejected before it reached the engine — fail its
+      // optimistic bubble (the observed turn keeps rendering unaffected).
       output.pushFeedItem(agentPath, sessionKey, {
         feed_type: "system_message",
         data: turnErrorMessage(e),
+        fails_pending: true,
       });
       return; // the observer keeps rendering the running turn
     }
@@ -222,7 +249,11 @@ export async function streamTurn(
     streaming.catch(() => {});
     if (!sent) {
       try {
-        await engine.sendMessage(sessionKey, prompt, { nonce, ...opts.pin });
+        await engine.sendMessage(sessionKey, prompt, {
+          nonce,
+          ...opts.pin,
+          displayText: opts.displayText,
+        });
         sink.sendAccepted();
       } catch (e) {
         // A definitive failure (engine verdict / our abort) settles below.

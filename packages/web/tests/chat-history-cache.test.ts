@@ -14,8 +14,10 @@ import { conversationStore } from "../src/engine-adapter/vm";
  * loadChatHistory × the local conversation cache (HOU-712): opening a cloud
  * chat paints the VM from the cached transcript IMMEDIATELY — even while the
  * gateway holds the history read for an engine-pod cold start — and every
- * successful read refreshes the cache. A 404 (conversation gone) drops both
- * the cache entry and the cache-seeded VM.
+ * successful read refreshes the cache. A 404 with a cached transcript KEEPS
+ * and serves the local copy (HOU-731): the pod may have lost or not yet
+ * restored its data, and the cache is the user's only surviving transcript.
+ * Deleting the chat (user intent) is what drops the cache entry.
  */
 
 function memoryBackend() {
@@ -158,7 +160,7 @@ test("a successful read refreshes the cache and reseeds the VM", async () => {
   });
 });
 
-test("a 404 drops the cache entry and clears the cache-seeded VM", async () => {
+test("a 404 with a cached transcript keeps and serves the local copy", async () => {
   const agentPath = "Ws/Agent";
   const sessionKey = `gone-${convSeq++}`;
   const client = cloudClient();
@@ -168,8 +170,37 @@ test("a 404 drops the cache entry and clears the cache-seeded VM", async () => {
   ) as unknown as typeof fetch;
 
   const feed = await client.loadChatHistory(agentPath, sessionKey);
+  // The local copy is the answer AND stays painted + persisted: a pod that
+  // lost (or hasn't restored) its data must never erase the user's transcript.
+  expect(feed).toEqual(CACHED);
+  expect(vmFeed(agentPath, sessionKey)).toEqual(CACHED);
+  expect((await store.backend.keysOldestFirst()).length).toBe(1);
+});
+
+test("a 404 with no cached transcript is an empty conversation", async () => {
+  const agentPath = "Ws/Agent";
+  const sessionKey = `fresh-404-${convSeq++}`;
+  const client = cloudClient();
+  globalThis.fetch = vi.fn(async () =>
+    json(404, { error: "not found" }),
+  ) as unknown as typeof fetch;
+
+  const feed = await client.loadChatHistory(agentPath, sessionKey);
   expect(feed).toEqual([]);
   expect(vmFeed(agentPath, sessionKey)).toEqual([]);
+});
+
+test("deleting the chat drops its cached transcript", async () => {
+  const agentPath = "Ws/Agent";
+  const activityId = `act-${convSeq++}`;
+  const sessionKey = `activity-${activityId}`;
+  const client = cloudClient();
+  await seedCache(agentPath, sessionKey);
+  globalThis.fetch = vi.fn(async () =>
+    json(200, { ok: true }),
+  ) as unknown as typeof fetch;
+
+  await client.deleteActivity(agentPath, activityId);
   await vi.waitFor(async () => {
     expect(await store.backend.keysOldestFirst()).toEqual([]);
   });

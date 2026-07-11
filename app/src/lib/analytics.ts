@@ -52,10 +52,8 @@ export type AnalyticsEventName =
   // real action exists (provider/apps connected, message/email sent) we fire on
   // the action, not the Continue click. Each fires exactly ONCE per install
   // (ref/flag-guarded at the call site).
-  | "onboarding_welcome_continued"
   | "onboarding_language_selected"
   | "onboarding_agreement_accepted"
-  | "onboarding_assistant_named"
   | "ai_provider_connected"
   | "tools_provider_connected"
   | "first_message_sent"
@@ -75,6 +73,9 @@ export type AnalyticsEventName =
   | "agent_installed_from_store"
   | "agent_shared"
   | "agent_imported"
+  // Fired when an agent's self-setup mission auto-starts after it is
+  // created/imported. Carries `source` (created vs imported).
+  | "agent_onboarding_started"
   | "chat_message_sent"
   | "chat_message_received"
   | "mission_created"
@@ -84,6 +85,7 @@ export type AnalyticsEventName =
   | "skill_used"
   | "routine_scheduled"
   | "routine_executed"
+  | "routine_chat_setup_started"
   | "tab_opened"
   | "file_attached"
   | "mobile_paired"

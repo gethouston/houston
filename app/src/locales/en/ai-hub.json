@@ -6,12 +6,14 @@
   },
   "tabs": {
     "providers": "Providers",
-    "providersCount": "Providers · {{count}}",
-    "modelsCount": "Models · {{count}}"
+    "models": "Models",
+    "policy": "Workspace policy"
   },
   "sections": {
     "connected": "Connected",
-    "available": "Available"
+    "available": "Available",
+    "subscription": "Subscription",
+    "apiKey": "API key"
   },
   "card": {
     "connect": "Connect",
@@ -22,47 +24,34 @@
     "signOut": "Sign out",
     "cancel": "Cancel",
     "models_one": "{{count}} model",
-    "models_other": "{{count}} models",
-    "subscription": "Subscription",
-    "apiKey": "Your API key",
-    "local": "Runs on your computer",
-    "gateway": "Multi-model gateway"
+    "models_other": "{{count}} models"
   },
   "directory": {
     "search": "Search {{count}}+ models",
     "searchFew": "Search models",
+    "seeMore": "See more",
     "filters": {
-      "all": "All",
+      "allSpecialties": "All specialties",
       "reasoning": "Reasoning",
       "images": "Images",
       "budget": "Budget",
+      "goodAt": "Good at",
       "provider": "AI provider",
       "allProviders": "All providers",
-      "goodAt": "Good at"
-    },
-    "columns": {
-      "model": "Model",
-      "goodAt": "Good at",
-      "memory": "Memory",
+      "searchProviders": "Search providers",
+      "noProviders": "No providers found",
       "cost": "Cost",
-      "offeredBy": "Offered by"
+      "costAll": "Any cost",
+      "costFree": "Free tier",
+      "costLow": "Low",
+      "costMid": "Mid",
+      "costHigh": "High",
+      "memory": "Memory",
+      "memoryAll": "Any memory",
+      "memorySmall": "Small",
+      "memoryMid": "Mid",
+      "memoryLong": "Long"
     },
-    "memory": {
-      "standard": "Standard",
-      "long": "Long",
-      "huge": "Huge"
-    },
-    "cost": {
-      "from": "from {{price}}",
-      "free": "Free",
-      "tiers": {
-        "1": "Budget",
-        "2": "Standard",
-        "3": "Premium"
-      }
-    },
-    "providers_one": "{{count}} provider",
-    "providers_other": "{{count}} providers",
     "showMore": "Show more",
     "empty": {
       "title": "No models found",
@@ -101,18 +90,15 @@
   },
   "providers": {
     "search": "Search providers",
+    "seeAll": "See all providers",
     "empty": {
       "title": "No providers found",
       "description": "Try a different search or filter."
     },
     "filter": {
       "label": "Filter providers",
-      "all": "All providers",
-      "popular": "Popular",
-      "subscription": "Included with a subscription",
-      "free": "Free to try",
-      "payg": "Pay per use",
-      "local": "Runs on your computer"
+      "subscription": "Subscription",
+      "payg": "Pay as you go"
     },
     "openai": {
       "description": "Sign in with ChatGPT and put the GPT and Codex models to work."

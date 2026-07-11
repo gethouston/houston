@@ -49,7 +49,6 @@ export async function finishAgentSetup(
         agentPath,
         {
           name: opts.routine.name,
-          description: opts.routine.description,
           prompt: opts.routine.prompt,
           schedule: opts.routine.schedule,
           enabled: true,

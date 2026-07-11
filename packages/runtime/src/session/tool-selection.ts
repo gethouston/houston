@@ -5,6 +5,8 @@ import {
   INTEGRATION_TOOL_NAMES,
   REQUEST_CONNECTION_TOOL_NAME,
 } from "./tools/integrations";
+import { PLAN_READY_TOOL_NAME } from "./tools/plan-ready";
+import { SUGGEST_REUSABLE_TOOL_NAME } from "./tools/suggest-reusable";
 
 export type CodeExecutionMode = "local" | "remote" | "disabled";
 
@@ -75,21 +77,29 @@ export function autoToolNames(all: readonly string[]): string[] {
 
 /**
  * The one place a turn's mode picks its tool allowlist: "plan" clamps to the
- * read-only subset, "auto" drops the blocking tools, and "execute" (or an absent
- * mode) passes the full allowlist through unchanged. Both backends dispatch
- * through here so the pi and Claude paths never drift on what a mode allows.
+ * read-only subset PLUS the plan-only `plan_ready` tool, "auto" drops the
+ * blocking tools, and "execute" (or an absent mode) passes the full allowlist
+ * through unchanged. Both backends dispatch through here so the pi and Claude
+ * paths never drift on what a mode allows.
+ *
+ * Strip-then-reinject: `plan_ready` is a plan-mode-only tool that must never
+ * survive into execute/auto, yet the incoming `all` set (e.g. the Claude
+ * backend's built list) may include it. So it is filtered out unconditionally
+ * first, then re-added ONLY on the plan branch. This keeps `plan_ready` out of
+ * the execute base allowlist regardless of how `all` was assembled.
  */
 export function toolNamesForMode(
   mode: TurnMode | undefined,
   all: readonly string[],
 ): string[] {
+  const base = all.filter((name) => name !== PLAN_READY_TOOL_NAME);
   switch (mode) {
     case "plan":
-      return planToolNames(all);
+      return [...planToolNames(base), PLAN_READY_TOOL_NAME];
     case "auto":
-      return autoToolNames(all);
+      return autoToolNames(base);
     default:
-      return [...all];
+      return [...base];
   }
 }
 
@@ -106,6 +116,13 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
       // ask_user is available in EVERY mode/backend — any blocking question,
       // choice, or approval goes through it instead of plain-text.
       ASK_USER_TOOL_NAME,
+      // suggest_reusable is available in execute AND auto — it holds no
+      // credential, takes no real-world action, and never blocks the turn (a
+      // clean finish offering to save the work as a Skill/Routine). It must
+      // NEVER reach plan mode, and it won't automatically: PLAN_MODE_TOOL_NAMES
+      // (the plan allowlist) doesn't list it, so `planToolNames` filters it out;
+      // and it isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES, so auto keeps it.
+      SUGGEST_REUSABLE_TOOL_NAME,
       ...executable,
       ...(input.integrations ? INTEGRATION_TOOL_NAMES : []),
     ],

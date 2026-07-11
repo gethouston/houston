@@ -26,6 +26,7 @@ import { buildToolSelection } from "../session/tool-selection";
 import { makeAskUserTool } from "../session/tools/ask-user";
 import { makeClampedFileTools } from "../session/tools/clamped-fs";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
+import { makePlanReadyTool } from "../session/tools/plan-ready";
 import { makeRunCodeTool } from "../session/tools/run-code";
 import {
   appendAssistantMessageAt,
@@ -83,20 +84,38 @@ export interface PiTurnRequest {
    * emitted frame and persisted on both stored messages.
    */
   turnId: string;
+  /**
+   * Presentation-only bubble text, when it must differ from `text` (the real
+   * prompt the model runs on). Persisted alongside the user message so a
+   * history reload renders `displayText ?? content`. Absent when they match.
+   */
+  displayText?: string;
 }
 
 export async function runPiTurn(
   root: string,
   turn: PiTurnRequest,
 ): Promise<TurnOutcome> {
-  const { conversationId, text, provider, signal, nonce, pin, mode, turnId } =
-    turn;
+  const {
+    conversationId,
+    text,
+    provider,
+    signal,
+    nonce,
+    pin,
+    mode,
+    turnId,
+    displayText,
+  } = turn;
   const emit = (e: WireFrame) => turn.emit({ ...e, turnId });
   const workspaceDir = join(root, "workspace");
   const dataDir = join(root, "data");
   const conversationsDir = join(dataDir, "conversations");
 
-  appendUserMessageAt(conversationsDir, conversationId, text, { turnId });
+  appendUserMessageAt(conversationsDir, conversationId, text, {
+    turnId,
+    displayText,
+  });
   emit({ type: "user", data: { content: text, ts: Date.now(), nonce } });
 
   let assistantText = "";
@@ -167,6 +186,10 @@ export async function runPiTurn(
         // already in toolSelection.toolNames. request_connection is NOT — it is
         // gated with the integration tools, which are off in cloud turn mode.
         makeAskUserTool(),
+        // plan_ready is registered always but name-gated to Plan mode by
+        // toolNamesForMode (harmless in execute/auto — pi exposes it only when
+        // its name is in the mode's allowlist).
+        makePlanReadyTool(),
         ...(sandbox ? [sandbox] : []),
       ],
     });

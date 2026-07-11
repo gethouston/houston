@@ -91,6 +91,19 @@ components:
     status: implemented
     ref: "@houston-ai/chat ChatInteractionCard (interaction-card + interaction-card-logic)"
 
+  plan-ready-card:
+    status: implemented
+    ref: "@houston-ai/chat ChatPlanReadyCard (chat-plan-ready-card + chat-plan-ready-card-model)"
+
+  suggest-reusable-card:
+    status: implemented
+    ref: "@houston-ai/chat ChatSuggestReusableCard (chat-suggest-reusable-card + chat-suggest-reusable-card-model)"
+
+  interaction-answers-message:
+    status: partial
+    ref: "@houston-ai/chat interaction-answers-message (decode) + UserInteractionAnswersMessage; encode in app/"
+    notes: Decode + render are shared; the marker encoder is composed in app/ (interaction-reply), mirroring skill-invocation-message.
+
   deliverable-card:
     status: implemented
     ref: "@houston-ai/review DeliverableCard / UserFeedback"
@@ -135,10 +148,11 @@ components:
 
   ai-model-row:
     status: partial
-    ref: "app/src/components/ai-hub/model-row.tsx + provider-model-list.tsx"
+    ref: "app/src/components/ai-hub/model-card-row.tsx (in models-browser.tsx)"
     notes: >-
-      Directory + provider-list row variants are app/-locked in the hub. Extract
-      the shared row into ui/ before mobile can reuse its structure.
+      The card grid + facet controls (ModelsBrowser) are app/-locked in the hub
+      and shared by the directory and the provider modal. Extract the shared card
+      into ui/ before mobile can reuse its structure.
 
   ai-model-offer-row:
     status: partial

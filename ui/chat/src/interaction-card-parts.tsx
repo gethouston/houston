@@ -1,19 +1,31 @@
 "use client";
 
 import { Button, cn } from "@houston-ai/core";
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { XIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import type { ChatInteractionOption } from "./interaction-card-logic";
 
-/** One selectable answer, a full-width single-select row (click = answer). */
+/** One selectable answer, a full-width single-select row (click = answer),
+ *  styled as a Mercury row: a raised white surface with a hairline border and
+ *  roomy padding. The label sits left (in a column so a subtitle can slot in
+ *  later); when `keycap` is set, its 1-based `position` shows on the right as a
+ *  subtle bordered keycap — a keyboard-shortcut hint, deliberately NOT a
+ *  left-side list marker. Selection is carried by the accent border + tint.
+ *  A single-option step passes `keycap={false}` so a lone row never shows an
+ *  arbitrary "1". */
 export function OptionRow({
   option,
   selected,
   disabled,
+  position,
+  keycap,
   onSelect,
 }: {
   option: ChatInteractionOption;
   selected: boolean;
   disabled: boolean;
+  position: number;
+  keycap: boolean;
   onSelect: () => void;
 }) {
   return (
@@ -21,7 +33,7 @@ export function OptionRow({
     <button
       aria-checked={selected}
       className={cn(
-        "flex w-full items-center gap-3 rounded-2xl border border-border/50 bg-background px-3.5 py-2.5 text-left text-sm text-foreground outline-none transition-colors",
+        "flex w-full items-center gap-3 rounded-xl border border-border/60 bg-background px-3.5 py-3 text-left text-sm text-foreground outline-none transition-colors",
         "hover:border-border hover:bg-accent",
         "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
         "disabled:pointer-events-none disabled:opacity-50",
@@ -32,72 +44,96 @@ export function OptionRow({
       role="radio"
       type="button"
     >
-      <span className="flex-1">{option.label}</span>
-      <span className="flex size-4 shrink-0 items-center justify-center">
-        {selected && <CheckIcon className="size-4 text-primary" />}
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="font-medium">{option.label}</span>
       </span>
+      {keycap && (
+        <kbd className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md border border-border bg-muted px-1 font-medium font-sans text-[11px] text-muted-foreground tabular-nums">
+          {position}
+        </kbd>
+      )}
     </button>
   );
 }
 
-/** Quiet header: a back chevron (from step 2 on) and a right-aligned "1 of X".
- *  Once the user walks back onto an already-completed step, a forward chevron
- *  joins the progress on the right so they can return to the live frontier. That
- *  matters most for a revisited connect step, whose card can't re-fire
- *  onConnected once connected, leaving the forward chevron the only way onward.
- *  Renders only when there is more than one step, so a lone step shows no chrome
- *  and keeps the one-tap feel. `min-h-8` reserves the chevron's height so the
- *  progress text never shifts between step 1 and later steps. */
-export function StepperHeader({
-  progressText,
-  canGoBack,
-  onBack,
-  backLabel,
-  canGoForward,
-  onForward,
-  forwardLabel,
-  disabled,
-}: {
-  progressText: string;
-  canGoBack: boolean;
-  onBack: () => void;
-  backLabel: string;
-  canGoForward: boolean;
-  onForward: () => void;
-  forwardLabel: string;
+export interface StepperHeaderProps {
+  /** Total step count; the progress eyebrow shows only for a multi-step sequence. */
+  total: number;
+  /** The quiet progress micro-label, e.g. "Step 1 of 3" (shown when total > 1). */
+  progressLabel: string;
+  /** The current step's title, rendered as the card's real title in the SAME
+   *  slot for every kind: a question step passes its question, a signin/connect
+   *  step passes its reason (with a labelled fallback). Omitted only when a step
+   *  has neither. */
+  title?: string;
+  /** Dismisses the WHOLE interaction sequence. The X button renders only when
+   *  supplied, so a caller with no dismiss affordance simply omits it. */
+  onDismiss?: () => void;
+  dismissLabel: string;
   disabled: boolean;
-}) {
+}
+
+/** Card header, in the Mercury title idiom: a quiet progress micro-label
+ *  eyebrow (only for a multi-step sequence) above the step's title rendered as a
+ *  real title in the body, with an unobtrusive dismiss X pinned top-right. Every
+ *  step kind (question, signin, connect) routes its title through this one slot,
+ *  so a connect step's reason reads with the exact same weight/position as a
+ *  question. Purely informational + the one escape hatch — all step-to-step
+ *  navigation (back/skip/next) lives together in the footer, see
+ *  `ChatInteractionCard`. */
+export function StepperHeader({
+  total,
+  progressLabel,
+  title,
+  onDismiss,
+  dismissLabel,
+  disabled,
+}: StepperHeaderProps) {
   return (
-    <div className="mb-1 flex min-h-8 items-center justify-between px-1">
-      {canGoBack ? (
+    // No horizontal padding: the eyebrow, title, option rows and footer all
+    // hang from the same left line (the content column's edge), Mercury-style.
+    <div className="flex items-start gap-2">
+      <div className="min-w-0 flex-1">
+        {total > 1 && (
+          <p className="font-medium text-muted-foreground text-xs">
+            {progressLabel}
+          </p>
+        )}
+        {title && (
+          <p
+            className={cn(
+              "text-balance text-base text-foreground leading-snug",
+              total > 1 && "mt-1.5",
+            )}
+          >
+            {title}
+          </p>
+        )}
+      </div>
+
+      {onDismiss && (
         <Button
-          aria-label={backLabel}
+          aria-label={dismissLabel}
+          className="-mr-1 -mt-1 shrink-0"
           disabled={disabled}
-          onClick={onBack}
+          onClick={onDismiss}
           size="icon-sm"
           variant="ghost"
         >
-          <ChevronLeftIcon className="size-4" />
+          <XIcon className="size-4" />
         </Button>
-      ) : (
-        <span className="size-8" />
       )}
-      <div className="flex items-center gap-1">
-        <span className="font-medium text-muted-foreground text-xs tabular-nums">
-          {progressText}
-        </span>
-        {canGoForward && (
-          <Button
-            aria-label={forwardLabel}
-            disabled={disabled}
-            onClick={onForward}
-            size="icon-sm"
-            variant="ghost"
-          >
-            <ChevronRightIcon className="size-4" />
-          </Button>
-        )}
-      </div>
     </div>
+  );
+}
+
+/** The one footer row for a step: quiet nav on the left, a single filled pill on
+ *  the right. Question steps fill it with Back / Skip / Next; signin & connect
+ *  steps (whose reactive body the app owns) fill it with the ui-supplied Back /
+ *  Forward nodes plus their own filled CTA. Exported so the app composes the
+ *  EXACT same footer chrome — one place owns the row's spacing and alignment. */
+export function InteractionFooter({ children }: { children: ReactNode }) {
+  return (
+    <div className="mt-4 flex items-center justify-end gap-1.5">{children}</div>
   );
 }

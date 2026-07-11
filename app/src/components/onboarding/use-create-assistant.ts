@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { seedTimezoneIfUnset } from "../../hooks/use-timezone-preference";
 import { analytics } from "../../lib/analytics";
 import { logger } from "../../lib/logger";
 import { tauriAgents, tauriProvider, tauriWorkspaces } from "../../lib/tauri";
@@ -16,6 +17,7 @@ import {
   buildAssistantInstructions,
   defaultAssistantSetup,
 } from "./personal-assistant-artifacts";
+import { buildPersonalAssistantSeeds } from "./personal-assistant-seeds";
 
 /**
  * Post-create bookkeeping: persist the last-used pick and reload the stores.
@@ -29,6 +31,15 @@ async function refreshAfterCreate(
   provider: string,
   model: string,
 ): Promise<void> {
+  // Persist the account timezone so the seeded morning-briefing routine fires at
+  // the user's local 7am, not the cloud pod's UTC 7am. The Routines-tab hook
+  // auto-seeds this too, but it never mounts during onboarding — so a user who
+  // never opens Routines would otherwise have their first routine fire in UTC.
+  // Shared helper with the hook; if-absent guarded, never overwrites an existing
+  // pref. A persist failure already surfaces via the tauri wrapper's toast.
+  await seedTimezoneIfUnset().catch((err) =>
+    logger.error(`[onboarding] timezone seed failed: ${err}`),
+  );
   await tauriProvider.setLastUsed(provider, model);
   if (ensured.createdWorkspace) {
     analytics.track("workspace_created", { provider, source: "onboarding" });
@@ -45,8 +56,6 @@ async function refreshAfterCreate(
 interface UseCreateAssistantArgs {
   assistantName: string;
   assistantColor: string;
-  /** Title stamped on the agent's first-run instructions. */
-  missionTitle: string;
 }
 
 /**
@@ -61,13 +70,12 @@ interface UseCreateAssistantArgs {
 export function useCreateAssistant({
   assistantName,
   assistantColor,
-  missionTitle,
 }: UseCreateAssistantArgs): {
   agent: Agent | null;
   creating: boolean;
   create: (provider: string, model: string) => Promise<Agent>;
 } {
-  const { t } = useTranslation("setup");
+  const { t, i18n } = useTranslation("setup");
   const [agent, setAgent] = useState<Agent | null>(null);
   const [creating, setCreating] = useState(false);
   const creationRef = useRef<Promise<Agent> | null>(null);
@@ -97,10 +105,14 @@ export function useCreateAssistant({
           createAssistant: (workspaceId) =>
             createPersonalAssistantForWorkspace(workspaceId, {
               name: setup.assistantName.trim(),
-              instructions: buildAssistantInstructions(setup, missionTitle),
+              instructions: buildAssistantInstructions(setup),
               color: setup.color,
               provider: pickedProvider,
               model: pickedModel,
+              // Real capability on day one: a Daily Briefing routine + a
+              // Meeting-prep skill, seeded into the fresh agent's tree. The
+              // active locale selects the language they write output in.
+              seeds: buildPersonalAssistantSeeds(t, i18n.language),
             }),
         });
       },

@@ -2,14 +2,20 @@ import { cn } from "@houston-ai/core";
 import type React from "react";
 import type { AppDisplay } from "./app-display";
 import { AppLogo } from "./app-logo";
-import { type ConnectionStatus, StatusDot } from "./connection-status-badge";
+import {
+  type ConnectionStatus,
+  ConnectionStatusBadge,
+} from "./connection-status-badge";
 
 /**
- * The generic integrations list row shared by both surfaces: logo + name (+ an
- * optional live status dot) + description, a trailing action slot, and an
- * optional `children` block that renders under the main line (used for the
- * pending / error recovery callouts). Renders as a button when `onClick` is
- * given, otherwise a plain row. Actions live in `trailing`, never hover-gated.
+ * The generic integrations list row shared by both surfaces: logo + name (+ a
+ * live status dot + label, right of the name) + description, a trailing
+ * action slot, and an optional `children` block that renders under the main
+ * line (used for the pending / error recovery callouts). Renders as a button
+ * when `onClick` is given, otherwise a plain row. Actions live in `trailing`,
+ * never hover-gated. The card itself stays the plain neutral surface — status
+ * reads from the dot + label, not a tinted background (that read as loud/
+ * cheap in review; a colored label next to the name is the sober version).
  */
 export function AppRow({
   display,
@@ -30,9 +36,9 @@ export function AppRow({
     <>
       <AppLogo display={display} />
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 truncate text-[13px] font-medium text-foreground">
-          <span className="truncate">{display.name}</span>
-          {status && <StatusDot status={status} />}
+        <p className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-foreground">
+          <span className="min-w-0 truncate">{display.name}</span>
+          {status && <ConnectionStatusBadge status={status} />}
         </p>
         {description && (
           <p className="truncate text-[11px] text-muted-foreground">

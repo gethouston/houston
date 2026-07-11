@@ -151,6 +151,39 @@ export function useScheduleBuilder(
       )
     : "";
 
+  // Re-derive the picker when the cron changes OUTSIDE this builder — the
+  // setup chat's agent editing the open routine (HOU-725). Without this the
+  // saved schedule and the "next run" preview move while the preset/time
+  // fields keep showing the old values. A `value` equal to what the current
+  // state emits is our own echo through the parent — skipped, so mid-edit
+  // typing never resets the fields.
+  const emittedCron =
+    unrepresentable && !touched
+      ? value
+      : isCustom
+        ? customCron
+        : weeklyValid
+          ? presetToCron(activePreset, options)
+          : "";
+  // The re-derived state round-trips to `value`, so the emit effect's
+  // follow-up call is a no-op echo.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sync on the incoming value only — `emittedCron` is derived from the state this effect sets, and reacting to it would fight the user's edits
+  useEffect(() => {
+    if (!value.trim() || value === emittedCron) return;
+    const preset = cronToPreset(value);
+    const interval = preset === "custom" ? cronToInterval(value) : null;
+    // An externally-written cron the picker can't represent: leave the state
+    // alone (same stance as the mount-time `unrepresentable` guard) — the
+    // value prop still drives the summary elsewhere and saving.
+    if (preset === "custom" && !interval) return;
+    setActivePreset(preset ?? "daily");
+    setOptions({ ...DEFAULT_OPTIONS, ...cronToOptions(value) });
+    if (interval) {
+      setEvery(String(interval.every));
+      setUnit(interval.unit);
+    }
+  }, [value]);
+
   // While an unrepresentable legacy cron is still untouched, describe the actual
   // saved schedule rather than the placeholder picker state.
   let summary: string;

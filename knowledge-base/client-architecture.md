@@ -75,6 +75,15 @@ mode), letting the whole desktop UI run on the host unchanged. Convergence says
   output decides where it lands.
 - **The global-events reactivity loop** — both the SDK's agents module and the
   web adapter consume the ONE `streamGlobalEvents` in `@houston/runtime-client`.
+- **The conversation VM cache is bounded** — `ConversationVmOutput` keeps folded
+  transcripts in an `LruCache` (`packages/sdk/src/lru.ts`), not an unbounded map,
+  so a multi-hour client's memory tracks its ACTIVE window, not total volume.
+  Past `SdkConfig.conversationCacheMax` (default `DEFAULT_CONVERSATION_CACHE_MAX`
+  = 50) the least-recently-published IDLE conversation is evicted and its retained
+  store snapshot cleared; it re-hydrates from history on the next `observe`. A
+  live conversation (running/streaming/queued/optimistic) or one with active
+  subscribers is pinned and never dropped. `turns.forget(conversationId)` is the
+  explicit drop for a closed/deleted conversation.
 
 **Still adapter-side (not yet SDK):** the control-plane surface
 (agents/activities/routines/skills/board/config CRUD — `client.ts`,
@@ -83,6 +92,33 @@ the `synthetic.ts` old-id↔engine-id provider remapping. The SDK "wraps the
 conversation/agent surface first; broader control-plane operations stay on their
 current paths until migrated deliberately" (`packages/sdk/README.md`, *Out of
 scope for v1*).
+
+**The wave-1 seam (adapter → `HoustonSdk`).** `HoustonClient` (`client.ts`) now
+constructs the ONE web-side `HoustonSdk` in `engine-adapter/sdk-client.ts`
+(`createEngineSdk`) and holds it (exposed via the `engineSdk` getter). This is
+the foundation for deleting the dual source of truth: web currently
+RE-implements agents/activities/providers/integrations/preferences CRUD in
+`control-plane.ts` + `client.ts` against the same routes the SDK modules already
+own (the iOS app consumes those modules via the native bridge), which violates
+"no business logic in surface code". Later waves delegate those adapter WRITE
+bodies to `client.engineSdk.<module>` so web matches iOS.
+
+- **Auth/active-space, one source of truth.** The SDK's `ports.fetch` is the
+  SAME `gatewayAuthFetch` instance `engine` uses — live bearer, 401-refresh, and
+  `x-houston-org` off the live `ControlPlaneConfig.activeOrgSlug`. `setActiveOrg`
+  mutates that config in place, so the SDK reroutes with no extra wiring.
+- **Read-path decision: WRITE-DELEGATION ONLY; reads stay on TanStack Query +
+  the `/v1/events` bus.** The SDK is built with `SdkConfig.reactivity: false`
+  (see `packages/sdk/src/ports.ts`), so its agents/activities modules do NOT open
+  their own `/v1/events` streams. Routes and `/v1/events` are untouched, and web
+  keeps its existing read model + `subscribeServerEvents` invalidation. Without
+  this flag, constructing the SDK would open duplicate SSE subscriptions and
+  refetch the agent list — a behavior change. Do NOT adopt the SDK's scope
+  snapshots as the web read model unless a write method hard-depends on an
+  observed scope (none do today).
+- **Inert until wave 2.** Construction issues zero requests; nothing consumes
+  `engineSdk` yet. Proven by `packages/web/tests/sdk-client.test.ts` and
+  `packages/sdk/src/sdk.test.ts` ("reactivity flag").
 
 ---
 
@@ -133,9 +169,12 @@ Behavior is **never** written in surface code. Change it in the SDK, then bind.
 > signal: `needs_you` = handled / your attention, `error` = genuine failure. A
 > *clean* turn splits on whether it ended on an interaction: nothing outstanding →
 > the terminal `done`; ended on `ask_user`/`request_connection` → `needs_you`
-> carrying the `pendingInteraction` VM field (the composer-replacing question /
-> connect card). (`packages/sdk/src/modules/turns/turn-settle.ts` /
-> `vm-output.ts`; full lifecycle in `knowledge-base/architecture.md`.)
+> carrying the `pendingInteraction` VM field (the question / connect card shown
+> above the always-mounted composer). ONE exception: a lone `suggest_reusable`
+> step (the save-as-Skill/Routine offer) settles `done`, not `needs_you` — the
+> offer is optional, nothing is waiting on the user.
+> (`packages/sdk/src/modules/turns/turn-settle.ts` / `vm-output.ts`; full
+> lifecycle in `knowledge-base/architecture.md`.)
 
 ### b. Visual change → tokens procedure
 

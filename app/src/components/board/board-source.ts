@@ -90,6 +90,13 @@ export interface BoardSource {
   // ── Panel scope (the agent whose chat features the right panel shows) ─────
   activeAgent: Agent | null;
   activeAgentDef: AgentDefinition | null;
+  /**
+   * Scope for the new-conversation composer draft (HOU-730): the agent id on
+   * the per-agent board (a parked first message must never surface in another
+   * agent's composer), a view constant in Mission Control (one composer whose
+   * draft survives switching the target agent).
+   */
+  draftScope: string;
   selectedSessionKey: string | null;
   selectedAgentPath: string | null;
   /** Called with a new conversation id after the panel creates one (Skill

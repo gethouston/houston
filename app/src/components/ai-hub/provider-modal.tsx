@@ -20,22 +20,14 @@ import { disconnectLocalModel } from "../../lib/local-model-connect.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
 import { BrandMark } from "../provider-browser/brand-mark.tsx";
 import {
-  authChipKey,
   providerDescriptionKey,
   providerModels,
 } from "../provider-browser/provider-grouping.ts";
 import { LocalModelStatusPill } from "../shell/local-model-status.tsx";
-import { AuthBadge, LiveStatus, SpecChip } from "./hub-badges.tsx";
+import { LiveStatus, SpecChip } from "./hub-badges.tsx";
 import { ModalShell } from "./modal-shell.tsx";
 import { ModelsBrowser } from "./models-browser.tsx";
 import { ConnectButton } from "./provider-modal-connect-button.tsx";
-
-/** Map the four-way auth chip key onto the three `AuthBadge` icon families. */
-function authBadgeKind(key: ReturnType<typeof authChipKey>) {
-  if (key === "subscription") return "subscription" as const;
-  if (key === "local") return "local" as const;
-  return "apiKey" as const;
-}
 
 export function ProviderModal({
   provider,
@@ -63,7 +55,6 @@ export function ProviderModal({
     [catalog, provider],
   );
   const isLocal = provider.auth === "openaiCompatible";
-  const authKey = authChipKey(provider);
 
   // Local model: the bridge's live online/offline state + a "disconnect" that
   // also tears the tunnel down (not just clears the credential). The tunnel pill
@@ -103,10 +94,6 @@ export function ProviderModal({
           {t(`providers.${providerDescriptionKey(provider.id)}.description`)}
         </p>
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-          <AuthBadge
-            kind={authBadgeKind(authKey)}
-            label={t(`card.${authKey}`)}
-          />
           {models.length > 0 && (
             <SpecChip>{t("card.models", { count: models.length })}</SpecChip>
           )}
@@ -181,7 +168,6 @@ export function ProviderModal({
         <ModelsBrowser
           models={models}
           onOpenModel={onOpenModel}
-          compact
           className="px-5 pb-4"
         />
       )}

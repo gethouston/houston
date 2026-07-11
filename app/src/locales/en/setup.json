@@ -1,9 +1,4 @@
 {
-  "welcome": {
-    "title": "Welcome to Houston",
-    "tagline": "Ship the impossible.",
-    "getStarted": "Get started"
-  },
   "name": {
     "title": "Name your workspace",
     "description": "Workspaces keep your agents organized, one for personal, one for work, etc.",
@@ -23,34 +18,15 @@
   },
   "tutorial": {
     "brand": "Houston",
-    "counter": "Mission {{current}} of {{total}}",
     "nav": {
       "back": "Back",
       "continue": "Continue"
     },
-    "eyebrow": "Step {{number}}",
-    "missionLabel": "Set up: {{title}}",
-    "upNext": "Up next",
     "errors": {
       "setupFailed": "We couldn't finish setting up your workspace. Please try again.",
-      "noProviderModel": "Connect an AI provider before creating your assistant."
-    },
-    "welcome": {
-      "title": "Welcome to Houston",
-      "tagline": "Houston is where you build agents that work with the same apps you already use.",
-      "stepsTitle": "A quick setup to get your agent working:",
-      "steps": {
-        "meet": "Meet your agent",
-        "brain": "Connect an AI provider so it can think",
-        "tools": "Connect your apps",
-        "email": "Send your first real email with it",
-        "try": "Try a real mission with your assistant",
-        "skill": "Save it as a reusable Skill",
-        "routine": "Schedule it as a recurring Routine",
-        "summary": "Meet your fully equipped assistant"
-      },
-      "start": "Get started",
-      "skip": "I'll set this up later"
+      "title": "Setup didn't finish",
+      "body": "Something went wrong while creating your assistant. Try again, or go back and pick a different AI.",
+      "retry": "Try again"
     },
     "toolkits": {
       "gmail": "Gmail",
@@ -60,10 +36,18 @@
     },
     "defaults": {
       "workspaceName": "Personal",
-      "assistantName": "Personal agent",
+      "assistantName": "Personal Assistant",
       "focus": "Help me stay organized, prepare my day, draft messages, protect focus time, and keep track of follow-ups.",
-      "approvalRule": "Ask before sending messages, creating calendar events, or changing anything in connected apps.",
-      "firstWorkflow": "Set up my first useful daily workflow"
+      "approvalRule": "Ask before sending messages, creating calendar events, or changing anything in connected apps."
+    },
+    "seeds": {
+      "dailyBriefing": {
+        "name": "Morning briefing"
+      },
+      "meetingPrep": {
+        "name": "Meeting prep",
+        "description": "Pull together everything you need before your next meeting: who is on the call, what you last discussed, and anything time-sensitive, from your inbox and a quick web check, handed to you before it starts."
+      }
     },
     "missions": {
       "intro": {
@@ -72,21 +56,13 @@
         "cta": "Start setup",
         "steps": {
           "ai": "Connect your AI",
-          "apps": "Connect your apps",
-          "agent": "Create your agent",
           "email": "Connect your email",
-          "send": "Send your first email"
+          "send": "Test your assistant"
         }
       },
       "connect": {
         "title": "Connect your AI",
         "body": "Choose the AI you already pay for and sign in. You bring your own subscription, so Houston never sees your password or your bill."
-      },
-      "meet": {
-        "title": "Create your first agent",
-        "body": "Give your agent a name and a color. You can change them anytime.",
-        "begin": "Create agent",
-        "creating": "Creating..."
       },
       "email": {
         "title": "See your agent in action",
@@ -111,107 +87,31 @@
         "otherPlaceholder": "Which email provider?",
         "connect": "Connect",
         "connecting": "Connecting...",
+        "cancel": "Cancel",
         "skipHint": "Can't connect right now? You can do this anytime from Integrations.",
-        "skip": "Skip for now"
-      },
-      "agentCreated": {
-        "title": "Agent created!",
-        "body": "Meet your new agent. Two quick steps and it's working for you.",
-        "cta": "Continue"
+        "skip": "Skip for now",
+        "preparing": "Getting your assistant ready...",
+        "skipConfirmTitle": "Skip connecting your email?",
+        "skipConfirmBody": "You can connect it anytime from Integrations. Your agent won't be able to send or read email until you do.",
+        "skipConfirmAction": "Skip for now",
+        "skipConfirmCancel": "Keep connecting"
       },
       "emailConnected": {
         "title": "Email connected!",
         "body": "That's how easy connecting an app is, and your agent can reach 1000+ this way.",
         "cta": "Continue"
       },
-      "emailSent": {
-        "title": "Email sent!",
-        "body": "Go check your inbox, your agent just sent you a real email.",
-        "cta": "Continue"
-      },
       "finished": {
         "title": "You're all set!",
-        "body": "Your agent is ready. What would you like to do next?",
-        "tour": "Take a tour of Houston",
-        "tourBody": "A quick walkthrough of the basics.",
-        "connectMore": "Connect more apps",
-        "connectMoreBody": "Give your agent access to more of your tools."
-      },
-      "onboardingIntro": {
-        "title": "Now let's put it to work",
-        "body": "Three quick steps to see your agent do something real.",
-        "cta": "Let's go"
-      },
-      "try": {
-        "title": "Try a real mission",
-        "intro": {
-          "title": "Work with your first agent",
-          "body": "In Houston, your agents connect to your real tools to actually do work for you.",
-          "cta": "Let's try that out"
-        },
-        "doneTitle": "You did it. First mission complete.",
-        "placeholder": "Reply to your assistant...",
-        "skill": {
-          "title": "Plan my next working day",
-          "description": "Read your calendar and inbox in parallel, cross-reference them for things you'd miss, and post a structured plan with what's urgent, your agenda and what to reply."
-        },
-        "chip": "Plan my next working day",
-        "continueChip": "Save this as a Skill",
-        "skip": "Skip tutorial"
-      },
-      "skill": {
-        "title": "Save this as a Skill",
-        "intro": {
-          "title": "Save it as a Skill",
-          "body": "If you want to run this same flow again later, save it as a Skill. Your assistant can reuse it with one click, or whenever you ask.",
-          "cta": "Got it"
-        },
-        "chip": "Save this as a Skill",
-        "continueChip": "Make it a Routine",
-        "skip": "Skip tutorial",
-        "placeholder": "Reply to your assistant...",
-        "savedDescription": "Plan the next working day by cross-referencing inbox and calendar, with a draft reply for the top email worth answering.",
-        "savedMessage": "Saved as a Skill called **{{slug}}**. You can run it anytime, with one click or by asking me.",
-        "done": {
-          "title": "Saved as a Skill",
-          "subtitle": "Now you can run this anytime, with one click or by asking.",
-          "integrationsLabel": "Uses",
-          "savedLabel": "Skill"
-        }
-      },
-      "routine": {
-        "title": "Make it a Routine",
-        "intro": {
-          "title": "Make it a Routine",
-          "body": "If you want this to run automatically on a schedule, save it as a Routine. Your assistant runs it in the background and shows you the result.",
-          "cta": "Got it"
-        },
-        "chip": "Make it a routine",
-        "continueChip": "See your assistant",
-        "skip": "Skip tutorial",
-        "placeholder": "Reply to your assistant...",
-        "done": {
-          "title": "Your Routine is ready",
-          "subtitle": "Houston will run this automatically on the schedule you picked.",
-          "everyWeekdayAt": "Every weekday at {{time}}",
-          "runsSkill": "Runs your {{skill}} Skill",
-          "manualHint": "You can also create routines yourself from the Routines tab, or just ask any agent."
-        }
-      },
-      "summary": {
-        "title": "Your assistant is ready",
-        "body": "Here is everything you just set up. You can change any of it later from the Skills or Routines tab, or just ask your assistant.",
-        "skillCardTitle": "Skill",
-        "routineCardTitle": "Routine",
-        "noSkill": "No Skill saved",
-        "noRoutine": "No Routine saved",
-        "continueChip": "Enter Houston"
+        "body": "Your Personal Assistant just proved it can act for you, for real.",
+        "readyTitle": "You're all set!",
+        "readyBody": "Your Personal Assistant is ready to get to work for you.",
+        "tagline": "Now go ship the impossible.",
+        "cta": "Start building",
+        "inviteTeam": "Invite your team",
+        "inviteTeamBody": "See who's working on every mission. Create a team and share your agents."
       }
     },
-    "sectionCounter": "{{section}} · {{current}} of {{total}}",
-    "sections": {
-      "setup": "Setup",
-      "onboarding": "Onboarding"
-    }
+    "stepCounter": "Step {{current}} of {{total}}"
   }
 }

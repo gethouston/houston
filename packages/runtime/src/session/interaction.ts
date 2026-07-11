@@ -10,15 +10,26 @@ import type {
  * `prompt()` resolves, and attached to the terminal clean `done` frame so the
  * board card can settle to `needs_you`.
  *
- * Merge semantics within one turn (the tools may call both):
+ * Merge semantics within one turn (the tools may call any combination):
  * - `ask_user` SETS the question steps — a second `ask_user` call REPLACES them
  *   (ids `q1`..`qN`).
+ * - A `signin_required` (409) from the integrations host RECORDS the single
+ *   signin step (id `s1`) — idempotent: a repeat call keeps the one step and
+ *   the LAST call's reason wins.
  * - `request_connection` APPENDS a connect step, deduped by normalized toolkit —
  *   a repeat call for the same toolkit updates its reason (ids `c1`..`cN` in
  *   first-seen order).
  * - The recorded {@link PendingInteraction} is the question steps THEN the
- *   connect steps, so the UI walks the user through everything the model queued
- *   in one flow. Either tool alone still yields a valid sequence.
+ *   signin step THEN the connect steps, so the UI walks the user through
+ *   everything the model queued in one flow. Any single kind alone still yields
+ *   a valid sequence.
+ *
+ * Precedence across the step kinds (see {@link InteractionHolder.pending}): a
+ * `plan_ready` step OWNS the interaction exclusively; otherwise the sequence is
+ * the questions, then the signin step, then the connects; and a
+ * `suggest_reusable` step is FALLBACK-ONLY — it surfaces solely when there are
+ * no other steps at all this turn, because it means the mission genuinely IS
+ * done (any question/signin/connect/plan_ready means it is not).
  *
  * Turn-scoping mechanism (mirrors acting-context.ts): an `AsyncLocalStorage`
  * whose store — a fresh mutable holder — is established for the DURATION of
@@ -31,25 +42,63 @@ import type {
  */
 
 type QuestionStep = Extract<InteractionStep, { kind: "question" }>;
+type SigninStep = Extract<InteractionStep, { kind: "signin" }>;
 type ConnectStep = Extract<InteractionStep, { kind: "connect" }>;
+type PlanReadyStep = Extract<InteractionStep, { kind: "plan_ready" }>;
+type SuggestReusableStep = Extract<
+  InteractionStep,
+  { kind: "suggest_reusable" }
+>;
 
 export interface InteractionHolder {
   /** Question steps from the last `ask_user` call this turn (replace semantics). */
   readonly questions: QuestionStep[];
+  /** The single signin step, once the host reported the user must sign in. */
+  readonly signin: SigninStep | undefined;
   /** Connect steps appended by `request_connection`, deduped by toolkit. */
   readonly connects: ConnectStep[];
-  /** The recorded sequence — question steps then connect steps — or undefined
-   *  when the model asked for nothing this turn. Derived: read after prompt(). */
+  /** The single plan-ready step, once the model called `plan_ready` (plan mode
+   *  only). When set it OWNS the interaction exclusively — see {@link pending}. */
+  readonly planReady: PlanReadyStep | undefined;
+  /** The single suggest-reusable step (id `r1`), once the model called
+   *  `suggest_reusable` on a clean finish to offer saving the work as a Skill or
+   *  Routine. CRITICALLY DIFFERENT FROM {@link planReady}: it does NOT own the
+   *  interaction exclusively. It is a FALLBACK ONLY — used solely when there are
+   *  no other steps at all this turn. Questions/signin/connects/planReady all
+   *  take priority, because any of those means the mission genuinely is not done
+   *  yet, whereas a suggestion means it IS done. See {@link pending}. */
+  readonly suggestReusable: SuggestReusableStep | undefined;
+  /** The recorded sequence — question steps, then the signin step, then connect
+   *  steps — or undefined when the model asked for nothing this turn. Derived:
+   *  read after prompt(). */
   readonly pending: PendingInteraction | undefined;
 }
 
 class Holder implements InteractionHolder {
   readonly questions: QuestionStep[] = [];
+  signin: SigninStep | undefined;
   readonly connects: ConnectStep[] = [];
+  planReady: PlanReadyStep | undefined;
+  suggestReusable: SuggestReusableStep | undefined;
 
   get pending(): PendingInteraction | undefined {
-    const steps = [...this.questions, ...this.connects];
-    return steps.length > 0 ? { steps } : undefined;
+    // A plan-ready step is exclusive: the plan-mode overlay tells the model to
+    // call `plan_ready` ALONE (and the tool subset withholds the ways to act),
+    // so if it somehow also queued questions/signin/connects this turn, the plan
+    // card still wins. Defensive normalization — one card, one meaning.
+    if (this.planReady) return { steps: [this.planReady] };
+    const steps = [
+      ...this.questions,
+      ...(this.signin ? [this.signin] : []),
+      ...this.connects,
+    ];
+    if (steps.length > 0) return { steps };
+    // suggest_reusable is FALLBACK-ONLY: it surfaces solely when nothing else
+    // was queued this turn. Any question/signin/connect above means the mission
+    // is not done, so it wins and the suggestion is dropped entirely — a
+    // suggestion must NEVER flip the board to `needs_you`.
+    if (this.suggestReusable) return { steps: [this.suggestReusable] };
+    return undefined;
   }
 }
 
@@ -80,6 +129,23 @@ export function recordQuestions(questions: QuestionStep[]): void {
 }
 
 /**
+ * Record the single signin step for this turn (the host reported the user must
+ * sign in to Houston before integrations can act). Idempotent: there is at most
+ * one signin step (id `s1`), so a repeat call keeps that one step and the LAST
+ * call's reason wins. A no-op outside a turn.
+ */
+export function recordSignin(input: { reason?: string }): void {
+  const holder = store.getStore();
+  if (!holder) return;
+  const reason = input.reason?.trim();
+  (holder as Holder).signin = {
+    kind: "signin",
+    id: "s1",
+    ...(reason ? { reason } : {}),
+  };
+}
+
+/**
  * Append a connect step for this turn, deduped by toolkit: a first mention gets
  * the next `c1`..`cN` id; a repeat for the same toolkit updates its reason in
  * place (keeping its id and position). A no-op outside a turn.
@@ -101,4 +167,44 @@ export function recordConnection(input: {
     toolkit: input.toolkit,
     ...(input.reason ? { reason: input.reason } : {}),
   });
+}
+
+/**
+ * Record the single plan-ready step for this turn (the model called `plan_ready`
+ * in Plan mode to present its finished plan). There is at most one such step
+ * (id `p1`); it OWNS the interaction exclusively (see {@link InteractionHolder.pending}).
+ * The summary is trimmed. A no-op outside a turn.
+ */
+export function recordPlanReady(input: { summary: string }): void {
+  const holder = store.getStore();
+  if (!holder) return;
+  (holder as Holder).planReady = {
+    kind: "plan_ready",
+    id: "p1",
+    summary: input.summary.trim(),
+  };
+}
+
+/**
+ * Record the single suggest-reusable step for this turn (the model called
+ * `suggest_reusable` on a clean finish to offer saving the work as a Skill or
+ * Routine). There is at most one such step (id `r1`); it is FALLBACK-ONLY —
+ * surfaced only when nothing else was queued this turn (see
+ * {@link InteractionHolder.pending}). The title and rationale are trimmed. A
+ * no-op outside a turn.
+ */
+export function recordSuggestReusable(input: {
+  reusableKind: "skill" | "routine";
+  title: string;
+  rationale: string;
+}): void {
+  const holder = store.getStore();
+  if (!holder) return;
+  (holder as Holder).suggestReusable = {
+    kind: "suggest_reusable",
+    id: "r1",
+    reusableKind: input.reusableKind,
+    title: input.title.trim(),
+    rationale: input.rationale.trim(),
+  };
 }

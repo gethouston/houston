@@ -7,3 +7,16 @@ export function humanizeSkillName(slug: string): string {
   if (spaced.length === 0) return slug;
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
+
+/**
+ * The title a skill renders with everywhere (cards, chip, chat marker,
+ * mission title): the frontmatter `title:` when the file carries one
+ * (translated store skills do — it holds the accents/casing the ASCII
+ * directory slug can't), else the humanized slug.
+ */
+export function skillDisplayTitle(skill: {
+  name: string;
+  title?: string | null;
+}): string {
+  return skill.title?.trim() || humanizeSkillName(skill.name);
+}

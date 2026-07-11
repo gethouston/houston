@@ -42,6 +42,7 @@
       "body": "Tu agente terminó de trabajar.",
       "question_one": "Tu agente tiene una pregunta para ti.",
       "question_other": "Tu agente tiene preguntas para ti.",
+      "signin": "Tu agente necesita que inicies sesión.",
       "connect": "Tu agente necesita que conectes una aplicación."
     }
   }

@@ -1,22 +1,40 @@
+import type {
+  InstalledSkillRowLabels,
+  SkillEditModalLabels,
+  SkillMarketplaceSectionLabels,
+} from "@houston-ai/skills";
 import { useTranslation } from "react-i18next";
 
+/**
+ * Labels for the installed-skill rows (icon-only pen/trash actions), the edit
+ * modal, and the shared delete-confirmation copy. The `ui/` pieces are
+ * i18n-agnostic; this fills their `labels` props from `t()`. Save/placeholder
+ * reuse the former detail screen's `detail.*` keys; Cancel/Delete come from the
+ * shared `common:actions`.
+ */
 export function useSkillSurfaceLabels() {
   const { t } = useTranslation(["skills", "common"]);
 
-  const skillDetailLabels = {
-    notFound: t("skills:detail.notFound"),
-    backAria: t("skills:detail.backAria"),
-    saveChanges: t("skills:detail.saveChanges"),
-    savingChanges: t("skills:detail.savingChanges"),
-    moreOptions: t("skills:detail.moreOptions"),
-    delete: t("skills:detail.delete"),
-    deleteTitle: (name: string) => t("skills:detail.deleteTitle", { name }),
-    deleteDescription: t("skills:detail.deleteDescription"),
-    deleteConfirmLabel: t("common:actions.delete"),
-    instructionsPlaceholder: t("skills:detail.instructionsPlaceholder"),
+  const installedRowLabels: InstalledSkillRowLabels = {
+    editAria: (name: string) => t("skills:grid.editSkillAria", { name }),
+    deleteAria: (name: string) => t("skills:grid.deleteSkillAria", { name }),
   };
 
-  return { skillDetailLabels };
+  const editModalLabels: SkillEditModalLabels = {
+    save: t("skills:detail.saveChanges"),
+    saving: t("skills:detail.savingChanges"),
+    cancel: t("common:actions.cancel"),
+    editorPlaceholder: t("skills:detail.instructionsPlaceholder"),
+    loadFailed: t("skills:detail.loadFailed"),
+  };
+
+  const deleteConfirm = {
+    title: (name: string) => t("skills:detail.deleteTitle", { name }),
+    description: t("skills:detail.deleteDescription"),
+    confirmLabel: t("common:actions.delete"),
+  };
+
+  return { installedRowLabels, editModalLabels, deleteConfirm };
 }
 
 export function useSkillDialogLabels() {
@@ -25,41 +43,8 @@ export function useSkillDialogLabels() {
   return {
     title: t("addDialog.title"),
     description: t("addDialog.description"),
-    storeTab: t("addDialog.storeTab"),
     repoTab: t("addDialog.repoTab"),
     scratchTab: t("addDialog.scratchTab"),
-    store: {
-      searchPlaceholder: t("addDialog.store.searchPlaceholder"),
-      popularHeading: t("addDialog.store.popularHeading"),
-      alreadyInstalledHint: (count: number) =>
-        t("addDialog.store.alreadyInstalledHint", { count }),
-      noResults: (query: string) => t("addDialog.store.noResults", { query }),
-      minQuery: t("addDialog.store.minQuery"),
-      searchUnavailable: t("addDialog.store.searchUnavailable"),
-      searchRateLimited: t("addDialog.store.searchRateLimited"),
-      searchOffline: t("addDialog.store.searchOffline"),
-      searchGeneric: t("addDialog.store.searchGeneric"),
-      loadingPopular: t("addDialog.store.loadingPopular"),
-      popularUnavailable: t("addDialog.store.popularUnavailable"),
-      retry: t("addDialog.store.retry"),
-      typeToSearch: t("addDialog.store.typeToSearch"),
-      installCount: (count: number, formatted: string) =>
-        t("addDialog.store.installCount", { count, formatted }),
-      installSkill: (name: string) =>
-        t("addDialog.store.installSkill", { name }),
-      installedSkill: (name: string) =>
-        t("addDialog.store.installedSkill", { name }),
-      alreadyInstalledBadge: t("addDialog.store.alreadyInstalledBadge"),
-      installedJustNow: t("addDialog.store.installedJustNow"),
-      installFailedAlready: t("addDialog.store.installFailedAlready"),
-      installFailedRepoMissing: t("addDialog.store.installFailedRepoMissing"),
-      installFailedMalformed: t("addDialog.store.installFailedMalformed"),
-      installFailedRateLimited: t("addDialog.store.installFailedRateLimited"),
-      installFailedOffline: t("addDialog.store.installFailedOffline"),
-      installFailedGeneric: t("addDialog.store.installFailedGeneric"),
-      installRetryAria: (name: string) =>
-        t("addDialog.store.installRetryAria", { name }),
-    },
     repo: {
       sourcePlaceholder: t("addDialog.repo.sourcePlaceholder"),
       findSkills: t("addDialog.repo.findSkills"),
@@ -90,6 +75,78 @@ export function useSkillDialogLabels() {
       errorTitleRequired: t("addDialog.scratch.errorTitleRequired"),
       errorBodyRequired: t("addDialog.scratch.errorBodyRequired"),
       errorSlugTaken: t("addDialog.scratch.errorSlugTaken"),
+    },
+  };
+}
+
+/**
+ * Labels for the inline {@link SkillMarketplaceSection} (the skills.sh "store"
+ * moved out of the Add Skill dialog into a page section). Reads from the
+ * top-level `store.*` keys; titles localized, shelf queries stay English
+ * because skills.sh is English.
+ */
+export function useSkillMarketplaceSectionLabels(): SkillMarketplaceSectionLabels {
+  const { t } = useTranslation("skills");
+
+  return {
+    heading: t("store.heading"),
+    subheading: t("store.subheading"),
+    searchPlaceholder: t("store.searchPlaceholder"),
+    publisherAllLabel: t("store.publisherAll"),
+    allCategories: t("store.allCategories"),
+    categoryAria: t("store.categoryAria"),
+    noResults: (query: string) => t("store.noResults", { query }),
+    searchRateLimited: t("store.searchRateLimited"),
+    searchOffline: t("store.searchOffline"),
+    searchGeneric: t("store.searchGeneric"),
+    typeToSearch: t("store.typeToSearch"),
+    minQuery: t("store.minQuery"),
+    seeAll: t("store.seeAll"),
+    retry: t("store.retry"),
+    browseUnavailable: t("store.browseUnavailable"),
+    poweredByVercel: t("store.poweredByVercel"),
+    shelves: [
+      {
+        id: "marketing",
+        title: t("store.shelves.marketing"),
+        query: "marketing",
+      },
+      { id: "sales", title: t("store.shelves.sales"), query: "sales" },
+      { id: "writing", title: t("store.shelves.writing"), query: "writing" },
+      { id: "research", title: t("store.shelves.research"), query: "research" },
+      { id: "legal", title: t("store.shelves.legal"), query: "legal" },
+      {
+        id: "productivity",
+        title: t("store.shelves.productivity"),
+        query: "productivity",
+      },
+    ],
+    card: {
+      installAria: (name: string) => t("store.card.installAria", { name }),
+      installedAria: (name: string) => t("store.card.installedAria", { name }),
+      installsCount: (count: number, formatted: string) =>
+        t("store.card.installsCount", { count, formatted }),
+      bySource: (owner: string) => t("store.card.bySource", { owner }),
+      infoAria: (name: string) => t("store.card.infoAria", { name }),
+      add: t("store.card.add"),
+      adding: t("store.card.adding"),
+      added: t("store.card.added"),
+    },
+    preview: {
+      install: t("store.preview.install"),
+      installing: t("store.preview.installing"),
+      installed: t("store.preview.installed"),
+      loadFailed: t("store.preview.loadFailed"),
+      noDescription: t("store.preview.noDescription"),
+      bySource: (owner: string, repo: string) =>
+        t("store.preview.bySource", { owner, repo }),
+      installsCount: (count: number, formatted: string) =>
+        t("store.preview.installsCount", { count, formatted }),
+      tagsHeading: t("store.preview.tagsHeading"),
+      description: {
+        alsoMatches: (keywords: string) =>
+          t("store.preview.alsoMatches", { keywords }),
+      },
     },
   };
 }

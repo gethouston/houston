@@ -29,8 +29,10 @@ const openExternal = (url: string) => () => {
  *
  * Two-panel card: the LEFT panel is the sign-in itself (Google, Microsoft, and
  * passwordless email — the 6-digit code stays fully in-app); the RIGHT panel is
- * a calm value note on a muted surface. Wordmark sits top-left of the screen and
- * the legal links anchor the footer.
+ * a calm value note on a muted surface. The card is pinned to the DARK palette
+ * (data-theme="dark") so the login looks the same in both app themes: dark
+ * "Log in" surface, dark value panel, light primary buttons. Wordmark sits
+ * top-left of the screen and the legal links anchor the footer.
  *
  * Re-click semantics: the provider spinner is only on while the system browser
  * is being opened (a few ms). After that the user is free to click again — the
@@ -75,12 +77,15 @@ export function SignInScreen() {
       </div>
 
       <div className="flex flex-1 items-center justify-center px-6">
-        {/* data-theme="light" pins the whole card to the light palette so it
-            reads identically in both app themes (white card on the
+        {/* data-theme="dark" pins the whole card to the dark palette so the
+            login reads identically in both app themes (dark card on the
             theme-invariant space backdrop). */}
+        {/* text-foreground is declared HERE, inside the pin, on purpose:
+            `color` inherits as a computed value, so a token utility set on an
+            ancestor outside the pin would carry the APP theme's foreground in. */}
         <div
-          data-theme="light"
-          className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-border shadow-2xl sm:grid-cols-3"
+          data-theme="dark"
+          className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-border text-foreground shadow-2xl sm:grid-cols-3"
         >
           <div className="flex flex-col gap-5 bg-background p-8 sm:col-span-2">
             <h1 className="text-lg font-medium">Log in</h1>
@@ -90,7 +95,7 @@ export function SignInScreen() {
                 variant="default"
                 onClick={handleSignIn("google")}
                 disabled={pending !== null}
-                className="h-10 w-full justify-center rounded-full shadow-none"
+                className="h-10 w-full justify-center rounded-full border-none! shadow-none"
               >
                 {pending === "google" ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -103,7 +108,7 @@ export function SignInScreen() {
                 variant="default"
                 onClick={handleSignIn("azure")}
                 disabled={pending !== null}
-                className="h-10 w-full justify-center rounded-full shadow-none"
+                className="h-10 w-full justify-center rounded-full border-none! shadow-none"
               >
                 {pending === "azure" ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -129,15 +134,16 @@ export function SignInScreen() {
             <div className="flex flex-col gap-3">
               <h2 className="text-lg font-medium">Share the love</h2>
               <p className="text-sm text-primary-foreground/70">
-                Refer a company to Houston for Teams. If they commit to 5 or
-                more licenses, you get $250 in credits for your own company.
+                Know a team that would fly with Houston? Send them our way. When
+                they commit to 5 or more licenses, your team gets $250 in
+                credits.
               </p>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={openExternal("https://gethouston.ai/referrals")}
-              className="-ml-3 gap-1 self-start text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+              className="-ml-3 gap-1 self-start text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground dark:hover:bg-primary-foreground/10"
             >
               See how it works
               <ArrowUpRight className="size-4" />

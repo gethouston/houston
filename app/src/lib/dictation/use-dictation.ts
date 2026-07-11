@@ -26,6 +26,9 @@ import {
 
 export type { DictationModelSetup };
 
+/** Shared empty history so the getLevels accessor never allocates when idle. */
+const EMPTY_LEVELS: readonly number[] = Object.freeze([]);
+
 export interface UseDictationArgs {
   /** Called with the recognized text once a transcription succeeds and is
    *  non-empty. Never called for a discarded (cancelled) capture. */
@@ -133,6 +136,14 @@ export function useDictation({
     dispatch({ type: "cancel" });
   }, []);
 
+  // Stable poll accessor for the composer's rAF-driven waveform. Reads the live
+  // recorder each call (returns [] before capture / after stop), so the control
+  // object can be rebuilt each render without churning this reference.
+  const getLevels = useCallback(
+    (): readonly number[] => recordingRef.current?.getLevels() ?? EMPTY_LEVELS,
+    [],
+  );
+
   // Disabled mid-flow, or unmounting: never leak a live mic stream/context.
   useEffect(() => {
     if (!enabled) {
@@ -165,6 +176,7 @@ export function useDictation({
         onStart: handleStart,
         onStop: () => void runStop("stop"),
         onCancel: handleCancel,
+        getLevels,
         labels,
       }
     : undefined;

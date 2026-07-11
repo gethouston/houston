@@ -12,7 +12,7 @@
  * typecheck here instead of silently drifting the mock.
  */
 
-import type { Activity } from "@houston/protocol";
+import type { Activity, Capabilities, SidebarLayout } from "@houston/protocol";
 import type {
   ChatMessage,
   IntegrationConnection,
@@ -29,6 +29,58 @@ import { resetProviders } from "./state-providers";
  */
 export type IntegrationsMode = "ready" | "unavailable" | "signin";
 
+/**
+ * The capabilities the fake host advertises at `GET /v1/capabilities`. It models
+ * the GATEWAY-augmented view the client sees, so it extends the host's protocol
+ * `Capabilities` with the two gateway-only feature-detect flags Teams adds
+ * (`teams`, `spaces` — defined in `@houston-ai/engine-client`, not the host
+ * protocol). `multiplayer` / `role` are already on the protocol type. The
+ * `/__test__/capabilities` control merges a partial into this so a spec can arm
+ * integrations, multiplayer, or the Teams surface without a forked build.
+ */
+export type FakeCapabilities = Capabilities & {
+  teams?: boolean;
+  spaces?: boolean;
+};
+
+/** A caller's effective per-agent access (Teams v2). Mirrors the wire enum. */
+export type AgentAccess = "manager" | "user";
+
+/**
+ * The Teams v2 settings the gateway serves at `/v1/agents/:slug/settings` and
+ * `/v1/org/settings`: the agent + org integration ceilings (`null` =
+ * unrestricted, `[]` = none), the agent's AI-model ceiling, and the caller's
+ * effective agent access. Seeded unrestricted; armed by `/__test__/agent-settings`.
+ */
+export interface TeamsSettings {
+  allowedToolkits: string[] | null;
+  orgAllowedToolkits: string[] | null;
+  allowedModels: string[] | null;
+  orgAllowedModels: string[] | null;
+  access: AgentAccess;
+}
+
+/** Single-player local profile — the default the app boots on (no Teams). */
+export const DEFAULT_CAPABILITIES: FakeCapabilities = {
+  profile: "local",
+  revealInOs: false,
+  terminal: false,
+  tunnel: false,
+  codeExecution: "disabled",
+  providers: ["anthropic"],
+  openaiCompatible: false,
+  integrations: [],
+};
+
+/** Unrestricted, manager access — no policy until a spec arms one. */
+export const DEFAULT_TEAMS_SETTINGS: TeamsSettings = {
+  allowedToolkits: null,
+  orgAllowedToolkits: null,
+  allowedModels: null,
+  orgAllowedModels: null,
+  access: "manager",
+};
+
 /** The host's agent wire model, mapped to the UI `Agent` by control-plane.ts. */
 export interface CpAgent {
   id: string;
@@ -38,6 +90,7 @@ export interface CpAgent {
 }
 
 export const ACTIVITY_PATH = ".houston/activity/activity.json";
+export const ROUTINES_PATH = ".houston/routines/routines.json";
 export const SEED_USAGE: TokenUsage = {
   context_tokens: 1200,
   output_tokens: 80,
@@ -73,7 +126,13 @@ export interface HostState {
   histories: Map<string, ChatMessage[]>;
   agentSeq: number;
   activitySeq: number;
+  /** Monotonic counter for minted routine ids. */
+  routineSeq: number;
   // ── user-scoped gateway state (integrations, grants, preferences) ──
+  /** Advertised capabilities, armed by `/__test__/capabilities` (Teams e2e). */
+  capabilities: FakeCapabilities;
+  /** Teams v2 integration/model ceilings, armed by `/__test__/agent-settings`. */
+  teamsSettings: TeamsSettings;
   /** Composio readiness, toggled by the `/__test__/integrations-mode` control. */
   integrationsMode: IntegrationsMode;
   /** connectionId -> the acting user's connected account. */
@@ -86,6 +145,11 @@ export interface HostState {
   grants: Map<string, string[]>;
   /** Per-user preference key -> value (locale, timezone, …). */
   preferences: Map<string, string>;
+  /**
+   * workspaceId -> the sidebar's order + grouping (real host persists it as the
+   * `sidebar_layout` workspace preference). A missing key reads as the default.
+   */
+  sidebarLayouts: Map<string, SidebarLayout>;
   /** Monotonic counter for minted connection ids. */
   connSeq: number;
 }
@@ -136,12 +200,16 @@ function freshState(): HostState {
     histories: new Map(),
     agentSeq: 1,
     activitySeq: 2,
+    routineSeq: 0,
+    capabilities: { ...DEFAULT_CAPABILITIES },
+    teamsSettings: { ...DEFAULT_TEAMS_SETTINGS },
     integrationsMode: "ready",
     connections,
     // No seeded grants record: the seed agent starts "grants unsupported" (404 →
     // null), so a suite can assert the null→[] distinction by writing one.
     grants: new Map(),
     preferences: new Map(),
+    sidebarLayouts: new Map(),
     connSeq: 1,
   };
 }

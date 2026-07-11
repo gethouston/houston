@@ -11,6 +11,7 @@ import {
 } from "../backends/registry";
 import type { HarnessSession, ResolvedModel } from "../backends/types";
 import { config } from "../config";
+import { LruCache } from "../lru";
 import type { TurnPin } from "./exec-turn";
 import { SYSTEM_PROMPT } from "./resource-loader";
 import { buildToolSelection } from "./tool-selection";
@@ -18,7 +19,9 @@ import { makeAskUserTool } from "./tools/ask-user";
 import { makeClampedFileTools } from "./tools/clamped-fs";
 import { makeIdTokenProvider } from "./tools/gcp-id-token";
 import { makeIntegrationTools } from "./tools/integrations";
+import { makePlanReadyTool } from "./tools/plan-ready";
 import { makeRunCodeTool } from "./tools/run-code";
+import { makeSuggestReusableTool } from "./tools/suggest-reusable";
 import type { ProvidedContext } from "./workspace-context";
 
 /**
@@ -40,6 +43,19 @@ const fileTools = makeClampedFileTools(config.workspaceDir);
 // makes no network call). Records the turn's pending question so it rides the
 // terminal `done` frame and Houston renders it as a card in place of the input.
 const askUserTool = makeAskUserTool();
+
+// The plan-presentation tool: registered always, name-gated to Plan mode by
+// `toolNamesForMode` (harmless in execute/auto — pi only exposes it when its
+// name is in the mode's allowlist). Records the turn's plan-ready step so it
+// rides the terminal `done` frame as a plan-approval card.
+const planReadyTool = makePlanReadyTool();
+
+// The reusable-suggestion tool: registered always, reaches execute/auto via the
+// tool-selection allowlist and is filtered out of plan by name (`toolNamesForMode`).
+// Records the turn's suggest-reusable step so a clean finish can ride the terminal
+// `done` frame as a dismissible save-as-Skill/Routine card, without flipping the
+// board to `needs_you`.
+const suggestReusableTool = makeSuggestReusableTool();
 
 // Integration tools (Composio, platform mode): available whenever this runtime
 // can reach its host with a sandbox token (server mode — local desktop +
@@ -84,6 +100,8 @@ const piBackend = createPiBackend({
   customTools: [
     ...fileTools,
     askUserTool,
+    planReadyTool,
+    suggestReusableTool,
     ...(runCodeTool ? [runCodeTool] : []),
     ...integrationTools,
   ],
@@ -165,10 +183,37 @@ export type Conversation = {
    * settles the turn it actually interrupts, not whatever a client guesses.
    */
   turnId?: string;
+  /**
+   * Turns queued-or-running for this conversation (incremented for a turn's
+   * whole lifetime by chat.ts `runTurn`, decremented when it settles). `> 0`
+   * pins the session against idle/LRU eviction so a session is NEVER disposed
+   * from under a queued turn — `turnId` alone would miss a turn parked in the
+   * queue behind the workdir lock, whose session is not yet executing.
+   */
+  pending: number;
 };
 
-/** Live sessions by conversation id (module state — one workspace per process). */
-export const conversations = new Map<string, Conversation>();
+/**
+ * A session cannot be evicted while it has a turn queued or executing — disposing
+ * it mid-turn would abort work the user is waiting on. Both signals are checked:
+ * `turnId` covers the executing turn, `pending` covers turns still queued.
+ */
+const isConvBusy = (conv: Conversation): boolean =>
+  (conv.pending ?? 0) > 0 || conv.turnId !== undefined;
+
+/**
+ * Live sessions by conversation id (module state — one workspace per process),
+ * LRU-bounded + idle-expiring so a long-lived runtime's memory tracks its ACTIVE
+ * conversations, not every one ever opened. An evicted session is disposed and
+ * transparently re-hydrated from its on-disk transcript on next access — behavior
+ * is preserved; only idle, turn-free sessions are ever evicted (see isConvBusy).
+ */
+export const conversations = new LruCache<string, Conversation>({
+  capacity: config.sessionCacheMax,
+  idleMs: config.sessionCacheIdleMs > 0 ? config.sessionCacheIdleMs : undefined,
+  isPinned: (_id, conv) => isConvBusy(conv),
+  onEvict: (_id, conv) => conv.session.dispose(),
+});
 
 export async function getConversation(
   id: string,
@@ -176,7 +221,12 @@ export async function getConversation(
   context?: ProvidedContext,
 ): Promise<Conversation> {
   const existing = conversations.get(id);
-  if (existing) return existing;
+  if (existing) {
+    // Reap sessions idle past the TTL on every access, so a quiet runtime still
+    // sheds memory between turns (get() above already marked `existing` fresh).
+    conversations.sweepIdle();
+    return existing;
+  }
 
   // The model the session is built with — recorded on the Conversation so a
   // later turn can detect when the active provider/model changed under it.
@@ -207,9 +257,14 @@ export async function getConversation(
     model: builtModel.id,
     backendId: backend.id,
     mode,
+    pending: 0,
     ...(context ? { context } : {}),
   };
+  // set() enforces the size bound (disposing the LRU tail if full); sweepIdle()
+  // then reaps any TTL-expired idle session. Both skip busy sessions, and the
+  // just-built `conv` is the most-recent entry, so it is never the one evicted.
   conversations.set(id, conv);
+  conversations.sweepIdle();
   return conv;
 }
 

@@ -20,10 +20,7 @@ export function defaultAssistantSetup(labels: {
   };
 }
 
-export function buildAssistantInstructions(
-  setup: AssistantSetup,
-  missionTitle: string,
-): string {
+export function buildAssistantInstructions(setup: AssistantSetup): string {
   return `# ${setup.assistantName}
 
 You are my Personal assistant in Houston.
@@ -31,8 +28,8 @@ You are my Personal assistant in Houston.
 ## Main job
 ${setup.focus.trim()}
 
-## First workflow
-Set up and run: ${missionTitle}.
+## What you already come with
+You ship with a ready-made morning-briefing routine and a meeting-prep skill. Lean on them, and mention them when they fit what I ask instead of building the same thing from scratch.
 
 ## Approval rule
 ${setup.approvalRule.trim()}

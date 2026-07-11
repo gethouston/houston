@@ -1,6 +1,7 @@
 import type { SequencedFrame } from "@houston/runtime-client";
 import { expect, test } from "vitest";
 import {
+  anyTurnRunning,
   evict,
   publish,
   reduceSnapshot,
@@ -13,6 +14,16 @@ import {
 // Unique id per test so the module-level maps never bleed across cases.
 let counter = 0;
 const freshId = () => `test-conv-${counter++}`;
+
+test("anyTurnRunning reports whether any channel snapshot is running", () => {
+  const id = freshId();
+  expect(anyTurnRunning()).toBe(false);
+  publish(id, { type: "user", data: { content: "go", ts: 1 } });
+  expect(anyTurnRunning()).toBe(true);
+  publish(id, { type: "done", data: null });
+  expect(anyTurnRunning()).toBe(false);
+  evict(id);
+});
 
 test("events reach only that conversation's subscribers, stamped with seq", () => {
   const a = freshId();
@@ -93,7 +104,13 @@ test("reduceSnapshot keeps the turn running through tool/thinking frames", () =>
   );
   s = reduceSnapshot(s, { type: "text", data: "work" });
   s = reduceSnapshot(s, { type: "tool_start", data: { name: "ls", args: {} } });
-  expect(s).toEqual({ running: true, partial: "work", seq: 0 }); // tool frame doesn't touch text
+  // tool frame doesn't touch text — it lands in the tools list (HOU-717)
+  expect(s).toEqual({
+    running: true,
+    partial: "work",
+    seq: 0,
+    tools: [{ name: "ls", input: {} }],
+  });
   s = reduceSnapshot(s, {
     type: "tool_end",
     data: { name: "ls", isError: false },

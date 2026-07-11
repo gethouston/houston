@@ -1,16 +1,22 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { seedSchemas } from "@houston/domain";
+import { loadRoutineRuns, seedSchemas } from "@houston/domain";
 import {
   type CustomEndpoint,
   type HoustonEvent,
   parseClaudeOAuthEnvelope,
 } from "@houston/protocol";
-import { ACTING_AS_HEADER, actingSubFromHeader } from "../auth/acting";
+import {
+  ACTING_AS_HEADER,
+  actingAuthorFromHeader,
+  actingSubFromHeader,
+} from "../auth/acting";
 import { checkPublicHttpsEndpoint } from "../custom-endpoint-validation";
 import type { Agent, UserId, Workspace } from "../domain/types";
+import { AgentNameConflictError } from "../ports";
 import { isApiKeyProvider } from "../providers";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
+import { stampTurnContributor } from "./activity-attribution";
 import {
   type AgentRouteDeps,
   authorizeAgent,
@@ -36,6 +42,42 @@ export type { AgentRouteDeps } from "./agent-authz";
 /** Attach the agent's real directory (`dir`) when this deployment has one. */
 function withAgentDir(deps: AgentRouteDeps, ws: Workspace, agent: Agent) {
   return deps.agentDir ? { ...agent, dir: deps.agentDir(ws, agent) } : agent;
+}
+
+async function activityStatus(
+  deps: AgentRouteDeps,
+  ctx: { workspace: Workspace; agent: Agent },
+) {
+  const channel = channelFor(deps, ctx.workspace);
+  if (!channel) return null;
+  if (!deps.vfs) return { error: "agent data not configured" as const };
+
+  const paths = deps.paths ?? DEFAULT_PATHS;
+  const runs = await loadRoutineRuns(
+    deps.vfs,
+    paths.agentRoot(ctx.workspace, ctx.agent),
+  );
+  const runningRoutineRuns = runs.items.filter(
+    (run) => run.status === "running",
+  ).length;
+  const turnBusy = await channel.busy(ctx);
+  const runtime = channel.runtimeStatus
+    ? await channel.runtimeStatus(ctx)
+    : "unknown";
+  // Other /agents/* requests held open right now — minus this probe itself.
+  // Catches what the turn check cannot: an open conversation-events SSE
+  // subscription (an agent open in a UI tab) between turns. Two probes
+  // overlapping see each other and both answer busy — conservative, and gone
+  // by the next sweep.
+  const activeRequests = deps.agentRequestCount
+    ? Math.max(0, deps.agentRequestCount() - 1)
+    : 0;
+  return {
+    busy: turnBusy || runningRoutineRuns > 0 || activeRequests > 0,
+    runtime,
+    runningRoutineRuns,
+    activeRequests,
+  };
 }
 
 /**
@@ -94,8 +136,30 @@ export async function handleAgents(
     // wired (legacy gke-only deploys); the typed-data routes 503 there anyway.
     if (deps.vfs) {
       const root = (deps.paths ?? DEFAULT_PATHS).agentRoot(ws, agent);
-      await seedSchemas(deps.vfs, root);
-      await writeAgentSeeds(deps.vfs, root, { claudeMd, seeds });
+      try {
+        await seedSchemas(deps.vfs, root);
+        await writeAgentSeeds(deps.vfs, root, { claudeMd, seeds });
+      } catch (err) {
+        // Atomic-enough create: a seed-write failure must not leave a
+        // permanently seedless agent. First-run reuses an existing record on
+        // retry (ensureWorkspaceWithAssistant lists then reuses), so a
+        // half-provisioned agent would never get re-seeded. Roll the just-created
+        // record + its folder back so a retry recreates cleanly, then rethrow so
+        // the failure still reaches the client (beta policy: no silent,
+        // half-provisioned agents).
+        try {
+          await deps.vfs.deletePrefix(root);
+          await deps.store.deleteAgent(agent.id);
+        } catch (rollbackErr) {
+          // Rollback itself failed — surface the ORIGINAL cause below, but leave
+          // a breadcrumb for the orphaned record/folder.
+          console.error(
+            `[agents] seed rollback failed for ${agent.id}:`,
+            rollbackErr instanceof Error ? rollbackErr.message : rollbackErr,
+          );
+        }
+        throw err;
+      }
     }
     deps.events?.emit(ws.ownerUserId, {
       type: "AgentsChanged",
@@ -125,7 +189,16 @@ export async function handleAgents(
         json(res, 400, { error: "missing 'name'" });
         return true;
       }
-      const renamed = await deps.store.renameAgent(agentId, name);
+      let renamed: Agent;
+      try {
+        renamed = await deps.store.renameAgent(agentId, name);
+      } catch (err) {
+        if (err instanceof AgentNameConflictError) {
+          json(res, 409, { error: err.message });
+          return true;
+        }
+        throw err;
+      }
       deps.events?.emit(authz.workspace.ownerUserId, {
         type: "AgentsChanged",
         workspaceId: authz.workspace.id,
@@ -423,6 +496,34 @@ export async function handleAgents(
   // dispatch below; the runtime has no routine routes. See routine-runs.ts.
   if (await handleRoutineRuns(deps, userId, method, path, res)) return true;
 
+  const activity = path.match(/^\/agents\/([^/]+)\/activity$/);
+  if (activity && method === "GET") {
+    const agentId = activity[1] ? decodeURIComponent(activity[1]) : undefined;
+    if (!agentId) {
+      json(res, 404, { error: "not found" });
+      return true;
+    }
+    const authz = await authorizeAgent(deps, userId, agentId);
+    if (!authz.ok) {
+      json(res, authz.status, { error: authz.reason });
+      return true;
+    }
+    const status = await activityStatus(deps, {
+      workspace: authz.workspace,
+      agent: authz.agent,
+    });
+    if (!status) {
+      noChannel(res, authz.workspace.runtime);
+      return true;
+    }
+    if ("error" in status) {
+      json(res, 503, { error: status.error });
+      return true;
+    }
+    json(res, 200, status);
+    return true;
+  }
+
   // The per-agent runtime surface: /agents/:agentId/<anything> → the agent's
   // runtime, via the workspace's channel. The frontend points its runtime
   // client at `${controlPlaneUrl}/agents/${agentId}`, so chat turns, the SSE
@@ -462,6 +563,13 @@ export async function handleAgents(
     const routineActor = deps.gatewayFronted
       ? actingSubFromHeader(req.headers[ACTING_AS_HEADER])
       : userId;
+    // The acting human as a full contributor, stamped onto missions (activity
+    // create/PATCH + turns). CRITICAL: null off the gateway (desktop/self-host),
+    // so single-player activity.json gains no attribution keys and stays
+    // byte-identical. Does NOT change routineActor.
+    const actingAuthor = deps.gatewayFronted
+      ? actingAuthorFromHeader(req.headers[ACTING_AS_HEADER])
+      : null;
     if (
       await handleAgentData(
         deps.vfs,
@@ -473,6 +581,7 @@ export async function handleAgents(
         res,
         emit,
         routineActor,
+        actingAuthor ?? undefined,
       )
     )
       return true;
@@ -540,7 +649,13 @@ export async function handleAgents(
       return true;
     if (
       await handlePortableAnonymize(
-        { vfs: deps.vfs, paths },
+        // The channel carries the AI pass into the agent's runtime; absent
+        // (or unsupported) the route falls back to the regex redactor.
+        {
+          vfs: deps.vfs,
+          paths,
+          channel: channelFor(deps, authz.workspace) ?? undefined,
+        },
         ctx,
         method,
         rest,
@@ -565,6 +680,26 @@ export async function handleAgents(
     if (!channel) {
       noChannel(res, authz.workspace.runtime);
       return true;
+    }
+    // Teams attribution: a user turn (POST …/conversations/:cid/messages) marks
+    // the acting human as a contributor on the mission it drives. Best-effort
+    // metadata that never blocks the turn (see activity-attribution.ts); runs
+    // only when a gateway vouched for the actor (actingAuthor non-null).
+    if (actingAuthor && deps.vfs) {
+      const turnMatch =
+        method === "POST"
+          ? rest.match(/^conversations\/([^/]+)\/messages$/)
+          : null;
+      if (turnMatch?.[1]) {
+        await stampTurnContributor(
+          deps.vfs,
+          paths.agentRoot(ctx.workspace, ctx.agent),
+          ctx.agent.id,
+          decodeURIComponent(turnMatch[1]),
+          actingAuthor,
+          emit,
+        );
+      }
     }
     await channel.dispatch(ctx, method, rest, url, req, res);
     return true;

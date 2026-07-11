@@ -1,11 +1,12 @@
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
-import type { WireEvent } from "@houston/runtime-client";
+import { clipToolResult, type WireEvent } from "@houston/runtime-client";
 import { classifyText, mapSdkError } from "./errors";
 import {
   type EventLike,
   normalizeUsage,
   parseArgs,
   type ToolBlock,
+  toolResultText,
   type UserContentBlock,
 } from "./translate-support";
 
@@ -107,7 +108,17 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
       // replayed/foreign result (e.g. resume history) and must not emit tool_end.
       const name = block.tool_use_id && toolNameById.get(block.tool_use_id);
       if (!name) continue;
-      out.push({ type: "tool_end", data: { name, isError: !!block.is_error } });
+      // Carry the result's text (clipped) so the mission log can show what
+      // the tool returned — same contract as the pi backend (HOU-717).
+      const content = toolResultText(block.content);
+      out.push({
+        type: "tool_end",
+        data: {
+          name,
+          isError: !!block.is_error,
+          ...(content ? { content: clipToolResult(content) } : {}),
+        },
+      });
     }
     return out;
   }

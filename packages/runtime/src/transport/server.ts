@@ -1,6 +1,8 @@
 import { createServer } from "node:http";
 import { primeAnthropicCredential } from "../backends/claude/credential-status";
 import { config } from "../config";
+import { anyTurnRunning } from "../session/bus";
+import { handleAnonymizeRoute } from "./anonymize-route";
 import { handleConversationRoute } from "./conversation-routes";
 import { applyCors } from "./cors";
 import { handleGenerateRoute } from "./generate-route";
@@ -24,6 +26,10 @@ async function handle(ctx: RouteContext) {
     json(ctx.res, 200, { status: "ok", version: config.version });
     return;
   }
+  if (ctx.method === "GET" && ctx.path === "/busy") {
+    json(ctx.res, 200, { busy: anyTurnRunning() });
+    return;
+  }
   if (ctx.method === "GET" && ctx.path === "/version") {
     json(ctx.res, 200, { engine: config.version, protocol: 2 });
     return;
@@ -36,6 +42,7 @@ async function handle(ctx: RouteContext) {
   if (await handleProviderRoute(ctx)) return;
   if (await handleConversationRoute(ctx)) return;
   if (await handleGenerateRoute(ctx)) return;
+  if (await handleAnonymizeRoute(ctx)) return;
 
   json(ctx.res, 404, { error: "not found" });
 }

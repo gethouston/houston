@@ -1,6 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  detectEngineAsleep,
   PROVISIONING_RETRY_MS,
   PROVISIONING_TTL_MS,
   parsePersistedProvisioning,
@@ -9,6 +10,66 @@ import {
 } from "../src/lib/agent-provisioning.ts";
 
 const httpError = (status: number) => Object.assign(new Error("x"), { status });
+
+describe("detectEngineAsleep (HOU-730)", () => {
+  /** Fast-answering read + a timer that never fires (awake engines win). */
+  const fastDeps = (read: Promise<unknown>) => ({
+    readFile: () => read,
+    sleep: () => new Promise<void>(() => {}),
+  });
+
+  it("awake: the probe answers before the window", async () => {
+    strictEqual(
+      await detectEngineAsleep("/w/a", fastDeps(Promise.resolve("ok"))),
+      false,
+    );
+  });
+
+  it("awake: any definitive HTTP answer means something responded", async () => {
+    strictEqual(
+      await detectEngineAsleep(
+        "/w/a",
+        fastDeps(Promise.reject(httpError(404))),
+      ),
+      false,
+    );
+    strictEqual(
+      await detectEngineAsleep(
+        "/w/a",
+        fastDeps(Promise.reject(httpError(401))),
+      ),
+      false,
+    );
+  });
+
+  it("awake: a fast transport failure is a network problem, not sleep", async () => {
+    strictEqual(
+      await detectEngineAsleep(
+        "/w/a",
+        fastDeps(Promise.reject(new TypeError("fetch failed"))),
+      ),
+      false,
+    );
+  });
+
+  it("asleep: a gateway warm-up status", async () => {
+    strictEqual(
+      await detectEngineAsleep(
+        "/w/a",
+        fastDeps(Promise.reject(httpError(503))),
+      ),
+      true,
+    );
+  });
+
+  it("asleep: the read is held past the detection window", async () => {
+    const deps = {
+      readFile: () => new Promise<unknown>(() => {}),
+      sleep: () => Promise.resolve(),
+    };
+    strictEqual(await detectEngineAsleep("/w/a", deps), true);
+  });
+});
 
 describe("probeSaysStillStarting", () => {
   it("keeps waiting on gateway warm-up statuses", () => {
@@ -48,6 +109,19 @@ describe("parsePersistedProvisioning", () => {
     );
   });
 
+  it("keeps a timed-out entry regardless of age (HOU-693 regression)", () => {
+    const stalled = {
+      agentId: "a3",
+      agentPath: "/w/a3",
+      since: now - PROVISIONING_TTL_MS * 10,
+      timedOut: true,
+    };
+    deepStrictEqual(
+      parsePersistedProvisioning(JSON.stringify([stalled, fresh]), now),
+      [stalled, fresh],
+    );
+  });
+
   it("survives malformed storage", () => {
     deepStrictEqual(parsePersistedProvisioning(null, now), []);
     deepStrictEqual(parsePersistedProvisioning("not json", now), []);
@@ -64,6 +138,23 @@ describe("parsePersistedProvisioning", () => {
       JSON.stringify([
         { ...fresh, pendingSends: [send, { text: 5 }, null, { id: "x" }] },
       ]),
+      now,
+    );
+    deepStrictEqual(parsed[0].pendingSends, [send]);
+  });
+
+  it("round-trips the optimistic-row fields on a pending send (HOU-713)", () => {
+    const send = {
+      id: "s1",
+      sessionKey: "welcome-a",
+      text: "",
+      queuedAt: now - 1_000,
+      titleText: "hi",
+      rowOnly: true,
+      row: { id: "a", title: "Hi", description: "hi", status: "needs_you" },
+    };
+    const parsed = parsePersistedProvisioning(
+      JSON.stringify([{ ...fresh, pendingSends: [send] }]),
       now,
     );
     deepStrictEqual(parsed[0].pendingSends, [send]);

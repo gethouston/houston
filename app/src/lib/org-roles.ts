@@ -1,17 +1,30 @@
-import type { Agent, Capabilities, OrgRole } from "@houston-ai/engine-client";
+import type { Capabilities, OrgRole } from "@houston-ai/engine-client";
 
 /**
- * Pure, DOM-free role logic for the multiplayer org surface. Mirrors the Teams
- * role matrix v2 (contract §1 — supersedes the old C3 matrix; note the admin
- * "see all agents" rule is GONE, and per-agent authority is now the agent
- * `access` level rather than mere assignment). The GATEWAY is the real enforcer
- * (these gates only hide affordances, never grant power). Extracted so the
- * who-can-see-what rules are unit-tested in isolation.
+ * Pure, DOM-free caps-only role logic for the multiplayer org surface. Mirrors
+ * the Teams role matrix v2 (contract §1 — supersedes the old C3 matrix; note the
+ * admin "see all agents" rule is GONE, and per-agent authority is now the agent
+ * `access` level rather than mere assignment). These gates read only from
+ * `Capabilities`; the PER-AGENT authority gates that take an `agent` argument
+ * live in `./agent-access`. The GATEWAY is the real enforcer (these gates only
+ * hide affordances, never grant power). Extracted so the who-can-see-what rules
+ * are unit-tested in isolation.
  */
 
 /** True when the deployment runs in multiplayer mode (paid org). */
 export function isMultiplayer(caps: Capabilities | null | undefined): boolean {
   return caps?.multiplayer === true;
+}
+
+/**
+ * Does this deployment serve C8 Spaces (self-serve team creation, agent moves,
+ * the multi-membership space switcher)? A cosmetic feature-detect — the gateway
+ * is the sole enforcer. Absent/false on desktop/self-host, so the switcher's
+ * create action stays "create a local workspace" there and becomes "create a
+ * team" only on a hosted deployment that advertises the surface.
+ */
+export function hasSpaces(caps: Capabilities | null | undefined): boolean {
+  return caps?.spaces === true;
 }
 
 /**
@@ -44,6 +57,53 @@ export function canSeeMembers(caps: Capabilities | null | undefined): boolean {
 }
 
 /**
+ * Should the global Integrations page be visible to this caller? In a Teams
+ * workspace that page becomes admin policy (the org-wide app ceiling), so only
+ * owner/admin see it there. Plain Teams members manage apps from the agent tab
+ * plus Settings > Connected accounts, and never see the policy page. Everyone
+ * else — single-player and non-Teams multiplayer — keeps the page unchanged. A
+ * cosmetic gate: the gateway is the real enforcer; this only hides an
+ * affordance that would be read-only (or forbidden) for a plain member.
+ */
+export function canSeeIntegrationsPage(
+  caps: Capabilities | null | undefined,
+): boolean {
+  if (isMultiplayer(caps) && caps?.teams === true) return canSeeMembers(caps);
+  return true;
+}
+
+/**
+ * Should the global AI Models hub be visible to this caller? In a Teams
+ * workspace the hub is owner/admin territory: AI provider connections are
+ * org-level (one credential per org — whoever connects, every member's agents
+ * work; C6), so a plain member has no account to connect there, and the new
+ * workspace model-policy is admin-only. Members pick their own model per agent in
+ * the composer instead, so they lose the hub nav exactly as they lose the
+ * Integrations nav. Everyone else — single-player and non-Teams multiplayer —
+ * keeps the hub unchanged. A cosmetic gate: the gateway is the real enforcer
+ * (a member's provider-connect POST already 403s); this only hides an
+ * affordance that would be dead for a plain member.
+ */
+export function canSeeAiModelsPage(
+  caps: Capabilities | null | undefined,
+): boolean {
+  if (isMultiplayer(caps) && caps?.teams === true) return canSeeMembers(caps);
+  return true;
+}
+
+/**
+ * Can this caller EDIT the org-wide policy ceilings (the app-allowlist ceiling
+ * AND the AI-model ceiling)? Owner only per C7 — admins see the policy surfaces
+ * read-only. A cosmetic gate: the gateway 403s a non-owner write, so this only
+ * avoids offering a control that would fail.
+ */
+export function canEditOrgSettings(
+  caps: Capabilities | null | undefined,
+): boolean {
+  return orgRole(caps) === "owner";
+}
+
+/**
  * Can this caller MUTATE members (add / remove / change role)? Owner only per
  * C3 — admins see the roster read-only.
  */
@@ -54,79 +114,35 @@ export function canManageMembers(
 }
 
 /**
- * Is this caller an "agent-manager" for a specific agent — the per-agent editor
- * role (Google Drive: managers are editors of the shared folder)? This is the
- * single per-agent authority gate behind renaming/deleting, sharing, and
- * configuring an agent (contract §1 matrix v2).
- *
- * - Single-player (no org): always true — the sole user owns everything.
- * - Multiplayer `owner`: always true (owner manages every org agent).
- * - Otherwise: the caller's effective `access` on this agent is `"manager"`.
- *
- * Purely trusts `agent.access`: the gateway already CLAMPS access to the org
- * role at read/enforcement time, so a role-`user` never carries an effective
- * `access="manager"` on the wire (a stale `manager` row is clamped away before
- * it reaches the client). The client therefore does not re-clamp by role —
- * `access` is already effective. Admins are NOT auto-managers of agents they
- * merely use; they must hold `access="manager"` (matrix v2 dropped the admin
- * "see/manage all" rule).
+ * Can this caller SEE the team's billing detail (C8 §Billing wire surface)?
+ * Owner/admin only — the gateway 403s a plain member's `GET /v1/org/billing`.
+ * Members NEVER see billing data; they render the `OrgSummary.degraded` banner
+ * and "ask your owner" copy instead. The admin/owner asymmetry lives elsewhere:
+ * an admin sees the summary (this gate) but cannot checkout (owner-only write) —
+ * the client shows admins the same "ask the owner to upgrade" copy, just better
+ * informed. Single-player has no billing, so `null` role is denied here (unlike
+ * `canCreateAgents`, which grants the sole user everything). A cosmetic gate:
+ * the gateway is the sole enforcer.
  */
-export function isAgentManager(
-  caps: Capabilities | null | undefined,
-  agent: Pick<Agent, "access">,
-): boolean {
-  if (!isMultiplayer(caps)) return true;
-  if (orgRole(caps) === "owner") return true;
-  return agent.access === "manager";
+export function canSeeBilling(caps: Capabilities | null | undefined): boolean {
+  const role = orgRole(caps);
+  return role === "owner" || role === "admin";
 }
 
 /**
- * Semantic alias of {@link isAgentManager}: can this caller EDIT an agent's
- * configuration — instructions (CLAUDE.md), skills, the AI model, and agent
- * settings (allowed toolkits)? Same gate, named for the config-editing call
- * sites so their intent reads clearly (matrix v2: configure-scope is
- * agent-manager only; a plain member gets a read-only view and the gateway
- * 403s any write).
+ * Whether the C8 Billing surface (the org dashboard tab AND the `useBilling`
+ * query) belongs at all: only on a Spaces-capable host (`caps.spaces`), only
+ * when the ACTIVE space is a team (personal spaces are free forever and never
+ * bill), and only for owner/admin (`canSeeBilling`; members never see billing
+ * data — C8 §Client UX). One source of truth for both the tab-visibility gate
+ * and the query-fire gate so they can never drift. The gateway is the sole
+ * enforcer; this only hides an unusable affordance.
  */
-export const canEditAgentConfig = isAgentManager;
-
-/**
- * Can this caller manage assignments for a specific agent (the "Who can use
- * this agent" / share block)? Agent-manager semantics (contract §1): owner for
- * any org agent; otherwise only when the caller's effective `access` on the
- * agent is `"manager"`; plain members and admins-who-only-use never can. The
- * old "admin manages any agent they're assigned to" rule is gone in matrix v2.
- */
-export function canManageAssignments(
+export function canSeeBillingTab(
   caps: Capabilities | null | undefined,
-  agent: Pick<Agent, "access">,
+  activeSpaceIsTeam: boolean,
 ): boolean {
-  return isAgentManager(caps, agent);
-}
-
-/** Can this caller read/edit their own per-agent integration grants? */
-export function canManageAgentGrants(
-  caps: Capabilities | null | undefined,
-  agent: Pick<Agent, "assigned">,
-): boolean {
-  if (orgRole(caps) === null) return false;
-  return agent.assigned === true;
-}
-
-/**
- * Can this caller EDIT an agent's integration grants on a grants-serving host?
- * Single-player (no org roles) always can — the sole user owns everything, the
- * same short-circuit the global Integrations page uses; without it a self-host /
- * local sidecar that serves grants would render the agent tab fully read-only.
- * Multiplayer defers to the assignment rule (any assigned user gates their OWN
- * grants, independent of agent-manager authority). Whether the host serves grants
- * at all is a separate concern the caller gates on.
- */
-export function canEditAgentGrants(
-  caps: Capabilities | null | undefined,
-  agent: Pick<Agent, "assigned">,
-): boolean {
-  return !isMultiplayer(caps) || canManageAgentGrants(caps, agent);
+  return hasSpaces(caps) && activeSpaceIsTeam && canSeeBilling(caps);
 }
 
 /**

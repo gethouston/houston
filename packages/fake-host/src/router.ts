@@ -8,7 +8,7 @@
  */
 
 import { buildProviderCatalog } from "@houston/host/src/providers/pi-catalog";
-import type { Capabilities, PendingInteraction } from "@houston/protocol";
+import type { PendingInteraction } from "@houston/protocol";
 import { setNextInteraction, setReplyDelay } from "./chat";
 import {
   clearChatStreams,
@@ -19,7 +19,9 @@ import {
 import { CORS, json } from "./http";
 import { authStatusBody, handleAgents, providersBody } from "./routes";
 import { handleUserRoutes } from "./routes-integrations";
+import { handleTeamsRoutes } from "./routes-teams";
 import { sseResponse } from "./sse";
+import type { FakeCapabilities, TeamsSettings } from "./state";
 import * as state from "./state";
 
 async function parseBody(
@@ -112,6 +114,21 @@ export async function handle(req: Request): Promise<Response> {
     );
     return json({ mode: state.integrationsMode() });
   }
+  // Override advertised capabilities (Teams e2e): merge a partial into the set,
+  // e.g. `{ integrations:["composio"], multiplayer:true, teams:true, role:"owner" }`
+  // to reach the Teams-shaped state single-player can't. Reset restores the seed.
+  if (path === "/__test__/capabilities" && method === "POST") {
+    const body = await parseBody(req);
+    return json(
+      state.setCapabilities((body ?? {}) as Partial<FakeCapabilities>),
+    );
+  }
+  // Arm the Teams settings the gateway serves at the settings routes below:
+  // the agent + org integration ceilings, the model ceiling, and agent access.
+  if (path === "/__test__/agent-settings" && method === "POST") {
+    const body = await parseBody(req);
+    return json(state.setTeamsSettings((body ?? {}) as Partial<TeamsSettings>));
+  }
   // Flip a pending connection to active (models the OAuth completing).
   if (path === "/__test__/integrations-activate" && method === "POST") {
     const body = await parseBody(req);
@@ -133,20 +150,11 @@ export async function handle(req: Request): Promise<Response> {
   if (path === "/providers") return json(providersBody());
 
   // --- misc host surface the UI may touch on boot (kept permissive) ---
-  // Single-player local profile: the app's boot routing waits on this
-  // (App.tsx gates onboarding-vs-shell on loaded capabilities).
+  // Deployment capabilities: single-player local by default (the app's boot
+  // routing waits on this — App.tsx gates onboarding-vs-shell on loaded
+  // capabilities). Armed to a Teams-shaped set by `/__test__/capabilities`.
   if (path === "/v1/capabilities" && method === "GET") {
-    const caps: Capabilities = {
-      profile: "local",
-      revealInOs: false,
-      terminal: false,
-      tunnel: false,
-      codeExecution: "disabled",
-      providers: ["anthropic"],
-      openaiCompatible: false,
-      integrations: [],
-    };
-    return json(caps);
+    return json(state.getCapabilities());
   }
   // pi-ai's full static model catalog (`GET /v1/catalog`, wire `ProviderCatalog`).
   // Built from the SAME real `buildProviderCatalog` the host route uses, so the
@@ -161,6 +169,10 @@ export async function handle(req: Request): Promise<Response> {
   // --- user-scoped gateway routes (integrations, grants, preferences, locale) ---
   const userRoute = handleUserRoutes(method, segs, body);
   if (userRoute) return userRoute;
+
+  // --- Teams v2 gateway routes (agent + org settings / allowlist ceilings) ---
+  const teamsRoute = handleTeamsRoutes(method, segs, body);
+  if (teamsRoute) return teamsRoute;
 
   // --- everything under /agents/* ---
   if (segs[0] === "agents") {

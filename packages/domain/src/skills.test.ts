@@ -45,11 +45,35 @@ test("parses Houston's existing frontmatter, including YAML-1.1 'featured: yes' 
   const parsed = parseSkillMd("research-company", HOUSTON_SKILL);
   if ("error" in parsed) throw new Error(parsed.error);
   expect(parsed.summary.name).toBe("research-company");
+  expect(parsed.summary.title).toBeNull(); // no title: field → UI humanizes the slug
   expect(parsed.summary.featured).toBe(true); // 'yes' is a STRING in YAML 1.2 — normalized
   expect(parsed.summary.created).toContain("2026-04-25"); // YAML date scalar → string
   expect(parsed.summary.integrations).toEqual(["tavily", "gmail"]);
   expect(parsed.summary.category).toBe("research");
   expect(parsed.body).toContain("## Procedure");
+});
+
+test("frontmatter title: surfaces as the display title while name stays the directory slug", async () => {
+  const translated = `---
+name: planear-una-campana
+title: "Planear una campaña"
+description: "Planifico tu campaña"
+version: 1
+category: Marketing
+---
+
+## Procedimiento
+Paso uno.
+`;
+  const parsed = parseSkillMd("planear-una-campana", translated);
+  if ("error" in parsed) throw new Error(parsed.error);
+  expect(parsed.summary.name).toBe("planear-una-campana"); // identity = dir slug (HOU-441)
+  expect(parsed.summary.title).toBe("Planear una campaña"); // accents live here, not in the slug
+
+  const store = memStore();
+  await store.writeText(skillKey(ROOT, "planear-una-campana"), translated);
+  const detail = await loadSkillDetail(store, ROOT, "planear-una-campana");
+  expect(detail?.title).toBe("Planear una campaña");
 });
 
 test("loadSkills lists slugs, sorted; broken frontmatter surfaces as a diagnostic", async () => {

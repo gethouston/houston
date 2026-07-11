@@ -147,13 +147,17 @@ export function useSessionEvents() {
                         "common:notifications.sessionComplete.question",
                         { count: interactionQuestionCount(interaction) },
                       )
-                    : bodyKey === "sessionComplete.connect"
+                    : bodyKey === "sessionComplete.signin"
                       ? handlersRef.current.t(
-                          "common:notifications.sessionComplete.connect",
+                          "common:notifications.sessionComplete.signin",
                         )
-                      : handlersRef.current.t(
-                          "common:notifications.sessionComplete.body",
-                        );
+                      : bodyKey === "sessionComplete.connect"
+                        ? handlersRef.current.t(
+                            "common:notifications.sessionComplete.connect",
+                          )
+                        : handlersRef.current.t(
+                            "common:notifications.sessionComplete.body",
+                          );
                 sendSessionNotification(title, body, nav);
               },
             );

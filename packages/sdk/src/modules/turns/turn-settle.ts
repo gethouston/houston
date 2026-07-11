@@ -30,6 +30,14 @@ export interface TurnState {
   prompt: string | null;
   text: string;
   thinking: string;
+  /**
+   * How many of this turn's `tool_call` feed items were already pushed (live
+   * frames + sync replay) — the dedup cursor a running `sync`'s tool replay
+   * starts from, so a resync never doubles a tool row (HOU-717).
+   */
+  toolsSeen: number;
+  /** Same cursor for `tool_result` pushes. */
+  toolResultsSeen: number;
   usage: TokenUsage | null;
   settled: boolean;
   terminal: TerminalBoardStatus | null;
@@ -42,6 +50,16 @@ export interface TurnState {
    * settles (user Stop, provider error) never set it.
    */
   pendingInteraction: PendingInteraction | null;
+  /**
+   * Whether the send was ever confirmed to REACH the engine — the send returned
+   * 202, our nonce echo came back, or the turn produced any frame / running
+   * sync. The sink sets it; the settles read it. An error settle with
+   * `delivered === false` means the message provably never landed (lost /
+   * rejected / refused), so its optimistic bubble is failed rather than
+   * confirmed. An AMBIGUOUS transport failure does NOT set it — only the
+   * verdict window's independent evidence does.
+   */
+  delivered: boolean;
 }
 
 export function newTurnState(
@@ -58,10 +76,13 @@ export function newTurnState(
     prompt: send?.prompt ?? null,
     text: "",
     thinking: "",
+    toolsSeen: 0,
+    toolResultsSeen: 0,
     usage: null,
     settled: false,
     terminal: null,
     pendingInteraction: null,
+    delivered: false,
   };
 }
 
@@ -80,6 +101,12 @@ const invisibleFinal = (s: TurnState) =>
  * board split is on the captured interaction (the `done` frame stashes it into
  * `s.pendingInteraction` before calling here): the turn ended asking the user
  * for something → `needs_you`; it ended with nothing outstanding → `done`.
+ *
+ * The ONE exception is a LONE `suggest_reusable` step: the mission genuinely IS
+ * done, and the card is just an optional offer to save the work as a Skill or
+ * Routine, not something blocking completion — so it settles `done`, not
+ * `needs_you`. Any other step kind, or `suggest_reusable` co-occurring with
+ * anything else, still means `needs_you`.
  */
 export function finishOk(s: TurnState): void {
   if (s.settled) return;
@@ -91,7 +118,10 @@ export function finishOk(s: TurnState): void {
     data: { result: s.text, cost_usd: null, duration_ms: null, usage: s.usage },
   });
   s.output.sessionStatus(s.agentPath, s.sessionKey, "completed");
-  s.terminal = s.pendingInteraction ? "needs_you" : "done";
+  const onlySuggestion =
+    s.pendingInteraction?.steps.length === 1 &&
+    s.pendingInteraction.steps[0].kind === "suggest_reusable";
+  s.terminal = s.pendingInteraction && !onlySuggestion ? "needs_you" : "done";
 }
 
 /**
@@ -124,7 +154,17 @@ export function finishErr(s: TurnState, msg: string): void {
     return;
   }
   s.settled = true;
-  push(s, { feed_type: "system_message", data: msg });
+  // Fail the optimistic bubble when the send never reached the engine (a lost /
+  // rejected send: `!delivered`) — never on a user Stop (a HANDLED settle: the
+  // message DID reach the agent, then the user cancelled). For a delivered turn
+  // that later errors, `failPending` is a no-op — server frames already
+  // confirmed the bubble — so this only ever bites a send with no evidence.
+  const failsSend = !s.delivered && !isStoppedByUser(msg);
+  push(s, {
+    feed_type: "system_message",
+    data: msg,
+    ...(failsSend ? { fails_pending: true } : {}),
+  });
   if (isStoppedByUser(msg)) {
     invisibleFinal(s);
     s.output.sessionStatus(s.agentPath, s.sessionKey, "error");
@@ -147,7 +187,15 @@ export function settleProviderErrorCard(
   s: TurnState,
   err: ProviderError & { failed_prompt?: string },
 ): void {
-  push(s, { feed_type: "provider_error", data: { ...err } });
+  // A card for a refused SEND (the not-connected path, `!delivered` — the prompt
+  // never left) fails the optimistic bubble; a mid-turn typed provider error is
+  // `delivered` (frames arrived first), so the flag is omitted and the bubble
+  // stays confirmed.
+  push(s, {
+    feed_type: "provider_error",
+    data: { ...err },
+    ...(s.delivered ? {} : { fails_pending: true }),
+  });
   if (s.settled) return;
   s.settled = true;
   invisibleFinal(s);

@@ -38,8 +38,16 @@ struct AgentOverview: Identifiable, Equatable, Sendable {
     /// Running-glow rule (PARITY §4): the avatar glows when the agent has any
     /// running mission.
     var isRunning: Bool { summary.runningCount > 0 }
-    /// Attention rule (PARITY §4): show the outline count chip when > 0.
+    /// Attention rule (PARITY §4): show the count chip when > 0.
     var needsYouCount: Int { summary.needsYouCount }
+
+    /// The most-recent active mission's wall-clock time, parsed from its ISO
+    /// `updatedAt` for the WhatsApp-style row time label (PARITY §4). `nil` when
+    /// the agent has no active mission, or the timestamp is absent/unparseable —
+    /// the row then shows no time label.
+    var lastActivityAt: Date? {
+        lastActivity?.updatedAt.flatMap(ActivityTimestamp.date(from:))
+    }
 }
 
 enum AgentsOverviewBuilder {

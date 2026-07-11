@@ -63,6 +63,10 @@ mod tests {
         assert!(prompt.contains("integration_execute"));
         assert!(prompt.contains("request_connection"));
         assert!(prompt.contains("I've connected Gmail. Please continue."));
+        // …the sign-in card joins the same flow, and app powers are never
+        // claimed unavailable unless Houston says they are not set up…
+        assert!(prompt.contains("a sign-in card joins"));
+        assert!(prompt.contains("not set up in this install"));
         // …the markdown-link connect hack is gone…
         assert!(!prompt.contains("houston_toolkit"));
         assert!(!prompt.contains("markdown link"));

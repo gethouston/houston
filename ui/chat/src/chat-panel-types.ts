@@ -44,10 +44,6 @@ export interface ChatPanelProps {
   onStop?: () => void;
   onBack?: () => void;
   isLoading: boolean;
-  /** The consumer narrates the pending send itself (inline card): a trailing
-   *  user message with no running turn must not light the in-flight
-   *  indicator. See `deriveStatus`. */
-  suppressPendingIndicator?: boolean;
   placeholder?: string;
   emptyState?: ReactNode;
   value?: string;
@@ -71,12 +67,11 @@ export interface ChatPanelProps {
   queuedLabels?: QueuedMessageLabels;
   canSendEmpty?: boolean;
   status?: ChatStatus;
+  /** Indicator for the gap before the agent's first output (the message is
+   *  in flight but nothing is running yet — e.g. the pulsing Houston helmet).
+   *  Suppressed the moment an active mission-log header takes over with
+   *  "Mission in progress: <action>" (HOU-724). */
   thinkingIndicator?: ReactNode;
-  /** Loader (e.g. the pulsing Houston helmet) shown for the WHOLE in-flight
-   *  turn — it stays up while the active mission-log header reads "Mission in
-   *  progress: <action>" and the standalone `thinkingIndicator` is suppressed
-   *  (HOU-655). Hidden the moment the reply text streams or the turn settles. */
-  loadingIndicator?: ReactNode;
   transformContent?: (content: string) => {
     content: string;
     extra?: ReactNode;

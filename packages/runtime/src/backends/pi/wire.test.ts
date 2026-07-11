@@ -232,3 +232,54 @@ test("toWire ignores a stopReason 'error' with no errorMessage (falls back to us
     data: { context_tokens: 20, output_tokens: 5, cached_tokens: 0 },
   });
 });
+
+test("toWire carries a tool_execution_end's result text, clipped (HOU-717)", () => {
+  const ev = {
+    type: "tool_execution_end",
+    toolCallId: "t1",
+    toolName: "bash",
+    result: {
+      content: [
+        { type: "text", text: "file-a.ts" },
+        { type: "image", data: "…" },
+        { type: "text", text: "file-b.ts" },
+      ],
+      details: {},
+    },
+    isError: false,
+  } as unknown as AgentSessionEvent;
+  expect(toWire(ev)).toEqual({
+    type: "tool_end",
+    data: { name: "bash", isError: false, content: "file-a.ts\nfile-b.ts" },
+  });
+});
+
+test("toWire omits tool_end content for a text-less or malformed result", () => {
+  const bare = {
+    type: "tool_execution_end",
+    toolCallId: "t1",
+    toolName: "bash",
+    result: null,
+    isError: true,
+  } as unknown as AgentSessionEvent;
+  expect(toWire(bare)).toEqual({
+    type: "tool_end",
+    data: { name: "bash", isError: true },
+  });
+});
+
+test("toWire clips an oversized tool result to the preview cap", () => {
+  const ev = {
+    type: "tool_execution_end",
+    toolCallId: "t1",
+    toolName: "read",
+    result: { content: [{ type: "text", text: "x".repeat(10_000) }] },
+    isError: false,
+  } as unknown as AgentSessionEvent;
+  const wire = toWire(ev) as Extract<
+    NonNullable<ReturnType<typeof toWire>>,
+    { type: "tool_end" }
+  >;
+  expect(wire.data.content?.length).toBeLessThan(4_100);
+  expect(wire.data.content?.endsWith("… (truncated)")).toBe(true);
+});

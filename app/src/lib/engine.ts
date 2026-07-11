@@ -15,6 +15,17 @@ declare global {
      *  mints a fresh Supabase access token so the request can be replayed
      *  invisibly (HOU-687). Installed by installHostedSessionRefresh below. */
     __HOUSTON_SESSION_REFRESH__?: () => Promise<string | null>;
+    /** Active-space selector (C8, `cloud/docs/contracts/C8-spaces-billing.md`),
+     *  the frontend-side record of the current space — the same role
+     *  `__HOUSTON_ENGINE__` plays for baseUrl/token. `setActiveOrg` below writes
+     *  it AND pushes the value into the live engine client (`_client.setActiveOrg`),
+     *  which is what actually pins `x-houston-org` on every gateway request and
+     *  `?org=` on the two SSE routes (`/v1/events`, `/agents/:slug/events`) —
+     *  browsers can't set headers on the event stream. A team org slug
+     *  (`[a-f0-9]{16}`), or `null`/absent for the personal space (no header ⇒
+     *  the gateway resolves the caller's personal org). The local host's
+     *  header-free `/v1/ws` transport ignores it. */
+    __HOUSTON_ACTIVE_ORG__?: string | null;
   }
 }
 
@@ -115,6 +126,11 @@ function applyConfig(config: { baseUrl: string; token: string }) {
   } else {
     _client = new HoustonClient(config);
   }
+  // Re-apply the recorded active space (C8) to the (re)built/repointed client:
+  // a freshly-built client starts personal, so without this the current space
+  // would be dropped if a client is constructed after setActiveOrg ran (and it
+  // keeps the token-refresh setEndpoint path idempotent). Absent ⇒ personal.
+  _client.setActiveOrg(window.__HOUSTON_ACTIVE_ORG__ ?? null);
   if (_resolveReady) {
     _resolveReady();
     _resolveReady = null;
@@ -184,6 +200,42 @@ export function setHostedEngineSessionToken(token: string | null): void {
     _ws.disconnect();
     _ws.connect();
   }
+}
+
+/**
+ * Pin the active space (C8) for every subsequent gateway request + SSE stream.
+ *
+ * `slug` is a team org slug (`[a-f0-9]{16}`, from `orgSlugFromWorkspaceId`) or
+ * `null` for the personal space (no header). Mirrors `setHostedEngineSessionToken`:
+ * it records the value on the `window.__HOUSTON_ACTIVE_ORG__` global AND pushes
+ * it into the live engine client via `_client.setActiveOrg` — the latter is what
+ * actually pins `x-houston-org` on every gateway request (read live per attempt)
+ * and `?org=` on the SSE routes (read per (re)connect). The client mutates its
+ * config in place, so the switch takes effect without rebuilding anything.
+ *
+ * Returns whether the active space actually changed, so callers only pay the
+ * cost of a cache reset on a real switch. An unchanged space — re-selecting the
+ * current workspace, or any switch on a personal-only host where every id maps
+ * to `null` — is a no-op, keeping single-workspace behaviour byte-identical.
+ *
+ * On a real change the live event stream is re-established (disconnect +
+ * connect) so the new `?org=` takes effect at once, mirroring the token-rotation
+ * bounce in `setHostedEngineSessionToken`. When no stream is live yet (initial
+ * load, before `getEngineWs()`), pushing onto the client is enough — the first
+ * connect reads its config.
+ */
+export function setActiveOrg(slug: string | null): boolean {
+  if (typeof window === "undefined") return false;
+  const previous = window.__HOUSTON_ACTIVE_ORG__ ?? null;
+  const next = slug ?? null;
+  if (previous === next) return false;
+  window.__HOUSTON_ACTIVE_ORG__ = next;
+  _client?.setActiveOrg(next);
+  if (_ws) {
+    _ws.disconnect();
+    _ws.connect();
+  }
+  return true;
 }
 
 /**

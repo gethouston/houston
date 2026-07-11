@@ -4,9 +4,15 @@ import { useTranslation } from "react-i18next";
 export type ConnectionStatus = "active" | "pending" | "error";
 
 const DOT: Record<ConnectionStatus, string> = {
-  active: "bg-emerald-500",
-  pending: "bg-amber-500",
+  active: "bg-success",
+  pending: "bg-warning",
   error: "bg-destructive",
+};
+
+const TEXT: Record<ConnectionStatus, string> = {
+  active: "text-success",
+  pending: "text-warning",
+  error: "text-destructive",
 };
 
 /** A small colored status dot, sized for inline use next to an app name. */
@@ -25,7 +31,11 @@ export function StatusDot({
   );
 }
 
-/** Colored dot + localized label describing a connection's live status. */
+/**
+ * Colored dot + colored, localized label describing a connection's live
+ * status — the sober "green thing next to the name" treatment (mirrors the
+ * AI Hub's `LiveStatus`), not a tinted card background.
+ */
 export function ConnectionStatusBadge({
   status,
 }: {
@@ -33,7 +43,12 @@ export function ConnectionStatusBadge({
 }) {
   const { t } = useTranslation("integrations");
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 text-xs font-medium",
+        TEXT[status],
+      )}
+    >
       <StatusDot status={status} />
       {t(`status.${status}`)}
     </span>

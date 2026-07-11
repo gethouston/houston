@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
   advanceConnect,
+  advanceSignin,
   answerWithOption,
   answerWithText,
   type ChatInteractionStep,
@@ -16,15 +17,11 @@ import {
   isLastStep,
   normalizeAnswer,
   optionLabel,
-  QUESTION_TEXT_CLASS,
   selectedOptionId,
   setDraft,
+  skipQuestion,
   toCompletedAnswers,
 } from "../src/interaction-card-logic.ts";
-
-function tokens(className: string): Set<string> {
-  return new Set(className.split(/\s+/).filter(Boolean));
-}
 
 const Q1: ChatInteractionStep = {
   kind: "question",
@@ -45,6 +42,11 @@ const CONNECT: ChatInteractionStep = {
   id: "c1",
   toolkit: "gmail",
   reason: "to send the email",
+};
+const SIGNIN: ChatInteractionStep = {
+  kind: "signin",
+  id: "s1",
+  reason: "to use connected apps",
 };
 
 describe("hasSelectableOptions", () => {
@@ -89,8 +91,8 @@ describe("isLastStep", () => {
 });
 
 describe("defaultProgress", () => {
-  it("formats '<current> of <total>'", () => {
-    assert.equal(defaultProgress(1, 3), "1 of 3");
+  it("formats 'Step <current> of <total>'", () => {
+    assert.equal(defaultProgress(1, 3), "Step 1 of 3");
   });
 });
 
@@ -190,6 +192,117 @@ describe("stepper flow: question, question, connect", () => {
   });
 });
 
+describe("skipQuestion", () => {
+  const steps = [Q1, Q2, CONNECT];
+
+  it("skips a middle question and omits it from the completed answers", () => {
+    let s = skipQuestion(initialStepperState(), steps).state; // skip Q1 -> Q2
+    assert.equal(s.current, 1);
+    assert.equal(s.answers.q1, undefined);
+    s = setDraft(s, "q2", "Running late");
+    s = answerWithText(s, steps).state; // answer Q2 -> connect
+    const done = advanceConnect(s, steps);
+    assert.deepEqual(done.completed, [
+      { stepId: "q2", question: "What should it say?", answer: "Running late" },
+    ]);
+  });
+
+  it("skipping the LAST question still completes with the prior answers", () => {
+    const s = answerWithOption(initialStepperState(), [Q1, Q2], "o1").state;
+    assert.equal(s.current, 1); // on Q2, the last step
+    const done = skipQuestion(s, [Q1, Q2]);
+    assert.deepEqual(done.completed, [
+      { stepId: "q1", question: "Who is it for?", answer: "John" },
+    ]);
+  });
+
+  it("is a no-op on a non-question step", () => {
+    const s = answerWithOption(
+      initialStepperState(),
+      [Q1, CONNECT],
+      "o1",
+    ).state;
+    assert.equal(s.current, 1); // on the connect step
+    const t = skipQuestion(s, [Q1, CONNECT]);
+    assert.equal(t.state, s);
+    assert.equal(t.completed, undefined);
+  });
+});
+
+describe("stepper flow: question, signin, connect", () => {
+  const steps = [Q2, SIGNIN, CONNECT];
+
+  it("walks all steps and completes with question answers only", () => {
+    // Answer Q2, advance the signin step, then the connect step.
+    let s = setDraft(initialStepperState(), "q2", "Running late");
+    s = answerWithText(s, steps).state; // -> signin step (index 1)
+    assert.equal(s.current, 1);
+
+    const afterSignin = advanceSignin(s, steps);
+    assert.equal(afterSignin.completed, undefined);
+    assert.equal(afterSignin.state.current, 2); // now on the connect step
+
+    // Signin contributes no answer text; only question answers complete.
+    const done = advanceConnect(afterSignin.state, steps);
+    assert.deepEqual(done.completed, [
+      { stepId: "q2", question: "What should it say?", answer: "Running late" },
+    ]);
+  });
+
+  it("advances the progress counter across the signin step", () => {
+    // "N of X" is derived from current+1 / total; signin counts like any step.
+    assert.equal(defaultProgress(2, steps.length), "Step 2 of 3");
+  });
+});
+
+describe("advanceSignin", () => {
+  it("completes when the signin step is the last step", () => {
+    const s = setDraft(initialStepperState(), "q2", "hi");
+    const afterQ = answerWithText(s, [Q2, SIGNIN]).state; // -> signin (last)
+    const done = advanceSignin(afterQ, [Q2, SIGNIN]);
+    assert.deepEqual(done.completed, [
+      { stepId: "q2", question: "What should it say?", answer: "hi" },
+    ]);
+  });
+
+  it("contributes no answer for a signin-only sequence", () => {
+    const done = advanceSignin(initialStepperState(), [SIGNIN]);
+    assert.deepEqual(done.completed, []);
+  });
+});
+
+describe("optionLabel on a signin step", () => {
+  it("returns null (signin steps carry no options)", () => {
+    assert.equal(optionLabel(SIGNIN, "o1"), null);
+  });
+});
+
+describe("forward navigation past a completed signin step", () => {
+  // Mirror of the connect regression: [question, signin, connect]. Signing in
+  // advances to connect; a revisited signin step never re-fires onSignedIn, so
+  // Back onto it strands the sequence unless the forward affordance is offered.
+  const steps = [Q2, SIGNIN, CONNECT];
+
+  it("lets the user return to a completed signin step and still finish", () => {
+    let s = setDraft(initialStepperState(), "q2", "Running late");
+    s = answerWithText(s, steps).state; // -> signin (index 1)
+    s = advanceSignin(s, steps).state; // signed in -> connect (index 2)
+    s = goBack(s); // Back onto the completed signin step (index 1)
+    assert.equal(s.current, 1);
+
+    // Already signed in: its card never re-fires onSignedIn, so the stepper's
+    // own forward affordance is the only way onward.
+    assert.equal(canGoForward(s), true);
+    s = goForward(s); // -> connect (index 2)
+    assert.equal(s.current, 2);
+
+    const done = advanceConnect(s, steps); // connected -> complete
+    assert.deepEqual(done.completed, [
+      { stepId: "q2", question: "What should it say?", answer: "Running late" },
+    ]);
+  });
+});
+
 describe("goBack", () => {
   it("never goes below the first step", () => {
     assert.equal(goBack(initialStepperState()).current, 0);
@@ -255,13 +368,5 @@ describe("toCompletedAnswers", () => {
       { stepId: "q1", question: "Who is it for?", answer: "John" },
       { stepId: "q2", question: "What should it say?", answer: "hi" },
     ]);
-  });
-});
-
-describe("interaction-card class tokens", () => {
-  it("renders each step's question prominently (text-lg)", () => {
-    const t = tokens(QUESTION_TEXT_CLASS);
-    assert.ok(t.has("text-lg"));
-    assert.ok(t.has("font-medium"));
   });
 });

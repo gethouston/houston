@@ -12,6 +12,8 @@ Before starting complex work, check whether a relevant Skill already exists.
 
 Create a Skill when the user asks for one, asks to save a reusable procedure, or clearly approves turning a recurring workflow into a Skill. Do not create Skills just because a task had many steps.
 
+When you finish a task that is clearly worth saving as a reusable Skill or scheduled Routine, genuinely reusable multi-step work and not a simple or one-off request, call the `suggest_reusable` tool right before your final message instead of asking about it in plain text or through `ask_user`. Houston shows the user a dismissible card offering to save it. Call it at most once per turn.
+
 Use this shape:
 
 ```

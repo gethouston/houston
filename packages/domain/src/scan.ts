@@ -151,9 +151,7 @@ export function scanContent(content: PortableContent): PortableScanResponse {
       items.push({ kind: "skill", id: skill.slug, findings });
   }
   for (const routine of content.routines) {
-    const findings = scanBody(
-      `${routine.name} \n ${routine.description} \n ${routine.prompt}`,
-    );
+    const findings = scanBody(`${routine.name} \n ${routine.prompt}`);
     if (findings.length)
       items.push({ kind: "routine", id: routine.id, findings });
   }

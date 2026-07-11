@@ -1,6 +1,7 @@
 import { existsSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { basename, dirname, join } from "node:path";
+import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
 import { ProxyChannel } from "../channel/proxy";
@@ -23,6 +24,7 @@ import { ChannelRoutineFirer } from "../schedule/firer";
 import { Scheduler } from "../schedule/scheduler";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { LocalWorkspaceStore } from "../store/local";
+import { StoreSyncDaemon } from "../store-sync";
 import { MemoryTurnBus } from "../turn/bus";
 import { FsVfs } from "../vfs";
 import { FsWatcher } from "../watch/watcher";
@@ -77,6 +79,15 @@ export interface LocalHostOptions {
   /** Test seam: a fake spawner so the wiring is exercisable without real processes. */
   spawner?: RuntimeSpawner;
   /**
+   * Spawn every stored agent's runtime right after listen instead of on its
+   * first dispatch (managed pods set HOUSTON_EAGER_RUNTIME=1). A woken pod's
+   * runtime boot (~10s — mostly loading the provider SDKs) then overlaps the
+   * wake's volume-attach/readiness window instead of taxing the user's first
+   * message. Leave off for the desktop: spawning every agent's runtime at app
+   * start would burn laptop RAM/CPU on agents that may never be opened.
+   */
+  eagerRuntime?: boolean;
+  /**
    * Path to the Rust-era chat-history db (`~/.houston/db/houston.db`). When set
    * AND the file exists, the host runs the one-time chat-history migration on
    * boot (idempotent, additive — see migrate/chat-history.ts). Omit (or point at
@@ -126,12 +137,31 @@ export interface LocalHostOptions {
    * untrusted client input — leave this false (the default) and it is dropped.
    */
   gatewayFronted?: boolean;
+  /** Managed-pod cache persistence. Omit to preserve the local/PVC lifecycle. */
+  storeSync?: {
+    store: ObjectStore;
+    quietMs?: number;
+    intervalMs?: number;
+    maxHydrateBytes?: number;
+  };
 }
 
 export interface LocalHost {
   server: Server;
   start(): Promise<void>;
-  stop(): void;
+  stop(): Promise<void>;
+}
+
+export function formatIntegrationsModeLog(
+  integrations: LocalHostOptions["integrations"],
+): string {
+  if (integrations?.gatewayUrl) {
+    return `[local-host] integrations: gateway ${integrations.gatewayUrl}`;
+  }
+  if (integrations?.composioApiKey) {
+    return "[local-host] integrations: direct (own Composio key)";
+  }
+  return "[local-host] integrations off: set HOUSTON_INTEGRATIONS_URL or COMPOSIO_API_KEY to enable";
 }
 
 /**
@@ -342,10 +372,22 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     firer: new ChannelRoutineFirer({ local: channel }),
     events,
   });
+  const syncDaemon = opts.storeSync
+    ? new StoreSyncDaemon({
+        ...opts.storeSync,
+        rootDir: dirname(opts.workspacesRoot),
+        log: (message, err) => console.error(message, err ?? ""),
+      })
+    : undefined;
+  let stopPromise: Promise<void> | undefined;
 
   return {
     server,
     async start() {
+      // The object store is authoritative in managed server mode. Hydration is
+      // readiness-critical and must finish before migrations or HTTP listening;
+      // failure propagates so the pod restarts without ever syncing an empty tree.
+      await syncDaemon?.hydrate();
       // One-time, idempotent migration of the pre-v0.4 FLAT `.houston/` layout
       // into the per-type folders the domain reads (ported from the Rust
       // engine's migrate_agent_data). Runs BEFORE the watcher so migrated files
@@ -386,7 +428,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         server.listen(opts.port, bind, () => resolve()),
       );
       watcher.start();
+      syncDaemon?.start();
       scheduler.start();
+      console.log(formatIntegrationsModeLog(opts.integrations));
       // The banner the Tauri supervisor parses (mirrors the runtime's contract).
       // The full token rides ONLY for the desktop sidecar; a pod/self-host token
       // is env-supplied and redacted so it never lands in plaintext logs.
@@ -397,12 +441,42 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           redactToken: opts.redactBannerToken ?? false,
         }),
       );
+      if (opts.eagerRuntime) {
+        // Fire-and-forget AFTER the banner: /health (and the supervisor)
+        // must never wait on a runtime boot — the point is overlap, and a
+        // runtime that fails here heals exactly like it always has (the
+        // next dispatch retries the spawn). Sequential on purpose: a pod
+        // hosts one agent, and a multi-agent tree shouldn't stampede the
+        // CPU it shares with the boot it is overlapping.
+        void (async () => {
+          for (const ws of await store.listWorkspaces()) {
+            for (const agent of await store.listAgents(ws.id)) {
+              await launcher.ensureAwake(agent).catch((err) => {
+                console.error(
+                  `[local-host] eager runtime spawn failed for ${agent.id} (continuing):`,
+                  err,
+                );
+              });
+            }
+          }
+        })();
+      }
     },
     stop() {
-      scheduler.stop();
-      watcher.stop();
-      launcher.shutdownAll(); // kill spawned runtimes — never orphan them
-      server.close();
+      if (stopPromise) return stopPromise;
+      stopPromise = (async () => {
+        scheduler.stop();
+        watcher.stop();
+        // Await actual child exit (bounded): the final sync below must not
+        // walk /data while a runtime is still flushing its last writes.
+        await launcher.shutdownAllAndWait();
+        await syncDaemon?.stop();
+        await new Promise<void>((resolve, reject) => {
+          if (!server.listening) return resolve();
+          server.close((err) => (err ? reject(err) : resolve()));
+        });
+      })();
+      return stopPromise;
     },
   };
 }

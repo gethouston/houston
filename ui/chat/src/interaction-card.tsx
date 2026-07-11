@@ -1,15 +1,16 @@
 "use client";
 
-import { cn } from "@houston-ai/core";
+import { Button, cn } from "@houston-ai/core";
 import {
-  type KeyboardEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   useCallback,
+  useEffect,
   useState,
 } from "react";
-import { PromptInputSubmit } from "./ai-elements/prompt-input";
 import {
   advanceConnect,
+  advanceSignin,
   answerWithOption,
   answerWithText,
   type ChatInteractionAnswer,
@@ -22,12 +23,17 @@ import {
   goForward,
   hasSelectableOptions,
   initialStepperState,
-  QUESTION_TEXT_CLASS,
   selectedOptionId,
   setDraft,
+  skipQuestion,
   type Transition,
 } from "./interaction-card-logic";
-import { OptionRow, StepperHeader } from "./interaction-card-parts";
+import { prettifyToolkit } from "./interaction-card-model.ts";
+import {
+  InteractionFooter,
+  OptionRow,
+  StepperHeader,
+} from "./interaction-card-parts";
 
 export type {
   ChatInteractionAnswer,
@@ -36,40 +42,87 @@ export type {
 } from "./interaction-card-logic";
 
 type ConnectStep = Extract<ChatInteractionStep, { kind: "connect" }>;
+type SigninStep = Extract<ChatInteractionStep, { kind: "signin" }>;
 
 export interface ChatInteractionCardProps {
-  /** The ordered interaction steps: question steps then connect steps (>=1). */
+  /** The ordered interaction steps: question steps, then at most one signin
+   *  step, then connect steps (>=1 total). */
   steps: ChatInteractionStep[];
   /** Receives every question answer, in step order, once the last step is done. */
   onComplete: (answers: ChatInteractionAnswer[]) => void;
-  /** Renders a connect step's body; call `api.onConnected` to advance. ui/chat
-   *  stays Composio-unaware, so the app supplies the connect card. */
+  /** Renders a connect step's body AND footer; call `api.onConnected` to advance.
+   *  ui/chat stays Composio-unaware, so the app supplies the reactive connect
+   *  content. It owns the row + primary CTA (a filled pill in {@link
+   *  InteractionFooter}); the card supplies the shared step-nav nodes via `api`
+   *  (`back`/`forward`) so the app never re-implements navigation, and routes the
+   *  step's title through the shared header. See {@link StepFooterApi}. */
   renderConnect: (
     step: ConnectStep,
-    api: { onConnected: () => void },
+    api: StepFooterApi & { onConnected: () => void },
   ) => ReactNode;
+  /** Renders a signin step's body AND footer; call `api.onSignedIn` to advance.
+   *  ui/chat stays auth-unaware, so the app supplies the reactive sign-in
+   *  content (row + filled CTA), placing the card's `api.back`/`api.forward`
+   *  nodes in the shared footer. See {@link StepFooterApi}. */
+  renderSignin: (
+    step: SigninStep,
+    api: StepFooterApi & { onSignedIn: () => void },
+  ) => ReactNode;
+  /** Dismisses the WHOLE interaction sequence. When omitted, the header shows no
+   *  dismiss (X) button. */
+  onDismiss?: () => void;
   disabled?: boolean;
   labels?: {
     placeholder?: string;
+    /** Visible label + aria-label of the commit-and-advance button ("Next"). */
     send?: string;
     back?: string;
     forward?: string;
+    skip?: string;
+    dismiss?: string;
     progress?: (current: number, total: number) => string;
+    /** Header title for a signin step with no agent-supplied reason. */
+    signinTitle?: string;
+    /** Header title for a connect step with no agent-supplied reason, given a
+     *  readable app name derived from the toolkit slug. */
+    connectTitle?: (app: string) => string;
   };
+}
+
+/** The shared step-navigation the card hands a signin/connect body so it can
+ *  compose the ONE footer row without owning navigation state. Each is a
+ *  ready-styled node (or null): place `back` leftmost, then render `forward`
+ *  INSTEAD of the primary CTA when present (a revisited, already-completed step
+ *  can't re-fire its own completion, so Forward is its only way onward). */
+export interface StepFooterApi {
+  back: ReactNode | null;
+  forward: ReactNode | null;
 }
 
 /**
  * The in-chat surface shown when the agent pauses to gather what it needs before
  * continuing: a stepper that walks the user through ONE step at a time (question
- * or connect), with a quiet "1 of X" progress and a back chevron. It REPLACES
- * the composer, so it borrows the composer's vocabulary (rounded-[28px] surface,
- * borderless inline textarea, round submit). The surface is grey (`bg-secondary`)
- * so the white option rows and free-text input read as raised, distinct chips.
+ * or connect). The header follows the Mercury title idiom: a quiet "Step N of M"
+ * micro-label (only for a multi-step sequence) above the question rendered as a
+ * real title, with an unobtrusive dismiss X top-right. ALL step-to-step
+ * navigation (back / skip / next) lives together in one footer row as quiet
+ * ghost buttons plus a single filled Next pill, Back leftmost, so there's a
+ * single place to look for "how do I move." A question step's option rows are
+ * also keyboard-selectable by their position number (shown as a right-aligned
+ * keycap hint when there's more than one option) whenever focus isn't in a text
+ * field. It renders ABOVE the real composer (which the caller keeps mounted
+ * alongside it, see `chat-panel.tsx`), so it borrows the composer's vocabulary
+ * (rounded-[28px] surface, borderless inline textarea) without replacing it —
+ * typing directly into the real composer instead is the caller's job to treat
+ * as an implicit abandon of this card. The surface is grey (`bg-secondary`) so
+ * the white option rows and free-text input read as raised, distinct chips.
  */
 export function ChatInteractionCard({
   steps,
   onComplete,
   renderConnect,
+  renderSignin,
+  onDismiss,
   disabled = false,
   labels,
 }: ChatInteractionCardProps) {
@@ -78,8 +131,11 @@ export function ChatInteractionCard({
   const total = steps.length;
   const current = Math.min(state.current, total - 1);
   const step = steps[current];
-  const placeholder = labels?.placeholder ?? "Type your answer...";
-  const sendLabel = labels?.send ?? "Send";
+  const placeholder = labels?.placeholder ?? "Type something else...";
+  const nextLabel = labels?.send ?? "Next";
+  const backLabel = labels?.back ?? "Back";
+  const forwardLabel = labels?.forward ?? "Next";
+  const skipLabel = labels?.skip ?? "Skip";
   const progress = labels?.progress ?? defaultProgress;
 
   const apply = useCallback(
@@ -103,17 +159,49 @@ export function ChatInteractionCard({
     [apply, disabled, state, steps],
   );
 
+  // Number-key shortcuts (1, 2, 3...) select the matching option row, mirroring
+  // the visible position numbers. Ignored while focus is in a text field, so
+  // typing digits into the free-text answer or the real composer is unaffected.
+  useEffect(() => {
+    if (disabled || !step || step.kind !== "question") return;
+    const options = step.options ?? [];
+    if (options.length === 0) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isEditable =
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "INPUT" ||
+        target?.isContentEditable;
+      if (isEditable) return;
+      const option = options[Number(e.key) - 1];
+      if (!option) return;
+      e.preventDefault();
+      onOption(option.id);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [disabled, step, onOption]);
+
   const onSend = useCallback(() => {
     if (disabled) return;
     apply(answerWithText(state, steps));
+  }, [apply, disabled, state, steps]);
+
+  const onSkip = useCallback(() => {
+    if (disabled) return;
+    apply(skipQuestion(state, steps));
   }, [apply, disabled, state, steps]);
 
   const onConnected = useCallback(() => {
     apply(advanceConnect(state, steps));
   }, [apply, state, steps]);
 
+  const onSignedIn = useCallback(() => {
+    apply(advanceSignin(state, steps));
+  }, [apply, state, steps]);
+
   const onKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         onSend();
@@ -127,6 +215,45 @@ export function ChatInteractionCard({
   const isQuestion = step.kind === "question";
   const canSend = canAdvanceQuestion(selectedId !== null, draft);
 
+  // Every step kind routes its title through the ONE header slot, so a connect
+  // step's reason reads with the same weight/position as a question. Falls back
+  // to a labelled title when the agent gave no reason.
+  const title =
+    step.kind === "question"
+      ? step.question
+      : step.kind === "signin"
+        ? (step.reason ?? labels?.signinTitle)
+        : (step.reason ??
+          labels?.connectTitle?.(prettifyToolkit(step.toolkit)));
+
+  // The shared step-nav nodes handed to a signin/connect body so it composes the
+  // footer without owning navigation state (styled exactly like the question
+  // footer's Back / Forward). Back walks to the previous reached step; Forward
+  // only appears for a revisited already-completed step.
+  const backNode =
+    current > 0 ? (
+      <Button
+        disabled={disabled}
+        onClick={() => setState(goBack)}
+        size="sm"
+        type="button"
+        variant="ghost"
+      >
+        {backLabel}
+      </Button>
+    ) : null;
+  const forwardNode = canGoForward(state) ? (
+    <Button
+      disabled={disabled}
+      onClick={() => setState(goForward)}
+      size="sm"
+      type="button"
+    >
+      {forwardLabel}
+    </Button>
+  ) : null;
+  const footerApi: StepFooterApi = { back: backNode, forward: forwardNode };
+
   return (
     <div
       aria-disabled={disabled || undefined}
@@ -138,18 +265,14 @@ export function ChatInteractionCard({
       )}
     >
       <div className="flex flex-col px-2.5 pt-2 pb-2">
-        {total > 1 && (
-          <StepperHeader
-            backLabel={labels?.back ?? "Back"}
-            canGoBack={current > 0}
-            canGoForward={canGoForward(state)}
-            disabled={disabled}
-            forwardLabel={labels?.forward ?? "Next"}
-            onBack={() => setState(goBack)}
-            onForward={() => setState(goForward)}
-            progressText={progress(current + 1, total)}
-          />
-        )}
+        <StepperHeader
+          disabled={disabled}
+          dismissLabel={labels?.dismiss ?? "Dismiss"}
+          onDismiss={onDismiss}
+          progressLabel={progress(current + 1, total)}
+          title={title}
+          total={total}
+        />
 
         {/* Content changes, chrome doesn't: a single quiet fade on step swap. */}
         <div
@@ -157,47 +280,76 @@ export function ChatInteractionCard({
           key={step.id}
         >
           {isQuestion ? (
-            <>
-              <p className={QUESTION_TEXT_CLASS}>{step.question}</p>
+            // Options and the free-text row live in one evenly-spaced group, so
+            // "Type something else..." reads as the last row of the same list —
+            // the escape hatch, not a separate control.
+            <div className="mt-4 flex flex-col gap-2">
               {hasSelectableOptions(step.options) && (
-                <div className="mt-3 flex flex-col gap-2" role="radiogroup">
-                  {step.options?.map((option) => (
+                <div className="flex flex-col gap-2" role="radiogroup">
+                  {step.options?.map((option, index) => (
                     <OptionRow
                       disabled={disabled}
+                      keycap={(step.options?.length ?? 0) > 1}
                       key={option.id}
                       onSelect={() => onOption(option.id)}
                       option={option}
+                      position={index + 1}
                       selected={selectedId === option.id}
                     />
                   ))}
                 </div>
               )}
-            </>
+
+              <div className="flex items-end gap-2 rounded-xl border border-border/60 bg-background px-3.5 py-2.5 transition-colors focus-within:border-border">
+                <textarea
+                  className="max-h-40 flex-1 resize-none border-none bg-transparent py-0.5 text-base text-foreground leading-[1.3] outline-none placeholder:text-muted-foreground/50"
+                  disabled={disabled}
+                  onChange={(e) =>
+                    setState((s) => setDraft(s, stepId, e.target.value))
+                  }
+                  onKeyDown={onKeyDown}
+                  placeholder={placeholder}
+                  rows={1}
+                  value={draft}
+                />
+              </div>
+            </div>
+          ) : step.kind === "signin" ? (
+            renderSignin(step, { ...footerApi, onSignedIn })
           ) : (
-            renderConnect(step, { onConnected })
+            renderConnect(step, { ...footerApi, onConnected })
           )}
         </div>
 
+        {/* Question steps' navigation lives here, one row, Back leftmost: a
+            single place to look for "how do I move." Back walks to the previous
+            already-reached step; Skip advances past the question unanswered;
+            Next is the single filled pill that commits. A signin/connect step
+            renders its OWN footer inside its body (the app owns that reactive
+            content), placing the same `InteractionFooter` with the card-supplied
+            `back`/`forward` nodes beside its filled CTA — so the chrome matches
+            without the card knowing anything about Composio/auth. */}
         {isQuestion && (
-          <div className="mt-4 flex items-end gap-2 rounded-2xl border border-border/50 bg-background px-3 py-2 transition-colors focus-within:border-border">
-            <textarea
-              className="max-h-40 flex-1 resize-none border-none bg-transparent py-1 text-base text-foreground leading-[1.2] outline-none placeholder:text-muted-foreground/50"
+          <InteractionFooter>
+            {backNode}
+            <Button
               disabled={disabled}
-              onChange={(e) =>
-                setState((s) => setDraft(s, stepId, e.target.value))
-              }
-              onKeyDown={onKeyDown}
-              placeholder={placeholder}
-              rows={1}
-              value={draft}
-            />
-            <PromptInputSubmit
-              aria-label={sendLabel}
-              className="shrink-0"
+              onClick={onSkip}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              {skipLabel}
+            </Button>
+            <Button
               disabled={disabled || !canSend}
               onClick={onSend}
-            />
-          </div>
+              size="sm"
+              type="button"
+            >
+              {nextLabel}
+            </Button>
+          </InteractionFooter>
         )}
       </div>
     </div>

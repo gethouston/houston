@@ -8,6 +8,14 @@ import type { TurnSinkOptions } from "./turn-sink-options";
 
 export type { TurnSinkOptions } from "./turn-sink-options";
 
+/** One of the running turn's tools, as the `sync` frame reports it. */
+type SyncTool = {
+  name: string;
+  input?: unknown;
+  isError?: boolean;
+  content?: string;
+};
+
 /**
  * Folds one conversation's wire frames into FeedItem + SessionStatus pushes on
  * the sink's {@link FeedOutput}, and settles the turn ONLY on a terminal frame
@@ -58,6 +66,9 @@ export class TurnSink {
   /** Turn mode: the send returned 202 — a running turn may now be OURS. */
   sendAccepted(): void {
     this.accepted = true;
+    // The engine acknowledged the send — the message reached it, so the
+    // optimistic bubble is delivered even if the turn later errors.
+    this.s.delivered = true;
   }
   /**
    * Turn mode: the send failed at the TRANSPORT level, so the engine may have
@@ -104,7 +115,10 @@ export class TurnSink {
       case "ours":
         break;
     }
-    if (ev.type !== "done" && ev.type !== "error") this.sawRunning = true;
+    if (ev.type !== "done" && ev.type !== "error") {
+      this.sawRunning = true;
+      this.s.delivered = true; // a real frame proves the turn started
+    }
     applyTurnFrame(this.s, ev, this.o.stop);
   }
 
@@ -116,6 +130,7 @@ export class TurnSink {
       this.turnId = ev.turnId;
       this.accepted = true;
       this.sawRunning = true;
+      this.s.delivered = true; // the engine echoed our send — it landed
       return;
     }
     if (classifyFrame(this.turnId, ev.turnId) === "boundary") {
@@ -129,6 +144,8 @@ export class TurnSink {
     partial: string;
     resync?: boolean;
     turnId?: string;
+    thinking?: string;
+    tools?: SyncTool[];
   }): void {
     // Any sync after the first is a reconnect catch-up: seq servers only
     // re-sync when our cursor was unserviceable (`resync: true`), legacy
@@ -152,7 +169,12 @@ export class TurnSink {
     }
   }
 
-  private onRunningSync(data: { partial: string; turnId?: string }): void {
+  private onRunningSync(data: {
+    partial: string;
+    turnId?: string;
+    thinking?: string;
+    tools?: SyncTool[];
+  }): void {
     const mayAdopt = this.o.mode === "observer" || this.accepted;
     switch (classifyRunningSync(this.turnId, data.turnId, mayAdopt)) {
       case "foreign":
@@ -167,6 +189,9 @@ export class TurnSink {
         break;
     }
     this.markRunning();
+    // Replay the running turn's activity BEFORE the text so the mission log
+    // folds in live order (thinking, then tools, then the reply bubble).
+    this.replaySyncActivity(data);
     // The server's authoritative in-flight assistant text REPLACES our
     // accumulation — empty string included: a stale splice must never survive
     // a resync. (Replayed frames, when servable, never reach a sync.)
@@ -176,6 +201,53 @@ export class TurnSink {
         feed_type: "assistant_text_streaming",
         data: this.s.text,
       });
+    }
+  }
+
+  /**
+   * Fold a running sync's `thinking`/`tools` (what streamed BEFORE we
+   * connected — a fresh attach gets no frame replay) into the feed, deduped
+   * so a resync never doubles what live frames or an earlier sync already
+   * pushed (HOU-717). Absent fields (pre-field server, or a turn with no
+   * activity yet) fold nothing.
+   */
+  private replaySyncActivity(data: {
+    thinking?: string;
+    tools?: SyncTool[];
+  }): void {
+    const s = this.s;
+    if (data.thinking && data.thinking !== s.thinking) {
+      // Server-authoritative cumulative reasoning, same posture as `partial`.
+      s.thinking = data.thinking;
+      push(s, { feed_type: "thinking_streaming", data: s.thinking });
+    }
+    const tools = data.tools ?? [];
+    // A tool whose call we already pushed may have ENDED while we were away —
+    // close it first (tools run serially, so results land in call order).
+    while (s.toolResultsSeen < Math.min(s.toolsSeen, tools.length)) {
+      const t = tools[s.toolResultsSeen];
+      if (t.isError === undefined) break;
+      push(s, {
+        feed_type: "tool_result",
+        data: { content: t.content ?? "", is_error: t.isError },
+      });
+      s.toolResultsSeen++;
+    }
+    // Then the calls we never saw, each with its result when it already ended.
+    while (s.toolsSeen < tools.length) {
+      const t = tools[s.toolsSeen];
+      s.toolsSeen++;
+      push(s, {
+        feed_type: "tool_call",
+        data: { name: t.name, input: t.input ?? {} },
+      });
+      if (t.isError !== undefined) {
+        push(s, {
+          feed_type: "tool_result",
+          data: { content: t.content ?? "", is_error: t.isError },
+        });
+        s.toolResultsSeen++;
+      }
     }
   }
 
@@ -190,6 +262,7 @@ export class TurnSink {
       );
     }
     this.sawRunning = true;
+    this.s.delivered = true; // a running sync proves the turn is live on the engine
   }
 
   private settleFromHistorySoon(): void {

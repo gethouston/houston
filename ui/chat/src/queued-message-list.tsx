@@ -31,7 +31,7 @@ export function QueuedMessageList({
 
   return (
     <div className="mb-2 rounded-lg border border-border/70 bg-muted/35 px-3 py-2 shadow-sm">
-      <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
         <Clock3Icon className="size-3" />
         <span>{title}</span>
       </div>

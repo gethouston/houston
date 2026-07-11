@@ -83,7 +83,7 @@ export interface Agent {
   /**
    * Teams v2: the CURRENT caller's effective access to this agent (`manager`
    * may reconfigure it, `user` may only use it). Absent in single-player mode.
-   * Drives the client-side read-only gating (org-roles `isAgentManager`);
+   * Drives the client-side read-only gating (agent-access `isAgentManager`);
    * the gateway is the sole enforcer. Kept in sync (by hand) with the
    * engine-client `Agent` shape.
    */
@@ -106,6 +106,11 @@ export interface TabProps {
 /** Skill summary returned by list_skills */
 export interface SkillSummary {
   name: string;
+  /**
+   * Display title from frontmatter `title:` — accents/casing the directory
+   * slug can't carry (translated store skills). Null → humanize the slug.
+   */
+  title: string | null;
   description: string;
   version: number;
   tags: string[];
@@ -139,6 +144,8 @@ export interface SkillInputDef {
 /** Skill detail returned by load_skill */
 export interface SkillDetail {
   name: string;
+  /** Display title from frontmatter `title:`; null → humanize the slug. */
+  title: string | null;
   description: string;
   version: number;
   content: string;

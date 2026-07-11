@@ -1,4 +1,7 @@
 {
+  "welcome": {
+    "greeting": "¡Hola! Soy {{name}}, tu nuevo agente. Cuéntame en qué te gustaría que te ayude: puedes describir una tarea con tus propias palabras, compartir algunos detalles sobre cómo te gusta que se hagan las cosas o adjuntar archivos que me den contexto. Cuanto más me cuentes, mejor se ajustará mi trabajo a lo que necesitas. ¿Con qué te gustaría empezar?"
+  },
   "composer": {
     "placeholder": "Pregunta lo que quieras...",
     "fileAlreadyInChat": "El archivo ya está en el chat",
@@ -38,14 +41,42 @@
     "description": "Escribe un mensaje para hablar con tu asistente."
   },
   "questionCard": {
-    "placeholder": "Escribe tu respuesta...",
-    "send": "Enviar",
+    "placeholder": "Escribe otra cosa...",
+    "send": "Siguiente",
     "back": "Atrás",
     "forward": "Siguiente",
-    "progress": "{{current}} de {{total}}"
+    "skip": "Omitir",
+    "dismiss": "Descartar",
+    "progress": "Paso {{current}} de {{total}}"
   },
   "interaction": {
-    "connectedLine": "Conectaste {{name}}."
+    "connectedLine": "Conectaste {{name}}.",
+    "signedInLine": "Sesión iniciada en Houston.",
+    "signedInFollowup": "Ya inicié sesión. Continúa, por favor.",
+    "signinReason": "Inicia sesión en Houston para continuar.",
+    "signinTitle": "Inicia sesión en Houston",
+    "signinDescription": "Tus cuentas siguen siendo tuyas; el agente actúa en tu nombre.",
+    "signin": "Iniciar sesión",
+    "connectTitle": "Conectar {{app}}"
+  },
+  "planReady": {
+    "title": "Plan listo",
+    "coworkerTitle": "Continuar en modo Compañero",
+    "coworkerDescription": "Trabaja contigo y te pregunta si tiene dudas.",
+    "autopilotTitle": "Continuar en modo Piloto automático",
+    "autopilotDescription": "Lo termina por su cuenta. Sin preguntas.",
+    "keepPlanningTitle": "Seguir planificando",
+    "keepPlanningDescription": "Sigue aquí y ajusta el plan.",
+    "startWorkingMessage": "Adelante con el plan.",
+    "runAutopilotMessage": "Adelante, termínalo por tu cuenta."
+  },
+  "suggestReusable": {
+    "title": "Guarda esto para la próxima vez",
+    "skillTitle": "Guardar como Habilidad",
+    "routineTitle": "Guardar como Rutina",
+    "notNow": "Ahora no",
+    "saveSkillMessage": "Guarda lo que acabo de hacer como una Habilidad llamada \"{{title}}\".",
+    "saveRoutineMessage": "Configura esto como una Rutina recurrente llamada \"{{title}}\"."
   },
   "errors": {
     "sessionStart": "No se pudo iniciar la sesión: {{error}}",
@@ -91,8 +122,8 @@
   "modeSelector": {
     "mode": "Modo",
     "modeValue": "Modo: {{mode}}",
-    "doer": "Ejecutor",
-    "doerDescription": "Hace las cosas y te pregunta si tiene dudas.",
+    "coworker": "Compañero",
+    "coworkerDescription": "Trabaja contigo: hace las cosas y te pregunta si tiene dudas.",
     "planner": "Planificador",
     "plannerDescription": "Primero escribe un plan para que lo apruebes. No hace cambios.",
     "autopilot": "Piloto automático",
@@ -123,10 +154,8 @@
       "back": "Atrás",
       "providersLabel": "Proveedores",
       "modelsLabel": "Modelos",
-      "resultsLabel": "Resultados",
       "loading": "Cargando proveedores…",
       "empty": "No se encontraron modelos.",
-      "emptyHint": "Prueba otro término de búsqueda.",
       "noProviders": "Aún no hay proveedores conectados."
     },
     "modelDescriptions": {

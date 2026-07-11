@@ -18,8 +18,12 @@
     "test": "pnpm -r --if-present --no-bail test",
     "start": "pnpm install && pnpm dev",
     "dev": "mprocs",
-    "dev:host": "HOUSTON_HOME=\"$HOME/.dev-houston\" HOUSTON_HOST_TOKEN=devtoken HOUSTON_HOST_PORT=4318 pnpm --filter @houston/host dev",
+    "dev:host": "set -a; [ -f .env.local ] && . ./.env.local; set +a; HOUSTON_HOME=\"$HOME/.dev-houston\" HOUSTON_HOST_TOKEN=devtoken HOUSTON_HOST_PORT=4318 pnpm --filter @houston/host dev",
     "dev:app": "cd app && VITE_NEW_ENGINE_URL=http://127.0.0.1:4318 VITE_NEW_ENGINE_TOKEN=devtoken VITE_HOSTED_ENGINE_URL= pnpm tauri dev",
+    "dev:cloud": "./scripts/dev-cloud.sh",
+    "dev:cloud:app": "./scripts/dev-cloud.sh --app",
+    "dev:cloud:retain": "./scripts/dev-cloud.sh --retain",
+    "dev:cloud:down": "./scripts/dev-cloud.sh --down",
     "ios": "bash mobile/ios/scripts/dev-sim.sh"
   },
   "devDependencies": {
@@ -28,6 +32,7 @@
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
+    "esbuild": "0.25.12",
     "husky": "9.1.7",
     "lint-staged": "17.0.8",
     "mprocs": "0.9.6",

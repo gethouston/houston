@@ -24,10 +24,16 @@ export interface TurnRequest {
   effort?: string;
   /**
    * Per-turn execution mode ("plan" = read-only + planning overlay; "auto" =
-   * Autopilot, acts without the blocking tools). Absent = execute. Routines never
-   * set a mode; a non-execute turn here is a user-initiated one.
+   * Autopilot, acts without the blocking tools). Absent = execute. Routine fire
+   * paths set "auto" so scheduled work never waits for user intervention.
    */
   mode?: TurnMode;
+  /**
+   * Presentation-only bubble text, when it must differ from `text` (the real
+   * prompt the model runs on). Persisted alongside the user message so a
+   * history reload renders `displayText ?? content`. Absent when they match.
+   */
+  displayText?: string;
 }
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -84,5 +90,6 @@ export function parseTurnRequest(body: unknown): TurnRequest {
     // Never trust the wire: only the known mode literals ("plan", "auto") pass;
     // anything else normalizes to "execute".
     mode: normalizeTurnMode(b.mode),
+    displayText: typeof b.displayText === "string" ? b.displayText : undefined,
   };
 }

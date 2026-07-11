@@ -69,18 +69,25 @@ const handlerOf = (t: SdkMcpToolDefinition): LooseHandler =>
 
 // --- gating ----------------------------------------------------------------
 
-test("exposes only ask_user when integrations are absent", () => {
+test("exposes ask_user + suggest_reusable when integrations are absent", () => {
+  // execute (undefined mode) keeps the always-on non-blocking tools: ask_user
+  // and suggest_reusable (plan_ready is plan-only, so it is stripped here).
   const { mcp, tools, serverName } = build(undefined);
   expect(serverName).toBe(HOUSTON_MCP_SERVER_NAME);
-  expect(tools.map((t) => t.name)).toEqual(["ask_user"]);
-  expect(mcp.allowedTools).toEqual(["mcp__houston__ask_user"]);
+  expect(new Set(tools.map((t) => t.name))).toEqual(
+    new Set(["ask_user", "suggest_reusable"]),
+  );
+  expect(new Set(mcp.allowedTools)).toEqual(
+    new Set(["mcp__houston__ask_user", "mcp__houston__suggest_reusable"]),
+  );
 });
 
-test("exposes ask_user + integration tools when the integrations gate is open", () => {
+test("exposes ask_user + suggest_reusable + integration tools when the integrations gate is open", () => {
   const { mcp, tools } = build(INTEGRATIONS);
   expect(new Set(tools.map((t) => t.name))).toEqual(
     new Set([
       "ask_user",
+      "suggest_reusable",
       "integration_search",
       "integration_execute",
       "request_connection",
@@ -89,6 +96,7 @@ test("exposes ask_user + integration tools when the integrations gate is open", 
   expect(new Set(mcp.allowedTools)).toEqual(
     new Set([
       "mcp__houston__ask_user",
+      "mcp__houston__suggest_reusable",
       "mcp__houston__integration_search",
       "mcp__houston__integration_execute",
       "mcp__houston__request_connection",
@@ -96,33 +104,76 @@ test("exposes ask_user + integration tools when the integrations gate is open", 
   );
 });
 
-test("plan mode keeps only ask_user even with the integrations gate open", () => {
+test("plan mode keeps ask_user + plan_ready even with the integrations gate open", () => {
+  // Plan withholds every acting tool but keeps the blocking-question tool and
+  // adds the plan-only plan_ready presentation tool.
   const { tools, mcp } = build(INTEGRATIONS, "plan");
-  expect(tools.map((t) => t.name)).toEqual(["ask_user"]);
-  expect(mcp.allowedTools).toEqual(["mcp__houston__ask_user"]);
+  expect(new Set(tools.map((t) => t.name))).toEqual(
+    new Set(["ask_user", "plan_ready"]),
+  );
+  expect(new Set(mcp.allowedTools)).toEqual(
+    new Set(["mcp__houston__ask_user", "mcp__houston__plan_ready"]),
+  );
 });
 
-test("auto mode keeps the integration tools but drops the blocking tools", () => {
+test("plan_ready is exposed ONLY in plan mode", () => {
+  // Present in plan…
+  expect(build(INTEGRATIONS, "plan").tools.map((t) => t.name)).toContain(
+    "plan_ready",
+  );
+  // …and stripped from execute and auto, even though it is in the built set.
+  expect(build(INTEGRATIONS).tools.map((t) => t.name)).not.toContain(
+    "plan_ready",
+  );
+  expect(build(INTEGRATIONS, "execute").tools.map((t) => t.name)).not.toContain(
+    "plan_ready",
+  );
+  expect(build(INTEGRATIONS, "auto").tools.map((t) => t.name)).not.toContain(
+    "plan_ready",
+  );
+});
+
+test("suggest_reusable is bridged for execute/auto but stripped from plan", () => {
+  // The inverse of plan_ready: kept in execute (undefined) and auto, filtered
+  // out of plan by `toolNamesForMode`, even though it is in the built set.
+  expect(build(INTEGRATIONS).tools.map((t) => t.name)).toContain(
+    "suggest_reusable",
+  );
+  expect(build(INTEGRATIONS, "execute").tools.map((t) => t.name)).toContain(
+    "suggest_reusable",
+  );
+  expect(build(INTEGRATIONS, "auto").tools.map((t) => t.name)).toContain(
+    "suggest_reusable",
+  );
+  expect(build(INTEGRATIONS, "plan").tools.map((t) => t.name)).not.toContain(
+    "suggest_reusable",
+  );
+});
+
+test("auto mode keeps the integration + suggest_reusable tools but drops the blocking tools", () => {
   const { tools, mcp } = build(INTEGRATIONS, "auto");
-  // Autopilot never waits on the user: ask_user + request_connection are gone,
-  // the acting integration tools stay.
+  // Autopilot never waits on the user: ask_user + request_connection are gone
+  // (and plan_ready is plan-only), the acting integration tools stay, and
+  // suggest_reusable stays too (it never blocks the turn).
   expect(new Set(tools.map((t) => t.name))).toEqual(
-    new Set(["integration_search", "integration_execute"]),
+    new Set(["suggest_reusable", "integration_search", "integration_execute"]),
   );
   expect(new Set(mcp.allowedTools)).toEqual(
     new Set([
+      "mcp__houston__suggest_reusable",
       "mcp__houston__integration_search",
       "mcp__houston__integration_execute",
     ]),
   );
 });
 
-test("auto mode with no integrations gate exposes NO custom tools", () => {
-  // The only always-on custom tool is ask_user, which auto drops — so with the
-  // integration gate closed the server exposes nothing.
+test("auto mode with no integrations gate exposes only suggest_reusable", () => {
+  // The always-on custom tools are ask_user (auto drops it), plan_ready
+  // (plan-only), and suggest_reusable (auto keeps it) — so with the integration
+  // gate closed the server exposes exactly suggest_reusable.
   const { tools, mcp } = build(undefined, "auto");
-  expect(tools).toEqual([]);
-  expect(mcp.allowedTools).toEqual([]);
+  expect(tools.map((t) => t.name)).toEqual(["suggest_reusable"]);
+  expect(mcp.allowedTools).toEqual(["mcp__houston__suggest_reusable"]);
 });
 
 test("the allowlist always matches the exposed tool set", () => {

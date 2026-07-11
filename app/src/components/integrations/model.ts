@@ -69,6 +69,53 @@ export function browseCatalog(opts: {
 }
 
 /**
+ * Max policy-blocked (locked) apps shown inline in the browse catalog before the
+ * rest collapse into a "+N more" count line. Caps the locked group so a tiny
+ * Teams allowlist over the ~1000-app catalog can't bury the connectable apps.
+ */
+export const LOCKED_PREVIEW_CAP = 8;
+
+/** The browse catalog split by the Teams allowlist ceiling. Both lists A-Z. */
+export interface BrowseCatalogView {
+  /** Apps the member may connect right now (inside the ceiling). */
+  connectable: IntegrationToolkit[];
+  /** Apps the ceiling BLOCKS — shown as locked rows, never connectable. */
+  locked: IntegrationToolkit[];
+}
+
+/**
+ * Partition the browse catalog into the apps a member may connect and the apps a
+ * Teams allowlist ceiling BLOCKS, after the same category + search +
+ * connected-exclusion filter {@link browseCatalog} applies. `allowlist === null`
+ * means unrestricted (single-player, or a Teams host with no ceiling), so nothing
+ * is ever locked — locks never appear off Teams. Both lists keep `browseCatalog`'s
+ * A-Z order so the surface renders the actionable `connectable` apps first and the
+ * `locked` group after them. Pure so it's unit-testable.
+ */
+export function browseCatalogView(opts: {
+  catalog: IntegrationToolkit[];
+  query: string;
+  category: string;
+  connected: ReadonlySet<string>;
+  allowlist: string[] | null;
+}): BrowseCatalogView {
+  const results = browseCatalog({
+    catalog: opts.catalog,
+    query: opts.query,
+    category: opts.category,
+    connected: opts.connected,
+  });
+  if (opts.allowlist === null) return { connectable: results, locked: [] };
+  const allowed = new Set(opts.allowlist);
+  const connectable: IntegrationToolkit[] = [];
+  const locked: IntegrationToolkit[] = [];
+  for (const t of results) {
+    (allowed.has(t.slug) ? connectable : locked).push(t);
+  }
+  return { connectable, locked };
+}
+
+/**
  * Split the user's connections into the two grant buckets:
  *
  *  - `granted`   — connected AND in this agent's grant set.
@@ -104,6 +151,47 @@ export function categoriesOf(catalog: IntegrationToolkit[]): string[] {
 /** "developer-tools" -> "Developer tools". */
 export function categoryLabel(cat: string): string {
   return cat.charAt(0).toUpperCase() + cat.slice(1).replace(/-/g, " ");
+}
+
+/**
+ * The set of toolkit slugs belonging to `category`, or `null` for the "all"
+ * sentinel (no category filter). Lets every surface filter its own app lists
+ * (connected / allowed / available) by category exactly the way `browseCatalog`
+ * filters the browse grid — one rule, no drift. Pure so it's unit-testable.
+ */
+export function toolkitsInCategory(
+  catalog: IntegrationToolkit[],
+  category: string,
+): Set<string> | null {
+  if (category === "all") return null;
+  const set = new Set<string>();
+  for (const t of catalog) {
+    if ((t.categories ?? []).includes(category)) set.add(t.slug);
+  }
+  return set;
+}
+
+/**
+ * Which variant of a category-filtered app list to render. Mirrors the
+ * allowed-models editor's `allowedListView`: an empty *visible* list means
+ * either the list is genuinely empty (`"empty"`) or an active category filter
+ * hides every row (`"empty-category"`). Distinct copy keeps the empty state from
+ * falsely claiming the list is empty when the user simply picked a category with
+ * no apps present. `"empty-category"` only applies while a category is selected
+ * AND the list has some app overall. Pure so it's unit-testable.
+ */
+export type CategoryListView = "list" | "empty" | "empty-category";
+
+export function categoryListView(args: {
+  /** How many rows remain visible after the category filter. */
+  visibleCount: number;
+  /** Whether the list has any app at all (before the category filter). */
+  hasAny: boolean;
+  /** Whether a specific category (not "all") is currently selected. */
+  categoryFiltered: boolean;
+}): CategoryListView {
+  if (args.visibleCount > 0) return "list";
+  return args.categoryFiltered && args.hasAny ? "empty-category" : "empty";
 }
 
 /**

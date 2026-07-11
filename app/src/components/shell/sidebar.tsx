@@ -1,26 +1,34 @@
-import { ConfirmDialog } from "@houston-ai/core";
-import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
 import {
-  Blocks,
-  Boxes,
-  Building2,
-  LayoutDashboard,
-  Settings,
-} from "lucide-react";
+  ConfirmDialog,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@houston-ai/core";
+import { AppSidebar } from "@houston-ai/layout";
+import { Users } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
-import { orderAgents } from "../../lib/agent-order";
+import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
+import {
+  canSeeAiModelsPage,
+  canSeeIntegrationsPage,
+} from "../../lib/org-roles";
 import { resolveAutoCollapse } from "../../lib/sidebar-auto-collapse";
 import { isTopLevelView } from "../../lib/top-level-views";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
-import { canSeeOrganization, ORGANIZATION_VIEW_ID } from "../organization";
-import { buildAgentSidebarItems } from "./agent-sidebar-items";
+import { canSeeOrganization } from "../organization";
+import { buildAgentSidebarLists } from "./agent-sidebar-items";
+import { GroupContextDialog } from "./group-context-dialog";
+import {
+  buildSidebarLabels,
+  buildSidebarNavItems,
+  SidebarWorkspaceHeader,
+} from "./sidebar-chrome";
 import { UpdateChecker } from "./update-checker";
 import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
 import { UserMenu } from "./user-menu";
@@ -41,6 +49,12 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const updateAgentColor = useAgentStore((s) => s.updateColor);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [createWsOpen, setCreateWsOpen] = useState(false);
+  // A just-created group: the sidebar opens it straight into inline-rename.
+  const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
+  // The group whose shared context is open in the editor dialog (null = closed).
+  const [editingContextGroupId, setEditingContextGroupId] = useState<
+    string | null
+  >(null);
 
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
@@ -51,9 +65,19 @@ export function Sidebar({ children }: { children: ReactNode }) {
   // only. Hidden entirely for plain members and single-player (canSeeOrganization
   // is the same gate as the members roster).
   const showOrganization = canSeeOrganization(capabilities);
+  // Teams v2: in a Teams workspace the Integrations page becomes org policy, so
+  // plain members lose both the page and its nav entry (they manage apps from
+  // the agent tab + Settings). Everyone else keeps it.
+  const showIntegrations = canSeeIntegrationsPage(capabilities);
+  // Teams v2: in a Teams workspace the AI Models hub is owner/admin territory
+  // (org-level provider credentials + admin model policy), so plain members lose
+  // its nav entry too — they pick their model per agent in the composer.
+  const showAiModels = canSeeAiModelsPage(capabilities);
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useUIStore((s) => s.toggleSidebarCollapsed);
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed);
+
+  const sidebar = useSidebarLayout(currentWorkspace?.id);
 
   // Auto-collapse the rail when the window gets narrow (e.g. Houston docked to
   // half the screen). Acts only when crossing the threshold, so a manual toggle
@@ -71,19 +95,16 @@ export function Sidebar({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("resize", apply);
   }, [setSidebarCollapsed]);
 
-  const sorted = orderAgents(agents);
   const activitySummaries = useAgentActivitySummaries(agents);
-
-  const items = buildAgentSidebarItems({
-    agents: sorted,
+  const { items, groups } = buildAgentSidebarLists({
+    agents,
+    layout: sidebar.layout,
     summaries: activitySummaries,
     runningLabel: (count) => t("shell:sidebar.runningCount", { count }),
     needsYouLabel: (count) => t("shell:sidebar.needsYouCount", { count }),
-    onChangeColor: (agentId, color) => {
-      void handleChangeColor(agentId, color);
-    },
+    onChangeColor: (agentId, color) => void handleChangeColor(agentId, color),
     onShareAgent: (agentId) => useUIStore.getState().setShareAgentId(agentId),
-    shareLabel: t("portable:shareMenu"),
+    shareLabel: t("portable:exportMenu"),
   });
   const isTopLevel = isTopLevelView(viewMode);
 
@@ -93,10 +114,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
     if (!ws) return;
     setCurrentWorkspace(ws);
     await loadAgents(ws.id);
-  };
-
-  const handleCreateWorkspace = () => {
-    setCreateWsOpen(true);
   };
 
   const handleSelectAgent = (agentId: string) => {
@@ -116,15 +133,15 @@ export function Sidebar({ children }: { children: ReactNode }) {
     await updateAgentColor(currentWorkspace.id, agentId, color);
   }
 
-  const handleDelete = (agentId: string) => {
-    setPendingDeleteId(agentId);
-  };
-
   const confirmDelete = async () => {
     if (!currentWorkspace || !pendingDeleteId) return;
     await deleteAgent(currentWorkspace.id, pendingDeleteId);
     setPendingDeleteId(null);
   };
+
+  const editingContextGroup = editingContextGroupId
+    ? sidebar.layout.groups.find((g) => g.id === editingContextGroupId)
+    : undefined;
 
   return (
     <>
@@ -142,79 +159,84 @@ export function Sidebar({ children }: { children: ReactNode }) {
         open={createWsOpen}
         onOpenChange={setCreateWsOpen}
       />
+      <GroupContextDialog
+        open={editingContextGroup !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setEditingContextGroupId(null);
+        }}
+        groupName={editingContextGroup?.name ?? ""}
+        content={editingContextGroup?.context ?? ""}
+        onSave={(next) => {
+          if (editingContextGroupId)
+            sidebar.setGroupContext(editingContextGroupId, next);
+        }}
+      />
       <div className="flex h-full flex-1 min-w-0">
         <AppSidebar
           collapsed={collapsed}
           onToggleCollapsed={toggleCollapsed}
           header={
-            <WorkspaceSwitcher
+            <SidebarWorkspaceHeader
+              t={t}
               workspaces={workspaces}
               currentId={currentWorkspace?.id ?? null}
-              currentName={
-                currentWorkspace?.name ?? t("shell:sidebar.selectWorkspace")
-              }
-              onSwitch={handleWorkspaceSwitch}
-              onCreate={handleCreateWorkspace}
+              currentName={currentWorkspace?.name}
               collapsed={collapsed}
-              createLabel={t("shell:sidebar.createOrganization")}
+              onSwitch={handleWorkspaceSwitch}
+              onCreate={() => setCreateWsOpen(true)}
               onExpand={() => setSidebarCollapsed(false)}
-              expandLabel={t("shell:sidebar.expand")}
             />
           }
-          navItems={[
-            {
-              id: "dashboard",
-              label: t("shell:sidebar.missionControl"),
-              icon: <LayoutDashboard className="h-4 w-4" />,
-              onClick: () => setViewMode("dashboard"),
-              dataAttrs: { "data-tour-target": "nav-dashboard" },
-            },
-            {
-              id: INTEGRATIONS_VIEW_ID,
-              label: t("shell:sidebar.integrations"),
-              icon: <Blocks className="h-4 w-4" />,
-              onClick: () => setViewMode(INTEGRATIONS_VIEW_ID),
-              dataAttrs: { "data-tour-target": "nav-integrations" },
-            },
-            {
-              id: "ai-hub",
-              label: t("shell:sidebar.aiModels"),
-              icon: <Boxes className="h-4 w-4" />,
-              onClick: () => setViewMode("ai-hub"),
-            },
-            ...(showOrganization
-              ? [
-                  {
-                    id: ORGANIZATION_VIEW_ID,
-                    label: t("teams:org.nav"),
-                    icon: <Building2 className="h-4 w-4" />,
-                    onClick: () => setViewMode(ORGANIZATION_VIEW_ID),
-                  },
-                ]
-              : []),
-            {
-              id: "settings",
-              label: t("shell:sidebar.settings"),
-              icon: <Settings className="h-4 w-4" />,
-              onClick: () => setViewMode("settings"),
-            },
-          ]}
+          navItems={buildSidebarNavItems({
+            t,
+            showIntegrations,
+            showAiModels,
+            showOrganization,
+            setViewMode,
+          })}
           activeNavId={isTopLevel ? viewMode : undefined}
           sectionLabel={t("shell:sidebar.yourAgents")}
+          sectionAction={
+            canCreateAgents ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={t("shell:sidebar.groups.new")}
+                    onClick={() => {
+                      const id = sidebar.createGroup(
+                        t("shell:sidebar.groups.newDefault"),
+                      );
+                      if (id) setRenamingGroupId(id);
+                    }}
+                    className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <Users className="size-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {t("shell:sidebar.groups.new")}
+                </TooltipContent>
+              </Tooltip>
+            ) : undefined
+          }
           items={items}
+          groups={groups}
+          renamingGroupId={renamingGroupId}
+          onRenamingGroupIdHandled={() => setRenamingGroupId(null)}
+          onToggleGroupCollapsed={sidebar.toggleGroupCollapsed}
+          onEditGroupContext={(id) => setEditingContextGroupId(id)}
+          onRenameGroup={sidebar.renameGroup}
+          onDeleteGroup={sidebar.deleteGroup}
+          onMoveItem={sidebar.moveItem}
+          onMoveGroup={sidebar.moveGroup}
           selectedId={!isTopLevel ? (currentAgent?.id ?? null) : null}
           onSelect={handleSelectAgent}
           onAdd={canCreateAgents ? () => setDialogOpen(true) : undefined}
           addItemDataAttrs={{ "data-tour-target": "newAgent" }}
           onRename={handleRename}
-          onDelete={handleDelete}
-          labels={{
-            addItem: t("shell:sidebar.addAgent"),
-            moreOptions: t("shell:sidebar.agentMenu"),
-            renameItem: t("common:actions.rename"),
-            deleteItem: t("common:actions.delete"),
-            collapseSidebar: t("shell:sidebar.collapse"),
-          }}
+          onDelete={(agentId) => setPendingDeleteId(agentId)}
+          labels={buildSidebarLabels(t)}
           footer={
             <div className="flex flex-col">
               <UserMenu collapsed={collapsed} />

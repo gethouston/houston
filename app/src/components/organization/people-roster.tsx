@@ -1,6 +1,7 @@
 import {
   Avatar,
   AvatarFallback,
+  AvatarImage,
   Button,
   ConfirmDialog,
   Select,
@@ -13,6 +14,8 @@ import type { OrgMember, OrgRole } from "@houston-ai/engine-client";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRemoveMember, useSetMemberRole } from "../../hooks/queries";
+import { useUserProfiles } from "../../hooks/queries/use-user-profiles";
+import { avatarUrlFromProfiles } from "../../hooks/queries/user-profiles-map";
 import { GRANTABLE_ROLES } from "../../lib/org-roles";
 import { canEditMember, initialsFor, memberLabel } from "./people-tab-model";
 
@@ -35,6 +38,7 @@ export function PeopleRoster({
   const { t } = useTranslation("teams");
   const setRole = useSetMemberRole();
   const removeMember = useRemoveMember();
+  const { profiles } = useUserProfiles(members.map((m) => m.userId));
   const [pendingRemove, setPendingRemove] = useState<OrgMember | null>(null);
 
   const roleLabel = (role: OrgRole) => t(`people.roles.${role}`);
@@ -52,12 +56,20 @@ export function PeopleRoster({
             isSelf,
             role: member.role,
           });
+          const avatarUrl = avatarUrlFromProfiles(profiles, member.userId);
           return (
             <li
               key={member.userId}
               className="flex items-center gap-3 rounded-xl border border-foreground/5 bg-card px-4 py-3"
             >
               <Avatar>
+                {avatarUrl && (
+                  <AvatarImage
+                    src={avatarUrl}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                  />
+                )}
                 <AvatarFallback className="text-xs">
                   {initialsFor(memberLabel(member))}
                 </AvatarFallback>

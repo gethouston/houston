@@ -1,21 +1,32 @@
 import SwiftUI
 
-/// Renders one folded ``ChatRow`` to its catalog view (PARITY §5). The row is
+/// Renders one folded ``ChatRow`` to its catalog view (PARITY §4/§5). The row is
 /// already filtered by ``MissionFeedFold`` (cancelled/unknown dropped, results
-/// paired), so this is a pure, total switch — every rendered case has a home.
+/// paired, reasoning+tools folded), so this is a pure, total switch.
 struct FeedRow: View {
   let row: ChatRow
+  /// Wall-clock time of this row's source message, threaded to the user bubble
+  /// only (assistant prose and other feed types show no in-line time this wave;
+  /// day separators are handled by the feed). Optional: absent renders as before.
+  let timestamp: Date?
+  /// Delivery state of this row's source message (`FeedItemVM.pending`), threaded
+  /// to the user bubble only for its WhatsApp tick. Defaults confirmed; ignored by
+  /// every non-user kind.
+  var pending: Bool = false
+  /// Whether this row's source message failed to reach the engine
+  /// (`FeedItemVM.failed`), threaded to the user bubble only for its failed tick.
+  /// Defaults false; ignored by every non-user kind.
+  var failed: Bool = false
 
   var body: some View {
     switch row.kind {
     case let .user(text, author):
-      UserBubble(text: text, author: author)
-    case let .assistant(text, streaming):
-      AssistantBubble(text: text, streaming: streaming)
-    case let .thinking(text, streaming):
-      ThinkingBlock(text: text, streaming: streaming)
-    case let .tool(call, result):
-      ToolChipView(call: call, result: result)
+      UserBubble(
+        text: text, author: author, timestamp: timestamp, pending: pending, failed: failed)
+    case let .assistant(text, _):
+      AssistantMessage(text: text)
+    case let .process(group):
+      ProcessBlockView(group: group)
     case let .toolRuntimeError(error):
       ToolRuntimeErrorView(error: error)
     case let .providerError(error):
@@ -31,8 +42,6 @@ struct FeedRow: View {
       FeedDivider(caption: ProviderSwitchCopy.label(provider: provider, summarized: summarized))
     case let .fileChanges(created, modified):
       FileChangesBlock(created: created, modified: modified)
-    case let .missionLog(result):
-      MissionLogBlock(result: result)
     }
   }
 }

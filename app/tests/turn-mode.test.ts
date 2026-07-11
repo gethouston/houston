@@ -7,8 +7,8 @@ import {
 } from "../src/lib/turn-mode.ts";
 
 // The composer "Mode" pin is loaded from per-agent config, which is untyped on
-// disk. `normalizeTurnMode` is the read-side guard: only the exact `"plan"` and
-// `"auto"` strings pin a non-default mode; everything else falls back to execute
+// disk. `normalizeTurnMode` is the read-side guard: only the three known mode
+// strings pass through as-is; everything else falls back to the default mode
 // so a stale or garbage value never strands the composer in an unknown mode.
 describe("normalizeTurnMode", () => {
   it("keeps the three known modes", () => {
@@ -17,24 +17,24 @@ describe("normalizeTurnMode", () => {
     strictEqual(normalizeTurnMode("execute"), "execute");
   });
 
-  it("normalizes absent / unset values to execute", () => {
-    strictEqual(normalizeTurnMode(undefined), "execute");
-    strictEqual(normalizeTurnMode(null), "execute");
-    strictEqual(normalizeTurnMode(""), "execute");
+  it("normalizes absent / unset values to the default mode", () => {
+    strictEqual(normalizeTurnMode(undefined), DEFAULT_TURN_MODE);
+    strictEqual(normalizeTurnMode(null), DEFAULT_TURN_MODE);
+    strictEqual(normalizeTurnMode(""), DEFAULT_TURN_MODE);
   });
 
-  it("normalizes unknown / legacy / wrong-typed values to execute", () => {
-    strictEqual(normalizeTurnMode("planning"), "execute");
-    strictEqual(normalizeTurnMode("Plan"), "execute"); // case-sensitive
-    strictEqual(normalizeTurnMode("Auto"), "execute"); // case-sensitive
-    strictEqual(normalizeTurnMode("autopilot"), "execute");
-    strictEqual(normalizeTurnMode("readonly"), "execute");
-    strictEqual(normalizeTurnMode(42), "execute");
-    strictEqual(normalizeTurnMode({ mode: "plan" }), "execute");
+  it("normalizes unknown / legacy / wrong-typed values to the default mode", () => {
+    strictEqual(normalizeTurnMode("planning"), DEFAULT_TURN_MODE);
+    strictEqual(normalizeTurnMode("Plan"), DEFAULT_TURN_MODE); // case-sensitive
+    strictEqual(normalizeTurnMode("Auto"), DEFAULT_TURN_MODE); // case-sensitive
+    strictEqual(normalizeTurnMode("autopilot"), DEFAULT_TURN_MODE);
+    strictEqual(normalizeTurnMode("readonly"), DEFAULT_TURN_MODE);
+    strictEqual(normalizeTurnMode(42), DEFAULT_TURN_MODE);
+    strictEqual(normalizeTurnMode({ mode: "plan" }), DEFAULT_TURN_MODE);
   });
 
-  it("defaults to execute (unpinned turns are execute)", () => {
-    strictEqual(DEFAULT_TURN_MODE, "execute");
+  it("defaults to plan (fresh agents open in Planner)", () => {
+    strictEqual(DEFAULT_TURN_MODE, "plan");
   });
 });
 
@@ -49,18 +49,25 @@ describe("readAgentTurnMode", () => {
       "auto",
     );
     strictEqual(
-      await readAgentTurnMode("Agent", async () => ({ mode: "legacy" })),
+      await readAgentTurnMode("Agent", async () => ({ mode: "execute" })),
       "execute",
     );
-    strictEqual(await readAgentTurnMode("Agent", async () => ({})), "execute");
+    strictEqual(
+      await readAgentTurnMode("Agent", async () => ({ mode: "legacy" })),
+      DEFAULT_TURN_MODE,
+    );
+    strictEqual(
+      await readAgentTurnMode("Agent", async () => ({})),
+      DEFAULT_TURN_MODE,
+    );
   });
 
-  it("falls back to execute when the config read fails", async () => {
+  it("falls back to the default mode when the config read fails", async () => {
     strictEqual(
       await readAgentTurnMode("Agent", async () => {
         throw new Error("missing config");
       }),
-      "execute",
+      DEFAULT_TURN_MODE,
     );
   });
 });

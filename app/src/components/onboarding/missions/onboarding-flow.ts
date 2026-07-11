@@ -54,8 +54,9 @@ export function integrationsAvailable(
 }
 
 /**
- * Where "Continue" on the agent-created screen goes: into the email detour when
- * integrations are available, straight to the finish line otherwise.
+ * Where "Continue" on the AI-connected screen goes (the assistant is already
+ * provisioned silently by then): into the email detour when integrations are
+ * available, straight to the finish line otherwise.
  */
 export function stepAfterAgentCreated(
   capabilities: Capabilities | null | undefined,
@@ -65,25 +66,27 @@ export function stepAfterAgentCreated(
 
 /**
  * Whether the connect-email screen should offer its "skip for now" escape
- * hatch. Capabilities only say the route EXISTS; the gateway can still be
- * unready (the Supabase session push hasn't landed, or errored), and a connect
- * attempt can end without the toolkit landing (abandoned OAuth, provider-side
- * failure). Both are dead ends with no Continue, so we offer the way out —
- * but never while a connect flow is still in flight.
+ * hatch. Always available (a confirm dialog is the actual friction, see
+ * `ConnectEmailMission`) except while a connect flow is in flight — the OAuth
+ * hop + poll owns the screen until it resolves.
  */
 export function shouldOfferConnectSkip(opts: {
-  /** The provider-status query has resolved (data or error). */
-  statusKnown: boolean;
-  /** The integrations gateway reports the provider usable now. */
-  ready: boolean;
-  /** The user kicked off at least one connect attempt. */
-  attempted: boolean;
   /** A connect flow (OAuth hop + poll) is currently in flight. */
   connecting: boolean;
 }): boolean {
-  if (opts.connecting) return false;
-  if (opts.statusKnown && !opts.ready) return true;
-  return opts.attempted;
+  return !opts.connecting;
+}
+
+/**
+ * Whether the finish screen offers the "Invite your team" growth card. Only on
+ * a deployment that serves C8 Spaces (self-serve team creation) — desktop /
+ * self-host / legacy hosts have no team to create, so the card would dead-end.
+ * A cosmetic feature-detect; the gateway is the sole enforcer.
+ */
+export function shouldOfferTeamInvite(
+  capabilities: Capabilities | null | undefined,
+): boolean {
+  return capabilities?.spaces === true;
 }
 
 /**

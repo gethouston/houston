@@ -15,6 +15,19 @@ import { FileOpError, FilePathError, fileKey, safeRel } from "./files-ops";
  */
 export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
+/**
+ * The raw HTTP body cap for an upload request. Files ride as base64 inside JSON,
+ * which inflates the byte count ~4/3, so the transport body is larger than the
+ * decoded payload `MAX_UPLOAD_BYTES` bounds. Cap the drained body at that
+ * inflated size (plus a 1 MiB JSON-envelope allowance for field names and, on
+ * files/import, several files' metadata) so a legitimately-sized upload is never
+ * rejected by the transport cap — while an oversized body is still cut off DURING
+ * draining, before it can OOM the process. The decoded-byte `MAX_UPLOAD_BYTES`
+ * check in the body parsers remains the semantic limit shown to the user.
+ */
+export const MAX_UPLOAD_BODY_BYTES =
+  Math.ceil((MAX_UPLOAD_BYTES * 4) / 3) + 1024 * 1024;
+
 /** One uploaded file: original name + its base64-encoded bytes. */
 export interface UploadFile {
   name: string;

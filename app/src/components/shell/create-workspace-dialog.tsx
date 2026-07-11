@@ -11,31 +11,46 @@ import { useTranslation } from "react-i18next";
 import { STORE_TEMPLATE_IDS } from "../../agents/builtin/store-catalog";
 import { loadStoreTemplate } from "../../agents/builtin/store-template-loader";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import { finishAgentSetup } from "../../lib/agent-setup";
+import { startAgentSetupMission } from "../../lib/agent-setup-mission";
 import { getDefaultModel } from "../../lib/providers";
 import { tauriProvider } from "../../lib/tauri";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
+import { integrationsAvailable } from "../onboarding/missions/onboarding-flow";
 import { AgentPickerStep } from "./agent-picker-step";
 import { AiAssistStep } from "./ai-assist-step";
 import { AiReviewStep } from "./ai-review-step";
 import { AiRoutineStep } from "./ai-routine-step";
+import { ConnectAppsStep } from "./connect-apps-step";
 import { NamingStep } from "./naming-step";
 
-type Step = 1 | "ai-assist" | "ai-routine" | "ai-review" | 2;
+type Step = 1 | "ai-assist" | "ai-routine" | "ai-review" | "connect" | 2;
+
+/** The just-created agent held for the in-dialog connect step. */
+interface CreatedAgent {
+  id: string;
+  name: string;
+  folderPath: string;
+  /** Toolkit slugs the chosen definition declares, offered in the step. */
+  toolkits: string[];
+}
 
 export function CreateAgentDialog() {
-  const { t } = useTranslation("shell");
+  const { t, i18n } = useTranslation("shell");
   const open = useUIStore((s) => s.createAgentDialogOpen);
   const setOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
   const uiTourActive = useUIStore((s) => s.uiTourActive);
   const agentDefs = useAgentCatalogStore((s) => s.agents);
   const createAgent = useAgentStore((s) => s.create);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
+  const { capabilities } = useCapabilities();
 
   const [step, setStep] = useState<Step>(1);
+  const [createdAgent, setCreatedAgent] = useState<CreatedAgent | null>(null);
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
   const [generatedClaudeMd, setGeneratedClaudeMd] = useState<
     string | undefined
@@ -64,6 +79,7 @@ export function CreateAgentDialog() {
   useEffect(() => {
     if (!open) {
       setStep(1);
+      setCreatedAgent(null);
       setSelectedConfigId(null);
       setGeneratedClaudeMd(undefined);
       setBrief("");
@@ -104,13 +120,16 @@ export function CreateAgentDialog() {
     // AI-generated instructions take priority over the template's claudeMd.
     let claudeMd = generatedClaudeMd ?? selectedDef?.config.claudeMd;
     let seeds = selectedDef?.config.agentSeeds;
+    let created: { id: string; name: string; color?: string };
     let agentPath: string;
     try {
       // First-party "store" templates (bookkeeping, legal, …) keep their
-      // CLAUDE.md + skills/data seeds in a lazily-loaded payload kept out of the
-      // initial bundle; pull it now so the host seeds the new agent with them.
+      // CLAUDE.md + skills/data seeds in a lazily-loaded payload kept out of
+      // the initial bundle; pull it now so the host seeds the new agent with
+      // them. The active UI language picks the translated variant, so a
+      // Spanish workspace seeds Spanish skills.
       if (!generatedClaudeMd && STORE_TEMPLATE_IDS.has(selectedConfigId)) {
-        const tpl = await loadStoreTemplate(selectedConfigId);
+        const tpl = await loadStoreTemplate(selectedConfigId, i18n.language);
         claudeMd = tpl.claudeMd;
         seeds = tpl.seeds;
       }
@@ -124,6 +143,7 @@ export function CreateAgentDialog() {
         seeds,
         existingPath ?? undefined,
       );
+      created = agent;
       agentPath = agent.folderPath;
     } catch (err) {
       setError(String(err));
@@ -138,12 +158,42 @@ export function CreateAgentDialog() {
     // land before the pod is usable enough to send a message, and each surfaces
     // its own error toast on failure.
     useUIStore.getState().setViewMode(DEFAULT_TAB_ID);
-    handleClose();
     void finishAgentSetup(agentPath, {
       provider,
       model,
       routine: routineAccepted ? routineForm : null,
     });
+    // Auto-start the agent's self-setup mission in the normal shell: it
+    // introduces itself and interviews the user, persisting what they say into
+    // instructions / Skills / Routines. Fire-and-forget so it runs regardless
+    // of what happens to the dialog next.
+    void startAgentSetupMission(
+      {
+        id: created.id,
+        name: created.name,
+        color: created.color,
+        folderPath: agentPath,
+      },
+      { provider, model },
+      "created",
+    );
+    // Templates that declare integrations keep a connect-apps step, but inside
+    // this dialog now, not a separate screen. Otherwise just close.
+    const toolkits = (selectedDef?.config.integrations ?? [])
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (toolkits.length > 0 && integrationsAvailable(capabilities)) {
+      setCreating(false);
+      setCreatedAgent({
+        id: created.id,
+        name: created.name,
+        folderPath: agentPath,
+        toolkits,
+      });
+      setStep("connect");
+      return;
+    }
+    handleClose();
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -221,7 +271,6 @@ export function CreateAgentDialog() {
                   routine
                     ? {
                         name: routine.name,
-                        description: "",
                         prompt: routine.prompt,
                         schedule: routine.schedule,
                         suppress_when_silent: true,
@@ -257,6 +306,12 @@ export function CreateAgentDialog() {
             onSubmit={handleCreateAgent}
             creating={creating}
             error={error}
+          />
+        ) : step === "connect" && createdAgent ? (
+          <ConnectAppsStep
+            agent={createdAgent}
+            toolkits={createdAgent.toolkits}
+            onDone={handleClose}
           />
         ) : (
           <NamingStep

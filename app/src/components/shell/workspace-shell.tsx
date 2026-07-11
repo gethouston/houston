@@ -27,13 +27,21 @@ import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
 import { analytics } from "../../lib/analytics";
+import {
+  canSeeAiModelsPage,
+  canSeeIntegrationsPage,
+  hasSpaces,
+} from "../../lib/org-roles";
 import { osIsTauri } from "../../lib/os-bridge";
 import { isMac } from "../../lib/platform";
+import { isRoutineSetupMode } from "../../lib/routine-chat-setup";
 import { shortcutLabel } from "../../lib/shortcuts";
-import { isTopLevelView } from "../../lib/top-level-views";
+import { blockedTopLevelView, isTopLevelView } from "../../lib/top-level-views";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
+import { AgentPersonScopeProvider } from "../agent-person-scope-context";
+import { AgentPersonScopeMenu } from "../agent-person-scope-menu";
 import { AiHubView } from "../ai-hub/ai-hub-view";
 import { CommandPalette } from "../command-palette";
 import { Dashboard } from "../dashboard";
@@ -48,12 +56,14 @@ import { ExportAgentWizard } from "../portable/export-wizard";
 import { ImportAgentWizard } from "../portable/import-wizard";
 import { SettingsView } from "../settings/settings-view";
 import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
+import { AgentShareButton } from "../tabs/agent-share-button";
 import { AgentWarmingDialog } from "./agent-warming-dialog";
 import { CreateAgentDialog } from "./create-workspace-dialog";
 import { DetailPanelProvider } from "./detail-panel-context";
 import { HoustonLogo } from "./experience-card";
 import { AgentRenderer } from "./experience-renderer";
 import { Sidebar } from "./sidebar";
+import { TeamStatusBanner } from "./team-status-banner";
 import { UiTour, type UiTourStep } from "./ui-tour";
 
 interface WorkspaceShellProps {
@@ -101,10 +111,16 @@ export function WorkspaceShell({
   // Teams v2: guard the Organization render so a stale `viewMode` can never show
   // it to a plain member / single-player (the sidebar already hides the entry).
   const showOrganization = canSeeOrganization(capabilities);
+  // Teams v2: guard the Integrations render + tour anchor so a stale `viewMode`
+  // can never show the page to a plain member (the sidebar already hides it).
+  const showIntegrations = canSeeIntegrationsPage(capabilities);
+  // Teams v2: same guard for the AI Models hub — owner/admin only in a Teams
+  // workspace (org-level providers + admin model policy).
+  const showAiModels = canSeeAiModelsPage(capabilities);
   const agentDef = currentAgent ? getById(currentAgent.configId) : undefined;
   const { data: activities } = useActivity(currentAgent?.folderPath);
   const needsYouCount = (activities ?? []).filter(
-    (a) => a.status === "needs_you",
+    (a) => a.status === "needs_you" && !isRoutineSetupMode(a.agent),
   ).length;
   const isAgentView = !isTopLevelView(viewMode);
   // Resolve against the CALLER-visible tab set, not the raw standard ids:
@@ -121,12 +137,36 @@ export function WorkspaceShell({
         : DEFAULT_TAB_ID;
 
   useEffect(() => {
-    if (!isAgentView) return;
+    if (!isAgentView) {
+      // A gated top-level view (Integrations for a plain Teams member,
+      // Organization for a member / single-player) with a stale `viewMode`
+      // would fall through every render branch and strand the user on the
+      // engine pane with its nav entry hidden; reset to the dashboard.
+      if (
+        blockedTopLevelView(viewMode, {
+          showIntegrations,
+          showAiModels,
+          showOrganization,
+        })
+      ) {
+        setViewMode("dashboard");
+      }
+      return;
+    }
     const valid = currentAgent
       ? isVisibleAgentTab(capabilities, currentAgent, viewMode)
       : STANDARD_TAB_IDS.has(viewMode);
     if (!valid) setViewMode(DEFAULT_TAB_ID);
-  }, [capabilities, currentAgent, isAgentView, setViewMode, viewMode]);
+  }, [
+    capabilities,
+    currentAgent,
+    isAgentView,
+    setViewMode,
+    showIntegrations,
+    showAiModels,
+    showOrganization,
+    viewMode,
+  ]);
 
   useEffect(() => {
     if (!currentAgent && agents.length > 0) {
@@ -183,23 +223,27 @@ export function WorkspaceShell({
                 data-tour-target="main"
                 className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-background canvas-screen"
               >
-                {viewMode === "dashboard" ? (
-                  <Dashboard />
-                ) : viewMode === "ai-hub" ? (
-                  <AiHubView />
-                ) : viewMode === "settings" ? (
-                  <SettingsView />
-                ) : viewMode === INTEGRATIONS_VIEW_ID ? (
-                  <IntegrationsView />
-                ) : viewMode === ORGANIZATION_VIEW_ID && showOrganization ? (
-                  <OrganizationView />
-                ) : currentAgent && agentDef && isAgentView ? (
-                  <>
-                    <div data-tour-target="tabs">
-                      <TabBar
-                        title={currentAgent.name}
-                        tabs={visibleAgentTabs(capabilities, currentAgent).map(
-                          (tab) => ({
+                <TeamStatusBanner />
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  {viewMode === "dashboard" ? (
+                    <Dashboard />
+                  ) : viewMode === "ai-hub" && showAiModels ? (
+                    <AiHubView />
+                  ) : viewMode === "settings" ? (
+                    <SettingsView />
+                  ) : viewMode === INTEGRATIONS_VIEW_ID && showIntegrations ? (
+                    <IntegrationsView />
+                  ) : viewMode === ORGANIZATION_VIEW_ID && showOrganization ? (
+                    <OrganizationView />
+                  ) : currentAgent && agentDef && isAgentView ? (
+                    <AgentPersonScopeProvider path={currentAgent.folderPath}>
+                      <div data-tour-target="tabs">
+                        <TabBar
+                          title={currentAgent.name}
+                          tabs={visibleAgentTabs(
+                            capabilities,
+                            currentAgent,
+                          ).map((tab) => ({
                             id: tab.id,
                             label: t(`agents:tabLabels.${tab.id}`, {
                               defaultValue: tab.label,
@@ -208,149 +252,161 @@ export function WorkspaceShell({
                               tab.badge === "activity"
                                 ? needsYouCount
                                 : undefined,
-                          }),
-                        )}
-                        activeTab={viewMode}
-                        onTabChange={setViewMode}
-                        actions={
-                          <div
-                            data-keep-panel-open
-                            className="flex min-w-0 flex-1 items-center justify-end gap-2"
-                          >
-                            {currentAgent && (
-                              <MissionSearchInput
-                                value={agentMissionSearchQuery}
-                                isSearchingText={agentMissionSearchLoading}
-                                labels={{
-                                  placeholder: t("board:search.placeholder"),
-                                  placeholderShort: t(
-                                    "board:search.placeholderShort",
-                                  ),
-                                  clear: t("board:search.clear"),
-                                  searchingText: t(
-                                    "board:search.searchingText",
-                                  ),
-                                }}
-                                className="relative min-w-0 flex-1 max-w-[320px]"
-                                onChange={(value) => {
-                                  setAgentMissionSearchQuery(
-                                    currentAgent.folderPath,
-                                    value,
-                                  );
-                                  if (viewMode !== "activity")
-                                    setViewMode("activity");
-                                }}
-                              />
-                            )}
-                            <div className="flex shrink-0 items-center gap-2">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    data-tour-target="appTour"
-                                    variant="ghost"
-                                    size={missionPanelOpen ? "icon" : "default"}
-                                    className="rounded-full"
-                                    onClick={() => setUiTourActive(true)}
-                                    aria-label={t("shell:tabActions.startTour")}
-                                  >
-                                    <Compass className="size-4" />
-                                    {!missionPanelOpen &&
-                                      t("shell:tabActions.startTour")}
-                                  </Button>
-                                </TooltipTrigger>
-                                {missionPanelOpen && (
-                                  <TooltipContent side="bottom">
-                                    {t("shell:tabActions.startTour")}
-                                  </TooltipContent>
-                                )}
-                              </Tooltip>
-                              {onStartMission && (
+                          }))}
+                          activeTab={viewMode}
+                          onTabChange={setViewMode}
+                          actions={
+                            <div
+                              data-keep-panel-open
+                              className="flex min-w-0 flex-1 items-center justify-end gap-2"
+                            >
+                              {currentAgent && (
+                                <MissionSearchInput
+                                  value={agentMissionSearchQuery}
+                                  isSearchingText={agentMissionSearchLoading}
+                                  labels={{
+                                    placeholder: t("board:search.placeholder"),
+                                    placeholderShort: t(
+                                      "board:search.placeholderShort",
+                                    ),
+                                    clear: t("board:search.clear"),
+                                    searchingText: t(
+                                      "board:search.searchingText",
+                                    ),
+                                  }}
+                                  className="relative min-w-0 flex-1 max-w-[320px]"
+                                  onChange={(value) => {
+                                    setAgentMissionSearchQuery(
+                                      currentAgent.folderPath,
+                                      value,
+                                    );
+                                    if (viewMode !== "activity")
+                                      setViewMode("activity");
+                                  }}
+                                />
+                              )}
+                              <div className="flex shrink-0 items-center gap-2">
+                                <AgentPersonScopeMenu
+                                  agent={currentAgent}
+                                  collapsed={missionPanelOpen}
+                                />
+                                <AgentShareButton
+                                  agent={currentAgent}
+                                  collapsed={missionPanelOpen}
+                                />
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button
-                                      data-tour-target="newMission"
+                                      data-tour-target="appTour"
+                                      variant="ghost"
                                       size={
                                         missionPanelOpen ? "icon" : "default"
                                       }
-                                      className={cn(
-                                        missionPanelOpen && "rounded-full",
-                                      )}
-                                      onClick={() => {
-                                        setViewMode("activity");
-                                        setTimeout(() => {
-                                          useUIStore
-                                            .getState()
-                                            .onStartMission?.();
-                                        }, 50);
-                                      }}
+                                      className="rounded-full"
+                                      onClick={() => setUiTourActive(true)}
                                       aria-label={t(
-                                        "shell:tabActions.newMission",
+                                        "shell:tabActions.startTour",
                                       )}
                                     >
-                                      <HoustonLogo size={16} />
+                                      <Compass className="size-4" />
                                       {!missionPanelOpen &&
-                                        t("shell:tabActions.newMission")}
+                                        t("shell:tabActions.startTour")}
                                     </Button>
                                   </TooltipTrigger>
-                                  <TooltipContent side="bottom">
-                                    {missionPanelOpen
-                                      ? t("shell:tabActions.newMission")
-                                      : shortcutLabel("newMission")}
-                                  </TooltipContent>
+                                  {missionPanelOpen && (
+                                    <TooltipContent side="bottom">
+                                      {t("shell:tabActions.startTour")}
+                                    </TooltipContent>
+                                  )}
                                 </Tooltip>
-                              )}
-                              {boardActions.map((action) => (
-                                <Button
-                                  key={action.id}
-                                  variant="secondary"
-                                  onClick={() => {
-                                    setViewMode("activity");
-                                    setTimeout(() => action.onClick(), 50);
-                                  }}
-                                >
-                                  {action.label}
-                                </Button>
-                              ))}
+                                {onStartMission && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        data-tour-target="newMission"
+                                        size={
+                                          missionPanelOpen ? "icon" : "default"
+                                        }
+                                        className={cn(
+                                          missionPanelOpen && "rounded-full",
+                                        )}
+                                        onClick={() => {
+                                          setViewMode("activity");
+                                          setTimeout(() => {
+                                            useUIStore
+                                              .getState()
+                                              .onStartMission?.();
+                                          }, 50);
+                                        }}
+                                        aria-label={t(
+                                          "shell:tabActions.newMission",
+                                        )}
+                                      >
+                                        <HoustonLogo size={16} />
+                                        {!missionPanelOpen &&
+                                          t("shell:tabActions.newMission")}
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom">
+                                      {missionPanelOpen
+                                        ? t("shell:tabActions.newMission")
+                                        : shortcutLabel("newMission")}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                                {boardActions.map((action) => (
+                                  <Button
+                                    key={action.id}
+                                    variant="secondary"
+                                    onClick={() => {
+                                      setViewMode("activity");
+                                      setTimeout(() => action.onClick(), 50);
+                                    }}
+                                  >
+                                    {action.label}
+                                  </Button>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        }
-                      />
+                          }
+                        />
+                      </div>
+                      <main className="min-h-0 flex-1 overflow-hidden">
+                        <AgentRenderer
+                          agentDef={agentDef}
+                          agent={currentAgent}
+                          activeTabId={viewMode}
+                        />
+                      </main>
+                    </AgentPersonScopeProvider>
+                  ) : agents.length === 0 ? (
+                    <div className="flex flex-1 flex-col items-center justify-center">
+                      <Empty className="border-0">
+                        <EmptyHeader>
+                          <EmptyTitle>{t("agents:empty.title")}</EmptyTitle>
+                          <EmptyDescription>
+                            {t("agents:empty.description")}
+                          </EmptyDescription>
+                        </EmptyHeader>
+                        {canCreateAgents && (
+                          <Button
+                            className="mt-4 rounded-full"
+                            onClick={() => setCreateAgentDialogOpen(true)}
+                          >
+                            <Plus className="h-4 w-4" />
+                            {t("shell:newAgent.dialogTitle")}
+                          </Button>
+                        )}
+                      </Empty>
                     </div>
-                    <main className="min-h-0 flex-1 overflow-hidden">
-                      <AgentRenderer
-                        agentDef={agentDef}
-                        agent={currentAgent}
-                        activeTabId={viewMode}
-                      />
-                    </main>
-                  </>
-                ) : agents.length === 0 ? (
-                  <div className="flex flex-1 flex-col items-center justify-center">
-                    <Empty className="border-0">
-                      <EmptyHeader>
-                        <EmptyTitle>{t("agents:empty.title")}</EmptyTitle>
-                        <EmptyDescription>
-                          {t("agents:empty.description")}
-                        </EmptyDescription>
-                      </EmptyHeader>
-                      {canCreateAgents && (
-                        <Button
-                          className="mt-4 rounded-full"
-                          onClick={() => setCreateAgentDialogOpen(true)}
-                        >
-                          <Plus className="h-4 w-4" />
-                          {t("shell:newAgent.dialogTitle")}
-                        </Button>
-                      )}
-                    </Empty>
-                  </div>
-                ) : (
-                  <div className="flex flex-1 flex-col items-center justify-center">
-                    <p className="text-muted-foreground text-sm">
-                      {t("shell:engineGate.starting")}
-                    </p>
-                  </div>
-                )}
+                  ) : (
+                    <div className="flex flex-1 flex-col items-center justify-center">
+                      <p className="text-muted-foreground text-sm">
+                        {t("shell:engineGate.starting")}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </main>
               {missionPanelOpen && (
                 <div
@@ -374,6 +430,15 @@ export function WorkspaceShell({
         <UiTour
           steps={(
             [
+              // Spaces hosts only (dropped by the filter below): open on the
+              // switcher so people learn a Space holds their personal agents and
+              // the teams they share with others.
+              {
+                title: t("shell:uiTour.steps.spaces.title"),
+                body: t("shell:uiTour.steps.spaces.body"),
+                targetSelector: "[data-tour-target='spaceSwitcher']",
+                onEnter: () => setViewMode(DEFAULT_TAB_ID),
+              },
               {
                 title: t("shell:uiTour.steps.assistant.title"),
                 body: t("shell:uiTour.steps.assistant.body"),
@@ -405,10 +470,22 @@ export function WorkspaceShell({
                 onEnter: () => setViewMode(tabOr("routines")),
               },
               {
+                title: t("shell:uiTour.steps.tabIntegrations.title"),
+                body: t("shell:uiTour.steps.tabIntegrations.body"),
+                targetSelector: "[data-tour-target='tab-integrations']",
+                onEnter: () => setViewMode(tabOr("integrations")),
+              },
+              {
                 title: t("shell:uiTour.steps.tabFiles.title"),
                 body: t("shell:uiTour.steps.tabFiles.body"),
                 targetSelector: "[data-tour-target='tab-files']",
                 onEnter: () => setViewMode(tabOr("files")),
+              },
+              {
+                title: t("shell:uiTour.steps.tabArchived.title"),
+                body: t("shell:uiTour.steps.tabArchived.body"),
+                targetSelector: "[data-tour-target='tab-archived']",
+                onEnter: () => setViewMode(tabOr("archived")),
               },
               {
                 title: t("shell:uiTour.steps.tabJobDescription.title"),
@@ -421,6 +498,30 @@ export function WorkspaceShell({
                 body: t("shell:uiTour.steps.missionControl.body"),
                 targetSelector: "[data-tour-target='nav-dashboard']",
                 onEnter: () => setViewMode("dashboard"),
+              },
+              {
+                title: t("shell:uiTour.steps.navIntegrations.title"),
+                body: t("shell:uiTour.steps.navIntegrations.body"),
+                targetSelector: "[data-tour-target='nav-integrations']",
+                onEnter: () => setViewMode(INTEGRATIONS_VIEW_ID),
+              },
+              {
+                title: t("shell:uiTour.steps.aiHub.title"),
+                body: t("shell:uiTour.steps.aiHub.body"),
+                targetSelector: "[data-tour-target='nav-ai-hub']",
+                onEnter: () => setViewMode("ai-hub"),
+              },
+              {
+                title: t("shell:uiTour.steps.organization.title"),
+                body: t("shell:uiTour.steps.organization.body"),
+                targetSelector: "[data-tour-target='nav-organization']",
+                onEnter: () => setViewMode(ORGANIZATION_VIEW_ID),
+              },
+              {
+                title: t("shell:uiTour.steps.settings.title"),
+                body: t("shell:uiTour.steps.settings.body"),
+                targetSelector: "[data-tour-target='nav-settings']",
+                onEnter: () => setViewMode("settings"),
               },
               {
                 title: t("shell:uiTour.steps.newAgent.title"),
@@ -439,6 +540,9 @@ export function WorkspaceShell({
                 placement: "viewport-right",
                 onEnter: () => setCreateAgentDialogOpen(true),
               },
+              // The "replay the tour" step is a wrap-up pointer at the replay
+              // button, so it comes last, right before the outro. It closes the
+              // create-agent dialog opened by the agentStore step above.
               {
                 title: t("shell:uiTour.steps.appTour.title"),
                 body: t("shell:uiTour.steps.appTour.body"),
@@ -455,23 +559,54 @@ export function WorkspaceShell({
                 onEnter: () => setCreateAgentDialogOpen(false),
               },
             ] satisfies UiTourStep[]
-          ).filter(
+          ).filter((step) => {
+            // The space-switcher step only makes sense on a spaces host; off
+            // spaces there is no team to switch to, so drop its spotlight.
+            if (step.targetSelector === "[data-tour-target='spaceSwitcher']") {
+              return hasSpaces(capabilities);
+            }
             // The Agent Settings (job-description) step targets a tab plain
-            // members never see. Drop it for them so the tour never highlights a
-            // missing anchor or leaves them on a blank agent pane.
-            (step) =>
-              step.targetSelector !==
-                "[data-tour-target='tab-job-description']" ||
-              (!!currentAgent &&
-                isVisibleAgentTab(
-                  capabilities,
-                  currentAgent,
-                  "job-description",
-                )),
-          )}
+            // members never see. Drop it for them so the tour never
+            // highlights a missing anchor or leaves them on a blank pane.
+            if (
+              step.targetSelector === "[data-tour-target='tab-job-description']"
+            ) {
+              return (
+                !!currentAgent &&
+                isVisibleAgentTab(capabilities, currentAgent, "job-description")
+              );
+            }
+            // The Organization nav item only renders for multiplayer
+            // workspaces — same reasoning, drop the step where the anchor
+            // never exists.
+            if (
+              step.targetSelector === "[data-tour-target='nav-organization']"
+            ) {
+              return showOrganization;
+            }
+            // The Integrations nav item is hidden from plain Teams members, so
+            // drop its tour step where the anchor never renders.
+            if (
+              step.targetSelector === "[data-tour-target='nav-integrations']"
+            ) {
+              return showIntegrations;
+            }
+            // The AI Models hub is hidden from plain Teams members too — drop its
+            // tour step where the anchor never renders.
+            if (step.targetSelector === "[data-tour-target='nav-ai-hub']") {
+              return showAiModels;
+            }
+            return true;
+          })}
           onDismiss={() => {
             setUiTourActive(false);
             setCreateAgentDialogOpen(false);
+            // End the tour on the assistant's Routines tab so the freshly-seeded
+            // Morning briefing routine is the last thing they land on — the
+            // onboarding payoff. Applies whether the tour completed or was
+            // skipped. `finishOnboarding` deliberately does NOT set viewMode
+            // (the tour's first step would overwrite it); the landing lives here.
+            setViewMode(tabOr("routines"));
           }}
         />
       )}

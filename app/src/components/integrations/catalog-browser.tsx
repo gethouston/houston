@@ -6,12 +6,17 @@ import { AppCatalogGrid } from "./app-catalog-grid";
 
 interface CatalogBrowserProps {
   catalog: IntegrationToolkit[];
+  /** The surface-owned category selection (`"all"` = no filter). */
+  category: string;
+  onCategoryChange: (next: string) => void;
   connectedToolkits: ReadonlySet<string>;
   /** Toolkit mid-OAuth (spinner on its row); disables every other Connect. */
   connectingToolkit: string | null;
   /** Toolkits to hide entirely (agent context surfaces them elsewhere, e.g. in
    *  the "Ready to activate" group), so no app is listed twice. */
   excludeToolkits?: ReadonlySet<string>;
+  /** The Teams effective allowlist; apps outside it render locked (`null` = none). */
+  allowlist?: string[] | null;
   /** The catalog is still fetching (show a loader, not a "no apps" message). */
   loading?: boolean;
   onConnect: (toolkit: string) => void;
@@ -26,9 +31,12 @@ interface CatalogBrowserProps {
  */
 export function CatalogBrowser({
   catalog,
+  category,
+  onCategoryChange,
   connectedToolkits,
   connectingToolkit,
   excludeToolkits,
+  allowlist,
   loading,
   onConnect,
 }: CatalogBrowserProps) {
@@ -38,7 +46,10 @@ export function CatalogBrowser({
   return (
     <AppCatalogGrid
       catalog={catalog}
+      category={category}
+      onCategoryChange={onCategoryChange}
       excludeToolkits={excludeToolkits}
+      allowlist={allowlist}
       loading={loading}
       renderRow={(_display, tk) => {
         if (connectedToolkits.has(tk.slug)) {

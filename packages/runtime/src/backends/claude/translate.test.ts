@@ -161,6 +161,39 @@ test("a tool_result for an unknown id (replayed/foreign) is dropped", () => {
   expect(events).toEqual([]);
 });
 
+test("a tool_result's text rides the tool_end as its content preview (HOU-717)", () => {
+  const withContent = {
+    type: "user",
+    message: {
+      role: "user",
+      content: [
+        {
+          type: "tool_result",
+          tool_use_id: "abc",
+          is_error: false,
+          content: [
+            { type: "text", text: "line one" },
+            { type: "text", text: "line two" },
+          ],
+        },
+      ],
+    },
+    parent_tool_use_id: null,
+  } as unknown as SDKMessage;
+  const { events } = collect([
+    toolStart(0, "abc", "Grep"),
+    blockStop(0),
+    withContent,
+  ]);
+  expect(events).toEqual([
+    { type: "tool_start", data: { name: "Grep", args: {} } },
+    {
+      type: "tool_end",
+      data: { name: "Grep", isError: false, content: "line one\nline two" },
+    },
+  ]);
+});
+
 // --- result / usage / context ----------------------------------------------
 
 test("a success result yields a usage frame and updates context tokens", () => {

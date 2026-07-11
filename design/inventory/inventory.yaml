@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 6
+version: 14
 
 components:
   - id: agent-avatar
@@ -229,25 +229,119 @@ components:
 
   - id: interaction-card
     title: Interaction card
-    purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions then connections), replacing the composer until done.
-    anatomy: [stepper-header, progress-indicator, back-chevron, question-step, option-row, free-text-input, send-action, connect-step]
-    states: [single-step, multi-step, with-options, free-text-only, connect-step, revisited, disabled]
-    variants: [choice, open-ended, connect, mixed-sequence]
+    purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections), floating ABOVE the always-mounted composer.
+    anatomy: [stepper-header, progress-label, step-title, dismiss-action, option-row, keycap-hint, free-text-input, footer-nav, back-action, skip-action, next-action, signin-step, connect-step, step-app-row, step-cta, waiting-note]
+    states: [single-step, multi-step, with-options, single-option, free-text-only, signin-step, connect-step, connecting, connected, revisited, abandoned, disabled]
+    variants: [choice, open-ended, signin, connect, mixed-sequence]
     behavior: >-
-      Rendered from the turn's pending interaction (steps[]: 1-3 question steps
-      then connect steps). Shows ONE step at a time with a quiet "N of X"
-      progress indicator (only when total > 1) and a back chevron from step 2 on.
-      Question step: one prominent question, vertical single-select option rows
-      (role=radio), and a free-text input ALWAYS visible below as the escape
-      hatch; clicking an option OR submitting typed text answers the current step
-      and advances. Connect step: renders the app-supplied connect card and
-      advances only when it reports connected. Revisiting a step pre-selects its
-      prior answer; re-answering replaces it. A single question-with-options step
-      keeps the one-tap feel (click = answer = complete). After the last step,
-      emits each question answer in step order to the consumer, which formats the
-      resume message. Disabled while another turn is active.
-    a11y: one step announced at a time; option rows are role=radio in a radiogroup, keyboard-toggleable and visible at rest (no hover gate); free-text input always present on question steps; back chevron is a labeled button; progress uses tabular-nums to avoid width jitter.
+      Rendered from the turn's pending interaction (steps[]: 1-3 question steps,
+      then at most one signin step, then connect steps). Shows ONE step at a
+      time. Header: a quiet "Step N of M" progress micro-label (only when total
+      > 1) above the question rendered as the card's title, plus a dismiss X
+      top-right that abandons the WHOLE sequence; a single-step sequence shows
+      the bare title with no progress chrome. The card never replaces the
+      composer: the real composer stays mounted below it, and sending a fresh
+      message there abandons the sequence exactly like the X. Question step:
+      single-select option rows (role=radio), each a raised hairline-bordered
+      row whose 1-based position shows as a right-aligned keycap-style keyboard
+      hint (hidden when the step has only one option); pressing that number key
+      selects the row whenever focus is not in a text field; a free-text input
+      styled as the list's last row is the "something else" escape hatch (so
+      option lists never need an "Other" row). ALL step navigation lives in one
+      footer row, Back leftmost: Back and Skip are quiet ghost buttons (Back
+      revisits the previous already-reached step; Skip advances past the
+      current question without answering, omitted from the composed reply) and
+      Next is the single filled pill that commits the answer; a revisited
+      signin/connect step shows a bare filled Forward instead (its own card
+      cannot re-fire completion). Signin/connect steps draw NO surface of their
+      own (no card-inside-a-card): their reason is routed through the SAME
+      header slot as a question's title (a labelled "Connect {app}" / sign-in
+      fallback when the agent gave no reason), and the app supplies a hairline
+      Mercury row (app logo + name + one-line clamped description, the option-row
+      grammar) plus a single filled CTA ("Connect" / "Sign in") in the SAME
+      footer beside the shared Back node — the app owns the reactive body + CTA
+      while ui/chat (auth/Composio-unaware) owns the header, the surface, and the
+      Back/Forward nav nodes, composed via the exported InteractionFooter. While
+      an OAuth hand-off is in flight the CTA shows a connecting spinner and a
+      quiet muted line above the footer reminds the user their browser is
+      waiting; an already-connected app shows a calm check in the row and
+      self-reports to advance. Revisiting a question pre-selects its prior answer
+      (accent border + subtle tint); re-answering replaces it. A single
+      question-with-options step keeps the one-tap feel (click = answer =
+      complete). After the last step, emits each answered question in step
+      order; the consumer encodes the structured interaction-answers message.
+      Disabled while another turn is active.
+    a11y: one step announced at a time, its question read as the card title; option rows are role=radio in a radiogroup, keyboard-selectable by the keycap-hinted position number and visible at rest (no hover gate); free-text input always present on question steps; Back/Skip/Next are labeled buttons in one predictable footer with Next the lone filled action; dismiss X labeled; the progress micro-label carries the full localized "Step N of M" copy as visible text.
     since: 4
+
+  - id: plan-ready-card
+    title: Plan-ready card
+    purpose: In-chat surface shown when the agent finishes planning (plan mode) and calls plan_ready; presents the drafted plan and three ways forward as composer mode-menu rows, floating above the always-mounted composer (typing there instead abandons it).
+    anatomy: [title, plan-summary, coworker-row, autopilot-row, keep-planning-row]
+    states: [default, disabled]
+    variants: [default]
+    behavior: >-
+      Rendered from a pending interaction carrying a single plan_ready step
+      (summary), exactly like ask_user reaches the frontend. Shows the plan
+      summary above three always-visible option rows built in the composer mode
+      menu's idiom: each a full-width row with its icon inline with the title
+      (Handshake / Rocket / ListTodo, matching the mode selector) and a
+      one-line description below, rounded-xl hover background, nothing
+      hover-gated. "Continue in Coworker mode" starts a normal (execute) turn
+      confirming the plan; "Continue in Autopilot mode" starts an autopilot
+      (auto) turn; both flip the composer Mode pill to match and send a visible
+      user message. "Keep planning" dismisses the card LOCALLY (the composer
+      returns, mode stays plan) without sending; a later, different plan
+      re-shows the card. Primary emphasis comes from row order + title weight,
+      not a filled button. Disabled gates all three rows.
+    a11y: title then plan summary read in order; three labeled row buttons visible at rest (no hover gate), keyboard-reachable, each with a foreground-color icon inline with its title; disabled state marks the surface aria-disabled and gates every row.
+    since: 9
+
+  - id: suggest-reusable-card
+    title: Suggest-reusable card
+    purpose: In-chat offer shown when the agent finishes a mission cleanly and calls suggest_reusable; proposes saving the just-completed work as a reusable Skill or a scheduled Routine, floating above the always-mounted composer.
+    anatomy: [eyebrow, proposed-title, rationale, save-row, not-now-row]
+    states: [default, disabled]
+    variants: [skill, routine]
+    behavior: >-
+      Rendered from a pending interaction carrying a single suggest_reusable
+      step (reusableKind, title, rationale) on the terminal done frame. Unlike
+      every other interaction step, a lone suggest_reusable step keeps the
+      mission's board status at done (the offer is optional, nothing is
+      waiting). Shows the eyebrow, the model-proposed name prominently, and the
+      model's one-line rationale, then two full-width rows in the plan-ready
+      card's idiom: Save (Sparkles icon for a Skill, CalendarClock for a
+      Routine; label names the kind) sends a follow-up message asking the agent
+      to actually write the Skill/Routine, always as an execute turn regardless
+      of the composer's pinned mode, dismissing the offer locally first; "Not
+      now" dismisses locally. Typing in the composer instead abandons it like
+      any interaction card. Dismissal is per-offer (step id) and per
+      conversation.
+    a11y: eyebrow then title then rationale read in order; two labeled row buttons visible at rest (no hover gate), keyboard-reachable; disabled marks the surface aria-disabled and gates both rows.
+    since: 12
+
+  - id: interaction-answers-message
+    title: Interaction answers message
+    purpose: The structured user-message bubble a completed question sequence sends; shows each question with its answer instead of a flat "question - answer" text blob.
+    anatomy: [bubble-frame, question-line, answer-line, pair-divider]
+    states: [default, single-pair]
+    variants: [questions-only, mixed-with-confirmations]
+    behavior: >-
+      A completed interaction card encodes its answers as a marker-prefixed
+      user message (houston:interaction-answers) whose plain-text body is what
+      the model reads, byte-identical to the pre-existing flat reply. The
+      renderer decodes the marker and shows an ordered receipt inside one
+      user-side bubble: each answered question as a small muted label with the
+      user's answer directly below, successive pairs separated by a hairline
+      divider for an even rhythm (a lone pair renders as a compact receipt
+      with no divider); confirmation lines with no question (a connected app,
+      a sign-in) render as a lone value line. Skipped questions emit no line.
+      Malformed or empty payloads fall through to the plain-text bubble;
+      connect/signin-only sequences stay hidden auto-continue messages and
+      never render this bubble. Deliberately quieter than the interaction
+      card, matching the user-bubble family.
+    a11y: reads in document order as question-then-answer pairs; pass-through content only, no interactive elements, no hover-gated information.
+    since: 12
 
   - id: deliverable-card
     title: Deliverable card
@@ -298,25 +392,41 @@ components:
   - id: routine-row
     title: Routine row
     purpose: A scheduled routine in the routines list -- schedule summary + next run.
-    anatomy: [name, schedule-summary, next-fire, enabled-toggle, run-status]
-    states: [enabled, disabled, running, last-run-failed]
+    anatomy:
+      [
+        status-icon,
+        name,
+        schedule-summary,
+        next-fire,
+        enabled-toggle,
+        quick-actions-menu,
+      ]
+    states: [enabled, disabled, running, paused, last-run-failed, renaming]
     variants: [list-row, grid-card]
     behavior: >-
       Shows a humanized schedule summary and the next fire time; the toggle
-      enables/disables the routine. Authoring the schedule is a separate surface.
-    a11y: listitem role; toggle labeled with the routine name; next-run as text.
+      enables/disables the routine. The leading status icon reflects the live
+      run state (waiting / running / usage-limit paused / last-run-failed).
+      The quick-actions menu renames inline and deletes behind a confirm
+      dialog. Authoring the schedule is a separate surface.
+    a11y: >-
+      listitem role; toggle labeled with the routine name; next-run as text;
+      status never color-alone (icon shape + row text carry it); menu trigger
+      always visible with an accessible label.
     since: 1
 
   - id: skill-row
     title: Skill row
     purpose: A skill in the skills list -- icon, name, description, install/run action.
     anatomy: [icon, name, description, trailing-action]
-    states: [available, installed, installing, error]
-    variants: [list-row, grid-card, community-row]
+    states: [available, installed, installing, error, editing]
+    variants: [installed-row, community-row]
     behavior: >-
-      Reflects install state; the trailing action installs or runs the skill.
-      Full skill detail/authoring lives on a separate surface.
-    a11y: listitem role; action button labeled; install state conveyed as text.
+      Community rows reflect install state (an "Add" pill plus an info button).
+      Installed rows carry a Delete pill and a pen that expands an inline editor
+      in place (large auto-growing textarea, Save/Cancel); there is no separate
+      skill-detail surface.
+    a11y: listitem role; action buttons labeled; install state conveyed as text.
     since: 1
 
   - id: empty-state
@@ -356,15 +466,18 @@ components:
     since: 2
 
   - id: ai-model-row
-    title: AI model row
-    purpose: One model in the AI hub directory or a provider's model list.
-    anatomy: [lab-glyph, name, description, provider-count, context-chip, reasoning-badge]
+    title: AI model card
+    purpose: One model card in the AI hub directory grid or a provider's model list.
+    anatomy: [lab-glyph, name, lab-name, see-more]
     states: [default]
-    variants: [directory-row, provider-model-row]
+    variants: [directory-card, provider-model-card]
     behavior: >-
-      A unique cross-provider catalog model; the provider-count reflects how many
-      providers offer it. Opening the row navigates to the model detail.
-    a11y: button/listitem role; name as accessible label; badges conveyed as text.
+      A unique cross-provider catalog model, shown as a compact card in a
+      two-column grid. The whole card is one button that opens the model detail
+      modal; a trailing "See more" cue (label + chevron) is always visible, never
+      hover-gated. The directory grid sits under a control row of a search box +
+      the AI provider / Good at / Cost / Memory facet comboboxes.
+    a11y: single button role; model name + "See more" as the accessible label; no nested buttons.
     since: 2
 
   - id: ai-model-offer-row

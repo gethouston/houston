@@ -1,3 +1,4 @@
+import { RingBuffer } from "./ring-buffer";
 import type { WireEventType, WireFrame } from "./types";
 
 /**
@@ -28,7 +29,11 @@ export function isTerminalFrame(type: WireEventType): boolean {
 
 export class ReplayLog {
   #watermark: number;
-  #buffer: SequencedFrame[] = [];
+  // Fixed-size window of the in-flight turn's frames, in ascending seq order.
+  // A ring buffer (not a shift-on-overflow array) keeps `append` amortized
+  // O(1): once full it overwrites the oldest frame instead of memmoving the
+  // whole 1024-element window on every published frame.
+  #buffer = new RingBuffer<SequencedFrame>(REPLAY_BUFFER_CAP);
 
   /** `watermark` seeds the counter (e.g. from a persisted snapshot); frames start at watermark+1. */
   constructor(watermark = 0) {
@@ -52,7 +57,6 @@ export class ReplayLog {
     this.#watermark = seq;
     const frame: SequencedFrame = { ...event, seq };
     this.#buffer.push(frame);
-    if (this.#buffer.length > REPLAY_BUFFER_CAP) this.#buffer.shift();
     return frame;
   }
 
@@ -65,14 +69,30 @@ export class ReplayLog {
   replayAfter(after: number): SequencedFrame[] | null {
     if (after > this.#watermark) return null;
     if (after === this.#watermark) return [];
-    const first = this.#buffer[0]?.seq ?? this.#watermark + 1;
+    const first = this.#buffer.at(0)?.seq ?? this.#watermark + 1;
     if (after < first - 1) return null;
-    return this.#buffer.filter((f) => f.seq > after);
+    // Frames are buffered in ascending seq order, so the frames still needed
+    // are a contiguous suffix: binary-search its start and copy from there,
+    // instead of scanning the whole window.
+    return this.#buffer.sliceFrom(this.#firstIndexAfter(after));
+  }
+
+  /** Lowest buffer index whose frame.seq > `after` (frames are seq-ascending). */
+  #firstIndexAfter(after: number): number {
+    let lo = 0;
+    let hi = this.#buffer.length; // exclusive; frames [lo, hi) are the window
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      // mid < length, so `at(mid)` is always defined here.
+      if ((this.#buffer.at(mid) as SequencedFrame).seq > after) hi = mid;
+      else lo = mid + 1;
+    }
+    return lo;
   }
 
   /** Drop the buffered frames (turn ended). The seq counter is NOT reset. */
   clear(): void {
-    this.#buffer = [];
+    this.#buffer.clear();
   }
 }
 

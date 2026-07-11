@@ -1,7 +1,5 @@
 import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
 import {
-  useAgentGrantMutation,
   useAgentGrants,
   useDisconnectIntegration,
   useIntegrationConnections,
@@ -12,11 +10,11 @@ import {
   useAgentSettings,
 } from "../../../hooks/queries/use-agent-settings";
 import { useCapabilities } from "../../../hooks/use-capabilities";
-import { canEditAgentGrants } from "../../../lib/org-roles";
+import { canEditAgentGrants } from "../../../lib/agent-access";
+import { canSeeIntegrationsPage } from "../../../lib/org-roles";
 import type { TabProps } from "../../../lib/types";
 import { useUIStore } from "../../../stores/ui";
 import {
-  ConnectMoreAppsSection,
   INTEGRATION_PROVIDER,
   LoadingState,
   ReconnectBanner,
@@ -26,24 +24,26 @@ import {
   useIntegrationsGate,
 } from "../../integrations";
 import { INTEGRATIONS_VIEW_ID } from "../../integrations-view/id";
-import { AgentAppsBody } from "./agent-apps-body";
+import { AgentIntegrationsBody } from "./agent-integrations-body";
 import { agentIntegrationsView } from "./model";
 
 /**
- * The per-agent Integrations tab. Sections: the apps this agent can use, the
- * account apps ready to activate here (grants mode), the apps a Teams allowlist
- * forbids, and the always-visible "Connect more apps" catalog. The allowlist
- * editor lives in Agent Settings > Access, not here, so this tab renders
- * identically for members and managers. One tab-level connect flow with
- * `autoGrant` so a brand-new connection auto-activates on this agent. Behind the
+ * The per-agent Integrations tab, a pure CONNECT surface. Sections: the apps
+ * this agent can use, the apps a Teams allowlist forbids, and the always-visible
+ * "Connect more apps" catalog. Grant activate/deactivate controls have moved to
+ * Settings > Connected accounts, so this tab only connects (with `autoGrant` so
+ * a brand-new connection auto-activates on this agent), recovers a pending
+ * connection, and disconnects. The allowlist editor lives in Agent Settings >
+ * Access, so this tab renders identically for members and managers. Behind the
  * shared boot gate; the grant view (multiplayer) and degraded view (host without
  * grant routes) are a discriminated union so the two never mix. On a Teams host
  * the effective allowlist (agent ceiling ∩ org ceiling) filters the browse
  * catalog and splits disallowed connected apps out; non-Teams hosts feature-
- * detect off and render exactly as before.
+ * detect off and render exactly as before. The bottom "manage" link routes by
+ * role: the global Integrations page when the caller may see it, else Settings >
+ * Connected accounts (a Teams plain member, for whom that page is gone).
  */
 export default function IntegrationsTab({ agent }: TabProps) {
-  const { t } = useTranslation("integrations");
   const gate = useIntegrationsGate();
   const ready = gate.kind === "ready";
   const { capabilities } = useCapabilities();
@@ -65,13 +65,20 @@ export default function IntegrationsTab({ agent }: TabProps) {
     () => (settings ? effectiveAllowlist(settings) : null),
     [settings],
   );
-  const grantMutation = useAgentGrantMutation(agent.id);
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const connectFlow = useConnectFlow({
     agentId: agent.id,
     autoGrant: grantsSupported && canEdit,
   });
   const setViewMode = useUIStore((s) => s.setViewMode);
+  const setSettingsSection = useUIStore((s) => s.setSettingsSection);
+  const canSeePolicyPage = canSeeIntegrationsPage(capabilities);
+  const onManageAll = canSeePolicyPage
+    ? () => setViewMode(INTEGRATIONS_VIEW_ID)
+    : () => {
+        setSettingsSection("connectedAccounts");
+        setViewMode("settings");
+      };
 
   const view = useMemo(
     () =>
@@ -84,26 +91,12 @@ export default function IntegrationsTab({ agent }: TabProps) {
     [connections.data, catalog.data, grants, allowlist],
   );
 
-  // The browse catalog is narrowed to the effective allowlist so a member can
-  // only connect apps the agent is allowed to use (null = unrestricted).
-  const browseCatalog = useMemo(() => {
-    const all = catalog.data ?? [];
-    if (allowlist === null) return all;
-    const set = new Set(allowlist);
-    return all.filter((tk) => set.has(tk.slug));
-  }, [catalog.data, allowlist]);
-
   const bodyLoading =
     ready &&
     (grantsQuery.isLoading ||
       connections.isLoading ||
       catalog.isLoading ||
       settingsQuery.isLoading);
-
-  const removeGrant = (toolkit: string) =>
-    grantMutation.mutate({ toolkit, op: "remove" });
-  const activate = (toolkit: string) =>
-    grantMutation.mutate({ toolkit, op: "add" });
 
   return (
     <div className="h-full overflow-auto">
@@ -127,33 +120,21 @@ export default function IntegrationsTab({ agent }: TabProps) {
               <ReconnectBanner onDismiss={gate.dismissReconnect} />
             )}
 
-            <AgentAppsBody
+            {/* Keyed by agent so the body's view-only category filter never
+                leaks across agents — the tab stays mounted on agent switch. */}
+            <AgentIntegrationsBody
+              key={agent.id}
               view={view}
               canEdit={canEdit}
+              catalog={catalog.data ?? []}
+              allowlist={allowlist}
+              connections={connections.data ?? []}
               connectFlow={connectFlow}
-              onRemoveGrant={removeGrant}
-              onActivate={activate}
+              catalogLoading={catalog.isLoading}
               onDisconnect={(toolkit) => disconnect.mutate(toolkit)}
+              canSeePolicyPage={canSeePolicyPage}
+              onManageAll={onManageAll}
             />
-
-            <div className="mt-8">
-              <ConnectMoreAppsSection
-                catalog={browseCatalog}
-                connections={connections.data ?? []}
-                connectFlow={connectFlow}
-                loading={catalog.isLoading}
-              />
-            </div>
-
-            <div className="mt-8 flex justify-center">
-              <button
-                type="button"
-                onClick={() => setViewMode(INTEGRATIONS_VIEW_ID)}
-                className="text-xs text-muted-foreground underline underline-offset-4 decoration-dotted transition-colors hover:text-foreground"
-              >
-                {t("agentTab.manageAll")}
-              </button>
-            </div>
           </>
         )}
       </div>

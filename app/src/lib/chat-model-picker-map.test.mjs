@@ -151,7 +151,7 @@ test("rankCuratedFirst: curated ids missing from the rows are simply skipped", (
   );
 });
 
-test("buildPickerModels: a real provider's rows rank curated-first with the flag set", () => {
+test("buildPickerModels: a real provider's rows rank curated-first", () => {
   // Raw pi-catalog order: legacy models first — the defect this ranking fixes.
   const anthropic = {
     id: "anthropic",
@@ -170,22 +170,19 @@ test("buildPickerModels: a real provider's rows rank curated-first with the flag
     visibleProviders: [anthropic],
     statuses: {},
   });
-  // Curated (PROVIDER_OVERRIDES.anthropic.models key order: sonnet-5 [absent],
-  // sonnet-4-6, opus-4-8, fable-5, opus-4-7) first, then legacy in catalog order.
+  // Curated (PROVIDER_OVERRIDES.anthropic.models key order: sonnet-5 [absent
+  // from this provider's rows, so skipped], opus-4-8, fable-5) first, then
+  // legacy (including the now-uncurated sonnet-4-6/opus-4-7) in catalog order.
   assert.deepEqual(
     models.map((m) => decodeModelPickerId(m.id).model),
     [
-      "claude-sonnet-4-6",
       "claude-opus-4-8",
       "claude-fable-5",
-      "claude-opus-4-7",
       "claude-opus-3",
       "claude-sonnet-3-5",
+      "claude-opus-4-7",
+      "claude-sonnet-4-6",
     ],
-  );
-  assert.deepEqual(
-    models.map((m) => m.curated === true),
-    [true, true, true, true, false, false],
   );
 });
 

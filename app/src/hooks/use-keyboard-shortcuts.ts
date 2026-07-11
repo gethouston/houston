@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
-import { orderAgents } from "../lib/agent-order";
+import { flatSidebarOrder } from "../lib/agent-order";
 import {
   isEmptyEditable,
   isTypingTarget,
@@ -8,6 +8,8 @@ import {
 } from "../lib/shortcuts";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
+import { useWorkspaceStore } from "../stores/workspaces";
+import { getCurrentSidebarLayout } from "./use-sidebar-layout";
 
 /**
  * Programmatic step-scroll of the chat message log. The conversation
@@ -99,7 +101,11 @@ export function useKeyboardShortcuts() {
         const dir = matchShortcut("nextAgent", e) ? 1 : -1;
         const { agents, current, setCurrent } = useAgentStore.getState();
         if (agents.length === 0) return;
-        const ordered = orderAgents(agents);
+        const workspaceId = useWorkspaceStore.getState().current?.id;
+        const ordered = flatSidebarOrder(
+          agents,
+          getCurrentSidebarLayout(workspaceId),
+        );
         const idx = current
           ? ordered.findIndex((a) => a.id === current.id)
           : -1;

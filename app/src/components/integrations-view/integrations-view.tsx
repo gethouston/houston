@@ -1,40 +1,50 @@
 import { useTranslation } from "react-i18next";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import {
   LoadingState,
   SigninState,
   UnavailableState,
   useIntegrationsGate,
 } from "../integrations";
+import { PageContainer, PageHeader } from "../shell/page-shell";
+import { IntegrationsPolicy } from "./integrations-policy";
 import { IntegrationsReady } from "./integrations-ready";
+import { integrationsPageMode } from "./integrations-view-model";
 
 /**
- * The top-level Integrations page (sidebar destination): every connected app,
- * which agents use it, per-agent activation, disconnects, and adding new apps.
- * Shares the exact gate UX of the per-agent tab (loading / unavailable / signin
- * / ready) via `useIntegrationsGate`; the ready body owns all the app wiring.
+ * The top-level Integrations page (sidebar destination). Exactly one identity
+ * per mode: in a Teams workspace it is the org POLICY surface (owner/admin only,
+ * gated by the nav); everywhere else it is the caller's PERSONAL connected-apps
+ * page. Shares the exact gate UX of the per-agent tab (loading / unavailable /
+ * signin / ready) via `useIntegrationsGate`; the ready body owns the mode split.
  */
 export function IntegrationsView() {
   const { t } = useTranslation("integrations");
+  const { capabilities } = useCapabilities();
   const gate = useIntegrationsGate();
 
   return (
     <div className="h-full overflow-auto">
-      <div className="mx-auto w-full max-w-3xl px-6 py-6">
+      <PageContainer className="py-10">
         {gate.kind === "ready" ? (
-          <IntegrationsReady
-            reconnectNotice={gate.reconnectNotice}
-            dismissReconnect={gate.dismissReconnect}
-          />
+          integrationsPageMode(capabilities) === "policy" ? (
+            <IntegrationsPolicy
+              reconnectNotice={gate.reconnectNotice}
+              dismissReconnect={gate.dismissReconnect}
+            />
+          ) : (
+            <IntegrationsReady
+              reconnectNotice={gate.reconnectNotice}
+              dismissReconnect={gate.dismissReconnect}
+            />
+          )
         ) : (
           <>
-            <div className="mb-6">
-              <h1 className="text-[28px] font-normal text-foreground">
-                {t("home.title")}
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t("home.description")}
-              </p>
-            </div>
+            <PageHeader
+              title={t("home.title")}
+              subtitle={t("home.description")}
+              className="mb-6"
+            />
             {gate.kind === "loading" ? (
               <LoadingState />
             ) : gate.kind === "signin" ? (
@@ -44,7 +54,7 @@ export function IntegrationsView() {
             )}
           </>
         )}
-      </div>
+      </PageContainer>
     </div>
   );
 }

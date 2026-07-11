@@ -11,6 +11,7 @@
 import i18n from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
+import agentOnboardingEn from "../locales/en/agent-onboarding.json";
 import agentsEn from "../locales/en/agents.json";
 import aiHubEn from "../locales/en/ai-hub.json";
 import boardEn from "../locales/en/board.json";
@@ -32,6 +33,7 @@ import setupEn from "../locales/en/setup.json";
 import shellEn from "../locales/en/shell.json";
 import skillsEn from "../locales/en/skills.json";
 import teamsEn from "../locales/en/teams.json";
+import agentOnboardingEs from "../locales/es/agent-onboarding.json";
 import agentsEs from "../locales/es/agents.json";
 import aiHubEs from "../locales/es/ai-hub.json";
 import boardEs from "../locales/es/board.json";
@@ -53,6 +55,7 @@ import setupEs from "../locales/es/setup.json";
 import shellEs from "../locales/es/shell.json";
 import skillsEs from "../locales/es/skills.json";
 import teamsEs from "../locales/es/teams.json";
+import agentOnboardingPt from "../locales/pt/agent-onboarding.json";
 import agentsPt from "../locales/pt/agents.json";
 import aiHubPt from "../locales/pt/ai-hub.json";
 import boardPt from "../locales/pt/board.json";
@@ -146,6 +149,7 @@ const resources = {
     context: contextEn,
     org: orgEn,
     teams: teamsEn,
+    agentOnboarding: agentOnboardingEn,
   },
   es: {
     common: commonEs,
@@ -169,6 +173,7 @@ const resources = {
     context: contextEs,
     org: orgEs,
     teams: teamsEs,
+    agentOnboarding: agentOnboardingEs,
   },
   pt: {
     common: commonPt,
@@ -192,6 +197,7 @@ const resources = {
     context: contextPt,
     org: orgPt,
     teams: teamsPt,
+    agentOnboarding: agentOnboardingPt,
   },
 } as const;
 
@@ -234,6 +240,7 @@ void i18n
       "context",
       "org",
       "teams",
+      "agentOnboarding",
     ],
     interpolation: { escapeValue: false }, // react already escapes
     detection: {

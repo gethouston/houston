@@ -1,8 +1,12 @@
+import { isInteractionStep } from "@houston/protocol";
 import { expect, test } from "vitest";
 import {
   newInteractionHolder,
   recordConnection,
+  recordPlanReady,
   recordQuestions,
+  recordSignin,
+  recordSuggestReusable,
   runWithInteractionCapture,
 } from "./interaction";
 
@@ -72,6 +76,54 @@ test("connect steps dedupe by toolkit, keep call order, and take c1..cN ids", ()
   });
 });
 
+test("recordSignin orders the signin step between questions and connects", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordConnection({ toolkit: "gmail", reason: "to send it" });
+    recordSignin({ reason: "Sign in first." });
+    recordQuestions([q("q1", "Which address?")]);
+  });
+  // Regardless of call order: questions, then the signin step, then connects.
+  expect(holder.pending).toEqual({
+    steps: [
+      q("q1", "Which address?"),
+      { kind: "signin", id: "s1", reason: "Sign in first." },
+      { kind: "connect", id: "c1", toolkit: "gmail", reason: "to send it" },
+    ],
+  });
+});
+
+test("recordSignin is idempotent — one step, last reason wins", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordSignin({ reason: "first reason" });
+    recordSignin({ reason: "  second reason  " });
+  });
+  expect(holder.pending).toEqual({
+    steps: [{ kind: "signin", id: "s1", reason: "second reason" }],
+  });
+});
+
+test("recordSignin omits an empty/whitespace reason", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordSignin({ reason: "   " });
+  });
+  expect(holder.pending).toEqual({ steps: [{ kind: "signin", id: "s1" }] });
+
+  const noReason = newInteractionHolder();
+  runWithInteractionCapture(noReason, () => recordSignin({}));
+  expect(noReason.pending).toEqual({ steps: [{ kind: "signin", id: "s1" }] });
+});
+
+test("a signin step alone yields a valid sequence", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => recordSignin({ reason: "Sign in." }));
+  expect(holder.pending).toEqual({
+    steps: [{ kind: "signin", id: "s1", reason: "Sign in." }],
+  });
+});
+
 test("either tool alone still yields a valid sequence", () => {
   const questionsOnly = newInteractionHolder();
   runWithInteractionCapture(questionsOnly, () =>
@@ -109,6 +161,132 @@ test("a fresh holder each turn is the reset — nothing leaks across turns", () 
 test("recording outside a turn is a no-op (undefined store)", () => {
   expect(() => recordQuestions([q("q1", "orphan?")])).not.toThrow();
   expect(() => recordConnection({ toolkit: "gmail" })).not.toThrow();
+  expect(() => recordSignin({ reason: "orphan" })).not.toThrow();
+  expect(() => recordPlanReady({ summary: "orphan plan" })).not.toThrow();
+  expect(() =>
+    recordSuggestReusable({
+      reusableKind: "skill",
+      title: "orphan",
+      rationale: "no turn",
+    }),
+  ).not.toThrow();
+});
+
+test("recordPlanReady records the single plan-ready step (id p1, trimmed)", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () =>
+    recordPlanReady({ summary: "  Book it, then confirm.  " }),
+  );
+  expect(holder.pending).toEqual({
+    steps: [
+      { kind: "plan_ready", id: "p1", summary: "Book it, then confirm." },
+    ],
+  });
+});
+
+test("a plan-ready step OWNS the interaction exclusively (wins over queued steps)", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    // Even if the model somehow queued questions/signin/connects this turn, a
+    // plan_ready call collapses the interaction to the single plan card.
+    recordQuestions([q("q1", "Which one?")]);
+    recordSignin({ reason: "Sign in first." });
+    recordConnection({ toolkit: "gmail", reason: "to send it" });
+    recordPlanReady({ summary: "Here is the plan." });
+  });
+  expect(holder.pending).toEqual({
+    steps: [{ kind: "plan_ready", id: "p1", summary: "Here is the plan." }],
+  });
+});
+
+test("the protocol guard accepts a valid plan_ready step and rejects a bad summary", () => {
+  // Guard coverage lands here because @houston/protocol has no test runner of
+  // its own; the runtime suite imports the same guard the wire/persist seams use.
+  expect(
+    isInteractionStep({ kind: "plan_ready", id: "p1", summary: "The plan." }),
+  ).toBe(true);
+  // A missing summary is invalid.
+  expect(isInteractionStep({ kind: "plan_ready", id: "p1" })).toBe(false);
+  // A non-string summary is invalid.
+  expect(isInteractionStep({ kind: "plan_ready", id: "p1", summary: 7 })).toBe(
+    false,
+  );
+  // No id is invalid (shared step rule).
+  expect(isInteractionStep({ kind: "plan_ready", summary: "x" })).toBe(false);
+});
+
+test("recordSuggestReusable records the single suggest-reusable step (id r1, trimmed)", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () =>
+    recordSuggestReusable({
+      reusableKind: "routine",
+      title: "  Morning digest  ",
+      rationale: "  Runs on its own each day.  ",
+    }),
+  );
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "suggest_reusable",
+        id: "r1",
+        reusableKind: "routine",
+        title: "Morning digest",
+        rationale: "Runs on its own each day.",
+      },
+    ],
+  });
+});
+
+test("a suggest-reusable step ALONE surfaces as the pending sequence", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () =>
+    recordSuggestReusable({
+      reusableKind: "skill",
+      title: "Weekly report",
+      rationale: "Reuse it next week.",
+    }),
+  );
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "suggest_reusable",
+        id: "r1",
+        reusableKind: "skill",
+        title: "Weekly report",
+        rationale: "Reuse it next week.",
+      },
+    ],
+  });
+});
+
+test("suggest-reusable is FALLBACK-ONLY: a question this same turn wins and drops it", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordSuggestReusable({
+      reusableKind: "skill",
+      title: "Weekly report",
+      rationale: "Reuse it next week.",
+    });
+    recordQuestions([q("q1", "Which week?")]);
+  });
+  // The question means the mission is NOT done, so it takes priority and the
+  // suggestion is dropped from `pending` entirely — never surfaced alongside.
+  expect(holder.pending).toEqual({ steps: [q("q1", "Which week?")] });
+});
+
+test("plan-ready wins over a suggest-reusable step set the same turn", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordSuggestReusable({
+      reusableKind: "skill",
+      title: "Weekly report",
+      rationale: "Reuse it next week.",
+    });
+    recordPlanReady({ summary: "Here is the plan." });
+  });
+  expect(holder.pending).toEqual({
+    steps: [{ kind: "plan_ready", id: "p1", summary: "Here is the plan." }],
+  });
 });
 
 test("the holder survives async work inside the capture (ALS propagation)", async () => {

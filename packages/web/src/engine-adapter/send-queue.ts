@@ -62,7 +62,10 @@ export function maybeQueueSend(
   entries.push({
     vm: {
       id: crypto.randomUUID(),
-      text: req.queuedPreview?.text ?? req.prompt,
+      // Prefer an explicit queued preview, then the display bubble text (a
+      // hidden-directive / attachment-path send shows the clean line, never the
+      // real prompt), falling back to the prompt when the two are the same.
+      text: req.queuedPreview?.text ?? req.displayText ?? req.prompt,
       attachmentNames: req.queuedPreview?.attachmentNames,
     },
     req,
@@ -108,5 +111,15 @@ export function flushQueuedSends(
     .map((e) => e.req.prompt.trim())
     .filter(Boolean)
     .join("\n\n");
-  dispatch({ ...last.req, prompt, queuedPreview: undefined });
+  // Reconstruct the combined BUBBLE the same way as the combined prompt so the
+  // history reload matches: each entry contributes what its own bubble showed
+  // (`displayText ?? prompt`). Only carried when at least one entry hid its
+  // prompt behind a displayText; otherwise the bubble equals the prompt.
+  const displayText = entries.some((e) => e.req.displayText !== undefined)
+    ? entries
+        .map((e) => (e.req.displayText ?? e.req.prompt).trim())
+        .filter(Boolean)
+        .join("\n\n")
+    : undefined;
+  dispatch({ ...last.req, prompt, displayText, queuedPreview: undefined });
 }

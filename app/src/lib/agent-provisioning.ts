@@ -32,6 +32,43 @@ export const PROVISIONING_RETRY_MS = 3_000;
 export const PROVISIONING_TTL_MS = 10 * 60_000;
 
 /**
+ * How long the asleep-check waits before calling the engine asleep (HOU-730).
+ * An awake engine answers the tiny probe read in well under a second; a pod
+ * scaled to zero is held by the gateway for its whole cold start.
+ */
+export const ASLEEP_DETECT_TIMEOUT_MS = 2_000;
+
+export interface AsleepDetectDeps {
+  /** The same cheap per-agent read the readiness probe uses. */
+  readFile: (agentPath: string, relPath: string) => Promise<unknown>;
+  sleep: (ms: number) => Promise<void>;
+}
+
+/**
+ * One-shot asleep check for an EXISTING agent (HOU-730). A hosted pod scaled
+ * to zero holds every per-agent request for its whole cold start — a first
+ * message sent then hangs with no bubble and dies with a reload. Asleep =
+ * the probe read is still held past the window, or the gateway answered a
+ * warm-up status (502/503/504). A fast transport failure is NOT asleep: the
+ * user's own request should surface the real network error instead of
+ * silently parking messages for an engine that isn't coming.
+ */
+export async function detectEngineAsleep(
+  agentPath: string,
+  deps: AsleepDetectDeps,
+): Promise<boolean> {
+  const attempt = deps.readFile(agentPath, PROVISIONING_PROBE_FILE).then(
+    () => false,
+    (err) => {
+      const status = (err as { status?: unknown } | null)?.status;
+      return status === 502 || status === 503 || status === 504;
+    },
+  );
+  const timer = deps.sleep(ASLEEP_DETECT_TIMEOUT_MS).then(() => true);
+  return Promise.race([attempt, timer]);
+}
+
+/**
  * A message sent while the engine was still warming up. The wire send is NOT
  * fired then (a held request dies with load-balancer timeouts or a reload) —
  * the message shows as a local bubble and the real send fires the moment the
@@ -58,13 +95,34 @@ export interface PendingWarmingSend {
     agent?: string;
     provider?: string;
     model?: string;
+    /**
+     * Status the row should land with (default `running`). The create route
+     * can't carry it, so the flush patches it right after the create. The
+     * welcome mission settles its queued row to `needs_you` when the
+     * greeting reveals (HOU-713).
+     */
+    status?: string;
   };
+  /**
+   * A row-only entry (HOU-713): the board row IS the payload — no bubble, no
+   * wire send at flush. Carried by the welcome mission, whose greeting is
+   * client-rendered.
+   */
+  rowOnly?: boolean;
   promptFile?: string;
   provider?: string;
   model?: string;
   effort?: string;
   /** Per-turn mode pin (composer "Mode" selector), forwarded at flush time. */
   mode?: "execute" | "plan" | "auto";
+  /** Epoch ms the message was queued — orders the optimistic board rows. */
+  queuedAt?: number;
+  /**
+   * Source text for the async AI title pass, carried only when the caller
+   * wanted one (no explicit title). The pass can't run at queue time — the
+   * engine can't answer — so the flush fires it after the row lands (HOU-713).
+   */
+  titleText?: string;
 }
 
 export interface ProvisioningEntry {
@@ -75,6 +133,15 @@ export interface ProvisioningEntry {
   since: number;
   /** Messages queued while warming, flushed on ready (in order). */
   pendingSends?: PendingWarmingSend[];
+  /**
+   * The TTL elapsed with no answer yet (HOU-693 regression: the entry used to
+   * be cleared here, silently dropping the user's still-visible first chat).
+   * Sticky once set — the store re-arms a fresh probe window on it rather
+   * than giving up, and the UI switches to a "still starting" state instead
+   * of the initial "we're creating your agent" copy. Never cleared back to
+   * false; a fresh entry (new create/rename) replaces it instead.
+   */
+  timedOut?: boolean;
 }
 
 /**
@@ -108,12 +175,17 @@ export function parsePersistedProvisioning(
   return parsed
     .filter((e): e is ProvisioningEntry => {
       if (!e || typeof e !== "object") return false;
-      const { agentId, agentPath, since } = e as Partial<ProvisioningEntry>;
+      const { agentId, agentPath, since, timedOut } =
+        e as Partial<ProvisioningEntry>;
       return (
         typeof agentId === "string" &&
         typeof agentPath === "string" &&
         typeof since === "number" &&
-        now - since < PROVISIONING_TTL_MS
+        // A timed-out entry is kept regardless of age: it's still visibly
+        // parked (its board row / chat bubble persists) and re-arms its own
+        // probe on rehydrate rather than expiring off the TTL clock a second
+        // time, which would silently drop it right back.
+        (timedOut === true || now - since < PROVISIONING_TTL_MS)
       );
     })
     .map((e) =>

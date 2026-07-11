@@ -90,6 +90,14 @@ export interface Capabilities {
    * every existing single-player/self-host profile stays valid.
    */
   teams?: boolean;
+  /**
+   * Whether this deployment serves C8 Spaces: self-serve team creation, agent
+   * moves between spaces, and the multi-membership space switcher. A feature-
+   * detect flag the frontend reads to route the switcher's create action to the
+   * Create-team dialog; absent/false on desktop/self-host (the create action
+   * stays "create a local workspace"). The gateway is the sole enforcer.
+   */
+  spaces?: boolean;
 }
 
 // ---------- Org / roles (multiplayer) ----------
@@ -169,6 +177,102 @@ export interface AddOrgMemberResult {
   email?: string;
 }
 
+// ---------- Spaces / teams (C8) ----------
+
+/**
+ * Billing status of a team space (C8 §Billing wire surface). Attached to an
+ * `OrgSummary` only for teams and only for owner/admin callers; the DERIVED
+ * effective `status` (never a stored column) drives every UI billing state.
+ * `seats` is the live `count(org_members)` at read time. Kept in sync by hand
+ * with the gateway — the server is the source of truth.
+ */
+export interface BillingSummary {
+  plan: "team" | "enterprise";
+  status: "free" | "trialing" | "active" | "past_due" | "expired";
+  /** ISO-8601; present once the trial clock exists. */
+  trialEndsAt?: string;
+  seats: number;
+  /** Present once subscribed. */
+  interval?: "monthly" | "annual";
+}
+
+/**
+ * A Stripe-hosted URL to redirect the owner to (C8 §Billing wire surface).
+ * Returned by `POST /v1/org/billing/checkout` (contextual card capture) and
+ * `POST /v1/org/billing/portal` (card, invoices, interval switch, cancel). The
+ * client opens it via the OS external-open path — never inline.
+ */
+export interface BillingCheckout {
+  url: string;
+}
+
+/**
+ * One space (org) the caller belongs to (C8 §Wire surface — spaces), from
+ * `GET /v1/orgs` and `POST /v1/orgs`. `kind` is derived server-side from
+ * `personal_of` — `personal` is the free-forever personal space, `team` is a
+ * paid-per-seat team. `role` is the caller's role IN THIS space. `degraded` is
+ * `true` when writes would `403 needs_upgrade` (visible to every member, carries
+ * no billing detail). `billing` is present for teams, owner/admin only.
+ *
+ * The space's `slug` is what pins the active space: a team's switcher workspace
+ * id is `"org:" + slug` (C8 §Workspaces bridge), and that slug rides
+ * `x-houston-org` / `?org=` (see `HoustonClient.setActiveOrg`).
+ */
+export interface OrgSummary {
+  id: string;
+  slug: string;
+  name: string;
+  kind: "personal" | "team";
+  role: OrgRole;
+  memberCount: number;
+  degraded: boolean;
+  billing?: BillingSummary;
+}
+
+/**
+ * A pending invite addressed to the caller's email (C8 §Wire surface), from
+ * `GET /v1/orgs` (`invites`). Accepted via `POST /v1/org-invites/:id/accept` or
+ * declined via `DELETE /v1/org-invites/:id`.
+ */
+export interface OrgInviteSummary {
+  id: string;
+  orgName: string;
+  role: OrgRole;
+  invitedBy?: string;
+}
+
+/**
+ * Response of `GET /v1/orgs` (C8): every membership plus every pending invite
+ * addressed to the caller. Degrades to an empty result on a host that predates
+ * spaces (404) so the switcher shows only the personal workspace.
+ */
+export interface OrgsList {
+  orgs: OrgSummary[];
+  invites: OrgInviteSummary[];
+}
+
+/**
+ * Response of `POST /v1/agents/:slug/move` (C8 §Agent move): the id to poll for
+ * move progress. The move route is async — `202 {moveId}` — because a move stops
+ * and restarts the agent's pod; completion is read from `getMoveStatus`, NEVER
+ * inferred from the agent event stream (which only relays pod-scoped events).
+ */
+export interface AgentMoveStart {
+  moveId: string;
+}
+
+/**
+ * Progress of one agent move (C8), polled from
+ * `GET /v1/agents/:slug/move/:moveId`. `done`/`failed` are terminal; `error` is
+ * a human-readable reason present on `failed`. The share pipeline MUST poll this
+ * to terminal `done` before inviting (C8 §Share-triggers-team) — inviting before
+ * the move completes is forbidden by the client contract.
+ */
+export interface AgentMoveStatus {
+  status: "moving" | "done" | "failed";
+  error?: string;
+}
+
 /**
  * Per-agent settings (Teams v2), from `GET /agents/:slug/settings`.
  * `allowedToolkits` is the agent-level integration ceiling (`null` =
@@ -177,13 +281,18 @@ export interface AddOrgMemberResult {
  * `allowedModels` is the manager-set AI-model ceiling: which models a member may
  * pick for this agent (`null` = every model allowed, `[]` = none). Each member's
  * own per-agent pick lives in the separate model-choice surface below; the
- * gateway clamps that pick to this ceiling on every turn.
+ * gateway clamps that pick to this ceiling on every turn. `orgAllowedModels` is
+ * the org-wide AI-model ceiling the agent ceiling is intersected with (the same
+ * relationship `orgAllowedToolkits` has to `allowedToolkits`); optional so a host
+ * predating the org models ceiling is read as `undefined` (treat as `null` =
+ * unrestricted).
  */
 export interface AgentSettings {
   allowedToolkits: string[] | null;
   orgAllowedToolkits: string[] | null;
   access: AgentAccess;
   allowedModels: string[] | null;
+  orgAllowedModels?: string[] | null;
 }
 
 // ---------- Per-user model choice (multiplayer) ----------
@@ -211,10 +320,20 @@ export interface AgentModelChoiceInfo {
   allowedModels: string[] | null;
 }
 
-/** Org-wide settings (Teams v2), from `GET /org/settings`. */
+/**
+ * Org-wide settings (Teams v2), from `GET /org/settings`. `PUT /org/settings` is
+ * a partial patch (owner only), so either ceiling can be changed without
+ * touching the other.
+ */
 export interface OrgSettings {
   /** Org-wide integration ceiling; `null` = unrestricted, `[]` = none. */
   allowedToolkits: string[] | null;
+  /**
+   * Org-wide AI-model ceiling: which models any agent in the workspace may run
+   * on (`null` = every model allowed, `[]` = none). Optional so a host predating
+   * the models ceiling is read as `undefined` (treat as `null` = unrestricted).
+   */
+  allowedModels?: string[] | null;
 }
 
 /**
@@ -245,11 +364,34 @@ export interface UsageRow {
 
 // ---------- Workspaces ----------
 
+/**
+ * Which kind of space a workspace bridges (C8 §Workspaces bridge). Mirrors the
+ * host domain `WorkspaceKind` (`packages/host/src/domain/types.ts`). `personal`
+ * ⟺ OrgSummary `personal`, `org` ⟺ OrgSummary `team`.
+ */
+export type WorkspaceKind = "personal" | "org";
+
 export interface Workspace {
+  /**
+   * Stable id. A hosted **personal** space keeps its existing auto-provisioned
+   * id — opaque, NEVER `org:`-prefixed. A hosted **team** space (`kind: "org"`)
+   * has the server-defined id grammar `"org:" + slug`, where `slug` is
+   * `[a-f0-9]{16}`. The `org:` prefix is a wire convention: strip it to recover
+   * the slug for `setActiveOrg` / `?org=`, but never synthesize or parse the
+   * slug beyond that (C8).
+   */
   id: string;
   name: string;
   isDefault: boolean;
   createdAt: string;
+  /**
+   * Which kind of space this row bridges (C8 §Workspaces bridge). Present on
+   * hosts that serve spaces; ABSENT on single-player/self-host hosts (treat as
+   * `"personal"`), so every pre-C8 profile stays valid. Selecting a `personal`
+   * workspace sends NO active-space header; selecting an `org` workspace pins
+   * `x-houston-org` (and `?org=` on the SSE routes) to its slug.
+   */
+  kind?: WorkspaceKind;
   /**
    * Optional per-workspace UI-locale override (BCP-47 base tag: `en`/`es`/`pt`).
    * Absent/null means the workspace inherits the global `locale` preference.
@@ -277,6 +419,34 @@ export interface UpdateProvider {
 export interface WorkspaceContext {
   workspace: string;
   user: string;
+}
+
+/** A user-created, collapsible sidebar section that agents are dragged into. */
+export interface SidebarGroup {
+  /** Stable client-minted id (never an agent id). */
+  id: string;
+  name: string;
+  collapsed: boolean;
+  /** Member agent ids, in drag order. */
+  agentIds: string[];
+  /** Shared context injected into every member agent's system prompt (a
+   *  group-scoped `WORKSPACE.md`), mirrored to each member's `GROUP.md`.
+   *  Absent/empty = no group context. */
+  context?: string;
+}
+
+/**
+ * Per-workspace sidebar arrangement: the user's named groups plus the manual
+ * (drag) order of everything. Ordering is ALWAYS manual — there is no sort
+ * mode. Agents in no group render in the default section in `ungroupedOrder`;
+ * a brand-new agent is appended. Persisted as the `sidebar_layout` workspace
+ * preference (JSON). Absent/corrupt reads as `{ groups: [], ungroupedOrder: [] }`.
+ */
+export interface SidebarLayout {
+  /** Named groups, in display order. */
+  groups: SidebarGroup[];
+  /** Drag order of agents not in any group. */
+  ungroupedOrder: string[];
 }
 
 // ---------- Workspace-scoped agent CRUD ----------
@@ -353,8 +523,8 @@ export interface InteractionOption {
 }
 
 /** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for
- *  question steps, `c1`..`cN` for connect steps) so each step's outcome is
- *  addressable. */
+ *  question steps, `s1` for the single signin step, `c1`..`cN` for connect
+ *  steps) so each step's outcome is addressable. */
 export type InteractionStep =
   | {
       kind: "question";
@@ -362,7 +532,23 @@ export type InteractionStep =
       question: string;
       options?: InteractionOption[];
     }
-  | { kind: "connect"; id: string; toolkit: string; reason?: string };
+  | { kind: "signin"; id: string; reason?: string }
+  | { kind: "connect"; id: string; toolkit: string; reason?: string }
+  /** The model finished planning: a short plan summary the user approves by
+   *  choosing a mode (start working / Autopilot) or dismisses to keep planning. */
+  | { kind: "plan_ready"; id: string; summary: string }
+  /** The model finished cleanly and offers to save the just-completed work as a
+   *  reusable Skill or a scheduled Routine. Optional and dismissible: unlike the
+   *  other kinds, a lone `suggest_reusable` step does NOT flip the board to
+   *  `needs_you` (the mission genuinely finished). Mirrors
+   *  `packages/protocol/src/domain/interaction.ts`. */
+  | {
+      kind: "suggest_reusable";
+      id: string;
+      reusableKind: "skill" | "routine";
+      title: string;
+      rationale: string;
+    };
 
 /**
  * The ordered steps a mission is waiting on the user for — recorded when the
@@ -370,7 +556,7 @@ export type InteractionStep =
  * (request_connection). Present drives the `needs_you` board card and the
  * composer-replacing card, which walks the user through the steps one at a time;
  * absent means the mission needs nothing. Question steps come first (at most 3),
- * then connect steps.
+ * then at most one signin step, then connect steps.
  */
 export interface PendingInteraction {
   steps: InteractionStep[];
@@ -390,6 +576,12 @@ export interface Activity {
   provider?: string;
   model?: string;
   pending_interaction?: PendingInteraction;
+  /** The human who created this mission (Teams attribution). Server-stamped
+   *  from the gateway acting-as identity; absent on desktop/single-player. */
+  created_by?: string;
+  /** Humans who started or collaborated on this mission (Teams attribution).
+   *  Server-stamped in multiplayer only; absent on desktop/single-player. */
+  contributors?: { user_id: string; name?: string }[];
 }
 
 export interface ActivityUpdate {
@@ -432,7 +624,6 @@ export type RoutineChatMode = "shared" | "per_run";
 export interface Routine {
   id: string;
   name: string;
-  description: string;
   prompt: string;
   schedule: string;
   enabled: boolean;
@@ -448,6 +639,11 @@ export interface Routine {
   /** Reasoning-effort override (e.g. "high", "max"); absent means inherit the agent's effort. */
   effort?: string | null;
   /**
+   * Id of the setup-chat activity attached to this routine — the persistent
+   * conversation shown next to the routine form.
+   */
+  setup_activity_id?: string;
+  /**
    * Multiplayer only: the org-member user id that created this routine. Absent
    * in single-player mode. Surfaced so the UI can attribute automations.
    */
@@ -458,7 +654,6 @@ export interface Routine {
 
 export interface NewRoutine {
   name: string;
-  description?: string;
   prompt: string;
   schedule: string;
   enabled?: boolean;
@@ -473,11 +668,12 @@ export interface NewRoutine {
   model?: string | null;
   /** Reasoning effort to pin (e.g. "high"); omit to inherit the agent's effort. */
   effort?: string | null;
+  /** Setup-chat activity to attach; omit for routines created without a chat. */
+  setup_activity_id?: string;
 }
 
 export interface RoutineUpdate {
   name?: string;
-  description?: string;
   prompt?: string;
   schedule?: string;
   enabled?: boolean;
@@ -490,6 +686,8 @@ export interface RoutineUpdate {
   model?: string | null;
   /** Reasoning effort to pin (e.g. "high"); omit or null to leave unchanged. */
   effort?: string | null;
+  /** Attach a setup-chat activity to this routine; omit to leave unchanged. */
+  setup_activity_id?: string;
 }
 
 export type RoutineRunStatus =
@@ -563,12 +761,23 @@ export interface ConversationEntry {
   agent_name: string;
   agent?: string;
   routine_id?: string;
+  /** The human who created this mission (Teams attribution). Server-stamped
+   *  from the gateway acting-as identity; absent on desktop/single-player. */
+  created_by?: string;
+  /** Humans who started or collaborated on this mission (Teams attribution).
+   *  Server-stamped in multiplayer only; absent on desktop/single-player. */
+  contributors?: { user_id: string; name?: string }[];
 }
 
 // ---------- Skills ----------
 
 export interface SkillSummary {
   name: string;
+  /**
+   * Display title from frontmatter `title:` — accents/casing the directory
+   * slug can't carry (translated store skills). Null → humanize the slug.
+   */
+  title: string | null;
   description: string;
   version: number;
   tags: string[];
@@ -601,6 +810,8 @@ export interface SkillInputDef {
 
 export interface SkillDetail {
   name: string;
+  /** Display title from frontmatter `title:`; null → humanize the slug. */
+  title: string | null;
   description: string;
   version: number;
   content: string;
@@ -643,6 +854,15 @@ export interface CommunitySkill {
   name: string;
   installs: number;
   source: string;
+}
+
+/** Full detail fetched on-demand for a community skill, read from its real SKILL.md. */
+export interface CommunitySkillPreview {
+  title: string | null;
+  description: string;
+  image: string | null;
+  category: string | null;
+  tags: string[];
 }
 
 // ---------- Providers / preferences ----------
@@ -812,6 +1032,15 @@ export interface RunShellRequest {
 export interface SessionStartRequest {
   sessionKey: string;
   prompt: string;
+  /**
+   * What renders as the user's chat bubble, when it must differ from `prompt`.
+   * The engine still receives `prompt` (the real text the model runs on);
+   * `displayText` is presentation-only — the optimistic live bubble and the
+   * replayed history bubble both render `displayText ?? prompt`. Set it when the
+   * prompt carries text the user should never see: a hidden setup-mission
+   * directive, or absolute attachment paths appended to the message.
+   */
+  displayText?: string;
   systemPrompt?: string;
   source?: string;
   workingDir?: string;
@@ -1047,7 +1276,6 @@ export interface PortableSkillPreview {
 export interface PortableRoutinePreview {
   id: string;
   name: string;
-  description: string;
   promptExcerpt: string;
   schedule: string;
   enabled: boolean;
@@ -1076,7 +1304,6 @@ export interface PortableExportSelection {
 
 export interface PortableRoutineFieldOverride {
   name?: string | null;
-  description?: string | null;
   prompt?: string | null;
 }
 
@@ -1106,6 +1333,12 @@ export interface PortableAnonymizeRequest {
   skillSlugs: string[];
   routineIds: string[];
   learningIds: string[];
+  /**
+   * Run the AI pass on top of the pattern + secret scrub (the wizard's
+   * "Let my AI help" toggle). Absent means true; false is a deliberate
+   * user choice, so the response carries no `aiError`.
+   */
+  useAi?: boolean;
 }
 
 export interface PortableAnonymizedString {
@@ -1140,6 +1373,10 @@ export interface PortableAnonymizeResponse {
   skills: PortableAnonymizedItem[];
   routines: PortableAnonymizedRoutine[];
   learnings: PortableAnonymizedItem[];
+  /** Which redactor produced the diffs: the AI pass, or the regex patterns fallback. */
+  mode: "ai" | "patterns";
+  /** Why the AI pass didn't run (set only when `mode` is "patterns"). */
+  aiError?: string;
 }
 
 export interface PortableManifestSummary {

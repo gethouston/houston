@@ -142,7 +142,6 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           cardAvatar={<AgentCardAvatar color={agent.color} />}
           thinkingIndicator={panel.thinkingIndicator}
-          loadingIndicator={panel.loadingIndicator}
           panelAgentName={agent.name}
           panelAvatar={<AgentPanelAvatar color={agent.color} running={false} />}
           cardLabels={{

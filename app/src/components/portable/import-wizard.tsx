@@ -38,6 +38,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { finishAgentSetup } from "../../lib/agent-setup";
+import { startAgentSetupMission } from "../../lib/agent-setup-mission";
 import { analytics } from "../../lib/analytics";
 import { getEngine } from "../../lib/engine";
 import { genericErrorDescription } from "../../lib/error-toast";
@@ -225,6 +226,20 @@ export function ImportAgentWizard() {
         model,
         routine: null,
       });
+      // With the wizard dismissed, auto-start the agent's self-setup mission in
+      // the normal shell: it introduces itself and interviews the user,
+      // persisting what they say into instructions / Skills / Routines. No
+      // connect step on import.
+      void startAgentSetupMission(
+        {
+          id: installed.agent.id,
+          name: installed.agentName,
+          color: installed.agent.color,
+          folderPath: installed.agentPath,
+        },
+        { provider, model },
+        "imported",
+      );
     } catch (err) {
       addToast({
         variant: "error",
@@ -317,7 +332,7 @@ export function ImportAgentWizard() {
                 getId={(r) => r.id}
                 renderRow={(r) => ({
                   title: r.name,
-                  subtitle: r.description || r.promptExcerpt,
+                  subtitle: r.promptExcerpt,
                   flagged: findingsForId("routine", r.id).length > 0,
                 })}
               />

@@ -1,16 +1,16 @@
 {
-  "shareMenu": "Share with a friend",
+  "exportMenu": "Export a copy",
   "newAgent": {
     "fromFriendCard": "From a friend",
     "fromFriendDescription": "Drop a file someone shared with you and bring their agent into your workspace."
   },
   "flagged": "Houston flagged this one for a closer look.",
   "export": {
-    "eyebrow": "Sharing {{name}}",
+    "eyebrow": "Exporting {{name}}",
     "loading": "Loading your agent.",
     "step1": {
-      "title": "What should we share?",
-      "body": "Pick what your friend gets. The agent's instructions always come along.",
+      "title": "What should we export?",
+      "body": "Pick what goes into the copy. The agent's instructions always come along.",
       "instructionsLabel": "Instructions",
       "instructionsRow": "Job description and rules",
       "noInstructions": "This agent has no instructions yet.",
@@ -20,13 +20,22 @@
     },
     "step2": {
       "title": "Want to anonymize first?",
-      "body": "Houston can remove obvious personal info like emails and paths. You'll see exactly what changed before saving.",
-      "asIsTitle": "Share as is",
+      "body": "Houston can remove personal info like names, emails and paths. You'll see exactly what changed before saving.",
+      "asIsTitle": "Export as is",
       "asIsBody": "Keep everything exactly the way it is.",
       "anonymizeTitle": "Help me anonymize",
-      "anonymizeBody": "Strip emails, paths and other obvious personal details.",
+      "anonymizeBody": "Remove names, emails, companies, API keys and other personal details.",
       "reviewLabel": "Review what changed",
       "working": "Houston is reviewing your content.",
+      "startReview": "Start the review",
+      "checkAgain": "Check again",
+      "workingProgress": "Houston is reviewing your content ({{done}} of {{total}} done).",
+      "slowNotice": "This is taking longer than usual. You can keep what's ready and finish the rest the quick way.",
+      "stopWait": "Use what's ready",
+      "stopping": "Finishing up with what's ready.",
+      "aiToggleTitle": "Let my AI help",
+      "aiToggleHint": "When this is on, your AI also looks for personal details that are easy to miss, like names or company names. When it's off, Houston only removes obvious things like emails, links, and keys. Either way, you review every change before sharing.",
+      "aiFallback": "Houston couldn't use AI for this pass ({{reason}}). Only obvious patterns like emails and paths were removed, so review the results carefully.",
       "diffInstructions": "Instructions",
       "before": "Before",
       "after": "After",
@@ -37,8 +46,8 @@
       "learningTitle": "Learning"
     },
     "step3": {
-      "title": "Ready to share",
-      "body": "Houston will package {{name}} into a single file you can send through any app.",
+      "title": "Ready to export",
+      "body": "Houston packages {{name}} into a single file you can send through any app. Whoever gets it imports their own copy. Live collaboration lives in Share.",
       "skillsLabel": "Skills",
       "routinesLabel": "Routines",
       "learningsLabel": "Learnings",

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { SettingsSectionId } from "../lib/settings-sections";
 
 export interface ToastItem {
   id: string;
@@ -13,6 +14,10 @@ export type JobDescriptionTarget = "instructions" | "skills" | "learnings";
 
 interface UIState {
   viewMode: string;
+  /** A one-shot deep-link consumed by SettingsView on mount: other surfaces set
+   * it right before `setViewMode("settings")` to open a specific section, and
+   * SettingsView clears it once read so a later plain Settings open lands home. */
+  settingsSection: SettingsSectionId | null;
   assistantPanelOpen: boolean;
   activityPanelId: string | null;
   activityPanelForceOpen: boolean;
@@ -37,6 +42,13 @@ interface UIState {
   agentArchivedSearchLoading: Record<string, boolean>;
   /** Whether the mission chat panel is open (hides tab bar for full-height panel) */
   missionPanelOpen: boolean;
+  /**
+   * One-shot nav target for a routine chat with no board card (session-
+   * finished notification click, #401): the activity id to open in the
+   * Routines tab. The tab consumes it (resolves which routine it belongs to,
+   * navigates, clears it) the moment it sees a match.
+   */
+  pendingRoutineActivityId: string | null;
   /** Whether the global command palette (⌘K) is open. */
   paletteOpen: boolean;
   /** Whether the keyboard shortcut cheatsheet (?) is open. */
@@ -60,13 +72,14 @@ interface UIState {
    * Set when the user completes M3 Try and clicks "Tutorial complete";
    * cleared when the user dismisses the final tour step. */
   uiTourActive: boolean;
-  /** Agent id queued for the "Share with a friend" wizard, or null. */
+  /** Agent id queued for the "Export a copy" wizard, or null. */
   shareAgentId: string | null;
   /** Whether the "From a friend" import wizard is open. */
   importFromFriendOpen: boolean;
   /** Whether the left rail is collapsed to an icon-only strip. Persisted. */
   sidebarCollapsed: boolean;
   setViewMode: (mode: string) => void;
+  setSettingsSection: (section: SettingsSectionId | null) => void;
   setAssistantPanelOpen: (open: boolean) => void;
   setActivityPanelId: (
     id: string | null,
@@ -87,6 +100,7 @@ interface UIState {
   setAgentArchivedSearchQuery: (agentPath: string, query: string) => void;
   setAgentArchivedSearchLoading: (agentPath: string, loading: boolean) => void;
   setMissionPanelOpen: (open: boolean) => void;
+  setPendingRoutineActivityId: (activityId: string | null) => void;
   setPaletteOpen: (open: boolean) => void;
   setCheatsheetOpen: (open: boolean) => void;
   setOnBoardNavigate: (
@@ -109,6 +123,7 @@ export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
       viewMode: "chat",
+      settingsSection: null,
       assistantPanelOpen: false,
       activityPanelId: null,
       activityPanelForceOpen: false,
@@ -124,6 +139,7 @@ export const useUIStore = create<UIState>()(
       agentArchivedSearchQueries: {},
       agentArchivedSearchLoading: {},
       missionPanelOpen: false,
+      pendingRoutineActivityId: null,
       paletteOpen: false,
       cheatsheetOpen: false,
       onBoardNavigate: null,
@@ -137,6 +153,7 @@ export const useUIStore = create<UIState>()(
       sidebarCollapsed: false,
 
       setViewMode: (viewMode) => set({ viewMode }),
+      setSettingsSection: (settingsSection) => set({ settingsSection }),
       setAssistantPanelOpen: (assistantPanelOpen) =>
         set({ assistantPanelOpen }),
       setActivityPanelId: (activityPanelId, options) =>
@@ -211,6 +228,8 @@ export const useUIStore = create<UIState>()(
           return { agentArchivedSearchLoading: next };
         }),
       setMissionPanelOpen: (missionPanelOpen) => set({ missionPanelOpen }),
+      setPendingRoutineActivityId: (pendingRoutineActivityId) =>
+        set({ pendingRoutineActivityId }),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
       setCheatsheetOpen: (cheatsheetOpen) => set({ cheatsheetOpen }),
       setOnBoardNavigate: (onBoardNavigate) => set({ onBoardNavigate }),

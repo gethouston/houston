@@ -183,6 +183,41 @@ test("a provider_error turn emits no done — the pending interaction never ride
   expect(persistedInteraction(id)).toBeUndefined();
 });
 
+test("the turn's thinking and tool inputs are persisted on the assistant message (HOU-717)", async () => {
+  const id = "exec-activity-persist";
+  const conv = fakeConv((emit) => {
+    emit({ type: "thinking", data: "first list, " });
+    emit({ type: "thinking", data: "then decide" });
+    emit({ type: "tool_start", data: { name: "bash", args: { cmd: "ls" } } });
+    emit({
+      type: "tool_end",
+      data: { name: "bash", isError: false, content: "file-a\nfile-b" },
+    });
+    emit({ type: "text", data: "done" });
+  });
+
+  await execTurn(conv, id, "turn-1", "run it", {
+    author: undefined,
+    priorAuthors: [],
+  });
+
+  const call = vi
+    .mocked(appendAssistantMessage)
+    .mock.calls.find((c) => c[0] === id);
+  const meta = call?.[2] as
+    | { thinking?: string; tools?: unknown[] }
+    | undefined;
+  expect(meta?.thinking).toBe("first list, then decide");
+  expect(meta?.tools).toEqual([
+    {
+      name: "bash",
+      input: { cmd: "ls" },
+      result: "file-a\nfile-b",
+      isError: false,
+    },
+  ]);
+});
+
 /** The providerError persisted on `id`'s assistant message, or undefined. */
 function persistedProviderError(id: string): unknown {
   const call = vi

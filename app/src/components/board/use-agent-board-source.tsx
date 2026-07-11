@@ -8,6 +8,7 @@ import { AgentCardAvatar } from "../shell/agent-card-avatar";
 import { useMissionSearch } from "../use-mission-search";
 import type { BoardSource } from "./board-source";
 import { useAgentBoardData } from "./use-agent-board-data";
+import { useAgentBoardScope } from "./use-agent-board-scope";
 import { useAgentBoardSelection } from "./use-agent-board-selection";
 import { useAgentBoardSend } from "./use-agent-board-send";
 import { useAgentNewMission } from "./use-agent-new-mission";
@@ -94,6 +95,12 @@ export function useAgentBoardSource(
   });
   const selection = useAgentBoardSelection(path, agent.id);
 
+  // Attribution + person-scope narrowing (hosted Teams only; off-multiplayer
+  // identity pass-through), on the active cards BEFORE text search, as the cross
+  // board. The scope is chosen in the agent header (AgentPersonScopeMenu) and
+  // read here through the shared per-agent scope context.
+  const personFilteredItems = useAgentBoardScope({ path, items: data.items });
+
   const selectedSessionKey = useMemo(() => {
     if (!selectedId) return null;
     const item = (data.rawItems ?? []).find((a) => a.id === selectedId);
@@ -108,7 +115,7 @@ export function useAgentBoardSource(
     });
   }, [addToast, t]);
   const missionSearch = useMissionSearch({
-    items: data.items,
+    items: personFilteredItems,
     query: missionSearchQuery,
     loadHistory: data.loadHistory,
     onHistoryLoadError: handleMissionSearchError,
@@ -145,7 +152,9 @@ export function useAgentBoardSource(
   return {
     variant: "agent",
     items: missionSearch.items,
-    allItems: data.items,
+    // Bulk section actions (archive-all / select-all) act within the current
+    // person filter, matching the cross-agent board.
+    allItems: personFilteredItems,
     feedItems: data.feedItems,
     loading: send.effectiveLoading,
     isLoaded: data.rawItems !== undefined,
@@ -155,6 +164,7 @@ export function useAgentBoardSource(
     setHighlightedId,
     activeAgent: agent,
     activeAgentDef: agentDef,
+    draftScope: agent.id,
     selectedSessionKey,
     selectedAgentPath: path,
     onSelectSession: setSelectedId,

@@ -112,7 +112,7 @@ export function ChatModelSelector({
       {readOnly ? (
         // The one allowed model, read-only: no dropdown affordance signals it is
         // fixed, and the visible label is its own accessible name.
-        <div className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground whitespace-nowrap">
           <span className="inline-flex size-3.5 items-center justify-center [&_svg]:size-full">
             <ProviderGlyph providerId={provider} />
           </span>
@@ -123,7 +123,7 @@ export function ChatModelSelector({
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground whitespace-nowrap hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <span className="inline-flex size-3.5 items-center justify-center [&_svg]:size-full">
                 <ProviderGlyph providerId={provider} />
@@ -132,9 +132,14 @@ export function ChatModelSelector({
               <ChevronDown className="size-3 opacity-60" />
             </button>
           </PopoverTrigger>
+          {/* `p-0` on the shared popover chrome, the same dropdown surface as
+              FilterCombobox; the picker fills it edge to edge. Auto-focus is
+              prevented both ways: the picker places focus itself (input or
+              cmdk root, per screen), and closing must not yank focus back. */}
           <PopoverContent
             align="start"
-            className="w-auto border-0 bg-transparent p-0 shadow-none"
+            className="w-[320px] p-0"
+            onOpenAutoFocus={(e) => e.preventDefault()}
             onCloseAutoFocus={(e) => e.preventDefault()}
           >
             <ModelPicker
@@ -146,7 +151,6 @@ export function ChatModelSelector({
               onConnectMore={picker.onConnectMore}
               renderProviderIcon={picker.renderProviderIcon}
               labels={picker.labels}
-              className="w-[380px]"
             />
           </PopoverContent>
         </Popover>

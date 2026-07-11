@@ -6,8 +6,17 @@
 // steps one at a time, with a "1 of X" progress indicator.
 //
 // A turn's steps are the question steps (from one ask_user call, 1 to 3
-// questions) FOLLOWED BY the connect steps (one per request_connection call,
-// deduped by toolkit). Either tool alone still yields a valid sequence.
+// questions) FOLLOWED BY at most one signin step (the user must sign in to
+// Houston first) FOLLOWED BY the connect steps (one per request_connection
+// call, deduped by toolkit). Any single kind alone still yields a valid
+// sequence.
+//
+// `suggest_reusable` is the ONE exception to "present → needs_you": the model
+// calls it on a clean finish to suggest saving the just-completed work as a
+// Skill or Routine, so the mission genuinely IS done. `turn-settle.ts` treats
+// a lone `suggest_reusable` step as `done`, not `needs_you` — see that file's
+// `finishOk`. It arrives on the same `done` frame and renders a card the same
+// way; only the board-status mapping differs.
 
 export interface InteractionOption {
   id: string;
@@ -15,9 +24,11 @@ export interface InteractionOption {
 }
 
 /** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for
- *  question steps, `c1`..`cN` for connect steps) so each step's outcome is
- *  addressable. A `question` carries its text + optional single-select options;
- *  a `connect` names the toolkit to connect with an optional user-facing reason. */
+ *  question steps, `s1` for the single signin step, `c1`..`cN` for connect
+ *  steps) so each step's outcome is addressable. A `question` carries its text +
+ *  optional single-select options; a `signin` asks the user to sign in to
+ *  Houston with an optional user-facing reason; a `connect` names the toolkit to
+ *  connect with an optional user-facing reason. */
 export type InteractionStep =
   | {
       kind: "question";
@@ -25,10 +36,19 @@ export type InteractionStep =
       question: string;
       options?: InteractionOption[];
     }
-  | { kind: "connect"; id: string; toolkit: string; reason?: string };
+  | { kind: "signin"; id: string; reason?: string }
+  | { kind: "connect"; id: string; toolkit: string; reason?: string }
+  | { kind: "plan_ready"; id: string; summary: string }
+  | {
+      kind: "suggest_reusable";
+      id: string;
+      reusableKind: "skill" | "routine";
+      title: string;
+      rationale: string;
+    };
 
 /** The ordered steps the mission is waiting on: question steps first (at most 3),
- *  then connect steps. Always at least one step. */
+ *  then at most one signin step, then connect steps. Always at least one step. */
 export interface PendingInteraction {
   steps: InteractionStep[];
 }
@@ -40,7 +60,16 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 export const isInteractionStep = (v: unknown): v is InteractionStep => {
   if (!isRecord(v) || typeof v.id !== "string") return false;
   if (v.kind === "question") return typeof v.question === "string";
+  if (v.kind === "signin")
+    return v.reason === undefined || typeof v.reason === "string";
   if (v.kind === "connect") return typeof v.toolkit === "string";
+  if (v.kind === "plan_ready") return typeof v.summary === "string";
+  if (v.kind === "suggest_reusable")
+    return (
+      (v.reusableKind === "skill" || v.reusableKind === "routine") &&
+      typeof v.title === "string" &&
+      typeof v.rationale === "string"
+    );
   return false;
 };
 

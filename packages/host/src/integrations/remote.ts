@@ -5,10 +5,26 @@ import {
   type ConnectStart,
   IntegrationSigninRequiredError,
   integrationUpstreamErrorFromResponse,
+  isIntegrationAppStatus,
   type ProviderReadiness,
+  statusFromConnected,
   type Toolkit,
   type ToolMatch,
 } from "./types";
+
+/**
+ * Read one search item from the gateway TOLERANTLY: a valid `status` (a later
+ * gateway that annotates `blocked`, etc.) passes through untouched; an absent or
+ * unrecognized `status` (today's gateway) derives from the legacy `connected`
+ * boolean. The new field is never required — the desktop keeps working against
+ * an old gateway, and a new gateway lights up `blocked` here with no change.
+ */
+function readSearchItem(raw: ToolMatch): ToolMatch {
+  const status = isIntegrationAppStatus(raw.status)
+    ? raw.status
+    : statusFromConnected(raw.connected);
+  return { ...raw, status };
+}
 
 /**
  * The gateway adapter — the desktop's IntegrationProvider. The platform API key
@@ -188,7 +204,7 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
       body: { query },
       acting,
     });
-    return this.must(body, "POST /search").items;
+    return this.must(body, "POST /search").items.map(readSearchItem);
   }
 
   async execute(

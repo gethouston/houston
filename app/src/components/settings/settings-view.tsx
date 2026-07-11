@@ -1,11 +1,17 @@
 import { Spinner } from "@houston-ai/core";
 import { ChevronLeft } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { canSeeMembers } from "../../lib/org-roles";
+import {
+  parseSettingsSection,
+  type SettingsSectionId,
+} from "../../lib/settings-sections";
+import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useAccountAvailable } from "./sections/account";
+import { ConnectedAccountsSection } from "./sections/connected-accounts";
 import { MembersSection } from "./sections/members";
 import { MigrationSection, useMigrationAvailable } from "./sections/migration";
 import { ReportBugSection } from "./sections/report-bug";
@@ -14,7 +20,7 @@ import {
   UserContextSection,
   WorkspaceContextSection,
 } from "./sections/workspace-context";
-import { SettingsIndex, type SettingsSectionId } from "./settings-index";
+import { SettingsIndex } from "./settings-index";
 
 export function SettingsView() {
   const { t } = useTranslation(["settings", "common", "org"]);
@@ -23,7 +29,18 @@ export function SettingsView() {
   const migrationAvailable = useMigrationAvailable();
   const { capabilities } = useCapabilities();
   const showMembers = canSeeMembers(capabilities);
-  const [active, setActive] = useState<SettingsSectionId | null>(null);
+  const setSettingsSection = useUIStore((s) => s.setSettingsSection);
+  // Consume the one-shot deep-link the moment this view mounts: another surface
+  // may have pinned a section (e.g. "connectedAccounts") right before switching
+  // to Settings. Read it once for the initial screen...
+  const [active, setActive] = useState<SettingsSectionId | null>(() =>
+    parseSettingsSection(useUIStore.getState().settingsSection),
+  );
+  // ...then clear the pin. SettingsView mounts fresh per navigation, so leaving
+  // it set would re-land a later plain Settings open on the same section.
+  useEffect(() => {
+    setSettingsSection(null);
+  }, [setSettingsSection]);
 
   if (!currentWorkspace) {
     return (
@@ -66,6 +83,7 @@ export function SettingsView() {
         ) : (
           <div className="mx-auto max-w-xl px-8 pb-10">
             {active === "members" && <MembersSection />}
+            {active === "connectedAccounts" && <ConnectedAccountsSection />}
             {active === "shortcuts" && <ShortcutsSection />}
             {active === "reportBug" && <ReportBugSection />}
             {active === "migration" && <MigrationSection />}

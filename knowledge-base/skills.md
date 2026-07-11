@@ -41,6 +41,11 @@ Source of truth: `engine/houston-skills/src/lib.rs` (`SkillSummary`). Parsed by 
 name: research-company             # slug, kebab-case
 description: Deep-dive on pricing  # one-liner Claude uses for tool matching
 
+# Display (optional)
+title: "Investigar una empresa"    # human title shown on cards; carries the
+                                   # accents/casing the ASCII slug can't.
+                                   # Missing → UI humanizes the slug.
+
 # Bookkeeping (optional, set by engine on create)
 version: 1
 created: 2026-04-25
@@ -63,6 +68,7 @@ Step-by-step instructions Claude follows when the Skill runs.
 | Field | Type | Default | Notes |
 |------|------|---------|-------|
 | `name` | string | — | Required slug. Drives the file path + Claude's tool name. |
+| `title` | string | unset | Display phrase (accents/casing). UI shows `title ?? humanize(slug)`; loading always resolves by the directory slug, so a drifting title can never 404. |
 | `description` | string | `""` | One line. Claude semantically matches user intent against this. **Specific = reliable invocation.** |
 | `version` | int | `1` | Engine increments on edit. |
 | `created` / `last_used` | string | unset | YYYY-MM-DD. Engine maintains. |
@@ -76,7 +82,7 @@ Step-by-step instructions Claude follows when the Skill runs.
 1. **Engine** parses SKILL.md frontmatter via `serde_yml` (`engine/houston-skills/src/format.rs`). Unknown fields are silently ignored — old skills with `icon:` / `starter_prompt:` still parse.
 2. Engine returns the full `SkillSummaryResponse` on `GET /v1/skills`.
 3. **App** (`useSkills` query → `tauri.ts` → `engine-client`) maps the snake/camel-case wire shape back to app's `SkillSummary`.
-4. **Skill cards** use `app/src/components/skill-card.tsx` across the chat empty state, picker, and Skills tab. Keep these in sync by reusing the component, not recreating card markup.
+4. **Skill cards** use `app/src/components/skill-card.tsx` across the chat empty state and the New Mission picker. Keep these in sync by reusing the component, not recreating card markup. (The per-agent Skills tab no longer uses `SkillCard`: its installed list now renders `InstalledSkillRow`s — see "Add Skills UI" below.) **First-party store skills ship fully translated** (en/es/pt SKILL.md trees; a Spanish workspace seeds Spanish skills, the agent runs the Spanish procedure, editing is in Spanish). Display names come from the frontmatter `title:` field via `skillDisplayTitle` (accents the ASCII slug can't carry), falling back to `humanize(slug)`. See `knowledge-base/i18n.md` § "Store skills are translated at the CONTENT level".
 5. **`useAgentChatPanel`** (`app/src/components/use-agent-chat-panel.tsx`) — single source of truth for the per-agent panel UX. Owns:
    - skill discovery (featured cards on empty state)
    - selected Skill chip above the composer
@@ -86,6 +92,127 @@ Step-by-step instructions Claude follows when the Skill runs.
    - file-tool result renderer
    - `renderUserMessage` — decodes skill + attachment markers into cards
 6. Both **BoardTab** (per-agent kanban) and **Dashboard** (Mission Control / cross-agent kanban) consume this hook so the right panel is identical in both views.
+
+## Add Skills UI — inline marketplace section (Integrations-style)
+
+The Skills.sh marketplace ("the store") lives **inline on the agent's Skills
+tab**, below the installed-skills list, styled like the Integrations tab
+(installed at top, browse catalog below on the same page) — NOT inside a dialog.
+The `AddSkillDialog` is now **GitHub / From scratch only** (the store tab was
+removed). The store is `SkillMarketplaceSection` (`ui/skills/`), mounted by
+`app/src/components/tabs/skills-content.tsx` when the marketplace handlers are
+wired and the surface is not read-only; it fetches its shelves/popular feed on
+mount (prop `active`, default true), not lazily on dialog-open. Its section
+header ("Discover skills" / "Add ready-made skills from the community.") sits
+above the search box; the installed list gets its own "Your skills" heading.
+
+The section composes `SkillMarketplaceGrid` + `SkillMarketplaceRow` +
+`SkillPreviewModal` (all in `ui/skills/`): compact **rows** in the Integrations
+`AppRow` idiom (owner avatar left, `kebabToTitle` name + `by <owner> · <installs>`
+subtitle, and TWO always-visible trailing actions in `[Add pill] [info icon]`
+order — a labeled **Add** pill (Integrations connect-pill idiom: `bg-primary`,
+`Adding...` spinner, muted `Added` check once installed) followed by an **info**
+button), laid out as a two-column `gap-2` grid; publisher-derived filter chips
+(skills.sh has no real categories, so `topPublishers` derives them from the
+`owner/repo` source, search mode only). The "Powered by Vercel" attribution badge
+(skills.sh runs on Vercel) sits **inline on the subheading line** in the section
+header: heading on its own line, then one `flex flex-wrap items-center gap-x-2`
+line holding the subheading text followed by the `PoweredByVercelBadge` (both
+muted small text, wraps gracefully at narrow widths) — not stacked, and not at
+the bottom of the grid. Row click (or the
+info button) opens `SkillPreviewModal` — a `Dialog` overlay (replacing the old
+body-swap `SkillPreviewSheet`, which only existed because the store lived in a
+fixed-size dialog); the Add pill `stopPropagation`s so it never also opens the modal.
+
+### Installed skills — rows with an edit modal (no separate detail screen)
+
+The per-agent Skills tab (`app/src/components/tabs/agent-admin/agent-admin-skills.tsx`)
+renders the installed list as `InstalledSkillRow`s (`ui/skills/`) in the SAME
+two-column `grid grid-cols-1 gap-2 sm:grid-cols-2` as the marketplace, not as
+`SkillCard`s. Each row is the AppRow idiom: a `size-8 rounded-lg` image box
+(monogram fallback on the display title's first letter; the app passes a resolved
+URL via `resolveSkillImageUrl` in `app/src/lib/skill-image.ts`, shared with
+`SkillIcon`), the display title + one-line description, and TWO icon-only trailing
+actions in `[pen] [trash]` order — a **pen** (left) that opens the edit modal and a
+**trash** (right) that opens the delete confirm. Both are `size-7 rounded-lg
+text-muted-foreground hover:bg-foreground/[0.05]`; the pen hovers to
+`hover:text-foreground`, the trash to the destructive `hover:text-destructive`; both
+`stopPropagation`. A row-body click also opens the edit modal (mirroring the
+marketplace rows' row-click-opens-modal pattern). Delete opens the existing
+`ConfirmDialog` (reusing `detail.deleteTitle`/`deleteDescription` copy). Row aria
+labels come from `grid.editSkillAria` / `grid.deleteSkillAria`.
+
+Editing happens in `SkillEditModal` (`ui/skills/src/skill-edit-modal.tsx`), a
+`Dialog`/`DialogContent` overlay mirroring `SkillPreviewModal` (`sm:max-w-2xl`,
+`bg-dialog` surface): title = the skill's display name with a muted one-line
+description under it (`DialogTitle`/`DialogDescription` for a11y), body = the editor
+content states (loading skeleton lines / inline load-error note / a roomy fixed-height
+`h-80 resize-none overflow-y-auto` monospace textarea seeded from the loaded
+markdown), footer (`DialogFooter`) = Cancel (ghost) + Save changes (primary pill,
+disabled until dirty, "Saving..." state). A successful save clears the editing
+skill in `useSkillSurface`, which closes the modal; a save rejection propagates to
+the app toast path. The modal is rendered once by `SkillsContent` (one at a time),
+not by the row. The content loads via the existing `useSkillDetail` →
+`tauriSkills.load` path (the 404 for a missing skill stays silenced via
+`isMissingSkillError` — see below); its state machine is the pure
+`deriveInstalledSkillEditorState` (`installed-skill-editor-model.ts`,
+node:test-covered). App state (which skill is being edited, editor state,
+save/delete) lives in `useSkillSurface` (`editingSkillName` + `editorState`); labels
+(`installedRowLabels` for the row, `editModalLabels` for the modal) come from
+`useSkillSurfaceLabels`. The old navigate-to-a-separate-screen flow and the
+`SkillDetailPage` / `SkillDetailHeaderActions` components were **deleted**; the
+previous inline-editor panel (`installed-skill-editor.tsx`, `col-span-full` expansion)
+was **replaced** by the modal.
+The modal fetches the skill's real SKILL.md description on demand via the
+`POST .../skills/community/preview` route (`packages/host/src/skills/preview.ts`,
+read-only, no vfs) before the user commits to install; install stays enabled
+even if that fetch fails. The shared
+`locateSkillMd` (`github-lookup.ts`) resolves the SKILL.md in three cost-ordered
+tiers — cheap raw-CDN path guesses, then a shallow tree scan (≤2 small
+non-recursive `api.github.com` calls that fuzzy-match `skills/*` dir names and
+confirm via frontmatter `name:`, so e.g. `skills/use-ai-sdk/` declaring
+`name: ai-sdk` resolves), then the expensive whole-repo recursive scan (install
+only; preview passes `deepScan: false`). Preview results are cached host-side by
+`PreviewDirectory`: successes fresh 24h, failures negatively cached 10min, so
+repeated row clicks don't refetch. The search/popular/install
+state machine lives in `use-skill-marketplace-state.ts` (pure phase transitions
+in `skill-marketplace-state-model.ts`); the grid is purely presentational. App
+wiring: `useSkillSurface.handlePreview` → `tauriSkills.previewCommunity` →
+`engine.previewCommunitySkill`. Install failures surface as a visible toast from
+`handleInstallCommunity` (the row only re-enables its button, so the toast
+carries the reason per the no-silent-failures rule). The default view (search box
+blank, "All categories" selected) is NOT a flat popular list but six curated,
+founder-relevant category shelves (`skill-marketplace-shelves.tsx` +
+`use-skill-marketplace-shelves.ts`, pure model + `DEFAULT_SHELVES` in
+`skill-marketplace-shelves-model.ts`): Marketing / Sales / Writing / Research /
+Legal / Productivity, each a validated skills.sh query fired concurrently when the
+section mounts (the host serializes + caches them) and rendered progressively
+(skeleton while loading, hidden on error, retryable `browseUnavailable` fallback
+only if every shelf fails). There is **no Popular shelf** — its skills.sh seed was
+dev-skewed, so the whole popular pathway (the `onPopular` prop, app `handlePopular`,
+`tauriSkills.popularCommunity`, and the adapter/engine-client
+`popularCommunitySkills` methods) was removed client-side; the host's public
+`community/popular` route stays. Each shelf renders a capped 2-column mini-grid of
+rows (`SHELF_GRID_CAP` = 4, matching the Integrations aesthetic); its "See all"
+now SELECTS that category in the dropdown (one mental model), not a search-box
+stuff. A **category dropdown** (`skill-category-select.tsx`, a `@houston-ai/core`
+Popover + Command pill mirroring the app's `FilterCombobox` look) sits beside the
+search box in the same control row (search `flex-1` + dropdown trailing, the
+Integrations `AppCatalogGrid` layout). "All categories" + empty box → the shelves
+browse; picking a category fires `onSearch(shelf.query)` uncapped through the same
+search machinery (its own state in `SkillMarketplaceSection`, never written into
+the search box) → the flat result grid + publisher chips; typing a query beats the
+category, clearing returns to it. Publisher chips render only in that
+search/category result mode. The grid takes the browse view as one optional
+`shelvesSlot` node (the section passes it only while "All" is selected), keeping
+its search contract unchanged.
+
+The i18n copy for the section lives under the **top-level `store.*`** key group
+in `app/src/locales/{en,es,pt}/skills.json` (promoted out of `addDialog.store`
+when the store left the dialog); `useSkillMarketplaceSectionLabels`
+(`app/src/components/tabs/use-skill-surface-labels.ts`) maps it to the section's
+`labels` prop, and `useSkillDialogLabels` in the same file now carries only the
+GitHub/From-scratch dialog copy.
 
 ## Community search behavior
 
@@ -248,7 +375,7 @@ The **directory slug is the one canonical identity** for a skill. `loadSkillDeta
 
 Therefore `loadSkills` (via `parseSkillMd`) reports each skill's **directory slug** as `name`, overriding whatever the frontmatter `name:` says. Agent-authored SKILL.md files sometimes carry a display phrase in `name:` (e.g. dir `redactar-outreach-esg`, frontmatter `name: Redactar Outreach ESG`). Before HOU-515/HOU-441 the list handed the UI the phrase, the user clicked it, and `loadSkill("Redactar Outreach ESG")` 404'd → a hard "skill not found" (red bug toast + Sentry). Reporting the directory slug makes the list → click → load round-trip consistent. The Skills card still shows a friendly title via `humanizeSkillName(slug)`, so the kebab slug is never shown raw. No frontmatter healing is needed: pi loads skills through `DefaultResourceLoader` (`packages/runtime/src/session/resource-loader.ts`), so there is no `.claude` mirror or native tool name to keep in step (the legacy Rust engine healed `name:` on open for exactly that reason).
 
-Genuinely missing skills still happen (deleted, never installed, a stale selection). The host answers `404 { error: "skill not found" }`, surfaced by `@houston-ai/engine-client` as a `HoustonEngineError` with `status: 404` (the TS host emits bare-string bodies, so there is **no** typed `.kind` here — unlike the Rust engine). That 404 is an expected, explainable state, **not** a Houston bug: `tauriSkills.load` passes `{ silence: isMissingSkillError }` (`app/src/lib/missing-skill.ts`) so the error skips the red bug toast + Sentry report, and `useSkillSurface` surfaces it inline (a friendly info toast, clears the selection, refetches the list so the dead card vanishes).
+Genuinely missing skills still happen (deleted, never installed, a stale selection). The host answers `404 { error: "skill not found" }`, surfaced by `@houston-ai/engine-client` as a `HoustonEngineError` with `status: 404` (the TS host emits bare-string bodies, so there is **no** typed `.kind` here — unlike the Rust engine). That 404 is an expected, explainable state, **not** a Houston bug: `tauriSkills.load` passes `{ silence: isMissingSkillError }` (`app/src/lib/missing-skill.ts`) so the error skips the red bug toast + Sentry report, and `useSkillSurface` surfaces it inline (a friendly info toast, collapses the open row, refetches the list so the dead row vanishes).
 
 ### Legacy Rust engine (oracle)
 

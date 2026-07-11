@@ -15,7 +15,7 @@ import {
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { buildLabels } from "../components/chat-model-selector-labels";
-import { ProviderGlyph } from "../components/shell/provider-logos";
+import { BrandMark } from "../components/provider-browser/brand-mark";
 import { decodeModelPickerId } from "../lib/chat-model-picker-ids";
 import { useUIStore } from "../stores/ui";
 import { usePickerViewModels } from "./use-picker-view-models";
@@ -36,17 +36,18 @@ export interface ChatModelPicker {
   renderProviderIcon: (providerId: string, className?: string) => ReactNode;
 }
 
-/** Render a provider's glyph in a square, size-following wrapper. */
+/**
+ * Render a provider's colorful brand mark, the same treatment as
+ * `FilterCombobox`'s option marks. `text-current!` re-inherits the brand color,
+ * which the Command item's default `svg` rule would otherwise flatten to gray.
+ */
 function renderProviderIcon(providerId: string, className?: string): ReactNode {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center justify-center [&_svg]:size-full",
-        className,
-      )}
-    >
-      <ProviderGlyph providerId={providerId} />
-    </span>
+    <BrandMark
+      providerId={providerId}
+      size="sm"
+      className={cn("[&_svg]:text-current!", className)}
+    />
   );
 }
 

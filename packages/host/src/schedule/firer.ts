@@ -26,11 +26,12 @@ export class ChannelRoutineFirer implements RoutineFirer {
     // The routine's provider/model/effort pins ride alongside (absent =
     // inherit), with routinePin applying the read-time legacy id mapping —
     // the pin is what makes a routine's provider stick regardless of what
-    // other chats or routines have picked since.
+    // other chats or routines have picked since. Routine fires also pin
+    // Autopilot mode so they never block on ask_user/request_connection.
     // The creator's sub (C2) is threaded as the turn's acting-user so integration
     // calls act as them; absent for legacy creator-less routines → acts as owner.
     const createdBy = job.routine.created_by;
-    const pin = routinePin(job.routine);
+    const pin = { ...routinePin(job.routine), mode: "auto" as const };
     // A pin that resolves to no known provider (junk or a legacy id no alias
     // maps — routinePin passes those through verbatim) fails the run RIGHT
     // HERE with the real reason: fireRoutineRun marks the run errored with
