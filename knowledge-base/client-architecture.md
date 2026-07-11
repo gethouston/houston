@@ -120,6 +120,42 @@ bodies to `client.engineSdk.<module>` so web matches iOS.
   `engineSdk` yet. Proven by `packages/web/tests/sdk-client.test.ts` and
   `packages/sdk/src/sdk.test.ts` ("reactivity flag").
 
+**The wave-2a write seams: no-refetch write variants (`module.writes.*`).** Web
+can't delegate its CRUD to the SDK's mutating FACADE methods
+(`agents.create/rename/delete`, `activities.create/setStatus/rename/delete`,
+`providers.setApiKey/logout/setModel`, `integrations.disconnect`) because each
+does a post-write `refresh()` (an extra GET) and returns a simplified shape —
+exactly the refetch web runs `reactivity:false` to avoid (web owns its TanStack
+reads). So each of those four modules now also exposes a **`writes` namespace**:
+the SAME underlying HTTP write, but it (a) does NOT call `refresh()` / publish a
+snapshot, and (b) RETURNS the wire entity (`agents.writes.create` returns the
+created agent incl. `id` for web's color overlay; `activities.writes.*` return
+the wire `Activity`; `providers.writes.status` returns `AuthStatus`). The
+refetching facade methods are UNCHANGED and, where sensible, now delegate to the
+same `writes` primitive then `refresh()` (one implementation, no drift — see
+`providers/operations.ts`). Extra additive surface landed with it:
+`agents.writes.create` takes the full `{ name, claudeMd?, seeds? }` body (the
+plain facade still posts `{ name }`); `providers.writes.setCustomEndpoint`
+(`POST /providers/openai-compatible`, no facade sibling);
+`integrations.setSession` / `dismissReconnectNotice`, an additive
+`connect(provider, toolkit, agent?)` overload (the 1-arg `connect(toolkit)` and
+its bridge command are byte-identical to before), and `IntegrationsClient`
+(runtime-client) gained `setSession` / `dismissReconnectNotice` + optional
+provider/agent on `connect`/`disconnect`. Web's actual delegation to these seams
+is a SEPARATE later wave (2b).
+
+**The strict-additive / iOS-safe contract rule (why the above is shaped this
+way).** `@houston/sdk` is consumed by BOTH the web engine-adapter AND the native
+iOS app (via the JavaScriptCore bridge, `bridge/entry.ts` → `new HoustonSdk()`).
+iOS reaches the SDK ONLY through the bridge — dispatched COMMANDS
+(`registerCommand` types) and subscribed SCOPES — never facade methods directly.
+So evolving the SDK for web MUST be strictly additive: never change an existing
+method's signature/route/body or its post-write `refresh()` behavior, register no
+new command for the web-only seams (the bridge can't route to what isn't
+registered, so the new `writes`/session/notice surface is unreachable from iOS),
+and keep every published scope snapshot shape unchanged. A web-needed op that
+can't be added without altering iOS behavior is STOPPED and reported, not forced.
+
 ---
 
 ## THE PROCEDURES

@@ -33,6 +33,7 @@ import {
   requireStringArray,
   unavailableVm,
 } from "./types";
+import { createIntegrationsWrites, type IntegrationsWrites } from "./writes";
 
 export type {
   IntegrationConnection,
@@ -42,6 +43,7 @@ export type {
   IntegrationToolkit,
 } from "./types";
 export { INTEGRATIONS_SCOPE, IntegrationsCommand } from "./types";
+export type { IntegrationsWrites } from "./writes";
 
 /** The result of a connect: the URL the surface opens, plus the id to poll. */
 export interface ConnectResult {
@@ -55,8 +57,14 @@ export interface IntegrationsModule {
   readonly scope: string;
   /** Refetch readiness + catalog + connections and republish the VM. */
   refresh(): Promise<IntegrationsViewModel>;
-  /** Start an OAuth connect; the surface opens `redirectUrl`, then polls. */
+  /** Start an OAuth connect (composio); the surface opens `redirectUrl`, then polls. */
   connect(toolkit: string): Promise<ConnectResult>;
+  /** Provider-scoped connect (additive): `agent` scopes it to one agent slug. */
+  connect(
+    provider: string,
+    toolkit: string,
+    agent?: string,
+  ): Promise<ConnectResult>;
   /** Poll one connection until its OAuth finishes (status flips to active). */
   pollConnection(connectionId: string): Promise<IntegrationConnection>;
   /** Disconnect a toolkit everywhere, then refetch the VM. */
@@ -65,6 +73,13 @@ export interface IntegrationsModule {
   grants(agentId: string): Promise<string[] | null>;
   /** Replace `agentId`'s granted toolkit slugs. */
   setGrants(agentId: string, toolkits: string[]): Promise<void>;
+  /** Push the caller's Supabase token to the gateway adapter (`null` on sign-out). */
+  setSession(token: string | null): Promise<void>;
+  /** Dismiss the one-time "reconnect your integrations" notice (idempotent). */
+  dismissReconnectNotice(): Promise<void>;
+  /** No-refetch write variants for a host that owns its own reads (web under
+   *  `reactivity:false`). The refetching methods above are untouched (iOS-safe). */
+  writes: IntegrationsWrites;
 }
 
 export function createIntegrationsModule(
@@ -117,8 +132,26 @@ export function createIntegrationsModule(
     return publish({ loaded: true, ready: true, toolkits, connections });
   }
 
-  async function connect(toolkit: string): Promise<ConnectResult> {
-    return run(() => client.connect(toolkit));
+  function connect(toolkit: string): Promise<ConnectResult>;
+  function connect(
+    provider: string,
+    toolkit: string,
+    agent?: string,
+  ): Promise<ConnectResult>;
+  function connect(
+    a: string,
+    b?: string,
+    agent?: string,
+  ): Promise<ConnectResult> {
+    // 1-arg = legacy `connect(toolkit)` (composio, `{ toolkit }` body — what the
+    // bridge command / iOS send, unchanged); 3-arg = `(provider, toolkit, agent?)`.
+    const [provider, toolkit] = b === undefined ? [undefined, a] : [a, b];
+    return run(() =>
+      client.connect(toolkit, {
+        ...(provider ? { provider } : {}),
+        ...(agent ? { agent } : {}),
+      }),
+    );
   }
 
   function pollConnection(
@@ -173,5 +206,6 @@ export function createIntegrationsModule(
     disconnect,
     grants,
     setGrants,
+    ...createIntegrationsWrites(client, run),
   };
 }

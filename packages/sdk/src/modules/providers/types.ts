@@ -16,12 +16,14 @@
  */
 
 import type {
+  AuthStatus,
+  CustomEndpoint,
   LoginInfo,
   LoginState,
   ProviderId,
 } from "@houston/runtime-client";
 
-export type { LoginInfo, LoginState, ProviderId };
+export type { AuthStatus, CustomEndpoint, LoginInfo, LoginState, ProviderId };
 
 /**
  * One provider inside the `providers/<agentId>` snapshot: the `ProviderInfo`
@@ -99,6 +101,31 @@ export interface SetModelOptions {
 }
 
 /**
+ * No-refetch provider writes for a host that owns its own read model (the web
+ * engine-adapter under `reactivity:false`): each performs the SAME per-agent-pod
+ * runtime call as its {@link ProvidersModule} sibling but does NOT publish/
+ * refresh the merged `providers/<agentId>` snapshot afterward — the host owns
+ * that invalidation. `status` is the raw `GET /auth/status` read (no publish);
+ * `setCustomEndpoint` (`POST /providers/openai-compatible`) has no refetching
+ * facade sibling and is exposed here only. The login flow's imperative state
+ * (login/cancelLogin/completeLogin) is deliberately NOT here — the surface owns
+ * that poller (see `index.ts`). The refetching facade methods are untouched — iOS
+ * keeps using those verbatim.
+ */
+export interface ProvidersWrites {
+  /** `GET /auth/status` for the agent's pod; returns it raw, publishes nothing. */
+  status(agentId: string): Promise<AuthStatus>;
+  /** Store an API key for an api-key provider; no refetch. */
+  setApiKey(agentId: string, provider: ProviderId, key: string): Promise<void>;
+  /** Disconnect a provider; no refetch. */
+  logout(agentId: string, provider: ProviderId): Promise<void>;
+  /** Apply a model/effort/provider switch (resolveModelSettings); no refetch. */
+  setModel(agentId: string, opts: SetModelOptions): Promise<void>;
+  /** Connect an OpenAI-compatible (local) server; LOCAL profile only. No refetch. */
+  setCustomEndpoint(agentId: string, endpoint: CustomEndpoint): Promise<void>;
+}
+
+/**
  * The typed facade for per-agent provider reads + writes.
  *
  * Every mutating call refreshes the agent's snapshot before it resolves, so a
@@ -138,4 +165,10 @@ export interface ProvidersModule {
   logout(agentId: string, provider: ProviderId): Promise<void>;
   /** Apply a model/effort/provider switch (resolveModelSettings), then refresh. */
   setModel(agentId: string, opts: SetModelOptions): Promise<void>;
+  /**
+   * No-refetch write variants for a host that owns its own reads (web under
+   * `reactivity:false`): same runtime calls, no post-write snapshot refresh,
+   * plus `setCustomEndpoint`. iOS keeps using the refetching methods above.
+   */
+  writes: ProvidersWrites;
 }

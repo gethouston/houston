@@ -39,15 +39,19 @@ import {
   type ProvidersModule,
   providersScope,
 } from "./types";
+import { createProviderWrites } from "./writes";
 
 export { mergeProviders, overlayStatus } from "./merge";
 export type {
+  AuthStatus,
+  CustomEndpoint,
   LoginInfo,
   LoginOptions,
   LoginState,
   ProviderId,
   ProvidersModule,
   ProvidersViewModel,
+  ProvidersWrites,
   ProviderVM,
   SetModelOptions,
 } from "./types";
@@ -58,7 +62,8 @@ export {
 } from "./types";
 
 export function createProvidersModule(ctx: ModuleContext): ProvidersModule {
-  const ops = createProviderOps(ctx);
+  const writes = createProviderWrites(ctx);
+  const ops = createProviderOps(ctx, writes);
 
   ctx.registerCommand(ProvidersCommand.Refresh, (p) =>
     ops.refresh(parseRefresh(p).agentId),
@@ -91,5 +96,5 @@ export function createProvidersModule(ctx: ModuleContext): ProvidersModule {
     return ops.setModel(agentId, { model, effort, provider });
   });
 
-  return { scope: providersScope, ...ops };
+  return { scope: providersScope, ...ops, writes };
 }
