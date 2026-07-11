@@ -81,20 +81,21 @@ describe("buildToolSelection", () => {
 });
 
 describe("planToolNames", () => {
-  const EXPECTED = ["read", "ls", "grep", "find", "ask_user"];
+  // The read-only core every plan turn keeps; bash joins it only where the
+  // execute selection carried bash (codeExecution=local).
+  const READ_ONLY = ["read", "ls", "grep", "find", "ask_user"];
 
-  test("keeps exactly the read-only subset from the local (bash) selection", () => {
+  test("keeps the read-only subset PLUS bash from the local selection", () => {
     const local = buildToolSelection({
       codeExecution: "local",
       integrations: true,
     });
     // Local selection has edit/write/bash + all integration tools; plan strips
-    // every writer/actor and keeps only read/ls/grep/find/ask_user.
-    expect(planToolNames(local.toolNames)).toEqual(EXPECTED);
+    // every writer/actor but keeps bash for live lookups (time, curl/wget).
+    expect(planToolNames(local.toolNames)).toEqual([...READ_ONLY, "bash"]);
     for (const dropped of [
       "edit",
       "write",
-      "bash",
       "integration_search",
       "integration_execute",
       "request_connection",
@@ -102,25 +103,26 @@ describe("planToolNames", () => {
       expect(planToolNames(local.toolNames)).not.toContain(dropped);
   });
 
-  test("drops run_code from the remote selection", () => {
+  test("drops run_code from the remote selection — no bash there to keep", () => {
     const remote = buildToolSelection({
       codeExecution: "remote",
       integrations: true,
     });
-    expect(planToolNames(remote.toolNames)).toEqual(EXPECTED);
+    expect(planToolNames(remote.toolNames)).toEqual(READ_ONLY);
     expect(planToolNames(remote.toolNames)).not.toContain("run_code");
+    expect(planToolNames(remote.toolNames)).not.toContain("bash");
   });
 
-  test("the disabled, integration-less selection already reduces to the subset", () => {
+  test("the disabled, integration-less selection reduces to the read-only core", () => {
     const disabled = buildToolSelection({
       codeExecution: "disabled",
       integrations: false,
     });
-    expect(planToolNames(disabled.toolNames)).toEqual(EXPECTED);
+    expect(planToolNames(disabled.toolNames)).toEqual(READ_ONLY);
   });
 
-  test("the subset constant is exactly read/ls/grep/find/ask_user", () => {
-    expect([...PLAN_MODE_TOOL_NAMES]).toEqual(EXPECTED);
+  test("the subset constant is exactly read/ls/grep/find/ask_user/bash", () => {
+    expect([...PLAN_MODE_TOOL_NAMES]).toEqual([...READ_ONLY, "bash"]);
   });
 });
 

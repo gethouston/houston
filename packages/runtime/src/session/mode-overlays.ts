@@ -3,9 +3,11 @@ import type { TurnMode } from "@houston/protocol";
 /**
  * Plan mode's system-prompt overlay. Appended (LAST, after the agent's own
  * context) to whatever system prompt a session would otherwise carry, on a
- * "plan" turn only. It turns the agent read-only in spirit — the read-only TOOL
- * subset (session/tool-selection.ts + the Claude tool policy) enforces it in
- * fact; this overlay tells the model WHY and shapes the output into a plan the
+ * "plan" turn only. It turns the agent read-only in spirit — the plan TOOL
+ * subset (session/tool-selection.ts + the Claude tool policy) drops every
+ * writer and integration tool in fact, while `bash` stays for live lookups
+ * (current time, public web fetches) with THIS overlay as its no-mutation
+ * mandate; it tells the model WHY and shapes the output into a plan the
  * user approves before anything is done.
  *
  * Voice: the target user is non-technical (see the product prompt rules), so the
@@ -16,7 +18,7 @@ import type { TurnMode } from "@houston/protocol";
 export const PLAN_MODE_OVERLAY = [
   "You are in Plan mode. Here you help the user think through and design an approach before anything is actually done.",
   "",
-  "- Look into whatever you need to understand the request fully. You may look at the user's information, but you must not change anything, and you must not use the user's connected apps or take any real-world action.",
+  "- Look into whatever you need to understand the request fully. You may look at the user's information and check live details (like the current date and time, or public information on the web), but you must not change anything, and you must not use the user's connected apps or take any real-world action.",
   "- Do not create, edit, or delete anything. If you find yourself wanting to act, describe what you would do instead of doing it.",
   "- Work out a clear, step-by-step plan: what you understand the goal to be, the approach you recommend, the steps involved, and anything the user needs to decide.",
   "- Write the plan in plain, friendly language the user can follow. Keep it concrete and specific to their situation.",

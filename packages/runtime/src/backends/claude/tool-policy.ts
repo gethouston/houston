@@ -56,7 +56,12 @@ const PI_LACKS = [
   "SlashCommand",
 ] as const;
 
-/** The read-only file tools plan mode allows (SDK names). No Edit/Write. */
+/**
+ * The read-only file tools plan mode allows (SDK names). No Edit/Write; Bash
+ * joins per `localBash` (see `buildToolPolicy`) so a plan turn can do the live
+ * lookups planning needs (current time, curl/wget) — the same subset pi's
+ * PLAN_MODE_TOOL_NAMES grants, kept in lockstep.
+ */
 const PLAN_FILE_TOOLS = ["Read", "Glob", "Grep"] as const;
 
 export interface ToolPolicyInput {
@@ -64,7 +69,9 @@ export interface ToolPolicyInput {
   localBash: boolean;
   /**
    * The turn's execution mode. "plan" clamps the SDK built-ins to the read-only
-   * subset (Read/Glob/Grep) and denies Edit/Write/Bash. "auto" (Autopilot) keeps
+   * subset (Read/Glob/Grep, plus Bash per `localBash`) and denies Edit/Write —
+   * bash stays for live lookups; its no-mutation rule is the plan overlay's
+   * mandate, matching pi's plan selection. "auto" (Autopilot) keeps
    * the SAME built-in policy as execute (file tools + Bash per `localBash`) — the
    * Claude-native built-ins have no blocking `ask_user`, so auto's "never wait on
    * the user" rule is enforced only on the MCP side (custom-tools drops ask_user
@@ -81,14 +88,19 @@ export interface ToolPolicy {
 
 /** Build the `{ tools, disallowedTools }` SDK options (this object sets no `allowedTools` — see above). */
 export function buildToolPolicy(input: ToolPolicyInput): ToolPolicy {
-  // Plan mode: read-only built-ins only, and deny every write/exec tool. We do
-  // NOT switch the SDK to permissionMode "plan" — that forces the ExitPlanMode
-  // tool (which pi lacks) and the SDK's own plan prompt; Houston keeps
-  // permissionMode "default" and enforces plan via this allowlist + the overlay.
+  // Plan mode: read-only built-ins plus Bash (per localBash) for live lookups,
+  // and deny every write tool. We do NOT switch the SDK to permissionMode
+  // "plan" — that forces the ExitPlanMode tool (which pi lacks) and the SDK's
+  // own plan prompt; Houston keeps permissionMode "default" and enforces plan
+  // via this allowlist + the overlay.
   if (input.mode === "plan") {
     return {
-      tools: [...PLAN_FILE_TOOLS],
-      disallowedTools: [...PI_LACKS, "Edit", "Write", "Bash"],
+      tools: input.localBash
+        ? [...PLAN_FILE_TOOLS, "Bash"]
+        : [...PLAN_FILE_TOOLS],
+      disallowedTools: input.localBash
+        ? [...PI_LACKS, "Edit", "Write"]
+        : [...PI_LACKS, "Edit", "Write", "Bash"],
     };
   }
   const tools = input.localBash ? [...FILE_TOOLS, "Bash"] : [...FILE_TOOLS];

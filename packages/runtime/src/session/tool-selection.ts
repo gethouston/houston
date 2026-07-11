@@ -26,12 +26,20 @@ export interface ToolSelection {
  * spinning up a live model session.
  */
 /**
- * The read-only tool subset a "plan" turn is clamped to: the clamped-fs READ
- * tools (`read, ls, grep, find` — never `edit`/`write`) plus `ask_user` (holds
- * no credential, takes no real-world action). Everything that mutates or acts is
- * dropped: `edit, write, bash, run_code`, and ALL integration tools
- * (`integration_search`, `integration_execute`, `request_connection` — an
- * integration call is a real-world action against the user's connected apps).
+ * The tool subset a "plan" turn is clamped to: the clamped-fs READ tools
+ * (`read, ls, grep, find` — never `edit`/`write`), `ask_user` (holds no
+ * credential, takes no real-world action), and `bash` — planning needs live
+ * lookups a file read can't answer (the current time, a `curl`/`wget` fetch of
+ * public information); without them a Planner-default chat stonewalls trivial
+ * questions. `bash` is membership-gated like everything else: it survives only
+ * when the execute selection carried it (codeExecution=local), so
+ * disabled/remote deployments stay bash-less in plan too. Its no-mutation rule
+ * is the overlay's mandate (mode-overlays.ts), not a tool wall — the same
+ * posture as auto-run inside the single-tenant workspace guard. Everything that
+ * WRITES or acts on the user's connected apps is still dropped: `edit, write,
+ * run_code`, and ALL integration tools (`integration_search`,
+ * `integration_execute`, `request_connection` — an integration call is a
+ * real-world action against the user's connected apps).
  */
 export const PLAN_MODE_TOOL_NAMES: readonly string[] = [
   "read",
@@ -39,14 +47,16 @@ export const PLAN_MODE_TOOL_NAMES: readonly string[] = [
   "grep",
   "find",
   ASK_USER_TOOL_NAME,
+  "bash",
 ];
 
 /**
- * Clamp an execute-mode tool allowlist to the plan-mode read-only subset: keep
- * only the names in {@link PLAN_MODE_TOOL_NAMES}, preserving their order. Applied
- * to whatever `buildToolSelection` produced, so plan mode composes with every
- * code-execution / integration selection (a `bash`/`run_code`/`integration_*`
- * name is simply filtered out).
+ * Clamp an execute-mode tool allowlist to the plan-mode subset: keep only the
+ * names in {@link PLAN_MODE_TOOL_NAMES}, preserving their order. Applied to
+ * whatever `buildToolSelection` produced, so plan mode composes with every
+ * code-execution / integration selection (an `edit`/`write`/`run_code`/
+ * `integration_*` name is simply filtered out, and `bash` survives only where
+ * the selection had it).
  */
 export function planToolNames(all: readonly string[]): string[] {
   return all.filter((name) => PLAN_MODE_TOOL_NAMES.includes(name));

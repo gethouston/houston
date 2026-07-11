@@ -53,14 +53,17 @@ test("buildToolPolicy grants Bash only when code execution is local", () => {
   expect(off.disallowedTools).toContain("Bash");
 });
 
-test("plan mode clamps built-ins to Read/Glob/Grep and denies Edit/Write/Bash", () => {
+test("plan mode clamps built-ins to Read/Glob/Grep (+Bash per localBash) and denies Edit/Write", () => {
+  // Bash stays for live lookups (current time, curl/wget) — the plan overlay
+  // carries the no-mutation mandate; the write tools are denied outright.
   const plan = buildToolPolicy({ localBash: true, mode: "plan" });
-  expect(plan.tools).toEqual(["Read", "Glob", "Grep"]);
-  for (const denied of ["Edit", "Write", "Bash"])
+  expect(plan.tools).toEqual(["Read", "Glob", "Grep", "Bash"]);
+  for (const denied of ["Edit", "Write"])
     expect(plan.disallowedTools).toContain(denied);
-  // The pi-lacking set is still denied on top of the write/exec denials.
+  expect(plan.disallowedTools).not.toContain("Bash");
+  // The pi-lacking set is still denied on top of the write denials.
   expect(plan.disallowedTools).toContain("WebSearch");
-  // localBash is irrelevant in plan mode: no Bash either way.
+  // No local code execution → no Bash in plan either, omitted AND denied.
   const planNoBash = buildToolPolicy({ localBash: false, mode: "plan" });
   expect(planNoBash.tools).toEqual(["Read", "Glob", "Grep"]);
   expect(planNoBash.disallowedTools).toContain("Bash");
