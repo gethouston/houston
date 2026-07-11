@@ -45,6 +45,19 @@ export class HoustonClientBase {
   }
 
   /**
+   * Point this client at a new engine endpoint in place. The desktop shell
+   * calls this whenever a config lands on an already-built client: the
+   * sidecar restarting on a fresh random port (HOU-432), and every hosted
+   * bearer rotation (`setHostedEngineSessionToken`) — so the instance every
+   * hook holds keeps working instead of being rebuilt. Delegates to the ONE
+   * {@link AdapterContext}. Mirrors `HoustonClient.setEndpoint` in
+   * `ui/engine-client` — the shell treats the two clients interchangeably.
+   */
+  setEndpoint(config: { baseUrl: string; token: string }): void {
+    this.ctx.setEndpoint(config);
+  }
+
+  /**
    * The web-side {@link HoustonSdk} (migration wave 1). Exposes the SDK's write
    * modules — `agents`, `activities`, `providers`, `integrations`,
    * `preferences` — so later waves delegate control-plane WRITES here (matching
