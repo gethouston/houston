@@ -11,7 +11,7 @@ import Foundation
 extension Strings {
     enum Agents {
         /// Navigation title for the Agents tab.
-        static let title = "Agents"
+        static let title = String(localized: "agents.title", defaultValue: "Agents")
 
         /// The most-recent-mission line under an agent's name, in product voice.
         /// Built from the mission title + its resolved state. ONE signal per state
@@ -22,17 +22,17 @@ extension Strings {
         /// `needsYouCount`, so nothing else surfaces it).
         static func lastActivity(state: MissionState, title: String) -> String {
             switch state {
-            case .running: return "Working on \(title)"
-            case .error: return "Hit a snag on \(title)"
-            case .done: return "Finished \(title)"
+            case .running: return String(localized: "agents.lastActivity.running", defaultValue: "Working on \(title)")
+            case .error: return String(localized: "agents.lastActivity.error", defaultValue: "Hit a snag on \(title)")
+            case .done: return String(localized: "agents.lastActivity.done", defaultValue: "Finished \(title)")
             case .needsYou, .archived, .unknown: return title
             }
         }
 
         /// Shown under the name when the agent has no active missions yet.
-        static let noActivity = "No missions yet"
+        static let noActivity = String(localized: "agents.noActivity", defaultValue: "No missions yet")
 
         /// VoiceOver summary for an agent row's running state.
-        static let runningAccessibility = "Running"
+        static let runningAccessibility = String(localized: "agents.runningAccessibility", defaultValue: "Running")
     }
 }

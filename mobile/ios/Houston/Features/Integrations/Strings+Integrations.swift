@@ -10,91 +10,91 @@ import Foundation
 extension Strings {
   enum Integrations {
     /// Tab / navigation title (`title`).
-    static let title = "Integrations"
+    static let title = String(localized: "integrations.title", defaultValue: "Integrations")
 
     /// Global-page hero copy (`home.*`).
-    static let homeDescription = "Connect your apps once, then choose which agents can use each one."
-    static let connectedTitle = "Connected apps"
-    static let usedByNone = "No agents yet"
-    static let usedByAll = "All agents"
+    static let homeDescription = String(localized: "integrations.homeDescription", defaultValue: "Connect your apps once, then choose which agents can use each one.")
+    static let connectedTitle = String(localized: "integrations.connectedTitle", defaultValue: "Connected apps")
+    static let usedByNone = String(localized: "integrations.usedByNone", defaultValue: "No agents yet")
+    static let usedByAll = String(localized: "integrations.usedByAll", defaultValue: "All agents")
 
     /// Not-configured full-screen state (`unavailable`).
-    static let unavailable = "Integrations are not available in this setup."
+    static let unavailable = String(localized: "integrations.unavailable", defaultValue: "Integrations are not available in this setup.")
 
     /// Signed-out full-screen state (`signin.*`).
-    static let signinTitle = "Sign in to connect apps"
+    static let signinTitle = String(localized: "integrations.signinTitle", defaultValue: "Sign in to connect apps")
     static let signinBody =
-      "Sign in to Houston to connect your apps. Your accounts stay yours; the agent acts on your behalf."
+      String(localized: "integrations.signinBody", defaultValue: "Sign in to Houston to connect your apps. Your accounts stay yours; the agent acts on your behalf.")
 
     /// First-load state (`loading.*`).
-    static let loadingTitle = "Loading your integrations"
-    static let loadingBody = "Checking your integrations provider…"
+    static let loadingTitle = String(localized: "integrations.loadingTitle", defaultValue: "Loading your integrations")
+    static let loadingBody = String(localized: "integrations.loadingBody", defaultValue: "Checking your integrations provider…")
 
     /// Connection status labels (`status.*`).
     static func status(_ status: ConnectionStatus) -> String {
       switch status {
-      case .active: return "Connected"
-      case .pending: return "Finishing up"
-      case .error: return "Needs reconnecting"
+      case .active: return String(localized: "integrations.status.active", defaultValue: "Connected")
+      case .pending: return String(localized: "integrations.status.pending", defaultValue: "Finishing up")
+      case .error: return String(localized: "integrations.status.error", defaultValue: "Needs reconnecting")
       case .unknown(let raw): return raw
       }
     }
 
     /// Per-app detail sheet (`detail.*`).
-    static let detailActiveOn = "Agents that can use this"
-    static let detailReconnect = "Reconnect"
-    static let detailDisconnect = "Disconnect"
-    static let detailNoAgents = "No agents can use this yet. Turn one on above."
-    static let detailAllAgentsNote = "Every agent can use this app."
+    static let detailActiveOn = String(localized: "integrations.detailActiveOn", defaultValue: "Agents that can use this")
+    static let detailReconnect = String(localized: "integrations.detailReconnect", defaultValue: "Reconnect")
+    static let detailDisconnect = String(localized: "integrations.detailDisconnect", defaultValue: "Disconnect")
+    static let detailNoAgents = String(localized: "integrations.detailNoAgents", defaultValue: "No agents can use this yet. Turn one on above.")
+    static let detailAllAgentsNote = String(localized: "integrations.detailAllAgentsNote", defaultValue: "Every agent can use this app.")
 
     /// Per-agent grant read failure (mobile-only — the desktop batches grant
     /// reads, so it has no per-agent read-error state). Retriable inline, never a
     /// silent "all agents allowed" fallback (no-silent-failures).
-    static let grantsLoadError = "We couldn't load which agents can use this."
-    static let grantsRetry = "Try again"
+    static let grantsLoadError = String(localized: "integrations.grantsLoadError", defaultValue: "We couldn't load which agents can use this.")
+    static let grantsRetry = String(localized: "integrations.grantsRetry", defaultValue: "Try again")
 
     /// Disconnect-everywhere confirm from the global page (`grants.disconnect.*`).
-    static func disconnectConfirmTitle(_ name: String) -> String { "Disconnect \(name) everywhere?" }
+    static func disconnectConfirmTitle(_ name: String) -> String { String(localized: "integrations.disconnectConfirmTitle", defaultValue: "Disconnect \(name) everywhere?") }
     static func disconnectConfirmBody(_ name: String) -> String {
-      "This removes \(name) for all of your agents, not just this one. You can reconnect it anytime."
+      String(localized: "integrations.disconnectConfirmBody", defaultValue: "This removes \(name) for all of your agents, not just this one. You can reconnect it anytime.")
     }
-    static let disconnectConfirmAction = "Disconnect everywhere"
-    static let cancel = "Cancel"
+    static let disconnectConfirmAction = String(localized: "integrations.disconnectConfirmAction", defaultValue: "Disconnect everywhere")
+    static let cancel = String(localized: "integrations.cancel", defaultValue: "Cancel")
 
     /// "Used by N agents" chip line (`disconnect.affected_*`).
     static func usedBy(count: Int) -> String {
-      count == 1 ? "Used by 1 agent" : "Used by \(count) agents"
+      String(localized: "integrations.usedBy", defaultValue: "Used by \(count) agents")
     }
 
     /// The connect catalog (`connectMore.*`, `picker.*`, `browse.*`).
-    static let connectMoreTitle = "Connect more apps"
-    static let searchPlaceholder = "Search apps..."
-    static let pickerConnected = "Connected"
-    static let pickerNoResults = "No matching apps found."
-    static let pickerLoading = "Loading apps..."
-    static let allCategories = "All categories"
-    static func loadMore(remaining count: Int) -> String { "Load more (\(count) remaining)" }
+    static let connectMoreTitle = String(localized: "integrations.connectMoreTitle", defaultValue: "Connect more apps")
+    static let searchPlaceholder = String(localized: "integrations.searchPlaceholder", defaultValue: "Search apps...")
+    static let pickerConnected = String(localized: "integrations.pickerConnected", defaultValue: "Connected")
+    static let pickerNoResults = String(localized: "integrations.pickerNoResults", defaultValue: "No matching apps found.")
+    static let pickerLoading = String(localized: "integrations.pickerLoading", defaultValue: "Loading apps...")
+    static let allCategories = String(localized: "integrations.allCategories", defaultValue: "All categories")
+    static func loadMore(remaining count: Int) -> String { String(localized: "integrations.loadMore", defaultValue: "Load more (\(count) remaining)") }
 
     /// Browser hand-off waiting sheet (`waiting.*`).
-    static func waitingTitle(app: String) -> String { "Finish connecting \(app)" }
+    static func waitingTitle(app: String) -> String { String(localized: "integrations.waitingTitle", defaultValue: "Finish connecting \(app)") }
     static func waitingBody(app: String) -> String {
-      "We opened \(app) in your browser. Sign in there, then come back here."
+      String(localized: "integrations.waitingBody", defaultValue: "We opened \(app) in your browser. Sign in there, then come back here.")
     }
-    static let waitingReopen = "Reopen in browser"
-    static let waitingCheck = "I have finished"
+    static let waitingReopen = String(localized: "integrations.waitingReopen", defaultValue: "Reopen in browser")
+    static let waitingCheck = String(localized: "integrations.waitingCheck", defaultValue: "I have finished")
 
     /// Poll-outcome error copy (`connectResult.*`).
-    static let connectTimeout = "The connection didn't finish. Please try again."
-    static let connectFailed = "The app couldn't be connected. Please try again."
+    static let connectTimeout = String(localized: "integrations.connectTimeout", defaultValue: "The connection didn't finish. Please try again.")
+    static let connectFailed = String(localized: "integrations.connectFailed", defaultValue: "The app couldn't be connected. Please try again.")
 
     /// Per-agent tab (`agentTab.*`) — reachable from the agent screen later.
-    static let agentActiveTitle = "Apps this agent can use"
-    static let agentAllAppsTitle = "Your other connected apps"
-    static let agentAllAppsSubtitle = "Apps you connected that this agent can't use yet."
-    static let agentDeactivate = "Remove from this agent"
-    static let agentActivate = "Activate for this agent"
-    static let agentEmptyTitle = "No apps yet"
-    static let agentEmptyBody = "Add an app so this agent can act on it."
-    static let agentManageAll = "Manage all integrations"
+    static let agentActiveTitle = String(localized: "integrations.agentActiveTitle", defaultValue: "Apps this agent can use")
+    static let agentAllAppsTitle = String(localized: "integrations.agentAllAppsTitle", defaultValue: "Your other connected apps")
+    static let agentAllAppsSubtitle = String(localized: "integrations.agentAllAppsSubtitle", defaultValue: "Apps you connected that this agent can't use yet.")
+    static let agentDeactivate = String(localized: "integrations.agentDeactivate", defaultValue: "Remove from this agent")
+    static let agentActivate = String(localized: "integrations.agentActivate", defaultValue: "Activate for this agent")
+    static let agentEmptyTitle = String(localized: "integrations.agentEmptyTitle", defaultValue: "No apps yet")
+    static let agentEmptyBody = String(localized: "integrations.agentEmptyBody", defaultValue: "Add an app so this agent can act on it.")
+    static let agentManageAll = String(localized: "integrations.agentManageAll", defaultValue: "Manage all integrations")
   }
 }

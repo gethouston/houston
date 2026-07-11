@@ -17,11 +17,11 @@ extension Strings {
         /// title-less here because the mission title already sits on line 1.
         /// Keeping the title off avoids the duplicate-signal this sober list is
         /// built to remove. (`working` reuses `Strings.Chat.TitleBar.working`.)
-        static let snag = "Hit a snag"
+        static let snag = String(localized: "agentMissions.snag", defaultValue: "Hit a snag")
 
         /// Destructive delete confirmation (title + body); the confirm button
         /// reuses `Strings.Board.delete` ("Delete").
-        static let deleteConfirmTitle = "Delete mission?"
-        static let deleteConfirmBody = "This removes the mission and its chat for good. You can't undo this."
+        static let deleteConfirmTitle = String(localized: "agentMissions.deleteConfirmTitle", defaultValue: "Delete mission?")
+        static let deleteConfirmBody = String(localized: "agentMissions.deleteConfirmBody", defaultValue: "This removes the mission and its chat for good. You can't undo this.")
     }
 }

@@ -38,9 +38,9 @@ open Houston.xcodeproj
 #    (Settings → Privacy & Security → Developer Mode), select it, and Run.
 ```
 
-Before sign-in works, paste the Supabase anon public key into
-`Houston/App/Config.swift` (`supabaseAnonKey`). It is public by design; it is
-left blank so each build supplies its own project key.
+`Houston/App/Config.swift` ships the production Supabase project URL and anon
+public key (public by design — RLS-guarded, baked into every client). Point
+them at your own Supabase project only if you run your own gateway.
 
 ## Layout
 
@@ -55,6 +55,8 @@ mobile/ios/
     DesignSystem/          tokens wrapper, Strings, shared styles
     Features/              Agents, AgentMissions, Chat, MissionControl, NewMission,
                            Settings, AIModels, Integrations
+    Assets.xcassets/       app icon (single-size 1024, flattened from the brand mark)
+    Localizable.xcstrings  en/es/pt String Catalog (see Localization below)
     Generated/             built at build time (gitignored): SDK bundle + tokens
   HoustonTests/            unit tests
   scripts/                 build-phase shell scripts
@@ -92,6 +94,19 @@ incremental builds when nothing changed.
 2. **Sync design tokens** (`scripts/sync-design-tokens.sh`) — copies
    `packages/design-tokens/dist/swift/HoustonTokens.swift` into
    `Houston/Generated/`; the DesignSystem code imports it as a compiled source.
+
+## Localization
+
+The app ships **en / es / pt**, following the iOS system (or per-app) language.
+All user-facing copy flows through the `Strings` enum (`Strings*.swift`, one file
+per surface); each member is a `String(localized: "<key>", defaultValue: "<en>")`
+lookup against `Houston/Localizable.xcstrings`. Keys mirror the Swift keypath
+(`Strings.Board.columnRunning` → `board.columnRunning`). The en copy mirrors the
+desktop locale files exactly (PARITY is law); where a desktop key exists, es/pt
+reuse the desktop translations verbatim. Plurals use catalog plural variations —
+never `count == 1` branches in Swift. Adding a string = add the `Strings` member
+AND the catalog entry with all three languages in the same change. Full
+conventions: `knowledge-base/i18n.md` (iOS section).
 
 ## Troubleshooting
 
