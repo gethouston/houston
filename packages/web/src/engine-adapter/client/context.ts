@@ -41,18 +41,21 @@ export const LAST_AGENT_PREF = "houston.pref.last_agent_id";
  * through one source of truth with no rebuild (C8 §Active space).
  */
 export class AdapterContext {
-  readonly engine: HoustonEngineClient;
-  readonly baseUrl: string;
-  readonly token: string;
+  // engine/sdk/baseUrl/token are mutable ONLY through setEndpoint below — the
+  // in-place repoint the desktop shell relies on when the sidecar restarts.
+  engine: HoustonEngineClient;
+  baseUrl: string;
+  token: string;
   /** The single web-side {@link HoustonSdk} (migration wave 1), built INERT
    *  (reactivity off) over the shared `authFetch`. Later waves delegate
    *  control-plane WRITES to its modules. */
-  readonly sdk: HoustonSdk;
+  sdk: HoustonSdk;
   /** Live-token auth fetch (not a pinned `token`): hosted mode rotates the
-   *  bearer mid-session and a 401 refreshes + replays (HOU-687). Built ONCE and
-   *  shared by `engine` and the SDK, so `x-houston-org` has one live source
-   *  (`setActiveOrg` mutates `_cp` in place; both re-read it). */
-  readonly authFetch: typeof fetch;
+   *  bearer mid-session and a 401 refreshes + replays (HOU-687). Shared by
+   *  `engine` and the SDK, so `x-houston-org` has one live source
+   *  (`setActiveOrg` mutates `_cp` in place; both re-read it). Rebuilt only by
+   *  `setEndpoint`, which keeps its fallback bearer current. */
+  authFetch: typeof fetch;
   /** In-flight cloud device-code logins, keyed `${agentId}:${providerId}` — the poll guard. */
   readonly activeLogins = new Set<string>();
   /** Per-provider auth-status pollers that translate login completion into events (local mode). */
@@ -102,6 +105,39 @@ export class AdapterContext {
   /** The live control-plane config (cloud), or null (local/self-host). */
   get cp(): ControlPlaneConfig | null {
     return this._cp;
+  }
+
+  /**
+   * Repoint this context at a new engine endpoint IN PLACE (HOU-432): the
+   * desktop shell calls `HoustonClient.setEndpoint` when the sidecar restarts
+   * on a fresh random port, and on every hosted bearer rotation
+   * (`setHostedEngineSessionToken`). The bearer needs no rework — every fetch
+   * reads it live per attempt (`liveToken` off `window.__HOUSTON_ENGINE__`,
+   * which the caller updates first). The pinned base URLs do: the shared
+   * `ControlPlaneConfig` is mutated in place (per-agent runtime clients and
+   * `cpFetch` re-read it per call), while `authFetch` + the direct runtime
+   * client + the SDK are rebuilt, because their requesters capture the base
+   * URL (and the fetch its fallback bearer) at construction.
+   */
+  setEndpoint(opts: { baseUrl: string; token: string }): void {
+    this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
+    this.token = opts.token;
+    if (this._cp) {
+      this._cp.baseUrl = this.baseUrl;
+      this._cp.token = opts.token;
+    }
+    this.authFetch = gatewayAuthFetch(
+      opts.token,
+      () => this._cp?.activeOrgSlug,
+    );
+    this.engine = new HoustonEngineClient({
+      baseUrl: this.baseUrl,
+      fetch: this.authFetch,
+    });
+    this.sdk = createEngineSdk({
+      baseUrl: this.baseUrl,
+      fetch: this.authFetch,
+    });
   }
 
   /**
