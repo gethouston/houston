@@ -170,12 +170,20 @@ function rawNavigatorPlatform() {
 }
 
 function baseSuperProps() {
+  // The web entry injects the runtime deploy environment on
+  // `window.__HOUSTON_DEPLOY_ENV__` (production / preview / development, derived
+  // from the hostname of the ONE promoted bundle). Attach it as a super property
+  // so preview traffic is filterable out of product metrics. Unset on the
+  // desktop, where `is_debug` already separates dev from release.
+  const deployEnv =
+    typeof window !== "undefined" ? window.__HOUSTON_DEPLOY_ENV__ : undefined;
   return {
     app_version: APP_VERSION,
     app_os: currentPlatformOs,
     os: rawNavigatorPlatform(),
     is_debug: import.meta.env.DEV,
     session_id: SESSION_ID,
+    ...(deployEnv ? { environment: deployEnv } : {}),
   };
 }
 

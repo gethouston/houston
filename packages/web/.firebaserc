@@ -1,0 +1,13 @@
+{
+  "projects": {
+    "default": "gethouston"
+  },
+  "targets": {
+    "gethouston": {
+      "hosting": {
+        "production": ["houston-web"],
+        "preview": ["houston-web-preview"]
+      }
+    }
+  }
+}

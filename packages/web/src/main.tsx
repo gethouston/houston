@@ -11,11 +11,19 @@
  *    or are entered at runtime on the Connect screen.
  */
 import { createRoot } from "react-dom/client";
+import { currentDeployEnvironment } from "./deploy-environment";
 import {
   type EngineConfig,
   NEW_ENGINE_STORAGE_KEY,
   readStoredEngineConfig,
 } from "./engine-config";
+
+// Publish the runtime deploy environment BEFORE the app module graph loads: the
+// shared Sentry + PostHog init (app/src) read `window.__HOUSTON_DEPLOY_ENV__` to
+// tag their `environment`, and those run as soon as `./app-tree` is imported
+// below. ONE bundle serves both sites, so this is derived from the hostname, not
+// baked at build time (see ./deploy-environment).
+window.__HOUSTON_DEPLOY_ENV__ = currentDeployEnvironment();
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Missing #root element");

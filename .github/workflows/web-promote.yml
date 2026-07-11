@@ -1,0 +1,111 @@
+# Web promotion — preview → production (app.gethouston.ai)
+#
+# The release workflow's `build-web` job builds packages/web ONCE, attaches it
+# as the `web-dist.tar.gz` release asset, and deploys those bytes to the PREVIEW
+# site. Publishing a release (draft → public, the manual QA gate) is the signal
+# that the preview build is blessed: this workflow downloads that SAME asset and
+# re-deploys the identical bytes to the PRODUCTION site. No rebuild — what users
+# get on app.gethouston.ai is byte-for-byte what was tested on
+# preview.gethouston.ai for this version. Preview vs production is decided at
+# runtime from the hostname, so one artifact legitimately serves both.
+#
+# Rollback = re-publish an older release (this re-runs and re-deploys that
+# release's web-dist.tar.gz), or roll back in the Firebase Hosting console.
+name: Web promote
+
+on:
+  release:
+    types: [published]
+
+# Serialize overlapping publishes so two rapid promotions can't race the same
+# production site into an inconsistent state; never cancel an in-flight deploy.
+concurrency:
+  group: web-promote
+  cancel-in-progress: false
+
+permissions:
+  contents: read # download the release asset
+  id-token: write # Workload Identity Federation for the Firebase deploy
+
+jobs:
+  promote:
+    # Promote ONLY real, published, non-prerelease LOCAL-channel releases:
+    #   - `v*`               — the local channel the web app tracks. cloud-v*
+    #                          desktop releases start with `c`, so they never match.
+    #   - not a prerelease   — cloud-v* releases are prereleases anyway; this also
+    #                          keeps any hand-made prerelease off production.
+    #   - canonical repo     — forks have no deploy access to our GCP project.
+    if: ${{ startsWith(github.event.release.tag_name, 'v') && !github.event.release.prerelease && github.repository == 'gethouston/houston' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_REPO: ${{ github.repository }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      # A release published BEFORE this pipeline existed carries no web asset.
+      # That is not a failure — skip gracefully with a notice rather than red-X an
+      # old release the instant it is published. A PRESENT-but-empty asset, by
+      # contrast, is a real problem and fails loudly below.
+      - name: Check for web-dist.tar.gz asset
+        id: check
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --json assets --jq '.assets[].name' | grep -qx 'web-dist.tar.gz'; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release $TAG has no web-dist.tar.gz asset — nothing to promote (tag predates the web pipeline). Skipping."
+          fi
+
+      # The Firebase config (firebase.json + .firebaserc) is version-controlled,
+      # not in the artifact. Check it out AT THE RELEASE TAG so production's
+      # headers/target mapping match the exact commit that produced the bundle.
+      - name: Checkout hosting config at the release tag
+        if: ${{ steps.check.outputs.present == 'true' }}
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          sparse-checkout: |
+            packages/web/firebase.json
+            packages/web/.firebaserc
+          sparse-checkout-cone-mode: false
+
+      # Download the SAME artifact build-web attached to this release and unpack
+      # it into the location firebase.json's `public: "dist"` expects. Reusing the
+      # asset (no rebuild) is what makes the promotion byte-identical.
+      - name: Download + unpack bundle into packages/web/dist
+        if: ${{ steps.check.outputs.present == 'true' }}
+        run: |
+          set -euo pipefail
+          gh release download "$TAG" --pattern 'web-dist.tar.gz' --dir .
+          if [ ! -s web-dist.tar.gz ]; then
+            echo "::error::web-dist.tar.gz is present on $TAG but downloaded empty — refusing to promote a partial artifact."
+            exit 1
+          fi
+          rm -rf packages/web/dist
+          mkdir -p packages/web/dist
+          tar -xzf web-dist.tar.gz -C packages/web/dist
+          test -f packages/web/dist/index.html \
+            || { echo "::error::unpacked bundle has no index.html — the artifact is not a web build"; exit 1; }
+
+      - name: Auth to GCP (Workload Identity Federation)
+        if: ${{ steps.check.outputs.present == 'true' }}
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/1056698080170/locations/global/workloadIdentityPools/github/providers/houston
+          service_account: github-deploy-web@gethouston.iam.gserviceaccount.com
+
+      # `production` maps to the houston-web site (see .firebaserc); firebase-tools
+      # reads the ADC google-github-actions/auth wrote, so no FIREBASE_TOKEN.
+      - name: Deploy to production site
+        if: ${{ steps.check.outputs.present == 'true' }}
+        working-directory: packages/web
+        run: |
+          # Pinned major: an unpinned @latest would let a breaking firebase-tools
+          # release silently break promotion. Keep in sync with release.yml build-web.
+          npx --yes firebase-tools@15 deploy \
+            --only hosting:production \
+            --project gethouston \
+            --non-interactive
+          echo "::notice::Promoted $TAG to production — app.gethouston.ai now serves the same bytes tested on preview."
