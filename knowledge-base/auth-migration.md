@@ -210,8 +210,17 @@ Replace everywhere `SUPABASE_URL`/`SUPABASE_ANON_KEY` appear:
   through the same modules. `supabase.ts` deleted; `__SUPABASE_*__` Vite defines removed
   with it; identity log sink registered at startup. See "As-built notes (Wave 2a)" below
   for the deviations, new defines, and the Rust contract Wave 2b must honor.
-- **2b Rust loopback** — owns `app/src-tauri/src/oauth_loopback.rs` (accept Google callback, keep `auth://deep-link` bridge), `auth.rs` untouched. *Accept:* `cargo check` + loopback unit tests; success page copy unchanged. **Implement against the "Rust assumptions for Wave 2b" in the As-built notes below.**
-- **2c Admin** — owns `packages/web/src/admin/*` only. firebase email/password + Google popup, `getIdToken()` bearer. *Accept:* admin signs in, dashboard loads with Firebase bearer.
+- **2b Rust loopback — LANDED.** `oauth_loopback.rs` audited against the pinned
+  contract (note (c)): NO mismatch — it already returns
+  `http://127.0.0.1:<port>/auth/callback`, forwards `?code=&state=` verbatim, and
+  emits `auth://deep-link` with `houston://auth-callback?<query>`. Added the
+  optional `cancel_oauth_loopback` improvement, retired the dead
+  `houston://auth-callback` OS deep-link branch, refreshed Supabase-naming
+  comments. See "As-built notes (Wave 2b)" below.
+- **2c Admin — LANDED.** `packages/web/src/admin/*`: GCIP email/password (REST) +
+  Google popup, Firebase ID-token bearer with proactive REST refresh. See
+  "As-built notes (Wave 2c)" below — **incl. a HIGH infra gap: `identity.tf` does
+  NOT enable the email/password sign-in method.**
 
 > **As-built notes (Wave 2a) — deviations, new seams, and the Rust contract.**
 >
@@ -289,6 +298,70 @@ Replace everywhere `SUPABASE_URL`/`SUPABASE_ANON_KEY` appear:
 > `SESSION_QUERY_KEY = ["session"]`. Email OTP stays plain `fetch` on both surfaces
 > (`otp.ts`); only the final Firebase step differs (REST `signInWithCustomToken` on
 > desktop; SDK `signInWithCustomToken` on web).
+
+> **As-built notes (Wave 2b) — Rust shell.**
+>
+> **(i) Contract audit: NO mismatch.** `oauth_loopback.rs`'s
+> `start_oauth_loopback` already met note (c) verbatim (redirect path
+> `/auth/callback`, `state` passthrough, `auth://deep-link` payload
+> `houston://auth-callback?<query>`). The query-forward was extracted into a pure
+> `callback_deep_link(query)` helper for a unit test; behavior identical. Success
+> page copy unchanged (it never named Supabase).
+>
+> **(j) `cancel_oauth_loopback` command ADDED** (note (c).4). New Tauri-managed
+> `OauthLoopbackState { Mutex<Option<oneshot::Sender<()>>> }`; the listener task
+> now `select!`s between serve/timeout and a cancel signal. A new
+> `start_oauth_loopback` supersedes the previous listener (fires its stored
+> sender → frees the old port immediately). TS wiring: `osCancelOauthLoopback`
+> (os-bridge) + a shim-parity case + injected `abandonLoopback` in
+> `oauth-attempt.ts`. **Race-safety:** cancel is called on the timeout and the
+> EXTERNAL (unmount) cancel, but NOT on supersession — the superseding
+> `start_oauth_loopback` already freed the old port in Rust, and a second cancel
+> could race and free the NEW listener's port (single-slot state).
+>
+> **(k) Dead `houston://auth-callback` OS deep-link handler REMOVED.** With the
+> direct-OAuth fallback retired (note (h)), nothing navigates to
+> `houston://auth-callback` anymore; the `lib.rs` `on_open_url` branch that
+> re-emitted it was dead and is gone. `houston://open` (success-page focus button)
+> still brings the window to front. `auth.rs` code/commands/tests UNCHANGED — only
+> its stale Supabase-flow module doc was refreshed (the keychain store is
+> provider-agnostic). Stale "Supabase" comments across `lib.rs`,
+> `loopback_util.rs`, `codex_oauth_loopback.rs`, `os-bridge.ts` refreshed to GCIP.
+> *Verified:* `cargo check` clean, `cargo test` 11 loopback tests pass (3 new:
+> `callback_deep_link_forwards_query_verbatim`, `replace_*`, `cancel_take_*`);
+> no clippy in CI. `identity-desktop-oauth.test.ts` +3 tests (supersede does NOT
+> free; unmount + timeout DO free).
+>
+> **As-built notes (Wave 2c) — admin dashboard.**
+>
+> **(l) REST password + SDK-popup Google, unified by one REST refresh loop.** The
+> web-only admin can't reach the desktop Keychain session store, so it does NOT
+> use `identity/refresh.ts`/`session-store.ts`. `admin/auth.ts` (pure, tested) +
+> `admin/use-admin-auth.ts` (hook): email/password via REST `signInWithPassword`,
+> Google via `@houston/web-identity` `webSignInWithGoogle`; both yield an
+> `AdminSession { idToken, refreshToken, expiresAt, email }`. A single proactive
+> `refreshIdToken` timer (5-min skew, terminal-vs-transient like `refresh.ts`)
+> keeps the bearer fresh; the live `idToken` is the control-plane bearer exactly
+> as today's Supabase `access_token` was. Session persisted to localStorage
+> (reload survival, parity with old Supabase UX). `refreshIdToken` +
+> `TokenSignInResult` newly exported from the identity barrel for this consumer.
+> `SignIn` moved to `admin/sign-in.tsx`, keeping `dashboard.tsx` lean. `api.ts`
+> unchanged. Removed: `VITE_CP_SUPABASE_*` reads, `@supabase/supabase-js` dep,
+> Dockerfile Supabase build args (→ `FIREBASE_*`). Admin reuses the shared
+> `identityConfig` (project `gethouston`) — NOT a separate `VITE_CP_FIREBASE_*`.
+> *Verified:* `pnpm -r typecheck` green (shim parity OK), `admin-auth.test.ts`
+> 6/6, biome clean.
+>
+> **(m) ⚠️ HIGH — infra gap, email/password NOT enabled in GCIP.**
+> `cloud-tf/infra/terraform/identity.tf` configures `authorized_domains` + the
+> Google & Microsoft IdPs, but has **no `sign_in { email { enabled = true } }`
+> block** on `google_identity_platform_config.default` — i.e. the email/password
+> method is not enabled (there is no `allow_password_signup` set either). Until
+> infra adds it, admin email/password sign-in returns GCIP `OPERATION_NOT_ALLOWED`
+> (the UI shows "This sign-in method isn't enabled for operators."); Google popup
+> works. **Not changed here per instructions — flagged for the infra owner.** Admin
+> accounts are still provisioned out-of-band by the platform admin (console/Admin
+> SDK); this UI only signs existing accounts in (documented in `admin/auth.ts`).
 
 **Wave 3 — integration + i18n + tests (1 agent).**
 - Wire seams, run full `pnpm --filter houston-web typecheck`, `cd app && pnpm tsgo --noEmit` + `cargo check`, `pnpm check:fix`.

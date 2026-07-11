@@ -17,11 +17,15 @@ export {
   type IdentityErrorCode,
   isIdentityError,
 } from "./errors.ts";
-// `signInWithPassword` + `PasswordSignInResult` are reserved for the Wave 2c
-// admin dashboard (design §2c); kept exported ahead of that consumer landing.
+// `signInWithPassword` + `PasswordSignInResult` power the Wave 2c admin
+// dashboard (design §2c); `refreshIdToken` lets the admin run the same REST
+// refresh the desktop `refresh.ts` uses (the web-only admin can't reach the
+// desktop Keychain-backed session store, so it drives refresh itself).
 export {
   type PasswordSignInResult,
+  refreshIdToken,
   signInWithPassword,
+  type TokenSignInResult,
 } from "./firebase-rest.ts";
 export { decodeIdTokenClaims } from "./id-token.ts";
 export { startEmailOtp, verifyEmailOtp } from "./otp.ts";

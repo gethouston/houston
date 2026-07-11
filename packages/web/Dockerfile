@@ -1,8 +1,9 @@
 # Serves the pre-built Houston Cloud web SPA over HTTP (port 8080, non-root nginx).
 # The SPA's config is baked at BUILD time, so build dist first:
 #   VITE_CONTROL_PLANE_URL=http://<cp-ip> \
-#   VITE_CP_SUPABASE_URL=https://<ref>.supabase.co \
-#   VITE_CP_SUPABASE_ANON_KEY=<anon-key> \
+#   FIREBASE_API_KEY=<web-api-key> \
+#   FIREBASE_AUTH_DOMAIN=gethouston.firebaseapp.com \
+#   FIREBASE_PROJECT_ID=gethouston \
 #   SENTRY_DSN=<houston-app DSN> \
 #     pnpm --filter houston-web build
 # (SENTRY_DSN powers browser crash reporting; "Send feedback" needs the

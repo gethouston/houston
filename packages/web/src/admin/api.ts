@@ -1,6 +1,6 @@
 /**
  * Typed client for the control plane's operator endpoints (`/admin/*`). Plain
- * fetch with the admin's Supabase bearer — same origin as the rest of the app, so
+ * fetch with the admin's Firebase ID token bearer — same origin as the rest of the app, so
  * nginx proxies `/api/admin/*` to the control plane (the `/api` prefix is stripped
  * there). Shapes mirror packages/host/src/admin/{overview,billing}.ts.
  */
